@@ -1,0 +1,28 @@
+# Secrets & environment
+.env
+.env.*
+*.env
+secrets/
+*.key
+*.pem
+*.crt
+
+# UO server saves & backups (too large for git)
+server/Saves/
+server/Backups/
+backups/
+
+# Downloads (binary assets, not tracked in git)
+downloads/
+
+# Docker runtime
+docker/data/
+docker/letsencrypt/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
