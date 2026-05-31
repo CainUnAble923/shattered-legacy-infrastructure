@@ -1,0 +1,28 @@
+====== Focus ======
+
+Focus supports stamina and mana recovery. It is useful for many early builds because it makes downtime less painful.
+
+===== Start Here =====
+
+^ Item ^ Value ^
+| Trainer | Sarsmea Smythe |
+| Area | New Haven |
+| Coordinates | ''3500, 2576, 14'' |
+
+===== Related Builds =====
+
+  * melee characters that need stamina recovery
+  * casters that want smoother mana recovery
+  * hybrid builds
+
+===== Needed Images =====
+
+  * Trainer screenshot
+  * Location screenshot
+  * Example stat/skill window
+
+===== Related Pages =====
+
+  * [[:uo:world:new_haven|New Haven]]
+  * [[:uo:world:trainers|Trainer index]]
+  * [[:uo:systems:stats|Stats]]

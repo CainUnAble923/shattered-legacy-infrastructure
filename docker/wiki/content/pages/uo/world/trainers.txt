@@ -1,0 +1,23 @@
+====== Trainer Index ======
+
+This page tracks trainer availability and where players should look first.
+
+===== New Haven Trainers =====
+
+^ Skill ^ Trainer ^ Map ^ Coordinates ^ Notes ^
+| Focus | Sarsmea Smythe | Trammel | ''3500, 2576, 14'' | Confirmed seeded |
+| Mining | Jacob Waltz | Trammel | around ''3522, 2531'' | Confirmed seeded |
+
+===== Verification Checklist =====
+
+  - Confirm the NPC is visible in-game.
+  - Add a screenshot to the page.
+  - Link the trainer to the matching profession page.
+  - Add exact coordinates.
+  - Add any nearby quest givers.
+
+===== Related Pages =====
+
+  * [[new_haven|New Haven]]
+  * [[:uo:professions:start|Professions]]
+  * [[:uo:systems:skill_gain|Skill gain]]

@@ -1,0 +1,28 @@
+====== New Haven ======
+
+{{:uo:media:new_haven_route.svg?nolink&700|New Haven route diagram}}
+
+New Haven is the current starting point and tutorial hub.
+
+===== What To Document Here =====
+
+  * Arrival point screenshot
+  * Bank and healer locations
+  * Trainer locations
+  * Quest giver route
+  * Useful shops
+  * Safe gathering nearby
+
+===== Current Known Trainer Anchors =====
+
+^ Skill ^ NPC ^ Location ^
+| Focus | Sarsmea Smythe | Trammel, ''3500, 2576, 14'' |
+| Mining | Jacob Waltz | Trammel, around ''3522, 2531'' |
+
+===== Related Pages =====
+
+  * [[trainers|Trainer index]]
+  * [[quests|Quest givers]]
+  * [[:uo:professions:mining|Mining]]
+  * [[:uo:professions:focus|Focus]]
+  * [[:uo:guides:first_hour|First hour route]]

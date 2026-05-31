@@ -1,0 +1,22 @@
+====== Quest Givers ======
+
+Quest giver pages should help players decide what to do next, not just list names.
+
+===== New Haven =====
+
+The ClusterF New Haven seeder places the official New Haven quest givers and repairs missing known trainers during world load.
+
+Recommended fields for each quest giver:
+
+^ Field ^ Example ^
+| Name | NPC name |
+| Location | Town, building, coordinates |
+| Quest type | Combat, crafting, gathering, tutorial |
+| Rewards | Gold, item, skill direction |
+| Related skill | Link to profession page |
+
+===== Related Pages =====
+
+  * [[new_haven|New Haven]]
+  * [[trainers|Trainer index]]
+  * [[:uo:guides:first_hour|First hour route]]

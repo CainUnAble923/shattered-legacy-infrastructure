@@ -1,0 +1,20 @@
+====== Skill Gain ======
+
+Skill gain is intentionally faster than stock ModernUO so players can explore builds without a long grind.
+
+===== Current ClusterF Settings =====
+
+^ Setting ^ Value ^
+| Applies to | Players |
+| Chance attempts | ''3'' |
+| Amount multiplier | ''5'' |
+
+===== What This Means =====
+
+Players should see skills move noticeably faster during normal play. This supports experimentation across crafting, combat, gathering, and support skills.
+
+===== Related Pages =====
+
+  * [[stats|Stats]]
+  * [[:uo:professions:start|Professions]]
+  * [[:uo:world:trainers|Trainer index]]

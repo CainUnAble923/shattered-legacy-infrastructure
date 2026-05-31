@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420" role="img" aria-labelledby="title desc">
+  <title id="title">Wiki media style guide</title>
+  <desc id="desc">A simple board showing the image types needed for the Shattered Legacy wiki.</desc>
+  <rect width="900" height="420" fill="#ece7dc"/>
+  <text x="450" y="54" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="#2f3e46">Images We Need</text>
+  <g font-family="Arial, sans-serif">
+    <rect x="70" y="95" width="220" height="110" rx="8" fill="#355070"/>
+    <text x="180" y="140" text-anchor="middle" font-size="22" fill="#ffffff">Places</text>
+    <text x="180" y="172" text-anchor="middle" font-size="15" fill="#e5ecf4">banks, shops, routes</text>
+    <rect x="340" y="95" width="220" height="110" rx="8" fill="#6d597a"/>
+    <text x="450" y="140" text-anchor="middle" font-size="22" fill="#ffffff">People</text>
+    <text x="450" y="172" text-anchor="middle" font-size="15" fill="#f3e9ff">trainers, quest NPCs</text>
+    <rect x="610" y="95" width="220" height="110" rx="8" fill="#b56576"/>
+    <text x="720" y="140" text-anchor="middle" font-size="22" fill="#ffffff">Systems</text>
+    <text x="720" y="172" text-anchor="middle" font-size="15" fill="#ffe5ec">menus, stats, skills</text>
+    <rect x="205" y="250" width="220" height="110" rx="8" fill="#52796f"/>
+    <text x="315" y="295" text-anchor="middle" font-size="22" fill="#ffffff">Maps</text>
+    <text x="315" y="327" text-anchor="middle" font-size="15" fill="#e5f4ef">annotated movement</text>
+    <rect x="475" y="250" width="220" height="110" rx="8" fill="#99582a"/>
+    <text x="585" y="295" text-anchor="middle" font-size="22" fill="#ffffff">Proof</text>
+    <text x="585" y="327" text-anchor="middle" font-size="15" fill="#fff0df">screenshots over guesses</text>
+  </g>
+</svg>

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "type": "Server.Items.PetMimic",
+  "properties": [
+    {
+      "name": "CurrentHP",
+      "type": "int",
+      "rule": "PrimitiveTypeMigrationRule",
+      "ruleArguments": [
+        ""
+      ]
+    },
+    {
+      "name": "LastRegenTicks",
+      "type": "long",
+      "rule": "PrimitiveTypeMigrationRule",
+      "ruleArguments": [
+        ""
+      ]
+    },
+    {
+      "name": "BonusMaxHP",
+      "type": "int",
+      "rule": "PrimitiveTypeMigrationRule",
+      "ruleArguments": [
+        ""
+      ]
+    }
+  ]
+}

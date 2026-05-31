@@ -1,0 +1,16 @@
+====== Guides ======
+
+Guides are step-by-step pages for players.
+
+===== Available Guides =====
+
+  * [[first_hour|First hour route]]
+  * [[troubleshooting|Troubleshooting]]
+
+===== Good Future Guides =====
+
+  * First crafting character
+  * First combat character
+  * How to join over VPN
+  * How to report missing trainers
+  * How to contribute screenshots

@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+"""
+Minimal HTTP health check for the ModernUO service.
+Returns 200 OK when uo.service is active, 503 when it is not.
+Intended to be polled by the Homepage dashboard status monitor.
+"""
+import http.server
+import subprocess
+
+PORT = 12001
+
+class HealthHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        result = subprocess.run(
+            ['systemctl', 'is-active', 'uo.service'],
+            capture_output=True, text=True
+        )
+        active = result.stdout.strip() == 'active'
+        code   = 200 if active else 503
+        body   = b'OK' if active else b'SERVICE UNAVAILABLE'
+
+        self.send_response(code)
+        self.send_header('Content-Type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass  # suppress access logs
+
+if __name__ == '__main__':
+    server = http.server.HTTPServer(('0.0.0.0', PORT), HealthHandler)
+    server.serve_forever()

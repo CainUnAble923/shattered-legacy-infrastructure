@@ -1,0 +1,37 @@
+--- a/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs
++++ b/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs
+@@ -111,6 +111,12 @@ namespace Server.Items;
+             if (targeted is PlagueBeastInnard innard)
+             {
+                 if (innard.OnBandage(from))
+                 {
+                     _bandage.Consume();
+                 }
+
+                 return;
+             }
+
++            if (targeted is PetMimic mimic)
++            {
++                mimic.TryFeed(from, _bandage);
++                return;
++            }
++
+             from.SendLocalizedMessage(500970); // Bandages can not be used on that.
+         }
+
+@@ -124,6 +130,10 @@ namespace Server.Items;
+             if (targeted is PlagueBeastInnard innard)
+             {
+                 if (innard.OnBandage(from))
+                 {
+                     _bandage.Consume();
+                 }
+             }
++            else if (targeted is PetMimic mimic)
++            {
++                mimic.TryFeed(from, _bandage);
++            }
+             else
+             {
+                 base.OnNonlocalTarget(from, targeted);

@@ -1,0 +1,20 @@
+====== Lore Hub ======
+
+This namespace is for shard fiction, faction flavor, place histories, and rumors.
+
+===== Good First Lore Pages =====
+
+  * Shattered Legacy premise
+  * New Haven rumors
+  * League of Extraordinary Citizens
+  * Miners' Compact
+  * Notable player deeds
+
+===== Writing Style =====
+
+Keep lore pages link-heavy:
+
+  * link places to [[:uo:world:start|World]]
+  * link factions to related professions
+  * link rumors to quests or NPCs
+  * add images when a place or person matters

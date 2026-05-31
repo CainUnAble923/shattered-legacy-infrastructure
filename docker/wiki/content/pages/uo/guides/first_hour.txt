@@ -1,0 +1,19 @@
+====== First Hour Route ======
+
+{{:uo:media:new_haven_route.svg?nolink&700|First hour route diagram}}
+
+This route is a starter path for a fresh character.
+
+===== Route =====
+
+  - Connect to the shard using [[:uo:connection|Connection guide]].
+  - Create a character and arrive in [[:uo:world:new_haven|New Haven]].
+  - Visit [[:uo:world:trainers|trainers]] for your first skill direction.
+  - If gathering, start with [[:uo:professions:mining|Mining]].
+  - If building recovery, train [[:uo:professions:focus|Focus]].
+  - Pick up starter quests from [[:uo:world:quests|Quest givers]].
+  - Check [[:uo:systems:skill_gain|Skill gain]] so expectations match this shard.
+
+===== Add Screenshots =====
+
+This page should eventually include a screenshot at each route step.

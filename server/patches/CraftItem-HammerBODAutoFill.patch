@@ -1,0 +1,14 @@
+--- a/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
++++ b/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
+@@ -1173,6 +1173,12 @@ namespace Server.Engines.Craft
+
+                     from.AddToBackpack(item);
+
++                    // ClusterF: Hammer of Hephaestus — BOD auto-fill
++                    if (from is PlayerMobile clusterHohPm && craftSystem is DefBlacksmithy
++                        && (tool is HammerOfHephaestus or ReinforcedHammerOfHephaestus))
++                        HammerBODAutoFill.TryAutoFill(clusterHohPm, item);
++
+                     if (from.AccessLevel > AccessLevel.Player)
+                     {
+                         CommandLogging.WriteLine(

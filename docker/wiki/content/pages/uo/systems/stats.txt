@@ -1,0 +1,17 @@
+====== Stats ======
+
+ClusterF stat caps are expanded for long-term character growth.
+
+===== Current Caps =====
+
+^ Stat ^ Cap ^
+| Strength | ''500'' |
+| Dexterity | ''500'' |
+| Intelligence | ''500'' |
+| Total stats | ''1500'' |
+
+===== Related Pages =====
+
+  * [[skill_gain|Skill gain]]
+  * [[:uo:new_player_guide|New player guide]]
+  * [[:uo:professions:start|Professions]]

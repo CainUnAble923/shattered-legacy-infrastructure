@@ -1,0 +1,24 @@
+====== Server Systems ======
+
+{{:uo:media:skill_systems.svg?nolink&700|Skill and stat systems diagram}}
+
+This namespace explains how Shattered Legacy differs from stock ModernUO.
+
+===== Progression =====
+
+  * [[skill_gain|Skill gain]]
+  * [[stats|Stats]]
+
+===== Account And Access =====
+
+  * [[accounts|Accounts]]
+
+===== World Extensions =====
+
+  * [[ultimalive|UltimaLive]]
+
+===== Related Pages =====
+
+  * [[:uo:new_player_guide|New player guide]]
+  * [[:uo:professions:start|Professions]]
+  * [[:uo:world:start|World]]

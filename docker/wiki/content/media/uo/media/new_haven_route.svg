@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420" role="img" aria-labelledby="title desc">
+  <title id="title">New Haven first route diagram</title>
+  <desc id="desc">A simple route diagram connecting arrival, trainers, quests, professions, and systems.</desc>
+  <rect width="900" height="420" fill="#f7f4ea"/>
+  <g fill="none" stroke="#56616f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M170 105 C260 105 290 105 360 105"/>
+    <path d="M500 105 C585 105 615 105 720 105"/>
+    <path d="M445 150 C445 205 380 235 315 260"/>
+    <path d="M455 150 C455 205 520 235 585 260"/>
+    <path d="M315 315 C390 350 510 350 585 315"/>
+  </g>
+  <g font-family="Arial, sans-serif" text-anchor="middle">
+    <rect x="55" y="58" width="230" height="94" rx="8" fill="#1d3557"/>
+    <text x="170" y="96" font-size="22" fill="#ffffff">Arrive</text>
+    <text x="170" y="126" font-size="15" fill="#cfe0ff">New Haven</text>
+    <rect x="350" y="58" width="190" height="94" rx="8" fill="#386641"/>
+    <text x="445" y="96" font-size="22" fill="#ffffff">Train</text>
+    <text x="445" y="126" font-size="15" fill="#d8f3dc">Focus / Mining</text>
+    <rect x="640" y="58" width="210" height="94" rx="8" fill="#7f5539"/>
+    <text x="745" y="96" font-size="22" fill="#ffffff">Quest</text>
+    <text x="745" y="126" font-size="15" fill="#ffe8d6">Starter NPCs</text>
+    <rect x="185" y="245" width="260" height="92" rx="8" fill="#6a4c93"/>
+    <text x="315" y="282" font-size="22" fill="#ffffff">Gather</text>
+    <text x="315" y="312" font-size="15" fill="#eadcff">Mining route</text>
+    <rect x="455" y="245" width="260" height="92" rx="8" fill="#bc6c25"/>
+    <text x="585" y="282" font-size="22" fill="#ffffff">Build</text>
+    <text x="585" y="312" font-size="15" fill="#fff2d6">Skills and stats</text>
+    <text x="450" y="386" font-size="18" fill="#343a40">Add real screenshots to replace this route as the shard matures.</text>
+  </g>
+</svg>

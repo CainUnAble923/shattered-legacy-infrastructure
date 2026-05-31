@@ -1,0 +1,28 @@
+====== Maps ======
+
+Maps should be visual first. Use screenshots or annotated images where possible.
+
+===== Map Types To Add =====
+
+  * New Haven walking map
+  * Trainer map
+  * Quest giver map
+  * Mining routes
+  * Bank and vendor routes
+  * Dungeon entrances
+
+===== Image Naming =====
+
+Store maps in the ''uo:media'' namespace:
+
+```text
+uo:media:new-haven-trainers.png
+uo:media:mining-route-iron.png
+uo:media:quest-giver-loop.png
+```
+
+===== Related Pages =====
+
+  * [[new_haven|New Haven]]
+  * [[trainers|Trainer index]]
+  * [[:uo:media:start|Images and media]]

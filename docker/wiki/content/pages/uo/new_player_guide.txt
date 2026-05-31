@@ -1,0 +1,26 @@
+====== New Player Guide ======
+
+Welcome to Shattered Legacy. This page should answer the first questions a new player has after logging in.
+
+===== First Choices =====
+
+  * If you want to gather and craft, start with [[:uo:professions:mining|Mining]] and [[:uo:professions:blacksmithy|Blacksmithy]].
+  * If you want smoother combat training, read [[:uo:professions:focus|Focus]] and [[:uo:systems:skill_gain|Skill gain]].
+  * If you want quests and NPC direction, start in [[:uo:world:new_haven|New Haven]].
+
+===== Quick Route =====
+
+  - Connect using [[:uo:connection|Connection guide]].
+  - Create your character.
+  - Find the nearest trainer using [[:uo:world:trainers|Trainer index]].
+  - Pick up early quests from [[:uo:world:quests|Quest givers]].
+  - Follow [[:uo:guides:first_hour|First hour route]].
+
+===== Server Differences =====
+
+  * Skill gains are faster than stock ModernUO.
+  * Individual stats can reach 500.
+  * Total stats can reach 1500.
+  * Skill caps are configured for ClusterF progression.
+
+See [[:uo:systems:start|Server systems]] for the details.

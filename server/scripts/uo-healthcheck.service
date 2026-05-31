@@ -1,0 +1,14 @@
+[Unit]
+Description=UO Service Health Check Endpoint
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/uo-healthcheck
+Restart=always
+RestartSec=5
+User=root
+
+[Install]
+WantedBy=multi-user.target

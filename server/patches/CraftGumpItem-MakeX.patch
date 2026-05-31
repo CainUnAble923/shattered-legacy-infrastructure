@@ -1,0 +1,39 @@
+--- a/Projects/UOContent/Engines/Craft/Core/CraftGumpItem.cs
++++ b/Projects/UOContent/Engines/Craft/Core/CraftGumpItem.cs
+@@ BuildLayout — adds MAKE X button (ID=2) between BACK and MAKE NOW
+
+         if (needsRecipe)
+         {
++            // ClusterF: Make X — greyed out when recipe not known
++            builder.AddButton(140, 387, 4005, 4007, 0, GumpButtonType.Page);
++            builder.AddLabel(175, 390, GreyLabelColor, "MAKE X");
+             builder.AddButton(270, 387, 4005, 4007, 0, GumpButtonType.Page);
+             builder.AddHtmlLocalized(305, 390, 150, 18, 1044151, GreyLabelColor); // MAKE NOW
+         }
+         else
+         {
++            // ClusterF: Make X button (ID=2)
++            builder.AddButton(140, 387, 4005, 4007, 2);
++            builder.AddLabel(175, 390, LabelHue, "MAKE X");
+             builder.AddButton(270, 387, 4005, 4007, 1);
+             builder.AddHtmlLocalized(305, 390, 150, 18, 1044151, LabelColor); // MAKE NOW
+         }
+
+@@ OnResponse — handle button 2 (Make X) and clear repeat state on Make Now
+
+-        else // Make Button
++        else if (info.ButtonID == 2) // ClusterF: Make X
++        {
++            from.SendGump(new CraftCountGump(from, _craftSystem, _craftItem, _tool));
++        }
++        else // Make Now (ButtonID == 1)
+         {
+             ...
+             if (context != null)
+             {
++                // ClusterF: Make X — clear any in-flight repeat for single craft
++                context.RepeatCount   = 0;
++                context.RepeatItem    = null;
++                context.RepeatTypeRes = null;
++
+                 var res = ...

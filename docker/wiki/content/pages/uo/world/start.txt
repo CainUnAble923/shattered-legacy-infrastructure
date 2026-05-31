@@ -1,0 +1,24 @@
+====== World Hub ======
+
+The world section collects places, maps, NPCs, quests, and travel notes.
+
+===== Places =====
+
+  * [[new_haven|New Haven]]
+  * [[maps|Maps]]
+
+===== People =====
+
+  * [[trainers|Trainer index]]
+  * [[quests|Quest givers]]
+
+===== Good Future Pages =====
+
+  * Towns
+  * Dungeons
+  * Shrines
+  * Resource routes
+  * Safe banks and vendors
+  * Player settlements
+
+When adding place pages, include an image, coordinates, nearby NPCs, and links to relevant professions or quests.

@@ -1,0 +1,22 @@
+====== Blacksmithy ======
+
+Blacksmithy turns mining into useful gear and an early economy loop.
+
+===== Good First Loop =====
+
+  - Mine ore using [[mining|Mining]].
+  - Smelt ore into ingots.
+  - Craft basic tools or armor.
+  - Sell extras or equip upgrades.
+
+===== Needed Images =====
+
+  * Forge/anvil location
+  * Basic crafting menu
+  * Early item recommendations
+
+===== Related Pages =====
+
+  * [[mining|Mining]]
+  * [[:uo:systems:skill_gain|Skill gain]]
+  * [[:uo:world:new_haven|New Haven]]

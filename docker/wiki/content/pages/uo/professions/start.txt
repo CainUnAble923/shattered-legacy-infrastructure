@@ -1,0 +1,23 @@
+====== Professions ======
+
+Professions are player paths through skills, trainers, equipment, and goals.
+
+===== Gathering And Crafting =====
+
+  * [[mining|Mining]]
+  * [[blacksmithy|Blacksmithy]]
+
+===== Support And Combat Readiness =====
+
+  * [[focus|Focus]]
+
+===== Page Template =====
+
+Each profession page should include:
+
+  * what the skill does
+  * where to train
+  * first useful tools
+  * early goals
+  * related quests
+  * screenshots or route images

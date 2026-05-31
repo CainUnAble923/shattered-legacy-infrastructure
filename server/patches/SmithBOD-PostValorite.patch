@@ -1,0 +1,74 @@
+--- a/Projects/UOContent/Engines/Bulk Orders/SmallSmithBOD.cs
++++ b/Projects/UOContent/Engines/Bulk Orders/SmallSmithBOD.cs
+@@ Add m_PostValMaterialChances array after m_BlacksmithMaterialChances
+
++        // ClusterF: post-Valorite material distribution.
++        public static double[] m_PostValMaterialChances =
++        {
++            0.501953125, // Platinum   (requires 105)
++            0.250000000, // Toxic      (requires 115)
++            0.125000000, // Blaze      (requires 130)
++            0.062500000, // Frost      (requires 150)
++            0.031250000, // Obsidian   (requires 175)
++            0.015625000, // Mythril    (requires 200)
++            0.007812500, // Adamantium (requires 250)
++            0.001953125  // Celestial  (requires 300)
++        };
+
+@@ In CreateRandomFor, before var excChance — add post-Valorite upgrade block
+
++            // ClusterF: post-Valorite upgrade — 30% chance for extended smiths (skill > 100)
++            if (useMaterials && theirSkill > 100.0 && Utility.RandomDouble() < 0.30)
++            {
++                var postVal = GetRandomMaterial(BulkMaterialType.Platinum, m_PostValMaterialChances);
++                var postValReq = postVal switch
++                {
++                    BulkMaterialType.Platinum   => 105.0,
++                    BulkMaterialType.Toxic      => 115.0,
++                    BulkMaterialType.Blaze      => 130.0,
++                    BulkMaterialType.Frost      => 150.0,
++                    BulkMaterialType.Obsidian   => 175.0,
++                    BulkMaterialType.Mythril    => 200.0,
++                    BulkMaterialType.Adamantium => 250.0,
++                    BulkMaterialType.Celestial  => 300.0,
++                    _                           => 999.0,
++                };
++                if (theirSkill >= postValReq)
++                    material = postVal;
++            }
++
+             var excChance = theirSkill >= 70.1 ? (theirSkill + 80.0) / 200.0 : 0.0;
+
+--- a/Projects/UOContent/Engines/Bulk Orders/LargeSmithBOD.cs
++++ b/Projects/UOContent/Engines/Bulk Orders/LargeSmithBOD.cs
+@@ Before ComputeFame — add CreateRandomFor static method
+
++        // ClusterF: skill-aware generation — upgrades material to post-Valorite for extended smiths.
++        public static LargeSmithBOD CreateRandomFor(Mobile m)
++        {
++            var bod = new LargeSmithBOD();
++            var theirSkill = m.Skills.Blacksmith.Base;
++            if (theirSkill > 100.0 && bod.Material != BulkMaterialType.None
++                && Utility.RandomDouble() < 0.30)
++            {
++                var postVal = GetRandomMaterial(BulkMaterialType.Platinum,
++                    SmallSmithBOD.m_PostValMaterialChances);
++                var postValReq = postVal switch
++                {
++                    BulkMaterialType.Platinum   => 105.0,
++                    BulkMaterialType.Toxic      => 115.0,
++                    BulkMaterialType.Blaze      => 130.0,
++                    BulkMaterialType.Frost      => 150.0,
++                    BulkMaterialType.Obsidian   => 175.0,
++                    BulkMaterialType.Mythril    => 200.0,
++                    BulkMaterialType.Adamantium => 250.0,
++                    BulkMaterialType.Celestial  => 300.0,
++                    _                           => 999.0,
++                };
++                if (theirSkill >= postValReq)
++                    bod.Material = postVal;
++            }
++            return bod;
++        }
++
+         public override int ComputeFame() => SmithRewardCalculator.Instance.ComputeFame(this);

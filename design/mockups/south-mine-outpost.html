@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Miners' Compact Outpost — South Mine Layout</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0b0b16; color: #d4c9a8; font-family: 'Segoe UI', sans-serif; padding: 16px; }
+
+h1 { color: #c8a84b; font-size: 16px; letter-spacing: 1px; margin-bottom: 2px; }
+.sub { color: #607080; font-size: 11px; margin-bottom: 14px; }
+
+.wrap { display: flex; gap: 24px; align-items: flex-start; }
+
+/* ═══ GRID ═══ */
+.grid-section { flex-shrink: 0; }
+.grid { display: inline-grid; border: 2px solid #2a2a40; }
+
+.cell {
+  width: 52px; height: 52px;
+  border: 1px solid #161626;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  position: relative;
+  cursor: default;
+  font-size: 20px;
+  line-height: 1;
+}
+.cell:hover { border-color: #c8a84b !important; z-index: 20; }
+.cell:hover .tip { display: flex; }
+
+.tip {
+  display: none;
+  position: absolute;
+  bottom: 56px; left: 50%; transform: translateX(-50%);
+  background: #05050f; border: 1px solid #c8a84b;
+  color: #e8e0c0; font-size: 11px; font-family: 'Courier New', monospace;
+  padding: 4px 8px; white-space: nowrap; z-index: 50;
+  border-radius: 3px; pointer-events: none;
+  flex-direction: column; gap: 1px;
+}
+.tip .t-coord { color: #c8a84b; font-size: 10px; }
+.tip .t-name  { color: #e8e0c0; }
+.tip .t-id    { color: #708090; font-size: 10px; }
+
+.cell-lbl { font-size: 7px; color: rgba(100,120,140,0.8); line-height: 1; margin-top: 1px; text-align: center; max-width: 50px; overflow: hidden; white-space: nowrap; }
+
+/* axis labels */
+.ax { display: flex; }
+.ax-corner { width: 36px; height: 22px; }
+.ax-x { width: 52px; height: 22px; display: flex; align-items: flex-end; justify-content: center; font-size: 9px; color: #3a4a5a; padding-bottom: 2px; }
+.ax-y { width: 36px; height: 52px; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px; font-size: 9px; color: #3a4a5a; }
+.grid-row { display: flex; }
+
+/* ═══ TERRAIN ═══ */
+.g  { background: #1c3210; }           /* grass */
+.w  { background: #0c2238; border-color: #0e2030 !important; } /* water */
+.cl { background: #282020; border-color: #201a1a !important; } /* cliff */
+.d  { background: #281e10; }           /* dirt/plaza */
+
+/* ═══ EXISTING (blue-silver) ═══ */
+.ex-ruin   { background: #28283a; border-color: #505070 !important; }
+.ex-fire   { background: #3c1400; border-color: #d05010 !important; }
+.ex-ket    { background: #18182e; border-color: #4858a0 !important; }
+.ex-forge  { background: #3a1000; border-color: #e04808 !important; }
+.ex-anvil  { background: #18202a; border-color: #586870 !important; }
+.ex-npc    { background: #082008; border-color: #28a028 !important; }
+
+/* ═══ NEW ITEMS (warm gold) ═══ */
+.n-bell    { background: #281000; border-color: #b05818 !important; }
+.n-tool    { background: #0e1e2e; border-color: #486080 !important; }
+.n-trough  { background: #082030; border-color: #2878b0 !important; }
+.n-barrel  { background: #281400; border-color: #784818 !important; }
+.n-crate   { background: #281a08; border-color: #907028 !important; }
+.n-bed     { background: #180828; border-color: #7048a0 !important; }
+.n-sign    { background: #181000; border-color: #c8a84b !important; }
+.n-ore     { background: #280808; border-color: #b01818 !important; }
+.n-table   { background: #1e1008; border-color: #705020 !important; }
+.n-stool   { background: #201408; border-color: #806030 !important; }
+.n-torch   { background: #2e1000; border-color: #e08018 !important; }
+.n-fence   { background: #180e00; border-color: #604818 !important; }
+.n-box     { background: #181008; border-color: #806840 !important; }
+.n-npc     { background: #003020; border-color: #18c878 !important; }
+
+/* ═══ TREES ═══ */
+.tr-k { background: #142a08; border-color: #285018 !important; }
+.tr-r { background: #280e08; border-color: #882018 !important; opacity: 0.72; }
+
+/* ═══ ZONE OUTLINES ═══ */
+.z-rest  { outline: 2px dashed rgba(110,60,200,0.4); outline-offset: -3px; }
+.z-work  { outline: 2px dashed rgba(220,70,10,0.45); outline-offset: -3px; }
+.z-store { outline: 2px dashed rgba(180,140,30,0.4); outline-offset: -3px; }
+.z-entry { outline: 2px dashed rgba(80,180,80,0.35); outline-offset: -3px; }
+
+/* ═══ PANEL ═══ */
+.panel { flex: 1; min-width: 280px; max-width: 340px; }
+
+.sec { margin-bottom: 16px; }
+.sec h3 { font-size: 11px; color: #c8a84b; border-bottom: 1px solid #252510; padding-bottom: 3px; margin-bottom: 7px; letter-spacing: 0.5px; font-family: 'Courier New', monospace; }
+
+ul.items { list-style: none; }
+ul.items li { font-size: 10.5px; color: #a0988a; padding: 1px 0 1px 14px; position: relative; line-height: 1.6; }
+ul.items li::before { position: absolute; left: 0; }
+li.keep::before { content:"·"; color:#5878c0; }
+li.new::before  { content:"+"; color:#48c048; }
+li.del::before  { content:"✕"; color:#c04848; }
+.coord  { color: #506070; font-size: 9px; }
+.itemid { color: #706040; font-size: 9px; font-family: 'Courier New', monospace; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 10px; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #807868; }
+.leg-sw { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+.note { font-size: 9.5px; color: #606850; line-height: 1.6; padding: 5px 8px; border-left: 2px solid #252510; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>⛏ Miners' Compact Outpost — South Mine (Proposed)</h1>
+<div class="sub">Trammel · New Haven South Mountain · Reference: Kettle @ (3508, 2743) · Hover cells for item details</div>
+
+<div class="wrap">
+
+<!-- GRID -->
+<div class="grid-section">
+  <div id="grid-container"></div>
+  <div class="legend" style="margin-top:10px;">
+    <div class="leg"><div class="leg-sw" style="background:#1c3210;border:1px solid #2a4518"></div>Grass</div>
+    <div class="leg"><div class="leg-sw" style="background:#0c2238;border:1px solid #0e2030"></div>Water</div>
+    <div class="leg"><div class="leg-sw" style="background:#282020;border:1px solid #201a1a"></div>Cliff</div>
+    <div class="leg"><div class="leg-sw" style="background:#142a08;border:1px solid #285018"></div>🌲 Keep</div>
+    <div class="leg"><div class="leg-sw" style="background:#280e08;border:1px solid #882018;opacity:.7"></div>🌲 Remove</div>
+    <div class="leg"><div class="leg-sw" style="background:#28283a;border:1px solid #505070"></div>Existing item</div>
+    <div class="leg"><div class="leg-sw" style="background:#003020;border:1px solid #18c878"></div>New NPC</div>
+    <div class="leg"><div class="leg-sw" style="background:#003020;border:2px dashed rgba(110,60,200,0.6)"></div>Zone A: Rest</div>
+    <div class="leg"><div class="leg-sw" style="background:#003020;border:2px dashed rgba(220,70,10,0.6)"></div>Zone B: Work</div>
+    <div class="leg"><div class="leg-sw" style="background:#003020;border:2px dashed rgba(180,140,30,0.6)"></div>Zone C: Storage</div>
+  </div>
+</div>
+
+<!-- PANEL -->
+<div class="panel">
+
+  <div class="sec">
+    <h3>ZONE A — Rest &amp; Camp</h3>
+    <ul class="items">
+      <li class="keep">Campfire <span class="coord">(3510, 2743)</span></li>
+      <li class="keep">Kettle / Cauldron <span class="coord">(3508, 2743)</span></li>
+      <li class="new">Bedroll ×2 <span class="coord">(3512, 2743) (3513, 2743)</span> <span class="itemid">0xA57</span></li>
+      <li class="new">Small Table <span class="coord">(3511, 2742)</span> <span class="itemid">0xB35</span></li>
+      <li class="new">Wooden Stool <span class="coord">(3510, 2742)</span> <span class="itemid">0x1218</span></li>
+    </ul>
+  </div>
+
+  <div class="sec">
+    <h3>ZONE B — Forge &amp; Work</h3>
+    <ul class="items">
+      <li class="keep">Forge <span class="coord">(3508, 2746)</span></li>
+      <li class="keep">Anvil <span class="coord">(3510, 2746)</span></li>
+      <li class="new">Bellows <span class="coord">(3509, 2745)</span> <span class="itemid">0x4D22</span></li>
+      <li class="new">Shovel display (static) <span class="coord">(3512, 2746)</span> <span class="itemid">0xF39</span></li>
+      <li class="new">Pickaxe display (static) <span class="coord">(3513, 2746)</span> <span class="itemid">0xE86</span></li>
+      <li class="new">Water Trough <span class="coord">(3507, 2747)</span> <span class="itemid">0x0FBB</span></li>
+    </ul>
+  </div>
+
+  <div class="sec">
+    <h3>ZONE C — Storage &amp; Ore</h3>
+    <ul class="items">
+      <li class="new">Barrel ×3 <span class="coord">(3515–3517, 2745)</span> <span class="itemid">0xE77</span></li>
+      <li class="new">Wooden Crate ×2 <span class="coord">(3515, 2748) (3517, 2748)</span> <span class="itemid">0xE3D</span></li>
+      <li class="new">Ore Pile display <span class="coord">(3518, 2746)</span> <span class="itemid">0x19B9</span></li>
+      <li class="new">Strongbox (records) <span class="coord">(3518, 2748)</span> <span class="itemid">0x9AB</span></li>
+    </ul>
+  </div>
+
+  <div class="sec">
+    <h3>ZONE D — Entrance</h3>
+    <ul class="items">
+      <li class="new">Sign Post "Miners' Compact Outpost" <span class="coord">(3512, 2739)</span> <span class="itemid">0xBD2</span></li>
+      <li class="new">Torch Post ×2 <span class="coord">(3508, 2741) (3516, 2741)</span> <span class="itemid">0xA1C</span></li>
+      <li class="new">Rope Fence Posts ×4 <span class="coord">(N perimeter, 2740)</span> <span class="itemid">0x14F5</span></li>
+    </ul>
+  </div>
+
+  <div class="sec">
+    <h3>NPCs</h3>
+    <ul class="items">
+      <li class="keep">Garrett Ashveil — Compact Liaison <span class="coord">(3510, 2748)</span></li>
+      <li class="new">Velara Thorne — Survey Archivist <span class="coord">(3516, 2747)</span> facing West</li>
+    </ul>
+  </div>
+
+  <div class="sec">
+    <h3>TREES — Clear for Camp</h3>
+    <ul class="items">
+      <li class="del">Remove ~8 trees in X 3509–3519, Y 2739–2749</li>
+      <li class="keep">Preserve western treeline (X ≤ 3506)</li>
+    </ul>
+    <div class="note">Trees are world statics — use admin [Remove targeting each one, or [ClusterFSouthMineDecor replace after adding removal logic.</div>
+  </div>
+
+</div>
+</div>
+
+<script>
+// Grid: X 3504–3522 (19 cols), Y 2737–2752 (16 rows)
+const X0=3504, X1=3522, Y0=2737, Y1=2752;
+const COLS=X1-X0+1, ROWS=Y1-Y0+1;
+
+// item map
+const C={};
+function s(x,y,cls,em,name,id,zone){
+  C[`${x},${y}`]={cls,em,name,id:id||'',zone:zone||''};
+}
+
+// ── Water (x>=3521) ──
+for(let x=3521;x<=X1;x++) for(let y=Y0;y<=Y1;y++) s(x,y,'w','〰','Water','');
+
+// ── Cliff (y>=2750, x<=3520) ──
+for(let x=X0;x<=3520;x++) for(let y=2750;y<=Y1;y++) s(x,y,'cl','⛰','Cliff / Mountain','');
+
+// ── Dirt path (central camp floor) ──
+for(let x=3506;x<=3520;x++) for(let y=2742;y<=2749;y++){
+  const k=`${x},${y}`;
+  if(!C[k]) C[k]={cls:'d',em:'',name:'Dirt/Camp floor',id:'',zone:''};
+}
+
+// ── Stone ruins ──
+[[3506,2738],[3507,2738],[3508,2738],[3509,2738],[3510,2738],
+ [3506,2739],[3510,2739],
+ [3506,2740],[3507,2740],[3508,2740],[3509,2740],[3510,2740]
+].forEach(([x,y])=>s(x,y,'ex-ruin','🧱','Stone Ruin (existing structure)',''));
+
+// ── Trees KEEP ──
+[[3504,2737],[3505,2737],[3504,2738],[3505,2738],[3504,2739],[3505,2739],
+ [3504,2740],[3505,2740],[3504,2741],[3505,2741],
+ [3504,2742],[3504,2743],[3504,2744],[3505,2744],
+ [3504,2745],[3504,2746],[3504,2747]
+].forEach(([x,y])=>s(x,y,'tr-k','🌲','Keep tree (west edge)',''));
+
+// ── Trees REMOVE ──
+[[3509,2741],[3510,2741],[3511,2741],[3512,2741],
+ [3511,2742],[3512,2742],[3513,2741],[3514,2741],
+ [3513,2740],[3514,2740],[3515,2740],[3515,2739],[3514,2739],
+ [3516,2741],[3516,2742],[3517,2742],[3517,2743],
+ [3511,2744],[3512,2745],[3513,2745],[3514,2744],[3514,2743],
+ [3519,2741],[3519,2742],[3520,2741]
+].forEach(([x,y])=>s(x,y,'tr-r','🌲','⚠ REMOVE this tree',''));
+
+// ── Existing ──
+s(3508,2743,'ex-ket', '🪣','EXISTING: Kettle / Cauldron','0xFAE');
+s(3510,2743,'ex-fire','🔥','EXISTING: Campfire','0xDE3');
+s(3508,2746,'ex-forge','🔶','EXISTING: Forge','');
+s(3510,2746,'ex-anvil','⚙','EXISTING: Anvil','0xFB0');
+s(3510,2748,'ex-npc', '👤','EXISTING NPC: Garrett Ashveil — Miners\' Compact Liaison','');
+
+// ── Zone A — Rest ──
+s(3510,2742,'n-stool','🪑','NEW: Wooden Stool','0x1218','z-rest');
+s(3511,2742,'n-table','🪵','NEW: Small Table','0xB35','z-rest');
+s(3512,2743,'n-bed',  '🛏','NEW: Bedroll','0xA57','z-rest');
+s(3513,2743,'n-bed',  '🛏','NEW: Bedroll','0xA57','z-rest');
+
+// ── Zone B — Work ──
+s(3509,2745,'n-bell',  '💨','NEW: Bellows','0x4D22','z-work');
+s(3512,2746,'n-tool',  '🔧','NEW: Static Shovel display','0xF39','z-work');
+s(3513,2746,'n-tool',  '⛏','NEW: Static Pickaxe display','0xE86','z-work');
+s(3507,2747,'n-trough','💧','NEW: Water Trough','0x0FBB','z-work');
+
+// ── Zone C — Storage ──
+s(3515,2745,'n-barrel','🪣','NEW: Barrel (ore/supply storage)','0xE77','z-store');
+s(3516,2745,'n-barrel','🪣','NEW: Barrel','0xE77','z-store');
+s(3517,2745,'n-barrel','🪣','NEW: Barrel','0xE77','z-store');
+s(3515,2748,'n-crate', '📦','NEW: Wooden Crate','0xE3D','z-store');
+s(3517,2748,'n-crate', '📦','NEW: Wooden Crate','0xE3D','z-store');
+s(3518,2746,'n-ore',   '🪨','NEW: Ore Pile display (iron stack)','0x19B9','z-store');
+s(3518,2748,'n-box',   '🔒','NEW: Strongbox (survey records)','0x9AB','z-store');
+
+// ── Zone D — Entrance ──
+s(3512,2739,'n-sign', '🪧','NEW: Sign Post "Miners\' Compact Outpost"','0xBD2','z-entry');
+s(3508,2741,'n-torch','🕯','NEW: Torch Post','0xA1C','z-entry');
+s(3516,2741,'n-torch','🕯','NEW: Torch Post','0xA1C','z-entry');
+s(3509,2740,'n-fence','│','NEW: Rope Fence Post','0x14F5','z-entry');
+s(3511,2740,'n-fence','│','NEW: Rope Fence Post','0x14F5','z-entry');
+s(3513,2740,'n-fence','│','NEW: Rope Fence Post','0x14F5','z-entry');
+s(3515,2740,'n-fence','│','NEW: Rope Fence Post','0x14F5','z-entry');
+
+// ── NEW NPC ──
+s(3516,2747,'n-npc','👤','NEW NPC: Velara Thorne — Survey Archivist (facing West)','');
+
+// ── RENDER ──
+const gc = document.getElementById('grid-container');
+
+// X labels
+const xrow = document.createElement('div'); xrow.className='ax';
+const corner = document.createElement('div'); corner.className='ax-corner'; xrow.appendChild(corner);
+for(let x=X0;x<=X1;x++){
+  const lbl=document.createElement('div'); lbl.className='ax-x';
+  lbl.textContent=(x%4===0)?x:''; xrow.appendChild(lbl);
+}
+gc.appendChild(xrow);
+
+for(let y=Y0;y<=Y1;y++){
+  const row=document.createElement('div'); row.className='grid-row';
+  // Y label
+  const yl=document.createElement('div'); yl.className='ax-y';
+  yl.textContent=(y%2===0)?y:''; row.appendChild(yl);
+
+  for(let x=X0;x<=X1;x++){
+    const k=`${x},${y}`;
+    const d=C[k];
+    const cell=document.createElement('div');
+    cell.className='cell '+(d?d.cls:'g')+(d&&d.zone?' '+d.zone:'');
+
+    if(d&&d.em){
+      const em=document.createElement('span'); em.textContent=d.em; cell.appendChild(em);
+      if(d.name&&d.name.length<18){
+        const lbl=document.createElement('div'); lbl.className='cell-lbl';
+        const short=d.name.replace('EXISTING: ','').replace('NEW: ','').replace('NEW NPC: ','').replace('Keep tree (west edge)','').replace('⚠ REMOVE this tree','').replace('EXISTING NPC: ','').split(' ').slice(0,2).join(' ');
+        lbl.textContent=short; cell.appendChild(lbl);
+      }
+    }
+
+    // Tooltip
+    const tip=document.createElement('div'); tip.className='tip';
+    const tc=document.createElement('div'); tc.className='t-coord'; tc.textContent=`(${x}, ${y})`;
+    const tn=document.createElement('div'); tn.className='t-name'; tn.textContent=d?d.name:'Grass';
+    tip.appendChild(tc); tip.appendChild(tn);
+    if(d&&d.id){ const ti=document.createElement('div'); ti.className='t-id'; ti.textContent=d.id; tip.appendChild(ti); }
+    cell.appendChild(tip);
+
+    row.appendChild(cell);
+  }
+  gc.appendChild(row);
+}
+</script>
+</body>
+</html>

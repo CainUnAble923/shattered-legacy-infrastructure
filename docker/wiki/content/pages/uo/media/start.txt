@@ -1,0 +1,48 @@
+====== Images And Media ======
+
+{{:uo:media:media_style_guide.svg?nolink&700|Media style guide}}
+
+Images make the wiki useful. Prefer real screenshots from the shard whenever possible.
+
+===== What We Need =====
+
+  * shard logo variants for Discord, dashboard, and announcements
+  * New Haven arrival screenshot
+  * trainer screenshots
+  * quest giver screenshots
+  * maps with route annotations
+  * profession tool screenshots
+  * example UI screenshots for connection and account setup
+
+===== Naming =====
+
+Use the ''uo:media'' namespace and descriptive lowercase names:
+
+```text
+new-haven-bank.png
+new-haven-mining-trainer.png
+new-haven-focus-trainer.png
+first-hour-route.png
+```
+
+===== Current Brand Assets =====
+
+  * {{:uo:media:shattered_legacy_logo.png?linkonly|Shattered Legacy full logo}}
+  * {{:wiki:logo.png?linkonly|DokuWiki header logo}}
+  * {{:wiki:favicon.ico?linkonly|DokuWiki favicon}}
+
+===== DokuWiki Image Syntax =====
+
+```text
+{{:uo:media:new-haven-bank.png?direct&700|New Haven bank}}
+```
+
+Use alt text after the pipe so pages remain readable if an image fails to load.
+
+===== Upload Path =====
+
+Use DokuWiki's media manager from a wiki page, or place files on the server under:
+
+```text
+/var/lib/dokuwiki/data/media/uo/media/
+```

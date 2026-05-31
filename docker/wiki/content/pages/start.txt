@@ -1,0 +1,33 @@
+====== Shattered Legacy Wiki ======
+
+{{:uo:media:shattered_legacy_logo.png?nolink&520|Shattered Legacy logo}}
+
+Welcome to the ClusterF wiki for the Shattered Legacy Ultima Online shard.
+
+This wiki is meant to be a living guide. Pages should connect to other pages generously so a player can start with one question and naturally discover the world, systems, professions, and lore around it.
+
+===== Start Here =====
+
+  * [[uo:start|Ultima Online hub]]
+  * [[uo:connection|Connection guide]]
+  * [[uo:new_player_guide|New player guide]]
+  * [[uo:guides:first_hour|First hour route]]
+
+===== Explore =====
+
+  * [[uo:world:start|World]]
+  * [[uo:systems:start|Server systems]]
+  * [[uo:professions:start|Professions]]
+  * [[uo:lore:start|Lore]]
+  * [[uo:media:start|Images and media]]
+
+===== Current Server Facts =====
+
+  * Shard: ''Shattered Legacy''
+  * Server: ''uo.clusterf.lab''
+  * Direct IP: ''10.7.4.120''
+  * Port: ''2593''
+  * Client: ClassicUO
+  * LAN or ClusterF VPN access required
+
+Operational documentation still lives in the Git repository. This wiki is for player-facing knowledge, maps, screenshots, and shard flavor.

@@ -1,0 +1,3 @@
+# Runtime cache / export files — generated during gameplay, not source-controlled
+*.json
+ClusterF_Ores.csv

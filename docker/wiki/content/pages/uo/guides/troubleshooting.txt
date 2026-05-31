@@ -1,0 +1,30 @@
+====== Troubleshooting ======
+
+===== Client Says There Is A Communication Problem =====
+
+Check these first:
+
+  - Server IP is ''10.7.4.120''.
+  - Port is ''2593''.
+  - You are on the LAN or connected to ClusterF VPN.
+  - The shard service is running.
+
+===== Useful Checks =====
+
+From a Windows client:
+
+```powershell
+Test-NetConnection 10.7.4.120 -Port 2593
+```
+
+From the UO container:
+
+```bash
+systemctl status uo.service
+journalctl -u uo.service -n 100
+```
+
+===== Related Pages =====
+
+  * [[:uo:connection|Connection guide]]
+  * [[:uo:systems:accounts|Accounts]]

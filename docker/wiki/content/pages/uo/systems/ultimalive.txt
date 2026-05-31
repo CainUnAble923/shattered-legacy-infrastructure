@@ -1,0 +1,19 @@
+====== UltimaLive ======
+
+UltimaLive is being tracked as a possible live-map extension for Shattered Legacy.
+
+===== Current ClusterF Status =====
+
+The server-side compatibility layer exists, but UltimaLive is disabled until client support and asset behavior are fully verified.
+
+===== Decision Points =====
+
+  * Confirm ClassicUO compatibility.
+  * Confirm client files and patching workflow.
+  * Decide whether live map edits are needed for the shard.
+  * Document rollback steps before enabling.
+
+===== Related Pages =====
+
+  * [[:uo:world:maps|Maps]]
+  * [[:uo:media:start|Images and media]]

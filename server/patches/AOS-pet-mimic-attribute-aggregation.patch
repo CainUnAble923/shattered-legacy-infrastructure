@@ -1,0 +1,24 @@
+--- a/Projects/UOContent/Misc/AOS.cs
++++ b/Projects/UOContent/Misc/AOS.cs
+@@ -574,6 +574,14 @@ namespace Server;
+                 else if (obj is BaseTalisman talisman)
+                 {
+                     var attrs = talisman.Attributes;
+
+                     if (attrs != null)
+                     {
+                         value += attrs[attribute];
+                     }
+                 }
++                else if (obj is PetMimic mimic)
++                {
++                    var attrs = mimic.Attributes;
++
++                    if (attrs != null)
++                    {
++                        value += attrs[attribute];
++                    }
++                }
+             }
+
+             return value;

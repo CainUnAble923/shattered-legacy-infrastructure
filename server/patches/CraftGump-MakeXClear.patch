@@ -1,0 +1,14 @@
+--- a/Projects/UOContent/Engines/Craft/Core/CraftGump.cs
++++ b/Projects/UOContent/Engines/Craft/Core/CraftGump.cs
+@@ -431,6 +431,12 @@ namespace Server.Engines.Craft
+             var context = _craftSystem.GetContext(_from);
+
+             if (context != null)
+             {
++                // ClusterF: Make X — cancel any in-flight repeat for manual single craft
++                context.RepeatCount   = 0;
++                context.RepeatItem    = null;
++                context.RepeatTypeRes = null;
++
+                 var res = item.UseSubRes2 ? _craftSystem.CraftSubRes2 : _craftSystem.CraftSubRes;
+                 var resIndex = item.UseSubRes2 ? context.LastResourceIndex2 : context.LastResourceIndex;

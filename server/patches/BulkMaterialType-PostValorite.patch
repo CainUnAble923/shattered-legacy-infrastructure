@@ -1,0 +1,18 @@
+--- a/Projects/UOContent/Engines/Bulk Orders/BulkMaterialType.cs
++++ b/Projects/UOContent/Engines/Bulk Orders/BulkMaterialType.cs
+@@ BulkMaterialType enum — append post-Valorite metals after Barbed (safe; no migration needed)
+
+         Spined,
+         Horned,
+-        Barbed
++        Barbed,
++        // Post-Valorite metals — ClusterF extension (appended; safe for existing serialized BODs)
++        Platinum   = 12,
++        Toxic      = 13,
++        Blaze      = 14,
++        Frost      = 15,
++        Obsidian   = 16,
++        Mythril    = 17,
++        Adamantium = 18,
++        Celestial  = 19,
+     }

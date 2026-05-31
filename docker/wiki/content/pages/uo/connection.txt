@@ -1,0 +1,26 @@
+====== Connection Guide ======
+
+===== Server =====
+
+^ Item ^ Value ^
+| Shard | ''Shattered Legacy'' |
+| Host | ''uo.clusterf.lab'' |
+| Direct IP | ''10.7.4.120'' |
+| Port | ''2593'' |
+| Client | ClassicUO |
+
+LAN or ClusterF VPN access is required.
+
+===== Client Setup Trail =====
+
+  - Install ClassicUO.
+  - Add a shard profile for ''10.7.4.120:2593''.
+  - Log in with the desired account name.
+  - If auto-account creation is enabled, the first login creates the account.
+  - Continue to [[:uo:new_player_guide|New player guide]].
+
+===== Related Pages =====
+
+  * [[:uo:systems:accounts|Accounts]]
+  * [[:uo:guides:troubleshooting|Troubleshooting]]
+  * [[:uo:world:new_haven|New Haven]]

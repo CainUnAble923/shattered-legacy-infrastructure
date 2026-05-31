@@ -1,0 +1,39 @@
+====== Navigation ======
+
+  * [[:start|Home]]
+  * [[:uo:start|UO hub]]
+  * [[:uo:connection|Connection]]
+  * [[:uo:new_player_guide|New player guide]]
+
+===== World =====
+
+  * [[:uo:world:start|World hub]]
+  * [[:uo:world:new_haven|New Haven]]
+  * [[:uo:world:trainers|Trainers]]
+  * [[:uo:world:quests|Quest givers]]
+  * [[:uo:world:maps|Maps]]
+
+===== Systems =====
+
+  * [[:uo:systems:start|Systems hub]]
+  * [[:uo:systems:skill_gain|Skill gain]]
+  * [[:uo:systems:stats|Stats]]
+  * [[:uo:systems:accounts|Accounts]]
+  * [[:uo:systems:ultimalive|UltimaLive]]
+
+===== Professions =====
+
+  * [[:uo:professions:start|Professions hub]]
+  * [[:uo:professions:mining|Mining]]
+  * [[:uo:professions:blacksmithy|Blacksmithy]]
+  * [[:uo:professions:focus|Focus]]
+
+===== Guides =====
+
+  * [[:uo:guides:first_hour|First hour route]]
+  * [[:uo:guides:troubleshooting|Troubleshooting]]
+
+===== Other =====
+
+  * [[:uo:lore:start|Lore]]
+  * [[:uo:media:start|Images and media]]
