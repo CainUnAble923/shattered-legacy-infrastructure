@@ -3,20 +3,29 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        DOTNET_VERSION: "10.0.203"
+        MODERNUO_COMMIT: "7c9215d97"
     container_name: sl-modernuo
     restart: unless-stopped
     ports:
-      - "2593:2593"           # UO client port — public
+      - "2593:2593"
       - "2593:2593/udp"
     volumes:
-      - ${SERVER_PATH}/:/modernuo   # Full server dir: binary + saves + config
+      # Live script editing — Projects synced into container on each start
+      - ${SERVER_PATH}/uo/modernuo/Projects/UOContent/Misc:/modernuo-projects
+      # Server configuration (modernuo.json, etc.)
+      - ${SERVER_PATH}/uo/modernuo/Configuration:/modernuo/Configuration
+      # World saves
+      - ${SERVER_PATH}/lib/uo/modernuo/Saves:/var/lib/uo/modernuo/Saves
+      # Backups & archives written by ModernUO
+      - ${SERVER_PATH}/lib/uo/modernuo/Backups:/var/lib/uo/modernuo/Backups
+      - ${SERVER_PATH}/lib/uo/modernuo/Archives:/var/lib/uo/modernuo/Archives
+      # UO client data (maps, art, tiledata, etc.)
+      - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
     environment:
-      SERVER_DIR: /modernuo
       TZ: ${TZ:-America/Chicago}
-    depends_on: []
-    # stdin_open + tty allow attaching for console commands:
-    #   docker attach sl-modernuo
-    stdin_open: true
+    stdin_open: true   # allows: docker attach sl-modernuo
     tty: true
 
   ddns-updater:
@@ -36,16 +45,13 @@ services:
               "host": "@",
               "ttl": 120,
               "token": "${CF_API_TOKEN}",
-              "ip_version": "ipv4",
-              "ipv6_prefix": ""
+              "ip_version": "ipv4"
             }
           ]
         }
       PERIOD: 5m
       UPDATE_COOLDOWN_PERIOD: 5m
       PUBLICIP_FETCHERS: all
-      PUBLICIP_HTTP_PROVIDERS: all
-      PUBLICIPV4_HTTP_PROVIDERS: all
       LOG_LEVEL: info
 
 volumes:
