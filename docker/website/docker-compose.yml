@@ -1,0 +1,15 @@
+services:
+  website:
+    image: nginx:alpine
+    container_name: sl-website
+    restart: unless-stopped
+    expose:
+      - "80"
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+    environment:
+      TZ: ${TZ:-America/Chicago}
+
+networks:
+  default:
+    name: sl-website-net

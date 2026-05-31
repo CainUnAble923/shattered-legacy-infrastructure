@@ -1,0 +1,19 @@
+services:
+  dashboard:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: sl-dashboard
+    restart: unless-stopped
+    expose:
+      - "3000"
+    volumes:
+      - ./config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # for Docker widget
+    environment:
+      TZ: ${TZ:-America/Chicago}
+      HOMEPAGE_ALLOWED_HOSTS: "dashboard.shatteredlegacyuo.com,localhost"
+
+networks:
+  default:
+    name: sl-dashboard-net
+
+volumes: {}

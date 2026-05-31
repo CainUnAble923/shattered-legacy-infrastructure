@@ -1,0 +1,52 @@
+services:
+  modernuo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sl-modernuo
+    restart: unless-stopped
+    ports:
+      - "2593:2593"           # UO client port — public
+      - "2593:2593/udp"
+    volumes:
+      - ${SERVER_PATH}/:/modernuo   # Full server dir: binary + saves + config
+    environment:
+      SERVER_DIR: /modernuo
+      TZ: ${TZ:-America/Chicago}
+    depends_on: []
+    # stdin_open + tty allow attaching for console commands:
+    #   docker attach sl-modernuo
+    stdin_open: true
+    tty: true
+
+  ddns-updater:
+    image: qmcgaw/ddns-updater:latest
+    container_name: sl-ddns
+    restart: unless-stopped
+    volumes:
+      - ddns_data:/updater/data
+    environment:
+      CONFIG: |
+        {
+          "settings": [
+            {
+              "provider": "cloudflare",
+              "zone_identifier": "${CF_ZONE_ID}",
+              "domain": "${DOMAIN}",
+              "host": "@",
+              "ttl": 120,
+              "token": "${CF_API_TOKEN}",
+              "ip_version": "ipv4",
+              "ipv6_prefix": ""
+            }
+          ]
+        }
+      PERIOD: 5m
+      UPDATE_COOLDOWN_PERIOD: 5m
+      PUBLICIP_FETCHERS: all
+      PUBLICIP_HTTP_PROVIDERS: all
+      PUBLICIPV4_HTTP_PROVIDERS: all
+      LOG_LEVEL: info
+
+volumes:
+  ddns_data:

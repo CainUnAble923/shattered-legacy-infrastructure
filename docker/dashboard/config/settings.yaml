@@ -1,0 +1,11 @@
+title: Shattered Legacy — Dashboard
+theme: dark
+color: slate
+headerStyle: boxed
+layout:
+  Shattered Legacy:
+    style: row
+    columns: 3
+  Infrastructure:
+    style: row
+    columns: 2

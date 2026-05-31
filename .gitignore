@@ -1,8 +1,10 @@
 # Secrets & environment
 .env
-.env.*
+.env.local
+.env.*.local
 *.env
 secrets/
+# .env.example files ARE tracked — they document required variables without secrets
 *.key
 *.pem
 *.crt
@@ -12,8 +14,9 @@ server/Saves/
 server/Backups/
 backups/
 
-# Downloads (binary assets, not tracked in git)
-downloads/
+# Downloads (binary assets — the actual files folder, not the service config)
+downloads/files/
+D:/ShatteredLegacy/downloads/
 
 # Docker runtime
 docker/data/

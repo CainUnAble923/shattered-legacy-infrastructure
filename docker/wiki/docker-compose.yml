@@ -1,0 +1,25 @@
+services:
+  wiki:
+    image: ghcr.io/dokuwiki/dokuwiki:latest
+    container_name: sl-wiki
+    restart: unless-stopped
+    # No public ports — access only through Nginx Proxy Manager
+    expose:
+      - "8080"
+    volumes:
+      - ./content/pages:/dokuwiki/data/pages
+      - ./content/media:/dokuwiki/data/media
+      - wiki_conf:/dokuwiki/conf
+      - wiki_plugins:/dokuwiki/lib/plugins
+      - wiki_tpl:/dokuwiki/lib/tpl
+    environment:
+      TZ: ${TZ:-America/Chicago}
+
+networks:
+  default:
+    name: sl-wiki-net
+
+volumes:
+  wiki_conf:
+  wiki_plugins:
+  wiki_tpl:

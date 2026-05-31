@@ -1,0 +1,16 @@
+services:
+  downloads:
+    image: nginx:alpine
+    container_name: sl-downloads
+    restart: unless-stopped
+    expose:
+      - "80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${DOWNLOADS_PATH:-./files}:/usr/share/nginx/html:ro
+    environment:
+      TZ: ${TZ:-America/Chicago}
+
+networks:
+  default:
+    name: sl-downloads-net

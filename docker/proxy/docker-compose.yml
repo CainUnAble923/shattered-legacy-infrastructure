@@ -1,0 +1,18 @@
+services:
+  proxy:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: sl-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "127.0.0.1:81:81"   # Admin UI — LAN only via SSH tunnel or VPN
+    volumes:
+      - npm_data:/data
+      - npm_letsencrypt:/etc/letsencrypt
+    environment:
+      DISABLE_IPV6: "true"
+
+volumes:
+  npm_data:
+  npm_letsencrypt:
