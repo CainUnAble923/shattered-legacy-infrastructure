@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "type": "Server.Items.PetMimic",
+  "properties": [
+    { "name": "CurrentHP",       "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "LastRegenTicks",  "type": "long", "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "BonusMaxHP",      "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "LockedCategory",  "type": "Server.Items.MimicCategory", "rule": "EnumMigrationRule" },
+    { "name": "ActiveFormItemID","type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "KnownFormItemIDs","type": "System.Collections.Generic.List<int>", "rule": "ListMigrationRule", "ruleArguments": ["int", "PrimitiveTypeMigrationRule", ""] },
+    { "name": "AccStrBonus",     "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccDexBonus",     "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccIntBonus",     "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccLRC",          "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccFC",           "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccFCR",          "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccDI",           "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccPhysResist",   "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccFireResist",   "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccColdResist",   "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccPoisonResist", "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccEnergyResist", "type": "int",  "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "AccSkillBonusIds",    "type": "System.Collections.Generic.List<int>",    "rule": "ListMigrationRule", "ruleArguments": ["int",    "PrimitiveTypeMigrationRule", ""] },
+    { "name": "AccSkillBonusValues", "type": "System.Collections.Generic.List<double>", "rule": "ListMigrationRule", "ruleArguments": ["double", "PrimitiveTypeMigrationRule", ""] }
+  ]
+}

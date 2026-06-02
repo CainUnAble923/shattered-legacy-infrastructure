@@ -13,4 +13,15 @@ fi
 
 cd /modernuo
 
+# ModernUO expects UOContent.dll in ./Assemblies/ but dotnet publish puts it flat.
+# Create the Assemblies directory and symlink it in.
+mkdir -p /modernuo/Assemblies
+for dll in /modernuo/*.dll; do
+    base=$(basename "$dll")
+    target="/modernuo/Assemblies/$base"
+    if [ ! -e "$target" ]; then
+        ln -s "$dll" "$target"
+    fi
+done
+
 exec dotnet ModernUO.dll

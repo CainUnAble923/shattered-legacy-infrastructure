@@ -1,0 +1,4 @@
+﻿my-docker:
+  host: host.docker.internal
+  port: 2375
+

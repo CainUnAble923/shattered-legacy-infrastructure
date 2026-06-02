@@ -1,8 +1,8 @@
 services:
   modernuo:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: docker/uo/Dockerfile
       args:
         DOTNET_VERSION: "10.0.203"
         MODERNUO_COMMIT: "7c9215d97"
@@ -27,6 +27,8 @@ services:
       TZ: ${TZ:-America/Chicago}
     stdin_open: true   # allows: docker attach sl-modernuo
     tty: true
+    security_opt:
+      - seccomp:unconfined   # io_uring requires relaxed seccomp (WSL2/Docker Desktop)
 
   ddns-updater:
     image: qmcgaw/ddns-updater:latest

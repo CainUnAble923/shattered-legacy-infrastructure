@@ -1,35 +1,31 @@
 - Shattered Legacy:
     - UO Server:
-        icon: game-controller
+        icon: /icons/shattered_legacy_logo.png
         href: "http://shatteredlegacyuo.com:2593"
         description: ModernUO — port 2593
-        widget:
-          type: customapi
-          url: http://sl-modernuo:2593/status
-          refreshInterval: 60000
-          mappings:
-            - field: online
-              label: Players Online
+        ping: 192.168.1.58
 
     - Wiki:
-        icon: bookstack
+        icon: /icons/shattered_legacy_logo.png
         href: "https://wiki.shatteredlegacyuo.com"
         description: DokuWiki
+        ping: 192.168.1.58
 
     - Downloads:
-        icon: download
+        icon: nginx
         href: "https://get.shatteredlegacyuo.com"
         description: Client files & patches
+        ping: 192.168.1.58
 
 - Infrastructure:
     - Proxy Manager:
         icon: nginx-proxy-manager
         href: "http://127.0.0.1:81"
         description: Nginx Proxy Manager (LAN only)
+        siteMonitor: "http://192.168.1.58:80"
 
-    - Docker:
-        icon: docker
-        description: Local Docker host
-        widget:
-          type: docker
-          url: unix:///var/run/docker.sock
+    - NPM Admin:
+        icon: nginx-proxy-manager
+        href: "http://127.0.0.1:81"
+        description: SSL certs & proxy hosts
+        siteMonitor: "http://host.docker.internal:81"

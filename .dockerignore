@@ -1,0 +1,8 @@
+# Keep build context lean — only what the Dockerfile needs
+backups/
+client-data/
+downloads/
+server/lib/
+server/uo/modernuo/Configuration/
+*.tar.gz
+*.tar.zst
