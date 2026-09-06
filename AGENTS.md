@@ -1,10 +1,13 @@
 # Shattered Legacy: agent working agreements
 
-**This shard is being migrated from ModernUO to ServUO pub57.** Before making any
-substantive change here, read the migration repo:
+**This shard runs on ModernUO and stays on ModernUO.** ServUO pub57 is a **read-only
+content source** we port from, piece by piece, as an open-ended backlog. There is no
+migration, no cutover and no ServUO base. Before making any substantive change here,
+read the migration repo:
 
 - `D:\UO\shard-migration\AGENTS.md` - the full working agreements
-- `D:\UO\shard-migration\docs\` - decisions, the phased plan, the measured inventory
+- `D:\UO\shard-migration\docs\direction-decision.md` - why, with the numbers
+- `D:\UO\shard-migration\docs\tasks.md` - the single task list
 - GitHub: https://github.com/CainUnAble923/shard-migration
 
 ## What this repo is
@@ -13,8 +16,8 @@ Infrastructure-as-code for the Shattered Legacy shard. It is **not** a ModernUO 
 It builds ModernUO from a pinned upstream commit in Docker and layers our code on top.
 
 ```
-server/customizations/   CANONICAL custom scripts. 111 .cs, 37,581 lines.
-server/patches/          real upstream overrides. 11 .patch + 6 full-file replacements.
+server/customizations/   CANONICAL custom scripts. 115 .cs, 38,986 lines.
+server/patches/          real upstream overrides. 9 .patch + 5 full-file replacements.
 server/migrations/       data migrations
 server/uo/modernuo/      BUILD TREE - see warning below
 docker/                  compose stack, Dockerfiles
@@ -22,10 +25,13 @@ design/                  system design notes
 client-data/ downloads/ backups/   binary, not source
 ```
 
+Counts are as of 2026-09-06 and move with every port. `shard-migration/tools/progress.py`
+recomputes them; treat that output as the live number and this block as a snapshot.
+
 ## Do not read `server/uo/`
 
 It is a build tree containing a full ModernUO checkout with our customizations already
-copied into `Projects/UOContent/Misc/`. **Every custom file exists twice on disk.**
+copied into `Projects/UOContent/`. **Every custom file exists twice on disk.**
 An agent reading both copies will not know which is canonical.
 
 `server/customizations/` is canonical. Edit there. `server/uo/` is generated.
@@ -33,17 +39,64 @@ An agent reading both copies will not know which is canonical.
 ## Two facts that are easy to get wrong
 
 - **ServUO targets `net48`** on every branch, including `p58-wip`. The .NET 10 in its
-  setup instructions is the build toolchain, not the target framework.
+  setup instructions is the build toolchain, not the target framework. This is one of
+  the reasons the shard stays on ModernUO.
 - **The six-facet client ceiling is an official-client limit only.** ClassicUO reads map
-  indices well past 5, and ServUO's core allocates 256 map slots.
+  indices well past 5, and ModernUO's core is not the constraint either.
 
 ## Standing rules
 
 1. Verify against the source trees, not documentation. Neither ModernUO nor ServUO
    documents its content coverage accurately.
 2. State explicitly what you could not verify. "Unverified" beats a confident guess.
+   A keyword hit is a candidate, not a result: publish the file list beside any count.
 3. Decisions go in `shard-migration/docs/` as part of the same change that makes them.
-4. Do not relitigate the ServUO direction. It was costed with numbers in
+   Agents do not edit `shard-migration/docs/`; findings go in `shard-migration/notes/`.
+4. **Do not relitigate the direction.** It was settled with numbers in
    `shard-migration/docs/direction-decision.md`. New evidence welcome, opinions are not.
-5. Never commit `Saves/`, `Accounts/`, `client-data/`, `backups/` or logs.
-6. Claude is working this project in parallel. Commit and push before handing off.
+5. Never commit `Saves/`, `Accounts/`, `client-data/`, `backups/`, `server/uo/` or logs.
+6. **Never deploy.** `docker compose up`, restarts, image builds against the live stack
+   and anything account-affecting are Chase's decision alone. Test in a throwaway
+   loopback-only container with a scratch save directory.
+7. Claude is overseeing this project in parallel. Commit before handing off; Chase pushes.
+
+## The layering pattern is not negotiable
+
+The architecture is: **pristine ModernUO pinned to commit `7c9215d97`**, plus additive
+`.cs` in `server/customizations/`, plus targeted `.patch` files and full-file `.cs`
+replacements in `server/patches/`, assembled at build time by
+`docker/uo/apply-patches.sh`.
+
+**This pattern is what makes porting cheap.** It is why there is no Core bucket and why
+the custom surface stays a clean, enumerable set instead of a diffuse fork. Ported
+ServUO content lands in `server/customizations/` under the same layering rules as
+anything else we wrote.
+
+- `D:\UO\ServUO-pub57` is the **pristine reference**. Never edit, never build in it,
+  never commit into it. It exists so "is this mine or is this stock?" stays a
+  one-minute question.
+- `D:\UO\ServUO-work` (if present) is a **scratch tree** for figuring out ports. Not the
+  deliverable. Create it with `git clone ServUO-pub57 ServUO-work`, not `git worktree`,
+  so the reference repo's `.git` is never written to.
+- **Final output lands in `server/customizations/` and `server/patches/`** in this repo.
+- **Never commit our code into a ServUO fork, and never vendor ServUO into this repo.**
+  A year from now, pulling ModernUO fixes must still be a pinned-commit bump.
+
+## How `apply-patches.sh` reaches the build tree
+
+Since F2 it does three things, and any change must preserve all three:
+
+- Top-level `server/customizations/*.cs` are copied flat into `Projects/UOContent/Misc/`
+  via `-maxdepth 1`, with several files deliberately excluded by name because they are
+  handled as patches instead.
+- Subdirectories under `server/customizations/` are **mirrored by path** into
+  `Projects/UOContent/` (`-mindepth 2`). Ported content goes in a subdirectory for this
+  reason - it keeps the ServUO tree's structure and avoids basename collisions.
+- **A failed patch fails the build.** The script reports every problem it finds, then
+  exits non-zero. It must never let a patch fail silently again.
+
+## The fidelity principle
+
+Port unchanged. Ported content should behave the way OSI's does, so players can use
+UOGuide and Stratics instead of a custom wiki. A deliberate deviation is a documentation
+debt and gets logged in `shard-migration/docs/fidelity-principle.md`.
