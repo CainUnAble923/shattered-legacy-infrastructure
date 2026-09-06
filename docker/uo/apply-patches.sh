@@ -16,11 +16,9 @@ cd "$REPO"
 
 # Patch files deliberately not applied. An entry here is a known defect awaiting
 # triage, not an endorsement. See F3 in shard-migration/docs/backlog.md.
-SKIPPED_PATCHES=(
-    # Not invoked by the previous runner either. Left unapplied so that making the
-    # runner strict is behaviour-preserving; triage decides whether it comes back.
-    'AOS-pet-mimic-attribute-aggregation.patch'
-)
+# Empty since F3. Every patch file is applied; nothing is skipped. An entry here would
+# be a known defect awaiting a decision, and must carry its reason.
+SKIPPED_PATCHES=()
 
 APPLIED_PATCHES=()
 FAILED_PATCHES=()
@@ -149,13 +147,12 @@ echo "[patches] Applying .patch files..."
 apply_patch "$PATCHES/PlayerMobile-individual-stat-cap.patch"
 apply_patch "$PATCHES/Healer-resurrection-policy.patch"
 apply_patch "$PATCHES/HealerGuildmaster-resurrection.patch"
+apply_patch "$PATCHES/AOS-pet-mimic-attribute-aggregation.patch"
 apply_patch "$PATCHES/Bandage-pet-mimic-targeting.patch"
 apply_patch "$PATCHES/BaseWeapon-talisman-durability.patch"
-apply_patch "$PATCHES/BulkMaterialType-PostValorite.patch"
 apply_patch "$PATCHES/CraftGump-MakeXClear.patch"
 apply_patch "$PATCHES/CraftGumpItem-MakeX.patch"
-apply_patch "$PATCHES/CraftItem-HammerBODAutoFill.patch"
-apply_patch "$PATCHES/SmithBOD-PostValorite.patch"
+apply_patch "$PATCHES/SmallSmithBOD-PostValorite.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.

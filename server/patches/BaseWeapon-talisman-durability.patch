@@ -1,12 +1,9 @@
---- a/Projects/UOContent/Items/Weapons/BaseWeapon.cs
-+++ b/Projects/UOContent/Items/Weapons/BaseWeapon.cs
-@@ -1646,6 +1646,12 @@ namespace Server.Items;
-             if (armorItem is IWearableDurability armor)
-             {
-                 armor.OnHit(this, damage); // call OnHit to lose durability
+--- a/Projects/UOContent/Items/Weapons/BaseWeapon.cs	2026-09-06 11:54:37.256198800 -0500
++++ b/Projects/UOContent/Items/Weapons/BaseWeapon.cs	2026-09-06 11:54:37.885761700 -0500
+@@ -1649,6 +1649,12 @@
              }
          }
-
+ 
 +        // Also notify any IWearableDurability item in the talisman slot (e.g. PetMimic).
 +        if (defender.FindItemOnLayer(Layer.Talisman) is IWearableDurability talisman)
 +        {
@@ -15,3 +12,4 @@
 +
          return damage;
      }
+ 
