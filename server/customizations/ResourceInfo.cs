@@ -44,7 +44,17 @@ namespace Server.Items
         YewWood,
         Heartwood,
         Bloodwood,
-        Frostwood
+        Frostwood,
+
+        // Shattered Legacy extended lumber (308–315)
+        Ironwood,
+        Ghostwood,
+        Emberbark,
+        Frostbark,
+        Shadowbark,
+        Runewood,
+        Voidwood,
+        Starwood
     }
 
     public enum CraftResourceType
@@ -66,6 +76,9 @@ namespace Server.Items
 
         // Shattered Legacy extended ores
         public static readonly CraftAttributeInfo Platinum, Toxic, Blaze, Frost, Obsidian, Mythril, Adamantium, Celestial;
+
+        // Shattered Legacy extended lumber
+        public static readonly CraftAttributeInfo Ironwood, Ghostwood, Emberbark, Frostbark, Shadowbark, Runewood, Voidwood, Starwood;
 
         static CraftAttributeInfo()
         {
@@ -471,6 +484,16 @@ namespace Server.Items
             var blood = Bloodwood = new CraftAttributeInfo();
 
             var frostwood = Frostwood = new CraftAttributeInfo();
+
+            // Extended lumber — no attributes yet; hue only
+            var ironwood   = Ironwood   = new CraftAttributeInfo();
+            var ghostwood  = Ghostwood  = new CraftAttributeInfo();
+            var emberbark  = Emberbark  = new CraftAttributeInfo();
+            var frostbark  = Frostbark  = new CraftAttributeInfo();
+            var shadowbark = Shadowbark = new CraftAttributeInfo();
+            var runewood   = Runewood   = new CraftAttributeInfo();
+            var voidwood   = Voidwood   = new CraftAttributeInfo();
+            var starwood   = Starwood   = new CraftAttributeInfo();
         }
 
         public int WeaponFireDamage { get; set; }
@@ -919,6 +942,80 @@ namespace Server.Items
                 CraftResource.Frostwood,
                 typeof(FrostwoodLog),
                 typeof(FrostwoodBoard)
+            ),
+
+            // ── Shattered Legacy extended lumber ────────────────────────────
+            new(
+                0x0966,
+                0,
+                "Ironwood",
+                CraftAttributeInfo.Ironwood,
+                CraftResource.Ironwood,
+                typeof(IronwoodLog),
+                typeof(IronwoodBoard)
+            ),
+            new(
+                0x047E,
+                0,
+                "Ghostwood",
+                CraftAttributeInfo.Ghostwood,
+                CraftResource.Ghostwood,
+                typeof(GhostwoodLog),
+                typeof(GhostwoodBoard)
+            ),
+            new(
+                0x0058,
+                0,
+                "Emberbark",
+                CraftAttributeInfo.Emberbark,
+                CraftResource.Emberbark,
+                typeof(EmberbarkLog),
+                typeof(EmberbarkBoard)
+            ),
+            new(
+                0x076E,
+                0,
+                "Frostbark",
+                CraftAttributeInfo.Frostbark,
+                CraftResource.Frostbark,
+                typeof(FrostbarkLog),
+                typeof(FrostbarkBoard)
+            ),
+            new(
+                0x0544,
+                0,
+                "Shadowbark",
+                CraftAttributeInfo.Shadowbark,
+                CraftResource.Shadowbark,
+                typeof(ShadowbarkLog),
+                typeof(ShadowbarkBoard)
+            ),
+            new(
+                0x0060,
+                0,
+                "Runewood",
+                CraftAttributeInfo.Runewood,
+                CraftResource.Runewood,
+                typeof(RunewoodLog),
+                typeof(RunewoodBoard)
+            ),
+            new(
+                0x022E,
+                0,
+                "Voidwood",
+                CraftAttributeInfo.Voidwood,
+                CraftResource.Voidwood,
+                typeof(VoidwoodLog),
+                typeof(VoidwoodBoard)
+            ),
+            new(
+                0x04EC,
+                0,
+                "Starwood",
+                CraftAttributeInfo.Starwood,
+                CraftResource.Starwood,
+                typeof(StarwoodLog),
+                typeof(StarwoodBoard)
             )
         };
 

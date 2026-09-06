@@ -21,8 +21,9 @@ RUN git clone https://github.com/modernuo/ModernUO.git /build/modernuo \
     && cd /build/modernuo \
     && git checkout ${MODERNUO_COMMIT}
 
-# Copy custom scripts (Misc/ only — new types, not stock replacements)
-COPY server/uo/modernuo/Projects/UOContent/Misc/ /build/modernuo/Projects/UOContent/Misc/
+# Stage canonical custom scripts. apply-patches.sh routes additive scripts and
+# full-file replacements to their verified locations in the pinned source tree.
+COPY server/customizations/ /customizations/
 
 # Copy serialization migration JSONs (needed for PetMimic VNContent generation)
 COPY server/migrations/ /build/modernuo/Projects/UOContent/Migrations/
