@@ -1,37 +1,30 @@
-using Server.Commands;
+using Server.Mobiles;
+using Server.Network;
 
-namespace Server
+namespace Server;
+
+public static class ClusterFHealerPolicy
 {
-    public static class ClusterFHealerPolicy
+    private static bool _enabled;
+
+    public static bool AllowCriminals { get; private set; }
+    public static bool AllowMurderers { get; private set; }
+
+    public static void Configure()
     {
-        private static bool m_Enabled;
+        _enabled = ServerConfiguration.GetOrUpdateSetting("clusterf.healerPolicy.enabled", true);
+        AllowCriminals = ServerConfiguration.GetOrUpdateSetting("clusterf.healerPolicy.allowCriminals", true);
+        AllowMurderers = ServerConfiguration.GetOrUpdateSetting("clusterf.healerPolicy.allowMurderers", true);
 
-        public static bool AllowCriminals { get; private set; }
-        public static bool AllowMurderers { get; private set; }
+        CommandSystem.Register("ClusterFHealerPolicy", AccessLevel.Administrator, ClusterFHealerPolicy_OnCommand);
+    }
 
-        public static void Configure()
-        {
-            m_Enabled = Config.Get("clusterf.healerPolicy.enabled", true);
-            AllowCriminals = Config.Get("clusterf.healerPolicy.allowCriminals", true);
-            AllowMurderers = Config.Get("clusterf.healerPolicy.allowMurderers", true);
-
-            CommandSystem.Register(
-                "ClusterFHealerPolicy",
-                AccessLevel.Administrator,
-                ClusterFHealerPolicy_OnCommand
-            );
-        }
-
-        [Usage("ClusterFHealerPolicy")]
-        [Description("Reports the current ClusterF healer resurrection policy.")]
-        private static void ClusterFHealerPolicy_OnCommand(CommandEventArgs e)
-        {
-            e.Mobile.SendMessage(
-                "ClusterF healer policy - enabled: {0}, allowCriminals: {1}, allowMurderers: {2}.",
-                m_Enabled,
-                AllowCriminals,
-                AllowMurderers
-            );
-        }
+    [Usage("ClusterFHealerPolicy")]
+    [Description("Reports the current ClusterF healer resurrection policy.")]
+    private static void ClusterFHealerPolicy_OnCommand(CommandEventArgs e)
+    {
+        e.Mobile.SendMessage(
+            $"ClusterF healer policy — enabled: {_enabled}, allowCriminals: {AllowCriminals}, allowMurderers: {AllowMurderers}."
+        );
     }
 }

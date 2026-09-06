@@ -1,3 +1,6 @@
+using ModernUO.Serialization;
+using Server.Items;
+
 namespace Server.Items
 {
     // ─────────────────────────────────────────────────────────────────────────────
@@ -10,40 +13,17 @@ namespace Server.Items
     //   Item limit   : 400 items
     // ─────────────────────────────────────────────────────────────────────────────
 
-    public class PackMuleBackpack : Backpack
+    [SerializationGenerator(0, false)]
+    public partial class PackMuleBackpack : Backpack
     {
-        [Constructable]
+        [Constructible]
         public PackMuleBackpack()
         {
-            Layer = Layer.Backpack;
-            Movable = false;
+            Layer    = Layer.Backpack;
+            Movable  = false;
         }
 
-        public PackMuleBackpack(Serial serial)
-            : base(serial)
-        {
-        }
-
-        public override int DefaultMaxWeight
-        {
-            get { return 4000; }
-        }
-
-        public override int DefaultMaxItems
-        {
-            get { return 400; }
-        }
-
-        public override void Serialize(GenericWriter writer)
-        {
-            base.Serialize(writer);
-            writer.WriteEncodedInt(0); // version
-        }
-
-        public override void Deserialize(GenericReader reader)
-        {
-            base.Deserialize(reader);
-            reader.ReadEncodedInt();
-        }
+        public override int DefaultMaxWeight => 4000;
+        public override int DefaultMaxItems  => 400;
     }
 }
