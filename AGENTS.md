@@ -16,7 +16,7 @@ Infrastructure-as-code for the Shattered Legacy shard. It is **not** a ModernUO 
 It builds ModernUO from a pinned upstream commit in Docker and layers our code on top.
 
 ```
-server/customizations/   CANONICAL custom scripts. 115 .cs, 38,986 lines.
+server/customizations/   CANONICAL custom scripts. 117 .cs, 39,087 lines.
 server/patches/          real upstream overrides. 9 .patch + 5 full-file replacements.
 server/migrations/       data migrations
 server/uo/modernuo/      BUILD TREE - see warning below
@@ -30,11 +30,20 @@ recomputes them; treat that output as the live number and this block as a snapsh
 
 ## Do not read `server/uo/`
 
-It is a build tree containing a full ModernUO checkout with our customizations already
-copied into `Projects/UOContent/`. **Every custom file exists twice on disk.**
-An agent reading both copies will not know which is canonical.
+It is a stale partial build tree, and it is **not** a copy of ModernUO. Counted 2026-09-06:
+`Configuration/` and `Projects/UOContent/Misc/` only, 161 `.cs` in total. 109 are ours, 52 are
+stock ModernUO `Misc/` files, and five of our current top-level customizations are missing from
+it, so it predates the F1 recovery. Reading it gets you a second, older copy of our own files
+and no way to tell which is canonical.
 
-`server/customizations/` is canonical. Edit there. `server/uo/` is generated.
+`server/customizations/` is canonical. Edit there. `server/uo/` is generated and gitignored.
+
+**It is not where you check whether ModernUO has a type.** 161 files against ModernUO's 7,058
+types. Use `D:\UO\ModernUO-pinned` if it exists, or the Docker builder stage
+(`/build/modernuo`) if it does not. See the migration repo's `AGENTS.md`.
+
+`server/uo/modernuo/Configuration/` is the exception worth knowing: it is bind-mounted into the
+live container, so `modernuo.json` there **is** the running server's configuration.
 
 ## Two facts that are easy to get wrong
 
