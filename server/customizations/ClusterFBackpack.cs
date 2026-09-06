@@ -1,7 +1,5 @@
-using ModernUO.Serialization;
-using Server.Mobiles;
-
-namespace Server.Items;
+namespace Server.Items
+{
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ClusterFBackpack — player backpack with strength-scaled weight limit
@@ -22,23 +20,43 @@ namespace Server.Items;
 // ClusterFWeightPatch.Configure().
 // ─────────────────────────────────────────────────────────────────────────────
 
-[SerializationGenerator(0, false)]
-public partial class ClusterFBackpack : Backpack
-{
-    [Constructible]
-    public ClusterFBackpack() { }
-
-    public ClusterFBackpack(Serial serial) : base(serial) { }
-
-    public override int DefaultMaxWeight
+    public class ClusterFBackpack : Backpack
     {
-        get
+        [Constructable]
+        public ClusterFBackpack()
         {
-            // Delegate to the player's strength-based carry limit.
-            if (Parent is Mobile m && m.Player && m.Backpack == this)
-                return m.MaxWeight;
+        }
 
-            return base.DefaultMaxWeight;
+        public ClusterFBackpack(Serial serial)
+            : base(serial)
+        {
+        }
+
+        public override int DefaultMaxWeight
+        {
+            get
+            {
+                // Delegate to the player's strength-based carry limit.
+                Mobile mobile = Parent as Mobile;
+                if (mobile != null && mobile.Player && mobile.Backpack == this)
+                {
+                    return mobile.MaxWeight;
+                }
+
+                return base.DefaultMaxWeight;
+            }
+        }
+
+        public override void Serialize(GenericWriter writer)
+        {
+            base.Serialize(writer);
+            writer.WriteEncodedInt(0); // version
+        }
+
+        public override void Deserialize(GenericReader reader)
+        {
+            base.Deserialize(reader);
+            reader.ReadEncodedInt();
         }
     }
 }
