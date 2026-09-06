@@ -77,13 +77,16 @@ echo "[patches] Installing additive customizations..."
 # -maxdepth 1 is deliberate: it keeps server/customizations subdirectories (notably
 # the stale migrations/ set) out of the build tree. The name exclusions below are the
 # files that are upstream replacements rather than additions; they are routed
-# explicitly further down.
+# explicitly further down. RegenRates is among them as of F5: it previously reached
+# Projects/UOContent/Misc/ through this additive copy and overwrote ModernUO's file of
+# the same name by coincidence of directory, rather than by being routed.
 find "$CUSTOMIZATIONS" -maxdepth 1 -type f -name '*.cs' \
     ! -name 'CharacterCreation.cs' \
     ! -name 'CraftContext.cs' \
     ! -name 'CraftItem.cs' \
     ! -name 'HammerOfHephaestus.cs' \
     ! -name 'Meditation.cs' \
+    ! -name 'RegenRates.cs' \
     ! -name 'ResourceInfo.cs' \
     -exec cp '{}' 'Projects/UOContent/Misc/' \;
 echo "[patches] Additive customizations installed."
@@ -140,6 +143,7 @@ replace_file "$PATCHES/BaseGuildmaster.cs"  "Projects/UOContent/Mobiles/Vendors/
 replace_file "$PATCHES/BulkMaterialType.cs" "Projects/UOContent/Engines/Bulk Orders/BulkMaterialType.cs"
 replace_file "$PATCHES/LargeSmithBOD.cs"    "Projects/UOContent/Engines/Bulk Orders/LargeSmithBOD.cs"
 replace_file "$PATCHES/JacobsPickaxe.cs"    "Projects/UOContent/Items/New Haven Quest Rewards/JacobsPickaxe.cs"
+replace_file "$CUSTOMIZATIONS/RegenRates.cs"   "Projects/UOContent/Misc/RegenRates.cs"
 replace_file "$CUSTOMIZATIONS/ResourceInfo.cs" "Projects/UOContent/Misc/ResourceInfo.cs"
 echo "[patches] Full-file replacements done."
 
