@@ -90,6 +90,42 @@ find "$CUSTOMIZATIONS" -maxdepth 1 -type f -name '*.cs' \
     -exec cp '{}' 'Projects/UOContent/Misc/' \;
 echo "[patches] Additive customizations installed."
 
+# Structured customizations: anything in a subdirectory of server/customizations is
+# mirrored into Projects/UOContent/<same relative path> instead of being flattened.
+#
+# Top-level .cs keeps its existing meaning ("additive into Misc/") so this is additive
+# rather than a rewrite. Flattening cannot carry ServUO's structured content: Revamped
+# Dungeons alone has 32 duplicate basenames across 137 files (four dungeons each with a
+# Generate.cs), and a flat cp would silently overwrite all but the last.
+# See shard-migration/docs/flat-namespace-problem.md.
+echo "[patches] Installing structured customizations..."
+structured_count=0
+while IFS= read -r -d "" src; do
+    rel=${src#"$CUSTOMIZATIONS"/}
+    dest="Projects/UOContent/$rel"
+
+    # An existing destination means we would be replacing an upstream file without
+    # saying so. Replacements are routed explicitly below; silent ones are how an
+    # override gets lost. Parent directories are created as needed, since ported
+    # content legitimately introduces directories ModernUO does not have.
+    if [ -e "$dest" ]; then
+        fail "$rel — would overwrite existing upstream file $dest; route it as an explicit replacement instead"
+        continue
+    fi
+
+    mkdir -p "$(dirname "$dest")"
+    cp "$src" "$dest"
+    structured_count=$((structured_count + 1))
+done < <(find "$CUSTOMIZATIONS" -mindepth 2 -type f -name "*.cs" -print0)
+echo "[patches] Structured customizations installed: $structured_count file(s)."
+
+# Non-.cs files in subdirectories are not installed. Report them so that nothing in
+# server/customizations is silently ignored: today this is the stale PetMimic migration
+# set, which must not reach the build tree (backlog F4).
+while IFS= read -r -d "" other; do
+    echo "[patches] NOTE: not installed (not a .cs file): ${other#"$CUSTOMIZATIONS"/}"
+done < <(find "$CUSTOMIZATIONS" -mindepth 2 -type f ! -name "*.cs" -print0)
+
 echo "[patches] Applying full-file replacements..."
 replace_file "$CUSTOMIZATIONS/CharacterCreation.cs" \
     "Projects/UOContent/Engines/Character Creation/CharacterCreation.cs"
