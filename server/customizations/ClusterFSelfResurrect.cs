@@ -1,44 +1,45 @@
-using Server.Mobiles;
+using Server.Commands;
 
-namespace Server;
-
-public static class ClusterFSelfResurrect
+namespace Server
 {
-    private static bool _enabled;
-
-    public static void Configure()
+    public static class ClusterFSelfResurrect
     {
-        _enabled = ServerConfiguration.GetOrUpdateSetting("clusterf.selfResurrect.enabled", true);
-        CommandSystem.Register("SelfRes", AccessLevel.Player, SelfRes_OnCommand);
-    }
+        private static bool m_Enabled;
 
-    [Usage("SelfRes")]
-    [Description("Resurrects your ghost. Only works when you are dead.")]
-    private static void SelfRes_OnCommand(CommandEventArgs e)
-    {
-        if (!_enabled)
+        public static void Configure()
         {
-            e.Mobile.SendMessage("Self-resurrection is not available.");
-            return;
+            m_Enabled = Config.Get("clusterf.selfResurrect.enabled", true);
+            CommandSystem.Register("SelfRes", AccessLevel.Player, SelfRes_OnCommand);
         }
 
-        var m = e.Mobile;
-
-        if (m.Alive)
+        [Usage("SelfRes")]
+        [Description("Resurrects your ghost. Only works when you are dead.")]
+        private static void SelfRes_OnCommand(CommandEventArgs e)
         {
-            m.SendMessage("You are not dead.");
-            return;
-        }
+            if (!m_Enabled)
+            {
+                e.Mobile.SendMessage("Self-resurrection is not available.");
+                return;
+            }
 
-        if (m.Map?.CanFit(m.Location, 16, false, false) != true)
-        {
-            m.SendMessage("You cannot be resurrected here. Move to a better location and try again.");
-            return;
-        }
+            Mobile mobile = e.Mobile;
 
-        m.PlaySound(0x214);
-        m.FixedEffect(0x376A, 10, 16);
-        m.Resurrect();
-        m.SendMessage("You have returned from the spirit realm.");
+            if (mobile.Alive)
+            {
+                mobile.SendMessage("You are not dead.");
+                return;
+            }
+
+            if (mobile.Map == null || !mobile.Map.CanFit(mobile.Location, 16, false, false))
+            {
+                mobile.SendMessage("You cannot be resurrected here. Move to a better location and try again.");
+                return;
+            }
+
+            mobile.PlaySound(0x214);
+            mobile.FixedEffect(0x376A, 10, 16);
+            mobile.Resurrect();
+            mobile.SendMessage("You have returned from the spirit realm.");
+        }
     }
 }
