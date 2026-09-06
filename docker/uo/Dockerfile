@@ -31,7 +31,9 @@ COPY server/migrations/ /build/modernuo/Projects/UOContent/Migrations/
 # Copy patch files and apply them
 COPY server/patches/ /patches/
 COPY docker/uo/apply-patches.sh /apply-patches.sh
-RUN chmod +x /apply-patches.sh && /apply-patches.sh
+RUN sed -i 's/\r$//' /apply-patches.sh \
+    && chmod +x /apply-patches.sh \
+    && /apply-patches.sh
 
 # Publish full solution
 WORKDIR /build/modernuo
