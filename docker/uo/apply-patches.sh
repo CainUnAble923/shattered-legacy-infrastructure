@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 # apply-patches.sh — applies all Shattered Legacy customizations to the stock ModernUO source
+#
+# This script is a verification gate, not a best-effort copier. If any patch does not
+# apply, or any replacement lands somewhere unexpected, the build fails.
+#
+# It reports every problem it finds before exiting, so one build run diagnoses all of
+# them rather than one per run.
 set -euo pipefail
 
 PATCHES=/patches
@@ -8,21 +14,72 @@ REPO=/build/modernuo
 
 cd "$REPO"
 
+# Patch files deliberately not applied. An entry here is a known defect awaiting
+# triage, not an endorsement. See F3 in shard-migration/docs/backlog.md.
+SKIPPED_PATCHES=(
+    # Not invoked by the previous runner either. Left unapplied so that making the
+    # runner strict is behaviour-preserving; triage decides whether it comes back.
+    'AOS-pet-mimic-attribute-aggregation.patch'
+)
+
+APPLIED_PATCHES=()
+FAILED_PATCHES=()
+HANDLED_PATCHES=$'\n'
+
+fail() {
+    echo "[patches] FAILED: $1"
+    FAILED_PATCHES+=("$1")
+}
+
 # Convert any CRLF patch files to LF (Windows git may add carriage returns)
-sed -i 's/\r//' "$PATCHES"/*.patch 2>/dev/null || true
+sed -i 's/\r$//' "$PATCHES"/*.patch
+
+# Replace an upstream file with one of ours. The destination must already exist:
+# if upstream moved or renamed it, a plain cp would silently create a new file that
+# nothing compiles against, and the override would vanish with no error.
+replace_file() {
+    local src="$1" dest="$2"
+
+    if [ ! -f "$src" ]; then
+        fail "$(basename "$src") — source missing at $src"
+        return
+    fi
+    if [ ! -f "$dest" ]; then
+        fail "$(basename "$src") — destination $dest does not exist in pinned upstream"
+        return
+    fi
+    cp "$src" "$dest"
+}
 
 apply_patch() {
     local file="$1"
-    local name
+    local name output
     name=$(basename "$file")
-    if patch -p1 --forward --ignore-whitespace --batch < "$file"; then
+    HANDLED_PATCHES+="$name"$'\n'
+
+    if [ ! -f "$file" ]; then
+        fail "$name — no such file in $PATCHES"
+        return
+    fi
+
+    # Dry-run first. A patch that fails halfway would otherwise leave a partially
+    # patched tree behind for every patch that follows, turning one broken patch
+    # into a cascade of misleading failures. On failure we touch nothing.
+    if output=$(patch -p1 --forward --ignore-whitespace --batch --dry-run < "$file" 2>&1); then
+        patch -p1 --forward --ignore-whitespace --batch < "$file" >/dev/null
         echo "[patches] Applied: $name"
+        APPLIED_PATCHES+=("$name")
     else
-        echo "[patches] WARN: $name did not apply cleanly (may already be applied or conflict)"
+        fail "$name"
+        printf '%s\n' "$output" | sed 's/^/[patches]     | /'
     fi
 }
 
 echo "[patches] Installing additive customizations..."
+# -maxdepth 1 is deliberate: it keeps server/customizations subdirectories (notably
+# the stale migrations/ set) out of the build tree. The name exclusions below are the
+# files that are upstream replacements rather than additions; they are routed
+# explicitly further down.
 find "$CUSTOMIZATIONS" -maxdepth 1 -type f -name '*.cs' \
     ! -name 'CharacterCreation.cs' \
     ! -name 'CraftContext.cs' \
@@ -34,22 +91,22 @@ find "$CUSTOMIZATIONS" -maxdepth 1 -type f -name '*.cs' \
 echo "[patches] Additive customizations installed."
 
 echo "[patches] Applying full-file replacements..."
-cp "$CUSTOMIZATIONS/CharacterCreation.cs" \
+replace_file "$CUSTOMIZATIONS/CharacterCreation.cs" \
     "Projects/UOContent/Engines/Character Creation/CharacterCreation.cs"
-cp "$CUSTOMIZATIONS/CraftItem.cs" \
+replace_file "$CUSTOMIZATIONS/CraftItem.cs" \
     "Projects/UOContent/Engines/Craft/Core/CraftItem.cs"
-cp "$CUSTOMIZATIONS/CraftContext.cs" \
+replace_file "$CUSTOMIZATIONS/CraftContext.cs" \
     "Projects/UOContent/Engines/Craft/Core/CraftContext.cs"
-cp "$CUSTOMIZATIONS/HammerOfHephaestus.cs" \
+replace_file "$CUSTOMIZATIONS/HammerOfHephaestus.cs" \
     "Projects/UOContent/Items/New Haven Quest Rewards/HammerOfHephaestus.cs"
-cp "$CUSTOMIZATIONS/Meditation.cs" \
+replace_file "$CUSTOMIZATIONS/Meditation.cs" \
     "Projects/UOContent/Skills/Meditation.cs"
-cp "$PATCHES/Mining.cs"           "Projects/UOContent/Engines/Harvest/Mining.cs"
-cp "$PATCHES/BaseGuildmaster.cs"  "Projects/UOContent/Mobiles/Vendors/NPC/Guildmasters/BaseGuildmaster.cs"
-cp "$PATCHES/BulkMaterialType.cs" "Projects/UOContent/Engines/Bulk Orders/BulkMaterialType.cs"
-cp "$PATCHES/LargeSmithBOD.cs"   "Projects/UOContent/Engines/Bulk Orders/LargeSmithBOD.cs"
-cp "$PATCHES/JacobsPickaxe.cs"   "Projects/UOContent/Items/New Haven Quest Rewards/JacobsPickaxe.cs"
-cp "$CUSTOMIZATIONS/ResourceInfo.cs" "Projects/UOContent/Misc/ResourceInfo.cs"
+replace_file "$PATCHES/Mining.cs"           "Projects/UOContent/Engines/Harvest/Mining.cs"
+replace_file "$PATCHES/BaseGuildmaster.cs"  "Projects/UOContent/Mobiles/Vendors/NPC/Guildmasters/BaseGuildmaster.cs"
+replace_file "$PATCHES/BulkMaterialType.cs" "Projects/UOContent/Engines/Bulk Orders/BulkMaterialType.cs"
+replace_file "$PATCHES/LargeSmithBOD.cs"    "Projects/UOContent/Engines/Bulk Orders/LargeSmithBOD.cs"
+replace_file "$PATCHES/JacobsPickaxe.cs"    "Projects/UOContent/Items/New Haven Quest Rewards/JacobsPickaxe.cs"
+replace_file "$CUSTOMIZATIONS/ResourceInfo.cs" "Projects/UOContent/Misc/ResourceInfo.cs"
 echo "[patches] Full-file replacements done."
 
 echo "[patches] Applying .patch files..."
@@ -64,9 +121,37 @@ apply_patch "$PATCHES/CraftGumpItem-MakeX.patch"
 apply_patch "$PATCHES/CraftItem-HammerBODAutoFill.patch"
 apply_patch "$PATCHES/SmithBOD-PostValorite.patch"
 
-echo "[patches] Structural fixes..."
-# Stock Lumberjacking must be partial for ClusterFLumberjackingExtension
-sed -i 's/public class Lumberjacking/public partial class Lumberjacking/' \
-    Projects/UOContent/Engines/Harvest/Lumberjacking.cs
+# A .patch file that no apply_patch line above names would be dead weight applied to
+# nothing, with no way to tell from the build log. Account for every file explicitly.
+echo "[patches] Checking every patch file is accounted for..."
+for skipped in "${SKIPPED_PATCHES[@]}"; do
+    HANDLED_PATCHES+="$skipped"$'\n'
+    echo "[patches] Skipped by name (recorded, awaiting triage): $skipped"
+done
+for file in "$PATCHES"/*.patch; do
+    name=$(basename "$file")
+    if ! printf '%s' "$HANDLED_PATCHES" | grep -Fxq "$name"; then
+        fail "$name — present in $PATCHES but never applied or skipped by name"
+    fi
+done
 
-echo "[patches] All patches applied successfully."
+echo "[patches] Structural fixes..."
+# Stock Lumberjacking must be partial for ClusterFLumberjackingExtension.
+# sed reports success when it matches nothing, so assert the result instead.
+LUMBERJACKING=Projects/UOContent/Engines/Harvest/Lumberjacking.cs
+sed -i 's/public class Lumberjacking/public partial class Lumberjacking/' "$LUMBERJACKING"
+if ! grep -q 'public partial class Lumberjacking' "$LUMBERJACKING"; then
+    fail "structural fix — 'public partial class Lumberjacking' not present in $LUMBERJACKING after sed"
+fi
+
+if [ ${#FAILED_PATCHES[@]} -gt 0 ]; then
+    echo "[patches] ------------------------------------------------------------------"
+    echo "[patches] ERROR: ${#FAILED_PATCHES[@]} item(s) did not apply. Failing the build."
+    for name in "${FAILED_PATCHES[@]}"; do
+        echo "[patches]   - $name"
+    done
+    echo "[patches] ------------------------------------------------------------------"
+    exit 1
+fi
+
+echo "[patches] All ${#APPLIED_PATCHES[@]} patches applied successfully."
