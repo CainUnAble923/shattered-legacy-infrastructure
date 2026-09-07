@@ -158,6 +158,12 @@ apply_patch "$PATCHES/CraftGump-MakeXClear.patch"
 apply_patch "$PATCHES/CraftGumpItem-MakeX.patch"
 apply_patch "$PATCHES/SmallSmithBOD-PostValorite.patch"
 
+# S1 armour set-bonus subsystem. All three are additive hooks; none rewrites upstream logic.
+# See shard-migration/notes/s1-armour-sets.md for what a pinned-commit bump must reconcile.
+apply_patch "$PATCHES/Mobile-set-item-resistance-hook.patch"
+apply_patch "$PATCHES/AOS-set-attribute-aggregation.patch"
+apply_patch "$PATCHES/BaseArmor-set-self-repair.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

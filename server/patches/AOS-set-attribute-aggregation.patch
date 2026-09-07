@@ -1,0 +1,22 @@
+--- a/Projects/UOContent/Misc/AOS.cs	2026-09-06 19:14:37.828950000 -0500
++++ b/Projects/UOContent/Misc/AOS.cs	2026-09-06 19:15:11.569029600 -0500
+@@ -507,6 +507,19 @@
+             {
+                 var obj = items[i];
+ 
++                // Shattered Legacy: Mondain's Legacy set bonuses. The set attributes of a completed
++                // set are carried by whichever piece was equipped last, and stack on top of whatever
++                // the piece contributes through its own Attributes below.
++                if (obj is ISetItem { LastEquipped: true } setItem)
++                {
++                    var setAttrs = setItem.SetAttributes;
++
++                    if (setAttrs != null)
++                    {
++                        value += setAttrs[attribute];
++                    }
++                }
++
+                 if (obj is BaseWeapon weapon)
+                 {
+                     var attrs = weapon.Attributes;

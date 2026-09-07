@@ -1,0 +1,22 @@
+--- a/Projects/UOContent/Items/Armor/BaseArmor.cs	2026-09-06 19:14:37.895029500 -0500
++++ b/Projects/UOContent/Items/Armor/BaseArmor.cs	2026-09-06 19:15:11.570034600 -0500
+@@ -750,6 +750,10 @@
+             this.MarkDirty();
+         }
+ 
++        // Shattered Legacy: BaseSetArmor adds the set's self repair to the armour's own while the
++        // full set is worn, as ServUO does at this point in its own OnHit.
++        public virtual int EffectiveSelfRepair => ArmorAttributes.SelfRepair;
++
+         public virtual int OnHit(BaseWeapon weapon, int damageTaken)
+         {
+             var halfar = ArmorRating / 2.0;
+@@ -760,7 +764,7 @@
+             // 25% chance to lower durability
+             if (Utility.Random(4) == 0)
+             {
+-                if (Core.AOS && ArmorAttributes.SelfRepair > Utility.Random(10))
++                if (Core.AOS && EffectiveSelfRepair > Utility.Random(10))
+                 {
+                     HitPoints += 2;
+                 }

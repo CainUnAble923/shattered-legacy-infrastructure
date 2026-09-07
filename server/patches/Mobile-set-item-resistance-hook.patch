@@ -1,0 +1,40 @@
+--- a/Projects/Server/Mobiles/Mobile.cs	2026-09-06 19:14:37.765093000 -0500
++++ b/Projects/Server/Mobiles/Mobile.cs	2026-09-06 19:15:11.569029600 -0500
+@@ -3180,6 +3180,20 @@
+         UpdateResistances();
+     }
+ 
++    // Shattered Legacy: a Mondain's Legacy armour set replaces an equipped piece's own resistance
++    // while the full set is worn. ISetItem lives in UOContent, which this project cannot reference,
++    // so the decision is delegated to a virtual that PlayerMobile overrides.
++    public virtual int GetItemResistance(Item item, ResistanceType type) =>
++        type switch
++        {
++            ResistanceType.Physical => item.PhysicalResistance,
++            ResistanceType.Fire     => item.FireResistance,
++            ResistanceType.Cold     => item.ColdResistance,
++            ResistanceType.Poison   => item.PoisonResistance,
++            ResistanceType.Energy   => item.EnergyResistance,
++            _                       => 0
++        };
++
+     public virtual void ComputeResistances()
+     {
+         Resistances ??= new[] { int.MinValue, int.MinValue, int.MinValue, int.MinValue, int.MinValue };
+@@ -3218,11 +3232,11 @@
+                 continue;
+             }
+ 
+-            Resistances[0] += item.PhysicalResistance;
+-            Resistances[1] += item.FireResistance;
+-            Resistances[2] += item.ColdResistance;
+-            Resistances[3] += item.PoisonResistance;
+-            Resistances[4] += item.EnergyResistance;
++            Resistances[0] += GetItemResistance(item, ResistanceType.Physical);
++            Resistances[1] += GetItemResistance(item, ResistanceType.Fire);
++            Resistances[2] += GetItemResistance(item, ResistanceType.Cold);
++            Resistances[3] += GetItemResistance(item, ResistanceType.Poison);
++            Resistances[4] += GetItemResistance(item, ResistanceType.Energy);
+         }
+ 
+         for (var i = 0; i < Resistances.Length; ++i)
