@@ -216,6 +216,10 @@ apply_patch "$PATCHES/Mobile-set-item-resistance-hook.patch"
 apply_patch "$PATCHES/AOS-set-attribute-aggregation.patch"
 apply_patch "$PATCHES/BaseArmor-set-self-repair.patch"
 
+# S2 Fountain of Fortune. One line, additive: PlayerMobile.Luck gains the fountain's temporary
+# bonus, which is how ServUO's RealLuck reaches loot generation. See notes/s2-fountain.md.
+apply_patch "$PATCHES/PlayerMobile-fountain-luck-bonus.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

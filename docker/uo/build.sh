@@ -58,8 +58,15 @@ echo "== 2/3 running $TEST_NAMESPACE tests (test gate) =========================
 # --network=none: these tests need no network and must not reach one.
 # --security-opt seccomp=unconfined: io_uring, as above.
 # --no-restore: step 1 already restored the whole solution.
+#
+# MSYS_NO_PATHCONV=1: Git Bash rewrites any argument that looks like a Unix absolute path into
+# a Windows one before exec. Without it `-w /build/modernuo` reaches Docker as
+# `C:/Program Files/Git/build/modernuo` and the daemon rejects it, failing the test gate with
+# "the working directory ... is invalid" and reporting it as a test failure. AGENTS.md says to
+# run this script from Git Bash, so the fix belongs here rather than in anyone's environment.
+# The variable is inert outside MSYS. Found in S2; see notes/s2-fountain.md.
 set +e
-test_output=$(docker run --rm --network=none --security-opt seccomp=unconfined \
+test_output=$(MSYS_NO_PATHCONV=1 docker run --rm --network=none --security-opt seccomp=unconfined \
     -w /build/modernuo "$BUILDER_TAG" \
     dotnet test "$TEST_PROJECT" -c Release --no-restore \
     --filter "FullyQualifiedName~$TEST_NAMESPACE" \

@@ -1,0 +1,11 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -330,7 +330,7 @@
+
+         public List<Mobile> PermaFlags { get; private set; }
+
+-        public override int Luck => AosAttributes.GetValue(this, AosAttribute.Luck);
++        public override int Luck => AosAttributes.GetValue(this, AosAttribute.Luck) + Server.Items.FountainOfFortune.GetLuckBonus(this);
+
+         public BOBFilter BOBFilter { get; private set; }
+
