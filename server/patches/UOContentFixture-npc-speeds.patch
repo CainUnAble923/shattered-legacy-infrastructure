@@ -1,0 +1,22 @@
+--- a/Projects/UOContent.Tests/Fixtures/UOContentFixture.cs
++++ b/Projects/UOContent.Tests/Fixtures/UOContentFixture.cs
+@@ -26,6 +26,19 @@
+         // Load Skills
+         SkillsInfo.Configure();
+ 
++        // Load the NPC speed table. Shattered Legacy addition; see
++        // shard-migration/notes/s8-test-route.md.
++        //
++        // Every public BaseCreature constructor calls NPCSpeeds.GetSpeeds, which falls back to
++        // _speedsByLevel[SpeedLevel.Medium] and throws KeyNotFoundException while the table is
++        // empty. The real server fills it from Data/npc-speeds.json through
++        // AssemblyHandler.Invoke("Configure") (Projects/Server/Main.cs:441); this fixture calls a
++        // hand-picked subset of Configure methods and NPCSpeeds is not among them, so no test can
++        // construct a creature. The file itself is already present: UOContent.Tests.csproj copies
++        // Distribution/Data into the output directory, and Core.BaseDirectory in the test host is
++        // that directory.
++        Server.Mobiles.NPCSpeeds.Configure();
++
+         // Configure networking (initializes RingSocketManager for tests)
+         Server.Network.NetState.Configure();
+ 

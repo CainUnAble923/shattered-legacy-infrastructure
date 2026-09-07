@@ -51,12 +51,12 @@ public class AbsorptionAttributesVerification
         return m;
     }
 
-    // Timers are on a wheel that only turns when something slices it. Nothing does inside a test
-    // host, so the delayed heal has to be driven by hand. EventSchedulerTests does the same.
-    private static void AdvanceTimers(TimeSpan by)
-    {
-        Timer.Slice((long)by.TotalMilliseconds);
-    }
+    // Time is advanced by ShardTestClock, the route's one way of doing it. This file used to
+    // turn the timer wheel directly, which runs every callback against a Core.Now that has not
+    // moved; that is Q-029, and it is why the first version of the damage test below reported
+    // healed=40 for an expected 3. See server/tests/Route/ShardTestClock.cs, and
+    // notes/s8-test-route.md section 3. apply-patches.sh now fails the build for a test that
+    // drives the wheel itself.
 
     [Fact]
     public void AloronPiecesCarryTheirColdEater()
@@ -123,16 +123,20 @@ public class AbsorptionAttributesVerification
 
         Assert.True(before > 0, $"the mobile has no room to be healed: Hits={before} HitsMax={m.HitsMax}");
 
-        Timer.Init(0);
+        // Arm before anything is scheduled. Setting Hits below HitsMax above started
+        // Mobile.HitsTimer (Projects/Server/Mobiles/Mobile.cs:2029) and arming drops it, which is
+        // what keeps the arithmetic below deterministic. The old Timer.Init(0) here did the same
+        // thing by accident; the route now does it on purpose and says so.
+        ShardTestClock.Arm();
 
         // 100 damage, all cold. The eater does NOT reduce this: the mobile takes it in full and a
         // share comes back three seconds later. 100 x (100/100) x 0.08 = 8, under the 30% cap.
         DamageEaterContext.CheckDamage(m, 100, 0, 0, 100, 0, 0, 0);
 
-        _out.WriteLine($"before slice: hits={m.Hits} (damage itself is applied by AOS.Damage, not here)");
+        _out.WriteLine($"t+0: hits={m.Hits} (damage itself is applied by AOS.Damage, not here)");
         Assert.Equal(before, m.Hits);
 
-        AdvanceTimers(TimeSpan.FromSeconds(4));
+        ShardTestClock.AdvanceSeconds(4);
 
         _out.WriteLine($"after 4s: hits={m.Hits} healed={m.Hits - before}");
 
@@ -143,9 +147,11 @@ public class AbsorptionAttributesVerification
     // AOS-damage-eater-hook.patch is dropped or stops being reached.
     //
     // It asserts on the context rather than on the victim's hit points, and that is deliberate.
-    // Driving AOS.Damage starts Mobile's own hit-regeneration timer, which then ticks once per
-    // wheel turn for the whole of the four seconds the delayed heal needs — it restored the full
-    // 40 damage in the first version of this test, swamping the eater's 3. The heal arithmetic is
+    // Driving AOS.Damage starts Mobile's own hit-regeneration timer, which then ticks for the
+    // whole of the four seconds the delayed heal needs — it restored the full 40 damage in the
+    // first version of this test, swamping the eater's 3. S8's clock fixes the frozen-Core.Now
+    // half of that (Q-029) but not this half: regeneration during the wait is real behaviour, and
+    // it would still confound an assertion on hit points here. The heal arithmetic is
     // proved deterministically by ACompletedAloronSetEatsColdDamage above, which never calls
     // Mobile.Damage and so never starts that timer. Between the two, the chain from AOS.Damage to
     // a heal is covered end to end with no timing dependence in either half.

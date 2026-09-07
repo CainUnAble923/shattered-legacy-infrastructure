@@ -25,7 +25,6 @@
 //      CollectObjectiveCountsOnlyMarkedQuestItems pins the ModernUO semantics.
 
 using System;
-using System.Collections.Generic;
 using Server;
 using Server.Engines.MLQuests;
 using Server.Engines.MLQuests.Definitions;
@@ -54,8 +53,6 @@ public class AthenaeumIsleQuestVerification
     {
         _out = output;
 
-        EnsureNpcSpeedsTable();
-
         // Configure() is what the server calls. Re-registering would append a second copy
         // of the quest to QueenZhah's list, so only register when it is absent.
         if (MLQuestSystem.FindQuest(typeof(JourneyToTheAthenaeumIsle)) == null)
@@ -64,28 +61,13 @@ public class AthenaeumIsleQuestVerification
         }
     }
 
-    // The S4 test route cannot construct ANY BaseCreature out of the box. Every public
-    // BaseCreature constructor calls NPCSpeeds.GetSpeeds, which indexes _speedsByLevel
-    // [SpeedLevel.Medium] and throws KeyNotFoundException when Data/npc-speeds.json has
-    // not been loaded - and NPCSpeeds.Configure() gives up silently when the file is not
-    // under Core.BaseDirectory, which in the test host it is not. ModernUO's own tests
-    // dodge this by constructing creatures through the Serial (deserialization) ctor;
-    // see UOContent.Tests/Tests/Engines/Pathing/BitmapAStarAlgorithmTests.cs:356.
-    //
-    // A quest test has to build real creatures, so register the table's Medium row
-    // instead. Values are verbatim from pinned Distribution/Data/npc-speeds.json.
-    // Recorded in notes/s5-quest-spike.md section 5 as a gap in the S4 route.
-    private static void EnsureNpcSpeedsTable() =>
-        // RegisterSpeed assigns by level, so calling it again with the same row is a no-op.
-        NPCSpeeds.RegisterSpeed(
-            new NPCSpeeds.SpeedClassEntry
-            {
-                Level = SpeedLevel.Medium,
-                ActiveSpeed = 0.25,
-                PassiveSpeed = 0.5,
-                Types = new HashSet<Type>()
-            }
-        );
+    // This class used to carry eight lines registering a single SpeedLevel.Medium speed row,
+    // because no BaseCreature could be constructed in the S4 test host at all. S8 moved that
+    // into the route: server/patches/UOContentFixture-npc-speeds.patch loads the real
+    // Data/npc-speeds.json for every test, so QueenZhah and MinionOfScelestus below construct
+    // with nothing in this file. The workaround is deliberately gone rather than kept
+    // alongside - see notes/s8-test-route.md - and apply-patches.sh now fails the build for a
+    // test file that registers speeds by hand.
 
     private static MLQuest Quest => MLQuestSystem.FindQuest(typeof(JourneyToTheAthenaeumIsle));
 

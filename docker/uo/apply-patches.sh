@@ -62,8 +62,10 @@ replace_file() {
 #   $4 mindepth    find(1) mindepth. 2 leaves a tree's top-level files alone because they
 #                  are routed elsewhere; 1 mirrors them too.
 #   $5 require_ns  optional. Every mirrored file must declare this namespace.
+#   $6 validator   optional. Name of a function called as `validator <src> <rel>` for each
+#                  file. It returns non-zero to reject the file, having called fail() itself.
 mirror_cs_tree() {
-    local label="$1" src_root="$2" dest_root="$3" mindepth="$4" require_ns="${5:-}"
+    local label="$1" src_root="$2" dest_root="$3" mindepth="$4" require_ns="${5:-}" validator="${6:-}"
     local count=0 src rel dest
 
     echo "[patches] Installing $label..."
@@ -96,6 +98,10 @@ mirror_cs_tree() {
             continue
         fi
 
+        if [ -n "$validator" ] && ! "$validator" "$src" "$rel"; then
+            continue
+        fi
+
         mkdir -p "$(dirname "$dest")"
         cp "$src" "$dest"
         count=$((count + 1))
@@ -109,6 +115,41 @@ mirror_cs_tree() {
     while IFS= read -r -d "" other; do
         echo "[patches] NOTE: not installed (not a .cs file): ${other#"$src_root"/}"
     done < <(find "$src_root" -mindepth "$mindepth" -type f ! -name "*.cs" -print0)
+}
+
+# S8 test-route rules. Both of these were real defects in the S4 route that a consumer worked
+# around inside its own fixture, which is the wrong permanent answer: a route that needs the
+# same workaround in every consumer is not a route, and the workaround becomes the example the
+# next author copies. The route now does both jobs centrally, so doing them by hand is a build
+# failure rather than a code-review question. See shard-migration/notes/s8-test-route.md.
+#
+# Line comments are stripped before matching, so a test file may name and discuss either rule.
+ROUTE_CLOCK_FILE="Route/ShardTestClock.cs"
+
+validate_shard_test() {
+    local src="$1" rel="$2" rc=0 code
+
+    code=$(grep -v '^[[:space:]]*//' "$src" || true)
+
+    # Q-029. Turning the wheel without moving Core.Now runs every callback against a frozen
+    # clock, which is how S6's first eater test ended up measuring Mobile.HitsTimer instead.
+    # ShardTestClock.cs itself is exempt: it owns the correct way, and one of its tests has to
+    # call the wrong way to prove it is wrong.
+    if [ "$rel" != "$ROUTE_CLOCK_FILE" ] && \
+       printf '%s\n' "$code" | grep -qE 'Timer\.(Slice|Init)[[:space:]]*\('; then
+        fail "$rel — drives the timer wheel directly. Use ShardTestClock.Arm() then ShardTestClock.Advance(); see server/tests/$ROUTE_CLOCK_FILE"
+        rc=1
+    fi
+
+    # Q-026. A hand-registered speed row stops the constructor throwing and is wrong for every
+    # creature the real table classifies as anything but Medium. The fixture patch loads the
+    # real Data/npc-speeds.json for every test.
+    if printf '%s\n' "$code" | grep -qE 'NPCSpeeds\.(RegisterSpeed|Configure)[[:space:]]*\('; then
+        fail "$rel — registers NPC speeds by hand. The route loads Data/npc-speeds.json for every test via UOContentFixture-npc-speeds.patch; delete the workaround"
+        rc=1
+    fi
+
+    return $rc
 }
 
 apply_patch() {
@@ -177,7 +218,11 @@ mirror_cs_tree "structured customizations" "$CUSTOMIZATIONS" "Projects/UOContent
 # these files and a test that does not COMPILE already fails the docker build. A test that
 # compiles and FAILS is caught by docker/uo/build.sh; see notes/s4-test-route.md for
 # why that gate cannot live inside `docker build` on Docker Desktop.
-mirror_cs_tree "shard tests" "$TESTS" "Projects/UOContent.Tests/Tests" 1 "ShatteredLegacy.Tests"
+#
+# The validator is S8's addition: two things the route now does centrally, and which a test
+# doing by hand is a build failure. See validate_shard_test above.
+mirror_cs_tree "shard tests" "$TESTS" "Projects/UOContent.Tests/Tests" 1 "ShatteredLegacy.Tests" \
+    validate_shard_test
 
 echo "[patches] Applying full-file replacements..."
 replace_file "$CUSTOMIZATIONS/CharacterCreation.cs" \
@@ -223,6 +268,13 @@ apply_patch "$PATCHES/PlayerMobile-fountain-luck-bonus.patch"
 # S6 Stygian Abyss damage eaters. One hook into AOS.Damage; the eater property is inert without
 # it while still showing on tooltips. See notes/s6-absorption.md section 3.
 apply_patch "$PATCHES/AOS-damage-eater-hook.patch"
+
+# S8 test route. The ONLY patch in this repo that touches an upstream TEST project, and the only
+# one with no effect on the shipped server: it adds the NPCSpeeds.Configure call that
+# UOContentFixture omits, so a test can construct a BaseCreature at all. Argued in
+# shard-migration/notes/s8-test-route.md section 2. If it ever stops applying, every creature
+# test fails with KeyNotFoundException in the constructor — loud, and the intended failure.
+apply_patch "$PATCHES/UOContentFixture-npc-speeds.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
