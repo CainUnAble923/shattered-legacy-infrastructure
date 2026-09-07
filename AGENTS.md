@@ -91,6 +91,28 @@ anything else we wrote.
 - **Never commit our code into a ServUO fork, and never vendor ServUO into this repo.**
   A year from now, pulling ModernUO fixes must still be a pinned-commit bump.
 
+## Build with `docker/uo/build.sh`, not `docker build`
+
+Since S4 this is the build command: builder stage, then the shard's own tests under
+`server/tests/`, then the image, each gating the next. **`docker build` and `docker compose build`
+are internal steps of it.** Run them directly and you get an image with no test gate and no
+warning that there wasn't one.
+
+A failing assertion cannot fail `docker build` here: every ModernUO test fixture calls
+`NetState.Configure()`, which needs io_uring, which Docker Desktop's default seccomp blocks, and
+`docker build` has no `--security-opt`. The BuildKit alternative would break `docker compose
+build`, so `build.sh` carries the gate instead. It also refuses to treat "the filter matched no
+tests" as a pass.
+
+## `server/tests/` is mirrored into ModernUO's test project
+
+`server/tests/<path>` lands at `Projects/UOContent.Tests/Tests/<path>`, by the same
+`mirror_cs_tree()` the customizations use, with the same destination-must-not-already-exist guard.
+
+**A ported subsystem needs a test; ported content does not.** Content is checked by the compiler
+and by reading the ServUO source. A subsystem is not: nothing else would catch a pinned-commit
+bump that leaves every patch applying while the behaviour quietly stops reaching the player.
+
 ## How `apply-patches.sh` reaches the build tree
 
 Since F2 it does three things, and any change must preserve all three:
