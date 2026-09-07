@@ -1,0 +1,13 @@
+# Everything in this repo is stored with LF endings.
+# Windows editors and PowerShell redirects rewrite files as CRLF, which turned a
+# no-op into a 608-line phantom diff across 16 armour files during S1. The
+# migration repo got this fix on 2026-09-06; this repo should have had it the
+# same day. Normalize on the way in so it cannot happen again.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.mul binary
+*.idx binary
+*.uop binary
