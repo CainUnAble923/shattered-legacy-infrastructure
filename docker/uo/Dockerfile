@@ -25,6 +25,13 @@ RUN git clone https://github.com/modernuo/ModernUO.git /build/modernuo \
 # full-file replacements to their verified locations in the pinned source tree.
 COPY server/customizations/ /customizations/
 
+# Stage the shard's own regression tests. apply-patches.sh mirrors them into
+# Projects/UOContent.Tests/Tests/ by path. They are compiled by the publish below because
+# UOContent.Tests is in ModernUO.slnx, so a test that does not compile fails this build.
+# Running them needs relaxed seccomp for io_uring, which `docker build` cannot grant:
+# docker/uo/build.sh is the gate that executes them. See notes/s4-test-route.md.
+COPY server/tests/ /tests/
+
 # Copy serialization migration JSONs (needed for PetMimic VNContent generation)
 COPY server/migrations/ /build/modernuo/Projects/UOContent/Migrations/
 

@@ -10,6 +10,7 @@ set -euo pipefail
 
 PATCHES=/patches
 CUSTOMIZATIONS=/customizations
+TESTS=/tests
 REPO=/build/modernuo
 
 cd "$REPO"
@@ -47,6 +48,67 @@ replace_file() {
         return
     fi
     cp "$src" "$dest"
+}
+
+# Mirror a tree of .cs files into the build tree, preserving each file's path relative
+# to its source root. This is the ONE copy mechanism for structured sources. F2 built it
+# for server/customizations subdirectories; server/tests is the same call with different
+# roots. Anything else that needs carrying into the build tree calls this too — do not
+# add a second copier.
+#
+#   $1 label       what to call this tree in the build log
+#   $2 src_root    directory being mirrored
+#   $3 dest_root   destination, relative to $REPO
+#   $4 mindepth    find(1) mindepth. 2 leaves a tree's top-level files alone because they
+#                  are routed elsewhere; 1 mirrors them too.
+#   $5 require_ns  optional. Every mirrored file must declare this namespace.
+mirror_cs_tree() {
+    local label="$1" src_root="$2" dest_root="$3" mindepth="$4" require_ns="${5:-}"
+    local count=0 src rel dest
+
+    echo "[patches] Installing $label..."
+
+    # A missing source tree is a broken build contract, not an empty mirror. Copying
+    # nothing quietly is how a whole category of files stops reaching the build.
+    if [ ! -d "$src_root" ]; then
+        fail "$label — source tree $src_root does not exist"
+        return
+    fi
+
+    while IFS= read -r -d "" src; do
+        rel=${src#"$src_root"/}
+        dest="$dest_root/$rel"
+
+        # An existing destination means we would be replacing an upstream file without
+        # saying so. Replacements are routed explicitly below; silent ones are how an
+        # override gets lost. Parent directories are created as needed, since ported
+        # content legitimately introduces directories ModernUO does not have.
+        if [ -e "$dest" ]; then
+            fail "$rel — would overwrite existing upstream file $dest; route it as an explicit replacement instead"
+            continue
+        fi
+
+        # A test file the runner's filter never selects is a test that can be green while
+        # broken, which is the F2/F3 defect wearing different clothes. Assert the
+        # namespace docker/uo/build.sh filters on, here, where it fails the build.
+        if [ -n "$require_ns" ] && ! grep -q "^namespace $require_ns" "$src"; then
+            fail "$rel — must declare 'namespace $require_ns' or docker/uo/build.sh will never run it"
+            continue
+        fi
+
+        mkdir -p "$(dirname "$dest")"
+        cp "$src" "$dest"
+        count=$((count + 1))
+    done < <(find "$src_root" -mindepth "$mindepth" -type f -name "*.cs" -print0)
+
+    echo "[patches] $label installed: $count file(s)."
+
+    # Non-.cs files are not installed. Report them so nothing in the source tree is
+    # silently ignored: for customizations this was the stale PetMimic migration set,
+    # which must not reach the build tree (backlog F4).
+    while IFS= read -r -d "" other; do
+        echo "[patches] NOTE: not installed (not a .cs file): ${other#"$src_root"/}"
+    done < <(find "$src_root" -mindepth "$mindepth" -type f ! -name "*.cs" -print0)
 }
 
 apply_patch() {
@@ -99,33 +161,23 @@ echo "[patches] Additive customizations installed."
 # Dungeons alone has 32 duplicate basenames across 137 files (four dungeons each with a
 # Generate.cs), and a flat cp would silently overwrite all but the last.
 # See shard-migration/docs/flat-namespace-problem.md.
-echo "[patches] Installing structured customizations..."
-structured_count=0
-while IFS= read -r -d "" src; do
-    rel=${src#"$CUSTOMIZATIONS"/}
-    dest="Projects/UOContent/$rel"
+mirror_cs_tree "structured customizations" "$CUSTOMIZATIONS" "Projects/UOContent" 2
 
-    # An existing destination means we would be replacing an upstream file without
-    # saying so. Replacements are routed explicitly below; silent ones are how an
-    # override gets lost. Parent directories are created as needed, since ported
-    # content legitimately introduces directories ModernUO does not have.
-    if [ -e "$dest" ]; then
-        fail "$rel — would overwrite existing upstream file $dest; route it as an explicit replacement instead"
-        continue
-    fi
-
-    mkdir -p "$(dirname "$dest")"
-    cp "$src" "$dest"
-    structured_count=$((structured_count + 1))
-done < <(find "$CUSTOMIZATIONS" -mindepth 2 -type f -name "*.cs" -print0)
-echo "[patches] Structured customizations installed: $structured_count file(s)."
-
-# Non-.cs files in subdirectories are not installed. Report them so that nothing in
-# server/customizations is silently ignored: today this is the stale PetMimic migration
-# set, which must not reach the build tree (backlog F4).
-while IFS= read -r -d "" other; do
-    echo "[patches] NOTE: not installed (not a .cs file): ${other#"$CUSTOMIZATIONS"/}"
-done < <(find "$CUSTOMIZATIONS" -mindepth 2 -type f ! -name "*.cs" -print0)
+# The shard's own regression tests. Same mirror, different roots: server/tests/<path>
+# becomes Projects/UOContent.Tests/Tests/<path>, at any depth.
+#
+# mindepth is 1 rather than 2 because server/tests has no flat-into-Misc meaning for a
+# top-level file — there is nothing else for one to mean — so top-level test files mirror
+# straight into Tests/.
+#
+# No patch to UOContent.Tests.csproj is needed and none should be written: the project
+# file carries no <Compile Include> items, so the SDK's default **/*.cs glob compiles
+# anything under the project directory at any depth. Verified against pinned 7c9215d97.
+# UOContent.Tests is already in ModernUO.slnx, so `dotnet publish ModernUO.slnx` compiles
+# these files and a test that does not COMPILE already fails the docker build. A test that
+# compiles and FAILS is caught by docker/uo/build.sh; see notes/s4-test-route.md for
+# why that gate cannot live inside `docker build` on Docker Desktop.
+mirror_cs_tree "shard tests" "$TESTS" "Projects/UOContent.Tests/Tests" 1 "ShatteredLegacy.Tests"
 
 echo "[patches] Applying full-file replacements..."
 replace_file "$CUSTOMIZATIONS/CharacterCreation.cs" \
