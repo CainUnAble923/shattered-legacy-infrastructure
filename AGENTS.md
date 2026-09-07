@@ -16,8 +16,8 @@ Infrastructure-as-code for the Shattered Legacy shard. It is **not** a ModernUO 
 It builds ModernUO from a pinned upstream commit in Docker and layers our code on top.
 
 ```
-server/customizations/   CANONICAL custom scripts. 153 .cs, 41,432 lines.
-server/patches/          real upstream overrides. 12 .patch + 5 full-file replacements.
+server/customizations/   CANONICAL custom scripts. 191 .cs, 42,617 lines.
+server/patches/          real upstream overrides. 13 .patch + 5 full-file replacements.
 server/migrations/       data migrations
 server/uo/modernuo/      BUILD TREE - see warning below
 docker/                  compose stack, Dockerfiles
