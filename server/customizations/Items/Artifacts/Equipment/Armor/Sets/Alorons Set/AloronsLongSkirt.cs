@@ -8,8 +8,7 @@ namespace Server.Items
         [Constructible]
         public AloronsLongSkirt()
         {
-            // AbsorptionAttributes.EaterCold = 2 is omitted: ModernUO has no SAAbsorptionAttributes
-            // and porting it pulls in three further missing subsystems. See notes/s1-armour-sets.md.
+            AbsorptionAttributes.EaterCold = 2;
             Attributes.BonusDex = 4;
             Attributes.BonusStam = 4;
             Attributes.RegenStam = 3;

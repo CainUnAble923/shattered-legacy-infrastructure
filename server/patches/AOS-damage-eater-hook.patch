@@ -1,0 +1,25 @@
+--- a/Projects/UOContent/Misc/AOS.cs
++++ b/Projects/UOContent/Misc/AOS.cs
+@@ -226,6 +226,22 @@
+                 }
+             }
+ 
++            // Shattered Legacy: Stygian Abyss damage eaters (S6). ServUO calls this from the same
++            // place, Scripts/Misc/AOS.cs:288-291 -- after the reflect block, before the totalDamage
++            // guard. The eater does not change totalDamage: it schedules a delayed heal for a share
++            // of it, so nothing below this line sees a different number.
++            //
++            // Armor Ignore bypasses resistances, so ServUO reports the whole hit as direct damage
++            // rather than splitting it by type. Kept verbatim.
++            if (ignoreArmor)
++            {
++                DamageEaterContext.CheckDamage(m, totalDamage, 0, 0, 0, 0, 0, 100);
++            }
++            else
++            {
++                DamageEaterContext.CheckDamage(m, totalDamage, phys, fire, cold, pois, nrgy, direct);
++            }
++
+             if (totalDamage <= 0)
+             {
+                 return 0;

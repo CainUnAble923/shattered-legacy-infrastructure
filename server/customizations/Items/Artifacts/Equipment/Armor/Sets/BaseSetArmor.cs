@@ -15,7 +15,7 @@ namespace Server.Items
     ///     <para>See <c>shard-migration/notes/s1-armour-sets.md</c> for the full deviation list.</para>
     /// </summary>
     [SerializationGenerator(0, false)]
-    public abstract partial class BaseSetArmor : BaseArmor, ISetItem
+    public abstract partial class BaseSetArmor : BaseArmor, ISetItem, IAbsorptionItem
     {
         [SerializedIgnoreDupe]
         [SerializableField(0, setter: "private")]
@@ -114,10 +114,32 @@ namespace Server.Items
         [SerializableFieldSaveFlag(10)]
         private bool ShouldSerializeSetSelfRepair() => _setSelfRepair != 0;
 
+        /// <summary>
+        ///     The Stygian Abyss absorption properties (S6). ServUO carries these on
+        ///     <see cref="BaseArmor" /> itself; here they ride on the same intermediate class the set
+        ///     state does, for the same reason - see the remarks on <see cref="IAbsorptionItem" />.
+        ///     <para>
+        ///         Appended as field 11 at serialization version 0. The generator writes a save-flag
+        ///         bit per field and skips any whose bit is clear, so an item saved before this field
+        ///         existed deserializes with the default and no migration is needed.
+        ///     </para>
+        /// </summary>
+        [SerializedIgnoreDupe]
+        [SerializableField(11, setter: "private")]
+        [SerializedCommandProperty(AccessLevel.GameMaster, canModify: true)]
+        private SAAbsorptionAttributes _absorptionAttributes;
+
+        [SerializableFieldSaveFlag(11)]
+        private bool ShouldSerializeAbsorptionAttributes() => !_absorptionAttributes.IsEmpty;
+
+        [SerializableFieldDefault(11)]
+        private SAAbsorptionAttributes AbsorptionAttributesDefaultValue() => new(this);
+
         public BaseSetArmor(int itemID) : base(itemID)
         {
             SetAttributes = new AosAttributes(this);
             SetSkillBonuses = new AosSkillBonuses(this);
+            AbsorptionAttributes = new SAAbsorptionAttributes(this);
         }
 
         public virtual SetItem SetID => SetItem.None;
@@ -212,6 +234,13 @@ namespace Server.Items
             }
 
             base.GetProperties(list);
+
+            // ServUO emits this block from inside BaseArmor.GetProperties, between the soul-charge
+            // and spell-channeling lines. ModernUO's BaseArmor has no hook there and patching one in
+            // would buy nothing but ordering, so it goes here instead. Same clilocs, same order
+            // within the block, a few lines lower in the tooltip. Cosmetic; see D-4 in
+            // notes/s1-armour-sets.md for the identical judgement on the set block.
+            SAAbsorptionAttributes.GetProperties(list, _absorptionAttributes);
 
             if (IsSetItem && !_setEquipped)
             {

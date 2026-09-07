@@ -220,6 +220,10 @@ apply_patch "$PATCHES/BaseArmor-set-self-repair.patch"
 # bonus, which is how ServUO's RealLuck reaches loot generation. See notes/s2-fountain.md.
 apply_patch "$PATCHES/PlayerMobile-fountain-luck-bonus.patch"
 
+# S6 Stygian Abyss damage eaters. One hook into AOS.Damage; the eater property is inert without
+# it while still showing on tooltips. See notes/s6-absorption.md section 3.
+apply_patch "$PATCHES/AOS-damage-eater-hook.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
