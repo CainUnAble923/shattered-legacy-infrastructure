@@ -1,0 +1,29 @@
+using ModernUO.Serialization;
+
+namespace Server.Items
+{
+    // ServUO: Items/Artifacts/Equipment/Glasses/NightEyes.cs (CC9).
+    [SerializationGenerator(0, false)]
+    public partial class NightEyes : Glasses
+    {
+        [Constructible]
+        public NightEyes()
+        {
+            Hue = 26;
+            Attributes.NightSight = 1;
+            Attributes.DefendChance = 10;
+            Attributes.CastRecovery = 3;
+        }
+
+        public override int LabelNumber => 1114785; // Night Eyes
+
+        public override int BasePhysicalResistance => 10;
+        public override int BaseFireResistance => 10;
+        public override int BaseColdResistance => 10;
+        public override int BasePoisonResistance => 10;
+        public override int BaseEnergyResistance => 10;
+
+        public override int InitMinHits => 255;
+        public override int InitMaxHits => 255;
+    }
+}
