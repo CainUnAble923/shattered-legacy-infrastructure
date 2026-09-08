@@ -9,8 +9,13 @@ namespace Server.Items
     // contributing to the earrings. Neither is virtual in ModernUO. Both are inert here anyway:
     // Chainmail defaults the resource to Iron, and Iron registers CraftAttributeInfo.Blank
     // (ResourceInfo.cs), so the resource terms ModernUO adds are zero.
+    // S10 (2026-09-08): derives from BaseSetArmor, not BaseArmor. ServUO carries set and absorption
+    // state on every BaseArmor, so for a ported armour-class base the carrier is the faithful parent;
+    // with SetID None it is inert. Decided before any instance reached a live world, because the
+    // parent is part of the save layout and cannot change afterwards without a wipe of the type.
+    // See shard-migration/notes/s10-carriers.md section 4.
     [SerializationGenerator(0, false)]
-    public partial class GargishEarrings : BaseArmor
+    public partial class GargishEarrings : BaseSetArmor
     {
         [Constructible]
         public GargishEarrings() : base(0x4213) => Layer = Layer.Earrings;
