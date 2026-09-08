@@ -21,8 +21,15 @@ namespace Server.Items
     ///     </para>
     ///     <para>See <c>shard-migration/notes/s10-carriers.md</c> for the deviations.</para>
     /// </summary>
+    // CC9 batch 4 (2026-09-08): derives from BaseMeleeWeapon, not BaseWeapon. Every stock melee base
+    // (BaseSword, BaseAxe, BaseStaff, BaseKnife, ...) sits on BaseMeleeWeapon, whose only member is an
+    // AbsorbDamage override (Attune Weapon absorption, and Reactive Armor pre-AOS). S10 skipped it, so
+    // every carrier child silently lost that hook. BaseMeleeWeapon is not a generated type and its
+    // Serialize/Deserialize only call base, so this inserts nothing into the save chain: the on-disk
+    // layout of every BaseSetWeapon child is unchanged. Ranged set weapons cannot use this carrier at
+    // all (Q-041), so nothing is lost by committing to the melee branch.
     [SerializationGenerator(0, false)]
-    public abstract partial class BaseSetWeapon : BaseWeapon, ISetItem, IAbsorptionItem
+    public abstract partial class BaseSetWeapon : BaseMeleeWeapon, ISetItem, IAbsorptionItem
     {
         [SerializedIgnoreDupe]
         [SerializableField(0, setter: "private")]

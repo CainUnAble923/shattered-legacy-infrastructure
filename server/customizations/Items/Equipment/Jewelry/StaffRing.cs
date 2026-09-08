@@ -4,7 +4,10 @@ namespace Server.Items
 {
     // ServUO: Items/Equipment/Jewelry/StaffRing.cs (CC9 batch 3). Not OSI content: a ServUO staff-only ring
     // ("By Nerun") that deletes itself if a player double-clicks or equips it. ServUO's Mobile.IsPlayer()
-    // is AccessLevel == Player; pinned ModernUO has no such method, so the comparison is written out.
+    // is AccessLevel <= AccessLevel.VIP (Server/Customs Framework/Utilities/Utilities.cs:51); pinned
+    // ModernUO has no such method and its AccessLevel enum has no VIP member (Mobiles/Mobile.cs:135-144),
+    // so AccessLevel == Player is the precise equivalent and is written out. (Comment corrected in CC9
+    // batch 4 after Q-040; the code was right, the stated reason was not. D-13.)
     [SerializationGenerator(0, false)]
     public partial class StaffRing : BaseRing
     {
