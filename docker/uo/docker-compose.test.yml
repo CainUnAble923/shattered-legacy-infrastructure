@@ -1,0 +1,30 @@
+# Throwaway test shard. Separate container, separate port, SEPARATE SAVE.
+#
+# The live stack (docker-compose.yml) mounts the real world save. That is correct
+# for the live shard and wrong for a spot check: a few hundred spawned test items
+# would persist into the real world. This file exists so testing can never do that.
+#
+#   docker/uo/test-shard.sh          build (gated) + bring this up
+#   docker compose -f docker/uo/docker-compose.test.yml down     stop it
+#
+# Host port is 2594, so it can run alongside the live shard on 2593.
+# There is no ddns-updater here on purpose: this must never touch public DNS.
+services:
+  modernuo-test:
+    image: sl-modernuo:latest
+    container_name: sl-modernuo-test
+    restart: "no"
+    ports:
+      - "127.0.0.1:2594:2593"
+      - "127.0.0.1:2594:2593/udp"
+    volumes:
+      - ${SERVER_PATH}/customizations:/modernuo-projects:ro
+      - ${SERVER_PATH}/uo/modernuo/Configuration-test:/modernuo/Configuration
+      - ${SERVER_PATH}/lib/uo/modernuo/Saves-test:/var/lib/uo/modernuo/Saves
+      - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
+    environment:
+      TZ: ${TZ:-America/Chicago}
+    stdin_open: true
+    tty: true
+    security_opt:
+      - seccomp:unconfined
