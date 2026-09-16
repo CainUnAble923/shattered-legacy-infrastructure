@@ -27,6 +27,10 @@ mkdir -p "$TEST_SAVES"
 if [ ! -d "$TEST_CONF" ]; then
     echo "== seeding Configuration-test from the live Configuration =============="
     cp -r "$SERVER/uo/modernuo/Configuration" "$TEST_CONF"
+    # The live config advertises 192.168.1.58. A client connecting to the TEST shard
+    # would be relayed straight onto the LIVE shard and never know. Point it at itself.
+    sed -i 's/"serverListing.address": *"[^"]*"/"serverListing.address": "127.0.0.1"/' "$TEST_CONF/modernuo.json"
+    sed -i 's/"serverListing.serverName": *"[^"]*"/"serverListing.serverName": "Shattered Legacy TEST"/' "$TEST_CONF/modernuo.json"
 fi
 
 echo "== building through the gates (patches, then tests, then image) ========"

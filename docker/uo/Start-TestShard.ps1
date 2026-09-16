@@ -58,6 +58,13 @@ if (-not (Test-Path $testSaves)) { New-Item -ItemType Directory -Path $testSaves
 if (-not (Test-Path $testConf)) {
     Write-Host "seeding Configuration-test from the live Configuration" -ForegroundColor Gray
     Copy-Item $liveConf $testConf -Recurse
+    # The live config advertises 192.168.1.58. A client connecting to the TEST shard
+    # would be relayed straight onto the LIVE shard and never know. Point it at itself.
+    $mj = "$testConf\modernuo.json"
+    $j  = Get-Content $mj -Raw
+    $j  = $j -replace '"serverListing\.address":\s*"[^"]*"', '"serverListing.address": "127.0.0.1"'
+    $j  = $j -replace '"serverListing\.serverName":\s*"[^"]*"', '"serverListing.serverName": "Shattered Legacy TEST"'
+    Set-Content $mj $j -Encoding UTF8
 }
 
 # --- build through the gates --------------------------------------------------
