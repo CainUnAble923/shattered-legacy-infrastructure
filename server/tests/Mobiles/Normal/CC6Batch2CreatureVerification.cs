@@ -1,8 +1,9 @@
-// CC6 batch 2: fourteen more creatures chosen by batch 1's rule - pinned ModernUO's own spawn data
+// CC6 batch 2: seventeen more creatures chosen by batch 1's rule - pinned ModernUO's own spawn data
 // (Distribution/Data/Spawns) already places them and no loaded assembly declared them, so their spawner entries
 // were running with EntryFlags.InvalidType (BaseSpawner.cs:1126-1131). Nine are clean ports (the Citadel's three
 // Black Order humans, the Abyss's lava elemental, skeletal lich, forgotten servant, plague rat and pit fiend, Ter
-// Mur's gargoyle shade); five are the fur cluster (three boura, two kepetch) with four items ported for them.
+// Mur's gargoyle shade); five are the fur cluster (three boura, two kepetch) with four items ported for them; three
+// are the sliths (the most-placed creatures in Ter Mur) with three items ported for them.
 //
 // This file proves the batch does what it was chosen for: every one constructs with its ServUO values, every stock
 // spawn entry naming one of them now resolves, and the fur cluster's ICarvable route (BladedItemTarget -> Carve)
@@ -47,7 +48,10 @@ public class CC6Batch2CreatureVerification
         (typeof(HighPlainsBoura), "a high plains boura", "a boura corpse", 715, 0, 5000, -5000),
         (typeof(LowlandBoura), "a lowland boura", "a boura corpse", 715, 0, 5000, -3500),
         (typeof(Kepetch), "a kepetch", "a kepetch corpse", 726, 0, 6000, -6000),
-        (typeof(KepetchAmbusher), "a kepetch ambusher", "a kepetch corpse", 726, 0, 2500, -2500)
+        (typeof(KepetchAmbusher), "a kepetch ambusher", "a kepetch corpse", 726, 0, 2500, -2500),
+        (typeof(Slith), "a slith", "a slith corpse", 734, 0, 0, 0),
+        (typeof(ToxicSlith), "a toxic slith", "a slith corpse", 734, 476, 0, 0),
+        (typeof(StoneSlith), "a stone slith", "a slith corpse", 734, 0, 0, 0)
     };
 
     private static PlayerMobile NewPlayer(Point3D loc, Map map = null)
@@ -60,9 +64,9 @@ public class CC6Batch2CreatureVerification
     }
 
     [Fact]
-    public void AllFourteenConstructWithTheirServUOValues()
+    public void AllSeventeenConstructWithTheirServUOValues()
     {
-        Assert.Equal(14, Batch.Length);
+        Assert.Equal(17, Batch.Length);
 
         foreach (var (type, name, corpse, body, hue, fame, karma) in Batch)
         {
@@ -112,7 +116,7 @@ public class CC6Batch2CreatureVerification
     }
 
     [Fact]
-    public void EveryStockSpawnEntryNamingOneOfTheFourteenNowResolves()
+    public void EveryStockSpawnEntryNamingOneOfTheSeventeenNowResolves()
     {
         var spawnsDir = Path.Combine(Core.BaseDirectory, "Data", "Spawns");
         Assert.True(Directory.Exists(spawnsDir), $"no spawn data at {spawnsDir}");
@@ -156,12 +160,12 @@ public class CC6Batch2CreatureVerification
             _out.WriteLine($"{type.Name}: {count} spawn entries");
         }
 
-        // Batch 1 left exactly 89 names unresolved (tools/spawn-orphans.txt, 391db6c). The fourteen here were among
-        // them, and nothing else in this batch adds or removes a spawnable type, so the count must be exactly 75.
-        Assert.Equal(75, unresolved.Count);
+        // Batch 1 left exactly 89 names unresolved (tools/spawn-orphans.txt, 391db6c). The seventeen here were among
+        // them, and nothing else in this batch adds or removes a spawnable type, so the count must be exactly 72.
+        Assert.Equal(72, unresolved.Count);
         // Counted 2026-09-19 from the same files: 33 entries name the clean nine (Citadel 11+8+5, Abyss 3+2+1+1+1,
-        // Ter Mur 1) and 18 name the fur five (6+5+1 boura, 2+4 kepetch).
-        Assert.Equal(51, referenced);
+        // Ter Mur 1), 18 name the fur five (6+5+1 boura, 2+4 kepetch) and 26 name the sliths (12+8+6).
+        Assert.Equal(77, referenced);
     }
 
     [Fact]
@@ -364,6 +368,66 @@ public class CC6Batch2CreatureVerification
         Assert.False(kepetch.Hidden);
 
         kepetch.Delete();
+    }
+
+    [Fact]
+    public void TheSlithsKeepTheirServUOShapeAndTheirThreeItemsExist()
+    {
+        var slith = new Slith();
+        Assert.True(slith.Tamable);
+        Assert.Equal(1, slith.ControlSlots);
+        Assert.Equal(80.7, slith.MinTameSkill);
+        Assert.Equal(2, slith.TreasureMapLevel);
+        Assert.Equal(6, slith.Meat);
+        Assert.Equal(10, slith.Hides);
+        Assert.Null(slith.GetWeaponAbility());
+
+        var toxic = new ToxicSlith();
+        Assert.False(toxic.Tamable);
+        Assert.Equal(HideType.Horned, toxic.HideType);
+        Assert.True(toxic.Skills.Poisoning.Value >= 90.0);
+        Assert.Equal(100, toxic.PoisonResistance);
+
+        var stone = new StoneSlith();
+        Assert.True(stone.Tamable);
+        Assert.Equal(2, stone.ControlSlots);
+        Assert.Equal(65.1, stone.MinTameSkill);
+        Assert.Same(WeaponAbility.BleedAttack, stone.GetWeaponAbility());
+        Assert.Equal(HideType.Spined, stone.HideType);
+        Assert.Equal(1, stone.Meat);
+
+        var eye = new SlithEye(3);
+        Assert.Equal(0x5749, eye.ItemID);
+        Assert.True(eye.Stackable);
+        Assert.Equal(3, eye.Amount);
+        Assert.Equal(1112396, eye.LabelNumber);
+
+        var sac = new ToxicVenomSac(2);
+        Assert.Equal(0x4005, sac.ItemID);
+        Assert.Equal(2, sac.Amount);
+        Assert.Equal(1112291, sac.LabelNumber);
+        var commodity = Assert.IsAssignableFrom<ICommodity>(sac);
+        Assert.Equal(1112291, commodity.DescriptionNumber);
+        Assert.True(commodity.IsDeedable);
+
+        var scroll = new TatteredAncientScroll();
+        Assert.Equal(0x1700, scroll.ItemID);
+        Assert.False(scroll.Stackable);
+        Assert.Equal(1112991, scroll.LabelNumber);
+
+        // The drop tables reach types that exist: our AncientPotteryFragments and StoneSlithClaw (CC9), the three here.
+        Assert.NotNull(AssemblyHandler.FindTypeByName("AncientPotteryFragments"));
+        Assert.NotNull(AssemblyHandler.FindTypeByName("StoneSlithClaw"));
+
+        foreach (var m in new Mobile[] { slith, toxic, stone })
+        {
+            m.Delete();
+        }
+
+        foreach (var i in new Item[] { eye, sac, scroll })
+        {
+            i.Delete();
+        }
     }
 
     [Fact]
