@@ -23,6 +23,14 @@ if [ "${1:-}" = "--fresh" ] && [ -d "$TEST_SAVES" ]; then
 fi
 
 mkdir -p "$TEST_SAVES"
+# A fresh, empty world has no accounts, so ModernUO's AccountPrompt asks "create the
+# owner account? (y/n)" on stdin and BLOCKS THERE FOREVER. The container looks healthy
+# (docker ps says Up), the listener never opens, and a client hangs at "verifying
+# account" with no clue why. Cost a week, 2026-09-19. Seed the accounts so it never asks.
+if [ ! -d "$TEST_SAVES/Accounts" ] && [ -d "$SERVER/lib/uo/modernuo/Saves/Accounts" ]; then
+    echo "== seeding test accounts from the live save (one-directional copy) ====="
+    cp -r "$SERVER/lib/uo/modernuo/Saves/Accounts" "$TEST_SAVES/Accounts"
+fi
 # Its own Configuration copy, so a test run cannot rewrite the live server's config.
 if [ ! -d "$TEST_CONF" ]; then
     echo "== seeding Configuration-test from the live Configuration =============="

@@ -55,6 +55,15 @@ if ($Fresh -and (Test-Path $testSaves)) {
     Remove-Item $testSaves -Recurse -Force
 }
 if (-not (Test-Path $testSaves)) { New-Item -ItemType Directory -Path $testSaves -Force | Out-Null }
+# A fresh, empty world has no accounts, so ModernUO's AccountPrompt asks "create the
+# owner account? (y/n)" on stdin and BLOCKS THERE FOREVER. docker ps still says Up, the
+# listener never opens, and the client hangs at "verifying account". Cost a week,
+# 2026-09-19. Seed the accounts so it never asks.
+$liveAccts = "$repo\server\lib\uo\modernuo\Saves\Accounts"
+if (-not (Test-Path "$testSaves\Accounts") -and (Test-Path $liveAccts)) {
+    Write-Host "seeding test accounts from the live save (one-directional copy)" -ForegroundColor Gray
+    Copy-Item $liveAccts "$testSaves\Accounts" -Recurse
+}
 if (-not (Test-Path $testConf)) {
     Write-Host "seeding Configuration-test from the live Configuration" -ForegroundColor Gray
     Copy-Item $liveConf $testConf -Recurse
