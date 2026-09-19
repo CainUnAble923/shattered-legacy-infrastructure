@@ -1,0 +1,28 @@
+--- a/Projects/UOContent/Mobiles/BaseCreature.cs
++++ b/Projects/UOContent/Mobiles/BaseCreature.cs
+@@ -924,6 +924,10 @@
+         public static bool BondingEnabled { get; private set; }
+ 
+         public virtual bool IsBondable => BondingEnabled && !Summoned;
++
++        // Shattered Legacy (CC4 Despise): ServUO's BaseCreature.CanAutoStable. False keeps the creature out of
++        // PlayerMobile.AutoStablePets on logout. Despise's possessed creatures return false.
++        public virtual bool CanAutoStable => true;
+         public virtual TimeSpan BondingDelay => TimeSpan.FromDays(7.0);
+         public virtual TimeSpan BondingAbandonDelay => TimeSpan.FromDays(1.0);
+ 
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -3649,6 +3649,12 @@
+                     continue;
+                 }
+ 
++                // Shattered Legacy (CC4 Despise): ServUO's CanAutoStable guard.
++                if (!pet.CanAutoStable)
++                {
++                    continue;
++                }
++
+                 pet.ControlTarget = null;
+                 pet.ControlOrder = OrderType.Stay;
+                 pet.Internalize();

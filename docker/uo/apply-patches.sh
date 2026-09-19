@@ -276,6 +276,12 @@ apply_patch "$PATCHES/AOS-damage-eater-hook.patch"
 # test fails with KeyNotFoundException in the constructor — loud, and the intended failure.
 apply_patch "$PATCHES/UOContentFixture-npc-speeds.patch"
 
+# CC4 Despise. ServUO's BaseCreature.CanAutoStable, three additive lines across two UOContent files: a
+# virtual on BaseCreature and one guard in PlayerMobile.AutoStablePets. Without it a creature possessed
+# through a Wisp Orb is taken into the stable when its master logs out. Alternatives argued in
+# shard-migration/notes/cc4-despise.md; pinned by DespiseRevampedVerification (proved red).
+apply_patch "$PATCHES/BaseCreature-PlayerMobile-can-auto-stable.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
