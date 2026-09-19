@@ -1,6 +1,6 @@
 --- a/Projects/UOContent.Tests/Fixtures/UOContentFixture.cs
 +++ b/Projects/UOContent.Tests/Fixtures/UOContentFixture.cs
-@@ -26,6 +26,30 @@
+@@ -26,6 +26,40 @@
          // Load Skills
          SkillsInfo.Configure();
  
@@ -27,6 +27,16 @@
 +        // behaviour that rolls a skill silently takes its failure branch. The same shape as the
 +        // speed table above, for a handler instead of a data file.
 +        Server.Misc.SkillCheck.Initialize();
++
++        // Load the name lists. Shattered Legacy addition (CC6 batch 2); see
++        // shard-migration/notes/cc6-creatures-batch2.md.
++        //
++        // NameList.RandomName returns "" while its table is empty. The real server fills it from
++        // Data/names.json in NameList.Configure through AssemblyHandler.Invoke("Configure"); this
++        // fixture does not, so any ported NPC that draws its name at construction (ForgottenServant
++        // here, the Ter Mur townspeople to come) is nameless in the test host. Same shape as the
++        // speed table above, for a data file the csproj already copies.
++        Server.NameList.Configure();
 +
          // Configure networking (initializes RingSocketManager for tests)
          Server.Network.NetState.Configure();

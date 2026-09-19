@@ -145,8 +145,10 @@ public class CC6Batch1CreatureVerification
         }
 
         // Measured 2026-09-19 against pinned 7c9215d97 before this batch: 109 names unresolved. The twenty here
-        // were among them, and nothing else in this batch adds or removes a type, so the count must be exactly 89.
-        Assert.Equal(89, unresolved.Count);
+        // were among them, and nothing else in this batch adds or removes a type, so the count was exactly 89.
+        // CC6 batch 2 (same day) ported fourteen more of the 89, so it is now 75; that file's own test pins the
+        // batch-2 figure and tools/spawn-orphans.txt carries the list. Every later batch moves this number.
+        Assert.Equal(75, unresolved.Count);
         // Counted the same day from the same files: 46 entries name the twenty (GrayGoblin 6, GreenGoblin 5, ...).
         Assert.Equal(46, referenced);
     }
