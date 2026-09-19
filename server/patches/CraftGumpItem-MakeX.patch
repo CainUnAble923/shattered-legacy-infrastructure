@@ -6,7 +6,7 @@
          {
 +            // ClusterF: Make X - greyed out when the recipe is not known
 +            builder.AddButton(140, 387, 4005, 4007, 0, GumpButtonType.Page);
-+            builder.AddLabel(175, 390, GreyLabelColor, "MAKE X");
++            builder.AddHtml(175, 390, 150, 18, "<BASEFONT COLOR=#787878>MAKE X", false, false);
              builder.AddButton(270, 387, 4005, 4007, 0, GumpButtonType.Page);
              builder.AddHtmlLocalized(305, 390, 150, 18, 1044151, GreyLabelColor); // MAKE NOW
          }
@@ -14,7 +14,7 @@
          {
 +            // ClusterF: Make X button (ID = 2)
 +            builder.AddButton(140, 387, 4005, 4007, 2);
-+            builder.AddLabel(175, 390, LabelColor, "MAKE X");
++            builder.AddHtml(175, 390, 150, 18, "<BASEFONT COLOR=#FFFFFF>MAKE X", false, false);
              builder.AddButton(270, 387, 4005, 4007, 1);
              builder.AddHtmlLocalized(305, 390, 150, 18, 1044151, LabelColor); // MAKE NOW
          }
