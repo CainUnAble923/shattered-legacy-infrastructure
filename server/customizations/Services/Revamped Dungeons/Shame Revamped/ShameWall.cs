@@ -7,10 +7,11 @@
 // tile in front of and behind each piece, replacing any stock ConditionTeleporter there; those teleporters
 // work only while the addon's Visible flag is set (ShameTeleporter.cs).
 //
-// Read, not run, and worth knowing before a client check: BaseAddon's constructor sets Visible = false on
-// both emulators and nothing sets it true until the first Reset(), so as shipped the wall teleporters are
-// inert until the first troll has died and the wall has come back, and active from then on. That is
-// ServUO's behaviour and it is reproduced, not corrected (notes/cc4-shame.md, question raised).
+// Visible is the wall's "standing" flag: OnTrollKilled clears it as the wall sinks, Reset sets it as the wall
+// comes back, and the wall teleporters read it. BaseAddon's constructor sets it false on both emulators and
+// ServUO's ShameWall constructor never sets it true, so as shipped a fresh wall's teleporters are inert until
+// that wall's troll has died once (Q-046). The constructor here sets it, which is the one deviation in this
+// file (notes/cc4-shame.md §9.1, D-10/D-16 precedent: ServUO's literal value is the bug).
 //
 // Conversion: the four serialized members are generator fields in ServUO's order. ServUO's version-1 and
 // version-2 upgrade paths (re-adding teleporters to old saves) are dropped. OnAfterDelete deletes a live
@@ -55,6 +56,11 @@ public partial class ShameWall : BaseAddon
         _trollSpawnLoc = trollSpawnLoc;
 
         SpawnTroll();
+
+        // Q-046: ServUO never sets this in the constructor, so a freshly generated wall is standing with a live
+        // troll but flagged as sunk, and its teleporters are inert until that wall's troll has died once. Reset()
+        // sets it; this makes a fresh wall match a reset one. Deviation, same shape as D-10/D-16.
+        Visible = true;
     }
 
     public void OnTrollKilled()

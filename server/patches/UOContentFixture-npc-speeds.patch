@@ -1,6 +1,6 @@
 --- a/Projects/UOContent.Tests/Fixtures/UOContentFixture.cs
 +++ b/Projects/UOContent.Tests/Fixtures/UOContentFixture.cs
-@@ -26,6 +26,19 @@
+@@ -26,6 +26,30 @@
          // Load Skills
          SkillsInfo.Configure();
  
@@ -16,6 +16,17 @@
 +        // Distribution/Data into the output directory, and Core.BaseDirectory in the test host is
 +        // that directory.
 +        Server.Mobiles.NPCSpeeds.Configure();
++
++        // Wire the skill-check handlers. Shattered Legacy addition (CC6 batch 1); see
++        // shard-migration/notes/cc6-creatures-batch1.md.
++        //
++        // Mobile.CheckSkill returns SkillCheckLocationHandler?.Invoke(...) == true, and the real
++        // server assigns the four handlers in SkillCheck.Initialize through
++        // AssemblyHandler.Invoke("Initialize") (Main.cs:448). The fixture never does, so every skill
++        // roll in the test host fails: Stealth.OnUse reveals the user, and any creature or item
++        // behaviour that rolls a skill silently takes its failure branch. The same shape as the
++        // speed table above, for a handler instead of a data file.
++        Server.Misc.SkillCheck.Initialize();
 +
          // Configure networking (initializes RingSocketManager for tests)
          Server.Network.NetState.Configure();

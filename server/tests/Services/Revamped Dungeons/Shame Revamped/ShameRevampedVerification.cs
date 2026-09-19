@@ -469,9 +469,10 @@ public class ShameRevampedVerification
 
         var player = NewPlayer(new Point3D(5402, 80, 10));
 
-        // As constructed, BaseAddon leaves Visible false, so the wall teleporters are inert (ServUO as shipped).
-        Assert.False(wall.Visible);
-        Assert.False(front.CanTeleport(player));
+        // Q-046: a fresh wall is standing, so its flag is set and the teleporters work from the start. ServUO
+        // leaves BaseAddon's Visible = false here and the teleporters are inert until the first troll dies.
+        Assert.True(wall.Visible);
+        Assert.True(front.CanTeleport(player));
 
         troll.Kill();
 
@@ -491,7 +492,7 @@ public class ShameRevampedVerification
         Assert.True(wall.Troll.Alive);
         Assert.Same(wall, wall.Troll.Wall);
 
-        // ...and from now on the teleporters work while the wall stands (ServUO as shipped, see ShameWall.cs).
+        // ...and the teleporters work again while the wall stands.
         Assert.True(front.CanTeleport(player));
 
         // Using a piece while the troll is dead resets at once.
