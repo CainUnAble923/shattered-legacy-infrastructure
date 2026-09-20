@@ -1,6 +1,6 @@
 --- a/Projects/UOContent.Tests/Fixtures/UOContentFixture.cs
 +++ b/Projects/UOContent.Tests/Fixtures/UOContentFixture.cs
-@@ -26,6 +26,40 @@
+@@ -26,6 +26,55 @@
          // Load Skills
          SkillsInfo.Configure();
  
@@ -37,6 +37,21 @@
 +        // here, the Ter Mur townspeople to come) is nameless in the test host. Same shape as the
 +        // speed table above, for a data file the csproj already copies.
 +        Server.NameList.Configure();
++
++        // Wire the corpse handler. Shattered Legacy addition (CC6 batch 4); see
++        // shard-migration/notes/cc6-creatures-batch4.md.
++        //
++        // Mobile.Kill() builds the corpse through Mobile.CreateCorpseHandler, which the real server
++        // assigns in Corpse.Initialize through AssemblyHandler.Invoke("Initialize"). The fixture never
++        // does, so Kill() in the test host hands OnDeath(Container) a null and every ported OnDeath
++        // drop (c.DropItem, ServUO's shape, no null guard) throws. With it a test can kill a creature
++        // and read its corpse. Same shape as the skill-check handlers above.
++        Server.Items.Corpse.Initialize();
++
++        // And the taming setting: BaseCreature.Configure reads taming.enableBonding (default Core.LBR, true).
++        // Without it BondingEnabled stays false and IsBondable is false for every creature in the test host,
++        // so no feed can ever bond a pet. Same batch, same shape.
++        Server.Mobiles.BaseCreature.Configure();
 +
          // Configure networking (initializes RingSocketManager for tests)
          Server.Network.NetState.Configure();
