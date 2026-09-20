@@ -161,8 +161,10 @@ public class CC6Batch2CreatureVerification
         }
 
         // Batch 1 left exactly 89 names unresolved (tools/spawn-orphans.txt, 391db6c). The seventeen here were among
-        // them, and nothing else in this batch adds or removes a spawnable type, so the count must be exactly 72.
-        Assert.Equal(72, unresolved.Count);
+        // them, and nothing else in this batch adds or removes a spawnable type, so the count was exactly 72.
+        // CC6 batch 3 (2026-09-19) ported ten more of the 72, so it is now 62; that file's test pins the batch-3
+        // figure and tools/spawn-orphans.txt carries the list.
+        Assert.Equal(62, unresolved.Count);
         // Counted 2026-09-19 from the same files: 33 entries name the clean nine (Citadel 11+8+5, Abyss 3+2+1+1+1,
         // Ter Mur 1), 18 name the fur five (6+5+1 boura, 2+4 kepetch) and 26 name the sliths (12+8+6).
         Assert.Equal(77, referenced);
