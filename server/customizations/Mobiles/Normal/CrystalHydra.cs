@@ -1,8 +1,12 @@
 // ServUO: Mobiles/Normal/CrystalHydra.cs (CC6 batch 4). Values verbatim; serialization by the generator. Spawned by the
 // two Prism of Light spawners (shared/felucca/PrismOfLight.json, shared/trammel/PrismOfLight.json), one entry each.
 //
-// DEVIATION (D-68): ServUO's SetSpecialAbility(SpecialAbility.DragonBreath) is dropped; ModernUO has no SpecialAbility
-// table (P6, the Saurosaurus precedent). Everything else is as ServUO's, including the loop that re-rolls
+// SetSpecialAbility(DragonBreath) is NOT dropped (CC6 follow-up, Q-054; D-68 retired, it never was a loss), and it is not
+// the default fire breath: CrystalHydra is the one type with its own DragonBreathDefinition (Services/Pet Training/
+// SpecialAbility.cs:1045-1063) - 100% COLD at 0.13 of current hits every 5-7 s, effect hue 0x47E, sound 0x56D, and five
+// breaths per trigger (the combatant plus up to four mobiles within 5 tiles of it). Pinned ModernUO's ColdBreath is the
+// mechanism; Mobiles/Abilities/Fire Breath/CrystalHydraBreath.cs (ours) carries those five differences over it.
+// Everything else is as ServUO's, including the loop that re-rolls
 // Utility.RandomMinMax(0, 1) on every iteration (so it packs 0 arcanist scrolls half the time and otherwise one or
 // more, geometrically) and the drop of CrystallineFragments, which is a STOCK ModernUO type here
 // (Items/Misc/Prism of Light/CrystallineFragments.cs, same ItemID, hue, loot type and label) and is not re-ported.
@@ -54,12 +58,14 @@ public partial class CrystalHydra : BaseCreature
         {
             PackItem(Loot.RandomScroll(0, Loot.ArcanistScrollTypes.Length, SpellbookType.Arcanist));
         }
-
-        // ServUO: SetSpecialAbility(SpecialAbility.DragonBreath); -- D-68
     }
 
     public override string CorpseName => "a crystal hydra corpse";
     public override string DefaultName => "a crystal hydra";
+
+    // ServUO: SetSpecialAbility(SpecialAbility.DragonBreath), resolved by type to the Crystal Hydra definition.
+    private static readonly MonsterAbility[] _abilities = { new CrystalHydraBreath() };
+    public override MonsterAbility[] GetMonsterAbilities() => _abilities;
 
     public override void GenerateLoot()
     {

@@ -5,13 +5,13 @@
 // and burns the egg at 120 h, a 10% (Dry 5%, Parched 1%, Dehydrated 0%) roll at maturity for a battle chicken lizard
 // in one of twelve hiryu hues, and a hatch that places a ChickenLizard or a BattleChickenLizard at the hatcher's feet.
 //
-// Two of its inputs are not reachable on this shard, both recorded as deviations in notes/cc6-creatures-batch4.md:
-//   - Incubating is only ever set true by ServUO's Incubator (Items/Functional/Incubator.cs, 158 lines, a house
-//     container that is not ported), and CheckStatus is only ever called from it. Here nothing advances an egg past
-//     New except a GameMaster setting TotalIncubationTime and calling CheckStatus (D-69). ServUO's DropToItem clause
-//     `!(Parent is Incubator)` is therefore dropped with the type; the rest of that override is as written.
-//   - Pour is called from ServUO's BaseBeverage.Pour_OnTarget (Beverage.cs:1489), a branch pinned ModernUO's
-//     Beverage.cs:587 does not have (D-70). The method is here and works; no beverage reaches it.
+// Its two drivers, missing when batch 4 ported it (D-69, D-70) and both present since the CC6 follow-up (Q-053, P12):
+//   - Incubating is set true, and CheckStatus called, by Incubator (Items/Functional/Incubator.cs, ours, from ServUO's).
+//     ServUO's DropToItem clause `!(Parent is Incubator)` is back with it: the incubator's drop overrides set
+//     Incubating AFTER base.OnDragDropInto/OnDragDrop has added the egg, and this override runs after that, so without
+//     the clause the egg switched itself off on the way in.
+//   - Pour is reached from BaseBeverage.Pour_OnTarget through server/patches/Beverage-chicken-lizard-egg-pour.patch,
+//     ServUO's Beverage.cs:1489 branch against pinned Beverage.cs:684.
 // The two BaseConfirmGump subclasses need nothing: pinned Gumps/BaseConfirmGump.cs:5 has the same shape.
 //
 // Serialization: six members, in ServUO's order. IncubationStart, Stage, WaterLevel and IsBattleChicken are plain
@@ -197,8 +197,9 @@ public partial class ChickenLizardEgg : Item
     {
         var check = base.DropToItem(from, target, p);
 
-        // ServUO: `check && !(Parent is Incubator) && m_Incubating`. There is no Incubator type here (D-69).
-        if (check && _incubating)
+        // ServUO: `check && !(Parent is Incubator) && m_Incubating`. Dropping into the incubator must not stop the
+        // incubation the incubator just started (see the header).
+        if (check && Parent is not Incubator && _incubating)
         {
             Incubating = false;
         }

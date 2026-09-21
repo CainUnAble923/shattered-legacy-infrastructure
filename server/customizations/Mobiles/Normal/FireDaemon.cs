@@ -9,7 +9,10 @@
 // and AuraDamage.EffectRange => 10 (:470) is what DoEffects iterates. Cadence differs slightly: ServUO rolls 40% per
 // think once off cooldown, ModernUO fires every AuraInterval; same numbers, a few seconds' jitter.
 //
-// Dropped: SetSpecialAbility(SpecialAbility.DragonBreath) (D-62: Pet Training, declined B3, the Saurosaurus precedent).
+// SetSpecialAbility(DragonBreath) is NOT dropped either (CC6 follow-up, Q-054; D-62 retired, it never was a loss):
+// FireDaemon is in no DragonBreathDefinition.Uses list (Services/Pet Training/SpecialAbility.cs:860-1063), so ServUO
+// gives it the default definition, 100% fire at 0.16 of current hits every 30-45 s, which pinned ModernUO carries line
+// for line as MonsterAbilities.FireBreath through BaseCreature.GetMonsterAbilities() (:1131).
 
 using System;
 using ModernUO.Serialization;
@@ -60,6 +63,10 @@ public partial class FireDaemon : BaseCreature
 
     public override string CorpseName => "a fire daemon corpse";
     public override string DefaultName => "a fire daemon";
+
+    // ServUO: SetSpecialAbility(SpecialAbility.DragonBreath), the default (fire) definition.
+    private static readonly MonsterAbility[] _abilities = { MonsterAbilities.FireBreath };
+    public override MonsterAbility[] GetMonsterAbilities() => _abilities;
 
     public override bool CanRummageCorpses => true;
     public override Poison PoisonImmune => Poison.Regular;

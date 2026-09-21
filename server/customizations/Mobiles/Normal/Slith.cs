@@ -1,7 +1,11 @@
 // ServUO: Mobiles/Normal/Slith.cs (CC6 batch 2). Values verbatim; serialization by the generator. ServUO sets
 // no Fame or Karma on the sliths; neither does this.
-// Dropped: SetSpecialAbility(DragonBreath) (D-55: Pet Training, declined B3, the Saurosaurus precedent); DragonBlood => 8
-// (D-50: pinned BaseCreature has no DragonBlood virtual and its corpse carve yields no dragon's blood).
+// SetSpecialAbility(DragonBreath) is NOT dropped (CC6 follow-up, Q-054; D-55 retired, it never was a loss): Slith is in
+// no DragonBreathDefinition.Uses list (Services/Pet Training/SpecialAbility.cs:860-1063), so ServUO gives it the default
+// definition, 100% fire at 0.16 of current hits every 30-45 s, which pinned ModernUO carries line for line as
+// MonsterAbilities.FireBreath through BaseCreature.GetMonsterAbilities() (:1131), the way stock Drake declares it.
+// Dropped: DragonBlood => 8 (D-50: pinned BaseCreature has no DragonBlood virtual and its corpse carve yields no dragon's
+// blood).
 
 using ModernUO.Serialization;
 using Server.Items;
@@ -42,6 +46,10 @@ public partial class Slith : BaseCreature
 
     public override string CorpseName => "a slith corpse";
     public override string DefaultName => "a slith";
+
+    // ServUO: SetSpecialAbility(SpecialAbility.DragonBreath), the default (fire) definition.
+    private static readonly MonsterAbility[] _abilities = { MonsterAbilities.FireBreath };
+    public override MonsterAbility[] GetMonsterAbilities() => _abilities;
 
     public override int TreasureMapLevel => 2;
     public override int Meat => 6;

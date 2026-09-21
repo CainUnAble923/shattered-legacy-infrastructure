@@ -1,7 +1,12 @@
 // ServUO: Mobiles/Normal/ToxicSlith.cs (CC6 batch 2). Values verbatim; serialization by the generator. ServUO sets
 // no Fame or Karma on the sliths; neither does this.
-// Dropped: SetSpecialAbility(DragonBreath) (D-56: Pet Training, declined B3, the Saurosaurus precedent); DragonBlood => 6
-// (D-50: pinned BaseCreature has no DragonBlood virtual and its corpse carve yields no dragon's blood).
+// SetSpecialAbility(DragonBreath) is NOT dropped (CC6 follow-up, Q-054; D-56 retired, it never was a loss): ToxicSlith is
+// in no DragonBreathDefinition.Uses list (Services/Pet Training/SpecialAbility.cs:860-1063), so ServUO gives it the
+// default definition, 100% fire at 0.16 of current hits every 30-45 s, which pinned ModernUO carries line for line as
+// MonsterAbilities.FireBreath through BaseCreature.GetMonsterAbilities() (:1131). A toxic slith breathes fire, not
+// poison: its poison is in its Poisoning skill and its 100% poison resistance, not its breath.
+// Dropped: DragonBlood => 6 (D-50: pinned BaseCreature has no DragonBlood virtual and its corpse carve yields no dragon's
+// blood).
 // ServUO's 5% drop switch is `Utility.Random(2)` with cases 0 and 2, so the SlithEye branch is unreachable
 // there and here: a toxic slith drops a venom sac 2.5% of the time and never an eye. Kept as written.
 
@@ -44,6 +49,10 @@ public partial class ToxicSlith : BaseCreature
 
     public override string CorpseName => "a slith corpse";
     public override string DefaultName => "a toxic slith";
+
+    // ServUO: SetSpecialAbility(SpecialAbility.DragonBreath), the default (fire) definition.
+    private static readonly MonsterAbility[] _abilities = { MonsterAbilities.FireBreath };
+    public override MonsterAbility[] GetMonsterAbilities() => _abilities;
 
     public override int Meat => 6;
     public override int Hides => 11;

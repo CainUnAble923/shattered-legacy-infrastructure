@@ -166,8 +166,15 @@ apply_patch() {
     # Dry-run first. A patch that fails halfway would otherwise leave a partially
     # patched tree behind for every patch that follows, turning one broken patch
     # into a cascade of misleading failures. On failure we touch nothing.
-    if output=$(patch -p1 --forward --ignore-whitespace --batch --dry-run < "$file" 2>&1); then
-        patch -p1 --forward --ignore-whitespace --batch < "$file" >/dev/null
+    #
+    # --fuzz=0: GNU patch's default fuzz of 2 lets a hunk apply with up to two of its
+    # context lines at each edge NOT matching, and reports it only on stdout, which the
+    # success branch below discards. The CC6 follow-up's red proof mangled a context line
+    # of a new patch and the build stayed green (shard-migration/notes/
+    # cc6-followup-breath-incubator.md section 6). A patch whose context has drifted is
+    # exactly what this gate exists to stop, so context must match exactly.
+    if output=$(patch -p1 --forward --ignore-whitespace --fuzz=0 --batch --dry-run < "$file" 2>&1); then
+        patch -p1 --forward --ignore-whitespace --fuzz=0 --batch < "$file" >/dev/null
         echo "[patches] Applied: $name"
         APPLIED_PATCHES+=("$name")
     else
@@ -281,6 +288,12 @@ apply_patch "$PATCHES/UOContentFixture-npc-speeds.patch"
 # through a Wisp Orb is taken into the stable when its master logs out. Alternatives argued in
 # shard-migration/notes/cc4-despise.md; pinned by DespiseRevampedVerification (proved red).
 apply_patch "$PATCHES/BaseCreature-PlayerMobile-can-auto-stable.patch"
+
+# CC6 follow-up (P12, Q-053). ServUO's `targ is ChickenLizardEgg` branch of BaseBeverage.Pour_OnTarget, four lines
+# beside the PlantItem branch. Pouring is a targeting flow the beverage owns and pinned has no interface hook for
+# the target, so there is no additive way to reach the egg's Pour. Alternatives argued in
+# shard-migration/notes/cc6-followup-breath-incubator.md; pinned by CC6FollowupBreathIncubatorVerification (proved red).
+apply_patch "$PATCHES/Beverage-chicken-lizard-egg-pour.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.

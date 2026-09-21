@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Items/Food/Beverage.cs
++++ b/Projects/UOContent/Items/Food/Beverage.cs
+@@ -685,6 +685,12 @@
+         {
+             item.Pour(from, this);
+         }
++        // Shattered Legacy (CC6 follow-up, P12): ServUO Beverage.cs:1489, the chicken lizard egg branch. The egg's
++        // Pour (server/customizations/Items/Functional/ChickenLizardEgg.cs) does its own water/quantity checks.
++        else if (targ is ChickenLizardEgg egg)
++        {
++            egg.Pour(from, this);
++        }
+         else if (targ is AddonComponent component &&
+                  component.Addon is WaterVatEast or WaterVatSouth &&
+                  Content == BeverageType.Water)

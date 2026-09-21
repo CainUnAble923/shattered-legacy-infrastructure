@@ -662,10 +662,14 @@ public class CC6Batch4CreatureVerification
             e.Delete();
         }
 
-        _out.WriteLine($"400 watered eggs matured: {battle} battle chickens (ServUO 5% at Dry); 200 unwatered: {maturedDehydrated} matured, none battle, {burntUnwatered} burnt (ServUO 12.5% / 87.5%)");
+        // The unwatered survival rate is 25%, not 12.5%: at the 48 h check an unwatered egg is stage 1 with water 0,
+        // Dryness 1 = Dry, below Parched, so the 50% burn roll never fires; only the 72 h roll (Dehydrated, 75% burn)
+        // does. This fact was written as 12.5% with a range wide enough to pass most runs, and went red at 57 of 200
+        // in the CC6 follow-up (build A6); corrected there to the implementation's 25%, n=200, +-3.6 sigma.
+        _out.WriteLine($"400 watered eggs matured: {battle} battle chickens (ServUO 5% at Dry); 200 unwatered: {maturedDehydrated} matured, none battle, {burntUnwatered} burnt (ServUO 25% / 75%)");
         Assert.Equal(400, maturedDry);
         Assert.InRange(battle, 5, 50);
-        Assert.InRange(maturedDehydrated, 8, 55);
+        Assert.InRange(maturedDehydrated, 28, 72);
 
         // Hatching: an immature egg crumbles; a mature battle egg hatches a BattleChickenLizard in the egg's hue at
         // the hatcher's feet; a mature plain egg hatches a ChickenLizard.
