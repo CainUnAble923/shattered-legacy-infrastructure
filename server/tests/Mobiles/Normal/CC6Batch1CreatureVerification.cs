@@ -155,7 +155,9 @@ public class CC6Batch1CreatureVerification
         // CC6 batch 6 (2026-09-21) ported nothing. Its one-name [TypeAlias] spike (Mobiles/Aliases/EliteNinjaSpawnAlias.cs,
         // Q-055) makes "eliteninjawarrior" resolve to stock EliteNinja, so it is now 40. Deleting that file makes it 41
         // again; that is the intended revert if Q-055 says no.
-        Assert.Equal(40, unresolved.Count);
+        // CC6 batch 7 (2026-09-21), Part A: Q-055 answered yes, so the eight remaining name-mapping aliases were added
+        // (Mobiles/Aliases/*SpawnAlias.cs: DryadA -> MLDryad, abbein..vicaie -> the seven Heartwood elders), so it is now 32.
+        Assert.Equal(32, unresolved.Count);
         // Counted the same day from the same files: 46 entries name the twenty (GrayGoblin 6, GreenGoblin 5, ...).
         Assert.Equal(46, referenced);
     }

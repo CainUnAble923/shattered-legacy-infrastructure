@@ -153,7 +153,9 @@ public class CC6Batch3CreatureVerification
         // CC6 batch 5 (2026-09-20) ported the whole Renowned row, seventeen of the 58, so it is now 41.
         // CC6 batch 6 (2026-09-21) ported nothing; its one-name [TypeAlias] spike (Mobiles/Aliases/EliteNinjaSpawnAlias.cs,
         // Q-055) makes "eliteninjawarrior" resolve to stock EliteNinja, so it is now 40. Delete that file and it is 41.
-        Assert.Equal(40, unresolved.Count);
+        // CC6 batch 7 (2026-09-21), Part A: Q-055 answered yes, so the eight remaining name-mapping aliases were added
+        // (Mobiles/Aliases/*SpawnAlias.cs: DryadA -> MLDryad, abbein..vicaie -> the seven Heartwood elders), so it is now 32.
+        Assert.Equal(32, unresolved.Count);
         // Counted 2026-09-20 from the same files with tools/spawn_orphans.py's reader: rotworm 7, WolfSpider 4,
         // FireAnt 3, FireDaemon 3, CoralSnake 2, AcidSlug 2, bloodworm 2, orcscout 2, ClockworkScorpion 1,
         // MaddeningHorror 1 (Underworld, Abyss, TerMur, and the two Sanctuary files).

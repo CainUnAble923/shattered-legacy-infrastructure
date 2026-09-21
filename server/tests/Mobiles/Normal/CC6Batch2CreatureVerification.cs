@@ -168,7 +168,9 @@ public class CC6Batch2CreatureVerification
         // CC6 batch 5 (2026-09-20) ported the whole Renowned row, seventeen of the 58, so it is now 41.
         // CC6 batch 6 (2026-09-21) ported nothing; its one-name [TypeAlias] spike (Mobiles/Aliases/EliteNinjaSpawnAlias.cs,
         // Q-055) makes "eliteninjawarrior" resolve to stock EliteNinja, so it is now 40. Delete that file and it is 41.
-        Assert.Equal(40, unresolved.Count);
+        // CC6 batch 7 (2026-09-21), Part A: Q-055 answered yes, so the eight remaining name-mapping aliases were added
+        // (Mobiles/Aliases/*SpawnAlias.cs: DryadA -> MLDryad, abbein..vicaie -> the seven Heartwood elders), so it is now 32.
+        Assert.Equal(32, unresolved.Count);
         // Counted 2026-09-19 from the same files: 33 entries name the clean nine (Citadel 11+8+5, Abyss 3+2+1+1+1,
         // Ter Mur 1), 18 name the fur five (6+5+1 boura, 2+4 kepetch) and 26 name the sliths (12+8+6).
         Assert.Equal(77, referenced);
