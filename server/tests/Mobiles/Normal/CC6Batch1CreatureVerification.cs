@@ -152,7 +152,10 @@ public class CC6Batch1CreatureVerification
         // CC6 batch 4 (2026-09-20) ported four spawn-named creatures of the 62 (its fifth, BattleChickenLizard, was
         // never on the list), so it is now 58.
         // CC6 batch 5 (2026-09-20) ported the whole Renowned row, seventeen of the 58, so it is now 41.
-        Assert.Equal(41, unresolved.Count);
+        // CC6 batch 6 (2026-09-21) ported nothing. Its one-name [TypeAlias] spike (Mobiles/Aliases/EliteNinjaSpawnAlias.cs,
+        // Q-055) makes "eliteninjawarrior" resolve to stock EliteNinja, so it is now 40. Deleting that file makes it 41
+        // again; that is the intended revert if Q-055 says no.
+        Assert.Equal(40, unresolved.Count);
         // Counted the same day from the same files: 46 entries name the twenty (GrayGoblin 6, GreenGoblin 5, ...).
         Assert.Equal(46, referenced);
     }

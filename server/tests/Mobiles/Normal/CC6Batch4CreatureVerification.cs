@@ -165,7 +165,9 @@ public class CC6Batch4CreatureVerification
         // many. Nothing else in this batch adds or removes a spawnable type, so the count must be exactly 58.
         // CC6 batch 5 (2026-09-20) ported the whole Renowned row, seventeen of the 58, so it is now 41; that file's
         // test pins the batch-5 figure and tools/spawn-orphans.txt carries the list.
-        Assert.Equal(41, unresolved.Count);
+        // CC6 batch 6 (2026-09-21) ported nothing; its one-name [TypeAlias] spike (Mobiles/Aliases/EliteNinjaSpawnAlias.cs,
+        // Q-055) makes "eliteninjawarrior" resolve to stock EliteNinja, so it is now 40. Delete that file and it is 41.
+        Assert.Equal(40, unresolved.Count);
         // Counted 2026-09-20 from the same files with tools/spawn_orphans.py's reader: ChickenLizard 8 (TerMur),
         // CrystalHydra 2 (PrismOfLight, Felucca and Trammel), FairyDragon 1 (Abyss), serpentsfanghighexecutioner 1
         // (Citadel).
