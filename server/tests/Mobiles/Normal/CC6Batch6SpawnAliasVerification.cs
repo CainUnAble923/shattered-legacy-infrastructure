@@ -38,9 +38,10 @@ public class CC6Batch6SpawnAliasVerification
     // The Citadel's spelling, exactly as shared/malas/Citadel.json carries it (7 entries, 2026-09-21).
     private const string CitadelName = "eliteninjawarrior";
 
-    // A Citadel name the spike does NOT alias (4 entries in the same file). ServUO's DragonsFlameGrandMage, which
-    // pinned lacks; it stays an orphan until it is ported, and this file must keep saying so.
-    private const string ControlName = "magedragonsflamemage";
+    // A name the spike does NOT alias. Batch 6 used "magedragonsflamemage" here; batch 7 ported it (MageDragonsFlameMage),
+    // so the control is now "genericguard" (2 Underworld entries): no declaration or alias in pinned, ours, ServUO or
+    // the six sibling trees (batch 6 §2), a spawn-data finding with nothing to map, so it stays an orphan longest.
+    private const string ControlName = "genericguard";
 
     // The first Citadel spawner that names it: shared/malas/Citadel.json, [82, 1875, 0], Malas, maxCount 4.
     private static readonly Point3D CitadelRoom = new(82, 1875, 0);

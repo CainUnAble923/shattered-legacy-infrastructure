@@ -1,7 +1,8 @@
 // ServUO: Items/Containers/TreasureChestMod.cs (CC4 Shame) - "Treasure Chest Pack 0.99I by Nerun".
 //
 // The four levels RevampedSpawns/ShameRevamped.xml spawns (TreasureLevel1 x20 rows, 2 x48, 3 x38, 4 x10).
-// ServUO's file also carries TreasureLevel1h and other variants that nothing here references; not ported.
+// CC6 batch 7 added TreasureLevel1h, which the Sea Market's four stock spawners name (post-uoml/*/Vendors.json).
+// ServUO's file also carries other variants that nothing here references; not ported.
 // Values are ServUO's. See BaseTreasureChestMod.cs for what the pack is and the two dropped hooks.
 //
 // The pre-AOS branch that hands out old-style magic levels is kept as ServUO has it (Core.AOS is true on
@@ -37,6 +38,54 @@ public partial class TreasureLevel1 : BaseTreasureChestMod
         for (var i = Utility.Random(3) + 1; i > 0; i--) // random 1 to 3
         {
             DropItem(Loot.RandomGem());
+        }
+    }
+
+    public override int DefaultGumpID => 0x49;
+}
+
+// ---------- [Level 1 Hybrid] ----------
+// Large, Medium and Small Crate
+// CC6 batch 7: the Sea Market's four spawners (post-uoml/{felucca,trammel}/Vendors.json, [4534,2349] and [4535,2349])
+// name treasurelevel1h; nothing else in ServUO's data does. ServUO's Shoes/Sandals hue is Utility.Random(1, 2), a
+// hue of 1 or 2, as written.
+[Flippable(0xE3E, 0xE3F)]
+[SerializationGenerator(0, false)]
+public partial class TreasureLevel1h : BaseTreasureChestMod
+{
+    [Constructible]
+    public TreasureLevel1h() : base(Utility.RandomList(0xE3C, 0xE3E, 0x9A9))
+    {
+        RequiredSkill = 56;
+        LockLevel = RequiredSkill - Utility.Random(1, 10);
+        MaxLockLevel = RequiredSkill;
+        TrapType = TrapType.MagicTrap;
+        TrapPower = 1 * Utility.Random(1, 25);
+
+        DropItem(new Gold(10, 40));
+        DropItem(new Bolt(5));
+
+        switch (Utility.Random(2))
+        {
+            case 0:
+                DropItem(new Shoes(Utility.Random(1, 2)));
+                break;
+            case 1:
+                DropItem(new Sandals(Utility.Random(1, 2)));
+                break;
+        }
+
+        switch (Utility.Random(3))
+        {
+            case 0:
+                DropItem(new BeverageBottle(BeverageType.Ale));
+                break;
+            case 1:
+                DropItem(new BeverageBottle(BeverageType.Liquor));
+                break;
+            case 2:
+                DropItem(new Jug(BeverageType.Cider));
+                break;
         }
     }
 
