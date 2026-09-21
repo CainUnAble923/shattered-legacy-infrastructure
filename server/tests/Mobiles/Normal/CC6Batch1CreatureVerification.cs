@@ -151,7 +151,8 @@ public class CC6Batch1CreatureVerification
         // CC6 batch 3 (2026-09-19) ported ten more of the 72, so it is now 62.
         // CC6 batch 4 (2026-09-20) ported four spawn-named creatures of the 62 (its fifth, BattleChickenLizard, was
         // never on the list), so it is now 58.
-        Assert.Equal(58, unresolved.Count);
+        // CC6 batch 5 (2026-09-20) ported the whole Renowned row, seventeen of the 58, so it is now 41.
+        Assert.Equal(41, unresolved.Count);
         // Counted the same day from the same files: 46 entries name the twenty (GrayGoblin 6, GreenGoblin 5, ...).
         Assert.Equal(46, referenced);
     }

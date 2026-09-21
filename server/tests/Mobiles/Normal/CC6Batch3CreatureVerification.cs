@@ -150,7 +150,8 @@ public class CC6Batch3CreatureVerification
         // them, and nothing else in this batch adds or removes a spawnable type, so the count must be exactly 62.
         // CC6 batch 4 (2026-09-20) ported four spawn-named creatures of the 62, so it is now 58; that file's test
         // pins the batch-4 figure and tools/spawn-orphans.txt carries the list.
-        Assert.Equal(58, unresolved.Count);
+        // CC6 batch 5 (2026-09-20) ported the whole Renowned row, seventeen of the 58, so it is now 41.
+        Assert.Equal(41, unresolved.Count);
         // Counted 2026-09-20 from the same files with tools/spawn_orphans.py's reader: rotworm 7, WolfSpider 4,
         // FireAnt 3, FireDaemon 3, CoralSnake 2, AcidSlug 2, bloodworm 2, orcscout 2, ClockworkScorpion 1,
         // MaddeningHorror 1 (Underworld, Abyss, TerMur, and the two Sanctuary files).

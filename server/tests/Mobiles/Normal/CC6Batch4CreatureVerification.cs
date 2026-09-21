@@ -163,7 +163,9 @@ public class CC6Batch4CreatureVerification
         // Batch 3 left exactly 62 names unresolved (tools/spawn-orphans.txt at 8161862). The FOUR spawn-named
         // creatures here were among them; the battle chicken lizard never was, so the brief's "62 -> 57" was one too
         // many. Nothing else in this batch adds or removes a spawnable type, so the count must be exactly 58.
-        Assert.Equal(58, unresolved.Count);
+        // CC6 batch 5 (2026-09-20) ported the whole Renowned row, seventeen of the 58, so it is now 41; that file's
+        // test pins the batch-5 figure and tools/spawn-orphans.txt carries the list.
+        Assert.Equal(41, unresolved.Count);
         // Counted 2026-09-20 from the same files with tools/spawn_orphans.py's reader: ChickenLizard 8 (TerMur),
         // CrystalHydra 2 (PrismOfLight, Felucca and Trammel), FairyDragon 1 (Abyss), serpentsfanghighexecutioner 1
         // (Citadel).
