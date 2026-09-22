@@ -287,7 +287,8 @@ public class CC6Batch7Verification
         // Batch 6 left exactly 40 names unresolved (tools/spawn-orphans.txt at 21aef83). Part A's eight aliases took
         // it to 32, Part B's eight creatures to 24, Part C's chest to 23; nothing else in this batch adds or removes a
         // spawnable type (DragonFlameKey is an item no spawner names), so the count must be exactly 23.
-        Assert.Equal(23, unresolved.Count);
+        // CC6 batch 8 (2026-09-22), Parts A and C: Navrey Night-Eyes ported (NavreyNightEyes, one name), so it is now 22.
+        Assert.Equal(22, unresolved.Count);
         // Counted 2026-09-21 from the same files: 16 entries name the eight aliased (2 each), 11 name the leaf row
         // (the grand mage 4, the seven rats 1 each), 4 name the chest.
         Assert.Equal(31, referenced);
