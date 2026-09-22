@@ -33,3 +33,31 @@ desktop.ini
 # Client data (2.6GB of UO client files) and the ModernUO build tree
 client-data/
 server/uo/
+
+# ---------------------------------------------------------------------------
+# Home lab services that share this Docker tree but are not shard content.
+# Added 2026-09-22 after `git status` in this repo had run at 49 dirty files
+# long enough that nobody read it, which is how a real change hides.
+# ---------------------------------------------------------------------------
+docker/atm10-site/
+docker/mc-status/
+docker/portainer/
+
+# Home lab dashboard config. docker/dashboard/config/services.yaml IS tracked
+# (it lists the shard's own services); these five are not.
+docker/dashboard/config/custom.css
+docker/dashboard/config/custom.js
+docker/dashboard/config/kubernetes.yaml
+docker/dashboard/config/proxmox.yaml
+docker/dashboard/config/widgets.yaml
+
+# The whole downloads folder, not just its files/ subdirectory.
+downloads/
+
+# Local library drop, not part of the build.
+server/lib/
+
+# Scratch output from diagnostic runs: check-HHMMSS.txt, shard-HHMMSS.txt.
+check-*.txt
+shard-*.txt
+Diagnose-*.ps1
