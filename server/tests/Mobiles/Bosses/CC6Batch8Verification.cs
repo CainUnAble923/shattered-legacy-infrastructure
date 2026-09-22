@@ -376,10 +376,674 @@ public class CC6Batch8Verification
         }
     }
 
+    // ---- Part B: the Slasher of Veils and the Stygian Dragon -------------------------------------------------------
+
+    [Fact]
+    public void TheTwoAbyssBossesConstructWithServUOValuesOnBaseSABoss()
+    {
+        var slasher = new SlasherOfVeils();
+        _out.WriteLine($"SlasherOfVeils: name='{slasher.Name}' body={(int)slasher.Body} hits={slasher.HitsMax} mana={slasher.ManaMax} " +
+                       $"fame={slasher.Fame} ai={slasher.AI} speed={slasher.ActiveSpeed}");
+        Assert.Same(typeof(BaseSABoss), typeof(SlasherOfVeils).BaseType);
+        Assert.Equal("The Slasher of Veils", slasher.Name);
+        Assert.Equal("a slasher of veils corpse", slasher.CorpseName);
+        Assert.Equal(741, (int)slasher.Body);
+        Assert.InRange(slasher.HitsMax, 50000, 65000);
+        Assert.Equal(10000, slasher.ManaMax);
+        Assert.Equal(35000, slasher.Fame);
+        Assert.Equal(-35000, slasher.Karma);
+        Assert.Equal(AIType.AI_Mage, slasher.AI);
+        Assert.Same(WeaponAbility.ParalyzingBlow, slasher.GetWeaponAbility());
+        Assert.False(slasher.Unprovokable);
+        Assert.False(slasher.BardImmune);
+        Assert.True(slasher.AlwaysMurderer);
+        Assert.False(slasher.DropPrimer);
+        Assert.False(slasher.GiveMLSpecial);
+        Assert.Equal(1589, slasher.GetIdleSound());
+        Assert.Equal(1587, slasher.GetDeathSound());
+        Assert.Equal(20, slasher.FireDamage);
+        Assert.True(slasher.Skills.Spellweaving.Base >= 111.1);
+        Assert.Equal(127.1, slasher.Skills.DetectHidden.Base);
+        Assert.Equal(0.25, slasher.ActiveSpeed); // Q-008
+        Assert.Equal(7, slasher.UniqueSAList.Length);
+        Assert.Equal(7, slasher.SharedSAList.Length);
+
+        var dragon = new StygianDragon();
+        _out.WriteLine($"StygianDragon: name='{dragon.Name}' body={(int)dragon.Body} hits={dragon.HitsMax} stam={dragon.StamMax} " +
+                       $"fame={dragon.Fame} abilities=[{string.Join(", ", (dragon.GetMonsterAbilities() ?? Array.Empty<MonsterAbility>()).Select(a => a.GetType().Name))}]");
+        Assert.Same(typeof(BaseSABoss), typeof(StygianDragon).BaseType);
+        Assert.Equal("Stygian Dragon", dragon.Name);
+        Assert.Equal("a stygian dragon corpse", dragon.CorpseName);
+        Assert.Equal(826, (int)dragon.Body);
+        Assert.Equal(362, dragon.BaseSoundID);
+        Assert.Equal(30000, dragon.HitsMax);
+        Assert.Equal(431, dragon.StamMax);
+        Assert.Equal(180, dragon.ManaMax);
+        Assert.Equal(15000, dragon.Fame);
+        Assert.Equal(60, dragon.VirtualArmor);
+        Assert.False(dragon.Tamable);
+        Assert.Equal(19, dragon.Meat);
+        Assert.Equal(30, dragon.Hides);
+        Assert.Equal(HideType.Barbed, dragon.HideType);
+        Assert.Equal(7, dragon.Scales);
+        Assert.Equal(ScaleType.Red, dragon.ScaleType);
+        Assert.False(dragon.CanFlee);
+        Assert.True(dragon.AutoDispel);
+        Assert.True(dragon.AlwaysMurderer);
+        Assert.False(dragon.Unprovokable);
+        Assert.Equal(50, dragon.FireDamage);
+        Assert.Equal(8, dragon.UniqueSAList.Length);
+        Assert.Equal(4, dragon.SharedSAList.Length);
+
+        // ServUO's SetSpecialAbility(DragonBreath) is pinned's FireBreath (Q-054); the two weapon abilities alternate.
+        Assert.Contains(dragon.GetMonsterAbilities()!, a => a is FireBreath);
+        var seen = new HashSet<WeaponAbility>();
+        for (var i = 0; i < 60; i++)
+        {
+            seen.Add(dragon.GetWeaponAbility());
+        }
+        Assert.Equal(new HashSet<WeaponAbility> { WeaponAbility.Bladeweave, WeaponAbility.TalonStrike }, seen);
+
+        // Every artifact the two lists name is ours (CC9 and this batch) and constructs; LifeSyphon and VampiricEssence
+        // are the two CC9 left behind for BloodDrinker (D-87).
+        foreach (var t in slasher.UniqueSAList.Concat(slasher.SharedSAList).Concat(dragon.UniqueSAList).Concat(dragon.SharedSAList))
+        {
+            var item = Loot.Construct(t);
+            Assert.NotNull(item);
+            item.Delete();
+        }
+
+        var syphon = new LifeSyphon();
+        Assert.IsAssignableFrom<BloodBlade>(syphon);
+        Assert.Equal(1172, syphon.Hue);
+        Assert.Equal(1113524, syphon.LabelNumber);
+        Assert.Equal(100, syphon.WeaponAttributes.HitLeechHits);
+        Assert.Equal(30, syphon.WeaponAttributes.HitHarm);
+        syphon.Delete();
+
+        var essence = new VampiricEssence();
+        Assert.IsAssignableFrom<Cutlass>(essence);
+        Assert.Equal(39, essence.Hue);
+        Assert.Equal(1113873, essence.LabelNumber);
+        Assert.Equal(100, essence.AosElementDamages.Cold);
+        essence.Delete();
+
+        foreach (var t in new[] { typeof(SlasherOfVeils), typeof(StygianDragon), typeof(StygianDragonHead), typeof(LifeSyphon), typeof(VampiricEssence) })
+        {
+            Assert.Single(t.GetCustomAttributes(typeof(SerializationGeneratorAttribute), false));
+            Assert.Same(t, t.GetConstructor(new[] { typeof(Serial) })!.DeclaringType);
+            Assert.Same(t, AssemblyHandler.FindTypeByName(t.Name));
+        }
+
+        slasher.Delete();
+        dragon.Delete();
+    }
+
+    [Fact]
+    public void ABossSurvivesASerializationRoundTripThroughAllThreeLevels()
+    {
+        // The stream is BaseCreature, then BasePeerless's version, then BaseSABoss's, then the boss's own (batch 4
+        // section 2, read off the generator's output). Each level declares its own Serialize.
+        foreach (var t in new[] { typeof(BasePeerless), typeof(BaseSABoss), typeof(SlasherOfVeils), typeof(StygianDragon) })
+        {
+            var serialize = t.GetMethod("Serialize", BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly, null, new[] { typeof(IGenericWriter) }, null);
+            Assert.NotNull(serialize);
+            Assert.Same(t, serialize.DeclaringType);
+        }
+
+        var original = new SlasherOfVeils { Hue = 1109 };
+        original.MoveToWorld(Here, Map.TerMur);
+        original.Hits = 777;
+        var hitsMax = original.HitsMax;
+
+        var copy = RoundTrip(original);
+        _out.WriteLine($"Slasher round trip: name='{copy.Name}' body={(int)copy.Body} hue={copy.Hue} hits={copy.Hits}/{copy.HitsMax} at {copy.Location} on {copy.Map}");
+        Assert.Equal("The Slasher of Veils", copy.Name);
+        Assert.Equal(741, (int)copy.Body);
+        Assert.Equal(1109, copy.Hue);
+        Assert.Equal(hitsMax, copy.HitsMax);
+        Assert.Equal(777, copy.Hits);
+        Assert.Equal(Here, copy.Location);
+        Assert.Same(Map.TerMur, copy.Map);
+        Assert.Equal(0, copy.CurrentWave);
+        Assert.False(copy.DropPrimer);
+        copy.Delete();
+        original.Delete();
+
+        var dragon = new StygianDragon();
+        dragon.MoveToWorld(Here, Map.TerMur);
+        var dragonCopy = RoundTrip(dragon);
+        Assert.Equal("Stygian Dragon", dragonCopy.Name);
+        Assert.Equal(826, (int)dragonCopy.Body);
+        Assert.Equal(30000, dragonCopy.HitsMax);
+        Assert.Contains(dragonCopy.GetMonsterAbilities()!, a => a is FireBreath);
+        dragonCopy.Delete();
+        dragon.Delete();
+    }
+
+    [Fact]
+    public void BaseSABossAwardsAnArtifactToADamagerAndTheDragonDropsItsHead()
+    {
+        // The award path, driven directly (batch 5's BaseRenowned facts, on the new base): one player with all the
+        // damage gets the artifact in the pack with the 1062317 message; nobody a player, and it is left alone.
+        var pm = NewPlayer(Here);
+        var boss = new StygianDragon();
+        boss.MoveToWorld(new Point3D(1002, 1000, 0), Map.TerMur);
+        boss.RegisterDamage(pm, 5000);
+        var artifact = new LifeSyphon();
+        boss.AwardArtifact(artifact);
+        Assert.Same(pm.Backpack, artifact.Parent);
+        artifact.Delete();
+
+        var pet = new Dragon();
+        pet.MoveToWorld(Here, Map.TerMur);
+        boss.RegisterDamage(pet, 5000); // not a player: ignored
+        boss.Delete();
+
+        // Real kills through OnBeforeDeath: the corpse always carries the head; the pack sometimes an artifact (5%
+        // unique + 10% shared; P(none in 60) = 0.85^60); a paragon chest 10% of deaths.
+        var tally = new Dictionary<string, int>();
+        var heads = 0;
+        var chests = 0;
+        for (var i = 0; i < 60; i++)
+        {
+            var d = new StygianDragon();
+            d.MoveToWorld(new Point3D(1002, 1000, 0), Map.TerMur);
+            d.Damage(60, pm);
+            Assert.NotEmpty(d.DamageEntries);
+            d.Kill();
+
+            var corpse = Assert.IsAssignableFrom<Corpse>(d.Corpse);
+            if (corpse.FindItemByType<StygianDragonHead>() != null)
+            {
+                heads++;
+            }
+
+            if (corpse.FindItemByType<ParagonChest>() != null)
+            {
+                chests++;
+            }
+
+            corpse.Delete();
+
+            foreach (var item in pm.Backpack!.Items.ToList())
+            {
+                tally[item.GetType().Name] = tally.GetValueOrDefault(item.GetType().Name) + 1;
+                Assert.Contains(item.GetType(), d.UniqueSAList.Concat(d.SharedSAList));
+                item.Delete();
+            }
+        }
+
+        _out.WriteLine($"60 dragon kills: heads={heads} chests={chests} artifacts=[{string.Join(", ", tally.Select(kv => $"{kv.Key}={kv.Value}"))}]");
+        Assert.Equal(60, heads);
+        Assert.True(tally.Values.Sum() > 0, "no artifact bestowed in 60 kills");
+
+        pet.Delete();
+        pm.Delete();
+    }
+
+    [Fact]
+    public void TheDragonsFireColumnLaysEightFieldsThatBurnOutAndAFieldCaughtBySaveDeletesItselfOnLoad()
+    {
+        ShardTestClock.Arm();
+
+        var pm = NewPlayer(new Point3D(1005, 1000, 0));
+        pm.RawStr = 500; // enough hits to take the fireball's 120-150 and stay alive
+        pm.Hits = pm.HitsMax;
+        pm.Hidden = true; // keep the dragon's AI from acquiring the player on its own while the clock advances
+        var dragon = new StygianDragon();
+        dragon.MoveToWorld(Here, Map.TerMur);
+        dragon.Combatant = pm;
+
+        var before = World.Items.Values.Count(i => i is StygianDragon.FireField);
+        dragon.DoFireColumn();
+        var fields = World.Items.Values.OfType<StygianDragon.FireField>().Where(f => !f.Deleted).ToList();
+        _out.WriteLine($"fire column: {fields.Count - before} fields, ids [{string.Join(", ", fields.Select(f => $"0x{f.ItemID:X}").Distinct())}]");
+        Assert.Equal(8, fields.Count - before);
+        Assert.All(fields, f => Assert.False(f.Movable));
+        Assert.All(fields, f => Assert.Contains(f.ItemID, new[] { 0x398C, 0x3996 }));
+
+        // 25-32 s of life on a 1 s timer: after 40 s every field has deleted itself.
+        ShardTestClock.Advance(TimeSpan.FromSeconds(40));
+        Assert.All(fields, f => Assert.True(f.Deleted));
+
+        // A field that reached a save (ServUO writes nothing for it and leaves a headless item) deletes itself here.
+        var field = new StygianDragon.FireField(dragon, 30, true);
+        field.MoveToWorld(Here, Map.TerMur);
+        var buffer = new byte[4096];
+        var writer = new BufferWriter(buffer, true, new ConcurrentQueue<Type>());
+        field.Serialize(writer);
+        writer.Flush();
+        var loaded = new StygianDragon.FireField(field.Serial);
+        loaded.Deserialize(new BufferReader(buffer));
+        // [AfterDeserialization(false)] is the deferred form: the generator schedules it with Timer.DelayCall (read
+        // off the generator's template strings), so it runs on the first timer slice after the load, not inline.
+        // Build C went red here asserting it inline.
+        Assert.False(loaded.Deleted);
+        ShardTestClock.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(loaded.Deleted);
+        field.Delete();
+
+        // The stygian fireball: eleven 200 ms ticks then 120-150 chaos damage to the combatant. The combatant is set
+        // again here: the dragon's own AI ran through the 40 s above and had dropped it (build D went red on that).
+        pm.Hits = pm.HitsMax;
+        dragon.Combatant = pm;
+        Assert.NotNull(dragon.Combatant);
+        dragon.DoStygianFireball();
+        ShardTestClock.Advance(TimeSpan.FromSeconds(4));
+        _out.WriteLine($"fireball: player {pm.Hits}/{pm.HitsMax}");
+        Assert.True(pm.Hits < pm.HitsMax, "the stygian fireball did no damage in 4 s");
+
+        dragon.Delete();
+        pm.Delete();
+    }
+
+    [Fact]
+    public void TheSlasherBlinksToACasterHalfTheTime()
+    {
+        var caster = NewPlayer(new Point3D(1006, 1000, 0));
+        var slasher = new SlasherOfVeils();
+        slasher.MoveToWorld(Here, Map.TerMur);
+
+        var blinks = 0;
+        for (var i = 0; i < 40; i++)
+        {
+            slasher.MoveToWorld(Here, Map.TerMur);
+            slasher.OnDamagedBySpell(caster, 10);
+            if (slasher.Location == caster.Location)
+            {
+                blinks++;
+            }
+        }
+
+        _out.WriteLine($"slasher blinked to the caster {blinks}/40 times");
+        Assert.InRange(blinks, 1, 39);
+
+        slasher.Delete();
+        caster.Delete();
+    }
+
+    [Fact]
+    public void NoneOfTheThreeIsASlayerTargetPinnedDoesNotList()
+    {
+        // ServUO Abilities/SlayerGroup.cs lists the Slasher under Exorcism (:320), the Stygian Dragon under
+        // ReptilianDeath (:503) and DragonSlaying (:528), Navrey under ArachnidDoom (:426) and SpidersDeath (:451).
+        // Pinned's entries are static typeof lists matched by IsAssignableFrom (SlayerEntry.cs:111) and the three
+        // derive from BaseCreature through no listed type, so none is slain (D-86). Pinned here so the day a patch
+        // adds them, this fact says so.
+        var slasher = new SlasherOfVeils();
+        var dragon = new StygianDragon();
+        var navrey = new NavreyNightEyes();
+
+        Assert.False(SlayerGroup.GetEntryByName(SlayerName.Exorcism).Slays(slasher));
+        Assert.False(SlayerGroup.GetEntryByName(SlayerName.ReptilianDeath).Slays(dragon));
+        Assert.False(SlayerGroup.GetEntryByName(SlayerName.DragonSlaying).Slays(dragon));
+        Assert.False(SlayerGroup.GetEntryByName(SlayerName.ArachnidDoom).Slays(navrey));
+        Assert.False(SlayerGroup.GetEntryByName(SlayerName.SpidersDeath).Slays(navrey));
+
+        slasher.Delete();
+        dragon.Delete();
+        navrey.Delete();
+    }
+
+    [Fact]
+    public void ASpawnerWhereTheDataPlacesEachAbyssBossFillsWithIt()
+    {
+        // post-uoml/termur/Abyss.json: the Slasher at [749, 475, -17], the Stygian Dragon at [326, 159, 20].
+        foreach (var (name, type, where) in new (string, Type, Point3D)[]
+                 {
+                     ("SlasherOfVeils", typeof(SlasherOfVeils), new Point3D(749, 475, -17)),
+                     ("StygianDragon", typeof(StygianDragon), new Point3D(326, 159, 20))
+                 })
+        {
+            var spawner = new Spawner();
+            spawner.MoveToWorld(where, Map.TerMur);
+            spawner.SpawnBounds = default;
+            var entry = spawner.AddEntry(name, 100, 1, dotimer: false);
+
+            try
+            {
+                Assert.True(spawner.Spawn(entry, out var flags), $"{name}: Spawn returned false with flags {flags}");
+                Assert.Equal(EntryFlags.None, flags);
+                var spawned = Assert.Single(spawner.Spawned.Keys);
+                Assert.Same(type, spawned.GetType());
+                Assert.Same(Map.TerMur, ((Mobile)spawned).Map);
+                _out.WriteLine($"spawner at {where} filled with {type.Name}");
+            }
+            finally
+            {
+                spawner.Delete();
+            }
+        }
+    }
+
+    // ---- Part D: Medusa ----------------------------------------------------------------------------------------
+
+    [Fact]
+    public void MedusaConstructsWithServUOValuesAndHerLeavesCarryTheirs()
+    {
+        var medusa = new Medusa();
+        _out.WriteLine($"Medusa: name='{medusa.Name}' body={(int)medusa.Body} hits={medusa.HitsMax} fame={medusa.Fame} " +
+                       $"scales={medusa.LightScales} items=[{string.Join(", ", medusa.Items.Select(i => i.GetType().Name))}]");
+        Assert.Same(typeof(BaseSABoss), typeof(Medusa).BaseType);
+        Assert.IsAssignableFrom<ICarvable>(medusa);
+        Assert.Equal("Medusa", medusa.Name);
+        Assert.Equal("a medusa corpse", medusa.CorpseName);
+        Assert.Equal(728, (int)medusa.Body);
+        Assert.Equal(60000, medusa.HitsMax);
+        Assert.Equal(22000, medusa.Fame);
+        Assert.Equal(-22000, medusa.Karma);
+        Assert.Equal(60, medusa.VirtualArmor);
+        Assert.Equal(AIType.AI_Mage, medusa.AI);
+        Assert.Same(WeaponAbility.MortalStrike, medusa.GetWeaponAbility());
+        Assert.True(medusa.BardImmune);
+        Assert.True(medusa.Unprovokable);
+        Assert.True(medusa.AutoDispel);
+        Assert.Equal(1.0, medusa.AutoDispelChance);
+        Assert.True(medusa.IgnoreYoungProtection);
+        Assert.Same(Poison.Lethal, medusa.PoisonImmune);
+        Assert.Equal(1557, medusa.GetIdleSound());
+        Assert.Equal(1555, medusa.GetDeathSound());
+        Assert.InRange(medusa.LightScales, 8, 9);
+        Assert.Equal(0, medusa.Scales); // the stock carve yield is untouched by the harvest stock
+        Assert.Equal(6, medusa.UniqueSAList.Length);
+        Assert.Single(medusa.SharedSAList);
+        Assert.Empty(medusa.Helpers);
+        Assert.Empty(medusa.AffectedMobiles);
+        Assert.False(Medusa.CheckBlockGaze(medusa)); // D-88: no Gorgon Lens in pinned
+
+        var bow = Assert.Single(medusa.Items, i => i is IronwoodCompositeBow);
+        Assert.False(bow.Movable);
+        var arrows = medusa.Backpack!.FindItemByType<Arrow>();
+        Assert.NotNull(arrows);
+        Assert.InRange(arrows.Amount, 100, 200);
+
+        var poisons = new HashSet<Poison>();
+        for (var i = 0; i < 40; i++)
+        {
+            poisons.Add(medusa.HitPoison);
+        }
+        Assert.Equal(new HashSet<Poison> { Poison.Deadly, Poison.Lethal }, poisons);
+
+        foreach (var t in medusa.UniqueSAList.Concat(medusa.SharedSAList))
+        {
+            var item = Loot.Construct(t);
+            Assert.NotNull(item);
+            item.Delete();
+        }
+
+        Assert.False(SlayerGroup.GetEntryByName(SlayerName.Repond).Slays(medusa)); // D-86
+        medusa.Delete();
+
+        var light = new MedusaLightScales(3);
+        Assert.Equal(9908, light.ItemID);
+        Assert.Equal(1266, light.Hue);
+        Assert.Equal(1112626, light.LabelNumber);
+        Assert.Equal(3, light.Amount);
+        light.Delete();
+
+        var dark = new MedusaDarkScales(2);
+        Assert.Equal(9908, dark.ItemID);
+        Assert.Equal(2223, dark.Hue);
+        Assert.Equal(1112626, dark.LabelNumber);
+        dark.Delete();
+
+        var blood = new MedusaBlood();
+        Assert.Equal(0x2DB6, blood.ItemID);
+        Assert.Equal(1031702, blood.LabelNumber);
+        Assert.True(((ICommodity)blood).IsDeedable);
+        blood.Delete();
+
+        var gargoyle = new UndeadGargoyle();
+        Assert.Equal("an Undead Gargoyle", gargoyle.Name);
+        Assert.Equal("an undead gargoyle corpse", gargoyle.CorpseName);
+        Assert.Equal(722, (int)gargoyle.Body);
+        Assert.Equal(372, gargoyle.BaseSoundID);
+        Assert.InRange(gargoyle.HitsMax, 200, 300);
+        Assert.Equal(3500, gargoyle.Fame);
+        Assert.Equal(1, gargoyle.TreasureMapLevel);
+        Assert.Equal(1, gargoyle.Meat);
+        Assert.True(gargoyle.Skills.Necromancy.Base >= 70);
+        gargoyle.Delete();
+
+        foreach (var t in new[] { typeof(Medusa), typeof(MedusaClone), typeof(UndeadGargoyle), typeof(MedusaLightScales), typeof(MedusaDarkScales), typeof(MedusaBlood) })
+        {
+            Assert.Single(t.GetCustomAttributes(typeof(SerializationGeneratorAttribute), false));
+            Assert.Same(t, t.GetConstructor(new[] { typeof(Serial) })!.DeclaringType);
+            Assert.Same(t, AssemblyHandler.FindTypeByName(t.Name));
+        }
+
+        Assert.Same(typeof(Medusa), AssemblyHandler.FindTypeByName("medusa"));
+    }
+
+    [Fact]
+    public void MedusaIsHarvestedAliveOnAOneMinuteCooldownAndCarvedDeadForDarkScales()
+    {
+        ShardTestClock.Arm();
+
+        var pm = NewPlayer(new Point3D(1001, 1000, 0));
+        var knife = new ButcherKnife();
+        pm.AddToBackpack(knife);
+        var medusa = new Medusa();
+        medusa.MoveToWorld(Here, Map.TerMur);
+
+        var stock = medusa.LightScales;
+        var harvested = 0;
+        var carves = 0;
+
+        // Each carve takes 2-3 (never more than the stock), leaves a blood splatter at her feet, and locks the next
+        // for a minute; the stock of 8-9 runs out in 3-5 carves, after which 1112674 and nothing.
+        while (medusa.LightScales > 0 && carves < 10)
+        {
+            var before = medusa.LightScales;
+            medusa.Carve(pm, knife);
+            carves++;
+            var taken = before - medusa.LightScales;
+            Assert.InRange(taken, 1, 3);
+            Assert.True(taken == Math.Min(before, 3) || taken == Math.Min(before, 2), $"took {taken} of {before}");
+            harvested += taken;
+
+            // A blood splatter at her feet (Blood deletes itself after 5 s, so it is checked before the clock moves).
+            Assert.Contains(World.Items.Values, i => i is Blood && i.Location == Here && !i.Deleted);
+
+            // Again at once: the cooldown, nothing taken.
+            var locked = medusa.LightScales;
+            medusa.Carve(pm, knife);
+            Assert.Equal(locked, medusa.LightScales);
+
+            ShardTestClock.Advance(TimeSpan.FromSeconds(61));
+        }
+
+        Assert.Equal(0, medusa.LightScales);
+        Assert.Equal(stock, harvested);
+        var scales = pm.Backpack!.Items.OfType<MedusaLightScales>().Sum(s => s.Amount);
+        Assert.Equal(stock, scales);
+        _out.WriteLine($"harvest: stock={stock} carves={carves} in pack={scales}");
+
+        // Nothing left: the carve is refused and takes nothing.
+        medusa.Carve(pm, knife);
+        Assert.Equal(0, medusa.LightScales);
+
+        // Dead: 1-5 dark scales on the corpse, blood 20% of the time, and the corpse is marked carved.
+        var darkTotal = 0;
+        var bloods = 0;
+        for (var i = 0; i < 20; i++)
+        {
+            var m = new Medusa();
+            m.MoveToWorld(Here, Map.TerMur);
+            m.Kill();
+            var corpse = Assert.IsAssignableFrom<Corpse>(m.Corpse);
+            Assert.False(corpse.Carved);
+            m.OnCarve(pm, corpse, knife);
+            Assert.True(corpse.Carved);
+            var dark = corpse.FindItemByType<MedusaDarkScales>();
+            Assert.NotNull(dark);
+            Assert.InRange(dark.Amount, 1, 5);
+            darkTotal += dark.Amount;
+            if (corpse.FindItemByType<MedusaBlood>() != null)
+            {
+                bloods++;
+            }
+            corpse.Delete();
+        }
+        _out.WriteLine($"20 corpse carves: dark scales={darkTotal} blood={bloods}");
+
+        medusa.Delete();
+        pm.Delete();
+    }
+
+    [Fact]
+    public void MedusasGazePetrifiesATargetBesideAFrozenCopyAndTheTimerReleasesBoth()
+    {
+        ShardTestClock.Arm();
+
+        var pm = NewPlayer(new Point3D(1003, 1000, 0));
+        pm.Name = "a gazed player";
+        var medusa = new Medusa();
+        medusa.MoveToWorld(Here, Map.TerMur);
+
+        var target = medusa.FindRandomMedusaTarget();
+        Assert.NotNull(target);
+        Assert.Same(pm, target);
+
+        medusa.DoGaze();
+
+        _out.WriteLine($"gaze: frozen={pm.Frozen} blessed={pm.Blessed} hue={pm.SolidHueOverride} helpers={medusa.Helpers.Count} affected={medusa.AffectedMobiles.Count}");
+        Assert.True(pm.Frozen);
+        Assert.True(pm.Blessed);
+        Assert.Equal(761, pm.SolidHueOverride);
+        Assert.Contains(pm, medusa.AffectedMobiles);
+
+        var clone = Assert.IsType<MedusaClone>(Assert.Single(medusa.Helpers));
+        Assert.True(clone.Frozen);
+        Assert.True(clone.Blessed);
+        Assert.Equal(761, clone.SolidHueOverride);
+        Assert.Equal(pm.Body, clone.Body);
+        Assert.Equal("a gazed player", clone.Name);
+        Assert.True(clone.Summoned);
+        Assert.Same(medusa, clone.SummonMaster);
+        Assert.Same(Map.TerMur, clone.Map);
+        Assert.False(clone.AlwaysMurderer); // !Frozen
+
+        // 5-10 s: the target is released; another 5-10 s: the copy wakes and hunts.
+        ShardTestClock.Advance(TimeSpan.FromSeconds(11));
+        Assert.False(pm.Frozen);
+        Assert.False(pm.Blessed);
+        Assert.Equal(-1, pm.SolidHueOverride);
+        Assert.DoesNotContain(pm, medusa.AffectedMobiles);
+
+        ShardTestClock.Advance(TimeSpan.FromSeconds(11));
+        Assert.False(clone.Frozen);
+        Assert.False(clone.Blessed);
+        Assert.Equal(-1, clone.SolidHueOverride);
+        Assert.True(clone.AlwaysMurderer);
+
+        // A copy that reached a save deletes itself on load (ServUO's Deserialize does the same).
+        var buffer = new byte[65536];
+        var writer = new BufferWriter(buffer, true, new ConcurrentQueue<Type>());
+        clone.Serialize(writer);
+        writer.Flush();
+        var loaded = new MedusaClone(clone.Serial);
+        loaded.Deserialize(new BufferReader(buffer));
+        ShardTestClock.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(loaded.Deleted);
+
+        medusa.Delete(); // OnAfterDelete takes the helpers with her
+        Assert.True(clone.Deleted);
+        pm.Delete();
+    }
+
+    [Fact]
+    public void MedusaKeepsFiveStoneMonstersReleasesOneWhenStruckAndSavesHerLivingHelpersAndScales()
+    {
+        ShardTestClock.Arm();
+
+        var medusa = new Medusa();
+        medusa.MoveToWorld(Here, Map.TerMur);
+
+        for (var i = 0; i < 7; i++)
+        {
+            medusa.SpawnStone();
+        }
+
+        // ServUO caps the menagerie at five stones, but BaseCreature.Summon (both trees) refuses any summon whose
+        // ControlSlots would take the summoner past FollowersMax, and every Mobile's FollowersMax is 5, so the real
+        // cap is five SLOTS: a Dragon is three. A refused stone is deleted by Summon and still added to the list,
+        // then dropped by the next DefragHelpers - build G found one such banshee at (0,0,0) and went red on "5".
+        var live = medusa.Helpers.Where(h => h is not MedusaClone && !h.Deleted).Cast<BaseCreature>().ToList();
+        _out.WriteLine($"stones: followers={medusa.Followers}/{medusa.FollowersMax} " +
+                       string.Join(", ", live.Select(s => $"{s.GetType().Name}({s.ControlSlots})@{s.Location}")));
+        Assert.InRange(live.Count, 2, 5);
+        Assert.True(live.Sum(s => s.ControlSlots) <= medusa.FollowersMax);
+        Assert.Equal(live.Sum(s => s.ControlSlots), medusa.Followers);
+        Assert.All(live, s => Assert.True(s.Frozen && s.Blessed && s.SolidHueOverride == 761));
+        Assert.All(live, s => Assert.True(s.Summoned && s.SummonMaster == medusa));
+        Assert.All(live, s => Assert.Contains(s.GetType(), new[] { typeof(OphidianWarrior), typeof(OphidianArchmage), typeof(WailingBanshee), typeof(OgreLord), typeof(Dragon), typeof(UndeadGargoyle) }));
+
+        medusa.ReleaseStoneMonster();
+        var released = Assert.Single(live, s => !medusa.Helpers.Contains(s));
+        Assert.False(released.Frozen);
+        Assert.False(released.Blessed);
+        Assert.Equal(-1, released.SolidHueOverride);
+        var stones = live.Where(s => s != released).ToList();
+
+        // The save: the scale stock and the helper list are hers (ServUO writes both); the deferred prune keeps only
+        // the living, so a refused (deleted) stone and a helper killed between save and load are not restored.
+        medusa.LightScales = 5;
+        var copy = RoundTrip(medusa);
+        ShardTestClock.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(5, copy.LightScales);
+        Assert.Equal(stones.Count, copy.Helpers.Count);
+        Assert.All(stones, h => Assert.Contains(h, copy.Helpers));
+
+        // A petrified stone is blessed and cannot be killed (Mobile.Kill returns on CanBeDamaged); a released one can.
+        var victim = stones[0];
+        victim.Blessed = false;
+        victim.Frozen = false;
+        victim.Kill();
+        _out.WriteLine($"victim {victim.GetType().Name}: deleted={victim.Deleted} alive={victim.Alive}");
+        Assert.True(victim.Deleted || !victim.Alive);
+        var copy2 = RoundTrip(medusa);
+        ShardTestClock.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal(stones.Count - 1, copy2.Helpers.Count);
+        Assert.DoesNotContain(victim, copy2.Helpers);
+
+        copy2.Helpers.Clear(); // the copies would otherwise take the originals' helpers with them
+        copy.Helpers.Clear();
+        copy2.Delete();
+        copy.Delete();
+        released.Delete();
+        medusa.Delete();
+        Assert.All(stones, s => Assert.True(s.Deleted));
+    }
+
+    [Fact]
+    public void ASpawnerWhereTheDataPlacesMedusaFillsWithHer()
+    {
+        // post-uoml/termur/Abyss.json: Medusa at [818, 927, -15].
+        var spawner = new Spawner();
+        spawner.MoveToWorld(new Point3D(818, 927, -15), Map.TerMur);
+        spawner.SpawnBounds = default;
+        var entry = spawner.AddEntry("Medusa", 100, 1, dotimer: false);
+
+        try
+        {
+            Assert.True(spawner.Spawn(entry, out var flags), $"Spawn returned false with flags {flags}");
+            Assert.Equal(EntryFlags.None, flags);
+            var spawned = Assert.Single(spawner.Spawned.Keys);
+            Assert.IsType<Medusa>(spawned);
+        }
+        finally
+        {
+            spawner.Delete();
+        }
+    }
+
     // ---- The orphan count --------------------------------------------------------------------------------------
 
-    // The spawn names this batch closes, exactly as the JSON carries them. Part C: NavreyNightEyes (1 entry).
-    private static readonly string[] Closed = { "NavreyNightEyes" };
+    // The spawn names this batch closes, exactly as the JSON carries them. Part C: NavreyNightEyes (1 entry);
+    // Part B: SlasherOfVeils and StygianDragon (1 each); Part D: Medusa (1).
+    private static readonly string[] Closed = { "NavreyNightEyes", "SlasherOfVeils", "StygianDragon", "Medusa" };
 
     [Fact]
     public void EveryStockSpawnEntryNamingThisBatchResolvesAndTheOrphanCountMovedInStep()
@@ -425,9 +1089,9 @@ public class CC6Batch8Verification
         }
 
         // Batch 7 left exactly 23 names unresolved (tools/spawn-orphans.txt at 1595753). Part C's Navrey takes it to
-        // 22; nothing else in Parts A and C adds a spawnable name (BasePeerless is named by no entry, BaseSABoss is
-        // abstract, the four items are named by no entry).
-        Assert.Equal(22, unresolved.Count);
-        Assert.Equal(1, referenced);
+        // 22 (BasePeerless is named by no entry, BaseSABoss is abstract, the items are named by no entry); Part B's
+        // two bosses to 20; Part D's Medusa to 19 (MedusaClone and UndeadGargoyle are named by no entry).
+        Assert.Equal(19, unresolved.Count);
+        Assert.Equal(4, referenced);
     }
 }

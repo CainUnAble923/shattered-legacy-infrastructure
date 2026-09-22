@@ -187,7 +187,9 @@ public class CC6Batch5CreatureVerification
         // CC6 batch 7 (2026-09-21), Parts B and C: the leaf-creature row (MageDragonsFlameMage and the seven Clan ratmen,
         // eight names) and TreasureLevel1h (one name) ported, so it is now 23.
         // CC6 batch 8 (2026-09-22), Parts A and C: Navrey Night-Eyes ported (NavreyNightEyes, one name), so it is now 22.
-        Assert.Equal(22, unresolved.Count);
+        // Part B: SlasherOfVeils and StygianDragon ported (two names), so it is now 20.
+        // Part D: Medusa ported (one name), so it is now 19.
+        Assert.Equal(19, unresolved.Count);
         // Counted 2026-09-20 from the same files with tools/spawn_orphans.py's reader: FireDaemonRenowned 2 (two Abyss
         // spawners), the other twelve renowned 1 each (Abyss), flurry/grim/mistral/tempest 1 each (one Labyrinth spawner).
         Assert.Equal(18, referenced);

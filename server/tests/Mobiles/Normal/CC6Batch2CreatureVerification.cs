@@ -173,7 +173,9 @@ public class CC6Batch2CreatureVerification
         // CC6 batch 7 (2026-09-21), Parts B and C: the leaf-creature row (MageDragonsFlameMage and the seven Clan ratmen,
         // eight names) and TreasureLevel1h (one name) ported, so it is now 23.
         // CC6 batch 8 (2026-09-22), Parts A and C: Navrey Night-Eyes ported (NavreyNightEyes, one name), so it is now 22.
-        Assert.Equal(22, unresolved.Count);
+        // Part B: SlasherOfVeils and StygianDragon ported (two names), so it is now 20.
+        // Part D: Medusa ported (one name), so it is now 19.
+        Assert.Equal(19, unresolved.Count);
         // Counted 2026-09-19 from the same files: 33 entries name the clean nine (Citadel 11+8+5, Abyss 3+2+1+1+1,
         // Ter Mur 1), 18 name the fur five (6+5+1 boura, 2+4 kepetch) and 26 name the sliths (12+8+6).
         Assert.Equal(77, referenced);
