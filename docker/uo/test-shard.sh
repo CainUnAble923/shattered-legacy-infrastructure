@@ -31,20 +31,32 @@ if [ ! -d "$TEST_SAVES/Accounts" ] && [ -d "$SERVER/lib/uo/modernuo/Saves/Accoun
     echo "== seeding test accounts from the live save (one-directional copy) ====="
     cp -r "$SERVER/lib/uo/modernuo/Saves/Accounts" "$TEST_SAVES/Accounts"
 fi
+# D19: Accounts.bin names each account's type by a hash that only SerializedTypes.db can
+# resolve. Without it every account is skipped silently, Accounts.Count is 0, and the
+# prompt above blocks anyway. Seed the type table with the accounts.
+if [ ! -f "$TEST_SAVES/SerializedTypes.db" ] && [ -f "$SERVER/lib/uo/modernuo/Saves/SerializedTypes.db" ]; then
+    cp "$SERVER/lib/uo/modernuo/Saves/SerializedTypes.db" "$TEST_SAVES/SerializedTypes.db"
+fi
 # Its own Configuration copy, so a test run cannot rewrite the live server's config.
 if [ ! -d "$TEST_CONF" ]; then
     echo "== seeding Configuration-test from the live Configuration =============="
     cp -r "$SERVER/uo/modernuo/Configuration" "$TEST_CONF"
-    # The live config advertises 192.168.1.58. A client connecting to the TEST shard
-    # would be relayed straight onto the LIVE shard and never know. Point it at itself.
-    sed -i 's/"serverListing.address": *"[^"]*"/"serverListing.address": "127.0.0.1"/' "$TEST_CONF/modernuo.json"
-    sed -i 's/"serverListing.serverName": *"[^"]*"/"serverListing.serverName": "Shattered Legacy TEST"/' "$TEST_CONF/modernuo.json"
+fi
+# Listen on 2594 inside the container and advertise the LAN address, so the relay packet
+# says 192.168.1.58:2594: this shard, never the live one on 2593. docker-compose.test.yml
+# explains why the ports must match. Applied every run, so an older 2593 copy migrates.
+sed -i 's/"0\.0\.0\.0:2593"/"0.0.0.0:2594"/' "$TEST_CONF/modernuo.json"
+sed -i 's/"serverListing.address": *\("[^"]*"\|null\)/"serverListing.address": "192.168.1.58"/' "$TEST_CONF/modernuo.json"
+sed -i 's/"serverListing.serverName": *"[^"]*"/"serverListing.serverName": "Shattered Legacy TEST"/' "$TEST_CONF/modernuo.json"
+if ! grep -q '"0.0.0.0:2594"' "$TEST_CONF/modernuo.json" || grep -q ':2593"' "$TEST_CONF/modernuo.json"; then
+    echo "Configuration-test/modernuo.json does not listen on 0.0.0.0:2594 only. Fix it by hand; not starting." >&2
+    exit 1
 fi
 
 echo "== building through the gates (patches, then tests, then image) ========"
 docker/uo/build.sh
 
-echo "== starting the throwaway test shard on 127.0.0.1:2594 ================="
+echo "== starting the throwaway test shard on port 2594 (LAN) ==============="
 $COMPOSE up -d
 
 echo

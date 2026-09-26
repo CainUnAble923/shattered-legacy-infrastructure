@@ -9,14 +9,25 @@
 #
 # Host port is 2594, so it can run alongside the live shard on 2593.
 # There is no ddns-updater here on purpose: this must never touch public DNS.
+#
+# WHY THE TWO PORTS MATCH (2594 outside, 2594 inside). Do not "tidy" this back to
+# 2594:2593. After login the server sends the client a relay packet (0x8C) carrying an
+# address AND the port the server believes it listens on. Configuration-test sets that
+# address to the LAN IP, 192.168.1.58. If the container listened on 2593, the relay would
+# say 192.168.1.58:2593, which on this LAN is the LIVE shard: a test client would land on
+# live without knowing (bug-list D8, back through the port instead of the address).
+# Configuration-test's "listeners" is 0.0.0.0:2594 for the same reason, so the relay says
+# 192.168.1.58:2594, which is this shard and nothing else, whatever the client does.
+# Published on all interfaces so other machines in the house can test. The router
+# forwards 2593 only; nothing outside the house can reach 2594.
 services:
   modernuo-test:
     image: sl-modernuo:latest
     container_name: sl-modernuo-test
     restart: "no"
     ports:
-      - "127.0.0.1:2594:2593"
-      - "127.0.0.1:2594:2593/udp"
+      - "2594:2594"
+      - "2594:2594/udp"
     volumes:
       - ${SERVER_PATH}/customizations:/modernuo-projects:ro
       - ${SERVER_PATH}/uo/modernuo/Configuration-test:/modernuo/Configuration

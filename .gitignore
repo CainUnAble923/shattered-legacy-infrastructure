@@ -61,3 +61,6 @@ server/lib/
 check-*.txt
 shard-*.txt
 Diagnose-*.ps1
+
+# Built player zips (player-package/Build-PlayerPackage.ps1). Rebuilt on demand, never committed.
+player-package/dist/
