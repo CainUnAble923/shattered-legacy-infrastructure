@@ -21,6 +21,20 @@ RUN git clone https://github.com/modernuo/ModernUO.git /build/modernuo \
     && cd /build/modernuo \
     && git checkout ${MODERNUO_COMMIT}
 
+# The runtime stage's native libraries, for the test host. build.sh runs the shard's tests in
+# THIS stage, and without them the first gump a test sends (every gump is deflate-packed) throws
+# in LibDeflateBinding's constructor and again in its finalizer, killing the test host; archive
+# code (ZstdNet) and password hashing (Argon2.Bindings) fail the same way. The list is exactly the
+# runtime stage's, less what line 6 already has, so the builder never has a library the running
+# server lacks. Keep the two in step. A layer of its own, after the clone, so that changing it
+# never invalidates the .NET SDK or clone layers above. See notes/gate-integrity.md part B.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libdeflate-dev libzstd-dev libargon2-1 \
+    && ln -sf /usr/lib/x86_64-linux-gnu/libargon2.so.1 /usr/local/lib/libargon2.so \
+    && ln -sf /usr/lib/x86_64-linux-gnu/libargon2.so.1 /usr/local/lib/libargon2.so.1 \
+    && ldconfig \
+    && rm -rf /var/lib/apt/lists/*
+
 # Stage canonical custom scripts. apply-patches.sh routes additive scripts and
 # full-file replacements to their verified locations in the pinned source tree.
 COPY server/customizations/ /customizations/
@@ -52,6 +66,7 @@ RUN dotnet publish ModernUO.slnx -c Release -o /modernuo/Distribution \
 # ── Runtime stage ──────────────────────────────────────────────────────────────
 FROM debian:12-slim
 
+# The builder stage installs this list's native libraries too, for the test host. Keep the two in step.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates libicu-dev libdeflate-dev libzstd-dev libargon2-1 \
     && ln -sf /usr/lib/x86_64-linux-gnu/libargon2.so.1 /usr/local/lib/libargon2.so \

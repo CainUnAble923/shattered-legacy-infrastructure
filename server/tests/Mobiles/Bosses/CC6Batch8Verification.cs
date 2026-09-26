@@ -588,7 +588,8 @@ public class CC6Batch8Verification
         ShardTestClock.Arm();
 
         var pm = NewPlayer(new Point3D(1005, 1000, 0));
-        pm.RawStr = 500; // enough hits to take the fireball's 120-150 and stay alive
+        // ML caps a player's Str at 150 (PlayerMobile.Str), so this is 125 hits, and a fireball of 126-150 kills.
+        pm.RawStr = 500;
         pm.Hits = pm.HitsMax;
         pm.Hidden = true; // keep the dragon's AI from acquiring the player on its own while the clock advances
         var dragon = new StygianDragon();
@@ -626,13 +627,33 @@ public class CC6Batch8Verification
 
         // The stygian fireball: eleven 200 ms ticks then 120-150 chaos damage to the combatant. The combatant is set
         // again here: the dragon's own AI ran through the 40 s above and had dropped it (build D went red on that).
+        //
+        // The hit is read on the wheel tick it lands, not 4 s later. The host never runs RegenRates.Configure, so
+        // Mobile.DefaultHitsRate is TimeSpan.Zero and a damaged mobile regenerates one hit per 8 ms tick: a fireball
+        // that rolls 120-125 leaves the player alive and back at 125/125 about a second later. Asserting on hits
+        // after the whole 4 s failed on exactly those rolls, about one run in five (notes/gate-integrity.md).
+        // One Advance(8 ms) is one wheel turn, and the HitsTimer the damage starts is due on the turn after, so the
+        // lowest reading below is exactly HitsMax minus the damage, or 0 when it killed.
         pm.Hits = pm.HitsMax;
         dragon.Combatant = pm;
         Assert.NotNull(dragon.Combatant);
         dragon.DoStygianFireball();
-        ShardTestClock.Advance(TimeSpan.FromSeconds(4));
-        _out.WriteLine($"fireball: player {pm.Hits}/{pm.HitsMax}");
-        Assert.True(pm.Hits < pm.HitsMax, "the stygian fireball did no damage in 4 s");
+        var lowest = pm.Hits;
+        var landedAt = TimeSpan.Zero;
+        for (var t = TimeSpan.Zero; t < TimeSpan.FromSeconds(4); t += TimeSpan.FromMilliseconds(8))
+        {
+            ShardTestClock.Advance(TimeSpan.FromMilliseconds(8));
+            if (pm.Hits < lowest)
+            {
+                lowest = pm.Hits;
+                landedAt = t + TimeSpan.FromMilliseconds(8);
+            }
+        }
+
+        var taken = pm.HitsMax - lowest;
+        _out.WriteLine($"fireball: {taken} taken at {landedAt.TotalMilliseconds} ms, lowest {lowest}/{pm.HitsMax}, alive={pm.Alive}");
+        // 120-150 chaos, capped by the 125 the player had to lose.
+        Assert.InRange(taken, Math.Min(120, pm.HitsMax), Math.Min(150, pm.HitsMax));
 
         dragon.Delete();
         pm.Delete();
