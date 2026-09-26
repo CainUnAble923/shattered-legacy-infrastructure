@@ -12,8 +12,8 @@ services:
       - "2593:2593"
       - "2593:2593/udp"
     volumes:
-      # Live script editing — Projects synced into container on each start
-      - ${SERVER_PATH}/uo/modernuo/Projects/UOContent/Misc:/modernuo-projects
+      # Canonical custom scripts, synced into the container on each start
+      - ${SERVER_PATH}/customizations:/modernuo-projects:ro
       # Server configuration (modernuo.json, etc.)
       - ${SERVER_PATH}/uo/modernuo/Configuration:/modernuo/Configuration
       # World saves

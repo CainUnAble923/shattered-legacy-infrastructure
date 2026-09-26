@@ -17,6 +17,94 @@
         description: Client files & patches
         ping: 192.168.1.58
 
+- Family Game Servers:
+    - ATM10 Minecraft:
+        icon: minecraft
+        href: "http://atm10.shatteredlegacyuo.com:25565"
+        description: All the Mods 10 — family LAN server
+        server: my-docker
+        container: atm10
+        showStats: true
+        ping: 192.168.1.58
+        widget:
+          type: minecraft
+          url: udp://atm10.shatteredlegacyuo.com:25565
+
+    - ATM10 Who's Online:
+        icon: minecraft
+        href: "http://atm10.shatteredlegacyuo.com:25565"
+        description: Current players
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8091/
+          refreshInterval: 15000
+          mappings:
+            - field: onlineText
+              label: Online
+            - field: playersText
+              label: Players
+
+    - ATM10 Live Map:
+        icon: minecraft
+        href: "http://atm10.shatteredlegacyuo.com:8100"
+        description: BlueMap — live world map
+        ping: 192.168.1.58
+
+    - ATM10 Quest Progress:
+        icon: minecraft
+        href: "http://atm10.shatteredlegacyuo.com:25565"
+        description: FTB Quests completion (shared team progress)
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8091/quests/summary
+          refreshInterval: 60000
+          mappings:
+            - field: summaryLabel
+              label: Completed
+
+    - ATM10 Recent Quests:
+        icon: minecraft
+        href: "http://atm10.shatteredlegacyuo.com:25565"
+        description: Latest quests completed and by who
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8091/quests/recent
+          refreshInterval: 60000
+          display: dynamic-list
+          mappings:
+            items: data
+            name: player
+            label: quest
+            format: text
+
+    - ATM10 Achievement Leaderboard:
+        icon: minecraft
+        href: "http://atm10.shatteredlegacyuo.com:25565"
+        description: Advancements unlocked by player
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8091/leaderboard/achievements
+          refreshInterval: 60000
+          display: dynamic-list
+          mappings:
+            items: data
+            name: name
+            label: achievementsLabel
+            format: text
+
+    - ATM10 Uptime:
+        icon: minecraft
+        href: "http://atm10.shatteredlegacyuo.com:25565"
+        description: How long the server has been running
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8091/
+          refreshInterval: 15000
+          mappings:
+            - field: uptimeSeconds
+              label: Uptime
+              format: duration
+
 - Infrastructure:
     - Proxy Manager:
         icon: nginx-proxy-manager
