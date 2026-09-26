@@ -1,0 +1,97 @@
+--- a/Projects/UOContent/Items/Armor/Sets/SpiritualityHelm.cs
++++ b/Projects/UOContent/Items/Armor/Sets/SpiritualityHelm.cs
+@@ -2,9 +2,13 @@
+ 
+ namespace Server.Items;
+ 
++// Shattered Legacy: one of the Virtue armour set's eight pieces. Stock models it standalone, with the set's +5
++// folded into every resist and self repair always on, because stock has no set system. The other six pieces are
++// ServUO ports on BaseSetArmor, so as stock this piece never counted and the set could not complete. ServUO's
++// values and set bonus, on the S1 carrier. See shard-migration/notes/armour-set-completion.md.
+ [Flippable(0x2B10, 0x2B11)]
+ [SerializationGenerator(0)]
+-public partial class SpiritualityHelm : BaseArmor
++public partial class SpiritualityHelm : BaseSetArmor
+ {
+     [Constructible]
+     public SpiritualityHelm() : base(0x2B10)
+@@ -13,15 +17,22 @@
+         Weight = 6.0;
+         Hue = 0x226;
+ 
+-        ArmorAttributes.SelfRepair = 5;
++        SetSelfRepair = 5;
++        SetPhysicalBonus = 5;
++        SetFireBonus = 5;
++        SetColdBonus = 5;
++        SetPoisonBonus = 5;
++        SetEnergyBonus = 5;
+     }
+ 
+     public override int LabelNumber => 1075237; // Helm of Spirituality (Virtue Armor Set)
+-    public override int BasePhysicalResistance => 13;
+-    public override int BaseFireResistance => 13;
+-    public override int BaseColdResistance => 12;
+-    public override int BasePoisonResistance => 14;
+-    public override int BaseEnergyResistance => 13;
++    public override SetItem SetID => SetItem.Virtue;
++    public override int Pieces => 8;
++    public override int BasePhysicalResistance => 8;
++    public override int BaseFireResistance => 8;
++    public override int BaseColdResistance => 7;
++    public override int BasePoisonResistance => 9;
++    public override int BaseEnergyResistance => 8;
+ 
+     public override int InitMinHits => 255;
+     public override int InitMaxHits => 255;
+--- a/Projects/UOContent/Items/Armor/Sets/ValorGauntlets.cs
++++ b/Projects/UOContent/Items/Armor/Sets/ValorGauntlets.cs
+@@ -2,9 +2,13 @@
+ 
+ namespace Server.Items;
+ 
++// Shattered Legacy: one of the Virtue armour set's eight pieces. Stock models it standalone, with the set's +5
++// folded into the resists and self repair always on, because stock has no set system. The other six pieces are
++// ServUO ports on BaseSetArmor, so as stock this piece never counted and the set could not complete. ServUO's
++// values and set bonus, on the S1 carrier. See shard-migration/notes/armour-set-completion.md.
+ [Flippable(0x2B0C, 0x2B0D)]
+ [SerializationGenerator(0)]
+-public partial class ValorGauntlets : BaseArmor
++public partial class ValorGauntlets : BaseSetArmor
+ {
+     [Constructible]
+     public ValorGauntlets() : base(0x2B0C)
+@@ -13,20 +17,27 @@
+         Weight = 4.0;
+         Hue = 0x226;
+ 
+-        ArmorAttributes.SelfRepair = 5;
++        SetSelfRepair = 5;
++        SetPhysicalBonus = 5;
++        SetFireBonus = 5;
++        SetColdBonus = 5;
++        SetPoisonBonus = 5;
++        SetEnergyBonus = 5;
+     }
+ 
+     public override int LabelNumber => 1075238; // Gauntlets of Valor (Virtue Armor Set)
++    public override SetItem SetID => SetItem.Virtue;
++    public override int Pieces => 8;
+ 
+-    public override int BasePhysicalResistance => 11;
++    public override int BasePhysicalResistance => 6;
+ 
+-    public override int BaseFireResistance => 11;
++    public override int BaseFireResistance => 6;
+ 
+-    public override int BaseColdResistance => 13;
++    public override int BaseColdResistance => 8;
+ 
+-    public override int BasePoisonResistance => 14;
++    public override int BasePoisonResistance => 9;
+ 
+-    public override int BaseEnergyResistance => 10;
++    public override int BaseEnergyResistance => 6;
+ 
+     public override int InitMinHits => 255;
+     public override int InitMaxHits => 255;

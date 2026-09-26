@@ -295,6 +295,13 @@ apply_patch "$PATCHES/BaseCreature-PlayerMobile-can-auto-stable.patch"
 # shard-migration/notes/cc6-followup-breath-incubator.md; pinned by CC6FollowupBreathIncubatorVerification (proved red).
 apply_patch "$PATCHES/Beverage-chicken-lizard-egg-pour.patch"
 
+# Armour-set completion. Stock SpiritualityHelm and ValorGauntlets are two of the Virtue set's eight pieces, modelled
+# standalone with the set bonus folded in, so the six ported pieces could never complete the set. Re-parented onto
+# BaseSetArmor with ServUO's values; no save held an instance. A patch rather than a replacement so a bump that
+# touches either file stops here. Alternatives argued in shard-migration/notes/armour-set-completion.md section
+# A.1.1; pinned by ArmourSetCompletionVerification (proved red).
+apply_patch "$PATCHES/Virtue-stock-pieces-set-carrier.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
