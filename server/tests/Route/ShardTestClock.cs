@@ -38,6 +38,29 @@
 // docker/uo/apply-patches.sh FAILS THE BUILD for any other test file under server/tests/
 // that drives the timer wheel directly. This file is the single exemption, because
 // SliceAloneDoesNotAdvanceTheClock below has to call the wrong thing to prove it is wrong.
+//
+// THE RULE FOR ANY TIMED FACT THAT READS HIT POINTS (D11, D15, Q-060):
+//
+//   Read hit points on the tick the damage lands, never after an Advance.
+//
+//   The test host regenerates one hit every 8 ms, 125 a second. UOContentFixture never runs
+//   RegenRates.Configure, so Mobile.DefaultHitsRate is TimeSpan.Zero, HitsTimer re-arms with a
+//   zero delay, and the wheel puts it in the next slot: every Advance(8 ms) after damage gives
+//   the hit back one point. A fact that damages, advances a second, and then reads Hits is
+//   measuring regeneration. D11, the stygian fireball flake, was exactly that. To read a hit
+//   that lands inside an Advance, advance in 8 ms steps and keep the lowest reading
+//   (CC6Batch8Verification's fireball fact does this). A fact that needs real regeneration
+//   (bleeds, poison, auras, "can this kill") is the moment to revisit Q-060, not to work
+//   around it. ADamagedMobileRegainsExactlyOneHitPerWheelTick below pins the rate, so if it
+//   ever changes the build goes red there first.
+//
+// WHAT THE CLOCK READS (D16): Core.Now is NOT always Epoch-based. PacketTestUtilities.
+// CreateTestNetState sets Core._now = DateTime.UtcNow (Server.Tests/Helpers/
+// PacketTestUtilities.cs:62), and Arm only raises a clock that is below Epoch. So Core.Now
+// starts at Epoch only if no fact in the process has made a test NetState yet; after one has,
+// it is the wall-clock time of that call, carried forward by every Advance. Either way it only
+// moves forward. Measure from a Core.Now read inside the fact, never from Epoch, and do not
+// assert on the date or the time of day.
 
 using System;
 using Server;
@@ -53,9 +76,10 @@ namespace ShatteredLegacy.Tests;
 public static class ShardTestClock
 {
     /// <summary>
-    /// The clock the test host starts from. UOContentFixture never assigns Core._now, so it
-    /// sits at DateTime.MinValue and any <c>Core.Now - TimeSpan</c> throws. Arm pins it here
-    /// once, and it only ever moves forward afterwards.
+    /// The floor Arm raises the clock to. UOContentFixture never assigns Core._now, so it
+    /// starts at DateTime.MinValue and any <c>Core.Now - TimeSpan</c> throws; Arm lifts it to
+    /// here if it is lower. It is not a process-wide base: CreateTestNetState sets Core._now to
+    /// the wall clock, which is later than this, and Arm then leaves it there (see the header).
     /// </summary>
     public static readonly DateTime Epoch = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -67,8 +91,8 @@ public static class ShardTestClock
     private static bool _armed;
 
     /// <summary>
-    /// Takes control of the clock for the current test: pins Core.Now to <see cref="Epoch"/> the
-    /// first time it is called in a process, and re-synchronises the timer wheel with
+    /// Takes control of the clock for the current test: raises Core.Now to <see cref="Epoch"/> if
+    /// it is below it (nothing has set it yet), and re-synchronises the timer wheel with
     /// Core.TickCount, dropping timers left behind by an earlier test.
     /// Call it BEFORE scheduling anything the test intends to fire.
     /// </summary>
@@ -225,5 +249,44 @@ public class ShardTestClockVerification
         Timer.DelayCall(TimeSpan.FromSeconds(1), () => check++);
         ShardTestClock.Advance(TimeSpan.FromSeconds(2));
         Assert.Equal(1, check);
+    }
+
+    /// <summary>
+    /// Pins the host's hit regeneration: one hit per 8 ms wheel tick (D15, Q-060). The host
+    /// never runs RegenRates.Configure, so Mobile.DefaultHitsRate is zero and HitsTimer re-arms
+    /// on every turn. Every timed fact that reads hit points is written against that. If a
+    /// pinned-commit bump or a well-meant RegenRates.Configure in the fixture changes it, this
+    /// goes red instead of those facts starting to pass or fail for a new reason.
+    /// </summary>
+    [Fact]
+    public void ADamagedMobileRegainsExactlyOneHitPerWheelTick()
+    {
+        ShardTestClock.Arm();
+
+        // Created after Arm: a timer started before it would never fire (notes/gate-integrity.md A.5).
+        var pm = new Server.Mobiles.PlayerMobile();
+        pm.MoveToWorld(new Point3D(1000, 1000, 0), Map.Trammel);
+        pm.Hits = pm.HitsMax;
+
+        try
+        {
+            pm.Damage(20);
+            var landed = pm.Hits;
+
+            ShardTestClock.Advance(TimeSpan.FromMilliseconds(8));
+            var oneTick = pm.Hits;
+
+            _out.WriteLine(
+                $"hits {pm.HitsMax} -> {landed} on the damage tick -> {oneTick} one 8 ms tick later; " +
+                $"DefaultHitsRate={Mobile.DefaultHitsRate} handler={(Mobile.HitsRegenRateHandler == null ? "none" : "set")}"
+            );
+
+            Assert.Equal(pm.HitsMax - 20, landed); // read on the tick it lands: the whole hit is visible
+            Assert.Equal(landed + 1, oneTick);     // and one tick later, exactly one hit is back
+        }
+        finally
+        {
+            pm.Delete();
+        }
     }
 }
