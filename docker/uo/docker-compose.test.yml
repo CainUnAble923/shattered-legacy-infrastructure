@@ -20,6 +20,12 @@
 # 192.168.1.58:2594, which is this shard and nothing else, whatever the client does.
 # Published on all interfaces so other machines in the house can test. The router
 # forwards 2593 only; nothing outside the house can reach 2594.
+# OWN COMPOSE PROJECT. Without this, both compose files sit in docker/uo/ and share the
+# default project name "uo", so compose treats the LIVE sl-modernuo and sl-ddns as orphans
+# of this stack: "docker compose -f docker-compose.test.yml down --remove-orphans" would
+# stop the live shard. See bug-list D22.
+name: sl-uo-test
+
 services:
   modernuo-test:
     image: sl-modernuo:latest

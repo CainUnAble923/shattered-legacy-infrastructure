@@ -64,3 +64,7 @@ Diagnose-*.ps1
 
 # Built player zips (player-package/Build-PlayerPackage.ps1). Rebuilt on demand, never committed.
 player-package/dist/
+
+# The player zip served by the website container. Copied in by hand, never committed:
+# it is 73 MB of binaries and this repo is public.
+docker/website/html/download/

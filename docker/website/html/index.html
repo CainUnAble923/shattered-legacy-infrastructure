@@ -1,19 +1,180 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shattered Legacy UO — Coming Soon</title>
-  <style>
-    body { margin: 0; background: #0d0d0d; color: #c8a96e; font-family: serif; display: flex; align-items: center; justify-content: center; height: 100vh; }
-    h1 { font-size: 2.5rem; text-align: center; letter-spacing: 0.1em; }
-    p  { text-align: center; color: #888; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shattered Legacy</title>
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --panel: #141414;
+    --line: #2a2317;
+    --gold: #c8a96e;
+    --gold-bright: #e3c98d;
+    --text: #cfcabd;
+    --muted: #8a8578;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.65;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 72px; }
+  header { text-align: center; padding: 72px 0 40px; border-bottom: 1px solid var(--line); }
+  h1 {
+    font-size: clamp(2.1rem, 7vw, 3.2rem);
+    letter-spacing: .12em;
+    color: var(--gold);
+    margin: 0 0 .3em;
+    font-weight: normal;
+  }
+  .tagline { color: var(--muted); margin: 0; font-size: 1.05rem; }
+  h2 {
+    color: var(--gold);
+    font-size: 1.3rem;
+    font-weight: normal;
+    letter-spacing: .04em;
+    margin: 48px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  a { color: var(--gold-bright); }
+  .cta { text-align: center; margin: 40px 0 8px; }
+  .btn {
+    display: inline-block;
+    padding: 16px 34px;
+    border: 1px solid var(--gold);
+    border-radius: 3px;
+    color: var(--gold-bright);
+    text-decoration: none;
+    font-size: 1.15rem;
+    letter-spacing: .06em;
+    background: #16130c;
+  }
+  .btn:hover, .btn:focus { background: #221c10; color: #fff; }
+  .cta .note { color: var(--muted); font-size: .9rem; margin-top: 12px; }
+  ol { padding-left: 1.3em; }
+  ol li { margin-bottom: 18px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 18px 20px;
+    margin: 18px 0;
+  }
+  .panel p:first-child { margin-top: 0; }
+  .panel p:last-child { margin-bottom: 0; }
+  strong { color: var(--gold-bright); font-weight: normal; }
+  code {
+    font-family: Consolas, Menlo, monospace;
+    font-size: .92em;
+    background: #1c1810;
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--gold-bright);
+  }
+  footer {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: .85rem;
+  }
+  footer a { color: var(--muted); }
+</style>
 </head>
 <body>
-  <div>
+<div class="wrap">
+
+  <header>
     <h1>Shattered Legacy</h1>
-    <p>An Ultima Online Free Shard &mdash; Coming Soon</p>
+    <p class="tagline">A private Ultima Online shard</p>
+  </header>
+
+  <div class="cta">
+    <a class="btn" href="/download/ShatteredLegacy-Setup.zip">Download and play</a>
+    <p class="note">Windows &middot; about 73 MB &middot; free</p>
   </div>
+
+  <h2>Getting in</h2>
+
+  <ol>
+    <li>
+      <strong>Unzip the folder anywhere</strong> you like: the desktop, documents, a USB stick.
+      Keep everything inside it together.
+    </li>
+    <li>
+      <strong>Double-click "Play Shattered Legacy".</strong>
+      The first time only, it looks for Ultima Online on your computer. If it is not there it
+      offers to fetch EA's free installer. Say yes, install it, and <strong>let the Ultima Online
+      launcher finish updating</strong> before you close it. That part is about 2.5&nbsp;GB and it
+      only happens once.
+    </li>
+    <li>
+      <strong>At the login screen, type any account name and password you want.</strong>
+      Your first login creates your account, so write them down. After that, step 2 is all you
+      ever need.
+    </li>
+  </ol>
+
+  <h2>If Windows complains</h2>
+
+  <div class="panel">
+    <p>
+      It will, and nothing is wrong. The package is not code-signed, so Windows does not recognise
+      it.
+    </p>
+    <p>
+      A blue <strong>"Windows protected your PC"</strong> box: click <strong>More info</strong>,
+      then <strong>Run anyway</strong>. An <strong>"Open File - Security Warning"</strong> box:
+      click <strong>Run</strong>. If antivirus quarantines something, restore it or unzip the
+      package again.
+    </p>
+    <p>If you would rather not click through a warning you do not understand, ask first.</p>
+  </div>
+
+  <h2>If something goes wrong</h2>
+
+  <div class="panel">
+    <p>
+      <strong>"Cannot reach Shattered Legacy"</strong> means the server is not answering. It may be
+      restarting. Wait a few minutes, then say something if it keeps happening.
+    </p>
+    <p>
+      <strong>"Couldn't connect to Ultima Online. Please try again in a few moments"</strong>,
+      right after typing a <em>new</em> account name, is not what it sounds like. Waiting will not
+      fix it. Say something and it can be sorted out in a minute.
+    </p>
+    <p>
+      Anything else: a photo or a screenshot of the window is worth more than a description.
+    </p>
+  </div>
+
+  <h2>What is in the download</h2>
+
+  <div class="panel">
+    <p>
+      The game client is <a href="https://github.com/PlayTazUO/TazUO">TazUO</a>, a free and
+      open-source Ultima Online client, under the BSD 2-Clause licence. The rest is a few small
+      scripts that point it at this shard and start it.
+    </p>
+    <p>
+      <strong>Nothing from EA is included.</strong> Ultima Online itself comes from EA's own free
+      installer at <a href="https://uo.com/client-download/">uo.com</a>, which the package fetches
+      for you if you do not already have the game.
+    </p>
+  </div>
+
+  <footer>
+    Shattered Legacy is a private server run for family and friends. It is not affiliated with,
+    endorsed by, or connected to Electronic Arts or Broadsword. Ultima Online is a trademark of
+    Electronic Arts Inc.
+  </footer>
+
+</div>
 </body>
 </html>
