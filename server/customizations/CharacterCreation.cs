@@ -771,8 +771,8 @@ public static partial class CharacterCreation
         var pants = raceFlag switch
         {
             Race.AllowElvesOnly                 => new ElvenPants(hue),
-            Race.AllowGargoylesOnly when female => new GargishClothLegsType2 { Hue = hue },
-            Race.AllowGargoylesOnly             => new GargishClothLegsType1 { Hue = hue },
+            Race.AllowGargoylesOnly when female => new GargishClothKiltType2 { Hue = hue },
+            Race.AllowGargoylesOnly             => new GargishClothKiltType1 { Hue = hue },
             // Humans
             _ => (Item)(Utility.RandomBool() switch
             {
