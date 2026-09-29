@@ -614,6 +614,212 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     } finally { $form.Dispose() }
 }
 
+# --- D37: the mode a click hands the window it opens ---------------------------------------------
+# On 2026-09-29 a -DryRun console stopped live and restored a snapshot for real (bug-list D37): the
+# child window's argument line carried no mode. The section 6 check drove a button that runs in the
+# console itself, which never builds that line. These drive Invoke-ConsoleButton, the function a
+# click calls, for every action that opens a window. The dialogs are answered yes, the state is
+# given, and Start-Process and Invoke-Plan are recorders, so nothing launches and nothing reaches
+# docker. What it would have handed Start-Process is the thing under test.
+
+$snapName = '20260929-101500_before-gargoyle-fix'
+
+# The capture has live running, so live.start refuses on it and opens nothing. This copy has live
+# stopped, so live.start builds its window too.
+$liveStoppedState = New-StateWithSnapshots @($snapName)
+$liveStoppedState.Shards['live'].Container.Running = $false
+$liveStoppedState.Shards['live'].Container.Status = 'exited'
+
+function Invoke-ClickCapture {
+    param([string]$ActionKey, [string]$ShardKey, [bool]$Dry, $State = $snapState)
+    $rec = [pscustomobject]@{
+        Spawned = New-Object 'System.Collections.Generic.List[string]'
+        Lines = New-Object 'System.Collections.Generic.List[string]'
+        Executed = New-Object 'System.Collections.Generic.List[string]'
+    }
+    # Defined here, so they shadow the real ones for Invoke-ConsoleButton only (dynamic scope).
+    function Start-Process { param($FilePath, $ArgumentList) $rec.Spawned.Add([string]$ArgumentList) }
+    function Invoke-Plan { $rec.Executed.Add('ran'); $true }
+    function Show-TypedConfirm { $true }
+    function Show-YesNo { 'Yes' }
+    function Get-ConsoleState { $State }
+    function Write-ConsoleLine { param([string]$Text, [string]$Color) $rec.Lines.Add($Text) }
+    $saved = @($script:dry, $script:cfg, $script:statusFrom, $script:SelfPath)
+    $script:dry = $Dry; $script:cfg = $config; $script:statusFrom = $null
+    $script:SelfPath = (Resolve-Path $script).Path
+    $sn = $null; $s = $null
+    if ($ActionKey -eq 'snapshot.create') { $sn = 'd37-check' }
+    if ($ActionKey -in @('snapshot.restore', 'snapshot.delete')) { $s = $snapName }
+    try { Invoke-ConsoleButton -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $sn -Snapshot $s }
+    finally { $script:dry, $script:cfg, $script:statusFrom, $script:SelfPath = $saved }
+    $rec
+}
+
+# Every window action on every shard it can act on.
+$windowCases = @(foreach ($a in @(Get-ConsoleActions | Where-Object { $_.RunIn -eq 'window' })) {
+    $shards = @('test')
+    if ($a.Key -like 'live.*') { $shards = @('live') }
+    if ($a.Key -like 'snapshot.*') { $shards = @('test', 'live') }
+    foreach ($sk in $shards) {
+        $st = $snapState
+        if ($a.Key -eq 'live.start') { $st = $liveStoppedState }
+        [pscustomobject]@{ Key = $a.Key; Shard = $sk; State = $st }
+    }
+})
+
+Fact 'EveryWindowActionClickedDryHandsItsWindowModeDryRun' {
+    Assert-True ($windowCases.Count -ge 13) ('found ' + $windowCases.Count + ' window cases')
+    foreach ($c in $windowCases) {
+        $r = Invoke-ClickCapture $c.Key $c.Shard $true $c.State
+        $what = $c.Key + ' ' + $c.Shard
+        Assert-Equal 0 @($r.Lines | Where-Object { $_ -match ' failed: ' }).Count ($what + ': ' + ($r.Lines -join ' | '))
+        Assert-Equal 1 $r.Spawned.Count ($what + ' opens one window')
+        Assert-Equal 0 $r.Executed.Count ($what + ' runs nothing in the console')
+        Assert-True ($r.Spawned[0] -match ' -Mode DryRun ') ($what + ': ' + $r.Spawned[0])
+        Assert-True (-not ($r.Spawned[0] -match 'Execute')) ($what + ': ' + $r.Spawned[0])
+    }
+}
+
+Fact 'TheThreeActionsThatHitD37CarryTheModeAndTheirOwnArguments' {
+    $stop = (Invoke-ClickCapture 'live.stop' 'live' $true).Spawned[0]
+    Assert-True ($stop -match '-Mode DryRun -Action live\.stop -Shard live') $stop
+    Assert-True ($stop -match '-ConfirmLive "stop live"') $stop
+    $restore = (Invoke-ClickCapture 'snapshot.restore' 'test' $true).Spawned[0]
+    Assert-True ($restore -match ('-Mode DryRun -Action snapshot\.restore -Shard test -Snapshot ' + $snapName)) $restore
+    $delete = (Invoke-ClickCapture 'snapshot.delete' 'test' $true).Spawned[0]
+    Assert-True ($delete -match ('-Mode DryRun -Action snapshot\.delete -Shard test -Snapshot ' + $snapName + ' -Yes')) $delete
+}
+
+Fact 'EveryWindowActionClickedForRealHandsItsWindowModeExecute' {
+    foreach ($c in $windowCases) {
+        $r = Invoke-ClickCapture $c.Key $c.Shard $false $c.State
+        $what = $c.Key + ' ' + $c.Shard
+        Assert-Equal 1 $r.Spawned.Count ($what + ': ' + ($r.Lines -join ' | '))
+        Assert-True ($r.Spawned[0] -match ' -Mode Execute ') ($what + ': ' + $r.Spawned[0])
+        Assert-True (-not ($r.Spawned[0] -match 'DryRun')) ($what + ': ' + $r.Spawned[0])
+    }
+}
+
+Fact 'AHereActionClickedDryOpensNothingAndRunsNothing' {
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.RunIn -eq 'here' })) {
+        $r = Invoke-ClickCapture $a.Key 'test' $true
+        Assert-Equal 0 $r.Spawned.Count $a.Key
+        Assert-Equal 0 $r.Executed.Count $a.Key
+    }
+}
+
+Fact 'AChildGivenNoModeRefusesEveryActionThatChangesSomething' {
+    foreach ($a in Get-ConsoleActions) {
+        $want = 'execute'
+        if ($a.Mutates) { $want = 'refuse' }
+        Assert-Equal $want (Resolve-RunMode -Action $a.Key) $a.Key
+    }
+    Assert-Equal 'refuse' (Resolve-RunMode -Action 'no.such.action') 'an unknown action is not assumed harmless'
+}
+
+Fact 'AnySignOfADryRunWins' {
+    Assert-Equal 'dry'     (Resolve-RunMode -Action 'live.stop' -Mode DryRun)
+    Assert-Equal 'dry'     (Resolve-RunMode -Action 'live.stop' -DryRun)
+    Assert-Equal 'dry'     (Resolve-RunMode -Action 'live.stop' -Mode Execute -DryRun)
+    Assert-Equal 'execute' (Resolve-RunMode -Action 'live.stop' -Mode Execute)
+}
+
+Fact 'TheBannerLeadsWithTheMode' {
+    $d = Get-ModeBanner 'dry' 'live.stop' 'live'
+    Assert-True ($d.Lines[1] -match '^  DRY RUN  live\.stop \(live\)') $d.Lines[1]
+    Assert-True ($d.Title -like 'DRY RUN *') $d.Title
+    Assert-True ((Get-ModeBanner 'execute' 'live.stop' 'live').Lines[1] -match 'RUNNING FOR REAL') 'execute'
+    Assert-True ((Get-ModeBanner 'refuse' 'live.stop' 'live').Lines[1] -match 'REFUSED') 'refuse'
+}
+
+Fact 'APlanThatStopsAShardSaysItDoesNotSaveBeforeThePhraseIsTyped' {
+    # D36. The warning used to be inside the stop step, below the plan's first lines.
+    foreach ($k in 'live.stop', 'live.restart') {
+        Assert-True ((Get-ConfirmPreface (Get-Plan $k 'live')) -like 'BEFORE YOU TYPE: A stop does not save*') $k
+    }
+    Assert-True ((Get-ConfirmPreface (Get-Plan 'snapshot.restore' 'live' -Snapshot $snapName -State $snapState)) -like 'BEFORE YOU TYPE:*') 'restore stops live first'
+    Assert-Equal '' (Get-ConfirmPreface (Get-Plan 'live.start' 'live' -State $liveStoppedState)) 'a start stops nothing'
+}
+
+# --- D37 end to end: the real child process, with a docker that only records --------------------
+# The facts above stop at the argument line. These run powershell.exe on it, the way Start-Process
+# would, with a docker.exe first on PATH that writes its arguments to a file and exits 1. It is
+# compiled rather than a .cmd because Invoke-DockerRead starts 'docker' through ProcessStartInfo,
+# which only finds .exe. Both resolution paths are checked to reach the shim before any child runs,
+# so a broken refusal would stop a recorder, not the live shard.
+
+$shimDir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-docker-shim-' + $PID)
+$shimLog = Join-Path $shimDir 'calls.txt'
+New-Item -ItemType Directory -Path $shimDir -Force | Out-Null
+Add-Type -OutputAssembly (Join-Path $shimDir 'docker.exe') -OutputType ConsoleApplication -TypeDefinition @'
+public static class DockerShim {
+    public static int Main(string[] a) {
+        System.IO.File.AppendAllText(System.Environment.GetEnvironmentVariable("SL_DOCKER_SHIM_LOG"), string.Join(" ", a) + "\n");
+        return 1;
+    }
+}
+'@
+
+function Invoke-Child {
+    param([string]$ArgLine)
+    $oldPath = $env:PATH
+    $env:PATH = $shimDir + ';' + $env:PATH
+    $env:SL_DOCKER_SHIM_LOG = $shimLog
+    try {
+        $ps = (Get-Command docker -CommandType Application | Select-Object -First 1).Source
+        $pr = @(where.exe docker)[0]
+        if ($ps -ne (Join-Path $shimDir 'docker.exe') -or $pr -ne (Join-Path $shimDir 'docker.exe')) {
+            throw ('the docker shim is not first on PATH (' + $ps + ', ' + $pr + '); not launching a child')
+        }
+        Remove-Item -LiteralPath $shimLog -ErrorAction SilentlyContinue
+        $out = Join-Path $shimDir 'out.txt'
+        $err = Join-Path $shimDir 'err.txt'
+        $p = Start-Process -FilePath 'powershell.exe' -ArgumentList ($ArgLine -replace ' -NoExit', '') -Wait -NoNewWindow -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+        $calls = @()
+        if (Test-Path -LiteralPath $shimLog) { $calls = @(Get-Content -LiteralPath $shimLog) }
+        [pscustomobject]@{
+            Exit = $p.ExitCode
+            Out = @(Get-Content -LiteralPath $out | Where-Object { $_.Trim() })
+            Err = [IO.File]::ReadAllText($err)
+            DockerCalls = $calls
+        }
+    } finally {
+        $env:PATH = $oldPath
+        Remove-Item Env:\SL_DOCKER_SHIM_LOG -ErrorAction SilentlyContinue
+    }
+}
+
+$d37Cases = @(
+    [pscustomobject]@{ Key = 'live.stop'; Shard = 'live' },
+    [pscustomobject]@{ Key = 'snapshot.restore'; Shard = 'live' },
+    [pscustomobject]@{ Key = 'snapshot.delete'; Shard = 'live' }
+)
+
+Fact 'TheRealChildGivenTheOldArgumentLineRefusesAndCallsNoDocker' {
+    # The line the parent built before this fix: everything but a mode.
+    foreach ($c in $d37Cases) {
+        $line = (Invoke-ClickCapture $c.Key $c.Shard $false).Spawned[0] -replace ' -Mode Execute', ''
+        Assert-True (-not ($line -match '-Mode')) $line
+        $r = Invoke-Child $line
+        Assert-Equal 0 $r.DockerCalls.Count ($c.Key + ' called docker: ' + ($r.DockerCalls -join ' | '))
+        Assert-Equal 2 $r.Exit ($c.Key + ': ' + ($r.Out -join ' | ') + $r.Err)
+        Assert-True ($r.Out[1] -match 'REFUSED') ($c.Key + ': ' + ($r.Out -join ' | '))
+    }
+}
+
+Fact 'TheRealChildOfADryClickSaysDryRunFirstAndCallsNoDocker' {
+    foreach ($c in $d37Cases) {
+        $line = (Invoke-ClickCapture $c.Key $c.Shard $true).Spawned[0]
+        $r = Invoke-Child $line
+        Assert-Equal 0 $r.DockerCalls.Count ($c.Key + ' called docker: ' + ($r.DockerCalls -join ' | '))
+        Assert-Equal 0 $r.Exit ($c.Key + ': ' + ($r.Out -join ' | ') + $r.Err)
+        Assert-True ($r.Out[1] -match ('^  DRY RUN  ' + [regex]::Escape($c.Key))) ($c.Key + ' first line: ' + $r.Out[1])
+        Assert-True (@($r.Out | Where-Object { $_ -like ('== DRY RUN: ' + $c.Key + '*') }).Count -eq 1) ($c.Key + ' printed its plan')
+    }
+}
+
+Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
+
 $failed = @($results | Where-Object { -not $_.Passed }).Count
 Write-Host ""
 Write-Host ("{0} facts, {1} passed, {2} failed" -f $results.Count, ($results.Count - $failed), $failed) -ForegroundColor $(if ($failed) { 'Red' } else { 'Green' })

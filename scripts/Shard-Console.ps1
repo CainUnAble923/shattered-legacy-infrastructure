@@ -5,13 +5,18 @@
       .\scripts\Shard-Console.ps1                  the console
       .\scripts\Shard-Console.ps1 -DryRun          every button prints what it would run instead of
                                                    running it, and the status panel reads a captured
-                                                   file instead of docker
+                                                   file instead of docker. A button that runs in its
+                                                   own window still asks and still opens the window,
+                                                   which says DRY RUN at the top and only prints
       .\scripts\Shard-Console.ps1 -Status          print the status panel here and exit
       .\scripts\Shard-Console.ps1 -Action list     every button, by key
-      .\scripts\Shard-Console.ps1 -Action test.start
+      .\scripts\Shard-Console.ps1 -Mode Execute -Action test.start
                                                    one button, headless. The console runs every
                                                    button that changes anything this way, in a
-                                                   window of its own, so you can watch each step
+                                                   window of its own, so you can watch each step.
+                                                   -Mode DryRun (or -DryRun) prints it instead.
+                                                   With no -Mode, a button that changes anything
+                                                   is refused (D37), so a lost flag fails safe
       .\scripts\Shard-Console.ps1 -Capture FILE    write a status capture from docker (read-only)
 
   AT A GLANCE. Three tiles across the top (and the window title) say what is running: LIVE, TEST,
@@ -42,6 +47,7 @@
 [CmdletBinding()]
 param(
     [switch]$DryRun,
+    [ValidateSet('DryRun', 'Execute')][string]$Mode,
     [string]$StatusFrom,
     [string]$Action,
     [ValidateSet('test', 'live')][string]$Shard = 'test',
@@ -63,6 +69,7 @@ param(
 $script:Invariant       = [Globalization.CultureInfo]::InvariantCulture
 $script:CaptureMarker   = '##### SHARD-CONSOLE-CAPTURE '
 $script:SnapshotPattern = '^(\d{8}-\d{6})_([A-Za-z0-9._-]+)$'
+$script:NoSaveWarning   = 'A stop does not save: play since the last autosave (every 5 minutes) is lost. [save in game first if that matters.'
 
 function Get-ConsoleConfig {
     param([Parameter(Mandatory = $true)][string]$RepoRoot)
@@ -462,10 +469,74 @@ function Get-ConfirmPhrase {
     }
 }
 
+function Get-ConfirmPreface {
+    # D36: a stop saves nothing. When a plan stops a shard, say so first in the confirmation,
+    # above the plan, where it is read before the phrase is typed rather than inside step 3.
+    param($Plan)
+    if (@($Plan | Where-Object { $_.Text -and $_.Text.Contains($script:NoSaveWarning) }).Count) {
+        return ('BEFORE YOU TYPE: ' + $script:NoSaveWarning + ' (D36)')
+    }
+    ''
+}
+
 function Test-TypedConfirmation {
     param([string]$Expected, [string]$Typed)
     if ($null -eq $Typed -or -not $Expected) { return $false }
     [string]::Equals($Expected, $Typed.Trim(), [StringComparison]::Ordinal)
+}
+
+function Get-ChildArgumentLine {
+    # D37. A window action runs in a child process of this script, which cannot see the parent's
+    # -DryRun. So the parent always names the mode, dry or not, and it goes first where a person
+    # reading the command line sees it. Resolve-RunMode is the other half.
+    param(
+        [string]$SelfPath, [string]$ActionKey, [string]$ShardKey, [string]$SnapshotName,
+        [string]$Snapshot, [string]$ConfirmLive, [switch]$Yes, [switch]$DryRun, [string]$StatusFrom
+    )
+    $mode = 'Execute'
+    if ($DryRun) { $mode = 'DryRun' }
+    $a = '-NoProfile -ExecutionPolicy Bypass -NoExit -File "' + $SelfPath + '" -Mode ' + $mode + ' -Action ' + $ActionKey + ' -Shard ' + $ShardKey
+    if ($DryRun -and $StatusFrom) { $a += ' -StatusFrom "' + $StatusFrom + '"' }
+    if ($SnapshotName) { $a += ' -SnapshotName ' + $SnapshotName }
+    if ($Snapshot) { $a += ' -Snapshot ' + $Snapshot }
+    if ($ConfirmLive) { $a += ' -ConfirmLive "' + $ConfirmLive + '"' }
+    if ($Yes) { $a += ' -Yes' }
+    $a
+}
+
+function Resolve-RunMode {
+    # 'dry', 'execute' or 'refuse' for a headless -Action. Any sign of a dry run wins. With no mode
+    # at all, an action that changes something is refused rather than run, so a mode lost on the
+    # way from the parent fails safe (D37). Actions that only read or open still run.
+    param([string]$Action, [string]$Mode, [switch]$DryRun)
+    if ($DryRun -or $Mode -eq 'DryRun') { return 'dry' }
+    if ($Mode -eq 'Execute') { return 'execute' }
+    $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $Action })[0]
+    if ($def -and -not $def.Mutates) { return 'execute' }
+    'refuse'
+}
+
+function Get-ModeBanner {
+    # The first thing a spawned window says, before it reads any state or runs anything.
+    param([string]$RunMode, [string]$Action, [string]$ShardKey)
+    $bar = '=' * 78
+    $what = $Action + ' (' + $ShardKey + ')'
+    switch ($RunMode) {
+        'dry' {
+            [pscustomobject]@{ Color = 'amber'; Title = ('DRY RUN - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  DRY RUN  ' + $what), '  Nothing will be run. This window only prints the plan.', $bar) }
+        }
+        'execute' {
+            [pscustomobject]@{ Color = 'red'; Title = ('RUNNING FOR REAL - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  RUNNING FOR REAL  ' + $what), ('  This acts on the ' + $ShardKey.ToUpper() + ' shard.'), $bar) }
+        }
+        default {
+            [pscustomobject]@{ Color = 'red'; Title = ('REFUSED - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  REFUSED  ' + $what),
+                '  No -Mode was given, and this action changes something. Nothing was run.',
+                '  Pass -Mode Execute to run it, or -DryRun to print it. (D37: a missing mode fails safe.)', $bar) }
+        }
+    }
 }
 
 function Get-ConsoleActions {
@@ -527,7 +598,7 @@ function Get-ActionPlan {
     $sts = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Config.StartTestShard)
     $stopWait = [string]$Config.StopTimeout
     $snapDir = Join-Path $Config.SnapshotRoot $sh.Key
-    $noSave = 'A stop does not save: play since the last autosave (every 5 minutes) is lost. [save in game first if that matters.'
+    $noSave = $script:NoSaveWarning
 
     $isLiveOp = ($Action -like 'live.*') -or ($sh.IsLive -and $Action -in @('snapshot.create', 'snapshot.restore', 'snapshot.delete'))
     if ($isLiveOp) {
@@ -1518,6 +1589,7 @@ function Show-TypedConfirm {
     param([string]$Phrase, [string]$Text, $Plan)
     $d = New-Object Windows.Forms.Form
     $d.Text = 'LIVE shard: type to confirm'
+    if ($script:dry) { $d.Text = 'DRY RUN - LIVE shard: type to confirm (the window it opens only prints)' }
     $d.Size = New-Object Drawing.Size(640, 420)
     $d.FormBorderStyle = 'FixedDialog'
     $d.StartPosition = 'CenterParent'
@@ -1529,7 +1601,9 @@ function Show-TypedConfirm {
     $body.ScrollBars = 'Vertical'
     $body.Font = $script:MonoFont
     $body.Dock = 'Fill'
-    $body.Text = ($Text + "`r`n`r`nThis will run:`r`n" + ((Format-Plan -Action '' -ShardKey 'live' -Plan $Plan -Header 'PLAN' | Select-Object -Skip 1) -join "`r`n"))
+    $pre = Get-ConfirmPreface $Plan
+    if ($pre) { $pre += "`r`n`r`n" }
+    $body.Text = ($pre + $Text + "`r`n`r`nThis will run:`r`n" + ((Format-Plan -Action '' -ShardKey 'live' -Plan $Plan -Header 'PLAN' | Select-Object -Skip 1) -join "`r`n"))
     $bottom = New-Object Windows.Forms.Panel
     $bottom.Dock = 'Bottom'
     $bottom.Height = 76
@@ -1565,6 +1639,13 @@ function Show-TypedConfirm {
     ($result -eq 'OK') -and (Test-TypedConfirmation $Phrase $typed)
 }
 
+function Show-YesNo {
+    param([string]$Text)
+    $title = 'Shard Console'
+    if ($script:dry) { $title = 'Shard Console - DRY RUN' }
+    [string][Windows.Forms.MessageBox]::Show($Text, $title, 'YesNo', 'Warning', 'Button2')
+}
+
 function Invoke-ConsoleButton {
     param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot)
     try {
@@ -1577,10 +1658,13 @@ function Invoke-ConsoleButton {
         $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
+        $dryTag = ''
         if ($script:dry) {
+            $dryTag = 'DRY RUN: '
             foreach ($l in (Format-Plan -Action $ActionKey -ShardKey $ShardKey -Plan $plan -Violations $viol)) { Write-ConsoleLine $l 'normal' }
-            Write-ConsoleLine '   (dry run: nothing was run)' 'gray'
-            return
+            # A window action goes on through the same confirmation and the same spawned window as a
+            # real click, so a dry run exercises them; the child is told -Mode DryRun and only prints.
+            if ($def.RunIn -ne 'window') { Write-ConsoleLine '   (dry run: nothing was run)' 'gray'; return }
         }
         if ($viol.Count) { foreach ($x in $viol) { Write-ConsoleLine ('REFUSED BY THE SAFETY CHECK: ' + $x) 'red' }; return }
         $refuse = @($plan | Where-Object { $_.Kind -eq 'refuse' })
@@ -1588,25 +1672,22 @@ function Invoke-ConsoleButton {
         $phrase = $null
         $conf = @($plan | Where-Object { $_.Kind -eq 'confirm' })
         if ($conf.Count) {
-            if (-not (Show-TypedConfirm -Phrase $conf[0].Phrase -Text $conf[0].Text -Plan $plan)) { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
+            if (-not (Show-TypedConfirm -Phrase $conf[0].Phrase -Text ($dryTag + $conf[0].Text) -Plan $plan)) { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
             $phrase = $conf[0].Phrase
         }
         $answeredYes = $false
         $ask = @($plan | Where-Object { $_.Kind -eq 'ask' })
         if ($ask.Count) {
-            $r = [Windows.Forms.MessageBox]::Show($ask[0].Text, 'Shard Console', 'YesNo', 'Warning', 'Button2')
-            if ($r -ne 'Yes') { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
+            if ((Show-YesNo ($dryTag + $ask[0].Text)) -ne 'Yes') { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
             $answeredYes = $true
         }
         if ($def.RunIn -eq 'window') {
-            $argLine = '-NoProfile -ExecutionPolicy Bypass -NoExit -File "' + $script:SelfPath + '" -Action ' + $ActionKey + ' -Shard ' + $ShardKey
-            if ($SnapshotName) { $argLine += ' -SnapshotName ' + $SnapshotName }
-            if ($Snapshot) { $argLine += ' -Snapshot ' + $Snapshot }
-            if ($phrase) { $argLine += ' -ConfirmLive "' + $phrase + '"' }
-            if ($answeredYes) { $argLine += ' -Yes' }
+            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom
             Start-Process -FilePath $script:cfg.PowerShell -ArgumentList $argLine | Out-Null
-            Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): running in its own window. Refresh the status when it finishes.') 'head'
+            if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in its own window. It prints the plan and runs nothing.') 'amber' }
+            else { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): running in its own window. Refresh the status when it finishes.') 'head' }
         } else {
+            if ($script:dry) { throw 'a dry run reached the executor' }
             [void](Invoke-Plan -Plan $plan -Config $script:cfg -ActionKey $ActionKey -ShardKey $ShardKey -ConfirmLive $phrase -Yes:$answeredYes)
         }
     } catch {
@@ -1936,18 +2017,25 @@ if ($Status) {
 }
 
 if ($Action) {
-    $st = Get-ConsoleState -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom
-    $now = Get-Date
-    if ($DryRun) { $now = $st.Now.ToLocalTime() }
-    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now)
-    $viol = @(Test-PlanSafety $plan $config)
-    $header = 'PLAN'
-    if ($DryRun) { $header = 'DRY RUN' }
     $sk = $Shard
     if ($Action -like 'live.*') { $sk = 'live' }
     if ($Action -like 'test.*') { $sk = 'test' }
+    # The mode is decided and shown before anything is read or run (D37).
+    $run = Resolve-RunMode -Action $Action -Mode $Mode -DryRun:$DryRun
+    $banner = Get-ModeBanner -RunMode $run -Action $Action -ShardKey $sk
+    try { $Host.UI.RawUI.WindowTitle = $banner.Title } catch { }
+    foreach ($l in $banner.Lines) { Write-ConsoleLine $l $banner.Color }
+    if ($run -eq 'refuse') { exit 2 }
+    $isDry = ($run -eq 'dry')
+    $st = Get-ConsoleState -Config $config -DryRun:$isDry -StatusFrom $StatusFrom
+    $now = Get-Date
+    if ($isDry) { $now = $st.Now.ToLocalTime() }
+    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now)
+    $viol = @(Test-PlanSafety $plan $config)
+    $header = 'PLAN'
+    if ($isDry) { $header = 'DRY RUN' }
     foreach ($l in (Format-Plan -Action $Action -ShardKey $sk -Plan $plan -Violations $viol -Header $header)) { Write-ConsoleLine $l 'normal' }
-    if ($DryRun) { exit 0 }
+    if ($isDry) { Write-ConsoleLine '   (dry run: nothing was run)' 'amber'; exit 0 }
     Write-ConsoleLine '' 'normal'
     $ok = Invoke-Plan -Plan $plan -Config $config -ActionKey $Action -ShardKey $sk -ConfirmLive $ConfirmLive -Yes:$Yes
     if ($ok) { Write-ConsoleLine ($Action + ': done.') 'green'; exit 0 }
