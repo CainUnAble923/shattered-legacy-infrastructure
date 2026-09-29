@@ -162,40 +162,62 @@ public class TypeIdentityVerification
         copy.Delete();
     }
 
-    // ---- D35: the transposed twins ------------------------------------------------------------
+    // ---- D35: the transposed twins, decided -------------------------------------------------------
 
-    // Pinned spells both classes wrong (GuantletsOfAnger, ShroudOfDeciet); ours carry ServUO's
-    // correct spellings. The question is whether either pair shadows the other the way D34 could.
-    // No [TypeAlias] names either spelling in any tree, so each should be its own bucket on every
-    // map. When D35 is decided and one of each pair goes, delete this fact with it.
+    // Pinned spells both classes wrong (GuantletsOfAnger, ShroudOfDeciet); ours carried ServUO's
+    // correct spellings. The fact that stood here proved the four were distinct buckets. D35 was
+    // decided 2026-09-29: drop ours, keep pinned's, which champion spawns, pigments, the Add menu
+    // and pinned's migrations all name (notes/type-identity.md section 3). cc-P8 removed ours while
+    // no save table held one (115 tables checked, notes/cc-P8-loot-tables-and-d35.md section 5).
+    //
+    // So this asserts GONE, not unreferenced: no lookup a save, a spawner or [add makes resolves
+    // either name, and no loaded assembly declares a type by it. Pinned's still resolve, still
+    // outside our set, and still carry the cliloc ours had.
     [Theory]
-    [InlineData("Server.Items.GauntletsOfAnger", "Server.Items.GuantletsOfAnger")]
-    [InlineData("Server.Items.ShroudOfDeceit", "Server.Items.ShroudOfDeciet")]
-    public void D35_BothSpellingsAreDistinctTypesAndNeitherShadowsTheOther(string oursName, string pinnedName)
+    [InlineData("Server.Items.GauntletsOfAnger", "Server.Items.GuantletsOfAnger", 1094902)]
+    [InlineData("Server.Items.ShroudOfDeceit", "Server.Items.ShroudOfDeciet", 1094914)]
+    public void D35_OursAreGoneAndPinnedsRemain(string droppedName, string pinnedName, int label)
     {
-        var ours = OurTypes.Value;
-        var oursType = AssemblyHandler.FindTypeByFullName(oursName, false);
+        var shortName = droppedName[(droppedName.LastIndexOf('.') + 1)..];
+
+        var declared = AssemblyHandler.Assemblies
+            .Append(Core.Assembly)
+            .Distinct()
+            .SelectMany(LoadableTypes)
+            .Where(t => t.Name == shortName || t.FullName == droppedName)
+            .Select(t => $"{t.FullName} in {t.Assembly.GetName().Name}")
+            .ToList();
+
+        _out.WriteLine($"{droppedName}: full {AssemblyHandler.FindTypeByFullName(droppedName, false)?.FullName ?? "none"}, " +
+                       $"full ci {AssemblyHandler.FindTypeByFullName(droppedName)?.FullName ?? "none"}, " +
+                       $"short {AssemblyHandler.FindTypeByName(shortName)?.FullName ?? "none"}, " +
+                       $"declared [{string.Join(", ", declared)}]");
+
+        Assert.Null(AssemblyHandler.FindTypeByFullName(droppedName, false));
+        Assert.Null(AssemblyHandler.FindTypeByFullName(droppedName));
+        Assert.Null(AssemblyHandler.FindTypeByName(shortName));
+        Assert.Empty(declared);
+
         var pinnedType = AssemblyHandler.FindTypeByFullName(pinnedName, false);
-
-        _out.WriteLine($"{oursName} -> {Describe(oursType, ours)}; short name -> {Describe(AssemblyHandler.FindTypeByName(oursType?.Name), ours)}");
-        _out.WriteLine($"{pinnedName} -> {Describe(pinnedType, ours)}; short name -> {Describe(AssemblyHandler.FindTypeByName(pinnedType?.Name), ours)}");
-
-        Assert.NotNull(oursType);
         Assert.NotNull(pinnedType);
-        Assert.NotEqual(oursType, pinnedType);
-        Assert.Contains(oursType, ours);
-        Assert.DoesNotContain(pinnedType, ours);
-        Assert.Equal(oursType, AssemblyHandler.FindTypeByFullName(oursName));
-        Assert.Equal(pinnedType, AssemblyHandler.FindTypeByFullName(pinnedName));
-        Assert.Equal(oursType, AssemblyHandler.FindTypeByName(oursType.Name));
+        Assert.DoesNotContain(pinnedType, OurTypes.Value);
         Assert.Equal(pinnedType, AssemblyHandler.FindTypeByName(pinnedType.Name));
 
-        var a = (Item)Activator.CreateInstance(oursType);
-        var b = (Item)Activator.CreateInstance(pinnedType);
-        _out.WriteLine($"LabelNumber ours {a.LabelNumber}, pinned {b.LabelNumber}");
-        Assert.Equal(b.LabelNumber, a.LabelNumber);
-        a.Delete();
-        b.Delete();
+        var item = (Item)Activator.CreateInstance(pinnedType);
+        Assert.Equal(label, item.LabelNumber);
+        item.Delete();
+    }
+
+    private static IEnumerable<Type> LoadableTypes(Assembly assembly)
+    {
+        try
+        {
+            return assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException e)
+        {
+            return e.Types.Where(t => t != null);
+        }
     }
 
     // ---- The sweep ---------------------------------------------------------------------------

@@ -113,6 +113,12 @@
     content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--jade); flex: none;
   }
   .w-more, .w-sub { margin: 8px 0 0; color: var(--muted); font-size: .85rem; }
+  /* The System's voice (jade, mono) for the empty-world line. */
+  .w-flavor {
+    margin: 10px 0 0; padding: 8px 10px; border: 1px solid var(--jade); border-radius: 3px;
+    font-family: Consolas, Menlo, monospace; font-size: .8rem; line-height: 1.5; color: var(--text);
+    background: #0e1512;
+  }
   @media (min-width: 1200px) {
     .players {
       position: fixed; top: 88px; left: calc(50% + 380px); width: 230px;
@@ -179,6 +185,7 @@
     <h2 class="w-title" id="players-title">Online now</h2>
     <p class="w-count"><span class="n" id="p-count">0</span><span class="k" id="p-word">playing</span></p>
     <ul class="w-names" id="p-names"></ul>
+    <p class="w-flavor" id="p-flavor" hidden></p>
     <p class="w-more" id="p-more" hidden></p>
     <p class="w-sub" id="p-sub"></p>
   </aside>
@@ -309,6 +316,17 @@
   var list = document.getElementById('p-names');
   var more = document.getElementById('p-more');
   var sub = document.getElementById('p-sub');
+  var flavor = document.getElementById('p-flavor');
+
+  // Shown when the shard is up and no one is on. The System's voice: dry, PG.
+  // Picked by the hour, so it does not change on every poll.
+  var GHOST_LINES = [
+    'Britannia is a ghost town. The ghosts have not complained.',
+    'No one is online. The training dummies are enjoying the break.',
+    'The world is empty and waiting for someone stubborn.',
+    'Zero players. Every skill is still up for grabs.',
+    'No one is here. The ore is not going to mine itself.'
+  ];
 
   function plural(n, one, many) { return n === 1 ? one : many; }
 
@@ -325,6 +343,7 @@
     var age = Date.now() - Date.parse(d && d.generatedAt);
     list.textContent = '';
     more.hidden = true;
+    flavor.hidden = true;
     box.hidden = false;
     if (!(age > -SKEW_MS && age < STALE_MS)) {
       count.textContent = '0';
@@ -334,8 +353,12 @@
     }
     var n = (d.players && d.players.count) || 0;
     var names = (d.players && d.players.names) || [];
-    count.textContent = n;
-    word.textContent = n === 0 ? 'playing' : plural(n, 'person playing', 'people playing');
+    count.textContent = n === 0 ? 'No one' : n;
+    word.textContent = n === 0 ? 'online' : plural(n, 'person playing', 'people playing');
+    if (n === 0) {
+      flavor.textContent = GHOST_LINES[new Date().getHours() % GHOST_LINES.length];
+      flavor.hidden = false;
+    }
     names.slice(0, SHOW_MAX).forEach(function (name) {
       var li = document.createElement('li');
       li.textContent = name;
@@ -345,7 +368,6 @@
     if (hiddenCount > 0) { more.textContent = 'and ' + hiddenCount + ' more'; more.hidden = false; }
     var up = uptimeText(d.shard && d.shard.uptimeSeconds);
     var parts = [];
-    if (n === 0) parts.push('No one is on right now.');
     if (up) parts.push(up + '.');
     sub.textContent = parts.join(' ');
   }

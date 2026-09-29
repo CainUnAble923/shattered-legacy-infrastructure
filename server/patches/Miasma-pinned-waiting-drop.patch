@@ -1,0 +1,21 @@
+--- a/Projects/UOContent/Mobiles/Monsters/ML/Labyrinth/Miasma.cs
++++ b/Projects/UOContent/Mobiles/Monsters/ML/Labyrinth/Miasma.cs
+@@ -41,8 +41,8 @@
+             Karma = -21000;
+         }
+ 
+-        /*
+-        // TODO: uncomment once added
++        // Shattered Legacy (P7): pinned's own drop, left waiting on the Myrmidon/Paladin/Leafweave/Death/Greymist/
++        // Assassin/Hunter set pieces. Ours now declare all sixteen. See shard-migration/notes/cc-P7-pinned-waiting-drops.md.
+         public override void OnDeath( Container c )
+         {
+           base.OnDeath( c );
+@@ -70,7 +70,6 @@
+             }
+           }
+         }
+-        */
+ 
+         public override string CorpseName => "a Miasma corpse";
+         public override string DefaultName => "Miasma";

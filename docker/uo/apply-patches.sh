@@ -302,6 +302,22 @@ apply_patch "$PATCHES/Beverage-chicken-lizard-egg-pour.patch"
 # A.1.1; pinned by ArmourSetCompletionVerification (proved red).
 apply_patch "$PATCHES/Virtue-stock-pieces-set-carrier.patch"
 
+# P7. Pinned wrote these two OnDeath drops and left them commented under "TODO: uncomment once added", waiting on
+# armour-set types it never shipped and we now declare. Each patch removes the comment markers and nothing else, except
+# that Lady Lissith's LissithsSilk and ParrotItem rolls stay commented: neither type exists in pinned or ours. Pinned's
+# other waiting drops (Ilhenir, the Valley champion, Scrapper's Compendium) are deliberately not patched: none reaches
+# a player. Argued in shard-migration/notes/cc-P7-pinned-waiting-drops.md; pinned by PinnedWaitingDropsVerification.
+apply_patch "$PATCHES/Miasma-pinned-waiting-drop.patch"
+apply_patch "$PATCHES/LadyLissith-pinned-waiting-drop.patch"
+
+# P8. Chase approved patching pinned's stock loot tables to match ServUO (2026-09-29). HatTypes gains ServUO's OrcMask
+# and TribalMask; the stealable table gains ServUO's 58 entries for the 55 types of ours it names, APPENDED because the
+# persistence file maps saved slots to entries by index and the live world holds 80. Treasure chests (gate 3) are not
+# here: pinned has none of the lists they were costed as. Argued in shard-migration/notes/cc-P8-loot-tables-and-d35.md;
+# pinned by P8LootTablesVerification.
+apply_patch "$PATCHES/Loot-hat-types-orc-tribal-mask.patch"
+apply_patch "$PATCHES/StealableArtifacts-servuo-entries.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

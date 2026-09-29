@@ -1,0 +1,31 @@
+--- "a/Projects/UOContent/Mobiles/Monsters/ML/Twisted Weald/LadyLissith.cs"
++++ "b/Projects/UOContent/Mobiles/Monsters/ML/Twisted Weald/LadyLissith.cs"
+@@ -43,8 +43,8 @@
+         public override string CorpseName => "a Lady Lissith corpse";
+         public override string DefaultName => "Lady Lissith";
+ 
+-        /*
+-        // TODO: uncomment once added
++        // Shattered Legacy (P7): pinned's own drop, left waiting on GreymistChest, which ours now declares. LissithsSilk
++        // and ParrotItem exist in neither tree, so their rolls stay commented. See shard-migration/notes/cc-P7-pinned-waiting-drops.md.
+         public override void OnDeath( Container c )
+         {
+           base.OnDeath( c );
+@@ -52,13 +52,12 @@
+           if (Utility.RandomDouble() < 0.025)
+             c.DropItem( new GreymistChest() );
+     
+-          if (Utility.RandomDouble() < 0.45)
+-            c.DropItem( new LissithsSilk() );
++          // if (Utility.RandomDouble() < 0.45)
++          //   c.DropItem( new LissithsSilk() );
+     
+-          if (Utility.RandomDouble() < 0.1)
+-            c.DropItem( new ParrotItem() );
++          // if (Utility.RandomDouble() < 0.1)
++          //   c.DropItem( new ParrotItem() );
+         }
+-        */
+ 
+         public override bool GivesMLMinorArtifact => true;
+ 
