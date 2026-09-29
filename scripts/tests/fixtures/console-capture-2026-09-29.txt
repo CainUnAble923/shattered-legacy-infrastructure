@@ -1,0 +1,963 @@
+##### SHARD-CONSOLE-CAPTURE meta #####
+captured-at 2026-09-29T16:22:07Z
+source docker
+##### SHARD-CONSOLE-CAPTURE inspect sl-modernuo-test #####
+[
+    {
+        "Id": "a851ed9914e3f27313feab178135c58ab4a377b53eec24cede7597b0be7e9934",
+        "Created": "2026-09-28T00:05:56.000942688Z",
+        "Path": "/entrypoint.sh",
+        "Args": [],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 255,
+            "Error": "",
+            "StartedAt": "2026-09-28T00:05:56.682404938Z",
+            "FinishedAt": "2026-09-28T19:06:56.487626724Z"
+        },
+        "Image": "sha256:2e7dcae65e54852cbb07ee1dd45779d5362c327b97f5e7c3b139026b11eb24db",
+        "ResolvConfPath": "/var/lib/docker/containers/a851ed9914e3f27313feab178135c58ab4a377b53eec24cede7597b0be7e9934/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/a851ed9914e3f27313feab178135c58ab4a377b53eec24cede7597b0be7e9934/hostname",
+        "HostsPath": "/var/lib/docker/containers/a851ed9914e3f27313feab178135c58ab4a377b53eec24cede7597b0be7e9934/hosts",
+        "LogPath": "/var/lib/docker/containers/a851ed9914e3f27313feab178135c58ab4a377b53eec24cede7597b0be7e9934/a851ed9914e3f27313feab178135c58ab4a377b53eec24cede7597b0be7e9934-json.log",
+        "Name": "/sl-modernuo-test",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "D:/ShatteredLegacy/server/customizations:/modernuo-projects:ro",
+                "D:/ShatteredLegacy/server/uo/modernuo/Configuration-test:/modernuo/Configuration:rw",
+                "D:/ShatteredLegacy/server/lib/uo/modernuo/Saves-test:/var/lib/uo/modernuo/Saves:rw",
+                "D:/ShatteredLegacy/client-data/classic-client:/var/lib/uo/client-data/classic-client:ro"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "sl-uo-test_default",
+            "PortBindings": {
+                "2594/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "2594"
+                    }
+                ],
+                "2594/udp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "2594"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": [
+                "seccomp:unconfined"
+            ],
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/lib/uo/modernuo/Saves-test",
+                "Destination": "/var/lib/uo/modernuo/Saves",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/customizations",
+                "Destination": "/modernuo-projects",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/uo/modernuo/Configuration-test",
+                "Destination": "/modernuo/Configuration",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/client-data/classic-client",
+                "Destination": "/var/lib/uo/client-data/classic-client",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "a851ed9914e3",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "ExposedPorts": {
+                "2593/tcp": {},
+                "2594/tcp": {},
+                "2594/udp": {}
+            },
+            "Tty": true,
+            "OpenStdin": true,
+            "StdinOnce": false,
+            "Env": [
+                "TZ=America/Chicago",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/dotnet",
+                "DOTNET_ROOT=/usr/local/dotnet",
+                "DOTNET_RUNNING_IN_CONTAINER=true",
+                "DOTNET_EnableDiagnostics=0"
+            ],
+            "Cmd": null,
+            "Image": "sl-modernuo:latest",
+            "Volumes": null,
+            "WorkingDir": "/modernuo",
+            "Entrypoint": [
+                "/entrypoint.sh"
+            ],
+            "Labels": {
+                "com.docker.compose.config-hash": "8e1e9d4a451c1b10b52ae99c452c61f976cd94bfea604b11b20b64086eb584ce",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:2e7dcae65e54852cbb07ee1dd45779d5362c327b97f5e7c3b139026b11eb24db",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "sl-uo-test",
+                "com.docker.compose.project.config_files": "D:\\ShatteredLegacy\\docker\\uo\\docker-compose.test.yml",
+                "com.docker.compose.project.working_dir": "D:\\ShatteredLegacy\\docker\\uo",
+                "com.docker.compose.replace": "sl-modernuo-test",
+                "com.docker.compose.service": "modernuo-test",
+                "com.docker.compose.version": "5.1.3"
+            },
+            "StopTimeout": 1
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "sl-uo-test_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "sl-modernuo-test",
+                        "modernuo-test"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "9154b1964da4580fa3a7e9a9c7ec6c95e081d381eac11e2f74f86cc1009e25d6",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "sl-modernuo-test",
+                        "modernuo-test",
+                        "a851ed9914e3"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:22835a3d028831753eb6e87051b63341feb9710e8322ec59b8f0a4e6469eb0f0",
+            "size": 2191,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    }
+]
+##### SHARD-CONSOLE-CAPTURE logs sl-modernuo-test #####
+[SL] Starting Shattered Legacy ModernUO...
+[?1h=[SL] Commit: 7c9215d97  .NET: 10.0.203
+[SL] Syncing Projects from bind mount...
+[?1h=[39;49m[32mModernUO - [https://github.com/modernuo/modernuo] Version 0.15.6.52
+[39;49m[39;49m[30mCopyright 2019-2026 ModernUO Development Team
+This program comes with ABSOLUTELY NO WARRANTY;
+This is free software, and you are welcome to redistribute it under certain conditions.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+[39;49m[39;49m[30m[[39;49m[39;49m[37m19:06:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mReading server configuration from [39;49m[39;49m[36mConfiguration/modernuo.json[39;49m[39;49m[37m...[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.ServerConfiguration[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mReading server configuration [39;49m[39;49m[36mdone[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.ServerConfiguration[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mRunning on [39;49m[39;49m[36m.NET 10.0.7[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Core[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading Map Definitions[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.MapLoader[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading map definitions [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m7[39;49m[39;49m[37m maps, [39;49m[39;49m[35m0[39;49m[39;49m[37m failures) ([39;49m[39;49m[35m0.05[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.MapLoader[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mEmail configuration read from [39;49m[39;49m[36mConfiguration/email-settings.json[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Configurations.EmailConfiguration[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mAutomatically detected client version [39;49m[39;49m[36m7.0.114.40[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.UOClient[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mEncryption support enabled: [39;49m[39;49m[32mBoth[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.EncryptionManager[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[33mWRN[39;49m[39;49m[30m] [39;49m[39;49m[37mCommand [39;49m[39;49m[36mstats[39;49m[39;49m[37m already registered to [39;49m[39;49m[36mStats_OnCommand[39;49m[39;49m[37m.[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.CommandSystem[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading maps[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.TileMatrixLoader[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading maps [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.00[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.TileMatrixLoader[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading regions[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.RegionJsonSerializer[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading regions [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m371[39;49m[39;49m[37m regions) ([39;49m[39;49m[35m0.09[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.RegionJsonSerializer[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading world[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[ClusterFLumberjackingExtension] Extended lumber veins registered: 8 new wood types (Ironwood through Starwood).
+[ClusterFMiningExtension] Extended mining veins registered: 8 new ore types (Platinum through Celestial). Veins are permanent (RandomizeVeins=false).
+ClusterF south mine decor complete: placed 0, skipped 2.
+ClusterF New Haven seed complete: created 0, repaired 2, skipped 38, deleted 0.
+ClusterF stat caps applied to 4 loaded player(s): 500 per stat, 1500 total.
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading world [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m707[39;49m[39;49m[37m items, [39;49m[39;49m[35m95[39;49m[39;49m[37m mobiles) ([39;49m[39;49m[35m0.20[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mRestricting client version to [39;49m[39;49m[36m7.0.114.40 or newer[39;49m[39;49m[37m. Action to be taken: [39;49m[39;49m[32mKick[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Misc.ClientVerification[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mServer listing address set from config: [39;49m[39;49m[36m192.168.1.58[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Misc.ServerList[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mFeature Flag system initialized with [39;49m[39;49m[35m0[39;49m[39;49m[37m flags, [39;49m[39;49m[35m0[39;49m[39;49m[37m gump blocks, [39;49m[39;49m[35m0[39;49m[39;49m[37m item blocks, [39;49m[39;49m[35m0[39;49m[39;49m[37m skill blocks, [39;49m[39;49m[35m0[39;49m[39;49m[37m spell blocks[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Systems.FeatureFlags.FeatureFlagManager[39;49m[39;49m[30m>[39;49m
+ClusterF skill gain enabled: 3 chance attempt(s), 5x gain amount.
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mListening: [39;49m[39;49m[36m127.0.0.1:2594[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.NetState[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mListening: [39;49m[39;49m[36m172.27.0.2:2594[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.NetState[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mListening: [39;49m[39;49m[36m127.0.0.1[39;49m[39;49m[37m:[39;49m[39;49m[35m12000[39;49m[ClusterFLumberjackingExtension] Carpentry sub-resources registered: Ironwood through Starwood.
+[39;49m[37m (Pings)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.PingServer[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:06:01[ClusterFLumberjackingExtension] Fletching sub-resources registered: Ironwood through Starwood.
+[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mListening: [39;49m[39;49m[36m172.27.0.2[39;49m[39;49m[37m:[39;49m[39;49m[35m12000[39;49m[39;49m[37m (Pings)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.PingServer[39;49m[39;49m[30m>[39;49m
+[ClusterFMiningExtension] Blacksmithy sub-resources registered: Platinum through Celestial.
+[39;49m[30m[[39;49m[39;49m[37m19:06:03[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mCleanup: Detected [39;49m[39;49m[35m1[39;49m[39;49m[37m inaccessible items, including [39;49m[39;49m[35m1[39;49m[39;49m[37m bank boxes, removing..[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Misc.Cleanup[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:10:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:10:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.02[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:10:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:10:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mCreated backup at [39;49m[39;49m[36m/var/lib/uo/modernuo/Backups/Automatic/2026-09-28-00-10-00[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Saves.AutoArchive[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:10:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.34[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:15:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:15:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.01[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:15:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:15:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mCreated backup at [39;49m[39;49m[36m/var/lib/uo/modernuo/Backups/Automatic/2026-09-28-00-15-00[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Saves.AutoArchive[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:15:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.44[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:20:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:20:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:20:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.00[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:20:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mCreated backup at [39;49m[39;49m[36m/var/lib/uo/modernuo/Backups/Automatic/2026-09-28-00-20-00[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Saves.AutoArchive[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m19:20:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.33[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+##### SHARD-CONSOLE-CAPTURE inspect sl-modernuo #####
+[
+    {
+        "Id": "94b40e56d9ceabd7d4a07aa1a0e44517622247cc919ec216f58d35ed05f214c1",
+        "Created": "2026-06-29T17:34:07.786444552Z",
+        "Path": "/entrypoint.sh",
+        "Args": [],
+        "State": {
+            "Status": "running",
+            "Running": true,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 918,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-09-28T19:07:18.140058115Z",
+            "FinishedAt": "2026-09-28T19:06:56.487606213Z"
+        },
+        "Image": "sha256:36cc709a82a67a1bc233e6aa0ce44a1f3991d6277c05f0e6fe18663b524e8dc4",
+        "ResolvConfPath": "/var/lib/docker/containers/94b40e56d9ceabd7d4a07aa1a0e44517622247cc919ec216f58d35ed05f214c1/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/94b40e56d9ceabd7d4a07aa1a0e44517622247cc919ec216f58d35ed05f214c1/hostname",
+        "HostsPath": "/var/lib/docker/containers/94b40e56d9ceabd7d4a07aa1a0e44517622247cc919ec216f58d35ed05f214c1/hosts",
+        "LogPath": "/var/lib/docker/containers/94b40e56d9ceabd7d4a07aa1a0e44517622247cc919ec216f58d35ed05f214c1/94b40e56d9ceabd7d4a07aa1a0e44517622247cc919ec216f58d35ed05f214c1-json.log",
+        "Name": "/sl-modernuo",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "D:/ShatteredLegacy/client-data/classic-client:/var/lib/uo/client-data/classic-client:ro",
+                "D:/ShatteredLegacy/server/uo/modernuo/Projects/UOContent/Misc:/modernuo-projects:rw",
+                "D:/ShatteredLegacy/server/uo/modernuo/Configuration:/modernuo/Configuration:rw",
+                "D:/ShatteredLegacy/server/lib/uo/modernuo/Saves:/var/lib/uo/modernuo/Saves:rw",
+                "D:/ShatteredLegacy/server/lib/uo/modernuo/Backups:/var/lib/uo/modernuo/Backups:rw",
+                "D:/ShatteredLegacy/server/lib/uo/modernuo/Archives:/var/lib/uo/modernuo/Archives:rw"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "uo_default",
+            "PortBindings": {
+                "2593/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "2593"
+                    }
+                ],
+                "2593/udp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "2593"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "unless-stopped",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": [
+                "seccomp:unconfined"
+            ],
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/uo/modernuo/Projects/UOContent/Misc",
+                "Destination": "/modernuo-projects",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/uo/modernuo/Configuration",
+                "Destination": "/modernuo/Configuration",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/client-data/classic-client",
+                "Destination": "/var/lib/uo/client-data/classic-client",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/lib/uo/modernuo/Archives",
+                "Destination": "/var/lib/uo/modernuo/Archives",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/lib/uo/modernuo/Backups",
+                "Destination": "/var/lib/uo/modernuo/Backups",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/lib/uo/modernuo/Saves",
+                "Destination": "/var/lib/uo/modernuo/Saves",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "94b40e56d9ce",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "ExposedPorts": {
+                "2593/tcp": {},
+                "2593/udp": {}
+            },
+            "Tty": true,
+            "OpenStdin": true,
+            "StdinOnce": false,
+            "Env": [
+                "TZ=America/Chicago",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/dotnet",
+                "DOTNET_ROOT=/usr/local/dotnet",
+                "DOTNET_RUNNING_IN_CONTAINER=true",
+                "DOTNET_EnableDiagnostics=0"
+            ],
+            "Cmd": null,
+            "Image": "uo-modernuo",
+            "Volumes": null,
+            "WorkingDir": "/modernuo",
+            "Entrypoint": [
+                "/entrypoint.sh"
+            ],
+            "Labels": {
+                "com.docker.compose.config-hash": "e9c28f9570bffac87cb00364328ccf88db977c444470b3201e33565e2f22c783",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:36cc709a82a67a1bc233e6aa0ce44a1f3991d6277c05f0e6fe18663b524e8dc4",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "uo",
+                "com.docker.compose.project.config_files": "D:\\ShatteredLegacy\\docker\\uo\\docker-compose.yml",
+                "com.docker.compose.project.working_dir": "D:\\ShatteredLegacy\\docker\\uo",
+                "com.docker.compose.replace": "sl-modernuo",
+                "com.docker.compose.service": "modernuo",
+                "com.docker.compose.version": "5.1.3"
+            },
+            "StopTimeout": 1
+        },
+        "NetworkSettings": {
+            "SandboxID": "fe166441f542ef5c9eef1f638e96b17d30eadcda5a6692579f36bf7f23395b6f",
+            "SandboxKey": "/var/run/docker/netns/fe166441f542",
+            "Ports": {
+                "2593/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "2593"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "2593"
+                    }
+                ],
+                "2593/udp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "2593"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "2593"
+                    }
+                ]
+            },
+            "Networks": {
+                "uo_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "sl-modernuo",
+                        "modernuo"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "120bf73a9a9cb3074974e9415d553c96339de4c922bb6ab29745cb39b461cccc",
+                    "EndpointID": "b82f52ba6fcc739b0e976826639938c83d53186f6ed4de89bb2a1db8ffe4d0b4",
+                    "Gateway": "172.19.0.1",
+                    "IPAddress": "172.19.0.3",
+                    "MacAddress": "4a:ef:ce:25:06:8a",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "sl-modernuo",
+                        "modernuo",
+                        "94b40e56d9ce"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:1fa50474de33af146e6ed9ff64b36d4c6c6fff908b5104ab0ba5a71cd57f37c5",
+            "size": 2191,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    }
+]
+##### SHARD-CONSOLE-CAPTURE logs sl-modernuo #####
+[SL] Starting Shattered Legacy ModernUO...
+[?1h=[SL] Commit: 7c9215d97  .NET: 10.0.203
+[SL] Syncing Projects from bind mount...
+[?1h=[39;49m[32mModernUO - [https://github.com/modernuo/modernuo] Version 0.15.6.52
+[39;49m[39;49m[30mCopyright 2019-2026 ModernUO Development Team
+This program comes with ABSOLUTELY NO WARRANTY;
+This is free software, and you are welcome to redistribute it under certain conditions.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+[39;49m[39;49m[30m[[39;49m[39;49m[37m14:07:56[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mReading server configuration from [39;49m[39;49m[36mConfiguration/modernuo.json[39;49m[39;49m[37m...[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.ServerConfiguration[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:07:57[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mReading server configuration [39;49m[39;49m[36mdone[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.ServerConfiguration[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:07:57[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mRunning on [39;49m[39;49m[36m.NET 10.0.7[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Core[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:07:59[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading Map Definitions[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.MapLoader[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:07:59[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading map definitions [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m7[39;49m[39;49m[37m maps, [39;49m[39;49m[35m0[39;49m[39;49m[37m failures) ([39;49m[39;49m[35m0.02[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.MapLoader[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:01[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mEmail configuration read from [39;49m[39;49m[36mConfiguration/email-settings.json[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Configurations.EmailConfiguration[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:02[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mAutomatically detected client version [39;49m[39;49m[36m7.0.114.40[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.UOClient[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:02[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mEncryption support enabled: [39;49m[39;49m[32mBoth[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.EncryptionManager[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:03[39;49m[39;49m[30m [39;49m[39;49m[33mWRN[39;49m[39;49m[30m] [39;49m[39;49m[37mCommand [39;49m[39;49m[36mstats[39;49m[39;49m[37m already registered to [39;49m[39;49m[36mStats_OnCommand[39;49m[39;49m[37m.[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.CommandSystem[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:03[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading maps[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.TileMatrixLoader[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:03[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading maps [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.00[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.TileMatrixLoader[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:03[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading regions[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.RegionJsonSerializer[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:03[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading regions [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m371[39;49m[39;49m[37m regions) ([39;49m[39;49m[35m0.36[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.RegionJsonSerializer[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:03[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading world[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[ClusterFLumberjackingExtension] Extended lumber veins registered: 8 new wood types (Ironwood through Starwood).
+[ClusterFMiningExtension] Extended mining veins registered: 8 new ore types (Platinum through Celestial). Veins are permanent (RandomizeVeins=false).
+ClusterF New Haven seed complete: created 0, repaired 0, skipped 40, deleted 0.
+[ClusterFRangersSystem] Re-applied skill mods for 2 Outriders Crook(s).
+ClusterF south mine decor complete: placed 0, skipped 2.
+ClusterF stat caps applied to 6 loaded player(s): 500 per stat, 1500 total.
+[39;49m[30m[[39;49m[39;49m[37m14:08:06[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading world [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m192047[39;49m[39;49m[37m items, [39;49m[39;49m[35m34965[39;49m[39;49m[37m mobiles) ([39;49m[39;49m[35m3.01[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:06[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mServer listing address set from config: [39;49m[39;49m[36m192.168.1.58[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Misc.ServerList[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:06[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mRestricting client version to [39;49m[39;49m[36m7.0.114.40 or newer[39;49m[39;49m[37m. Action to be taken: [39;49m[39;49m[32mKick[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Misc.ClientVerification[39;49m[39;49m[30m>[39;49m
+ClusterF UltimaLive disabled. Set clusterf.ultimaLive.enabled=true to enable.
+[39;49m[30m[[39;49m[39;49m[37m14:08:07[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mFeature Flag system initialized with [39;49m[39;49m[35m0[39;49m[39;49m[37m flags, [39;49m[39;49m[35m0[39;49m[39;49m[37m gump blocks, [39;49m[39;49m[35m0[39;49m[39;49m[37m item blocks, [39;49m[39;49m[35m0[39;49m[39;49m[37m skill blocks, [39;49m[39;49m[35m0[39;49m[39;49m[37m spell blocks[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Systems.FeatureFlags.FeatureFlagManager[39;49m[39;49m[30m>[39;49m
+ClusterF skill gain enabled: 3 chance attempt(s), 5x gain amount.
+[39;49m[30m[[39;49m[39;49m[37m14:08:07[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mListening: [39;49m[39;49m[36m127.0.0.1:2593[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.NetState[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:07[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mListening: [39;49m[39;49m[36m172.19.0.3:2593[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.NetState[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:07[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mListening: [39;49m[39;49m[36m127.0.0.1[39;49m[39;49m[37m:[39;49m[39;49m[35m12000[39;49m[39;49m[37m (Pings)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.PingServer[39;49m[39;49m[30m>[39;49m
+[ClusterFLumberjackingExtension] Carpentry sub-resources registered: Ironwood through Starwood.
+[39;49m[30m[[39;49m[39;49m[37m14:08:07[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[ClusterFLumberjackingExtension] Fletching sub-resources registered: Ironwood through Starwood.
+[39;49m[37mListening: [39;49m[39;49m[36m172.19.0.3[39;49m[39;49m[37m:[39;49m[39;49m[35m12000[39;49m[39;49m[37m (Pings)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.PingServer[39;49m[39;49m[30m>[39;49m
+[ClusterFMiningExtension] Blacksmithy sub-resources registered: Platinum through Celestial.
+[39;49m[30m[[39;49m[39;49m[37m14:08:10[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mCreated archive at [39;49m[39;49m[36m/var/lib/uo/modernuo/Archives/Hourly/2026-09-28-15.tar.zst[39;49m[39;49m[37m ([39;49m[39;49m[35m210[39;49m[39;49m[37m entries, [39;49m[39;49m[35m323.1[39;49m[39;49m[37m MB)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Compression.ManagedArchive[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:11[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mCreated [39;49m[39;49m[36mhourly[39;49m[39;49m[37m archive at [39;49m[39;49m[36m/var/lib/uo/modernuo/Archives/Hourly/2026-09-28-15.tar.zst[39;49m[39;49m[37m ([39;49m[39;49m[35m210[39;49m[39;49m[37m entries, [39;49m[39;49m[35m45.5[39;49m[39;49m[37m MB, [39;49m[39;49m[35m7.75[39;49m[39;49m[37ms)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Saves.AutoArchive[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:08:11[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mPruning [39;49m[39;49m[36mhourly[39;49m[39;49m[37m archive [39;49m[39;49m[36m2026-09-27-15.tar.zst[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Saves.AutoArchive[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:10:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:10:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.07[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:10:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:10:32[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mCreated backup at [39;49m[39;49m[36m/var/lib/uo/modernuo/Backups/Automatic/2026-09-28-19-10-31[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Saves.AutoArchive[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:10:32[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m32.16[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:15:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:15:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.04[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:15:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:15:17[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mCreated backup at [39;49m[39;49m[36m/var/lib/uo/modernuo/Backups/Automatic/2026-09-28-19-15-17[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Saves.AutoArchive[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:15:18[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m17.72[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:20:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:20:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mSaving world [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m0.02[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:20:00[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:20:03[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mCreated backup at [39;49m[39;49m[36m/var/lib/uo/modernuo/Backups/Automatic/2026-09-28-19-20-03[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Saves.AutoArchive[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m14:20:03[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mWriting world save snapshot [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m3.54[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.World[39;49m[39;49m[30m>[39;49m
+##### SHARD-CONSOLE-CAPTURE image sl-modernuo:latest #####
+[
+    {
+        "Id": "sha256:8304d4a24fd2b6bcfe37496d1a3cb85a97b14a1cff7b069b97ed5fc2d165c712",
+        "RepoTags": [
+            "sl-modernuo:latest"
+        ],
+        "RepoDigests": [
+            "sl-modernuo@sha256:8304d4a24fd2b6bcfe37496d1a3cb85a97b14a1cff7b069b97ed5fc2d165c712"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-09-29T11:53:29.957900586Z",
+        "Config": {
+            "ExposedPorts": {
+                "2593/tcp": {}
+            },
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/dotnet",
+                "DOTNET_ROOT=/usr/local/dotnet",
+                "DOTNET_RUNNING_IN_CONTAINER=true",
+                "DOTNET_EnableDiagnostics=0"
+            ],
+            "Entrypoint": [
+                "/entrypoint.sh"
+            ],
+            "WorkingDir": "/modernuo"
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 338756736,
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:34467cc93912af891dfee8a3902adf9b4f355a9bca4eaa46f658d1181a21de0d",
+                "sha256:f21dd2e82d113c1d10f663a7a129d17e6c4ed47b172f90bbd6eeaa1448ca00ec",
+                "sha256:3cce576906b2e8c3153e73c9374467a296fee8ecdb21625005de05cc603bcf13",
+                "sha256:ef75661d05d6cdbf79442f9fabcafadc3bea4a63a9609c4abd83730f78730b0c",
+                "sha256:7d142c0ad07b55cebdf374dd0021169ac10ad5d6c014775be9888bad57bf51cb",
+                "sha256:36bd75f3a34eda54dd988d7e5d8e216d7e22cb528cb15941c50b74b4cc3a532b",
+                "sha256:e49adfaccc5fe1601a1caef001978de03b396fb7fc2a1b48848596e4c6e397e0",
+                "sha256:654c2655102cbf21a101696e9635e1bdc9c8ef956a47158a84a27642ad4a96b2",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-09-29T11:53:32.825779703Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:8304d4a24fd2b6bcfe37496d1a3cb85a97b14a1cff7b069b97ed5fc2d165c712",
+            "size": 856
+        },
+        "Identity": {
+            "Build": [
+                {
+                    "Ref": "u4kr5py1xnityxyluxagqvcra",
+                    "CreatedAt": "2026-09-29T11:53:33.456651816Z"
+                }
+            ]
+        }
+    }
+]
+##### SHARD-CONSOLE-CAPTURE image sha256:2e7dcae65e54852cbb07ee1dd45779d5362c327b97f5e7c3b139026b11eb24db #####
+[]
+
+Error response from daemon: No such image: sha256:2e7dcae65e54852cbb07ee1dd45779d5362c327b97f5e7c3b139026b11eb24db
+##### SHARD-CONSOLE-CAPTURE image uo-modernuo #####
+[
+    {
+        "Id": "sha256:bc04a35bf344c49b3f7599703b9c135d63730e2e4784b4356ee85b4e9a4df2ef",
+        "RepoTags": [
+            "uo-modernuo:latest"
+        ],
+        "RepoDigests": [
+            "uo-modernuo@sha256:bc04a35bf344c49b3f7599703b9c135d63730e2e4784b4356ee85b4e9a4df2ef"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-09-06T15:45:14.294264095Z",
+        "Config": {
+            "ExposedPorts": {
+                "2593/tcp": {}
+            },
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/dotnet",
+                "DOTNET_ROOT=/usr/local/dotnet",
+                "DOTNET_RUNNING_IN_CONTAINER=true",
+                "DOTNET_EnableDiagnostics=0"
+            ],
+            "Entrypoint": [
+                "/entrypoint.sh"
+            ],
+            "WorkingDir": "/modernuo",
+            "Labels": {
+                "com.docker.compose.project": "uo",
+                "com.docker.compose.service": "modernuo",
+                "com.docker.compose.version": "5.1.3"
+            }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 338305634,
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:1d69a5fd31932841d7825ef4780c06f008eea65aaa9f3110fe09d5832ed5c7d8",
+                "sha256:2b9d962d0af36c4f55234ba12203a393016eb5a07cb098de116c85b464b9b4f6",
+                "sha256:65690391ce230a1dc21047f561a1290b90ebbb1757f62afa4937a926604f7135",
+                "sha256:52944bcaf91c92705338a4576c5f3562009caf0ea677e8e3aa9ec8f50c44569e",
+                "sha256:ebb2595f5f8a4acd4a0f021be663337377161b17201724ee2b31a518ff9f60c6",
+                "sha256:8918cecbb2c8a19b929c729800b3e42e74c53ea9f12e737d156492454780d3b5",
+                "sha256:5232eed4d7c33b2a9fb6655dc959f88283c415acc552bf1ce2c6543efdfb6dea",
+                "sha256:6b37cde9e306dda77048a87b2f0e9c0b8fe3e6dd717770f83b276e1d10185ccd",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-09-06T15:45:30.202642017Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:bc04a35bf344c49b3f7599703b9c135d63730e2e4784b4356ee85b4e9a4df2ef",
+            "size": 856
+        },
+        "Identity": {
+            "Build": [
+                {
+                    "Ref": "srz5mnnd6q4fxp25wutg6waw4",
+                    "CreatedAt": "2026-09-06T15:45:34.216295232Z"
+                }
+            ]
+        }
+    }
+]
+##### SHARD-CONSOLE-CAPTURE image sha256:36cc709a82a67a1bc233e6aa0ce44a1f3991d6277c05f0e6fe18663b524e8dc4 #####
+[]
+
+Error response from daemon: No such image: sha256:36cc709a82a67a1bc233e6aa0ce44a1f3991d6277c05f0e6fe18663b524e8dc4
+##### SHARD-CONSOLE-CAPTURE saves test #####
+2026-09-28T15:45:01Z|7893|SerializedTypes.db
+2026-09-28T15:45:01Z|709|Accounts\Accounts.bin
+2026-09-28T15:45:01Z|140|Accounts\Accounts.idx
+2026-09-28T15:45:01Z|0|BOBEntries\BOBEntries.bin
+2026-09-28T15:45:01Z|8|BOBEntries\BOBEntries.idx
+2026-09-28T15:45:01Z|2|ChampionTitles\ChampionTitles.bin
+2026-09-28T15:45:01Z|1|Disguises\Disguises.bin
+2026-09-28T15:45:01Z|0|Ethics\Ethics.bin
+2026-09-28T15:45:01Z|8|Ethics\Ethics.idx
+2026-09-28T15:45:01Z|425|Factions\Factions.bin
+2026-09-28T15:45:01Z|0|Guilds\Guilds.bin
+2026-09-28T15:45:01Z|8|Guilds\Guilds.idx
+2026-09-28T15:45:01Z|691161|Items\Items.bin
+2026-09-28T15:45:01Z|23900|Items\Items.idx
+2026-09-28T15:45:01Z|2|Jail\Jail.bin
+2026-09-28T15:45:00Z|55133|Mobiles\Mobiles.bin
+2026-09-28T15:45:00Z|3176|Mobiles\Mobiles.idx
+2026-09-28T15:45:01Z|2|PlayerMurders\PlayerMurders.bin
+2026-09-28T15:45:01Z|2|StealableArtifacts\StealableArtifacts.bin
+2026-09-28T15:45:01Z|2|Virtues\Virtues.bin
+2026-09-28T15:45:01Z|2|WeakEntityCollection\WeakEntityCollection.bin
+##### SHARD-CONSOLE-CAPTURE snapshots test #####
+##### SHARD-CONSOLE-CAPTURE asides test #####
+##### SHARD-CONSOLE-CAPTURE saves live #####
+2026-09-29T16:20:01Z|52985|SerializedTypes.db
+2026-09-29T16:20:01Z|1631|Accounts\Accounts.bin
+2026-09-29T16:20:01Z|305|Accounts\Accounts.idx
+2026-09-29T16:20:01Z|84|BOBEntries\BOBEntries.bin
+2026-09-29T16:20:01Z|107|BOBEntries\BOBEntries.idx
+2026-09-29T16:20:01Z|2|ChampionTitles\ChampionTitles.bin
+2026-09-29T16:20:01Z|1|Disguises\Disguises.bin
+2026-09-29T16:20:01Z|0|Ethics\Ethics.bin
+2026-09-29T16:20:01Z|8|Ethics\Ethics.idx
+2026-09-29T16:20:01Z|425|Factions\Factions.bin
+2026-09-29T16:20:01Z|0|Guilds\Guilds.bin
+2026-09-29T16:20:01Z|8|Guilds\Guilds.idx
+2026-09-29T16:20:00Z|8689944|Items\Items.bin
+2026-09-29T16:20:00Z|6337064|Items\Items.idx
+2026-09-29T16:20:01Z|2|Jail\Jail.bin
+2026-09-29T16:20:00Z|17901935|Mobiles\Mobiles.bin
+2026-09-29T16:20:00Z|1153952|Mobiles\Mobiles.idx
+2026-09-29T16:20:01Z|2|PlayerMurders\PlayerMurders.bin
+2026-09-29T16:20:01Z|963|StealableArtifacts\StealableArtifacts.bin
+2026-09-29T16:20:01Z|2|Virtues\Virtues.bin
+##### SHARD-CONSOLE-CAPTURE snapshots live #####
+##### SHARD-CONSOLE-CAPTURE asides live #####
+##### SHARD-CONSOLE-CAPTURE compose live #####
+services:
+  modernuo:
+    build:
+      context: ../..
+      dockerfile: docker/uo/Dockerfile
+      args:
+        DOTNET_VERSION: "10.0.203"
+        MODERNUO_COMMIT: "7c9215d97"
+    container_name: sl-modernuo
+    restart: unless-stopped
+    ports:
+      - "2593:2593"
+      - "2593:2593/udp"
+    volumes:
+      # Canonical custom scripts, synced into the container on each start
+      - ${SERVER_PATH}/customizations:/modernuo-projects:ro
+      # Server configuration (modernuo.json, etc.)
+      - ${SERVER_PATH}/uo/modernuo/Configuration:/modernuo/Configuration
+      # World saves
+      - ${SERVER_PATH}/lib/uo/modernuo/Saves:/var/lib/uo/modernuo/Saves
+      # Backups & archives written by ModernUO
+      - ${SERVER_PATH}/lib/uo/modernuo/Backups:/var/lib/uo/modernuo/Backups
+      - ${SERVER_PATH}/lib/uo/modernuo/Archives:/var/lib/uo/modernuo/Archives
+      # UO client data (maps, art, tiledata, etc.)
+      - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
+    environment:
+      TZ: ${TZ:-America/Chicago}
+    stdin_open: true   # allows: docker attach sl-modernuo
+    tty: true
+    security_opt:
+      - seccomp:unconfined   # io_uring requires relaxed seccomp (WSL2/Docker Desktop)
+
+  ddns-updater:
+    image: qmcgaw/ddns-updater:latest
+    container_name: sl-ddns
+    restart: unless-stopped
+    volumes:
+      - ddns_data:/updater/data
+    environment:
+      CONFIG: |
+        {
+          "settings": [
+            {
+              "provider": "cloudflare",
+              "zone_identifier": "${CF_ZONE_ID}",
+              "domain": "${DOMAIN}",
+              "host": "@",
+              "ttl": 120,
+              "token": "${CF_API_TOKEN}",
+              "ip_version": "ipv4"
+            }
+          ]
+        }
+      PERIOD: 5m
+      UPDATE_COOLDOWN_PERIOD: 5m
+      PUBLICIP_FETCHERS: all
+      # Look our own records up on public DNS. The home router answers with the LAN address
+      # (split DNS), which made the health check fail and the record rewrite every period (bug D23).
+      RESOLVER_ADDRESS: "1.1.1.1:53"
+      LOG_LEVEL: info
+
+volumes:
+  ddns_data:
+##### SHARD-CONSOLE-CAPTURE inspect sl-console-missing #####
+[]
+
+error: no such object: sl-console-missing

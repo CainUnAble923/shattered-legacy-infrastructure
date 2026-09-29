@@ -21,6 +21,8 @@ services:
       # Backups & archives written by ModernUO
       - ${SERVER_PATH}/lib/uo/modernuo/Backups:/var/lib/uo/modernuo/Backups
       - ${SERVER_PATH}/lib/uo/modernuo/Archives:/var/lib/uo/modernuo/Archives
+      # Public status.json, written by ShardStatusPublisher and served by sl-uo-status
+      - ${SERVER_PATH}/lib/uo/modernuo/status:/var/lib/uo/modernuo/status
       # UO client data (maps, art, tiledata, etc.)
       - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
     environment:
@@ -54,6 +56,9 @@ services:
       PERIOD: 5m
       UPDATE_COOLDOWN_PERIOD: 5m
       PUBLICIP_FETCHERS: all
+      # Look our own records up on public DNS. The home router answers with the LAN address
+      # (split DNS), which made the health check fail and the record rewrite every period (bug D23).
+      RESOLVER_ADDRESS: "1.1.1.1:53"
       LOG_LEVEL: info
 
 volumes:

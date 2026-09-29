@@ -1,5 +1,15 @@
 # Dashboard (Homepage)
 
+> **This runs on Haven, not on this machine.**
+> Haven is the Debian box at `192.168.1.61` (`ssh chase@192.168.1.61`). The container
+> (`sl-dashboard`) and its live copy of this folder, `~/shattered-legacy/docker/dashboard/`, are there.
+> This folder in the repo is the **source**: edit here, then deploy with a copy to Haven and a recreate there.
+> **Never run `docker compose` for this on the Windows box.** A second copy of the web stack there
+> is how the site went unreachable for months (the stray Windows `sl-proxy`, stopped 2026-09-29).
+
+> The rest of this README describes the old ClusterF deployment (Enderman, `dashboard.clusterf.lab`)
+> and is out of date. It is LAN only and never goes on the public site.
+
 ## Overview
 
 Homepage is deployed in a Proxmox LXC container on Enderman. It provides a central UI for ClusterF service status with per-service status dots and auto-refresh.

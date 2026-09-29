@@ -52,7 +52,7 @@ docker/dashboard/config/proxmox.yaml
 docker/dashboard/config/widgets.yaml
 
 # The whole downloads folder, not just its files/ subdirectory.
-downloads/
+/downloads/
 
 # Local library drop, not part of the build.
 server/lib/
@@ -68,3 +68,10 @@ player-package/dist/
 # The player zip served by the website container. Copied in by hand, never committed:
 # it is 73 MB of binaries and this repo is public.
 docker/website/html/download/
+
+# Python bytecode (docker/uo-status/probe.py)
+__pycache__/
+
+# Scratch previews and backups next to the website source (not deployed).
+docker/website/preview-*.html
+docker/website/*.bak

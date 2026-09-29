@@ -1,3 +1,4 @@
+# Nginx Proxy Manager on Haven. Fronts the wiki, website, downloads and the password vault.
 services:
   proxy:
     image: jc21/nginx-proxy-manager:latest
@@ -6,13 +7,35 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "127.0.0.1:81:81"   # Admin UI — LAN only via SSH tunnel or VPN
+      - "127.0.0.1:81:81"   # Admin UI: Haven only. From the PC, run D:\UO\Open-NPM-Admin.ps1 (SSH tunnel).
     volumes:
       - npm_data:/data
       - npm_letsencrypt:/etc/letsencrypt
     environment:
       DISABLE_IPV6: "true"
+    # The proxy reaches each service over that service's own network. These used to be attached
+    # by hand with "docker network connect" and were lost whenever sl-proxy was recreated.
+    networks:
+      - default
+      - sl-wiki-net
+      - sl-downloads-net
+      - sl-website-net
+      - sl-vaultwarden-net
+
+networks:
+  default:
+    name: proxy_default
+  sl-wiki-net:
+    external: true
+  sl-downloads-net:
+    external: true
+  sl-website-net:
+    external: true
+  sl-vaultwarden-net:
+    external: true
 
 volumes:
   npm_data:
+    name: proxy_npm_data
   npm_letsencrypt:
+    name: proxy_npm_letsencrypt

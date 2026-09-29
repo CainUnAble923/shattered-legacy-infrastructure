@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shattered Legacy: progress</title>
+<meta name="description" content="How much of Shattered Legacy, a private Ultima Online shard, is built so far.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0d0d0d">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --panel: #141414;
+    --line: #2a2317;
+    --gold: #c8a96e;
+    --gold-bright: #e3c98d;
+    --text: #cfcabd;
+    --muted: #8a8578;
+    --jade: #72b89a;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1.65;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 72px; }
+  .mark { display: block; width: 56px; height: 56px; margin: 0 auto 14px; }
+  header { text-align: center; padding: 56px 0 32px; border-bottom: 1px solid var(--line); }
+  h1 {
+    font-size: clamp(1.7rem, 5vw, 2.4rem);
+    letter-spacing: .04em;
+    color: var(--gold);
+    margin: 0 0 .3em;
+    font-weight: normal;
+  }
+  .tagline { color: var(--muted); margin: 0; font-size: 1rem; }
+  :focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+  h2 {
+    color: var(--gold);
+    font-size: 1.2rem;
+    font-weight: normal;
+    letter-spacing: .04em;
+    margin: 44px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  a { color: var(--gold-bright); }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 18px 20px;
+    margin: 18px 0;
+  }
+  .panel p:first-child { margin-top: 0; }
+  .panel p:last-child { margin-bottom: 0; }
+  strong { color: var(--gold-bright); font-weight: normal; }
+  .figures { display: flex; flex-wrap: wrap; gap: 28px; margin: 0; }
+  .figure { flex: 1 1 120px; }
+  .figure .n {
+    display: block;
+    font-size: 2rem;
+    color: var(--gold-bright);
+    line-height: 1.2;
+  }
+  .figure .k { color: var(--muted); font-size: .9rem; }
+  .bar {
+    height: 8px;
+    background: var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 14px 0 8px;
+  }
+  .bar i { display: block; height: 100%; background: var(--jade); width: 0; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  footer {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: .85rem;
+  }
+  footer a { color: var(--muted); }
+  footer .links { margin: 0 0 10px; }
+  #err { display: none; }
+  /* Site menu and shard status. Same block on every page. */
+  .topnav { border-bottom: 1px solid var(--line); background: var(--bg); }
+  .topnav-in {
+    max-width: 720px; margin: 0 auto; padding: 10px 16px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px;
+  }
+  .topnav .home {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--gold); text-decoration: none; letter-spacing: .06em;
+  }
+  .topnav .home img { width: 24px; height: 24px; }
+  .topnav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 18px; }
+  .topnav ul a { color: var(--text); text-decoration: none; font-size: .95rem; }
+  .topnav ul a:hover, .topnav ul a:focus { color: var(--gold-bright); text-decoration: underline; }
+  .topnav ul a[aria-current="page"] { color: var(--gold-bright); }
+  [hidden] { display: none !important; }
+  .shards { margin: 0 0 0 auto; display: flex; gap: 14px; font-size: .85rem; color: var(--muted); }
+  .shards .s { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .shards .s b { font-weight: normal; color: var(--text); }
+  .sdot { width: 8px; height: 8px; border-radius: 50%; flex: none; border: 1px solid var(--muted); }
+  .sdot.up { background: var(--jade); border-color: var(--jade); }
+  @media (max-width: 560px) { .shards { margin: 0; width: 100%; } }
+</style>
+</head>
+<body>
+<nav class="topnav" aria-label="Site">
+  <div class="topnav-in">
+    <a class="home" href="/"><img src="/mark.svg" width="24" height="24" alt="">Shattered Legacy</a>
+    <ul>
+      <li><a href="/#play">Play</a></li>
+      <li><a href="https://wiki.shatteredlegacyuo.com/">Wiki</a></li>
+      <li><a href="/migration.html" aria-current="page">Progress</a></li>
+      <li><a href="/#help">Help</a></li>
+    </ul>
+    <p class="shards" id="shards" hidden aria-live="polite">
+      <span class="s"><i class="sdot" id="sd-live"></i>Live <b id="st-live"></b></span>
+      <span class="s"><i class="sdot" id="sd-test"></i>Test <b id="st-test"></b></span>
+    </p>
+  </div>
+</nav>
+<div class="wrap">
+
+  <header>
+    <h1>Progress</h1>
+    <p class="tagline">How much of Shattered Legacy is built so far</p>
+  </header>
+
+  <h2>Defects</h2>
+  <div class="panel">
+    <div class="figures">
+      <div class="figure"><span class="n" id="d-open">&middot;</span><span class="k">Open</span></div>
+      <div class="figure"><span class="n" id="d-fixed">&middot;</span><span class="k">Fixed</span></div>
+      <div class="figure"><span class="n" id="d-tracked">&middot;</span><span class="k">Tracked in all</span></div>
+    </div>
+    <p class="muted" style="margin-top:16px">
+      Every defect found during the port is written down, including the ones we decided to keep
+      because the original had them too.
+    </p>
+  </div>
+
+  <h2>Ported content in reach</h2>
+  <div class="panel">
+    <p>
+      <strong id="c-reach">&middot;</strong> of <strong id="c-total">&middot;</strong> ported content
+      files can be reached by a player.
+    </p>
+    <div class="bar"><i id="c-bar"></i></div>
+    <p class="muted">
+      The rest exist on the shard but nothing yet drops, sells, spawns or crafts them. Closing that
+      gap is most of the remaining work, and it is measured rather than estimated.
+    </p>
+  </div>
+
+  <p class="muted" id="asof"></p>
+  <p class="muted" id="err">Status is not available right now.</p>
+
+  <footer>
+    <p class="links">
+      <a href="/">Shattered Legacy</a> &middot;
+      <a href="https://wiki.shatteredlegacyuo.com/">Wiki</a>
+    </p>
+    Shattered Legacy is a private server run for family and friends. It is not affiliated with,
+    endorsed by, or connected to Electronic Arts or Broadsword. Ultima Online is a trademark of
+    Electronic Arts Inc.
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  function set(id, v) { document.getElementById(id).textContent = v; }
+
+  fetch('/api/migration.json', { cache: 'no-store' })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (d) {
+      set('d-open', d.defects.open);
+      set('d-fixed', d.defects.fixed);
+      set('d-tracked', d.defects.tracked);
+
+      set('c-reach', d.content.reachableFiles);
+      set('c-total', d.content.portedFiles);
+
+      var pct = d.content.reachablePercent;
+      document.getElementById('c-bar').style.width = (pct > 0 ? pct : 0) + '%';
+
+      var when = new Date(d.generatedAt);
+      set('asof', 'As of ' + when.toLocaleDateString(undefined,
+        { year: 'numeric', month: 'long', day: 'numeric' }) + '.');
+    })
+    .catch(function () {
+      document.getElementById('err').style.display = 'block';
+      document.getElementById('asof').textContent = '';
+    });
+})();
+</script>
+<script>
+(function () {
+  // Shard up/down, from the probe on the Windows box. Like status.json, a stale file means
+  // the probe itself stopped, so stale reads "unknown", never "down".
+  var STALE_MS = 3 * 60 * 1000;
+  var box = document.getElementById('shards');
+  function set(id, state) {
+    var dot = document.getElementById('sd-' + id), txt = document.getElementById('st-' + id);
+    dot.className = 'sdot' + (state === 'up' ? ' up' : '');
+    txt.textContent = state;
+  }
+  function poll() {
+    fetch('/api/shards.json', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        var age = Date.now() - Date.parse(d && d.generatedAt);
+        var fresh = age >= 0 && age < STALE_MS;
+        (d.shards || []).forEach(function (s) {
+          if (s.id === 'live' || s.id === 'test') set(s.id, fresh ? (s.up ? 'up' : 'down') : 'unknown');
+        });
+        box.hidden = false;
+      })
+      .catch(function () { /* no feed: keep the menu clean rather than show a broken badge */ });
+  }
+  poll();
+  setInterval(poll, 60 * 1000);
+})();
+</script>
+</body>
+</html>

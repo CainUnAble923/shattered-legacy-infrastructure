@@ -1,30 +1,30 @@
 ====== Troubleshooting ======
 
-===== Client Says There Is A Communication Problem =====
+===== Windows warns about the download =====
 
-Check these first:
+It will, and nothing is wrong. The package is not code-signed, so Windows does not recognize it.
 
-  - Server IP is ''10.7.4.120''.
-  - Port is ''2593''.
-  - You are on the LAN or connected to ClusterF VPN.
-  - The shard service is running.
+  * A blue **Windows protected your PC** box: click **More info**, then **Run anyway**.
+  * An **Open File - Security Warning** box: click **Run**.
+  * If antivirus quarantines something, restore it or unzip the package again.
 
-===== Useful Checks =====
+===== The launcher says the client is missing =====
 
-From a Windows client:
+Windows' **Extract All** sometimes stops partway through without saying so. Delete the folder, unzip the package again, and check that everything came out.
 
-```powershell
-Test-NetConnection 10.7.4.120 -Port 2593
-```
+===== "Cannot reach Shattered Legacy" =====
 
-From the UO container:
+The server is not answering. It may be restarting. Wait a few minutes, then say something if it keeps happening.
 
-```bash
-systemctl status uo.service
-journalctl -u uo.service -n 100
-```
+===== "Couldn't connect to Ultima Online" right after a new account name =====
 
-===== Related Pages =====
+This one is not what it sounds like, and waiting will not fix it. Say something and it can be sorted out in a minute.
 
-  * [[:uo:connection|Connection guide]]
+===== Anything else =====
+
+A photo or a screenshot of the window is worth more than a description.
+
+===== Related pages =====
+
+  * [[:uo:connection|Getting connected]]
   * [[:uo:systems:accounts|Accounts]]

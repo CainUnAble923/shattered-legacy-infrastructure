@@ -1,22 +1,19 @@
 ====== Accounts ======
 
-Shattered Legacy can create accounts automatically from the game client when the feature is enabled.
+Your first login creates your account. There is no sign-up page.
 
-===== Current Notes =====
+===== Good to know =====
 
-  * Auto account creation is enabled.
-  * Current maximum accounts per source IP: ''5''.
-  * Players should use the exact account name they want on first login.
+  * Type the exact account name you want the first time; that is the name you keep.
+  * Write the name and password down. There is no "forgot password" link.
+  * One account can hold several characters.
 
-===== Troubleshooting =====
+===== Trouble logging in =====
 
-If the client reports a communication problem:
+  - Check the address and port in [[:uo:connection|Getting connected]].
+  - See [[:uo:guides:troubleshooting|Troubleshooting]].
 
-  - Confirm the server IP and port in [[:uo:connection|Connection guide]].
-  - Confirm VPN or LAN access.
-  - Check [[:uo:guides:troubleshooting|Troubleshooting]].
+===== Related pages =====
 
-===== Related Pages =====
-
-  * [[:uo:connection|Connection guide]]
+  * [[:uo:connection|Getting connected]]
   * [[:uo:new_player_guide|New player guide]]

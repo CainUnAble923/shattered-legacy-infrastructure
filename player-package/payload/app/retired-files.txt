@@ -1,0 +1,10 @@
+# Files and folders the package updater (app\Update.ps1) deletes from an install,
+# because a newer package no longer ships them. One path per line, relative to the
+# package folder (the one holding "Play Shattered Legacy.bat"), for example:
+#     app\tazuo\SomeOldLibrary.dll
+# Lines starting with # are ignored. The list may be empty.
+#
+# Build-PlayerPackage.ps1 refuses a line that contains "..", is an absolute path,
+# holds a wildcard, is anything under app\tazuo\Data\ (players' profiles and saved
+# gump positions), names app, app\tazuo, app\uo-path.txt or a settings*.json, or names
+# a file the package itself still ships.

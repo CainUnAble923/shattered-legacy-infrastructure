@@ -1,4 +1,4 @@
 @echo off
-rem The throwaway TEST shard, 192.168.1.58:2594. Inside the house only.
+rem The throwaway TEST shard, shatteredlegacyuo.com:2594. Works from anywhere.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Play.ps1" -Test %*
 if errorlevel 1 pause

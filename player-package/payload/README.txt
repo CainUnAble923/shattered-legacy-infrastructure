@@ -19,6 +19,23 @@ SHATTERED LEGACY - how to play
 That is all. From now on, step 2 is all you need.
 
 
+Updates
+-------
+  When a newer version of this package is out, "Play Shattered Legacy.bat" says so
+  and asks "Update now? [Y/n]". Press Enter to update: it downloads the new version,
+  keeps your account, settings, Ultima Online folder and gump positions, and starts
+  the game. Type n to skip it this time; it asks again next time. If the update
+  server cannot be reached, the game just starts as usual.
+
+
+The TEST shard
+--------------
+  "Play TEST Shard.bat" connects to a separate, throwaway test world where Chase
+  tries out new things before they reach the real one. It only works while Chase
+  has it running. Nothing you do there is kept: characters, items and accounts can
+  be wiped at any time, so use a different account name from your real one.
+
+
 If Windows or your antivirus complains
 --------------------------------------
 This package is not "signed" (that costs money every year), so Windows does not
@@ -45,8 +62,7 @@ If something goes wrong
 For the house
 -------------
   app\Play-Lan.bat    connects straight to the server's address in the house
-  app\Play-Test.bat   the throwaway TEST shard, only when Chase has it running.
-                      Nothing you do there is kept.
+  app\Play-Test.bat   same as "Play TEST Shard.bat" (see "The TEST shard" above)
   app\Setup.bat "D:\somewhere\Ultima Online Classic"
                       use an Ultima Online folder the package did not find itself
 
@@ -55,6 +71,10 @@ What is in here
 ---------------
   app\tazuo\   TazUO, the game client (BSD 2-Clause licence, app\tazuo\LICENSE-TazUO.txt,
                source at https://github.com/PlayTazUO/TazUO)
+               with Fiddle-Me-This interface art by NewYears1978 (CC0,
+               https://github.com/NewYears1978/Fiddle-Me-This)
+               The custom health and mana gumps are off until you turn them on
+               from the TazUO top bar (XmlGumps menu).
   app\         the scripts that set it up and start it
   Nothing from EA is included. Ultima Online itself comes from EA's own free
   installer at https://uo.com/client-download/

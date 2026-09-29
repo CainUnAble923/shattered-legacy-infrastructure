@@ -1,21 +1,68 @@
+# Two machines, and the dashboard must not blur them (bug-list D30):
+#   192.168.1.58  the Windows box: the UO shard, the Minecraft stack, this dashboard
+#   192.168.1.61  Haven: the whole web stack, and the proxy that actually serves the domain
+# A ping at the wrong address is a green light that means nothing.
+
 - Shattered Legacy:
     - UO Server:
         icon: /icons/shattered_legacy_logo.png
         href: "http://shatteredlegacyuo.com:2593"
-        description: ModernUO — port 2593
+        description: ModernUO, port 2593
+        server: my-docker
+        container: sl-modernuo
+        showStats: true
         ping: 192.168.1.58
+
+    - UO Who's Online:
+        icon: /icons/shattered_legacy_logo.png
+        href: "https://shatteredlegacyuo.com"
+        description: Characters in world right now
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8092/status.json
+          refreshInterval: 30000
+          mappings:
+            - field:
+                players: count
+              label: Online
+            - field:
+                shard: uptimeSeconds
+              label: Uptime
+              format: duration
+
+    - Website:
+        icon: nginx
+        href: "https://shatteredlegacyuo.com"
+        description: Landing page and download
+        ping: 192.168.1.61
+
+    - Migration status:
+        icon: /icons/shattered_legacy_logo.png
+        href: "https://shatteredlegacyuo.com/migration.html"
+        description: Defects and content reach
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8092/migration.json
+          refreshInterval: 300000
+          mappings:
+            - field:
+                defects: open
+              label: Open
+            - field:
+                content: reachableFiles
+              label: In reach
 
     - Wiki:
         icon: /icons/shattered_legacy_logo.png
         href: "https://wiki.shatteredlegacyuo.com"
         description: DokuWiki
-        ping: 192.168.1.58
+        ping: 192.168.1.61
 
     - Downloads:
         icon: nginx
         href: "https://get.shatteredlegacyuo.com"
-        description: Client files & patches
-        ping: 192.168.1.58
+        description: Client files and patches
+        ping: 192.168.1.61
 
 - Family Game Servers:
     - ATM10 Minecraft:
@@ -106,14 +153,28 @@
               format: duration
 
 - Infrastructure:
-    - Proxy Manager:
+    # There are TWO Nginx Proxy Manager instances and only one of them serves the domain.
+    # That is bug-list D30, and naming them apart here is half the cure.
+    - Proxy (Haven):
+        icon: nginx-proxy-manager
+        href: "https://shatteredlegacyuo.com"
+        description: The real one. Fronts website, wiki, downloads, vault
+        siteMonitor: "http://192.168.1.61:80"
+
+    - Proxy (Windows box, stray):
         icon: nginx-proxy-manager
         href: "http://127.0.0.1:81"
-        description: Nginx Proxy Manager (LAN only)
+        description: Serves nothing public. Candidate for removal (D30)
         siteMonitor: "http://192.168.1.58:80"
 
-    - NPM Admin:
-        icon: nginx-proxy-manager
-        href: "http://127.0.0.1:81"
-        description: SSL certs & proxy hosts
-        siteMonitor: "http://host.docker.internal:81"
+    - Password vault:
+        icon: bitwarden
+        href: "https://vault.shatteredlegacyuo.com"
+        description: Vaultwarden, on Haven
+        ping: 192.168.1.61
+
+    - Status feed:
+        icon: nginx
+        href: "http://192.168.1.58:8092/status.json"
+        description: What the website reads. LAN only
+        siteMonitor: "http://192.168.1.58:8092/status.json"

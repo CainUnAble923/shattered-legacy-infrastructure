@@ -1,0 +1,620 @@
+#Requires -Version 5.1
+# Facts for the pure core of scripts/Shard-Console.ps1.
+#
+#     powershell -NoProfile -ExecutionPolicy Bypass -File scripts\tests\Shard-Console.Tests.ps1
+#
+# Exit code is the number of failed facts, so 0 is green.
+#
+# Same shape as server/tests: one behaviour per fact, named for the behaviour, with the reason
+# it exists written beside it. Not xUnit, because the thing under test is PowerShell 5.1 and
+# the dotnet test gate runs in a Linux container that has neither 5.1 nor WinForms; and not
+# Pester, because the Pester that ships with Windows is 3.4 and anything newer would be an
+# install. A fact is a scriptblock that throws on failure.
+#
+# THE FIXTURES ARE REAL. fixtures/console-capture-2026-09-29.txt was written by
+# `Shard-Console.ps1 -Capture` against the running Docker on 2026-09-29: docker inspect of both
+# containers, docker image inspect of every image they name, docker logs from each container's
+# StartedAt, the save folder listings, and docker/uo/docker-compose.yml. The only edit the
+# capture makes is dropping log lines that name accounts or clients (Remove-AccountLines),
+# because this repo is public. fixtures/console-capture-probe-2026-09-29.txt is the same for a
+# throwaway container of sl-modernuo:latest on an empty save with no network, which is the only
+# way to get a real owner-account prompt without touching either shard. Invented docker output
+# agrees with an invented parser; these do not have to.
+#
+# Snapshot names and plans are inputs this tool generates itself, so those facts use literals.
+
+$ErrorActionPreference = 'Stop'
+$here    = $PSScriptRoot
+$script  = Join-Path $here '..\Shard-Console.ps1'
+$fixture = Join-Path $here 'fixtures'
+. $script -LoadOnly
+
+$results = New-Object 'System.Collections.Generic.List[object]'
+
+function Fact {
+    param([string]$Name, [scriptblock]$Body)
+    try {
+        & $Body
+        $results.Add([pscustomobject]@{ Name = $Name; Passed = $true; Message = '' })
+        Write-Host "  PASS  $Name" -ForegroundColor Green
+    } catch {
+        $results.Add([pscustomobject]@{ Name = $Name; Passed = $false; Message = $_.Exception.Message })
+        Write-Host "  FAIL  $Name" -ForegroundColor Red
+        Write-Host "        $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+function Assert-Equal {
+    param($Expected, $Actual, [string]$Because = '')
+    if ($Expected -ne $Actual) { throw "expected [$Expected] but got [$Actual]. $Because" }
+}
+
+function Assert-True {
+    param($Condition, [string]$Because)
+    if (-not $Condition) { throw "not true: $Because" }
+}
+
+function Read-Fixture {
+    param([string]$Name)
+    ConvertFrom-CaptureFile ([IO.File]::ReadAllText((Join-Path $fixture $Name)))
+}
+
+$repo   = (Resolve-Path (Join-Path $here '..\..')).Path
+$config = Get-ConsoleConfig -RepoRoot $repo
+$cap    = Read-Fixture 'console-capture-2026-09-29.txt'
+$probe  = Read-Fixture 'console-capture-probe-2026-09-29.txt'
+$state  = New-ConsoleState -Config $config -Sections $cap
+$now    = $state.Now
+$test   = $state.Shards['test']
+$live   = $state.Shards['live']
+
+$probeContainer = ConvertFrom-ContainerInspect $probe['inspect sl-console-probe']
+$probeLatest    = ConvertFrom-ImageInspect $probe['image sl-modernuo:latest']
+
+function Get-Plan {
+    param([string]$Action, [string]$Shard = 'test', [string]$SnapshotName, [string]$Snapshot, $State = $state)
+    @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $State -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now)
+}
+
+# A copy of the captured state with one snapshot on each shard, for the restore and delete plans.
+# The live container is running in the capture and the test container is exited, so between
+# them these cover both halves of rule 1 (stop only what is running, start only what was).
+function New-StateWithSnapshots {
+    param([string[]]$Names)
+    $s = New-ConsoleState -Config $config -Sections $cap
+    foreach ($k in 'test', 'live') {
+        $s.Shards[$k].Snapshots = @($Names | ForEach-Object {
+            $p = ConvertFrom-SnapshotFolderName $_
+            $p | Add-Member -NotePropertyName Bytes -NotePropertyValue 1000 -PassThru |
+                 Add-Member -NotePropertyName Files -NotePropertyValue 20 -PassThru |
+                 Add-Member -NotePropertyName HasAccounts -NotePropertyValue $true -PassThru
+        })
+    }
+    $s
+}
+$snapState = New-StateWithSnapshots @('20260929-101500_before-gargoyle-fix')
+$twoState  = New-StateWithSnapshots @('20260929-101500_before-gargoyle-fix', '20260929-111500_PRE-RESTORE_before-restoring-x')
+
+Write-Host ""
+Write-Host "Shard-Console core facts" -ForegroundColor Cyan
+
+# --- parsing docker inspect -----------------------------------------------------------------
+
+Fact 'TheTestContainerInspectParsesToItsImageStateAndPort' {
+    $c = $test.Container
+    Assert-True $c.Exists 'the test container is in the capture'
+    Assert-Equal 'sl-modernuo-test' $c.Name
+    Assert-Equal 'sha256:2e7dcae65e54852cbb07ee1dd45779d5362c327b97f5e7c3b139026b11eb24db' $c.ImageId
+    Assert-Equal 'sl-modernuo:latest' $c.ConfigImage
+    Assert-Equal 'exited' $c.Status
+    Assert-Equal $false $c.Running
+    Assert-Equal 255 $c.ExitCode
+    Assert-Equal 2594 $c.GamePort 'the published tcp port, not the 2593 the Dockerfile EXPOSEs'
+    Assert-Equal 'sl-uo-test' $c.ComposeProject 'D22: its own compose project'
+}
+
+Fact 'TheLiveContainerInspectParsesToTheTagItWasCreatedFrom' {
+    $c = $live.Container
+    Assert-Equal 'sl-modernuo' $c.Name
+    Assert-Equal 'uo-modernuo' $c.ConfigImage 'bug-list D25: not sl-modernuo:latest'
+    Assert-Equal $true $c.Running
+    Assert-Equal 2593 $c.GamePort
+    Assert-Equal 'uo' $c.ComposeProject
+}
+
+Fact 'DockerTimestampsWithNanosecondsParseAsUtc' {
+    # .NET parses at most seven fractional digits; docker writes nine.
+    $t = $live.Container.StartedAt
+    Assert-Equal ([datetime]::new(2026, 9, 28, 19, 7, 18, [DateTimeKind]::Utc)) ($t.AddTicks(-($t.Ticks % 10000000)))
+    Assert-Equal ([DateTimeKind]::Utc) $t.Kind
+}
+
+Fact 'DockersZeroTimeMeansNever' {
+    # A running container that has never finished reports FinishedAt as year 1.
+    Assert-Equal $true $probeContainer.Running
+    Assert-Equal $null $probeContainer.FinishedAt
+}
+
+Fact 'AContainerThatDoesNotExistParsesAsMissing' {
+    $c = ConvertFrom-ContainerInspect $cap['inspect sl-console-missing']
+    Assert-Equal $false $c.Exists
+    Assert-True ($c.Error -match 'No such') "the daemon's error is kept: $($c.Error)"
+}
+
+Fact 'AnImageThatIsNoLongerInTheStoreParsesAsMissing' {
+    # Both running images are gone: sl-modernuo:latest moved off the test one, and D29 records
+    # the live one.
+    Assert-Equal $false $test.RunningImage.Exists
+    Assert-Equal $false $live.RunningImage.Exists
+}
+
+Fact 'TheLatestImageParses' {
+    Assert-Equal 'sha256:8304d4a24fd2b6bcfe37496d1a3cb85a97b14a1cff7b069b97ed5fc2d165c712' $state.Latest.Id
+    Assert-Equal ([datetime]::new(2026, 9, 29, 11, 53, 29, [DateTimeKind]::Utc)) ($state.Latest.Created.AddTicks(-($state.Latest.Created.Ticks % 10000000)))
+}
+
+# --- drift -------------------------------------------------------------------------------------
+
+Fact 'DriftComparesImageIdsNotTagNames' {
+    # The failure this panel exists for. The test container was created from the name
+    # sl-modernuo:latest, so a check on names says it is current. It is running 2e7dcae6 and the
+    # name now means 8304d4a2: a rebuild plus a restart left the old code running.
+    Assert-Equal 'sl-modernuo:latest' $test.Container.ConfigImage
+    Assert-Equal 'DRIFTED' $test.Drift.Verdict
+}
+
+Fact 'TheTestContainerSaysTheTagMovedUnderIt' {
+    $d = $test.Drift
+    Assert-Equal $true $d.CreatedFromLatest
+    Assert-Equal $true $d.TagMoved
+    Assert-Equal $true $d.RunningImageGone
+    Assert-Equal $true $d.Ambiguous 'a tag that moved is the ambiguity the brief asked to be shown, not resolved'
+    Assert-True ($d.Advice -match 'Start') 'the test shard is told how to fix it'
+}
+
+Fact 'LiveDriftShowsTheTagAndEveryResolvedIdAndPicksNone' {
+    $d = $live.Drift
+    Assert-Equal 'DRIFTED' $d.Verdict
+    Assert-Equal $true $d.Ambiguous
+    Assert-Equal $false $d.CreatedFromLatest
+    $text = $d.Lines -join "`n"
+    foreach ($want in 'uo-modernuo', '36cc709a82a6', 'bc04a35bf344', '8304d4a24fd2') {
+        Assert-True ($text -match [regex]::Escape($want)) "the drift lines show $want"
+    }
+}
+
+Fact 'LiveDriftAdviceOffersNoDeploy' {
+    Assert-True ($live.Drift.Advice -match 'not a button') $live.Drift.Advice
+}
+
+Fact 'AContainerCreatedFromTheCurrentLatestIsCurrent' {
+    $d = Get-ImageDrift -Shard $config.Shards['test'] -Container $probeContainer -Latest $probeLatest `
+        -ConfigRef $probeLatest -RunningImage $probeLatest -LatestTag 'sl-modernuo:latest'
+    Assert-Equal 'CURRENT' $d.Verdict
+    Assert-Equal $false $d.Ambiguous
+}
+
+# --- the listener ----------------------------------------------------------------------------
+
+Fact 'TheLiveLogShowsTheGameListenerNotThePingListener' {
+    Assert-Equal 'LISTENING' $live.Listener.State
+    Assert-Equal '127.0.0.1:2593,172.19.0.3:2593' ($live.Listener.Addresses -join ',')
+}
+
+Fact 'AnExitedContainerIsNotListeningThoughItsLastRunSaidSo' {
+    # docker logs still carries the last run's Listening line after the container exits.
+    Assert-Equal 'STOPPED' $test.Listener.State
+    Assert-True ($test.Listener.Detail -match 'last run') $test.Listener.Detail
+}
+
+Fact 'AListenerOnAnotherPortDoesNotCount' {
+    $running = $live.Container
+    $l = Get-ListenerState -Container $running -LogText $cap['logs sl-modernuo'] -GamePort 2594
+    Assert-Equal 'NOT LISTENING' $l.State
+}
+
+Fact 'AWorldWithNoAccountsIsTheOwnerPrompt' {
+    # D19. docker ps says Up and nothing listens.
+    $l = Get-ListenerState -Container $probeContainer -LogText $probe['logs sl-console-probe'] -GamePort 2594
+    Assert-Equal 'OWNER PROMPT' $l.State
+    Assert-True ($l.Detail -match 'docker attach') $l.Detail
+}
+
+Fact 'TheLogIsReadFromStartedAtNotFromATail' {
+    # After a day of autosaves the Listening line is thousands of lines back; a --tail misses it.
+    $a = @(Get-LogWindowArgs -Container $live.Container -Minutes 15)
+    Assert-Equal 'logs' $a[0]
+    Assert-True ($a -contains '--since') 'reads from --since'
+    Assert-True ($a -contains $live.Container.StartedAtRaw) 'since the container StartedAt'
+    Assert-True ($a -contains '--until') 'bounded, so a month-old container is not read whole'
+    Assert-True (-not ($a -contains '--tail')) 'no --tail'
+    Assert-Equal 'sl-modernuo' $a[-1]
+}
+
+# --- saves and snapshots -----------------------------------------------------------------------
+
+Fact 'TheSaveSummaryFindsTheNewestFileAndTheAccounts' {
+    $s = $test.Save
+    Assert-Equal $true $s.Exists
+    Assert-Equal 21 $s.Count
+    Assert-Equal $true $s.HasAccounts 'accounts live inside Saves'
+    Assert-Equal ([datetime]::new(2026, 9, 28, 15, 45, 1, [DateTimeKind]::Utc)) $s.Newest.LastWriteUtc
+}
+
+Fact 'SnapshotNamesRejectPathsAndTheReservedWord' {
+    foreach ($bad in '', '..\x', 'a/b', 'a b', 'pre-restore-mine', 'PreRestore', ('x' * 41), '.hidden') {
+        Assert-True (Test-SnapshotLabel $bad) "'$bad' is rejected"
+    }
+    foreach ($good in 'before-gargoyle-fix', 'd25_check.2', ('x' * 40)) {
+        Assert-Equal $null (Test-SnapshotLabel $good) "'$good' is accepted"
+    }
+}
+
+Fact 'ASnapshotFolderNameRoundTrips' {
+    $n = New-SnapshotFolderName -Label 'before-gargoyle-fix' -Now ([datetime]::new(2026, 9, 29, 10, 15, 0))
+    Assert-Equal '20260929-101500_before-gargoyle-fix' $n
+    $p = ConvertFrom-SnapshotFolderName $n
+    Assert-Equal 'before-gargoyle-fix' $p.Label
+    Assert-Equal ([datetime]::new(2026, 9, 29, 10, 15, 0)) $p.Taken
+    Assert-Equal $false $p.IsPreRestore
+}
+
+Fact 'ThePreRestoreSnapshotIsObviouslyThePreRestoreOne' {
+    $n = New-PreRestoreFolderName -RestoringFrom '20260929-101500_before-gargoyle-fix' -Now ([datetime]::new(2026, 9, 29, 11, 0, 0))
+    Assert-True ($n -cmatch '_PRE-RESTORE_') $n
+    Assert-Equal $true (ConvertFrom-SnapshotFolderName $n).IsPreRestore
+}
+
+Fact 'DeletingTheLastSnapshotSaysItIsTheLast' {
+    $w = Get-SnapshotDeleteWarning -Snapshots $snapState.Shards['test'].Snapshots -Name '20260929-101500_before-gargoyle-fix' -Shard $config.Shards['test']
+    Assert-True ($w -cmatch 'LAST') $w
+    $w2 = Get-SnapshotDeleteWarning -Snapshots $twoState.Shards['test'].Snapshots -Name '20260929-101500_before-gargoyle-fix' -Shard $config.Shards['test']
+    Assert-True (-not ($w2 -cmatch 'LAST')) 'not said when another remains'
+}
+
+# --- plans -------------------------------------------------------------------------------------
+
+Fact 'ARestoreStopsThenSnapshotsThenMovesAsideThenCopies' {
+    # Live is the running container in the capture, so its plan shows the whole sequence.
+    $p = Get-Plan 'snapshot.restore' 'live' -Snapshot '20260929-101500_before-gargoyle-fix' -State $snapState
+    $kinds = @($p | ForEach-Object { $_.Kind })
+    $order = @('confirm', 'exec', 'stopped', 'copy', 'verify', 'move', 'copy', 'verify', 'exec', 'log')
+    Assert-Equal ($order -join ',') (@($kinds | Where-Object { $_ -notin 'say' }) -join ',')
+    $stop = @($p | Where-Object { $_.Kind -eq 'exec' })[0]
+    Assert-Equal 'stop' $stop.Arguments[0]
+    $pre = @($p | Where-Object { $_.Kind -eq 'copy' })[0]
+    Assert-True ($pre.To -cmatch 'PRE-RESTORE') 'the first copy is the automatic pre-restore snapshot'
+    $move = @($p | Where-Object { $_.Kind -eq 'move' })[0]
+    Assert-True ($move.To -like '*.aside-*') 'the current save is moved aside'
+}
+
+Fact 'ARestoreNeverDeletesAnything' {
+    foreach ($k in 'test', 'live') {
+        $p = Get-Plan 'snapshot.restore' $k -Snapshot '20260929-101500_before-gargoyle-fix' -State $snapState
+        Assert-Equal 0 @($p | Where-Object { $_.Kind -eq 'remove-snapshot' }).Count
+    }
+}
+
+Fact 'ASnapshotOfAStoppedContainerNeitherStopsNorStartsIt' {
+    $p = Get-Plan 'snapshot.create' 'test' -SnapshotName 'x'
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -eq 'exec' }).Count
+}
+
+Fact 'ASnapshotOfARunningContainerStopsItAndStartsItAgain' {
+    $p = Get-Plan 'snapshot.create' 'live' -SnapshotName 'x'
+    $exec = @($p | Where-Object { $_.Kind -eq 'exec' })
+    Assert-Equal 'stop,start' (@($exec | ForEach-Object { $_.Arguments[0] }) -join ',')
+    Assert-Equal 'confirm' $p[0].Kind
+}
+
+Fact 'EveryLiveActionBeginsWithATypedConfirmation' {
+    foreach ($a in 'live.start', 'live.stop', 'live.restart', 'live.tail', 'live.client') {
+        Assert-Equal 'confirm' (Get-Plan $a 'live')[0].Kind $a
+    }
+    foreach ($a in 'snapshot.create', 'snapshot.restore', 'snapshot.delete') {
+        $p = Get-Plan $a 'live' -SnapshotName 'x' -Snapshot '20260929-101500_before-gargoyle-fix' -State $snapState
+        Assert-Equal 'confirm' $p[0].Kind "$a on live"
+    }
+    foreach ($a in 'test.start', 'test.stop', 'snapshot.create') {
+        Assert-Equal 0 @(Get-Plan $a 'test' -SnapshotName 'x' | Where-Object { $_.Kind -eq 'confirm' }).Count "$a on test needs none"
+    }
+}
+
+Fact 'TypedConfirmationMustMatchExactly' {
+    Assert-Equal $true  (Test-TypedConfirmation 'stop live' 'stop live')
+    Assert-Equal $true  (Test-TypedConfirmation 'stop live' '  stop live ')
+    Assert-Equal $false (Test-TypedConfirmation 'stop live' 'Stop live')
+    Assert-Equal $false (Test-TypedConfirmation 'stop live' 'yes')
+    Assert-Equal $false (Test-TypedConfirmation 'stop live' 'stop')
+    Assert-Equal $false (Test-TypedConfirmation 'stop live' $null)
+}
+
+Fact 'NoPlanRunsComposeItself' {
+    # Compose is reached only through Start-TestShard.ps1, which only ever names the test file.
+    foreach ($a in Get-ConsoleActions) {
+        foreach ($k in 'test', 'live') {
+            $p = Get-Plan $a.Key $k -SnapshotName 'x' -Snapshot '20260929-101500_before-gargoyle-fix' -State $snapState
+            foreach ($s in $p) {
+                Assert-True (-not (@($s.Exe) + @($s.Arguments) -match 'compose')) "$($a.Key) $k"
+            }
+        }
+    }
+}
+
+Fact 'LiveStartRefusesWhenTheContainerIsGone' {
+    $gone = New-ConsoleState -Config $config -Sections $cap
+    $gone.Shards['live'].Container = ConvertFrom-ContainerInspect $cap['inspect sl-console-missing']
+    $p = Get-Plan 'live.start' 'live' -State $gone
+    Assert-Equal 1 @($p | Where-Object { $_.Kind -eq 'refuse' }).Count
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -eq 'exec' }).Count
+}
+
+Fact 'StartFreshMovesTheTestSaveAsideAndNeverPassesFresh' {
+    $p = Get-Plan 'test.fresh' 'test'
+    $move = @($p | Where-Object { $_.Kind -eq 'move' })
+    Assert-Equal 1 $move.Count
+    Assert-Equal $config.Shards['test'].Saves $move[0].From
+    foreach ($s in $p) { Assert-True (-not ($s.Arguments -contains '-Fresh')) 'no -Fresh: it deletes Saves-test' }
+}
+
+Fact 'StartSkipsTheBuildAndRebuildGoesThroughTheGates' {
+    $start = @(Get-Plan 'test.start' | Where-Object { $_.Kind -eq 'exec' })[0]
+    Assert-True ($start.Arguments -contains $config.StartTestShard) 'calls Start-TestShard.ps1'
+    Assert-True ($start.Arguments -contains '-SkipBuild') 'start is the image already built'
+    $rebuild = @(Get-Plan 'test.rebuild' | Where-Object { $_.Kind -eq 'exec' })[0]
+    Assert-True ($rebuild.Arguments -contains $config.StartTestShard) 'calls Start-TestShard.ps1'
+    Assert-True (-not ($rebuild.Arguments -contains '-SkipBuild')) 'so build.sh runs its gates'
+}
+
+# A count of violations is not enough: on the first run an empty result came back as one
+# phantom violation, and these three facts passed on it while every clean plan was refused.
+# So each names the reason it expects.
+function Assert-Refused {
+    param($Plan, [string]$Reason, [string]$Because)
+    $v = @(Test-PlanSafety @($Plan) $config)
+    Assert-True (@($v | Where-Object { $_ -is [string] -and $_ -match $Reason }).Count -gt 0) "$Because : refused for '$Reason'; got [$($v -join ' | ')]"
+}
+
+Fact 'TheSafetyCheckRejectsComposeOnTheLiveFile' {
+    $bad = @(New-PlanStep -Kind exec -Exe 'docker' -Arguments @('compose', '-f', 'docker/uo/docker-compose.yml', 'up', '-d'))
+    Assert-Refused $bad 'runs docker compose itself' 'compose up on the live file'
+    $down = @(New-PlanStep -Kind exec -Exe 'docker' -Arguments @('compose', 'down'))
+    Assert-Refused $down 'runs docker compose itself' 'compose down, which would stop sl-ddns'
+}
+
+Fact 'TheSafetyCheckRejectsDeletingAWorldSave' {
+    foreach ($k in 'test', 'live') {
+        $bad = @(New-PlanStep -Kind remove-snapshot -Path $config.Shards[$k].Saves)
+        Assert-Refused $bad 'deletes a world save' "$k save"
+        $inside = @(New-PlanStep -Kind remove-snapshot -Path (Join-Path $config.Shards[$k].Saves 'Accounts'))
+        Assert-Refused $inside 'deletes a world save' "$k save contents"
+        $move = @(New-PlanStep -Kind move -From $config.Shards[$k].Saves -To 'D:\elsewhere')
+        Assert-Refused $move 'the only move' "$k save moved anywhere but aside"
+    }
+    $root = @(New-PlanStep -Kind remove-snapshot -Path $config.SnapshotRoot)
+    Assert-Refused $root 'not one snapshot folder' 'the whole snapshot folder'
+    $ok = @(New-PlanStep -Kind remove-snapshot -Path (Join-Path $config.SnapshotRoot 'test\20260929-101500_x'))
+    Assert-Equal 0 @(Test-PlanSafety $ok $config).Count 'one snapshot is fine'
+}
+
+Fact 'TheSafetyCheckRejectsBuildsAndTouchingLiveUnconfirmed' {
+    $build = @(New-PlanStep -Kind exec -Exe 'docker' -Arguments @('build', '.'))
+    Assert-Refused $build 'docker build is not' 'docker build'
+    $sh = @(New-PlanStep -Kind exec -Exe 'bash' -Arguments @('docker/uo/build.sh'))
+    Assert-Refused $sh 'build\.sh is reached only' 'build.sh directly'
+    $unconfirmed = @(New-PlanStep -Kind exec -Exe 'docker' -Arguments @('stop', 'sl-modernuo'))
+    Assert-Refused $unconfirmed 'without a typed confirmation' 'live without a typed confirmation'
+    $confirmed = @((New-PlanStep -Kind confirm -Phrase 'stop live'), (New-PlanStep -Kind exec -Exe 'docker' -Arguments @('stop', 'sl-modernuo')))
+    Assert-Equal 0 @(Test-PlanSafety $confirmed $config).Count 'the same step with a typed confirmation passes'
+}
+
+Fact 'EveryRealPlanPassesTheSafetyCheck' {
+    foreach ($a in Get-ConsoleActions) {
+        foreach ($k in 'test', 'live') {
+            $p = Get-Plan $a.Key $k -SnapshotName 'x' -Snapshot '20260929-101500_before-gargoyle-fix' -State $snapState
+            $v = @(Test-PlanSafety $p $config)
+            Assert-Equal 0 $v.Count "$($a.Key) $k : $($v -join '; ')"
+        }
+    }
+}
+
+Fact 'TheExecutorRunsNothingWithoutTheTypedPhraseOrTheYes' {
+    # The executor, not only the plan. The step it would run writes a marker file, so a bug here
+    # leaves evidence and touches nothing: never a real docker command against the live shard.
+    $marker = Join-Path ([IO.Path]::GetTempPath()) ('shard-console-fact-' + [guid]::NewGuid().ToString('N'))
+    $write = New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-NoProfile', '-Command', "Set-Content -LiteralPath '$marker' -Value x")
+    $typed = @((New-PlanStep -Kind confirm -Phrase 'stop live'), $write)
+    $asked = @((New-PlanStep -Kind ask -Text 'Delete it?'), $write)
+    try {
+        foreach ($given in $null, '', 'Stop live', 'yes', 'stop') {
+            Assert-Equal $false (Invoke-Plan -Plan $typed -Config $config -ActionKey 'fact' -ShardKey 'live' -ConfirmLive $given 6>$null) "phrase '$given'"
+        }
+        Assert-Equal $false (Invoke-Plan -Plan $asked -Config $config -ActionKey 'fact' -ShardKey 'test' 6>$null) 'no -Yes'
+        Assert-True (-not (Test-Path -LiteralPath $marker)) 'nothing ran'
+        Assert-Equal $true (Invoke-Plan -Plan $typed -Config $config -ActionKey 'fact' -ShardKey 'live' -ConfirmLive 'stop live' 6>$null) 'the exact phrase runs it'
+        Assert-True (Test-Path -LiteralPath $marker) 'and it did run'
+    } finally {
+        Remove-Item -LiteralPath $marker -ErrorAction SilentlyContinue
+    }
+}
+
+Fact 'AnOldSaveIsOnlyStaleOnceTheServerHasHadTimeToSave' {
+    # Found by the end-to-end run: right after a restore the save's files carry the snapshot's
+    # timestamps, and the panel said NOT SAVING 13 seconds after the start.
+    $s = New-ConsoleState -Config $config -Sections $cap
+    $lv = $s.Shards['live']
+    $lv.Save.Newest.LastWriteUtc = $s.Now.AddDays(-1)
+    $lv.Container.StartedAt = $s.Now.AddSeconds(-13)
+    $text = (Format-StatusReport $s $config | ForEach-Object { $_.Text }) -join "`n"
+    Assert-True (-not ($text -match 'NOT SAVING')) 'just started: no warning'
+    $lv.Container.StartedAt = $s.Now.AddHours(-2)
+    $text = (Format-StatusReport $s $config | ForEach-Object { $_.Text }) -join "`n"
+    Assert-True ($text -match 'NOT SAVING') 'up two hours with a day-old save: warned'
+}
+
+# --- the rest ----------------------------------------------------------------------------------
+
+Fact 'TheCapturedLiveComposeFileIsInTheD29State' {
+    Assert-Equal $true  $state.Compose.HasBuild
+    Assert-Equal $false $state.Compose.HasImage
+    Assert-True ($state.Compose.Warning -match 'D29') $state.Compose.Warning
+    $t = Test-LiveComposeFile -Text ([IO.File]::ReadAllText((Join-Path $repo 'docker\uo\docker-compose.test.yml'))) -Service 'modernuo-test'
+    Assert-Equal $true $t.HasImage 'the test file names its image'
+    Assert-Equal $null $t.Warning
+}
+
+Fact 'RedactionKeepsTheListenerAndPromptAndDropsAccountNames' {
+    $raw = "[16:03:33 WRN] This server has no accounts. <s:Server.Misc.AccountPrompt>`n" +
+           "[16:03:33 INF] Do you want to create the owner account now? (y/n): <s:Server.Misc.AccountPrompt>`n" +
+           "[19:06:01 INF] Protected accounts registered: someone <s:Server.Misc.ServerAccess>`n" +
+           "[19:06:01 INF] Listening: 127.0.0.1:2594 <s:Server.Network.NetState>"
+    $r = Remove-AccountLines $raw
+    Assert-True ($r -match 'no accounts') 'kept'
+    Assert-True ($r -match 'owner account') 'kept'
+    Assert-True ($r -match 'Listening') 'kept'
+    Assert-True (-not ($r -match 'someone')) 'dropped'
+}
+
+Fact 'TheWorldSetupChecklistIsTheTwelveSpawnFilesThenShameThenDespiseThenSave' {
+    $c = @(Get-WorldSetupChecklist)
+    $spawn = @($c | Where-Object { $_.Command -like '`[GenerateSpawners *' })
+    Assert-Equal 12 $spawn.Count 'reachability-audit section 5 lists twelve paths; the brief said ten'
+    $pinned = 'D:\UO\ModernUO-pinned\Distribution'
+    if (Test-Path $pinned) {
+        foreach ($s in $spawn) {
+            $rel = $s.Command.Substring('[GenerateSpawners '.Length)
+            Assert-True (Test-Path (Join-Path $pinned $rel)) "$rel exists in pinned Distribution"
+        }
+    }
+    $rest = @($c | Select-Object -Skip 12 | ForEach-Object { $_.Command })
+    Assert-Equal '[GenerateNewShame,[SetupDespise,[save' ($rest -join ',')
+}
+
+Fact 'TheScriptAndItsFactsAreAsciiWithNoBom' {
+    foreach ($f in $script, $MyInvocation.MyCommand.Path, $PSCommandPath) {
+        if (-not $f) { continue }
+        $b = [IO.File]::ReadAllBytes($f)
+        Assert-True (-not ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF)) "$f has a BOM"
+        $hi = @($b | Where-Object { $_ -gt 0x7E -or ($_ -lt 0x20 -and $_ -notin 9, 10, 13) })
+        Assert-Equal 0 $hi.Count "$f has non-ASCII bytes"
+    }
+}
+
+# --- at a glance and the status publisher -----------------------------------------------------
+# status.json is this project's own contract (docker/uo-status/README.md), so these use literals
+# for it. The docker side stays the real capture.
+
+function New-PublisherSections {
+    param([string]$Json, [string]$Meta = '2026-09-29T17:00:00Z|300', [string]$Http = '200', [switch]$NoFeed, [switch]$Missing)
+    $s = [ordered]@{}
+    foreach ($k in $cap.Keys) { $s[$k] = $cap[$k] }
+    if (-not $NoFeed) { $s['inspect sl-uo-status'] = $cap['inspect sl-modernuo'] }
+    if ($Missing) { $s['status meta'] = 'missing'; $s['status file'] = '' } else { $s['status meta'] = $Meta; $s['status file'] = $Json }
+    $s['feed http'] = $Http
+    $s
+}
+function New-StatusJson {
+    param([datetime]$GeneratedUtc, [int]$Count = 2)
+    '{"schema":1,"generatedAt":"' + (Format-DockerTime $GeneratedUtc) + '","shard":{"name":"Shattered Legacy","startedAt":"2026-09-28T19:07:18Z","uptimeSeconds":1},"players":{"count":' + $Count + ',"names":["Cain","Bram"]},"world":{"lastSaveAt":"2026-09-29T16:55:00Z"}}'
+}
+
+Fact 'ACaptureFromBeforeThePublisherCheckSaysUnknownNotOffline' {
+    # The 2026-09-29 capture has no status sections. Saying NOT PUBLISHING there would be a guess.
+    Assert-Equal 'UNKNOWN' $state.Publisher.State
+    Assert-Equal 'UNKNOWN' $state.Publisher.FeedState
+}
+
+Fact 'TheGlanceShowsLiveRunningAndTestStoppedFromTheCapture' {
+    $t = @(Get-AtAGlance $state $config)
+    Assert-Equal 'LIVE,TEST,STATUS PUBLISHER' (($t | ForEach-Object { $_.Title }) -join ',')
+    Assert-Equal 'STOPPED' $t[1].Word 'the test container is exited in the capture'
+    Assert-True ($t[0].Word -in @('RUNNING', 'STARTING?')) ('live is running in the capture, got ' + $t[0].Word)
+    Assert-True ($t[0].Detail -match 'OLD IMAGE') 'live runs a drifted image in the capture (D25), and the tile says so'
+    Assert-True ($t[0].Color -ne 'green') 'a drifted live shard is not shown all-green'
+}
+
+Fact 'NoStatusFileAndNoMountSaysNotPublishingAndWhy' {
+    $s = New-ConsoleState -Config $config -Sections (New-PublisherSections -Missing -Http '503')
+    Assert-Equal 'NOT PUBLISHING' $s.Publisher.State
+    Assert-Equal 0 @($s.Publisher.Writers).Count 'neither captured container has the status folder mounted'
+    Assert-True ($s.Publisher.Detail -match 'mounted') 'it says the mount is what is missing'
+    Assert-Equal 'NOT SERVING' $s.Publisher.FeedState
+}
+
+Fact 'AFreshStatusFileIsPublishingWithThePlayerCount' {
+    $json = New-StatusJson $now.AddSeconds(-20) 2
+    $s = New-ConsoleState -Config $config -Sections (New-PublisherSections $json)
+    Assert-Equal 'PUBLISHING' $s.Publisher.State
+    Assert-Equal 2 $s.Publisher.Players
+    Assert-Equal 'SERVING' $s.Publisher.FeedState
+    $tile = @(Get-AtAGlance $s $config)[2]
+    Assert-True ($tile.Detail -match '^2 playing') $tile.Detail
+}
+
+Fact 'AStatusFileOlderThanThreeMinutesIsStale' {
+    # The README's one liveness rule. The file never says it is offline; its age does.
+    $json = New-StatusJson $now.AddMinutes(-4)
+    $s = New-ConsoleState -Config $config -Sections (New-PublisherSections $json)
+    Assert-Equal 'STALE' $s.Publisher.State
+    Assert-Equal 'red' $s.Publisher.Color
+}
+
+Fact 'AHalfWrittenStatusFileIsUnreadableNotPublishing' {
+    $s = New-ConsoleState -Config $config -Sections (New-PublisherSections '{"schema":1,"generatedAt":')
+    Assert-Equal 'UNREADABLE' $s.Publisher.State
+}
+
+Fact 'PublishingWithTheFeedStoppedIsAmberBecauseTheWebsiteCannotSeeIt' {
+    $json = New-StatusJson $now.AddSeconds(-20)
+    $s2 = New-ConsoleState -Config $config -Sections (New-PublisherSections $json -Http '200')
+    Assert-Equal 'green' $s2.Publisher.Color
+    $sec = New-PublisherSections $json
+    $sec['inspect sl-uo-status'] = $cap['inspect sl-modernuo-test']
+    $s3 = New-ConsoleState -Config $config -Sections $sec
+    Assert-Equal 'STOPPED' $s3.Publisher.FeedState
+    Assert-Equal 'amber' $s3.Publisher.Color
+}
+
+Fact 'OnlyTheTestShardMountingTheStatusFolderIsAWarning' {
+    # The website would show the test shard's players as if they were live.
+    $json = New-StatusJson $now.AddSeconds(-20)
+    $s = New-ConsoleState -Config $config -Sections (New-PublisherSections $json)
+    $s.Shards['test'].Container.MountTargets = @('/var/lib/uo/modernuo/status')
+    $p = Get-PublisherState -Config $config -Sections (New-PublisherSections $json) -Shards $s.Shards -Now $now
+    Assert-Equal 'test' (@($p.Writers) -join ',')
+    Assert-Equal 'amber' $p.Color
+    Assert-True (@($p.Lines | Where-Object { $_ -like 'WARNING*TEST*' }).Count -eq 1) 'the warning names the test shard'
+}
+
+Fact 'TheReportHasAGlanceLineForEachTileAndAPublisherSection' {
+    $text = (Format-StatusReport $state $config | ForEach-Object { $_.Text }) -join "`n"
+    Assert-True ($text -match '(?m)^LIVE\s+:') 'a LIVE glance line'
+    Assert-True ($text -match '(?m)^TEST\s+:') 'a TEST glance line'
+    Assert-True ($text -match '(?m)^STATUS PUBLISHER\s*:') 'a publisher glance line'
+    Assert-True ($text -match '== Status publisher') 'a publisher section'
+}
+
+Fact 'TheScriptParsesUnderWindowsPowerShell51' {
+    Assert-Equal 5 $PSVersionTable.PSVersion.Major 'these facts must run under the shell Chase runs'
+    $errs = $null
+    [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $script).Path, [ref]$null, [ref]$errs)
+    Assert-Equal 0 @($errs).Count (@($errs) -join '; ')
+}
+
+Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
+    # Construction only: every control, every handler attached, nothing shown or clicked.
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
+        Assert-Equal 'Test shard,Snapshots,World setup,Diagnostics,LIVE shard' ($tabs -join ',')
+        Assert-True ($script:ui.Status.Text -match 'DRIFTED') 'the status panel rendered the capture'
+        Assert-Equal 3 @($script:ui.Tiles).Count 'three tiles: LIVE, TEST, STATUS PUBLISHER'
+        Assert-Equal 'TEST: STOPPED' $script:ui.Tiles[1].Word.Text
+        Assert-True ($form.Text -match 'LIVE .*\| TEST stopped \| publisher unknown') ('the title carries the glance: ' + $form.Text)
+    } finally { $form.Dispose() }
+}
+
+$failed = @($results | Where-Object { -not $_.Passed }).Count
+Write-Host ""
+Write-Host ("{0} facts, {1} passed, {2} failed" -f $results.Count, ($results.Count - $failed), $failed) -ForegroundColor $(if ($failed) { 'Red' } else { 'Green' })
+exit $failed

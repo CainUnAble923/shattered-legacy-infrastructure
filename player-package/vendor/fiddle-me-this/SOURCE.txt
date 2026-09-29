@@ -1,0 +1,63 @@
+Fiddle-Me-This, vendored for the Shattered Legacy player package
+================================================================
+
+Source   https://github.com/NewYears1978/Fiddle-Me-This
+Commit   e1d2a09f139dceb978d9584db9e1b03a18771109 (2024-02-03T14:46:22-06:00)
+         origin/HEAD was the same commit when taken.
+Taken    2026-09-29, cloned with core.autocrlf=false so every file is byte-for-byte
+         the upstream blob (upstream stores LF).
+Author   NewYears1978
+Licence  CC0 1.0 Universal, LICENSE-FiddleMeThis.txt (upstream LICENSE, renamed only)
+
+What it is: PNG overrides and XML gumps for TazUO. It patches no EA files.
+Build-PlayerPackage.ps1 copies [Original] then [Custom] into app\tazuo\.
+
+Files taken (counted in this folder after the copy)
+  [Original]\ExternalImages\gumps\*.png   107  restyled stock gumps, applied automatically
+  [Custom]\ExternalImages\gumps\*.png      63  art for the custom gumps
+  [Custom]\Data\XmlGumps\*.xml              6  opt-in gumps, opened from TazUO's top bar
+  LICENSE-FiddleMeThis.txt                  1
+  No filename appears in both gumps folders.
+
+Left out
+  Images\           README art. Its header dragon is a purchased GraphicRiver asset, not CC0.
+  Art ID List.xlsx  author's worksheet
+  README.md
+
+The [Original] / [Custom] split is kept so an upstream diff is a plain folder diff.
+
+Gump IDs overridden (the [Custom] IDs replace whatever the client's own gump art has
+at those IDs, for every gump that draws them)
+  [Original]  57-59 113 212 250-257 1209 1210 2000 2001 2006-2012 2015-2017 2021-2029
+              2031-2033 2051-2057 2091 2092 2103 2104 2200 2205 2206 2224-2232
+              2360-2362 2435-2438 2472 2700 2701 3500-3508 5587 5839 5840 9028 10860
+              22450-22455 30008 30009 30085 30089 39923 40303-40312
+  [Custom]    14952-14957 14959 61978 61979 61999 62000-62026 62050-62052
+              62070-62083 62180-62188
+
+Local changes (everything that differs from upstream)
+  Only the start position on the root <gump x= y=> tag of each XmlGumps file. Upstream
+  positions assume a 2560x1440 screen and open off screen at 1920x1080 and below. No XML
+  declares a gump size, so each is set to 0,0, which is inside 1280x720 whatever the
+  gump's size. Nothing else in any file is changed.
+
+  File                              before           after
+  Default Style HP Bar - Large.xml  x=2053 y=746     x=0 y=0
+  HP Bars Stacked - Large.xml       x=514  y=1007    x=0 y=0
+  HP Bars Stacked - Small.xml       x=0    y=0       x=0 y=0   (unchanged upstream value)
+  HP Orb.xml                        x=514  y=1007    x=0 y=0
+  MP Orb.xml                        x=1872 y=1007    x=0 y=0
+  Status Gump - Icons.xml           x=2304 y=367     x=0 y=0
+
+  TazUO writes x, y and locked back into the XML file when a player moves or locks one of
+  these gumps (XmlGumpHandler.SaveFile), so a player's own position sticks after the first
+  move.
+
+Checked against TazUO v26.0909.63 (3212623f, the version the package ships) and 7deed693
+(2026-09-23); neither file differs between them:
+  src/ClassicUO.Assets/ExternalImageLoader.cs  AppContext.BaseDirectory\ExternalImages\gumps,
+                                               *.png and *.bmp, recursive, name = gump ID
+  src/ClassicUO.Client/Game/UI/XmlGumpHandler.cs  CUOEnviroment.ExecutablePath\Data\XmlGumps\*.xml
+
+To update: diff a fresh clone of upstream against this folder, re-apply the position table
+above, and update the commit, date and counts here.

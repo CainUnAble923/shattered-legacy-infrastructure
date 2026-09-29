@@ -1,17 +1,17 @@
-====== Shattered Legacy Wiki ======
+====== Shattered Legacy ======
 
-{{:uo:media:shattered_legacy_logo.png?nolink&520|Shattered Legacy logo}}
+{{:uo:media:shattered_legacy_logo.png?nolink&520|Shattered Legacy crest}}
 
-Welcome to the ClusterF wiki for the Shattered Legacy Ultima Online shard.
+**One life. Every skill. As many loops as it takes.**
 
-This wiki is meant to be a living guide. Pages should connect to other pages generously so a player can start with one question and naturally discover the world, systems, professions, and lore around it.
+Shattered Legacy is a private Ultima Online shard run for family and friends. This wiki is the player's guide to it. Pages link to each other generously, so you can start with one question and follow it into the world, the systems, the professions and the lore.
 
-===== Start Here =====
+===== Start here =====
 
-  * [[uo:start|Ultima Online hub]]
-  * [[uo:connection|Connection guide]]
+  * [[uo:connection|Getting connected]]
   * [[uo:new_player_guide|New player guide]]
   * [[uo:guides:first_hour|First hour route]]
+  * [[uo:start|Ultima Online hub]]
 
 ===== Explore =====
 
@@ -21,13 +21,10 @@ This wiki is meant to be a living guide. Pages should connect to other pages gen
   * [[uo:lore:start|Lore]]
   * [[uo:media:start|Images and media]]
 
-===== Current Server Facts =====
+===== Server at a glance =====
 
-  * Shard: ''Shattered Legacy''
-  * Server: ''uo.clusterf.lab''
-  * Direct IP: ''10.7.4.120''
-  * Port: ''2593''
-  * Client: ClassicUO
-  * LAN or ClusterF VPN access required
+  * Address: ''shatteredlegacyuo.com'', port ''2593''
+  * Client: TazUO, included in the player package from [[https://shatteredlegacyuo.com|shatteredlegacyuo.com]]
+  * Accounts: your first login creates yours
 
-Operational documentation still lives in the Git repository. This wiki is for player-facing knowledge, maps, screenshots, and shard flavor.
+The shard's technical documentation lives in its Git repository. This wiki is for what players need: guides, maps, screenshots and the world's flavor.

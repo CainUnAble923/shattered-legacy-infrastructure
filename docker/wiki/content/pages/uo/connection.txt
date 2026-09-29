@@ -1,25 +1,24 @@
-====== Connection Guide ======
+====== Getting connected ======
+
+===== The short version =====
+
+  - Go to [[https://shatteredlegacyuo.com|shatteredlegacyuo.com]] and click **Download and play**.
+  - Unzip the folder anywhere and keep everything inside it together.
+  - Double-click **Play Shattered Legacy**. The first time only, it looks for Ultima Online on your computer and offers to fetch EA's free installer if it is not there.
+  - At the login screen, type any account name and password you want. Your first login creates your account, so write them down.
+  - Continue to the [[:uo:new_player_guide|New player guide]].
 
 ===== Server =====
 
 ^ Item ^ Value ^
 | Shard | ''Shattered Legacy'' |
-| Host | ''uo.clusterf.lab'' |
-| Direct IP | ''10.7.4.120'' |
+| Address | ''shatteredlegacyuo.com'' |
 | Port | ''2593'' |
-| Client | ClassicUO |
+| Client | TazUO, included in the player package |
 
-LAN or ClusterF VPN access is required.
+The package is already pointed at the server. You only need these values if you set up a client yourself.
 
-===== Client Setup Trail =====
-
-  - Install ClassicUO.
-  - Add a shard profile for ''10.7.4.120:2593''.
-  - Log in with the desired account name.
-  - If auto-account creation is enabled, the first login creates the account.
-  - Continue to [[:uo:new_player_guide|New player guide]].
-
-===== Related Pages =====
+===== Related pages =====
 
   * [[:uo:systems:accounts|Accounts]]
   * [[:uo:guides:troubleshooting|Troubleshooting]]

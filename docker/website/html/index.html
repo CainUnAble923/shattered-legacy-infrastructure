@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shattered Legacy</title>
+<meta name="description" content="Shattered Legacy, a private Ultima Online shard. One life. Every skill. As many loops as it takes.">
+<meta name="theme-color" content="#0d0d0d">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
 <style>
   :root {
     --bg: #0d0d0d;
@@ -13,6 +17,7 @@
     --gold-bright: #e3c98d;
     --text: #cfcabd;
     --muted: #8a8578;
+    --jade: #72b89a;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -24,7 +29,7 @@
     line-height: 1.65;
   }
   .wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 72px; }
-  header { text-align: center; padding: 72px 0 40px; border-bottom: 1px solid var(--line); }
+  header { text-align: center; padding: 56px 0 40px; border-bottom: 1px solid var(--line); }
   h1 {
     font-size: clamp(2.1rem, 7vw, 3.2rem);
     letter-spacing: .12em;
@@ -32,7 +37,10 @@
     margin: 0 0 .3em;
     font-weight: normal;
   }
+  .mark { display: block; width: 88px; height: 88px; margin: 0 auto 18px; }
   .tagline { color: var(--muted); margin: 0; font-size: 1.05rem; }
+  .what { color: var(--muted); margin: 6px 0 0; font-size: .9rem; }
+  :focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
   h2 {
     color: var(--gold);
     font-size: 1.3rem;
@@ -85,20 +93,95 @@
     font-size: .85rem;
   }
   footer a { color: var(--muted); }
+  footer .links { margin: 0 0 10px; }
+  .cta .note + .note { margin-top: 4px; }
+  /* Who is online. Inline under the button on narrow screens; in the right-hand gutter,
+     outside the reading column, on wide ones. Data from the shard's own status.json. */
+  .players { margin: 24px 0 0; }
+  .players h2.w-title {
+    margin: 0 0 10px; padding: 0 0 8px; font-size: 1rem;
+  }
+  .w-count { margin: 0; display: flex; align-items: baseline; gap: 8px; }
+  .w-count .n { font-size: 1.8rem; line-height: 1.1; color: var(--gold-bright); }
+  .w-count .k { color: var(--muted); font-size: .9rem; }
+  .w-names { list-style: none; margin: 10px 0 0; padding: 0; }
+  .w-names li {
+    padding: 5px 0; border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere;
+  }
+  .w-names li::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--jade); flex: none;
+  }
+  .w-more, .w-sub { margin: 8px 0 0; color: var(--muted); font-size: .85rem; }
+  @media (min-width: 1200px) {
+    .players {
+      position: fixed; top: 88px; left: calc(50% + 380px); width: 230px;
+      max-height: calc(100vh - 112px); overflow-y: auto; margin: 0;
+    }
+  }
+  /* Site menu and shard status. Same block on every page. */
+  .topnav { border-bottom: 1px solid var(--line); background: var(--bg); }
+  .topnav-in {
+    max-width: 720px; margin: 0 auto; padding: 10px 16px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px;
+  }
+  .topnav .home {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--gold); text-decoration: none; letter-spacing: .06em;
+  }
+  .topnav .home img { width: 24px; height: 24px; }
+  .topnav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 18px; }
+  .topnav ul a { color: var(--text); text-decoration: none; font-size: .95rem; }
+  .topnav ul a:hover, .topnav ul a:focus { color: var(--gold-bright); text-decoration: underline; }
+  .topnav ul a[aria-current="page"] { color: var(--gold-bright); }
+  [hidden] { display: none !important; }
+  .shards { margin: 0 0 0 auto; display: flex; gap: 14px; font-size: .85rem; color: var(--muted); }
+  .shards .s { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .shards .s b { font-weight: normal; color: var(--text); }
+  .sdot { width: 8px; height: 8px; border-radius: 50%; flex: none; border: 1px solid var(--muted); }
+  .sdot.up { background: var(--jade); border-color: var(--jade); }
+  @media (max-width: 560px) { .shards { margin: 0; width: 100%; } }
 </style>
 </head>
 <body>
+<nav class="topnav" aria-label="Site">
+  <div class="topnav-in">
+    <a class="home" href="/"><img src="/mark.svg" width="24" height="24" alt="">Shattered Legacy</a>
+    <ul>
+      <li><a href="/#play">Play</a></li>
+      <li><a href="https://wiki.shatteredlegacyuo.com/">Wiki</a></li>
+      <li><a href="/migration.html">Progress</a></li>
+      <li><a href="/#help">Help</a></li>
+    </ul>
+    <p class="shards" id="shards" hidden aria-live="polite">
+      <span class="s"><i class="sdot" id="sd-live"></i>Live <b id="st-live"></b></span>
+      <span class="s"><i class="sdot" id="sd-test"></i>Test <b id="st-test"></b></span>
+    </p>
+  </div>
+</nav>
 <div class="wrap">
 
   <header>
+    <img class="mark" src="/mark.svg" width="88" height="88" alt="">
     <h1>Shattered Legacy</h1>
-    <p class="tagline">A private Ultima Online shard</p>
+    <p class="tagline">One life. Every skill. As many loops as it takes.</p>
+    <p class="what">A private Ultima Online shard</p>
   </header>
 
-  <div class="cta">
+  <div class="cta" id="play">
     <a class="btn" href="/download/ShatteredLegacy-Setup.zip">Download and play</a>
     <p class="note">Windows &middot; about 73 MB &middot; free</p>
+    <p class="note">New here? Read the <a href="https://wiki.shatteredlegacyuo.com/">wiki</a> first.</p>
   </div>
+
+
+  <aside class="panel players" id="players" hidden aria-labelledby="players-title">
+    <h2 class="w-title" id="players-title">Online now</h2>
+    <p class="w-count"><span class="n" id="p-count">0</span><span class="k" id="p-word">playing</span></p>
+    <ul class="w-names" id="p-names"></ul>
+    <p class="w-more" id="p-more" hidden></p>
+    <p class="w-sub" id="p-sub"></p>
+  </aside>
 
   <h2>Getting in</h2>
 
@@ -121,11 +204,36 @@
     </li>
   </ol>
 
+  <h2>Learning the world</h2>
+
+  <div class="panel">
+    <p>
+      The <a href="https://wiki.shatteredlegacyuo.com/">Shattered Legacy wiki</a> covers everything
+      past the login screen: where to go in your first hour, the trainers and quest givers, maps,
+      and how the shard works.
+    </p>
+    <p>
+      Good places to start: <a href="https://wiki.shatteredlegacyuo.com/doku.php?id=uo:guides:first_hour">First hour route</a> &middot;
+      <a href="https://wiki.shatteredlegacyuo.com/doku.php?id=uo:world:new_haven">New Haven</a> &middot;
+      <a href="https://wiki.shatteredlegacyuo.com/doku.php?id=uo:world:maps">Maps</a>
+    </p>
+  </div>
+
+  <h2>Where the shard stands</h2>
+
+  <div class="panel">
+    <p>
+      Shattered Legacy is still being built. The <a href="/migration.html">progress page</a> shows
+      how much of the world is in place and how many known problems are still open, counted
+      straight from the project's own records.
+    </p>
+  </div>
+
   <h2>If Windows complains</h2>
 
   <div class="panel">
     <p>
-      It will, and nothing is wrong. The package is not code-signed, so Windows does not recognise
+      It will, and nothing is wrong. The package is not code-signed, so Windows does not recognize
       it.
     </p>
     <p>
@@ -137,7 +245,7 @@
     <p>If you would rather not click through a warning you do not understand, ask first.</p>
   </div>
 
-  <h2>If something goes wrong</h2>
+  <h2 id="help">If something goes wrong</h2>
 
   <div class="panel">
     <p>
@@ -150,6 +258,10 @@
       fix it. Say something and it can be sorted out in a minute.
     </p>
     <p>
+      The wiki's <a href="https://wiki.shatteredlegacyuo.com/doku.php?id=uo:guides:troubleshooting">troubleshooting page</a> covers the
+      common problems in more detail.
+    </p>
+    <p>
       Anything else: a photo or a screenshot of the window is worth more than a description.
     </p>
   </div>
@@ -159,7 +271,7 @@
   <div class="panel">
     <p>
       The game client is <a href="https://github.com/PlayTazUO/TazUO">TazUO</a>, a free and
-      open-source Ultima Online client, under the BSD 2-Clause licence. The rest is a few small
+      open-source Ultima Online client, under the BSD 2-Clause license. The rest is a few small
       scripts that point it at this shard and start it.
     </p>
     <p>
@@ -170,11 +282,112 @@
   </div>
 
   <footer>
+    <p class="links">
+      <a href="https://wiki.shatteredlegacyuo.com/">Wiki</a> &middot;
+      <a href="/download/ShatteredLegacy-Setup.zip">Download</a> &middot;
+      <a href="/migration.html">Progress</a>
+    </p>
     Shattered Legacy is a private server run for family and friends. It is not affiliated with,
     endorsed by, or connected to Electronic Arts or Broadsword. Ultima Online is a trademark of
     Electronic Arts Inc.
   </footer>
 
 </div>
+<script>
+(function () {
+  // The shard writes status.json itself, so it cannot report its own death: if it stops,
+  // the file just stops changing. Stale means "not answering", and no feed at all means
+  // the widget stays hidden. Names are player-chosen: textContent only, never innerHTML.
+  var STALE_MS = 3 * 60 * 1000;
+  var POLL_MS = 60 * 1000;
+  var SHOW_MAX = 25;
+
+  var box = document.getElementById('players');
+  var count = document.getElementById('p-count');
+  var word = document.getElementById('p-word');
+  var list = document.getElementById('p-names');
+  var more = document.getElementById('p-more');
+  var sub = document.getElementById('p-sub');
+
+  function plural(n, one, many) { return n === 1 ? one : many; }
+
+  function uptimeText(sec) {
+    if (!(sec > 0)) return '';
+    var h = Math.floor(sec / 3600);
+    if (h < 1) { var m = Math.max(1, Math.floor(sec / 60)); return 'Up ' + m + ' ' + plural(m, 'minute', 'minutes'); }
+    if (h < 48) return 'Up ' + h + ' ' + plural(h, 'hour', 'hours');
+    var d = Math.floor(h / 24);
+    return 'Up ' + d + ' ' + plural(d, 'day', 'days');
+  }
+
+  function render(d) {
+    var age = Date.now() - Date.parse(d && d.generatedAt);
+    list.textContent = '';
+    more.hidden = true;
+    box.hidden = false;
+    if (!(age >= 0 && age < STALE_MS)) {
+      count.textContent = '0';
+      word.textContent = 'playing';
+      sub.textContent = 'The shard is not answering right now.';
+      return;
+    }
+    var n = (d.players && d.players.count) || 0;
+    var names = (d.players && d.players.names) || [];
+    count.textContent = n;
+    word.textContent = n === 0 ? 'playing' : plural(n, 'person playing', 'people playing');
+    names.slice(0, SHOW_MAX).forEach(function (name) {
+      var li = document.createElement('li');
+      li.textContent = name;
+      list.appendChild(li);
+    });
+    var hiddenCount = n - Math.min(names.length, SHOW_MAX);
+    if (hiddenCount > 0) { more.textContent = 'and ' + hiddenCount + ' more'; more.hidden = false; }
+    var up = uptimeText(d.shard && d.shard.uptimeSeconds);
+    var parts = [];
+    if (n === 0) parts.push('No one is on right now.');
+    if (up) parts.push(up + '.');
+    sub.textContent = parts.join(' ');
+  }
+
+  function poll() {
+    fetch('/api/status.json', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(render)
+      .catch(function () { /* no feed yet: leave the widget hidden */ });
+  }
+
+  poll();
+  setInterval(poll, POLL_MS);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
+})();
+</script>
+<script>
+(function () {
+  // Shard up/down, from the probe on the Windows box. Like status.json, a stale file means
+  // the probe itself stopped, so stale reads "unknown", never "down".
+  var STALE_MS = 3 * 60 * 1000;
+  var box = document.getElementById('shards');
+  function set(id, state) {
+    var dot = document.getElementById('sd-' + id), txt = document.getElementById('st-' + id);
+    dot.className = 'sdot' + (state === 'up' ? ' up' : '');
+    txt.textContent = state;
+  }
+  function poll() {
+    fetch('/api/shards.json', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        var age = Date.now() - Date.parse(d && d.generatedAt);
+        var fresh = age >= 0 && age < STALE_MS;
+        (d.shards || []).forEach(function (s) {
+          if (s.id === 'live' || s.id === 'test') set(s.id, fresh ? (s.up ? 'up' : 'down') : 'unknown');
+        });
+        box.hidden = false;
+      })
+      .catch(function () { /* no feed: keep the menu clean rather than show a broken badge */ });
+  }
+  poll();
+  setInterval(poll, 60 * 1000);
+})();
+</script>
 </body>
 </html>

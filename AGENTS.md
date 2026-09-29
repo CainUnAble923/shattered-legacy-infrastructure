@@ -53,6 +53,15 @@ live container, so `modernuo.json` there **is** the running server's configurati
 - **The six-facet client ceiling is an official-client limit only.** ClassicUO reads map
   indices well past 5, and ModernUO's core is not the constraint either.
 
+## Where things run
+
+Two machines. **All the web stuff runs on Haven** (`192.168.1.61`, Debian): `sl-proxy`,
+`sl-website`, `sl-wiki`, `sl-downloads`, `sl-dashboard`. The **Windows box** (`192.168.1.58`) runs
+the shards, `sl-ddns` and the status feed (`docker/uo-status`). The folders under `docker/` for web
+services are the source; Haven has its own copies. Never start a web container on the Windows box,
+and never assume a `docker` command here reaches Haven: `docker info --format "{{.Name}}"` says
+which daemon you are talking to. See the root `README.md` and each folder's README.
+
 ## Standing rules
 
 1. Verify against the source trees, not documentation. Neither ModernUO nor ServUO

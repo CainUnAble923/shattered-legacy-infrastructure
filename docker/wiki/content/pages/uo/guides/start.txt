@@ -2,15 +2,15 @@
 
 Guides are step-by-step pages for players.
 
-===== Available Guides =====
+===== Available guides =====
 
+  * [[:uo:connection|Getting connected]]
   * [[first_hour|First hour route]]
   * [[troubleshooting|Troubleshooting]]
 
-===== Good Future Guides =====
+===== Guides we would like to add =====
 
   * First crafting character
   * First combat character
-  * How to join over VPN
   * How to report missing trainers
   * How to contribute screenshots

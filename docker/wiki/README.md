@@ -1,167 +1,62 @@
 # Shattered Legacy Wiki
 
-## Overview
+> **This runs on Haven, not on this machine.**
+> Haven is the Debian box at `192.168.1.61` (`ssh chase@192.168.1.61`). The container
+> (`sl-wiki`) and its live copy of this folder, `~/shattered-legacy/docker/wiki/`, are there.
+> This folder in the repo is the **source**: edit here, then deploy with the scripts in `D:\UO\haven-migration\` (skin: `D:\UO\Install-WikiSkin.ps1`).
+> **Never run `docker compose` for this on the Windows box.** A second copy of the web stack there
+> is how the site went unreachable for months (the stray Windows `sl-proxy`, stopped 2026-09-29).
 
-The Shattered Legacy wiki is a lightweight DokuWiki instance for player-facing Ultima Online documentation, shard notes, and in-world references.
+Player-facing DokuWiki for the Shattered Legacy shard: guides, maps, systems and lore.
+Operational documentation stays in Git; the wiki is for what players need.
 
-Operational source of truth remains in Git. The wiki is for content that benefits from faster edits by admins and players.
-
-## Current State
+## Where it runs
 
 | Item | Value |
 | --- | --- |
-| URL | `http://wiki.clusterf.lab` |
-| Container ID | `110` |
-| Node | `enderman` |
-| IP | `10.7.4.121` |
-| OS | Debian 12 |
-| App | DokuWiki |
-| Web server | Nginx |
-| PHP runtime | PHP-FPM |
-| Health check | `http://10.7.4.121/healthz` |
-| Auth | Local DokuWiki admin; FreeIPA LDAP planned |
-| Upload limit | 32 MB |
+| URL | https://wiki.shatteredlegacyuo.com |
+| Host | Haven, `192.168.1.61` (Debian), `ssh chase@192.168.1.61` |
+| Container | `sl-wiki`, image `ghcr.io/dokuwiki/dokuwiki:latest` |
+| Compose | `~/shattered-legacy/docker/wiki/docker-compose.yml` on Haven (copy of this folder) |
+| Data | Docker volume `sl-wiki-storage`, mounted at `/storage` |
+| Network | `sl-wiki-net`; Nginx Proxy Manager (`sl-proxy`) reaches it as `sl-wiki:8080` |
+| TLS | Terminated by `sl-proxy` on Haven |
 
-The Debian DokuWiki package can pull in Apache. The deployment script disables `apache2` and serves the wiki through Nginx.
+Everything DokuWiki keeps lives in `/storage`: pages and media (`/storage/data`), configuration
+(`/storage/conf`), and installed plugins and templates (`/storage/lib`). The image installs DokuWiki
+itself to `/var/www/html` and refreshes the bundled plugins and template on every update.
 
-## Architecture
+## Updating DokuWiki
 
-```text
-Browser -> Nginx :80 -> DokuWiki/PHP-FPM
-```
-
-The wiki is intended for LAN and VPN access only.
-
-## Deployment
-
-Run on `enderman` after copying Boblin's public key to `/tmp/clusterf_boblin.pub`:
+Pull and recreate. Data stays in `sl-wiki-storage`.
 
 ```bash
-sudo ./scripts/deploy/wiki/deploy-dokuwiki-enderman-lxc.sh
+cd ~/shattered-legacy/docker/wiki
+docker compose pull && docker compose up -d
 ```
 
-Run from the Windows workstation:
+Never use `docker compose down -v`. Plain `down` is safe now that the volume is named, but there is
+no reason to use it.
 
-```powershell
-scp -i $env:USERPROFILE\.ssh\clusterf_boblin `
-  .\scripts\deploy\wiki\deploy-dokuwiki-enderman-lxc.sh `
-  boblin@enderman.clusterf.lab:/tmp/
+## Content
 
-ssh -i $env:USERPROFILE\.ssh\clusterf_boblin boblin@enderman.clusterf.lab `
-  "sudo bash /tmp/deploy-dokuwiki-enderman-lxc.sh"
-```
+`content/pages` and `content/media` are the seed copy of the wiki, kept in Git. They are **not**
+mounted into the container; the live pages are in the volume and can be edited in the wiki.
+To push seed pages to Haven without overwriting live edits, copy them into
+`/storage/data/pages` with `tar -xk` (keep existing), as `D:\UO\haven-migration\haven-wiki-fix.sh` does.
 
-The script is safe to re-run. It preserves existing wiki pages and non-admin local users.
+## Skin
 
-## Seed Content
-
-Starter wiki content is tracked in Git:
-
-```text
-services/wiki/content/pages
-services/wiki/content/media
-```
-
-Deploy seed content on `enderman` from a repository clone:
-
-```bash
-sudo SYNC_MODE=seed ./scripts/deploy/wiki/sync-dokuwiki-content.sh
-```
-
-Use `SYNC_MODE=seed` for normal operation because it preserves live wiki edits. Use `SYNC_MODE=overwrite` only when intentionally replacing matching wiki pages/media from Git.
-
-If running from the Windows workstation, copy the content bundle and run the sync through Boblin:
-
-```powershell
-scp -i $env:USERPROFILE\.ssh\clusterf_boblin `
-  .\scripts\deploy\wiki\sync-dokuwiki-content.sh `
-  boblin@enderman.clusterf.lab:/tmp/
-
-scp -i $env:USERPROFILE\.ssh\clusterf_boblin -r `
-  .\services\wiki\content `
-  boblin@enderman.clusterf.lab:/tmp/wiki-content
-
-ssh -i $env:USERPROFILE\.ssh\clusterf_boblin boblin@enderman.clusterf.lab `
-  "sudo CONTENT_ROOT=/tmp/wiki-content SYNC_MODE=seed bash /tmp/sync-dokuwiki-content.sh"
-```
-
-The current seed includes:
-
-- a main Shattered Legacy landing page
-- UO hub page
-- world, systems, professions, guides, lore, and media namespaces
-- sidebar navigation
-- Shattered Legacy logo media for page content, DokuWiki header, and favicon
-- starter SVG images for route, progression, and media guide pages
-
-## Key Paths
-
-| Purpose | Path |
-| --- | --- |
-| DokuWiki app | `/usr/share/dokuwiki` |
-| DokuWiki config | `/etc/dokuwiki` |
-| Wiki pages/media | `/var/lib/dokuwiki/data` |
-| Nginx site | `/etc/nginx/sites-available/wiki.clusterf.lab` |
-| Bootstrap admin secret | `/root/clusterf-wiki-admin.txt` |
-
-Retrieve the bootstrap admin password on `enderman`:
-
-```bash
-sudo pct exec 110 -- cat /root/clusterf-wiki-admin.txt
-```
-
-## DNS
-
-Current state: DNS record pending. The wiki is reachable by IP at `http://10.7.4.121` until `wiki.clusterf.lab` exists in UniFi DNS or FreeIPA DNS.
-
-Preferred FreeIPA record when an IPA admin ticket is available:
-
-```bash
-ipa dnsrecord-add clusterf.lab wiki --a-rec=10.7.4.121
-```
-
-## Health Checks
-
-From `enderman`:
-
-```bash
-sudo pct status 110
-sudo pct exec 110 -- systemctl is-active nginx
-sudo pct exec 110 -- systemctl list-units 'php*-fpm.service'
-curl http://10.7.4.121/healthz
-```
-
-From a LAN or VPN client:
-
-```powershell
-curl.exe http://10.7.4.121/healthz
-curl.exe http://wiki.clusterf.lab/healthz
-```
-
-Check image upload limits inside the container:
-
-```bash
-php -i | grep -E 'upload_max_filesize|post_max_size|max_file_uploads'
-```
+`skin/` holds the Shattered Legacy look (colors, type, logo, footer) from the Shattered Legacy
+design system. It changes only config and media, so updates do not undo it.
+Install or reinstall with `D:\UO\Install-WikiSkin.ps1`. See `skin/README.md`.
 
 ## Backups
 
-Back up both config and data:
+The whole wiki is one volume:
 
 ```bash
-sudo pct exec 110 -- tar -C / -czf /root/wiki-backup.tgz etc/dokuwiki var/lib/dokuwiki/data
-sudo pct pull 110 /root/wiki-backup.tgz /tank/clusterf-artifacts/wiki/wiki-backup-$(date -u +%Y%m%dT%H%M%SZ).tgz
+docker exec sl-wiki tar -C /storage -czf - . > ~/wiki-storage-$(date +%Y%m%d).tgz
 ```
 
-## Future Improvements
-
-- Add FreeIPA-issued TLS certificate and serve HTTPS.
-- Integrate DokuWiki LDAP auth with FreeIPA groups.
-- Add scheduled backups to Enderman artifact storage.
-- Replace starter SVGs with real in-game screenshots and annotated maps.
-- Create an admin-only operations namespace.
-
-## Upstream Links
-
-- DokuWiki: <https://www.dokuwiki.org/dokuwiki>
-- DokuWiki ACLs: <https://www.dokuwiki.org/acl>
+Restore by extracting into `/storage` of a stopped container, or into a fresh `sl-wiki-storage`.
