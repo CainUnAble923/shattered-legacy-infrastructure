@@ -120,8 +120,25 @@ public static class ShardStatusPublisher
     // The characters in the world behind a set of connections, one per character.
     internal static List<Mobile> InWorld(IEnumerable<NetState> states)
     {
-        // P6 RED: no in-world test
-        var l = new List<Mobile>(); foreach (var ns in states) { if (ns?.Mobile != null) l.Add(ns.Mobile); } return l;
+        var list = new List<Mobile>();
+
+        foreach (var ns in states)
+        {
+            var m = ns?.Mobile;
+
+            // m == null: logging in or at character select; Mobile is set when a character is chosen.
+            // m.NetState != ns: a second connection has taken this character over and the old one is
+            // still being torn down, so the character is counted once, on the connection it has now.
+            // Map.Internal is where a logged-out character is parked.
+            if (m == null || m.Deleted || m.NetState != ns || m.Map == null || m.Map == Map.Internal)
+            {
+                continue;
+            }
+
+            list.Add(m);
+        }
+
+        return list;
     }
 
     internal static bool IsListed(Mobile m) =>
@@ -131,8 +148,37 @@ public static class ShardStatusPublisher
     // Name, not RawName: a disguised character is published as the name other players see.
     internal static (int Count, List<string> Names) Players(IEnumerable<Mobile> inWorld)
     {
-        // P6 RED: no filter, no sort, no dedup, no cap
-        var n = new List<string>(); foreach (var m in inWorld) { n.Add(m.Name); } return (n.Count, n);
+        var count = 0;
+        var unique = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var m in inWorld)
+        {
+            if (m == null || !IsListed(m))
+            {
+                continue;
+            }
+
+            count++;
+
+            var name = m.Name?.Trim();
+            if (!string.IsNullOrEmpty(name))
+            {
+                unique.Add(name);
+            }
+        }
+
+        var names = new List<string>(Math.Min(unique.Count, MaxNames));
+        foreach (var name in unique)
+        {
+            if (names.Count == MaxNames)
+            {
+                break;
+            }
+
+            names.Add(name);
+        }
+
+        return (count, names);
     }
 
     // Schema 1, exactly as docker/uo-status/README.md shows it. The default encoder escapes every
@@ -142,8 +188,45 @@ public static class ShardStatusPublisher
         DateTime? lastSaveAt
     )
     {
-        // P6 RED: empty document
-        return System.Text.Encoding.ASCII.GetBytes("{}");
+        using var stream = new MemoryStream();
+        using (var w = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+        {
+            w.WriteStartObject();
+            w.WriteNumber("schema", 1);
+            w.WriteString("generatedAt", Timestamp(generatedAt));
+
+            w.WriteStartObject("shard");
+            w.WriteString("name", ShardName);
+            w.WriteString("startedAt", Timestamp(startedAt));
+            w.WriteNumber("uptimeSeconds", Math.Max(0, uptimeSeconds));
+            w.WriteEndObject();
+
+            w.WriteStartObject("players");
+            w.WriteNumber("count", count);
+            w.WriteStartArray("names");
+            foreach (var name in names)
+            {
+                w.WriteStringValue(name);
+            }
+            w.WriteEndArray();
+            w.WriteEndObject();
+
+            // null until the first save of this process: the time is only known from the event.
+            w.WriteStartObject("world");
+            if (lastSaveAt.HasValue)
+            {
+                w.WriteString("lastSaveAt", Timestamp(lastSaveAt.Value));
+            }
+            else
+            {
+                w.WriteNull("lastSaveAt");
+            }
+            w.WriteEndObject();
+
+            w.WriteEndObject();
+        }
+
+        return stream.ToArray();
     }
 
     private static string Timestamp(DateTime t) =>
@@ -154,7 +237,35 @@ public static class ShardStatusPublisher
     // half-written one. The temp file is removed if anything fails before the rename.
     internal static void WriteAtomically(string path, byte[] bytes)
     {
-        // P6 RED: rewrite in place
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!); File.WriteAllBytes(path, bytes);
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        var tmp = path + ".tmp";
+
+        try
+        {
+            using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                fs.Write(bytes, 0, bytes.Length);
+            }
+
+            File.Move(tmp, path, true);
+        }
+        catch
+        {
+            try
+            {
+                File.Delete(tmp);
+            }
+            catch
+            {
+                // The original failure is the one worth reporting.
+            }
+
+            throw;
+        }
     }
 }

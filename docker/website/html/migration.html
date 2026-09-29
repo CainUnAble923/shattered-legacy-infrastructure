@@ -209,6 +209,7 @@
   // Shard up/down, from the probe on the Windows box. Like status.json, a stale file means
   // the probe itself stopped, so stale reads "unknown", never "down".
   var STALE_MS = 3 * 60 * 1000;
+  var SKEW_MS = 60 * 1000; // a viewer's clock may run behind the shard's
   var box = document.getElementById('shards');
   function set(id, state) {
     var dot = document.getElementById('sd-' + id), txt = document.getElementById('st-' + id);
@@ -220,7 +221,7 @@
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(function (d) {
         var age = Date.now() - Date.parse(d && d.generatedAt);
-        var fresh = age >= 0 && age < STALE_MS;
+        var fresh = age > -SKEW_MS && age < STALE_MS;
         (d.shards || []).forEach(function (s) {
           if (s.id === 'live' || s.id === 'test') set(s.id, fresh ? (s.up ? 'up' : 'down') : 'unknown');
         });
