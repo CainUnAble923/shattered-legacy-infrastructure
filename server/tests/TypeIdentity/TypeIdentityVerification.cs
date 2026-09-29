@@ -180,8 +180,10 @@ public class TypeIdentityVerification
     {
         var shortName = droppedName[(droppedName.LastIndexOf('.') + 1)..];
 
+        // Core.Assembly is null in the test host (the fixture loads Server.dll as a content assembly instead).
         var declared = AssemblyHandler.Assemblies
             .Append(Core.Assembly)
+            .Where(a => a != null)
             .Distinct()
             .SelectMany(LoadableTypes)
             .Where(t => t.Name == shortName || t.FullName == droppedName)

@@ -12,10 +12,13 @@
 //
 // Gate 3 (treasure chests) is not here: pinned has none of the lists it was costed as. See the note, section 2.
 //
-// Test-host fact that limits one assertion: the host has no tile data, so a type whose weight comes from
-// tiledata.mul rather than a DefaultWeight override reads 1 here. Of the 55 that is LightInTheVoid alone (its
-// GargishTalwar base has no override; the client's tiledata row 0x908 says 4, read for the note). The weight fact
-// is exact for the other 54 and only a lower bound for that one.
+// Two test-host facts limit the weight assertion, both seen in the first run:
+//   - the host has no tile data, so a type whose weight comes from tiledata.mul rather than a DefaultWeight override
+//     reads 0 here. Of the 55 that is LightInTheVoid alone (its GargishTalwar base has no override; the client's
+//     tiledata row 0x908 says 4, read for the note). The fact is exact for the other 54 and trivial for that one.
+//   - Stealing.Configure never runs in the host, so Stealing.MaxWeightToSteal reads 0. The cap is asserted against
+//     the value Configure would set: ServerConfiguration's "stealing.maxWeightToSteal", default 10 (Stealing.cs:33),
+//     which no shard configuration overrides.
 
 using System;
 using System.Collections.Generic;
@@ -24,7 +27,6 @@ using System.Reflection;
 using Server;
 using Server.Engines.Stealables;
 using Server.Items;
-using Server.SkillHandlers;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -174,6 +176,9 @@ public class P8LootTablesVerification
         Assert.Equal(OursAdded.OrderBy(t => t.Name), appended.Distinct().OrderBy(t => t.Name));
     }
 
+    // Stealing.cs:33's default; see the header for why Stealing.MaxWeightToSteal itself reads 0 in this host.
+    private const int StealCap = 10;
+
     public static IEnumerable<object[]> AppendedEntries() =>
         StealableArtifacts.Entries.Skip(80).Select((e, i) => new object[] { 80 + i, e.Type.Name });
 
@@ -198,8 +203,8 @@ public class P8LootTablesVerification
 
         // Stealing refuses anything heavier (Stealing.cs:256). A stealable nobody can steal is not reached.
         Assert.True(
-            item.Weight + item.TotalWeight <= Stealing.MaxWeightToSteal,
-            $"{typeName} weighs {item.Weight}, over the {Stealing.MaxWeightToSteal} stone steal cap"
+            item.Weight + item.TotalWeight <= StealCap,
+            $"{typeName} weighs {item.Weight}, over the {StealCap} stone steal cap"
         );
 
         item.Delete();
