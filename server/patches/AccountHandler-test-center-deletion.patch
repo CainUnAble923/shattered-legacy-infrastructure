@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Accounting/AccountHandler.cs
++++ b/Projects/UOContent/Accounting/AccountHandler.cs
+@@ -19,7 +19,11 @@
+ 
+     private static int MaxAccountsPerIP;
+     private static bool AutoAccountCreation;
+-    private static readonly bool RestrictDeletion = !TestCenter.Enabled;
++    // Shattered Legacy (cc-P9): read when a deletion is asked for, not frozen when AccountHandler's statics are first
++    // touched. As a field its value depended on whether TestCenter.Configure had run by then, which is decided by an
++    // unstable sort of default-priority Configure methods. Latent at 7c9215d97 (TestCenter sorts first), but any
++    // added Configure can reorder it. See shard-migration/notes/cc-P9-test-center.md.
++    private static bool RestrictDeletion => !TestCenter.Enabled;
+     private static readonly TimeSpan DeleteDelay = TimeSpan.FromDays(7.0);
+     private static bool PasswordCommandEnabled;
+ 

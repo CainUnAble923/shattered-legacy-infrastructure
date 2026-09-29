@@ -76,6 +76,10 @@ $script:Invariant       = [Globalization.CultureInfo]::InvariantCulture
 $script:CaptureMarker   = '##### SHARD-CONSOLE-CAPTURE '
 $script:SnapshotPattern = '^(\d{8}-\d{6})_([A-Za-z0-9._-]+)$'
 $script:NoSaveWarning   = 'A stop does not save: play since the last autosave (every 5 minutes) is lost. [save in game first if that matters.'
+# D36 fixed: said instead for a container whose log since this start has $script:SavesOnStopLine.
+$script:SavesOnStopNote = 'The shard saves on stop (D36 fix, seen in its log since this start). If the stop times out, play since the last autosave is lost.'
+# Printed by server/customizations/Misc/SaveOnShutdown.cs (RegisteredLine) once it listens for SIGTERM. Change both together.
+$script:SavesOnStopLine = '[SaveOnShutdown] listening for SIGTERM: a stop saves the world first (D36)'
 
 function Get-ConsoleConfig {
     param([Parameter(Mandatory = $true)][string]$RepoRoot)
@@ -361,6 +365,13 @@ function Get-ListenerState {
     [pscustomobject]@{ State = $state; Addresses = $addresses.ToArray(); Detail = $detail }
 }
 
+function Test-SavesOnStop {
+    # D36. Whether this run of the shard registered the save-on-stop handler. Read from the log
+    # the process wrote since it started, not from the image, so it is true of what is running.
+    param([string]$LogText)
+    (Remove-Ansi $LogText).Contains($script:SavesOnStopLine)
+}
+
 function ConvertFrom-FileListing {
     # One file per line: 2026-09-29T16:00:00Z|12345|Accounts\Accounts.bin
     param([string]$Text)
@@ -609,6 +620,7 @@ function Get-ActionPlan {
     $stopWait = [string]$Config.StopTimeout
     $snapDir = Join-Path $Config.SnapshotRoot $sh.Key
     $noSave = $script:NoSaveWarning
+    if ($ss.SavesOnStop) { $noSave = $script:SavesOnStopNote }
 
     $isLiveOp = ($Action -like 'live.*') -or ($sh.IsLive -and $Action -in @('snapshot.create', 'snapshot.restore', 'snapshot.delete'))
     if ($isLiveOp) {
@@ -935,6 +947,7 @@ function New-ConsoleState {
             RunningImage = $run
             Drift        = (Get-ImageDrift -Shard $sh -Container $c -Latest $latest -ConfigRef $cfgRef -RunningImage $run -LatestTag $Config.LatestTag)
             Listener     = (Get-ListenerState -Container $c -LogText $Sections['logs ' + $sh.Container] -GamePort $port)
+            SavesOnStop  = [bool]($c.Exists -and (Test-SavesOnStop ([string]$Sections['logs ' + $sh.Container])))
             Save         = (Get-SaveSummary (ConvertFrom-FileListing $Sections['saves ' + $sh.Key]))
             Snapshots    = @(ConvertFrom-SnapshotListing $Sections['snapshots ' + $sh.Key])
             Asides       = $asides
@@ -1381,6 +1394,44 @@ function Get-ConsoleState {
     $s
 }
 
+function New-ExecOutputFile {
+    # One file per run that has exec steps, in shard-console-output\ beside shard-console.log, so
+    # a failure can be read after its window is closed (D38). Ignored by git as *.log.
+    param($Config, [string]$ActionKey, [string]$ShardKey)
+    $dir = Join-Path (Split-Path -Parent $Config.LogFile) 'shard-console-output'
+    if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    $name = (Get-Date).ToString('yyyyMMdd-HHmmss', $script:Invariant) + '_' + $ActionKey + '_' + $ShardKey + '.log'
+    Join-Path $dir ($name -replace '[^A-Za-z0-9._-]', '_')
+}
+
+function Invoke-ExecStep {
+    # Runs one command with its stdout and stderr on the screen as they arrive (D38: they used to
+    # become Invoke-Plan's return value) and in OutFile. Returns only the exit code.
+    # 2>&1 on a native command wraps each stderr line in an ErrorRecord, and under
+    # ErrorActionPreference Stop the first one throws, so the preference is Continue here: docker
+    # writes its progress to stderr. Failure is the exit code, never stderr.
+    param([string]$Exe, [string[]]$Arguments, [string]$OutFile, [string]$Header)
+    $w = New-Object IO.StreamWriter($OutFile, $true, (New-Object Text.UTF8Encoding $false))
+    $w.AutoFlush = $true
+    $eap = $ErrorActionPreference
+    try {
+        $w.WriteLine('== ' + (Get-Date).ToString('yyyy-MM-dd HH:mm:ss', $script:Invariant) + ' ' + $Header)
+        $ErrorActionPreference = 'Continue'
+        & $Exe @Arguments 2>&1 | ForEach-Object {
+            $t = [string]$_
+            if ($_ -is [Management.Automation.ErrorRecord]) { $t = $_.Exception.Message }
+            $w.WriteLine($t)
+            Write-ConsoleLine $t 'normal'
+        }
+        $code = $LASTEXITCODE
+        $w.WriteLine('== exited with ' + $code)
+    } finally {
+        $ErrorActionPreference = $eap
+        $w.Dispose()
+    }
+    $code
+}
+
 function Invoke-Plan {
     # Runs a plan, one step at a time, saying what each step is before it runs it. Stops at the
     # first failure and says what has already been moved, so nothing is left somewhere unknown.
@@ -1403,6 +1454,7 @@ function Invoke-Plan {
     $logged = @($plan | Where-Object { $_.Kind -eq 'log' }).Count -gt 0
     if ($logged) { Write-ConsoleLog $Config ('START ' + $ActionKey + ' shard=' + $ShardKey) }
     $moved = New-Object 'System.Collections.Generic.List[string]'
+    $outFile = $null
     $i = 0
     foreach ($s in $plan) {
         $i++
@@ -1415,10 +1467,11 @@ function Invoke-Plan {
                 'log'     { Write-ConsoleLog $Config ('DONE  ' + $s.Text); Write-ConsoleLine ($tag + 'logged to ' + $Config.LogFile) 'gray' }
                 'exec' {
                     Write-ConsoleLine ($tag + $s.Text) 'head'
-                    Write-ConsoleLine ('      > ' + (Format-CommandLine $s.Exe $s.Arguments)) 'gray'
-                    $a = @($s.Arguments)
-                    & $s.Exe @a
-                    if ($LASTEXITCODE -ne 0) { throw ((Format-CommandLine $s.Exe $s.Arguments) + ' exited with ' + $LASTEXITCODE) }
+                    $line = Format-CommandLine $s.Exe $s.Arguments
+                    Write-ConsoleLine ('      > ' + $line) 'gray'
+                    if (-not $outFile) { $outFile = New-ExecOutputFile $Config $ActionKey $ShardKey }
+                    $code = Invoke-ExecStep -Exe $s.Exe -Arguments @($s.Arguments) -OutFile $outFile -Header ($tag + $line)
+                    if ($code -ne 0) { throw ($line + ' exited with ' + $code) }
                 }
                 'stopped' {
                     Write-ConsoleLine ($tag + $s.Text) 'head'
@@ -1476,6 +1529,7 @@ function Invoke-Plan {
                 foreach ($m in $moved) { Write-ConsoleLine ('      ' + $m) 'red' }
             }
             Write-ConsoleLine 'Nothing after that step was run.' 'red'
+            if ($outFile) { Write-ConsoleLine ('Everything the commands printed is kept in ' + $outFile) 'red' }
             if ($logged) { Write-ConsoleLog $Config ('FAILED ' + $ActionKey + ' shard=' + $ShardKey + ' at step ' + $i + ': ' + $_.Exception.Message) }
             return $false
         }
@@ -1992,7 +2046,7 @@ function New-ConsoleForm {
         (New-ConsoleButton 'Open the folder they write to' 'diag.folder')
     )
 
-    $livePage = New-ButtonPage 'LIVE shard' 'LIVE: sl-modernuo, the real world save, real players. Every button here asks you to type a phrase first. Start, Stop and Restart are docker start / stop / restart on the existing container; this console never runs compose on the live file (D29) and never deploys. A stop does not save: play since the last autosave is lost.' @(
+    $livePage = New-ButtonPage 'LIVE shard' 'LIVE: sl-modernuo, the real world save, real players. Every button here asks you to type a phrase first. Start, Stop and Restart are docker start / stop / restart on the existing container; this console never runs compose on the live file (D29) and never deploys. Whether a stop saves (D36) depends on what the container runs; each plan says which.' @(
         (New-ConsoleButton 'Start' 'live.start'),
         (New-ConsoleButton 'Stop' 'live.stop'),
         (New-ConsoleButton 'Restart' 'live.restart'),

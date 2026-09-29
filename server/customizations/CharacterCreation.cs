@@ -245,6 +245,8 @@ public static partial class CharacterCreation
             if (TestCenter.Enabled)
             {
                 TestCenter.FillBankbox(newChar);
+                // Our own resources (server/customizations/TestCenter/TESTKIT.md).
+                TestCenterKit.PlaceKit(newChar);
             }
         }
         else

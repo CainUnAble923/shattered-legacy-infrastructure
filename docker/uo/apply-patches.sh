@@ -318,6 +318,14 @@ apply_patch "$PATCHES/LadyLissith-pinned-waiting-drop.patch"
 apply_patch "$PATCHES/Loot-hat-types-orc-tribal-mask.patch"
 apply_patch "$PATCHES/StealableArtifacts-servuo-entries.patch"
 
+# P9. Test Center deletion. Pinned's RestrictDeletion is a static readonly field set from TestCenter.Enabled when
+# AccountHandler's statics are first touched, which can be before TestCenter.Configure runs (same default priority,
+# unstable sort), freezing the 7-day wait on a Test Center shard. Latent at 7c9215d97 (a probe put TestCenter first), but
+# any added Configure can reorder it. One line: the field becomes a property read at
+# deletion time. Live (testCenter.enable false) keeps the wait. Alternatives argued in
+# shard-migration/notes/cc-P9-test-center.md section 3; pinned by TestCenterVerification.
+apply_patch "$PATCHES/AccountHandler-test-center-deletion.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

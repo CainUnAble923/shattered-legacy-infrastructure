@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Test Queue</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  /* One column of test cards, summary first, filters sticky. Night by default, Parchment for light. */
+  :root {
+    --bg: #0d0d0d; --panel: #141414; --line: #2a2317;
+    --gold: #c8a96e; --gold-bright: #e3c98d; --text: #cfcabd; --muted: #8a8578;
+    --jade: #72b89a; --vermilion: #e0674c; --amber: #f0b44c;
+    --code-bg: #1c1810; --system-bg: #0e1512;
+    --serif: Georgia, "Times New Roman", serif;
+    --mono: Consolas, Menlo, monospace;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f3ecdc; --panel: #faf5e9; --line: #d6c7a3;
+      --gold: #7a5718; --gold-bright: #5c4110; --text: #2b2519; --muted: #675d4b;
+      --jade: #2c6a52; --vermilion: #a3321f; --amber: #7f5300;
+      --code-bg: #ebe0c3; --system-bg: #e8efe6;
+      color-scheme: light;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--serif); line-height: 1.55; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 16px 64px; }
+  a { color: var(--gold-bright); }
+  :focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+  strong { color: var(--gold-bright); font-weight: normal; }
+  code { font-family: var(--mono); font-size: .88em; background: var(--code-bg); color: var(--gold-bright);
+         padding: 1px 5px; border-radius: 2px; overflow-wrap: anywhere; }
+
+  header { padding: 36px 0 18px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap;
+           align-items: baseline; justify-content: space-between; gap: 8px 24px; }
+  h1 { margin: 0; color: var(--gold); font-weight: normal; font-size: clamp(1.6rem, 4vw, 2.1rem); letter-spacing: .04em; }
+  .watch { color: var(--muted); font-size: .85rem; display: flex; align-items: center; gap: 8px; }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--jade); flex: none; }
+  .pulse.stale { background: transparent; border: 1px solid var(--vermilion); }
+  .lede { color: var(--muted); font-size: .92rem; margin: 14px 0 0; max-width: 70ch; }
+
+  .summary { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 22px 0 6px; }
+  .sum { display: flex; align-items: baseline; gap: 8px; }
+  .sum .n { font-size: 1.9rem; line-height: 1; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+  .sum .k { color: var(--muted); font-size: .9rem; }
+  .bar { display: flex; height: 6px; border-radius: 2px; overflow: hidden; background: var(--line); margin: 10px 0 0; }
+  .bar i { display: block; height: 100%; }
+
+  .controls { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 12px 0;
+              border-bottom: 1px solid var(--line); margin-top: 18px;
+              display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .chip { font: inherit; font-size: .9rem; color: var(--text); background: transparent; border: 1px solid var(--line);
+          border-radius: 3px; padding: 5px 12px; cursor: pointer; }
+  .chip[aria-pressed="true"] { border-color: var(--gold); color: var(--gold-bright); background: var(--code-bg); }
+  .chip .c { color: var(--muted); margin-left: 6px; font-variant-numeric: tabular-nums; }
+  #q { flex: 1 1 200px; min-width: 0; font: inherit; font-size: .95rem; color: var(--text); background: var(--panel);
+       border: 1px solid var(--line); border-radius: 3px; padding: 6px 10px; }
+  #q::placeholder { color: var(--muted); }
+
+  h2 { color: var(--gold); font-weight: normal; font-size: 1.2rem; letter-spacing: .03em;
+       margin: 32px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line);
+       display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h2 .sc { color: var(--muted); font-size: .85rem; letter-spacing: 0; }
+
+  .item { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 4px 16px; padding: 16px 0;
+          border-bottom: 1px solid var(--line); }
+  .item:last-child { border-bottom: 0; }
+  .side { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  .tid { font-family: var(--mono); font-size: .85rem; color: var(--muted); }
+  .pill { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+          padding: 2px 7px; border-radius: 2px; border: 1px solid currentColor; white-space: nowrap; }
+  .pill.open { color: var(--muted); }
+  .pill.pass { color: var(--jade); }
+  .pill.fail { color: var(--vermilion); }
+  .pill.blocked { color: var(--amber); }
+  .pill.moot { color: var(--muted); border-style: dashed; }
+  .main { min-width: 0; }
+  .check { margin: 0; font-size: 1.08rem; color: var(--gold-bright); }
+  dl { margin: 8px 0 0; display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 4px 12px; font-size: .95rem; }
+  dt { color: var(--muted); font-size: .8rem; padding-top: 3px; }
+  dd { margin: 0; min-width: 0; }
+  dd.src { color: var(--muted); font-size: .88rem; }
+  .copy { font: inherit; font-size: .78rem; color: var(--muted); background: transparent; border: 1px solid var(--line);
+          border-radius: 2px; padding: 1px 7px; margin: 4px 6px 0 0; cursor: pointer; font-family: var(--mono); }
+  .copy:hover, .copy:focus-visible { color: var(--gold-bright); border-color: var(--gold); }
+  .hist { margin: 10px 0 0; padding: 8px 12px; background: var(--system-bg); border: 1px solid var(--line);
+          border-radius: 3px; font-size: .88rem; display: grid; gap: 6px; }
+  .hist p { margin: 0; }
+  .hist .d { font-family: var(--mono); color: var(--muted); font-size: .8rem; margin-right: 6px; }
+  .item.settled .check { color: var(--text); }
+  .flash { animation: flash 2.4s ease-out; }
+  @keyframes flash { from { background: var(--code-bg); } to { background: transparent; } }
+  @media (prefers-reduced-motion: reduce) { .flash { animation: none; } }
+
+  .empty { color: var(--muted); padding: 18px 0; }
+  .err { color: var(--vermilion); padding: 18px 0; }
+  footer { margin-top: 40px; color: var(--muted); font-size: .82rem; border-top: 1px solid var(--line); padding-top: 14px; }
+
+  @media (max-width: 560px) {
+    .item { grid-template-columns: minmax(0, 1fr); }
+    .side { flex-direction: row; align-items: center; }
+    dl { grid-template-columns: minmax(0, 1fr); gap: 0 0; }
+    dt { padding-top: 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Client test queue</h1>
+    <p class="watch" id="watch"><span class="pulse" id="pulse"></span><span id="watch-text">Reading client-test-queue.md</span></p>
+  </header>
+  <p class="lede">Things only a person at a screen can settle. This page reads
+    <code>shard-migration/docs/client-test-queue.md</code> every 10 seconds and never writes to it:
+    mark results in the file and they appear here.</p>
+
+  <div class="summary" id="summary"></div>
+  <div class="bar" id="bar"></div>
+
+  <div class="controls" role="toolbar" aria-label="Filter tests">
+    <button class="chip" type="button" data-f="open" id="f-open">To run<span class="c" id="c-open"></span></button>
+    <button class="chip" type="button" data-f="settled" id="f-settled">Settled<span class="c" id="c-settled"></span></button>
+    <button class="chip" type="button" data-f="all" id="f-all">All<span class="c" id="c-all"></span></button>
+    <input id="q" type="search" placeholder="Search checks, commands, sources" aria-label="Search">
+  </div>
+
+  <div id="list"></div>
+  <p class="err" id="err" hidden></p>
+
+  <footer>Served by <code>sl-test-queue</code> on the Windows box, LAN only. The file is the source of truth;
+    its own header has the rules for adding and settling items.</footer>
+</div>
+
+<script>
+(function () {
+  var URL_MD = '/client-test-queue.md';
+  var POLL_MS = 10000;
+  var STATUS = { OPEN: 'open', PASS: 'pass', FAIL: 'fail', BLOCKED: 'blocked', MOOT: 'moot' };
+  var LABEL = { open: 'Open', pass: 'Pass', fail: 'Fail', blocked: 'Blocked', moot: 'Moot' };
+  var COLOR = { pass: 'var(--jade)', fail: 'var(--vermilion)', blocked: 'var(--amber)', moot: 'var(--muted)', open: 'transparent' };
+
+  var filter = 'open', query = '', lastText = null, lastStatus = {}, data = null;
+  try { filter = localStorage.getItem('tq-filter') || 'open'; } catch (e) {}
+
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function inline(t) {
+    t = esc(t);
+    t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+    t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    t = t.replace(/(^|[^\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])/g, '$1<em>$2</em>');
+    return t;
+  }
+  function plain(t) { return t.replace(/[`*]/g, ''); }
+
+  function parse(md) {
+    var sections = [], items = [], results = [], section = null, inRes = false;
+    md.split(/\r?\n/).forEach(function (line) {
+      var m = line.match(/^## ([A-Z])\. (.+)$/);
+      if (m) { section = m[1]; sections.push({ id: m[1], title: m[2].trim() }); inRes = false; return; }
+      if (/^## Results/.test(line)) { section = null; inRes = true; return; }
+      if (/^## /.test(line)) { section = null; inRes = false; return; }
+      if (section && /^\|\s*T-\d+/.test(line)) {
+        var c = line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(function (s) { return s.trim(); });
+        var word = (c[1] || '').replace(/[^A-Z]/g, '');
+        var codes = []; (c[3] || '').replace(/`(\[[^`]+)`/g, function (_, x) { codes.push(x); });
+        items.push({ id: c[0], n: +c[0].slice(2), section: section, status: STATUS[word] || 'open',
+                     check: plain(c[2] || ''), how: c[3] || '', pass: c[4] || '', source: c[5] || '', codes: codes });
+        return;
+      }
+      if (inRes) {
+        var r = line.match(/^- (T-\d+), (\d{4}-\d{2}-\d{2}): (.*)$/);
+        if (r) results.push({ id: r[1], date: r[2], text: r[3] });
+      }
+    });
+    return { sections: sections, items: items, results: results };
+  }
+
+  function visible(it) {
+    if (filter === 'open' && it.status !== 'open') return false;
+    if (filter === 'settled' && it.status === 'open') return false;
+    if (!query) return true;
+    var hay = (it.id + ' ' + it.check + ' ' + it.how + ' ' + it.pass + ' ' + it.source).toLowerCase();
+    return hay.indexOf(query) !== -1;
+  }
+
+  function renderSummary() {
+    var counts = { open: 0, pass: 0, fail: 0, blocked: 0, moot: 0 };
+    data.items.forEach(function (i) { counts[i.status]++; });
+    var total = data.items.length;
+    var s = document.getElementById('summary'); s.innerHTML = '';
+    [['open', 'to run'], ['pass', 'passed'], ['fail', 'failed'], ['blocked', 'blocked'], ['moot', 'moot']].forEach(function (p) {
+      if (p[0] !== 'open' && p[0] !== 'pass' && !counts[p[0]]) return;
+      var d = document.createElement('div'); d.className = 'sum';
+      d.innerHTML = '<span class="n">' + counts[p[0]] + '</span><span class="k">' + p[1] + '</span>';
+      s.appendChild(d);
+    });
+    var b = document.getElementById('bar'); b.innerHTML = '';
+    ['pass', 'fail', 'blocked', 'moot'].forEach(function (k) {
+      if (!counts[k]) return;
+      var i = document.createElement('i'); i.style.width = (counts[k] * 100 / total) + '%'; i.style.background = COLOR[k];
+      i.title = counts[k] + ' ' + LABEL[k].toLowerCase(); b.appendChild(i);
+    });
+    document.getElementById('c-open').textContent = counts.open;
+    document.getElementById('c-settled').textContent = total - counts.open;
+    document.getElementById('c-all').textContent = total;
+    ['open', 'settled', 'all'].forEach(function (f) {
+      document.getElementById('f-' + f).setAttribute('aria-pressed', String(f === filter));
+    });
+  }
+
+  function renderList() {
+    var list = document.getElementById('list'); list.innerHTML = '';
+    var byId = {};
+    data.results.forEach(function (r) { (byId[r.id] = byId[r.id] || []).push(r); });
+    var shown = 0;
+    data.sections.forEach(function (sec) {
+      var its = data.items.filter(function (i) { return i.section === sec.id; }).sort(function (a, b) { return a.n - b.n; });
+      var vis = its.filter(visible);
+      if (!vis.length) return;
+      var open = its.filter(function (i) { return i.status === 'open'; }).length;
+      var h = document.createElement('h2');
+      h.innerHTML = '<span>' + esc(sec.id + '. ' + sec.title) + '</span><span class="sc">' + open + ' of ' + its.length + ' to run</span>';
+      list.appendChild(h);
+      vis.forEach(function (it) {
+        shown++;
+        var el = document.createElement('article');
+        el.className = 'item' + (it.status === 'open' ? '' : ' settled');
+        el.id = it.id;
+        if (lastStatus[it.id] && lastStatus[it.id] !== it.status) el.classList.add('flash');
+        var hist = byId[it.id] || [];
+        el.innerHTML =
+          '<div class="side"><span class="tid">' + esc(it.id) + '</span><span class="pill ' + it.status + '">' + LABEL[it.status] + '</span></div>' +
+          '<div class="main"><p class="check">' + esc(it.check) + '</p><dl>' +
+          '<dt>How</dt><dd>' + inline(it.how) + '<span class="cps"></span></dd>' +
+          '<dt>Pass</dt><dd>' + inline(it.pass) + '</dd>' +
+          '<dt>Source</dt><dd class="src">' + inline(it.source) + '</dd></dl>' +
+          (hist.length ? '<div class="hist">' + hist.map(function (r) {
+            return '<p><span class="d">' + esc(r.date) + '</span>' + inline(r.text) + '</p>';
+          }).join('') + '</div>' : '') + '</div>';
+        var cps = el.querySelector('.cps');
+        if (it.codes.length) cps.appendChild(document.createElement('br'));
+        it.codes.forEach(function (code) {
+          var btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'copy'; btn.textContent = 'Copy ' + code;
+          btn.addEventListener('click', function () {
+            var done = function () { btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = 'Copy ' + code; }, 1400); };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(code).then(done, function () { window.prompt('Copy:', code); });
+            } else { window.prompt('Copy:', code); }
+          });
+          cps.appendChild(btn);
+        });
+        list.appendChild(el);
+      });
+    });
+    if (!shown) {
+      var p = document.createElement('p'); p.className = 'empty';
+      p.textContent = filter === 'open' && !query ? 'Nothing left to run. The queue is drained until someone adds to it.' : 'No tests match.';
+      list.appendChild(p);
+    }
+  }
+
+  function render() { if (!data) return; renderSummary(); renderList(); }
+
+  function setWatch(ok, text) {
+    document.getElementById('pulse').className = 'pulse' + (ok ? '' : ' stale');
+    document.getElementById('watch-text').textContent = text;
+  }
+
+  function poll() {
+    fetch(URL_MD, { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var lm = r.headers.get('Last-Modified');
+        return r.text().then(function (t) { return { t: t, lm: lm }; });
+      })
+      .then(function (res) {
+        var changed = res.lm ? new Date(res.lm).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+        setWatch(true, 'Watching the file' + (changed ? ' · last changed ' + changed : ''));
+        document.getElementById('err').hidden = true;
+        if (res.t === lastText) return;
+        if (data) data.items.forEach(function (i) { lastStatus[i.id] = i.status; });
+        lastText = res.t;
+        data = parse(res.t);
+        render();
+      })
+      .catch(function (e) {
+        setWatch(false, 'Cannot read the file right now');
+        if (!data) { var er = document.getElementById('err'); er.hidden = false;
+          er.textContent = 'Could not load client-test-queue.md (' + e.message + '). Is sl-test-queue running?'; }
+      });
+  }
+
+  document.querySelectorAll('.chip').forEach(function (b) {
+    b.addEventListener('click', function () {
+      filter = b.getAttribute('data-f');
+      try { localStorage.setItem('tq-filter', filter); } catch (e) {}
+      render();
+    });
+  });
+  document.getElementById('q').addEventListener('input', function (e) { query = e.target.value.trim().toLowerCase(); render(); });
+
+  poll();
+  setInterval(poll, POLL_MS);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
+})();
+</script>
+</body>
+</html>

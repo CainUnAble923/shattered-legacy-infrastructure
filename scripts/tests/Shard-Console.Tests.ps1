@@ -422,6 +422,10 @@ Fact 'TheExecutorRunsNothingWithoutTheTypedPhraseOrTheYes' {
     # The executor, not only the plan. The step it would run writes a marker file, so a bug here
     # leaves evidence and touches nothing: never a real docker command against the live shard.
     $marker = Join-Path ([IO.Path]::GetTempPath()) ('shard-console-fact-' + [guid]::NewGuid().ToString('N'))
+    # A throwaway log, so the exec step's output file (D38) lands beside it and not in scripts\.
+    $config = Get-ConsoleConfig -RepoRoot $repo
+    $config.LogFile = Join-Path ($marker + '-log') 'shard-console.log'
+    New-Item -ItemType Directory -Path ($marker + '-log') -Force | Out-Null
     $write = New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-NoProfile', '-Command', "Set-Content -LiteralPath '$marker' -Value x")
     $typed = @((New-PlanStep -Kind confirm -Phrase 'stop live'), $write)
     $asked = @((New-PlanStep -Kind ask -Text 'Delete it?'), $write)
@@ -435,7 +439,77 @@ Fact 'TheExecutorRunsNothingWithoutTheTypedPhraseOrTheYes' {
         Assert-True (Test-Path -LiteralPath $marker) 'and it did run'
     } finally {
         Remove-Item -LiteralPath $marker -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath ($marker + '-log') -Recurse -Force -ErrorAction SilentlyContinue
     }
+}
+
+# D38. An exec step's output used to become Invoke-Plan's return value: the headless entry
+# assigned it to $ok and the form threw it away, so a failed rebuild said only "exited with 1".
+# The step here is a throwaway script, so neither fact can reach docker.
+function New-D38Step {
+    param([int]$Exit)
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-d38-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $ps1 = Join-Path $dir 'child.ps1'
+    Set-Content -LiteralPath $ps1 -Encoding ASCII -Value @(
+        "Write-Output 'd38 out one'",
+        "Write-Output 'd38 out two'",
+        "[Console]::Error.WriteLine('d38 err line')",
+        ('exit ' + $Exit))
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.LogFile = Join-Path $dir 'shard-console.log'
+    [pscustomobject]@{
+        Dir = $dir
+        Config = $cfg
+        Step = New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ps1) -Text 'd38 child'
+    }
+}
+
+Fact 'AnExecStepThatSucceedsLeavesTheExecutorReturningOneTrue' {
+    $d = New-D38Step 0
+    try {
+        $r = @(Invoke-Plan -Plan @($d.Step) -Config $d.Config -ActionKey 'fact' -ShardKey 'test' 6>$null)
+        Assert-Equal 1 $r.Count ('Invoke-Plan returned ' + $r.Count + ' objects: ' + ($r -join ' | '))
+        Assert-True ($r[0] -is [bool]) ('a ' + $r[0].GetType().FullName)
+        Assert-Equal $true $r[0]
+    } finally { Remove-Item -LiteralPath $d.Dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'AFailedExecStepShowsItsOutputInAHeadlessRunAndTheResultIsOneFalse' {
+    # A real headless process: no form, so Write-ConsoleLine goes to Write-Host, which a
+    # redirected powershell.exe writes to stdout. Same path as a window action's child.
+    $d = New-D38Step 1
+    try {
+        $cmd = @(
+            "`$ErrorActionPreference = 'Stop'",
+            (". '" + (Resolve-Path $script).Path + "' -LoadOnly"),
+            ("`$c = Get-ConsoleConfig -RepoRoot '" + $repo + "'"),
+            ("`$c.LogFile = '" + $d.Config.LogFile + "'"),
+            ("`$s = New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', '" + (Join-Path $d.Dir 'child.ps1') + "') -Text 'd38 child'"),
+            "`$ok = Invoke-Plan -Plan @(`$s) -Config `$c -ActionKey 'fact' -ShardKey 'test'",
+            "'RESULT count=' + @(`$ok).Count + ' type=' + `$ok.GetType().FullName + ' value=' + `$ok"
+        )
+        $runner = Join-Path $d.Dir 'headless.ps1'
+        Set-Content -LiteralPath $runner -Encoding ASCII -Value $cmd
+        $o = Join-Path $d.Dir 'out.txt'
+        $e = Join-Path $d.Dir 'err.txt'
+        $p = Start-Process -FilePath 'powershell.exe' -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -File "' + $runner + '"') -Wait -NoNewWindow -PassThru -RedirectStandardOutput $o -RedirectStandardError $e
+        $out = @(Get-Content -LiteralPath $o) + @(Get-Content -LiteralPath $e)
+        $all = ($out -join ' | ') + ' (exit ' + $p.ExitCode + ')'
+        foreach ($l in 'd38 out one', 'd38 out two', 'd38 err line') {
+            Assert-True (@($out | Where-Object { $_ -match [regex]::Escape($l) }).Count -eq 1) ("'" + $l + "' on screen: " + $all)
+        }
+        Assert-True (@($out | Where-Object { $_ -match 'FAILED at step 1: .* exited with 1' }).Count -eq 1) ('the failure is named: ' + $all)
+        Assert-True (@($out | Where-Object { $_ -eq 'RESULT count=1 type=System.Boolean value=False' }).Count -eq 1) ('$ok is one false: ' + $all)
+        # And it can be read after the window is closed.
+        $tee = @(Get-ChildItem -LiteralPath (Join-Path $d.Dir 'shard-console-output') -Filter '*.log' -ErrorAction SilentlyContinue)
+        Assert-Equal 1 $tee.Count ('one output file beside the log: ' + $all)
+        $text = [IO.File]::ReadAllText($tee[0].FullName)
+        foreach ($l in 'd38 out one', 'd38 out two', 'd38 err line', 'exited with 1') {
+            Assert-True ($text -match [regex]::Escape($l)) ("'" + $l + "' in " + $tee[0].Name + ': ' + $text)
+        }
+        Assert-True (@($out | Where-Object { $_ -match [regex]::Escape($tee[0].FullName) }).Count -ge 1) ('the failure names the file: ' + $all)
+    } finally { Remove-Item -LiteralPath $d.Dir -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 Fact 'AnOldSaveIsOnlyStaleOnceTheServerHasHadTimeToSave' {
@@ -800,6 +874,27 @@ Fact 'APlanThatStopsAShardSaysItDoesNotSaveBeforeThePhraseIsTyped' {
     }
     Assert-True ((Get-ConfirmPreface (Get-Plan 'snapshot.restore' 'live' -Snapshot $snapName -State $snapState)) -like 'BEFORE YOU TYPE:*') 'restore stops live first'
     Assert-Equal '' (Get-ConfirmPreface (Get-Plan 'live.start' 'live' -State $liveStoppedState)) 'a start stops nothing'
+}
+
+Fact 'AShardWhoseLogSaysAStopSavesGetsThatWordingAndNoWarningFirst' {
+    # D36 fixed. server/customizations/Misc/SaveOnShutdown.cs prints this line at start, so the
+    # running process itself says whether a stop saves. Only the live log gets it here.
+    $sec = @{}
+    foreach ($k in $cap.Keys) { $sec[$k] = $cap[$k] }
+    $sec['logs sl-modernuo'] = $cap['logs sl-modernuo'] + "`r`n[SaveOnShutdown] listening for SIGTERM: a stop saves the world first (D36)`r`n"
+    $fixed = New-ConsoleState -Config $config -Sections $sec
+    Assert-True ($fixed.Shards['live'].SavesOnStop -eq $true) 'live says it saves'
+    Assert-True ($fixed.Shards['test'].SavesOnStop -eq $false) 'test does not'
+    Assert-True ($state.Shards['live'].SavesOnStop -eq $false) 'the captured logs predate the fix'
+    foreach ($k in 'live.stop', 'live.restart') {
+        $p = Get-Plan $k 'live' -State $fixed
+        $text = (@($p | ForEach-Object { $_.Text }) -join ' ')
+        Assert-True ($text -match 'saves on stop') ($k + ': ' + $text)
+        Assert-True (-not $text.Contains($script:NoSaveWarning)) ($k + ' still warns')
+        Assert-Equal '' (Get-ConfirmPreface $p) $k
+    }
+    $t = (@(Get-Plan 'test.stop' 'test' -State $fixed | ForEach-Object { $_.Text }) -join ' ')
+    Assert-True ($t.Contains($script:NoSaveWarning)) ('test keeps the warning: ' + $t)
 }
 
 # --- D37 end to end: the real child process, with a docker that only records --------------------

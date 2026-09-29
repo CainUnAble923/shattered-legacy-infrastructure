@@ -14,8 +14,10 @@
   machines. Add to them; never rename or remove one.
 
   What it does:
-    1. Waits for the launcher that started it, then for any TazUO.exe running from this
-       install (and tells the player to close the game).
+    1. Waits for the launcher's cmd.exe, if it was started from a .bat, saying so, then
+       for any TazUO.exe running from this install (and tells the player to close the
+       game). If nothing differs from the new package, it changes nothing, makes no
+       backup, says "Already up to date" and starts the game.
     2. Backs up app\ in full, plus any file outside app\ it will replace or retire, to
        <install>\update-backup\.
     3. Copies the new package over the install WITHOUT deleting anything, except the
@@ -148,8 +150,23 @@ $ok = $false
 # --- 1. wait: the launcher window, then the game ------------------------------------
 # The launcher's cmd.exe must be gone before a .bat is replaced: cmd reads a batch file
 # by byte offset as it runs, and a file changed under it executes whatever lands there.
+# Only cmd.exe is waited for. Play.ps1 also passes its own PowerShell, but PowerShell
+# reads a script whole before running it and Play.ps1 holds no file open, so nothing
+# depends on it being gone. When Play.ps1 is run from an open PowerShell prompt, that
+# PID is the prompt itself, which never exits, so waiting on it only ever ran out the
+# full 60 seconds in a blank window. Every Play.ps1 already installed passes both PIDs,
+# so the choice is made here, not there.
 foreach ($id in "$WaitPid".Split(',', [StringSplitOptions]::RemoveEmptyEntries)) {
+    $p = Get-Process -Id ([int]$id) -ErrorAction SilentlyContinue
+    if (-not $p -or $p.ProcessName -ne 'cmd') { continue }
+    Say 'Waiting for the launcher window to close...'
+    $sw = [Diagnostics.Stopwatch]::StartNew()
     try { Wait-Process -Id ([int]$id) -Timeout 60 -ErrorAction Stop } catch {}
+    if (Get-Process -Id ([int]$id) -ErrorAction SilentlyContinue) {
+        Say ("It is still open after {0:N0} s. Carrying on." -f $sw.Elapsed.TotalSeconds) Yellow
+    } else {
+        Say ("It closed after {0:N1} s." -f $sw.Elapsed.TotalSeconds)
+    }
 }
 $told = $false
 while ($true) {
@@ -197,55 +214,70 @@ try {
     }
     Say ("{0} files to add, {1} to replace, {2} to remove." -f @($copy | Where-Object New).Count, @($copy | Where-Object { -not $_.New }).Count, $retired.Count)
 
-    # --- 3. back up ------------------------------------------------------------------
-    Say 'Backing up the current version...'
-    New-Item -ItemType Directory -Path $backup -Force | Out-Null
-    [IO.File]::WriteAllText($createdLog, '')
-    Copy-Item -LiteralPath (Join-Path $root 'app') -Destination (Join-Path $backup 'app') -Recurse -Force
-    $outside = @($copy | Where-Object { -not $_.New } | ForEach-Object Rel) + $retired | Where-Object { -not $_.ToLowerInvariant().StartsWith('app\') }
-    foreach ($r in $outside) {
-        $b = Join-Path $backup $r
-        $dir = Split-Path $b -Parent
-        if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        Copy-Item -LiteralPath (Join-Path $root $r) -Destination $b -Recurse -Force
-    }
-    # From here until the end the install claims no version, so a stop anywhere in
-    # between is offered the update again rather than taken for finished.
     $pv = Join-Path $root 'app\package-version.txt'
-    if (Test-Path -LiteralPath $pv) { Remove-Item -LiteralPath $pv -Force }
+    if (-not $copy.Count -and -not $retired.Count) {
+        # Nothing to do: no backup, no copy. This is what -Update on the current version
+        # comes to, and it still proves the offer, download, checksum and unpack. The
+        # version file is outside $copy (Test-Kept), so write it if it is not already right.
+        $have = $null
+        if (Test-Path -LiteralPath $pv) { $have = (Get-Content -LiteralPath $pv -TotalCount 1).Trim() }
+        if ($have -ne $newVersion) {
+            Copy-Item -LiteralPath (Join-Path $srcRoot 'app\package-version.txt') -Destination $pv -Force
+            Unblock-File -LiteralPath $pv
+        }
+        $ok = $true
+        Write-Host ''
+        Say "Already up to date: $newVersion. Nothing was changed." Green
+    } else {
+        # --- 3. back up ------------------------------------------------------------------
+        Say 'Backing up the current version...'
+        New-Item -ItemType Directory -Path $backup -Force | Out-Null
+        [IO.File]::WriteAllText($createdLog, '')
+        Copy-Item -LiteralPath (Join-Path $root 'app') -Destination (Join-Path $backup 'app') -Recurse -Force
+        $outside = @($copy | Where-Object { -not $_.New } | ForEach-Object Rel) + $retired | Where-Object { -not $_.ToLowerInvariant().StartsWith('app\') }
+        foreach ($r in $outside) {
+            $b = Join-Path $backup $r
+            $dir = Split-Path $b -Parent
+            if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            Copy-Item -LiteralPath (Join-Path $root $r) -Destination $b -Recurse -Force
+        }
+        # From here until the end the install claims no version, so a stop anywhere in
+        # between is offered the update again rather than taken for finished.
+        if (Test-Path -LiteralPath $pv) { Remove-Item -LiteralPath $pv -Force }
 
-    # --- 4. copy and retire ----------------------------------------------------------
-    Say 'Installing the new version...'
-    $failAfter = 0
-    if ($env:SL_UPDATE_FAIL_AFTER) { $failAfter = [int]$env:SL_UPDATE_FAIL_AFTER }
-    $n = 0
-    foreach ($c in $copy) {
-        if ($failAfter -and $n -ge $failAfter) { throw "test failure injected after $n files (SL_UPDATE_FAIL_AFTER)" }
-        $dir = Split-Path $c.Dest -Parent
-        if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        # Recorded before it exists, so a restore after a crash removes it too.
-        if ($c.New) { [IO.File]::AppendAllText($createdLog, $c.Rel + "`r`n") }
-        Copy-Item -LiteralPath $c.Src -Destination $c.Dest -Force
-        Unblock-File -LiteralPath $c.Dest
-        $n++
-    }
-    foreach ($r in $retired) {
-        Remove-Item -LiteralPath (Join-Path $root $r) -Recurse -Force
-        Say "removed $r"
-    }
-    Copy-Item -LiteralPath (Join-Path $srcRoot 'app\package-version.txt') -Destination $pv -Force
-    Unblock-File -LiteralPath $pv
+        # --- 4. copy and retire ----------------------------------------------------------
+        Say 'Installing the new version...'
+        $failAfter = 0
+        if ($env:SL_UPDATE_FAIL_AFTER) { $failAfter = [int]$env:SL_UPDATE_FAIL_AFTER }
+        $n = 0
+        foreach ($c in $copy) {
+            if ($failAfter -and $n -ge $failAfter) { throw "test failure injected after $n files (SL_UPDATE_FAIL_AFTER)" }
+            $dir = Split-Path $c.Dest -Parent
+            if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            # Recorded before it exists, so a restore after a crash removes it too.
+            if ($c.New) { [IO.File]::AppendAllText($createdLog, $c.Rel + "`r`n") }
+            Copy-Item -LiteralPath $c.Src -Destination $c.Dest -Force
+            Unblock-File -LiteralPath $c.Dest
+            $n++
+        }
+        foreach ($r in $retired) {
+            Remove-Item -LiteralPath (Join-Path $root $r) -Recurse -Force
+            Say "removed $r"
+        }
+        Copy-Item -LiteralPath (Join-Path $srcRoot 'app\package-version.txt') -Destination $pv -Force
+        Unblock-File -LiteralPath $pv
 
-    # --- 5. done ---------------------------------------------------------------------
-    # Renamed before it is deleted: a half-deleted backup must never be restored over
-    # a finished update. Play.ps1 removes a leftover update-backup.done.
-    $done = "$backup.done"
-    if (Test-Path -LiteralPath $done) { Remove-Item -LiteralPath $done -Recurse -Force }
-    Rename-Item -LiteralPath $backup -NewName (Split-Path $done -Leaf)
-    try { Remove-Item -LiteralPath $done -Recurse -Force } catch {}
-    $ok = $true
-    Write-Host ''
-    Say "Updated to $newVersion. Your account, settings and gump positions were kept." Green
+        # --- 5. done ---------------------------------------------------------------------
+        # Renamed before it is deleted: a half-deleted backup must never be restored over
+        # a finished update. Play.ps1 removes a leftover update-backup.done.
+        $done = "$backup.done"
+        if (Test-Path -LiteralPath $done) { Remove-Item -LiteralPath $done -Recurse -Force }
+        Rename-Item -LiteralPath $backup -NewName (Split-Path $done -Leaf)
+        try { Remove-Item -LiteralPath $done -Recurse -Force } catch {}
+        $ok = $true
+        Write-Host ''
+        Say "Updated to $newVersion. Your account, settings and gump positions were kept." Green
+    }
 } catch {
     Write-Host ''
     Say "The update stopped: $($_.Exception.Message)" Red

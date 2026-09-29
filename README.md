@@ -24,6 +24,7 @@ them on the Windows box.** Each folder's README says how it deploys.
 | Test shard | `docker/uo` (`docker-compose.test.yml`) | Windows box | `shatteredlegacyuo.com:2594` |
 | Cloudflare DDNS | `docker/uo` (`sl-ddns`) | Windows box | Internal |
 | Status feed and shard probe | `docker/uo-status` | Windows box | via NPM, `https://shatteredlegacyuo.com/api/` |
+| Client test queue viewer | `docker/test-queue` | Windows box | LAN only, `http://192.168.1.58:8093/` |
 | Website | `docker/website` | Haven | Public, `https://shatteredlegacyuo.com` |
 | Wiki (DokuWiki) | `docker/wiki` | Haven | Public, `https://wiki.shatteredlegacyuo.com` |
 | Downloads | `docker/downloads` | Haven | Public, `https://get.shatteredlegacyuo.com` |

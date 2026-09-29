@@ -102,11 +102,50 @@ function Get-RemotePackage([string]$base) {
     } catch { return $null }
 }
 
+# Downloads $url to $path with a progress bar. Not Invoke-WebRequest: its bar redraws on
+# every chunk and slows 5.1's download about 10x, which is why it used to run with the
+# bar off and show nothing for a minute. Here the bar is redrawn at most four times a
+# second. Timeout is what Invoke-WebRequest -TimeoutSec 600 set: HttpWebRequest.Timeout,
+# which covers connecting and the response headers. A stalled body still fails on
+# ReadWriteTimeout (the default, 5 minutes).
+function Save-Download([string]$url, [string]$path, [long]$expected) {
+    $req = [Net.HttpWebRequest][Net.WebRequest]::Create($url)
+    $req.Timeout = 600000
+    $req.UserAgent = 'ShatteredLegacy-Play'
+    $resp = $req.GetResponse()
+    try {
+        $total = $resp.ContentLength
+        if ($total -le 0) { $total = $expected }
+        $in = $resp.GetResponseStream()
+        $out = [IO.File]::Create($path)
+        try {
+            $buf = New-Object byte[] 65536
+            $got = [long]0
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $next = 0
+            while (($n = $in.Read($buf, 0, $buf.Length)) -gt 0) {
+                $out.Write($buf, 0, $n)
+                $got += $n
+                if ($sw.ElapsedMilliseconds -ge $next) {
+                    $next = $sw.ElapsedMilliseconds + 250
+                    $pct = 0
+                    if ($total -gt 0) { $pct = [int][Math]::Min(100, $got * 100 / $total) }
+                    Write-Progress -Activity 'Downloading the update' -Status ("{0:N1} of {1:N1} MB ({2}%)" -f ($got / 1MB), ($total / 1MB), $pct) -PercentComplete $pct
+                }
+            }
+        } finally {
+            $out.Dispose()
+            $in.Dispose()
+            Write-Progress -Activity 'Downloading the update' -Completed
+        }
+        Write-Host ("  Downloaded {0:N1} MB in {1:N1} s." -f ($got / 1MB), $sw.Elapsed.TotalSeconds) -ForegroundColor Gray
+    } finally { $resp.Close() }
+}
+
 # Downloads, checks and unpacks the package, then hands over to its Update.ps1 in a new
 # window and ends this script. Returns only if something failed, having said what, with
 # nothing in the install touched.
 function Install-Package($j) {
-    $ProgressPreference = 'SilentlyContinue'   # the progress bar slows 5.1's download 10x
     $work = Join-Path $env:TEMP 'sl-update'
     try {
         if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
@@ -114,7 +153,7 @@ function Install-Package($j) {
         $zip = Join-Path $work 'package.zip'
         Write-Host ("  Downloading {0:N0} MB..." -f ([long]$j.bytes / 1MB)) -ForegroundColor Gray
         [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-        Invoke-WebRequest -Uri $j.url -OutFile $zip -UseBasicParsing -TimeoutSec 600
+        Save-Download $j.url $zip ([long]$j.bytes)
         $len = (Get-Item -LiteralPath $zip).Length
         $sha = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLower()
         if ($len -ne [long]$j.bytes -or $sha -ne $j.sha256) {
@@ -170,7 +209,13 @@ if (-not $NoUpdate) {
         } catch {}
         if ([version]$remote.version -gt $local -or $Update) {
             Write-Host ''
-            Write-Host "  A newer Shattered Legacy package is out: $($remote.version) (you have $localText)." -ForegroundColor Cyan
+            if ([version]$remote.version -gt $local) {
+                Write-Host "  A newer Shattered Legacy package is out: $($remote.version) (you have $localText)." -ForegroundColor Cyan
+            } elseif ([version]$remote.version -eq $local) {
+                Write-Host "  -Update: reinstalling the current Shattered Legacy package, $($remote.version). You already have it." -ForegroundColor Cyan
+            } else {
+                Write-Host "  -Update: the server has $($remote.version), which is OLDER than yours ($localText). Installing it anyway." -ForegroundColor Cyan
+            }
             if ($remote.notes) { Write-Host "  What is new: $($remote.notes)" -ForegroundColor Cyan }
             Write-Host ("  About {0:N0} MB. Your account, settings, Ultima Online folder and gump positions are kept." -f ([long]$remote.bytes / 1MB)) -ForegroundColor Gray
             $ans = Read-Host '  Update now? [Y/n]'
