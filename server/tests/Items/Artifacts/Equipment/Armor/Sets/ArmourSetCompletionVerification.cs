@@ -269,7 +269,10 @@ public class ArmourSetCompletionVerification
     {
         var m = new PlayerMobile();
 
-        var arms = Wear(m, new BestialArms(), Layer.Arms);
+        // Not through Wear: BestialArms sets its own layer since D28, and a hand-set one here is what hid that it was
+        // wrong. AddItem is layer-blind, so this fact never depended on it (notes/d27-worn-item-facts.md 3.2).
+        var arms = new BestialArms();
+        m.AddItem(arms);
         var earrings = Wear(m, new BestialEarrings(), Layer.Earrings);
         var necklace = Wear(m, new BestialNecklace(), Layer.Neck);
         Assert.False(arms.SetEquipped); // three of four: where the gargoyle half stopped before this task
@@ -312,5 +315,65 @@ public class ArmourSetCompletionVerification
         }
 
         m.Delete();
+    }
+
+    // D28 (Q-065). ServUO's BestialArms is a GargishLeatherArms, whose constructor builds on 0x302 (an Arms row) and
+    // then sets Layer = Layer.Arms itself (ServUO GargishLeatherArms.cs:19); only after that does BestialArms switch its
+    // ItemID to 0x4052, which does not touch the layer. Ours passes 0x4052 to the base call, whose row is a chest plate,
+    // so without its own Layer line it lands on InnerTorso and collides with any chest piece.
+    //
+    // The host has no tiledata (D27, TestHostTileData.cs), so the three rows this depends on are seeded for the fact's
+    // duration by TestTileRows (Route/TestTileRows.cs has the values and where they came from).
+    [Fact]
+    public void BestialArmsIsOnTheArmsLayerAndGoesOnOverAGargishChest()
+    {
+        // 0x302 is ServUO's parent graphic (Arms), 0x304 the chest the arms go on beside (InnerTorso), 0x4052 the arms'
+        // own graphic (InnerTorso, the row that put them on the wrong layer). All three are read in the constructors.
+        using var tiles = TestTileRows.Seed(
+            TileRows.GargishLeatherArmsType2,
+            TileRows.GargishLeatherChestType1,
+            TileRows.BestialArms
+        );
+
+        PlayerMobile m = null;
+        Item chest = null, stock = null, arms = null;
+
+        try
+        {
+            m = new PlayerMobile { Race = Race.Gargoyle, Player = true, RawStr = 50, RawDex = 50, RawInt = 50 };
+
+            chest = new GargishLeatherChestType1();
+            stock = new GargishLeatherArmsType2();
+            arms = new BestialArms();
+
+            // The player's order: the chest first, then the arms over it.
+            var chestOn = m.EquipItem(chest);
+            var armsOn = m.EquipItem(arms);
+
+            _out.WriteLine(
+                $"chest 0x{chest.ItemID:X} layer={chest.Layer} equipped={chestOn}; " +
+                $"GargishLeatherArmsType2 0x{stock.ItemID:X} layer={stock.Layer}; " +
+                $"BestialArms 0x{arms.ItemID:X} layer={arms.Layer} equipped={armsOn}"
+            );
+
+            Assert.Equal(Layer.Arms, arms.Layer);
+            Assert.Equal(stock.Layer, arms.Layer); // the seeded rows are live: ServUO's parent reads Arms from 0x302
+            Assert.Equal(0x4052, arms.ItemID);     // the graphic is right; only the computed layer was wrong
+
+            Assert.True(chestOn);
+            Assert.Same(chest, m.FindItemOnLayer(Layer.InnerTorso));
+
+            Assert.True(armsOn, "a gargoyle wearing a gargish leather chest could not put Bestial Arms on");
+            Assert.Same(m, arms.Parent);
+            Assert.Same(arms, m.FindItemOnLayer(Layer.Arms));
+            Assert.Same(chest, m.FindItemOnLayer(Layer.InnerTorso));
+        }
+        finally
+        {
+            arms?.Delete();
+            stock?.Delete();
+            chest?.Delete();
+            m?.Delete();
+        }
     }
 }

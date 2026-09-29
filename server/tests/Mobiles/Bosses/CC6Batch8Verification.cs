@@ -1111,8 +1111,9 @@ public class CC6Batch8Verification
 
         // Batch 7 left exactly 23 names unresolved (tools/spawn-orphans.txt at 1595753). Part C's Navrey takes it to
         // 22 (BasePeerless is named by no entry, BaseSABoss is abstract, the items are named by no entry); Part B's
-        // two bosses to 20; Part D's Medusa to 19 (MedusaClone and UndeadGargoyle are named by no entry).
-        Assert.Equal(19, unresolved.Count);
+        // two bosses to 20; Part D's Medusa to 19 (MedusaClone and UndeadGargoyle are named by no entry). CC9 close's
+        // Niporailem, the fourth BaseSABoss, takes it to 18 (NiporailemsTreasure is named by no entry).
+        Assert.Equal(18, unresolved.Count);
         Assert.Equal(4, referenced);
     }
 }

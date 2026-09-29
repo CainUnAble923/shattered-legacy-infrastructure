@@ -15,6 +15,7 @@ namespace Server.Items
         {
             Hue = 2010;
             StrRequirement = 25;
+            Layer = Layer.Arms; // ServUO's parent GargishLeatherArms sets this (:19); 0x4052's own row is InnerTorso (D28)
         }
 
         public override int LabelNumber => 1151545; // Bestial Arms

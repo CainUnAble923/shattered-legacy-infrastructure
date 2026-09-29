@@ -290,7 +290,8 @@ public class CC6Batch7Verification
         // CC6 batch 8 (2026-09-22), Parts A and C: Navrey Night-Eyes ported (NavreyNightEyes, one name), so it is now 22.
         // Part B: SlasherOfVeils and StygianDragon ported (two names), so it is now 20.
         // Part D: Medusa ported (one name), so it is now 19.
-        Assert.Equal(19, unresolved.Count);
+        // CC9 close (2026-09-29): Niporailem ported as the Epiphany suites' gate (one name), so it is now 18.
+        Assert.Equal(18, unresolved.Count);
         // Counted 2026-09-21 from the same files: 16 entries name the eight aliased (2 each), 11 name the leaf row
         // (the grand mage 4, the seven rats 1 each), 4 name the chest.
         Assert.Equal(31, referenced);

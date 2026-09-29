@@ -8,21 +8,16 @@
 // not AddPants through a seam. AddPants was doing exactly what it was written to do; the defect was what it was
 // written to do.
 //
-// The one thing the test host lacks is tiledata.mul. TileData's static constructor returns early under xUnit, leaving
-// MaxItemValue at 0, so Item.ItemData reads ItemTable[itemID & 0], row 0, for every item. Every BaseArmor therefore gets
-// Layer.Invalid from ItemData.Quality, Mobile.EquipItem refuses it, and the creation path drops the whole outfit into
-// the backpack. So for the duration of the fact only, the six gargish cloth rows are put into TileData.ItemTable and
-// MaxItemValue is set to 0xFFFF (its value after a real Load of this file), then both are restored. The row values
-// were read from the shard's own client-data/classic-client/tiledata.mul (3,188,736 bytes) by the parser recorded in
-// the note: chest 0x405/0x406 quality 13 (InnerTorso), kilt 0x407/0x408 quality 7 (Gloves), legs 0x409/0x40A quality
-// 4 (Pants). Nothing about the creation path itself is substituted.
+// The one thing the test host lacks is tiledata.mul (D27), so every BaseArmor is on Layer.Invalid and the creation
+// path's EquipItem packs the whole outfit. For the duration of the fact only, TestTileRows seeds the six gargish cloth
+// rows and raises MaxItemValue, then restores both (Route/TestTileRows.cs has the rows and where they came from).
+// Nothing about the creation path itself is substituted.
 //
 // The D26 assertions (no legs anywhere, a kilt present) come first and do not depend on that setup; the worn-and-layer
 // assertions after them do.
 
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Server;
 using Server.Accounting;
 using Server.Accounting.Security;
@@ -42,17 +37,6 @@ public class GargoyleStartingClothesVerification
     private readonly ITestOutputHelper _out;
 
     public GargoyleStartingClothesVerification(ITestOutputHelper output) => _out = output;
-
-    // (itemID, name, weight, quality = layer, animation), from the shard's tiledata.mul. Flags 0x404002 on all six.
-    private static readonly (int ItemID, string Name, int Weight, int Quality, int Animation)[] GargishClothTiles =
-    [
-        (0x405, "gargoyle_clothing_ch", 6, 13, 592),
-        (0x406, "gargoyle_clothing_ch", 6, 13, 593),
-        (0x407, "gargoyle_clothing_ki", 2, 7, 594),
-        (0x408, "gargoyle_clothing_ki", 2, 7, 595),
-        (0x409, "gargoyle_clothing_le", 4, 4, 596),
-        (0x40A, "gargoyle_clothing_le", 4, 4, 597)
-    ];
 
     private static bool _startupHooksRun;
 
@@ -77,38 +61,6 @@ public class GargoyleStartingClothesVerification
         }
     }
 
-    private static readonly MethodInfo SetMaxItemValue =
-        typeof(TileData).GetProperty(nameof(TileData.MaxItemValue))!.GetSetMethod(true)!;
-
-    private static int _savedMaxItemValue;
-
-    private static ItemData[] SeedGargishClothTiles()
-    {
-        _savedMaxItemValue = TileData.MaxItemValue;
-        SetMaxItemValue.Invoke(null, [0xFFFF]);
-
-        var saved = new ItemData[GargishClothTiles.Length];
-
-        for (var i = 0; i < GargishClothTiles.Length; i++)
-        {
-            var (id, name, weight, quality, animation) = GargishClothTiles[i];
-            saved[i] = TileData.ItemTable[id];
-            TileData.ItemTable[id] = new ItemData(name, (TileFlag)0x404002UL, weight, quality, animation, 0, 0, 1);
-        }
-
-        return saved;
-    }
-
-    private static void RestoreTiles(ItemData[] saved)
-    {
-        for (var i = 0; i < GargishClothTiles.Length; i++)
-        {
-            TileData.ItemTable[GargishClothTiles[i].ItemID] = saved[i];
-        }
-
-        SetMaxItemValue.Invoke(null, [_savedMaxItemValue]);
-    }
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -120,7 +72,12 @@ public class GargoyleStartingClothesVerification
         using var ns = PacketTestUtilities.CreateTestNetState();
         Mobile m = null;
 
-        var savedTiles = SeedGargishClothTiles();
+        // The rows the worn-and-layer assertions rest on: all six the creation path could build, for either sex.
+        using var tiles = TestTileRows.Seed(
+            TileRows.GargishClothChestType1, TileRows.GargishClothChestType2,
+            TileRows.GargishClothKiltType1, TileRows.GargishClothKiltType2,
+            TileRows.GargishClothLegsType1, TileRows.GargishClothLegsType2
+        );
 
         try
         {
@@ -182,7 +139,6 @@ public class GargoyleStartingClothesVerification
         {
             m?.Delete();
             Accounts.Remove(account);
-            RestoreTiles(savedTiles);
         }
     }
 }

@@ -160,7 +160,8 @@ public class CC6Batch3CreatureVerification
         // CC6 batch 8 (2026-09-22), Parts A and C: Navrey Night-Eyes ported (NavreyNightEyes, one name), so it is now 22.
         // Part B: SlasherOfVeils and StygianDragon ported (two names), so it is now 20.
         // Part D: Medusa ported (one name), so it is now 19.
-        Assert.Equal(19, unresolved.Count);
+        // CC9 close (2026-09-29): Niporailem ported as the Epiphany suites' gate (one name), so it is now 18.
+        Assert.Equal(18, unresolved.Count);
         // Counted 2026-09-20 from the same files with tools/spawn_orphans.py's reader: rotworm 7, WolfSpider 4,
         // FireAnt 3, FireDaemon 3, CoralSnake 2, AcidSlug 2, bloodworm 2, orcscout 2, ClockworkScorpion 1,
         // MaddeningHorror 1 (Underworld, Abyss, TerMur, and the two Sanctuary files).

@@ -1,0 +1,179 @@
+/* Shattered Legacy skin for DokuWiki (default "dokuwiki" template).
+   Colors come from conf/tpl/dokuwiki/style.ini; this file sets type,
+   rules, and the few colors the template hard-codes. */
+
+html, body {
+  background: #0d0d0d;
+  background-image: none;
+}
+body {
+  font: normal 100%/1.65 Georgia, "Times New Roman", serif;
+}
+:focus-visible {
+  outline: 2px solid #e3c98d;
+  outline-offset: 2px;
+}
+
+/* Header: mark, wordmark, tagline */
+#dokuwiki__header .headings h1 {
+  margin: 0;
+}
+#dokuwiki__header h1 a {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #c8a96e;
+  text-decoration: none;
+}
+#dokuwiki__header h1 img {
+  width: 48px;
+  height: 48px;
+  float: none;
+  margin: 0;
+}
+#dokuwiki__header h1 span {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: normal;
+  font-size: 1.75rem;
+  letter-spacing: .12em;
+  color: #c8a96e;
+}
+#dokuwiki__header p.claim {
+  color: #8a8578;
+  font-style: normal;
+  margin-left: 62px;
+}
+#dokuwiki__header {
+  border-bottom: 1px solid #2a2317;
+  padding-bottom: 1em;
+}
+
+/* Page area: flat panel with a hairline, no shadows */
+#dokuwiki__site .wrapper,
+.dokuwiki div.page {
+  box-shadow: none;
+}
+.dokuwiki div.page {
+  border: 1px solid #2a2317;
+  border-radius: 3px;
+}
+
+/* Headings: gold, regular weight, hairline under h1 and h2 */
+.dokuwiki h1, .dokuwiki h2, .dokuwiki h3, .dokuwiki h4, .dokuwiki h5 {
+  color: #c8a96e;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: normal;
+  letter-spacing: .04em;
+}
+.dokuwiki h1 { font-size: 2em; }
+.dokuwiki h2 { font-size: 1.5em; }
+.dokuwiki h1, .dokuwiki h2 {
+  border-bottom: 1px solid #2a2317;
+  padding-bottom: .25em;
+}
+.dokuwiki h3 { font-size: 1.3em; }
+.dokuwiki h4 { font-size: 1.12em; }
+.dokuwiki h5 { font-size: 1em; }
+
+/* Links: underlined gold-bright; missing pages in vermilion */
+.dokuwiki a:link, .dokuwiki a:visited { text-decoration: underline; }
+.dokuwiki a.wikilink2:link, .dokuwiki a.wikilink2:visited { text-decoration: underline dashed; }
+#dokuwiki__header a, #dokuwiki__footer a, .dokuwiki .pagetools a, .dokuwiki .tools a { text-decoration: none; }
+
+/* Strong: gold-bright, regular weight (brand rule) */
+.dokuwiki strong, .dokuwiki b {
+  color: #e3c98d;
+  font-weight: normal;
+}
+
+/* Code: Consolas on code-bg, gold-bright text */
+.dokuwiki code, .dokuwiki pre, .dokuwiki tt, .dokuwiki kbd, .dokuwiki samp {
+  font-family: Consolas, Menlo, monospace;
+  color: #e3c98d;
+  background-color: #1c1810;
+  border-radius: 2px;
+}
+.dokuwiki pre {
+  border: 1px solid #2a2317;
+  box-shadow: none;
+  line-height: 1.55;
+}
+
+/* Tables: hairlines, no zebra, gold header row, tabular numbers */
+.dokuwiki table.inline { border-collapse: collapse; }
+.dokuwiki table.inline th, .dokuwiki table.inline td {
+  border: 1px solid #2a2317;
+  background-color: transparent;
+}
+.dokuwiki table.inline th {
+  color: #c8a96e;
+  font-weight: normal;
+  background-color: #1c1810;
+}
+.dokuwiki table.inline td.rightalign { font-variant-numeric: tabular-nums; }
+
+/* Table of contents and sidebar: raised panel with a hairline */
+.dokuwiki div.toc, #dokuwiki__aside {
+  border-radius: 3px;
+}
+.dokuwiki div.toc {
+  border: 1px solid #2a2317;
+  background-color: #141414;
+}
+.dokuwiki div.toc h3 { color: #c8a96e; font-weight: normal; }
+
+/* Buttons and inputs */
+.dokuwiki button, .dokuwiki input[type=submit], .dokuwiki input.button {
+  background: #16130c;
+  color: #e3c98d;
+  border: 1px solid #c8a96e;
+  border-radius: 3px;
+  box-shadow: none;
+  text-shadow: none;
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: .06em;
+}
+.dokuwiki button:hover, .dokuwiki button:focus,
+.dokuwiki input[type=submit]:hover, .dokuwiki input[type=submit]:focus {
+  background: #221c10;
+  color: #ffffff;
+  border-color: #c8a96e;
+}
+.dokuwiki input[type=text], .dokuwiki input[type=search], .dokuwiki input[type=password], .dokuwiki textarea, .dokuwiki select {
+  background: #0d0d0d;
+  color: #cfcabd;
+  border: 1px solid #2a2317;
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+/* Notes and quotes: panel with a hairline, never a colored left edge */
+.dokuwiki blockquote {
+  border: 1px solid #2a2317;
+  border-radius: 3px;
+  background: #141414;
+  color: #cfcabd;
+  padding: .75em 1em;
+  margin-left: 0;
+}
+
+/* Footer: fine print in muted */
+#dokuwiki__footer, #dokuwiki__footer .doc, #dokuwiki__footer .license {
+  color: #8a8578;
+  font-size: .85rem;
+}
+#dokuwiki__footer a { color: #8a8578; }
+#dokuwiki__footer .buttons { display: none; }
+
+/* Message boxes (admin notices, errors, success): panel with a hairline, no stock yellow/red fills */
+.dokuwiki div.info, .dokuwiki div.notify, .dokuwiki div.error, .dokuwiki div.success {
+  background-color: #141414;
+  background-image: none;
+  color: #cfcabd;
+  border: 1px solid #2a2317;
+  border-radius: 3px;
+  padding-left: 1em;
+}
+.dokuwiki div.notify { border-color: #c8a96e; }
+.dokuwiki div.error { border-color: #e0674c; }
+.dokuwiki div.success { border-color: #72b89a; }

@@ -189,7 +189,8 @@ public class CC6Batch5CreatureVerification
         // CC6 batch 8 (2026-09-22), Parts A and C: Navrey Night-Eyes ported (NavreyNightEyes, one name), so it is now 22.
         // Part B: SlasherOfVeils and StygianDragon ported (two names), so it is now 20.
         // Part D: Medusa ported (one name), so it is now 19.
-        Assert.Equal(19, unresolved.Count);
+        // CC9 close (2026-09-29): Niporailem ported as the Epiphany suites' gate (one name), so it is now 18.
+        Assert.Equal(18, unresolved.Count);
         // Counted 2026-09-20 from the same files with tools/spawn_orphans.py's reader: FireDaemonRenowned 2 (two Abyss
         // spawners), the other twelve renowned 1 each (Abyss), flurry/grim/mistral/tempest 1 each (one Labyrinth spawner).
         Assert.Equal(18, referenced);

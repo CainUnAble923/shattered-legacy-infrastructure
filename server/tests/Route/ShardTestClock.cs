@@ -61,6 +61,19 @@
 // it is the wall-clock time of that call, carried forward by every Advance. Either way it only
 // moves forward. Measure from a Core.Now read inside the fact, never from Epoch, and do not
 // assert on the date or the time of day.
+//
+// WHAT ARM DOES TO A TIMER ALREADY RUNNING (D16): it drops it from the wheel but leaves it
+// flagged Running. Timer.Init swaps in empty rings and never touches the flag
+// (Projects/Server/Timer/Timer.TimerWheel.cs:43-52), and Start() returns at once while Running
+// (Timer.cs:108), so the timer never fires and a Start() on it does nothing. Only a Stop() first
+// clears the flag (Timer.cs:145, 160). So an object built before Arm() - a mobile whose HitsTimer
+// is going, a creature with an AI timer, an item with a decay timer - can silently lose that
+// timer, unless its own code happens to Stop it first. Create anything with a timer AFTER Arm().
+//
+// The host differs from the shard in one more way that is not about time: it has no tile data
+// (D27), so armour and weapons that do not set their own layer are on no layer at all.
+// TestHostTileData.cs pins that, and TestTileRows.cs is how a fact gets real rows for its
+// own duration.
 
 using System;
 using Server;
@@ -93,8 +106,10 @@ public static class ShardTestClock
     /// <summary>
     /// Takes control of the clock for the current test: raises Core.Now to <see cref="Epoch"/> if
     /// it is below it (nothing has set it yet), and re-synchronises the timer wheel with
-    /// Core.TickCount, dropping timers left behind by an earlier test.
-    /// Call it BEFORE scheduling anything the test intends to fire.
+    /// Core.TickCount, emptying it. Every timer on the wheel is dropped and stays flagged Running,
+    /// so it never fires and Start() on it is a no-op until something Stops it (D16, see the header).
+    /// Call it BEFORE scheduling anything, or constructing anything that starts a timer, that the
+    /// test intends to fire.
     /// </summary>
     public static void Arm()
     {
