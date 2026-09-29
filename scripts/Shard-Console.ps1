@@ -7,7 +7,12 @@
                                                    running it, and the status panel reads a captured
                                                    file instead of docker. A button that runs in its
                                                    own window still asks and still opens the window,
-                                                   which says DRY RUN at the top and only prints
+                                                   which says DRY RUN at the top and only prints.
+                                                   Launched without it, the "DRY RUN" box by the
+                                                   Refresh button does the same for the buttons while
+                                                   the status stays live from docker. Launched with
+                                                   it, the box is locked on: a plan built from a
+                                                   capture file must never run for real
       .\scripts\Shard-Console.ps1 -Status          print the status panel here and exit
       .\scripts\Shard-Console.ps1 -Action list     every button, by key
       .\scripts\Shard-Console.ps1 -Mode Execute -Action test.start
@@ -49,6 +54,7 @@ param(
     [switch]$DryRun,
     [ValidateSet('DryRun', 'Execute')][string]$Mode,
     [string]$StatusFrom,
+    [switch]$StatusFromDocker,
     [string]$Action,
     [ValidateSet('test', 'live')][string]$Shard = 'test',
     [string]$SnapshotName,
@@ -491,12 +497,16 @@ function Get-ChildArgumentLine {
     # reading the command line sees it. Resolve-RunMode is the other half.
     param(
         [string]$SelfPath, [string]$ActionKey, [string]$ShardKey, [string]$SnapshotName,
-        [string]$Snapshot, [string]$ConfirmLive, [switch]$Yes, [switch]$DryRun, [string]$StatusFrom
+        [string]$Snapshot, [string]$ConfirmLive, [switch]$Yes, [switch]$DryRun, [string]$StatusFrom,
+        [switch]$StatusFromDocker
     )
     $mode = 'Execute'
     if ($DryRun) { $mode = 'DryRun' }
     $a = '-NoProfile -ExecutionPolicy Bypass -NoExit -File "' + $SelfPath + '" -Mode ' + $mode + ' -Action ' + $ActionKey + ' -Shard ' + $ShardKey
-    if ($DryRun -and $StatusFrom) { $a += ' -StatusFrom "' + $StatusFrom + '"' }
+    # A dry child reads a capture file unless told otherwise. When the parent's status came from
+    # docker (the toggle, not -DryRun), the child reads docker too, so it prints the same plan.
+    if ($DryRun -and $StatusFromDocker) { $a += ' -StatusFromDocker' }
+    elseif ($DryRun -and $StatusFrom) { $a += ' -StatusFrom "' + $StatusFrom + '"' }
     if ($SnapshotName) { $a += ' -SnapshotName ' + $SnapshotName }
     if ($Snapshot) { $a += ' -Snapshot ' + $Snapshot }
     if ($ConfirmLive) { $a += ' -ConfirmLive "' + $ConfirmLive + '"' }
@@ -1544,7 +1554,7 @@ function Update-GlanceTiles {
 
 function Update-ConsoleStatus {
     try {
-        $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:dry -StatusFrom $script:statusFrom
+        $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:fromCapture -StatusFrom $script:statusFrom
         $script:lastState = $state
         Update-GlanceTiles $state
         $box = $script:ui.Status
@@ -1639,6 +1649,25 @@ function Show-TypedConfirm {
     ($result -eq 'OK') -and (Test-TypedConfirmation $Phrase $typed)
 }
 
+function Set-ConsoleDryRun {
+    # The DRY RUN box. Buttons print instead of run; the status panel is unaffected.
+    param([bool]$On)
+    if ($script:fromCapture -and -not $On) { $On = $true }
+    $changed = ([bool]$script:dry -ne $On)
+    $script:dry = $On
+    $box = $script:ui.DryBox
+    if ($box) {
+        if ($box.Checked -ne $On) { $box.Checked = $On }
+        if ($On) { $box.BackColor = [Drawing.Color]::FromArgb(255, 238, 204); $box.ForeColor = [Drawing.Color]::FromArgb(150, 80, 0) }
+        else { $box.BackColor = [Drawing.Color]::Transparent; $box.ForeColor = [Drawing.Color]::Black }
+    }
+    if ($script:lastState) { Update-GlanceTiles $script:lastState }
+    if ($changed) {
+        if ($On) { Write-ConsoleLine 'DRY RUN on: buttons print the plan, and a window action opens a window that only prints. Nothing runs.' 'amber' }
+        else { Write-ConsoleLine 'DRY RUN off: buttons run for real.' 'head' }
+    }
+}
+
 function Show-YesNo {
     param([string]$Text)
     $title = 'Shard Console'
@@ -1651,10 +1680,13 @@ function Invoke-ConsoleButton {
     try {
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
         if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' } }
-        $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:dry -StatusFrom $script:statusFrom
+        # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
+        # status is a capture file". Only the second decides where the state comes from.
+        if ($script:fromCapture -and -not $script:dry) { throw 'the status is from a capture file, so nothing may run for real. Relaunch without -DryRun.' }
+        $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:fromCapture -StatusFrom $script:statusFrom
         $script:lastState = $state
         $now = Get-Date
-        if ($script:dry) { $now = $state.Now.ToLocalTime() }
+        if ($script:fromCapture) { $now = $state.Now.ToLocalTime() }
         $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
@@ -1682,7 +1714,7 @@ function Invoke-ConsoleButton {
             $answeredYes = $true
         }
         if ($def.RunIn -eq 'window') {
-            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom
+            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture)
             Start-Process -FilePath $script:cfg.PowerShell -ArgumentList $argLine | Out-Null
             if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in its own window. It prints the plan and runs nothing.') 'amber' }
             else { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): running in its own window. Refresh the status when it finishes.') 'head' }
@@ -1741,7 +1773,9 @@ function New-ConsoleForm {
     [Windows.Forms.Application]::EnableVisualStyles()
     $script:cfg = $Config
     $script:dry = [bool]$DryRun
+    $script:fromCapture = [bool]$DryRun
     $script:statusFrom = $StatusFrom
+    $script:lastState = $null
     $script:ui = @{}
     $script:MonoFont = New-Object Drawing.Font('Consolas', 9)
     $script:BoldFont = New-Object Drawing.Font('Consolas', 9, [Drawing.FontStyle]::Bold)
@@ -1797,7 +1831,18 @@ function New-ConsoleForm {
     $auto.AutoSize = $true
     $auto.Checked = -not $DryRun
     $auto.Margin = New-Object Windows.Forms.Padding(12, 8, 3, 3)
-    $bar.Controls.AddRange(@($refresh, $auto))
+    $dryBox = New-Object Windows.Forms.CheckBox
+    $dryBox.Text = 'DRY RUN: buttons print, nothing runs'
+    $dryBox.AutoSize = $true
+    $dryBox.Font = New-Object Drawing.Font('Segoe UI', 9, [Drawing.FontStyle]::Bold)
+    $dryBox.Margin = New-Object Windows.Forms.Padding(24, 8, 3, 3)
+    if ($DryRun) {
+        # Launched with -DryRun the status is a capture file, so this stays on.
+        $dryBox.Text = 'DRY RUN (locked on: the status is from a capture file)'
+        $dryBox.Enabled = $false
+    }
+    $dryBox.Add_CheckedChanged({ Set-ConsoleDryRun $this.Checked })
+    $bar.Controls.AddRange(@($refresh, $auto, $dryBox))
     $status = New-Object Windows.Forms.RichTextBox
     $status.Dock = 'Fill'
     $status.ReadOnly = $true
@@ -1809,6 +1854,7 @@ function New-ConsoleForm {
     $statusGroup.Controls.Add($bar)
     $script:ui.Status = $status
     $script:ui.Auto = $auto
+    $script:ui.DryBox = $dryBox
 
     # tabs
     $tabs = New-Object Windows.Forms.TabControl
@@ -1983,6 +2029,7 @@ function New-ConsoleForm {
     $script:ui.Timer = $timer
 
     if ($DryRun) { Write-ConsoleLine 'DRY RUN: every button prints the plan it would run. The status panel is read from a capture file, not docker.' 'amber' }
+    Set-ConsoleDryRun ([bool]$DryRun)
     Update-ConsoleStatus
     $form
 }
@@ -2027,9 +2074,10 @@ if ($Action) {
     foreach ($l in $banner.Lines) { Write-ConsoleLine $l $banner.Color }
     if ($run -eq 'refuse') { exit 2 }
     $isDry = ($run -eq 'dry')
-    $st = Get-ConsoleState -Config $config -DryRun:$isDry -StatusFrom $StatusFrom
+    $fromCapture = $isDry -and -not $StatusFromDocker
+    $st = Get-ConsoleState -Config $config -DryRun:$fromCapture -StatusFrom $StatusFrom
     $now = Get-Date
-    if ($isDry) { $now = $st.Now.ToLocalTime() }
+    if ($fromCapture) { $now = $st.Now.ToLocalTime() }
     $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now)
     $viol = @(Test-PlanSafety $plan $config)
     $header = 'PLAN'

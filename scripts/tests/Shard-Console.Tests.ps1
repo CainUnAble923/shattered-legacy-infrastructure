@@ -631,7 +631,10 @@ $liveStoppedState.Shards['live'].Container.Running = $false
 $liveStoppedState.Shards['live'].Container.Status = 'exited'
 
 function Invoke-ClickCapture {
-    param([string]$ActionKey, [string]$ShardKey, [bool]$Dry, $State = $snapState)
+    # FromCapture defaults to Dry: a console launched with -DryRun. Dry with FromCapture false is
+    # the toggle in a console whose status is live from docker.
+    param([string]$ActionKey, [string]$ShardKey, [bool]$Dry, $State = $snapState, $FromCapture = $null)
+    if ($null -eq $FromCapture) { $FromCapture = $Dry }
     $rec = [pscustomobject]@{
         Spawned = New-Object 'System.Collections.Generic.List[string]'
         Lines = New-Object 'System.Collections.Generic.List[string]'
@@ -644,14 +647,14 @@ function Invoke-ClickCapture {
     function Show-YesNo { 'Yes' }
     function Get-ConsoleState { $State }
     function Write-ConsoleLine { param([string]$Text, [string]$Color) $rec.Lines.Add($Text) }
-    $saved = @($script:dry, $script:cfg, $script:statusFrom, $script:SelfPath)
-    $script:dry = $Dry; $script:cfg = $config; $script:statusFrom = $null
+    $saved = @($script:dry, $script:cfg, $script:statusFrom, $script:SelfPath, $script:fromCapture)
+    $script:dry = $Dry; $script:cfg = $config; $script:statusFrom = $null; $script:fromCapture = [bool]$FromCapture
     $script:SelfPath = (Resolve-Path $script).Path
     $sn = $null; $s = $null
     if ($ActionKey -eq 'snapshot.create') { $sn = 'd37-check' }
     if ($ActionKey -in @('snapshot.restore', 'snapshot.delete')) { $s = $snapName }
     try { Invoke-ConsoleButton -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $sn -Snapshot $s }
-    finally { $script:dry, $script:cfg, $script:statusFrom, $script:SelfPath = $saved }
+    finally { $script:dry, $script:cfg, $script:statusFrom, $script:SelfPath, $script:fromCapture = $saved }
     $rec
 }
 
@@ -698,6 +701,64 @@ Fact 'EveryWindowActionClickedForRealHandsItsWindowModeExecute' {
         Assert-True ($r.Spawned[0] -match ' -Mode Execute ') ($what + ': ' + $r.Spawned[0])
         Assert-True (-not ($r.Spawned[0] -match 'DryRun')) ($what + ': ' + $r.Spawned[0])
     }
+}
+
+# --- the DRY RUN toggle -----------------------------------------------------------------------------
+# Launched without -DryRun the status is docker, and the box by Refresh makes the buttons print.
+
+Fact 'WithTheToggleOnEveryWindowActionIsDryAndItsChildReadsDocker' {
+    foreach ($c in $windowCases) {
+        $r = Invoke-ClickCapture $c.Key $c.Shard $true $c.State $false
+        $what = $c.Key + ' ' + $c.Shard
+        Assert-Equal 1 $r.Spawned.Count ($what + ': ' + ($r.Lines -join ' | '))
+        Assert-Equal 0 $r.Executed.Count $what
+        Assert-True ($r.Spawned[0] -match ' -Mode DryRun ') ($what + ': ' + $r.Spawned[0])
+        Assert-True ($r.Spawned[0] -match ' -StatusFromDocker') ($what + ' reads the same docker state as the parent: ' + $r.Spawned[0])
+    }
+    $real = (Invoke-ClickCapture 'live.stop' 'live' $false).Spawned[0]
+    Assert-True (-not ($real -match 'StatusFromDocker')) ('only a dry child is told where to read: ' + $real)
+}
+
+Fact 'AConsoleWhoseStatusIsACaptureCannotRunAnythingForReal' {
+    # The box is locked in that case; this is the check behind the lock.
+    foreach ($c in $windowCases) {
+        $r = Invoke-ClickCapture $c.Key $c.Shard $false $c.State $true
+        Assert-Equal 0 $r.Spawned.Count $c.Key
+        Assert-Equal 0 $r.Executed.Count $c.Key
+        Assert-True (@($r.Lines | Where-Object { $_ -match 'capture file' }).Count -eq 1) ($c.Key + ': ' + ($r.Lines -join ' | '))
+    }
+}
+
+Fact 'TheToggleFlipsTheButtonsAndTheTitleAndNotTheStatusSource' {
+    function Get-ConsoleState { param($Config, [switch]$DryRun, $StatusFrom) $script:stateAskedDry.Add([bool]$DryRun); $state }
+    $script:stateAskedDry = New-Object 'System.Collections.Generic.List[bool]'
+    $form = New-ConsoleForm -Config $config
+    try {
+        $box = $script:ui.DryBox
+        Assert-True ($box.Enabled -and -not $box.Checked) 'off and usable when the status is docker'
+        Assert-Equal $false $script:dry
+        Assert-True (-not ($form.Text -match 'DRY RUN')) $form.Text
+        $box.Checked = $true
+        Assert-Equal $true $script:dry 'ticked'
+        Assert-True ($form.Text -like 'Shard Console - DRY RUN - *') $form.Text
+        Update-ConsoleStatus
+        $box.Checked = $false
+        Assert-Equal $false $script:dry 'unticked'
+        Assert-True (-not ($form.Text -match 'DRY RUN')) $form.Text
+        Assert-True ($script:stateAskedDry.Count -ge 2) 'the status was read'
+        Assert-Equal 0 @($script:stateAskedDry | Where-Object { $_ }).Count 'the status stayed on docker while ticked'
+    } finally { $form.Dispose() }
+}
+
+Fact 'LaunchedWithDryRunTheToggleIsLockedOn' {
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        $box = $script:ui.DryBox
+        Assert-True ($box.Checked -and -not $box.Enabled) 'ticked and greyed out'
+        Set-ConsoleDryRun $false
+        Assert-Equal $true $script:dry 'turning it off from code does not take either'
+        Assert-True $box.Checked 'still ticked'
+    } finally { $form.Dispose() }
 }
 
 Fact 'AHereActionClickedDryOpensNothingAndRunsNothing' {
@@ -816,6 +877,18 @@ Fact 'TheRealChildOfADryClickSaysDryRunFirstAndCallsNoDocker' {
         Assert-True ($r.Out[1] -match ('^  DRY RUN  ' + [regex]::Escape($c.Key))) ($c.Key + ' first line: ' + $r.Out[1])
         Assert-True (@($r.Out | Where-Object { $_ -like ('== DRY RUN: ' + $c.Key + '*') }).Count -eq 1) ($c.Key + ' printed its plan')
     }
+}
+
+Fact 'TheRealChildOfAToggledClickReadsDockerAndChangesNothing' {
+    # A dry child told -StatusFromDocker reads docker the way the status panel does. The recorder
+    # sees every call; none may be a verb that changes anything.
+    $line = (Invoke-ClickCapture 'live.stop' 'live' $true $snapState $false).Spawned[0]
+    $r = Invoke-Child $line
+    Assert-Equal 0 $r.Exit (($r.Out -join ' | ') + $r.Err)
+    Assert-True ($r.Out[1] -match '^  DRY RUN  live\.stop') $r.Out[1]
+    Assert-True ($r.DockerCalls.Count -gt 0) 'it did read docker'
+    $bad = @($r.DockerCalls | Where-Object { $_ -match '^(stop|start|restart|rm|kill|compose|exec|commit|tag|run|create|pause)\b' })
+    Assert-Equal 0 $bad.Count ($bad -join ' | ')
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
