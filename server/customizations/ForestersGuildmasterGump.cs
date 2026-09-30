@@ -76,11 +76,12 @@ public class ForestersGuildmasterGump : Gump
         AddLabel(W - 28, H - 26, 1154, "X");
     }
 
-    // ── Views ─────────────────────────────────────────────────────────────────
+    // -- Views -----------------------------------------------------------------
 
     private void DrawMainMenu(ClusterFAccountData data)
     {
-        var isMember = data.JoinedGuilds.Contains("foresters");
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
+        var isMember = guild.JoinedGuilds.Contains("foresters");
 
         AddLabel(18, 56, 999, "What brings you to the wood yard, friend?");
         AddImageTiled(10, 72, W - 20, 1, 9304);
@@ -113,7 +114,7 @@ public class ForestersGuildmasterGump : Gump
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var html =
-            "<BASEFONT COLOR=#AAAAAA>The Foresters' Union is the guild of those who work the wood — " +
+            "<BASEFONT COLOR=#AAAAAA>The Foresters' Union is the guild of those who work the wood - " +
             "the axe-wielders, saw-workers, and bark-readers who turn standing timber into " +
             "the boards, beams, and planks that hold Britannia together.</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#AAAAAA>We supply the carpenters, the shipwrights, and the builders. " +
@@ -136,19 +137,19 @@ public class ForestersGuildmasterGump : Gump
             "<BASEFONT COLOR=#AAAAAA>The Union buys all grades of timber cut from Britannia's forests." +
             "</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Common Boards</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — Cut from the pines and oaks of the lowland forests. " +
+            "<BASEFONT COLOR=#888888> - Cut from the pines and oaks of the lowland forests. " +
             "The backbone of carpentry and construction.</BASEFONT><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Oak and Ash</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — Harder and more durable than common wood. Found in " +
+            "<BASEFONT COLOR=#888888> - Harder and more durable than common wood. Found in " +
             "the older stands of the inland groves.</BASEFONT><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Yew</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — The bowyer's wood. Dense and flexible, prized by " +
+            "<BASEFONT COLOR=#888888> - The bowyer's wood. Dense and flexible, prized by " +
             "ranged weapon crafters and high-end furniture makers.</BASEFONT><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Heartwood</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — Found in the oldest forest giants. Difficult to cut " +
+            "<BASEFONT COLOR=#888888> - Found in the oldest forest giants. Difficult to cut " +
             "but worth the effort for fine construction work.</BASEFONT><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Bloodwood and Frostwood</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — The rarest timbers, found only in the deepest wilderness. " +
+            "<BASEFONT COLOR=#888888> - The rarest timbers, found only in the deepest wilderness. " +
             "The Union pays premium for these. Only veteran foresters reach them.</BASEFONT>";
 
         AddHtml(16, 78, W - 32, H - 128, html, false, true);
@@ -202,11 +203,12 @@ public class ForestersGuildmasterGump : Gump
 
     private void DrawMemberDashboard(ClusterFAccountData data)
     {
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
         AddLabel(18, 56, 1154, "Member Dashboard");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
-        data.GuildReputation.TryGetValue("foresters", out var standing);
-        data.GuildCurrency.TryGetValue("foresters",   out var tokens);
+        guild.GuildReputation.TryGetValue("foresters", out var standing);
+        guild.GuildCurrency.TryGetValue("foresters",   out var tokens);
         var rank = GetRankName(standing);
 
         var html =
@@ -234,7 +236,7 @@ public class ForestersGuildmasterGump : Gump
         var hasLogbook = _pm.Backpack?.FindItemByType<Items.ForestersLogbook>() != null;
         if (hasLogbook)
         {
-            AddLabel(18, y2, 0x3B2, "Forester's Logbook — in your backpack.");
+            AddLabel(18, y2, 0x3B2, "Forester's Logbook - in your backpack.");
         }
         else
         {
@@ -246,7 +248,7 @@ public class ForestersGuildmasterGump : Gump
         var hasSatchel = _pm.Backpack?.FindItemByType<Items.ForestersLumberSatchel>() != null;
         if (hasSatchel)
         {
-            AddLabel(18, y2, 0x3B2, "Lumber Satchel — in your backpack.");
+            AddLabel(18, y2, 0x3B2, "Lumber Satchel - in your backpack.");
         }
         else
         {
@@ -305,18 +307,18 @@ public class ForestersGuildmasterGump : Gump
             {
                 if (entry.State == DiscoveryState.Reported)
                 {
-                    stateHue   = 0x3F;  // green — reported
+                    stateHue   = 0x3F;  // green - reported
                     stateLabel = "Reported";
                 }
                 else
                 {
-                    stateHue   = 0x44;  // orange — pending report
+                    stateHue   = 0x44;  // orange - pending report
                     stateLabel = "Discovered";
                 }
             }
             else
             {
-                stateHue   = 0x3B2; // grey — not found
+                stateHue   = 0x3B2; // grey - not found
                 stateLabel = "Not Found";
             }
 
@@ -326,7 +328,7 @@ public class ForestersGuildmasterGump : Gump
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     public static string GetRankName(int standing) => standing switch
     {
@@ -339,14 +341,15 @@ public class ForestersGuildmasterGump : Gump
         _         => "Woodcutter"
     };
 
-    // ── Helpers ── replace items ──────────────────────────────────────────────
+    // -- Helpers -- replace items ----------------------------------------------
 
     private const int LogbookReplaceCost = 5;  // Timber Tokens
     private const int SatchelReplaceCost = 5;  // Timber Tokens
 
     private void HandleReplaceSatchel(ClusterFAccountData data)
     {
-        if (!data.JoinedGuilds.Contains("foresters"))
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
+        if (!guild.JoinedGuilds.Contains("foresters"))
         {
             _pm.SendMessage(0x22, "You must be a member of the Foresters' Union to replace your satchel.");
             return;
@@ -361,7 +364,7 @@ public class ForestersGuildmasterGump : Gump
             return;
         }
 
-        data.GuildCurrency.TryGetValue("foresters", out var tokens);
+        guild.GuildCurrency.TryGetValue("foresters", out var tokens);
 
         var bypass = Items.DevTestingCrystal.IsActive(_pm);
         if (!bypass && tokens < SatchelReplaceCost)
@@ -373,7 +376,7 @@ public class ForestersGuildmasterGump : Gump
         }
 
         if (!bypass)
-            data.GuildCurrency["foresters"] = tokens - SatchelReplaceCost;
+            guild.GuildCurrency["foresters"] = tokens - SatchelReplaceCost;
 
         pack.DropItem(new Items.ForestersLumberSatchel());
         _pm.SendMessage(0x44, "A replacement Foresters' Lumber Satchel has been added to your backpack.");
@@ -381,7 +384,8 @@ public class ForestersGuildmasterGump : Gump
 
     private void HandleReplaceLogbook(ClusterFAccountData data)
     {
-        if (!data.JoinedGuilds.Contains("foresters"))
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
+        if (!guild.JoinedGuilds.Contains("foresters"))
         {
             _pm.SendMessage(0x22, "You must be a member of the Foresters' Union to replace your logbook.");
             return;
@@ -396,7 +400,7 @@ public class ForestersGuildmasterGump : Gump
             return;
         }
 
-        data.GuildCurrency.TryGetValue("foresters", out var tokens);
+        guild.GuildCurrency.TryGetValue("foresters", out var tokens);
 
         var bypass = Items.DevTestingCrystal.IsActive(_pm);
         if (!bypass && tokens < LogbookReplaceCost)
@@ -408,13 +412,13 @@ public class ForestersGuildmasterGump : Gump
         }
 
         if (!bypass)
-            data.GuildCurrency["foresters"] = tokens - LogbookReplaceCost;
+            guild.GuildCurrency["foresters"] = tokens - LogbookReplaceCost;
 
         pack.DropItem(new Items.ForestersLogbook());
         _pm.SendMessage(0x44, "A replacement Forester's Logbook has been added to your backpack.");
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {

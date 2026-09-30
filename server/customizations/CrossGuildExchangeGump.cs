@@ -6,14 +6,14 @@ using Server.Network;
 
 namespace Server;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Cross-Guild Exchange Gump
 //
 // Accessible from the Member Dashboard of any of the four trade guilds:
 //   Miners' Compact, Society of Smiths, Rangers' League, Foresters' Union.
 //
 // Allows guild members who have accumulated scrip across all four guilds to
-// exchange it for a PackMuleDeed — a prestige pack animal reward.
+// exchange it for a PackMuleDeed - a prestige pack animal reward.
 //
 // Cost:
 //   25 Mining Vouchers  (Miners' Compact)
@@ -21,13 +21,13 @@ namespace Server;
 //   25 Trail Marks      (Rangers' League)
 //   25 Timber Tokens    (Foresters' Union)
 //   25,000 gold         (backpack or bank)
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 public class CrossGuildExchangeGump : Gump
 {
     private readonly PlayerMobile _pm;
 
-    // Exchange costs — adjust here if the economy needs rebalancing.
+    // Exchange costs - adjust here if the economy needs rebalancing.
     private const int MiningCost   = 25;   // Mining Vouchers
     private const int SmithCost    = 25;   // Smithing Seals
     private const int RangerCost   = 25;   // Trail Marks
@@ -50,31 +50,31 @@ public class CrossGuildExchangeGump : Gump
         AddBackground(0, 0, W, H, BgId);
         AddAlphaRegion(6, 6, W - 12, H - 12);
 
-        // ── Header ────────────────────────────────────────────────────────
+        // -- Header --------------------------------------------------------
         AddLabel(W / 2 - 95, 12, 1154, "The Civic Mule Exchange");
         AddLabel(W / 2 - 110, 28, 999, "A Cross-Guild Prestige Reward");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
-        // ── Content ───────────────────────────────────────────────────────
+        // -- Content -------------------------------------------------------
         var acct = pm.Account as IAccount;
-        var data = acct != null
-            ? ClusterFAccountPersistence.GetOrCreate(acct)
-            : new ClusterFAccountData();
+        var guild = acct != null
+            ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial)
+            : new CharacterGuildData();
 
-        DrawMain(data);
+        DrawMain(guild);
 
-        // ── Footer ────────────────────────────────────────────────────────
+        // -- Footer --------------------------------------------------------
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
         AddButton(W - 50, H - 28, 4023, 4025, 0);
         AddLabel(W - 28, H - 26, 1154, "X");
     }
 
-    private void DrawMain(ClusterFAccountData data)
+    private void DrawMain(CharacterGuildData guild)
     {
-        data.GuildCurrency.TryGetValue("mining",    out var mining);
-        data.GuildCurrency.TryGetValue("smithing",  out var smithing);
-        data.GuildCurrency.TryGetValue("rangers",   out var rangers);
-        data.GuildCurrency.TryGetValue("foresters", out var foresters);
+        guild.GuildCurrency.TryGetValue("mining",    out var mining);
+        guild.GuildCurrency.TryGetValue("smithing",  out var smithing);
+        guild.GuildCurrency.TryGetValue("rangers",   out var rangers);
+        guild.GuildCurrency.TryGetValue("foresters", out var foresters);
 
         var goldAvail = CompactGoldHelper.GetTotalGold(_pm);
         var bypass    = Items.DevTestingCrystal.IsActive(_pm);
@@ -107,14 +107,14 @@ public class CrossGuildExchangeGump : Gump
             $"Timber Tokens:    {foresters} / {ForesterCost}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={CostColor(goldAvail >= GoldCost    || bypass)}>  " +
             $"Gold:             {goldAvail:N0} / {GoldCost:N0}</BASEFONT>" +
-            (bypass ? "<BR><BASEFONT COLOR=#FF44FF>[Testing Token active — costs bypassed]</BASEFONT>" : "");
+            (bypass ? "<BR><BASEFONT COLOR=#FF44FF>[Testing Token active - costs bypassed]</BASEFONT>" : "");
 
         AddHtml(16, 56, W - 32, H - 120, html, false, true);
 
-        // Purchase button — grayed out if player cannot afford
+        // Purchase button - grayed out if player cannot afford
         AddButton(18, H - 68, 4011, 4012, BtnPurchase);
         AddLabel(44, H - 66, canAfford ? 999 : 0x22,
-            "Exchange — Receive a Pack Mule Deed");
+            "Exchange - Receive a Pack Mule Deed");
     }
 
     public override void OnResponse(NetState sender, in RelayInfo info)
@@ -123,7 +123,7 @@ public class CrossGuildExchangeGump : Gump
             HandlePurchase();
     }
 
-    // ── Purchase logic ────────────────────────────────────────────────────────
+    // -- Purchase logic --------------------------------------------------------
 
     private void HandlePurchase()
     {
@@ -137,13 +137,13 @@ public class CrossGuildExchangeGump : Gump
             return;
         }
 
-        var data   = ClusterFAccountPersistence.GetOrCreate(acct);
+        var guild   = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial);
         var bypass = Items.DevTestingCrystal.IsActive(_pm);
 
-        data.GuildCurrency.TryGetValue("mining",    out var mining);
-        data.GuildCurrency.TryGetValue("smithing",  out var smithing);
-        data.GuildCurrency.TryGetValue("rangers",   out var rangers);
-        data.GuildCurrency.TryGetValue("foresters", out var foresters);
+        guild.GuildCurrency.TryGetValue("mining",    out var mining);
+        guild.GuildCurrency.TryGetValue("smithing",  out var smithing);
+        guild.GuildCurrency.TryGetValue("rangers",   out var rangers);
+        guild.GuildCurrency.TryGetValue("foresters", out var foresters);
         var goldAvail = CompactGoldHelper.GetTotalGold(_pm);
 
         if (!bypass)
@@ -186,10 +186,10 @@ public class CrossGuildExchangeGump : Gump
             }
 
             // Consume all four guild currencies and gold.
-            data.GuildCurrency["mining"]    = mining    - MiningCost;
-            data.GuildCurrency["smithing"]  = smithing  - SmithCost;
-            data.GuildCurrency["rangers"]   = rangers   - RangerCost;
-            data.GuildCurrency["foresters"] = foresters - ForesterCost;
+            guild.GuildCurrency["mining"]    = mining    - MiningCost;
+            guild.GuildCurrency["smithing"]  = smithing  - SmithCost;
+            guild.GuildCurrency["rangers"]   = rangers   - RangerCost;
+            guild.GuildCurrency["foresters"] = foresters - ForesterCost;
             CompactGoldHelper.ConsumeGold(_pm, GoldCost);
         }
 

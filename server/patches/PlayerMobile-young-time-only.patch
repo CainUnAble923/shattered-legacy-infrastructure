@@ -1,0 +1,16 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -4146,11 +4146,8 @@
+ 
+         public override void OnSkillChange(SkillName skill, double oldBase)
+         {
+-            if (Young && SkillsTotal >= 4500)
+-            {
+-                // You have successfully obtained a respectable skill level, and have outgrown your status as a young player!
+-                ((Account)Account)?.RemoveYoungStatus(1019036);
+-            }
++            // cc-P18 (F-5): Young ends by time played only on this shard (ClusterFYoungPlayer.cs). OSI also
++            // ended it at a skill total of 450.0 (message 1019036); that rule is removed here.
+ 
+             if (MLQuestSystem.Enabled)
+             {

@@ -29,8 +29,18 @@
 // cc-P15 added version 14, a guild starter record per character (notes/cc-P15-guild-starter-path.md):
 //   7. Fact 1 carries two characters' records, every field compared.
 //   8. Version 13 bytes, written by a frozen copy of the pre-cc-P15 writer, load whole and come back
-//      with no records; written again they are version 14.
+//      with no records; written again they are version 15.
 //   9. A newer account-data version, or an unknown starter-record version, fails loudly.
+//
+// cc-P18 (F-7) added version 15: guild membership, Apprentice marks, reputation, scrip, work orders,
+// smith commissions and the Artificer order moved from the account to CharacterGuildData, one per
+// character serial (notes/cc-P18-reset-stone-young-craftx.md):
+//  10. Fact 1 carries two characters' guild data and exploration, every field compared.
+//  11. A version 14 save with account-level guild data (bytes from a frozen copy of the pre-cc-P18
+//      writer) loads whole: the guild data and the Apprentice flags are cleared, not given to a
+//      character, and everything else is kept. Written again it is version 15. A version 14 save with
+//      no guild data is not reported as having dropped any.
+//  12. An unknown CharacterGuildData version fails loudly.
 
 using System;
 using System.Collections;
@@ -65,6 +75,9 @@ public class AccountDataSerializerVerification
         "00000107596577576F6F640A00000001000000010000000107556E6B6E6F776E0107556E6B6E6F776E00" +
         "0000000000000000000000C6384EC7B4BCDE080A000000";
 
+    private static readonly Serial First  = (Serial)0x1234u;
+    private static readonly Serial Second = (Serial)0x5678u;
+
     private static (byte[] Buffer, long Length) Write(Action<IGenericWriter> serialize)
     {
         var writer = new BufferWriter(true, new ConcurrentQueue<Type>());
@@ -77,6 +90,40 @@ public class AccountDataSerializerVerification
             .GetField("_exploredChunks", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(d)!;
 
+    private static Dictionary<uint, CharacterGuildData> GuildData(ClusterFAccountData d) =>
+        (Dictionary<uint, CharacterGuildData>)typeof(ClusterFAccountData)
+            .GetField("_guildData", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(d)!;
+
+    // One character's guild data with every collection non-empty and every field set. Before v15 the
+    // account held exactly this, once; the frozen writers below write it at the account level.
+    private static void FillGuild(CharacterGuildData g)
+    {
+        g.GuildReputation["mining"] = 300;
+        g.GuildReputation["smithing"] = -5;
+        g.GuildCurrency["mining"] = 42;
+        g.JoinedGuilds.Add("mining");
+        g.JoinedGuilds.Add("foresters");
+        g.ApprenticeGuilds.Add("mining");
+
+        var active = new WorkOrderEntry("mining.dullcopper.50", "mining");
+        active.TamingProgress["Horse"] = 2;
+        g.ActiveWorkOrders.Add(active);
+        g.CompletedWorkOrders.Add(new WorkOrderEntry("smithing.plate.10", "smithing")
+        {
+            CompletedAt = new DateTime(2026, 9, 2, 8, 30, 0, DateTimeKind.Utc)
+        });
+
+        g.SmithCommissions.Add(new SmithCommissionEntry(
+            "c1", "platechest", CraftResource.Valorite, true, "Sir Test", "Mind the rivets", 12, 34));
+        var large = new SmithLargeCommissionEntry(
+            "L1", "ringmail", CraftResource.Agapite, false, "Dame Test", "", 56, 78);
+        large.FulfilledPieces.Add("ringmailchest");
+        g.SmithLargeCommissions.Add(large);
+
+        g.AcceptArtificerOrder("artificer.slayer.silver", 0x40001234u);
+    }
+
     private static ClusterFAccountData FullyPopulated()
     {
         var d = new ClusterFAccountData
@@ -85,12 +132,6 @@ public class AccountDataSerializerVerification
             AchievementPoints  = 567,
             LastSeenBulletinId = 89
         };
-
-        d.GuildReputation["mining"] = 300;
-        d.GuildReputation["smithing"] = -5;
-        d.GuildCurrency["mining"] = 42;
-        d.JoinedGuilds.Add("mining");
-        d.JoinedGuilds.Add("foresters");
 
         var restored = new RestorationEntry("legacy.jacobs_pickaxe", "quest")
         {
@@ -105,14 +146,6 @@ public class AccountDataSerializerVerification
         d.SetFlag("league.joined");
         d.SetFlagValue("league.referrer", "Aetherion");
 
-        var active = new WorkOrderEntry("mining.dullcopper.50", "mining");
-        active.TamingProgress["Horse"] = 2;
-        d.ActiveWorkOrders.Add(active);
-        d.CompletedWorkOrders.Add(new WorkOrderEntry("smithing.plate.10", "smithing")
-        {
-            CompletedAt = new DateTime(2026, 9, 2, 8, 30, 0, DateTimeKind.Utc)
-        });
-
         var ore = new OreDiscoveryEntry("Valorite") { TotalMined = 77, State = DiscoveryState.Reported };
         ore.AddLocation("Felucca", "Minoc", new Point3D(2560, 480, 0)).AmountMined = 50;
         ore.AddLocation("Trammel", "Wilderness", new Point3D(1, 2, -3)).Reported = true;
@@ -120,22 +153,17 @@ public class AccountDataSerializerVerification
 
         d.ImbuingDiscoveries["Hit Chance Increase"] = 4;
 
-        d.SmithCommissions.Add(new SmithCommissionEntry(
-            "c1", "platechest", CraftResource.Valorite, true, "Sir Test", "Mind the rivets", 12, 34));
-        var large = new SmithLargeCommissionEntry(
-            "L1", "ringmail", CraftResource.Agapite, false, "Dame Test", "", 56, 78);
-        large.FulfilledPieces.Add("ringmailchest");
-        d.SmithLargeCommissions.Add(large);
-
         d.EncounteredCreatures.Add("Dragon");
         d.EncounteredCreatures.Add("Ridgeback");
 
-        // Two facets visited, the other four never; bits set at both ends and in the middle.
-        var fel = d.GetOrCreateExploration((Serial)0x1234u, 0, 40, 30);
+        // Two characters' exploration. The first: two facets visited, the other four never, bits set at
+        // both ends and in the middle. The second: one facet.
+        var fel = d.GetOrCreateExploration(First, 0, 40, 30);
         fel[0] = true;
         fel[599] = true;
         fel[1199] = true;
-        d.GetOrCreateExploration((Serial)0x1234u, 4, 13, 7)[90] = true;
+        d.GetOrCreateExploration(First, 4, 13, 7)[90] = true;
+        d.GetOrCreateExploration(Second, 1, 40, 30)[7] = true;
 
         d.WoodDiscoveries["Ironwood"] = SeveralGroves();
         var starwood = new WoodDiscoveryEntry("Starwood") { TotalChopped = 1 };
@@ -143,16 +171,20 @@ public class AccountDataSerializerVerification
             "Ilshenar", "Wilderness", new Point3D(1100, 600, -80), new DateTime(2026, 9, 3, 1, 2, 3, DateTimeKind.Utc), 1));
         d.WoodDiscoveries["Starwood"] = starwood;
 
-        d.AcceptArtificerOrder("artificer.slayer.silver", 0x40001234u);
-
         // v14 (cc-P15): two characters' guild starter records, one of them everything, one nearly empty.
-        var full = d.GetOrCreateGuildStarter((Serial)0x1234u);
+        var full = d.GetOrCreateGuildStarter(First);
         full.ToolsTaken.Add("mining");
         full.ToolsTaken.Add("warriors");
         full.ItemsTaken.Add("TheDeluciansLostMine");
         full.ItemsTaken.Add("EnGuarde");
         full.WelcomeShown = true;
-        d.GetOrCreateGuildStarter((Serial)0x5678u).ToolsTaken.Add("keepers");
+        d.GetOrCreateGuildStarter(Second).ToolsTaken.Add("keepers");
+
+        // v15 (cc-P18): two characters' guild data, one of them everything, one a single guild with scrip.
+        FillGuild(d.GetOrCreateGuildData(First));
+        var second = d.GetOrCreateGuildData(Second);
+        second.JoinedGuilds.Add("keepers");
+        second.GuildCurrency["keepers"] = 7;
         return d;
     }
 
@@ -163,47 +195,51 @@ public class AccountDataSerializerVerification
 
     // Version 13 as the build before cc-P15 wrote it: a frozen copy of ClusterFAccountData.Serialize at
     // d0a1782 (server/customizations/ClusterFAccountData.cs:276-350 there), so these bytes do not come
-    // from the writer under test. The entries' own writers are unchanged by cc-P15.
-    private static void SerializeVersion13(ClusterFAccountData d, IGenericWriter w)
+    // from the writer under test. The guild fields were the account's then; `legacy` supplies them.
+    private static void SerializeVersion13(ClusterFAccountData d, CharacterGuildData legacy, IGenericWriter w,
+        int version = 13)
     {
-        w.Write(13);
+        w.Write(version);
 
         w.Write(d.Renown);
         w.Write(d.AchievementPoints);
         w.Write(d.LastSeenBulletinId);
 
-        w.Write(d.GuildReputation.Count);
-        foreach (var (k, v) in d.GuildReputation) { w.Write(k); w.Write(v); }
+        w.Write(legacy.GuildReputation.Count);
+        foreach (var (k, v) in legacy.GuildReputation) { w.Write(k); w.Write(v); }
 
-        w.Write(d.GuildCurrency.Count);
-        foreach (var (k, v) in d.GuildCurrency) { w.Write(k); w.Write(v); }
+        w.Write(legacy.GuildCurrency.Count);
+        foreach (var (k, v) in legacy.GuildCurrency) { w.Write(k); w.Write(v); }
 
         w.Write(d.RestorationRegistry.Count);
         foreach (var entry in d.RestorationRegistry.Values) entry.Serialize(w);
 
-        w.Write(d.JoinedGuilds.Count);
-        foreach (var key in d.JoinedGuilds) w.Write(key);
+        w.Write(legacy.JoinedGuilds.Count);
+        foreach (var key in legacy.JoinedGuilds) w.Write(key);
 
-        w.Write(d.Flags.Count);
-        foreach (var f in d.Flags) w.Write(f);
+        // Before v15 the Apprentice marks were account flags "guild.apprentice.<key>" (cc-P15).
+        var flags = new List<string>(d.Flags);
+        foreach (var key in legacy.ApprenticeGuilds) flags.Add("guild.apprentice." + key);
+        w.Write(flags.Count);
+        foreach (var f in flags) w.Write(f);
 
         w.Write(d.FlagValues.Count);
         foreach (var (k, v) in d.FlagValues) { w.Write(k); w.Write(v); }
 
-        w.Write(d.ActiveWorkOrders.Count);
-        foreach (var e in d.ActiveWorkOrders) e.Serialize(w);
+        w.Write(legacy.ActiveWorkOrders.Count);
+        foreach (var e in legacy.ActiveWorkOrders) e.Serialize(w);
 
-        w.Write(d.CompletedWorkOrders.Count);
-        foreach (var e in d.CompletedWorkOrders) e.Serialize(w);
+        w.Write(legacy.CompletedWorkOrders.Count);
+        foreach (var e in legacy.CompletedWorkOrders) e.Serialize(w);
 
         w.Write(d.OreDiscoveries.Count);
         foreach (var entry in d.OreDiscoveries.Values) entry.Serialize(w);
 
-        w.Write(d.SmithCommissions.Count);
-        foreach (var e in d.SmithCommissions) e.Serialize(w);
+        w.Write(legacy.SmithCommissions.Count);
+        foreach (var e in legacy.SmithCommissions) e.Serialize(w);
 
-        w.Write(d.SmithLargeCommissions.Count);
-        foreach (var e in d.SmithLargeCommissions) e.Serialize(w);
+        w.Write(legacy.SmithLargeCommissions.Count);
+        foreach (var e in legacy.SmithLargeCommissions) e.Serialize(w);
 
         var chunks = Chunks(d);
         w.Write(chunks.Count);
@@ -232,8 +268,23 @@ public class AccountDataSerializerVerification
         w.Write(d.ImbuingDiscoveries.Count);
         foreach (var (k, v) in d.ImbuingDiscoveries) { w.Write(k); w.Write(v); }
 
-        w.Write(d.ActiveArtificerOrderKey ?? "");
-        w.Write(d.ActiveArtificerItemSerial);
+        w.Write(legacy.ActiveArtificerOrderKey ?? "");
+        w.Write(legacy.ActiveArtificerItemSerial);
+    }
+
+    // Version 14 as the build before cc-P18 wrote it (ClusterFAccountData.cs:316-398 at bb51fad): the
+    // version 13 layout, then the per-character guild starter records.
+    private static void SerializeVersion14(ClusterFAccountData d, CharacterGuildData legacy, IGenericWriter w)
+    {
+        SerializeVersion13(d, legacy, w, 14);
+
+        var records = StarterRecords(d);
+        w.Write(records.Count);
+        foreach (var (serial, record) in records)
+        {
+            w.Write(serial);
+            record.Serialize(w);
+        }
     }
 
     // Three groves on three facets, in the order found, with distinct values in every field: a named
@@ -269,6 +320,51 @@ public class AccountDataSerializerVerification
     // The first int of a serialized WoodDiscoveryEntry is its version.
     private static int VersionOf(byte[] buffer, int offset = 0) => BitConverter.ToInt32(buffer, offset);
 
+    private static void AssertSameGuild(CharacterGuildData o, CharacterGuildData c)
+    {
+        Assert.Equal(o.JoinedGuilds.OrderBy(k => k), c.JoinedGuilds.OrderBy(k => k));
+        Assert.Equal(o.ApprenticeGuilds.OrderBy(k => k), c.ApprenticeGuilds.OrderBy(k => k));
+        Assert.Equal(o.GuildReputation, c.GuildReputation);
+        Assert.Equal(o.GuildCurrency, c.GuildCurrency);
+        Assert.Equal(o.ActiveArtificerOrderKey, c.ActiveArtificerOrderKey);
+        Assert.Equal(o.ActiveArtificerItemSerial, c.ActiveArtificerItemSerial);
+
+        Assert.Equal(o.ActiveWorkOrders.Count, c.ActiveWorkOrders.Count);
+        Assert.Equal(o.CompletedWorkOrders.Count, c.CompletedWorkOrders.Count);
+        var orders = new List<(WorkOrderEntry, WorkOrderEntry)>();
+        for (var i = 0; i < o.ActiveWorkOrders.Count; i++)
+            orders.Add((o.ActiveWorkOrders[i], c.ActiveWorkOrders[i]));
+        for (var i = 0; i < o.CompletedWorkOrders.Count; i++)
+            orders.Add((o.CompletedWorkOrders[i], c.CompletedWorkOrders[i]));
+        foreach (var (oe, ce) in orders)
+        {
+            Assert.Equal(oe.DefKey, ce.DefKey);
+            Assert.Equal(oe.GuildKey, ce.GuildKey);
+            Assert.Equal(oe.AcceptedAt, ce.AcceptedAt);
+            Assert.Equal(oe.CompletedAt, ce.CompletedAt);
+            Assert.Equal(oe.TamingProgress, ce.TamingProgress);
+        }
+
+        Assert.Equal(o.SmithCommissions.Count, c.SmithCommissions.Count);
+        for (var i = 0; i < o.SmithCommissions.Count; i++)
+        {
+            var (oc, cc) = (o.SmithCommissions[i], c.SmithCommissions[i]);
+            Assert.Equal(
+                (oc.Id, oc.ItemKey, oc.Material, oc.RequireExceptional, oc.RequesterName, oc.RequesterNote, oc.SealReward, oc.StandingReward, oc.IssuedAt),
+                (cc.Id, cc.ItemKey, cc.Material, cc.RequireExceptional, cc.RequesterName, cc.RequesterNote, cc.SealReward, cc.StandingReward, cc.IssuedAt));
+        }
+
+        Assert.Equal(o.SmithLargeCommissions.Count, c.SmithLargeCommissions.Count);
+        for (var i = 0; i < o.SmithLargeCommissions.Count; i++)
+        {
+            var (oc, cc) = (o.SmithLargeCommissions[i], c.SmithLargeCommissions[i]);
+            Assert.Equal(
+                (oc.Id, oc.SetKey, oc.Material, oc.RequireExceptional, oc.RequesterName, oc.RequesterNote, oc.SealReward, oc.StandingReward, oc.IssuedAt),
+                (cc.Id, cc.SetKey, cc.Material, cc.RequireExceptional, cc.RequesterName, cc.RequesterNote, cc.SealReward, cc.StandingReward, cc.IssuedAt));
+            Assert.Equal(oc.FulfilledPieces, cc.FulfilledPieces);
+        }
+    }
+
     [Fact]
     public void AnAccountWithEveryCollectionNonEmptySurvivesAWriteAndARead()
     {
@@ -280,19 +376,15 @@ public class AccountDataSerializerVerification
 
         _out.WriteLine($"wrote {length} bytes, read {reader.Position}");
         Assert.Equal(length, reader.Position);
+        Assert.False(copy.DroppedAccountGuildData);
 
         Assert.Equal(original.Renown, copy.Renown);
         Assert.Equal(original.AchievementPoints, copy.AchievementPoints);
         Assert.Equal(original.LastSeenBulletinId, copy.LastSeenBulletinId);
-        Assert.Equal(original.GuildReputation, copy.GuildReputation);
-        Assert.Equal(original.GuildCurrency, copy.GuildCurrency);
-        Assert.Equal(original.JoinedGuilds, copy.JoinedGuilds);
         Assert.Equal(original.Flags, copy.Flags);
         Assert.Equal(original.FlagValues, copy.FlagValues);
         Assert.Equal(original.ImbuingDiscoveries, copy.ImbuingDiscoveries);
         Assert.Equal(original.EncounteredCreatures, copy.EncounteredCreatures);
-        Assert.Equal(original.ActiveArtificerOrderKey, copy.ActiveArtificerOrderKey);
-        Assert.Equal(original.ActiveArtificerItemSerial, copy.ActiveArtificerItemSerial);
 
         Assert.Equal(original.RestorationRegistry.Count, copy.RestorationRegistry.Count);
         foreach (var (key, o) in original.RestorationRegistry)
@@ -304,22 +396,6 @@ public class AccountDataSerializerVerification
             Assert.Equal(o.RestorationCount, c.RestorationCount);
             Assert.Equal(o.LastRestoredAt, c.LastRestoredAt);
             Assert.Equal(o.HasActiveCopy, c.HasActiveCopy);
-        }
-
-        Assert.Equal(original.ActiveWorkOrders.Count, copy.ActiveWorkOrders.Count);
-        Assert.Equal(original.CompletedWorkOrders.Count, copy.CompletedWorkOrders.Count);
-        var orders = new List<(WorkOrderEntry, WorkOrderEntry)>();
-        for (var i = 0; i < original.ActiveWorkOrders.Count; i++)
-            orders.Add((original.ActiveWorkOrders[i], copy.ActiveWorkOrders[i]));
-        for (var i = 0; i < original.CompletedWorkOrders.Count; i++)
-            orders.Add((original.CompletedWorkOrders[i], copy.CompletedWorkOrders[i]));
-        foreach (var (o, c) in orders)
-        {
-            Assert.Equal(o.DefKey, c.DefKey);
-            Assert.Equal(o.GuildKey, c.GuildKey);
-            Assert.Equal(o.AcceptedAt, c.AcceptedAt);
-            Assert.Equal(o.CompletedAt, c.CompletedAt);
-            Assert.Equal(o.TamingProgress, c.TamingProgress);
         }
 
         Assert.Equal(original.OreDiscoveries.Count, copy.OreDiscoveries.Count);
@@ -341,28 +417,11 @@ public class AccountDataSerializerVerification
             }
         }
 
-        Assert.Equal(original.SmithCommissions.Count, copy.SmithCommissions.Count);
-        for (var i = 0; i < original.SmithCommissions.Count; i++)
-        {
-            var (o, c) = (original.SmithCommissions[i], copy.SmithCommissions[i]);
-            Assert.Equal(
-                (o.Id, o.ItemKey, o.Material, o.RequireExceptional, o.RequesterName, o.RequesterNote, o.SealReward, o.StandingReward, o.IssuedAt),
-                (c.Id, c.ItemKey, c.Material, c.RequireExceptional, c.RequesterName, c.RequesterNote, c.SealReward, c.StandingReward, c.IssuedAt));
-        }
-
-        Assert.Equal(original.SmithLargeCommissions.Count, copy.SmithLargeCommissions.Count);
-        for (var i = 0; i < original.SmithLargeCommissions.Count; i++)
-        {
-            var (o, c) = (original.SmithLargeCommissions[i], copy.SmithLargeCommissions[i]);
-            Assert.Equal(
-                (o.Id, o.SetKey, o.Material, o.RequireExceptional, o.RequesterName, o.RequesterNote, o.SealReward, o.StandingReward, o.IssuedAt),
-                (c.Id, c.SetKey, c.Material, c.RequireExceptional, c.RequesterName, c.RequesterNote, c.SealReward, c.StandingReward, c.IssuedAt));
-            Assert.Equal(o.FulfilledPieces, c.FulfilledPieces);
-        }
-
+        // Exploration, both characters, every bit.
         var oChunks = Chunks(original);
         var cChunks = Chunks(copy);
-        Assert.Equal(oChunks.Keys, cChunks.Keys);
+        Assert.Equal(2, cChunks.Count);
+        Assert.Equal(oChunks.Keys.OrderBy(k => k), cChunks.Keys.OrderBy(k => k));
         foreach (var (serial, oFacets) in oChunks)
         {
             var cFacets = cChunks[serial];
@@ -376,7 +435,7 @@ public class AccountDataSerializerVerification
                 Assert.NotNull(cFacets[f]);
                 Assert.Equal(oFacets[f]!.Length, cFacets[f]!.Length);
                 for (var b = 0; b < oFacets[f]!.Length; b++)
-                    Assert.True(oFacets[f]![b] == cFacets[f]![b], $"facet {f} bit {b}");
+                    Assert.True(oFacets[f]![b] == cFacets[f]![b], $"character {serial:X} facet {f} bit {b}");
             }
         }
 
@@ -394,6 +453,14 @@ public class AccountDataSerializerVerification
         // v14: every character's guild starter record, every field.
         AssertSameStarterRecords(original, copy);
         Assert.Equal(2, copy.GuildStarterRecordCount);
+
+        // v15: every character's guild data, every field.
+        Assert.Equal(2, copy.GuildDataCount);
+        Assert.Equal(GuildData(original).Keys.OrderBy(k => k), GuildData(copy).Keys.OrderBy(k => k));
+        foreach (var (serial, o) in GuildData(original))
+            AssertSameGuild(o, GuildData(copy)[serial]);
+        Assert.Contains("mining", copy.GetGuildData(First)!.JoinedGuilds);
+        Assert.DoesNotContain("mining", copy.GetGuildData(Second)!.JoinedGuilds);
     }
 
     private static void AssertSameStarterRecords(ClusterFAccountData original, ClusterFAccountData copy)
@@ -409,11 +476,28 @@ public class AccountDataSerializerVerification
         }
     }
 
+    // The account-level guild data an old save carries: everything set, as the account held it.
+    private static CharacterGuildData LegacyAccountGuild()
+    {
+        var legacy = new CharacterGuildData();
+        FillGuild(legacy);
+        return legacy;
+    }
+
+    // What an old save carries apart from guild data: FullyPopulated without its per-character guild
+    // data, which no build before v15 could write.
+    private static ClusterFAccountData WithoutGuildData()
+    {
+        var d = FullyPopulated();
+        d.ClearGuildData();
+        return d;
+    }
+
     [Fact]
     public void AVersion13SaveFromTheBuildBeforeGuildStarterRecordsLoads()
     {
-        var original = FullyPopulated();
-        var (v13, v13Length) = Write(w => SerializeVersion13(original, w));
+        var original = WithoutGuildData();
+        var (v13, v13Length) = Write(w => SerializeVersion13(original, LegacyAccountGuild(), w));
         Assert.Equal(13, VersionOf(v13));
 
         var reader = new BufferReader(v13);
@@ -421,25 +505,73 @@ public class AccountDataSerializerVerification
         _out.WriteLine($"v13: {v13Length} bytes, read {reader.Position}");
         Assert.Equal(v13Length, reader.Position);
 
-        // Everything version 13 carried is back; the new record is empty, as for any character before it.
-        Assert.Equal(original.JoinedGuilds, copy.JoinedGuilds);
-        Assert.Equal(original.GuildCurrency, copy.GuildCurrency);
+        // Everything version 13 carried that stays on the account is back; the starter records are
+        // empty, as for any character before them; the account's guild data is cleared (cc-P18).
         Assert.Equal(original.Flags, copy.Flags);
-        Assert.Equal(Chunks(original).Keys, Chunks(copy).Keys);
+        Assert.Equal(Chunks(original).Keys.OrderBy(k => k), Chunks(copy).Keys.OrderBy(k => k));
         Assert.Equal(original.EncounteredCreatures, copy.EncounteredCreatures);
         Assert.Equal(original.WoodDiscoveries.Count, copy.WoodDiscoveries.Count);
         Assert.Equal(original.ImbuingDiscoveries, copy.ImbuingDiscoveries);
-        Assert.Equal(original.ActiveArtificerOrderKey, copy.ActiveArtificerOrderKey);
-        Assert.Equal(original.ActiveArtificerItemSerial, copy.ActiveArtificerItemSerial);
         Assert.Equal(0, copy.GuildStarterRecordCount);
+        Assert.Equal(0, copy.GuildDataCount);
+        Assert.True(copy.DroppedAccountGuildData);
 
-        // Written again it is version 14, and it reads back whole.
-        var (v14, v14Length) = Write(copy.Serialize);
-        Assert.Equal(ClusterFAccountData.CurrentVersion, VersionOf(v14));
-        Assert.Equal(14, VersionOf(v14));
-        var again = new BufferReader(v14);
+        // Written again it is version 15, and it reads back whole.
+        var (v15, v15Length) = Write(copy.Serialize);
+        Assert.Equal(ClusterFAccountData.CurrentVersion, VersionOf(v15));
+        Assert.Equal(15, VersionOf(v15));
+        var again = new BufferReader(v15);
         new ClusterFAccountData(again);
-        Assert.Equal(v14Length, again.Position);
+        Assert.Equal(v15Length, again.Position);
+    }
+
+    [Fact]
+    public void AVersion14SaveWithAccountLevelGuildDataLoadsAndTheGuildDataIsCleared()
+    {
+        var original = WithoutGuildData();
+        var (v14, v14Length) = Write(w => SerializeVersion14(original, LegacyAccountGuild(), w));
+        Assert.Equal(14, VersionOf(v14));
+
+        var reader = new BufferReader(v14);
+        var copy = new ClusterFAccountData(reader);
+        _out.WriteLine($"v14: {v14Length} bytes, read {reader.Position}");
+        Assert.Equal(v14Length, reader.Position);
+
+        // The guild data is gone: no character has it, and no Apprentice flag is left on the account.
+        Assert.True(copy.DroppedAccountGuildData);
+        Assert.Equal(0, copy.GuildDataCount);
+        Assert.Null(copy.GetGuildData(First));
+        Assert.Null(copy.GetGuildData(Second));
+        Assert.DoesNotContain(copy.Flags, f => f.StartsWith("guild.apprentice.", StringComparison.OrdinalIgnoreCase));
+
+        // Everything else is kept, the starter records included.
+        Assert.Equal(original.Renown, copy.Renown);
+        Assert.Equal(original.AchievementPoints, copy.AchievementPoints);
+        Assert.Equal(original.LastSeenBulletinId, copy.LastSeenBulletinId);
+        Assert.Equal(original.Flags, copy.Flags);
+        Assert.Equal(original.FlagValues, copy.FlagValues);
+        Assert.Equal(original.RestorationRegistry.Keys, copy.RestorationRegistry.Keys);
+        Assert.Equal(original.OreDiscoveries.Keys, copy.OreDiscoveries.Keys);
+        Assert.Equal(original.WoodDiscoveries.Keys, copy.WoodDiscoveries.Keys);
+        Assert.Equal(original.ImbuingDiscoveries, copy.ImbuingDiscoveries);
+        Assert.Equal(original.EncounteredCreatures, copy.EncounteredCreatures);
+        Assert.Equal(Chunks(original).Keys.OrderBy(k => k), Chunks(copy).Keys.OrderBy(k => k));
+        AssertSameStarterRecords(original, copy);
+
+        // Written again it is version 15, and it reads back whole with nothing more dropped.
+        var (v15, v15Length) = Write(copy.Serialize);
+        Assert.Equal(15, VersionOf(v15));
+        var again = new BufferReader(v15);
+        var reread = new ClusterFAccountData(again);
+        Assert.Equal(v15Length, again.Position);
+        Assert.False(reread.DroppedAccountGuildData);
+
+        // A version 14 save with no guild data at all is not reported as having dropped any.
+        var (empty, emptyLength) = Write(w => SerializeVersion14(original, new CharacterGuildData(), w));
+        var emptyReader = new BufferReader(empty);
+        var clean = new ClusterFAccountData(emptyReader);
+        Assert.Equal(emptyLength, emptyReader.Position);
+        Assert.False(clean.DroppedAccountGuildData);
     }
 
     [Fact]
@@ -460,6 +592,12 @@ public class AccountDataSerializerVerification
         ex = Assert.Throws<InvalidDataException>(() => new GuildStarterRecord(new BufferReader(record)));
         _out.WriteLine(ex.Message);
         Assert.Contains("version 1", ex.Message);
+
+        // cc-P18: the per-character guild data carries its own version too.
+        var (guild, _) = Write(w => w.Write(CharacterGuildData.CurrentVersion + 1));
+        ex = Assert.Throws<InvalidDataException>(() => new CharacterGuildData(new BufferReader(guild)));
+        _out.WriteLine(ex.Message);
+        Assert.Contains($"CharacterGuildData version {CharacterGuildData.CurrentVersion + 1}", ex.Message);
     }
 
     [Fact]

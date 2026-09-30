@@ -8,14 +8,14 @@ using Server.Network;
 namespace Server.Items;
 
 /// <summary>
-/// Jacob's Reinforced Pickaxe — Tier 2 upgrade of Jacob's Pickaxe.
+/// Jacob's Reinforced Pickaxe - Tier 2 upgrade of Jacob's Pickaxe.
 ///
 /// Stats:
 ///   - Name: "Jacob's Reinforced Pickaxe"
 ///   - Blessed: yes (cannot be looted)
 ///   - Mining skill bonus: +10
 ///   - UsesRemaining: 400 (very durable)
-///   - Hue: 0x8A5C (Dull Copper — matches the upgrade material)
+///   - Hue: 0x8A5C (Dull Copper - matches the upgrade material)
 ///
 /// Upgrade requirements (from Miners' Compact Liaison):
 ///   - Compact member
@@ -33,14 +33,14 @@ namespace Server.Items;
 ///   - Registry entry "legacy.jacobs_reinforced_pickaxe" is cleared so the player
 ///     can request restoration (Phase 3 restoration flow).
 ///
-/// Exhausted state: tracked via Hue — functional = 0x8A5C, exhausted = 0x0415.
-/// Serialization: v0 — no custom fields beyond Pickaxe. Hue is serialized by base Item.
+/// Exhausted state: tracked via Hue - functional = 0x8A5C, exhausted = 0x0415.
+/// Serialization: v0 - no custom fields beyond Pickaxe. Hue is serialized by base Item.
 /// </summary>
 [SerializationGenerator(0, false)]
 public partial class JacobsReinforcedPickaxe : Pickaxe
 {
     private const int FunctionalHue = 0x8A5C; // Dull Copper
-    private const int ExhaustedHue  = 0x0415; // Charcoal — exhausted state
+    private const int ExhaustedHue  = 0x0415; // Charcoal - exhausted state
 
     [Constructible]
     public JacobsReinforcedPickaxe()
@@ -87,12 +87,12 @@ public partial class JacobsReinforcedPickaxe : Pickaxe
         base.GetProperties(list);
 
         if (Exhausted)
-            list.Add("(Exhausted — speak with the Miners' Compact Liaison)");
+            list.Add("(Exhausted - speak with the Miners' Compact Liaison)");
         else
             list.Add("<BASEFONT COLOR=#AAAAAA>Tier 2 Miners' Compact Legacy Tool</BASEFONT>");
     }
 
-    // ── Registry unlock on acquisition ────────────────────────────────────────
+    // -- Registry unlock on acquisition ----------------------------------------
 
     public override void OnAdded(IEntity parent)
     {
@@ -107,15 +107,15 @@ public partial class JacobsReinforcedPickaxe : Pickaxe
 
         if (pm?.Account is IAccount acct)
         {
-            // T1 safety-net unlock — ensures a T1 record exists if somehow T2 was obtained
+            // T1 safety-net unlock - ensures a T1 record exists if somehow T2 was obtained
             // without going through the normal T1 acquisition path.
-            // Do NOT set T1 HasActiveCopy here — acquiring T2 doesn't mean you have a T1.
+            // Do NOT set T1 HasActiveCopy here - acquiring T2 doesn't mean you have a T1.
             ClusterFRestorationRegistry.Unlock(acct, "legacy.jacobs_pickaxe", "item_acquisition");
 
             ClusterFRestorationRegistry.Unlock(acct, "legacy.jacobs_reinforced_pickaxe", "item_acquisition");
 
             // Mark T2 active copy whenever a non-exhausted T2 pickaxe enters the player's possession.
-            // Exhausted replacement drops are skipped — ClearActiveCopy was already called in OnDelete.
+            // Exhausted replacement drops are skipped - ClearActiveCopy was already called in OnDelete.
             if (!Exhausted)
             {
                 var entry = ClusterFRestorationRegistry.GetEntry(acct, "legacy.jacobs_reinforced_pickaxe");
@@ -124,7 +124,7 @@ public partial class JacobsReinforcedPickaxe : Pickaxe
         }
     }
 
-    // ── Exhausted state ───────────────────────────────────────────────────────
+    // -- Exhausted state -------------------------------------------------------
 
     public override void OnDoubleClick(Mobile from)
     {
@@ -139,7 +139,7 @@ public partial class JacobsReinforcedPickaxe : Pickaxe
         base.OnDoubleClick(from);
     }
 
-    // ── Durability MVP — non-disposable behaviour ─────────────────────────────
+    // -- Durability MVP - non-disposable behaviour -----------------------------
 
     /// <summary>
     /// When the pickaxe's uses run out, create an exhausted replacement instead of
@@ -183,9 +183,9 @@ public partial class JacobsReinforcedPickaxe : Pickaxe
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Upgrade gump — opened from the Miners' Compact Liaison Member Dashboard
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Upgrade gump - opened from the Miners' Compact Liaison Member Dashboard
+// -----------------------------------------------------------------------------
 
 public class JacobsUpgradeGump : Gump
 {
@@ -212,20 +212,20 @@ public class JacobsUpgradeGump : Gump
         AddBackground(0, 0, W, H, BgId);
         AddAlphaRegion(6, 6, W - 12, H - 12);
 
-        AddLabel(W / 2 - 105, 12, 1154, "Jacob's Pickaxe — Tier 2 Upgrade");
+        AddLabel(W / 2 - 105, 12, 1154, "Jacob's Pickaxe - Tier 2 Upgrade");
         AddLabel(W / 2 - 80,  28, 999,  "Miners' Compact Liaison");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
         var acct = pm.Account as IAccount;
-        var data = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : null;
+        var guild = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial) : null;
 
-        if (data == null)
+        if (guild == null)
         {
             AddLabel(18, 56, 999, "Account data unavailable.");
         }
         else
         {
-            DrawUpgradeInfo(data, acct!);
+            DrawUpgradeInfo(guild, acct!);
         }
 
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
@@ -237,10 +237,10 @@ public class JacobsUpgradeGump : Gump
         AddLabel(W - 28, H - 26, 1154, "X");
     }
 
-    private void DrawUpgradeInfo(ClusterFAccountData data, IAccount acct)
+    private void DrawUpgradeInfo(CharacterGuildData guild, IAccount acct)
     {
-        data.GuildReputation.TryGetValue("mining", out var standing);
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var mining          = _pm.Skills[SkillName.Mining].Value;
         var pack            = _pm.Backpack;
 
@@ -257,7 +257,7 @@ public class JacobsUpgradeGump : Gump
         var reqMet_iron    = bypass || ironCount       >= UpgradeIronCost;
         var reqMet_copper  = bypass || dullCopperCount >= UpgradeDullCopperCost;
         var reqMet_gold    = bypass || goldCount       >= UpgradeGoldCost;
-        var reqMet_pickaxe = hasPickaxe; // T1 pickaxe always required — consumed in upgrade
+        var reqMet_pickaxe = hasPickaxe; // T1 pickaxe always required - consumed in upgrade
 
         var allMet = reqMet_rank && reqMet_skill && reqMet_voucher
                   && reqMet_iron && reqMet_copper && reqMet_gold && reqMet_pickaxe;
@@ -265,7 +265,7 @@ public class JacobsUpgradeGump : Gump
         static string Clr(bool met) => met ? "#FFD700" : "#FF6666";
 
         var html =
-            $"<BASEFONT COLOR={Clr(reqMet_rank)}>Rank: Apprentice required — Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
+            $"<BASEFONT COLOR={Clr(reqMet_rank)}>Rank: Apprentice required - Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqMet_skill)}>Mining skill: {mining:F1}/{UpgradeSkillReq:F0} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqMet_voucher)}>Mining Vouchers: {vouchers}/{UpgradeVoucherCost} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqMet_iron)}>Iron Ingots in pack: {ironCount}/{UpgradeIronCost} required</BASEFONT><BR>" +
@@ -313,7 +313,7 @@ public class JacobsUpgradeGump : Gump
     {
         if (info.ButtonID == 0) return;
 
-        if (info.ButtonID == 1) // Back → Member Dashboard
+        if (info.ButtonID == 1) // Back -> Member Dashboard
         {
             _pm.SendGump(new MinersCompactLiaisonGump(_pm, MinersCompactLiaisonGump.View.MemberDashboard));
             return;
@@ -327,12 +327,12 @@ public class JacobsUpgradeGump : Gump
         var acct = _pm.Account as IAccount;
         if (acct == null) return;
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial);
         var pack = _pm.Backpack;
         if (pack == null) return;
 
-        data.GuildReputation.TryGetValue("mining", out var standing);
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var mining      = _pm.Skills[SkillName.Mining].Value;
         var ironCount   = pack.GetAmount(typeof(IronIngot));
         var copperCount = pack.GetAmount(typeof(DullCopperIngot));
@@ -354,13 +354,13 @@ public class JacobsUpgradeGump : Gump
         // Consume costs (skipped when testing token is active; T1 pickaxe always consumed)
         if (!bypass)
         {
-            data.GuildCurrency["mining"] = vouchers - UpgradeVoucherCost;
+            guild.GuildCurrency["mining"] = vouchers - UpgradeVoucherCost;
             pack.ConsumeTotal(typeof(IronIngot),       UpgradeIronCost);
             pack.ConsumeTotal(typeof(DullCopperIngot), UpgradeDullCopperCost);
             CompactGoldHelper.ConsumeGold(_pm, UpgradeGoldCost);
         }
 
-        // Consume source pickaxe — mark exhausted first to suppress the durability replacement
+        // Consume source pickaxe - mark exhausted first to suppress the durability replacement
         srcPickaxe.Exhausted = true;
         srcPickaxe.Delete();
 
@@ -373,7 +373,7 @@ public class JacobsUpgradeGump : Gump
 
         _pm.SendMessage(0x44,
             "Jacob's Reinforced Pickaxe is yours. The Compact acknowledges your dedication. " +
-            "Keep it well — only the Compact can restore it.");
+            "Keep it well - only the Compact can restore it.");
         _pm.PlaySound(0x35D);
     }
 }

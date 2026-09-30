@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# apply-patches.sh — applies all Shattered Legacy customizations to the stock ModernUO source
+# apply-patches.sh - applies all Shattered Legacy customizations to the stock ModernUO source
 #
 # This script is a verification gate, not a best-effort copier. If any patch does not
 # apply, or any replacement lands somewhere unexpected, the build fails.
@@ -40,11 +40,11 @@ replace_file() {
     local src="$1" dest="$2"
 
     if [ ! -f "$src" ]; then
-        fail "$(basename "$src") — source missing at $src"
+        fail "$(basename "$src") - source missing at $src"
         return
     fi
     if [ ! -f "$dest" ]; then
-        fail "$(basename "$src") — destination $dest does not exist in pinned upstream"
+        fail "$(basename "$src") - destination $dest does not exist in pinned upstream"
         return
     fi
     cp "$src" "$dest"
@@ -53,7 +53,7 @@ replace_file() {
 # Mirror a tree of .cs files into the build tree, preserving each file's path relative
 # to its source root. This is the ONE copy mechanism for structured sources. F2 built it
 # for server/customizations subdirectories; server/tests is the same call with different
-# roots. Anything else that needs carrying into the build tree calls this too — do not
+# roots. Anything else that needs carrying into the build tree calls this too - do not
 # add a second copier.
 #
 #   $1 label       what to call this tree in the build log
@@ -73,7 +73,7 @@ mirror_cs_tree() {
     # A missing source tree is a broken build contract, not an empty mirror. Copying
     # nothing quietly is how a whole category of files stops reaching the build.
     if [ ! -d "$src_root" ]; then
-        fail "$label — source tree $src_root does not exist"
+        fail "$label - source tree $src_root does not exist"
         return
     fi
 
@@ -86,7 +86,7 @@ mirror_cs_tree() {
         # override gets lost. Parent directories are created as needed, since ported
         # content legitimately introduces directories ModernUO does not have.
         if [ -e "$dest" ]; then
-            fail "$rel — would overwrite existing upstream file $dest; route it as an explicit replacement instead"
+            fail "$rel - would overwrite existing upstream file $dest; route it as an explicit replacement instead"
             continue
         fi
 
@@ -94,7 +94,7 @@ mirror_cs_tree() {
         # broken, which is the F2/F3 defect wearing different clothes. Assert the
         # namespace docker/uo/build.sh filters on, here, where it fails the build.
         if [ -n "$require_ns" ] && ! grep -q "^namespace $require_ns" "$src"; then
-            fail "$rel — must declare 'namespace $require_ns' or docker/uo/build.sh will never run it"
+            fail "$rel - must declare 'namespace $require_ns' or docker/uo/build.sh will never run it"
             continue
         fi
 
@@ -137,7 +137,7 @@ validate_shard_test() {
     # call the wrong way to prove it is wrong.
     if [ "$rel" != "$ROUTE_CLOCK_FILE" ] && \
        printf '%s\n' "$code" | grep -qE 'Timer\.(Slice|Init)[[:space:]]*\('; then
-        fail "$rel — drives the timer wheel directly. Use ShardTestClock.Arm() then ShardTestClock.Advance(); see server/tests/$ROUTE_CLOCK_FILE"
+        fail "$rel - drives the timer wheel directly. Use ShardTestClock.Arm() then ShardTestClock.Advance(); see server/tests/$ROUTE_CLOCK_FILE"
         rc=1
     fi
 
@@ -145,7 +145,7 @@ validate_shard_test() {
     # creature the real table classifies as anything but Medium. The fixture patch loads the
     # real Data/npc-speeds.json for every test.
     if printf '%s\n' "$code" | grep -qE 'NPCSpeeds\.(RegisterSpeed|Configure)[[:space:]]*\('; then
-        fail "$rel — registers NPC speeds by hand. The route loads Data/npc-speeds.json for every test via UOContentFixture-npc-speeds.patch; delete the workaround"
+        fail "$rel - registers NPC speeds by hand. The route loads Data/npc-speeds.json for every test via UOContentFixture-npc-speeds.patch; delete the workaround"
         rc=1
     fi
 
@@ -159,7 +159,7 @@ apply_patch() {
     HANDLED_PATCHES+="$name"$'\n'
 
     if [ ! -f "$file" ]; then
-        fail "$name — no such file in $PATCHES"
+        fail "$name - no such file in $PATCHES"
         return
     fi
 
@@ -215,7 +215,7 @@ mirror_cs_tree "structured customizations" "$CUSTOMIZATIONS" "Projects/UOContent
 # becomes Projects/UOContent.Tests/Tests/<path>, at any depth.
 #
 # mindepth is 1 rather than 2 because server/tests has no flat-into-Misc meaning for a
-# top-level file — there is nothing else for one to mean — so top-level test files mirror
+# top-level file - there is nothing else for one to mean - so top-level test files mirror
 # straight into Tests/.
 #
 # No patch to UOContent.Tests.csproj is needed and none should be written: the project
@@ -280,7 +280,7 @@ apply_patch "$PATCHES/AOS-damage-eater-hook.patch"
 # one with no effect on the shipped server: it adds the NPCSpeeds.Configure call that
 # UOContentFixture omits, so a test can construct a BaseCreature at all. Argued in
 # shard-migration/notes/s8-test-route.md section 2. If it ever stops applying, every creature
-# test fails with KeyNotFoundException in the constructor — loud, and the intended failure.
+# test fails with KeyNotFoundException in the constructor - loud, and the intended failure.
 apply_patch "$PATCHES/UOContentFixture-npc-speeds.patch"
 
 # CC4 Despise. ServUO's BaseCreature.CanAutoStable, three additive lines across two UOContent files: a
@@ -326,6 +326,14 @@ apply_patch "$PATCHES/StealableArtifacts-servuo-entries.patch"
 # shard-migration/notes/cc-P9-test-center.md section 3; pinned by TestCenterVerification.
 apply_patch "$PATCHES/AccountHandler-test-center-deletion.patch"
 
+# P18 (F-5, ours). Young status by time played: 2 weeks (336 h of account game time) instead of 40 h, the
+# login countdown in days and hours, and no skill-total rule (the murder rule stays). The duration and the
+# countdown are in pinned Account.cs and the skill rule in pinned PlayerMobile.OnSkillChange, with no hook to
+# reach them from customizations; both patches point pinned at ClusterFYoungPlayer.cs. Argued in
+# shard-migration/notes/cc-P18-reset-stone-young-craftx.md; pinned by YoungPlayerVerification.
+apply_patch "$PATCHES/Account-young-duration.patch"
+apply_patch "$PATCHES/PlayerMobile-young-time-only.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
@@ -336,7 +344,7 @@ done
 for file in "$PATCHES"/*.patch; do
     name=$(basename "$file")
     if ! printf '%s' "$HANDLED_PATCHES" | grep -Fxq "$name"; then
-        fail "$name — present in $PATCHES but never applied or skipped by name"
+        fail "$name - present in $PATCHES but never applied or skipped by name"
     fi
 done
 
@@ -346,7 +354,7 @@ echo "[patches] Structural fixes..."
 LUMBERJACKING=Projects/UOContent/Engines/Harvest/Lumberjacking.cs
 sed -i 's/public class Lumberjacking/public partial class Lumberjacking/' "$LUMBERJACKING"
 if ! grep -q 'public partial class Lumberjacking' "$LUMBERJACKING"; then
-    fail "structural fix — 'public partial class Lumberjacking' not present in $LUMBERJACKING after sed"
+    fail "structural fix - 'public partial class Lumberjacking' not present in $LUMBERJACKING after sed"
 fi
 
 if [ ${#FAILED_PATCHES[@]} -gt 0 ]; then

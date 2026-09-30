@@ -7,14 +7,14 @@ using Server.Network;
 
 namespace Server;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SmithCommissionGump — Phase 4C-ii
+// -----------------------------------------------------------------------------
+// SmithCommissionGump - Phase 4C-ii
 //
 // Shows the player's active Smith Commissions (up to 3).
 // Each card displays requester name + note, item requested, and reward.
 // "Turn In" button appears when a matching item is found in the backpack.
 // "Request New Commission" generates a new commission (while slots < 3).
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 public class SmithCommissionGump : Gump
 {
@@ -42,11 +42,11 @@ public class SmithCommissionGump : Gump
 
         if (pm.Account is not IAccount acct) return;
 
-        var data        = ClusterFAccountPersistence.GetOrCreate(acct);
-        var commissions = data.SmithCommissions;
+        var guild        = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        var commissions = guild.SmithCommissions;
 
         // Pre-scan backpack for matching items per commission
-        var backpackMatch = new Dictionary<string, bool>(); // commId → has match
+        var backpackMatch = new Dictionary<string, bool>(); // commId -> has match
         if (pm.Backpack != null)
         {
             foreach (var c in commissions)
@@ -77,7 +77,7 @@ public class SmithCommissionGump : Gump
         AddBackground(0, 0, W, H, 9270);
         AddAlphaRegion(8, 8, W - 16, H - 16);
 
-        // ── Header ────────────────────────────────────────────────────────────
+        // -- Header ------------------------------------------------------------
         AddLabel(W / 2 - 70, 14, 1153, "Smith Commissions");
         AddImageTiled(10, 34, W - 20, 2, 9304);
 
@@ -88,7 +88,7 @@ public class SmithCommissionGump : Gump
 
         var y = 72;
 
-        // ── Commission cards ──────────────────────────────────────────────────
+        // -- Commission cards --------------------------------------------------
 
         if (commissions.Count == 0)
         {
@@ -110,7 +110,7 @@ public class SmithCommissionGump : Gump
                 AddLabel(W - 54, y, 33, "Abandon");
                 y += 20;
 
-                // Requester note — HTML for natural wrapping
+                // Requester note - HTML for natural wrapping
                 AddHtml(18, y, W - 36, 34,
                     $"<BASEFONT COLOR=#AAAAAA>\"{c.RequesterNote}\"</BASEFONT>",
                     false, false);
@@ -152,7 +152,7 @@ public class SmithCommissionGump : Gump
             }
         }
 
-        // ── Footer area ───────────────────────────────────────────────────────
+        // -- Footer area -------------------------------------------------------
         AddImageTiled(10, y, W - 20, 2, 9304);
         y += 10;
 
@@ -163,7 +163,7 @@ public class SmithCommissionGump : Gump
         }
         else
         {
-            AddLabel(18, y, 37, "Commission slots full — complete an order to open a slot.");
+            AddLabel(18, y, 37, "Commission slots full - complete an order to open a slot.");
         }
 
         y += 28;
@@ -173,18 +173,18 @@ public class SmithCommissionGump : Gump
             false, false);
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
         if (sender.Mobile is not PlayerMobile pm) return;
         if (pm.Account is not IAccount acct) return;
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
 
         if (info.ButtonID == BtnRequestNew)
         {
-            HandleRequestNew(pm, data);
+            HandleRequestNew(pm, guild);
             return;
         }
 
@@ -192,7 +192,7 @@ public class SmithCommissionGump : Gump
         var turnIdx = info.ButtonID - BtnTurnInBase;
         if (turnIdx >= 0 && turnIdx <= 2 && turnIdx < _commissionIds.Count)
         {
-            HandleTurnIn(pm, data, _commissionIds[turnIdx]);
+            HandleTurnIn(pm, guild, _commissionIds[turnIdx]);
             return;
         }
 
@@ -200,13 +200,13 @@ public class SmithCommissionGump : Gump
         var abandonIdx = info.ButtonID - BtnAbandonBase;
         if (abandonIdx >= 0 && abandonIdx <= 2 && abandonIdx < _commissionIds.Count)
         {
-            HandleAbandon(pm, data, _commissionIds[abandonIdx]);
+            HandleAbandon(pm, guild, _commissionIds[abandonIdx]);
         }
     }
 
-    private void HandleRequestNew(PlayerMobile pm, ClusterFAccountData data)
+    private void HandleRequestNew(PlayerMobile pm, CharacterGuildData guild)
     {
-        if (data.SmithCommissions.Count >= SmithCommissionSystem.MaxActiveCommissions)
+        if (guild.SmithCommissions.Count >= SmithCommissionSystem.MaxActiveCommissions)
         {
             pm.SendMessage(0x22,
                 "You already have the maximum number of active commissions.");
@@ -224,9 +224,9 @@ public class SmithCommissionGump : Gump
         pm.SendGump(new SmithCommissionGump(pm, _npc));
     }
 
-    private void HandleTurnIn(PlayerMobile pm, ClusterFAccountData data, string commissionId)
+    private void HandleTurnIn(PlayerMobile pm, CharacterGuildData guild, string commissionId)
     {
-        var commission = data.SmithCommissions.Find(c => c.Id == commissionId);
+        var commission = guild.SmithCommissions.Find(c => c.Id == commissionId);
 
         if (commission == null)
         {
@@ -261,13 +261,13 @@ public class SmithCommissionGump : Gump
         }
 
         SmithCommissionSystem.Complete(pm, commission, match);
-        // Complete sends its own message + sound — reopen the gump.
+        // Complete sends its own message + sound - reopen the gump.
         pm.SendGump(new SmithCommissionGump(pm, _npc));
     }
 
-    private void HandleAbandon(PlayerMobile pm, ClusterFAccountData data, string commissionId)
+    private void HandleAbandon(PlayerMobile pm, CharacterGuildData guild, string commissionId)
     {
-        var commission = data.SmithCommissions.Find(c => c.Id == commissionId);
+        var commission = guild.SmithCommissions.Find(c => c.Id == commissionId);
 
         if (commission == null)
         {
@@ -275,7 +275,7 @@ public class SmithCommissionGump : Gump
         }
         else
         {
-            data.SmithCommissions.Remove(commission);
+            guild.SmithCommissions.Remove(commission);
             pm.SendMessage(0x59,
                 $"Commission from {commission.RequesterName} abandoned. The slot is now open.");
         }

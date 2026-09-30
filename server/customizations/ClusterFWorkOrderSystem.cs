@@ -6,7 +6,7 @@ using Server.Mobiles;
 
 namespace Server;
 
-// ── Work order type ───────────────────────────────────────────────────────────
+// -- Work order type -----------------------------------------------------------
 
 public enum WorkOrderType
 {
@@ -23,7 +23,7 @@ public enum WorkOrderType
     CivicContract,
 }
 
-// ── Requirement: one line of a work order ─────────────────────────────────────
+// -- Requirement: one line of a work order -------------------------------------
 
 /// <summary>A single item/amount requirement line inside a work order definition.</summary>
 public class WorkOrderRequirement
@@ -52,13 +52,13 @@ public class WorkOrderTamingRequirement : WorkOrderRequirement
         : base(creatureType, amount, label) { }
 }
 
-// ── Work order definition (static, registered at startup) ────────────────────
+// -- Work order definition (static, registered at startup) --------------------
 
 /// <summary>
 /// Defines a guild work order that players can accept and turn in.
 ///
 /// Definitions are immutable and registered once in ClusterFWorkOrderSystem.Configure().
-/// Player state (active/completed instances) lives in ClusterFAccountData.
+/// Player state (active/completed instances) lives in the character's CharacterGuildData.
 /// </summary>
 public class WorkOrderDef
 {
@@ -146,7 +146,8 @@ public class WorkOrderDef
     /// <summary>Returns true if the player meets standing, skill, discovery, and encounter eligibility.</summary>
     public bool IsEligible(PlayerMobile pm, ClusterFAccountData data)
     {
-        if (data.GetReputation(GuildKey) < MinStanding) return false;
+        var guild = data.GetOrCreateGuildData(pm.Serial);
+        if (guild.GetReputation(GuildKey) < MinStanding) return false;
         if (SkillRequired.HasValue && pm.Skills[SkillRequired.Value].Value < MinSkill) return false;
 
         if (RequiredDiscovery != null)
@@ -172,7 +173,8 @@ public class WorkOrderDef
     /// </summary>
     public string? IneligibleReason(PlayerMobile pm, ClusterFAccountData data)
     {
-        if (data.GetReputation(GuildKey) < MinStanding)
+        var guild = data.GetOrCreateGuildData(pm.Serial);
+        if (guild.GetReputation(GuildKey) < MinStanding)
         {
             var guildName = ClusterFGuildSystem.GetDef(GuildKey)?.Name ?? GuildKey;
             return $"Requires {MinStanding:N0} {guildName} standing";
@@ -237,7 +239,7 @@ public class WorkOrderDef
     /// </summary>
     public void ConsumeRequirements(PlayerMobile pm)
     {
-        if (Items.DevTestingCrystal.IsActive(pm)) return; // testing bypass — nothing consumed
+        if (Items.DevTestingCrystal.IsActive(pm)) return; // testing bypass - nothing consumed
         var pack = pm.Backpack;
         if (pack == null) return;
         foreach (var req in Requirements)
@@ -248,11 +250,11 @@ public class WorkOrderDef
     }
 }
 
-// ── Player's active work order instance (serialized in account data) ──────────
+// -- Player's active work order instance (serialized in account data) ----------
 
 /// <summary>
 /// One accepted work order on a player's account.
-/// Stored in ClusterFAccountData.ActiveWorkOrders / CompletedWorkOrders.
+/// Stored in CharacterGuildData.ActiveWorkOrders / CompletedWorkOrders (per character, cc-P18).
 /// </summary>
 public class WorkOrderEntry
 {
@@ -274,7 +276,7 @@ public class WorkOrderEntry
         AcceptedAt = DateTime.UtcNow;
     }
 
-    // Deserialization — version 1 adds TamingProgress
+    // Deserialization - version 1 adds TamingProgress
     public WorkOrderEntry(IGenericReader r)
     {
         var version = r.ReadInt(); // 0 or 1
@@ -309,18 +311,18 @@ public class WorkOrderEntry
     }
 }
 
-// ── Static registry ───────────────────────────────────────────────────────────
+// -- Static registry -----------------------------------------------------------
 
 /// <summary>
 /// Shattered Legacy Guild Work Order System.
 ///
 /// All work order definitions are registered here at startup via Configure().
-/// Player state lives in ClusterFAccountData (ActiveWorkOrders / CompletedWorkOrders).
+/// Player state lives in CharacterGuildData (ActiveWorkOrders / CompletedWorkOrders), per character.
 ///
 /// Work order flow:
 ///   1. Player opens the Guild Contract Ledger gump via a guild liaison.
 ///   2. Available tab shows eligible orders the player doesn't already have active.
-///   3. Player accepts — a WorkOrderEntry is added to their account data.
+///   3. Player accepts - a WorkOrderEntry is added to their account data.
 ///   4. Player gathers required items.
 ///   5. Player returns to the liaison, opens Active tab, clicks Turn In.
 ///   6. Items consumed, rewards applied, entry moved to completed history.
@@ -338,7 +340,7 @@ public static class ClusterFWorkOrderSystem
     /// <summary>Maximum active work orders a player may hold per guild at any time.</summary>
     public const int MaxActiveOrdersPerGuild = 3;
 
-    /// <summary>Maximum completed entries retained per account (oldest pruned).</summary>
+    /// <summary>Maximum completed entries retained per character (oldest pruned).</summary>
     public const int MaxHistoryEntries = 20;
 
     public static void Configure()
@@ -352,7 +354,7 @@ public static class ClusterFWorkOrderSystem
         RegisterCustodiansOrders();
     }
 
-    // ── Registry ──────────────────────────────────────────────────────────────
+    // -- Registry --------------------------------------------------------------
 
     public static void Register(WorkOrderDef def) => _defs[def.Key] = def;
 
@@ -363,23 +365,23 @@ public static class ClusterFWorkOrderSystem
         _defs.Values
              .Where(d => d.GuildKey.Equals(guildKey, StringComparison.OrdinalIgnoreCase));
 
-    // ── Account data helpers ──────────────────────────────────────────────────
+    // -- Character guild data helpers --------------------------------------------------
 
     /// <summary>Returns true if the player already has an active copy of this order.</summary>
-    public static bool HasActive(ClusterFAccountData data, string defKey) =>
-        data.ActiveWorkOrders.Exists(e => e.DefKey.Equals(defKey, StringComparison.OrdinalIgnoreCase));
+    public static bool HasActive(CharacterGuildData guild, string defKey) =>
+        guild.ActiveWorkOrders.Exists(e => e.DefKey.Equals(defKey, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Returns true if the player can accept another work order of this key.</summary>
-    public static bool CanAccept(ClusterFAccountData data, string defKey, string guildKey) =>
-        data.ActiveWorkOrders.Count(e => e.GuildKey.Equals(guildKey, StringComparison.OrdinalIgnoreCase)) < MaxActiveOrdersPerGuild
-        && !HasActive(data, defKey);
+    public static bool CanAccept(CharacterGuildData guild, string defKey, string guildKey) =>
+        guild.ActiveWorkOrders.Count(e => e.GuildKey.Equals(guildKey, StringComparison.OrdinalIgnoreCase)) < MaxActiveOrdersPerGuild
+        && !HasActive(guild, defKey);
 
-    // ── Miners' Compact order definitions ─────────────────────────────────────
+    // -- Miners' Compact order definitions -------------------------------------
 
     private static void RegisterMinersCompactOrders()
     {
-        // ── Entry-level: no standing or skill required ────────────────────────
-        // Iron orders have no discovery gate — iron is excluded from discovery tracking by design.
+        // -- Entry-level: no standing or skill required ------------------------
+        // Iron orders have no discovery gate - iron is excluded from discovery tracking by design.
 
         Register(new WorkOrderDef(
             key:               "mining.iron_ingots_s",
@@ -411,7 +413,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        60
         ));
 
-        // ── Intermediate: Mining 30+ required ────────────────────────────────
+        // -- Intermediate: Mining 30+ required --------------------------------
 
         Register(new WorkOrderDef(
             key:               "mining.iron_ingots_m",
@@ -423,12 +425,12 @@ public static class ClusterFWorkOrderSystem
             minStanding:       0,
             skillRequired:     SkillName.Mining,
             minSkill:          30.0,
-            standingReward:    600,   // 2.4/ingot vs 2.0 for the small — bulk orders reward effort
+            standingReward:    600,   // 2.4/ingot vs 2.0 for the small - bulk orders reward effort
             voucherReward:     30,    // 0.12/ingot vs 0.10 for the small
             goldReward:        350
         ));
 
-        // ── Apprentice tier: 1,000 Standing + Mining 40+ ─────────────────────
+        // -- Apprentice tier: 1,000 Standing + Mining 40+ ---------------------
         // Discovery gate: must have reported the ore type to the Survey Archivist.
 
         Register(new WorkOrderDef(
@@ -467,7 +469,7 @@ public static class ClusterFWorkOrderSystem
             requiredDiscovery: "DullCopper"
         ));
 
-        // ── Journeyman tier: 5,000 Standing ──────────────────────────────────
+        // -- Journeyman tier: 5,000 Standing ----------------------------------
 
         Register(new WorkOrderDef(
             key:               "mining.shadow_iron_s",
@@ -514,14 +516,14 @@ public static class ClusterFWorkOrderSystem
             standingReward:    350,
             voucherReward:     16,
             goldReward:        400
-            // No discovery gate — iron ore, iron is excluded from tracking.
+            // No discovery gate - iron ore, iron is excluded from tracking.
         ));
 
         Register(new WorkOrderDef(
             key:               "mining.deep_veins_m",
             guildKey:          "mining",
             title:             "Deep Veins Run",
-            description:       "A large pull from the deep veins — shadow iron and copper for the master forges.",
+            description:       "A large pull from the deep veins - shadow iron and copper for the master forges.",
             type:              WorkOrderType.ResourceContract,
             requirements:      new()
             {
@@ -537,7 +539,7 @@ public static class ClusterFWorkOrderSystem
             requiredDiscovery: "ShadowIron"
         ));
 
-        // ── Surveyor tier: 15,000 Standing ───────────────────────────────────
+        // -- Surveyor tier: 15,000 Standing -----------------------------------
 
         Register(new WorkOrderDef(
             key:               "mining.bronze_s",
@@ -591,7 +593,7 @@ public static class ClusterFWorkOrderSystem
             requiredDiscovery: "Bronze"
         ));
 
-        // ── Master Delver tier: 40,000 Standing ──────────────────────────────
+        // -- Master Delver tier: 40,000 Standing ------------------------------
 
         Register(new WorkOrderDef(
             key:               "mining.verite_s",
@@ -646,7 +648,7 @@ public static class ClusterFWorkOrderSystem
             requiredDiscovery: "Verite"
         ));
 
-        // ── Deepwarden tier: 80,000 Standing ─────────────────────────────────
+        // -- Deepwarden tier: 80,000 Standing ---------------------------------
 
         Register(new WorkOrderDef(
             key:               "mining.valorite_cache",
@@ -658,9 +660,9 @@ public static class ClusterFWorkOrderSystem
             minStanding:       80000,
             skillRequired:     SkillName.Mining,
             minSkill:          90.0,
-            standingReward:    6000,   // 300/ingot vs 250 for the small — 20-ingot haul earns a premium
+            standingReward:    6000,   // 300/ingot vs 250 for the small - 20-ingot haul earns a premium
             voucherReward:     240,    // 12/ingot vs 10 for the small
-            goldReward:        10000,  // significant gold — 20 valorite is serious effort; helps fund T4/T5 restoration
+            goldReward:        10000,  // significant gold - 20 valorite is serious effort; helps fund T4/T5 restoration
             requiredDiscovery: "Valorite"
         ));
 
@@ -668,7 +670,7 @@ public static class ClusterFWorkOrderSystem
             key:               "mining.grand_tribute",
             guildKey:          "mining",
             title:             "Grand Forge Tribute",
-            description:       "The highest honour a Compact member can perform — a full-spectrum metals tribute to the forge.",
+            description:       "The highest honour a Compact member can perform - a full-spectrum metals tribute to the forge.",
             type:              WorkOrderType.ResourceContract,
             requirements:      new()
             {
@@ -688,7 +690,7 @@ public static class ClusterFWorkOrderSystem
             requiredDiscovery: "Valorite"
         ));
 
-        // ── Extended ore tier — gated by facet discovery reports ─────────────
+        // -- Extended ore tier - gated by facet discovery reports -------------
         // These ores come from Ilshenar, Malas, Tokuno, and Ter Mur.
         // Players must have reported the relevant discovery to Velara Thorne
         // before these contracts appear in their ledger.
@@ -822,18 +824,18 @@ public static class ClusterFWorkOrderSystem
         ));
     }
 
-    // ── Miners' Compact — Gem Cache orders ───────────────────────────────────
+    // -- Miners' Compact - Gem Cache orders -----------------------------------
     //
     // Gems are a bonus yield during ore and stone mining. These high-value orders
     // reward players who save their gem finds. Rewards are weighted heavily toward
     // gold since gems have inherent trade value.
     //
-    // Gem orders are gated by Compact Standing + Mining skill only — no discovery
+    // Gem orders are gated by Compact Standing + Mining skill only - no discovery
     // gate, since gems drop from any ore vein regardless of type.
 
     private static void RegisterMinersCompactGemOrders()
     {
-        // ── Journeyman tier: 5,000 Standing + Mining 50 ──────────────────────
+        // -- Journeyman tier: 5,000 Standing + Mining 50 ----------------------
 
         Register(new WorkOrderDef(
             key:               "mining.common_gems_s",
@@ -855,7 +857,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        2000
         ));
 
-        // ── Master Delver tier: 40,000 Standing + Mining 70 ──────────────────
+        // -- Master Delver tier: 40,000 Standing + Mining 70 ------------------
 
         Register(new WorkOrderDef(
             key:               "mining.fine_gems_s",
@@ -877,7 +879,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        8000
         ));
 
-        // ── Deepwarden tier: 80,000 Standing + Mining 80/90 ──────────────────
+        // -- Deepwarden tier: 80,000 Standing + Mining 80/90 ------------------
 
         Register(new WorkOrderDef(
             key:               "mining.rare_gems_s",
@@ -914,16 +916,16 @@ public static class ClusterFWorkOrderSystem
         ));
     }
 
-    // ── Miners' Compact — Stone Contract orders ───────────────────────────────
+    // -- Miners' Compact - Stone Contract orders -------------------------------
     //
     // Stone mining yields granite of various types depending on the vein worked.
     // Colored granite matches the ore vein it comes from and shares the same
-    // discovery gate as the parallel ore — if you've reported the vein, you can
+    // discovery gate as the parallel ore - if you've reported the vein, you can
     // take the stone order. Basic granite (iron-tier stone) has no discovery gate.
 
     private static void RegisterMinersCompactStoneOrders()
     {
-        // ── Entry / Intermediate: no discovery gate ───────────────────────────
+        // -- Entry / Intermediate: no discovery gate ---------------------------
 
         Register(new WorkOrderDef(
             key:               "mining.granite_haul_s",
@@ -955,7 +957,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        1500
         ));
 
-        // ── Apprentice tier: 1,000 Standing — colored stone begins ────────────
+        // -- Apprentice tier: 1,000 Standing - colored stone begins ------------
 
         Register(new WorkOrderDef(
             key:               "mining.dull_copper_granite_s",
@@ -973,7 +975,7 @@ public static class ClusterFWorkOrderSystem
             requiredDiscovery: "DullCopper"
         ));
 
-        // ── Journeyman tier: 5,000 Standing ──────────────────────────────────
+        // -- Journeyman tier: 5,000 Standing ----------------------------------
 
         Register(new WorkOrderDef(
             key:               "mining.shadow_stone_s",
@@ -1012,7 +1014,7 @@ public static class ClusterFWorkOrderSystem
             requiredDiscovery: "ShadowIron"
         ));
 
-        // ── Surveyor tier: 15,000 Standing ───────────────────────────────────
+        // -- Surveyor tier: 15,000 Standing -----------------------------------
 
         Register(new WorkOrderDef(
             key:               "mining.bronze_stone_s",
@@ -1046,7 +1048,7 @@ public static class ClusterFWorkOrderSystem
             requiredDiscovery: "Gold"
         ));
 
-        // ── Master Delver tier: 40,000 Standing ──────────────────────────────
+        // -- Master Delver tier: 40,000 Standing ------------------------------
 
         Register(new WorkOrderDef(
             key:               "mining.agapite_granite_s",
@@ -1080,7 +1082,7 @@ public static class ClusterFWorkOrderSystem
             requiredDiscovery: "Verite"
         ));
 
-        // ── Deepwarden tier: 80,000 Standing ─────────────────────────────────
+        // -- Deepwarden tier: 80,000 Standing ---------------------------------
 
         Register(new WorkOrderDef(
             key:               "mining.valorite_granite_s",
@@ -1099,11 +1101,11 @@ public static class ClusterFWorkOrderSystem
         ));
     }
 
-    // ── Society of Smiths order definitions ───────────────────────────────────
+    // -- Society of Smiths order definitions -----------------------------------
 
     private static void RegisterSocietyOfSmithsOrders()
     {
-        // ── Initiate tier: no standing or skill required ──────────────────────
+        // -- Initiate tier: no standing or skill required ----------------------
 
         Register(new WorkOrderDef(
             key:           "smithing.iron_ingots_s",
@@ -1150,7 +1152,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     75
         ));
 
-        // ── Apprentice tier: 1,000 Standing + Blacksmith 40+ ─────────────────
+        // -- Apprentice tier: 1,000 Standing + Blacksmith 40+ -----------------
 
         Register(new WorkOrderDef(
             key:           "smithing.smith_hammers_s",
@@ -1171,7 +1173,7 @@ public static class ClusterFWorkOrderSystem
             key:           "smithing.forge_resupply_m",
             guildKey:      "smithing",
             title:         "Forge Resupply Order",
-            description:   "A full resupply for the forge yard — ingots, picks, shovels, and hammers.",
+            description:   "A full resupply for the forge yard - ingots, picks, shovels, and hammers.",
             type:          WorkOrderType.CraftedSupply,
             requirements:  new()
             {
@@ -1188,7 +1190,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     300
         ));
 
-        // ── Journeyman tier: 5,000 Standing + Blacksmith 50+ ─────────────────
+        // -- Journeyman tier: 5,000 Standing + Blacksmith 50+ -----------------
 
         Register(new WorkOrderDef(
             key:           "smithing.broadswords_s",
@@ -1239,7 +1241,7 @@ public static class ClusterFWorkOrderSystem
             key:           "smithing.militia_arms_m",
             guildKey:      "smithing",
             title:         "Militia Arms Order",
-            description:   "Outfit a militia unit — blades, gloves, and shields in one contract.",
+            description:   "Outfit a militia unit - blades, gloves, and shields in one contract.",
             type:          WorkOrderType.CraftedSupply,
             requirements:  new()
             {
@@ -1256,7 +1258,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     600
         ));
 
-        // ── Master tier: 15,000 Standing + Blacksmith 65+ ────────────────────
+        // -- Master tier: 15,000 Standing + Blacksmith 65+ --------------------
 
         Register(new WorkOrderDef(
             key:           "smithing.plate_chest_s",
@@ -1314,7 +1316,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     1000
         ));
 
-        // ── Grandmaster tier: 50,000 Standing + Blacksmith 80+ ───────────────
+        // -- Grandmaster tier: 50,000 Standing + Blacksmith 80+ ---------------
 
         Register(new WorkOrderDef(
             key:           "smithing.valorite_ingots_s",
@@ -1353,7 +1355,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     3000
         ));
 
-        // ── Cross-guild: Miners' Compact requests from Smiths ─────────────────
+        // -- Cross-guild: Miners' Compact requests from Smiths -----------------
 
         Register(new WorkOrderDef(
             key:           "smithing.compact_tools_cross",
@@ -1375,14 +1377,14 @@ public static class ClusterFWorkOrderSystem
         ));
     }
 
-    // ── Rangers' League order definitions ─────────────────────────────────────
+    // -- Rangers' League order definitions -------------------------------------
     //
     // Rangers earn Trail Marks (voucherReward) and Outriders Standing
     // (standingReward) by delivering wilderness resources: leather, hides,
     // feathers, lumber, and arrows.
     //
     // Tier gates mirror the Outriders rank ladder:
-    //   Wanderer (0) → Scout (1,000) → Outrider (5,000) → Trailblazer (15,000)
+    //   Wanderer (0) -> Scout (1,000) -> Outrider (5,000) -> Trailblazer (15,000)
     //
     // Skill gates reflect which rangers are realistically producing
     // the required materials. Higher hides require AnimalTaming to reach
@@ -1390,7 +1392,7 @@ public static class ClusterFWorkOrderSystem
 
     private static void RegisterRangersOrders()
     {
-        // ── Wanderer tier: no standing or skill required ───────────────────────
+        // -- Wanderer tier: no standing or skill required -----------------------
 
         Register(new WorkOrderDef(
             key:               "rangers.leather_s",
@@ -1422,7 +1424,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        60
         ));
 
-        // ── Scout tier: 1,000 standing ────────────────────────────────────────
+        // -- Scout tier: 1,000 standing ----------------------------------------
 
         Register(new WorkOrderDef(
             key:               "rangers.feathers_s",
@@ -1504,7 +1506,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        120
         ));
 
-        // ── Outrider tier: 5,000 standing ─────────────────────────────────────
+        // -- Outrider tier: 5,000 standing -------------------------------------
 
         Register(new WorkOrderDef(
             key:               "rangers.horned_leather_s",
@@ -1526,7 +1528,7 @@ public static class ClusterFWorkOrderSystem
             key:               "rangers.wilderness_bounty_m",
             guildKey:          "rangers",
             title:             "Wilderness Bounty",
-            description:       "A mixed field haul — spined hides and feathers for the League's combined supply contracts.",
+            description:       "A mixed field haul - spined hides and feathers for the League's combined supply contracts.",
             type:              WorkOrderType.HuntingContract,
             requirements:      new()
             {
@@ -1579,7 +1581,7 @@ public static class ClusterFWorkOrderSystem
             key:               "rangers.field_provisions_m",
             guildKey:          "rangers",
             title:             "Field Provisions",
-            description:       "A full provisions run for the League's extended camps — birds, mutton, and wool in one delivery.",
+            description:       "A full provisions run for the League's extended camps - birds, mutton, and wool in one delivery.",
             type:              WorkOrderType.HuntingContract,
             requirements:      new()
             {
@@ -1595,7 +1597,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        700
         ));
 
-        // ── Trailblazer tier: 15,000 standing ─────────────────────────────────
+        // -- Trailblazer tier: 15,000 standing ---------------------------------
 
         Register(new WorkOrderDef(
             key:               "rangers.barbed_leather_s",
@@ -1636,7 +1638,7 @@ public static class ClusterFWorkOrderSystem
             key:               "rangers.expedition_cache_m",
             guildKey:          "rangers",
             title:             "Expedition Cache",
-            description:       "A full expedition resupply — lumber, hides, and feathers for a sustained field operation.",
+            description:       "A full expedition resupply - lumber, hides, and feathers for a sustained field operation.",
             type:              WorkOrderType.ExpeditionContract,
             requirements:      new()
             {
@@ -1656,7 +1658,7 @@ public static class ClusterFWorkOrderSystem
             key:               "rangers.wilderness_provisions_m",
             guildKey:          "rangers",
             title:             "Wilderness Provisions Cache",
-            description:       "A large provisions run for a sustained campaign — every kind of wilderness fare the League needs.",
+            description:       "A large provisions run for a sustained campaign - every kind of wilderness fare the League needs.",
             type:              WorkOrderType.HuntingContract,
             requirements:      new()
             {
@@ -1677,7 +1679,7 @@ public static class ClusterFWorkOrderSystem
             key:               "rangers.full_predator_cache_m",
             guildKey:          "rangers",
             title:             "Full Predator Cache",
-            description:       "The armorer needs hides from the entire predator tier — spined, horned, and barbed in one delivery.",
+            description:       "The armorer needs hides from the entire predator tier - spined, horned, and barbed in one delivery.",
             type:              WorkOrderType.HuntingContract,
             requirements:      new()
             {
@@ -1693,7 +1695,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        2000
         ));
 
-        // ── Beastmaster tier: 40,000 standing ────────────────────────────────
+        // -- Beastmaster tier: 40,000 standing --------------------------------
 
         Register(new WorkOrderDef(
             key:               "rangers.wool_cache_m",
@@ -1714,7 +1716,7 @@ public static class ClusterFWorkOrderSystem
             key:               "rangers.grand_hunting_tribute",
             guildKey:          "rangers",
             title:             "Grand Hunting Tribute",
-            description:       "The highest honour a ranger can earn — a full-spectrum wilderness haul covering every material the League needs.",
+            description:       "The highest honour a ranger can earn - a full-spectrum wilderness haul covering every material the League needs.",
             type:              WorkOrderType.HuntingContract,
             requirements:      new()
             {
@@ -1736,7 +1738,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        8000
         ));
 
-        // ── Cross-guild: Rangers supply raw hides to the Society of Smiths ────
+        // -- Cross-guild: Rangers supply raw hides to the Society of Smiths ----
 
         Register(new WorkOrderDef(
             key:               "rangers.smiths_hide_cross",
@@ -1757,12 +1759,12 @@ public static class ClusterFWorkOrderSystem
             goldReward:        400
         ));
 
-        // ── Taming contracts (delivered via Outrider's Crook) ──────────────────
+        // -- Taming contracts (delivered via Outrider's Crook) ------------------
         // Progress is tracked in WorkOrderEntry.TamingProgress, NOT the backpack.
         // Requirements use WorkOrderTamingRequirement so RequirementsMet checks
         // the delivery counter rather than pack contents.
 
-        // ── Wanderer tier: 30+ taming ─────────────────────────────────────────
+        // -- Wanderer tier: 30+ taming -----------------------------------------
 
         Register(new WorkOrderDef(
             key:               "rangers.tame_horse",
@@ -1809,7 +1811,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        250
         ));
 
-        // ── Scout tier: 1,000 standing + 50 taming ────────────────────────────
+        // -- Scout tier: 1,000 standing + 50 taming ----------------------------
 
         Register(new WorkOrderDef(
             key:               "rangers.tame_wolf",
@@ -1841,7 +1843,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:        350
         ));
 
-        // ── Outrider tier: 5,000 standing + 65 taming ────────────────────────
+        // -- Outrider tier: 5,000 standing + 65 taming ------------------------
 
         Register(new WorkOrderDef(
             key:               "rangers.tame_direwolf",
@@ -1888,13 +1890,13 @@ public static class ClusterFWorkOrderSystem
             goldReward:        800
         ));
 
-        // ── Trailblazer tier: 15,000 standing + 80 taming ────────────────────
+        // -- Trailblazer tier: 15,000 standing + 80 taming --------------------
 
         Register(new WorkOrderDef(
             key:               "rangers.tame_nightmare",
             guildKey:          "rangers",
             title:             "Nightmare Taming Contract",
-            description:       "Nightmares are the mount of legend. Tame two and deliver them — the League will put them to use.",
+            description:       "Nightmares are the mount of legend. Tame two and deliver them - the League will put them to use.",
             type:              WorkOrderType.TamingContract,
             requirements:      new() { new WorkOrderTamingRequirement(typeof(Nightmare), 2, "Nightmares") },
             minStanding:       15000,
@@ -1922,7 +1924,7 @@ public static class ClusterFWorkOrderSystem
             requiredCreature:  "Kirin"
         ));
 
-        // ── Beastmaster tier: 40,000 standing + 90+ taming ──────────────────
+        // -- Beastmaster tier: 40,000 standing + 90+ taming ------------------
 
         Register(new WorkOrderDef(
             key:               "rangers.tame_white_wyrm",
@@ -1973,21 +1975,21 @@ public static class ClusterFWorkOrderSystem
         ));
     }
 
-    // ── Foresters' Union order definitions ────────────────────────────────────
+    // -- Foresters' Union order definitions ------------------------------------
     //
     // Foresters earn Timber Tokens (voucherReward) and Foresters' Standing
     // (standingReward) by delivering timber of increasing quality.
     //
     // Tier gates mirror the Foresters' rank ladder:
-    //   Woodcutter (0) → Sawyer (1,000) → Forester (5,000) → Arborist (15,000)
-    //   Grove Warden (40,000) → Master of the Wood (80,000)
+    //   Woodcutter (0) -> Sawyer (1,000) -> Forester (5,000) -> Arborist (15,000)
+    //   Grove Warden (40,000) -> Master of the Wood (80,000)
     //
     // Wood type progression:
-    //   Common Boards → Oak/Ash → Yew → Heartwood → Bloodwood/Frostwood
+    //   Common Boards -> Oak/Ash -> Yew -> Heartwood -> Bloodwood/Frostwood
 
     private static void RegisterForestersOrders()
     {
-        // ── Woodcutter tier: no standing or skill required ────────────────────
+        // -- Woodcutter tier: no standing or skill required --------------------
 
         Register(new WorkOrderDef(
             key:            "foresters.boards_s",
@@ -2019,7 +2021,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     350
         ));
 
-        // ── Sawyer tier: 1,000 standing ───────────────────────────────────────
+        // -- Sawyer tier: 1,000 standing ---------------------------------------
 
         Register(new WorkOrderDef(
             key:            "foresters.oak_boards_s",
@@ -2066,7 +2068,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     300
         ));
 
-        // ── Forester tier: 5,000 standing ─────────────────────────────────────
+        // -- Forester tier: 5,000 standing -------------------------------------
 
         Register(new WorkOrderDef(
             key:            "foresters.yew_boards_s",
@@ -2087,7 +2089,7 @@ public static class ClusterFWorkOrderSystem
             key:            "foresters.mixed_timber_m",
             guildKey:       "foresters",
             title:          "Mixed Timber Commission",
-            description:    "The carpenter's guild wants a varied timber delivery — common stock and specialty grades combined.",
+            description:    "The carpenter's guild wants a varied timber delivery - common stock and specialty grades combined.",
             type:           WorkOrderType.TimberContract,
             requirements:   new()
             {
@@ -2103,7 +2105,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     800
         ));
 
-        // ── Arborist tier: 15,000 standing ────────────────────────────────────
+        // -- Arborist tier: 15,000 standing ------------------------------------
 
         Register(new WorkOrderDef(
             key:            "foresters.heartwood_s",
@@ -2139,7 +2141,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     2000
         ));
 
-        // ── Grove Warden tier: 40,000 standing ───────────────────────────────
+        // -- Grove Warden tier: 40,000 standing -------------------------------
 
         Register(new WorkOrderDef(
             key:            "foresters.bloodwood_s",
@@ -2175,7 +2177,7 @@ public static class ClusterFWorkOrderSystem
             key:            "foresters.rare_timber_m",
             guildKey:       "foresters",
             title:          "Rare Timber Commission",
-            description:    "The finest timber the wilderness yields — bloodwood, frostwood, and heartwood for the vault.",
+            description:    "The finest timber the wilderness yields - bloodwood, frostwood, and heartwood for the vault.",
             type:           WorkOrderType.TimberContract,
             requirements:   new()
             {
@@ -2191,13 +2193,13 @@ public static class ClusterFWorkOrderSystem
             goldReward:     6000
         ));
 
-        // ── Master of the Wood tier: 80,000 standing ─────────────────────────
+        // -- Master of the Wood tier: 80,000 standing -------------------------
 
         Register(new WorkOrderDef(
             key:            "foresters.grand_tribute",
             guildKey:       "foresters",
             title:          "Grand Forest Tribute",
-            description:    "The highest tribute a Forester can give — every grade of timber for the Union's ceremonial vault.",
+            description:    "The highest tribute a Forester can give - every grade of timber for the Union's ceremonial vault.",
             type:           WorkOrderType.TimberContract,
             requirements:   new()
             {
@@ -2215,7 +2217,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     10000
         ));
 
-        // ── Cross-guild: Foresters supply lumber to the Rangers' League ───────
+        // -- Cross-guild: Foresters supply lumber to the Rangers' League -------
 
         Register(new WorkOrderDef(
             key:            "foresters.rangers_supply_cross",
@@ -2236,13 +2238,13 @@ public static class ClusterFWorkOrderSystem
             goldReward:     400
         ));
 
-        // ── Extended lumber: discovery-gated, Grove Warden tier+ ─────────────
+        // -- Extended lumber: discovery-gated, Grove Warden tier+ -------------
 
         Register(new WorkOrderDef(
             key:            "foresters.ironwood_s",
             guildKey:       "foresters",
             title:          "Ironwood Consignment",
-            description:    "The smiths want ironwood for tool handles — harder than heartwood and doesn't splinter.",
+            description:    "The smiths want ironwood for tool handles - harder than heartwood and doesn't splinter.",
             type:           WorkOrderType.TimberContract,
             requirements:   new() { new(typeof(IronwoodBoard), 8, "Ironwood Boards") },
             minStanding:    40000,
@@ -2354,7 +2356,7 @@ public static class ClusterFWorkOrderSystem
             key:            "foresters.starwood_s",
             guildKey:       "foresters",
             title:          "Starwood Consignment",
-            description:    "Starwood gleams faintly in the dark. The rarest timber in Britannia — a single plank is worth a fortune.",
+            description:    "Starwood gleams faintly in the dark. The rarest timber in Britannia - a single plank is worth a fortune.",
             type:           WorkOrderType.TimberContract,
             requirements:   new() { new(typeof(StarwoodBoard), 2, "Starwood Boards") },
             minStanding:    80000,
@@ -2388,19 +2390,19 @@ public static class ClusterFWorkOrderSystem
         ));
     }
 
-    // ── Custodians order definitions ──────────────────────────────────────────
+    // -- Custodians order definitions ------------------------------------------
     //
     // Civic Contracts use CleanedDebris (civic waste bundles) as the turn-in
     // currency.  Bundles are earned at a rate of 1 per 5 items cleaned in any
     // batch operation ([cleanupall or TrashBag dump).
     //
     // Five tiers aligned to the Custodian rank ladder:
-    //   Volunteer (0) → Junior Custodian (100) → Custodian (500)
-    //   → Senior Custodian (2,000) → Chief Custodian (5,000)
+    //   Volunteer (0) -> Junior Custodian (100) -> Custodian (500)
+    //   -> Senior Custodian (2,000) -> Chief Custodian (5,000)
 
     private static void RegisterCustodiansOrders()
     {
-        // ── Volunteer tier: no standing required ──────────────────────────────
+        // -- Volunteer tier: no standing required ------------------------------
 
         Register(new WorkOrderDef(
             key:            "custodians.refuse_collection",
@@ -2417,7 +2419,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     100
         ));
 
-        // ── Junior Custodian tier: 100 standing ───────────────────────────────
+        // -- Junior Custodian tier: 100 standing -------------------------------
 
         Register(new WorkOrderDef(
             key:            "custodians.sanitation_detail",
@@ -2434,7 +2436,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     300
         ));
 
-        // ── Custodian tier: 500 standing ──────────────────────────────────────
+        // -- Custodian tier: 500 standing --------------------------------------
 
         Register(new WorkOrderDef(
             key:            "custodians.district_cleanup",
@@ -2451,7 +2453,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     750
         ));
 
-        // ── Senior Custodian tier: 2,000 standing ─────────────────────────────
+        // -- Senior Custodian tier: 2,000 standing -----------------------------
 
         Register(new WorkOrderDef(
             key:            "custodians.ward_sanitation",
@@ -2468,7 +2470,7 @@ public static class ClusterFWorkOrderSystem
             goldReward:     1500
         ));
 
-        // ── Chief Custodian tier: 5,000 standing ──────────────────────────────
+        // -- Chief Custodian tier: 5,000 standing ------------------------------
 
         Register(new WorkOrderDef(
             key:            "custodians.grand_sanitation",

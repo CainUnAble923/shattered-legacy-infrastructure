@@ -49,18 +49,18 @@ public class OutridersGuildmasterGump : Gump
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
         var acct = pm.Account as IAccount;
-        var data = acct != null
-            ? ClusterFAccountPersistence.GetOrCreate(acct)
-            : new ClusterFAccountData();
+        var guild = acct != null
+            ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial)
+            : new CharacterGuildData();
 
         switch (view)
         {
-            case View.MainMenu:        DrawMainMenu(data);        break;
+            case View.MainMenu:        DrawMainMenu(guild);        break;
             case View.AboutOutriders:  DrawAboutOutriders();      break;
             case View.WhatWeHunt:      DrawWhatWeHunt();          break;
             case View.JoiningReqs:     DrawJoiningReqs();         break;
             case View.Rewards:         DrawRewards();             break;
-            case View.MemberDashboard: DrawMemberDashboard(data); break;
+            case View.MemberDashboard: DrawMemberDashboard(guild); break;
         }
 
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
@@ -75,11 +75,11 @@ public class OutridersGuildmasterGump : Gump
         AddLabel(W - 28, H - 26, 1154, "X");
     }
 
-    // ── Views ─────────────────────────────────────────────────────────────────
+    // -- Views -----------------------------------------------------------------
 
-    private void DrawMainMenu(ClusterFAccountData data)
+    private void DrawMainMenu(CharacterGuildData guild)
     {
-        var isMember = data.JoinedGuilds.Contains("rangers");
+        var isMember = guild.JoinedGuilds.Contains("rangers");
 
         AddLabel(18, 56, 999, "What can I do for you, traveller?");
         AddImageTiled(10, 72, W - 20, 1, 9304);
@@ -112,7 +112,7 @@ public class OutridersGuildmasterGump : Gump
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var html =
-            "<BASEFONT COLOR=#AAAAAA>The Outriders are the Rangers' League field company — " +
+            "<BASEFONT COLOR=#AAAAAA>The Outriders are the Rangers' League field company - " +
             "the ones who actually go out there. While other guilds work their forges and " +
             "counting houses, we range the wilderness, track the beasts, and keep the roads " +
             "between New Haven and the deep country passable.</BASEFONT><BR><BR>" +
@@ -135,19 +135,19 @@ public class OutridersGuildmasterGump : Gump
             "<BASEFONT COLOR=#AAAAAA>The Outriders work the full range of Britannia's wilderness." +
             "</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Leather and Hides</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — From wolves, hinds, and wilderness beasts. " +
+            "<BASEFONT COLOR=#888888> - From wolves, hinds, and wilderness beasts. " +
             "Tougher creatures yield spined, horned, and barbed hides.</BASEFONT><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Feathers</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — Collected from birds of all kinds. Used in fletching " +
+            "<BASEFONT COLOR=#888888> - Collected from birds of all kinds. Used in fletching " +
             "and alchemical reagent work.</BASEFONT><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Lumber</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — Cut from the forest for camp construction and " +
+            "<BASEFONT COLOR=#888888> - Cut from the forest for camp construction and " +
             "expedition rigging.</BASEFONT><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Pack Animals</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — Tamed mules and horses are the Outriders' " +
+            "<BASEFONT COLOR=#888888> - Tamed mules and horses are the Outriders' " +
             "primary logistics tool. A tamed mule can carry far more than any backpack." +
             "</BASEFONT><BR><BR>" +
-            "<BASEFONT COLOR=#888888>Veterans speak of rarer things in the deep wilderness — " +
+            "<BASEFONT COLOR=#888888>Veterans speak of rarer things in the deep wilderness - " +
             "creatures whose hides and bones the guild will pay well for. " +
             "Build your rank and you'll learn what they mean.</BASEFONT>";
 
@@ -199,13 +199,13 @@ public class OutridersGuildmasterGump : Gump
         AddHtml(16, 78, W - 32, H - 128, html, false, true);
     }
 
-    private void DrawMemberDashboard(ClusterFAccountData data)
+    private void DrawMemberDashboard(CharacterGuildData guild)
     {
         AddLabel(18, 56, 1154, "Member Dashboard");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
-        data.GuildReputation.TryGetValue("rangers", out var standing);
-        data.GuildCurrency.TryGetValue("rangers",   out var marks);
+        guild.GuildReputation.TryGetValue("rangers", out var standing);
+        guild.GuildCurrency.TryGetValue("rangers",   out var marks);
         var rank = GetRankName(standing);
 
         var html =
@@ -223,9 +223,9 @@ public class OutridersGuildmasterGump : Gump
         AddButton(18, 226, 4011, 4012, 31);
         AddLabel(44, 228, 999, "Field Contracts");
 
-        data.GuildCurrency.TryGetValue("rangers", out var curMarks);
+        guild.GuildCurrency.TryGetValue("rangers", out var curMarks);
 
-        // Crook replacement — only offered if the member has no crook of any tier
+        // Crook replacement - only offered if the member has no crook of any tier
         if (HasAnyCrook(_pm))
         {
             AddLabel(18, 256, 999, "Outrider's Crook: in your possession");
@@ -238,7 +238,7 @@ public class OutridersGuildmasterGump : Gump
             AddLabel(44, 258, 999, $"Replace Outrider's Crook ({costLabel})");
         }
 
-        // Satchel replacement — only offered if the member has no satchel of any tier
+        // Satchel replacement - only offered if the member has no satchel of any tier
         if (HasAnySatchel(_pm))
         {
             AddLabel(18, 280, 999, "Hunter's Satchel: in your possession");
@@ -257,7 +257,7 @@ public class OutridersGuildmasterGump : Gump
         AddLabel(44, 318, 1154, "Cross-Guild Exchange (Pack Mule)");
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     private const int CrookReplacementCost   = 50;
     private const int SatchelReplacementCost = 25;
@@ -284,7 +284,7 @@ public class OutridersGuildmasterGump : Gump
         _         => "Wanderer"
     };
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -320,9 +320,9 @@ public class OutridersGuildmasterGump : Gump
             case 32:
             {
                 if (acct == null) break;
-                var data = ClusterFAccountPersistence.GetOrCreate(acct);
+                var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial);
 
-                if (!data.JoinedGuilds.Contains("rangers"))
+                if (!guild.JoinedGuilds.Contains("rangers"))
                 {
                     _pm.SendMessage(0x22, "You are not a member of the Rangers' League.");
                     break;
@@ -341,13 +341,13 @@ public class OutridersGuildmasterGump : Gump
                     break;
                 }
 
-                data.GuildCurrency.TryGetValue("rangers", out var curMarks);
+                guild.GuildCurrency.TryGetValue("rangers", out var curMarks);
 
                 // If the player can't afford the fee they get a free first-issue crook.
                 // This covers members who joined before the crook giveaway was implemented
                 // and have no way to earn Trail Marks without one.
                 if (curMarks >= CrookReplacementCost)
-                    data.GuildCurrency["rangers"] = curMarks - CrookReplacementCost;
+                    guild.GuildCurrency["rangers"] = curMarks - CrookReplacementCost;
 
                 _pm.Backpack.DropItem(new OutridersCrook());
                 _pm.SendMessage(0x44, curMarks >= CrookReplacementCost
@@ -360,9 +360,9 @@ public class OutridersGuildmasterGump : Gump
             case 33:
             {
                 if (acct == null) break;
-                var data = ClusterFAccountPersistence.GetOrCreate(acct);
+                var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial);
 
-                if (!data.JoinedGuilds.Contains("rangers"))
+                if (!guild.JoinedGuilds.Contains("rangers"))
                 {
                     _pm.SendMessage(0x22, "You are not a member of the Rangers' League.");
                     break;
@@ -381,10 +381,10 @@ public class OutridersGuildmasterGump : Gump
                     break;
                 }
 
-                data.GuildCurrency.TryGetValue("rangers", out var curMarks);
+                guild.GuildCurrency.TryGetValue("rangers", out var curMarks);
 
                 if (curMarks >= SatchelReplacementCost)
-                    data.GuildCurrency["rangers"] = curMarks - SatchelReplacementCost;
+                    guild.GuildCurrency["rangers"] = curMarks - SatchelReplacementCost;
 
                 _pm.Backpack.DropItem(new HuntersSatchel());
                 _pm.SendMessage(0x44, curMarks >= SatchelReplacementCost

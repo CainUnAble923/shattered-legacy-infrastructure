@@ -7,32 +7,32 @@ using Server.Mobiles;
 
 namespace Server.Engines.Harvest;
 
-// ── Extended ore discovery gate ───────────────────────────────────────────────
+// -- Extended ore discovery gate -----------------------------------------------
 //
-// Extended ores (Platinum → Celestial) require a two-step unlock before the
+// Extended ores (Platinum -> Celestial) require a two-step unlock before the
 // player can actually extract them:
 //
-//   Step 1: Mine a vein — the harvest system calls Mining.Give() with the ore.
+//   Step 1: Mine a vein - the harvest system calls Mining.Give() with the ore.
 //           TryLogDiscovery() fires first, recording a Discovered entry in the
 //           player's OreDiscoveries.  The ore item is then intercepted here and
-//           replaced with iron ore — the vein doesn't yield the rare metal yet
+//           replaced with iron ore - the vein doesn't yield the rare metal yet
 //           because the player doesn't know how to work it.
 //           A one-time message explains what happened.
 //
-//   Step 2: Visit the Survey Archivist and report the discovery (Discovered →
+//   Step 2: Visit the Survey Archivist and report the discovery (Discovered ->
 //           Reported). From that point on, Mining.Give() delivers the actual
 //           extended ore normally, and the matching work orders appear in the
 //           Guild Contract Ledger.
 //
-// Vanilla ores (DullCopper → Valorite) are not gated — they have always been
+// Vanilla ores (DullCopper -> Valorite) are not gated - they have always been
 // part of Britannia and miners know how to extract them without instruction.
 //
 // Testing bypass: if the player carries an active DevTestingCrystal the gate
 // is skipped and extended ore is delivered directly.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 /// <summary>
-/// Shattered Legacy — Compact Ore Satchel auto-routing hook + Prospector's Logbook discovery logger.
+/// Shattered Legacy - Compact Ore Satchel auto-routing hook + Prospector's Logbook discovery logger.
 ///
 /// Extends Mining.Give (via partial class) to:
 ///   1. Log ore discoveries to the player's account (ProspectorsLogbook data)
@@ -43,7 +43,7 @@ namespace Server.Engines.Harvest;
 ///   2. Standard backpack (PlaceInBackpack / feet fallback)
 ///
 /// Discovery logging:
-///   - Iron is excluded (per design — only colored ore is tracked)
+///   - Iron is excluded (per design - only colored ore is tracked)
 ///   - First discovery sends a chat message to the player
 ///   - Subsequent mines silently increment TotalMined on the existing entry
 ///   - Discovery data is account-backed regardless of whether the player carries a logbook
@@ -51,7 +51,7 @@ namespace Server.Engines.Harvest;
 public partial class Mining
 {
     // Extended ore types that are gated until the player reports the discovery.
-    // Keyed by ore item type → canonical discovery key (matches _oreDiscoveryKeys).
+    // Keyed by ore item type -> canonical discovery key (matches _oreDiscoveryKeys).
     private static readonly Dictionary<Type, string> _extendedOreGateKeys = new()
     {
         { typeof(PlatinumOre),   "Platinum"   },
@@ -66,7 +66,7 @@ public partial class Mining
 
     public override bool Give(Mobile m, Item item, bool placeAtFeet)
     {
-        // ── Progressive ore availability gate ─────────────────────────────────
+        // -- Progressive ore availability gate ---------------------------------
         // Check before TryLogDiscovery so we can detect first-time finds
         // (wasAlreadyKnown == false when the discovery is brand new).
         bool isExtended      = _extendedOreGateKeys.TryGetValue(item.GetType(), out var extKey);
@@ -89,7 +89,7 @@ public partial class Mining
         // Log ore discovery before routing so data is captured even if routing fails.
         TryLogDiscovery(m, item);
 
-        // ── Progressive ore availability: apply gate after logging discovery ───
+        // -- Progressive ore availability: apply gate after logging discovery ---
         // TryLogDiscovery has now created/updated the OreDiscoveryEntry (Discovered).
         // If the player hasn't reported this ore to the Archivist yet, substitute
         // iron ore so the vein remains "locked" until they complete the report step.
@@ -104,13 +104,13 @@ public partial class Mining
             if (!wasAlreadyKnown && m is PlayerMobile pmMsg)
             {
                 pmMsg.SendMessage(0x44,
-                    "The ore crumbles before you can properly extract it — you lack " +
+                    "The ore crumbles before you can properly extract it - you lack " +
                     "the technique for this vein. Visit the Survey Archivist with your " +
                     "discovery notes to learn how to work it.");
             }
         }
 
-        // ── T4/T5 Deepdelver's Advantage: +1 ore per yield in Felucca ─────────
+        // -- T4/T5 Deepdelver's Advantage: +1 ore per yield in Felucca ---------
         // Applies to T4 (Deepdelver) and T5 (Worldbreaker).
         if (m.Map == Map.Felucca && m is PlayerMobile pmFelucca)
         {
@@ -119,7 +119,7 @@ public partial class Mining
                 item.Amount += 1;
         }
 
-        // ── T5 Worldbreaker's Edge: +1 ore per yield everywhere ───────────────
+        // -- T5 Worldbreaker's Edge: +1 ore per yield everywhere ---------------
         // Stacks with Deepdelver's Advantage in Felucca (+2 total).
         if (m is PlayerMobile pmWb)
         {
@@ -128,23 +128,23 @@ public partial class Mining
                 item.Amount += 1;
         }
 
-        // ── Mining depletion broadcast ─────────────────────────────────────────
+        // -- Mining depletion broadcast -----------------------------------------
         // After consuming from the harvest bank (done by the base harvest system
-        // before Give() fires), check if this 8×8 chunk is now empty.  If so,
+        // before Give() fires), check if this 8x8 chunk is now empty.  If so,
         // send a delta packet to nearby players so the World Map haze appears
-        // immediately — without waiting for the next login sync.
+        // immediately - without waiting for the next login sync.
         BroadcastDepletionIfEmptied(m);
 
         // Attempt to route into the Compact Ore Satchel first.
         if (TryRouteToSatchel(m, item))
             return true;
 
-        // Fall back to vanilla behaviour (backpack → feet).
+        // Fall back to vanilla behaviour (backpack -> feet).
         return base.Give(m, item, placeAtFeet);
     }
 
     /// <summary>
-    /// Checks the HarvestBank at the player's current 8×8 chunk.
+    /// Checks the HarvestBank at the player's current 8x8 chunk.
     /// If the bank's Current count just reached zero, broadcasts a depletion
     /// delta to all players within range so the World Map haze updates live.
     /// </summary>
@@ -166,7 +166,7 @@ public partial class Mining
             ClusterFDepletionSync.BroadcastDelta(m.Map, m.X, m.Y, true);
     }
 
-    // ── Ore Satchel routing ───────────────────────────────────────────────────
+    // -- Ore Satchel routing ---------------------------------------------------
 
     private static bool TryRouteToSatchel(Mobile m, Item item)
     {
@@ -180,13 +180,13 @@ public partial class Mining
         if (satchel == null)
             return false;
 
-        // TryDropItem respects the satchel's CheckHold — returns false if full.
+        // TryDropItem respects the satchel's CheckHold - returns false if full.
         return satchel.TryDropItem(m, item, false);
     }
 
-    // ── Prospector's Logbook discovery logging ────────────────────────────────
+    // -- Prospector's Logbook discovery logging --------------------------------
 
-    // Ore type → canonical discovery key. Iron is deliberately excluded.
+    // Ore type -> canonical discovery key. Iron is deliberately excluded.
     private static readonly Dictionary<Type, string> _oreDiscoveryKeys = new()
     {
         { typeof(DullCopperOre),  "DullCopper"  },
@@ -215,17 +215,18 @@ public partial class Mining
         if (!_oreDiscoveryKeys.TryGetValue(item.GetType(), out var oreKey))
             return; // Not a tracked ore type (Iron excluded)
 
-        // ── Achievement: any colored ore mined, total amount, Felucca bonus ──
+        // -- Achievement: any colored ore mined, total amount, Felucca bonus --
         ClusterFAchievementSystem.NotifyMining(pm, item.Amount, m.Map == Map.Felucca);
 
         var data       = ClusterFAccountPersistence.GetOrCreate(acct);
+        var guild = data.GetOrCreateGuildData(pm.Serial);
         var facetName  = m.Map?.Name ?? "Unknown";
         var regionName = m.Region?.Name;
         if (string.IsNullOrWhiteSpace(regionName)) regionName = "Wilderness";
 
         if (!data.OreDiscoveries.TryGetValue(oreKey, out var entry))
         {
-            // ── First discovery of this ore type ─────────────────────────────
+            // -- First discovery of this ore type -----------------------------
             entry = new OreDiscoveryEntry(oreKey);
             data.OreDiscoveries[oreKey] = entry;
 
@@ -240,34 +241,34 @@ public partial class Mining
             pm.SendMessage(0x44,
                 "Report this discovery to Velara Thorne at the south mine to unlock work orders.");
 
-            // ── T3+ Prospector's Insight: +3 Mining Vouchers on new discovery ──
+            // -- T3+ Prospector's Insight: +3 Mining Vouchers on new discovery --
             // Applies to T3 (Prospector), T4 (Deepdelver), and T5 (Worldbreaker).
             var equippedTool = pm.FindItemOnLayer(Layer.TwoHanded);
             if (equippedTool is JacobsProspectorPickaxe
                 || equippedTool is JacobsDeepdelverPickaxe
                 || equippedTool is JacobsWorldbreakerPickaxe)
             {
-                data.AddCurrency("mining", 3);
+                guild.AddCurrency("mining", 3);
                 pm.SendMessage(0x44, "Prospector's Insight: +3 Mining Vouchers for this discovery.");
             }
 
-            // ── Achievement: ore discovery count ─────────────────────────────
+            // -- Achievement: ore discovery count -----------------------------
             ClusterFAchievementSystem.NotifyOreDiscoveryCount(pm, data.OreDiscoveries.Count);
         }
         else
         {
-            // ── Known ore type — check if this is a new vein location ─────────
+            // -- Known ore type - check if this is a new vein location ---------
             entry.TotalMined += item.Amount;
 
             var nearby = entry.FindNearbyLocation(m.Location, 12);
             if (nearby != null)
             {
-                // Same vein — silently accumulate.
+                // Same vein - silently accumulate.
                 nearby.AmountMined += item.Amount;
             }
             else
             {
-                // New vein of a previously known ore type — log and notify.
+                // New vein of a previously known ore type - log and notify.
                 var loc = entry.AddLocation(facetName, regionName, m.Location);
                 loc.AmountMined += item.Amount;
 

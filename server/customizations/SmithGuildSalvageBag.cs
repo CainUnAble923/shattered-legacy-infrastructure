@@ -9,27 +9,27 @@ using Server.Mobiles;
 
 namespace Server.Items;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SmithGuildSalvageBag — Society of Smiths guild salvage bag
+// -----------------------------------------------------------------------------
+// SmithGuildSalvageBag - Society of Smiths guild salvage bag
 //
 // Issued to members on join.  Fully replaces the vanilla SalvageBag for
 // smithing guild members.
 //
 // Enhancements over the vanilla SalvageBag:
-//   1. Post-Valorite metal support — Platinum through Celestial.
+//   1. Post-Valorite metal support - Platinum through Celestial.
 //      Resmelt difficulty scales with extended skill (>100 Mining required).
-//   2. Smithing Seals — guild members earn seals for each item smelted,
+//   2. Smithing Seals - guild members earn seals for each item smelted,
 //      scaled by material tier.
-//   3. [TODO — Guild Enhancement: "Forge Efficiency" upgrade]
+//   3. [TODO - Guild Enhancement: "Forge Efficiency" upgrade]
 //      Non-exceptional crafted items auto-filed into matching SmithGuildBook
 //      BODs instead of smelting.  Enable via a future guild upgrade flag.
 //      See HammerBODAutoFill.TryAutoFill for the matching pattern.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class SmithGuildSalvageBag : Bag
 {
-    // ── Constants ─────────────────────────────────────────────────────────────
+    // -- Constants -------------------------------------------------------------
 
     private const int BagHue  = 1154; // Society of Smiths blue
     private const int BagItemID = 0xE76; // standard bag
@@ -48,7 +48,7 @@ public partial class SmithGuildSalvageBag : Bag
 
     public override int LabelNumber => 1079931; // "Salvage Bag" cliloc (reused)
 
-    // ── Resmelt difficulty table ───────────────────────────────────────────────
+    // -- Resmelt difficulty table -----------------------------------------------
     // Vanilla metals cap at 99.0 (base Mining).
     // Post-Valorite metals require extended Mining skill (power scrolls).
     // Scale mirrors ClusterFSmithCommissions skill ranges.
@@ -63,7 +63,7 @@ public partial class SmithGuildSalvageBag : Bag
         CraftResource.Agapite     =>  90.0,
         CraftResource.Verite      =>  95.0,
         CraftResource.Valorite    =>  99.0,
-        // Post-Valorite — requires extended Mining skill
+        // Post-Valorite - requires extended Mining skill
         CraftResource.Platinum    => 105.0,
         CraftResource.Toxic       => 115.0,
         CraftResource.Blaze       => 130.0,
@@ -72,10 +72,10 @@ public partial class SmithGuildSalvageBag : Bag
         CraftResource.Mythril     => 200.0,
         CraftResource.Adamantium  => 250.0,
         CraftResource.Celestial   => 300.0,
-        _                         =>   0.0,  // Iron — no check
+        _                         =>   0.0,  // Iron - no check
     };
 
-    // ── Seals per item smelted ────────────────────────────────────────────────
+    // -- Seals per item smelted ------------------------------------------------
     // Awarded only to guild members.  Small passive income scaled by tier.
 
     private static int SealReward(CraftResource r) => r switch
@@ -93,7 +93,7 @@ public partial class SmithGuildSalvageBag : Bag
         _                                                    =>  0,
     };
 
-    // ── Context menu ──────────────────────────────────────────────────────────
+    // -- Context menu ----------------------------------------------------------
 
     public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
     {
@@ -110,7 +110,7 @@ public partial class SmithGuildSalvageBag : Bag
         }
     }
 
-    // ── Resmelt ───────────────────────────────────────────────────────────────
+    // -- Resmelt ---------------------------------------------------------------
 
     private bool _failure;
 
@@ -136,7 +136,7 @@ public partial class SmithGuildSalvageBag : Bag
             var difficulty = ResmeltDifficulty(resource);
             var ingot      = info.ResourceTypes[0].CreateInstance<Item>();
 
-            // Ingot amount — use raw skill (no 100-cap) to reward extended Mining
+            // Ingot amount - use raw skill (no 100-cap) to reward extended Mining
             if (item is DragonBardingDeed
                 || item is BaseArmor  a && a.PlayerConstructed
                 || item is BaseWeapon w && w.PlayerConstructed
@@ -155,7 +155,7 @@ public partial class SmithGuildSalvageBag : Bag
             {
                 _failure = true;
                 ingot.Delete();
-                return false; // skill check failed — item stays in bag, no seals
+                return false; // skill check failed - item stays in bag, no seals
             }
 
             item.Delete();
@@ -172,7 +172,7 @@ public partial class SmithGuildSalvageBag : Bag
         return false;
     }
 
-    // ── Salvage ingots ────────────────────────────────────────────────────────
+    // -- Salvage ingots --------------------------------------------------------
 
     private void SalvageIngots(Mobile from)
     {
@@ -260,20 +260,20 @@ public partial class SmithGuildSalvageBag : Bag
         // Award Smithing Seals to guild members + achievement notification
         if (from is PlayerMobile pm && pm.Account is IAccount acct)
         {
-            // Smelting achievement — track regardless of guild membership
+            // Smelting achievement - track regardless of guild membership
             if (salvaged > 0)
                 ClusterFAchievementSystem.NotifyIngotsSmelted(pm, salvaged);
 
-            if (totalSeals > 0 && ClusterFGuildSystem.IsJoined(acct, "smithing"))
+            if (totalSeals > 0 && ClusterFGuildSystem.IsJoined(pm, "smithing"))
             {
-                var data = ClusterFAccountPersistence.GetOrCreate(acct);
-                data.AddCurrency("smithing", totalSeals);
+                var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+                guild.AddCurrency("smithing", totalSeals);
                 pm.SendMessage(0x59, $"[Salvage] +{totalSeals} Smithing Seal{(totalSeals == 1 ? "" : "s")} earned.");
             }
         }
     }
 
-    // ── Salvage cloth — mirrors vanilla exactly ────────────────────────────────
+    // -- Salvage cloth - mirrors vanilla exactly --------------------------------
 
     private static readonly Type[] _clothTypes =
     {
@@ -326,7 +326,7 @@ public partial class SmithGuildSalvageBag : Bag
         SalvageCloth(from);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     private bool HasResmeltable()
     {
@@ -353,7 +353,7 @@ public partial class SmithGuildSalvageBag : Bag
         return false;
     }
 
-    // ── Join bonus ────────────────────────────────────────────────────────────
+    // -- Join bonus ------------------------------------------------------------
 
     /// <summary>Issues a SmithGuildSalvageBag when a player joins the Society of Smiths.</summary>
     public static void OnSmithingJoined(PlayerMobile pm)
@@ -365,11 +365,11 @@ public partial class SmithGuildSalvageBag : Bag
 
         pm.Backpack.DropItem(new SmithGuildSalvageBag());
         pm.SendMessage(0x44, "You have been issued a Smith Guild Salvage Bag. " +
-            "Place metal items inside and right-click to smelt them down — " +
+            "Place metal items inside and right-click to smelt them down - " +
             "guild members earn Smithing Seals for each item salvaged.");
     }
 
-    // ── Context menu entries ──────────────────────────────────────────────────
+    // -- Context menu entries --------------------------------------------------
 
     private class SalvageIngotsEntry : ContextMenuEntry
     {

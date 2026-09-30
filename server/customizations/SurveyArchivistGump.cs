@@ -11,8 +11,8 @@ namespace Server;
 /// Gump for the Miners' Compact Survey Archivist (Velara Thorne).
 ///
 /// Views:
-///   MainMenu    — introduction and navigation
-///   Discoveries — lists unreported ore discoveries with reward previews;
+///   MainMenu    - introduction and navigation
+///   Discoveries - lists unreported ore discoveries with reward previews;
 ///                 "Report All" submits them, marks as Reported, grants rewards
 /// </summary>
 public class SurveyArchivistGump : Gump
@@ -26,13 +26,13 @@ public class SurveyArchivistGump : Gump
     private const int H    = 420;
     private const int BgId = 9270;
 
-    // ── Reward table: Standing, Vouchers, and Gold per vein report ───────────────
-    // Awarded per vein location (not just per ore type — every new vein is reportable).
+    // -- Reward table: Standing, Vouchers, and Gold per vein report ---------------
+    // Awarded per vein location (not just per ore type - every new vein is reportable).
     // Scales with ore rarity/tier. Gold is deposited directly to the player's bank box.
     // Internal so the Prospector's Logbook remote-submit feature can preview rewards.
     internal static readonly Dictionary<string, (int Standing, int Vouchers, int Gold)> RewardTable = new()
     {
-        // Vanilla ore tier (DullCopper → Valorite)
+        // Vanilla ore tier (DullCopper -> Valorite)
         { "DullCopper",  (  50,  2,   500) },
         { "ShadowIron",  (  75,  3,   750) },
         { "Copper",      (  75,  3,   750) },
@@ -41,7 +41,7 @@ public class SurveyArchivistGump : Gump
         { "Agapite",     ( 150,  6,  1500) },
         { "Verite",      ( 200,  8,  2000) },
         { "Valorite",    ( 300, 12,  3000) },
-        // Extended ore tier (Platinum → Celestial)
+        // Extended ore tier (Platinum -> Celestial)
         { "Platinum",    ( 200,  8,  2000) },
         { "Toxic",       ( 200,  8,  2000) },
         { "Blaze",       ( 250, 10,  2500) },
@@ -71,7 +71,7 @@ public class SurveyArchivistGump : Gump
         AddBackground(0, 0, W, H, BgId);
         AddAlphaRegion(6, 6, W - 12, H - 12);
 
-        // ── Header ────────────────────────────────────────────────────────
+        // -- Header --------------------------------------------------------
         AddLabel(W / 2 - 80, 12, 1154, "Survey Archivist");
         AddLabel(W / 2 - 60, 28, 999,  "Velara Thorne");
         AddImageTiled(10, 48, W - 20, 2, 9304);
@@ -87,13 +87,13 @@ public class SurveyArchivistGump : Gump
             case View.Discoveries: DrawDiscoveries(data); break;
         }
 
-        // ── Footer ────────────────────────────────────────────────────────
+        // -- Footer --------------------------------------------------------
         AddImageTiled(10, H - 42, W - 20, 2, 9304);
         AddButton(W - 50, H - 32, 4023, 4025, 0);
         AddLabel(W - 28, H - 30, 1154, "X");
     }
 
-    // ── Main menu ─────────────────────────────────────────────────────────────
+    // -- Main menu -------------------------------------------------------------
 
     private void DrawMainMenu(ClusterFAccountData data)
     {
@@ -101,7 +101,7 @@ public class SurveyArchivistGump : Gump
 
         var html =
             "<BASEFONT COLOR=#AAAAAA>The Miners' Compact maintains geological records " +
-            "of ore deposits across all facets. Every vein you discover is valuable — " +
+            "of ore deposits across all facets. Every vein you discover is valuable - " +
             "the more locations we chart, the better we serve the guild." +
             "</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#AAAAAA>Bring your Prospector's Logbook vein records to me " +
@@ -119,7 +119,7 @@ public class SurveyArchivistGump : Gump
         else if (data.OreDiscoveries.Count > 0)
         {
             html += "<BASEFONT COLOR=#44AA44>All known veins have been reported. " +
-                    "Keep mining — every new deposit will appear in your Prospector's Logbook." +
+                    "Keep mining - every new deposit will appear in your Prospector's Logbook." +
                     "</BASEFONT>";
         }
         else
@@ -131,7 +131,7 @@ public class SurveyArchivistGump : Gump
 
         AddHtml(16, 56, W - 32, H - 130, html, false, true);
 
-        // "Review Veins" button — always shown, disabled label if nothing to report
+        // "Review Veins" button - always shown, disabled label if nothing to report
         if (unreported > 0)
         {
             AddButton(18, H - 68, 4011, 4012, 10);
@@ -143,7 +143,7 @@ public class SurveyArchivistGump : Gump
         }
     }
 
-    // ── Discoveries view ──────────────────────────────────────────────────────
+    // -- Discoveries view ------------------------------------------------------
 
     private void DrawDiscoveries(ClusterFAccountData data)
     {
@@ -155,7 +155,7 @@ public class SurveyArchivistGump : Gump
         if (pending.Count == 0)
         {
             AddLabel(18, 60, 999, "All vein discoveries have been reported.");
-            AddLabel(18, 78, 999, "Continue mining — every new deposit is reportable.");
+            AddLabel(18, 78, 999, "Continue mining - every new deposit is reportable.");
             return;
         }
 
@@ -204,14 +204,14 @@ public class SurveyArchivistGump : Gump
         AddLabel(18,  totY + 6,  1154, "Total:");
         AddLabel(230, totY + 6,  0x44, $"+{totStand} Standing");
         AddLabel(300, totY + 6,  0x44, $"+{totVouch} Vouchers");
-        AddLabel(370, totY + 6,  0x44, $"{totGold:N0}gp → Bank");
+        AddLabel(370, totY + 6,  0x44, $"{totGold:N0}gp -> Bank");
 
         // Report All button
         AddButton(18,    totY + 28, 4011, 4012, 30);
         AddLabel(44,     totY + 30, 999,  $"Report All ({pending.Count} vein{(pending.Count == 1 ? "" : "s")})");
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     // Canonical ore display order
     private static readonly string[] _oreOrder =
@@ -266,7 +266,7 @@ public class SurveyArchivistGump : Gump
         return list;
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -304,6 +304,7 @@ public class SurveyArchivistGump : Gump
         if (acct == null) return;
 
         var data    = ClusterFAccountPersistence.GetOrCreate(acct);
+        var guild = data.GetOrCreateGuildData(pm.Serial);
         var pending = GetUnreportedVeins(data);
 
         if (pending.Count == 0)
@@ -324,8 +325,8 @@ public class SurveyArchivistGump : Gump
             // Mark this individual vein as reported
             entry.Locations[locIdx].Reported = true;
 
-            // Promote entry state to Reported on the first turnin — this is the
-            // ore-availability gate for extended ores (Platinum → Celestial).
+            // Promote entry state to Reported on the first turnin - this is the
+            // ore-availability gate for extended ores (Platinum -> Celestial).
             if (entry.State == DiscoveryState.Discovered)
                 entry.State = DiscoveryState.Reported;
 
@@ -335,8 +336,8 @@ public class SurveyArchivistGump : Gump
             totalGold     += gold;
         }
 
-        data.AddReputation("mining", totalStanding);
-        data.AddCurrency("mining",   totalVouchers);
+        guild.AddReputation("mining", totalStanding);
+        guild.AddCurrency("mining",   totalVouchers);
 
         // Deposit gold directly to the player's bank box
         if (totalGold > 0)

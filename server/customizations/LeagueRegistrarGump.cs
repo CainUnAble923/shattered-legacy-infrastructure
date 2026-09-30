@@ -79,7 +79,7 @@ public class LeagueRegistrarGump : Gump
     private void DrawMainMenu(ClusterFAccountData data)
     {
         var joined = ClusterFLeagueSystem.IsJoined(data);
-        var status = ClusterFLeagueSystem.GetStatus(data);
+        var status = ClusterFLeagueSystem.GetStatus(data, ClusterFAccountPersistence.GetGuild(_pm));
         var label  = ClusterFLeagueSystem.GetStatusLabel(status);
         var color  = ClusterFLeagueSystem.GetStatusColor(status);
 
@@ -111,7 +111,7 @@ public class LeagueRegistrarGump : Gump
         AddLabel(18, 56, 1154, "Citizen Status");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
-        var status = ClusterFLeagueSystem.GetStatus(data);
+        var status = ClusterFLeagueSystem.GetStatus(data, ClusterFAccountPersistence.GetGuild(_pm));
         var label  = ClusterFLeagueSystem.GetStatusLabel(status);
         var color  = ClusterFLeagueSystem.GetStatusColor(status);
 

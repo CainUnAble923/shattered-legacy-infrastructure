@@ -8,7 +8,7 @@ using Server.Network;
 namespace Server;
 
 /// <summary>
-/// Society of Smiths — Seal Catalog
+/// Society of Smiths - Seal Catalog
 ///
 /// Allows guild members to spend Smithing Seals on tools, runic hammers,
 /// ancient smithy hammers, and power scrolls.
@@ -17,7 +17,7 @@ namespace Server;
 /// </summary>
 public class SmithSealCatalogGump : Gump
 {
-    // ── Layout ────────────────────────────────────────────────────────────────
+    // -- Layout ----------------------------------------------------------------
 
     private const int W       = 500;
     private const int H       = 440;
@@ -31,7 +31,7 @@ public class SmithSealCatalogGump : Gump
     private const int NameX   = PanelX + 26;
     private const int CostX   = W - 100;
 
-    // ── Catalog definition ────────────────────────────────────────────────────
+    // -- Catalog definition ----------------------------------------------------
 
     public enum Cat { Tools, AncientHammers, RunicVanilla, RunicPostVal, PowerScrolls }
 
@@ -48,7 +48,7 @@ public class SmithSealCatalogGump : Gump
 
     private static readonly CatalogEntry[][] Catalog =
     {
-        // ── Tools & Supplies ──────────────────────────────────────────────
+        // -- Tools & Supplies ----------------------------------------------
         new CatalogEntry[]
         {
             new("Sturdy Shovel",           50,  () => new SturdyShovel()),
@@ -61,7 +61,7 @@ public class SmithSealCatalogGump : Gump
             new("Smith Guild Salvage Bag", 250,  () => new SmithGuildSalvageBag()),
         },
 
-        // ── Ancient Smithy Hammers ────────────────────────────────────────
+        // -- Ancient Smithy Hammers ----------------------------------------
         new CatalogEntry[]
         {
             new("Ancient Smithy Hammer (+10 uses)",   100, () => new AncientSmithyHammer(10)),
@@ -70,7 +70,7 @@ public class SmithSealCatalogGump : Gump
             new("Ancient Smithy Hammer (+60 uses)", 1_000, () => new AncientSmithyHammer(60)),
         },
 
-        // ── Runic Hammers (Vanilla) ───────────────────────────────────────
+        // -- Runic Hammers (Vanilla) ---------------------------------------
         new CatalogEntry[]
         {
             new("Dull Copper Runic Hammer",    200, () => new RunicHammer(CraftResource.DullCopper, 50)),
@@ -83,7 +83,7 @@ public class SmithSealCatalogGump : Gump
             new("Valorite Runic Hammer",     5_000, () => new RunicHammer(CraftResource.Valorite,   15)),
         },
 
-        // ── Runic Hammers (Post-Valorite) — placeholders ──────────────────
+        // -- Runic Hammers (Post-Valorite) - placeholders ------------------
         new CatalogEntry[]
         {
             new("Platinum Runic Hammer",     7_500, () => null, ComingSoon: true),
@@ -96,9 +96,9 @@ public class SmithSealCatalogGump : Gump
             new("Celestial Runic Hammer",   50_000, () => null, ComingSoon: true),
         },
 
-        // ── Power Scrolls ─────────────────────────────────────────────────
+        // -- Power Scrolls -------------------------------------------------
         // Each scroll raises the Blacksmithing skill cap by its listed amount.
-        // PS 305 = cap raised from 300 → 305; buy PS 310 next for the next step, etc.
+        // PS 305 = cap raised from 300 -> 305; buy PS 310 next for the next step, etc.
         new CatalogEntry[]
         {
             new("Blacksmithing Power Scroll +5",     750, () => new PowerScroll(SkillName.Blacksmith, 305.0)),
@@ -108,17 +108,17 @@ public class SmithSealCatalogGump : Gump
         },
     };
 
-    // ── Button IDs ────────────────────────────────────────────────────────────
+    // -- Button IDs ------------------------------------------------------------
     // 0         = close / no-op
-    // 1–5       = select category (Cat enum value + 1)
-    // 100–199   = buy item at row index (100 + index)
+    // 1-5       = select category (Cat enum value + 1)
+    // 100-199   = buy item at row index (100 + index)
 
-    // ── State ─────────────────────────────────────────────────────────────────
+    // -- State -----------------------------------------------------------------
 
     private readonly PlayerMobile _pm;
     private readonly Cat          _cat;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
+    // -- Constructor -----------------------------------------------------------
 
     public SmithSealCatalogGump(PlayerMobile pm, Cat cat = Cat.Tools) : base(60, 60)
     {
@@ -129,19 +129,19 @@ public class SmithSealCatalogGump : Gump
         Disposable = true;
 
         var acct  = pm.Account as IAccount;
-        var data  = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : null;
-        var seals = data?.GetCurrency("smithing") ?? 0;
+        var guild  = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial) : null;
+        var seals = guild?.GetCurrency("smithing") ?? 0;
 
         AddBackground(0, 0, W, H, 9270);
         AddAlphaRegion(8, 8, W - 16, H - 16);
 
-        // ── Header ────────────────────────────────────────────────────────────
-        AddLabel(W / 2 - 95, 12, 1153, "Society of Smiths — Seal Catalog");
+        // -- Header ------------------------------------------------------------
+        AddLabel(W / 2 - 95, 12, 1153, "Society of Smiths - Seal Catalog");
         AddLabel(16, 12, 999, "Balance:");
         AddLabel(72, 12, 68,  $"{seals:N0} seals");
         AddImageTiled(10, 30, W - 20, 2, 9304);
 
-        // ── Category sidebar ──────────────────────────────────────────────────
+        // -- Category sidebar --------------------------------------------------
         var sy = ItemsY;
         for (var i = 0; i < CatLabels.Length; i++)
         {
@@ -153,7 +153,7 @@ public class SmithSealCatalogGump : Gump
 
         AddImageTiled(SideW, 34, 2, H - 44, 9304);
 
-        // ── Item rows ─────────────────────────────────────────────────────────
+        // -- Item rows ---------------------------------------------------------
         var entries = Catalog[(int)_cat];
 
         for (var i = 0; i < entries.Length; i++)
@@ -163,7 +163,7 @@ public class SmithSealCatalogGump : Gump
 
             if (entry.ComingSoon)
             {
-                AddLabel(BuyX,  y + 2, 0x3DE, "—");
+                AddLabel(BuyX,  y + 2, 0x3DE, "-");
                 AddLabel(NameX, y + 2, 0x3DE, entry.Name);
                 AddLabel(CostX, y + 2, 0x3DE, $"{entry.Cost:N0}  *");
             }
@@ -177,15 +177,15 @@ public class SmithSealCatalogGump : Gump
             }
         }
 
-        // ── Footer ────────────────────────────────────────────────────────────
+        // -- Footer ------------------------------------------------------------
         AddImageTiled(10, H - 34, W - 20, 2, 9304);
         if (_cat == Cat.RunicPostVal)
-            AddLabel(PanelX, H - 28, 0x3DE, "* Not yet available — reserved for future post-valorite metals.");
+            AddLabel(PanelX, H - 28, 0x3DE, "* Not yet available - reserved for future post-valorite metals.");
         AddButton(W - 54, H - 26, 4023, 4025, 0);
         AddLabel(W - 110, H - 23, 999, "Close");
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -220,11 +220,11 @@ public class SmithSealCatalogGump : Gump
             var acct = _pm.Account as IAccount;
             if (acct == null) return;
 
-            var data = ClusterFAccountPersistence.GetOrCreate(acct);
+            var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial);
 
-            if (!data.SpendCurrency("smithing", entry.Cost))
+            if (!guild.SpendCurrency("smithing", entry.Cost))
             {
-                _pm.SendMessage(0x22, $"You need {entry.Cost:N0} Smithing Seals for that (you have {data.GetCurrency("smithing"):N0}).");
+                _pm.SendMessage(0x22, $"You need {entry.Cost:N0} Smithing Seals for that (you have {guild.GetCurrency("smithing"):N0}).");
                 _pm.SendGump(new SmithSealCatalogGump(_pm, _cat));
                 return;
             }
@@ -232,7 +232,7 @@ public class SmithSealCatalogGump : Gump
             var item = entry.Create();
             if (item == null)
             {
-                data.AddCurrency("smithing", entry.Cost); // refund
+                guild.AddCurrency("smithing", entry.Cost); // refund
                 _pm.SendMessage(0x22, "That item is not yet available.");
                 _pm.SendGump(new SmithSealCatalogGump(_pm, _cat));
                 return;

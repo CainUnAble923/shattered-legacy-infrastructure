@@ -9,12 +9,12 @@ namespace Server;
 /// Gump for the Artificers' Order Guildmaster.
 ///
 /// Views:
-///   MainMenu        — topic list; shows Join or Dashboard depending on membership
-///   About           — guild identity and purpose
-///   WhatWeEnhance   — what imbuing does and what items it works on
-///   JoiningReqs     — what is required to join
-///   Rewards         — Essence Shards and rank bonuses on join
-///   MemberDashboard — standing, rank, shard balance; link to Imbuing Table
+///   MainMenu        - topic list; shows Join or Dashboard depending on membership
+///   About           - guild identity and purpose
+///   WhatWeEnhance   - what imbuing does and what items it works on
+///   JoiningReqs     - what is required to join
+///   Rewards         - Essence Shards and rank bonuses on join
+///   MemberDashboard - standing, rank, shard balance; link to Imbuing Table
 /// </summary>
 public class ArtificersGuildmasterGump : Gump
 {
@@ -48,18 +48,18 @@ public class ArtificersGuildmasterGump : Gump
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
         var acct = pm.Account as IAccount;
-        var data = acct != null
-            ? ClusterFAccountPersistence.GetOrCreate(acct)
-            : new ClusterFAccountData();
+        var guild = acct != null
+            ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial)
+            : new CharacterGuildData();
 
         switch (view)
         {
-            case View.MainMenu:        DrawMainMenu(data);        break;
+            case View.MainMenu:        DrawMainMenu(guild);        break;
             case View.About:           DrawAbout();               break;
             case View.WhatWeEnhance:   DrawWhatWeEnhance();       break;
             case View.JoiningReqs:     DrawJoiningReqs();         break;
             case View.Rewards:         DrawRewards();             break;
-            case View.MemberDashboard: DrawMemberDashboard(data); break;
+            case View.MemberDashboard: DrawMemberDashboard(guild); break;
         }
 
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
@@ -74,11 +74,11 @@ public class ArtificersGuildmasterGump : Gump
         AddLabel(W - 28, H - 26, 1153, "X");
     }
 
-    // ── Views ─────────────────────────────────────────────────────────────────
+    // -- Views -----------------------------------------------------------------
 
-    private void DrawMainMenu(ClusterFAccountData data)
+    private void DrawMainMenu(CharacterGuildData guild)
     {
-        var isMember = data.JoinedGuilds.Contains("artificers");
+        var isMember = guild.JoinedGuilds.Contains("artificers");
 
         AddLabel(18, 56, 999, "Greetings. What knowledge do you seek?");
         AddImageTiled(10, 72, W - 20, 1, 9304);
@@ -118,15 +118,15 @@ public class ArtificersGuildmasterGump : Gump
 
         var html =
             "<BASEFONT COLOR=#AAAAAA>The Artificers' Order is Britannia's foremost guild of enchanters " +
-            "and item-shapers. We preserve the ancient art of Imbuing — the practice of weaving " +
+            "and item-shapers. We preserve the ancient art of Imbuing - the practice of weaving " +
             "magical properties directly into weapons, armour, and jewellery.</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#AAAAAA>Our craft requires patience, deep knowledge of magical resonance, " +
             "and a steady hand. An unskilled practitioner can shatter a weapon's enchantment or " +
-            "worse — fuse conflicting properties into a dangerous combination.</BASEFONT><BR><BR>" +
+            "worse - fuse conflicting properties into a dangerous combination.</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#AAAAAA>The Order maintains workshops in Ter Mur's Royal City, where " +
             "the gargoyle tradition of essence-work has flourished for centuries. We welcome all " +
             "who would learn, regardless of race or origin.</BASEFONT><BR><BR>" +
-            "<BASEFONT COLOR=#888888>Guild currency: Essence Shards — gathered from disenchanting " +
+            "<BASEFONT COLOR=#888888>Guild currency: Essence Shards - gathered from disenchanting " +
             "and imbuing work, spent at the Order's shop for reagents, tools, and enhanced recipes." +
             "</BASEFONT>";
 
@@ -143,16 +143,16 @@ public class ArtificersGuildmasterGump : Gump
             "almost any equippable item. The process requires the Imbuing skill and Essence Shards." +
             "</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Weapons</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — Add damage bonuses, hit chance, swing speed, hit spells, " +
+            "<BASEFONT COLOR=#888888> - Add damage bonuses, hit chance, swing speed, hit spells, " +
             "leeches, and elemental damage modifiers.</BASEFONT><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Armour &amp; Shields</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — Boost resistances, self-repair, lower stat requirements, " +
+            "<BASEFONT COLOR=#888888> - Boost resistances, self-repair, lower stat requirements, " +
             "and general defensive attributes.</BASEFONT><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Jewellery</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — Enhance skill bonuses, attribute bonuses, and magical " +
+            "<BASEFONT COLOR=#888888> - Enhance skill bonuses, attribute bonuses, and magical " +
             "properties like lower mana cost.</BASEFONT><BR>" +
             "<BASEFONT COLOR=#CCCCCC>Clothing</BASEFONT>" +
-            "<BASEFONT COLOR=#888888> — Apply skill and attribute bonuses to robes, cloaks, " +
+            "<BASEFONT COLOR=#888888> - Apply skill and attribute bonuses to robes, cloaks, " +
             "and other worn pieces.</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#FFD700>Order members can imbue already-enchanted items and reach " +
             "property intensities beyond vanilla limits. Higher ranks unlock greater caps." +
@@ -173,7 +173,7 @@ public class ArtificersGuildmasterGump : Gump
         var html =
             "<BASEFONT COLOR=#AAAAAA>The Order asks only that you demonstrate some facility " +
             "with the craft before we share our deeper secrets. Even a novice with basic Imbuing " +
-            "knowledge is welcome — we will teach you the rest.</BASEFONT><BR><BR>" +
+            "knowledge is welcome - we will teach you the rest.</BASEFONT><BR><BR>" +
             $"<BASEFONT COLOR=#FFD700>{reqText}</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#888888>Click 'Join the Artificers' Order' on the main menu " +
             "when you are ready.</BASEFONT>";
@@ -210,13 +210,13 @@ public class ArtificersGuildmasterGump : Gump
         AddHtml(16, 78, W - 32, H - 128, html, false, true);
     }
 
-    private void DrawMemberDashboard(ClusterFAccountData data)
+    private void DrawMemberDashboard(CharacterGuildData guild)
     {
         AddLabel(18, 56, 1153, "Member Dashboard");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
-        data.GuildReputation.TryGetValue("artificers", out var standing);
-        data.GuildCurrency.TryGetValue("artificers",   out var shards);
+        guild.GuildReputation.TryGetValue("artificers", out var standing);
+        guild.GuildCurrency.TryGetValue("artificers",   out var shards);
         var rank    = GetRankName(standing);
         var maxCap  = ArtificersImbueGump.GetIntensityCap(standing);
         var maxSlots= ArtificersImbueGump.GetMaxPropertySlots(standing);
@@ -228,8 +228,8 @@ public class ArtificersGuildmasterGump : Gump
             $"<BASEFONT COLOR=#CCCCCC>Your imbuing limits:</BASEFONT><BR>" +
             $"<BASEFONT COLOR=#AAAAAA>  Max property slots: {maxSlots}</BASEFONT><BR>" +
             $"<BASEFONT COLOR=#AAAAAA>  Max intensity: {maxCap}%</BASEFONT><BR><BR>" +
-            "<BASEFONT COLOR=#888888>Apprentice (0) → Journeyman (1,000) → Artificer (5,000)</BASEFONT><BR>" +
-            "<BASEFONT COLOR=#888888>Master Artificer (15,000) → Arcane Artisan (40,000)</BASEFONT>";
+            "<BASEFONT COLOR=#888888>Apprentice (0) -> Journeyman (1,000) -> Artificer (5,000)</BASEFONT><BR>" +
+            "<BASEFONT COLOR=#888888>Master Artificer (15,000) -> Arcane Artisan (40,000)</BASEFONT>";
 
         AddHtml(16, 78, W - 32, 175, html, false, false);
 
@@ -247,7 +247,7 @@ public class ArtificersGuildmasterGump : Gump
         AddLabel(44, 340, 1154, "Cross-Guild Exchange (Pack Mule)");
     }
 
-    // ── Rank helpers ──────────────────────────────────────────────────────────
+    // -- Rank helpers ----------------------------------------------------------
 
     public static string GetRankName(int standing) => standing switch
     {
@@ -262,10 +262,10 @@ public class ArtificersGuildmasterGump : Gump
     /// Returns the minimum standing required to attempt imbuing a property
     /// based on its discovery threshold (a proxy for power level).
     ///
-    ///   Threshold  3  (GoldBase &lt;  500) → Apprentice — 0 standing
-    ///   Threshold  5  (GoldBase &lt; 1500) → Journeyman — 1,000 standing
-    ///   Threshold  8  (GoldBase &lt; 3000) → Artificer  — 5,000 standing
-    ///   Threshold 10  (GoldBase ≥ 3000 + all slayers) → Master Artificer — 15,000 standing
+    ///   Threshold  3  (GoldBase &lt;  500) -> Apprentice - 0 standing
+    ///   Threshold  5  (GoldBase &lt; 1500) -> Journeyman - 1,000 standing
+    ///   Threshold  8  (GoldBase &lt; 3000) -> Artificer  - 5,000 standing
+    ///   Threshold 10  (GoldBase >= 3000 + all slayers) -> Master Artificer - 15,000 standing
     /// </summary>
     public static int GetMinStanding(int discoveryThreshold) => discoveryThreshold switch
     {
@@ -281,7 +281,7 @@ public class ArtificersGuildmasterGump : Gump
     public static string GetRequiredRankName(int discoveryThreshold) =>
         GetRankName(GetMinStanding(discoveryThreshold));
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {

@@ -6,14 +6,14 @@ using Server.Mobiles;
 namespace Server.Items;
 
 /// <summary>
-/// Compact Dispatch Ledger — issued to every Miners' Compact member on join.
+/// Compact Dispatch Ledger - issued to every Miners' Compact member on join.
 ///
 /// Double-clicking this item opens the Guild Contract Ledger gump (work orders)
 /// without requiring proximity to the Miners' Compact Liaison NPC.
 ///
 /// The ledger effectively replaces the need to travel to Garrett Ashveil every
 /// time a miner wants to check, accept, or turn in a work order. Turn-ins still
-/// require the player to have the required materials in their backpack — only the
+/// require the player to have the required materials in their backpack - only the
 /// location restriction is lifted.
 ///
 /// Properties:
@@ -32,7 +32,7 @@ public partial class CompactDispatchLedger : Item
     public CompactDispatchLedger() : base(0xFBD) // Book graphic
     {
         Name     = "Compact Dispatch Ledger";
-        Hue      = 0x8A4;     // Earthy brown — matches liaison's attire
+        Hue      = 0x8A4;     // Earthy brown - matches liaison's attire
         Weight   = 1.0;
         LootType = LootType.Blessed;
     }
@@ -49,9 +49,9 @@ public partial class CompactDispatchLedger : Item
         }
 
         var acct = pm.Account as IAccount;
-        var data = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : null;
+        var guild = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial) : null;
 
-        if (data == null || !data.JoinedGuilds.Contains("mining"))
+        if (guild == null || !guild.JoinedGuilds.Contains("mining"))
         {
             pm.SendMessage(0x22, "This ledger is issued to members of the Miners' Compact only.");
             return;

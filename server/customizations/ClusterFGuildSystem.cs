@@ -66,14 +66,14 @@ public class GuildDef
 /// <summary>
 /// Shattered Legacy guild membership system.
 ///
-/// Each account can join multiple guilds. Membership is stored in
-/// ClusterFAccountData.JoinedGuilds (HashSet{string}); what each character has taken from a guild is
-/// per character (GuildStarterRecord, ClusterFGuildStarterPath.cs).
+/// Each character can join multiple guilds. Membership, reputation and scrip are per character
+/// (CharacterGuildData, ClusterFAccountData v15, cc-P18 F-7); so is what each character has taken from
+/// a guild (GuildStarterRecord, ClusterFGuildStarterPath.cs).
 ///
 /// Join flow (cc-P15, F-9 Decision 3):
 ///   Talk to a guildmaster -> the guild's hall page (GuildTaskDetailGump) -> [Join], free, one click,
-///   rank Initiate. The character gets the guild's tools. A second character on a member account
-///   gets "Welcome back" and its own tools.
+///   rank Initiate. The character gets the guild's tools. A second character on the same account
+///   joins on its own (cc-P18); a member asking again gets "Welcome back" and any tools it lacks.
 ///   The old skill-or-tribute join task is the Apprentice task: meeting it later pays the reputation
 ///   and scrip joining used to pay and raises the rank. Nothing is consumed to join.
 ///
@@ -293,10 +293,11 @@ public static class ClusterFGuildSystem
     public static GuildDef? GetDefForGuildmaster(Type npcType) =>
         _byNpc.TryGetValue(npcType, out var d) ? d : null;
 
-    public static bool IsJoined(IAccount acct, string key) =>
-        ClusterFAccountPersistence.GetOrCreate(acct).JoinedGuilds.Contains(key);
+    /// <summary>Whether this character is in the guild (per character since cc-P18, F-7).</summary>
+    public static bool IsJoined(Mobile m, string key) =>
+        ClusterFAccountPersistence.GetGuild(m)?.JoinedGuilds.Contains(key) == true;
 
-    /// <summary>Joining is free (F-9 Decision 3): only an account already in the guild is refused.</summary>
+    /// <summary>Joining is free (F-9 Decision 3): only a character already in the guild is refused.</summary>
     public static bool CanJoin(PlayerMobile pm, GuildDef def, out string reason)
     {
         if (pm.Account is not IAccount acct)
@@ -305,7 +306,7 @@ public static class ClusterFGuildSystem
             return false;
         }
 
-        if (IsJoined(acct, def.Key))
+        if (IsJoined(pm, def.Key))
         {
             reason = "Already a member.";
             return false;
@@ -358,9 +359,7 @@ public static class ClusterFGuildSystem
         }
     }
 
-    public static string ApprenticeFlag(string key) => "guild.apprentice." + key.ToLowerInvariant();
-
-    public static bool IsApprentice(ClusterFAccountData data, string key) => data.HasFlag(ApprenticeFlag(key));
+    public static bool IsApprentice(CharacterGuildData data, string key) => data.ApprenticeGuilds.Contains(key);
 
     /// <summary>
     /// The Apprentice task: pays the reputation and scrip joining used to pay and raises the rank.
@@ -368,13 +367,13 @@ public static class ClusterFGuildSystem
     /// </summary>
     public static bool CompleteApprenticeTask(PlayerMobile pm, GuildDef def, out string reason)
     {
-        if (pm.Account is not IAccount acct || !IsJoined(acct, def.Key))
+        if (pm.Account is null || !IsJoined(pm, def.Key))
         {
             reason = "Join the guild first.";
             return false;
         }
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
+        var data = ClusterFAccountPersistence.GetOrCreateGuild(pm);
         if (IsApprentice(data, def.Key))
         {
             reason = "Your Apprentice task is already done.";
@@ -391,7 +390,7 @@ public static class ClusterFGuildSystem
             pm.Backpack?.ConsumeTotal(def.TaskItemType, def.TaskItemCount);
         }
 
-        data.SetFlag(ApprenticeFlag(def.Key));
+        data.ApprenticeGuilds.Add(def.Key);
         data.AddReputation(def.Key, def.JoinReputation);
         data.AddCurrency(def.Key, def.JoinScrip);
 
@@ -402,14 +401,14 @@ public static class ClusterFGuildSystem
     }
 
     /// <summary>
-    /// Joins the account to the guild (free, rank Initiate) if it is not already a member, and hands
-    /// this character the guild's tools if it has not had them ("Welcome back" for a second character).
+    /// Joins this character to the guild (free, rank Initiate) if it is not already a member, and hands
+    /// it the guild's tools if it has not had them ("Welcome back" for a member asking again).
     /// </summary>
     public static void Join(PlayerMobile pm, GuildDef def)
     {
-        if (pm.Account is not IAccount acct) return;
+        if (pm.Account is null) return;
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
+        var data = ClusterFAccountPersistence.GetOrCreateGuild(pm);
         var newMember = data.JoinedGuilds.Add(def.Key);
 
         if (newMember)
@@ -524,7 +523,7 @@ public static class ClusterFGuildSystem
     /// </summary>
     public static void OpenMemberServices(PlayerMobile pm, GuildDef def, IAccount acct)
     {
-        var isMember = IsJoined(acct, def.Key);
+        var isMember = IsJoined(pm, def.Key);
 
         switch (def.Key.ToLowerInvariant())
         {
@@ -582,7 +581,7 @@ public static class ClusterFGuildSystem
     /// The rank to show: reputation's rank, raised to the ladder's second rank once the Apprentice
     /// task is done (Apprentice on the generic ladder; each custom ladder keeps its own names).
     /// </summary>
-    public static string GetRankName(string guildKey, ClusterFAccountData data)
+    public static string GetRankName(string guildKey, CharacterGuildData data)
     {
         var standing = data.GetReputation(guildKey);
         if (IsApprentice(data, guildKey))
@@ -723,8 +722,10 @@ public class GuildProgressGump : Gump
         Closable   = true;
         Disposable = true;
 
-        // No account (a test host player) reads as an account that has joined nothing.
-        var data        = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : new ClusterFAccountData();
+        // No account (a test host player) reads as a character that has joined nothing.
+        var data        = acct != null
+            ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial)
+            : new CharacterGuildData();
         var locations   = GuildLocations.All;
         var totalH      = HeaderH + RowsPerPage * RowH + FooterH;
 
@@ -826,7 +827,7 @@ public class GuildProgressGump : Gump
         if (info.ButtonID >= BtnServicesBase && info.ButtonID < BtnServicesBase + locations.Length)
         {
             var def = ClusterFGuildSystem.GetDef(locations[info.ButtonID - BtnServicesBase].GuildKey);
-            if (def != null && _acct != null && ClusterFGuildSystem.IsJoined(_acct, def.Key))
+            if (def != null && _acct != null && ClusterFGuildSystem.IsJoined(_pm, def.Key))
                 ClusterFGuildSystem.OpenMemberServices(_pm, def, _acct);
             return;
         }
@@ -834,7 +835,7 @@ public class GuildProgressGump : Gump
         if (info.ButtonID >= BtnContractsBase && info.ButtonID < BtnContractsBase + locations.Length)
         {
             var def = ClusterFGuildSystem.GetDef(locations[info.ButtonID - BtnContractsBase].GuildKey);
-            if (def != null && _acct != null && ClusterFGuildSystem.IsJoined(_acct, def.Key))
+            if (def != null && _acct != null && ClusterFGuildSystem.IsJoined(_pm, def.Key))
                 _pm.SendGump(new GuildContractLedgerGump(_pm, def.Key));
         }
     }
@@ -879,7 +880,7 @@ public class GuildTaskDetailGump : Gump
         Closable   = true;
         Disposable = true;
 
-        var data      = ClusterFAccountPersistence.GetOrCreate(acct);
+        var data      = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
         var isMember  = data.JoinedGuilds.Contains(def.Key);
         var hasTools  = ClusterFGuildStarter.HasTools(pm, def.Key);
         var atMaster  = _guildmaster != null;
@@ -1002,7 +1003,7 @@ public class GuildTaskDetailGump : Gump
                 break;
 
             case BtnTools:
-                if (atMaster && ClusterFGuildSystem.IsJoined(_acct, _def.Key))
+                if (atMaster && ClusterFGuildSystem.IsJoined(_pm, _def.Key))
                     ClusterFGuildSystem.Join(_pm, _def); // a member: "Welcome back" and this character's tools
                 break;
 
@@ -1017,7 +1018,7 @@ public class GuildTaskDetailGump : Gump
                 break;
 
             case BtnServices:
-                if (ClusterFGuildSystem.IsJoined(_acct, _def.Key))
+                if (ClusterFGuildSystem.IsJoined(_pm, _def.Key))
                     ClusterFGuildSystem.OpenMemberServices(_pm, _def, _acct);
                 return;
 
@@ -1043,7 +1044,7 @@ public static class ClusterFGuildAdminCommands
     }
 
     [Usage("ResetGuild <key|all>")]
-    [Description("Resets guild membership, reputation, and currency. " +
+    [Description("Resets this character's guild membership, reputation, and currency. " +
                  "Use a guild key (e.g. 'smithing') or 'all' to reset every guild. " +
                  "Targets yourself; use [Admin to target another player first.")]
     private static void ResetGuild_OnCommand(CommandEventArgs e)
@@ -1052,7 +1053,7 @@ public static class ClusterFGuildAdminCommands
             return;
 
         var key  = e.Length > 0 ? e.GetString(0).Trim() : "all";
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
+        var data = ClusterFAccountPersistence.GetOrCreateGuild(pm);
 
         if (key.Equals("all", StringComparison.OrdinalIgnoreCase))
         {
@@ -1079,13 +1080,13 @@ public static class ClusterFGuildAdminCommands
         }
     }
 
-    private static void DoReset(PlayerMobile pm, ClusterFAccountData data, string key)
+    private static void DoReset(PlayerMobile pm, CharacterGuildData data, string key)
     {
         data.JoinedGuilds.Remove(key);
         data.GuildReputation.Remove(key);
         data.GuildCurrency.Remove(key);
-        data.ClearFlag(ClusterFGuildSystem.ApprenticeFlag(key));
-        data.GetGuildStarter(pm.Serial)?.ToolsTaken.Remove(key);
+        data.ApprenticeGuilds.Remove(key);
+        ClusterFAccountPersistence.GetGuildStarter(pm)?.ToolsTaken.Remove(key);
 
         // Guild-specific data cleanup
         if (key.Equals("smithing", StringComparison.OrdinalIgnoreCase))

@@ -10,20 +10,20 @@ using Server.Network;
 
 namespace Server;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SmithGuildBook — Phase 4C-iii
+// -----------------------------------------------------------------------------
+// SmithGuildBook - Phase 4C-iii
 //
 // Portable guild interface issued to every Smith member on join.
-// Blessed — survives death.
+// Blessed - survives death.
 //
 // Functions:
-//   • Stores SmallSmithBODs and LargeSmithBODs (drag in to file, drag out
+//   * Stores SmallSmithBODs and LargeSmithBODs (drag in to file, drag out
 //     to remove).
-//   • Gump shows all active BODs (book + backpack) with one-click turn-in.
-//   • Commission tab: request new commissions, turn in / abandon — no
+//   * Gump shows all active BODs (book + backpack) with one-click turn-in.
+//   * Commission tab: request new commissions, turn in / abandon - no
 //     Guildmaster visit required.
-//   • Seal balance visible at all times in the header.
-// ─────────────────────────────────────────────────────────────────────────────
+//   * Seal balance visible at all times in the header.
+// -----------------------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class SmithGuildBook : Container
@@ -42,7 +42,7 @@ public partial class SmithGuildBook : Container
 
     public SmithGuildBook(Serial serial) : base(serial) { }
 
-    // ── Post-load fixup ───────────────────────────────────────────────────────
+    // -- Post-load fixup -------------------------------------------------------
 
     /// <summary>Ensure ItemID/Hue are correct on existing instances after a save/load.</summary>
     [AfterDeserialization]
@@ -52,7 +52,7 @@ public partial class SmithGuildBook : Container
         if (Hue    != BookHue)   Hue    = BookHue;
     }
 
-    // ── Container overrides ───────────────────────────────────────────────────
+    // -- Container overrides ---------------------------------------------------
 
     /// <summary>
     /// When the client drops an item directly ON the book icon,
@@ -88,7 +88,7 @@ public partial class SmithGuildBook : Container
             return;
         }
 
-        if (pm.Account is not IAccount acct || !ClusterFGuildSystem.IsJoined(acct, "smithing"))
+        if (pm.Account is not IAccount acct || !ClusterFGuildSystem.IsJoined(pm, "smithing"))
         {
             pm.SendMessage(0x22, "This book is for members of the Society of Smiths.");
             return;
@@ -97,7 +97,7 @@ public partial class SmithGuildBook : Container
         pm.SendGump(new SmithGuildBookGump(pm, this));
     }
 
-    // ── Join bonus ────────────────────────────────────────────────────────────
+    // -- Join bonus ------------------------------------------------------------
 
     /// <summary>
     /// Called when a player joins the Society of Smiths.
@@ -117,7 +117,7 @@ public partial class SmithGuildBook : Container
     }
 }
 
-// ── Gump ──────────────────────────────────────────────────────────────────────
+// -- Gump ----------------------------------------------------------------------
 
 public class SmithGuildBookGump : Gump
 {
@@ -132,16 +132,16 @@ public class SmithGuildBookGump : Gump
 
     // Small commission actions
     private const int BtnReqComm        = 3;
-    private const int BtnTurnInCommBase  = 20; // 20–22 (small comms)
-    private const int BtnAbandonCommBase = 30; // 30–32
+    private const int BtnTurnInCommBase  = 20; // 20-22 (small comms)
+    private const int BtnAbandonCommBase = 30; // 30-32
 
     // Large commission actions
     private const int BtnReqLargeComm          = 6;
-    private const int BtnTurnInLargePieceBase   = 40; // 40–44 (up to 5 pieces)
+    private const int BtnTurnInLargePieceBase   = 40; // 40-44 (up to 5 pieces)
     private const int BtnAbandonLargeComm       = 50;
 
     // BOD turn-in (unchanged)
-    private const int BtnTurnInBODBase = 10; // 10–17 (up to 8 BODs)
+    private const int BtnTurnInBODBase = 10; // 10-17 (up to 8 BODs)
 
     private const int W = 500;
     private const int H = 620;
@@ -166,12 +166,12 @@ public class SmithGuildBookGump : Gump
 
         if (pm.Account is not IAccount acct) return;
 
-        var data          = ClusterFAccountPersistence.GetOrCreate(acct);
-        var seals         = data.GetCurrency("smithing");
-        var standing      = data.GetReputation("smithing");
+        var guild          = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        var seals         = guild.GetCurrency("smithing");
+        var standing      = guild.GetReputation("smithing");
         var rank          = ClusterFGuildSystem.GetRankName("smithing", standing);
-        var commissions   = data.SmithCommissions;
-        var largeComms    = data.SmithLargeCommissions;
+        var commissions   = guild.SmithCommissions;
+        var largeComms    = guild.SmithLargeCommissions;
 
         // Collect all smith BODs: book storage + loose in backpack
         var bods = new List<Item>();
@@ -189,7 +189,7 @@ public class SmithGuildBookGump : Gump
         AddBackground(0, 0, W, H, 9270);
         AddAlphaRegion(8, 8, W - 16, H - 16);
 
-        // ── Header ────────────────────────────────────────────────────────────
+        // -- Header ------------------------------------------------------------
         AddLabel(W / 2 - 80, 14, 1153, "Smithing Guild Book");
         AddImageTiled(10, 34, W - 20, 2, 9304);
 
@@ -199,7 +199,7 @@ public class SmithGuildBookGump : Gump
         AddLabel(330, 44, 68,   $"{seals:N0}");
         AddImageTiled(10, 62, W - 20, 2, 9304);
 
-        // ── Tab buttons ───────────────────────────────────────────────────────
+        // -- Tab buttons -------------------------------------------------------
         var bodHue  = _page == 0 ? 1154 : 999;
         var commHue = _page == 1 ? 1154 : 999;
 
@@ -209,7 +209,7 @@ public class SmithGuildBookGump : Gump
         AddButton(196, 70, 4005, 4007, BtnNavComms, GumpButtonType.Reply, 0);
         AddLabel(232, 72, commHue, $"Commissions ({commissions.Count}s/{largeComms.Count}L)");
 
-        // ClusterF: Seal Catalog shortcut — anchored to right edge
+        // ClusterF: Seal Catalog shortcut - anchored to right edge
         AddButton(W - 126, 70, 4005, 4007, BtnCatalog, GumpButtonType.Reply, 0);
         AddLabel(W - 90, 72, 999, "Seal Catalog");
 
@@ -220,10 +220,10 @@ public class SmithGuildBookGump : Gump
         if (_page == 0)
             BuildBODPage(bods, ref y);
         else
-            BuildCommPage(pm, commissions, largeComms, data, ref y);
+            BuildCommPage(pm, commissions, largeComms, guild, ref y);
     }
 
-    // ── BOD page ──────────────────────────────────────────────────────────────
+    // -- BOD page --------------------------------------------------------------
 
     private void BuildBODPage(List<Item> bods, ref int y)
     {
@@ -243,7 +243,7 @@ public class SmithGuildBookGump : Gump
 
                 if (bod is SmallSmithBOD small)
                 {
-                    // ── Small BOD — single line ───────────────────────────────
+                    // -- Small BOD - single line -------------------------------
                     var mat   = BodMatName(small.Material);
                     var exc   = small.RequireExceptional ? "Exceptional " : "";
                     var item  = TypeNameToWords(small.Type?.Name ?? "Item");
@@ -263,7 +263,7 @@ public class SmithGuildBookGump : Gump
                 }
                 else if (bod is LargeSmithBOD large)
                 {
-                    // ── Large BOD — header + per-entry expansion ──────────────
+                    // -- Large BOD - header + per-entry expansion --------------
                     var mat        = BodMatName(large.Material);
                     var exc        = large.RequireExceptional ? "Exceptional " : "";
                     var pieceDone  = 0;
@@ -294,7 +294,7 @@ public class SmithGuildBookGump : Gump
                         {
                             var entryDone   = pe.Amount >= large.AmountMax;
                             var entryHue    = entryDone ? 0x44 : (pe.Amount > 0 ? 68 : 999);
-                            var marker      = entryDone ? "[✓]" : "[ ]";
+                            var marker      = entryDone ? "[x]" : "[ ]";
                             var entryName   = TypeNameToWords(pe.Details.Type?.Name ?? "Item");
                             var amtLabel    = $"{pe.Amount}/{large.AmountMax}";
 
@@ -328,19 +328,19 @@ public class SmithGuildBookGump : Gump
         AddLabel(54, y + 2, 999, "Request Large Bulk Order  (requires Journeyman rank)");
     }
 
-    // ── Commission page ───────────────────────────────────────────────────────
+    // -- Commission page -------------------------------------------------------
 
     private void BuildCommPage(PlayerMobile pm, List<SmithCommissionEntry> commissions,
-        List<SmithLargeCommissionEntry> largeComms, ClusterFAccountData data, ref int y)
+        List<SmithLargeCommissionEntry> largeComms, CharacterGuildData guild, ref int y)
     {
-        // ── Pre-scan backpack for small commission matches ─────────────────────
+        // -- Pre-scan backpack for small commission matches ---------------------
         var backpackMatch = new Dictionary<string, bool>();
         if (pm.Backpack != null)
             foreach (var c in commissions)
                 foreach (var item in pm.Backpack.Items)
                     if (SmithCommissionSystem.IsMatch(c, item)) { backpackMatch[c.Id] = true; break; }
 
-        // ── Small commissions ──────────────────────────────────────────────────
+        // -- Small commissions --------------------------------------------------
         AddLabel(18, y, 999, $"Small Commissions ({commissions.Count}/{SmithCommissionSystem.MaxActiveSmallCommissions}):");
         y += 20;
 
@@ -387,7 +387,7 @@ public class SmithGuildBookGump : Gump
             y += 6;
         }
 
-        // ── Large commission ───────────────────────────────────────────────────
+        // -- Large commission ---------------------------------------------------
         AddImageTiled(10, y, W - 20, 2, 9304);
         y += 10;
         AddLabel(18, y, 999, $"Large Commission ({largeComms.Count}/{SmithCommissionSystem.MaxActiveLargeCommissions}):");
@@ -418,7 +418,7 @@ public class SmithGuildBookGump : Gump
                 }
 
             // Header
-            AddLabel(18, y, 1153, $"{lc.RequesterName}  —  {lc.FullLabel}");
+            AddLabel(18, y, 1153, $"{lc.RequesterName}  -  {lc.FullLabel}");
             AddButton(W - 90, y - 2, 4005, 4007, BtnAbandonLargeComm, GumpButtonType.Reply, 0);
             AddLabel(W - 54, y, 33, "Abandon");
             y += 20;
@@ -433,7 +433,7 @@ public class SmithGuildBookGump : Gump
                 var key       = _largePieceKeys[pi];
                 var fulfilled = lc.FulfilledPieces.Contains(key);
                 var label     = SmithCommissionPool.GetItemLabel(key);
-                var marker    = fulfilled ? "[✓]" : "[ ]";
+                var marker    = fulfilled ? "[x]" : "[ ]";
                 var hue       = fulfilled ? 0x3DE : 999;
 
                 AddLabel(24, y, hue, $"{marker} {label}");
@@ -450,11 +450,11 @@ public class SmithGuildBookGump : Gump
             var done  = lc.FulfilledPieces.Count;
             var total = _largePieceKeys.Length;
             AddLabel(18, y, 999,
-                $"Progress: {done}/{total}  —  Reward: {lc.SealReward} Seals, +{lc.StandingReward} standing");
+                $"Progress: {done}/{total}  -  Reward: {lc.SealReward} Seals, +{lc.StandingReward} standing");
             y += 22;
         }
 
-        // ── Request buttons ────────────────────────────────────────────────────
+        // -- Request buttons ----------------------------------------------------
         AddImageTiled(10, y, W - 20, 2, 9304);
         y += 10;
 
@@ -464,7 +464,7 @@ public class SmithGuildBookGump : Gump
             AddLabel(54, y + 2, 999, "Request Small Commission");
         }
         else
-            AddLabel(18, y, 37, "Small slots full — complete or abandon one first.");
+            AddLabel(18, y, 37, "Small slots full - complete or abandon one first.");
 
         y += 26;
 
@@ -474,16 +474,16 @@ public class SmithGuildBookGump : Gump
             AddLabel(54, y + 2, 999, "Request Large Commission  (full armor set)");
         }
         else
-            AddLabel(18, y, 37, "Large slot full — complete or abandon to request another.");
+            AddLabel(18, y, 37, "Large slot full - complete or abandon to request another.");
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
         if (sender.Mobile is not PlayerMobile pm) return;
         if (pm.Account is not IAccount acct) return;
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
 
         switch (info.ButtonID)
         {
@@ -508,15 +508,15 @@ public class SmithGuildBookGump : Gump
                 return;
 
             case BtnReqComm:
-                HandleReqComm(pm, data);
+                HandleReqComm(pm, guild);
                 return;
 
             case BtnReqLargeComm:
-                HandleReqLargeComm(pm, data);
+                HandleReqLargeComm(pm, guild);
                 return;
 
             case BtnAbandonLargeComm:
-                HandleAbandonLargeComm(pm, data);
+                HandleAbandonLargeComm(pm, guild);
                 return;
         }
 
@@ -532,7 +532,7 @@ public class SmithGuildBookGump : Gump
         var commIdx = info.ButtonID - BtnTurnInCommBase;
         if (commIdx is >= 0 and <= 2 && commIdx < _commIds.Count)
         {
-            HandleTurnInComm(pm, data, _commIds[commIdx]);
+            HandleTurnInComm(pm, guild, _commIds[commIdx]);
             return;
         }
 
@@ -540,21 +540,21 @@ public class SmithGuildBookGump : Gump
         var abandonIdx = info.ButtonID - BtnAbandonCommBase;
         if (abandonIdx is >= 0 and <= 2 && abandonIdx < _commIds.Count)
         {
-            HandleAbandonComm(pm, data, _commIds[abandonIdx]);
+            HandleAbandonComm(pm, guild, _commIds[abandonIdx]);
             return;
         }
 
         // Large commission piece turn-in
         var pieceIdx = info.ButtonID - BtnTurnInLargePieceBase;
         if (pieceIdx >= 0 && pieceIdx < _largePieceKeys.Length)
-            HandleLargePieceTurnIn(pm, data, pieceIdx);
+            HandleLargePieceTurnIn(pm, guild, pieceIdx);
     }
 
-    // ── Handlers ──────────────────────────────────────────────────────────────
+    // -- Handlers --------------------------------------------------------------
 
-    private void HandleReqComm(PlayerMobile pm, ClusterFAccountData data)
+    private void HandleReqComm(PlayerMobile pm, CharacterGuildData guild)
     {
-        if (data.SmithCommissions.Count >= SmithCommissionSystem.MaxActiveCommissions)
+        if (guild.SmithCommissions.Count >= SmithCommissionSystem.MaxActiveCommissions)
         {
             pm.SendMessage(0x22, "You already have the maximum active commissions.");
         }
@@ -580,9 +580,9 @@ public class SmithGuildBookGump : Gump
         pm.SendGump(new SmithGuildBookGump(pm, _book, 0));
     }
 
-    private void HandleTurnInComm(PlayerMobile pm, ClusterFAccountData data, string commId)
+    private void HandleTurnInComm(PlayerMobile pm, CharacterGuildData guild, string commId)
     {
-        var c = data.SmithCommissions.Find(x => x.Id == commId);
+        var c = guild.SmithCommissions.Find(x => x.Id == commId);
         if (c == null)
         {
             pm.SendMessage(0x22, "That commission no longer exists.");
@@ -603,12 +603,12 @@ public class SmithGuildBookGump : Gump
         pm.SendGump(new SmithGuildBookGump(pm, _book, 1));
     }
 
-    private void HandleAbandonComm(PlayerMobile pm, ClusterFAccountData data, string commId)
+    private void HandleAbandonComm(PlayerMobile pm, CharacterGuildData guild, string commId)
     {
-        var c = data.SmithCommissions.Find(x => x.Id == commId);
+        var c = guild.SmithCommissions.Find(x => x.Id == commId);
         if (c != null)
         {
-            data.SmithCommissions.Remove(c);
+            guild.SmithCommissions.Remove(c);
             pm.SendMessage(0x59, $"Commission from {c.RequesterName} abandoned. Slot is now open.");
         }
         pm.SendGump(new SmithGuildBookGump(pm, _book, 1));
@@ -622,7 +622,7 @@ public class SmithGuildBookGump : Gump
             pm.AddToBackpack(bod);
             var desc = bod switch
             {
-                SmallSmithBOD s => $"New order: {s.AmountMax}× {(s.RequireExceptional ? "exceptional " : "")}{s.Type?.Name ?? "item"}",
+                SmallSmithBOD s => $"New order: {s.AmountMax}x {(s.RequireExceptional ? "exceptional " : "")}{s.Type?.Name ?? "item"}",
                 LargeSmithBOD _ => "New large order received.",
                 _               => "New order received.",
             };
@@ -642,7 +642,7 @@ public class SmithGuildBookGump : Gump
         pm.SendGump(new SmithGuildBookGump(pm, _book, 0));
     }
 
-    private void HandleReqLargeComm(PlayerMobile pm, ClusterFAccountData data)
+    private void HandleReqLargeComm(PlayerMobile pm, CharacterGuildData guild)
     {
         var entry = SmithCommissionSystem.GenerateLarge(pm);
         pm.SendMessage(entry != null ? 0x44 : 0x22,
@@ -652,18 +652,18 @@ public class SmithGuildBookGump : Gump
         pm.SendGump(new SmithGuildBookGump(pm, _book, 1));
     }
 
-    private void HandleAbandonLargeComm(PlayerMobile pm, ClusterFAccountData data)
+    private void HandleAbandonLargeComm(PlayerMobile pm, CharacterGuildData guild)
     {
-        var c = data.SmithLargeCommissions.Count > 0 ? data.SmithLargeCommissions[0] : null;
+        var c = guild.SmithLargeCommissions.Count > 0 ? guild.SmithLargeCommissions[0] : null;
         if (c != null)
         {
-            data.SmithLargeCommissions.Remove(c);
+            guild.SmithLargeCommissions.Remove(c);
             pm.SendMessage(0x59, $"Large commission from {c.RequesterName} abandoned.");
         }
         pm.SendGump(new SmithGuildBookGump(pm, _book, 1));
     }
 
-    private void HandleLargePieceTurnIn(PlayerMobile pm, ClusterFAccountData data, int pieceIdx)
+    private void HandleLargePieceTurnIn(PlayerMobile pm, CharacterGuildData guild, int pieceIdx)
     {
         if (string.IsNullOrEmpty(_largeCommId) || pieceIdx >= _largePieceKeys.Length)
         {
@@ -671,7 +671,7 @@ public class SmithGuildBookGump : Gump
             return;
         }
 
-        var c = data.SmithLargeCommissions.Find(x => x.Id == _largeCommId);
+        var c = guild.SmithLargeCommissions.Find(x => x.Id == _largeCommId);
         if (c == null)
         {
             pm.SendMessage(0x22, "That commission no longer exists.");
@@ -699,11 +699,11 @@ public class SmithGuildBookGump : Gump
         pm.SendGump(new SmithGuildBookGump(pm, _book, 1));
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     /// <summary>
     /// Converts a PascalCase type name to spaced words.
-    /// "PlateChest" → "Plate Chest", "VikingSword" → "Viking Sword".
+    /// "PlateChest" -> "Plate Chest", "VikingSword" -> "Viking Sword".
     /// </summary>
     private static string TypeNameToWords(string name) =>
         Regex.Replace(name, "(?<=[a-z])(?=[A-Z])", " ");

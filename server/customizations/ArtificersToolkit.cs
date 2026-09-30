@@ -6,14 +6,14 @@ using Server.Mobiles;
 namespace Server.Items;
 
 /// <summary>
-/// Shattered Legacy — Artificers' Toolkit.
+/// Shattered Legacy - Artificers' Toolkit.
 ///
 /// A portable tool issued to Artificers' Order members on joining.
 /// Double-clicking opens the full Imbuing Table gump (imbue, disenchant,
 /// craft essence) without needing to visit the Guildmaster NPC.
 ///
 /// Requires active Artificers' Order membership to use.
-/// Blessed — not dropped on death.
+/// Blessed - not dropped on death.
 /// </summary>
 [SerializationGenerator(0, false)]
 public partial class ArtificersToolkit : Item
@@ -47,8 +47,8 @@ public partial class ArtificersToolkit : Item
             return;
         }
 
-        var data     = ClusterFAccountPersistence.GetOrCreate(acct);
-        var isMember = data.JoinedGuilds.Contains("artificers");
+        var guild     = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        var isMember = guild.JoinedGuilds.Contains("artificers");
 
         if (!isMember)
         {

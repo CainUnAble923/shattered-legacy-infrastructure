@@ -9,38 +9,38 @@ using Server.Targeting;
 
 namespace Server.Items;
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // OutridersCrook / JourneymansCrook / WardensCrook
 //
 // Three-tier Shepherd's Crook for the Rangers' League (Outriders).
 //
-// T1 — Outrider's Crook (issued on guild join):
-//   • +5 Animal Taming, +5 Peacemaking (passive while in backpack)
-//   • Instant Bond: once per 48 h
-//   • Deliver Pet: use on a following pet to send it for a taming work order
-//   • Shrink Pet:  use on a bonded, following pet → ceramic figurine in backpack
+// T1 - Outrider's Crook (issued on guild join):
+//   * +5 Animal Taming, +5 Peacemaking (passive while in backpack)
+//   * Instant Bond: once per 48 h
+//   * Deliver Pet: use on a following pet to send it for a taming work order
+//   * Shrink Pet:  use on a bonded, following pet -> ceramic figurine in backpack
 //
-// T2 — Journeyman's Crook:
-//   • +10 Animal Taming, +10 Peacemaking
-//   • Instant Bond: once per 36 h
-//   • All T1 abilities
-//   • Peaceful Approach: activates a 60-second buff that bypasses the
+// T2 - Journeyman's Crook:
+//   * +10 Animal Taming, +10 Peacemaking
+//   * Instant Bond: once per 36 h
+//   * All T1 abilities
+//   * Peaceful Approach: activates a 60-second buff that bypasses the
 //     "must subdue before taming" HP check for one taming attempt
 //
-// T3 — Warden's Crook:
-//   • +15 Animal Taming, +10 Animal Lore, +15 Peacemaking
-//   • Instant Bond: once per 24 h
-//   • All T2 abilities
-//   • Peaceful Taming (passive): subdue requirement permanently bypassed
+// T3 - Warden's Crook:
+//   * +15 Animal Taming, +10 Animal Lore, +15 Peacemaking
+//   * Instant Bond: once per 24 h
+//   * All T2 abilities
+//   * Peaceful Taming (passive): subdue requirement permanently bypassed
 //     while this crook is anywhere in the player's possession
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-// ── T1 ────────────────────────────────────────────────────────────────────────
+// -- T1 ------------------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class OutridersCrook : Item
 {
-    // ── Tier-overridable stats ────────────────────────────────────────────────
+    // -- Tier-overridable stats ------------------------------------------------
 
     protected virtual double TamingBonus      => 5.0;
     protected virtual double PeacemakingBonus => 5.0;
@@ -49,9 +49,9 @@ public partial class OutridersCrook : Item
     protected virtual bool HasPeacefulApproach => false;
     protected virtual bool HasPeacefulTaming   => false;
 
-    // ── Bond cooldown tracking ────────────────────────────────────────────────
+    // -- Bond cooldown tracking ------------------------------------------------
 
-    private DateTime _lastBondUse;      // not serialized — resets on restart (24-48h loss acceptable)
+    private DateTime _lastBondUse;      // not serialized - resets on restart (24-48h loss acceptable)
 
     public bool CanInstantBond => Core.Now >= _lastBondUse + BondCooldown;
 
@@ -59,7 +59,7 @@ public partial class OutridersCrook : Item
         CanInstantBond ? TimeSpan.Zero
                        : (_lastBondUse + BondCooldown) - Core.Now;
 
-    // ── Skill mod management ──────────────────────────────────────────────────
+    // -- Skill mod management --------------------------------------------------
 
     // Non-serialised: always re-applied by ClusterFRangersSystem on WorldLoad
     private bool _modsApplied;
@@ -95,7 +95,7 @@ public partial class OutridersCrook : Item
         _modsApplied = false;
     }
 
-    // ── Container lifecycle ───────────────────────────────────────────────────
+    // -- Container lifecycle ---------------------------------------------------
 
     public override void OnAdded(IEntity parent)
     {
@@ -107,14 +107,14 @@ public partial class OutridersCrook : Item
     {
         base.OnRemoved(parent);
 
-        // parent is the OLD container — find the player who owned it
+        // parent is the OLD container - find the player who owned it
         if (parent is Container c && c.RootParent is PlayerMobile pm)
             RemoveModsFrom(pm);
         else if (parent is PlayerMobile pm2)
             RemoveModsFrom(pm2);
     }
 
-    // ── Construction / serialization ─────────────────────────────────────────
+    // -- Construction / serialization -----------------------------------------
 
     [Constructible]
     public OutridersCrook() : base(0xE81)
@@ -128,7 +128,7 @@ public partial class OutridersCrook : Item
 
     private void Deserialize(IGenericReader reader, int version) { }
 
-    // ── Double-click: open action gump ────────────────────────────────────────
+    // -- Double-click: open action gump ----------------------------------------
 
     public override void OnDoubleClick(Mobile from)
     {
@@ -141,7 +141,7 @@ public partial class OutridersCrook : Item
         pm.SendGump(new CrookActionsGump(this, pm));
     }
 
-    // ── Deliver pet for work order ────────────────────────────────────────────
+    // -- Deliver pet for work order --------------------------------------------
 
     public void BeginDeliver(PlayerMobile pm)
     {
@@ -173,14 +173,14 @@ public partial class OutridersCrook : Item
 
             var acct = _pm.Account as IAccount;
             if (acct == null) return;
-            var data = ClusterFAccountPersistence.GetOrCreate(acct);
+            var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial);
 
             var typeName = pet.GetType().Name;
             WorkOrderEntry? matchEntry = null;
             WorkOrderDef?   matchDef   = null;
             string?         matchKey   = null;
 
-            foreach (var entry in data.ActiveWorkOrders)
+            foreach (var entry in guild.ActiveWorkOrders)
             {
                 var def = ClusterFWorkOrderSystem.Get(entry.DefKey);
                 if (def == null || def.Type != WorkOrderType.TamingContract) continue;
@@ -234,7 +234,7 @@ public partial class OutridersCrook : Item
         }
     }
 
-    // ── Shrink pet ────────────────────────────────────────────────────────────
+    // -- Shrink pet ------------------------------------------------------------
 
     public void BeginShrink(PlayerMobile pm)
     {
@@ -272,7 +272,7 @@ public partial class OutridersCrook : Item
         }
     }
 
-    // ── Instant Bond ─────────────────────────────────────────────────────────
+    // -- Instant Bond ---------------------------------------------------------
 
     public void BeginInstantBond(PlayerMobile pm)
     {
@@ -324,12 +324,12 @@ public partial class OutridersCrook : Item
             pet.BondingBegin    = DateTime.MinValue;
             _crook._lastBondUse = Core.Now;
 
-            _pm.SendMessage(0x44, $"Your crook pulses with warm light — {pet.Name} bonds to you instantly.");
+            _pm.SendMessage(0x44, $"Your crook pulses with warm light - {pet.Name} bonds to you instantly.");
             Effects.PlaySound(_pm.Location, _pm.Map, 0x1F5);
         }
     }
 
-    // ── Peaceful Approach ─────────────────────────────────────────────────────
+    // -- Peaceful Approach -----------------------------------------------------
 
     public void BeginPeacefulApproach(PlayerMobile pm)
     {
@@ -362,7 +362,7 @@ public partial class OutridersCrook : Item
         }
     }
 
-    // ── Action gump ───────────────────────────────────────────────────────────
+    // -- Action gump -----------------------------------------------------------
 
     private class CrookActionsGump : Gump
     {
@@ -379,7 +379,7 @@ public partial class OutridersCrook : Item
             Closable   = true;
             Disposable = true;
 
-            // ── Background ────────────────────────────────────────────────────
+            // -- Background ----------------------------------------------------
             AddBackground(0, 0, W, 220, 9270);
             AddAlphaRegion(6, 6, W - 12, 208);
 
@@ -388,7 +388,7 @@ public partial class OutridersCrook : Item
 
             var y = 36;
 
-            // ── Deliver Pet ───────────────────────────────────────────────────
+            // -- Deliver Pet ---------------------------------------------------
             AddButton(14, y, 4011, 4012, 1);
             AddLabel(40, y + 2, 999, "Deliver Pet for Contract");
             AddLabel(14, y + 18, 0x966, "  Tame any creature, have it follow you, then target it.");
@@ -396,7 +396,7 @@ public partial class OutridersCrook : Item
             AddImageTiled(10, y, W - 20, 1, 9304);
             y += 6;
 
-            // ── Shrink Pet ────────────────────────────────────────────────────
+            // -- Shrink Pet ----------------------------------------------------
             AddButton(14, y, 4011, 4012, 2);
             AddLabel(40, y + 2, 999, "Shrink Pet into Figurine");
             AddLabel(14, y + 18, 0x966, "  Must be bonded and following. Stores in backpack.");
@@ -404,7 +404,7 @@ public partial class OutridersCrook : Item
             AddImageTiled(10, y, W - 20, 1, 9304);
             y += 6;
 
-            // ── Instant Bond ──────────────────────────────────────────────────
+            // -- Instant Bond --------------------------------------------------
             if (crook.CanInstantBond)
             {
                 AddButton(14, y, 4011, 4012, 3);
@@ -414,12 +414,12 @@ public partial class OutridersCrook : Item
             else
             {
                 var rem = crook.BondTimeRemaining;
-                AddLabel(14, y + 2,  0x96D, $"Instant Bond — Ready in {(int)rem.TotalHours}h {rem.Minutes:D2}m");
+                AddLabel(14, y + 2,  0x96D, $"Instant Bond - Ready in {(int)rem.TotalHours}h {rem.Minutes:D2}m");
                 AddLabel(14, y + 18, 0x966, "  Bond cooldown not yet expired.");
             }
             y += 44;
 
-            // ── Peaceful Approach (T2+) ───────────────────────────────────────
+            // -- Peaceful Approach (T2+) ---------------------------------------
             if (crook.HasPeacefulApproach)
             {
                 AddImageTiled(10, y, W - 20, 1, 9304);
@@ -433,7 +433,7 @@ public partial class OutridersCrook : Item
             {
                 AddImageTiled(10, y, W - 20, 1, 9304);
                 y += 6;
-                AddLabel(14, y + 2, 0x44, "Peaceful Taming (passive — always active)");
+                AddLabel(14, y + 2, 0x44, "Peaceful Taming (passive - always active)");
                 y += 24;
             }
         }
@@ -452,7 +452,7 @@ public partial class OutridersCrook : Item
         }
     }
 
-    // ── Properties display ────────────────────────────────────────────────────
+    // -- Properties display ----------------------------------------------------
 
     public override void GetProperties(IPropertyList list)
     {
@@ -476,7 +476,7 @@ public partial class OutridersCrook : Item
     }
 }
 
-// ── T2 ────────────────────────────────────────────────────────────────────────
+// -- T2 ------------------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class JourneymansCrook : OutridersCrook
@@ -496,7 +496,7 @@ public partial class JourneymansCrook : OutridersCrook
     private void Deserialize(IGenericReader reader, int version) { }
 }
 
-// ── T3 ────────────────────────────────────────────────────────────────────────
+// -- T3 ------------------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class WardensCrook : JourneymansCrook

@@ -8,7 +8,7 @@ using Server.Targeting;
 namespace Server;
 
 /// <summary>
-/// Shattered Legacy — Miners' Compact admin and testing commands.
+/// Shattered Legacy - Miners' Compact admin and testing commands.
 ///
 /// Commands (all require GameMaster+):
 ///   [CompactStanding [amount]        -- inspect or set mining standing on targeted player
@@ -43,7 +43,7 @@ public static class ClusterFCompactAdminTools
         CommandSystem.Register("TestingZeroSkills",            AccessLevel.GameMaster, TestingZeroSkills_OnCommand);
     }
 
-    // ── [CompactStanding ──────────────────────────────────────────────────────
+    // -- [CompactStanding ------------------------------------------------------
 
     [Usage("[CompactStanding [amount]")]
     [Description("Inspect or set Compact Standing (mining GuildReputation) on a targeted player.")]
@@ -58,22 +58,23 @@ public static class ClusterFCompactAdminTools
             if (targeted is not PlayerMobile pm) { from.SendMessage("Target a player."); return; }
             if (pm.Account is not IAccount acct) return;
             var data = ClusterFAccountPersistence.GetOrCreate(acct);
+            var guild = data.GetOrCreateGuildData(pm.Serial);
 
             if (setAmount.HasValue)
             {
-                data.GuildReputation["mining"] = setAmount.Value;
+                guild.GuildReputation["mining"] = setAmount.Value;
                 from.SendMessage($"Set {pm.Name}'s Compact Standing to {setAmount.Value:N0}.");
             }
             else
             {
-                data.GuildReputation.TryGetValue("mining", out var standing);
+                guild.GuildReputation.TryGetValue("mining", out var standing);
                 var rank     = MinersCompactLiaisonGump.GetRankName(standing);
                 from.SendMessage($"{pm.Name}: Compact Standing={standing:N0}, Rank={rank}");
             }
         });
     }
 
-    // ── [CompactVouchers ──────────────────────────────────────────────────────
+    // -- [CompactVouchers ------------------------------------------------------
 
     [Usage("[CompactVouchers [amount]")]
     [Description("Inspect or set Mining Vouchers (mining GuildCurrency) on a targeted player.")]
@@ -88,21 +89,22 @@ public static class ClusterFCompactAdminTools
             if (targeted is not PlayerMobile pm) { from.SendMessage("Target a player."); return; }
             if (pm.Account is not IAccount acct) return;
             var data = ClusterFAccountPersistence.GetOrCreate(acct);
+            var guild = data.GetOrCreateGuildData(pm.Serial);
 
             if (setAmount.HasValue)
             {
-                data.GuildCurrency["mining"] = setAmount.Value;
+                guild.GuildCurrency["mining"] = setAmount.Value;
                 from.SendMessage($"Set {pm.Name}'s Mining Vouchers to {setAmount.Value}.");
             }
             else
             {
-                data.GuildCurrency.TryGetValue("mining", out var vouchers);
+                guild.GuildCurrency.TryGetValue("mining", out var vouchers);
                 from.SendMessage($"{pm.Name}: Mining Vouchers={vouchers}");
             }
         });
     }
 
-    // ── [CompactRank ──────────────────────────────────────────────────────────
+    // -- [CompactRank ----------------------------------------------------------
 
     [Usage("[CompactRank")]
     [Description("Show Compact rank for the targeted player's current standing.")]
@@ -113,13 +115,14 @@ public static class ClusterFCompactAdminTools
             if (targeted is not PlayerMobile pm) { from.SendMessage("Target a player."); return; }
             if (pm.Account is not IAccount acct) return;
             var data     = ClusterFAccountPersistence.GetOrCreate(acct);
-            data.GuildReputation.TryGetValue("mining", out var standing);
+            var guild = data.GetOrCreateGuildData(pm.Serial);
+            guild.GuildReputation.TryGetValue("mining", out var standing);
             var rank     = MinersCompactLiaisonGump.GetRankName(standing);
             from.SendMessage($"{pm.Name}: Standing={standing:N0}, Rank={rank}");
         });
     }
 
-    // ── [CompactUnlockPickaxe ─────────────────────────────────────────────────
+    // -- [CompactUnlockPickaxe -------------------------------------------------
 
     [Usage("[CompactUnlockPickaxe")]
     [Description("Grant legacy.jacobs_pickaxe registry unlock to the targeted player.")]
@@ -137,7 +140,7 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [CompactGivePickaxe ───────────────────────────────────────────────────
+    // -- [CompactGivePickaxe ---------------------------------------------------
 
     [Usage("[CompactGivePickaxe")]
     [Description("Give Jacob's Pickaxe (fresh) to the targeted player.")]
@@ -155,7 +158,7 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [CompactGiveReinforcedPickaxe ─────────────────────────────────────────
+    // -- [CompactGiveReinforcedPickaxe -----------------------------------------
 
     [Usage("[CompactGiveReinforcedPickaxe")]
     [Description("Give Jacob's Reinforced Pickaxe to the targeted player.")]
@@ -173,7 +176,7 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [CompactExhaust ───────────────────────────────────────────────────────
+    // -- [CompactExhaust -------------------------------------------------------
 
     [Usage("[CompactExhaust")]
     [Description("Exhaust the Jacob's Pickaxe in the targeted player's pack (for testing durability behaviour).")]
@@ -212,7 +215,7 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [CompactClearActive ───────────────────────────────────────────────────
+    // -- [CompactClearActive ---------------------------------------------------
 
     [Usage("[CompactClearActive")]
     [Description("Clears the active-copy flag for legacy.jacobs_pickaxe on a targeted player, allowing restoration.")]
@@ -229,10 +232,10 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [TestingReset ─────────────────────────────────────────────────────────
+    // -- [TestingReset ---------------------------------------------------------
 
     [Usage("[TestingReset")]
-    [Description("Wipes all guild, league, and Compact data for a targeted player — full testing reset.")]
+    [Description("Wipes all guild, league, and Compact data for a targeted player - full testing reset.")]
     private static void TestingReset_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -241,19 +244,20 @@ public static class ClusterFCompactAdminTools
             if (pm.Account is not IAccount acct) return;
 
             var data = ClusterFAccountPersistence.GetOrCreate(acct);
+            var guild = data.GetOrCreateGuildData(pm.Serial);
 
             // Clear guild membership, reputation, and currency
-            data.JoinedGuilds.Clear();
-            data.GuildReputation.Clear();
-            data.GuildCurrency.Clear();
+            guild.JoinedGuilds.Clear();
+            guild.GuildReputation.Clear();
+            guild.GuildCurrency.Clear();
 
             // Clear all flags and flag values (league.*, mining.*, etc.)
             data.Flags.Clear();
             data.FlagValues.Clear();
 
             // Clear active and completed work orders
-            data.ActiveWorkOrders.Clear();
-            data.CompletedWorkOrders.Clear();
+            guild.ActiveWorkOrders.Clear();
+            guild.CompletedWorkOrders.Clear();
 
             // Clear ore discovery records
             data.OreDiscoveries.Clear();
@@ -282,7 +286,7 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [TestingZeroSkills ────────────────────────────────────────────────────
+    // -- [TestingZeroSkills ----------------------------------------------------
 
     [Usage("[TestingZeroSkills")]
     [Description("Sets all skills to 0.0 on a targeted player for clean testing.")]
@@ -300,7 +304,7 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [CompactGiveSatchel ───────────────────────────────────────────────────
+    // -- [CompactGiveSatchel ---------------------------------------------------
 
     [Usage("[CompactGiveSatchel")]
     [Description("Give a Compact Ore Satchel to the targeted player.")]
@@ -317,7 +321,7 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [CompactGiveLogbook ───────────────────────────────────────────────────
+    // -- [CompactGiveLogbook ---------------------------------------------------
 
     [Usage("[CompactGiveLogbook")]
     [Description("Give a Prospector's Logbook to the targeted player.")]
@@ -334,7 +338,7 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [CompactWipeLogbook ───────────────────────────────────────────────────
+    // -- [CompactWipeLogbook ---------------------------------------------------
 
     [Usage("[CompactWipeLogbook")]
     [Description("Clears all ore discovery records from a targeted player's logbook (for testing).")]
@@ -354,7 +358,7 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [CompactSeedDiscoveries ───────────────────────────────────────────────
+    // -- [CompactSeedDiscoveries -----------------------------------------------
 
     [Usage("[CompactSeedDiscoveries [Discovered|Reported]")]
     [Description("Seeds all 16 ore types into a targeted player's logbook. State defaults to Discovered (unreported). Use 'Reported' to skip straight to reported state.")]
@@ -407,7 +411,7 @@ public static class ClusterFCompactAdminTools
         });
     }
 
-    // ── [CompactOreInfo ───────────────────────────────────────────────────────
+    // -- [CompactOreInfo -------------------------------------------------------
 
     [Usage("[CompactOreInfo")]
     [Description("Print extended ore CraftResource enum values and hues to the console.")]

@@ -8,21 +8,21 @@ using Server.Mobiles;
 
 namespace Server.Mobiles;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ClusterF Smith BOD System — Phase 4C-i
+// -----------------------------------------------------------------------------
+// ClusterF Smith BOD System - Phase 4C-i
 //
 // Merges the vanilla BOD system into the Society of Smiths guild so there
 // is exactly one kind of Smith BOD:
 //
-//   • Regular Blacksmith NPCs no longer issue or accept BODs.
+//   * Regular Blacksmith NPCs no longer issue or accept BODs.
 //     Players who try to get a BOD from a random smith are redirected to the
 //     Guildmaster.
 //
-//   • BlacksmithGuildmaster is the sole source and turn-in point.
+//   * BlacksmithGuildmaster is the sole source and turn-in point.
 //     Generation is cap-based (3 small / 1 large concurrent), no cooldown.
 //     Large BODs require Journeyman rank (5 000 standing) + 70.1 Blacksmithy.
 //
-//   • Turn-in gives Smithing Seals + a skill check (no vanilla item rewards).
+//   * Turn-in gives Smithing Seals + a skill check (no vanilla item rewards).
 //     Skill check range is scaled to material tier + exceptional requirement
 //     so BODs always push skill gain in the right bracket.
 //
@@ -31,33 +31,33 @@ namespace Server.Mobiles;
 //   gate (MiningGuildOreKnowledge.KnowsOre) once Mining Guild data exists.
 //   Skill-threshold gating is already correct for Phase 4C-i.
 //
-// Replaces ClusterFSmithBODRewards.cs — that file's reward logic now lives
+// Replaces ClusterFSmithBODRewards.cs - that file's reward logic now lives
 // in BlacksmithGuildmaster.OnDragDrop / ComputeGuildReward below.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-// ── Note: Blacksmith.cs (server file, not customization) is patched separately
+// -- Note: Blacksmith.cs (server file, not customization) is patched separately
 // to disable BOD generation on regular Blacksmith NPCs.  The four overrides
 // (SupportsBulkOrders, CreateBulkOrder, IsValidBulkOrder, GetNextBulkOrder)
 // are replaced with no-op returns so only the Guildmaster issues BODs.
 // See patches/Blacksmith_DisableBODs.patch in this repo for the diff.
 
-// ── BlacksmithGuildmaster — guild BOD generation and turn-in ─────────────────
+// -- BlacksmithGuildmaster - guild BOD generation and turn-in -----------------
 
 public partial class BlacksmithGuildmaster
 {
     private const int SmallBODCap = 3; // max concurrent small BODs in pack
     private const int LargeBODCap = 1; // max concurrent large BODs in pack
 
-    // ── Generation ───────────────────────────────────────────────────────────
+    // -- Generation -----------------------------------------------------------
 
     public override bool SupportsBulkOrders(Mobile from)
     {
         if (from is not PlayerMobile pm) return false;
         if (pm.Account is not IAccount acct) return false;
-        return ClusterFGuildSystem.IsJoined(acct, "smithing");
+        return ClusterFGuildSystem.IsJoined(pm, "smithing");
     }
 
-    // No cooldown — generation is throttled by the active-BOD cap instead.
+    // No cooldown - generation is throttled by the active-BOD cap instead.
     public override TimeSpan GetNextBulkOrder(Mobile from) => TimeSpan.Zero;
 
     /// <summary>
@@ -70,14 +70,14 @@ public partial class BlacksmithGuildmaster
         return TryCreateBOD(pm);
     }
 
-    // ── Book-facing static BOD creation ───────────────────────────────────────
+    // -- Book-facing static BOD creation ---------------------------------------
     // Callable from SmithGuildBook without a Guildmaster NPC reference.
     // Contains the same generation logic as the old CreateBulkOrder body.
 
     public static Item? TryCreateBOD(PlayerMobile pm)
     {
         if (pm.Account is not IAccount acct) return null;
-        if (!ClusterFGuildSystem.IsJoined(acct, "smithing"))
+        if (!ClusterFGuildSystem.IsJoined(pm, "smithing"))
         {
             pm.SendMessage(0x22, "You must join the Society of Smiths first.");
             return null;
@@ -85,8 +85,8 @@ public partial class BlacksmithGuildmaster
 
         var bypass   = DevTestingCrystal.IsActive(pm);
         var skill    = pm.Skills.Blacksmith.Base;
-        var data     = ClusterFAccountPersistence.GetOrCreate(acct);
-        var standing = data.GetReputation("smithing");
+        var guild     = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        var standing = guild.GetReputation("smithing");
 
         var (smallCount, largeCount) = CountBODs(pm);
 
@@ -121,7 +121,7 @@ public partial class BlacksmithGuildmaster
         return bod;
     }
 
-    // ── Forced large BOD creation (guild book "Request Large" button) ─────────
+    // -- Forced large BOD creation (guild book "Request Large" button) ---------
 
     /// <summary>
     /// Creates a large BOD directly, skipping the small/large random roll.
@@ -131,7 +131,7 @@ public partial class BlacksmithGuildmaster
     public static Item? TryCreateLargeBOD(PlayerMobile pm)
     {
         if (pm.Account is not IAccount acct) return null;
-        if (!ClusterFGuildSystem.IsJoined(acct, "smithing"))
+        if (!ClusterFGuildSystem.IsJoined(pm, "smithing"))
         {
             pm.SendMessage(0x22, "You must join the Society of Smiths first.");
             return null;
@@ -139,8 +139,8 @@ public partial class BlacksmithGuildmaster
 
         var bypass   = DevTestingCrystal.IsActive(pm);
         var skill    = pm.Skills.Blacksmith.Base;
-        var data     = ClusterFAccountPersistence.GetOrCreate(acct);
-        var standing = data.GetReputation("smithing");
+        var guild     = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        var standing = guild.GetReputation("smithing");
 
         if (!bypass && standing < 5_000)
         {
@@ -165,7 +165,7 @@ public partial class BlacksmithGuildmaster
         return LargeSmithBOD.CreateRandomFor(pm);
     }
 
-    // ── Turn-in ───────────────────────────────────────────────────────────────
+    // -- Turn-in ---------------------------------------------------------------
 
     public override bool IsValidBulkOrder(Item item) => item is SmallSmithBOD or LargeSmithBOD;
 
@@ -175,13 +175,13 @@ public partial class BlacksmithGuildmaster
     /// </summary>
     public override bool OnDragDrop(Mobile from, Item dropped)
     {
-        // ── Commission turn-in — check before the BOD type filter ─────────────
+        // -- Commission turn-in - check before the BOD type filter -------------
         // Commission items are weapons/armor, so they would otherwise fall through
         // to base.OnDragDrop.  Intercept them here for guild members.
         if (from is PlayerMobile pmComm && pmComm.Account is IAccount acctComm
-            && ClusterFGuildSystem.IsJoined(acctComm, "smithing"))
+            && ClusterFGuildSystem.IsJoined(pmComm, "smithing"))
         {
-            var commData       = ClusterFAccountPersistence.GetOrCreate(acctComm);
+            var commData       = ClusterFAccountPersistence.GetOrCreate(acctComm).GetOrCreateGuildData(pmComm.Serial);
             var matchedComm    = SmithCommissionSystem.FindMatch(commData, dropped);
             if (matchedComm != null)
             {
@@ -191,7 +191,7 @@ public partial class BlacksmithGuildmaster
             }
         }
 
-        // Not a BOD at all — let base handle it (vendor sale, etc.)
+        // Not a BOD at all - let base handle it (vendor sale, etc.)
         if (dropped is not SmallBOD and not LargeBOD)
             return base.OnDragDrop(from, dropped);
 
@@ -204,7 +204,7 @@ public partial class BlacksmithGuildmaster
 
         // Must be a guild member
         if (from is not PlayerMobile pm || pm.Account is not IAccount acct
-            || !ClusterFGuildSystem.IsJoined(acct, "smithing"))
+            || !ClusterFGuildSystem.IsJoined(pm, "smithing"))
         {
             SayTo(from, "Only members of the Society of Smiths may turn in orders here.");
             return false;
@@ -224,17 +224,17 @@ public partial class BlacksmithGuildmaster
             return false;
         }
 
-        // ── Reward
+        // -- Reward
         var (seals, standing, skillChecks) = ComputeGuildReward(dropped);
 
-        var playerData = ClusterFAccountPersistence.GetOrCreate(acct);
-        playerData.AddReputation("smithing", standing);
-        playerData.AddCurrency("smithing", seals);
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        guild.AddReputation("smithing", standing);
+        guild.AddCurrency("smithing", seals);
 
         pm.SendMessage(0x44,
             $"Society of Smiths: +{standing} standing, +{seals} Smithing Seal{(seals == 1 ? "" : "s")}.");
 
-        // Skill checks — each is a real gain-eligible roll scaled to BOD difficulty
+        // Skill checks - each is a real gain-eligible roll scaled to BOD difficulty
         var (skillMin, skillMax) = GetSkillRange(dropped);
         for (var i = 0; i < skillChecks; i++)
             pm.CheckSkill(SkillName.Blacksmith, skillMin, skillMax);
@@ -245,32 +245,32 @@ public partial class BlacksmithGuildmaster
         return true;
     }
 
-    // ── Reward calculation ────────────────────────────────────────────────────
+    // -- Reward calculation ----------------------------------------------------
     // Seals are derived from the vanilla gold value (SmithRewardCalculator.ComputeGold)
     // divided by SealDivisor.  This naturally captures quantity (10/15/20), material
     // tier, exceptional flag, AND item type (ringmail vs platemail vs weapons) without
-    // a hand-coded table.  The ±10 % randomisation in ComputeGold also gives slight
+    // a hand-coded table.  The +/-10 % randomisation in ComputeGold also gives slight
     // turn-in variation so the same BOD doesn't always yield the exact same seals.
     //
     // Post-Valorite materials are not in the vanilla gold table so we compute a
     // Valorite-equivalent gold value and scale it by PostValoriteMultiplier.
     //
     // Representative values at divisor 400:
-    //   Iron small regular  qty10           →    1 seal  (floor)
-    //   DullCopper exc      qty20           →    4 seals
-    //   Valorite small reg  qty20           →   10 seals
-    //   Valorite small exc  qty20           →  ~30 seals
-    //   Platinum small exc  qty20           →  ~45 seals
-    //   Celestial small exc qty20           → ~150 seals
-    //   Large Valorite exc  qty20           → ~500 seals
-    //   Large Platinum exc  qty20           → ~750 seals
-    //   Large Celestial exc qty20           → ~2 500 seals
+    //   Iron small regular  qty10           ->    1 seal  (floor)
+    //   DullCopper exc      qty20           ->    4 seals
+    //   Valorite small reg  qty20           ->   10 seals
+    //   Valorite small exc  qty20           ->  ~30 seals
+    //   Platinum small exc  qty20           ->  ~45 seals
+    //   Celestial small exc qty20           -> ~150 seals
+    //   Large Valorite exc  qty20           -> ~500 seals
+    //   Large Platinum exc  qty20           -> ~750 seals
+    //   Large Celestial exc qty20           -> ~2 500 seals
 
     private const int SealDivisor = 400;
 
     // Returns the post-Valorite multiplier over a Valorite-equivalent gold value.
-    // Multipliers produce a smooth curve: Valorite large exc ≈ 500 seals,
-    // Celestial large exc ≈ 2 500 seals.
+    // Multipliers produce a smooth curve: Valorite large exc ~ 500 seals,
+    // Celestial large exc ~ 2 500 seals.
     private static double PostValoriteMultiplier(BulkMaterialType mat) => mat switch
     {
         BulkMaterialType.Platinum   => 1.5,
@@ -287,7 +287,7 @@ public partial class BlacksmithGuildmaster
     private static bool IsPostValorite(BulkMaterialType mat) => (int)mat >= 12;
 
     // For post-Valorite BODs, ComputeGold() returns iron-level gold because the vanilla
-    // gold table only covers None–Valorite (indices 0–8).  We instead compute the
+    // gold table only covers None-Valorite (indices 0-8).  We instead compute the
     // Valorite-equivalent gold and scale it by the tier multiplier.
     private static int GoldEquivalentForSeals(SmallSmithBOD small)
     {
@@ -340,7 +340,7 @@ public partial class BlacksmithGuildmaster
         return (0, 0, 0);
     }
 
-    // ── Skill check range ─────────────────────────────────────────────────────
+    // -- Skill check range -----------------------------------------------------
 
     /// <summary>
     /// Returns the (minSkill, maxSkill) window for CheckSkill on BOD completion.
@@ -371,7 +371,7 @@ public partial class BlacksmithGuildmaster
             BulkMaterialType.Agapite    => ( 70.0,   96.0),
             BulkMaterialType.Verite     => ( 75.0,  100.0),
             BulkMaterialType.Valorite   => ( 80.0,  105.0),
-            // Post-Valorite — extended skill ranges (no 120 cap; extended skill can exceed 300)
+            // Post-Valorite - extended skill ranges (no 120 cap; extended skill can exceed 300)
             BulkMaterialType.Platinum   => ( 85.0,  115.0),
             BulkMaterialType.Toxic      => ( 95.0,  130.0),
             BulkMaterialType.Blaze      => (110.0,  150.0),
@@ -386,14 +386,14 @@ public partial class BlacksmithGuildmaster
         if (exceptional)
         {
             min += 10.0;
-            // No 120 cap for post-Valorite — extended skill goes well above 120
+            // No 120 cap for post-Valorite - extended skill goes well above 120
             max = IsPostValorite(mat) ? max + 10.0 : Math.Min(120.0, max + 10.0);
         }
 
         return (min, max);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     /// <summary>
     /// Completes a BOD turn-in programmatically (e.g. from the SmithGuildBook gump).
@@ -403,7 +403,7 @@ public partial class BlacksmithGuildmaster
     {
         if (bod is not (SmallSmithBOD or LargeSmithBOD)) return false;
         if (pm.Account is not IAccount acct) return false;
-        if (!ClusterFGuildSystem.IsJoined(acct, "smithing")) return false;
+        if (!ClusterFGuildSystem.IsJoined(pm, "smithing")) return false;
 
         var complete = bod switch
         {
@@ -414,9 +414,9 @@ public partial class BlacksmithGuildmaster
         if (!complete) return false;
 
         var (seals, standing, skillChecks) = ComputeGuildReward(bod);
-        var playerData = ClusterFAccountPersistence.GetOrCreate(acct);
-        playerData.AddReputation("smithing", standing);
-        playerData.AddCurrency("smithing", seals);
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        guild.AddReputation("smithing", standing);
+        guild.AddCurrency("smithing", seals);
 
         pm.SendMessage(0x44,
             $"Society of Smiths: +{standing} standing, +{seals} Smithing Seal{(seals == 1 ? "" : "s")}.");
@@ -463,7 +463,7 @@ public partial class BlacksmithGuildmaster
         BulkMaterialType.Agapite    => 6,
         BulkMaterialType.Verite     => 7,
         BulkMaterialType.Valorite   => 8,
-        // Post-Valorite tiers 9–16
+        // Post-Valorite tiers 9-16
         BulkMaterialType.Platinum   => 9,
         BulkMaterialType.Toxic      => 10,
         BulkMaterialType.Blaze      => 11,

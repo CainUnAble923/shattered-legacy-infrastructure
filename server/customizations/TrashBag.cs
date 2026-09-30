@@ -11,18 +11,18 @@ using Server.Network;
 
 namespace Server.Items;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TrashBag — Custodians portable cleanup bag
+// -----------------------------------------------------------------------------
+// TrashBag - Custodians portable cleanup bag
 //
 // Works as a normal bag: double-click opens the container as usual, items
 // can be dragged in and out freely.
 //
-// Right-click the bag → "Dump for Tokens" → opens TrashBagGump which shows
+// Right-click the bag -> "Dump for Tokens" -> opens TrashBagGump which shows
 // contents, estimated yield, current balance, and action buttons.
 //
-// "Dump Now"       — deletes eligible items and awards Civic Tokens.
-// "Return All"     — moves all bag contents back to the player's backpack.
-// ─────────────────────────────────────────────────────────────────────────────
+// "Dump Now"       - deletes eligible items and awards Civic Tokens.
+// "Return All"     - moves all bag contents back to the player's backpack.
+// -----------------------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class TrashBag : Container
@@ -40,7 +40,7 @@ public partial class TrashBag : Container
 
     public TrashBag(Serial serial) : base(serial) { }
 
-    // ── Context menu: "Dump for Tokens" ──────────────────────────────────────
+    // -- Context menu: "Dump for Tokens" --------------------------------------
 
     public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
     {
@@ -50,7 +50,7 @@ public partial class TrashBag : Container
             list.Add(new DumpEntry(pm, this));
     }
 
-    // ── Context entry ─────────────────────────────────────────────────────────
+    // -- Context entry ---------------------------------------------------------
 
     private sealed class DumpEntry : ContextMenuEntry
     {
@@ -73,7 +73,7 @@ public partial class TrashBag : Container
     }
 }
 
-// ── TrashBag gump ─────────────────────────────────────────────────────────────
+// -- TrashBag gump -------------------------------------------------------------
 
 public class TrashBagGump : Gump
 {
@@ -96,9 +96,9 @@ public class TrashBagGump : Gump
         var standing = 0;
         if (pm.Account is IAccount acct)
         {
-            var data = ClusterFAccountPersistence.GetOrCreate(acct);
-            balance  = data.GetCurrency("custodians");
-            standing = data.GetReputation("custodians");
+            var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+            balance  = guild.GetCurrency("custodians");
+            standing = guild.GetReputation("custodians");
         }
         var rank = ClusterFCustodianSystem.GetCustodianRank(standing);
 
@@ -159,7 +159,7 @@ public class TrashBagGump : Gump
             bag.Items.Count > 0 ? "Return All Items to Pack" : "Close");
 
         AddHtml(18, 232, W - 36, 46,
-            "<BASEFONT COLOR=#888888>Place items in the bag then right-click → Dump for Tokens. " +
+            "<BASEFONT COLOR=#888888>Place items in the bag then right-click -> Dump for Tokens. " +
             "Blessed, quest, named, and exceptional items are ineligible.</BASEFONT>",
             false, false);
     }

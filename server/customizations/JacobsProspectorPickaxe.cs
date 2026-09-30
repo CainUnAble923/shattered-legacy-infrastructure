@@ -7,16 +7,16 @@ using Server.Network;
 namespace Server.Items;
 
 /// <summary>
-/// Jacob's Prospector Pickaxe — Tier 3 upgrade of Jacob's Reinforced Pickaxe.
+/// Jacob's Prospector Pickaxe - Tier 3 upgrade of Jacob's Reinforced Pickaxe.
 ///
 /// Stats:
 ///   - Name: "Jacob's Prospector Pickaxe"
 ///   - Blessed: yes
 ///   - Mining skill bonus: +18
 ///   - UsesRemaining: 600
-///   - Hue: 0x026C (teal — cartographic/survey identity)
+///   - Hue: 0x026C (teal - cartographic/survey identity)
 ///
-/// Special — Prospector's Insight:
+/// Special - Prospector's Insight:
 ///   When a new ore type is discovered for the first time, +3 Mining Vouchers
 ///   are credited instantly. Tracked in CompactOreSatchelRoutingHook.TryLogDiscovery.
 ///
@@ -30,13 +30,13 @@ namespace Server.Items;
 ///   - Existing T2 Jacob's Reinforced Pickaxe (consumed)
 ///
 /// Exhausted state: tracked via Hue. Functional = 0x026C, exhausted = 0x0415.
-/// Serialization: v0 — no custom fields. Hue serialized by base Item.
+/// Serialization: v0 - no custom fields. Hue serialized by base Item.
 /// </summary>
 [SerializationGenerator(0, false)]
 public partial class JacobsProspectorPickaxe : Pickaxe
 {
     private const int FunctionalHue = 0x026C; // Teal
-    private const int ExhaustedHue  = 0x0415; // Charcoal — exhausted state
+    private const int ExhaustedHue  = 0x0415; // Charcoal - exhausted state
 
     [Constructible]
     public JacobsProspectorPickaxe()
@@ -77,7 +77,7 @@ public partial class JacobsProspectorPickaxe : Pickaxe
         base.GetProperties(list);
 
         if (Exhausted)
-            list.Add("(Exhausted — speak with the Miners' Compact Liaison)");
+            list.Add("(Exhausted - speak with the Miners' Compact Liaison)");
         else
             list.Add("<BASEFONT COLOR=#AAAAAA>Tier 3 Miners' Compact Legacy Tool</BASEFONT>");
     }
@@ -160,9 +160,9 @@ public partial class JacobsProspectorPickaxe : Pickaxe
     private void Deserialize(IGenericReader reader, int version) { }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// T3 Upgrade Gump — opened from the Miners' Compact Liaison Member Dashboard
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// T3 Upgrade Gump - opened from the Miners' Compact Liaison Member Dashboard
+// -----------------------------------------------------------------------------
 
 public class JacobsT3UpgradeGump : Gump
 {
@@ -189,17 +189,17 @@ public class JacobsT3UpgradeGump : Gump
         AddBackground(0, 0, W, H, BgId);
         AddAlphaRegion(6, 6, W - 12, H - 12);
 
-        AddLabel(W / 2 - 120, 12, 1154, "Jacob's Pickaxe — Tier 3 Upgrade");
+        AddLabel(W / 2 - 120, 12, 1154, "Jacob's Pickaxe - Tier 3 Upgrade");
         AddLabel(W / 2 - 80,  28, 999,  "Miners' Compact Liaison");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
         var acct = pm.Account as IAccount;
-        var data = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : null;
+        var guild = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial) : null;
 
-        if (data == null)
+        if (guild == null)
             AddLabel(18, 56, 999, "Account data unavailable.");
         else
-            DrawUpgradeInfo(data, acct!);
+            DrawUpgradeInfo(guild, acct!);
 
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
         AddButton(18, H - 28, 4014, 4015, 1);
@@ -208,10 +208,10 @@ public class JacobsT3UpgradeGump : Gump
         AddLabel(W - 28, H - 26, 1154, "X");
     }
 
-    private void DrawUpgradeInfo(ClusterFAccountData data, IAccount acct)
+    private void DrawUpgradeInfo(CharacterGuildData guild, IAccount acct)
     {
-        data.GuildReputation.TryGetValue("mining", out var standing);
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var mining      = _pm.Skills[SkillName.Mining].Value;
         var pack        = _pm.Backpack;
         var bypass      = DevTestingCrystal.IsActive(_pm);
@@ -227,7 +227,7 @@ public class JacobsT3UpgradeGump : Gump
         var reqIron     = bypass || ironCount     >= UpgradeIronCost;
         var reqAgapite  = bypass || agapiteCount  >= UpgradeAgapiteCost;
         var reqGold     = bypass || goldCount     >= UpgradeGoldCost;
-        var reqT2       = hasT2; // T2 always required — consumed in upgrade
+        var reqT2       = hasT2; // T2 always required - consumed in upgrade
 
         var allMet = reqRank && reqSkill && reqVoucher && reqIron && reqAgapite && reqGold && reqT2;
 
@@ -236,7 +236,7 @@ public class JacobsT3UpgradeGump : Gump
         var html =
             "<BASEFONT COLOR=#AAAAAA>Prospector's Insight: Each new ore discovery immediately " +
             "credits +3 Mining Vouchers.</BASEFONT><BR><BR>" +
-            $"<BASEFONT COLOR={Clr(reqRank)}>Rank: Surveyor required — Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
+            $"<BASEFONT COLOR={Clr(reqRank)}>Rank: Surveyor required - Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqSkill)}>Mining skill: {mining:F1}/{UpgradeSkillReq:F0} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqVoucher)}>Mining Vouchers: {vouchers}/{UpgradeVoucherCost} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqIron)}>Iron Ingots in pack: {ironCount:N0}/{UpgradeIronCost:N0} required</BASEFONT><BR>" +
@@ -289,12 +289,12 @@ public class JacobsT3UpgradeGump : Gump
         var acct = _pm.Account as IAccount;
         if (acct == null) return;
 
-        var data    = ClusterFAccountPersistence.GetOrCreate(acct);
+        var guild    = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial);
         var pack    = _pm.Backpack;
         if (pack == null) return;
 
-        data.GuildReputation.TryGetValue("mining", out var standing);
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var mining      = _pm.Skills[SkillName.Mining].Value;
         var ironCount   = pack.GetAmount(typeof(IronIngot));
         var agapiteCount = pack.GetAmount(typeof(AgapiteIngot));
@@ -314,13 +314,13 @@ public class JacobsT3UpgradeGump : Gump
 
         if (!bypass)
         {
-            data.GuildCurrency["mining"] = vouchers - UpgradeVoucherCost;
+            guild.GuildCurrency["mining"] = vouchers - UpgradeVoucherCost;
             pack.ConsumeTotal(typeof(IronIngot),    UpgradeIronCost);
             pack.ConsumeTotal(typeof(AgapiteIngot), UpgradeAgapiteCost);
             CompactGoldHelper.ConsumeGold(_pm, UpgradeGoldCost);
         }
 
-        // Consume T2 — mark exhausted first to suppress the durability replacement drop
+        // Consume T2 - mark exhausted first to suppress the durability replacement drop
         srcPickaxe.Exhausted = true;
         srcPickaxe.Delete();
         ClusterFRestorationRegistry.ClearActiveCopy(acct, "legacy.jacobs_reinforced_pickaxe");

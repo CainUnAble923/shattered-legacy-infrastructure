@@ -23,7 +23,7 @@ namespace Server;
 /// </summary>
 public static class ClusterFLeagueSystem
 {
-    // ── Flag constants ─────────────────────────────────────────────────────────
+    // -- Flag constants ---------------------------------------------------------
 
     /// <summary>Set when the player registers with the League Registrar.</summary>
     public const string FlagJoined               = "league.joined";
@@ -46,7 +46,7 @@ public static class ClusterFLeagueSystem
     /// <summary>FlagValue: guild key of the first guild the player was referred to.</summary>
     public const string FlagValFirstReferralGuild = "league.first_referral_guild";
 
-    // ── Citizen status ─────────────────────────────────────────────────────────
+    // -- Citizen status ---------------------------------------------------------
 
     public enum CitizenStatus
     {
@@ -55,12 +55,14 @@ public static class ClusterFLeagueSystem
         RecognizedCitizen,
     }
 
-    // ── Status queries ─────────────────────────────────────────────────────────
+    // -- Status queries ---------------------------------------------------------
 
-    public static CitizenStatus GetStatus(ClusterFAccountData data)
+    // League registration is per account (a flag); guild membership is per character since cc-P18, so
+    // "Recognized" means this character is in a guild.
+    public static CitizenStatus GetStatus(ClusterFAccountData data, CharacterGuildData? guild)
     {
-        if (!data.HasFlag(FlagJoined))        return CitizenStatus.Unregistered;
-        if (data.JoinedGuilds.Count > 0)      return CitizenStatus.RecognizedCitizen;
+        if (!data.HasFlag(FlagJoined))                 return CitizenStatus.Unregistered;
+        if (guild != null && guild.JoinedGuilds.Count > 0) return CitizenStatus.RecognizedCitizen;
         return CitizenStatus.RegisteredCitizen;
     }
 
@@ -83,7 +85,7 @@ public static class ClusterFLeagueSystem
         _                               => "888888",  // gray
     };
 
-    // ── Actions ────────────────────────────────────────────────────────────────
+    // -- Actions ----------------------------------------------------------------
 
     /// <summary>
     /// Enroll the player in the League of Extraordinary Citizens.
@@ -146,7 +148,7 @@ public static class ClusterFLeagueSystem
     public static void OnGuildJoined(PlayerMobile pm)
     {
         if (pm.Account is not IAccount acct) return;
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
+        var data = ClusterFAccountPersistence.GetOrCreateGuild(pm);
 
         // JoinedGuilds already has the new guild at this point
         if (data.JoinedGuilds.Count >= 1)

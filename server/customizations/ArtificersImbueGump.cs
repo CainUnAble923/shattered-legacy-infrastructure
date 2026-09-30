@@ -9,7 +9,7 @@ using Server.Targeting;
 
 namespace Server;
 
-// ── Imbue property categories ─────────────────────────────────────────────────
+// -- Imbue property categories -------------------------------------------------
 
 [Flags]
 internal enum ImbuableItem
@@ -23,7 +23,7 @@ internal enum ImbuableItem
     NonWeapon = Armor | Jewel | Clothing,
 }
 
-// ── Property definition ───────────────────────────────────────────────────────
+// -- Property definition -------------------------------------------------------
 
 internal sealed class ImbuePropertyDef
 {
@@ -98,7 +98,7 @@ internal sealed class ImbuePropertyDef
     public int CraftGold => GoldBase / 2;
 }
 
-// ── Property catalogue ────────────────────────────────────────────────────────
+// -- Property catalogue --------------------------------------------------------
 
 internal static class ImbueCatalogue
 {
@@ -108,7 +108,7 @@ internal static class ImbueCatalogue
     {
         All = new List<ImbuePropertyDef>();
 
-        // ── General — apply to most item types ───────────────────────────────
+        // -- General - apply to most item types -------------------------------
 
         Add("Swing Speed Increase",    "General",  60,  85, shards: 8,  gold: 3500,  ImbuableItem.Weapon,
             i => ((BaseWeapon)i).Attributes.WeaponSpeed,
@@ -177,7 +177,7 @@ internal static class ImbueCatalogue
             i => GetAttr(i).ReflectPhysical,
             (i, v) => GetAttr(i).ReflectPhysical = v);
 
-        // ── Stat bonuses ──────────────────────────────────────────────────────
+        // -- Stat bonuses ------------------------------------------------------
 
         Add("Bonus Strength",          "Stats",   8, 15, shards: 4,  gold: 1500,
             ImbuableItem.Weapon | ImbuableItem.Armor | ImbuableItem.Jewel | ImbuableItem.Clothing,
@@ -209,7 +209,7 @@ internal static class ImbueCatalogue
             i => GetAttr(i).RegenMana,
             (i, v) => GetAttr(i).RegenMana = v);
 
-        // ── Weapon-specific: Hit abilities ────────────────────────────────────
+        // -- Weapon-specific: Hit abilities ------------------------------------
 
         Add("Hit Life Leech",    "Weapon", 50, 70, shards: 7, gold: 3000, ImbuableItem.Weapon,
             i => ((BaseWeapon)i).WeaponAttributes.HitLeechHits,
@@ -279,7 +279,7 @@ internal static class ImbueCatalogue
             i => ((BaseWeapon)i).WeaponAttributes.LowerStatReq,
             (i, v) => ((BaseWeapon)i).WeaponAttributes.LowerStatReq = v);
 
-        // ── Armor-specific ────────────────────────────────────────────────────
+        // -- Armor-specific ----------------------------------------------------
 
         Add("Physical Resist Bonus", "Defense", 20, 30, shards: 6, gold: 2500, ImbuableItem.Armor,
             i => ((BaseArmor)i).PhysicalBonus,
@@ -313,8 +313,8 @@ internal static class ImbueCatalogue
             i => ((BaseArmor)i).ArmorAttributes.MageArmor,
             (i, v) => ((BaseArmor)i).ArmorAttributes.MageArmor = v);
 
-        // ── Slayer properties (weapons only) ──────────────────────────────────
-        // NOTE: SlayerName enum values — verify against your ModernUO build if
+        // -- Slayer properties (weapons only) ----------------------------------
+        // NOTE: SlayerName enum values - verify against your ModernUO build if
         //       you get CS0117 "SlayerName does not contain a definition for X".
         //       Common alternatives: DaemonDismissal, Exorcism, GargoylesFoe.
 
@@ -334,7 +334,7 @@ internal static class ImbueCatalogue
         AddSlayer("Slayer: Ophidian",          SlayerName.Ophidian);
     }
 
-    // ── Slayer helper ─────────────────────────────────────────────────────────
+    // -- Slayer helper ---------------------------------------------------------
 
     private static void AddSlayer(string name, SlayerName slayer)
     {
@@ -369,7 +369,7 @@ internal static class ImbueCatalogue
                         w.Slayer = sn;
                     else if (w.Slayer2 == SlayerName.None)
                         w.Slayer2 = sn;
-                    // else both slots full — no-op (caller should check)
+                    // else both slots full - no-op (caller should check)
                 }
                 else
                 {
@@ -381,7 +381,7 @@ internal static class ImbueCatalogue
         });
     }
 
-    // ── General Add helpers ───────────────────────────────────────────────────
+    // -- General Add helpers ---------------------------------------------------
 
     private static void Add(
         string name, string group, int maxVanilla, int maxGuild,
@@ -411,7 +411,7 @@ internal static class ImbueCatalogue
         Func<Item, int> get, Action<Item, int> set)
         => Add(name, group, maxVanilla, maxGuild, shards, gold, applies, get, set, isBool);
 
-    // ── Discovery threshold ───────────────────────────────────────────────────
+    // -- Discovery threshold ---------------------------------------------------
 
     /// <summary>
     /// Computes how many successful imbues using an essence are required before
@@ -426,7 +426,7 @@ internal static class ImbueCatalogue
         _      => 10
     };
 
-    // ── Helper — get AosAttributes regardless of item type ───────────────────
+    // -- Helper - get AosAttributes regardless of item type -------------------
 
     internal static AosAttributes GetAttr(Item item) => item switch
     {
@@ -487,26 +487,26 @@ internal static class ImbueCatalogue
     }
 }
 
-// ── Main imbuing / disenchanting gump ────────────────────────────────────────
+// -- Main imbuing / disenchanting gump ----------------------------------------
 
 /// <summary>
-/// Shattered Legacy — Artificers' Order Imbuing &amp; Disenchanting Gump.
+/// Shattered Legacy - Artificers' Order Imbuing &amp; Disenchanting Gump.
 ///
 /// Stages:
-///   SelectItem        — entry point; choose to imbue, disenchant, or craft essence
-///   ViewItem          — show item enchantments; click property to imbue/upgrade
-///   SelectProp        — choose vanilla max or guild-enhanced max; confirm costs
-///   Confirm           — final cost confirmation before applying imbue
-///   DisenchantView    — show item enchantments + choose full disenchant or extract property
-///   DisenchantConfirm — confirm destroying item (full disenchant)
-///   ExtractConfirm    — confirm extracting a specific property
-///   CraftSelect       — list mastered properties available to craft essences from
-///   CraftConfirm      — confirm crafting a specific PropertyEssence
+///   SelectItem        - entry point; choose to imbue, disenchant, or craft essence
+///   ViewItem          - show item enchantments; click property to imbue/upgrade
+///   SelectProp        - choose vanilla max or guild-enhanced max; confirm costs
+///   Confirm           - final cost confirmation before applying imbue
+///   DisenchantView    - show item enchantments + choose full disenchant or extract property
+///   DisenchantConfirm - confirm destroying item (full disenchant)
+///   ExtractConfirm    - confirm extracting a specific property
+///   CraftSelect       - list mastered properties available to craft essences from
+///   CraftConfirm      - confirm crafting a specific PropertyEssence
 ///
 /// Discovery system:
 ///   All properties require a PropertyEssence until mastered.
 ///   Mastery threshold scales with property power (GoldBase):
-///     &lt;500g → 3 uses, &lt;1500g → 5 uses, &lt;3000g → 8 uses, else 10 uses.
+///     &lt;500g -> 3 uses, &lt;1500g -> 5 uses, &lt;3000g -> 8 uses, else 10 uses.
 ///   Once mastered: no essence needed; player can craft &amp; sell essences.
 /// </summary>
 public sealed class ArtificersImbueGump : Gump
@@ -528,7 +528,7 @@ public sealed class ArtificersImbueGump : Gump
     private const int H    = 570;
     private const int BgId = 9270;
 
-    // ── Per-instance state ────────────────────────────────────────────────────
+    // -- Per-instance state ----------------------------------------------------
     private readonly PlayerMobile _pm;
     private readonly Item?        _item;
     private readonly int          _selectedPropIdx;  // index into ForItem(_item) for imbue/extract; index into All for craft
@@ -536,7 +536,7 @@ public sealed class ArtificersImbueGump : Gump
     private readonly Stage        _stage;
     private readonly int          _page;
 
-    // Public constructor — no item selected yet
+    // Public constructor - no item selected yet
     public ArtificersImbueGump(PlayerMobile pm)
         : this(pm, null, Stage.SelectItem, -1, 0, 0) { }
 
@@ -558,14 +558,15 @@ public sealed class ArtificersImbueGump : Gump
         AddBackground(0, 0, W, H, BgId);
         AddAlphaRegion(6, 6, W - 12, H - 12);
 
-        AddLabel(W / 2 - 95, 12, 1153, "Artificers' Order — Imbuing Table");
+        AddLabel(W / 2 - 95, 12, 1153, "Artificers' Order - Imbuing Table");
         AddImageTiled(10, 32, W - 20, 2, 9304);
 
         var acct     = pm.Account as IAccount;
         var data     = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : new ClusterFAccountData();
-        var standing = data.GetReputation("artificers");
-        var shards   = data.GetCurrency("artificers");
-        var isMember = data.JoinedGuilds.Contains("artificers");
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
+        var standing = guild.GetReputation("artificers");
+        var shards   = guild.GetCurrency("artificers");
+        var isMember = guild.JoinedGuilds.Contains("artificers");
 
         AddLabel(18,  38, 999,  $"Rank: {ArtificersGuildmasterGump.GetRankName(standing)}");
         AddLabel(200, 38, 1153, $"Essence Shards: {shards}");
@@ -596,13 +597,13 @@ public sealed class ArtificersImbueGump : Gump
         AddLabel(W - 28,  H - 26, 1153, "X");
     }
 
-    // ── Stage: Select Item (entry point) ─────────────────────────────────────
+    // -- Stage: Select Item (entry point) -------------------------------------
 
     private void DrawSelectItem(ClusterFAccountData data, int standing)
     {
         var y = 62;
 
-        // ── Imbue section ─────────────────────────────────────────────────────
+        // -- Imbue section -----------------------------------------------------
         AddLabel(18, y, 1153, "Imbuing");
         y += 18;
         AddLabel(18, y, 999,
@@ -615,7 +616,7 @@ public sealed class ArtificersImbueGump : Gump
         AddImageTiled(10, y, W - 20, 1, 9304);
         y += 8;
 
-        // ── Disenchant section ────────────────────────────────────────────────
+        // -- Disenchant section ------------------------------------------------
         AddLabel(18, y, 1153, "Disenchanting");
         y += 18;
         AddLabel(18, y, 999,
@@ -628,7 +629,7 @@ public sealed class ArtificersImbueGump : Gump
         AddImageTiled(10, y, W - 20, 1, 9304);
         y += 8;
 
-        // ── Craft Essence section ─────────────────────────────────────────────
+        // -- Craft Essence section ---------------------------------------------
         AddLabel(18, y, 1153, "Craft Essence");
         y += 18;
 
@@ -655,7 +656,7 @@ public sealed class ArtificersImbueGump : Gump
         }
     }
 
-    // ── Stage: View Item (imbue mode) ─────────────────────────────────────────
+    // -- Stage: View Item (imbue mode) -----------------------------------------
 
     private void DrawViewItem(ClusterFAccountData data, int standing, bool isMember)
     {
@@ -771,7 +772,7 @@ public sealed class ArtificersImbueGump : Gump
         AddLabel(W - 154,  footY + 2, 999, "Change Item");
     }
 
-    // ── Stage: Select Target Value ────────────────────────────────────────────
+    // -- Stage: Select Target Value --------------------------------------------
 
     private void DrawSelectProp(ClusterFAccountData data, int standing, bool isMember)
     {
@@ -792,7 +793,7 @@ public sealed class ArtificersImbueGump : Gump
         AddLabel(18, 60, 1154, $"Imbue: {def.Name}");
         AddLabel(18, 80, 999,  $"Current value: {(def.IsBool ? (cur == 1 ? "ON" : "OFF") : cur.ToString())}");
 
-        // Rank gate — show locked message and bail out of controls
+        // Rank gate - show locked message and bail out of controls
         if (rankLocked)
         {
             AddLabel(18, 98,  0x22, $"Requires {reqRankName} rank ({minStanding:N0} standing).");
@@ -804,12 +805,12 @@ public sealed class ArtificersImbueGump : Gump
 
         // Discovery status bar
         if (mastered)
-            AddLabel(18, 98, 0x44, $"Mastered — no essence required. (Uses: {discCount}/{def.DiscoveryThreshold})");
+            AddLabel(18, 98, 0x44, $"Mastered - no essence required. (Uses: {discCount}/{def.DiscoveryThreshold})");
         else
         {
             var essHue = essCount > 0 ? 1154 : 0x22;
             AddLabel(18, 98, essHue,
-                $"Discovery: {discCount}/{def.DiscoveryThreshold} uses — " +
+                $"Discovery: {discCount}/{def.DiscoveryThreshold} uses - " +
                 (essCount > 0 ? $"{essCount} essence(s) in pack." : "No essence in pack!"));
         }
 
@@ -875,7 +876,7 @@ public sealed class ArtificersImbueGump : Gump
         var chanceHue = chance >= 75 ? 0x44 : chance >= 40 ? 999 : 0x22;
         var hue       = isAtValue ? 0x3B2 : (isUpgrade ? 999 : 0x3B2);
         var note      = isAtValue ? " [current]" : (!isUpgrade ? " [downgrade]" : "");
-        var label     = $"Set to {target}{note} — {shards} Shard(s) + {gold:N0} gold";
+        var label     = $"Set to {target}{note} - {shards} Shard(s) + {gold:N0} gold";
 
         AddLabel(28, y, hue, label);
         if (isUpgrade)
@@ -885,10 +886,11 @@ public sealed class ArtificersImbueGump : Gump
         }
     }
 
-    // ── Stage: Confirm Imbue ──────────────────────────────────────────────────
+    // -- Stage: Confirm Imbue --------------------------------------------------
 
     private void DrawConfirm(ClusterFAccountData data, int standing, bool isMember)
     {
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
         if (_item == null || _item.Deleted || _selectedPropIdx < 0) { DrawSelectItem(data, standing); return; }
 
         var itemProps = ImbueCatalogue.ForItem(_item);
@@ -902,7 +904,7 @@ public sealed class ArtificersImbueGump : Gump
         var mastered  = data.IsMastered(def.Name, def.DiscoveryThreshold);
         var discCount = data.GetDiscoveryCount(def.Name);
         var essCount  = CountEssencesFor(def.Name);
-        var pmShards  = data.GetCurrency("artificers");
+        var pmShards  = guild.GetCurrency("artificers");
         var pmGold    = CompactGoldHelper.GetTotalGold(_pm);
         var canAfford = pmShards >= shards && pmGold >= gold;
         var hasEss    = mastered || essCount > 0;
@@ -911,7 +913,7 @@ public sealed class ArtificersImbueGump : Gump
         AddImageTiled(10, 78, W - 20, 1, 9304);
 
         var essLine = mastered
-            ? "<BASEFONT COLOR=#44FF44>Mastered — no essence required.</BASEFONT><BR>"
+            ? "<BASEFONT COLOR=#44FF44>Mastered - no essence required.</BASEFONT><BR>"
             : $"<BASEFONT COLOR={(essCount > 0 ? "#AACCFF" : "#FF4444")}>Requires: 1 Essence of {def.Name} " +
               $"(you have: {essCount})  Discovery: {discCount}/{def.DiscoveryThreshold}</BASEFONT><BR>";
 
@@ -920,7 +922,7 @@ public sealed class ArtificersImbueGump : Gump
 
         var html =
             $"<BASEFONT COLOR=#CCCCCC>Property: {def.Name}</BASEFONT><BR>" +
-            $"<BASEFONT COLOR=#AAAAAA>Current value: {cur}  →  Target: {_targetValue}</BASEFONT><BR>" +
+            $"<BASEFONT COLOR=#AAAAAA>Current value: {cur}  ->  Target: {_targetValue}</BASEFONT><BR>" +
             $"{essLine}" +
             $"<BASEFONT COLOR=#FFD700>Essence Shards: {shards}  (you have: {pmShards})</BASEFONT><BR>" +
             $"<BASEFONT COLOR=#FFD700>Gold: {gold:N0}  (you have: {pmGold:N0})</BASEFONT><BR><BR>" +
@@ -943,7 +945,7 @@ public sealed class ArtificersImbueGump : Gump
             AddLabel(18, 322, 0x22, "Insufficient Essence Shards or Gold.");
     }
 
-    // ── Stage: Disenchant View ────────────────────────────────────────────────
+    // -- Stage: Disenchant View ------------------------------------------------
 
     private void DrawDisenchantView(ClusterFAccountData data, int standing)
     {
@@ -978,12 +980,12 @@ public sealed class ArtificersImbueGump : Gump
         AddImageTiled(10, y, W - 20, 1, 9304);
         y += 8;
 
-        // ── Full disenchant option ────────────────────────────────────────────
+        // -- Full disenchant option --------------------------------------------
         var totalShards = 0;
         foreach (var (def, val) in activeProps)
             totalShards += Math.Max(1, def.ShardBase / 2);
 
-        AddLabel(18, y, 0x21, "Option 1 — Full Disenchant (destroys item)");
+        AddLabel(18, y, 0x21, "Option 1 - Full Disenchant (destroys item)");
         y += 18;
         AddLabel(18, y, 999,
             $"Yield: ~{totalShards} Essence Shard(s) + chance at PropertyEssence(s) for each property.");
@@ -997,8 +999,8 @@ public sealed class ArtificersImbueGump : Gump
         AddImageTiled(10, y, W - 20, 1, 9304);
         y += 8;
 
-        // ── Extract specific property option ──────────────────────────────────
-        AddLabel(18, y, 1154, "Option 2 — Extract a Property (item survives)");
+        // -- Extract specific property option ----------------------------------
+        AddLabel(18, y, 1154, "Option 2 - Extract a Property (item survives)");
         y += 18;
 
         if (activeProps.Count == 0)
@@ -1017,13 +1019,13 @@ public sealed class ArtificersImbueGump : Gump
                 if (propIdx < 0) continue;
 
                 AddButton(18, y, 4011, 4012, (int)BtnId.ExtractPropBase + propIdx);
-                AddLabel(44, y + 2, 999, $"Extract: {def.Name}  → 1 Essence + {def.ShardBase / 4} shards");
+                AddLabel(44, y + 2, 999, $"Extract: {def.Name}  -> 1 Essence + {def.ShardBase / 4} shards");
                 y += 22;
             }
         }
     }
 
-    // ── Stage: Disenchant Confirm (full) ──────────────────────────────────────
+    // -- Stage: Disenchant Confirm (full) --------------------------------------
 
     private void DrawDisenchantConfirm(ClusterFAccountData data, int standing)
     {
@@ -1035,7 +1037,7 @@ public sealed class ArtificersImbueGump : Gump
             totalShards += Math.Max(1, def.ShardBase / 2);
         if (activeProps.Count == 0) totalShards = 1;
 
-        AddLabel(18, 60, 0x21, "Full Disenchant — FINAL CONFIRMATION");
+        AddLabel(18, 60, 0x21, "Full Disenchant - FINAL CONFIRMATION");
         AddImageTiled(10, 78, W - 20, 1, 9304);
 
         var html =
@@ -1052,7 +1054,7 @@ public sealed class ArtificersImbueGump : Gump
         AddLabel(44, 284, 0x21, "Destroy Item and Collect Yield");
     }
 
-    // ── Stage: Extract Property Confirm ──────────────────────────────────────
+    // -- Stage: Extract Property Confirm --------------------------------------
 
     private void DrawExtractConfirm(ClusterFAccountData data, int standing)
     {
@@ -1064,7 +1066,7 @@ public sealed class ArtificersImbueGump : Gump
 
         var shardGain = Math.Max(1, def.ShardBase / 4);
 
-        AddLabel(18, 60, 1154, "Extract Property — Confirmation");
+        AddLabel(18, 60, 1154, "Extract Property - Confirmation");
         AddImageTiled(10, 78, W - 20, 1, 9304);
 
         var html =
@@ -1082,11 +1084,11 @@ public sealed class ArtificersImbueGump : Gump
         AddLabel(44, 284, 1154, "Confirm Extraction");
     }
 
-    // ── Stage: Craft Essence Select ───────────────────────────────────────────
+    // -- Stage: Craft Essence Select -------------------------------------------
 
     private void DrawCraftSelect(ClusterFAccountData data, int standing)
     {
-        AddLabel(18, 60, 0x44, "Craft PropertyEssence — Mastered Properties");
+        AddLabel(18, 60, 0x44, "Craft PropertyEssence - Mastered Properties");
         AddImageTiled(10, 78, W - 20, 1, 9304);
         AddLabel(18, 82, 999,
             "Select a mastered property to craft one PropertyEssence (tradeable to other Artificers).");
@@ -1109,7 +1111,7 @@ public sealed class ArtificersImbueGump : Gump
             var allIdx = ImbueCatalogue.All.IndexOf(def);
             AddButton(18, y, 4011, 4012, (int)BtnId.CraftPropBase + allIdx);
             AddLabel(44, y + 2, 999,
-                $"{def.Name}  — {def.CraftShards} Shard(s) + {def.CraftGold:N0} gold");
+                $"{def.Name}  - {def.CraftShards} Shard(s) + {def.CraftGold:N0} gold");
 
             y += rowH;
             rowIdx++;
@@ -1133,21 +1135,22 @@ public sealed class ArtificersImbueGump : Gump
         }
     }
 
-    // ── Stage: Craft Essence Confirm ──────────────────────────────────────────
+    // -- Stage: Craft Essence Confirm ------------------------------------------
 
     private void DrawCraftConfirm(ClusterFAccountData data, int standing)
     {
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
         if (_selectedPropIdx < 0 || _selectedPropIdx >= ImbueCatalogue.All.Count)
         {
             DrawSelectItem(data, standing); return;
         }
 
         var def      = ImbueCatalogue.All[_selectedPropIdx];
-        var pmShards = data.GetCurrency("artificers");
+        var pmShards = guild.GetCurrency("artificers");
         var pmGold   = CompactGoldHelper.GetTotalGold(_pm);
         var canAfford = pmShards >= def.CraftShards && pmGold >= def.CraftGold;
 
-        AddLabel(18, 60, 0x44, "Craft PropertyEssence — Confirmation");
+        AddLabel(18, 60, 0x44, "Craft PropertyEssence - Confirmation");
         AddImageTiled(10, 78, W - 20, 1, 9304);
 
         var html =
@@ -1169,7 +1172,7 @@ public sealed class ArtificersImbueGump : Gump
             AddLabel(18, 262, 0x22, "Insufficient Essence Shards or Gold.");
     }
 
-    // ── Button IDs ────────────────────────────────────────────────────────────
+    // -- Button IDs ------------------------------------------------------------
 
     private enum BtnId
     {
@@ -1190,7 +1193,7 @@ public sealed class ArtificersImbueGump : Gump
         ConfirmBase        = 1000,   // + tier 1-5 (imbue tier confirm)
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -1198,8 +1201,9 @@ public sealed class ArtificersImbueGump : Gump
 
         var acct     = _pm.Account as IAccount;
         var data     = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : new ClusterFAccountData();
-        var standing = data.GetReputation("artificers");
-        var isMember = data.JoinedGuilds.Contains("artificers");
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
+        var standing = guild.GetReputation("artificers");
+        var isMember = guild.JoinedGuilds.Contains("artificers");
 
         switch (info.ButtonID)
         {
@@ -1249,7 +1253,7 @@ public sealed class ArtificersImbueGump : Gump
                 return;
         }
 
-        // Imbue property row click (ViewItem → SelectProp)
+        // Imbue property row click (ViewItem -> SelectProp)
         if (info.ButtonID >= (int)BtnId.PropBase && info.ButtonID < (int)BtnId.ExtractPropBase)
         {
             var propIdx = info.ButtonID - (int)BtnId.PropBase;
@@ -1258,7 +1262,7 @@ public sealed class ArtificersImbueGump : Gump
             return;
         }
 
-        // Extract property row click (DisenchantView → ExtractConfirm)
+        // Extract property row click (DisenchantView -> ExtractConfirm)
         if (info.ButtonID >= (int)BtnId.ExtractPropBase && info.ButtonID < (int)BtnId.CraftPropBase)
         {
             var propIdx = info.ButtonID - (int)BtnId.ExtractPropBase;
@@ -1267,7 +1271,7 @@ public sealed class ArtificersImbueGump : Gump
             return;
         }
 
-        // Craft essence row click (CraftSelect → CraftConfirm)
+        // Craft essence row click (CraftSelect -> CraftConfirm)
         if (info.ButtonID >= (int)BtnId.CraftPropBase && info.ButtonID < (int)BtnId.ConfirmBase)
         {
             var allIdx = info.ButtonID - (int)BtnId.CraftPropBase;
@@ -1276,7 +1280,7 @@ public sealed class ArtificersImbueGump : Gump
             return;
         }
 
-        // Tier selected (SelectProp → Confirm)
+        // Tier selected (SelectProp -> Confirm)
         if (info.ButtonID >= (int)BtnId.ConfirmBase && info.ButtonID < (int)BtnId.ConfirmBase + 10)
         {
             var tier = info.ButtonID - (int)BtnId.ConfirmBase;
@@ -1322,10 +1326,11 @@ public sealed class ArtificersImbueGump : Gump
         });
     }
 
-    // ── Apply imbue logic ─────────────────────────────────────────────────────
+    // -- Apply imbue logic -----------------------------------------------------
 
     private void HandleApplyImbue(ClusterFAccountData data, int standing, bool isMember)
     {
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
         if (!_pm.CheckAlive()) return;
         if (_item == null || _item.Deleted) { _pm.SendMessage(0x22, "The item is gone."); _pm.SendGump(new ArtificersImbueGump(_pm)); return; }
 
@@ -1382,7 +1387,7 @@ public sealed class ArtificersImbueGump : Gump
         }
 
         // Resource check
-        var pmShards = data.GetCurrency("artificers");
+        var pmShards = guild.GetCurrency("artificers");
         var pmGold   = CompactGoldHelper.GetTotalGold(_pm);
         if (pmShards < shards)
         {
@@ -1402,15 +1407,15 @@ public sealed class ArtificersImbueGump : Gump
         if (!success)
         {
             _pm.PlaySound(0x5C3);
-            _pm.SendMessage(0x22, "Your hands falter — the imbue fails. No resources were consumed.");
+            _pm.SendMessage(0x22, "Your hands falter - the imbue fails. No resources were consumed.");
             if (_item is BaseWeapon bwF && bwF.MaxHitPoints > 10) bwF.HitPoints = Math.Max(1, bwF.HitPoints - 10);
             else if (_item is BaseArmor baF && baF.MaxHitPoints > 10) baF.HitPoints = Math.Max(1, baF.HitPoints - 10);
             _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
             return;
         }
 
-        // Success — consume resources
-        data.SpendCurrency("artificers", shards);
+        // Success - consume resources
+        guild.SpendCurrency("artificers", shards);
         CompactGoldHelper.ConsumeGold(_pm, gold);
 
         // Consume essence if not mastered
@@ -1430,17 +1435,18 @@ public sealed class ArtificersImbueGump : Gump
         _item.InvalidateProperties();
 
         var repGain = Math.Max(1, shards / 2);
-        data.AddReputation("artificers", repGain);
+        guild.AddReputation("artificers", repGain);
 
         _pm.PlaySound(0x1F5);
         _pm.SendMessage(0x44, $"You successfully imbue {_item.Name ?? _item.GetType().Name} with {def.Name} = {_targetValue}! (+{repGain} Artificers' Standing)");
         _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
     }
 
-    // ── Full disenchant logic ─────────────────────────────────────────────────
+    // -- Full disenchant logic -------------------------------------------------
 
     private void HandleFullDisenchant(ClusterFAccountData data, int standing)
     {
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
         if (!_pm.CheckAlive()) return;
         if (_item == null || _item.Deleted) { _pm.SendMessage(0x22, "The item is gone."); _pm.SendGump(new ArtificersImbueGump(_pm)); return; }
         if (_item.RootParent != _pm) { _pm.SendMessage(0x22, "You must have the item in your possession."); _pm.SendGump(new ArtificersImbueGump(_pm)); return; }
@@ -1454,7 +1460,7 @@ public sealed class ArtificersImbueGump : Gump
         if (activeProps.Count == 0) totalShards = 1; // bare minimum for unenchanted items
 
         // Shards to player
-        data.AddCurrency("artificers", totalShards);
+        guild.AddCurrency("artificers", totalShards);
 
         // Chance at PropertyEssence per property
         var essencesDropped = 0;
@@ -1483,10 +1489,11 @@ public sealed class ArtificersImbueGump : Gump
         _pm.SendGump(new ArtificersImbueGump(_pm));
     }
 
-    // ── Extract property logic ────────────────────────────────────────────────
+    // -- Extract property logic ------------------------------------------------
 
     private void HandleExtractProperty(ClusterFAccountData data, int standing)
     {
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
         if (!_pm.CheckAlive()) return;
         if (_item == null || _item.Deleted) { _pm.SendMessage(0x22, "The item is gone."); _pm.SendGump(new ArtificersImbueGump(_pm)); return; }
         if (_item.RootParent != _pm) { _pm.SendMessage(0x22, "You must have the item in your possession."); _pm.SendGump(new ArtificersImbueGump(_pm)); return; }
@@ -1520,7 +1527,7 @@ public sealed class ArtificersImbueGump : Gump
         _pm.AddToBackpack(ess);
 
         var shardGain = Math.Max(1, def.ShardBase / 4);
-        data.AddCurrency("artificers", shardGain);
+        guild.AddCurrency("artificers", shardGain);
 
         // Skill gain
         _pm.CheckSkill(SkillName.Imbuing, 20.0, 80.0);
@@ -1533,10 +1540,11 @@ public sealed class ArtificersImbueGump : Gump
         _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.DisenchantView, -1, 0, 0));
     }
 
-    // ── Craft essence logic ───────────────────────────────────────────────────
+    // -- Craft essence logic ---------------------------------------------------
 
     private void HandleCraftEssence(ClusterFAccountData data, int standing)
     {
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
         if (!_pm.CheckAlive()) return;
         if (_selectedPropIdx < 0 || _selectedPropIdx >= ImbueCatalogue.All.Count)
         { _pm.SendGump(new ArtificersImbueGump(_pm, null, Stage.CraftSelect, -1, 0, _page)); return; }
@@ -1550,7 +1558,7 @@ public sealed class ArtificersImbueGump : Gump
             return;
         }
 
-        var pmShards = data.GetCurrency("artificers");
+        var pmShards = guild.GetCurrency("artificers");
         var pmGold   = CompactGoldHelper.GetTotalGold(_pm);
 
         if (pmShards < def.CraftShards)
@@ -1566,7 +1574,7 @@ public sealed class ArtificersImbueGump : Gump
             return;
         }
 
-        data.SpendCurrency("artificers", def.CraftShards);
+        guild.SpendCurrency("artificers", def.CraftShards);
         CompactGoldHelper.ConsumeGold(_pm, def.CraftGold);
 
         var ess = new PropertyEssence(def.Name);
@@ -1577,7 +1585,7 @@ public sealed class ArtificersImbueGump : Gump
         _pm.SendGump(new ArtificersImbueGump(_pm, null, Stage.CraftSelect, -1, 0, _page));
     }
 
-    // ── Target inner class ────────────────────────────────────────────────────
+    // -- Target inner class ----------------------------------------------------
 
     private sealed class ImbueItemTarget : Target
     {
@@ -1623,7 +1631,7 @@ public sealed class ArtificersImbueGump : Gump
         }
     }
 
-    // ── Essence helpers ───────────────────────────────────────────────────────
+    // -- Essence helpers -------------------------------------------------------
 
     private int CountEssencesFor(string propertyKey)
     {
@@ -1644,7 +1652,7 @@ public sealed class ArtificersImbueGump : Gump
         return null;
     }
 
-    // ── Public static helpers (used by ArtificersGuildmasterGump) ────────────
+    // -- Public static helpers (used by ArtificersGuildmasterGump) ------------
 
     /// <summary>
     /// Returns the success chance (0-100%) for an imbue attempt.

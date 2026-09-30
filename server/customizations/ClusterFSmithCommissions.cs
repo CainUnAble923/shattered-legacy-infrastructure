@@ -8,8 +8,8 @@ using Server.Mobiles;
 
 namespace Server;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ClusterF Smith Commissions — Phase 4C-ii
+// -----------------------------------------------------------------------------
+// ClusterF Smith Commissions - Phase 4C-ii
 //
 // Dynamically generated single-piece crafting requests commissioned by named
 // adventurers, guards, and mercenaries.  Distinct from BODs (bulk counts) and
@@ -24,11 +24,11 @@ namespace Server;
 //
 // Limits: max 3 active commissions, separate from the BOD cap.
 //
-// Future: cross-guild hook — Warriors/Mercenary guild will eventually post
+// Future: cross-guild hook - Warriors/Mercenary guild will eventually post
 // commissions here automatically.  RequesterGuild field reserved for that.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-// ── Serializable commission entry ─────────────────────────────────────────────
+// -- Serializable commission entry ---------------------------------------------
 
 public class SmithCommissionEntry
 {
@@ -42,7 +42,7 @@ public class SmithCommissionEntry
     public int           StandingReward    { get; }
     public DateTime      IssuedAt          { get; }
 
-    // Derived (not serialized — looked up from pool at runtime)
+    // Derived (not serialized - looked up from pool at runtime)
     public Type?   ItemType  => SmithCommissionPool.GetItemType(ItemKey);
     public string  ItemLabel => SmithCommissionPool.GetItemLabel(ItemKey);
 
@@ -101,7 +101,7 @@ public class SmithCommissionEntry
     }
 }
 
-// ── Static item pool ──────────────────────────────────────────────────────────
+// -- Static item pool ----------------------------------------------------------
 
 public static class SmithCommissionPool
 {
@@ -109,7 +109,7 @@ public static class SmithCommissionPool
 
     private static readonly Dictionary<string, PoolEntry> _items = new()
     {
-        // ── Weapons ───────────────────────────────────────────────────────
+        // -- Weapons -------------------------------------------------------
         { "longsword",      new(typeof(Longsword),      "Longsword",     false) },
         { "broadsword",     new(typeof(Broadsword),     "Broadsword",    false) },
         { "katana",         new(typeof(Katana),         "Katana",        false) },
@@ -123,7 +123,7 @@ public static class SmithCommissionPool
         { "bardiche",       new(typeof(Bardiche),       "Bardiche",      false) },
         { "spear",          new(typeof(Spear),          "Spear",         false) },
         { "short_spear",    new(typeof(ShortSpear),     "Short Spear",   false) },
-        // ── Armor ─────────────────────────────────────────────────────────
+        // -- Armor ---------------------------------------------------------
         { "plate_chest",    new(typeof(PlateChest),     "Plate Chest",    true)  },
         { "plate_arms",     new(typeof(PlateArms),      "Plate Arms",     true)  },
         { "plate_legs",     new(typeof(PlateLegs),      "Plate Legs",     true)  },
@@ -136,15 +136,15 @@ public static class SmithCommissionPool
         { "ringmail_arms",  new(typeof(RingmailArms),   "Ringmail Arms",  true)  },
         { "ringmail_legs",  new(typeof(RingmailLegs),   "Ringmail Legs",  true)  },
         { "ringmail_gloves",new(typeof(RingmailGloves), "Ringmail Gloves",true)  },
-        // ── Female plate ───────────────────────────────────────────────────
+        // -- Female plate ---------------------------------------------------
         { "female_plate_chest", new(typeof(FemalePlateChest), "Female Plate Chest", true) },
-        // ── Samurai plate ──────────────────────────────────────────────────
+        // -- Samurai plate --------------------------------------------------
         { "plate_do",              new(typeof(PlateDo),             "Plate Do",              true) },
         { "plate_suneate",         new(typeof(PlateSuneate),        "Plate Suneate",         true) },
         { "plate_haidate",         new(typeof(PlateHaidate),        "Plate Haidate",         true) },
         { "standard_plate_kabuto", new(typeof(StandardPlateKabuto), "Standard Plate Kabuto", true) },
-        // ── Dragon scale ───────────────────────────────────────────────────
-        // Resource = CraftResource.RedScales — IgnoreMaterial must be true on the CommissionSet.
+        // -- Dragon scale ---------------------------------------------------
+        // Resource = CraftResource.RedScales - IgnoreMaterial must be true on the CommissionSet.
         { "dragon_chest",  new(typeof(DragonChest),  "Dragon Scale Tunic",   true) },
         { "dragon_arms",   new(typeof(DragonArms),   "Dragon Scale Arms",    true) },
         { "dragon_legs",   new(typeof(DragonLegs),   "Dragon Scale Legs",    true) },
@@ -187,7 +187,7 @@ public static class SmithCommissionPool
     }
 }
 
-// ── Requester flavor pool ─────────────────────────────────────────────────────
+// -- Requester flavor pool -----------------------------------------------------
 
 public static class SmithRequesterPool
 {
@@ -262,7 +262,7 @@ public static class SmithRequesterPool
     }
 }
 
-// ── Armor set pool for large commissions ─────────────────────────────────────
+// -- Armor set pool for large commissions -------------------------------------
 
 public static class SmithCommissionSetPool
 {
@@ -307,8 +307,8 @@ public static class SmithCommissionSetPool
         new("samurai_plate", "Samurai Plate Armor",
             new[] { "plate_do", "plate_suneate", "plate_haidate", "standard_plate_kabuto" }),
 
-        // Dragon Scale: all five pieces — material check bypassed (resource = RedScales, not metal)
-        // Extra reward: 2.5× multiplier to reflect rarity of dragon scale materials.
+        // Dragon Scale: all five pieces - material check bypassed (resource = RedScales, not metal)
+        // Extra reward: 2.5x multiplier to reflect rarity of dragon scale materials.
         new("dragon_scale",  "Dragon Scale Armor",
             new[] { "dragon_chest", "dragon_arms", "dragon_legs", "dragon_gloves", "dragon_helm" },
             IgnoreMaterial: true, RewardMultiplier: 2.5),
@@ -329,7 +329,7 @@ public static class SmithCommissionSetPool
         _sets[Utility.Random(_sets.Length)];
 }
 
-// ── Large commission entry ────────────────────────────────────────────────────
+// -- Large commission entry ----------------------------------------------------
 
 public class SmithLargeCommissionEntry
 {
@@ -407,7 +407,7 @@ public class SmithLargeCommissionEntry
     }
 }
 
-// ── Commission system ─────────────────────────────────────────────────────────
+// -- Commission system ---------------------------------------------------------
 
 public static class SmithCommissionSystem
 {
@@ -415,7 +415,7 @@ public static class SmithCommissionSystem
     public const int MaxActiveCommissions      = MaxActiveSmallCommissions; // alias
     public const int MaxActiveLargeCommissions = 1;
 
-    // ── Material selection helper ─────────────────────────────────────────────
+    // -- Material selection helper ---------------------------------------------
     // Shared by Generate and GenerateLarge.  Each bracket blends the unlocked
     // material (70%) with the previous tier (30%) for variety without giving
     // anything the player cannot craft.
@@ -445,7 +445,7 @@ public static class SmithCommissionSystem
         return               Utility.RandomDouble() < 0.70 ? CraftResource.Celestial   : CraftResource.Adamantium;
     }
 
-    // ── Generation ────────────────────────────────────────────────────────────
+    // -- Generation ------------------------------------------------------------
 
     /// <summary>
     /// Generates a new small commission for the player based on their skill.
@@ -455,8 +455,8 @@ public static class SmithCommissionSystem
     {
         if (pm.Account is not IAccount acct) return null;
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
-        if (data.SmithCommissions.Count >= MaxActiveSmallCommissions) return null;
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        if (guild.SmithCommissions.Count >= MaxActiveSmallCommissions) return null;
 
         var skill  = pm.Skills.Blacksmith.Base;
         var bypass = Items.DevTestingCrystal.IsActive(pm);
@@ -479,15 +479,15 @@ public static class SmithCommissionSystem
             sealReward:         seals,
             standingReward:     standing);
 
-        data.SmithCommissions.Add(entry);
+        guild.SmithCommissions.Add(entry);
         return entry;
     }
 
-    // ── Large commission generation ───────────────────────────────────────────
+    // -- Large commission generation -------------------------------------------
 
     private static readonly string[] _largeNotes =
     {
-        "A full matching set — anything less won't do in the field.",
+        "A full matching set - anything less won't do in the field.",
         "My whole company needs outfitting. Quality and consistency both.",
         "Piecemeal won't work. I need the whole kit, properly made.",
         "The contract specifies a complete set. Can the Society deliver?",
@@ -502,8 +502,8 @@ public static class SmithCommissionSystem
     {
         if (pm.Account is not IAccount acct) return null;
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
-        if (data.SmithLargeCommissions.Count >= MaxActiveLargeCommissions) return null;
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        if (guild.SmithLargeCommissions.Count >= MaxActiveLargeCommissions) return null;
 
         var skill  = pm.Skills.Blacksmith.Base;
         var bypass = Items.DevTestingCrystal.IsActive(pm);
@@ -516,8 +516,8 @@ public static class SmithCommissionSystem
         var (pieceSeals, pieceStanding) = ComputeReward(mat, exceptional);
         var pieceCount  = set.ItemKeys.Length;
 
-        // Set bonus: 1.5× over equivalent individual pieces, then apply per-set RewardMultiplier.
-        // Dragon scale and other exotic sets carry a higher multiplier (e.g. 2.5×).
+        // Set bonus: 1.5x over equivalent individual pieces, then apply per-set RewardMultiplier.
+        // Dragon scale and other exotic sets carry a higher multiplier (e.g. 2.5x).
         var setMult       = set.RewardMultiplier;
         var totalSeals    = Math.Max(5, (int)(pieceSeals    * pieceCount * 1.5 * setMult));
         var totalStanding = Math.Max(50, (int)(pieceStanding * pieceCount * 1.5 * setMult));
@@ -535,11 +535,11 @@ public static class SmithCommissionSystem
             sealReward:         totalSeals,
             standingReward:     totalStanding);
 
-        data.SmithLargeCommissions.Add(entry);
+        guild.SmithLargeCommissions.Add(entry);
         return entry;
     }
 
-    // ── Large commission turn-in ──────────────────────────────────────────────
+    // -- Large commission turn-in ----------------------------------------------
 
     /// <summary>
     /// Returns true if the item satisfies the given piece of a large commission.
@@ -552,7 +552,7 @@ public static class SmithCommissionSystem
         var itemType = SmithCommissionPool.GetItemType(pieceKey);
         if (itemType == null || item.GetType() != itemType) return false;
 
-        // Skip material check for sets with IgnoreMaterial (e.g. dragon scale — resource is RedScales).
+        // Skip material check for sets with IgnoreMaterial (e.g. dragon scale - resource is RedScales).
         var setDef = SmithCommissionSetPool.GetSet(c.SetKey);
         if (setDef == null || !setDef.IgnoreMaterial)
         {
@@ -592,7 +592,7 @@ public static class SmithCommissionSystem
 
         var done  = c.FulfilledPieces.Count;
         var total = c.SetDef?.ItemKeys.Length ?? 0;
-        pm.SendMessage(0x59, $"[Commission] {SmithCommissionPool.GetItemLabel(pieceKey)} submitted — {done}/{total} pieces.");
+        pm.SendMessage(0x59, $"[Commission] {SmithCommissionPool.GetItemLabel(pieceKey)} submitted - {done}/{total} pieces.");
 
         if (c.Complete)
             CompleteLarge(pm, c);
@@ -603,10 +603,10 @@ public static class SmithCommissionSystem
     {
         if (pm.Account is not IAccount acct) return;
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
-        data.SmithLargeCommissions.Remove(c);
-        data.AddReputation("smithing", c.StandingReward);
-        data.AddCurrency("smithing",   c.SealReward);
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        guild.SmithLargeCommissions.Remove(c);
+        guild.AddReputation("smithing", c.StandingReward);
+        guild.AddCurrency("smithing",   c.SealReward);
 
         pm.SendMessage(0x44,
             $"Large commission complete for {c.RequesterName}: {c.FullLabel}. " +
@@ -617,15 +617,15 @@ public static class SmithCommissionSystem
         pm.PlaySound(0x3D);
     }
 
-    // ── Turn-in validation ────────────────────────────────────────────────────
+    // -- Turn-in validation ----------------------------------------------------
 
     /// <summary>
     /// Returns the first active commission that the given item satisfies,
     /// or null if none match.
     /// </summary>
-    public static SmithCommissionEntry? FindMatch(ClusterFAccountData data, Item item)
+    public static SmithCommissionEntry? FindMatch(CharacterGuildData guild, Item item)
     {
-        foreach (var c in data.SmithCommissions)
+        foreach (var c in guild.SmithCommissions)
         {
             if (IsMatch(c, item)) return c;
         }
@@ -665,18 +665,18 @@ public static class SmithCommissionSystem
     }
 
     /// <summary>
-    /// Completes a commission — consumes the item, awards rewards, fires skill check.
+    /// Completes a commission - consumes the item, awards rewards, fires skill check.
     /// Removes the commission from the player's active list.
     /// </summary>
     public static void Complete(PlayerMobile pm, SmithCommissionEntry c, Item item)
     {
         if (pm.Account is not IAccount acct) return;
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
-        data.SmithCommissions.Remove(c);
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        guild.SmithCommissions.Remove(c);
 
-        data.AddReputation("smithing", c.StandingReward);
-        data.AddCurrency("smithing",   c.SealReward);
+        guild.AddReputation("smithing", c.StandingReward);
+        guild.AddCurrency("smithing",   c.SealReward);
 
         pm.SendMessage(0x44,
             $"Commission fulfilled for {c.RequesterName}. " +
@@ -690,20 +690,20 @@ public static class SmithCommissionSystem
         pm.SendSound(0x3D);
     }
 
-    // ── Reward calculation ────────────────────────────────────────────────────
+    // -- Reward calculation ----------------------------------------------------
     // Seals derived from the vanilla BOD gold table for a single-item qty-10 BOD
     // (typeIndex=0, quanIndex=0) divided by CommissionSealDivisor.
-    // Post-Valorite uses Valorite-equivalent gold × PostValMultiplier.
+    // Post-Valorite uses Valorite-equivalent gold x PostValMultiplier.
     // This aligns commission economics with BOD rewards on a per-piece basis.
     //
-    // Divisor 100 means commissions give ~4× per piece vs a qty-10 BOD at divisor 400,
+    // Divisor 100 means commissions give ~4x per piece vs a qty-10 BOD at divisor 400,
     // appropriate for targeted single-item work.
     //
     // Representative commission seal values:
-    //   Iron exceptional        →  ~2  seals
-    //   Valorite exceptional    →  ~30 seals
-    //   Platinum exceptional    →  ~45 seals
-    //   Celestial exceptional   → ~150 seals
+    //   Iron exceptional        ->  ~2  seals
+    //   Valorite exceptional    ->  ~30 seals
+    //   Platinum exceptional    ->  ~45 seals
+    //   Celestial exceptional   -> ~150 seals
 
     private const int CommissionSealDivisor = 100;
 
@@ -759,7 +759,7 @@ public static class SmithCommissionSystem
         return (seals, standing);
     }
 
-    // ── Skill range for completion check ──────────────────────────────────────
+    // -- Skill range for completion check --------------------------------------
 
     public static (double min, double max) GetSkillRange(SmithCommissionEntry c) =>
         GetSkillRange(c.Material, c.RequireExceptional);
@@ -778,7 +778,7 @@ public static class SmithCommissionSystem
             CraftResource.Agapite     => ( 70.0,  96.0),
             CraftResource.Verite      => ( 75.0, 100.0),
             CraftResource.Valorite    => ( 80.0, 105.0),
-            // Post-Valorite — threshold-10 to threshold+20 (no 120 cap; extended skill)
+            // Post-Valorite - threshold-10 to threshold+20 (no 120 cap; extended skill)
             CraftResource.Platinum    => ( 95.0, 125.0),
             CraftResource.Toxic       => (105.0, 135.0),
             CraftResource.Blaze       => (120.0, 155.0),
@@ -793,14 +793,14 @@ public static class SmithCommissionSystem
         if (exceptional)
         {
             min += 10.0;
-            // No 120 cap for post-Valorite — extended skill goes well above 120
+            // No 120 cap for post-Valorite - extended skill goes well above 120
             max = MaterialTier(mat) >= 9 ? max + 10.0 : Math.Min(120.0, max + 10.0);
         }
 
         return (min, max);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     public static int MaterialTier(CraftResource mat) => mat switch
     {
@@ -846,7 +846,7 @@ public static class SmithCommissionSystem
     };
 }
 
-// ── GM command: [ClearCommissions ────────────────────────────────────────────
+// -- GM command: [ClearCommissions --------------------------------------------
 
 public static class SmithCommissionCommands
 {
@@ -863,9 +863,9 @@ public static class SmithCommissionCommands
         if (e.Mobile is not PlayerMobile pm || pm.Account is not IAccount acct)
             return;
 
-        var data  = ClusterFAccountPersistence.GetOrCreate(acct);
-        var count = data.SmithCommissions.Count;
-        data.SmithCommissions.Clear();
+        var guild  = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        var count = guild.SmithCommissions.Count;
+        guild.SmithCommissions.Clear();
 
         pm.SendMessage(0x44, count > 0
             ? $"Cleared {count} active commission{(count == 1 ? "" : "s")}."

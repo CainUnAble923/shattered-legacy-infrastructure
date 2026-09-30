@@ -9,7 +9,7 @@ using Server.Network;
 
 namespace Server;
 
-// ── Requirement ───────────────────────────────────────────────────────────────
+// -- Requirement ---------------------------------------------------------------
 
 /// <summary>A single property requirement within a work order.</summary>
 public sealed class ArtificerWorkOrderRequirement
@@ -24,13 +24,13 @@ public sealed class ArtificerWorkOrderRequirement
     }
 }
 
-// ── Order definition ──────────────────────────────────────────────────────────
+// -- Order definition ----------------------------------------------------------
 
 /// <summary>
 /// Defines a single work order / commission.
 ///
 /// Regular orders:  guildmaster hands the player a blank item (ItemFactory != null).
-///                  The serial is stored in ClusterFAccountData so we can match on turn-in.
+///                  The serial is stored in the character's CharacterGuildData so we can match on turn-in.
 ///
 /// Combo orders:    ItemFactory is null.  The player must craft the item themselves
 ///                  (smith membership required) using the specified material.
@@ -101,20 +101,20 @@ public sealed class ArtificerWorkOrderDef
     }
 }
 
-// ── Catalogue ─────────────────────────────────────────────────────────────────
+// -- Catalogue -----------------------------------------------------------------
 
 /// <summary>
 /// Fixed pool of 39 commissions across four tiers.
 ///
-/// Availability is gated by mastery — every required property must be mastered
+/// Availability is gated by mastery - every required property must be mastered
 /// before the order appears.  Combo orders additionally require Smiths' Fellowship
 /// membership and the player to craft the base item from a specific material.
 ///
 /// Tier breakdown (by required property power / standing):
-///   Journeyman  (1,000 standing)  — 3  orders  — Night Sight applications
-///   Artificer   (5,000 standing)  — 20 orders  — mage, stat/regen, defense, hit effects
-///   Master      (15,000 standing) — 12 orders  — high-end combat + slayers
-///   Combo       (15,000 standing) — 4  orders  — smith-crafted + Artificer-enchanted
+///   Journeyman  (1,000 standing)  - 3  orders  - Night Sight applications
+///   Artificer   (5,000 standing)  - 20 orders  - mage, stat/regen, defense, hit effects
+///   Master      (15,000 standing) - 12 orders  - high-end combat + slayers
+///   Combo       (15,000 standing) - 4  orders  - smith-crafted + Artificer-enchanted
 /// </summary>
 public static class ArtificerWorkOrderCatalogue
 {
@@ -158,7 +158,7 @@ public static class ArtificerWorkOrderCatalogue
         return item;
     }
 
-    // ── Availability / verification ───────────────────────────────────────────
+    // -- Availability / verification -------------------------------------------
 
     /// <summary>
     /// True if the player has mastered every required property and holds any
@@ -193,11 +193,11 @@ public static class ArtificerWorkOrderCatalogue
         return true;
     }
 
-    // ── Build ─────────────────────────────────────────────────────────────────
+    // -- Build -----------------------------------------------------------------
 
     private static void Build()
     {
-        // ── Journeyman tier — Night Sight ─────────────────────────────────────
+        // -- Journeyman tier - Night Sight -------------------------------------
 
         All.Add(new ArtificerWorkOrderDef(
             "ns_ring", "Nightvision Ring",
@@ -220,7 +220,7 @@ public static class ArtificerWorkOrderCatalogue
             3_000, 10, 50,
             R("Night Sight", 1)));
 
-        // ── Artificer tier — Mage / Caster ────────────────────────────────────
+        // -- Artificer tier - Mage / Caster ------------------------------------
 
         All.Add(new ArtificerWorkOrderDef(
             "mage_ring", "Ring of Clarity",
@@ -264,7 +264,7 @@ public static class ArtificerWorkOrderCatalogue
             11_000, 55, 185,
             R("Lower Mana Cost", 20), R("Faster Cast Recovery", 1)));
 
-        // ── Artificer tier — Stats / Regen ────────────────────────────────────
+        // -- Artificer tier - Stats / Regen ------------------------------------
 
         All.Add(new ArtificerWorkOrderDef(
             "str_ring", "Warrior's Band",
@@ -301,7 +301,7 @@ public static class ArtificerWorkOrderCatalogue
             12_000, 60, 200,
             R("Hit Points Regen", 3), R("Mana Regen", 3)));
 
-        // ── Artificer tier — Defense / Armor ──────────────────────────────────
+        // -- Artificer tier - Defense / Armor ----------------------------------
 
         All.Add(new ArtificerWorkOrderDef(
             "fire_chest", "Ember Ward Plate",
@@ -352,7 +352,7 @@ public static class ArtificerWorkOrderCatalogue
             9_000, 45, 165,
             R("Enhance Potions", 20)));
 
-        // ── Artificer tier — Weapons: hit effects ─────────────────────────────
+        // -- Artificer tier - Weapons: hit effects -----------------------------
 
         All.Add(new ArtificerWorkOrderDef(
             "lightning_sword", "Storm Cleaver",
@@ -382,7 +382,7 @@ public static class ArtificerWorkOrderCatalogue
             14_000, 70, 220,
             R("Hit Dispel", 35), R("Lower Mana Cost", 20)));
 
-        // ── Master tier — High-end combat ─────────────────────────────────────
+        // -- Master tier - High-end combat -------------------------------------
 
         All.Add(new ArtificerWorkOrderDef(
             "berserk_sword", "Berserker's Blade",
@@ -433,7 +433,7 @@ public static class ArtificerWorkOrderCatalogue
             22_000, 110, 400,
             R("Lower Reagent Cost", 75)));
 
-        // ── Slayer orders ─────────────────────────────────────────────────────
+        // -- Slayer orders -----------------------------------------------------
 
         All.Add(new ArtificerWorkOrderDef(
             "slayer_undead", "Undead Hunter's Blade",
@@ -470,7 +470,7 @@ public static class ArtificerWorkOrderCatalogue
             30_000, 160, 550,
             R("Slayer: Arachnid Doom", 1)));
 
-        // ── Combo orders (Smith + Artificer) ──────────────────────────────────
+        // -- Combo orders (Smith + Artificer) ----------------------------------
 
         All.Add(new ArtificerWorkOrderDef(
             "combo_gold_berserker", "Gold Berserker's Blade",
@@ -506,14 +506,14 @@ public static class ArtificerWorkOrderCatalogue
     }
 }
 
-// ── Gump ──────────────────────────────────────────────────────────────────────
+// -- Gump ----------------------------------------------------------------------
 
 /// <summary>
 /// Work order board for the Artificers' Order.
 ///
 /// Stages:
-///   List   — shows current active order (if any) + available orders
-///   Detail — shows one order's full spec; Accept / Turn In button
+///   List   - shows current active order (if any) + available orders
+///   Detail - shows one order's full spec; Accept / Turn In button
 /// </summary>
 public sealed class ArtificerWorkOrderGump : Gump
 {
@@ -553,13 +553,14 @@ public sealed class ArtificerWorkOrderGump : Gump
         var data = acct != null
             ? ClusterFAccountPersistence.GetOrCreate(acct)
             : new ClusterFAccountData();
+        var guild = data.GetOrCreateGuildData(pm.Serial);
 
-        var isSmithMember = data.JoinedGuilds.Contains("smithing");
+        var isSmithMember = guild.JoinedGuilds.Contains("smithing");
 
         switch (_stage)
         {
-            case Stage.List:   DrawList(data, isSmithMember);   break;
-            case Stage.Detail: DrawDetail(data, isSmithMember); break;
+            case Stage.List:   DrawList(data, guild, isSmithMember);   break;
+            case Stage.Detail: DrawDetail(data, guild, isSmithMember); break;
         }
 
         AddImageTiled(10, H - 42, W - 20, 2, 9304);
@@ -574,17 +575,17 @@ public sealed class ArtificerWorkOrderGump : Gump
         AddLabel(W - 28, H - 30, 1153, "X");
     }
 
-    // ── List view ─────────────────────────────────────────────────────────────
+    // -- List view -------------------------------------------------------------
 
-    private void DrawList(ClusterFAccountData data, bool isSmithMember)
+    private void DrawList(ClusterFAccountData data, CharacterGuildData guild, bool isSmithMember)
     {
         var y = 40;
 
-        // ── Active order panel ────────────────────────────────────────────────
-        if (data.HasActiveArtificerOrder)
+        // -- Active order panel ------------------------------------------------
+        if (guild.HasActiveArtificerOrder)
         {
             var active = ArtificerWorkOrderCatalogue.All
-                .Find(d => d.Key == data.ActiveArtificerOrderKey);
+                .Find(d => d.Key == guild.ActiveArtificerOrderKey);
 
             if (active != null)
             {
@@ -592,15 +593,15 @@ public sealed class ArtificerWorkOrderGump : Gump
                 y += 18;
 
                 // Requirements summary
-                var reqLine = string.Join(", ", active.Requirements.Select(r => $"{r.PropertyName} ≥ {r.MinValue}"));
+                var reqLine = string.Join(", ", active.Requirements.Select(r => $"{r.PropertyName} >= {r.MinValue}"));
                 AddLabel(28, y, 999, $"Requires: {reqLine}");
                 y += 16;
 
                 // Item location status
-                var ready = IsReadyToTurnIn(active, data, out _);
+                var ready = IsReadyToTurnIn(active, guild, out _);
                 if (active.ItemFactory != null)
                 {
-                    var itemInPack = FindItemBySerial(data.ActiveArtificerItemSerial);
+                    var itemInPack = FindItemBySerial(guild.ActiveArtificerItemSerial);
                     var itemHue    = itemInPack != null ? 0x44 : 0x22;
                     var itemLabel  = itemInPack != null
                         ? $"Item in pack: {active.ItemDescription}"
@@ -617,7 +618,7 @@ public sealed class ArtificerWorkOrderGump : Gump
                 if (ready)
                 {
                     AddButton(28, y, 4023, 4025, 900);
-                    AddLabel(54, y + 2, 0x44, "Turn In →");
+                    AddLabel(54, y + 2, 0x44, "Turn In ->");
                 }
                 else
                 {
@@ -634,7 +635,7 @@ public sealed class ArtificerWorkOrderGump : Gump
             }
         }
 
-        // ── Available orders ──────────────────────────────────────────────────
+        // -- Available orders --------------------------------------------------
         AddLabel(18, y, 1153, "Available Commissions:");
         y += 18;
         AddImageTiled(10, y, W - 20, 1, 9304);
@@ -648,7 +649,7 @@ public sealed class ArtificerWorkOrderGump : Gump
         if (available.Count == 0)
         {
             AddLabel(28, y, 0x3B2,
-                "No commissions available yet — master more properties to unlock them.");
+                "No commissions available yet - master more properties to unlock them.");
         }
         else
         {
@@ -658,16 +659,16 @@ public sealed class ArtificerWorkOrderGump : Gump
             for (var listI = startIdx; listI < available.Count && listI < startIdx + RowsPerPg; listI++)
             {
                 var (def, _) = available[listI];
-                var isActive = data.HasActiveArtificerOrder
-                               && data.ActiveArtificerOrderKey == def.Key;
+                var isActive = guild.HasActiveArtificerOrder
+                               && guild.ActiveArtificerOrderKey == def.Key;
                 var comboTag = def.RequiresSmithMembership ? " [S+A]" : "";
                 var hue      = isActive ? 0x44 : (def.RequiresSmithMembership ? 1154 : 999);
 
                 var rowLabel = isActive
                     ? $"[ACTIVE] {def.Title}"
-                    : $"{def.Title}{comboTag}  — {def.GoldReward:N0}g + {def.ArtificerScripReward} shards";
+                    : $"{def.Title}{comboTag}  - {def.GoldReward:N0}g + {def.ArtificerScripReward} shards";
 
-                if (!isActive && !data.HasActiveArtificerOrder)
+                if (!isActive && !guild.HasActiveArtificerOrder)
                 {
                     AddButton(18, y, 4011, 4012, 100 + listI);
                     AddLabel(46, y + 2, hue, rowLabel);
@@ -693,13 +694,13 @@ public sealed class ArtificerWorkOrderGump : Gump
             }
         }
 
-        if (data.HasActiveArtificerOrder && available.Count > 0)
+        if (guild.HasActiveArtificerOrder && available.Count > 0)
             AddLabel(18, H - 48, 0x3B2, "Complete or abandon your active commission to accept another.");
     }
 
-    // ── Detail view ───────────────────────────────────────────────────────────
+    // -- Detail view -----------------------------------------------------------
 
-    private void DrawDetail(ClusterFAccountData data, bool isSmithMember)
+    private void DrawDetail(ClusterFAccountData data, CharacterGuildData guild, bool isSmithMember)
     {
         if (_detailIdx < 0 || _detailIdx >= ArtificerWorkOrderCatalogue.All.Count)
         {
@@ -708,8 +709,8 @@ public sealed class ArtificerWorkOrderGump : Gump
         }
 
         var def      = ArtificerWorkOrderCatalogue.All[_detailIdx];
-        var isActive = data.HasActiveArtificerOrder
-                       && data.ActiveArtificerOrderKey == def.Key;
+        var isActive = guild.HasActiveArtificerOrder
+                       && guild.ActiveArtificerOrderKey == def.Key;
         var y        = 40;
 
         // Title + type tag
@@ -743,7 +744,7 @@ public sealed class ArtificerWorkOrderGump : Gump
 
         foreach (var req in def.Requirements)
         {
-            AddLabel(28, y, 999, $"•  {req.PropertyName}  ≥  {req.MinValue}");
+            AddLabel(28, y, 999, $"*  {req.PropertyName}  >=  {req.MinValue}");
             y += 16;
         }
 
@@ -754,13 +755,13 @@ public sealed class ArtificerWorkOrderGump : Gump
         // Rewards
         AddLabel(18, y, 1153, "Reward:");
         y += 18;
-        AddLabel(28, y, 0x44, $"•  {def.GoldReward:N0} Gold");                           y += 16;
-        AddLabel(28, y, 0x44, $"•  {def.ArtificerScripReward} Essence Shards");          y += 16;
-        AddLabel(28, y, 0x44, $"•  {def.ArtificerRepReward} Artificers' Standing");      y += 16;
+        AddLabel(28, y, 0x44, $"*  {def.GoldReward:N0} Gold");                           y += 16;
+        AddLabel(28, y, 0x44, $"*  {def.ArtificerScripReward} Essence Shards");          y += 16;
+        AddLabel(28, y, 0x44, $"*  {def.ArtificerRepReward} Artificers' Standing");      y += 16;
         if (def.RequiresSmithMembership)
         {
             AddLabel(28, y, 1154,
-                $"•  {def.SmithScripReward} Smiths' Scrip  +  {def.SmithRepReward} Smiths' Standing");
+                $"*  {def.SmithScripReward} Smiths' Scrip  +  {def.SmithRepReward} Smiths' Standing");
             y += 16;
         }
 
@@ -771,7 +772,7 @@ public sealed class ArtificerWorkOrderGump : Gump
         // Action
         if (isActive)
         {
-            var ready = IsReadyToTurnIn(def, data, out _);
+            var ready = IsReadyToTurnIn(def, guild, out _);
             if (ready)
             {
                 AddButton(18, y, 4023, 4025, 900);
@@ -780,10 +781,10 @@ public sealed class ArtificerWorkOrderGump : Gump
             else
             {
                 AddLabel(18, y, 0x3B2,
-                    "Commission in progress — enchant the item to spec, then return to turn it in.");
+                    "Commission in progress - enchant the item to spec, then return to turn it in.");
             }
         }
-        else if (!data.HasActiveArtificerOrder)
+        else if (!guild.HasActiveArtificerOrder)
         {
             if (ArtificerWorkOrderCatalogue.IsAvailable(def, data, isSmithMember))
             {
@@ -801,7 +802,7 @@ public sealed class ArtificerWorkOrderGump : Gump
         }
     }
 
-    // ── Turn-in check ─────────────────────────────────────────────────────────
+    // -- Turn-in check ---------------------------------------------------------
 
     /// <summary>
     /// Returns true if an item meeting the order requirements is in the player's backpack.
@@ -809,20 +810,20 @@ public sealed class ArtificerWorkOrderGump : Gump
     /// For combo orders any matching type + resource combination is accepted.
     /// </summary>
     private bool IsReadyToTurnIn(
-        ArtificerWorkOrderDef def, ClusterFAccountData data, out Item? foundItem)
+        ArtificerWorkOrderDef def, CharacterGuildData guild, out Item? foundItem)
     {
         foundItem = null;
         if (_pm.Backpack == null) return false;
 
         if (def.ItemFactory != null)
         {
-            // Regular order — must be the specific item we handed out
-            foundItem = FindItemBySerial(data.ActiveArtificerItemSerial);
+            // Regular order - must be the specific item we handed out
+            foundItem = FindItemBySerial(guild.ActiveArtificerItemSerial);
             return foundItem != null
                    && ArtificerWorkOrderCatalogue.ItemMeetsRequirements(foundItem, def);
         }
 
-        // Combo order — player-crafted; match by type + resource + enchantments
+        // Combo order - player-crafted; match by type + resource + enchantments
         foreach (var item in _pm.Backpack.Items)
         {
             if (def.RequiredItemType != null && item.GetType() != def.RequiredItemType) continue;
@@ -842,7 +843,7 @@ public sealed class ArtificerWorkOrderGump : Gump
         return null;
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -852,7 +853,8 @@ public sealed class ArtificerWorkOrderGump : Gump
         if (acct == null) return;
 
         var data          = ClusterFAccountPersistence.GetOrCreate(acct);
-        var isSmithMember = data.JoinedGuilds.Contains("smithing");
+        var guild         = data.GetOrCreateGuildData(_pm.Serial);
+        var isSmithMember = guild.JoinedGuilds.Contains("smithing");
 
         switch (info.ButtonID)
         {
@@ -869,15 +871,15 @@ public sealed class ArtificerWorkOrderGump : Gump
                 return;
 
             case 800: // Accept (from detail view)
-                HandleAccept(data, isSmithMember);
+                HandleAccept(data, guild, isSmithMember);
                 return;
 
             case 900: // Turn in
-                HandleTurnIn(data, isSmithMember);
+                HandleTurnIn(data, guild, isSmithMember);
                 return;
 
             case 901: // Abandon
-                HandleAbandon(data);
+                HandleAbandon(guild);
                 return;
         }
 
@@ -898,14 +900,14 @@ public sealed class ArtificerWorkOrderGump : Gump
         }
     }
 
-    // ── Action handlers ───────────────────────────────────────────────────────
+    // -- Action handlers -------------------------------------------------------
 
-    private void HandleAccept(ClusterFAccountData data, bool isSmithMember)
+    private void HandleAccept(ClusterFAccountData data, CharacterGuildData guild, bool isSmithMember)
     {
         if (_detailIdx < 0 || _detailIdx >= ArtificerWorkOrderCatalogue.All.Count) return;
         var def = ArtificerWorkOrderCatalogue.All[_detailIdx];
 
-        if (data.HasActiveArtificerOrder)
+        if (guild.HasActiveArtificerOrder)
         {
             _pm.SendMessage(0x22, "You already have an active commission. Complete or abandon it first.");
             _pm.SendGump(new ArtificerWorkOrderGump(_pm, Stage.Detail, _detailIdx, _page));
@@ -942,27 +944,27 @@ public sealed class ArtificerWorkOrderGump : Gump
         }
 
         _pm.SendMessage(999, "Return here when the item is ready to turn it in.");
-        data.AcceptArtificerOrder(def.Key, itemSerial);
+        guild.AcceptArtificerOrder(def.Key, itemSerial);
 
         _pm.SendGump(new ArtificerWorkOrderGump(_pm, Stage.List, -1, 0));
     }
 
-    private void HandleTurnIn(ClusterFAccountData data, bool isSmithMember)
+    private void HandleTurnIn(ClusterFAccountData data, CharacterGuildData guild, bool isSmithMember)
     {
-        if (!data.HasActiveArtificerOrder) return;
+        if (!guild.HasActiveArtificerOrder) return;
 
         var def = ArtificerWorkOrderCatalogue.All
-            .Find(d => d.Key == data.ActiveArtificerOrderKey);
+            .Find(d => d.Key == guild.ActiveArtificerOrderKey);
 
         if (def == null)
         {
-            data.ClearArtificerOrder();
-            _pm.SendMessage(0x22, "Commission data was invalid — order cleared.");
+            guild.ClearArtificerOrder();
+            _pm.SendMessage(0x22, "Commission data was invalid - order cleared.");
             _pm.SendGump(new ArtificerWorkOrderGump(_pm));
             return;
         }
 
-        if (!IsReadyToTurnIn(def, data, out var turnInItem))
+        if (!IsReadyToTurnIn(def, guild, out var turnInItem))
         {
             _pm.SendMessage(0x22, "The item does not yet meet the commission requirements:");
 
@@ -970,7 +972,7 @@ public sealed class ArtificerWorkOrderGump : Gump
             Item? checkItem = null;
             if (def.ItemFactory != null)
             {
-                checkItem = FindItemBySerial(data.ActiveArtificerItemSerial);
+                checkItem = FindItemBySerial(guild.ActiveArtificerItemSerial);
             }
             else if (_pm.Backpack != null)
             {
@@ -992,7 +994,7 @@ public sealed class ArtificerWorkOrderGump : Gump
                     if (propDef == null) continue;
                     var cur = propDef.Get(checkItem);
                     if (cur < req.MinValue)
-                        _pm.SendMessage(0x22, $"  {req.PropertyName}: {cur} (need ≥ {req.MinValue})");
+                        _pm.SendMessage(0x22, $"  {req.PropertyName}: {cur} (need >= {req.MinValue})");
                 }
             }
 
@@ -1002,18 +1004,18 @@ public sealed class ArtificerWorkOrderGump : Gump
             return;
         }
 
-        // ── Success ────────────────────────────────────────────────────────────
+        // -- Success ------------------------------------------------------------
         turnInItem!.Delete();
-        data.ClearArtificerOrder();
+        guild.ClearArtificerOrder();
 
-        data.AddReputation("artificers", def.ArtificerRepReward);
-        data.AddCurrency("artificers",   def.ArtificerScripReward);
+        guild.AddReputation("artificers", def.ArtificerRepReward);
+        guild.AddCurrency("artificers",   def.ArtificerScripReward);
         _pm.Backpack?.DropItem(new Gold(def.GoldReward));
 
         if (def.RequiresSmithMembership && def.SmithScripReward > 0)
         {
-            data.AddReputation("smithing", def.SmithRepReward);
-            data.AddCurrency("smithing",   def.SmithScripReward);
+            guild.AddReputation("smithing", def.SmithRepReward);
+            guild.AddCurrency("smithing",   def.SmithScripReward);
             _pm.SendMessage(1154,
                 $"Smiths' reward: +{def.SmithRepReward} standing, +{def.SmithScripReward} scrip.");
         }
@@ -1027,21 +1029,21 @@ public sealed class ArtificerWorkOrderGump : Gump
         _pm.SendGump(new ArtificerWorkOrderGump(_pm));
     }
 
-    private void HandleAbandon(ClusterFAccountData data)
+    private void HandleAbandon(CharacterGuildData guild)
     {
-        if (!data.HasActiveArtificerOrder) return;
+        if (!guild.HasActiveArtificerOrder) return;
 
         var def = ArtificerWorkOrderCatalogue.All
-            .Find(d => d.Key == data.ActiveArtificerOrderKey);
+            .Find(d => d.Key == guild.ActiveArtificerOrderKey);
 
         // Delete the commission item if it's still in the player's pack
-        if (def?.ItemFactory != null && data.ActiveArtificerItemSerial != 0)
+        if (def?.ItemFactory != null && guild.ActiveArtificerItemSerial != 0)
         {
-            var item = FindItemBySerial(data.ActiveArtificerItemSerial);
+            var item = FindItemBySerial(guild.ActiveArtificerItemSerial);
             item?.Delete();
         }
 
-        data.ClearArtificerOrder();
+        guild.ClearArtificerOrder();
 
         _pm.SendMessage(0x22, "Commission abandoned. No reward issued.");
         _pm.SendGump(new ArtificerWorkOrderGump(_pm));

@@ -10,7 +10,8 @@
 //   GuildWelcome         the once-per-character first-login page.
 //
 // Per character, not per account: ClusterFAccountData v14 keeps a GuildStarterRecord per character
-// serial. Membership stays per account. "Once per loop" is once per character until loops exist.
+// serial. Membership is per character too since cc-P18 (CharacterGuildData, v15). "Once per loop" is once per
+// character until loops exist.
 //
 // One ledger with the quests: taking an item here marks its MLQuest done for the character
 // (MLQuestContext.SetDoneQuest, which only records, MLQuestContext.cs:156-168). A quest already
@@ -363,7 +364,7 @@ public static class ClusterFGuildStarter
             return false;
         }
 
-        if (!ClusterFGuildSystem.IsJoined(acct, def.Key))
+        if (!ClusterFGuildSystem.IsJoined(pm, def.Key))
         {
             message = $"Join the {def.Name} first. Joining is free.";
             return false;
@@ -451,10 +452,10 @@ public static class ClusterFGuildStarter
             return false;
         }
 
-        var data = ClusterFAccountPersistence.GetOrCreate((IAccount)pm.Account);
-        if (data.GetCurrency(def.Key) < ReplacementScrip)
+        var guild = ClusterFAccountPersistence.GetOrCreate((IAccount)pm.Account).GetOrCreateGuildData(pm.Serial);
+        if (guild.GetCurrency(def.Key) < ReplacementScrip)
         {
-            message = $"A replacement costs {ReplacementScrip} {def.Name} scrip. You have {data.GetCurrency(def.Key)}.";
+            message = $"A replacement costs {ReplacementScrip} {def.Name} scrip. You have {guild.GetCurrency(def.Key)}.";
             return false;
         }
 
@@ -483,7 +484,7 @@ public static class ClusterFGuildStarter
             return false;
         }
 
-        data.SpendCurrency(def.Key, ReplacementScrip);
+        guild.SpendCurrency(def.Key, ReplacementScrip);
         message = $"Replaced for {ReplacementScrip} scrip.";
         return true;
     }

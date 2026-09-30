@@ -5,7 +5,8 @@
 //
 // Facts (the brief's numbering; 8, old saves load, is in AccountDataSerializerVerification):
 //   1. A fresh character with no skill and no gold joins and gets its tools once. Nothing is consumed.
-//   2. A second character on the same account gets its own tools and items (PT-06).
+//   2. A second character on the same account gets its own tools and items (PT-06); since cc-P18 it
+//      is not a member because the first is, and joins on its own.
 //   3. An item taken from the guild marks its quest done and the quest then pays nothing; a quest
 //      done first shows its item as received and the guild pays nothing.
 //   4. The Necromancer spellbook from the guild has every spell.
@@ -13,7 +14,8 @@
 //   6. Joining each guild as a gargoyle hands over only items a gargoyle can use. The 26 starter
 //      items are checked the same way and listed as data for Chase.
 //   7. The directory's arrow resolves to a guildmaster that exists; a missing one reports it.
-//   9. The dev reset's Account Data clears JoinedGuilds and every character's starter record.
+//   9. The dev reset's Guilds option (Account Data before cc-P18) clears every character's guild data
+//      and starter record.
 // And three more: a guild kit never deletes what is worn, the old join task is the Apprentice task,
 // and every trainer's line names its hall's guild.
 //
@@ -170,9 +172,9 @@ public class GuildStarterPathVerification
             var owned = Owned(pm);
             _out.WriteLine("after joining the Healers: " + string.Join(", ", owned.Select(i => $"{i.GetType().Name}x{i.Amount}")));
 
-            Assert.True(ClusterFGuildSystem.IsJoined(account, "healers"));
+            Assert.True(ClusterFGuildSystem.IsJoined(pm, "healers"));
             Assert.Contains("healers", ClusterFGuildStarter.GetRecord(pm).ToolsTaken);
-            Assert.Equal("Initiate", ClusterFGuildSystem.GetRankName("healers", ClusterFAccountPersistence.GetOrCreate(account)));
+            Assert.Equal("Initiate", ClusterFGuildSystem.GetRankName("healers", ClusterFAccountPersistence.GetOrCreateGuild(pm)));
 
             // Healing, Anatomy, Alchemy and Taste ID at creation: 50 bandages and scissors, 3 bandages
             // and a robe, 4 bottles, a mortar and a robe, nothing. No type twice: Anatomy's bandages
@@ -255,15 +257,16 @@ public class GuildStarterPathVerification
             Assert.Equal(1, CountOf<CompactOreSatchel>(first));
             Assert.Equal(1, CountOf<JacobsPickaxe>(first));
 
-            // PT-06: the account is a member, so the old code said "Already a member" and gave nothing.
-            Assert.False(ClusterFGuildSystem.CanJoin(second, mining, out var reason));
-            Assert.Equal("Already a member.", reason);
+            // PT-06, and cc-P18 (F-7): membership is per character, so the second character is not a
+            // member because the first is. It joins on its own and gets its own tools.
+            Assert.True(ClusterFGuildSystem.CanJoin(second, mining, out var reason), reason);
+            Assert.False(ClusterFGuildSystem.IsJoined(second, "mining"));
             Assert.Empty(Owned(second));
 
-            ClusterFGuildSystem.Join(second, mining); // "Welcome back"
+            ClusterFGuildSystem.Join(second, mining);
 
             var owned = Owned(second);
-            _out.WriteLine("second character after Welcome back: " + string.Join(", ", owned.Select(i => i.GetType().Name)));
+            _out.WriteLine("second character after joining: " + string.Join(", ", owned.Select(i => i.GetType().Name)));
             Assert.Equal(1, CountOf<Pickaxe>(second) - CountOf<JacobsPickaxe>(second));
             Assert.Equal(1, CountOf<CompactOreSatchel>(second));
             Assert.Equal(1, CountOf<ProspectorsLogbook>(second));
@@ -623,19 +626,21 @@ public class GuildStarterPathVerification
             Assert.True(ClusterFGuildStarter.TakeStarterItem(first, Guild("warriors"), typeof(EnGuarde), out _));
 
             var data = ClusterFAccountPersistence.GetOrCreate(account);
-            data.SetFlag(ClusterFGuildSystem.ApprenticeFlag("warriors"));
+            ClusterFAccountPersistence.GetOrCreateGuild(first).ApprenticeGuilds.Add("warriors");
             data.SetFlag("league.joined");
             ClusterFGuildStarter.GetRecord(first).WelcomeShown = true;
 
-            Assert.Equal(2, data.JoinedGuilds.Count);
+            Assert.Single(ClusterFAccountPersistence.GetOrCreateGuild(first).JoinedGuilds);
+            Assert.Equal(2, ClusterFAccountPersistence.GetOrCreateGuild(second).JoinedGuilds.Count);
             Assert.Equal(2, data.GuildStarterRecordCount);
 
-            ClusterFDevTools.ExecuteReset(first, first, account, new ResetOptions { AccountData = true });
+            // cc-P18: the Guilds option (P15's Account Data guild half), every character.
+            ClusterFDevTools.ExecuteReset(first, first, account, new ResetOptions { Guilds = true });
 
-            Assert.Empty(data.JoinedGuilds);
+            Assert.Equal(0, data.GuildDataCount);
             Assert.Equal(0, data.GuildStarterRecordCount);
-            Assert.False(ClusterFGuildSystem.IsApprentice(data, "warriors"));
-            Assert.True(data.HasFlag("league.joined")); // not a guild flag: left alone
+            Assert.False(ClusterFGuildSystem.IsApprentice(ClusterFAccountPersistence.GetOrCreateGuild(first), "warriors"));
+            Assert.True(data.HasFlag("league.joined")); // not a guild flag: left alone by the Guilds option
 
             // Both characters can join and take their tools again.
             Assert.True(ClusterFGuildSystem.CanJoin(second, Guild("warriors"), out _));
@@ -643,7 +648,7 @@ public class GuildStarterPathVerification
             Assert.False(ClusterFGuildStarter.HasTools(second, "tinkers"));
 
             // The starter item's other half is the quest's done-record, which is Quest History, not
-            // Account Data: with only Account Data cleared the guild still shows it as received.
+            // Guilds: with only Guilds cleared the guild still shows it as received.
             Assert.Equal(StarterItemState.ReceivedFromTrainer, ClusterFGuildStarter.GetState(first, typeof(EnGuarde)));
             ClusterFDevTools.ExecuteReset(first, first, account, new ResetOptions { Quests = true });
             Assert.Equal(StarterItemState.Available, ClusterFGuildStarter.GetState(first, typeof(EnGuarde)));
@@ -662,7 +667,7 @@ public class GuildStarterPathVerification
         var account = NewAccount();
         var pm = NewCharacter(account, 0);
         var thieves = Guild("thieves");
-        var data = ClusterFAccountPersistence.GetOrCreate(account);
+        var data = ClusterFAccountPersistence.GetOrCreateGuild(pm);
 
         try
         {

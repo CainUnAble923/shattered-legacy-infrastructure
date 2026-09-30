@@ -58,7 +58,7 @@ public class SmithGuildmasterGump : Gump
         _acct = acct;
         _npc  = npc;
 
-        var isMember = ClusterFGuildSystem.IsJoined(acct, "smithing");
+        var isMember = ClusterFGuildSystem.IsJoined(pm, "smithing");
 
         Closable   = true;
         Disposable = true;
@@ -82,9 +82,9 @@ public class SmithGuildmasterGump : Gump
 
     private void BuildMemberView(PlayerMobile pm, IAccount acct)
     {
-        var data     = ClusterFAccountPersistence.GetOrCreate(acct);
-        var standing = data.GetReputation("smithing");
-        var seals    = data.GetCurrency("smithing");
+        var guild     = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        var standing = guild.GetReputation("smithing");
+        var seals    = guild.GetCurrency("smithing");
         var rank     = GetRank(standing);
 
         // -- Standing / rank block ----------------------------------------------

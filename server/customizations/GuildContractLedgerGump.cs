@@ -10,19 +10,19 @@ using Server.Network;
 namespace Server;
 
 /// <summary>
-/// Guild Contract Ledger — opened from a guild liaison's Member Dashboard.
+/// Guild Contract Ledger - opened from a guild liaison's Member Dashboard.
 ///
 /// Three tabs:
-///   Available — orders the player is eligible for and can accept
-///   Active    — accepted orders with live pack-count progress and Turn In
-///   History   — recently completed orders (last 20)
+///   Available - orders the player is eligible for and can accept
+///   Active    - accepted orders with live pack-count progress and Turn In
+///   History   - recently completed orders (last 20)
 ///
-/// Scroll arrows (▲/▼) appear on the right edge whenever there are more items
+/// Scroll arrows (^/v) appear on the right edge whenever there are more items
 /// than fit in the visible window.  Button IDs 20/21 carry the scroll action;
 /// accept/turn-in IDs encode the absolute list index so they survive scrolling.
 ///
 /// Instantiate with a guildKey (e.g. "mining") to scope the display to one guild.
-/// The same gump is reused by all future guilds — only the guildKey changes.
+/// The same gump is reused by all future guilds - only the guildKey changes.
 /// </summary>
 public class GuildContractLedgerGump : Gump
 {
@@ -56,18 +56,18 @@ public class GuildContractLedgerGump : Gump
         AddBackground(0, 0, W, H, BgId);
         AddAlphaRegion(6, 6, W - 12, H - 12);
 
-        // ── Header ────────────────────────────────────────────────────────
+        // -- Header --------------------------------------------------------
         AddLabel(W / 2 - 80, 12, 1154, "Guild Contract Ledger");
         AddLabel(W / 2 - 60, 28, 999,  GuildDisplayName(guildKey));
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
-        // ── Tab bar ───────────────────────────────────────────────────────
+        // -- Tab bar -------------------------------------------------------
         DrawTabButton(18,  56, 10, Tab.Available, "Available");
         DrawTabButton(165, 56, 11, Tab.Active,    "Active");
         DrawTabButton(290, 56, 12, Tab.History,   "History");
         AddImageTiled(10, 78, W - 20, 2, 9304);
 
-        // ── Content ───────────────────────────────────────────────────────
+        // -- Content -------------------------------------------------------
         var acct = pm.Account as IAccount;
         var data = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : new ClusterFAccountData();
 
@@ -78,7 +78,7 @@ public class GuildContractLedgerGump : Gump
             case Tab.History:   DrawHistory(data);   break;
         }
 
-        // ── Footer ────────────────────────────────────────────────────────
+        // -- Footer --------------------------------------------------------
         AddImageTiled(10, FooterY, W - 20, 2, 9304);
         AddButton(18,      H - 32, 4014, 4016, 1);   // Back
         AddLabel(44,       H - 30, 999,   "Back");
@@ -93,10 +93,10 @@ public class GuildContractLedgerGump : Gump
         AddLabel(x + 24, y + 2, color, label);
     }
 
-    // ── Scroll helpers ────────────────────────────────────────────────────────
+    // -- Scroll helpers --------------------------------------------------------
 
     /// <summary>
-    /// Draws ▲/▼ arrow buttons on the right edge of the content area.
+    /// Draws ^/v arrow buttons on the right edge of the content area.
     /// Only the buttons that are actually usable are shown.
     /// Returns the clamped, valid offset for the given total.
     /// </summary>
@@ -108,10 +108,10 @@ public class GuildContractLedgerGump : Gump
         if (total <= MaxCards) return offset; // nothing to scroll
 
         if (offset > 0)
-            AddButton(ScrollX, ContentY + 4, 0x15E3, 0x15E7, 20); // ▲ up
+            AddButton(ScrollX, ContentY + 4, 0x15E3, 0x15E7, 20); // ^ up
 
         if (offset + MaxCards < total)
-            AddButton(ScrollX, FooterY - 22, 0x15E5, 0x15E9, 21); // ▼ down
+            AddButton(ScrollX, FooterY - 22, 0x15E5, 0x15E9, 21); // v down
 
         // Small position label, e.g. "2/5"
         var labelY = ContentY + (FooterY - ContentY) / 2 - 8;
@@ -121,10 +121,11 @@ public class GuildContractLedgerGump : Gump
         return offset;
     }
 
-    // ── Available tab ─────────────────────────────────────────────────────────
+    // -- Available tab ---------------------------------------------------------
 
     private void DrawAvailable(ClusterFAccountData data)
     {
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
         var allForGuild = ClusterFWorkOrderSystem.GetForGuild(_guildKey);
 
         var orders = allForGuild
@@ -143,7 +144,7 @@ public class GuildContractLedgerGump : Gump
             return;
         }
 
-        var guildActiveCount = data.ActiveWorkOrders.Count(e => e.GuildKey.Equals(_guildKey, StringComparison.OrdinalIgnoreCase));
+        var guildActiveCount = guild.ActiveWorkOrders.Count(e => e.GuildKey.Equals(_guildKey, StringComparison.OrdinalIgnoreCase));
         var atMax  = guildActiveCount >= ClusterFWorkOrderSystem.MaxActiveOrdersPerGuild;
         var offset = AddScrollButtons(_offset, orders.Count + pendingDiscovery.Count);
 
@@ -166,7 +167,7 @@ public class GuildContractLedgerGump : Gump
 
             if (isPending)
             {
-                // ── Discovery-pending entry (locked) ──────────────────────
+                // -- Discovery-pending entry (locked) ----------------------
                 AddLabel(18,      cy,     999, def.Title + "  [Locked]");
                 AddLabel(W - 175, cy,     999, def.TypeLabel);
 
@@ -184,8 +185,8 @@ public class GuildContractLedgerGump : Gump
             }
             else
             {
-                // ── Eligible entry ────────────────────────────────────────
-                var hasThis = ClusterFWorkOrderSystem.HasActive(data, def.Key);
+                // -- Eligible entry ----------------------------------------
+                var hasThis = ClusterFWorkOrderSystem.HasActive(guild, def.Key);
 
                 AddLabel(18,      cy,     1154, def.Title);
                 AddLabel(W - 175, cy,     999,  def.TypeLabel);
@@ -227,8 +228,9 @@ public class GuildContractLedgerGump : Gump
     /// </summary>
     private bool IsDiscoveryPending(WorkOrderDef def, ClusterFAccountData data)
     {
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
         if (def.RequiredDiscovery == null) return false;
-        if (data.GetReputation(def.GuildKey) < def.MinStanding) return false;
+        if (guild.GetReputation(def.GuildKey) < def.MinStanding) return false;
         if (def.SkillRequired.HasValue && _pm.Skills[def.SkillRequired.Value].Value < def.MinSkill) return false;
 
         // Ore must be discovered (entry exists) but not yet reported
@@ -236,11 +238,12 @@ public class GuildContractLedgerGump : Gump
             && entry.State == DiscoveryState.Discovered;
     }
 
-    // ── Active tab ────────────────────────────────────────────────────────────
+    // -- Active tab ------------------------------------------------------------
 
     private void DrawActive(ClusterFAccountData data)
     {
-        var entries = data.ActiveWorkOrders
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
+        var entries = guild.ActiveWorkOrders
             .Where(e => e.GuildKey.Equals(_guildKey, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
@@ -274,7 +277,7 @@ public class GuildContractLedgerGump : Gump
             // Title
             AddLabel(18, cy, 1154, def.Title);
 
-            // Requirements — taming contracts show delivery progress, others show pack count
+            // Requirements - taming contracts show delivery progress, others show pack count
             var reqY   = cy + 16;
             var allMet = bypass;
 
@@ -292,13 +295,13 @@ public class GuildContractLedgerGump : Gump
                 {
                     entry.TamingProgress.TryGetValue(req.ItemType.Name, out have);
                     total  = req.Amount;
-                    label  = $"• Deliver {req.Label}: {(bypass ? total : have)}/{total}";
+                    label  = $"* Deliver {req.Label}: {(bypass ? total : have)}/{total}";
                 }
                 else
                 {
                     have  = _pm.Backpack?.GetAmount(req.ItemType) ?? 0;
                     total = req.Amount;
-                    label = $"• {req.Label}: {(bypass ? total : have)}/{total}";
+                    label = $"* {req.Label}: {(bypass ? total : have)}/{total}";
                 }
 
                 var met = bypass || have >= total;
@@ -306,7 +309,7 @@ public class GuildContractLedgerGump : Gump
                 reqY += 16;
             }
 
-            // Turn in / deliver more — button ID encodes absolute active-list index
+            // Turn in / deliver more - button ID encodes absolute active-list index
             if (allMet)
             {
                 AddButton(18, reqY + 2, 4011, 4012, 200 + absIdx);
@@ -323,11 +326,12 @@ public class GuildContractLedgerGump : Gump
         }
     }
 
-    // ── History tab ───────────────────────────────────────────────────────────
+    // -- History tab -----------------------------------------------------------
 
     private void DrawHistory(ClusterFAccountData data)
     {
-        var entries = data.CompletedWorkOrders
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
+        var entries = guild.CompletedWorkOrders
             .Where(e => e.GuildKey.Equals(_guildKey, StringComparison.OrdinalIgnoreCase))
             .Reverse()          // most recent first
             .ToList();
@@ -338,7 +342,7 @@ public class GuildContractLedgerGump : Gump
             return;
         }
 
-        // History rows are compact (22px each) — fit more per page
+        // History rows are compact (22px each) - fit more per page
         const int historyRowH  = 22;
         const int historyMax   = 14; // rows visible in the content area
         var offset = Math.Max(0, Math.Min(_offset, Math.Max(0, entries.Count - historyMax)));
@@ -373,7 +377,7 @@ public class GuildContractLedgerGump : Gump
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     private void SendBackGump()
     {
@@ -382,7 +386,7 @@ public class GuildContractLedgerGump : Gump
             case "mining":
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, MinersCompactLiaisonGump.View.MemberDashboard));
                 break;
-            // Future guilds: add cases here (e.g. "smithing" → SmithsBrotherhoodLiaisonGump)
+            // Future guilds: add cases here (e.g. "smithing" -> SmithsBrotherhoodLiaisonGump)
         }
     }
 
@@ -395,7 +399,7 @@ public class GuildContractLedgerGump : Gump
         _          => guildKey
     };
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -433,7 +437,8 @@ public class GuildContractLedgerGump : Gump
 
     private void HandleAccept(ClusterFAccountData data, int idx)
     {
-        if (!data.JoinedGuilds.Contains(_guildKey))
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
+        if (!guild.JoinedGuilds.Contains(_guildKey))
         {
             _pm.SendMessage(0x22, "You must be a member of the guild to accept work orders.");
             return;
@@ -465,26 +470,27 @@ public class GuildContractLedgerGump : Gump
             return;
         }
 
-        if (ClusterFWorkOrderSystem.HasActive(data, def.Key))
+        if (ClusterFWorkOrderSystem.HasActive(guild, def.Key))
         {
             _pm.SendMessage(0x22, "You already have this order active.");
             return;
         }
 
-        var guildCount = data.ActiveWorkOrders.Count(e => e.GuildKey.Equals(def.GuildKey, StringComparison.OrdinalIgnoreCase));
+        var guildCount = guild.ActiveWorkOrders.Count(e => e.GuildKey.Equals(def.GuildKey, StringComparison.OrdinalIgnoreCase));
         if (guildCount >= ClusterFWorkOrderSystem.MaxActiveOrdersPerGuild)
         {
             _pm.SendMessage(0x22, $"You can only hold {ClusterFWorkOrderSystem.MaxActiveOrdersPerGuild} active work orders per guild at a time. Complete one first.");
             return;
         }
 
-        data.ActiveWorkOrders.Add(new WorkOrderEntry(def.Key, def.GuildKey));
+        guild.ActiveWorkOrders.Add(new WorkOrderEntry(def.Key, def.GuildKey));
         _pm.SendMessage(0x44, $"Accepted: {def.Title}. Gather the required materials and return to turn it in.");
     }
 
     private void HandleTurnIn(ClusterFAccountData data, int idx)
     {
-        var entries = data.ActiveWorkOrders
+        var guild = data.GetOrCreateGuildData(_pm.Serial);
+        var entries = guild.ActiveWorkOrders
             .Where(e => e.GuildKey.Equals(_guildKey, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
@@ -499,7 +505,7 @@ public class GuildContractLedgerGump : Gump
 
         if (def == null)
         {
-            _pm.SendMessage(0x22, "Order definition not found — please report this to an admin.");
+            _pm.SendMessage(0x22, "Order definition not found - please report this to an admin.");
             return;
         }
 
@@ -514,18 +520,18 @@ public class GuildContractLedgerGump : Gump
 
         // Consume materials and apply rewards
         def.ConsumeRequirements(_pm);
-        data.AddReputation(_guildKey, def.StandingReward);
-        data.AddCurrency(_guildKey,   def.VoucherReward);
+        guild.AddReputation(_guildKey, def.StandingReward);
+        guild.AddCurrency(_guildKey,   def.VoucherReward);
 
         if (def.GoldReward > 0)
             _pm.Backpack?.DropItem(new Gold(def.GoldReward));
 
         // Move to history
         entry.CompletedAt = DateTime.UtcNow;
-        data.ActiveWorkOrders.Remove(entry);
-        data.CompletedWorkOrders.Add(entry);
-        while (data.CompletedWorkOrders.Count > ClusterFWorkOrderSystem.MaxHistoryEntries)
-            data.CompletedWorkOrders.RemoveAt(0);
+        guild.ActiveWorkOrders.Remove(entry);
+        guild.CompletedWorkOrders.Add(entry);
+        while (guild.CompletedWorkOrders.Count > ClusterFWorkOrderSystem.MaxHistoryEntries)
+            guild.CompletedWorkOrders.RemoveAt(0);
 
         // Confirmation message
         var reward       = new List<string>();

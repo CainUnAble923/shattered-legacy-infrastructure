@@ -8,13 +8,13 @@ using Server.Targeting;
 
 namespace Server;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ClusterF Custodian System — Phase 4E (rev 2)
+// -----------------------------------------------------------------------------
+// ClusterF Custodian System - Phase 4E (rev 2)
 //
-// The Custodians — Britannia's civic cleanup guild.
+// The Custodians - Britannia's civic cleanup guild.
 //
-//   • [cleanup     — target a single item on the ground; awards Civic Tokens.
-//   • [cleanupall  — area sweep (10-tile radius); 60-second cooldown.
+//   * [cleanup     - target a single item on the ground; awards Civic Tokens.
+//   * [cleanupall  - area sweep (10-tile radius); 60-second cooldown.
 //
 // Both commands require Custodians guild membership.
 //
@@ -24,16 +24,16 @@ namespace Server;
 //               gold, bank checks, non-empty non-corpse containers.
 //
 // Token math:
-//   Corpse           → 2 base + 1 per 50 gp of estimated NPC vendor value of contents
-//                      (weapons 20 gp × material mult, armor 15 gp × material mult,
-//                       exceptional items ×2, stackables 2 gp/unit, gold at face value)
-//   Weapon / Armor   → 1–6 scaled by CraftResource tier
-//   Stackable        → max(1, amount / 10)
-//   Default          → 1
+//   Corpse           -> 2 base + 1 per 50 gp of estimated NPC vendor value of contents
+//                      (weapons 20 gp x material mult, armor 15 gp x material mult,
+//                       exceptional items x2, stackables 2 gp/unit, gold at face value)
+//   Weapon / Armor   -> 1-6 scaled by CraftResource tier
+//   Stackable        -> max(1, amount / 10)
+//   Default          -> 1
 //
 // Civic Tokens accumulate in both GuildCurrency("custodians") [spendable]
 // and GuildReputation("custodians") [rank standing].
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 public static class ClusterFCustodianSystem
 {
@@ -42,7 +42,7 @@ public static class ClusterFCustodianSystem
 
     private static readonly Dictionary<Serial, DateTime> _cleanupAllCooldowns = new();
 
-    // ── Bootstrap ─────────────────────────────────────────────────────────────
+    // -- Bootstrap -------------------------------------------------------------
 
     public static void Configure()
     {
@@ -50,7 +50,7 @@ public static class ClusterFCustodianSystem
         CommandSystem.Register("cleanupall", AccessLevel.Player, OnCleanupAllCommand);
     }
 
-    // ── Command handlers ──────────────────────────────────────────────────────
+    // -- Command handlers ------------------------------------------------------
 
     [Usage("cleanup")]
     [Description("Target a ground item to clean it up and earn Civic Tokens.")]
@@ -74,12 +74,12 @@ public static class ClusterFCustodianSystem
         pm.Target = new CleanupAllTarget(pm);
     }
 
-    // ── Membership check ──────────────────────────────────────────────────────
+    // -- Membership check ------------------------------------------------------
 
     private static bool RequireMembership(PlayerMobile pm)
     {
         if (pm.Account is not IAccount acct
-            || !ClusterFGuildSystem.IsJoined(acct, "custodians"))
+            || !ClusterFGuildSystem.IsJoined(pm, "custodians"))
         {
             pm.SendMessage(0x22,
                 "You must be a member of The Custodians to use this command. " +
@@ -89,11 +89,11 @@ public static class ClusterFCustodianSystem
         return true;
     }
 
-    // ── Public API ────────────────────────────────────────────────────────────
+    // -- Public API ------------------------------------------------------------
 
     /// <summary>
     /// Returns true if the item can be cleaned up for tokens.
-    /// <paramref name="requireGround"/> — true for [cleanup/[cleanupall (ground only);
+    /// <paramref name="requireGround"/> - true for [cleanup/[cleanupall (ground only);
     /// false when evaluating TrashBag contents.
     /// </summary>
     public static bool IsEligible(Item item, bool requireGround = true)
@@ -110,7 +110,7 @@ public static class ClusterFCustodianSystem
         // Corpses are always eligible regardless of name or contents.
         if (item is Corpse) return true;
 
-        // Non-movable items are decorations or world fixtures — never clean these up.
+        // Non-movable items are decorations or world fixtures - never clean these up.
         if (!item.Movable) return false;
 
         // Player-named items (custom name set by player or system) are skipped.
@@ -171,7 +171,7 @@ public static class ClusterFCustodianSystem
         if (item is Gold g)      return g.Amount;
         if (item is BankCheck bc) return bc.Worth;
 
-        // Weapons: base 20 gp × material multiplier × quality bonus.
+        // Weapons: base 20 gp x material multiplier x quality bonus.
         if (item is BaseWeapon bw)
         {
             var val = (int)(20 * VendorMaterialMult(bw.Resource));
@@ -179,7 +179,7 @@ public static class ClusterFCustodianSystem
             return val;
         }
 
-        // Armor: base 15 gp × material multiplier × quality bonus.
+        // Armor: base 15 gp x material multiplier x quality bonus.
         if (item is BaseArmor ba)
         {
             var val = (int)(15 * VendorMaterialMult(ba.Resource));
@@ -218,12 +218,12 @@ public static class ClusterFCustodianSystem
         if (pm.Account is not IAccount acct) return;
         if (tokens <= 0) return;
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
-        data.AddReputation("custodians", tokens);
-        data.AddCurrency("custodians",   tokens);
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        guild.AddReputation("custodians", tokens);
+        guild.AddCurrency("custodians",   tokens);
     }
 
-    // ── Rank helper ───────────────────────────────────────────────────────────
+    // -- Rank helper -----------------------------------------------------------
 
     public static string GetCustodianRank(int standing) => standing switch
     {
@@ -234,7 +234,7 @@ public static class ClusterFCustodianSystem
         _        => "Volunteer",
     };
 
-    // ── Inner targets ─────────────────────────────────────────────────────────
+    // -- Inner targets ---------------------------------------------------------
 
     private sealed class CleanupTarget : Target
     {
@@ -318,7 +318,7 @@ public static class ClusterFCustodianSystem
                 ? new Point3D(p3.X, p3.Y, p3.Z)
                 : pm.Location;
 
-            // Collect eligible items first — avoids modifying collection during iteration
+            // Collect eligible items first - avoids modifying collection during iteration
             var eligible = new List<Item>();
             foreach (var it in map.GetItemsInRange(center, CleanupAllRadius))
             {
@@ -365,7 +365,7 @@ public static class ClusterFCustodianSystem
         }
     }
 
-    // ── Material token scale ──────────────────────────────────────────────────
+    // -- Material token scale --------------------------------------------------
 
     private static int MaterialTokens(CraftResource res) => res switch
     {

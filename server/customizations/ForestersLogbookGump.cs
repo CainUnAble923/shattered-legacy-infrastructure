@@ -11,14 +11,14 @@ namespace Server;
 /// Gump for the Forester's Logbook.
 ///
 /// Two views:
-///   Logbook         — scrollable HTML list of all tracked timber types.
-///                     Vanilla colored woods (Oak → Frostwood) show total
+///   Logbook         - scrollable HTML list of all tracked timber types.
+///                     Vanilla colored woods (Oak -> Frostwood) show total
 ///                     chopped and first-found date. Extended rare timbers
-///                     (Ironwood → Starwood) additionally show Discovered /
+///                     (Ironwood -> Starwood) additionally show Discovered /
 ///                     Reported state. "Discovery Report" button appears if
 ///                     any extended finds are pending submission.
 ///
-///   DiscoveryReport — lists all extended timbers in Discovered state with
+///   DiscoveryReport - lists all extended timbers in Discovered state with
 ///                     reward previews (standing + Timber Tokens).
 ///                     "Submit" grants rewards and marks them Reported,
 ///                     identical to visiting Cedric Rowanwood in person.
@@ -42,7 +42,7 @@ public class ForestersLogbookGump : Gump
         "Shadowbark", "Runewood", "Voidwood", "Starwood",
     };
 
-    // Extended wood keys — these have a Discovered/Reported gate
+    // Extended wood keys - these have a Discovered/Reported gate
     private static readonly HashSet<string> ExtendedKeys = new(StringComparer.OrdinalIgnoreCase)
     {
         "Ironwood", "Ghostwood", "Emberbark", "Frostbark",
@@ -104,7 +104,7 @@ public class ForestersLogbookGump : Gump
         }
     }
 
-    // ── Logbook view ──────────────────────────────────────────────────────────
+    // -- Logbook view ----------------------------------------------------------
 
     private void DrawLogbook()
     {
@@ -121,7 +121,7 @@ public class ForestersLogbookGump : Gump
             AddHtml(10, 56, W - 20, 400, BuildHtml(discoveries), false, true);
         }
 
-        // ── Footer ────────────────────────────────────────────────────────────
+        // -- Footer ------------------------------------------------------------
         AddImageTiled(10, H - 46, W - 20, 2, 9304);
 
         var pending   = CountPending(_data);
@@ -165,7 +165,7 @@ public class ForestersLogbookGump : Gump
 
         if (anyVanilla)
         {
-            sb.Append("<BASEFONT COLOR=#AAAAAA><B>── Known Timbers ──</B></BASEFONT><BR>");
+            sb.Append("<BASEFONT COLOR=#AAAAAA><B>-- Known Timbers --</B></BASEFONT><BR>");
 
             foreach (var key in WoodOrder)
             {
@@ -178,7 +178,7 @@ public class ForestersLogbookGump : Gump
                 var dateStr = entry.FirstFound.ToString("yyyy-MM-dd");
                 sb.Append(
                     $"<BASEFONT COLOR={disp.Color}><B>{disp.Name}</B></BASEFONT>" +
-                    $"<BASEFONT COLOR=#AAAAAA> — first cut {dateStr}, {GroveCount(entry)}, " +
+                    $"<BASEFONT COLOR=#AAAAAA> - first cut {dateStr}, {GroveCount(entry)}, " +
                     $"{entry.TotalChopped:N0} logs chopped</BASEFONT><BR>");
                 AppendGroves(sb, entry);
             }
@@ -187,7 +187,7 @@ public class ForestersLogbookGump : Gump
         if (anyExtended)
         {
             if (anyVanilla) sb.Append("<BR>");
-            sb.Append("<BASEFONT COLOR=#AAAAAA><B>── Rare Discoveries ──</B></BASEFONT><BR>");
+            sb.Append("<BASEFONT COLOR=#AAAAAA><B>-- Rare Discoveries --</B></BASEFONT><BR>");
 
             foreach (var key in WoodOrder)
             {
@@ -204,7 +204,7 @@ public class ForestersLogbookGump : Gump
 
                 sb.Append(
                     $"<BASEFONT COLOR={disp.Color}><B>{disp.Name}</B></BASEFONT>" +
-                    $"<BASEFONT COLOR=#AAAAAA> — first found {dateStr}, {GroveCount(entry)}, " +
+                    $"<BASEFONT COLOR=#AAAAAA> - first found {dateStr}, {GroveCount(entry)}, " +
                     $"{entry.TotalChopped:N0} logs chopped{stateTag}</BASEFONT><BR>");
                 AppendGroves(sb, entry);
             }
@@ -224,12 +224,12 @@ public class ForestersLogbookGump : Gump
                 ? $"{loc.RegionName}, {loc.FacetName} | ({loc.Location.X}, {loc.Location.Y})"
                 : "location not recorded";
             sb.Append(
-                $"<BASEFONT COLOR=#888888>  • {loc.DiscoveredAt:yyyy-MM-dd} | {where} | " +
+                $"<BASEFONT COLOR=#888888>  * {loc.DiscoveredAt:yyyy-MM-dd} | {where} | " +
                 $"{loc.AmountChopped:N0} logs</BASEFONT><BR>");
         }
     }
 
-    // ── Discovery Report view ─────────────────────────────────────────────────
+    // -- Discovery Report view -------------------------------------------------
 
     private void DrawDiscoveryReport()
     {
@@ -242,7 +242,7 @@ public class ForestersLogbookGump : Gump
         if (pendingList.Count == 0)
         {
             AddLabel(18,  82, 999, "All rare timber discoveries have been submitted.");
-            AddLabel(18, 100, 999, "Keep chopping — new exotic finds can be reported here.");
+            AddLabel(18, 100, 999, "Keep chopping - new exotic finds can be reported here.");
 
             AddImageTiled(10, H - 46, W - 20, 2, 9304);
             AddButton(18,     H - 36, 4014, 4016, 20);
@@ -297,7 +297,7 @@ public class ForestersLogbookGump : Gump
         AddLabel(W - 28,  H - 34, 1154, "X");
     }
 
-    // ── Static helpers ────────────────────────────────────────────────────────
+    // -- Static helpers --------------------------------------------------------
 
     public static int CountPending(ClusterFAccountData data)
     {
@@ -332,6 +332,7 @@ public class ForestersLogbookGump : Gump
         if (pm.Account is not Server.Accounting.IAccount acct) return;
 
         var data    = ClusterFAccountPersistence.GetOrCreate(acct);
+        var guild = data.GetOrCreateGuildData(pm.Serial);
         var pending = GetPendingList(data);
 
         if (pending.Count == 0)
@@ -349,8 +350,8 @@ public class ForestersLogbookGump : Gump
             entry.State = DiscoveryState.Reported;
 
             var (standing, tokens) = RewardTable.TryGetValue(key, out var rw) ? rw : (250, 10);
-            data.AddReputation("foresters", standing);
-            data.AddCurrency("foresters", tokens);
+            guild.AddReputation("foresters", standing);
+            guild.AddCurrency("foresters", tokens);
             totStand += standing;
             totTok   += tokens;
         }
@@ -360,7 +361,7 @@ public class ForestersLogbookGump : Gump
             $"Gained +{totStand} Foresters' Standing and +{totTok} Timber Tokens.");
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {

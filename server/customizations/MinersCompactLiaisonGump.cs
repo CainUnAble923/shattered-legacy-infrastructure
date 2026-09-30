@@ -68,7 +68,7 @@ public class MinersCompactLiaisonGump : Gump
     private const int RestoreT5AdamantiumCost = 40;
     private const int RestoreT5GoldCost       = 60000;
 
-    // Satchel Upgrade costs (T1→T2 through T4→T5)
+    // Satchel Upgrade costs (T1->T2 through T4->T5)
     // Rank requirements: Apprentice (1k) / Surveyor (15k) / Master Delver (40k) / Deepwarden (80k)
     private const int SatchelT2VoucherCost    = 25;
     private const int SatchelT2IronCost       = 200;
@@ -111,31 +111,31 @@ public class MinersCompactLiaisonGump : Gump
         AddBackground(0, 0, W, H, BgId);
         AddAlphaRegion(6, 6, W - 12, H - 12);
 
-        // ── Header ────────────────────────────────────────────────────────
+        // -- Header --------------------------------------------------------
         AddLabel(W / 2 - 80, 12, 1154, "Miners' Compact");
         AddLabel(W / 2 - 60, 28, 999,  "New Haven Liaison");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
-        // ── View content ──────────────────────────────────────────────────
+        // -- View content --------------------------------------------------
         var acct = pm.Account as IAccount;
-        var data = acct != null
-            ? ClusterFAccountPersistence.GetOrCreate(acct)
-            : new ClusterFAccountData();
+        var guild = acct != null
+            ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial)
+            : new CharacterGuildData();
 
         switch (view)
         {
-            case View.MainMenu:        DrawMainMenu(data);          break;
+            case View.MainMenu:        DrawMainMenu(guild);          break;
             case View.AboutCompact:    DrawAboutCompact();          break;
             case View.WhatWeMine:      DrawWhatWeMine();            break;
             case View.JoiningReqs:     DrawJoiningReqs();           break;
             case View.Rewards:         DrawRewards();               break;
-            case View.MemberDashboard: DrawMemberDashboard(data);   break;
-            case View.Restoration:     DrawRestoration(data, acct);    break;
+            case View.MemberDashboard: DrawMemberDashboard(guild);   break;
+            case View.Restoration:     DrawRestoration(guild, acct);    break;
             case View.ReplaceKit:      DrawReplaceKit();               break;
-            case View.UpgradeSatchel:  DrawUpgradeSatchel(data, acct); break;
+            case View.UpgradeSatchel:  DrawUpgradeSatchel(guild, acct); break;
         }
 
-        // ── Footer ────────────────────────────────────────────────────────
+        // -- Footer --------------------------------------------------------
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
 
         if (view is not View.MainMenu)
@@ -148,11 +148,11 @@ public class MinersCompactLiaisonGump : Gump
         AddLabel(W - 28, H - 26, 1154, "X");
     }
 
-    // ── Views ─────────────────────────────────────────────────────────────────
+    // -- Views -----------------------------------------------------------------
 
-    private void DrawMainMenu(ClusterFAccountData data)
+    private void DrawMainMenu(CharacterGuildData guild)
     {
-        var isMember = data.JoinedGuilds.Contains("mining");
+        var isMember = guild.JoinedGuilds.Contains("mining");
 
         AddLabel(18, 56, 999, "Aye, what can I do for you?");
         AddImageTiled(10, 72, W - 20, 1, 9304);
@@ -218,8 +218,8 @@ public class MinersCompactLiaisonGump : Gump
             "<BASEFONT COLOR=#4488FF>Valorite</BASEFONT>" +
             "<BASEFONT COLOR=#888888> - The rarest vein. Reserved for master craftsmen." +
             "</BASEFONT><BR><BR>" +
-            "<BASEFONT COLOR=#AAAAAA>Veteran Compact members have spoken of deeper ores — veins " +
-            "not found on any map — whose existence the Compact neither confirms nor denies. " +
+            "<BASEFONT COLOR=#AAAAAA>Veteran Compact members have spoken of deeper ores - veins " +
+            "not found on any map - whose existence the Compact neither confirms nor denies. " +
             "A skilled prospector with the right tools may one day find them.</BASEFONT>";
 
         AddHtml(16, 78, W - 32, H - 128, html, false, true);
@@ -272,18 +272,18 @@ public class MinersCompactLiaisonGump : Gump
         AddHtml(16, 78, W - 32, H - 128, html, false, true);
     }
 
-    private void DrawMemberDashboard(ClusterFAccountData data)
+    private void DrawMemberDashboard(CharacterGuildData guild)
     {
         AddLabel(18, 56, 1154, "Member Dashboard");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
-        data.GuildReputation.TryGetValue("mining", out var standing);
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var rank        = GetRankName(standing);
         var acct        = _pm.Account as IAccount;
         var highestTier = GetHighestUnlockedTier(acct);
 
-        // Fixed-height HTML block (no scrollbar) — UO gumps do not render &gt; entities,
+        // Fixed-height HTML block (no scrollbar) - UO gumps do not render &gt; entities,
         // so use plain > or the text will appear literally escaped.
         var html =
             $"<BASEFONT COLOR=#FFD700>Rank: {rank}</BASEFONT><BR>" +
@@ -305,7 +305,7 @@ public class MinersCompactLiaisonGump : Gump
         AddButton(18, 250, 4011, 4012, 32);
         AddLabel(44, 252, 999, "Restoration (Jacob's Pickaxe)");
 
-        // Pickaxe upgrade button — shows next available tier upgrade, or a completion note.
+        // Pickaxe upgrade button - shows next available tier upgrade, or a completion note.
         var (upgradeLabel, upgradeBtn) = GetNextUpgradeButton(acct, highestTier);
         if (upgradeBtn > 0)
         {
@@ -342,7 +342,7 @@ public class MinersCompactLiaisonGump : Gump
             2 => ("Upgrade to Tier 3 (Prospector Pickaxe)", 34),
             3 => ("Upgrade to Tier 4 (Deepdelver Pickaxe)", 35),
             4 => ("Upgrade to Tier 5 (Worldbreaker Pickaxe)", 36),
-            _ => ("Tier 5 — Worldbreaker complete.", 0),
+            _ => ("Tier 5 - Worldbreaker complete.", 0),
         };
     }
 
@@ -360,17 +360,17 @@ public class MinersCompactLiaisonGump : Gump
         var html =
             "<BASEFONT COLOR=#AAAAAA>Each starting kit item costs " +
             $"{ReplaceCost} Mining Vouchers to replace. Items must be missing from " +
-            "your backpack to be replaced — if you have them in a house or container, " +
+            "your backpack to be replaced - if you have them in a house or container, " +
             "retrieve them instead.</BASEFONT><BR><BR>" +
             (hasSatchel
-                ? "<BASEFONT COLOR=#888888>Compact Ore Satchel — in your backpack.</BASEFONT><BR>"
-                : $"<BASEFONT COLOR=#FFD700>Compact Ore Satchel — not in backpack ({ReplaceCost}V to replace).</BASEFONT><BR>") +
+                ? "<BASEFONT COLOR=#888888>Compact Ore Satchel - in your backpack.</BASEFONT><BR>"
+                : $"<BASEFONT COLOR=#FFD700>Compact Ore Satchel - not in backpack ({ReplaceCost}V to replace).</BASEFONT><BR>") +
             (hasLogbook
-                ? "<BASEFONT COLOR=#888888>Prospector's Logbook — in your backpack.</BASEFONT><BR>"
-                : $"<BASEFONT COLOR=#FFD700>Prospector's Logbook — not in backpack ({ReplaceCost}V to replace).</BASEFONT><BR>") +
+                ? "<BASEFONT COLOR=#888888>Prospector's Logbook - in your backpack.</BASEFONT><BR>"
+                : $"<BASEFONT COLOR=#FFD700>Prospector's Logbook - not in backpack ({ReplaceCost}V to replace).</BASEFONT><BR>") +
             (hasLedger
-                ? "<BASEFONT COLOR=#888888>Compact Dispatch Ledger — in your backpack.</BASEFONT>"
-                : $"<BASEFONT COLOR=#FFD700>Compact Dispatch Ledger — not in backpack ({ReplaceCost}V to replace).</BASEFONT>");
+                ? "<BASEFONT COLOR=#888888>Compact Dispatch Ledger - in your backpack.</BASEFONT>"
+                : $"<BASEFONT COLOR=#FFD700>Compact Dispatch Ledger - not in backpack ({ReplaceCost}V to replace).</BASEFONT>");
 
         AddHtml(16, 78, W - 32, 140, html, false, false);
 
@@ -400,7 +400,7 @@ public class MinersCompactLiaisonGump : Gump
             AddLabel(18, y, 68, "All kit items are present in your backpack.");
     }
 
-    private void DrawUpgradeSatchel(ClusterFAccountData data, IAccount? acct)
+    private void DrawUpgradeSatchel(CharacterGuildData guild, IAccount? acct)
     {
         AddLabel(18, 56, 1154, "Upgrade Ore Satchel");
         AddImageTiled(10, 72, W - 20, 1, 9304);
@@ -408,10 +408,10 @@ public class MinersCompactLiaisonGump : Gump
         var bypass   = Items.DevTestingCrystal.IsActive(_pm);
         var curTier  = GetCurrentSatchelTier(_pm);
         var regTier  = GetHighestUnlockedSatchelTier(acct); // highest tier registered (ever owned)
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
-        data.GuildReputation.TryGetValue("mining", out var standing);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildReputation.TryGetValue("mining", out var standing);
 
-        // ── Detect "missing" satchel: registered but not in backpack ──────────
+        // -- Detect "missing" satchel: registered but not in backpack ----------
         // A higher-tier satchel may be in storage or accidentally deleted.
         bool satchelMissing = regTier > curTier;
 
@@ -440,7 +440,7 @@ public class MinersCompactLiaisonGump : Gump
         {
             html =
                 $"<BASEFONT COLOR=#FFD700>Current tier: {curName}</BASEFONT><BR><BR>" +
-                "<BASEFONT COLOR=#44AA44>Tier 5 — Master Expedition Satchel. " +
+                "<BASEFONT COLOR=#44AA44>Tier 5 - Master Expedition Satchel. " +
                 "You have reached the pinnacle of Compact logistics.</BASEFONT>";
         }
         else
@@ -454,10 +454,10 @@ public class MinersCompactLiaisonGump : Gump
                 $"<BASEFONT COLOR=#AAAAAA>Next upgrade: {nextName}</BASEFONT><BR><BR>" +
                 $"<BASEFONT COLOR=#AAAAAA>Cost: {costLine}</BASEFONT><BR>" +
                 (meetsRank
-                    ? $"<BASEFONT COLOR=#44AA44>Rank requirement: {rankName} ({rankReq:N0} standing) — met.</BASEFONT><BR>"
-                    : $"<BASEFONT COLOR=#FF8888>Rank requirement: {rankName} ({rankReq:N0} standing) — you have {standing:N0}.</BASEFONT><BR>") +
+                    ? $"<BASEFONT COLOR=#44AA44>Rank requirement: {rankName} ({rankReq:N0} standing) - met.</BASEFONT><BR>"
+                    : $"<BASEFONT COLOR=#FF8888>Rank requirement: {rankName} ({rankReq:N0} standing) - you have {standing:N0}.</BASEFONT><BR>") +
                 $"<BASEFONT COLOR=#AAAAAA>Your Mining Vouchers: {vouchers}</BASEFONT>" +
-                (bypass ? "<BR><BASEFONT COLOR=#FF44FF>[Testing Token active — costs bypassed]</BASEFONT>" : "");
+                (bypass ? "<BR><BASEFONT COLOR=#FF44FF>[Testing Token active - costs bypassed]</BASEFONT>" : "");
         }
 
         AddHtml(16, 78, W - 32, H - 148, html, false, true);
@@ -483,7 +483,7 @@ public class MinersCompactLiaisonGump : Gump
         }
     }
 
-    // ── Satchel tier helpers ──────────────────────────────────────────────────
+    // -- Satchel tier helpers --------------------------------------------------
 
     /// <summary>Returns the highest ore satchel tier the player currently has in their backpack.</summary>
     private static int GetCurrentSatchelTier(PlayerMobile pm)
@@ -550,7 +550,7 @@ public class MinersCompactLiaisonGump : Gump
               && CompactGoldHelper.GetTotalGold(_pm) >= SatchelT5GoldCost,
         };
 
-    private void DrawRestoration(ClusterFAccountData data, IAccount? acct)
+    private void DrawRestoration(CharacterGuildData guild, IAccount? acct)
     {
         AddLabel(18, 56, 1154, "Restoration");
         AddImageTiled(10, 72, W - 20, 1, 9304);
@@ -564,7 +564,7 @@ public class MinersCompactLiaisonGump : Gump
 
         var bypass      = Items.DevTestingCrystal.IsActive(_pm);
         var highestTier = GetHighestUnlockedTier(acct);
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
 
         if (highestTier == 0)
         {
@@ -596,7 +596,7 @@ public class MinersCompactLiaisonGump : Gump
             statusHtml = $"<BASEFONT COLOR=#FFD700>{pickaxeName}: Ready for restoration.</BASEFONT><BR>" +
                          $"<BASEFONT COLOR=#AAAAAA>{restoreCost}</BASEFONT>";
 
-        var bypassLine  = bypass ? "<BR><BASEFONT COLOR=#FF44FF>[Testing Token active — all material costs bypassed]</BASEFONT>" : "";
+        var bypassLine  = bypass ? "<BR><BASEFONT COLOR=#FF44FF>[Testing Token active - all material costs bypassed]</BASEFONT>" : "";
         var balanceLine = $"<BR><BR><BASEFONT COLOR=#AAAAAA>Your Mining Vouchers: {vouchers}</BASEFONT>" + bypassLine;
 
         AddHtml(16, 78, W - 32, H - 128, statusHtml + balanceLine, false, true);
@@ -608,7 +608,7 @@ public class MinersCompactLiaisonGump : Gump
         }
     }
 
-    // ── Restoration tier helpers ──────────────────────────────────────────────
+    // -- Restoration tier helpers ----------------------------------------------
 
     /// <summary>Returns the highest Jacob's Pickaxe tier the player has unlocked (0 = none).</summary>
     private static int GetHighestUnlockedTier(IAccount? acct)
@@ -690,7 +690,7 @@ public class MinersCompactLiaisonGump : Gump
               && CompactGoldHelper.GetTotalGold(_pm)                           >= RestoreT5GoldCost,
         };
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     public static string GetRankName(int standing) => standing switch
     {
@@ -703,7 +703,7 @@ public class MinersCompactLiaisonGump : Gump
         _         => "Initiate"
     };
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -719,17 +719,17 @@ public class MinersCompactLiaisonGump : Gump
         }
 
         var acct = _pm.Account as IAccount;
-        var data = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : null;
+        var guild = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial) : null;
 
         switch (info.ButtonID)
         {
-            // ── Topic navigation ──────────────────────────────────────────
+            // -- Topic navigation ------------------------------------------
             case 11: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.AboutCompact));    break;
             case 12: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.WhatWeMine));      break;
             case 13: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.JoiningReqs));     break;
             case 14: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Rewards));         break;
 
-            // ── Join flow ─────────────────────────────────────────────────
+            // -- Join flow -------------------------------------------------
             case 20:
             {
                 var def = ClusterFGuildSystem.GetDef("mining");
@@ -738,7 +738,7 @@ public class MinersCompactLiaisonGump : Gump
                 break;
             }
 
-            // ── Member navigation ─────────────────────────────────────────
+            // -- Member navigation -----------------------------------------
             case 30: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.MemberDashboard));         break;
             case 31: _pm.SendGump(new GuildContractLedgerGump(_pm, "mining"));                      break;
             case 32: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));             break;
@@ -750,52 +750,52 @@ public class MinersCompactLiaisonGump : Gump
             case 39: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.UpgradeSatchel));         break;
             case 100: _pm.SendGump(new CrossGuildExchangeGump(_pm));                               break;
 
-            // ── Satchel upgrade / recovery ────────────────────────────────
+            // -- Satchel upgrade / recovery --------------------------------
             case 90:
-                HandleSatchelRecovery(data, acct);
+                HandleSatchelRecovery(guild, acct);
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.UpgradeSatchel));
                 break;
             case 91:
-                HandleSatchelUpgrade(data, acct);
+                HandleSatchelUpgrade(guild, acct);
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.UpgradeSatchel));
                 break;
 
-            // ── Replace kit items ─────────────────────────────────────────
+            // -- Replace kit items -----------------------------------------
             case 75:
-                HandleReplaceKitItem<Items.CompactOreSatchel>(data, "Compact Ore Satchel",
+                HandleReplaceKitItem<Items.CompactOreSatchel>(guild, "Compact Ore Satchel",
                     () => new Items.CompactOreSatchel());
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.ReplaceKit));
                 break;
             case 76:
-                HandleReplaceKitItem<Items.ProspectorsLogbook>(data, "Prospector's Logbook",
+                HandleReplaceKitItem<Items.ProspectorsLogbook>(guild, "Prospector's Logbook",
                     () => new Items.ProspectorsLogbook());
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.ReplaceKit));
                 break;
             case 77:
-                HandleReplaceKitItem<Items.CompactDispatchLedger>(data, "Compact Dispatch Ledger",
+                HandleReplaceKitItem<Items.CompactDispatchLedger>(guild, "Compact Dispatch Ledger",
                     () => new Items.CompactDispatchLedger());
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.ReplaceKit));
                 break;
 
-            // ── Restoration requests ──────────────────────────────────────
+            // -- Restoration requests --------------------------------------
             case 60:
-                HandleRestorationRequest(data, acct);
+                HandleRestorationRequest(guild, acct);
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
                 break;
             case 61:
-                HandleT2RestorationRequest(data, acct);
+                HandleT2RestorationRequest(guild, acct);
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
                 break;
             case 62:
-                HandleTierRestorationRequest(data, acct, 3);
+                HandleTierRestorationRequest(guild, acct, 3);
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
                 break;
             case 63:
-                HandleTierRestorationRequest(data, acct, 4);
+                HandleTierRestorationRequest(guild, acct, 4);
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
                 break;
             case 64:
-                HandleTierRestorationRequest(data, acct, 5);
+                HandleTierRestorationRequest(guild, acct, 5);
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
                 break;
         }
@@ -805,11 +805,11 @@ public class MinersCompactLiaisonGump : Gump
     /// Handles restoration for T3, T4, or T5 pickaxe tiers.
     /// Consumes the appropriate materials, removes any exhausted copy, and delivers a fresh one.
     /// </summary>
-    private void HandleTierRestorationRequest(ClusterFAccountData? data, IAccount? acct, int tier)
+    private void HandleTierRestorationRequest(CharacterGuildData? guild, IAccount? acct, int tier)
     {
-        if (data == null || acct == null) return;
+        if (guild == null || acct == null) return;
 
-        if (!data.JoinedGuilds.Contains("mining"))
+        if (!guild.JoinedGuilds.Contains("mining"))
         {
             _pm.SendMessage(0x22, "You must be a Miners' Compact member to request a restoration.");
             return;
@@ -833,7 +833,7 @@ public class MinersCompactLiaisonGump : Gump
         var pack   = _pm.Backpack;
         if (pack == null) { _pm.SendMessage(0x22, "You don't have a backpack."); return; }
 
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
 
         // Validate costs (skipped in bypass mode)
         if (!bypass)
@@ -867,7 +867,7 @@ public class MinersCompactLiaisonGump : Gump
             }
 
             // Consume costs
-            data.GuildCurrency["mining"] = vouchers - vCost;
+            guild.GuildCurrency["mining"] = vouchers - vCost;
             pack.ConsumeTotal(typeof(Items.IronIngot), ironCost);
             if (matType != null) pack.ConsumeTotal(matType, matCost);
             if (mat2Type != null) pack.ConsumeTotal(mat2Type, mat2Cost);
@@ -915,7 +915,7 @@ public class MinersCompactLiaisonGump : Gump
             _ => new Items.JacobsWorldbreakerPickaxe(),
         };
 
-    // ── Kit replacement ───────────────────────────────────────────────────────
+    // -- Kit replacement -------------------------------------------------------
 
     private const int KitReplaceCost = 5; // Mining Vouchers per item
 
@@ -925,12 +925,12 @@ public class MinersCompactLiaisonGump : Gump
     /// player's backpack.  Blessed items don't drop on death, but players may have
     /// deleted them, left them in a house, or traded them away.
     /// </summary>
-    private void HandleReplaceKitItem<T>(ClusterFAccountData? data, string itemName,
+    private void HandleReplaceKitItem<T>(CharacterGuildData? guild, string itemName,
         Func<Item> factory) where T : Item
     {
-        if (data == null) return;
+        if (guild == null) return;
 
-        if (!data.JoinedGuilds.Contains("mining"))
+        if (!guild.JoinedGuilds.Contains("mining"))
         {
             _pm.SendMessage(0x22, "You must be a member of the Miners' Compact to replace kit items.");
             return;
@@ -945,7 +945,7 @@ public class MinersCompactLiaisonGump : Gump
             return;
         }
 
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
 
         var bypass = Items.DevTestingCrystal.IsActive(_pm);
         if (!bypass && vouchers < KitReplaceCost)
@@ -957,19 +957,19 @@ public class MinersCompactLiaisonGump : Gump
         }
 
         if (!bypass)
-            data.GuildCurrency["mining"] = vouchers - KitReplaceCost;
+            guild.GuildCurrency["mining"] = vouchers - KitReplaceCost;
 
         pack.DropItem(factory());
         _pm.SendMessage(0x44, $"A replacement {itemName} has been added to your backpack.");
     }
 
-    // ── Satchel upgrade ───────────────────────────────────────────────────────
+    // -- Satchel upgrade -------------------------------------------------------
 
-    private void HandleSatchelUpgrade(ClusterFAccountData? data, IAccount? acct)
+    private void HandleSatchelUpgrade(CharacterGuildData? guild, IAccount? acct)
     {
-        if (data == null || acct == null) return;
+        if (guild == null || acct == null) return;
 
-        if (!data.JoinedGuilds.Contains("mining"))
+        if (!guild.JoinedGuilds.Contains("mining"))
         {
             _pm.SendMessage(0x22, "You must be a Miners' Compact member to upgrade your satchel.");
             return;
@@ -990,8 +990,8 @@ public class MinersCompactLiaisonGump : Gump
             return;
         }
 
-        data.GuildReputation.TryGetValue("mining", out var standing);
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
 
         var (nextName, _, rankReq) = GetSatchelUpgradeInfo(curTier);
         var bypass = Items.DevTestingCrystal.IsActive(_pm);
@@ -1017,25 +1017,25 @@ public class MinersCompactLiaisonGump : Gump
             switch (curTier)
             {
                 case 1:
-                    data.GuildCurrency["mining"] = vouchers - SatchelT2VoucherCost;
+                    guild.GuildCurrency["mining"] = vouchers - SatchelT2VoucherCost;
                     pack.ConsumeTotal(typeof(Items.IronIngot),       SatchelT2IronCost);
                     pack.ConsumeTotal(typeof(Items.DullCopperIngot), SatchelT2DullCopperCost);
                     CompactGoldHelper.ConsumeGold(_pm, SatchelT2GoldCost);
                     break;
                 case 2:
-                    data.GuildCurrency["mining"] = vouchers - SatchelT3VoucherCost;
+                    guild.GuildCurrency["mining"] = vouchers - SatchelT3VoucherCost;
                     pack.ConsumeTotal(typeof(Items.IronIngot),    SatchelT3IronCost);
                     pack.ConsumeTotal(typeof(Items.AgapiteIngot), SatchelT3AgapiteCost);
                     CompactGoldHelper.ConsumeGold(_pm, SatchelT3GoldCost);
                     break;
                 case 3:
-                    data.GuildCurrency["mining"] = vouchers - SatchelT4VoucherCost;
+                    guild.GuildCurrency["mining"] = vouchers - SatchelT4VoucherCost;
                     pack.ConsumeTotal(typeof(Items.IronIngot),     SatchelT4IronCost);
                     pack.ConsumeTotal(typeof(Items.ValoriteIngot), SatchelT4ValoriteCost);
                     CompactGoldHelper.ConsumeGold(_pm, SatchelT4GoldCost);
                     break;
                 case 4:
-                    data.GuildCurrency["mining"] = vouchers - SatchelT5VoucherCost;
+                    guild.GuildCurrency["mining"] = vouchers - SatchelT5VoucherCost;
                     pack.ConsumeTotal(typeof(Items.IronIngot),       SatchelT5IronCost);
                     pack.ConsumeTotal(typeof(Items.AdamantiumIngot), SatchelT5AdamantiumCost);
                     CompactGoldHelper.ConsumeGold(_pm, SatchelT5GoldCost);
@@ -1058,7 +1058,7 @@ public class MinersCompactLiaisonGump : Gump
         // Transfer all contents from old to new satchel before deleting old.
         if (oldSatchel != null)
         {
-            // Move items from old satchel — iterate backwards to avoid index shifting.
+            // Move items from old satchel - iterate backwards to avoid index shifting.
             for (var i = oldSatchel.Items.Count - 1; i >= 0; i--)
             {
                 var content = oldSatchel.Items[i];
@@ -1085,11 +1085,11 @@ public class MinersCompactLiaisonGump : Gump
     /// Recovers a higher-tier satchel that has been registered but is not in the player's backpack.
     /// Costs SatchelRestoreCost vouchers.
     /// </summary>
-    private void HandleSatchelRecovery(ClusterFAccountData? data, IAccount? acct)
+    private void HandleSatchelRecovery(CharacterGuildData? guild, IAccount? acct)
     {
-        if (data == null || acct == null) return;
+        if (guild == null || acct == null) return;
 
-        if (!data.JoinedGuilds.Contains("mining"))
+        if (!guild.JoinedGuilds.Contains("mining"))
         {
             _pm.SendMessage(0x22, "You must be a Miners' Compact member to recover a satchel.");
             return;
@@ -1100,14 +1100,14 @@ public class MinersCompactLiaisonGump : Gump
 
         if (regTier <= curTier)
         {
-            _pm.SendMessage(0x22, "Your satchel is accounted for — no recovery needed.");
+            _pm.SendMessage(0x22, "Your satchel is accounted for - no recovery needed.");
             return;
         }
 
         var pack = _pm.Backpack;
         if (pack == null) { _pm.SendMessage(0x22, "You don't have a backpack."); return; }
 
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var bypass = Items.DevTestingCrystal.IsActive(_pm);
 
         if (!bypass && vouchers < SatchelRestoreCost)
@@ -1119,7 +1119,7 @@ public class MinersCompactLiaisonGump : Gump
         }
 
         if (!bypass)
-            data.GuildCurrency["mining"] = vouchers - SatchelRestoreCost;
+            guild.GuildCurrency["mining"] = vouchers - SatchelRestoreCost;
 
         var recovered = CreateUpgradedSatchel(regTier);
         pack.DropItem(recovered);
@@ -1139,11 +1139,11 @@ public class MinersCompactLiaisonGump : Gump
             _ => new Items.CompactOreSatchel(),
         };
 
-    private void HandleRestorationRequest(ClusterFAccountData? data, IAccount? acct)
+    private void HandleRestorationRequest(CharacterGuildData? guild, IAccount? acct)
     {
-        if (data == null || acct == null) return;
+        if (guild == null || acct == null) return;
 
-        if (!data.JoinedGuilds.Contains("mining"))
+        if (!guild.JoinedGuilds.Contains("mining"))
         {
             _pm.SendMessage(0x22, "You must be a member of the Miners' Compact to request a restoration.");
             return;
@@ -1163,7 +1163,7 @@ public class MinersCompactLiaisonGump : Gump
 
         var bypass = Items.DevTestingCrystal.IsActive(_pm);
 
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         if (!bypass && vouchers < RestoreVoucherCost)
         {
             _pm.SendMessage(0x22, $"You need {RestoreVoucherCost} Mining Vouchers (you have {vouchers}).");
@@ -1189,10 +1189,10 @@ public class MinersCompactLiaisonGump : Gump
             return;
         }
 
-        // All checks pass — consume costs (skipped when testing token is active)
+        // All checks pass - consume costs (skipped when testing token is active)
         if (!bypass)
         {
-            data.GuildCurrency["mining"] = vouchers - RestoreVoucherCost;
+            guild.GuildCurrency["mining"] = vouchers - RestoreVoucherCost;
             pack.ConsumeTotal(typeof(IronIngot), RestoreIngotCost);
             CompactGoldHelper.ConsumeGold(_pm, RestoreGoldCost);
         }
@@ -1207,15 +1207,15 @@ public class MinersCompactLiaisonGump : Gump
         var pickaxe = new JacobsPickaxe();
         pack.DropItem(pickaxe);
 
-        _pm.SendMessage(0x44, "Jacob's Pickaxe has been restored. Handle it with care — it can be exhausted but never lost.");
+        _pm.SendMessage(0x44, "Jacob's Pickaxe has been restored. Handle it with care - it can be exhausted but never lost.");
         _pm.PlaySound(0x35D); // Forge/craft sound
     }
 
-    private void HandleT2RestorationRequest(ClusterFAccountData? data, IAccount? acct)
+    private void HandleT2RestorationRequest(CharacterGuildData? guild, IAccount? acct)
     {
-        if (data == null || acct == null) return;
+        if (guild == null || acct == null) return;
 
-        if (!data.JoinedGuilds.Contains("mining"))
+        if (!guild.JoinedGuilds.Contains("mining"))
         {
             _pm.SendMessage(0x22, "You must be a member of the Miners' Compact to request a restoration.");
             return;
@@ -1235,7 +1235,7 @@ public class MinersCompactLiaisonGump : Gump
 
         var bypass = Items.DevTestingCrystal.IsActive(_pm);
 
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         if (!bypass && vouchers < RestoreT2VoucherCost)
         {
             _pm.SendMessage(0x22, $"You need {RestoreT2VoucherCost} Mining Vouchers (you have {vouchers}).");
@@ -1267,10 +1267,10 @@ public class MinersCompactLiaisonGump : Gump
             return;
         }
 
-        // All checks pass — consume costs (skipped when testing token is active)
+        // All checks pass - consume costs (skipped when testing token is active)
         if (!bypass)
         {
-            data.GuildCurrency["mining"] = vouchers - RestoreT2VoucherCost;
+            guild.GuildCurrency["mining"] = vouchers - RestoreT2VoucherCost;
             pack.ConsumeTotal(typeof(Items.IronIngot),       RestoreT2IronCost);
             pack.ConsumeTotal(typeof(Items.DullCopperIngot), RestoreT2DullCopperCost);
             CompactGoldHelper.ConsumeGold(_pm, RestoreT2GoldCost);

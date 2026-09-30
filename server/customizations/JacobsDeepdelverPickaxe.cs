@@ -7,16 +7,16 @@ using Server.Network;
 namespace Server.Items;
 
 /// <summary>
-/// Jacob's Deepdelver Pickaxe — Tier 4 upgrade of Jacob's Prospector Pickaxe.
+/// Jacob's Deepdelver Pickaxe - Tier 4 upgrade of Jacob's Prospector Pickaxe.
 ///
 /// Stats:
 ///   - Name: "Jacob's Deepdelver Pickaxe"
 ///   - Blessed: yes
 ///   - Mining skill bonus: +22
 ///   - UsesRemaining: 800
-///   - Hue: 0x0455 (deep slate blue — dangerous/deep-earth identity)
+///   - Hue: 0x0455 (deep slate blue - dangerous/deep-earth identity)
 ///
-/// Special — Deepdelver's Advantage:
+/// Special - Deepdelver's Advantage:
 ///   +1 ore per yield when mining in Felucca. Applied in CompactOreSatchelRoutingHook.Give
 ///   before the ore is routed to the satchel or backpack.
 ///   Also retains T3 Prospector's Insight (new ore discoveries still grant +3 vouchers).
@@ -31,13 +31,13 @@ namespace Server.Items;
 ///   - Existing T3 Jacob's Prospector Pickaxe (consumed)
 ///
 /// Exhausted state: tracked via Hue. Functional = 0x0455, exhausted = 0x0415.
-/// Serialization: v0 — no custom fields. Hue serialized by base Item.
+/// Serialization: v0 - no custom fields. Hue serialized by base Item.
 /// </summary>
 [SerializationGenerator(0, false)]
 public partial class JacobsDeepdelverPickaxe : Pickaxe
 {
     private const int FunctionalHue = 0x0455; // Deep slate blue
-    private const int ExhaustedHue  = 0x0415; // Charcoal — exhausted state
+    private const int ExhaustedHue  = 0x0415; // Charcoal - exhausted state
 
     [Constructible]
     public JacobsDeepdelverPickaxe()
@@ -78,7 +78,7 @@ public partial class JacobsDeepdelverPickaxe : Pickaxe
         base.GetProperties(list);
 
         if (Exhausted)
-            list.Add("(Exhausted — speak with the Miners' Compact Liaison)");
+            list.Add("(Exhausted - speak with the Miners' Compact Liaison)");
         else
             list.Add("<BASEFONT COLOR=#AAAAAA>Tier 4 Miners' Compact Legacy Tool</BASEFONT>");
     }
@@ -161,9 +161,9 @@ public partial class JacobsDeepdelverPickaxe : Pickaxe
     private void Deserialize(IGenericReader reader, int version) { }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// T4 Upgrade Gump — opened from the Miners' Compact Liaison Member Dashboard
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// T4 Upgrade Gump - opened from the Miners' Compact Liaison Member Dashboard
+// -----------------------------------------------------------------------------
 
 public class JacobsT4UpgradeGump : Gump
 {
@@ -190,17 +190,17 @@ public class JacobsT4UpgradeGump : Gump
         AddBackground(0, 0, W, H, BgId);
         AddAlphaRegion(6, 6, W - 12, H - 12);
 
-        AddLabel(W / 2 - 120, 12, 1154, "Jacob's Pickaxe — Tier 4 Upgrade");
+        AddLabel(W / 2 - 120, 12, 1154, "Jacob's Pickaxe - Tier 4 Upgrade");
         AddLabel(W / 2 - 80,  28, 999,  "Miners' Compact Liaison");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
         var acct = pm.Account as IAccount;
-        var data = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : null;
+        var guild = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial) : null;
 
-        if (data == null)
+        if (guild == null)
             AddLabel(18, 56, 999, "Account data unavailable.");
         else
-            DrawUpgradeInfo(data, acct!);
+            DrawUpgradeInfo(guild, acct!);
 
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
         AddButton(18, H - 28, 4014, 4015, 1);
@@ -209,10 +209,10 @@ public class JacobsT4UpgradeGump : Gump
         AddLabel(W - 28, H - 26, 1154, "X");
     }
 
-    private void DrawUpgradeInfo(ClusterFAccountData data, IAccount acct)
+    private void DrawUpgradeInfo(CharacterGuildData guild, IAccount acct)
     {
-        data.GuildReputation.TryGetValue("mining", out var standing);
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var mining       = _pm.Skills[SkillName.Mining].Value;
         var pack         = _pm.Backpack;
         var bypass       = DevTestingCrystal.IsActive(_pm);
@@ -238,7 +238,7 @@ public class JacobsT4UpgradeGump : Gump
             "<BASEFONT COLOR=#AAAAAA>Deepdelver's Advantage: +1 ore per yield when mining " +
             "in Felucca. Also retains Prospector's Insight (new discoveries = +3 vouchers)." +
             "</BASEFONT><BR><BR>" +
-            $"<BASEFONT COLOR={Clr(reqRank)}>Rank: Master Delver required — Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
+            $"<BASEFONT COLOR={Clr(reqRank)}>Rank: Master Delver required - Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqSkill)}>Mining skill: {mining:F1}/{UpgradeSkillReq:F0} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqVoucher)}>Mining Vouchers: {vouchers}/{UpgradeVoucherCost} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqIron)}>Iron Ingots in pack: {ironCount:N0}/{UpgradeIronCost:N0} required</BASEFONT><BR>" +
@@ -291,12 +291,12 @@ public class JacobsT4UpgradeGump : Gump
         var acct = _pm.Account as IAccount;
         if (acct == null) return;
 
-        var data         = ClusterFAccountPersistence.GetOrCreate(acct);
+        var guild         = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial);
         var pack         = _pm.Backpack;
         if (pack == null) return;
 
-        data.GuildReputation.TryGetValue("mining", out var standing);
-        data.GuildCurrency.TryGetValue("mining", out var vouchers);
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var mining       = _pm.Skills[SkillName.Mining].Value;
         var ironCount    = pack.GetAmount(typeof(IronIngot));
         var valoriteCount = pack.GetAmount(typeof(ValoriteIngot));
@@ -316,7 +316,7 @@ public class JacobsT4UpgradeGump : Gump
 
         if (!bypass)
         {
-            data.GuildCurrency["mining"] = vouchers - UpgradeVoucherCost;
+            guild.GuildCurrency["mining"] = vouchers - UpgradeVoucherCost;
             pack.ConsumeTotal(typeof(IronIngot),    UpgradeIronCost);
             pack.ConsumeTotal(typeof(ValoriteIngot), UpgradeValoriteCost);
             CompactGoldHelper.ConsumeGold(_pm, UpgradeGoldCost);
@@ -331,7 +331,7 @@ public class JacobsT4UpgradeGump : Gump
 
         _pm.SendMessage(0x44,
             "Jacob's Deepdelver Pickaxe is yours. The veins of Felucca will yield more for you now. " +
-            "Tread carefully — the deep earth does not forgive carelessness.");
+            "Tread carefully - the deep earth does not forgive carelessness.");
         _pm.PlaySound(0x35D);
     }
 }

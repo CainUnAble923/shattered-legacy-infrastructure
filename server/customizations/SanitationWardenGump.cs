@@ -17,11 +17,11 @@ namespace Server;
 /// </summary>
 public class SanitationWardenGump : Gump
 {
-    // ── Layout ────────────────────────────────────────────────────────────────
+    // -- Layout ----------------------------------------------------------------
 
     private const int W = 400;
 
-    // ── Button IDs ────────────────────────────────────────────────────────────
+    // -- Button IDs ------------------------------------------------------------
 
     private const int BtnClose       = 0;
     private const int BtnJoin        = 1;
@@ -32,20 +32,20 @@ public class SanitationWardenGump : Gump
     private const int BtnBuyHealPots = 12;
     private const int BtnBuyTrashBag = 13;
 
-    // ── Shop prices ───────────────────────────────────────────────────────────
+    // -- Shop prices -----------------------------------------------------------
 
     private const int CostBandages = 15;   // 100 Bandages
     private const int CostRefresh  = 30;   // 5 Refresh Potions
     private const int CostHealPots = 60;   // 3 Greater Heal Potions
     private const int CostTrashBag = 150;  // 1 replacement TrashBag
 
-    // ── State ─────────────────────────────────────────────────────────────────
+    // -- State -----------------------------------------------------------------
 
     private readonly PlayerMobile _pm;
     private readonly GuildDef     _def;
     private readonly IAccount     _acct;
 
-    // ── Construction ──────────────────────────────────────────────────────────
+    // -- Construction ----------------------------------------------------------
 
     /// <summary>Opens the main member/join view.</summary>
     public SanitationWardenGump(PlayerMobile pm, GuildDef def, IAccount acct)
@@ -63,7 +63,7 @@ public class SanitationWardenGump : Gump
         Disposable = true;
         Resizable  = false;
 
-        var isMember = ClusterFGuildSystem.IsJoined(acct, "custodians");
+        var isMember = ClusterFGuildSystem.IsJoined(pm, "custodians");
         var H        = shopView ? 290 : (isMember ? 415 : 340);
 
         AddPage(0);
@@ -87,17 +87,17 @@ public class SanitationWardenGump : Gump
         }
     }
 
-    // ── Member main view ──────────────────────────────────────────────────────
+    // -- Member main view ------------------------------------------------------
 
     private void BuildMemberView(PlayerMobile pm, IAccount acct)
     {
-        var data     = ClusterFAccountPersistence.GetOrCreate(acct);
-        var standing = data.GetReputation("custodians");
-        var tokens   = data.GetCurrency("custodians");
+        var guild     = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        var standing = guild.GetReputation("custodians");
+        var tokens   = guild.GetCurrency("custodians");
         var rank     = ClusterFCustodianSystem.GetCustodianRank(standing);
         var (nextThreshold, nextRankName) = GetNextRankInfo(standing);
 
-        // ── Status block ─────────────────────────────────────────────────────
+        // -- Status block -----------------------------------------------------
 
         AddLabel(18, 46, 999,  "Rank:");
         AddLabel(70, 46, 1153, rank);
@@ -108,7 +108,7 @@ public class SanitationWardenGump : Gump
         if (nextThreshold > 0)
         {
             var toNext = nextThreshold - standing;
-            AddLabel(200, 66, 1154, $"→  {nextRankName}");
+            AddLabel(200, 66, 1154, $"->  {nextRankName}");
             AddLabel(200, 82, 999,  $"   ({toNext:N0} to go)");
         }
         else
@@ -121,14 +121,14 @@ public class SanitationWardenGump : Gump
 
         AddImageTiled(10, 108, W - 20, 2, 9304);
 
-        // ── Token shop button ─────────────────────────────────────────────────
+        // -- Token shop button -------------------------------------------------
 
         AddButton(18, 118, 4005, 4007, BtnShop, GumpButtonType.Reply, 0);
         AddLabel(54, 120, 1154, "Visit Token Shop");
 
         AddImageTiled(10, 146, W - 20, 2, 9304);
 
-        // ── How-to tips ───────────────────────────────────────────────────────
+        // -- How-to tips -------------------------------------------------------
 
         AddLabel(18, 156, 999, "How to earn Civic Tokens:");
 
@@ -139,30 +139,30 @@ public class SanitationWardenGump : Gump
             "Place items in your Trash Bag and use <B>Dump Now</B> to cash in.<BR><BR>" +
             "Higher-value materials yield more tokens. " +
             "Corpses yield tokens based on their contents.<BR>" +
-            "Every 5 items cleaned in a batch earns 1 civic waste bundle — " +
+            "Every 5 items cleaned in a batch earns 1 civic waste bundle - " +
             "turn these in for Custodian work order rewards." +
             "</BASEFONT>",
             false, false);
 
         AddImageTiled(10, 302, W - 20, 2, 9304);
 
-        // ── Rank ladder ───────────────────────────────────────────────────────
+        // -- Rank ladder -------------------------------------------------------
 
         AddHtml(18, 312, W - 36, 88,
             "<BASEFONT COLOR=#888888>" +
-            "Ranks: Volunteer → Junior Custodian → Custodian → " +
-            "Senior Custodian → Chief Custodian<BR>" +
+            "Ranks: Volunteer -> Junior Custodian -> Custodian -> " +
+            "Senior Custodian -> Chief Custodian<BR>" +
             "(100 / 500 / 2,000 / 5,000 standing)" +
             "</BASEFONT>",
             false, false);
     }
 
-    // ── Token shop view ───────────────────────────────────────────────────────
+    // -- Token shop view -------------------------------------------------------
 
     private void BuildShopView(PlayerMobile pm, IAccount acct)
     {
-        var data   = ClusterFAccountPersistence.GetOrCreate(acct);
-        var tokens = data.GetCurrency("custodians");
+        var guild   = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        var tokens = guild.GetCurrency("custodians");
 
         AddLabel(W / 2 - 38, 44, 1154, "Token Shop");
         AddLabel(18, 64, 999, "Civic Tokens:");
@@ -174,25 +174,25 @@ public class SanitationWardenGump : Gump
         // 50 Bandages
         AddButton(18, y, 4005, 4007, BtnBuyBandages, GumpButtonType.Reply, 0);
         AddLabel(54, y + 2, tokens >= CostBandages ? 68 : 37,
-            $"100 Bandages  —  {CostBandages} tokens");
+            $"100 Bandages  -  {CostBandages} tokens");
         y += 32;
 
         // 5 Refresh Potions
         AddButton(18, y, 4005, 4007, BtnBuyRefresh, GumpButtonType.Reply, 0);
         AddLabel(54, y + 2, tokens >= CostRefresh ? 68 : 37,
-            $"5 Refresh Potions  —  {CostRefresh} tokens");
+            $"5 Refresh Potions  -  {CostRefresh} tokens");
         y += 32;
 
         // 3 Greater Heal Potions
         AddButton(18, y, 4005, 4007, BtnBuyHealPots, GumpButtonType.Reply, 0);
         AddLabel(54, y + 2, tokens >= CostHealPots ? 68 : 37,
-            $"3 Greater Heal Potions  —  {CostHealPots} tokens");
+            $"3 Greater Heal Potions  -  {CostHealPots} tokens");
         y += 32;
 
         // TrashBag replacement
         AddButton(18, y, 4005, 4007, BtnBuyTrashBag, GumpButtonType.Reply, 0);
         AddLabel(54, y + 2, tokens >= CostTrashBag ? 68 : 37,
-            $"Replacement Trash Bag  —  {CostTrashBag} tokens");
+            $"Replacement Trash Bag  -  {CostTrashBag} tokens");
         y += 32;
 
         AddImageTiled(10, y + 4, W - 20, 2, 9304);
@@ -203,7 +203,7 @@ public class SanitationWardenGump : Gump
         AddLabel(54, y + 2, 999, "Back");
     }
 
-    // ── Join view ─────────────────────────────────────────────────────────────
+    // -- Join view -------------------------------------------------------------
 
     private void BuildJoinView(PlayerMobile pm, GuildDef def, IAccount acct)
     {
@@ -213,7 +213,7 @@ public class SanitationWardenGump : Gump
 
         AddImageTiled(10, 110, W - 20, 2, 9304);
 
-        AddLabel(18, 120, 68, "Open to all citizens — no requirements.");
+        AddLabel(18, 120, 68, "Open to all citizens - no requirements.");
         AddHtml(18, 142, W - 36, 40,
             $"<BASEFONT COLOR=#AAAAAA>{def.TaskDescription}</BASEFONT>",
             false, false);
@@ -231,7 +231,7 @@ public class SanitationWardenGump : Gump
             false, false);
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -288,7 +288,7 @@ public class SanitationWardenGump : Gump
         }
     }
 
-    // ── Purchase helper ───────────────────────────────────────────────────────
+    // -- Purchase helper -------------------------------------------------------
 
     private void HandlePurchase(PlayerMobile pm, int cost, Action giveItems)
     {
@@ -299,21 +299,21 @@ public class SanitationWardenGump : Gump
             return;
         }
 
-        var data = ClusterFAccountPersistence.GetOrCreate(_acct);
-        if (data.GetCurrency("custodians") < cost)
+        var guild = ClusterFAccountPersistence.GetOrCreate(_acct).GetOrCreateGuildData(pm.Serial);
+        if (guild.GetCurrency("custodians") < cost)
         {
             pm.SendMessage(0x22, "You do not have enough Civic Tokens for that.");
             pm.SendGump(new SanitationWardenGump(pm, _def, _acct, shopView: true));
             return;
         }
 
-        data.AddCurrency("custodians", -cost);
+        guild.AddCurrency("custodians", -cost);
         giveItems();
         pm.PlaySound(0x2E6);
         pm.SendGump(new SanitationWardenGump(pm, _def, _acct, shopView: true));
     }
 
-    // ── Rank progress helper ──────────────────────────────────────────────────
+    // -- Rank progress helper --------------------------------------------------
 
     private static (int threshold, string name) GetNextRankInfo(int standing)
     {
@@ -324,7 +324,7 @@ public class SanitationWardenGump : Gump
         return (-1, string.Empty);
     }
 
-    // ── Join handler ──────────────────────────────────────────────────────────
+    // -- Join handler ----------------------------------------------------------
 
     private void HandleJoin(PlayerMobile pm)
     {

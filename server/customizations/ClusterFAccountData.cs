@@ -10,14 +10,15 @@ namespace Server;
 /// Holds all account-wide progression state:
 ///   - Renown (spendable achievement currency)
 ///   - Achievement points (permanent prestige score, not spendable)
-///   - Guild reputation per guild key
-///   - Guild currency (scrip) per guild key
 ///   - Restoration registry (set of unlocked legacy item keys)
 ///   - Last-seen bulletin ID (for MOTD/Dispatch unread tracking)
-///   - Active and completed guild work order entries
+///   - Flags, discoveries (ore, wood, imbuing), encountered creatures
 ///
-/// Keyed by account username. Account-wide by design - Shattered Legacy
-/// is a single-character shard and all progression belongs to the account.
+/// Keyed by account username. Per character, keyed by character serial inside the account record:
+///   - Guild data (CharacterGuildData, v15, cc-P18 F-7): membership, Apprentice marks, reputation,
+///     scrip, work orders, smith commissions, the Artificer order
+///   - Guild starter records (GuildStarterRecord, v14, cc-P15)
+///   - Exploration (fog of war chunks)
 ///
 /// Guild keys are short lowercase identifiers:
 ///   "mining", "smithing", "rangers", "healers", "cartographers",
@@ -33,11 +34,8 @@ public class ClusterFAccountData
     public int AchievementPoints { get; set; }
 
     // -- Guild systems ----------------------------------------------------
-    public Dictionary<string, int> GuildReputation { get; } = new(StringComparer.OrdinalIgnoreCase);
-    public Dictionary<string, int> GuildCurrency   { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-    // -- Guild membership -------------------------------------------------
-    public HashSet<string> JoinedGuilds { get; } = new(StringComparer.OrdinalIgnoreCase);
+    // Membership, reputation, scrip, work orders, commissions and the Artificer order are per
+    // character since v15 (cc-P18, F-7): see CharacterGuildData and GetOrCreateGuildData below.
 
     // -- Restoration registry ---------------------------------------------
     public Dictionary<string, RestorationEntry> RestorationRegistry { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -50,10 +48,6 @@ public class ClusterFAccountData
     // Use ClusterFLeagueSystem constants -- do not use raw strings directly.
     public HashSet<string>            Flags      { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> FlagValues { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-    // -- Guild work orders (Phase 3) -------------------------------------------
-    public List<WorkOrderEntry> ActiveWorkOrders    { get; } = new();
-    public List<WorkOrderEntry> CompletedWorkOrders { get; } = new();
 
     // -- Ore discoveries (Phase 3) - Prospector's Logbook ---------------------
     // Keyed by canonical ore key (e.g. "DullCopper", "Valorite", "Celestial").
@@ -72,13 +66,6 @@ public class ClusterFAccountData
     //
     // Keyed by ImbuePropertyDef.Name (e.g. "Hit Chance Increase", "Slayer: Silver").
     public Dictionary<string, int> ImbuingDiscoveries { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-    // -- Smith Commissions (Phase 4C-ii) --------------------------------------
-    // Active single-piece crafting commissions from named adventurers.
-    // Separate from BODs; max 3 small + 1 large concurrent.
-    public List<SmithCommissionEntry>      SmithCommissions      { get; } = new();
-    public List<SmithLargeCommissionEntry> SmithLargeCommissions { get; } = new();
-
 
     // -- Creature encounters (bestiary) -------------------------------------------
     // Records creature type names on first kill (e.g. "Dragon", "Ridgeback", "Drake").
@@ -99,11 +86,16 @@ public class ClusterFAccountData
         return facets[facet] ??= new BitArray(chunkW * chunkH, false);
     }
 
+    public int ExploredCharacterCount => _exploredChunks.Count;
+
+    /// <summary>Forgets every character's exploration on this account (the reset, cc-P18).</summary>
+    public void ClearExploration() => _exploredChunks.Clear();
+
     // -- Guild starter path (v14, cc-P15) ---------------------------------------
     // Per character, keyed by character serial like _exploredChunks: which guilds' tools and which
     // New Haven starter items this character has taken, and whether it has seen the first-login
-    // welcome. Membership (JoinedGuilds) stays per account. "Once per loop" is once per character
-    // until loops exist, so clearing a character's record starts its loop again.
+    // welcome. Membership is per character too since v15 (CharacterGuildData). "Once per loop" is once
+    // per character until loops exist, so clearing a character's record starts its loop again.
     private readonly Dictionary<uint, GuildStarterRecord> _guildStarter = new();
 
     public GuildStarterRecord GetOrCreateGuildStarter(Serial serial)
@@ -121,12 +113,43 @@ public class ClusterFAccountData
 
     public void ClearGuildStarterRecords() => _guildStarter.Clear();
 
+    // -- Guild data per character (v15, cc-P18, F-7) ---------------------------
+    // Keyed by character serial like _exploredChunks, so two characters on one account are in
+    // different guilds with separate reputation and scrip. Chase, 2026-09-30: per character "for now";
+    // F-4 (one character per account) may fold it back. To fold it back, key every character of an
+    // account to one record here (for example serial 0); no call site needs to change.
+    private readonly Dictionary<uint, CharacterGuildData> _guildData = new();
+
+    public CharacterGuildData GetOrCreateGuildData(Serial serial)
+    {
+        var key = (uint)serial;
+        if (!_guildData.TryGetValue(key, out var record))
+            _guildData[key] = record = new CharacterGuildData();
+        return record;
+    }
+
+    public CharacterGuildData? GetGuildData(Serial serial) =>
+        _guildData.TryGetValue((uint)serial, out var record) ? record : null;
+
+    public int GuildDataCount => _guildData.Count;
+
+    /// <summary>Clears every character's guild data on this account (the reset, cc-P18).</summary>
+    public void ClearGuildData() => _guildData.Clear();
+
+    /// <summary>
+    /// True when this record was read from a save before v15 that held account-level guild data
+    /// (membership, Apprentice marks, reputation, scrip, work orders, commissions or an Artificer
+    /// order). That data was dropped, not given to a character: the save does not say which character
+    /// earned it (cc-P18, Chase's decision). Not saved; ClusterFAccountPersistence logs it once.
+    /// </summary>
+    public bool DroppedAccountGuildData { get; private set; }
+
     // -- Constructors -----------------------------------------------------
     public ClusterFAccountData() { }
 
     public ClusterFAccountData(IGenericReader r)
     {
-        var version = r.ReadInt(); // 0..14
+        var version = r.ReadInt(); // 0..15
 
         // D40 (cc-P11): a version this reader does not know is a save from a newer build. Reading it as
         // this version misreads every field after the first difference, so refuse it loudly instead.
@@ -138,13 +161,20 @@ public class ClusterFAccountData
         AchievementPoints   = r.ReadInt();
         LastSeenBulletinId  = r.ReadInt();
 
-        var repCount = r.ReadInt();
-        for (var i = 0; i < repCount; i++)
-            GuildReputation[r.ReadString()] = r.ReadInt();
+        // Before v15 the account held one copy of the guild data. It is read to stay aligned with the
+        // bytes and then dropped (cc-P18): the save does not say which character it belonged to.
+        var legacy = new CharacterGuildData();
 
-        var curCount = r.ReadInt();
-        for (var i = 0; i < curCount; i++)
-            GuildCurrency[r.ReadString()] = r.ReadInt();
+        if (version < 15)
+        {
+            var repCount = r.ReadInt();
+            for (var i = 0; i < repCount; i++)
+                legacy.GuildReputation[r.ReadString()] = r.ReadInt();
+
+            var curCount = r.ReadInt();
+            for (var i = 0; i < curCount; i++)
+                legacy.GuildCurrency[r.ReadString()] = r.ReadInt();
+        }
 
         var regCount = r.ReadInt();
         for (var i = 0; i < regCount; i++)
@@ -162,11 +192,11 @@ public class ClusterFAccountData
             }
         }
 
-        if (version >= 1)
+        if (version is >= 1 and < 15)
         {
             var joinCount = r.ReadInt();
             for (var i = 0; i < joinCount; i++)
-                JoinedGuilds.Add(r.ReadString());
+                legacy.JoinedGuilds.Add(r.ReadString());
         }
 
         if (version >= 3)
@@ -180,15 +210,15 @@ public class ClusterFAccountData
                 FlagValues[r.ReadString()] = r.ReadString();
         }
 
-        if (version >= 4)
+        if (version is >= 4 and < 15)
         {
             var aoCount = r.ReadInt();
             for (var i = 0; i < aoCount; i++)
-                ActiveWorkOrders.Add(new WorkOrderEntry(r));
+                legacy.ActiveWorkOrders.Add(new WorkOrderEntry(r));
 
             var coCount = r.ReadInt();
             for (var i = 0; i < coCount; i++)
-                CompletedWorkOrders.Add(new WorkOrderEntry(r));
+                legacy.CompletedWorkOrders.Add(new WorkOrderEntry(r));
         }
 
         if (version >= 5)
@@ -201,18 +231,18 @@ public class ClusterFAccountData
             }
         }
 
-        if (version >= 6)
+        if (version is >= 6 and < 15)
         {
             var commCount = r.ReadInt();
             for (var i = 0; i < commCount; i++)
-                SmithCommissions.Add(new SmithCommissionEntry(r));
+                legacy.SmithCommissions.Add(new SmithCommissionEntry(r));
         }
 
-        if (version >= 7)
+        if (version is >= 7 and < 15)
         {
             var lCount = r.ReadInt();
             for (var i = 0; i < lCount; i++)
-                SmithLargeCommissions.Add(new SmithLargeCommissionEntry(r));
+                legacy.SmithLargeCommissions.Add(new SmithLargeCommissionEntry(r));
         }
 
         // v9 had a bug: EncounteredCreatures was serialized BEFORE ExploredChunks,
@@ -224,35 +254,13 @@ public class ClusterFAccountData
             for (var i = 0; i < ecCount; i++)
                 EncounteredCreatures.Add(r.ReadString());
 
-            var charCount = r.ReadInt();
-            for (var i = 0; i < charCount; i++)
-            {
-                var serial = r.ReadUInt();
-                var facets = new BitArray?[6];
-                for (var f = 0; f < 6; f++)
-                {
-                    if (r.ReadBool())
-                        facets[f] = r.ReadBitArray();
-                }
-                _exploredChunks[serial] = facets;
-            }
+            ReadExploration(r);
         }
 
         if (version >= 10)
         {
             // v10+: correct order - ExploredChunks then EncounteredCreatures.
-            var charCount = r.ReadInt();
-            for (var i = 0; i < charCount; i++)
-            {
-                var serial = r.ReadUInt();
-                var facets = new BitArray?[6];
-                for (var f = 0; f < 6; f++)
-                {
-                    if (r.ReadBool())
-                        facets[f] = r.ReadBitArray();
-                }
-                _exploredChunks[serial] = facets;
-            }
+            ReadExploration(r);
 
             var ecCount = r.ReadInt();
             for (var i = 0; i < ecCount; i++)
@@ -276,11 +284,12 @@ public class ClusterFAccountData
                 ImbuingDiscoveries[r.ReadString()] = r.ReadInt();
         }
 
-        if (version >= 13)
+        if (version is >= 13 and < 15)
         {
-            var orderKey = r.ReadString();
-            ActiveArtificerOrderKey   = string.IsNullOrEmpty(orderKey) ? null : orderKey;
-            ActiveArtificerItemSerial = r.ReadUInt();
+            var orderKey   = r.ReadString();
+            var itemSerial = r.ReadUInt();
+            if (!string.IsNullOrEmpty(orderKey))
+                legacy.AcceptArtificerOrder(orderKey, itemSerial);
         }
 
         if (version >= 14)
@@ -293,25 +302,47 @@ public class ClusterFAccountData
             }
         }
 
-        // v8-only saves (no EncounteredCreatures yet): just read chunks.
-        if (version == 8)
+        if (version >= 15)
         {
-            var charCount = r.ReadInt();
-            for (var i = 0; i < charCount; i++)
+            var gdCount = r.ReadInt();
+            for (var i = 0; i < gdCount; i++)
             {
                 var serial = r.ReadUInt();
-                var facets = new BitArray?[6];
-                for (var f = 0; f < 6; f++)
-                {
-                    if (r.ReadBool())
-                        facets[f] = r.ReadBitArray();
-                }
-                _exploredChunks[serial] = facets;
+                _guildData[serial] = new CharacterGuildData(r);
             }
+        }
+
+        // v8-only saves (no EncounteredCreatures yet): just read chunks.
+        if (version == 8)
+            ReadExploration(r);
+
+        // The Apprentice marks were account flags before v15. They are guild data, dropped with it.
+        var apprenticeFlags = Flags.RemoveWhere(
+            f => f.StartsWith(LegacyApprenticeFlagPrefix, StringComparison.OrdinalIgnoreCase));
+
+        DroppedAccountGuildData = !legacy.IsEmpty || apprenticeFlags > 0;
+    }
+
+    // The account flag prefix that marked a finished Apprentice task before v15.
+    public const string LegacyApprenticeFlagPrefix = "guild.apprentice.";
+
+    private void ReadExploration(IGenericReader r)
+    {
+        var charCount = r.ReadInt();
+        for (var i = 0; i < charCount; i++)
+        {
+            var serial = r.ReadUInt();
+            var facets = new BitArray?[6];
+            for (var f = 0; f < 6; f++)
+            {
+                if (r.ReadBool())
+                    facets[f] = r.ReadBitArray();
+            }
+            _exploredChunks[serial] = facets;
         }
     }
 
-    public const int CurrentVersion = 14;
+    public const int CurrentVersion = 15;
 
     public void Serialize(IGenericWriter w)
     {
@@ -321,17 +352,12 @@ public class ClusterFAccountData
         w.Write(AchievementPoints);
         w.Write(LastSeenBulletinId);
 
-        w.Write(GuildReputation.Count);
-        foreach (var (k, v) in GuildReputation) { w.Write(k); w.Write(v); }
-
-        w.Write(GuildCurrency.Count);
-        foreach (var (k, v) in GuildCurrency) { w.Write(k); w.Write(v); }
+        // v15: guild reputation and currency moved to CharacterGuildData.
 
         w.Write(RestorationRegistry.Count);
         foreach (var entry in RestorationRegistry.Values) entry.Serialize(w);
 
-        w.Write(JoinedGuilds.Count);
-        foreach (var key in JoinedGuilds) w.Write(key);
+        // v15: joined guilds moved to CharacterGuildData.
 
         w.Write(Flags.Count);
         foreach (var f in Flags) w.Write(f);
@@ -339,20 +365,12 @@ public class ClusterFAccountData
         w.Write(FlagValues.Count);
         foreach (var (k, v) in FlagValues) { w.Write(k); w.Write(v); }
 
-        w.Write(ActiveWorkOrders.Count);
-        foreach (var e in ActiveWorkOrders) e.Serialize(w);
-
-        w.Write(CompletedWorkOrders.Count);
-        foreach (var e in CompletedWorkOrders) e.Serialize(w);
+        // v15: work orders moved to CharacterGuildData.
 
         w.Write(OreDiscoveries.Count);
         foreach (var entry in OreDiscoveries.Values) entry.Serialize(w);
 
-        w.Write(SmithCommissions.Count);
-        foreach (var e in SmithCommissions) e.Serialize(w);
-
-        w.Write(SmithLargeCommissions.Count);
-        foreach (var e in SmithLargeCommissions) e.Serialize(w);
+        // v15: smith commissions moved to CharacterGuildData.
 
         // v10: correct order - ExploredChunks before EncounteredCreatures.
         // (v9 had these two blocks swapped, which caused a read misalignment on reload.)
@@ -384,9 +402,7 @@ public class ClusterFAccountData
         w.Write(ImbuingDiscoveries.Count);
         foreach (var (k, v) in ImbuingDiscoveries) { w.Write(k); w.Write(v); }
 
-        // v13: active artificer work order
-        w.Write(ActiveArtificerOrderKey ?? "");
-        w.Write(ActiveArtificerItemSerial);
+        // v13's active artificer work order moved to CharacterGuildData in v15.
 
         // v14: per-character guild starter records
         w.Write(_guildStarter.Count);
@@ -395,23 +411,15 @@ public class ClusterFAccountData
             w.Write(serial);
             record.Serialize(w);
         }
-    }
 
-    // -- Guild helpers -----------------------------------------------------
-    public int  GetReputation(string guild) => GuildReputation.TryGetValue(guild, out var v) ? v : 0;
-    public void AddReputation(string guild, int amount) =>
-        GuildReputation[guild] = GetReputation(guild) + amount;
-
-    public int  GetCurrency(string guild) => GuildCurrency.TryGetValue(guild, out var v) ? v : 0;
-    public bool SpendCurrency(string guild, int amount)
-    {
-        var have = GetCurrency(guild);
-        if (have < amount) return false;
-        GuildCurrency[guild] = have - amount;
-        return true;
+        // v15: per-character guild data
+        w.Write(_guildData.Count);
+        foreach (var (serial, record) in _guildData)
+        {
+            w.Write(serial);
+            record.Serialize(w);
+        }
     }
-    public void AddCurrency(string guild, int amount) =>
-        GuildCurrency[guild] = GetCurrency(guild) + amount;
 
     // -- Flag helpers ------------------------------------------------------
     public bool    HasFlag(string key)                    => Flags.Contains(key);
@@ -437,12 +445,159 @@ public class ClusterFAccountData
     public bool IsMastered(string propertyKey, int threshold) =>
         GetDiscoveryCount(propertyKey) >= threshold;
 
-    // -- Artificer work order tracking -----------------------------------------
+    // -- Renown helpers ---------------------------------------------------
+    public bool SpendRenown(int amount)
+    {
+        if (Renown < amount) return false;
+        Renown -= amount;
+        return true;
+    }
+}
+
+/// <summary>
+/// One character's guild data (cc-P18, F-7): membership, Apprentice marks, reputation, scrip, work
+/// orders, smith commissions and the Artificer order. Stored in ClusterFAccountData v15, keyed by
+/// character serial like the exploration chunks and GuildStarterRecord. Until v15 all of this was one
+/// copy per account, so a second character on an account was already in its first character's guilds.
+///
+/// The member names are the ones ClusterFAccountData had, so a call site changes from the account
+/// record to this one and nothing else. Reach it with ClusterFAccountPersistence.GetOrCreateGuild(m).
+///
+/// Carries its own version so a later field can be added without touching the account record's
+/// reader; an unknown version fails loudly (the D40 rule).
+/// </summary>
+public sealed class CharacterGuildData
+{
+    public const int CurrentVersion = 0;
+
+    // -- Membership ---------------------------------------------------------
+    public HashSet<string> JoinedGuilds { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    // Guild keys whose Apprentice task this character has finished (the account flag
+    // "guild.apprentice.<key>" before v15).
+    public HashSet<string> ApprenticeGuilds { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    // -- Standing and scrip -------------------------------------------------
+    public Dictionary<string, int> GuildReputation { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, int> GuildCurrency   { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    // -- Guild work orders (Phase 3) ---------------------------------------
+    public List<WorkOrderEntry> ActiveWorkOrders    { get; } = new();
+    public List<WorkOrderEntry> CompletedWorkOrders { get; } = new();
+
+    // -- Smith Commissions (Phase 4C-ii) -----------------------------------
+    // Active single-piece crafting commissions from named adventurers.
+    // Separate from BODs; max 3 small + 1 large concurrent.
+    public List<SmithCommissionEntry>      SmithCommissions      { get; } = new();
+    public List<SmithLargeCommissionEntry> SmithLargeCommissions { get; } = new();
+
+    // -- Artificer work order ----------------------------------------------
     // At most one commission active at a time.  ItemSerial == 0 for combo orders
     // (player crafts the item themselves; no serial to track).
     public string? ActiveArtificerOrderKey   { get; private set; }
     public uint    ActiveArtificerItemSerial { get; private set; }
     public bool    HasActiveArtificerOrder   => ActiveArtificerOrderKey != null;
+
+    public bool IsEmpty =>
+        JoinedGuilds.Count == 0 && ApprenticeGuilds.Count == 0 &&
+        GuildReputation.Count == 0 && GuildCurrency.Count == 0 &&
+        ActiveWorkOrders.Count == 0 && CompletedWorkOrders.Count == 0 &&
+        SmithCommissions.Count == 0 && SmithLargeCommissions.Count == 0 &&
+        !HasActiveArtificerOrder;
+
+    public CharacterGuildData() { }
+
+    public CharacterGuildData(IGenericReader r)
+    {
+        var version = r.ReadInt();
+        if (version != 0)
+            throw new System.IO.InvalidDataException(
+                $"CharacterGuildData version {version} is not one this build reads (0).");
+
+        var joined = r.ReadInt();
+        for (var i = 0; i < joined; i++)
+            JoinedGuilds.Add(r.ReadString());
+
+        var apprentice = r.ReadInt();
+        for (var i = 0; i < apprentice; i++)
+            ApprenticeGuilds.Add(r.ReadString());
+
+        var rep = r.ReadInt();
+        for (var i = 0; i < rep; i++)
+            GuildReputation[r.ReadString()] = r.ReadInt();
+
+        var cur = r.ReadInt();
+        for (var i = 0; i < cur; i++)
+            GuildCurrency[r.ReadString()] = r.ReadInt();
+
+        var active = r.ReadInt();
+        for (var i = 0; i < active; i++)
+            ActiveWorkOrders.Add(new WorkOrderEntry(r));
+
+        var completed = r.ReadInt();
+        for (var i = 0; i < completed; i++)
+            CompletedWorkOrders.Add(new WorkOrderEntry(r));
+
+        var small = r.ReadInt();
+        for (var i = 0; i < small; i++)
+            SmithCommissions.Add(new SmithCommissionEntry(r));
+
+        var large = r.ReadInt();
+        for (var i = 0; i < large; i++)
+            SmithLargeCommissions.Add(new SmithLargeCommissionEntry(r));
+
+        var orderKey = r.ReadString();
+        ActiveArtificerOrderKey   = string.IsNullOrEmpty(orderKey) ? null : orderKey;
+        ActiveArtificerItemSerial = r.ReadUInt();
+    }
+
+    public void Serialize(IGenericWriter w)
+    {
+        w.Write(CurrentVersion);
+
+        w.Write(JoinedGuilds.Count);
+        foreach (var key in JoinedGuilds) w.Write(key);
+
+        w.Write(ApprenticeGuilds.Count);
+        foreach (var key in ApprenticeGuilds) w.Write(key);
+
+        w.Write(GuildReputation.Count);
+        foreach (var (k, v) in GuildReputation) { w.Write(k); w.Write(v); }
+
+        w.Write(GuildCurrency.Count);
+        foreach (var (k, v) in GuildCurrency) { w.Write(k); w.Write(v); }
+
+        w.Write(ActiveWorkOrders.Count);
+        foreach (var e in ActiveWorkOrders) e.Serialize(w);
+
+        w.Write(CompletedWorkOrders.Count);
+        foreach (var e in CompletedWorkOrders) e.Serialize(w);
+
+        w.Write(SmithCommissions.Count);
+        foreach (var e in SmithCommissions) e.Serialize(w);
+
+        w.Write(SmithLargeCommissions.Count);
+        foreach (var e in SmithLargeCommissions) e.Serialize(w);
+
+        w.Write(ActiveArtificerOrderKey ?? "");
+        w.Write(ActiveArtificerItemSerial);
+    }
+
+    // -- Guild helpers -----------------------------------------------------
+    public int  GetReputation(string guild) => GuildReputation.TryGetValue(guild, out var v) ? v : 0;
+    public void AddReputation(string guild, int amount) =>
+        GuildReputation[guild] = GetReputation(guild) + amount;
+
+    public int  GetCurrency(string guild) => GuildCurrency.TryGetValue(guild, out var v) ? v : 0;
+    public bool SpendCurrency(string guild, int amount)
+    {
+        var have = GetCurrency(guild);
+        if (have < amount) return false;
+        GuildCurrency[guild] = have - amount;
+        return true;
+    }
+    public void AddCurrency(string guild, int amount) =>
+        GuildCurrency[guild] = GetCurrency(guild) + amount;
 
     public void AcceptArtificerOrder(string key, uint itemSerial)
     {
@@ -454,14 +609,6 @@ public class ClusterFAccountData
     {
         ActiveArtificerOrderKey   = null;
         ActiveArtificerItemSerial = 0;
-    }
-
-    // -- Renown helpers ---------------------------------------------------
-    public bool SpendRenown(int amount)
-    {
-        if (Renown < amount) return false;
-        Renown -= amount;
-        return true;
     }
 }
 
@@ -525,6 +672,7 @@ public sealed class GuildStarterRecord
 /// Access data via:
 ///   ClusterFAccountPersistence.GetOrCreate(mobile.Account)
 ///   ClusterFAccountPersistence.Get(mobile.Account)
+///   ClusterFAccountPersistence.GetOrCreateGuild(mobile)   (one character's guild data)
 /// </summary>
 public class ClusterFAccountPersistence : Item
 {
@@ -547,6 +695,21 @@ public class ClusterFAccountPersistence : Item
     /// <summary>Returns existing data, or null if no record exists yet.</summary>
     public static ClusterFAccountData? Get(Accounting.IAccount account) =>
         _data.TryGetValue(account.Username, out var d) ? d : null;
+
+    /// <summary>
+    /// This character's guild data (cc-P18, F-7), created if missing. The character must have an
+    /// account, as for GetOrCreate(IAccount).
+    /// </summary>
+    public static CharacterGuildData GetOrCreateGuild(Mobile m) =>
+        GetOrCreate(m.Account).GetOrCreateGuildData(m.Serial);
+
+    /// <summary>This character's guild data, or null if it has no account or no record yet.</summary>
+    public static CharacterGuildData? GetGuild(Mobile m) =>
+        m.Account is { } acct ? Get(acct)?.GetGuildData(m.Serial) : null;
+
+    /// <summary>This character's guild starter record (cc-P15), or null if it has none.</summary>
+    public static GuildStarterRecord? GetGuildStarter(Mobile m) =>
+        m.Account is { } acct ? Get(acct)?.GetGuildStarter(m.Serial) : null;
 
     // -- Lifecycle ---------------------------------------------------------
 
@@ -587,11 +750,22 @@ public class ClusterFAccountPersistence : Item
         base.Deserialize(r);
         var version = r.ReadInt();
 
+        var dropped = 0;
         var count = r.ReadInt();
         for (var i = 0; i < count; i++)
         {
             var username = r.ReadString();
-            _data[username] = new ClusterFAccountData(r);
+            var d = new ClusterFAccountData(r);
+            _data[username] = d;
+            if (d.DroppedAccountGuildData)
+                dropped++;
         }
+
+        // cc-P18 (F-7): guild data became per character in ClusterFAccountData v15. An older save's
+        // account-level guild data is cleared, not guessed onto a character. Say so once.
+        if (dropped > 0)
+            Console.WriteLine(
+                $"[ClusterFAccountPersistence] Cleared account-level guild data on {dropped} account(s): " +
+                "guild membership, reputation and scrip are per character from this build (cc-P18).");
     }
 }
