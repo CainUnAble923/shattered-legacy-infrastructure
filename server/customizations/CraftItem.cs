@@ -68,7 +68,7 @@ namespace Server.Engines.Craft
             new[] { typeof(OakLog), typeof(OakBoard) },
             new[] { typeof(AshLog), typeof(AshBoard) },
             new[] { typeof(YewLog), typeof(YewBoard) },
-            // ── Shattered Legacy extended lumber ─────────────────────────────
+            // -- Shattered Legacy extended lumber -----------------------------
             new[] { typeof(IronwoodLog),   typeof(IronwoodBoard)   },
             new[] { typeof(GhostwoodLog),  typeof(GhostwoodBoard)  },
             new[] { typeof(EmberbarkLog),  typeof(EmberbarkBoard)  },
@@ -918,21 +918,25 @@ namespace Server.Engines.Craft
             if (!from.BeginAction<CraftSystem>())
             {
                 from.SendLocalizedMessage(500119); // You must wait to perform another action
+                ClusterFCraftRun.Refused(from, craftSystem, null, MakeXStop.CannotCraft); // cc-P18: a Craft X run ends
                 return;
             }
 
             if (RequiredExpansion != Expansion.None && from.NetState?.SupportsExpansion(RequiredExpansion) != true)
             {
                 from.EndAction<CraftSystem>();
-                from.SendGump(
-                    new CraftGump(
-                        from,
-                        craftSystem,
-                        tool,
-                        // The {0} expansion is required to attempt this item.
-                        RequiredExpansionMessage(RequiredExpansion)
-                    )
-                );
+                if (!ClusterFCraftRun.Refused(from, craftSystem, RequiredExpansionMessage(RequiredExpansion), MakeXStop.CannotCraft))
+                {
+                    from.SendGump(
+                        new CraftGump(
+                            from,
+                            craftSystem,
+                            tool,
+                            // The {0} expansion is required to attempt this item.
+                            RequiredExpansionMessage(RequiredExpansion)
+                        )
+                    );
+                }
                 return;
             }
 
@@ -941,28 +945,34 @@ namespace Server.Engines.Craft
             if (!allRequiredSkills || chance <= 0.0)
             {
                 from.EndAction<CraftSystem>();
-                from.SendGump(
-                    new CraftGump(
-                        from,
-                        craftSystem,
-                        tool,
-                        1044153 // You don't have the required skills to attempt this item.
-                    )
-                );
+                if (!ClusterFCraftRun.Refused(from, craftSystem, 1044153, MakeXStop.CannotCraft))
+                {
+                    from.SendGump(
+                        new CraftGump(
+                            from,
+                            craftSystem,
+                            tool,
+                            1044153 // You don't have the required skills to attempt this item.
+                        )
+                    );
+                }
                 return;
             }
 
             if (Recipe != null && (from as PlayerMobile)?.HasRecipe(Recipe) == false)
             {
                 from.EndAction<CraftSystem>();
-                from.SendGump(
-                    new CraftGump(
-                        from,
-                        craftSystem,
-                        tool,
-                        1072847 // You must learn that recipe from a scroll.
-                    )
-                );
+                if (!ClusterFCraftRun.Refused(from, craftSystem, 1072847, MakeXStop.CannotCraft))
+                {
+                    from.SendGump(
+                        new CraftGump(
+                            from,
+                            craftSystem,
+                            tool,
+                            1072847 // You must learn that recipe from a scroll.
+                        )
+                    );
+                }
                 return;
             }
 
@@ -971,7 +981,10 @@ namespace Server.Engines.Craft
             if (badCraft > 0)
             {
                 from.EndAction<CraftSystem>();
-                from.SendGump(new CraftGump(from, craftSystem, tool, badCraft));
+                if (!ClusterFCraftRun.Refused(from, craftSystem, badCraft, MakeXStop.CannotCraft))
+                {
+                    from.SendGump(new CraftGump(from, craftSystem, tool, badCraft));
+                }
                 return;
             }
 
@@ -982,7 +995,10 @@ namespace Server.Engines.Craft
             if (!ConsumeRes(from, typeRes, craftSystem, ref resHue, ref maxAmount, ConsumeType.None, ref message))
             {
                 from.EndAction<CraftSystem>();
-                from.SendGump(new CraftGump(from, craftSystem, tool, message));
+                if (!ClusterFCraftRun.Refused(from, craftSystem, message, MakeXStop.Materials))
+                {
+                    from.SendGump(new CraftGump(from, craftSystem, tool, message));
+                }
                 return;
             }
 
@@ -991,7 +1007,10 @@ namespace Server.Engines.Craft
             if (!ConsumeAttributes(from, ref message, false))
             {
                 from.EndAction<CraftSystem>();
-                from.SendGump(new CraftGump(from, craftSystem, tool, message));
+                if (!ClusterFCraftRun.Refused(from, craftSystem, message, MakeXStop.CannotCraft))
+                {
+                    from.SendGump(new CraftGump(from, craftSystem, tool, message));
+                }
                 return;
             }
 
@@ -1025,7 +1044,10 @@ namespace Server.Engines.Craft
 
             if (badCraft > 0)
             {
-                if (tool?.Deleted == false && tool.UsesRemaining > 0)
+                if (ClusterFCraftRun.Refused(from, craftSystem, badCraft, MakeXStop.CannotCraft))
+                {
+                }
+                else if (tool?.Deleted == false && tool.UsesRemaining > 0)
                 {
                     from.SendGump(new CraftGump(from, craftSystem, tool, badCraft));
                 }
@@ -1054,7 +1076,10 @@ namespace Server.Engines.Craft
             // Not enough resource to craft it
             if (!(consumeRes && ConsumeAttributes(from, ref checkMessage, false)))
             {
-                if (tool?.Deleted == false && tool.UsesRemaining > 0)
+                if (ClusterFCraftRun.Refused(from, craftSystem, checkMessage, MakeXStop.Materials))
+                {
+                }
+                else if (tool?.Deleted == false && tool.UsesRemaining > 0)
                 {
                     from.SendGump(new CraftGump(from, craftSystem, tool, checkMessage));
                 }
@@ -1094,7 +1119,10 @@ namespace Server.Engines.Craft
                 // Not enough resource to craft it
                 if (!(consumeRes && ConsumeAttributes(from, ref message, true)))
                 {
-                    if (tool?.Deleted == false && tool.UsesRemaining > 0)
+                    if (ClusterFCraftRun.Refused(from, craftSystem, message, MakeXStop.Materials))
+                    {
+                    }
+                    else if (tool?.Deleted == false && tool.UsesRemaining > 0)
                     {
                         from.SendGump(new CraftGump(from, craftSystem, tool, message));
                     }
@@ -1184,7 +1212,7 @@ namespace Server.Engines.Craft
 
                     from.AddToBackpack(item);
 
-                    // ClusterF: Hammer of Hephaestus — BOD auto-fill
+                    // ClusterF: Hammer of Hephaestus - BOD auto-fill
                     if (from is PlayerMobile clusterHohPm && craftSystem is DefBlacksmithy
                         && (tool is HammerOfHephaestus or ReinforcedHammerOfHephaestus))
                         HammerBODAutoFill.TryAutoFill(clusterHohPm, item);
@@ -1276,21 +1304,13 @@ namespace Server.Engines.Craft
                         )
                     );
                 }
+                else if (ClusterFCraftRun.AfterAttempt(from, craftSystem, tool, item, endquality == 2))
+                {
+                    // cc-P18 (F-1): a Craft X run counted it, and went on or ended (ClusterFCraftRun.cs).
+                }
                 else if (tool?.Deleted == false && tool.UsesRemaining > 0)
                 {
-                    // ClusterF: Make X — auto-repeat on success
-                    var clusterRepCtx = craftSystem.GetContext(from);
-                    if (clusterRepCtx?.RepeatCount > 0 && clusterRepCtx.RepeatItem != null)
-                    {
-                        clusterRepCtx.RepeatCount--;
-                        craftSystem.CreateItem(from, clusterRepCtx.RepeatItem.ItemType,
-                            clusterRepCtx.RepeatTypeRes, tool, clusterRepCtx.RepeatItem);
-                    }
-                    else
-                    {
-                        if (clusterRepCtx != null) { clusterRepCtx.RepeatCount = 0; clusterRepCtx.RepeatItem = null; clusterRepCtx.RepeatTypeRes = null; }
-                        from.SendGump(new CraftGump(from, craftSystem, tool, num));
-                    }
+                    from.SendGump(new CraftGump(from, craftSystem, tool, num));
                 }
                 else if (num > 0)
                 {
@@ -1302,7 +1322,10 @@ namespace Server.Engines.Craft
 
             if (!allRequiredSkills)
             {
-                if (tool?.Deleted == false && tool.UsesRemaining > 0)
+                if (ClusterFCraftRun.Refused(from, craftSystem, 1044153, MakeXStop.CannotCraft))
+                {
+                }
+                else if (tool?.Deleted == false && tool.UsesRemaining > 0)
                 {
                     from.SendGump(new CraftGump(from, craftSystem, tool, 1044153));
                 }
@@ -1319,7 +1342,10 @@ namespace Server.Engines.Craft
             // Not enough resource to craft it
             if (!ConsumeRes(from, typeRes, craftSystem, ref resHue, ref maxAmount, consumeType, ref message, true))
             {
-                if (tool?.Deleted == false && tool.UsesRemaining > 0)
+                if (ClusterFCraftRun.Refused(from, craftSystem, message, MakeXStop.Materials))
+                {
+                }
+                else if (tool?.Deleted == false && tool.UsesRemaining > 0)
                 {
                     from.SendGump(new CraftGump(from, craftSystem, tool, message));
                 }
@@ -1353,11 +1379,12 @@ namespace Server.Engines.Craft
             // SkillCheck failed.
             num = craftSystem.PlayEndingEffect(from, true, true, toolBroken, endquality, false, this);
 
-            if (!tool.Deleted && tool.UsesRemaining > 0)
+            if (ClusterFCraftRun.AfterAttempt(from, craftSystem, tool, null, false))
             {
-                // ClusterF: Make X — clear repeat on skill-check failure
-                var clusterFailCtx = craftSystem.GetContext(from);
-                if (clusterFailCtx != null) { clusterFailCtx.RepeatCount = 0; clusterFailCtx.RepeatItem = null; clusterFailCtx.RepeatTypeRes = null; }
+                // cc-P18 (F-1): a Craft X run keeps going through a failed attempt (ClusterFCraftRun.cs).
+            }
+            else if (!tool.Deleted && tool.UsesRemaining > 0)
+            {
                 from.SendGump(new CraftGump(from, craftSystem, tool, num));
             }
             else if (num > 0)
@@ -1408,7 +1435,10 @@ namespace Server.Engines.Craft
 
                 if (badCraft > 0)
                 {
-                    if (m_Tool?.Deleted == false && m_Tool.UsesRemaining > 0)
+                    if (ClusterFCraftRun.Refused(m_From, m_CraftSystem, badCraft, MakeXStop.CannotCraft))
+                    {
+                    }
+                    else if (m_Tool?.Deleted == false && m_Tool.UsesRemaining > 0)
                     {
                         m_From.SendGump(new CraftGump(m_From, m_CraftSystem, m_Tool, badCraft));
                     }
@@ -1459,7 +1489,8 @@ namespace Server.Engines.Craft
                     makersMark = m_CraftItem.IsMarkable(m_CraftItem.ItemType);
                 }
 
-                if (makersMark && context.MarkOption == CraftMarkOption.PromptForMark)
+                // cc-P18 (F-1): no prompt in the middle of a Craft X run; "prompt" marks, as answering yes would.
+                if (makersMark && context.MarkOption == CraftMarkOption.PromptForMark && context.Run == null)
                 {
                     m_From.SendGump(
                         new QueryMakersMarkGump(

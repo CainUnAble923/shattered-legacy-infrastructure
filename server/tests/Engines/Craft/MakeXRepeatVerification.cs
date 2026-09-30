@@ -7,12 +7,11 @@
 //
 // What they pin:
 //   1. The loop itself works: at a skill that cannot fail, five rings, and no craft gump between them.
-//   2. A failed skill check on the second attempt ends the run after one item, and its message goes to the craft
-//      gump's notice box, not the journal: PlayEndingEffect returns the cliloc (DefTinkering.cs:111) and
-//      CraftItem.cs:1354-1361 hands it to a new CraftGump, which draws it inside the gump (CraftGump.cs:113). So "no
-//      failure line in the journal" does not rule this out.
-//   3. Running out of material ends the run after one item the same way, and leaves the repeat armed (RepeatCount 3
-//      of 5): Craft()'s pre-checks (CraftItem.cs:969-996) never clear it. A defect, recorded, not fixed here.
+//   2. As P17 found it, a failed skill check on the second attempt ended the run after one item, its message only
+//      in the craft gump's notice box. Since cc-P18 (F-1, Craft X) a failed attempt no longer ends the run: it goes on
+//      until it runs out of material, and the stop and a summary go to the journal.
+//   3. As P17 found it, running out of material left the repeat armed (RepeatCount 3 of 5) and said nothing. Since
+//      cc-P18 the run ends, disarmed, and says why.
 //
 // Random numbers are pinned by swapping BuiltInRng.Generator (internal setter, visible to this assembly) for a
 // constant source, restored in finally.
@@ -155,7 +154,7 @@ public class MakeXRepeatVerification
     }
 
     [Fact]
-    public void AFailedSecondAttemptEndsTheRunAfterOneAndSaysSoOnlyInTheGump()
+    public void AFailedAttemptNoLongerEndsTheRunAndTheStopIsInTheJournal()
     {
         var rng = new ConstantRandom { Value = 0.0 };
         BuiltInRng.Generator = rng;
@@ -171,21 +170,20 @@ public class MakeXRepeatVerification
         Assert.Equal(1, run.Rings);
         rng.Value = 0.999;
 
-        var journalBefore = run.Ns.SendBuffer.GetReadSpan().Length;
         AdvanceWatchingGump(run, 1);
 
-        var notice = run.Notice;
-        _out.WriteLine($"rings {run.Rings}, notice {notice?.Number}, repeat {run.Context.RepeatCount}");
+        var last = run.Context.LastRun;
+        _out.WriteLine($"rings {run.Rings}, {last?.Summary}");
 
         Assert.Equal(1, run.Rings);
-        Assert.NotNull(notice);
-        Assert.Contains(notice.Number, new[] { 1044043, 1044157 }); // "You failed to create the item..."
-        Assert.Equal(0, run.Context.RepeatCount);
-        Assert.False(SentLocalized(run.Ns, journalBefore, notice.Number), "the failure reached the journal");
+        Assert.NotNull(last);
+        Assert.True(last.Failed >= 2, "the run went on through failed attempts");
+        Assert.Equal(MakeXStop.Materials, last.StoppedBy);
+        Assert.Null(run.Context.Run);
     }
 
     [Fact]
-    public void RunningOutOfMaterialEndsTheRunAfterOneAndLeavesTheRepeatArmed()
+    public void RunningOutOfMaterialEndsTheRunDisarmedAndSaysWhy()
     {
         using var run = Start(120.0, 3); // one ring's worth
 
@@ -196,8 +194,9 @@ public class MakeXRepeatVerification
 
         Assert.Equal(1, run.Rings);
         Assert.NotNull(notice);
-        Assert.Equal(3, run.Context.RepeatCount); // the defect: Craft()'s pre-checks leave it armed
-        Assert.Same(run.Entry, run.Context.RepeatItem);
+        Assert.Equal(0, run.Context.RepeatCount); // P17's defect, fixed by cc-P18: nothing is left armed
+        Assert.Null(run.Context.RepeatItem);
+        Assert.Equal(MakeXStop.Materials, run.Context.LastRun.StoppedBy);
     }
 
     // A 0xC1 localized message with this cliloc anywhere on the wire since `from`.

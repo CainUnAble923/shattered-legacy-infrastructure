@@ -32,12 +32,42 @@ namespace Server.Engines.Craft
 
         public CraftMarkOption MarkOption { get; set; }
 
-        // Shattered Legacy: Make X repeat state.
-        public int RepeatCount { get; set; }
+        // Shattered Legacy, cc-P18 (F-1): Craft X. The run in progress, if any (ClusterFCraftRun.cs), and the
+        // two toggles, remembered per player per craft system until the server restarts (not saved).
+        public MakeXRun Run { get; set; }
 
-        public CraftItem RepeatItem { get; set; }
+        // The last run that ended, with its counts and summary.
+        public MakeXRun LastRun { get; set; }
 
-        public Type RepeatTypeRes { get; set; }
+        public bool MakeXCountAttempts { get; set; }
+
+        public bool MakeXExceptionalOnly { get; set; }
+
+        // The two make-X patches (CraftGump-MakeXClear, CraftGumpItem-MakeX) clear these three when the player
+        // starts a single craft by hand. Kept for them: clearing RepeatItem ends the run in progress.
+        public int RepeatCount
+        {
+            get => Run?.Remaining ?? 0;
+            set { }
+        }
+
+        public CraftItem RepeatItem
+        {
+            get => Run?.Item;
+            set
+            {
+                if (value == null)
+                {
+                    ClusterFCraftRun.End(this, MakeXStop.OtherCraft);
+                }
+            }
+        }
+
+        public Type RepeatTypeRes
+        {
+            get => Run?.TypeRes;
+            set { }
+        }
 
         public CraftItem LastMade
         {

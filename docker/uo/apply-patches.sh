@@ -334,6 +334,13 @@ apply_patch "$PATCHES/AccountHandler-test-center-deletion.patch"
 apply_patch "$PATCHES/Account-young-duration.patch"
 apply_patch "$PATCHES/PlayerMobile-young-time-only.patch"
 
+# P18 (F-1, ours). Craft X recycles its rejects through pinned's own code, not a copy: a smith's reject through the
+# craft menu's Smelt (Resmelt.cs), and a salvage bag's contents through the bag's Salvage All (SalvageBag.cs). Both
+# were private; each patch only makes them internal. Argued in shard-migration/notes/cc-P18-reset-stone-young-craftx.md
+# section 3; pinned by CraftXVerification.
+apply_patch "$PATCHES/Resmelt-smelt-one.patch"
+apply_patch "$PATCHES/SalvageBag-salvage-all.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

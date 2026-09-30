@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Items/Containers/SalvageBag.cs
++++ b/Projects/UOContent/Items/Containers/SalvageBag.cs
+@@ -286,7 +286,8 @@
+         }
+     }
+ 
+-    private void SalvageAll(Mobile from)
++    // cc-P18 (F-1): internal, so Craft X runs the bag's own Salvage All on its rejects (ClusterFCraftRejects.cs).
++    internal void SalvageAll(Mobile from)
+     {
+         SalvageIngots(from);
+         SalvageCloth(from);

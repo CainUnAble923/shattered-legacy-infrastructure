@@ -1,0 +1,21 @@
+--- a/Projects/UOContent/Engines/Craft/Core/Resmelt.cs
++++ b/Projects/UOContent/Engines/Craft/Core/Resmelt.cs
+@@ -29,7 +29,8 @@
+             }
+         }
+ 
+-        private class InternalTarget : Target
++        // cc-P18 (F-1): internal, so Craft X smelts a reject through this recycle (ClusterFCraftRejects.cs).
++        internal class InternalTarget : Target
+         {
+             private readonly CraftSystem m_CraftSystem;
+             private readonly BaseTool m_Tool;
+@@ -40,7 +41,7 @@
+                 m_Tool = tool;
+             }
+ 
+-            private SmeltResult Resmelt(Mobile from, Item item, CraftResource resource)
++            internal SmeltResult Resmelt(Mobile from, Item item, CraftResource resource)
+             {
+                 try
+                 {

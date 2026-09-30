@@ -37,7 +37,7 @@ Core pillars:
 - Treat NPC guilds as profession progression systems, not exclusive player-guild replacements.
 - Allow players to join and progress through all NPC guilds over time.
 - Build long-term character identity through professions, relics, reputation, discoveries, companions, and custom content.
-- Balance future systems around the ClusterF high-progression model: 300 skill caps and expanded stat caps.
+- Balance future systems around the Legacy Awakening loop model: each skill's cap equals the character's max level (up to 1000), total skill cap unlimited, expanded stat caps. See Legacy Awakening. (Decided 2026-09-30; replaces the flat 300 skill cap model.)
 - Prefer systems that emerge from normal gameplay over repetitive daily quest loops.
 - Systems should exist in the world through guilds, halls, lodges, archives, and physical locations instead of floating vendor stones or abstract convenience hubs.
 - Travel, geography, and player-built infrastructure should matter.
@@ -336,7 +336,9 @@ Legacy Awakening is the shard's long-term progression concept. It replaces a gen
 
 It is inspired by mastery/refinement/cultivation concepts, but should be adapted into Britannian/Ultima tone.
 
-Do not make it a mandatory treadmill or infinite stat reset loop. It should represent refinement of identity through experience.
+It should represent refinement of identity through experience.
+
+**Decided 2026-09-30: Legacy Awakening is a loop of mandatory resets.** Each loop resets the character's level to 1 and raises their max level (first cap 50, up to 1000). Each skill's cap equals the max level, so looping is the only way to raise skills further, and it is forced early in the game on purpose. Everything else stays through a reset (titles, perks, follower slots, achievements, Renown, guild standing, registry unlocks, housing, discoveries, cosmetics); only gear above the character's current level becomes unusable until they level back up. Each loop grants a raised stat cap, follower slots at some loops, a loop title and achievement, and never free skill or stat points. Past a point, looping higher needs a scroll (see Champion Spawn and Mastery Rewrite). Details: `D:\UO\shard-migration\docs\feature-queue.md`, F-12.
 
 Possible stages:
 
@@ -357,7 +359,7 @@ Legacy Awakening can unlock:
 - limited permanent bonuses
 - new activities and trials
 
-Avoid mandatory resets that make players feel obsolete if they do not prestige. If resets exist, they should be optional and preserve history such as registry unlocks, guild standing, achievements, housing, discoveries, and cosmetics.
+Resets are mandatory to progress past each cap (decided 2026-09-30, replacing the earlier "avoid mandatory resets" guidance). They must still preserve history: registry unlocks, guild standing, achievements, housing, discoveries and cosmetics all carry through every loop.
 
 ## Restoration Registry
 
@@ -458,9 +460,9 @@ ClusterF plans to expand mining and resources beyond the traditional OSI ore cha
 
 Current design direction:
 
-- Individual skill cap: 300
-- Total skill cap: enough for all skills to reach 300
-- Mining progression should use the full 0-300 range
+- Individual skill cap: equals the character's max level (first cap 50, up to 1000 through Legacy Awakening loops). The flat 300 cap in `ClusterFSkillCaps.cs` is the current implementation, to be replaced.
+- Total skill cap: unlimited
+- Mining progression should use the full 0-300 range (content above a character's cap waits for the loops that reach it)
 - Ores should have slight linear tier progression plus distinctive identity
 
 Standard ore chain:
@@ -912,15 +914,14 @@ Treasure maps should become part of the exploration/logistics loop rather than a
 
 ## Champion Spawn and Mastery Rewrite
 
-Traditional powerscrolls are much less useful with 300 skill caps. Champion spawns should be updated so they remain meaningful.
+Traditional powerscrolls are much less useful with high skill caps. Champion spawns should be updated so they remain meaningful.
 
-Future direction:
+Direction (decided 2026-09-30, replaces the additive +5/+10/+15/+20 cap scrolls of Phase 4F):
 
-- replace or supplement old 105/110/115/120 cap scrolls
-- implement additive mastery scrolls or Legacy Scrolls
-- scrolls grant +5, +10, +15, or +20 skill cap beyond current cap
-- allow 300 skill to become 305/310/320+ through endgame progression
-- eventually tie advanced mastery to Legacy Awakening and guild systems
+- **Loops set the skill cap; scrolls are the key to loop higher.** Legacy Awakening loops raise each skill's cap. Past a point, starting the next loop requires the right scroll (Legacy Scroll or similar), so champion spawns and other scroll sources gate progression instead of adding cap directly.
+- **Scroll merging:** lower scrolls can be combined into higher scrolls later on, so early drops keep their value.
+- keep OSI's 105/110/115/120 power scrolls for the OSI range, or fold them into the new line (to settle)
+- tie advanced mastery to Legacy Awakening and guild systems
 
 Possible names:
 
