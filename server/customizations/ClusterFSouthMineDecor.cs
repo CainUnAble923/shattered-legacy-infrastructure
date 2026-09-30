@@ -16,6 +16,7 @@ public static class ClusterFSouthMineDecor
 
     [Usage("ClusterFSouthMineDecor [dryrun|replace]")]
     [Description("Seeds forge and anvil at the New Haven south mine camp. Default places only if missing.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.Unverified, DryRun = "dryrun", Summary = "Places a forge and anvil at the south mine camp if missing. replace DELETES and re-places them. Also runs on world load.")]
     private static void ClusterFSouthMineDecor_OnCommand(CommandEventArgs e)
     {
         if (!_enabled)

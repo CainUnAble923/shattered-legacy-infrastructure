@@ -103,6 +103,7 @@ public static class ClusterFOldHavenSeeder
     // -----------------------------------------------------------------------
     [Usage("ClusterFSeedOldHaven [missing|dryrun|replace]")]
     [Description("Seeds or replaces the ClusterF Old Haven respawn spawners.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.Unverified, DryRun = "dryrun", Summary = "Places missing Old Haven respawn spawners. replace DELETES every managed spawner and places new ones.")]
     private static void ClusterFSeedOldHaven_OnCommand(CommandEventArgs e)
     {
         if (!_enabled)

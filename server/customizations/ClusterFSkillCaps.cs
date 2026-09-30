@@ -39,6 +39,7 @@ public static class ClusterFSkillCaps
 
     [Usage("ClusterFSkillCaps [all]")]
     [Description("Applies ClusterF skill cap policy to the caller or all online players.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void ClusterFSkillCaps_OnCommand(CommandEventArgs e)
     {
         if (!_enabled)

@@ -213,6 +213,7 @@ public static class ClusterFNewHavenServicesSeeder
 
     [Usage("ClusterFSeedNewHavenServices [dryrun]")]
     [Description("Places ServUO's New Haven decoration (forges, anvils, ankh, doors, statics) and a Healer spawner where missing. Moves and deletes nothing; a re-run places nothing twice.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places New Haven forges, anvils, ankh, doors, statics and a Healer spawner where missing. Moves and deletes nothing.")]
     private static void OnCommand(CommandEventArgs e)
     {
         var mode = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "";

@@ -114,12 +114,14 @@ public static class ClusterFRoyalCitySeeder
             Seed(verbose: false);
     }
 
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.Unverified, NoDryRun = true, Summary = "DELETES human vendors in Royal City, then places missing gargoyle vendors and the moongate.")]
     private static void OnSeedCommand(CommandEventArgs e)
     {
         Seed(verbose: true);
         e.Mobile.SendMessage(0x44, "[SeedRoyalCity complete.");
     }
 
+    [ShardCommand(CommandCategory.WorldRemoval, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.Unverified, NoDryRun = true, Summary = "DELETES the Royal City gargoyle vendors and the moongate SeedRoyalCity placed.")]
     private static void OnClearCommand(CommandEventArgs e)
     {
         ClearRoyalCity(e.Mobile);

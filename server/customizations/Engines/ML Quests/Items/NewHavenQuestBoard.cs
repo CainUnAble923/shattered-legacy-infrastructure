@@ -345,6 +345,7 @@ public partial class NewHavenQuestBoard : QuestGiverItem
 
     [Usage("PlaceNewHavenQuestBoard")]
     [Description("Places the New Haven training board at the town square, or moves the existing one back there.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.Unverified, NoDryRun = true, Summary = "Places the New Haven training board, or moves the existing one back. Never deletes.")]
     private static void PlaceNewHavenQuestBoard_OnCommand(CommandEventArgs e)
     {
         e.Mobile.SendMessage(Place());

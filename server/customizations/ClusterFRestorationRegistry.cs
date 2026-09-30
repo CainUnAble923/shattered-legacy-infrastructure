@@ -213,6 +213,7 @@ public static class ClusterFRestorationRegistry
 
     [Usage("RestorationUnlock <key> [source]")]
     [Description("Grants a restoration registry unlock to the targeted player. Source defaults to 'admin'.")]
+    [ShardCommand(CommandCategory.Grant)]
     private static void RestorationUnlock_OnCommand(CommandEventArgs e)
     {
         if (e.Length < 1)
@@ -230,6 +231,7 @@ public static class ClusterFRestorationRegistry
 
     [Usage("RestorationRevoke <key>")]
     [Description("Revokes a restoration registry unlock (and active-copy state) from the targeted player.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void RestorationRevoke_OnCommand(CommandEventArgs e)
     {
         if (e.Length < 1)
@@ -245,6 +247,7 @@ public static class ClusterFRestorationRegistry
 
     [Usage("RestorationClear <key>")]
     [Description("Clears the active-copy flag for a key without revoking the unlock. Use when an item is confirmed lost.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void RestorationClear_OnCommand(CommandEventArgs e)
     {
         if (e.Length < 1)
@@ -260,6 +263,7 @@ public static class ClusterFRestorationRegistry
 
     [Usage("RestorationList")]
     [Description("Lists all restoration registry entries for the targeted player.")]
+    [ShardCommand(CommandCategory.Diagnostic)]
     private static void RestorationList_OnCommand(CommandEventArgs e)
     {
         e.Mobile.SendMessage("Target the player to list registry entries for.");

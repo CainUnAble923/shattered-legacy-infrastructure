@@ -116,6 +116,7 @@ public static class ClusterFOldHavenCleanup
 
     [Usage("ClusterFOldHavenCleanup [dryrun]")]
     [Description("Removes misplaced Old Haven vendors, guards, and their spawners.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.Unverified, DryRun = "dryrun", Summary = "DELETES stray Old Haven vendors, guards and their spawners. Any argument but dryrun deletes.")]
     private static void OnCommand(CommandEventArgs e)
     {
         var dryRun = e.Length > 0 &&

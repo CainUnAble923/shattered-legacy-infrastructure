@@ -41,6 +41,7 @@ public static class ClusterFDevTools
 
     [Usage("ClusterFReset [username]")]
     [Description("Opens the developer reset gump for the specified account (or your own if omitted).")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void OnResetCommand(CommandEventArgs e)
     {
         IAccount?     account = null;
@@ -67,6 +68,7 @@ public static class ClusterFDevTools
 
     [Usage("ResetMyAccount")]
     [Description("Test shard: opens the account reset for your own account and this character. Takes no arguments.")]
+    [ShardCommand(CommandCategory.Player, Shard = CommandShard.TestOnly)]
     private static void OnResetMyAccountCommand(CommandEventArgs e) => OpenSelfReset(e.Mobile);
 
     /// <summary>
@@ -95,6 +97,7 @@ public static class ClusterFDevTools
 
     [Usage("ClusterFDeleteChar")]
     [Description("Target a player character to force-delete, bypassing the 7-day wait.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void OnDeleteCharCommand(CommandEventArgs e)
     {
         e.Mobile.SendMessage("Target the character to force-delete.");

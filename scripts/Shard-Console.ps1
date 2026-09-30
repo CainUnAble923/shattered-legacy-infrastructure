@@ -23,6 +23,7 @@
                                                    With no -Mode, a button that changes anything
                                                    is refused (D37), so a lost flag fails safe
       .\scripts\Shard-Console.ps1 -Capture FILE    write a status capture from docker (read-only)
+      .\scripts\Shard-Console.ps1 -WorldCommands   print the World setup tab here and exit
 
   AT A GLANCE. Three tiles across the top (and the window title) say what is running: LIVE, TEST,
   and the STATUS PUBLISHER (the shard's status.json for the website, docker/uo-status/README.md).
@@ -64,6 +65,7 @@ param(
     [switch]$Status,
     [string]$Capture,
     [switch]$LoadOnly,
+    [switch]$WorldCommands,
     [string]$RepoRoot
 )
 
@@ -104,6 +106,7 @@ function Get-ConsoleConfig {
         LiveCompose      = (Join-Path $RepoRoot 'docker\uo\docker-compose.yml')
         CheckDocker      = (Join-Path $RepoRoot 'Check-Docker.ps1')
         CheckShard       = (Join-Path $RepoRoot 'Check-Shard.ps1')
+        Customizations   = (Join-Path $RepoRoot 'server\customizations')
         DiagFolder       = $RepoRoot
         SnapshotRoot     = (Join-Path $lib 'Snapshots')
         LogFile          = (Join-Path $RepoRoot 'scripts\shard-console.log')
@@ -1227,25 +1230,318 @@ function Format-StatusReport {
     $o.ToArray()
 }
 
-function Get-WorldSetupChecklist {
-    # A fresh world does not populate itself: notes/reachability-audit.md section 5 found 282 of
-    # the 296 reachable ported content types exist only where someone ran these by hand. The
-    # console cannot run in-game commands; it can stop them being forgotten.
-    # Syntax from docker/uo/SERVER.md:355-357. Access levels from the source that registers them.
-    $spawn = @(
-        'post-uoml/termur/Abyss.json', 'post-uoml/termur/TerMur.json', 'post-uoml/termur/Underworld.json',
-        'shared/malas/Citadel.json', 'shared/malas/Labyrinth.json',
-        'shared/trammel/Sanctuary.json', 'shared/felucca/Sanctuary.json',
-        'shared/trammel/PrismOfLight.json', 'shared/felucca/PrismOfLight.json',
-        'post-uoml/trammel/Vendors.json', 'post-uoml/felucca/Vendors.json',
-        'post-uoml/trammel/Outdoors.json'
-    )
-    foreach ($f in $spawn) {
-        [pscustomobject]@{ Command = '[GenerateSpawners Data/Spawns/' + $f; Access = 'Developer'; Why = 'a spawn file ported content comes through. Re-running replaces, not duplicates.' }
+# --- world commands (cc-P21) -----------------------------------------------------------------
+# The World setup tab lists the in-game commands that change a world. It DISCOVERS them: every
+# CommandSystem.Register( call in server/customizations, with the [ShardCommand(...)] its handler
+# declares (server/customizations/ShardCommandAttribute.cs). It never decides what a command is.
+# A registered command with no declaration is listed as "new, unclassified"; it never vanishes.
+# The build gate (server/tests/Misc/CommandDeclarationVerification.cs) fails a command registered
+# without one, so that group should be empty on any tree that built.
+#
+# The console copies text; a GM pastes it into a client. It runs nothing in game and cannot see
+# whether a world has had any of these: that is a fact about the save.
+
+$script:CommandCategoryNames = @{
+    WorldGeneration = 'world-generation'; WorldSetup = 'world-setup'; WorldRemoval = 'world-removal'
+    DevTool = 'dev-tool'; Grant = 'grant'; Diagnostic = 'diagnostic'; Player = 'player'
+}
+$script:CommandRerunText = @{
+    Skips = 're-run skips what exists'; Replaces = 're-run replaces what it placed'
+    Duplicates = 'RE-RUN DUPLICATES: run once'; Refuses = 'refuses a second run'
+    DeletesAgain = 're-run deletes again whatever matches'; Unverified = 're-run: not established'
+}
+$script:CommandShardText = @{
+    Any = 'either shard'; TestFirst = 'test first, then live'; TestOnly = 'test only'; Unverified = 'shard: not stated'
+}
+
+function New-OrderStep {
+    param([string]$Name, [string]$Arguments)
+    [pscustomobject]@{ Name = $Name; Args = $Arguments; Stock = $false }
+}
+
+function New-StockStep {
+    # A pinned command. Pinned's source cannot carry our declaration, so these are the one place
+    # the console states facts itself, each with where it came from.
+    param([string]$Command, [string]$Access, [string]$Why)
+    [pscustomobject]@{ Name = $null; Args = $null; Stock = $true; Command = $Command; Access = $Access; Why = $Why }
+}
+
+# ORDER. A relationship between commands, not a property of one, so it is not declared at the
+# command. One explicit list of sequences, each from a runbook that states it. Between sequences
+# no order is established, and nothing here invents one. A world command in no sequence is listed
+# under "no order established".
+$script:WorldSetupOrder = @(
+    [pscustomobject]@{
+        Key    = 'fresh'
+        Title  = 'Fresh world, once: generation, in this order'
+        Source = 'notes/shard-console.md section 8 and notes/reachability-audit.md section 5 (spawn files, then Shame, then Despise, then save); docs/client-test-queue.md:49 (Shame then Despise)'
+        Steps  = @(
+            # Syntax from docker/uo/SERVER.md:355-357; the twelve paths from notes/reachability-audit.md section 5.
+            foreach ($f in @(
+                'post-uoml/termur/Abyss.json', 'post-uoml/termur/TerMur.json', 'post-uoml/termur/Underworld.json',
+                'shared/malas/Citadel.json', 'shared/malas/Labyrinth.json',
+                'shared/trammel/Sanctuary.json', 'shared/felucca/Sanctuary.json',
+                'shared/trammel/PrismOfLight.json', 'shared/felucca/PrismOfLight.json',
+                'post-uoml/trammel/Vendors.json', 'post-uoml/felucca/Vendors.json',
+                'post-uoml/trammel/Outdoors.json')) {
+                New-StockStep ('[GenerateSpawners Data/Spawns/' + $f) 'Developer' 'pinned. A spawn file ported content comes through. Re-running replaces, not duplicates.'
+            }
+            (New-OrderStep 'GenerateNewShame')
+            (New-OrderStep 'SetupDespise')
+            (New-StockStep '[save' 'Administrator' 'pinned. Save after generation (docker/uo/SERVER.md:360).')
+        )
     }
-    [pscustomobject]@{ Command = '[GenerateNewShame'; Access = 'Administrator'; Why = 'Shame Revamped on Trammel and Felucca: altars, walls, spawners. Nothing in the spawn data hints at it. Safe to re-run: it skips what exists.' }
-    [pscustomobject]@{ Command = '[SetupDespise'; Access = 'GameMaster'; Why = 'Despise: controller, ankhs, gates, spawners. Nothing in the spawn data hints at it. Refuses to run twice.' }
-    [pscustomobject]@{ Command = '[save'; Access = 'Administrator'; Why = 'save after generation (docker/uo/SERVER.md:360).' }
+    [pscustomobject]@{
+        Key    = 'newhaven'
+        Title  = 'Existing world: New Haven services, NPCs and guild halls, in this order'
+        Source = 'notes/cc-P17-playtest-bugs-1.md:624-637 (a fresh world runs the first two after the spawn files, :634-637)'
+        Steps  = @(
+            (New-OrderStep 'ClusterFSeedNewHavenServices' 'dryrun')
+            (New-OrderStep 'ClusterFSeedNewHavenServices')
+            (New-OrderStep 'ClusterFSeedNewHaven' 'dryrun')
+            (New-OrderStep 'ClusterFSeedNewHaven' 'repair')
+            (New-OrderStep 'ClusterFSeedGuildHalls' 'repair')
+        )
+    }
+    [pscustomobject]@{
+        Key    = 'minecamp'
+        Title  = 'Existing world: mine camp tents, then the NPC move, in this order'
+        Source = 'notes/cc-P16-mine-camp-tents.md:321-324 and :331-338'
+        Steps  = @(
+            (New-OrderStep 'ClusterFSeedMineCamp' 'dryrun')
+            (New-OrderStep 'ClusterFSeedMineCamp')
+            (New-OrderStep 'ClusterFMoveMineCampNpcs' 'dryrun')
+            (New-OrderStep 'ClusterFMoveMineCampNpcs')
+        )
+    }
+)
+
+function Get-AttributeBlock {
+    # The attribute lines directly above line $DeclIndex: everything back to the previous line
+    # that ends a statement or a block. Comment lines are skipped, not treated as an end.
+    param([string[]]$Lines, [int]$DeclIndex)
+    $i = $DeclIndex - 1
+    $block = New-Object 'System.Collections.Generic.List[string]'
+    while ($i -ge 0) {
+        $t = $Lines[$i].Trim()
+        if ($t -notlike '//*' -and $t -match '[;{}]$') { break }
+        $block.Insert(0, $Lines[$i])
+        $i--
+    }
+    $block -join "`n"
+}
+
+function ConvertFrom-ShardCommandArgs {
+    param([string]$Text)
+    $r = [ordered]@{ Category = $null; Rerun = $null; Shard = $null; DryRun = ''; NoDryRun = $false; Summary = '' }
+    $str = '"((?:[^"\\]|\\.)*)"'
+    $m = [regex]::Match($Text, '^\s*CommandCategory\.(\w+)')
+    if ($m.Success) { $r.Category = $m.Groups[1].Value }
+    $m = [regex]::Match($Text, '\bRerun\s*=\s*CommandRerun\.(\w+)')
+    if ($m.Success) { $r.Rerun = $m.Groups[1].Value }
+    $m = [regex]::Match($Text, '\bShard\s*=\s*CommandShard\.(\w+)')
+    if ($m.Success) { $r.Shard = $m.Groups[1].Value }
+    $m = [regex]::Match($Text, '\bDryRun\s*=\s*' + $str)
+    if ($m.Success) { $r.DryRun = $m.Groups[1].Value }
+    $r.NoDryRun = [regex]::IsMatch($Text, '\bNoDryRun\s*=\s*true')
+    $m = [regex]::Match($Text, '\bSummary\s*=\s*' + $str)
+    if ($m.Success) { $r.Summary = $m.Groups[1].Value -replace '\\"', '"' }
+    [pscustomobject]$r
+}
+
+function ConvertFrom-CommandSources {
+    # Source text in (a hashtable of path -> file text), one object per CommandSystem.Register(
+    # call out. Pure: the shell reads the files (Get-CommandSourceFiles).
+    param([hashtable]$Sources)
+    $str = '"((?:[^"\\]|\\.)*)"'
+    $reg = [regex]('CommandSystem\.Register\(\s*(?:"(?<lit>[^"]*)"|(?<id>[A-Za-z_][\w.]*))\s*,\s*AccessLevel\.(?<access>\w+)\s*,\s*(?<handler>[A-Za-z_]\w*)\s*\)')
+    foreach ($path in @($Sources.Keys | Sort-Object)) {
+        $text = ([string]$Sources[$path]) -replace "`r`n", "`n"
+        $lines = $text -split "`n"
+        foreach ($call in [regex]::Matches($text, 'CommandSystem\.Register\(')) {
+            $lineStart = $text.LastIndexOf("`n", [Math]::Max(0, $call.Index - 1)) + 1
+            if ($call.Index -eq 0) { $lineStart = 0 }
+            if ($text.Substring($lineStart, $call.Index - $lineStart).TrimStart() -match '^(//|\*)') { continue }
+            $lineNo = ([regex]::Matches($text.Substring(0, $call.Index), "`n")).Count + 1
+            $problems = New-Object 'System.Collections.Generic.List[string]'
+            $e = [ordered]@{
+                Name = ''; Access = ''; Handler = ''; File = $path; Line = $lineNo; Usage = ''; Description = ''
+                Declared = $false; Category = 'unclassified'; Rerun = ''; Shard = ''; RerunText = ''; ShardText = ''
+                DryRun = ''; NoDryRun = $false; DryRunCommand = ''; Summary = ''; Command = ''; Problems = $problems
+            }
+            $m = $reg.Match($text, $call.Index)
+            if (-not $m.Success -or $m.Index -ne $call.Index) {
+                # A shape this reader does not know (a lambda handler, a computed name). Listed, never dropped.
+                $lit = [regex]::Match($text.Substring($call.Index, [Math]::Min(300, $text.Length - $call.Index)), $str)
+                $e.Name = '(unread)'
+                if ($lit.Success) { $e.Name = $lit.Groups[1].Value }
+                $problems.Add('the console could not read this registration; look at ' + $path + ':' + $lineNo)
+            } else {
+                $e.Access = $m.Groups['access'].Value
+                $e.Handler = $m.Groups['handler'].Value
+                if ($m.Groups['lit'].Success) {
+                    $e.Name = $m.Groups['lit'].Value
+                } else {
+                    $id = @($m.Groups['id'].Value -split '\.')[-1]
+                    $c = [regex]::Match($text, 'const\s+string\s+' + [regex]::Escape($id) + '\s*=\s*' + $str)
+                    if ($c.Success) { $e.Name = $c.Groups[1].Value } else { $e.Name = $m.Groups['id'].Value; $problems.Add('name is the constant ' + $id + ', not found in this file') }
+                }
+                $declIndex = -1
+                for ($i = 0; $i -lt $lines.Count; $i++) {
+                    if ($lines[$i] -match ('^\s*(?:(?:public|private|internal|protected|static|async)\s+)+void\s+' + [regex]::Escape($e.Handler) + '\s*\(')) { $declIndex = $i; break }
+                }
+                if ($declIndex -lt 0) {
+                    $problems.Add('handler ' + $e.Handler + ' is not in ' + $path)
+                } else {
+                    $block = Get-AttributeBlock $lines $declIndex
+                    $u = [regex]::Match($block, '\bUsage\(\s*' + $str)
+                    if ($u.Success) { $e.Usage = $u.Groups[1].Value }
+                    $d = [regex]::Match($block, '\bDescription\(\s*' + $str)
+                    if ($d.Success) { $e.Description = $d.Groups[1].Value }
+                    $sc = [regex]::Match($block, '\bShardCommand\((?<args>(?:"(?:[^"\\]|\\.)*"|[^"])*?)\)\s*\]', 'Singleline')
+                    if ($sc.Success) {
+                        $a = ConvertFrom-ShardCommandArgs $sc.Groups['args'].Value
+                        if ($a.Category -and $script:CommandCategoryNames.ContainsKey($a.Category)) {
+                            $e.Declared = $true
+                            $e.Category = $script:CommandCategoryNames[$a.Category]
+                        } else {
+                            $problems.Add('[ShardCommand] names no category the console knows: ' + $a.Category)
+                        }
+                        $e.Rerun = [string]$a.Rerun
+                        $e.Shard = [string]$a.Shard
+                        $e.DryRun = $a.DryRun
+                        $e.NoDryRun = $a.NoDryRun
+                        $e.Summary = $a.Summary
+                    }
+                }
+            }
+            if ($e.Rerun -and $script:CommandRerunText.ContainsKey($e.Rerun)) { $e.RerunText = $script:CommandRerunText[$e.Rerun] }
+            if ($e.Shard -and $script:CommandShardText.ContainsKey($e.Shard)) { $e.ShardText = $script:CommandShardText[$e.Shard] }
+            $e.Command = '[' + $e.Name
+            if ($e.DryRun) {
+                $words = @($e.Usage -split '[^A-Za-z0-9_]+')
+                if (-not $e.Declared) {
+                    # only a declaration says a word is a dry run
+                } elseif ($words -ccontains $e.DryRun) {
+                    $e.DryRunCommand = '[' + $e.Name + ' ' + $e.DryRun
+                } else {
+                    $problems.Add('declared dry run "' + $e.DryRun + '" is not a word of its [Usage("' + $e.Usage + '")], so none is shown')
+                }
+            }
+            if ($e.Category -in 'world-generation', 'world-setup', 'world-removal') {
+                if (-not $e.RerunText) { $problems.Add('declares no re-run behaviour') }
+                if (-not $e.ShardText) { $problems.Add('declares no shard') }
+                if (-not $e.Summary) { $problems.Add('declares no summary') }
+            }
+            [pscustomobject]$e
+        }
+    }
+}
+
+function Format-WorldCommandLine {
+    # The line beside a command in the tab. What it does, who may run it, where, and what a
+    # second run does, in the command's own declared words.
+    param($Entry, [string]$Arguments)
+    if ($Entry.Category -eq 'unclassified') {
+        $t = 'NEW, UNCLASSIFIED: registered at ' + $Entry.File + ':' + $Entry.Line + ' with no [ShardCommand] the console could read. Read its source before running it.'
+        if ($Entry.Access) { $t = $Entry.Access + '. ' + $t }
+        if ($Entry.Usage) { $t += ' Usage: ' + $Entry.Usage }
+        foreach ($p in $Entry.Problems) { $t += ' (' + $p + ')' }
+        return $t
+    }
+    $parts = New-Object 'System.Collections.Generic.List[string]'
+    if ($Entry.Shard -eq 'TestOnly') { $parts.Add('TEST SHARD ONLY') }
+    $parts.Add($Entry.Access)
+    if ($Entry.Shard -ne 'TestOnly' -and $Entry.ShardText) { $parts.Add($Entry.ShardText) }
+    if ($Entry.RerunText) { $parts.Add($Entry.RerunText) }
+    if ($Arguments -eq $Entry.DryRun -and $Entry.DryRun) {
+        $parts.Add('DRY RUN: reports and changes nothing')
+    } elseif ($Entry.NoDryRun) {
+        $parts.Add('no dry run')
+    }
+    $t = ($parts -join '. ') + '. ' + $Entry.Summary
+    if (-not $Entry.Summary -and $Entry.Description) { $t += $Entry.Description }
+    foreach ($p in $Entry.Problems) { $t += ' (' + $p + ')' }
+    $t
+}
+
+function Test-WorldCommandWarn {
+    # Shown in red: nobody has classified it, it is for the test shard only, or its plain form
+    # (no argument) deletes something.
+    param($Entry)
+    ($Entry.Category -eq 'unclassified') -or ($Entry.Shard -eq 'TestOnly') -or ($Entry.Rerun -eq 'DeletesAgain') -or ($Entry.Summary -clike 'DELETES*')
+}
+
+function Get-WorldCommandGroups {
+    # The tab's groups, in the order shown. Sequences first (from $script:WorldSetupOrder), then
+    # every other world command, removals, and anything unclassified. Player, dev-tool, grant and
+    # diagnostic commands are never in this tab.
+    param([object[]]$Commands)
+    $byName = @{}
+    foreach ($c in $Commands) { if (-not $byName.ContainsKey($c.Name)) { $byName[$c.Name] = $c } }
+    $used = @{}
+    foreach ($seq in $script:WorldSetupOrder) {
+        $items = foreach ($s in $seq.Steps) {
+            if ($s.Stock) {
+                [pscustomobject]@{ Name = $null; Command = $s.Command; DryRunCommand = ''; Warn = $false; Text = $s.Access + ': ' + $s.Why }
+                continue
+            }
+            $cmd = '[' + $s.Name
+            if ($s.Args) { $cmd += ' ' + $s.Args }
+            $e = $byName[$s.Name]
+            if ($null -eq $e) {
+                [pscustomobject]@{ Name = $s.Name; Command = $cmd; DryRunCommand = ''; Warn = $true; Text = 'NOT REGISTERED: the order list names a command the source no longer registers. Do not run it until someone looks.' }
+                continue
+            }
+            $used[$s.Name] = $true
+            [pscustomobject]@{ Name = $s.Name; Command = $cmd; DryRunCommand = ''; Warn = (Test-WorldCommandWarn $e); Text = (Format-WorldCommandLine $e $s.Args) }
+        }
+        [pscustomobject]@{ Key = $seq.Key; Title = $seq.Title; Source = $seq.Source; CopyAll = $true; Items = @($items) }
+    }
+    $single = {
+        param($e)
+        [pscustomobject]@{ Name = $e.Name; Command = $e.Command; DryRunCommand = $e.DryRunCommand; Warn = (Test-WorldCommandWarn $e); Text = (Format-WorldCommandLine $e) }
+    }
+    $rest = @($Commands | Where-Object { $_.Category -in 'world-generation', 'world-setup' -and -not $used.ContainsKey($_.Name) } | Sort-Object Name)
+    [pscustomobject]@{
+        Key = 'noorder'; Title = 'Existing world: no order established between these'; CopyAll = $false
+        Source = 'No runbook states an order for these, and the console does not invent one. Copy them one at a time.'
+        Items = @($rest | ForEach-Object { & $single $_ })
+    }
+    [pscustomobject]@{
+        Key = 'removal'; Title = 'Removal: each undoes what another command placed'; CopyAll = $false
+        Source = 'Never part of a run sequence.'
+        Items = @($Commands | Where-Object { $_.Category -eq 'world-removal' } | Sort-Object Name | ForEach-Object { & $single $_ })
+    }
+    [pscustomobject]@{
+        Key = 'unclassified'; Title = 'Registered but new, unclassified'; CopyAll = $false
+        Source = 'A command with no [ShardCommand] the console could read. The build gate should keep this empty; if it is not, the tree has not been through build.sh.'
+        Items = @($Commands | Where-Object { $_.Category -eq 'unclassified' } | Sort-Object Name | ForEach-Object { & $single $_ })
+    }
+}
+
+function Get-GroupClipboardText {
+    # Every command of a group, one per line, in order. The client takes one command at a time;
+    # this is for a text file beside it, so nobody loses their place.
+    param($Group)
+    (@($Group.Items | ForEach-Object { $_.Command }) -join "`r`n") + "`r`n"
+}
+
+function Format-WorldCommandReport {
+    # The tab as text, for -WorldCommands.
+    param([object[]]$Groups)
+    foreach ($g in $Groups) {
+        [pscustomobject]@{ Text = ''; Color = 'normal' }
+        [pscustomobject]@{ Text = ('== ' + $g.Title + ' ' + ('=' * [Math]::Max(3, 90 - $g.Title.Length))); Color = 'head' }
+        [pscustomobject]@{ Text = ('   ' + $g.Source); Color = 'gray' }
+        if (-not @($g.Items).Count) { [pscustomobject]@{ Text = '   (none)'; Color = 'gray' } }
+        foreach ($i in $g.Items) {
+            $c = 'normal'
+            if ($i.Warn) { $c = 'amber' }
+            [pscustomobject]@{ Text = ('   {0,-44} {1}' -f $i.Command, $i.Text); Color = $c }
+            if ($i.DryRunCommand) { [pscustomobject]@{ Text = ('   {0,-44} {1}' -f $i.DryRunCommand, '(its dry run)'); Color = 'gray' } }
+        }
+    }
 }
 
 # =============================================================================================
@@ -1290,6 +1586,19 @@ function Invoke-DockerRead {
         return [pscustomobject]@{ Out = ''; Err = ('error: docker did not answer within ' + ($TimeoutMs / 1000) + ' s'); Code = -1 }
     }
     [pscustomobject]@{ Out = $o.Result; Err = $e.Result; Code = $p.ExitCode }
+}
+
+function Get-CommandSourceFiles {
+    # Every .cs under server/customizations, path relative to it -> text, for
+    # ConvertFrom-CommandSources. Read only.
+    param([string]$Root)
+    $h = @{}
+    if (-not (Test-Path -LiteralPath $Root)) { return $h }
+    $base = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('') + ''
+    foreach ($f in Get-ChildItem -LiteralPath $Root -Recurse -File -Filter '*.cs') {
+        $h[$f.FullName.Substring($base.Length)] = [IO.File]::ReadAllText($f.FullName)
+    }
+    $h
 }
 
 function Get-FileListing {
@@ -2009,34 +2318,79 @@ function New-ConsoleForm {
     $worldTable = New-Object Windows.Forms.TableLayoutPanel
     $worldTable.Dock = 'Fill'
     $worldTable.AutoScroll = $true
-    $worldTable.ColumnCount = 3
+    $worldTable.ColumnCount = 4
+    [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('AutoSize')))
     [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('AutoSize')))
     [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('AutoSize')))
     [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 100)))
-    $head = New-Caption ('In-game commands, run by hand once per world, in this order. The console cannot run them and cannot see whether this world has had them: that is a fact about the save. The ticks are for this session only and are not saved. Copy puts one line on the clipboard. docker/uo/SERVER.md:355-357 has three broad patterns that cover every spawn file below.') 1100
+    $worldCmds = @()
+    try { $worldCmds = @(ConvertFrom-CommandSources (Get-CommandSourceFiles $Config.Customizations)) } catch { }
+    $head = New-Caption ('In-game commands, run by hand in a client. The console cannot run them and cannot see whether this world has had them: that is a fact about the save. Read from the [ShardCommand] each command declares in ' + $Config.Customizations + ' (' + $worldCmds.Count + ' registrations; the tab shows only those that change a world). Fresh-world generation is a different job from changing a world that already exists: check which shard your client is on before you paste. Copy puts one line on the clipboard; Copy group puts the whole group, one line each, for a text file beside the client. The ticks are for this session only.') 1100
     $worldTable.Controls.Add($head, 0, 0)
-    $worldTable.SetColumnSpan($head, 3)
+    $worldTable.SetColumnSpan($head, 4)
     $row = 1
-    foreach ($item in Get-WorldSetupChecklist) {
-        $cb = New-Object Windows.Forms.CheckBox
-        $cb.Text = $item.Command
-        $cb.AutoSize = $true
-        $cb.Font = $script:MonoFont
-        $cb.Margin = New-Object Windows.Forms.Padding(6, 5, 3, 3)
-        $copy = New-Object Windows.Forms.Button
-        $copy.Text = 'Copy'
-        $copy.Width = 60
-        $copy.Tag = $item.Command
-        $copy.Add_Click({ [Windows.Forms.Clipboard]::SetText([string]$this.Tag); Write-ConsoleLine ('copied: ' + $this.Tag) 'gray' })
-        $why = New-Object Windows.Forms.Label
-        $why.Text = $item.Access + ': ' + $item.Why
-        $why.AutoSize = $true
-        $why.ForeColor = [Drawing.Color]::DimGray
-        $why.Margin = New-Object Windows.Forms.Padding(6, 8, 3, 3)
-        $worldTable.Controls.Add($cb, 0, $row)
-        $worldTable.Controls.Add($copy, 1, $row)
-        $worldTable.Controls.Add($why, 2, $row)
+    $copyClick = { [Windows.Forms.Clipboard]::SetText([string]$this.Tag); Write-ConsoleLine ('copied: ' + ([string]$this.Tag).Trim()) 'gray' }
+    foreach ($group in @(Get-WorldCommandGroups $worldCmds)) {
+        $title = New-Object Windows.Forms.Label
+        $title.Text = $group.Title
+        $title.AutoSize = $true
+        $title.Font = New-Object Drawing.Font($worldTable.Font, [Drawing.FontStyle]::Bold)
+        $title.Margin = New-Object Windows.Forms.Padding(6, 14, 3, 2)
+        if ($group.Key -eq 'unclassified' -and @($group.Items).Count) { $title.ForeColor = [Drawing.Color]::Firebrick }
+        $worldTable.Controls.Add($title, 0, $row)
+        $worldTable.SetColumnSpan($title, 4)
         $row++
+        $src = New-Caption $group.Source 760 ([Drawing.Color]::DimGray)
+        if ($group.CopyAll -and @($group.Items).Count) {
+            $all = New-Object Windows.Forms.Button
+            $all.Text = 'Copy group'
+            $all.Width = 90
+            $all.Tag = Get-GroupClipboardText $group
+            $all.Add_Click({ [Windows.Forms.Clipboard]::SetText([string]$this.Tag); Write-ConsoleLine ('copied a group of ' + @(([string]$this.Tag).Trim() -split "`r`n").Count + ' commands') 'gray' })
+            $worldTable.Controls.Add($all, 1, $row)
+            $worldTable.SetColumnSpan($all, 2)
+            $worldTable.Controls.Add($src, 3, $row)
+        } else {
+            $worldTable.Controls.Add($src, 0, $row)
+            $worldTable.SetColumnSpan($src, 4)
+        }
+        $row++
+        if (-not @($group.Items).Count) {
+            $none = New-Caption '(none)' 300 ([Drawing.Color]::DimGray)
+            $worldTable.Controls.Add($none, 0, $row)
+            $row++
+        }
+        foreach ($item in $group.Items) {
+            $cb = New-Object Windows.Forms.CheckBox
+            $cb.Text = $item.Command
+            $cb.AutoSize = $true
+            $cb.Font = $script:MonoFont
+            $cb.Margin = New-Object Windows.Forms.Padding(6, 5, 3, 3)
+            $copy = New-Object Windows.Forms.Button
+            $copy.Text = 'Copy'
+            $copy.Width = 60
+            $copy.Tag = $item.Command
+            $copy.Add_Click($copyClick)
+            $worldTable.Controls.Add($cb, 0, $row)
+            $worldTable.Controls.Add($copy, 1, $row)
+            if ($item.DryRunCommand) {
+                $dry = New-Object Windows.Forms.Button
+                $dry.Text = 'Copy dry run'
+                $dry.Width = 95
+                $dry.Tag = $item.DryRunCommand
+                $dry.Add_Click($copyClick)
+                $worldTable.Controls.Add($dry, 2, $row)
+            }
+            $why = New-Object Windows.Forms.Label
+            $why.Text = $item.Text
+            $why.AutoSize = $true
+            $why.MaximumSize = New-Object Drawing.Size(760, 0)
+            $why.ForeColor = [Drawing.Color]::DimGray
+            if ($item.Warn) { $why.ForeColor = [Drawing.Color]::DarkRed }
+            $why.Margin = New-Object Windows.Forms.Padding(6, 8, 3, 3)
+            $worldTable.Controls.Add($why, 3, $row)
+            $row++
+        }
     }
     $worldPage.Controls.Add($worldTable)
 
@@ -2108,6 +2462,13 @@ if ($Capture) {
 if ($Action -eq 'list') {
     foreach ($a in Get-ConsoleActions) { Write-Host ('{0,-18} {1,-12} {2}' -f $a.Key, $a.Group, $a.Label) }
     Write-Host 'snapshot.* take -Shard test|live (default test), -SnapshotName for create, -Snapshot for restore and delete.'
+    exit 0
+}
+
+if ($WorldCommands) {
+    $cmds = @(ConvertFrom-CommandSources (Get-CommandSourceFiles $config.Customizations))
+    Write-ConsoleLine ('World commands, discovered from ' + $config.Customizations + ': ' + $cmds.Count + ' registrations read.') 'head'
+    foreach ($l in (Format-WorldCommandReport @(Get-WorldCommandGroups $cmds))) { Write-ConsoleLine $l.Text $l.Color }
     exit 0
 }
 

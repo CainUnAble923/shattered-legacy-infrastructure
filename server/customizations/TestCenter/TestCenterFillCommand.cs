@@ -30,6 +30,7 @@ public static class TestCenterFillCommand
 
     [Usage("TCFill")]
     [Description("Test Center only. Restocks your bank box with the Test Center supplies and the Shattered Legacy Test Kit. Once every ten minutes.")]
+    [ShardCommand(CommandCategory.Player)]
     public static void TCFill_OnCommand(CommandEventArgs e)
     {
         var from = e.Mobile;

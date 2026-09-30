@@ -47,6 +47,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactStanding [amount]")]
     [Description("Inspect or set Compact Standing (mining GuildReputation) on a targeted player.")]
+    [ShardCommand(CommandCategory.Grant)]
     private static void CompactStanding_OnCommand(CommandEventArgs e)
     {
         int? setAmount = null;
@@ -78,6 +79,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactVouchers [amount]")]
     [Description("Inspect or set Mining Vouchers (mining GuildCurrency) on a targeted player.")]
+    [ShardCommand(CommandCategory.Grant)]
     private static void CompactVouchers_OnCommand(CommandEventArgs e)
     {
         int? setAmount = null;
@@ -108,6 +110,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactRank")]
     [Description("Show Compact rank for the targeted player's current standing.")]
+    [ShardCommand(CommandCategory.Diagnostic)]
     private static void CompactRank_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -126,6 +129,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactUnlockPickaxe")]
     [Description("Grant legacy.jacobs_pickaxe registry unlock to the targeted player.")]
+    [ShardCommand(CommandCategory.Grant)]
     private static void CompactUnlockPickaxe_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -144,6 +148,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactGivePickaxe")]
     [Description("Give Jacob's Pickaxe (fresh) to the targeted player.")]
+    [ShardCommand(CommandCategory.Grant)]
     private static void CompactGivePickaxe_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -162,6 +167,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactGiveReinforcedPickaxe")]
     [Description("Give Jacob's Reinforced Pickaxe to the targeted player.")]
+    [ShardCommand(CommandCategory.Grant)]
     private static void CompactGiveReinforced_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -180,6 +186,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactExhaust")]
     [Description("Exhaust the Jacob's Pickaxe in the targeted player's pack (for testing durability behaviour).")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void CompactExhaust_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -219,6 +226,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactClearActive")]
     [Description("Clears the active-copy flag for legacy.jacobs_pickaxe on a targeted player, allowing restoration.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void CompactClearActive_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -236,6 +244,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[TestingReset")]
     [Description("Wipes all guild, league, and Compact data for a targeted player - full testing reset.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void TestingReset_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -290,6 +299,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[TestingZeroSkills")]
     [Description("Sets all skills to 0.0 on a targeted player for clean testing.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void TestingZeroSkills_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -308,6 +318,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactGiveSatchel")]
     [Description("Give a Compact Ore Satchel to the targeted player.")]
+    [ShardCommand(CommandCategory.Grant)]
     private static void CompactGiveSatchel_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -325,6 +336,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactGiveLogbook")]
     [Description("Give a Prospector's Logbook to the targeted player.")]
+    [ShardCommand(CommandCategory.Grant)]
     private static void CompactGiveLogbook_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -342,6 +354,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactWipeLogbook")]
     [Description("Clears all ore discovery records from a targeted player's logbook (for testing).")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void CompactWipeLogbook_OnCommand(CommandEventArgs e)
     {
         e.Mobile.BeginTarget(-1, false, TargetFlags.None, (from, targeted) =>
@@ -362,6 +375,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactSeedDiscoveries [Discovered|Reported]")]
     [Description("Seeds all 16 ore types into a targeted player's logbook. State defaults to Discovered (unreported). Use 'Reported' to skip straight to reported state.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void CompactSeedDiscoveries_OnCommand(CommandEventArgs e)
     {
         var stateArg = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "discovered";
@@ -415,6 +429,7 @@ public static class ClusterFCompactAdminTools
 
     [Usage("[CompactOreInfo")]
     [Description("Print extended ore CraftResource enum values and hues to the console.")]
+    [ShardCommand(CommandCategory.Diagnostic)]
     private static void CompactOreInfo_OnCommand(CommandEventArgs e)
     {
         e.Mobile.SendMessage("Extended ore info printed to server console.");

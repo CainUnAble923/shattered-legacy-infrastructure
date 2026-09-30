@@ -736,6 +736,7 @@ public static class AddCloneCommands
     }
 
     [Description("")]
+    [ShardCommand(CommandCategory.DevTool)]
     public static void AddClone_OnCommand(CommandEventArgs e)
     {
         BaseCreature clone = new MedusaClone(e.Mobile);

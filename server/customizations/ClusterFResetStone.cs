@@ -49,6 +49,7 @@ namespace Server
 
         [Usage("ClusterFSeedResetStone [dryrun]")]
         [Description("Test shard: places the Reset Stone in New Haven if none is there. Moves and deletes nothing; a re-run places nothing.")]
+        [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestOnly, DryRun = "dryrun", Summary = "Places the Reset Stone in New Haven if none is there.")]
         private static void OnCommand(CommandEventArgs e)
         {
             var mode = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "";

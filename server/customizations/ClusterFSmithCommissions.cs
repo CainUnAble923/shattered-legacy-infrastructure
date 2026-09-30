@@ -858,6 +858,7 @@ public static class SmithCommissionCommands
 
     [Usage("ClearCommissions")]
     [Description("Clears all active Smith Commissions for yourself (GM testing tool).")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void ClearCommissions_OnCommand(CommandEventArgs e)
     {
         if (e.Mobile is not PlayerMobile pm || pm.Account is not IAccount acct)

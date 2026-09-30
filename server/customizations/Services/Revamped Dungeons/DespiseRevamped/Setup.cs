@@ -32,6 +32,7 @@ public static class DespiseRevampedSetup
         CommandSystem.Register("DeleteDespise", AccessLevel.GameMaster, DeleteDespise_OnCommand);
     }
 
+    [ShardCommand(CommandCategory.WorldRemoval, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.Unverified, NoDryRun = true, Summary = "DELETES everything SetupDespise placed.")]
     private static void DeleteDespise_OnCommand(CommandEventArgs e)
     {
         var deleted = DeleteDespise();
@@ -45,6 +46,7 @@ public static class DespiseRevampedSetup
         return deleted;
     }
 
+    [ShardCommand(CommandCategory.WorldGeneration, Rerun = CommandRerun.Refuses, Shard = CommandShard.Any, NoDryRun = true, Summary = "Despise Revamped: controller, ankhs, gates, spawners. Refuses once a controller exists.")]
     public static void SetupDespise_OnCommand(CommandEventArgs e)
     {
         e.Mobile.SendMessage(SetupDespise());

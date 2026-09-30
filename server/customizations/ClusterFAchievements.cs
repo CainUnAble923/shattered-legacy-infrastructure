@@ -1275,6 +1275,7 @@ public static class ClusterFAchievementSystem
 
     [Usage("achievements")]
     [Description("Opens your achievement records from the League of Extraordinary Citizens.")]
+    [ShardCommand(CommandCategory.Player)]
     private static void OnAchievementsCommand(CommandEventArgs e)
     {
         if (e.Mobile is PlayerMobile pm)
@@ -1283,6 +1284,7 @@ public static class ClusterFAchievementSystem
 
     [Usage("ClusterFAchievement <grant|revoke|info|list> [args]")]
     [Description("Admin achievement management.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void OnAdminCommand(CommandEventArgs e)
     {
         if (e.Length == 0)

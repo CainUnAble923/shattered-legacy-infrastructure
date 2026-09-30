@@ -32,6 +32,7 @@ public static class ClusterFAreaScan
 
     [Usage("ClusterFAreaScan [haven|oldhaven|newhaven]")]
     [Description("Writes all mobiles and notable items in the zone to /tmp/areascan-<zone>.txt")]
+    [ShardCommand(CommandCategory.Diagnostic)]
     private static void OnCommand(CommandEventArgs e)
     {
         var zone = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "oldhaven";

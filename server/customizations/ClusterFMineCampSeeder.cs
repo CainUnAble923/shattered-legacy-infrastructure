@@ -63,6 +63,7 @@ namespace Server
 
         [Usage("ClusterFSeedMineCamp [status|dryrun]")]
         [Description("Places the two New Haven mine camp tents if they are not on the world. status or dryrun lists what it would place and changes nothing.")]
+        [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places the two mine camp tents if they are not on Trammel. Moves and deletes nothing.")]
         private static void OnSeedCommand(CommandEventArgs e)
         {
             var mode = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "";
@@ -81,6 +82,7 @@ namespace Server
 
         [Usage("ClusterFMoveMineCampNpcs [dryrun]")]
         [Description("Moves the Miners' Compact Liaison and the Survey Archivist from near their old spots to the mine camp tent openings. Creates nothing; a re-run moves nothing.")]
+        [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Moves the Liaison and the Archivist to the mine camp tent openings. Creates nothing.")]
         private static void OnMoveCommand(CommandEventArgs e)
         {
             var mode = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "";

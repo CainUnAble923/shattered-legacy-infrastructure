@@ -20,6 +20,7 @@ public static class ClusterFStatInspect
 
     [Usage("stats")]
     [Description("Opens a summary of all your character stats and item bonuses.")]
+    [ShardCommand(CommandCategory.Player)]
     private static void OnStats(CommandEventArgs e)
     {
         var m = e.Mobile;

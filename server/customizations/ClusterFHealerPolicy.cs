@@ -21,6 +21,7 @@ public static class ClusterFHealerPolicy
 
     [Usage("ClusterFHealerPolicy")]
     [Description("Reports the current ClusterF healer resurrection policy.")]
+    [ShardCommand(CommandCategory.Diagnostic)]
     private static void ClusterFHealerPolicy_OnCommand(CommandEventArgs e)
     {
         e.Mobile.SendMessage(

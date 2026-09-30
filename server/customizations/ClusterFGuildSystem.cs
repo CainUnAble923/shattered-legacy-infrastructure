@@ -645,6 +645,7 @@ public static class ClusterFGuildSystem
 
     [Usage("guild")]
     [Description("Opens the Guild Directory: every guild, what it teaches, where its guildmaster stands.")]
+    [ShardCommand(CommandCategory.Player)]
     private static void OnGuildCommand(CommandEventArgs e)
     {
         if (e.Mobile is not PlayerMobile pm) return;
@@ -1047,6 +1048,7 @@ public static class ClusterFGuildAdminCommands
     [Description("Resets this character's guild membership, reputation, and currency. " +
                  "Use a guild key (e.g. 'smithing') or 'all' to reset every guild. " +
                  "Targets yourself; use [Admin to target another player first.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void ResetGuild_OnCommand(CommandEventArgs e)
     {
         if (e.Mobile is not PlayerMobile pm || pm.Account is not IAccount acct)

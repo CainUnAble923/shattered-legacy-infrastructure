@@ -549,8 +549,127 @@ Fact 'RedactionKeepsTheListenerAndPromptAndDropsAccountNames' {
     Assert-True (-not ($r -match 'someone')) 'dropped'
 }
 
-Fact 'TheWorldSetupChecklistIsTheTwelveSpawnFilesThenShameThenDespiseThenSave' {
-    $c = @(Get-WorldSetupChecklist)
+# --- world commands (cc-P21) ------------------------------------------------------------------
+# The tab lists what server/customizations declares with [ShardCommand], read from the source
+# itself. These facts read the real tree, so they fail when the tree and the tab disagree. Literal
+# sources are used only for shapes the real tree should never contain (no declaration, a handler
+# in another file, a declared dry run its [Usage] does not list).
+
+$custom    = Join-Path $repo 'server\customizations'
+$sources   = Get-CommandSourceFiles $custom
+$worldCmds = @(ConvertFrom-CommandSources $sources)
+$groups    = @(Get-WorldCommandGroups $worldCmds)
+
+function Get-WorldEntry { param([string]$Name) @($worldCmds | Where-Object { $_.Name -ceq $Name })[0] }
+
+Fact 'DiscoveryFindsEveryRegisterCallInTheTree' {
+    # Counted without the parser: a line that calls CommandSystem.Register( and is not a comment.
+    $lines = 0
+    foreach ($k in $sources.Keys) {
+        $lines += @(($sources[$k] -split "`n") | Where-Object { $_ -match 'CommandSystem\.Register\(' -and $_ -notmatch '^\s*(//|\*)' }).Count
+    }
+    Assert-True ($lines -ge 58) "the tree had 58 registrations on 2026-09-30; counted $lines"
+    Assert-Equal $lines $worldCmds.Count 'one entry per Register call'
+    Assert-Equal 0 @($worldCmds | Where-Object { -not $_.Name }).Count 'every entry has a name'
+    Assert-True ($null -ne (Get-WorldEntry 'TCFill')) 'a name held in a const (TestCenterFillCommand.Command) is resolved'
+}
+
+Fact 'TheElevenSeedersTheBriefNamesAreAllFoundAndDeclaredWorldSetup' {
+    $eleven = 'ClusterFSeedGuildHalls', 'ClusterFSeedNewHaven', 'ClusterFSeedOldHaven', 'ClusterFSeedInstitutions',
+              'ClusterFSeedNewHavenServices', 'ClusterFSeedResetStone', 'ClusterFSeedMineCamp', 'ClusterFSouthMineDecor',
+              'ClusterFOldHavenCleanup', 'ClusterFMoveMineCampNpcs', 'SeedRoyalCity'
+    foreach ($n in $eleven) {
+        $e = Get-WorldEntry $n
+        Assert-True ($null -ne $e) "$n discovered"
+        Assert-Equal 'world-setup' $e.Category $n
+        Assert-Equal 'Administrator' $e.Access $n
+        Assert-True ([bool]$e.Summary) "$n has a one-line summary"
+    }
+}
+
+Fact 'ACommandWithNoUsageStillAppears' {
+    $src = @{ 'X.cs' = "public static class X {`n  public static void Initialize() { CommandSystem.Register(`"Bare`", AccessLevel.Seer, Bare_OnCommand); }`n  public static void Bare_OnCommand(CommandEventArgs e) { }`n}" }
+    $e = @(ConvertFrom-CommandSources $src)
+    Assert-Equal 1 $e.Count
+    Assert-Equal 'Bare' $e[0].Name
+    Assert-Equal '' $e[0].Usage
+    Assert-Equal 'unclassified' $e[0].Category
+    Assert-Equal '[Bare' $e[0].Command
+    # and the real ones: no [Usage] on addclone, SetupDespise, GenerateNewShame, SeedRoyalCity
+    foreach ($n in 'addclone', 'SetupDespise', 'GenerateNewShame', 'SeedRoyalCity') {
+        $r = Get-WorldEntry $n
+        Assert-True ($null -ne $r) "$n discovered"
+        Assert-Equal '' $r.Usage $n
+    }
+}
+
+Fact 'AnUnclassifiedCommandSurfacesInTheNewGroupAndNeverVanishes' {
+    $src = @{
+        'A.cs' = "  public static void Configure() { CommandSystem.Register(`"Undeclared`", AccessLevel.Administrator, OnA); }`n    [Usage(`"Undeclared [dryrun]`")]`n    private static void OnA(CommandEventArgs e) { }"
+        'B.cs' = "  public static void Configure() { CommandSystem.Register(`"Elsewhere`", AccessLevel.GameMaster, HandlerInAnotherFile); }"
+    }
+    $e = @(ConvertFrom-CommandSources $src)
+    Assert-Equal 2 $e.Count
+    Assert-Equal 'unclassified,unclassified' ((@($e | Sort-Object Name) | ForEach-Object { $_.Category }) -join ',')
+    $g = @(Get-WorldCommandGroups $e)
+    $new = @($g | Where-Object { $_.Key -eq 'unclassified' })[0]
+    Assert-Equal 'Elsewhere,Undeclared' ((@($new.Items | ForEach-Object { $_.Name }) | Sort-Object) -join ',')
+    Assert-True ($new.Title -match 'new, unclassified') $new.Title
+    Assert-True (-not $new.CopyAll) 'no Copy-all for commands nobody has classified'
+    Assert-True (@($e | Where-Object { $_.Name -eq 'Undeclared' })[0].DryRunCommand -eq '') 'an undeclared command gets no dry run, even when its usage lists one'
+}
+
+Fact 'TheRenderedDryRunIsAWordOfThatCommandsOwnUsage' {
+    $withDry = @($worldCmds | Where-Object { $_.DryRunCommand })
+    # Counted 2026-09-30: nine declare one. A new one is welcome; one of these losing it is not.
+    $nine = 'ClusterFMoveMineCampNpcs', 'ClusterFOldHavenCleanup', 'ClusterFSeedGuildHalls', 'ClusterFSeedMineCamp', 'ClusterFSeedNewHaven',
+            'ClusterFSeedNewHavenServices', 'ClusterFSeedOldHaven', 'ClusterFSeedResetStone', 'ClusterFSouthMineDecor'
+    foreach ($n in $nine) { Assert-True ([bool](Get-WorldEntry $n).DryRunCommand) "$n renders its dry run" }
+    foreach ($e in $withDry) {
+        Assert-Equal ('[' + $e.Name + ' ' + $e.DryRun) $e.DryRunCommand $e.Name
+        $words = @($e.Usage -split '[^A-Za-z0-9_]+')
+        Assert-True ($words -ccontains $e.DryRun) ($e.Name + ': "' + $e.DryRun + '" is not a word of "' + $e.Usage + '"')
+    }
+    Assert-Equal '[ClusterFSeedMineCamp dryrun' (Get-WorldEntry 'ClusterFSeedMineCamp').DryRunCommand
+    Assert-Equal '[ClusterFSeedNewHaven dryrun' (Get-WorldEntry 'ClusterFSeedNewHaven').DryRunCommand 'repair moves NPCs; it is not the dry run'
+    Assert-Equal '' (Get-WorldEntry 'SetupDespise').DryRunCommand 'declared NoDryRun'
+}
+
+Fact 'ADeclaredDryRunThatIsNotInItsUsageRendersNoDryRunAndSaysSo' {
+    $src = @{ 'C.cs' = "CommandSystem.Register(`"Liar`", AccessLevel.Administrator, OnC);`n    [Usage(`"Liar [missing]`")]`n    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = `"dryrun`", Summary = `"x`")]`n    private static void OnC(CommandEventArgs e) { }" }
+    $e = @(ConvertFrom-CommandSources $src)[0]
+    Assert-Equal 'world-setup' $e.Category
+    Assert-Equal '' $e.DryRunCommand 'never render a flag the usage does not list'
+    Assert-True ((@($e.Problems) -join ' ') -match 'not a word of') (@($e.Problems) -join ' | ')
+}
+
+Fact 'PlayerCommandsNeverAppearInTheWorldTab' {
+    $shown = @($groups | ForEach-Object { $_.Items } | ForEach-Object { $_.Name } | Where-Object { $_ })
+    $players = @($worldCmds | Where-Object { $_.Category -eq 'player' })
+    foreach ($p in $players) {
+        Assert-True ($shown -notcontains $p.Name) "$($p.Name) is a player command"
+    }
+    Assert-Equal 'achievements,cleanup,cleanupall,guild,ResetMyAccount,SelfRes,stats,TCFill' ((@($players | ForEach-Object { $_.Name }) | Sort-Object) -join ',')
+}
+
+Fact 'EveryStepOfTheOrderListIsARegisteredWorldCommandWithAFlagItsUsageLists' {
+    foreach ($seq in $script:WorldSetupOrder) {
+        Assert-True ([bool]$seq.Source) "$($seq.Key) says where its order came from"
+        foreach ($s in @($seq.Steps | Where-Object { -not $_.Stock })) {
+            $e = Get-WorldEntry $s.Name
+            Assert-True ($null -ne $e) "$($s.Name) in the order list is registered"
+            Assert-True ($e.Category -in 'world-setup', 'world-generation') "$($s.Name) is $($e.Category)"
+            if ($s.Args) {
+                $words = @($e.Usage -split '[^A-Za-z0-9_]+')
+                Assert-True ($words -ccontains $s.Args) "$($s.Name) $($s.Args): not a word of `"$($e.Usage)`""
+            }
+        }
+    }
+}
+
+Fact 'TheFreshWorldGroupIsTheTwelveSpawnFilesThenShameThenDespiseThenSave' {
+    $fresh = @($groups | Where-Object { $_.Key -eq 'fresh' })[0]
+    $c = @($fresh.Items)
     $spawn = @($c | Where-Object { $_.Command -like '`[GenerateSpawners *' })
     Assert-Equal 12 $spawn.Count 'reachability-audit section 5 lists twelve paths; the brief said ten'
     $pinned = 'D:\UO\ModernUO-pinned\Distribution'
@@ -562,6 +681,40 @@ Fact 'TheWorldSetupChecklistIsTheTwelveSpawnFilesThenShameThenDespiseThenSave' {
     }
     $rest = @($c | Select-Object -Skip 12 | ForEach-Object { $_.Command })
     Assert-Equal '[GenerateNewShame,[SetupDespise,[save' ($rest -join ',')
+    Assert-True $fresh.CopyAll 'the fresh-world group copies as a whole'
+}
+
+Fact 'CopyGroupIsEveryCommandOfTheGroupOneLineEachInOrder' {
+    $copyable = @($groups | Where-Object { $_.CopyAll })
+    Assert-True ($copyable.Count -ge 3) 'fresh world, New Haven and the mine camp'
+    foreach ($g in $copyable) {
+        Assert-Equal ((@($g.Items | ForEach-Object { $_.Command }) -join "`r`n") + "`r`n") (Get-GroupClipboardText $g) $g.Key
+    }
+    $mine = @($groups | Where-Object { $_.Key -eq 'minecamp' })[0]
+    Assert-Equal '[ClusterFSeedMineCamp dryrun,[ClusterFSeedMineCamp,[ClusterFMoveMineCampNpcs dryrun,[ClusterFMoveMineCampNpcs' ((@($mine.Items) | ForEach-Object { $_.Command }) -join ',')
+}
+
+Fact 'EveryDiscoveredWorldCommandIsInTheTabAndOnlyTheUnorderedOnesOnce' {
+    $world = @($worldCmds | Where-Object { $_.Category -in 'world-generation', 'world-setup', 'world-removal', 'unclassified' })
+    $shown = @($groups | ForEach-Object { $_.Items } | ForEach-Object { $_.Name } | Where-Object { $_ })
+    foreach ($w in $world) {
+        Assert-True ($shown -contains $w.Name) "$($w.Name) is in the tab"
+    }
+    $unordered = @($groups | Where-Object { -not $_.CopyAll } | ForEach-Object { $_.Items } | ForEach-Object { $_.Name })
+    Assert-Equal @($unordered).Count @($unordered | Select-Object -Unique).Count 'an unordered command is listed once'
+    $noOrder = @($groups | Where-Object { $_.Key -eq 'noorder' })[0]
+    Assert-True ($noOrder.Title -match 'no order') $noOrder.Title
+}
+
+Fact 'ATestOnlyCommandSaysSoInItsLine' {
+    $e = Get-WorldEntry 'ClusterFSeedResetStone'
+    Assert-Equal 'test only' $e.ShardText
+    Assert-True ((Format-WorldCommandLine $e) -cmatch '^TEST SHARD ONLY') (Format-WorldCommandLine $e)
+}
+
+Fact 'RedMeansTestOnlyUnclassifiedOrAPlainRunThatDeletesAndNothingElse' {
+    $red = @($groups | ForEach-Object { $_.Items } | Where-Object { $_.Warn } | ForEach-Object { $_.Command }) | Sort-Object -Unique
+    Assert-Equal '[ClearRoyalCityVendors,[ClusterFOldHavenCleanup,[ClusterFSeedResetStone,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red'
 }
 
 Fact 'TheScriptAndItsFactsAreAsciiWithNoBom' {

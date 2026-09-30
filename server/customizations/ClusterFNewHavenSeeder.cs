@@ -85,6 +85,7 @@ public static class ClusterFNewHavenSeeder
 
     [Usage("ClusterFSeedNewHaven [missing|dryrun|repair|replace]")]
     [Description("Seeds or repairs the ClusterF New Haven quest NPC set. Default mode creates only missing NPCs. repair also moves NPCs off their pre-PT-05 tiles, which world load leaves alone.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places missing New Haven quest NPCs. repair moves them onto their floors. replace DELETES and recreates them.")]
     private static void ClusterFSeedNewHaven_OnCommand(CommandEventArgs e)
     {
         if (!_enabled)

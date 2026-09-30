@@ -44,6 +44,7 @@ public static class ClusterFGuildHallSeeder
 
     [Usage("ClusterFSeedGuildHalls [dryrun|missing|repair]")]
     [Description("Places the guild hall guildmasters (cc-P15). Default places only missing ones; repair also moves misplaced ones.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places missing guild hall guildmasters. repair also moves misplaced ones; dryrun does not show moves.")]
     private static void OnCommand(CommandEventArgs e)
     {
         var mode = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "missing";

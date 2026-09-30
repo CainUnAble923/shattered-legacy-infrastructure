@@ -153,6 +153,7 @@ public static class ClusterFInstitutionSeeder
 
     [Usage("ClusterFSeedInstitutions")]
     [Description("Seeds League institution NPCs (Miners' Compact Liaison, etc.) if not already present.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.Any, NoDryRun = true, Summary = "Places missing League institution NPCs. It also runs by itself on every world load.")]
     private static void OnSeedCommand(CommandEventArgs e)
     {
         Seed(verbose: true);

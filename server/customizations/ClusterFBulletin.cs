@@ -134,6 +134,7 @@ public static class ClusterFBulletinSystem
 
     [Usage("ClusterFBulletin <add|list|remove> [args]")]
     [Description("Manages the League Dispatch / MOTD bulletin board.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void OnCommand(CommandEventArgs e)
     {
         if (e.Length == 0)

@@ -52,6 +52,7 @@ public static class ClusterFSkillGain
 
     [Usage("ClusterFSkillGain")]
     [Description("Reports the active ClusterF player skill gain acceleration settings.")]
+    [ShardCommand(CommandCategory.Diagnostic)]
     private static void ClusterFSkillGain_OnCommand(CommandEventArgs e)
     {
         e.Mobile.SendMessage(

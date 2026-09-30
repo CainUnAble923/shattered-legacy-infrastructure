@@ -54,6 +54,7 @@ public static class ClusterFCustodianSystem
 
     [Usage("cleanup")]
     [Description("Target a ground item to clean it up and earn Civic Tokens.")]
+    [ShardCommand(CommandCategory.Player)]
     private static void OnCleanupCommand(CommandEventArgs e)
     {
         if (e.Mobile is not PlayerMobile pm) return;
@@ -65,6 +66,7 @@ public static class ClusterFCustodianSystem
 
     [Usage("cleanupall")]
     [Description("Sweep a 10-tile area for all eligible ground items.")]
+    [ShardCommand(CommandCategory.Player)]
     private static void OnCleanupAllCommand(CommandEventArgs e)
     {
         if (e.Mobile is not PlayerMobile pm) return;

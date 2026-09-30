@@ -50,6 +50,7 @@ public static class ShameGenerator
         CommandSystem.Register("DeleteShame", AccessLevel.Administrator, Delete_OnCommand);
     }
 
+    [ShardCommand(CommandCategory.WorldRemoval, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.Unverified, NoDryRun = true, Summary = "DELETES everything GenerateNewShame placed and restarts the stock Shame spawners.")]
     private static void Delete_OnCommand(CommandEventArgs e)
     {
         var deleted = DeleteShame();
@@ -63,6 +64,7 @@ public static class ShameGenerator
         return deleted;
     }
 
+    [ShardCommand(CommandCategory.WorldGeneration, Rerun = CommandRerun.Skips, Shard = CommandShard.Any, NoDryRun = true, Summary = "Shame Revamped on Trammel and Felucca: altars, walls, spawners. Skips what exists.")]
     public static void Generate_OnCommand(CommandEventArgs e)
     {
         e.Mobile.SendMessage(Generate());

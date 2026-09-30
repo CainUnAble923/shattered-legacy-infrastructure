@@ -89,6 +89,7 @@ public partial class DevTestingCrystal : Item
 
     [Usage("GiveDevCrystal")]
     [Description("Gives an active Dev Testing Crystal to the targeted player. Toggle on/off via double-click.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void GiveCrystal_OnCommand(CommandEventArgs e)
     {
         e.Mobile.SendMessage("Target the player to give a Dev Testing Crystal to.");

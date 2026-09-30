@@ -188,6 +188,7 @@ public partial class Incubator : Container, ISecurable
         }
     }
 
+    [ShardCommand(CommandCategory.DevTool)]
     public static void IncreaseStage_OnCommand(CommandEventArgs e)
     {
         e.Mobile.SendMessage("Target the egg.");

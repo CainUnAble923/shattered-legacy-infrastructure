@@ -14,6 +14,7 @@ public static class ClusterFSelfResurrect
 
     [Usage("SelfRes")]
     [Description("Resurrects your ghost. Only works when you are dead.")]
+    [ShardCommand(CommandCategory.Player)]
     private static void SelfRes_OnCommand(CommandEventArgs e)
     {
         if (!_enabled)

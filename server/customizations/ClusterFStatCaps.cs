@@ -39,6 +39,7 @@ public static class ClusterFStatCaps
 
     [Usage("ClusterFStatCaps [all]")]
     [Description("Applies ClusterF stat cap policy to the caller or all online players.")]
+    [ShardCommand(CommandCategory.DevTool)]
     private static void ClusterFStatCaps_OnCommand(CommandEventArgs e)
     {
         if (!_enabled)
