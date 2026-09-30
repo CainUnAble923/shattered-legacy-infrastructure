@@ -4,6 +4,7 @@ using Server.Accounting;
 using Server.Commands;
 using Server.Collections;
 using Server.ContextMenus;
+using Server.Engines.MLQuests.Items;
 using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
@@ -11,7 +12,7 @@ using Server.Network;
 
 namespace Server;
 
-// ── Guild task type ───────────────────────────────────────────────────────────
+// -- Guild task type ------------------------------------------------------------------------------
 
 public enum GuildTaskType
 {
@@ -20,22 +21,22 @@ public enum GuildTaskType
     SkillOrItem,
 }
 
-// ── Guild definition ──────────────────────────────────────────────────────────
+// -- Guild definition -----------------------------------------------------------------------------
 
 public class GuildDef
 {
     public string          Key               { get; }
     public string          Name              { get; }
     public string          Pitch             { get; }   // guildmaster's greeting
-    public string          TaskDescription   { get; }   // shown in detail gump
+    public string          TaskDescription   { get; }   // the Apprentice task, shown in the hall page
     public Type            GuildmasterType   { get; }
     public GuildTaskType   TaskType          { get; }
     public SkillName       TaskSkill         { get; }
     public double          TaskSkillMin      { get; }
     public Type?           TaskItemType      { get; }
     public int             TaskItemCount     { get; }
-    public int             JoinReputation    { get; }   // rep awarded on join
-    public int             JoinScrip         { get; }   // scrip awarded on join
+    public int             JoinReputation    { get; }   // rep paid by the Apprentice task (was: on join)
+    public int             JoinScrip         { get; }   // scrip paid by the Apprentice task (was: on join)
 
     public GuildDef(
         string key, string name, string pitch, string taskDesc,
@@ -60,20 +61,24 @@ public class GuildDef
     }
 }
 
-// ── Guild system ──────────────────────────────────────────────────────────────
+// -- Guild system ---------------------------------------------------------------------------------
 
 /// <summary>
 /// Shattered Legacy guild membership system.
 ///
 /// Each account can join multiple guilds. Membership is stored in
-/// ClusterFAccountData.JoinedGuilds (HashSet{string}).
+/// ClusterFAccountData.JoinedGuilds (HashSet{string}); what each character has taken from a guild is
+/// per character (GuildStarterRecord, ClusterFGuildStarterPath.cs).
 ///
-/// Join flow:
-///   Right-click a guildmaster → "Guild Membership" → GuildTaskDetailGump
-///   Player meets task → clicks [Join] → membership granted, rep and scrip awarded.
+/// Join flow (cc-P15, F-9 Decision 3):
+///   Talk to a guildmaster -> the guild's hall page (GuildTaskDetailGump) -> [Join], free, one click,
+///   rank Initiate. The character gets the guild's tools. A second character on a member account
+///   gets "Welcome back" and its own tools.
+///   The old skill-or-tribute join task is the Apprentice task: meeting it later pays the reputation
+///   and scrip joining used to pay and raises the rank. Nothing is consumed to join.
 ///
 /// Commands:
-///   [guild   — opens GuildProgressGump showing all 12 guilds and membership status.
+///   [guild   - opens the Guild Directory (GuildProgressGump), the same rows as the board's first page.
 /// </summary>
 public static class ClusterFGuildSystem
 {
@@ -82,14 +87,21 @@ public static class ClusterFGuildSystem
 
     public static IReadOnlyDictionary<string, GuildDef> AllGuilds => _byKey;
 
+    // How close a player must be to a guildmaster to join or take anything.
+    public const int GuildmasterRange = 8;
+
     public static void Configure()
     {
-        RegisterAll();
+        EnsureRegistered();
         CommandSystem.Register("guild", AccessLevel.Player, OnGuildCommand);
     }
 
-    private static void RegisterAll()
+    // Public so the test host, which runs no Configure, can register the guilds.
+    public static void EnsureRegistered()
     {
+        if (_byKey.Count > 0)
+            return;
+
         Register(new GuildDef(
             "smithing", "Smiths' Fellowship",
             "The forge never rests, and neither do we. Prove your mettle.",
@@ -122,7 +134,7 @@ public static class ClusterFGuildSystem
 
         Register(new GuildDef(
             "tinkers", "Tinkers' Union",
-            "Gears and ingenuity — the Foundation of civilization.",
+            "Gears and ingenuity - the foundation of civilization.",
             "Demonstrate Tinkering of at least 50.0, or bring 5 Gears as tribute.",
             typeof(TinkerGuildmaster),
             GuildTaskType.SkillOrItem,
@@ -143,7 +155,7 @@ public static class ClusterFGuildSystem
         Register(new GuildDef(
             "bards", "Bards' Consortium",
             "The world turns on a song. Do you have the gift?",
-            "Demonstrate Musicianship of at least 30.0 to be considered.",
+            "Demonstrate Musicianship of at least 30.0.",
             typeof(BardGuildmaster),
             GuildTaskType.SkillOnly,
             SkillName.Musicianship, 30.0,
@@ -153,7 +165,7 @@ public static class ClusterFGuildSystem
         Register(new GuildDef(
             "thieves", "Thieves' Den",
             "We see all. Can we trust you? Show us your light fingers.",
-            "Demonstrate Stealing of at least 20.0 to earn entry.",
+            "Demonstrate Stealing of at least 20.0.",
             typeof(ThiefGuildmaster),
             GuildTaskType.SkillOnly,
             SkillName.Stealing, 20.0,
@@ -163,7 +175,7 @@ public static class ClusterFGuildSystem
         Register(new GuildDef(
             "warriors", "Warriors' Brotherhood",
             "Strength alone is not enough. Prove you understand the art of battle.",
-            "Demonstrate Tactics of at least 30.0 to join our ranks.",
+            "Demonstrate Tactics of at least 30.0.",
             typeof(WarriorGuildmaster),
             GuildTaskType.SkillOnly,
             SkillName.Tactics, 30.0,
@@ -233,12 +245,38 @@ public static class ClusterFGuildSystem
         Register(new GuildDef(
             "custodians", "The Custodians",
             "Britannia's streets do not clean themselves. We are its invisible backbone.",
-            "Open to all citizens — simply speak with a Sanitation Warden and pledge your service.",
+            "Open to all citizens - simply speak with a Sanitation Warden and pledge your service.",
             typeof(SanitationWarden),
             GuildTaskType.SkillOnly,
             SkillName.ItemID, 0.0,  // 0.0 min = always eligible
             null, 0,
             joinRep: 25, joinScrip: 5));
+
+        // cc-P15: two guilds for the New Haven halls no existing guild fits (F-9 Decision 1).
+        Register(new GuildDef(
+            "dojo", "Twin Paths Dojo",
+            "Bushido and Ninjitsu, taught side by side in the Ninja Dojo. Pick the path that suits you, or walk both.",
+            "Demonstrate Bushido of at least 30.0.",
+            typeof(TwinPathsDojoGuildmaster),
+            GuildTaskType.SkillOnly,
+            SkillName.Bushido, 30.0,
+            null, 0,
+            joinRep: 25, joinScrip: 10));
+
+        Register(new GuildDef(
+            "keepers", "Keepers of the Last Door",
+            "Necromancy, Spirit Speak and Forensics, taught in the old Necromancers Guild Hall. Dark work, done carefully.",
+            "Demonstrate Necromancy of at least 30.0, or bring 10 Grave Dust as tribute.",
+            typeof(KeepersOfTheLastDoorGuildmaster),
+            GuildTaskType.SkillOrItem,
+            SkillName.Necromancy, 30.0,
+            typeof(GraveDust), 10,
+            joinRep: 25, joinScrip: 10));
+
+        // A guild's other guildmaster types (the Miners' Compact Liaison) resolve to it too.
+        foreach (var loc in GuildLocations.All)
+            if (!_byNpc.ContainsKey(loc.NpcType) && _byKey.TryGetValue(loc.GuildKey, out var def))
+                _byNpc[loc.NpcType] = def;
     }
 
     private static void Register(GuildDef def)
@@ -247,7 +285,7 @@ public static class ClusterFGuildSystem
         _byNpc[def.GuildmasterType] = def;
     }
 
-    // ── Public API ────────────────────────────────────────────────────────
+    // -- Public API ------------------------------------------------------------------------------
 
     public static GuildDef? GetDef(string key) =>
         _byKey.TryGetValue(key, out var d) ? d : null;
@@ -258,6 +296,7 @@ public static class ClusterFGuildSystem
     public static bool IsJoined(IAccount acct, string key) =>
         ClusterFAccountPersistence.GetOrCreate(acct).JoinedGuilds.Contains(key);
 
+    /// <summary>Joining is free (F-9 Decision 3): only an account already in the guild is refused.</summary>
     public static bool CanJoin(PlayerMobile pm, GuildDef def, out string reason)
     {
         if (pm.Account is not IAccount acct)
@@ -272,6 +311,13 @@ public static class ClusterFGuildSystem
             return false;
         }
 
+        reason = string.Empty;
+        return true;
+    }
+
+    /// <summary>The old join task, now the Apprentice task: skill, tribute in the backpack, or either.</summary>
+    public static bool MeetsApprenticeTask(PlayerMobile pm, GuildDef def, out string reason)
+    {
         switch (def.TaskType)
         {
             case GuildTaskType.SkillOnly:
@@ -280,7 +326,7 @@ public static class ClusterFGuildSystem
                     reason = string.Empty;
                     return true;
                 }
-                reason = $"Requires {def.TaskSkill} ≥ {def.TaskSkillMin:F1}.";
+                reason = $"Requires {def.TaskSkill} of {def.TaskSkillMin:F1}.";
                 return false;
 
             case GuildTaskType.ItemOnly:
@@ -303,7 +349,7 @@ public static class ClusterFGuildSystem
                     reason = string.Empty;
                     return true;
                 }
-                reason = $"Requires {def.TaskSkill} ≥ {def.TaskSkillMin:F1} OR {def.TaskItemCount}x {def.TaskItemType!.Name}.";
+                reason = $"Requires {def.TaskSkill} of {def.TaskSkillMin:F1} or {def.TaskItemCount}x {def.TaskItemType!.Name}.";
                 return false;
 
             default:
@@ -312,13 +358,32 @@ public static class ClusterFGuildSystem
         }
     }
 
-    public static void Join(PlayerMobile pm, GuildDef def)
+    public static string ApprenticeFlag(string key) => "guild.apprentice." + key.ToLowerInvariant();
+
+    public static bool IsApprentice(ClusterFAccountData data, string key) => data.HasFlag(ApprenticeFlag(key));
+
+    /// <summary>
+    /// The Apprentice task: pays the reputation and scrip joining used to pay and raises the rank.
+    /// Tribute is taken only when the skill half is not met, as the old join did.
+    /// </summary>
+    public static bool CompleteApprenticeTask(PlayerMobile pm, GuildDef def, out string reason)
     {
-        if (pm.Account is not IAccount acct) return;
+        if (pm.Account is not IAccount acct || !IsJoined(acct, def.Key))
+        {
+            reason = "Join the guild first.";
+            return false;
+        }
 
         var data = ClusterFAccountPersistence.GetOrCreate(acct);
+        if (IsApprentice(data, def.Key))
+        {
+            reason = "Your Apprentice task is already done.";
+            return false;
+        }
 
-        // Consume items if skill check did not pass but items are present.
+        if (!MeetsApprenticeTask(pm, def, out reason))
+            return false;
+
         if (def.TaskType != GuildTaskType.SkillOnly &&
             pm.Skills[def.TaskSkill].Base < def.TaskSkillMin &&
             def.TaskItemType != null)
@@ -326,15 +391,47 @@ public static class ClusterFGuildSystem
             pm.Backpack?.ConsumeTotal(def.TaskItemType, def.TaskItemCount);
         }
 
-        data.JoinedGuilds.Add(def.Key);
+        data.SetFlag(ApprenticeFlag(def.Key));
         data.AddReputation(def.Key, def.JoinReputation);
         data.AddCurrency(def.Key, def.JoinScrip);
 
-        pm.SendMessage(54, $"You have been accepted into the {def.Name}!");
+        pm.SendMessage(54, $"You are now {GetRankName(def.Key, data)} of the {def.Name}.");
         pm.SendMessage(999, $"Awarded: {def.JoinReputation} reputation and {def.JoinScrip} scrip with the {def.Name}.");
+        reason = string.Empty;
+        return true;
+    }
 
-        // ── Guild join bonuses ─────────────────────────────────────────────────
-        // Mining: give a Compact Ore Satchel on first join.
+    /// <summary>
+    /// Joins the account to the guild (free, rank Initiate) if it is not already a member, and hands
+    /// this character the guild's tools if it has not had them ("Welcome back" for a second character).
+    /// </summary>
+    public static void Join(PlayerMobile pm, GuildDef def)
+    {
+        if (pm.Account is not IAccount acct) return;
+
+        var data = ClusterFAccountPersistence.GetOrCreate(acct);
+        var newMember = data.JoinedGuilds.Add(def.Key);
+
+        if (newMember)
+        {
+            pm.SendMessage(54, $"You have joined the {def.Name} as {GetRankName(def.Key, data)}. Joining is free.");
+            pm.SendMessage(999, $"Its Apprentice task is waiting when you are ready: {def.TaskDescription}");
+        }
+        else
+        {
+            pm.SendMessage(54, $"Welcome back to the {def.Name}.");
+        }
+
+        ClusterFGuildStarter.GiveTools(pm, def);
+
+        if (newMember)
+            ClusterFLeagueSystem.OnGuildJoined(pm);
+    }
+
+    /// <summary>The guild's own join bonus, once per character with its tools (fixes PT-06).</summary>
+    public static void GiveJoinBonus(PlayerMobile pm, GuildDef def)
+    {
+        // Mining: Compact Ore Satchel, Prospector's Logbook, Compact Dispatch Ledger.
         if (def.Key.Equals("mining", StringComparison.OrdinalIgnoreCase) && pm.Backpack != null)
         {
             pm.Backpack.DropItem(new Items.CompactOreSatchel());
@@ -345,63 +442,85 @@ public static class ClusterFGuildSystem
             pm.SendMessage(0x44, "Use the Dispatch Ledger to access work orders from anywhere in the world.");
         }
 
-        // Smithing: give a SmithGuildBook and SmithGuildSalvageBag on first join.
+        // Smithing: SmithGuildBook and SmithGuildSalvageBag.
         if (def.Key.Equals("smithing", StringComparison.OrdinalIgnoreCase))
         {
             SmithGuildBook.OnSmithingJoined(pm);
             Items.SmithGuildSalvageBag.OnSmithingJoined(pm);
         }
 
-        // Rangers: issue Outrider's Crook and Hunter's Satchel on first join.
+        // Rangers: Outrider's Crook and Hunter's Satchel.
         if (def.Key.Equals("rangers", StringComparison.OrdinalIgnoreCase) && pm.Backpack != null)
         {
             pm.Backpack.DropItem(new Items.OutridersCrook());
             pm.Backpack.DropItem(new Items.HuntersSatchel());
-            pm.SendMessage(0x44, "Welcome to the Rangers' League, Wanderer. You have been issued your first Trail Marks.");
+            pm.SendMessage(0x44, "Welcome to the Rangers' League, Wanderer.");
             pm.SendMessage(0x44, "You have been issued an Outrider's Crook and a Hunter's Satchel.");
             pm.SendMessage(0x44, "Right-click the crook to deliver pets for contracts, shrink bonded animals, or instant-bond.");
             pm.SendMessage(0x44, "Speak with the Outriders' Guildmaster in New Haven to access field contracts.");
         }
 
-        // Foresters: give a Forester's Logbook and Lumber Satchel on first join.
+        // Foresters: Forester's Logbook and Lumber Satchel.
         if (def.Key.Equals("foresters", StringComparison.OrdinalIgnoreCase) && pm.Backpack != null)
         {
             pm.Backpack.DropItem(new Items.ForestersLogbook());
             pm.Backpack.DropItem(new Items.ForestersLumberSatchel());
-            pm.SendMessage(0x44, "Welcome to the Foresters' Union, Woodcutter. Your Timber Tokens are ready.");
+            pm.SendMessage(0x44, "Welcome to the Foresters' Union, Woodcutter.");
             pm.SendMessage(0x44, "You have been issued a Forester's Logbook and a Lumber Satchel.");
             pm.SendMessage(0x44, "Chopped logs and boards route to the satchel automatically. All timber discoveries are recorded in the logbook.");
         }
 
-        // Custodians: give a TrashBag on first join.
-        // Note: SanitationWardenGump.HandleJoin also calls OnCustodiansJoined directly
-        // when joining via the warden — this path handles the [guild command join route.
+        // Custodians: a TrashBag (SanitationWardenGump's own join path also calls this; it gives one bag).
         if (def.Key.Equals("custodians", StringComparison.OrdinalIgnoreCase))
             SanitationWarden.OnCustodiansJoined(pm);
 
-        // Artificers' Order: issue the Essence Satchel + Toolkit and send welcome messages.
-        if (def.Key.Equals("artificers", StringComparison.OrdinalIgnoreCase))
+        // Artificers' Order: the Essence Satchel and Toolkit.
+        if (def.Key.Equals("artificers", StringComparison.OrdinalIgnoreCase) && pm.Backpack != null)
         {
             pm.Backpack.DropItem(new Items.ArtificersSatchel());
             pm.Backpack.DropItem(new Items.ArtificersToolkit());
-            pm.SendMessage(0x44, "Welcome to the Artificers' Order, Apprentice. Your Essence Shards are ready.");
+            pm.SendMessage(0x44, "Welcome to the Artificers' Order.");
             pm.SendMessage(0x44, "You have been issued an Artificers' Essence Satchel and an Artificers' Toolkit.");
             pm.SendMessage(0x44, "The Satchel stores your PropertyEssences and tracks mastery progress.");
-            pm.SendMessage(0x44, "The Toolkit lets you imbue and disenchant anywhere — no NPC visit required.");
+            pm.SendMessage(0x44, "The Toolkit lets you imbue and disenchant anywhere - no NPC visit required.");
             pm.SendMessage(0x44, "As your Artificers' Standing grows, you will unlock higher intensity caps and more property slots.");
         }
-
-        ClusterFLeagueSystem.OnGuildJoined(pm);
     }
 
-    // ── Remote member services routing ───────────────────────────────────
+    // -- The guild hall page ---------------------------------------------------------------------
+
+    public static bool IsNearGuildmaster(PlayerMobile pm, Mobile guildmaster) =>
+        guildmaster is { Deleted: false } && guildmaster.Map == pm.Map && pm.InRange(guildmaster, GuildmasterRange);
+
+    /// <summary>A guildmaster of this guild within reach of the player, or null.</summary>
+    public static Mobile FindGuildmasterNear(PlayerMobile pm, GuildDef def)
+    {
+        if (pm.Map == null || pm.Map == Map.Internal)
+            return null;
+
+        foreach (var m in pm.Map.GetMobilesInRange(pm.Location, GuildmasterRange))
+        {
+            if (!m.Deleted && GetDefForGuildmaster(m.GetType()) == def)
+                return m;
+        }
+
+        return null;
+    }
+
+    public static void OpenGuildHall(PlayerMobile pm, GuildDef def, Mobile guildmaster)
+    {
+        if (pm.Account is not IAccount acct) return;
+        pm.CloseGump<GuildTaskDetailGump>();
+        pm.SendGump(new GuildTaskDetailGump(pm, def, acct, guildmaster));
+    }
+
+    // -- Remote member services routing --------------------------------------------------------
 
     /// <summary>
     /// Opens the appropriate member services gump for a guild.
-    /// Used by both GuildMembershipEntry (NPC context menu) and
-    /// GuildProgressGump (remote [guild command / LeagueMemberPass).
+    /// Used by the hall page's Services button and the Guild Directory.
     /// For members: routes to the guild's member dashboard.
-    /// For non-members: falls back to GuildTaskDetailGump (join screen).
+    /// For non-members: falls back to GuildTaskDetailGump (the hall page).
     /// </summary>
     public static void OpenMemberServices(PlayerMobile pm, GuildDef def, IAccount acct)
     {
@@ -441,12 +560,12 @@ public static class ClusterFGuildSystem
         pm.SendGump(new GuildTaskDetailGump(pm, def, acct));
     }
 
-    // ── Rank name helper ──────────────────────────────────────────────────
+    // -- Rank name helper -----------------------------------------------------------------------
 
     /// <summary>
     /// Returns the rank title for a player's standing within a specific guild.
     /// Guild-specific ladders are used where defined; all others fall back to
-    /// the generic five-tier ladder.
+    /// the generic ladder.
     /// </summary>
     public static string GetRankName(string guildKey, int standing) =>
         guildKey.ToLowerInvariant() switch
@@ -458,6 +577,28 @@ public static class ClusterFGuildSystem
             "artificers"  => ArtificersGuildmasterGump.GetRankName(standing),
             _             => GenericRank(standing),
         };
+
+    /// <summary>
+    /// The rank to show: reputation's rank, raised to the ladder's second rank once the Apprentice
+    /// task is done (Apprentice on the generic ladder; each custom ladder keeps its own names).
+    /// </summary>
+    public static string GetRankName(string guildKey, ClusterFAccountData data)
+    {
+        var standing = data.GetReputation(guildKey);
+        if (IsApprentice(data, guildKey))
+            standing = Math.Max(standing, SecondRankStanding(guildKey));
+        return GetRankName(guildKey, standing);
+    }
+
+    // The least standing at which a ladder shows its second rank, found by asking the ladder.
+    private static int SecondRankStanding(string guildKey)
+    {
+        var first = GetRankName(guildKey, 0);
+        foreach (var candidate in new[] { 1, 10, 25, 50, 100, 250, 500, 1_000, 2_500, 5_000 })
+            if (GetRankName(guildKey, candidate) != first)
+                return candidate;
+        return 0;
+    }
 
     private static string ForestersRank(int standing) => standing switch
     {
@@ -501,19 +642,20 @@ public static class ClusterFGuildSystem
         _          => "Initiate",
     };
 
-    // ── [guild command ────────────────────────────────────────────────────
+    // -- [guild command -------------------------------------------------------------------------
 
     [Usage("guild")]
-    [Description("Opens the guild membership and progress overview.")]
+    [Description("Opens the Guild Directory: every guild, what it teaches, where its guildmaster stands.")]
     private static void OnGuildCommand(CommandEventArgs e)
     {
         if (e.Mobile is not PlayerMobile pm) return;
         if (pm.Account is not IAccount acct) return;
+        pm.CloseGump<GuildProgressGump>();
         e.Mobile.SendGump(new GuildProgressGump(pm, acct));
     }
 }
 
-// ── Guild context menu entry ───────────────────────────────────────────────────
+// -- Guild context menu entry ----------------------------------------------------------------------
 
 public class GuildMembershipEntry : ContextMenuEntry
 {
@@ -521,7 +663,7 @@ public class GuildMembershipEntry : ContextMenuEntry
     private readonly GuildDef     _def;
     private readonly IAccount     _acct;
 
-    // Cliloc 6146 = "Talk" — confirmed from BaseQuester.TalkNumber default
+    // Cliloc 6146 = "Talk" - confirmed from BaseQuester.TalkNumber default
     public GuildMembershipEntry(PlayerMobile from, GuildDef def, IAccount acct)
         : base(6146, 4)
     {
@@ -532,293 +674,366 @@ public class GuildMembershipEntry : ContextMenuEntry
 
     public override void OnClick(Mobile from, IEntity target)
     {
-        ClusterFGuildSystem.OpenMemberServices(_from, _def, _acct);
+        ClusterFGuildSystem.OpenGuildHall(_from, _def, target as Mobile);
     }
 }
 
-// ── Guild progress gump ───────────────────────────────────────────────────────
+// -- The Guild Directory -------------------------------------------------------------------------
 
 /// <summary>
-/// Overview of all 12 guilds — shows joined/not-joined status and a [View] button
-/// to open GuildTaskDetailGump for each guild.
+/// The Guild Directory (F-9 Decision 2): one row per guild and per guildmaster location, the skills it
+/// teaches, its hall, Show me the way, and the player's rank where joined. The same rows open from the
+/// New Haven board (its first page; the 26-quest picker is its "Training quests" tab), from [guild and
+/// from the League Registrar's Guild Referrals. The class keeps its old name so every caller of the
+/// old guild overview now opens the directory.
 /// </summary>
 public class GuildProgressGump : Gump
 {
-    private readonly PlayerMobile _pm;
-    private readonly IAccount     _acct;
+    private readonly PlayerMobile        _pm;
+    private readonly IAccount?           _acct;
+    private readonly NewHavenQuestBoard? _board;
 
-    private static readonly GuildDef[] AllDefs = BuildDefList();
-
-    private static GuildDef[] BuildDefList()
-    {
-        var list = new List<GuildDef>(ClusterFGuildSystem.AllGuilds.Values);
-        list.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase));
-        return list.ToArray();
-    }
-
-    private const int W        = 640;
-    private const int HeaderH  = 70;
-    private const int RowH     = 36;
+    private const int W        = 760;
+    private const int HeaderH  = 92;
+    private const int RowH     = 44;
     private const int FooterH  = 48;
+    public  const int RowsPerPage = 8;
 
     // Button IDs:
     //   0          = close
-    //   100 + i    = Services / View for guild i
-    //   200 + i    = Contracts for guild i (members only)
-    private const int BtnClose = 0;
+    //   50         = Training quests (the board's second tab; only when opened from the board)
+    //   100 + i    = Show me the way for location i
+    //   200 + i    = Services for location i's guild (members only)
+    //   300 + i    = Contracts for location i's guild (members only)
+    public const int BtnTrainingQuests = 50;
+    public const int BtnWayBase        = 100;
+    public const int BtnServicesBase   = 200;
+    public const int BtnContractsBase  = 300;
 
-    public GuildProgressGump(PlayerMobile pm, IAccount acct) : base(50, 50)
+    public static int PageCount => (GuildLocations.All.Length + RowsPerPage - 1) / RowsPerPage;
+
+    public GuildProgressGump(PlayerMobile pm, IAccount acct) : this(pm, acct, null) { }
+
+    public GuildProgressGump(PlayerMobile pm, IAccount? acct, NewHavenQuestBoard? board) : base(40, 40)
     {
-        _pm   = pm;
-        _acct = acct;
+        _pm    = pm;
+        _acct  = acct;
+        _board = board;
 
         Closable   = true;
         Disposable = true;
 
-        var data        = ClusterFAccountPersistence.GetOrCreate(acct);
-        var joined      = data.JoinedGuilds;
-        var joinedCount = 0;
-        foreach (var def in AllDefs)
-            if (joined.Contains(def.Key)) joinedCount++;
+        // No account (a test host player) reads as an account that has joined nothing.
+        var data        = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : new ClusterFAccountData();
+        var locations   = GuildLocations.All;
+        var totalH      = HeaderH + RowsPerPage * RowH + FooterH;
 
-        var totalH = HeaderH + AllDefs.Length * RowH + FooterH;
-
+        AddPage(0);
         AddBackground(0, 0, W, totalH, 9270);
         AddAlphaRegion(10, 10, W - 20, totalH - 20);
 
-        // ── Header ────────────────────────────────────────────────────────
-        AddLabel(W / 2 - 50, 14, 1154, "Guild Registry");
-        AddLabel(W / 2 - 70, 34, 999, $"Member of {joinedCount} / {AllDefs.Length} guilds");
-        AddImageTiled(10, 56, W - 20, 2, 9304);
+        AddLabel(20, 16, 1154, "Guild Directory");
+        AddLabel(20, 38, 999, "Every skill has a guild. Joining is free: talk to its guildmaster, and it hands you your tools.");
+        AddLabel(20, 58, 999, $"Member of {data.JoinedGuilds.Count} of {ClusterFGuildSystem.AllGuilds.Count} guilds.");
 
-        // ── Column headers ────────────────────────────────────────────────
-        // (implicit — layout is self-explanatory)
-
-        // ── Guild rows ────────────────────────────────────────────────────
-        var y = HeaderH;
-        for (var i = 0; i < AllDefs.Length; i++)
+        if (board != null)
         {
-            var def      = AllDefs[i];
-            var isMember = joined.Contains(def.Key);
-            var nameHue  = isMember ? 1154 : 999;
-
-            string statusTxt;
-            int    statusHue;
-            if (isMember)
-            {
-                var standing = data.GetReputation(def.Key);
-                var tokens   = data.GetCurrency(def.Key);
-                var rankName = ClusterFGuildSystem.GetRankName(def.Key, standing);
-                statusTxt = tokens > 0 ? $"{rankName}  ({tokens:N0} scrip)" : rankName;
-                statusHue = 68;
-            }
-            else
-            {
-                statusTxt = "Not joined";
-                statusHue = 37;
-            }
-
-            // Guild name
-            AddLabel(18, y + 9, nameHue, def.Name);
-
-            // Rank / status
-            AddLabel(230, y + 9, statusHue, statusTxt);
-
-            // Contracts button — members only
-            if (isMember)
-            {
-                AddButton(450, y + 7, 4011, 4012, 200 + i);
-                AddLabel(474, y + 9, 999, "Contracts");
-            }
-
-            // Services / View button — always visible
-            AddButton(556, y + 7, 4011, 4012, 100 + i);
-            AddLabel(580, y + 9, isMember ? 1154 : 999, isMember ? "Services" : "View");
-
-            if (i < AllDefs.Length - 1)
-                AddImageTiled(10, y + RowH - 1, W - 20, 1, 9304);
-
-            y += RowH;
+            AddButton(W - 200, 14, 4005, 4007, BtnTrainingQuests);
+            AddLabel(W - 165, 16, 1154, "Training quests (26)");
         }
 
-        // ── Footer ────────────────────────────────────────────────────────
-        AddImageTiled(10, y + 4, W - 20, 2, 9304);
-        AddButton(W / 2 - 20, y + 14, 4023, 4025, BtnClose);
-        AddLabel(W / 2 + 4, y + 16, 999, "Close");
+        AddImageTiled(10, HeaderH - 12, W - 20, 2, 9304);
+
+        for (var page = 1; page <= PageCount; page++)
+        {
+            AddPage(page);
+
+            for (var row = 0; row < RowsPerPage; row++)
+            {
+                var i = (page - 1) * RowsPerPage + row;
+                if (i >= locations.Length)
+                    break;
+
+                var loc      = locations[i];
+                var def      = ClusterFGuildSystem.GetDef(loc.GuildKey);
+                if (def == null)
+                    continue;
+
+                var y        = HeaderH + row * RowH;
+                var isMember = data.JoinedGuilds.Contains(def.Key);
+                var found    = loc.Find() != null;
+
+                AddLabel(20, y, isMember ? 1154 : 999, def.Name);
+                AddLabel(230, y, 999, loc.Hall);
+
+                if (!found)
+                    AddLabel(450, y, 37, "Guildmaster missing");
+                else if (isMember)
+                    AddLabel(450, y, 68, $"Rank: {ClusterFGuildSystem.GetRankName(def.Key, data)}");
+                else
+                    AddLabel(450, y, 999, "Not joined");
+
+                AddHtml(20, y + 20, 420, 20,
+                    $"<BASEFONT COLOR=#AAAAAA>{GuildSkillTable.Describe(def.Key)}</BASEFONT>", false, false);
+
+                AddButton(450, y + 18, 4005, 4007, BtnWayBase + i);
+                AddLabel(485, y + 20, 999, "Show me the way");
+
+                if (isMember)
+                {
+                    AddButton(600, y + 18, 4011, 4012, BtnServicesBase + i);
+                    AddLabel(625, y + 20, 1154, "Services");
+                    AddButton(600, y, 4011, 4012, BtnContractsBase + i);
+                    AddLabel(625, y + 2, 999, "Contracts");
+                }
+
+                AddImageTiled(10, y + RowH - 4, W - 20, 1, 9304);
+            }
+
+            var navY = HeaderH + RowsPerPage * RowH + 8;
+            if (page < PageCount)
+            {
+                AddButton(W - 60, navY, 4005, 4007, 0, GumpButtonType.Page, page + 1);
+                AddLabel(W - 130, navY + 2, 999, "More guilds");
+            }
+
+            if (page > 1)
+            {
+                AddButton(20, navY, 4014, 4016, 0, GumpButtonType.Page, page - 1);
+                AddLabel(55, navY + 2, 999, "Back");
+            }
+        }
     }
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
-        if (info.ButtonID == BtnClose) return;
+        if (sender.Mobile != _pm || info.ButtonID == 0) return;
 
-        // Services / View
-        if (info.ButtonID >= 100 && info.ButtonID < 200)
+        var locations = GuildLocations.All;
+
+        if (info.ButtonID == BtnTrainingQuests)
         {
-            var idx = info.ButtonID - 100;
-            if (idx < 0 || idx >= AllDefs.Length) return;
-            var def = AllDefs[idx];
-            ClusterFGuildSystem.OpenMemberServices(_pm, def, _acct);
+            _board?.OpenTrainingQuests(_pm);
             return;
         }
 
-        // Contracts (members only)
-        if (info.ButtonID >= 200 && info.ButtonID < 300)
+        if (info.ButtonID >= BtnWayBase && info.ButtonID < BtnWayBase + locations.Length)
         {
-            var idx = info.ButtonID - 200;
-            if (idx < 0 || idx >= AllDefs.Length) return;
-            _pm.SendGump(new GuildContractLedgerGump(_pm, AllDefs[idx].Key));
+            _pm.SendMessage(0x44, ClusterFGuildStarter.ShowTheWay(_pm, locations[info.ButtonID - BtnWayBase]));
             return;
+        }
+
+        if (info.ButtonID >= BtnServicesBase && info.ButtonID < BtnServicesBase + locations.Length)
+        {
+            var def = ClusterFGuildSystem.GetDef(locations[info.ButtonID - BtnServicesBase].GuildKey);
+            if (def != null && _acct != null && ClusterFGuildSystem.IsJoined(_acct, def.Key))
+                ClusterFGuildSystem.OpenMemberServices(_pm, def, _acct);
+            return;
+        }
+
+        if (info.ButtonID >= BtnContractsBase && info.ButtonID < BtnContractsBase + locations.Length)
+        {
+            var def = ClusterFGuildSystem.GetDef(locations[info.ButtonID - BtnContractsBase].GuildKey);
+            if (def != null && _acct != null && ClusterFGuildSystem.IsJoined(_acct, def.Key))
+                _pm.SendGump(new GuildContractLedgerGump(_pm, def.Key));
         }
     }
 }
 
-// ── Guild task detail gump ────────────────────────────────────────────────────
+// -- The guild hall page ---------------------------------------------------------------------------
 
 /// <summary>
-/// Detail view for a single guild. Shows pitch, task requirement, current status,
-/// and a [Join] button when the player meets the requirements.
+/// A guild's page at its guildmaster (F-9 Decisions 3 and 4): join (free, one click), take this
+/// character's tools ("Welcome back" on a member account), starter items, the Apprentice task, and a
+/// way on to the guild's own services. Anything that hands something over needs a guildmaster of the
+/// guild within reach, however the page was opened; every button is judged again at the click.
 /// </summary>
 public class GuildTaskDetailGump : Gump
 {
     private readonly PlayerMobile _pm;
     private readonly GuildDef     _def;
     private readonly IAccount     _acct;
+    private readonly Mobile?      _guildmaster;
 
-    private const int W = 480;
+    private const int W = 520;
 
-    // Button IDs
-    private const int BtnBack = 0;
-    private const int BtnJoin = 1;
+    public const int BtnClose      = 0;
+    public const int BtnJoin       = 1;
+    public const int BtnTools      = 2;
+    public const int BtnStarter    = 3;
+    public const int BtnApprentice = 4;
+    public const int BtnServices   = 5;
+    public const int BtnDirectory  = 6;
 
-    public GuildTaskDetailGump(PlayerMobile pm, GuildDef def, IAccount acct) : base(80, 80)
+    public GuildTaskDetailGump(PlayerMobile pm, GuildDef def, IAccount acct) : this(pm, def, acct, null) { }
+
+    public GuildTaskDetailGump(PlayerMobile pm, GuildDef def, IAccount acct, Mobile? guildmaster) : base(80, 80)
     {
-        _pm   = pm;
-        _def  = def;
-        _acct = acct;
+        _pm          = pm;
+        _def         = def;
+        _acct        = acct;
+        _guildmaster = ClusterFGuildSystem.IsNearGuildmaster(pm, guildmaster)
+            ? guildmaster
+            : ClusterFGuildSystem.FindGuildmasterNear(pm, def);
 
         Closable   = true;
         Disposable = true;
 
-        var isMember = ClusterFGuildSystem.IsJoined(acct, def.Key);
-        var reason   = string.Empty;
-        var canJoin  = !isMember && ClusterFGuildSystem.CanJoin(pm, def, out reason);
+        var data      = ClusterFAccountPersistence.GetOrCreate(acct);
+        var isMember  = data.JoinedGuilds.Contains(def.Key);
+        var hasTools  = ClusterFGuildStarter.HasTools(pm, def.Key);
+        var atMaster  = _guildmaster != null;
+        var starters  = GuildStarterItems.For(def.Key).Length;
+        var isApprentice = ClusterFGuildSystem.IsApprentice(data, def.Key);
 
-        // Build task status line
-        string taskStatus;
-        int    taskHue;
-        if (isMember)
-        {
-            taskStatus = "You are a member of this guild.";
-            taskHue    = 68; // green
-        }
-        else if (canJoin)
-        {
-            taskStatus = "Requirements met — you may join!";
-            taskHue    = 1154; // gold
-        }
-        else
-        {
-            taskStatus = reason;
-            taskHue    = 37; // red
-        }
-
-        // Inventory snapshot for item tasks
-        string itemStatus = string.Empty;
-        if (!isMember && def.TaskType != GuildTaskType.SkillOnly && def.TaskItemType != null)
-        {
-            var have = pm.Backpack?.GetAmount(def.TaskItemType) ?? 0;
-            itemStatus = $"In backpack: {have} / {def.TaskItemCount} {def.TaskItemType.Name}";
-        }
-        string skillStatus = string.Empty;
-        if (!isMember && def.TaskType != GuildTaskType.ItemOnly)
-        {
-            var val = pm.Skills[def.TaskSkill].Base;
-            skillStatus = $"{def.TaskSkill}: {val:F1} / {def.TaskSkillMin:F1} required";
-        }
-
-        // Rep / scrip reward line
-        var rewardLine = $"On join: +{def.JoinReputation} reputation, +{def.JoinScrip} scrip";
-
-        // Count content lines for dynamic height
-        var lines = 0;
-        if (skillStatus.Length > 0) lines++;
-        if (itemStatus.Length  > 0) lines++;
-
-        var H = 160 + lines * 22 + 60;
-
+        const int H = 400;
         AddBackground(0, 0, W, H, 9270);
         AddAlphaRegion(10, 10, W - 20, H - 20);
 
-        // ── Header ────────────────────────────────────────────────────────
-        AddLabel(W / 2 - def.Name.Length * 4, 14, 1154, def.Name);
-        AddImageTiled(10, 34, W - 20, 2, 9304);
+        AddLabel(20, 14, 1154, def.Name);
+        AddImageTiled(10, 36, W - 20, 2, 9304);
+        AddHtml(20, 44, W - 40, 36, $"<BASEFONT COLOR=#DDDDDD><I>{def.Pitch}</I></BASEFONT>", false, false);
+        AddHtml(20, 82, W - 40, 36, $"<BASEFONT COLOR=#AAAAAA>Teaches: {GuildSkillTable.Describe(def.Key)}</BASEFONT>", false, false);
 
-        // ── Pitch ─────────────────────────────────────────────────────────
-        AddHtml(20, 42, W - 40, 36, $"<BASEFONT COLOR=#DDDDDD><I>{def.Pitch}</I></BASEFONT>", false, false);
+        if (_guildmaster is BaseGuildmaster)
+            AddLabel(20, 118, 999, "Separate from the stock trade guild (say \"join\", 500 gold). One does not join the other.");
 
-        AddImageTiled(10, 84, W - 20, 2, 9304);
+        AddImageTiled(10, 140, W - 20, 2, 9304);
 
-        // ── Task description ──────────────────────────────────────────────
-        AddLabel(20, 92, 999, "Initiation Task:");
-        AddHtml(20, 110, W - 40, 36, $"<BASEFONT COLOR=#DDDDDD>{def.TaskDescription}</BASEFONT>", false, false);
-
-        var y = 152;
-
-        if (skillStatus.Length > 0)
+        var y = 150;
+        if (!isMember)
         {
-            var shue = (!isMember && pm.Skills[def.TaskSkill].Base >= def.TaskSkillMin) ? 68 : 999;
-            AddLabel(20, y, shue, skillStatus);
+            AddLabel(20, y, 999, "Joining is free and takes one click. You start as an Initiate.");
             y += 22;
+            if (atMaster)
+            {
+                AddButton(20, y, 4023, 4025, BtnJoin);
+                AddLabel(55, y + 2, 1154, "Join the guild");
+            }
+            else
+            {
+                AddLabel(20, y + 2, 37, "Talk to this guild's guildmaster to join.");
+            }
+            y += 30;
         }
-        if (itemStatus.Length > 0)
+        else
         {
-            var have  = pm.Backpack?.GetAmount(def.TaskItemType!) ?? 0;
-            var ihue  = have >= def.TaskItemCount ? 68 : 999;
-            AddLabel(20, y, ihue, itemStatus);
+            AddLabel(20, y, 68, $"Member. Rank: {ClusterFGuildSystem.GetRankName(def.Key, data)}.");
             y += 22;
+
+            if (!hasTools)
+            {
+                AddLabel(20, y, 1154, "Welcome back. This character has not taken its tools yet.");
+                y += 22;
+                if (atMaster)
+                {
+                    AddButton(20, y, 4023, 4025, BtnTools);
+                    AddLabel(55, y + 2, 1154, "Take your tools");
+                    y += 30;
+                }
+            }
+        }
+
+        if (starters > 0 && atMaster)
+        {
+            AddButton(20, y, 4005, 4007, BtnStarter);
+            AddLabel(55, y + 2, 999, $"Starter items ({starters})");
+            y += 28;
         }
 
         AddImageTiled(10, y + 4, W - 20, 2, 9304);
+        y += 12;
 
-        // Status line
-        AddLabel(20, y + 12, taskHue, taskStatus);
-        y += 34;
+        AddLabel(20, y, 999, "Apprentice task:");
+        AddHtml(20, y + 20, W - 40, 36, $"<BASEFONT COLOR=#DDDDDD>{def.TaskDescription}</BASEFONT>", false, false);
+        y += 58;
 
-        // Reward hint
-        AddLabel(20, y, 999, rewardLine);
-        y += 22;
-
-        AddImageTiled(10, y + 4, W - 20, 2, 9304);
-
-        // Buttons
-        if (canJoin)
+        if (!isMember)
         {
-            AddButton(W / 2 - 100, y + 14, 4023, 4025, BtnJoin);
-            AddLabel(W / 2 - 76,   y + 16, 999, "Join Guild");
+            AddLabel(20, y, 999, "Open to members.");
+        }
+        else if (isApprentice)
+        {
+            AddLabel(20, y, 68, "Done.");
+        }
+        else if (ClusterFGuildSystem.MeetsApprenticeTask(pm, def, out var reason))
+        {
+            if (atMaster)
+            {
+                AddButton(20, y, 4023, 4025, BtnApprentice);
+                AddLabel(55, y + 2, 1154, $"Complete it: +{def.JoinReputation} reputation, +{def.JoinScrip} scrip");
+            }
+            else
+            {
+                AddLabel(20, y, 68, "Met. Complete it at the guildmaster.");
+            }
+        }
+        else
+        {
+            AddLabel(20, y, 37, reason);
         }
 
-        AddButton(W / 2 + 30, y + 14, 4023, 4025, BtnBack);
-        AddLabel(W / 2 + 56,  y + 16, 999, "Back");
+        AddImageTiled(10, H - 50, W - 20, 2, 9304);
+        if (isMember)
+        {
+            AddButton(20, H - 38, 4011, 4012, BtnServices);
+            AddLabel(45, H - 36, 999, "Guild services");
+        }
+
+        AddButton(180, H - 38, 4011, 4012, BtnDirectory);
+        AddLabel(205, H - 36, 999, "Guild Directory");
+
+        AddButton(W - 100, H - 38, 4017, 4019, BtnClose);
+        AddLabel(W - 65, H - 36, 999, "Close");
     }
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
+        if (sender.Mobile != _pm)
+            return;
+
+        var atMaster = ClusterFGuildSystem.IsNearGuildmaster(_pm, _guildmaster);
+
         switch (info.ButtonID)
         {
-            case BtnBack:
+            case BtnJoin:
+                if (atMaster && ClusterFGuildSystem.CanJoin(_pm, _def, out _))
+                    ClusterFGuildSystem.Join(_pm, _def);
+                break;
+
+            case BtnTools:
+                if (atMaster && ClusterFGuildSystem.IsJoined(_acct, _def.Key))
+                    ClusterFGuildSystem.Join(_pm, _def); // a member: "Welcome back" and this character's tools
+                break;
+
+            case BtnStarter:
+                if (atMaster)
+                    _pm.SendGump(new GuildStarterItemsGump(_pm, _def, _guildmaster));
+                return;
+
+            case BtnApprentice:
+                if (atMaster && !ClusterFGuildSystem.CompleteApprenticeTask(_pm, _def, out var reason))
+                    _pm.SendMessage(0x22, reason);
+                break;
+
+            case BtnServices:
+                if (ClusterFGuildSystem.IsJoined(_acct, _def.Key))
+                    ClusterFGuildSystem.OpenMemberServices(_pm, _def, _acct);
+                return;
+
+            case BtnDirectory:
                 _pm.SendGump(new GuildProgressGump(_pm, _acct));
                 return;
 
-            case BtnJoin:
-                if (!ClusterFGuildSystem.CanJoin(_pm, _def, out _)) return;
-                ClusterFGuildSystem.Join(_pm, _def);
-                _pm.SendGump(new GuildProgressGump(_pm, _acct));
+            default:
                 return;
         }
+
+        ClusterFGuildSystem.OpenGuildHall(_pm, _def, _guildmaster);
     }
 }
 
-// ── GM admin commands ─────────────────────────────────────────────────────────
+// -- GM admin commands ---------------------------------------------------------------------------
 
 public static class ClusterFGuildAdminCommands
 {
@@ -860,7 +1075,7 @@ public static class ClusterFGuildAdminCommands
             }
 
             DoReset(pm, data, key);
-            pm.SendMessage(0x44, $"Guild '{key}' reset — membership, reputation, currency cleared.");
+            pm.SendMessage(0x44, $"Guild '{key}' reset - membership, reputation, currency cleared.");
         }
     }
 
@@ -869,6 +1084,8 @@ public static class ClusterFGuildAdminCommands
         data.JoinedGuilds.Remove(key);
         data.GuildReputation.Remove(key);
         data.GuildCurrency.Remove(key);
+        data.ClearFlag(ClusterFGuildSystem.ApprenticeFlag(key));
+        data.GetGuildStarter(pm.Serial)?.ToolsTaken.Remove(key);
 
         // Guild-specific data cleanup
         if (key.Equals("smithing", StringComparison.OrdinalIgnoreCase))

@@ -14,7 +14,7 @@ namespace Server;
 ///   MainMenu       -- list of available topics (Join hidden after joining)
 ///   CitizenStatus  -- three-tier status explained + player's current tier
 ///   AboutRenown    -- what Renown is and current balance
-///   GuildReferrals -- which guilds the League recommends; direction to liaisons
+///   GuildReferrals -- the Guild Directory (cc-P15): the same rows as the board's first page and [guild
 ///   WhereToStart   -- step-by-step guidance for new arrivals
 ///
 /// Opened by: LeagueRegistrar.OnDoubleClick
@@ -46,12 +46,12 @@ public class LeagueRegistrarGump : Gump
         AddBackground(0, 0, W, H, BgId);
         AddAlphaRegion(6, 6, W - 12, H - 12);
 
-        // ── Header ────────────────────────────────────────────────────────
+        // -- Header --------------------------------------------------------
         AddLabel(W / 2 - 120, 12, 1154, "League of Extraordinary Citizens");
         AddLabel(W / 2 - 75,  28, 999,  "New Haven Field Office");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
-        // ── View content ──────────────────────────────────────────────────
+        // -- View content --------------------------------------------------
         switch (view)
         {
             case View.MainMenu:      DrawMainMenu(data);      break;
@@ -61,7 +61,7 @@ public class LeagueRegistrarGump : Gump
             case View.WhereToStart:  DrawWhereToStart(data);  break;
         }
 
-        // ── Footer ────────────────────────────────────────────────────────
+        // -- Footer --------------------------------------------------------
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
 
         if (view != View.MainMenu)
@@ -74,7 +74,7 @@ public class LeagueRegistrarGump : Gump
         AddLabel(W - 28, H - 26, 1154, "X");
     }
 
-    // ── Views ─────────────────────────────────────────────────────────────────
+    // -- Views -----------------------------------------------------------------
 
     private void DrawMainMenu(ClusterFAccountData data)
     {
@@ -153,21 +153,13 @@ public class LeagueRegistrarGump : Gump
         AddLabel(18, 56, 1154, "Guild Referrals");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
-        var html =
-            "<BASEFONT COLOR=#AAAAAA>The League maintains partnerships with the professional guilds " +
-            "of New Haven. As a citizen, you are encouraged to seek membership in any guild that " +
-            "matches your calling.</BASEFONT><BR><BR>" +
-            "<BASEFONT COLOR=#FFD700>Miners' Compact</BASEFONT><BR>" +
-            "<BASEFONT COLOR=#AAAAAA>The Miners' Compact represents those who work the stone and ore " +
-            "of Britannia. Their liaison is stationed near the south mountain mine." +
-            "</BASEFONT><BR><BR>" +
-            "<BASEFONT COLOR=#888888>Additional guild liaisons will be established at this field office " +
-            "as the League expands its presence throughout New Haven.</BASEFONT>";
+        AddHtml(16, 78, W - 32, 80,
+            "<BASEFONT COLOR=#AAAAAA>The League refers every citizen to the guilds of New Haven. " +
+            "The Guild Directory lists each one, what it teaches, and where its guildmaster stands, " +
+            "with an arrow to show you the way. Joining is free.</BASEFONT>", false, false);
 
-        AddHtml(16, 78, W - 32, H - 170, html, false, true);
-
-        AddButton(18, H - 80, 4011, 4012, 20);
-        AddLabel(44, H - 78, 999, "Find the Miners' Compact Liaison");
+        AddButton(18, 170, 4011, 4012, 20);
+        AddLabel(44, 172, 999, "Open the Guild Directory");
     }
 
     private void DrawWhereToStart(ClusterFAccountData data)
@@ -191,9 +183,9 @@ public class LeagueRegistrarGump : Gump
             $"<BASEFONT COLOR=#5599FF>{step++}. Read the League Dispatch.</BASEFONT> " +
             "<BASEFONT COLOR=#AAAAAA>The Dispatch contains current notices and announcements from " +
             "the League. Access it from the main menu.</BASEFONT><BR><BR>" +
-            $"<BASEFONT COLOR=#5599FF>{step++}. Visit a guild liaison.</BASEFONT> " +
-            "<BASEFONT COLOR=#AAAAAA>The Miners' Compact Liaison is near the south mountain mine " +
-            "(around 3508, 2748). Introduce yourself and learn what the guild offers.</BASEFONT><BR><BR>" +
+            $"<BASEFONT COLOR=#5599FF>{step++}. Join a guild.</BASEFONT> " +
+            "<BASEFONT COLOR=#AAAAAA>Every skill has one, and joining is free. The Guild Board in the " +
+            "town square, or [guild, lists them all and shows you the way to each guildmaster.</BASEFONT><BR><BR>" +
             $"<BASEFONT COLOR=#5599FF>{step}. Explore.</BASEFONT> " +
             "<BASEFONT COLOR=#AAAAAA>The ruins of Old Haven lie to the southwest. " +
             "Use [achievements to track your progress across Shattered Legacy.</BASEFONT>";
@@ -201,7 +193,7 @@ public class LeagueRegistrarGump : Gump
         AddHtml(16, 78, W - 32, H - 128, html, false, true);
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -242,9 +234,7 @@ public class LeagueRegistrarGump : Gump
                     _pm.SendGump(new GuildProgressGump(_pm, acct));
                 break;
 
-            case 15: // Guild Referrals
-                if (data != null)
-                    ClusterFLeagueSystem.OnGuildReferralSeen(_pm, "mining");
+            case 15: // Guild Referrals: the Guild Directory (cc-P15)
                 _pm.SendGump(new LeagueRegistrarGump(_pm, View.GuildReferrals));
                 break;
 
@@ -261,59 +251,9 @@ public class LeagueRegistrarGump : Gump
                 _pm.SendGump(new LeagueRegistrarGump(_pm, View.WhereToStart));
                 break;
 
-            case 20: // Direction to Miners' Compact Liaison — set quest arrow
-            {
-                _pm.QuestArrow?.Stop();
-
-                // Find the live Miners' Compact Liaison NPC — QuestArrow requires a non-null Mobile target
-                Mobile? liaison = null;
-                foreach (var mob in World.Mobiles.Values)
-                {
-                    if (mob is MinersCompactLiaison && !mob.Deleted)
-                    {
-                        liaison = mob;
-                        break;
-                    }
-                }
-
-                if (liaison != null)
-                {
-                    new MinersCompactDirectionArrow(_pm, liaison);
-                    _pm.SendMessage(999,
-                        "Head south from the League office to the mountain mine — follow the arrow to the Miners' Compact Liaison.");
-                }
-                else
-                {
-                    _pm.SendMessage(999,
-                        "The Miners' Compact Liaison is near the south mountain mine, around coordinates 3510, 2748.");
-                }
-
-                _pm.SendGump(new LeagueRegistrarGump(_pm, View.GuildReferrals));
+            case 20: // Open the Guild Directory. Its "Show me the way" replaces the Miners' Compact arrow.
+                _pm.SendGump(new GuildProgressGump(_pm, acct));
                 break;
-            }
         }
-    }
-}
-
-/// <summary>
-/// Quest arrow pointing players from the League field office south to the
-/// Miners' Compact Liaison NPC. Right-clicking dismisses it.
-/// Auto-stops after 10 minutes so it doesn't linger indefinitely.
-///
-/// Note: QuestArrow requires a non-null Mobile target — Target.Serial is used
-/// in the SendSetArrow/SendCancelArrow packets. We pass the actual liaison NPC.
-/// </summary>
-public class MinersCompactDirectionArrow : QuestArrow
-{
-    public MinersCompactDirectionArrow(PlayerMobile m, Mobile liaison) : base(m, liaison)
-    {
-        // Auto-dismiss after 10 minutes
-        Timer.DelayCall(TimeSpan.FromMinutes(10), () => { if (Running) Stop(); });
-    }
-
-    public override void OnClick(bool rightClick)
-    {
-        if (rightClick)
-            Stop();
     }
 }

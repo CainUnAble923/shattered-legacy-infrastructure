@@ -16,7 +16,7 @@ namespace Server;
 ///   - Last-seen bulletin ID (for MOTD/Dispatch unread tracking)
 ///   - Active and completed guild work order entries
 ///
-/// Keyed by account username. Account-wide by design — Shattered Legacy
+/// Keyed by account username. Account-wide by design - Shattered Legacy
 /// is a single-character shard and all progression belongs to the account.
 ///
 /// Guild keys are short lowercase identifiers:
@@ -28,44 +28,44 @@ namespace Server;
 /// </summary>
 public class ClusterFAccountData
 {
-    // ── Currencies ───────────────────────────────────────────────────────
+    // -- Currencies -------------------------------------------------------
     public int Renown            { get; set; }
     public int AchievementPoints { get; set; }
 
-    // ── Guild systems ────────────────────────────────────────────────────
+    // -- Guild systems ----------------------------------------------------
     public Dictionary<string, int> GuildReputation { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, int> GuildCurrency   { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    // ── Guild membership ─────────────────────────────────────────────────
+    // -- Guild membership -------------------------------------------------
     public HashSet<string> JoinedGuilds { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    // ── Restoration registry ─────────────────────────────────────────────
+    // -- Restoration registry ---------------------------------------------
     public Dictionary<string, RestorationEntry> RestorationRegistry { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    // ── Bulletin tracking ────────────────────────────────────────────────
+    // -- Bulletin tracking ------------------------------------------------
     public int LastSeenBulletinId { get; set; }
 
-    // ── Account flags ─────────────────────────────────────────────────────
+    // -- Account flags -----------------------------------------------------
     // Generic boolean flags keyed by string (e.g. "league.joined").
     // Use ClusterFLeagueSystem constants -- do not use raw strings directly.
     public HashSet<string>            Flags      { get; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> FlagValues { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    // ── Guild work orders (Phase 3) ───────────────────────────────────────────
+    // -- Guild work orders (Phase 3) -------------------------------------------
     public List<WorkOrderEntry> ActiveWorkOrders    { get; } = new();
     public List<WorkOrderEntry> CompletedWorkOrders { get; } = new();
 
-    // ── Ore discoveries (Phase 3) — Prospector's Logbook ─────────────────────
+    // -- Ore discoveries (Phase 3) - Prospector's Logbook ---------------------
     // Keyed by canonical ore key (e.g. "DullCopper", "Valorite", "Celestial").
-    // Iron is excluded by convention — only colored and extended ores are tracked.
+    // Iron is excluded by convention - only colored and extended ores are tracked.
     public Dictionary<string, OreDiscoveryEntry> OreDiscoveries { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    // ── Wood discoveries (Phase 4) — Foresters' Discoveries ──────────────────
+    // -- Wood discoveries (Phase 4) - Foresters' Discoveries ------------------
     // Keyed by canonical wood key (e.g. "Ironwood", "Ghostwood", "Starwood").
-    // Regular and vanilla colored woods excluded — only extended woods tracked.
+    // Regular and vanilla colored woods excluded - only extended woods tracked.
     public Dictionary<string, WoodDiscoveryEntry> WoodDiscoveries { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    // ── Imbuing property discoveries — Artificers' Order ─────────────────────
+    // -- Imbuing property discoveries - Artificers' Order ---------------------
     // Tracks how many times a player has successfully imbued each property using
     // a PropertyEssence. Once the count reaches ImbuePropertyDef.DiscoveryThreshold,
     // the property is "mastered" and no essence is required for future imbues.
@@ -73,19 +73,19 @@ public class ClusterFAccountData
     // Keyed by ImbuePropertyDef.Name (e.g. "Hit Chance Increase", "Slayer: Silver").
     public Dictionary<string, int> ImbuingDiscoveries { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    // ── Smith Commissions (Phase 4C-ii) ──────────────────────────────────────
+    // -- Smith Commissions (Phase 4C-ii) --------------------------------------
     // Active single-piece crafting commissions from named adventurers.
     // Separate from BODs; max 3 small + 1 large concurrent.
     public List<SmithCommissionEntry>      SmithCommissions      { get; } = new();
     public List<SmithLargeCommissionEntry> SmithLargeCommissions { get; } = new();
 
 
-    // ── Creature encounters (bestiary) ───────────────────────────────────────────
+    // -- Creature encounters (bestiary) -------------------------------------------
     // Records creature type names on first kill (e.g. "Dragon", "Ridgeback", "Drake").
-    // Used to gate hunting work orders — parallel to OreDiscoveries for mining orders.
+    // Used to gate hunting work orders - parallel to OreDiscoveries for mining orders.
     public HashSet<string> EncounteredCreatures { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    // ── Fog of war (exploration) ──────────────────────────────────────────────
+    // -- Fog of war (exploration) ----------------------------------------------
     // Per-character, per-facet chunk exploration bitmask.
     // Outer key = character serial (uint). Inner array = 6 BitArrays, one per facet.
     // Null inner entry means the facet has never been visited.
@@ -99,12 +99,40 @@ public class ClusterFAccountData
         return facets[facet] ??= new BitArray(chunkW * chunkH, false);
     }
 
-    // ── Constructors ─────────────────────────────────────────────────────
+    // -- Guild starter path (v14, cc-P15) ---------------------------------------
+    // Per character, keyed by character serial like _exploredChunks: which guilds' tools and which
+    // New Haven starter items this character has taken, and whether it has seen the first-login
+    // welcome. Membership (JoinedGuilds) stays per account. "Once per loop" is once per character
+    // until loops exist, so clearing a character's record starts its loop again.
+    private readonly Dictionary<uint, GuildStarterRecord> _guildStarter = new();
+
+    public GuildStarterRecord GetOrCreateGuildStarter(Serial serial)
+    {
+        var key = (uint)serial;
+        if (!_guildStarter.TryGetValue(key, out var record))
+            _guildStarter[key] = record = new GuildStarterRecord();
+        return record;
+    }
+
+    public GuildStarterRecord? GetGuildStarter(Serial serial) =>
+        _guildStarter.TryGetValue((uint)serial, out var record) ? record : null;
+
+    public int GuildStarterRecordCount => _guildStarter.Count;
+
+    public void ClearGuildStarterRecords() => _guildStarter.Clear();
+
+    // -- Constructors -----------------------------------------------------
     public ClusterFAccountData() { }
 
     public ClusterFAccountData(IGenericReader r)
     {
-        var version = r.ReadInt(); // 0..13
+        var version = r.ReadInt(); // 0..14
+
+        // D40 (cc-P11): a version this reader does not know is a save from a newer build. Reading it as
+        // this version misreads every field after the first difference, so refuse it loudly instead.
+        if (version > CurrentVersion)
+            throw new System.IO.InvalidDataException(
+                $"ClusterFAccountData version {version} is newer than this build reads (up to {CurrentVersion}).");
 
         Renown              = r.ReadInt();
         AchievementPoints   = r.ReadInt();
@@ -123,7 +151,7 @@ public class ClusterFAccountData
         {
             if (version < 2)
             {
-                // v0/v1 stored a plain HashSet<string> — migrate to RestorationEntry
+                // v0/v1 stored a plain HashSet<string> - migrate to RestorationEntry
                 var key = r.ReadString();
                 RestorationRegistry[key] = new RestorationEntry(key, "legacy_migration");
             }
@@ -212,7 +240,7 @@ public class ClusterFAccountData
 
         if (version >= 10)
         {
-            // v10+: correct order — ExploredChunks then EncounteredCreatures.
+            // v10+: correct order - ExploredChunks then EncounteredCreatures.
             var charCount = r.ReadInt();
             for (var i = 0; i < charCount; i++)
             {
@@ -255,6 +283,16 @@ public class ClusterFAccountData
             ActiveArtificerItemSerial = r.ReadUInt();
         }
 
+        if (version >= 14)
+        {
+            var gsCount = r.ReadInt();
+            for (var i = 0; i < gsCount; i++)
+            {
+                var serial = r.ReadUInt();
+                _guildStarter[serial] = new GuildStarterRecord(r);
+            }
+        }
+
         // v8-only saves (no EncounteredCreatures yet): just read chunks.
         if (version == 8)
         {
@@ -273,9 +311,11 @@ public class ClusterFAccountData
         }
     }
 
+    public const int CurrentVersion = 14;
+
     public void Serialize(IGenericWriter w)
     {
-        w.Write(13); // version
+        w.Write(CurrentVersion);
 
         w.Write(Renown);
         w.Write(AchievementPoints);
@@ -314,7 +354,7 @@ public class ClusterFAccountData
         w.Write(SmithLargeCommissions.Count);
         foreach (var e in SmithLargeCommissions) e.Serialize(w);
 
-        // v10: correct order — ExploredChunks before EncounteredCreatures.
+        // v10: correct order - ExploredChunks before EncounteredCreatures.
         // (v9 had these two blocks swapped, which caused a read misalignment on reload.)
         w.Write(_exploredChunks.Count);
         foreach (var (serial, facets) in _exploredChunks)
@@ -347,9 +387,17 @@ public class ClusterFAccountData
         // v13: active artificer work order
         w.Write(ActiveArtificerOrderKey ?? "");
         w.Write(ActiveArtificerItemSerial);
+
+        // v14: per-character guild starter records
+        w.Write(_guildStarter.Count);
+        foreach (var (serial, record) in _guildStarter)
+        {
+            w.Write(serial);
+            record.Serialize(w);
+        }
     }
 
-    // ── Guild helpers ─────────────────────────────────────────────────────
+    // -- Guild helpers -----------------------------------------------------
     public int  GetReputation(string guild) => GuildReputation.TryGetValue(guild, out var v) ? v : 0;
     public void AddReputation(string guild, int amount) =>
         GuildReputation[guild] = GetReputation(guild) + amount;
@@ -365,21 +413,21 @@ public class ClusterFAccountData
     public void AddCurrency(string guild, int amount) =>
         GuildCurrency[guild] = GetCurrency(guild) + amount;
 
-    // ── Flag helpers ──────────────────────────────────────────────────────
+    // -- Flag helpers ------------------------------------------------------
     public bool    HasFlag(string key)                    => Flags.Contains(key);
     public void    SetFlag(string key)                    => Flags.Add(key);
     public void    ClearFlag(string key)                  => Flags.Remove(key);
     public string? GetFlagValue(string key)               => FlagValues.TryGetValue(key, out var v) ? v : null;
     public void    SetFlagValue(string key, string value) => FlagValues[key] = value;
 
-    // ── Restoration registry helpers ─────────────────────────────────────
+    // -- Restoration registry helpers -------------------------------------
     // Prefer ClusterFRestorationRegistry for richer API (TryRestore, ClearActiveCopy, etc.)
     public bool HasUnlocked(string key) => RestorationRegistry.ContainsKey(key);
 
-    // ── Creature encounter helpers ────────────────────────────────────────
+    // -- Creature encounter helpers ----------------------------------------
     public bool HasEncountered(string creatureTypeName) => EncounteredCreatures.Contains(creatureTypeName);
 
-    // ── Imbuing discovery helpers ─────────────────────────────────────────────
+    // -- Imbuing discovery helpers ---------------------------------------------
     public int  GetDiscoveryCount(string propertyKey) =>
         ImbuingDiscoveries.TryGetValue(propertyKey, out var v) ? v : 0;
 
@@ -389,7 +437,7 @@ public class ClusterFAccountData
     public bool IsMastered(string propertyKey, int threshold) =>
         GetDiscoveryCount(propertyKey) >= threshold;
 
-    // ── Artificer work order tracking ─────────────────────────────────────────
+    // -- Artificer work order tracking -----------------------------------------
     // At most one commission active at a time.  ItemSerial == 0 for combo orders
     // (player crafts the item themselves; no serial to track).
     public string? ActiveArtificerOrderKey   { get; private set; }
@@ -408,12 +456,65 @@ public class ClusterFAccountData
         ActiveArtificerItemSerial = 0;
     }
 
-    // ── Renown helpers ───────────────────────────────────────────────────
+    // -- Renown helpers ---------------------------------------------------
     public bool SpendRenown(int amount)
     {
         if (Renown < amount) return false;
         Renown -= amount;
         return true;
+    }
+}
+
+/// <summary>
+/// One character's progress on the guild starter path (cc-P15, F-9). Stored in ClusterFAccountData
+/// v14, keyed by character serial. Carries its own version so a later field can be added without
+/// touching the account record's reader; an unknown version fails loudly (the D40 rule).
+/// </summary>
+public sealed class GuildStarterRecord
+{
+    public const int CurrentVersion = 0;
+
+    // Guild keys whose joining tools (creation kit plus join bonus) this character has taken.
+    public HashSet<string> ToolsTaken { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    // Starter items this character has taken from a guild, by the name of the New Haven quest that
+    // also gives them (e.g. "EnGuarde"). A quest turned in to a trainer is not recorded here; its
+    // MLQuest done-record is the other half of the one ledger.
+    public HashSet<string> ItemsTaken { get; } = new(StringComparer.Ordinal);
+
+    public bool WelcomeShown { get; set; }
+
+    public GuildStarterRecord() { }
+
+    public GuildStarterRecord(IGenericReader r)
+    {
+        var version = r.ReadInt();
+        if (version != 0)
+            throw new System.IO.InvalidDataException(
+                $"GuildStarterRecord version {version} is not one this build reads (0).");
+
+        var tools = r.ReadInt();
+        for (var i = 0; i < tools; i++)
+            ToolsTaken.Add(r.ReadString());
+
+        var items = r.ReadInt();
+        for (var i = 0; i < items; i++)
+            ItemsTaken.Add(r.ReadString());
+
+        WelcomeShown = r.ReadBool();
+    }
+
+    public void Serialize(IGenericWriter w)
+    {
+        w.Write(CurrentVersion);
+
+        w.Write(ToolsTaken.Count);
+        foreach (var key in ToolsTaken) w.Write(key);
+
+        w.Write(ItemsTaken.Count);
+        foreach (var key in ItemsTaken) w.Write(key);
+
+        w.Write(WelcomeShown);
     }
 }
 
@@ -433,7 +534,7 @@ public class ClusterFAccountPersistence : Item
     private static readonly Dictionary<string, ClusterFAccountData> _data =
         new(StringComparer.OrdinalIgnoreCase);
 
-    // ── Public API ────────────────────────────────────────────────────────
+    // -- Public API --------------------------------------------------------
 
     /// <summary>Returns existing data or creates a new empty record for the account.</summary>
     public static ClusterFAccountData GetOrCreate(Accounting.IAccount account)
@@ -447,11 +548,11 @@ public class ClusterFAccountPersistence : Item
     public static ClusterFAccountData? Get(Accounting.IAccount account) =>
         _data.TryGetValue(account.Username, out var d) ? d : null;
 
-    // ── Lifecycle ─────────────────────────────────────────────────────────
+    // -- Lifecycle ---------------------------------------------------------
 
     public static void Configure()
     {
-        // Item creation must happen after world load — not during Configure.
+        // Item creation must happen after world load - not during Configure.
         EventSink.WorldLoad += EnsureExistence;
     }
 
@@ -464,9 +565,9 @@ public class ClusterFAccountPersistence : Item
 
     public ClusterFAccountPersistence(Serial serial) : base(serial) => _instance = this;
 
-    public override string DefaultName => "ClusterF Account Persistence — Internal";
+    public override string DefaultName => "ClusterF Account Persistence - Internal";
 
-    // ── Serialization ─────────────────────────────────────────────────────
+    // -- Serialization -----------------------------------------------------
 
     public override void Serialize(IGenericWriter w)
     {

@@ -107,16 +107,29 @@ public partial class NewHavenQuestBoard : QuestGiverItem
         list.Add("Get these early! When a skill reaches 50, its quest is gone for good.");
         list.Add("Your whole skill counts, not just what you gain after. At 45, you only need 5 more.");
         list.Add("The number in your skill list is what counts, and magic items raise it. Take quests first.");
-        list.Add("Double-click for all 26 quests. Take the ones you want.");
+        list.Add("Double-click for the Guild Directory. All 26 quests are its second tab.");
         list.Add("Bring them back to this board, not the trainer. You can carry 10 quests in all.");
     }
 
     // QuestGiverItem requires IsChildOf(from.Backpack), which a board standing in the town
     // square never is. Everything else is the stock body's checks, then our menu in place of
     // MLQuestSystem.OnDoubleClick's single pick.
+    //
+    // cc-P15 (F-9 Decision 5): the board's first page is the Guild Directory; the menu of 26 is its
+    // second tab, "Training quests", unchanged. The board is the same item at the same spot.
     public override void OnDoubleClick(Mobile from)
     {
         if (CanUse(from) && from is PlayerMobile pm)
+        {
+            pm.CloseGump<GuildProgressGump>();
+            pm.SendGump(new GuildProgressGump(pm, pm.Account as Accounting.IAccount, this));
+        }
+    }
+
+    // The directory's "Training quests" tab: the menu, behind the same checks as a double-click.
+    public void OpenTrainingQuests(PlayerMobile pm)
+    {
+        if (CanUse(pm))
         {
             pm.SendGump(new NewHavenQuestPickerGump(this, pm));
         }

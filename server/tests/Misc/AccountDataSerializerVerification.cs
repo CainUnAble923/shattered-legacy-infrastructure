@@ -25,12 +25,19 @@
 //   5. A version-0 entry reads forward as one Unknown grove carrying the old FirstFound, and is
 //      written back as version 1.
 //   6. Groves merge only on the same facet and region; region labels never call a house wilderness.
+//
+// cc-P15 added version 14, a guild starter record per character (notes/cc-P15-guild-starter-path.md):
+//   7. Fact 1 carries two characters' records, every field compared.
+//   8. Version 13 bytes, written by a frozen copy of the pre-cc-P15 writer, load whole and come back
+//      with no records; written again they are version 14.
+//   9. A newer account-data version, or an unknown starter-record version, fails loudly.
 
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Server;
 using Server.Items;
@@ -137,7 +144,96 @@ public class AccountDataSerializerVerification
         d.WoodDiscoveries["Starwood"] = starwood;
 
         d.AcceptArtificerOrder("artificer.slayer.silver", 0x40001234u);
+
+        // v14 (cc-P15): two characters' guild starter records, one of them everything, one nearly empty.
+        var full = d.GetOrCreateGuildStarter((Serial)0x1234u);
+        full.ToolsTaken.Add("mining");
+        full.ToolsTaken.Add("warriors");
+        full.ItemsTaken.Add("TheDeluciansLostMine");
+        full.ItemsTaken.Add("EnGuarde");
+        full.WelcomeShown = true;
+        d.GetOrCreateGuildStarter((Serial)0x5678u).ToolsTaken.Add("keepers");
         return d;
+    }
+
+    private static Dictionary<uint, GuildStarterRecord> StarterRecords(ClusterFAccountData d) =>
+        (Dictionary<uint, GuildStarterRecord>)typeof(ClusterFAccountData)
+            .GetField("_guildStarter", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(d)!;
+
+    // Version 13 as the build before cc-P15 wrote it: a frozen copy of ClusterFAccountData.Serialize at
+    // d0a1782 (server/customizations/ClusterFAccountData.cs:276-350 there), so these bytes do not come
+    // from the writer under test. The entries' own writers are unchanged by cc-P15.
+    private static void SerializeVersion13(ClusterFAccountData d, IGenericWriter w)
+    {
+        w.Write(13);
+
+        w.Write(d.Renown);
+        w.Write(d.AchievementPoints);
+        w.Write(d.LastSeenBulletinId);
+
+        w.Write(d.GuildReputation.Count);
+        foreach (var (k, v) in d.GuildReputation) { w.Write(k); w.Write(v); }
+
+        w.Write(d.GuildCurrency.Count);
+        foreach (var (k, v) in d.GuildCurrency) { w.Write(k); w.Write(v); }
+
+        w.Write(d.RestorationRegistry.Count);
+        foreach (var entry in d.RestorationRegistry.Values) entry.Serialize(w);
+
+        w.Write(d.JoinedGuilds.Count);
+        foreach (var key in d.JoinedGuilds) w.Write(key);
+
+        w.Write(d.Flags.Count);
+        foreach (var f in d.Flags) w.Write(f);
+
+        w.Write(d.FlagValues.Count);
+        foreach (var (k, v) in d.FlagValues) { w.Write(k); w.Write(v); }
+
+        w.Write(d.ActiveWorkOrders.Count);
+        foreach (var e in d.ActiveWorkOrders) e.Serialize(w);
+
+        w.Write(d.CompletedWorkOrders.Count);
+        foreach (var e in d.CompletedWorkOrders) e.Serialize(w);
+
+        w.Write(d.OreDiscoveries.Count);
+        foreach (var entry in d.OreDiscoveries.Values) entry.Serialize(w);
+
+        w.Write(d.SmithCommissions.Count);
+        foreach (var e in d.SmithCommissions) e.Serialize(w);
+
+        w.Write(d.SmithLargeCommissions.Count);
+        foreach (var e in d.SmithLargeCommissions) e.Serialize(w);
+
+        var chunks = Chunks(d);
+        w.Write(chunks.Count);
+        foreach (var (serial, facets) in chunks)
+        {
+            w.Write(serial);
+            for (var f = 0; f < 6; f++)
+            {
+                var bits = facets[f];
+                if (bits == null)
+                    w.Write(false);
+                else
+                {
+                    w.Write(true);
+                    w.Write(bits);
+                }
+            }
+        }
+
+        w.Write(d.EncounteredCreatures.Count);
+        foreach (var name in d.EncounteredCreatures) w.Write(name);
+
+        w.Write(d.WoodDiscoveries.Count);
+        foreach (var entry in d.WoodDiscoveries.Values) entry.Serialize(w);
+
+        w.Write(d.ImbuingDiscoveries.Count);
+        foreach (var (k, v) in d.ImbuingDiscoveries) { w.Write(k); w.Write(v); }
+
+        w.Write(d.ActiveArtificerOrderKey ?? "");
+        w.Write(d.ActiveArtificerItemSerial);
     }
 
     // Three groves on three facets, in the order found, with distinct values in every field: a named
@@ -294,6 +390,76 @@ public class AccountDataSerializerVerification
             Assert.NotEqual(0, c.FirstFound.Ticks);
         }
         Assert.Equal(3, copy.WoodDiscoveries["Ironwood"].Locations.Count);
+
+        // v14: every character's guild starter record, every field.
+        AssertSameStarterRecords(original, copy);
+        Assert.Equal(2, copy.GuildStarterRecordCount);
+    }
+
+    private static void AssertSameStarterRecords(ClusterFAccountData original, ClusterFAccountData copy)
+    {
+        var o = StarterRecords(original);
+        var c = StarterRecords(copy);
+        Assert.Equal(o.Keys.OrderBy(k => k), c.Keys.OrderBy(k => k));
+        foreach (var (serial, record) in o)
+        {
+            Assert.Equal(record.ToolsTaken.OrderBy(k => k), c[serial].ToolsTaken.OrderBy(k => k));
+            Assert.Equal(record.ItemsTaken.OrderBy(k => k), c[serial].ItemsTaken.OrderBy(k => k));
+            Assert.Equal(record.WelcomeShown, c[serial].WelcomeShown);
+        }
+    }
+
+    [Fact]
+    public void AVersion13SaveFromTheBuildBeforeGuildStarterRecordsLoads()
+    {
+        var original = FullyPopulated();
+        var (v13, v13Length) = Write(w => SerializeVersion13(original, w));
+        Assert.Equal(13, VersionOf(v13));
+
+        var reader = new BufferReader(v13);
+        var copy = new ClusterFAccountData(reader);
+        _out.WriteLine($"v13: {v13Length} bytes, read {reader.Position}");
+        Assert.Equal(v13Length, reader.Position);
+
+        // Everything version 13 carried is back; the new record is empty, as for any character before it.
+        Assert.Equal(original.JoinedGuilds, copy.JoinedGuilds);
+        Assert.Equal(original.GuildCurrency, copy.GuildCurrency);
+        Assert.Equal(original.Flags, copy.Flags);
+        Assert.Equal(Chunks(original).Keys, Chunks(copy).Keys);
+        Assert.Equal(original.EncounteredCreatures, copy.EncounteredCreatures);
+        Assert.Equal(original.WoodDiscoveries.Count, copy.WoodDiscoveries.Count);
+        Assert.Equal(original.ImbuingDiscoveries, copy.ImbuingDiscoveries);
+        Assert.Equal(original.ActiveArtificerOrderKey, copy.ActiveArtificerOrderKey);
+        Assert.Equal(original.ActiveArtificerItemSerial, copy.ActiveArtificerItemSerial);
+        Assert.Equal(0, copy.GuildStarterRecordCount);
+
+        // Written again it is version 14, and it reads back whole.
+        var (v14, v14Length) = Write(copy.Serialize);
+        Assert.Equal(ClusterFAccountData.CurrentVersion, VersionOf(v14));
+        Assert.Equal(14, VersionOf(v14));
+        var again = new BufferReader(v14);
+        new ClusterFAccountData(again);
+        Assert.Equal(v14Length, again.Position);
+    }
+
+    [Fact]
+    public void AnAccountRecordOrStarterRecordOfAnUnknownVersionFailsLoudly()
+    {
+        var (newer, _) = Write(w => w.Write(ClusterFAccountData.CurrentVersion + 1));
+        var ex = Assert.Throws<InvalidDataException>(() => new ClusterFAccountData(new BufferReader(newer)));
+        _out.WriteLine(ex.Message);
+        Assert.Contains($"version {ClusterFAccountData.CurrentVersion + 1}", ex.Message);
+
+        var (record, _) = Write(w =>
+        {
+            w.Write(1);
+            w.Write(0);
+            w.Write(0);
+            w.Write(false);
+        });
+        ex = Assert.Throws<InvalidDataException>(() => new GuildStarterRecord(new BufferReader(record)));
+        _out.WriteLine(ex.Message);
+        Assert.Contains("version 1", ex.Message);
     }
 
     [Fact]

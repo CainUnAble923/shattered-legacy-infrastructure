@@ -12,8 +12,8 @@ namespace Server;
 /// Developer reset and character management tools for Shattered Legacy.
 ///
 /// Commands:
-///   [ClusterFReset [username]  — opens a selective reset gump for the account.
-///   [ClusterFDeleteChar        — target a character to force-delete (bypasses the 7-day wait).
+///   [ClusterFReset [username]  - opens a selective reset gump for the account.
+///   [ClusterFDeleteChar        - target a character to force-delete (bypasses the 7-day wait).
 ///
 /// Reset gump lets you choose any combination of:
 ///   Skills / Stats / Achievements / Account Data / Bulletins / Quest History
@@ -62,7 +62,7 @@ public static class ClusterFDevTools
         e.Mobile.Target = new DeleteCharTarget();
     }
 
-    // ── Core reset logic ──────────────────────────────────────────────────────
+    // -- Core reset logic ------------------------------------------------------
 
     public static void ExecuteReset(Mobile admin, PlayerMobile? pm, IAccount account, ResetOptions opts)
     {
@@ -98,13 +98,20 @@ public static class ClusterFDevTools
             data.GuildReputation.Clear();
             data.GuildCurrency.Clear();
             data.RestorationRegistry.Clear();
-            admin.SendMessage("Account data (Renown, guild rep/currency, restoration registry) cleared.");
+
+            // cc-P15 (F-7's defect): membership, the Apprentice marks, and every character's guild
+            // starter record (tools, starter items, welcome), so the whole starter path can be run again.
+            data.JoinedGuilds.Clear();
+            data.Flags.RemoveWhere(f => f.StartsWith("guild.apprentice.", System.StringComparison.OrdinalIgnoreCase));
+            data.ClearGuildStarterRecords();
+
+            admin.SendMessage("Account data (Renown, guild membership, rep/currency, guild starter records for every character, restoration registry) cleared.");
         }
 
         if (opts.Bulletins)
         {
             ClusterFAccountPersistence.GetOrCreate(account).LastSeenBulletinId = 0;
-            admin.SendMessage("Bulletin read position reset — all bulletins will show on next login.");
+            admin.SendMessage("Bulletin read position reset - all bulletins will show on next login.");
         }
 
         if (opts.Quests)
@@ -116,7 +123,7 @@ public static class ClusterFDevTools
             }
             else
             {
-                admin.SendMessage("Quest reset skipped — no character found on this account.");
+                admin.SendMessage("Quest reset skipped - no character found on this account.");
             }
         }
 
@@ -124,7 +131,7 @@ public static class ClusterFDevTools
     }
 }
 
-// ── Reset options ─────────────────────────────────────────────────────────────
+// -- Reset options -------------------------------------------------------------
 
 public class ResetOptions
 {
@@ -145,7 +152,7 @@ public class ResetOptions
     }
 }
 
-// ── Dev Reset Gump ────────────────────────────────────────────────────────────
+// -- Dev Reset Gump ------------------------------------------------------------
 
 /// <summary>
 /// Checkbox-based gump for selecting which data to reset.
@@ -184,8 +191,8 @@ public class DevResetGump : Gump
         ("Skills",       "Resets all skill values to 0.0.",                          SwSkills),
         ("Stats",        "Resets Str/Dex/Int to 10, restores Hits/Stam/Mana.",      SwStats),
         ("Achievements", "Clears all earned achievements and resets AP to 0.",       SwAchievements),
-        ("Account Data", "Clears Renown, guild rep/currency, restoration items.",    SwAccountData),
-        ("Bulletins",    "Resets bulletin read state — all bulletins show on login.",SwBulletins),
+        ("Account Data", "Renown, guilds joined, rep/scrip, starter records (all chars).", SwAccountData),
+        ("Bulletins",    "Resets bulletin read state - all bulletins show on login.",SwBulletins),
         ("Quest History","Clears all New Haven trainer quest completion history.",    SwQuests),
     ];
 
@@ -203,14 +210,14 @@ public class DevResetGump : Gump
         AddBackground(0, 0, GumpWidth, GumpHeight, 9270);
         AddAlphaRegion(10, 10, GumpWidth - 20, GumpHeight - 20);
 
-        // ── Header ─────────────────────────────────────────────────────────
+        // -- Header ---------------------------------------------------------
         AddLabel(GumpWidth / 2 - 80, 14, 37, "Developer Reset Tool");
         var acctLine = $"Account: {account.Username}" +
                        (pm != null ? $"  ({pm.Name})" : "  (offline)");
         AddLabel(GumpWidth / 2 - acctLine.Length * 4, 34, 999, acctLine);
         AddImageTiled(10, 56, GumpWidth - 20, 2, 9304);
 
-        // ── Checkbox rows ─────────────────────────────────────────────────
+        // -- Checkbox rows -------------------------------------------------
         var y = HeaderH;
         for (var i = 0; i < Rows.Length; i++)
         {
@@ -236,7 +243,7 @@ public class DevResetGump : Gump
             y += RowH;
         }
 
-        // ── Footer ─────────────────────────────────────────────────────────
+        // -- Footer ---------------------------------------------------------
         AddImageTiled(10, y + 4, GumpWidth - 20, 2, 9304);
 
         AddButton(20,              y + 14, 4011, 4012, BtnSelectAll);
@@ -293,7 +300,7 @@ public class DevResetGump : Gump
     };
 }
 
-// ── Dev Reset Confirm Gump ────────────────────────────────────────────────────
+// -- Dev Reset Confirm Gump ----------------------------------------------------
 
 public class DevResetConfirmGump : Gump
 {
@@ -316,7 +323,8 @@ public class DevResetConfirmGump : Gump
         if (opts.Skills)       items.Add("All skill values (reset to 0)");
         if (opts.Stats)        items.Add("Str / Dex / Int (reset to 10)");
         if (opts.Achievements) items.Add("Achievements + Achievement Points");
-        if (opts.AccountData)  items.Add("Renown, guild rep, guild currency, restoration registry");
+        if (opts.AccountData)  items.Add("Renown, guilds joined, guild rep and currency, restoration registry");
+        if (opts.AccountData)  items.Add("Guild tools and starter items taken, for every character on the account");
         if (opts.Bulletins)    items.Add("Bulletin read position");
         if (opts.Quests)       items.Add("ML Quest completion history");
 
@@ -335,7 +343,7 @@ public class DevResetConfirmGump : Gump
         var y = 66;
         foreach (var item in items)
         {
-            AddLabel(28, y, 1154, $"• {item}");
+            AddLabel(28, y, 1154, $"* {item}");
             y += 22;
         }
 
@@ -357,7 +365,7 @@ public class DevResetConfirmGump : Gump
     }
 }
 
-// ── Delete char target ────────────────────────────────────────────────────────
+// -- Delete char target --------------------------------------------------------
 
 public class DeleteCharTarget : Target
 {
@@ -373,7 +381,7 @@ public class DeleteCharTarget : Target
 
         if (pm.NetState != null)
         {
-            from.SendMessage($"Cannot delete '{pm.Name}' — character is currently online.");
+            from.SendMessage($"Cannot delete '{pm.Name}' - character is currently online.");
             return;
         }
 

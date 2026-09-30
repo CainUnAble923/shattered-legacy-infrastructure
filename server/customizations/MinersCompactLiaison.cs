@@ -51,7 +51,7 @@ public partial class MinersCompactLiaison : BaseCreature
     public override bool ClickTitle      => true;
     public override bool ShowFameTitle   => false;
 
-    // ── Interaction ───────────────────────────────────────────────────────────
+    // -- Interaction -----------------------------------------------------------
 
     public override void OnDoubleClick(Mobile from)
     {
@@ -63,7 +63,14 @@ public partial class MinersCompactLiaison : BaseCreature
             return;
         }
 
-        pm.SendGump(new MinersCompactLiaisonGump(pm));
+        // cc-P15: the Miners' Compact hall page first (join, tools, Jacob's Pickaxe); its Services button
+        // opens the Liaison's own gump, which the speech keywords below still open directly. The
+        // Liaison is the Compact's guildmaster in New Haven (GuildLocations); MinerGuildmaster stays
+        // the GuildDef's type for stock miner guildmasters elsewhere.
+        if (ClusterFGuildSystem.GetDef("mining") is { } def)
+            ClusterFGuildSystem.OpenGuildHall(pm, def, this);
+        else
+            pm.SendGump(new MinersCompactLiaisonGump(pm));
     }
 
     public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
@@ -74,7 +81,7 @@ public partial class MinersCompactLiaison : BaseCreature
             list.Add(new TalkEntry(pm, this));
     }
 
-    // ── Speech trigger — say "compact", "orders", "menu", or "work" to open menu ──
+    // -- Speech trigger - say "compact", "orders", "menu", or "work" to open menu --
 
     public override bool HandlesOnSpeech(Mobile from) =>
         from is PlayerMobile && from.InRange(Location, 4) || base.HandlesOnSpeech(from);

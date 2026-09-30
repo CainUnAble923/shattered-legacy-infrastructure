@@ -8,7 +8,7 @@ using Server.Items;
 namespace Server.Mobiles;
 
 /// <summary>
-/// Outriders' Guildmaster — placed near the New Haven stables.
+/// Outriders' Guildmaster - placed near the New Haven stables.
 ///
 /// Handles Rangers' League guild join flow and member services
 /// (standing, Trail Marks, work orders).
@@ -52,7 +52,7 @@ public partial class OutridersGuildmaster : BaseCreature
     public override bool ClickTitle      => true;
     public override bool ShowFameTitle   => false;
 
-    // ── Interaction ──────────────────────────────────────────────────────────────────────
+    // -- Interaction ----------------------------------------------------------------------
 
     public override void OnDoubleClick(Mobile from)
     {
@@ -64,7 +64,12 @@ public partial class OutridersGuildmaster : BaseCreature
             return;
         }
 
-        pm.SendGump(new OutridersGuildmasterGump(pm));
+        // cc-P15: the guild's hall page first (join, tools, starter items); its Services button opens
+        // the Outriders' own gump, which the speech keywords below still open directly.
+        if (ClusterFGuildSystem.GetDef("rangers") is { } def)
+            ClusterFGuildSystem.OpenGuildHall(pm, def, this);
+        else
+            pm.SendGump(new OutridersGuildmasterGump(pm));
     }
 
     public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)

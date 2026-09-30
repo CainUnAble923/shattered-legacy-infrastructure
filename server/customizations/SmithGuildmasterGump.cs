@@ -14,12 +14,12 @@ namespace Server;
 /// Opened when a player talks to a BlacksmithGuildmaster.
 ///
 /// Non-members see a join screen (Society pitch + task requirement).
-/// Members see their Smith status — rank, standing, Smithing Seals — and
+/// Members see their Smith status - rank, standing, Smithing Seals - and
 /// can open Work Orders or read about Smithing Seals.
 /// </summary>
 public class SmithGuildmasterGump : Gump
 {
-    // ── Layout constants ──────────────────────────────────────────────────────
+    // -- Layout constants ------------------------------------------------------
 
     private const int W = 380;
     private const int H = 630;  // member view includes rank progression table + mule exchange
@@ -33,7 +33,7 @@ public class SmithGuildmasterGump : Gump
     private const int BtnMuleExchange = 20;
     private const int BtnJoin         = 10;
 
-    // Smith rank thresholds — mirrors Phase 4 design doc
+    // Smith rank thresholds - mirrors Phase 4 design doc
     private static readonly (int Standing, string Title)[] Ranks =
     {
         (100_000, "Legendary"),
@@ -68,7 +68,7 @@ public class SmithGuildmasterGump : Gump
         AddBackground(0, 0, W, H, 9270);
         AddAlphaRegion(8, 8, W - 16, H - 16);
 
-        // ── Header ─────────────────────────────────────────────────────────────
+        // -- Header -------------------------------------------------------------
         AddLabel(W / 2 - 90, 14, 1153, "Society of Smiths");
         AddImageTiled(10, 34, W - 20, 2, 9304);
 
@@ -78,7 +78,7 @@ public class SmithGuildmasterGump : Gump
             BuildJoinView(pm, def, acct);
     }
 
-    // ── Member view ───────────────────────────────────────────────────────────
+    // -- Member view -----------------------------------------------------------
 
     private void BuildMemberView(PlayerMobile pm, IAccount acct)
     {
@@ -87,7 +87,7 @@ public class SmithGuildmasterGump : Gump
         var seals    = data.GetCurrency("smithing");
         var rank     = GetRank(standing);
 
-        // ── Standing / rank block ──────────────────────────────────────────────
+        // -- Standing / rank block ----------------------------------------------
         AddLabel(18, 46, 999,  "Rank:");
         AddLabel(70, 46, 1153, rank);
 
@@ -97,7 +97,7 @@ public class SmithGuildmasterGump : Gump
         AddLabel(18, 86, 999,  "Smithing Seals:");
         AddLabel(120, 86, 68,  $"{seals:N0}");
 
-        // ── Rank progression table ─────────────────────────────────────────────
+        // -- Rank progression table ---------------------------------------------
         AddImageTiled(10, 106, W - 20, 2, 9304);
         AddLabel(18, 114, 999, "Rank Progression:");
 
@@ -109,7 +109,7 @@ public class SmithGuildmasterGump : Gump
             { currentRankIdx = ri; break; }
         }
 
-        // Ranks[] is ordered highest → lowest; display top-to-bottom same way
+        // Ranks[] is ordered highest -> lowest; display top-to-bottom same way
         var tblY = 132;
         for (var ri = 0; ri < Ranks.Length; ri++)
         {
@@ -120,24 +120,24 @@ public class SmithGuildmasterGump : Gump
 
             if (ri < currentRankIdx)
             {
-                // higher rank — not yet achieved
+                // higher rank - not yet achieved
                 nameHue   = 999;
                 dataHue   = 999;
                 dataLabel = $"{thresh:N0}";
             }
             else if (ri == currentRankIdx)
             {
-                // current rank — highlight in gold
+                // current rank - highlight in gold
                 nameHue   = 68;
                 dataHue   = 68;
                 dataLabel = thresh == 0 ? "current" : $"{standing:N0} / {thresh:N0}";
             }
             else
             {
-                // lower rank — already surpassed, dim
+                // lower rank - already surpassed, dim
                 nameHue   = 0x3DE;
                 dataHue   = 0x3DE;
-                dataLabel = thresh == 0 ? "—" : $"{thresh:N0}";
+                dataLabel = thresh == 0 ? "-" : $"{thresh:N0}";
             }
 
             AddLabel(30,      tblY, nameHue, title);
@@ -145,7 +145,7 @@ public class SmithGuildmasterGump : Gump
             tblY += 16;
         }
 
-        // ── Progress to next rank ──────────────────────────────────────────────
+        // -- Progress to next rank ----------------------------------------------
         tblY += 4;
         if (currentRankIdx == 0)
         {
@@ -155,15 +155,15 @@ public class SmithGuildmasterGump : Gump
         {
             var (nextThresh, nextTitle) = Ranks[currentRankIdx - 1];
             var needed = nextThresh - standing;
-            AddLabel(18, tblY, 999, $"Next: {nextTitle}  —  {needed:N0} standing needed");
+            AddLabel(18, tblY, 999, $"Next: {nextTitle}  -  {needed:N0} standing needed");
         }
         tblY += 20;
 
-        // ── Buttons ────────────────────────────────────────────────────────────
+        // -- Buttons ------------------------------------------------------------
         AddImageTiled(10, tblY + 4, W - 20, 2, 9304);
         var btnY = tblY + 18;
 
-        // BOD button — show active count
+        // BOD button - show active count
         var (smallBods, largeBods) = BlacksmithGuildmaster.CountBODs(pm);
         var bodLabel = (smallBods + largeBods) > 0
             ? $"Bulk Orders  ({smallBods} small, {largeBods} large active)"
@@ -184,7 +184,7 @@ public class SmithGuildmasterGump : Gump
         AddLabel(54, btnY + 2, 999, "What are Smithing Seals?");
         btnY += 32;
 
-        // Hammer of Hephaestus — show tier/state in label
+        // Hammer of Hephaestus - show tier/state in label
         var hammerLabel = GetHammerStatusLabel(pm);
         AddButton(18, btnY, 4005, 4007, BtnHammer, GumpButtonType.Reply, 0);
         AddLabel(54, btnY + 2, 999, hammerLabel);
@@ -207,11 +207,11 @@ public class SmithGuildmasterGump : Gump
         AddHtml(18, btnY + 16, W - 36, 70,
             "<BASEFONT COLOR=#AAAAAA>The Society of Smiths honours those who turn raw ore into the tools " +
             "and arms that keep the realm standing. Earn Smithing Seals through bulk orders and work orders " +
-            "— they may be spent on guild rewards as your rank grows.</BASEFONT>",
+            "- they may be spent on guild rewards as your rank grows.</BASEFONT>",
             false, false);
     }
 
-    // ── Join view ─────────────────────────────────────────────────────────────
+    // -- Join view -------------------------------------------------------------
 
     private void BuildJoinView(PlayerMobile pm, GuildDef def, IAccount acct)
     {
@@ -222,8 +222,8 @@ public class SmithGuildmasterGump : Gump
 
         AddImageTiled(10, 110, W - 20, 2, 9304);
 
-        // Task requirement
-        AddLabel(18, 120, 999, "To join the Society of Smiths:");
+        // The old join task is the Apprentice task since cc-P15; joining is free.
+        AddLabel(18, 120, 999, "Joining is free. After you join, the Apprentice task:");
         AddHtml(18, 140, W - 36, 40,
             $"<BASEFONT COLOR=#AAAAAA>{def.TaskDescription}</BASEFONT>",
             false, false);
@@ -235,7 +235,7 @@ public class SmithGuildmasterGump : Gump
 
         if (canJoin)
         {
-            AddLabel(18, 200, 68, "You meet the requirements.");
+            AddLabel(18, 200, 68, "Anyone may join. You start as an Initiate.");
             AddButton(18, 225, 4023, 4025, BtnJoin, GumpButtonType.Reply, 0);
             AddLabel(54, 227, 999, "Join the Society of Smiths");
         }
@@ -246,7 +246,7 @@ public class SmithGuildmasterGump : Gump
         }
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -313,13 +313,7 @@ public class SmithGuildmasterGump : Gump
             return;
         }
 
-        // Consume item tribute if required
-        if (_def.TaskType is GuildTaskType.ItemOnly or GuildTaskType.SkillOrItem
-            && pm.Backpack?.GetAmount(_def.TaskItemType!) >= _def.TaskItemCount)
-        {
-            pm.Backpack!.ConsumeTotal(_def.TaskItemType!, _def.TaskItemCount);
-        }
-
+        // cc-P15: nothing is consumed to join; the tribute belongs to the Apprentice task.
         ClusterFGuildSystem.Join(pm, _def);
         pm.SendMessage(0x44, $"Welcome to the Society of Smiths, {pm.Name}. The forge awaits.");
         pm.PlaySound(0x57);
@@ -328,7 +322,7 @@ public class SmithGuildmasterGump : Gump
         pm.SendGump(new SmithGuildmasterGump(pm, _def, _acct, _npc));
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // -- Helpers ---------------------------------------------------------------
 
     private static string GetRank(int standing)
     {
@@ -348,7 +342,7 @@ public class SmithGuildmasterGump : Gump
         {
             if (item is ReinforcedHammerOfHephaestus t2)
                 return t2.Exhausted
-                    ? "Hammer of Hephaestus Upgrades (T2 — Exhausted)"
+                    ? "Hammer of Hephaestus Upgrades (T2 - Exhausted)"
                     : "Hammer of Hephaestus Upgrades (T2)";
         }
         // Then T1
@@ -356,14 +350,14 @@ public class SmithGuildmasterGump : Gump
         {
             if (item is HammerOfHephaestus t1)
                 return t1.Exhausted
-                    ? "Hammer of Hephaestus Upgrades (T1 — Exhausted)"
+                    ? "Hammer of Hephaestus Upgrades (T1 - Exhausted)"
                     : "Hammer of Hephaestus Upgrades (T1)";
         }
         return "Hammer of Hephaestus Upgrades";
     }
 }
 
-// ── Smithing Seals info gump ──────────────────────────────────────────────────
+// -- Smithing Seals info gump --------------------------------------------------
 
 public class SmithSealsInfoGump : Gump
 {
@@ -382,12 +376,12 @@ public class SmithSealsInfoGump : Gump
             "<BASEFONT COLOR=#CCCCCC>" +
             "Smithing Seals are the Society of Smiths guild currency.<BR><BR>" +
             "You earn Seals by:<BR>" +
-            "  • Completing Bulk Orders (request from the Guildmaster)<BR>" +
-            "  • Completing Smith work orders<BR><BR>" +
+            "  * Completing Bulk Orders (request from the Guildmaster)<BR>" +
+            "  * Completing Smith work orders<BR><BR>" +
             "Higher-tier BODs award more Seals. Coloured-metal orders " +
             "are worth significantly more than plain iron. Exceptional " +
             "requirements increase both Seals and skill check rewards.<BR><BR>" +
-            "Seals may be spent on guild rewards as your rank grows — " +
+            "Seals may be spent on guild rewards as your rank grows - " +
             "including the Hammer of Hephaestus restoration, field forge " +
             "components, and more." +
             "</BASEFONT>",

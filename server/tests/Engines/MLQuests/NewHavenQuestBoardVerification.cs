@@ -286,9 +286,23 @@ public class NewHavenQuestBoardVerification
             .ToList();
     }
 
+    // cc-P15: a double-click opens the Guild Directory, the board's first page; the menu is its
+    // "Training quests" tab, pressed here the way a client presses it.
     private static NewHavenQuestPickerGump OpenMenu(NewHavenQuestBoard board, PlayerMobile pm)
     {
         board.OnDoubleClick(pm);
+        var directory = Open<GuildProgressGump>(pm);
+        Assert.NotNull(directory);
+
+        if (pm.NetState != null)
+        {
+            Press(pm.NetState, directory, GuildProgressGump.BtnTrainingQuests);
+        }
+        else
+        {
+            board.OpenTrainingQuests(pm);
+        }
+
         return Open<NewHavenQuestPickerGump>(pm);
     }
 

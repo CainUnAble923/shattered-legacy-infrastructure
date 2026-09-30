@@ -12,11 +12,11 @@ namespace Server;
 ///
 /// Current institutions:
 ///   - Miners' Compact Liaison at Trammel 3510, 2748, Z=0
-///   - Survey Archivist at Trammel 3516, 2747, Z=1 (temporary — mine encampment TBD)
+///   - Survey Archivist at Trammel 3516, 2747, Z=1 (temporary - mine encampment TBD)
 ///   - Outriders' Guildmaster at Trammel 3524, 2574, Z=7 (New Haven stables area)
 ///   - Foresters' Guildmaster at Trammel 3441, 2637, Z=28 (New Haven carpenter shop area)
 ///   - Artificers' Guildmaster at TerMur 797, 3431, Z=-10 (Royal City enchanter district)
-///   - Artificers' Guildmaster at Trammel 3490, 2627, Z=0 (New Haven mage school area)
+///   (The New Haven Artificers' Guildmaster moved to ClusterFGuildHallSeeder in cc-P15.)
 ///
 /// Seeding is duplicate-safe: each NPC type is only spawned if no instance
 /// of that type exists anywhere in the world. Use [ClusterFSeedInstitutions
@@ -46,7 +46,7 @@ public static class ClusterFInstitutionSeeder
             label: "Miners' Compact Liaison",
             verbose);
 
-        // Temporary location — near the south mountain mine entrance.
+        // Temporary location - near the south mountain mine entrance.
         // Relocate to the mine encampment when that area is built.
         SeedNpc(
             typeof(SurveyArchivist),
@@ -57,7 +57,7 @@ public static class ClusterFInstitutionSeeder
             label: "Survey Archivist",
             verbose);
 
-        // Sanitation Warden — seated at the civic hall table in New Haven.
+        // Sanitation Warden - seated at the civic hall table in New Haven.
         SeedNpc(
             typeof(SanitationWarden),
             () => new SanitationWarden(),
@@ -67,7 +67,7 @@ public static class ClusterFInstitutionSeeder
             label: "Sanitation Warden",
             verbose);
 
-        // Outriders' Guildmaster — New Haven stables area.
+        // Outriders' Guildmaster - New Haven stables area.
         SeedNpc(
             typeof(OutridersGuildmaster),
             () => new OutridersGuildmaster(),
@@ -77,7 +77,7 @@ public static class ClusterFInstitutionSeeder
             label: "Outriders' Guildmaster",
             verbose);
 
-        // Foresters' Guildmaster — New Haven wood yard.
+        // Foresters' Guildmaster - New Haven wood yard.
         SeedNpc(
             typeof(ForestersGuildmaster),
             () => new ForestersGuildmaster(),
@@ -87,7 +87,7 @@ public static class ClusterFInstitutionSeeder
             label: "Foresters' Guildmaster",
             verbose);
 
-        // Artificers' Guildmaster — Royal City enchanter district (Ter Mur).
+        // Artificers' Guildmaster - Royal City enchanter district (Ter Mur).
         SeedNpc(
             typeof(ArtificersGuildmaster),
             () => new ArtificersGuildmaster(),
@@ -97,15 +97,10 @@ public static class ClusterFInstitutionSeeder
             label: "Artificers' Guildmaster (Ter Mur)",
             verbose);
 
-        // Artificers' Guildmaster — New Haven mage school area.
-        SeedNpc(
-            typeof(ArtificersGuildmaster),
-            () => new ArtificersGuildmaster(),
-            x: 3490, y: 2627, z: 0,
-            Direction.South,
-            map: Map.Trammel,
-            label: "Artificers' Guildmaster (New Haven)",
-            verbose);
+        // The New Haven Artificers' Guildmaster is ClusterFGuildHallSeeder's since cc-P15: it stood in the
+        // water at 3490, 2627, 0 and moves into the Magery School. It left this list rather than changing
+        // tile here, because this seeder runs on every world load and would place a second one beside
+        // the Magery School while the old one still stood more than 15 tiles away.
     }
 
     private static void SeedNpc(Type type, Func<Mobile> factory,
@@ -122,7 +117,7 @@ public static class ClusterFInstitutionSeeder
                 if (Math.Abs(mobile.X - x) <= 15 && Math.Abs(mobile.Y - y) <= 15)
                 {
                     if (verbose)
-                        Console.WriteLine($"[ClusterFInstitutionSeeder] {label} already exists at {mobile.Location} — skipping.");
+                        Console.WriteLine($"[ClusterFInstitutionSeeder] {label} already exists at {mobile.Location} - skipping.");
                     return;
                 }
             }

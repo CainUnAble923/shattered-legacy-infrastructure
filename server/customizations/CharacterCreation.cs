@@ -694,12 +694,42 @@ public static partial class CharacterCreation
         }
     }
 
+    // cc-P15: a guild hands out the creation kit for its skills when a character joins. The kit is
+    // this file's AddSkillItems, not a copy of it. While a guild call is in progress every item the
+    // kit makes is recorded here, and nothing the character already wears is deleted.
+    [ThreadStatic]
+    private static List<Item> _guildKitItems;
+
+    /// <summary>
+    /// Hands <paramref name="m" /> the character-creation items for one skill, exactly as picking
+    /// that skill at creation does (race-aware), and returns every item made. Unlike creation it
+    /// never removes worn pants or shoes: a slot that is taken sends the new item to the pack.
+    /// </summary>
+    public static List<Item> GiveSkillItems(Mobile m, SkillName skill)
+    {
+        var made = new List<Item>();
+        _guildKitItems = made;
+
+        try
+        {
+            m.AddSkillItems(skill);
+        }
+        finally
+        {
+            _guildKitItems = null;
+        }
+
+        return made;
+    }
+
     private static void EquipItem(Mobile m, Item item, bool mustEquip = false)
     {
         if (item == null)
         {
             return;
         }
+
+        _guildKitItems?.Add(item);
 
         if (!Core.AOS && item.LootType == LootType.Regular)
         {
@@ -725,6 +755,8 @@ public static partial class CharacterCreation
 
     private static void PackItem(this Mobile m, Item item)
     {
+        _guildKitItems?.Add(item);
+
         if (!Core.AOS && item.LootType == LootType.Regular)
         {
             item.LootType = LootType.Newbied;
@@ -1008,8 +1040,11 @@ public static partial class CharacterCreation
                 {
                     if (elfOrHuman)
                     {
-                        // Delete pants
-                        m.FindItemOnLayer(Layer.OuterLegs)?.Delete();
+                        // Delete pants (at creation only: a guild kit never deletes what is worn)
+                        if (_guildKitItems == null)
+                        {
+                            m.FindItemOnLayer(Layer.OuterLegs)?.Delete();
+                        }
 
                         EquipItem(m, new Hakama());
                         EquipItem(m, new Kasa());
@@ -1209,8 +1244,11 @@ public static partial class CharacterCreation
                 {
                     if (elfOrHuman)
                     {
-                        // Delete pants
-                        m.FindItemOnLayer(Layer.OuterLegs)?.Delete();
+                        // Delete pants (at creation only: a guild kit never deletes what is worn)
+                        if (_guildKitItems == null)
+                        {
+                            m.FindItemOnLayer(Layer.OuterLegs)?.Delete();
+                        }
 
                         EquipItem(m, new Hakama(0x2C3)); // Only ninjas get the hued one.
                         EquipItem(m, new Kasa());
@@ -1285,8 +1323,11 @@ public static partial class CharacterCreation
                 {
                     if (elfOrHuman)
                     {
-                        // Delete shoes
-                        m.FindItemOnLayer(Layer.Shoes)?.Delete();
+                        // Delete shoes (at creation only: a guild kit never deletes what is worn)
+                        if (_guildKitItems == null)
+                        {
+                            m.FindItemOnLayer(Layer.Shoes)?.Delete();
+                        }
 
                         var hue = Utility.RandomYellowHue();
                         EquipItem(m, elf ? new ElvenBoots(hue) : new Boots(hue));
