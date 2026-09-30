@@ -215,7 +215,6 @@ namespace Server
                     lines.Add(elsewhere != null
                         ? $"{move.TypeName}: none near its old spot {move.From}; {Describe(elsewhere)} stands at {elsewhere.Location}, left alone."
                         : $"{move.TypeName}: none near its old spot {move.From}; nothing moved and nothing created.");
-                    if (elsewhere == null && !dryRun) { var m = (Mobile)Activator.CreateInstance(type); Place(m, move); } // P16-BREAK
                     continue;
                 }
 

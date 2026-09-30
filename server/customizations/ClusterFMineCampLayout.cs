@@ -30,7 +30,7 @@ public static class ClusterFMineCampLayout
         new("deco", 0x1BEF, "iron ingot%s", 3496, 2742, 6),
         new("deco", 0x0E77, "barrel", 3497, 2742, 5),
         new("deco", 0x0E31, "brazier", 3499, 2742, 2),
-        new("deco", 0x0E3F, "crate", 3498, 2744, 4), // P16-BREAK
+        new("deco", 0x0E3F, "crate", 3498, 2743, 4),
         new("deco", 0x0E86, "pickaxe", 3498, 2743, 7),
         new("deco", 0x19B8, "iron ore", 3499, 2743, 3),
         new("deco", 0x19BA, "iron ore", 3500, 2743, 3),
