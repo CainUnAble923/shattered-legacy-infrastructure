@@ -13,7 +13,7 @@ namespace Server.Mobiles;
 /// Provides players with information about the Miners' Compact guild and allows
 /// them to begin the join flow, submit work orders, and request restorations.
 ///
-/// Location: Trammel 3510, 2748, Z=0 (south mountain mine area)
+/// Location: Trammel 3498, 2744, Z=4 (mine camp, at the Miners' Compact tent's opening; cc-P16)
 /// Seeded by: ClusterFInstitutionSeeder
 /// </summary>
 [SerializationGenerator(0, false)]

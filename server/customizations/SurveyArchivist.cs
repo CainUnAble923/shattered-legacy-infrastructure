@@ -7,11 +7,10 @@ using Server.Items;
 namespace Server.Mobiles;
 
 /// <summary>
-/// Miners' Compact Survey Archivist — accepts ore discovery reports from players
+/// Miners' Compact Survey Archivist - accepts ore discovery reports from players
 /// who carry a Prospector's Logbook and grants Compact Standing and Mining Vouchers.
 ///
-/// Location: Trammel 3516, 2747, Z=1 (temporary — near south mountain mine entrance;
-///           to be relocated when the mine encampment is built)
+/// Location: Trammel 3496, 2754, Z=4 (mine camp, at the Survey Archivist's tent opening; cc-P16)
 /// Seeded by: ClusterFInstitutionSeeder
 /// </summary>
 [SerializationGenerator(0, false)]
@@ -33,7 +32,7 @@ public partial class SurveyArchivist : BaseCreature
         Fame  = 0;
         Karma = 2000;
 
-        // Scholar's attire — ink-stained robes, field boots
+        // Scholar's attire - ink-stained robes, field boots
         AddItem(new Robe         { Movable = false, Hue = 0x0455 }); // Deep slate blue
         AddItem(new Boots        { Movable = false, Hue = 0x0901 });
 
@@ -47,7 +46,7 @@ public partial class SurveyArchivist : BaseCreature
     public override bool ClickTitle      => true;
     public override bool ShowFameTitle   => false;
 
-    // ── Interaction ───────────────────────────────────────────────────────────
+    // -- Interaction -----------------------------------------------------------
 
     public override void OnDoubleClick(Mobile from)
     {
@@ -82,9 +81,9 @@ public partial class SurveyArchivist : BaseCreature
         }
     }
 
-    // ── Ambient speech ────────────────────────────────────────────────────────
+    // -- Ambient speech --------------------------------------------------------
 
-    public override bool OnBeforeDeath() => false; // Invulnerable — never dies
+    public override bool OnBeforeDeath() => false; // Invulnerable - never dies
 
     private void Deserialize(IGenericReader reader, int version) { }
 }

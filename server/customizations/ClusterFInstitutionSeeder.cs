@@ -11,16 +11,21 @@ namespace Server;
 /// New Haven quest NPCs managed by ClusterFNewHavenSeeder.
 ///
 /// Current institutions:
-///   - Miners' Compact Liaison at Trammel 3510, 2748, Z=0
-///   - Survey Archivist at Trammel 3516, 2747, Z=1 (temporary - mine encampment TBD)
+///   - Miners' Compact Liaison at Trammel 3498, 2744, Z=4 (mine camp, at its tent's opening)
+///   - Survey Archivist at Trammel 3496, 2754, Z=4 (mine camp, at its tent's opening)
 ///   - Outriders' Guildmaster at Trammel 3524, 2574, Z=7 (New Haven stables area)
 ///   - Foresters' Guildmaster at Trammel 3441, 2637, Z=28 (New Haven carpenter shop area)
 ///   - Artificers' Guildmaster at TerMur 797, 3431, Z=-10 (Royal City enchanter district)
 ///   (The New Haven Artificers' Guildmaster moved to ClusterFGuildHallSeeder in cc-P15.)
 ///
-/// Seeding is duplicate-safe: each NPC type is only spawned if no instance
-/// of that type exists anywhere in the world. Use [ClusterFSeedInstitutions
-/// to manually trigger seeding or check status.
+/// Seeding is duplicate-safe: an NPC is only spawned if no instance of its type
+/// stands within 15 tiles of its tile, or of its old tile when it has one. Use
+/// [ClusterFSeedInstitutions to manually trigger seeding or check status.
+///
+/// This seeder runs on every world load, on live and on test. A changed tile
+/// must never relocate anything here: the old tile goes in wasAt, so an NPC
+/// still standing near it counts as present and is left alone, and the move is
+/// a command Chase runs (cc-P16: [ClusterFMoveMineCampNpcs).
 /// </summary>
 public static class ClusterFInstitutionSeeder
 {
@@ -35,27 +40,30 @@ public static class ClusterFInstitutionSeeder
         Seed(verbose: false);
     }
 
-    private static void Seed(bool verbose)
+    internal static void Seed(bool verbose)
     {
         SeedNpc(
             typeof(MinersCompactLiaison),
             () => new MinersCompactLiaison(),
-            x: 3510, y: 2748, z: 0,
-            Direction.South,
+            x: 3498, y: 2744, z: 4,
+            Direction.East,
             map: Map.Trammel,
             label: "Miners' Compact Liaison",
-            verbose);
+            verbose,
+            wasAt: new Point3D(3510, 2748, 0));
 
-        // Temporary location - near the south mountain mine entrance.
-        // Relocate to the mine encampment when that area is built.
+        // Mine camp tents (cc-P16, design/mine-camp-tents/layout.json). The Archivist's new tile is 20
+        // tiles from its old one, outside the 15-tile duplicate check, so without wasAt a world that
+        // still has her at 3516, 2747 would get a second Archivist here.
         SeedNpc(
             typeof(SurveyArchivist),
             () => new SurveyArchivist(),
-            x: 3516, y: 2747, z: 1,
-            Direction.West,
+            x: 3496, y: 2754, z: 4,
+            Direction.East,
             map: Map.Trammel,
             label: "Survey Archivist",
-            verbose);
+            verbose,
+            wasAt: new Point3D(3516, 2747, 1));
 
         // Sanitation Warden - seated at the civic hall table in New Haven.
         SeedNpc(
@@ -104,7 +112,7 @@ public static class ClusterFInstitutionSeeder
     }
 
     private static void SeedNpc(Type type, Func<Mobile> factory,
-        int x, int y, int z, Direction dir, Map map, string label, bool verbose)
+        int x, int y, int z, Direction dir, Map map, string label, bool verbose, Point3D? wasAt = null)
     {
         // Duplicate-safe: check for an existing instance of this type within
         // 15 tiles of the target location on the same map. This allows the same
@@ -114,7 +122,8 @@ public static class ClusterFInstitutionSeeder
         {
             if (!mobile.Deleted && mobile.GetType() == type && mobile.Map == map)
             {
-                if (Math.Abs(mobile.X - x) <= 15 && Math.Abs(mobile.Y - y) <= 15)
+                if (Math.Abs(mobile.X - x) <= 15 && Math.Abs(mobile.Y - y) <= 15 ||
+                    wasAt is { } old && Math.Abs(mobile.X - old.X) <= 15 && Math.Abs(mobile.Y - old.Y) <= 15)
                 {
                     if (verbose)
                         Console.WriteLine($"[ClusterFInstitutionSeeder] {label} already exists at {mobile.Location} - skipping.");

@@ -207,7 +207,7 @@ public static class GuildLocations
         new("arcane",     "New Haven Magery School",          typeof(MageGuildmaster),                 GuildLocation.TrammelIndex, 3486, 2494, 52, true),
         new("healers",    "Healer's Hall",                    typeof(HealerGuildmaster),               GuildLocation.TrammelIndex, 3463, 2558, 36, false),
         new("rangers",    "New Haven stables",                typeof(OutridersGuildmaster),            GuildLocation.TrammelIndex, 3524, 2574, 7,  false),
-        new("mining",     "Mine camp, south mountains",       typeof(MinersCompactLiaison),            GuildLocation.TrammelIndex, 3510, 2748, 0,  false),
+        new("mining",     "Mine camp, south mountains",       typeof(MinersCompactLiaison),            GuildLocation.TrammelIndex, 3498, 2744, 4,  false, Direction.East),
         new("smithing",   "Forge and Anvil",                  typeof(BlacksmithGuildmaster),           GuildLocation.TrammelIndex, 3469, 2536, 41, false),
         new("tinkers",    "Springs N Things",                 typeof(TinkerGuildmaster),               GuildLocation.TrammelIndex, 3458, 2524, 53, false),
         new("thieves",    "Bountiful Harvest Inn, back room", typeof(ThiefGuildmaster),                GuildLocation.TrammelIndex, 3495, 2515, 27, true),
