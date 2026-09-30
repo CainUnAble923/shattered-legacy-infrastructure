@@ -36,6 +36,7 @@
 //      everything at the click; do not remove that on the strength of a gump-system check.
 
 using System;
+using System.Collections.Generic;
 using ModernUO.Serialization;
 using Server.Engines.MLQuests.Definitions;
 using Server.Engines.MLQuests.Objectives;
@@ -108,7 +109,7 @@ public partial class NewHavenQuestBoard : QuestGiverItem
         list.Add("Your whole skill counts, not just what you gain after. At 45, you only need 5 more.");
         list.Add("The number in your skill list is what counts, and magic items raise it. Take quests first.");
         list.Add("Double-click for the Guild Directory. All 26 quests are its second tab.");
-        list.Add("Bring them back to this board, not the trainer. You can carry 10 quests in all.");
+        list.Add("Turn them in here or to their trainer. You can carry 10 quests in all.");
     }
 
     // QuestGiverItem requires IsChildOf(from.Backpack), which a board standing in the town
@@ -159,7 +160,7 @@ public partial class NewHavenQuestBoard : QuestGiverItem
         Available,      // not held, and the stock pick would offer it
         InProgress,     // held from this board, objective not met
         ReadyToTurnIn,  // held from this board, objective met or reward waiting
-        TakenElsewhere, // held, but from a trainer: it goes back to them, not here
+        TakenElsewhere, // held from a giver that is neither this board nor the quest's trainer
         Done,           // turned in; OneTimeOnly
         LockedAtFifty,  // the objective refuses: the skill is at 50 or more
         NoRoom,         // would be on offer, but the player already holds MaxConcurrentQuests
@@ -176,8 +177,9 @@ public partial class NewHavenQuestBoard : QuestGiverItem
 
         if (instance != null)
         {
-            // FindQuest step 1 (MLQuestSystem.cs:327-331), private upstream, restated.
-            if (instance.Quester != this && (quest.IsEscort || instance.QuesterType != GetType()))
+            // FindQuest step 1 (MLQuestSystem.cs:327-334), private upstream, restated, and widened by
+            // PT-03: a quest taken from its trainer is turned in here too.
+            if (instance.Quester != this && !IsInterchangeable(instance, quest))
             {
                 return RowState.TakenElsewhere;
             }
@@ -277,6 +279,64 @@ public partial class NewHavenQuestBoard : QuestGiverItem
 
                     break;
                 }
+        }
+    }
+
+    // cc-P17 PT-03 (Chase, 2026-09-30; D-90): the board and the quest's trainer are interchangeable
+    // ends of one quest. A quest taken at either is turned in at either, for the same reward, paid
+    // once: the board and the trainer hold the same MLQuest object (Register, above), a player holds
+    // one instance of it, and ClaimRewards removes that instance and records the quest done
+    // (MLQuestEntry.cs:354-443). Nothing new is saved; an instance keeps the quester it was taken
+    // from (MLQuestEntry.cs:514-529), so a quest held before PT-03 turns in where it did then.
+    public static bool IsInterchangeable(MLQuestInstance instance, MLQuest quest)
+    {
+        if (quest.IsEscort || instance.QuesterType == null)
+        {
+            return false;
+        }
+
+        return instance.QuesterType == typeof(NewHavenQuestBoard) ||
+               BoardQuests.Contains(quest) && MLQuestSystem.FindQuestList(instance.QuesterType).Contains(quest);
+    }
+
+    private static List<MLQuest> BoardQuests => MLQuestSystem.FindQuestList(typeof(NewHavenQuestBoard));
+
+    // A trainer's double-click: a board quest this trainer offers is pointed at the trainer for the
+    // length of the stock double-click, so the stock FindQuest step 1 finds it (MLQuestSystem.cs:
+    // 333-334; pinned has no hook for the match), then pointed back at the board if it is still
+    // held. Pointing it back keeps the save as it was and keeps the quest off the trainer's
+    // deletion path (MLQuestSystem.HandleDeletion(IQuestGiver), :640-650).
+    public static void TrainerDoubleClick(BaseCreature trainer, Mobile from, Action stock)
+    {
+        var borrowed = new List<(MLQuestInstance Instance, IQuestGiver Board)>();
+
+        if (MLQuestSystem.Enabled && from is PlayerMobile pm && MLQuestSystem.GetContext(pm) is { } context)
+        {
+            foreach (var quest in trainer.MLQuests)
+            {
+                var instance = context.FindInstance(quest);
+
+                if (instance?.Quester is NewHavenQuestBoard board && IsInterchangeable(instance, quest))
+                {
+                    instance.Quester = trainer;
+                    borrowed.Add((instance, board));
+                }
+            }
+        }
+
+        try
+        {
+            stock();
+        }
+        finally
+        {
+            foreach (var (instance, board) in borrowed)
+            {
+                if (!instance.Removed && instance.Quester == trainer && !board.Deleted)
+                {
+                    instance.Quester = board;
+                }
+            }
         }
     }
 

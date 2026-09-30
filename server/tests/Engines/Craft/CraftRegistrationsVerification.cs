@@ -323,7 +323,7 @@ public class CraftRegistrationsVerification
         var pairs = new (CraftSystem Live, Type SystemType, Type[] Types)[]
         {
             (Blacksmithy(), typeof(DefBlacksmithy), new[] { typeof(GargishPlateChest), typeof(GargishKatana), typeof(SmallPlateShield), typeof(PowderedIron) }),
-            (Tailoring(), typeof(DefTailoring), new[] { typeof(LeatherTalons) }),
+            (Tailoring(), typeof(DefTailoring), new[] { typeof(LeatherTalons), typeof(GargishClothChestType1), typeof(GargishClothKiltType2) }),
             (Tinkering(), typeof(DefTinkering), new[] { typeof(GargishRing), typeof(GargishEarrings), typeof(BlueDiamondRing), typeof(VoidOrb) }),
             (Carpentry(), typeof(DefCarpentry), new[] { typeof(GargishGnarledStaff), typeof(AudChar) })
         };
@@ -385,5 +385,59 @@ public class CraftRegistrationsVerification
         ring.Delete();
         tools.Delete();
         tinker.Delete();
+    }
+
+    // cc-P17 PT-08: ServUO's gargish cloth armour (DefTailoring.cs:711-725), on pinned's own types, and a gargoyle tailor
+    // makes a chest and wears it. PT-10: like ServUO, each male and female pair shares one name.
+    [Fact]
+    public void TailoringCraftsServUOsEightGargishClothPiecesAndAGargoyleWearsOne()
+    {
+        var tailoring = Tailoring();
+        var cloth = typeof(Cloth);
+
+        AssertRows(
+            tailoring,
+            new Row[]
+            {
+                new(typeof(GargishClothArmsType1), 1111748, 1021027, 87.1, 137.1, cloth, 8),
+                new(typeof(GargishClothChestType1), 1111748, 1021029, 94.0, 144.0, cloth, 8),
+                new(typeof(GargishClothLegsType1), 1111748, 1021033, 91.2, 141.2, cloth, 10),
+                new(typeof(GargishClothKiltType1), 1111748, 1021031, 82.9, 132.9, cloth, 6),
+                new(typeof(GargishClothArmsType2), 1111748, 1021027, 87.1, 137.1, cloth, 8),
+                new(typeof(GargishClothChestType2), 1111748, 1021029, 94.0, 144.0, cloth, 8),
+                new(typeof(GargishClothLegsType2), 1111748, 1021033, 91.2, 141.2, cloth, 10),
+                new(typeof(GargishClothKiltType2), 1111748, 1021031, 82.9, 132.9, cloth, 6),
+            }
+        );
+
+        foreach (var (type, _, _, _, _) in TailoringCraftRegistrations.GargishClothArmour)
+        {
+            Assert.Equal(1044287, (int)tailoring.CraftItems.SearchFor(type).Resources[0].Message);
+        }
+
+        // The layer comes from the tile row when the piece is built (BaseArmor.cs:166), so the row goes in first.
+        using var tiles = TestTileRows.Seed(TileRows.GargishClothChestType1);
+
+        var tailor = new PlayerMobile { Player = true, Race = Race.Gargoyle };
+        tailor.RawStr = tailor.RawDex = tailor.RawInt = 50; // the chest wants 25 strength (GargishClothChestType1.cs:23)
+        tailor.AddItem(new Backpack());
+        tailor.MoveToWorld(new Point3D(1400, 1722, 0), Map.Trammel);
+        tailor.Skills.Tailoring.Base = 150.0; // chance (150 - 94) / (144 - 94) > 1: the craft cannot fail
+
+        var kit = new SewingKit();
+        tailor.Backpack.DropItem(kit);
+        tailor.Backpack.DropItem(new Cloth(8));
+
+        var entry = tailoring.CraftItems.SearchFor(typeof(GargishClothChestType1));
+        entry.CompleteCraft(1, false, tailor, tailoring, cloth, kit, null);
+
+        var chest = tailor.Backpack.FindItemByType<GargishClothChestType1>();
+        Assert.NotNull(chest);
+        Assert.Equal(0, tailor.Backpack.GetAmount(cloth));
+
+        Assert.True(tailor.EquipItem(chest));
+        Assert.Same(chest, tailor.FindItemOnLayer(Layer.InnerTorso));
+
+        tailor.Delete();
     }
 }

@@ -29,6 +29,7 @@ using Server.Accounting.Security;
 using Server.Engines.MLQuests;
 using Server.Engines.MLQuests.Definitions;
 using Server.Engines.MLQuests.Items;
+using Server.Gumps;
 using Server.Items;
 using Server.Misc;
 using Server.Mobiles;
@@ -330,6 +331,54 @@ public class GuildStarterPathVerification
         finally
         {
             Cleanup(account, recaro);
+        }
+    }
+
+    // cc-P17 PT-03: the board and the trainer are interchangeable ends of a quest. One done through a
+    // guild item, whether it was held from the board or not held at all, pays at neither end.
+    [Fact]
+    public void AQuestDoneThroughAGuildItemPaysAtNeitherEnd()
+    {
+        var account = NewAccount();
+        var pm = NewCharacter(account, 0);
+        var ns = Server.Tests.Network.PacketTestUtilities.CreateTestNetState();
+        pm.NetState = ns;
+        ns.Mobile = pm;
+        pm.Skills[SkillName.Fencing].BaseFixedPoint = 300;
+
+        var warriors = Guild("warriors");
+        var fencing = MLQuestSystem.FindQuest(typeof(EnGuarde));
+        var board = new NewHavenQuestBoard();
+        board.MoveToWorld(new Point3D(Spot.X + 1, Spot.Y, Spot.Z), Map.Trammel);
+        var recaro = new Recaro();
+        recaro.MoveToWorld(new Point3D(Spot.X, Spot.Y + 1, Spot.Z), Map.Trammel);
+
+        try
+        {
+            ClusterFGuildSystem.Join(pm, warriors);
+
+            // Held from the board, then the guild hands the item over.
+            fencing.OnAccept(board, pm);
+            Assert.True(ClusterFGuildStarter.TakeStarterItem(pm, warriors, typeof(EnGuarde), out var said), said);
+            Assert.Equal(1, CountOf<RecarosRiposte>(pm));
+
+            // Skill met, as if the player went on training: still nothing at either end.
+            pm.Skills[SkillName.Fencing].BaseFixedPoint = 500;
+            var context = MLQuestSystem.GetContext(pm);
+            Assert.Equal(NewHavenQuestBoard.RowState.Done, board.GetRowState(pm, context, fencing, out _));
+
+            board.OnPick(pm, typeof(EnGuarde));
+            recaro.OnDoubleClick(pm);
+
+            Assert.False(pm.HasGump<Server.Engines.MLQuests.Gumps.QuestOfferGump>());
+            Assert.False(pm.HasGump<Server.Engines.MLQuests.Gumps.QuestReportBackGump>());
+            Assert.False(pm.HasGump<Server.Engines.MLQuests.Gumps.QuestRewardGump>());
+            Assert.Null(context.FindInstance(fencing));
+            Assert.Equal(1, CountOf<RecarosRiposte>(pm));
+        }
+        finally
+        {
+            Cleanup(account, recaro, board);
         }
     }
 

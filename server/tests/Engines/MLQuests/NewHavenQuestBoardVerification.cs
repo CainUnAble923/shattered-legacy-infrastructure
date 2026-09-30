@@ -507,7 +507,7 @@ public class NewHavenQuestBoardVerification
 
         var expected = new Dictionary<MLQuest, RowState>
         {
-            [fencing] = RowState.TakenElsewhere,
+            [fencing] = RowState.InProgress, // cc-P17 PT-03: a trainer's quest is the board's to take back too
             [mining] = RowState.InProgress,
             [magery] = RowState.ReadyToTurnIn,
             [smithing] = RowState.Done, // done wins over past 50: its skill is at 50 too
@@ -719,15 +719,16 @@ public class NewHavenQuestBoardVerification
         }
         Assert.Empty(context.QuestInstances);
 
-        // The quest taken from a trainer after the menu was sent: no second instance.
+        // The quest taken from a trainer after the menu was sent: no second instance. Since
+        // cc-P17 PT-03 the board shows the trainer's quest's progress, and it stays the trainer's.
         var recaro = new Recaro();
         recaro.MoveToWorld(new Point3D(BoardSpot.X, BoardSpot.Y + 1, BoardSpot.Z), Map.Trammel);
-        var before = Mark(ns);
         PressAfter(() => fencing.OnAccept(recaro, pm));
         Assert.False(pm.HasGump<QuestOfferGump>());
+        Assert.True(pm.HasGump<QuestConversationGump>());
         Assert.Single(context.QuestInstances, i => i.Quest == fencing);
         Assert.Equal(typeof(Recaro), context.FindInstance(fencing).QuesterType);
-        Assert.True(SentText(ns, before, "You took that quest from a trainer."));
+        pm.CloseGump<QuestConversationGump>();
         context.FindInstance(fencing).Cancel();
         recaro.Delete();
 
@@ -807,8 +808,10 @@ public class NewHavenQuestBoardVerification
         Cleanup(pm, board);
     }
 
+    // Pinned's own path, unchanged: MLQuestSystem.OnDoubleClick alone does not match a board quest
+    // to its trainer. cc-P17 PT-03 goes around it in the trainer's double-click (the facts below).
     [Fact]
-    public void AQuestTakenAtTheBoardIsNotTheTrainersToTakeBack()
+    public void TheStockPathAloneDoesNotMatchABoardQuestToItsTrainer()
     {
         var board = PlaceBoard();
         var pm = Online(NewPlayer(500, SkillName.Fencing), out var ns);
@@ -820,7 +823,7 @@ public class NewHavenQuestBoardVerification
 
         fencing.OnAccept(board, pm);
 
-        // The quest's own text says "return to Recaro". Recaro, on the stock path, has
+        // The quest's own text says "return to Recaro". Recaro, on the stock path alone, has
         // nothing for a player already doing his only quest.
         var before = Mark(ns);
         MLQuestSystem.OnDoubleClick(recaro, pm);
@@ -841,6 +844,173 @@ public class NewHavenQuestBoardVerification
 
         recaro.Delete();
         Cleanup(pm);
+    }
+
+    // ---------------------------------------------------------------- cc-P17 PT-03
+    //
+    // Chase, 2026-09-30 (D-90): the board and the quest's trainer are interchangeable. A quest taken
+    // at either is turned in at either, for the same reward, paid once. The quest done through a
+    // P15 guild item is GuildStarterPathVerification.AQuestDoneThroughAGuildItemPaysAtNeitherEnd.
+
+    private static T Trainer<T>(T trainer) where T : BaseCreature
+    {
+        trainer.MoveToWorld(new Point3D(BoardSpot.X, BoardSpot.Y + 1, BoardSpot.Z), Map.Trammel);
+        return trainer;
+    }
+
+    private static void TurnIn(NetState ns, PlayerMobile pm)
+    {
+        var report = Open<QuestReportBackGump>(pm);
+        Assert.NotNull(report);
+        Press(ns, report, 4);
+        var reward = Open<QuestRewardGump>(pm);
+        Assert.NotNull(reward);
+        Press(ns, reward, 1);
+    }
+
+    private static void CloseQuestGumps(PlayerMobile pm)
+    {
+        pm.CloseGump<QuestOfferGump>();
+        pm.CloseGump<QuestConversationGump>();
+        pm.CloseGump<QuestReportBackGump>();
+        pm.CloseGump<QuestRewardGump>();
+    }
+
+    // Done: the board's row says so, and neither the board nor the trainer opens anything for it.
+    private static void PaysNothingAtEitherEnd(NewHavenQuestBoard board, BaseCreature trainer, PlayerMobile pm, MLQuest quest)
+    {
+        CloseQuestGumps(pm);
+        var context = MLQuestSystem.GetContext(pm);
+        Assert.Equal(RowState.Done, board.GetRowState(pm, context, quest, out _));
+
+        board.OnPick(pm, quest.GetType());
+        trainer.OnDoubleClick(pm);
+
+        Assert.False(pm.HasGump<QuestOfferGump>());
+        Assert.False(pm.HasGump<QuestReportBackGump>());
+        Assert.False(pm.HasGump<QuestRewardGump>());
+        Assert.Null(context.FindInstance(quest));
+    }
+
+    [Fact]
+    public void AQuestTakenAtTheBoardIsTurnedInToItsTrainerAndPaysOnce()
+    {
+        var board = PlaceBoard();
+        var pm = Online(NewPlayer(500, SkillName.Fencing), out var ns);
+        var fencing = Quest<EnGuarde>();
+        var recaro = Trainer(new Recaro());
+
+        fencing.OnAccept(board, pm);
+        var context = MLQuestSystem.GetContext(pm);
+        var instance = context.FindInstance(fencing);
+
+        // Not met yet: Recaro shows its progress, and the quest stays the board's (nothing saved changes).
+        recaro.OnDoubleClick(pm);
+        Assert.True(pm.HasGump<QuestConversationGump>());
+        Assert.Same(board, instance.Quester);
+        CloseQuestGumps(pm);
+
+        // Met: Recaro takes the report and pays.
+        pm.Skills[SkillName.Fencing].BaseFixedPoint = 500;
+        recaro.OnDoubleClick(pm);
+        TurnIn(ns, pm);
+
+        Assert.Equal(1, pm.Backpack.GetAmount(typeof(RecarosRiposte)));
+        Assert.True(context.HasDoneQuest(fencing));
+
+        // Then the other end, and this end again: nothing more.
+        PaysNothingAtEitherEnd(board, recaro, pm, fencing);
+        Assert.Equal(1, pm.Backpack.GetAmount(typeof(RecarosRiposte)));
+
+        recaro.Delete();
+        Cleanup(pm, board);
+    }
+
+    [Fact]
+    public void AQuestTakenFromTheTrainerIsTurnedInAtTheBoardAndPaysOnce()
+    {
+        var board = PlaceBoard();
+        var pm = Online(NewPlayer(500, SkillName.Mining), out var ns);
+        var mining = Quest<TheDeluciansLostMine>();
+        var jacob = Trainer(new JacobWaltz());
+
+        mining.OnAccept(jacob, pm);
+        var context = MLQuestSystem.GetContext(pm);
+        Assert.Equal(typeof(JacobWaltz), context.FindInstance(mining).QuesterType);
+        Assert.Equal(RowState.InProgress, board.GetRowState(pm, context, mining, out _));
+
+        pm.Skills[SkillName.Mining].BaseFixedPoint = 500;
+        Assert.Equal(RowState.ReadyToTurnIn, board.GetRowState(pm, context, mining, out _));
+
+        // The board takes the report and pays, through its menu.
+        Press(ns, OpenMenu(board, pm), Button<TheDeluciansLostMine>());
+        TurnIn(ns, pm);
+
+        Assert.Equal(1, pm.Backpack.GetAmount(typeof(JacobsPickaxe)));
+        Assert.True(context.HasDoneQuest(mining));
+
+        PaysNothingAtEitherEnd(board, jacob, pm, mining);
+        Assert.Equal(1, pm.Backpack.GetAmount(typeof(JacobsPickaxe)));
+
+        jacob.Delete();
+        Cleanup(pm, board);
+    }
+
+    // Every quest on the board has a trainer that offers it (Data/MLQuests.cfg), so none is
+    // board-only and the menu needs no line saying so.
+    [Fact]
+    public void EveryBoardQuestHasATrainerAtTheOtherEnd()
+    {
+        var creatureTypes = typeof(Recaro).Assembly.GetTypes()
+            .Where(t => typeof(BaseCreature).IsAssignableFrom(t) && !t.IsAbstract)
+            .ToList();
+
+        var boardOnly = new List<string>();
+        foreach (var type in NewHavenQuestBoard.QuestTypes)
+        {
+            var quest = MLQuestSystem.FindQuest(type);
+            var trainers = creatureTypes.Where(t => MLQuestSystem.FindQuestList(t).Contains(quest)).ToList();
+            _out.WriteLine($"{type.Name}: {string.Join(", ", trainers.Select(t => t.Name))}");
+
+            if (trainers.Count == 0)
+            {
+                boardOnly.Add(type.Name);
+            }
+        }
+
+        Assert.Empty(boardOnly);
+    }
+
+    // A quest held before PT-03 keeps the quester it was taken from whichever end the player visits,
+    // so its save is unchanged and it still turns in where it did before.
+    [Fact]
+    public void AQuestHeldBeforePT03KeepsTheQuesterItWasTakenFrom()
+    {
+        var board = PlaceBoard();
+        var pm = Online(NewPlayer(500, SkillName.Fencing), out var ns);
+        var fencing = Quest<EnGuarde>();
+        var recaro = Trainer(new Recaro());
+        var context = MLQuestSystem.GetOrCreateContext(pm);
+
+        fencing.OnAccept(board, pm);
+        recaro.OnDoubleClick(pm);
+        Assert.Same(board, context.FindInstance(fencing).Quester);
+        CloseQuestGumps(pm);
+
+        context.FindInstance(fencing).Cancel();
+        fencing.OnAccept(recaro, pm);
+        board.OnPick(pm, typeof(EnGuarde));
+        Assert.Same(recaro, context.FindInstance(fencing).Quester);
+        CloseQuestGumps(pm);
+
+        // And the trainer's own quest still turns in at the trainer, stock.
+        pm.Skills[SkillName.Fencing].BaseFixedPoint = 500;
+        recaro.OnDoubleClick(pm);
+        TurnIn(ns, pm);
+        Assert.Equal(1, pm.Backpack.GetAmount(typeof(RecarosRiposte)));
+
+        recaro.Delete();
+        Cleanup(pm, board);
     }
 
     [Fact]

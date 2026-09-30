@@ -22,6 +22,22 @@
 // When one of those gates is built, register the entry with AddQuestRecipe, not AddRecipe: pinned's tailor satchel draws
 // from every AddRecipe-registered tailoring recipe (Q-064), which ServUO's never does.
 
+// cc-P17 PT-08: ServUO's gargish cloth armour, DefTailoring.cs:709-725 (#region Cloth Armor, inside `if (Core.SA)`):
+//
+//     index = AddCraft(typeof(GargishClothArmsArmor), 1111748, 1021027, 87.1, 137.1, typeof(Cloth), 1044455, 8, 1044287);
+//     ... Chest 1021029 94.0-144.0 x8, Legs 1021033 91.2-141.2 x10, Kilt 1021031 82.9-132.9 x6, then the four Female*
+//     with the same clilocs, skills and cloth.
+//
+// Pinned has every one of the eight types, under its own names, and never registers them (it wears them only as
+// creation clothes, CharacterCreation.cs:773-797). ServUO's names resolve to pinned's by TypeAlias: GargishCloth*Armor
+// is GargishCloth*Type1 and FemaleGargishCloth*Armor is Type2 (GargishClothArmsType1.cs:6 and so on; the kilt Type2 has
+// no alias, and ServUO's art 0x407 is pinned's Type2 art, GargishClothKiltType2.cs:9). The art matches ServUO's piece
+// for piece (ServUO Items/Equipment/Armor/GargishClothArmor.cs:15-549). ServUO's ninth line, GargishClothWingArmor
+// (1115393), is not here: pinned has no such type. Neither are its gargish garments (GargishRobe, GargishFancyRobe,
+// GargishSash, GargoyleHalfApron, RobeofRite): no type in pinned or ours. notes/cc-P17-playtest-bugs-1.md, PT-08.
+//
+// Like ServUO, the male and female entries share a name (PT-10); no label is added.
+
 using System;
 using Server.Items;
 
@@ -37,7 +53,7 @@ public static class TailoringCraftRegistrations
     }
 
     /// <summary>
-    /// Appends ServUO's leather talons entry to DefTailoring.CraftSystem. Idempotent; the test host calls it directly
+    /// Appends ServUO's leather talons entry and its eight gargish cloth armour entries to DefTailoring.CraftSystem. Idempotent; the test host calls it directly
     /// because ServerStarted never fires there.
     /// </summary>
     public static void Register()
@@ -63,5 +79,23 @@ public static class TailoringCraftRegistrations
         }
 
         tailoring.AddCraft(typeof(LeatherTalons), 1015288, 1095728, 40.4, 65.4, typeof(Leather), 1044462, 6, 1044453);
+
+        foreach (var (type, name, min, max, cloth) in GargishClothArmour)
+        {
+            tailoring.AddCraft(type, 1111748, name, min, max, typeof(Cloth), 1044455, cloth, 1044287);
+        }
     }
+
+    // ServUO's order and values: type, name cliloc, minimum and maximum skill, yards of cloth.
+    public static readonly (Type Type, int Name, double Min, double Max, int Cloth)[] GargishClothArmour =
+    {
+        (typeof(GargishClothArmsType1), 1021027, 87.1, 137.1, 8),
+        (typeof(GargishClothChestType1), 1021029, 94.0, 144.0, 8),
+        (typeof(GargishClothLegsType1), 1021033, 91.2, 141.2, 10),
+        (typeof(GargishClothKiltType1), 1021031, 82.9, 132.9, 6),
+        (typeof(GargishClothArmsType2), 1021027, 87.1, 137.1, 8),
+        (typeof(GargishClothChestType2), 1021029, 94.0, 144.0, 8),
+        (typeof(GargishClothLegsType2), 1021033, 91.2, 141.2, 10),
+        (typeof(GargishClothKiltType2), 1021031, 82.9, 132.9, 6),
+    };
 }
