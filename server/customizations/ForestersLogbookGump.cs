@@ -127,15 +127,15 @@ public class ForestersLogbookGump : Gump
         var pending   = CountPending(_data);
         var total     = discoveries.Count;
         var reported  = 0;
-        var totalChop = 0;
+        var groves    = 0;
         foreach (var e in discoveries.Values)
         {
             if (e.State == DiscoveryState.Reported) reported++;
-            totalChop += e.TotalChopped;
+            groves += e.Locations.Count;
         }
 
         AddLabel(18, H - 32, 999,
-            $"Timber types: {total}   Total chopped: {totalChop:N0}   Reported: {reported}");
+            $"Timber types: {total}   Groves: {groves}   Reported: {reported}");
 
         if (pending > 0)
         {
@@ -178,8 +178,9 @@ public class ForestersLogbookGump : Gump
                 var dateStr = entry.FirstFound.ToString("yyyy-MM-dd");
                 sb.Append(
                     $"<BASEFONT COLOR={disp.Color}><B>{disp.Name}</B></BASEFONT>" +
-                    $"<BASEFONT COLOR=#AAAAAA> — first cut {dateStr}, " +
+                    $"<BASEFONT COLOR=#AAAAAA> — first cut {dateStr}, {GroveCount(entry)}, " +
                     $"{entry.TotalChopped:N0} logs chopped</BASEFONT><BR>");
+                AppendGroves(sb, entry);
             }
         }
 
@@ -203,12 +204,29 @@ public class ForestersLogbookGump : Gump
 
                 sb.Append(
                     $"<BASEFONT COLOR={disp.Color}><B>{disp.Name}</B></BASEFONT>" +
-                    $"<BASEFONT COLOR=#AAAAAA> — first found {dateStr}, " +
+                    $"<BASEFONT COLOR=#AAAAAA> — first found {dateStr}, {GroveCount(entry)}, " +
                     $"{entry.TotalChopped:N0} logs chopped{stateTag}</BASEFONT><BR>");
+                AppendGroves(sb, entry);
             }
         }
 
         return sb.ToString();
+    }
+
+    private static string GroveCount(WoodDiscoveryEntry entry) =>
+        $"{entry.Locations.Count} grove{(entry.Locations.Count != 1 ? "s" : "")}";
+
+    private static void AppendGroves(StringBuilder sb, WoodDiscoveryEntry entry)
+    {
+        foreach (var loc in entry.Locations)
+        {
+            var where = loc.HasKnownLocation
+                ? $"{loc.RegionName}, {loc.FacetName} | ({loc.Location.X}, {loc.Location.Y})"
+                : "location not recorded";
+            sb.Append(
+                $"<BASEFONT COLOR=#888888>  • {loc.DiscoveredAt:yyyy-MM-dd} | {where} | " +
+                $"{loc.AmountChopped:N0} logs</BASEFONT><BR>");
+        }
     }
 
     // ── Discovery Report view ─────────────────────────────────────────────────

@@ -10,12 +10,21 @@
 // ignored it, so it read the location list's first string as ticks. Full measurement in
 // shard-migration notes/cc-P11-account-data-serializer.md.
 //
-// Three facts:
+// cc-P13 made that version 1 canonical: grove tracking is wanted and the old live world is not being
+// kept, so nothing needs version 0 written any more. Each wood type keeps a list of groves
+// (facet, region, Point3D, DateTime, amount). Notes in shard-migration notes/cc-P13-grove-tracking.md.
+//
+// Facts:
 //   1. Every ClusterFAccountData field survives a write and a read with every collection non-empty,
 //      and the read consumes exactly the bytes the write produced (the check ModernUO's loader makes).
+//      Wood entries carry several groves, and every grove field is compared.
 //   2. The exact 276 bytes of WoodDiscoveries from the live save read back, and the reader stops on
-//      the last byte.
+//      the last byte. Written again they are version 1, keep their groves, and match the save byte for byte.
 //   3. An unknown WoodDiscoveryEntry version fails loudly instead of being read as another version.
+//   4. One wood type with several groves round-trips as version 1, every field intact.
+//   5. A version-0 entry reads forward as one Unknown grove carrying the old FirstFound, and is
+//      written back as version 1.
+//   6. Groves merge only on the same facet and region; region labels never call a house wilderness.
 
 using System;
 using System.Collections;
@@ -121,16 +130,48 @@ public class AccountDataSerializerVerification
         fel[1199] = true;
         d.GetOrCreateExploration((Serial)0x1234u, 4, 13, 7)[90] = true;
 
-        d.WoodDiscoveries["Ironwood"] = new WoodDiscoveryEntry("Ironwood")
-        {
-            TotalChopped = 19,
-            State        = DiscoveryState.Reported
-        };
-        d.WoodDiscoveries["Starwood"] = new WoodDiscoveryEntry("Starwood") { TotalChopped = 1 };
+        d.WoodDiscoveries["Ironwood"] = SeveralGroves();
+        var starwood = new WoodDiscoveryEntry("Starwood") { TotalChopped = 1 };
+        starwood.Locations.Add(new WoodLocationRecord(
+            "Ilshenar", "Wilderness", new Point3D(1100, 600, -80), new DateTime(2026, 9, 3, 1, 2, 3, DateTimeKind.Utc), 1));
+        d.WoodDiscoveries["Starwood"] = starwood;
 
         d.AcceptArtificerOrder("artificer.slayer.silver", 0x40001234u);
         return d;
     }
+
+    // Three groves on three facets, in the order found, with distinct values in every field: a named
+    // region, the default region, an unnamed non-default one, a sub-second timestamp and a negative Z.
+    private static WoodDiscoveryEntry SeveralGroves()
+    {
+        var e = new WoodDiscoveryEntry("Ironwood") { TotalChopped = 19, State = DiscoveryState.Reported };
+        e.Locations.Add(new WoodLocationRecord(
+            "Trammel", "Yew", new Point3D(560, 990, 0), new DateTime(2026, 9, 1, 6, 0, 0, DateTimeKind.Utc).AddTicks(1234567), 11));
+        e.Locations.Add(new WoodLocationRecord(
+            "Felucca", "Wilderness", new Point3D(4400, 1100, 3), new DateTime(2026, 9, 2, 7, 30, 0, DateTimeKind.Utc), 5));
+        e.Locations.Add(new WoodLocationRecord(
+            "Malas", "HouseRegion", new Point3D(1000, 1500, -20), new DateTime(2026, 9, 4, 22, 15, 9, DateTimeKind.Utc), 3));
+        return e;
+    }
+
+    private static void AssertSameGroves(WoodDiscoveryEntry o, WoodDiscoveryEntry c)
+    {
+        Assert.Equal(o.WoodKey, c.WoodKey);
+        Assert.Equal(o.TotalChopped, c.TotalChopped);
+        Assert.Equal(o.State, c.State);
+        Assert.Equal(o.FirstFound.Ticks, c.FirstFound.Ticks);
+        Assert.Equal(o.Locations.Count, c.Locations.Count);
+        for (var i = 0; i < o.Locations.Count; i++)
+        {
+            var (ol, cl) = (o.Locations[i], c.Locations[i]);
+            Assert.Equal(
+                (ol.FacetName, ol.RegionName, ol.Location, ol.DiscoveredAt.Ticks, ol.AmountChopped),
+                (cl.FacetName, cl.RegionName, cl.Location, cl.DiscoveredAt.Ticks, cl.AmountChopped));
+        }
+    }
+
+    // The first int of a serialized WoodDiscoveryEntry is its version.
+    private static int VersionOf(byte[] buffer, int offset = 0) => BitConverter.ToInt32(buffer, offset);
 
     [Fact]
     public void AnAccountWithEveryCollectionNonEmptySurvivesAWriteAndARead()
@@ -243,19 +284,16 @@ public class AccountDataSerializerVerification
             }
         }
 
-        // FirstFound is get-only and set from UtcNow by the new-entry constructor; the read
-        // constructor sets it from the stream. Ticks, not a formatted string, so nothing is rounded.
+        // FirstFound is the earliest grove. Ticks, not a formatted string, so nothing is rounded.
         Assert.Equal(original.WoodDiscoveries.Count, copy.WoodDiscoveries.Count);
         foreach (var (key, o) in original.WoodDiscoveries)
         {
             var c = copy.WoodDiscoveries[key];
-            _out.WriteLine($"wood {key}: FirstFound {o.FirstFound.Ticks} -> {c.FirstFound.Ticks}");
-            Assert.Equal(o.WoodKey, c.WoodKey);
-            Assert.Equal(o.TotalChopped, c.TotalChopped);
-            Assert.Equal(o.State, c.State);
-            Assert.Equal(o.FirstFound.Ticks, c.FirstFound.Ticks);
+            _out.WriteLine($"wood {key}: {o.Locations.Count} groves -> {c.Locations.Count}, FirstFound {o.FirstFound.Ticks} -> {c.FirstFound.Ticks}");
+            AssertSameGroves(o, c);
             Assert.NotEqual(0, c.FirstFound.Ticks);
         }
+        Assert.Equal(3, copy.WoodDiscoveries["Ironwood"].Locations.Count);
     }
 
     [Fact]
@@ -281,14 +319,28 @@ public class AccountDataSerializerVerification
         Assert.Equal(639154787005632764L, entries[0].FirstFound.Ticks);
         Assert.Equal(639155681757116614L, entries[3].FirstFound.Ticks);
 
-        // Written again, they are version 0 and read back the same.
-        var (buffer, length) = Write(w => { foreach (var e in entries) e.Serialize(w); });
-        var again = new BufferReader(buffer);
-        foreach (var e in entries)
+        // The synthesised grove is kept, not collapsed.
+        Assert.All(entries, e =>
         {
-            var c = new WoodDiscoveryEntry(again);
-            Assert.Equal((e.WoodKey, e.TotalChopped, e.State, e.FirstFound.Ticks), (c.WoodKey, c.TotalChopped, c.State, c.FirstFound.Ticks));
-        }
+            var loc = Assert.Single(e.Locations);
+            Assert.False(loc.HasKnownLocation);
+            Assert.Equal((WoodLocationRecord.Unknown, WoodLocationRecord.Unknown, Point3D.Zero, e.TotalChopped),
+                (loc.FacetName, loc.RegionName, loc.Location, loc.AmountChopped));
+        });
+
+        // Written again, they are version 1, byte for byte what the live save held, and read back the same.
+        var (buffer, length) = Write(w =>
+        {
+            w.Write(entries.Count);
+            foreach (var e in entries) e.Serialize(w);
+        });
+        Assert.Equal(1, VersionOf(buffer, 4));
+        Assert.Equal(LiveWoodDiscoveriesHex, Convert.ToHexString(buffer, 0, (int)length));
+
+        var again = new BufferReader(buffer);
+        again.ReadInt();
+        foreach (var e in entries)
+            AssertSameGroves(e, new WoodDiscoveryEntry(again));
         Assert.Equal(length, again.Position);
     }
 
@@ -307,5 +359,76 @@ public class AccountDataSerializerVerification
         var ex = Assert.Throws<InvalidDataException>(() => new WoodDiscoveryEntry(new BufferReader(buffer)));
         _out.WriteLine(ex.Message);
         Assert.Contains("version 2", ex.Message);
+    }
+
+    [Fact]
+    public void AWoodTypeFoundInSeveralGrovesRoundTripsAsVersion1()
+    {
+        var original = SeveralGroves();
+        var (buffer, length) = Write(original.Serialize);
+
+        _out.WriteLine($"{original.Locations.Count} groves, {length} bytes, version {VersionOf(buffer)}");
+        Assert.Equal(1, VersionOf(buffer));
+
+        var reader = new BufferReader(buffer);
+        var copy = new WoodDiscoveryEntry(reader);
+        Assert.Equal(length, reader.Position);
+        AssertSameGroves(original, copy);
+        Assert.Equal(original.Locations[0].DiscoveredAt, copy.FirstFound);
+    }
+
+    [Fact]
+    public void AVersion0SaveReadsForwardAsOneUnknownGrove()
+    {
+        var firstFound = new DateTime(2026, 5, 27, 11, 38, 20, DateTimeKind.Utc).AddTicks(5632764);
+        var (v0, v0Length) = Write(w =>
+        {
+            w.Write(0);
+            w.Write("Ghostwood");
+            w.Write(42);
+            w.Write((int)DiscoveryState.Discovered);
+            w.Write(firstFound);
+        });
+
+        var reader = new BufferReader(v0);
+        var entry = new WoodDiscoveryEntry(reader);
+        Assert.Equal(v0Length, reader.Position);
+
+        Assert.Equal(("Ghostwood", 42, DiscoveryState.Discovered), (entry.WoodKey, entry.TotalChopped, entry.State));
+        var loc = Assert.Single(entry.Locations);
+        Assert.Equal(("Unknown", "Unknown", Point3D.Zero, firstFound.Ticks, 42),
+            (loc.FacetName, loc.RegionName, loc.Location, loc.DiscoveredAt.Ticks, loc.AmountChopped));
+        Assert.Equal(firstFound.Ticks, entry.FirstFound.Ticks);
+
+        var (v1, v1Length) = Write(entry.Serialize);
+        _out.WriteLine($"v0 {v0Length} bytes -> v{VersionOf(v1)} {v1Length} bytes");
+        Assert.Equal(1, VersionOf(v1));
+        AssertSameGroves(entry, new WoodDiscoveryEntry(new BufferReader(v1)));
+    }
+
+    [Fact]
+    public void GrovesMergeOnlyOnTheSameFacetAndRegion()
+    {
+        var e = new WoodDiscoveryEntry("YewWood");
+        e.AddLocation("Trammel", "Wilderness", new Point3D(1000, 1000, 0)).AmountChopped = 10;
+
+        Assert.NotNull(e.FindNearbyLocation("Trammel", "Wilderness", new Point3D(1010, 1011, 0), 15));
+        Assert.Null(e.FindNearbyLocation("Trammel", "Wilderness", new Point3D(1011, 1011, 0), 15));
+        Assert.Null(e.FindNearbyLocation("Felucca", "Wilderness", new Point3D(1000, 1000, 0), 15));
+        Assert.Null(e.FindNearbyLocation("Trammel", "HouseRegion", new Point3D(1000, 1000, 0), 15));
+
+        // A version-0 grove sits at 0,0 on no facet; a chop near the origin must not land in it.
+        e.Locations.Add(new WoodLocationRecord("Unknown", "Unknown", Point3D.Zero, DateTime.UnixEpoch, 5));
+        Assert.Null(e.FindNearbyLocation("Trammel", "Wilderness", new Point3D(3, 3, 0), 15));
+    }
+
+    [Fact]
+    public void RegionLabelsNeverCallAnUnnamedRegionWilderness()
+    {
+        Assert.Equal("Britain", WoodLocationRecord.RegionLabel("Britain", false, "TownRegion"));
+        Assert.Equal("Wilderness", WoodLocationRecord.RegionLabel(null, true, "Region"));
+        Assert.Equal("Wilderness", WoodLocationRecord.RegionLabel("", true, "Region"));
+        Assert.Equal("HouseRegion", WoodLocationRecord.RegionLabel(null, false, "HouseRegion"));
+        Assert.Equal("HouseRegion", WoodLocationRecord.RegionLabel("  ", false, "HouseRegion"));
     }
 }

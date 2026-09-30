@@ -129,16 +129,27 @@ public partial class Lumberjacking
         else
             return; // Board types not tracked (discovery happens at the log stage)
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
+        var data       = ClusterFAccountPersistence.GetOrCreate(acct);
+        var facetName  = m.Map?.Name ?? WoodLocationRecord.Unknown;
+        var region     = m.Region;
+        var regionName = WoodLocationRecord.RegionLabel(region.Name, region.IsDefault, region.GetType().Name);
 
         if (data.WoodDiscoveries.TryGetValue(woodKey, out var existing))
         {
             existing.TotalChopped += item.Amount;
+
+            // Found again: add to a grove within 15 tiles, or record a new one.
+            var nearby = existing.FindNearbyLocation(facetName, regionName, m.Location, 15);
+            if (nearby != null)
+                nearby.AmountChopped += item.Amount;
+            else
+                existing.AddLocation(facetName, regionName, m.Location).AmountChopped = item.Amount;
             return;
         }
 
         // First time finding this wood type.
         var entry = new WoodDiscoveryEntry(woodKey) { TotalChopped = item.Amount };
+        entry.AddLocation(facetName, regionName, m.Location).AmountChopped = item.Amount;
 
         // Vanilla colored woods don't require reporting — mark Reported immediately.
         if (isVanilla)
