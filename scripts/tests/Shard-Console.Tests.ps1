@@ -700,10 +700,33 @@ Fact 'EveryDiscoveredWorldCommandIsInTheTabAndOnlyTheUnorderedOnesOnce' {
     foreach ($w in $world) {
         Assert-True ($shown -contains $w.Name) "$($w.Name) is in the tab"
     }
-    $unordered = @($groups | Where-Object { -not $_.CopyAll } | ForEach-Object { $_.Items } | ForEach-Object { $_.Name })
-    Assert-Equal @($unordered).Count @($unordered | Select-Object -Unique).Count 'an unordered command is listed once'
+    $unordered = @($groups | Where-Object { -not $_.CopyAll } | ForEach-Object { $_.Items } | ForEach-Object { $_.Command })
+    Assert-Equal @($unordered).Count @($unordered | Select-Object -Unique).Count 'an unordered command, and its dry run, are each listed once'
     $noOrder = @($groups | Where-Object { $_.Key -eq 'noorder' })[0]
     Assert-True ($noOrder.Title -match 'no order') $noOrder.Title
+}
+
+Fact 'EveryRowIsOneCommandWithOneCopyAndADryRunIsItsOwnRowJustAbove' {
+    # One shape in every group: a row is exactly what Copy puts on the clipboard. No row carries a
+    # second command, and a command with a dry run has the dry run as the row directly above it,
+    # the way the runbooks and Copy group already list them.
+    foreach ($g in $groups) {
+        $items = @($g.Items)
+        foreach ($i in $items) {
+            Assert-True (-not ($i.PSObject.Properties.Name -contains 'DryRunCommand') -or -not $i.DryRunCommand) "$($g.Key): $($i.Command) carries a second command"
+        }
+        for ($k = 0; $k -lt $items.Count; $k++) {
+            if (-not $items[$k].Name) { continue }
+            $e = Get-WorldEntry $items[$k].Name
+            if ($null -eq $e -or -not $e.DryRunCommand) { continue }
+            if ($items[$k].Command -ceq $e.Command) {
+                Assert-True ($k -gt 0 -and $items[$k - 1].Command -ceq $e.DryRunCommand) "$($g.Key): $($e.Command) has its dry run on the row above"
+            }
+        }
+    }
+    $noOrder = @($groups | Where-Object { $_.Key -eq 'noorder' })[0]
+    $cmds = @($noOrder.Items | ForEach-Object { $_.Command })
+    Assert-True ($cmds -ccontains '[ClusterFOldHavenCleanup dryrun') ($cmds -join ' | ')
 }
 
 Fact 'ATestOnlyCommandSaysSoInItsLine' {
@@ -714,7 +737,7 @@ Fact 'ATestOnlyCommandSaysSoInItsLine' {
 
 Fact 'RedMeansTestOnlyUnclassifiedOrAPlainRunThatDeletesAndNothingElse' {
     $red = @($groups | ForEach-Object { $_.Items } | Where-Object { $_.Warn } | ForEach-Object { $_.Command }) | Sort-Object -Unique
-    Assert-Equal '[ClearRoyalCityVendors,[ClusterFOldHavenCleanup,[ClusterFSeedResetStone,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red'
+    Assert-Equal '[ClearRoyalCityVendors,[ClusterFOldHavenCleanup,[ClusterFSeedResetStone,[ClusterFSeedResetStone dryrun,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red, and a dry run deletes nothing'
 }
 
 Fact 'TheScriptAndItsFactsAreAsciiWithNoBom' {

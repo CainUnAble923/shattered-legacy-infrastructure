@@ -1467,9 +1467,11 @@ function Format-WorldCommandLine {
 
 function Test-WorldCommandWarn {
     # Shown in red: nobody has classified it, it is for the test shard only, or its plain form
-    # (no argument) deletes something.
-    param($Entry)
-    ($Entry.Category -eq 'unclassified') -or ($Entry.Shard -eq 'TestOnly') -or ($Entry.Rerun -eq 'DeletesAgain') -or ($Entry.Summary -clike 'DELETES*')
+    # (no argument) deletes something. A dry-run row deletes nothing.
+    param($Entry, [string]$Arguments)
+    if ($Entry.Category -eq 'unclassified' -or $Entry.Shard -eq 'TestOnly') { return $true }
+    if ($Arguments -and $Arguments -ceq $Entry.DryRun) { return $false }
+    ($Entry.Rerun -eq 'DeletesAgain') -or ($Entry.Summary -clike 'DELETES*')
 }
 
 function Get-WorldCommandGroups {
@@ -1483,24 +1485,29 @@ function Get-WorldCommandGroups {
     foreach ($seq in $script:WorldSetupOrder) {
         $items = foreach ($s in $seq.Steps) {
             if ($s.Stock) {
-                [pscustomobject]@{ Name = $null; Command = $s.Command; DryRunCommand = ''; Warn = $false; Text = $s.Access + ': ' + $s.Why }
+                [pscustomobject]@{ Name = $null; Command = $s.Command; Warn = $false; Text = $s.Access + ': ' + $s.Why }
                 continue
             }
             $cmd = '[' + $s.Name
             if ($s.Args) { $cmd += ' ' + $s.Args }
             $e = $byName[$s.Name]
             if ($null -eq $e) {
-                [pscustomobject]@{ Name = $s.Name; Command = $cmd; DryRunCommand = ''; Warn = $true; Text = 'NOT REGISTERED: the order list names a command the source no longer registers. Do not run it until someone looks.' }
+                [pscustomobject]@{ Name = $s.Name; Command = $cmd; Warn = $true; Text = 'NOT REGISTERED: the order list names a command the source no longer registers. Do not run it until someone looks.' }
                 continue
             }
             $used[$s.Name] = $true
-            [pscustomobject]@{ Name = $s.Name; Command = $cmd; DryRunCommand = ''; Warn = (Test-WorldCommandWarn $e); Text = (Format-WorldCommandLine $e $s.Args) }
+            [pscustomobject]@{ Name = $s.Name; Command = $cmd; Warn = (Test-WorldCommandWarn $e $s.Args); Text = (Format-WorldCommandLine $e $s.Args) }
         }
         [pscustomobject]@{ Key = $seq.Key; Title = $seq.Title; Source = $seq.Source; CopyAll = $true; Items = @($items) }
     }
+    # Every row is one command and one Copy, in every group. A command with a dry run gets it as its
+    # own row directly above, the way the runbooks, and so the sequences above, list them.
     $single = {
         param($e)
-        [pscustomobject]@{ Name = $e.Name; Command = $e.Command; DryRunCommand = $e.DryRunCommand; Warn = (Test-WorldCommandWarn $e); Text = (Format-WorldCommandLine $e) }
+        if ($e.DryRunCommand) {
+            [pscustomobject]@{ Name = $e.Name; Command = $e.DryRunCommand; Warn = (Test-WorldCommandWarn $e $e.DryRun); Text = (Format-WorldCommandLine $e $e.DryRun) }
+        }
+        [pscustomobject]@{ Name = $e.Name; Command = $e.Command; Warn = (Test-WorldCommandWarn $e); Text = (Format-WorldCommandLine $e) }
     }
     $rest = @($Commands | Where-Object { $_.Category -in 'world-generation', 'world-setup' -and -not $used.ContainsKey($_.Name) } | Sort-Object Name)
     [pscustomobject]@{
@@ -1539,7 +1546,6 @@ function Format-WorldCommandReport {
             $c = 'normal'
             if ($i.Warn) { $c = 'amber' }
             [pscustomobject]@{ Text = ('   {0,-44} {1}' -f $i.Command, $i.Text); Color = $c }
-            if ($i.DryRunCommand) { [pscustomobject]@{ Text = ('   {0,-44} {1}' -f $i.DryRunCommand, '(its dry run)'); Color = 'gray' } }
         }
     }
 }
@@ -2318,16 +2324,15 @@ function New-ConsoleForm {
     $worldTable = New-Object Windows.Forms.TableLayoutPanel
     $worldTable.Dock = 'Fill'
     $worldTable.AutoScroll = $true
-    $worldTable.ColumnCount = 4
-    [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('AutoSize')))
+    $worldTable.ColumnCount = 3
     [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('AutoSize')))
     [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('AutoSize')))
     [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 100)))
     $worldCmds = @()
     try { $worldCmds = @(ConvertFrom-CommandSources (Get-CommandSourceFiles $Config.Customizations)) } catch { }
-    $head = New-Caption ('In-game commands, run by hand in a client. The console cannot run them and cannot see whether this world has had them: that is a fact about the save. Read from the [ShardCommand] each command declares in ' + $Config.Customizations + ' (' + $worldCmds.Count + ' registrations; the tab shows only those that change a world). Fresh-world generation is a different job from changing a world that already exists: check which shard your client is on before you paste. Copy puts one line on the clipboard; Copy group puts the whole group, one line each, for a text file beside the client. The ticks are for this session only.') 1100
+    $head = New-Caption ('In-game commands, run by hand in a client. The console cannot run them and cannot see whether this world has had them: that is a fact about the save. Read from the [ShardCommand] each command declares in ' + $Config.Customizations + ' (' + $worldCmds.Count + ' registrations; the tab shows only those that change a world). Fresh-world generation is a different job from changing a world that already exists: check which shard your client is on before you paste. Each row is one command: its Copy puts that line on the clipboard, and a dry run is its own row just above the command it previews. Copy group puts the whole group, one line each, for a text file beside the client. The ticks are for this session only.') 1100
     $worldTable.Controls.Add($head, 0, 0)
-    $worldTable.SetColumnSpan($head, 4)
+    $worldTable.SetColumnSpan($head, 3)
     $row = 1
     $copyClick = { [Windows.Forms.Clipboard]::SetText([string]$this.Tag); Write-ConsoleLine ('copied: ' + ([string]$this.Tag).Trim()) 'gray' }
     foreach ($group in @(Get-WorldCommandGroups $worldCmds)) {
@@ -2338,7 +2343,7 @@ function New-ConsoleForm {
         $title.Margin = New-Object Windows.Forms.Padding(6, 14, 3, 2)
         if ($group.Key -eq 'unclassified' -and @($group.Items).Count) { $title.ForeColor = [Drawing.Color]::Firebrick }
         $worldTable.Controls.Add($title, 0, $row)
-        $worldTable.SetColumnSpan($title, 4)
+        $worldTable.SetColumnSpan($title, 3)
         $row++
         $src = New-Caption $group.Source 760 ([Drawing.Color]::DimGray)
         if ($group.CopyAll -and @($group.Items).Count) {
@@ -2348,11 +2353,10 @@ function New-ConsoleForm {
             $all.Tag = Get-GroupClipboardText $group
             $all.Add_Click({ [Windows.Forms.Clipboard]::SetText([string]$this.Tag); Write-ConsoleLine ('copied a group of ' + @(([string]$this.Tag).Trim() -split "`r`n").Count + ' commands') 'gray' })
             $worldTable.Controls.Add($all, 1, $row)
-            $worldTable.SetColumnSpan($all, 2)
-            $worldTable.Controls.Add($src, 3, $row)
+            $worldTable.Controls.Add($src, 2, $row)
         } else {
             $worldTable.Controls.Add($src, 0, $row)
-            $worldTable.SetColumnSpan($src, 4)
+            $worldTable.SetColumnSpan($src, 3)
         }
         $row++
         if (-not @($group.Items).Count) {
@@ -2373,14 +2377,6 @@ function New-ConsoleForm {
             $copy.Add_Click($copyClick)
             $worldTable.Controls.Add($cb, 0, $row)
             $worldTable.Controls.Add($copy, 1, $row)
-            if ($item.DryRunCommand) {
-                $dry = New-Object Windows.Forms.Button
-                $dry.Text = 'Copy dry run'
-                $dry.Width = 95
-                $dry.Tag = $item.DryRunCommand
-                $dry.Add_Click($copyClick)
-                $worldTable.Controls.Add($dry, 2, $row)
-            }
             $why = New-Object Windows.Forms.Label
             $why.Text = $item.Text
             $why.AutoSize = $true
@@ -2388,7 +2384,7 @@ function New-ConsoleForm {
             $why.ForeColor = [Drawing.Color]::DimGray
             if ($item.Warn) { $why.ForeColor = [Drawing.Color]::DarkRed }
             $why.Margin = New-Object Windows.Forms.Padding(6, 8, 3, 3)
-            $worldTable.Controls.Add($why, 3, $row)
+            $worldTable.Controls.Add($why, 2, $row)
             $row++
         }
     }
