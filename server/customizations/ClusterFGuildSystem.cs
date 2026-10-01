@@ -681,8 +681,8 @@ public class GuildMembershipEntry : ContextMenuEntry
 // -- The Guild Directory -------------------------------------------------------------------------
 
 /// <summary>
-/// The Guild Directory (F-9 Decision 2): one row per guild and per guildmaster location, the skills it
-/// teaches, its hall, Show me the way, and the player's rank where joined. The same rows open from the
+/// The Guild Directory (F-9 Decision 2): one row per guild, the skills it teaches, its hall (or its
+/// towns, for a guild with posts in several), Show me the way, and the player's rank where joined. The same rows open from the
 /// New Haven board (its first page; the 26-quest picker is its "Training quests" tab), from [guild and
 /// from the League Registrar's Guild Referrals. The class keeps its old name so every caller of the
 /// old guild overview now opens the directory.
@@ -702,15 +702,52 @@ public class GuildProgressGump : Gump
     // Button IDs:
     //   0          = close
     //   50         = Training quests (the board's second tab; only when opened from the board)
-    //   100 + i    = Show me the way for location i
-    //   200 + i    = Services for location i's guild (members only)
-    //   300 + i    = Contracts for location i's guild (members only)
+    //   100 + i    = Show me the way for guild row i
+    //   200 + i    = Services for guild row i (members only)
+    //   300 + i    = Contracts for guild row i (members only)
     public const int BtnTrainingQuests = 50;
     public const int BtnWayBase        = 100;
     public const int BtnServicesBase   = 200;
     public const int BtnContractsBase  = 300;
 
-    public static int PageCount => (GuildLocations.All.Length + RowsPerPage - 1) / RowsPerPage;
+    public static int PageCount => (Guilds().Count + RowsPerPage - 1) / RowsPerPage;
+
+    /// <summary>
+    /// The directory's rows (D41, cc-P23): one per registered guild (ClusterFGuildSystem.AllGuilds),
+    /// never one per guildmaster or per post, so a guild with guildmasters in two towns is one row.
+    /// In F-9's order, which is the order of each guild's first post in GuildLocations.All; a guild
+    /// with no post at all still gets a row, after the rest, by key.
+    /// </summary>
+    public static List<GuildDef> Guilds()
+    {
+        var order = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < GuildLocations.All.Length; i++)
+            order.TryAdd(GuildLocations.All[i].GuildKey, i);
+
+        var guilds = new List<GuildDef>(ClusterFGuildSystem.AllGuilds.Values);
+        guilds.Sort((a, b) =>
+        {
+            var ia = order.TryGetValue(a.Key, out var x) ? x : int.MaxValue;
+            var ib = order.TryGetValue(b.Key, out var y) ? y : int.MaxValue;
+            return ia != ib ? ia.CompareTo(ib) : string.Compare(a.Key, b.Key, StringComparison.OrdinalIgnoreCase);
+        });
+        return guilds;
+    }
+
+    // The hall column: the hall for a guild with one post, its towns for a guild with several.
+    private static string HallColumn(List<GuildLocation> posts)
+    {
+        if (posts.Count == 0)
+            return "No post";
+        if (posts.Count == 1)
+            return posts[0].Hall;
+
+        var towns = new List<string>();
+        foreach (var post in posts)
+            if (!towns.Contains(post.Town))
+                towns.Add(post.Town);
+        return string.Join(", ", towns);
+    }
 
     public GuildProgressGump(PlayerMobile pm, IAccount acct) : this(pm, acct, null) { }
 
@@ -727,7 +764,7 @@ public class GuildProgressGump : Gump
         var data        = acct != null
             ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial)
             : new CharacterGuildData();
-        var locations   = GuildLocations.All;
+        var guilds      = Guilds();
         var totalH      = HeaderH + RowsPerPage * RowH + FooterH;
 
         AddPage(0);
@@ -753,20 +790,17 @@ public class GuildProgressGump : Gump
             for (var row = 0; row < RowsPerPage; row++)
             {
                 var i = (page - 1) * RowsPerPage + row;
-                if (i >= locations.Length)
+                if (i >= guilds.Count)
                     break;
 
-                var loc      = locations[i];
-                var def      = ClusterFGuildSystem.GetDef(loc.GuildKey);
-                if (def == null)
-                    continue;
-
+                var def      = guilds[i];
+                var posts    = GuildLocations.For(def.Key);
                 var y        = HeaderH + row * RowH;
                 var isMember = data.JoinedGuilds.Contains(def.Key);
-                var found    = loc.Find() != null;
+                var found    = posts.Exists(p => p.Find() != null);
 
                 AddLabel(20, y, isMember ? 1154 : 999, def.Name);
-                AddLabel(230, y, 999, loc.Hall);
+                AddLabel(230, y, 999, HallColumn(posts));
 
                 if (!found)
                     AddLabel(450, y, 37, "Guildmaster missing");
@@ -811,7 +845,7 @@ public class GuildProgressGump : Gump
     {
         if (sender.Mobile != _pm || info.ButtonID == 0) return;
 
-        var locations = GuildLocations.All;
+        var guilds = Guilds();
 
         if (info.ButtonID == BtnTrainingQuests)
         {
@@ -819,24 +853,24 @@ public class GuildProgressGump : Gump
             return;
         }
 
-        if (info.ButtonID >= BtnWayBase && info.ButtonID < BtnWayBase + locations.Length)
+        if (info.ButtonID >= BtnWayBase && info.ButtonID < BtnWayBase + guilds.Count)
         {
-            _pm.SendMessage(0x44, ClusterFGuildStarter.ShowTheWay(_pm, locations[info.ButtonID - BtnWayBase]));
+            _pm.SendMessage(0x44, ClusterFGuildStarter.ShowTheWay(_pm, guilds[info.ButtonID - BtnWayBase].Key));
             return;
         }
 
-        if (info.ButtonID >= BtnServicesBase && info.ButtonID < BtnServicesBase + locations.Length)
+        if (info.ButtonID >= BtnServicesBase && info.ButtonID < BtnServicesBase + guilds.Count)
         {
-            var def = ClusterFGuildSystem.GetDef(locations[info.ButtonID - BtnServicesBase].GuildKey);
-            if (def != null && _acct != null && ClusterFGuildSystem.IsJoined(_pm, def.Key))
+            var def = guilds[info.ButtonID - BtnServicesBase];
+            if (_acct != null && ClusterFGuildSystem.IsJoined(_pm, def.Key))
                 ClusterFGuildSystem.OpenMemberServices(_pm, def, _acct);
             return;
         }
 
-        if (info.ButtonID >= BtnContractsBase && info.ButtonID < BtnContractsBase + locations.Length)
+        if (info.ButtonID >= BtnContractsBase && info.ButtonID < BtnContractsBase + guilds.Count)
         {
-            var def = ClusterFGuildSystem.GetDef(locations[info.ButtonID - BtnContractsBase].GuildKey);
-            if (def != null && _acct != null && ClusterFGuildSystem.IsJoined(_pm, def.Key))
+            var def = guilds[info.ButtonID - BtnContractsBase];
+            if (_acct != null && ClusterFGuildSystem.IsJoined(_pm, def.Key))
                 _pm.SendGump(new GuildContractLedgerGump(_pm, def.Key));
         }
     }

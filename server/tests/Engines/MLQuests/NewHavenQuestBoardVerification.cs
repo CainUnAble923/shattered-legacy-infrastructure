@@ -1013,27 +1013,50 @@ public class NewHavenQuestBoardVerification
         Cleanup(pm, board);
     }
 
-    [Fact]
-    public void PlaceFindsABoardOnAnyMapAndMovesItRatherThanBuildingASecond()
-    {
-        static List<NewHavenQuestBoard> Boards() =>
-            World.Items.Values.OfType<NewHavenQuestBoard>().Where(b => !b.Deleted).ToList();
+    private static List<NewHavenQuestBoard> Boards() =>
+        World.Items.Values.OfType<NewHavenQuestBoard>().Where(b => !b.Deleted).ToList();
 
-        // Every fact here deletes its boards; one that failed part-way may not have.
+    // Every fact here deletes its boards; one that failed part-way may not have.
+    private void ClearBoards()
+    {
         foreach (var leftover in Boards())
         {
             _out.WriteLine($"deleting a board left by another fact: {leftover.Serial} on {leftover.Map}");
             leftover.Delete();
         }
+    }
 
-        // A board on Map.Internal, where the Trammel-only search could not see it (D13).
+    // D13 and cc-P23. Place() finds a board on any map, Map.Internal included, so it never builds a
+    // second. One found off Trammel is reported and left alone unless the caller says move.
+    [Fact]
+    public void PlaceFindsABoardOnAnyMapAndRefusesToMoveOneOffTrammelUnlessTold()
+    {
+        ClearBoards();
+
+        // A board on Map.Internal, where a Trammel-only search could not see it (D13).
         var lost = new NewHavenQuestBoard();
         Assert.Equal(Map.Internal, lost.Map);
 
         var said = NewHavenQuestBoard.Place();
         _out.WriteLine(said);
-        Assert.Contains("moved to", said);
         Assert.Contains("found 0 on Trammel, 1 elsewhere", said);
+        Assert.Contains("not moved", said);
+        Assert.Contains(lost.Serial.ToString(), said);
+        Assert.Equal(lost, Assert.Single(Boards()));
+        Assert.Equal(Map.Internal, lost.Map);
+
+        // The dry run says what move would do and does nothing.
+        said = NewHavenQuestBoard.Place(move: true, dryRun: true);
+        _out.WriteLine(said);
+        Assert.StartsWith("Dry run", said);
+        Assert.Contains("would move", said);
+        Assert.Equal(Map.Internal, lost.Map);
+        Assert.Equal(lost, Assert.Single(Boards()));
+
+        // Told to: moved home, the same board.
+        said = NewHavenQuestBoard.Place(move: true);
+        _out.WriteLine(said);
+        Assert.Contains("moved to", said);
         Assert.Equal(lost, Assert.Single(Boards()));
         Assert.Equal(Map.Trammel, lost.Map);
         Assert.Equal(NewHavenQuestBoard.HomeLocation, lost.Location);
@@ -1053,13 +1076,53 @@ public class NewHavenQuestBoardVerification
         Assert.Equal(Map.Felucca, felucca.Map);
         Assert.Equal(2, Boards().Count);
 
-        // Only the Felucca one left: moved home, not duplicated.
+        // Only the Felucca one left: refused, not moved and not duplicated.
         lost.Delete();
         said = NewHavenQuestBoard.Place();
-        Assert.Contains("moved to", said);
+        _out.WriteLine(said);
+        Assert.Contains("not moved", said);
         Assert.Equal(felucca, Assert.Single(Boards()));
-        Assert.Equal(Map.Trammel, felucca.Map);
+        Assert.Equal(Map.Felucca, felucca.Map);
 
         felucca.Delete();
+    }
+
+    // The brief's fact 1: a board already on Trammel, away from home, is moved home and not doubled.
+    [Fact]
+    public void PlaceWithABoardOnTrammelMakesNoSecondBoard()
+    {
+        ClearBoards();
+
+        var board = new NewHavenQuestBoard();
+        board.MoveToWorld(new Point3D(NewHavenQuestBoard.HomeLocation.X + 3, NewHavenQuestBoard.HomeLocation.Y, NewHavenQuestBoard.HomeLocation.Z), Map.Trammel);
+
+        var said = NewHavenQuestBoard.Place();
+        _out.WriteLine(said);
+        Assert.Contains("moved to", said);
+        Assert.Equal(board, Assert.Single(Boards()));
+        Assert.Equal(NewHavenQuestBoard.HomeLocation, board.Location);
+
+        board.Delete();
+    }
+
+    // The brief's fact 3: run twice from clean, exactly one board, and a dry run from clean places none.
+    [Fact]
+    public void PlaceRunTwiceFromCleanMakesExactlyOneBoard()
+    {
+        ClearBoards();
+
+        var said = NewHavenQuestBoard.Place(dryRun: true);
+        _out.WriteLine(said);
+        Assert.StartsWith("Dry run", said);
+        Assert.Empty(Boards());
+
+        _out.WriteLine(NewHavenQuestBoard.Place());
+        _out.WriteLine(NewHavenQuestBoard.Place());
+
+        var board = Assert.Single(Boards());
+        Assert.Equal(Map.Trammel, board.Map);
+        Assert.Equal(NewHavenQuestBoard.HomeLocation, board.Location);
+
+        board.Delete();
     }
 }

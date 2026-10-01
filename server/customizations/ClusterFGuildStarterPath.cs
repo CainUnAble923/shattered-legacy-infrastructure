@@ -138,11 +138,12 @@ public sealed class GuildLocation
     public const int SearchRange = 15;
 
     public GuildLocation(
-        string guildKey, string hall, Type npcType, int mapIndex, int x, int y, int z,
+        string guildKey, string hall, string town, Type npcType, int mapIndex, int x, int y, int z,
         bool seeded, Direction facing = Direction.South, params Point3D[] oldTiles)
     {
         GuildKey = guildKey;
         Hall = hall;
+        Town = town;
         NpcType = npcType;
         MapIndex = mapIndex;
         Point = new Point3D(x, y, z);
@@ -153,6 +154,9 @@ public sealed class GuildLocation
 
     public string GuildKey { get; }
     public string Hall { get; }
+
+    // The town the hall is in, named in "Show me the way" so a player knows where it sends them.
+    public string Town { get; }
     public Type NpcType { get; }
     public int MapIndex { get; }
     public Point3D Point { get; }
@@ -203,24 +207,24 @@ public static class GuildLocations
     // placed by someone else; spawned stock guildmasters wander, so their tile is their spawn point.
     public static readonly GuildLocation[] All =
     [
-        new("warriors",   "Warrior's Guild Hall",             typeof(WarriorGuildmaster),              GuildLocation.TrammelIndex, 3530, 2537, 20, true),
-        new("arcane",     "New Haven Magery School",          typeof(MageGuildmaster),                 GuildLocation.TrammelIndex, 3486, 2494, 52, true),
-        new("healers",    "Healer's Hall",                    typeof(HealerGuildmaster),               GuildLocation.TrammelIndex, 3463, 2558, 36, false),
-        new("rangers",    "New Haven stables",                typeof(OutridersGuildmaster),            GuildLocation.TrammelIndex, 3524, 2574, 7,  false),
-        new("mining",     "Mine camp, south mountains",       typeof(MinersCompactLiaison),            GuildLocation.TrammelIndex, 3498, 2744, 4,  false, Direction.East),
-        new("smithing",   "Forge and Anvil",                  typeof(BlacksmithGuildmaster),           GuildLocation.TrammelIndex, 3469, 2536, 41, false),
-        new("tinkers",    "Springs N Things",                 typeof(TinkerGuildmaster),               GuildLocation.TrammelIndex, 3458, 2524, 53, false),
-        new("thieves",    "Bountiful Harvest Inn, back room", typeof(ThiefGuildmaster),                GuildLocation.TrammelIndex, 3495, 2515, 27, true),
-        new("dojo",       "Ninja Dojo",                       typeof(TwinPathsDojoGuildmaster),        GuildLocation.TrammelIndex, 3420, 2517, 21, true),
-        new("keepers",    "Necromancers Guild Hall",          typeof(KeepersOfTheLastDoorGuildmaster), GuildLocation.TrammelIndex, 3551, 2463, 15, true),
-        new("foresters",  "Carpenters of New Haven",          typeof(ForestersGuildmaster),            GuildLocation.TrammelIndex, 3441, 2637, 28, false),
-        new("tailoring",  "A Stitch In Time",                 typeof(TailorGuildmaster),               GuildLocation.TrammelIndex, 3494, 2551, 20, false),
-        new("maritime",   "New Haven Docks",                  typeof(FisherGuildmaster),               GuildLocation.TrammelIndex, 3507, 2597, 1,  true),
-        new("custodians", "Civic hall, upstairs",             typeof(SanitationWarden),                GuildLocation.TrammelIndex, 3506, 2560, 21, false),
-        new("merchants",  "New Haven Bank",                   typeof(MerchantGuildmaster),             GuildLocation.TrammelIndex, 3488, 2567, 20, true),
-        new("bards",      "Bardic Guild",                     typeof(BardGuildmaster),                 GuildLocation.TrammelIndex, 3410, 2608, 55, true),
-        new("artificers", "New Haven Magery School",          typeof(ArtificersGuildmaster),           GuildLocation.TrammelIndex, 3483, 2501, 52, true, Direction.South, new Point3D(3490, 2627, 0)),
-        new("artificers", "Royal City, Ter Mur",              typeof(ArtificersGuildmaster),           GuildLocation.TerMurIndex,  797,  3431, -10, false, Direction.West),
+        new("warriors",   "Warrior's Guild Hall", "New Haven",             typeof(WarriorGuildmaster),              GuildLocation.TrammelIndex, 3530, 2537, 20, true),
+        new("arcane",     "New Haven Magery School", "New Haven",          typeof(MageGuildmaster),                 GuildLocation.TrammelIndex, 3486, 2494, 52, true),
+        new("healers",    "Healer's Hall", "New Haven",                    typeof(HealerGuildmaster),               GuildLocation.TrammelIndex, 3463, 2558, 36, false),
+        new("rangers",    "New Haven stables", "New Haven",                typeof(OutridersGuildmaster),            GuildLocation.TrammelIndex, 3524, 2574, 7,  false),
+        new("mining",     "Mine camp, south mountains", "New Haven",       typeof(MinersCompactLiaison),            GuildLocation.TrammelIndex, 3498, 2744, 4,  false, Direction.East),
+        new("smithing",   "Forge and Anvil", "New Haven",                  typeof(BlacksmithGuildmaster),           GuildLocation.TrammelIndex, 3469, 2536, 41, false),
+        new("tinkers",    "Springs N Things", "New Haven",                 typeof(TinkerGuildmaster),               GuildLocation.TrammelIndex, 3458, 2524, 53, false),
+        new("thieves",    "Bountiful Harvest Inn, back room", "New Haven", typeof(ThiefGuildmaster),                GuildLocation.TrammelIndex, 3495, 2515, 27, true),
+        new("dojo",       "Ninja Dojo", "New Haven",                       typeof(TwinPathsDojoGuildmaster),        GuildLocation.TrammelIndex, 3420, 2517, 21, true),
+        new("keepers",    "Necromancers Guild Hall", "New Haven",          typeof(KeepersOfTheLastDoorGuildmaster), GuildLocation.TrammelIndex, 3551, 2463, 15, true),
+        new("foresters",  "Carpenters of New Haven", "New Haven",          typeof(ForestersGuildmaster),            GuildLocation.TrammelIndex, 3441, 2637, 28, false),
+        new("tailoring",  "A Stitch In Time", "New Haven",                 typeof(TailorGuildmaster),               GuildLocation.TrammelIndex, 3494, 2551, 20, false),
+        new("maritime",   "New Haven Docks", "New Haven",                  typeof(FisherGuildmaster),               GuildLocation.TrammelIndex, 3507, 2597, 1,  true),
+        new("custodians", "Civic hall, upstairs", "New Haven",             typeof(SanitationWarden),                GuildLocation.TrammelIndex, 3506, 2560, 21, false),
+        new("merchants",  "New Haven Bank", "New Haven",                   typeof(MerchantGuildmaster),             GuildLocation.TrammelIndex, 3488, 2567, 20, true),
+        new("bards",      "Bardic Guild", "New Haven",                     typeof(BardGuildmaster),                 GuildLocation.TrammelIndex, 3410, 2608, 55, true),
+        new("artificers", "New Haven Magery School", "New Haven",          typeof(ArtificersGuildmaster),           GuildLocation.TrammelIndex, 3483, 2501, 52, true, Direction.South, new Point3D(3490, 2627, 0)),
+        new("artificers", "Royal City", "Ter Mur",                         typeof(ArtificersGuildmaster),           GuildLocation.TerMurIndex,  797,  3431, -10, false, Direction.West),
     ];
 
     public static List<GuildLocation> For(string guildKey)
@@ -568,22 +572,91 @@ public static class ClusterFGuildStarter
     /// </summary>
     public static string ShowTheWay(PlayerMobile pm, GuildLocation loc)
     {
-        var def = ClusterFGuildSystem.GetDef(loc.GuildKey);
-        var name = def?.Name ?? loc.GuildKey;
+        var name = GuildName(loc.GuildKey);
         var map = loc.Map;
 
         if (map == null)
-            return $"The {name}'s post at {loc.Hall} is on a facet this shard does not have loaded.";
+            return $"The {name}'s post at {loc.Hall} in {loc.Town} is on a facet this shard does not have loaded.";
 
         var npc = loc.Find();
         if (npc == null)
-            return $"The {name}'s guildmaster is not at {loc.Hall} ({loc.Point.X}, {loc.Point.Y}, {map.Name}). Please tell a Game Master.";
+            return $"The {name}'s guildmaster is not at {Post(loc)}. Please tell a Game Master.";
 
-        if (pm.Map != map)
-            return $"The {name}'s guildmaster is at {loc.Hall}, on {map.Name}. The arrow cannot cross facets.";
+        return PointAt(pm, name, loc, npc);
+    }
 
-        pm.QuestArrow = new GuildDirectionArrow(pm, npc, npc.Location, map, $"the {name}'s guildmaster");
-        return $"Follow the arrow to the {name}'s guildmaster at {loc.Hall}. Right-click the arrow to put it away.";
+    /// <summary>
+    /// The directory's "Show me the way" for a guild (D41, cc-P23). The guildmaster is picked when the
+    /// button is pressed, not when the directory was drawn: the nearest one found on the player's own
+    /// map; else one found on another map, named with its town but not pointed at; else every post the
+    /// guild has is reported missing, in the words above.
+    /// </summary>
+    public static string ShowTheWay(PlayerMobile pm, string guildKey)
+    {
+        var locations = GuildLocations.For(guildKey);
+        var name = GuildName(guildKey);
+
+        if (locations.Count == 0)
+            return $"The {name} has no guildmaster post. Please tell a Game Master.";
+
+        GuildLocation near = null, away = null;
+        Mobile nearNpc = null, awayNpc = null;
+        var nearDistance = int.MaxValue;
+
+        foreach (var loc in locations)
+        {
+            var npc = loc.Map != null ? loc.Find() : null;
+            if (npc == null)
+                continue;
+
+            if (npc.Map != pm.Map)
+            {
+                if (away == null)
+                {
+                    away = loc;
+                    awayNpc = npc;
+                }
+
+                continue;
+            }
+
+            var d = Math.Max(Math.Abs(npc.X - pm.X), Math.Abs(npc.Y - pm.Y));
+            if (d < nearDistance)
+            {
+                near = loc;
+                nearNpc = npc;
+                nearDistance = d;
+            }
+        }
+
+        if (near != null)
+            return PointAt(pm, name, near, nearNpc);
+
+        if (away != null)
+            return PointAt(pm, name, away, awayNpc);
+
+        if (locations.Count == 1)
+            return ShowTheWay(pm, locations[0]);
+
+        var posts = new List<string>();
+        foreach (var loc in locations)
+            posts.Add(loc.Map != null ? Post(loc) : $"{loc.Hall} in {loc.Town} (a facet this shard does not have loaded)");
+
+        return $"The {name}'s guildmaster is not at {string.Join(" or ", posts)}. Please tell a Game Master.";
+    }
+
+    private static string GuildName(string guildKey) => ClusterFGuildSystem.GetDef(guildKey)?.Name ?? guildKey;
+
+    private static string Post(GuildLocation loc) =>
+        $"{loc.Hall} in {loc.Town} ({loc.Point.X}, {loc.Point.Y}, {loc.Map?.Name})";
+
+    private static string PointAt(PlayerMobile pm, string name, GuildLocation loc, Mobile npc)
+    {
+        if (pm.Map != npc.Map)
+            return $"The {name}'s guildmaster is at {loc.Hall} in {loc.Town}, on {npc.Map?.Name}. The arrow cannot cross facets.";
+
+        pm.QuestArrow = new GuildDirectionArrow(pm, npc, npc.Location, npc.Map, $"the {name}'s guildmaster");
+        return $"Follow the arrow to the {name}'s guildmaster at {loc.Hall} in {loc.Town}. Right-click the arrow to put it away.";
     }
 }
 

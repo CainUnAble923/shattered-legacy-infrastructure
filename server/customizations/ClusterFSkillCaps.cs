@@ -115,6 +115,10 @@ public static class ClusterFSkillCaps
 
         var individualCap = IndividualSkillCapFixedPoint;
 
+        // By design this overwrites every skill's cap, including one a power scroll raised
+        // (PowerScroll.Use sets Skills[x].Cap, pinned PowerScroll.cs:272): the scroll lasts until the
+        // next login or world load (D43, cc-P23). F-12 replaces the flat value with a per-character
+        // max level, and power scrolls then raise that (shard-migration notes/f12-levels-loops-caps.md).
         for (var i = 0; i < skills.Length; i++)
         {
             skills[i].CapFixedPoint = individualCap;

@@ -10,8 +10,8 @@ namespace Server;
 /// <summary>
 /// Society of Smiths - Seal Catalog
 ///
-/// Allows guild members to spend Smithing Seals on tools, runic hammers,
-/// ancient smithy hammers, and power scrolls.
+/// Allows guild members to spend Smithing Seals on tools, runic hammers
+/// and ancient smithy hammers.
 ///
 /// Opened from: SmithGuildmasterGump (member view) and SmithGuildBook.
 /// </summary>
@@ -33,7 +33,14 @@ public class SmithSealCatalogGump : Gump
 
     // -- Catalog definition ----------------------------------------------------
 
-    public enum Cat { Tools, AncientHammers, RunicVanilla, RunicPostVal, PowerScrolls }
+    // The power scroll tab is gone (D43, cc-P23). It sold Blacksmithing scrolls at 305 to 320, and
+    // ClusterFSkillCaps.Apply writes the flat cap back over every skill at the next login, so every
+    // one was lost. Under F-12 (shard-migration notes/f12-levels-loops-caps.md) power scrolls raise
+    // the character's max level instead, in steps of 25 above 100. The seam: when F-12 lands, add a
+    // LevelScrolls member here, its label to CatLabels and its rows to Catalog, in the same position
+    // in all three. The sidebar and OnResponse read their range from CatLabels.Length, so nothing
+    // else changes. SmithSealScrollCensus counts what was sold.
+    public enum Cat { Tools, AncientHammers, RunicVanilla, RunicPostVal }
 
     private static readonly string[] CatLabels =
     {
@@ -41,7 +48,6 @@ public class SmithSealCatalogGump : Gump
         "Smithy Hammers",
         "Runic Hammers",
         "Post-Valorite",
-        "Power Scrolls",
     };
 
     private record CatalogEntry(string Name, int Cost, Func<Item?> Create, bool ComingSoon = false);
@@ -95,22 +101,11 @@ public class SmithSealCatalogGump : Gump
             new("Adamantium Runic Hammer",  36_000, () => null, ComingSoon: true),
             new("Celestial Runic Hammer",   50_000, () => null, ComingSoon: true),
         },
-
-        // -- Power Scrolls -------------------------------------------------
-        // Each scroll raises the Blacksmithing skill cap by its listed amount.
-        // PS 305 = cap raised from 300 -> 305; buy PS 310 next for the next step, etc.
-        new CatalogEntry[]
-        {
-            new("Blacksmithing Power Scroll +5",     750, () => new PowerScroll(SkillName.Blacksmith, 305.0)),
-            new("Blacksmithing Power Scroll +10",  2_000, () => new PowerScroll(SkillName.Blacksmith, 310.0)),
-            new("Blacksmithing Power Scroll +15",  4_500, () => new PowerScroll(SkillName.Blacksmith, 315.0)),
-            new("Blacksmithing Power Scroll +20", 10_000, () => new PowerScroll(SkillName.Blacksmith, 320.0)),
-        },
     };
 
     // -- Button IDs ------------------------------------------------------------
     // 0         = close / no-op
-    // 1-5       = select category (Cat enum value + 1)
+    // 1-N       = select category (Cat enum value + 1), N = CatLabels.Length
     // 100-199   = buy item at row index (100 + index)
 
     // -- State -----------------------------------------------------------------
@@ -194,7 +189,7 @@ public class SmithSealCatalogGump : Gump
         var buttonID = info.ButtonID;
 
         // Category select
-        if (buttonID is >= 1 and <= 5)
+        if (buttonID >= 1 && buttonID <= CatLabels.Length)
         {
             _pm.SendGump(new SmithSealCatalogGump(_pm, (Cat)(buttonID - 1)));
             return;

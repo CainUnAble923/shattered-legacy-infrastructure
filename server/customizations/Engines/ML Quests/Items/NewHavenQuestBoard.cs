@@ -26,7 +26,7 @@
 //      if it stops registering.
 //   3. MLQuestInstance still saves its quester by serial only (MLQuestEntry.cs:520, and the
 //      TODO at :536). A held quest whose board is gone is dropped from the player's log at the
-//      next load, which is why Place() moves a board and never replaces one.
+//      next load, which is why Place() never replaces a board, and moves one only when told to.
 //   4. GetRowState and OnPick restate two private pieces of MLQuestSystem (FindQuest and
 //      OnDoubleClick, MLQuestSystem.cs:315-411): step 1's "held from this quester" predicate,
 //      and the ClaimReward / IsCompleted / progress branch for a held quest. If either changes
@@ -343,19 +343,35 @@ public partial class NewHavenQuestBoard : QuestGiverItem
     public static readonly string FullMessage =
         $"You already carry {MLQuestSystem.MaxConcurrentQuests} quests, the most you can. Finish or drop one to take another.";
 
-    [Usage("PlaceNewHavenQuestBoard")]
-    [Description("Places the New Haven training board at the town square, or moves the existing one back there.")]
-    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.Unverified, NoDryRun = true, Summary = "Places the New Haven training board, or moves the existing one back. Never deletes.")]
+    [Usage("PlaceNewHavenQuestBoard [dryrun|move]")]
+    [Description("Places the New Haven training board at the town square if no board exists anywhere. A board found off Trammel is reported and left alone; 'move' moves it home, 'dryrun' reports only.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.Unverified, DryRun = "dryrun", Summary = "Places the New Haven training board if none exists. Never deletes; moves a board off Trammel only with 'move'.")]
     private static void PlaceNewHavenQuestBoard_OnCommand(CommandEventArgs e)
     {
-        e.Mobile.SendMessage(Place());
+        var arg = e.Length > 0 ? e.GetString(0) : "";
+        var dryRun = arg.Equals("dryrun", StringComparison.OrdinalIgnoreCase);
+        var move = arg.Equals("move", StringComparison.OrdinalIgnoreCase);
+
+        if (arg.Length > 0 && !dryRun && !move)
+        {
+            e.Mobile.SendMessage("Usage: PlaceNewHavenQuestBoard [dryrun|move]");
+            return;
+        }
+
+        e.Mobile.SendMessage(Place(move, dryRun));
     }
 
-    // Never deletes: a board already in the world is moved, not replaced. Every quest a player
+    // Never deletes: a board already in the world is kept, never replaced. Every quest a player
     // holds from a board is saved against that board's serial and is dropped on the next load
-    // if the board is gone. Searches every map, Map.Internal and containers included: a board
-    // the search cannot see is a board Place() would duplicate.
-    public static string Place()
+    // if the board is gone. Searches every map, Map.Internal and containers included (World.Items,
+    // every item in the world whatever its map or parent): a board the search cannot see is a
+    // board Place() would duplicate.
+    //
+    // A board on Trammel but away from home is moved home: that is what the command is for. A
+    // board anywhere else (another facet, Map.Internal, a container) is reported and left where it
+    // is unless `move` is set (cc-P23). Somebody put it there, and the quests held from it are safe
+    // wherever it stands, so refusing costs nothing; moving it could undo a deliberate placement.
+    public static string Place(bool move = false, bool dryRun = false)
     {
         NewHavenQuestBoard existing = null;
         var onTrammel = 0;
@@ -385,21 +401,41 @@ public partial class NewHavenQuestBoard : QuestGiverItem
 
         var found = $"found {onTrammel} on Trammel, {elsewhere} elsewhere";
         var extra = onTrammel + elsewhere > 1 ? " More than one board exists; the others were left where they are." : "";
+        var dry = dryRun ? "Dry run, nothing changed: " : "";
 
         if (existing == null)
         {
+            if (dryRun)
+            {
+                return $"{dry}would place the New Haven training board at {HomeLocation} Trammel ({found}).";
+            }
+
             new NewHavenQuestBoard().MoveToWorld(HomeLocation, Map.Trammel);
             return $"New Haven training board placed at {HomeLocation} Trammel ({found}).";
         }
 
         if (PlaceRank(existing) == 2)
         {
-            return $"New Haven training board already at {HomeLocation} Trammel ({found}).{extra}";
+            return $"{dry}New Haven training board already at {HomeLocation} Trammel ({found}).{extra}";
         }
 
-        var from = existing.Parent != null ? "a container" : $"{existing.Location} {existing.Map}";
+        var from = existing.Parent != null
+            ? $"a container ({existing.RootParent?.GetType().Name} {existing.RootParent?.Serial})"
+            : $"{existing.Location} {existing.Map?.Name ?? "no map"}";
+
+        if (PlaceRank(existing) == 0 && !move)
+        {
+            return $"{dry}New Haven training board {existing.Serial} found at {from}, not moved: it is off Trammel. " +
+                   $"Run [PlaceNewHavenQuestBoard move to bring it home ({found}).{extra}";
+        }
+
+        if (dryRun)
+        {
+            return $"{dry}would move New Haven training board {existing.Serial} to {HomeLocation} Trammel from {from} ({found}).{extra}";
+        }
+
         existing.MoveToWorld(HomeLocation, Map.Trammel);
-        return $"New Haven training board moved to {HomeLocation} Trammel from {from} ({found}).{extra}";
+        return $"New Haven training board {existing.Serial} moved to {HomeLocation} Trammel from {from} ({found}).{extra}";
     }
 
     // Which board Place() keeps: one already home, then one standing on Trammel, then any.

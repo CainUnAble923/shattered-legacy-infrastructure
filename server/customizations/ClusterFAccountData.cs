@@ -133,6 +133,9 @@ public class ClusterFAccountData
 
     public int GuildDataCount => _guildData.Count;
 
+    /// <summary>Every character's guild data on this account, by character serial. Read only (cc-P23).</summary>
+    public IReadOnlyDictionary<uint, CharacterGuildData> AllGuildData => _guildData;
+
     /// <summary>Clears every character's guild data on this account (the reset, cc-P18).</summary>
     public void ClearGuildData() => _guildData.Clear();
 
@@ -695,6 +698,9 @@ public class ClusterFAccountPersistence : Item
     /// <summary>Returns existing data, or null if no record exists yet.</summary>
     public static ClusterFAccountData? Get(Accounting.IAccount account) =>
         _data.TryGetValue(account.Username, out var d) ? d : null;
+
+    /// <summary>Every account's record, by username. Read only: for reports (cc-P23).</summary>
+    public static IReadOnlyDictionary<string, ClusterFAccountData> All => _data;
 
     /// <summary>
     /// This character's guild data (cc-P18, F-7), created if missing. The character must have an

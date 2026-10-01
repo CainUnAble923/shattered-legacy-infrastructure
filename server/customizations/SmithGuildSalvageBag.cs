@@ -110,11 +110,35 @@ public partial class SmithGuildSalvageBag : Bag
         }
     }
 
+    // -- Ingot return ----------------------------------------------------------
+    // Pinned's formula (SalvageBag.cs:90-108) without its Mining clamp of 100, so extended Mining
+    // keeps paying. Unclamped it passes the item's own cost at Mining about 143 and gave 51 ingots
+    // for a 25-ingot item at 300: an ingot dupe (D42, cc-P23). So the result is clamped, not the
+    // skill: never more than cost - 1, which every Mining from about 143 up reaches. Pinned's floor
+    // of 2 wins over that cap, which matters only for a 2-ingot item: it returns 2, its cost and no
+    // more, as pinned does at every Mining. No blacksmith recipe costs 2 today.
+
+    public const int MinimumIngotReturn = 2;
+
+    public static int IngotReturn(Item item, double mining, int cost)
+    {
+        if (item is not DragonBardingDeed
+            && item is not BaseArmor { PlayerConstructed: true }
+            && item is not BaseWeapon { PlayerConstructed: true }
+            && item is not BaseClothing { PlayerConstructed: true })
+        {
+            return MinimumIngotReturn;
+        }
+
+        var amount = (int)(((4 + mining) * cost - 4) * 0.0068);
+        return Math.Max(MinimumIngotReturn, Math.Min(amount, cost - 1));
+    }
+
     // -- Resmelt ---------------------------------------------------------------
 
     private bool _failure;
 
-    private bool TryResmelt(Mobile from, Item item, CraftResource resource)
+    internal bool TryResmelt(Mobile from, Item item, CraftResource resource)
     {
         try
         {
@@ -136,20 +160,7 @@ public partial class SmithGuildSalvageBag : Bag
             var difficulty = ResmeltDifficulty(resource);
             var ingot      = info.ResourceTypes[0].CreateInstance<Item>();
 
-            // Ingot amount - use raw skill (no 100-cap) to reward extended Mining
-            if (item is DragonBardingDeed
-                || item is BaseArmor  a && a.PlayerConstructed
-                || item is BaseWeapon w && w.PlayerConstructed
-                || item is BaseClothing c && c.PlayerConstructed)
-            {
-                var mining = from.Skills.Mining.Value;
-                var amount = ((4 + mining) * craftResource.Amount - 4) * 0.0068;
-                ingot.Amount = Math.Max(2, (int)amount);
-            }
-            else
-            {
-                ingot.Amount = 2;
-            }
+            ingot.Amount = IngotReturn(item, from.Skills.Mining.Value, craftResource.Amount);
 
             if (difficulty > from.Skills.Mining.Value)
             {
