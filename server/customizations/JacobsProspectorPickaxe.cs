@@ -172,6 +172,9 @@ public class JacobsT3UpgradeGump : Gump
     private const int UpgradeIronCost     = 1500;
     private const int UpgradeAgapiteCost  = 500;
     private const int UpgradeGoldCost     = 50000;
+
+    // F-11: materials come from the pack and the bank (GuildResources), gold from both through CompactGoldHelper.
+    private static GuildCost[] Materials => new[] { GuildCost.Of<IronIngot>(UpgradeIronCost), GuildCost.Of<AgapiteIngot>(UpgradeAgapiteCost) };
     private const int UpgradeStandingReq  = 15000;  // Surveyor rank
     private const double UpgradeSkillReq  = 80.0;
 
@@ -216,8 +219,8 @@ public class JacobsT3UpgradeGump : Gump
         var pack        = _pm.Backpack;
         var bypass      = DevTestingCrystal.IsActive(_pm);
 
-        var ironCount   = pack?.GetAmount(typeof(IronIngot))    ?? 0;
-        var agapiteCount = pack?.GetAmount(typeof(AgapiteIngot)) ?? 0;
+        var ironCount   = GuildResources.Count(_pm, GuildCost.Of<IronIngot>(0)).Total;
+        var agapiteCount = GuildResources.Count(_pm, GuildCost.Of<AgapiteIngot>(0)).Total;
         var goldCount   = CompactGoldHelper.GetTotalGold(_pm);
         var hasT2       = FindT2InPack() != null;
 
@@ -239,9 +242,10 @@ public class JacobsT3UpgradeGump : Gump
             $"<BASEFONT COLOR={Clr(reqRank)}>Rank: Surveyor required - Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqSkill)}>Mining skill: {mining:F1}/{UpgradeSkillReq:F0} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqVoucher)}>Mining Vouchers: {vouchers}/{UpgradeVoucherCost} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqIron)}>Iron Ingots in pack: {ironCount:N0}/{UpgradeIronCost:N0} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqAgapite)}>Agapite Ingots in pack: {agapiteCount}/{UpgradeAgapiteCost} required</BASEFONT><BR>" +
+            $"<BASEFONT COLOR={Clr(reqIron)}>Iron Ingots (pack+bank): {ironCount:N0}/{UpgradeIronCost:N0} required</BASEFONT><BR>" +
+            $"<BASEFONT COLOR={Clr(reqAgapite)}>Agapite Ingots (pack+bank): {agapiteCount}/{UpgradeAgapiteCost} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqGold)}>Gold (pack+bank): {goldCount:N0}/{UpgradeGoldCost:N0} required</BASEFONT><BR>" +
+            $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, Materials)}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqT2)}>Jacob's Reinforced Pickaxe (non-exhausted) in pack: {(hasT2 ? "Yes" : "No")}</BASEFONT>";
 
         AddHtml(16, 56, W - 32, H - 130, html, false, true);
@@ -294,30 +298,23 @@ public class JacobsT3UpgradeGump : Gump
         if (pack == null) return;
 
         guild.GuildReputation.TryGetValue("mining", out var standing);
-        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var mining      = _pm.Skills[SkillName.Mining].Value;
-        var ironCount   = pack.GetAmount(typeof(IronIngot));
-        var agapiteCount = pack.GetAmount(typeof(AgapiteIngot));
         var srcPickaxe  = FindT2InPack();
         var bypass      = DevTestingCrystal.IsActive(_pm);
 
         if (srcPickaxe == null
-            || (!bypass && (standing < UpgradeStandingReq || mining < UpgradeSkillReq
-                || vouchers < UpgradeVoucherCost || ironCount < UpgradeIronCost
-                || agapiteCount < UpgradeAgapiteCost
-                || CompactGoldHelper.GetTotalGold(_pm) < UpgradeGoldCost)))
+            || (!bypass && (standing < UpgradeStandingReq || mining < UpgradeSkillReq)))
         {
             _pm.SendMessage(0x22, "Requirements no longer met. Upgrade cancelled.");
             _pm.SendGump(new JacobsT3UpgradeGump(_pm));
             return;
         }
 
-        if (!bypass)
+        // Vouchers, materials (pack then bank) and gold, all or nothing; skipped when the testing token is active.
+        if (!bypass && !GuildResources.TryPay(_pm, guild, "mining", UpgradeVoucherCost, "Mining Vouchers", UpgradeGoldCost, Materials))
         {
-            guild.GuildCurrency["mining"] = vouchers - UpgradeVoucherCost;
-            pack.ConsumeTotal(typeof(IronIngot),    UpgradeIronCost);
-            pack.ConsumeTotal(typeof(AgapiteIngot), UpgradeAgapiteCost);
-            CompactGoldHelper.ConsumeGold(_pm, UpgradeGoldCost);
+            _pm.SendGump(new JacobsT3UpgradeGump(_pm));
+            return;
         }
 
         // Consume T2 - mark exhausted first to suppress the durability replacement drop

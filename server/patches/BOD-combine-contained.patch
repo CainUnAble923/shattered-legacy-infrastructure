@@ -1,0 +1,106 @@
+--- "a/Projects/UOContent/Engines/Bulk Orders/SmallBODGump.cs"	2026-10-01 11:10:37.902236900 -0500
++++ "b/Projects/UOContent/Engines/Bulk Orders/SmallBODGump.cs"	2026-10-01 11:11:02.323363100 -0500
+@@ -15,14 +15,15 @@
+         {
+             builder.AddPage();
+ 
+-            builder.AddBackground(50, 10, 455, 260, 5054);
+-            builder.AddImageTiled(58, 20, 438, 241, 2624);
+-            builder.AddAlphaRegion(58, 20, 438, 241);
++            // Shattered Legacy (F-17): one row taller for "Combine this deed with contained items".
++            builder.AddBackground(50, 10, 455, 284, 5054);
++            builder.AddImageTiled(58, 20, 438, 265, 2624);
++            builder.AddAlphaRegion(58, 20, 438, 265);
+ 
+             builder.AddImage(45, 5, 10460);
+             builder.AddImage(480, 5, 10460);
+-            builder.AddImage(45, 245, 10460);
+-            builder.AddImage(480, 245, 10460);
++            builder.AddImage(45, 269, 10460);
++            builder.AddImage(480, 269, 10460);
+ 
+             builder.AddHtmlLocalized(225, 25, 120, 20, 1045133, 0x7FFF); // A bulk order
+ 
+@@ -62,8 +63,11 @@
+             builder.AddButton(125, 192, 4005, 4007, 2);
+             builder.AddHtmlLocalized(160, 192, 300, 20, 1045154, 0x7FFF); // Combine this deed with the item requested.
+ 
+-            builder.AddButton(125, 216, 4005, 4007, 1);
+-            builder.AddHtmlLocalized(160, 216, 120, 20, 1011441, 0x7FFF); // EXIT
++            builder.AddButton(125, 216, 4005, 4007, BODCombineContained.ButtonID);
++            builder.AddHtmlLocalized(160, 216, 300, 20, BODCombineContained.Cliloc, 0x7FFF); // Combine this deed with contained items.
++
++            builder.AddButton(125, 240, 4005, 4007, 1);
++            builder.AddHtmlLocalized(160, 240, 120, 20, 1011441, 0x7FFF); // EXIT
+         }
+ 
+         public override void OnResponse(NetState sender, in RelayInfo info)
+@@ -80,6 +84,11 @@
+                 from.SendGump(new SmallBODGump(_deed));
+                 _deed.BeginCombine(from);
+             }
++            else if (info.ButtonID == BODCombineContained.ButtonID) // Combine with contained items (F-17)
++            {
++                from.SendGump(new SmallBODGump(_deed));
++                BODCombineContained.Begin(from, _deed);
++            }
+         }
+ 
+         public static int GetMaterialNumberFor(BulkMaterialType material)
+--- "a/Projects/UOContent/Engines/Bulk Orders/LargeBODGump.cs"	2026-10-01 11:10:38.008879000 -0500
++++ "b/Projects/UOContent/Engines/Bulk Orders/LargeBODGump.cs"	2026-10-01 11:11:02.323363100 -0500
+@@ -17,15 +17,16 @@
+ 
+             builder.AddPage();
+ 
+-            builder.AddBackground(50, 10, 455, 236 + entries.Length * 24, 5054);
++            // Shattered Legacy (F-17): one row taller for "Combine this deed with contained items".
++            builder.AddBackground(50, 10, 455, 260 + entries.Length * 24, 5054);
+ 
+-            builder.AddImageTiled(58, 20, 438, 217 + entries.Length * 24, 2624);
+-            builder.AddAlphaRegion(58, 20, 438, 217 + entries.Length * 24);
++            builder.AddImageTiled(58, 20, 438, 241 + entries.Length * 24, 2624);
++            builder.AddAlphaRegion(58, 20, 438, 241 + entries.Length * 24);
+ 
+             builder.AddImage(45, 5, 10460);
+             builder.AddImage(480, 5, 10460);
+-            builder.AddImage(45, 221 + entries.Length * 24, 10460);
+-            builder.AddImage(480, 221 + entries.Length * 24, 10460);
++            builder.AddImage(45, 245 + entries.Length * 24, 10460);
++            builder.AddImage(480, 245 + entries.Length * 24, 10460);
+ 
+             builder.AddHtmlLocalized(225, 25, 120, 20, 1045134, 0x7FFF); // A large bulk order
+ 
+@@ -83,8 +84,18 @@
+                 0x7FFF
+             );
+ 
+-            builder.AddButton(125, 192 + entries.Length * 24, 4005, 4007, 1);
+-            builder.AddHtmlLocalized(160, 192 + entries.Length * 24, 120, 20, 1011441, 0x7FFF); // EXIT
++            builder.AddButton(125, 192 + entries.Length * 24, 4005, 4007, BODCombineContained.ButtonID);
++            builder.AddHtmlLocalized(
++                160,
++                192 + entries.Length * 24,
++                300,
++                20,
++                BODCombineContained.Cliloc, // Combine this deed with contained items.
++                0x7FFF
++            );
++
++            builder.AddButton(125, 216 + entries.Length * 24, 4005, 4007, 1);
++            builder.AddHtmlLocalized(160, 216 + entries.Length * 24, 120, 20, 1011441, 0x7FFF); // EXIT
+         }
+ 
+         public override void OnResponse(NetState sender, in RelayInfo info)
+@@ -101,6 +112,11 @@
+                 sender.SendGump(new LargeBODGump(_deed));
+                 _deed.BeginCombine(from);
+             }
++            else if (info.ButtonID == BODCombineContained.ButtonID) // Combine with contained small deeds (F-17)
++            {
++                sender.SendGump(new LargeBODGump(_deed));
++                BODCombineContained.Begin(from, _deed);
++            }
+         }
+ 
+         public static int GetMaterialNumberFor(BulkMaterialType material)

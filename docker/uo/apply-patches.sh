@@ -341,6 +341,12 @@ apply_patch "$PATCHES/PlayerMobile-young-time-only.patch"
 apply_patch "$PATCHES/Resmelt-smelt-one.patch"
 apply_patch "$PATCHES/SalvageBag-salvage-all.patch"
 
+# P22 (F-17, ported). OSI's "Combine this deed with contained items" (cliloc 1157304) on pinned's small and large BOD
+# gumps: one row taller, one button, one response branch calling BODCombineContained (customizations), which runs
+# every item through the deed's own EndCombine. No hook reaches a pinned gump's layout. Argued in
+# shard-migration/notes/cc-P22-small-features-1.md (F-17); pinned by BODCombineContainedVerification.
+apply_patch "$PATCHES/BOD-combine-contained.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

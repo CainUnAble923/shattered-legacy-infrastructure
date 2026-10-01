@@ -9,7 +9,7 @@ using Server.Network;
 
 namespace Server;
 
-// ── Bulletin category ─────────────────────────────────────────────────────────
+// -- Bulletin category ---------------------------------------------------------
 
 public enum BulletinCategory
 {
@@ -20,7 +20,7 @@ public enum BulletinCategory
     PersonalNotice,   // future: player-specific unlocks, promotions
 }
 
-// ── Bulletin entry ────────────────────────────────────────────────────────────
+// -- Bulletin entry ------------------------------------------------------------
 
 public class BulletinEntry
 {
@@ -51,7 +51,7 @@ public class BulletinEntry
     }
 }
 
-// ── Bulletin system ───────────────────────────────────────────────────────────
+// -- Bulletin system -----------------------------------------------------------
 
 /// <summary>
 /// League Dispatch / MOTD bulletin system for Shattered Legacy.
@@ -64,7 +64,7 @@ public class BulletinEntry
 ///   [ClusterFBulletin add <category> <message text>
 ///   [ClusterFBulletin list
 ///   [ClusterFBulletin remove <id>
-///   [ClusterFBulletin load           — load/reload from bulletins.txt
+///   [ClusterFBulletin load           - load/reload from bulletins.txt
 ///
 /// Category names: critical, dispatch, guild, event, personal
 ///
@@ -95,33 +95,41 @@ public static class ClusterFBulletinSystem
         CommandSystem.Register("ClusterFBulletin", AccessLevel.Administrator, OnCommand);
     }
 
-    // ── Login hook ────────────────────────────────────────────────────────
+    // -- Login hook --------------------------------------------------------
 
     [OnEvent(nameof(PlayerMobile.PlayerLoginEvent))]
     public static void OnLogin(PlayerMobile pm)
     {
-        if (_bulletins.Count == 0) return;
         if (pm.Account is not IAccount acct) return;
 
-        var data = ClusterFAccountPersistence.GetOrCreate(acct);
-        var lastSeen = data.LastSeenBulletinId;
+        var unread = UnreadFor(acct);
+
+        // F-15 (cc-P22): the current version's patch notes, once per account per version (ShardVersion).
+        var notes = ShardVersion.UnseenNotesFor(acct);
+
+        if (unread.Count == 0 && notes == null) return;
+
+        // Small delay so the player has fully loaded in before we send the gump.
+        Timer.StartTimer(TimeSpan.FromSeconds(2.0), () =>
+        {
+            if (pm.NetState != null)
+                pm.SendGump(new BulletinGump(pm, unread, notes));
+        });
+    }
+
+    public static List<BulletinEntry> UnreadFor(IAccount acct)
+    {
+        var lastSeen = ClusterFAccountPersistence.GetOrCreate(acct).LastSeenBulletinId;
 
         var unread = new List<BulletinEntry>();
         foreach (var b in _bulletins)
             if (b.Id > lastSeen)
                 unread.Add(b);
 
-        if (unread.Count == 0) return;
-
-        // Small delay so the player has fully loaded in before we send the gump.
-        Timer.StartTimer(TimeSpan.FromSeconds(2.0), () =>
-        {
-            if (pm.NetState != null)
-                pm.SendGump(new BulletinGump(pm, unread));
-        });
+        return unread;
     }
 
-    // ── Mark all current bulletins as seen for this account ───────────────
+    // -- Mark all current bulletins as seen for this account ---------------
 
     public static void MarkSeen(IAccount acct)
     {
@@ -130,7 +138,7 @@ public static class ClusterFBulletinSystem
         ClusterFAccountPersistence.GetOrCreate(acct).LastSeenBulletinId = id;
     }
 
-    // ── Command handler ───────────────────────────────────────────────────
+    // -- Command handler ---------------------------------------------------
 
     [Usage("ClusterFBulletin <add|list|remove> [args]")]
     [Description("Manages the League Dispatch / MOTD bulletin board.")]
@@ -226,13 +234,13 @@ public static class ClusterFBulletinSystem
         {
             // Create a template file so the admin knows the format.
             File.WriteAllText(BulletinFilePath,
-                "# Shattered Legacy — League Dispatch bulletin file\n" +
+                "# Shattered Legacy - League Dispatch bulletin file\n" +
                 "# One bulletin per line: category|message text\n" +
                 "# Categories: critical, dispatch, guild, event, personal\n" +
                 "# Run [ClusterFBulletin load in-game after editing.\n" +
                 "#\n" +
                 "# dispatch|Welcome to Shattered Legacy!\n");
-            e.Mobile.SendMessage($"No bulletins.txt found — created template at {BulletinFilePath}");
+            e.Mobile.SendMessage($"No bulletins.txt found - created template at {BulletinFilePath}");
             e.Mobile.SendMessage("Edit it over SSH and run [ClusterFBulletin load again.");
             return;
         }
@@ -289,7 +297,7 @@ public static class ClusterFBulletinSystem
         e.Mobile.SendMessage($"Bulletin load complete: {added} added, {skipped} skipped.");
     }
 
-    // ── Internal persistence API ──────────────────────────────────────────
+    // -- Internal persistence API ------------------------------------------
 
     internal static void Load(List<BulletinEntry> entries, int nextId)
     {
@@ -302,7 +310,7 @@ public static class ClusterFBulletinSystem
         (_bulletins, _nextId);
 }
 
-// ── Persistence item ──────────────────────────────────────────────────────────
+// -- Persistence item ----------------------------------------------------------
 
 /// <summary>
 /// Singleton Item that serializes the global bulletin list into the world save.
@@ -313,7 +321,7 @@ public class ClusterFBulletinPersistence : Item
 
     public static void Configure()
     {
-        // Item creation must happen after world load — not during Configure.
+        // Item creation must happen after world load - not during Configure.
         EventSink.WorldLoad += EnsureExistence;
     }
 
@@ -326,7 +334,7 @@ public class ClusterFBulletinPersistence : Item
 
     public ClusterFBulletinPersistence(Serial serial) : base(serial) => _instance = this;
 
-    public override string DefaultName => "ClusterF Bulletin Persistence — Internal";
+    public override string DefaultName => "ClusterF Bulletin Persistence - Internal";
 
     public override void Serialize(IGenericWriter w)
     {
@@ -355,15 +363,22 @@ public class ClusterFBulletinPersistence : Item
     }
 }
 
-// ── Bulletin gump ─────────────────────────────────────────────────────────────
+// -- Bulletin gump -------------------------------------------------------------
 
 /// <summary>
-/// Displays unread League Dispatch bulletins to the player on login.
-/// Dismissing (or closing) the gump marks all current bulletins as seen.
+/// Displays unread League Dispatch bulletins to the player on login, and above them, once per version, the
+/// shard's patch notes (F-15: "Shattered Legacy <version>", the short list, a Full notes button that opens the
+/// version's section of the wiki page in the player's browser).
+/// Dismissing (or closing) the gump marks all current bulletins, and the notes, as seen.
 /// </summary>
 public class BulletinGump : Gump
 {
+    public const int FullNotesButton = 2;
+    public const int MaxNoteLines = 8;
+    private const int NoteLineH = 18;
+
     private readonly Mobile _mobile;
+    private readonly PatchNoteVersion _notes;
 
     // Category display names and hues (UO label hue values, not RGB hex).
     private static readonly (string Label, int Hue)[] CategoryStyles =
@@ -381,28 +396,67 @@ public class BulletinGump : Gump
     private const int HeaderH    = 72;
     private const int FooterH    = 50;
 
-    public BulletinGump(Mobile m, List<BulletinEntry> entries) : base(60, 60)
+    public BulletinGump(Mobile m, List<BulletinEntry> entries, PatchNoteVersion notes = null) : base(60, 60)
     {
         _mobile = m;
+        _notes  = notes;
 
         Closable   = true;
         Disposable = true;
 
         var visibleCount = Math.Min(entries.Count, 7); // cap display at 7 entries
-        var totalH = HeaderH + visibleCount * EntryHeight + FooterH;
+        var noteLines = notes != null ? PatchNotes.BulletinLines(notes) : new List<string>();
+        var shownNotes = Math.Min(noteLines.Count, MaxNoteLines);
+        var notesH = notes != null ? 30 + shownNotes * NoteLineH + (noteLines.Count > MaxNoteLines ? NoteLineH : 0) + 34 : 0;
+        var totalH = HeaderH + notesH + visibleCount * EntryHeight + FooterH;
 
         AddBackground(0, 0, GumpWidth, totalH, BgGumpId);
         AddAlphaRegion(10, 10, GumpWidth - 20, totalH - 20);
 
-        // ── Header ────────────────────────────────────────────────────────
-        AddLabel(GumpWidth / 2 - 75, 14, 1154, "League Dispatch");
-        AddLabel(GumpWidth / 2 - 95, 34, 999,  "New notices since your last visit:");
+        // -- Header ----------------------------------------------------------
+        if (notes != null)
+        {
+            AddLabel(GumpWidth / 2 - 90, 14, 1154, $"{ShardVersion.ShardName} {notes.Version}");
+            AddLabel(GumpWidth / 2 - 95, 34, 999,  visibleCount > 0 ? "What changed, and new notices:" : "What changed in this version:");
+        }
+        else
+        {
+            AddLabel(GumpWidth / 2 - 75, 14, 1154, "League Dispatch");
+            AddLabel(GumpWidth / 2 - 95, 34, 999,  "New notices since your last visit:");
+        }
 
         // Horizontal rule (thin line image)
         AddImageTiled(10, 58, GumpWidth - 20, 2, 9304);
 
-        // ── Entries ───────────────────────────────────────────────────────
         var y = HeaderH;
+
+        // -- Patch notes (F-15) ----------------------------------------------
+        if (notes != null)
+        {
+            AddLabel(20, y + 4, 1154, "Patch notes");
+            y += 30;
+
+            for (var i = 0; i < shownNotes; i++)
+            {
+                AddHtml(20, y, GumpWidth - 40, NoteLineH, $"<BASEFONT COLOR=#DDDDDD>{noteLines[i]}</BASEFONT>", false, false);
+                y += NoteLineH;
+            }
+
+            if (noteLines.Count > MaxNoteLines)
+            {
+                AddLabel(20, y, 999, $"... and {noteLines.Count - MaxNoteLines} more in the full notes.");
+                y += NoteLineH;
+            }
+
+            AddButton(20, y + 6, 4005, 4007, FullNotesButton);
+            AddLabel(54, y + 8, 1154, "Full notes (opens the wiki in your browser)");
+            y += 34;
+
+            if (visibleCount > 0)
+                AddImageTiled(10, y - 2, GumpWidth - 20, 2, 9304);
+        }
+
+        // -- Entries ---------------------------------------------------------
         for (var i = 0; i < visibleCount; i++)
         {
             var b   = entries[i];
@@ -435,7 +489,7 @@ public class BulletinGump : Gump
             y += 20;
         }
 
-        // ── Footer / dismiss button ───────────────────────────────────────
+        // -- Footer / dismiss button ---------------------------------------
         AddImageTiled(10, y + 4, GumpWidth - 20, 2, 9304);
         AddButton(GumpWidth / 2 - 40, y + 14, 4023, 4025, 1); // OK button
         AddLabel(GumpWidth / 2 - 16, y + 16, 1154, "Dismiss");
@@ -443,8 +497,15 @@ public class BulletinGump : Gump
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
-        // Mark as seen on any interaction — close (0) or dismiss button (1).
+        // Mark as seen on any interaction - close (0), dismiss (1) or Full notes (2).
         if (_mobile.Account is IAccount acct)
+        {
             ClusterFBulletinSystem.MarkSeen(acct);
+            ShardVersion.MarkSeen(acct, _notes);
+        }
+
+        // Mobile.LaunchBrowser sends the open-URL packet; TazUO opens it without asking (notes, F-15).
+        if (info.ButtonID == FullNotesButton && _notes != null)
+            _mobile.LaunchBrowser(PatchNotes.NotesUrl(_notes.Version));
     }
 }

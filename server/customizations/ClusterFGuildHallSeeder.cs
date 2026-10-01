@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Server.Mobiles;
 
 namespace Server;
@@ -18,6 +19,8 @@ namespace Server;
 ///   [ClusterFSeedGuildHalls dryrun   what would happen, nothing changed
 ///   [ClusterFSeedGuildHalls          place the missing ones (default "missing")
 ///   [ClusterFSeedGuildHalls repair   also move one standing elsewhere (or on an old tile) onto its tile
+///
+/// The Thieves' Den lookout by the fighting pit (GuildLocations.Lookouts, cc-P22) is placed the same way.
 ///
 /// Re-running never duplicates: a guildmaster of the right type within GuildLocation.SearchRange of
 /// its tile, or of one of its OldTiles, counts as present.
@@ -63,7 +66,7 @@ public static class ClusterFGuildHallSeeder
         var report = new List<string>();
         int created = 0, moved = 0, present = 0;
 
-        foreach (var loc in GuildLocations.All)
+        foreach (var loc in GuildLocations.All.Concat(GuildLocations.Lookouts))
         {
             if (!loc.Seeded)
                 continue;

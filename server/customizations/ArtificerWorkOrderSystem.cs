@@ -805,7 +805,8 @@ public sealed class ArtificerWorkOrderGump : Gump
     // -- Turn-in check ---------------------------------------------------------
 
     /// <summary>
-    /// Returns true if an item meeting the order requirements is in the player's backpack.
+    /// Returns true if an item meeting the order requirements is in the player's backpack or bank (F-11: pack
+    /// first, then bank; never equipped, blessed, or inside a locked or secure container; GuildResources).
     /// For regular orders the item must match the stored serial.
     /// For combo orders any matching type + resource combination is accepted.
     /// </summary>
@@ -813,7 +814,6 @@ public sealed class ArtificerWorkOrderGump : Gump
         ArtificerWorkOrderDef def, CharacterGuildData guild, out Item? foundItem)
     {
         foundItem = null;
-        if (_pm.Backpack == null) return false;
 
         if (def.ItemFactory != null)
         {
@@ -824,24 +824,22 @@ public sealed class ArtificerWorkOrderGump : Gump
         }
 
         // Combo order - player-crafted; match by type + resource + enchantments
-        foreach (var item in _pm.Backpack.Items)
-        {
-            if (def.RequiredItemType != null && item.GetType() != def.RequiredItemType) continue;
-            if (item is not BaseWeapon bw || bw.Resource != def.RequiredResource)       continue;
-            if (!ArtificerWorkOrderCatalogue.ItemMeetsRequirements(item, def))          continue;
-            foundItem = item;
-            return true;
-        }
-        return false;
+        foundItem = FirstCandidate(item => IsComboCandidate(def, item)
+                                           && ArtificerWorkOrderCatalogue.ItemMeetsRequirements(item, def));
+        return foundItem != null;
     }
 
-    private Item? FindItemBySerial(uint serial)
+    private static bool IsComboCandidate(ArtificerWorkOrderDef def, Item item) =>
+        (def.RequiredItemType == null || item.GetType() == def.RequiredItemType)
+        && item is BaseWeapon bw && bw.Resource == def.RequiredResource;
+
+    private Item? FirstCandidate(Predicate<Item> match)
     {
-        if (_pm.Backpack == null) return null;
-        foreach (var item in _pm.Backpack.Items)
-            if ((uint)item.Serial == serial) return item;
-        return null;
+        var found = GuildResources.Candidates(_pm, GuildCost.Where(match, 1, "commission item"));
+        return found.Count > 0 ? found[0] : null;
     }
+
+    private Item? FindItemBySerial(uint serial) => FirstCandidate(item => (uint)item.Serial == serial);
 
     // -- Response --------------------------------------------------------------
 
@@ -974,15 +972,9 @@ public sealed class ArtificerWorkOrderGump : Gump
             {
                 checkItem = FindItemBySerial(guild.ActiveArtificerItemSerial);
             }
-            else if (_pm.Backpack != null)
+            else
             {
-                foreach (var candidate in _pm.Backpack.Items)
-                {
-                    if (def.RequiredItemType != null && candidate.GetType() != def.RequiredItemType) continue;
-                    if (candidate is not BaseWeapon bw2 || bw2.Resource != def.RequiredResource)    continue;
-                    checkItem = candidate;
-                    break;
-                }
+                checkItem = FirstCandidate(candidate => IsComboCandidate(def, candidate));
             }
 
             if (checkItem != null)

@@ -38,16 +38,18 @@ public class MinersCompactLiaisonGump : Gump
     private const int H    = 420;
     private const int BgId = 9270;
 
-    // T1 Restoration: ~20% of upgrade cost (upgrade: ~50V + 500 Iron + 10000gp)
-    private const int RestoreVoucherCost = 5;
-    private const int RestoreIngotCost   = 100;
-    private const int RestoreGoldCost    = 2000;
+    // T1 Restoration (F-16, Chase 2026-09-30): about what 150 uses cost in plain pickaxes, so restoring
+    // is always the better deal for a new player but never free. Was 5V + 100 Iron + 2,000gp.
+    internal const int RestoreVoucherCost = 1;
+    internal const int RestoreIngotCost   = 25;
+    internal const int RestoreGoldCost    = 100;
 
-    // T2 Restoration: ~20% of upgrade cost (upgrade: 50V + 1000 Iron + 250 DC + 25000gp)
-    private const int RestoreT2VoucherCost    = 10;
-    private const int RestoreT2IronCost       = 200;
-    private const int RestoreT2DullCopperCost = 40;
-    private const int RestoreT2GoldCost       = 5000;
+    // T2 Restoration (F-16, Chase 2026-09-30): cheap enough that a new member keeps the pickaxe.
+    // Was 10V + 200 Iron + 40 DC + 5,000gp.
+    internal const int RestoreT2VoucherCost    = 4;
+    internal const int RestoreT2IronCost       = 100;
+    internal const int RestoreT2DullCopperCost = 15;
+    internal const int RestoreT2GoldCost       = 1000;
 
     // T3 Restoration: ~20% of upgrade cost (upgrade: 200V + 1500 Iron + 500 Agapite + 50000gp)
     private const int RestoreT3VoucherCost = 40;
@@ -453,6 +455,7 @@ public class MinersCompactLiaisonGump : Gump
                 $"<BASEFONT COLOR=#FFD700>Current tier: {curName}</BASEFONT><BR>" +
                 $"<BASEFONT COLOR=#AAAAAA>Next upgrade: {nextName}</BASEFONT><BR><BR>" +
                 $"<BASEFONT COLOR=#AAAAAA>Cost: {costLine}</BASEFONT><BR>" +
+                $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, GetSatchelUpgradeCost(curTier).Materials)}</BASEFONT><BR>" +
                 (meetsRank
                     ? $"<BASEFONT COLOR=#44AA44>Rank requirement: {rankName} ({rankReq:N0} standing) - met.</BASEFONT><BR>"
                     : $"<BASEFONT COLOR=#FF8888>Rank requirement: {rankName} ({rankReq:N0} standing) - you have {standing:N0}.</BASEFONT><BR>") +
@@ -475,7 +478,7 @@ public class MinersCompactLiaisonGump : Gump
         {
             var (_, _, rankReq) = GetSatchelUpgradeInfo(curTier);
             var canUpgrade = bypass
-                || (standing >= rankReq && CanAffordSatchelUpgrade(curTier, vouchers));
+                || (standing >= rankReq && CanAfford(guild, GetSatchelUpgradeCost(curTier)));
 
             AddButton(18, btnY, 4011, 4012, 91);
             AddLabel(44, btnY + 2, canUpgrade ? 999 : 0x22,
@@ -529,26 +532,32 @@ public class MinersCompactLiaisonGump : Gump
                   SatchelT5RankReq),
         };
 
-    private bool CanAffordSatchelUpgrade(int curTier, int vouchers) =>
+    // -- Costs (F-11: materials from the pack and the bank, through GuildResources) ------------------
+
+    internal static (int Vouchers, GuildCost[] Materials, int Gold) GetSatchelUpgradeCost(int curTier) =>
         curTier switch
         {
-            1 => vouchers >= SatchelT2VoucherCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.IronIngot))       ?? 0) >= SatchelT2IronCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.DullCopperIngot)) ?? 0) >= SatchelT2DullCopperCost
-              && CompactGoldHelper.GetTotalGold(_pm) >= SatchelT2GoldCost,
-            2 => vouchers >= SatchelT3VoucherCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.IronIngot))    ?? 0) >= SatchelT3IronCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.AgapiteIngot)) ?? 0) >= SatchelT3AgapiteCost
-              && CompactGoldHelper.GetTotalGold(_pm) >= SatchelT3GoldCost,
-            3 => vouchers >= SatchelT4VoucherCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.IronIngot))     ?? 0) >= SatchelT4IronCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.ValoriteIngot)) ?? 0) >= SatchelT4ValoriteCost
-              && CompactGoldHelper.GetTotalGold(_pm) >= SatchelT4GoldCost,
-            _ => vouchers >= SatchelT5VoucherCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.IronIngot))       ?? 0) >= SatchelT5IronCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.AdamantiumIngot)) ?? 0) >= SatchelT5AdamantiumCost
-              && CompactGoldHelper.GetTotalGold(_pm) >= SatchelT5GoldCost,
+            1 => (SatchelT2VoucherCost, new[] { GuildCost.Of<Items.IronIngot>(SatchelT2IronCost), GuildCost.Of<Items.DullCopperIngot>(SatchelT2DullCopperCost) }, SatchelT2GoldCost),
+            2 => (SatchelT3VoucherCost, new[] { GuildCost.Of<Items.IronIngot>(SatchelT3IronCost), GuildCost.Of<Items.AgapiteIngot>(SatchelT3AgapiteCost) }, SatchelT3GoldCost),
+            3 => (SatchelT4VoucherCost, new[] { GuildCost.Of<Items.IronIngot>(SatchelT4IronCost), GuildCost.Of<Items.ValoriteIngot>(SatchelT4ValoriteCost) }, SatchelT4GoldCost),
+            _ => (SatchelT5VoucherCost, new[] { GuildCost.Of<Items.IronIngot>(SatchelT5IronCost), GuildCost.Of<Items.AdamantiumIngot>(SatchelT5AdamantiumCost) }, SatchelT5GoldCost),
         };
+
+    internal static (int Vouchers, GuildCost[] Materials, int Gold) GetRestoreCost(int tier) =>
+        tier switch
+        {
+            1 => (RestoreVoucherCost,   new[] { GuildCost.Of<Items.IronIngot>(RestoreIngotCost) }, RestoreGoldCost),
+            2 => (RestoreT2VoucherCost, new[] { GuildCost.Of<Items.IronIngot>(RestoreT2IronCost), GuildCost.Of<Items.DullCopperIngot>(RestoreT2DullCopperCost) }, RestoreT2GoldCost),
+            3 => (RestoreT3VoucherCost, new[] { GuildCost.Of<Items.IronIngot>(RestoreT3IronCost), GuildCost.Of<Items.AgapiteIngot>(RestoreT3AgapiteCost) }, RestoreT3GoldCost),
+            4 => (RestoreT4VoucherCost, new[] { GuildCost.Of<Items.IronIngot>(RestoreT4IronCost), GuildCost.Of<Items.ValoriteIngot>(RestoreT4ValoriteCost) }, RestoreT4GoldCost),
+            _ => (RestoreT5VoucherCost, new[] { GuildCost.Of<Items.IronIngot>(RestoreT5IronCost), GuildCost.Of<Items.ValoriteIngot>(RestoreT5ValoriteCost), GuildCost.Of<Items.AdamantiumIngot>(RestoreT5AdamantiumCost) }, RestoreT5GoldCost),
+        };
+
+    private bool CanAfford(CharacterGuildData guild, (int Vouchers, GuildCost[] Materials, int Gold) cost) =>
+        GuildResources.CanPay(_pm, guild, "mining", cost.Vouchers, cost.Gold, cost.Materials);
+
+    private bool TryPay(CharacterGuildData guild, (int Vouchers, GuildCost[] Materials, int Gold) cost) =>
+        GuildResources.TryPay(_pm, guild, "mining", cost.Vouchers, "Mining Vouchers", cost.Gold, cost.Materials);
 
     private void DrawRestoration(CharacterGuildData guild, IAccount? acct)
     {
@@ -587,14 +596,15 @@ public class MinersCompactLiaisonGump : Gump
         }
 
         var isActive   = ClusterFRestorationRegistry.HasActiveCopy(acct, regKey);
-        var canRestore = !isActive && (bypass || CanAffordRestore(highestTier, vouchers));
+        var canRestore = !isActive && (bypass || CanAfford(guild, GetRestoreCost(highestTier)));
 
         string statusHtml;
         if (isActive)
             statusHtml = $"<BASEFONT COLOR=#FFD700>{pickaxeName}: Active copy on hand.</BASEFONT>";
         else
             statusHtml = $"<BASEFONT COLOR=#FFD700>{pickaxeName}: Ready for restoration.</BASEFONT><BR>" +
-                         $"<BASEFONT COLOR=#AAAAAA>{restoreCost}</BASEFONT>";
+                         $"<BASEFONT COLOR=#AAAAAA>{restoreCost}</BASEFONT><BR>" +
+                         $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, GetRestoreCost(highestTier).Materials)}</BASEFONT>";
 
         var bypassLine  = bypass ? "<BR><BASEFONT COLOR=#FF44FF>[Testing Token active - all material costs bypassed]</BASEFONT>" : "";
         var balanceLine = $"<BR><BR><BASEFONT COLOR=#AAAAAA>Your Mining Vouchers: {vouchers}</BASEFONT>" + bypassLine;
@@ -666,29 +676,6 @@ public class MinersCompactLiaisonGump : Gump
               || (pack?.FindItemByType<Items.JacobsWorldbreakerPickaxe>() is Items.JacobsWorldbreakerPickaxe p5 && !p5.Exhausted),
         };
     }
-
-    private bool CanAffordRestore(int tier, int vouchers) =>
-        tier switch
-        {
-            1 => vouchers >= RestoreVoucherCost,
-            2 => vouchers >= RestoreT2VoucherCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.IronIngot))       ?? 0) >= RestoreT2IronCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.DullCopperIngot)) ?? 0) >= RestoreT2DullCopperCost
-              && CompactGoldHelper.GetTotalGold(_pm)                           >= RestoreT2GoldCost,
-            3 => vouchers >= RestoreT3VoucherCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.IronIngot))    ?? 0) >= RestoreT3IronCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.AgapiteIngot)) ?? 0) >= RestoreT3AgapiteCost
-              && CompactGoldHelper.GetTotalGold(_pm)                        >= RestoreT3GoldCost,
-            4 => vouchers >= RestoreT4VoucherCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.IronIngot))     ?? 0) >= RestoreT4IronCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.ValoriteIngot)) ?? 0) >= RestoreT4ValoriteCost
-              && CompactGoldHelper.GetTotalGold(_pm)                         >= RestoreT4GoldCost,
-            _ => vouchers >= RestoreT5VoucherCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.IronIngot))       ?? 0) >= RestoreT5IronCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.ValoriteIngot))   ?? 0) >= RestoreT5ValoriteCost
-              && (_pm.Backpack?.GetAmount(typeof(Items.AdamantiumIngot)) ?? 0) >= RestoreT5AdamantiumCost
-              && CompactGoldHelper.GetTotalGold(_pm)                           >= RestoreT5GoldCost,
-        };
 
     // -- Helpers ---------------------------------------------------------------
 
@@ -778,40 +765,25 @@ public class MinersCompactLiaisonGump : Gump
                 break;
 
             // -- Restoration requests --------------------------------------
-            case 60:
-                HandleRestorationRequest(guild, acct);
-                _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
-                break;
-            case 61:
-                HandleT2RestorationRequest(guild, acct);
-                _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
-                break;
-            case 62:
-                HandleTierRestorationRequest(guild, acct, 3);
-                _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
-                break;
-            case 63:
-                HandleTierRestorationRequest(guild, acct, 4);
-                _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
-                break;
-            case 64:
-                HandleTierRestorationRequest(guild, acct, 5);
+            case >= 60 and <= 64:
+                HandleRestoration(guild, acct, info.ButtonID - 59);
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
                 break;
         }
     }
 
     /// <summary>
-    /// Handles restoration for T3, T4, or T5 pickaxe tiers.
-    /// Consumes the appropriate materials, removes any exhausted copy, and delivers a fresh one.
+    /// Restores the Jacob's Pickaxe of a tier (1 to 5). Vouchers, materials and gold go through
+    /// GuildResources.TryPay (pack then bank, all or nothing); then the exhausted copy is removed and a fresh one
+    /// delivered. One handler for every tier since F-11; T1 and T2 had their own copies before.
     /// </summary>
-    private void HandleTierRestorationRequest(CharacterGuildData? guild, IAccount? acct, int tier)
+    private void HandleRestoration(CharacterGuildData? guild, IAccount? acct, int tier)
     {
         if (guild == null || acct == null) return;
 
         if (!guild.JoinedGuilds.Contains("mining"))
         {
-            _pm.SendMessage(0x22, "You must be a Miners' Compact member to request a restoration.");
+            _pm.SendMessage(0x22, "You must be a member of the Miners' Compact to request a restoration.");
             return;
         }
 
@@ -829,80 +801,38 @@ public class MinersCompactLiaisonGump : Gump
             return;
         }
 
-        var bypass = Items.DevTestingCrystal.IsActive(_pm);
-        var pack   = _pm.Backpack;
+        var pack = _pm.Backpack;
         if (pack == null) { _pm.SendMessage(0x22, "You don't have a backpack."); return; }
 
-        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
+        // Costs are skipped when the testing token is active.
+        if (!Items.DevTestingCrystal.IsActive(_pm) && !TryPay(guild, GetRestoreCost(tier)))
+            return;
 
-        // Validate costs (skipped in bypass mode)
-        if (!bypass)
-        {
-            var (vCost, ironCost, matCost, matType, mat2Cost, mat2Type, goldCost) = GetTierRestoreCosts(tier);
-
-            if (vouchers < vCost)
-            {
-                _pm.SendMessage(0x22, $"You need {vCost} Mining Vouchers (you have {vouchers}).");
-                return;
-            }
-            if (pack.GetAmount(typeof(Items.IronIngot)) < ironCost)
-            {
-                _pm.SendMessage(0x22, $"You need {ironCost} iron ingots.");
-                return;
-            }
-            if (matType != null && pack.GetAmount(matType) < matCost)
-            {
-                _pm.SendMessage(0x22, $"You need {matCost} {matType.Name.Replace("Ingot", " Ingots")}.");
-                return;
-            }
-            if (mat2Type != null && pack.GetAmount(mat2Type) < mat2Cost)
-            {
-                _pm.SendMessage(0x22, $"You need {mat2Cost} {mat2Type.Name.Replace("Ingot", " Ingots")}.");
-                return;
-            }
-            if (CompactGoldHelper.GetTotalGold(_pm) < goldCost)
-            {
-                _pm.SendMessage(0x22, $"You need {goldCost:N0} gold in your backpack or bank (you have {CompactGoldHelper.GetTotalGold(_pm):N0}).");
-                return;
-            }
-
-            // Consume costs
-            guild.GuildCurrency["mining"] = vouchers - vCost;
-            pack.ConsumeTotal(typeof(Items.IronIngot), ironCost);
-            if (matType != null) pack.ConsumeTotal(matType, matCost);
-            if (mat2Type != null) pack.ConsumeTotal(mat2Type, mat2Cost);
-            CompactGoldHelper.ConsumeGold(_pm, goldCost);
-        }
-
-        // Remove exhausted copy if present
+        // Remove the exhausted copy if present
         RemoveExhaustedTierItem(pack, tier);
 
         // Deliver fresh copy
         ClusterFRestorationRegistry.TryRestore(acct, regKey, out _);
-        var newPickaxe = CreateTierPickaxe(tier);
-        pack.DropItem(newPickaxe);
+        pack.DropItem(CreateTierPickaxe(tier));
 
-        _pm.SendMessage(0x44, $"{name} has been restored. The Compact acknowledges your commitment.");
+        _pm.SendMessage(0x44, tier switch
+        {
+            1 => "Jacob's Pickaxe has been restored. Handle it with care - it can be exhausted but never lost.",
+            2 => "Jacob's Reinforced Pickaxe has been restored. The Compact acknowledges your continued dedication.",
+            _ => $"{name} has been restored. The Compact acknowledges your commitment.",
+        });
         _pm.PlaySound(0x35D);
     }
-
-    private static (int vCost, int ironCost, int matCost, Type? matType, int mat2Cost, Type? mat2Type, int goldCost)
-        GetTierRestoreCosts(int tier) =>
-        tier switch
-        {
-            3 => (RestoreT3VoucherCost, RestoreT3IronCost, RestoreT3AgapiteCost, typeof(Items.AgapiteIngot),    0, null,                         RestoreT3GoldCost),
-            4 => (RestoreT4VoucherCost, RestoreT4IronCost, RestoreT4ValoriteCost, typeof(Items.ValoriteIngot),  0, null,                         RestoreT4GoldCost),
-            _ => (RestoreT5VoucherCost, RestoreT5IronCost, RestoreT5ValoriteCost, typeof(Items.ValoriteIngot),  RestoreT5AdamantiumCost, typeof(Items.AdamantiumIngot), RestoreT5GoldCost),
-        };
 
     private static void RemoveExhaustedTierItem(Container pack, int tier)
     {
         Item? exhausted = tier switch
         {
-            3 => pack.FindItemByType<Items.JacobsProspectorPickaxe>()  is { Exhausted: true } e3 ? e3 : null,
-            4 => pack.FindItemByType<Items.JacobsDeepdelverPickaxe>()  is { Exhausted: true } e4 ? e4 : null,
-            5 => pack.FindItemByType<Items.JacobsWorldbreakerPickaxe>() is { Exhausted: true } e5 ? e5 : null,
-            _ => null,
+            1 => pack.FindItemByType<Items.JacobsPickaxe>()             is { Exhausted: true } e1 ? e1 : null,
+            2 => pack.FindItemByType<Items.JacobsReinforcedPickaxe>()   is { Exhausted: true } e2 ? e2 : null,
+            3 => pack.FindItemByType<Items.JacobsProspectorPickaxe>()   is { Exhausted: true } e3 ? e3 : null,
+            4 => pack.FindItemByType<Items.JacobsDeepdelverPickaxe>()   is { Exhausted: true } e4 ? e4 : null,
+            _ => pack.FindItemByType<Items.JacobsWorldbreakerPickaxe>() is { Exhausted: true } e5 ? e5 : null,
         };
         exhausted?.Delete();
     }
@@ -910,6 +840,8 @@ public class MinersCompactLiaisonGump : Gump
     private static Item CreateTierPickaxe(int tier) =>
         tier switch
         {
+            1 => new Items.JacobsPickaxe(),
+            2 => new Items.JacobsReinforcedPickaxe(),
             3 => new Items.JacobsProspectorPickaxe(),
             4 => new Items.JacobsDeepdelverPickaxe(),
             _ => new Items.JacobsWorldbreakerPickaxe(),
@@ -1006,41 +938,8 @@ public class MinersCompactLiaisonGump : Gump
                 return;
             }
 
-            if (!CanAffordSatchelUpgrade(curTier, vouchers))
-            {
-                var (_, costLine, _) = GetSatchelUpgradeInfo(curTier);
-                _pm.SendMessage(0x22, $"You cannot afford the upgrade. Cost: {costLine}.");
+            if (!TryPay(guild, GetSatchelUpgradeCost(curTier)))
                 return;
-            }
-
-            // Consume costs
-            switch (curTier)
-            {
-                case 1:
-                    guild.GuildCurrency["mining"] = vouchers - SatchelT2VoucherCost;
-                    pack.ConsumeTotal(typeof(Items.IronIngot),       SatchelT2IronCost);
-                    pack.ConsumeTotal(typeof(Items.DullCopperIngot), SatchelT2DullCopperCost);
-                    CompactGoldHelper.ConsumeGold(_pm, SatchelT2GoldCost);
-                    break;
-                case 2:
-                    guild.GuildCurrency["mining"] = vouchers - SatchelT3VoucherCost;
-                    pack.ConsumeTotal(typeof(Items.IronIngot),    SatchelT3IronCost);
-                    pack.ConsumeTotal(typeof(Items.AgapiteIngot), SatchelT3AgapiteCost);
-                    CompactGoldHelper.ConsumeGold(_pm, SatchelT3GoldCost);
-                    break;
-                case 3:
-                    guild.GuildCurrency["mining"] = vouchers - SatchelT4VoucherCost;
-                    pack.ConsumeTotal(typeof(Items.IronIngot),     SatchelT4IronCost);
-                    pack.ConsumeTotal(typeof(Items.ValoriteIngot), SatchelT4ValoriteCost);
-                    CompactGoldHelper.ConsumeGold(_pm, SatchelT4GoldCost);
-                    break;
-                case 4:
-                    guild.GuildCurrency["mining"] = vouchers - SatchelT5VoucherCost;
-                    pack.ConsumeTotal(typeof(Items.IronIngot),       SatchelT5IronCost);
-                    pack.ConsumeTotal(typeof(Items.AdamantiumIngot), SatchelT5AdamantiumCost);
-                    CompactGoldHelper.ConsumeGold(_pm, SatchelT5GoldCost);
-                    break;
-            }
         }
 
         // Find the current satchel, move its contents, then destroy and replace it.
@@ -1138,156 +1037,4 @@ public class MinersCompactLiaisonGump : Gump
             5 => new Items.MasterExpeditionSatchel(),
             _ => new Items.CompactOreSatchel(),
         };
-
-    private void HandleRestorationRequest(CharacterGuildData? guild, IAccount? acct)
-    {
-        if (guild == null || acct == null) return;
-
-        if (!guild.JoinedGuilds.Contains("mining"))
-        {
-            _pm.SendMessage(0x22, "You must be a member of the Miners' Compact to request a restoration.");
-            return;
-        }
-
-        if (!ClusterFRestorationRegistry.HasUnlocked(acct, "legacy.jacobs_pickaxe"))
-        {
-            _pm.SendMessage(0x22, "You have no record of ever owning Jacob's Pickaxe.");
-            return;
-        }
-
-        if (ClusterFRestorationRegistry.HasActiveCopy(acct, "legacy.jacobs_pickaxe"))
-        {
-            _pm.SendMessage(0x22, "You already have an active copy of Jacob's Pickaxe.");
-            return;
-        }
-
-        var bypass = Items.DevTestingCrystal.IsActive(_pm);
-
-        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
-        if (!bypass && vouchers < RestoreVoucherCost)
-        {
-            _pm.SendMessage(0x22, $"You need {RestoreVoucherCost} Mining Vouchers (you have {vouchers}).");
-            return;
-        }
-
-        var pack = _pm.Backpack;
-        if (pack == null)
-        {
-            _pm.SendMessage(0x22, "You don't have a backpack.");
-            return;
-        }
-
-        if (!bypass && pack.GetAmount(typeof(IronIngot)) < RestoreIngotCost)
-        {
-            _pm.SendMessage(0x22, $"You need {RestoreIngotCost} iron ingots (you have {pack.GetAmount(typeof(IronIngot))}).");
-            return;
-        }
-
-        if (!bypass && CompactGoldHelper.GetTotalGold(_pm) < RestoreGoldCost)
-        {
-            _pm.SendMessage(0x22, $"You need {RestoreGoldCost:N0} gold in your backpack or bank (you have {CompactGoldHelper.GetTotalGold(_pm):N0}).");
-            return;
-        }
-
-        // All checks pass - consume costs (skipped when testing token is active)
-        if (!bypass)
-        {
-            guild.GuildCurrency["mining"] = vouchers - RestoreVoucherCost;
-            pack.ConsumeTotal(typeof(IronIngot), RestoreIngotCost);
-            CompactGoldHelper.ConsumeGold(_pm, RestoreGoldCost);
-        }
-
-        // Remove the exhausted pickaxe from the pack before delivering the fresh one
-        var exhaustedT1 = pack.FindItemByType<JacobsPickaxe>();
-        if (exhaustedT1 is { Exhausted: true })
-            exhaustedT1.Delete();
-
-        // Register active copy and deliver item
-        ClusterFRestorationRegistry.TryRestore(acct, "legacy.jacobs_pickaxe", out _);
-        var pickaxe = new JacobsPickaxe();
-        pack.DropItem(pickaxe);
-
-        _pm.SendMessage(0x44, "Jacob's Pickaxe has been restored. Handle it with care - it can be exhausted but never lost.");
-        _pm.PlaySound(0x35D); // Forge/craft sound
-    }
-
-    private void HandleT2RestorationRequest(CharacterGuildData? guild, IAccount? acct)
-    {
-        if (guild == null || acct == null) return;
-
-        if (!guild.JoinedGuilds.Contains("mining"))
-        {
-            _pm.SendMessage(0x22, "You must be a member of the Miners' Compact to request a restoration.");
-            return;
-        }
-
-        if (!ClusterFRestorationRegistry.HasUnlocked(acct, "legacy.jacobs_reinforced_pickaxe"))
-        {
-            _pm.SendMessage(0x22, "You have no record of ever owning Jacob's Reinforced Pickaxe.");
-            return;
-        }
-
-        if (ClusterFRestorationRegistry.HasActiveCopy(acct, "legacy.jacobs_reinforced_pickaxe"))
-        {
-            _pm.SendMessage(0x22, "You already have an active copy of Jacob's Reinforced Pickaxe.");
-            return;
-        }
-
-        var bypass = Items.DevTestingCrystal.IsActive(_pm);
-
-        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
-        if (!bypass && vouchers < RestoreT2VoucherCost)
-        {
-            _pm.SendMessage(0x22, $"You need {RestoreT2VoucherCost} Mining Vouchers (you have {vouchers}).");
-            return;
-        }
-
-        var pack = _pm.Backpack;
-        if (pack == null)
-        {
-            _pm.SendMessage(0x22, "You don't have a backpack.");
-            return;
-        }
-
-        if (!bypass && pack.GetAmount(typeof(Items.IronIngot)) < RestoreT2IronCost)
-        {
-            _pm.SendMessage(0x22, $"You need {RestoreT2IronCost} iron ingots (you have {pack.GetAmount(typeof(Items.IronIngot))}).");
-            return;
-        }
-
-        if (!bypass && pack.GetAmount(typeof(Items.DullCopperIngot)) < RestoreT2DullCopperCost)
-        {
-            _pm.SendMessage(0x22, $"You need {RestoreT2DullCopperCost} Dull Copper Ingots (you have {pack.GetAmount(typeof(Items.DullCopperIngot))}).");
-            return;
-        }
-
-        if (!bypass && CompactGoldHelper.GetTotalGold(_pm) < RestoreT2GoldCost)
-        {
-            _pm.SendMessage(0x22, $"You need {RestoreT2GoldCost:N0} gold in your backpack or bank (you have {CompactGoldHelper.GetTotalGold(_pm):N0}).");
-            return;
-        }
-
-        // All checks pass - consume costs (skipped when testing token is active)
-        if (!bypass)
-        {
-            guild.GuildCurrency["mining"] = vouchers - RestoreT2VoucherCost;
-            pack.ConsumeTotal(typeof(Items.IronIngot),       RestoreT2IronCost);
-            pack.ConsumeTotal(typeof(Items.DullCopperIngot), RestoreT2DullCopperCost);
-            CompactGoldHelper.ConsumeGold(_pm, RestoreT2GoldCost);
-        }
-
-        // Remove the exhausted T2 pickaxe from the pack before delivering the fresh one
-        var exhaustedT2 = pack.FindItemByType<Items.JacobsReinforcedPickaxe>();
-        if (exhaustedT2 is { Exhausted: true })
-            exhaustedT2.Delete();
-
-        // Register active copy and deliver item
-        ClusterFRestorationRegistry.TryRestore(acct, "legacy.jacobs_reinforced_pickaxe", out _);
-        var pickaxe = new Items.JacobsReinforcedPickaxe();
-        pack.DropItem(pickaxe);
-
-        _pm.SendMessage(0x44,
-            "Jacob's Reinforced Pickaxe has been restored. The Compact acknowledges your continued dedication.");
-        _pm.PlaySound(0x35D);
-    }
 }

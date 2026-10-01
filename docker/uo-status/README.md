@@ -35,7 +35,7 @@ answer in memory. `ShardStatusPublisher` in `server/customizations` writes it ou
 {
   "schema": 1,
   "generatedAt": "2026-09-29T17:30:00Z",
-  "shard":   { "name": "Shattered Legacy", "startedAt": "2026-09-28T14:07:18Z", "uptimeSeconds": 98765 },
+  "shard":   { "name": "Shattered Legacy", "startedAt": "2026-09-28T14:07:18Z", "uptimeSeconds": 98765, "version": "2026.10.02" },
   "players": { "count": 3, "names": ["Cain", "Elowen", "Bram"] },
   "world":   { "lastSaveAt": "2026-09-29T17:20:01Z" }
 }
@@ -51,6 +51,9 @@ this check will show a dead shard as online, indefinitely.
 
 `names` is capped and may be shorter than `count`. Render `count` as the truth and `names` as a
 courtesy.
+
+`shard.version` (added 2026-10-01, cc-P22, F-15) is the build's date version from `CHANGELOG.md`, or `null`
+for a build with none. Still schema 1: a reader that does not know the field ignores it.
 
 ## Moving parts
 

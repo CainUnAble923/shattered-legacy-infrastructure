@@ -88,7 +88,7 @@ public static class ShardStatusPublisher
         try
         {
             var (count, names) = Players(InWorld(NetState.Instances));
-            var bytes = Render(DateTime.UtcNow, _startedAt, Core.Uptime / 1000, count, names, _lastSaveAt);
+            var bytes = Render(DateTime.UtcNow, _startedAt, Core.Uptime / 1000, count, names, _lastSaveAt, ShardVersion.Current);
             WriteAtomically(_path, bytes);
 
             if (_failing)
@@ -185,7 +185,7 @@ public static class ShardStatusPublisher
     // non-ASCII character, so the file is ASCII whatever a character is called.
     internal static byte[] Render(
         DateTime generatedAt, DateTime startedAt, long uptimeSeconds, int count, IReadOnlyList<string> names,
-        DateTime? lastSaveAt
+        DateTime? lastSaveAt, string version = null
     )
     {
         using var stream = new MemoryStream();
@@ -199,6 +199,17 @@ public static class ShardStatusPublisher
             w.WriteString("name", ShardName);
             w.WriteString("startedAt", Timestamp(startedAt));
             w.WriteNumber("uptimeSeconds", Math.Max(0, uptimeSeconds));
+
+            // F-15 (cc-P22): the build's date version, or null when it has none. Added to schema 1; a reader that
+            // does not know the field ignores it.
+            if (string.IsNullOrEmpty(version))
+            {
+                w.WriteNull("version");
+            }
+            else
+            {
+                w.WriteString("version", version);
+            }
             w.WriteEndObject();
 
             w.WriteStartObject("players");

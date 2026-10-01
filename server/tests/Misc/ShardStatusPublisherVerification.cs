@@ -53,7 +53,7 @@ public class ShardStatusPublisherVerification
         var started = generated.AddSeconds(-98765);
         var saved = generated.AddMinutes(-10);
 
-        var bytes = ShardStatusPublisher.Render(generated, started, 98765, 3, ["Bram", "Cain", "\u00c9lowen"], saved);
+        var bytes = ShardStatusPublisher.Render(generated, started, 98765, 3, ["Bram", "Cain", "\u00c9lowen"], saved, "2026.09.30.2");
 
         // ASCII only, whatever a character is called: the encoder escapes the E-acute.
         Assert.All(bytes, b => Assert.True(b < 0x80, $"non-ASCII byte 0x{b:X2}"));
@@ -67,7 +67,8 @@ public class ShardStatusPublisherVerification
         Assert.Equal(generated, ParseUtc(root.GetProperty("generatedAt")));
 
         var shard = root.GetProperty("shard");
-        Assert.Equal(new[] { "name", "startedAt", "uptimeSeconds" }, Keys(shard));
+        Assert.Equal(new[] { "name", "startedAt", "uptimeSeconds", "version" }, Keys(shard));
+        Assert.Equal("2026.09.30.2", shard.GetProperty("version").GetString()); // F-15 (cc-P22)
         Assert.Equal("Shattered Legacy", shard.GetProperty("name").GetString());
         Assert.Equal(started, ParseUtc(shard.GetProperty("startedAt")));
         Assert.Equal(98765, shard.GetProperty("uptimeSeconds").GetInt64());
@@ -89,6 +90,8 @@ public class ShardStatusPublisherVerification
         using var unsaved = JsonDocument.Parse(ShardStatusPublisher.Render(generated, started, 0, 0, [], null));
         var lastSave = unsaved.RootElement.GetProperty("world").GetProperty("lastSaveAt");
         Assert.Equal(JsonValueKind.Null, lastSave.ValueKind);
+        // A build with no version says so with null, not a missing key (F-15).
+        Assert.Equal(JsonValueKind.Null, unsaved.RootElement.GetProperty("shard").GetProperty("version").ValueKind);
         Assert.Empty(unsaved.RootElement.GetProperty("players").GetProperty("names").EnumerateArray());
     }
 

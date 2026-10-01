@@ -1009,6 +1009,11 @@ public class HammerRestoreGump : Gump
     private const int UpgradeStandingReq = 5_000;
     private const double UpgradeSkillReq = 80.0;
 
+    // F-11: materials come from the pack and the bank (GuildResources); gold from both through CompactGoldHelper
+    // (the upgrade's gold was pack-only before).
+    private static GuildCost[] RestoreMaterials => new[] { GuildCost.Of<IronIngot>(RestoreIronCost) };
+    private static GuildCost[] UpgradeMaterials => new[] { GuildCost.Of<IronIngot>(UpgradeIronCost), GuildCost.Of<ValoriteIngot>(UpgradeValoriteCost) };
+
     private const int W    = 460;
     private const int H    = 420;
     private const int BgId = 9270;
@@ -1049,7 +1054,7 @@ public class HammerRestoreGump : Gump
 
         var hammer1   = FindHammer<HammerOfHephaestus>();
         var hammer2   = FindHammer<ReinforcedHammerOfHephaestus>();
-        var ironInPack = _pm.Backpack?.GetAmount(typeof(IronIngot)) ?? 0;
+        var ironInPack = GuildResources.Count(_pm, GuildCost.Of<IronIngot>(0)).Total; // pack and bank (F-11)
         var bypass    = DevTestingCrystal.IsActive(_pm);
 
         var y = 58;
@@ -1095,7 +1100,8 @@ public class HammerRestoreGump : Gump
             static string Clr(bool ok) => ok ? "#FFD700" : "#FF6666";
             AddHtml(18, y, W - 36, 32,
                 $"<BASEFONT COLOR={Clr(canSeals)}>Seals: {seals}/{RestoreSealCost}</BASEFONT>  " +
-                $"<BASEFONT COLOR={Clr(canIron)}>Iron: {ironInPack}/{RestoreIronCost}</BASEFONT>",
+                $"<BASEFONT COLOR={Clr(canIron)}>Iron (pack+bank): {ironInPack}/{RestoreIronCost}</BASEFONT><BR>" +
+                $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, RestoreMaterials)}</BASEFONT>",
                 false, false);
             y += 36;
 
@@ -1120,8 +1126,8 @@ public class HammerRestoreGump : Gump
             AddLabel(18, y, 1154, "Upgrade to T2 - Reinforced Hammer"); y += 16;
 
             var skill       = _pm.Skills[SkillName.Blacksmith].Value;
-            var valoriteAmt = _pm.Backpack?.GetAmount(typeof(ValoriteIngot)) ?? 0;
-            var goldAmt     = _pm.Backpack?.GetAmount(typeof(Gold)) ?? 0;
+            var valoriteAmt = GuildResources.Count(_pm, GuildCost.Of<ValoriteIngot>(0)).Total;
+            var goldAmt     = CompactGoldHelper.GetTotalGold(_pm);
 
             var reqRank     = bypass || standing    >= UpgradeStandingReq;
             var reqSkill    = bypass || skill       >= UpgradeSkillReq;
@@ -1140,9 +1146,10 @@ public class HammerRestoreGump : Gump
                 $"<BASEFONT COLOR={Clr2(reqRank)}>Rank: Journeyman (5,000 Standing) - {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
                 $"<BASEFONT COLOR={Clr2(reqSkill)}>Blacksmithy: {skill:F1}/{UpgradeSkillReq:F0} required</BASEFONT><BR>" +
                 $"<BASEFONT COLOR={Clr2(reqSeals)}>Smithing Seals: {seals}/{UpgradeSealCost} required</BASEFONT><BR>" +
-                $"<BASEFONT COLOR={Clr2(reqIron)}>Iron Ingots: {ironInPack}/{UpgradeIronCost} required</BASEFONT><BR>" +
-                $"<BASEFONT COLOR={Clr2(reqValorite)}>Valorite Ingots: {valoriteAmt}/{UpgradeValoriteCost} required</BASEFONT><BR>" +
-                $"<BASEFONT COLOR={Clr2(reqGold)}>Gold: {goldAmt:N0}/{UpgradeGoldCost:N0} required</BASEFONT><BR>" +
+                $"<BASEFONT COLOR={Clr2(reqIron)}>Iron Ingots (pack+bank): {ironInPack}/{UpgradeIronCost} required</BASEFONT><BR>" +
+                $"<BASEFONT COLOR={Clr2(reqValorite)}>Valorite Ingots (pack+bank): {valoriteAmt}/{UpgradeValoriteCost} required</BASEFONT><BR>" +
+                $"<BASEFONT COLOR={Clr2(reqGold)}>Gold (pack+bank): {goldAmt:N0}/{UpgradeGoldCost:N0} required</BASEFONT><BR>" +
+                $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, UpgradeMaterials)}</BASEFONT><BR>" +
                 $"<BASEFONT COLOR={Clr2(reqHammer)}>Hammer (non-exhausted) in pack: {(reqHammer ? "Yes" : "No")}</BASEFONT><BR>" +
                 $"<BASEFONT COLOR=#AAAAAA>Familiarity carried over: {fam} forge strikes (capped at T2 max 250/metal)</BASEFONT>",
                 false, true);
@@ -1199,16 +1206,7 @@ public class HammerRestoreGump : Gump
         var pack  = _pm.Backpack;
         if (pack == null) return;
 
-        guild.GuildCurrency.TryGetValue("smithing", out var seals);
-        var ironAmt = pack.GetAmount(typeof(IronIngot));
         var bypass  = DevTestingCrystal.IsActive(_pm);
-
-        if (!bypass && (seals < RestoreSealCost || ironAmt < RestoreIronCost))
-        {
-            _pm.SendMessage(0x22, "Requirements no longer met. Restoration cancelled.");
-            _pm.SendGump(new HammerRestoreGump(_pm));
-            return;
-        }
 
         var hammer2 = FindHammer<ReinforcedHammerOfHephaestus>();
         var hammer1 = FindHammer<HammerOfHephaestus>();
@@ -1220,10 +1218,11 @@ public class HammerRestoreGump : Gump
             return;
         }
 
-        if (!bypass)
+        // Seals and iron (pack then bank), all or nothing; skipped when the testing token is active.
+        if (!bypass && !GuildResources.TryPay(_pm, guild, "smithing", RestoreSealCost, "Smithing Seals", 0, RestoreMaterials))
         {
-            guild.GuildCurrency["smithing"] = seals - RestoreSealCost;
-            pack.ConsumeTotal(typeof(IronIngot), RestoreIronCost);
+            _pm.SendGump(new HammerRestoreGump(_pm));
+            return;
         }
 
         if (hammer2 != null) hammer2.GuildmasterRestore();
@@ -1245,18 +1244,12 @@ public class HammerRestoreGump : Gump
         if (pack == null) return;
 
         guild.GuildReputation.TryGetValue("smithing", out var standing);
-        guild.GuildCurrency.TryGetValue("smithing",   out var seals);
         var skill       = _pm.Skills[SkillName.Blacksmith].Value;
-        var ironAmt     = pack.GetAmount(typeof(IronIngot));
-        var valoriteAmt = pack.GetAmount(typeof(ValoriteIngot));
-        var goldAmt     = pack.GetAmount(typeof(Gold));
         var srcHammer   = FindHammer<HammerOfHephaestus>();
         var bypass      = DevTestingCrystal.IsActive(_pm);
 
         if (srcHammer == null || srcHammer.Exhausted
-            || (!bypass && (standing < UpgradeStandingReq || skill < UpgradeSkillReq
-                || seals < UpgradeSealCost || ironAmt < UpgradeIronCost
-                || valoriteAmt < UpgradeValoriteCost || goldAmt < UpgradeGoldCost)))
+            || (!bypass && (standing < UpgradeStandingReq || skill < UpgradeSkillReq)))
         {
             _pm.SendMessage(0x22, "Requirements no longer met. Upgrade cancelled.");
             _pm.SendGump(new HammerRestoreGump(_pm));
@@ -1266,12 +1259,11 @@ public class HammerRestoreGump : Gump
         // Snapshot familiarity BEFORE deleting T1
         var famSnapshot = srcHammer.GetFamiliaritySnapshot();
 
-        if (!bypass)
+        // Seals, materials (pack then bank) and gold (pack then bank), all or nothing; skipped with the testing token.
+        if (!bypass && !GuildResources.TryPay(_pm, guild, "smithing", UpgradeSealCost, "Smithing Seals", UpgradeGoldCost, UpgradeMaterials))
         {
-            guild.GuildCurrency["smithing"] = seals - UpgradeSealCost;
-            pack.ConsumeTotal(typeof(IronIngot),     UpgradeIronCost);
-            pack.ConsumeTotal(typeof(ValoriteIngot), UpgradeValoriteCost);
-            pack.ConsumeTotal(typeof(Gold),          UpgradeGoldCost);
+            _pm.SendGump(new HammerRestoreGump(_pm));
+            return;
         }
 
         ClusterFRestorationRegistry.ClearActiveCopy(acct, "legacy.hammer_of_hephaestus");

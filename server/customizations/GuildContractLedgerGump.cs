@@ -299,9 +299,13 @@ public class GuildContractLedgerGump : Gump
                 }
                 else
                 {
-                    have  = _pm.Backpack?.GetAmount(req.ItemType) ?? 0;
+                    // F-11: pack and bank together
+                    var stock = GuildResources.Count(_pm, GuildCost.Of(req.ItemType, req.Amount, req.Label));
+                    have  = stock.Total;
                     total = req.Amount;
-                    label = $"* {req.Label}: {(bypass ? total : have)}/{total}";
+                    label = bypass || have < total
+                        ? $"* {req.Label}: {(bypass ? total : have)}/{total}"
+                        : $"* {req.Label}: {total}/{total} ({Math.Min(stock.Pack, total)} pack, {total - Math.Min(stock.Pack, total)} bank)";
                 }
 
                 var met = bypass || have >= total;
@@ -514,12 +518,16 @@ public class GuildContractLedgerGump : Gump
             _pm.SendMessage(0x22,
                 def.Type == WorkOrderType.TamingContract
                     ? "You have not yet delivered all required animals."
-                    : "You don't have all required materials in your backpack.");
+                    : "You don't have all required materials in your backpack and bank.");
             return;
         }
 
-        // Consume materials and apply rewards
-        def.ConsumeRequirements(_pm);
+        // Consume materials (pack then bank, all or nothing) and apply rewards
+        if (!def.ConsumeRequirements(_pm))
+        {
+            _pm.SendMessage(0x22, "You don't have all required materials in your backpack and bank.");
+            return;
+        }
         guild.AddReputation(_guildKey, def.StandingReward);
         guild.AddCurrency(_guildKey,   def.VoucherReward);
 

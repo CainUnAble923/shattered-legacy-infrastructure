@@ -195,6 +195,9 @@ public class JacobsUpgradeGump : Gump
     private const int UpgradeIronCost       = 1000;
     private const int UpgradeDullCopperCost = 250;
     private const int UpgradeGoldCost       = 25000;
+
+    // F-11: materials come from the pack and the bank (GuildResources), gold from both through CompactGoldHelper.
+    private static GuildCost[] Materials => new[] { GuildCost.Of<IronIngot>(UpgradeIronCost), GuildCost.Of<DullCopperIngot>(UpgradeDullCopperCost) };
     private const int UpgradeStandingReq    = 1000;  // Apprentice rank
     private const double UpgradeSkillReq    = 75.0;
 
@@ -244,8 +247,8 @@ public class JacobsUpgradeGump : Gump
         var mining          = _pm.Skills[SkillName.Mining].Value;
         var pack            = _pm.Backpack;
 
-        var ironCount       = pack?.GetAmount(typeof(IronIngot))       ?? 0;
-        var dullCopperCount = pack?.GetAmount(typeof(DullCopperIngot)) ?? 0;
+        var ironCount       = GuildResources.Count(_pm, GuildCost.Of<IronIngot>(0)).Total;
+        var dullCopperCount = GuildResources.Count(_pm, GuildCost.Of<DullCopperIngot>(0)).Total;
         var goldCount       = CompactGoldHelper.GetTotalGold(_pm);
         var hasPickaxe      = FindPickaxeInPack() != null;
 
@@ -268,9 +271,10 @@ public class JacobsUpgradeGump : Gump
             $"<BASEFONT COLOR={Clr(reqMet_rank)}>Rank: Apprentice required - Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqMet_skill)}>Mining skill: {mining:F1}/{UpgradeSkillReq:F0} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqMet_voucher)}>Mining Vouchers: {vouchers}/{UpgradeVoucherCost} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqMet_iron)}>Iron Ingots in pack: {ironCount}/{UpgradeIronCost} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqMet_copper)}>Dull Copper Ingots in pack: {dullCopperCount}/{UpgradeDullCopperCost} required</BASEFONT><BR>" +
+            $"<BASEFONT COLOR={Clr(reqMet_iron)}>Iron Ingots (pack+bank): {ironCount}/{UpgradeIronCost} required</BASEFONT><BR>" +
+            $"<BASEFONT COLOR={Clr(reqMet_copper)}>Dull Copper Ingots (pack+bank): {dullCopperCount}/{UpgradeDullCopperCost} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqMet_gold)}>Gold (pack+bank): {goldCount:N0}/{UpgradeGoldCost:N0} required</BASEFONT><BR>" +
+            $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, Materials)}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqMet_pickaxe)}>Jacob's Pickaxe (non-exhausted) in pack: {(hasPickaxe ? "Yes" : "No")}</BASEFONT>";
 
         AddHtml(16, 56, W - 32, H - 130, html, false, true);
@@ -332,32 +336,24 @@ public class JacobsUpgradeGump : Gump
         if (pack == null) return;
 
         guild.GuildReputation.TryGetValue("mining", out var standing);
-        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var mining      = _pm.Skills[SkillName.Mining].Value;
-        var ironCount   = pack.GetAmount(typeof(IronIngot));
-        var copperCount = pack.GetAmount(typeof(DullCopperIngot));
         var srcPickaxe  = FindPickaxeInPack();
 
         var bypass = DevTestingCrystal.IsActive(_pm);
 
         if (srcPickaxe == null // T1 always required
-            || (!bypass && (standing < UpgradeStandingReq || mining < UpgradeSkillReq
-                || vouchers < UpgradeVoucherCost || ironCount < UpgradeIronCost
-                || copperCount < UpgradeDullCopperCost
-                || CompactGoldHelper.GetTotalGold(_pm) < UpgradeGoldCost)))
+            || (!bypass && (standing < UpgradeStandingReq || mining < UpgradeSkillReq)))
         {
             _pm.SendMessage(0x22, "Requirements no longer met. Upgrade cancelled.");
             _pm.SendGump(new JacobsUpgradeGump(_pm));
             return;
         }
 
-        // Consume costs (skipped when testing token is active; T1 pickaxe always consumed)
-        if (!bypass)
+        // Vouchers, materials (pack then bank) and gold, all or nothing; skipped when the testing token is active.
+        if (!bypass && !GuildResources.TryPay(_pm, guild, "mining", UpgradeVoucherCost, "Mining Vouchers", UpgradeGoldCost, Materials))
         {
-            guild.GuildCurrency["mining"] = vouchers - UpgradeVoucherCost;
-            pack.ConsumeTotal(typeof(IronIngot),       UpgradeIronCost);
-            pack.ConsumeTotal(typeof(DullCopperIngot), UpgradeDullCopperCost);
-            CompactGoldHelper.ConsumeGold(_pm, UpgradeGoldCost);
+            _pm.SendGump(new JacobsUpgradeGump(_pm));
+            return;
         }
 
         // Consume source pickaxe - mark exhausted first to suppress the durability replacement

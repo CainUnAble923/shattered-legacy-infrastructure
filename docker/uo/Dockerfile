@@ -63,7 +63,7 @@ RUN dotnet publish ModernUO.slnx -c Release -o /modernuo/Distribution \
     /p:PublishAot=false \
     /p:PublishSingleFile=false
 
-# ── Runtime stage ──────────────────────────────────────────────────────────────
+# -- Runtime stage --------------------------------------------------------------
 FROM debian:12-slim
 
 # The builder stage installs this list's native libraries too, for the test host. Keep the two in step.
@@ -86,6 +86,9 @@ ENV DOTNET_EnableDiagnostics=0
 # Copy built Distribution and Data from builder stage
 COPY --from=builder /modernuo/Distribution /modernuo
 COPY --from=builder /build/modernuo/Distribution/Data /modernuo/Data
+
+# F-15 (cc-P22): the patch notes ship with the build they describe. ShardVersion.cs reads both at server start.
+COPY CHANGELOG.md VERSION /modernuo/Data/ShatteredLegacy/
 
 # Create runtime directories
 RUN mkdir -p \

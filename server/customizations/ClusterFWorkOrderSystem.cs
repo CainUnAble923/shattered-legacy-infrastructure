@@ -213,7 +213,6 @@ public class WorkOrderDef
     public bool RequirementsMet(PlayerMobile pm, WorkOrderEntry? entry = null)
     {
         if (Items.DevTestingCrystal.IsActive(pm)) return true;
-        var pack = pm.Backpack;
         foreach (var req in Requirements)
         {
             if (req is WorkOrderTamingRequirement tamingReq)
@@ -222,31 +221,33 @@ public class WorkOrderDef
                 entry.TamingProgress.TryGetValue(tamingReq.ItemType.Name, out var progress);
                 if (progress < tamingReq.Amount) return false;
             }
-            else
-            {
-                if (pack == null) return false;
-                if (pack.GetAmount(req.ItemType) < req.Amount) return false;
-            }
         }
-        return true;
+
+        // F-11: materials and crafted items count from the pack and the bank, together (GuildResources).
+        return GuildResources.Has(pm, ItemCosts());
+    }
+
+    /// <summary>The item requirements (not the taming ones) as GuildResources costs.</summary>
+    public GuildCost[] ItemCosts()
+    {
+        var costs = new List<GuildCost>();
+        foreach (var req in Requirements)
+        {
+            if (req is not WorkOrderTamingRequirement)
+                costs.Add(GuildCost.Of(req.ItemType, req.Amount, req.Label));
+        }
+        return costs.ToArray();
     }
 
     /// <summary>
-    /// Consumes all required items from the player's backpack.
+    /// Takes every required item, pack first, then bank, loose before satchels, all or nothing (F-11).
     /// Taming requirements are skipped (animals were already consumed via crook delivery).
-    /// No-op if the player carries an active DevTestingCrystal (bypass mode).
-    /// Should only be called after RequirementsMet() returns true.
+    /// Takes nothing and returns true if the player carries an active DevTestingCrystal (bypass mode).
     /// </summary>
-    public void ConsumeRequirements(PlayerMobile pm)
+    public bool ConsumeRequirements(PlayerMobile pm)
     {
-        if (Items.DevTestingCrystal.IsActive(pm)) return; // testing bypass - nothing consumed
-        var pack = pm.Backpack;
-        if (pack == null) return;
-        foreach (var req in Requirements)
-        {
-            if (req is WorkOrderTamingRequirement) continue; // already consumed via crook delivery
-            pack.ConsumeTotal(req.ItemType, req.Amount);
-        }
+        if (Items.DevTestingCrystal.IsActive(pm)) return true; // testing bypass - nothing consumed
+        return GuildResources.TryConsume(pm, ItemCosts());
     }
 }
 

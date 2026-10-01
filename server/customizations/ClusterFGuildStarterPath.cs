@@ -227,6 +227,15 @@ public static class GuildLocations
         new("artificers", "Royal City", "Ter Mur",                         typeof(ArtificersGuildmaster),           GuildLocation.TerMurIndex,  797,  3431, -10, false, Direction.West),
     ];
 
+    // Guild members who are not guildmasters and only send players on to one (cc-P22, the F-9 follow-up). Kept out of
+    // All so the Guild Directory and "Show me the way" never list or point at them; ClusterFGuildHallSeeder places
+    // them with the Seeded rows. The lookout's tile is the stool by the fighting pit (static 0xA2A at 3440,2558,55,
+    // tiledata height 1, so its top is z56; the stool is not a surface, so z56 is set, never walked to).
+    public static readonly GuildLocation[] Lookouts =
+    [
+        new("thieves",    "Fighting pit, upper floor", "New Haven",        typeof(ThievesDenLookout),               GuildLocation.TrammelIndex, 3440, 2558, 56, true, Direction.East),
+    ];
+
     public static List<GuildLocation> For(string guildKey)
     {
         var list = new List<GuildLocation>();

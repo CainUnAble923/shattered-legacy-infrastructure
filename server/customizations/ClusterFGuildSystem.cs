@@ -331,12 +331,12 @@ public static class ClusterFGuildSystem
                 return false;
 
             case GuildTaskType.ItemOnly:
-                if (pm.Backpack?.GetAmount(def.TaskItemType!) >= def.TaskItemCount)
+                if (GuildResources.Count(pm, GuildCost.Of(def.TaskItemType!, def.TaskItemCount)).Total >= def.TaskItemCount)
                 {
                     reason = string.Empty;
                     return true;
                 }
-                reason = $"Requires {def.TaskItemCount}x {def.TaskItemType!.Name} in your backpack.";
+                reason = $"Requires {def.TaskItemCount}x {def.TaskItemType!.Name} in your backpack or bank.";
                 return false;
 
             case GuildTaskType.SkillOrItem:
@@ -345,7 +345,8 @@ public static class ClusterFGuildSystem
                     reason = string.Empty;
                     return true;
                 }
-                if (def.TaskItemType != null && pm.Backpack?.GetAmount(def.TaskItemType) >= def.TaskItemCount)
+                if (def.TaskItemType != null &&
+                    GuildResources.Count(pm, GuildCost.Of(def.TaskItemType, def.TaskItemCount)).Total >= def.TaskItemCount)
                 {
                     reason = string.Empty;
                     return true;
@@ -387,7 +388,12 @@ public static class ClusterFGuildSystem
             pm.Skills[def.TaskSkill].Base < def.TaskSkillMin &&
             def.TaskItemType != null)
         {
-            pm.Backpack?.ConsumeTotal(def.TaskItemType, def.TaskItemCount);
+            // F-11: the tribute comes from the pack, then the bank, all or nothing.
+            if (!GuildResources.TryConsume(pm, GuildCost.Of(def.TaskItemType, def.TaskItemCount)))
+            {
+                reason = $"Requires {def.TaskItemCount}x {def.TaskItemType.Name} in your backpack or bank.";
+                return false;
+            }
         }
 
         data.ApprenticeGuilds.Add(def.Key);

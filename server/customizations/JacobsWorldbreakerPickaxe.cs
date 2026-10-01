@@ -176,6 +176,9 @@ public class JacobsT5UpgradeGump : Gump
     private const int UpgradeValoriteCost   = 1000;
     private const int UpgradeAdamantiumCost = 200;
     private const int UpgradeGoldCost       = 300000;
+
+    // F-11: materials come from the pack and the bank (GuildResources), gold from both through CompactGoldHelper.
+    private static GuildCost[] Materials => new[] { GuildCost.Of<IronIngot>(UpgradeIronCost), GuildCost.Of<ValoriteIngot>(UpgradeValoriteCost), GuildCost.Of<AdamantiumIngot>(UpgradeAdamantiumCost) };
     private const int UpgradeStandingReq    = 80000;  // Deepwarden rank
     private const double UpgradeSkillReq    = 100.0;  // GM Mining
 
@@ -220,9 +223,9 @@ public class JacobsT5UpgradeGump : Gump
         var pack            = _pm.Backpack;
         var bypass          = DevTestingCrystal.IsActive(_pm);
 
-        var ironCount       = pack?.GetAmount(typeof(IronIngot))       ?? 0;
-        var valoriteCount   = pack?.GetAmount(typeof(ValoriteIngot))   ?? 0;
-        var adamantiumCount = pack?.GetAmount(typeof(AdamantiumIngot)) ?? 0;
+        var ironCount       = GuildResources.Count(_pm, GuildCost.Of<IronIngot>(0)).Total;
+        var valoriteCount   = GuildResources.Count(_pm, GuildCost.Of<ValoriteIngot>(0)).Total;
+        var adamantiumCount = GuildResources.Count(_pm, GuildCost.Of<AdamantiumIngot>(0)).Total;
         var goldCount       = CompactGoldHelper.GetTotalGold(_pm);
         var hasT4           = FindT4InPack() != null;
 
@@ -247,10 +250,11 @@ public class JacobsT5UpgradeGump : Gump
             $"<BASEFONT COLOR={Clr(reqRank)}>Rank: Deepwarden required - Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqSkill)}>Mining skill: {mining:F1}/{UpgradeSkillReq:F0} required (GM)</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqVoucher)}>Mining Vouchers: {vouchers}/{UpgradeVoucherCost} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqIron)}>Iron Ingots in pack: {ironCount:N0}/{UpgradeIronCost:N0} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqValorite)}>Valorite Ingots in pack: {valoriteCount}/{UpgradeValoriteCost} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqAdamantium)}>Adamantium Ingots in pack: {adamantiumCount}/{UpgradeAdamantiumCost} required</BASEFONT><BR>" +
+            $"<BASEFONT COLOR={Clr(reqIron)}>Iron Ingots (pack+bank): {ironCount:N0}/{UpgradeIronCost:N0} required</BASEFONT><BR>" +
+            $"<BASEFONT COLOR={Clr(reqValorite)}>Valorite Ingots (pack+bank): {valoriteCount}/{UpgradeValoriteCost} required</BASEFONT><BR>" +
+            $"<BASEFONT COLOR={Clr(reqAdamantium)}>Adamantium Ingots (pack+bank): {adamantiumCount}/{UpgradeAdamantiumCost} required</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqGold)}>Gold (pack+bank): {goldCount:N0}/{UpgradeGoldCost:N0} required</BASEFONT><BR>" +
+            $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, Materials)}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={Clr(reqT4)}>Jacob's Deepdelver Pickaxe (non-exhausted) in pack: {(hasT4 ? "Yes" : "No")}</BASEFONT>";
 
         AddHtml(16, 56, W - 32, H - 130, html, false, true);
@@ -303,32 +307,23 @@ public class JacobsT5UpgradeGump : Gump
         if (pack == null) return;
 
         guild.GuildReputation.TryGetValue("mining", out var standing);
-        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
         var mining          = _pm.Skills[SkillName.Mining].Value;
-        var ironCount       = pack.GetAmount(typeof(IronIngot));
-        var valoriteCount   = pack.GetAmount(typeof(ValoriteIngot));
-        var adamantiumCount = pack.GetAmount(typeof(AdamantiumIngot));
         var srcPickaxe      = FindT4InPack();
         var bypass          = DevTestingCrystal.IsActive(_pm);
 
         if (srcPickaxe == null
-            || (!bypass && (standing < UpgradeStandingReq || mining < UpgradeSkillReq
-                || vouchers < UpgradeVoucherCost || ironCount < UpgradeIronCost
-                || valoriteCount < UpgradeValoriteCost || adamantiumCount < UpgradeAdamantiumCost
-                || CompactGoldHelper.GetTotalGold(_pm) < UpgradeGoldCost)))
+            || (!bypass && (standing < UpgradeStandingReq || mining < UpgradeSkillReq)))
         {
             _pm.SendMessage(0x22, "Requirements no longer met. Upgrade cancelled.");
             _pm.SendGump(new JacobsT5UpgradeGump(_pm));
             return;
         }
 
-        if (!bypass)
+        // Vouchers, materials (pack then bank) and gold, all or nothing; skipped when the testing token is active.
+        if (!bypass && !GuildResources.TryPay(_pm, guild, "mining", UpgradeVoucherCost, "Mining Vouchers", UpgradeGoldCost, Materials))
         {
-            guild.GuildCurrency["mining"] = vouchers - UpgradeVoucherCost;
-            pack.ConsumeTotal(typeof(IronIngot),       UpgradeIronCost);
-            pack.ConsumeTotal(typeof(ValoriteIngot),   UpgradeValoriteCost);
-            pack.ConsumeTotal(typeof(AdamantiumIngot), UpgradeAdamantiumCost);
-            CompactGoldHelper.ConsumeGold(_pm, UpgradeGoldCost);
+            _pm.SendGump(new JacobsT5UpgradeGump(_pm));
+            return;
         }
 
         srcPickaxe.Exhausted = true;
