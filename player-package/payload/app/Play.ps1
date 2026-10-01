@@ -300,5 +300,18 @@ Write-Host '  First time? Type any account name and password you like. The first
 Write-Host '  creates your account, so remember them.' -ForegroundColor Gray
 Write-Host ''
 
-Start-Process -FilePath $tazExe -ArgumentList @('-settings', "`"$settingsPath`"") -WorkingDirectory $taz
+# --- our own art -------------------------------------------------------------------------
+# Patched copies of this computer's own tiledata.mul and animdata.mul, so our art animates
+# (Build-UoOverrides.ps1, cc-P26). Fast when nothing changed. Any failure there is one yellow
+# line and the game starts without them: our art then shows still, never the game not at all.
+$tazArgs = @('-settings', "`"$settingsPath`"")
+$uoOverride = $null
+try {
+    $uoOverride = & (Join-Path $app 'Build-UoOverrides.ps1') -UoDir $uoDir
+} catch {
+    Write-Host "  Shattered Legacy art could not be prepared ($($_.Exception.Message)). Starting without it." -ForegroundColor Yellow
+}
+if ($uoOverride) { $tazArgs += @('-uofilesoverride', "`"$uoOverride`"") }
+
+Start-Process -FilePath $tazExe -ArgumentList $tazArgs -WorkingDirectory $taz
 exit 0

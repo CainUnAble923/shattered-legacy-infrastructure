@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#0d0d0d">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
   :root {
     --bg: #0d0d0d;
@@ -147,6 +148,12 @@
   .sdot { width: 8px; height: 8px; border-radius: 50%; flex: none; border: 1px solid var(--muted); }
   .sdot.up { background: var(--jade); border-color: var(--jade); }
   @media (max-width: 560px) { .shards { margin: 0; width: 100%; } }
+  /* Intro video under the title. Plays once, muted, and holds on the crest. */
+  .intro {
+    display: block; width: min(480px, 100%); height: auto; aspect-ratio: 1 / 1;
+    margin: 18px auto 22px; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 3px;
+  }
 </style>
 </head>
 <body>
@@ -170,6 +177,19 @@
   <header>
     <img class="mark" src="/mark.svg" width="88" height="88" alt="">
     <h1>Shattered Legacy</h1>
+    <video class="intro" id="sl-intro" src="/media/intro-web.mp4" poster="/media/intro-poster.jpg"
+           muted playsinline preload="none" width="800" height="800"
+           aria-label="Shattered Legacy crest"></video>
+    <script>
+      /* Reduced motion: never load or play the video; the poster stays as the still. */
+      (function () {
+        var v = document.getElementById('sl-intro');
+        if (!v || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        v.muted = true;
+        v.preload = 'auto';
+        v.play().catch(function () {});
+      })();
+    </script>
     <p class="tagline">One life. Every skill. As many loops as it takes.</p>
     <p class="what">A private Ultima Online shard</p>
   </header>

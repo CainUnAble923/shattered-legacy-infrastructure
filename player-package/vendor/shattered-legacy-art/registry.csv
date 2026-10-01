@@ -1,0 +1,47 @@
+# Art registry: every art ID our package uses for its own art, one row per ID. scripts/find-free-art.py reads
+# it, so a later pack (F-21 to F-23) never takes an ID listed here. Add rows; never reuse or renumber one.
+id,id_hex,what,source,license
+15376,0x3C10,shattered runestone design 1 frame 1 of 11 (base ID: the item ID; has our tiledata and animdata record),"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0001_top.png",no license stated; see SOURCE.txt
+15377,0x3C11,shattered runestone design 1 frame 2 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0002_top.png",no license stated; see SOURCE.txt
+15378,0x3C12,shattered runestone design 1 frame 3 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0003_top.png",no license stated; see SOURCE.txt
+15379,0x3C13,shattered runestone design 1 frame 4 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0004_top.png",no license stated; see SOURCE.txt
+15380,0x3C14,shattered runestone design 1 frame 5 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0005_top.png",no license stated; see SOURCE.txt
+15381,0x3C15,shattered runestone design 1 frame 6 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0006_top.png",no license stated; see SOURCE.txt
+15382,0x3C16,shattered runestone design 1 frame 7 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0007_top.png",no license stated; see SOURCE.txt
+15383,0x3C17,shattered runestone design 1 frame 8 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0008_top.png",no license stated; see SOURCE.txt
+15384,0x3C18,shattered runestone design 1 frame 9 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0009_top.png",no license stated; see SOURCE.txt
+15385,0x3C19,shattered runestone design 1 frame 10 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0010_top.png",no license stated; see SOURCE.txt
+15386,0x3C1A,shattered runestone design 1 frame 11 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0011_top.png",no license stated; see SOURCE.txt
+15387,0x3C1B,shattered runestone design 2 frame 1 of 11 (base ID: the item ID; has our tiledata and animdata record),"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0001_top.png",no license stated; see SOURCE.txt
+15388,0x3C1C,shattered runestone design 2 frame 2 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0002_top.png",no license stated; see SOURCE.txt
+15389,0x3C1D,shattered runestone design 2 frame 3 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0003_top.png",no license stated; see SOURCE.txt
+15390,0x3C1E,shattered runestone design 2 frame 4 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0004_top.png",no license stated; see SOURCE.txt
+15391,0x3C1F,shattered runestone design 2 frame 5 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0005_top.png",no license stated; see SOURCE.txt
+15392,0x3C20,shattered runestone design 2 frame 6 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0006_top.png",no license stated; see SOURCE.txt
+15393,0x3C21,shattered runestone design 2 frame 7 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0007_top.png",no license stated; see SOURCE.txt
+15394,0x3C22,shattered runestone design 2 frame 8 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0008_top.png",no license stated; see SOURCE.txt
+15395,0x3C23,shattered runestone design 2 frame 9 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0009_top.png",no license stated; see SOURCE.txt
+15396,0x3C24,shattered runestone design 2 frame 10 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0010_top.png",no license stated; see SOURCE.txt
+15397,0x3C25,shattered runestone design 2 frame 11 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test2_0011_top.png",no license stated; see SOURCE.txt
+15398,0x3C26,shattered runestone design 3 frame 1 of 11 (base ID: the item ID; has our tiledata and animdata record),"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0001_top.png",no license stated; see SOURCE.txt
+15399,0x3C27,shattered runestone design 3 frame 2 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0002_top.png",no license stated; see SOURCE.txt
+15400,0x3C28,shattered runestone design 3 frame 3 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0003_top.png",no license stated; see SOURCE.txt
+15401,0x3C29,shattered runestone design 3 frame 4 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0004_top.png",no license stated; see SOURCE.txt
+15402,0x3C2A,shattered runestone design 3 frame 5 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0005_top.png",no license stated; see SOURCE.txt
+15403,0x3C2B,shattered runestone design 3 frame 6 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0006_top.png",no license stated; see SOURCE.txt
+15404,0x3C2C,shattered runestone design 3 frame 7 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0007_top.png",no license stated; see SOURCE.txt
+15405,0x3C2D,shattered runestone design 3 frame 8 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0008_top.png",no license stated; see SOURCE.txt
+15406,0x3C2E,shattered runestone design 3 frame 9 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0009_top.png",no license stated; see SOURCE.txt
+15407,0x3C2F,shattered runestone design 3 frame 10 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0010_top.png",no license stated; see SOURCE.txt
+15408,0x3C30,shattered runestone design 3 frame 11 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test3_0011_top.png",no license stated; see SOURCE.txt
+15409,0x3C31,shattered runestone design 4 frame 1 of 11 (base ID: the item ID; has our tiledata and animdata record),"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0001_top.png",no license stated; see SOURCE.txt
+15410,0x3C32,shattered runestone design 4 frame 2 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0002_top.png",no license stated; see SOURCE.txt
+15411,0x3C33,shattered runestone design 4 frame 3 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0003_top.png",no license stated; see SOURCE.txt
+15412,0x3C34,shattered runestone design 4 frame 4 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0004_top.png",no license stated; see SOURCE.txt
+15413,0x3C35,shattered runestone design 4 frame 5 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0005_top.png",no license stated; see SOURCE.txt
+15414,0x3C36,shattered runestone design 4 frame 6 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0006_top.png",no license stated; see SOURCE.txt
+15415,0x3C37,shattered runestone design 4 frame 7 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0007_top.png",no license stated; see SOURCE.txt
+15416,0x3C38,shattered runestone design 4 frame 8 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0008_top.png",no license stated; see SOURCE.txt
+15417,0x3C39,shattered runestone design 4 frame 9 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0009_top.png",no license stated; see SOURCE.txt
+15418,0x3C3A,shattered runestone design 4 frame 10 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0010_top.png",no license stated; see SOURCE.txt
+15419,0x3C3B,shattered runestone design 4 frame 11 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test4_0011_top.png",no license stated; see SOURCE.txt

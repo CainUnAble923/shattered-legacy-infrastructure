@@ -27,3 +27,22 @@ Example:
 ### Fixed
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
+
+## 2026.10.01
+
+### Added
+- Wren, a Thieves' Den lookout, sits by the New Haven fighting pit and points the way to the guildmaster.
+- "Combine this deed with contained items" on bulk order deeds: target a bag in your pack to combine everything in it.
+- Your bank now holds 1,000 items.
+- Patch notes: new updates show here when you log in, and [version shows them any time.
+- The Reset Stone in New Haven is now a floating, shattered runestone. Accept the game update when it is offered to see it.
+
+### Changed
+- Guild upgrades, restorations and turn-ins now use materials from your bank as well as your pack, pack first.
+- Restoring a Jacob's Pickaxe at tiers 1 and 2 costs much less.
+- The Smith Seal catalog no longer sells power scrolls.
+
+### Fixed
+- The Guild Directory listed the Artificers' Order twice.
+- "Show me the way" now points to the nearest guildmaster and names the town.
+- Salvaging a smithed item can no longer return more ingots than it cost.

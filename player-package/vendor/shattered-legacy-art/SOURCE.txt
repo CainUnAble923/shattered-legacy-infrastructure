@@ -1,0 +1,53 @@
+Shattered Legacy's own art for TazUO, shipped in the player package (cc-P26, F-8)
+================================================================================
+
+What is here
+------------
+  art\<id>.png    art overrides, by static item ID in decimal. The build copies them to
+                  app\tazuo\ExternalImages\art\, where TazUO draws them instead of the art in the
+                  player's artLegacyMUL.uop (TazUO ExternalImageLoader.Load and Art.LoadSourceArtInfo).
+  registry.csv    every art ID we use, one row each. scripts\find-free-art.py reads it so a later pack
+                  never takes one of these IDs.
+  records.json    our tiledata and animdata records for the IDs that need them. The build copies it to
+                  app\art-records.json. Play.ps1 writes it into copies of the player's own
+                  tiledata.mul and animdata.mul (app\uo-overrides\), never into the player's EA files.
+                  Nothing of EA's is shipped: not a file, not a part of one.
+
+Shattered runestone (IDs 15376-15419, 0x3C10-0x3C3B)
+----------------------------------------------------
+Author:      Vrark
+Resource:    "Animated Runestone", https://www.servuo.dev/archive/animated-runestone.2564/
+             Posted 2025-12-27. Its description in full: "An animated runestone in four directions."
+Downloaded:  2026-09-30, by Chase (logged in to servuo.dev). Original download kept at
+             D:\UO\third-party\animated-runestone\ ("MMH7 runestone.zip": four GIFs and four zips of PNGs).
+License:     NO LICENSE STATED, in the download or on the page. Posted for the ServUO community to use.
+             The download's folder and file names ("MMH7 runestone", "MM7H runestone 2") suggest the
+             art is taken or rendered from Might & Magic Heroes VII. The page does not say so. Treat it
+             as the same open question F-22 records for Vrark's animated Christmas trees.
+
+The four "designs" are Vrark's four directions of the one stone:
+  design 1  15376-15386  Test1_0001_top.png .. Test1_0011_top.png  (MMH7 runestone 1.zip)
+  design 2  15387-15397  Test2_0001_top.png .. Test2_0011_top.png  (MM7H runestone 2.zip, folder TOP\)
+  design 3  15398-15408  Test3_0001_top.png .. Test3_0011_top.png  (MMH7 runestone 3.zip)
+  design 4  15409-15419  Test4_0001_top.png .. Test4_0011_top.png  (MMH7 runestone 4.zip)
+Each base ID (the first of each run) is the item's ID and the only one with records. The other ten
+are frames only.
+
+Changed from the download, and only this: each design's frames were cut to the union of their
+non-transparent pixels (the same cut for all 11, so they stay registered), then given 22 transparent
+rows below. That puts the floating stone over the centre of its tile; TazUO puts an image's bottom row
+on the tile's bottom tip and its middle column on the tile's centre. No pixel was scaled or altered:
+scripts\anchor-art-frames.py checks every frame it writes against its source, pixel for pixel. Before
+that, the 44 PNGs were checked byte-identical to the ones in Vrark's four zips.
+
+  python scripts\anchor-art-frames.py --src D:\UO\third-party\animated-runestone\frames\stone<N>
+      --first-id <base> --out player-package\vendor\shattered-legacy-art\art --bottom-pad 22
+
+Frame timing: the GIFs run 80 to 90 ms a frame. TazUO's static animation step is
+FrameInterval x 100 ms (AnimatedStaticsManager.Process, ITEM_EFFECT_ANIMATION_DELAY 50, doubled), so
+records.json uses interval 1: about 100 ms a frame, a little slower than the GIFs.
+
+Tiledata record: copied from OSI's own animated runestone, 0xADBA "Runestone01 Glow01", as read from
+the client's tiledata.mul on 2026-10-01: flags 0x01040040 (Animation, PartialHue, Impassable),
+weight 1, height 3. Only the name ("shattered runestone") is ours. The flag values are facts about how
+OSI's item behaves, not EA data shipped: the record is written by hand here.

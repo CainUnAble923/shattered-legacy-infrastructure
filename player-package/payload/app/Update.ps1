@@ -22,7 +22,9 @@
        <install>\update-backup\.
     3. Copies the new package over the install WITHOUT deleting anything, except the
        paths the new package lists in app\retired-files.txt. It never overwrites
-       app\uo-path.txt, app\tazuo\settings*.json, or anything under app\tazuo\Data\
+       app\uo-path.txt, app\tazuo\settings*.json, app\uo-overrides\ (made on the player's
+       computer by Build-UoOverrides.ps1; a retired-files.txt line cannot remove it either,
+       and a changed art-records.json makes it rebuild itself), or anything under app\tazuo\Data\
        (the player's profiles, and the XmlGumps where TazUO saves gump positions). A
        Data\XmlGumps\*.xml that the install does not have yet is added.
     4. Writes app\package-version.txt last, so an install that stopped halfway never
@@ -101,6 +103,7 @@ function Test-Kept([string]$rel) {
     $r = $rel.ToLowerInvariant()
     if ($r -eq 'app\uo-path.txt') { return $true }
     if ($r -eq 'app\package-version.txt') { return $true }      # written last, separately
+    if ($r.StartsWith('app\uo-overrides\')) { return $true }     # made on this computer by Build-UoOverrides.ps1
     if ($r -match '^app\\tazuo\\settings[^\\]*\.json$') { return $true }
     if ($r.StartsWith('app\tazuo\data\')) {
         # A new XML gump is added; an existing one holds the player's saved position.
@@ -117,7 +120,7 @@ function Test-RetiredLine([string]$p) {
     if ($p -match '[*?\[\]]') { return 'contains a wildcard' }
     $l = $p.ToLowerInvariant().TrimEnd('\')
     if ($l -eq 'app\tazuo\data' -or $l.StartsWith('app\tazuo\data\')) { return 'is under app\tazuo\Data\' }
-    if (@('', '.', 'app', 'app\tazuo', 'update-backup', 'app\uo-path.txt') -contains $l -or $l -match '^app\\tazuo\\settings[^\\]*\.json$') { return 'is protected' }
+    if (@('', '.', 'app', 'app\tazuo', 'update-backup', 'app\uo-path.txt', 'app\uo-overrides') -contains $l -or $l -match '^app\\tazuo\\settings[^\\]*\.json$') { return 'is protected' }
     return $null
 }
 

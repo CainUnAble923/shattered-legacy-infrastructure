@@ -112,10 +112,10 @@ namespace Server.Items
     [SerializationGenerator(0, false)]
     public partial class ResetStone : Item
     {
-        // The pinned "gift stone" graphic (IngotStone, RegStone, AlchemyStone ...). One constant, so F-8 can
-        // give the stone custom art later by changing this line.
-        public const int StoneGraphic = 0xED4;
-        public const int StoneHue     = 0x2B;
+        // cc-P26, F-8: the shattered runestone's design 1 (our own art; ShatteredRunestone.cs). Hue 0, because a hue
+        // would tint that art. Until F-8 it was 0xED4, pinned's gift-stone graphic, hued 0x2B.
+        public static int StoneGraphic => ShatteredRunestone.DesignItemIds[0];
+        public const int StoneHue     = 0;
         public const int UseRange     = 2;
 
         [Constructible]
@@ -128,6 +128,15 @@ namespace Server.Items
         public override string DefaultName => "a Reset Stone (test shard)";
 
         public override bool Decays => false;
+
+        // A stone placed before F-8 was saved with 0xED4 and hue 0x2B; it takes the current look at load. Nothing is
+        // added to the save, so no version change.
+        [AfterDeserialization]
+        private void AfterDeserialization()
+        {
+            ItemID = StoneGraphic;
+            Hue = StoneHue;
+        }
 
         public override void GetProperties(IPropertyList list)
         {

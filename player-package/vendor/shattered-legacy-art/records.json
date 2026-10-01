@@ -1,0 +1,15 @@
+{
+  "about": "Our own tiledata and animdata records (cc-P26, F-8). Nothing here is copied from EA's files: every value is ours, and the tiledata values follow OSI's animated runestone 0xADBA 'Runestone01 Glow01' (flags, weight and height read from the client's tiledata.mul; see SOURCE.txt). app\\Play.ps1 writes these into copies of the player's own tiledata.mul and animdata.mul. Change only together with registry.csv.",
+  "tiledata": [
+    { "id": 15376, "name": "shattered runestone", "flags": "0x01040040", "weight": 1, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 3 },
+    { "id": 15387, "name": "shattered runestone", "flags": "0x01040040", "weight": 1, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 3 },
+    { "id": 15398, "name": "shattered runestone", "flags": "0x01040040", "weight": 1, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 3 },
+    { "id": 15409, "name": "shattered runestone", "flags": "0x01040040", "weight": 1, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 3 }
+  ],
+  "animdata": [
+    { "id": 15376, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "interval": 1, "start": 0 },
+    { "id": 15387, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "interval": 1, "start": 0 },
+    { "id": 15398, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "interval": 1, "start": 0 },
+    { "id": 15409, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "interval": 1, "start": 0 }
+  ]
+}
