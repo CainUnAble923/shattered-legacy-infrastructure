@@ -95,8 +95,9 @@ namespace Server.Items
             get => _design;
             set
             {
+                var itemId = ItemIdOf(value); // throws for anything but 1 to 4: [props then says it was not set
                 _design = value;
-                ItemID = value is >= 1 and <= 4 ? DesignItemIds[value - 1] : ItemID;
+                ItemID = itemId;
                 this.MarkDirty();
             }
         }
@@ -110,6 +111,7 @@ namespace Server.Items
                 _design = FirstDesign;
             }
 
+            ItemID = DesignItemIds[_design - 1];
         }
     }
 }
