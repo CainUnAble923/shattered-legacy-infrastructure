@@ -120,12 +120,18 @@ namespace Server
             }
         }
 
-        internal static List<string> Seed(bool dryRun)
+        internal static List<string> Seed(bool dryRun) => SeedAddons("mine camp", "tents", Tents, dryRun);
+
+        // Places each addon whose type is not already on Trammel, at its first component. Shared with
+        // cc-P19's League field office (ClusterFRegistrarOfficeSeeder), so both decorations have one placer.
+        internal static List<string> SeedAddons(
+            string label, string noun, (Type Type, Func<BaseAddon> Create, MineCampComponent[] Components)[] addons, bool dryRun
+        )
         {
             var lines = new List<string>();
             var placed = 0;
 
-            foreach (var (type, create, components) in Tents)
+            foreach (var (type, create, components) in addons)
             {
                 var origin = OriginOf(components);
                 var existing = FindTent(type);
@@ -153,7 +159,7 @@ namespace Server
                 placed++;
             }
 
-            lines.Add($"ClusterF mine camp {(dryRun ? "dry run" : "seed")}: {(dryRun ? "would place" : "placed")} {placed} of {Tents.Length} tents.");
+            lines.Add($"ClusterF {label} {(dryRun ? "dry run" : "seed")}: {(dryRun ? "would place" : "placed")} {placed} of {addons.Length} {noun}.");
             return lines;
         }
 

@@ -16,7 +16,8 @@ public static class ClusterFNewHavenSeeder
     //
     // WasAt names the tile an entry used before PT-05. World-load repair accepts an NPC standing
     // there, so an existing world keeps its NPCs where they are until an Administrator runs
-    // [ClusterFSeedNewHaven repair; a fresh world places them on the floor.
+    // [ClusterFSeedNewHaven repair; a fresh world places them on the floor. WasAt may also name the
+    // facing the entry used before (cc-P19, the League Registrar); world-load repair accepts that too.
     internal static readonly SeedEntry[] Entries =
     {
         new("Sir Helper", "Town square", typeof(SirHelper), () => new SirHelper(), 3503, 2574, Direction.South, 14),
@@ -65,8 +66,9 @@ public static class ClusterFNewHavenSeeder
         new SeedEntry("Jacob Waltz", "Mine camp (south mountains)", typeof(JacobWaltz), () => new JacobWaltz(), 3510, 2745, Direction.South, 0).WasAt(3511, 2744, 0),
         new("George Hephaestus", "Forge and Anvil", typeof(GeorgeHephaestus), () => new GeorgeHephaestus(), 3471, 2542, Direction.South, 36),
 
-        // League of Extraordinary Citizens field office
-        new("League Registrar", "League of Extraordinary Citizens Field Office", typeof(LeagueRegistrar), () => new LeagueRegistrar(), 3459, 2601, Direction.North, 18),
+        // League of Extraordinary Citizens field office. Faces West, to her desk (the table at
+        // 3458,2600-2601); she faced North before cc-P19, which world load still accepts.
+        new SeedEntry("League Registrar", "League of Extraordinary Citizens Field Office", typeof(LeagueRegistrar), () => new LeagueRegistrar(), 3459, 2601, Direction.West, 18).WasAt(3459, 2601, 18, Direction.North),
     };
 
     private static bool _enabled;
@@ -194,17 +196,18 @@ public static class ClusterFNewHavenSeeder
 
     internal static bool NeedsRepair(Mobile mobile, SeedEntry entry, bool acceptLegacyTiles = false)
     {
-        if (acceptLegacyTiles && entry.HasLegacyLocation && !NeedsRepairAt(mobile, entry, entry.GetLegacyLocation()))
+        if (acceptLegacyTiles && entry.HasLegacyLocation &&
+            !NeedsRepairAt(mobile, entry.GetLegacyLocation(), entry.LegacyDirection))
         {
             return false;
         }
 
-        return NeedsRepairAt(mobile, entry, entry.GetLocation());
+        return NeedsRepairAt(mobile, entry.GetLocation(), entry.Direction);
     }
 
-    private static bool NeedsRepairAt(Mobile mobile, SeedEntry entry, Point3D location)
+    private static bool NeedsRepairAt(Mobile mobile, Point3D location, Direction direction)
     {
-        if (mobile.Map != Map.Trammel || mobile.Location != location || mobile.Direction != entry.Direction || !mobile.CantWalk)
+        if (mobile.Map != Map.Trammel || mobile.Location != location || mobile.Direction != direction || !mobile.CantWalk)
         {
             return true;
         }
@@ -284,9 +287,13 @@ public static class ClusterFNewHavenSeeder
         private int _legacyX;
         private int _legacyY;
         private int _legacyZ = AutoZ;
+        private Direction? _legacyDirection;
 
         public bool HasAutoZ => _z == AutoZ;
         public bool HasLegacyLocation { get; private set; }
+
+        /// <summary>The facing world load accepts on the legacy tile: the old one if WasAt named it, else today's.</summary>
+        public Direction LegacyDirection => _legacyDirection ?? Direction;
 
         public Mobile Create() => _factory();
 
@@ -295,11 +302,12 @@ public static class ClusterFNewHavenSeeder
         /// <summary>Where this entry placed its NPC before PT-05, resolved as the seeder did then.</summary>
         public Point3D GetLegacyLocation() => Resolve(_legacyX, _legacyY, _legacyZ);
 
-        public SeedEntry WasAt(int x, int y, int z = AutoZ)
+        public SeedEntry WasAt(int x, int y, int z = AutoZ, Direction? facing = null)
         {
             _legacyX = x;
             _legacyY = y;
             _legacyZ = z;
+            _legacyDirection = facing;
             HasLegacyLocation = true;
             return this;
         }
