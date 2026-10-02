@@ -30,7 +30,7 @@ public partial class SanitationWarden : BaseGuildmaster
         "A tidy town is a safe town.",
         "Every piece of refuse removed is a service to the realm.",
         "The Custodians keep the roads clear and the citizenry healthy.",
-        "You there — seen any litter about? We pay good Civic Tokens for clean streets.",
+        "You there, seen any litter about? Every scrap counts toward Clean Up Britannia.",
         "Cleanliness is next to civic virtue.",
         "Join The Custodians and earn your keep keeping the peace — of the streets.",
     };
@@ -70,22 +70,18 @@ public partial class SanitationWarden : BaseGuildmaster
 
     /// <summary>
     /// Called after Custodians membership is granted (from gump or [guild command).
-    /// Issues a TrashBag to the new member if they don't already have one.
+    /// Issues a TrashBag to the new member unless they already own one (cc-P33: one per character, by owner), and
+    /// sets their Custodian standing from lifetime Clean Up points.
     /// </summary>
     public static void OnCustodiansJoined(PlayerMobile pm)
     {
-        if (pm.Backpack == null) return;
+        ClusterFCustodianSystem.SyncStanding(pm);
 
-        // Only issue one bag per player
-        foreach (var item in pm.Backpack.Items)
-        {
-            if (item is TrashBag) return;
-        }
+        if (pm.Backpack == null || TrashBag.OwnedBy(pm).Count > 0) return;
 
-        var bag = new TrashBag();
-        pm.Backpack.DropItem(bag);
+        TrashBag.IssueTo(pm);
         pm.SendMessage(0x44,
             "You have been issued a Trash Bag. " +
-            "Drag litter into it, then double-click to dump for Civic Tokens.");
+            "Drag litter into it, then right-click it to dump for Clean Up Britannia points.");
     }
 }

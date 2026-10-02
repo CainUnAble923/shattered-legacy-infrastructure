@@ -152,7 +152,13 @@ public static class ClusterFDevTools
             // cc-P15), for every character of the account, so the whole starter path runs again.
             data.ClearGuildData();
             data.ClearGuildStarterRecords();
-            admin.SendMessage("Guild membership, rank, reputation, scrip, work orders, commissions and starter records cleared for every character.");
+
+            // cc-P33 (F-3): a Custodian's rank is its lifetime Clean Up points, so they go with the guilds.
+            for (var i = 0; i < account.Length; i++)
+                if (account[i] is PlayerMobile character)
+                    Server.Engines.Points.CleanUpBritanniaData.Instance.RemoveEntry(character);
+
+            admin.SendMessage("Guild membership, rank, reputation, scrip, work orders, commissions, starter records and Clean Up Britannia points cleared for every character.");
         }
 
         if (opts.Exploration)
@@ -251,7 +257,7 @@ public class ResetOptions
         if (Skills)       items.Add($"Skills, all to 0: {who}");
         if (Stats)        items.Add($"Str / Dex / Int to 10: {who}");
         if (Quests)       items.Add($"ML quest history: {who}");
-        if (Guilds)       items.Add("Guilds, rank, rep, scrip, work orders, commissions, tools and starter items: EVERY character");
+        if (Guilds)       items.Add("Guilds, rank, rep, scrip, work orders, commissions, tools, starter items and Clean Up points: EVERY character");
         if (Exploration)  items.Add("Exploration (fog of war): EVERY character");
         if (Achievements) items.Add("Achievements and Achievement Points: the account");
         if (Renown)       items.Add("Renown and the restoration registry: the account");

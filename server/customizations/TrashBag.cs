@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ModernUO.Serialization;
-using Server.Accounting;
 using Server.Collections;
 using Server.ContextMenus;
 using Server.Gumps;
@@ -17,18 +17,30 @@ namespace Server.Items;
 // Works as a normal bag: double-click opens the container as usual, items
 // can be dragged in and out freely.
 //
-// Right-click the bag -> "Dump for Tokens" -> opens TrashBagGump which shows
-// contents, estimated yield, current balance, and action buttons.
+// Right-click the bag -> "Dump for Clean Up points" -> opens TrashBagGump which shows contents, estimated yield,
+// current points, and action buttons.
 //
-// "Dump Now"       - deletes eligible items and awards Civic Tokens.
+// "Dump Now"       - deletes eligible items and awards Clean Up Britannia points (cc-P33, F-3; was Civic Tokens).
 // "Return All"     - moves all bag contents back to the player's backpack.
+//
+// cc-P33 (F-3): the bag is free and one per character at a time, enforced by owner (Chase, 2026-09-29). The bag
+// records its owner (version 1); IssueTo deletes every bag the character already owns, wherever it is, then gives
+// one. Only the owner can dump it. A bag from before version 1 has no owner and dumps for no one; its owner asks a
+// Sanitation Warden for a new one. Craft X routes rejects into the crafter's own bag (ClusterFCraftRejects.cs).
 // -----------------------------------------------------------------------------
 
-[SerializationGenerator(0, false)]
+[SerializationGenerator(1, false)]
 public partial class TrashBag : Container
 {
     private const int BagItemID = 0xE75; // bag graphic
     private const int BagHue    = 0x48D; // muted green
+
+    // Every bag in the world, so IssueTo finds a character's old bag wherever it is.
+    private static readonly HashSet<TrashBag> _all = new();
+
+    [SerializableField(0)]
+    [SerializedCommandProperty(AccessLevel.GameMaster)]
+    private Mobile _owner;
 
     [Constructible]
     public TrashBag() : base(BagItemID)
@@ -36,11 +48,49 @@ public partial class TrashBag : Container
         Name     = "trash bag";
         Hue      = BagHue;
         LootType = LootType.Blessed;
+        _all.Add(this);
     }
 
-    public TrashBag(Serial serial) : base(serial) { }
+    // A version 0 bag has no fields and no owner.
+    private void MigrateFrom(V0Content content)
+    {
+    }
 
-    // -- Context menu: "Dump for Tokens" --------------------------------------
+    [AfterDeserialization(false)]
+    private void AfterDeserialization() => _all.Add(this);
+
+    public override void OnAfterDelete()
+    {
+        base.OnAfterDelete();
+        _all.Remove(this);
+    }
+
+    /// <summary>Every bag this character owns, wherever it is.</summary>
+    public static List<TrashBag> OwnedBy(Mobile owner) =>
+        _all.Where(b => !b.Deleted && b.Owner == owner).ToList();
+
+    /// <summary>
+    /// Gives the character a new trash bag, free, after deleting every bag it already owns (in a house, the bank, on the
+    /// ground). Returns the new bag, or null if the character has no backpack.
+    /// </summary>
+    public static TrashBag IssueTo(PlayerMobile pm)
+    {
+        if (pm.Backpack == null)
+        {
+            return null;
+        }
+
+        foreach (var old in OwnedBy(pm))
+        {
+            old.Delete();
+        }
+
+        var bag = new TrashBag { Owner = pm };
+        pm.Backpack.DropItem(bag);
+        return bag;
+    }
+
+    // -- Context menu: "Dump for Clean Up points" --------------------------------
 
     public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
     {
@@ -48,6 +98,16 @@ public partial class TrashBag : Container
 
         if (from is PlayerMobile pm && IsChildOf(pm.Backpack))
             list.Add(new DumpEntry(pm, this));
+    }
+
+    public override void GetProperties(IPropertyList list)
+    {
+        base.GetProperties(list);
+
+        if (_owner != null)
+        {
+            list.Add($"Owned by {_owner.Name}");
+        }
     }
 
     // -- Context entry ---------------------------------------------------------
@@ -63,7 +123,7 @@ public partial class TrashBag : Container
             _bag = bag;
         }
 
-        public override string ToString() => "Dump for Tokens";
+        public override string ToString() => "Dump for Clean Up points";
 
         public override void OnClick(Mobile from, IEntity target)
         {
@@ -91,26 +151,20 @@ public class TrashBagGump : Gump
         Closable   = true;
         Disposable = true;
 
-        // Account state
-        var balance  = 0;
-        var standing = 0;
-        if (pm.Account is IAccount acct)
-        {
-            var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
-            balance  = guild.GetCurrency("custodians");
-            standing = guild.GetReputation("custodians");
-        }
-        var rank = ClusterFCustodianSystem.GetCustodianRank(standing);
+        var points   = ClusterFCustodianSystem.GetPoints(pm);
+        var lifetime = ClusterFCustodianSystem.GetLifetimePoints(pm);
+        var rank     = ClusterFCustodianSystem.GetCustodianRank((int)Math.Floor(lifetime));
+        var owned    = bag.Owner == pm;
 
         // Count eligible items
         var eligibleCount  = 0;
-        var estimatedTotal = 0;
+        var estimatedTotal = 0.0;
         foreach (var item in bag.Items)
         {
             if (ClusterFCustodianSystem.IsEligible(item, requireGround: false))
             {
                 eligibleCount++;
-                estimatedTotal += ClusterFCustodianSystem.ComputeTokens(item);
+                estimatedTotal += ClusterFCustodianSystem.ComputePoints(item);
             }
         }
 
@@ -125,11 +179,15 @@ public class TrashBagGump : Gump
 
         AddLabel(18, 44, 999,  "Rank:");
         AddLabel(70, 44, 1153, rank);
-        AddLabel(18, 64, 999,  "Civic Tokens:");
-        AddLabel(110, 64, 68,  $"{balance:N0}");
+        AddLabel(18, 64, 999,  "Clean Up points:");
+        AddLabel(130, 64, 68,  ClusterFCustodianSystem.FormatPoints(points));
         AddImageTiled(10, 86, W - 20, 2, 9304);
 
-        if (bag.Items.Count == 0)
+        if (!owned)
+        {
+            AddLabel(18, 96, 37, "This bag is not yours. Ask a Sanitation Warden for your own.");
+        }
+        else if (bag.Items.Count == 0)
         {
             AddLabel(18, 96, 999, "The bag is empty.");
         }
@@ -137,8 +195,8 @@ public class TrashBagGump : Gump
         {
             AddLabel(18, 96,  999, $"Contents:  {bag.Items.Count} item{(bag.Items.Count == 1 ? "" : "s")}");
             AddLabel(18, 116, 999, $"Eligible:  {eligibleCount} item{(eligibleCount == 1 ? "" : "s")}");
-            if (estimatedTotal > 0)
-                AddLabel(18, 136, 68, $"Estimated: +{estimatedTotal} Civic Token{(estimatedTotal == 1 ? "" : "s")}");
+            if (eligibleCount > 0)
+                AddLabel(18, 136, 68, $"Estimated: +{ClusterFCustodianSystem.FormatPoints(estimatedTotal)} Clean Up points");
             else
                 AddLabel(18, 136, 37, "No eligible items in bag.");
         }
@@ -146,11 +204,11 @@ public class TrashBagGump : Gump
         AddImageTiled(10, 162, W - 20, 2, 9304);
 
         var btnY = 174;
-        if (eligibleCount > 0)
+        if (owned && eligibleCount > 0)
         {
             AddButton(18, btnY, 4005, 4007, BtnDump, GumpButtonType.Reply, 0);
             AddLabel(54, btnY + 2, 1154,
-                $"Dump Now  (+{estimatedTotal} Civic Token{(estimatedTotal == 1 ? "" : "s")})");
+                $"Dump Now  (+{ClusterFCustodianSystem.FormatPoints(estimatedTotal)} Clean Up points)");
             btnY += 32;
         }
 
@@ -159,7 +217,7 @@ public class TrashBagGump : Gump
             bag.Items.Count > 0 ? "Return All Items to Pack" : "Close");
 
         AddHtml(18, 232, W - 36, 46,
-            "<BASEFONT COLOR=#888888>Place items in the bag then right-click -> Dump for Tokens. " +
+            "<BASEFONT COLOR=#888888>Place items in the bag then right-click -> Dump for Clean Up points. " +
             "Blessed, quest, named, and exceptional items are ineligible.</BASEFONT>",
             false, false);
     }
@@ -186,43 +244,40 @@ public class TrashBagGump : Gump
         }
     }
 
-    private static void DumpBag(PlayerMobile pm, TrashBag bag)
+    /// <summary>Deletes the bag's eligible items and pays their Clean Up points. Only the owner can dump a bag.</summary>
+    public static double DumpBag(PlayerMobile pm, TrashBag bag)
     {
+        if (bag.Owner != pm)
+        {
+            pm.SendMessage(0x22, "This trash bag is not yours. Ask a Sanitation Warden for your own.");
+            return 0;
+        }
+
         var snapshot = new List<Item>(bag.Items);
         var count    = 0;
-        var total    = 0;
+        var valued   = 0;
+        var total    = 0.0;
 
         foreach (var item in snapshot)
         {
             if (item.Deleted) continue;
             if (!ClusterFCustodianSystem.IsEligible(item, requireGround: false)) continue;
 
-            total += ClusterFCustodianSystem.ComputeTokens(item);
+            var points = ClusterFCustodianSystem.ComputePoints(item);
+            total += points;
             count++;
+            if (points > 0) valued++;
             item.Delete();
         }
 
         if (count > 0)
         {
-            ClusterFCustodianSystem.AwardTokens(pm, total);
+            ClusterFCustodianSystem.AwardPoints(pm, total);
 
-            // Award CleanedDebris bundles: 1 per 5 items cleaned in the dump
-            var bundles = count / 5;
-            if (bundles > 0 && pm.Backpack != null)
-            {
-                var debris = new CleanedDebris { Amount = bundles };
-                pm.Backpack.DropItem(debris);
-                pm.SendMessage(0x44,
-                    $"Dumped {count} item{(count == 1 ? "" : "s")}: " +
-                    $"+{total} Civic Token{(total == 1 ? "" : "s")}, " +
-                    $"{bundles} civic waste bundle{(bundles == 1 ? "" : "s")}.");
-            }
-            else
-            {
-                pm.SendMessage(0x44,
-                    $"Dumped {count} item{(count == 1 ? "" : "s")}: " +
-                    $"+{total} Civic Token{(total == 1 ? "" : "s")}.");
-            }
+            pm.SendMessage(0x44,
+                $"Dumped {count} item{(count == 1 ? "" : "s")}: " +
+                $"+{ClusterFCustodianSystem.FormatPoints(total)} Clean Up points" +
+                ClusterFCustodianSystem.GiveBundles(pm, valued) + ".");
             pm.SendSound(0x3D);
         }
         else
@@ -230,7 +285,12 @@ public class TrashBagGump : Gump
             pm.SendMessage(0x22, "No eligible items in the bag to dump.");
         }
 
-        pm.SendGump(new TrashBagGump(pm, bag));
+        if (pm.NetState != null)
+        {
+            pm.SendGump(new TrashBagGump(pm, bag));
+        }
+
+        return total;
     }
 
     private static void ReturnAll(PlayerMobile pm, TrashBag bag)

@@ -1,0 +1,74 @@
+--- a/Projects/UOContent/Items/Misc/TrashChest.cs
++++ b/Projects/UOContent/Items/Misc/TrashChest.cs
+@@ -1,4 +1,7 @@
+ using ModernUO.Serialization;
++using Server.Collections;
++using Server.ContextMenus;
++using Server.Engines.Points;
+ 
+ namespace Server.Items;
+ 
+@@ -13,12 +16,45 @@
+ 
+     public override bool IsDecoContainer => false;
+ 
++    // cc-P33 (F-3): Clean Up Britannia, as ServUO's TrashChest : BaseTrash (customizations CleanUpTrash.cs).
++    public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
++    {
++        base.GetContextMenuEntries(from, ref list);
++        CleanUpTrash.AddAppraiseEntry(from, ref list);
++    }
++
++    // ServUO TrashChest.cs:56-90: an item worth nothing to Clean Up that is blessed is refused, not destroyed.
++    // ServUO adds the item first and then refuses it, so it bounces back; checked first here, to the same effect.
++    private static bool RefuseBlessed(Mobile from, Item item)
++    {
++        if (CleanUpBritanniaData.Enabled && item.LootType == LootType.Blessed && CleanUpBritanniaData.GetPoints(item) <= 0)
++        {
++            from.SendLocalizedMessage(1075256); // That is blessed; you cannot throw it away.
++            return true;
++        }
++
++        return false;
++    }
++
++    private void Trash(Mobile from, Item item)
++    {
++        CleanUpTrash.AddCleanupItem(this, from, item);
++        CleanUpTrash.ConfirmCleanupItem(this, item);
++        item.Delete();
++        CleanUpTrash.Award(this);
++    }
++
+     public override bool OnDragDrop(Mobile from, Item dropped)
+     {
++        if (RefuseBlessed(from, dropped))
++        {
++            return false;
++        }
++
+         if (base.OnDragDrop(from, dropped))
+         {
+             PublicOverheadMessage(MessageType.Regular, 0x3B2, Utility.Random(1042891, 8));
+-            dropped.Delete();
++            Trash(from, dropped);
+             return true;
+         }
+ 
+@@ -27,10 +63,15 @@
+ 
+     public override bool OnDragDropInto(Mobile from, Item item, Point3D p)
+     {
++        if (RefuseBlessed(from, item))
++        {
++            return false;
++        }
++
+         if (base.OnDragDropInto(from, item, p))
+         {
+             PublicOverheadMessage(MessageType.Regular, 0x3B2, Utility.Random(1042891, 8));
+-            item.Delete();
++            Trash(from, item);
+             return true;
+         }
+ 

@@ -1,0 +1,52 @@
+--- a/Projects/UOContent/Items/Misc/TrashBarrel.cs
++++ b/Projects/UOContent/Items/Misc/TrashBarrel.cs
+@@ -1,5 +1,7 @@
+ using System;
+ using ModernUO.Serialization;
++using Server.Collections;
++using Server.ContextMenus;
+ using Server.Multis;
+ 
+ namespace Server.Items;
+@@ -22,6 +24,13 @@
+ 
+     public override bool IsDecoContainer => false;
+ 
++    // cc-P33 (F-3): Clean Up Britannia, as ServUO's TrashBarrel : BaseTrash (customizations CleanUpTrash.cs).
++    public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
++    {
++        base.GetContextMenuEntries(from, ref list);
++        CleanUpTrash.AddAppraiseEntry(from, ref list);
++    }
++
+     public void OnChop(Mobile from)
+     {
+         var house = BaseHouse.FindHouseAt(from);
+@@ -71,6 +80,7 @@
+     {
+         if (base.OnDragDrop(from, dropped))
+         {
++            CleanUpTrash.AddCleanupItem(this, from, dropped);
+             InvalidateContents(from);
+             return true;
+         }
+@@ -82,6 +92,7 @@
+     {
+         if (base.OnDragDropInto(from, item, p))
+         {
++            CleanUpTrash.AddCleanupItem(this, from, item);
+             InvalidateContents(from);
+             return true;
+         }
+@@ -104,8 +115,11 @@
+                     continue;
+                 }
+ 
++                CleanUpTrash.ConfirmCleanupItem(this, items[i]);
+                 items[i].Delete();
+             }
++
++            CleanUpTrash.Award(this);
+         }
+ 
+         _timer?.Stop();

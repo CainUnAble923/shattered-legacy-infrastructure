@@ -367,6 +367,15 @@ apply_patch "$PATCHES/ImportSpawners-guid-key.patch"
 # RareSelfRepairVerification (proved red).
 apply_patch "$PATCHES/BaseRunicTool-no-random-self-repair.patch"
 
+# cc-P33 (F-3, ported). Clean Up Britannia pays for what goes into any trash barrel or trash chest, a house's
+# included, as OSI's does (ServUO pub57 Items/Containers/TrashBarrel.cs and TrashChest.cs derive from BaseTrash).
+# Pinned's two have no hook, so each patch adds the calls into customizations Services/CleanUpBritannia/
+# CleanUpTrash.cs, which holds BaseTrash's bookkeeping: record a drop, confirm it as the container deletes it, pay,
+# and the "Appraise for Cleanup" entry. The alternatives (our own barrel only, or replacing house barrels) are argued
+# in shard-migration/notes/cc-P33-clean-up-britannia.md; pinned by CleanUpBritanniaBarrelVerification (proved red).
+apply_patch "$PATCHES/TrashBarrel-clean-up-britannia.patch"
+apply_patch "$PATCHES/TrashChest-clean-up-britannia.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

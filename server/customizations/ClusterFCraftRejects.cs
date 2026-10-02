@@ -13,8 +13,10 @@
 //      rules, e.g. BaseClothing.cs:255).
 //   4. Into the rejects bag the player picked when the run started, if it is still in their pack. Otherwise it stays
 //      where crafting put it.
-// F-3 HOOK (not routed): the Custodian trash bag. Until Clean Up Britannia (F-3) replaces Custodian scoring, crafted
-// non-exceptional gear would earn tokens there, making crafting a token farm (brief cc-P18). Route it here once F-3 lands.
+//   3b. cc-P33 (F-3): the crafter's own Custodian trash bag, if it is in their pack. Routed now that Clean Up Britannia
+//      values the trash: a crafted piece pays no more than its materials (CleanUpBritanniaPointsVerification). The bag
+//      is dumped by the player, as any other litter.
+// (The F-3 hook P18 left here.)
 
 using Server.Items;
 
@@ -67,7 +69,13 @@ public static class ClusterFCraftRejects
             return;
         }
 
-        // F-3 HOOK: the Custodian trash bag would go here. Not routed (see the header).
+        // 3b. The crafter's own trash bag (F-3).
+        if (from is Mobiles.PlayerMobile && TrashBag.OwnedBy(from).Find(b => b.IsChildOf(pack)) is { } trashBag)
+        {
+            trashBag.DropItem(item);
+            run.Trashed++;
+            return;
+        }
 
         // 4. The rejects bag.
         var bag = run.RejectsBag;
@@ -111,6 +119,11 @@ public static class ClusterFCraftRejects
         if (run.ToSalvageBag > 0)
         {
             parts.Add($"{run.ToSalvageBag} to the salvage bag");
+        }
+
+        if (run.Trashed > 0)
+        {
+            parts.Add($"{run.Trashed} to the trash bag");
         }
 
         if (run.Bagged > 0)

@@ -2397,9 +2397,13 @@ public static class ClusterFWorkOrderSystem
     // currency.  Bundles are earned at a rate of 1 per 5 items cleaned in any
     // batch operation ([cleanupall or TrashBag dump).
     //
-    // Five tiers aligned to the Custodian rank ladder:
-    //   Volunteer (0) -> Junior Custodian (100) -> Custodian (500)
-    //   -> Senior Custodian (2,000) -> Chief Custodian (5,000)
+    // Five tiers aligned to the Custodian rank ladder (ClusterFCustodianSystem.Ranks, lifetime Clean Up points):
+    //   Volunteer (0) -> Junior Custodian (25) -> Custodian (125)
+    //   -> Senior Custodian (500) -> Chief Custodian (1,250)
+    //
+    // cc-P33 (F-3): Custodian standing is lifetime Clean Up points and nothing else, and the scrip was Civic Tokens,
+    // now retired, so these orders pay gold only: standingReward and voucherReward are 0. Gates rescaled with the
+    // ladder (the old 100 / 500 / 2,000 / 5,000 divided by 4).
 
     private static void RegisterCustodiansOrders()
     {
@@ -2415,8 +2419,8 @@ public static class ClusterFWorkOrderSystem
             minStanding:    0,
             skillRequired:  null,
             minSkill:       0.0,
-            standingReward: 200,
-            voucherReward:  10,
+            standingReward: 0,
+            voucherReward:  0,
             goldReward:     100
         ));
 
@@ -2429,11 +2433,11 @@ public static class ClusterFWorkOrderSystem
             description:    "A district supervisor has posted a cleanup order. Deliver a larger batch of civic waste bundles.",
             type:           WorkOrderType.CivicContract,
             requirements:   new() { new(typeof(CleanedDebris), 15, "Civic Waste Bundles") },
-            minStanding:    100,
+            minStanding:    25,
             skillRequired:  null,
             minSkill:       0.0,
-            standingReward: 600,
-            voucherReward:  30,
+            standingReward: 0,
+            voucherReward:  0,
             goldReward:     300
         ));
 
@@ -2446,11 +2450,11 @@ public static class ClusterFWorkOrderSystem
             description:    "A full district sweep is required. This is steady work for a committed Custodian.",
             type:           WorkOrderType.CivicContract,
             requirements:   new() { new(typeof(CleanedDebris), 40, "Civic Waste Bundles") },
-            minStanding:    500,
+            minStanding:    125,
             skillRequired:  null,
             minSkill:       0.0,
-            standingReward: 1600,
-            voucherReward:  80,
+            standingReward: 0,
+            voucherReward:  0,
             goldReward:     750
         ));
 
@@ -2463,11 +2467,11 @@ public static class ClusterFWorkOrderSystem
             description:    "A major city ward contract. Only experienced Custodians can handle the volume required.",
             type:           WorkOrderType.CivicContract,
             requirements:   new() { new(typeof(CleanedDebris), 80, "Civic Waste Bundles") },
-            minStanding:    2000,
+            minStanding:    500,
             skillRequired:  null,
             minSkill:       0.0,
-            standingReward: 3500,
-            voucherReward:  175,
+            standingReward: 0,
+            voucherReward:  0,
             goldReward:     1500
         ));
 
@@ -2480,11 +2484,11 @@ public static class ClusterFWorkOrderSystem
             description:    "Britannia's highest civic honour. Reserved for Chief Custodians whose dedication is beyond question.",
             type:           WorkOrderType.CivicContract,
             requirements:   new() { new(typeof(CleanedDebris), 200, "Civic Waste Bundles") },
-            minStanding:    5000,
+            minStanding:    1250,
             skillRequired:  null,
             minSkill:       0.0,
-            standingReward: 10000,
-            voucherReward:  500,
+            standingReward: 0,
+            voucherReward:  0,
             goldReward:     4000
         ));
     }

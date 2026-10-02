@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Server.Accounting;
 using Server.Commands;
+using Server.Engines.Points;
 using Server.Items;
 using Server.Mobiles;
 using Server.Targeting;
@@ -9,36 +9,50 @@ using Server.Targeting;
 namespace Server;
 
 // -----------------------------------------------------------------------------
-// ClusterF Custodian System - Phase 4E (rev 2)
+// ClusterF Custodian System - The Custodians, Britannia's civic cleanup guild.
 //
-// The Custodians - Britannia's civic cleanup guild.
+// cc-P33 (F-3): the Custodians are our layer on Clean Up Britannia (Services/PointsSystems/CleanUpBritanniaData.cs,
+// ported). Civic Tokens are retired: every cleanup now earns Clean Up points, on the character, the same points
+// OSI's trash barrels pay and the Clean Up store spends. Each piece of the layer is a registered deviation
+// (shard-migration notes/cc-P33-clean-up-britannia.md):
 //
-//   * [cleanup     - target a single item on the ground; awards Civic Tokens.
+//   * [cleanup, [cleanupall and the trash bag pay Clean Up points, valued by Clean Up's own table (GetPoints).
+//   * Corpses: Clean Up has no rule for them, so ours: CorpseBasePoints plus each item inside at its Clean Up value.
+//   * Ranks key on lifetime Clean Up points (CleanUpBritanniaEntry.Lifetime), which spending never lowers. The
+//     character's "custodians" guild standing is kept equal to it (SyncStanding), so every reader of guild standing
+//     (directory, rank names, work order gates) follows the lifetime total.
+//   * Retired: AwardTokens, the token math, the Warden's token shop, and the "custodians" scrip that held the
+//     balances. Balances are cleared at world load (RetireCivicTokens), with the standing re-synced.
+//
+//   * [cleanup     - target a single item on the ground.
 //   * [cleanupall  - area sweep (10-tile radius); 60-second cooldown.
-//
 // Both commands require Custodians guild membership.
 //
-// Item eligibility (applies to both commands and TrashBag dump):
-//   Eligible:   ground items, corpses (any state).
-//   Ineligible: blessed, quest, player-named, exceptional weapons/armor,
-//               gold, bank checks, non-empty non-corpse containers.
-//
-// Token math:
-//   Corpse           -> 2 base + 1 per 50 gp of estimated NPC vendor value of contents
-//                      (weapons 20 gp x material mult, armor 15 gp x material mult,
-//                       exceptional items x2, stackables 2 gp/unit, gold at face value)
-//   Weapon / Armor   -> 1-6 scaled by CraftResource tier
-//   Stackable        -> max(1, amount / 10)
-//   Default          -> 1
-//
-// Civic Tokens accumulate in both GuildCurrency("custodians") [spendable]
-// and GuildReputation("custodians") [rank standing].
+// Item eligibility (applies to both commands and the trash bag):
+//   Eligible:   ground items, monster corpses (any state).
+//   Ineligible: blessed, quest, player-named, exceptional weapons/armor, gold, bank checks, non-empty non-corpse
+//               containers, and (cc-P33) a player's corpse.
 // -----------------------------------------------------------------------------
 
 public static class ClusterFCustodianSystem
 {
     private const int CleanupAllRadius          = 10; // tiles
     private const int CleanupAllCooldownSeconds = 60; // seconds between uses per player
+
+    // Ours (F-3): what clearing a corpse is worth before its contents, one iron ingot's worth of Clean Up points.
+    public const double CorpseBasePoints = 0.10;
+
+    // Ours (F-3): the rank ladder in lifetime Clean Up points. Civic Tokens paid at least 1 a piece and corpses 2 or
+    // more (the old ladder was 100 / 500 / 2,000 / 5,000 tokens); Clean Up pays an iron weapon about 1 point, most
+    // other litter nothing, and a corpse its contents. So the ladder is the old one divided by 4.
+    public static readonly (int Threshold, string Name)[] Ranks =
+    [
+        (0,     "Volunteer"),
+        (25,    "Junior Custodian"),
+        (125,   "Custodian"),
+        (500,   "Senior Custodian"),
+        (1_250, "Chief Custodian")
+    ];
 
     private static readonly Dictionary<Serial, DateTime> _cleanupAllCooldowns = new();
 
@@ -48,12 +62,14 @@ public static class ClusterFCustodianSystem
     {
         CommandSystem.Register("cleanup",    AccessLevel.Player, OnCleanupCommand);
         CommandSystem.Register("cleanupall", AccessLevel.Player, OnCleanupAllCommand);
+
+        EventSink.WorldLoad += RetireCivicTokensOnLoad;
     }
 
     // -- Command handlers ------------------------------------------------------
 
     [Usage("cleanup")]
-    [Description("Target a ground item to clean it up and earn Civic Tokens.")]
+    [Description("Target a ground item to clean it up and earn Clean Up Britannia points.")]
     [ShardCommand(CommandCategory.Player)]
     private static void OnCleanupCommand(CommandEventArgs e)
     {
@@ -61,7 +77,7 @@ public static class ClusterFCustodianSystem
         if (!RequireMembership(pm)) return;
 
         pm.SendMessage(0x59, "Target an item to clean up.");
-        pm.Target = new CleanupTarget(pm);
+        pm.Target = new CleanupTarget();
     }
 
     [Usage("cleanupall")]
@@ -73,15 +89,14 @@ public static class ClusterFCustodianSystem
         if (!RequireMembership(pm)) return;
 
         pm.SendMessage(0x59, "Target a point to center the sweep.");
-        pm.Target = new CleanupAllTarget(pm);
+        pm.Target = new CleanupAllTarget();
     }
 
     // -- Membership check ------------------------------------------------------
 
     private static bool RequireMembership(PlayerMobile pm)
     {
-        if (pm.Account is not IAccount acct
-            || !ClusterFGuildSystem.IsJoined(pm, "custodians"))
+        if (pm.Account == null || !ClusterFGuildSystem.IsJoined(pm, "custodians"))
         {
             pm.SendMessage(0x22,
                 "You must be a member of The Custodians to use this command. " +
@@ -94,9 +109,9 @@ public static class ClusterFCustodianSystem
     // -- Public API ------------------------------------------------------------
 
     /// <summary>
-    /// Returns true if the item can be cleaned up for tokens.
+    /// Returns true if the item can be cleaned up.
     /// <paramref name="requireGround"/> - true for [cleanup/[cleanupall (ground only);
-    /// false when evaluating TrashBag contents.
+    /// false when evaluating trash bag contents.
     /// </summary>
     public static bool IsEligible(Item item, bool requireGround = true)
     {
@@ -109,7 +124,10 @@ public static class ClusterFCustodianSystem
         if (item.LootType == LootType.Blessed) return false;
         if (item.QuestItem)                    return false;
 
-        // Corpses are always eligible regardless of name or contents.
+        // cc-P33: a player's corpse holds their belongings and is never litter.
+        if (item is Corpse { Owner: PlayerMobile }) return false;
+
+        // Monster corpses are always eligible regardless of name or contents.
         if (item is Corpse) return true;
 
         // Non-movable items are decorations or world fixtures - never clean these up.
@@ -131,121 +149,145 @@ public static class ClusterFCustodianSystem
         return true;
     }
 
-    /// <summary>Computes the Civic Token value of an eligible item.</summary>
-    public static int ComputeTokens(Item item)
-    {
-        if (item is Corpse corpse) return ComputeCorpseTokens(corpse);
-
-        if (item is BaseWeapon bw) return MaterialTokens(bw.Resource);
-        if (item is BaseArmor  ba) return MaterialTokens(ba.Resource);
-
-        if (item.Stackable && item.Amount > 1)
-            return Math.Max(1, item.Amount / 10);
-
-        return 1;
-    }
+    /// <summary>The Clean Up points an eligible item earns: Clean Up's own value, or the corpse rule.</summary>
+    public static double ComputePoints(Item item) =>
+        item is Corpse corpse ? ComputeCorpsePoints(corpse) : CleanUpBritanniaData.GetPoints(item);
 
     /// <summary>
-    /// Computes the token value of a corpse by estimating the NPC vendor sell
-    /// value of its contents, then converting at 1 token per 50 gp.
-    /// Base 2 tokens are always awarded for the cleanup effort itself.
-    /// Exceptional quality items count double.
+    /// Ours (F-3): Clean Up has no value for a corpse. Clearing one is worth CorpseBasePoints, plus every item
+    /// inside at its Clean Up value, so a corpse never pays more than its loot would in a trash barrel, plus the base.
     /// </summary>
-    private static int ComputeCorpseTokens(Corpse corpse)
+    public static double ComputeCorpsePoints(Corpse corpse)
     {
-        var goldTotal = 0;
-        foreach (var item in corpse.Items)
-            goldTotal += EstimateVendorGold(item);
+        var points = CorpseBasePoints;
 
-        // 2 base tokens for the cleanup + 1 token per 50 gp of estimated value.
-        return Math.Max(2, 2 + goldTotal / 50);
-    }
-
-    /// <summary>
-    /// Returns a rough NPC-vendor-sell-price estimate for an item.
-    /// Used only for corpse content valuation.
-    /// </summary>
-    private static int EstimateVendorGold(Item item)
-    {
-        if (item == null || item.Deleted) return 0;
-
-        // Gold and bank checks: face value.
-        if (item is Gold g)      return g.Amount;
-        if (item is BankCheck bc) return bc.Worth;
-
-        // Weapons: base 20 gp x material multiplier x quality bonus.
-        if (item is BaseWeapon bw)
+        foreach (var item in corpse.FindItemsByType<Item>())
         {
-            var val = (int)(20 * VendorMaterialMult(bw.Resource));
-            if (bw.Quality == WeaponQuality.Exceptional) val *= 2;
-            return val;
+            points += CleanUpBritanniaData.GetPoints(item);
         }
 
-        // Armor: base 15 gp x material multiplier x quality bonus.
-        if (item is BaseArmor ba)
-        {
-            var val = (int)(15 * VendorMaterialMult(ba.Resource));
-            if (ba.Quality == ArmorQuality.Exceptional) val *= 2;
-            return val;
-        }
-
-        // Stackables (reagents, ingots, arrows, etc.): 2 gp per unit.
-        if (item.Stackable && item.Amount > 1)
-            return item.Amount * 2;
-
-        // Everything else: 5 gp flat.
-        return 5;
+        return points;
     }
 
-    /// <summary>Material multiplier for NPC vendor gold estimates.</summary>
-    private static double VendorMaterialMult(CraftResource res) => res switch
+    /// <summary>Awards Clean Up points for Custodian work. The award keeps the standing in step (SyncStanding).</summary>
+    public static void AwardPoints(PlayerMobile pm, double points)
     {
-        CraftResource.DullCopper => 1.5,
-        CraftResource.ShadowIron => 2.0,
-        CraftResource.Copper     => 2.5,
-        CraftResource.Bronze     => 3.0,
-        CraftResource.Gold       => 4.0,
-        CraftResource.Agapite    => 5.0,
-        CraftResource.Verite     => 7.5,
-        CraftResource.Valorite   => 10.0,
-        _                        => 1.0,
-    };
+        if (points <= 0) return;
+
+        CleanUpBritanniaData.Instance.AwardPoints(pm, points, message: false);
+    }
+
+    public static double GetPoints(Mobile m) => CleanUpBritanniaData.Instance.GetPoints(m);
+
+    public static double GetLifetimePoints(Mobile m) => CleanUpBritanniaData.Instance.GetLifetimePoints(m);
 
     /// <summary>
-    /// Awards Civic Tokens to the player.
-    /// Adds to both spendable currency and standing (rank) for the guild.
+    /// Sets the character's "custodians" guild standing to its lifetime Clean Up points, rounded down. Called by every
+    /// Clean Up award (CleanUpBritanniaData.OnPointsAwarded), on joining, and at world load. Nothing else adds
+    /// Custodian standing: the Civic Contracts pay none and the Apprentice task pays none (cc-P33).
     /// </summary>
-    public static void AwardTokens(PlayerMobile pm, int tokens)
+    public static void SyncStanding(PlayerMobile pm)
     {
-        if (pm.Account is not IAccount acct) return;
-        if (tokens <= 0) return;
+        if (pm?.Account == null) return;
 
-        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
-        guild.AddReputation("custodians", tokens);
-        guild.AddCurrency("custodians",   tokens);
+        // Only a member's standing is written (or one already there, which a leave-and-rejoin keeps). A non-member's
+        // points still count: joining calls this, so the rank is right from the first day.
+        var guild = ClusterFAccountPersistence.GetGuild(pm);
+
+        if (guild == null ||
+            !guild.JoinedGuilds.Contains("custodians") && !guild.GuildReputation.ContainsKey("custodians"))
+        {
+            return;
+        }
+
+        guild.GuildReputation["custodians"] = (int)Math.Floor(GetLifetimePoints(pm));
     }
+
+    /// <summary>
+    /// World load (cc-P33): Civic Tokens are retired. Every character's "custodians" scrip (the token balance) is
+    /// removed, and its Custodian standing set from lifetime Clean Up points, so no token-earned rank survives.
+    /// Idempotent: a second load finds nothing to clear and writes the same standings.
+    /// </summary>
+    public static (int Balances, int Standings) RetireCivicTokens()
+    {
+        var balances = 0;
+        var standings = 0;
+
+        foreach (var (_, account) in ClusterFAccountPersistence.All)
+        {
+            foreach (var (serial, guild) in account.AllGuildData)
+            {
+                if (guild.GuildCurrency.Remove("custodians"))
+                {
+                    balances++;
+                }
+
+                if (guild.GuildReputation.ContainsKey("custodians") || guild.JoinedGuilds.Contains("custodians"))
+                {
+                    var pm = World.FindMobile((Serial)serial) as PlayerMobile;
+                    var standing = pm == null ? 0 : (int)Math.Floor(GetLifetimePoints(pm));
+
+                    if (guild.GetReputation("custodians") != standing)
+                    {
+                        standings++;
+                    }
+
+                    guild.GuildReputation["custodians"] = standing;
+                }
+            }
+        }
+
+        if (balances > 0 || standings > 0)
+        {
+            Console.WriteLine(
+                $"[ClusterFCustodianSystem] Civic Tokens retired (cc-P33): cleared {balances} token balance(s), " +
+                $"re-synced {standings} Custodian standing(s) to lifetime Clean Up points.");
+        }
+
+        return (balances, standings);
+    }
+
+    private static void RetireCivicTokensOnLoad() => RetireCivicTokens();
 
     // -- Rank helper -----------------------------------------------------------
 
-    public static string GetCustodianRank(int standing) => standing switch
+    public static string GetCustodianRank(int standing)
     {
-        >= 5_000 => "Chief Custodian",
-        >= 2_000 => "Senior Custodian",
-        >= 500   => "Custodian",
-        >= 100   => "Junior Custodian",
-        _        => "Volunteer",
-    };
+        var name = Ranks[0].Name;
+
+        foreach (var (threshold, rank) in Ranks)
+        {
+            if (standing >= threshold)
+            {
+                name = rank;
+            }
+        }
+
+        return name;
+    }
+
+    /// <summary>The next rank above <paramref name="standing"/>, or (-1, "") at the top.</summary>
+    public static (int Threshold, string Name) GetNextRank(int standing)
+    {
+        foreach (var rank in Ranks)
+        {
+            if (standing < rank.Threshold)
+            {
+                return rank;
+            }
+        }
+
+        return (-1, string.Empty);
+    }
+
+    public static string FormatPoints(double points) => points.ToString("#,0.##");
 
     // -- Inner targets ---------------------------------------------------------
 
     private sealed class CleanupTarget : Target
     {
-        private readonly PlayerMobile _pm;
-
-        public CleanupTarget(PlayerMobile pm)
-            : base(12, false, TargetFlags.None)
+        public CleanupTarget() : base(12, false, TargetFlags.None)
         {
-            _pm = pm;
         }
 
         protected override void OnTarget(Mobile from, object targeted)
@@ -266,36 +308,33 @@ public static class ClusterFCustodianSystem
                 return;
             }
 
-            var tokens = ComputeTokens(item);
+            var points = ComputePoints(item);
 
-            // Build a context-aware confirmation message before deleting.
             string msg;
             if (item is Corpse corpse)
             {
                 var count = corpse.Items.Count;
                 msg = count > 0
-                    ? $"Corpse cleared ({count} item{(count == 1 ? "" : "s")} inside). +{tokens} Civic Token{(tokens == 1 ? "" : "s")}."
-                    : $"Empty corpse cleared. +{tokens} Civic Token{(tokens == 1 ? "" : "s")}.";
+                    ? $"Corpse cleared ({count} item{(count == 1 ? "" : "s")} inside). +{FormatPoints(points)} Clean Up points."
+                    : $"Empty corpse cleared. +{FormatPoints(points)} Clean Up points.";
             }
             else
             {
-                msg = $"Cleaned up! +{tokens} Civic Token{(tokens == 1 ? "" : "s")}.";
+                msg = points > 0
+                    ? $"Cleaned up! +{FormatPoints(points)} Clean Up points."
+                    : "Cleaned up. That had no turn-in value for Clean Up Britannia.";
             }
 
             item.Delete();
-            AwardTokens(pm, tokens);
+            AwardPoints(pm, points);
             pm.SendMessage(0x44, msg);
         }
     }
 
     private sealed class CleanupAllTarget : Target
     {
-        private readonly PlayerMobile _pm;
-
-        public CleanupAllTarget(PlayerMobile pm)
-            : base(15, true, TargetFlags.None)
+        public CleanupAllTarget() : base(15, true, TargetFlags.None)
         {
-            _pm = pm;
         }
 
         protected override void OnTarget(Mobile from, object targeted)
@@ -334,51 +373,42 @@ public static class ClusterFCustodianSystem
                 return;
             }
 
-            var total = 0;
+            var total = 0.0;
+            var valued = 0;
             foreach (var it in eligible)
             {
                 if (it.Deleted) continue;
-                total += ComputeTokens(it);
+                var points = ComputePoints(it);
+                total += points;
+                if (points > 0) valued++;
                 it.Delete();
             }
 
             // Record cooldown timestamp
             _cleanupAllCooldowns[pm.Serial] = DateTime.UtcNow;
 
-            AwardTokens(pm, total);
+            AwardPoints(pm, total);
 
-            // Award CleanedDebris bundles: 1 per 5 items cleaned in the sweep
-            var bundles = eligible.Count / 5;
-            if (bundles > 0 && pm.Backpack != null)
-            {
-                var debris = new CleanedDebris { Amount = bundles };
-                pm.Backpack.DropItem(debris);
-                pm.SendMessage(0x44,
-                    $"Sweep complete: {eligible.Count} item{(eligible.Count == 1 ? "" : "s")} cleaned. " +
-                    $"+{total} Civic Token{(total == 1 ? "" : "s")}, " +
-                    $"{bundles} civic waste bundle{(bundles == 1 ? "" : "s")}.");
-            }
-            else
-            {
-                pm.SendMessage(0x44,
-                    $"Sweep complete: {eligible.Count} item{(eligible.Count == 1 ? "" : "s")} cleaned. " +
-                    $"+{total} Civic Token{(total == 1 ? "" : "s")}.");
-            }
+            pm.SendMessage(0x44,
+                $"Sweep complete: {eligible.Count} item{(eligible.Count == 1 ? "" : "s")} cleaned. " +
+                $"+{FormatPoints(total)} Clean Up points" + GiveBundles(pm, valued) + ".");
         }
     }
 
-    // -- Material token scale --------------------------------------------------
-
-    private static int MaterialTokens(CraftResource res) => res switch
+    /// <summary>
+    /// Civic waste bundles for the Civic Contracts: 1 per 5 items cleaned in one batch. cc-P33: only items with Clean Up
+    /// value count, so sweeping worthless litter no longer fills a contract.
+    /// </summary>
+    public static string GiveBundles(PlayerMobile pm, int valuedItems)
     {
-        CraftResource.DullCopper => 2,
-        CraftResource.ShadowIron => 2,
-        CraftResource.Copper     => 3,
-        CraftResource.Bronze     => 3,
-        CraftResource.Gold       => 4,
-        CraftResource.Agapite    => 4,
-        CraftResource.Verite     => 6,
-        CraftResource.Valorite   => 6,
-        _                        => 1,
-    };
+        var bundles = valuedItems / 5;
+
+        if (bundles <= 0 || pm.Backpack == null)
+        {
+            return "";
+        }
+
+        pm.Backpack.DropItem(new CleanedDebris { Amount = bundles });
+        return $", {bundles} civic waste bundle{(bundles == 1 ? "" : "s")}";
+    }
 }

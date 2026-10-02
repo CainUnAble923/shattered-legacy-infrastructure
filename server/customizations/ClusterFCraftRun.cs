@@ -65,6 +65,7 @@ public sealed class MakeXRun
     public int Smelted { get; set; }
     public int Cut { get; set; }
     public int ToSalvageBag { get; set; }
+    public int Trashed { get; set; } // into the crafter's own trash bag (cc-P33, F-3)
     public int Bagged { get; set; }
     public SalvageBag SalvageBag { get; set; }
 

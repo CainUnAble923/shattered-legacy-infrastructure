@@ -250,7 +250,8 @@ public static class ClusterFGuildSystem
             GuildTaskType.SkillOnly,
             SkillName.ItemID, 0.0,  // 0.0 min = always eligible
             null, 0,
-            joinRep: 25, joinScrip: 5));
+            // cc-P33 (F-3): no standing (it follows lifetime Clean Up points) and no scrip (Civic Tokens retired).
+            joinRep: 0, joinScrip: 0));
 
         // cc-P15: two guilds for the New Haven halls no existing guild fits (F-9 Decision 1).
         Register(new GuildDef(
@@ -1133,5 +1134,9 @@ public static class ClusterFGuildAdminCommands
         // Guild-specific data cleanup
         if (key.Equals("smithing", StringComparison.OrdinalIgnoreCase))
             data.SmithCommissions.Clear();
+
+        // cc-P33 (F-3): a Custodian's rank is its lifetime Clean Up points, so resetting the guild resets those too.
+        if (key.Equals("custodians", StringComparison.OrdinalIgnoreCase))
+            Server.Engines.Points.CleanUpBritanniaData.Instance.RemoveEntry(pm);
     }
 }
