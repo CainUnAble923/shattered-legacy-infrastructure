@@ -6,6 +6,15 @@
       Play.ps1 -Lan     192.168.1.58:2593            the shard, from inside the house, no DNS
       Play.ps1 -Test    shatteredlegacyuo.com:2594   the throwaway TEST shard, from anywhere
 
+  Test profiles: one saved TEST login per name, for a desktop shortcut each.
+      Play.ps1 -Test -Account gargoyle               app\tazuo\settings.test.gargoyle.json
+  The name is the profile, not the UO account: 1 to 24 of a-z, 0-9 and -. The first
+  launch of a profile shows the login screen; log in once with Save Account ticked and
+  every launch after that logs straight in, as the last character played. No password
+  ever goes on a command line: it stays in that profile's settings file, as TazUO keeps
+  it. -Account without -Test is refused, so live is never logged in automatically.
+  Play-Test.bat passes it through: Play-Test.bat -Account gargoyle.
+
   Runs Setup.ps1 first whenever the Ultima Online files are not known yet.
 
   Before that it asks get.shatteredlegacyuo.com/version.json whether a newer package is
@@ -17,13 +26,14 @@
 
   Safe to re-run. The saved username and password in each settings file are kept; only
   the server, the port and the client folder are rewritten. The live shard and the test
-  shard keep separate settings files so a test login is never offered to live.
+  shard keep separate settings files so a test login is never offered to live. Which
+  file, and what is rewritten in it, is Launch-Settings.ps1.
 
   ASCII only, on purpose: PowerShell 5.1 reads a UTF-8 file without a BOM as
   Windows-1252, and a non-ASCII character can become syntax.
 #>
 [CmdletBinding()]
-param([switch]$Lan, [switch]$Test, [string]$UoPath,
+param([switch]$Lan, [switch]$Test, [string]$Account, [string]$UoPath,
       [switch]$NoUpdate, [switch]$Update, [string]$UpdateBase = 'https://get.shatteredlegacyuo.com')
 
 $ErrorActionPreference = 'Stop'
@@ -32,10 +42,12 @@ $root  = Split-Path $app -Parent
 $taz   = Join-Path $app 'tazuo'
 $tazExe = Join-Path $taz 'TazUO.exe'
 
-if ($Lan -and $Test) { Write-Host '  Pick one of -Lan or -Test.' -ForegroundColor Red; exit 1 }
-if     ($Test) { $server = 'shatteredlegacyuo.com'; $port = 2594; $settingsName = 'settings.test.json'; $label = 'TEST SHARD (throwaway)' }
-elseif ($Lan)  { $server = '192.168.1.58';          $port = 2593; $settingsName = 'settings.json';      $label = 'Shattered Legacy (house network)' }
-else           { $server = 'shatteredlegacyuo.com'; $port = 2593; $settingsName = 'settings.json';      $label = 'Shattered Legacy' }
+. (Join-Path $app 'Launch-Settings.ps1')
+$targetArgs = @{ Lan = $Lan; Test = $Test }
+if ($PSBoundParameters.ContainsKey('Account')) { $targetArgs.Account = $Account }
+try { $target = Get-LaunchTarget @targetArgs }
+catch { Write-Host "  $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
+$server = $target.Server; $port = $target.Port; $settingsName = $target.SettingsName; $label = $target.Label
 $settingsPath = Join-Path $taz $settingsName
 
 # --- an update that stopped halfway ------------------------------------------------
@@ -188,6 +200,14 @@ function Install-Package($j) {
         $a = "-NoProfile -ExecutionPolicy Bypass -File $(& $q $upd) -Source $(& $q $src) -Target $(& $q $root) -Stage $(& $q $work) -WaitPid $pids"
         if ($Test) { $a += ' -Test' }
         if ($Lan)  { $a += ' -Lan' }
+        # So the game comes back as the same profile. Only to an updater that knows -Account
+        # (2026-10-02 on): an older one would refuse the whole command line, and then the
+        # update would not run at all. Without it the relaunch is plain -Test, once.
+        if ($target.Profile) {
+            $knows = $false
+            try { $knows = (Get-Command -Name $upd -CommandType ExternalScript).Parameters.ContainsKey('Account') } catch {}
+            if ($knows) { $a += " -Account $($target.Profile)" }
+        }
         Start-Process -FilePath 'powershell.exe' -ArgumentList $a
         Write-Host '  The update carries on in a new window.' -ForegroundColor Gray
         exit 0
@@ -252,43 +272,8 @@ if (-not $reachable) {
 }
 
 # --- settings -------------------------------------------------------------------
-$s = [ordered]@{
-    username              = ''
-    password              = ''
-    saveaccount           = $true
-    autologin             = $false
-    encryption            = 0
-    plugins               = @()
-}
-# Anything not named here takes TazUO's own default (Configuration/Settings.cs).
-# Keep what the player already has (their saved username and password, above all).
-if (Test-Path $settingsPath) {
-    try {
-        $old = [IO.File]::ReadAllText($settingsPath) | ConvertFrom-Json
-        foreach ($p in $old.PSObject.Properties) { $s[$p.Name] = $p.Value }
-    } catch {
-        Write-Host "  $settingsName could not be read; starting it fresh." -ForegroundColor Yellow
-    }
-}
-# Then force the parts this launcher owns.
-$s.ip                    = $server
-$s.port                  = $port
-$s.ultimaonlinedirectory = $uoDir
-$s.clientversion         = $clientVersion
-$s.last_server_name      = $(if ($Test) { 'Shattered Legacy TEST' } else { 'Shattered Legacy' })
-# After login the server tells the client where the game server is (packet 0x8C). The
-# live shard currently names its LAN address there, which is unreachable from outside
-# the house. With this true, TazUO ignores that address AND port and reconnects to the
-# server it logged in to (LoginHandshake.HandleRelayServerPacket). It is what makes the
-# default target work from outside, and what keeps -Test from ever landing on live.
-$s.ignore_relay_ip       = $true
-# A populated plugins array makes the client Assembly.LoadFile a plugin and can crash it.
-$s.plugins               = @()
-if ($Test) { $s.saveaccount = $false; $s.autologin = $false }
-
-# PowerShell 5.1's -Encoding UTF8 writes a BOM, and TazUO's settings reader falls back to
-# defaults on one WITHOUT SAYING SO: the client starts and connects nowhere. No BOM.
-[IO.File]::WriteAllText($settingsPath, ($s | ConvertTo-Json -Depth 10), (New-Object Text.UTF8Encoding $false))
+# Launch-Settings.ps1: keeps the saved login, rewrites only what the launcher owns.
+Write-LaunchSettings -Path $settingsPath -Target $target -UoDir $uoDir -ClientVersion $clientVersion -Test:$Test
 
 Write-Host ''
 Write-Host "  $label" -ForegroundColor Cyan
@@ -305,6 +290,10 @@ Write-Host ''
 # (Build-UoOverrides.ps1, cc-P26). Fast when nothing changed. Any failure there is one yellow
 # line and the game starts without them: our art then shows still, never the game not at all.
 $tazArgs = @('-settings', "`"$settingsPath`"")
+# A profile logs straight in. TazUO's autologin alone does not: on a cold start it only
+# connects with -skiploginscreen (LoginScene.Load), and then only when the file holds a
+# saved username, so a profile with none yet stops at the login screen.
+if ($target.Profile) { $tazArgs += '-skiploginscreen' }
 $uoOverride = $null
 try {
     $uoOverride = & (Join-Path $app 'Build-UoOverrides.ps1') -UoDir $uoDir

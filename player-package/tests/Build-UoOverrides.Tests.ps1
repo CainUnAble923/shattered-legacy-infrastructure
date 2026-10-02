@@ -243,6 +243,7 @@ function New-Sandbox([string]$name, [byte[]]$tile, [byte[]]$anim) {
     $app = Join-Path $root 'app'
     New-Item -ItemType Directory -Path (Join-Path $app 'tazuo') -Force | Out-Null
     Copy-Item (Join-Path $pkg 'payload\app\Play.ps1') $app
+    Copy-Item (Join-Path $pkg 'payload\app\Launch-Settings.ps1') $app
     Copy-Item $builder $app
     Copy-Item $records (Join-Path $app 'art-records.json')
     Copy-Item $stubExe (Join-Path $app 'tazuo\TazUO.exe')

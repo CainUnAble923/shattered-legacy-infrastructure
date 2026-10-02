@@ -65,6 +65,11 @@ For the house
   app\Play-Test.bat   same as "Play TEST Shard.bat" (see "The TEST shard" above)
   app\Setup.bat "D:\somewhere\Ultima Online Classic"
                       use an Ultima Online folder the package did not find itself
+  app\Play-Test.bat -Account gargoyle
+                      the TEST shard with its own saved login, one per name (a-z,
+                      0-9 and -, up to 24). The first time, log in with Save Account
+                      ticked; after that it logs straight in as your last character.
+                      Good for a desktop shortcut per test account. TEST shard only.
 
 
 What is in here

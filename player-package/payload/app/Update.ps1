@@ -7,7 +7,7 @@
   %TEMP%\sl-update\Update.ps1 and starts it in a new window. So the updater that runs is
   always the new package's, and no file it replaces is the script that is running.
 
-      Update.ps1 -Source <unpacked package> -Target <install> -Stage <temp> -WaitPid <pids> [-Test|-Lan]
+      Update.ps1 -Source <unpacked package> -Target <install> -Stage <temp> -WaitPid <pids> [-Test [-Account <profile>]|-Lan]
       Update.ps1 -Target <install> -Restore
 
   The parameters are a contract with every Play.ps1 already installed on players'
@@ -29,7 +29,8 @@
        Data\XmlGumps\*.xml that the install does not have yet is added.
     4. Writes app\package-version.txt last, so an install that stopped halfway never
        claims the new version.
-    5. On success deletes the backup; on any error copies it back. Then starts the game.
+    5. On success deletes the backup; on any error copies it back. Then starts the game,
+       with the -Test, -Lan or -Account it was given, so a profile comes back as itself.
 
   If the machine dies partway, update-backup\ is still there; Play.ps1 sees it on the
   next start and runs this script with -Restore.
@@ -51,7 +52,8 @@ param(
     [string]$WaitPid,
     [switch]$Test,
     [switch]$Lan,
-    [switch]$Restore
+    [switch]$Restore,
+    [string]$Account     # 2026-10-02 (cc-P28): Play.ps1 passes it only to an updater that declares it
 )
 
 $ErrorActionPreference = 'Stop'
@@ -315,6 +317,7 @@ try { Stop-Transcript | Out-Null } catch {}
 $playArgs = @('-NoUpdate')
 if ($Test) { $playArgs += '-Test' }
 if ($Lan)  { $playArgs += '-Lan' }
+if ($Account) { $playArgs += @('-Account', $Account) }
 Write-Host ''
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'app\Play.ps1') @playArgs
 if ($LASTEXITCODE -ne 0) { Read-Host '  Press Enter to close' | Out-Null }
