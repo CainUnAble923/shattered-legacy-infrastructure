@@ -1521,11 +1521,18 @@ public sealed class ArtificersImbueGump : Gump
         def.Set(_item, 0);
         _item.InvalidateProperties();
 
-        // Durability hit (20% of max HP)
+        // Durability hit (20% of max HP). The current value comes down with the max (cc-P29, D48): the HitPoints
+        // setters clamp only what is assigned to them, so a lowered max alone left e.g. 89 / 58.
         if (_item is BaseWeapon bw)
+        {
             bw.MaxHitPoints = Math.Max(1, bw.MaxHitPoints - bw.MaxHitPoints / 5);
+            bw.HitPoints = Math.Min(bw.HitPoints, bw.MaxHitPoints);
+        }
         else if (_item is BaseArmor ba)
+        {
             ba.MaxHitPoints = Math.Max(1, ba.MaxHitPoints - ba.MaxHitPoints / 5);
+            ba.HitPoints = Math.Min(ba.HitPoints, ba.MaxHitPoints);
+        }
 
         // Yield: essence + bonus shards
         var ess = new PropertyEssence(def.Name);

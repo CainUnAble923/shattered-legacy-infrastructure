@@ -39,12 +39,14 @@ public partial class ArtificersGuildmaster : BaseGuildmaster
     }
 
     // ── Context menu entry — "Imbuing Table" ─────────────────────────────────
-    // TODO: cliloc 6277 shows "Smelt Metal" — replace with a proper
-    //       "Open Imbuing Table" cliloc once the correct number is confirmed.
+    // cc-P29: cliloc 1114267 "Imbue Item" (read from the client's Cliloc.enu, 7.0.114.40 and 7.0.117.0). It was
+    // 6277, which goes out as 3006277, "Salvage Ingots". A number above 0x7FFF is sent as-is in the version 2
+    // context packet (pinned ContextMenuEntry.cs:40-48, ContextMenu.cs:51), as pinned's EndlessDecanter does.
+    public const int LabelCliloc = 1114267;
 
     private sealed class ImbueTableEntry : ContextMenuEntry
     {
-        public ImbueTableEntry() : base(6277, 5) { }
+        public ImbueTableEntry() : base(LabelCliloc, 5) { }
 
         public override void OnClick(Mobile from, IEntity target)
         {

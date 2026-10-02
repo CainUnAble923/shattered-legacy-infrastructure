@@ -1,0 +1,30 @@
+--- a/Projects/UOContent/Misc/AOS.cs
++++ b/Projects/UOContent/Misc/AOS.cs
+@@ -595,20 +595,23 @@
+ 
+             if (strBonus != 0 || dexBonus != 0 || intBonus != 0)
+             {
+-                var hashCode = GetHashCode();
++                // Shattered Legacy (cc-P29, D44): name the mods by the owning item's serial, as RemoveStatBonuses
++                // removes them and as every other item type does. Named by GetHashCode() they never came off, so
++                // each re-equip of a talisman or quiver stacked another copy until restart.
++                var serial = Owner.Serial;
+                 if (strBonus != 0)
+                 {
+-                    to.AddStatMod(new StatMod(StatType.Str, $"{hashCode}Str", strBonus, TimeSpan.Zero));
++                    to.AddStatMod(new StatMod(StatType.Str, $"{serial}Str", strBonus, TimeSpan.Zero));
+                 }
+ 
+                 if (dexBonus != 0)
+                 {
+-                    to.AddStatMod(new StatMod(StatType.Dex, $"{hashCode}Dex", dexBonus, TimeSpan.Zero));
++                    to.AddStatMod(new StatMod(StatType.Dex, $"{serial}Dex", dexBonus, TimeSpan.Zero));
+                 }
+ 
+                 if (intBonus != 0)
+                 {
+-                    to.AddStatMod(new StatMod(StatType.Int, $"{hashCode}Int", intBonus, TimeSpan.Zero));
++                    to.AddStatMod(new StatMod(StatType.Int, $"{serial}Int", intBonus, TimeSpan.Zero));
+                 }
+             }
+ 

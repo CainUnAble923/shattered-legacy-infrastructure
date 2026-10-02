@@ -18,6 +18,25 @@ namespace Server.SkillHandlers
             || Core.AOS && item is BaseWeapon weapon && weapon.Attributes.SpellChanneling != 0
             || Core.AOS && item is BaseArmor armor && armor.Attributes.SpellChanneling != 0;
 
+        // Above this pool the mana deficit is scaled to it. OSI's effective Int cap (pinned PlayerMobile.cs:594).
+        public const int OsiPool = 150;
+
+        // The chance to enter a trance, before the armored-meditation penalty. OSI's formula is
+        // (50 + (skill - deficit) * 2) / 100 with the absolute deficit ManaMax - Mana. Shattered Legacy (cc-P29, D45):
+        // with no stat ceiling a big pool had to be nearly full to start (Int 500 at Med 120 needed 356 mana), so above
+        // a 150-mana pool the deficit is scaled to a 150 pool. At or below 150 this is OSI's formula exactly.
+        public static double StartChance(double skill, int mana, int manaMax)
+        {
+            double deficit = manaMax - mana;
+
+            if (manaMax > OsiPool)
+            {
+                deficit = deficit * OsiPool / manaMax;
+            }
+
+            return (50.0 + (skill - deficit) * 2) / 100;
+        }
+
         public static TimeSpan OnUse(Mobile m)
         {
             m.RevealingAction();
@@ -80,7 +99,7 @@ namespace Server.SkillHandlers
                 return TimeSpan.FromSeconds(2.5);
             }
 
-            var chance = (50.0 + (skillVal - (m.ManaMax - m.Mana)) * 2) / 100;
+            var chance = StartChance(skillVal, m.Mana, m.ManaMax);
 
             // Armored meditation penalty: heavier armor = lower chance = more gain opportunity
             if (armoredExpert)

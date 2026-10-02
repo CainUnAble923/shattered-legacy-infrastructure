@@ -276,6 +276,13 @@ apply_patch "$PATCHES/PlayerMobile-fountain-luck-bonus.patch"
 # it while still showing on tooltips. See notes/s6-absorption.md section 3.
 apply_patch "$PATCHES/AOS-damage-eater-hook.patch"
 
+# cc-P29 D44, a pinned defect. AosAttributes.AddStatBonuses named its stat mods by GetHashCode() and
+# RemoveStatBonuses removed them by Owner.Serial, so a talisman's or quiver's Str/Dex/Int bonus never came off and
+# stacked on every re-equip until restart (unbounded with no stat ceiling). The add path now uses the serial, as
+# every other item type does. Alternatives argued in shard-migration/notes/cc-P29-defect-batch-2.md Part A;
+# pinned by StatBonusLeakVerification (proved red). ModernUO's to report upstream.
+apply_patch "$PATCHES/AOS-stat-bonus-names.patch"
+
 # S8 test route. The ONLY patch in this repo that touches an upstream TEST project, and the only
 # one with no effect on the shipped server: it adds the NPCSpeeds.Configure call that
 # UOContentFixture omits, so a test can construct a BaseCreature at all. Argued in
