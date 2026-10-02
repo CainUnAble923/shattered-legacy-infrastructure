@@ -28,22 +28,6 @@
    "z": 13
   },
   {
-   "area": "outside",
-   "id": "0x0B98",
-   "name": "wooden signpost",
-   "x": 3460,
-   "y": 2595,
-   "z": 15
-  },
-  {
-   "area": "outside",
-   "id": "0x0BD0",
-   "name": "wooden sign",
-   "x": 3460,
-   "y": 2595,
-   "z": 15
-  },
-  {
    "area": "office",
    "id": "0x1E25",
    "name": "books",
@@ -93,18 +77,10 @@
   },
   {
    "area": "office",
-   "id": "0x1E5F",
-   "name": "bulletin board",
-   "x": 3458,
-   "y": 2598,
-   "z": 18
-  },
-  {
-   "area": "office",
    "id": "0x0B26",
    "name": "candelabra",
    "x": 3461,
-   "y": 2600,
+   "y": 2602,
    "z": 18
   },
   {
@@ -113,14 +89,6 @@
    "name": "flowerpot",
    "x": 3460,
    "y": 2597,
-   "z": 18
-  },
-  {
-   "area": "office",
-   "id": "0x1047",
-   "name": "globe",
-   "x": 3461,
-   "y": 2598,
    "z": 18
   },
   {

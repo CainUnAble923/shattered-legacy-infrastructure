@@ -2,6 +2,8 @@
 //
 // cc-P19: props for the League of Extraordinary Citizens Field Office in New Haven (Trammel), and the
 // League Registrar turned to face her desk. Notes in shard-migration notes/cc-P19-registrar-office-decor.md.
+// cc-P31: the design's cleanup (18 components to 14) and the replace mode that swaps a cc-P19 office for
+// the current one. Notes in shard-migration notes/cc-P31-registrar-office-cleanup.md.
 //
 // What the facts pin:
 //   1. The layout the server loads (ClusterFRegistrarOfficeLayout) is design/registrar-office/layout.json,
@@ -13,9 +15,12 @@
 //      The doors are cc-P17's own entries, placed by cc-P17's code, not doors made up here. Also pinned:
 //      on a world where pinned's [DoorGen ran (the test world), the doorway holds DoorGen's SouthCW door
 //      instead, which swings onto the desk's north tile, and the props there do not stop it closing.
-//   4. Both signs report the League's name; the signposts do not.
+//   4. The one sign reports the League's name; nothing else outside does.
 //   5. The Registrar's seeded facing is West, to her desk. World load leaves one facing North on her
 //      tile alone; the repair command turns her.
+//   6. (cc-P31) On a world seeded by cc-P19 (built from cleanup/layout_p19.json), replace leaves exactly
+//      the current layout, no cc-P19-only component, and every unrelated item where it was. Twice is once.
+//   7. (cc-P31) replace dryrun changes nothing, and lists what it would delete and place.
 //
 // The test host has no map files (cc-P17 section 1.3), so nothing here asks the map about z. The z
 // values were checked offline against the server's map files (notes, Part A).
@@ -84,10 +89,10 @@ public class RegistrarOfficeVerification
             Assert.Equal(loaded.Where(c => c.Group == area).ToArray(), components);
         }
 
-        // Counted here, not taken from the brief: 18 = 5 outside + 10 office + 3 quarters.
-        Assert.Equal(18, loaded.Length);
-        Assert.Equal(5, ClusterFRegistrarOfficeLayout.Outside.Length);
-        Assert.Equal(10, ClusterFRegistrarOfficeLayout.Office.Length);
+        // Counted here, not taken from the brief: 14 = 3 outside + 8 office + 3 quarters (cc-P19: 18 = 5 + 10 + 3).
+        Assert.Equal(14, loaded.Length);
+        Assert.Equal(3, ClusterFRegistrarOfficeLayout.Outside.Length);
+        Assert.Equal(8, ClusterFRegistrarOfficeLayout.Office.Length);
         Assert.Equal(3, ClusterFRegistrarOfficeLayout.Quarters.Length);
         Assert.Equal(loaded.Length, areas.Sum(a => a.Components.Length));
     }
@@ -140,7 +145,7 @@ public class RegistrarOfficeVerification
                 components += addon.Components.Count;
             }
 
-            Assert.Equal(18, components);
+            Assert.Equal(14, components);
         }
         finally
         {
@@ -232,7 +237,7 @@ public class RegistrarOfficeVerification
     // ---------------------------------------------------------------- 4
 
     [Fact]
-    public void BothSignsReportTheLeagueName()
+    public void TheSignReportsTheLeagueName()
     {
         ClearOffice();
         try
@@ -240,21 +245,20 @@ public class RegistrarOfficeVerification
             ClusterFRegistrarOfficeSeeder.Seed(false);
             var outside = OfficeAddons().OfType<RegistrarOfficeOutsideAddon>().Single();
 
+            // Exactly one sign: 0x0BCF on the east wall. cc-P19's north sign 0x0BD0 left the design (cc-P31).
             var signs = outside.Components.Where(c => c.ItemID is 0x0BCF or 0x0BD0).ToList();
-            Assert.Equal(2, signs.Count);
-            Assert.Contains(signs, s => s.ItemID == 0x0BCF && s.Location == new Point3D(3463, 2597, 13));
-            Assert.Contains(signs, s => s.ItemID == 0x0BD0 && s.Location == new Point3D(3460, 2595, 15));
+            var sign = Assert.Single(signs);
+            Assert.Equal(0x0BCF, sign.ItemID);
+            Assert.Equal(new Point3D(3463, 2597, 13), sign.Location);
+            Assert.Single(ClusterFRegistrarOfficeLayout.Components, c => c.Name == "wooden sign");
 
-            foreach (var sign in signs)
-            {
-                Assert.Equal("League of Extraordinary Citizens", sign.Name);
+            Assert.Equal("League of Extraordinary Citizens", sign.Name);
 
-                // What a single click sends with tooltips on (Item.OnAosSingleClick, Item.cs:4050-4067).
-                sign.InvalidateProperties();
-                Assert.Equal("League of Extraordinary Citizens", sign.PropertyList.HeaderArgs);
-            }
+            // What a single click sends with tooltips on (Item.OnAosSingleClick, Item.cs:4050-4067).
+            sign.InvalidateProperties();
+            Assert.Equal("League of Extraordinary Citizens", sign.PropertyList.HeaderArgs);
 
-            // The signposts and every other prop keep their tile names.
+            // The signpost and every other prop keep their tile names.
             Assert.All(outside.Components.Except(signs), c => Assert.Null(c.Name));
         }
         finally
@@ -301,7 +305,216 @@ public class RegistrarOfficeVerification
         }
     }
 
+    // ---------------------------------------------------------------- 6
+
+    [Fact]
+    public void ReplaceSwapsAP19OfficeForTheCurrentLayoutAndNothingElse()
+    {
+        ClearOffice();
+        var unrelated = new List<(Item Item, Point3D At)>();
+        try
+        {
+            var p19 = SeedP19Office();
+            Assert.Equal(18, p19.Sum(a => a.Components.Count));
+            Assert.Equal(18, OfficeComponentsInTheHouseBox().Count);
+
+            // What only cc-P19 had, from the two files, not from the brief: exactly the brief's five.
+            var current = ClusterFRegistrarOfficeLayout.Components.Select(c => (c.ItemID, c.Location)).ToHashSet();
+            var p19Only = P19Layout().Where(c => !current.Contains((c.ItemID, c.Location))).Select(c => (c.ItemID, c.Location)).ToList();
+            var briefsFive = new List<(int ItemID, Point3D Location)>
+            {
+                (0x0B98, new Point3D(3460, 2595, 15)), (0x0BD0, new Point3D(3460, 2595, 15)),
+                (0x1E5F, new Point3D(3458, 2598, 18)), (0x0B26, new Point3D(3461, 2600, 18)),
+                (0x1047, new Point3D(3461, 2598, 18)),
+            };
+            Assert.Equal(briefsFive, p19Only);
+
+            // A plain seed does not update it: each type is already on Trammel.
+            var plain = ClusterFRegistrarOfficeSeeder.Seed(false);
+            Assert.Contains("placed 0 of 3", plain.Last());
+            Assert.Equal(18, OfficeComponentsInTheHouseBox().Count);
+
+            // Things replace must not touch: statics with cc-P19's bulletin board and north signpost graphics
+            // on their old tiles, a door on the front door tile, a plain item beside the candelabra's new tile.
+            unrelated.Add((new Static(0x1E5F), new Point3D(3458, 2598, 18)));
+            unrelated.Add((new Static(0x0B98), new Point3D(3460, 2595, 15)));
+            unrelated.Add((new DarkWoodDoor(DoorFacing.WestCCW), FrontDoor));
+            unrelated.Add((new Item(0x0EED), new Point3D(3461, 2601, 18)));
+            foreach (var (item, at) in unrelated)
+            {
+                item.MoveToWorld(at, Map.Trammel);
+            }
+
+            var first = ClusterFRegistrarOfficeSeeder.Replace(false);
+            _out.WriteLine(string.Join("\n", first));
+            Assert.Contains("ClusterF registrar office replace: deleted 3 addons (18 components).", first);
+            Assert.Contains("placed 3 of 3", first.Last());
+            Assert.All(p19, a => Assert.True(a.Deleted));
+            Assert.All(p19.SelectMany(a => a.Components), c => Assert.True(c.Deleted));
+
+            var once = Layout();
+            AssertTheCurrentLayoutAndNoP19Component(p19Only);
+
+            // Twice is once: the second run swaps the current office for an identical one.
+            var second = ClusterFRegistrarOfficeSeeder.Replace(false);
+            _out.WriteLine(string.Join("\n", second));
+            Assert.Contains("ClusterF registrar office replace: deleted 3 addons (14 components).", second);
+            Assert.Equal(once, Layout());
+            AssertTheCurrentLayoutAndNoP19Component(p19Only);
+
+            foreach (var (item, at) in unrelated)
+            {
+                Assert.False(item.Deleted, $"{item.GetType().Name} 0x{item.ItemID:X4} at {at} was deleted");
+                Assert.Equal(at, item.Location);
+                Assert.Same(Map.Trammel, item.Map);
+            }
+        }
+        finally
+        {
+            foreach (var (item, _) in unrelated)
+            {
+                item.Delete();
+            }
+
+            ClearOffice();
+        }
+    }
+
+    // ---------------------------------------------------------------- 7
+
+    [Fact]
+    public void ReplaceDryRunChangesNothing()
+    {
+        ClearOffice();
+        try
+        {
+            var p19 = SeedP19Office();
+            var before = LayoutWithSerials();
+            var items = World.Items.Count;
+
+            var lines = ClusterFRegistrarOfficeSeeder.Replace(true);
+            _out.WriteLine(string.Join("\n", lines));
+
+            Assert.Equal(items, World.Items.Count);
+            Assert.Equal(before, LayoutWithSerials());
+            Assert.All(p19, a => Assert.False(a.Deleted));
+
+            // It names what it would delete (serial, location, component count) and what it would place.
+            foreach (var a in p19)
+            {
+                Assert.Contains(
+                    $"{a.GetType().Name} 0x{a.Serial.Value:X8}: would delete at {a.Location} (Trammel), {a.Components.Count} components.",
+                    lines
+                );
+            }
+
+            Assert.Contains("ClusterF registrar office replace: would delete 3 addons (18 components).", lines);
+            foreach (var (type, _, layout) in ClusterFRegistrarOfficeSeeder.Addons)
+            {
+                Assert.Contains($"{type.Name}: would place at {layout[0].Location} (Trammel), {layout.Length} components.", lines);
+            }
+
+            Assert.Equal("ClusterF registrar office dry run: would place 3 of 3 addons.", lines.Last());
+        }
+        finally
+        {
+            ClearOffice();
+        }
+    }
+
     // ---------------------------------------------------------------- helpers
+
+    private static MineCampComponent[] P19Layout()
+    {
+        var json = RegistrarOfficeLayoutP19Copy.Json.Replace("\r\n", "\n");
+        var sha = Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(json))).ToLowerInvariant();
+        Assert.Equal(RegistrarOfficeLayoutP19Copy.Sha256, sha);
+
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.GetProperty("components").EnumerateArray().Select(d => new MineCampComponent(
+            d.GetProperty("area").GetString(),
+            Convert.ToInt32(d.GetProperty("id").GetString(), 16),
+            d.GetProperty("name").GetString(),
+            d.GetProperty("x").GetInt32(),
+            d.GetProperty("y").GetInt32(),
+            d.GetProperty("z").GetInt32()
+        )).ToArray();
+    }
+
+    // A world seeded by cc-P19: the same three addon types, built as cc-P19's constructors built them (the
+    // area's components from layout_p19.json, both signs named) and placed at the area's first component.
+    private static List<BaseAddon> SeedP19Office()
+    {
+        var layout = P19Layout();
+        var made = new List<BaseAddon>();
+
+        for (var i = 0; i < ClusterFRegistrarOfficeSeeder.Addons.Length; i++)
+        {
+            var (type, create, _) = ClusterFRegistrarOfficeSeeder.Addons[i];
+            var area = ClusterFRegistrarOfficeLayout.Areas[i].Area;
+            var components = layout.Where(c => c.Group == area).ToArray();
+
+            var addon = create();
+            Assert.IsType(type, addon);
+            foreach (var c in addon.Components.ToList())
+            {
+                c.Addon = null; // so deleting it does not delete the addon (AddonComponent.OnAfterDelete)
+                c.Delete();
+            }
+
+            addon.Components.Clear();
+            ClusterFMineCampSeeder.AddComponents(addon, components);
+            foreach (var c in addon.Components.Where(c => c.ItemID is 0x0BCF or 0x0BD0))
+            {
+                c.Name = ClusterFRegistrarOfficeSeeder.SignName;
+            }
+
+            addon.MoveToWorld(ClusterFMineCampSeeder.OriginOf(components), Map.Trammel);
+            made.Add(addon);
+        }
+
+        return made;
+    }
+
+    // Every AddonComponent on Trammel in the house box, whoever owns it: catches a component left behind.
+    private static List<AddonComponent> OfficeComponentsInTheHouseBox() =>
+        World.Items.Values.OfType<AddonComponent>()
+            .Where(c => !c.Deleted && c.Map == Map.Trammel && c.X is >= 3448 and <= 3468 && c.Y is >= 2590 and <= 2608).ToList();
+
+    private static List<string> Layout() =>
+        OfficeAddons().SelectMany(a => a.Components.Select(c => $"{a.GetType().Name} 0x{c.ItemID:X4} {c.Location} {c.Name}"))
+            .Order().ToList();
+
+    private static List<string> LayoutWithSerials() =>
+        OfficeAddons().SelectMany(a => a.Components.Select(c =>
+                $"{a.GetType().Name} 0x{a.Serial.Value:X8} {a.Location} 0x{c.Serial.Value:X8} 0x{c.ItemID:X4} {c.Location} {c.Name}"
+            ))
+            .Order().ToList();
+
+    private static void AssertTheCurrentLayoutAndNoP19Component(List<(int ItemID, Point3D Location)> p19Only)
+    {
+        var addons = OfficeAddons();
+        Assert.Equal(3, addons.Count);
+        Assert.Single(addons, a => a is RegistrarOfficeOutsideAddon);
+        Assert.Single(addons, a => a is RegistrarOfficeAddon);
+        Assert.Single(addons, a => a is RegistrarQuartersAddon);
+
+        var placed = OfficeComponentsInTheHouseBox();
+        Assert.Equal(14, placed.Count);
+        Assert.Equal(
+            ClusterFRegistrarOfficeLayout.Components.Select(c => $"0x{c.ItemID:X4} {c.Location}").Order(),
+            placed.Select(c => $"0x{c.ItemID:X4} {c.Location}").Order()
+        );
+
+        foreach (var (id, at) in p19Only)
+        {
+            Assert.DoesNotContain(placed, c => c.ItemID == id && c.Location == at);
+        }
+
+        Assert.DoesNotContain(placed, c => c.ItemID is 0x0B98 or 0x0BD0 or 0x1E5F or 0x1047);
+        Assert.Equal("League of Extraordinary Citizens", Assert.Single(placed, c => c.Name != null).Name);
+    }
+
 
     private static Point2D Swing(Point3D closed, DoorFacing facing)
     {

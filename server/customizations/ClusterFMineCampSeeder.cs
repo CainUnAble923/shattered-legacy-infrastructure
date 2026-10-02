@@ -124,8 +124,11 @@ namespace Server
 
         // Places each addon whose type is not already on Trammel, at its first component. Shared with
         // cc-P19's League field office (ClusterFRegistrarOfficeSeeder), so both decorations have one placer.
+        // cc-P31: removing names addons the caller is about to delete (the office's replace dry run); the
+        // placer treats them as already gone. Null for every other caller, which then behaves as before.
         internal static List<string> SeedAddons(
-            string label, string noun, (Type Type, Func<BaseAddon> Create, MineCampComponent[] Components)[] addons, bool dryRun
+            string label, string noun, (Type Type, Func<BaseAddon> Create, MineCampComponent[] Components)[] addons, bool dryRun,
+            ICollection<BaseAddon> removing = null
         )
         {
             var lines = new List<string>();
@@ -134,7 +137,7 @@ namespace Server
             foreach (var (type, create, components) in addons)
             {
                 var origin = OriginOf(components);
-                var existing = FindTent(type);
+                var existing = FindTent(type, removing);
 
                 if (existing != null)
                 {
@@ -163,11 +166,12 @@ namespace Server
             return lines;
         }
 
-        internal static BaseAddon FindTent(Type type)
+        internal static BaseAddon FindTent(Type type, ICollection<BaseAddon> removing = null)
         {
             foreach (var item in World.Items.Values)
             {
-                if (!item.Deleted && item.GetType() == type && item.Map == Map.Trammel)
+                if (!item.Deleted && item.GetType() == type && item.Map == Map.Trammel &&
+                    removing?.Contains((BaseAddon)item) != true)
                 {
                     return (BaseAddon)item;
                 }

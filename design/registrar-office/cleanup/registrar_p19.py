@@ -5,13 +5,13 @@ def avgz(x,y):
     return (l+r)//2 if abs(a-b)>abs(l-r) else (a+b)//2
 F=18  # floor z
 TBL=F+6
-# P29 cleanup 2026-10-02: removed the north door sign (hung off the back of the building, wrong way),
-# the bulletin board (doubled up the map's stretched hide), and the globe (hidden behind the bookcase).
 items=[
  # --- outside, at the north door (3459,2596) ---
  ('outside',0x11c9,3458,2595,None),          # potted tree left of the door
  ('outside',0xb97,3463,2597,None),           # wooden signpost off the east wall, seen from the road and the square
  ('outside',0xbcf,3463,2597,None),           # wooden sign on it (named "League of Extraordinary Citizens" server-side)
+ ('outside',0xb98,3460,2595,None),           # second signpost at the door
+ ('outside',0xbd0,3460,2595,None),           # and its sign
  # --- office (east room) ---
  ('office',0x1e25,3458,2600,TBL),            # stack of books on the desk
  ('office',0x2d61,3458,2601,TBL),            # inkwell
@@ -19,8 +19,10 @@ items=[
  ('office',0x1810,3458,2600,TBL+3),          # hourglass on the books
  ('office',0xa99,3461,2597,F),               # bookcase against the north wall
  ('office',0xa9a,3458,2602,F),               # bookcase against the partition
- ('office',0xb26,3461,2602,F),               # standing candelabra, SE corner (P29: was 3461,2600, in the walkway)
+ ('office',0x1e5f,3458,2598,F),              # bulletin board on the partition wall
+ ('office',0xb26,3461,2600,F),               # standing candelabra
  ('office',0x11ca,3460,2597,F),              # flowerpot under the north window
+ ('office',0x1047,3461,2598,F),              # globe beside the bookcase
  # --- back room (west room, the registrar's quarters) ---
  ('quarters',0xe42,3456,2597,F),             # chest at the foot of the bed
  ('quarters',0xa9a,3454,2602,F),             # bookcase
