@@ -5,7 +5,7 @@
 # would persist into the real world. This file exists so testing can never do that.
 #
 #   docker/uo/test-shard.sh          build (gated) + bring this up
-#   docker compose -f docker/uo/docker-compose.test.yml down     stop it
+#   docker compose -f docker/uo/docker-compose.test.yml down -t 60     stop it (60 s for the shutdown save, D50)
 #
 # Host port is 2594, so it can run alongside the live shard on 2593.
 # There is no ddns-updater here on purpose: this must never touch public DNS.
@@ -31,6 +31,7 @@ services:
     image: sl-modernuo:latest
     container_name: sl-modernuo-test
     restart: "no"
+    stop_grace_period: 60s   # D50: was 1 s, which SIGKILLed D36's shutdown save mid-write
     ports:
       - "2594:2594"
       - "2594:2594/udp"

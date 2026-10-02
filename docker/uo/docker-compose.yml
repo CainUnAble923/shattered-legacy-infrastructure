@@ -8,6 +8,7 @@ services:
         MODERNUO_COMMIT: "d4531cd94b739613155225c234900de9f47d2c88"
     container_name: sl-modernuo
     restart: unless-stopped
+    stop_grace_period: 60s   # D50: was 1 s, which SIGKILLed D36's shutdown save mid-write. Takes effect when live is next recreated (fresh-world wipe).
     ports:
       - "2593:2593"
       - "2593:2593/udp"

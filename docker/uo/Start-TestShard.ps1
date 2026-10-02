@@ -24,7 +24,8 @@ $compose = "docker/uo/docker-compose.test.yml"
 Set-Location $repo
 
 if ($Down) {
-    docker compose -f $compose down
+    # -t 60 as well as stop_grace_period in the compose file: D36's shutdown save needs seconds (D50).
+    docker compose -f $compose down -t 60
     if ($LASTEXITCODE -ne 0) { throw "docker compose down failed ($LASTEXITCODE)" }
     Write-Host "test shard stopped." -ForegroundColor Cyan
     return
