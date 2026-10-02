@@ -34,9 +34,15 @@
 // ServUO Spawns/trammel.xml), one tile off pinned's, so a later [GenerateSpawners of Vendors.json
 // does not delete it the same way.
 //
+// cc-P32 patched the importer (server/patches/ImportSpawners-guid-key.patch), so a re-run of
+// Vendors.json now brings pinned's own Healer spawner back. Once that spawner (found by its data
+// guid) is in the world, this seeder places no stand-in, and retires a stand-in it placed before:
+// the Spawner on HealerSpawnerLocation that spawns Healer and nothing else, deleted with its Healers
+// (BaseSpawner.OnDelete). That is the only thing it ever deletes.
+//
 // Runs at world load only if clusterf.newHavenServices.seedOnWorldLoad is true (default false; the
 // server writes the default into modernuo.json on first start). Otherwise an Administrator runs
-// [ClusterFSeedNewHavenServices [dryrun]. Nothing is ever moved or deleted, and a re-run places
+// [ClusterFSeedNewHavenServices [dryrun]. Nothing is moved, nothing but the stand-in above is deleted, and a re-run places
 // nothing already there: pinned's FindItem for decoration, a door on the tile for doors, and any
 // Healer or Healer spawner in New Haven for the Healer.
 
@@ -190,6 +196,9 @@ public static class ClusterFNewHavenServicesSeeder
     public const int HealerCount = 2;
     public const int HealerWalkingRange = 4;
 
+    // Pinned's Healer spawner, post-uoml/trammel/Vendors.json:146-161 (3463,2558,35).
+    public static readonly Guid DataHealerSpawnerGuid = new("f713041b-8980-4839-84cb-232cb39f710a");
+
     // The New Haven town region (Distribution/Data/regions.json, "New Haven").
     public static bool IsNewHaven(Point3D p) => p.X >= 3416 && p.X <= 3545 && p.Y >= 2480 && p.Y <= 2648;
 
@@ -212,8 +221,8 @@ public static class ClusterFNewHavenServicesSeeder
     }
 
     [Usage("ClusterFSeedNewHavenServices [dryrun]")]
-    [Description("Places ServUO's New Haven decoration (forges, anvils, ankh, doors, statics) and a Healer spawner where missing. Moves and deletes nothing; a re-run places nothing twice.")]
-    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places New Haven forges, anvils, ankh, doors, statics and a Healer spawner where missing. Moves and deletes nothing.")]
+    [Description("Places ServUO's New Haven decoration (forges, anvils, ankh, doors, statics) and a Healer spawner where missing. Moves nothing; deletes only its own stand-in Healer spawner once pinned's is back; a re-run places nothing twice.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places New Haven forges, anvils, ankh, doors, statics and a Healer spawner where missing. Retires its own stand-in Healer spawner once pinned's is back.")]
     private static void OnCommand(CommandEventArgs e)
     {
         var mode = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "";
@@ -228,7 +237,8 @@ public static class ClusterFNewHavenServicesSeeder
     }
 
     public readonly record struct SeedResult(
-        int Placed, int Present, int KindAlreadyThere, bool HealerPlaced, string Message, List<string> KeptOut
+        int Placed, int Present, int KindAlreadyThere, bool HealerPlaced, string Message, List<string> KeptOut,
+        bool StandInRetired = false
     );
 
     public static SeedResult Seed(bool dryRun)
@@ -275,6 +285,15 @@ public static class ClusterFNewHavenServicesSeeder
             }
         }
 
+        // In a dry run the stand-in stays, so HasHealer still sees it and nothing is placed either.
+        var standIn = FindStandInHealerSpawner(map);
+        var standInRetired = standIn != null && HasDataHealerSpawner(map);
+
+        if (standInRetired && !dryRun)
+        {
+            standIn.Delete();
+        }
+
         var healerPlaced = !HasHealer(map);
 
         if (healerPlaced && !dryRun)
@@ -285,9 +304,11 @@ public static class ClusterFNewHavenServicesSeeder
         var verb = dryRun ? "would place" : "placed";
         var message = "New Haven services" + (dryRun ? " (dry run)" : "") +
                       $": decoration {verb} {placed}, already there {present}, kept out for a door, forge, anvil or ankh already there {kindThere}; " +
-                      "Healer spawner " + (healerPlaced ? verb : "already there") + ".";
+                      "Healer spawner " + (healerPlaced ? verb : "already there") +
+                      (standInRetired ? $"; stand-in Healer spawner at {HealerSpawnerLocation} {(dryRun ? "would be retired" : "retired")}, pinned's is back" : "") +
+                      ".";
 
-        return new SeedResult(placed, present, kindThere, healerPlaced, message, keptOut);
+        return new SeedResult(placed, present, kindThere, healerPlaced, message, keptOut, standInRetired);
     }
 
     private static bool KindAlreadyThere(Map map, DecorEntry entry)
@@ -392,6 +413,37 @@ public static class ClusterFNewHavenServicesSeeder
         }
 
         return false;
+    }
+
+    // Pinned's own Healer spawner, by its data guid, anywhere on the map.
+    internal static bool HasDataHealerSpawner(Map map)
+    {
+        foreach (var item in World.Items.Values)
+        {
+            if (item is BaseSpawner { Deleted: false } spawner && spawner.Map == map && spawner.Guid == DataHealerSpawnerGuid)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // The spawner PlaceHealerSpawner made: a Spawner on its tile whose only entry is Healer.
+    internal static Spawner FindStandInHealerSpawner(Map map)
+    {
+        foreach (var item in map.GetItemsAt(HealerSpawnerLocation))
+        {
+            if (item is Spawner { Deleted: false } spawner && spawner.GetType() == typeof(Spawner) &&
+                spawner.Z == HealerSpawnerLocation.Z && spawner.Guid != DataHealerSpawnerGuid &&
+                spawner.Entries.Count == 1 &&
+                string.Equals(spawner.Entries[0].SpawnedName, "Healer", StringComparison.OrdinalIgnoreCase))
+            {
+                return spawner;
+            }
+        }
+
+        return null;
     }
 
     private static void PlaceHealerSpawner(Map map)

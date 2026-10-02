@@ -11,16 +11,18 @@ namespace Server.Mobiles;
 // -----------------------------------------------------------------------------
 // ClusterF Smith BOD System - Phase 4C-i
 //
-// Merges the vanilla BOD system into the Society of Smiths guild so there
-// is exactly one kind of Smith BOD:
+// The Society of Smiths path for Smith BODs. One kind of deed, two paths, on purpose
+// (Chase, 2026-10-02, PT-11: the guildmaster is not everywhere smiths are):
 //
-//   * Regular Blacksmith NPCs no longer issue or accept BODs.
-//     Players who try to get a BOD from a random smith are redirected to the
-//     Guildmaster.
+//   * Regular Blacksmith NPCs give and take Smith BODs and pay OSI's rewards, as pinned
+//     (Mobiles/Vendors/NPC/Blacksmith.cs:76-127, BaseVendor.cs:1078-1150). Nothing patches
+//     them; an earlier version of this note said Blacksmith_DisableBODs.patch did, and that
+//     patch does not exist (cc-P32 Part B).
 //
-//   * BlacksmithGuildmaster is the sole source and turn-in point.
+//   * BlacksmithGuildmaster and the Smithing Guild Book give and take them for members.
 //     Generation is cap-based (3 small / 1 large concurrent), no cooldown.
-//     Large BODs require Journeyman rank (5 000 standing) + 70.1 Blacksmithy.
+//     Large BODs require Journeyman rank (5 000 standing) + 70.1 Blacksmithy, to request
+//     and, since cc-P32, to turn in (a large deed from a regular smith needs only 70.1).
 //
 //   * Turn-in gives Smithing Seals + a skill check (no vanilla item rewards).
 //     Skill check range is scaled to material tier + exceptional requirement
@@ -47,6 +49,7 @@ public partial class BlacksmithGuildmaster
 {
     private const int SmallBODCap = 3; // max concurrent small BODs in pack
     private const int LargeBODCap = 1; // max concurrent large BODs in pack
+    private const int LargeOrderStanding = 5_000; // Journeyman
 
     // -- Generation -----------------------------------------------------------
 
@@ -91,7 +94,7 @@ public partial class BlacksmithGuildmaster
         var (smallCount, largeCount) = CountBODs(pm);
 
         // Large BOD: Journeyman rank + 70.1 skill, random chance same as vanilla
-        var qualifiesLarge = bypass || (standing >= 5_000 && skill >= 70.1);
+        var qualifiesLarge = bypass || (standing >= LargeOrderStanding && skill >= 70.1);
         var rollsLarge     = skill >= 70.1 && (skill - 40.0) / 300.0 > Utility.RandomDouble();
 
         if (qualifiesLarge && rollsLarge)
@@ -142,7 +145,7 @@ public partial class BlacksmithGuildmaster
         var guild     = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
         var standing = guild.GetReputation("smithing");
 
-        if (!bypass && standing < 5_000)
+        if (!bypass && standing < LargeOrderStanding)
         {
             pm.SendMessage(0x22, "You must achieve Journeyman rank (5,000 standing) to request large orders.");
             return null;
@@ -221,6 +224,14 @@ public partial class BlacksmithGuildmaster
         if (!complete)
         {
             SayTo(from, 1045131); // You have not completed the order yet.
+            return false;
+        }
+
+        // cc-P32 (PT-11): the rank gate on requesting a large order holds for turning one in, so a large
+        // deed from a regular smith (70.1 skill, no rank) cannot pay Seals and standing early.
+        if (dropped is LargeSmithBOD && !CanTurnInLarge(pm))
+        {
+            SayTo(from, LargeRankRefusal);
             return false;
         }
 
@@ -412,6 +423,7 @@ public partial class BlacksmithGuildmaster
             _          => false,
         };
         if (!complete) return false;
+        if (bod is LargeSmithBOD && !CanTurnInLarge(pm)) return false;
 
         var (seals, standing, skillChecks) = ComputeGuildReward(bod);
         var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
@@ -429,6 +441,15 @@ public partial class BlacksmithGuildmaster
         bod.Delete();
         return true;
     }
+
+    public const string LargeRankRefusal =
+        "Large orders are for Journeymen of the Society. Any blacksmith will take this one.";
+
+    /// <summary>Journeyman rank, or an active Dev Testing Crystal: the same gate as requesting a large order.</summary>
+    public static bool CanTurnInLarge(PlayerMobile pm) =>
+        DevTestingCrystal.IsActive(pm) ||
+        pm.Account is IAccount acct &&
+        ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial).GetReputation("smithing") >= LargeOrderStanding;
 
     /// <summary>
     /// Counts SmallSmithBOD and LargeSmithBOD items anywhere in the player's pack,

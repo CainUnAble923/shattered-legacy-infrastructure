@@ -1,0 +1,20 @@
+--- "a/Projects/UOContent/Items/Skill Items/Tools/BaseRunicTool.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Tools/BaseRunicTool.cs"
+@@ -635,6 +635,9 @@
+         var baseCount = isShield ? 7 : 20;
+         var baseOffset = isShield ? 0 : 4;
+ 
++        // Shattered Legacy (F-27): Self Repair (case 5) is out of the random table; ClusterFRareSelfRepair rolls it.
++        m_Props.Set(isShield ? 5 : 1, true);
++
+         if (!isShield && armor.MeditationAllowance == ArmorMeditationAllowance.All)
+         {
+             m_Props.Set(3, true); // remove mage armor from possible properties
+@@ -819,6 +822,7 @@
+         var resists = hat.Resistances;
+ 
+         m_Props.SetAll(false);
++        m_Props.Set(12, true); // Shattered Legacy (F-27): Self Repair (case 12) is out of the random table.
+ 
+         for (var i = 0; i < attributeCount; ++i)
+         {

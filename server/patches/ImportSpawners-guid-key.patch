@@ -1,0 +1,35 @@
+--- a/Projects/UOContent/Engines/Spawners/Commands/ImportSpawnersCommand.cs
++++ b/Projects/UOContent/Engines/Spawners/Commands/ImportSpawnersCommand.cs
+@@ -209,7 +209,6 @@
+                 return;
+             }
+             
+-            using var queue = PooledRefQueue<Item>.Create();
+             for (var i = 0; i < spawners.Count; i++)
+             {
+                 var json = spawners[i];
+@@ -225,21 +224,9 @@
+                 json.GetProperty("location", options, out Point3D location);
+                 json.GetProperty("map", options, out Map map);
+ 
+-                // Delete all spawners at this location.
+-                // Probably shouldn't do this outside of migrations? Is there a better way to find/fix spawners?
+-                foreach (var spawner in map.GetItemsAt<BaseSpawner>(location))
+-                {
+-                    if (spawner.GetType() == type)
+-                    {
+-                        queue.Enqueue(spawner);
+-                        allSpawners.Remove(spawner.Guid);
+-                    }
+-                }
+-
+-                while (queue.Count > 0)
+-                {
+-                    queue.Dequeue().Delete();
+-                }
++                // Shattered Legacy (cc-P32, PT-07): no delete by location. GetItemsAt matches x,y only
++                // (Map.ItemEnumerator.cs:31) and the data stacks spawners on one tile, so it deleted 338 of
++                // them. The same spawner is found by its guid below, so a re-run still replaces, not adds.
+ 
+                 try
+                 {

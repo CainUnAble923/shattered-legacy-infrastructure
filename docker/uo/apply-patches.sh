@@ -354,6 +354,19 @@ apply_patch "$PATCHES/SalvageBag-salvage-all.patch"
 # shard-migration/notes/cc-P22-small-features-1.md (F-17); pinned by BODCombineContainedVerification.
 apply_patch "$PATCHES/BOD-combine-contained.patch"
 
+# cc-P32 Part A (PT-07), a pinned defect. The JSON spawner import deleted every same-type spawner on the entry's x,y
+# (GetItemsAt ignores z), and pinned's data stacks spawners on one tile, so 338 of shared/** and post-uoml/** were
+# lost. The patch drops that delete; the import's guid match still replaces on a re-run. Argued in
+# shard-migration/notes/cc-P32-spawner-importer-bods-self-repair.md A.2; pinned by SpawnerImportVerification (proved
+# red). ModernUO's to report upstream.
+apply_patch "$PATCHES/ImportSpawners-guid-key.patch"
+
+# cc-P32 Part C (F-27, ours). Self Repair leaves the random property table for armor, shields and hats (two
+# m_Props.Set lines, as pinned already does for Mage Armor), so loot and runic crafting never roll it; the rare
+# roll is ClusterFRareSelfRepair (customizations). Argued in the same notes, C.2; pinned by
+# RareSelfRepairVerification (proved red).
+apply_patch "$PATCHES/BaseRunicTool-no-random-self-repair.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

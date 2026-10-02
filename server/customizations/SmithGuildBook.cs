@@ -574,6 +574,8 @@ public class SmithGuildBookGump : Gump
         var bod = World.FindItem(serial);
         if (bod == null || bod.Deleted)
             pm.SendMessage(0x22, "That order no longer exists.");
+        else if (bod is LargeSmithBOD && !BlacksmithGuildmaster.CanTurnInLarge(pm))
+            pm.SendMessage(0x22, BlacksmithGuildmaster.LargeRankRefusal); // cc-P32 (PT-11)
         else if (!BlacksmithGuildmaster.TurnInBOD(pm, bod))
             pm.SendMessage(0x22, "That order is not yet complete.");
 
