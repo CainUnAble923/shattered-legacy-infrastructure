@@ -1,7 +1,11 @@
+# The pinned ModernUO commit. Declared before the first FROM so both stages can read it: the
+# builder checks it out, and the runtime stage records it for entrypoint.sh's banner (cc-P37).
+ARG MODERNUO_COMMIT=7c9215d97
+
 FROM debian:12-slim AS builder
 
 ARG DOTNET_VERSION=10.0.203
-ARG MODERNUO_COMMIT=7c9215d97
+ARG MODERNUO_COMMIT
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates git libicu-dev gcc patch \
@@ -65,6 +69,11 @@ RUN dotnet publish ModernUO.slnx -c Release -o /modernuo/Distribution \
 
 # -- Runtime stage --------------------------------------------------------------
 FROM debian:12-slim
+
+# entrypoint.sh prints this in its banner. It used to hardcode the hash, which was wrong as soon as
+# a build used another commit (cc-P30 run 1: an upstream image announcing 7c9215d97).
+ARG MODERNUO_COMMIT
+ENV SL_MODERNUO_COMMIT=${MODERNUO_COMMIT}
 
 # The builder stage installs this list's native libraries too, for the test host. Keep the two in step.
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -354,7 +354,7 @@ Fact 'StartFreshMovesTheTestSaveAsideAndNeverPassesFresh' {
     $move = @($p | Where-Object { $_.Kind -eq 'move' })
     Assert-Equal 1 $move.Count
     Assert-Equal $config.Shards['test'].Saves $move[0].From
-    foreach ($s in $p) { Assert-True (-not ($s.Arguments -contains '-Fresh')) 'no -Fresh: it deletes Saves-test' }
+    foreach ($s in $p) { Assert-True (-not ($s.Arguments -contains '-Fresh')) 'no -Fresh: it deletes the test save' }
 }
 
 Fact 'StartSkipsTheBuildAndRebuildGoesThroughTheGates' {
@@ -737,7 +737,7 @@ Fact 'ATestOnlyCommandSaysSoInItsLine' {
 
 Fact 'RedMeansTestOnlyUnclassifiedOrAPlainRunThatDeletesAndNothingElse' {
     $red = @($groups | ForEach-Object { $_.Items } | Where-Object { $_.Warn } | ForEach-Object { $_.Command }) | Sort-Object -Unique
-    Assert-Equal '[ClearRoyalCityVendors,[ClusterFOldHavenCleanup,[ClusterFSeedResetStone,[ClusterFSeedResetStone dryrun,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red, and a dry run deletes nothing'
+    Assert-Equal '[ClearRoyalCityVendors,[ClusterFOldHavenCleanup,[ClusterFPurgeUpgradeCollisions,[ClusterFPurgeUpgradeCollisions dryrun,[ClusterFSeedResetStone,[ClusterFSeedResetStone dryrun,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red, and a dry run deletes nothing'
 }
 
 Fact 'TheScriptAndItsFactsAreAsciiWithNoBom' {

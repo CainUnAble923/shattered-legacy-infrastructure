@@ -14,8 +14,19 @@ COMPOSE="docker compose -f docker/uo/docker-compose.test.yml"
 if [ "${1:-}" = "--down" ]; then $COMPOSE down; echo "test shard stopped."; exit 0; fi
 
 SERVER=server
-TEST_SAVES="$SERVER/lib/uo/modernuo/Saves-test"
+# The test world's folder, mounted whole as /var/lib/uo/modernuo (docker-compose.test.yml, cc-P37).
+TEST_ROOT="$SERVER/lib/uo/modernuo-test"
+TEST_SAVES="$TEST_ROOT/Saves"
+LEGACY_TEST_SAVES="$SERVER/lib/uo/modernuo/Saves-test"
 TEST_CONF="$SERVER/uo/modernuo/Configuration-test"
+
+# Before P37 the test save was lib/uo/modernuo/Saves-test. Starting without it would seed a NEW
+# world and leave the old one orphaned, so stop and say how to move it instead.
+if [ -d "$LEGACY_TEST_SAVES" ]; then
+    echo "The test save is still at $LEGACY_TEST_SAVES, the pre-P37 place." >&2
+    echo "Move it to $TEST_SAVES (stop the test shard first), then run this again. Not starting." >&2
+    exit 1
+fi
 
 if [ "${1:-}" = "--fresh" ] && [ -d "$TEST_SAVES" ]; then
     echo "== wiping the test save (the live save is never touched) ==============="

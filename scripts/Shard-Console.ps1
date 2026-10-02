@@ -89,7 +89,8 @@ function Get-ConsoleConfig {
     $shards = [ordered]@{
         test = [pscustomobject]@{
             Key = 'test'; Label = 'TEST'; Container = 'sl-modernuo-test'; IsLive = $false
-            Saves = (Join-Path $lib 'Saves-test'); GamePort = 2594
+            # cc-P37: the test world has its own folder, mounted whole (docker-compose.test.yml).
+            Saves = (Join-Path (Join-Path $RepoRoot 'server\lib\uo\modernuo-test') 'Saves'); GamePort = 2594
             Client = 'D:\UO\Play-SL-Admin-TEST.bat'
         }
         live = [pscustomobject]@{
@@ -659,7 +660,7 @@ function Get-ActionPlan {
         }
         'test.fresh' {
             $aside = New-AsideName $sh.Saves $Now
-            $steps.Add((New-PlanStep -Kind say -Text ('Start fresh. Start-TestShard.ps1 -Fresh would DELETE Saves-test, and no button here deletes a world save, so instead: stop the test shard, move Saves-test aside, and start without -Fresh. Start-TestShard.ps1 then finds no Saves-test and seeds a new one exactly as -Fresh does (accounts and SerializedTypes.db from the live save, D19). No build.')))
+            $steps.Add((New-PlanStep -Kind say -Text ('Start fresh. Start-TestShard.ps1 -Fresh would DELETE the test save (modernuo-test\Saves), and no button here deletes a world save, so instead: stop the test shard, move that save aside, and start without -Fresh. Start-TestShard.ps1 then finds no test save and seeds a new one exactly as -Fresh does (accounts and SerializedTypes.db from the live save, D19). No build.')))
             $steps.Add((New-PlanStep -Kind exec -Exe $ps -Arguments ($sts + '-Down') -Text 'docker/uo/Start-TestShard.ps1 -Down'))
             $steps.Add((New-PlanStep -Kind stopped -Container $sh.Container -Text ('Checking ' + $sh.Container + ' is not running.')))
             $steps.Add((New-PlanStep -Kind move -From $sh.Saves -To $aside -IfExists -Text 'Moving the test save aside (if there is one). It is kept, not deleted.'))
@@ -793,7 +794,7 @@ function Test-PlanSafety {
             if ($line -match '\bcompose\b') { $v.Add('runs docker compose itself; compose is reached only through Start-TestShard.ps1: ' + $line) }
             if ($s.Exe -eq 'docker' -and @($s.Arguments).Count -and $s.Arguments[0] -in $forbidden) { $v.Add('docker ' + $s.Arguments[0] + ' is not something this console runs: ' + $line) }
             if ($line -match 'build\.sh') { $v.Add('build.sh is reached only through Start-TestShard.ps1: ' + $line) }
-            if (@($s.Arguments) -contains '-Fresh') { $v.Add('-Fresh deletes Saves-test; this console moves it aside instead') }
+            if (@($s.Arguments) -contains '-Fresh') { $v.Add('-Fresh deletes the test save; this console moves it aside instead') }
             if (@($s.Arguments) -contains $live.Container -and -not $confirmed) { $v.Add('touches ' + $live.Container + ' without a typed confirmation: ' + $line) }
         }
         if ($s.Kind -eq 'launch' -and $s.Path -eq $live.Client -and -not $confirmed) { $v.Add('opens a live client without a typed confirmation') }
@@ -2230,7 +2231,7 @@ function New-ConsoleForm {
     $tabs.Dock = 'Fill'
     $script:ui.Tabs = $tabs
 
-    $testPage = New-ButtonPage 'Test shard' 'The throwaway test shard (sl-modernuo-test, port 2594, its own Saves-test). No confirmation: it is throwaway. Start, Stop and Rebuild call docker/uo/Start-TestShard.ps1; Rebuild is the only one that builds, and it builds through build.sh and its gates.' @(
+    $testPage = New-ButtonPage 'Test shard' 'The throwaway test shard (sl-modernuo-test, port 2594, its own save in modernuo-test\Saves). No confirmation: it is throwaway. Start, Stop and Rebuild call docker/uo/Start-TestShard.ps1; Rebuild is the only one that builds, and it builds through build.sh and its gates.' @(
         (New-ConsoleButton 'Start' 'test.start'),
         (New-ConsoleButton 'Start fresh (old save moved aside)' 'test.fresh'),
         (New-ConsoleButton 'Stop' 'test.stop'),

@@ -16,13 +16,12 @@ services:
       - ${SERVER_PATH}/customizations:/modernuo-projects:ro
       # Server configuration (modernuo.json, etc.)
       - ${SERVER_PATH}/uo/modernuo/Configuration:/modernuo/Configuration
-      # World saves
-      - ${SERVER_PATH}/lib/uo/modernuo/Saves:/var/lib/uo/modernuo/Saves
-      # Backups & archives written by ModernUO
-      - ${SERVER_PATH}/lib/uo/modernuo/Backups:/var/lib/uo/modernuo/Backups
-      - ${SERVER_PATH}/lib/uo/modernuo/Archives:/var/lib/uo/modernuo/Archives
-      # Public status.json, written by ShardStatusPublisher and served by sl-uo-status
-      - ${SERVER_PATH}/lib/uo/modernuo/status:/var/lib/uo/modernuo/status
+      # World data, one mount for the whole folder (cc-P37): Saves, Backups, Archives, temp, and
+      # status/ (the public status.json, written by ShardStatusPublisher and served by sl-uo-status).
+      # Mount the PARENT, never Saves on its own. The upgraded engine (upstream d4531cd9, #2612)
+      # publishes a save by renaming the Saves folder, and a bind-mount target cannot be renamed:
+      # with Saves mounted alone the first save fails and leaves the host's Saves EMPTY (cc-P30 run 2b).
+      - ${SERVER_PATH}/lib/uo/modernuo:/var/lib/uo/modernuo
       # UO client data (maps, art, tiledata, etc.)
       - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
     environment:

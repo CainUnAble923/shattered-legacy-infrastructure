@@ -23,14 +23,19 @@
 # same seccomp option for the same reason. See notes/s4-test-route.md for the evidence.
 #
 # Usage, from anywhere:
-#     docker/uo/build.sh [-t IMAGE_TAG] [--tests-only]
+#     docker/uo/build.sh [-t IMAGE_TAG] [--builder-tag BUILDER_TAG] [--tests-only]
+#
+# The builder image is tagged after -t: `-t sl-modernuo:cc-p37` builds `sl-uo-builder:cc-p37`, and the
+# default `sl-modernuo:latest` builds `sl-uo-builder:latest`. Two builds with different -t tags no
+# longer overwrite one shared builder image between steps 1 and 2 (P30 and P32 both hit that).
+# --builder-tag names it outright.
 #
 # PowerShell 5.1 has no shell for this; run it from Git Bash, or run the three commands
 # it prints by hand. notes/s4-test-route.md lists them.
 set -euo pipefail
 
 IMAGE_TAG=sl-modernuo:latest
-BUILDER_TAG=sl-uo-builder:latest
+BUILDER_TAG=
 TESTS_ONLY=0
 
 # Every test the route carries declares this namespace; apply-patches.sh fails the build
@@ -41,11 +46,23 @@ TEST_PROJECT=Projects/UOContent.Tests/UOContent.Tests.csproj
 while [ $# -gt 0 ]; do
     case "$1" in
         -t|--tag)     IMAGE_TAG="$2"; shift 2 ;;
+        --builder-tag) BUILDER_TAG="$2"; shift 2 ;;
         --tests-only) TESTS_ONLY=1; shift ;;
-        -h|--help)    sed -n '2,30p' "$0"; exit 0 ;;
+        -h|--help)    sed -n '2,36p' "$0"; exit 0 ;;
         *)            echo "build.sh: unknown argument '$1'" >&2; exit 2 ;;
     esac
 done
+
+# The builder's tag follows the image's: the part after the last ':' of the last path component,
+# or "latest" when the image names no tag (a registry port such as host:5000/img is not a tag).
+if [ -z "$BUILDER_TAG" ]; then
+    image_name=${IMAGE_TAG##*/}
+    case "$image_name" in
+        *:*) BUILDER_TAG="sl-uo-builder:${image_name##*:}" ;;
+        *)   BUILDER_TAG="sl-uo-builder:latest" ;;
+    esac
+fi
+echo "image: $IMAGE_TAG   builder: $BUILDER_TAG"
 
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$REPO_ROOT"

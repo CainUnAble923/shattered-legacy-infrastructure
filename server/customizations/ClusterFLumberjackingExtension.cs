@@ -191,12 +191,6 @@ public static class ClusterFLumberjackingExtension
         // comment block in CraftItem.cs.
     }
 
-    /// <summary>
-    /// Appends extended lumber HarvestResources and HarvestVeins to Lumberjacking.System.Definitions[0].
-    ///
-    /// All extended woods require GM Lumberjacking (100.0 skill).
-    /// Vein weights: 8 (Ironwood) down to 1 (Starwood), total 36 added to base 1000 = 1036.
-    /// </summary>
     private static void ExtendLumberjackingVeins()
     {
         var lj = Lumberjacking.System;
@@ -213,6 +207,21 @@ public static class ClusterFLumberjackingExtension
             return;
         }
 
+        var added = ApplyExtendedVeins(def);
+
+        Console.WriteLine($"[ClusterFLumberjackingExtension] Extended lumber veins registered: {added} new wood types (Ironwood through Starwood). Groves are permanent (RandomizeVeins=false).");
+    }
+
+    /// <summary>
+    /// Appends extended lumber HarvestResources and HarvestVeins to a lumber definition, and makes its
+    /// veins permanent. Returns the number of veins added. Public so the tests can apply it to a fresh
+    /// definition (server/tests/Engines/Harvest/PermanentGrovesVerification.cs).
+    ///
+    /// All extended woods require GM Lumberjacking (100.0 skill).
+    /// Vein weights: 8 (Ironwood) down to 1 (Starwood), total 36 added to base 1000 = 1036.
+    /// </summary>
+    public static int ApplyExtendedVeins(HarvestDefinition def)
+    {
         // Reuse frostwood message cliloc (1072546) — "You chop some frostwood logs."
         // Generic enough for any rare timber; exact text doesn't matter since the gate
         // intercepts extended logs before the player sees them until reported.
@@ -255,7 +264,18 @@ public static class ClusterFLumberjackingExtension
         Array.Copy(extVeins, 0, combinedVeins, existingVeins.Length, extVeins.Length);
         def.Veins = combinedVeins;
 
-        Console.WriteLine($"[ClusterFLumberjackingExtension] Extended lumber veins registered: {extVeins.Length} new wood types (Ironwood through Starwood).");
+        // Permanent groves (cc-P37, Chase 2026-10-02): the same decision mining made at
+        // ClusterFMiningExtension.cs:131. Pinned sets RandomizeVeins = Core.ML (Lumberjacking.cs:118), and
+        // a randomized bank picks its wood when first touched and again on every respawn
+        // (HarvestDefinition.cs:136-139, HarvestBank.cs:60-63), and banks live only in memory, so a spot
+        // could change wood after a respawn or a restart. With it off, a bank's wood is a stable
+        // function of x, y and map (HarvestDefinition.cs:141-143), drawn over VeinWeights, which the
+        // Veins setter above has just recomputed for the combined list (HarvestDefinition.cs:66-77).
+        // The logging book's groves (P13) rely on a recorded spot keeping its wood. Set after the
+        // veins are combined. OSI re-rolls per tree bank since ML: a deviation, in the register.
+        def.RandomizeVeins = false;
+
+        return extVeins.Length;
     }
 
     /// <summary>

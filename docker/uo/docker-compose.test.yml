@@ -37,7 +37,11 @@ services:
     volumes:
       - ${SERVER_PATH}/customizations:/modernuo-projects:ro
       - ${SERVER_PATH}/uo/modernuo/Configuration-test:/modernuo/Configuration
-      - ${SERVER_PATH}/lib/uo/modernuo/Saves-test:/var/lib/uo/modernuo/Saves
+      # The test world's own folder (cc-P37): Saves, plus the Backups and Archives the shard writes
+      # beside it, which used to vanish with the container. Mount the PARENT, never Saves alone:
+      # the upgraded engine publishes a save by renaming Saves, which a bind mount cannot be
+      # (cc-P30 run 2b). It was server/lib/uo/modernuo/Saves-test until P37.
+      - ${SERVER_PATH}/lib/uo/modernuo-test:/var/lib/uo/modernuo
       - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
     environment:
       TZ: ${TZ:-America/Chicago}

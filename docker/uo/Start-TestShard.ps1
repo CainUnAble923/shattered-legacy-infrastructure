@@ -8,8 +8,8 @@
       .\docker\uo\Start-TestShard.ps1 -SkipBuild start the image already built, no gates
 
   Everything happens on the THROWAWAY test shard: sl-modernuo-test, port 2594 (LAN),
-  its own Saves-test and Configuration-test. The live container, the live world save
-  and DNS are never touched.
+  its own world folder (server\lib\uo\modernuo-test, holding Saves) and Configuration-test.
+  The live container, the live world save and DNS are never touched.
 
   build.sh still does the building. It is the only thing that runs the patch check
   and the tests as gates, and reimplementing it here is exactly how a gate gets lost,
@@ -47,9 +47,19 @@ if (-not $bash) {
 }
 
 # --- seed the test-only directories ------------------------------------------
-$testSaves = "$repo\server\lib\uo\modernuo\Saves-test"
+# The test world's folder is mounted whole as /var/lib/uo/modernuo (docker-compose.test.yml, cc-P37):
+# Saves, and the Backups and Archives the shard writes beside it.
+$testRoot  = "$repo\server\lib\uo\modernuo-test"
+$testSaves = "$testRoot\Saves"
 $testConf  = "$repo\server\uo\modernuo\Configuration-test"
 $liveConf  = "$repo\server\uo\modernuo\Configuration"
+
+# Before P37 the test save was server\lib\uo\modernuo\Saves-test. Starting without it would seed a
+# NEW world and leave the old one orphaned, so stop and say how to move it instead.
+$legacyTestSaves = "$repo\server\lib\uo\modernuo\Saves-test"
+if (Test-Path $legacyTestSaves) {
+    throw "The test save is still at $legacyTestSaves, the pre-P37 place. Stop the test shard, move that folder to $testSaves, then run this again. Not starting."
+}
 
 if ($Fresh -and (Test-Path $testSaves)) {
     Write-Host "wiping the test save (the live save is never touched)" -ForegroundColor Yellow
