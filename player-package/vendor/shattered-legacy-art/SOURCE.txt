@@ -21,9 +21,10 @@ Resource:    "Animated Runestone", https://www.servuo.dev/archive/animated-runes
 Downloaded:  2026-09-30, by Chase (logged in to servuo.dev). Original download kept at
              D:\UO\third-party\animated-runestone\ ("MMH7 runestone.zip": four GIFs and four zips of PNGs).
 License:     NO LICENSE STATED, in the download or on the page. Posted for the ServUO community to use.
-             The download's folder and file names ("MMH7 runestone", "MM7H runestone 2") suggest the
-             art is taken or rendered from Might & Magic Heroes VII. The page does not say so. Treat it
-             as the same open question F-22 records for Vrark's animated Christmas trees.
+             The download's folder and file names ("MMH7 runestone", "MM7H runestone 2") are a
+             misnaming, not a sign of where the art came from. Cleared for use, and to ship to
+             players, by Chase on 2026-10-02 ("the art is fine just missnamed"; shard-migration
+             notes\p26-decisions-2026-10-02.md, item 1).
 
 The four "designs" are Vrark's four directions of the one stone:
   design 1  15376-15386  Test1_0001_top.png .. Test1_0011_top.png  (MMH7 runestone 1.zip)

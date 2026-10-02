@@ -17,6 +17,7 @@
 //     A container is never taken while it holds anything.
 //
 // Every guild path that counts or takes resources from a player goes through here, so they cannot drift.
+// Imbuing essences joined them in cc-P27 (ArtificersImbueGump.EssenceCost; Chase, 2026-10-01).
 
 using System;
 using System.Collections.Generic;

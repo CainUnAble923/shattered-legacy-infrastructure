@@ -811,7 +811,7 @@ public sealed class ArtificersImbueGump : Gump
             var essHue = essCount > 0 ? 1154 : 0x22;
             AddLabel(18, 98, essHue,
                 $"Discovery: {discCount}/{def.DiscoveryThreshold} uses - " +
-                (essCount > 0 ? $"{essCount} essence(s) in pack." : "No essence in pack!"));
+                (essCount > 0 ? DescribeEssences(_pm, def.Name, withName: false) : "No essence in pack or bank!"));
         }
 
         AddImageTiled(10, 114, W - 20, 1, 9304);
@@ -915,7 +915,7 @@ public sealed class ArtificersImbueGump : Gump
         var essLine = mastered
             ? "<BASEFONT COLOR=#44FF44>Mastered - no essence required.</BASEFONT><BR>"
             : $"<BASEFONT COLOR={(essCount > 0 ? "#AACCFF" : "#FF4444")}>Requires: 1 Essence of {def.Name} " +
-              $"(you have: {essCount})  Discovery: {discCount}/{def.DiscoveryThreshold}</BASEFONT><BR>";
+              $"(you have {DescribeEssences(_pm, def.Name)})  Discovery: {discCount}/{def.DiscoveryThreshold}</BASEFONT><BR>";
 
         var chance     = ComputeSuccessChance(_pm.Skills[SkillName.Imbuing].Value, diff);
         var chanceColor = chance >= 75 ? "#44FF44" : chance >= 40 ? "#FFD700" : "#FF4444";
@@ -940,7 +940,7 @@ public sealed class ArtificersImbueGump : Gump
             AddLabel(44, 324, 0x44, "Apply Imbue");
         }
         else if (!hasEss)
-            AddLabel(18, 322, 0x22, $"You need an Essence of {def.Name} to imbue this property.");
+            AddLabel(18, 322, 0x22, $"You need an Essence of {def.Name} in your pack or bank.");
         else
             AddLabel(18, 322, 0x22, "Insufficient Essence Shards or Gold.");
     }
@@ -1372,15 +1372,14 @@ public sealed class ArtificersImbueGump : Gump
             return;
         }
 
-        // Discovery / essence check
+        // Discovery / essence check (pack first, then bank: GuildResources)
         var mastered  = data.IsMastered(def.Name, def.DiscoveryThreshold);
-        PropertyEssence? essence = null;
-        if (!mastered)
+        var essence   = mastered ? null : EssenceCost(def.Name);
+        if (essence != null)
         {
-            essence = FindEssenceInPack(def.Name);
-            if (essence == null)
+            if (!GuildResources.Has(_pm, essence))
             {
-                _pm.SendMessage(0x22, $"You need an Essence of {def.Name} to imbue this property. Obtain one by extracting it from a magic item.");
+                _pm.SendMessage(0x22, $"You need an Essence of {def.Name} in your backpack or bank to imbue this property. Obtain one by extracting it from a magic item.");
                 _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
                 return;
             }
@@ -1414,14 +1413,20 @@ public sealed class ArtificersImbueGump : Gump
             return;
         }
 
-        // Success - consume resources
+        // Success - consume resources. The essence first, so that if it cannot be taken nothing else is.
+        if (essence != null && !GuildResources.TryConsume(_pm, essence))
+        {
+            _pm.SendMessage(0x22, $"You need an Essence of {def.Name} in your backpack or bank to imbue this property.");
+            _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
+            return;
+        }
+
         guild.SpendCurrency("artificers", shards);
         CompactGoldHelper.ConsumeGold(_pm, gold);
 
-        // Consume essence if not mastered
-        if (!mastered && essence != null)
+        // Essence taken (not mastered): count the use toward mastery
+        if (essence != null)
         {
-            essence.Delete();
             data.IncrementDiscovery(def.Name);
             var newCount = data.GetDiscoveryCount(def.Name);
             if (newCount >= def.DiscoveryThreshold)
@@ -1632,25 +1637,32 @@ public sealed class ArtificersImbueGump : Gump
     }
 
     // -- Essence helpers -------------------------------------------------------
+    //
+    // cc-P27 (Chase, 2026-10-01): essences come from the pack first, then the bank, through GuildResources (F-11),
+    // so the order and the exclusions are those of every other guild cost: pack loose, pack satchels (the
+    // Artificers' Essence Satchel among them), bank loose, bank satchels; never equipped, blessed or locked away.
+    // Before this the imbue path read only the top level of the backpack, so an essence kept in the Essence
+    // Satchel, or in any bag, could not be used to imbue.
 
-    private int CountEssencesFor(string propertyKey)
+    /// <summary>The one essence an unmastered imbue of this property takes.</summary>
+    public static GuildCost EssenceCost(string propertyKey) =>
+        GuildCost.Where(
+            item => item is PropertyEssence ess && ess.PropertyKey.Equals(propertyKey, StringComparison.OrdinalIgnoreCase),
+            1, $"Essence of {propertyKey}");
+
+    public static GuildStock CountEssences(PlayerMobile pm, string propertyKey) =>
+        GuildResources.Count(pm, EssenceCost(propertyKey));
+
+    /// <summary>"3 essences of Luck: 1 in pack, 2 in bank". Without the name: "3 essences: 1 in pack, 2 in bank".</summary>
+    public static string DescribeEssences(PlayerMobile pm, string propertyKey, bool withName = true)
     {
-        if (_pm.Backpack == null) return 0;
-        var count = 0;
-        foreach (var item in _pm.Backpack.Items)
-            if (item is PropertyEssence ess && ess.PropertyKey.Equals(propertyKey, StringComparison.OrdinalIgnoreCase))
-                count++;
-        return count;
+        var stock = CountEssences(pm, propertyKey);
+        var noun  = stock.Total == 1 ? "essence" : "essences";
+        var what  = withName ? $"{noun} of {propertyKey}" : noun;
+        return $"{stock.Total} {what}: {stock.Pack} in pack, {stock.Bank} in bank";
     }
 
-    private PropertyEssence? FindEssenceInPack(string propertyKey)
-    {
-        if (_pm.Backpack == null) return null;
-        foreach (var item in _pm.Backpack.Items)
-            if (item is PropertyEssence ess && ess.PropertyKey.Equals(propertyKey, StringComparison.OrdinalIgnoreCase))
-                return ess;
-        return null;
-    }
+    private int CountEssencesFor(string propertyKey) => CountEssences(_pm, propertyKey).Total;
 
     // -- Public static helpers (used by ArtificersGuildmasterGump) ------------
 
