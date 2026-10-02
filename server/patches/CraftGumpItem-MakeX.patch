@@ -1,6 +1,8 @@
---- a/Projects/UOContent/Engines/Craft/Core/CraftGumpItem.cs	2026-09-06 11:54:37.260199600 -0500
-+++ b/Projects/UOContent/Engines/Craft/Core/CraftGumpItem.cs	2026-09-06 11:54:37.888270400 -0500
-@@ -74,11 +74,17 @@
+diff --git a/Projects/UOContent/Engines/Craft/Core/CraftGumpItem.cs b/Projects/UOContent/Engines/Craft/Core/CraftGumpItem.cs
+index c8e9a5f..0845a2a 100644
+--- a/Projects/UOContent/Engines/Craft/Core/CraftGumpItem.cs
++++ b/Projects/UOContent/Engines/Craft/Core/CraftGumpItem.cs
+@@ -74,11 +74,17 @@ public class CraftGumpItem : DynamicGump
  
          if (needsRecipe)
          {
@@ -18,9 +20,9 @@
              builder.AddButton(270, 387, 4005, 4007, 1);
              builder.AddHtmlLocalized(305, 390, 150, 18, 1044151, LabelColor); // MAKE NOW
          }
-@@ -313,7 +319,11 @@
-             var craftGump = new CraftGump(from, _craftSystem, _tool, null);
-             from.SendGump(craftGump);
+@@ -312,7 +318,11 @@ public class CraftGumpItem : DynamicGump
+         {
+             CraftItem.ShowCraftMenu(from, _craftSystem, _tool, null);
          }
 -        else // Make Button
 +        else if (info.ButtonID == 2) // ClusterF: Make X
@@ -31,7 +33,7 @@
          {
              var num = _craftSystem.CanCraft(from, _tool, _craftItem.ItemType);
  
-@@ -329,6 +339,11 @@
+@@ -328,6 +338,11 @@ public class CraftGumpItem : DynamicGump
  
                  if (context != null)
                  {

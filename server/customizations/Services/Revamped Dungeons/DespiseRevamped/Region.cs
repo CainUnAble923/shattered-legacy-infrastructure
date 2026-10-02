@@ -22,6 +22,7 @@
 //   GetEnumeratedMobiles/Items are GetMobiles/GetItems; TimerStateCallback is a lambda.
 
 using System;
+using Server.Collections; // cc-P30: ValueLinkList<DamageEntry> enumerator (#2605)
 using System.Collections.Generic;
 using Server.Items;
 using Server.Mobiles;

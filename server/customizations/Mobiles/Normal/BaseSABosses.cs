@@ -14,6 +14,7 @@
 // dead (Q-008), so this mirrors pinned BaseCreature's signature.
 
 using System;
+using Server.Collections; // cc-P30: ValueLinkList<DamageEntry> enumerator (#2605)
 using System.Collections.Generic;
 using ModernUO.Serialization;
 using Server.Items;

@@ -12,6 +12,7 @@
 // ServUO and every renowned lands on ModernUO's Medium (Q-008).
 
 using System;
+using Server.Collections; // cc-P30: ValueLinkList<DamageEntry> enumerator (#2605)
 using System.Collections.Generic;
 using ModernUO.Serialization;
 using Server.Items;

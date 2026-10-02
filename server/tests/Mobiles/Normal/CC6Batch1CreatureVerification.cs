@@ -15,6 +15,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Server;
+using Server.Collections; // cc-P30: ValueLinkList enumerator (#2605)
 using Server.Items;
 using Server.Mobiles;
 using Xunit;
@@ -289,14 +290,17 @@ public class CC6Batch1CreatureVerification
         // the same advance, and the Hits setter clears DamageEntries once hits are full again (Mobile.cs:2022; the
         // Q-029 shape, see the Shame mana-taint fact). So walk the clock one wheel tick at a time and read the hit
         // on the tick it lands.
-        Assert.Empty(player.DamageEntries);
+        Assert.Equal(0, player.DamageEntries.Count); // cc-P30: ValueLinkList (#2605)
         var landed = false;
         var ticks = 0;
 
         for (; ticks < 300 && !landed; ticks++) // up to 2.4 s, two acid ticks
         {
             ShardTestClock.Advance(TimeSpan.FromMilliseconds(8));
-            landed = player.DamageEntries.Any(e => e.Damager == roots);
+            foreach (var e in player.DamageEntries)
+            {
+                landed |= e.Damager == roots;
+            }
         }
 
         _out.WriteLine($"acid landed after {ticks} wheel ticks: hits={player.Hits}/{player.HitsMax} frozen={player.Frozen}");

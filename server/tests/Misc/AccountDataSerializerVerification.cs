@@ -80,7 +80,7 @@ public class AccountDataSerializerVerification
 
     private static (byte[] Buffer, long Length) Write(Action<IGenericWriter> serialize)
     {
-        var writer = new BufferWriter(true, new ConcurrentQueue<Type>());
+        var writer = new BufferWriter(true);
         serialize(writer);
         return (writer.Buffer, writer.Position);
     }

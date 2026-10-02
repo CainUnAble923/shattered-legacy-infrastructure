@@ -1,7 +1,7 @@
 // CraftXVerification.cs
 //
 // cc-P18, F-1: Craft X, keep going on failure (ClusterFCraftRun.cs, ClusterFCraftRejects.cs, CraftCountGump.cs, the
-// hooks in our CraftItem.cs). Notes in shard-migration notes/cc-P18-reset-stone-young-craftx.md section 3.
+// hooks in server/patches/CraftItem-shard-hooks.patch). Notes in shard-migration notes/cc-P18-reset-stone-young-craftx.md section 3.
 //
 // Facts (the brief's numbering), every run through the real craft timer chain:
 //   1. Items mode makes exactly X successes through failed attempts, and uses materials exactly as the same attempts

@@ -79,6 +79,18 @@ public static class ClusterFMiningExtension
             return;
         }
 
+        var added = ApplyExtendedVeins(def);
+
+        Console.WriteLine($"[ClusterFMiningExtension] Extended mining veins registered: {added} new ore types (Platinum through Celestial). Veins are permanent (RandomizeVeins=false).");
+    }
+
+    /// <summary>
+    /// Appends the extended ores to an ore definition and makes its veins permanent. Returns the number of veins
+    /// added. Public so the tests can apply it to a fresh definition (server/tests/Engines/Harvest/
+    /// PermanentGrovesVerification.cs), as ClusterFLumberjackingExtension.ApplyExtendedVeins does (cc-P38).
+    /// </summary>
+    public static int ApplyExtendedVeins(HarvestDefinition def)
+    {
         // Extended ore HarvestResources
         // reqSkill/minSkill/maxSkill: all require GM Mining (100.0 req) with increasing curves.
         var extResources = new HarvestResource[]
@@ -130,7 +142,7 @@ public static class ClusterFMiningExtension
         // correct ore type at the recorded location.
         def.RandomizeVeins = false;
 
-        Console.WriteLine($"[ClusterFMiningExtension] Extended mining veins registered: {extVeins.Length} new ore types (Platinum through Celestial). Veins are permanent (RandomizeVeins=false).");
+        return extVeins.Length;
     }
 
     // ── Blacksmithy sub-resource extension ────────────────────────────────────

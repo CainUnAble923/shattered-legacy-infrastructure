@@ -339,7 +339,7 @@ public class CC6Batch5CreatureVerification
             var bc = new AcidElementalRenowned();
             bc.MoveToWorld(new Point3D(1002, 1000, 0), Map.TerMur);
             bc.Damage(60, heavy);
-            Assert.NotEmpty(bc.DamageEntries);
+            Assert.True(bc.DamageEntries.Count > 0); // cc-P30: ValueLinkList (#2605)
             bc.Kill();
             var corpse = bc.Corpse;
             Assert.NotNull(corpse);

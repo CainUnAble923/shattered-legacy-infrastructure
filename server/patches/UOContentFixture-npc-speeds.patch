@@ -1,58 +1,24 @@
---- a/Projects/UOContent.Tests/Fixtures/UOContentFixture.cs
-+++ b/Projects/UOContent.Tests/Fixtures/UOContentFixture.cs
-@@ -26,6 +26,55 @@
-         // Load Skills
-         SkillsInfo.Configure();
+diff --git a/Projects/UOContent.Tests/Fixtures/TestServerInitializer.cs b/Projects/UOContent.Tests/Fixtures/TestServerInitializer.cs
+index bca909a..5c58cdb 100644
+--- a/Projects/UOContent.Tests/Fixtures/TestServerInitializer.cs
++++ b/Projects/UOContent.Tests/Fixtures/TestServerInitializer.cs
+@@ -111,6 +111,19 @@ internal static class TestServerInitializer
+             DecayScheduler.Configure();
+             // Without npc-speeds.json every BaseCreature constructor throws.
+             Server.Mobiles.NPCSpeeds.Configure();
++
++            // Shattered Legacy additions (S8 route, CC6 batches 1, 2 and 4); see shard-migration/notes/s8-test-route.md
++            // and notes/cc-P30-modernuo-upgrade-research.md. Pinned 7c9215d97 had no NPCSpeeds call, which this patch
++            // used to add; upstream now makes it on the line above, so only these four remain ours. Each is a Configure
++            // or Initialize the real server reaches through AssemblyHandler.Invoke and this curated subset does not:
++            //   SkillCheck.Initialize   - Mobile.CheckSkill's handlers; without them every skill roll fails.
++            //   NameList.Configure      - Data/names.json; without it RandomName returns "".
++            //   Corpse.Initialize       - Mobile.CreateCorpseHandler; without it Kill() hands OnDeath a null corpse.
++            //   BaseCreature.Configure  - taming.enableBonding; without it no pet can bond.
++            Server.Misc.SkillCheck.Initialize();
++            Server.NameList.Configure();
++            Server.Items.Corpse.Initialize();
++            Server.Mobiles.BaseCreature.Configure();
+             Server.Engines.Spawners.SpawnerJsonSerializer.Configure();
  
-+        // Load the NPC speed table. Shattered Legacy addition; see
-+        // shard-migration/notes/s8-test-route.md.
-+        //
-+        // Every public BaseCreature constructor calls NPCSpeeds.GetSpeeds, which falls back to
-+        // _speedsByLevel[SpeedLevel.Medium] and throws KeyNotFoundException while the table is
-+        // empty. The real server fills it from Data/npc-speeds.json through
-+        // AssemblyHandler.Invoke("Configure") (Projects/Server/Main.cs:441); this fixture calls a
-+        // hand-picked subset of Configure methods and NPCSpeeds is not among them, so no test can
-+        // construct a creature. The file itself is already present: UOContent.Tests.csproj copies
-+        // Distribution/Data into the output directory, and Core.BaseDirectory in the test host is
-+        // that directory.
-+        Server.Mobiles.NPCSpeeds.Configure();
-+
-+        // Wire the skill-check handlers. Shattered Legacy addition (CC6 batch 1); see
-+        // shard-migration/notes/cc6-creatures-batch1.md.
-+        //
-+        // Mobile.CheckSkill returns SkillCheckLocationHandler?.Invoke(...) == true, and the real
-+        // server assigns the four handlers in SkillCheck.Initialize through
-+        // AssemblyHandler.Invoke("Initialize") (Main.cs:448). The fixture never does, so every skill
-+        // roll in the test host fails: Stealth.OnUse reveals the user, and any creature or item
-+        // behaviour that rolls a skill silently takes its failure branch. The same shape as the
-+        // speed table above, for a handler instead of a data file.
-+        Server.Misc.SkillCheck.Initialize();
-+
-+        // Load the name lists. Shattered Legacy addition (CC6 batch 2); see
-+        // shard-migration/notes/cc6-creatures-batch2.md.
-+        //
-+        // NameList.RandomName returns "" while its table is empty. The real server fills it from
-+        // Data/names.json in NameList.Configure through AssemblyHandler.Invoke("Configure"); this
-+        // fixture does not, so any ported NPC that draws its name at construction (ForgottenServant
-+        // here, the Ter Mur townspeople to come) is nameless in the test host. Same shape as the
-+        // speed table above, for a data file the csproj already copies.
-+        Server.NameList.Configure();
-+
-+        // Wire the corpse handler. Shattered Legacy addition (CC6 batch 4); see
-+        // shard-migration/notes/cc6-creatures-batch4.md.
-+        //
-+        // Mobile.Kill() builds the corpse through Mobile.CreateCorpseHandler, which the real server
-+        // assigns in Corpse.Initialize through AssemblyHandler.Invoke("Initialize"). The fixture never
-+        // does, so Kill() in the test host hands OnDeath(Container) a null and every ported OnDeath
-+        // drop (c.DropItem, ServUO's shape, no null guard) throws. With it a test can kill a creature
-+        // and read its corpse. Same shape as the skill-check handlers above.
-+        Server.Items.Corpse.Initialize();
-+
-+        // And the taming setting: BaseCreature.Configure reads taming.enableBonding (default Core.LBR, true).
-+        // Without it BondingEnabled stays false and IsBondable is false for every creature in the test host,
-+        // so no feed can ever bond a pet. Same batch, same shape.
-+        Server.Mobiles.BaseCreature.Configure();
-+
-         // Configure networking (initializes RingSocketManager for tests)
-         Server.Network.NetState.Configure();
- 
+             if (TileDataLoaded)

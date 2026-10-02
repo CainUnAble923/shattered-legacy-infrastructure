@@ -53,7 +53,7 @@ down (`docker/uo` holds both `sl-modernuo` and `sl-ddns`).
 ## Shard Details
 
 - **Name:** Shattered Legacy
-- **Engine:** ModernUO, pinned upstream commit `7c9215d97` (.NET 10)
+- **Engine:** ModernUO, pinned upstream commit `d4531cd94` (.NET 10; `7c9215d97` until cc-P38, 2026-10-02)
 - **Client:** TazUO, shipped in the player package
 - **Port:** 2593
 

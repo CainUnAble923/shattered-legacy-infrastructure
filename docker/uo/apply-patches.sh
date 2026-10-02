@@ -192,8 +192,6 @@ echo "[patches] Installing additive customizations..."
 # the same name by coincidence of directory, rather than by being routed.
 find "$CUSTOMIZATIONS" -maxdepth 1 -type f -name '*.cs' \
     ! -name 'CharacterCreation.cs' \
-    ! -name 'CraftContext.cs' \
-    ! -name 'CraftItem.cs' \
     ! -name 'HammerOfHephaestus.cs' \
     ! -name 'Meditation.cs' \
     ! -name 'RegenRates.cs' \
@@ -234,10 +232,6 @@ mirror_cs_tree "shard tests" "$TESTS" "Projects/UOContent.Tests/Tests" 1 "Shatte
 echo "[patches] Applying full-file replacements..."
 replace_file "$CUSTOMIZATIONS/CharacterCreation.cs" \
     "Projects/UOContent/Engines/Character Creation/CharacterCreation.cs"
-replace_file "$CUSTOMIZATIONS/CraftItem.cs" \
-    "Projects/UOContent/Engines/Craft/Core/CraftItem.cs"
-replace_file "$CUSTOMIZATIONS/CraftContext.cs" \
-    "Projects/UOContent/Engines/Craft/Core/CraftContext.cs"
 replace_file "$CUSTOMIZATIONS/HammerOfHephaestus.cs" \
     "Projects/UOContent/Items/New Haven Quest Rewards/HammerOfHephaestus.cs"
 replace_file "$CUSTOMIZATIONS/Meditation.cs" \
@@ -252,6 +246,14 @@ replace_file "$CUSTOMIZATIONS/ResourceInfo.cs" "Projects/UOContent/Misc/Resource
 echo "[patches] Full-file replacements done."
 
 echo "[patches] Applying .patch files..."
+# cc-P38. CraftItem.cs and CraftContext.cs were full-file replacements until the bump to d4531cd9. A replacement hides
+# upstream drift completely: that bump changed both upstream files (+636/-65, T2A craft menus #2476 and the
+# PlayerConstructed stamp #2574), and keeping our old copies would have silently reverted both. They are patches now,
+# so the next upstream change to either file stops the build here. The hooks are the Shattered Legacy ones (Craft X,
+# extended lumber and ingots, familiarity, the Hammer of Hephaestus, BOD autofill); hook placement against upstream's
+# overloads was checked with shard-migration/notes/cc-P30-tools/hook_audit.py. Notes: notes/cc-P38-engine-upgrade.md.
+apply_patch "$PATCHES/CraftItem-shard-hooks.patch"
+apply_patch "$PATCHES/CraftContext-shard-hooks.patch"
 apply_patch "$PATCHES/PlayerMobile-individual-stat-cap.patch"
 apply_patch "$PATCHES/Healer-resurrection-policy.patch"
 apply_patch "$PATCHES/HealerGuildmaster-resurrection.patch"
@@ -284,10 +286,11 @@ apply_patch "$PATCHES/AOS-damage-eater-hook.patch"
 apply_patch "$PATCHES/AOS-stat-bonus-names.patch"
 
 # S8 test route. The ONLY patch in this repo that touches an upstream TEST project, and the only
-# one with no effect on the shipped server: it adds the NPCSpeeds.Configure call that
-# UOContentFixture omits, so a test can construct a BaseCreature at all. Argued in
-# shard-migration/notes/s8-test-route.md section 2. If it ever stops applying, every creature
-# test fails with KeyNotFoundException in the constructor - loud, and the intended failure.
+# one with no effect on the shipped server. Argued in shard-migration/notes/s8-test-route.md section 2.
+# Since cc-P38 (upstream d4531cd9) it targets TestServerInitializer.cs, where upstream #2473 moved the test
+# bootstrap, and upstream now calls NPCSpeeds.Configure itself; the patch adds the four shard calls after it
+# (SkillCheck, NameList, Corpse, BaseCreature). The file keeps its old name. If it ever stops applying, the
+# build stops here, which is the intended failure.
 apply_patch "$PATCHES/UOContentFixture-npc-speeds.patch"
 
 # CC4 Despise. ServUO's BaseCreature.CanAutoStable, three additive lines across two UOContent files: a
@@ -375,6 +378,14 @@ apply_patch "$PATCHES/BaseRunicTool-no-random-self-repair.patch"
 # in shard-migration/notes/cc-P33-clean-up-britannia.md; pinned by CleanUpBritanniaBarrelVerification (proved red).
 apply_patch "$PATCHES/TrashBarrel-clean-up-britannia.patch"
 apply_patch "$PATCHES/TrashChest-clean-up-britannia.patch"
+
+# cc-P38 (D49, Chase 2026-10-02), an engine defect, pinned 7c9215d97 and upstream d4531cd9 alike. HarvestDefinition.
+# GetVeinFrom tested `randomValue <= VeinChance` over values 0..VeinWeights-1, so the first vein got one value too many
+# and the last one too few: our last veins, Starwood and Celestial (weight 1 each), could never occur. One character,
+# `<`. Stock shares move by one value per thousand (the first vein loses one, the last gains one). Measured in
+# shard-migration/notes/cc-P37-upgrade-prep.md section 5 and cc-P38-engine-upgrade.md; pinned by
+# PermanentGrovesVerification facts 3 and 4 (proved red). ModernUO's to report upstream (not exploit-class).
+apply_patch "$PATCHES/HarvestDefinition-vein-boundary.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.

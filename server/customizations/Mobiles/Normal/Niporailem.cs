@@ -172,7 +172,7 @@ public partial class Niporailem : BaseSABoss
         var spawned = new SpectralArmour();
 
         spawned.Team = Team;
-        spawned.SummonMaster = this;
+        spawned.Master = this; // cc-P30: an unsummoned helper reads SummonMaster back as null since #2670; Master is the field
 
         var validLocation = false;
         var loc = Location;
@@ -195,7 +195,7 @@ public partial class Niporailem : BaseSABoss
 
         spawned.MoveToWorld(loc, map);
         spawned.Combatant = m;
-        spawned.SummonMaster = this;
+        spawned.Master = this; // cc-P30: an unsummoned helper reads SummonMaster back as null since #2670; Master is the field
 
         _nextSpawn = Core.Now + TimeSpan.FromSeconds(Utility.RandomMinMax(30, 60));
 

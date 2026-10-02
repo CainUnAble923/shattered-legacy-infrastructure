@@ -35,8 +35,8 @@ IP selection note: `10.7.4.110` was tested first but is already used by another 
 | --- | --- |
 | .NET SDK | `10.0.203` |
 | .NET runtime | `10.0.7` |
-| ModernUO version | `0.15.6.52` |
-| ModernUO commit | `7c9215d97` |
+| ModernUO version | `0.15.6.52` at `7c9215d97` (live) |
+| ModernUO commit | build pin `d4531cd94` since cc-P38 (`docker/uo/Dockerfile:3`); the live shard still runs `7c9215d97` until the wipe |
 | Published build path | `/opt/uo/modernuo/Distribution` |
 | Enderman build artifact | `/tank/clusterf-artifacts/uo/modernuo/builds/modernuo-distribution-20260506T080202Z.tar.zst` |
 | Enderman client data | `/tank/clusterf-artifacts/uo/modernuo/client-data/Classic Client` |

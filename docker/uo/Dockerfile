@@ -1,6 +1,6 @@
 # The pinned ModernUO commit. Declared before the first FROM so both stages can read it: the
 # builder checks it out, and the runtime stage records it for entrypoint.sh's banner (cc-P37).
-ARG MODERNUO_COMMIT=7c9215d97
+ARG MODERNUO_COMMIT=d4531cd94b739613155225c234900de9f47d2c88
 
 FROM debian:12-slim AS builder
 

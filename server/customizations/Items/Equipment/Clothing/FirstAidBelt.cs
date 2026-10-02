@@ -21,13 +21,12 @@ namespace Server.Items
 
         [SerializedIgnoreDupe]
         [SerializableField(0, setter: "private")]
+        [SaveFlag(nameof(ShouldSerializeAttributes), nameof(AttributesDefaultValue))]
         [SerializedCommandProperty(AccessLevel.GameMaster, canModify: true)]
         private AosAttributes _attributes;
 
-        [SerializableFieldSaveFlag(0)]
         private bool ShouldSerializeAttributes() => !_attributes.IsEmpty;
 
-        [SerializableFieldDefault(0)]
         private AosAttributes AttributesDefaultValue() => new(this);
 
         [InvalidateProperties]

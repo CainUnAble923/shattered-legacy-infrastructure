@@ -142,7 +142,7 @@ public class CustodianLayerVerification
         try
         {
             var buffer = new byte[16384];
-            var writer = new BufferWriter(buffer, true, new ConcurrentQueue<Type>());
+            var writer = new BufferWriter(buffer, true);
             bag.Serialize(writer);
             writer.Flush();
             var length = (int)writer.Position;

@@ -69,7 +69,7 @@ public class SpawnerImportVerification
 
         var json = entries.Select(e => new Dictionary<string, object>
         {
-            ["type"] = "Spawner",
+            ["$type"] = "Spawner", // cc-P30: upstream #2505 discriminator (was "type" at 7c9215d97)
             ["guid"] = e.Guid.ToString(),
             ["name"] = "cc-P32 test",
             ["location"] = new[] { e.X, e.Y, e.Z },

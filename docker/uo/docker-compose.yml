@@ -5,7 +5,7 @@ services:
       dockerfile: docker/uo/Dockerfile
       args:
         DOTNET_VERSION: "10.0.203"
-        MODERNUO_COMMIT: "7c9215d97"
+        MODERNUO_COMMIT: "d4531cd94b739613155225c234900de9f47d2c88"
     container_name: sl-modernuo
     restart: unless-stopped
     ports:

@@ -11,13 +11,15 @@
 //      covers the combined list (1000 stock + 36 extended), as the Veins setter computes (HarvestDefinition.cs:66-77).
 //   2. The same x, y and map give the same wood across two fresh definitions, and again after the bank cache is
 //      cleared, over a grid on six facets; and the grid meets the extended woods, so the fact is not vacuous.
-//   3. Every wood occurs over the real bank cells of six facets in about its share, EXCEPT STARWOOD, WHICH NEVER
-//      OCCURS. Measured in cc-P37, a defect of pinned's GetVeinFrom, not of this change: it tests
-//      `randomValue <= VeinChance` (HarvestDefinition.cs:155), so over values 0..VeinWeights-1 the first vein gets
-//      VeinChance + 1 values and the last VeinChance - 1. Starwood is last with weight 1, so it gets none, and it got
-//      none before this change too (a randomized bank also draws through GetVeinFrom). Upstream d4531cd9 has the same
-//      line. The fact pins the engine's exact shares, so a fix (an engine patch, or a reorder of our veins) turns it
-//      red on purpose and the Starwood expectation is then changed to its weight. See notes/cc-P37-upgrade-prep.md.
+//   3. Every wood occurs over the real bank cells of six facets at about its weight, Starwood included, and each
+//      vein's exact share of GetVeinFrom's values IS its weight. cc-P37 measured Starwood at 0 of 1,036: pinned's
+//      GetVeinFrom tested `randomValue <= VeinChance` (HarvestDefinition.cs:155, the same line at upstream d4531cd9),
+//      so the first vein got VeinChance + 1 values and the last VeinChance - 1, and Starwood, last with weight 1, got
+//      none. cc-P38 (D49, Chase 2026-10-02) patches it to `<` (server/patches/HarvestDefinition-vein-boundary.patch).
+//   4. The same for mining: every ore, Celestial included (last, weight 1, ClusterFMiningExtension), occurs over the
+//      real 8x8 bank cells of six facets at about its weight. cc-P37 deduced Celestial had the same defect; this
+//      measures it.
+
 
 using System;
 using System.Collections.Generic;
@@ -145,60 +147,86 @@ public class PermanentGrovesVerification
     // ---- 3 ----------------------------------------------------------------------------------------
 
     [Fact]
-    public void EveryWoodButStarwoodOccursAtAboutItsShare()
+    public void EveryWoodOccursAtItsWeightStarwoodIncluded()
     {
         var def = FreshDefinition();
+        var counts = CountBanks(def, 4, 3); // a lumber bank is 4x3 tiles (pinned Lumberjacking.cs:43-44)
+
+        Assert.Equal(typeof(StarwoodLog), Wood(def.Veins[^1]));
+        AssertEveryVeinAtItsWeight(def, counts);
+        Assert.All(ExtendedLogs, t => Assert.True(counts[t] > 0, t.Name));
+    }
+
+    // ---- 4 ----------------------------------------------------------------------------------------
+
+    [Fact]
+    public void EveryOreOccursAtItsWeightCelestialIncluded()
+    {
+        var stock = ((Mining)Activator.CreateInstance(typeof(Mining), true)!).OreAndStone;
+        Assert.Equal(1000u, stock.VeinWeights);
+        Assert.Equal(8, ClusterFMiningExtension.ApplyExtendedVeins(stock));
+        Assert.False(stock.RandomizeVeins);
+        Assert.Equal(1036u, stock.VeinWeights);
+
+        var counts = CountBanks(stock, stock.BankWidth, stock.BankHeight);
+
+        Assert.Equal(typeof(CelestialOre), Wood(stock.Veins[^1]));
+        AssertEveryVeinAtItsWeight(stock, counts);
+        Assert.True(counts[typeof(CelestialOre)] > 0, "CelestialOre never occurs");
+    }
+
+    private static Dictionary<Type, int> CountBanks(HarvestDefinition def, int bankWidth, int bankHeight)
+    {
         var counts = def.Veins.ToDictionary(Wood, _ => 0);
-        var banks = 0;
 
         foreach (var (map, width, height) in Facets)
         {
-            for (var bx = 0; bx < width / 4; bx++)
+            for (var bx = 0; bx < width / bankWidth; bx++)
             {
-                for (var by = 0; by < height / 3; by++)
+                for (var by = 0; by < height / bankHeight; by++)
                 {
                     counts[Wood(def.GetVeinAt(map, bx, by))]++;
-                    banks++;
                 }
             }
         }
 
-        // The exact share each vein receives from GetVeinFrom over every value StableRandom can return.
+        return counts;
+    }
+
+    private void AssertEveryVeinAtItsWeight(HarvestDefinition def, Dictionary<Type, int> counts)
+    {
+        var banks = counts.Values.Sum();
+
+        // The exact share each vein receives from GetVeinFrom over every value StableRandom can return
+        // (StableRandom.First returns 0..VeinWeights-1). With `<` it is the vein's weight, and nothing falls through.
         var exact = def.Veins.ToDictionary(Wood, _ => 0);
         for (var v = 0u; v < def.VeinWeights; v++)
         {
-            exact[Wood(def.GetVeinFrom(v))]++;
+            var vein = def.GetVeinFrom(v);
+            Assert.True(vein != null, $"GetVeinFrom({v}) returned no vein");
+            exact[Wood(vein)]++;
         }
 
         var bad = new List<string>();
-        for (var i = 0; i < def.Veins.Length; i++)
+        foreach (var vein in def.Veins)
         {
-            var vein = def.Veins[i];
-            var wood = Wood(vein);
+            var type = Wood(vein);
+            var expected = (double)banks * vein.VeinChance / def.VeinWeights;
+            var got = counts[type];
+            _out.WriteLine($"{type.Name,-14} weight {vein.VeinChance,4}  exact share {exact[type],4}/{def.VeinWeights}  banks {got,7}  expected {expected,9:F0}  ratio {(expected > 0 ? got / expected : 0):F2}");
 
-            // Pinned GetVeinFrom's `<=`: one extra value for the first vein, one fewer for the last.
-            var share = vein.VeinChance + (i == 0 ? 1 : 0) - (i == def.Veins.Length - 1 ? 1 : 0);
-            var expected = (double)banks * share / def.VeinWeights;
-            var got = counts[wood];
-            _out.WriteLine($"{wood.Name,-14} weight {vein.VeinChance,4}  exact share {exact[wood],4}/{def.VeinWeights}  banks {got,7}  expected {expected,9:F0}  ratio {(expected > 0 ? got / expected : 0):F2}");
-
-            if (exact[wood] != share)
+            if (exact[type] != vein.VeinChance)
             {
-                bad.Add($"{wood.Name}: exact share {exact[wood]}, the engine's rule gives {share}");
+                bad.Add($"{type.Name}: exact share {exact[type]}, weight {vein.VeinChance}");
             }
 
             if (got < expected * 0.5 || got > expected * 1.5)
             {
-                bad.Add($"{wood.Name}: {got} banks, expected about {expected:F0}");
+                bad.Add($"{type.Name}: {got} banks, expected about {expected:F0}");
             }
         }
 
         _out.WriteLine($"{banks} banks over six facets");
         Assert.True(bad.Count == 0, string.Join("; ", bad));
-
-        // The defect, stated: Starwood never occurs. Every other extended wood does.
-        Assert.Equal(typeof(StarwoodLog), Wood(def.Veins[^1]));
-        Assert.Equal(0, counts[typeof(StarwoodLog)]);
-        Assert.All(ExtendedLogs.Where(t => t != typeof(StarwoodLog)), t => Assert.True(counts[t] > 0, t.Name));
     }
 }

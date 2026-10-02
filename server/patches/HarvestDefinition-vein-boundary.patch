@@ -1,0 +1,11 @@
+--- a/Projects/UOContent/Engines/Harvest/Core/HarvestDefinition.cs
++++ b/Projects/UOContent/Engines/Harvest/Core/HarvestDefinition.cs
+@@ -152,7 +152,7 @@
+ 
+             for (var i = 0; i < Veins.Length; ++i)
+             {
+-                if (randomValue <= Veins[i].VeinChance)
++                if (randomValue < Veins[i].VeinChance)
+                 {
+                     return Veins[i];
+                 }

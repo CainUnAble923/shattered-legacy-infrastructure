@@ -56,7 +56,7 @@ public class CC6Batch8Verification
     private static T RoundTrip<T>(T original) where T : Mobile
     {
         var buffer = new byte[65536];
-        var writer = new BufferWriter(buffer, true, new ConcurrentQueue<Type>());
+        var writer = new BufferWriter(buffer, true);
         original.Serialize(writer);
         writer.Flush();
 
@@ -550,7 +550,7 @@ public class CC6Batch8Verification
             var d = new StygianDragon();
             d.MoveToWorld(new Point3D(1002, 1000, 0), Map.TerMur);
             d.Damage(60, pm);
-            Assert.NotEmpty(d.DamageEntries);
+            Assert.True(d.DamageEntries.Count > 0); // cc-P30: ValueLinkList (#2605)
             d.Kill();
 
             var corpse = Assert.IsAssignableFrom<Corpse>(d.Corpse);
@@ -612,7 +612,7 @@ public class CC6Batch8Verification
         var field = new StygianDragon.FireField(dragon, 30, true);
         field.MoveToWorld(Here, Map.TerMur);
         var buffer = new byte[4096];
-        var writer = new BufferWriter(buffer, true, new ConcurrentQueue<Type>());
+        var writer = new BufferWriter(buffer, true);
         field.Serialize(writer);
         writer.Flush();
         var loaded = new StygianDragon.FireField(field.Serial);
@@ -961,7 +961,7 @@ public class CC6Batch8Verification
 
         // A copy that reached a save deletes itself on load (ServUO's Deserialize does the same).
         var buffer = new byte[65536];
-        var writer = new BufferWriter(buffer, true, new ConcurrentQueue<Type>());
+        var writer = new BufferWriter(buffer, true);
         clone.Serialize(writer);
         writer.Flush();
         var loaded = new MedusaClone(clone.Serial);

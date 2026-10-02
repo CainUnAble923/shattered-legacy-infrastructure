@@ -45,6 +45,10 @@ fi
 # D19: Accounts.bin names each account's type by a hash that only SerializedTypes.db can
 # resolve. Without it every account is skipped silently, Accounts.Count is 0, and the
 # prompt above blocks anyway. Seed the type table with the accounts.
+# cc-P38: from upstream d4531cd9 the engine writes idx v5 saves, which carry their types
+# inside the .idx and have no SerializedTypes.db. While live stays on pinned 7c9215d97 its
+# save is idx v3 and still has the file, and this copy is what lets the new engine read
+# those accounts. Once live saves on the new engine the file is gone and this is a no-op.
 if [ ! -f "$TEST_SAVES/SerializedTypes.db" ] && [ -f "$SERVER/lib/uo/modernuo/Saves/SerializedTypes.db" ]; then
     cp "$SERVER/lib/uo/modernuo/Saves/SerializedTypes.db" "$TEST_SAVES/SerializedTypes.db"
 fi

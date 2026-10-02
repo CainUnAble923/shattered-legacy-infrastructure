@@ -301,7 +301,7 @@ public class CleanUpBritanniaPointsVerification
             cub.DeductPoints(a, 34.56);
             cub.AwardPoints(b, 0.1, message: false);
 
-            var writer = new BufferWriter(true, new ConcurrentQueue<Type>());
+            var writer = new BufferWriter(true);
             PointsSystemPersistence.WriteAll(writer);
             var bytes = writer.Buffer.AsSpan(0, (int)writer.Position).ToArray();
             _out.WriteLine($"{bytes.Length} bytes for two characters");
@@ -320,7 +320,7 @@ public class CleanUpBritanniaPointsVerification
             Assert.Equal(0.1, cub.GetLifetimePoints(b), 6);
 
             // An unknown system or version fails loudly.
-            var unknown = new BufferWriter(true, new ConcurrentQueue<Type>());
+            var unknown = new BufferWriter(true);
             IGenericWriter u = unknown;
             u.WriteEncodedInt(0);
             u.WriteEncodedInt(1);
@@ -328,7 +328,7 @@ public class CleanUpBritanniaPointsVerification
             Assert.Throws<InvalidDataException>(() =>
                 PointsSystemPersistence.ReadAll(new BufferReader(unknown.Buffer.AsSpan(0, (int)unknown.Position).ToArray())));
 
-            var newer = new BufferWriter(true, new ConcurrentQueue<Type>());
+            var newer = new BufferWriter(true);
             ((IGenericWriter)newer).WriteEncodedInt(1);
             Assert.Throws<InvalidDataException>(() =>
                 PointsSystemPersistence.ReadAll(new BufferReader(newer.Buffer.AsSpan(0, (int)newer.Position).ToArray())));

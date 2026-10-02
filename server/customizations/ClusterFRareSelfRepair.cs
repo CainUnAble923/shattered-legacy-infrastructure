@@ -39,7 +39,7 @@ public static class ClusterFRareSelfRepair
 {
     public const int OneIn = 500;
 
-    [OnEvent(nameof(BaseCreature.CreatureDeathEvent))]
+    [OnEvent(nameof(CreatureEvents.CreatureDeathEvent))]
     public static void OnCreatureDeath(BaseCreature bc)
     {
         if (!IsHighEndSource(bc) || bc.Corpse is not { Deleted: false } corpse)

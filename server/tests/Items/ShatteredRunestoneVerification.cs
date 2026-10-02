@@ -36,7 +36,7 @@ public class ShatteredRunestoneVerification
     private static T RoundTrip<T>(T original) where T : ISerializable
     {
         var buffer = new byte[65536];
-        var writer = new BufferWriter(buffer, true, new ConcurrentQueue<Type>());
+        var writer = new BufferWriter(buffer, true);
         original.Serialize(writer);
         writer.Flush();
 

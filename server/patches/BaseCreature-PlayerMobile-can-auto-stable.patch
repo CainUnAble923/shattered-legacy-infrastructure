@@ -1,7 +1,9 @@
+diff --git a/Projects/UOContent/Mobiles/BaseCreature.cs b/Projects/UOContent/Mobiles/BaseCreature.cs
+index f0210d4..f8d55c6 100644
 --- a/Projects/UOContent/Mobiles/BaseCreature.cs
 +++ b/Projects/UOContent/Mobiles/BaseCreature.cs
-@@ -924,6 +924,10 @@
-         public static bool BondingEnabled { get; private set; }
+@@ -1387,6 +1387,10 @@ namespace Server.Mobiles
+         public virtual bool StandsDownOnCommand => PetsStandDownOnCommand;
  
          public virtual bool IsBondable => BondingEnabled && !Summoned;
 +
@@ -11,9 +13,11 @@
          public virtual TimeSpan BondingDelay => TimeSpan.FromDays(7.0);
          public virtual TimeSpan BondingAbandonDelay => TimeSpan.FromDays(1.0);
  
+diff --git a/Projects/UOContent/Mobiles/PlayerMobile.cs b/Projects/UOContent/Mobiles/PlayerMobile.cs
+index 160c6b1..97c1c4f 100644
 --- a/Projects/UOContent/Mobiles/PlayerMobile.cs
 +++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
-@@ -3649,6 +3649,12 @@
+@@ -3548,6 +3548,12 @@ namespace Server.Mobiles
                      continue;
                  }
  

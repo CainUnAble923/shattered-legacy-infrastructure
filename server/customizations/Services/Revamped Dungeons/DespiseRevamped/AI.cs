@@ -156,11 +156,11 @@ public class DespiseMeleeAI : MeleeAI
         return false;
     }
 
-    public override bool WalkMobileRange(Mobile m, int iSteps, bool run, int iWantDistMin, int iWantDistMax)
+    public override bool WalkMobileRange(Mobile m, int iSteps, int iWantDistMin, int iWantDistMax)
     {
         if (_creature.Orb == null || _creature.ControlMaster == null)
         {
-            return base.WalkMobileRange(m, iSteps, run, iWantDistMin, iWantDistMax);
+            return base.WalkMobileRange(m, iSteps, iWantDistMin, iWantDistMax);
         }
 
         var range = _creature.GetLeashLength();
@@ -171,7 +171,7 @@ public class DespiseMeleeAI : MeleeAI
 
             if (p == null)
             {
-                return base.WalkMobileRange(m, iSteps, run, iWantDistMin, iWantDistMax);
+                return base.WalkMobileRange(m, iSteps, iWantDistMin, iWantDistMax);
             }
 
             if (_creature.InRange(p, range))
@@ -181,13 +181,13 @@ public class DespiseMeleeAI : MeleeAI
 
             if (p is Mobile anchor)
             {
-                return base.WalkMobileRange(anchor, iSteps, run, range, range);
+                return base.WalkMobileRange(anchor, iSteps, range, range);
             }
 
-            return DespiseAIHelper.WalkToPoint(this, p, iSteps, run, range, range);
+            return DespiseAIHelper.WalkToPoint(this, p, iSteps, range, range);
         }
 
-        return base.WalkMobileRange(m, iSteps, run, iWantDistMin, iWantDistMax);
+        return base.WalkMobileRange(m, iSteps, iWantDistMin, iWantDistMax);
     }
 
     public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
@@ -336,11 +336,11 @@ public class DespiseMageAI : MageAI
         return false;
     }
 
-    public override bool WalkMobileRange(Mobile m, int iSteps, bool run, int iWantDistMin, int iWantDistMax)
+    public override bool WalkMobileRange(Mobile m, int iSteps, int iWantDistMin, int iWantDistMax)
     {
         if (_creature.Orb == null || _creature.ControlMaster == null)
         {
-            return base.WalkMobileRange(m, iSteps, run, iWantDistMin, iWantDistMax);
+            return base.WalkMobileRange(m, iSteps, iWantDistMin, iWantDistMax);
         }
 
         var range = _creature.GetLeashLength();
@@ -351,7 +351,7 @@ public class DespiseMageAI : MageAI
 
             if (p == null)
             {
-                return base.WalkMobileRange(m, iSteps, run, iWantDistMin, iWantDistMax);
+                return base.WalkMobileRange(m, iSteps, iWantDistMin, iWantDistMax);
             }
 
             if (_creature.InRange(p, range))
@@ -361,13 +361,13 @@ public class DespiseMageAI : MageAI
 
             if (p is Mobile anchor)
             {
-                return base.WalkMobileRange(anchor, iSteps, run, range, range);
+                return base.WalkMobileRange(anchor, iSteps, range, range);
             }
 
-            return DespiseAIHelper.WalkToPoint(this, p, iSteps, run, range, range);
+            return DespiseAIHelper.WalkToPoint(this, p, iSteps, range, range);
         }
 
-        return base.WalkMobileRange(m, iSteps, run, iWantDistMin, iWantDistMax);
+        return base.WalkMobileRange(m, iSteps, iWantDistMin, iWantDistMax);
     }
 
     public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
@@ -453,7 +453,7 @@ public static class DespiseAIHelper
     // RunUO's WalkMobileRange(IPoint3D, ...) as ServUO still has it, for an anchor that is an Item. It is
     // only ever called from outside the wanted band (the callers return before it when already in range),
     // so the "move away" arm RunUO carried is not needed; stepping closer is the whole job.
-    public static bool WalkToPoint(BaseAI ai, IPoint3D p, int iSteps, bool run, int iWantDistMin, int iWantDistMax)
+    public static bool WalkToPoint(BaseAI ai, IPoint3D p, int iSteps, int iWantDistMin, int iWantDistMax)
     {
         var mobile = ai.Mobile;
 
@@ -478,7 +478,7 @@ public static class DespiseAIHelper
                 return false;
             }
 
-            if (!ai.DoMove(mobile.GetDirectionTo(target, run && dist > 5), true))
+            if (!ai.DoMove(mobile.GetDirectionTo(target), true))
             {
                 return false;
             }

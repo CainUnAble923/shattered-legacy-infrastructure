@@ -80,7 +80,7 @@ which daemon you are talking to. See the root `README.md` and each folder's READ
 
 ## The layering pattern is not negotiable
 
-The architecture is: **pristine ModernUO pinned to commit `7c9215d97`**, plus additive
+The architecture is: **pristine ModernUO pinned to commit `d4531cd94`** (upstream `d4531cd94b739613155225c234900de9f47d2c88`, since cc-P38; `7c9215d97` before), plus additive
 `.cs` in `server/customizations/`, plus targeted `.patch` files and full-file `.cs`
 replacements in `server/patches/`, assembled at build time by
 `docker/uo/apply-patches.sh`.

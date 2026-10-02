@@ -101,8 +101,8 @@ namespace Server.Items
         public GrammarOfOrchishTalisman() : base(0x2F59)
         {
             Blessed = GetRandomBlessed();
-            Protection = GetRandomProtection();
-            Summoner = new TalismanAttribute(typeof(SummonedOrcBrute), 1072414);
+            Protection = GetRandomProtection(this);
+            Summoner = new TalismanAttribute(this, typeof(SummonedOrcBrute), 1072414);
             SkillBonuses.SetValues(0, SkillName.MagicResist, 5.0);
             SkillBonuses.SetValues(1, SkillName.Anatomy, 7.0);
             MaxChargeTime = 1800;
@@ -146,7 +146,7 @@ namespace Server.Items
         public TheLifeOfTravelingMinstrelTalisman() : base(0x2F5B)
         {
             Blessed = GetRandomBlessed();
-            Protection = GetRandomProtection();
+            Protection = GetRandomProtection(this);
             SkillBonuses.SetValues(0, SkillName.Provocation, 5.0);
             SkillBonuses.SetValues(1, SkillName.Musicianship, 5.0);
             Removal = TalismanRemoval.Curse;

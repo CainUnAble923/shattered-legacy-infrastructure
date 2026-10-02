@@ -1055,7 +1055,7 @@ public static class ClusterFAchievementSystem
         TryGrant(acct, "combat.first_death");
     }
 
-    [OnEvent(nameof(BaseCreature.CreatureDeathEvent))]
+    [OnEvent(nameof(CreatureEvents.CreatureDeathEvent))]
     public static void OnCreatureDeath(BaseCreature bc)
     {
         if (bc.LastKiller is PlayerMobile pm)

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using Server.Engines.Spawners;
 
@@ -194,7 +195,7 @@ public static class ClusterFOldHavenCleanup
 
             if (!matched) continue;
 
-            var entryNames = string.Join(", ", spawner.Entries.ConvertAll(se => se.SpawnedName));
+            var entryNames = string.Join(", ", spawner.Entries.Select(se => se.SpawnedName));
 
             if (dryRun)
                 e.Mobile.SendMessage($"[DRY RUN] Spawner at ({spawner.X},{spawner.Y}) entries: {entryNames}");

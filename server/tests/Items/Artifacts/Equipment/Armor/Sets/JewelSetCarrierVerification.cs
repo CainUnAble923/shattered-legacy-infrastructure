@@ -158,7 +158,7 @@ public class JewelSetCarrierVerification
         original.SetFireBonus = 6;
 
         var buffer = new byte[16384];
-        var writer = new BufferWriter(buffer, true, new ConcurrentQueue<Type>());
+        var writer = new BufferWriter(buffer, true);
         original.Serialize(writer);
         writer.Flush();
 

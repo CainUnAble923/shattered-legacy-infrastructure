@@ -79,6 +79,10 @@ if (-not (Test-Path "$testSaves\Accounts") -and (Test-Path "$liveSaves\Accounts"
 # a hash that only SerializedTypes.db resolves; without it ModernUO skips every account
 # without a word, Accounts.Count is 0, and the owner prompt above blocks anyway. That is
 # what -Fresh did until 2026-09-26. Seed the type table with the accounts.
+# cc-P38: from upstream d4531cd9 the engine writes idx v5 saves, which carry their types inside
+# the .idx and have no SerializedTypes.db. While live stays on pinned 7c9215d97 its save is idx v3
+# and still has the file, and this copy is what lets the new engine read those accounts. Once live
+# saves on the new engine the file is gone and this is a no-op.
 if (-not (Test-Path "$testSaves\SerializedTypes.db") -and (Test-Path "$liveSaves\SerializedTypes.db")) {
     Copy-Item "$liveSaves\SerializedTypes.db" "$testSaves\SerializedTypes.db"
 }

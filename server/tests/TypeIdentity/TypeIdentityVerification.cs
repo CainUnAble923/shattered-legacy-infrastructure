@@ -134,7 +134,7 @@ public class TypeIdentityVerification
     private void AssertSurvivesSaveRoundTrip(Mobile original)
     {
         var buffer = new byte[65536];
-        var writer = new BufferWriter(buffer, true, new ConcurrentQueue<Type>());
+        var writer = new BufferWriter(buffer, true);
         writer.Write(original.GetType());
         var entityStart = writer.Position;
         original.Serialize(writer);

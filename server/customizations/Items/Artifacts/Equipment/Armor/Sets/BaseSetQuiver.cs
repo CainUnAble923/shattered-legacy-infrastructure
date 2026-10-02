@@ -22,90 +22,88 @@ namespace Server.Items
     {
         [SerializedIgnoreDupe]
         [SerializableField(0, setter: "private")]
+        [SaveFlag(nameof(ShouldSerializeSetAttributes), nameof(SetAttributesDefaultValue))]
         [SerializedCommandProperty(AccessLevel.GameMaster, canModify: true)]
         private AosAttributes _setAttributes;
 
-        [SerializableFieldSaveFlag(0)]
         private bool ShouldSerializeSetAttributes() => !_setAttributes.IsEmpty;
 
-        [SerializableFieldDefault(0)]
         private AosAttributes SetAttributesDefaultValue() => new(this);
 
         [SerializedIgnoreDupe]
         [SerializableField(1, setter: "private")]
+        [SaveFlag(nameof(ShouldSerializeSetSkillBonuses), nameof(SetSkillBonusesDefaultValue))]
         [SerializedCommandProperty(AccessLevel.GameMaster, canModify: true)]
         private AosSkillBonuses _setSkillBonuses;
 
-        [SerializableFieldSaveFlag(1)]
         private bool ShouldSerializeSetSkillBonuses() => !_setSkillBonuses.IsEmpty;
 
-        [SerializableFieldDefault(1)]
         private AosSkillBonuses SetSkillBonusesDefaultValue() => new(this);
 
         [EncodedInt]
         [InvalidateProperties]
         [SerializableField(2)]
+        [SaveFlag(nameof(ShouldSerializeSetPhysicalBonus))]
         [SerializedCommandProperty(AccessLevel.GameMaster)]
         private int _setPhysicalBonus;
 
-        [SerializableFieldSaveFlag(2)]
         private bool ShouldSerializeSetPhysicalBonus() => _setPhysicalBonus != 0;
 
         [EncodedInt]
         [InvalidateProperties]
         [SerializableField(3)]
+        [SaveFlag(nameof(ShouldSerializeSetFireBonus))]
         [SerializedCommandProperty(AccessLevel.GameMaster)]
         private int _setFireBonus;
 
-        [SerializableFieldSaveFlag(3)]
         private bool ShouldSerializeSetFireBonus() => _setFireBonus != 0;
 
         [EncodedInt]
         [InvalidateProperties]
         [SerializableField(4)]
+        [SaveFlag(nameof(ShouldSerializeSetColdBonus))]
         [SerializedCommandProperty(AccessLevel.GameMaster)]
         private int _setColdBonus;
 
-        [SerializableFieldSaveFlag(4)]
         private bool ShouldSerializeSetColdBonus() => _setColdBonus != 0;
 
         [EncodedInt]
         [InvalidateProperties]
         [SerializableField(5)]
+        [SaveFlag(nameof(ShouldSerializeSetPoisonBonus))]
         [SerializedCommandProperty(AccessLevel.GameMaster)]
         private int _setPoisonBonus;
 
-        [SerializableFieldSaveFlag(5)]
         private bool ShouldSerializeSetPoisonBonus() => _setPoisonBonus != 0;
 
         [EncodedInt]
         [InvalidateProperties]
         [SerializableField(6)]
+        [SaveFlag(nameof(ShouldSerializeSetEnergyBonus))]
         [SerializedCommandProperty(AccessLevel.GameMaster)]
         private int _setEnergyBonus;
 
-        [SerializableFieldSaveFlag(6)]
         private bool ShouldSerializeSetEnergyBonus() => _setEnergyBonus != 0;
 
         [EncodedInt]
         [InvalidateProperties]
         [SerializableField(7)]
+        [SaveFlag(nameof(ShouldSerializeSetHue))]
         [SerializedCommandProperty(AccessLevel.GameMaster)]
         private int _setHue;
 
-        [SerializableFieldSaveFlag(7)]
         private bool ShouldSerializeSetHue() => _setHue != 0;
 
         [SerializableField(8)]
+        [SaveFlag(nameof(ShouldSerializeSetEquipped))]
         private bool _setEquipped;
 
-        [SerializableFieldSaveFlag(8)]
         private bool ShouldSerializeSetEquipped() => _setEquipped;
 
         [SerializableField(9)]
+        [SaveFlag(nameof(ShouldSerializeLastEquipped))]
         private bool _lastEquipped;
 
-        [SerializableFieldSaveFlag(9)]
         private bool ShouldSerializeLastEquipped() => _lastEquipped;
 
         public BaseSetQuiver(int itemID = 0x2FB7) : base(itemID)

@@ -50,7 +50,7 @@ public class CC9CloseVerification
     private static T RoundTrip<T>(T original) where T : ISerializable
     {
         var buffer = new byte[65536];
-        var writer = new BufferWriter(buffer, true, new ConcurrentQueue<Type>());
+        var writer = new BufferWriter(buffer, true);
         original.Serialize(writer);
         writer.Flush();
 
@@ -266,7 +266,7 @@ public class CC9CloseVerification
         boss.SpawnSpectralArmour(pm);
 
         var helper = Assert.IsType<SpectralArmour>(Assert.Single(boss.Helpers));
-        Assert.Same(boss, helper.SummonMaster);
+        Assert.Same(boss, helper.Master); // cc-P30: #2670 gates SummonMaster on Summoned
         Assert.Same(pm, helper.Combatant);
         Assert.Same(Map.TerMur, helper.Map);
         Assert.Equal(helper.ControlSlots, boss.Followers);

@@ -57,6 +57,11 @@ public class NewHavenQuestBoardVerification
     // these, and every player's held board quest is saved against a board's serial.
     private const string SaveShapeAtHead = "090000001010160400AE0D0D0A0EC5C10201010000000000000000";
 
+    // cc-P30: the same board on upstream d4531cd9. Item is v11 there (was 9) and writes LastMoved as an anchored
+    // time, 8 bytes that depend on the clock (was one delta byte, 00), so those 16 hex digits are masked. Every
+    // byte the board itself owns is unchanged.
+    private const string SaveShapeAtD4531 = "0B00000010101604################AE0D0D0A0EC5C10201010000000000000000";
+
     private static readonly Point3D BoardSpot = new(1000, 1000, 0);
 
     private readonly ITestOutputHelper _out;
@@ -112,6 +117,16 @@ public class NewHavenQuestBoardVerification
         ns = PacketTestUtilities.CreateTestNetState();
         pm.NetState = ns;
         ns.Mobile = pm; // login does this; Mobile.NetState does not, and a gump reply reads it
+        // cc-P30: upstream (#2639/#2641) caps a connection with no account at a 4 KiB send ring and promotes it only
+        // after credentials verify (NetState.cs:562-567 at d4531cd9). A real player is past login; this test never
+        // drains, so without an account its gumps stop reaching the wire partway through a fact.
+        if (Server.Accounting.Security.AccountSecurity.CurrentAlgorithm == Server.Accounting.Security.PasswordProtectionAlgorithm.None)
+        {
+            // As GargoyleStartingClothesVerification: never checked here, and PBKDF2 is fully managed.
+            Server.Accounting.Security.AccountSecurity.CurrentAlgorithm = Server.Accounting.Security.PasswordProtectionAlgorithm.PBKDF2;
+        }
+
+        ns.Account = new Server.Accounting.Account($"p30-board-{pm.Serial.Value:X8}", "p30-test-only");
         return pm;
     }
 
@@ -378,13 +393,13 @@ public class NewHavenQuestBoardVerification
         board.MoveToWorld(NewHavenQuestBoard.HomeLocation, Map.Trammel);
         board.LastMoved = Core.Now;
 
-        var writer = new BufferWriter(new byte[256], true, new ConcurrentQueue<Type>());
+        var writer = new BufferWriter(new byte[256], true);
         board.Serialize(writer);
         var hex = Convert.ToHexString(writer.Buffer, 0, (int)writer.Position);
         _out.WriteLine($"board save: {hex} ({writer.Position} bytes)");
         board.Delete();
 
-        Assert.Equal(SaveShapeAtHead, hex);
+        Assert.Equal(SaveShapeAtD4531, hex[..16] + new string('#', 16) + hex[32..]);
     }
 
     [Fact]

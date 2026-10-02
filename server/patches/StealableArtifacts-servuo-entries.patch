@@ -1,13 +1,15 @@
---- a/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs	2026-09-29 14:52:36.050247300 -0500
-+++ b/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs	2026-09-29 14:52:59.047783400 -0500
-@@ -170,7 +170,81 @@
-         new(Map.Malas, new Point3D(157, 608, -1), 18432, 27648, typeof(SwordDisplay5WestArtifact)),
-         new(Map.Malas, new Point3D(187, 643, 1), 18432, 27648, typeof(Painting6NorthArtifact)),
+diff --git a/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs b/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs
+index 4cd8d8c..640023d 100644
+--- a/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs
++++ b/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs
+@@ -172,8 +172,80 @@ public class StealableArtifacts : GenericPersistence
          new(Map.Malas, new Point3D(146, 623, 1), 18432, 27648, typeof(Painting6WestArtifact)),
--        new(Map.Malas, new Point3D(178, 629, -1), 18432, 27648, typeof(ManStatuetteEastArtifact))
-+        new(Map.Malas, new Point3D(178, 629, -1), 18432, 27648, typeof(ManStatuetteEastArtifact)),
-+
-+        // Shattered Legacy: ServUO pub57's entries for types this shard ports, appended so saved slots keep their index.
+         new(Map.Malas, new Point3D(178, 629, -1), 18432, 27648, typeof(ManStatuetteEastArtifact)),
+ 
+-        // Stygian Abyss (Ter Mur) - Artifact rarity 5
+-        new(Map.TerMur, new Point3D(843, 665, 27), 1152, 1728, typeof(ValkyriesGlaive))
++        // Shattered Legacy: upstream (#2512) appends only ValkyriesGlaive here, as slot 80. Ours keeps it at slot 85 because
++        // saved slots map to entries by index and our worlds already hold 80-137. ServUO pub57's entries for types this shard ports, appended so saved slots keep their index.
 +        // Abyss - Artifact rarity 5
 +        new(Map.TerMur, new Point3D(717, 416, 50), 1152, 1728, typeof(DyingPlantArtifact)),
 +        new(Map.TerMur, new Point3D(951, 542, -14), 1152, 1728, typeof(LargePewterBowlArtifact)),

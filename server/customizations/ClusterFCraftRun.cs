@@ -13,7 +13,7 @@
 // This file is the loop, counts, caps, stops and summary. What happens to a non-exceptional result in "exceptional
 // only" is ClusterFCraftRejects.cs, so either can change without the other.
 //
-// CraftItem.cs (our replacement) calls AfterAttempt when an attempt ends and Refused when an attempt is refused before
+// CraftItem.cs (patched, server/patches/CraftItem-shard-hooks.patch) calls AfterAttempt when an attempt ends and Refused when an attempt is refused before
 // or at its end; neither does anything when no run is going, so a single craft is unchanged.
 
 using System;

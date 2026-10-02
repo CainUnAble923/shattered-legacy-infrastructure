@@ -79,7 +79,9 @@ namespace Server.Mobiles
         public override Poison PoisonImmune => Poison.LethalParasitic;
         public override Poison HitPoison => Poison.Lethal;
         public override bool ReacquireOnMovement => true;
-        public override bool AcquireOnApproach => true;
+        // cc-P30: upstream #2601 removed the AcquireOnApproach switch; every creature now acquires on approach after
+        // AcquireOnApproachDelay (2 s, paragons 0). Zero keeps this minion's pinned behaviour: acquire at once.
+        public override TimeSpan AcquireOnApproachDelay => TimeSpan.Zero;
         public override int AcquireOnApproachRange => 12;
 
         public override void GenerateLoot()
