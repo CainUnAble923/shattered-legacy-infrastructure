@@ -111,9 +111,10 @@ namespace Server.Engines.BulkOrders
 
             // cc-P42 Part G1: a set whose pieces can all still raise the smith's Blacksmithy, or the closest when none
             // can (ClusterFSmithTeaching.PickSets). The exceptional roll is stock and comes first, since it decides
-            // what the smith can make.
+            // what the smith can make. cc-P46 Part B: with the character's setting off, any set it can make.
             var reqExceptional = Utility.RandomDouble() < 0.825;
-            var sets = ClusterFSmithTeaching.PickSets(m, new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, SetTypes, reqExceptional);
+            var sets = ClusterFSmithTeaching.PickSets(m, new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, SetTypes, reqExceptional,
+                ClusterFSmithTeaching.WantsTeaching(m));
             var bod = new LargeSmithBOD(sets.RandomElement(), reqExceptional);
 
             // ClusterF: post-Valorite upgrade — 15% chance for extended smiths (skill > 100)

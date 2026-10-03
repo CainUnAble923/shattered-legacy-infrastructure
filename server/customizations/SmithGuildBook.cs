@@ -129,6 +129,7 @@ public class SmithGuildBookGump : Gump
     // BOD tab
     private const int BtnRequestSmallBOD = 5;
     private const int BtnRequestLargeBOD = 7;
+    public const int BtnTeachingOrders = 8; // cc-P46 Part B
 
     // Small commission actions
     private const int BtnReqComm        = 3;
@@ -335,6 +336,15 @@ public class SmithGuildBookGump : Gump
         {
             AddLabel(18, y + 2, 0x3B2, $"Large Bulk Order: needs 70.1 Blacksmithy (yours is {_pm.Skills.Blacksmith.Base:F1})");
         }
+
+        // cc-P46 Part B: the character's teaching-orders setting, the same one the Bulk Order choice gump shows.
+        y += 32;
+        var teaching = ClusterFSmithTeaching.WantsTeaching(_pm);
+        AddButton(18, y, teaching ? SmithBulkOrderChoiceGump.CheckOn : SmithBulkOrderChoiceGump.CheckOff,
+            teaching ? SmithBulkOrderChoiceGump.CheckOff : SmithBulkOrderChoiceGump.CheckOn, BtnTeachingOrders,
+            GumpButtonType.Reply, 0);
+        AddLabel(44, y, 999, ClusterFSmithTeaching.ToggleLabel);
+        AddLabel(44, y + 20, 0x3B2, ClusterFSmithTeaching.ToggleHint);
     }
 
     // -- Commission page -------------------------------------------------------
@@ -514,6 +524,11 @@ public class SmithGuildBookGump : Gump
 
             case BtnRequestLargeBOD:
                 HandleRequestLargeBOD(pm);
+                return;
+
+            case BtnTeachingOrders:
+                SmithBulkOrderChoiceGump.ToggleTeaching(pm);
+                pm.SendGump(new SmithGuildBookGump(pm, _book, 0));
                 return;
 
             case BtnReqComm:

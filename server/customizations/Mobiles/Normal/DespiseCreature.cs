@@ -100,6 +100,31 @@ public partial class DespiseCreature : BaseCreature
         SetDamage(MinDamStart, MaxDamStart);
     }
 
+    // cc-P46 Part H (bug-list D58). Pinned's NoKillAwards is a plain property, not serialized (BaseCreature.cs:1315),
+    // so a Despise creature loaded from a save paid fame and karma on death (Titles.ComputeKillAwards through
+    // BaseCreature.OnDeath, BaseCreature.cs:3546-3600): a master who had hit their possessed good creature lost karma
+    // when it died. Every Despise creature gives no awards, as the constructor says, after a load too.
+    [AfterDeserialization]
+    private void AfterDeserialization()
+    {
+        NoKillAwards = true;
+    }
+
+    // cc-P46 Part H. A possessed creature never harms its master or anyone in its master's party: its Combatant cannot
+    // be set to them (pinned Mobile.Combatant refuses a target CanBeHarmful refuses, Mobile.cs:737-743), and no
+    // attack, spell or area effect of its own can reach them. ServUO's possession has no such case only because its
+    // AI never targets the master; ours did under pinned's ControlOrder (AI.cs header).
+    public override bool CanBeHarmful(Mobile target, bool message, bool ignoreOurBlessedness)
+    {
+        if (_orb != null && Controlled && ControlMaster is { } master &&
+            (target == master || Server.Engines.PartySystem.Party.Get(master)?.Contains(target) == true))
+        {
+            return false;
+        }
+
+        return base.CanBeHarmful(target, message, ignoreOurBlessedness);
+    }
+
     [CommandProperty(AccessLevel.GameMaster)]
     public virtual Alignment Alignment
     {

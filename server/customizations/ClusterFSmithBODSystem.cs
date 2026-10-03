@@ -131,7 +131,8 @@ public partial class BlacksmithGuildmaster
             return null;
         }
 
-        var bod = SmallSmithBOD.CreateRandomFor(pm, teachingOnly: true); // cc-P42 Part G1
+        // cc-P42 Part G1; cc-P46 Part B: off, the stock generator's own pick.
+        var bod = SmallSmithBOD.CreateRandomFor(pm, teachingOnly: ClusterFSmithTeaching.WantsTeaching(pm));
         if (bod == null)
             pm.SendMessage(0x22,
                 "There are no suitable orders for your skill level right now. " +

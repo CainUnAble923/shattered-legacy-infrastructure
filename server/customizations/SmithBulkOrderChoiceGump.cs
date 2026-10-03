@@ -10,14 +10,22 @@ namespace Server;
 /// why. Either choice goes through BlacksmithGuildmaster.OfferBOD, which needs no NPC and shows pinned's own accept
 /// gump, so the button works from the guild page opened anywhere (guild directory, Hammer of Hephaestus) as well as
 /// from the guildmaster. Not OSI: OSI's smiths choose small or large at random; see the deviation register.
+///
+/// cc-P46 Part B (Chase, 2026-10-03): the character's "Orders that still teach me" setting, a check box that flips it
+/// and redraws the gump (ClusterFSmithTeaching.SetWantsTeaching). The guild book's order page shows the same setting.
 /// </summary>
 public class SmithBulkOrderChoiceGump : Gump
 {
     public const int BtnSmall = 1;
     public const int BtnLarge = 2;
+    public const int BtnTeaching = 3;
+
+    // The client's check box art: 210 unchecked, 211 checked.
+    public const int CheckOff = 210;
+    public const int CheckOn = 211;
 
     private const int W = 340;
-    private const int H = 190;
+    private const int H = 240;
 
     private readonly PlayerMobile _pm;
 
@@ -54,6 +62,13 @@ public class SmithBulkOrderChoiceGump : Gump
             AddLabel(18, 130, 0x3B2, $"(yours is {pm.Skills.Blacksmith.Base:F1})");
         }
 
+        // cc-P46 Part B: the teaching-orders setting.
+        var teaching = ClusterFSmithTeaching.WantsTeaching(pm);
+        AddImageTiled(10, 152, W - 20, 2, 9304);
+        AddButton(18, 162, teaching ? CheckOn : CheckOff, teaching ? CheckOff : CheckOn, BtnTeaching);
+        AddLabel(44, 162, 1154, ClusterFSmithTeaching.ToggleLabel);
+        AddLabel(44, 182, 0x3B2, ClusterFSmithTeaching.ToggleHint);
+
         AddButton(W - 50, H - 34, 4017, 4019, 0);
         AddLabel(W - 90, H - 32, 999, "Close");
     }
@@ -71,6 +86,20 @@ public class SmithBulkOrderChoiceGump : Gump
                 // The button is not drawn below the skill; a client can still send it, so the rule is checked again.
                 BlacksmithGuildmaster.OfferBOD(pm, large: true);
                 break;
+            case BtnTeaching:
+                ToggleTeaching(pm);
+                pm.SendGump(new SmithBulkOrderChoiceGump(pm));
+                break;
         }
+    }
+
+    /// <summary>Flips the character's teaching-orders setting and says what it is now. Both gumps use this.</summary>
+    public static void ToggleTeaching(PlayerMobile pm)
+    {
+        var on = !ClusterFSmithTeaching.WantsTeaching(pm);
+        ClusterFSmithTeaching.SetWantsTeaching(pm, on);
+        pm.SendMessage(0x59, on
+            ? "Society orders will ask for items that still teach you."
+            : "Society orders will ask for any item you can make.");
     }
 }

@@ -1,0 +1,19 @@
+====== Retaliate macro (SL_Retaliate.py) ======
+
+Runs in the background next to whatever else you are doing (mining, for example). When you take damage, or a monster gets right next to you, it attacks the nearest hostile, bandages if you drop low, and walks you back to where you were standing when the fight is over.
+
+By default it only fights monsters, never other players, and never anyone on your friends list.
+
+===== Settings worth knowing =====
+
+^ Setting ^ Default ^ What it does ^
+| ''SCAN_RANGE'' | 6 | How far out it looks for attackers. |
+| ''CHASE_LIMIT'' | 8 | Never chases further than this from your spot. |
+| ''RETURN_HOME'' | True | Walk back to your spot after the fight. |
+| ''ATTACK_PLAYERS'' | False | Leave this off. |
+| ''IGNORE_NAMES'' | empty | Names it should never attack, for example ''["a pack llama"]''. |
+| ''BANDAGE_BELOW'' | 60 | Hit point percent that triggers a bandage (0 = never). |
+| ''FLEE_BELOW'' | 0 | Hit point percent where it stops fighting and just heals (0 = off). |
+
+===== Download =====
+

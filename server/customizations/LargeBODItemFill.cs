@@ -67,7 +67,10 @@ public static class LargeBODItemFill
 
         var material = SmallBOD.GetMaterial(armor?.Resource ?? clothing?.Resource ?? CraftResource.None);
 
-        if (deed.Material >= BulkMaterialType.DullCopper && deed.Material <= BulkMaterialType.Valorite &&
+        // cc-P46 Part A: the post-Valorite ores too, as pinned's small deed checks them since SmallBOD-post-valorite-
+        // material.patch (which also maps them in GetMaterial).
+        if ((deed.Material >= BulkMaterialType.DullCopper && deed.Material <= BulkMaterialType.Valorite ||
+             deed.Material >= BulkMaterialType.Platinum && deed.Material <= BulkMaterialType.Celestial) &&
             material != deed.Material)
         {
             from.SendLocalizedMessage(1045168); // The item is not made from the requested ore.

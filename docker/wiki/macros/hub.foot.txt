@@ -1,0 +1,4 @@
+
+===== Moving to another computer =====
+
+Download the files again from this page into the new client's ''LegionScripts'' folder. Some scripts remember things between runs (your forge spot, empty ore blocks); those live in the client's ''Data\legionvars.db'' file. Copy that file too if you want to keep them.

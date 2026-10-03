@@ -77,8 +77,9 @@ public class ImbueEssenceSourcesVerification
             AccountSecurity.CurrentAlgorithm = PasswordProtectionAlgorithm.PBKDF2;
         }
 
-        // The test host does not run SkillCheck.Initialize, and without a handler every CheckSkill is false.
-        Mobile.SkillCheckLocationHandler ??= SkillCheck.Mobile_SkillCheckLocation;
+        // A real skill check: SkillCheck's handler and AntiMacro's settings (cc-P46 Part F, ShardTestHost; the fixture
+        // patch makes both too).
+        ShardTestHost.EnsureSkillChecks();
     }
 
     private sealed class Artificer : IDisposable

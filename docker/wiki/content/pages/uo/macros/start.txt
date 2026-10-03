@@ -1,0 +1,22 @@
+====== Macros ======
+
+Macros are Python scripts for the **TazUO** client's built-in Legion Scripting. They run inside the client, so there is nothing extra to install.
+
+===== Installing a macro =====
+
+  - Open the macro's page below and click the file name above the code box to download it (for example ''SL_Mining.py'').
+  - Put the file in your client's ''LegionScripts'' folder. In the Shattered Legacy player package that is ''app\tazuo\LegionScripts'' inside your install folder.
+  - In game, open the Legion Scripting window (TazUO options, Legion Scripting), press refresh, then press Play on the script.
+  - Every script has a ''CONFIG'' block at the top. That is the only part you should need to change.
+
+To update, download the file again and replace the old one. Your settings in the ''CONFIG'' block are part of the file, so note any you changed first.
+
+===== Available macros =====
+
+^ Macro ^ File ^ What it does ^ Published ^
+| [[sl_mining|Mining]] | ''SL_Mining.py'' | Mines every tile around you, wanders to fresh rock, smelts at your forge, stashes bars, makes new tools, and steers toward veins your logbook is missing. | 2026-10-03 11:12 |
+| [[sl_retaliate|Retaliate]] | ''SL_Retaliate.py'' | Background helper: fights back when something attacks you, bandages when you get low, then walks you back to your spot. | 2026-10-03 11:12 |
+
+===== Moving to another computer =====
+
+Download the files again from this page into the new client's ''LegionScripts'' folder. Some scripts remember things between runs (your forge spot, empty ore blocks); those live in the client's ''Data\legionvars.db'' file. Copy that file too if you want to keep them.

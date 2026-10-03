@@ -1,0 +1,181 @@
+import API
+
+# =============================================================================
+# SL_Retaliate.py  -  Shattered Legacy: fight back when something attacks you
+# Runs in the background. When you take damage (or a monster gets right next
+# to you) it attacks the nearest hostile, bandages if you drop low, and when
+# the fight is over it walks you back to where you were standing.
+# Standalone: run it alongside whatever else you are doing.
+# =============================================================================
+
+# ---- CONFIG -----------------------------------------------------------------
+SCAN_RANGE      = 6         # look for attackers this far out
+TRIGGER_ON_ADJ  = True      # also fight a hostile standing right next to you
+CHASE           = True      # follow a target that backs off
+CHASE_LIMIT     = 8         # never chase further than this from your spot
+RETURN_HOME     = True      # walk back to your starting spot after the fight
+ATTACK_PLAYERS  = False     # False = only monsters, never other players
+IGNORE_NAMES    = []        # e.g. ["a horse", "a pack llama"]
+
+BANDAGE_BELOW   = 60        # % hits -> bandage self (0 = never)
+BANDAGE_DELAY   = 8         # seconds between bandage attempts
+FLEE_BELOW      = 0         # % hits -> stop fighting and just heal (0 = off)
+FIGHT_TIMEOUT   = 90        # give up on one target after this many seconds
+HIGHLIGHT_HUE   = 33        # red highlight on the current target (0 = off)
+# -----------------------------------------------------------------------------
+
+HOSTILE = [API.Notoriety.Gray, API.Notoriety.Criminal,
+           API.Notoriety.Enemy, API.Notoriety.Murderer]
+
+state = {"home": None, "target": None, "last_band": 0.0, "clock": 0.0}
+
+
+def on_stop():
+    unhighlight()
+    API.SysMsg("SL_Retaliate stopped.", 33)
+
+API.OnStop(on_stop)
+
+
+def hp_pct():
+    if API.Player.HitsMax <= 0:
+        return 100
+    return (API.Player.Hits * 100) / API.Player.HitsMax
+
+
+def dist(x, y):
+    return max(abs(API.Player.X - x), abs(API.Player.Y - y))
+
+
+def valid(mob):
+    if mob is None or mob.IsDead:
+        return False
+    if mob.Serial == API.Player.Serial:
+        return False
+    if not ATTACK_PLAYERS and mob.IsHuman:
+        return False
+    if API.IsFriend(mob.Serial):
+        return False
+    name = (mob.Name or "").lower()
+    if any(n.lower() == name for n in IGNORE_NAMES):
+        return False
+    return True
+
+
+def nearest_hostile(rng):
+    mobs = API.NearestMobiles(HOSTILE, rng) or []
+    for m in mobs:              # already sorted closest first
+        if valid(m):
+            return m
+    return None
+
+
+def unhighlight():
+    t = state["target"]
+    if t is not None and HIGHLIGHT_HUE:
+        try:
+            m = API.FindMobile(t)
+            if m:
+                m.Highlight(None)
+        except Exception:
+            pass
+
+
+def tick(seconds):
+    API.Pause(seconds)
+    state["clock"] += seconds
+
+
+def maybe_bandage():
+    if BANDAGE_BELOW <= 0 or hp_pct() >= BANDAGE_BELOW:
+        return
+    if state["clock"] - state["last_band"] < BANDAGE_DELAY:
+        return
+    if API.BandageSelf():
+        state["last_band"] = state["clock"]
+        API.HeadMsg("Bandaging", API.Player, 68)
+
+
+def fight(mob):
+    home = state["home"]
+    state["target"] = mob.Serial
+    API.CancelTarget()           # drop any pending target cursor
+    if HIGHLIGHT_HUE:
+        mob.Highlight(HIGHLIGHT_HUE)
+    API.HeadMsg("Fighting " + (mob.Name or "something"), API.Player, 33)
+    API.SetWarMode(True)
+    API.Attack(mob.Serial)
+
+    started = state["clock"]
+    while not API.StopRequested:
+        API.ProcessCallbacks()
+        m = API.FindMobile(mob.Serial)
+        if m is None or m.IsDead:
+            API.HeadMsg("Target down", API.Player, 68)
+            break
+        if state["clock"] - started > FIGHT_TIMEOUT:
+            API.HeadMsg("Giving up on target", API.Player, 43)
+            break
+        if FLEE_BELOW and hp_pct() < FLEE_BELOW:
+            API.HeadMsg("Low HP - disengaging", API.Player, 33)
+            break
+
+        maybe_bandage()
+
+        d = dist(m.X, m.Y)
+        if d > 1:
+            too_far = home and max(abs(m.X - home[0]), abs(m.Y - home[1])) > CHASE_LIMIT
+            if CHASE and not too_far:
+                API.PathfindEntity(m.Serial, 1, False, 3)
+            elif d > SCAN_RANGE or too_far:
+                API.HeadMsg("Target left", API.Player, 43)
+                break
+
+        API.Attack(m.Serial)     # re-assert in case war mode or target dropped
+        tick(0.5)
+
+    unhighlight()
+    state["target"] = None
+
+    # another attacker waiting? keep fighting before standing down
+    nxt = nearest_hostile(2)
+    if nxt is not None and not API.StopRequested:
+        fight(nxt)
+        return
+
+    API.SetWarMode(False)
+    if RETURN_HOME and home and dist(home[0], home[1]) > 0:
+        API.Pathfind(home[0], home[1], home[2], 0, True, 10)
+
+
+def main():
+    state["home"] = (API.Player.X, API.Player.Y, API.Player.Z)
+    last_hits = API.Player.Hits
+    API.SysMsg("[Retaliate] Watching. Home spot set here.", 68)
+
+    while not API.StopRequested:
+        API.ProcessCallbacks()
+
+        # re-anchor home whenever you move on your own (not mid-fight)
+        state["home"] = (API.Player.X, API.Player.Y, API.Player.Z)
+
+        hits = API.Player.Hits
+        took_damage = hits < last_hits
+        last_hits = hits
+
+        mob = None
+        if took_damage:
+            mob = nearest_hostile(SCAN_RANGE)
+        elif TRIGGER_ON_ADJ:
+            mob = nearest_hostile(1)
+
+        if mob is not None:
+            fight(mob)
+            last_hits = API.Player.Hits
+        else:
+            maybe_bandage()
+
+        tick(0.25)
+
+
+main()

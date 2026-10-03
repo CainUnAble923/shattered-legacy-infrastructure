@@ -61,7 +61,7 @@ public class ImbueExtractDurabilityVerification
             AccountSecurity.CurrentAlgorithm = PasswordProtectionAlgorithm.PBKDF2;
         }
 
-        Mobile.SkillCheckLocationHandler ??= SkillCheck.Mobile_SkillCheckLocation;
+        ShardTestHost.EnsureSkillChecks(); // cc-P46 Part F: the handler and AntiMacro's settings together
     }
 
     private sealed class Artificer : IDisposable

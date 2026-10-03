@@ -196,11 +196,11 @@
                          }
                      }
  
-+                    // ClusterF: Metal Familiarity tracking for Hammer of Hephaestus
++                    // ClusterF: Metal Familiarity for Hammer of Hephaestus; a null typeRes is the default (cc-P46 G)
 +                    if (tool is HammerOfHephaestus clusterHoh)
-+                        clusterHoh.RecordFamiliarity(typeRes, from);
++                        clusterHoh.RecordFamiliarity(HammerMetal.CraftedResource(typeRes, craftSystem, this), from);
 +                    else if (tool is ReinforcedHammerOfHephaestus clusterRhoh)
-+                        clusterRhoh.RecordFamiliarity(typeRes, from);
++                        clusterRhoh.RecordFamiliarity(HammerMetal.CraftedResource(typeRes, craftSystem, this), from);
 +
                      if (tool.UsesRemaining < 1 && tool.BreakOnDepletion)
                      {

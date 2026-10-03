@@ -1,0 +1,41 @@
+====== Mining macro (SL_Mining.py) ======
+
+Stand in a cave or next to a mountain wall and press Start. It works each tile around you until it is dry, then moves on. When you get heavy it walks to your forge, smelts, puts the bars in your satchel and walks back to keep mining.
+
+===== What you need =====
+
+^ Item ^ Why ^
+| Pickaxe or shovel | Required. Jacob's Pickaxe is used first while it has uses. |
+| Tinkering and iron ingots | Optional. Makes new pickaxes (and a spare set of tinker's tools) when you run low. |
+| Compact Ore Satchel | Optional. Bars (and ore, if you turn that on) go in here. Found and opened automatically. |
+| A forge | Optional. Press **Set Forge** once and it will walk there to smelt when you get heavy. |
+| Prospector's Logbook | Optional. Lets the macro steer you toward colored veins you have not logged yet. |
+
+===== The control window =====
+
+  * **Start / Pause / Stop**: run the macro. Start turns into Pause while it runs.
+  * **Set Forge** and **Set Satchel**: target your forge and your ore satchel once.
+  * **Smelt now**: walk to the forge and smelt right away.
+  * **Stash now**: put bars and ore in your satchel without walking anywhere.
+  * **Make tools**: craft replacement pickaxes now.
+  * **Survey**: lists and marks the best veins nearby that your skill can mine and your logbook does not have yet.
+  * **Go to vein**: walks you to the top vein from Survey.
+  * Checkboxes: Wander to new veins, Seek colored veins, Go smelt when heavy, Highlight tiles, and the ore map.
+
+Tiles light up while it works: yellow is the tile being mined, green (or the ore's own color) gave ore, red is empty. Blue is where it is walking to.
+
+===== Settings worth knowing =====
+
+^ Setting ^ Default ^ What it does ^
+| ''RADIUS'' | 2 | 1 mines the 8 tiles touching you, 2 a 5x5 box. |
+| ''SMELT_AT'' | 75 | Weight percent that sends you to the forge. |
+| ''WEIGHT_STOP'' | 90 | Weight percent that stops the macro if it cannot unload. |
+| ''WANDER_RANGE'' | 16 | Furthest it will walk from where you started. |
+| ''MAKE_TOOLS'' | True | Craft new tools when low. |
+| ''EQUIP_JACOB'' | False | Hold Jacob's Pickaxe while mining (needed for its bonus ore). |
+| ''DIAGNOSE'' | False | Set True for one run if it says "No pickaxe or shovel". It lists every tool it can see. |
+
+It writes ''SL_Mining.log'' next to the script. Send that along if you report a problem.
+
+===== Download =====
+

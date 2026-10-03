@@ -14,6 +14,13 @@
 //   2. At Master, Self Repair 6 on a weapon costs 70 shards and 70,000 gold (was 8 and 3,500).
 //   3. Every other property keeps its base price and its threshold tier; Swing Speed Increase at Master still costs
 //      what it did (14 shards, 6,125 gold at 78).
+//
+// cc-P46 Part C (Chase, 2026-10-03): a floor. Self Repair 1 cost 11 shards, fewer than a slayer (15) or Lower Reagent
+// Cost 100 (17 at Master). Notes: shard-migration notes/cc-P46-smith-orders-2.md, Part C.
+//   4. At Master and at Arcane Artisan, every Self Repair value (1 to the rank's maximum) costs more shards and more
+//      gold than the most expensive value of every other property in the catalogue, computed from the catalogue.
+//   5. That floor is what the table charges: the lowest tier of Self Repair at Master, applied through the buttons,
+//      takes the floored price, above every other property's.
 
 using System;
 using System.Linq;
@@ -54,23 +61,11 @@ public class ImbueSelfRepairGateVerification
         ClusterFGuildSystem.EnsureRegistered();
     }
 
-    private static bool _startupHooksRun;
-
+    // cc-P46 Part F: the shared host setup, so the imbue's skill check is the server's in any order (ShardTestHost).
     private static void EnsureStartupHooks()
     {
-        if (!_startupHooksRun)
-        {
-            Accounts.Configure();
-            WelcomeTimer.Initialize();
-            _startupHooksRun = true;
-        }
-
-        if (AccountSecurity.CurrentAlgorithm == PasswordProtectionAlgorithm.None)
-        {
-            AccountSecurity.CurrentAlgorithm = PasswordProtectionAlgorithm.PBKDF2;
-        }
-
-        Mobile.SkillCheckLocationHandler ??= SkillCheck.Mobile_SkillCheckLocation;
+        ShardTestHost.EnsureAccounts();
+        ShardTestHost.EnsureSkillChecks();
     }
 
     private sealed class Artificer : IDisposable
@@ -263,5 +258,64 @@ public class ImbueSelfRepairGateVerification
         Assert.Equal(78, sword.Attributes.WeaponSpeed);
         Assert.Equal(Shards - 14, a.ShardsLeft);
         Assert.Equal(Gold - 6125, a.GoldLeft);
+    }
+
+    // ---------------------------------------------------------------- 4 (cc-P46 Part C)
+
+    [Theory]
+    [InlineData(15000, "Master Artificer")]
+    [InlineData(40000, "Arcane Artisan")]
+    public void EverySelfRepairValueCostsMoreThanEveryOtherProperty(int standing, string rank)
+    {
+        Assert.Equal(rank, ArtificersGuildmasterGump.GetRankName(standing));
+
+        // The dearest value of every other property at this standing, from the catalogue.
+        var others = ImbueCatalogue.All.Where(d => !d.Name.StartsWith("Self Repair", StringComparison.Ordinal)).ToList();
+        var mostShards = others.Max(d => d.ShardsFor(d.GetMaxForStanding(standing), standing));
+        var mostGold = others.Max(d => d.GoldFor(d.GetMaxForStanding(standing), standing));
+        var dearestShards = others.First(d => d.ShardsFor(d.GetMaxForStanding(standing), standing) == mostShards);
+        var dearestGold = others.First(d => d.GoldFor(d.GetMaxForStanding(standing), standing) == mostGold);
+        _out.WriteLine($"{rank} ({standing:N0}): dearest other in shards {dearestShards.Name} {mostShards}, " +
+                       $"in gold {dearestGold.Name} {mostGold:N0}");
+
+        foreach (var sr in ImbueCatalogue.All.Where(d => d.Name.StartsWith("Self Repair", StringComparison.Ordinal)))
+        {
+            for (var v = 1; v <= sr.GetMaxForStanding(standing); v++)
+            {
+                var shards = sr.ShardsFor(v, standing);
+                var gold = sr.GoldFor(v, standing);
+                _out.WriteLine($"  {sr.Name} {v}: before {sr.ScaledShardsFor(v, standing)} / " +
+                               $"{sr.ScaledGoldFor(v, standing):N0}, now {shards} / {gold:N0}");
+                Assert.True(shards > mostShards, $"{sr.Name} {v} at {rank}: {shards} shards, {dearestShards.Name} {mostShards}");
+                Assert.True(gold > mostGold, $"{sr.Name} {v} at {rank}: {gold} gold, {dearestGold.Name} {mostGold}");
+                // Above the floor the scaling is kept.
+                Assert.Equal(Math.Max(sr.ScaledShardsFor(v, standing), mostShards + 1), shards);
+                Assert.Equal(Math.Max(sr.ScaledGoldFor(v, standing), mostGold + 1), gold);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- 5 (cc-P46 Part C)
+
+    [Fact]
+    public void TheTableChargesTheFloor()
+    {
+        using var a = new Artificer(15000);
+        var sword = new Longsword();
+        a.Pm.Backpack.DropItem(sword);
+
+        Imbue(a, sword, "Self Repair", 1);
+
+        var value = sword.WeaponAttributes.SelfRepair;
+        var def = ImbueCatalogue.ForItem(sword).Find(d => d.Name == "Self Repair");
+        var others = ImbueCatalogue.All.Where(d => !d.Name.StartsWith("Self Repair", StringComparison.Ordinal)).ToList();
+        var mostShards = others.Max(d => d.ShardsFor(d.GetMaxForStanding(15000), 15000));
+        _out.WriteLine($"lowest tier at Master: Self Repair {value}, took {Shards - a.ShardsLeft} shards and " +
+                       $"{Gold - a.GoldLeft:N0} gold; dearest other property {mostShards} shards");
+
+        Assert.InRange(value, 1, 6);
+        Assert.Equal(def.ShardsFor(value, 15000), Shards - a.ShardsLeft);
+        Assert.Equal(def.GoldFor(value, 15000), Gold - a.GoldLeft);
+        Assert.True(Shards - a.ShardsLeft > mostShards);
     }
 }

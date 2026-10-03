@@ -22,10 +22,35 @@ namespace Server;
 /// When nothing teaches (Blacksmithy at or above the top of every item on offer), the order falls back to the
 /// hardest items the smith can make: the highest maximum, the ones closest to their skill.
 /// Regular NPC smiths are not changed (PT-11: they are the OSI path).
+///
+/// cc-P46 Part B (Chase, 2026-10-03): each character can turn this off (default on), in the Bulk Order choice gump and
+/// on the guild book's order page. Off, every Society order picks among everything the smith can make: a small order is
+/// exactly stock's (SmallSmithBOD.CreateRandomFor(m, false)); a large order or a commission takes any set or item the
+/// smith can make every piece of, which is stock's small-order rule (stock's large roll checks nothing).
+/// The setting is CharacterGuildData.SmithTeachingOrders.
 /// </summary>
 public static class ClusterFSmithTeaching
 {
     public static CraftSystem Smithing => DefBlacksmithy.CraftSystem;
+
+    /// <summary>This character's setting: true (the default) when its Society orders should still teach.</summary>
+    public static bool WantsTeaching(Mobile m) => ClusterFAccountPersistence.GetGuild(m)?.SmithTeachingOrders ?? true;
+
+    /// <summary>Turns this character's setting on or off; needs an account, as all guild data does.</summary>
+    public static void SetWantsTeaching(Mobile m, bool on)
+    {
+        if (m.Account == null)
+        {
+            return;
+        }
+
+        ClusterFAccountPersistence.GetOrCreateGuild(m).SmithTeachingOrders = on;
+    }
+
+    /// <summary>The setting's label and its one-line explanation, shared by both gumps that show it.</summary>
+    public const string ToggleLabel = "Orders that still teach me";
+
+    public const string ToggleHint = "Off: any item you can make.";
 
     private static CraftItem Find(Type type) => type == null ? null : Smithing.CraftItems.SearchFor(type);
 
@@ -74,9 +99,11 @@ public static class ClusterFSmithTeaching
     /// <summary>
     /// Of the candidates the smith can make, the ones that teach; if none teaches, the hardest (highest maximum,
     /// ties kept). Candidates the smith cannot make are never returned; with none makeable, the list comes back
-    /// as it was (stock behaviour).
+    /// as it was (stock behaviour). With <paramref name="teaching"/> false (the setting off), every makeable one.
     /// </summary>
-    public static List<T> PickItems<T>(Mobile m, IEnumerable<T> candidates, Func<T, Type> typeOf, bool exceptional)
+    public static List<T> PickItems<T>(
+        Mobile m, IEnumerable<T> candidates, Func<T, Type> typeOf, bool exceptional, bool teaching = true
+    )
     {
         var all = candidates.ToList();
         var makeable = all.Where(c => CanMake(m, typeOf(c), exceptional)).ToList();
@@ -85,10 +112,15 @@ public static class ClusterFSmithTeaching
             return all;
         }
 
-        var teaching = makeable.Where(c => Teaches(m, typeOf(c))).ToList();
-        if (teaching.Count > 0)
+        if (!teaching)
         {
-            return teaching;
+            return makeable;
+        }
+
+        var teaches = makeable.Where(c => Teaches(m, typeOf(c))).ToList();
+        if (teaches.Count > 0)
+        {
+            return teaches;
         }
 
         var hardest = makeable.Max(c => MaxSkill(typeOf(c)));
@@ -98,15 +130,23 @@ public static class ClusterFSmithTeaching
     /// <summary>
     /// For orders of several items (a large deed's entries, a large commission's pieces): the sets the smith can make
     /// every piece of and every piece teaches; if there is none, the makeable sets with the most teaching pieces, then
-    /// the highest lowest maximum (ties kept). With no makeable set, every set (stock behaviour).
+    /// the highest lowest maximum (ties kept). With no makeable set, every set (stock behaviour). With
+    /// <paramref name="teaching"/> false (the setting off), every makeable set.
     /// </summary>
-    public static List<T> PickSets<T>(Mobile m, IEnumerable<T> sets, Func<T, Type[]> typesOf, bool exceptional)
+    public static List<T> PickSets<T>(
+        Mobile m, IEnumerable<T> sets, Func<T, Type[]> typesOf, bool exceptional, bool teaching = true
+    )
     {
         var all = sets.ToList();
         var makeable = all.Where(s => typesOf(s).All(t => CanMake(m, t, exceptional))).ToList();
         if (makeable.Count == 0)
         {
             return all;
+        }
+
+        if (!teaching)
+        {
+            return makeable;
         }
 
         var full = makeable.Where(s => typesOf(s).All(t => Teaches(m, t))).ToList();

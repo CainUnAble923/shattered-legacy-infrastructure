@@ -67,6 +67,9 @@ public class SmithOrdersTeachVerification
         }
 
         BlacksmithyCraftRegistrations.Register(); // idempotent
+
+        // cc-P46 Part F: the turn-in fact reaches Mobile.CheckSkill (ClusterFSmithBODSystem.cs:272).
+        ShardTestHost.EnsureSkillChecks();
     }
 
     private static bool _startupHooksRun;

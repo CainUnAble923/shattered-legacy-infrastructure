@@ -2,20 +2,24 @@ diff --git a/Projects/UOContent.Tests/Fixtures/TestServerInitializer.cs b/Projec
 index bca909a..5c58cdb 100644
 --- a/Projects/UOContent.Tests/Fixtures/TestServerInitializer.cs
 +++ b/Projects/UOContent.Tests/Fixtures/TestServerInitializer.cs
-@@ -111,6 +111,19 @@ internal static class TestServerInitializer
+@@ -111,6 +111,23 @@ internal static class TestServerInitializer
              DecayScheduler.Configure();
              // Without npc-speeds.json every BaseCreature constructor throws.
              Server.Mobiles.NPCSpeeds.Configure();
 +
-+            // Shattered Legacy additions (S8 route, CC6 batches 1, 2 and 4); see shard-migration/notes/s8-test-route.md
-+            // and notes/cc-P30-modernuo-upgrade-research.md. Pinned 7c9215d97 had no NPCSpeeds call, which this patch
-+            // used to add; upstream now makes it on the line above, so only these four remain ours. Each is a Configure
-+            // or Initialize the real server reaches through AssemblyHandler.Invoke and this curated subset does not:
-+            //   SkillCheck.Initialize   - Mobile.CheckSkill's handlers; without them every skill roll fails.
-+            //   NameList.Configure      - Data/names.json; without it RandomName returns "".
-+            //   Corpse.Initialize       - Mobile.CreateCorpseHandler; without it Kill() hands OnDeath a null corpse.
-+            //   BaseCreature.Configure  - taming.enableBonding; without it no pet can bond.
++            // Shattered Legacy additions (S8 route, CC6 batches 1, 2 and 4, cc-P46); see shard-migration/notes/
++            // s8-test-route.md and notes/cc-P30-modernuo-upgrade-research.md. Pinned 7c9215d97 had no NPCSpeeds call,
++            // which this patch used to add; upstream now makes it on the line above, so only these five remain ours.
++            // Each is a Configure or Initialize the real server reaches through AssemblyHandler.Invoke and this curated
++            // subset does not:
++            //   SkillCheck.Initialize     - Mobile.CheckSkill's handlers; without them every skill roll fails.
++            //   AntiMacroSystem.Configure - the settings SkillCheck.CheckLocation reads (SkillCheck.cs:72); with the
++            //                               handlers and without these, a gain-range CheckSkill threw (cc-P46 Part F).
++            //   NameList.Configure        - Data/names.json; without it RandomName returns "".
++            //   Corpse.Initialize         - Mobile.CreateCorpseHandler; without it Kill() hands OnDeath a null corpse.
++            //   BaseCreature.Configure    - taming.enableBonding; without it no pet can bond.
 +            Server.Misc.SkillCheck.Initialize();
++            Server.Misc.AntiMacroSystem.Configure();
 +            Server.NameList.Configure();
 +            Server.Items.Corpse.Initialize();
 +            Server.Mobiles.BaseCreature.Configure();

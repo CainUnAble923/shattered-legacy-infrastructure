@@ -13,6 +13,14 @@
 //      made it 70.1 Blacksmithy and nothing else, for requesting and turning in alike. A complete large deed
 //      pays a member at 70.0 nothing at the guildmaster or the book and stays in the pack; at 70.1 with no
 //      standing at all it pays.
+//
+// cc-P46 Part F (bug-list D56): fact 2 failed in Chase's 2026-10-03 09:40 rebuild with a NullReferenceException at
+// pinned SkillCheck.cs:72. The turn-in's CheckSkill (ClusterFSmithBODSystem.cs:272) reached AntiMacroSystem.Settings,
+// which the fixture patch did not configure (it installs SkillCheck's handlers) and only the craft facts did, so it
+// depended on a craft fact running first; and on its random deed being of a coloured ore, since an iron deed's range
+// (0-55) is "no challenge" at 70.1 and never reaches that line. The fixture patch configures AntiMacro now, both facts
+// set up what they need (ShardTestHost), and fact 2's deed is a Dull Copper one (40-72), so its skill check is real
+// every run.
 
 using System;
 using System.Linq;
@@ -41,22 +49,12 @@ public class SmithBODPathsVerification
 
     // ---------------------------------------------------------------- helpers
 
-    private static bool _startupHooksRun;
-
-    // As SmithSealCatalogVerification: new Account(...) needs Accounts.Configure and a password algorithm.
+    // new Account(...) needs Accounts.Configure and a password algorithm; the turn-in's CheckSkill needs the skill-check
+    // handler and AntiMacro's settings (cc-P46 Part F, ShardTestHost).
     private static void EnsureStartupHooks()
     {
-        if (!_startupHooksRun)
-        {
-            Accounts.Configure();
-            WelcomeTimer.Initialize();
-            _startupHooksRun = true;
-        }
-
-        if (AccountSecurity.CurrentAlgorithm == PasswordProtectionAlgorithm.None)
-        {
-            AccountSecurity.CurrentAlgorithm = PasswordProtectionAlgorithm.PBKDF2;
-        }
+        ShardTestHost.EnsureAccounts();
+        ShardTestHost.EnsureSkillChecks();
     }
 
     private static readonly Point3D Spot = new(1500, 1500, 0);
@@ -104,10 +102,12 @@ public class SmithBODPathsVerification
     private static SmallSmithBOD CompleteSmall() =>
         new(10, 10, typeof(Longsword), 1025049, 0x0F61, false, BulkMaterialType.None);
 
-    // A regular smith's large deed: pinned Blacksmith.CreateBulkOrder makes it with new LargeSmithBOD().
-    private static LargeSmithBOD CompleteLarge()
+    // cc-P46 Part F: a complete Dull Copper plate deed, so the turn-in's skill range (40-72, GetSkillRange) holds 70.1
+    // and its CheckSkill is a real check, not the "no challenge" an iron deed (0-55) gives.
+    private static LargeSmithBOD CompleteDullCopperLarge()
     {
-        var deed = new LargeSmithBOD();
+        var deed = new LargeSmithBOD(10, false, BulkMaterialType.DullCopper, null);
+        deed.Entries = LargeBulkEntry.ConvertEntries(deed, LargeBulkEntry.LargePlate);
         foreach (var entry in deed.Entries)
         {
             entry.Amount = deed.AmountMax;
@@ -174,7 +174,7 @@ public class SmithBODPathsVerification
 
         try
         {
-            var deed = CompleteLarge();
+            var deed = CompleteDullCopperLarge();
             pm.Backpack.DropItem(deed);
 
             var seals = Guild(account, pm).GetCurrency("smithing");

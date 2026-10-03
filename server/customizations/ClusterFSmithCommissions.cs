@@ -191,20 +191,25 @@ public static class SmithCommissionPool
     /// cc-P42 Part G1. RandomKey's 65 / 35 split between weapons and armor, among the items that can still raise the
     /// smith's Blacksmithy (ClusterFSmithTeaching); a side with none of those is skipped, and with none on either
     /// side the commission asks for the hardest items the smith can make.
+    /// cc-P46 Part B: with the character's setting off, the same split among everything the smith can make.
     /// </summary>
     public static string TeachingKey(Mobile m, bool exceptional)
     {
-        var weapons = WeaponKeys.Where(k => ClusterFSmithTeaching.CanMake(m, GetItemType(k), exceptional) &&
-                                            ClusterFSmithTeaching.Teaches(m, GetItemType(k))).ToArray();
-        var armors  = ArmorKeys.Where(k => ClusterFSmithTeaching.CanMake(m, GetItemType(k), exceptional) &&
-                                           ClusterFSmithTeaching.Teaches(m, GetItemType(k))).ToArray();
+        var teaching = ClusterFSmithTeaching.WantsTeaching(m);
+
+        bool Wanted(string k) =>
+            ClusterFSmithTeaching.CanMake(m, GetItemType(k), exceptional) &&
+            (!teaching || ClusterFSmithTeaching.Teaches(m, GetItemType(k)));
+
+        var weapons = WeaponKeys.Where(Wanted).ToArray();
+        var armors  = ArmorKeys.Where(Wanted).ToArray();
 
         if (weapons.Length > 0 && armors.Length > 0)
             return Utility.RandomDouble() < 0.65 ? weapons.RandomElement() : armors.RandomElement();
         if (weapons.Length > 0) return weapons.RandomElement();
         if (armors.Length > 0)  return armors.RandomElement();
 
-        return ClusterFSmithTeaching.PickItems(m, AllKeys, GetItemType, exceptional).RandomElement();
+        return ClusterFSmithTeaching.PickItems(m, AllKeys, GetItemType, exceptional, teaching).RandomElement();
     }
 }
 
@@ -349,10 +354,14 @@ public static class SmithCommissionSetPool
     public static CommissionSet RandomSet() =>
         _sets[Utility.Random(_sets.Length)];
 
-    /// <summary>cc-P42 Part G1. A set whose pieces can all still raise the smith's Blacksmithy, or the closest.</summary>
+    /// <summary>
+    /// cc-P42 Part G1. A set whose pieces can all still raise the smith's Blacksmithy, or the closest.
+    /// cc-P46 Part B: with the character's setting off, any set the smith can make.
+    /// </summary>
     public static CommissionSet TeachingSet(Mobile m, bool exceptional) =>
         ClusterFSmithTeaching.PickSets(
-            m, _sets, s => System.Array.ConvertAll(s.ItemKeys, k => SmithCommissionPool.GetItemType(k)), exceptional
+            m, _sets, s => System.Array.ConvertAll(s.ItemKeys, k => SmithCommissionPool.GetItemType(k)), exceptional,
+            ClusterFSmithTeaching.WantsTeaching(m)
         ).RandomElement();
 }
 
@@ -540,14 +549,17 @@ public static class SmithCommissionSystem
         var exceptional  = Utility.RandomDouble() < exceptChance;
 
         var set         = SmithCommissionSetPool.TeachingSet(pm, exceptional); // cc-P42 Part G1
-        var (pieceSeals, pieceStanding) = ComputeReward(mat, exceptional);
+        var (pieceSeals, pieceStanding) = ComputeBaseReward(mat, exceptional);
         var pieceCount  = set.ItemKeys.Length;
 
         // Set bonus: 1.5x over equivalent individual pieces, then apply per-set RewardMultiplier.
         // Dragon scale and other exotic sets carry a higher multiplier (e.g. 2.5x).
+        // cc-P46 Part D: then the bulk orders' x3 Seals and x2 standing, after the floors, as for a small commission.
         var setMult       = set.RewardMultiplier;
-        var totalSeals    = Math.Max(5, (int)(pieceSeals    * pieceCount * 1.5 * setMult));
-        var totalStanding = Math.Max(50, (int)(pieceStanding * pieceCount * 1.5 * setMult));
+        var totalSeals    = Math.Max(5, (int)(pieceSeals    * pieceCount * 1.5 * setMult)) *
+                            BlacksmithGuildmaster.SealMultiplier;
+        var totalStanding = Math.Max(50, (int)(pieceStanding * pieceCount * 1.5 * setMult)) *
+                            BlacksmithGuildmaster.StandingMultiplier;
 
         var (name, _) = SmithRequesterPool.Random();
         var note      = _largeNotes[Utility.Random(_largeNotes.Length)];
@@ -726,11 +738,19 @@ public static class SmithCommissionSystem
     // Divisor 100 means commissions give ~4x per piece vs a qty-10 BOD at divisor 400,
     // appropriate for targeted single-item work.
     //
-    // Representative commission seal values:
-    //   Iron exceptional        ->  ~2  seals
-    //   Valorite exceptional    ->  ~30 seals
-    //   Platinum exceptional    ->  ~45 seals
-    //   Celestial exceptional   -> ~150 seals
+    // cc-P46 Part D (Chase, 2026-10-03): commissions pay the bulk orders' x3 Seals and x2 standing
+    // (BlacksmithGuildmaster.SealMultiplier, StandingMultiplier; cc-P42 Part G2), applied after the floors, so every
+    // commission pays exactly three times the Seals and twice the standing it did and keeps its place among
+    // commissions and bulk orders.
+    //
+    // Representative values, computed from the formulas below and pinned's gold table (Rewards.cs m_GoldTable rows 0
+    // and 1, qty-10 column; ComputeGold's gold * 9 / 10 to gold * 10 / 9), as the range that randomisation gives:
+    //   Small Iron exceptional       ->    6-9 Seals,   160 standing  (was 2-3, 80)
+    //   Small Valorite exceptional   ->  81-99 Seals,   800 standing  (was 27-33, 400)
+    //   Small Platinum exceptional   -> 120-150 Seals,  880 standing  (was 40-50, 440)
+    //   Small Celestial exceptional  -> 405-501 Seals, 1440 standing  (was 135-167, 720)
+    //   Large Valorite exc full plate -> 606-741 Seals, 6000 standing (was 202-247, 3000)
+    // The table and how it was computed: shard-migration notes/cc-P46-smith-orders-2.md, Part D.
 
     private const int CommissionSealDivisor = 100;
 
@@ -760,7 +780,15 @@ public static class SmithCommissionSystem
         _                        => BulkMaterialType.None,  // Iron or post-Valorite
     };
 
-    private static (int seals, int standing) ComputeReward(CraftResource mat, bool exceptional)
+    /// <summary>A small commission's reward: the base reward times the bulk orders' multipliers (cc-P46 Part D).</summary>
+    internal static (int seals, int standing) ComputeReward(CraftResource mat, bool exceptional)
+    {
+        var (seals, standing) = ComputeBaseReward(mat, exceptional);
+        return (seals * BlacksmithGuildmaster.SealMultiplier, standing * BlacksmithGuildmaster.StandingMultiplier);
+    }
+
+    /// <summary>The reward before cc-P46 Part D, per piece; a large commission builds its total from this.</summary>
+    internal static (int seals, int standing) ComputeBaseReward(CraftResource mat, bool exceptional)
     {
         var tier = MaterialTier(mat);
 

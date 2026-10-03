@@ -77,31 +77,38 @@ public class SmithSealCatalogGump : Gump
         },
 
         // -- Runic Hammers (Vanilla) ---------------------------------------
+        // cc-P46 Part E (Chase, 2026-10-03): Gold and up x3 (was 1,200 / 1,800 / 3,000 / 5,000), because cc-P42's x3
+        // Seals made one large Celestial exceptional deed buy a Valorite runic outright. Dull Copper to Bronze unchanged.
         new CatalogEntry[]
         {
             new("Dull Copper Runic Hammer",    200, () => new RunicHammer(CraftResource.DullCopper, 50)),
             new("Shadow Iron Runic Hammer",    350, () => new RunicHammer(CraftResource.ShadowIron, 45)),
             new("Copper Runic Hammer",         550, () => new RunicHammer(CraftResource.Copper,     40)),
             new("Bronze Runic Hammer",         800, () => new RunicHammer(CraftResource.Bronze,     35)),
-            new("Gold Runic Hammer",         1_200, () => new RunicHammer(CraftResource.Gold,       30)),
-            new("Agapite Runic Hammer",      1_800, () => new RunicHammer(CraftResource.Agapite,    25)),
-            new("Verite Runic Hammer",       3_000, () => new RunicHammer(CraftResource.Verite,     20)),
-            new("Valorite Runic Hammer",     5_000, () => new RunicHammer(CraftResource.Valorite,   15)),
+            new("Gold Runic Hammer",         3_600, () => new RunicHammer(CraftResource.Gold,       30)),
+            new("Agapite Runic Hammer",      5_400, () => new RunicHammer(CraftResource.Agapite,    25)),
+            new("Verite Runic Hammer",       9_000, () => new RunicHammer(CraftResource.Verite,     20)),
+            new("Valorite Runic Hammer",    15_000, () => new RunicHammer(CraftResource.Valorite,   15)),
         },
 
         // -- Runic Hammers (Post-Valorite) - placeholders ------------------
+        // cc-P46 Part E: x3 too, so the ladder stays in order above Valorite (was 7,500 .. 50,000).
         new CatalogEntry[]
         {
-            new("Platinum Runic Hammer",     7_500, () => null, ComingSoon: true),
-            new("Toxic Runic Hammer",       10_000, () => null, ComingSoon: true),
-            new("Blaze Runic Hammer",       13_000, () => null, ComingSoon: true),
-            new("Frost Runic Hammer",       17_000, () => null, ComingSoon: true),
-            new("Obsidian Runic Hammer",    22_000, () => null, ComingSoon: true),
-            new("Mythril Runic Hammer",     28_000, () => null, ComingSoon: true),
-            new("Adamantium Runic Hammer",  36_000, () => null, ComingSoon: true),
-            new("Celestial Runic Hammer",   50_000, () => null, ComingSoon: true),
+            new("Platinum Runic Hammer",    22_500, () => null, ComingSoon: true),
+            new("Toxic Runic Hammer",       30_000, () => null, ComingSoon: true),
+            new("Blaze Runic Hammer",       39_000, () => null, ComingSoon: true),
+            new("Frost Runic Hammer",       51_000, () => null, ComingSoon: true),
+            new("Obsidian Runic Hammer",    66_000, () => null, ComingSoon: true),
+            new("Mythril Runic Hammer",     84_000, () => null, ComingSoon: true),
+            new("Adamantium Runic Hammer", 108_000, () => null, ComingSoon: true),
+            new("Celestial Runic Hammer",  150_000, () => null, ComingSoon: true),
         },
     };
+
+    /// <summary>A category's rows as the gump lists them (name, price, coming soon). Read only: for the facts.</summary>
+    internal static (string Name, int Cost, bool ComingSoon)[] Rows(Cat cat) =>
+        System.Array.ConvertAll(Catalog[(int)cat], e => (e.Name, e.Cost, e.ComingSoon));
 
     // -- Button IDs ------------------------------------------------------------
     // 0         = close / no-op

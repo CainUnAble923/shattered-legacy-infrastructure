@@ -57,6 +57,13 @@ internal sealed class ImbuePropertyDef
     /// <summary>Rank name of RequiredStanding, as the gump shows it ("[req: Master Artificer]").</summary>
     public string RequiredRankName => ArtificersGuildmasterGump.GetRankName(RequiredStanding);
 
+    /// <summary>
+    /// cc-P46 Part C: every value of this property costs at least one shard and one gold more than the most expensive
+    /// other property at the same standing (ImbueCatalogue.MostShardsOfOthers / MostGoldOfOthers); above that floor
+    /// the usual scaling applies. Self Repair.
+    /// </summary>
+    public bool PricedAboveAll;
+
     // Accessors
     public Func<Item, int>    Get;
     public Action<Item, int>  Set;
@@ -76,6 +83,13 @@ internal sealed class ImbuePropertyDef
     /// <summary>Returns Essence Shard cost to set this property to targetValue.</summary>
     public int ShardsFor(int targetValue, int standing)
     {
+        var scaled = ScaledShardsFor(targetValue, standing);
+        return PricedAboveAll ? Math.Max(scaled, ImbueCatalogue.MostShardsOfOthers(standing) + 1) : scaled;
+    }
+
+    /// <summary>The shard cost from the scaling alone, before any floor (cc-P46 Part C).</summary>
+    public int ScaledShardsFor(int targetValue, int standing)
+    {
         if (IsBool) return ShardBase;
         var maxAllowed = GetMaxForStanding(standing);
         var fraction   = maxAllowed > 0 ? (float)targetValue / maxAllowed : 1f;
@@ -86,6 +100,13 @@ internal sealed class ImbuePropertyDef
 
     /// <summary>Returns gold cost to set this property to targetValue.</summary>
     public int GoldFor(int targetValue, int standing)
+    {
+        var scaled = ScaledGoldFor(targetValue, standing);
+        return PricedAboveAll ? Math.Max(scaled, ImbueCatalogue.MostGoldOfOthers(standing) + 1) : scaled;
+    }
+
+    /// <summary>The gold cost from the scaling alone, before any floor (cc-P46 Part C).</summary>
+    public int ScaledGoldFor(int targetValue, int standing)
     {
         if (IsBool) return GoldBase;
         var maxAllowed = GetMaxForStanding(standing);
@@ -124,6 +145,36 @@ internal static class ImbueCatalogue
     public const int SelfRepairShards      = 40;
     public const int SelfRepairGold        = 40000;
     public const int SelfRepairMinStanding = 15000;
+
+    // cc-P46 Part C (Chase, 2026-10-03): a floor, so Self Repair 1 no longer costs fewer shards than a slayer. The most
+    // a property without the floor costs at its highest value for this standing; Self Repair costs at least one more.
+    public static int MostShardsOfOthers(int standing)
+    {
+        var most = 0;
+        foreach (var d in All)
+        {
+            if (!d.PricedAboveAll)
+            {
+                most = Math.Max(most, d.ScaledShardsFor(d.GetMaxForStanding(standing), standing));
+            }
+        }
+
+        return most;
+    }
+
+    public static int MostGoldOfOthers(int standing)
+    {
+        var most = 0;
+        foreach (var d in All)
+        {
+            if (!d.PricedAboveAll)
+            {
+                most = Math.Max(most, d.ScaledGoldFor(d.GetMaxForStanding(standing), standing));
+            }
+        }
+
+        return most;
+    }
 
     static ImbueCatalogue()
     {
@@ -299,6 +350,7 @@ internal static class ImbueCatalogue
             i => ((BaseWeapon)i).WeaponAttributes.SelfRepair,
             (i, v) => ((BaseWeapon)i).WeaponAttributes.SelfRepair = v,
             minStanding: SelfRepairMinStanding);
+        All[^1].PricedAboveAll = true; // cc-P46 Part C: the floor above every other property
 
         Add("Lower Stat Req (Weapon)", "Weapon", 100, 100, shards: 4, gold: 1500, ImbuableItem.Weapon,
             i => ((BaseWeapon)i).WeaponAttributes.LowerStatReq,
@@ -330,6 +382,7 @@ internal static class ImbueCatalogue
             i => ((BaseArmor)i).ArmorAttributes.SelfRepair,
             (i, v) => ((BaseArmor)i).ArmorAttributes.SelfRepair = v,
             minStanding: SelfRepairMinStanding);
+        All[^1].PricedAboveAll = true; // cc-P46 Part C
 
         Add("Lower Stat Req (Armor)", "Defense", 100, 100, shards: 4, gold: 1500, ImbuableItem.Armor,
             i => ((BaseArmor)i).ArmorAttributes.LowerStatReq,

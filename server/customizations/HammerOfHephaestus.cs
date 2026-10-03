@@ -64,6 +64,15 @@ internal static class HammerMetal
 
     public static int Count => All.Length; // 17
 
+    /// <summary>
+    /// cc-P46 Part G (bug-list D57). The resource a craft used, for Metal Familiarity. The craft passes null when the
+    /// player never picked a material (pinned CraftGump.cs:441-455: CraftContext.LastResourceIndex is -1 until then,
+    /// CraftContext.cs:18), and the craft then uses its collection's default (CraftItem.ConsumeRes, CraftItem.cs:615-626:
+    /// iron ingots for Blacksmithy). Null therefore means that default, not "no metal". Craft X runs pass the same value.
+    /// </summary>
+    public static Type? CraftedResource(Type? typeRes, CraftSystem system, CraftItem item) =>
+        typeRes ?? (item.UseSubRes2 ? system.CraftSubRes2 : system.CraftSubRes).ResType;
+
     public static int InferResource(Type? t)
     {
         if (t == null) return -1;

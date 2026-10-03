@@ -471,7 +471,8 @@ public class ClusterFAccountData
 /// </summary>
 public sealed class CharacterGuildData
 {
-    public const int CurrentVersion = 0;
+    // 0: cc-P18. 1: cc-P46 Part B, SmithTeachingOrders.
+    public const int CurrentVersion = 1;
 
     // -- Membership ---------------------------------------------------------
     public HashSet<string> JoinedGuilds { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -501,21 +502,26 @@ public sealed class CharacterGuildData
     public uint    ActiveArtificerItemSerial { get; private set; }
     public bool    HasActiveArtificerOrder   => ActiveArtificerOrderKey != null;
 
+    // -- Society of Smiths: orders that still teach (v1, cc-P46 Part B) -----
+    // On (the default): the Society's bulk orders and commissions ask for items that can still raise this
+    // character's Blacksmithy (ClusterFSmithTeaching). Off: any item the character can make. A v0 record reads as on.
+    public bool SmithTeachingOrders { get; set; } = true;
+
     public bool IsEmpty =>
         JoinedGuilds.Count == 0 && ApprenticeGuilds.Count == 0 &&
         GuildReputation.Count == 0 && GuildCurrency.Count == 0 &&
         ActiveWorkOrders.Count == 0 && CompletedWorkOrders.Count == 0 &&
         SmithCommissions.Count == 0 && SmithLargeCommissions.Count == 0 &&
-        !HasActiveArtificerOrder;
+        !HasActiveArtificerOrder && SmithTeachingOrders;
 
     public CharacterGuildData() { }
 
     public CharacterGuildData(IGenericReader r)
     {
         var version = r.ReadInt();
-        if (version != 0)
+        if (version is < 0 or > CurrentVersion)
             throw new System.IO.InvalidDataException(
-                $"CharacterGuildData version {version} is not one this build reads (0).");
+                $"CharacterGuildData version {version} is not one this build reads (0 to {CurrentVersion}).");
 
         var joined = r.ReadInt();
         for (var i = 0; i < joined; i++)
@@ -552,6 +558,9 @@ public sealed class CharacterGuildData
         var orderKey = r.ReadString();
         ActiveArtificerOrderKey   = string.IsNullOrEmpty(orderKey) ? null : orderKey;
         ActiveArtificerItemSerial = r.ReadUInt();
+
+        if (version >= 1)
+            SmithTeachingOrders = r.ReadBool();
     }
 
     public void Serialize(IGenericWriter w)
@@ -584,6 +593,8 @@ public sealed class CharacterGuildData
 
         w.Write(ActiveArtificerOrderKey ?? "");
         w.Write(ActiveArtificerItemSerial);
+
+        w.Write(SmithTeachingOrders); // v1
     }
 
     // -- Guild helpers -----------------------------------------------------

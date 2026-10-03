@@ -39,3 +39,7 @@ This is the main hub for Shattered Legacy.
 ===== Lore =====
 
   * [[:uo:lore:start|Lore hub]]
+
+===== Macros =====
+
+  * [[:uo:macros:start|Macros]] (TazUO scripts you can download)

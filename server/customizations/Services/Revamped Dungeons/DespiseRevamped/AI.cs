@@ -12,6 +12,13 @@
 //     overload, which ServUO still has and this AI needs for an Item anchor, is reproduced as WalkToPoint.
 //   GetContextMenuEntries takes a ref PooledRefList; DebugSay lives on BaseAI, not the creature;
 //     IPooledEnumerable.Free is gone.
+//   cc-P46 Part H (bug-list D58): every "ControlOrder = OrderType.Attack" is IssueOrder(Attack, null, target).
+//     ServUO's ControlOrder setter only clears the Combatant for Attack (pub57 BaseAI.OnCurrentOrderChanged,
+//     BaseAI.cs:1270-1277); pinned's issues the order at once and IssueAttack writes Combatant = ControlTarget
+//     (PetOrders.cs:197-201). While following, ControlTarget is the master (Obey below), so the raw assignment made
+//     the creature's Combatant its master for a moment: its DoHarmful made the master its aggressor, and the master,
+//     with no Combatant, took the creature as Combatant (Mobile.AggressiveAction, Mobile.cs:3877-3927) and swung at
+//     it in war mode. IssueOrder sets ControlTarget to the real target first (BaseCreature.IssueOrder).
 
 using Server.Collections;
 using Server.ContextMenus;
@@ -47,7 +54,7 @@ public class DespiseMeleeAI : MeleeAI
                     {
                         if (_creature.ControlOrder == OrderType.Follow)
                         {
-                            _creature.ControlOrder = OrderType.Attack;
+                            _creature.IssueOrder(OrderType.Attack, null, _creature.Combatant);
                             Action = ActionType.Combat;
                         }
 
@@ -60,8 +67,7 @@ public class DespiseMeleeAI : MeleeAI
 
                         if (closest != null)
                         {
-                            _creature.ControlTarget = closest;
-                            _creature.ControlOrder = OrderType.Attack;
+                            _creature.IssueOrder(OrderType.Attack, null, closest);
                             _creature.Combatant = closest;
                             DebugSay("But -that- is not dead. Here we go again...");
 
@@ -78,7 +84,7 @@ public class DespiseMeleeAI : MeleeAI
                     {
                         if (_creature.ControlOrder == OrderType.Follow)
                         {
-                            _creature.ControlOrder = OrderType.Attack;
+                            _creature.IssueOrder(OrderType.Attack, null, _creature.Combatant);
                             Action = ActionType.Combat;
                         }
 
@@ -97,7 +103,7 @@ public class DespiseMeleeAI : MeleeAI
                             DebugSay($"I have detected {_creature.FocusMob.Name}, attacking");
                         }
 
-                        _creature.ControlOrder = OrderType.Attack;
+                        _creature.IssueOrder(OrderType.Attack, null, _creature.FocusMob);
                         _creature.Combatant = _creature.FocusMob;
 
                         Action = ActionType.Combat;
@@ -227,7 +233,7 @@ public class DespiseMageAI : MageAI
                     {
                         if (_creature.ControlOrder == OrderType.Follow)
                         {
-                            _creature.ControlOrder = OrderType.Attack;
+                            _creature.IssueOrder(OrderType.Attack, null, _creature.Combatant);
                             Action = ActionType.Combat;
                         }
 
@@ -240,8 +246,7 @@ public class DespiseMageAI : MageAI
 
                         if (closest != null)
                         {
-                            _creature.ControlTarget = closest;
-                            _creature.ControlOrder = OrderType.Attack;
+                            _creature.IssueOrder(OrderType.Attack, null, closest);
                             _creature.Combatant = closest;
                             DebugSay("But -that- is not dead. Here we go again...");
 
@@ -258,7 +263,7 @@ public class DespiseMageAI : MageAI
                     {
                         if (_creature.ControlOrder == OrderType.Follow)
                         {
-                            _creature.ControlOrder = OrderType.Attack;
+                            _creature.IssueOrder(OrderType.Attack, null, _creature.Combatant);
                             Action = ActionType.Combat;
                         }
 
@@ -277,7 +282,7 @@ public class DespiseMageAI : MageAI
                             DebugSay($"I have detected {_creature.FocusMob.Name}, attacking");
                         }
 
-                        _creature.ControlOrder = OrderType.Attack;
+                        _creature.IssueOrder(OrderType.Attack, null, _creature.FocusMob);
                         _creature.Combatant = _creature.FocusMob;
 
                         Action = ActionType.Combat;

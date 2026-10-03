@@ -268,6 +268,14 @@ apply_patch "$PATCHES/SmallSmithBOD-PostValorite.patch"
 # one-argument form, which regular smiths call, is unchanged. Alternatives (a copy of the generator in customizations)
 # argued in shard-migration/notes/cc-P42-defect-batch-3.md, Part G; pinned by SmithOrdersTeachVerification.
 apply_patch "$PATCHES/SmallSmithBOD-teaching-orders.patch"
+# cc-P46 Part A (bug-list D55). Pinned's ore rule covers DullCopper..Valorite only, so a Platinum..Celestial deed took
+# any item (an iron one included). SmallBOD: GetMaterial maps our eight post-Valorite CraftResources, and the item
+# combine refuses another ore with pinned's 1045168. LargeBOD: a small deed of another post-Valorite ore is refused with
+# pinned's 1045162. One else-if beside pinned's own ore branch each. Alternatives (overrides copying pinned's checks,
+# renumbering the enum) argued in shard-migration/notes/cc-P46-smith-orders-2.md, Part A; pinned by
+# PostValoriteBODMaterialVerification.
+apply_patch "$PATCHES/SmallBOD-post-valorite-material.patch"
+apply_patch "$PATCHES/LargeBOD-post-valorite-material.patch"
 
 # S1 armour set-bonus subsystem. All three are additive hooks; none rewrites upstream logic.
 # See shard-migration/notes/s1-armour-sets.md for what a pinned-commit bump must reconcile.
@@ -293,9 +301,11 @@ apply_patch "$PATCHES/AOS-stat-bonus-names.patch"
 # S8 test route. One of the two patches in this repo that touch an upstream TEST project (cc-P42 added the other), and
 # like it has no effect on the shipped server. Argued in shard-migration/notes/s8-test-route.md section 2.
 # Since cc-P38 (upstream d4531cd9) it targets TestServerInitializer.cs, where upstream #2473 moved the test
-# bootstrap, and upstream now calls NPCSpeeds.Configure itself; the patch adds the four shard calls after it
-# (SkillCheck, NameList, Corpse, BaseCreature). The file keeps its old name. If it ever stops applying, the
-# build stops here, which is the intended failure.
+# bootstrap, and upstream now calls NPCSpeeds.Configure itself; the patch adds the five shard calls after it
+# (SkillCheck, AntiMacroSystem, NameList, Corpse, BaseCreature). AntiMacroSystem since cc-P46 Part F: SkillCheck's
+# handlers read its settings, and without it a gain-range CheckSkill threw unless a craft fact had run first
+# (D56; argued in shard-migration/notes/cc-P46-smith-orders-2.md, Part F). The file keeps its old name. If it ever
+# stops applying, the build stops here, which is the intended failure.
 apply_patch "$PATCHES/UOContentFixture-npc-speeds.patch"
 
 # CC4 Despise. ServUO's BaseCreature.CanAutoStable, three additive lines across two UOContent files: a

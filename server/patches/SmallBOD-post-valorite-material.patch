@@ -1,0 +1,29 @@
+--- "a/Projects/UOContent/Engines/Bulk Orders/SmallBOD.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/SmallBOD.cs"
+@@ -107,6 +107,15 @@
+             CraftResource.Agapite       => BulkMaterialType.Agapite,
+             CraftResource.Verite        => BulkMaterialType.Verite,
+             CraftResource.Valorite      => BulkMaterialType.Valorite,
++            // ClusterF (cc-P46 Part A): our post-Valorite ores (ResourceInfo.cs CraftResource, BulkMaterialType.cs).
++            CraftResource.Platinum      => BulkMaterialType.Platinum,
++            CraftResource.Toxic         => BulkMaterialType.Toxic,
++            CraftResource.Blaze         => BulkMaterialType.Blaze,
++            CraftResource.Frost         => BulkMaterialType.Frost,
++            CraftResource.Obsidian      => BulkMaterialType.Obsidian,
++            CraftResource.Mythril       => BulkMaterialType.Mythril,
++            CraftResource.Adamantium    => BulkMaterialType.Adamantium,
++            CraftResource.Celestial     => BulkMaterialType.Celestial,
+             CraftResource.SpinedLeather => BulkMaterialType.Spined,
+             CraftResource.HornedLeather => BulkMaterialType.Horned,
+             CraftResource.BarbedLeather => BulkMaterialType.Barbed,
+@@ -141,6 +150,10 @@
+             {
+                 from.SendLocalizedMessage(1045168); // The item is not made from the requested ore.
+             }
++            else if (Material >= BulkMaterialType.Platinum && Material <= BulkMaterialType.Celestial && material != Material)
++            {
++                from.SendLocalizedMessage(1045168); // ClusterF (cc-P46 Part A): the post-Valorite ores, same rule.
++            }
+             else if (Material >= BulkMaterialType.Spined && Material <= BulkMaterialType.Barbed && material != Material)
+             {
+                 from.SendLocalizedMessage(1049352); // The item is not made from the requested leather type.
