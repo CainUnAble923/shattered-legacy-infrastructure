@@ -178,6 +178,15 @@ function Test-PackageZip([string]$path) {
             }
         }
 
+        # Setup.ps1's test-only options (cc-P44): nothing that ships passes them, and Setup.ps1
+        # gives them no default, so a player's Setup always searches the real places.
+        foreach ($n in @($names | Where-Object { $_ -match '\.(ps1|bat|cmd)$' -and $_ -ne 'app/Setup.ps1' -and $_ -notlike 'app/tazuo/*' })) {
+            if ((Read-ZipText $rel[$n]) -match 'Probe(Folder|Installer)') { $fail += "$n passes Setup.ps1's test-only -ProbeFolder/-ProbeInstaller" }
+        }
+        $setup = $rel['app/Setup.ps1']
+        if (-not $setup) { $fail += 'no app/Setup.ps1' }
+        elseif ((Read-ZipText $setup) -match '\$Probe(Folder|Installer)\s*=') { $fail += 'app/Setup.ps1 gives a test-only -Probe option a value' }
+
         if ($names -contains 'app/.unblocked') { $fail += 'app/.unblocked is in the zip' }
         $play = $rel['app/Play.ps1']
         if (-not $play) { $fail += 'no app/Play.ps1' } else {

@@ -8,9 +8,10 @@ SHATTERED LEGACY - how to play
 
    The first time only, it looks for Ultima Online on your computer. If it is not
    there it offers to download EA's free installer (Ultima Online is free). Say yes,
-   install it, and when the Ultima Online launcher opens LET IT FINISH UPDATING.
-   That is a large download (about 2.5 GB). Close it when it is done, then
-   double-click "Play Shattered Legacy.bat" again.
+   then read and accept EA's license yourself. EA's launcher then downloads the game
+   (about 1.8 GB). Leave it open and wait: this window shows the progress and
+   starts the game by itself when EA's download is done. Windows asks for
+   permission for EA's installer and launcher; those requests come from EA.
 
 3. The game window opens. At the login screen, type ANY account name and password
    you like. Your first login creates your account, so write them down.
@@ -56,6 +57,9 @@ If something goes wrong
   * "Couldn't connect to Ultima Online. Please try again in a few moments." right
     after typing a NEW account name: the server has a limit on new accounts.
     Tell Chase; waiting will not fix it.
+  * "EA's launcher closed before Ultima Online was ready": check the internet
+    connection and that the drive has about 3 GB free, then double-click
+    "Play Shattered Legacy.bat" again. It starts EA's launcher and waits again.
   * Anything else: take a photo or screenshot of the window and send it to Chase.
 
 
