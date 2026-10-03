@@ -1,3 +1,4 @@
+using System;
 using ModernUO.Serialization;
 using Server.Mobiles;
 using Server.Targeting;
@@ -56,9 +57,33 @@ public partial class ShrunkPet : Item
         pet.ControlOrder = OrderType.None;
         pet.MoveToWorld(new Point3D(1, 1, 0), Map.Internal);
 
-        pm.Followers -= pet.ControlSlots;   // manually decrement — MoveToWorld alone won't
+        // Take the pet out of pm's follower count and AllFollowers by hand; MoveToWorld alone won't.
+        // Left in AllFollowers, pinned's SE auto-stable stables it on logout and at startup and login
+        // puts it back at pm's feet (PlayerMobile.cs:1522, :1081, :1276), emptying the figurine.
+        // Master stays pm on purpose: clearing it, as stabling does, would expose the pet to the 3-day
+        // abandon timer at the next load (BaseCreature.cs:2504), because IsStabled is not saved.
+        pm.Followers -= pet.ControlSlots;
+        pm.RemoveFollower(pet);
 
         return fig;
+    }
+
+    // Neither Followers nor AllFollowers is saved (pinned Mobile.cs:6331-6334). At load every creature's
+    // Deserialize puts itself back in both for its master (BaseCreature.cs:2514), a figurine's pet
+    // included, undoing what TryShrink did. Undo it again once the world is loaded (Main.cs: World.Load,
+    // then Initialize), before startup's CheckPets timer can auto-stable the pet. Also corrects
+    // figurines shrunk before this fix.
+    public static void Initialize()
+    {
+        foreach (var item in World.Items.Values)
+        {
+            if (item is ShrunkPet { _pet: { Deleted: false, ControlMaster: { } master } pet } &&
+                pet.Map == Map.Internal)
+            {
+                master.Followers -= Math.Min(pet.ControlSlots, master.Followers);
+                (master as PlayerMobile)?.RemoveFollower(pet);
+            }
+        }
     }
 
     // ── Use ───────────────────────────────────────────────────────────────────
@@ -93,13 +118,35 @@ public partial class ShrunkPet : Item
             return;
         }
 
+        // While shrunk the pet is in no one's Followers or AllFollowers. Put it back with its master
+        // first; SetControlMaster then leaves it there or, for a different holder, moves it through the
+        // Master setter (BaseCreature.cs:1163-1170). Adding the slots after SetControlMaster counted the
+        // pet twice whenever the master changed.
+        var owner = pet.ControlMaster;
+        if (owner != null)
+        {
+            owner.Followers += pet.ControlSlots;
+            (owner as PlayerMobile)?.AddFollower(pet);
+        }
+
+        if (owner != pm && !pet.SetControlMaster(pm))
+        {
+            if (owner != null)
+            {
+                owner.Followers -= pet.ControlSlots;
+                (owner as PlayerMobile)?.RemoveFollower(pet);
+            }
+
+            return;
+        }
+
         // Return to world
         pet.MoveToWorld(pm.Location, pm.Map);
-        pet.SetControlMaster(pm);
-        pet.IsBonded    = true;
-        pet.ControlOrder = OrderType.Follow;
+        pet.IsBonded = true;
 
-        pm.Followers += pet.ControlSlots;
+        // Not a raw ControlOrder = Follow: SetControlMaster clears ControlTarget, and Follow with no
+        // target drops to None on the next AI tick (PetOrders.cs:638-644). IssueOrder sets the target.
+        pet.IssueOrder(OrderType.Follow, null, pm);
 
         pm.SendMessage(0x44, $"{pet.Name} materialises at your feet.");
         Effects.PlaySound(pm.Location, pm.Map, 0x1FA);
