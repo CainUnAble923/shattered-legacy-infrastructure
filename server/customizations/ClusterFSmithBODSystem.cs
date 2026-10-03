@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Server;
 using Server.Accounting;
 using Server.Engines.BulkOrders;
+using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
 
@@ -21,8 +22,10 @@ namespace Server.Mobiles;
 //
 //   * BlacksmithGuildmaster and the Smithing Guild Book give and take them for members.
 //     Generation is cap-based (3 small / 1 large concurrent), no cooldown.
-//     Large BODs require Journeyman rank (5 000 standing) + 70.1 Blacksmithy, to request
-//     and, since cc-P32, to turn in (a large deed from a regular smith needs only 70.1).
+//     Large BODs need 70.1 Blacksmithy and nothing else (cc-P42 Part F, Chase 2026-10-03: the
+//     Journeyman rank gate is gone), to request and to turn in. The Bulk Order button (guild page,
+//     with or without the NPC) and the guild book let the player pick small or large
+//     (SmithBulkOrderChoiceGump); talking to the guildmaster keeps the stock random roll.
 //
 //   * Turn-in gives Smithing Seals + a skill check (no vanilla item rewards).
 //     Skill check range is scaled to material tier + exceptional requirement
@@ -37,19 +40,21 @@ namespace Server.Mobiles;
 // in BlacksmithGuildmaster.OnDragDrop / ComputeGuildReward below.
 // -----------------------------------------------------------------------------
 
-// -- Note: Blacksmith.cs (server file, not customization) is patched separately
-// to disable BOD generation on regular Blacksmith NPCs.  The four overrides
-// (SupportsBulkOrders, CreateBulkOrder, IsValidBulkOrder, GetNextBulkOrder)
-// are replaced with no-op returns so only the Guildmaster issues BODs.
-// See patches/Blacksmith_DisableBODs.patch in this repo for the diff.
-
 // -- BlacksmithGuildmaster - guild BOD generation and turn-in -----------------
 
 public partial class BlacksmithGuildmaster
 {
     private const int SmallBODCap = 3; // max concurrent small BODs in pack
     private const int LargeBODCap = 1; // max concurrent large BODs in pack
-    private const int LargeOrderStanding = 5_000; // Journeyman
+
+    /// <summary>Blacksmithy needed for a large order, to request and to turn in (cc-P42 Part F: skill only).</summary>
+    public const double LargeOrderSkill = 70.1;
+
+    public const string LargeSkillMessage = "You need at least 70.1 Blacksmithy to request large orders.";
+
+    /// <summary>70.1 Blacksmithy, or an active Dev Testing Crystal.</summary>
+    public static bool MeetsLargeSkill(PlayerMobile pm) =>
+        DevTestingCrystal.IsActive(pm) || pm.Skills.Blacksmith.Base >= LargeOrderSkill;
 
     // -- Generation -----------------------------------------------------------
 
@@ -79,23 +84,19 @@ public partial class BlacksmithGuildmaster
 
     public static Item? TryCreateBOD(PlayerMobile pm)
     {
-        if (pm.Account is not IAccount acct) return null;
+        if (pm.Account is not IAccount) return null;
         if (!ClusterFGuildSystem.IsJoined(pm, "smithing"))
         {
             pm.SendMessage(0x22, "You must join the Society of Smiths first.");
             return null;
         }
 
-        var bypass   = DevTestingCrystal.IsActive(pm);
-        var skill    = pm.Skills.Blacksmith.Base;
-        var guild     = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
-        var standing = guild.GetReputation("smithing");
+        var skill = pm.Skills.Blacksmith.Base;
+        var (_, largeCount) = CountBODs(pm);
 
-        var (smallCount, largeCount) = CountBODs(pm);
-
-        // Large BOD: Journeyman rank + 70.1 skill, random chance same as vanilla
-        var qualifiesLarge = bypass || (standing >= LargeOrderStanding && skill >= 70.1);
-        var rollsLarge     = skill >= 70.1 && (skill - 40.0) / 300.0 > Utility.RandomDouble();
+        // Large BOD: 70.1 skill, random chance same as vanilla (the guildmaster's talk and context menu path)
+        var qualifiesLarge = MeetsLargeSkill(pm);
+        var rollsLarge     = skill >= LargeOrderSkill && (skill - 40.0) / 300.0 > Utility.RandomDouble();
 
         if (qualifiesLarge && rollsLarge)
         {
@@ -108,7 +109,21 @@ public partial class BlacksmithGuildmaster
             return LargeSmithBOD.CreateRandomFor(pm);
         }
 
-        // Small BOD
+        return TryCreateSmallBOD(pm);
+    }
+
+    // -- Small BOD on demand (cc-P42 Part F: the choice gump's Small, never a large roll) --------
+
+    public static Item? TryCreateSmallBOD(PlayerMobile pm)
+    {
+        if (pm.Account is not IAccount) return null;
+        if (!ClusterFGuildSystem.IsJoined(pm, "smithing"))
+        {
+            pm.SendMessage(0x22, "You must join the Society of Smiths first.");
+            return null;
+        }
+
+        var (smallCount, _) = CountBODs(pm);
         if (smallCount >= SmallBODCap)
         {
             pm.SendMessage(0x22,
@@ -116,7 +131,7 @@ public partial class BlacksmithGuildmaster
             return null;
         }
 
-        var bod = SmallSmithBOD.CreateRandomFor(pm);
+        var bod = SmallSmithBOD.CreateRandomFor(pm, teachingOnly: true); // cc-P42 Part G1
         if (bod == null)
             pm.SendMessage(0x22,
                 "There are no suitable orders for your skill level right now. " +
@@ -124,36 +139,25 @@ public partial class BlacksmithGuildmaster
         return bod;
     }
 
-    // -- Forced large BOD creation (guild book "Request Large" button) ---------
+    // -- Large BOD on demand (the choice gump's and the guild book's Large) ------
 
     /// <summary>
     /// Creates a large BOD directly, skipping the small/large random roll.
-    /// Requires Journeyman rank (5 000 standing) + 70.1 Blacksmithy.
+    /// Requires 70.1 Blacksmithy (no rank since cc-P42 Part F).
     /// Respects the large-BOD cap (max 1 active).
     /// </summary>
     public static Item? TryCreateLargeBOD(PlayerMobile pm)
     {
-        if (pm.Account is not IAccount acct) return null;
+        if (pm.Account is not IAccount) return null;
         if (!ClusterFGuildSystem.IsJoined(pm, "smithing"))
         {
             pm.SendMessage(0x22, "You must join the Society of Smiths first.");
             return null;
         }
 
-        var bypass   = DevTestingCrystal.IsActive(pm);
-        var skill    = pm.Skills.Blacksmith.Base;
-        var guild     = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
-        var standing = guild.GetReputation("smithing");
-
-        if (!bypass && standing < LargeOrderStanding)
+        if (!MeetsLargeSkill(pm))
         {
-            pm.SendMessage(0x22, "You must achieve Journeyman rank (5,000 standing) to request large orders.");
-            return null;
-        }
-
-        if (!bypass && skill < 70.1)
-        {
-            pm.SendMessage(0x22, "You need at least 70.1 Blacksmithy to request large orders.");
+            pm.SendMessage(0x22, LargeSkillMessage);
             return null;
         }
 
@@ -166,6 +170,23 @@ public partial class BlacksmithGuildmaster
         }
 
         return LargeSmithBOD.CreateRandomFor(pm);
+    }
+
+    /// <summary>
+    /// cc-P42 Part F. The one entry point for a chosen order (choice gump, guild book): creates the small or large
+    /// deed with the rules above, needing no NPC, and shows pinned's own accept gump, as asking the guildmaster does
+    /// (BaseVendor.cs:1393-1397). Accepting puts the deed in the backpack; cancelling deletes it.
+    /// </summary>
+    public static Item? OfferBOD(PlayerMobile pm, bool large)
+    {
+        var bod = large ? TryCreateLargeBOD(pm) : TryCreateSmallBOD(pm);
+
+        if (bod is LargeSmithBOD largeBod)
+            pm.SendGump(new LargeBODAcceptGump(largeBod));
+        else if (bod is SmallSmithBOD smallBod)
+            pm.SendGump(new SmallBODAcceptGump(smallBod));
+
+        return bod;
     }
 
     // -- Turn-in ---------------------------------------------------------------
@@ -227,11 +248,11 @@ public partial class BlacksmithGuildmaster
             return false;
         }
 
-        // cc-P32 (PT-11): the rank gate on requesting a large order holds for turning one in, so a large
-        // deed from a regular smith (70.1 skill, no rank) cannot pay Seals and standing early.
+        // cc-P32 (PT-11), cc-P42 Part F: the gate on requesting a large order (70.1 Blacksmithy) holds for
+        // turning one in, so a deed the player could request can be turned in and one they could not cannot.
         if (dropped is LargeSmithBOD && !CanTurnInLarge(pm))
         {
-            SayTo(from, LargeRankRefusal);
+            SayTo(from, LargeSkillRefusal);
             return false;
         }
 
@@ -266,18 +287,31 @@ public partial class BlacksmithGuildmaster
     // Post-Valorite materials are not in the vanilla gold table so we compute a
     // Valorite-equivalent gold value and scale it by PostValoriteMultiplier.
     //
-    // Representative values at divisor 400:
-    //   Iron small regular  qty10           ->    1 seal  (floor)
-    //   DullCopper exc      qty20           ->    4 seals
-    //   Valorite small reg  qty20           ->   10 seals
-    //   Valorite small exc  qty20           ->  ~30 seals
-    //   Platinum small exc  qty20           ->  ~45 seals
-    //   Celestial small exc qty20           -> ~150 seals
-    //   Large Valorite exc  qty20           -> ~500 seals
-    //   Large Platinum exc  qty20           -> ~750 seals
-    //   Large Celestial exc qty20           -> ~2 500 seals
+    // cc-P42 Part G2 (Chase, 2026-10-03): about 3x Seals and 2x standing across the board, still no gold. Seals are
+    // the divisor-400 count (floor 1) times SealMultiplier, so every order pays exactly three times what it did and
+    // exceptional and large stay worth more; standing is the old table times StandingMultiplier.
+    //
+    // Representative values, computed from the formulas below and pinned's gold table (Rewards.cs m_GoldTable,
+    // ComputeGold's gold * 9 / 10 to gold * 10 / 9), shown as the range that randomisation gives (Seals, standing):
+    //   Iron small regular   qty10            ->    3 Seals,      50 standing   (was 1, 25)
+    //   Iron small exc       qty20            ->    3 Seals,     120 standing   (was 1, 60)
+    //   DullCopper small exc qty20            ->    6 Seals,     150 standing   (was 2, 75)
+    //   Valorite small reg   qty20            ->   27-33 Seals,  240 standing   (was 9-11, 120)
+    //   Valorite small exc   qty20            ->   81-99 Seals,  360 standing   (was 27-33, 180)
+    //   Platinum small exc   qty20            ->  120-150 Seals, 390 standing   (was 40-50, 195)
+    //   Celestial small exc  qty20            ->  405-501 Seals, 600 standing   (was 135-167, 300)
+    //   Large Valorite exc   qty20 (plate)    -> 1350-1668 Seals, 620 standing  (was 450-556, 310)
+    //   Large Platinum exc   qty20 (plate)    -> 2025-2499 Seals, 660 standing  (was 675-833, 330)
+    //   Large Celestial exc  qty20 (plate)    -> 6750-8334 Seals, 940 standing  (was 2250-2778, 470)
+    // The table and how it was computed: shard-migration notes/cc-P42-defect-batch-3.md, Part G2.
 
     private const int SealDivisor = 400;
+    internal const int SealMultiplier = 3;
+    internal const int StandingMultiplier = 2;
+
+    /// <summary>Seals for an order worth <paramref name="gold"/> (its gold equivalent): floor 1, times SealMultiplier.</summary>
+    internal static int SealsForGold(int gold) =>
+        Math.Max(1, (int)Math.Round(gold / (double)SealDivisor)) * SealMultiplier;
 
     // Returns the post-Valorite multiplier over a Valorite-equivalent gold value.
     // Multipliers produce a smooth curve: Valorite large exc ~ 500 seals,
@@ -300,7 +334,7 @@ public partial class BlacksmithGuildmaster
     // For post-Valorite BODs, ComputeGold() returns iron-level gold because the vanilla
     // gold table only covers None-Valorite (indices 0-8).  We instead compute the
     // Valorite-equivalent gold and scale it by the tier multiplier.
-    private static int GoldEquivalentForSeals(SmallSmithBOD small)
+    internal static int GoldEquivalentForSeals(SmallSmithBOD small)
     {
         if (!IsPostValorite(small.Material))
             return small.ComputeGold();
@@ -310,7 +344,7 @@ public partial class BlacksmithGuildmaster
         return (int)(valGold * PostValoriteMultiplier(small.Material));
     }
 
-    private static int GoldEquivalentForSeals(LargeSmithBOD large)
+    internal static int GoldEquivalentForSeals(LargeSmithBOD large)
     {
         if (!IsPostValorite(large.Material))
             return large.ComputeGold();
@@ -321,17 +355,17 @@ public partial class BlacksmithGuildmaster
         return (int)(valGold * PostValoriteMultiplier(large.Material));
     }
 
-    private static (int seals, int standing, int skillChecks) ComputeGuildReward(Item deed)
+    internal static (int seals, int standing, int skillChecks) ComputeGuildReward(Item deed)
     {
         if (deed is SmallSmithBOD small)
         {
             var tier     = MaterialTier(small.Material);
-            var standing = small.RequireExceptional
+            var standing = (small.RequireExceptional
                 ? 60  + tier * 15
-                : tier == 0 ? 25 : 40 + tier * 10;
+                : tier == 0 ? 25 : 40 + tier * 10) * StandingMultiplier;
 
             var gold  = GoldEquivalentForSeals(small);
-            var seals = Math.Max(1, (int)Math.Round(gold / (double)SealDivisor));
+            var seals = SealsForGold(gold);
 
             return (seals, standing, 1);
         }
@@ -339,11 +373,11 @@ public partial class BlacksmithGuildmaster
         if (deed is LargeSmithBOD large)
         {
             var tier     = MaterialTier(large.Material);
-            var standing = tier == 0 ? 100 : 150 + tier * 20;
+            var standing = (tier == 0 ? 100 : 150 + tier * 20) * StandingMultiplier;
             var checks   = tier >= 5 ? 3 : 2;   // Gold+ large earns an extra skill check
 
             var gold  = GoldEquivalentForSeals(large);
-            var seals = Math.Max(1, (int)Math.Round(gold / (double)SealDivisor));
+            var seals = SealsForGold(gold);
 
             return (seals, standing, checks);
         }
@@ -442,14 +476,11 @@ public partial class BlacksmithGuildmaster
         return true;
     }
 
-    public const string LargeRankRefusal =
-        "Large orders are for Journeymen of the Society. Any blacksmith will take this one.";
+    public const string LargeSkillRefusal =
+        "Large orders need 70.1 Blacksmithy. Any blacksmith will take this one.";
 
-    /// <summary>Journeyman rank, or an active Dev Testing Crystal: the same gate as requesting a large order.</summary>
-    public static bool CanTurnInLarge(PlayerMobile pm) =>
-        DevTestingCrystal.IsActive(pm) ||
-        pm.Account is IAccount acct &&
-        ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial).GetReputation("smithing") >= LargeOrderStanding;
+    /// <summary>70.1 Blacksmithy, or an active Dev Testing Crystal: the same gate as requesting a large order.</summary>
+    public static bool CanTurnInLarge(PlayerMobile pm) => MeetsLargeSkill(pm);
 
     /// <summary>
     /// Counts SmallSmithBOD and LargeSmithBOD items anywhere in the player's pack,

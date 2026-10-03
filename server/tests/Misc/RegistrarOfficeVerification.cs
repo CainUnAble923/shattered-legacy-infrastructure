@@ -21,6 +21,7 @@
 //   6. (cc-P31) On a world seeded by cc-P19 (built from cleanup/layout_p19.json), replace leaves exactly
 //      the current layout, no cc-P19-only component, and every unrelated item where it was. Twice is once.
 //   7. (cc-P31) replace dryrun changes nothing, and lists what it would delete and place.
+//   8. (cc-P42 Part D) replace dryrun does not report an addon it would delete as "already on its tiles".
 //
 // The test host has no map files (cc-P17 section 1.3), so nothing here asks the map about z. The z
 // values were checked offline against the server's map files (notes, Part A).
@@ -418,6 +419,41 @@ public class RegistrarOfficeVerification
         }
         finally
         {
+            ClearOffice();
+        }
+    }
+
+    // ---------------------------------------------------------------- 8
+
+    // cc-P42 Part D (p31-checks-2026-10-02.md). After each "would place", the dry run said "already on its tiles, left
+    // alone: <Addon> 0x0001 at <point>": the old addon it would delete (0x0001 is BaseAddon's item id, not a serial),
+    // which a real run has deleted by then. The dry run no longer reports what it is removing; an item that is really
+    // on a tile is still reported.
+    [Fact]
+    public void ReplaceDryRunDoesNotReportTheAddonsItRemoves()
+    {
+        ClearOffice();
+        var stranger = new Item(0x0EED);
+        try
+        {
+            var p19 = SeedP19Office();
+            var tile = ClusterFRegistrarOfficeLayout.Office[0].Location;
+            stranger.MoveToWorld(tile, Map.Trammel);
+
+            var lines = ClusterFRegistrarOfficeSeeder.Replace(true);
+            _out.WriteLine(string.Join("\n", lines));
+
+            var leftAlone = lines.Where(l => l.Contains("already on its tiles, left alone", StringComparison.Ordinal)).ToList();
+            foreach (var a in p19)
+            {
+                Assert.DoesNotContain(leftAlone, l => l.Contains($"{a.GetType().Name} 0x", StringComparison.Ordinal));
+            }
+
+            Assert.Contains(leftAlone, l => l.Contains($"Item 0x0EED at {tile}", StringComparison.Ordinal));
+        }
+        finally
+        {
+            stranger.Delete();
             ClearOffice();
         }
     }

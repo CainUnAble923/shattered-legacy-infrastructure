@@ -10,6 +10,8 @@
 // small deed directly in it) goes through the deed's own EndCombine, pinned's checks unchanged (type, exceptional,
 // material; a large deed's entry, quality, material, amount and completion). An item that fails stays where it is,
 // with pinned's message for it. Like ServUO, the backpack itself may be targeted (ServUO accepts any Container).
+// cc-P42 Part H: a large Smith deed takes crafted items too (LargeBODItemFill), so for one every item in the
+// container is offered, small deeds and items alike; a mixed bag fills every entry it can.
 //
 // Ours on top of ServUO, each a small addition, none changing what combines:
 //   - The container must be the backpack or inside it. ServUO checks nothing here; pinned's single combine refuses
@@ -60,7 +62,7 @@ public static class BODCombineContained
         var items = new List<Item>();
         foreach (var item in container.Items)
         {
-            if (item != deed && (deed is not LargeBOD || item is SmallBOD))
+            if (item != deed && (deed is not LargeBOD || deed is LargeSmithBOD || item is SmallBOD))
             {
                 items.Add(item);
             }

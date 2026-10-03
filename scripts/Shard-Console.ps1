@@ -179,7 +179,7 @@ function ConvertFrom-ContainerInspect {
         Exists = $false; Error = $r.Error; Name = $null; ImageId = $null; ConfigImage = $null
         Status = 'missing'; Running = $false; StartedAtRaw = $null; StartedAt = $null
         FinishedAt = $null; ExitCode = $null; GamePort = $null; ComposeProject = $null
-        MountTargets = @()
+        MountTargets = @(); Mounts = @()
     }
     if ($r.Items.Count -gt 0) {
         $c = $r.Items[0]
@@ -203,7 +203,12 @@ function ConvertFrom-ContainerInspect {
         $rec.ExitCode = $c.State.ExitCode
         $rec.GamePort = $port
         $rec.ComposeProject = $project
-        if ($c.Mounts) { $rec.MountTargets = @($c.Mounts | ForEach-Object { [string]$_.Destination } | Where-Object { $_ }) }
+        if ($c.Mounts) {
+            $rec.MountTargets = @($c.Mounts | ForEach-Object { [string]$_.Destination } | Where-Object { $_ })
+            # cc-P42 Part E: the host side too, so a parent mount can be traced to the folder it serves.
+            $rec.Mounts = @($c.Mounts | Where-Object { $_.Destination } | ForEach-Object {
+                [pscustomobject]@{ Source = [string]$_.Source; Destination = [string]$_.Destination } })
+        }
     }
     [pscustomobject]$rec
 }
@@ -976,6 +981,35 @@ function ConvertFrom-StatusJsonTime {
     ConvertFrom-DockerTime ([string]$Value)
 }
 
+function ConvertTo-HostPath {
+    # A bind mount's Source as Docker reports it, as a comparable Windows path: 'D:/x/y' and the WSL forms
+    # '/run/desktop/mnt/host/d/x/y', '/host_mnt/d/x/y' and '/mnt/d/x/y' all become 'D:\x\y'. No trailing separator.
+    param([string]$Path)
+    if (-not $Path) { return $null }
+    $p = $Path -replace '\\', '/'
+    if ($p -match '^(?:/run/desktop/mnt/host|/host_mnt|/mnt)/([a-zA-Z])(/.*)?$') { $p = $Matches[1].ToUpper() + ':' + $Matches[2] }
+    $p = $p.TrimEnd('/')
+    $p -replace '/', '\'
+}
+
+function Test-StatusWriterMount {
+    # cc-P42 Part E (cc-P37 section 7.3). A container writes the publisher's folder when one of its mounts has the
+    # status target as its destination, or an ancestor of it (live mounts the parent, /var/lib/uo/modernuo, since
+    # cc-P37), and that mount's source, followed down to the target, is the publisher's folder. The test shard mounts
+    # its own parent (modernuo-test), so its status folder is not the one served and it is not a writer.
+    param($Mount, [string]$Target, [string]$Folder)
+    $dest = ([string]$Mount.Destination).TrimEnd('/')
+    $target = $Target.TrimEnd('/')
+    if (-not $dest) { return $false }
+    if ($dest -eq $target) { $rest = '' }
+    elseif ($target.StartsWith($dest + '/')) { $rest = $target.Substring($dest.Length + 1) }
+    else { return $false }
+    $src = ConvertTo-HostPath ([string]$Mount.Source)
+    if (-not $src) { return $false }
+    if ($rest) { $src = $src + '\' + ($rest -replace '/', '\') }
+    return ($src -ieq (ConvertTo-HostPath $Folder))
+}
+
 function Get-PublisherState {
     # Is the shard status publisher running? Read from the file it writes, never from a claim in
     # the file: the file cannot report its own death (docker/uo-status/README.md). Fresh within
@@ -994,7 +1028,7 @@ function Get-PublisherState {
     $writers = @()
     foreach ($k in $Shards.Keys) {
         $c = $Shards[$k].Container
-        if ($c.Exists -and (@($c.MountTargets) -contains $p.MountTarget)) { $writers += $k }
+        if ($c.Exists -and @(@($c.Mounts) | Where-Object { Test-StatusWriterMount $_ $p.MountTarget $p.Folder }).Count) { $writers += $k }
     }
     $r.Writers = $writers
 
@@ -1070,7 +1104,7 @@ function Get-PublisherState {
     }
     $wtext = 'none'
     if ($writers.Count) { $wtext = ($writers | ForEach-Object { $Config.Shards[$_].Label + ' (' + $Config.Shards[$_].Container + ')' }) -join ', ' }
-    $lines.Insert(0, 'written by : ' + $wtext + ' (containers with ' + $p.MountTarget + ' mounted)')
+    $lines.Insert(0, 'written by : ' + $wtext + ' (containers with ' + $p.Folder + ' at ' + $p.MountTarget + ', directly or through a parent mount)')
     $lines.Add('feed       : ' + $r.FeedState + '. ' + $r.FeedDetail)
     if ($r.ShardStartedAt) { $lines.Add('shard says : started ' + (Format-LocalTime $r.ShardStartedAt) + ', last world save ' + (Format-LocalTime $r.LastSaveAt)) }
     $r.Lines = $lines.ToArray()

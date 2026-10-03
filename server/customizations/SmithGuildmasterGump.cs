@@ -288,22 +288,10 @@ public class SmithGuildmasterGump : Gump
         }
     }
 
-    private void HandleBulkOrder(PlayerMobile pm)
-    {
-        if (_npc == null || _npc.Deleted)
-        {
-            pm.SendMessage(0x22, "Please speak with the Guildmaster directly.");
-            return;
-        }
-
-        var bod = _npc.CreateBulkOrder(pm, true);
-
-        if (bod is LargeSmithBOD largeBod)
-            pm.SendGump(new LargeBODAcceptGump(largeBod));
-        else if (bod is SmallSmithBOD smallBod)
-            pm.SendGump(new SmallBODAcceptGump(smallBod));
-        // null means CreateBulkOrder already sent an explanatory message
-    }
+    // cc-P42 Part F (D51). The player picks small or large; works with or without the guildmaster, since
+    // SmithBulkOrderChoiceGump goes through BlacksmithGuildmaster.OfferBOD, which needs no NPC. Before this the
+    // button rolled small or large at random from the NPC and, opened anywhere else, only said to go and talk to him.
+    private void HandleBulkOrder(PlayerMobile pm) => pm.SendGump(new SmithBulkOrderChoiceGump(pm));
 
     private void HandleJoin(PlayerMobile pm)
     {

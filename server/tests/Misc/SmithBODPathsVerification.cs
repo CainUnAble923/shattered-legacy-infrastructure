@@ -9,9 +9,10 @@
 //   1. A deed crosses paths and pays once: a guild deed turned in at a regular smith, and a regular smith's
 //      deed turned in at the guildmaster, are each accepted and deleted; a small combined into a large is
 //      deleted by the combine, so it cannot be paid on its own.
-//   2. The Journeyman gate holds at turn-in (the one fix): a large deed from a regular smith, who issues
-//      them at 70.1 Blacksmithy with no rank, pays a member below Journeyman nothing at the guildmaster or
-//      the book and stays in the pack; at Journeyman it pays.
+//   2. The request gate holds at turn-in. cc-P32 made it Journeyman rank; cc-P42 Part F (Chase, 2026-10-03)
+//      made it 70.1 Blacksmithy and nothing else, for requesting and turning in alike. A complete large deed
+//      pays a member at 70.0 nothing at the guildmaster or the book and stays in the pack; at 70.1 with no
+//      standing at all it pays.
 
 using System;
 using System.Linq;
@@ -165,9 +166,10 @@ public class SmithBODPathsVerification
     // ---------------------------------------------------------------- 2
 
     [Fact]
-    public void ALargeDeedNeedsJourneymanAtTheGuild()
+    public void ALargeDeedNeedsSeventyPointOneBlacksmithyAtTheGuild()
     {
-        var (account, pm) = NewMember(1_000);
+        var (account, pm) = NewMember(0);
+        pm.Skills.Blacksmith.Base = 70.0;
         var master = Near(new BlacksmithGuildmaster());
 
         try
@@ -180,7 +182,7 @@ public class SmithBODPathsVerification
 
             var atMaster = master.OnDragDrop(pm, deed);
             var atBook = BlacksmithGuildmaster.TurnInBOD(pm, deed);
-            _out.WriteLine($"below Journeyman ({standing}): guildmaster {atMaster}, book {atBook}; " +
+            _out.WriteLine($"at 70.0 Blacksmithy, {standing} standing: guildmaster {atMaster}, book {atBook}; " +
                            $"seals {seals} -> {Guild(account, pm).GetCurrency("smithing")}");
 
             Assert.False(atMaster);
@@ -190,12 +192,12 @@ public class SmithBODPathsVerification
             Assert.Equal(seals, Guild(account, pm).GetCurrency("smithing"));
             Assert.Equal(standing, Guild(account, pm).GetReputation("smithing"));
 
-            // At Journeyman it pays.
-            Guild(account, pm).AddReputation("smithing", 5_000 - standing);
+            // At 70.1, still with no standing, it pays.
+            pm.Skills.Blacksmith.Base = 70.1;
             Assert.True(master.OnDragDrop(pm, deed));
             Assert.True(deed.Deleted);
             Assert.True(Guild(account, pm).GetCurrency("smithing") > seals);
-            _out.WriteLine($"at Journeyman: seals {seals} -> {Guild(account, pm).GetCurrency("smithing")}");
+            _out.WriteLine($"at 70.1, 0 standing: seals {seals} -> {Guild(account, pm).GetCurrency("smithing")}");
         }
         finally
         {

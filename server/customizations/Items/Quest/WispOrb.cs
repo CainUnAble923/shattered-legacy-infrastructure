@@ -524,6 +524,25 @@ public partial class WispOrb : Item
         }
     }
 
+    // ServUO pub57 BaseCreature.SetControlMaster, :6664-6673, the part pinned's SetControlMaster lacks.
+    internal static void EndFight(BaseCreature creature, Mobile master)
+    {
+        creature.RemoveAggressed(master);
+        creature.RemoveAggressor(master);
+        master.RemoveAggressed(creature);
+        master.RemoveAggressor(creature);
+
+        if (creature.Combatant != null)
+        {
+            creature.Combatant = null;
+        }
+
+        if (master.Combatant == creature)
+        {
+            master.Combatant = null;
+        }
+    }
+
     private class InternalTarget : Target
     {
         private readonly WispOrb _orb;
@@ -560,6 +579,13 @@ public partial class WispOrb : Item
                         _orb.Pet.SetControlMaster(from);
                         _orb.Pet.ControlTarget = from;
                         _orb.Pet.ControlOrder = OrderType.Follow;
+
+                        // cc-P42 Part I (D52). ServUO's SetControlMaster ends the fight with the new master both ways
+                        // (pub57 BaseCreature.cs:6664-6673); pinned's does not (BaseCreature.cs:3748-3795), so a player
+                        // who possessed the creature they were fighting kept it as Combatant and swung at it, and the
+                        // creature's defensive AI took them as its aggressor (DespiseAIHelper.FindAggressorNearAnchor
+                        // matches m.Combatant == creature). The same four removals and two resets as ServUO.
+                        EndFight(creature, from);
 
                         from.SendLocalizedMessage(1153276); // Your Wisp Orb takes control of the creature!
                         _orb.Pet.PublicOverheadMessage(MessageType.Regular, 0x3B2, 1153295, from.Name); // * This creature is now under the control of ~1_NAME~ *

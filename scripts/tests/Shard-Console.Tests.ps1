@@ -825,15 +825,61 @@ Fact 'PublishingWithTheFeedStoppedIsAmberBecauseTheWebsiteCannotSeeIt' {
     Assert-Equal 'amber' $s3.Publisher.Color
 }
 
+# cc-P42 Part E (cc-P37 section 7.3). A container's mounts as Docker reports them: both the destinations the old check
+# read and the sources the new one follows.
+function Set-Mounts {
+    param($Container, [object[]]$Pairs)
+    $Container.Mounts = @($Pairs | ForEach-Object { [pscustomobject]@{ Source = $_[0]; Destination = $_[1] } })
+    $Container.MountTargets = @($Pairs | ForEach-Object { $_[1] })
+}
+$statusDir = $config.Publisher.Folder -replace '\\', '/'
+$libDir    = Split-Path $config.Publisher.Folder -Parent
+
 Fact 'OnlyTheTestShardMountingTheStatusFolderIsAWarning' {
     # The website would show the test shard's players as if they were live.
     $json = New-StatusJson $now.AddSeconds(-20)
     $s = New-ConsoleState -Config $config -Sections (New-PublisherSections $json)
-    $s.Shards['test'].Container.MountTargets = @('/var/lib/uo/modernuo/status')
+    Set-Mounts $s.Shards['test'].Container @(, @($statusDir, '/var/lib/uo/modernuo/status'))
     $p = Get-PublisherState -Config $config -Sections (New-PublisherSections $json) -Shards $s.Shards -Now $now
     Assert-Equal 'test' (@($p.Writers) -join ',')
     Assert-Equal 'amber' $p.Color
     Assert-True (@($p.Lines | Where-Object { $_ -like 'WARNING*TEST*' }).Count -eq 1) 'the warning names the test shard'
+}
+
+Fact 'LiveMountingTheParentFolderIsTheStatusWriter' {
+    # cc-P37's live mount, ${SERVER_PATH}/lib/uo/modernuo:/var/lib/uo/modernuo, and the test shard's own parent,
+    # modernuo-test, at the same destination. Only live's source leads to the folder sl-uo-status serves.
+    $json = New-StatusJson $now.AddSeconds(-20)
+    $s = New-ConsoleState -Config $config -Sections (New-PublisherSections $json)
+    Set-Mounts $s.Shards['live'].Container @(, @(($libDir -replace '\\', '/'), '/var/lib/uo/modernuo'))
+    Set-Mounts $s.Shards['test'].Container @(, @((($libDir + '-test') -replace '\\', '/'), '/var/lib/uo/modernuo'))
+    $p = Get-PublisherState -Config $config -Sections (New-PublisherSections $json) -Shards $s.Shards -Now $now
+    Assert-Equal 'live' (@($p.Writers) -join ',')
+    Assert-Equal 'green' $p.Color
+    Assert-True ($p.Lines[0] -like 'written by : LIVE (sl-modernuo)*') $p.Lines[0]
+    Assert-Equal 0 @($p.Lines | Where-Object { $_ -like 'WARNING*' }).Count 'no test-only warning'
+}
+
+Fact 'TheTestShardsOwnParentFolderIsNotAStatusWriter' {
+    # The test shard writes modernuo-test\status, which nothing serves: with live down to no mount, nobody writes.
+    $json = New-StatusJson $now.AddSeconds(-20)
+    $s = New-ConsoleState -Config $config -Sections (New-PublisherSections $json)
+    Set-Mounts $s.Shards['live'].Container @()
+    Set-Mounts $s.Shards['test'].Container @(, @((($libDir + '-test') -replace '\\', '/'), '/var/lib/uo/modernuo'))
+    $p = Get-PublisherState -Config $config -Sections (New-PublisherSections $json) -Shards $s.Shards -Now $now
+    Assert-Equal '' (@($p.Writers) -join ',')
+    Assert-True ($p.Lines[0] -like 'written by : none*') $p.Lines[0]
+}
+
+Fact 'AWslFormSourceMapsToTheSameFolder' {
+    # Docker Desktop can report a bind source as /run/desktop/mnt/host/<drive>/...; it is the same folder.
+    $wsl = '/run/desktop/mnt/host/' + $libDir.Substring(0, 1).ToLower() + ($libDir.Substring(2) -replace '\\', '/')
+    $json = New-StatusJson $now.AddSeconds(-20)
+    $s = New-ConsoleState -Config $config -Sections (New-PublisherSections $json)
+    Set-Mounts $s.Shards['live'].Container @(, @($wsl, '/var/lib/uo/modernuo/'))
+    Set-Mounts $s.Shards['test'].Container @()
+    $p = Get-PublisherState -Config $config -Sections (New-PublisherSections $json) -Shards $s.Shards -Now $now
+    Assert-Equal 'live' (@($p.Writers) -join ',') $wsl
 }
 
 Fact 'TheReportHasAGlanceLineForEachTileAndAPublisherSection' {

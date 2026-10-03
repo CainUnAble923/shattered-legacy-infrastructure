@@ -320,12 +320,21 @@ public class SmithGuildBookGump : Gump
             false, false);
         y += 32;
 
+        // cc-P42 Part F: the book's two buttons are the same choice as the Bulk Order button, by the same rules
+        // (BlacksmithGuildmaster.OfferBOD): Small is always small, Large needs 70.1 Blacksmithy and nothing else.
         AddButton(18, y, 4005, 4007, BtnRequestSmallBOD, GumpButtonType.Reply, 0);
         AddLabel(54, y + 2, 999, "Request Small Bulk Order");
         y += 28;
 
-        AddButton(18, y, 4005, 4007, BtnRequestLargeBOD, GumpButtonType.Reply, 0);
-        AddLabel(54, y + 2, 999, "Request Large Bulk Order  (requires Journeyman rank)");
+        if (BlacksmithGuildmaster.MeetsLargeSkill(_pm))
+        {
+            AddButton(18, y, 4005, 4007, BtnRequestLargeBOD, GumpButtonType.Reply, 0);
+            AddLabel(54, y + 2, 999, "Request Large Bulk Order");
+        }
+        else
+        {
+            AddLabel(18, y + 2, 0x3B2, $"Large Bulk Order: needs 70.1 Blacksmithy (yours is {_pm.Skills.Blacksmith.Base:F1})");
+        }
     }
 
     // -- Commission page -------------------------------------------------------
@@ -575,7 +584,7 @@ public class SmithGuildBookGump : Gump
         if (bod == null || bod.Deleted)
             pm.SendMessage(0x22, "That order no longer exists.");
         else if (bod is LargeSmithBOD && !BlacksmithGuildmaster.CanTurnInLarge(pm))
-            pm.SendMessage(0x22, BlacksmithGuildmaster.LargeRankRefusal); // cc-P32 (PT-11)
+            pm.SendMessage(0x22, BlacksmithGuildmaster.LargeSkillRefusal); // cc-P32 (PT-11), cc-P42 Part F
         else if (!BlacksmithGuildmaster.TurnInBOD(pm, bod))
             pm.SendMessage(0x22, "That order is not yet complete.");
 
@@ -616,32 +625,17 @@ public class SmithGuildBookGump : Gump
         pm.SendGump(new SmithGuildBookGump(pm, _book, 1));
     }
 
+    // cc-P42 Part F: through the accept gump, as the Bulk Order button and the guildmaster do. Small never rolls large.
     private void HandleRequestBOD(PlayerMobile pm)
     {
-        var bod = BlacksmithGuildmaster.TryCreateBOD(pm);
-        if (bod != null)
-        {
-            pm.AddToBackpack(bod);
-            var desc = bod switch
-            {
-                SmallSmithBOD s => $"New order: {s.AmountMax}x {(s.RequireExceptional ? "exceptional " : "")}{s.Type?.Name ?? "item"}",
-                LargeSmithBOD _ => "New large order received.",
-                _               => "New order received.",
-            };
-            pm.SendMessage(0x44, desc);
-        }
         pm.SendGump(new SmithGuildBookGump(pm, _book, 0));
+        BlacksmithGuildmaster.OfferBOD(pm, large: false);
     }
 
     private void HandleRequestLargeBOD(PlayerMobile pm)
     {
-        var bod = BlacksmithGuildmaster.TryCreateLargeBOD(pm);
-        if (bod != null)
-        {
-            pm.AddToBackpack(bod);
-            pm.SendMessage(0x44, "New large bulk order received.");
-        }
         pm.SendGump(new SmithGuildBookGump(pm, _book, 0));
+        BlacksmithGuildmaster.OfferBOD(pm, large: true);
     }
 
     private void HandleReqLargeComm(PlayerMobile pm, CharacterGuildData guild)

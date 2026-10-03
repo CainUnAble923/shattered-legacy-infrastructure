@@ -263,6 +263,11 @@ apply_patch "$PATCHES/BaseWeapon-talisman-durability.patch"
 apply_patch "$PATCHES/CraftGump-MakeXClear.patch"
 apply_patch "$PATCHES/CraftGumpItem-MakeX.patch"
 apply_patch "$PATCHES/SmallSmithBOD-PostValorite.patch"
+# cc-P42 Part G1 (Chase, 2026-10-03). The Society of Smiths' small orders ask for items that can still raise the smith's
+# Blacksmithy: an overload CreateRandomFor(m, teachingOnly) with two calls into customizations ClusterFSmithTeaching; the
+# one-argument form, which regular smiths call, is unchanged. Alternatives (a copy of the generator in customizations)
+# argued in shard-migration/notes/cc-P42-defect-batch-3.md, Part G; pinned by SmithOrdersTeachVerification.
+apply_patch "$PATCHES/SmallSmithBOD-teaching-orders.patch"
 
 # S1 armour set-bonus subsystem. All three are additive hooks; none rewrites upstream logic.
 # See shard-migration/notes/s1-armour-sets.md for what a pinned-commit bump must reconcile.
@@ -285,8 +290,8 @@ apply_patch "$PATCHES/AOS-damage-eater-hook.patch"
 # pinned by StatBonusLeakVerification (proved red). ModernUO's to report upstream.
 apply_patch "$PATCHES/AOS-stat-bonus-names.patch"
 
-# S8 test route. The ONLY patch in this repo that touches an upstream TEST project, and the only
-# one with no effect on the shipped server. Argued in shard-migration/notes/s8-test-route.md section 2.
+# S8 test route. One of the two patches in this repo that touch an upstream TEST project (cc-P42 added the other), and
+# like it has no effect on the shipped server. Argued in shard-migration/notes/s8-test-route.md section 2.
 # Since cc-P38 (upstream d4531cd9) it targets TestServerInitializer.cs, where upstream #2473 moved the test
 # bootstrap, and upstream now calls NPCSpeeds.Configure itself; the patch adds the four shard calls after it
 # (SkillCheck, NameList, Corpse, BaseCreature). The file keeps its old name. If it ever stops applying, the
@@ -363,6 +368,18 @@ apply_patch "$PATCHES/BOD-combine-contained.patch"
 # shard-migration/notes/cc-P32-spawner-importer-bods-self-repair.md A.2; pinned by SpawnerImportVerification (proved
 # red). ModernUO's to report upstream.
 apply_patch "$PATCHES/ImportSpawners-guid-key.patch"
+# cc-P42 Part C. Upstream's own ImportCleanupTests.Import_DuplicateLocation_ReplacesExistingSpawner asserted the delete by
+# location the patch above removes, so the upstream suite had 1 failure (cc-P38 section 13). This test patch makes that one
+# test expect our behaviour: the other-guid spawner on the tile is kept, the same-guid one is replaced. With the patch above
+# removed it fails, so a later upstream change to the importer stops here. The second patch that touches an upstream TEST
+# project (the first is the fixture patch above). Argued in shard-migration/notes/cc-P42-defect-batch-3.md, Part C.
+apply_patch "$PATCHES/ImportCleanupTests-guid-key.patch"
+# cc-P42 Part J (D53, Chase 2026-10-03). Trammel Despise runs the revamp only: the importer asks customizations
+# ClusterFDespiseStockSpawns.Admit about every spawner it builds, which keeps the treasure chests of upstream's
+# shared/trammel/Despise.json and drops its creatures; every other spawner is untouched. An exclusion we own rather than an
+# edited copy of upstream's JSON, argued in shard-migration/notes/cc-P42-defect-batch-3.md, Part J; pinned by
+# DespiseStockSpawnsVerification (proved red).
+apply_patch "$PATCHES/ImportSpawners-despise-exclusion.patch"
 
 # cc-P32 Part C (F-27, ours). Self Repair leaves the random property table for armor, shields and hats (two
 # m_Props.Set lines, as pinned already does for Mage Armor), so loot and runic crafting never roll it; the rare

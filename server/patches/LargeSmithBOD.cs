@@ -33,12 +33,16 @@ namespace Server.Engines.BulkOrders
         };
 
         [Constructible]
-        public LargeSmithBOD()
+        public LargeSmithBOD() : this(Utility.Random(8), Utility.RandomDouble() < 0.825)
+        {
+        }
+
+        // ClusterF (cc-P42 Part G1): the stock constructor with its two rolls passed in, so CreateRandomFor can pick
+        // the set after the exceptional roll. Set indexes as below, in SetTypes' order.
+        private LargeSmithBOD(int rand, bool reqExceptional)
         {
             LargeBulkEntry[] entries;
             var useMaterials = true;
-
-            var rand = Utility.Random(8);
 
             entries = rand switch
             {
@@ -60,7 +64,6 @@ namespace Server.Engines.BulkOrders
 
             var hue = 0x44E;
             var amountMax = Utility.RandomList(10, 15, 20, 20);
-            var reqExceptional = Utility.RandomDouble() < 0.825;
 
             var material = useMaterials
                 ? GetRandomMaterial(BulkMaterialType.DullCopper, m_BlacksmithMaterialChances)
@@ -78,7 +81,26 @@ namespace Server.Engines.BulkOrders
         {
         }
 
-        // ClusterF: factory method matching SmallSmithBOD.CreateRandomFor pattern
+        // ClusterF (cc-P42 Part G1): the eight sets in the constructor's order.
+        public static System.Type[] SetTypes(int rand) =>
+            System.Array.ConvertAll(
+                rand switch
+                {
+                    0 => LargeBulkEntry.LargeRing,
+                    1 => LargeBulkEntry.LargePlate,
+                    2 => LargeBulkEntry.LargeChain,
+                    3 => LargeBulkEntry.LargeAxes,
+                    4 => LargeBulkEntry.LargeFencing,
+                    5 => LargeBulkEntry.LargeMaces,
+                    6 => LargeBulkEntry.LargePolearms,
+                    7 => LargeBulkEntry.LargeSwords,
+                    _ => LargeBulkEntry.LargeRing
+                },
+                e => e.Type
+            );
+
+        // ClusterF: factory method matching SmallSmithBOD.CreateRandomFor pattern. The Society of Smiths' large orders
+        // only; regular smiths make new LargeSmithBOD() (Blacksmith.cs:98).
         public static LargeSmithBOD CreateRandomFor(Mobile m)
         {
             var theirSkill = m.Skills.Blacksmith.Base;
@@ -87,7 +109,12 @@ namespace Server.Engines.BulkOrders
             if (theirSkill < 70.1)
                 return null;
 
-            var bod = new LargeSmithBOD();
+            // cc-P42 Part G1: a set whose pieces can all still raise the smith's Blacksmithy, or the closest when none
+            // can (ClusterFSmithTeaching.PickSets). The exceptional roll is stock and comes first, since it decides
+            // what the smith can make.
+            var reqExceptional = Utility.RandomDouble() < 0.825;
+            var sets = ClusterFSmithTeaching.PickSets(m, new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, SetTypes, reqExceptional);
+            var bod = new LargeSmithBOD(sets.RandomElement(), reqExceptional);
 
             // ClusterF: post-Valorite upgrade — 15% chance for extended smiths (skill > 100)
             if (bod.Material != BulkMaterialType.None && theirSkill > 100.0 && Utility.RandomDouble() < 0.15)
@@ -110,6 +137,19 @@ namespace Server.Engines.BulkOrders
             }
 
             return bod;
+        }
+
+        // ClusterF (cc-P42 Part H): a large Smith deed also takes the crafted items, each filling its entry as a small
+        // deed of that entry would (LargeBODItemFill). Small deeds combine through pinned's LargeBOD.EndCombine as before.
+        public override void EndCombine(Mobile from, Item item)
+        {
+            if (item is SmallBOD)
+            {
+                base.EndCombine(from, item);
+                return;
+            }
+
+            LargeBODItemFill.Fill(this, from, item);
         }
 
         public override int ComputeFame() => SmithRewardCalculator.Instance.ComputeFame(this);

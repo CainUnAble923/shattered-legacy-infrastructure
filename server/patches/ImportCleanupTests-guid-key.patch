@@ -1,0 +1,51 @@
+--- a/Projects/UOContent.Tests/Tests/Engines/Spawners/Json/ImportCleanupTests.cs
++++ b/Projects/UOContent.Tests/Tests/Engines/Spawners/Json/ImportCleanupTests.cs
+@@ -138,7 +138,10 @@
+     [Fact]
+     public void Import_DuplicateLocation_ReplacesExistingSpawner()
+     {
+-        // Verifies that an existing spawner at the same location and type is removed and replaced.
++        // Shattered Legacy (cc-P42 Part C): ImportSpawners-guid-key.patch drops the delete by location (PT-07; GetItemsAt
++        // matches x,y only and the data stacks spawners on one tile). A spawner of another guid on the tile is kept; the
++        // one with the file's guid is still replaced. Upstream asserted the delete. See shard-migration
++        // notes/cc-P42-defect-batch-3.md, Part C.
+         var dir = Path.Combine(Path.GetTempPath(), "muo-spawner-import-dup-" + Guid.NewGuid().ToString("N"));
+         Directory.CreateDirectory(dir);
+         var path = Path.Combine(dir, "test-dup.json");
+@@ -163,15 +166,21 @@
+         var existing = new Spawner(1, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(10));
+         existing.MoveToWorld(new Point3D(310, 310, 0), Map.Felucca);
+ 
++        // And an earlier import of the file's own spawner, with the file's guid.
++        var sameGuid = new Spawner(1, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(10)) { Guid = newGuid };
++        sameGuid.MoveToWorld(new Point3D(310, 310, 0), Map.Felucca);
++
+         BaseSpawner placedSpawner = null;
+         try
+         {
+-            var all = new Dictionary<Guid, ISpawner> { [existing.Guid] = existing };
++            var all = new Dictionary<Guid, ISpawner> { [existing.Guid] = existing, [newGuid] = sameGuid };
+             ImportSpawnersCommand.ImportFile(new FileInfo(path), all);
+ 
+-            // existing should have been deleted and replaced.
+-            Assert.True(existing.Deleted);
+-            Assert.DoesNotContain(existing.Guid, all.Keys);
++            // existing is kept; the same-guid spawner is deleted and replaced.
++            Assert.False(existing.Deleted);
++            Assert.Contains(existing.Guid, all.Keys);
++            Assert.True(sameGuid.Deleted);
++            Assert.NotSame(sameGuid, all[newGuid]);
+ 
+             foreach (var s in Map.Felucca.GetItemsAt<BaseSpawner>(new Point3D(310, 310, 0)))
+             {
+@@ -190,6 +199,10 @@
+             {
+                 existing.Delete();
+             }
++            if (!sameGuid.Deleted)
++            {
++                sameGuid.Delete();
++            }
+             placedSpawner?.Delete();
+             if (Directory.Exists(dir))
+             {

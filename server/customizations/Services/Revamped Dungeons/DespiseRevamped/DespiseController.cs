@@ -645,10 +645,22 @@ public partial class DespiseController : Item
     }
 
     // ServUO: EventSink.OnEnterRegion. When an orb's owner is no longer standing in any Despise region -
-    // walked out, recalled out, or was internalized on logout - the orb vanishes, which releases the creature.
+    // walked out or recalled out - the orb vanishes, which releases the creature.
     // Called from DespiseRegion.OnExit, after the mobile's location has moved on.
+    //
+    // cc-P42 Part K (D54): not when the owner is internalized on logout. ServUO's handler excludes nothing
+    // (pub57 DespiseController.cs:597-609) and its Region.OnRegionChange fires it for the move to the internal
+    // map too (Server/Region.cs:1128-1163), so it destroyed the orb on logout as this did; but OnLogin below is
+    // written to bring the player back to their stronghold with their creature, and DespiseCreature.CanAutoStable
+    // is false so the creature stays out, neither of which can happen once the orb is gone. The owner comes back
+    // where they logged out (Mobile.LogoutLocation), inside the dungeon.
     public static void OnLeaveDespise(Mobile m)
     {
+        if (m.Map == Map.Internal || m.Map == null)
+        {
+            return;
+        }
+
         var orb = GetWispOrb(m);
 
         if (orb != null && !Region.Find(m.Location, m.Map).IsPartOf<DespiseRegion>())

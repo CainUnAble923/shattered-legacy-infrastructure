@@ -43,6 +43,20 @@ internal sealed class ImbuePropertyDef
     /// </summary>
     public int DiscoveryThreshold;
 
+    /// <summary>
+    /// Standing required to imbue this property, when it is set above the tier the discovery threshold gives
+    /// (-1: use the tier). cc-P42 Part A: Self Repair.
+    /// </summary>
+    public int MinStandingOverride = -1;
+
+    /// <summary>Standing required to imbue this property.</summary>
+    public int RequiredStanding => MinStandingOverride >= 0
+        ? MinStandingOverride
+        : ArtificersGuildmasterGump.GetMinStanding(DiscoveryThreshold);
+
+    /// <summary>Rank name of RequiredStanding, as the gump shows it ("[req: Master Artificer]").</summary>
+    public string RequiredRankName => ArtificersGuildmasterGump.GetRankName(RequiredStanding);
+
     // Accessors
     public Func<Item, int>    Get;
     public Action<Item, int>  Set;
@@ -103,6 +117,13 @@ internal sealed class ImbuePropertyDef
 internal static class ImbueCatalogue
 {
     public static readonly List<ImbuePropertyDef> All;
+
+    // cc-P42 Part A. Self Repair (weapon and armor): shards and gold at the vanilla maximum, scaled like every other
+    // property by target value and rank, and the standing required (Master Artificer). Was 5 shards, 2,000 gold, and
+    // the Artificer tier its threshold gave.
+    public const int SelfRepairShards      = 40;
+    public const int SelfRepairGold        = 40000;
+    public const int SelfRepairMinStanding = 15000;
 
     static ImbueCatalogue()
     {
@@ -271,9 +292,13 @@ internal static class ImbueCatalogue
             i => ((BaseWeapon)i).WeaponAttributes.HitDispel,
             (i, v) => ((BaseWeapon)i).WeaponAttributes.HitDispel = v);
 
-        Add("Self Repair",       "Weapon", 5, 7, shards: 5, gold: 2000, ImbuableItem.Weapon,
+        // cc-P42 Part A (Chase, 2026-10-02): Self Repair is kept but priced far above every other property and
+        // gated at Master Artificer. With F-27 (1 in 500 from high-end loot) this keeps it rare. Numbers and the
+        // comparison table: shard-migration notes/cc-P42-defect-batch-3.md, Part A.
+        Add("Self Repair",       "Weapon", 5, 7, shards: SelfRepairShards, gold: SelfRepairGold, ImbuableItem.Weapon,
             i => ((BaseWeapon)i).WeaponAttributes.SelfRepair,
-            (i, v) => ((BaseWeapon)i).WeaponAttributes.SelfRepair = v);
+            (i, v) => ((BaseWeapon)i).WeaponAttributes.SelfRepair = v,
+            minStanding: SelfRepairMinStanding);
 
         Add("Lower Stat Req (Weapon)", "Weapon", 100, 100, shards: 4, gold: 1500, ImbuableItem.Weapon,
             i => ((BaseWeapon)i).WeaponAttributes.LowerStatReq,
@@ -301,9 +326,10 @@ internal static class ImbueCatalogue
             i => ((BaseArmor)i).EnergyBonus,
             (i, v) => ((BaseArmor)i).EnergyBonus = v);
 
-        Add("Self Repair (Armor)",   "Defense",  5,  7, shards: 5, gold: 2000, ImbuableItem.Armor,
+        Add("Self Repair (Armor)",   "Defense",  5,  7, shards: SelfRepairShards, gold: SelfRepairGold, ImbuableItem.Armor,
             i => ((BaseArmor)i).ArmorAttributes.SelfRepair,
-            (i, v) => ((BaseArmor)i).ArmorAttributes.SelfRepair = v);
+            (i, v) => ((BaseArmor)i).ArmorAttributes.SelfRepair = v,
+            minStanding: SelfRepairMinStanding);
 
         Add("Lower Stat Req (Armor)", "Defense", 100, 100, shards: 4, gold: 1500, ImbuableItem.Armor,
             i => ((BaseArmor)i).ArmorAttributes.LowerStatReq,
@@ -387,7 +413,7 @@ internal static class ImbueCatalogue
         string name, string group, int maxVanilla, int maxGuild,
         int shards, int gold, ImbuableItem applies,
         Func<Item, int> get, Action<Item, int> set,
-        bool isBool = false)
+        bool isBool = false, int minStanding = -1)
     {
         All.Add(new ImbuePropertyDef
         {
@@ -399,6 +425,7 @@ internal static class ImbueCatalogue
             GoldBase           = gold,
             IsBool             = isBool,
             DiscoveryThreshold = ComputeThreshold(gold),
+            MinStandingOverride = minStanding,
             Applies            = applies,
             Get                = get,
             Set                = set
@@ -714,9 +741,9 @@ public sealed class ArtificersImbueGump : Gump
             var blocked  = cur != 0 && !isMember && standing < 1000;
 
             // Rank gate: property tier vs player standing
-            var minStanding   = ArtificersGuildmasterGump.GetMinStanding(def.DiscoveryThreshold);
+            var minStanding   = def.RequiredStanding;
             var rankLocked    = standing < minStanding;
-            var reqRankName   = ArtificersGuildmasterGump.GetRequiredRankName(def.DiscoveryThreshold);
+            var reqRankName   = def.RequiredRankName;
 
             // Discovery status
             var mastered = data.IsMastered(def.Name, def.DiscoveryThreshold);
@@ -786,9 +813,9 @@ public sealed class ArtificersImbueGump : Gump
         var mastered    = data.IsMastered(def.Name, def.DiscoveryThreshold);
         var discCount   = data.GetDiscoveryCount(def.Name);
         var essCount    = CountEssencesFor(def.Name);
-        var minStanding = ArtificersGuildmasterGump.GetMinStanding(def.DiscoveryThreshold);
+        var minStanding = def.RequiredStanding;
         var rankLocked  = standing < minStanding;
-        var reqRankName = ArtificersGuildmasterGump.GetRequiredRankName(def.DiscoveryThreshold);
+        var reqRankName = def.RequiredRankName;
 
         AddLabel(18, 60, 1154, $"Imbue: {def.Name}");
         AddLabel(18, 80, 999,  $"Current value: {(def.IsBool ? (cur == 1 ? "ON" : "OFF") : cur.ToString())}");
@@ -1345,10 +1372,10 @@ public sealed class ArtificersImbueGump : Gump
         var diff   = def.SkillDifficulty(_targetValue, standing);
 
         // Rank gate: property tier vs player standing
-        var minStanding = ArtificersGuildmasterGump.GetMinStanding(def.DiscoveryThreshold);
+        var minStanding = def.RequiredStanding;
         if (standing < minStanding)
         {
-            var reqRank = ArtificersGuildmasterGump.GetRequiredRankName(def.DiscoveryThreshold);
+            var reqRank = def.RequiredRankName;
             _pm.SendMessage(0x22, $"You need {reqRank} rank ({minStanding:N0} standing) to imbue {def.Name}.");
             _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
             return;

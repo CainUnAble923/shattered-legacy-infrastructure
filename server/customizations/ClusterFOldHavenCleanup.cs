@@ -15,6 +15,12 @@ namespace Server;
 /// vendor type names and confirming the spawner is in the Old Haven area —
 /// no coordinate pin needed, so relocated spawners are still caught.
 ///
+/// Stock spawners are never touched (cc-P42 Part B): any spawner pinned's post-uoml/** or shared/**
+/// spawn files place on Trammel (ClusterFStockSpawnData), and any NPC one of them spawned, is left
+/// alone, whatever it spawns. Before this the box reached into New Haven (X 3416-3570) and took
+/// pinned's Blacksmith Guildmaster spawner at 3526,2536,20 (P21 section 7 defect 2), and also
+/// pinned's Healer spawner in the ruins at 3618,2614,0 with its Healer.
+///
 /// Usage:
 ///   [ClusterFOldHavenCleanup          — deletes all targets
 ///   [ClusterFOldHavenCleanup dryrun   — reports what would be deleted
@@ -84,7 +90,7 @@ public static class ClusterFOldHavenCleanup
     // names is deleted.  This catches spawners that were generating the
     // vendor NPCs above — including the Carpenter/RealEstateBroker spawner
     // that escaped the first manual cleanup pass.
-    private static readonly HashSet<string> SpawnerVendorTypes = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> SpawnerVendorTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "MansionGuard",
         "Uzeraan",
@@ -102,10 +108,21 @@ public static class ClusterFOldHavenCleanup
         "WarriorGuildmaster", "MinerGuildmaster", "ThiefGuildmaster",
     };
 
-    // Old Haven ruins bounding box used for spawner scan.
-    private static bool IsOldHavenArea(Point3D loc) =>
+    // Old Haven ruins bounding box used for spawner scan. It overlaps New Haven (whose west half ends at
+    // X 3545, ClusterFNewHavenServicesSeeder; its Necromancers Guild Hall reaches X 3559), so the box alone
+    // never decides: stock spawners are excluded by IsStock below.
+    internal static bool IsOldHavenArea(Point3D loc) =>
         loc.X >= 3520 && loc.X <= 3760 &&
         loc.Y >= 2420 && loc.Y <= 2760;
+
+    // cc-P42 Part B: every stock Trammel spawner inside the box, from the shipped spawn files.
+    internal static List<ClusterFStockSpawnData.StockSpawner> StockInBox() =>
+        ClusterFStockSpawnData.Load(Map.Trammel, ClusterFStockSpawnData.ShardFolders)
+            .Where(s => IsOldHavenArea(s.Location))
+            .ToList();
+
+    private static bool IsStock(BaseSpawner spawner, List<ClusterFStockSpawnData.StockSpawner> stock) =>
+        stock.Any(s => s.Matches(spawner));
 
     // How many tiles from the recorded position we still consider an NPC match.
     private const int Tolerance = 8;
@@ -123,9 +140,31 @@ public static class ClusterFOldHavenCleanup
         var dryRun = e.Length > 0 &&
                      e.GetString(0).Equals("dryrun", StringComparison.OrdinalIgnoreCase);
 
+        foreach (var line in Run(dryRun))
+        {
+            e.Mobile.SendMessage(line);
+        }
+    }
+
+    /// <summary>The cleanup; returns the lines the command shows (cc-P42 Part B, so a test reads them).</summary>
+    internal static List<string> Run(bool dryRun)
+    {
+        var lines = new List<string>();
         var npcDeleted      = 0;
         var spawnerDeleted  = 0;
         var notFound        = 0;
+        var stockKept       = 0;
+
+        // cc-P42 Part B. Without the stock spawn files nothing can be told apart from New Haven's own
+        // spawners, so refuse rather than guess.
+        var stock = StockInBox();
+        if (stock.Count == 0)
+        {
+            lines.Add(
+                $"ClusterF Old Haven cleanup: no stock Trammel spawners read from {ClusterFStockSpawnData.SpawnsDirectory}. " +
+                "Nothing done: without them New Haven's spawners cannot be told apart.");
+            return lines;
+        }
 
         // ── 1. Delete NPC targets ────────────────────────────────────────
         var lookup = new Dictionary<string, List<(int X, int Y)>>(StringComparer.OrdinalIgnoreCase);
@@ -138,12 +177,18 @@ public static class ClusterFOldHavenCleanup
 
         var foundNpcs = new HashSet<(string, int, int)>();
 
+        // Deleted after each scan, not inside it: deleting removes from the collection being enumerated.
+        var toDelete = new List<IEntity>();
+
         foreach (var m in World.Mobiles.Values)
         {
             if (m.Deleted || m.Map != Map.Trammel) continue;
 
             var typeName = m.GetType().Name;
             if (!lookup.TryGetValue(typeName, out var coords)) continue;
+
+            // Spawned by a stock spawner: stock content, never a stray (cc-P42 Part B).
+            if (m is ISpawnable { Spawner: BaseSpawner owner } && IsStock(owner, stock)) continue;
 
             foreach (var (tx, ty) in coords)
             {
@@ -153,11 +198,11 @@ public static class ClusterFOldHavenCleanup
                 foundNpcs.Add((typeName, tx, ty));
 
                 if (dryRun)
-                    e.Mobile.SendMessage($"[DRY RUN] NPC: {typeName} \"{m.Name}\" at ({m.X},{m.Y})");
+                    lines.Add($"[DRY RUN] NPC: {typeName} \"{m.Name}\" at ({m.X},{m.Y})");
                 else
                 {
                     Console.WriteLine($"[ClusterFOldHavenCleanup] Deleting NPC {typeName} \"{m.Name}\" at ({m.X},{m.Y})");
-                    m.Delete();
+                    toDelete.Add(m);
                 }
 
                 npcDeleted++;
@@ -169,7 +214,7 @@ public static class ClusterFOldHavenCleanup
         {
             if (!foundNpcs.Contains((type, x, y)))
             {
-                e.Mobile.SendMessage($"[NOT FOUND] {type} near ({x},{y}) — already gone or moved.");
+                lines.Add($"[NOT FOUND] {type} near ({x},{y}): already gone or moved.");
                 notFound++;
             }
         }
@@ -197,21 +242,35 @@ public static class ClusterFOldHavenCleanup
 
             var entryNames = string.Join(", ", spawner.Entries.Select(se => se.SpawnedName));
 
+            if (IsStock(spawner, stock))
+            {
+                lines.Add($"[STOCK, KEPT] Spawner at ({spawner.X},{spawner.Y},{spawner.Z}) entries: {entryNames}");
+                stockKept++;
+                continue;
+            }
+
             if (dryRun)
-                e.Mobile.SendMessage($"[DRY RUN] Spawner at ({spawner.X},{spawner.Y}) entries: {entryNames}");
+                lines.Add($"[DRY RUN] Spawner at ({spawner.X},{spawner.Y}) entries: {entryNames}");
             else
             {
                 Console.WriteLine($"[ClusterFOldHavenCleanup] Deleting spawner at ({spawner.X},{spawner.Y}) entries: {entryNames}");
-                spawner.Delete();
+                toDelete.Add(spawner);
             }
 
             spawnerDeleted++;
         }
 
+        foreach (var entity in toDelete)
+        {
+            entity.Delete();
+        }
+
         var verb = dryRun ? "Would delete" : "Deleted";
-        e.Mobile.SendMessage(
+        lines.Add(
             $"ClusterF Old Haven cleanup {(dryRun ? "dry run" : "complete")}: " +
-            $"{verb} {npcDeleted} NPCs, {spawnerDeleted} spawners. Not found: {notFound}."
+            $"{verb} {npcDeleted} NPCs, {spawnerDeleted} spawners. Not found: {notFound}. " +
+            $"Stock spawners left alone: {stockKept}."
         );
+        return lines;
     }
 }

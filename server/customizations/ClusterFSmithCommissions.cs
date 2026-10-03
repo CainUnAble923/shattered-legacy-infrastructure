@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Server.Accounting;
 using Server.Commands;
 using Server.Engines.BulkOrders;
@@ -185,6 +186,26 @@ public static class SmithCommissionPool
             return WeaponKeys[Utility.Random(WeaponKeys.Length)];
         return ArmorKeys[Utility.Random(ArmorKeys.Length)];
     }
+
+    /// <summary>
+    /// cc-P42 Part G1. RandomKey's 65 / 35 split between weapons and armor, among the items that can still raise the
+    /// smith's Blacksmithy (ClusterFSmithTeaching); a side with none of those is skipped, and with none on either
+    /// side the commission asks for the hardest items the smith can make.
+    /// </summary>
+    public static string TeachingKey(Mobile m, bool exceptional)
+    {
+        var weapons = WeaponKeys.Where(k => ClusterFSmithTeaching.CanMake(m, GetItemType(k), exceptional) &&
+                                            ClusterFSmithTeaching.Teaches(m, GetItemType(k))).ToArray();
+        var armors  = ArmorKeys.Where(k => ClusterFSmithTeaching.CanMake(m, GetItemType(k), exceptional) &&
+                                           ClusterFSmithTeaching.Teaches(m, GetItemType(k))).ToArray();
+
+        if (weapons.Length > 0 && armors.Length > 0)
+            return Utility.RandomDouble() < 0.65 ? weapons.RandomElement() : armors.RandomElement();
+        if (weapons.Length > 0) return weapons.RandomElement();
+        if (armors.Length > 0)  return armors.RandomElement();
+
+        return ClusterFSmithTeaching.PickItems(m, AllKeys, GetItemType, exceptional).RandomElement();
+    }
 }
 
 // -- Requester flavor pool -----------------------------------------------------
@@ -327,6 +348,12 @@ public static class SmithCommissionSetPool
 
     public static CommissionSet RandomSet() =>
         _sets[Utility.Random(_sets.Length)];
+
+    /// <summary>cc-P42 Part G1. A set whose pieces can all still raise the smith's Blacksmithy, or the closest.</summary>
+    public static CommissionSet TeachingSet(Mobile m, bool exceptional) =>
+        ClusterFSmithTeaching.PickSets(
+            m, _sets, s => System.Array.ConvertAll(s.ItemKeys, k => SmithCommissionPool.GetItemType(k)), exceptional
+        ).RandomElement();
 }
 
 // -- Large commission entry ----------------------------------------------------
@@ -465,7 +492,7 @@ public static class SmithCommissionSystem
         var exceptChance = bypass ? 1.0 : Math.Max(0.0, (skill - 40.0) / 100.0);
         var exceptional  = Utility.RandomDouble() < exceptChance;
 
-        var itemKey = SmithCommissionPool.RandomKey();
+        var itemKey = SmithCommissionPool.TeachingKey(pm, exceptional); // cc-P42 Part G1
         var (seals, standing) = ComputeReward(mat, exceptional);
         var (name, note)      = SmithRequesterPool.Random();
 
@@ -512,7 +539,7 @@ public static class SmithCommissionSystem
         var exceptChance = bypass ? 1.0 : Math.Max(0.0, (skill - 40.0) / 100.0);
         var exceptional  = Utility.RandomDouble() < exceptChance;
 
-        var set         = SmithCommissionSetPool.RandomSet();
+        var set         = SmithCommissionSetPool.TeachingSet(pm, exceptional); // cc-P42 Part G1
         var (pieceSeals, pieceStanding) = ComputeReward(mat, exceptional);
         var pieceCount  = set.ItemKeys.Length;
 

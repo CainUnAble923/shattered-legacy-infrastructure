@@ -1,0 +1,18 @@
+--- a/Projects/UOContent/Engines/Spawners/Commands/ImportSpawnersCommand.cs
++++ b/Projects/UOContent/Engines/Spawners/Commands/ImportSpawnersCommand.cs
+@@ -253,6 +253,15 @@
+                 continue;
+             }
+ 
++            // Shattered Legacy (cc-P42 Part J, D53): Trammel Despise runs the revamp only. A stock spawner of
++            // shared/trammel/Despise.json keeps its treasure chests and loses its creatures; one with nothing left is
++            // not placed. Every other spawner is admitted untouched (ClusterFDespiseStockSpawns.Admit).
++            if (!ClusterFDespiseStockSpawns.Admit(spawner, map))
++            {
++                spawner.Delete();
++                continue;
++            }
++
+             var type = spawner.GetType();
+ 
+             // Shattered Legacy (cc-P32, PT-07): no delete by location. GetItemsAt matches x,y only

@@ -145,7 +145,7 @@ namespace Server
                     continue;
                 }
 
-                var others = ForeignItemsOn(components);
+                var others = ForeignItemsOn(components, removing);
                 var verb = dryRun ? "would place" : "placed";
                 lines.Add($"{type.Name}: {verb} at {origin} (Trammel), {components.Length} components.");
 
@@ -181,7 +181,9 @@ namespace Server
         }
 
         // Items not ours standing on a component tile, for the status line. Never moved or deleted.
-        private static List<string> ForeignItemsOn(MineCampComponent[] components)
+        // cc-P42 Part D: an addon the caller is about to delete is not foreign. The office's replace dry run
+        // reported each old addon itself ("<Addon> 0x0001", BaseAddon's item id) after its own "would place".
+        private static List<string> ForeignItemsOn(MineCampComponent[] components, ICollection<BaseAddon> removing = null)
         {
             var tiles = new HashSet<Point2D>();
             foreach (var c in components)
@@ -193,7 +195,8 @@ namespace Server
             foreach (var item in World.Items.Values)
             {
                 if (!item.Deleted && item.Map == Map.Trammel && item.Parent == null &&
-                    item is not AddonComponent && tiles.Contains(new Point2D(item.X, item.Y)))
+                    item is not AddonComponent && removing?.Contains(item as BaseAddon) != true &&
+                    tiles.Contains(new Point2D(item.X, item.Y)))
                 {
                     found.Add($"{item.GetType().Name} 0x{item.ItemID:X4} at {item.Location}");
                 }

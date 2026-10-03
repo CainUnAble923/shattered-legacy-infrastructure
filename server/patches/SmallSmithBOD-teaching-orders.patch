@@ -1,0 +1,37 @@
+--- "a/Projects/UOContent/Engines/Bulk Orders/SmallSmithBOD.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/SmallSmithBOD.cs"
+@@ -85,9 +85,20 @@
+         public override RewardGroup GetRewardGroup() =>
+             SmithRewardCalculator.Instance.LookupRewards(SmithRewardCalculator.Instance.ComputePoints(this));
+ 
+-        public static SmallSmithBOD CreateRandomFor(Mobile m)
++        public static SmallSmithBOD CreateRandomFor(Mobile m) => CreateRandomFor(m, false);
++
++        // ClusterF (cc-P42 Part G1): teachingOnly is the Society of Smiths' orders. They ask for items that can still
++        // raise the smith's Blacksmithy, or the hardest the smith can make when none can (ClusterFSmithTeaching).
++        // Regular smiths call the overload above and get stock orders.
++        public static SmallSmithBOD CreateRandomFor(Mobile m, bool teachingOnly)
+         {
+-            var useMaterials = Utility.RandomBool();
++            var useMaterials = teachingOnly
++                ? ClusterFSmithTeaching.UseArmorList(
++                    m,
++                    Array.ConvertAll(SmallBulkEntry.BlacksmithArmor, e => e.Type),
++                    Array.ConvertAll(SmallBulkEntry.BlacksmithWeapons, e => e.Type)
++                )
++                : Utility.RandomBool();
+ 
+             var entries = useMaterials ? SmallBulkEntry.BlacksmithArmor : SmallBulkEntry.BlacksmithWeapons;
+ 
+@@ -191,6 +202,11 @@
+                 }
+             }
+ 
++            if (teachingOnly)
++            {
++                validEntries = ClusterFSmithTeaching.PickItems(m, validEntries, e => e.Type, reqExceptional);
++            }
++
+             if (validEntries.Count <= 0)
+             {
+                 return null;
