@@ -41,6 +41,14 @@
 //      character, and everything else is kept. Written again it is version 15. A version 14 save with
 //      no guild data is not reported as having dropped any.
 //  12. An unknown CharacterGuildData version fails loudly.
+//
+// cc-P48 (League batch 1) added version 16: LifetimeRenown, and a CharacterLeagueData per character serial (League
+// rank, promotion jobs done, trials done). Notes in shard-migration notes/cc-P48-league-batch-1.md:
+//  13. Fact 1 carries lifetime Renown and two characters' League records at different ranks, every field compared.
+//  14. Version 15 bytes, written by a frozen copy of the pre-cc-P48 writer, load whole: no League records, lifetime
+//      Renown equal to the account's Renown, and the joined flag kept (so its characters read as Iron:
+//      LeagueLadderVerification). Written again it is version 16.
+//  15. An unknown CharacterLeagueData version fails loudly.
 
 using System;
 using System.Collections;
@@ -185,7 +193,91 @@ public class AccountDataSerializerVerification
         var second = d.GetOrCreateGuildData(Second);
         second.JoinedGuilds.Add("keepers");
         second.GuildCurrency["keepers"] = 7;
+
+        // v16 (cc-P48): lifetime Renown above the balance (some was spent), and two characters at different ranks.
+        d.LifetimeRenown = 4321;
+        var bronze = d.GetOrCreateLeagueData(First);
+        bronze.Rank = 5;
+        bronze.PromotionDone.Add(2);
+        bronze.PromotionDone.Add(5);
+        bronze.TrialsDone.Add(1);
+        bronze.TrialsDone.Add(2);
+        d.GetOrCreateLeagueData(Second).Rank = 2;
         return d;
+    }
+
+    // Version 15 as the build before cc-P48 wrote it: a frozen copy of ClusterFAccountData.Serialize at 92f8f5f
+    // (server/customizations/ClusterFAccountData.cs:350-425 there), so these bytes do not come from the writer under
+    // test. It has no lifetime Renown and no League records.
+    internal static void SerializeVersion15(ClusterFAccountData d, IGenericWriter w)
+    {
+        w.Write(15);
+
+        w.Write(d.Renown);
+        w.Write(d.AchievementPoints);
+        w.Write(d.LastSeenBulletinId);
+
+        w.Write(d.RestorationRegistry.Count);
+        foreach (var entry in d.RestorationRegistry.Values) entry.Serialize(w);
+
+        w.Write(d.Flags.Count);
+        foreach (var f in d.Flags) w.Write(f);
+
+        w.Write(d.FlagValues.Count);
+        foreach (var (k, v) in d.FlagValues) { w.Write(k); w.Write(v); }
+
+        w.Write(d.OreDiscoveries.Count);
+        foreach (var entry in d.OreDiscoveries.Values) entry.Serialize(w);
+
+        var chunks = Chunks(d);
+        w.Write(chunks.Count);
+        foreach (var (serial, facets) in chunks)
+        {
+            w.Write(serial);
+            for (var f = 0; f < 6; f++)
+            {
+                var bits = facets[f];
+                if (bits == null)
+                    w.Write(false);
+                else
+                {
+                    w.Write(true);
+                    w.Write(bits);
+                }
+            }
+        }
+
+        w.Write(d.EncounteredCreatures.Count);
+        foreach (var name in d.EncounteredCreatures) w.Write(name);
+
+        w.Write(d.WoodDiscoveries.Count);
+        foreach (var entry in d.WoodDiscoveries.Values) entry.Serialize(w);
+
+        w.Write(d.ImbuingDiscoveries.Count);
+        foreach (var (k, v) in d.ImbuingDiscoveries) { w.Write(k); w.Write(v); }
+
+        var records = StarterRecords(d);
+        w.Write(records.Count);
+        foreach (var (serial, record) in records)
+        {
+            w.Write(serial);
+            record.Serialize(w);
+        }
+
+        var guilds = GuildData(d);
+        w.Write(guilds.Count);
+        foreach (var (serial, record) in guilds)
+        {
+            w.Write(serial);
+            record.Serialize(w);
+        }
+    }
+
+    private static void AssertSameLeague(CharacterLeagueData o, CharacterLeagueData c)
+    {
+        Assert.Equal(o.Rank, c.Rank);
+        Assert.Equal(o.PromotionDone.OrderBy(k => k), c.PromotionDone.OrderBy(k => k));
+        Assert.Equal(o.TrialsDone.OrderBy(k => k), c.TrialsDone.OrderBy(k => k));
     }
 
     private static Dictionary<uint, GuildStarterRecord> StarterRecords(ClusterFAccountData d) =>
@@ -461,6 +553,47 @@ public class AccountDataSerializerVerification
             AssertSameGuild(o, GuildData(copy)[serial]);
         Assert.Contains("mining", copy.GetGuildData(First)!.JoinedGuilds);
         Assert.DoesNotContain("mining", copy.GetGuildData(Second)!.JoinedGuilds);
+
+        // v16 (cc-P48): lifetime Renown and both characters' League records, every field; different ranks.
+        Assert.Equal(original.LifetimeRenown, copy.LifetimeRenown);
+        Assert.Equal(2, copy.LeagueDataCount);
+        AssertSameLeague(original.GetLeagueData(First)!, copy.GetLeagueData(First)!);
+        AssertSameLeague(original.GetLeagueData(Second)!, copy.GetLeagueData(Second)!);
+        Assert.NotEqual(copy.GetLeagueData(First)!.Rank, copy.GetLeagueData(Second)!.Rank);
+    }
+
+    [Fact]
+    public void AVersion15SaveFromTheBuildBeforeLeagueRanksLoads()
+    {
+        var original = FullyPopulated();
+        original.ClearLeagueData();
+        Assert.True(original.HasFlag("league.joined"));
+
+        var (v15, v15Length) = Write(w => SerializeVersion15(original, w));
+        Assert.Equal(15, VersionOf(v15));
+
+        var reader = new BufferReader(v15);
+        var copy = new ClusterFAccountData(reader);
+        _out.WriteLine($"v15: {v15Length} bytes, read {reader.Position}; Renown {copy.Renown}, lifetime {copy.LifetimeRenown}");
+        Assert.Equal(v15Length, reader.Position);
+
+        // No League records; lifetime Renown starts at the Renown held; registration kept; the rest as before.
+        Assert.Equal(0, copy.LeagueDataCount);
+        Assert.Equal(original.Renown, copy.LifetimeRenown);
+        Assert.True(copy.HasFlag("league.joined"));
+        Assert.False(copy.DroppedAccountGuildData);
+        Assert.Equal(2, copy.GuildDataCount);
+        foreach (var (serial, o) in GuildData(original))
+            AssertSameGuild(o, GuildData(copy)[serial]);
+        AssertSameStarterRecords(original, copy);
+
+        // Written again it is version 16, and it reads back whole.
+        var (v16, v16Length) = Write(copy.Serialize);
+        Assert.Equal(16, VersionOf(v16));
+        var again = new BufferReader(v16);
+        var reread = new ClusterFAccountData(again);
+        Assert.Equal(v16Length, again.Position);
+        Assert.Equal(original.Renown, reread.LifetimeRenown);
     }
 
     private static void AssertSameStarterRecords(ClusterFAccountData original, ClusterFAccountData copy)
@@ -516,10 +649,10 @@ public class AccountDataSerializerVerification
         Assert.Equal(0, copy.GuildDataCount);
         Assert.True(copy.DroppedAccountGuildData);
 
-        // Written again it is version 15, and it reads back whole.
+        // Written again it is the current version (16 since cc-P48), and it reads back whole.
         var (v15, v15Length) = Write(copy.Serialize);
         Assert.Equal(ClusterFAccountData.CurrentVersion, VersionOf(v15));
-        Assert.Equal(15, VersionOf(v15));
+        Assert.Equal(16, VersionOf(v15));
         var again = new BufferReader(v15);
         new ClusterFAccountData(again);
         Assert.Equal(v15Length, again.Position);
@@ -558,9 +691,9 @@ public class AccountDataSerializerVerification
         Assert.Equal(Chunks(original).Keys.OrderBy(k => k), Chunks(copy).Keys.OrderBy(k => k));
         AssertSameStarterRecords(original, copy);
 
-        // Written again it is version 15, and it reads back whole with nothing more dropped.
+        // Written again it is the current version (16 since cc-P48), and it reads back whole with nothing more dropped.
         var (v15, v15Length) = Write(copy.Serialize);
-        Assert.Equal(15, VersionOf(v15));
+        Assert.Equal(16, VersionOf(v15));
         var again = new BufferReader(v15);
         var reread = new ClusterFAccountData(again);
         Assert.Equal(v15Length, again.Position);
@@ -598,6 +731,12 @@ public class AccountDataSerializerVerification
         ex = Assert.Throws<InvalidDataException>(() => new CharacterGuildData(new BufferReader(guild)));
         _out.WriteLine(ex.Message);
         Assert.Contains($"CharacterGuildData version {CharacterGuildData.CurrentVersion + 1}", ex.Message);
+
+        // cc-P48: and the per-character League record.
+        var (league, _) = Write(w => w.Write(CharacterLeagueData.CurrentVersion + 1));
+        ex = Assert.Throws<InvalidDataException>(() => new CharacterLeagueData(new BufferReader(league)));
+        _out.WriteLine(ex.Message);
+        Assert.Contains($"CharacterLeagueData version {CharacterLeagueData.CurrentVersion + 1}", ex.Message);
     }
 
     [Fact]

@@ -16,15 +16,23 @@ namespace Server;
 ///   AboutRenown    -- what Renown is and current balance
 ///   GuildReferrals -- the Guild Directory (cc-P15): the same rows as the board's first page and [guild
 ///   WhereToStart   -- step-by-step guidance for new arrivals
+///   Rank           -- (cc-P48) the character's League rank, the next one, the four promotion checks, Promote
 ///
 /// Opened by: LeagueRegistrar.OnDoubleClick
 /// </summary>
 public class LeagueRegistrarGump : Gump
 {
-    public enum View { MainMenu, CitizenStatus, AboutRenown, GuildReferrals, WhereToStart }
+    public enum View { MainMenu, CitizenStatus, AboutRenown, GuildReferrals, WhereToStart, Rank }
+
+    // cc-P48: the main menu's League Rank entry and the Rank page's Promote (the free IDs from 18).
+    public const int BtnRank    = 18;
+    public const int BtnPromote = 19;
 
     private readonly PlayerMobile _pm;
     private readonly View         _view;
+
+    // The rank the page was drawn at. Promote acts only from this rank, so a stale page promotes nobody.
+    private readonly int          _rankAtDraw;
 
     private const int W    = 440;
     private const int H    = 420;
@@ -34,6 +42,7 @@ public class LeagueRegistrarGump : Gump
     {
         _pm   = pm;
         _view = view;
+        _rankAtDraw = ClusterFLeagueRanks.GetRank(pm);
 
         Closable   = true;
         Disposable = true;
@@ -59,6 +68,7 @@ public class LeagueRegistrarGump : Gump
             case View.AboutRenown:   DrawAboutRenown(data);   break;
             case View.GuildReferrals: DrawGuildReferrals(data); break;
             case View.WhereToStart:  DrawWhereToStart(data);  break;
+            case View.Rank:          DrawRank(data);          break;
         }
 
         // -- Footer --------------------------------------------------------
@@ -84,8 +94,13 @@ public class LeagueRegistrarGump : Gump
         var color  = ClusterFLeagueSystem.GetStatusColor(status);
 
         AddLabel(18, 56, 999, $"Welcome, {_pm.Name}.");
-        AddHtml(18, 72, W - 36, 20,
+        AddHtml(18, 72, 200, 20,
             $"<BASEFONT COLOR=#{color}>Status: {label}</BASEFONT>", false, false);
+
+        // cc-P48: the League rank beside the status, in its metal's hue.
+        if (_rankAtDraw > 0)
+            AddLabel(220, 72, ClusterFLeagueRanks.LabelHue(_rankAtDraw), ClusterFLeagueRanks.RankName(_rankAtDraw));
+
         AddImageTiled(10, 96, W - 20, 1, 9304);
 
         var y = 106;
@@ -103,7 +118,8 @@ public class LeagueRegistrarGump : Gump
         AddButton(18, y, 4011, 4012, 14); AddLabel(44, y + 2, 999, "Guilds Overview");   y += 28;
         AddButton(18, y, 4011, 4012, 15); AddLabel(44, y + 2, 999, "Guild Referrals");   y += 28;
         AddButton(18, y, 4011, 4012, 16); AddLabel(44, y + 2, 999, "League Dispatch");   y += 28;
-        AddButton(18, y, 4011, 4012, 17); AddLabel(44, y + 2, 999, "Where to go first?");
+        AddButton(18, y, 4011, 4012, 17); AddLabel(44, y + 2, 999, "Where to go first?"); y += 28;
+        AddButton(18, y, 4011, 4012, BtnRank); AddLabel(44, y + 2, 999, "League Rank");
     }
 
     private void DrawCitizenStatus(ClusterFAccountData data)
@@ -125,9 +141,66 @@ public class LeagueRegistrarGump : Gump
             "<BASEFONT COLOR=#AAAAAA> - Member of at least one guild." +
             " Your deeds are noted in the League records.</BASEFONT><BR><BR>" +
             $"<BASEFONT COLOR=#AAAAAA>Your current status: </BASEFONT>" +
-            $"<BASEFONT COLOR=#{color}>{label}</BASEFONT>";
+            $"<BASEFONT COLOR=#{color}>{label}</BASEFONT><BR><BR>" +
+            "<BASEFONT COLOR=#AAAAAA>Beside your status, each citizen holds a League rank, Iron Citizen to " +
+            "Celestial Citizen. See League Rank on the main page.</BASEFONT>";
 
-        AddHtml(16, 78, W - 32, H - 128, html, false, true);
+        AddHtml(16, 78, W - 32, H - 150, html, false, true);
+
+        // cc-P48: this character's rank, in its metal's hue.
+        AddLabel(18, H - 64, 999, "League rank:");
+        AddLabel(110, H - 64, _rankAtDraw > 0 ? ClusterFLeagueRanks.LabelHue(_rankAtDraw) : 999,
+            ClusterFLeagueRanks.RankName(_rankAtDraw));
+    }
+
+    // cc-P48: current rank, next rank, the four checks, Promote.
+    private void DrawRank(ClusterFAccountData data)
+    {
+        AddLabel(18, 56, 1154, "League Rank");
+        AddImageTiled(10, 72, W - 20, 1, 9304);
+
+        AddLabel(18, 80, 999, "Your rank:");
+        AddLabel(110, 80, _rankAtDraw > 0 ? ClusterFLeagueRanks.LabelHue(_rankAtDraw) : 999,
+            ClusterFLeagueRanks.RankName(_rankAtDraw));
+
+        var report = ClusterFLeagueRanks.Evaluate(_pm);
+
+        if (report.Blocker != null)
+        {
+            AddHtml(18, 108, W - 36, 80, $"<BASEFONT COLOR=#AAAAAA>{report.Blocker}</BASEFONT>", false, false);
+            return;
+        }
+
+        AddLabel(18, 102, 999, "Next rank:");
+        AddLabel(110, 102, ClusterFLeagueRanks.LabelHue(report.To), ClusterFLeagueRanks.RankName(report.To));
+        AddImageTiled(10, 126, W - 20, 1, 9304);
+
+        var y = 134;
+        foreach (var check in report.Checks)
+        {
+            var (mark, hue) = check.State switch
+            {
+                LeagueCheckState.Passed      => ("[x]", 68),
+                LeagueCheckState.Failed      => ("[ ]", 37),
+                LeagueCheckState.Waived      => ("[-]", 999),
+                _                            => ("[-]", 999),
+            };
+
+            AddLabel(18, y, hue, mark);
+            AddLabel(50, y, 1153, check.Label);
+            AddLabel(50, y + 18, 999, check.Detail);
+            y += 44;
+        }
+
+        if (report.CanPromote)
+        {
+            AddButton(18, y + 4, 4023, 4025, BtnPromote);
+            AddLabel(52, y + 6, 1154, $"Promote to {ClusterFLeagueRanks.RankName(report.To)}");
+        }
+        else
+        {
+            AddLabel(18, y + 6, 999, "Meet every unticked check to be promoted.");
+        }
     }
 
     private void DrawAboutRenown(ClusterFAccountData data)
@@ -253,6 +326,19 @@ public class LeagueRegistrarGump : Gump
 
             case 20: // Open the Guild Directory. Its "Show me the way" replaces the Miners' Compact arrow.
                 _pm.SendGump(new GuildProgressGump(_pm, acct));
+                break;
+
+            case BtnRank: // League Rank (cc-P48)
+                _pm.SendGump(new LeagueRegistrarGump(_pm, View.Rank));
+                break;
+
+            case BtnPromote: // Promote: every check again, server side, from the rank this page was drawn at
+                if (_view == View.Rank)
+                {
+                    var promoted = ClusterFLeagueRanks.TryPromote(_pm, _rankAtDraw, out var message);
+                    _pm.SendMessage(promoted ? 0x44 : 0x22, message);
+                    _pm.SendGump(new LeagueRegistrarGump(_pm, View.Rank));
+                }
                 break;
         }
     }

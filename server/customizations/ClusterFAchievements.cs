@@ -835,7 +835,7 @@ public static class ClusterFAchievementSystem
 
         var data = ClusterFAccountPersistence.GetOrCreate(acct);
         data.AchievementPoints += def.AP;
-        data.Renown            += def.Renown;
+        data.GrantRenown(def.Renown, RenownSource.Achievement); // and LifetimeRenown (cc-P48)
 
         if (def.RewardItems.Length > 0)
             SpawnRewardItems(acct, def);

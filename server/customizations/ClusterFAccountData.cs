@@ -18,6 +18,7 @@ namespace Server;
 ///   - Guild data (CharacterGuildData, v15, cc-P18 F-7): membership, Apprentice marks, reputation,
 ///     scrip, work orders, smith commissions, the Artificer order
 ///   - Guild starter records (GuildStarterRecord, v14, cc-P15)
+///   - League rank, promotion jobs and trials done (CharacterLeagueData, v16, cc-P48)
 ///   - Exploration (fog of war chunks)
 ///
 /// Guild keys are short lowercase identifiers:
@@ -32,6 +33,11 @@ public class ClusterFAccountData
     // -- Currencies -------------------------------------------------------
     public int Renown            { get; set; }
     public int AchievementPoints { get; set; }
+
+    // Every Renown this account has earned that counts toward League rank (v16, cc-P48). It only rises:
+    // spending Renown never lowers it, so buying from a shop never costs rank. Fed by GrantRenown; a save
+    // before v16 starts it at the account's Renown then.
+    public int LifetimeRenown    { get; set; }
 
     // -- Guild systems ----------------------------------------------------
     // Membership, reputation, scrip, work orders, commissions and the Artificer order are per
@@ -139,6 +145,28 @@ public class ClusterFAccountData
     /// <summary>Clears every character's guild data on this account (the reset, cc-P18).</summary>
     public void ClearGuildData() => _guildData.Clear();
 
+    // -- League rank per character (v16, cc-P48) --------------------------------
+    // Keyed by character serial like the guild data, and kept apart from it so a guild reset never touches a
+    // League rank. Registration stays the account flag "league.joined": a character with no record here on a
+    // registered account is Iron (ClusterFLeagueRanks.GetRank), which is how a pre-v16 save reads.
+    private readonly Dictionary<uint, CharacterLeagueData> _leagueData = new();
+
+    public CharacterLeagueData GetOrCreateLeagueData(Serial serial)
+    {
+        var key = (uint)serial;
+        if (!_leagueData.TryGetValue(key, out var record))
+            _leagueData[key] = record = new CharacterLeagueData();
+        return record;
+    }
+
+    public CharacterLeagueData? GetLeagueData(Serial serial) =>
+        _leagueData.TryGetValue((uint)serial, out var record) ? record : null;
+
+    public int LeagueDataCount => _leagueData.Count;
+
+    /// <summary>Clears every character's League rank record on this account (the reset's "League, flags").</summary>
+    public void ClearLeagueData() => _leagueData.Clear();
+
     /// <summary>
     /// True when this record was read from a save before v15 that held account-level guild data
     /// (membership, Apprentice marks, reputation, scrip, work orders, commissions or an Artificer
@@ -152,7 +180,7 @@ public class ClusterFAccountData
 
     public ClusterFAccountData(IGenericReader r)
     {
-        var version = r.ReadInt(); // 0..15
+        var version = r.ReadInt(); // 0..16
 
         // D40 (cc-P11): a version this reader does not know is a save from a newer build. Reading it as
         // this version misreads every field after the first difference, so refuse it loudly instead.
@@ -315,6 +343,25 @@ public class ClusterFAccountData
             }
         }
 
+        // v16 (cc-P48): lifetime Renown, then each character's League record. Before v16 there was no
+        // lifetime figure, so it starts at the Renown the account holds (nothing had ever been spent:
+        // SpendRenown had no callers). A registered account's characters read as Iron with no record.
+        if (version >= 16)
+        {
+            LifetimeRenown = r.ReadInt();
+
+            var ldCount = r.ReadInt();
+            for (var i = 0; i < ldCount; i++)
+            {
+                var serial = r.ReadUInt();
+                _leagueData[serial] = new CharacterLeagueData(r);
+            }
+        }
+        else
+        {
+            LifetimeRenown = Renown;
+        }
+
         // v8-only saves (no EncounteredCreatures yet): just read chunks.
         if (version == 8)
             ReadExploration(r);
@@ -345,7 +392,8 @@ public class ClusterFAccountData
         }
     }
 
-    public const int CurrentVersion = 15;
+    // 15: cc-P18, guild data per character. 16: cc-P48, LifetimeRenown and CharacterLeagueData.
+    public const int CurrentVersion = 16;
 
     public void Serialize(IGenericWriter w)
     {
@@ -422,6 +470,15 @@ public class ClusterFAccountData
             w.Write(serial);
             record.Serialize(w);
         }
+
+        // v16: lifetime Renown and per-character League records
+        w.Write(LifetimeRenown);
+        w.Write(_leagueData.Count);
+        foreach (var (serial, record) in _leagueData)
+        {
+            w.Write(serial);
+            record.Serialize(w);
+        }
     }
 
     // -- Flag helpers ------------------------------------------------------
@@ -449,11 +506,91 @@ public class ClusterFAccountData
         GetDiscoveryCount(propertyKey) >= threshold;
 
     // -- Renown helpers ---------------------------------------------------
+
+    /// <summary>
+    /// The one way Renown is earned (cc-P48). Adds to the spendable balance, and to LifetimeRenown unless the
+    /// source is excluded from League rank. Batch 2's League jobs call it with LeagueJob; batch 4's Citizen
+    /// Commissions must call it with Commission, which never counts: Renown passed between players would
+    /// otherwise buy League rank (cc-P47 section 7.4).
+    /// </summary>
+    public void GrantRenown(int amount, RenownSource source)
+    {
+        if (amount <= 0) return;
+
+        Renown += amount;
+
+        if (CountsTowardLeagueRank(source))
+            LifetimeRenown += amount;
+    }
+
+    public static bool CountsTowardLeagueRank(RenownSource source) => source != RenownSource.Commission;
+
+    /// <summary>Spends from the balance only. LifetimeRenown, and so League rank, never goes down.</summary>
     public bool SpendRenown(int amount)
     {
         if (Renown < amount) return false;
         Renown -= amount;
         return true;
+    }
+}
+
+/// <summary>Where a Renown grant came from (cc-P48). Only Commission is kept out of LifetimeRenown.</summary>
+public enum RenownSource
+{
+    Achievement,
+    LeagueJob,   // batch 2
+    Commission,  // batch 4: escrowed Renown paid by another player; never counts toward rank
+    Staff,       // a GM grant
+}
+
+/// <summary>
+/// One character's League record (cc-P48): rank on the 17-rank metal ladder (ClusterFLeagueRanks), the ranks whose
+/// promotion job is done, and the trial chapters done. Stored in ClusterFAccountData v16 keyed by character serial.
+/// Carries its own version; an unknown version fails loudly (the D40 rule).
+/// </summary>
+public sealed class CharacterLeagueData
+{
+    public const int CurrentVersion = 0;
+
+    // 0 = not promoted past what registration gives (Iron on a registered account); 1 = Iron ... 17 = Celestial.
+    public int Rank { get; set; }
+
+    // Rank indexes whose promotion job this character has turned in (batch 2 sets these).
+    public HashSet<int> PromotionDone { get; } = new();
+
+    // Story trial chapters this character has finished (1 to 6).
+    public HashSet<int> TrialsDone { get; } = new();
+
+    public CharacterLeagueData() { }
+
+    public CharacterLeagueData(IGenericReader r)
+    {
+        var version = r.ReadInt();
+        if (version != 0)
+            throw new System.IO.InvalidDataException(
+                $"CharacterLeagueData version {version} is not one this build reads (0).");
+
+        Rank = r.ReadInt();
+
+        var jobs = r.ReadInt();
+        for (var i = 0; i < jobs; i++)
+            PromotionDone.Add(r.ReadInt());
+
+        var trials = r.ReadInt();
+        for (var i = 0; i < trials; i++)
+            TrialsDone.Add(r.ReadInt());
+    }
+
+    public void Serialize(IGenericWriter w)
+    {
+        w.Write(CurrentVersion);
+        w.Write(Rank);
+
+        w.Write(PromotionDone.Count);
+        foreach (var rank in PromotionDone) w.Write(rank);
+
+        w.Write(TrialsDone.Count);
+        foreach (var chapter in TrialsDone) w.Write(chapter);
     }
 }
 

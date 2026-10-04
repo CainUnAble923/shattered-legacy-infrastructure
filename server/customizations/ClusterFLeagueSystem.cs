@@ -56,6 +56,8 @@ public static class ClusterFLeagueSystem
     }
 
     // -- Status queries ---------------------------------------------------------
+    // cc-P48: these statuses sit beside the metal ladder (ClusterFLeagueRanks). Unregistered is rank 0; registering
+    // makes every character on the account Iron (rank 1); Recognized stays a computed tag ("has a guild").
 
     // League registration is per account (a flag); guild membership is per character since cc-P18, so
     // "Recognized" means this character is in a guild.
@@ -139,6 +141,56 @@ public static class ClusterFLeagueSystem
 
         if (guildKey.Equals("mining", StringComparison.OrdinalIgnoreCase))
             data.SetFlag(FlagReferredMiners);
+    }
+
+    // -- Show me the way (cc-P48) -------------------------------------------------
+
+    /// <summary>
+    /// Where the Registrar stands: her ClusterFNewHavenSeeder entry, read here so the directory and the seeder never
+    /// disagree. A GuildLocation so the directory's own finder looks for her (within SearchRange of the tile).
+    /// </summary>
+    public static GuildLocation RegistrarPost
+    {
+        get
+        {
+            foreach (var entry in ClusterFNewHavenSeeder.Entries)
+            {
+                if (entry.Type == typeof(LeagueRegistrar))
+                {
+                    var p = entry.GetLocation();
+                    return new GuildLocation("league", "League Field Office", "New Haven", typeof(LeagueRegistrar),
+                        GuildLocation.TrammelIndex, p.X, p.Y, p.Z, false);
+                }
+            }
+
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The Guild Directory's League row: a quest arrow to the League Registrar, the same arrow and the same wording
+    /// rules as a guild row's "Show me the way" (ClusterFGuildStarter.ShowTheWay). A Registrar who is not there is
+    /// reported, never silently skipped.
+    /// </summary>
+    public static string ShowTheWayToRegistrar(PlayerMobile pm)
+    {
+        var post = RegistrarPost;
+        var npc = post?.Find();
+
+        if (npc == null)
+        {
+            return post == null
+                ? "The League Registrar has no post. Please tell a Game Master."
+                : $"The League Registrar is not at the {post.Hall} in {post.Town} ({post.Point.X}, {post.Point.Y}, {post.Map?.Name}). Please tell a Game Master.";
+        }
+
+        if (pm.Map != npc.Map)
+        {
+            return $"The League Registrar is at the {post.Hall} in {post.Town}, on {npc.Map?.Name}. The arrow cannot cross facets.";
+        }
+
+        pm.QuestArrow = new GuildDirectionArrow(pm, npc, npc.Location, npc.Map, "the League Registrar");
+        return $"Follow the arrow to the League Registrar at the {post.Hall} in {post.Town}. Right-click the arrow to put it away.";
     }
 
     /// <summary>

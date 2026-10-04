@@ -777,8 +777,12 @@ public static class GuildWelcome
 public class GuildWelcomeGump : Gump
 {
     private const int W = 420;
-    private const int H = 230;
+    private const int H = 260;
     private const int BtnArrow = 1;
+
+    // cc-P48, the 2026-10-01 signpost: one line naming the League, next to the Guild Board line.
+    public const string LeagueLine =
+        "The League of Extraordinary Citizens ties every guild together. Find its Registrar in New Haven.";
 
     private readonly PlayerMobile _pm;
 
@@ -792,11 +796,11 @@ public class GuildWelcomeGump : Gump
         AddLabel(20, 16, 1154, $"Welcome to {town}");
         AddImageTiled(10, 38, W - 20, 2, 9304);
 
-        AddHtml(20, 48, W - 40, 110,
+        AddHtml(20, 48, W - 40, 140,
             "<BASEFONT COLOR=#DDDDDD>Every skill has a guild in " + town + ". Joining one is free, " +
             "and it hands you the tools of its trade and the starter items the trainers give.<BR><BR>" +
             "The Guild Board in the town square lists every guild, what it teaches, and where its " +
-            "guildmaster stands.</BASEFONT>", false, false);
+            "guildmaster stands.<BR>" + LeagueLine + "</BASEFONT>", false, false);
 
         AddImageTiled(10, H - 62, W - 20, 2, 9304);
         AddButton(20, H - 48, 4005, 4007, BtnArrow);

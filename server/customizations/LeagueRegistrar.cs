@@ -26,7 +26,7 @@ public partial class LeagueRegistrar : BaseCreature
     {
         "Welcome to New Haven, traveller. Speak with me when you have a moment.",
         "Looking for purpose? The guilds of New Haven are always seeking new members.",
-        "The League of Extraordinary Citizens — register today. It costs only your time.",
+        "The League of Extraordinary Citizens: register today. It costs only your time.",
         "The Miners' Compact has a liaison near the south mine. Fine people, all of them.",
         "New to Britannia? I can help you find your footing here in New Haven.",
         "Registered citizens of the League are known throughout Sosaria. Ask me how.",
@@ -104,10 +104,34 @@ public partial class LeagueRegistrar : BaseCreature
     }
 
     // ── Ambient speech ────────────────────────────────────────────────────────
+    //
+    // cc-P48 (found by cc-P47): the speech used to start only from OnAfterSpawn, which pinned calls from a spawner
+    // alone (BaseSpawner.cs:1131). ClusterFNewHavenSeeder places her with MoveToWorld, and a world load restores her
+    // with no call at all, so she never spoke. It now starts whenever she arrives on a map and after a load, and a
+    // token keeps it to one timer however many of those happen.
+
+    private TimerExecutionToken _ambientTimer;
+
+    public bool AmbientSpeechRunning => _ambientTimer.Running;
 
     public override void OnAfterSpawn()
     {
         base.OnAfterSpawn();
+        StartAmbientSpeech();
+    }
+
+    protected override void OnMapChange(Map oldMap)
+    {
+        base.OnMapChange(oldMap);
+        StartAmbientSpeech();
+    }
+
+    [AfterDeserialization(false)]
+    private void AfterDeserialization() => StartAmbientSpeech();
+
+    private void StartAmbientSpeech()
+    {
+        if (Deleted || Map == null || Map == Map.Internal || _ambientTimer.Running) return;
         ScheduleAmbientSpeech();
     }
 
@@ -115,7 +139,13 @@ public partial class LeagueRegistrar : BaseCreature
     {
         if (Deleted) return;
         var delay = TimeSpan.FromSeconds(Utility.RandomMinMax(25, 45));
-        Timer.DelayCall(delay, OnAmbientTick);
+        Timer.StartTimer(delay, OnAmbientTick, out _ambientTimer);
+    }
+
+    public override void OnAfterDelete()
+    {
+        base.OnAfterDelete();
+        _ambientTimer.Cancel();
     }
 
     private void OnAmbientTick()
@@ -162,7 +192,7 @@ public partial class LeagueRegistrar : BaseCreature
                 Timer.DelayCall(TimeSpan.FromSeconds(2.0), () =>
                 {
                     if (!Deleted && !target.Deleted && target.InRange(Location, 8))
-                        Say($"Ah, {target.Name}! Welcome to New Haven. I am Elara Voss — the League Registrar. Do speak with me when you have a moment.");
+                        Say($"Ah, {target.Name}! Welcome to New Haven. I am Elara Voss, the League Registrar. Do speak with me when you have a moment.");
                 });
             }
         }

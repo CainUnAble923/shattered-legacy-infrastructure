@@ -184,9 +184,12 @@ public static class ClusterFDevTools
 
         if (opts.Renown)
         {
+            // cc-P48: lifetime Renown too, so the account starts over. League rank already held is kept: rank
+            // never drops on Renown; "League, flags" is what clears it.
             data.Renown = 0;
+            data.LifetimeRenown = 0;
             data.RestorationRegistry.Clear();
-            admin.SendMessage("Renown and the restoration registry cleared.");
+            admin.SendMessage("Renown, lifetime Renown and the restoration registry cleared. League rank is kept.");
         }
 
         if (opts.Discoveries)
@@ -200,9 +203,16 @@ public static class ClusterFDevTools
 
         if (opts.Flags)
         {
+            // cc-P48: registration is the "league.joined" flag; every character's League rank goes with it.
             data.Flags.Clear();
             data.FlagValues.Clear();
-            admin.SendMessage("League registration and every account flag cleared.");
+            data.ClearLeagueData();
+
+            for (var i = 0; i < account.Length; i++)
+                if (account[i] is PlayerMobile ranked)
+                    ClusterFBankLimit.Apply(ranked, false);
+
+            admin.SendMessage("League registration, every character's League rank, and every account flag cleared.");
         }
 
         if (opts.Bulletins)
@@ -262,7 +272,7 @@ public class ResetOptions
         if (Achievements) items.Add("Achievements and Achievement Points: the account");
         if (Renown)       items.Add("Renown and the restoration registry: the account");
         if (Discoveries)  items.Add("Ore, wood and imbuing discoveries, creatures encountered: the account");
-        if (Flags)        items.Add("League registration and all account flags: the account");
+        if (Flags)        items.Add("League registration, every character's League rank and all account flags: the account");
         if (Bulletins)    items.Add("Bulletin read position: the account");
         return items;
     }
@@ -330,7 +340,7 @@ public class DevResetGump : Gump
             ("Achievements",  "Clears all earned achievements and resets AP to 0.",          SwAchievements),
             ("Renown",        "Renown and the restoration registry (legacy items).",         SwRenown),
             ("Discoveries",   "Ore, wood and imbuing discoveries; creatures encountered.",   SwDiscoveries),
-            ("League, flags", "League registration and every other account flag.",           SwFlags),
+            ("League, flags", "League registration and rank, and every other account flag.", SwFlags),
             ("Bulletins",     "Resets bulletin read state - all bulletins show on login.",   SwBulletins),
         ]),
     ];

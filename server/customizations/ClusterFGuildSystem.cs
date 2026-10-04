@@ -581,8 +581,81 @@ public static class ClusterFGuildSystem
             "foresters"   => ForestersRank(standing),
             "custodians"  => ClusterFCustodianSystem.GetCustodianRank(standing),
             "artificers"  => ArtificersGuildmasterGump.GetRankName(standing),
+            "mining"      => MinersCompactLiaisonGump.GetRankName(standing), // cc-P48: was missing (cc-P47)
             _             => GenericRank(standing),
         };
+
+    // -- Rank index (cc-P48) ----------------------------------------------------------------------
+    // One number for "how high in this guild", whatever the guild's own names: 0 = the ladder's first rank
+    // (Initiate) to 5 = its top rank. Used by League promotion (ClusterFLeagueRanks), which asks for
+    // "Apprentice in 2 guilds" and the like.
+
+    public const int RankInitiate    = 0;
+    public const int RankApprentice  = 1;
+    public const int RankJourneyman  = 2;
+    public const int RankMaster      = 3;
+    public const int RankGrandmaster = 4;
+    public const int RankTop         = 5;
+
+    private static readonly int[] GenericThresholds = [0, 1_000, 5_000, 15_000, 50_000, 100_000];
+    private static readonly int[] SevenRungThresholds = [0, 1_000, 5_000, 15_000, 40_000, 80_000, 150_000];
+    private static readonly int[] ArtificerThresholds = [0, 1_000, 5_000, 15_000, 40_000];
+
+    /// <summary>
+    /// The standing at which each rank of this guild's ladder starts, lowest first: the same steps GetRankName
+    /// takes (GuildRankIndexVerification holds the two together). Generic and Smithing have 6 ranks; Mining,
+    /// Outriders and Foresters 7; Artificers and Custodians 5.
+    /// </summary>
+    public static int[] RankThresholds(string guildKey) =>
+        guildKey.ToLowerInvariant() switch
+        {
+            "rangers" or "foresters" or "mining" => SevenRungThresholds,
+            "artificers"                          => ArtificerThresholds,
+            "custodians"                          => Array.ConvertAll(ClusterFCustodianSystem.Ranks, r => r.Threshold),
+            _                                     => GenericThresholds,
+        };
+
+    /// <summary>
+    /// 0 (Initiate) to 5 (top rank) for this standing on this guild's ladder. Rungs 0 to 3 are Initiate, Apprentice,
+    /// Journeyman and Master on every ladder; the top rung is 5; a seven-rank ladder's two rungs between are both 4,
+    /// and a five-rank ladder has no 4.
+    /// </summary>
+    public static int GuildRankIndex(string guildKey, int standing)
+    {
+        var thresholds = RankThresholds(guildKey);
+        var rung = 0;
+
+        for (var i = 1; i < thresholds.Length; i++)
+            if (standing >= thresholds[i])
+                rung = i;
+
+        if (rung <= RankMaster)
+            return rung;
+
+        return rung == thresholds.Length - 1 ? RankTop : RankGrandmaster;
+    }
+
+    /// <summary>
+    /// This character's rank index in a guild: by standing, raised to Apprentice once the guild's Apprentice task is
+    /// done (the same bump GetRankName(key, data) shows). Membership is not checked here; callers that need a member
+    /// check IsJoined.
+    /// </summary>
+    public static int GuildRankIndex(string guildKey, CharacterGuildData data)
+    {
+        var index = GuildRankIndex(guildKey, data.GetReputation(guildKey));
+        return IsApprentice(data, guildKey) ? Math.Max(index, RankApprentice) : index;
+    }
+
+    /// <summary>The generic name of a rank index, as League requirements are written ("Journeyman").</summary>
+    public static string RankIndexName(int index) => index switch
+    {
+        <= RankInitiate  => "Initiate",
+        RankApprentice   => "Apprentice",
+        RankJourneyman   => "Journeyman",
+        RankMaster       => "Master",
+        RankGrandmaster  => "Grandmaster",
+        _                => "top rank",
+    };
 
     /// <summary>
     /// The rank to show: reputation's rank, raised to the ladder's second rank once the Apprentice
@@ -701,18 +774,25 @@ public class GuildProgressGump : Gump
     private readonly NewHavenQuestBoard? _board;
 
     private const int W        = 760;
-    private const int HeaderH  = 92;
+    private const int HeaderH  = 140;
     private const int RowH     = 44;
     private const int FooterH  = 48;
     public  const int RowsPerPage = 8;
 
+    // The League row (cc-P48, the 2026-10-01 signpost): above the guild rows on every page, set apart as the
+    // umbrella over them. Its name label is at x 20 like a guild row's, above the first guild row (y 140).
+    public const int LeagueRowY = 86;
+    public const string LeagueRowName = "League of Extraordinary Citizens";
+
     // Button IDs:
     //   0          = close
     //   50         = Training quests (the board's second tab; only when opened from the board)
+    //   60         = Show me the way to the League Registrar (the League row)
     //   100 + i    = Show me the way for guild row i
     //   200 + i    = Services for guild row i (members only)
     //   300 + i    = Contracts for guild row i (members only)
     public const int BtnTrainingQuests = 50;
+    public const int BtnLeagueWay      = 60;
     public const int BtnWayBase        = 100;
     public const int BtnServicesBase   = 200;
     public const int BtnContractsBase  = 300;
@@ -788,6 +868,18 @@ public class GuildProgressGump : Gump
             AddLabel(W - 165, 16, 1154, "Training quests (26)");
         }
 
+        // The League row: the guild for the guilds, above them and fenced off from them.
+        AddImageTiled(10, LeagueRowY - 6, W - 20, 2, 9304);
+        var leagueRank = ClusterFLeagueRanks.GetRank(pm);
+        AddLabel(20, LeagueRowY, 53, LeagueRowName);
+        AddLabel(230, LeagueRowY, 999, "Field Office, New Haven");
+        AddLabel(450, LeagueRowY, leagueRank > 0 ? ClusterFLeagueRanks.LabelHue(leagueRank) : 999,
+            leagueRank > 0 ? $"Rank: {ClusterFLeagueRanks.RankName(leagueRank)}" : "Not registered");
+        AddHtml(20, LeagueRowY + 20, 420, 20,
+            "<BASEFONT COLOR=#AAAAAA>Ties every guild together. Its Registrar keeps your League rank.</BASEFONT>", false, false);
+        AddButton(450, LeagueRowY + 18, 4005, 4007, BtnLeagueWay);
+        AddLabel(485, LeagueRowY + 20, 999, "Show me the way");
+
         AddImageTiled(10, HeaderH - 12, W - 20, 2, 9304);
 
         for (var page = 1; page <= PageCount; page++)
@@ -857,6 +949,12 @@ public class GuildProgressGump : Gump
         if (info.ButtonID == BtnTrainingQuests)
         {
             _board?.OpenTrainingQuests(_pm);
+            return;
+        }
+
+        if (info.ButtonID == BtnLeagueWay)
+        {
+            _pm.SendMessage(0x44, ClusterFLeagueSystem.ShowTheWayToRegistrar(_pm));
             return;
         }
 

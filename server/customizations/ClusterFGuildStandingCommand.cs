@@ -91,12 +91,9 @@ public static class ClusterFGuildStandingCommand
         return string.Join(", ", ClusterFGuildSystem.AllGuilds.Values.Select(d => d.Key).OrderBy(k => k, StringComparer.Ordinal));
     }
 
-    // The guild's own rank ladder. Mining's is the Miners' Compact's, which [CompactStanding also uses; the
-    // Directory's GetRankName has no mining case and would show the generic ladder.
-    public static string RankName(string key, int standing) =>
-        key == "mining"
-            ? MinersCompactLiaisonGump.GetRankName(standing)
-            : ClusterFGuildSystem.GetRankName(key, standing);
+    // The guild's own rank ladder. Mining's is the Miners' Compact's, which [CompactStanding also uses; since
+    // cc-P48 the Directory's GetRankName has the mining case too, so this is the one call.
+    public static string RankName(string key, int standing) => ClusterFGuildSystem.GetRankName(key, standing);
 
     // Sets (amount given) or reports one guild's standing on one character. Returns the line for the staff member.
     public static string Apply(PlayerMobile pm, string key, int? amount)

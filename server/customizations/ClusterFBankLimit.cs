@@ -11,7 +11,8 @@
 // backpacks and house containers included, keeps 125.
 //
 // GetMaxItems is the one function that decides the number. When a character's League rank changes,
-// call Apply on them so the bank follows without waiting for the next login.
+// call Apply on them so the bank follows without waiting for the next login (ClusterFLeagueRanks.TryPromote
+// and SetRank do, cc-P48).
 
 using ModernUO.CodeGeneratedEvents;
 using Server.Items;
@@ -24,8 +25,11 @@ public static class ClusterFBankLimit
     /// <summary>Items a bank box holds before any League bonus (Chase, 2026-09-30).</summary>
     public const int BaseItems = 1000;
 
-    /// <summary>Extra items per League rank (Chase, 2026-09-30). Not reachable until ranks exist.</summary>
-    public const int ItemsPerLeagueRank = 100;
+    /// <summary>
+    /// Extra items per League milestone rank reached (Chase, 2026-09-30, as ItemsPerLeagueRank; cc-P48: bonuses step
+    /// only at the six milestone ranks, Chase 2026-10-03), so +600 at Celestial.
+    /// </summary>
+    public const int ItemsPerLeagueMilestone = 100;
 
     public static void Configure()
     {
@@ -36,11 +40,11 @@ public static class ClusterFBankLimit
     public static int GetMaxItems(Mobile owner) => BaseItems + LeagueRankBonus(owner);
 
     /// <summary>
-    /// Items added for the owner's League rank. Always 0 today: League ranks do not exist yet
-    /// (ClusterFLeagueSystem has only citizen status, and F-12's metal ranks are undecided). When F-12
-    /// defines them, return ItemsPerLeagueRank times the owner's rank here (F-19).
+    /// Items added for the owner's League rank (cc-P48): ItemsPerLeagueMilestone per milestone rank reached, 0 to 6
+    /// (ClusterFLeagueRanks.LeagueMilestonesReached). A promotion to a rank that is not a milestone adds nothing.
     /// </summary>
-    public static int LeagueRankBonus(Mobile owner) => 0;
+    public static int LeagueRankBonus(Mobile owner) =>
+        owner == null ? 0 : ItemsPerLeagueMilestone * ClusterFLeagueRanks.LeagueMilestonesReached(owner);
 
     /// <summary>Writes the limit to the owner's bank box. Creates the bank only when asked to.</summary>
     public static void Apply(Mobile m, bool createBank)

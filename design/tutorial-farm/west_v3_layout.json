@@ -1,0 +1,2356 @@
+{
+"farmhouse_center": [
+3377,
+2611
+],
+"base_z": 15,
+"map_edit_remove_statics": [
+{
+"id": "0x0CE7",
+"name": "willow leaves",
+"x": 3388,
+"y": 2607,
+"z": 19
+},
+{
+"id": "0x0CE6",
+"name": "willow tree",
+"x": 3388,
+"y": 2607,
+"z": 19
+},
+{
+"id": "0x0CE1",
+"name": "walnut leaves",
+"x": 3396,
+"y": 2616,
+"z": 38
+},
+{
+"id": "0x0CE0",
+"name": "walnut tree",
+"x": 3396,
+"y": 2616,
+"z": 38
+}
+],
+"items": [
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3382,
+"y": 2603,
+"z": 9
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3382,
+"y": 2619,
+"z": 17
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3383,
+"y": 2603,
+"z": 12
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3383,
+"y": 2619,
+"z": 18
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3384,
+"y": 2603,
+"z": 12
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3384,
+"y": 2619,
+"z": 20
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3385,
+"y": 2603,
+"z": 13
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3385,
+"y": 2619,
+"z": 22
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3386,
+"y": 2603,
+"z": 15
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3386,
+"y": 2619,
+"z": 21
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3387,
+"y": 2603,
+"z": 15
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3387,
+"y": 2619,
+"z": 21
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3388,
+"y": 2603,
+"z": 15
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3388,
+"y": 2619,
+"z": 22
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3389,
+"y": 2603,
+"z": 18
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3389,
+"y": 2619,
+"z": 26
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3390,
+"y": 2603,
+"z": 18
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3390,
+"y": 2619,
+"z": 27
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3391,
+"y": 2603,
+"z": 19
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3391,
+"y": 2619,
+"z": 28
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3392,
+"y": 2603,
+"z": 22
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3392,
+"y": 2619,
+"z": 33
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3393,
+"y": 2603,
+"z": 25
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3393,
+"y": 2619,
+"z": 34
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3394,
+"y": 2603,
+"z": 25
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3394,
+"y": 2619,
+"z": 37
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3395,
+"y": 2603,
+"z": 26
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3395,
+"y": 2619,
+"z": 38
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3396,
+"y": 2603,
+"z": 28
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3396,
+"y": 2619,
+"z": 39
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3397,
+"y": 2603,
+"z": 34
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3397,
+"y": 2619,
+"z": 40
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3398,
+"y": 2603,
+"z": 35
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3398,
+"y": 2619,
+"z": 42
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3399,
+"y": 2603,
+"z": 36
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3399,
+"y": 2619,
+"z": 43
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2604,
+"z": 11
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2604,
+"z": 39
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2605,
+"z": 10
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2605,
+"z": 39
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2606,
+"z": 11
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2606,
+"z": 39
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2607,
+"z": 10
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2607,
+"z": 38
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2608,
+"z": 13
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2608,
+"z": 37
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2609,
+"z": 40
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2610,
+"z": 41
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2611,
+"z": 39
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2612,
+"z": 41
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2613,
+"z": 42
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2614,
+"z": 13
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2615,
+"z": 12
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2616,
+"z": 14
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2616,
+"z": 44
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2617,
+"z": 14
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2617,
+"z": 43
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2618,
+"z": 15
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2618,
+"z": 44
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3381,
+"y": 2619,
+"z": 15
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2619,
+"z": 43
+},
+{
+"id": "0x0835",
+"name": "wooden fence",
+"x": 3381,
+"y": 2603,
+"z": 9
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3393,
+"y": 2603,
+"z": 25
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3393,
+"y": 2609,
+"z": 28
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3394,
+"y": 2603,
+"z": 25
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3394,
+"y": 2609,
+"z": 29
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3395,
+"y": 2603,
+"z": 26
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3395,
+"y": 2609,
+"z": 31
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3396,
+"y": 2603,
+"z": 28
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3396,
+"y": 2609,
+"z": 33
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3397,
+"y": 2603,
+"z": 34
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3397,
+"y": 2609,
+"z": 34
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3398,
+"y": 2603,
+"z": 35
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3398,
+"y": 2609,
+"z": 37
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3399,
+"y": 2603,
+"z": 36
+},
+{
+"id": "0x0836",
+"name": "wooden fence",
+"x": 3399,
+"y": 2609,
+"z": 40
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3392,
+"y": 2604,
+"z": 22
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2604,
+"z": 39
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3392,
+"y": 2605,
+"z": 23
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2605,
+"z": 39
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2606,
+"z": 39
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2607,
+"z": 38
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3392,
+"y": 2608,
+"z": 28
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2608,
+"z": 37
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3392,
+"y": 2609,
+"z": 28
+},
+{
+"id": "0x0837",
+"name": "wooden fence",
+"x": 3399,
+"y": 2609,
+"z": 40
+},
+{
+"id": "0x0835",
+"name": "wooden fence",
+"x": 3392,
+"y": 2603,
+"z": 22
+},
+{
+"id": "0x0B41",
+"name": "water trough",
+"x": 3394,
+"y": 2605,
+"z": 26
+},
+{
+"id": "0x0B42",
+"name": "water trough",
+"x": 3395,
+"y": 2605,
+"z": 30
+},
+{
+"id": "0x0F36",
+"name": "sheaf of hay",
+"x": 3397,
+"y": 2607,
+"z": 33
+},
+{
+"id": "0x0F36",
+"name": "sheaf of hay",
+"x": 3398,
+"y": 2607,
+"z": 36
+},
+{
+"id": "0x100C",
+"name": "hay sheave",
+"x": 3397,
+"y": 2608,
+"z": 35
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3383,
+"y": 2611,
+"z": 13
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3384,
+"y": 2611,
+"z": 15
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3385,
+"y": 2611,
+"z": 16
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3386,
+"y": 2611,
+"z": 17
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3387,
+"y": 2611,
+"z": 21
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3388,
+"y": 2611,
+"z": 22
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3389,
+"y": 2611,
+"z": 23
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3390,
+"y": 2611,
+"z": 26
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3391,
+"y": 2611,
+"z": 27
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3392,
+"y": 2611,
+"z": 29
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3393,
+"y": 2611,
+"z": 30
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3394,
+"y": 2611,
+"z": 31
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3395,
+"y": 2611,
+"z": 34
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3396,
+"y": 2611,
+"z": 35
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3397,
+"y": 2611,
+"z": 37
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3383,
+"y": 2613,
+"z": 15
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3384,
+"y": 2613,
+"z": 17
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3385,
+"y": 2613,
+"z": 17
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3386,
+"y": 2613,
+"z": 19
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3387,
+"y": 2613,
+"z": 27
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3388,
+"y": 2613,
+"z": 22
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3389,
+"y": 2613,
+"z": 24
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3390,
+"y": 2613,
+"z": 26
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3391,
+"y": 2613,
+"z": 27
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3392,
+"y": 2613,
+"z": 29
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3393,
+"y": 2613,
+"z": 30
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3394,
+"y": 2613,
+"z": 34
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3395,
+"y": 2613,
+"z": 34
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3396,
+"y": 2613,
+"z": 35
+},
+{
+"id": "0x0C55",
+"name": "wheat",
+"x": 3397,
+"y": 2613,
+"z": 39
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3383,
+"y": 2615,
+"z": 17
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3384,
+"y": 2615,
+"z": 16
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3385,
+"y": 2615,
+"z": 16
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3386,
+"y": 2615,
+"z": 19
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3387,
+"y": 2615,
+"z": 21
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3388,
+"y": 2615,
+"z": 23
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3389,
+"y": 2615,
+"z": 23
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3390,
+"y": 2615,
+"z": 27
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3391,
+"y": 2615,
+"z": 28
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3392,
+"y": 2615,
+"z": 30
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3393,
+"y": 2615,
+"z": 32
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3394,
+"y": 2615,
+"z": 33
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3395,
+"y": 2615,
+"z": 35
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3396,
+"y": 2615,
+"z": 38
+},
+{
+"id": "0x0C7D",
+"name": "corn stalk",
+"x": 3397,
+"y": 2615,
+"z": 40
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3383,
+"y": 2617,
+"z": 16
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3384,
+"y": 2617,
+"z": 17
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3385,
+"y": 2617,
+"z": 17
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3386,
+"y": 2617,
+"z": 20
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3387,
+"y": 2617,
+"z": 21
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3388,
+"y": 2617,
+"z": 22
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3389,
+"y": 2617,
+"z": 25
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3390,
+"y": 2617,
+"z": 26
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3391,
+"y": 2617,
+"z": 30
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3392,
+"y": 2617,
+"z": 32
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3393,
+"y": 2617,
+"z": 34
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3394,
+"y": 2617,
+"z": 36
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3395,
+"y": 2617,
+"z": 36
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3396,
+"y": 2617,
+"z": 38
+},
+{
+"id": "0x0C76",
+"name": "carrots",
+"x": 3397,
+"y": 2617,
+"z": 40
+},
+{
+"id": "0x0C6A",
+"name": "pumpkin%s%",
+"x": 3383,
+"y": 2605,
+"z": 13
+},
+{
+"id": "0x0C6A",
+"name": "pumpkin%s%",
+"x": 3384,
+"y": 2605,
+"z": 14
+},
+{
+"id": "0x0C6A",
+"name": "pumpkin%s%",
+"x": 3385,
+"y": 2605,
+"z": 15
+},
+{
+"id": "0x0C6A",
+"name": "pumpkin%s%",
+"x": 3386,
+"y": 2605,
+"z": 15
+},
+{
+"id": "0x0C6A",
+"name": "pumpkin%s%",
+"x": 3387,
+"y": 2605,
+"z": 16
+},
+{
+"id": "0x0C6A",
+"name": "pumpkin%s%",
+"x": 3388,
+"y": 2605,
+"z": 18
+},
+{
+"id": "0x0C6A",
+"name": "pumpkin%s%",
+"x": 3389,
+"y": 2605,
+"z": 18
+},
+{
+"id": "0x0C6A",
+"name": "pumpkin%s%",
+"x": 3390,
+"y": 2605,
+"z": 19
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3383,
+"y": 2607,
+"z": 14
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3384,
+"y": 2607,
+"z": 14
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3385,
+"y": 2607,
+"z": 16
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3386,
+"y": 2607,
+"z": 16
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3387,
+"y": 2607,
+"z": 16
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3388,
+"y": 2607,
+"z": 19
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3389,
+"y": 2607,
+"z": 21
+},
+{
+"id": "0x0C7B",
+"name": "head%s% of cabbage",
+"x": 3390,
+"y": 2607,
+"z": 21
+},
+{
+"id": "0x1E34",
+"name": "scarecrow",
+"x": 3388,
+"y": 2612,
+"z": 22
+},
+{
+"id": "0x0B97",
+"name": "wooden signpost",
+"x": 3401,
+"y": 2613,
+"z": 44
+},
+{
+"id": "0x0BCF",
+"name": "wooden sign",
+"x": 3401,
+"y": 2613,
+"z": 44
+},
+{
+"id": "0x0E77",
+"name": "barrel",
+"x": 3400,
+"y": 2616,
+"z": 45
+},
+{
+"id": "0x04AC",
+"name": "wooden boards",
+"x": 3377,
+"y": 2611,
+"z": 22
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3377,
+"y": 2611,
+"z": 48
+},
+{
+"id": "0x04A9",
+"name": "wooden boards",
+"x": 3378,
+"y": 2611,
+"z": 22
+},
+{
+"id": "0x04AB",
+"name": "wooden boards",
+"x": 3376,
+"y": 2610,
+"z": 22
+},
+{
+"id": "0x04AB",
+"name": "wooden boards",
+"x": 3377,
+"y": 2612,
+"z": 22
+},
+{
+"id": "0x04AA",
+"name": "wooden boards",
+"x": 3378,
+"y": 2610,
+"z": 22
+},
+{
+"id": "0x04A9",
+"name": "wooden boards",
+"x": 3378,
+"y": 2612,
+"z": 22
+},
+{
+"id": "0x04A9",
+"name": "wooden boards",
+"x": 3377,
+"y": 2610,
+"z": 22
+},
+{
+"id": "0x04AA",
+"name": "wooden boards",
+"x": 3376,
+"y": 2611,
+"z": 22
+},
+{
+"id": "0x04AC",
+"name": "wooden boards",
+"x": 3376,
+"y": 2612,
+"z": 22
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3376,
+"y": 2610,
+"z": 45
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3376,
+"y": 2611,
+"z": 45
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3376,
+"y": 2612,
+"z": 45
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3377,
+"y": 2610,
+"z": 48
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3377,
+"y": 2612,
+"z": 48
+},
+{
+"id": "0x05A5",
+"name": "thatch roof",
+"x": 3378,
+"y": 2612,
+"z": 51
+},
+{
+"id": "0x05A5",
+"name": "thatch roof",
+"x": 3378,
+"y": 2611,
+"z": 51
+},
+{
+"id": "0x05A5",
+"name": "thatch roof",
+"x": 3378,
+"y": 2610,
+"z": 51
+},
+{
+"id": "0x04AB",
+"name": "wooden boards",
+"x": 3378,
+"y": 2613,
+"z": 22
+},
+{
+"id": "0x04B0",
+"name": "wooden boards",
+"x": 3376,
+"y": 2609,
+"z": 22
+},
+{
+"id": "0x04B0",
+"name": "wooden boards",
+"x": 3378,
+"y": 2609,
+"z": 22
+},
+{
+"id": "0x04B0",
+"name": "wooden boards",
+"x": 3377,
+"y": 2609,
+"z": 22
+},
+{
+"id": "0x04AA",
+"name": "wooden boards",
+"x": 3377,
+"y": 2613,
+"z": 22
+},
+{
+"id": "0x04A9",
+"name": "wooden boards",
+"x": 3376,
+"y": 2613,
+"z": 22
+},
+{
+"id": "0x04AD",
+"name": "wooden boards",
+"x": 3375,
+"y": 2610,
+"z": 22
+},
+{
+"id": "0x04AD",
+"name": "wooden boards",
+"x": 3375,
+"y": 2611,
+"z": 22
+},
+{
+"id": "0x04AD",
+"name": "wooden boards",
+"x": 3375,
+"y": 2612,
+"z": 22
+},
+{
+"id": "0x04AA",
+"name": "wooden boards",
+"x": 3379,
+"y": 2612,
+"z": 22
+},
+{
+"id": "0x04AB",
+"name": "wooden boards",
+"x": 3379,
+"y": 2611,
+"z": 22
+},
+{
+"id": "0x04AC",
+"name": "wooden boards",
+"x": 3379,
+"y": 2610,
+"z": 22
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3375,
+"y": 2612,
+"z": 42
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3375,
+"y": 2611,
+"z": 42
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3375,
+"y": 2610,
+"z": 42
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3376,
+"y": 2609,
+"z": 45
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3376,
+"y": 2613,
+"z": 45
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3377,
+"y": 2609,
+"z": 48
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3377,
+"y": 2613,
+"z": 48
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3379,
+"y": 2610,
+"z": 48
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3379,
+"y": 2611,
+"z": 48
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3379,
+"y": 2612,
+"z": 48
+},
+{
+"id": "0x05A5",
+"name": "thatch roof",
+"x": 3378,
+"y": 2609,
+"z": 51
+},
+{
+"id": "0x05A5",
+"name": "thatch roof",
+"x": 3378,
+"y": 2613,
+"z": 51
+},
+{
+"id": "0x0063",
+"name": "stone wall",
+"x": 3376,
+"y": 2614,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3380,
+"y": 2612,
+"z": 15
+},
+{
+"id": "0x0063",
+"name": "stone wall",
+"x": 3377,
+"y": 2608,
+"z": 15
+},
+{
+"id": "0x0063",
+"name": "stone wall",
+"x": 3378,
+"y": 2608,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3374,
+"y": 2612,
+"z": 15
+},
+{
+"id": "0x0063",
+"name": "stone wall",
+"x": 3378,
+"y": 2614,
+"z": 15
+},
+{
+"id": "0x0063",
+"name": "stone wall",
+"x": 3376,
+"y": 2608,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3380,
+"y": 2611,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3374,
+"y": 2611,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3374,
+"y": 2610,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3380,
+"y": 2610,
+"z": 15
+},
+{
+"id": "0x00A7",
+"name": "wooden wall",
+"x": 3374,
+"y": 2611,
+"z": 22
+},
+{
+"id": "0x04AF",
+"name": "wooden boards",
+"x": 3380,
+"y": 2610,
+"z": 22
+},
+{
+"id": "0x00A8",
+"name": "wooden wall",
+"x": 3376,
+"y": 2608,
+"z": 22
+},
+{
+"id": "0x00A8",
+"name": "wooden wall",
+"x": 3377,
+"y": 2608,
+"z": 22
+},
+{
+"id": "0x00A8",
+"name": "wooden wall",
+"x": 3378,
+"y": 2608,
+"z": 22
+},
+{
+"id": "0x00B9",
+"name": "window",
+"x": 3374,
+"y": 2610,
+"z": 22
+},
+{
+"id": "0x00A7",
+"name": "wooden wall",
+"x": 3374,
+"y": 2612,
+"z": 22
+},
+{
+"id": "0x04AF",
+"name": "wooden boards",
+"x": 3380,
+"y": 2611,
+"z": 22
+},
+{
+"id": "0x04AF",
+"name": "wooden boards",
+"x": 3380,
+"y": 2612,
+"z": 22
+},
+{
+"id": "0x04B0",
+"name": "wooden boards",
+"x": 3379,
+"y": 2609,
+"z": 22
+},
+{
+"id": "0x04AE",
+"name": "wooden boards",
+"x": 3376,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x04B4",
+"name": "wooden boards",
+"x": 3375,
+"y": 2609,
+"z": 22
+},
+{
+"id": "0x04AE",
+"name": "wooden boards",
+"x": 3377,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x04AC",
+"name": "wooden boards",
+"x": 3379,
+"y": 2613,
+"z": 22
+},
+{
+"id": "0x04AE",
+"name": "wooden boards",
+"x": 3378,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x04AD",
+"name": "wooden boards",
+"x": 3375,
+"y": 2613,
+"z": 22
+},
+{
+"id": "0x00C1",
+"name": "wooden wall",
+"x": 3376,
+"y": 2614,
+"z": 42
+},
+{
+"id": "0x00C1",
+"name": "wooden wall",
+"x": 3377,
+"y": 2614,
+"z": 42
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3375,
+"y": 2609,
+"z": 42
+},
+{
+"id": "0x00C1",
+"name": "wooden wall",
+"x": 3378,
+"y": 2614,
+"z": 42
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3375,
+"y": 2613,
+"z": 42
+},
+{
+"id": "0x00C1",
+"name": "wooden wall",
+"x": 3378,
+"y": 2614,
+"z": 45
+},
+{
+"id": "0x00C1",
+"name": "wooden wall",
+"x": 3377,
+"y": 2614,
+"z": 45
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3380,
+"y": 2612,
+"z": 45
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3380,
+"y": 2611,
+"z": 45
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3380,
+"y": 2610,
+"z": 45
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3376,
+"y": 2614,
+"z": 45
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3377,
+"y": 2614,
+"z": 48
+},
+{
+"id": "0x00C1",
+"name": "wooden wall",
+"x": 3378,
+"y": 2614,
+"z": 48
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3379,
+"y": 2609,
+"z": 48
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3379,
+"y": 2613,
+"z": 48
+},
+{
+"id": "0x05A5",
+"name": "thatch roof",
+"x": 3378,
+"y": 2614,
+"z": 51
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3380,
+"y": 2613,
+"z": 15
+},
+{
+"id": "0x0065",
+"name": "stone wall",
+"x": 3380,
+"y": 2614,
+"z": 15
+},
+{
+"id": "0x0063",
+"name": "stone wall",
+"x": 3375,
+"y": 2608,
+"z": 15
+},
+{
+"id": "0x0063",
+"name": "stone wall",
+"x": 3379,
+"y": 2614,
+"z": 15
+},
+{
+"id": "0x0063",
+"name": "stone wall",
+"x": 3375,
+"y": 2614,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3374,
+"y": 2614,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3374,
+"y": 2613,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3374,
+"y": 2609,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3374,
+"y": 2608,
+"z": 15
+},
+{
+"id": "0x0063",
+"name": "stone wall",
+"x": 3379,
+"y": 2608,
+"z": 15
+},
+{
+"id": "0x0063",
+"name": "stone wall",
+"x": 3380,
+"y": 2608,
+"z": 15
+},
+{
+"id": "0x0064",
+"name": "stone wall",
+"x": 3380,
+"y": 2609,
+"z": 15
+},
+{
+"id": "0x04B1",
+"name": "wooden boards",
+"x": 3380,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x04AF",
+"name": "wooden boards",
+"x": 3380,
+"y": 2613,
+"z": 22
+},
+{
+"id": "0x04B3",
+"name": "wooden boards",
+"x": 3380,
+"y": 2609,
+"z": 22
+},
+{
+"id": "0x04AE",
+"name": "wooden boards",
+"x": 3379,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x04B2",
+"name": "wooden boards",
+"x": 3375,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x00A6",
+"name": "wooden wall",
+"x": 3380,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x00A7",
+"name": "wooden wall",
+"x": 3380,
+"y": 2609,
+"z": 22
+},
+{
+"id": "0x00A8",
+"name": "wooden wall",
+"x": 3380,
+"y": 2608,
+"z": 22
+},
+{
+"id": "0x00A8",
+"name": "wooden wall",
+"x": 3379,
+"y": 2608,
+"z": 22
+},
+{
+"id": "0x00A8",
+"name": "wooden wall",
+"x": 3375,
+"y": 2608,
+"z": 22
+},
+{
+"id": "0x00A7",
+"name": "wooden wall",
+"x": 3374,
+"y": 2609,
+"z": 22
+},
+{
+"id": "0x00A7",
+"name": "wooden wall",
+"x": 3374,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x00B9",
+"name": "window",
+"x": 3380,
+"y": 2613,
+"z": 22
+},
+{
+"id": "0x00B9",
+"name": "window",
+"x": 3374,
+"y": 2613,
+"z": 22
+},
+{
+"id": "0x00A8",
+"name": "wooden wall",
+"x": 3375,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x00A8",
+"name": "wooden wall",
+"x": 3379,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x00A9",
+"name": "wooden post",
+"x": 3374,
+"y": 2608,
+"z": 22
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3381,
+"y": 2613,
+"z": 42
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3381,
+"y": 2612,
+"z": 42
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3381,
+"y": 2611,
+"z": 42
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3381,
+"y": 2610,
+"z": 42
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3375,
+"y": 2615,
+"z": 42
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3375,
+"y": 2614,
+"z": 42
+},
+{
+"id": "0x00C1",
+"name": "wooden wall",
+"x": 3379,
+"y": 2614,
+"z": 42
+},
+{
+"id": "0x00C1",
+"name": "wooden wall",
+"x": 3380,
+"y": 2614,
+"z": 42
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3381,
+"y": 2609,
+"z": 42
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3380,
+"y": 2614,
+"z": 45
+},
+{
+"id": "0x00C1",
+"name": "wooden wall",
+"x": 3379,
+"y": 2614,
+"z": 45
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3376,
+"y": 2615,
+"z": 45
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3380,
+"y": 2609,
+"z": 45
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3380,
+"y": 2613,
+"z": 45
+},
+{
+"id": "0x05A6",
+"name": "thatch roof",
+"x": 3377,
+"y": 2615,
+"z": 48
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3379,
+"y": 2614,
+"z": 48
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3379,
+"y": 2615,
+"z": 48
+},
+{
+"id": "0x05A5",
+"name": "thatch roof",
+"x": 3378,
+"y": 2615,
+"z": 51
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3381,
+"y": 2614,
+"z": 42
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3380,
+"y": 2615,
+"z": 45
+},
+{
+"id": "0x05A4",
+"name": "thatch roof",
+"x": 3381,
+"y": 2615,
+"z": 42
+},
+{
+"id": "0x00A8",
+"name": "wooden wall",
+"x": 3376,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x00BA",
+"name": "window",
+"x": 3377,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x00A8",
+"name": "wooden wall",
+"x": 3378,
+"y": 2614,
+"z": 22
+},
+{
+"id": "0x00AB",
+"name": "wooden wall",
+"x": 3380,
+"y": 2610,
+"z": 22
+},
+{
+"id": "0x06AD",
+"name": "wooden door",
+"x": 3380,
+"y": 2611,
+"z": 22
+},
+{
+"id": "0x00AD",
+"name": "wooden wall",
+"x": 3380,
+"y": 2612,
+"z": 22
+},
+{
+"id": "0x04AF",
+"name": "wooden boards",
+"x": 3381,
+"y": 2609,
+"z": 20
+},
+{
+"id": "0x04AF",
+"name": "wooden boards",
+"x": 3381,
+"y": 2610,
+"z": 20
+},
+{
+"id": "0x04A9",
+"name": "wooden boards",
+"x": 3381,
+"y": 2611,
+"z": 20
+},
+{
+"id": "0x04AF",
+"name": "wooden boards",
+"x": 3381,
+"y": 2612,
+"z": 20
+},
+{
+"id": "0x04AF",
+"name": "wooden boards",
+"x": 3381,
+"y": 2613,
+"z": 20
+},
+{
+"id": "0x0B2C",
+"name": "wooden bench",
+"x": 3381,
+"y": 2609,
+"z": 22
+},
+{
+"id": "0x154D",
+"name": "water barrel",
+"x": 3381,
+"y": 2613,
+"z": 22
+},
+{
+"id": "0x0725",
+"name": "wooden stairs",
+"x": 3382,
+"y": 2611,
+"z": 17
+},
+{
+"id": "0x0725",
+"name": "wooden stairs",
+"x": 3382,
+"y": 2610,
+"z": 17
+},
+{
+"id": "0x0725",
+"name": "wooden stairs",
+"x": 3382,
+"y": 2612,
+"z": 17
+},
+{
+"id": "0x08D5",
+"name": "chimney",
+"x": 3373,
+"y": 2611,
+"z": 15
+},
+{
+"id": "0x0F36",
+"name": "sheaf of hay",
+"x": 3375,
+"y": 2607,
+"z": 15
+},
+{
+"id": "0x100C",
+"name": "hay sheave",
+"x": 3376,
+"y": 2607,
+"z": 15
+},
+{
+"id": "0x0F36",
+"name": "sheaf of hay",
+"x": 3377,
+"y": 2607,
+"z": 15
+},
+{
+"id": "0x0E87",
+"name": "pitchfork",
+"x": 3378,
+"y": 2607,
+"z": 15
+},
+{
+"id": "0x1E34",
+"name": "scarecrow",
+"x": 3379,
+"y": 2606,
+"z": 15
+},
+{
+"id": "0xA300",
+"name": "wishing_well_east",
+"x": 3372,
+"y": 2615,
+"z": 15
+},
+{
+"id": "0x4514",
+"name": "ChickenCoop South",
+"x": 3375,
+"y": 2605,
+"z": 15
+}
+]
+}
