@@ -1,0 +1,5 @@
+# Gate 6 (Build-PlayerPackage.ps1): shipped native files whose imports are NOT checked,
+# because they are proven never to be loaded. One per line:
+#   <path in the zip under the top folder, forward slashes>  <reason and where it is proven>
+# Gate 6 fails when a line names a file the zip no longer holds, so this list cannot rot.
+# Empty on purpose (cc-P35, 2026-10-03): zlib.dll IS loaded, so vcruntime140.dll ships instead.

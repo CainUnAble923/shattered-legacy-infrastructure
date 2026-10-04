@@ -1,0 +1,48 @@
+# Gate 6 (Build-PlayerPackage.ps1): DLLs that every Windows 10 22H2 and Windows 11 PC has,
+# so a shipped native file may import them without the package carrying them.
+#
+# Built 2026-10-03 (cc-P35) from what the 2026.10.02.0840 zip actually imports, nothing
+# else. Each name was checked against the Microsoft page after it (an API reference whose
+# Requirements table names the DLL, with a minimum client of Windows 10 or earlier, unless
+# the note says otherwise). Notes, quotes and caveats: D:\UO\shard-migration\notes\
+# cc-P35-clean-machine-test.md section 2. The Windows Sandbox kit (clean-test\) also lists
+# each one's presence in a fresh Windows's System32 in baseline.txt.
+#
+# Add a name only with a citation, and only when a shipped file imports it. One per line:
+#   <dll name, lower case>  <source>
+advapi32.dll                        learn.microsoft.com/windows/win32/api/winreg/nf-winreg-regopenkeyexw
+bcrypt.dll                          learn.microsoft.com/windows/win32/api/bcrypt/nf-bcrypt-bcryptopenalgorithmprovider
+crypt32.dll                         learn.microsoft.com/windows/win32/api/wincrypt/nf-wincrypt-certopenstore
+dbghelp.dll                         learn.microsoft.com/windows/win32/debug/dbghelp-versions (in all supported Windows)
+gdi32.dll                           learn.microsoft.com/windows/win32/api/wingdi/nf-wingdi-bitblt
+imm32.dll                           learn.microsoft.com/windows/win32/api/imm/nf-imm-immgetcontext
+iphlpapi.dll                        learn.microsoft.com/windows/win32/api/iphlpapi/nf-iphlpapi-getadaptersaddresses
+kernel32.dll                        learn.microsoft.com/windows/win32/api/libloaderapi/nf-libloaderapi-loadlibraryw
+msvcrt.dll                          learn.microsoft.com/cpp/porting/overview-of-potential-upgrade-issues-visual-cpp (Windows component)
+ntdll.dll                           learn.microsoft.com/windows/win32/api/winternl/nf-winternl-rtlntstatustodoserror
+ole32.dll                           learn.microsoft.com/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex
+oleaut32.dll                        learn.microsoft.com/windows/win32/api/oleauto/nf-oleauto-sysallocstring (no minimum-client row)
+rpcrt4.dll                          learn.microsoft.com/windows/win32/api/rpcdce/nf-rpcdce-uuidcreate
+secur32.dll                         learn.microsoft.com/windows/win32/api/sspi/nf-sspi-acquirecredentialshandlew
+setupapi.dll                        learn.microsoft.com/windows/win32/api/setupapi/nf-setupapi-setupdigetclassdevsw
+shell32.dll                         learn.microsoft.com/windows/win32/api/shellapi/nf-shellapi-shellexecutew
+sspicli.dll                         learn.microsoft.com/windows/win32/api/sspi/nf-sspi-sspiisauthidentityencrypted
+user32.dll                          learn.microsoft.com/windows/win32/api/winuser/nf-winuser-messageboxw
+version.dll                         learn.microsoft.com/windows/win32/api/winver/nf-winver-getfileversioninfow (DLL row names the API set)
+winmm.dll                           learn.microsoft.com/windows/win32/api/timeapi/nf-timeapi-timegettime
+ws2_32.dll                          learn.microsoft.com/windows/win32/api/winsock2/nf-winsock2-wsastartup
+# The Universal CRT's API sets: "a Microsoft Windows operating system component" on Windows 10
+# and later, learn.microsoft.com/cpp/windows/universal-crt-deployment
+api-ms-win-crt-convert-l1-1-0.dll       UCRT
+api-ms-win-crt-environment-l1-1-0.dll   UCRT
+api-ms-win-crt-filesystem-l1-1-0.dll    UCRT
+api-ms-win-crt-heap-l1-1-0.dll          UCRT
+api-ms-win-crt-locale-l1-1-0.dll        UCRT
+api-ms-win-crt-math-l1-1-0.dll          UCRT
+api-ms-win-crt-runtime-l1-1-0.dll       UCRT
+api-ms-win-crt-stdio-l1-1-0.dll         UCRT
+api-ms-win-crt-string-l1-1-0.dll        UCRT
+api-ms-win-crt-time-l1-1-0.dll          UCRT
+api-ms-win-crt-utility-l1-1-0.dll       UCRT
+# Delay-loaded by coreclr.dll only. Windows 10 API set: learn.microsoft.com/previous-versions/mt186421(v=vs.85)
+api-ms-win-core-winrt-l1-1-0.dll    API set

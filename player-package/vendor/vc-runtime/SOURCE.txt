@@ -1,0 +1,31 @@
+Microsoft Visual C++ runtime, vendored for the Shattered Legacy player package
+==============================================================================
+
+File     vcruntime140.dll, 123472 bytes, file version 14.50.35719.0, x64
+SHA-256  184146852727a9db4eea06178716bec3cdbb1015c911f6b0f915b184ad7775b2
+Source   C:\Program Files\Microsoft Visual Studio\18\Community\VC\Redist\MSVC\14.50.35710\
+         x64\Microsoft.VC145.CRT\vcruntime140.dll on CHASES-TOWER (Visual Studio 18 Community)
+Signed   Authenticode Valid, Microsoft Corporation
+Taken    2026-10-03 (cc-P35), byte for byte; never modify it.
+
+Why it ships: TazUO's zlib.dll (app\tazuo\zlib.dll and app\tazuo\x64\zlib.dll, zlib 1.2.11,
+linker 14.0) imports VCRUNTIME140.dll, which is not part of Windows. ClassicUO.Utility.dll
+P/Invokes "zlib" and TazUO loads it about 3 s after start, before the login screen. On a PC
+without the Visual C++ Redistributable that load fails. Evidence in
+D:\UO\shard-migration\notes\cc-P35-clean-machine-test.md.
+
+Where: app\tazuo\, the folder TazUO.exe starts from. Windows searches the application's folder
+for a DLL's dependencies before System32, so both zlib.dll copies find it there. Any 14.x
+vcruntime140.dll runs code built with an older 14.x toolset.
+
+Licence: the Visual Studio 2026 "Distributable Code" list,
+https://learn.microsoft.com/visualstudio/releases/2026/redistribution (aka.ms/vs/18/redistribution),
+lets licensed Visual Studio users copy any file under [VisualStudioFolder]\VC\redist (except
+debug_nonredist) unmodified with their program, subject to the Visual Studio licence terms.
+App-local deployment is described at
+https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files (allowed; Microsoft
+recommends the central Redistributable for servicing).
+
+Build-PlayerPackage.ps1 checks this file's SHA-256 and signature before copying it, and gate 3
+checks the shipped copy byte for byte. To update it, copy a newer one from the same VC\Redist
+folder and change the hash here and in the build script together.

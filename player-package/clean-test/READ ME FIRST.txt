@@ -1,0 +1,37 @@
+Shattered Legacy: clean PC first run (Windows Sandbox)
+=====================================================
+
+This window is a throwaway Windows with no Ultima Online, no .NET, no Visual C++ runtime and
+no graphics driver. Closing it throws EVERYTHING inside it away, including EA's patch (about
+1.8 GB download, 2.7 GB on disk). baseline.txt is already in the results folder on the host.
+
+Write down the time now. Do these in order, and note anything you had to click that our
+README.txt did not tell you about.
+
+1. Get the zip like a player.
+   Build mode: ShatteredLegacy-Setup.zip is already on this desktop (marked as downloaded).
+   Published mode: double-click "Download Shattered Legacy" on this desktop and let the
+   browser save the zip to Downloads.
+   Then right-click the zip, Extract All, Extract.
+
+2. In the extracted folder, double-click "Play Shattered Legacy.bat".
+   Say yes to EA's installer, tick EA's license yourself, accept the defaults. Then touch
+   nothing: the launcher waits for EA's patch (about 10 minutes) and carries on by itself.
+   Note:
+     - how long it took, from the double-click to the game window;
+     - did Windows ask for permission once or twice;
+     - did EA's window close by itself, or did the launcher print "Close it yourself";
+     - did EA's installer start the patcher on its own.
+
+3. When the game opens, log in to live with a throwaway account name (the first login
+   makes the account), make a character, walk a few steps, open the paperdoll and the
+   backpack.
+
+4. Leave the game running. Double-click Collect-Evidence.bat on this desktop. It writes
+   evidence.txt to the results folder on the host and copies EA's patcher logs there too.
+
+5. Screenshot anything that looked wrong. Close the sandbox only after Collect-Evidence
+   says "Written".
+
+Only if step 3 had a graphics problem: run Start-CleanTest.ps1 again with -VGpu and repeat
+steps 2 to 4.

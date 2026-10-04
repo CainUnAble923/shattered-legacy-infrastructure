@@ -14,6 +14,9 @@
                                and our tiledata and animdata records (records.json, shipped as
                                app\art-records.json; Play.ps1 writes them into copies of the
                                player's own files). See its SOURCE.txt and registry.csv.
+      vendor\vc-runtime\       Microsoft's vcruntime140.dll, which TazUO's zlib.dll needs,
+                               into app\tazuo\ (cc-P35). See its SOURCE.txt.
+  clean-test\ (the Windows Sandbox kit) is never staged; gate 4 proves none of it ships.
   into player-package\dist\ShatteredLegacy-<stamp>.zip, which is gitignored, where <stamp>
   is the build time, yyyy.MM.dd.HHmm local. Beside it goes ShatteredLegacy-<stamp>.version.json,
   which Publish-PlayerPackage.ps1 serves as get.shatteredlegacyuo.com/version.json and which
@@ -51,6 +54,13 @@
   delete (no "..", nothing absolute, no wildcard, nothing under app\tazuo\Data\, nothing the
   package itself ships). Gate 5 checks version.json against the zip: same version, and its
   sha256 and bytes are the zip's.
+
+  Gate 6 (cc-P35) reads the import table of every native Windows file in the finished zip and
+  fails when one imports a DLL that is neither shipped in app\tazuo\ (the folder TazUO.exe
+  starts from) nor on native-import-allowlist.txt (DLLs every Windows 10 22H2 and 11 PC has).
+  It is what catches a file that works here only because this PC has a runtime installed.
+  native-import-exceptions.txt may name a file proven never loaded; naming a file the zip no
+  longer holds fails the gate. -CheckZip runs gate 6 too.
 
   -Notes "<one line>" puts a line in version.json that launchers print as "What is new".
 
@@ -187,6 +197,13 @@ function Test-PackageZip([string]$path) {
         if (-not $setup) { $fail += 'no app/Setup.ps1' }
         elseif ((Read-ZipText $setup) -match '\$Probe(Folder|Installer)\s*=') { $fail += 'app/Setup.ps1 gives a test-only -Probe option a value' }
 
+        # The Windows Sandbox kit (clean-test\, cc-P35) is for test runs on Chase's PC, never for
+        # players. It lives outside payload\, so only a mistake could stage it.
+        $kitNames = @('start-cleantest.ps1', 'inside-start.ps1', 'inside-start.bat', 'collect-evidence.ps1', 'collect-evidence.bat', 'read me first.txt')
+        foreach ($n in $names) {
+            if ($n -match '(^|/)clean-test/' -or $kitNames -contains ($n -split '/')[-1].ToLowerInvariant()) { $fail += "$n is part of the clean-test kit and must not ship" }
+        }
+
         if ($names -contains 'app/.unblocked') { $fail += 'app/.unblocked is in the zip' }
         $play = $rel['app/Play.ps1']
         if (-not $play) { $fail += 'no app/Play.ps1' } else {
@@ -194,6 +211,133 @@ function Test-PackageZip([string]$path) {
             try { $t = $sr.ReadToEnd() } finally { $sr.Dispose() }
             if ($t.Contains('.unblocked')) { $fail += 'app/Play.ps1 still references .unblocked' }
         }
+    } finally { $za.Dispose() }
+    return ,$fail
+}
+
+# --- gate 6: every native import resolves on a clean Windows (cc-P35) --------------------
+# A clean PC has no Visual C++ Redistributable, no .NET and no GPU vendor runtime, so a DLL
+# that imports one of those works here and fails there. Gate 6 parses each PE import table
+# itself (no external tools) and accepts an import only when:
+#   - a file of that name ships in app/tazuo/. That is the folder TazUO.exe starts from, and
+#     Windows searches a DLL's dependencies as if loaded by module name alone: the
+#     application's folder, then System32 (learn.microsoft.com/windows/win32/dlls/
+#     dynamic-link-library-search-order). That holds for app/tazuo/x64/ too. The importing
+#     file's own folder is NOT counted: Windows searches it only when the caller asks for it
+#     (LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR); or
+#   - it is on native-import-allowlist.txt (stock Windows 10 22H2 and 11, each one cited).
+# Static and delay-load imports are both checked: a delay-loaded DLL that is missing fails on
+# first use instead of at load, which is no better for a player.
+# Skipped, and why:
+#   - lib64/, osx*/, linux*/ folders and *.so*, *.dylib: Linux and macOS natives, never loaded
+#     on Windows (the build already leaves out osx\ and osx-arm\);
+#   - anything not named .dll or .exe: not a Windows binary TazUO loads;
+#   - IL-only .NET assemblies (CLR header with COMIMAGE_FLAGS_ILONLY): CoreCLR maps them itself
+#     and never resolves their native import table, whose only entry is mscoree.dll;
+#   - files named on native-import-exceptions.txt.
+$nativeAllow  = Join-Path $PSScriptRoot 'native-import-allowlist.txt'
+$nativeExcept = Join-Path $PSScriptRoot 'native-import-exceptions.txt'
+# First word of each line that is not blank or a "#" comment, lower case; the rest is the reason.
+function Read-NameList([string]$path) {
+    $r = [ordered]@{}
+    foreach ($line in [IO.File]::ReadAllLines($path)) {
+        $t = $line.Trim()
+        if (-not $t -or $t.StartsWith('#')) { continue }
+        $w = $t -split '\s+', 2
+        $r[$w[0].ToLowerInvariant()] = if ($w.Count -gt 1) { $w[1] } else { '' }
+    }
+    return $r
+}
+# The DLL names one PE image imports, statically and delay-loaded, and whether it is an IL-only
+# .NET assembly. $null when the bytes are not a PE file.
+function Get-PeImports([byte[]]$b) {
+    if ($b.Length -lt 0x40 -or $b[0] -ne 0x4D -or $b[1] -ne 0x5A) { return $null }
+    $pe = [BitConverter]::ToInt32($b, 0x3C)
+    if ($pe -lt 0 -or $pe + 24 -gt $b.Length -or [BitConverter]::ToUInt32($b, $pe) -ne 0x4550) { return $null }
+    $nsec  = [BitConverter]::ToUInt16($b, $pe + 6)
+    $opt   = $pe + 24
+    $magic = [BitConverter]::ToUInt16($b, $opt)
+    if     ($magic -eq 0x20b) { $dd = $opt + 112; $imageBase = [BitConverter]::ToUInt64($b, $opt + 24) }
+    elseif ($magic -eq 0x10b) { $dd = $opt + 96;  $imageBase = [uint64][BitConverter]::ToUInt32($b, $opt + 28) }
+    else { throw ('unknown PE optional header magic 0x{0:x}' -f $magic) }
+    $ndd  = [BitConverter]::ToUInt32($b, $dd - 4)
+    $secs = @()   # virtual address, virtual size, file offset
+    $s0 = $opt + [BitConverter]::ToUInt16($b, $pe + 20)
+    for ($i = 0; $i -lt $nsec; $i++) {
+        $o = $s0 + 40 * $i
+        $secs += ,@([uint64][BitConverter]::ToUInt32($b, $o + 12), [uint64][Math]::Max([BitConverter]::ToUInt32($b, $o + 8), [BitConverter]::ToUInt32($b, $o + 16)), [int64][BitConverter]::ToUInt32($b, $o + 20))
+    }
+    function RvaToOffset([uint64]$rva) {
+        foreach ($s in $secs) { if ($rva -ge $s[0] -and $rva -lt $s[0] + $s[1]) { return [int64]($rva - $s[0]) + $s[2] } }
+        return [int64]-1
+    }
+    function CString([int64]$off) {
+        if ($off -lt 0) { return '?' }
+        $e = $off; while ($e -lt $b.Length -and $b[$e] -ne 0) { $e++ }
+        return [Text.Encoding]::ASCII.GetString($b, [int]$off, [int]($e - $off))
+    }
+    function DirRva([int]$i) { if ($i -ge $ndd) { return [uint64]0 }; return [uint64][BitConverter]::ToUInt32($b, $dd + 8 * $i) }
+    $imports = @(); $delay = @()
+    $rva = DirRva 1           # import directory: 20-byte descriptors, name RVA at +12
+    if ($rva) {
+        $o = RvaToOffset $rva
+        while ($o -ge 0 -and $o + 20 -le $b.Length) {
+            $nameRva = [BitConverter]::ToUInt32($b, $o + 12)
+            if (-not $nameRva) { break }
+            $imports += CString (RvaToOffset $nameRva)
+            $o += 20
+        }
+    }
+    $rva = DirRva 13          # delay-load directory: 32-byte descriptors, name at +4
+    if ($rva) {
+        $o = RvaToOffset $rva
+        while ($o -ge 0 -and $o + 32 -le $b.Length) {
+            $attr = [BitConverter]::ToUInt32($b, $o); $nameRva = [uint64][BitConverter]::ToUInt32($b, $o + 4)
+            if (-not $nameRva) { break }
+            if (-not ($attr -band 1)) { $nameRva -= $imageBase }   # old style holds a VA, not an RVA
+            $delay += CString (RvaToOffset $nameRva)
+            $o += 32
+        }
+    }
+    $ilOnly = $false
+    $rva = DirRva 14          # CLR header; Flags at +16, bit 0 = COMIMAGE_FLAGS_ILONLY
+    if ($rva) { $o = RvaToOffset $rva; if ($o -ge 0) { $ilOnly = ([BitConverter]::ToUInt32($b, $o + 16) -band 1) -eq 1 } }
+    return [pscustomobject]@{ Imports = $imports; Delay = $delay; ILOnly = $ilOnly }
+}
+function Test-NativeImports([string]$path) {
+    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    $fail   = @()
+    $allow  = Read-NameList $nativeAllow
+    $except = Read-NameList $nativeExcept
+    $za = [IO.Compression.ZipFile]::OpenRead($path)
+    try {
+        $rel = @{}   # lower-case path under the top folder -> entry
+        foreach ($e in $za.Entries) { if ($e.FullName -notmatch '/$') { $rel[$e.FullName.Substring($e.FullName.IndexOf('/') + 1).ToLowerInvariant()] = $e } }
+        foreach ($x in $except.Keys) { if (-not $rel.ContainsKey($x)) { $fail += "native-import-exceptions.txt names $x, which the zip does not hold" } }
+        $inApp = @{}
+        foreach ($k in $rel.Keys) { if ($k -match '^app/tazuo/([^/]+)$') { $inApp[$Matches[1]] = 1 } }
+        $checked = 0; $skipped = 0
+        foreach ($l in @($rel.Keys | Sort-Object)) {
+            if ($l -notmatch '\.(dll|exe)$') { continue }
+            if ($l -match '(^|/)(lib64|osx[^/]*|linux[^/]*)/' -or $l -match '\.so(\.|$)|\.dylib$' -or $except.Contains($l)) { $skipped++; continue }
+            $n = $rel[$l].FullName.Substring($rel[$l].FullName.IndexOf('/') + 1)
+            $s = $rel[$l].Open(); $ms = New-Object IO.MemoryStream
+            try { $s.CopyTo($ms) } finally { $s.Dispose() }
+            $pi = Get-PeImports $ms.ToArray()
+            if (-not $pi) { $fail += "$n is named like a Windows binary but is not a PE file"; continue }
+            if ($pi.ILOnly) { $skipped++; continue }
+            $checked++
+            foreach ($kind in 'static', 'delay') {
+                $list = if ($kind -eq 'static') { $pi.Imports } else { $pi.Delay }
+                $how  = if ($kind -eq 'static') { '' } else { ' (delay-loaded)' }
+                foreach ($d in $list) {
+                    $dl = $d.ToLowerInvariant()
+                    if ($inApp.ContainsKey($dl) -or $allow.Contains($dl)) { continue }
+                    $fail += "$n imports $d${how}: not shipped in app/tazuo/, not on native-import-allowlist.txt"
+                }
+            }
+        }
+        Write-Host "  gate 6: $checked native files checked, $skipped skipped (IL-only .NET, non-Windows, excepted)" -ForegroundColor Gray
     } finally { $za.Dispose() }
     return ,$fail
 }
@@ -224,6 +368,9 @@ if ($CheckZip) {
     $fail = Test-PackageZip $zp
     if ($fail.Count) { throw "GATE 4: $CheckZip fails:`n  $($fail -join "`n  ")" }
     Write-Host "  GATE 4 passed: $CheckZip" -ForegroundColor Green
+    $fail = Test-NativeImports $zp
+    if ($fail.Count) { throw "GATE 6 (native imports on a clean Windows): $CheckZip fails:`n  $($fail -join "`n  ")" }
+    Write-Host "  GATE 6 passed: $CheckZip" -ForegroundColor Green
     $jp = $zp -replace '\.zip$', '.version.json'
     if (Test-Path -LiteralPath $jp) {
         $fail = Test-VersionJson $zp $jp
@@ -327,6 +474,20 @@ if (Test-Path -LiteralPath $slArtOut) {
 New-Item -ItemType Directory -Path $slArtOut -Force | Out-Null
 foreach ($f in $slPngs) { $vendored += ,@($f.FullName, (Join-Path $slArtOut $f.Name)) }
 $vendored += ,@((Join-Path $slArt 'records.json'), (Join-Path $stage 'app\art-records.json'))
+
+# --- Visual C++ runtime (cc-P35) -----------------------------------------------------------
+# TazUO's zlib.dll imports VCRUNTIME140.dll, which Windows does not have, and TazUO loads
+# zlib.dll at every start. Microsoft's own copy goes app-local in app\tazuo\, unmodified; see
+# vendor\vc-runtime\SOURCE.txt for where it came from and the licence. Gate 6 is what fails
+# if it is ever missing; gate 3 checks it byte for byte.
+$vcr    = Join-Path $here 'vendor\vc-runtime\vcruntime140.dll'
+$vcrSha = '184146852727A9DB4EEA06178716BEC3CDBB1015C911F6B0F915B184AD7775B2'   # 14.50.35719.0, SOURCE.txt
+if ((Get-FileHash -LiteralPath $vcr -Algorithm SHA256).Hash -ne $vcrSha) { throw "vendor\vc-runtime\vcruntime140.dll is not the file SOURCE.txt records (SHA-256). Not building." }
+$sig = Get-AuthenticodeSignature -LiteralPath $vcr
+if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw "vendor\vc-runtime\vcruntime140.dll is not validly signed by Microsoft ($($sig.Status)). Not building." }
+if (Test-Path -LiteralPath (Join-Path $tazOut 'vcruntime140.dll')) { throw "$TazUO already holds a vcruntime140.dll; decide which one ships before building. Not building." }
+$vendored += ,@($vcr, (Join-Path $tazOut 'vcruntime140.dll'))
+
 foreach ($p in $vendored) { Copy-Item -LiteralPath $p[0] -Destination $p[1] }
 
 $tazVersion = if (Test-Path (Join-Path $srcRoot 'v.txt')) { (Get-Content (Join-Path $srcRoot 'v.txt') -TotalCount 1).Trim() } else { 'unknown' }
@@ -385,6 +546,14 @@ foreach ($f in Get-StagedFiles '.ps1','.bat','.txt') {
     $b = [IO.File]::ReadAllBytes($f.FullName)
     if (@($b | Where-Object { $_ -gt 127 }).Count) { $bad += $f.FullName.Substring($stage.Length + 1) }
 }
+# The Windows Sandbox kit (clean-test\, cc-P35) never ships, but it runs under PowerShell 5.1
+# and cmd.exe inside the sandbox, so it is held to the same rule. Read where it lives; its
+# CRLF half is Start-CleanTest.ps1's job, which copies the kit with CRLF line ends and checks
+# the copy before mapping it in (the repo stores LF).
+foreach ($f in Get-ChildItem -LiteralPath (Join-Path $here 'clean-test') -Recurse -File -ErrorAction SilentlyContinue | Where-Object { @('.ps1', '.bat', '.txt', '.wsb') -contains $_.Extension.ToLower() }) {
+    $b = [IO.File]::ReadAllBytes($f.FullName)
+    if (@($b | Where-Object { $_ -gt 127 }).Count) { $bad += $f.FullName.Substring($here.Length + 1) }
+}
 if ($bad.Count) { throw "GATE 2: non-ASCII bytes in $($bad -join ', '). Not building." }
 # The repo stores LF (.gitattributes). cmd.exe misparses some LF-only batch files, so the
 # shipped .bat and .txt files get CRLF here, at the last moment.
@@ -405,7 +574,7 @@ if ($changed.Count) { throw "GATE 3: $($changed.Count) client files differ from 
 foreach ($p in $vendored) {
     if ((Get-FileHash -LiteralPath $p[0]).Hash -ne (Get-FileHash -LiteralPath $p[1]).Hash) { $changed += $p[1].Substring($stage.Length + 1) }
 }
-if ($changed.Count) { throw "GATE 3: $($changed.Count) vendored files (Fiddle-Me-This, our art) differ from vendor\, first: $($changed[0]). Not building." }
+if ($changed.Count) { throw "GATE 3: $($changed.Count) vendored files (Fiddle-Me-This, our art, the VC++ runtime) differ from vendor\, first: $($changed[0]). Not building." }
 
 # --- zip ------------------------------------------------------------------------
 if (-not (Test-Path $Out)) { New-Item -ItemType Directory -Path $Out -Force | Out-Null }
@@ -429,6 +598,11 @@ $fail = Test-PackageZip $zip
 if ($fail.Count) {
     Remove-Item $zip -Force
     throw "GATE 4: the zip fails, deleted:`n  $($fail -join "`n  ")"
+}
+$fail = Test-NativeImports $zip
+if ($fail.Count) {
+    Remove-Item $zip -Force
+    throw "GATE 6 (native imports on a clean Windows): the zip fails, deleted:`n  $($fail -join "`n  ")"
 }
 
 $z = Get-Item $zip

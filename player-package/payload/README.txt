@@ -82,6 +82,10 @@ What is in here
                source at https://github.com/PlayTazUO/TazUO)
                with Fiddle-Me-This interface art by NewYears1978 (CC0,
                https://github.com/NewYears1978/Fiddle-Me-This)
+               and Microsoft's Visual C++ runtime file vcruntime140.dll, which
+               TazUO's zlib.dll needs. It is Microsoft's, shipped unmodified under
+               the Visual Studio redistribution terms
+               (https://aka.ms/vs/18/redistribution).
                The custom health and mana gumps are off until you turn them on
                from the TazUO top bar (XmlGumps menu).
   app\         the scripts that set it up and start it

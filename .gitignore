@@ -64,6 +64,9 @@ Diagnose-*.ps1
 
 # Built player zips (player-package/Build-PlayerPackage.ps1). Rebuilt on demand, never committed.
 player-package/dist/
+# Microsoft's vcruntime140.dll (cc-P35): kept on the build PC only. Commit-ShardWork.ps1 refuses .dll and both
+# repos are public. SOURCE.txt (tracked) says where to copy it from; the build checks its hash and signature.
+player-package/vendor/vc-runtime/*.dll
 
 # The player zip served by the website container. Copied in by hand, never committed:
 # it is 73 MB of binaries and this repo is public.
