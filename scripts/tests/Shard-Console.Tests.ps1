@@ -71,9 +71,35 @@ $live   = $state.Shards['live']
 $probeContainer = ConvertFrom-ContainerInspect $probe['inspect sl-console-probe']
 $probeLatest    = ConvertFrom-ImageInspect $probe['image sl-modernuo:latest']
 
+# cc-P60. What Get-CommitFacts would read, written out: the commit plans are built from these and
+# never from the real repos. The default is the state a commit goes ahead in: the script is there,
+# the console is not SYSTEM, both repos have work, every note numbered 54 or above says DONE or
+# STOPPED, and nothing pending changed in the last 5 minutes.
+$p60Now = [datetime]::SpecifyKind([datetime]'2026-10-05 15:00:00', 'Utc')
+function New-CommitFacts {
+    param([switch]$System, [switch]$Clean, [switch]$NoScript, $Notes, $Changed, $Repos)
+    if ($null -eq $Notes) {
+        $Notes = @(
+            [pscustomobject]@{ Name = 'cc-P12-audit-correction.md'; LastLine = '- No D-number or Q-number taken.' },
+            [pscustomobject]@{ Name = 'cc-P57-batch-6.md'; LastLine = 'P57 DONE' },
+            [pscustomobject]@{ Name = 'cc-P58-changelog-catch-up.md'; LastLine = 'P58 STOPPED: Chase asked to wait' })
+    }
+    if ($null -eq $Changed) { $Changed = @([pscustomobject]@{ Repo = 'code'; Path = 'scripts/Shard-Console.ps1'; LastWriteUtc = $p60Now.AddMinutes(-30) }) }
+    if ($null -eq $Repos) {
+        $Repos = @(
+            [pscustomobject]@{ Name = 'code'; Path = 'D:\ShatteredLegacy'; Paths = @('scripts/Shard-Console.ps1', 'CHANGELOG.md'); Error = $null },
+            [pscustomobject]@{ Name = 'docs'; Path = 'D:\UO\shard-migration'; Paths = @('notes/cc-P57-batch-6.md'); Error = $null })
+        if ($Clean) { foreach ($r in $Repos) { $r.Paths = @() }; $Changed = @() }
+    }
+    $who = 'HOUSE\chase'
+    if ($System) { $who = 'NT AUTHORITY\SYSTEM' }
+    [pscustomobject]@{ Identity = $who; IsSystem = [bool]$System; ScriptExists = (-not $NoScript); Repos = $Repos; Notes = $Notes; Changed = $Changed; Now = $p60Now }
+}
+$commitFactsOk = New-CommitFacts
+
 function Get-Plan {
-    param([string]$Action, [string]$Shard = 'test', [string]$SnapshotName, [string]$Snapshot, $State = $state)
-    @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $State -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now)
+    param([string]$Action, [string]$Shard = 'test', [string]$SnapshotName, [string]$Snapshot, $State = $state, [string]$CommitMessage, $CommitFacts = $commitFactsOk)
+    @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $State -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $CommitFacts)
 }
 
 # A copy of the captured state with one snapshot on each shard, for the restore and delete plans.
@@ -903,7 +929,9 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
-        Assert-Equal 'Test shard,Snapshots,World setup,Diagnostics,LIVE shard' ($tabs -join ',')
+        Assert-Equal 'Test shard,Snapshots,World setup,Diagnostics,Commit,LIVE shard' ($tabs -join ',')
+        Assert-Equal 'Preview commit,Commit and push' (@($script:ui.CommitButtons | ForEach-Object { $_.Text }) -join ',') 'cc-P60'
+        Assert-True ($null -ne $script:ui.CommitMessage) 'the message box'
         Assert-True ($script:ui.Status.Text -match 'DRIFTED') 'the status panel rendered the capture'
         Assert-Equal 3 @($script:ui.Tiles).Count 'three tiles: LIVE, TEST, STATUS PUBLISHER'
         Assert-Equal 'TEST: STOPPED' $script:ui.Tiles[1].Word.Text
@@ -931,19 +959,21 @@ $liveStoppedState.Shards['live'].Container.Status = 'exited'
 function Invoke-ClickCapture {
     # FromCapture defaults to Dry: a console launched with -DryRun. Dry with FromCapture false is
     # the toggle in a console whose status is live from docker.
-    param([string]$ActionKey, [string]$ShardKey, [bool]$Dry, $State = $snapState, $FromCapture = $null)
+    param([string]$ActionKey, [string]$ShardKey, [bool]$Dry, $State = $snapState, $FromCapture = $null, $CommitFacts = $commitFactsOk, [string]$CommitMessage)
     if ($null -eq $FromCapture) { $FromCapture = $Dry }
     $rec = [pscustomobject]@{
         Spawned = New-Object 'System.Collections.Generic.List[string]'
         Lines = New-Object 'System.Collections.Generic.List[string]'
         Executed = New-Object 'System.Collections.Generic.List[string]'
+        Confirms = New-Object 'System.Collections.Generic.List[string]'
     }
     # Defined here, so they shadow the real ones for Invoke-ConsoleButton only (dynamic scope).
     function Start-Process { param($FilePath, $ArgumentList) $rec.Spawned.Add([string]$ArgumentList) }
     function Invoke-Plan { $rec.Executed.Add('ran'); $true }
-    function Show-TypedConfirm { $true }
+    function Show-TypedConfirm { param($Phrase, $Text, $Plan, $What) $rec.Confirms.Add($Phrase); $true }
     function Show-YesNo { 'Yes' }
     function Get-ConsoleState { $State }
+    function Get-CommitFacts { $CommitFacts }
     function Write-ConsoleLine { param([string]$Text, [string]$Color) $rec.Lines.Add($Text) }
     $saved = @($script:dry, $script:cfg, $script:statusFrom, $script:SelfPath, $script:fromCapture)
     $script:dry = $Dry; $script:cfg = $config; $script:statusFrom = $null; $script:fromCapture = [bool]$FromCapture
@@ -951,7 +981,7 @@ function Invoke-ClickCapture {
     $sn = $null; $s = $null
     if ($ActionKey -eq 'snapshot.create') { $sn = 'd37-check' }
     if ($ActionKey -in @('snapshot.restore', 'snapshot.delete')) { $s = $snapName }
-    try { Invoke-ConsoleButton -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $sn -Snapshot $s }
+    try { Invoke-ConsoleButton -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $sn -Snapshot $s -CommitMessage $CommitMessage }
     finally { $script:dry, $script:cfg, $script:statusFrom, $script:SelfPath, $script:fromCapture = $saved }
     $rec
 }
@@ -961,6 +991,7 @@ $windowCases = @(foreach ($a in @(Get-ConsoleActions | Where-Object { $_.RunIn -
     $shards = @('test')
     if ($a.Key -like 'live.*') { $shards = @('live') }
     if ($a.Key -like 'snapshot.*') { $shards = @('test', 'live') }
+    if ($a.Key -like 'commit.*') { $shards = @('') }   # no shard: the click names both repos
     foreach ($sk in $shards) {
         $st = $snapState
         if ($a.Key -eq 'live.start') { $st = $liveStoppedState }
@@ -1326,9 +1357,252 @@ Fact 'P52_TheDnsTileIsBuiltAndDrawnWithoutTheNetwork' {
     } finally { $form.Dispose(); $script:netResult = $null; $script:NetProbeDisabled = $false }
 }
 
+# --- cc-P60: the Commit tab, which runs D:\UO\Commit-ShardWork.ps1 --------------------------------
+# The plans are built from New-CommitFacts, never the real repos. The two facts that run something
+# run a throwaway stand-in for the commit script, or a real child under -Mode DryRun, which prints
+# and exits before anything could run: no fact here can commit or push.
+
+# Quotes of both kinds, $, ;, & and a word that looks like one of the script's own switches.
+$p60Message = 'it''s "quoted" $HOME; Remove-Item -Recurse x & echo %PATH% -NoPush'
+# The form facts above leave the console's output box pointing at a disposed form; the executor
+# facts below write to the screen instead, as a headless window does.
+$script:OutputBox = $null
+
+Fact 'P60_TheTwoCommitActionsExistWithTheirGroupMutatesAndRunIn' {
+    $a = @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Commit' })
+    Assert-Equal 'commit.preview,commit.run' (@($a | ForEach-Object { $_.Key }) -join ',')
+    Assert-Equal $false $a[0].Mutates 'preview changes nothing'
+    Assert-Equal $true $a[1].Mutates 'commit and push does'
+    Assert-Equal 'window,window' (@($a | ForEach-Object { $_.RunIn }) -join ',') 'both in a window of their own'
+    Assert-Equal 'commit shard work' (Get-ConfirmPhrase 'commit.run')
+}
+
+Fact 'P60_WithNoModeCommitRunIsRefusedAndThePreviewRuns' {
+    # D37: a lost -Mode fails safe.
+    Assert-Equal 'refuse' (Resolve-RunMode -Action 'commit.run')
+    Assert-Equal 'execute' (Resolve-RunMode -Action 'commit.preview') 'it only reads'
+    Assert-Equal 'dry' (Resolve-RunMode -Action 'commit.run' -Mode Execute -DryRun)
+    $b = Get-ModeBanner 'refuse' 'commit.run' 'repos'
+    Assert-True ($b.Lines[1] -match '^  REFUSED  commit\.run') $b.Lines[1]
+}
+
+# The real-child facts below take the phrase off the line as well. Without it Invoke-Plan refuses
+# before any step, so a broken mode check fails the fact instead of reaching the real script: there
+# is no recorder for git as there is for docker. (Found by breaking D37 on purpose: the child ran
+# commit.run for real and only the in-flight guard stopped it.)
+function Remove-Phrase { param([string]$Line) $Line -replace ' -ConfirmLive "[^"]*"', '' }
+
+Fact 'P60_TheRealChildGivenNoModeRefusesCommitRun' {
+    $line = Remove-Phrase ((Invoke-ClickCapture 'commit.run' '' $false).Spawned[0] -replace ' -Mode Execute', '')
+    Assert-True (-not ($line -match '-Mode|-ConfirmLive')) $line
+    $r = Invoke-Child $line
+    Assert-Equal 2 $r.Exit (($r.Out -join ' | ') + $r.Err)
+    Assert-True ($r.Out[1] -match '^  REFUSED  commit\.run') ($r.Out -join ' | ')
+    Assert-Equal 0 @($r.Out | Where-Object { $_ -match 'Commit-ShardWork' }).Count ('nothing past the banner: ' + ($r.Out -join ' | '))
+}
+
+Fact 'P60_TheDryRunPlanPrintsTheCommandLineWithTheMessageQuoted' {
+    $p = Get-Plan 'commit.run' -CommitMessage $p60Message
+    $text = (Format-Plan -Action 'commit.run' -ShardKey 'repos' -Plan $p -Header 'DRY RUN') -join "`n"
+    $want = "& 'D:\UO\Commit-ShardWork.ps1' -Message 'it''s `"quoted`" `$HOME; Remove-Item -Recurse x & echo %PATH% -NoPush'"
+    Assert-True ($text.Contains('RUN      ' + $want)) $text
+    # And the printed line means the same to PowerShell: parse it and read the value back.
+    $errs = $null
+    $ast = [Management.Automation.Language.Parser]::ParseInput($want, [ref]$null, [ref]$errs)
+    Assert-Equal 0 @($errs).Count (@($errs) -join '; ')
+    $cmd = $ast.Find({ param($n) $n -is [Management.Automation.Language.CommandAst] }, $true)
+    Assert-Equal $p60Message $cmd.CommandElements[2].Value 'the quoted value is the message'
+    $preview = Get-Plan 'commit.preview' -CommitMessage $p60Message
+    $ptext = (Format-Plan -Action 'commit.preview' -ShardKey 'repos' -Plan $preview) -join "`n"
+    Assert-True ($ptext.Contains("& 'D:\UO\Commit-ShardWork.ps1' -DryRun -Message 'it''s")) $ptext
+    $blank = (Format-Plan -Action 'commit.run' -ShardKey 'repos' -Plan (Get-Plan 'commit.run')) -join "`n"
+    Assert-True ($blank.Contains("RUN      & 'D:\UO\Commit-ShardWork.ps1'`n")) ('blank: no -Message, the script''s default: ' + $blank)
+}
+
+Fact 'P60_AMessageCrossesTheChildCommandLineUnchanged' {
+    # The click's real argument line, run by a real child under -Mode DryRun: it prints its plan
+    # and exits before anything runs. The child reads the real repos' git status (read-only).
+    Assert-True (Test-Path -LiteralPath $config.CommitScript) ($config.CommitScript + ' is needed for its plan line')
+    $line = (Invoke-ClickCapture 'commit.run' '' $true -CommitMessage $p60Message).Spawned[0]
+    Assert-True ($line -match ' -Mode DryRun -Action commit\.run -ConfirmLive "commit shard work" -CommitMessageB64 [A-Za-z0-9+/=]+$') $line
+    Assert-True (-not ($line -match '-Shard')) ('no shard for the repos: ' + $line)
+    $line = Remove-Phrase $line
+    Assert-True (-not ($line -match '-ConfirmLive')) $line
+    $r = Invoke-Child $line
+    Assert-Equal 0 $r.Exit (($r.Out -join ' | ') + $r.Err)
+    Assert-True ($r.Out[1] -match '^  DRY RUN  commit\.run \(both repos\)') $r.Out[1]
+    $want = "& 'D:\UO\Commit-ShardWork.ps1' -Message 'it''s `"quoted`" `$HOME; Remove-Item -Recurse x & echo %PATH% -NoPush'"
+    Assert-Equal 1 @($r.Out | Where-Object { $_.Contains('RUN      ' + $want) }).Count ($r.Out -join ' | ')
+    Assert-Equal 0 $r.DockerCalls.Count 'the commit buttons never read docker'
+}
+
+function Invoke-P60Stand {
+    # Commit-ShardWork.ps1 swapped for a stand-in that writes what it was given and exits with Exit.
+    param([string]$Action, [string]$Message, [string]$Phrase, [int]$Exit = 0)
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p60-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $stand = Join-Path $dir 'Commit-ShardWork.ps1'
+    $got = Join-Path $dir 'got.txt'
+    Set-Content -LiteralPath $stand -Encoding ASCII -Value @(
+        'param([string]$Message, [switch]$DryRun, [switch]$NoPush)',
+        ("[IO.File]::WriteAllText('" + $got + "', ('dry=' + [bool]`$DryRun + ' nopush=' + [bool]`$NoPush + '|' + `$Message))"),
+        "Write-Host 'stand-in: OK' -ForegroundColor Green",
+        ('exit ' + $Exit))
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.CommitScript = $stand
+    $cfg.LogFile = Join-Path $dir 'shard-console.log'
+    try {
+        $plan = @(Get-ActionPlan -Action $Action -Config $cfg -CommitFacts $commitFactsOk -CommitMessage $Message)
+        $ok = @(Invoke-Plan -Plan $plan -Config $cfg -ActionKey $Action -ShardKey 'repos' -ConfirmLive $Phrase 6>$null)
+        $text = $null
+        if (Test-Path -LiteralPath $got) { $text = [IO.File]::ReadAllText($got) }
+        $out = @(Get-ChildItem -LiteralPath (Join-Path $dir 'shard-console-output') -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join ''
+        [pscustomobject]@{ Ok = $ok; Got = $text; Output = $out }
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P60_AMessageReachesTheScriptUnchanged' {
+    $r = Invoke-P60Stand 'commit.run' $p60Message 'commit shard work'
+    Assert-Equal 1 $r.Ok.Count ('one result: ' + ($r.Ok -join ' | '))
+    Assert-Equal $true $r.Ok[0] $r.Output
+    Assert-Equal ('dry=False nopush=False|' + $p60Message) $r.Got 'every character, and -NoPush inside it is only text'
+    Assert-True ($r.Output -match 'stand-in: OK') ('its own output is kept: ' + $r.Output)
+    $p = Invoke-P60Stand 'commit.preview' $p60Message $null
+    Assert-Equal ('dry=True nopush=False|' + $p60Message) $p.Got 'the preview passes -DryRun'
+    $d = Invoke-P60Stand 'commit.run' '' 'commit shard work'
+    Assert-Equal 'dry=False nopush=False|' $d.Got 'blank: no -Message, so the script uses its own default'
+}
+
+Fact 'P60_TheCommitRunsOnlyWithThePhraseAndItsFailureIsAFailure' {
+    foreach ($given in $null, '', 'Commit shard work', 'commit', 'yes') {
+        $r = Invoke-P60Stand 'commit.run' 'x' $given
+        Assert-Equal $false $r.Ok[0] ("phrase '" + $given + "'")
+        Assert-Equal $null $r.Got ("phrase '" + $given + "' ran it")
+    }
+    $bad = Invoke-P60Stand 'commit.run' 'x' 'commit shard work' 2
+    Assert-Equal $false $bad.Ok[0] 'the script exiting 2 (a repo refused or FAILED) is a failure here too'
+    Assert-True ($bad.Output -match 'exited with 2') $bad.Output
+}
+
+Fact 'P60_TheGuardFlagsANoteThatHasNotSaidDone' {
+    $notes = @(
+        [pscustomobject]@{ Name = 'cc-P57-batch-6.md'; LastLine = '- the last bullet of section 4' },
+        [pscustomobject]@{ Name = 'cc-P59-evo-pet-body-sheet.md'; LastLine = '' })
+    $f = @(Get-CommitInFlight -Notes $notes -Changed @() -Now $p60Now)
+    Assert-Equal 2 $f.Count (@($f | ForEach-Object { $_.Text }) -join ' | ')
+    Assert-Equal 'P57 has not said DONE: cc-P57-batch-6.md ends "- the last bullet of section 4". Committing now may publish half its work.' $f[0].Text
+    Assert-True ($f[1].Text -like 'P59 has not said DONE:*empty*') $f[1].Text
+}
+
+Fact 'P60_TheGuardPassesANoteEndingDoneOrStopped' {
+    foreach ($last in 'P57 DONE', 'P57 STOPPED: x', '  P57 DONE  ') {
+        $f = @(Get-CommitInFlight -Notes @([pscustomobject]@{ Name = 'cc-P57-batch-6.md'; LastLine = $last }) -Changed @() -Now $p60Now)
+        Assert-Equal 0 $f.Count ("'" + $last + "'")
+    }
+    foreach ($last in 'P57 done', 'P56 DONE', 'P57 DONE.', 'P57 STOPPED:', 'P570 DONE', '**P57 DONE**') {
+        $f = @(Get-CommitInFlight -Notes @([pscustomobject]@{ Name = 'cc-P57-batch-6.md'; LastLine = $last }) -Changed @() -Now $p60Now)
+        Assert-Equal 1 $f.Count ("'" + $last + "' is not the finishing line")
+    }
+    # Notes from before the finishing rule (P54) are not read as running; nor is anything else.
+    $old = @([pscustomobject]@{ Name = 'cc-P53-two-hundred-cap.md'; LastLine = '10. Promote D-113' },
+             [pscustomobject]@{ Name = 'shard-console.md'; LastLine = 'x' },
+             [pscustomobject]@{ Name = 'cc-P-f12-xp-curve.md'; LastLine = 'x' })
+    Assert-Equal 0 @(Get-CommitInFlight -Notes $old -Changed @() -Now $p60Now).Count
+}
+
+Fact 'P60_TheGuardFlagsAFileChangedInTheLastFiveMinutes' {
+    $changed = @(
+        [pscustomobject]@{ Repo = 'code'; Path = 'scripts/Shard-Console.ps1'; LastWriteUtc = $p60Now.AddSeconds(-90) },
+        [pscustomobject]@{ Repo = 'docs'; Path = 'notes/old.md'; LastWriteUtc = $p60Now.AddMinutes(-5).AddSeconds(-1) })
+    $f = @(Get-CommitInFlight -Notes @() -Changed $changed -Now $p60Now)
+    Assert-Equal 1 $f.Count (@($f | ForEach-Object { $_.Text }) -join ' | ')
+    Assert-Equal 'code: scripts/Shard-Console.ps1 changed 90 s ago, inside the last 5 minutes. Something may still be writing it.' $f[0].Text
+}
+
+Fact 'P60_ANoteWithoutDoneBlocksCommitRunAndThePreviewNamesItAndRuns' {
+    $busy = New-CommitFacts -Notes @([pscustomobject]@{ Name = 'cc-P57-batch-6.md'; LastLine = 'still writing' }) -Changed @(
+        [pscustomobject]@{ Repo = 'code'; Path = 'CHANGELOG.md'; LastWriteUtc = $p60Now.AddSeconds(-10) })
+    $run = Get-Plan 'commit.run' -CommitFacts $busy
+    $refused = @($run | Where-Object { $_.Kind -eq 'refuse' } | ForEach-Object { $_.Text })
+    Assert-True (@($refused | Where-Object { $_ -like 'P57 has not said DONE*' }).Count -eq 1) ($refused -join ' | ')
+    Assert-True (@($refused | Where-Object { $_ -like 'code: CHANGELOG.md changed 10 s ago*' }).Count -eq 1) ($refused -join ' | ')
+    $r = Invoke-ClickCapture 'commit.run' '' $false -CommitFacts $busy
+    Assert-Equal 0 $r.Spawned.Count 'no window'
+    Assert-Equal 0 $r.Confirms.Count 'and no phrase asked for: there is no override'
+    Assert-True (@($r.Lines | Where-Object { $_ -match 'P57 has not said DONE' }).Count -eq 1) ($r.Lines -join ' | ')
+    $prev = Get-Plan 'commit.preview' -CommitFacts $busy
+    Assert-Equal 0 @($prev | Where-Object { $_.Kind -eq 'refuse' }).Count 'the preview is not blocked'
+    Assert-True (@($prev | Where-Object { $_.Kind -eq 'say' -and $_.Text -like 'WARNING: P57 has not said DONE*' }).Count -eq 1) 'and names it'
+    Assert-Equal 1 (Invoke-ClickCapture 'commit.preview' '' $false -CommitFacts $busy).Spawned.Count 'and runs'
+}
+
+Fact 'P60_SystemRefusesCommitRunAndThePreviewSaysSo' {
+    $sys = New-CommitFacts -System
+    $run = Get-Plan 'commit.run' -CommitFacts $sys
+    $refused = @($run | Where-Object { $_.Kind -eq 'refuse' })
+    Assert-Equal 1 $refused.Count (@($run | ForEach-Object { $_.Kind + ' ' + $_.Text }) -join ' | ')
+    Assert-True ($refused[0].Text -like 'This console is running as NT AUTHORITY\SYSTEM. Git refuses*') $refused[0].Text
+    Assert-Equal 0 (Invoke-ClickCapture 'commit.run' '' $false -CommitFacts $sys).Spawned.Count
+    $prev = Get-Plan 'commit.preview' -CommitFacts $sys
+    Assert-Equal 0 @($prev | Where-Object { $_.Kind -eq 'refuse' }).Count
+    Assert-True (@($prev | Where-Object { $_.Text -like 'WARNING: This console is running as NT AUTHORITY\SYSTEM*' }).Count -eq 1) 'the preview says the same'
+}
+
+Fact 'P60_BothReposCleanSaysSoInsteadOfAskingForThePhrase' {
+    $clean = New-CommitFacts -Clean
+    $r = Invoke-ClickCapture 'commit.run' '' $false -CommitFacts $clean
+    Assert-Equal 0 $r.Confirms.Count 'no phrase asked for'
+    Assert-Equal 0 $r.Spawned.Count
+    Assert-True (@($r.Lines | Where-Object { $_ -eq 'commit.run: Nothing to commit: both repos are clean.' }).Count -eq 1) ($r.Lines -join ' | ')
+    # A git failure is not clean (D66): one repo unreadable is not "nothing to commit".
+    $broken = New-CommitFacts -Repos @(
+        [pscustomobject]@{ Name = 'code'; Path = 'D:\ShatteredLegacy'; Paths = @(); Error = 'fatal: detected dubious ownership' },
+        [pscustomobject]@{ Name = 'docs'; Path = 'D:\UO\shard-migration'; Paths = @(); Error = $null }) -Changed @()
+    $p = Get-Plan 'commit.run' -CommitFacts $broken
+    Assert-Equal 0 @($p | Where-Object { $_.Text -match 'Nothing to commit' }).Count
+    Assert-True (@($p | Where-Object { $_.Text -like 'WARNING: git status failed in code*dubious ownership*' }).Count -eq 1) 'it says so'
+}
+
+Fact 'P60_AMissingScriptMakesBothButtonsSaySoAndDoNothing' {
+    foreach ($a in 'commit.preview', 'commit.run') {
+        $r = Invoke-ClickCapture $a '' $false -CommitFacts (New-CommitFacts -NoScript)
+        Assert-Equal 0 $r.Spawned.Count $a
+        Assert-Equal 0 $r.Confirms.Count $a
+        Assert-True (@($r.Lines | Where-Object { $_ -like ($a + ': D:\UO\Commit-ShardWork.ps1 is not there*') }).Count -eq 1) ($a + ': ' + ($r.Lines -join ' | '))
+    }
+}
+
+Fact 'P60_ACleanCommitAsksForThePhraseSaysPublicFirstAndOpensItsWindow' {
+    $r = Invoke-ClickCapture 'commit.run' '' $false
+    Assert-Equal 'commit shard work' ($r.Confirms -join ',')
+    Assert-Equal 1 $r.Spawned.Count ($r.Lines -join ' | ')
+    Assert-True ($r.Spawned[0] -match ' -NoExit ') ('the window stays open: ' + $r.Spawned[0])
+    Assert-True ($r.Spawned[0] -match ' -Mode Execute -Action commit\.run -ConfirmLive "commit shard work"$') $r.Spawned[0]
+    Assert-Equal ('BEFORE YOU TYPE: ' + $script:CommitPublicWarning) (Get-ConfirmPreface (Get-Plan 'commit.run'))
+    Assert-Equal '' (Get-ConfirmPreface (Get-Plan 'commit.preview')) 'the preview asks nothing'
+    $prev = Invoke-ClickCapture 'commit.preview' '' $false
+    Assert-Equal 0 $prev.Confirms.Count
+    Assert-True ($prev.Spawned[0] -match ' -NoExit .* -Mode Execute -Action commit\.preview$') $prev.Spawned[0]
+}
+
+Fact 'P60_TheSafetyCheckRefusesARealCommitWithoutThePhraseOrAnotherScript' {
+    $real = New-PlanStep -Kind script -Path $config.CommitScript -Named ([ordered]@{ Message = 'x' })
+    Assert-Refused @($real) 'runs the commit for real without a typed confirmation' 'no phrase'
+    Assert-Equal 0 @(Test-PlanSafety @((New-PlanStep -Kind confirm -Phrase 'commit shard work'), $real) $config).Count 'with the phrase'
+    $dry = New-PlanStep -Kind script -Path $config.CommitScript -Named ([ordered]@{ DryRun = $true })
+    Assert-Equal 0 @(Test-PlanSafety @($dry) $config).Count 'the preview needs none'
+    $other = New-PlanStep -Kind script -Path 'D:\UO\Something-Else.ps1' -Named ([ordered]@{ DryRun = $true })
+    Assert-Refused @($other) 'the only script this console runs' 'another script'
+}
+
+Fact 'P60_PorcelainPathsAreReadAsTheCommitScriptReadsThem' {
+    $p = @(ConvertFrom-GitPorcelain @(' M scripts/Shard-Console.ps1', '?? notes/new file.md', 'R  old.md -> docs/new.md', '?? "with space.txt"', ''))
+    Assert-Equal 'scripts/Shard-Console.ps1|notes/new file.md|docs/new.md|with space.txt' ($p -join '|')
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 
-$failed = @($results | Where-Object { -not $_.Passed }).Count
+$failed =@($results | Where-Object { -not $_.Passed }).Count
 Write-Host ""
 Write-Host ("{0} facts, {1} passed, {2} failed" -f $results.Count, ($results.Count - $failed), $failed) -ForegroundColor $(if ($failed) { 'Red' } else { 'Green' })
 exit $failed

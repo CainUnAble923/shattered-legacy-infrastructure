@@ -40,6 +40,12 @@
     docker/uo/build.sh             reached only through Start-TestShard.ps1. It is the only thing
                                    that runs the gates.
     Check-Docker.ps1, Check-Shard.ps1   the diagnostics, as they are.
+    D:\UO\Commit-ShardWork.ps1     the Commit tab (cc-P60): Preview runs it with -DryRun, Commit and
+                                   push runs it for real after the phrase 'commit shard work'. Both
+                                   in a window of their own. Commit and push is refused when the
+                                   console runs as SYSTEM, when both repos are clean, or while a CC
+                                   prompt has not said DONE or a pending file changed in the last 5
+                                   minutes (Get-CommitInFlight); the preview still runs and names them.
 
   WHAT NO BUTTON DOES
     - docker compose on docker/uo/docker-compose.yml. That file has build: and no image:
@@ -70,7 +76,9 @@ param(
     [string]$Capture,
     [switch]$LoadOnly,
     [switch]$WorldCommands,
-    [string]$RepoRoot
+    [string]$RepoRoot,
+    [string]$CommitMessage,
+    [string]$CommitMessageB64
 )
 
 # =============================================================================================
@@ -86,6 +94,8 @@ $script:NoSaveWarning   = 'A stop does not save: play since the last autosave (e
 $script:SavesOnStopNote = 'The shard saves on stop (D36 fix, seen in its log since this start). If the stop times out, play since the last autosave is lost.'
 # Printed by server/customizations/Misc/SaveOnShutdown.cs (RegisteredLine) once it listens for SIGTERM. Change both together.
 $script:SavesOnStopLine = '[SaveOnShutdown] listening for SIGTERM: a stop saves the world first (D36)'
+# cc-P60: said above the phrase before a commit, the way D36's warning is said before a stop.
+$script:CommitPublicWarning = 'Both repos are PUBLIC on GitHub: a commit that is pushed cannot be taken back.'
 
 function Get-ConsoleConfig {
     param([Parameter(Mandatory = $true)][string]$RepoRoot)
@@ -133,6 +143,17 @@ function Get-ConsoleConfig {
             StaleMinutes   = 3
             StartFeed      = (Join-Path $RepoRoot 'docker\uo-status\Start-UoStatus.ps1')
         }
+        # cc-P60, the Commit tab. The repos are the two Commit-ShardWork.ps1 commits ($Repos there,
+        # not this RepoRoot); change both together. A note numbered NotesDoneFrom or above must end
+        # "P<nn> DONE" or "P<nn> STOPPED: ..."; the notes before P54 predate that rule.
+        CommitScript       = 'D:\UO\Commit-ShardWork.ps1'
+        CommitRepos        = @(
+            [pscustomobject]@{ Name = 'code'; Path = 'D:\ShatteredLegacy' },
+            [pscustomobject]@{ Name = 'docs'; Path = 'D:\UO\shard-migration' }
+        )
+        NotesFolder        = 'D:\UO\shard-migration\notes'
+        NotesDoneFrom      = 54
+        CommitQuietMinutes = 5
     }
 }
 
@@ -495,6 +516,7 @@ function Get-ConfirmPhrase {
         'snapshot.create'  { 'snapshot live' }
         'snapshot.restore' { 'restore live' }
         'snapshot.delete'  { 'delete live snapshot' }
+        'commit.run'       { 'commit shard work' }
         default            { 'confirm live' }
     }
 }
@@ -505,6 +527,9 @@ function Get-ConfirmPreface {
     param($Plan)
     if (@($Plan | Where-Object { $_.Text -and $_.Text.Contains($script:NoSaveWarning) }).Count) {
         return ('BEFORE YOU TYPE: ' + $script:NoSaveWarning + ' (D36)')
+    }
+    if (@($Plan | Where-Object { $_.Kind -eq 'script' -and -not $_.Named['DryRun'] }).Count) {
+        return ('BEFORE YOU TYPE: ' + $script:CommitPublicWarning)
     }
     ''
 }
@@ -522,11 +547,12 @@ function Get-ChildArgumentLine {
     param(
         [string]$SelfPath, [string]$ActionKey, [string]$ShardKey, [string]$SnapshotName,
         [string]$Snapshot, [string]$ConfirmLive, [switch]$Yes, [switch]$DryRun, [string]$StatusFrom,
-        [switch]$StatusFromDocker
+        [switch]$StatusFromDocker, [string]$CommitMessage
     )
     $mode = 'Execute'
     if ($DryRun) { $mode = 'DryRun' }
-    $a = '-NoProfile -ExecutionPolicy Bypass -NoExit -File "' + $SelfPath + '" -Mode ' + $mode + ' -Action ' + $ActionKey + ' -Shard ' + $ShardKey
+    $a = '-NoProfile -ExecutionPolicy Bypass -NoExit -File "' + $SelfPath + '" -Mode ' + $mode + ' -Action ' + $ActionKey
+    if ($ShardKey -in @('test', 'live')) { $a += ' -Shard ' + $ShardKey }
     # A dry child reads a capture file unless told otherwise. When the parent's status came from
     # docker (the toggle, not -DryRun), the child reads docker too, so it prints the same plan.
     if ($DryRun -and $StatusFromDocker) { $a += ' -StatusFromDocker' }
@@ -535,6 +561,9 @@ function Get-ChildArgumentLine {
     if ($Snapshot) { $a += ' -Snapshot ' + $Snapshot }
     if ($ConfirmLive) { $a += ' -ConfirmLive "' + $ConfirmLive + '"' }
     if ($Yes) { $a += ' -Yes' }
+    # A commit message is typed by a person and can hold quotes, $ and ;. It crosses this command
+    # line as base64 of its UTF-8, which has none of them, so no quoting rule can change it (cc-P60).
+    if ($CommitMessage) { $a += ' -CommitMessageB64 ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($CommitMessage)) }
     $a
 }
 
@@ -555,10 +584,21 @@ function Get-ModeBanner {
     param([string]$RunMode, [string]$Action, [string]$ShardKey)
     $bar = '=' * 78
     $what = $Action + ' (' + $ShardKey + ')'
+    if ($Action -like 'commit.*') { $what = $Action + ' (both repos)' }
     switch ($RunMode) {
         'dry' {
             [pscustomobject]@{ Color = 'amber'; Title = ('DRY RUN - ' + $what + ' - Shard Console'); Lines = @(
                 $bar, ('  DRY RUN  ' + $what), '  Nothing will be run. This window only prints the plan.', $bar) }
+        }
+        { $_ -eq 'execute' -and $Action -eq 'commit.preview' } {
+            [pscustomobject]@{ Color = 'amber'; Title = ('PREVIEW - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  PREVIEW  ' + $what), '  Commit-ShardWork.ps1 -DryRun: it lists what would be committed and changes nothing.', $bar) }
+            break
+        }
+        { $_ -eq 'execute' -and $Action -eq 'commit.run' } {
+            [pscustomobject]@{ Color = 'red'; Title = ('RUNNING FOR REAL - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  RUNNING FOR REAL  ' + $what), ('  This commits and pushes both repos. ' + $script:CommitPublicWarning), $bar) }
+            break
         }
         'execute' {
             [pscustomobject]@{ Color = 'red'; Title = ('RUNNING FOR REAL - ' + $what + ' - Shard Console'); Lines = @(
@@ -595,23 +635,156 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'diag.docker';      Group = 'Diagnostics'; Label = 'Run Check-Docker.ps1';               Mutates = $false; RunIn = 'window' }
         [pscustomobject]@{ Key = 'diag.shard';       Group = 'Diagnostics'; Label = 'Run Check-Shard.ps1';                Mutates = $false; RunIn = 'window' }
         [pscustomobject]@{ Key = 'diag.folder';      Group = 'Diagnostics'; Label = 'Open the folder they write to';      Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'commit.preview';   Group = 'Commit';      Label = 'Preview commit';                     Mutates = $false; RunIn = 'window' }
+        [pscustomobject]@{ Key = 'commit.run';       Group = 'Commit';      Label = 'Commit and push';                    Mutates = $true;  RunIn = 'window' }
     )
 }
 
 function New-PlanStep {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log')]
+        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log')]
         [string]$Kind,
         [string]$Text, [string]$Exe, [string[]]$Arguments, [string]$From, [string]$To,
-        [string]$Path, [string]$Phrase, [string]$Container, [switch]$IfExists
+        [string]$Path, [string]$Phrase, [string]$Container, [switch]$IfExists,
+        [Collections.IDictionary]$Named
     )
     $a = @()
     if ($Arguments) { $a = @($Arguments) }
+    # Named: a 'script' step's parameters, by name. The script runs in this process with them
+    # splatted, so no command line sits between the value and the script (cc-P60).
+    $n = [ordered]@{}
+    if ($Named) { foreach ($k in $Named.Keys) { $n[$k] = $Named[$k] } }
     [pscustomobject]@{
         Kind = $Kind; Text = $Text; Exe = $Exe; Arguments = $a; From = $From; To = $To
-        Path = $Path; Phrase = $Phrase; Container = $Container; IfExists = [bool]$IfExists
+        Path = $Path; Phrase = $Phrase; Container = $Container; IfExists = [bool]$IfExists; Named = $n
     }
+}
+
+function ConvertTo-PsLiteral {
+    # A PowerShell single-quoted string: everything in it is literal, $ and ; and " included. Only
+    # a single quote is special, and PowerShell counts the curly ones as single quotes too.
+    param([string]$Text)
+    $q = "(['" + [char]0x2018 + [char]0x2019 + [char]0x201A + [char]0x201B + "])"
+    "'" + ($Text -replace $q, '$1$1') + "'"
+}
+
+function Format-ScriptCall {
+    # How a 'script' step reads in a plan: a line that pastes into PowerShell and does the same.
+    param([string]$Path, [Collections.IDictionary]$Named)
+    $s = '& ' + (ConvertTo-PsLiteral $Path)
+    if ($Named) {
+        foreach ($k in $Named.Keys) {
+            $v = $Named[$k]
+            if ($v -is [bool] -or $v -is [switch]) { if ($v) { $s += ' -' + $k } }
+            else { $s += ' -' + $k + ' ' + (ConvertTo-PsLiteral ([string]$v)) }
+        }
+    }
+    $s
+}
+
+function ConvertFrom-GitPorcelain {
+    # The paths in `git status --porcelain --untracked-files=all`, read the way Commit-ShardWork.ps1
+    # reads them: a rename keeps its new name, and git's quotes come off.
+    param([string[]]$Lines)
+    foreach ($l in @($Lines)) {
+        if (-not $l -or $l.Length -lt 4) { continue }
+        $p = $l.Substring(3).Trim()
+        if ($p -match ' -> ') { $p = ($p -split ' -> ')[-1] }
+        $p.Trim('"')
+    }
+}
+
+function Get-CommitInFlight {
+    # cc-P60 Part B: what says work is still being written. Two listings in, so it is checked
+    # without the real folders. Notes: Name and LastLine (the last non-empty line) of each
+    # notes\cc-P<nn>-*.md. Changed: Repo, Path and LastWriteUtc of each file git would commit.
+    # A note numbered DoneFrom or above that does not end "P<nn> DONE" or "P<nn> STOPPED: <why>"
+    # is a prompt still running; notes numbered below it predate that rule and are not read. A
+    # pending file written in the last Minutes may be mid-write. Commit and push refuses on any of
+    # these; the preview names them and runs.
+    param($Notes, $Changed, [datetime]$Now, [int]$Minutes = 5, [int]$DoneFrom = 54)
+    $out = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($n in @($Notes)) {
+        if (-not $n -or [string]$n.Name -notmatch '^cc-P(\d+)-.+\.md$') { continue }
+        $num = [int]$Matches[1]
+        if ($num -lt $DoneFrom) { continue }
+        $last = ([string]$n.LastLine).Trim()
+        if ($last -cmatch ('^P' + $num + ' (DONE|STOPPED: .+)$')) { continue }
+        $shown = $last
+        if ($shown.Length -gt 70) { $shown = $shown.Substring(0, 67) + '...' }
+        if (-not $shown) { $shown = '(the file is empty)' }
+        $out.Add([pscustomobject]@{ Kind = 'prompt'; Name = $n.Name
+            Text = ('P' + $num + ' has not said DONE: ' + $n.Name + ' ends "' + $shown + '". Committing now may publish half its work.') })
+    }
+    $since = $Now.AddMinutes(-$Minutes)
+    foreach ($c in @($Changed)) {
+        if (-not $c -or $null -eq $c.LastWriteUtc -or $c.LastWriteUtc -lt $since) { continue }
+        $ago = [int][Math]::Max(0, [Math]::Floor(($Now - $c.LastWriteUtc).TotalSeconds))
+        $out.Add([pscustomobject]@{ Kind = 'file'; Name = ($c.Repo + ': ' + $c.Path)
+            Text = ($c.Repo + ': ' + $c.Path + ' changed ' + $ago + ' s ago, inside the last ' + $Minutes + ' minutes. Something may still be writing it.') })
+    }
+    $out.ToArray()
+}
+
+function Get-CommitPlan {
+    # commit.preview and commit.run. Both call Commit-ShardWork.ps1 and reimplement none of it; the
+    # preview passes its own -DryRun. Facts come from Get-CommitFacts: who is running, both repos'
+    # git status, the CC notes and when each pending file last changed. What makes a commit unsafe
+    # refuses commit.run, with no override, and is only reported by the preview, which still runs.
+    param([string]$Action, $Config, $Facts, [string]$Message)
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    $run = ($Action -eq 'commit.run')
+    if (-not $Facts) { $steps.Add((New-PlanStep -Kind refuse -Text 'The state of the repos was not read, so nothing is run.')); return $steps.ToArray() }
+    if (-not $Facts.ScriptExists) {
+        $steps.Add((New-PlanStep -Kind refuse -Text ($Config.CommitScript + ' is not there, so there is nothing to run. Its path is CommitScript in Get-ConsoleConfig.')))
+        return $steps.ToArray()
+    }
+    # Blocks commit.run; a warning in the preview.
+    $flag = {
+        param([string]$Text)
+        if ($run) { $steps.Add((New-PlanStep -Kind refuse -Text $Text)) }
+        else { $steps.Add((New-PlanStep -Kind say -Text ('WARNING: ' + $Text))) }
+    }
+    if ($run) {
+        # Get-ConfirmPreface says $script:CommitPublicWarning above this, before the phrase.
+        $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'This commits and pushes both repos, D:\ShatteredLegacy and D:\UO\shard-migration.'))
+    }
+    if ($Facts.IsSystem) {
+        & $flag ('This console is running as ' + $Facts.Identity + '. Git refuses both repos for that account (dubious ownership) and it has no push credential. Run the console from your own Windows login.')
+    }
+    $read = 0
+    $pending = 0
+    foreach ($r in @($Facts.Repos)) {
+        if ($r.Error) {
+            $steps.Add((New-PlanStep -Kind say -Text ('WARNING: git status failed in ' + $r.Name + ' (' + $r.Path + '): ' + $r.Error + '. Commit-ShardWork.ps1 will say FAILED there and commit nothing in it.')))
+        } else {
+            $read++
+            $pending += @($r.Paths).Count
+            $steps.Add((New-PlanStep -Kind say -Text ($r.Name + ' (' + $r.Path + '): ' + @($r.Paths).Count + ' file(s) to commit.')))
+        }
+    }
+    if ($read -eq @($Facts.Repos).Count -and $pending -eq 0) {
+        if ($run) { $steps.Add((New-PlanStep -Kind refuse -Text 'Nothing to commit: both repos are clean.')) }
+        else { $steps.Add((New-PlanStep -Kind say -Text 'Nothing to commit: both repos are clean.')) }
+    }
+    $busy = @(Get-CommitInFlight -Notes $Facts.Notes -Changed $Facts.Changed -Now $Facts.Now -Minutes $Config.CommitQuietMinutes -DoneFrom $Config.NotesDoneFrom)
+    foreach ($b in $busy) { & $flag $b.Text }
+    if ($run -and $busy.Count) {
+        $steps.Add((New-PlanStep -Kind refuse -Text ('Commit and push stays refused until every prompt above ends DONE or STOPPED and no pending file has changed for ' + $Config.CommitQuietMinutes + ' minutes. Preview commit still runs.')))
+    }
+    $named = [ordered]@{}
+    if (-not $run) { $named['DryRun'] = $true }
+    if ($Message) { $named['Message'] = $Message }
+    if ($run) {
+        if ($Message) { $steps.Add((New-PlanStep -Kind say -Text ('Commit message: ' + $Message))) }
+        else { $steps.Add((New-PlanStep -Kind say -Text 'Commit message: the script''s default, "Shard work, <date> <time>".')) }
+        $steps.Add((New-PlanStep -Kind script -Path $Config.CommitScript -Named $named -Text 'Commit-ShardWork.ps1: add, commit and push both repos. Its own table at the end says pushed, clean, BLOCKED or FAILED for each.'))
+        $steps.Add((New-PlanStep -Kind log -Text 'commit.run'))
+    } else {
+        $steps.Add((New-PlanStep -Kind script -Path $Config.CommitScript -Named $named -Text 'Commit-ShardWork.ps1 -DryRun: lists what would be committed in each repo and changes nothing.'))
+    }
+    $steps.ToArray()
 }
 
 function Get-ActionPlan {
@@ -619,8 +792,11 @@ function Get-ActionPlan {
     # shell runs it or, under -DryRun, prints it. So what -DryRun prints is exactly what runs.
     param(
         [string]$Action, [string]$ShardKey = 'test', $Config, $State,
-        [string]$SnapshotName, [string]$Snapshot, [datetime]$Now = [datetime]::MinValue
+        [string]$SnapshotName, [string]$Snapshot, [datetime]$Now = [datetime]::MinValue,
+        [string]$CommitMessage, $CommitFacts
     )
+    # The commit buttons read git and the notes, not docker, so they need no $State (cc-P60).
+    if ($Action -like 'commit.*') { return (Get-CommitPlan -Action $Action -Config $Config -Facts $CommitFacts -Message $CommitMessage) }
     if ($Now -eq [datetime]::MinValue) { $Now = $State.Now }
     if ($Action -like 'live.*') { $ShardKey = 'live' }
     if ($Action -like 'test.*') { $ShardKey = 'test' }
@@ -806,6 +982,12 @@ function Test-PlanSafety {
             if (@($s.Arguments) -contains '-Fresh') { $v.Add('-Fresh deletes the test save; this console moves it aside instead') }
             if (@($s.Arguments) -contains $live.Container -and -not $confirmed) { $v.Add('touches ' + $live.Container + ' without a typed confirmation: ' + $line) }
         }
+        if ($s.Kind -eq 'script') {
+            # cc-P60. The one script run in-process is the commit script, and for real only once typed.
+            $call = Format-ScriptCall $s.Path $s.Named
+            if (-not $s.Path -or -not $Config.CommitScript -or [IO.Path]::GetFullPath($s.Path) -ne [IO.Path]::GetFullPath($Config.CommitScript)) { $v.Add('the only script this console runs in-process is ' + $Config.CommitScript + ': ' + $call) }
+            if (-not $s.Named['DryRun'] -and -not $confirmed) { $v.Add('runs the commit for real without a typed confirmation: ' + $call) }
+        }
         if ($s.Kind -eq 'launch' -and $s.Path -eq $live.Client -and -not $confirmed) { $v.Add('opens a live client without a typed confirmation') }
         if ($s.Kind -eq 'remove-snapshot') {
             $full = [IO.Path]::GetFullPath($s.Path).TrimEnd('\')
@@ -846,6 +1028,7 @@ function Format-PlanStep {
         'say'     { $out.Add($n + 'SAY      ' + $Step.Text) }
         'refuse'  { $out.Add($n + 'REFUSE   ' + $Step.Text) }
         'exec'    { $out.Add($n + 'RUN      ' + (Format-CommandLine $Step.Exe $Step.Arguments)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
+        'script'  { $out.Add($n + 'RUN      ' + (Format-ScriptCall $Step.Path $Step.Named)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'window'  { $out.Add($n + 'WINDOW   a new PowerShell window running: ' + (Format-CommandLine $Step.Exe $Step.Arguments)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'launch'  { $out.Add($n + 'OPEN     ' + (Format-CommandLine $Step.Path $Step.Arguments)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'move'    {
@@ -1718,7 +1901,13 @@ function Invoke-DockerRead {
     # Read-only docker calls. stdout and stderr kept apart, so 5.1 cannot wrap either in an
     # ErrorRecord, and a hung daemon cannot hang the form for more than the timeout.
     param([string[]]$Arguments, [int]$TimeoutMs = 20000)
-    $psi = New-Object Diagnostics.ProcessStartInfo 'docker'
+    Invoke-ToolRead -Exe 'docker' -Arguments $Arguments -TimeoutMs $TimeoutMs
+}
+
+function Invoke-ToolRead {
+    # Invoke-DockerRead for any tool; the Commit tab reads git through it (cc-P60).
+    param([string]$Exe, [string[]]$Arguments, [int]$TimeoutMs = 20000)
+    $psi = New-Object Diagnostics.ProcessStartInfo $Exe
     $psi.Arguments = (@($Arguments | ForEach-Object { if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ } }) -join ' ')
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
@@ -1727,14 +1916,59 @@ function Invoke-DockerRead {
     $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
     $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
     try { $p = [Diagnostics.Process]::Start($psi) }
-    catch { return [pscustomobject]@{ Out = ''; Err = ('error: docker could not be started: ' + $_.Exception.Message); Code = -1 } }
+    catch { return [pscustomobject]@{ Out = ''; Err = ('error: ' + $Exe + ' could not be started: ' + $_.Exception.Message); Code = -1 } }
     $o = $p.StandardOutput.ReadToEndAsync()
     $e = $p.StandardError.ReadToEndAsync()
     if (-not $p.WaitForExit($TimeoutMs)) {
         try { $p.Kill() } catch { }
-        return [pscustomobject]@{ Out = ''; Err = ('error: docker did not answer within ' + ($TimeoutMs / 1000) + ' s'); Code = -1 }
+        return [pscustomobject]@{ Out = ''; Err = ('error: ' + $Exe + ' did not answer within ' + ($TimeoutMs / 1000) + ' s'); Code = -1 }
     }
     [pscustomobject]@{ Out = $o.Result; Err = $e.Result; Code = $p.ExitCode }
+}
+
+function Get-CommitFacts {
+    # What Get-CommitPlan reads, all read-only: who this console runs as, each repo's pending files
+    # (git status, as Commit-ShardWork.ps1 reads it) and when each last changed, and the last line
+    # of every CC notes file. A git failure is kept as an error, never read as clean (D66).
+    param($Config)
+    $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $repos = New-Object 'System.Collections.Generic.List[object]'
+    $changed = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($r in @($Config.CommitRepos)) {
+        $g = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $r.Path, '--no-optional-locks', 'status', '--porcelain', '--untracked-files=all')
+        $err = $null
+        $paths = @()
+        if ($g.Code -ne 0) {
+            $err = @((($g.Err + "`n" + $g.Out) -split "`n") | Where-Object { $_.Trim() } | Select-Object -First 1)
+            $err = ([string]($err -join '')).Trim()
+            if (-not $err) { $err = 'git exited with ' + $g.Code }
+        } else {
+            $paths = @(ConvertFrom-GitPorcelain @(@($g.Out -split "`n") | ForEach-Object { $_.TrimEnd("`r") }))
+            foreach ($p in $paths) {
+                $full = Join-Path $r.Path ($p -replace '/', '\')
+                if (Test-Path -LiteralPath $full -PathType Leaf) {
+                    $changed.Add([pscustomobject]@{ Repo = $r.Name; Path = $p; LastWriteUtc = (Get-Item -LiteralPath $full -Force).LastWriteTimeUtc })
+                }
+            }
+        }
+        $repos.Add([pscustomobject]@{ Name = $r.Name; Path = $r.Path; Paths = $paths; Error = $err })
+    }
+    $notes = @()
+    if ($Config.NotesFolder -and (Test-Path -LiteralPath $Config.NotesFolder)) {
+        $notes = @(foreach ($f in Get-ChildItem -LiteralPath $Config.NotesFolder -Filter 'cc-P*.md' -File) {
+            $last = @([IO.File]::ReadAllLines($f.FullName) | Where-Object { $_.Trim() } | Select-Object -Last 1)
+            [pscustomobject]@{ Name = $f.Name; LastLine = [string]($last -join '') }
+        })
+    }
+    [pscustomobject]@{
+        Identity     = $id.Name
+        IsSystem     = [bool]$id.IsSystem
+        ScriptExists = [bool]($Config.CommitScript -and (Test-Path -LiteralPath $Config.CommitScript -PathType Leaf))
+        Repos        = $repos.ToArray()
+        Notes        = $notes
+        Changed      = $changed.ToArray()
+        Now          = [datetime]::UtcNow
+    }
 }
 
 function Get-CommandSourceFiles {
@@ -1890,6 +2124,56 @@ function Invoke-ExecStep {
     $code
 }
 
+function Invoke-ScriptStep {
+    # A 'script' step (cc-P60): the PowerShell script runs in this process with its parameters
+    # splatted by name, so a commit message with quotes, $ or ; reaches it unchanged. As with an
+    # exec step (D38) everything it prints is on screen and in OutFile, its Write-Host lines in
+    # their own colours, so its OK, BLOCKED or FAILED reads the same as in a window of its own.
+    # The result is its exit code: what it passed to exit, else 0 unless a native command it ran
+    # last failed.
+    param([string]$Path, [Collections.IDictionary]$Named, [string]$OutFile, [string]$Header)
+    $splat = @{}
+    if ($Named) { foreach ($k in $Named.Keys) { $splat[$k] = $Named[$k] } }
+    $colors = @{ Red = 'red'; DarkRed = 'red'; Green = 'green'; DarkGreen = 'green'; Yellow = 'amber'; DarkYellow = 'amber'; Cyan = 'head'; DarkCyan = 'head'; Gray = 'normal'; DarkGray = 'gray' }
+    $w = New-Object IO.StreamWriter($OutFile, $true, (New-Object Text.UTF8Encoding $false))
+    $w.AutoFlush = $true
+    $eap = $ErrorActionPreference
+    $fmt = New-Object 'System.Collections.Generic.List[object]'
+    try {
+        $w.WriteLine('== ' + (Get-Date).ToString('yyyy-MM-dd HH:mm:ss', $script:Invariant) + ' ' + $Header)
+        $ErrorActionPreference = 'Continue'
+        $global:LASTEXITCODE = 0
+        & $Path @splat *>&1 | ForEach-Object {
+            $o = $_
+            $color = 'normal'
+            if ($o.GetType().FullName -like 'Microsoft.PowerShell.Commands.Internal.Format.*') {
+                # Format-Table arrives as pieces; render them together once the table ends.
+                $fmt.Add($o)
+                if ($o.GetType().Name -ne 'FormatEndData') { return }
+                $lines = @($fmt | Out-String -Stream -Width 160)
+                $fmt.Clear()
+            } elseif ($o -is [Management.Automation.InformationRecord]) {
+                $lines = @([string]$o.MessageData)
+                $fc = $null
+                try { $fc = [string]$o.MessageData.ForegroundColor } catch { $fc = $null }
+                if ($fc -and $colors.ContainsKey($fc)) { $color = $colors[$fc] }
+            } elseif ($o -is [Management.Automation.ErrorRecord]) {
+                $lines = @($o.Exception.Message)
+            } else {
+                $lines = @([string]$o)
+            }
+            foreach ($t in $lines) { $w.WriteLine($t); Write-ConsoleLine $t $color }
+        }
+        $code = $global:LASTEXITCODE
+        if ($null -eq $code) { $code = 0 }
+        $w.WriteLine('== exited with ' + $code)
+    } finally {
+        $ErrorActionPreference = $eap
+        $w.Dispose()
+    }
+    $code
+}
+
 function Invoke-Plan {
     # Runs a plan, one step at a time, saying what each step is before it runs it. Stops at the
     # first failure and says what has already been moved, so nothing is left somewhere unknown.
@@ -1901,7 +2185,7 @@ function Invoke-Plan {
     if ($refuse.Count) { foreach ($x in $refuse) { Write-ConsoleLine $x.Text 'amber' }; return $false }
     foreach ($s in $plan) {
         if ($s.Kind -eq 'confirm' -and -not (Test-TypedConfirmation $s.Phrase $ConfirmLive)) {
-            Write-ConsoleLine ("Refused: this is a live action and needs the typed confirmation '" + $s.Phrase + "' (-ConfirmLive '" + $s.Phrase + "')." ) 'red'
+            Write-ConsoleLine ("Refused: this needs the typed confirmation '" + $s.Phrase + "' (-ConfirmLive '" + $s.Phrase + "')." ) 'red'
             return $false
         }
         if ($s.Kind -eq 'ask' -and -not $Yes) {
@@ -1929,6 +2213,15 @@ function Invoke-Plan {
                     Write-ConsoleLine ('      > ' + $line) 'gray'
                     if (-not $outFile) { $outFile = New-ExecOutputFile $Config $ActionKey $ShardKey }
                     $code = Invoke-ExecStep -Exe $s.Exe -Arguments @($s.Arguments) -OutFile $outFile -Header ($tag + $line)
+                    if ($code -ne 0) { throw ($line + ' exited with ' + $code) }
+                }
+                'script' {
+                    Write-ConsoleLine ($tag + $s.Text) 'head'
+                    $line = Format-ScriptCall $s.Path $s.Named
+                    Write-ConsoleLine ('      > ' + $line) 'gray'
+                    if (-not (Test-Path -LiteralPath $s.Path -PathType Leaf)) { throw ('not found: ' + $s.Path) }
+                    if (-not $outFile) { $outFile = New-ExecOutputFile $Config $ActionKey $ShardKey }
+                    $code = Invoke-ScriptStep -Path $s.Path -Named $s.Named -OutFile $outFile -Header ($tag + $line)
                     if ($code -ne 0) { throw ($line + ' exited with ' + $code) }
                 }
                 'stopped' {
@@ -2201,10 +2494,10 @@ function Update-SnapshotList {
 }
 
 function Show-TypedConfirm {
-    param([string]$Phrase, [string]$Text, $Plan)
+    param([string]$Phrase, [string]$Text, $Plan, [string]$What = 'LIVE shard')
     $d = New-Object Windows.Forms.Form
-    $d.Text = 'LIVE shard: type to confirm'
-    if ($script:dry) { $d.Text = 'DRY RUN - LIVE shard: type to confirm (the window it opens only prints)' }
+    $d.Text = $What + ': type to confirm'
+    if ($script:dry) { $d.Text = 'DRY RUN - ' + $What + ': type to confirm (the window it opens only prints)' }
     $d.Size = New-Object Drawing.Size(640, 420)
     $d.FormBorderStyle = 'FixedDialog'
     $d.StartPosition = 'CenterParent'
@@ -2281,18 +2574,25 @@ function Show-YesNo {
 }
 
 function Invoke-ConsoleButton {
-    param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot)
+    param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage)
     try {
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
-        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' } }
+        $isCommit = ($ActionKey -like 'commit.*')
+        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' } }
         # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
         # status is a capture file". Only the second decides where the state comes from.
         if ($script:fromCapture -and -not $script:dry) { throw 'the status is from a capture file, so nothing may run for real. Relaunch without -DryRun.' }
-        $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:fromCapture -StatusFrom $script:statusFrom
-        $script:lastState = $state
+        $facts = $null
         $now = Get-Date
-        if ($script:fromCapture) { $now = $state.Now.ToLocalTime() }
-        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now)
+        if ($isCommit) {
+            # The commit buttons read git and the notes, never docker (cc-P60).
+            $facts = Get-CommitFacts $script:cfg
+        } else {
+            $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:fromCapture -StatusFrom $script:statusFrom
+            $script:lastState = $state
+            if ($script:fromCapture) { $now = $state.Now.ToLocalTime() }
+        }
+        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
         $dryTag = ''
@@ -2309,7 +2609,9 @@ function Invoke-ConsoleButton {
         $phrase = $null
         $conf = @($plan | Where-Object { $_.Kind -eq 'confirm' })
         if ($conf.Count) {
-            if (-not (Show-TypedConfirm -Phrase $conf[0].Phrase -Text ($dryTag + $conf[0].Text) -Plan $plan)) { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
+            $confWhat = 'LIVE shard'
+            if ($isCommit) { $confWhat = 'Commit and push' }
+            if (-not (Show-TypedConfirm -Phrase $conf[0].Phrase -Text ($dryTag + $conf[0].Text) -Plan $plan -What $confWhat)) { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
             $phrase = $conf[0].Phrase
         }
         $answeredYes = $false
@@ -2319,7 +2621,7 @@ function Invoke-ConsoleButton {
             $answeredYes = $true
         }
         if ($def.RunIn -eq 'window') {
-            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture)
+            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage
             Start-Process -FilePath $script:cfg.PowerShell -ArgumentList $argLine | Out-Null
             if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in its own window. It prints the plan and runs nothing.') 'amber' }
             else { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): running in its own window. Refresh the status when it finishes.') 'head' }
@@ -2644,7 +2946,40 @@ function New-ConsoleForm {
         (New-ConsoleButton 'Open a client' 'live.client')
     ) ([Drawing.Color]::Firebrick)
 
-    $tabs.TabPages.AddRange(@($testPage, $snapPage, $worldPage, $diagPage, $livePage))
+    # commit (cc-P60): Commit-ShardWork.ps1, as it is, in a window of its own
+    $commitBtns = @()
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Commit' })) {
+        # New-ConsoleButton's look, with a click that also hands over the message box.
+        $b = New-Object Windows.Forms.Button
+        $b.Text = $a.Label
+        $b.Tag = $a.Key
+        $b.Width = 230
+        $b.Height = 36
+        $b.Margin = New-Object Windows.Forms.Padding(6)
+        $b.Add_Click({
+            $m = $script:ui.CommitMessage.Text
+            if (-not $m.Trim()) { $m = '' }
+            Invoke-ConsoleButton -ActionKey $this.Tag -CommitMessage $m
+        })
+        $commitBtns += $b
+    }
+    $where = $Config.CommitScript
+    if (-not (Test-Path -LiteralPath $Config.CommitScript -PathType Leaf)) { $where += ' (NOT FOUND: both buttons will say so and do nothing)' }
+    $commitPage = New-ButtonPage 'Commit' ('Runs ' + $where + ' in a window of its own, which stays open so you can read its own table at the end. Preview passes its -DryRun and changes nothing. Commit and push asks for the phrase ''commit shard work'' first: both repos are public on GitHub, so a pushed commit cannot be taken back. It is refused when this console runs as SYSTEM, when both repos are clean, or while a CC prompt has not said DONE or a pending file changed in the last ' + $Config.CommitQuietMinutes + ' minutes; Preview still runs and names them.') $commitBtns
+    $msgLabel = New-Caption 'Message (blank: the script''s default, "Shard work, <date> <time>"):' 400
+    $msgBox = New-Object Windows.Forms.TextBox
+    $msgBox.Width = 700
+    $msgBox.Margin = New-Object Windows.Forms.Padding(6)
+    $flow = $commitPage.Controls[0]
+    $flow.Controls.Add($msgLabel)
+    $flow.Controls.Add($msgBox)
+    $flow.Controls.SetChildIndex($msgLabel, 1)
+    $flow.Controls.SetChildIndex($msgBox, 2)
+    $flow.SetFlowBreak($msgBox, $true)
+    $script:ui.CommitMessage = $msgBox
+    $script:ui.CommitButtons = $commitBtns
+
+    $tabs.TabPages.AddRange(@($testPage, $snapPage, $worldPage, $diagPage, $commitPage, $livePage))
 
     # output
     $outGroup = New-Object Windows.Forms.GroupBox
@@ -2708,6 +3043,7 @@ if ($Capture) {
 if ($Action -eq 'list') {
     foreach ($a in Get-ConsoleActions) { Write-Host ('{0,-18} {1,-12} {2}' -f $a.Key, $a.Group, $a.Label) }
     Write-Host 'snapshot.* take -Shard test|live (default test), -SnapshotName for create, -Snapshot for restore and delete.'
+    Write-Host 'commit.* take -CommitMessage (blank: the script''s default); commit.run needs -Mode Execute and -ConfirmLive ''commit shard work''.'
     exit 0
 }
 
@@ -2728,6 +3064,7 @@ if ($Action) {
     $sk = $Shard
     if ($Action -like 'live.*') { $sk = 'live' }
     if ($Action -like 'test.*') { $sk = 'test' }
+    if ($Action -like 'commit.*') { $sk = 'repos' }
     # The mode is decided and shown before anything is read or run (D37).
     $run = Resolve-RunMode -Action $Action -Mode $Mode -DryRun:$DryRun
     $banner = Get-ModeBanner -RunMode $run -Action $Action -ShardKey $sk
@@ -2735,11 +3072,19 @@ if ($Action) {
     foreach ($l in $banner.Lines) { Write-ConsoleLine $l $banner.Color }
     if ($run -eq 'refuse') { exit 2 }
     $isDry = ($run -eq 'dry')
-    $fromCapture = $isDry -and -not $StatusFromDocker
-    $st = Get-ConsoleState -Config $config -DryRun:$fromCapture -StatusFrom $StatusFrom
+    $st = $null
+    $facts = $null
     $now = Get-Date
-    if ($fromCapture) { $now = $st.Now.ToLocalTime() }
-    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now)
+    if ($Action -like 'commit.*') {
+        # From a click the message comes as base64 (Get-ChildArgumentLine); -CommitMessage is for a person.
+        if ($CommitMessageB64) { $CommitMessage = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($CommitMessageB64)) }
+        $facts = Get-CommitFacts $config
+    } else {
+        $fromCapture = $isDry -and -not $StatusFromDocker
+        $st = Get-ConsoleState -Config $config -DryRun:$fromCapture -StatusFrom $StatusFrom
+        if ($fromCapture) { $now = $st.Now.ToLocalTime() }
+    }
+    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts)
     $viol = @(Test-PlanSafety $plan $config)
     $header = 'PLAN'
     if ($isDry) { $header = 'DRY RUN' }

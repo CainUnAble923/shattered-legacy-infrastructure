@@ -60,6 +60,7 @@ Example:
 
 ### Staff
 - Staff Hub: solid background, long values wrap, Green Acres is in the travel list, and you can jump to the same spot on another facet.
+- Shard Console: a Commit tab previews the shard's uncommitted work and commits and pushes it, after a typed confirmation.
 
 ## 2026.10.04
 
