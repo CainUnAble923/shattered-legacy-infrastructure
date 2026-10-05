@@ -11,3 +11,4 @@
 *.mul binary
 *.idx binary
 *.uop binary
+*.bin binary

@@ -6,12 +6,20 @@ What is here
   art\<id>.png    art overrides, by static item ID in decimal. The build copies them to
                   app\tazuo\ExternalImages\art\, where TazUO draws them instead of the art in the
                   player's artLegacyMUL.uop (TazUO ExternalImageLoader.Load and Art.LoadSourceArtInfo).
-  registry.csv    every art ID we use, one row each. scripts\find-free-art.py reads it so a later pack
-                  never takes one of these IDs.
-  records.json    our tiledata and animdata records for the IDs that need them. The build copies it to
-                  app\art-records.json. Play.ps1 writes it into copies of the player's own
-                  tiledata.mul and animdata.mul (app\uo-overrides\), never into the player's EA files.
+  registry.csv    every ID we use, one row each, with its kind: art (an art/item ID), anim (an Animation
+                  number) or gump (a gump ID). scripts\find-free-art.py reads it so a later pack never
+                  takes one of these IDs, and --check-registry re-tests each in its own space.
+  records.json    our tiledata and animdata records for the IDs that need them, and our worn-item
+                  animations (equipAnims). The build copies it to app\art-records.json. Play.ps1 writes
+                  it into copies of the player's own tiledata.mul, animdata.mul and Bodyconv.def
+                  (app\uo-overrides\), never into the player's EA files.
                   Nothing of EA's is shipped: not a file, not a part of one.
+  gumps\<id>.png  gump overrides (cc-P62), into app\tazuo\ExternalImages\gumps\ beside Fiddle-Me-This's.
+  anim-src\<N>\a<action>_d<direction>_f<frame>.png
+                  the frames of worn-item animation N, 130 x 128, canvas (x, y) = run coordinates
+                  (x - 67, y - 98). scripts\build-equip-anims.py encodes them into sl-anim7.bin and
+                  sl-anim7-idx.bin (committed; --check proves they are what the PNGs build), which ship
+                  as app\sl-anim7.bin and app\sl-anim7-idx.bin and which TazUO reads as anim7.mul/.idx.
 
 Shattered runestone (IDs 15376-15419, 0x3C10-0x3C3B)
 ----------------------------------------------------
@@ -52,3 +60,23 @@ Tiledata record: copied from OSI's own animated runestone, 0xADBA "Runestone01 G
 the client's tiledata.mul on 2026-10-01: flags 0x01040040 (Animation, PartialHue, Impassable),
 weight 1, height 3. Only the name ("shattered runestone") is ours. The flag values are facts about how
 OSI's item behaves, not EA data shipped: the record is written by hand here.
+
+Fox ears and tail (cc-P62, F-35): item 15420 (0x3C3C), Animation 4783, gump 64783
+---------------------------------------------------------------------------------
+Author:      drawn for Shattered Legacy by the art chat for Chase, 2026-10-05 ("Moonrunner": tall pointed
+             ears with dark tips, one long low tail with a cream tip). Ours. Source files, never edited
+             here: D:\ShatteredLegacy\design\kitsune-ears-tail\.
+  art\15420.png               icon_44.png, byte for byte
+  gumps\64783.png             stage2-final\paperdoll_260x237.png, byte for byte (female paperdoll,
+                              60000 + 4783)
+  anim-src\4783\a00_d1_fNN    stage3-final\walk_dir1\walk_dir1_fNN.png, byte for byte: action 0 (walk
+                              unarmed), animation direction 1, frames 0 to 9. Drawn over body 401's own
+                              walk frames, so frame i lines up with body 401's frame i.
+Natural colours (hue 0); the _partialhue and _gray versions beside them are for later. Not drawn yet:
+stand, run, and walk directions 0, 2, 3 and 4 (they draw nothing).
+Encoding (scripts\build-equip-anims.py) changes only colour depth: the anim format holds 5 bits a
+channel, so each colour becomes the nearest one TazUO can draw (largest difference 4 of 255). Pixel
+positions are unchanged.
+Tiledata record (records.json): flags 0x00400002 (Wearable, and 0x2, which pinned names Weapon and nothing reads),
+weight 1, layer 0x12 (Earrings), height 1, as OSI's earrings 0x1087 read from the client's tiledata.mul on 2026-10-05;
+animId 4783 and the name ("fox ears and tail") are ours.

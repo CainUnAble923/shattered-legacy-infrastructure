@@ -14,6 +14,9 @@
                                and our tiledata and animdata records (records.json, shipped as
                                app\art-records.json; Play.ps1 writes them into copies of the
                                player's own files). See its SOURCE.txt and registry.csv.
+                               cc-P62: also gumps\<id>.png (into ExternalImages\gumps\) and the
+                               worn-item animation files sl-anim7.bin and sl-anim7-idx.bin (into app\),
+                               after the equipment-animation gate.
       vendor\shattered-legacy-cliloc\   our own client text (cc-P57): entries.json, shipped as
                                app\cliloc-entries.json; Play.ps1 adds them to a copy of the player's
                                own Cliloc.enu. registry.csv holds our number block. Checked by the
@@ -92,7 +95,39 @@ $fmtMaxX = 1280; $fmtMaxY = 720
 # Our own art (cc-P26). The registry is the count: one PNG per registered ID, exactly.
 $slArt      = Join-Path $PSScriptRoot 'vendor\shattered-legacy-art'
 $slRegistry = @(Get-Content -LiteralPath (Join-Path $slArt 'registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
-$slIds      = @($slRegistry | ForEach-Object { [int]$_.id })
+# cc-P62: the registry's "kind" says which ID space a row is in. art: one PNG in art\; gump: one PNG in gumps\
+# (into ExternalImages\gumps\ beside Fiddle-Me-This's); anim: an Animation number, whose frames are in
+# sl-anim7.bin and sl-anim7-idx.bin (scripts\build-equip-anims.py), shipped as app\ files of those names.
+$slIds      = @($slRegistry | Where-Object { -not $_.kind -or $_.kind -eq 'art' } | ForEach-Object { [int]$_.id })
+$slGumpIds  = @($slRegistry | Where-Object { $_.kind -eq 'gump' } | ForEach-Object { [int]$_.id })
+$slAnimIds  = @($slRegistry | Where-Object { $_.kind -eq 'anim' } | ForEach-Object { [int]$_.id })
+$slAnimFiles = @('sl-anim7.bin', 'sl-anim7-idx.bin')
+# The equipment-animation gate: the two anim files hold blocks only in the slots records.json's equipAnims name,
+# for registered Animation numbers, and every block lies inside sl-anim7.bin. Run on vendor\ before staging and
+# on the zip (gate 4).
+function Test-EquipAnims($records, [byte[]]$mul, [byte[]]$idx, [string]$what) {
+    $fail = @()
+    $eq = @($records.equipAnims | Where-Object { $_ })
+    $slots = @{}
+    foreach ($e in $eq) {
+        if ($slAnimIds -notcontains [int]$e.anim) { $fail += "$what has equipAnims $($e.anim), which registry.csv does not list as an anim" }
+        if ([int]$e.slot -lt 400) { $fail += "$what puts $($e.anim) in slot $($e.slot); anim7 slots below 400 are not the people layout" }
+        $slots[[int]$e.slot] = $true
+    }
+    foreach ($n in $slAnimIds) { if (@($eq | Where-Object { [int]$_.anim -eq $n }).Count -ne 1) { $fail += "registry.csv lists anim $n; $what does not give it exactly one equipAnims entry" } }
+    if ($eq.Count -eq 0) { return $fail }
+    if ($idx.Length % 12) { $fail += "sl-anim7-idx.bin is $($idx.Length) bytes, not whole 12-byte entries" }
+    for ($k = 0; $k + 12 -le $idx.Length; $k += 12) {
+        $pos = [BitConverter]::ToInt32($idx, $k); $size = [BitConverter]::ToInt32($idx, $k + 4)
+        if ($pos -eq -1) { continue }
+        $i = $k / 12
+        $slot = if ($i -ge 35000) { 400 + [Math]::Floor(($i - 35000) / 175) } else { -1 }
+        if (-not $slots.ContainsKey([int]$slot)) { $fail += "sl-anim7-idx.bin entry $i holds a block outside the slots records name"; continue }
+        if ($pos -lt 0 -or $size -le 0 -or $pos + $size -gt $mul.Length) { $fail += "sl-anim7-idx.bin entry $i points outside sl-anim7.bin ($pos, $size)" }
+    }
+    foreach ($s in $slots.Keys) { if ($idx.Length -lt 12 * (35000 + ($s - 399) * 175)) { $fail += "sl-anim7-idx.bin is too short for slot $s" } }
+    return $fail
+}
 # Our own client text (cc-P57 Part D). The cliloc gate: entries.json is plain ASCII (no BOM, every
 # byte printable or a line break), parses, and every entry has a number in our block, a non-empty
 # printable ASCII text, no number twice, and a row of registry.csv with the same text; and every
@@ -163,7 +198,8 @@ function Test-PackageZip([string]$path) {
         $names = @($rel.Keys)
 
         $png = @($names | Where-Object { $_ -match '^app/tazuo/ExternalImages/gumps/[^/]+\.png$' })
-        if ($png.Count -ne $fmtPngCount) { $fail += "$($png.Count) PNGs under app/tazuo/ExternalImages/gumps/, expected $fmtPngCount" }
+        if ($png.Count -ne $fmtPngCount + $slGumpIds.Count) { $fail += "$($png.Count) PNGs under app/tazuo/ExternalImages/gumps/, expected $fmtPngCount (Fiddle-Me-This) + $($slGumpIds.Count) (ours, registry.csv)" }
+        foreach ($g in $slGumpIds) { if ($names -notcontains "app/tazuo/ExternalImages/gumps/$g.png") { $fail += "no app/tazuo/ExternalImages/gumps/$g.png, a registered gump" } }
         $xml = @($names | Where-Object { $_ -like 'app/tazuo/Data/XmlGumps/*' })
         if ($xml.Count -ne $fmtXmlCount) { $fail += "$($xml.Count) files under app/tazuo/Data/XmlGumps/, expected $fmtXmlCount" }
         if ($names -notcontains 'app/tazuo/LICENSE-FiddleMeThis.txt') { $fail += 'no app/tazuo/LICENSE-FiddleMeThis.txt' }
@@ -194,6 +230,12 @@ function Test-PackageZip([string]$path) {
                 foreach ($id in @($j.tiledata | ForEach-Object id) + @($j.animdata | ForEach-Object id)) {
                     if ($slIds -notcontains [int]$id) { $fail += "app/art-records.json has a record for $id, which registry.csv does not list" }
                 }
+                # cc-P62: the worn-item animations, from the files that shipped.
+                $am = $rel['app/sl-anim7.bin']; $ai = $rel['app/sl-anim7-idx.bin']
+                if (@($j.equipAnims | Where-Object { $_ }).Count) {
+                    if (-not $am -or -not $ai) { $fail += 'app/art-records.json has equipAnims but app/sl-anim7.bin or app/sl-anim7-idx.bin is missing' }
+                    else { $fail += @(Test-EquipAnims $j (Read-ZipBytes $am) (Read-ZipBytes $ai) 'app/art-records.json') }
+                } elseif ($am -or $ai) { $fail += 'app/sl-anim7*.bin shipped with no equipAnims in app/art-records.json' }
             } catch { $fail += "app/art-records.json does not parse: $($_.Exception.Message)" }
         }
 
@@ -521,6 +563,22 @@ if (Test-Path -LiteralPath $slArtOut) {
 New-Item -ItemType Directory -Path $slArtOut -Force | Out-Null
 foreach ($f in $slPngs) { $vendored += ,@($f.FullName, (Join-Path $slArtOut $f.Name)) }
 $vendored += ,@((Join-Path $slArt 'records.json'), (Join-Path $stage 'app\art-records.json'))
+# cc-P62: our gumps (gumps\<id>.png, exactly the registered gump IDs, never a Fiddle-Me-This name) and the
+# worn-item animation files, after the equipment-animation gate on the vendored copies.
+$slGumpDir = Join-Path $slArt 'gumps'
+$slGumps   = @(if (Test-Path -LiteralPath $slGumpDir) { Get-ChildItem -LiteralPath $slGumpDir -File })
+$extra     = @($slGumps | Where-Object { $_.Name -notmatch '^(\d+)\.png$' -or $slGumpIds -notcontains [int]$Matches[1] } | ForEach-Object Name)
+if ($extra.Count) { throw "vendor\shattered-legacy-art\gumps holds files registry.csv does not list: $($extra -join ', '). Not building." }
+if ($slGumps.Count -ne $slGumpIds.Count) { throw "vendor\shattered-legacy-art\gumps holds $($slGumps.Count) PNGs, registry.csv lists $($slGumpIds.Count) gumps. Not building." }
+$clash = @($slGumps | Where-Object { ($fmtOrig + $fmtCust).Name -contains $_.Name } | ForEach-Object Name)
+if ($clash.Count) { throw "our gumps clash with Fiddle-Me-This's: $($clash -join ', '). Not building." }
+foreach ($f in $slGumps) { $vendored += ,@($f.FullName, (Join-Path $fmtGumps $f.Name)) }
+$slRecords = [IO.File]::ReadAllText((Join-Path $slArt 'records.json')) | ConvertFrom-Json
+if (@($slRecords.equipAnims | Where-Object { $_ }).Count) {
+    $eqFail = @(Test-EquipAnims $slRecords ([IO.File]::ReadAllBytes((Join-Path $slArt 'sl-anim7.bin'))) ([IO.File]::ReadAllBytes((Join-Path $slArt 'sl-anim7-idx.bin'))) 'vendor\shattered-legacy-art\records.json')
+    if ($eqFail.Count) { throw "EQUIPMENT ANIMATION GATE: $($eqFail -join '; '). Not building." }
+    foreach ($n in $slAnimFiles) { $vendored += ,@((Join-Path $slArt $n), (Join-Path $stage "app\$n")) }
+}
 
 # --- our own client text (cc-P57 Part D) ----------------------------------------------------
 # entries.json as app\cliloc-entries.json, after the cliloc gate. Checked byte for byte in gate 3.

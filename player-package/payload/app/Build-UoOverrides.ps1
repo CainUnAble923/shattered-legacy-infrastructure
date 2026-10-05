@@ -35,6 +35,20 @@
        02 00 00 00. Uncompressed costs no space: EA's file is 5,078,062 bytes compressed and
        5,061,666 bytes uncompressed (cc-P56 Part C).
 
+  Worn-item animations (cc-P62, F-35): the kitsune's fox ears and tail.
+    A worn item's tiledata names an Animation number N, and TazUO draws body N's frames over the wearer
+    (MobileView.Draw). Ours are in app\sl-anim7.bin and app\sl-anim7-idx.bin (scripts\build-equip-anims.py;
+    entirely ours), which the override list hands TazUO as anim7.mul and anim7.idx: EA's files stop at anim6, and
+    TazUO opens anim.mul to anim10.mul by name through the list (AnimationsLoader.Load). Bodyconv.def sends body N
+    there: a line "N -1 -1 -1 -1 -1 S" means slot S of anim7.mul (AnimationsLoader.ProcessBodyConvDef).
+    1. Reads records.json's "equipAnims" (anim N, slot S).
+    2. If app\uo-overrides\equip-stamp.txt matches the player's Bodyconv.def and mobtypes.txt (size and time),
+       the records and both anim files (SHA-256), and the copy is there, it is done.
+    3. Otherwise refuses if the player's folder has an anim7.mul or anim7.idx of its own (EA has begun to use the
+       file), and skips, with a yellow line, any N that the player's Bodyconv.def or mobtypes.txt already names
+       (mobtypes would send N to the UOP files instead). Then writes the player's Bodyconv.def, unchanged, with
+       our lines added at the end, to app\uo-overrides\Bodyconv.def, then the stamp.
+
   Then files-override.txt lists whichever copies were made. The player's EA files are only ever
   read. app\uo-overrides\ is made here and never shipped; the updater leaves it alone and the
   package build refuses a payload that holds it.
@@ -57,11 +71,15 @@ param(
     [Parameter(Mandatory = $true)][string]$UoDir,
     [string]$Records,
     [string]$Clilocs,
-    [string]$OutDir
+    [string]$OutDir,
+    [string]$AnimMul,
+    [string]$AnimIdx
 )
 
 $ErrorActionPreference = 'Stop'
 if (-not $Records) { $Records = Join-Path $PSScriptRoot 'art-records.json' }
+if (-not $AnimMul) { $AnimMul = Join-Path $PSScriptRoot 'sl-anim7.bin' }
+if (-not $AnimIdx) { $AnimIdx = Join-Path $PSScriptRoot 'sl-anim7-idx.bin' }
 if (-not $Clilocs) { $Clilocs = Join-Path $PSScriptRoot 'cliloc-entries.json' }
 if (-not $OutDir)  { $OutDir  = Join-Path $PSScriptRoot 'uo-overrides' }
 
@@ -70,6 +88,7 @@ $StaticGroup = 4 + 32 * 41
 $AnimEntry   = 68
 $StampFormat = 'uo-overrides 1'
 $ClilocStampFormat = 'uo-cliloc 1'
+$EquipStampFormat = 'uo-equip 1'
 
 function Get-TileOffset([int]$id) { $LandBytes + [Math]::Floor($id / 32) * $StaticGroup + 4 + ($id % 32) * 41 }
 function Get-AnimOffset([int]$id) { $id * $AnimEntry + 4 * ([Math]::Floor($id / 8) + 1) }
@@ -201,12 +220,109 @@ function Build-Art {
         Write-AnimRecord $anim $a
     }
 
+    # Tiledata records with no animation of their own (cc-P62: a worn item's icon, which names its Animation
+    # number). Same tests on the one slot: tiledata free, and not drawn as another animation's frame.
+    $animated = @(@($rec.animdata) | ForEach-Object { [int]$_.id })
+    foreach ($r in @($rec.tiledata | Where-Object { $animated -notcontains [int]$_.id })) {
+        $why = Test-TileFree $tile ([int]$r.id)
+        if (-not $why -and $targets.Contains([int]$r.id)) { $why = 'is a frame of another animation' }
+        if ($why) {
+            Say-Skip "Shattered Legacy art: skipping item $($r.id): your Ultima Online files now use it (art ID $($r.id) $why)."
+            continue
+        }
+        Write-TileRecord $tile $r
+    }
+
     if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
     if (Test-Path -LiteralPath $stampOut) { Remove-Item -LiteralPath $stampOut -Force }
     [IO.File]::WriteAllBytes($tileOut, $tile)
     [IO.File]::WriteAllBytes($animOut, $anim)
     [IO.File]::WriteAllText($stampOut, $stamp, (New-Object Text.ASCIIEncoding))
     # With every stone skipped the copies equal the player's files, and the override is harmless.
+    & $lines
+}
+
+# The first number of every line a .def or mobtypes.txt file has, read as TazUO reads them: trimmed lines that
+# start with a digit (DefReader.Parse; AnimationsLoader.Load for mobtypes.txt).
+function Get-DefIndexes([string]$path) {
+    $h = New-Object 'System.Collections.Generic.HashSet[int]'
+    if (Test-Path -LiteralPath $path) {
+        foreach ($l in [IO.File]::ReadAllLines($path, [Text.Encoding]::GetEncoding(28591))) {
+            $t = $l.Trim()
+            if ($t.Length -and [char]::IsDigit($t[0]) -and $t -match '^(\d+)') { [void]$h.Add([int]$Matches[1]) }
+        }
+    }
+    return ,$h
+}
+
+function Get-FileStamp([string]$path) {
+    if (-not (Test-Path -LiteralPath $path)) { return 'none' }
+    $i = Get-Item -LiteralPath $path
+    return "$($i.Length) $($i.LastWriteTimeUtc.Ticks)"
+}
+
+# Returns the worn-item animations' override lines ("name=path"), or none (cc-P62).
+function Build-EquipAnim {
+    if (-not (Test-Path -LiteralPath $Records)) { return }
+    $eq = @((([IO.File]::ReadAllText($Records) | ConvertFrom-Json).equipAnims) | Where-Object { $_ })
+    if ($eq.Count -eq 0) { return }
+    foreach ($f in $AnimMul, $AnimIdx) {
+        if (-not (Test-Path -LiteralPath $f)) { throw "$(Split-Path $f -Leaf) is missing from the game folder" }
+        if ($f.Contains('=')) { throw "the game folder's path has an '=' in it, which TazUO cannot read in an override list" }
+    }
+    foreach ($n in 'anim7.mul', 'anim7.idx') {
+        if (Test-Path -LiteralPath (Join-Path $UoDir $n)) { throw "your Ultima Online folder now has its own $n" }
+    }
+    $bcSrc = Join-Path $UoDir 'Bodyconv.def'
+    $mtSrc = Join-Path $UoDir 'mobtypes.txt'
+    if (-not (Test-Path -LiteralPath $bcSrc)) { throw "Bodyconv.def is not in $UoDir" }
+    $bcOut    = Join-Path $OutDir 'Bodyconv.def'
+    $stampOut = Join-Path $OutDir 'equip-stamp.txt'
+    $lines = { "bodyconv.def=$((Resolve-Path -LiteralPath $bcOut).Path)"; "anim7.mul=$AnimMul"; "anim7.idx=$AnimIdx" }
+    $hash = { param($p) (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash }
+    $stamp = "$EquipStampFormat`nBodyconv.def $(Get-FileStamp $bcSrc)`nmobtypes.txt $(Get-FileStamp $mtSrc)`nrecords $(& $hash $Records)`nanim $(& $hash $AnimMul) $(& $hash $AnimIdx)"
+
+    if ((Test-Path -LiteralPath $stampOut) -and (Test-Path -LiteralPath $bcOut) -and
+        [IO.File]::ReadAllText($stampOut) -ceq $stamp) {
+        & $lines
+        return
+    }
+
+    $used = Get-DefIndexes $bcSrc
+    $mob  = Get-DefIndexes $mtSrc
+    $idxLength = (Get-Item -LiteralPath $AnimIdx).Length
+    $add = @()
+    foreach ($e in $eq) {
+        $n = [int]$e.anim; $s = [int]$e.slot
+        $why = $null
+        if ($s -lt 400 -or $idxLength -lt 12 * (35000 + ($s - 399) * 175)) { $why = "its slot $s is not in sl-anim7-idx.bin" }
+        elseif ($used.Contains($n)) { $why = 'Bodyconv.def already names it' }
+        elseif ($mob.Contains($n)) { $why = 'mobtypes.txt already names it' }
+        if ($why) {
+            Say-Skip "Shattered Legacy art: skipping worn animation ${n}: $why."
+            continue
+        }
+        $add += "$n`t-1`t-1`t-1`t-1`t-1`t$s`t# $($e.name)"
+    }
+
+    if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
+    if (Test-Path -LiteralPath $stampOut) { Remove-Item -LiteralPath $stampOut -Force }
+    if ($add.Count -eq 0) {
+        if (Test-Path -LiteralPath $bcOut) { Remove-Item -LiteralPath $bcOut -Force }
+        return
+    }
+    # The player's file byte for byte, then ours. A line break first if their last line has none.
+    $src = [IO.File]::ReadAllBytes($bcSrc)
+    $tail = ''
+    if ($src.Length -and $src[$src.Length - 1] -ne 10) { $tail = "`r`n" }
+    $tail += "# Shattered Legacy's worn-item animations (app\Build-UoOverrides.ps1): body N is slot S of anim7.mul.`r`n"
+    $tail += (($add | ForEach-Object { "$_`r`n" }) -join '')
+    $b = [Text.Encoding]::ASCII.GetBytes($tail)
+    $all = New-Object byte[] ($src.Length + $b.Length)
+    [Array]::Copy($src, 0, $all, 0, $src.Length)
+    [Array]::Copy($b, 0, $all, $src.Length, $b.Length)
+    [IO.File]::WriteAllBytes($bcOut, $all)
+    [IO.File]::WriteAllText($stampOut, $stamp, (New-Object Text.ASCIIEncoding))
     & $lines
 }
 
@@ -440,8 +556,17 @@ try {
     $listOut = Join-Path $OutDir 'files-override.txt'
     $lines = @()
 
-    try { $lines += @(Build-Art) }
+    $art = @()
+    try { $art = @(Build-Art | Where-Object { $_ }) }
     catch { Say-Skip "Shattered Legacy art could not be prepared ($($_.Exception.Message)). Starting without it." }
+    $lines += $art
+
+    # The worn-item animations only mean something through the tiledata copy (it is what names each Animation
+    # number), so without the art part they are left out too, with no second line.
+    if ($art.Count) {
+        try { $lines += @(Build-EquipAnim) }
+        catch { Say-Skip "Shattered Legacy worn-item art could not be prepared ($($_.Exception.Message)). Starting without it." }
+    }
 
     try { $lines += @(Build-Cliloc) }
     catch { Say-Skip "Shattered Legacy text could not be prepared ($($_.Exception.Message)). Starting without it." }

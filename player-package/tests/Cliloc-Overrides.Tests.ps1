@@ -84,7 +84,10 @@ function New-UoDir([string]$name, [byte[]]$cliloc) {
 function Invoke-BuilderSaying([string]$uo, [string]$out, [string]$ent = $entries, [string]$rec = (Join-Path $work 'no-records.json')) {
     $said = New-Object 'System.Collections.Generic.List[string]'
     $res = $null
-    foreach ($x in @(& $builder -UoDir $uo -Records $rec -Clilocs $ent -OutDir $out 6>&1)) {
+    # cc-P62: the shipped records also name a worn-item animation; its two files are vendor's (Play.ps1's folder
+    # gets them from the package build).
+    $va = Join-Path $pkg 'vendor\shattered-legacy-art'
+    foreach ($x in @(& $builder -UoDir $uo -Records $rec -Clilocs $ent -OutDir $out -AnimMul (Join-Path $va 'sl-anim7.bin') -AnimIdx (Join-Path $va 'sl-anim7-idx.bin') 6>&1)) {
         if ($x -is [Management.Automation.InformationRecord]) { $said.Add("$x") } else { $res = $x }
     }
     return [pscustomobject]@{ Result = $res; Said = ($said -join ' | ') }
@@ -168,6 +171,7 @@ Fact 'AMissingClilocIsOneYellowLineAndTheArtStillShips' {
     $anim = New-Object byte[] ([int](15616 / 8) * (4 + 8 * 68))
     [IO.File]::WriteAllBytes((Join-Path $uo 'tiledata.mul'), $tile)
     [IO.File]::WriteAllBytes((Join-Path $uo 'animdata.mul'), $anim)
+    [IO.File]::WriteAllText((Join-Path $uo 'Bodyconv.def'), "1000`t-1`t300`r`n")    # cc-P62: every EA install has one
     $out = Join-Path $work 'no-cliloc-out'
     $r = Invoke-BuilderSaying $uo $out $entries $records
     Assert-True ($r.Said -match '^\s*Shattered Legacy text could not be prepared \(Cliloc\.enu is not in .*\)\. Starting without it\.$') $r.Said

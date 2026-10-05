@@ -44,6 +44,9 @@ namespace Server
                     RunestoneName, RunestoneFlags, RunestoneWeight, 0, 0, 0, 0, RunestoneHeight
                 );
             }
+
+            // cc-P62: the fox ears and tail's icon, which names its layer and Animation number.
+            Items.KitsuneEarsTail.ApplyTileData();
         }
     }
 }
