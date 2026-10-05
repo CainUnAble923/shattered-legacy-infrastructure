@@ -18,7 +18,8 @@ namespace Server.Mobiles;
 //   * Regular Blacksmith NPCs give and take Smith BODs and pay OSI's rewards, as pinned
 //     (Mobiles/Vendors/NPC/Blacksmith.cs:76-127, BaseVendor.cs:1078-1150). Nothing patches
 //     them; an earlier version of this note said Blacksmith_DisableBODs.patch did, and that
-//     patch does not exist (cc-P32 Part B).
+//     patch does not exist (cc-P32 Part B). Since cc-P55 Part H their request is a Small/Large
+//     choice and a Society member's turn-in there pays the guild's way (ClusterFSmithBODPayout.cs).
 //
 //   * BlacksmithGuildmaster and the Smithing Guild Book give and take them for members.
 //     Generation is cap-based (3 small / 1 large concurrent), no cooldown.
@@ -30,6 +31,11 @@ namespace Server.Mobiles;
 //   * Turn-in gives Smithing Seals + a skill check (no vanilla item rewards).
 //     Skill check range is scaled to material tier + exceptional requirement
 //     so BODs always push skill gain in the right bracket.
+//
+//   * cc-P55 Part H (Chase 2026-10-05): a member's turn-in, here, from the book, or at any regular smith, is banked
+//     (Seals, the default) or cashed out (gold and a chance at OSI's item) by a per-character setting, or asks each time
+//     (ClusterFSmithBODPayout.cs). Regular smiths open a Small/Large choice by the stock rules and pay non-members
+//     OSI's rewards as before.
 //
 // Ore gating hook:
 //   TODO Phase 4C-ore: replace skill-only material check with ore knowledge
@@ -257,25 +263,22 @@ public partial class BlacksmithGuildmaster
             return false;
         }
 
-        // -- Reward
-        var (seals, standing, skillChecks) = ComputeGuildReward(dropped);
+        // -- Reward: bank or cash out by the member's setting (cc-P55 Part H, ClusterFSmithBODPayout). With "ask each
+        // time" the deed goes back to the pack and the choice gump pays it.
+        var result = ClusterFSmithBODPayout.Begin(pm, dropped, this, inHand: true);
+        if (result != SmithTurnInResult.Paid)
+            return false;
 
-        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
-        guild.AddReputation("smithing", standing);
-        guild.AddCurrency("smithing", seals);
+        SayTo(from, "Well done. The Society thanks you for your craft.");
+        return true;
+    }
 
-        pm.SendMessage(0x44,
-            $"Society of Smiths: +{standing} standing, +{seals} Smithing Seal{(seals == 1 ? "" : "s")}.");
-
-        // Skill checks - each is a real gain-eligible roll scaled to BOD difficulty
-        var (skillMin, skillMax) = GetSkillRange(dropped);
+    /// <summary>The turn-in's Blacksmithy checks, each a real gain-eligible roll scaled to the deed (GetSkillRange).</summary>
+    internal static void RollTurnInSkillChecks(PlayerMobile pm, Item deed, int skillChecks)
+    {
+        var (skillMin, skillMax) = GetSkillRange(deed);
         for (var i = 0; i < skillChecks; i++)
             pm.CheckSkill(SkillName.Blacksmith, skillMin, skillMax);
-
-        from.SendSound(0x3D);
-        SayTo(from, "Well done. The Society thanks you for your craft.");
-        dropped.Delete();
-        return true;
     }
 
     // -- Reward calculation ----------------------------------------------------
@@ -457,21 +460,8 @@ public partial class BlacksmithGuildmaster
         if (!complete) return false;
         if (bod is LargeSmithBOD && !CanTurnInLarge(pm)) return false;
 
-        var (seals, standing, skillChecks) = ComputeGuildReward(bod);
-        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
-        guild.AddReputation("smithing", standing);
-        guild.AddCurrency("smithing", seals);
-
-        pm.SendMessage(0x44,
-            $"Society of Smiths: +{standing} standing, +{seals} Smithing Seal{(seals == 1 ? "" : "s")}.");
-
-        var (skillMin, skillMax) = GetSkillRange(bod);
-        for (var i = 0; i < skillChecks; i++)
-            pm.CheckSkill(SkillName.Blacksmith, skillMin, skillMax);
-
-        pm.PlaySound(0x3D);
-        bod.Delete();
-        return true;
+        // cc-P55 Part H: bank or cash out by the member's setting; "ask each time" shows the choice and counts as handled.
+        return ClusterFSmithBODPayout.Begin(pm, bod, null) != SmithTurnInResult.Refused;
     }
 
     public const string LargeSkillRefusal =

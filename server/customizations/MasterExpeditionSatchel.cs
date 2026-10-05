@@ -14,9 +14,10 @@ namespace Server.Items;
 ///   - 1,200-stone content capacity (360 effective after reduction)
 ///   - Accepts: same as T1 (all ore/ingot types, granite)
 ///   - Blessed — not dropped on death
+///   - Smelt Ore, as T2 (cc-P55 Part D)
+///   - Hue: Platinum (cc-P55 Part E; was 0x0B2A, a near-black slot in hues.mul)
 ///
 /// Future hooks (not yet implemented):
-///   - "Smelt All" context menu — smelt all ore in satchel to ingots at a forge
 ///   - Overflow routing to Compact Mule cargo
 ///   - Shared logistics UI with Compact Dispatch Ledger
 ///   - Depository deposit integration
@@ -26,16 +27,17 @@ namespace Server.Items;
 [SerializationGenerator(0, false)]
 public partial class MasterExpeditionSatchel : CompactOreSatchel
 {
-    private const int TierHue = 0x0B2A; // bright gold — matches T5 pickaxe
-
     protected override int TierWeightReductionPct => 70;
     protected override int TierMaxContentWeight    => 1200;
     public    override double DefaultWeight        => 5.0;
 
+    public    override CraftResource TierMetal     => CraftResource.Platinum;
+    protected override int LegacyTierHue           => 0x0B2A;
+    public    override bool CanSmeltOre            => true;
+
     [Constructible]
     public MasterExpeditionSatchel() : base()
     {
-        Hue  = TierHue;
         Name = "Master Expedition Satchel";
     }
 

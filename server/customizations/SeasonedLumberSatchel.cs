@@ -19,7 +19,7 @@ namespace Server.Items;
 ///   - Blessed — not dropped on death
 ///
 /// Tier 2 Feature — Process All Logs:
-///   Right-click context menu "Smelt Metal" option (displayed label; TODO: use 'Process Logs' cliloc).
+///   Right-click context menu "* Magically Chops Logs into Boards *" (cliloc 1158775, cc-P55 Part C).
 ///   Requires the player to have a hatchet or axe equipped (Layer.TwoHanded).
 ///   Converts all logs in the satchel to their matching board types at a 1:1 ratio.
 ///   Boards are placed back into the satchel first; overflow goes to backpack.
@@ -152,11 +152,17 @@ public partial class SeasonedLumberSatchel : ForestersLumberSatchel
 
     // ── Context menu entry ────────────────────────────────────────────────────
 
-    private sealed class ProcessAllLogsEntry : ContextMenuEntry
+    public sealed class ProcessAllLogsEntry : ContextMenuEntry
     {
-        // TODO: replace 6277 ("Smelt Metal") with a 'Process Logs' or 'Chop Wood' cliloc
-        // when the appropriate cliloc number is confirmed for the client build.
-        public ProcessAllLogsEntry(bool enabled) : base(6277) => Enabled = enabled;
+        /// <summary>
+        /// cc-P55 Part C (D74): "* Magically Chops Logs into Boards *" in the client's Cliloc.enu (EA 7.0.117.0 and
+        /// ClassicUO's copy), OSI's own line for its Lumberjack's Satchel, which does what this entry does. It was 6277,
+        /// sent as 3006277, "Salvage Ingots". No stock cliloc reads "Process Logs" or "Make Boards"; 1015101 "Boards" is
+        /// the shorter alternative.
+        /// </summary>
+        public const int Cliloc = 1158775;
+
+        public ProcessAllLogsEntry(bool enabled) : base(Cliloc) => Enabled = enabled;
 
         public override void OnClick(Mobile from, IEntity target)
         {

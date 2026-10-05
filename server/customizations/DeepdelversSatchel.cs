@@ -14,9 +14,10 @@ namespace Server.Items;
 ///   - 1,000-stone content capacity (350 effective after reduction)
 ///   - Accepts: same as T1 (all ore/ingot types, granite)
 ///   - Blessed — not dropped on death
+///   - Smelt Ore, as T2 (cc-P55 Part D)
+///   - Hue: Valorite (cc-P55 Part E; was 0x0455)
 ///
 /// Future hooks (not yet implemented):
-///   - "Smelt All" context menu — smelt all ore in satchel to ingots at a forge
 ///   - Ore fragment recovery for partial ore piles
 ///
 /// Restoration key: compact.satchel_t4
@@ -24,16 +25,17 @@ namespace Server.Items;
 [SerializationGenerator(0, false)]
 public partial class DeepdelversSatchel : CompactOreSatchel
 {
-    private const int TierHue = 0x0455; // deep slate blue — matches T4 pickaxe
-
     protected override int TierWeightReductionPct => 65;
     protected override int TierMaxContentWeight    => 1000;
     public    override double DefaultWeight        => 4.5;
 
+    public    override CraftResource TierMetal     => CraftResource.Valorite;
+    protected override int LegacyTierHue           => 0x0455;
+    public    override bool CanSmeltOre            => true;
+
     [Constructible]
     public DeepdelversSatchel() : base()
     {
-        Hue  = TierHue;
         Name = "Deepdelver's Ore Satchel";
     }
 

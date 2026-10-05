@@ -608,8 +608,8 @@ public sealed class CharacterLeagueData
 /// </summary>
 public sealed class CharacterGuildData
 {
-    // 0: cc-P18. 1: cc-P46 Part B, SmithTeachingOrders.
-    public const int CurrentVersion = 1;
+    // 0: cc-P18. 1: cc-P46 Part B, SmithTeachingOrders. 2: cc-P55 Part H, SmithTurnIn.
+    public const int CurrentVersion = 2;
 
     // -- Membership ---------------------------------------------------------
     public HashSet<string> JoinedGuilds { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -644,12 +644,17 @@ public sealed class CharacterGuildData
     // character's Blacksmithy (ClusterFSmithTeaching). Off: any item the character can make. A v0 record reads as on.
     public bool SmithTeachingOrders { get; set; } = true;
 
+    // -- Society of Smiths: bank or cash out at turn-in (v2, cc-P55 Part H) -
+    // Bank (the default) pays the deed into Smithing Seals; CashOut pays gold and a chance at OSI's item at the counter;
+    // Ask shows the two-button choice at each turn-in (ClusterFSmithBODPayout). A v0 or v1 record reads as Bank.
+    public SmithTurnInMode SmithTurnIn { get; set; } = SmithTurnInMode.Bank;
+
     public bool IsEmpty =>
         JoinedGuilds.Count == 0 && ApprenticeGuilds.Count == 0 &&
         GuildReputation.Count == 0 && GuildCurrency.Count == 0 &&
         ActiveWorkOrders.Count == 0 && CompletedWorkOrders.Count == 0 &&
         SmithCommissions.Count == 0 && SmithLargeCommissions.Count == 0 &&
-        !HasActiveArtificerOrder && SmithTeachingOrders;
+        !HasActiveArtificerOrder && SmithTeachingOrders && SmithTurnIn == SmithTurnInMode.Bank;
 
     public CharacterGuildData() { }
 
@@ -698,6 +703,14 @@ public sealed class CharacterGuildData
 
         if (version >= 1)
             SmithTeachingOrders = r.ReadBool();
+
+        if (version >= 2)
+        {
+            var mode = r.ReadByte();
+            if (mode > (byte)SmithTurnInMode.Ask)
+                throw new System.IO.InvalidDataException($"CharacterGuildData turn-in mode {mode} is not one this build knows.");
+            SmithTurnIn = (SmithTurnInMode)mode;
+        }
     }
 
     public void Serialize(IGenericWriter w)
@@ -732,6 +745,7 @@ public sealed class CharacterGuildData
         w.Write(ActiveArtificerItemSerial);
 
         w.Write(SmithTeachingOrders); // v1
+        w.Write((byte)SmithTurnIn);   // v2
     }
 
     // -- Guild helpers -----------------------------------------------------

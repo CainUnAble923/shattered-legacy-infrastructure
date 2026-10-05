@@ -1,0 +1,33 @@
+--- a/Projects/UOContent/Items/Resources/Blacksmithing/Ore.cs
++++ b/Projects/UOContent/Items/Resources/Blacksmithing/Ore.cs
+@@ -116,10 +116,16 @@
+         }
+     }
+ 
+-    private class InternalTarget : Target
++    // cc-P55 Part B (bug-list D70): internal, so an ore satchel smelts each pile through this forge step
++    // (CompactOreSatchel.SmeltAllOre, ore satchel tiers 2 to 5), and its ingots go back into the satchel.
++    internal class InternalTarget : Target
+     {
+         private readonly BaseOre m_Ore;
+ 
++        internal Container IngotDestination;
++
++        internal void SmeltAt(Mobile from, object forge) => OnTarget(from, forge);
++
+         public InternalTarget(BaseOre ore) : base(2, false, TargetFlags.None) => m_Ore = ore;
+ 
+         private bool IsForge(object obj)
+@@ -234,7 +240,11 @@
+                     ingot.Amount = ingotAmount;
+ 
+                     m_Ore.Consume(toConsume);
+-                    from.AddToBackpack(ingot);
++
++                    if (IngotDestination?.TryDropItem(from, ingot, false) != true)
++                    {
++                        from.AddToBackpack(ingot);
++                    }
+                     // from.PlaySound( 0x57 );
+ 
+                     // You smelt the ore removing the impurities and put the metal in your backpack.

@@ -26,7 +26,8 @@ namespace Server.Items;
 //   T3 - B: Resource efficiency  - familiar metals waste fewer ingots (STUB - implement with T3)
 //   T4 - A: Exceptional quality  - familiar metals get bonus exceptional chance  (STUB - implement with T4)
 //
-// Familiarity is serialized (persistent across restarts) and transferred on upgrade.
+// Familiarity is serialized (persistent across restarts) and transferred on upgrade. Caps: 1,000 a metal (T1) and
+// 2,500 (T2); each successful craft rolls to gain (HammerFamiliarityPace, cc-P55 Part A). Stored values are kept.
 // T3+T3 -> T4 combination: call MergeFamiliarity on the T4 instance with both T3 snapshots.
 //
 // Serialization (manual - no source generator, to support Dictionary<int,int>):
@@ -102,6 +103,36 @@ internal static class HammerMetal
     }
 }
 
+/// <summary>
+/// cc-P55 Part A (bug-list D69, Chase 2026-10-05). Metal Familiarity grows slowly: each successful craft rolls once to
+/// gain, with a chance of 1 - current / cap that never drops below 5%, and a gain is +3 for an exceptional item and +1
+/// otherwise, never past the cap. Before, every craft gave +1 and the caps were 100 (T1) and 250 (T2); they are now ten
+/// times that, and every familiarity bonus still reaches its full value at the cap. The roll reads Utility.RandomDouble,
+/// so a seeded BuiltInRng.Generator replays it.
+/// </summary>
+public static class HammerFamiliarityPace
+{
+    public const double FloorChance     = 0.05;
+    public const int    NormalGain      = 1;
+    public const int    ExceptionalGain = 3;
+
+    /// <summary>The chance one successful craft adds familiarity: 1 - current / cap, never below 5%.</summary>
+    public static double GainChance(int current, int cap) => Math.Max(FloorChance, 1.0 - current / (double)cap);
+
+    public static int GainAmount(bool exceptional) => exceptional ? ExceptionalGain : NormalGain;
+
+    /// <summary>One successful craft's roll: the new familiarity for this metal (unchanged on a miss or at the cap).</summary>
+    public static int Roll(int current, int cap, bool exceptional)
+    {
+        if (current >= cap || Utility.RandomDouble() >= GainChance(current, cap))
+        {
+            return current;
+        }
+
+        return Math.Min(cap, current + GainAmount(exceptional));
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Tier 1 - Hammer of Hephaestus
 // -----------------------------------------------------------------------------
@@ -113,7 +144,7 @@ public partial class HammerOfHephaestus : SmithHammer
     private const int    ExhaustedHue     = 0x0415;
     private const int    MaxUses          = 150;
     private const int    RegenMinutes     = 30;
-    private const int    FamCap           = 100;
+    public  const int    FamCap           = 1000; // per metal (cc-P55 Part A: was 100)
     private const string RegKey           = "legacy.hammer_of_hephaestus";
 
     // T1 Bonus - D: use cost reduction
@@ -269,22 +300,23 @@ public partial class HammerOfHephaestus : SmithHammer
 
     /// <summary>
     /// Called from CraftItem.cs after each successful Blacksmithy craft.
-    /// Records familiarity and applies the T1 use-refund bonus.
+    /// Rolls for familiarity (HammerFamiliarityPace) and applies the T1 use-refund bonus.
     /// </summary>
-    public void RecordFamiliarity(Type resourceType, Mobile from)
+    public void RecordFamiliarity(Type resourceType, Mobile from, bool exceptional = false)
     {
         var key = HammerMetal.InferResource(resourceType);
         if (key < 0) return;
 
         _metalFamiliarity.TryGetValue(key, out var cur);
-        if (cur < FamCap)
+        var next = HammerFamiliarityPace.Roll(cur, FamCap, exceptional);
+        if (next != cur)
         {
-            _metalFamiliarity[key] = cur + 1;
+            _metalFamiliarity[key] = next;
             InvalidateProperties();
         }
 
         // T1 Bonus D - use cost reduction
-        var chance = (Math.Min(cur + 1, FamCap) / (double)FamCap) * MaxRefundChance;
+        var chance = (next / (double)FamCap) * MaxRefundChance;
         if (Utility.RandomDouble() < chance)
         {
             UsesRemaining = Math.Min(MaxUses, UsesRemaining + 1);
@@ -405,11 +437,11 @@ public partial class HammerOfHephaestus : SmithHammer
                     .OrderByDescending(kv => kv.Value)
                     .Select(kv => HammerMetal.All.FirstOrDefault(m => m.Resource == kv.Key).Name)
                     .FirstOrDefault() ?? "Unknown";
-                list.Add($"Metal Familiarity: {totalFam} strikes - most familiar: {topMetal}");
+                list.Add($"Metal Familiarity: {totalFam:N0} (cap {FamCap:N0} a metal) - most familiar: {topMetal}");
             }
             else
             {
-                list.Add("Metal Familiarity: 0 forge strikes this session");
+                list.Add($"Metal Familiarity: 0 (cap {FamCap:N0} a metal)");
             }
 
             list.Add("Bonus: Use refund chance (single-click for details)");
@@ -492,7 +524,7 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
     private const int    ExhaustedHue     = 0x0415;
     private const int    MaxUses          = 400;
     private const int    RegenMinutes     = 15;
-    private const int    FamCap           = 250;
+    public  const int    FamCap           = 2500; // per metal (cc-P55 Part A: was 250)
     private const string RegKey           = "legacy.reinforced_hammer_of_hephaestus";
 
     // T2 Bonus - C: skill bonus via SkillMod
@@ -650,17 +682,18 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
 
     /// <summary>
     /// Called from CraftItem.cs after each successful Blacksmithy craft.
-    /// Records familiarity and refreshes the T2 SkillMod.
+    /// Rolls for familiarity (HammerFamiliarityPace) and refreshes the T2 SkillMod.
     /// </summary>
-    public void RecordFamiliarity(Type resourceType, Mobile from)
+    public void RecordFamiliarity(Type resourceType, Mobile from, bool exceptional = false)
     {
         var key = HammerMetal.InferResource(resourceType);
         if (key < 0) return;
 
         _metalFamiliarity.TryGetValue(key, out var cur);
-        if (cur < FamCap)
+        var next = HammerFamiliarityPace.Roll(cur, FamCap, exceptional);
+        if (next != cur)
         {
-            _metalFamiliarity[key] = cur + 1;
+            _metalFamiliarity[key] = next;
             InvalidateProperties();
             UpdateSkillMod(); // C-bonus: refresh SkillMod after each gain (held only)
         }
@@ -812,9 +845,7 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
         }
 
         var totalFam = _metalFamiliarity.Values.Sum();
-        list.Add(totalFam > 0
-            ? $"Metal Familiarity: {totalFam} strikes - single-click for breakdown"
-            : "Metal Familiarity: 0 forge strikes (single-click for details)");
+        list.Add($"Metal Familiarity: {totalFam:N0} (cap {FamCap:N0} a metal) - single-click for details");
     }
 
     // -- Registry --------------------------------------------------------------
@@ -938,7 +969,7 @@ public class HammerFamiliarityGump : Gump
         bool isT2              = hammer is ReinforcedHammerOfHephaestus;
         var  tier              = isT2 ? "T2" : "T1";
         var  title             = isT2 ? "Reinforced Hammer of Hephaestus" : "Hammer of Hephaestus";
-        var  famCap            = isT2 ? 250 : 100;
+        var  famCap            = isT2 ? ReinforcedHammerOfHephaestus.FamCap : HammerOfHephaestus.FamCap;
         var  maxUses           = isT2 ? 400 : 150;
         var  usesRemaining     = ((IUsesRemaining)hammer).UsesRemaining;
         var  exhausted         = isT2
@@ -977,7 +1008,7 @@ public class HammerFamiliarityGump : Gump
             // T1 - D bonus
             AddLabel(16, 74, 1154, "Active Bonus - Use Refund (Tier 1):");
             AddLabel(16, 90, 999,
-                "Each metal: familiarity/100 * 20% chance to refund a hammer use per craft.");
+                $"Each metal: familiarity/{famCap:N0} * 20% chance to refund a hammer use per craft.");
         }
         else
         {
@@ -989,7 +1020,7 @@ public class HammerFamiliarityGump : Gump
 
             AddLabel(16, 74, 1154, "Active Bonus - Blacksmithy Skill (Tier 2):");
             AddLabel(16, 90, 999,
-                $"Total familiarity: {total}/{max}  |  Current bonus: +{bonus:F1} Blacksmithy (max +2.5)");
+                $"Total familiarity: {total:N0}/{max:N0}  |  Current bonus: +{bonus:F1} Blacksmithy (max +2.5)");
         }
 
         AddImageTiled(10, 108, W - 20, 2, 9304);
@@ -1011,7 +1042,7 @@ public class HammerFamiliarityGump : Gump
             AddLabel(16, y, nameColor, name);
 
             // Count
-            AddLabel(200, y, count >= famCap ? 0x44 : 999, $"{count}/{famCap}");
+            AddLabel(200, y, count >= famCap ? 0x44 : 999, $"{count:N0}/{famCap:N0}");
 
             // Progress bar (10 segments)
             var filled   = (int)Math.Round(count / (double)famCap * 10);
@@ -1137,14 +1168,14 @@ public class HammerRestoreGump : Gump
             var status = hammer2.Exhausted ? "(Exhausted)" : $"{hammer2.UsesRemaining} uses remaining";
             AddLabel(18, y, 999, $"Reinforced Hammer of Hephaestus - T2 - {status}"); y += 16;
             var total = hammer2.GetFamiliaritySnapshot().Values.Sum();
-            AddLabel(18, y, 999, $"Total Metal Familiarity: {total} forge strikes");
+            AddLabel(18, y, 999, $"Total Metal Familiarity: {total:N0} (cap {ReinforcedHammerOfHephaestus.FamCap:N0} a metal)");
         }
         else if (hammer1 != null)
         {
             var status = hammer1.Exhausted ? "(Exhausted)" : $"{hammer1.UsesRemaining} uses remaining";
             AddLabel(18, y, 999, $"Hammer of Hephaestus - T1 - {status}"); y += 16;
             var total = hammer1.GetFamiliaritySnapshot().Values.Sum();
-            AddLabel(18, y, 999, $"Total Metal Familiarity: {total} forge strikes");
+            AddLabel(18, y, 999, $"Total Metal Familiarity: {total:N0} (cap {HammerOfHephaestus.FamCap:N0} a metal)");
         }
 
         y += 10;
@@ -1215,7 +1246,7 @@ public class HammerRestoreGump : Gump
                 $"<BASEFONT COLOR={Clr2(reqGold)}>Gold (pack+bank): {goldAmt:N0}/{UpgradeGoldCost:N0} required</BASEFONT><BR>" +
                 $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, UpgradeMaterials)}</BASEFONT><BR>" +
                 $"<BASEFONT COLOR={Clr2(reqHammer)}>Hammer (non-exhausted) in pack: {(reqHammer ? "Yes" : "No")}</BASEFONT><BR>" +
-                $"<BASEFONT COLOR=#AAAAAA>Familiarity carried over: {fam} forge strikes (capped at T2 max 250/metal)</BASEFONT>",
+                $"<BASEFONT COLOR=#AAAAAA>Familiarity carried over: {fam:N0} (capped at T2 max {ReinforcedHammerOfHephaestus.FamCap:N0}/metal)</BASEFONT>",
                 false, true);
             y += 135;
 
@@ -1341,8 +1372,8 @@ public class HammerRestoreGump : Gump
         srcHammer.Delete();
 
         var upgraded = new ReinforcedHammerOfHephaestus();
-        // Carry familiarity forward - capped at T2 cap (250 per metal)
-        upgraded.LoadFamiliaritySnapshot(famSnapshot, targetCap: 250);
+        // Carry familiarity forward - capped at T2 cap (2,500 per metal since cc-P55)
+        upgraded.LoadFamiliaritySnapshot(famSnapshot, targetCap: ReinforcedHammerOfHephaestus.FamCap);
         pack.DropItem(upgraded);
 
         _pm.SendMessage(0x44,

@@ -15,7 +15,7 @@ namespace Server.Items;
 ///   - Blessed: yes (cannot be looted)
 ///   - Mining skill bonus: +10
 ///   - UsesRemaining: 400 (very durable)
-///   - Hue: 0x8A5C (Dull Copper - matches the upgrade material)
+///   - Hue: Gold, as the Reinforced Ore Satchel (cc-P55 Part E; was 0x8A5C, which carries the 0x8000 flag bit)
 ///
 /// Upgrade requirements (from Miners' Compact Liaison):
 ///   - Compact member
@@ -33,13 +33,17 @@ namespace Server.Items;
 ///   - Registry entry "legacy.jacobs_reinforced_pickaxe" is cleared so the player
 ///     can request restoration (Phase 3 restoration flow).
 ///
-/// Exhausted state: tracked via Hue - functional = 0x8A5C, exhausted = 0x0415.
+/// Exhausted state: tracked via Hue - functional = Gold (cc-P55), exhausted = 0x0415.
 /// Serialization: v0 - no custom fields beyond Pickaxe. Hue is serialized by base Item.
 /// </summary>
 [SerializationGenerator(0, false)]
 public partial class JacobsReinforcedPickaxe : Pickaxe
 {
-    private const int FunctionalHue = 0x8A5C; // Dull Copper
+    // cc-P55 Part E (D72): the hue of the ore satchel of the same tier, read from the metal's own entry. A saved pickaxe in
+    // the old hue takes it on load; the exhausted state (ExhaustedHue, unchanged) is kept as saved.
+    public const CraftResource TierMetal = CraftResource.Gold; // Satchel tier 2
+    private const int LegacyFunctionalHue = 0x8A5C;
+    private static int FunctionalHue => CraftResources.GetHue(TierMetal);
     private const int ExhaustedHue  = 0x0415; // Charcoal - exhausted state
 
     [Constructible]
@@ -63,6 +67,17 @@ public partial class JacobsReinforcedPickaxe : Pickaxe
             // IUsesRemaining.ShowUsesRemaining is not virtual so we set it via interface cast.
             ((IUsesRemaining)this).ShowUsesRemaining = !value;
             InvalidateProperties();
+        }
+    }
+
+    // cc-P55 Part E: a working pickaxe saved in the old hue takes the new one. An exhausted one keeps ExhaustedHue, so it
+    // stays exhausted; any other hue (one staff set) is kept.
+    [AfterDeserialization]
+    private void AfterDeserialization()
+    {
+        if (Hue == LegacyFunctionalHue)
+        {
+            Hue = FunctionalHue;
         }
     }
 

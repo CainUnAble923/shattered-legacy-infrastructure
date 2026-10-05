@@ -16,7 +16,8 @@
 //   A2. Held then to the pack: none. Pack then held: the bonus, once (repeated moves never stack).
 //   A3. A held hammer after serialize and deserialize has the bonus (after the load), one mod; one in the pack has none.
 //   A4. A Guildmaster restore and passive regen out of exhaustion add the bonus while held, not in the pack.
-//   A5. Reinforced only: the familiarity mod follows the same rule (held only, one mod, back after a load).
+//   A5. Reinforced only: the familiarity mod follows the same rule (held only, one mod, back after a load). Its familiarity
+//       is one metal at the cap (2,500 since cc-P55 Part A, 250 before).
 //   B1. The menu entry is there for the owner (held or in the pack) and not for another character; selecting it sends
 //       the familiarity gump.
 
@@ -283,8 +284,8 @@ public class HammerHeldBonusVerification
 
         try
         {
-            // 250 Iron of 4250: +0.1 (GetSkillBonus rounds to a tenth)
-            hammer.LoadFamiliaritySnapshot(new() { [(int)CraftResource.Iron] = 250 }, 250);
+            // 2,500 Iron of 42,500: +0.1 (GetSkillBonus rounds to a tenth). cc-P55 Part A: the cap was 250 (250 of 4,250).
+            hammer.LoadFamiliaritySnapshot(new() { [(int)CraftResource.Iron] = ReinforcedHammerOfHephaestus.FamCap }, ReinforcedHammerOfHephaestus.FamCap);
             pm.Backpack.DropItem(hammer);
             Report("in pack with familiarity", pm, true);
             Assert.Equal(0, Mods(pm, T2Familiarity));

@@ -14,7 +14,7 @@ namespace Server.Items;
 ///   - Blessed: yes
 ///   - Mining skill bonus: +22
 ///   - UsesRemaining: 800
-///   - Hue: 0x0455 (deep slate blue - dangerous/deep-earth identity)
+///   - Hue: Valorite, as the Deepdelver's Ore Satchel (cc-P55 Part E; was 0x0455)
 ///
 /// Special - Deepdelver's Advantage:
 ///   +1 ore per yield when mining in Felucca. Applied in CompactOreSatchelRoutingHook.Give
@@ -30,13 +30,17 @@ namespace Server.Items;
 ///   - 150,000 gold
 ///   - Existing T3 Jacob's Prospector Pickaxe (consumed)
 ///
-/// Exhausted state: tracked via Hue. Functional = 0x0455, exhausted = 0x0415.
+/// Exhausted state: tracked via Hue. Functional = Valorite (cc-P55), exhausted = 0x0415.
 /// Serialization: v0 - no custom fields. Hue serialized by base Item.
 /// </summary>
 [SerializationGenerator(0, false)]
 public partial class JacobsDeepdelverPickaxe : Pickaxe
 {
-    private const int FunctionalHue = 0x0455; // Deep slate blue
+    // cc-P55 Part E (D72): the hue of the ore satchel of the same tier, read from the metal's own entry. A saved pickaxe in
+    // the old hue takes it on load; the exhausted state (ExhaustedHue, unchanged) is kept as saved.
+    public const CraftResource TierMetal = CraftResource.Valorite; // Satchel tier 4
+    private const int LegacyFunctionalHue = 0x0455;
+    private static int FunctionalHue => CraftResources.GetHue(TierMetal);
     private const int ExhaustedHue  = 0x0415; // Charcoal - exhausted state
 
     [Constructible]
@@ -57,6 +61,17 @@ public partial class JacobsDeepdelverPickaxe : Pickaxe
             Hue = value ? ExhaustedHue : FunctionalHue;
             ((IUsesRemaining)this).ShowUsesRemaining = !value;
             InvalidateProperties();
+        }
+    }
+
+    // cc-P55 Part E: a working pickaxe saved in the old hue takes the new one. An exhausted one keeps ExhaustedHue, so it
+    // stays exhausted; any other hue (one staff set) is kept.
+    [AfterDeserialization]
+    private void AfterDeserialization()
+    {
+        if (Hue == LegacyFunctionalHue)
+        {
+            Hue = FunctionalHue;
         }
     }
 

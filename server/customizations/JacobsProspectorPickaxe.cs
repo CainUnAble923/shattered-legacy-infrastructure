@@ -14,7 +14,7 @@ namespace Server.Items;
 ///   - Blessed: yes
 ///   - Mining skill bonus: +18
 ///   - UsesRemaining: 600
-///   - Hue: 0x026C (teal - cartographic/survey identity)
+///   - Hue: Verite, as the Surveyor's Ore Satchel (cc-P55 Part E; was 0x026C)
 ///
 /// Special - Prospector's Insight:
 ///   When a new ore type is discovered for the first time, +3 Mining Vouchers
@@ -29,13 +29,17 @@ namespace Server.Items;
 ///   - 50,000 gold
 ///   - Existing T2 Jacob's Reinforced Pickaxe (consumed)
 ///
-/// Exhausted state: tracked via Hue. Functional = 0x026C, exhausted = 0x0415.
+/// Exhausted state: tracked via Hue. Functional = Verite (cc-P55), exhausted = 0x0415.
 /// Serialization: v0 - no custom fields. Hue serialized by base Item.
 /// </summary>
 [SerializationGenerator(0, false)]
 public partial class JacobsProspectorPickaxe : Pickaxe
 {
-    private const int FunctionalHue = 0x026C; // Teal
+    // cc-P55 Part E (D72): the hue of the ore satchel of the same tier, read from the metal's own entry. A saved pickaxe in
+    // the old hue takes it on load; the exhausted state (ExhaustedHue, unchanged) is kept as saved.
+    public const CraftResource TierMetal = CraftResource.Verite; // Satchel tier 3
+    private const int LegacyFunctionalHue = 0x026C;
+    private static int FunctionalHue => CraftResources.GetHue(TierMetal);
     private const int ExhaustedHue  = 0x0415; // Charcoal - exhausted state
 
     [Constructible]
@@ -56,6 +60,17 @@ public partial class JacobsProspectorPickaxe : Pickaxe
             Hue = value ? ExhaustedHue : FunctionalHue;
             ((IUsesRemaining)this).ShowUsesRemaining = !value;
             InvalidateProperties();
+        }
+    }
+
+    // cc-P55 Part E: a working pickaxe saved in the old hue takes the new one. An exhausted one keeps ExhaustedHue, so it
+    // stays exhausted; any other hue (one staff set) is kept.
+    [AfterDeserialization]
+    private void AfterDeserialization()
+    {
+        if (Hue == LegacyFunctionalHue)
+        {
+            Hue = FunctionalHue;
         }
     }
 

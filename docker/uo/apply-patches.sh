@@ -437,6 +437,15 @@ apply_patch "$PATCHES/PlayerMobile-skill-bonus-above-cap.patch"
 # column (200 pixels wide). Argued in the same notes, Part E; pinned by CraftCategoryPagingVerification (proved red).
 apply_patch "$PATCHES/CraftGump-category-pages.patch"
 
+# cc-P55 Part B (D70, Chase 2026-10-05). The ore satchels' Smelt Ore smelts each pile exactly as the forge does, through
+# the forge's own step rather than a copy of its ratio and skill check: BaseOre's private target becomes internal, gains
+# SmeltAt (its own OnTarget, with the forge the satchel found) and an optional IngotDestination so the ingots go back into
+# the satchel (the backpack when it cannot hold them, as before). Rejected: no patch, driving the player's own target
+# cursor (replaces any pending target, says "Select the forge" for every pile, drops ingots loose in the pack); copying
+# the formula (drifts from the forge). Argued in shard-migration/notes/cc-P55-bug-batch-5.md, Part B; pinned by
+# OreSatchelSmeltVerification (proved red).
+apply_patch "$PATCHES/Ore-smelt-at-forge.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

@@ -14,7 +14,7 @@ namespace Server.Items;
 ///   - Blessed: yes
 ///   - Mining skill bonus: +25
 ///   - UsesRemaining: 1,200
-///   - Hue: 0x0B2A (warm amber/gold - legendary relic identity)
+///   - Hue: Platinum, as the Master Expedition Satchel (cc-P55 Part E; was 0x0B2A)
 ///
 /// Special - Worldbreaker's Edge (combines T3 + T4 + new bonus):
 ///   - Prospector's Insight: new ore discoveries grant +3 Mining Vouchers (T3 carry-over)
@@ -31,13 +31,17 @@ namespace Server.Items;
 ///   - 300,000 gold
 ///   - Existing T4 Jacob's Deepdelver Pickaxe (consumed)
 ///
-/// Exhausted state: tracked via Hue. Functional = 0x0B2A, exhausted = 0x0415.
+/// Exhausted state: tracked via Hue. Functional = Platinum (cc-P55), exhausted = 0x0415.
 /// Serialization: v0 - no custom fields. Hue serialized by base Item.
 /// </summary>
 [SerializationGenerator(0, false)]
 public partial class JacobsWorldbreakerPickaxe : Pickaxe
 {
-    private const int FunctionalHue = 0x0B2A; // Warm amber/gold - legendary
+    // cc-P55 Part E (D72): the hue of the ore satchel of the same tier, read from the metal's own entry. A saved pickaxe in
+    // the old hue takes it on load; the exhausted state (ExhaustedHue, unchanged) is kept as saved.
+    public const CraftResource TierMetal = CraftResource.Platinum; // Satchel tier 5
+    private const int LegacyFunctionalHue = 0x0B2A;
+    private static int FunctionalHue => CraftResources.GetHue(TierMetal);
     private const int ExhaustedHue  = 0x0415; // Charcoal - exhausted state
 
     [Constructible]
@@ -58,6 +62,17 @@ public partial class JacobsWorldbreakerPickaxe : Pickaxe
             Hue = value ? ExhaustedHue : FunctionalHue;
             ((IUsesRemaining)this).ShowUsesRemaining = !value;
             InvalidateProperties();
+        }
+    }
+
+    // cc-P55 Part E: a working pickaxe saved in the old hue takes the new one. An exhausted one keeps ExhaustedHue, so it
+    // stays exhausted; any other hue (one staff set) is kept.
+    [AfterDeserialization]
+    private void AfterDeserialization()
+    {
+        if (Hue == LegacyFunctionalHue)
+        {
+            Hue = FunctionalHue;
         }
     }
 

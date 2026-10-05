@@ -13,6 +13,9 @@
 //   2. Reinforced Hammer of Hephaestus: the same.
 //   3. A Craft X run of 3 with no material picked gives Iron familiarity 3.
 //   4. Picking Dull Copper still counts Dull Copper, not Iron.
+//
+// cc-P55 Part A (D69): every craft here rolls 0.0, so it succeeds, is exceptional and always gains, and an exceptional
+// gain is +3 (it was +1 per craft). The counts below are 3 per craft; the pace itself is HammerFamiliarityPaceVerification.
 
 using System;
 using System.Linq;
@@ -156,7 +159,8 @@ public class HammerFamiliarityVerification
                        $"Iron familiarity {Familiarity(s.Tool, CraftResource.Iron)}");
         Assert.Single(chests);
         Assert.Equal(CraftResource.Iron, chests[0].Resource);
-        Assert.Equal(1, Familiarity(s.Tool, CraftResource.Iron));
+        Assert.Equal(ArmorQuality.Exceptional, chests[0].Quality);
+        Assert.Equal(HammerFamiliarityPace.ExceptionalGain, Familiarity(s.Tool, CraftResource.Iron));
     }
 
     // ---------------------------------------------------------------- 3
@@ -176,7 +180,7 @@ public class HammerFamiliarityVerification
         Assert.NotNull(last);
         _out.WriteLine($"{last.Summary}; Iron familiarity {Familiarity(s.Tool, CraftResource.Iron)}");
         Assert.Equal(3, last.Made);
-        Assert.Equal(3, Familiarity(s.Tool, CraftResource.Iron));
+        Assert.Equal(3 * HammerFamiliarityPace.ExceptionalGain, Familiarity(s.Tool, CraftResource.Iron));
     }
 
     // ---------------------------------------------------------------- 4
@@ -188,7 +192,7 @@ public class HammerFamiliarityVerification
 
         s.Craft(typeof(DullCopperIngot));
 
-        Assert.Equal(1, Familiarity(s.Tool, CraftResource.DullCopper));
+        Assert.Equal(HammerFamiliarityPace.ExceptionalGain, Familiarity(s.Tool, CraftResource.DullCopper));
         Assert.Equal(0, Familiarity(s.Tool, CraftResource.Iron));
     }
 }

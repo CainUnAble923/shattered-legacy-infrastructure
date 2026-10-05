@@ -21,13 +21,14 @@ public class SmithBulkOrderChoiceGump : Gump
     public const int BtnLarge = 2;
     public const int BtnTeaching = 3;
     public const int BtnBack = 4; // cc-P52 Part E (D65): back to the gump that opened this one
+    public const int BtnTurnIn = 5; // cc-P55 Part H: bank, cash out or ask
 
     // The client's check box art: 210 unchecked, 211 checked.
     public const int CheckOff = 210;
     public const int CheckOn = 211;
 
     private const int W = 340;
-    private const int H = 240;
+    private const int H = 290; // cc-P55 Part H: 50 taller for the turn-in setting
 
     private readonly PlayerMobile _pm;
     private readonly Action<PlayerMobile>? _back;
@@ -73,6 +74,12 @@ public class SmithBulkOrderChoiceGump : Gump
         AddLabel(44, 162, 1154, ClusterFSmithTeaching.ToggleLabel);
         AddLabel(44, 182, 0x3B2, ClusterFSmithTeaching.ToggleHint);
 
+        // cc-P55 Part H: the character's turn-in setting; each press moves it to the next of bank, cash out, ask.
+        var mode = ClusterFSmithBODPayout.GetMode(pm);
+        AddButton(18, 206, 4005, 4007, BtnTurnIn);
+        AddLabel(54, 208, 1154, $"{ClusterFSmithBODPayout.ToggleLabel} {ClusterFSmithBODPayout.ModeLabel(mode)}");
+        AddLabel(54, 228, 0x3B2, ClusterFSmithBODPayout.ToggleHint);
+
         if (back != null)
         {
             AddButton(18, H - 34, 4014, 4016, BtnBack);
@@ -98,6 +105,10 @@ public class SmithBulkOrderChoiceGump : Gump
                 break;
             case BtnTeaching:
                 ToggleTeaching(pm);
+                pm.SendGump(new SmithBulkOrderChoiceGump(pm, _back));
+                break;
+            case BtnTurnIn:
+                ClusterFSmithBODPayout.CycleMode(pm);
                 pm.SendGump(new SmithBulkOrderChoiceGump(pm, _back));
                 break;
             case BtnBack:

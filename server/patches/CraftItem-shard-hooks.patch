@@ -196,11 +196,11 @@
                          }
                      }
  
-+                    // ClusterF: Metal Familiarity for Hammer of Hephaestus; a null typeRes is the default (cc-P46 G)
++                    // ClusterF: Metal Familiarity for Hammer of Hephaestus; a null typeRes is the default (cc-P46 G); exceptional counts more (cc-P55 A)
 +                    if (tool is HammerOfHephaestus clusterHoh)
-+                        clusterHoh.RecordFamiliarity(HammerMetal.CraftedResource(typeRes, craftSystem, this), from);
++                        clusterHoh.RecordFamiliarity(HammerMetal.CraftedResource(typeRes, craftSystem, this), from, quality == 2);
 +                    else if (tool is ReinforcedHammerOfHephaestus clusterRhoh)
-+                        clusterRhoh.RecordFamiliarity(HammerMetal.CraftedResource(typeRes, craftSystem, this), from);
++                        clusterRhoh.RecordFamiliarity(HammerMetal.CraftedResource(typeRes, craftSystem, this), from, quality == 2);
 +
                      if (tool.UsesRemaining < 1 && tool.BreakOnDepletion)
                      {

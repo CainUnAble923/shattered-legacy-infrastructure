@@ -11,7 +11,133 @@ using Server.Items;
 using Server.Mobiles;
 using Server.Network;
 
+using T = Server.AchievementTrigger;
+
 namespace Server;
+
+// -- Achievement trigger (cc-P55 Part F, bug-list D73) -------------------------
+//
+// What awards an achievement, as data: the grant code below reads each achievement's kind and threshold from here
+// (GrantCounted, GrantSkills, GrantEvent), and the "(Earned: ...)" line is written from the same object, so the number a
+// player is shown is the number that awarded it. Before cc-P55 every threshold was a literal in the grant code.
+
+public enum TriggerKind
+{
+    FirstLogin,
+    Kills,
+    OldHavenMageKills,
+    KillDrelgor,
+    PlayerKill,
+    UndeadKills,
+    RatmanKills,
+    OrcKills,
+    OldHavenKills,
+    FirstDeath,
+    AnySkill,
+    SkillsAtLevel,
+    SpecificSkill,
+    VisitOldHaven,
+    VisitFacet,
+    VisitAllFacets,
+    JoinLeague,
+    ReadDispatch,
+    GuildReferral,
+    JoinGuild,
+    MineColoredOre,
+    ColoredOreMined,
+    MineInFelucca,
+    OreTypesDiscovered,
+    JacobsPickaxe,
+    SurveyReport,
+    TreasureMap,
+    CraftAny,
+    CraftExceptional,
+    CraftSmithed,
+    CraftTailored,
+    IngotsSmelted,
+    BankGold,
+    NewHavenQuests,
+    AchievementPoints,
+    Renown,
+    Logins,
+}
+
+public sealed class AchievementTrigger
+{
+    public TriggerKind Kind      { get; }
+    /// <summary>The count that awards it (1 for a one-time event; for SkillsAtLevel, the number of skills).</summary>
+    public int         Threshold { get; }
+    /// <summary>The skill level for AnySkill, SkillsAtLevel and SpecificSkill; 0 otherwise.</summary>
+    public int         Level     { get; }
+    public SkillName?  OnSkill   { get; }
+    public string?     FacetName { get; }
+
+    private AchievementTrigger(TriggerKind kind, int threshold, int level, SkillName? skill, string? facet)
+    {
+        Kind      = kind;
+        Threshold = threshold;
+        Level     = level;
+        OnSkill   = skill;
+        FacetName = facet;
+    }
+
+    public static AchievementTrigger Event(TriggerKind kind)           => new(kind, 1, 0, null, null);
+    public static AchievementTrigger Count(TriggerKind kind, int n)    => new(kind, n, 0, null, null);
+    public static AchievementTrigger AnySkill(int level)               => new(TriggerKind.AnySkill, 1, level, null, null);
+    public static AchievementTrigger SkillsAt(int count, int level)    => new(TriggerKind.SkillsAtLevel, count, level, null, null);
+    public static AchievementTrigger Skill(SkillName skill, int level) => new(TriggerKind.SpecificSkill, 1, level, skill, null);
+    public static AchievementTrigger Facet(string facet)               => new(TriggerKind.VisitFacet, 1, 0, null, facet);
+
+    /// <summary>True for the kinds that test a skill level (the ones Part G checks against the 200 cap).</summary>
+    public bool IsSkillLevel => Kind is TriggerKind.AnySkill or TriggerKind.SkillsAtLevel or TriggerKind.SpecificSkill;
+
+    /// <summary>What was done, in plain words, with the trigger's own numbers.</summary>
+    public string Describe()
+    {
+        var n = Threshold;
+        return Kind switch
+        {
+            TriggerKind.FirstLogin         => "logged in for the first time",
+            TriggerKind.Kills              => n == 1 ? "slew your first creature" : $"slew {n:N0} creatures",
+            TriggerKind.OldHavenMageKills  => $"slew {n:N0} Old Haven Mages",
+            TriggerKind.KillDrelgor        => "slew Drelgor the Impaler",
+            TriggerKind.PlayerKill         => "killed another player",
+            TriggerKind.UndeadKills        => $"slew {n:N0} undead",
+            TriggerKind.RatmanKills        => $"slew {n:N0} ratmen",
+            TriggerKind.OrcKills           => $"slew {n:N0} orcs",
+            TriggerKind.OldHavenKills      => $"slew {n:N0} creatures in Old Haven",
+            TriggerKind.FirstDeath         => "died for the first time",
+            TriggerKind.AnySkill           => $"reached {Level:N0} in a skill",
+            TriggerKind.SkillsAtLevel      => $"reached {Level:N0} in {n:N0} skills",
+            TriggerKind.SpecificSkill      => $"reached {Level:N0} in {SkillInfo.Table[(int)OnSkill!.Value].Name}",
+            TriggerKind.VisitOldHaven      => "found the ruins of Old Haven",
+            TriggerKind.VisitFacet         => $"set foot in {FacetName}",
+            TriggerKind.VisitAllFacets     => "visited all five facets",
+            TriggerKind.JoinLeague         => "registered with the League",
+            TriggerKind.ReadDispatch       => "read the League Dispatch",
+            TriggerKind.GuildReferral      => "received a guild referral from the League",
+            TriggerKind.JoinGuild          => "joined a professional guild",
+            TriggerKind.MineColoredOre     => "mined colored ore",
+            TriggerKind.ColoredOreMined    => $"mined {n:N0} colored ore",
+            TriggerKind.MineInFelucca      => "mined colored ore in Felucca",
+            TriggerKind.OreTypesDiscovered => $"discovered {n:N0} ore types",
+            TriggerKind.JacobsPickaxe      => "carried one of Jacob's Pickaxes",
+            TriggerKind.SurveyReport       => "reported an ore discovery to the Survey Archivist",
+            TriggerKind.TreasureMap        => "dug up a treasure map chest",
+            TriggerKind.CraftAny           => "crafted an item",
+            TriggerKind.CraftExceptional   => "crafted an exceptional item",
+            TriggerKind.CraftSmithed       => "smithed an item",
+            TriggerKind.CraftTailored      => "tailored an item",
+            TriggerKind.IngotsSmelted      => $"smelted {n:N0} ingots",
+            TriggerKind.BankGold           => $"held {n:N0} gold in your bank",
+            TriggerKind.NewHavenQuests     => n == 1 ? "finished a New Haven trainer quest" : $"finished {n:N0} New Haven trainer quests",
+            TriggerKind.AchievementPoints  => $"reached {n:N0} Achievement Points",
+            TriggerKind.Renown             => $"reached {n:N0} Renown",
+            TriggerKind.Logins             => $"logged in {n:N0} times",
+            _                              => Kind.ToString()
+        };
+    }
+}
 
 // ── Achievement category ──────────────────────────────────────────────────────
 
@@ -70,17 +196,32 @@ public class AchievementDef
     public Type[]              RewardItems       { get; }
 
     public string?             ProgressCounter   { get; } // null = no progress bar
-    public int                 ProgressThreshold { get; } // target count for progress bar
+
+    /// <summary>Target count for the progress bar: the trigger's own threshold (cc-P55; it was a second copy).</summary>
+    public int                 ProgressThreshold => ProgressCounter != null ? Trigger.Threshold : 0;
+
+    /// <summary>cc-P55 Part F: what awards it; the grant code reads it, and EarnedLine is written from it.</summary>
+    public AchievementTrigger  Trigger           { get; }
+
+    /// <summary>
+    /// cc-P55 Part G (bug-list D75, Chase 2026-10-05): never awarded again, left out of the lists and the progress count.
+    /// Characters who already hold it keep it (and its AP and Renown); their list shows it under "Retired".
+    /// </summary>
+    public bool                Retired           { get; }
+
+    /// <summary>The plain line shown with the flavor text, e.g. "(Earned: slew 100 creatures)".</summary>
+    public string              EarnedLine        => $"(Earned: {Trigger.Describe()})";
 
     public AchievementDef(string key, string title, string desc,
                           AchievementCategory cat, int ap, int renown,
+                          AchievementTrigger trigger,
                           string flavorText        = "",
                           int    itemGumpId        = 0,
                           bool   hidden            = false,
                           string? prerequisiteKey  = null,
                           Type[]? rewardItems      = null,
                           string? progressCounter  = null,
-                          int     progressThreshold = 0)
+                          bool    retired          = false)
     {
         Key               = key;
         Title             = title;
@@ -89,12 +230,13 @@ public class AchievementDef
         Category          = cat;
         AP                = ap;
         Renown            = renown;
+        Trigger           = trigger;
         ItemGumpId        = itemGumpId;
         Hidden            = hidden;
         PrerequisiteKey   = prerequisiteKey;
         RewardItems       = rewardItems ?? Array.Empty<Type>();
         ProgressCounter   = progressCounter;
-        ProgressThreshold = progressThreshold;
+        Retired           = retired;
     }
 }
 
@@ -156,6 +298,7 @@ public static class ClusterFAchievementSystem
             "Still Breathing",
             "Log in to Shattered Legacy for the first time. The System has formally acknowledged your continued existence.",
             AchievementCategory.Exploration, ap: 10, renown: 20,
+            trigger:          T.Event(TriggerKind.FirstLogin),
             flavor:      "The bar was on the floor. You cleared it.",
             itemGumpId:  0x14EC);   // Treasure Map — a world to explore
 
@@ -164,50 +307,56 @@ public static class ClusterFAchievementSystem
             "Oh Look, It's Dead",
             "Slay your first creature. Something has died because of you. The System has logged this.",
             AchievementCategory.Combat, ap: 5, renown: 5,
+            trigger:          T.Count(TriggerKind.Kills, 1),
             flavor:           "You are, by definition, a killer now. Congratulations.",
             itemGumpId:       0x0F5E,   // Broadsword
-            progressCounter:  "kills", progressThreshold: 1);
+            progressCounter:  "kills");
 
         Reg("combat.century",
             "Getting Into It",
             "Slay 100 creatures. You've developed what the System charitably calls a process.",
             AchievementCategory.Combat, ap: 15, renown: 25,
+            trigger:          T.Count(TriggerKind.Kills, 100),
             flavor:           "They had families. Probably.",
             itemGumpId:       0x0F5E,   // Broadsword
             prerequisiteKey:  "combat.first_blood",
-            progressCounter:  "kills", progressThreshold: 100);
+            progressCounter:  "kills");
 
         Reg("combat.thousand",
             "This Is Fine",
             "Slay 1,000 creatures. You have personally ended more lives than most Britannians will ever encounter.",
             AchievementCategory.Combat, ap: 35, renown: 75,
+            trigger:          T.Count(TriggerKind.Kills, 1_000),
             flavor:           "The local monster population has filed a formal grievance.",
             itemGumpId:       0x0F5E,   // Broadsword
             prerequisiteKey:  "combat.century",
-            progressCounter:  "kills", progressThreshold: 1000);
+            progressCounter:  "kills");
 
         Reg("combat.ten_thousand",
             "Extremely Normal Behavior",
             "Slay 10,000 creatures. At this point you are less an adventurer and more a geological event with opinions.",
             AchievementCategory.Combat, ap: 100, renown: 250,
+            trigger:          T.Count(TriggerKind.Kills, 10_000),
             flavor:           "The System is choosing to look the other way.",
             itemGumpId:       0x0F5E,   // Broadsword
             prerequisiteKey:  "combat.thousand",
             hidden:           true,     // secret — players don't see this until earned
-            progressCounter:  "kills", progressThreshold: 10000);
+            progressCounter:  "kills");
 
         Reg("combat.oldhaven_mage",
             "Specific Grudge",
             "Slay 25 Old Haven Mages. Whatever they did to earn this level of focused personal attention, the System declines to investigate.",
             AchievementCategory.Combat, ap: 20, renown: 50,
+            trigger:          T.Count(TriggerKind.OldHavenMageKills, 25),
             flavor:          "You really don't like these guys.",
             itemGumpId:      0x0E3B,    // Spellbook
-            progressCounter: "oldhaven_mage_kills", progressThreshold: 25);
+            progressCounter: "oldhaven_mage_kills");
 
         Reg("combat.drelgor",
             "You Fought a Man Called 'The Impaler' and Won",
             "Slay Drelgor the Impaler. His title was a warning. You did not take the hint. You were correct not to.",
             AchievementCategory.Combat, ap: 25, renown: 100,
+            trigger:          T.Event(TriggerKind.KillDrelgor),
             flavor:     "Bold strategy. Unambiguously effective.",
             itemGumpId: 0x0F49,         // Axe — heavy weapon energy
             hidden:     true);          // secret — finding Drelgor is the discovery
@@ -217,6 +366,7 @@ public static class ClusterFAchievementSystem
             "You've Read the Introduction",
             "Reach 50 in any skill. You now understand approximately one-sixth of something. The journey has, technically, begun.",
             AchievementCategory.Skills, ap: 5, renown: 10,
+            trigger:          T.AnySkill(50),
             flavor:     "A promising start. The bar is currently underground.",
             itemGumpId: 0x0E34);        // Scroll
 
@@ -224,6 +374,7 @@ public static class ClusterFAchievementSystem
             "Dangerously Competent",
             "Reach 100 in any skill. Your incompetence is no longer immediately life-threatening. Progress.",
             AchievementCategory.Skills, ap: 15, renown: 35,
+            trigger:          T.AnySkill(100),
             flavor:          "Most people stop here. You don't seem like most people.",
             itemGumpId:      0x0E34,    // Scroll
             prerequisiteKey: "skills.apprentice");
@@ -232,6 +383,7 @@ public static class ClusterFAchievementSystem
             "Unsettling Dedication",
             "Reach 200 in any skill. You've gone well past the point where normal people stop and develop hobbies. The System respects this, cautiously.",
             AchievementCategory.Skills, ap: 40, renown: 100,
+            trigger:          T.AnySkill(200),
             flavor:          "Whatever you used to do with your free time, this replaced it.",
             itemGumpId:      0x0E34,    // Scroll
             prerequisiteKey: "skills.journeyman");
@@ -240,6 +392,8 @@ public static class ClusterFAchievementSystem
             "What Have You Done With Your Life (Respect)",
             "Reach 300 in any skill. The absolute ceiling has been touched. The System is both deeply impressed and quietly concerned.",
             AchievementCategory.Skills, ap: 100, renown: 300,
+            trigger:          T.AnySkill(300),
+            retired:          true,   // cc-P55 Part G (D75): keyed above the 200 cap
             flavor:          "The ceiling has a handprint on it now. That's yours.",
             itemGumpId:      0x0F26,    // Diamond — only fitting
             prerequisiteKey: "skills.master");
@@ -249,6 +403,7 @@ public static class ClusterFAchievementSystem
             "A Bad Neighborhood",
             "Discover the ruins of Old Haven. Nobody lives there anymore. That is, objectively, information you now possess.",
             AchievementCategory.Discovery, ap: 15, renown: 35,
+            trigger:          T.Event(TriggerKind.VisitOldHaven),
             flavor:     "The real treasure was the foreboding atmosphere.",
             itemGumpId: 0x14EC);        // Treasure Map
 
@@ -257,6 +412,7 @@ public static class ClusterFAchievementSystem
             "Officially a Problem",
             "Register with the League of Extraordinary Citizens. You are now in the database. This cannot be undone.",
             AchievementCategory.League, ap: 10, renown: 25,
+            trigger:          T.Event(TriggerKind.JoinLeague),
             flavor:     "They can't un-know this. Neither can you.",
             itemGumpId: 0x0FF4);        // Brown Book — your file
 
@@ -264,6 +420,7 @@ public static class ClusterFAchievementSystem
             "Minimally Informed",
             "Read the League Dispatch for the first time. You are now among the people who technically know what's going on.",
             AchievementCategory.League, ap: 5, renown: 10,
+            trigger:          T.Event(TriggerKind.ReadDispatch),
             flavor:          "Information received. Presumably retained.",
             itemGumpId:      0x0E34,    // Scroll — the dispatch
             prerequisiteKey: "league.registered_citizen");
@@ -272,6 +429,7 @@ public static class ClusterFAchievementSystem
             "Someone Vouched For You",
             "Receive a guild referral from the League. A professional organization wants to meet you. Please don't make it weird.",
             AchievementCategory.League, ap: 5, renown: 10,
+            trigger:          T.Event(TriggerKind.GuildReferral),
             flavor:          "They seem excited. It would be a shame to disappoint them.",
             itemGumpId:      0x0FF4,    // Brown Book
             prerequisiteKey: "league.registered_citizen");
@@ -280,6 +438,7 @@ public static class ClusterFAchievementSystem
             "You're Someone's Problem Now",
             "Join your first professional guild. They have, in some capacity, accepted responsibility for you.",
             AchievementCategory.League, ap: 15, renown: 50,
+            trigger:          T.Event(TriggerKind.JoinGuild),
             flavor:          "Welcome to the family. There's a dues structure.",
             itemGumpId:      0x1B76,    // Metal Shield — belonging to something
             prerequisiteKey: "league.first_referral");
@@ -291,49 +450,55 @@ public static class ClusterFAchievementSystem
             "Hitting Your Stride",
             "Slay 500 creatures. The monsters have noticed there is a pattern here.",
             AchievementCategory.Combat, ap: 25, renown: 60,
+            trigger:          T.Count(TriggerKind.Kills, 500),
             flavor:          "Consistent. That's one word for it.",
             itemGumpId:      0x0F5E,
             prerequisiteKey: "combat.century",
-            progressCounter: "kills", progressThreshold: 500);
+            progressCounter: "kills");
 
         Reg("combat.five_thousand",
             "You Have a Type (It's Dead)",
             "Slay 5,000 creatures. You have ended more lives than most natural disasters.",
             AchievementCategory.Combat, ap: 70, renown: 175,
+            trigger:          T.Count(TriggerKind.Kills, 5_000),
             flavor:          "The System has no further commentary. Carry on.",
             itemGumpId:      0x0F5E,
             hidden:          true,
             prerequisiteKey: "combat.thousand",
-            progressCounter: "kills", progressThreshold: 5000);
+            progressCounter: "kills");
 
         Reg("combat.undead_hunter",
             "They Were Already Dead Once",
             "Slay 50 undead. You've dispatched the dispatched. Twice. The System has moved on from this word.",
             AchievementCategory.Combat, ap: 15, renown: 35,
+            trigger:          T.Count(TriggerKind.UndeadKills, 50),
             flavor:          "It barely counts. The System counted it anyway.",
             itemGumpId:      0x0F5E,
-            progressCounter: "undead_kills", progressThreshold: 50);
+            progressCounter: "undead_kills");
 
         Reg("combat.rat_problem",
             "Pest Control at Scale",
             "Slay 25 ratmen. Whatever they did, they seem to have done it in large numbers.",
             AchievementCategory.Combat, ap: 10, renown: 20,
+            trigger:          T.Count(TriggerKind.RatmanKills, 25),
             flavor:          "The problem has been addressed. Aggressively.",
             itemGumpId:      0x0F49,
-            progressCounter: "ratman_kills", progressThreshold: 25);
+            progressCounter: "ratman_kills");
 
         Reg("combat.orc_grudge",
             "Made Your Position Clear to the Orcs",
             "Slay 50 orcs. You've formed and acted on very strong opinions about the orcish community.",
             AchievementCategory.Combat, ap: 15, renown: 35,
+            trigger:          T.Count(TriggerKind.OrcKills, 50),
             flavor:          "The orcish community has received your feedback.",
             itemGumpId:      0x0F49,
-            progressCounter: "orc_kills", progressThreshold: 50);
+            progressCounter: "orc_kills");
 
         Reg("combat.first_death",
             "Oh. So THAT'S What Resurrection Feels Like.",
             "Die for the first time. You have now experienced mortality from the inside. You got better.",
             AchievementCategory.Combat, ap: 5, renown: 0,
+            trigger:          T.Event(TriggerKind.FirstDeath),
             flavor:          "The System notes you got better. Barely.",
             itemGumpId:      0x0E34);   // Scroll — resurrection scroll vibe
 
@@ -341,6 +506,7 @@ public static class ClusterFAchievementSystem
             "Morally Complicated",
             "Kill another player. The System is not here to judge. The System has logged it.",
             AchievementCategory.Combat, ap: 15, renown: 50,
+            trigger:          T.Event(TriggerKind.PlayerKill),
             flavor:          "Technically legal in at least one facet.",
             itemGumpId:      0x0F5E,
             hidden:          true);     // Surprise when you do it
@@ -352,6 +518,7 @@ public static class ClusterFAchievementSystem
             "Legal Jurisdiction Acquired",
             "Set foot in Trammel. The safe side. Statistically the permanent address of most Britannians.",
             AchievementCategory.Exploration, ap: 5, renown: 10,
+            trigger:          T.Facet("Trammel"),
             flavor:          "The one where monsters are less likely to specifically seek you out.",
             itemGumpId:      0x14EC);
 
@@ -359,6 +526,7 @@ public static class ClusterFAchievementSystem
             "Bold Move. Noted.",
             "Set foot in Felucca. Some things don't want you here. Others are actively pursuing you.",
             AchievementCategory.Exploration, ap: 10, renown: 25,
+            trigger:          T.Facet("Felucca"),
             flavor:          "The System notes your continued survival. With mild surprise.",
             itemGumpId:      0x14EC,
             prerequisiteKey: "exploration.trammel");
@@ -367,6 +535,7 @@ public static class ClusterFAchievementSystem
             "You Found the Third One",
             "Set foot in Ilshenar. The lost lands that weren't entirely lost, just inconveniently located.",
             AchievementCategory.Exploration, ap: 10, renown: 25,
+            trigger:          T.Facet("Ilshenar"),
             flavor:          "Not everyone finds this place. You did. That's something.",
             itemGumpId:      0x14EC);
 
@@ -374,6 +543,7 @@ public static class ClusterFAchievementSystem
             "The City That Shouldn't Float, Does",
             "Set foot in Malas. A shadow realm that defies physics, zoning laws, and reasonable expectations.",
             AchievementCategory.Exploration, ap: 10, renown: 25,
+            trigger:          T.Facet("Malas"),
             flavor:          "You went to the dark floating city. Voluntarily. Okay.",
             itemGumpId:      0x14EC);
 
@@ -381,6 +551,7 @@ public static class ClusterFAchievementSystem
             "Islands That Time Forgot, Then Found Again",
             "Set foot in Tokuno. The Empire expects composure. Try to provide it.",
             AchievementCategory.Exploration, ap: 10, renown: 25,
+            trigger:          T.Facet("Tokuno"),
             flavor:          "Diplomatic incident: narrowly averted.",
             itemGumpId:      0x14EC);
 
@@ -388,6 +559,7 @@ public static class ClusterFAchievementSystem
             "Frequent Flyer: Unlimited Edition",
             "Visit all five facets of Britannia. You have been everywhere. Possibly too many places.",
             AchievementCategory.Exploration, ap: 50, renown: 100,
+            trigger:          T.Event(TriggerKind.VisitAllFacets),
             flavor:          "The passport is full. The System is out of stamps.",
             itemGumpId:      0x0F26,
             hidden:          true);     // Checked manually — no single prereq
@@ -395,14 +567,17 @@ public static class ClusterFAchievementSystem
         // ── Skill additions ───────────────────────────────────────────────
         // 0x0E86 = Pickaxe   0x13E3 = Smith's Hammer   0x0E3B = Spellbook
 
-        // ── Expanded skill cap milestones (cap = 300) ─────────────────────
+        // -- Expanded skill cap milestones (written for a 300 cap) ---------
         // Tiers: 50 Apprentice | 100 Journeyman | 150 Advanced | 200 Master
         //        250 Paragon   | 300 Grandmaster
+        // cc-P55 Part G (D75, Chase 2026-10-05): the cap is 200 (cc-P53), so every skill achievement keyed above it is
+        // retired: Paragon, Grandmaster, Triple Grandmaster and the three Legends. Holders keep them.
 
         Reg("skills.advanced",
             "Exceeding the Old Normal",
             "Reach 150 in any skill. You are now above what was previously considered the ceiling. Someone else's ceiling.",
             AchievementCategory.Skills, ap: 20, renown: 50,
+            trigger:          T.AnySkill(150),
             flavor:          "150. The old standard GM cap was 100. The System is aware you noticed.",
             itemGumpId:      0x0E34,
             prerequisiteKey: "skills.journeyman");
@@ -411,6 +586,8 @@ public static class ClusterFAchievementSystem
             "This Is No Longer a Normal Amount",
             "Reach 250 in any skill. Three-quarters of the way to the actual ceiling. The System is watching.",
             AchievementCategory.Skills, ap: 60, renown: 150,
+            trigger:          T.AnySkill(250),
+            retired:          true,   // cc-P55 Part G (D75): keyed above the 200 cap
             flavor:          "250. The System has revised its projections upward.",
             itemGumpId:      0x0E34,
             prerequisiteKey: "skills.master");
@@ -421,6 +598,7 @@ public static class ClusterFAchievementSystem
             "Competent in Three Directions",
             "Reach 100 in three different skills. You are no longer a one-trick pony. You are a three-trick pony.",
             AchievementCategory.Skills, ap: 25, renown: 60,
+            trigger:          T.SkillsAt(3, 100),
             flavor:          "Three skills at cap. The System approves of diversification.",
             itemGumpId:      0x0E34,
             prerequisiteKey: "skills.journeyman");
@@ -429,6 +607,7 @@ public static class ClusterFAchievementSystem
             "Suspiciously Well-Rounded",
             "Reach 100 in five different skills. At this point it's a lifestyle choice.",
             AchievementCategory.Skills, ap: 50, renown: 125,
+            trigger:          T.SkillsAt(5, 100),
             flavor:          "Five skills at 100. The System is mildly concerned about your free time.",
             itemGumpId:      0x0F26,
             prerequisiteKey: "skills.triple_journeyman");
@@ -437,6 +616,7 @@ public static class ClusterFAchievementSystem
             "Elite in Three Disciplines",
             "Reach 200 in three different skills. You have pushed three separate ceilings significantly upward.",
             AchievementCategory.Skills, ap: 75, renown: 200,
+            trigger:          T.SkillsAt(3, 200),
             flavor:          "Three skills at 200. This was clearly done on purpose.",
             itemGumpId:      0x0F26,
             hidden:          true,
@@ -446,6 +626,8 @@ public static class ClusterFAchievementSystem
             "The Ceiling Has Three Handprints Now",
             "Reach 300 in three different skills. The System does not have adequate superlatives for this.",
             AchievementCategory.Skills, ap: 150, renown: 500,
+            trigger:          T.SkillsAt(3, 300),
+            retired:          true,   // cc-P55 Part G (D75): keyed above the 200 cap
             flavor:          "Three skills at 300. The System is speechless. That's a first.",
             itemGumpId:      0x0F26,
             hidden:          true,
@@ -457,6 +639,7 @@ public static class ClusterFAchievementSystem
             "The Mountain Yields to You",
             "Reach 200 in Mining. You have gone significantly past what anyone thought was possible with a pickaxe.",
             AchievementCategory.Skills, ap: 60, renown: 150,
+            trigger:          T.Skill(SkillName.Mining, 200),
             flavor:          "200 Mining. The rocks have filed for relocation.",
             itemGumpId:      0x0E86,
             prerequisiteKey: "skills.mining_gm");
@@ -465,6 +648,8 @@ public static class ClusterFAchievementSystem
             "The Earth Has Given Up Entirely",
             "Reach 300 in Mining. Full cap. The ore practically introduces itself.",
             AchievementCategory.Skills, ap: 100, renown: 300,
+            trigger:          T.Skill(SkillName.Mining, 300),
+            retired:          true,   // cc-P55 Part G (D75): keyed above the 200 cap
             flavor:          "300 Mining. You are the mountain now.",
             itemGumpId:      0x0F26,
             hidden:          true,
@@ -476,6 +661,7 @@ public static class ClusterFAchievementSystem
             "The Forge Has No More Objections",
             "Reach 200 in Blacksmithy. Every alloy cooperates. The hammer is an extension of your intent.",
             AchievementCategory.Skills, ap: 60, renown: 150,
+            trigger:          T.Skill(SkillName.Blacksmith, 200),
             flavor:          "200 Blacksmithy. The metal stopped arguing.",
             itemGumpId:      0x13E3,
             prerequisiteKey: "skills.smith_gm");
@@ -484,6 +670,8 @@ public static class ClusterFAchievementSystem
             "The Anvil's Opinions of You Are Reverent",
             "Reach 300 in Blacksmithy. Full cap. The craft has nothing left to teach. You are the craft.",
             AchievementCategory.Skills, ap: 100, renown: 300,
+            trigger:          T.Skill(SkillName.Blacksmith, 300),
+            retired:          true,   // cc-P55 Part G (D75): keyed above the 200 cap
             flavor:          "300 Blacksmithy. The System suggests naming a technique after yourself.",
             itemGumpId:      0x0F26,
             hidden:          true,
@@ -495,6 +683,7 @@ public static class ClusterFAchievementSystem
             "Arcane Comprehension: Unsettling",
             "Reach 200 in Magery. The spellbook is essentially a formality at this point.",
             AchievementCategory.Skills, ap: 60, renown: 150,
+            trigger:          T.Skill(SkillName.Magery, 200),
             flavor:          "200 Magery. Reality is taking your calls now.",
             itemGumpId:      0x0E3B,
             prerequisiteKey: "skills.magery_gm");
@@ -503,6 +692,8 @@ public static class ClusterFAchievementSystem
             "Reality Is Mostly a Suggestion Now",
             "Reach 300 in Magery. Full cap. The distinction between intent and outcome has become very narrow.",
             AchievementCategory.Skills, ap: 100, renown: 300,
+            trigger:          T.Skill(SkillName.Magery, 300),
+            retired:          true,   // cc-P55 Part G (D75): keyed above the 200 cap
             flavor:          "300 Magery. The System recommends not thinking too hard about what this means.",
             itemGumpId:      0x0F26,
             hidden:          true,
@@ -512,6 +703,7 @@ public static class ClusterFAchievementSystem
             "Comfortably Mediocre in Several Things",
             "Reach 50 in five different skills. You've committed to nothing while dabbling in everything. Classic.",
             AchievementCategory.Skills, ap: 15, renown: 25,
+            trigger:          T.SkillsAt(5, 50),
             flavor:          "Five half-skills. That's approximately two and a half whole skills.",
             itemGumpId:      0x0E34,
             prerequisiteKey: "skills.apprentice");
@@ -520,6 +712,7 @@ public static class ClusterFAchievementSystem
             "Embarrassingly Well-Rounded",
             "Reach 50 in ten different skills. At some point this became a character trait.",
             AchievementCategory.Skills, ap: 35, renown: 75,
+            trigger:          T.SkillsAt(10, 50),
             flavor:          "The System has stopped trying to categorize you.",
             itemGumpId:      0x0F26,
             hidden:          true,
@@ -529,6 +722,7 @@ public static class ClusterFAchievementSystem
             "The Earth Has No Secrets From You",
             "Reach Grandmaster in Mining. Every rock type, every vein depth, catalogued.",
             AchievementCategory.Skills, ap: 50, renown: 100,
+            trigger:          T.Skill(SkillName.Mining, 100),
             flavor:          "GM Miner. The ore knows.",
             itemGumpId:      0x0E86);
 
@@ -536,6 +730,7 @@ public static class ClusterFAchievementSystem
             "Hammer Time (Permanent)",
             "Reach Grandmaster in Blacksmithy. Metal bends to your will. Almost entirely.",
             AchievementCategory.Skills, ap: 50, renown: 100,
+            trigger:          T.Skill(SkillName.Blacksmith, 100),
             flavor:          "The anvil has opinions about you. They are positive.",
             itemGumpId:      0x13E3);
 
@@ -543,6 +738,7 @@ public static class ClusterFAchievementSystem
             "Memorized Every Word in Every Spellbook",
             "Reach Grandmaster in Magery. The arcane syllables flow freely now. Perhaps uncomfortably so.",
             AchievementCategory.Skills, ap: 50, renown: 100,
+            trigger:          T.Skill(SkillName.Magery, 100),
             flavor:          "The System recommends care around residential areas during practice.",
             itemGumpId:      0x0E3B);
 
@@ -553,6 +749,7 @@ public static class ClusterFAchievementSystem
             "The Ground Didn't Want That",
             "Mine your first non-iron colored ore. The earth has relinquished something and you took it.",
             AchievementCategory.Mining, ap: 10, renown: 20,
+            trigger:          T.Event(TriggerKind.MineColoredOre),
             flavor:          "Step one of a very long relationship with rocks.",
             itemGumpId:      0x0E86);
 
@@ -560,52 +757,58 @@ public static class ClusterFAchievementSystem
             "Certified Rock Enthusiast",
             "Discover 5 different ore types in your Prospector's Logbook. The rocks respect you now.",
             AchievementCategory.Mining, ap: 20, renown: 50,
+            trigger:          T.Count(TriggerKind.OreTypesDiscovered, 5),
             flavor:          "The logbook is filling up. The rocks are taking notes.",
             itemGumpId:      0x0E86,
-            progressCounter: "ore_types_discovered", progressThreshold: 5);
+            progressCounter: "ore_types_discovered");
 
         Reg("mining.surveyor",
             "The Earth Has a Lot Going On",
             "Discover 10 different ore types. Half of Britannia's underground is now in your notes.",
             AchievementCategory.Mining, ap: 40, renown: 100,
+            trigger:          T.Count(TriggerKind.OreTypesDiscovered, 10),
             flavor:          "Your logbook is getting heavy. This is good.",
             itemGumpId:      0x0E86,
             hidden:          true,
             prerequisiteKey: "mining.prospector",
-            progressCounter: "ore_types_discovered", progressThreshold: 10);
+            progressCounter: "ore_types_discovered");
 
         Reg("mining.master_prospector",
             "Nothing Left to Find. Sort Of.",
             "Discover all 16 ore types. Complete mineral survey of Britannia. The System is genuinely impressed.",
             AchievementCategory.Mining, ap: 100, renown: 300,
+            trigger:          T.Count(TriggerKind.OreTypesDiscovered, 16),
             flavor:          "The survey is complete. The earth has no more surprises for you.",
             itemGumpId:      0x0F26,
             hidden:          true,
             prerequisiteKey: "mining.surveyor",
-            progressCounter: "ore_types_discovered", progressThreshold: 16);
+            progressCounter: "ore_types_discovered");
 
         Reg("mining.ore_1k",
             "Industrial Scale Geology",
             "Mine 1,000 total ore. You have moved a quantifiable portion of Britannia's crust.",
             AchievementCategory.Mining, ap: 25, renown: 50,
+            trigger:          T.Count(TriggerKind.ColoredOreMined, 1_000),
             flavor:          "Structural geologists have filed a complaint.",
             itemGumpId:      0x0E86,
-            progressCounter: "total_ore_mined", progressThreshold: 1000);
+            progressCounter: "total_ore_mined");
 
         Reg("mining.ore_10k",
             "You Are Technically a Geological Event",
             "Mine 10,000 total ore. Mountains have opinions. They are not sharing them.",
             AchievementCategory.Mining, ap: 75, renown: 200,
+            trigger:          T.Count(TriggerKind.ColoredOreMined, 10_000),
             flavor:          "The crust has moved. This is your doing.",
             itemGumpId:      0x0E86,
             hidden:          true,
             prerequisiteKey: "mining.ore_1k",
-            progressCounter: "total_ore_mined", progressThreshold: 10000);
+            progressCounter: "total_ore_mined");
 
         Reg("mining.jacobs_legacy",
             "Jacob's Legacy: Accepted",
             "Equip any of Jacob's Pickaxes. Some tools come with history. This one comes with expectations.",
             AchievementCategory.Mining, ap: 15, renown: 35,
+            trigger:          T.Event(TriggerKind.JacobsPickaxe),
             flavor:          "The pickaxe has a story. You are now part of it.",
             itemGumpId:      0x0E86);
 
@@ -613,6 +816,7 @@ public static class ClusterFAchievementSystem
             "Unsafe Mining Practices (Felucca Division)",
             "Mine ore in Felucca. The resources are better here. So are the consequences.",
             AchievementCategory.Mining, ap: 20, renown: 50,
+            trigger:          T.Event(TriggerKind.MineInFelucca),
             flavor:          "Danger premium: earned.",
             itemGumpId:      0x0E86,
             prerequisiteKey: "exploration.felucca");
@@ -624,6 +828,7 @@ public static class ClusterFAchievementSystem
             "You Made a Thing. It Exists Now.",
             "Craft your first item. Raw material has become an object. Your fingerprints are on it.",
             AchievementCategory.Crafting, ap: 5, renown: 10,
+            trigger:          T.Event(TriggerKind.CraftAny),
             flavor:          "Crafting: begun. It only gets more expensive from here.",
             itemGumpId:      0x13E3);
 
@@ -631,6 +836,7 @@ public static class ClusterFAchievementSystem
             "The System Acknowledges Quality",
             "Craft an exceptional item. Something you made is measurably better than it had to be.",
             AchievementCategory.Crafting, ap: 20, renown: 50,
+            trigger:          T.Event(TriggerKind.CraftExceptional),
             flavor:          "Exceptional. Not aspirationally. Actually.",
             itemGumpId:      0x0F26,
             prerequisiteKey: "crafting.first_item");
@@ -639,14 +845,16 @@ public static class ClusterFAchievementSystem
             "Halfway to a Real Inventory",
             "Smelt 100 ingots. You have converted rock into slightly more useful rock.",
             AchievementCategory.Crafting, ap: 15, renown: 30,
+            trigger:          T.Count(TriggerKind.IngotsSmelted, 100),
             flavor:          "The ore situation has been processed.",
             itemGumpId:      0x1BF2,
-            progressCounter: "ingots_smelted", progressThreshold: 100);
+            progressCounter: "ingots_smelted");
 
         Reg("crafting.blacksmith_first",
             "Hammer Applied to Metal: Successfully",
             "Craft your first smithed item. You are a blacksmith now, informally.",
             AchievementCategory.Crafting, ap: 10, renown: 20,
+            trigger:          T.Event(TriggerKind.CraftSmithed),
             flavor:          "The anvil has been consulted. It has noted your contribution.",
             itemGumpId:      0x13E3,
             prerequisiteKey: "crafting.first_item");
@@ -655,6 +863,7 @@ public static class ClusterFAchievementSystem
             "Sewing: Harder Than It Looks",
             "Craft your first tailored item. Needle, thread, and concentrated effort. Something wearable has resulted.",
             AchievementCategory.Crafting, ap: 10, renown: 20,
+            trigger:          T.Event(TriggerKind.CraftTailored),
             flavor:          "The garment exists. That is the whole achievement.",
             itemGumpId:      0x0F9D,
             prerequisiteKey: "crafting.first_item");
@@ -666,24 +875,27 @@ public static class ClusterFAchievementSystem
             "Ore Bingo: Standard Edition",
             "Mine all 8 standard colored ore types (Dull Copper through Valorite). The classics.",
             AchievementCategory.Collection, ap: 25, renown: 75,
+            trigger:          T.Count(TriggerKind.OreTypesDiscovered, 8),
             flavor:          "Every serious miner has done this. You are now a serious miner.",
             itemGumpId:      0x0E86,
-            progressCounter: "ore_types_discovered", progressThreshold: 8);
+            progressCounter: "ore_types_discovered");
 
         Reg("collection.ore_full",
             "Ore Bingo: Expert Edition",
             "Mine all 16 ore types including rare veins. The complete mineral vocabulary of Shattered Legacy.",
             AchievementCategory.Collection, ap: 75, renown: 200,
+            trigger:          T.Count(TriggerKind.OreTypesDiscovered, 16),
             flavor:          "The logbook is satisfied. The earth has no surprises left.",
             itemGumpId:      0x0F26,
             hidden:          true,
             prerequisiteKey: "collection.ore_standard",
-            progressCounter: "ore_types_discovered", progressThreshold: 16);
+            progressCounter: "ore_types_discovered");
 
         Reg("collection.gold_10k",
             "Double-Digit Thousands Is a Personality",
             "Accumulate 10,000 gold in your bank. Enough to be inconvenient to lose.",
             AchievementCategory.Collection, ap: 10, renown: 20,
+            trigger:          T.Count(TriggerKind.BankGold, 10_000),
             flavor:          "The wealth is real. For now.",
             itemGumpId:      0xEED);
 
@@ -691,6 +903,7 @@ public static class ClusterFAchievementSystem
             "The System Calculates: Comfortable",
             "Accumulate 100,000 gold in your bank. Six figures in Britannian currency. Genuinely impressive.",
             AchievementCategory.Collection, ap: 35, renown: 75,
+            trigger:          T.Count(TriggerKind.BankGold, 100_000),
             flavor:          "Don't lose it.",
             itemGumpId:      0xEED,
             prerequisiteKey: "collection.gold_10k");
@@ -701,6 +914,7 @@ public static class ClusterFAchievementSystem
             "Contributing to Science. Technically.",
             "Report an ore discovery to the Survey Archivist. Your data is now in the official record.",
             AchievementCategory.Discovery, ap: 15, renown: 35,
+            trigger:          T.Event(TriggerKind.SurveyReport),
             flavor:          "The Archivist has filed it. Probably in the right folder.",
             itemGumpId:      0x14EC);
 
@@ -708,6 +922,7 @@ public static class ClusterFAchievementSystem
             "X Marked the Spot. You Found the X.",
             "Decode and excavate a treasure map chest. The treasure was buried. You unburied it.",
             AchievementCategory.Discovery, ap: 20, renown: 50,
+            trigger:          T.Event(TriggerKind.TreasureMap),
             flavor:          "The treasure hunters of old would approve. Briefly, before wanting a cut.",
             itemGumpId:      0x14EC);
 
@@ -717,6 +932,7 @@ public static class ClusterFAchievementSystem
             "The Tutorial Has a Checkbox",
             "Complete your first New Haven trainer quest. The questgivers are broadly satisfied.",
             AchievementCategory.Legacy, ap: 5, renown: 10,
+            trigger:          T.Count(TriggerKind.NewHavenQuests, 1),
             flavor:          "One down. The others are aware you exist now.",
             itemGumpId:      0x0E34);
 
@@ -724,28 +940,31 @@ public static class ClusterFAchievementSystem
             "New Haven: Mostly Done With You",
             "Complete 10 New Haven trainer quests. A double-digit investment in local civic responsibility.",
             AchievementCategory.Legacy, ap: 20, renown: 50,
+            trigger:          T.Count(TriggerKind.NewHavenQuests, 10),
             flavor:          "The trainers are surprised you came back. Ten times.",
             itemGumpId:      0x0E34,
             prerequisiteKey: "legacy.new_haven_1",
-            progressCounter: "new_haven_quests", progressThreshold: 10);
+            progressCounter: "new_haven_quests");
 
         Reg("legacy.new_haven_all",
             "The System Is Running Out of Superlatives",
             "Complete all 38 New Haven trainer quests. Every quest. Every trainer. Completely done.",
             AchievementCategory.Legacy, ap: 75, renown: 200,
+            trigger:          T.Count(TriggerKind.NewHavenQuests, 38),
             flavor:          "Done. Actually completely done. The System chooses to believe you.",
             itemGumpId:      0x0F26,
             hidden:          true,
             prerequisiteKey: "legacy.new_haven_10",
-            progressCounter: "new_haven_quests", progressThreshold: 38);
+            progressCounter: "new_haven_quests");
 
         Reg("legacy.old_haven_local",
             "Old Haven's Least Welcome Regular",
             "Slay 50 creatures in Old Haven's ruins. You are the reason tourism has not recovered.",
             AchievementCategory.Legacy, ap: 20, renown: 50,
+            trigger:          T.Count(TriggerKind.OldHavenKills, 50),
             flavor:          "They know your name there. It is not used fondly.",
             itemGumpId:      0x0F49,
-            progressCounter: "oldhaven_kills", progressThreshold: 50);
+            progressCounter: "oldhaven_kills");
 
         // ── League additions ──────────────────────────────────────────────
 
@@ -753,6 +972,7 @@ public static class ClusterFAchievementSystem
             "The System Is Taking Notes",
             "Accumulate 100 Achievement Points. You are officially on the board.",
             AchievementCategory.League, ap: 10, renown: 25,
+            trigger:          T.Count(TriggerKind.AchievementPoints, 100),
             flavor:          "100 AP. A beginning. Or a warning sign. Possibly both.",
             itemGumpId:      0x0FF4,
             prerequisiteKey: "league.registered_citizen");
@@ -761,6 +981,7 @@ public static class ClusterFAchievementSystem
             "Deeply, Embarrassingly Invested",
             "Accumulate 500 Achievement Points. Half a thousand. The System has taken formal notice.",
             AchievementCategory.League, ap: 25, renown: 75,
+            trigger:          T.Count(TriggerKind.AchievementPoints, 500),
             flavor:          "At this point this is a hobby. An aggressive one.",
             itemGumpId:      0x0FF4,
             hidden:          true,
@@ -770,6 +991,7 @@ public static class ClusterFAchievementSystem
             "People Know Your Name Now",
             "Accumulate 500 Renown. Word travels. About you. The System confirms: this is about you.",
             AchievementCategory.League, ap: 20, renown: 50,
+            trigger:          T.Count(TriggerKind.Renown, 500),
             flavor:          "The reputation precedes you. It arrives walking fast.",
             itemGumpId:      0x1B76,
             prerequisiteKey: "league.guildbound");
@@ -778,35 +1000,87 @@ public static class ClusterFAchievementSystem
             "Still Here. Somehow.",
             "Log in 10 times. You have returned. Multiple times. The System acknowledges your persistence.",
             AchievementCategory.League, ap: 15, renown: 35,
+            trigger:          T.Count(TriggerKind.Logins, 10),
             flavor:          "Ten sessions. The System marks this: 'committed.'",
             itemGumpId:      0x0FF4,
             prerequisiteKey: "league.registered_citizen",
-            progressCounter: "login_count", progressThreshold: 10);
+            progressCounter: "login_count");
 
         Reg("league.known",
             "You Live Here Now. It's Fine.",
             "Log in 50 times. Shattered Legacy is where you live now. The rent is your time.",
             AchievementCategory.League, ap: 40, renown: 100,
+            trigger:          T.Count(TriggerKind.Logins, 50),
             flavor:          "50 logins. You're not a visitor anymore.",
             itemGumpId:      0x0FF4,
             hidden:          true,
             prerequisiteKey: "league.veteran",
-            progressCounter: "login_count", progressThreshold: 50);
+            progressCounter: "login_count");
     }
 
     private static void Reg(string key, string title, string desc,
                              AchievementCategory cat, int ap, int renown,
+                             AchievementTrigger trigger,
                              string  flavor           = "",
                              int     itemGumpId       = 0,
                              bool    hidden           = false,
                              string? prerequisiteKey  = null,
                              Type[]? rewardItems      = null,
                              string? progressCounter  = null,
-                             int     progressThreshold = 0) =>
-        _defs[key] = new AchievementDef(key, title, desc, cat, ap, renown,
+                             bool    retired          = false) =>
+        _defs[key] = new AchievementDef(key, title, desc, cat, ap, renown, trigger,
                                         flavor, itemGumpId, hidden,
                                         prerequisiteKey, rewardItems,
-                                        progressCounter, progressThreshold);
+                                        progressCounter, retired);
+
+    // -- Granting by trigger (cc-P55 Part F) -------------------------------
+
+    /// <summary>The live achievements of one kind, lowest threshold first (so a prerequisite is granted before its next step).</summary>
+    private static IEnumerable<AchievementDef> OfKind(TriggerKind kind) =>
+        _defs.Values.Where(d => d.Trigger.Kind == kind).OrderBy(d => d.Trigger.Threshold).ThenBy(d => d.Trigger.Level);
+
+    /// <summary>Grants every achievement of <paramref name="kind"/> whose threshold <paramref name="value"/> has reached.</summary>
+    private static void GrantCounted(IAccount acct, TriggerKind kind, long value)
+    {
+        foreach (var def in OfKind(kind))
+            if (value >= def.Trigger.Threshold)
+                TryGrant(acct, def.Key);
+    }
+
+    /// <summary>Grants every achievement of a one-time event kind (and, for a facet, only that facet's).</summary>
+    private static void GrantEvent(IAccount acct, TriggerKind kind, string? facet = null)
+    {
+        foreach (var def in OfKind(kind))
+            if (facet == null || string.Equals(def.Trigger.FacetName, facet, StringComparison.OrdinalIgnoreCase))
+                TryGrant(acct, def.Key);
+    }
+
+    /// <summary>The skill achievements, from the character's Base skill (never Value, so item bonuses do not count).</summary>
+    private static void GrantSkills(PlayerMobile pm, IAccount acct)
+    {
+        foreach (var def in _defs.Values.Where(d => d.Trigger.IsSkillLevel).OrderBy(d => d.Trigger.Level).ThenBy(d => d.Trigger.Threshold))
+        {
+            var t = def.Trigger;
+            var earned = t.Kind switch
+            {
+                TriggerKind.AnySkill      => CountSkillsAt(pm, t.Level) >= 1,
+                TriggerKind.SkillsAtLevel => CountSkillsAt(pm, t.Level) >= t.Threshold,
+                TriggerKind.SpecificSkill => pm.Skills[t.OnSkill!.Value].Base >= t.Level,
+                _                         => false
+            };
+
+            if (earned)
+                TryGrant(acct, def.Key);
+        }
+    }
+
+    private static int CountSkillsAt(PlayerMobile pm, int level)
+    {
+        var count = 0;
+        for (var i = 0; i < pm.Skills.Length; i++)
+            if (pm.Skills[i].Base >= level) count++;
+        return count;
+    }
 
     // ── Public API ─────────────────────────────────────────────────────────
 
@@ -819,6 +1093,17 @@ public static class ClusterFAchievementSystem
             : (IReadOnlyCollection<string>)Array.Empty<string>();
 
     /// <summary>
+    /// The "earned / total" the achievements gump shows. cc-P55 Part G: retired achievements count in neither, so a
+    /// character who holds one is not shown as further along than the live list allows.
+    /// </summary>
+    public static (int earned, int total) ProgressCount(string username)
+    {
+        var earned = GetEarnedKeys(username);
+        var live   = _defs.Values.Where(d => !d.Retired).ToList();
+        return (live.Count(d => earned.Contains(d.Key)), live.Count);
+    }
+
+    /// <summary>
     /// Grant an achievement if not already earned. Returns true on new earn.
     /// Enforces prerequisite chain, updates AP and Renown, spawns any reward
     /// items into the player's backpack, and shows the earn popup.
@@ -826,6 +1111,9 @@ public static class ClusterFAchievementSystem
     public static bool TryGrant(IAccount acct, string key)
     {
         if (!_defs.TryGetValue(key, out var def)) return false;
+
+        // cc-P55 Part G: a retired achievement is never awarded again, by any path (staff grants included).
+        if (def.Retired) return false;
 
         // Prerequisite must be earned first.
         if (def.PrerequisiteKey != null && !HasEarned(acct, def.PrerequisiteKey))
@@ -877,27 +1165,18 @@ public static class ClusterFAchievementSystem
         if (pm.Account is not IAccount acct) return;
 
         // ── Kill milestones ────────────────────────────────────────────────
-        var kills = Increment(acct.Username, "kills");
-        TryGrant(acct, "combat.first_blood");
-        if (kills >= 100)    TryGrant(acct, "combat.century");
-        if (kills >= 500)    TryGrant(acct, "combat.five_hundred");
-        if (kills >= 1_000)  TryGrant(acct, "combat.thousand");
-        if (kills >= 5_000)  TryGrant(acct, "combat.five_thousand");
-        if (kills >= 10_000) TryGrant(acct, "combat.ten_thousand");
+        GrantCounted(acct, TriggerKind.Kills, Increment(acct.Username, "kills"));
 
         // ── Named bosses ───────────────────────────────────────────────────
         if (victim is OldHavenMage)
-        {
-            var mageKills = Increment(acct.Username, "oldhaven_mage_kills");
-            if (mageKills >= 25) TryGrant(acct, "combat.oldhaven_mage");
-        }
+            GrantCounted(acct, TriggerKind.OldHavenMageKills, Increment(acct.Username, "oldhaven_mage_kills"));
 
         if (victim is DrelgorTheImpaler)
-            TryGrant(acct, "combat.drelgor");
+            GrantEvent(acct, TriggerKind.KillDrelgor);
 
         // ── PvP ────────────────────────────────────────────────────────────
         if (victim is PlayerMobile)
-            TryGrant(acct, "combat.pvp_first");
+            GrantEvent(acct, TriggerKind.PlayerKill);
 
         // ── Undead ────────────────────────────────────────────────────────
         if (victim is Zombie    || victim is Skeleton      || victim is Ghoul
@@ -905,31 +1184,23 @@ public static class ClusterFAchievementSystem
                     || victim is Lich      || victim is LichLord      || victim is BoneKnight
                     || victim is SkeletalKnight || victim is SkeletalDragon)
         {
-            var u = Increment(acct.Username, "undead_kills");
-            if (u >= 50) TryGrant(acct, "combat.undead_hunter");
+            GrantCounted(acct, TriggerKind.UndeadKills, Increment(acct.Username, "undead_kills"));
         }
 
         // ── Ratmen ────────────────────────────────────────────────────────
         if (victim is Ratman || victim is RatmanArcher || victim is RatmanMage)
-        {
-            var r = Increment(acct.Username, "ratman_kills");
-            if (r >= 25) TryGrant(acct, "combat.rat_problem");
-        }
+            GrantCounted(acct, TriggerKind.RatmanKills, Increment(acct.Username, "ratman_kills"));
 
         // ── Orcs ──────────────────────────────────────────────────────────
         if (victim is Orc     || victim is OrcBrute  || victim is OrcBomber
                    || victim is OrcCaptain || victim is OrcishMage || victim is OrcishLord)
         {
-            var o = Increment(acct.Username, "orc_kills");
-            if (o >= 50) TryGrant(acct, "combat.orc_grudge");
+            GrantCounted(acct, TriggerKind.OrcKills, Increment(acct.Username, "orc_kills"));
         }
 
         // ── Old Haven region (any mob) ─────────────────────────────────────
         if (IsInOldHaven(pm))
-        {
-            var oh = Increment(acct.Username, "oldhaven_kills");
-            if (oh >= 50) TryGrant(acct, "legacy.old_haven_local");
-        }
+            GrantCounted(acct, TriggerKind.OldHavenKills, Increment(acct.Username, "oldhaven_kills"));
     }
 
     private static bool IsInOldHaven(Mobile m) =>
@@ -942,12 +1213,9 @@ public static class ClusterFAchievementSystem
     public static void NotifySkillValue(PlayerMobile pm, double value)
     {
         if (pm.Account is not IAccount acct) return;
-        if (value >= 50)  TryGrant(acct, "skills.apprentice");
-        if (value >= 100) TryGrant(acct, "skills.journeyman");
-        if (value >= 150) TryGrant(acct, "skills.advanced");
-        if (value >= 200) TryGrant(acct, "skills.master");
-        if (value >= 250) TryGrant(acct, "skills.paragon");
-        if (value >= 300) TryGrant(acct, "skills.grandmaster");
+        foreach (var def in OfKind(TriggerKind.AnySkill))
+            if (value >= def.Trigger.Level)
+                TryGrant(acct, def.Key);
     }
 
     /// <summary>
@@ -957,7 +1225,7 @@ public static class ClusterFAchievementSystem
     public static void NotifyOldHavenVisit(PlayerMobile pm)
     {
         if (pm.Account is not IAccount acct) return;
-        TryGrant(acct, "discovery.old_haven");
+        GrantEvent(acct, TriggerKind.VisitOldHaven);
     }
 
     // ── Event hooks ───────────────────────────────────────────────────────
@@ -967,50 +1235,10 @@ public static class ClusterFAchievementSystem
     {
         if (pm.Account is not IAccount acct) return;
 
-        TryGrant(acct, "exploration.citizen");
+        GrantEvent(acct, TriggerKind.FirstLogin);
 
-        // ── Skill achievements ─────────────────────────────────────────────
-        var skillsAt50  = 0;
-        var skillsAt100 = 0;
-        var skillsAt200 = 0;
-        var skillsAt300 = 0;
-        for (var i = 0; i < pm.Skills.Length; i++)
-        {
-            var val = pm.Skills[i].Base;
-            NotifySkillValue(pm, val);
-            if (val >= 50)  skillsAt50++;
-            if (val >= 100) skillsAt100++;
-            if (val >= 200) skillsAt200++;
-            if (val >= 300) skillsAt300++;
-        }
-
-        // Breadth — standard tiers
-        if (skillsAt50 >= 5)  TryGrant(acct, "skills.renaissance_man");
-        if (skillsAt50 >= 10) TryGrant(acct, "skills.polymath");
-
-        // Breadth — expanded cap tiers
-        if (skillsAt100 >= 3) TryGrant(acct, "skills.triple_journeyman");
-        if (skillsAt100 >= 5) TryGrant(acct, "skills.five_journeyman");
-        if (skillsAt200 >= 3) TryGrant(acct, "skills.triple_master");
-        if (skillsAt300 >= 3) TryGrant(acct, "skills.triple_grandmaster");
-
-        // Skill-specific tiers — Mining
-        var miningBase = pm.Skills[SkillName.Mining].Base;
-        if (miningBase >= 100) TryGrant(acct, "skills.mining_gm");
-        if (miningBase >= 200) TryGrant(acct, "skills.mining_elite");
-        if (miningBase >= 300) TryGrant(acct, "skills.mining_legend");
-
-        // Skill-specific tiers — Blacksmithy
-        var smithBase = pm.Skills[SkillName.Blacksmith].Base;
-        if (smithBase >= 100) TryGrant(acct, "skills.smith_gm");
-        if (smithBase >= 200) TryGrant(acct, "skills.smith_elite");
-        if (smithBase >= 300) TryGrant(acct, "skills.smith_legend");
-
-        // Skill-specific tiers — Magery
-        var mageryBase = pm.Skills[SkillName.Magery].Base;
-        if (mageryBase >= 100) TryGrant(acct, "skills.magery_gm");
-        if (mageryBase >= 200) TryGrant(acct, "skills.magery_elite");
-        if (mageryBase >= 300) TryGrant(acct, "skills.magery_legend");
+        // -- Skill achievements (any skill, several skills, one skill), from Base --
+        GrantSkills(pm, acct);
 
         // ── Facet visits ──────────────────────────────────────────────────
         NotifyMapVisit(pm);
@@ -1023,26 +1251,19 @@ public static class ClusterFAchievementSystem
             foreach (var (questType, _) in AchievementsGump.NewHavenQuests)
                 if (ctx.HasDoneQuest(questType)) doneCount++;
             SetCounter(acct.Username, "new_haven_quests", doneCount);
-            if (doneCount >= 1)  TryGrant(acct, "legacy.new_haven_1");
-            if (doneCount >= 10) TryGrant(acct, "legacy.new_haven_10");
-            if (doneCount >= 38) TryGrant(acct, "legacy.new_haven_all");
+            GrantCounted(acct, TriggerKind.NewHavenQuests, doneCount);
         }
 
         // ── Login count ───────────────────────────────────────────────────
-        var logins = Increment(acct.Username, "login_count");
-        if (logins >= 10) TryGrant(acct, "league.veteran");
-        if (logins >= 50) TryGrant(acct, "league.known");
+        GrantCounted(acct, TriggerKind.Logins, Increment(acct.Username, "login_count"));
 
         // ── AP / Renown league thresholds ─────────────────────────────────
         var data = ClusterFAccountPersistence.GetOrCreate(acct);
-        if (data.AchievementPoints >= 100) TryGrant(acct, "league.ap_100");
-        if (data.AchievementPoints >= 500) TryGrant(acct, "league.ap_500");
-        if (data.Renown >= 500)            TryGrant(acct, "league.renown_500");
+        GrantCounted(acct, TriggerKind.AchievementPoints, data.AchievementPoints);
+        GrantCounted(acct, TriggerKind.Renown, data.Renown);
 
         // ── Bank gold ─────────────────────────────────────────────────────
-        var bankGold = pm.BankBox?.GetAmount(typeof(Gold)) ?? 0;
-        if (bankGold >= 10_000)  TryGrant(acct, "collection.gold_10k");
-        if (bankGold >= 100_000) TryGrant(acct, "collection.gold_100k");
+        GrantCounted(acct, TriggerKind.BankGold, pm.BankBox?.GetAmount(typeof(Gold)) ?? 0);
 
         // ── Jacob's Pickaxe ───────────────────────────────────────────────
         CheckJacobsPickaxe(pm);
@@ -1052,7 +1273,7 @@ public static class ClusterFAchievementSystem
     public static void OnPlayerDeath(PlayerMobile pm)
     {
         if (pm.Account is not IAccount acct) return;
-        TryGrant(acct, "combat.first_death");
+        GrantEvent(acct, TriggerKind.FirstDeath);
     }
 
     [OnEvent(nameof(CreatureEvents.CreatureDeathEvent))]
@@ -1105,21 +1326,11 @@ public static class ClusterFAchievementSystem
         var map = pm.Map;
         if (map == null || map == Map.Internal) return;
 
-        if (map == Map.Trammel)  TryGrant(acct, "exploration.trammel");
-        if (map == Map.Felucca)  TryGrant(acct, "exploration.felucca");
-        if (map == Map.Ilshenar) TryGrant(acct, "exploration.ilshenar");
-        if (map == Map.Malas)    TryGrant(acct, "exploration.malas");
-        if (map == Map.Tokuno)   TryGrant(acct, "exploration.tokuno");
+        GrantEvent(acct, TriggerKind.VisitFacet, map.Name);
 
-        // All-facets check — only after all five individually earned
-        if (HasEarned(acct, "exploration.trammel") &&
-            HasEarned(acct, "exploration.felucca")  &&
-            HasEarned(acct, "exploration.ilshenar") &&
-            HasEarned(acct, "exploration.malas")    &&
-            HasEarned(acct, "exploration.tokuno"))
-        {
-            TryGrant(acct, "exploration.all_facets");
-        }
+        // All-facets check: only after every facet achievement is earned
+        if (OfKind(TriggerKind.VisitFacet).All(d => HasEarned(acct, d.Key)))
+            GrantEvent(acct, TriggerKind.VisitAllFacets);
     }
 
     /// <summary>
@@ -1129,13 +1340,10 @@ public static class ClusterFAchievementSystem
     {
         if (pm.Account is not IAccount acct) return;
 
-        TryGrant(acct, "mining.first_vein");
+        GrantEvent(acct, TriggerKind.MineColoredOre);
+        GrantCounted(acct, TriggerKind.ColoredOreMined, IncrementBy(acct.Username, "total_ore_mined", amount));
 
-        var total = IncrementBy(acct.Username, "total_ore_mined", amount);
-        if (total >= 1_000)  TryGrant(acct, "mining.ore_1k");
-        if (total >= 10_000) TryGrant(acct, "mining.ore_10k");
-
-        if (inFelucca) TryGrant(acct, "mining.felucca_vein");
+        if (inFelucca) GrantEvent(acct, TriggerKind.MineInFelucca);
     }
 
     /// <summary>
@@ -1147,37 +1355,29 @@ public static class ClusterFAchievementSystem
         if (pm.Account is not IAccount acct) return;
 
         SetCounter(acct.Username, "ore_types_discovered", discoveredCount);
-
-        if (discoveredCount >= 5)  TryGrant(acct, "mining.prospector");
-        if (discoveredCount >= 8)  TryGrant(acct, "collection.ore_standard");
-        if (discoveredCount >= 10) TryGrant(acct, "mining.surveyor");
-        if (discoveredCount >= 16)
-        {
-            TryGrant(acct, "mining.master_prospector");
-            TryGrant(acct, "collection.ore_full");
-        }
+        GrantCounted(acct, TriggerKind.OreTypesDiscovered, discoveredCount);
     }
 
     /// <summary>Called when a survey report is submitted to the Survey Archivist.</summary>
     public static void NotifySurveyReport(PlayerMobile pm)
     {
         if (pm.Account is not IAccount acct) return;
-        TryGrant(acct, "discovery.survey_report");
+        GrantEvent(acct, TriggerKind.SurveyReport);
     }
 
     /// <summary>Called when a treasure map chest is excavated and opened.</summary>
     public static void NotifyTreasureMap(PlayerMobile pm)
     {
         if (pm.Account is not IAccount acct) return;
-        TryGrant(acct, "discovery.treasure_map");
+        GrantEvent(acct, TriggerKind.TreasureMap);
     }
 
     /// <summary>Called when any item is crafted. Pass exceptional=true for exceptional quality.</summary>
     public static void NotifyCraftedItem(PlayerMobile pm, bool exceptional)
     {
         if (pm.Account is not IAccount acct) return;
-        TryGrant(acct, "crafting.first_item");
-        if (exceptional) TryGrant(acct, "crafting.exceptional");
+        GrantEvent(acct, TriggerKind.CraftAny);
+        if (exceptional) GrantEvent(acct, TriggerKind.CraftExceptional);
     }
 
     /// <summary>Called when a smithed item is crafted.</summary>
@@ -1185,7 +1385,7 @@ public static class ClusterFAchievementSystem
     {
         NotifyCraftedItem(pm, exceptional);
         if (pm.Account is not IAccount acct) return;
-        TryGrant(acct, "crafting.blacksmith_first");
+        GrantEvent(acct, TriggerKind.CraftSmithed);
     }
 
     /// <summary>Called when a tailored item is crafted.</summary>
@@ -1193,15 +1393,14 @@ public static class ClusterFAchievementSystem
     {
         NotifyCraftedItem(pm, exceptional);
         if (pm.Account is not IAccount acct) return;
-        TryGrant(acct, "crafting.tailor_first");
+        GrantEvent(acct, TriggerKind.CraftTailored);
     }
 
     /// <summary>Called when ingots are smelted. Pass the number of ingots produced.</summary>
     public static void NotifyIngotsSmelted(PlayerMobile pm, int amount)
     {
         if (pm.Account is not IAccount acct) return;
-        var total = IncrementBy(acct.Username, "ingots_smelted", amount);
-        if (total >= 100) TryGrant(acct, "crafting.ingots_100");
+        GrantCounted(acct, TriggerKind.IngotsSmelted, IncrementBy(acct.Username, "ingots_smelted", amount));
     }
 
     /// <summary>
@@ -1220,10 +1419,10 @@ public static class ClusterFAchievementSystem
             item is JacobsDeepdelverPickaxe ||
             item is JacobsWorldbreakerPickaxe;
 
-        if (HasJacobs(pm.FindItemOnLayer(Layer.TwoHanded)!)) { TryGrant(acct, "mining.jacobs_legacy"); return; }
+        if (HasJacobs(pm.FindItemOnLayer(Layer.TwoHanded)!)) { GrantEvent(acct, TriggerKind.JacobsPickaxe); return; }
         if (pm.Backpack == null) return;
         foreach (var item in pm.Backpack.Items)
-            if (HasJacobs(item)) { TryGrant(acct, "mining.jacobs_legacy"); return; }
+            if (HasJacobs(item)) { GrantEvent(acct, TriggerKind.JacobsPickaxe); return; }
     }
 
     // ── Notification (earn popup gump) ────────────────────────────────────
@@ -1314,7 +1513,9 @@ public static class ClusterFAchievementSystem
         var ok = TryGrant(acct, key);
         e.Mobile.SendMessage(ok
             ? $"Achievement '{key}' granted to {acct.Username}."
-            : $"Achievement '{key}' was not granted (already earned or unknown key).");
+            : _defs.TryGetValue(key, out var def) && def.Retired
+                ? $"Achievement '{key}' is retired and is never awarded (cc-P55)."
+                : $"Achievement '{key}' was not granted (already earned or unknown key).");
     }
 
     private static void AdminRevoke(CommandEventArgs e)
@@ -1335,6 +1536,7 @@ public static class ClusterFAchievementSystem
         var key = e.GetString(1);
         if (!_defs.TryGetValue(key, out var def)) { e.Mobile.SendMessage($"No achievement with key '{key}'."); return; }
         e.Mobile.SendMessage($"[{def.Category}] {def.Title} — {def.Description}");
+        e.Mobile.SendMessage($"  {def.EarnedLine}{(def.Retired ? " [Retired]" : "")}");
         e.Mobile.SendMessage($"  Rewards: {def.AP} AP, {def.Renown} Renown");
     }
 
@@ -1459,7 +1661,7 @@ public class AchievementEarnedGump : Gump
         Disposable = true;
 
         const int W = 420;
-        const int H = 136;
+        const int H = 156; // cc-P55 Part F: 20 taller for the Earned line
 
         AddBackground(0, 0, W, H, 9270);
         AddAlphaRegion(4, 4, W - 8, H - 8);
@@ -1482,9 +1684,10 @@ public class AchievementEarnedGump : Gump
         var bodyText = string.IsNullOrWhiteSpace(def.FlavorText) ? def.Description : def.FlavorText;
         var html =
             $"<BASEFONT COLOR=#FFD700>{def.Title}</BASEFONT><BR>" +
-            $"<BASEFONT COLOR=#999999>{bodyText}</BASEFONT>";
+            $"<BASEFONT COLOR=#999999>{bodyText}</BASEFONT> " +
+            $"<BASEFONT COLOR=#88AA88>{def.EarnedLine}</BASEFONT>";
 
-        AddHtml(contentX, 30, contentW, 70, html, false, false);
+        AddHtml(contentX, 30, contentW, 90, html, false, false);
 
         // ── Footer ────────────────────────────────────────────────────────
         AddImageTiled(4, H - 36, W - 8, 1, 9304);
@@ -1539,9 +1742,12 @@ public class AchievementsGump : Gump
     private const int PagePrev = 300;
     private const int PageNext = 301;
 
-    // Achievement row layout constants
-    private const int RowH        = 52;
-    private const int RowsPerPage = 6;
+    // Achievement row layout constants (cc-P55 Part F: 64 high, five to a page, so the Earned line wraps inside the row)
+    private const int RowH        = 64;
+    private const int RowsPerPage = 5;
+
+    /// <summary>cc-P55 Part G: the heading over the retired achievements a character already holds.</summary>
+    public const string RetiredHeader = "-- Retired (No Longer Awarded) --------------------";
 
     private static readonly (string Label, AchievementCategory? Cat)[] CategoryTabs =
     [
@@ -1629,8 +1835,7 @@ public class AchievementsGump : Gump
 
         var ap     = data?.AchievementPoints ?? 0;
         var renown = data?.Renown ?? 0;
-        var earned = earnedKeys.Count;
-        var total  = ClusterFAchievementSystem.Definitions.Count;
+        var (earned, total) = ClusterFAchievementSystem.ProgressCount(username);
         AddLabel(GumpWidth - 180, 13, 1154, $"AP: {ap}");
         AddLabel(GumpWidth - 180, 31, 999,  $"Renown: {renown}   {earned}/{total}");
 
@@ -1692,9 +1897,11 @@ public class AchievementsGump : Gump
             .ThenBy(d => d.Title)
             .ToList();
 
-        var earnedList = filtered.Where(d =>  earnedKeys.Contains(d.Key)).ToList();
-        // Hidden achievements that haven't been earned are completely invisible.
-        var lockedList = filtered.Where(d => !earnedKeys.Contains(d.Key) && !d.Hidden).ToList();
+        var earnedList = filtered.Where(d =>  earnedKeys.Contains(d.Key) && !d.Retired).ToList();
+        // Hidden achievements that haven't been earned are completely invisible; so are retired ones (cc-P55 Part G).
+        var lockedList = filtered.Where(d => !earnedKeys.Contains(d.Key) && !d.Hidden && !d.Retired).ToList();
+        // A retired achievement this account already holds is kept, listed last under its own heading.
+        var retiredList = filtered.Where(d => earnedKeys.Contains(d.Key) && d.Retired).ToList();
 
         // Build a flat list of rows; section-header rows + achievement rows interleaved.
         var rows = new List<PageRow>();
@@ -1710,6 +1917,11 @@ public class AchievementsGump : Gump
             {
                 rows.Add(new PageRow("━━ Not Yet (The System Is Watching) ━━━━━━━━━━━━━━", null, false));
                 foreach (var d in lockedList) rows.Add(new PageRow(null, d, false));
+            }
+            if (retiredList.Count > 0)
+            {
+                rows.Add(new PageRow(RetiredHeader, null, false));
+                foreach (var d in retiredList) rows.Add(new PageRow(null, d, true));
             }
         }
 
@@ -1786,6 +1998,9 @@ public class AchievementsGump : Gump
                 sb.Append($"<BASEFONT COLOR=#4A7070>\"{def.FlavorText}\"</BASEFONT>");
             else
                 sb.Append($"<BASEFONT COLOR=#888888>{def.Description}</BASEFONT>");
+
+            // cc-P55 Part F: what earned it, in plain words, from the achievement's own trigger.
+            sb.Append($" <BASEFONT COLOR=#6A8A6A>{def.EarnedLine}</BASEFONT>");
 
             if (def.RewardItems.Length > 0)
                 sb.Append($"<BASEFONT COLOR=#558855> (+{def.RewardItems.Length} item)</BASEFONT>");

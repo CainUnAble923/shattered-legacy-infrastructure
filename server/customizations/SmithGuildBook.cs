@@ -130,6 +130,7 @@ public class SmithGuildBookGump : Gump
     private const int BtnRequestSmallBOD = 5;
     private const int BtnRequestLargeBOD = 7;
     public const int BtnTeachingOrders = 8; // cc-P46 Part B
+    public const int BtnTurnInMode = 9;     // cc-P55 Part H
 
     // Small commission actions
     private const int BtnReqComm        = 3;
@@ -345,6 +346,13 @@ public class SmithGuildBookGump : Gump
             GumpButtonType.Reply, 0);
         AddLabel(44, y, 999, ClusterFSmithTeaching.ToggleLabel);
         AddLabel(44, y + 20, 0x3B2, ClusterFSmithTeaching.ToggleHint);
+
+        // cc-P55 Part H: the character's turn-in setting, the same one the Bulk Order choice gump shows.
+        y += 46;
+        AddButton(18, y, 4005, 4007, BtnTurnInMode, GumpButtonType.Reply, 0);
+        AddLabel(54, y + 2, 999,
+            $"{ClusterFSmithBODPayout.ToggleLabel} {ClusterFSmithBODPayout.ModeLabel(ClusterFSmithBODPayout.GetMode(_pm))}");
+        AddLabel(54, y + 22, 0x3B2, ClusterFSmithBODPayout.ToggleHint);
     }
 
     // -- Commission page -------------------------------------------------------
@@ -533,6 +541,11 @@ public class SmithGuildBookGump : Gump
 
             case BtnTeachingOrders:
                 SmithBulkOrderChoiceGump.ToggleTeaching(pm);
+                pm.SendGump(new SmithGuildBookGump(pm, _book, 0));
+                return;
+
+            case BtnTurnInMode:
+                ClusterFSmithBODPayout.CycleMode(pm);
                 pm.SendGump(new SmithGuildBookGump(pm, _book, 0));
                 return;
 
