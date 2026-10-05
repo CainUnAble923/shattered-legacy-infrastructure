@@ -18,8 +18,9 @@
 //   3. At 30, 70, 100, 120 and 130, every commission (small: its item; large: its set) teaches, or is a fallback.
 //   4. Regular smiths are unchanged: the one-argument SmallSmithBOD.CreateRandomFor still gives a Grandmaster items
 //      that teach nothing.
-//   5. The turn-in numbers: Seals are exactly three times the old count and standing twice the old, for the five
-//      representative orders in the notes.
+//   5. The turn-in numbers: standing twice the old, for the five representative orders in the notes. Seals were three
+//      times the old count until cc-P56 Part A (D77), which made the bank pay at least OSI's value for the deed; the
+//      ranges below are the cc-P56 formula's (shard-migration notes/cc-P56-smith-economy-and-labels.md, Part A).
 
 using System;
 using System.Collections.Generic;
@@ -288,17 +289,17 @@ public class SmithOrdersTeachVerification
 
     public static IEnumerable<object[]> Representative() =>
     [
-        // name, deed factory, old Seals low and high (divisor 400, floor 1), old standing
-        ["Iron small regular 10", (Func<Item>)(() => new SmallSmithBOD(0, 10, typeof(RingmailChest), 1025008, 0x13EC, false, BulkMaterialType.None)), 1, 1, 25],
-        ["Iron small exceptional 20", (Func<Item>)(() => new SmallSmithBOD(0, 20, typeof(RingmailChest), 1025008, 0x13EC, true, BulkMaterialType.None)), 1, 1, 60],
-        ["Valorite small exceptional 20", (Func<Item>)(() => new SmallSmithBOD(0, 20, typeof(PlateChest), 1025141, 0x1415, true, BulkMaterialType.Valorite)), 27, 33, 180],
-        ["Large Valorite exceptional 20 (plate)", (Func<Item>)(() => LargePlate(BulkMaterialType.Valorite)), 450, 556, 310],
-        ["Large Celestial exceptional 20 (plate)", (Func<Item>)(() => LargePlate(BulkMaterialType.Celestial)), 2250, 2778, 470],
+        // name, deed factory, Seals low and high (cc-P56: gold part over the 90%-111% roll plus OSI's item), old standing
+        ["Iron small regular 10", (Func<Item>)(() => new SmallSmithBOD(0, 10, typeof(RingmailChest), 1025008, 0x13EC, false, BulkMaterialType.None)), 52, 52, 25],
+        ["Iron small exceptional 20", (Func<Item>)(() => new SmallSmithBOD(0, 20, typeof(RingmailChest), 1025008, 0x13EC, true, BulkMaterialType.None)), 305, 306, 60],
+        ["Valorite small exceptional 20", (Func<Item>)(() => new SmallSmithBOD(0, 20, typeof(PlateChest), 1025141, 0x1415, true, BulkMaterialType.Valorite)), 252, 275, 180],
+        ["Large Valorite exceptional 20 (plate)", (Func<Item>)(() => LargePlate(BulkMaterialType.Valorite)), 16_688, 17_084, 310],
+        ["Large Celestial exceptional 20 (plate)", (Func<Item>)(() => LargePlate(BulkMaterialType.Celestial)), 23_438, 25_417, 470],
     ];
 
     [Theory]
     [MemberData(nameof(Representative))]
-    public void TurnInPaysThreeTimesTheSealsAndTwiceTheStanding(string name, Func<Item> make, int oldLow, int oldHigh, int oldStanding)
+    public void TurnInPaysTheBankSealsAndTwiceTheStanding(string name, Func<Item> make, int low, int high, int oldStanding)
     {
         var seen = new SortedSet<int>();
         for (var i = 0; i < 40; i++)
@@ -308,8 +309,7 @@ public class SmithOrdersTeachVerification
             deed.Delete();
 
             Assert.Equal(oldStanding * 2, standing);
-            Assert.Equal(0, seals % 3);
-            Assert.InRange(seals, oldLow * 3, oldHigh * 3);
+            Assert.InRange(seals, low, high);
             seen.Add(seals);
         }
 

@@ -444,6 +444,10 @@ apply_patch "$PATCHES/CraftGump-category-pages.patch"
 # cursor (replaces any pending target, says "Select the forge" for every pile, drops ingots loose in the pack); copying
 # the formula (drifts from the forge). Argued in shard-migration/notes/cc-P55-bug-batch-5.md, Part B; pinned by
 # OreSatchelSmeltVerification (proved red).
+# cc-P56 Part B (D78, Chase 2026-10-05): a third hunk in the same forge step gives each post-Valorite ore its metal's
+# tier as smelt difficulty (ClusterFMetalTiers, Platinum 112.5 .. Celestial 200; pinned gives every unlisted ore 50),
+# so the satchel inherits it with no copy. Rejected: a second patch on the same file (two seams for one method), a
+# satchel-only check (the forge would still smelt Celestial at 50). Pinned by OreSmeltDifficultyVerification.
 apply_patch "$PATCHES/Ore-smelt-at-forge.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to

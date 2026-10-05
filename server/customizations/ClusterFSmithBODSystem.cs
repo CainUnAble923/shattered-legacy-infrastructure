@@ -282,44 +282,97 @@ public partial class BlacksmithGuildmaster
     }
 
     // -- Reward calculation ----------------------------------------------------
-    // Seals are derived from the vanilla gold value (SmithRewardCalculator.ComputeGold)
-    // divided by SealDivisor.  This naturally captures quantity (10/15/20), material
-    // tier, exceptional flag, AND item type (ringmail vs platemail vs weapons) without
-    // a hand-coded table.  The +/-10 % randomisation in ComputeGold also gives slight
-    // turn-in variation so the same BOD doesn't always yield the exact same seals.
+    // cc-P56 Part A (bug-list D77, Chase 2026-10-05): banking a deed is worth at least what OSI pays a non-member for
+    // the same deed at a regular smith (pinned's BaseBOD.GetRewards: gold and one item from the reward ladder), valued in
+    // Seals: the gold at the guild's rate (SealMultiplier Seals per SealDivisor gold) and the item at its Seal catalog
+    // price. So the bank pays two parts:
     //
-    // Post-Valorite materials are not in the vanilla gold table so we compute a
-    // Valorite-equivalent gold value and scale it by PostValoriteMultiplier.
+    //   1. Gold part: the deed's gold value (pinned's SmithRewardCalculator.ComputeGold, which rolls 90% to 111% of its
+    //      table) times BankGoldShare, at the guild's rate, rounded up, floor 1. BankGoldShare 1.25 covers OSI's whole
+    //      roll: the lowest bank roll (90% x 1.25 = 112.5%) is above OSI's highest (111.1%), so no roll on either side
+    //      lets a non-member out-earn a member.
+    //   2. Item part: OsiItemSeals, the best item OSI's ladder gives for the deed's points, at its catalog price.
     //
-    // cc-P42 Part G2 (Chase, 2026-10-03): about 3x Seals and 2x standing across the board, still no gold. Seals are
-    // the divisor-400 count (floor 1) times SealMultiplier, so every order pays exactly three times what it did and
-    // exceptional and large stay worth more; standing is the old table times StandingMultiplier.
+    // Post-Valorite deeds: pinned's tables stop at Valorite, so OSI pays a non-member iron's gold and an item with no
+    // material points. The gold part is the larger of that and the Valorite-equivalent gold times PostValoriteMultiplier
+    // (the multipliers and what they multiply are unchanged since cc-P42); the item part is the larger of the deed's own
+    // rung and the same deed's rung in Valorite. The item part is not multiplied: OSI's ladder has nothing above a
+    // Valorite runic, and multiplying it would make one large Celestial exceptional deed worth five Valorite runics
+    // (cc-P46 Part E raised the runic prices against exactly that).
     //
-    // Representative values, computed from the formulas below and pinned's gold table (Rewards.cs m_GoldTable,
-    // ComputeGold's gold * 9 / 10 to gold * 10 / 9), shown as the range that randomisation gives (Seals, standing):
-    //   Iron small regular   qty10            ->    3 Seals,      50 standing   (was 1, 25)
-    //   Iron small exc       qty20            ->    3 Seals,     120 standing   (was 1, 60)
-    //   DullCopper small exc qty20            ->    6 Seals,     150 standing   (was 2, 75)
-    //   Valorite small reg   qty20            ->   27-33 Seals,  240 standing   (was 9-11, 120)
-    //   Valorite small exc   qty20            ->   81-99 Seals,  360 standing   (was 27-33, 180)
-    //   Platinum small exc   qty20            ->  120-150 Seals, 390 standing   (was 40-50, 195)
-    //   Celestial small exc  qty20            ->  405-501 Seals, 600 standing   (was 135-167, 300)
-    //   Large Valorite exc   qty20 (plate)    -> 1350-1668 Seals, 620 standing  (was 450-556, 310)
-    //   Large Platinum exc   qty20 (plate)    -> 2025-2499 Seals, 660 standing  (was 675-833, 330)
-    //   Large Celestial exc  qty20 (plate)    -> 6750-8334 Seals, 940 standing  (was 2250-2778, 470)
-    // The table and how it was computed: shard-migration notes/cc-P42-defect-batch-3.md, Part G2.
+    // Representative values at the middle of the gold roll (Seals; before cc-P56 in brackets; OSI = what a non-member
+    // gets, valued the same way):
+    //   Iron small regular   qty10          ->     52 (3)       OSI 51
+    //   Iron small exc       qty20          ->    305 (3)       OSI 304
+    //   Valorite small exc   qty20          ->    263 (90)      OSI 240
+    //   Large Valorite exc   qty20 (plate)  -> 16,875 (1,500)   OSI 16,500
+    //   Platinum small exc   qty20          ->    469 (135)     OSI 304
+    //   Large Platinum exc   qty20 (plate)  -> 17,813 (2,250)   OSI 700
+    //   Large Celestial exc  qty20 (plate)  -> 24,375 (7,500)   OSI 700
+    // Every smith deed shape (918) and the table: shard-migration notes/cc-P56-smith-economy-and-labels.md, Part A.
 
     private const int SealDivisor = 400;
     internal const int SealMultiplier = 3;
     internal const int StandingMultiplier = 2;
 
-    /// <summary>Seals for an order worth <paramref name="gold"/> (its gold equivalent): floor 1, times SealMultiplier.</summary>
-    internal static int SealsForGold(int gold) =>
-        Math.Max(1, (int)Math.Round(gold / (double)SealDivisor)) * SealMultiplier;
+    /// <summary>cc-P56 Part A: the bank's gold part pays this share of the deed's gold value (covers OSI's 90%-111% roll).</summary>
+    internal const double BankGoldShare = 1.25;
 
-    // Returns the post-Valorite multiplier over a Valorite-equivalent gold value.
-    // Multipliers produce a smooth curve: Valorite large exc ~ 500 seals,
-    // Celestial large exc ~ 2 500 seals.
+    /// <summary>The bank's gold part for an order worth <paramref name="gold"/>: BankGoldShare of it at the guild's rate, rounded up, floor 1.</summary>
+    internal static int SealsForGold(int gold) =>
+        Math.Max(1, (int)Math.Ceiling(gold * BankGoldShare * SealMultiplier / SealDivisor));
+
+    // OSI's smith reward ladder (pinned Rewards.cs, SmithRewardCalculator's Groups: the points each rung needs), each rung
+    // valued at the best item it can give, at the Seal catalog's price (SmithSealCatalogGump). An item the catalog does not
+    // sell (mining gloves +1, the colored anvil, the 105 to 120 power scrolls) is valued at the midpoint of the best priced
+    // item on the nearest priced rung below and above its own, as cc-P55 Part H valued the 115 scroll. Checked against the
+    // live ladder and catalog by SmithBankValueVerification, so a price change not carried here fails the build.
+    private static readonly (int Points, int Seals)[] OsiRungSeals =
+    {
+        (0, 50),       // Sturdy Shovel
+        (25, 50),      // Sturdy Pickaxe
+        (50, 175),     // shovel, pickaxe, mining gloves +1 (unpriced: 50 and 300)
+        (200, 300),    // Gargoyle's Pickaxe, Prospector's Tool, mining gloves +3
+        (400, 200),    // Gargoyle's Pickaxe, Prospector's Tool, Powder of Temperament
+        (450, 600),    // Powder of Temperament, mining gloves +5
+        (500, 200),    // Dull Copper runic
+        (550, 350),    // Dull Copper or Shadow Iron runic
+        (600, 350),    // Shadow Iron runic
+        (625, 450),    // Shadow Iron runic, 105 scroll, colored anvil (unpriced: 350 and 550)
+        (650, 550),    // Copper runic
+        (675, 675),    // colored anvil, 110 scroll (unpriced: 550 and 800), Copper runic
+        (700, 800),    // Bronze runic
+        (750, 100),    // Ancient Smithy Hammer +10
+        (800, 150),    // 115 scroll (unpriced: 100 and 200)
+        (850, 200),    // Ancient Smithy Hammer +15
+        (900, 1_900),  // 120 scroll (unpriced: 200 and 3,600)
+        (950, 3_600),  // Gold runic
+        (1000, 500),   // Ancient Smithy Hammer +30
+        (1050, 5_400), // Agapite runic
+        (1100, 1_000), // Ancient Smithy Hammer +60
+        (1150, 9_000), // Verite runic
+        (1200, 15_000) // Valorite runic
+    };
+
+    /// <summary>The ladder rungs the bank's item part reads, lowest first. Read only: for the facts.</summary>
+    internal static (int Points, int Seals)[] OsiRungs => OsiRungSeals;
+
+    /// <summary>The best item OSI's ladder gives for <paramref name="points"/>, in Seals (pinned's LookupRewards: the highest rung reached).</summary>
+    internal static int OsiItemSeals(int points)
+    {
+        var seals = OsiRungSeals[0].Seals;
+        foreach (var (rung, value) in OsiRungSeals)
+        {
+            if (points >= rung)
+            {
+                seals = value;
+            }
+        }
+
+        return seals;
+    }
+
+    // Returns the post-Valorite multiplier over a Valorite-equivalent gold value (cc-P42; Chase 2026-10-04 kept them).
     private static double PostValoriteMultiplier(BulkMaterialType mat) => mat switch
     {
         BulkMaterialType.Platinum   => 1.5,
@@ -335,9 +388,10 @@ public partial class BlacksmithGuildmaster
 
     private static bool IsPostValorite(BulkMaterialType mat) => (int)mat >= 12;
 
-    // For post-Valorite BODs, ComputeGold() returns iron-level gold because the vanilla
-    // gold table only covers None-Valorite (indices 0-8).  We instead compute the
-    // Valorite-equivalent gold and scale it by the tier multiplier.
+    // For post-Valorite BODs, ComputeGold() returns iron-level gold because the vanilla gold table only covers
+    // None-Valorite (indices 0-8). The gold part is the larger of that (what OSI pays) and the Valorite-equivalent gold
+    // scaled by the tier multiplier. cc-P56: the larger, because pinned's table pays no gold for a large weapon order in
+    // any colored metal (Rewards.cs, the 2-, 5- and 6-part rows) but iron's gold for a metal it does not know.
     internal static int GoldEquivalentForSeals(SmallSmithBOD small)
     {
         if (!IsPostValorite(small.Material))
@@ -345,7 +399,7 @@ public partial class BlacksmithGuildmaster
 
         var valGold = SmithRewardCalculator.Instance.ComputeGold(
             small.AmountMax, small.RequireExceptional, BulkMaterialType.Valorite, 1, small.Type);
-        return (int)(valGold * PostValoriteMultiplier(small.Material));
+        return Math.Max(small.ComputeGold(), (int)(valGold * PostValoriteMultiplier(small.Material)));
     }
 
     internal static int GoldEquivalentForSeals(LargeSmithBOD large)
@@ -356,7 +410,18 @@ public partial class BlacksmithGuildmaster
         var valGold = SmithRewardCalculator.Instance.ComputeGold(
             large.AmountMax, large.RequireExceptional, BulkMaterialType.Valorite,
             large.Entries.Length, large.Entries[0].Details.Type);
-        return (int)(valGold * PostValoriteMultiplier(large.Material));
+        return Math.Max(large.ComputeGold(), (int)(valGold * PostValoriteMultiplier(large.Material)));
+    }
+
+    /// <summary>The bank's item part: the best item OSI gives for this deed (post-Valorite: or for it in Valorite), in Seals.</summary>
+    internal static int ItemSealsForDeed(BulkMaterialType material, int amountMax, bool exceptional, int itemCount, Type type)
+    {
+        var calc = SmithRewardCalculator.Instance;
+        var own  = OsiItemSeals(calc.ComputePoints(amountMax, exceptional, material, itemCount, type));
+
+        return IsPostValorite(material)
+            ? Math.Max(own, OsiItemSeals(calc.ComputePoints(amountMax, exceptional, BulkMaterialType.Valorite, itemCount, type)))
+            : own;
     }
 
     internal static (int seals, int standing, int skillChecks) ComputeGuildReward(Item deed)
@@ -369,7 +434,8 @@ public partial class BlacksmithGuildmaster
                 : tier == 0 ? 25 : 40 + tier * 10) * StandingMultiplier;
 
             var gold  = GoldEquivalentForSeals(small);
-            var seals = SealsForGold(gold);
+            var seals = SealsForGold(gold) +
+                        ItemSealsForDeed(small.Material, small.AmountMax, small.RequireExceptional, 1, small.Type);
 
             return (seals, standing, 1);
         }
@@ -381,7 +447,9 @@ public partial class BlacksmithGuildmaster
             var checks   = tier >= 5 ? 3 : 2;   // Gold+ large earns an extra skill check
 
             var gold  = GoldEquivalentForSeals(large);
-            var seals = SealsForGold(gold);
+            var seals = SealsForGold(gold) +
+                        ItemSealsForDeed(large.Material, large.AmountMax, large.RequireExceptional,
+                            large.Entries.Length, large.Entries[0].Details.Type);
 
             return (seals, standing, checks);
         }

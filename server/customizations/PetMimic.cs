@@ -1601,12 +1601,15 @@ public partial class PetMimic : Item, IAosItem, IWearableDurability
         }
     }
 
-    // "Talk" (6146) — opens status gump
-    private class CheckStatusEntry : ContextMenuEntry
+    // "Status" (3000132): opens the status gump
+    internal class CheckStatusEntry : ContextMenuEntry
     {
         private readonly PetMimic _mimic;
 
-        public CheckStatusEntry(PetMimic mimic) : base(6146)
+        // cc-P56 Part C (D79): 3000132 "Status" (was 6146, "Talk").
+        public const int Cliloc = 3000132;
+
+        public CheckStatusEntry(PetMimic mimic) : base(Cliloc)
         {
             _mimic = mimic;
         }

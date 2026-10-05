@@ -112,12 +112,15 @@ public partial class TrashBag : Container
 
     // -- Context entry ---------------------------------------------------------
 
-    private sealed class DumpEntry : ContextMenuEntry
+    internal sealed class DumpEntry : ContextMenuEntry
     {
         private readonly PlayerMobile _pm;
         private readonly TrashBag     _bag;
 
-        public DumpEntry(PlayerMobile pm, TrashBag bag) : base(6146, 3) // 6146 = "Talk" cliloc
+        // cc-P56 Part C (D79): 1151316 "Clean Up Britannia", the system the bag dumps into (was 6146, "Talk").
+        public const int Cliloc = 1151316;
+
+        public DumpEntry(PlayerMobile pm, TrashBag bag) : base(Cliloc, 3)
         {
             _pm  = pm;
             _bag = bag;

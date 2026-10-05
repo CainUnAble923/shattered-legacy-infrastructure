@@ -18,7 +18,18 @@
          public InternalTarget(BaseOre ore) : base(2, false, TargetFlags.None) => m_Ore = ore;
  
          private bool IsForge(object obj)
-@@ -234,7 +240,11 @@
+@@ -175,6 +181,10 @@
+                     CraftResource.Agapite    => 90.0,
+                     CraftResource.Verite     => 95.0,
+                     CraftResource.Valorite   => 99.0,
++                    // cc-P56 Part B (bug-list D78, Chase 2026-10-05): a post-Valorite ore smelts at its metal's tier
++                    // (ClusterFMetalTiers: Platinum 112.5 .. Celestial 200), not the 50 every unlisted ore gets.
++                    _ when ClusterFMetalTiers.RequiredSkill(m_Ore._resource) > 99.0 =>
++                        ClusterFMetalTiers.RequiredSkill(m_Ore._resource),
+                     _                        => 50.0
+                 };
+ 
+@@ -234,7 +244,11 @@
                      ingot.Amount = ingotAmount;
  
                      m_Ore.Consume(toConsume);

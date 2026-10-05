@@ -301,7 +301,7 @@ public class RegularSmithBODVerification
         Assert.True(vendor.OnDragDrop(s.Pm, deed));
         _out.WriteLine($"member at {vendor.GetType().Name}: seals {s.Seals}, standing {s.Standing}, gold +{s.Gold - gold}");
         Assert.True(deed.Deleted);
-        Assert.Equal(seals, s.Seals);       // an iron deed's Seals do not vary (the floor of 1, times 3)
+        Assert.Equal(seals, s.Seals);       // an iron deed's Seals do not vary (cc-P56: 2 for the gold, 50 for the shovel)
         Assert.Equal(standing, s.Standing);
         Assert.Equal(gold, s.Gold);
         Assert.Equal(SmithTurnInMode.Bank, ClusterFSmithBODPayout.GetMode(s.Pm)); // the default

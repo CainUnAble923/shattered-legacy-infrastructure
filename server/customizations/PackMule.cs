@@ -226,13 +226,17 @@ namespace Server.Mobiles
 
         // ── Breeding context-menu entry ───────────────────────────────────────────
 
-        private sealed class PackMuleBreedEntry : ContextMenuEntry
+        internal sealed class PackMuleBreedEntry : ContextMenuEntry
         {
             private readonly PackMule _mule;
 
-            // Cliloc 6131 = "Tame" (stock UO string — closest readable option for breed)
-            // The breeding action is initiated here; the label is imperfect but visible.
-            public PackMuleBreedEntry(PackMule mule) : base(6131, 2)
+            // cc-P56 Part C (D79): 6132 = 3006132 "Use". It was 6131, which the client shows as "Close" (3006131), not
+            // "Tame" as this said. No stock cliloc says "Breed" (EA's Cliloc.enu, 124,000 entries), so the label stays on
+            // the nearest honest stock word until a cliloc of our own ships with the client (shard-migration notes
+            // cc-P56-smith-economy-and-labels.md, Part C).
+            public const int Cliloc = 6132;
+
+            public PackMuleBreedEntry(PackMule mule) : base(Cliloc, 2)
             {
                 _mule   = mule;
                 Enabled = mule.CanBreedNow;
