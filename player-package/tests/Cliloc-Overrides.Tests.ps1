@@ -228,7 +228,9 @@ Fact 'TheClilocGateFailsEachBadEntriesFile' {
         @('a number twice', $good.Replace('1900001', '1900000'), 'twice'),
         @('a text the registry does not have', $good.Replace('"Smelt Ore"', '"Smelt"'), 'registry.csv says'),
         @('an unregistered number', $good.Replace('1900002', '1900099'), 'does not list once'),
-        @('no entries', '{ "block": { "first": 1900000, "last": 1999999 }, "entries": [] }', 'no entries')
+        @('no entries', '{ "block": { "first": 1900000, "last": 1999999 }, "entries": [] }', 'no entries'),
+        # cc-P61 Part C: a registered number that does not ship (the Celestial deed line left out).
+        @('a registered number missing', ($good -replace ',\s*\{ "number": 1900010, "text": "[^"]*" \}', ''), 'lacks 1900010')
     )
     foreach ($c in $cases) {
         $bytes = [Text.Encoding]::UTF8.GetBytes($c[1])
@@ -243,9 +245,31 @@ Fact 'TheServerAndThePackageAgreeOnEveryNumber' {
     Assert-Equal 1900000 (& $num 'BlockFirst')
     Assert-Equal 1999999 (& $num 'BlockLast')
     $want = @{ 'Breed' = (& $num 'Breed'); 'Smelt Ore' = (& $num 'SmeltOre'); 'Metal Familiarity' = (& $num 'MetalFamiliarity') }
+    # cc-P61 Part C: the post-Valorite deed lines, ShardClilocs.<Metal>Ingots.
+    foreach ($m in 'Platinum', 'Toxic', 'Blaze', 'Frost', 'Obsidian', 'Mythril', 'Adamantium', 'Celestial') {
+        $want["All items must be made with $m ingots."] = (& $num "$($m)Ingots")
+    }
     Assert-Equal $want.Count $ours.Count 'one entry per server constant'
     foreach ($e in $ours) { Assert-Equal $want["$($e.text)"] ([int]$e.number) "$($e.text)" }
     Assert-Equal $ours.Count $slClilocRegistry.Count 'registry rows'
+}
+
+Fact 'ThePostValoriteDeedLinesAreEAsValoriteLineWithTheMetalNamed' {
+    # cc-P61 Part C (D85): EA's line for Valorite (1045149), the metal in Title Case (D-114), numbers 1900003-1900010 in
+    # the metals' order. The wording is checked against EA's own file when it is on this machine.
+    $metals = 'Platinum', 'Toxic', 'Blaze', 'Frost', 'Obsidian', 'Mythril', 'Adamantium', 'Celestial'
+    $ea = Join-Path $eaDir 'Cliloc.enu'
+    $valorite = 'All items must be made with valorite ingots.'
+    if (Test-Path -LiteralPath $ea) {
+        $src = [ShatteredLegacy.Cliloc]::Read([ShatteredLegacy.Cliloc]::Table([IO.File]::ReadAllBytes($ea)))
+        $valorite = @($src | Where-Object { $_.Key -eq 1045149 })[0].Value
+        Write-Host "        EA's 1045149: $valorite" -ForegroundColor Gray
+    } else { Write-Host "        (no ${ea}: EA's line as read on 2026-10-05)" -ForegroundColor Yellow }
+    for ($i = 0; $i -lt $metals.Count; $i++) {
+        $e = @($ours | Where-Object { [int]$_.number -eq 1900003 + $i })
+        Assert-Equal 1 $e.Count "1900003 + $i once"
+        Assert-Equal ($valorite -creplace 'valorite', $metals[$i]) "$($e[0].text)" "$($metals[$i])"
+    }
 }
 
 # ------------------------------------------------------------------------------------- Play.ps1, end to end

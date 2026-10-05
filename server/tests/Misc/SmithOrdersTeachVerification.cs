@@ -16,6 +16,8 @@
 //   2. At 70.1, 100, 120 and 130, every large guild order's set teaches piece for piece, or is the set the fallback
 //      names (the most teaching pieces, then the highest lowest maximum): plate at 100, 120 and 130.
 //   3. At 30, 70, 100, 120 and 130, every commission (small: its item; large: its set) teaches, or is a fallback.
+//   cc-P61 Part A: an order in a post-Valorite metal teaches up to the metal's gain ceiling (ClusterFCraftGain), so facts
+//   1, 3 and 4 read "teaches" in the order's own metal (ClusterFMetalTiers.GainCeiling of its material).
 //   4. Regular smiths are unchanged: the one-argument SmallSmithBOD.CreateRandomFor still gives a Grandmaster items
 //      that teach nothing.
 //   5. The turn-in numbers: standing twice the old, for the five representative orders in the notes. Seals were three
@@ -99,8 +101,8 @@ public class SmithOrdersTeachVerification
     private static Type[] Armor => SmallBulkEntry.BlacksmithArmor.Select(e => e.Type).ToArray();
     private static Type[] Weapons => SmallBulkEntry.BlacksmithWeapons.Select(e => e.Type).ToArray();
 
-    private static bool AnyTeaches(Mobile m, IEnumerable<Type> types, bool exceptional) =>
-        types.Any(t => ClusterFSmithTeaching.CanMake(m, t, exceptional) && ClusterFSmithTeaching.Teaches(m, t));
+    private static bool AnyTeaches(Mobile m, IEnumerable<Type> types, bool exceptional, double ceiling = 0.0) =>
+        types.Any(t => ClusterFSmithTeaching.CanMake(m, t, exceptional) && ClusterFSmithTeaching.Teaches(m, t, ceiling));
 
     private static double Hardest(Mobile m, IEnumerable<Type> types, bool exceptional) =>
         types.Where(t => ClusterFSmithTeaching.CanMake(m, t, exceptional)).Max(ClusterFSmithTeaching.MaxSkill);
@@ -128,10 +130,11 @@ public class SmithOrdersTeachVerification
                 Assert.NotNull(bod);
                 names.Add(bod.Type.Name + (bod.RequireExceptional ? " (exc)" : ""));
 
-                if (!ClusterFSmithTeaching.Teaches(pm, bod.Type))
+                var ceiling = ClusterFMetalTiers.GainCeiling(bod.Material);
+                if (!ClusterFSmithTeaching.Teaches(pm, bod.Type, ceiling))
                 {
                     // A fallback: nothing on either list teaches, and this is the hardest the smith can make.
-                    Assert.False(AnyTeaches(pm, Armor.Concat(Weapons), false), $"{bod.Type.Name} at {skill} teaches nothing but something else does");
+                    Assert.False(AnyTeaches(pm, Armor.Concat(Weapons), false, ceiling), $"{bod.Type.Name} at {skill} teaches nothing but something else does");
                     var list = Armor.Contains(bod.Type) ? Armor : Weapons;
                     Assert.Equal(Hardest(pm, list, bod.RequireExceptional), ClusterFSmithTeaching.MaxSkill(bod.Type));
                 }
@@ -218,9 +221,10 @@ public class SmithOrdersTeachVerification
                 Assert.NotNull(c);
                 var type = SmithCommissionPool.GetItemType(c.ItemKey);
                 small.Add(type.Name);
-                if (!ClusterFSmithTeaching.Teaches(pm, type))
+                var ceiling = ClusterFMetalTiers.GainCeiling(c.Material);
+                if (!ClusterFSmithTeaching.Teaches(pm, type, ceiling))
                 {
-                    Assert.False(AnyTeaches(pm, allTypes, c.RequireExceptional), $"{type.Name} at {skill}");
+                    Assert.False(AnyTeaches(pm, allTypes, c.RequireExceptional, ceiling), $"{type.Name} at {skill}");
                     Assert.Equal(Hardest(pm, allTypes, c.RequireExceptional), ClusterFSmithTeaching.MaxSkill(type));
                 }
 
@@ -230,13 +234,14 @@ public class SmithOrdersTeachVerification
                 var set = SmithCommissionSetPool.GetSet(lc.SetKey);
                 var pieces = set.ItemKeys.Select(SmithCommissionPool.GetItemType).ToArray();
                 large.Add(set.Key);
-                if (!pieces.All(t => ClusterFSmithTeaching.Teaches(pm, t)))
+                var largeCeiling = ClusterFMetalTiers.GainCeiling(lc.Material);
+                if (!pieces.All(t => ClusterFSmithTeaching.Teaches(pm, t, largeCeiling)))
                 {
                     var sets = typeof(SmithCommissionSetPool).GetField("_sets",
                             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
                         .GetValue(null) as SmithCommissionSetPool.CommissionSet[];
                     var anyFull = sets!.Any(s => s.ItemKeys.Select(SmithCommissionPool.GetItemType).All(t =>
-                        ClusterFSmithTeaching.CanMake(pm, t, lc.RequireExceptional) && ClusterFSmithTeaching.Teaches(pm, t)));
+                        ClusterFSmithTeaching.CanMake(pm, t, lc.RequireExceptional) && ClusterFSmithTeaching.Teaches(pm, t, largeCeiling)));
                     Assert.False(anyFull, $"{set.Key} at {skill}");
                 }
             }
@@ -262,7 +267,7 @@ public class SmithOrdersTeachVerification
             for (var i = 0; i < 200; i++)
             {
                 var bod = SmallSmithBOD.CreateRandomFor(pm);
-                if (bod != null && !ClusterFSmithTeaching.Teaches(pm, bod.Type))
+                if (bod != null && !ClusterFSmithTeaching.Teaches(pm, bod.Type, ClusterFMetalTiers.GainCeiling(bod.Material)))
                 {
                     nonTeaching++;
                 }

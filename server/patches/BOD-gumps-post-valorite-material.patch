@@ -1,0 +1,48 @@
+--- "a/Projects/UOContent/Engines/Bulk Orders/SmallBODGump.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/SmallBODGump.cs"
+@@ -103,7 +103,8 @@
+                 return 1049348 + (material - BulkMaterialType.Spined);
+             }
+ 
+-            return 0;
++            // ClusterF (cc-P61 C, D85): Platinum..Celestial have no EA line; ours, shipped with the player package.
++            return ShardClilocs.PostValoriteMaterial(material);
+         }
+     }
+ }
+--- "a/Projects/UOContent/Engines/Bulk Orders/LargeBODGump.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/LargeBODGump.cs"
+@@ -131,7 +131,8 @@
+                 return 1049348 + (material - BulkMaterialType.Spined);
+             }
+ 
+-            return 0;
++            // ClusterF (cc-P61 C, D85): Platinum..Celestial have no EA line; ours, shipped with the player package.
++            return ShardClilocs.PostValoriteMaterial(material);
+         }
+     }
+ }
+--- "a/Projects/UOContent/Engines/Bulk Orders/SmallBODAcceptGump.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/SmallBODAcceptGump.cs"
+@@ -108,7 +108,8 @@
+                 return 1049348 + (material - BulkMaterialType.Spined);
+             }
+ 
+-            return 0;
++            // ClusterF (cc-P61 C, D85): Platinum..Celestial have no EA line; ours, shipped with the player package.
++            return ShardClilocs.PostValoriteMaterial(material);
+         }
+     }
+ }
+--- "a/Projects/UOContent/Engines/Bulk Orders/LargeBODAcceptGump.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/LargeBODAcceptGump.cs"
+@@ -121,7 +121,8 @@
+                 return 1049348 + (material - BulkMaterialType.Spined);
+             }
+ 
+-            return 0;
++            // ClusterF (cc-P61 C, D85): Platinum..Celestial have no EA line; ours, shipped with the player package.
++            return ShardClilocs.PostValoriteMaterial(material);
+         }
+     }
+ }

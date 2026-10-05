@@ -28,16 +28,28 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.05.2
+
+### Changed
+- Crafting in Platinum to Celestial now raises Blacksmithy past the item's own limit, up to the next metal's need: Platinum to 125, Toxic to 137.5, Blaze to 150, Frost to 162.5, Obsidian to 175, Mythril to 187.5, Adamantium and Celestial to 200. The chance to make the item is unchanged.
+- "Orders that still teach me" counts the order's metal: a Platinum to Celestial order still teaches until your Blacksmithy reaches that metal's limit.
+
+### Fixed
+- Earned achievements no longer show a progress line.
+- Platinum to Celestial smith deeds now say which ingots they need, on the deed, the offer and the tooltip. Take the launcher's update to see the line.
+
 ## 2026.10.05
 
 ### Added
 - Society of Smiths members choose what happens to a finished smith deed: always bank it as Smithing Seals, always cash it out, or ask each time. Set it at the guildmaster or in the Smithing Guild Book.
-- Single-click the Hammer of Hephaestus and choose Knowledge to see its Metal Familiarity, anywhere.
+- Single-click the Hammer of Hephaestus and choose Metal Familiarity to see it, anywhere.
+- The shard has its own menu words: Breed on a pack mule, Smelt Ore on the ore satchels, Metal Familiarity on the Hammer of Hephaestus. Take the launcher's update to see them; without it those menu rows are blank.
+- The Society guildmaster's Bulk Order Info now asks whether you want a small or a large order.
 
 ### Changed
 - Each skill now caps at 200. Nobody loses skill they already have.
 - Platinum to Celestial now need 112.5 to 200 Blacksmithy, one step of 12.5 per metal, so Celestial can be worked at the 200 cap. Smith orders, commissions and the salvage bag follow the same steps.
-- Platinum to Celestial ore now smelts at the same steps, from 112.5 Mining for Platinum to 200 for Celestial. Mining them still needs 100.
+- Platinum to Celestial ore now smelts and mines at the same steps, from 112.5 Mining for Platinum to 200 for Celestial. Below a metal's step, its vein gives iron.
 - Skill bonuses from items and from temporary effects now count above the skill cap: a +15 ring on a capped skill reads 15 over the cap. Skill gain still stops at the cap.
 - Armor no longer stops meditation from 150 Meditation (was 200).
 - Any town blacksmith or weaponsmith now asks whether you want a small or a large bulk order. Large needs 70.1 Blacksmithy.
@@ -50,13 +62,18 @@ Example:
 - Ore satchels and Jacob's pickaxes are colored by tier, following the ore ladder.
 - Craft menus show material names as "Iron", "Dull Copper" and so on, the same style as the shard's own metals.
 - The smith guild is called the Society of Smiths everywhere.
+- Seal catalog prices are three times what they were. A banked deed still pays the same Seals.
+- Banking a Platinum to Celestial deed pays more Seals, more for each higher metal.
+- The achievements window puts a row's Earned, Requires and Progress lines each on a line of its own, shows its tabs as full words on two rows, and is no longer see-through.
 - Smelting from an ore satchel now works exactly like the forge (the Reinforced Ore Satchel gave about a quarter of the ingots), the ingots go into the satchel, and the Surveyor's, Deepdelver's and Master Expedition satchels can smelt too.
 
 ### Fixed
 - The game now starts on a computer with no OpenGL 2.1 graphics driver: the launcher starts it again with its automatic graphics driver.
 - The smith guild's menus (Seal catalog, Bulk Orders, Commissions, Hammer upgrades, Guild Contracts, Mule Exchange) have a working Back button, and the Seal catalog's note no longer covers its Close button.
 - Blacksmithy and Inscription menus page their categories instead of running into the notices box.
-- Menu labels: satchels no longer say "Salvage Ingots" (the ore satchel says "Smelt"), the trash bag says "Clean Up Britannia", the pet mimic says "Status", and a pack mule's breeding entry says "Use".
+- Achievement rows no longer run into each other.
+- A thief can no longer take a whole heavy pile at high Stealing: a steal takes at most 10 stones' worth, as it always did up to 100 Stealing.
+- Menu labels: satchels no longer say "Salvage Ingots" (the ore satchels say "Smelt Ore"), the trash bag says "Clean Up Britannia", the pet mimic says "Status", and a pack mule's breeding entry says "Breed".
 
 ### Staff
 - Staff Hub: solid background, long values wrap, Green Acres is in the travel list, and you can jump to the same spot on another facet.

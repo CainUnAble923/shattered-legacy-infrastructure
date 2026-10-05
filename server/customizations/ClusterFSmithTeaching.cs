@@ -28,6 +28,12 @@ namespace Server;
 /// exactly stock's (SmallSmithBOD.CreateRandomFor(m, false)); a large order or a commission takes any set or item the
 /// smith can make every piece of, which is stock's small-order rule (stock's large roll checks nothing).
 /// The setting is CharacterGuildData.SmithTeachingOrders.
+///
+/// cc-P61 Part A (D83, Chase 2026-10-05): a craft in a post-Valorite metal can teach past the item's maximum, up to the
+/// metal's gain ceiling (ClusterFCraftGain). Teaches reads the same window, given the order's metal: a post-Valorite
+/// order still teaches while the smith is below that metal's ceiling. Where the metal is known before the pick (small
+/// orders, both kinds of commission) it is passed in; a large order's metal is rolled after its set (stock's order of
+/// rolls, LargeSmithBOD.CreateRandomFor), so its pick reads the item's own range, as before.
 /// </summary>
 public static class ClusterFSmithTeaching
 {
@@ -57,17 +63,23 @@ public static class ClusterFSmithTeaching
     private static CraftSkill MainSkill(CraftItem item) =>
         item?.Skills.FirstOrDefault(s => s.SkillToMake == Smithing.MainSkill);
 
-    /// <summary>Making <paramref name="type"/> can raise <paramref name="m"/>'s Blacksmithy: min &lt;= value &lt; max.</summary>
-    public static bool Teaches(Mobile m, Type type)
+    /// <summary>
+    /// Making <paramref name="type"/> can raise <paramref name="m"/>'s Blacksmithy: min &lt;= value &lt; max, in the window
+    /// the craft's gain roll uses (ClusterFCraftGain.Window). <paramref name="gainCeiling"/> is the order's metal's
+    /// (ClusterFMetalTiers.GainCeiling; 0 for iron and the stock metals, and ignored for an item made of scales).
+    /// </summary>
+    public static bool Teaches(Mobile m, Type type, double gainCeiling = 0.0)
     {
-        var skill = MainSkill(Find(type));
+        var item = Find(type);
+        var skill = MainSkill(item);
         if (skill == null)
         {
             return false;
         }
 
         var value = m.Skills[Smithing.MainSkill].Value;
-        return value >= skill.MinSkill && value < skill.MaxSkill;
+        var (min, max) = ClusterFCraftGain.Window(value, skill.MinSkill, skill.MaxSkill, item.UseSubRes2 ? 0.0 : gainCeiling);
+        return value >= min && value < max;
     }
 
     /// <summary>The item's Blacksmithy maximum (where gains stop), or -infinity for an item Blacksmithy cannot make.</summary>
@@ -102,7 +114,8 @@ public static class ClusterFSmithTeaching
     /// as it was (stock behaviour). With <paramref name="teaching"/> false (the setting off), every makeable one.
     /// </summary>
     public static List<T> PickItems<T>(
-        Mobile m, IEnumerable<T> candidates, Func<T, Type> typeOf, bool exceptional, bool teaching = true
+        Mobile m, IEnumerable<T> candidates, Func<T, Type> typeOf, bool exceptional, bool teaching = true,
+        double gainCeiling = 0.0
     )
     {
         var all = candidates.ToList();
@@ -117,7 +130,7 @@ public static class ClusterFSmithTeaching
             return makeable;
         }
 
-        var teaches = makeable.Where(c => Teaches(m, typeOf(c))).ToList();
+        var teaches = makeable.Where(c => Teaches(m, typeOf(c), gainCeiling)).ToList();
         if (teaches.Count > 0)
         {
             return teaches;
@@ -134,7 +147,8 @@ public static class ClusterFSmithTeaching
     /// <paramref name="teaching"/> false (the setting off), every makeable set.
     /// </summary>
     public static List<T> PickSets<T>(
-        Mobile m, IEnumerable<T> sets, Func<T, Type[]> typesOf, bool exceptional, bool teaching = true
+        Mobile m, IEnumerable<T> sets, Func<T, Type[]> typesOf, bool exceptional, bool teaching = true,
+        double gainCeiling = 0.0
     )
     {
         var all = sets.ToList();
@@ -149,17 +163,16 @@ public static class ClusterFSmithTeaching
             return makeable;
         }
 
-        var full = makeable.Where(s => typesOf(s).All(t => Teaches(m, t))).ToList();
+        var full = makeable.Where(s => typesOf(s).All(t => Teaches(m, t, gainCeiling))).ToList();
         if (full.Count > 0)
         {
             return full;
         }
 
-        static (int, double) Score(Mobile m, Type[] types) =>
-            (types.Count(t => Teaches(m, t)), types.Min(MaxSkill));
+        (int, double) Score(Type[] types) => (types.Count(t => Teaches(m, t, gainCeiling)), types.Min(MaxSkill));
 
-        var best = makeable.Select(s => Score(m, typesOf(s))).Max();
-        return makeable.Where(s => Score(m, typesOf(s)) == best).ToList();
+        var best = makeable.Select(s => Score(typesOf(s))).Max();
+        return makeable.Where(s => Score(typesOf(s)) == best).ToList();
     }
 
     /// <summary>

@@ -252,6 +252,10 @@ echo "[patches] Applying .patch files..."
 # so the next upstream change to either file stops the build here. The hooks are the Shattered Legacy ones (Craft X,
 # extended lumber and ingots, familiarity, the Hammer of Hephaestus, BOD autofill); hook placement against upstream's
 # overloads was checked with shard-migration/notes/cc-P30-tools/hook_audit.py. Notes: notes/cc-P38-engine-upgrade.md.
+# cc-P61 Part A (D83) added one hunk: GetSuccessChance's gain call goes through ClusterFCraftGain.CheckSkill, so a
+# post-Valorite metal can raise Blacksmithy's gain ceiling. The roll is pinned's own Mobile.CheckSkill; only its window
+# moves, and only from the item's maximum up; the success chance below it still reads the item's own range. A hook
+# cannot do it without a patch: the skill-check handlers do not know the craft's metal. Notes: notes/cc-P61-batch-7.md.
 apply_patch "$PATCHES/CraftItem-shard-hooks.patch"
 apply_patch "$PATCHES/CraftContext-shard-hooks.patch"
 apply_patch "$PATCHES/PlayerMobile-individual-stat-cap.patch"
@@ -371,6 +375,16 @@ apply_patch "$PATCHES/SalvageBag-salvage-all.patch"
 # every item through the deed's own EndCombine. No hook reaches a pinned gump's layout. Argued in
 # shard-migration/notes/cc-P22-small-features-1.md (F-17); pinned by BODCombineContainedVerification.
 apply_patch "$PATCHES/BOD-combine-contained.patch"
+
+# cc-P61 Part C (D85, Chase 2026-10-05: our own clilocs). Pinned's four GetMaterialNumberFor (the small and large deed
+# gumps, which the deeds' tooltips also call, SmallBOD.cs:64 and LargeBOD.cs:55, and the two accept gumps) map only Dull
+# Copper..Valorite to EA's 1045142+ and return 0 for anything else, so a Platinum..Celestial deed had no "All items must
+# be made with ... ingots." line anywhere. Each is a public static on a pinned gump class, called by pinned code: no
+# hook or override reaches it, and a copy of the gumps would hide upstream drift. One line each: the fall-through
+# return 0 becomes ShardClilocs.PostValoriteMaterial(material), which is our 1900003-1900010 for the eight metals and
+# still 0 for everything else. Applied after the combine patch (same two gump files). Argued in shard-migration
+# notes/cc-P61-batch-7.md, Part C; pinned by PostValoriteDeedMaterialLineVerification.
+apply_patch "$PATCHES/BOD-gumps-post-valorite-material.patch"
 
 # cc-P32 Part A (PT-07), a pinned defect. The JSON spawner import deleted every same-type spawner on the entry's x,y
 # (GetItemsAt ignores z), and pinned's data stacks spawners on one tile, so 338 of shared/** and post-uoml/** were

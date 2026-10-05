@@ -6,3 +6,11 @@ number,text,used_by,added
 1900000,Breed,"pack mule context menu, breed (PackMule.PackMuleBreedEntry)",cc-P57
 1900001,Smelt Ore,"ore satchels T2-T5 context menu, smelt (CompactOreSatchel.SmeltOreEntry)",cc-P57
 1900002,Metal Familiarity,"Hammer of Hephaestus context menu (HammerFamiliarityEntry)",cc-P57
+1900003,All items must be made with Platinum ingots.,"smith deed material line, Platinum (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
+1900004,All items must be made with Toxic ingots.,"smith deed material line, Toxic (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
+1900005,All items must be made with Blaze ingots.,"smith deed material line, Blaze (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
+1900006,All items must be made with Frost ingots.,"smith deed material line, Frost (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
+1900007,All items must be made with Obsidian ingots.,"smith deed material line, Obsidian (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
+1900008,All items must be made with Mythril ingots.,"smith deed material line, Mythril (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
+1900009,All items must be made with Adamantium ingots.,"smith deed material line, Adamantium (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
+1900010,All items must be made with Celestial ingots.,"smith deed material line, Celestial (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61

@@ -12,6 +12,8 @@
 // A client without the package's entries has no text for these numbers: TazUO draws an empty, zero-width row there
 // (PopupMenuGump.cs:49-67, Label.cs), so the entry cannot be clicked until the player takes the update.
 
+using Server.Engines.BulkOrders;
+
 namespace Server;
 
 public static class ShardClilocs
@@ -27,4 +29,47 @@ public static class ShardClilocs
 
     /// <summary>"Metal Familiarity": the Hammer of Hephaestus entry (it showed "Knowledge", 1112530, until cc-P57).</summary>
     public const int MetalFamiliarity = 1_900_002;
+
+    // cc-P61 Part C (bug-list D85, Chase 2026-10-05): a post-Valorite smith deed's "All items must be made with ... ingots."
+    // line. EA's lines stop at Valorite (1045142-1045149, "All items must be made with valorite ingots."), so pinned's
+    // GetMaterialNumberFor gave these metals 0 and the deed gumps and tooltips said nothing (SmallBODGump.cs:85-98,
+    // LargeBODGump.cs:106-119, and the two accept gumps). The wording is EA's, with the metal named in Title Case (D-114).
+
+    /// <summary>"All items must be made with Platinum ingots."</summary>
+    public const int PlatinumIngots = 1_900_003;
+
+    /// <summary>"All items must be made with Toxic ingots."</summary>
+    public const int ToxicIngots = 1_900_004;
+
+    /// <summary>"All items must be made with Blaze ingots."</summary>
+    public const int BlazeIngots = 1_900_005;
+
+    /// <summary>"All items must be made with Frost ingots."</summary>
+    public const int FrostIngots = 1_900_006;
+
+    /// <summary>"All items must be made with Obsidian ingots."</summary>
+    public const int ObsidianIngots = 1_900_007;
+
+    /// <summary>"All items must be made with Mythril ingots."</summary>
+    public const int MythrilIngots = 1_900_008;
+
+    /// <summary>"All items must be made with Adamantium ingots."</summary>
+    public const int AdamantiumIngots = 1_900_009;
+
+    /// <summary>"All items must be made with Celestial ingots."</summary>
+    public const int CelestialIngots = 1_900_010;
+
+    /// <summary>The deed line for a post-Valorite material; 0 (no line, pinned's value) for any other.</summary>
+    public static int PostValoriteMaterial(BulkMaterialType material) => material switch
+    {
+        BulkMaterialType.Platinum   => PlatinumIngots,
+        BulkMaterialType.Toxic      => ToxicIngots,
+        BulkMaterialType.Blaze      => BlazeIngots,
+        BulkMaterialType.Frost      => FrostIngots,
+        BulkMaterialType.Obsidian   => ObsidianIngots,
+        BulkMaterialType.Mythril    => MythrilIngots,
+        BulkMaterialType.Adamantium => AdamantiumIngots,
+        BulkMaterialType.Celestial  => CelestialIngots,
+        _                           => 0
+    };
 }

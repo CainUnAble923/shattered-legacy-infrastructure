@@ -23,13 +23,16 @@
  
              var entries = useMaterials ? SmallBulkEntry.BlacksmithArmor : SmallBulkEntry.BlacksmithWeapons;
  
-@@ -191,6 +202,11 @@
+@@ -191,6 +202,14 @@
                  }
              }
  
 +            if (teachingOnly)
 +            {
-+                validEntries = ClusterFSmithTeaching.PickItems(m, validEntries, e => e.Type, reqExceptional);
++                // cc-P61 A: a post-Valorite order teaches up to its metal's gain ceiling (ClusterFCraftGain).
++                validEntries = ClusterFSmithTeaching.PickItems(
++                    m, validEntries, e => e.Type, reqExceptional, true, ClusterFMetalTiers.GainCeiling(material)
++                );
 +            }
 +
              if (validEntries.Count <= 0)

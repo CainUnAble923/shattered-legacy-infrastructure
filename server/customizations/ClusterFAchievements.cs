@@ -1719,7 +1719,7 @@ public class AchievementEarnedGump : Gump
 ///
 /// Achievements tab:
 ///   - Earned achievements listed first (gold, with AP/Renown), then locked (gray).
-///   - Achievements with progress counters show a "Progress: n/m" line (a block bar until cc-P57).
+///   - Achievements with progress counters show a "Progress: n/m" line until earned (a block bar until cc-P57).
 ///
 /// Quests tab:
 ///   - All 38 New Haven ML trainer quests with done/pending indicators.
@@ -2043,11 +2043,13 @@ public class AchievementsGump : Gump
             }
         }
 
-        // Progress, as words (cc-P57 Part F: the block bar's empty cells had no glyph in the client's font).
-        if (def.ProgressCounter != null && def.ProgressThreshold > 0)
+        // Progress, as words (cc-P57 Part F: the block bar's empty cells had no glyph in the client's font). Only while
+        // not yet earned (cc-P61 Part B, D84): the counter keeps counting past the goal ("Progress: 9/1" under an
+        // earned "Oh Look, It's Dead"), and the Earned line already says what was done.
+        if (!earned && def.ProgressCounter != null && def.ProgressThreshold > 0)
         {
             var count = ClusterFAchievementSystem.GetCounter(username, def.ProgressCounter);
-            lines.Add([(earned ? "#AAAAAA" : "#7A7A7A", $"Progress: {count:N0}/{def.ProgressThreshold:N0}")]);
+            lines.Add([("#7A7A7A", $"Progress: {count:N0}/{def.ProgressThreshold:N0}")]);
         }
 
         return lines;

@@ -3,6 +3,14 @@
   "entries": [
     { "number": 1900000, "text": "Breed" },
     { "number": 1900001, "text": "Smelt Ore" },
-    { "number": 1900002, "text": "Metal Familiarity" }
+    { "number": 1900002, "text": "Metal Familiarity" },
+    { "number": 1900003, "text": "All items must be made with Platinum ingots." },
+    { "number": 1900004, "text": "All items must be made with Toxic ingots." },
+    { "number": 1900005, "text": "All items must be made with Blaze ingots." },
+    { "number": 1900006, "text": "All items must be made with Frost ingots." },
+    { "number": 1900007, "text": "All items must be made with Obsidian ingots." },
+    { "number": 1900008, "text": "All items must be made with Mythril ingots." },
+    { "number": 1900009, "text": "All items must be made with Adamantium ingots." },
+    { "number": 1900010, "text": "All items must be made with Celestial ingots." }
   ]
 }

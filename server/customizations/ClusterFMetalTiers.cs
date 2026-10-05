@@ -48,6 +48,38 @@ public static class ClusterFMetalTiers
         _                        => 0.0
     };
 
+    /// <summary>
+    /// cc-P61 Part A (D83, Chase 2026-10-05): the Blacksmithy a craft in this metal can teach up to, the next metal's
+    /// requirement (Celestial, the last, to the cap: its own 200). 0 for iron and the stock metals, whose crafts teach
+    /// to the item's own maximum as stock (ClusterFCraftGain).
+    /// </summary>
+    public static double GainCeiling(CraftResource r) => r switch
+    {
+        CraftResource.Platinum   => Toxic,
+        CraftResource.Toxic      => Blaze,
+        CraftResource.Blaze      => Frost,
+        CraftResource.Frost      => Obsidian,
+        CraftResource.Obsidian   => Mythril,
+        CraftResource.Mythril    => Adamantium,
+        CraftResource.Adamantium => Celestial,
+        CraftResource.Celestial  => Celestial,
+        _                        => 0.0
+    };
+
+    /// <summary>The same for a bulk order's material; 0 for anything that is not a post-Valorite metal.</summary>
+    public static double GainCeiling(BulkMaterialType m) => m switch
+    {
+        BulkMaterialType.Platinum   => GainCeiling(CraftResource.Platinum),
+        BulkMaterialType.Toxic      => GainCeiling(CraftResource.Toxic),
+        BulkMaterialType.Blaze      => GainCeiling(CraftResource.Blaze),
+        BulkMaterialType.Frost      => GainCeiling(CraftResource.Frost),
+        BulkMaterialType.Obsidian   => GainCeiling(CraftResource.Obsidian),
+        BulkMaterialType.Mythril    => GainCeiling(CraftResource.Mythril),
+        BulkMaterialType.Adamantium => GainCeiling(CraftResource.Adamantium),
+        BulkMaterialType.Celestial  => GainCeiling(CraftResource.Celestial),
+        _                           => 0.0
+    };
+
     /// <summary>The same table for a bulk order's material; 999 for anything that is not a post-Valorite metal.</summary>
     public static double PostValoriteRequiredSkill(BulkMaterialType m) => m switch
     {

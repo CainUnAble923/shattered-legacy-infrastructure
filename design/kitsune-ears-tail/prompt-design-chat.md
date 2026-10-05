@@ -68,3 +68,12 @@ The game draws the item on top of her body in every animation frame, so each fra
 | **Total** | | | **105** |
 
 UO draws 5 directions (`dir0` to `dir4`); the game mirrors them for the other 3, so do not draw mirrored directions. One preview strip per action and direction, over the body frames, is enough.
+
+## Stage 3 retry (2026-10-05, after the first walk test was rejected)
+
+The first walk test pasted the front-view paperdoll art onto the walking sprite. It was rejected: wrong scale, the tail root at the thigh, the tail drawn over her front leg, front-facing ears on a body turned three-quarters away, and no real motion (the art only slid around).
+
+New body references are plain blue silhouettes, so there is no gray body to trip the image tools:
+- `D:\ShatteredLegacy\design\kitsune-ears-tail\reference\8x\silhouettes\` (1040 x 1024 each, same alignment as before)
+- `D:\ShatteredLegacy\design\kitsune-ears-tail\reference\8x\silhouette-guides\` (red line = top of her head, green line = lower back / hip height, black circle = the sprite's anchor point)
+- `D:\ShatteredLegacy\design\kitsune-ears-tail\reference\8x\frame-guides.json` (per frame, in game pixels: crown_y, head_x left and right, lower_back_row, body x range at that row)

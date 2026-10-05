@@ -192,14 +192,16 @@ public static class SmithCommissionPool
     /// smith's Blacksmithy (ClusterFSmithTeaching); a side with none of those is skipped, and with none on either
     /// side the commission asks for the hardest items the smith can make.
     /// cc-P46 Part B: with the character's setting off, the same split among everything the smith can make.
+    /// cc-P61 Part A: in the commission's metal, which teaches up to its gain ceiling (ClusterFCraftGain).
     /// </summary>
-    public static string TeachingKey(Mobile m, bool exceptional)
+    public static string TeachingKey(Mobile m, bool exceptional, CraftResource material = CraftResource.Iron)
     {
         var teaching = ClusterFSmithTeaching.WantsTeaching(m);
+        var ceiling  = ClusterFMetalTiers.GainCeiling(material);
 
         bool Wanted(string k) =>
             ClusterFSmithTeaching.CanMake(m, GetItemType(k), exceptional) &&
-            (!teaching || ClusterFSmithTeaching.Teaches(m, GetItemType(k)));
+            (!teaching || ClusterFSmithTeaching.Teaches(m, GetItemType(k), ceiling));
 
         var weapons = WeaponKeys.Where(Wanted).ToArray();
         var armors  = ArmorKeys.Where(Wanted).ToArray();
@@ -209,7 +211,7 @@ public static class SmithCommissionPool
         if (weapons.Length > 0) return weapons.RandomElement();
         if (armors.Length > 0)  return armors.RandomElement();
 
-        return ClusterFSmithTeaching.PickItems(m, AllKeys, GetItemType, exceptional, teaching).RandomElement();
+        return ClusterFSmithTeaching.PickItems(m, AllKeys, GetItemType, exceptional, teaching, ceiling).RandomElement();
     }
 }
 
@@ -357,11 +359,13 @@ public static class SmithCommissionSetPool
     /// <summary>
     /// cc-P42 Part G1. A set whose pieces can all still raise the smith's Blacksmithy, or the closest.
     /// cc-P46 Part B: with the character's setting off, any set the smith can make.
+    /// cc-P61 Part A: in the commission's metal, which teaches up to its gain ceiling (ClusterFCraftGain); a scale set
+    /// is not made of the metal, and Teaches leaves its pieces at their own range.
     /// </summary>
-    public static CommissionSet TeachingSet(Mobile m, bool exceptional) =>
+    public static CommissionSet TeachingSet(Mobile m, bool exceptional, CraftResource material = CraftResource.Iron) =>
         ClusterFSmithTeaching.PickSets(
             m, _sets, s => System.Array.ConvertAll(s.ItemKeys, k => SmithCommissionPool.GetItemType(k)), exceptional,
-            ClusterFSmithTeaching.WantsTeaching(m)
+            ClusterFSmithTeaching.WantsTeaching(m), ClusterFMetalTiers.GainCeiling(material)
         ).RandomElement();
 }
 
@@ -504,7 +508,7 @@ public static class SmithCommissionSystem
         var exceptChance = bypass ? 1.0 : Math.Max(0.0, (skill - 40.0) / 100.0);
         var exceptional  = Utility.RandomDouble() < exceptChance;
 
-        var itemKey = SmithCommissionPool.TeachingKey(pm, exceptional); // cc-P42 Part G1
+        var itemKey = SmithCommissionPool.TeachingKey(pm, exceptional, mat); // cc-P42 Part G1, cc-P61 A
         var (seals, standing) = ComputeReward(mat, exceptional);
         var (name, note)      = SmithRequesterPool.Random();
 
@@ -551,7 +555,7 @@ public static class SmithCommissionSystem
         var exceptChance = bypass ? 1.0 : Math.Max(0.0, (skill - 40.0) / 100.0);
         var exceptional  = Utility.RandomDouble() < exceptChance;
 
-        var set         = SmithCommissionSetPool.TeachingSet(pm, exceptional); // cc-P42 Part G1
+        var set         = SmithCommissionSetPool.TeachingSet(pm, exceptional, mat); // cc-P42 Part G1, cc-P61 A
         var (pieceSeals, pieceStanding) = ComputeBaseReward(mat, exceptional);
         var pieceCount  = set.ItemKeys.Length;
 

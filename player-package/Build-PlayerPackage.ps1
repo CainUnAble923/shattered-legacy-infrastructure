@@ -95,8 +95,9 @@ $slRegistry = @(Get-Content -LiteralPath (Join-Path $slArt 'registry.csv') | Whe
 $slIds      = @($slRegistry | ForEach-Object { [int]$_.id })
 # Our own client text (cc-P57 Part D). The cliloc gate: entries.json is plain ASCII (no BOM, every
 # byte printable or a line break), parses, and every entry has a number in our block, a non-empty
-# printable ASCII text, no number twice, and a row of registry.csv with the same text. Run on the
-# vendored file before staging and on app/cliloc-entries.json in the finished zip.
+# printable ASCII text, no number twice, and a row of registry.csv with the same text; and every
+# registry.csv row has its entry (cc-P61). Run on the vendored file before staging and on
+# app/cliloc-entries.json in the finished zip.
 $slCliloc = Join-Path $PSScriptRoot 'vendor\shattered-legacy-cliloc'
 $slClilocRegistry = @(Get-Content -LiteralPath (Join-Path $slCliloc 'registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
 function Test-ClilocEntries([byte[]]$bytes, [string]$what) {
@@ -117,6 +118,11 @@ function Test-ClilocEntries([byte[]]$bytes, [string]$what) {
         $row = @($slClilocRegistry | Where-Object { [int]$_.number -eq $n })
         if ($row.Count -ne 1) { $fail += "$what has $n, which registry.csv does not list once" }
         elseif ($row[0].text -cne $text) { $fail += "$what says '$text' for $n, registry.csv says '$($row[0].text)'" }
+    }
+    # cc-P61 Part C: and the other way round. Every number registry.csv lists ships, so a number the server sends (the
+    # deed lines 1900003-1900010 as much as the menu words) always has its text in the player's copy.
+    foreach ($r in $slClilocRegistry) {
+        if (-not $seen.ContainsKey([int]$r.number)) { $fail += "$what lacks $($r.number) ('$($r.text)'), which registry.csv lists" }
     }
     return $fail
 }
