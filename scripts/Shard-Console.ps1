@@ -28,7 +28,11 @@
   AT A GLANCE. Three tiles across the top (and the window title) say what is running: LIVE, TEST,
   and the STATUS PUBLISHER (the shard's status.json for the website, docker/uo-status/README.md).
   The publisher is judged by the file's generatedAt, fresh within 3 minutes, never by a claim in
-  the file. The tile also says whether sl-uo-status is serving it on 8092.
+  the file. The tile also says whether sl-uo-status is serving it on 8092. A fourth tile, PUBLIC
+  DNS (cc-P52, bug-list D47), goes red when a VPN carries this PC's traffic or public DNS for
+  shatteredlegacyuo.com is not this house: "VPN on: public DNS points at <ip>. Turn the VPN off."
+  Its check runs in a runspace of its own, so it never holds the window; a check that failed is
+  grey UNKNOWN, never red. Get-DnsGlance says which signals it reads and why.
 
   IT CALLS THE EXISTING SCRIPTS AND DOES NOT REIMPLEMENT THEM.
     docker/uo/Start-TestShard.ps1  starts, stops and rebuilds the test shard, seeds its accounts
@@ -1170,6 +1174,103 @@ function Get-AtAGlance {
     $tiles.ToArray()
 }
 
+# --- public DNS and VPN (cc-P52 Part H, bug-list D47) ------------------------------------------
+# Twice Chase's VPN made sl-ddns publish the VPN's exit as shatteredlegacyuo.com (146.70.217.106 on
+# 2026-10-02, 159.26.100.68 on 2026-10-04), taking the site, the updater and the shard off the
+# internet. ddns is not changed (Chase, 2026-10-04); the console says so plainly instead.
+#
+# The signals, gathered off the UI thread by Get-NetworkProbe (SHELL), judged here:
+#   route    the interface Windows would use to reach 1.1.1.1 (Find-NetRoute). Not the LAN NIC (the
+#            one holding HouseLanIp) means a VPN is carrying this PC's traffic. This is the signal
+#            that decides "VPN on": VPN clients either replace the default route or add 0/1 and
+#            128/1, and Find-NetRoute answers through either.
+#   adapters up network adapters that look like a VPN (PPP or tunnel type, or a VPN client's name).
+#            Shown, not decisive on its own: a split-tunnel VPN or Tailscale can be up while this
+#            PC's traffic still leaves through the LAN.
+#   dns      shatteredlegacyuo.com's A record from public DNS over HTTPS (Cloudflare, then Google).
+#            Not Resolve-DnsName: inside the house the UniFi router answers every port-53 query
+#            for it, even one sent to 1.1.1.1, with 192.168.1.58 (shard-migration
+#            notes/player-package.md).
+#   publicIp this PC's public address as Cloudflare sees it (cdn-cgi/trace). With no VPN it is
+#            this house's address, so DNS must equal it. With a VPN on it is the VPN's exit, so it
+#            says nothing about the house, and is not compared. No fetch made from inside the
+#            house can be shown to bypass a full-tunnel VPN, and the router's WAN address needs
+#            UniFi credentials the console does not have, so the house address is known only
+#            while the VPN is off.
+# A check that failed is grey UNKNOWN, never red. Red needs a signal that worked.
+
+$script:VpnAdapterPattern = '(?i)vpn|wireguard|wintun|tap-windows|\btun\b|openvpn|nordlynx|proton|mullvad|anyconnect|fortinet|forticlient|globalprotect|pangp|surfshark|expressvpn|windscribe|\bpia\b|private internet access|cyberghost'
+
+function Test-VpnAdapter {
+    # An adapter (anything with Name, Description, Type and Up) that looks like a VPN's.
+    param($Adapter)
+    if (-not $Adapter -or -not $Adapter.Up) { return $false }
+    if ([string]$Adapter.Type -in @('Ppp', 'Tunnel')) { return $true }
+    return (([string]$Adapter.Name + ' ' + [string]$Adapter.Description) -match $script:VpnAdapterPattern)
+}
+
+function ConvertFrom-DohJson {
+    # The A records in a DNS-over-HTTPS JSON answer (Cloudflare and Google share the format: type 1 is A).
+    param([string]$Json)
+    $doc = $Json | ConvertFrom-Json
+    if ($null -eq $doc -or $doc.Status -ne 0) { throw ('DNS answered status ' + $(if ($doc) { $doc.Status } else { 'nothing' })) }
+    @(@($doc.Answer) | Where-Object { $_ -and $_.type -eq 1 } | ForEach-Object { [string]$_.data })
+}
+
+function ConvertFrom-TraceText {
+    # The ip= line of Cloudflare's cdn-cgi/trace.
+    param([string]$Text)
+    foreach ($line in ($Text -split "`n")) {
+        if ($line.Trim() -match '^ip=(.+)$') { return $Matches[1].Trim() }
+    }
+    throw 'no ip= line in the trace'
+}
+
+function Get-DnsGlance {
+    # The fourth tile. $Probe is Get-NetworkProbe's result, or $null while the first one runs.
+    param($Probe, [string]$HostName = 'shatteredlegacyuo.com')
+    $t = [ordered]@{ Title = 'PUBLIC DNS'; Word = 'CHECKING'; Color = 'gray'; Detail = 'checking public DNS and this PC''s route...' }
+    if (-not $Probe) { return [pscustomobject]$t }
+
+    $dns = @($Probe.DnsIps)
+    $dnsText = 'unknown'
+    if (-not $Probe.DnsError -and $dns.Count) { $dnsText = $dns -join ', ' }
+    $adapters = @($Probe.VpnAdapters)
+    $adapterText = ''
+    if ($adapters.Count) { $adapterText = ' VPN adapter up: ' + ($adapters -join ', ') + '.' }
+
+    if ($Probe.RouteIsLan -eq $false) {
+        $t.Word = 'VPN ON'; $t.Color = 'red'
+        $t.Detail = 'VPN on: public DNS points at ' + $dnsText + '. Turn the VPN off. (Traffic leaves through ' + $Probe.RouteInterface + ', not the LAN.' + $adapterText + ')'
+        return [pscustomobject]$t
+    }
+    if ($null -eq $Probe.RouteIsLan) {
+        $t.Word = 'UNKNOWN'
+        $t.Detail = 'could not read this PC''s route (' + $Probe.RouteError + ').' + $adapterText
+        return [pscustomobject]$t
+    }
+    if ($Probe.DnsError -or -not $dns.Count) {
+        $t.Word = 'UNKNOWN'
+        $why = $Probe.DnsError
+        if (-not $why) { $why = 'no A record' }
+        $t.Detail = 'public DNS for ' + $HostName + ' could not be read (' + $why + '). No VPN route.' + $adapterText
+        return [pscustomobject]$t
+    }
+    if ($Probe.PublicIpError -or -not $Probe.PublicIp) {
+        $t.Word = 'UNKNOWN'
+        $t.Detail = 'public DNS points at ' + $dnsText + '; this house''s address could not be read (' + $Probe.PublicIpError + '). No VPN route.'
+        return [pscustomobject]$t
+    }
+    if ($dns -contains $Probe.PublicIp) {
+        $t.Word = 'OK'; $t.Color = 'green'
+        $t.Detail = $HostName + ' = ' + $Probe.PublicIp + ', this house. No VPN.' + $adapterText
+        return [pscustomobject]$t
+    }
+    $t.Word = 'WRONG IP'; $t.Color = 'red'
+    $t.Detail = 'VPN on: public DNS points at ' + $dnsText + ', not this house (' + $Probe.PublicIp + '). Turn the VPN off; ddns puts it back within 10 minutes.'
+    [pscustomobject]$t
+}
+
 function Format-StatusReport {
     # Lines with a colour name: normal, head, green, amber, red, gray.
     param($State, $Config)
@@ -1972,6 +2073,99 @@ function Update-ConsoleStatus {
     }
 }
 
+function Get-NetworkProbe {
+    # cc-P52 Part H: the signals Get-DnsGlance judges. Reads only: the route table, the adapter list,
+    # and two HTTPS GETs with a short timeout. Never throws: each failure is recorded beside its
+    # signal. The scriptblocks are for the facts, which hand in recorded or failing answers.
+    param(
+        [string]$HostName = 'shatteredlegacyuo.com',
+        [string]$LanIp = '192.168.1.58',
+        [int]$TimeoutSec = 4,
+        [scriptblock]$Http = { param($Url, $Timeout) (Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec $Timeout -Headers @{ accept = 'application/dns-json' } -ErrorAction Stop).Content },
+        [scriptblock]$Route = { Find-NetRoute -RemoteIPAddress '1.1.1.1' -ErrorAction Stop },
+        [scriptblock]$Adapters = {
+            [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | ForEach-Object {
+                [pscustomobject]@{ Name = $_.Name; Description = $_.Description; Type = [string]$_.NetworkInterfaceType; Up = ($_.OperationalStatus -eq 'Up') }
+            }
+        }
+    )
+    # Windows PowerShell 5.1 may not offer TLS 1.2 by default; both DNS services require it.
+    try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch { }
+    $r = [ordered]@{
+        At = [datetime]::UtcNow; RouteInterface = $null; RouteSource = $null; RouteIsLan = $null; RouteError = $null
+        VpnAdapters = @(); DnsIps = @(); DnsError = $null; PublicIp = $null; PublicIpError = $null
+    }
+    try {
+        $found = @(& $Route)
+        $src = $found | Where-Object { $_.IPAddress } | Select-Object -First 1
+        $rt = $found | Where-Object { $_.DestinationPrefix } | Select-Object -First 1
+        if (-not $src) { throw 'no route to 1.1.1.1' }
+        $r.RouteSource = [string]$src.IPAddress
+        $r.RouteInterface = [string]$src.InterfaceAlias
+        if ($rt -and $rt.InterfaceAlias) { $r.RouteInterface = [string]$rt.InterfaceAlias }
+        $r.RouteIsLan = ($r.RouteSource -eq $LanIp)
+    } catch { $r.RouteError = $_.Exception.Message }
+    try {
+        $r.VpnAdapters = @(@(& $Adapters) | Where-Object { Test-VpnAdapter $_ } | ForEach-Object { [string]$_.Name })
+    } catch { $r.VpnAdapters = @() }
+    $errs = @()
+    foreach ($url in @("https://cloudflare-dns.com/dns-query?name=$HostName&type=A", "https://dns.google/resolve?name=$HostName&type=A")) {
+        try { $r.DnsIps = @(ConvertFrom-DohJson ([string](& $Http $url $TimeoutSec))); $r.DnsError = $null; break }
+        catch { $errs += ((([uri]$url).Host) + ': ' + $_.Exception.Message); $r.DnsError = $errs -join '; ' }
+    }
+    try { $r.PublicIp = ConvertFrom-TraceText ([string](& $Http 'https://cloudflare.com/cdn-cgi/trace' $TimeoutSec)) }
+    catch { $r.PublicIpError = $_.Exception.Message }
+    [pscustomobject]$r
+}
+
+# Set by the facts so a form built in a test never reaches the network.
+$script:NetProbeDisabled = $false
+
+function Start-NetworkProbe {
+    # Runs Get-NetworkProbe in a runspace of its own, so a slow or dead network never holds the form.
+    # The functions it needs are handed over as text: a runspace starts empty.
+    $ps = [PowerShell]::Create()
+    $defs = @('Test-VpnAdapter', 'ConvertFrom-DohJson', 'ConvertFrom-TraceText', 'Get-NetworkProbe') | ForEach-Object {
+        'function ' + $_ + ' {' + (Get-Item ('function:' + $_)).Definition + '}'
+    }
+    $code = '$script:VpnAdapterPattern = ' + "'" + ($script:VpnAdapterPattern -replace "'", "''") + "'" + "`n" + ($defs -join "`n") + "`nGet-NetworkProbe"
+    [void]$ps.AddScript($code)
+    $script:netProbe = [pscustomobject]@{ PS = $ps; Handle = $ps.BeginInvoke(); Started = [datetime]::UtcNow }
+}
+
+function Update-NetworkTile {
+    # On the UI timer: collect a finished probe (never waits for one), draw the tile, start the next
+    # one when the last is older than a refresh. A probe that ran past 30 s is abandoned as UNKNOWN.
+    $p = $script:netProbe
+    if ($p) {
+        if ($p.Handle.IsCompleted) {
+            try {
+                $out = @($p.PS.EndInvoke($p.Handle))
+                if ($out.Count) { $script:netResult = $out[-1] } else { $script:netResult = [pscustomobject]@{ RouteIsLan = $null; RouteError = 'the check returned nothing'; VpnAdapters = @() } }
+            } catch {
+                $script:netResult = [pscustomobject]@{ RouteIsLan = $null; RouteError = $_.Exception.Message; VpnAdapters = @() }
+            }
+            $p.PS.Dispose(); $script:netProbe = $null; $script:netResultAt = [datetime]::UtcNow
+        } elseif (([datetime]::UtcNow - $p.Started).TotalSeconds -gt 30) {
+            try { $p.PS.Stop(); $p.PS.Dispose() } catch { }
+            $script:netProbe = $null; $script:netResultAt = [datetime]::UtcNow
+            $script:netResult = [pscustomobject]@{ RouteIsLan = $null; RouteError = 'the check took longer than 30 s'; VpnAdapters = @() }
+        }
+    }
+    if ($script:ui.NetTile) {
+        $t = Get-DnsGlance $script:netResult
+        $cols = Get-TileColors $t.Color
+        $script:ui.NetTile.Panel.BackColor = $cols[0]
+        $script:ui.NetTile.Word.ForeColor = $cols[1]
+        $script:ui.NetTile.Detail.ForeColor = $cols[1]
+        $script:ui.NetTile.Word.Text = $t.Title + ': ' + $t.Word
+        $script:ui.NetTile.Detail.Text = $t.Detail
+    }
+    if (-not $script:NetProbeDisabled -and -not $script:netProbe -and (-not $script:netResultAt -or ([datetime]::UtcNow - $script:netResultAt).TotalSeconds -ge 30)) {
+        Start-NetworkProbe
+    }
+}
+
 function Get-SelectedSnapshotShard {
     if ($script:ui.SnapLive.Checked) { 'live' } else { 'test' }
 }
@@ -2207,9 +2401,9 @@ function New-ConsoleForm {
     $glance = New-Object Windows.Forms.TableLayoutPanel
     $glance.Dock = 'Fill'
     $glance.RowCount = 1
-    $glance.ColumnCount = 3
+    $glance.ColumnCount = 4
     $glance.Margin = New-Object Windows.Forms.Padding(0)
-    foreach ($i in 1..3) { [void]$glance.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 33.33))) }
+    foreach ($i in 1..4) { [void]$glance.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 25))) }
     $script:ui.Tiles = @()
     $col = 0
     foreach ($title in @('LIVE', 'TEST', 'STATUS PUBLISHER')) {
@@ -2218,6 +2412,10 @@ function New-ConsoleForm {
         $script:ui.Tiles += $tile
         $col++
     }
+    # cc-P52 Part H: public DNS and VPN. Drawn by Update-NetworkTile, not by the status refresh.
+    $script:ui.NetTile = New-StatusTile 'PUBLIC DNS'
+    $glance.Controls.Add($script:ui.NetTile.Panel, $col, 0)
+    $script:netProbe = $null; $script:netResult = $null; $script:netResultAt = $null
 
     # status
     $statusGroup = New-Object Windows.Forms.GroupBox
@@ -2464,8 +2662,18 @@ function New-ConsoleForm {
     $timer.Interval = 30000
     $timer.Add_Tick({ if ($script:ui.Auto.Checked) { Update-ConsoleStatus } })
     $timer.Start()
-    $form.Add_FormClosed({ $script:ui.Timer.Stop(); $script:OutputBox = $null })
+    # The DNS tile: a 1 s tick that only collects a finished check and starts the next every 30 s.
+    $netTimer = New-Object Windows.Forms.Timer
+    $netTimer.Interval = 1000
+    $netTimer.Add_Tick({ Update-NetworkTile })
+    $netTimer.Start()
+    $form.Add_FormClosed({
+        $script:ui.Timer.Stop(); $script:ui.NetTimer.Stop(); $script:OutputBox = $null
+        if ($script:netProbe) { try { $script:netProbe.PS.Stop(); $script:netProbe.PS.Dispose() } catch { } }
+    })
     $script:ui.Timer = $timer
+    $script:ui.NetTimer = $netTimer
+    Update-NetworkTile
 
     if ($DryRun) { Write-ConsoleLine 'DRY RUN: every button prints the plan it would run. The status panel is read from a capture file, not docker.' 'amber' }
     Set-ConsoleDryRun ([bool]$DryRun)

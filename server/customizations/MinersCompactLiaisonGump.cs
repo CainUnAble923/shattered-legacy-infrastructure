@@ -735,7 +735,7 @@ public class MinersCompactLiaisonGump : Gump
             case 36: _pm.SendGump(new JacobsT5UpgradeGump(_pm));                                   break;
             case 38: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.ReplaceKit));              break;
             case 39: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.UpgradeSatchel));         break;
-            case 100: _pm.SendGump(new CrossGuildExchangeGump(_pm));                               break;
+            case 100: _pm.SendGump(new CrossGuildExchangeGump(_pm, p => p.SendGump(new MinersCompactLiaisonGump(p, View.MemberDashboard)))); break;
 
             // -- Satchel upgrade / recovery --------------------------------
             case 90:

@@ -390,14 +390,20 @@ public class GuildContractLedgerGump : Gump
             case "mining":
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, MinersCompactLiaisonGump.View.MemberDashboard));
                 break;
-            // Future guilds: add cases here (e.g. "smithing" -> SmithsBrotherhoodLiaisonGump)
+            // cc-P52 Part E (D65): Back did nothing for the smith guild; it reopens the Society of Smiths menu.
+            case "smithing":
+                if (ClusterFGuildSystem.GetDefForGuildmaster(typeof(BlacksmithGuildmaster)) is { } def
+                    && _pm.Account is IAccount acct)
+                    _pm.SendGump(new SmithGuildmasterGump(_pm, def, acct));
+                break;
+            // Future guilds: add cases here
         }
     }
 
     private static string GuildDisplayName(string guildKey) => guildKey.ToLowerInvariant() switch
     {
         "mining"   => "Miners' Compact",
-        "smithing" => "Smiths' Brotherhood",
+        "smithing" => "Society of Smiths", // cc-P52 Part G (D68)
         "rangers"  => "Rangers' League",
         "healers"  => "Healers' Circle",
         _          => guildKey

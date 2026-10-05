@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Server.Accounting;
 using Server.Gumps;
@@ -19,6 +20,7 @@ namespace Server;
 public class SmithCommissionGump : Gump
 {
     private const int BtnRequestNew = 1;
+    public const int BtnBack = 99; // cc-P52 Part E (D65): back to the gump that opened this one
 
     // Turn-in buttons: one per commission slot (0-indexed)
     // BtnTurnIn0 = 11, BtnTurnIn1 = 12, BtnTurnIn2 = 13
@@ -32,13 +34,15 @@ public class SmithCommissionGump : Gump
 
     private readonly PlayerMobile           _pm;
     private readonly BlacksmithGuildmaster? _npc;
+    private readonly Action<PlayerMobile>?  _back;
     private readonly List<string>           _commissionIds = new();
 
-    public SmithCommissionGump(PlayerMobile pm, BlacksmithGuildmaster? npc = null)
+    public SmithCommissionGump(PlayerMobile pm, BlacksmithGuildmaster? npc = null, Action<PlayerMobile>? back = null)
         : base(90, 60)
     {
-        _pm  = pm;
-        _npc = npc;
+        _pm   = pm;
+        _npc  = npc;
+        _back = back;
 
         if (pm.Account is not IAccount acct) return;
 
@@ -65,7 +69,7 @@ public class SmithCommissionGump : Gump
         // Height: header (70) + per-card (110) + footer/button area (80)
         const int CardH    = 110;
         const int HeaderH  = 70;
-        const int FooterH  = 80;
+        const int FooterH  = 108; // request row, the hint, and the Back row
         var       H        = HeaderH + (commissions.Count > 0 ? commissions.Count * CardH : 30) + FooterH;
         if (H < 240) H = 240;
 
@@ -171,6 +175,13 @@ public class SmithCommissionGump : Gump
             "<BASEFONT COLOR=#666666>Craft the requested item and drag it to the Guildmaster, " +
             "or use Turn In when it is in your backpack.</BASEFONT>",
             false, false);
+
+        if (_back != null)
+        {
+            y += 42;
+            AddButton(18, y, 4014, 4016, BtnBack);
+            AddLabel(52, y + 2, 999, "Back");
+        }
     }
 
     // -- Response --------------------------------------------------------------
@@ -179,6 +190,12 @@ public class SmithCommissionGump : Gump
     {
         if (sender.Mobile is not PlayerMobile pm) return;
         if (pm.Account is not IAccount acct) return;
+
+        if (info.ButtonID == BtnBack)
+        {
+            _back?.Invoke(pm);
+            return;
+        }
 
         var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
 
@@ -221,7 +238,7 @@ public class SmithCommissionGump : Gump
                 pm.SendMessage(0x22, "No commissions are available right now.");
         }
 
-        pm.SendGump(new SmithCommissionGump(pm, _npc));
+        pm.SendGump(new SmithCommissionGump(pm, _npc, _back));
     }
 
     private void HandleTurnIn(PlayerMobile pm, CharacterGuildData guild, string commissionId)
@@ -231,14 +248,14 @@ public class SmithCommissionGump : Gump
         if (commission == null)
         {
             pm.SendMessage(0x22, "That commission no longer exists.");
-            pm.SendGump(new SmithCommissionGump(pm, _npc));
+            pm.SendGump(new SmithCommissionGump(pm, _npc, _back));
             return;
         }
 
         if (pm.Backpack == null)
         {
             pm.SendMessage(0x22, "You have no backpack.");
-            pm.SendGump(new SmithCommissionGump(pm, _npc));
+            pm.SendGump(new SmithCommissionGump(pm, _npc, _back));
             return;
         }
 
@@ -256,13 +273,13 @@ public class SmithCommissionGump : Gump
         {
             pm.SendMessage(0x22,
                 $"You don't have a matching {commission.FullLabel} in your backpack.");
-            pm.SendGump(new SmithCommissionGump(pm, _npc));
+            pm.SendGump(new SmithCommissionGump(pm, _npc, _back));
             return;
         }
 
         SmithCommissionSystem.Complete(pm, commission, match);
         // Complete sends its own message + sound - reopen the gump.
-        pm.SendGump(new SmithCommissionGump(pm, _npc));
+        pm.SendGump(new SmithCommissionGump(pm, _npc, _back));
     }
 
     private void HandleAbandon(PlayerMobile pm, CharacterGuildData guild, string commissionId)
@@ -280,6 +297,6 @@ public class SmithCommissionGump : Gump
                 $"Commission from {commission.RequesterName} abandoned. The slot is now open.");
         }
 
-        pm.SendGump(new SmithCommissionGump(pm, _npc));
+        pm.SendGump(new SmithCommissionGump(pm, _npc, _back));
     }
 }

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Server.Accounting;
+using Server.Collections;
+using Server.ContextMenus;
 using Server.Engines.BulkOrders;
 using Server.Engines.Craft;
 using Server.Gumps;
@@ -31,9 +33,12 @@ namespace Server.Items;
 //   v0 (legacy generator format): bool _exhausted + long _lastRegenAtTicks (no familiarity)
 //   v1 (current):                 bool + long + Dictionary<int,int> familiarity
 //
-// Note on +5/+10 Blacksmithy base bonus: SmithHammer extends BaseTool which has no
-// SkillBonuses property. The base bonus is display-only until Phase 4E adds SkillMod
-// on equip/remove. The T2 familiarity SkillMod IS real and stacks on top of it.
+// The +5/+10 Blacksmithy base bonus and the T2 familiarity bonus are SkillMods that apply only while
+// the hammer is held (its Parent is the Mobile), never from a container. cc-P52 Part A (bug-list D59):
+// they used to apply from the backpack too, and nothing re-applied them after a world load. Neither mod
+// is serialized; Deserialize schedules ApplyHeldBonus for after the load, as stock BaseWeapon's
+// [AfterDeserialization] does for its SkillMods (pinned BaseWeapon.cs:3551-3571). Each hammer holds at
+// most one mod of each kind: every apply removes its own previous mod first.
 // -----------------------------------------------------------------------------
 
 // -- Shared helpers ------------------------------------------------------------
@@ -189,6 +194,9 @@ public partial class HammerOfHephaestus : SmithHammer
         // Guard: uninitialized regen timestamp
         if (_lastRegenAtTicks == 0)
             _lastRegenAtTicks = DateTime.UtcNow.Ticks;
+
+        // SkillMods are not saved: re-apply for a held hammer once the world has loaded.
+        Timer.DelayCall(ApplyHeldBonus);
     }
 
     // -- Passive regen ---------------------------------------------------------
@@ -213,6 +221,7 @@ public partial class HammerOfHephaestus : SmithHammer
             Hue        = FunctionalHue;
             ((IUsesRemaining)this).ShowUsesRemaining = true;
             InvalidateProperties();
+            ApplyHeldBonus();
         }
     }
 
@@ -233,12 +242,14 @@ public partial class HammerOfHephaestus : SmithHammer
 
     // -- Base SkillMod (Phase 4E) ----------------------------------------------
 
-    private Mobile? GetOwnerMobile() => RootParent as Mobile ?? Parent as Mobile;
+    /// <summary>The mobile holding this hammer in hand, or null (in a container, on the ground).</summary>
+    public Mobile? HeldBy => Parent as Mobile;
 
-    private void ApplyBaseSkillMod(Mobile m)
+    /// <summary>Applies the +5 for a held, usable hammer and removes it otherwise. Safe to repeat.</summary>
+    public void ApplyHeldBonus()
     {
         RemoveBaseSkillMod();
-        if (!_exhausted)
+        if (!_exhausted && !Deleted && HeldBy is { } m)
         {
             _baseSkillMod = new DefaultSkillMod(SkillName.Blacksmith, "HammerOfHephaestusBase", true, 5.0);
             m.AddSkillMod(_baseSkillMod);
@@ -366,6 +377,12 @@ public partial class HammerOfHephaestus : SmithHammer
             LabelTo(from, $"[{UsesRemaining}/{MaxUses} uses - T1]");
     }
 
+    public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
+    {
+        base.GetContextMenuEntries(from, ref list);
+        HammerFamiliarityEntry.AddTo(this, from, ref list);
+    }
+
     public override void GetProperties(IPropertyList list)
     {
         ApplyPassiveRegen();
@@ -423,9 +440,8 @@ public partial class HammerOfHephaestus : SmithHammer
             }
         }
 
-        // Apply base SkillMod when entering a player's possession
-        if (pm != null && !_exhausted)
-            ApplyBaseSkillMod(pm);
+        // The base SkillMod applies only in hand, never from a container
+        ApplyHeldBonus();
     }
 
     public override void OnRemoved(IEntity parent)
@@ -462,9 +478,7 @@ public partial class HammerOfHephaestus : SmithHammer
         ((IUsesRemaining)this).ShowUsesRemaining = true;
         InvalidateProperties();
 
-        var owner = GetOwnerMobile();
-        if (owner != null)
-            ApplyBaseSkillMod(owner);
+        ApplyHeldBonus();
     }
 }
 
@@ -555,6 +569,9 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
 
         if (_lastRegenAtTicks == 0)
             _lastRegenAtTicks = DateTime.UtcNow.Ticks;
+
+        // SkillMods are not saved: re-apply for a held hammer once the world has loaded.
+        Timer.DelayCall(ApplyHeldBonus);
     }
 
     // -- Passive regen ---------------------------------------------------------
@@ -579,6 +596,7 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
             Hue        = FunctionalHue;
             ((IUsesRemaining)this).ShowUsesRemaining = true;
             InvalidateProperties();
+            ApplyHeldBonus();
         }
     }
 
@@ -600,13 +618,22 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
 
     // -- Base SkillMod (Phase 4E) ----------------------------------------------
 
-    private void ApplyBaseSkillMod(Mobile m)
+    /// <summary>The mobile holding this hammer in hand, or null (in a container, on the ground).</summary>
+    public Mobile? HeldBy => Parent as Mobile;
+
+    /// <summary>
+    /// Applies the +10 base and the familiarity mod for a held, usable hammer and removes both otherwise.
+    /// Safe to repeat.
+    /// </summary>
+    public void ApplyHeldBonus()
     {
         RemoveBaseSkillMod();
-        if (!_exhausted)
+        RemoveSkillMod();
+        if (!_exhausted && !Deleted && HeldBy is { } m)
         {
             _baseSkillMod = new DefaultSkillMod(SkillName.Blacksmith, "ReinforcedHammerOfHephaestusBase", true, 10.0);
             m.AddSkillMod(_baseSkillMod);
+            ApplySkillMod(m);
         }
     }
 
@@ -635,7 +662,7 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
         {
             _metalFamiliarity[key] = cur + 1;
             InvalidateProperties();
-            UpdateSkillMod(from); // C-bonus: refresh SkillMod after each gain
+            UpdateSkillMod(); // C-bonus: refresh SkillMod after each gain (held only)
         }
     }
 
@@ -669,16 +696,10 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
         }
     }
 
-    private void UpdateSkillMod(Mobile? from)
+    private void UpdateSkillMod()
     {
-        var owner = from ?? GetOwnerMobile();
-        if (owner != null)
-            ApplySkillMod(owner);
-    }
-
-    private Mobile? GetOwnerMobile()
-    {
-        return RootParent as Mobile ?? Parent as Mobile;
+        if (!_exhausted && HeldBy is { } m)
+            ApplySkillMod(m);
     }
 
     // -- Familiarity snapshots -------------------------------------------------
@@ -764,6 +785,12 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
             LabelTo(from, $"[{UsesRemaining}/{MaxUses} uses - T2  +{10.0 + GetSkillBonus():F1} BS total]");
     }
 
+    public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
+    {
+        base.GetContextMenuEntries(from, ref list);
+        HammerFamiliarityEntry.AddTo(this, from, ref list);
+    }
+
     public override void GetProperties(IPropertyList list)
     {
         ApplyPassiveRegen();
@@ -815,12 +842,8 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
             }
         }
 
-        // Reapply SkillMods after world load or container move
-        if (pm != null && !_exhausted)
-        {
-            ApplyBaseSkillMod(pm);
-            ApplySkillMod(pm);
-        }
+        // The SkillMods apply only in hand, never from a container
+        ApplyHeldBonus();
     }
 
     public override void OnRemoved(IEntity parent)
@@ -857,18 +880,48 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
         ((IUsesRemaining)this).ShowUsesRemaining = true;
         InvalidateProperties();
 
-        var owner = GetOwnerMobile();
-        if (owner != null)
+        ApplyHeldBonus();
+    }
+}
+
+// -----------------------------------------------------------------------------
+// HammerFamiliarityEntry - cc-P52 Part B (bug-list D60): the single-click (context)
+// menu entry that opens the Metal Familiarity panel anywhere, on both hammers, for
+// the character carrying the hammer (in hand or in their pack). Cliloc 1112530 reads
+// "Knowledge" in the client's Cliloc.enu; no cliloc names Metal Familiarity. Numbers
+// above 0x7FFF are sent as they are (pinned ContextMenuEntry.cs:39-48) and switch the
+// menu to the newer packet (ContextMenu.cs:51-54).
+// -----------------------------------------------------------------------------
+
+public class HammerFamiliarityEntry : ContextMenuEntry
+{
+    public const int Cliloc = 1112530; // "Knowledge"
+
+    public HammerFamiliarityEntry() : base(Cliloc)
+    {
+    }
+
+    public static void AddTo(Item hammer, Mobile from, ref PooledRefList<ContextMenuEntry> list)
+    {
+        if (from.Alive && hammer.RootParent == from)
+            list.Add(new HammerFamiliarityEntry());
+    }
+
+    public override void OnClick(Mobile from, IEntity target)
+    {
+        if (target is Item { Deleted: false } hammer
+            && hammer is HammerOfHephaestus or ReinforcedHammerOfHephaestus
+            && hammer.RootParent == from)
         {
-            ApplyBaseSkillMod(owner);
-            ApplySkillMod(owner);
+            from.CloseGump<HammerFamiliarityGump>();
+            from.SendGump(new HammerFamiliarityGump(from, hammer));
         }
     }
 }
 
 // -----------------------------------------------------------------------------
-// HammerFamiliarityGump - opened via double-click when not near a forge,
-// or via single-click in the T1/T2 label.
+// HammerFamiliarityGump - opened from the hammer's single-click menu (Knowledge),
+// or via double-click when not near a forge or while exhausted.
 // Shows per-metal familiarity, current bonus, and bonus tier documentation.
 // -----------------------------------------------------------------------------
 
@@ -1008,6 +1061,7 @@ public class HammerFamiliarityGump : Gump
 public class HammerRestoreGump : Gump
 {
     private readonly PlayerMobile _pm;
+    private readonly Action<PlayerMobile>? _back; // cc-P52 Part E: the opener's Back, when it gave one
 
     private const int RestoreSealCost    = 10;
     private const int RestoreIronCost    = 200;
@@ -1027,9 +1081,10 @@ public class HammerRestoreGump : Gump
     private const int H    = 420;
     private const int BgId = 9270;
 
-    public HammerRestoreGump(PlayerMobile pm) : base(100, 60)
+    public HammerRestoreGump(PlayerMobile pm, Action<PlayerMobile>? back = null) : base(100, 60)
     {
-        _pm = pm;
+        _pm   = pm;
+        _back = back;
 
         Closable   = true;
         Disposable = true;
@@ -1195,6 +1250,13 @@ public class HammerRestoreGump : Gump
 
         if (info.ButtonID == 1)
         {
+            // cc-P52 Part E (D65): the opener's own Back when it gave one (keeps the guildmaster), else as before.
+            if (_back != null)
+            {
+                _back(_pm);
+                return;
+            }
+
             var def  = ClusterFGuildSystem.GetDefForGuildmaster(typeof(BlacksmithGuildmaster));
             var acct = _pm.Account as IAccount;
             if (def != null && acct != null)
@@ -1223,14 +1285,14 @@ public class HammerRestoreGump : Gump
         if (hammer2 == null && hammer1 == null)
         {
             _pm.SendMessage(0x22, "No Hammer of Hephaestus found in your pack.");
-            _pm.SendGump(new HammerRestoreGump(_pm));
+            _pm.SendGump(new HammerRestoreGump(_pm, _back));
             return;
         }
 
         // Seals and iron (pack then bank), all or nothing; skipped when the testing token is active.
         if (!bypass && !GuildResources.TryPay(_pm, guild, "smithing", RestoreSealCost, "Smithing Seals", 0, RestoreMaterials))
         {
-            _pm.SendGump(new HammerRestoreGump(_pm));
+            _pm.SendGump(new HammerRestoreGump(_pm, _back));
             return;
         }
 
@@ -1240,7 +1302,7 @@ public class HammerRestoreGump : Gump
         _pm.SendMessage(0x44,
             "The Guildmaster lays hands on the hammer, and it blazes to life once more.");
         _pm.PlaySound(0x35D);
-        _pm.SendGump(new HammerRestoreGump(_pm));
+        _pm.SendGump(new HammerRestoreGump(_pm, _back));
     }
 
     private void HandleUpgrade()
@@ -1261,7 +1323,7 @@ public class HammerRestoreGump : Gump
             || (!bypass && (standing < UpgradeStandingReq || skill < UpgradeSkillReq)))
         {
             _pm.SendMessage(0x22, "Requirements no longer met. Upgrade cancelled.");
-            _pm.SendGump(new HammerRestoreGump(_pm));
+            _pm.SendGump(new HammerRestoreGump(_pm, _back));
             return;
         }
 
@@ -1271,7 +1333,7 @@ public class HammerRestoreGump : Gump
         // Seals, materials (pack then bank) and gold (pack then bank), all or nothing; skipped with the testing token.
         if (!bypass && !GuildResources.TryPay(_pm, guild, "smithing", UpgradeSealCost, "Smithing Seals", UpgradeGoldCost, UpgradeMaterials))
         {
-            _pm.SendGump(new HammerRestoreGump(_pm));
+            _pm.SendGump(new HammerRestoreGump(_pm, _back));
             return;
         }
 
@@ -1287,7 +1349,7 @@ public class HammerRestoreGump : Gump
             "The Guildmaster strikes the hammer against the forge-stone - " +
             "the Reinforced Hammer of Hephaestus is yours. Your metal mastery carries forward.");
         _pm.PlaySound(0x35D);
-        _pm.SendGump(new HammerRestoreGump(_pm));
+        _pm.SendGump(new HammerRestoreGump(_pm, _back));
     }
 }
 

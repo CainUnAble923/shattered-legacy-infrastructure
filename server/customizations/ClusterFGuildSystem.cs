@@ -103,7 +103,7 @@ public static class ClusterFGuildSystem
             return;
 
         Register(new GuildDef(
-            "smithing", "Smiths' Fellowship",
+            "smithing", "Society of Smiths", // cc-P52 Part G (D68): display name only; the key stays "smithing"
             "The forge never rests, and neither do we. Prove your mettle.",
             "Demonstrate Blacksmithing of at least 50.0, or bring 10 Iron Ingots as tribute.",
             typeof(BlacksmithGuildmaster),

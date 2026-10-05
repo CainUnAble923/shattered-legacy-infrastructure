@@ -84,3 +84,93 @@ function Write-LaunchSettings {
     # defaults on one WITHOUT SAYING SO: the client starts and connects nowhere. No BOM.
     [IO.File]::WriteAllText($Path, ($s | ConvertTo-Json -Depth 10), (New-Object Text.UTF8Encoding $false))
 }
+
+# ---- graphics driver fallback (cc-P52 Part C, bug-list D61) ---------------------------------------
+# TazUO picks its renderer from force_driver (settings file or -force_driver): 1 OpenGL, 2 Vulkan,
+# 3 "SDL/FNA auto-select", and anything else, 0 included, falls through to OpenGL (TazUO 3212623f,
+# src/ClassicUO.Client/Main.cs:211-227, "default: case 1"). So every player runs OpenGL today. A PC
+# with no OpenGL 2.1 driver (a VM, Windows Sandbox, Microsoft Basic Display) then crashes at start:
+# "OpenGL 2.1 support is required!". 3 sets no driver and lets FNA3D try SDL_GPU, then D3D11, then
+# OpenGL (FNA3D.c:42-53), which started the game in P35's sandbox on D3D11 through WARP.
+#
+# On a PC with a real GPU, 3 would move the player off OpenGL to SDL_GPU (Vulkan or Direct3D 12,
+# whichever SDL picks), so it is not forced on everyone: the launcher switches to 3 only on a PC
+# where TazUO has logged that crash, and only where force_driver is still TazUO's default 0. A
+# player's own choice in the client (1, 2 or 3) is never changed.
+
+$GraphicsFallbackDriver = 3
+$OpenGlCrashText = 'OpenGL 2.1 support is required!'
+
+# force_driver in a TazUO settings file; 0 (TazUO's default) when the file, the key or the JSON is missing.
+function Get-ForceDriver {
+    param([string]$Path)
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return 0 }
+    try { $j = [IO.File]::ReadAllText($Path) | ConvertFrom-Json } catch { return 0 }
+    if ($null -eq $j -or $null -eq $j.force_driver) { return 0 }
+    $v = 0
+    if ([int]::TryParse([string]$j.force_driver, [ref]$v)) { return $v }
+    return 0
+}
+
+# The newest crash log TazUO wrote at or after $Since (Logs\<stamp>_crash.txt, Main.cs:88-96) that
+# names the missing OpenGL 2.1 driver, or $null.
+function Find-OpenGlCrash {
+    param([string]$LogsDir, [datetime]$Since = [datetime]::MinValue)
+    if (-not $LogsDir -or -not (Test-Path -LiteralPath $LogsDir)) { return $null }
+    $logs = @(Get-ChildItem -LiteralPath $LogsDir -Filter '*crash.txt' -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.LastWriteTime -ge $Since } | Sort-Object LastWriteTime -Descending)
+    foreach ($log in $logs) {
+        try { $text = [IO.File]::ReadAllText($log.FullName) } catch { continue }
+        if ($text.Contains($OpenGlCrashText)) { return $log }
+    }
+    return $null
+}
+
+# Writes force_driver 3 into every settings*.json in $TazDir whose force_driver is still 0, keeping
+# everything else in it. Returns the names it changed.
+function Set-GraphicsFallback {
+    param([string]$TazDir)
+    $changed = @()
+    foreach ($f in @(Get-ChildItem -LiteralPath $TazDir -Filter 'settings*.json' -File -ErrorAction SilentlyContinue)) {
+        if ((Get-ForceDriver $f.FullName) -ne 0) { continue }
+        try { $j = [IO.File]::ReadAllText($f.FullName) | ConvertFrom-Json } catch { continue }
+        if ($null -eq $j) { continue }
+        $j | Add-Member -NotePropertyName force_driver -NotePropertyValue $GraphicsFallbackDriver -Force
+        # No BOM, as Write-LaunchSettings: TazUO reads a BOM'd file as defaults.
+        [IO.File]::WriteAllText($f.FullName, ($j | ConvertTo-Json -Depth 10), (New-Object Text.UTF8Encoding $false))
+        $changed += $f.Name
+    }
+    return $changed
+}
+
+# Starts TazUO. Before: a PC that has already logged the OpenGL crash gets force_driver 3 first. After:
+# waits up to $WaitSeconds; if TazUO exits having logged that crash, switches to 3 and starts it once
+# more. Returns 'running' (still up when the wait ended), 'exited', 'crashed' (the crash, on a player's
+# own force_driver, left alone) or 'fallback' (started again on 3).
+function Start-TazUO {
+    param([string]$Exe, [string[]]$Arguments, [string]$TazDir, [string]$SettingsPath, [int]$WaitSeconds = 20)
+    $logs = Join-Path $TazDir 'Logs'
+
+    if ((Get-ForceDriver $SettingsPath) -eq 0 -and (Find-OpenGlCrash $logs)) {
+        $null = Set-GraphicsFallback $TazDir
+        Write-Host '  This computer has no OpenGL 2.1 driver; the game uses its automatic graphics driver.' -ForegroundColor Yellow
+    }
+
+    # Only a crash log written after this start counts (an earlier one was handled above, or was a player's own driver).
+    $since = Get-Date
+    $p = Start-Process -FilePath $Exe -ArgumentList $Arguments -WorkingDirectory $TazDir -PassThru
+    if (-not $p.WaitForExit($WaitSeconds * 1000)) { return 'running' }
+    if (-not (Find-OpenGlCrash $logs $since)) { return 'exited' }
+
+    $own = Get-ForceDriver $SettingsPath
+    if ($own -ne 0) {
+        Write-Host "  The game could not start its graphics with your own setting (force_driver $own)." -ForegroundColor Red
+        Write-Host '  Change Force driver in the client''s login options, or ask Chase.' -ForegroundColor Red
+        return 'crashed'
+    }
+
+    $null = Set-GraphicsFallback $TazDir
+    Write-Host '  This computer has no OpenGL 2.1 driver. Starting the game again with its automatic graphics driver.' -ForegroundColor Yellow
+    Start-Process -FilePath $Exe -ArgumentList $Arguments -WorkingDirectory $TazDir | Out-Null
+    return 'fallback'
+}

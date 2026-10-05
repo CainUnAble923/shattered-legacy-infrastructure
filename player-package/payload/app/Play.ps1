@@ -302,5 +302,8 @@ try {
 }
 if ($uoOverride) { $tazArgs += @('-uofilesoverride', "`"$uoOverride`"") }
 
-Start-Process -FilePath $tazExe -ArgumentList $tazArgs -WorkingDirectory $taz
+# Launch-Settings.ps1's Start-TazUO: on a PC with no OpenGL 2.1 driver it switches the client to its
+# automatic graphics driver (force_driver 3) and starts it again (cc-P52, D61). Waits up to 20 seconds.
+Write-Host '  Starting the game...' -ForegroundColor Gray
+$null = Start-TazUO -Exe $tazExe -Arguments $tazArgs -TazDir $taz -SettingsPath $settingsPath
 exit 0

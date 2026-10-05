@@ -450,7 +450,7 @@ public class ForestersGuildmasterGump : Gump
             case 30: _pm.SendGump(new ForestersGuildmasterGump(_pm, View.MemberDashboard)); break;
             case 31: _pm.SendGump(new GuildContractLedgerGump(_pm, "foresters"));           break;
             case 32: _pm.SendGump(new ForestersGuildmasterGump(_pm, View.Discoveries));     break;
-            case 50: _pm.SendGump(new CrossGuildExchangeGump(_pm));                         break;
+            case 50: _pm.SendGump(new CrossGuildExchangeGump(_pm, p => p.SendGump(new ForestersGuildmasterGump(p, View.MemberDashboard)))); break;
 
             case 33:
             {

@@ -121,7 +121,7 @@ public static class GuildStarterItems
         if (questType == typeof(TheDeluciansLostMine))
             return "Lost? The Miners' Compact Liaison issues a new one.";
         if (questType == typeof(ItsHammerTime))
-            return "The Smiths' Fellowship recharges it.";
+            return "The Society of Smiths recharges it.";
         return null;
     }
 }

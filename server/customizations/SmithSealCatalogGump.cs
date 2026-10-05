@@ -13,7 +13,8 @@ namespace Server;
 /// Allows guild members to spend Smithing Seals on tools, runic hammers
 /// and ancient smithy hammers.
 ///
-/// Opened from: SmithGuildmasterGump (member view) and SmithGuildBook.
+/// Opened from: SmithGuildmasterGump (member view) and SmithGuildBook. The opener passes a Back
+/// action that reopens it (cc-P52 Part E, bug-list D65); category switches and buys carry it.
 /// </summary>
 public class SmithSealCatalogGump : Gump
 {
@@ -114,18 +115,22 @@ public class SmithSealCatalogGump : Gump
     // 0         = close / no-op
     // 1-N       = select category (Cat enum value + 1), N = CatLabels.Length
     // 100-199   = buy item at row index (100 + index)
+    // 99        = back to the gump that opened the catalog
+    public const int BtnBack = 99;
 
     // -- State -----------------------------------------------------------------
 
-    private readonly PlayerMobile _pm;
-    private readonly Cat          _cat;
+    private readonly PlayerMobile          _pm;
+    private readonly Cat                   _cat;
+    private readonly Action<PlayerMobile>? _back;
 
     // -- Constructor -----------------------------------------------------------
 
-    public SmithSealCatalogGump(PlayerMobile pm, Cat cat = Cat.Tools) : base(60, 60)
+    public SmithSealCatalogGump(PlayerMobile pm, Cat cat = Cat.Tools, Action<PlayerMobile>? back = null) : base(60, 60)
     {
-        _pm  = pm;
-        _cat = cat;
+        _pm   = pm;
+        _cat  = cat;
+        _back = back;
 
         Closable   = true;
         Disposable = true;
@@ -179,13 +184,32 @@ public class SmithSealCatalogGump : Gump
             }
         }
 
+        // The coming-soon note sits under the rows, wrapped to the right panel, clear of the footer
+        // (cc-P52 Part E: as a label at H - 28 it ran under Close and OK and was cut off).
+        if (_cat == Cat.RunicPostVal)
+            AddHtml(PanelX, NoteY(entries.Length), NoteW, 36,
+                "<BASEFONT COLOR=#9A9A9A>* Not yet available - reserved for future post-valorite metals.</BASEFONT>");
+
         // -- Footer ------------------------------------------------------------
         AddImageTiled(10, H - 34, W - 20, 2, 9304);
-        if (_cat == Cat.RunicPostVal)
-            AddLabel(PanelX, H - 28, 0x3DE, "* Not yet available - reserved for future post-valorite metals.");
+        if (_back != null)
+        {
+            AddButton(16, H - 26, 4014, 4016, BtnBack);
+            AddLabel(50, H - 24, 999, "Back");
+        }
         AddButton(W - 54, H - 26, 4023, 4025, 0);
         AddLabel(W - 110, H - 23, 999, "Close");
     }
+
+    /// <summary>Where the coming-soon note starts and how wide it is: for the layout fact.</summary>
+    internal static int NoteY(int rows) => ItemsY + rows * RowH + 8;
+
+    internal const int NoteW = W - PanelX - 16;
+
+    internal const int FooterTop = H - 34;
+
+    /// <summary>The longest category, for the layout fact: the note must end above the footer line.</summary>
+    internal static int MostRows => System.Linq.Enumerable.Max(Catalog, c => c.Length);
 
     // -- Response --------------------------------------------------------------
 
@@ -195,10 +219,16 @@ public class SmithSealCatalogGump : Gump
 
         var buttonID = info.ButtonID;
 
+        if (buttonID == BtnBack)
+        {
+            _back?.Invoke(_pm);
+            return;
+        }
+
         // Category select
         if (buttonID >= 1 && buttonID <= CatLabels.Length)
         {
-            _pm.SendGump(new SmithSealCatalogGump(_pm, (Cat)(buttonID - 1)));
+            _pm.SendGump(new SmithSealCatalogGump(_pm, (Cat)(buttonID - 1), _back));
             return;
         }
 
@@ -215,7 +245,7 @@ public class SmithSealCatalogGump : Gump
             if (entry.ComingSoon)
             {
                 _pm.SendMessage(0x22, $"{entry.Name} is not yet available.");
-                _pm.SendGump(new SmithSealCatalogGump(_pm, _cat));
+                _pm.SendGump(new SmithSealCatalogGump(_pm, _cat, _back));
                 return;
             }
 
@@ -227,7 +257,7 @@ public class SmithSealCatalogGump : Gump
             if (!guild.SpendCurrency("smithing", entry.Cost))
             {
                 _pm.SendMessage(0x22, $"You need {entry.Cost:N0} Smithing Seals for that (you have {guild.GetCurrency("smithing"):N0}).");
-                _pm.SendGump(new SmithSealCatalogGump(_pm, _cat));
+                _pm.SendGump(new SmithSealCatalogGump(_pm, _cat, _back));
                 return;
             }
 
@@ -236,7 +266,7 @@ public class SmithSealCatalogGump : Gump
             {
                 guild.AddCurrency("smithing", entry.Cost); // refund
                 _pm.SendMessage(0x22, "That item is not yet available.");
-                _pm.SendGump(new SmithSealCatalogGump(_pm, _cat));
+                _pm.SendGump(new SmithSealCatalogGump(_pm, _cat, _back));
                 return;
             }
 
@@ -245,7 +275,7 @@ public class SmithSealCatalogGump : Gump
             _pm.PlaySound(0x57);
 
             // Reopen same category with refreshed balance
-            _pm.SendGump(new SmithSealCatalogGump(_pm, _cat));
+            _pm.SendGump(new SmithSealCatalogGump(_pm, _cat, _back));
         }
     }
 }

@@ -515,8 +515,13 @@ public class SmithGuildBookGump : Gump
                 return;
 
             case BtnCatalog:
-                pm.SendGump(new SmithSealCatalogGump(pm));
+            {
+                // cc-P52 Part E (D65): Back returns to the page the catalog was opened from
+                var book = _book;
+                var page = _page;
+                pm.SendGump(new SmithSealCatalogGump(pm, back: p => p.SendGump(new SmithGuildBookGump(p, book, page))));
                 return;
+            }
 
             case BtnRequestSmallBOD:
                 HandleRequestBOD(pm);

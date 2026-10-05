@@ -899,6 +899,7 @@ Fact 'TheScriptParsesUnderWindowsPowerShell51' {
 
 Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     # Construction only: every control, every handler attached, nothing shown or clicked.
+    $script:NetProbeDisabled = $true # cc-P52: the PUBLIC DNS tile's check would reach the network
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
@@ -907,7 +908,8 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
         Assert-Equal 3 @($script:ui.Tiles).Count 'three tiles: LIVE, TEST, STATUS PUBLISHER'
         Assert-Equal 'TEST: STOPPED' $script:ui.Tiles[1].Word.Text
         Assert-True ($form.Text -match 'LIVE .*\| TEST stopped \| publisher unknown') ('the title carries the glance: ' + $form.Text)
-    } finally { $form.Dispose() }
+        Assert-True ($null -ne $script:ui.NetTile) 'and the fourth, PUBLIC DNS (cc-P52), drawn apart from them'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
 }
 
 # --- D37: the mode a click hands the window it opens ---------------------------------------------
@@ -1206,6 +1208,122 @@ Fact 'TheRealChildOfAToggledClickReadsDockerAndChangesNothing' {
     Assert-True ($r.DockerCalls.Count -gt 0) 'it did read docker'
     $bad = @($r.DockerCalls | Where-Object { $_ -match '^(stop|start|restart|rm|kill|compose|exec|commit|tag|run|create|pause)\b' })
     Assert-Equal 0 $bad.Count ($bad -join ' | ')
+}
+
+# --- cc-P52 Part H (bug-list D47): the PUBLIC DNS tile -------------------------------------------
+# Get-NetworkProbe with the route, the adapter list and the two HTTPS answers handed in, so these
+# reach no network. The addresses are the real ones from D47: the house 216.247.206.76, and the VPN
+# exits ddns published, 146.70.217.106 (2026-10-02) and 159.26.100.68 (2026-10-04).
+
+$houseIp = '216.247.206.76'
+
+function New-Doh([string[]]$Ips) {
+    $answers = @($Ips | ForEach-Object { @{ name = 'shatteredlegacyuo.com'; type = 1; TTL = 300; data = $_ } })
+    @{ Status = 0; Answer = $answers } | ConvertTo-Json -Depth 5
+}
+
+function New-Http([string[]]$DnsIps, [string]$PublicIp, [switch]$DnsFails, [switch]$TraceFails) {
+    $doh = New-Doh $DnsIps
+    $trace = "fl=1\nh=cloudflare.com\nip=$PublicIp\nts=1759600000.0\nvisit_scheme=https\n" -replace '\\n', "`n"
+    { param($Url, $Timeout)
+        if ($Url -like '*cdn-cgi/trace') { if ($TraceFails) { throw 'The operation has timed out.' }; return $trace }
+        if ($DnsFails) { throw 'The remote name could not be resolved' }
+        return $doh
+    }.GetNewClosure()
+}
+
+$lanRoute = { @([pscustomobject]@{ IPAddress = '192.168.1.58'; InterfaceAlias = 'Ethernet' }, [pscustomobject]@{ DestinationPrefix = '0.0.0.0/0'; InterfaceAlias = 'Ethernet' }) }
+$vpnRoute = { @([pscustomobject]@{ IPAddress = '10.2.0.2'; InterfaceAlias = 'ProtonVPN' }, [pscustomobject]@{ DestinationPrefix = '0.0.0.0/1'; InterfaceAlias = 'ProtonVPN' }) }
+$noVpnAdapters = { @(
+    [pscustomobject]@{ Name = 'Ethernet'; Description = 'Realtek Gaming 2.5GbE Family Controller'; Type = 'Ethernet'; Up = $true },
+    [pscustomobject]@{ Name = 'vEthernet (WSL (Hyper-V firewall))'; Description = 'Hyper-V Virtual Ethernet Adapter #2'; Type = 'Ethernet'; Up = $true },
+    [pscustomobject]@{ Name = 'Loopback Pseudo-Interface 1'; Description = 'Software Loopback Interface 1'; Type = 'Loopback'; Up = $true }) }
+$vpnAdapters = { @(& $noVpnAdapters) + [pscustomobject]@{ Name = 'ProtonVPN'; Description = 'ProtonVPN Tunnel'; Type = 'Unknown'; Up = $true } }
+
+function Get-Glance($Http, $Route, $Adapters) {
+    $p = Get-NetworkProbe -Http $Http -Route $Route -Adapters $Adapters
+    [pscustomobject]@{ Probe = $p; Tile = (Get-DnsGlance $p) }
+}
+
+Fact 'P52_VpnOnIsRedAndSaysWhereDnsPoints' {
+    $g = Get-Glance (New-Http @('159.26.100.68') '159.26.100.68') $vpnRoute $vpnAdapters
+    Assert-Equal 'red' $g.Tile.Color $g.Tile.Detail
+    Assert-Equal 'VPN ON' $g.Tile.Word
+    Assert-True ($g.Tile.Detail.StartsWith('VPN on: public DNS points at 159.26.100.68. Turn the VPN off.')) $g.Tile.Detail
+    Assert-True ($g.Tile.Detail -match 'ProtonVPN') 'names the interface and the adapter'
+    Assert-Equal $false $g.Probe.RouteIsLan
+}
+
+Fact 'P52_VpnOffWithDnsAtTheHouseIsGreen' {
+    $g = Get-Glance (New-Http @($houseIp) $houseIp) $lanRoute $noVpnAdapters
+    Assert-Equal 'green' $g.Tile.Color $g.Tile.Detail
+    Assert-Equal 'OK' $g.Tile.Word
+    Assert-True ($g.Tile.Detail -match [regex]::Escape($houseIp)) $g.Tile.Detail
+    Assert-Equal 0 @($g.Probe.VpnAdapters).Count 'Hyper-V and loopback are not VPNs'
+}
+
+Fact 'P52_DnsNotTheHouseIsRedEvenWithNoVpnSeen' {
+    # The VPN just went off, or one the route check cannot see: ddns has the VPN's exit.
+    $g = Get-Glance (New-Http @('146.70.217.106') $houseIp) $lanRoute $noVpnAdapters
+    Assert-Equal 'red' $g.Tile.Color $g.Tile.Detail
+    Assert-True ($g.Tile.Detail.StartsWith('VPN on: public DNS points at 146.70.217.106, not this house (216.247.206.76). Turn the VPN off')) $g.Tile.Detail
+}
+
+Fact 'P52_AFailedCheckIsGreyNeverRed' {
+    foreach ($case in @(
+        @{ Name = 'DNS failed'; Http = (New-Http @() $houseIp -DnsFails); Route = $lanRoute },
+        @{ Name = 'public IP failed'; Http = (New-Http @('146.70.217.106') $houseIp -TraceFails); Route = $lanRoute },
+        @{ Name = 'both failed'; Http = (New-Http @() '' -DnsFails -TraceFails); Route = $lanRoute },
+        @{ Name = 'route failed'; Http = (New-Http @('146.70.217.106') $houseIp); Route = { throw 'Find-NetRoute: access denied' } },
+        @{ Name = 'no A record'; Http = (New-Http @() $houseIp); Route = $lanRoute })) {
+        $g = Get-Glance $case.Http $case.Route $noVpnAdapters
+        Assert-Equal 'gray' $g.Tile.Color ($case.Name + ': ' + $g.Tile.Detail)
+        Assert-Equal 'UNKNOWN' $g.Tile.Word $case.Name
+    }
+    # The adapter list failing as well still never throws.
+    $p = Get-NetworkProbe -Http (New-Http @() '' -DnsFails -TraceFails) -Route { throw 'no route' } -Adapters { throw 'no adapters' }
+    Assert-Equal 'gray' (Get-DnsGlance $p).Color 'everything failed'
+    Assert-True ($p.DnsError -match 'cloudflare-dns.com' -and $p.DnsError -match 'dns.google') ('both DNS services tried: ' + $p.DnsError)
+}
+
+Fact 'P52_ASplitTunnelVpnIsJudgedByDns' {
+    # A VPN adapter is up but traffic leaves through the LAN: not red on the adapter alone.
+    $g = Get-Glance (New-Http @($houseIp) $houseIp) $lanRoute $vpnAdapters
+    Assert-Equal 'green' $g.Tile.Color $g.Tile.Detail
+    Assert-True ($g.Tile.Detail -match 'VPN adapter up: ProtonVPN') 'still shown'
+}
+
+Fact 'P52_VpnAdapterShapes' {
+    Assert-True (Test-VpnAdapter ([pscustomobject]@{ Name = 'NordLynx'; Description = 'NordLynx Tunnel'; Type = 'Unknown'; Up = $true })) 'NordLynx'
+    Assert-True (Test-VpnAdapter ([pscustomobject]@{ Name = 'Office'; Description = 'WAN Miniport (IKEv2)'; Type = 'Ppp'; Up = $true })) 'a Windows VPN (PPP)'
+    Assert-True (Test-VpnAdapter ([pscustomobject]@{ Name = 'Local Area Connection'; Description = 'TAP-Windows Adapter V9'; Type = 'Ethernet'; Up = $true })) 'OpenVPN TAP'
+    Assert-True (-not (Test-VpnAdapter ([pscustomobject]@{ Name = 'ProtonVPN'; Description = 'ProtonVPN Tunnel'; Type = 'Unknown'; Up = $false }))) 'down is not on'
+    Assert-True (-not (Test-VpnAdapter ([pscustomobject]@{ Name = 'vEthernet (Default Switch)'; Description = 'Hyper-V Virtual Ethernet Adapter'; Type = 'Ethernet'; Up = $true }))) 'Hyper-V'
+    Assert-True (-not (Test-VpnAdapter ([pscustomobject]@{ Name = 'Wi-Fi'; Description = 'Intel(R) Wi-Fi 6E AX211 160MHz'; Type = 'Wireless80211'; Up = $true }))) 'Wi-Fi'
+}
+
+Fact 'P52_TheParsersReadRealShapes' {
+    Assert-Equal '216.247.206.76' ((ConvertFrom-DohJson '{"Status":0,"TC":false,"RD":true,"RA":true,"AD":false,"CD":false,"Question":[{"name":"shatteredlegacyuo.com","type":1}],"Answer":[{"name":"shatteredlegacyuo.com","type":1,"TTL":300,"data":"216.247.206.76"}]}') -join ',')
+    $threw = $false
+    try { [void](ConvertFrom-DohJson '{"Status":2,"Question":[{"name":"shatteredlegacyuo.com","type":1}]}') } catch { $threw = $true }
+    Assert-True $threw 'SERVFAIL is a failure, not an empty answer'
+    Assert-Equal '216.247.206.76' (ConvertFrom-TraceText "fl=29f\nh=cloudflare.com\nip=216.247.206.76\nts=1759600000.1\n".Replace('\n', "`n"))
+}
+
+Fact 'P52_TheDnsTileIsBuiltAndDrawnWithoutTheNetwork' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-True ($null -ne $script:ui.NetTile) 'the fourth tile exists'
+        Assert-Equal 'PUBLIC DNS: CHECKING' $script:ui.NetTile.Word.Text
+        Assert-Equal $null $script:netProbe 'no probe was started'
+        $script:netResult = Get-NetworkProbe -Http (New-Http @('159.26.100.68') '159.26.100.68') -Route $vpnRoute -Adapters $vpnAdapters
+        Update-NetworkTile
+        Assert-Equal 'PUBLIC DNS: VPN ON' $script:ui.NetTile.Word.Text
+        Assert-True ($script:ui.NetTile.Detail.Text.StartsWith('VPN on: public DNS points at 159.26.100.68. Turn the VPN off.')) $script:ui.NetTile.Detail.Text
+        $cols = Get-TileColors 'red'
+        Assert-Equal $cols[0] $script:ui.NetTile.Panel.BackColor 'red tile'
+    } finally { $form.Dispose(); $script:netResult = $null; $script:NetProbeDisabled = $false }
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

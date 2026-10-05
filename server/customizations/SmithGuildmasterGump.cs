@@ -263,23 +263,23 @@ public class SmithGuildmasterGump : Gump
                 break;
 
             case BtnCommissions:
-                pm.SendGump(new SmithCommissionGump(pm, _npc));
+                pm.SendGump(new SmithCommissionGump(pm, _npc, Reopen));
                 break;
 
             case BtnSealsInfo:
-                pm.SendGump(new SmithSealsInfoGump());
+                pm.SendGump(new SmithSealsInfoGump(Reopen));
                 break;
 
             case BtnHammer:
-                pm.SendGump(new HammerRestoreGump(pm));
+                pm.SendGump(new HammerRestoreGump(pm, Reopen));
                 break;
 
             case BtnCatalog:
-                pm.SendGump(new SmithSealCatalogGump(pm));
+                pm.SendGump(new SmithSealCatalogGump(pm, back: Reopen));
                 break;
 
             case BtnMuleExchange:
-                pm.SendGump(new CrossGuildExchangeGump(pm));
+                pm.SendGump(new CrossGuildExchangeGump(pm, Reopen));
                 break;
 
             case BtnJoin:
@@ -291,7 +291,13 @@ public class SmithGuildmasterGump : Gump
     // cc-P42 Part F (D51). The player picks small or large; works with or without the guildmaster, since
     // SmithBulkOrderChoiceGump goes through BlacksmithGuildmaster.OfferBOD, which needs no NPC. Before this the
     // button rolled small or large at random from the NPC and, opened anywhere else, only said to go and talk to him.
-    private void HandleBulkOrder(PlayerMobile pm) => pm.SendGump(new SmithBulkOrderChoiceGump(pm));
+    private void HandleBulkOrder(PlayerMobile pm) => pm.SendGump(new SmithBulkOrderChoiceGump(pm, Reopen));
+
+    /// <summary>
+    /// cc-P52 Part E (bug-list D65): the Back action this gump hands to the sub-gumps it opens. It reopens this
+    /// gump as it was opened (same guild, account and guildmaster, so Commissions still reach the NPC).
+    /// </summary>
+    public Action<PlayerMobile> Reopen => p => p.SendGump(new SmithGuildmasterGump(p, _def, _acct, _npc));
 
     private void HandleJoin(PlayerMobile pm)
     {
@@ -349,13 +355,20 @@ public class SmithGuildmasterGump : Gump
 
 public class SmithSealsInfoGump : Gump
 {
-    public SmithSealsInfoGump() : base(120, 100)
+    public const int BtnBack = 1; // cc-P52 Part E (D65)
+
+    private readonly Action<PlayerMobile>? _back;
+
+    public SmithSealsInfoGump(Action<PlayerMobile>? back = null) : base(120, 100)
     {
+        _back = back;
+
         Closable   = true;
         Disposable = true;
 
-        AddBackground(0, 0, 360, 260, 9270);
-        AddAlphaRegion(8, 8, 344, 244);
+        var h = back != null ? 290 : 260;
+        AddBackground(0, 0, 360, h, 9270);
+        AddAlphaRegion(8, 8, 344, h - 16);
 
         AddLabel(360 / 2 - 55, 14, 1153, "Smithing Seals");
         AddImageTiled(10, 34, 340, 2, 9304);
@@ -374,7 +387,17 @@ public class SmithSealsInfoGump : Gump
             "components, and more." +
             "</BASEFONT>",
             false, false);
+
+        if (back != null)
+        {
+            AddButton(18, 252, 4014, 4016, BtnBack);
+            AddLabel(52, 254, 999, "Back");
+        }
     }
 
-    public override void OnResponse(NetState sender, in RelayInfo info) { }
+    public override void OnResponse(NetState sender, in RelayInfo info)
+    {
+        if (info.ButtonID == BtnBack && sender.Mobile is PlayerMobile pm)
+            _back?.Invoke(pm);
+    }
 }

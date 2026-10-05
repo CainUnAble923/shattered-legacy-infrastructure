@@ -1,3 +1,4 @@
+using System;
 using Server.Gumps;
 using Server.Mobiles;
 using Server.Network;
@@ -19,6 +20,7 @@ public class SmithBulkOrderChoiceGump : Gump
     public const int BtnSmall = 1;
     public const int BtnLarge = 2;
     public const int BtnTeaching = 3;
+    public const int BtnBack = 4; // cc-P52 Part E (D65): back to the gump that opened this one
 
     // The client's check box art: 210 unchecked, 211 checked.
     public const int CheckOff = 210;
@@ -28,10 +30,12 @@ public class SmithBulkOrderChoiceGump : Gump
     private const int H = 240;
 
     private readonly PlayerMobile _pm;
+    private readonly Action<PlayerMobile>? _back;
 
-    public SmithBulkOrderChoiceGump(PlayerMobile pm) : base(120, 100)
+    public SmithBulkOrderChoiceGump(PlayerMobile pm, Action<PlayerMobile>? back = null) : base(120, 100)
     {
         _pm = pm;
+        _back = back;
 
         Closable   = true;
         Disposable = true;
@@ -69,6 +73,12 @@ public class SmithBulkOrderChoiceGump : Gump
         AddLabel(44, 162, 1154, ClusterFSmithTeaching.ToggleLabel);
         AddLabel(44, 182, 0x3B2, ClusterFSmithTeaching.ToggleHint);
 
+        if (back != null)
+        {
+            AddButton(18, H - 34, 4014, 4016, BtnBack);
+            AddLabel(52, H - 32, 999, "Back");
+        }
+
         AddButton(W - 50, H - 34, 4017, 4019, 0);
         AddLabel(W - 90, H - 32, 999, "Close");
     }
@@ -88,7 +98,10 @@ public class SmithBulkOrderChoiceGump : Gump
                 break;
             case BtnTeaching:
                 ToggleTeaching(pm);
-                pm.SendGump(new SmithBulkOrderChoiceGump(pm));
+                pm.SendGump(new SmithBulkOrderChoiceGump(pm, _back));
+                break;
+            case BtnBack:
+                _back?.Invoke(pm);
                 break;
         }
     }

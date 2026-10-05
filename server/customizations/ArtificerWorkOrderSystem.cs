@@ -107,7 +107,7 @@ public sealed class ArtificerWorkOrderDef
 /// Fixed pool of 39 commissions across four tiers.
 ///
 /// Availability is gated by mastery - every required property must be mastered
-/// before the order appears.  Combo orders additionally require Smiths' Fellowship
+/// before the order appears.  Combo orders additionally require Society of Smiths
 /// membership and the player to craft the base item from a specific material.
 ///
 /// Tier breakdown (by required property power / standing):
@@ -738,7 +738,7 @@ public sealed class ArtificerWorkOrderGump : Gump
         else
         {
             AddLabel(28, y, 1154,
-                $"You must craft:  {def.ItemDescription}  (requires Smiths' Fellowship)");
+                $"You must craft:  {def.ItemDescription}  (requires Society of Smiths)");
         }
         y += 18;
 

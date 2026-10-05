@@ -1,3 +1,4 @@
+using System;
 using Server.Accounting;
 using Server.Gumps;
 using Server.Items;
@@ -25,7 +26,8 @@ namespace Server;
 
 public class CrossGuildExchangeGump : Gump
 {
-    private readonly PlayerMobile _pm;
+    private readonly PlayerMobile          _pm;
+    private readonly Action<PlayerMobile>? _back; // cc-P52 Part E (D65): reopens the guild menu that opened this
 
     // Exchange costs - adjust here if the economy needs rebalancing.
     private const int MiningCost   = 25;   // Mining Vouchers
@@ -35,14 +37,16 @@ public class CrossGuildExchangeGump : Gump
     private const int GoldCost     = 25_000;
 
     private const int BtnPurchase = 100;
+    public const int BtnBack = 1;
 
     private const int W    = 440;
     private const int H    = 440;
     private const int BgId = 9270;
 
-    public CrossGuildExchangeGump(PlayerMobile pm) : base(100, 80)
+    public CrossGuildExchangeGump(PlayerMobile pm, Action<PlayerMobile>? back = null) : base(100, 80)
     {
-        _pm = pm;
+        _pm   = pm;
+        _back = back;
 
         Closable   = true;
         Disposable = true;
@@ -65,6 +69,11 @@ public class CrossGuildExchangeGump : Gump
 
         // -- Footer --------------------------------------------------------
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
+        if (_back != null)
+        {
+            AddButton(18, H - 28, 4014, 4016, BtnBack);
+            AddLabel(52, H - 26, 999, "Back");
+        }
         AddButton(W - 50, H - 28, 4023, 4025, 0);
         AddLabel(W - 28, H - 26, 1154, "X");
     }
@@ -119,7 +128,9 @@ public class CrossGuildExchangeGump : Gump
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
-        if (info.ButtonID == BtnPurchase)
+        if (info.ButtonID == BtnBack)
+            _back?.Invoke(_pm);
+        else if (info.ButtonID == BtnPurchase)
             HandlePurchase();
     }
 
@@ -152,28 +163,28 @@ public class CrossGuildExchangeGump : Gump
             {
                 _pm.SendMessage(0x22,
                     $"You need {MiningCost} Mining Vouchers (you have {mining}).");
-                _pm.SendGump(new CrossGuildExchangeGump(_pm));
+                _pm.SendGump(new CrossGuildExchangeGump(_pm, _back));
                 return;
             }
             if (smithing < SmithCost)
             {
                 _pm.SendMessage(0x22,
                     $"You need {SmithCost} Smithing Seals (you have {smithing}).");
-                _pm.SendGump(new CrossGuildExchangeGump(_pm));
+                _pm.SendGump(new CrossGuildExchangeGump(_pm, _back));
                 return;
             }
             if (rangers < RangerCost)
             {
                 _pm.SendMessage(0x22,
                     $"You need {RangerCost} Trail Marks (you have {rangers}).");
-                _pm.SendGump(new CrossGuildExchangeGump(_pm));
+                _pm.SendGump(new CrossGuildExchangeGump(_pm, _back));
                 return;
             }
             if (foresters < ForesterCost)
             {
                 _pm.SendMessage(0x22,
                     $"You need {ForesterCost} Timber Tokens (you have {foresters}).");
-                _pm.SendGump(new CrossGuildExchangeGump(_pm));
+                _pm.SendGump(new CrossGuildExchangeGump(_pm, _back));
                 return;
             }
             if (goldAvail < GoldCost)
@@ -181,7 +192,7 @@ public class CrossGuildExchangeGump : Gump
                 _pm.SendMessage(0x22,
                     $"You need {GoldCost:N0} gold in your backpack or bank " +
                     $"(you have {goldAvail:N0}).");
-                _pm.SendGump(new CrossGuildExchangeGump(_pm));
+                _pm.SendGump(new CrossGuildExchangeGump(_pm, _back));
                 return;
             }
 

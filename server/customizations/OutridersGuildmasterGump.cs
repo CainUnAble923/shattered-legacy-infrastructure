@@ -315,7 +315,7 @@ public class OutridersGuildmasterGump : Gump
 
             case 30: _pm.SendGump(new OutridersGuildmasterGump(_pm, View.MemberDashboard)); break;
             case 31: _pm.SendGump(new GuildContractLedgerGump(_pm, "rangers"));             break;
-            case 50: _pm.SendGump(new CrossGuildExchangeGump(_pm));                         break;
+            case 50: _pm.SendGump(new CrossGuildExchangeGump(_pm, p => p.SendGump(new OutridersGuildmasterGump(p, View.MemberDashboard)))); break;
 
             case 32:
             {

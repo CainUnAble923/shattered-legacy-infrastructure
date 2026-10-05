@@ -10,7 +10,12 @@
   2. Build mode: copies the zip to the desktop as ShatteredLegacy-Setup.zip, checks its
      sha256, and gives it the Zone.Identifier stream a browser download gets (ZoneId=3).
      Published mode: puts a shortcut to the download URL on the desktop.
-  3. Puts READ ME FIRST.txt, Collect-Evidence.bat and Collect-Evidence.ps1 on the desktop.
+  3. Puts READ ME FIRST.txt, Collect-Evidence.bat and Collect-Evidence.ps1 on the desktop, and
+     opens the README if anything here can (cc-P52 Part D: Windows Sandbox on Windows 11 24H2 has
+     no notepad.exe, and Start-Process notepad.exe threw "The system cannot find the file
+     specified", which failed the whole start after the zip had already reached the desktop).
+     Tries notepad.exe when it exists, then the .txt file's own handler; if neither opens it, it
+     is still on the desktop. results\inside-start.txt says which.
 
   Installs nothing and clicks nothing. The parameters exist only to dry-run it outside the
   sandbox; the sandbox uses the defaults. ASCII only (PowerShell 5.1).
@@ -20,13 +25,28 @@ param(
     [string]$Results = 'C:\SL\results',
     [string]$Dist    = 'C:\SL\dist',
     [string]$Desktop = [Environment]::GetFolderPath('Desktop'),
-    [switch]$NoNotepad
+    [switch]$NoNotepad,
+    # The editor tried first. A parameter only so a dry run can name one that is not there.
+    [string]$Notepad = 'notepad.exe'
 )
 $ErrorActionPreference = 'Stop'
 $kit = $Kit; $results = $Results; $desktop = $Desktop
 $out     = New-Object Collections.Generic.List[string]
 function Say([string]$s) { $out.Add($s) }
 function Section([string]$s) { $out.Add(''); $out.Add("== $s") }
+
+# Opens the README without ever failing the start. Returns one line saying how, or why not.
+function Open-ReadMe([string]$path) {
+    $exe = Get-Command $Notepad -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($exe) {
+        try { Start-Process -FilePath $exe.Source -ArgumentList "`"$path`""; return "README opened with $($exe.Source)" }
+        catch { $why = $_.Exception.Message }
+    } else {
+        $why = "$Notepad is not on this computer"
+    }
+    try { Invoke-Item -LiteralPath $path; return "README opened with the .txt handler ($why)" }
+    catch { return "README not opened ($why; no .txt handler: $($_.Exception.Message)). It is on the desktop." }
+}
 
 try {
     $run = [IO.File]::ReadAllText((Join-Path $kit 'run.json')) | ConvertFrom-Json
@@ -119,7 +139,9 @@ try {
     foreach ($n in 'READ ME FIRST.txt', 'Collect-Evidence.bat', 'Collect-Evidence.ps1') {
         Copy-Item -LiteralPath (Join-Path $kit $n) -Destination (Join-Path $desktop $n)
     }
-    if (-not $NoNotepad) { Start-Process notepad.exe -ArgumentList "`"$(Join-Path $desktop 'READ ME FIRST.txt')`"" }
+    $opened = if ($NoNotepad) { 'README not opened (-NoNotepad)' } else { Open-ReadMe (Join-Path $desktop 'READ ME FIRST.txt') }
+    [IO.File]::WriteAllLines((Join-Path $results 'inside-start.txt'),
+        [string[]]@('Inside-Start finished', ("at {0}" -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz')), $opened), (New-Object Text.ASCIIEncoding))
 } catch {
     $out.Add(''); $out.Add("INSIDE-START FAILED: $($_.Exception.Message)")
     [IO.File]::WriteAllLines((Join-Path $results 'inside-start-error.txt'), $out, (New-Object Text.ASCIIEncoding))

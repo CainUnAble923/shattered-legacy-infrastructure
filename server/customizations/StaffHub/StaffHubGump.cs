@@ -1,8 +1,9 @@
 // StaffHubGump.cs
 //
 // cc-P51 (F-30). The Staff Hub gump [SL opens, drawn to Chase's approved mockup (Design canvas "Staff Hub Mockup",
-// transcribed in the cc-P51 brief): 560 x 440 on 9270, four tabs on 2445 at y 42, an alpha region over the content at
-// (16,74) 528 x 324, the footer at (20,408). Go arrows 4005, close and delete 4017, category gems 2117/2118, text
+// transcribed in the cc-P51 brief): 560 x 440 on 9270, four tabs on 2445 at y 42, the content panel at (16,74)
+// 528 x 324, the footer at (20,408). cc-P52 Part F (D67): the panel was an alpha region and the paperdoll and world
+// showed through the text; it is now the solid black tile 2624 with no alpha region, so it reads over a busy screen. Go arrows 4005, close and delete 4017, category gems 2117/2118, text
 // buttons on 2445. What each tab shows and does is ClusterFStaffHub's; this file only draws and dispatches.
 //
 // Hues, taken from our other gumps' named constants: gold headings 0x386 (ClusterFStatInspect.HueHdr, "gold - section
@@ -71,6 +72,7 @@ public class StaffHubGump : Gump
     public const int BtnSpotGoBase = 4200;
     public const int BtnSpotDeleteBase = 4300;
     public const int BtnRecentBase = 4400;
+    public const int BtnFacetBase = 4500;     // cc-P52: 4500..4505, ClusterFStaffHub.ChangeFacets
 
     // ---- text entry IDs ----
     public const int TextSearch = 1;
@@ -81,6 +83,12 @@ public class StaffHubGump : Gump
 
     public const int RowsPerPage = 4;
     private const int RowHeight = 72;
+
+    // cc-P52 Part F: the content panel, solid (no alpha region), and the Player tab's rows block.
+    public const int PanelTile = 2624;
+    public const int PanelX = 16, PanelY = 74, PanelW = 528, PanelH = 324;
+    public const int PlayerRowsX = 26, PlayerRowsY = 136, PlayerRowsW = 300, PlayerRowsH = 234;
+    public const int LineHeight = 18;
     public const int SpotsPerPage = 5;
     public const int MaxGrantRows = 9;
     public const int MaxHallRows = 10;
@@ -139,7 +147,7 @@ public class StaffHubGump : Gump
             }
         }
 
-        AddAlphaRegion(16, 74, 528, 324);
+        AddImageTiled(PanelX, PanelY, PanelW, PanelH, PanelTile);
 
         switch (_state.Tab)
         {
@@ -228,7 +236,7 @@ public class StaffHubGump : Gump
 
             AddHtml(156, y, 264, 18, $"<B><BASEFONT COLOR={color}>{ClusterFStaffHub.Html(c.Name)}</BASEFONT></B>");
             AddHtml(156, y + 16, 264, 34, $"<BASEFONT COLOR={HexText}>{ClusterFStaffHub.Html(c.Summary)}</BASEFONT>");
-            AddLabelCropped(156, y + 50, 264, 18, HueGrey, $"Re-run: {c.Declaration.Rerun} . Shard: {c.Declaration.Shard}");
+            AddLabelCropped(156, y + 50, 264, 18, HueGrey, ClusterFStaffHub.CommandMeta(c));
 
             _rows.Add(c.Name);
             var row = _rows.Count - 1;
@@ -311,28 +319,14 @@ public class StaffHubGump : Gump
         AddLabelCropped(26, 112, 170, 18, HueGold, name);
         AddLabelCropped(200, 112, 136, 18, HueGrey, $"account {ClusterFStaffHub.AccountName(selected)}{(online ? "" : ", offline")}");
 
+        // cc-P52 Part F (D67): one wrapped block, so a long value takes a second line instead of being cropped. If the
+        // estimate ever outgrows the block, it scrolls rather than cut anything off.
         var rows = ClusterFStaffHub.PlayerRows(selected);
-        for (var i = 0; i < rows.Count; i++)
-        {
-            var y = 138 + i * 20;
-            AddLabel(26, y, HueGrey, rows[i].Label);
-            AddLabelCropped(150, y, 176, 18, HueWhite, rows[i].Value);
-        }
+        var html = ClusterFStaffHub.PlayerRowsHtml(rows, PlayerRowsW - 20, out var lines);
+        AddHtml(PlayerRowsX, PlayerRowsY, PlayerRowsW, PlayerRowsH, html, false, lines * LineHeight > PlayerRowsH);
 
-        // The Levels and Loops placeholder: a dashed box with nothing behind it (F-12 is not built).
-        for (var x = 26; x < 26 + 296; x += 8)
-        {
-            AddImageTiled(x, 330, 4, 1, 9304);
-            AddImageTiled(x, 381, 4, 1, 9304);
-        }
-
-        for (var y = 330; y < 330 + 52; y += 8)
-        {
-            AddImageTiled(26, y, 1, 4, 9304);
-            AddImageTiled(321, y, 1, 4, 9304);
-        }
-
-        AddHtml(30, 346, 288, 20, $"<CENTER><BASEFONT COLOR={HexGrey}>Levels and Loops panel arrives with F-12.</BASEFONT></CENTER>");
+        // The Levels and Loops placeholder, one line now (F-12 is not built), to give the rows the room.
+        AddHtml(26, 374, 296, 20, $"<CENTER><BASEFONT COLOR={HexGrey}>Levels and Loops panel arrives with F-12.</BASEFONT></CENTER>");
 
         AddLabel(340, 114, HueGold, "Actions");
         ActionRow(340, 134, BtnPlayerGo, "Go to player", online);
@@ -432,7 +426,25 @@ public class StaffHubGump : Gump
             }
         }
 
-        AddLabel(26, 338, HueGrey, "Read from the seeders' own coordinates.");
+        // cc-P52 Part F (D67): the same x, y on another facet, z as [Go x y picks it.
+        if (!_state.ShowGuildHalls)
+        {
+            AddLabel(26, 298, HueGold, "Same x, y on another facet");
+            var facets = ClusterFStaffHub.ChangeFacets;
+            for (var i = 0; i < facets.Length; i++)
+            {
+                var x = 26 + i % 3 * 86;
+                var y = 318 + i / 3 * 20;
+                var f = facets[i];
+                var here = f == from.Map;
+                if (!here && f != null && f != Map.Internal)
+                {
+                    AddButton(x, y + 3, 5601, 5605, BtnFacetBase + i);
+                }
+
+                AddLabel(x + 16, y, here ? HueGold : HueWhite, f?.Name ?? "?");
+            }
+        }
 
         // Saved spots, newest first.
         AddLabel(292, 82, HueGold, "Saved spots");
@@ -711,6 +723,13 @@ public class StaffHubGump : Gump
         {
             from.SendGump(new StaffHubPromptGump(_state, StaffHubPrompt.SaveSpot, null, ""));
             reopen = false;
+        }
+        else if (id >= BtnFacetBase && id < BtnFacetBase + ClusterFStaffHub.ChangeFacets.Length)
+        {
+            if (!ClusterFStaffHub.ChangeFacet(from, ClusterFStaffHub.ChangeFacets[id - BtnFacetBase], out var facetError))
+            {
+                from.SendMessage(HueRed, facetError);
+            }
         }
         else if (id == BtnGoTo)
         {

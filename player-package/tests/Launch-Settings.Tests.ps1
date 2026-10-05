@@ -164,6 +164,146 @@ Fact 'ABadProfileNameIsRefused' {
     }
 }
 
+# --- graphics driver fallback (cc-P52 Part C, bug-list D61) ----------------------------------------
+# Needs no server. The stub "TazUO" below behaves as TazUO 3212623f does on a PC with no OpenGL 2.1:
+# unless its settings file says force_driver 3, it writes Logs\<stamp>_crash.txt naming the missing
+# driver (Main.cs:88-96) and exits 1; on 3 it counts a good start and exits 0. Every start is counted.
+$crashStubSrc = @'
+using System; using System.IO; using System.Text.RegularExpressions;
+public static class CrashStub { public static int Main(string[] args) {
+    var dir = AppDomain.CurrentDomain.BaseDirectory;
+    File.AppendAllText(Path.Combine(dir, "starts.txt"), "start" + Environment.NewLine);
+    string settings = null;
+    for (var i = 0; i + 1 < args.Length; i++) { if (args[i] == "-settings") { settings = args[i + 1].Trim('"'); } }
+    var text = settings != null && File.Exists(settings) ? File.ReadAllText(settings) : "";
+    if (Regex.IsMatch(text, "\"force_driver\"\\s*:\\s*3\\b")) {
+        File.AppendAllText(Path.Combine(dir, "good.txt"), "good" + Environment.NewLine);
+        return 0;
+    }
+    var logs = Path.Combine(dir, "Logs");
+    Directory.CreateDirectory(logs);
+    File.WriteAllText(Path.Combine(logs, DateTime.Now.ToString("yyyy-MM-dd_hh-mm-ss") + "_crash.txt"),
+        "Exception:\nMicrosoft.Xna.Framework.Graphics.NoSuitableGraphicsDeviceException: OpenGL 2.1 support is required!\n" +
+        "OpenGL Renderer: GDI Generic\n");
+    return 1;
+} }
+'@
+$crashStubExe = Join-Path $work 'crash-stub.exe'
+Add-Type -TypeDefinition $crashStubSrc -OutputAssembly $crashStubExe -OutputType ConsoleApplication
+
+function New-CrashTaz([string]$name, $forceDriver) {
+    $d = New-Dir $name
+    Copy-Item $crashStubExe (Join-Path $d 'TazUO.exe')
+    $s = [ordered]@{ username = 'gargtester'; password = '1-2-3-encoded'; ip = 'shatteredlegacyuo.com' }
+    if ($null -ne $forceDriver) { $s.force_driver = $forceDriver }
+    Write-Json (Join-Path $d 'settings.json') $s
+    return $d
+}
+
+function Get-Starts([string]$dir, [string]$file = 'starts.txt') {
+    $p = Join-Path $dir $file
+    if (Test-Path -LiteralPath $p) { return @(Get-Content -LiteralPath $p).Count }
+    return 0
+}
+
+function Start-CrashTaz([string]$dir) {
+    $settings = Join-Path $dir 'settings.json'
+    $r = Start-TazUO -Exe (Join-Path $dir 'TazUO.exe') -Arguments @('-settings', "`"$settings`"") -TazDir $dir -SettingsPath $settings -WaitSeconds 15
+    # The relaunch is not waited for; give it a moment to count itself.
+    for ($i = 0; $i -lt 50 -and $r -eq 'fallback' -and (Get-Starts $dir 'good.txt') -lt 1; $i++) { Start-Sleep -Milliseconds 100 }
+    return $r
+}
+
+Fact 'ForceDriverReadsTazUOsDefaultAsZero' {
+    $d = New-Dir 'fd-read'
+    Assert-Equal 0 (Get-ForceDriver (Join-Path $d 'none.json')) 'no file'
+    Write-Json (Join-Path $d 'a.json') ([ordered]@{ username = 'x' })
+    Assert-Equal 0 (Get-ForceDriver (Join-Path $d 'a.json')) 'no key'
+    Write-Json (Join-Path $d 'b.json') ([ordered]@{ force_driver = 3 })
+    Assert-Equal 3 (Get-ForceDriver (Join-Path $d 'b.json')) 'three'
+    [IO.File]::WriteAllText((Join-Path $d 'c.json'), '{ not json')
+    Assert-Equal 0 (Get-ForceDriver (Join-Path $d 'c.json')) 'unreadable'
+}
+
+Fact 'OnlyAnOpenGlCrashSinceTheLaunchCounts' {
+    $d = New-Dir 'fd-crash'
+    $logs = Join-Path $d 'Logs'
+    New-Item -ItemType Directory -Path $logs -Force | Out-Null
+    $other = Join-Path $logs '2026-10-04_01-00-00_crash.txt'
+    [IO.File]::WriteAllText($other, 'Exception: System.IO.FileNotFoundException: tiledata.mul')
+    Assert-Equal $null (Find-OpenGlCrash $logs) 'another crash is not this one'
+    $old = Join-Path $logs '2026-10-04_02-00-00_crash.txt'
+    [IO.File]::WriteAllText($old, 'NoSuitableGraphicsDeviceException: OpenGL 2.1 support is required!')
+    (Get-Item -LiteralPath $old).LastWriteTime = (Get-Date).AddHours(-1)
+    Assert-True ($null -ne (Find-OpenGlCrash $logs)) 'any time: found'
+    Assert-Equal $null (Find-OpenGlCrash $logs (Get-Date).AddMinutes(-5)) 'an hour old is not since this launch'
+}
+
+Fact 'TheFallbackWritesThreeOnlyOverTheDefault' {
+    $d = New-Dir 'fd-write'
+    Write-Json (Join-Path $d 'settings.json') $savedLogin
+    Write-Json (Join-Path $d 'settings.test.json') ([ordered]@{ username = ''; force_driver = 0 })
+    Write-Json (Join-Path $d 'settings.test.elf.json') ([ordered]@{ username = 'elf'; force_driver = 1 })
+    $changed = @(Set-GraphicsFallback $d | Sort-Object)
+    Assert-Equal 'settings.json,settings.test.json' ($changed -join ',') 'changed'
+    $live = Read-Json (Join-Path $d 'settings.json')
+    Assert-Equal 3 $live.force_driver 'live'
+    Assert-Equal 'gargtester' $live.username 'login kept'
+    Assert-Equal '1-2-3-encoded' $live.password 'password kept'
+    Assert-Equal 3 (Read-Json (Join-Path $d 'settings.test.json')).force_driver 'test'
+    Assert-Equal 1 (Read-Json (Join-Path $d 'settings.test.elf.json')).force_driver 'the player''s own 1 is kept'
+    $bytes = [IO.File]::ReadAllBytes((Join-Path $d 'settings.json'))
+    Assert-True ($bytes[0] -ne 0xEF) 'no BOM'
+}
+
+Fact 'AnOpenGlCrashSwitchesToThreeAndStartsAgainOnce' {
+    $d = New-CrashTaz 'fd-e2e-default' $null
+    $r = Start-CrashTaz $d
+    Assert-Equal 'fallback' $r 'result'
+    Assert-Equal 2 (Get-Starts $d) 'started twice: the crash, then the fallback'
+    Assert-Equal 1 (Get-Starts $d 'good.txt') 'the second start worked'
+    $s = Read-Json (Join-Path $d 'settings.json')
+    Assert-Equal 3 $s.force_driver 'kept for the next launch'
+    Assert-Equal 'gargtester' $s.username 'login kept'
+
+    # The next launch starts on 3 straight away.
+    $r = Start-CrashTaz $d
+    Assert-Equal 'exited' $r 'second launch'
+    Assert-Equal 3 (Get-Starts $d) 'one more start, no crash'
+}
+
+Fact 'APlayersOwnDriverIsNeverChanged' {
+    $d = New-CrashTaz 'fd-e2e-own' 1
+    $r = Start-CrashTaz $d
+    Assert-Equal 'crashed' $r 'result'
+    Assert-Equal 1 (Get-Starts $d) 'not started again'
+    Assert-Equal 1 (Read-Json (Join-Path $d 'settings.json')).force_driver 'the player''s 1 kept'
+}
+
+Fact 'AnEarlierCrashSwitchesBeforeTheLaunch' {
+    # The player closed the window before the relaunch: the crash log is still there next time.
+    $d = New-CrashTaz 'fd-e2e-earlier' 0
+    $logs = Join-Path $d 'Logs'
+    New-Item -ItemType Directory -Path $logs -Force | Out-Null
+    $log = Join-Path $logs '2026-10-03_07-10-00_crash.txt'
+    [IO.File]::WriteAllText($log, 'OpenGL 2.1 support is required!')
+    (Get-Item -LiteralPath $log).LastWriteTime = (Get-Date).AddDays(-1)
+    $r = Start-CrashTaz $d
+    Assert-Equal 'exited' $r 'result'
+    Assert-Equal 1 (Get-Starts $d) 'one start'
+    Assert-Equal 1 (Get-Starts $d 'good.txt') 'and it worked'
+}
+
+Fact 'ANormalStartIsLeftAlone' {
+    # A start that does not crash (the stub needs 3 to stand in for a PC with OpenGL): nothing written.
+    $d = New-CrashTaz 'fd-e2e-normal' 3
+    $before = [IO.File]::ReadAllText((Join-Path $d 'settings.json'))
+    $r = Start-CrashTaz $d
+    Assert-Equal 'exited' $r 'result'
+    Assert-Equal $before ([IO.File]::ReadAllText((Join-Path $d 'settings.json'))) 'settings untouched'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $d 'Logs'))) 'no crash log'
+}
+
 # --- Play.ps1 and Play-Test.bat, end to end in a sandbox -------------------------------------------
 $stubSrc = @'
 using System; using System.IO;

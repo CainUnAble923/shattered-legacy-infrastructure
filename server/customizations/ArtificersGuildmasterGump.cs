@@ -314,7 +314,7 @@ public class ArtificersGuildmasterGump : Gump
             case 31: _pm.SendGump(new ArtificerWorkOrderGump(_pm));                           break;
             case 50: _pm.SendGump(new ArtificersImbueGump(_pm));                             break;
             case 51: _pm.SendGump(new ArtificersImbueGump(_pm));                             break; // non-member access
-            case 52: _pm.SendGump(new CrossGuildExchangeGump(_pm));                          break;
+            case 52: _pm.SendGump(new CrossGuildExchangeGump(_pm, p => p.SendGump(new ArtificersGuildmasterGump(p, View.MemberDashboard)))); break;
         }
     }
 }

@@ -480,8 +480,64 @@ public static class ClusterFStaffHub
         new(GuildHallsRow, ClusterFNewHavenSeeder.Facet, Point3D.Zero),
         new("Fountain of Fortune", ClusterFFountainOfFortuneSeeder.Facet, ClusterFFountainOfFortuneSeeder.Location),
         new("Royal City", ClusterFRoyalCitySeeder.Facet, ClusterFRoyalCitySeeder.MoongateLocation),
+        new(GreenAcresName, GreenAcresFacet, GreenAcresLocation),
         new("Dungeon entrance", null, Point3D.Zero, "after P36"),
     ];
+
+    /// <summary>
+    /// cc-P52 Part F (D67). Green Acres, the staff area, as pinned's own data has it: the [Go locations list
+    /// (Distribution/Data/Locations/felucca.json:221, trammel.json:189: "Green Acres" at 5445, 1153, 0), the region's
+    /// GoLocation (Distribution/Data/regions.json:780-787, GreenAcresRegion on Felucca), and character creation, which
+    /// starts staff there on Felucca (Engines/Character Creation/CharacterCreation.cs:309-315). Felucca, as both of those.
+    /// Not a seeder of ours, so not from a seeder member.
+    /// </summary>
+    public const string GreenAcresName = "Green Acres";
+
+    public static Map GreenAcresFacet => Map.Felucca;
+
+    public static readonly Point3D GreenAcresLocation = new(5445, 1153, 0);
+
+    /// <summary>The facets the change-facet row offers, in its order.</summary>
+    public static Map[] ChangeFacets => [Map.Felucca, Map.Trammel, Map.Ilshenar, Map.Malas, Map.Tokuno, Map.TerMur];
+
+    /// <summary>
+    /// cc-P52 Part F (D67). Moves the staff member to the same x, y on another facet. z is the facet's average Z there,
+    /// as pinned's [Go x y picks it when no z is given (Commands/Handlers.cs:537, map.GetAverageZ). A point outside the
+    /// target facet's bounds is refused in one line and nothing moves.
+    /// </summary>
+    public static bool ChangeFacet(Mobile from, Map target, out string error)
+    {
+        error = null;
+
+        if (target == null || target == Map.Internal)
+        {
+            error = "That facet is not loaded.";
+            return false;
+        }
+
+        if (from.Map == null || from.Map == Map.Internal)
+        {
+            error = "You are not on a facet.";
+            return false;
+        }
+
+        if (target == from.Map)
+        {
+            error = $"You are already on {target.Name}.";
+            return false;
+        }
+
+        var x = from.X;
+        var y = from.Y;
+        if (x < 0 || y < 0 || x >= target.Width || y >= target.Height)
+        {
+            error = $"{x}, {y} is outside {target.Name} (0 to {target.Width - 1}, 0 to {target.Height - 1}).";
+            return false;
+        }
+
+        var location = new Point3D(x, y, target.GetAverageZ(x, y));
+        return GoTo(from, $"{target.Name} {x}, {y}", target, location);
+    }
 
     // Named guild first: two guilds share the New Haven Magery School.
     public static List<ShardPlace> GuildHalls()
@@ -583,6 +639,36 @@ public static class ClusterFStaffHub
     }
 
     // ---------------------------------------------------------------- shared
+
+    /// <summary>
+    /// cc-P52 Part F (D67): a command row's third line. It read "Re-run: Skips . Shard: Any", the separator a spaced
+    /// period; now two sentences.
+    /// </summary>
+    public static string CommandMeta(HubCommand c) => $"Re-run: {c.Declaration.Rerun}. Shard: {c.Declaration.Shard}.";
+
+    /// <summary>
+    /// cc-P52 Part F (D67): the Player tab's rows as one wrapped HTML block, label in grey and value in white, so a
+    /// long value takes a second line instead of being cropped. Estimated at a conservative 7 pixels a character
+    /// (pinned's gumps assume about 7 for the default font, e.g. the hub's own CenterLabel).
+    /// </summary>
+    public static string PlayerRowsHtml(IReadOnlyList<PlayerRow> rows, int width, out int lines)
+    {
+        var sb = new System.Text.StringBuilder();
+        lines = 0;
+        foreach (var r in rows)
+        {
+            sb.Append("<BASEFONT COLOR=#9A9A9A>").Append(Html(r.Label)).Append(":</BASEFONT> <BASEFONT COLOR=#FFFFFF>")
+                .Append(Html(r.Value)).Append("</BASEFONT><BR>");
+            lines += EstimateLines($"{r.Label}: {r.Value}", width);
+        }
+
+        return sb.ToString();
+    }
+
+    public const int CharPixels = 7;
+
+    public static int EstimateLines(string text, int width) =>
+        Math.Max(1, (int)Math.Ceiling((text ?? "").Length * CharPixels / (double)Math.Max(1, width)));
 
     /// <summary>Escapes text for a gump's HTML (usage strings carry angle brackets).</summary>
     public static string Html(string text) =>
