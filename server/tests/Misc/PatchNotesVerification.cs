@@ -7,10 +7,10 @@
 // Facts:
 //   1. A two-version sample changelog parses into the right versions, bulletin lines, wiki markup and anchors; the
 //      format comment at the top (which holds an example version) is not a version.
-//   2. An account sees a version's notes once; a new version shows again; Full notes opens the wiki at the version's
-//      anchor (the open-URL packet, 0xA5).
+//   2. An account sees a version's notes once; a new version shows again. cc-P64: All patch notes opens the Patch
+//      History gump and no longer the wiki (no open-URL packet, 0xA5); the address itself is still built right.
 //   3. An empty changelog posts nothing and does not crash; nor does a VERSION that is not a date version.
-//   4. [version says the version and shows the notes.
+//   4. [version says the version and shows the notes (cc-P64: in the Patch History gump).
 
 using System;
 using System.Text;
@@ -141,7 +141,7 @@ public class PatchNotesVerification : IDisposable
     // ---------------------------------------------------------------- 2
 
     [Fact]
-    public void AnAccountSeesAVersionsNotesOnceAndFullNotesOpensTheWiki()
+    public void AnAccountSeesAVersionsNotesOnceAndAllPatchNotesOpensTheHistory()
     {
         ShardVersion.Load(Sample, "2026.10.02");
 
@@ -160,10 +160,11 @@ public class PatchNotesVerification : IDisposable
 
             var gump = new BulletinGump(pm, ClusterFBulletinSystem.UnreadFor(account), notes);
             var from = ns.SendBuffer.GetReadSpan().Length;
-            gump.OnResponse(ns, new RelayInfo(BulletinGump.FullNotesButton, ReadOnlySpan<int>.Empty,
+            gump.OnResponse(ns, new RelayInfo(BulletinGump.AllNotesButton, ReadOnlySpan<int>.Empty,
                 ReadOnlySpan<ushort>.Empty, ReadOnlySpan<Range>.Empty, ReadOnlySpan<byte>.Empty));
 
-            Assert.True(SentText(ns, from, PatchNotes.NotesUrl("2026.10.02")), "no open-URL packet with the notes' address");
+            Assert.False(SentText(ns, from, PatchNotes.NotesUrl("2026.10.02")), "the wiki was opened (cc-P64: not until launch)");
+            Assert.True(pm.HasGump<PatchHistoryGump>());
             Assert.Null(ShardVersion.UnseenNotesFor(account)); // seen: not again
 
             // The next version shows again.
@@ -233,7 +234,7 @@ public class PatchNotesVerification : IDisposable
             ShardVersion.Version_OnCommand(new CommandEventArgs(pm, "version", "", []));
 
             Assert.True(SentText(ns, from, "Shattered Legacy 2026.10.02.2"), "the version was not said");
-            Assert.True(pm.HasGump<BulletinGump>());
+            Assert.True(pm.HasGump<PatchHistoryGump>());
         }
         finally
         {

@@ -97,9 +97,51 @@ function New-CommitFacts {
 }
 $commitFactsOk = New-CommitFacts
 
+# cc-P63. What Get-PackageFacts would read, written out: the default is the state a build or a
+# publish goes ahead in. The repo is clean, both scripts are there, and the one zip's version.json
+# describes it. The changelog and the newest note say nothing about rollout order.
+$pkgZipName = 'ShatteredLegacy-2026.10.05.1329.zip'
+$pkgSha = ('ab' * 32)
+function New-PackageZipRow {
+    param([string]$Name = $pkgZipName, [string]$Version = '2026.10.05.1329', [string]$Notes = 'Smith deeds name their ingots.', [string]$Sha = $pkgSha, [string]$JsonBytes = '83886080', [switch]$NoJson, [string]$JsonError)
+    $j = [pscustomobject]@{ Exists = (-not $NoJson); Error = $null; Version = $Version; Notes = $Notes; Sha256 = $Sha; Bytes = $JsonBytes }
+    if ($NoJson) { $j.Version = $null; $j.Notes = $null; $j.Sha256 = $null; $j.Bytes = $null }
+    if ($JsonError) { $j.Error = $JsonError }
+    [pscustomobject]@{ Name = $Name; FullName = (Join-Path $config.PackageDist $Name); Bytes = 83886080; LastWriteUtc = $p60Now.AddHours(-1); Json = $j }
+}
+function New-PackageFacts {
+    param([string[]]$Dirty = @(), [string]$RepoError, [switch]$NoBuild, [switch]$NoPublish, $Zips, $Picked, [string]$Changelog, $LatestNote)
+    if ($null -eq $Zips) { $Zips = @(New-PackageZipRow) }
+    if ($null -eq $Picked) { $Picked = [pscustomobject]@{ Name = $pkgZipName; Sha256 = $pkgSha; InnerVersion = '2026.10.05.1329'; Error = $null } }
+    if (-not $Changelog) { $Changelog = "# Shattered Legacy changelog`n<!--`n## 2026.10.02`n-->`n`n## 2026.10.05.2`n`n### Fixed`n- Smith deeds say which ingots they need.`n" }
+    if ($null -eq $LatestNote) { $LatestNote = [pscustomobject]@{ Name = 'cc-P62-kitsune-walk-test.md'; Text = "P62 DONE`n" } }
+    [pscustomobject]@{
+        BuildExists = (-not $NoBuild); PublishExists = (-not $NoPublish); RepoPath = 'D:\ShatteredLegacy'; RepoPaths = @($Dirty)
+        RepoError = $RepoError; Head = '9ab57e4'; Zips = @($Zips); Picked = $Picked; Changelog = $Changelog; LatestNote = $LatestNote
+    }
+}
+$pkgFactsOk = New-PackageFacts
+
+# The captured state plus a real `docker images sl-modernuo` listing (fixtures, 2026-10-05). The
+# capture's latest (8304d4a24fd2) is in no listed tag, so the rollback is by id; $deployStateP61 has
+# latest on cc-p61's image, so the rollback names that tag.
+$imagesText = [IO.File]::ReadAllText((Join-Path $fixture 'docker-images-sl-modernuo-2026-10-05.txt'))
+function New-DeployState {
+    param([string]$LatestId)
+    $sec = [ordered]@{}
+    foreach ($k in $cap.Keys) { $sec[$k] = $cap[$k] }
+    $sec['images sl-modernuo'] = $imagesText
+    $s = New-ConsoleState -Config $config -Sections $sec
+    if ($LatestId) { $s.Latest.Id = $LatestId }
+    $s
+}
+$deployState = New-DeployState
+$deployStateP61 = New-DeployState 'sha256:9349dc9c9826aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+
 function Get-Plan {
-    param([string]$Action, [string]$Shard = 'test', [string]$SnapshotName, [string]$Snapshot, $State = $state, [string]$CommitMessage, $CommitFacts = $commitFactsOk)
-    @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $State -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $CommitFacts)
+    param([string]$Action, [string]$Shard = 'test', [string]$SnapshotName, [string]$Snapshot, $State = $state, [string]$CommitMessage, $CommitFacts = $commitFactsOk,
+        [string]$PackageNotes, [string]$PackageZip, $PackageFacts = $pkgFactsOk, [string]$ImageTag)
+    @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $State -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $CommitFacts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $PackageFacts -ImageTag $ImageTag)
 }
 
 # A copy of the captured state with one snapshot on each shard, for the restore and delete plans.
@@ -929,8 +971,12 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
-        Assert-Equal 'Test shard,Snapshots,World setup,Diagnostics,Commit,LIVE shard' ($tabs -join ',')
+        Assert-Equal 'Test shard,Snapshots,World setup,Diagnostics,Commit,Player package,LIVE shard' ($tabs -join ',')
         Assert-Equal 'Preview commit,Commit and push' (@($script:ui.CommitButtons | ForEach-Object { $_.Text }) -join ',') 'cc-P60'
+        Assert-Equal 'package.build,package.publish' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P63'
+        Assert-True ($null -ne $script:ui.PackageNotes -and $null -ne $script:ui.PackageList) 'cc-P63: the notes box and the zip list'
+        $testTags = @($script:ui.Tabs.TabPages[0].Controls[0].Controls | Where-Object { $_ -is [Windows.Forms.Button] } | ForEach-Object { $_.Tag })
+        Assert-True ($testTags -contains 'test.deploy') ('cc-P63: Deploy built image on the Test shard tab: ' + ($testTags -join ','))
         Assert-True ($null -ne $script:ui.CommitMessage) 'the message box'
         Assert-True ($script:ui.Status.Text -match 'DRIFTED') 'the status panel rendered the capture'
         Assert-Equal 3 @($script:ui.Tiles).Count 'three tiles: LIVE, TEST, STATUS PUBLISHER'
@@ -959,13 +1005,15 @@ $liveStoppedState.Shards['live'].Container.Status = 'exited'
 function Invoke-ClickCapture {
     # FromCapture defaults to Dry: a console launched with -DryRun. Dry with FromCapture false is
     # the toggle in a console whose status is live from docker.
-    param([string]$ActionKey, [string]$ShardKey, [bool]$Dry, $State = $snapState, $FromCapture = $null, $CommitFacts = $commitFactsOk, [string]$CommitMessage)
+    param([string]$ActionKey, [string]$ShardKey, [bool]$Dry, $State = $snapState, $FromCapture = $null, $CommitFacts = $commitFactsOk, [string]$CommitMessage,
+        $PackageFacts = $pkgFactsOk, [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [string]$Picked = 'sl-modernuo:cc-p61')
     if ($null -eq $FromCapture) { $FromCapture = $Dry }
     $rec = [pscustomobject]@{
         Spawned = New-Object 'System.Collections.Generic.List[string]'
         Lines = New-Object 'System.Collections.Generic.List[string]'
         Executed = New-Object 'System.Collections.Generic.List[string]'
         Confirms = New-Object 'System.Collections.Generic.List[string]'
+        Pickers = 0
     }
     # Defined here, so they shadow the real ones for Invoke-ConsoleButton only (dynamic scope).
     function Start-Process { param($FilePath, $ArgumentList) $rec.Spawned.Add([string]$ArgumentList) }
@@ -974,6 +1022,8 @@ function Invoke-ClickCapture {
     function Show-YesNo { 'Yes' }
     function Get-ConsoleState { $State }
     function Get-CommitFacts { $CommitFacts }
+    function Get-PackageFacts { $PackageFacts }
+    function Show-ImagePicker { $rec.Pickers++; $Picked }
     function Write-ConsoleLine { param([string]$Text, [string]$Color) $rec.Lines.Add($Text) }
     $saved = @($script:dry, $script:cfg, $script:statusFrom, $script:SelfPath, $script:fromCapture)
     $script:dry = $Dry; $script:cfg = $config; $script:statusFrom = $null; $script:fromCapture = [bool]$FromCapture
@@ -981,7 +1031,10 @@ function Invoke-ClickCapture {
     $sn = $null; $s = $null
     if ($ActionKey -eq 'snapshot.create') { $sn = 'd37-check' }
     if ($ActionKey -in @('snapshot.restore', 'snapshot.delete')) { $s = $snapName }
-    try { Invoke-ConsoleButton -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $sn -Snapshot $s -CommitMessage $CommitMessage }
+    # cc-P63: the package buttons need notes or a zip to open a window; a picked image is the picker's.
+    if ($ActionKey -eq 'package.build' -and -not $PSBoundParameters.ContainsKey('PackageNotes')) { $PackageNotes = 'P63 window check' }
+    if ($ActionKey -eq 'package.publish' -and -not $PSBoundParameters.ContainsKey('PackageZip')) { $PackageZip = $pkgZipName }
+    try { Invoke-ConsoleButton -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $sn -Snapshot $s -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag }
     finally { $script:dry, $script:cfg, $script:statusFrom, $script:SelfPath, $script:fromCapture = $saved }
     $rec
 }
@@ -992,9 +1045,11 @@ $windowCases = @(foreach ($a in @(Get-ConsoleActions | Where-Object { $_.RunIn -
     if ($a.Key -like 'live.*') { $shards = @('live') }
     if ($a.Key -like 'snapshot.*') { $shards = @('test', 'live') }
     if ($a.Key -like 'commit.*') { $shards = @('') }   # no shard: the click names both repos
+    if ($a.Key -like 'package.*') { $shards = @('') }  # nor the player package (cc-P63)
     foreach ($sk in $shards) {
         $st = $snapState
         if ($a.Key -eq 'live.start') { $st = $liveStoppedState }
+        if ($a.Key -eq 'test.deploy') { $st = $deployState }
         [pscustomobject]@{ Key = $a.Key; Shard = $sk; State = $st }
     }
 })
@@ -1598,6 +1653,381 @@ Fact 'P60_TheSafetyCheckRefusesARealCommitWithoutThePhraseOrAnotherScript' {
 Fact 'P60_PorcelainPathsAreReadAsTheCommitScriptReadsThem' {
     $p = @(ConvertFrom-GitPorcelain @(' M scripts/Shard-Console.ps1', '?? notes/new file.md', 'R  old.md -> docs/new.md', '?? "with space.txt"', ''))
     Assert-Equal 'scripts/Shard-Console.ps1|notes/new file.md|docs/new.md|with space.txt' ($p -join '|')
+}
+
+# --- cc-P63: Player package (build, publish) and Test shard > Deploy built image ------------------
+# Plans are built from New-PackageFacts and New-DeployState, never the real dist\ or docker. What
+# runs runs stand-ins (a build script, a docker that only records), or a real child under no mode or
+# -Mode DryRun. No fact here can publish, retag sl-modernuo:latest or restart a shard.
+
+# Quotes of both kinds, $, ; and & in one line of printable ASCII, as a notes line must be.
+$p63Notes = 'It''s "new" $HOME; Remove-Item x & echo %PATH% -GateSelfTest'
+
+Fact 'P63_TheThreeActionsExistWithTheirGroupMutatesAndRunIn' {
+    $want = @{ 'package.build' = 'Player package'; 'package.publish' = 'Player package'; 'test.deploy' = 'Test shard' }
+    foreach ($k in $want.Keys) {
+        $a = @(Get-ConsoleActions | Where-Object { $_.Key -eq $k })
+        Assert-Equal 1 $a.Count $k
+        Assert-Equal $want[$k] $a[0].Group $k
+        Assert-Equal $true $a[0].Mutates $k
+        Assert-Equal 'window' $a[0].RunIn $k
+    }
+    Assert-Equal 'publish player package' (Get-ConfirmPhrase 'package.publish')
+    Assert-Equal 'deploy to test' (Get-ConfirmPhrase 'test.deploy')
+    Assert-Equal 'Publish player package' (Get-ConfirmSubject 'package.publish')
+    Assert-Equal 'Deploy to test' (Get-ConfirmSubject 'test.deploy')
+}
+
+Fact 'P63_D37WithNoModeEachIsRefused' {
+    foreach ($k in 'package.build', 'package.publish', 'test.deploy') {
+        Assert-Equal 'refuse' (Resolve-RunMode -Action $k) $k
+        Assert-Equal 'dry' (Resolve-RunMode -Action $k -Mode Execute -DryRun) $k
+        Assert-True ((Get-ModeBanner 'refuse' $k 'x').Lines[1] -match ('^  REFUSED  ' + [regex]::Escape($k))) $k
+    }
+    Assert-True ((Get-ModeBanner 'execute' 'package.publish' 'package').Lines[2] -match 'PUBLIC') 'the publish window says public first'
+    Assert-True ((Get-ModeBanner 'execute' 'package.build' 'package').Lines[2] -match 'Nothing is published') 'the build window says it publishes nothing'
+}
+
+Fact 'P63_TheRealChildGivenNoModeRefusesEachAndCallsNoDocker' {
+    # The click's real line minus its mode and its phrase. For the build, minus its notes too, so a
+    # broken mode check is refused by the plan before any build could start.
+    foreach ($k in 'package.build', 'package.publish', 'test.deploy') {
+        $c = [pscustomobject]@{ Key = $k }
+        $st = $snapState
+        if ($k -eq 'test.deploy') { $st = $deployState }
+        $line = (Invoke-ClickCapture $k '' $false $st).Spawned[0] -replace ' -PackageNotesB64 \S+', ''
+        $line = Remove-Phrase ($line -replace ' -Mode Execute', '')
+        Assert-True (-not ($line -match ' -Mode | -ConfirmLive | -PackageNotesB64 ')) ($c.Key + ': ' + $line)
+        $r = Invoke-Child $line
+        Assert-Equal 2 $r.Exit ($c.Key + ': ' + ($r.Out -join ' | ') + $r.Err)
+        Assert-True ($r.Out[1] -match ('^  REFUSED  ' + [regex]::Escape($c.Key))) ($c.Key + ': ' + ($r.Out -join ' | '))
+        Assert-Equal 0 $r.DockerCalls.Count ($c.Key + ' called docker: ' + ($r.DockerCalls -join ' | '))
+        Assert-Equal 0 @($r.Out | Where-Object { $_ -match 'PLAN|Build-PlayerPackage|Publish-PlayerPackage|docker tag' }).Count ($c.Key + ': nothing past the banner: ' + ($r.Out -join ' | '))
+    }
+}
+
+Fact 'P63_TheDryRunPlansPrintTheCommandLinesWithNotesQuoted' {
+    $p = Get-Plan 'package.build' -PackageNotes $p63Notes
+    $text = (Format-Plan -Action 'package.build' -ShardKey 'package' -Plan $p -Header 'DRY RUN') -join "`n"
+    $want = '& ' + (ConvertTo-PsLiteral $config.BuildPackage) + " -Notes 'It''s `"new`" `$HOME; Remove-Item x & echo %PATH% -GateSelfTest'"
+    Assert-True ($text.Contains('RUN      ' + $want)) $text
+    $errs = $null
+    $ast = [Management.Automation.Language.Parser]::ParseInput($want, [ref]$null, [ref]$errs)
+    Assert-Equal 0 @($errs).Count (@($errs) -join '; ')
+    $cmd = $ast.Find({ param($n) $n -is [Management.Automation.Language.CommandAst] }, $true)
+    Assert-Equal $p63Notes $cmd.CommandElements[2].Value 'the quoted value is the notes, -GateSelfTest inside it only text'
+    Assert-True ($text -match 'CHECK    & .*Build-PlayerPackage\.ps1'' -CheckZip ''<the one zip in .*dist written since this plan started>''') $text
+    $pub = (Format-Plan -Action 'package.publish' -ShardKey 'package' -Plan (Get-Plan 'package.publish' -PackageZip $pkgZipName)) -join "`n"
+    Assert-True ($pub.Contains("RUN      & 'D:\UO\haven-migration\Publish-PlayerPackage.ps1' -Zip '" + (Join-Path $config.PackageDist $pkgZipName) + "'")) $pub
+    $dep = (Format-Plan -Action 'test.deploy' -ShardKey 'test' -Plan (Get-Plan 'test.deploy' -State $deployState -ImageTag 'sl-modernuo:cc-p61')) -join "`n"
+    Assert-True ($dep.Contains('RUN      docker tag sl-modernuo:cc-p61 sl-modernuo:latest')) $dep
+    Assert-True ($dep -match 'RUN      powershell\.exe .*Start-TestShard\.ps1 -Down\n') $dep
+    Assert-True ($dep -match 'RUN      powershell\.exe .*Start-TestShard\.ps1 -SkipBuild\n') $dep
+    Assert-True ($dep.IndexOf('docker tag') -lt $dep.IndexOf('-Down') -and $dep.IndexOf('-Down') -lt $dep.IndexOf('-SkipBuild')) 'tag, down, start, in that order'
+}
+
+Fact 'P63_NotesCrossTheChildCommandLineUnchanged' {
+    # The click's real line, run by a real child under -Mode DryRun: it prints the plan and exits. It
+    # reads the real repo's git status and dist\ (read-only), and no docker.
+    $line = (Invoke-ClickCapture 'package.build' '' $true -PackageNotes $p63Notes).Spawned[0]
+    Assert-True ($line -match ' -Mode DryRun -Action package\.build -PackageNotesB64 [A-Za-z0-9+/=]+$') $line
+    $r = Invoke-Child $line
+    Assert-Equal 0 $r.Exit (($r.Out -join ' | ') + $r.Err)
+    Assert-True ($r.Out[1] -match '^  DRY RUN  package\.build \(player package\)') $r.Out[1]
+    $want = " -Notes 'It''s `"new`" `$HOME; Remove-Item x & echo %PATH% -GateSelfTest'"
+    Assert-Equal 1 @($r.Out | Where-Object { $_.Contains('Build-PlayerPackage.ps1''' + $want) }).Count ($r.Out -join ' | ')
+    Assert-Equal 0 $r.DockerCalls.Count 'the package buttons never read docker'
+}
+
+Fact 'P63_PackageBuildRefusesOnADirtyTreeAndNamesTheFiles' {
+    $dirty = New-PackageFacts -Dirty @('scripts/Shard-Console.ps1', 'CHANGELOG.md')
+    $p = Get-Plan 'package.build' -PackageNotes 'x' -PackageFacts $dirty
+    $ref = @($p | Where-Object { $_.Kind -eq 'refuse' })
+    Assert-Equal 1 $ref.Count (@($p | ForEach-Object { $_.Kind + ' ' + $_.Text }) -join ' | ')
+    Assert-Equal 'D:\ShatteredLegacy has 2 uncommitted file(s), so the package would not be built from a commit: scripts/Shard-Console.ps1, CHANGELOG.md. Commit first (Commit tab), then build.' $ref[0].Text
+    Assert-Equal 0 @($p | Where-Object { $_.Text -match 'committed and clean' }).Count 'it does not say clean'
+    $r = Invoke-ClickCapture 'package.build' '' $false -PackageFacts $dirty
+    Assert-Equal 0 $r.Spawned.Count 'no window'
+    Assert-Equal 0 $r.Confirms.Count 'no override'
+    Assert-True (@($r.Lines | Where-Object { $_ -like 'package.build: D:\ShatteredLegacy has 2 uncommitted file(s)*' }).Count -eq 1) ($r.Lines -join ' | ')
+    $many = New-PackageFacts -Dirty @(1..13 | ForEach-Object { 'f' + $_ + '.txt' })
+    $t = @(Get-Plan 'package.build' -PackageNotes 'x' -PackageFacts $many | Where-Object { $_.Kind -eq 'refuse' })[0].Text
+    Assert-True ($t -match 'has 13 uncommitted file\(s\).*f1\.txt, .*f10\.txt and 3 more\.') $t
+    $broken = New-PackageFacts -RepoError 'fatal: detected dubious ownership'
+    Assert-True (@(Get-Plan 'package.build' -PackageNotes 'x' -PackageFacts $broken | Where-Object { $_.Kind -eq 'refuse' -and $_.Text -match 'git status failed.*dubious' }).Count -eq 1) 'a git failure is not clean (D66)'
+    $clean = Get-Plan 'package.build' -PackageNotes 'x'
+    Assert-Equal 0 @($clean | Where-Object { $_.Kind -eq 'refuse' }).Count 'clean and with notes, it builds'
+    Assert-Equal 'say,script,checkzip,log' (@($clean | ForEach-Object { $_.Kind }) -join ',')
+    Assert-Equal 1 (Invoke-ClickCapture 'package.build' '' $false).Spawned.Count 'and opens its window'
+}
+
+Fact 'P63_PackageBuildNeedsOneLineOfAsciiNotes' {
+    foreach ($n in '', '   ', ('two' + "`n" + 'lines'), ('curly ' + [char]0x2019), ('em ' + [char]0x2014)) {
+        $p = Get-Plan 'package.build' -PackageNotes $n
+        Assert-Equal 1 @($p | Where-Object { $_.Kind -eq 'refuse' }).Count ("notes '" + $n + "'")
+    }
+    $r = Invoke-ClickCapture 'package.build' '' $false -PackageNotes ''
+    Assert-Equal 0 $r.Spawned.Count 'blank notes open nothing'
+    Assert-True (@($r.Lines | Where-Object { $_ -like 'package.build: A package needs notes*' }).Count -eq 1) ($r.Lines -join ' | ')
+}
+
+Fact 'P63_TheZipPickerReadsVersionJson' {
+    # A real dist\ folder: three zips written oldest to newest, one with a version.json, one with none,
+    # one whose version.json does not parse.
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p63-dist-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    try {
+        Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+        $mk = {
+            param([string]$Name, [string]$Stamp, [int]$AgeMin)
+            $zp = Join-Path $dir $Name
+            $za = [IO.Compression.ZipFile]::Open($zp, 'Create')
+            try {
+                $e = $za.CreateEntry(($Name -replace '\.zip$', '') + '/app/package-version.txt')
+                $w = New-Object IO.StreamWriter($e.Open()); try { $w.Write($Stamp + "`r`n") } finally { $w.Dispose() }
+            } finally { $za.Dispose() }
+            (Get-Item -LiteralPath $zp).LastWriteTimeUtc = [datetime]::UtcNow.AddMinutes(-$AgeMin)
+            $zp
+        }
+        $a = & $mk 'ShatteredLegacy-2026.10.05.1010.zip' '2026.10.05.1010' 30
+        $b = & $mk 'ShatteredLegacy-2026.10.05.1100.zip' '2026.10.05.1100' 20
+        $c = & $mk 'ShatteredLegacy-2026.10.05.1200.zip' '2026.10.05.1200' 10
+        $sha = (Get-FileHash -LiteralPath $a -Algorithm SHA256).Hash.ToLower()
+        $len = (Get-Item -LiteralPath $a).Length
+        [IO.File]::WriteAllText(($a -replace '\.zip$', '.version.json'), ('{ "version": "2026.10.05.1010", "sha256": "' + $sha + '", "bytes": ' + $len + ', "url": "x", "notes": "It''s \"new\"" }'))
+        [IO.File]::WriteAllText(($c -replace '\.zip$', '.version.json'), '{ not json')
+        Set-Content -LiteralPath (Join-Path $dir 'notes.txt') -Value 'not a zip'
+        $rows = @(Get-PackageZips $dir)
+        Assert-Equal 'ShatteredLegacy-2026.10.05.1200.zip,ShatteredLegacy-2026.10.05.1100.zip,ShatteredLegacy-2026.10.05.1010.zip' (@($rows | ForEach-Object { $_.Name }) -join ',') 'newest first, zips only'
+        Assert-True ($rows[0].Json.Exists -and $rows[0].Json.Error) 'unparsable json is an error, not empty'
+        Assert-Equal $false $rows[1].Json.Exists 'no version.json'
+        Assert-Equal '2026.10.05.1010' $rows[2].Json.Version
+        Assert-Equal 'It''s "new"' $rows[2].Json.Notes 'the notes, as launchers print them'
+        Assert-Equal $sha $rows[2].Json.Sha256
+        Assert-Equal '2026.10.05.1010' (Read-ZipPackageVersion $a) 'the stamp inside the zip'
+        # The guard: each of the three zips against its own hash and stamp.
+        $picked = { param($p) [pscustomobject]@{ Name = (Split-Path $p -Leaf); Sha256 = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash.ToLower(); InnerVersion = (Read-ZipPackageVersion $p); Error = $null } }
+        Assert-Equal 0 @(Get-PackageZipProblems $rows[2] (& $picked $a)).Count 'a zip its version.json describes passes'
+        Assert-True ((@(Get-PackageZipProblems $rows[1] (& $picked $b)))[0] -match 'has no ShatteredLegacy-2026\.10\.05\.1100\.version\.json') 'no json'
+        Assert-True ((@(Get-PackageZipProblems $rows[0] (& $picked $c)))[0] -match 'does not parse') 'bad json'
+        $rows[2].Json.Version = '2026.10.05.9999'; $rows[2].Json.Sha256 = ('0' * 64); $rows[2].Json.Bytes = '1'
+        $pr = @(Get-PackageZipProblems $rows[2] (& $picked $a))
+        Assert-Equal 3 $pr.Count ($pr -join ' | ')
+        Assert-True ($pr[0] -match 'version 2026\.10\.05\.9999.*says 2026\.10\.05\.1010') $pr[0]
+        Assert-True ($pr[1] -match 'sha256') $pr[1]
+        Assert-True ($pr[2] -match ('says 1 bytes, the zip is ' + $len)) $pr[2]
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P63_APublishWhoseVersionJsonDoesNotMatchIsBlockedBeforeThePhrase' {
+    $bad = New-PackageFacts -Picked ([pscustomobject]@{ Name = $pkgZipName; Sha256 = ('cd' * 32); InnerVersion = '2026.10.05.1329'; Error = $null })
+    $r = Invoke-ClickCapture 'package.publish' '' $false -PackageFacts $bad
+    Assert-Equal 0 $r.Confirms.Count 'no phrase asked for'
+    Assert-Equal 0 $r.Spawned.Count 'no window'
+    Assert-True (@($r.Lines | Where-Object { $_ -like 'package.publish: Not publishing: version.json says sha256 abab*the zip is cdcd*' }).Count -eq 1) ($r.Lines -join ' | ')
+    $none = New-PackageFacts -Zips @(New-PackageZipRow -NoJson)
+    Assert-Equal 0 (Invoke-ClickCapture 'package.publish' '' $false -PackageFacts $none).Spawned.Count 'no version.json'
+    Assert-Equal 0 (Invoke-ClickCapture 'package.publish' '' $false -PackageZip '').Spawned.Count 'nothing chosen'
+    Assert-Equal 0 (Invoke-ClickCapture 'package.publish' '' $false -PackageZip 'ShatteredLegacy-nope.zip').Spawned.Count 'not in dist'
+    Assert-Equal 0 (Invoke-ClickCapture 'package.publish' '' $false -PackageFacts (New-PackageFacts -NoPublish)).Spawned.Count 'no script'
+}
+
+Fact 'P63_PublishAsksThePhraseSaysPublicFirstAndOpensItsWindow' {
+    $r = Invoke-ClickCapture 'package.publish' '' $false
+    Assert-Equal 'publish player package' ($r.Confirms -join ',')
+    Assert-Equal 1 $r.Spawned.Count ($r.Lines -join ' | ')
+    Assert-True ($r.Spawned[0] -match (' -NoExit .* -Mode Execute -Action package\.publish -ConfirmLive "publish player package" -PackageZip "' + [regex]::Escape($pkgZipName) + '"$')) $r.Spawned[0]
+    $p = Get-Plan 'package.publish' -PackageZip $pkgZipName
+    Assert-Equal ('BEFORE YOU TYPE: ' + $script:PublishPublicWarning) (Get-ConfirmPreface $p)
+    Assert-Equal 'confirm' $p[0].Kind 'the phrase comes first'
+    $info = @($p | Where-Object { $_.Kind -eq 'say' })[0].Text
+    Assert-True ($info -match '^zip ShatteredLegacy-2026\.10\.05\.1329\.zip, version 2026\.10\.05\.1329, 80\.0 MB, built .*What is new: Smith deeds name their ingots\.$') $info
+    Assert-Equal 0 @($p | Where-Object { $_.Text -match '^Reminder' }).Count 'no rollout note when nothing says so'
+    Assert-Equal '' (Get-ConfirmPreface (Get-Plan 'package.build' -PackageNotes 'x')) 'the build is not public'
+    Assert-Equal ('BEFORE YOU TYPE: ' + $script:CommitPublicWarning) (Get-ConfirmPreface (Get-Plan 'commit.run')) 'and the commit keeps its own'
+}
+
+Fact 'P63_ThePublishRemindsThatTheServerFollowsWhenTheNotesSaySo' {
+    $n = New-PackageFacts -LatestNote ([pscustomobject]@{ Name = 'cc-P62-kitsune-walk-test.md'; Text = "...`nPackage first, then the server, then the client check.`nP62 DONE`n" })
+    $t = @(Get-Plan 'package.publish' -PackageZip $pkgZipName -PackageFacts $n | Where-Object { $_.Text -like 'Reminder*' })
+    Assert-Equal 1 $t.Count 'from the newest note'
+    Assert-Equal 'Reminder: cc-P62-kitsune-walk-test.md says package first, then the server. The server deploy follows this publish; it is not part of this button.' $t[0].Text
+    $cl = "<!--`n## 2026.10.02`n- package first, then server (an example in the header)`n-->`n## 2026.10.05.3`n### Staff`n- Rollout: publish the package before deploying the server.`n## 2026.10.05.2`n"
+    $t2 = @(Get-Plan 'package.publish' -PackageZip $pkgZipName -PackageFacts (New-PackageFacts -Changelog $cl) | Where-Object { $_.Text -like 'Reminder*' })
+    Assert-True ($t2.Count -eq 1 -and $t2[0].Text -like 'Reminder: CHANGELOG.md 2026.10.05.3 says*') ($t2 | ForEach-Object { $_.Text })
+    $old = "<!--`n- package first (header example)`n-->`n## 2026.10.05.3`n- nothing about order`n## 2026.10.05.2`n- package first, then server`n"
+    Assert-Equal $null (Get-RolloutReminder -Changelog $old -LatestNote $null) 'only the newest section counts, and never the header'
+    Assert-Equal 0 @(Get-Plan 'package.publish' -PackageZip $pkgZipName -PackageFacts $n | Where-Object { $_.Kind -eq 'refuse' }).Count 'a warning only'
+}
+
+Fact 'P63_ImageTagListingParsesRealDockerOutput' {
+    $rows = @(ConvertFrom-ImageTagListing $imagesText)
+    Assert-True ($rows.Count -ge 30) ('rows: ' + $rows.Count)
+    $p62 = @($rows | Where-Object { $_.Tag -eq 'sl-modernuo:cc-p62' })[0]
+    Assert-Equal 'b04ed61adb5a' $p62.Id
+    Assert-Equal ([datetime]::SpecifyKind([datetime]'2026-10-05 19:19:04', 'Utc')) $p62.Created '14:19:04 -0500 is 19:19:04 UTC'
+    $c = @(Get-DeployCandidates $deployStateP61 $config)
+    Assert-True (@($c | Where-Object { $_.Tag -notlike 'sl-modernuo:cc-p*' }).Count -eq 0) 'cc-p tags only: not latest, pre-bump or <none>'
+    Assert-Equal 'sl-modernuo:cc-p62' $c[0].Tag 'newest first'
+    for ($i = 1; $i -lt $c.Count; $i++) { Assert-True ($c[$i - 1].Created -ge $c[$i].Created) ('order at ' + $i) }
+    Assert-Equal 'sl-modernuo:cc-p61' (@($c | Where-Object { $_.IsLatest }) | ForEach-Object { $_.Tag }) 'and which one latest points at now'
+}
+
+Fact 'P63_TestDeployShowsTheOldLatestAndHowToRollBack' {
+    $p = Get-Plan 'test.deploy' -State $deployStateP61 -ImageTag 'sl-modernuo:cc-p62'
+    Assert-Equal 'confirm,say,exec,say,exec,exec,log' (@($p | ForEach-Object { $_.Kind }) -join ',')
+    Assert-True ($p[1].Text -like 'sl-modernuo:latest before this deploy: 9349dc9c9826, built *') $p[1].Text
+    Assert-Equal 'To roll back: deploy sl-modernuo:cc-p61 (9349dc9c9826).' $p[3].Text
+    $q = Get-Plan 'test.deploy' -State $deployState -ImageTag 'sl-modernuo:cc-p62'
+    Assert-Equal 'To roll back: docker tag 8304d4a24fd2 sl-modernuo:latest, then Test shard > Start (no cc-p tag names 8304d4a24fd2).' $q[3].Text
+    Assert-True ($p[0].Text -like 'This points sl-modernuo:latest at sl-modernuo:cc-p62 (b04ed61adb5a, built *) and restarts the TEST shard on it. *') $p[0].Text
+    # Refusals: the image latest already is, a tag that is not cc-p, one docker does not have, none.
+    $same = @(Get-Plan 'test.deploy' -State $deployStateP61 -ImageTag 'sl-modernuo:cc-p61' | Where-Object { $_.Kind -eq 'refuse' })
+    Assert-True ($same.Count -eq 1 -and $same[0].Text -match 'already is') 'already latest'
+    foreach ($t in 'sl-modernuo:latest', 'sl-modernuo:pre-bump-7c9215d97', 'uo-modernuo:latest', 'sl-modernuo:cc-p99', '') {
+        Assert-Equal 'refuse' ((Get-Plan 'test.deploy' -State $deployState -ImageTag $t)[0].Kind) ("'" + $t + "'")
+    }
+    $r = Invoke-ClickCapture 'test.deploy' 'test' $false $deployState
+    Assert-Equal 1 $r.Pickers 'the click asks which image'
+    Assert-Equal 'deploy to test' ($r.Confirms -join ',')
+    Assert-True ($r.Spawned[0] -match ' -Mode Execute -Action test\.deploy -Shard test -ConfirmLive "deploy to test" -ImageTag "sl-modernuo:cc-p61"$') $r.Spawned[0]
+    $cancel = Invoke-ClickCapture 'test.deploy' 'test' $false $deployState -Picked ''
+    Assert-Equal 0 $cancel.Spawned.Count 'cancelling the picker runs nothing'
+    Assert-Equal 0 $cancel.Confirms.Count
+}
+
+Fact 'P63_TheLiveLineIsReadFromWhatLiveWasCreatedFrom' {
+    # From the capture: live was created from 'uo-modernuo' (docker-compose.yml builds its own image,
+    # D29), as it still is on 2026-10-05. Moving sl-modernuo:latest changes nothing live.
+    Assert-Equal 'uo-modernuo' $deployState.Shards['live'].Container.ConfigImage
+    $line = Get-DeployLiveLine $deployState $config
+    Assert-Equal "Live does not use this tag: sl-modernuo was created from 'uo-modernuo', and a restart keeps the image it runs, so moving sl-modernuo:latest changes nothing live. Only the live drift line compares against it." $line
+    Assert-True ((Get-Plan 'test.deploy' -State $deployState -ImageTag 'sl-modernuo:cc-p62')[0].Text.EndsWith($line)) 'in the confirmation'
+    $s = New-DeployState
+    $s.Shards['live'].Container.ConfigImage = 'sl-modernuo:latest'
+    Assert-True ((Get-DeployLiveLine $s $config) -like 'LIVE was created from sl-modernuo:latest. A restart keeps the image it runs; the next time live is recreated*') 'if it were'
+}
+
+Fact 'P63_TestDeploysPlanNeverNamesTheLiveContainer' {
+    $live = $config.Shards['live'].Container
+    foreach ($c in @(Get-DeployCandidates $deployState $config)) {
+        $p = Get-Plan 'test.deploy' -State $deployState -ImageTag $c.Tag
+        if ($p[0].Kind -eq 'refuse') { continue }
+        $words = @($p | ForEach-Object { @($_.Exe) + @($_.Arguments) + @($_.Container) + @($_.Path) } | Where-Object { $_ })
+        Assert-Equal 0 @($words | Where-Object { [string]$_ -ceq $live }).Count ($c.Tag + ': ' + ($words -join ' '))
+        Assert-Equal 0 @($words | Where-Object { [string]$_ -match 'docker-compose\.yml|uo-modernuo' }).Count ($c.Tag + ' names live''s compose file or image')
+        Assert-Equal 0 @(Test-PlanSafety $p $config).Count ($c.Tag + ' passes the safety check')
+        $tags = @($p | Where-Object { $_.Kind -eq 'exec' -and $_.Exe -eq 'docker' })
+        Assert-Equal 1 $tags.Count 'one docker command, the tag'
+        Assert-Equal ('tag ' + $c.Tag + ' sl-modernuo:latest') ($tags[0].Arguments -join ' ')
+    }
+    # And the safety check refuses any plan that would: a deploy with a live step slipped in, a tag
+    # onto anything but latest or from anything but cc-p, and a tag with no phrase.
+    $ok = Get-Plan 'test.deploy' -State $deployState -ImageTag 'sl-modernuo:cc-p62'
+    Assert-Refused (@($ok) + @(New-PlanStep -Kind exec -Exe 'docker' -Arguments @('restart', $live))) 'names the live container' 'a live restart in a deploy'
+    Assert-Refused (@($ok) + @(New-PlanStep -Kind stopped -Container $live)) 'names the live container' 'a live check in a deploy'
+    $conf = New-PlanStep -Kind confirm -Phrase 'deploy to test'
+    Assert-Refused @($conf, (New-PlanStep -Kind exec -Exe 'docker' -Arguments @('tag', 'sl-modernuo:cc-p62', 'uo-modernuo:latest'))) 'the only tag this console makes' 'onto live''s image name'
+    Assert-Refused @($conf, (New-PlanStep -Kind exec -Exe 'docker' -Arguments @('tag', 'uo-modernuo:latest', 'sl-modernuo:latest'))) 'the only tag this console makes' 'from a non cc-p image'
+    Assert-Refused @(New-PlanStep -Kind exec -Exe 'docker' -Arguments @('tag', 'sl-modernuo:cc-p62', 'sl-modernuo:latest')) 'without a typed confirmation' 'no phrase'
+}
+
+Fact 'P63_ADeployStopsAtTheFirstFailureAndSaysHowToRollBack' {
+    # The plan run by the real executor with the recording docker first on PATH, which exits 1: the
+    # tag fails, so Start-TestShard.ps1 is never reached. Its log goes to a temp folder.
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p63-deploy-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.LogFile = Join-Path $dir 'shard-console.log'
+    $cfg.StartTestShard = Join-Path $dir 'Start-TestShard.ps1'   # never there: reaching it would fail differently
+    $oldPath = $env:PATH
+    $env:PATH = $shimDir + ';' + $env:PATH
+    $env:SL_DOCKER_SHIM_LOG = $shimLog
+    $p63Lines = New-Object 'System.Collections.Generic.List[string]'
+    function Write-ConsoleLine { param([string]$Text, [string]$Color) $p63Lines.Add($Text) }
+    try {
+        Assert-Equal (Join-Path $shimDir 'docker.exe') (Get-Command docker -CommandType Application | Select-Object -First 1).Source 'the recorder is first on PATH'
+        Remove-Item -LiteralPath $shimLog -ErrorAction SilentlyContinue
+        $p = @(Get-ActionPlan -Action 'test.deploy' -Config $cfg -State $deployStateP61 -ImageTag 'sl-modernuo:cc-p62')
+        $ok = Invoke-Plan -Plan $p -Config $cfg -ActionKey 'test.deploy' -ShardKey 'test' -ConfirmLive 'deploy to test'
+        Assert-Equal $false $ok ($p63Lines -join ' | ')
+        Assert-Equal 'tag sl-modernuo:cc-p62 sl-modernuo:latest' ((Get-Content -LiteralPath $shimLog) -join ' | ') 'docker saw the tag and nothing else'
+        Assert-True (@($p63Lines | Where-Object { $_ -like 'FAILED at step 3:*' }).Count -eq 1) ($p63Lines -join ' | ')
+        Assert-True (@($p63Lines | Where-Object { $_ -like '*sl-modernuo:latest before this deploy: 9349dc9c9826*' }).Count -eq 1) 'the old id was said before the tag'
+        Assert-Equal 0 @($p63Lines | Where-Object { $_ -match 'Start-TestShard|To roll back' }).Count ('nothing after the failed step: ' + ($p63Lines -join ' | '))
+        Assert-True ((Get-Content -LiteralPath $cfg.LogFile -Raw) -match 'FAILED test\.deploy shard=test at step 3') 'logged'
+        $none = Invoke-Plan -Plan $p -Config $cfg -ActionKey 'test.deploy' -ShardKey 'test' -ConfirmLive 'deploy test'
+        Assert-Equal $false $none 'a wrong phrase runs nothing'
+        Assert-Equal 1 @(Get-Content -LiteralPath $shimLog).Count 'still the one call'
+    } finally {
+        $env:PATH = $oldPath
+        Remove-Item Env:\SL_DOCKER_SHIM_LOG -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+Fact 'P63_ABuildRunsTheScriptWithTheNotesThenChecksTheZipItWrote' {
+    # Build-PlayerPackage.ps1 swapped for a stand-in that, given -Notes, writes a zip and records the
+    # notes, and given -CheckZip records the path. dist\ is a temp folder holding an older zip, which
+    # the check must not pick.
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p63-build-' + [guid]::NewGuid().ToString('N'))
+    $dist = Join-Path $dir 'dist'
+    New-Item -ItemType Directory -Path $dist -Force | Out-Null
+    $old = Join-Path $dist 'ShatteredLegacy-2026.10.01.0000.zip'
+    Set-Content -LiteralPath $old -Value 'old'
+    (Get-Item -LiteralPath $old).LastWriteTimeUtc = [datetime]::UtcNow.AddHours(-1)
+    $stand = Join-Path $dir 'Build-PlayerPackage.ps1'
+    $got = Join-Path $dir 'got.txt'
+    Set-Content -LiteralPath $stand -Encoding ASCII -Value @(
+        'param([string]$Notes, [string]$CheckZip, [switch]$GateSelfTest)',
+        ('$got = ''' + $got + ''''),
+        'if ($CheckZip) { [IO.File]::AppendAllText($got, "check=$CheckZip`n"); Write-Host "  GATE 4 passed: $CheckZip" -ForegroundColor Green; exit 0 }',
+        '[IO.File]::AppendAllText($got, "notes=$Notes|self=$GateSelfTest`n")',
+        ('$z = ''' + (Join-Path $dist 'ShatteredLegacy-2026.10.05.2359.zip') + ''''),
+        'Set-Content -LiteralPath $z -Value new',
+        ('[IO.File]::WriteAllText(($z -replace ''\.zip$'', ''.version.json''), ''{ "version": "2026.10.05.2359", "notes": "n" }'')'),
+        'Write-Host "  built $z" -ForegroundColor Green')
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.BuildPackage = $stand
+    $cfg.PackageDist = $dist
+    $cfg.LogFile = Join-Path $dir 'shard-console.log'
+    $p63Lines = New-Object 'System.Collections.Generic.List[string]'
+    function Write-ConsoleLine { param([string]$Text, [string]$Color) $p63Lines.Add($Text) }
+    try {
+        $p = @(Get-ActionPlan -Action 'package.build' -Config $cfg -PackageFacts $pkgFactsOk -PackageNotes $p63Notes)
+        Assert-Equal 0 @(Test-PlanSafety $p $cfg).Count (@(Test-PlanSafety $p $cfg) -join ' | ')
+        $ok = Invoke-Plan -Plan $p -Config $cfg -ActionKey 'package.build' -ShardKey 'package'
+        Assert-Equal $true $ok ($p63Lines -join ' | ')
+        $g = @(Get-Content -LiteralPath $got)
+        Assert-Equal ('notes=' + $p63Notes + '|self=False') $g[0] 'every character of the notes, and -GateSelfTest inside them only text'
+        Assert-Equal ('check=' + (Join-Path $dist 'ShatteredLegacy-2026.10.05.2359.zip')) $g[1] 'the check got the zip just written, not the older one'
+        Assert-True (@($p63Lines | Where-Object { $_ -match 'zip     .*ShatteredLegacy-2026\.10\.05\.2359\.zip' }).Count -eq 1) ($p63Lines -join ' | ')
+        Assert-True (@($p63Lines | Where-Object { $_ -match 'version 2026\.10\.05\.2359, .*What is new: n$' }).Count -eq 1) ($p63Lines -join ' | ')
+        Assert-True (@($p63Lines | Where-Object { $_ -match 'GATE 4 passed' }).Count -eq 1) 'the gate results are shown'
+        # A build that wrote no zip fails at the check, and says so.
+        Remove-Item -Path (Join-Path $dist 'ShatteredLegacy-2026.10.05.2359.*')
+        Set-Content -LiteralPath $stand -Encoding ASCII -Value 'param([string]$Notes, [string]$CheckZip) Write-Host built-nothing'
+        $p63Lines.Clear()
+        Assert-Equal $false (Invoke-Plan -Plan $p -Config $cfg -ActionKey 'package.build' -ShardKey 'package') ($p63Lines -join ' | ')
+        Assert-True (@($p63Lines | Where-Object { $_ -like 'FAILED at step 3: expected one zip*found 0*' }).Count -eq 1) ($p63Lines -join ' | ')
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P63_TheSafetyCheckGuardsTheNewScripts' {
+    $conf = New-PlanStep -Kind confirm -Phrase 'publish player package'
+    $zip = Join-Path $config.PackageDist $pkgZipName
+    Assert-Refused @(New-PlanStep -Kind script -Path $config.BuildPackage -Named ([ordered]@{ GateSelfTest = $true })) 'with -Notes or -CheckZip only' 'the gate self-test'
+    Assert-Equal 0 @(Test-PlanSafety @(New-PlanStep -Kind script -Path $config.BuildPackage -Named ([ordered]@{ Notes = 'x' })) $config).Count 'a build needs no phrase'
+    Assert-Refused @(New-PlanStep -Kind script -Path $config.PublishScript -Named ([ordered]@{ Zip = $zip })) 'publishes a player package without a typed confirmation' 'no phrase'
+    Assert-Equal 0 @(Test-PlanSafety @($conf, (New-PlanStep -Kind script -Path $config.PublishScript -Named ([ordered]@{ Zip = $zip }))) $config).Count 'with it'
+    Assert-Refused @($conf, (New-PlanStep -Kind script -Path $config.PublishScript -Named ([ordered]@{ Zip = 'D:\Downloads\x.zip' }))) 'runs only with -Zip on a zip in' 'a zip outside dist'
+    Assert-Refused @($conf, (New-PlanStep -Kind script -Path $config.PublishScript -Named ([ordered]@{}))) 'runs only with -Zip' 'no -Zip: the script would pick the newest itself'
+    Assert-Refused @(New-PlanStep -Kind checkzip -Path 'D:\UO\Other.ps1' -To $config.PackageDist) 'a zip is checked only by' 'another checker'
+    Assert-Refused @(New-PlanStep -Kind script -Path 'D:\UO\Other.ps1') 'the only script this console runs' 'another script'
+    foreach ($a in 'package.build', 'package.publish') {
+        $p = Get-Plan $a -PackageNotes 'x' -PackageZip $pkgZipName
+        Assert-Equal 0 @(Test-PlanSafety $p $config).Count ($a + ': ' + (@(Test-PlanSafety $p $config) -join ' | '))
+    }
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

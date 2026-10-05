@@ -35,6 +35,15 @@ CREAM = (239, 204, 164, 255)
 CREAM_LIGHT = (255, 226, 188, 255)
 CREAM_HI = (255, 239, 210, 255)
 
+# High-readability game-client colors used by the final walk-cycle polish.
+TAIL_UNDER = (174, 68, 30, 255)
+TAIL_BASE = (238, 96, 31, 255)
+TAIL_TOP = (255, 151, 64, 255)
+TIP_CREAM = (250, 221, 177, 255)
+EAR_ORANGE = (241, 105, 35, 255)
+EAR_LIGHT = (255, 151, 62, 255)
+EAR_CREAM = (250, 220, 177, 255)
+
 
 # Each visible centerline is authored for its frame at game resolution. A
 # separate hidden root is added inside the lower back. The list then runs down
@@ -110,22 +119,25 @@ def draw_tail(layer: Image.Image, frame: int, body_mask: Image.Image, guide: dic
     # The final segment is drawn separately as a stepped rounded taper.
     draw.line(pts[:-1], fill=OUTLINE, width=5, joint="curve")
     draw.line(pts[2:-1], fill=OUTLINE, width=8, joint="curve")
-    draw.line(pts[:-1], fill=DEEP_RED, width=3, joint="curve")
-    draw.line(pts[2:-1], fill=DEEP_RED, width=6, joint="curve")
-    draw.line(pts[1:-1], fill=FOX_DARK, width=4, joint="curve")
-    draw.line(pts[2:-2], fill=FOX, width=5, joint="curve")
-    draw.line([(x, y - 1) for x, y in pts[2:-2]], fill=FOX_LIGHT, width=2, joint="curve")
+    # Three high-contrast lengthwise fur bands: dark underside, bright body,
+    # and a light upper ridge. These remain readable after the client palette.
+    draw.line(pts[:-1], fill=TAIL_UNDER, width=3, joint="curve")
+    draw.line(pts[2:-1], fill=TAIL_UNDER, width=6, joint="curve")
+    draw.line(pts[1:-1], fill=TAIL_BASE, width=4, joint="curve")
+    draw.line(pts[2:-2], fill=TAIL_BASE, width=5, joint="curve")
+    draw.line([(x, y + 2) for x, y in pts[2:-2]], fill=TAIL_UNDER, width=2, joint="curve")
+    draw.line([(x, y - 2) for x, y in pts[2:-2]], fill=TAIL_TOP, width=2, joint="curve")
 
     # A few deliberate one-pixel wedges break the smooth sleeve-like edges.
     tuft_index = 3 + (frame % 3)
     tx, ty = pts[min(tuft_index, len(pts) - 2)]
     draw.point((tx - 4, ty - 1), fill=OUTLINE)
-    draw.point((tx - 3, ty - 1), fill=FOX_GOLD)
+    draw.point((tx - 3, ty - 1), fill=TAIL_TOP)
     draw.point((tx + 4, ty + 1), fill=OUTLINE)
-    draw.point((tx + 3, ty + 1), fill=EDGE_RED)
+    draw.point((tx + 3, ty + 1), fill=TAIL_UNDER)
     sx, sy = pts[-3]
     draw.point((sx - 4, sy), fill=OUTLINE)
-    draw.point((sx - 3, sy), fill=RED_SHADOW)
+    draw.point((sx - 3, sy), fill=TAIL_UNDER)
 
     # Cream section narrows 7 -> 5 -> 3 -> 1 pixels and ends at the existing
     # endpoint, producing a rounded point without changing length or motion.
@@ -136,17 +148,13 @@ def draw_tail(layer: Image.Image, frame: int, body_mask: Image.Image, guide: dic
         outer_radius = max(0, round(3 * (1 - t)))
         inner_radius = max(0, outer_radius - 1)
         stamp(x, y, outer_radius, OUTLINE)
-        tip_color = CREAM_DARK if t < 0.30 else CREAM_SHADOW if t < 0.60 else CREAM if t < 0.85 else CREAM_LIGHT
-        stamp(x, y, inner_radius, tip_color)
-        if i < len(tip_path) - 1:
-            draw.point((x - 1, y - 1), fill=CREAM_HI if t > 0.45 else CREAM_MID)
-    draw.point(pts[-1], fill=CREAM_HI)
+        stamp(x, y, inner_radius, TIP_CREAM)
+    draw.point(pts[-1], fill=TIP_CREAM)
 
-    # A jagged orange/cream transition rather than a straight band.
-    jx, jy = pts[-2]
-    draw.point((jx + 1, jy - 2), fill=FOX_LIGHT)
-    draw.point((jx + 1, jy + 2), fill=EDGE_RED)
-    draw.point((jx, jy), fill=CREAM_MID)
+    # Bridge across the internal join so the cream is one solid patch, not a
+    # stack of outlined rings. The dark color remains only on the outer edge.
+    join_path = raster_line(pts[-3], pts[-2])
+    draw.line(join_path[-2:], fill=TIP_CREAM, width=3, joint="curve")
 
     # The tail is behind the character. Omit every pixel covered by the body.
     px = layer.load()
@@ -196,28 +204,31 @@ def draw_ears(layer: Image.Image, frame: int, guide: dict) -> None:
         if 0 <= x < GAME_SIZE[0] and 0 <= y < GAME_SIZE[1]:
             px[x, y] = color
 
-    # Far ear first: a pointed 4 x 6 wedge, partially hidden by the near ear.
+    # Far ear first: pointed 4 x 7 wedge, partially hidden by the near ear.
     fx = center + 1 + lean
     far = [
-        (0, -5, TIP_DARK),
-        (0, -4, EAR_DARK), (1, -4, OUTLINE),
-        (-1, -3, DEEP_RED), (0, -3, EAR_DARK), (1, -3, OUTLINE),
-        (-1, -2, FOX_DARK), (0, -2, CREAM_SHADOW), (1, -2, CREAM_DARK), (2, -2, EDGE_RED),
-        (-1, -1, RED_SHADOW), (0, -1, CREAM_MID), (1, -1, FOX_DARK), (2, -1, OUTLINE),
-        (-1, 0, OUTLINE), (0, 0, FOX_DARK), (1, 0, FOX_DARK), (2, 0, OUTLINE),
+        (0, -6, TIP_DARK),
+        (0, -5, EAR_DARK),
+        (0, -4, EAR_ORANGE), (1, -4, EAR_LIGHT),
+        (-1, -3, OUTLINE), (0, -3, EAR_ORANGE), (1, -3, EAR_LIGHT),
+        (-1, -2, EAR_ORANGE), (0, -2, EAR_CREAM), (1, -2, EAR_LIGHT), (2, -2, OUTLINE),
+        (-1, -1, EAR_ORANGE), (0, -1, EAR_CREAM), (1, -1, EAR_ORANGE), (2, -1, OUTLINE),
+        (-1, 0, OUTLINE), (0, 0, EAR_ORANGE), (1, 0, EAR_ORANGE), (2, 0, OUTLINE),
     ]
     for dx, dy, color in far:
         put(fx + dx, crown + dy, color)
 
-    # Near ear: pointed 4 x 6 triangle, with one tip pixel and a stepped taper.
+    # Near ear: pointed 4 x 7 triangle with a two-pixel brown tip and clear
+    # cream inner fur. Its base stays on the exact approved crown anchor.
     nx = center - 2 + lean
     near = [
-        (0, -5, TIP_DARK),
-        (0, -4, EAR_DARK), (1, -4, OUTLINE),
-        (-1, -3, DEEP_RED), (0, -3, CREAM_DARK), (1, -3, OUTLINE),
-        (-1, -2, FOX_DARK), (0, -2, CREAM_LIGHT), (1, -2, CREAM_DARK), (2, -2, EAR_DARK),
-        (-1, -1, FOX), (0, -1, CREAM_HI), (1, -1, CREAM_MID), (2, -1, DEEP_RED),
-        (-1, 0, OUTLINE), (0, 0, FOX_DARK), (1, 0, FOX_DARK), (2, 0, OUTLINE),
+        (0, -6, TIP_DARK),
+        (0, -5, EAR_DARK),
+        (0, -4, EAR_ORANGE), (1, -4, EAR_LIGHT),
+        (-1, -3, OUTLINE), (0, -3, EAR_ORANGE), (1, -3, EAR_LIGHT),
+        (-1, -2, EAR_ORANGE), (0, -2, EAR_CREAM), (1, -2, EAR_CREAM), (2, -2, OUTLINE),
+        (-1, -1, EAR_ORANGE), (0, -1, EAR_CREAM), (1, -1, EAR_LIGHT), (2, -1, OUTLINE),
+        (-1, 0, OUTLINE), (0, 0, EAR_ORANGE), (1, 0, EAR_ORANGE), (2, 0, OUTLINE),
     ]
     for dx, dy, color in near:
         put(nx + dx, crown + dy, color)
@@ -232,7 +243,7 @@ def build_frame(frame: int, guide: dict) -> tuple[Image.Image, Image.Image]:
     # Preview ordering: tail behind silhouette; ears on top of the head.
     tail_only = item.copy()
     crown = int(guide["crown_y"])
-    ear_cut = max(0, crown - 6)
+    ear_cut = max(0, crown - 7)
     for y in range(ear_cut, min(GAME_SIZE[1], crown + 2)):
         for x in range(GAME_SIZE[0]):
             tail_only.putpixel((x, y), (0, 0, 0, 0))
@@ -261,7 +272,7 @@ def validate(item: Image.Image, silhouette: Image.Image, frame: int, guide: dict
                     tail_points.append((x, y))
                     if sil_px[x, y][3]:
                         tail_overlap += 1
-                elif crown - 6 <= y <= crown + 1:
+                elif crown - 7 <= y <= crown + 1:
                     ear_points.append((x, y))
 
     def bbox(points):

@@ -15,11 +15,11 @@
     ],
     "ear_bbox_game_px": [
       60,
-      39,
+      38,
       66,
       44
     ],
-    "palette_colors": 14
+    "palette_colors": 10
   },
   {
     "frame": 1,
@@ -37,11 +37,11 @@
     ],
     "ear_bbox_game_px": [
       60,
-      38,
+      37,
       66,
       43
     ],
-    "palette_colors": 15
+    "palette_colors": 10
   },
   {
     "frame": 2,
@@ -59,11 +59,11 @@
     ],
     "ear_bbox_game_px": [
       61,
-      37,
+      36,
       67,
       42
     ],
-    "palette_colors": 15
+    "palette_colors": 10
   },
   {
     "frame": 3,
@@ -81,11 +81,11 @@
     ],
     "ear_bbox_game_px": [
       61,
-      38,
+      37,
       67,
       43
     ],
-    "palette_colors": 15
+    "palette_colors": 10
   },
   {
     "frame": 4,
@@ -103,11 +103,11 @@
     ],
     "ear_bbox_game_px": [
       60,
-      39,
+      38,
       66,
       44
     ],
-    "palette_colors": 13
+    "palette_colors": 10
   },
   {
     "frame": 5,
@@ -125,11 +125,11 @@
     ],
     "ear_bbox_game_px": [
       60,
-      40,
+      39,
       66,
       45
     ],
-    "palette_colors": 13
+    "palette_colors": 10
   },
   {
     "frame": 6,
@@ -147,11 +147,11 @@
     ],
     "ear_bbox_game_px": [
       60,
-      38,
+      37,
       66,
       43
     ],
-    "palette_colors": 14
+    "palette_colors": 10
   },
   {
     "frame": 7,
@@ -169,11 +169,11 @@
     ],
     "ear_bbox_game_px": [
       61,
-      37,
+      36,
       67,
       42
     ],
-    "palette_colors": 16
+    "palette_colors": 10
   },
   {
     "frame": 8,
@@ -191,11 +191,11 @@
     ],
     "ear_bbox_game_px": [
       62,
-      38,
+      37,
       68,
       43
     ],
-    "palette_colors": 15
+    "palette_colors": 10
   },
   {
     "frame": 9,
@@ -213,10 +213,10 @@
     ],
     "ear_bbox_game_px": [
       60,
-      39,
+      38,
       66,
       44
     ],
-    "palette_colors": 15
+    "palette_colors": 10
   }
 ]

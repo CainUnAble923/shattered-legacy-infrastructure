@@ -7,6 +7,7 @@ How this file works (F-15, cc-P22). This file is the only place patch notes are 
   same day is 2026.09.30.2, then .3. The newest section's version also goes in VERSION, one line.
 - Under a version, up to three lists, each headed "### Added", "### Changed" or "### Fixed". Leave out a list with
   nothing in it.
+- A fourth list, "### Staff", is for staff: players never see it, and staff see it in [version (in its own color).
 - One player-facing line per item, starting "- ". Plain words: what a player sees, not how it was built. Internal
   detail (file names, tests, bug numbers) stays out.
 - Anything else in this file, including this comment, is ignored.
@@ -28,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.05.3
+
+### Added
+- [version opens the full patch history: every update, newest first, a page at a time. The login notes have an "All patch notes" button that opens it.
+
+### Changed
+- Long patch note lines now wrap onto a second or third line instead of being cut off at the edge.
+
 ## 2026.10.05.2
 
 ### Changed
@@ -37,6 +46,9 @@ Example:
 ### Fixed
 - Earned achievements no longer show a progress line.
 - Platinum to Celestial smith deeds now say which ingots they need, on the deed, the offer and the tooltip. Take the launcher's update to see the line.
+
+### Staff
+- Shard Console: a Player package tab builds the player zip and publishes a chosen one, and the Test shard tab can put an image a prompt already built on the test shard. Publishing and deploying each ask for a typed phrase first.
 
 ## 2026.10.05
 

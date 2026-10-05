@@ -77,3 +77,27 @@ New body references are plain blue silhouettes, so there is no gray body to trip
 - `D:\ShatteredLegacy\design\kitsune-ears-tail\reference\8x\silhouettes\` (1040 x 1024 each, same alignment as before)
 - `D:\ShatteredLegacy\design\kitsune-ears-tail\reference\8x\silhouette-guides\` (red line = top of her head, green line = lower back / hip height, black circle = the sprite's anchor point)
 - `D:\ShatteredLegacy\design\kitsune-ears-tail\reference\8x\frame-guides.json` (per frame, in game pixels: crown_y, head_x left and right, lower_back_row, body x range at that row)
+
+## Stage 4 brief (2026-10-05, after the walk dir1 test passed in game)
+
+Approved look: the current `stage3\walk_dir1` frames (ears 4x7 with dark tips and cream inner ear; lighter tail with
+fur bands and a solid cream tip). Every new frame matches that style, size and palette.
+
+Which way she faces, from `reference\directions_sheet.png` (stand, walk, run per direction). The game mirrors dir1,
+dir2 and dir3 for the other three directions, so only these five are drawn:
+
+| Dir | She faces | Where the tail goes |
+|---|---|---|
+| dir0 | straight toward the viewer (front view) | behind her; only a little shows, low, beside or between her legs |
+| dir1 | toward the viewer, down-left (done) | behind her viewer-right hip, hanging down behind her legs |
+| dir2 | left, in profile | behind her on the viewer's right; the most visible view, the whole tail hangs and sweeps right |
+| dir3 | away from the viewer, up-left (we see her back) | IN FRONT of her body: drawn over her lower back and legs, root at the lower back |
+| dir4 | straight away from the viewer (back view) | IN FRONT of her body: centered over her lower back, hanging down over her legs |
+
+Ears: seen from behind in dir3 and dir4 (no cream inner ear showing, just the orange backs and dark tips); in profile
+in dir2 (one ear in front, the far ear mostly hidden).
+
+Motion: stand is a single still frame per direction (tail resting, hanging down). Walk is as in dir1. Run: the tail
+streams out further behind her and bounces more with each stride.
+
+Order: walk dir0, dir2, dir3, dir4 first (40 frames), stop for approval; then run (50) and stand (5).

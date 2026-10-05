@@ -367,15 +367,19 @@ public class ClusterFBulletinPersistence : Item
 
 /// <summary>
 /// Displays unread League Dispatch bulletins to the player on login, and above them, once per version, the
-/// shard's patch notes (F-15: "Shattered Legacy <version>", the short list, a Full notes button that opens the
-/// version's section of the wiki page in the player's browser).
-/// Dismissing (or closing) the gump marks all current bulletins, and the notes, as seen.
+/// shard's patch notes (F-15: "Shattered Legacy <version>", the short list, and since cc-P64 an All patch notes button
+/// that opens PatchHistoryGump; the Full notes button that opened the wiki is gone until launch, see OnResponse).
+/// Dismissing (or closing) the gump, or opening All patch notes, marks all current bulletins, and the notes, as seen.
+/// cc-P64 (D87): each note line is its own HTML block as tall as its wrapped words need (ClusterFGumpText), so none is
+/// cut at the edge; the lines that fit whole in MaxNotesHeight are shown and the rest point to All patch notes.
 /// </summary>
 public class BulletinGump : Gump
 {
-    public const int FullNotesButton = 2;
-    public const int MaxNoteLines = 8;
+    public const int AllNotesButton = 2;
+    public const int MaxNotesHeight = 180;
     private const int NoteLineH = 18;
+    public const int NoteX = 20;
+    public const int NoteW = 440;
 
     private readonly Mobile _mobile;
     private readonly PatchNoteVersion _notes;
@@ -406,8 +410,21 @@ public class BulletinGump : Gump
 
         var visibleCount = Math.Min(entries.Count, 7); // cap display at 7 entries
         var noteLines = notes != null ? PatchNotes.BulletinLines(notes) : new List<string>();
-        var shownNotes = Math.Min(noteLines.Count, MaxNoteLines);
-        var notesH = notes != null ? 30 + shownNotes * NoteLineH + (noteLines.Count > MaxNoteLines ? NoteLineH : 0) + 34 : 0;
+
+        // cc-P64 (D87): whole lines only, each as tall as it wraps to, while they fit in MaxNotesHeight.
+        var noteHeights = new List<int>();
+        var shownH = 0;
+        foreach (var line in noteLines)
+        {
+            var h = NoteHeight(line);
+            if (shownH + h > MaxNotesHeight)
+                break;
+            noteHeights.Add(h);
+            shownH += h;
+        }
+
+        var shownNotes = noteHeights.Count;
+        var notesH = notes != null ? 30 + shownH + (noteLines.Count > shownNotes ? NoteLineH : 0) + 34 : 0;
         var totalH = HeaderH + notesH + visibleCount * EntryHeight + FooterH;
 
         AddBackground(0, 0, GumpWidth, totalH, BgGumpId);
@@ -438,18 +455,18 @@ public class BulletinGump : Gump
 
             for (var i = 0; i < shownNotes; i++)
             {
-                AddHtml(20, y, GumpWidth - 40, NoteLineH, $"<BASEFONT COLOR=#DDDDDD>{noteLines[i]}</BASEFONT>", false, false);
-                y += NoteLineH;
+                AddHtml(NoteX, y, NoteW, noteHeights[i] - 2, $"<BASEFONT COLOR=#DDDDDD>{noteLines[i]}</BASEFONT>", false, false);
+                y += noteHeights[i];
             }
 
-            if (noteLines.Count > MaxNoteLines)
+            if (noteLines.Count > shownNotes)
             {
-                AddLabel(20, y, 999, $"... and {noteLines.Count - MaxNoteLines} more in the full notes.");
+                AddLabel(20, y, 999, $"... and {noteLines.Count - shownNotes} more (All patch notes)");
                 y += NoteLineH;
             }
 
-            AddButton(20, y + 6, 4005, 4007, FullNotesButton);
-            AddLabel(54, y + 8, 1154, "Full notes (opens the wiki in your browser)");
+            AddButton(20, y + 6, 4005, 4007, AllNotesButton);
+            AddLabel(54, y + 8, 1154, "All patch notes");
             y += 34;
 
             if (visibleCount > 0)
@@ -495,17 +512,23 @@ public class BulletinGump : Gump
         AddLabel(GumpWidth / 2 - 16, y + 16, 1154, "Dismiss");
     }
 
+    /// <summary>A note line's block height plus its 2-pixel gap: wrapped 8 pixels short of the block, and 4 to spare.</summary>
+    public static int NoteHeight(string line) =>
+        ClusterFGumpText.Lines(line, NoteW - 8) * ClusterFGumpText.LineHeight + 4 + 2;
+
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
-        // Mark as seen on any interaction - close (0), dismiss (1) or Full notes (2).
+        // Mark as seen on any interaction - close (0), dismiss (1) or All patch notes (2).
         if (_mobile.Account is IAccount acct)
         {
             ClusterFBulletinSystem.MarkSeen(acct);
             ShardVersion.MarkSeen(acct, _notes);
         }
 
-        // Mobile.LaunchBrowser sends the open-URL packet; TazUO opens it without asking (notes, F-15).
-        if (info.ButtonID == FullNotesButton && _notes != null)
-            _mobile.LaunchBrowser(PatchNotes.NotesUrl(_notes.Version));
+        // cc-P64: All patch notes opens the in-game history. Until cc-P64 this button opened the wiki in the player's
+        // browser; to bring that back at launch, call _mobile.LaunchBrowser(PatchNotes.NotesUrl(_notes.Version)) here
+        // (the address constants are in ShardVersion.cs, PatchNotes.WikiBase and WikiPage; TazUO opens it unasked).
+        if (info.ButtonID == AllNotesButton)
+            _mobile.SendGump(new PatchHistoryGump(_mobile));
     }
 }

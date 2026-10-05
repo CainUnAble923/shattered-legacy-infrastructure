@@ -8,10 +8,11 @@
 // here at server start (Configure), by the one parser the shard's tests gate (PatchNotesVerification).
 //
 // What reads it:
-//   - the bulletin gump on login (ClusterFBulletinSystem.OnLogin): "Shattered Legacy <version>", the short list and a
-//     Full notes button, once per account per version (the account's FlagValues[SeenVersionKey]; no saved type
+//   - the bulletin gump on login (ClusterFBulletinSystem.OnLogin): "Shattered Legacy <version>", the short list and an
+//     All patch notes button, once per account per version (the account's FlagValues[SeenVersionKey]; no saved type
 //     changes);
-//   - [version, for any player: the version, and the notes again;
+//   - [version, for any player: the version, and the Patch History gump (cc-P64, PatchHistoryGump.cs): every version
+//     in the changelog, newest first, paged, each line wrapped;
 //   - status.json (ShardStatusPublisher), shard.version;
 //   - the wiki page: RenderDokuWiki, written at server start to /modernuo/Data/ShatteredLegacy/patch_notes.txt in
 //     the container, which scripts/Publish-PatchNotes.ps1 copies to the wiki on Haven.
@@ -19,10 +20,12 @@
 // The changelog's format is explained at the top of CHANGELOG.md itself. In short: "## 2026.09.30" starts a
 // version (newest first; a second update that day is 2026.09.30.2), "### Added", "### Changed" and "### Fixed" start
 // its lists, and each "- " line under one is a player-facing item. Everything else (the explanation at the top,
-// blank lines, comments) is ignored.
+// blank lines, comments) is ignored. cc-P64: "### Staff" is parsed too, into Staff, which only the Patch History gump
+// reads and only for staff; Sections() (the bulletin, the wiki page, players) leaves it out, as it always has.
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -40,6 +43,16 @@ public sealed class PatchNoteVersion
     public List<string> Changed { get; } = new();
     public List<string> Fixed { get; } = new();
 
+    /// <summary>cc-P64: the "### Staff" list. Never in Sections(): players, the bulletin and the wiki do not see it.</summary>
+    public List<string> Staff { get; } = new();
+
+    /// <summary>cc-P64: the date the version names, "October 5, 2026"; "" if its first three parts are not a date.</summary>
+    public string Date =>
+        DateTime.TryParseExact(Version.Length >= 10 ? Version[..10] : Version, "yyyy.MM.dd", CultureInfo.InvariantCulture,
+            DateTimeStyles.None, out var d)
+            ? d.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture)
+            : "";
+
     public bool IsEmpty => Added.Count == 0 && Changed.Count == 0 && Fixed.Count == 0;
 
     public IEnumerable<(string Section, List<string> Lines)> Sections()
@@ -52,6 +65,9 @@ public sealed class PatchNoteVersion
 
 public static class PatchNotes
 {
+    // cc-P64: nothing in game opens the wiki now. Its page waits for the fresh-world launch (Chase, 2026-10-05) and was
+    // stale, so the bulletin's Full notes button became All patch notes (PatchHistoryGump). These two constants and
+    // NotesUrl stay so the button can come back at launch: BulletinGump.OnResponse says where.
     public const string WikiBase = "https://wiki.shatteredlegacyuo.com/";
 
     /// <summary>The wiki page id: namespace uo, as every page on the wiki is (/uo:start, /uo:connection).</summary>
@@ -115,6 +131,7 @@ public static class PatchNotes
                     "added"   => current.Added,
                     "changed" => current.Changed,
                     "fixed"   => current.Fixed,
+                    "staff"   => current.Staff,
                     _         => null
                 };
                 continue;
@@ -307,7 +324,7 @@ public static class ShardVersion
     }
 
     [Usage("version")]
-    [Description("Shows the shard's version and its patch notes.")]
+    [Description("Shows the shard's version and every version's patch notes.")]
     [ShardCommand(CommandCategory.Player)]
     public static void Version_OnCommand(CommandEventArgs e)
     {
@@ -324,10 +341,13 @@ public static class ShardVersion
         if (CurrentNotes == null || CurrentNotes.IsEmpty)
         {
             m.SendMessage("There are no notes for this version.");
-            return;
         }
 
-        m.SendGump(new BulletinGump(m, new List<BulletinEntry>(), CurrentNotes));
+        // cc-P64: every version, not just this one.
+        if (_versions.Count > 0)
+        {
+            m.SendGump(new PatchHistoryGump(m));
+        }
     }
 
     // For tests: a known state without files.

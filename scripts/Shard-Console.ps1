@@ -46,6 +46,15 @@
                                    console runs as SYSTEM, when both repos are clean, or while a CC
                                    prompt has not said DONE or a pending file changed in the last 5
                                    minutes (Get-CommitInFlight); the preview still runs and names them.
+    player-package/Build-PlayerPackage.ps1   the Player package tab (cc-P63): Build package runs it
+                                   with -Notes, then -CheckZip on the zip it wrote. Refused while
+                                   the shard repo has uncommitted changes.
+    D:\UO\haven-migration\Publish-PlayerPackage.ps1   Publish package runs it with -Zip after the
+                                   phrase 'publish player package'; it asks its own "Type yes".
+                                   Refused when the zip's version.json does not describe the zip.
+    docker tag + Start-TestShard.ps1   Test shard > Deploy built image (cc-P63): sl-modernuo:cc-p*
+                                   onto sl-modernuo:latest after 'deploy to test', then -Down and
+                                   -SkipBuild. The only docker tag the console makes; never live.
 
   WHAT NO BUTTON DOES
     - docker compose on docker/uo/docker-compose.yml. That file has build: and no image:
@@ -78,7 +87,11 @@ param(
     [switch]$WorldCommands,
     [string]$RepoRoot,
     [string]$CommitMessage,
-    [string]$CommitMessageB64
+    [string]$CommitMessageB64,
+    [string]$PackageNotes,
+    [string]$PackageNotesB64,
+    [string]$PackageZip,
+    [string]$ImageTag
 )
 
 # =============================================================================================
@@ -96,6 +109,8 @@ $script:SavesOnStopNote = 'The shard saves on stop (D36 fix, seen in its log sin
 $script:SavesOnStopLine = '[SaveOnShutdown] listening for SIGTERM: a stop saves the world first (D36)'
 # cc-P60: said above the phrase before a commit, the way D36's warning is said before a stop.
 $script:CommitPublicWarning = 'Both repos are PUBLIC on GitHub: a commit that is pushed cannot be taken back.'
+# cc-P63: said above the phrase before a publish. Publish-PlayerPackage.ps1 serves version.json, which every launcher reads.
+$script:PublishPublicWarning = 'This is PUBLIC: every player''s launcher is offered this package at its next start.'
 
 function Get-ConsoleConfig {
     param([Parameter(Mandatory = $true)][string]$RepoRoot)
@@ -154,6 +169,13 @@ function Get-ConsoleConfig {
         NotesFolder        = 'D:\UO\shard-migration\notes'
         NotesDoneFrom      = 54
         CommitQuietMinutes = 5
+        # cc-P63, the Player package tab and Test shard > Deploy built image. The publish script is
+        # outside the repo and overseer-owned; the console runs it as it is.
+        BuildPackage       = (Join-Path $RepoRoot 'player-package\Build-PlayerPackage.ps1')
+        PackageDist        = (Join-Path $RepoRoot 'player-package\dist')
+        PublishScript      = 'D:\UO\haven-migration\Publish-PlayerPackage.ps1'
+        # The images Deploy built image offers: build.sh -t sl-modernuo:cc-pNN, one per prompt.
+        DeployTagPattern   = '^sl-modernuo:cc-p[A-Za-z0-9._-]*$'
     }
 }
 
@@ -249,6 +271,18 @@ function ConvertFrom-ImageInspect {
         Exists = $true; Id = $i.Id; RepoTags = @($i.RepoTags)
         Created = (ConvertFrom-DockerTime $i.Created); Error = $null
     }
+}
+
+function ConvertFrom-ImageTagListing {
+    # cc-P63. `docker images sl-modernuo --format {{.Repository}}:{{.Tag}}|{{.ID}}|{{.CreatedAt}}`, one
+    # image per line: sl-modernuo:cc-p62|b04ed61adb5a|2026-10-05 14:19:04 -0500 CDT. Newest first.
+    param([string]$Text)
+    $out = foreach ($l in @((Remove-Ansi $Text) -split "`n")) {
+        if ($l.Trim() -notmatch '^([^|\s]+)\|([0-9a-f]{12,})\|(\d{4}-\d\d-\d\d) (\d\d:\d\d:\d\d) ([+-]\d\d)(\d\d)') { continue }
+        $created = [DateTimeOffset]::Parse($Matches[3] + 'T' + $Matches[4] + $Matches[5] + ':' + $Matches[6], $script:Invariant).UtcDateTime
+        [pscustomobject]@{ Tag = $Matches[1]; Id = (Format-ShortId $Matches[2]); Created = $created }
+    }
+    @($out | Sort-Object Created -Descending)
 }
 
 function Format-ShortId {
@@ -517,7 +551,20 @@ function Get-ConfirmPhrase {
         'snapshot.restore' { 'restore live' }
         'snapshot.delete'  { 'delete live snapshot' }
         'commit.run'       { 'commit shard work' }
+        'package.publish'  { 'publish player package' }
+        'test.deploy'      { 'deploy to test' }
         default            { 'confirm live' }
+    }
+}
+
+function Get-ConfirmSubject {
+    # The typed-confirmation dialog's title: what the phrase is for.
+    param([string]$Action)
+    switch ($Action) {
+        'commit.run'      { 'Commit and push' }
+        'package.publish' { 'Publish player package' }
+        'test.deploy'     { 'Deploy to test' }
+        default           { 'LIVE shard' }
     }
 }
 
@@ -528,8 +575,11 @@ function Get-ConfirmPreface {
     if (@($Plan | Where-Object { $_.Text -and $_.Text.Contains($script:NoSaveWarning) }).Count) {
         return ('BEFORE YOU TYPE: ' + $script:NoSaveWarning + ' (D36)')
     }
-    if (@($Plan | Where-Object { $_.Kind -eq 'script' -and -not $_.Named['DryRun'] }).Count) {
+    if (@($Plan | Where-Object { $_.Kind -eq 'script' -and $_.Path -and (Split-Path $_.Path -Leaf) -eq 'Commit-ShardWork.ps1' -and -not $_.Named['DryRun'] }).Count) {
         return ('BEFORE YOU TYPE: ' + $script:CommitPublicWarning)
+    }
+    if (@($Plan | Where-Object { $_.Kind -eq 'script' -and $_.Path -and (Split-Path $_.Path -Leaf) -eq 'Publish-PlayerPackage.ps1' }).Count) {
+        return ('BEFORE YOU TYPE: ' + $script:PublishPublicWarning)
     }
     ''
 }
@@ -547,7 +597,8 @@ function Get-ChildArgumentLine {
     param(
         [string]$SelfPath, [string]$ActionKey, [string]$ShardKey, [string]$SnapshotName,
         [string]$Snapshot, [string]$ConfirmLive, [switch]$Yes, [switch]$DryRun, [string]$StatusFrom,
-        [switch]$StatusFromDocker, [string]$CommitMessage
+        [switch]$StatusFromDocker, [string]$CommitMessage, [string]$PackageNotes, [string]$PackageZip,
+        [string]$ImageTag
     )
     $mode = 'Execute'
     if ($DryRun) { $mode = 'DryRun' }
@@ -564,6 +615,12 @@ function Get-ChildArgumentLine {
     # A commit message is typed by a person and can hold quotes, $ and ;. It crosses this command
     # line as base64 of its UTF-8, which has none of them, so no quoting rule can change it (cc-P60).
     if ($CommitMessage) { $a += ' -CommitMessageB64 ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($CommitMessage)) }
+    # cc-P63: package notes are typed too, and cross the same way. A zip name and an image tag are
+    # picked from lists the console read; the plan refuses anything outside those, and they are
+    # quoted here only so a stray space cannot split them.
+    if ($PackageNotes) { $a += ' -PackageNotesB64 ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($PackageNotes)) }
+    if ($PackageZip) { $a += ' -PackageZip "' + ($PackageZip -replace '"', '') + '"' }
+    if ($ImageTag) { $a += ' -ImageTag "' + ($ImageTag -replace '"', '') + '"' }
     $a
 }
 
@@ -585,6 +642,7 @@ function Get-ModeBanner {
     $bar = '=' * 78
     $what = $Action + ' (' + $ShardKey + ')'
     if ($Action -like 'commit.*') { $what = $Action + ' (both repos)' }
+    if ($Action -like 'package.*') { $what = $Action + ' (player package)' }
     switch ($RunMode) {
         'dry' {
             [pscustomobject]@{ Color = 'amber'; Title = ('DRY RUN - ' + $what + ' - Shard Console'); Lines = @(
@@ -598,6 +656,16 @@ function Get-ModeBanner {
         { $_ -eq 'execute' -and $Action -eq 'commit.run' } {
             [pscustomobject]@{ Color = 'red'; Title = ('RUNNING FOR REAL - ' + $what + ' - Shard Console'); Lines = @(
                 $bar, ('  RUNNING FOR REAL  ' + $what), ('  This commits and pushes both repos. ' + $script:CommitPublicWarning), $bar) }
+            break
+        }
+        { $_ -eq 'execute' -and $Action -eq 'package.build' } {
+            [pscustomobject]@{ Color = 'amber'; Title = ('BUILDING - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  BUILDING  ' + $what), '  Build-PlayerPackage.ps1 writes a zip into player-package\dist. Nothing is published.', $bar) }
+            break
+        }
+        { $_ -eq 'execute' -and $Action -eq 'package.publish' } {
+            [pscustomobject]@{ Color = 'red'; Title = ('RUNNING FOR REAL - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  RUNNING FOR REAL  ' + $what), ('  ' + $script:PublishPublicWarning + ' Publish-PlayerPackage.ps1 asks "Type yes" itself, below.'), $bar) }
             break
         }
         'execute' {
@@ -621,6 +689,7 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'test.fresh';       Group = 'Test shard'; Label = 'Start fresh';                         Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'test.stop';        Group = 'Test shard'; Label = 'Stop';                                Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'test.rebuild';     Group = 'Test shard'; Label = 'Rebuild through the gates and start'; Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'test.deploy';      Group = 'Test shard'; Label = 'Deploy built image';                  Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'test.tail';        Group = 'Test shard'; Label = 'Tail the log';                        Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'test.client';      Group = 'Test shard'; Label = 'Open a client';                       Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'live.start';       Group = 'LIVE shard'; Label = 'Start';                               Mutates = $true;  RunIn = 'window' }
@@ -637,13 +706,15 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'diag.folder';      Group = 'Diagnostics'; Label = 'Open the folder they write to';      Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'commit.preview';   Group = 'Commit';      Label = 'Preview commit';                     Mutates = $false; RunIn = 'window' }
         [pscustomobject]@{ Key = 'commit.run';       Group = 'Commit';      Label = 'Commit and push';                    Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'package.build';    Group = 'Player package'; Label = 'Build package';                   Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'package.publish';  Group = 'Player package'; Label = 'Publish package';                 Mutates = $true;  RunIn = 'window' }
     )
 }
 
 function New-PlanStep {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log')]
+        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'checkzip', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log')]
         [string]$Kind,
         [string]$Text, [string]$Exe, [string[]]$Arguments, [string]$From, [string]$To,
         [string]$Path, [string]$Phrase, [string]$Container, [switch]$IfExists,
@@ -787,16 +858,180 @@ function Get-CommitPlan {
     $steps.ToArray()
 }
 
+# --- the player package (cc-P63) ---------------------------------------------------------------
+# Build package runs player-package\Build-PlayerPackage.ps1 -Notes, then its -CheckZip on the zip it
+# just wrote. Publish package runs D:\UO\haven-migration\Publish-PlayerPackage.ps1 -Zip, which asks
+# its own "Type yes". Neither is reimplemented. Facts come from Get-PackageFacts (SHELL): the shard
+# repo's git status and HEAD, the zips in dist\ with their version.json, the picked zip's own hash
+# and app\package-version.txt, the newest committed CHANGELOG.md and the newest cc-P notes.
+
+function Test-PackageNotes {
+    # Why a notes line is refused, or $null. Build-PlayerPackage.ps1 refuses the same (one line of
+    # printable ASCII: launchers print it in a PowerShell 5.1 console); said here before anything runs.
+    param([string]$Notes)
+    if (-not $Notes -or -not $Notes.Trim()) { return 'A package needs notes: the one line launchers show as "What is new". Type it in the Notes box.' }
+    if ($Notes -match '[^\x20-\x7E]') { return 'Notes must be one line of plain ASCII (no line breaks, curly quotes or dashes other than -): launchers print it in a PowerShell 5.1 console.' }
+    $null
+}
+
+function Get-PackageZipProblems {
+    # cc-P63 Part A item 2, the guard: the zip's version.json must describe this zip. The same three
+    # checks Publish-PlayerPackage.ps1 and gate 5 make (version, sha256, bytes), made before the
+    # phrase is asked for. $Zip is a listing row; $Picked is the zip's own hash and package-version.
+    param($Zip, $Picked)
+    $p = New-Object 'System.Collections.Generic.List[string]'
+    $j = $Zip.Json
+    if (-not $j -or -not $j.Exists) {
+        $p.Add($Zip.Name + ' has no ' + ($Zip.Name -replace '\.zip$', '.version.json') + ' beside it, so launchers could not be told about it. Build a new one.')
+        return $p.ToArray()
+    }
+    if ($j.Error) { $p.Add(($Zip.Name -replace '\.zip$', '.version.json') + ' does not parse: ' + $j.Error); return $p.ToArray() }
+    if (-not $Picked) { $p.Add('The zip itself was not read, so it cannot be checked against its version.json.'); return $p.ToArray() }
+    if ($Picked.Error) { $p.Add($Zip.Name + ' could not be read: ' + $Picked.Error) }
+    elseif ([string]$j.Version -ne [string]$Picked.InnerVersion) { $p.Add('version.json says version ' + $j.Version + ', the zip''s app\package-version.txt says ' + $Picked.InnerVersion + '.') }
+    if ($Picked.Sha256 -and [string]$j.Sha256 -cne [string]$Picked.Sha256) { $p.Add('version.json says sha256 ' + $j.Sha256 + ', the zip is ' + $Picked.Sha256 + '.') }
+    if ([string]$j.Bytes -ne [string]$Zip.Bytes) { $p.Add('version.json says ' + $j.Bytes + ' bytes, the zip is ' + $Zip.Bytes + '.') }
+    $p.ToArray()
+}
+
+function Get-RolloutReminder {
+    # Part A item 2, the note: when the newest committed CHANGELOG.md section or the newest cc-P notes
+    # file says the package goes first and the server after ("Package first, then the server",
+    # "publish the package before deploying the server"), one line reminding that the server deploy
+    # follows. A warning only. The changelog's own header comment holds an example section, so it is
+    # cut out before the newest "## " section is found.
+    param([string]$Changelog, $LatestNote)
+    $rx = '(?i)\bpackage\s+(first|before)\b'
+    $where = @()
+    if ($Changelog) {
+        $body = [regex]::Replace($Changelog, '(?s)<!--.*?-->', '')
+        $m = [regex]::Match($body, '(?ms)^## (\S+)[^\n]*\n(.*?)(?=^## |\z)')
+        if ($m.Success -and $m.Groups[2].Value -match $rx) { $where += ('CHANGELOG.md ' + $m.Groups[1].Value) }
+    }
+    if ($LatestNote -and [string]$LatestNote.Text -match $rx) { $where += [string]$LatestNote.Name }
+    if (-not $where.Count) { return $null }
+    'Reminder: ' + ($where -join ' and ') + ' says package first, then the server. The server deploy follows this publish; it is not part of this button.'
+}
+
+function Get-PackagePlan {
+    param([string]$Action, $Config, $Facts, [string]$Notes, [string]$Zip)
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    if (-not $Facts) { $steps.Add((New-PlanStep -Kind refuse -Text 'The package folder and the repo were not read, so nothing is run.')); return $steps.ToArray() }
+    if ($Action -eq 'package.build') {
+        if (-not $Facts.BuildExists) { $steps.Add((New-PlanStep -Kind refuse -Text ($Config.BuildPackage + ' is not there, so there is nothing to run.'))); return $steps.ToArray() }
+        $bad = Test-PackageNotes $Notes
+        if ($bad) { $steps.Add((New-PlanStep -Kind refuse -Text $bad)) }
+        # The package should be built from a commit (P60's refusal style: every file named, no override).
+        if ($Facts.RepoError) {
+            $steps.Add((New-PlanStep -Kind refuse -Text ('git status failed in ' + $Facts.RepoPath + ': ' + $Facts.RepoError + '. The package is built only from a tree known to be committed.')))
+        } elseif (@($Facts.RepoPaths).Count) {
+            $all = @($Facts.RepoPaths)
+            $shown = @($all | Select-Object -First 10)
+            $more = ''
+            if ($all.Count -gt $shown.Count) { $more = ' and ' + ($all.Count - $shown.Count) + ' more' }
+            $steps.Add((New-PlanStep -Kind refuse -Text ($Facts.RepoPath + ' has ' + $all.Count + ' uncommitted file(s), so the package would not be built from a commit: ' + ($shown -join ', ') + $more + '. Commit first (Commit tab), then build.')))
+        }
+        if (-not $Facts.RepoError -and -not @($Facts.RepoPaths).Count) {
+            $steps.Add((New-PlanStep -Kind say -Text ('Building from ' + $Facts.RepoPath + ' at ' + $Facts.Head + ', committed and clean. The zip goes to ' + $Config.PackageDist + '; nothing is published.')))
+        }
+        $steps.Add((New-PlanStep -Kind script -Path $Config.BuildPackage -Named ([ordered]@{ Notes = $Notes }) -Text 'Build-PlayerPackage.ps1: stage, gates 1 to 3, zip, gates 4 to 6, version.json. A failing gate stops it and deletes the zip.'))
+        $steps.Add((New-PlanStep -Kind checkzip -Path $Config.BuildPackage -To $Config.PackageDist -Text 'Build-PlayerPackage.ps1 -CheckZip on the zip the step above wrote: gates 4, 6 and 5 again, on the file itself.'))
+        $steps.Add((New-PlanStep -Kind log -Text 'package.build'))
+        return $steps.ToArray()
+    }
+    # package.publish
+    if (-not $Facts.PublishExists) { $steps.Add((New-PlanStep -Kind refuse -Text ($Config.PublishScript + ' is not there, so there is nothing to run. Its path is PublishScript in Get-ConsoleConfig.'))); return $steps.ToArray() }
+    if (-not $Zip) { $steps.Add((New-PlanStep -Kind refuse -Text ('Choose a zip from ' + $Config.PackageDist + ' to publish.'))); return $steps.ToArray() }
+    $row = @(@($Facts.Zips) | Where-Object { $_.Name -eq $Zip })
+    if ($row.Count -ne 1) { $steps.Add((New-PlanStep -Kind refuse -Text ("There is no zip '" + $Zip + "' in " + $Config.PackageDist + '.'))); return $steps.ToArray() }
+    $z = $row[0]
+    foreach ($x in @(Get-PackageZipProblems -Zip $z -Picked $Facts.Picked)) { $steps.Add((New-PlanStep -Kind refuse -Text ('Not publishing: ' + $x))) }
+    $ver = '(unknown)'; $nt = '(none)'
+    if ($z.Json -and $z.Json.Version) { $ver = [string]$z.Json.Version }
+    if ($z.Json -and $z.Json.Notes) { $nt = [string]$z.Json.Notes }
+    $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ('This publishes ' + $z.Name + ' (version ' + $ver + ') to get.shatteredlegacyuo.com and the website, and its version.json tells every installed launcher to offer it.')))
+    $steps.Add((New-PlanStep -Kind say -Text ('zip ' + $z.Name + ', version ' + $ver + ', ' + (Format-Bytes $z.Bytes) + ', built ' + (Format-LocalTime $z.LastWriteUtc) + '. What is new: ' + $nt)))
+    $remind = Get-RolloutReminder -Changelog $Facts.Changelog -LatestNote $Facts.LatestNote
+    if ($remind) { $steps.Add((New-PlanStep -Kind say -Text $remind)) }
+    $steps.Add((New-PlanStep -Kind script -Path $Config.PublishScript -Named ([ordered]@{ Zip = $z.FullName }) -Text 'Publish-PlayerPackage.ps1: shows the zip, asks you to type yes HERE, then gates, copies to Haven, swaps in and checks both URLs, rolling back on a mismatch.'))
+    $steps.Add((New-PlanStep -Kind say -Text 'Read the script''s own last line above: PUBLISHED, NOT PUBLISHED, or Nothing done (it exits 0 when the answer is not yes).'))
+    $steps.Add((New-PlanStep -Kind log -Text ('package.publish ' + $z.Name)))
+    $steps.ToArray()
+}
+
+# --- Test shard > Deploy built image (cc-P63 Part B) ----------------------------------------------
+
+function Get-DeployCandidates {
+    # The picker's rows: sl-modernuo:cc-p* only, newest first, and which one latest points at now.
+    param($State, $Config)
+    $latest = $null
+    if ($State.Latest -and $State.Latest.Exists) { $latest = Format-ShortId $State.Latest.Id }
+    @(@($State.Images) | Where-Object { $_.Tag -cmatch $Config.DeployTagPattern } | Sort-Object Created -Descending | ForEach-Object {
+        [pscustomobject]@{ Tag = $_.Tag; Id = $_.Id; Created = $_.Created; IsLatest = [bool]($latest -and $_.Id -eq $latest) }
+    })
+}
+
+function Get-DeployLiveLine {
+    # The one plain line in the deploy confirmation about live. Read from what the live container was
+    # created from, not assumed: on 2026-10-05 sl-modernuo was created from 'uo-modernuo', which
+    # docker/uo/docker-compose.yml (build: and no image:, D29) names after its own project.
+    param($State, $Config)
+    $c = $State.Shards['live'].Container
+    if (-not $c -or -not $c.Exists) { return 'There is no live container (sl-modernuo), so nothing live uses this tag.' }
+    if ((ConvertTo-ImageRef $c.ConfigImage) -eq (ConvertTo-ImageRef $Config.LatestTag)) {
+        return ('LIVE was created from ' + $Config.LatestTag + '. A restart keeps the image it runs; the next time live is recreated (a deploy) it would get this image.')
+    }
+    'Live does not use this tag: sl-modernuo was created from ''' + $c.ConfigImage + ''', and a restart keeps the image it runs, so moving ' + $Config.LatestTag + ' changes nothing live. Only the live drift line compares against it.'
+}
+
+function Get-DeployPlan {
+    param($Config, $State, [string]$ImageTag)
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    $sh = $Config.Shards['test']
+    if (-not $ImageTag) { $steps.Add((New-PlanStep -Kind refuse -Text 'Choose an image to deploy.')); return $steps.ToArray() }
+    if ($ImageTag -cnotmatch $Config.DeployTagPattern) { $steps.Add((New-PlanStep -Kind refuse -Text ("'" + $ImageTag + "' is not an image this button deploys: only sl-modernuo:cc-p* tags, as build.sh -t makes them."))); return $steps.ToArray() }
+    $pick = @(@($State.Images) | Where-Object { $_.Tag -ceq $ImageTag })
+    if ($pick.Count -ne 1) { $steps.Add((New-PlanStep -Kind refuse -Text ('There is no image tagged ' + $ImageTag + ' (docker images sl-modernuo).'))); return $steps.ToArray() }
+    $pick = $pick[0]
+    $old = $null
+    if ($State.Latest -and $State.Latest.Exists) { $old = Format-ShortId $State.Latest.Id }
+    if ($old -and $old -eq $pick.Id) { $steps.Add((New-PlanStep -Kind refuse -Text ($Config.LatestTag + ' already is ' + $ImageTag + ' (' + $old + '). Nothing to deploy; Test shard > Start starts the test shard on it.'))); return $steps.ToArray() }
+    # Rollback: a cc-p tag on the old image if there is one, else its id.
+    $back = 'there was no ' + $Config.LatestTag + ' before this, so there is nothing to roll back to.'
+    if ($old) {
+        $oldTags = @(@($State.Images) | Where-Object { $_.Id -eq $old -and $_.Tag -cmatch $Config.DeployTagPattern } | ForEach-Object { $_.Tag })
+        if ($oldTags.Count) { $back = 'deploy ' + $oldTags[0] + ' (' + $old + ').' }
+        else { $back = 'docker tag ' + $old + ' ' + $Config.LatestTag + ', then Test shard > Start (no cc-p tag names ' + $old + ').' }
+    }
+    $was = '(none)'
+    if ($old) { $was = $old + ', built ' + (Format-LocalTime $State.Latest.Created) }
+    $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase 'test.deploy') -Text ('This points ' + $Config.LatestTag + ' at ' + $ImageTag + ' (' + $pick.Id + ', built ' + (Format-LocalTime $pick.Created) + ') and restarts the TEST shard on it. ' + (Get-DeployLiveLine $State $Config))))
+    $steps.Add((New-PlanStep -Kind say -Text ($Config.LatestTag + ' before this deploy: ' + $was + '.')))
+    $steps.Add((New-PlanStep -Kind exec -Exe 'docker' -Arguments @('tag', $ImageTag, $Config.LatestTag) -Text ('Point ' + $Config.LatestTag + ' at ' + $ImageTag + '. A tag only: no build, no gates (they ran when ' + $ImageTag + ' was built).')))
+    $steps.Add((New-PlanStep -Kind say -Text ('To roll back: ' + $back)))
+    $sts = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Config.StartTestShard)
+    $noSave = $script:NoSaveWarning
+    if ($State.Shards['test'].SavesOnStop) { $noSave = $script:SavesOnStopNote }
+    $steps.Add((New-PlanStep -Kind exec -Exe $Config.PowerShell -Arguments ($sts + '-Down') -Text ('docker/uo/Start-TestShard.ps1 -Down: compose down on the sl-uo-test project only (D22). ' + $noSave)))
+    $steps.Add((New-PlanStep -Kind exec -Exe $Config.PowerShell -Arguments ($sts + '-SkipBuild') -Text ('docker/uo/Start-TestShard.ps1 -SkipBuild: ' + $sh.Container + ' on the new ' + $Config.LatestTag + ', then waits for the listener.')))
+    $steps.Add((New-PlanStep -Kind log -Text ('test.deploy ' + $ImageTag + ' (' + $pick.Id + '), ' + $Config.LatestTag + ' was ' + $was)))
+    $steps.ToArray()
+}
+
 function Get-ActionPlan {
     # Every button is a plan: a list of steps, built here from the status and nothing else. The
     # shell runs it or, under -DryRun, prints it. So what -DryRun prints is exactly what runs.
     param(
         [string]$Action, [string]$ShardKey = 'test', $Config, $State,
         [string]$SnapshotName, [string]$Snapshot, [datetime]$Now = [datetime]::MinValue,
-        [string]$CommitMessage, $CommitFacts
+        [string]$CommitMessage, $CommitFacts,
+        [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag
     )
     # The commit buttons read git and the notes, not docker, so they need no $State (cc-P60).
     if ($Action -like 'commit.*') { return (Get-CommitPlan -Action $Action -Config $Config -Facts $CommitFacts -Message $CommitMessage) }
+    # Nor do the package buttons; they read git, dist\ and the notes (cc-P63).
+    if ($Action -in @('package.build', 'package.publish')) { return (Get-PackagePlan -Action $Action -Config $Config -Facts $PackageFacts -Notes $PackageNotes -Zip $PackageZip) }
+    if ($Action -eq 'test.deploy') { return (Get-DeployPlan -Config $Config -State $State -ImageTag $ImageTag) }
     if ($Now -eq [datetime]::MinValue) { $Now = $State.Now }
     if ($Action -like 'live.*') { $ShardKey = 'live' }
     if ($Action -like 'test.*') { $ShardKey = 'test' }
@@ -981,12 +1216,38 @@ function Test-PlanSafety {
             if ($line -match 'build\.sh') { $v.Add('build.sh is reached only through Start-TestShard.ps1: ' + $line) }
             if (@($s.Arguments) -contains '-Fresh') { $v.Add('-Fresh deletes the test save; this console moves it aside instead') }
             if (@($s.Arguments) -contains $live.Container -and -not $confirmed) { $v.Add('touches ' + $live.Container + ' without a typed confirmation: ' + $line) }
+            # cc-P63. The one tag this console makes: a built cc-p image onto sl-modernuo:latest, typed,
+            # in a plan that names nothing live. Live's own image is never retagged.
+            if ($s.Exe -eq 'docker' -and @($s.Arguments).Count -and $s.Arguments[0] -eq 'tag') {
+                if (@($s.Arguments).Count -ne 3 -or $s.Arguments[2] -cne $Config.LatestTag -or [string]$s.Arguments[1] -cnotmatch $Config.DeployTagPattern) { $v.Add('the only tag this console makes is sl-modernuo:cc-p* onto ' + $Config.LatestTag + ': ' + $line) }
+                if (-not $confirmed) { $v.Add('moves ' + $Config.LatestTag + ' without a typed confirmation: ' + $line) }
+                $liveWords = @($plan | ForEach-Object { @($_.Arguments) + @($_.Container) + @($_.Path) } | Where-Object { $_ -and ([string]$_ -ceq $live.Container) })
+                if ($liveWords.Count) { $v.Add('a deploy to test names the live container ' + $live.Container) }
+            }
         }
-        if ($s.Kind -eq 'script') {
-            # cc-P60. The one script run in-process is the commit script, and for real only once typed.
+        if ($s.Kind -in @('script', 'checkzip')) {
+            # cc-P60, cc-P63. The scripts run in-process: the commit script (for real only once typed),
+            # the package build (never its -GateSelfTest), and the publish script (only once typed, only
+            # on a zip in dist\). A checkzip step runs the build script's -CheckZip.
             $call = Format-ScriptCall $s.Path $s.Named
-            if (-not $s.Path -or -not $Config.CommitScript -or [IO.Path]::GetFullPath($s.Path) -ne [IO.Path]::GetFullPath($Config.CommitScript)) { $v.Add('the only script this console runs in-process is ' + $Config.CommitScript + ': ' + $call) }
-            if (-not $s.Named['DryRun'] -and -not $confirmed) { $v.Add('runs the commit for real without a typed confirmation: ' + $call) }
+            $full = $null
+            if ($s.Path) { $full = [IO.Path]::GetFullPath($s.Path) }
+            $is = { param($p) $p -and $full -and $full -ieq [IO.Path]::GetFullPath($p) }
+            if ($s.Kind -eq 'checkzip') {
+                if (-not (& $is $Config.BuildPackage)) { $v.Add('a zip is checked only by ' + $Config.BuildPackage + ': ' + $s.Path) }
+            } elseif (& $is $Config.CommitScript) {
+                if (-not $s.Named['DryRun'] -and -not $confirmed) { $v.Add('runs the commit for real without a typed confirmation: ' + $call) }
+            } elseif (& $is $Config.BuildPackage) {
+                $other = @($s.Named.Keys | Where-Object { $_ -notin @('Notes', 'CheckZip') })
+                if ($other.Count) { $v.Add('the package build runs with -Notes or -CheckZip only: ' + $call) }
+            } elseif (& $is $Config.PublishScript) {
+                if (-not $confirmed) { $v.Add('publishes a player package without a typed confirmation: ' + $call) }
+                $zp = [string]$s.Named['Zip']
+                $dist = [IO.Path]::GetFullPath($Config.PackageDist).TrimEnd('\') + '\'
+                if (-not $zp -or -not ([IO.Path]::GetFullPath($zp)).StartsWith($dist, [StringComparison]::OrdinalIgnoreCase) -or $zp -notmatch '\.zip$' -or @($s.Named.Keys).Count -ne 1) { $v.Add('the publish script runs only with -Zip on a zip in ' + $dist + ': ' + $call) }
+            } else {
+                $v.Add('the only script this console runs in-process is one of ' + $Config.CommitScript + ', ' + $Config.BuildPackage + ' and ' + $Config.PublishScript + ': ' + $call)
+            }
         }
         if ($s.Kind -eq 'launch' -and $s.Path -eq $live.Client -and -not $confirmed) { $v.Add('opens a live client without a typed confirmation') }
         if ($s.Kind -eq 'remove-snapshot') {
@@ -1029,6 +1290,7 @@ function Format-PlanStep {
         'refuse'  { $out.Add($n + 'REFUSE   ' + $Step.Text) }
         'exec'    { $out.Add($n + 'RUN      ' + (Format-CommandLine $Step.Exe $Step.Arguments)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'script'  { $out.Add($n + 'RUN      ' + (Format-ScriptCall $Step.Path $Step.Named)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
+        'checkzip' { $out.Add($n + 'CHECK    ' + (Format-ScriptCall $Step.Path ([ordered]@{ CheckZip = '<the one zip in ' + $Step.To + ' written since this plan started>' }))); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'window'  { $out.Add($n + 'WINDOW   a new PowerShell window running: ' + (Format-CommandLine $Step.Exe $Step.Arguments)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'launch'  { $out.Add($n + 'OPEN     ' + (Format-CommandLine $Step.Path $Step.Arguments)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'move'    {
@@ -1153,6 +1415,8 @@ function New-ConsoleState {
         Now         = $now
         Source      = $Source
         Latest      = $latest
+        # cc-P63: every sl-modernuo image, newest first, for Deploy built image.
+        Images      = @(ConvertFrom-ImageTagListing ([string]$Sections['images sl-modernuo']))
         Compose     = (Test-LiveComposeFile $Sections['compose live'])
         DockerError = $dockerError
         Shards      = $shards
@@ -1971,6 +2235,90 @@ function Get-CommitFacts {
     }
 }
 
+function Get-PackageZips {
+    # cc-P63: the zips in dist\, newest first, each with what its version.json says. Read-only, and
+    # no hashing: the picker lists them all, and only the picked one is hashed (Get-PackageFacts).
+    param([string]$Dist)
+    if (-not $Dist -or -not (Test-Path -LiteralPath $Dist)) { return @() }
+    $rows = foreach ($f in @(Get-ChildItem -LiteralPath $Dist -Filter 'ShatteredLegacy-*.zip' -File | Sort-Object LastWriteTimeUtc -Descending)) {
+        $jp = $f.FullName -replace '\.zip$', '.version.json'
+        $j = [pscustomobject]@{ Exists = $false; Error = $null; Version = $null; Notes = $null; Sha256 = $null; Bytes = $null }
+        if (Test-Path -LiteralPath $jp -PathType Leaf) {
+            $j.Exists = $true
+            try {
+                $d = [IO.File]::ReadAllText($jp) | ConvertFrom-Json
+                $j.Version = [string]$d.version; $j.Notes = [string]$d.notes; $j.Sha256 = [string]$d.sha256; $j.Bytes = [string]$d.bytes
+            } catch { $j.Error = $_.Exception.Message }
+        }
+        [pscustomobject]@{ Name = $f.Name; FullName = $f.FullName; Bytes = $f.Length; LastWriteUtc = $f.LastWriteTimeUtc; Json = $j }
+    }
+    @($rows)
+}
+
+function Read-ZipPackageVersion {
+    # The stamp in <top>/app/package-version.txt inside a zip, as gate 5 reads it.
+    param([string]$Path)
+    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    $za = [IO.Compression.ZipFile]::OpenRead($Path)
+    try {
+        $pv = @($za.Entries | Where-Object { $_.FullName -match '^[^/]+/app/package-version\.txt$' })
+        if ($pv.Count -ne 1) { return $null }
+        $sr = New-Object IO.StreamReader($pv[0].Open())
+        try { return $sr.ReadToEnd().Trim() } finally { $sr.Dispose() }
+    } finally { $za.Dispose() }
+}
+
+function Get-PackageFacts {
+    # What Get-PackagePlan reads, all read-only: the two scripts, the shard repo's git status and
+    # HEAD (a git failure is kept as an error, never read as clean, D66), the zips in dist\, the
+    # picked zip's own SHA-256 and package-version, the newest committed CHANGELOG.md and the
+    # newest cc-P notes file by number.
+    param($Config, [string]$Zip)
+    $repo = $Config.RepoRoot
+    $g = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'status', '--porcelain', '--untracked-files=all')
+    $err = $null; $paths = @()
+    if ($g.Code -ne 0) {
+        $err = ([string](@((($g.Err + "`n" + $g.Out) -split "`n") | Where-Object { $_.Trim() } | Select-Object -First 1) -join '')).Trim()
+        if (-not $err) { $err = 'git exited with ' + $g.Code }
+    } else {
+        $paths = @(ConvertFrom-GitPorcelain @(@($g.Out -split "`n") | ForEach-Object { $_.TrimEnd("`r") }))
+    }
+    $head = (Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'rev-parse', '--short', 'HEAD')).Out.Trim()
+    $zips = @(Get-PackageZips $Config.PackageDist)
+    $picked = $null
+    if ($Zip) {
+        $row = @($zips | Where-Object { $_.Name -eq $Zip })
+        if ($row.Count -eq 1) {
+            $picked = [pscustomobject]@{ Name = $Zip; Sha256 = $null; InnerVersion = $null; Error = $null }
+            try {
+                $picked.Sha256 = (Get-FileHash -LiteralPath $row[0].FullName -Algorithm SHA256).Hash.ToLower()
+                $picked.InnerVersion = Read-ZipPackageVersion $row[0].FullName
+            } catch { $picked.Error = $_.Exception.Message }
+        }
+    }
+    $log = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'show', 'HEAD:CHANGELOG.md')
+    $changelog = $null
+    if ($log.Code -eq 0) { $changelog = $log.Out }
+    $latestNote = $null
+    if ($Config.NotesFolder -and (Test-Path -LiteralPath $Config.NotesFolder)) {
+        $n = @(Get-ChildItem -LiteralPath $Config.NotesFolder -Filter 'cc-P*.md' -File | Where-Object { $_.Name -match '^cc-P(\d+)-' } |
+            Sort-Object @{ Expression = { [int]([regex]::Match($_.Name, '^cc-P(\d+)-').Groups[1].Value) } }, Name | Select-Object -Last 1)
+        if ($n.Count) { $latestNote = [pscustomobject]@{ Name = $n[0].Name; Text = [IO.File]::ReadAllText($n[0].FullName) } }
+    }
+    [pscustomobject]@{
+        BuildExists   = [bool](Test-Path -LiteralPath $Config.BuildPackage -PathType Leaf)
+        PublishExists = [bool]($Config.PublishScript -and (Test-Path -LiteralPath $Config.PublishScript -PathType Leaf))
+        RepoPath      = $repo
+        RepoPaths     = $paths
+        RepoError     = $err
+        Head          = $head
+        Zips          = $zips
+        Picked        = $picked
+        Changelog     = $changelog
+        LatestNote    = $latestNote
+    }
+}
+
 function Get-CommandSourceFiles {
     # Every .cs under server/customizations, path relative to it -> text, for
     # ConvertFrom-CommandSources. Read only.
@@ -2036,6 +2384,9 @@ function Get-DockerSections {
         $r = Invoke-DockerRead @('image', 'inspect', $ref)
         $sec['image ' + $ref] = ($r.Out + "`n" + $r.Err).Trim()
     }
+    # cc-P63: the images Deploy built image chooses from.
+    $r = Invoke-DockerRead @('images', 'sl-modernuo', '--format', '{{.Repository}}:{{.Tag}}|{{.ID}}|{{.CreatedAt}}')
+    $sec['images sl-modernuo'] = ($r.Out + "`n" + $r.Err).Trim()
     foreach ($sh in $Config.Shards.Values) {
         $sec['saves ' + $sh.Key] = Get-FileListing $sh.Saves
         $sec['snapshots ' + $sh.Key] = Get-SnapshotListingText (Join-Path $Config.SnapshotRoot $sh.Key)
@@ -2197,6 +2548,9 @@ function Invoke-Plan {
     if ($logged) { Write-ConsoleLog $Config ('START ' + $ActionKey + ' shard=' + $ShardKey) }
     $moved = New-Object 'System.Collections.Generic.List[string]'
     $outFile = $null
+    # A checkzip step finds the zip a build step in this plan wrote by its time (cc-P63). Less a
+    # second, for file systems that round a write time down.
+    $planStarted = [datetime]::UtcNow.AddSeconds(-1)
     $i = 0
     foreach ($s in $plan) {
         $i++
@@ -2223,6 +2577,22 @@ function Invoke-Plan {
                     if (-not $outFile) { $outFile = New-ExecOutputFile $Config $ActionKey $ShardKey }
                     $code = Invoke-ScriptStep -Path $s.Path -Named $s.Named -OutFile $outFile -Header ($tag + $line)
                     if ($code -ne 0) { throw ($line + ' exited with ' + $code) }
+                }
+                'checkzip' {
+                    Write-ConsoleLine ($tag + $s.Text) 'head'
+                    $new = @(Get-PackageZips $s.To | Where-Object { $_.LastWriteUtc -ge $planStarted })
+                    if ($new.Count -ne 1) { throw ('expected one zip in ' + $s.To + ' written since this plan started, found ' + $new.Count + ': ' + (@($new | ForEach-Object { $_.Name }) -join ', ')) }
+                    $z = $new[0]
+                    $line = Format-ScriptCall $s.Path ([ordered]@{ CheckZip = $z.FullName })
+                    Write-ConsoleLine ('      > ' + $line) 'gray'
+                    if (-not $outFile) { $outFile = New-ExecOutputFile $Config $ActionKey $ShardKey }
+                    $code = Invoke-ScriptStep -Path $s.Path -Named ([ordered]@{ CheckZip = $z.FullName }) -OutFile $outFile -Header ($tag + $line)
+                    if ($code -ne 0) { throw ($line + ' exited with ' + $code) }
+                    $nt = '(none)'
+                    if ($z.Json.Notes) { $nt = $z.Json.Notes }
+                    Write-ConsoleLine ('      zip     ' + $z.FullName) 'green'
+                    Write-ConsoleLine ('      version ' + $z.Json.Version + ', ' + (Format-Bytes $z.Bytes) + '. What is new: ' + $nt) 'green'
+                    Write-ConsoleLine '      gates   1 to 6 passed in the build, and 4, 6 and 5 again on the zip just above. Nothing is published: Player package > Publish package does that.' 'green'
                 }
                 'stopped' {
                     Write-ConsoleLine ($tag + $s.Text) 'head'
@@ -2547,6 +2917,89 @@ function Show-TypedConfirm {
     ($result -eq 'OK') -and (Test-TypedConfirmation $Phrase $typed)
 }
 
+function Show-ListPicker {
+    # A small dialog: a list with columns, OK and Cancel. Returns the Tag of the row picked, or $null.
+    param([string]$Title, [string]$Caption, [object[]]$Columns, [object[]]$Rows)
+    $d = New-Object Windows.Forms.Form
+    $d.Text = $Title
+    if ($script:dry) { $d.Text = 'DRY RUN - ' + $Title }
+    $d.Size = New-Object Drawing.Size(900, 460)
+    $d.StartPosition = 'CenterParent'
+    $d.MinimizeBox = $false
+    $cap = New-Object Windows.Forms.Label
+    $cap.Text = $Caption
+    $cap.Dock = 'Top'
+    $cap.Height = 40
+    $cap.Padding = New-Object Windows.Forms.Padding(6)
+    $lv = New-Object Windows.Forms.ListView
+    $lv.Dock = 'Fill'
+    $lv.View = 'Details'
+    $lv.FullRowSelect = $true
+    $lv.MultiSelect = $false
+    $lv.HideSelection = $false
+    $lv.Font = $script:MonoFont
+    foreach ($c in $Columns) { [void]$lv.Columns.Add($c[0], $c[1]) }
+    foreach ($r in $Rows) {
+        $item = New-Object Windows.Forms.ListViewItem([string]$r.Cells[0])
+        foreach ($x in @($r.Cells | Select-Object -Skip 1)) { [void]$item.SubItems.Add([string]$x) }
+        $item.Tag = $r.Tag
+        [void]$lv.Items.Add($item)
+    }
+    $bottom = New-Object Windows.Forms.FlowLayoutPanel
+    $bottom.Dock = 'Bottom'
+    $bottom.Height = 44
+    $bottom.FlowDirection = 'RightToLeft'
+    $cancel = New-Object Windows.Forms.Button
+    $cancel.Text = 'Cancel'; $cancel.DialogResult = 'Cancel'; $cancel.Width = 100; $cancel.Height = 30
+    $ok = New-Object Windows.Forms.Button
+    $ok.Text = 'Choose'; $ok.DialogResult = 'OK'; $ok.Width = 100; $ok.Height = 30
+    $bottom.Controls.AddRange(@($cancel, $ok))
+    $d.Controls.Add($lv)
+    $d.Controls.Add($cap)
+    $d.Controls.Add($bottom)
+    $d.AcceptButton = $ok
+    $d.CancelButton = $cancel
+    $lv.Add_DoubleClick({ $this.FindForm().DialogResult = 'OK' })
+    $result = $d.ShowDialog()
+    $pick = $null
+    if ($result -eq 'OK' -and $lv.SelectedItems.Count) { $pick = [string]$lv.SelectedItems[0].Tag }
+    $d.Dispose()
+    $pick
+}
+
+function Show-ImagePicker {
+    # Test shard > Deploy built image: which sl-modernuo:cc-p* to put on the test shard (cc-P63).
+    param($State)
+    $rows = @(Get-DeployCandidates $State $script:cfg | ForEach-Object {
+        $now = ''
+        if ($_.IsLatest) { $now = '<- latest now' }
+        [pscustomobject]@{ Tag = $_.Tag; Cells = @($_.Tag, $_.Id, (Format-LocalTime $_.Created), $now) }
+    })
+    if (-not $rows.Count) { Write-ConsoleLine 'test.deploy: there is no sl-modernuo:cc-p* image to deploy (docker images sl-modernuo).' 'amber'; return $null }
+    $was = '(none)'
+    if ($State.Latest.Exists) { $was = Format-ShortId $State.Latest.Id }
+    Show-ListPicker -Title 'Deploy built image to the TEST shard' -Caption ($script:cfg.LatestTag + ' is ' + $was + ' now. Pick the image to point it at; the test shard is restarted on it after you type the phrase.') -Columns @(@('Image', 260), @('Id', 120), @('Created', 160), @('', 120)) -Rows $rows
+}
+
+function Update-PackageList {
+    # The Player package tab's list of zips in dist\, newest first.
+    $lv = $script:ui.PackageList
+    if (-not $lv) { return }
+    $lv.BeginUpdate()
+    $lv.Items.Clear()
+    foreach ($z in @(Get-PackageZips $script:cfg.PackageDist)) {
+        $ver = '(no version.json)'; $nt = ''
+        if ($z.Json.Exists) { $ver = [string]$z.Json.Version; $nt = [string]$z.Json.Notes; if ($z.Json.Error) { $ver = '(version.json unreadable)' } }
+        $item = New-Object Windows.Forms.ListViewItem($z.Name)
+        [void]$item.SubItems.Add($ver)
+        [void]$item.SubItems.Add((Format-Bytes $z.Bytes))
+        [void]$item.SubItems.Add((Format-LocalTime $z.LastWriteUtc))
+        [void]$item.SubItems.Add($nt)
+        [void]$lv.Items.Add($item)
+    }
+    $lv.EndUpdate()
+}
+
 function Set-ConsoleDryRun {
     # The DRY RUN box. Buttons print instead of run; the status panel is unaffected.
     param([bool]$On)
@@ -2574,25 +3027,36 @@ function Show-YesNo {
 }
 
 function Invoke-ConsoleButton {
-    param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage)
+    param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage,
+        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag)
     try {
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
         $isCommit = ($ActionKey -like 'commit.*')
-        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' } }
+        $isPackage = ($ActionKey -like 'package.*')
+        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' } }
         # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
         # status is a capture file". Only the second decides where the state comes from.
         if ($script:fromCapture -and -not $script:dry) { throw 'the status is from a capture file, so nothing may run for real. Relaunch without -DryRun.' }
         $facts = $null
+        $pkgFacts = $null
         $now = Get-Date
         if ($isCommit) {
             # The commit buttons read git and the notes, never docker (cc-P60).
             $facts = Get-CommitFacts $script:cfg
+        } elseif ($isPackage) {
+            # So do the package buttons, and dist\ (cc-P63).
+            $pkgFacts = Get-PackageFacts $script:cfg $PackageZip
         } else {
             $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:fromCapture -StatusFrom $script:statusFrom
             $script:lastState = $state
             if ($script:fromCapture) { $now = $state.Now.ToLocalTime() }
         }
-        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts)
+        if ($ActionKey -eq 'test.deploy' -and -not $ImageTag) {
+            # cc-P63 Part B: the picker lists sl-modernuo:cc-p* from the state just read.
+            $ImageTag = Show-ImagePicker $state
+            if (-not $ImageTag) { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
+        }
+        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
         $dryTag = ''
@@ -2609,8 +3073,7 @@ function Invoke-ConsoleButton {
         $phrase = $null
         $conf = @($plan | Where-Object { $_.Kind -eq 'confirm' })
         if ($conf.Count) {
-            $confWhat = 'LIVE shard'
-            if ($isCommit) { $confWhat = 'Commit and push' }
+            $confWhat = Get-ConfirmSubject $ActionKey
             if (-not (Show-TypedConfirm -Phrase $conf[0].Phrase -Text ($dryTag + $conf[0].Text) -Plan $plan -What $confWhat)) { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
             $phrase = $conf[0].Phrase
         }
@@ -2621,7 +3084,7 @@ function Invoke-ConsoleButton {
             $answeredYes = $true
         }
         if ($def.RunIn -eq 'window') {
-            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage
+            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag
             Start-Process -FilePath $script:cfg.PowerShell -ArgumentList $argLine | Out-Null
             if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in its own window. It prints the plan and runs nothing.') 'amber' }
             else { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): running in its own window. Refresh the status when it finishes.') 'head' }
@@ -2772,11 +3235,12 @@ function New-ConsoleForm {
     $tabs.Dock = 'Fill'
     $script:ui.Tabs = $tabs
 
-    $testPage = New-ButtonPage 'Test shard' 'The throwaway test shard (sl-modernuo-test, port 2594, its own save in modernuo-test\Saves). No confirmation: it is throwaway. Start, Stop and Rebuild call docker/uo/Start-TestShard.ps1; Rebuild is the only one that builds, and it builds through build.sh and its gates.' @(
+    $testPage = New-ButtonPage 'Test shard' 'The throwaway test shard (sl-modernuo-test, port 2594, its own save in modernuo-test\Saves). No confirmation: it is throwaway. Start, Stop and Rebuild call docker/uo/Start-TestShard.ps1; Rebuild is the only one that builds, and it builds through build.sh and its gates. Deploy built image (cc-P63) points sl-modernuo:latest at an image a prompt already built through the gates (sl-modernuo:cc-pNN), after the phrase ''deploy to test'', then stops and starts the test shard on it. It never touches the live container.' @(
         (New-ConsoleButton 'Start' 'test.start'),
         (New-ConsoleButton 'Start fresh (old save moved aside)' 'test.fresh'),
         (New-ConsoleButton 'Stop' 'test.stop'),
         (New-ConsoleButton 'Rebuild through the gates and start' 'test.rebuild' 300),
+        (New-ConsoleButton 'Deploy built image...' 'test.deploy'),
         (New-ConsoleButton 'Tail the log' 'test.tail'),
         (New-ConsoleButton 'Open a client' 'test.client')
     )
@@ -2979,7 +3443,66 @@ function New-ConsoleForm {
     $script:ui.CommitMessage = $msgBox
     $script:ui.CommitButtons = $commitBtns
 
-    $tabs.TabPages.AddRange(@($testPage, $snapPage, $worldPage, $diagPage, $commitPage, $livePage))
+    # player package (cc-P63): Build-PlayerPackage.ps1 and Publish-PlayerPackage.ps1, as they are
+    $pkgPage = New-Object Windows.Forms.TabPage('Player package')
+    $pkgTop = New-Object Windows.Forms.FlowLayoutPanel
+    $pkgTop.Dock = 'Top'
+    $pkgTop.Height = 96
+    $pkgTop.WrapContents = $true
+    $pubWhere = $Config.PublishScript
+    if (-not (Test-Path -LiteralPath $Config.PublishScript -PathType Leaf)) { $pubWhere += ' (NOT FOUND: Publish will say so and do nothing)' }
+    $pkgCap = New-Caption ('Build package runs player-package\Build-PlayerPackage.ps1 -Notes, then its -CheckZip on the new zip, in a window of its own; nothing is published, and it is refused while D:\ShatteredLegacy has uncommitted changes. Publish package runs ' + $pubWhere + ' -Zip on the zip chosen below, after the phrase ''publish player package'' (it is public: every launcher is offered it), and the script then asks you to type yes in its window.') 1100
+    $pkgTop.Controls.Add($pkgCap)
+    $pkgTop.SetFlowBreak($pkgCap, $true)
+    $notesLabel = New-Caption 'Notes ("What is new", one line):' 300
+    $notesBox = New-Object Windows.Forms.TextBox
+    $notesBox.Width = 600
+    $notesBox.Margin = New-Object Windows.Forms.Padding(6)
+    $buildBtn = New-Object Windows.Forms.Button
+    $buildBtn.Text = 'Build package'
+    $buildBtn.Tag = 'package.build'
+    $buildBtn.Width = 160
+    $buildBtn.Height = 30
+    $buildBtn.Add_Click({ Invoke-ConsoleButton -ActionKey 'package.build' -PackageNotes $script:ui.PackageNotes.Text.Trim() })
+    $pkgTop.Controls.AddRange(@($notesLabel, $notesBox, $buildBtn))
+    $pkgList = New-Object Windows.Forms.ListView
+    $pkgList.Dock = 'Fill'
+    $pkgList.View = 'Details'
+    $pkgList.FullRowSelect = $true
+    $pkgList.MultiSelect = $false
+    $pkgList.HideSelection = $false
+    foreach ($col in @(@('Zip in dist\ (newest first)', 300), @('Version', 130), @('Size', 80), @('Built', 140), @('What is new (version.json notes)', 420))) {
+        [void]$pkgList.Columns.Add($col[0], $col[1])
+    }
+    $pkgBottom = New-Object Windows.Forms.FlowLayoutPanel
+    $pkgBottom.Dock = 'Bottom'
+    $pkgBottom.Height = 42
+    $pkgRefresh = New-Object Windows.Forms.Button
+    $pkgRefresh.Text = 'Refresh list'
+    $pkgRefresh.Width = 110
+    $pkgRefresh.Height = 30
+    $pkgRefresh.Add_Click({ Update-PackageList })
+    $publishBtn = New-Object Windows.Forms.Button
+    $publishBtn.Text = 'Publish selected'
+    $publishBtn.Tag = 'package.publish'
+    $publishBtn.Width = 160
+    $publishBtn.Height = 30
+    $publishBtn.Margin = New-Object Windows.Forms.Padding(40, 3, 3, 3)
+    $publishBtn.Add_Click({
+        $sel = $null
+        if ($script:ui.PackageList.SelectedItems.Count) { $sel = $script:ui.PackageList.SelectedItems[0].Text }
+        Invoke-ConsoleButton -ActionKey 'package.publish' -PackageZip $sel
+    })
+    $pkgBottom.Controls.AddRange(@($pkgRefresh, $publishBtn))
+    $pkgPage.Controls.Add($pkgList)
+    $pkgPage.Controls.Add($pkgTop)
+    $pkgPage.Controls.Add($pkgBottom)
+    $script:ui.PackageNotes = $notesBox
+    $script:ui.PackageList = $pkgList
+    $script:ui.PackageButtons = @($buildBtn, $publishBtn)
+    Update-PackageList
+
+    $tabs.TabPages.AddRange(@($testPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $livePage))
 
     # output
     $outGroup = New-Object Windows.Forms.GroupBox
@@ -3044,6 +3567,8 @@ if ($Action -eq 'list') {
     foreach ($a in Get-ConsoleActions) { Write-Host ('{0,-18} {1,-12} {2}' -f $a.Key, $a.Group, $a.Label) }
     Write-Host 'snapshot.* take -Shard test|live (default test), -SnapshotName for create, -Snapshot for restore and delete.'
     Write-Host 'commit.* take -CommitMessage (blank: the script''s default); commit.run needs -Mode Execute and -ConfirmLive ''commit shard work''.'
+    Write-Host 'package.build takes -PackageNotes; package.publish takes -PackageZip <name in player-package\dist> and -ConfirmLive ''publish player package''.'
+    Write-Host 'test.deploy takes -ImageTag sl-modernuo:cc-pNN and -ConfirmLive ''deploy to test''.'
     exit 0
 }
 
@@ -3065,6 +3590,7 @@ if ($Action) {
     if ($Action -like 'live.*') { $sk = 'live' }
     if ($Action -like 'test.*') { $sk = 'test' }
     if ($Action -like 'commit.*') { $sk = 'repos' }
+    if ($Action -like 'package.*') { $sk = 'package' }
     # The mode is decided and shown before anything is read or run (D37).
     $run = Resolve-RunMode -Action $Action -Mode $Mode -DryRun:$DryRun
     $banner = Get-ModeBanner -RunMode $run -Action $Action -ShardKey $sk
@@ -3074,17 +3600,22 @@ if ($Action) {
     $isDry = ($run -eq 'dry')
     $st = $null
     $facts = $null
+    $pkgFacts = $null
     $now = Get-Date
     if ($Action -like 'commit.*') {
         # From a click the message comes as base64 (Get-ChildArgumentLine); -CommitMessage is for a person.
         if ($CommitMessageB64) { $CommitMessage = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($CommitMessageB64)) }
         $facts = Get-CommitFacts $config
+    } elseif ($Action -like 'package.*') {
+        # cc-P63: the notes come as base64 from a click, as a commit message does.
+        if ($PackageNotesB64) { $PackageNotes = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($PackageNotesB64)) }
+        $pkgFacts = Get-PackageFacts $config $PackageZip
     } else {
         $fromCapture = $isDry -and -not $StatusFromDocker
         $st = Get-ConsoleState -Config $config -DryRun:$fromCapture -StatusFrom $StatusFrom
         if ($fromCapture) { $now = $st.Now.ToLocalTime() }
     }
-    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts)
+    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag)
     $viol = @(Test-PlanSafety $plan $config)
     $header = 'PLAN'
     if ($isDry) { $header = 'DRY RUN' }
