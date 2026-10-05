@@ -66,7 +66,7 @@ namespace Server.SkillHandlers
                 return TimeSpan.FromSeconds(Core.AOS ? 10.0 : 5.0);
             }
 
-            // ClusterF: Armored Meditation — skill above ArmoredMeditationSkill bypasses the armor block.
+            // ClusterF: Armored Meditation - skill above ArmoredMeditationSkill bypasses the armor block.
             // Success chance is penalised by armor weight, providing a harder challenge
             // that re-opens skill gains past that point. Heavier armor = lower chance = more
             // gain opportunities; no mage-armor property required.

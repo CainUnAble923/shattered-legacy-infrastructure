@@ -177,7 +177,7 @@ public class TwoHundredCapVerification
     [Theory]
     [InlineData(200.0, true)]
     [InlineData(187.4, false)]
-    public void ASmithAt200CanWorkCelestialAndOneAt187Point4CannotWithAdamantiumBelow(double skill, bool celestial)
+    public void ASmithAt200CanWorkCelestialAndOneAt187Point4CannotYetCanWorkMythril(double skill, bool celestial)
     {
         var smith = Blacksmithy();
         var dagger = smith.CraftItems.SearchFor(typeof(Dagger));
@@ -188,9 +188,9 @@ public class TwoHundredCapVerification
         try
         {
             pm.Skills.Blacksmith.Cap = 200.0;
-            pm.Skills.Blacksmith.Base = skill;
+            pm.Skills.Blacksmith.BaseFixedPoint = (int)Math.Round(skill * 10); // 187.4 * 10 truncates to 1873
             pm.Backpack.DropItem(new CelestialIngot(20));
-            pm.Backpack.DropItem(new AdamantiumIngot(20));
+            pm.Backpack.DropItem(new MythrilIngot(20));
 
             var hue = 0;
             var max = 0;
@@ -200,11 +200,13 @@ public class TwoHundredCapVerification
             Assert.Equal(celestial, ok);
             if (!celestial)
             {
-                Assert.Equal(1044036, message.Number); // You cannot use that material without the proper skill.
+                // The sub-resource's own refusal (AddSubRes's last argument, 1044268, as for every stock metal).
+                Assert.Equal(smith.CraftSubRes.SearchFor(typeof(CelestialIngot)).Message.Number, message.Number);
+                Assert.Equal(1044268, message.Number);
             }
 
             message = null;
-            Assert.True(dagger.ConsumeRes(pm, typeof(AdamantiumIngot), smith, ref hue, ref max, ConsumeType.None, ref message));
+            Assert.True(dagger.ConsumeRes(pm, typeof(MythrilIngot), smith, ref hue, ref max, ConsumeType.None, ref message));
         }
         finally
         {

@@ -224,18 +224,16 @@ public class CraftCategoryPagingVerification
     [Fact]
     public void NoCategoryRowReachesTheNoticesAreaAndEveryGroupIsClickable()
     {
-        using var c = new Crafter();
         var tool = new SmithHammer();
-        c.Pm.Backpack.DropItem(tool);
 
         foreach (var (name, system) in Systems())
         {
             var groups = system.CraftGroups.Count;
             var pages = CraftGump.GroupPageCount(groups);
             _out.WriteLine($"{name}: {groups} categories, {pages} page(s)");
+            Console.WriteLine($"[P53 categories] {name}: {groups} categories, {pages} page(s)"); // the notes count these
 
             var reached = new HashSet<int>();
-            var context = system.GetContext(c.Pm);
 
             // Every page as a paging button asks for it, and every selection as the derived page shows it.
             var views = new List<(int Selected, int Page)>();
@@ -253,7 +251,9 @@ public class CraftCategoryPagingVerification
 
             foreach (var (selected, page) in views)
             {
-                context.LastGroupIndex = selected;
+                // A fresh crafter per view: the test NetState's send buffer is never drained.
+                using var c = new Crafter();
+                system.GetContext(c.Pm).LastGroupIndex = selected;
                 var (layout, _) = Send(c, new CraftGump(c.Pm, system, tool, null, CraftGump.CraftPage.None, page));
                 var shown = new HashSet<int>();
 

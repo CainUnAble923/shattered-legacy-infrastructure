@@ -158,9 +158,8 @@ public static class ClusterFMiningExtension
     /// Skill requirements per extended ingot: ClusterFMetalTiers, even 12.5 steps from Platinum 112.5 to Celestial 200.0,
     /// the shard's skill cap (cc-P53, D64; until then they were spread over a 300 cap, Platinum 100 to Celestial 300).
     ///
-    /// Messages reuse vanilla clilocs:
-    ///   1044036 = "You cannot use that material without the proper skill."
-    ///   1044268 = "You don't have enough materials to make anything."
+    /// Clilocs as stock's metals use them (DefBlacksmithy.cs:688): generic name 1044036 "Ingots", and
+    ///   1044268 "You cannot work this strange and unusual metal." when Blacksmithy is below the requirement.
     /// </summary>
     private static void ExtendBlacksmithySubResources()
     {
