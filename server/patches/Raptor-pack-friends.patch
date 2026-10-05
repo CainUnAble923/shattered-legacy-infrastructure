@@ -1,0 +1,38 @@
+--- a/Projects/UOContent/Mobiles/Monsters/Reptile/Raptor.cs
++++ b/Projects/UOContent/Mobiles/Monsters/Reptile/Raptor.cs
+@@ -37,10 +37,6 @@
+         Tamable = true;
+         MinTameSkill = 107.1;
+         ControlSlots = 2;
+-
+-        // TODO(SA-creatures): ServUO Raptors summon up to 2 "friend" raptors on entering combat
+-        // (InternalTimer/CheckFriends). Omitted pending a ModernUO timer/MonsterAbility adaptation.
+-        // Also unported vs ServUO: the 25% AncientPotteryFragments corpse drop (item class not yet in ModernUO).
+     }
+ 
+     public override string CorpseName => "a raptor corpse";
+@@ -64,10 +60,24 @@
+         AddLoot(LootPack.Rich, 2);
+     }
+ 
++    // Shattered Legacy (cc-P51, F-31): ServUO's pack friends. The timer and the friends are ClusterFRaptorPack's
++    // (customizations); a friend is a RaptorPackFriend. See shard-migration/notes/cc-P51-staff-hub-and-raptor-pack.md.
++    public override void OnCombatantChange()
++    {
++        base.OnCombatantChange();
++        ClusterFRaptorPack.OnCombatantChange(this);
++    }
++
+     public override void OnDeath(Container c)
+     {
+         base.OnDeath(c);
+ 
++        // Shattered Legacy (cc-P51, F-31): ServUO's 25% pottery drop, before the claw roll as ServUO orders them.
++        if (!Controlled && Utility.RandomDouble() < 0.25)
++        {
++            c.DropItem(new AncientPotteryFragments());
++        }
++
+         if (!Controlled && Utility.RandomDouble() <= 0.005)
+         {
+             c.DropItem(new RaptorClaw());

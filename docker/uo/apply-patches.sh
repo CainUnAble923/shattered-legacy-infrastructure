@@ -414,6 +414,14 @@ apply_patch "$PATCHES/TrashChest-clean-up-britannia.patch"
 # PermanentGrovesVerification facts 3 and 4 (proved red). ModernUO's to report upstream (not exploit-class).
 apply_patch "$PATCHES/HarvestDefinition-vein-boundary.patch"
 
+# cc-P51 Part A (F-31, ported). Upstream's Raptor left out ServUO's pack friends and its 25% AncientPotteryFragments drop
+# (its own TODO, removed here). The patch adds an OnCombatantChange override that calls base and then customizations
+# Mobiles/Normal/ClusterFRaptorPack.cs, and the pottery roll before upstream's claw roll. Friends are RaptorPackFriend, a
+# customization subclass that deletes itself after load, so Raptor keeps its version 0 save shape and needs no migration.
+# Alternatives (a serialized _isFriend with a version bump, a world poll timer, our old class as a replacement) argued in
+# shard-migration/notes/cc-P51-staff-hub-and-raptor-pack.md, Part A; pinned by RaptorPackFriendsVerification.
+apply_patch "$PATCHES/Raptor-pack-friends.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

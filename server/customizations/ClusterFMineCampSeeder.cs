@@ -37,6 +37,26 @@ namespace Server
         // range ClusterFInstitutionSeeder uses for "already there".
         public const int NearRange = 15;
 
+        // cc-P51: the Staff Hub's Travel row. The Miners' Compact Liaison's tent opening, read from the layout the NPC
+        // move uses (ClusterFMineCampLayout.Npcs); nothing here changes what the seeder places.
+        public static Map Facet => Map.Trammel;
+
+        public static Point3D Anchor
+        {
+            get
+            {
+                foreach (var move in ClusterFMineCampLayout.Npcs)
+                {
+                    if (move.TypeName == nameof(MinersCompactLiaison))
+                    {
+                        return move.To;
+                    }
+                }
+
+                throw new InvalidOperationException("the mine camp layout names no MinersCompactLiaison");
+            }
+        }
+
         private static bool _seedOnWorldLoad;
 
         public static void Configure()

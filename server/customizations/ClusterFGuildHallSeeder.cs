@@ -29,6 +29,12 @@ public static class ClusterFGuildHallSeeder
 {
     private static bool _seedOnWorldLoad;
 
+    /// <summary>
+    /// cc-P51: the halls this seeder places a guildmaster in (the Seeded GuildLocations Seed walks, without the
+    /// lookout), for the Staff Hub's Travel tab. Each location carries its own facet and tile.
+    /// </summary>
+    public static IEnumerable<GuildLocation> Anchors => GuildLocations.All.Where(l => l.Seeded);
+
     public static void Configure()
     {
         _seedOnWorldLoad = ServerConfiguration.GetOrUpdateSetting("clusterf.guildHallSeeder.seedOnWorldLoad", false);

@@ -71,6 +71,29 @@ public static class ClusterFNewHavenSeeder
         new SeedEntry("League Registrar", "League of Extraordinary Citizens Field Office", typeof(LeagueRegistrar), () => new LeagueRegistrar(), 3459, 2601, Direction.West, 18).WasAt(3459, 2601, 18, Direction.North),
     };
 
+    // cc-P51: where the Staff Hub's Travel tab sends staff, read from Entries so a moved entry moves the row too.
+    // Each is the seeded NPC's own tile; nothing here changes what the seeder places.
+    public static Map Facet => Map.Trammel;
+
+    public static Point3D SpotOf(Type type)
+    {
+        foreach (var entry in Entries)
+        {
+            if (entry.Type == type)
+            {
+                return entry.GetLocation();
+            }
+        }
+
+        throw new InvalidOperationException($"ClusterFNewHavenSeeder places no {type.Name}");
+    }
+
+    /// <summary>The New Haven banker's tile (Sarsmea Smythe, "New Haven Bank").</summary>
+    public static Point3D BankAnchor => SpotOf(typeof(SarsmeaSmythe));
+
+    /// <summary>The League Registrar's tile, inside the field office.</summary>
+    public static Point3D RegistrarAnchor => SpotOf(typeof(LeagueRegistrar));
+
     private static bool _enabled;
     private static bool _seedOnWorldLoad;
     private static bool _repairOnWorldLoad;

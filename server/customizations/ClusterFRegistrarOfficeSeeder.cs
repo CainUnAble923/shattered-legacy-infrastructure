@@ -45,6 +45,13 @@ namespace Server
         // The sign, by item id (design: 0x0BCF at 3463,2597). cc-P31: 0x0BD0 at 3460,2595 left the design.
         public const int SignItemID = 0x0BCF;
 
+        // cc-P51: the Staff Hub's Travel row. The office's addons have no standing point of their own, so this is the
+        // League Registrar's seeded tile inside the office (ClusterFNewHavenSeeder.Entries, which places her); nothing
+        // here changes what either seeder places.
+        public static Map Facet => ClusterFNewHavenSeeder.Facet;
+
+        public static Point3D Anchor => ClusterFNewHavenSeeder.RegistrarAnchor;
+
         private static bool _seedOnWorldLoad;
 
         public static void Configure()

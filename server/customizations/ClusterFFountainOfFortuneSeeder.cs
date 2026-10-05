@@ -22,6 +22,9 @@ public static class ClusterFFountainOfFortuneSeeder
 {
     public static readonly Point3D Location = new(1121, 957, -42);
 
+    // cc-P51: the facet Seed places it on (Map.TerMur below), for the Staff Hub's Travel tab.
+    public static Map Facet => Map.TerMur;
+
     // The addon spans 4 x 4 tiles around its centre; a few tiles more covers a hand-placed one nearby.
     public const int SearchRange = 5;
 

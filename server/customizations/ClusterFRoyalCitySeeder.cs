@@ -38,7 +38,9 @@ public static class ClusterFRoyalCitySeeder
 
     // ── Moongate location (matches PublicMoongate.PMList.TerMur) ──────────────
 
-    private static readonly Point3D MoongateLocation = new(850, 3525, -38);
+    // cc-P51: public so the Staff Hub's Travel tab reads it; the value and its use are unchanged.
+    public static readonly Point3D MoongateLocation = new(850, 3525, -38);
+    public static Map Facet => Map.TerMur;
     private const int MoongateHue = 0;   // standard blue/purple gate
 
     // ── Vendor placement table ────────────────────────────────────────────────
