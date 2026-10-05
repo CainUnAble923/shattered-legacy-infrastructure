@@ -155,20 +155,8 @@ public static class ClusterFMiningExtension
     /// Uses string TextDefinition names (no cliloc required) — these display correctly
     /// in the craft menu dropdown since ModernUO's AddSubRes accepts TextDefinition.
     ///
-    /// Skill requirements per extended ingot.
-    ///
-    /// Spread evenly across the shard's normal skill cap (300.0), with Celestial
-    /// pinned to the hard cap.  Power scrolls raise the cap to 500.0 — that range
-    /// is reserved for future content.
-    ///
-    /// Platinum    100.0
-    /// Toxic       125.0
-    /// Blaze       150.0
-    /// Frost       175.0
-    /// Obsidian    200.0
-    /// Mythril     225.0
-    /// Adamantium  250.0
-    /// Celestial   300.0 — requires max normal skill
+    /// Skill requirements per extended ingot: ClusterFMetalTiers, even 12.5 steps from Platinum 112.5 to Celestial 200.0,
+    /// the shard's skill cap (cc-P53, D64; until then they were spread over a 300 cap, Platinum 100 to Celestial 300).
     ///
     /// Messages reuse vanilla clilocs:
     ///   1044036 = "You cannot use that material without the proper skill."
@@ -183,14 +171,14 @@ public static class ClusterFMiningExtension
             return;
         }
 
-        smithy.AddSubRes(typeof(PlatinumIngot),   "Platinum",   100.0, 1044036, 1044268);
-        smithy.AddSubRes(typeof(ToxicIngot),      "Toxic",      125.0, 1044036, 1044268);
-        smithy.AddSubRes(typeof(BlazeIngot),      "Blaze",      150.0, 1044036, 1044268);
-        smithy.AddSubRes(typeof(FrostIngot),      "Frost",      175.0, 1044036, 1044268);
-        smithy.AddSubRes(typeof(ObsidianIngot),   "Obsidian",   200.0, 1044036, 1044268);
-        smithy.AddSubRes(typeof(MythrilIngot),    "Mythril",    225.0, 1044036, 1044268);
-        smithy.AddSubRes(typeof(AdamantiumIngot), "Adamantium", 250.0, 1044036, 1044268);
-        smithy.AddSubRes(typeof(CelestialIngot),  "Celestial",  300.0, 1044036, 1044268);
+        smithy.AddSubRes(typeof(PlatinumIngot),   "Platinum",   ClusterFMetalTiers.Platinum, 1044036, 1044268);
+        smithy.AddSubRes(typeof(ToxicIngot),      "Toxic",      ClusterFMetalTiers.Toxic, 1044036, 1044268);
+        smithy.AddSubRes(typeof(BlazeIngot),      "Blaze",      ClusterFMetalTiers.Blaze, 1044036, 1044268);
+        smithy.AddSubRes(typeof(FrostIngot),      "Frost",      ClusterFMetalTiers.Frost, 1044036, 1044268);
+        smithy.AddSubRes(typeof(ObsidianIngot),   "Obsidian",   ClusterFMetalTiers.Obsidian, 1044036, 1044268);
+        smithy.AddSubRes(typeof(MythrilIngot),    "Mythril",    ClusterFMetalTiers.Mythril, 1044036, 1044268);
+        smithy.AddSubRes(typeof(AdamantiumIngot), "Adamantium", ClusterFMetalTiers.Adamantium, 1044036, 1044268);
+        smithy.AddSubRes(typeof(CelestialIngot),  "Celestial",  ClusterFMetalTiers.Celestial, 1044036, 1044268);
 
         Console.WriteLine("[ClusterFMiningExtension] Blacksmithy sub-resources registered: Platinum through Celestial.");
     }

@@ -17,7 +17,7 @@ namespace Server.Items;
 //
 // Enhancements over the vanilla SalvageBag:
 //   1. Post-Valorite metal support - Platinum through Celestial.
-//      Resmelt difficulty scales with extended skill (>100 Mining required).
+//      Resmelt difficulty scales with Mining above 100, up to 200 for Celestial.
 //   2. Smithing Seals - guild members earn seals for each item smelted,
 //      scaled by material tier.
 //   3. [TODO - Guild Enhancement: "Forge Efficiency" upgrade]
@@ -50,8 +50,7 @@ public partial class SmithGuildSalvageBag : Bag
 
     // -- Resmelt difficulty table -----------------------------------------------
     // Vanilla metals cap at 99.0 (base Mining).
-    // Post-Valorite metals require extended Mining skill (power scrolls).
-    // Scale mirrors ClusterFSmithCommissions skill ranges.
+    // Post-Valorite metals require Mining above 100, at each metal's Blacksmithy requirement (ClusterFMetalTiers).
 
     private static double ResmeltDifficulty(CraftResource r) => r switch
     {
@@ -63,15 +62,11 @@ public partial class SmithGuildSalvageBag : Bag
         CraftResource.Agapite     =>  90.0,
         CraftResource.Verite      =>  95.0,
         CraftResource.Valorite    =>  99.0,
-        // Post-Valorite - requires extended Mining skill
-        CraftResource.Platinum    => 105.0,
-        CraftResource.Toxic       => 115.0,
-        CraftResource.Blaze       => 130.0,
-        CraftResource.Frost       => 150.0,
-        CraftResource.Obsidian    => 175.0,
-        CraftResource.Mythril     => 200.0,
-        CraftResource.Adamantium  => 250.0,
-        CraftResource.Celestial   => 300.0,
+        // Post-Valorite - the metal's Blacksmithy requirement, checked against Mining (ClusterFMetalTiers, cc-P53).
+        // The 300-era values ran 105 .. 300, so Adamantium (250) and Celestial (300) could never be salvaged at 200.
+        CraftResource.Platinum or CraftResource.Toxic or CraftResource.Blaze or CraftResource.Frost
+            or CraftResource.Obsidian or CraftResource.Mythril or CraftResource.Adamantium
+            or CraftResource.Celestial => ClusterFMetalTiers.RequiredSkill(r),
         _                         =>   0.0,  // Iron - no check
     };
 

@@ -7,20 +7,20 @@
 +        // ClusterF: post-Valorite material distribution.
 +        public static double[] m_PostValMaterialChances =
 +        {
-+            0.501953125, // Platinum   (requires 105)
-+            0.250000000, // Toxic      (requires 115)
-+            0.125000000, // Blaze      (requires 130)
++            0.501953125, // Platinum   (requires 112.5)
++            0.250000000, // Toxic      (requires 125)
++            0.125000000, // Blaze      (requires 137.5)
 +            0.062500000, // Frost      (requires 150)
-+            0.031250000, // Obsidian   (requires 175)
-+            0.015625000, // Mythril    (requires 200)
-+            0.007812500, // Adamantium (requires 250)
-+            0.001953125  // Celestial  (requires 300)
++            0.031250000, // Obsidian   (requires 162.5)
++            0.015625000, // Mythril    (requires 175)
++            0.007812500, // Adamantium (requires 187.5)
++            0.001953125  // Celestial  (requires 200)
 +        };
 +
          private SmallSmithBOD(SmallBulkEntry entry, BulkMaterialType mat, int amountMax, bool reqExceptional)
              : base(0x44E, 0, amountMax, entry.Type, entry.Number, entry.Graphic, reqExceptional, mat)
          {
-@@ -124,6 +137,29 @@
+@@ -124,6 +137,19 @@
                  }
              }
  
@@ -28,18 +28,8 @@
 +            if (useMaterials && theirSkill > 100.0 && Utility.RandomDouble() < 0.30)
 +            {
 +                var postVal = GetRandomMaterial(BulkMaterialType.Platinum, m_PostValMaterialChances);
-+                var postValReq = postVal switch
-+                {
-+                    BulkMaterialType.Platinum   => 105.0,
-+                    BulkMaterialType.Toxic      => 115.0,
-+                    BulkMaterialType.Blaze      => 130.0,
-+                    BulkMaterialType.Frost      => 150.0,
-+                    BulkMaterialType.Obsidian   => 175.0,
-+                    BulkMaterialType.Mythril    => 200.0,
-+                    BulkMaterialType.Adamantium => 250.0,
-+                    BulkMaterialType.Celestial  => 300.0,
-+                    _                           => 999.0
-+                };
++                // ClusterFMetalTiers: each metal's Blacksmithy requirement on the 200 cap (cc-P53; was 105 .. 300).
++                var postValReq = ClusterFMetalTiers.PostValoriteRequiredSkill(postVal);
 +
 +                if (theirSkill >= postValReq)
 +                {

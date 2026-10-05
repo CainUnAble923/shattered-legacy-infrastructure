@@ -139,7 +139,7 @@ public static class TestCenterKit
     // [TCFill: pinned's fill, then the kit, keeping the caller's caps.
     //
     // FillBankAOS SETS the power-scroll skills' caps to 120 and StatCap to 250 (TestCenter.cs:226-231). On this shard
-    // ClusterFSkillCaps and ClusterFStatCaps hold them at 300 and 1500, so on an existing character pinned's fill would
+    // ClusterFSkillCaps and ClusterFStatCaps hold them at 200 (300 until cc-P53) and 1500, so on an existing character pinned's fill would
     // LOWER them until the next login. Neither setter clamps the skill or stat values (Skills.cs:205-219,
     // Mobile.cs:1731-1743), so keeping the higher of before and after is enough, and needs no patch.
     public static void RefillBank(Mobile m)

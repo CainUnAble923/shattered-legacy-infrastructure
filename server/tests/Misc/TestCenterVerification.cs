@@ -222,10 +222,10 @@ public class TestCenterVerification
             Assert.True(CommandSystem.Entries.TryGetValue(TestCenterFillCommand.Command, out var command));
             Assert.Equal(AccessLevel.Player, command.AccessLevel);
 
-            // What ClusterFSkillCaps and ClusterFStatCaps hold every player at on this shard.
+            // What ClusterFSkillCaps and ClusterFStatCaps hold every player at on this shard (skills 200 since cc-P53).
             for (var i = 0; i < pm.Skills.Length; i++)
             {
-                pm.Skills[i].CapFixedPoint = 3000;
+                pm.Skills[i].CapFixedPoint = 2000;
             }
 
             pm.StatCap = 1500;
@@ -238,8 +238,8 @@ public class TestCenterVerification
             for (var i = 0; i < pm.Skills.Length; i++)
             {
                 Assert.True(
-                    pm.Skills[i].CapFixedPoint == 3000,
-                    $"{pm.Skills[i].Name} cap is {pm.Skills[i].Cap} after [TCFill; ours is 300"
+                    pm.Skills[i].CapFixedPoint == 2000,
+                    $"{pm.Skills[i].Name} cap is {pm.Skills[i].Cap} after [TCFill; ours is 200"
                 );
             }
 

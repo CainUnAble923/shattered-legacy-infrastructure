@@ -1490,7 +1490,7 @@ function ConvertFrom-CommandSources {
     # call out. Pure: the shell reads the files (Get-CommandSourceFiles).
     param([hashtable]$Sources)
     $str = '"((?:[^"\\]|\\.)*)"'
-    $reg = [regex]('CommandSystem\.Register\(\s*(?:"(?<lit>[^"]*)"|(?<id>[A-Za-z_][\w.]*))\s*,\s*AccessLevel\.(?<access>\w+)\s*,\s*(?<handler>[A-Za-z_]\w*)\s*\)')
+    $reg = [regex]('CommandSystem\.Register\(\s*(?:"(?<lit>[^"]*)"|(?<id>[A-Za-z_][\w.]*))\s*,\s*(?:AccessLevel\.(?<access>\w+)|(?<accessId>[A-Za-z_][\w.]*))\s*,\s*(?<handler>[A-Za-z_]\w*)\s*\)')
     foreach ($path in @($Sources.Keys | Sort-Object)) {
         $text = ([string]$Sources[$path]) -replace "`r`n", "`n"
         $lines = $text -split "`n"
@@ -1513,7 +1513,14 @@ function ConvertFrom-CommandSources {
                 if ($lit.Success) { $e.Name = $lit.Groups[1].Value }
                 $problems.Add('the console could not read this registration; look at ' + $path + ':' + $lineNo)
             } else {
-                $e.Access = $m.Groups['access'].Value
+                if ($m.Groups['access'].Success) {
+                    $e.Access = $m.Groups['access'].Value
+                } else {
+                    # An access level held in a constant (ClusterFStaffHub.Access, cc-P53), read the way a constant name is.
+                    $aid = @($m.Groups['accessId'].Value -split '\.')[-1]
+                    $ac = [regex]::Match($text, 'const\s+AccessLevel\s+' + [regex]::Escape($aid) + '\s*=\s*AccessLevel\.(\w+)')
+                    if ($ac.Success) { $e.Access = $ac.Groups[1].Value } else { $e.Access = $m.Groups['accessId'].Value; $problems.Add('access is the constant ' + $aid + ', not found in this file') }
+                }
                 $e.Handler = $m.Groups['handler'].Value
                 if ($m.Groups['lit'].Success) {
                     $e.Name = $m.Groups['lit'].Value

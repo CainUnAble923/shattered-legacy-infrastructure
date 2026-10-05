@@ -417,15 +417,12 @@ public partial class BlacksmithGuildmaster
             BulkMaterialType.Agapite    => ( 70.0,   96.0),
             BulkMaterialType.Verite     => ( 75.0,  100.0),
             BulkMaterialType.Valorite   => ( 80.0,  105.0),
-            // Post-Valorite - extended skill ranges (no 120 cap; extended skill can exceed 300)
-            BulkMaterialType.Platinum   => ( 85.0,  115.0),
-            BulkMaterialType.Toxic      => ( 95.0,  130.0),
-            BulkMaterialType.Blaze      => (110.0,  150.0),
-            BulkMaterialType.Frost      => (130.0,  175.0),
-            BulkMaterialType.Obsidian   => (155.0,  205.0),
-            BulkMaterialType.Mythril    => (180.0,  235.0),
-            BulkMaterialType.Adamantium => (230.0,  285.0),
-            BulkMaterialType.Celestial  => (280.0,  340.0),
+            // Post-Valorite - requirement-20 to requirement+20 (ClusterFMetalTiers, cc-P53; no 120 cap). The 300-era rows
+            // ran from Platinum 85-115 to Celestial 280-340 and put Adamantium and Celestial wholly above the 200 cap.
+            BulkMaterialType.Platinum or BulkMaterialType.Toxic or BulkMaterialType.Blaze or BulkMaterialType.Frost
+                or BulkMaterialType.Obsidian or BulkMaterialType.Mythril or BulkMaterialType.Adamantium
+                or BulkMaterialType.Celestial => (ClusterFMetalTiers.PostValoriteRequiredSkill(mat) - 20.0,
+                    ClusterFMetalTiers.PostValoriteRequiredSkill(mat) + 20.0),
             _                           => (  0.0,   55.0),
         };
 

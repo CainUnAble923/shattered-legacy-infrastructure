@@ -155,10 +155,10 @@ namespace Server.Misc
 
                 if (armorPenalty > 0)
                 {
-                    // ClusterF: past skill 200, armored meditation grants reduced (not zero) regen.
+                    // ClusterF: past Meditation.ArmoredMeditationSkill (150), armored meditation grants reduced (not zero) regen.
                     // This rewards a successful armored-meditation attempt while still being
                     // significantly weaker than unarmored. Heavier armor = deeper reduction.
-                    if (from.Meditating && from.Skills.Meditation.Value > 200.0)
+                    if (from.Meditating && from.Skills.Meditation.Value > Server.SkillHandlers.Meditation.ArmoredMeditationSkill)
                         medPoints *= Math.Max(0.1, 1.0 - armorPenalty * 0.02);
                     else
                         medPoints = 0; // vanilla: armor completely blocks meditation bonus

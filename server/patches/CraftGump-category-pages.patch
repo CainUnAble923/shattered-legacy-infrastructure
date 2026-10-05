@@ -1,0 +1,113 @@
+--- a/Projects/UOContent/Engines/Craft/Core/CraftGump.cs
++++ b/Projects/UOContent/Engines/Craft/Core/CraftGump.cs
+@@ -24,12 +24,19 @@
+     private readonly BaseTool _tool;
+     private readonly TextDefinition _notice;
+ 
++    // ClusterF (cc-P53, D63): the category list pages once it holds more groups than its panel. -1 shows the page that
++    // holds the selected group. _shownGroupPage is the page this gump drew, for its own paging buttons.
++    private readonly int _groupPage;
++    private int _shownGroupPage;
++
+     public override bool Singleton => true;
+ 
+     public CraftGump(
+-        Mobile from, CraftSystem craftSystem, BaseTool tool, TextDefinition notice, CraftPage page = CraftPage.None
++        Mobile from, CraftSystem craftSystem, BaseTool tool, TextDefinition notice, CraftPage page = CraftPage.None,
++        int groupPage = -1
+     ) : base(40, 40)
+     {
++        _groupPage = groupPage;
+         _from = from;
+         _craftSystem = craftSystem;
+         _tool = tool;
+@@ -395,6 +402,18 @@
+         }
+     }
+ 
++    // ClusterF (cc-P53, D63): the category panel runs from y 37 to 287, above NOTICES (y 292). Under LAST TEN it holds
++    // ten rows at pinned's 20-pixel pitch (y 80 .. 260); an eleventh drew over the notices box and a twelfth over its
++    // label (blacksmithy with ServUO's Miscellaneous group). Up to ten groups draw exactly as pinned. Past ten the list
++    // shows nine a page, and the tenth row holds the page buttons and "Page x of y". Pinned's own CreateItemList and
++    // CreateResList page the same way; those use client pages, which the item list already owns, so categories page by
++    // re-sending the gump. The page holding the selected group is shown unless a paging button chose another.
++    public const int GroupRowsWithoutPaging = 10;
++    public const int GroupsPerPage = 9;
++
++    public static int GroupPageCount(int groups) =>
++        groups <= GroupRowsWithoutPaging ? 1 : (groups + GroupsPerPage - 1) / GroupsPerPage;
++
+     public void CreateGroupList(ref DynamicGumpBuilder builder)
+     {
+         var craftGroupCol = _craftSystem.CraftGroups;
+@@ -402,19 +421,51 @@
+         builder.AddButton(15, 60, 4005, 4007, GetButtonID(6, 3));
+         builder.AddHtmlLocalized(50, 63, 150, 18, 1044014, LabelColor); // LAST TEN
+ 
+-        for (var i = 0; i < craftGroupCol.Count; i++)
++        var pages = GroupPageCount(craftGroupCol.Count);
++        var first = 0;
++        var count = craftGroupCol.Count;
++
++        if (pages > 1)
++        {
++            var page = _groupPage;
++
++            if (page < 0)
++            {
++                var selected = _craftSystem.GetContext(_from)?.LastGroupIndex ?? -1;
++                page = selected >= 0 && selected < craftGroupCol.Count ? selected / GroupsPerPage : 0;
++            }
++
++            _shownGroupPage = Math.Clamp(page, 0, pages - 1);
++            first = _shownGroupPage * GroupsPerPage;
++            count = Math.Min(GroupsPerPage, craftGroupCol.Count - first);
++
++            if (_shownGroupPage > 0)
++            {
++                builder.AddButton(15, 260, 4014, 4015, GetButtonID(6, 9));
++            }
++
++            builder.AddLabel(50, 263, LabelHue, $"Page {_shownGroupPage + 1} of {pages}");
++
++            if (_shownGroupPage < pages - 1)
++            {
++                builder.AddButton(175, 260, 4005, 4007, GetButtonID(6, 10));
++            }
++        }
++
++        for (var row = 0; row < count; row++)
+         {
++            var i = first + row;
+             var craftGroup = craftGroupCol[i];
+ 
+-            builder.AddButton(15, 80 + i * 20, 4005, 4007, GetButtonID(0, i));
++            builder.AddButton(15, 80 + row * 20, 4005, 4007, GetButtonID(0, i));
+ 
+             if (craftGroup.NameNumber > 0)
+             {
+-                builder.AddHtmlLocalized(50, 83 + i * 20, 150, 18, craftGroup.NameNumber, LabelColor);
++                builder.AddHtmlLocalized(50, 83 + row * 20, 150, 18, craftGroup.NameNumber, LabelColor);
+             }
+             else
+             {
+-                builder.AddLabel(50, 83 + i * 20, LabelHue, craftGroup.NameString);
++                builder.AddLabel(50, 83 + row * 20, LabelHue, craftGroup.NameString);
+             }
+         }
+     }
+@@ -730,6 +781,14 @@
+ 
+                                 break;
+                             }
++                        case 9: // ClusterF (cc-P53): previous category page
++                        case 10: // ClusterF (cc-P53): next category page
++                            {
++                                var target = _shownGroupPage + (index == 9 ? -1 : 1);
++                                _from.SendGump(new CraftGump(_from, _craftSystem, _tool, null, _page, target));
++
++                                break;
++                            }
+                     }
+ 
+                     break;

@@ -1,0 +1,17 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -271,6 +271,14 @@
+             }
+         }
+ 
++        // ClusterF (cc-P53, deviation D-113): item and temporary skill bonuses count above the skill's cap. Every SkillMod
++        // a player receives passes through here, so ClusterFSkillBonusAboveCap decides it once for all sources.
++        public override void AddSkillMod(SkillMod mod)
++        {
++            ClusterFSkillBonusAboveCap.Admit(mod);
++            base.AddSkillMod(mod);
++        }
++
+         public List<Item> EquipSnapshot { get; private set; }
+ 
+         public SkillName Learning { get; set; } = (SkillName)(-1);

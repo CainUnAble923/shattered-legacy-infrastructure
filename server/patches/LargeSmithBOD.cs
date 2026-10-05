@@ -121,18 +121,8 @@ namespace Server.Engines.BulkOrders
             if (bod.Material != BulkMaterialType.None && theirSkill > 100.0 && Utility.RandomDouble() < 0.15)
             {
                 var postVal = GetRandomMaterial(BulkMaterialType.Platinum, m_PostValMaterialChances);
-                var postValReq = postVal switch
-                {
-                    BulkMaterialType.Platinum   => 105.0,
-                    BulkMaterialType.Toxic      => 115.0,
-                    BulkMaterialType.Blaze      => 130.0,
-                    BulkMaterialType.Frost      => 150.0,
-                    BulkMaterialType.Obsidian   => 175.0,
-                    BulkMaterialType.Mythril    => 200.0,
-                    BulkMaterialType.Adamantium => 250.0,
-                    BulkMaterialType.Celestial  => 300.0,
-                    _ => 999.0
-                };
+                // ClusterFMetalTiers: each metal's Blacksmithy requirement on the 200 cap (cc-P53; was 105 .. 300).
+                var postValReq = ClusterFMetalTiers.PostValoriteRequiredSkill(postVal);
                 if (theirSkill >= postValReq)
                     bod.Material = postVal;
             }

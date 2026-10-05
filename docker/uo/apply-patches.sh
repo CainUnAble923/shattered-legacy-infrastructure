@@ -422,6 +422,21 @@ apply_patch "$PATCHES/HarvestDefinition-vein-boundary.patch"
 # shard-migration/notes/cc-P51-staff-hub-and-raptor-pack.md, Part A; pinned by RaptorPackFriendsVerification.
 apply_patch "$PATCHES/Raptor-pack-friends.patch"
 
+# cc-P53 Part C (deviation D-113, Chase 2026-10-04). Item and temporary skill bonuses count above the skill's cap.
+# PlayerMobile.AddSkillMod hands every mod to ClusterFSkillBonusAboveCap (customizations), which clears ObeyCap, so the
+# three pinned sources that clamp (AosSkillBonuses.AddTo, Animal Form's two) and any later one are covered by one hook.
+# Rejected: patching Skills.cs (core, every mobile, changes what ObeyCap means), patching AOS.cs and AnimalForm.cs (two
+# files, misses the next source), customizations alone (no event fires on AddSkillMod). Argued in
+# shard-migration/notes/cc-P53-two-hundred-cap.md Part C; pinned by SkillBonusAboveCapVerification (proved red).
+apply_patch "$PATCHES/PlayerMobile-skill-bonus-above-cap.patch"
+
+# cc-P53 Part E (D63). The craft gump's category list has no paging (CraftGump.CreateGroupList; ServUO's is the same)
+# and its panel holds ten groups, so blacksmithy's twelfth drew over NOTICES. Past ten groups the list pages nine at a
+# time, re-sending the gump; ten or fewer draw exactly as pinned. Rejected: a tighter row pitch (buttons overlap and are
+# hard to click), folding a group (moves ServUO content, and the stock blacksmithy list alone is eleven), a second
+# column (200 pixels wide). Argued in the same notes, Part E; pinned by CraftCategoryPagingVerification (proved red).
+apply_patch "$PATCHES/CraftGump-category-pages.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

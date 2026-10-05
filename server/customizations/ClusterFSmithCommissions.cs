@@ -470,14 +470,17 @@ public static class SmithCommissionSystem
         if (skill < 90.0)  return Utility.RandomDouble() < 0.70 ? CraftResource.Gold        : CraftResource.Bronze;
         if (skill < 95.0)  return Utility.RandomDouble() < 0.70 ? CraftResource.Agapite     : CraftResource.Gold;
         if (skill < 99.0)  return Utility.RandomDouble() < 0.70 ? CraftResource.Verite      : CraftResource.Agapite;
-        if (skill < 105.0) return Utility.RandomDouble() < 0.70 ? CraftResource.Valorite    : CraftResource.Verite;
-        if (skill < 115.0) return Utility.RandomDouble() < 0.70 ? CraftResource.Platinum    : CraftResource.Valorite;
-        if (skill < 130.0) return Utility.RandomDouble() < 0.70 ? CraftResource.Toxic       : CraftResource.Platinum;
-        if (skill < 150.0) return Utility.RandomDouble() < 0.70 ? CraftResource.Blaze       : CraftResource.Toxic;
-        if (skill < 175.0) return Utility.RandomDouble() < 0.70 ? CraftResource.Frost       : CraftResource.Blaze;
-        if (skill < 200.0) return Utility.RandomDouble() < 0.70 ? CraftResource.Obsidian    : CraftResource.Frost;
-        if (skill < 250.0) return Utility.RandomDouble() < 0.70 ? CraftResource.Mythril     : CraftResource.Obsidian;
-        if (skill < 300.0) return Utility.RandomDouble() < 0.70 ? CraftResource.Adamantium  : CraftResource.Mythril;
+        // Post-Valorite: each bracket opens at its metal's Blacksmithy requirement (ClusterFMetalTiers, the 200-cap
+        // tiers, cc-P53). Until then the brackets were cut for a 300 cap (<115 .. <300) and offered Toxic from 115 and
+        // Mythril from 200 against requirements of 125 and 225.
+        if (skill < ClusterFMetalTiers.Platinum)   return Utility.RandomDouble() < 0.70 ? CraftResource.Valorite    : CraftResource.Verite;
+        if (skill < ClusterFMetalTiers.Toxic)      return Utility.RandomDouble() < 0.70 ? CraftResource.Platinum    : CraftResource.Valorite;
+        if (skill < ClusterFMetalTiers.Blaze)      return Utility.RandomDouble() < 0.70 ? CraftResource.Toxic       : CraftResource.Platinum;
+        if (skill < ClusterFMetalTiers.Frost)      return Utility.RandomDouble() < 0.70 ? CraftResource.Blaze       : CraftResource.Toxic;
+        if (skill < ClusterFMetalTiers.Obsidian)   return Utility.RandomDouble() < 0.70 ? CraftResource.Frost       : CraftResource.Blaze;
+        if (skill < ClusterFMetalTiers.Mythril)    return Utility.RandomDouble() < 0.70 ? CraftResource.Obsidian    : CraftResource.Frost;
+        if (skill < ClusterFMetalTiers.Adamantium) return Utility.RandomDouble() < 0.70 ? CraftResource.Mythril     : CraftResource.Obsidian;
+        if (skill < ClusterFMetalTiers.Celestial)  return Utility.RandomDouble() < 0.70 ? CraftResource.Adamantium  : CraftResource.Mythril;
         return               Utility.RandomDouble() < 0.70 ? CraftResource.Celestial   : CraftResource.Adamantium;
     }
 
@@ -833,15 +836,12 @@ public static class SmithCommissionSystem
             CraftResource.Agapite     => ( 70.0,  96.0),
             CraftResource.Verite      => ( 75.0, 100.0),
             CraftResource.Valorite    => ( 80.0, 105.0),
-            // Post-Valorite - threshold-10 to threshold+20 (no 120 cap; extended skill)
-            CraftResource.Platinum    => ( 95.0, 125.0),
-            CraftResource.Toxic       => (105.0, 135.0),
-            CraftResource.Blaze       => (120.0, 155.0),
-            CraftResource.Frost       => (140.0, 175.0),
-            CraftResource.Obsidian    => (165.0, 200.0),
-            CraftResource.Mythril     => (190.0, 225.0),
-            CraftResource.Adamantium  => (240.0, 275.0),
-            CraftResource.Celestial   => (290.0, 325.0),
+            // Post-Valorite - requirement-10 to requirement+20 (ClusterFMetalTiers, cc-P53; no 120 cap). The 300-era rows
+            // put Adamantium at 240-275 and Celestial at 290-325, above the 200 cap, so those orders could never gain.
+            CraftResource.Platinum or CraftResource.Toxic or CraftResource.Blaze or CraftResource.Frost
+                or CraftResource.Obsidian or CraftResource.Mythril or CraftResource.Adamantium
+                or CraftResource.Celestial => (ClusterFMetalTiers.RequiredSkill(mat) - 10.0,
+                    ClusterFMetalTiers.RequiredSkill(mat) + 20.0),
             _                         => (  0.0,  55.0),
         };
 

@@ -7,7 +7,15 @@ namespace Server;
 
 public static class ClusterFSkillCaps
 {
-    private const double DefaultIndividualSkillCap = 300.0;
+    // cc-P53 (D64, Chase 2026-10-04): the shard's top is 200, the 2026-10-03 ladder's loop 21. Was 300.
+    public const double DefaultIndividualSkillCap = 200.0;
+
+    // The 300 every config file already holds was written by this class's own default (GetOrUpdateSetting stores a
+    // missing key once), so it is rewritten once to 200 and the marker below records that it was. A value anyone set
+    // by hand (anything but 300), or any value set after the marker, is never touched.
+    public const double LegacyIndividualSkillCap = 300.0;
+    public const string IndividualCapKey = "clusterf.skillCaps.individualCap";
+    public const string RescaledMarkerKey = "clusterf.skillCaps.rescaledTo200";
     private const int FixedPointScale = 10;
 
     private static bool _enabled;
@@ -17,10 +25,8 @@ public static class ClusterFSkillCaps
     public static void Configure()
     {
         _enabled = ServerConfiguration.GetOrUpdateSetting("clusterf.skillCaps.enabled", true);
-        _individualSkillCap = ServerConfiguration.GetOrUpdateSetting(
-            "clusterf.skillCaps.individualCap",
-            DefaultIndividualSkillCap
-        );
+        RescaleStoredLegacyCap();
+        _individualSkillCap = ServerConfiguration.GetOrUpdateSetting(IndividualCapKey, DefaultIndividualSkillCap);
         _totalSkillCap = ServerConfiguration.GetOrUpdateSetting("clusterf.skillCaps.totalCap", 0.0);
 
         EventSink.WorldLoad += ApplyToLoadedPlayers;
@@ -79,7 +85,46 @@ public static class ClusterFSkillCaps
         );
     }
 
-    private static double TotalSkillCap =>
+    /// <summary>
+    /// One-time: a stored individual cap of exactly the old default (300) becomes the new default (200). Returns true
+    /// when it rewrote the value. Sets the marker either way, so it runs once per config file.
+    /// </summary>
+    public static bool RescaleStoredLegacyCap()
+    {
+        if (ServerConfiguration.GetSetting(RescaledMarkerKey, false))
+        {
+            return false;
+        }
+
+        var stored = ServerConfiguration.GetSetting(IndividualCapKey, -1.0);
+        var rewrite = stored == LegacyIndividualSkillCap;
+
+        if (rewrite)
+        {
+            ServerConfiguration.SetSetting(IndividualCapKey, DefaultIndividualSkillCap);
+            Console.WriteLine(
+                $"[ClusterFSkillCaps] {IndividualCapKey} was the old default {LegacyIndividualSkillCap:0}; now {DefaultIndividualSkillCap:0} (cc-P53)."
+            );
+        }
+
+        ServerConfiguration.SetSetting(RescaledMarkerKey, true);
+        return rewrite;
+    }
+
+    /// <summary>The individual cap in force (read at Configure).</summary>
+    public static double IndividualSkillCap => _individualSkillCap;
+
+    /// <summary>Re-reads the configured caps; for the test host, where Configure's registrations must not repeat.</summary>
+    public static void ReloadForTests()
+    {
+        _enabled = ServerConfiguration.GetOrUpdateSetting("clusterf.skillCaps.enabled", true);
+        _individualSkillCap = ServerConfiguration.GetOrUpdateSetting(IndividualCapKey, DefaultIndividualSkillCap);
+        _totalSkillCap = ServerConfiguration.GetOrUpdateSetting("clusterf.skillCaps.totalCap", 0.0);
+    }
+
+    public static void ApplyTo(PlayerMobile player) => Apply(player);
+
+    public static double TotalSkillCap =>
         _totalSkillCap > 0 ? _totalSkillCap : SkillInfo.Table.Length * _individualSkillCap;
 
     private static int IndividualSkillCapFixedPoint =>

@@ -8,6 +8,10 @@ namespace Server.SkillHandlers
 {
     internal static class Meditation
     {
+        // ClusterF: Meditation (Value, item bonuses included) above which armor no longer blocks meditating. 200 on the
+        // 300 cap, where it could be reached; 150 on the 200 cap (cc-P53), the same point of the range above 100.
+        public const double ArmoredMeditationSkill = 150.0;
+
         public static void Initialize()
         {
             SkillInfo.Table[46].Callback = OnUse;
@@ -62,13 +66,13 @@ namespace Server.SkillHandlers
                 return TimeSpan.FromSeconds(Core.AOS ? 10.0 : 5.0);
             }
 
-            // ClusterF: Armored Meditation — skill > 200 bypasses the armor block.
+            // ClusterF: Armored Meditation — skill above ArmoredMeditationSkill bypasses the armor block.
             // Success chance is penalised by armor weight, providing a harder challenge
-            // that re-opens skill gains past 200. Heavier armor = lower chance = more
+            // that re-opens skill gains past that point. Heavier armor = lower chance = more
             // gain opportunities; no mage-armor property required.
             var armorOffset   = Core.AOS ? RegenRates.GetArmorOffset(m) : 0.0;
             var skillVal      = m.Skills.Meditation.Value;
-            var armoredExpert = armorOffset > 0.0 && skillVal > 200.0;
+            var armoredExpert = armorOffset > 0.0 && skillVal > ArmoredMeditationSkill;
 
             if (Core.AOS && armorOffset > 0 && !armoredExpert)
             {
@@ -107,7 +111,7 @@ namespace Server.SkillHandlers
 
             if (chance > Utility.RandomDouble())
             {
-                // ClusterF: raise gain cap to individual skill cap (supports extended caps 100 → 500)
+                // ClusterF: raise gain cap to the individual skill cap (ClusterFSkillCaps, 200)
                 m.CheckSkill(SkillName.Meditation, 0.0, m.Skills[SkillName.Meditation].Cap);
 
                 if (armoredExpert)

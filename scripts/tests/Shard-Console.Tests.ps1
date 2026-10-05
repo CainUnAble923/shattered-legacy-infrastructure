@@ -737,7 +737,7 @@ Fact 'ATestOnlyCommandSaysSoInItsLine' {
 
 Fact 'RedMeansTestOnlyUnclassifiedOrAPlainRunThatDeletesAndNothingElse' {
     $red = @($groups | ForEach-Object { $_.Items } | Where-Object { $_.Warn } | ForEach-Object { $_.Command }) | Sort-Object -Unique
-    Assert-Equal '[ClearRoyalCityVendors,[ClusterFOldHavenCleanup,[ClusterFSeedResetStone,[ClusterFSeedResetStone dryrun,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red, and a dry run deletes nothing'
+    Assert-Equal '[ClearRoyalCityVendors,[ClusterFDespiseStockCleanup,[ClusterFOldHavenCleanup,[ClusterFSeedResetStone,[ClusterFSeedResetStone dryrun,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red, and a dry run deletes nothing'
 }
 
 Fact 'TheScriptAndItsFactsAreAsciiWithNoBom' {
