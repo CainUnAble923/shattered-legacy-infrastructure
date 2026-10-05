@@ -1,0 +1,16 @@
+--- a/Projects/UOContent/Skills/Stealing.cs
++++ b/Projects/UOContent/Skills/Stealing.cs
+@@ -269,8 +269,12 @@
+                 {
+                     if (toSteal.Stackable && toSteal.Amount > 1)
+                     {
++                        // cc-P57 Part G (bug-list D82): what is taken, a part or the whole pile, weighs no more than
++                        // MaxWeightToSteal, the limit the single-item test above applies. Pinned lets a thief take up to
++                        // Stealing / 10 stones, which is that same 10 at 100 (OSI's top Stealing) but grew with the shard's
++                        // 200 cap: a pile up to 20 stones, a skill window up to 227.5, and so a gain at every skill.
+                         var maxAmount = Math.Clamp(
+-                            (int)(_thief.Skills.Stealing.Value / 10.0 / toSteal.Weight),
++                            (int)(Math.Min(_thief.Skills.Stealing.Value / 10.0, MaxWeightToSteal) / toSteal.Weight),
+                             1,
+                             toSteal.Amount
+                         );

@@ -51,7 +51,16 @@ public class SmithSealCatalogGump : Gump
         "Post-Valorite",
     };
 
-    private record CatalogEntry(string Name, int Cost, Func<Item?> Create, bool ComingSoon = false);
+    // cc-P57 Part A (Chase 2026-10-05, after cc-P56 raised Seal income): every price is its baseline times PriceFactor.
+    // The baseline is the catalog as it stood through cc-P56, kept as written below; the bank's item part is valued at
+    // the baseline (BlacksmithGuildmaster.OsiRungs), not at the price, so raising the price lowers what a Seal buys.
+    // One factor for every line keeps their relations. Notes: shard-migration notes/cc-P57-batch-6.md, Part A.
+    public const int PriceFactor = 3;
+
+    private record CatalogEntry(string Name, int BaseCost, Func<Item?> Create, bool ComingSoon = false)
+    {
+        public int Cost => BaseCost * PriceFactor;
+    }
 
     private static readonly CatalogEntry[][] Catalog =
     {
@@ -107,9 +116,9 @@ public class SmithSealCatalogGump : Gump
         },
     };
 
-    /// <summary>A category's rows as the gump lists them (name, price, coming soon). Read only: for the facts.</summary>
-    internal static (string Name, int Cost, bool ComingSoon)[] Rows(Cat cat) =>
-        System.Array.ConvertAll(Catalog[(int)cat], e => (e.Name, e.Cost, e.ComingSoon));
+    /// <summary>A category's rows as the gump lists them (name, price, coming soon, baseline price). Read only: for the facts.</summary>
+    internal static (string Name, int Cost, bool ComingSoon, int BaseCost)[] Rows(Cat cat) =>
+        System.Array.ConvertAll(Catalog[(int)cat], e => (e.Name, e.Cost, e.ComingSoon, e.BaseCost));
 
     // -- Button IDs ------------------------------------------------------------
     // 0         = close / no-op

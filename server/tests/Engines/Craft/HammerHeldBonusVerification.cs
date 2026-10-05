@@ -357,7 +357,7 @@ public class HammerHeldBonusVerification
                                $"[{string.Join(", ", theirs.Select(e => e.Number))}]");
 
                 var entry = Assert.Single(mine.OfType<HammerFamiliarityEntry>());
-                Assert.Equal(1112530, entry.Number);
+                Assert.Equal(1900002, entry.Number); // "Metal Familiarity", ours since cc-P57 Part D (was 1112530 "Knowledge")
                 Assert.Empty(theirs.OfType<HammerFamiliarityEntry>());
 
                 pm.CloseGump<HammerFamiliarityGump>();

@@ -7,7 +7,8 @@
 // client looks up. Notes: shard-migration notes/cc-P56-smith-economy-and-labels.md, Part C.
 //
 // Facts:
-//   C1. The pack mule's breed entry is 3006132 "Use" (no stock cliloc says "Breed"), not 3006131 "Close".
+//   C1. The pack mule's breed entry is not 3006131 "Close". cc-P56 put it on 3006132 "Use" (no stock cliloc says "Breed");
+//       cc-P57 Part D gave it our own, 1900000 "Breed".
 //   C2. The trash bag's dump entry is 1151316 "Clean Up Britannia", not 3006146 "Talk".
 //   C3. The pet mimic's status entry is 3000132 "Status", not 3006146 "Talk"; its feed entry stays 3006135 "Eat".
 
@@ -105,7 +106,7 @@ public class ContextMenuLabelVerification
             _out.WriteLine($"pack mule: {Show(entries)}");
 
             var breed = Assert.Single(entries, e => e is PackMule.PackMuleBreedEntry);
-            Assert.Equal(3006132, breed.Number); // "Use"
+            Assert.Equal(1900000, breed.Number); // "Breed", ours since cc-P57 Part D (cc-P56: 3006132 "Use")
             Assert.DoesNotContain(entries, e => e.Number == 3006131); // "Close"
         }
         finally

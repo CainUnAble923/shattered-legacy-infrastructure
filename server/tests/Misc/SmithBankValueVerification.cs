@@ -7,8 +7,9 @@
 //
 // Facts:
 //   A1. The ladder the bank's item part reads (BlacksmithGuildmaster.OsiRungs) is pinned's own reward ladder, each rung at
-//       the best value of the items it can give, valued here from the live catalog. A catalog price change that is not
-//       carried into the ladder fails this.
+//       the best value of the items it can give, valued here from the live catalog's baseline prices (cc-P57 Part A: the
+//       price is PriceFactor times the baseline; the bank reads the baseline). A baseline change that is not carried into
+//       the ladder fails this.
 //   A2. Every smith deed shape (small, and the eight large sets; 10, 15 and 20; regular and exceptional; iron, the eight
 //       stock colors and the eight post-Valorite metals: 918 deeds): the bank at the lowest roll of its gold is at least
 //       OSI's value at OSI's highest roll with OSI's best item for that deed, and OSI's value is above cash out's.
@@ -65,10 +66,12 @@ public class SmithBankValueVerification
 
     // ---------------------------------------------------------------- valuation, independent of the server's table
 
+    // cc-P57 Part A: OSI's item is valued at the catalog's baseline price (the price before PriceFactor), the unit the bank
+    // pays in. The price itself is PriceFactor times it.
     private static int Price(SmithSealCatalogGump.Cat cat, string name) =>
-        SmithSealCatalogGump.Rows(cat).Single(r => r.Name == name).Cost;
+        SmithSealCatalogGump.Rows(cat).Single(r => r.Name == name).BaseCost;
 
-    // An OSI reward item's Seal catalog price, or null when the catalog does not sell it.
+    // An OSI reward item's Seal catalog baseline price, or null when the catalog does not sell it.
     private static int? CatalogPrice(Item item) => item switch
     {
         SturdyShovel          => Price(SmithSealCatalogGump.Cat.Tools, "Sturdy Shovel"),
@@ -248,6 +251,7 @@ public class SmithBankValueVerification
         var shapes = 0;
         var tightest = (Name: "", Margin: double.MaxValue);
         var failures = new List<string>();
+        var belowAtPrice = 0;
 
         foreach (var (name, make) in EveryShape())
         {
@@ -258,6 +262,12 @@ public class SmithBankValueVerification
                 var osi = OsiValue(deed, Highest, ladder, out var gold, out var item);
                 var cash = CashOutValue(gold, item);
                 shapes++;
+
+                // cc-P57 Part A, said in the notes, not asserted: with OSI's item valued at the new price instead.
+                if (bank < gold * 3 / 400.0 + item * SmithSealCatalogGump.PriceFactor)
+                {
+                    belowAtPrice++;
+                }
 
                 if (bank < osi)
                 {
@@ -280,7 +290,8 @@ public class SmithBankValueVerification
             }
         }
 
-        _out.WriteLine($"{shapes} deed shapes; tightest margin {tightest.Margin:F2} Seals ({tightest.Name}); failures {failures.Count}");
+        _out.WriteLine($"{shapes} deed shapes; tightest margin {tightest.Margin:F2} Seals ({tightest.Name}); failures {failures.Count}; " +
+                       $"below OSI if its item were valued at the new price (x{SmithSealCatalogGump.PriceFactor}): {belowAtPrice}");
         foreach (var f in failures.Take(20))
         {
             _out.WriteLine(f);

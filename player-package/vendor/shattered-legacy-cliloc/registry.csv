@@ -1,0 +1,8 @@
+# Cliloc registry: our own client text numbers (cc-P57 Part D). Our block is 1900000-1999999: EA's Cliloc.enu uses
+# nothing from 1200000 to 2999999 (counted, cc-P56 Part C). One row per number we use; add rows, never reuse or renumber
+# one. entries.json ships the text; server/customizations/ShardClilocs.cs names the numbers; the package tests hold all
+# three in step.
+number,text,used_by,added
+1900000,Breed,"pack mule context menu, breed (PackMule.PackMuleBreedEntry)",cc-P57
+1900001,Smelt Ore,"ore satchels T2-T5 context menu, smelt (CompactOreSatchel.SmeltOreEntry)",cc-P57
+1900002,Metal Familiarity,"Hammer of Hephaestus context menu (HammerFamiliarityEntry)",cc-P57

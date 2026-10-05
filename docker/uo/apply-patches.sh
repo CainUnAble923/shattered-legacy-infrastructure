@@ -450,6 +450,15 @@ apply_patch "$PATCHES/CraftGump-category-pages.patch"
 # satchel-only check (the forge would still smelt Celestial at 50). Pinned by OreSmeltDifficultyVerification.
 apply_patch "$PATCHES/Ore-smelt-at-forge.patch"
 
+# cc-P57 Part G (bug-list D82). Stealing from a stack: the amount a thief may take was Stealing / 10 stones, so above
+# OSI's top Stealing (100) a part or a whole pile could weigh up to 20 stones, its skill window ran to 227.5, and Stealing
+# gained at every skill up to the 200 cap (and is never caught from 150). One clamp: what is taken weighs no more than
+# MaxWeightToSteal (10), the limit the single-item test already applies; identical to pinned at every Stealing up to 100.
+# Rejected: testing the whole pile's weight before a partial steal (OSI and pinned let a thief take part of a heavy pile),
+# capping the window's numbers (leaves 20-stone piles stealable), a customization (the target class is private, no hook).
+# Argued in shard-migration/notes/cc-P57-batch-6.md, Part G; pinned by StealingStackWeightVerification (proved red).
+apply_patch "$PATCHES/Stealing-stack-weight.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

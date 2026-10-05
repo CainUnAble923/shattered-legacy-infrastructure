@@ -28,6 +28,108 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.05
+
+### Added
+- Society of Smiths members choose what happens to a finished smith deed: always bank it as Smithing Seals, always cash it out, or ask each time. Set it at the guildmaster or in the Smithing Guild Book.
+- Single-click the Hammer of Hephaestus and choose Knowledge to see its Metal Familiarity, anywhere.
+
+### Changed
+- Each skill now caps at 200. Nobody loses skill they already have.
+- Platinum to Celestial now need 112.5 to 200 Blacksmithy, one step of 12.5 per metal, so Celestial can be worked at the 200 cap. Smith orders, commissions and the salvage bag follow the same steps.
+- Platinum to Celestial ore now smelts at the same steps, from 112.5 Mining for Platinum to 200 for Celestial. Mining them still needs 100.
+- Skill bonuses from items and from temporary effects now count above the skill cap: a +15 ring on a capped skill reads 15 over the cap. Skill gain still stops at the cap.
+- Armor no longer stops meditation from 150 Meditation (was 200).
+- Any town blacksmith or weaponsmith now asks whether you want a small or a large bulk order. Large needs 70.1 Blacksmithy.
+- Society of Smiths members are paid the guild's way for smith deeds at every smith, town blacksmiths included.
+- Banking a smith deed with the Society now pays far more Smithing Seals, always at least what a non-member gets from a town smith in gold and reward items.
+- Metal Familiarity on the Hammer of Hephaestus grows more slowly and steadily: up to 1,000 per metal (2,500 on the Reinforced hammer), with an exceptional piece counting 3.
+- The Hammer of Hephaestus gives its Blacksmithy bonus only while you hold it.
+- Achievements now say plainly what earned them, after their usual line.
+- Six skill achievements that needed skill above 200 are retired. If you earned one, you keep it, with its points, in a Retired section.
+- Ore satchels and Jacob's pickaxes are colored by tier, following the ore ladder.
+- Craft menus show material names as "Iron", "Dull Copper" and so on, the same style as the shard's own metals.
+- The smith guild is called the Society of Smiths everywhere.
+- Smelting from an ore satchel now works exactly like the forge (the Reinforced Ore Satchel gave about a quarter of the ingots), the ingots go into the satchel, and the Surveyor's, Deepdelver's and Master Expedition satchels can smelt too.
+
+### Fixed
+- The game now starts on a computer with no OpenGL 2.1 graphics driver: the launcher starts it again with its automatic graphics driver.
+- The smith guild's menus (Seal catalog, Bulk Orders, Commissions, Hammer upgrades, Guild Contracts, Mule Exchange) have a working Back button, and the Seal catalog's note no longer covers its Close button.
+- Blacksmithy and Inscription menus page their categories instead of running into the notices box.
+- Menu labels: satchels no longer say "Salvage Ingots" (the ore satchel says "Smelt"), the trash bag says "Clean Up Britannia", the pet mimic says "Status", and a pack mule's breeding entry says "Use".
+
+### Staff
+- Staff Hub: solid background, long values wrap, Green Acres is in the travel list, and you can jump to the same spot on another facet.
+
+## 2026.10.04
+
+### Added
+- League ranks: seventeen of them, one for each metal from Iron Citizen to Celestial Citizen. The League Registrar's Rank page shows what the next rank needs (lifetime Renown and guild ranks) and promotes you when you have it.
+- Each milestone League rank adds 100 items to your bank box.
+- The Guild Directory shows the League at the top, with your League rank and a "Show me the way" button to the Registrar. The guild welcome page mentions the League too.
+- Raptors hunt in packs: attack one and two more come to its aid. Raptors can also drop ancient pottery fragments.
+
+### Fixed
+- The League Registrar now talks to passers-by.
+- The Guild Directory shows the Miners' Compact's own rank names.
+
+### Staff
+- [SL opens the Staff Hub: every staff command by category with dry runs, a player panel with grants, go to and bring, and travel to shard places and saved spots.
+- [LeagueLadder reload reads the League rank table again. The dev reset's League and Renown options also clear League ranks and lifetime Renown.
+
+## 2026.10.03
+
+### Added
+- The Society of Smiths' Bulk Orders button works from anywhere and lets you choose a small or a large order. Large needs 70.1 Blacksmithy and no guild rank. The Smithing Guild Book does the same.
+- "Orders that still teach me" (on by default): the Society's orders and commissions ask only for items that can still raise your Blacksmithy. Turn it off on the Bulk Orders page.
+- Large smith deeds can be filled with crafted items directly, as well as with small deeds.
+- The wiki has a Macros page: a Mining macro and a Retaliate helper for TazUO, ready to download.
+
+### Changed
+- Society of Smiths bulk orders pay twice the standing. Commissions pay three times the Seals and twice the standing.
+- Runic hammers from Gold up cost more Seals in the catalog.
+- Imbuing Self Repair needs Master Artificer and costs more than any other property.
+- Trammel Despise runs only the revamped dungeon: the old ettins, lizardmen and elementals are gone and its chests stay. Felucca Despise is unchanged.
+- The installer waits for EA's patch to finish instead of stopping.
+
+### Fixed
+- A shrunk pet now stays in its figurine across a logout or a restart, follows you when restored, and counts once toward your followers, even if another player restores it.
+- Possessing a creature with a Wisp Orb no longer leaves you attacking it, and logging out in Despise no longer destroys the orb.
+- You no longer attack your own possessed creature in a fight, and its death no longer costs you karma.
+- Platinum to Celestial smith deeds take only items of their own ore.
+- The Hammer of Hephaestus gains Metal Familiarity when you craft iron without picking a material.
+- The game starts on a computer without Microsoft's Visual C++ runtime.
+
+### Staff
+- The Old Haven cleanup leaves stock spawners and New Haven's own placements alone. A Despise cleanup command removes the old Trammel Despise spawns.
+
+## 2026.10.02
+
+### Added
+- Clean Up Britannia: throw unwanted items in a trash barrel (your house's counts too) for points, and spend them at the Clean Up Britannia store through a Cleanup Officer or the Sanitation Warden.
+- The Fountain of Fortune stands in Ter Mur, with stepping stones out to it.
+
+### Changed
+- The Custodians rank by Clean Up Britannia points. Civic Tokens are retired, Civic Contracts pay gold only, and each character gets one free trash bag.
+- Imbuing takes essences from your pack first, then the Artificers' Essence Satchel, then your bank, and says where they are.
+- Each tree keeps the same wood, so a grove in your logging book always leads back to that wood.
+- Self Repair is now very rare on loot: about 1 in 500 magic weapons and armor from bosses, champions and paragons.
+- The League Registrar's field office has tidier decor.
+
+### Fixed
+- Starwood can be chopped and Celestial ore can be mined. Neither could be found before.
+- Talismans, quivers and the Pet Mimic no longer stack their Strength, Dexterity or Intelligence bonus each time they are put on.
+- Meditation no longer gets harder to start as your Intelligence rises.
+- Extracting a property now lowers an item's current durability along with its maximum.
+- Essences in the Artificers' Essence Satchel can be used to imbue.
+- The Imbuing Table's menu says "Imbue Item" instead of "Salvage Ingots".
+- Cleaning up litter no longer takes a player's corpse.
+
+### Staff
+- [GuildStanding sets a character's guild standing on the test shard.
+- Running the spawner import again no longer removes other spawners that share a tile.
+- [ClusterFPlaceCleanUp places a Cleanup Officer and a barrel; [ClusterFSeedRegistrarOffice replace swaps in the new office decor.
+
 ## 2026.10.01
 
 ### Added

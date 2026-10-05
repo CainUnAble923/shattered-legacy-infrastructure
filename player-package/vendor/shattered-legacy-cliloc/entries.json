@@ -1,0 +1,8 @@
+{
+  "block": { "first": 1900000, "last": 1999999 },
+  "entries": [
+    { "number": 1900000, "text": "Breed" },
+    { "number": 1900001, "text": "Smelt Ore" },
+    { "number": 1900002, "text": "Metal Familiarity" }
+  ]
+}

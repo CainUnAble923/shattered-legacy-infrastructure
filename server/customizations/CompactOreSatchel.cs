@@ -310,10 +310,10 @@ public partial class CompactOreSatchel : Container
     public sealed class SmeltOreEntry : ContextMenuEntry
     {
         /// <summary>
-        /// "Smelt" in the client's Cliloc.enu (EA 7.0.117.0 and ClassicUO's copy alike). No stock cliloc reads
-        /// "Smelt Ore"; the exact words need a client cliloc (cc-P55 notes, Part C).
+        /// "Smelt Ore", our own cliloc, which the player package adds to the client (cc-P57 Part D, ShardClilocs). It was
+        /// 3006143 "Smelt": no stock cliloc reads "Smelt Ore" (cc-P55 notes, Part C).
         /// </summary>
-        public const int Cliloc = 3006143;
+        public const int Cliloc = ShardClilocs.SmeltOre;
 
         public SmeltOreEntry(bool enabled) : base(Cliloc) => Enabled = enabled;
 

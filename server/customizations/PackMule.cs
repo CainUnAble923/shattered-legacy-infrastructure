@@ -230,11 +230,9 @@ namespace Server.Mobiles
         {
             private readonly PackMule _mule;
 
-            // cc-P56 Part C (D79): 6132 = 3006132 "Use". It was 6131, which the client shows as "Close" (3006131), not
-            // "Tame" as this said. No stock cliloc says "Breed" (EA's Cliloc.enu, 124,000 entries), so the label stays on
-            // the nearest honest stock word until a cliloc of our own ships with the client (shard-migration notes
-            // cc-P56-smith-economy-and-labels.md, Part C).
-            public const int Cliloc = 6132;
+            // cc-P56 Part C (D79): 6132 = 3006132 "Use" (6131 showed "Close"); no stock cliloc says "Breed". cc-P57 Part D:
+            // our own cliloc, "Breed", which the player package adds to the client (ShardClilocs).
+            public const int Cliloc = ShardClilocs.Breed;
 
             public PackMuleBreedEntry(PackMule mule) : base(Cliloc, 2)
             {

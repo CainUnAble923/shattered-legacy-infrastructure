@@ -355,8 +355,9 @@ public class RegularSmithBODVerification
         _             => throw new ArgumentException(reward.GetType().Name)
     };
 
+    // cc-P57 Part A: at the catalog's baseline price, the unit the bank pays in (the price is PriceFactor times it).
     private static int Price(SmithSealCatalogGump.Cat cat, string name) =>
-        SmithSealCatalogGump.Rows(cat).Single(r => r.Name == name).Cost;
+        SmithSealCatalogGump.Rows(cat).Single(r => r.Name == name).BaseCost;
 
     [Fact]
     public void BankingPaysMoreThanCashingOut()

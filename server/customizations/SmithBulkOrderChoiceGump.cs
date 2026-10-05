@@ -27,8 +27,13 @@ public class SmithBulkOrderChoiceGump : Gump
     public const int CheckOff = 210;
     public const int CheckOn = 211;
 
-    private const int W = 340;
-    private const int H = 290; // cc-P55 Part H: 50 taller for the turn-in setting
+    // cc-P57 Part E (bug-list D81): 60 wider, so the turn-in hint ("Bank: Seals. Cash out: gold, a chance at an item.", 297
+    // pixels in the client's label font from x 54) ends inside the frame; at 340 it ran 23 pixels past the right edge.
+    public const int W = 400;
+    public const int H = 290; // cc-P55 Part H: 50 taller for the turn-in setting
+
+    /// <summary>cc-P57 Part E: the solid panel tile under the text, as the Staff Hub (cc-P52 Part F, D67).</summary>
+    public const int PanelTile = 2624;
 
     private readonly PlayerMobile _pm;
     private readonly Action<PlayerMobile>? _back;
@@ -47,7 +52,8 @@ public class SmithBulkOrderChoiceGump : Gump
 
         AddPage(0);
         AddBackground(0, 0, W, H, 9270);
-        AddAlphaRegion(8, 8, W - 16, H - 16);
+        // cc-P57 Part E: opaque. The alpha region let the world show through the text.
+        AddImageTiled(8, 8, W - 16, H - 16, PanelTile);
 
         AddLabel(18, 16, 1153, "Society of Smiths - Bulk Order");
         AddImageTiled(10, 38, W - 20, 2, 9304);

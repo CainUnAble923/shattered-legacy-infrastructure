@@ -20,7 +20,8 @@
 //      that teach nothing.
 //   5. The turn-in numbers: standing twice the old, for the five representative orders in the notes. Seals were three
 //      times the old count until cc-P56 Part A (D77), which made the bank pay at least OSI's value for the deed; the
-//      ranges below are the cc-P56 formula's (shard-migration notes/cc-P56-smith-economy-and-labels.md, Part A).
+//      ranges below are the cc-P56 formula's (shard-migration notes/cc-P56-smith-economy-and-labels.md, Part A), with
+//      cc-P57 Part B's post-Valorite item multiplier on the Celestial row.
 
 using System;
 using System.Collections.Generic;
@@ -294,7 +295,8 @@ public class SmithOrdersTeachVerification
         ["Iron small exceptional 20", (Func<Item>)(() => new SmallSmithBOD(0, 20, typeof(RingmailChest), 1025008, 0x13EC, true, BulkMaterialType.None)), 305, 306, 60],
         ["Valorite small exceptional 20", (Func<Item>)(() => new SmallSmithBOD(0, 20, typeof(PlateChest), 1025141, 0x1415, true, BulkMaterialType.Valorite)), 252, 275, 180],
         ["Large Valorite exceptional 20 (plate)", (Func<Item>)(() => LargePlate(BulkMaterialType.Valorite)), 16_688, 17_084, 310],
-        ["Large Celestial exceptional 20 (plate)", (Func<Item>)(() => LargePlate(BulkMaterialType.Celestial)), 23_438, 25_417, 470],
+        // cc-P57 Part B: the Celestial item part (a Valorite runic, 15,000) is x3.0 now, +30,000.
+        ["Large Celestial exceptional 20 (plate)", (Func<Item>)(() => LargePlate(BulkMaterialType.Celestial)), 53_438, 55_417, 470],
     ];
 
     [Theory]

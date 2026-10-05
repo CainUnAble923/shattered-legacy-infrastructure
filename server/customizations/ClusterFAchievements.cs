@@ -1664,7 +1664,8 @@ public class AchievementEarnedGump : Gump
         const int H = 156; // cc-P55 Part F: 20 taller for the Earned line
 
         AddBackground(0, 0, W, H, 9270);
-        AddAlphaRegion(4, 4, W - 8, H - 8);
+        // cc-P57 Part F (D80): opaque, like the achievements list and the Staff Hub (D67).
+        AddImageTiled(4, 4, W - 8, H - 8, AchievementsGump.PanelTile);
 
         // ── Header ────────────────────────────────────────────────────────
         AddImageTiled(4, 4, W - 8, 2, 9304);
@@ -1714,11 +1715,11 @@ public class AchievementEarnedGump : Gump
 /// <summary>
 /// Player-facing achievement records gump. Opened via [achievements.
 ///
-/// Tabs: All | Combat | Skills | Explore | Mining | Craft | Legacy | Quests
+/// Tabs (two even rows, cc-P57 Part F): All | Combat | Skills | Exploration | Mining / Crafting | Legacy | Discovery | Quests
 ///
 /// Achievements tab:
 ///   - Earned achievements listed first (gold, with AP/Renown), then locked (gray).
-///   - Achievements with progress counters show a filled/empty block bar.
+///   - Achievements with progress counters show a "Progress: n/m" line (a block bar until cc-P57).
 ///
 /// Quests tab:
 ///   - All 38 New Haven ML trainer quests with done/pending indicators.
@@ -1730,8 +1731,8 @@ public class AchievementsGump : Gump
     private readonly bool                 _questsTab;
     private readonly int                  _page;
 
-    private const int GumpWidth  = 580;
-    private const int GumpHeight = 510;
+    public const int GumpWidth  = 580;
+    public const int GumpHeight = 510;
     private const int BgGumpId   = 9270;
 
     // Tab button base ID — 100..107 for categories, 108 for quests
@@ -1742,24 +1743,38 @@ public class AchievementsGump : Gump
     private const int PagePrev = 300;
     private const int PageNext = 301;
 
-    // Achievement row layout constants (cc-P55 Part F: 64 high, five to a page, so the Earned line wraps inside the row)
-    private const int RowH        = 64;
-    private const int RowsPerPage = 5;
+    // cc-P57 Part F (bug-list D80, Chase screenshot 2026-10-05): rows were a fixed 64 high, five to a page, and a row
+    // with a wrapped flavor, an Earned line and a progress line ran under the next row's title. Each row now gets the
+    // height its own lines need (ClusterFGumpText, the client's font widths) and a page holds as many rows as fit.
+    public const int PanelTile     = 2624; // the solid tile under the text (cc-P52 Part F, D67), not an alpha region
+    public const int TabY          = 60;
+    public const int TabRowH       = 22;
+    public const int TabColW       = 108; // two even rows of tabs, full words, in fixed columns
+    public const int TabLabelDx    = 34;  // the tab button (4011) is 30 wide
+    public const int ListY         = TabY + 2 * TabRowH + 6;
+    public const int ContentBottom = GumpHeight - 74; // rows end here; the pager sits below, the footer line at H - 40
+    public const int HeaderRowH    = 26;
+    public const int RowGap        = 6;
+    public const int IconH         = 48;
 
     /// <summary>cc-P55 Part G: the heading over the retired achievements a character already holds.</summary>
     public const string RetiredHeader = "-- Retired (No Longer Awarded) --------------------";
 
-    private static readonly (string Label, AchievementCategory? Cat)[] CategoryTabs =
+    // cc-P57 Part F: full words ("Explore", "Craft" and "Discov" were cut to fit one row, and "Discov" was still cut).
+    internal static readonly (string Label, AchievementCategory? Cat)[] CategoryTabs =
     [
-        ("All",    null),
-        ("Combat", AchievementCategory.Combat),
-        ("Skills", AchievementCategory.Skills),
-        ("Explore",AchievementCategory.Exploration),
-        ("Mining", AchievementCategory.Mining),
-        ("Craft",  AchievementCategory.Crafting),
-        ("Legacy", AchievementCategory.Legacy),
-        ("Discov", AchievementCategory.Discovery),
+        ("All",         null),
+        ("Combat",      AchievementCategory.Combat),
+        ("Skills",      AchievementCategory.Skills),
+        ("Exploration", AchievementCategory.Exploration),
+        ("Mining",      AchievementCategory.Mining),
+        ("Crafting",    AchievementCategory.Crafting),
+        ("Legacy",      AchievementCategory.Legacy),
+        ("Discovery",   AchievementCategory.Discovery),
     ];
+
+    /// <summary>Where tab <paramref name="i"/> (0..7 the categories, 8 Quests) sits: five on the first row, four on the second.</summary>
+    internal static (int X, int Y) TabAt(int i) => (14 + i % 5 * TabColW, TabY + i / 5 * TabRowH);
 
     // ── New Haven quest list ──────────────────────────────────────────────
 
@@ -1826,7 +1841,8 @@ public class AchievementsGump : Gump
         var data       = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct) : null;
 
         AddBackground(0, 0, GumpWidth, GumpHeight, BgGumpId);
-        AddAlphaRegion(10, 10, GumpWidth - 20, GumpHeight - 20);
+        // cc-P57 Part F: opaque; the alpha region let the world show through the rows.
+        AddImageTiled(10, 10, GumpWidth - 20, GumpHeight - 20, PanelTile);
 
         // ── Header ────────────────────────────────────────────────────────
         AddLabel(GumpWidth / 2 - 125, 13, 1154, "League of Extraordinary Citizens");
@@ -1836,32 +1852,27 @@ public class AchievementsGump : Gump
         var ap     = data?.AchievementPoints ?? 0;
         var renown = data?.Renown ?? 0;
         var (earned, total) = ClusterFAchievementSystem.ProgressCount(username);
-        AddLabel(GumpWidth - 180, 13, 1154, $"AP: {ap}");
-        AddLabel(GumpWidth - 180, 31, 999,  $"Renown: {renown}   {earned}/{total}");
+        AddLabel(GumpWidth - 200, 13, 1154, $"AP: {ap}");
+        AddLabel(GumpWidth - 200, 31, 999,  $"Renown: {renown}   {earned}/{total}");
 
         AddImageTiled(10, 54, GumpWidth - 20, 2, 9304);
 
-        // ── Tab row — row 1: category tabs ───────────────────────────────
-        const int tabY  = 60;
-        const int tabY2 = tabY + 22; // second row for Quests tab
-        var tabX = 14;
-        for (var i = 0; i < CategoryTabs.Length; i++)
+        // ── Tabs: two even rows in fixed columns, full words (cc-P57 Part F) ──
+        // The labels sat at button + 18 over a 30-wide button and were cut to fit one row.
+        for (var i = 0; i <= CategoryTabs.Length; i++)
         {
-            var (label, cat) = CategoryTabs[i];
-            var isActive = !questsTab && cat == filter;
-            AddButton(tabX, tabY, 4011, 4012, TabBase + i);
-            AddLabel(tabX + 18, tabY + 2, isActive ? 1154 : 999, label);
-            tabX += label.Length * 8 + 22;
+            var (x, y) = TabAt(i);
+            var isQuests = i == CategoryTabs.Length;
+            var label = isQuests ? "Quests" : CategoryTabs[i].Label;
+            var isActive = isQuests ? questsTab : !questsTab && CategoryTabs[i].Cat == filter;
+            AddButton(x, y, 4011, 4012, isQuests ? TabQuests : TabBase + i);
+            AddLabel(x + TabLabelDx, y + 2, isActive ? 1154 : 999, label);
         }
 
-        // ── Tab row — row 2: Quests tab ───────────────────────────────────
-        AddButton(14, tabY2, 4011, 4012, TabQuests);
-        AddLabel(14 + 18, tabY2 + 2, questsTab ? 1154 : 999, "Quests");
-
-        AddImageTiled(10, tabY2 + 22, GumpWidth - 20, 2, 9304);
+        AddImageTiled(10, ListY - 6, GumpWidth - 20, 2, 9304);
 
         // ── Content area ─────────────────────────────────────────────────
-        const int listY = tabY2 + 28;
+        const int listY = ListY;
         const int listH = GumpHeight - listY - 46;
 
         if (questsTab)
@@ -1885,10 +1896,6 @@ public class AchievementsGump : Gump
     private void AddAchievementContent(int listY, int listH,
         AchievementCategory? filter, string username, IReadOnlyCollection<string> earnedKeys)
     {
-        const int IconX       = 14;
-        const int TextXIcon   = 56; // text X when icon is present
-        const int TextXNoIcon = 14; // text X when no icon
-
         var allDefs  = ClusterFAchievementSystem.Definitions.Values;
         var filtered = (filter.HasValue
             ? allDefs.Where(d => d.Category == filter.Value)
@@ -1903,19 +1910,20 @@ public class AchievementsGump : Gump
         // A retired achievement this account already holds is kept, listed last under its own heading.
         var retiredList = filtered.Where(d => earnedKeys.Contains(d.Key) && d.Retired).ToList();
 
-        // Build a flat list of rows; section-header rows + achievement rows interleaved.
+        // Build a flat list of rows; section-header rows + achievement rows interleaved. cc-P57 Part F: ASCII headings
+        // (the box-drawing dashes were 16 pixels each and ran the heading past the frame).
         var rows = new List<PageRow>();
 
         if (filtered.Count > 0)
         {
             if (earnedList.Count > 0)
             {
-                rows.Add(new PageRow("━━ The System Has Recorded These ━━━━━━━━━━━━━━━━━━", null, false));
+                rows.Add(new PageRow(EarnedHeader, null, false));
                 foreach (var d in earnedList) rows.Add(new PageRow(null, d, true));
             }
             if (lockedList.Count > 0)
             {
-                rows.Add(new PageRow("━━ Not Yet (The System Is Watching) ━━━━━━━━━━━━━━", null, false));
+                rows.Add(new PageRow(LockedHeader, null, false));
                 foreach (var d in lockedList) rows.Add(new PageRow(null, d, false));
             }
             if (retiredList.Count > 0)
@@ -1931,113 +1939,161 @@ public class AchievementsGump : Gump
             return;
         }
 
-        var totalPages = (rows.Count + RowsPerPage - 1) / RowsPerPage;
-        var page       = Math.Clamp(_page, 0, totalPages - 1);
-        var pageStart  = page * RowsPerPage;
-        var pageEnd    = Math.Min(pageStart + RowsPerPage, rows.Count);
+        // cc-P57 Part F: each row as tall as its own lines, and a page holds the rows that fit above ContentBottom.
+        var heights = rows.Select(r => RowHeight(r, username)).ToList();
+        var pages   = Paginate(heights, ContentBottom - listY);
+        var page    = Math.Clamp(_page, 0, pages.Count - 1);
+        var (pageStart, pageEnd) = pages[page];
 
+        var rowY = listY;
         for (var i = pageStart; i < pageEnd; i++)
         {
-            var rowY = listY + (i - pageStart) * RowH;
-            var row  = rows[i];
+            var row = rows[i];
 
             if (row.Header != null)
             {
                 // ── Section divider row ──────────────────────────────────
                 AddLabel(16, rowY + 4, 0x777, row.Header);
-                AddImageTiled(16, rowY + 20, GumpWidth - 32, 2, 9304);
+                AddImageTiled(16, rowY + 22, GumpWidth - 32, 2, 9304);
             }
             else if (row.Def != null)
             {
                 // ── Achievement row ──────────────────────────────────────
                 var def   = row.Def;
-                var textX = def.ItemGumpId > 0 ? TextXIcon : TextXNoIcon;
-                var textW = GumpWidth - textX - 16;
+                var lines = RowLines(def, row.Earned, username);
+                var textX = TextX(def);
 
                 if (def.ItemGumpId > 0)
                     AddItem(IconX, rowY + 4, def.ItemGumpId);
 
-                AddHtml(textX, rowY + 2, textW, RowH - 4,
-                    BuildRowHtml(def, row.Earned, username), false, false);
+                AddHtml(textX, rowY + 2, GumpWidth - textX - 16, HtmlHeight(lines, def), RowHtml(lines), false, false);
             }
+
+            rowY += heights[i];
         }
 
         // ── Pagination controls ──────────────────────────────────────────
-        if (totalPages > 1)
+        if (pages.Count > 1)
         {
-            var btnY = listY + RowsPerPage * RowH + 6;
+            var btnY = ContentBottom + 4;
 
             if (page > 0)
             {
                 AddButton(GumpWidth / 2 - 90, btnY, 4011, 4012, PagePrev);
-                AddLabel(GumpWidth / 2 - 72, btnY + 2, 999, "< Prev");
+                AddLabel(GumpWidth / 2 - 56, btnY + 2, 999, "< Prev");
             }
 
-            AddLabel(GumpWidth / 2 - 18, btnY + 2, 999, $"{page + 1}/{totalPages}");
+            AddLabel(GumpWidth / 2 - 18, btnY + 2, 999, $"{page + 1}/{pages.Count}");
 
-            if (page < totalPages - 1)
+            if (page < pages.Count - 1)
             {
-                AddButton(GumpWidth / 2 + 20, btnY, 4011, 4012, PageNext);
-                AddLabel(GumpWidth / 2 + 38, btnY + 2, 999, "Next >");
+                AddButton(GumpWidth / 2 + 30, btnY, 4011, 4012, PageNext);
+                AddLabel(GumpWidth / 2 + 64, btnY + 2, 999, "Next >");
             }
         }
     }
 
-    /// <summary>Builds the HTML content for a single achievement row (no scroll, fixed height).</summary>
-    private static string BuildRowHtml(AchievementDef def, bool earned, string username)
+    public const string EarnedHeader = "-- The System Has Recorded These --";
+    public const string LockedHeader = "-- Not Yet (The System Is Watching) --";
+
+    private const int IconX       = 14;
+    // cc-P57 Part F: the icons are at most 50 wide and 44 tall (EA art, read 2026-10-05: 0x1B76 is 50 x 44), so text
+    // starts clear of them at 68 (it started at 56) and a row is at least IconH tall.
+    private const int TextXIcon   = 68; // text X when icon is present
+    private const int TextXNoIcon = 14; // text X when no icon
+
+    private static int TextX(AchievementDef def) => def.ItemGumpId > 0 ? TextXIcon : TextXNoIcon;
+
+    // A row's lines, each a list of (color, text) runs. The HTML and the measure are both made from this, so they agree.
+    private static List<List<(string Color, string Text)>> RowLines(AchievementDef def, bool earned, string username)
     {
-        var sb = new StringBuilder();
+        var lines = new List<List<(string, string)>>();
 
         if (earned)
         {
-            var secretTag = def.Hidden ? "<BASEFONT COLOR=#886633> [Secret]</BASEFONT>" : "";
-            sb.Append($"<BASEFONT COLOR=#FFD700>{def.Title}</BASEFONT>{secretTag}");
-            sb.Append($"<BASEFONT COLOR=#6699BB> [{def.AP} AP / {def.Renown} R]</BASEFONT><BR>");
+            var title = new List<(string, string)> { ("#FFD700", def.Title) };
+            if (def.Hidden)
+                title.Add(("#886633", " [Secret]"));
+            title.Add(("#6699BB", $" [{def.AP} AP / {def.Renown} R]"));
+            lines.Add(title);
 
             if (!string.IsNullOrWhiteSpace(def.FlavorText))
-                sb.Append($"<BASEFONT COLOR=#4A7070>\"{def.FlavorText}\"</BASEFONT>");
+                lines.Add([("#4A7070", $"\"{def.FlavorText}\"")]);
             else
-                sb.Append($"<BASEFONT COLOR=#888888>{def.Description}</BASEFONT>");
+                lines.Add([("#888888", def.Description)]);
 
-            // cc-P55 Part F: what earned it, in plain words, from the achievement's own trigger.
-            sb.Append($" <BASEFONT COLOR=#6A8A6A>{def.EarnedLine}</BASEFONT>");
-
+            // cc-P55 Part F: what earned it, in plain words, from the achievement's own trigger; its own line (cc-P57).
+            var earnedLine = new List<(string, string)> { ("#6A8A6A", def.EarnedLine) };
             if (def.RewardItems.Length > 0)
-                sb.Append($"<BASEFONT COLOR=#558855> (+{def.RewardItems.Length} item)</BASEFONT>");
+                earnedLine.Add(("#558855", $" (+{def.RewardItems.Length} item)"));
+            lines.Add(earnedLine);
         }
         else
         {
-            sb.Append($"<BASEFONT COLOR=#555555>{def.Title}</BASEFONT>");
-            sb.Append($"<BASEFONT COLOR=#2A4455> [{def.AP} AP / {def.Renown} R]</BASEFONT><BR>");
+            lines.Add([("#777777", def.Title), ("#4A6A80", $" [{def.AP} AP / {def.Renown} R]")]);
+            lines.Add([("#8A8A8A", def.Description)]);
 
+            // cc-P57 Part F: the prerequisite on its own line, as a plain sentence, under the description.
             var playerEarned = ClusterFAchievementSystem.GetEarnedKeys(username);
-            var defs         = ClusterFAchievementSystem.Definitions;
             if (def.PrerequisiteKey != null
                 && !playerEarned.Contains(def.PrerequisiteKey)
-                && defs.TryGetValue(def.PrerequisiteKey, out var prereqDef))
+                && ClusterFAchievementSystem.Definitions.TryGetValue(def.PrerequisiteKey, out var prereqDef))
             {
-                sb.Append($"<BASEFONT COLOR=#553333>Requires: {prereqDef.Title}</BASEFONT>");
-            }
-            else
-            {
-                sb.Append($"<BASEFONT COLOR=#3A3A3A>{def.Description}</BASEFONT>");
+                lines.Add([("#AA6666", $"Requires: {prereqDef.Title}")]);
             }
         }
 
-        // Progress bar (third line — only renders if row is tall enough)
+        // Progress, as words (cc-P57 Part F: the block bar's empty cells had no glyph in the client's font).
         if (def.ProgressCounter != null && def.ProgressThreshold > 0)
         {
-            var count    = ClusterFAchievementSystem.GetCounter(username, def.ProgressCounter);
-            var clamped  = Math.Min(count, def.ProgressThreshold);
-            var filled   = (int)(clamped * 12.0 / def.ProgressThreshold);
-            var bar      = new string('█', filled) + new string('░', 12 - filled);
-            var barColor = earned ? "#FFD700" : "#5A5A5A";
-            var txtColor = earned ? "#AAAAAA" : "#444444";
-            sb.Append($"<BR><BASEFONT COLOR={barColor}>{bar}</BASEFONT>");
-            sb.Append($"<BASEFONT COLOR={txtColor}> {count:N0}/{def.ProgressThreshold:N0}</BASEFONT>");
+            var count = ClusterFAchievementSystem.GetCounter(username, def.ProgressCounter);
+            lines.Add([(earned ? "#AAAAAA" : "#7A7A7A", $"Progress: {count:N0}/{def.ProgressThreshold:N0}")]);
         }
 
-        return sb.ToString();
+        return lines;
+    }
+
+    private static string RowHtml(List<List<(string Color, string Text)>> lines) =>
+        string.Join("<BR>", lines.Select(l => string.Concat(l.Select(r => $"<BASEFONT COLOR={r.Color}>{r.Text}</BASEFONT>"))));
+
+    /// <summary>The row's text as the client lays it out: runs joined, lines split by '\n'.</summary>
+    internal static string RowPlainText(AchievementDef def, bool earned, string username) =>
+        string.Join("\n", RowLines(def, earned, username).Select(l => string.Concat(l.Select(r => r.Text))));
+
+    // The measure wraps 8 pixels short of the block's width, so a rounding difference in the client never adds a line.
+    private static int HtmlHeight(List<List<(string Color, string Text)>> lines, AchievementDef def) =>
+        ClusterFGumpText.Lines(string.Join("\n", lines.Select(l => string.Concat(l.Select(r => r.Text)))),
+            GumpWidth - TextX(def) - 16 - 8) * ClusterFGumpText.LineHeight + 4;
+
+    private static int RowHeight(PageRow row, string username)
+    {
+        if (row.Def == null)
+            return HeaderRowH;
+
+        var html = HtmlHeight(RowLines(row.Def, row.Earned, username), row.Def);
+        return Math.Max(html + 2, row.Def.ItemGumpId > 0 ? IconH : 0) + RowGap;
+    }
+
+    /// <summary>Pages of whole rows, each page's rows fitting in <paramref name="room"/>; a page always takes one row.</summary>
+    internal static List<(int Start, int End)> Paginate(IReadOnlyList<int> heights, int room)
+    {
+        var pages = new List<(int, int)>();
+        var start = 0;
+        while (start < heights.Count)
+        {
+            var end = start;
+            var used = 0;
+            while (end < heights.Count && (end == start || used + heights[end] <= room))
+            {
+                used += heights[end];
+                end++;
+            }
+
+            pages.Add((start, end));
+            start = end;
+        }
+
+        return pages;
     }
 
     // ── Quest list ────────────────────────────────────────────────────────
@@ -2050,7 +2106,7 @@ public class AchievementsGump : Gump
         var doneCount  = 0;
         var totalCount = NewHavenQuests.Length;
 
-        sb.Append("<BASEFONT COLOR=#888888>━━ New Haven Trainer Quests ━━━━━━━━━━━━━━</BASEFONT><BR>");
+        sb.Append("<BASEFONT COLOR=#888888>-- New Haven Trainer Quests --</BASEFONT><BR>");
 
         foreach (var (questType, title) in NewHavenQuests)
         {
@@ -2059,7 +2115,7 @@ public class AchievementsGump : Gump
 
             if (done)
             {
-                sb.Append($"<BASEFONT COLOR=#FFD700>[✓] {title}</BASEFONT><BR>");
+                sb.Append($"<BASEFONT COLOR=#FFD700>[x] {title}</BASEFONT><BR>"); // cc-P57 Part F: ASCII (no check-mark glyph in the font)
             }
             else
             {

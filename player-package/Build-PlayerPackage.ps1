@@ -14,6 +14,10 @@
                                and our tiledata and animdata records (records.json, shipped as
                                app\art-records.json; Play.ps1 writes them into copies of the
                                player's own files). See its SOURCE.txt and registry.csv.
+      vendor\shattered-legacy-cliloc\   our own client text (cc-P57): entries.json, shipped as
+                               app\cliloc-entries.json; Play.ps1 adds them to a copy of the player's
+                               own Cliloc.enu. registry.csv holds our number block. Checked by the
+                               cliloc gate, before staging and again in the zip (gate 4).
       vendor\vc-runtime\       Microsoft's vcruntime140.dll, which TazUO's zlib.dll needs,
                                into app\tazuo\ (cc-P35). See its SOURCE.txt.
   clean-test\ (the Windows Sandbox kit) is never staged; gate 4 proves none of it ships.
@@ -89,6 +93,39 @@ $fmtMaxX = 1280; $fmtMaxY = 720
 $slArt      = Join-Path $PSScriptRoot 'vendor\shattered-legacy-art'
 $slRegistry = @(Get-Content -LiteralPath (Join-Path $slArt 'registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
 $slIds      = @($slRegistry | ForEach-Object { [int]$_.id })
+# Our own client text (cc-P57 Part D). The cliloc gate: entries.json is plain ASCII (no BOM, every
+# byte printable or a line break), parses, and every entry has a number in our block, a non-empty
+# printable ASCII text, no number twice, and a row of registry.csv with the same text. Run on the
+# vendored file before staging and on app/cliloc-entries.json in the finished zip.
+$slCliloc = Join-Path $PSScriptRoot 'vendor\shattered-legacy-cliloc'
+$slClilocRegistry = @(Get-Content -LiteralPath (Join-Path $slCliloc 'registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+function Test-ClilocEntries([byte[]]$bytes, [string]$what) {
+    $fail = @()
+    $odd = @($bytes | Where-Object { ($_ -lt 32 -and $_ -ne 9 -and $_ -ne 10 -and $_ -ne 13) -or $_ -gt 126 })
+    if ($odd.Count) { return @("$what is not plain ASCII ($($odd.Count) other bytes, the first 0x$('{0:X2}' -f $odd[0]))") }
+    try { $j = [Text.Encoding]::ASCII.GetString($bytes) | ConvertFrom-Json } catch { return @("$what does not parse: $($_.Exception.Message)") }
+    if ([int]$j.block.first -ne 1900000 -or [int]$j.block.last -ne 1999999) { $fail += "$what names the block $($j.block.first)-$($j.block.last), not 1900000-1999999 (registry.csv)" }
+    $seen = @{}
+    $entries = @($j.entries)
+    if ($entries.Count -eq 0) { $fail += "$what has no entries" }
+    foreach ($e in $entries) {
+        $n = $e.number -as [int]; $text = "$($e.text)"
+        if ($null -eq $n -or $n -lt 1900000 -or $n -gt 1999999) { $fail += "$what has number '$($e.number)', outside our block 1900000-1999999"; continue }
+        if ($seen.ContainsKey($n)) { $fail += "$what has $n twice" }
+        $seen[$n] = $true
+        if (-not $text -or $text -cnotmatch '^[\x20-\x7E]+$') { $fail += "$what has an empty or non-printable text for $n" }
+        $row = @($slClilocRegistry | Where-Object { [int]$_.number -eq $n })
+        if ($row.Count -ne 1) { $fail += "$what has $n, which registry.csv does not list once" }
+        elseif ($row[0].text -cne $text) { $fail += "$what says '$text' for $n, registry.csv says '$($row[0].text)'" }
+    }
+    return $fail
+}
+function Read-ZipBytes($entry) {
+    $ms = New-Object IO.MemoryStream
+    $s = $entry.Open()
+    try { $s.CopyTo($ms) } finally { $s.Dispose() }
+    return ,$ms.ToArray()
+}
 # The EA files' names, for gate 4. The shard's own copy of the client data by default.
 if (-not $UoData) { $UoData = Join-Path (Split-Path $PSScriptRoot -Parent) 'client-data\classic-client' }
 if (-not (Test-Path -LiteralPath (Join-Path $UoData 'tiledata.mul'))) { throw "No EA client data in $UoData (-UoData): gate 4 needs its file names to prove none ships." }
@@ -153,6 +190,10 @@ function Test-PackageZip([string]$path) {
                 }
             } catch { $fail += "app/art-records.json does not parse: $($_.Exception.Message)" }
         }
+
+        # Our own client text (cc-P57 Part D): the cliloc gate on what shipped.
+        $ce = $rel['app/cliloc-entries.json']
+        if (-not $ce) { $fail += 'no app/cliloc-entries.json' } else { $fail += @(Test-ClilocEntries (Read-ZipBytes $ce) 'app/cliloc-entries.json') }
 
         # Nothing of EA's: no EA data file by type or by name, nothing made from one (cc-P26).
         foreach ($n in $names) {
@@ -474,6 +515,12 @@ if (Test-Path -LiteralPath $slArtOut) {
 New-Item -ItemType Directory -Path $slArtOut -Force | Out-Null
 foreach ($f in $slPngs) { $vendored += ,@($f.FullName, (Join-Path $slArtOut $f.Name)) }
 $vendored += ,@((Join-Path $slArt 'records.json'), (Join-Path $stage 'app\art-records.json'))
+
+# --- our own client text (cc-P57 Part D) ----------------------------------------------------
+# entries.json as app\cliloc-entries.json, after the cliloc gate. Checked byte for byte in gate 3.
+$clilocFail = @(Test-ClilocEntries ([IO.File]::ReadAllBytes((Join-Path $slCliloc 'entries.json'))) 'vendor\shattered-legacy-cliloc\entries.json')
+if ($clilocFail.Count) { throw "CLILOC GATE: $($clilocFail -join '; '). Not building." }
+$vendored += ,@((Join-Path $slCliloc 'entries.json'), (Join-Path $stage 'app\cliloc-entries.json'))
 
 # --- Visual C++ runtime (cc-P35) -----------------------------------------------------------
 # TazUO's zlib.dll imports VCRUNTIME140.dll, which Windows does not have, and TazUO loads

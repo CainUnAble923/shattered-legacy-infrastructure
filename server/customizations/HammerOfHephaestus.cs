@@ -918,15 +918,16 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
 // -----------------------------------------------------------------------------
 // HammerFamiliarityEntry - cc-P52 Part B (bug-list D60): the single-click (context)
 // menu entry that opens the Metal Familiarity panel anywhere, on both hammers, for
-// the character carrying the hammer (in hand or in their pack). Cliloc 1112530 reads
-// "Knowledge" in the client's Cliloc.enu; no cliloc names Metal Familiarity. Numbers
+// the character carrying the hammer (in hand or in their pack). It sent 1112530
+// "Knowledge" until cc-P57 Part D: no stock cliloc names Metal Familiarity, so it is
+// our own now, added to the client by the player package (ShardClilocs). Numbers
 // above 0x7FFF are sent as they are (pinned ContextMenuEntry.cs:39-48) and switch the
 // menu to the newer packet (ContextMenu.cs:51-54).
 // -----------------------------------------------------------------------------
 
 public class HammerFamiliarityEntry : ContextMenuEntry
 {
-    public const int Cliloc = 1112530; // "Knowledge"
+    public const int Cliloc = ShardClilocs.MetalFamiliarity; // "Metal Familiarity", ours (was 1112530 "Knowledge")
 
     public HammerFamiliarityEntry() : base(Cliloc)
     {

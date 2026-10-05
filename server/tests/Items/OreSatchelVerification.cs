@@ -272,7 +272,7 @@ public class OreSatchelVerification
         var lumber = new SeasonedLumberSatchel.ProcessAllLogsEntry(true);
         _out.WriteLine($"ore satchel {ore.Number}, lumber satchel {lumber.Number}");
 
-        Assert.Equal(3006143, ore.Number);     // "Smelt"
+        Assert.Equal(1900001, ore.Number);     // "Smelt Ore", ours since cc-P57 Part D (was 3006143 "Smelt")
         Assert.Equal(1158775, lumber.Number);  // "* Magically Chops Logs into Boards *"
         Assert.NotEqual(3006277, ore.Number);  // "Salvage Ingots"
         Assert.NotEqual(3006277, lumber.Number);

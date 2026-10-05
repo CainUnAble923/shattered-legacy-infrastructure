@@ -26,7 +26,7 @@ namespace Server;
 ///   Vanilla ore vein weights total 1000 (Iron 496 through Valorite 14).
 ///   Extended ores add 36 total weight, making the new pool 1036.
 ///   Extended ore combined probability ≈ 3.5%; Celestial ≈ 0.1%.
-///   All require GM Mining (100.0 skill) to attempt.
+///   Each needs its metal's tier in Mining (ClusterFMetalTiers, cc-P57 Part C), as the stock colors need their own.
 ///
 /// Felucca yield (+100%):
 ///   Already implemented by vanilla Mining.cs: ConsumedPerFeluccaHarvest = 2.
@@ -60,7 +60,7 @@ public static class ClusterFMiningExtension
     /// Appends extended ore HarvestResources and HarvestVeins to Mining.System.OreAndStone.
     ///
     /// Skill ranges follow the vanilla pattern: reqSkill/minSkill/maxSkill.
-    /// All extended ores require 100.0 minimum skill (GM Mining).
+    /// Each extended ore requires its metal's tier (cc-P57 Part C; 100.0 for all of them until then).
     /// Message parameter reuses cliloc 1007072 (generic "You mine some ore.").
     /// </summary>
     private static void ExtendMiningVeins()
@@ -91,18 +91,23 @@ public static class ClusterFMiningExtension
     /// </summary>
     public static int ApplyExtendedVeins(HarvestDefinition def)
     {
-        // Extended ore HarvestResources
-        // reqSkill/minSkill/maxSkill: all require GM Mining (100.0 req) with increasing curves.
+        // Extended ore HarvestResources.
+        // cc-P57 Part C (Chase 2026-10-05): like OSI's metals. Stock lines up harvest and smelt: each colored ore's reqSkill
+        // is its forge difficulty (pinned Engines/Harvest/Mining.cs:115-187, Dull Copper 65 .. Valorite 99, against
+        // Items/Resources/Blacksmithing/Ore.cs:168-179, the same numbers) and its window is reqSkill - 40 to reqSkill + 40.
+        // So each post-Valorite ore needs its metal's tier (ClusterFMetalTiers, the smelt difficulty since cc-P56 Part B)
+        // with the same window. Below the tier a miner gets the vein's fallback, iron, as stock (HarvestSystem.MutateResource).
+        // Until cc-P57 every one of these needed 100 Mining.
         var extResources = new HarvestResource[]
         {
-            new(100.0, 65.0, 140.0, 1007072, typeof(PlatinumOre)),   // Platinum
-            new(100.0, 68.0, 142.0, 1007072, typeof(ToxicOre)),      // Toxic
-            new(100.0, 70.0, 144.0, 1007072, typeof(BlazeOre)),      // Blaze
-            new(100.0, 72.0, 146.0, 1007072, typeof(FrostOre)),      // Frost
-            new(100.0, 74.0, 148.0, 1007072, typeof(ObsidianOre)),   // Obsidian
-            new(100.0, 76.0, 150.0, 1007072, typeof(MythrilOre)),    // Mythril
-            new(100.0, 78.0, 152.0, 1007072, typeof(AdamantiumOre)), // Adamantium
-            new(100.0, 80.0, 155.0, 1007072, typeof(CelestialOre))  // Celestial
+            Ore(ClusterFMetalTiers.Platinum, typeof(PlatinumOre)),
+            Ore(ClusterFMetalTiers.Toxic, typeof(ToxicOre)),
+            Ore(ClusterFMetalTiers.Blaze, typeof(BlazeOre)),
+            Ore(ClusterFMetalTiers.Frost, typeof(FrostOre)),
+            Ore(ClusterFMetalTiers.Obsidian, typeof(ObsidianOre)),
+            Ore(ClusterFMetalTiers.Mythril, typeof(MythrilOre)),
+            Ore(ClusterFMetalTiers.Adamantium, typeof(AdamantiumOre)),
+            Ore(ClusterFMetalTiers.Celestial, typeof(CelestialOre))
         };
 
         // Combine existing resources with extended ones
@@ -144,6 +149,12 @@ public static class ClusterFMiningExtension
 
         return extVeins.Length;
     }
+
+    /// <summary>cc-P57 Part C: stock's pattern for a colored ore: required = the tier, window tier - 40 to tier + 40.</summary>
+    public const double HarvestWindow = 40.0;
+
+    private static HarvestResource Ore(double tier, Type ore) =>
+        new(tier, tier - HarvestWindow, tier + HarvestWindow, 1007072, ore);
 
     // ── Blacksmithy sub-resource extension ────────────────────────────────────
 

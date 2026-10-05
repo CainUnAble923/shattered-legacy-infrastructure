@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using Server;
 using Server.Accounting;
+using Server.Collections;
+using Server.ContextMenus;
 using Server.Engines.BulkOrders;
+using Server.Systems.FeatureFlags;
 using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
@@ -69,6 +72,21 @@ public partial class BlacksmithGuildmaster
         if (from is not PlayerMobile pm) return false;
         if (pm.Account is not IAccount acct) return false;
         return ClusterFGuildSystem.IsJoined(pm, "smithing");
+    }
+
+    // cc-P57 Part E (bug-list D81, Chase 2026-10-05): the single-click "Bulk Order Info" (stock BulkOrderInfoEntry, pinned
+    // BaseVendor.cs:1330-1332, which calls CreateBulkOrder and so handed out a deed directly) opens the Small/Large choice,
+    // as the guild page's button does and as cc-P55 Part H made regular smiths do. Same entry place and number (3006152).
+    public override void AddCustomContextEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
+    {
+        base.AddCustomContextEntries(from, ref list);
+        for (var i = 0; i < list.Count; i++)
+        {
+            if (list[i].Number == GuildmasterBulkOrderEntry.Cliloc && list[i] is not GuildmasterBulkOrderEntry)
+            {
+                list[i] = new GuildmasterBulkOrderEntry();
+            }
+        }
     }
 
     // No cooldown - generation is throttled by the active-BOD cap instead.
@@ -296,12 +314,19 @@ public partial class BlacksmithGuildmaster
     // Post-Valorite deeds: pinned's tables stop at Valorite, so OSI pays a non-member iron's gold and an item with no
     // material points. The gold part is the larger of that and the Valorite-equivalent gold times PostValoriteMultiplier
     // (the multipliers and what they multiply are unchanged since cc-P42); the item part is the larger of the deed's own
-    // rung and the same deed's rung in Valorite. The item part is not multiplied: OSI's ladder has nothing above a
+    // rung and the same deed's rung in Valorite. Until cc-P57 the item part was not multiplied: OSI's ladder has nothing above a
     // Valorite runic, and multiplying it would make one large Celestial exceptional deed worth five Valorite runics
     // (cc-P46 Part E raised the runic prices against exactly that).
     //
-    // Representative values at the middle of the gold roll (Seals; before cc-P56 in brackets; OSI = what a non-member
-    // gets, valued the same way):
+    // cc-P57 Part A (Chase 2026-10-05): the catalog's prices are three times their baseline (SmithSealCatalogGump.
+    // PriceFactor), and the item part stays at the baseline: OsiRungSeals below are the cc-P56 prices, constants, so a
+    // price rise lowers what a banked Seal buys. Bank >= OSI holds with OSI's item valued at the same baseline.
+    // cc-P57 Part B (Chase 2026-10-05): a post-Valorite deed's item part scales with the metal at half the gold
+    // multiplier's step, ItemMultiplier = 1 + (PostValoriteMultiplier - 1) / 2 (Platinum x1.25 .. Celestial x3.0).
+    //
+    // Representative values at the middle of the gold roll as cc-P56 left them (Seals; before cc-P56 in brackets; OSI =
+    // what a non-member gets, valued the same way). cc-P57 Part B raises the post-Valorite rows; its table is in the
+    // cc-P57 notes:
     //   Iron small regular   qty10          ->     52 (3)       OSI 51
     //   Iron small exc       qty20          ->    305 (3)       OSI 304
     //   Valorite small exc   qty20          ->    263 (90)      OSI 240
@@ -323,10 +348,11 @@ public partial class BlacksmithGuildmaster
         Math.Max(1, (int)Math.Ceiling(gold * BankGoldShare * SealMultiplier / SealDivisor));
 
     // OSI's smith reward ladder (pinned Rewards.cs, SmithRewardCalculator's Groups: the points each rung needs), each rung
-    // valued at the best item it can give, at the Seal catalog's price (SmithSealCatalogGump). An item the catalog does not
+    // valued at the best item it can give, at the Seal catalog's baseline price (SmithSealCatalogGump BaseCost; cc-P57:
+    // not the price, which is PriceFactor times it). An item the catalog does not
     // sell (mining gloves +1, the colored anvil, the 105 to 120 power scrolls) is valued at the midpoint of the best priced
     // item on the nearest priced rung below and above its own, as cc-P55 Part H valued the 115 scroll. Checked against the
-    // live ladder and catalog by SmithBankValueVerification, so a price change not carried here fails the build.
+    // live ladder and catalog baseline by SmithBankValueVerification, so a baseline change not carried here fails the build.
     private static readonly (int Points, int Seals)[] OsiRungSeals =
     {
         (0, 50),       // Sturdy Shovel
@@ -386,6 +412,9 @@ public partial class BlacksmithGuildmaster
         _ => 1.0,
     };
 
+    /// <summary>cc-P57 Part B: the item part's multiplier, half the gold multiplier's step (1.0 below Platinum).</summary>
+    internal static double ItemMultiplier(BulkMaterialType mat) => 1.0 + (PostValoriteMultiplier(mat) - 1.0) / 2.0;
+
     private static bool IsPostValorite(BulkMaterialType mat) => (int)mat >= 12;
 
     // For post-Valorite BODs, ComputeGold() returns iron-level gold because the vanilla gold table only covers
@@ -413,15 +442,20 @@ public partial class BlacksmithGuildmaster
         return Math.Max(large.ComputeGold(), (int)(valGold * PostValoriteMultiplier(large.Material)));
     }
 
-    /// <summary>The bank's item part: the best item OSI gives for this deed (post-Valorite: or for it in Valorite), in Seals.</summary>
+    /// <summary>
+    /// The bank's item part: the best item OSI gives for this deed, in baseline Seals. Post-Valorite: the larger of that
+    /// and the same deed's in Valorite, times ItemMultiplier (cc-P57 Part B), rounded up.
+    /// </summary>
     internal static int ItemSealsForDeed(BulkMaterialType material, int amountMax, bool exceptional, int itemCount, Type type)
     {
         var calc = SmithRewardCalculator.Instance;
         var own  = OsiItemSeals(calc.ComputePoints(amountMax, exceptional, material, itemCount, type));
 
-        return IsPostValorite(material)
-            ? Math.Max(own, OsiItemSeals(calc.ComputePoints(amountMax, exceptional, BulkMaterialType.Valorite, itemCount, type)))
-            : own;
+        if (!IsPostValorite(material))
+            return own;
+
+        var best = Math.Max(own, OsiItemSeals(calc.ComputePoints(amountMax, exceptional, BulkMaterialType.Valorite, itemCount, type)));
+        return (int)Math.Ceiling(best * ItemMultiplier(material));
     }
 
     internal static (int seals, int standing, int skillChecks) ComputeGuildReward(Item deed)
@@ -558,6 +592,29 @@ public partial class BlacksmithGuildmaster
             else if (item is LargeSmithBOD) large++;
             else if (item is Container c)
                 CountBODsIn(c.Items, ref small, ref large);
+        }
+    }
+
+    /// <summary>cc-P57 Part E: the guildmaster's "Bulk Order Info", opening SmithBulkOrderChoiceGump.</summary>
+    public class GuildmasterBulkOrderEntry : ContextMenuEntry
+    {
+        /// <summary>The stock entry's number, "Bulk Order Info" (pinned BaseVendor.cs, 6152 sent as 3006152).</summary>
+        public const int Cliloc = 3006152;
+
+        public GuildmasterBulkOrderEntry() : base(Cliloc)
+        {
+        }
+
+        public override void OnClick(Mobile from, IEntity target)
+        {
+            if (!ContentFeatureFlags.BulkOrders || target is not BlacksmithGuildmaster gm || from is not PlayerMobile pm
+                || !gm.SupportsBulkOrders(pm))
+            {
+                return;
+            }
+
+            pm.CloseGump<SmithBulkOrderChoiceGump>();
+            pm.SendGump(new SmithBulkOrderChoiceGump(pm));
         }
     }
 
