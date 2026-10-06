@@ -44,11 +44,14 @@
                                    push runs it for real after the phrase 'commit shard work'. Both
                                    in a window of their own. Commit and push is refused when the
                                    console runs as SYSTEM, when both repos are clean, or while a CC
-                                   prompt has not said DONE or a pending file changed in the last 5
-                                   minutes (Get-CommitInFlight); the preview still runs and names them.
+                                   prompt has not said DONE or a pending file changed inside the
+                                   quiet window, CommitQuietSeconds (60 s, cc-P68), Get-CommitInFlight;
+                                   the preview still runs and names them. The tab counts down to when
+                                   the commit is allowed. Force (cc-P68) skips only the quiet window.
     player-package/Build-PlayerPackage.ps1   the Player package tab (cc-P63): Build package runs it
                                    with -Notes, then -CheckZip on the zip it wrote. Refused while
-                                   the shard repo has uncommitted changes.
+                                   the shard repo has uncommitted changes. Check selected (cc-P68)
+                                   runs -CheckZip on any zip in dist\ and only reads.
     D:\UO\haven-migration\Publish-PlayerPackage.ps1   Publish package runs it with -Zip after the
                                    phrase 'publish player package'; it asks its own "Type yes".
                                    Refused when the zip's version.json does not describe the zip.
@@ -88,6 +91,7 @@ param(
     [string]$RepoRoot,
     [string]$CommitMessage,
     [string]$CommitMessageB64,
+    [switch]$CommitForce,
     [string]$PackageNotes,
     [string]$PackageNotesB64,
     [string]$PackageZip,
@@ -168,7 +172,10 @@ function Get-ConsoleConfig {
         )
         NotesFolder        = 'D:\UO\shard-migration\notes'
         NotesDoneFrom      = 54
-        CommitQuietMinutes = 5
+        # cc-P68: a pending file written less than this many seconds ago blocks Commit and push (was 5 minutes).
+        CommitQuietSeconds = 60
+        # How often the Commit tab's countdown re-reads both repos while that tab is showing.
+        CommitPollSeconds  = 5
         # cc-P63, the Player package tab and Test shard > Deploy built image. The publish script is
         # outside the repo and overseer-owned; the console runs it as it is.
         BuildPackage       = (Join-Path $RepoRoot 'player-package\Build-PlayerPackage.ps1')
@@ -598,7 +605,7 @@ function Get-ChildArgumentLine {
         [string]$SelfPath, [string]$ActionKey, [string]$ShardKey, [string]$SnapshotName,
         [string]$Snapshot, [string]$ConfirmLive, [switch]$Yes, [switch]$DryRun, [string]$StatusFrom,
         [switch]$StatusFromDocker, [string]$CommitMessage, [string]$PackageNotes, [string]$PackageZip,
-        [string]$ImageTag
+        [string]$ImageTag, [switch]$CommitForce
     )
     $mode = 'Execute'
     if ($DryRun) { $mode = 'DryRun' }
@@ -615,6 +622,8 @@ function Get-ChildArgumentLine {
     # A commit message is typed by a person and can hold quotes, $ and ;. It crosses this command
     # line as base64 of its UTF-8, which has none of them, so no quoting rule can change it (cc-P60).
     if ($CommitMessage) { $a += ' -CommitMessageB64 ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($CommitMessage)) }
+    # cc-P68: the Force box. The child rebuilds the plan, so it must skip the same wait the dialog said.
+    if ($CommitForce) { $a += ' -CommitForce' }
     # cc-P63: package notes are typed too, and cross the same way. A zip name and an image tag are
     # picked from lists the console read; the plan refuses anything outside those, and they are
     # quoted here only so a stray space cannot split them.
@@ -663,6 +672,11 @@ function Get-ModeBanner {
                 $bar, ('  BUILDING  ' + $what), '  Build-PlayerPackage.ps1 writes a zip into player-package\dist. Nothing is published.', $bar) }
             break
         }
+        { $_ -eq 'execute' -and $Action -eq 'package.check' } {
+            [pscustomobject]@{ Color = 'amber'; Title = ('CHECKING - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  CHECKING  ' + $what), '  Build-PlayerPackage.ps1 -CheckZip: it reads the zip and changes nothing.', $bar) }
+            break
+        }
         { $_ -eq 'execute' -and $Action -eq 'package.publish' } {
             [pscustomobject]@{ Color = 'red'; Title = ('RUNNING FOR REAL - ' + $what + ' - Shard Console'); Lines = @(
                 $bar, ('  RUNNING FOR REAL  ' + $what), ('  ' + $script:PublishPublicWarning + ' Publish-PlayerPackage.ps1 asks "Type yes" itself, below.'), $bar) }
@@ -708,13 +722,14 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'commit.run';       Group = 'Commit';      Label = 'Commit and push';                    Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'package.build';    Group = 'Player package'; Label = 'Build package';                   Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'package.publish';  Group = 'Player package'; Label = 'Publish package';                 Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'package.check';    Group = 'Player package'; Label = 'Check selected';                  Mutates = $false; RunIn = 'window' }
     )
 }
 
 function New-PlanStep {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'checkzip', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log')]
+        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'checkzip', 'gatecheck', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log')]
         [string]$Kind,
         [string]$Text, [string]$Exe, [string[]]$Arguments, [string]$From, [string]$To,
         [string]$Path, [string]$Phrase, [string]$Container, [switch]$IfExists,
@@ -772,9 +787,10 @@ function Get-CommitInFlight {
     # notes\cc-P<nn>-*.md. Changed: Repo, Path and LastWriteUtc of each file git would commit.
     # A note numbered DoneFrom or above that does not end "P<nn> DONE" or "P<nn> STOPPED: <why>"
     # is a prompt still running; notes numbered below it predate that rule and are not read. A
-    # pending file written in the last Minutes may be mid-write. Commit and push refuses on any of
-    # these; the preview names them and runs.
-    param($Notes, $Changed, [datetime]$Now, [int]$Minutes = 5, [int]$DoneFrom = 54)
+    # pending file written less than Seconds ago may be mid-write (cc-P68: seconds, from
+    # CommitQuietSeconds; it was a fixed 5 minutes). Commit and push refuses on any of these; the
+    # preview names them and runs.
+    param($Notes, $Changed, [datetime]$Now, [int]$Seconds = 60, [int]$DoneFrom = 54)
     $out = New-Object 'System.Collections.Generic.List[object]'
     foreach ($n in @($Notes)) {
         if (-not $n -or [string]$n.Name -notmatch '^cc-P(\d+)-.+\.md$') { continue }
@@ -785,17 +801,57 @@ function Get-CommitInFlight {
         $shown = $last
         if ($shown.Length -gt 70) { $shown = $shown.Substring(0, 67) + '...' }
         if (-not $shown) { $shown = '(the file is empty)' }
-        $out.Add([pscustomobject]@{ Kind = 'prompt'; Name = $n.Name
+        $out.Add([pscustomobject]@{ Kind = 'prompt'; Name = $n.Name; Number = $num; Path = $null; LastWriteUtc = $null
             Text = ('P' + $num + ' has not said DONE: ' + $n.Name + ' ends "' + $shown + '". Committing now may publish half its work.') })
     }
-    $since = $Now.AddMinutes(-$Minutes)
+    $since = $Now.AddSeconds(-$Seconds)
     foreach ($c in @($Changed)) {
-        if (-not $c -or $null -eq $c.LastWriteUtc -or $c.LastWriteUtc -lt $since) { continue }
+        if (-not $c -or $null -eq $c.LastWriteUtc -or $c.LastWriteUtc -le $since) { continue }
         $ago = [int][Math]::Max(0, [Math]::Floor(($Now - $c.LastWriteUtc).TotalSeconds))
-        $out.Add([pscustomobject]@{ Kind = 'file'; Name = ($c.Repo + ': ' + $c.Path)
-            Text = ($c.Repo + ': ' + $c.Path + ' changed ' + $ago + ' s ago, inside the last ' + $Minutes + ' minutes. Something may still be writing it.') })
+        $out.Add([pscustomobject]@{ Kind = 'file'; Name = ($c.Repo + ': ' + $c.Path); Number = $null; Path = $c.Path; LastWriteUtc = $c.LastWriteUtc; Ago = $ago
+            Text = ($c.Repo + ': ' + $c.Path + ' changed ' + $ago + ' s ago, inside the last ' + (Format-QuietWindow $Seconds) + '. Something may still be writing it.') })
     }
     $out.ToArray()
+}
+
+function Format-QuietWindow {
+    # How the quiet window is said: "60 seconds", "90 seconds", "5 minutes" (cc-P68).
+    param([int]$Seconds)
+    if ($Seconds -ge 120 -and ($Seconds % 60) -eq 0) { return ([string]($Seconds / 60) + ' minutes') }
+    [string]$Seconds + ' seconds'
+}
+
+function Format-Countdown {
+    # m:ss, rounded up, so the line never reads 0:00 while the commit is still refused.
+    param([double]$Seconds)
+    $s = [int][Math]::Max(0, [Math]::Ceiling($Seconds))
+    '{0}:{1:00}' -f [Math]::Floor($s / 60), ($s % 60)
+}
+
+function Get-CommitCountdown {
+    # cc-P68 Part D: the Commit tab's live line, from the facts Get-CommitPlan reads and the time
+    # now. While a pending file is inside the quiet window it counts down to when the newest one
+    # leaves it, naming that file. After that it shows whatever still blocks Commit and push (a
+    # prompt that has not said DONE, SYSTEM, both repos clean), else "Ready to commit".
+    param($Facts, $Config, [datetime]$Now, [switch]$Force)
+    if (-not $Facts) { return 'The repos have not been read yet.' }
+    $win = [int]$Config.CommitQuietSeconds
+    $busy = @(Get-CommitInFlight -Notes $Facts.Notes -Changed $Facts.Changed -Now $Now -Seconds $win -DoneFrom $Config.NotesDoneFrom)
+    $other = New-Object 'System.Collections.Generic.List[string]'
+    if ($Facts.IsSystem) { $other.Add('this console runs as ' + $Facts.Identity + '; run it from your own Windows login') }
+    foreach ($p in @($busy | Where-Object { $_.Kind -eq 'prompt' })) { $other.Add('P' + $p.Number + ' has not said DONE (' + $p.Name + ')') }
+    $read = @(@($Facts.Repos) | Where-Object { -not $_.Error })
+    if ($read.Count -eq @($Facts.Repos).Count -and @($read | ForEach-Object { @($_.Paths) }).Count -eq 0) { return 'Nothing to commit: both repos are clean.' }
+    $files = @($busy | Where-Object { $_.Kind -eq 'file' } | Sort-Object LastWriteUtc -Descending)
+    if ($files.Count) {
+        $left = $win - ($Now - $files[0].LastWriteUtc).TotalSeconds
+        $t = 'Commit allowed in ' + (Format-Countdown $left) + ' (waiting on ' + $files[0].Path + ')'
+        if ($Force) { $t += '. Force is ticked: Commit and push skips this wait' }
+        if ($other.Count) { $t += '. Also blocked: ' + ($other -join '; ') }
+        return $t
+    }
+    if ($other.Count) { return 'Not ready: ' + ($other -join '; ') + '.' }
+    'Ready to commit'
 }
 
 function Get-CommitPlan {
@@ -803,7 +859,10 @@ function Get-CommitPlan {
     # preview passes its own -DryRun. Facts come from Get-CommitFacts: who is running, both repos'
     # git status, the CC notes and when each pending file last changed. What makes a commit unsafe
     # refuses commit.run, with no override, and is only reported by the preview, which still runs.
-    param([string]$Action, $Config, $Facts, [string]$Message)
+    # cc-P68: -Force (the Force box) skips only the quiet window for recently changed files. A
+    # prompt that has not said DONE, SYSTEM, clean repos and the phrase are all as before, and the
+    # confirmation names the files whose wait it skips.
+    param([string]$Action, $Config, $Facts, [string]$Message, [switch]$Force)
     $steps = New-Object 'System.Collections.Generic.List[object]'
     $run = ($Action -eq 'commit.run')
     if (-not $Facts) { $steps.Add((New-PlanStep -Kind refuse -Text 'The state of the repos was not read, so nothing is run.')); return $steps.ToArray() }
@@ -817,9 +876,17 @@ function Get-CommitPlan {
         if ($run) { $steps.Add((New-PlanStep -Kind refuse -Text $Text)) }
         else { $steps.Add((New-PlanStep -Kind say -Text ('WARNING: ' + $Text))) }
     }
+    $win = Format-QuietWindow $Config.CommitQuietSeconds
+    $busy = @(Get-CommitInFlight -Notes $Facts.Notes -Changed $Facts.Changed -Now $Facts.Now -Seconds $Config.CommitQuietSeconds -DoneFrom $Config.NotesDoneFrom)
+    $forced = @()
+    if ($run -and $Force) { $forced = @($busy | Where-Object { $_.Kind -eq 'file' }) }
     if ($run) {
         # Get-ConfirmPreface says $script:CommitPublicWarning above this, before the phrase.
-        $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'This commits and pushes both repos, D:\ShatteredLegacy and D:\UO\shard-migration.'))
+        $ct = 'This commits and pushes both repos, D:\ShatteredLegacy and D:\UO\shard-migration.'
+        if ($forced.Count) {
+            $ct += ' FORCE is ticked: this skips the wait for files to be unchanged for ' + $win + ', for ' + (@($forced | ForEach-Object { $_.Name + ' (changed ' + $_.Ago + ' s ago)' }) -join ', ') + '. Something may still be writing them.'
+        }
+        $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text $ct))
     }
     if ($Facts.IsSystem) {
         & $flag ('This console is running as ' + $Facts.Identity + '. Git refuses both repos for that account (dubious ownership) and it has no push credential. Run the console from your own Windows login.')
@@ -839,10 +906,14 @@ function Get-CommitPlan {
         if ($run) { $steps.Add((New-PlanStep -Kind refuse -Text 'Nothing to commit: both repos are clean.')) }
         else { $steps.Add((New-PlanStep -Kind say -Text 'Nothing to commit: both repos are clean.')) }
     }
-    $busy = @(Get-CommitInFlight -Notes $Facts.Notes -Changed $Facts.Changed -Now $Facts.Now -Minutes $Config.CommitQuietMinutes -DoneFrom $Config.NotesDoneFrom)
-    foreach ($b in $busy) { & $flag $b.Text }
-    if ($run -and $busy.Count) {
-        $steps.Add((New-PlanStep -Kind refuse -Text ('Commit and push stays refused until every prompt above ends DONE or STOPPED and no pending file has changed for ' + $Config.CommitQuietMinutes + ' minutes. Preview commit still runs.')))
+    foreach ($b in $busy) {
+        if ($forced -contains $b) { $steps.Add((New-PlanStep -Kind say -Text ('FORCE: not waiting on ' + $b.Text))) }
+        else { & $flag $b.Text }
+    }
+    $blocking = @($busy | Where-Object { $forced -notcontains $_ })
+    if ($run -and $blocking.Count) {
+        if ($Force) { $steps.Add((New-PlanStep -Kind refuse -Text 'Commit and push stays refused until every prompt above ends DONE or STOPPED. Force skips only the wait for recently changed files. Preview commit still runs.')) }
+        else { $steps.Add((New-PlanStep -Kind refuse -Text ('Commit and push stays refused until every prompt above ends DONE or STOPPED and no pending file has changed for ' + $win + '. Preview commit still runs.'))) }
     }
     $named = [ordered]@{}
     if (-not $run) { $named['DryRun'] = $true }
@@ -939,6 +1010,20 @@ function Get-PackagePlan {
         $steps.Add((New-PlanStep -Kind log -Text 'package.build'))
         return $steps.ToArray()
     }
+    if ($Action -eq 'package.check') {
+        # cc-P68 Part A: -CheckZip on any zip in dist\, only reading it, so not refused on a dirty tree.
+        if (-not $Facts.BuildExists) { $steps.Add((New-PlanStep -Kind refuse -Text ($Config.BuildPackage + ' is not there, so there is nothing to check with.'))); return $steps.ToArray() }
+        if (-not $Zip) { $steps.Add((New-PlanStep -Kind refuse -Text ('Choose a zip from ' + $Config.PackageDist + ' to check.'))); return $steps.ToArray() }
+        $row = @(@($Facts.Zips) | Where-Object { $_.Name -eq $Zip })
+        if ($row.Count -ne 1) { $steps.Add((New-PlanStep -Kind refuse -Text ("There is no zip '" + $Zip + "' in " + $Config.PackageDist + '.'))); return $steps.ToArray() }
+        $z = $row[0]
+        # P63 section 7 item 3: the working tree's build script is the one doing the gating.
+        if ($Facts.BuildDiff -eq 'differs') { $steps.Add((New-PlanStep -Kind say -Text ('Note: the working tree''s player-package\Build-PlayerPackage.ps1 differs from HEAD''s (' + $Facts.Head + '), and it is the script doing this check.'))) }
+        elseif ($Facts.BuildDiff -and $Facts.BuildDiff -ne 'same') { $steps.Add((New-PlanStep -Kind say -Text ('Note: could not tell whether player-package\Build-PlayerPackage.ps1 differs from HEAD''s: ' + $Facts.BuildDiff))) }
+        if (-not $z.Json -or -not $z.Json.Exists) { $steps.Add((New-PlanStep -Kind say -Text ('No ' + ($z.Name -replace '\.zip$', '.version.json') + ' beside it, so gate 5 will fail.'))) }
+        $steps.Add((New-PlanStep -Kind gatecheck -Path $Config.BuildPackage -From $z.FullName -Text ('Build-PlayerPackage.ps1 -CheckZip on ' + $z.Name + ': gates 4 and 6 on the zip, and 5 on its version.json. It reads the zip and changes nothing.')))
+        return $steps.ToArray()
+    }
     # package.publish
     if (-not $Facts.PublishExists) { $steps.Add((New-PlanStep -Kind refuse -Text ($Config.PublishScript + ' is not there, so there is nothing to run. Its path is PublishScript in Get-ConsoleConfig.'))); return $steps.ToArray() }
     if (-not $Zip) { $steps.Add((New-PlanStep -Kind refuse -Text ('Choose a zip from ' + $Config.PackageDist + ' to publish.'))); return $steps.ToArray() }
@@ -953,10 +1038,20 @@ function Get-PackagePlan {
     $steps.Add((New-PlanStep -Kind say -Text ('zip ' + $z.Name + ', version ' + $ver + ', ' + (Format-Bytes $z.Bytes) + ', built ' + (Format-LocalTime $z.LastWriteUtc) + '. What is new: ' + $nt)))
     $remind = Get-RolloutReminder -Changelog $Facts.Changelog -LatestNote $Facts.LatestNote
     if ($remind) { $steps.Add((New-PlanStep -Kind say -Text $remind)) }
-    $steps.Add((New-PlanStep -Kind script -Path $Config.PublishScript -Named ([ordered]@{ Zip = $z.FullName }) -Text 'Publish-PlayerPackage.ps1: shows the zip, asks you to type yes HERE, then gates, copies to Haven, swaps in and checks both URLs, rolling back on a mismatch.'))
-    $steps.Add((New-PlanStep -Kind say -Text 'Read the script''s own last line above: PUBLISHED, NOT PUBLISHED, or Nothing done (it exits 0 when the answer is not yes).'))
+    $steps.Add((New-PlanStep -Kind script -Path $Config.PublishScript -Named ([ordered]@{ Zip = $z.FullName }) -Text 'Publish-PlayerPackage.ps1: shows the zip, asks you to type yes HERE, then gates, copies to Haven, swaps in and checks both URLs, rolling back on a mismatch. Exit 0 is published, 3 is cancelled (not yes), anything else failed.'))
     $steps.Add((New-PlanStep -Kind log -Text ('package.publish ' + $z.Name)))
     $steps.ToArray()
+}
+
+function Get-PublishOutcome {
+    # cc-P68 Part B: what Publish-PlayerPackage.ps1's exit code means. Since 2026-10-05 a declined
+    # "Type yes" ("Nothing done.") exits 3; a publish exits 0; a failure 1 or anything else.
+    param([int]$Code)
+    switch ($Code) {
+        0       { [pscustomobject]@{ Result = 'published'; Color = 'green'; Text = 'Published: Publish-PlayerPackage.ps1 exited 0.' } }
+        3       { [pscustomobject]@{ Result = 'cancelled'; Color = 'amber'; Text = 'Publish cancelled. Nothing was published.' } }
+        default { [pscustomobject]@{ Result = 'failed'; Color = 'red'; Text = ('Publish failed: Publish-PlayerPackage.ps1 exited with ' + $Code + '. Read its last lines above.') } }
+    }
 }
 
 # --- Test shard > Deploy built image (cc-P63 Part B) ----------------------------------------------
@@ -1025,12 +1120,12 @@ function Get-ActionPlan {
         [string]$Action, [string]$ShardKey = 'test', $Config, $State,
         [string]$SnapshotName, [string]$Snapshot, [datetime]$Now = [datetime]::MinValue,
         [string]$CommitMessage, $CommitFacts,
-        [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag
+        [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag, [switch]$CommitForce
     )
     # The commit buttons read git and the notes, not docker, so they need no $State (cc-P60).
-    if ($Action -like 'commit.*') { return (Get-CommitPlan -Action $Action -Config $Config -Facts $CommitFacts -Message $CommitMessage) }
-    # Nor do the package buttons; they read git, dist\ and the notes (cc-P63).
-    if ($Action -in @('package.build', 'package.publish')) { return (Get-PackagePlan -Action $Action -Config $Config -Facts $PackageFacts -Notes $PackageNotes -Zip $PackageZip) }
+    if ($Action -like 'commit.*') { return (Get-CommitPlan -Action $Action -Config $Config -Facts $CommitFacts -Message $CommitMessage -Force:$CommitForce) }
+    # Nor do the package buttons; they read git, dist\ and the notes (cc-P63, cc-P68).
+    if ($Action -in @('package.build', 'package.publish', 'package.check')) { return (Get-PackagePlan -Action $Action -Config $Config -Facts $PackageFacts -Notes $PackageNotes -Zip $PackageZip) }
     if ($Action -eq 'test.deploy') { return (Get-DeployPlan -Config $Config -State $State -ImageTag $ImageTag) }
     if ($Now -eq [datetime]::MinValue) { $Now = $State.Now }
     if ($Action -like 'live.*') { $ShardKey = 'live' }
@@ -1225,6 +1320,14 @@ function Test-PlanSafety {
                 if ($liveWords.Count) { $v.Add('a deploy to test names the live container ' + $live.Container) }
             }
         }
+        if ($s.Kind -eq 'gatecheck') {
+            # cc-P68: Check selected runs the build script's -CheckZip on one zip in dist\, nothing else.
+            $full = $null
+            if ($s.Path) { $full = [IO.Path]::GetFullPath($s.Path) }
+            if (-not $full -or $full -ine [IO.Path]::GetFullPath($Config.BuildPackage)) { $v.Add('a zip is checked only by ' + $Config.BuildPackage + ': ' + $s.Path) }
+            $dist = [IO.Path]::GetFullPath($Config.PackageDist).TrimEnd('\') + '\'
+            if (-not $s.From -or $s.From -notmatch '\.zip$' -or -not ([IO.Path]::GetFullPath($s.From)).StartsWith($dist, [StringComparison]::OrdinalIgnoreCase)) { $v.Add('Check selected checks only a zip in ' + $dist + ': ' + $s.From) }
+        }
         if ($s.Kind -in @('script', 'checkzip')) {
             # cc-P60, cc-P63. The scripts run in-process: the commit script (for real only once typed),
             # the package build (never its -GateSelfTest), and the publish script (only once typed, only
@@ -1291,6 +1394,7 @@ function Format-PlanStep {
         'exec'    { $out.Add($n + 'RUN      ' + (Format-CommandLine $Step.Exe $Step.Arguments)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'script'  { $out.Add($n + 'RUN      ' + (Format-ScriptCall $Step.Path $Step.Named)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'checkzip' { $out.Add($n + 'CHECK    ' + (Format-ScriptCall $Step.Path ([ordered]@{ CheckZip = '<the one zip in ' + $Step.To + ' written since this plan started>' }))); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
+        'gatecheck' { $out.Add($n + 'CHECK    ' + (Format-ScriptCall $Step.Path ([ordered]@{ CheckZip = $Step.From }))); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'window'  { $out.Add($n + 'WINDOW   a new PowerShell window running: ' + (Format-CommandLine $Step.Exe $Step.Arguments)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'launch'  { $out.Add($n + 'OPEN     ' + (Format-CommandLine $Step.Path $Step.Arguments)); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'move'    {
@@ -2296,6 +2400,11 @@ function Get-PackageFacts {
             } catch { $picked.Error = $_.Exception.Message }
         }
     }
+    # cc-P68: whether the build script that gates a zip is HEAD's. git diff --quiet: 0 same, 1 differs.
+    $bd = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'diff', '--quiet', 'HEAD', '--', 'player-package/Build-PlayerPackage.ps1')
+    $buildDiff = 'same'
+    if ($bd.Code -eq 1) { $buildDiff = 'differs' }
+    elseif ($bd.Code -ne 0) { $buildDiff = ('git diff exited with ' + $bd.Code + ' ' + ([string]$bd.Err).Trim()).Trim() }
     $log = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'show', 'HEAD:CHANGELOG.md')
     $changelog = $null
     if ($log.Code -eq 0) { $changelog = $log.Out }
@@ -2312,6 +2421,7 @@ function Get-PackageFacts {
         RepoPaths     = $paths
         RepoError     = $err
         Head          = $head
+        BuildDiff     = $buildDiff
         Zips          = $zips
         Picked        = $picked
         Changelog     = $changelog
@@ -2551,6 +2661,8 @@ function Invoke-Plan {
     # A checkzip step finds the zip a build step in this plan wrote by its time (cc-P63). Less a
     # second, for file systems that round a write time down.
     $planStarted = [datetime]::UtcNow.AddSeconds(-1)
+    $script:PlanCancelled = $false
+    $checkFailed = $false
     $i = 0
     foreach ($s in $plan) {
         $i++
@@ -2576,7 +2688,45 @@ function Invoke-Plan {
                     if (-not (Test-Path -LiteralPath $s.Path -PathType Leaf)) { throw ('not found: ' + $s.Path) }
                     if (-not $outFile) { $outFile = New-ExecOutputFile $Config $ActionKey $ShardKey }
                     $code = Invoke-ScriptStep -Path $s.Path -Named $s.Named -OutFile $outFile -Header ($tag + $line)
-                    if ($code -ne 0) { throw ($line + ' exited with ' + $code) }
+                    if ([IO.Path]::GetFullPath($s.Path) -ieq [IO.Path]::GetFullPath($Config.PublishScript)) {
+                        # cc-P68 Part B: 3 is a declined "Type yes", which is neither done nor failed.
+                        $o = Get-PublishOutcome $code
+                        if ($o.Result -eq 'failed') { throw $o.Text }
+                        Write-ConsoleLine ('      ' + $o.Text) $o.Color
+                        if ($o.Result -eq 'cancelled') {
+                            $script:PlanCancelled = $true
+                            if ($logged) { Write-ConsoleLog $Config ('CANCELLED ' + $ActionKey + ' shard=' + $ShardKey + ': the publish script exited 3, nothing was published') }
+                            return $false
+                        }
+                    } elseif ($code -ne 0) { throw ($line + ' exited with ' + $code) }
+                }
+                'gatecheck' {
+                    # cc-P68 Part A. Every gate line the script prints is shown; a gate that throws is
+                    # shown in red; a zip with no version.json fails gate 5 here, because -CheckZip
+                    # skips gate 5 when there is none. The last line is PASSED or FAILED.
+                    Write-ConsoleLine ($tag + $s.Text) 'head'
+                    $named = [ordered]@{ CheckZip = $s.From }
+                    $line = Format-ScriptCall $s.Path $named
+                    Write-ConsoleLine ('      > ' + $line) 'gray'
+                    if (-not (Test-Path -LiteralPath $s.Path -PathType Leaf)) { throw ('not found: ' + $s.Path) }
+                    if (-not $outFile) { $outFile = New-ExecOutputFile $Config $ActionKey $ShardKey }
+                    $why = New-Object 'System.Collections.Generic.List[string]'
+                    try {
+                        $code = Invoke-ScriptStep -Path $s.Path -Named $named -OutFile $outFile -Header ($tag + $line)
+                        if ($code -ne 0) { $why.Add($line + ' exited with ' + $code) }
+                    } catch {
+                        $why.Add($_.Exception.Message)
+                        foreach ($l in @(([string]$_.Exception.Message) -split "`n")) { Write-ConsoleLine ('  ' + $l.TrimEnd("`r")) 'red' }
+                    }
+                    $jp = $s.From -replace '\.zip$', '.version.json'
+                    if (-not (Test-Path -LiteralPath $jp -PathType Leaf)) {
+                        $g5 = 'GATE 5 failed: there is no ' + (Split-Path $jp -Leaf) + ' beside the zip, so launchers could not be told about it.'
+                        $why.Add($g5)
+                        Write-ConsoleLine ('  ' + $g5) 'red'
+                    }
+                    $zn = Split-Path $s.From -Leaf
+                    if ($why.Count) { Write-ConsoleLine ('FAILED: ' + $zn + ' did not pass the package gates (' + $why.Count + ' problem(s) above).') 'red'; $checkFailed = $true }
+                    else { Write-ConsoleLine ('PASSED: ' + $zn + ' passed gates 4, 6 and 5.') 'green' }
                 }
                 'checkzip' {
                     Write-ConsoleLine ($tag + $s.Text) 'head'
@@ -2655,6 +2805,7 @@ function Invoke-Plan {
             return $false
         }
     }
+    if ($checkFailed) { return $false }
     $true
 }
 
@@ -3000,6 +3151,23 @@ function Update-PackageList {
     $lv.EndUpdate()
 }
 
+function Update-CommitCountdown {
+    # cc-P68 Part D: the Commit tab's line. Nothing is read while another tab is showing. The time
+    # left is worked out every tick from the facts last read; the repos are read again every
+    # CommitPollSeconds (or on -Reread), so a file changed meanwhile restarts the count.
+    param([switch]$Reread)
+    $ui = $script:ui
+    if (-not $ui -or -not $ui.CommitCountdown -or -not $ui.Tabs -or $ui.Tabs.SelectedTab -ne $ui.CommitPage) { return }
+    $now = [datetime]::UtcNow
+    if ($Reread -or -not $script:commitFactsCache -or -not $script:commitFactsAt -or ($now - $script:commitFactsAt).TotalSeconds -ge $script:cfg.CommitPollSeconds) {
+        try { $script:commitFactsCache = Get-CommitFacts $script:cfg; $script:commitFactsAt = $now }
+        catch { $ui.CommitCountdown.Text = 'Could not read the repos: ' + $_.Exception.Message; $ui.CommitCountdown.ForeColor = [Drawing.Color]::Firebrick; return }
+    }
+    $t = Get-CommitCountdown -Facts $script:commitFactsCache -Config $script:cfg -Now $now -Force:$ui.CommitForce.Checked
+    if ($ui.CommitCountdown.Text -ne $t) { $ui.CommitCountdown.Text = $t }
+    if ($t -eq 'Ready to commit') { $ui.CommitCountdown.ForeColor = [Drawing.Color]::ForestGreen } else { $ui.CommitCountdown.ForeColor = [Drawing.Color]::DarkOrange }
+}
+
 function Set-ConsoleDryRun {
     # The DRY RUN box. Buttons print instead of run; the status panel is unaffected.
     param([bool]$On)
@@ -3028,7 +3196,7 @@ function Show-YesNo {
 
 function Invoke-ConsoleButton {
     param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage,
-        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag)
+        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce)
     try {
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
         $isCommit = ($ActionKey -like 'commit.*')
@@ -3056,7 +3224,7 @@ function Invoke-ConsoleButton {
             $ImageTag = Show-ImagePicker $state
             if (-not $ImageTag) { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
         }
-        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag)
+        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
         $dryTag = ''
@@ -3084,7 +3252,7 @@ function Invoke-ConsoleButton {
             $answeredYes = $true
         }
         if ($def.RunIn -eq 'window') {
-            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag
+            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:($CommitForce -and $ActionKey -eq 'commit.run')
             Start-Process -FilePath $script:cfg.PowerShell -ArgumentList $argLine | Out-Null
             if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in its own window. It prints the plan and runs nothing.') 'amber' }
             else { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): running in its own window. Refresh the status when it finishes.') 'head' }
@@ -3423,13 +3591,17 @@ function New-ConsoleForm {
         $b.Add_Click({
             $m = $script:ui.CommitMessage.Text
             if (-not $m.Trim()) { $m = '' }
-            Invoke-ConsoleButton -ActionKey $this.Tag -CommitMessage $m
+            $force = [bool]($this.Tag -eq 'commit.run' -and $script:ui.CommitForce.Checked)
+            Invoke-ConsoleButton -ActionKey $this.Tag -CommitMessage $m -CommitForce:$force
+            # Force is for one commit: it never carries over to the next click.
+            if ($this.Tag -eq 'commit.run') { $script:ui.CommitForce.Checked = $false }
+            Update-CommitCountdown -Reread
         })
         $commitBtns += $b
     }
     $where = $Config.CommitScript
     if (-not (Test-Path -LiteralPath $Config.CommitScript -PathType Leaf)) { $where += ' (NOT FOUND: both buttons will say so and do nothing)' }
-    $commitPage = New-ButtonPage 'Commit' ('Runs ' + $where + ' in a window of its own, which stays open so you can read its own table at the end. Preview passes its -DryRun and changes nothing. Commit and push asks for the phrase ''commit shard work'' first: both repos are public on GitHub, so a pushed commit cannot be taken back. It is refused when this console runs as SYSTEM, when both repos are clean, or while a CC prompt has not said DONE or a pending file changed in the last ' + $Config.CommitQuietMinutes + ' minutes; Preview still runs and names them.') $commitBtns
+    $commitPage = New-ButtonPage 'Commit' ('Runs ' + $where + ' in a window of its own, which stays open so you can read its own table at the end. Preview passes its -DryRun and changes nothing. Commit and push asks for the phrase ''commit shard work'' first: both repos are public on GitHub, so a pushed commit cannot be taken back. It is refused when this console runs as SYSTEM, when both repos are clean, or while a CC prompt has not said DONE or a pending file changed in the last ' + (Format-QuietWindow $Config.CommitQuietSeconds) + '; Preview still runs and names them. Force skips only that last wait, for one commit; the confirmation names the files.') $commitBtns
     $msgLabel = New-Caption 'Message (blank: the script''s default, "Shard work, <date> <time>"):' 400
     $msgBox = New-Object Windows.Forms.TextBox
     $msgBox.Width = 700
@@ -3440,8 +3612,22 @@ function New-ConsoleForm {
     $flow.Controls.SetChildIndex($msgLabel, 1)
     $flow.Controls.SetChildIndex($msgBox, 2)
     $flow.SetFlowBreak($msgBox, $true)
+    # cc-P68: the Force box, after the buttons, and the live countdown under them.
+    $forceBox = New-Object Windows.Forms.CheckBox
+    $forceBox.Text = ('Force: skip the ' + (Format-QuietWindow $Config.CommitQuietSeconds) + ' wait for recently changed files (not the DONE check, SYSTEM or the phrase)')
+    $forceBox.AutoSize = $true
+    $forceBox.Margin = New-Object Windows.Forms.Padding(12, 14, 6, 6)
+    $forceBox.Add_CheckedChanged({ Update-CommitCountdown })
+    $flow.Controls.Add($forceBox)
+    $flow.SetFlowBreak($forceBox, $true)
+    $countdown = New-Caption 'Commit: checking...' 1100
+    $countdown.Font = $script:BoldFont
+    $flow.Controls.Add($countdown)
     $script:ui.CommitMessage = $msgBox
     $script:ui.CommitButtons = $commitBtns
+    $script:ui.CommitForce = $forceBox
+    $script:ui.CommitCountdown = $countdown
+    $script:ui.CommitPage = $commitPage
 
     # player package (cc-P63): Build-PlayerPackage.ps1 and Publish-PlayerPackage.ps1, as they are
     $pkgPage = New-Object Windows.Forms.TabPage('Player package')
@@ -3493,13 +3679,24 @@ function New-ConsoleForm {
         if ($script:ui.PackageList.SelectedItems.Count) { $sel = $script:ui.PackageList.SelectedItems[0].Text }
         Invoke-ConsoleButton -ActionKey 'package.publish' -PackageZip $sel
     })
-    $pkgBottom.Controls.AddRange(@($pkgRefresh, $publishBtn))
+    # cc-P68 Part A: -CheckZip on the selected zip, in a window that stays open. It only reads.
+    $checkBtn = New-Object Windows.Forms.Button
+    $checkBtn.Text = 'Check selected'
+    $checkBtn.Tag = 'package.check'
+    $checkBtn.Width = 140
+    $checkBtn.Height = 30
+    $checkBtn.Add_Click({
+        $sel = $null
+        if ($script:ui.PackageList.SelectedItems.Count) { $sel = $script:ui.PackageList.SelectedItems[0].Text }
+        Invoke-ConsoleButton -ActionKey 'package.check' -PackageZip $sel
+    })
+    $pkgBottom.Controls.AddRange(@($pkgRefresh, $checkBtn, $publishBtn))
     $pkgPage.Controls.Add($pkgList)
     $pkgPage.Controls.Add($pkgTop)
     $pkgPage.Controls.Add($pkgBottom)
     $script:ui.PackageNotes = $notesBox
     $script:ui.PackageList = $pkgList
-    $script:ui.PackageButtons = @($buildBtn, $publishBtn)
+    $script:ui.PackageButtons = @($buildBtn, $publishBtn, $checkBtn)
     Update-PackageList
 
     $tabs.TabPages.AddRange(@($testPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $livePage))
@@ -3532,12 +3729,22 @@ function New-ConsoleForm {
     $netTimer.Interval = 1000
     $netTimer.Add_Tick({ Update-NetworkTile })
     $netTimer.Start()
+    # cc-P68: the Commit tab's countdown. A 1 s tick that does nothing unless the Commit tab is the
+    # one showing; the repos are re-read every CommitPollSeconds, so a new change restarts it.
+    $cdTimer = New-Object Windows.Forms.Timer
+    $cdTimer.Interval = 1000
+    $cdTimer.Add_Tick({ Update-CommitCountdown })
+    $cdTimer.Start()
+    $tabs.Add_SelectedIndexChanged({ Update-CommitCountdown -Reread })
+    $script:commitFactsCache = $null
+    $script:commitFactsAt = $null
     $form.Add_FormClosed({
-        $script:ui.Timer.Stop(); $script:ui.NetTimer.Stop(); $script:OutputBox = $null
+        $script:ui.Timer.Stop(); $script:ui.NetTimer.Stop(); $script:ui.CountdownTimer.Stop(); $script:OutputBox = $null
         if ($script:netProbe) { try { $script:netProbe.PS.Stop(); $script:netProbe.PS.Dispose() } catch { } }
     })
     $script:ui.Timer = $timer
     $script:ui.NetTimer = $netTimer
+    $script:ui.CountdownTimer = $cdTimer
     Update-NetworkTile
 
     if ($DryRun) { Write-ConsoleLine 'DRY RUN: every button prints the plan it would run. The status panel is read from a capture file, not docker.' 'amber' }
@@ -3566,8 +3773,9 @@ if ($Capture) {
 if ($Action -eq 'list') {
     foreach ($a in Get-ConsoleActions) { Write-Host ('{0,-18} {1,-12} {2}' -f $a.Key, $a.Group, $a.Label) }
     Write-Host 'snapshot.* take -Shard test|live (default test), -SnapshotName for create, -Snapshot for restore and delete.'
-    Write-Host 'commit.* take -CommitMessage (blank: the script''s default); commit.run needs -Mode Execute and -ConfirmLive ''commit shard work''.'
+    Write-Host 'commit.* take -CommitMessage (blank: the script''s default); commit.run needs -Mode Execute and -ConfirmLive ''commit shard work''; -CommitForce skips only the wait for recently changed files.'
     Write-Host 'package.build takes -PackageNotes; package.publish takes -PackageZip <name in player-package\dist> and -ConfirmLive ''publish player package''.'
+    Write-Host 'package.check takes -PackageZip <name in player-package\dist>; it only reads.'
     Write-Host 'test.deploy takes -ImageTag sl-modernuo:cc-pNN and -ConfirmLive ''deploy to test''.'
     exit 0
 }
@@ -3615,7 +3823,7 @@ if ($Action) {
         $st = Get-ConsoleState -Config $config -DryRun:$fromCapture -StatusFrom $StatusFrom
         if ($fromCapture) { $now = $st.Now.ToLocalTime() }
     }
-    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag)
+    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce)
     $viol = @(Test-PlanSafety $plan $config)
     $header = 'PLAN'
     if ($isDry) { $header = 'DRY RUN' }
@@ -3624,6 +3832,8 @@ if ($Action) {
     Write-ConsoleLine '' 'normal'
     $ok = Invoke-Plan -Plan $plan -Config $config -ActionKey $Action -ShardKey $sk -ConfirmLive $ConfirmLive -Yes:$Yes
     if ($ok) { Write-ConsoleLine ($Action + ': done.') 'green'; exit 0 }
+    # cc-P68: a declined publish already said "Publish cancelled. Nothing was published." last.
+    if ($script:PlanCancelled) { exit 3 }
     exit 1
 }
 

@@ -1,0 +1,187 @@
+[
+  {
+    "direction": 0,
+    "frame": 0,
+    "alpha_values": [
+      0,
+      255
+    ],
+    "opaque_black_pixels": 0,
+    "tail_body_overlap_pixels": 0,
+    "tail_layer": "behind",
+    "ear_cream_pixels": 6,
+    "cream_tip_bbox_game_px": null,
+    "palette_colors": 6
+  },
+  {
+    "direction": 0,
+    "frame": 1,
+    "alpha_values": [
+      0,
+      255
+    ],
+    "opaque_black_pixels": 0,
+    "tail_body_overlap_pixels": 0,
+    "tail_layer": "behind",
+    "ear_cream_pixels": 6,
+    "cream_tip_bbox_game_px": [
+      72,
+      86,
+      73,
+      91
+    ],
+    "palette_colors": 9
+  },
+  {
+    "direction": 0,
+    "frame": 2,
+    "alpha_values": [
+      0,
+      255
+    ],
+    "opaque_black_pixels": 0,
+    "tail_body_overlap_pixels": 0,
+    "tail_layer": "behind",
+    "ear_cream_pixels": 6,
+    "cream_tip_bbox_game_px": [
+      72,
+      84,
+      73,
+      89
+    ],
+    "palette_colors": 8
+  },
+  {
+    "direction": 0,
+    "frame": 3,
+    "alpha_values": [
+      0,
+      255
+    ],
+    "opaque_black_pixels": 0,
+    "tail_body_overlap_pixels": 0,
+    "tail_layer": "behind",
+    "ear_cream_pixels": 6,
+    "cream_tip_bbox_game_px": [
+      71,
+      83,
+      72,
+      88
+    ],
+    "palette_colors": 8
+  },
+  {
+    "direction": 0,
+    "frame": 4,
+    "alpha_values": [
+      0,
+      255
+    ],
+    "opaque_black_pixels": 0,
+    "tail_body_overlap_pixels": 0,
+    "tail_layer": "behind",
+    "ear_cream_pixels": 6,
+    "cream_tip_bbox_game_px": [
+      70,
+      89,
+      70,
+      90
+    ],
+    "palette_colors": 7
+  },
+  {
+    "direction": 0,
+    "frame": 5,
+    "alpha_values": [
+      0,
+      255
+    ],
+    "opaque_black_pixels": 0,
+    "tail_body_overlap_pixels": 0,
+    "tail_layer": "behind",
+    "ear_cream_pixels": 6,
+    "cream_tip_bbox_game_px": [
+      60,
+      86,
+      61,
+      91
+    ],
+    "palette_colors": 7
+  },
+  {
+    "direction": 0,
+    "frame": 6,
+    "alpha_values": [
+      0,
+      255
+    ],
+    "opaque_black_pixels": 0,
+    "tail_body_overlap_pixels": 0,
+    "tail_layer": "behind",
+    "ear_cream_pixels": 6,
+    "cream_tip_bbox_game_px": [
+      60,
+      85,
+      61,
+      90
+    ],
+    "palette_colors": 7
+  },
+  {
+    "direction": 0,
+    "frame": 7,
+    "alpha_values": [
+      0,
+      255
+    ],
+    "opaque_black_pixels": 0,
+    "tail_body_overlap_pixels": 0,
+    "tail_layer": "behind",
+    "ear_cream_pixels": 6,
+    "cream_tip_bbox_game_px": [
+      61,
+      84,
+      62,
+      89
+    ],
+    "palette_colors": 9
+  },
+  {
+    "direction": 0,
+    "frame": 8,
+    "alpha_values": [
+      0,
+      255
+    ],
+    "opaque_black_pixels": 0,
+    "tail_body_overlap_pixels": 0,
+    "tail_layer": "behind",
+    "ear_cream_pixels": 6,
+    "cream_tip_bbox_game_px": [
+      73,
+      86,
+      73,
+      88
+    ],
+    "palette_colors": 8
+  },
+  {
+    "direction": 0,
+    "frame": 9,
+    "alpha_values": [
+      0,
+      255
+    ],
+    "opaque_black_pixels": 0,
+    "tail_body_overlap_pixels": 0,
+    "tail_layer": "behind",
+    "ear_cream_pixels": 6,
+    "cream_tip_bbox_game_px": [
+      72,
+      85,
+      73,
+      90
+    ],
+    "palette_colors": 8
+  }
+]

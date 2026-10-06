@@ -110,14 +110,14 @@ function New-PackageZipRow {
     [pscustomobject]@{ Name = $Name; FullName = (Join-Path $config.PackageDist $Name); Bytes = 83886080; LastWriteUtc = $p60Now.AddHours(-1); Json = $j }
 }
 function New-PackageFacts {
-    param([string[]]$Dirty = @(), [string]$RepoError, [switch]$NoBuild, [switch]$NoPublish, $Zips, $Picked, [string]$Changelog, $LatestNote)
+    param([string[]]$Dirty = @(), [string]$RepoError, [switch]$NoBuild, [switch]$NoPublish, $Zips, $Picked, [string]$Changelog, $LatestNote, [string]$BuildDiff = 'same')
     if ($null -eq $Zips) { $Zips = @(New-PackageZipRow) }
     if ($null -eq $Picked) { $Picked = [pscustomobject]@{ Name = $pkgZipName; Sha256 = $pkgSha; InnerVersion = '2026.10.05.1329'; Error = $null } }
     if (-not $Changelog) { $Changelog = "# Shattered Legacy changelog`n<!--`n## 2026.10.02`n-->`n`n## 2026.10.05.2`n`n### Fixed`n- Smith deeds say which ingots they need.`n" }
     if ($null -eq $LatestNote) { $LatestNote = [pscustomobject]@{ Name = 'cc-P62-kitsune-walk-test.md'; Text = "P62 DONE`n" } }
     [pscustomobject]@{
         BuildExists = (-not $NoBuild); PublishExists = (-not $NoPublish); RepoPath = 'D:\ShatteredLegacy'; RepoPaths = @($Dirty)
-        RepoError = $RepoError; Head = '9ab57e4'; Zips = @($Zips); Picked = $Picked; Changelog = $Changelog; LatestNote = $LatestNote
+        RepoError = $RepoError; Head = '9ab57e4'; BuildDiff = $BuildDiff; Zips = @($Zips); Picked = $Picked; Changelog = $Changelog; LatestNote = $LatestNote
     }
 }
 $pkgFactsOk = New-PackageFacts
@@ -973,7 +973,9 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
         Assert-Equal 'Test shard,Snapshots,World setup,Diagnostics,Commit,Player package,LIVE shard' ($tabs -join ',')
         Assert-Equal 'Preview commit,Commit and push' (@($script:ui.CommitButtons | ForEach-Object { $_.Text }) -join ',') 'cc-P60'
-        Assert-Equal 'package.build,package.publish' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P63'
+        Assert-Equal 'package.build,package.publish,package.check' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P63, and cc-P68''s Check selected'
+        Assert-True ($null -ne $script:ui.CommitForce -and -not $script:ui.CommitForce.Checked) 'cc-P68: the Force box, unticked'
+        Assert-True ($null -ne $script:ui.CommitCountdown -and $null -ne $script:ui.CountdownTimer) 'cc-P68: the countdown line and its timer'
         Assert-True ($null -ne $script:ui.PackageNotes -and $null -ne $script:ui.PackageList) 'cc-P63: the notes box and the zip list'
         $testTags = @($script:ui.Tabs.TabPages[0].Controls[0].Controls | Where-Object { $_ -is [Windows.Forms.Button] } | ForEach-Object { $_.Tag })
         Assert-True ($testTags -contains 'test.deploy') ('cc-P63: Deploy built image on the Test shard tab: ' + ($testTags -join ','))
@@ -1006,19 +1008,20 @@ function Invoke-ClickCapture {
     # FromCapture defaults to Dry: a console launched with -DryRun. Dry with FromCapture false is
     # the toggle in a console whose status is live from docker.
     param([string]$ActionKey, [string]$ShardKey, [bool]$Dry, $State = $snapState, $FromCapture = $null, $CommitFacts = $commitFactsOk, [string]$CommitMessage,
-        $PackageFacts = $pkgFactsOk, [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [string]$Picked = 'sl-modernuo:cc-p61')
+        $PackageFacts = $pkgFactsOk, [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [string]$Picked = 'sl-modernuo:cc-p61', [switch]$CommitForce)
     if ($null -eq $FromCapture) { $FromCapture = $Dry }
     $rec = [pscustomobject]@{
         Spawned = New-Object 'System.Collections.Generic.List[string]'
         Lines = New-Object 'System.Collections.Generic.List[string]'
         Executed = New-Object 'System.Collections.Generic.List[string]'
         Confirms = New-Object 'System.Collections.Generic.List[string]'
+        ConfirmTexts = New-Object 'System.Collections.Generic.List[string]'
         Pickers = 0
     }
     # Defined here, so they shadow the real ones for Invoke-ConsoleButton only (dynamic scope).
     function Start-Process { param($FilePath, $ArgumentList) $rec.Spawned.Add([string]$ArgumentList) }
     function Invoke-Plan { $rec.Executed.Add('ran'); $true }
-    function Show-TypedConfirm { param($Phrase, $Text, $Plan, $What) $rec.Confirms.Add($Phrase); $true }
+    function Show-TypedConfirm { param($Phrase, $Text, $Plan, $What) $rec.Confirms.Add($Phrase); $rec.ConfirmTexts.Add($Text); $true }
     function Show-YesNo { 'Yes' }
     function Get-ConsoleState { $State }
     function Get-CommitFacts { $CommitFacts }
@@ -1033,8 +1036,8 @@ function Invoke-ClickCapture {
     if ($ActionKey -in @('snapshot.restore', 'snapshot.delete')) { $s = $snapName }
     # cc-P63: the package buttons need notes or a zip to open a window; a picked image is the picker's.
     if ($ActionKey -eq 'package.build' -and -not $PSBoundParameters.ContainsKey('PackageNotes')) { $PackageNotes = 'P63 window check' }
-    if ($ActionKey -eq 'package.publish' -and -not $PSBoundParameters.ContainsKey('PackageZip')) { $PackageZip = $pkgZipName }
-    try { Invoke-ConsoleButton -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $sn -Snapshot $s -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag }
+    if ($ActionKey -in @('package.publish', 'package.check') -and -not $PSBoundParameters.ContainsKey('PackageZip')) { $PackageZip = $pkgZipName }
+    try { Invoke-ConsoleButton -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $sn -Snapshot $s -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:$CommitForce }
     finally { $script:dry, $script:cfg, $script:statusFrom, $script:SelfPath, $script:fromCapture = $saved }
     $rec
 }
@@ -1569,7 +1572,8 @@ Fact 'P60_TheGuardFlagsAFileChangedInTheLastFiveMinutes' {
     $changed = @(
         [pscustomobject]@{ Repo = 'code'; Path = 'scripts/Shard-Console.ps1'; LastWriteUtc = $p60Now.AddSeconds(-90) },
         [pscustomobject]@{ Repo = 'docs'; Path = 'notes/old.md'; LastWriteUtc = $p60Now.AddMinutes(-5).AddSeconds(-1) })
-    $f = @(Get-CommitInFlight -Notes @() -Changed $changed -Now $p60Now)
+    # cc-P68: the window is seconds now (60 by default); P60's five minutes is 300 of them.
+    $f = @(Get-CommitInFlight -Notes @() -Changed $changed -Now $p60Now -Seconds 300)
     Assert-Equal 1 $f.Count (@($f | ForEach-Object { $_.Text }) -join ' | ')
     Assert-Equal 'code: scripts/Shard-Console.ps1 changed 90 s ago, inside the last 5 minutes. Something may still be writing it.' $f[0].Text
 }
@@ -2028,6 +2032,247 @@ Fact 'P63_TheSafetyCheckGuardsTheNewScripts' {
         $p = Get-Plan $a -PackageNotes 'x' -PackageZip $pkgZipName
         Assert-Equal 0 @(Test-PlanSafety $p $config).Count ($a + ': ' + (@(Test-PlanSafety $p $config) -join ' | '))
     }
+}
+
+# --- cc-P68: Check selected, a cancelled publish, the quiet window and its countdown, Force ---------
+# As above: plans from written-out facts, stand-in scripts in temp folders. Nothing publishes or commits.
+
+Fact 'P68_TheCheckActionExistsNotMutatingInAWindow' {
+    $a = @(Get-ConsoleActions | Where-Object { $_.Key -eq 'package.check' })
+    Assert-Equal 1 $a.Count
+    Assert-Equal 'Player package' $a[0].Group
+    Assert-Equal $false $a[0].Mutates 'it only reads'
+    Assert-Equal 'window' $a[0].RunIn 'in a window that stays open'
+    Assert-Equal 'execute' (Resolve-RunMode -Action 'package.check') 'so a child with no mode still runs it (D37 refuses only what changes something)'
+    $b = Get-ModeBanner 'execute' 'package.check' 'package'
+    Assert-True ($b.Lines[1] -match '^  CHECKING  package\.check \(player package\)' -and $b.Lines[2] -match 'changes nothing') ($b.Lines -join ' | ')
+    $r = Invoke-ClickCapture 'package.check' '' $false
+    Assert-Equal 0 $r.Confirms.Count 'no phrase'
+    Assert-Equal 1 $r.Spawned.Count ($r.Lines -join ' | ')
+    Assert-True ($r.Spawned[0] -match (' -NoExit .* -Mode Execute -Action package\.check -PackageZip "' + [regex]::Escape($pkgZipName) + '"$')) $r.Spawned[0]
+}
+
+Fact 'P68_TheCheckPlanNamesCheckZipAndTheSelectedZipQuoted' {
+    # A name with a single quote in it, as a person could rename a zip in dist\.
+    $odd = 'ShatteredLegacy-it''s $x; y.zip'
+    $f = New-PackageFacts -Zips @((New-PackageZipRow), (New-PackageZipRow -Name $odd))
+    $p = Get-Plan 'package.check' -PackageZip $odd -PackageFacts $f
+    Assert-Equal 'gatecheck' (@($p | ForEach-Object { $_.Kind }) -join ',')
+    $full = Join-Path $config.PackageDist $odd
+    $text = (Format-Plan -Action 'package.check' -ShardKey 'package' -Plan $p) -join "`n"
+    $want = '& ' + (ConvertTo-PsLiteral $config.BuildPackage) + ' -CheckZip ' + (ConvertTo-PsLiteral $full)
+    Assert-True ($text.Contains('CHECK    ' + $want)) $text
+    $errs = $null
+    $ast = [Management.Automation.Language.Parser]::ParseInput($want, [ref]$null, [ref]$errs)
+    Assert-Equal 0 @($errs).Count (@($errs) -join '; ')
+    $cmd = $ast.Find({ param($n) $n -is [Management.Automation.Language.CommandAst] }, $true)
+    Assert-Equal 'CheckZip' $cmd.CommandElements[1].ParameterName
+    Assert-Equal $full $cmd.CommandElements[2].Value 'the quoted value is the selected zip, whole'
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count (@(Test-PlanSafety $p $config) -join ' | ')
+}
+
+Fact 'P68_TheCheckIsNotRefusedOnADirtyTreeAndSaysWhenTheBuildScriptDiffersFromHead' {
+    $dirty = New-PackageFacts -Dirty @('player-package/Build-PlayerPackage.ps1') -BuildDiff 'differs'
+    $p = Get-Plan 'package.check' -PackageZip $pkgZipName -PackageFacts $dirty
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -eq 'refuse' }).Count 'it only reads'
+    $say = @($p | Where-Object { $_.Kind -eq 'say' })
+    Assert-Equal 1 $say.Count (@($p | ForEach-Object { $_.Kind + ' ' + $_.Text }) -join ' | ')
+    Assert-Equal 'Note: the working tree''s player-package\Build-PlayerPackage.ps1 differs from HEAD''s (9ab57e4), and it is the script doing this check.' $say[0].Text
+    Assert-Equal 1 (Invoke-ClickCapture 'package.check' '' $false -PackageFacts $dirty).Spawned.Count 'and it opens its window'
+    Assert-Equal 0 @(Get-Plan 'package.check' -PackageZip $pkgZipName | Where-Object { $_.Kind -eq 'say' }).Count 'nothing said when it is HEAD''s'
+    $unk = @(Get-Plan 'package.check' -PackageZip $pkgZipName -PackageFacts (New-PackageFacts -BuildDiff 'git diff exited with 128 fatal: x') | Where-Object { $_.Kind -eq 'say' })
+    Assert-True ($unk.Count -eq 1 -and $unk[0].Text -like 'Note: could not tell whether*128*') 'a git failure is said, not read as the same (D66)'
+}
+
+Fact 'P68_TheCheckSaysGate5WillFailWithNoVersionJsonAndRefusesWhatItCannotCheck' {
+    $none = New-PackageFacts -Zips @(New-PackageZipRow -NoJson)
+    $p = Get-Plan 'package.check' -PackageZip $pkgZipName -PackageFacts $none
+    Assert-Equal 'say,gatecheck' (@($p | ForEach-Object { $_.Kind }) -join ',') 'not refused: the check is how you find out'
+    Assert-Equal 'No ShatteredLegacy-2026.10.05.1329.version.json beside it, so gate 5 will fail.' $p[0].Text
+    foreach ($c in @(@('', $pkgFactsOk, 'Choose a zip'), @('ShatteredLegacy-nope.zip', $pkgFactsOk, 'no zip'), @($pkgZipName, (New-PackageFacts -NoBuild), 'is not there'))) {
+        $r = Invoke-ClickCapture 'package.check' '' $false -PackageZip $c[0] -PackageFacts $c[1]
+        Assert-Equal 0 $r.Spawned.Count $c[2]
+        Assert-True (@($r.Lines | Where-Object { $_ -like ('package.check: *' + $c[2] + '*') }).Count -eq 1) ($c[2] + ': ' + ($r.Lines -join ' | '))
+    }
+}
+
+Fact 'P68_ACheckShowsEachGateLineThenPassedOrFailed' {
+    # Build-PlayerPackage.ps1 swapped for a stand-in shaped like its -CheckZip: GATE 4 and 6 lines,
+    # GATE 5 only when version.json is there, and a throw for a zip named *bad*.
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p68-check-' + [guid]::NewGuid().ToString('N'))
+    $dist = Join-Path $dir 'dist'
+    New-Item -ItemType Directory -Path $dist -Force | Out-Null
+    $stand = Join-Path $dir 'Build-PlayerPackage.ps1'
+    Set-Content -LiteralPath $stand -Encoding ASCII -Value @(
+        'param([string]$Notes, [string]$CheckZip, [switch]$GateSelfTest)',
+        'if ($CheckZip -match ''bad'') { throw "GATE 4: $CheckZip fails:`n  app\Data\x.mul is EA''s" }',
+        'Write-Host "  GATE 4 passed: $CheckZip" -ForegroundColor Green',
+        'Write-Host "  GATE 6 passed: $CheckZip" -ForegroundColor Green',
+        '$jp = $CheckZip -replace ''\.zip$'', ''.version.json''',
+        'if (Test-Path -LiteralPath $jp) { Write-Host "  GATE 5 passed: $jp" -ForegroundColor Green }',
+        'exit 0')
+    $good = Join-Path $dist 'ShatteredLegacy-2026.10.05.1606.zip'
+    $nojs = Join-Path $dist 'ShatteredLegacy-2026-09-26.zip'
+    $bad  = Join-Path $dist 'ShatteredLegacy-bad.zip'
+    foreach ($z in $good, $nojs, $bad) { Set-Content -LiteralPath $z -Value 'zip' }
+    Set-Content -LiteralPath ($good -replace '\.zip$', '.version.json') -Value '{}'
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.BuildPackage = $stand
+    $cfg.PackageDist = $dist
+    $cfg.LogFile = Join-Path $dir 'shard-console.log'
+    $p68Lines = New-Object 'System.Collections.Generic.List[string]'
+    function Write-ConsoleLine { param([string]$Text, [string]$Color) $p68Lines.Add($Text) }
+    try {
+        $run = {
+            param([string]$Zip)
+            $p68Lines.Clear()
+            $facts = [pscustomobject]@{ BuildExists = $true; Head = 'abc1234'; BuildDiff = 'same'; Zips = @(Get-PackageZips $dist) }
+            $p = @(Get-ActionPlan -Action 'package.check' -Config $cfg -PackageFacts $facts -PackageZip $Zip)
+            Assert-Equal 0 @(Test-PlanSafety $p $cfg).Count (@(Test-PlanSafety $p $cfg) -join ' | ')
+            Invoke-Plan -Plan $p -Config $cfg -ActionKey 'package.check' -ShardKey 'package'
+        }
+        Assert-Equal $true (& $run (Split-Path $good -Leaf)) ($p68Lines -join ' | ')
+        foreach ($g in 'GATE 4 passed', 'GATE 6 passed', 'GATE 5 passed') { Assert-True (@($p68Lines | Where-Object { $_ -match $g }).Count -eq 1) ($g + ': ' + ($p68Lines -join ' | ')) }
+        Assert-Equal 'PASSED: ShatteredLegacy-2026.10.05.1606.zip passed gates 4, 6 and 5.' $p68Lines[$p68Lines.Count - 1]
+        Assert-Equal $false (& $run (Split-Path $nojs -Leaf)) ($p68Lines -join ' | ')
+        Assert-True (@($p68Lines | Where-Object { $_ -eq '  GATE 5 failed: there is no ShatteredLegacy-2026-09-26.version.json beside the zip, so launchers could not be told about it.' }).Count -eq 1) ($p68Lines -join ' | ')
+        Assert-True ($p68Lines[$p68Lines.Count - 1] -like 'FAILED: ShatteredLegacy-2026-09-26.zip did not pass the package gates*') $p68Lines[$p68Lines.Count - 1]
+        Assert-Equal $false (& $run (Split-Path $bad -Leaf)) ($p68Lines -join ' | ')
+        Assert-True (@($p68Lines | Where-Object { $_ -match '^  GATE 4: .*bad\.zip fails:' }).Count -eq 1) ('the gate''s own words: ' + ($p68Lines -join ' | '))
+        Assert-True ($p68Lines[$p68Lines.Count - 1] -like 'FAILED: ShatteredLegacy-bad.zip*') $p68Lines[$p68Lines.Count - 1]
+        Assert-Equal 3 @(Get-ChildItem -LiteralPath $dist -Filter '*.zip').Count 'nothing in dist\ changed'
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P68_TheSafetyCheckKeepsTheCheckToTheBuildScriptAndDist' {
+    $in = Join-Path $config.PackageDist $pkgZipName
+    Assert-Equal 0 @(Test-PlanSafety @(New-PlanStep -Kind gatecheck -Path $config.BuildPackage -From $in) $config).Count 'the build script on a zip in dist'
+    Assert-Refused @(New-PlanStep -Kind gatecheck -Path 'D:\UO\Other.ps1' -From $in) 'a zip is checked only by' 'another script'
+    Assert-Refused @(New-PlanStep -Kind gatecheck -Path $config.BuildPackage -From 'D:\Downloads\x.zip') 'checks only a zip in' 'a zip outside dist'
+    Assert-Refused @(New-PlanStep -Kind gatecheck -Path $config.BuildPackage -From (Join-Path $config.PackageDist 'x.txt')) 'checks only a zip in' 'not a zip'
+}
+
+Fact 'P68_ThePublishScriptsThreeExitCodesReadAsTheyMean' {
+    Assert-Equal 'published' (Get-PublishOutcome 0).Result
+    $c = Get-PublishOutcome 3
+    Assert-Equal 'cancelled' $c.Result
+    Assert-Equal 'Publish cancelled. Nothing was published.' $c.Text
+    foreach ($x in 1, 2, 255) { $o = Get-PublishOutcome $x; Assert-True ($o.Result -eq 'failed' -and $o.Text -match (' exited with ' + $x + '\.')) ([string]$x) }
+    # And through the executor, with a stand-in publish script that exits each code.
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p68-pub-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $stand = Join-Path $dir 'Publish-PlayerPackage.ps1'
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.PublishScript = $stand
+    $cfg.LogFile = Join-Path $dir 'shard-console.log'
+    $p68Lines = New-Object 'System.Collections.Generic.List[string]'
+    function Write-ConsoleLine { param([string]$Text, [string]$Color) $p68Lines.Add($Text) }
+    try {
+        $plan = @((New-PlanStep -Kind confirm -Phrase 'publish player package'),
+            (New-PlanStep -Kind script -Path $stand -Named ([ordered]@{ Zip = (Join-Path $cfg.PackageDist $pkgZipName) }) -Text 'publish'),
+            (New-PlanStep -Kind log -Text 'package.publish x'))
+        Assert-Equal 0 @(Test-PlanSafety $plan $cfg).Count (@(Test-PlanSafety $plan $cfg) -join ' | ')
+        $go = {
+            param([int]$Code, [string]$Say)
+            Set-Content -LiteralPath $stand -Encoding ASCII -Value @('param([string]$Zip)', ("Write-Host '" + $Say + "'"), ('exit ' + $Code))
+            $p68Lines.Clear()
+            $script:PlanCancelled = $false
+            $ok = Invoke-Plan -Plan $plan -Config $cfg -ActionKey 'package.publish' -ShardKey 'package' -ConfirmLive 'publish player package'
+            [pscustomobject]@{ Ok = $ok; Cancelled = [bool]$script:PlanCancelled; Lines = @($p68Lines) }
+        }
+        $no = & $go 3 'Nothing done.'
+        Assert-Equal $false $no.Ok ($no.Lines -join ' | ')
+        Assert-Equal $true $no.Cancelled 'cancelled, so the window exits 3, not 1'
+        Assert-Equal '      Publish cancelled. Nothing was published.' $no.Lines[$no.Lines.Count - 1] ($no.Lines -join ' | ')
+        Assert-Equal 0 @($no.Lines | Where-Object { $_ -match 'FAILED' }).Count 'a cancel is not a failure'
+        Assert-True ((Get-Content -LiteralPath $cfg.LogFile -Raw) -match 'CANCELLED package\.publish') 'logged as cancelled'
+        $yes = & $go 0 'PUBLISHED'
+        Assert-Equal $true $yes.Ok ($yes.Lines -join ' | ')
+        Assert-True (@($yes.Lines | Where-Object { $_ -match 'Published: Publish-PlayerPackage\.ps1 exited 0\.' }).Count -eq 1) ($yes.Lines -join ' | ')
+        $bad = & $go 1 'STOPPED: x'
+        Assert-Equal $false $bad.Ok
+        Assert-Equal $false $bad.Cancelled
+        Assert-True (@($bad.Lines | Where-Object { $_ -like 'FAILED at step 2: Publish failed: Publish-PlayerPackage.ps1 exited with 1.*' }).Count -eq 1) ($bad.Lines -join ' | ')
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P68_TheQuietWindowComesFromConfigAndTheRefusalQuotesIt' {
+    Assert-Equal 60 $config.CommitQuietSeconds 'the default is 60 seconds'
+    $f = New-CommitFacts -Changed @([pscustomobject]@{ Repo = 'code'; Path = 'design/x.png'; LastWriteUtc = $p60Now.AddSeconds(-30) })
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $refusals = { param($c) @(Get-ActionPlan -Action 'commit.run' -Config $c -CommitFacts $f | Where-Object { $_.Kind -eq 'refuse' } | ForEach-Object { $_.Text }) }
+    $r60 = & $refusals $cfg
+    Assert-Equal 2 $r60.Count ($r60 -join ' | ')
+    Assert-Equal 'code: design/x.png changed 30 s ago, inside the last 60 seconds. Something may still be writing it.' $r60[0]
+    Assert-True ($r60[1] -match 'has changed for 60 seconds\.' -and $r60[1] -notmatch 'minutes') $r60[1]
+    $cfg.CommitQuietSeconds = 20
+    Assert-Equal 0 (& $refusals $cfg).Count 'at 20 seconds, 30 s ago is quiet'
+    $cfg.CommitQuietSeconds = 300
+    Assert-True ((& $refusals $cfg)[1] -match 'has changed for 5 minutes\.') 'the window, as configured'
+    Assert-Equal '90 seconds' (Format-QuietWindow 90)
+}
+
+Fact 'P68_AFileChanged30sAgoBlocksAt60AndNotAt20' {
+    $c = @([pscustomobject]@{ Repo = 'code'; Path = 'design/x.png'; LastWriteUtc = $p60Now.AddSeconds(-30) })
+    Assert-Equal 1 @(Get-CommitInFlight -Notes @() -Changed $c -Now $p60Now -Seconds 60).Count 'at 60'
+    Assert-Equal 0 @(Get-CommitInFlight -Notes @() -Changed $c -Now $p60Now -Seconds 20).Count 'at 20'
+    Assert-Equal 0 @(Get-CommitInFlight -Notes @() -Changed $c -Now $p60Now -Seconds 30).Count 'at exactly the window it is quiet, as the countdown reaches 0:00'
+}
+
+Fact 'P68_TheCountdownTextForAGivenAge' {
+    $two = @([pscustomobject]@{ Repo = 'code'; Path = 'scripts/old.ps1'; LastWriteUtc = $p60Now.AddSeconds(-50) },
+             [pscustomobject]@{ Repo = 'code'; Path = 'design/x.png'; LastWriteUtc = $p60Now.AddSeconds(-18) })
+    $f = New-CommitFacts -Changed $two
+    Assert-Equal 'Commit allowed in 0:42 (waiting on design/x.png)' (Get-CommitCountdown -Facts $f -Config $config -Now $p60Now) 'the newest file names the wait'
+    Assert-Equal 'Commit allowed in 0:41 (waiting on design/x.png)' (Get-CommitCountdown -Facts $f -Config $config -Now $p60Now.AddSeconds(1)) 'and it ticks down'
+    Assert-Equal 'Commit allowed in 0:01 (waiting on design/x.png)' (Get-CommitCountdown -Facts $f -Config $config -Now $p60Now.AddSeconds(41.5)) 'rounded up, never 0:00 while refused'
+    Assert-Equal 'Ready to commit' (Get-CommitCountdown -Facts $f -Config $config -Now $p60Now.AddSeconds(42)) 'at zero'
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.CommitQuietSeconds = 90
+    Assert-Equal 'Commit allowed in 1:12 (waiting on design/x.png)' (Get-CommitCountdown -Facts $f -Config $cfg -Now $p60Now)
+    Assert-Equal 'Nothing to commit: both repos are clean.' (Get-CommitCountdown -Facts (New-CommitFacts -Clean) -Config $config -Now $p60Now)
+    Assert-True ((Get-CommitCountdown -Facts $f -Config $config -Now $p60Now -Force) -like '*(waiting on design/x.png). Force is ticked: Commit and push skips this wait') 'with Force ticked'
+}
+
+Fact 'P68_TheNotDoneBlockStillWinsAtZero' {
+    $notes = @([pscustomobject]@{ Name = 'cc-P65-shard-thing.md'; LastLine = 'still writing' })
+    $f = New-CommitFacts -Notes $notes -Changed @([pscustomobject]@{ Repo = 'code'; Path = 'design/x.png'; LastWriteUtc = $p60Now.AddSeconds(-18) })
+    Assert-Equal 'Commit allowed in 0:42 (waiting on design/x.png). Also blocked: P65 has not said DONE (cc-P65-shard-thing.md)' (Get-CommitCountdown -Facts $f -Config $config -Now $p60Now)
+    Assert-Equal 'Not ready: P65 has not said DONE (cc-P65-shard-thing.md).' (Get-CommitCountdown -Facts $f -Config $config -Now $p60Now.AddSeconds(60)) 'at zero the prompt is what blocks'
+    Assert-Equal 'Not ready: P65 has not said DONE (cc-P65-shard-thing.md).' (Get-CommitCountdown -Facts $f -Config $config -Now $p60Now.AddSeconds(60) -Force) 'and Force does not lift it'
+    $sys = New-CommitFacts -System
+    Assert-True ((Get-CommitCountdown -Facts $sys -Config $config -Now $p60Now) -like 'Not ready: this console runs as NT AUTHORITY\SYSTEM*') 'SYSTEM too'
+}
+
+Fact 'P68_ForceSkipsOnlyTheRecentFileWaitAndTheConfirmationNamesTheFiles' {
+    $recent = @([pscustomobject]@{ Repo = 'code'; Path = 'CHANGELOG.md'; LastWriteUtc = $p60Now.AddSeconds(-10) },
+                [pscustomobject]@{ Repo = 'docs'; Path = 'notes/cc-P68-console-package-check.md'; LastWriteUtc = $p60Now.AddSeconds(-25) })
+    $f = New-CommitFacts -Changed $recent
+    $plain = @(Get-ActionPlan -Action 'commit.run' -Config $config -CommitFacts $f)
+    Assert-Equal 3 @($plain | Where-Object { $_.Kind -eq 'refuse' }).Count 'without Force: both files and the summary'
+    $p = @(Get-ActionPlan -Action 'commit.run' -Config $config -CommitFacts $f -CommitForce)
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -eq 'refuse' }).Count (@($p | ForEach-Object { $_.Kind + ' ' + $_.Text }) -join ' | ')
+    Assert-Equal 'confirm' $p[0].Kind 'the phrase is still asked first'
+    Assert-Equal 'commit shard work' $p[0].Phrase
+    Assert-Equal 'This commits and pushes both repos, D:\ShatteredLegacy and D:\UO\shard-migration. FORCE is ticked: this skips the wait for files to be unchanged for 60 seconds, for code: CHANGELOG.md (changed 10 s ago), docs: notes/cc-P68-console-package-check.md (changed 25 s ago). Something may still be writing them.' $p[0].Text
+    Assert-Equal 2 @($p | Where-Object { $_.Kind -eq 'say' -and $_.Text -like 'FORCE: not waiting on *' }).Count 'each file said in the plan too'
+    Assert-Equal ('BEFORE YOU TYPE: ' + $script:CommitPublicWarning) (Get-ConfirmPreface $p) 'the public warning is unchanged'
+    # Force never lifts a prompt that has not said DONE, or SYSTEM.
+    $busy = New-CommitFacts -Changed $recent -Notes @([pscustomobject]@{ Name = 'cc-P65-shard-thing.md'; LastLine = 'still writing' })
+    $bp = @(Get-ActionPlan -Action 'commit.run' -Config $config -CommitFacts $busy -CommitForce | Where-Object { $_.Kind -eq 'refuse' } | ForEach-Object { $_.Text })
+    Assert-Equal 2 $bp.Count ($bp -join ' | ')
+    Assert-True ($bp[0] -like 'P65 has not said DONE*') $bp[0]
+    Assert-True ($bp[1] -like '*Force skips only the wait for recently changed files*') $bp[1]
+    $sp = @(Get-ActionPlan -Action 'commit.run' -Config $config -CommitFacts (New-CommitFacts -System -Changed $recent) -CommitForce | Where-Object { $_.Kind -eq 'refuse' })
+    Assert-True ($sp.Count -eq 1 -and $sp[0].Text -like 'This console is running as NT AUTHORITY\SYSTEM*') (@($sp | ForEach-Object { $_.Text }) -join ' | ')
+    # The click: the dialog says it, the child is told -CommitForce, and the phrase still guards the run.
+    $r = Invoke-ClickCapture 'commit.run' '' $false -CommitFacts $f -CommitForce
+    Assert-Equal 'commit shard work' ($r.Confirms -join ',')
+    Assert-True ($r.ConfirmTexts[0] -match 'FORCE is ticked: .*code: CHANGELOG\.md \(changed 10 s ago\)') $r.ConfirmTexts[0]
+    Assert-True ($r.Spawned[0] -match ' -Mode Execute -Action commit\.run -ConfirmLive "commit shard work" -CommitForce$') $r.Spawned[0]
+    Assert-Equal 0 (Invoke-ClickCapture 'commit.run' '' $false -CommitFacts $f).Spawned.Count 'unticked, the same state is refused'
+    Assert-True (-not ((Invoke-ClickCapture 'commit.preview' '' $false -CommitFacts $f -CommitForce).Spawned[0] -match 'CommitForce')) 'the preview is never forced'
+    Assert-Equal $false (Invoke-Plan -Plan $p -Config $config -ActionKey 'commit.run' -ShardKey 'repos' -ConfirmLive '' 6>$null) 'a forced plan still runs nothing without the phrase'
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

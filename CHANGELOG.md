@@ -37,6 +37,9 @@ Example:
 ### Changed
 - Long patch note lines now wrap onto a second or third line instead of being cut off at the edge.
 
+### Staff
+- Shard Console: the Player package tab can check any built zip against the package gates, a declined publish now says it was cancelled, and the Commit tab waits 60 seconds after the last change instead of 5 minutes, counts down to when it can commit, and has a Force box that skips only that wait.
+
 ## 2026.10.05.2
 
 ### Changed
