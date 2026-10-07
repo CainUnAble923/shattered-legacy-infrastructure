@@ -29,6 +29,24 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.06
+
+### Added
+- Hiding, Stealth, Detect Hidden, Snooping, Stealing, Poisoning, Healing, Veterinary, Begging, Forensic Evaluation, Animal Lore, Musicianship, Tracking, Taste Identification, Camping, Resisting Spells and Bushido no longer stop gaining at 100 or 120: past that point they keep rising with use, up to your skill cap. Below it they train exactly as before.
+- Detect Hidden past 100 gains only when a search finds something: a hidden player or creature, a trapped chest or container, or a hidden trap.
+- Animal Lore past 120 gains on creatures that are hard to tame, the same ones Animal Taming trains on; easy animals teach nothing more.
+- Stealth past 142 gains in any armor, and Stealing past 127.5 gains only on the heaviest (10 stone) thefts.
+
+### Changed
+- Skill bonuses on worn items no longer stop a skill gaining before it reaches its cap.
+- A thief is caught as often as at 120 Stealing, however high their skill or gear.
+- Hiding above 100 no longer lets you hide right next to a fight; you still need to be more than 8 tiles from anyone fighting you.
+- Detect Hidden searches up to 10 tiles at most, the same as at 100.
+- Musicianship above 120 no longer makes creatures easier to calm, provoke or discord.
+- The chance to block a hit tops out at 60 percent.
+- Tracking searches up to 110 tiles at most, the same as at 100.
+- Resisting Spells above 120 no longer turns Nether Cyclone into a gift of stamina and mana.
+
 ## 2026.10.05.3
 
 ### Added

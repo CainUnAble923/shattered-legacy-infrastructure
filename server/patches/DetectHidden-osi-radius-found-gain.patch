@@ -1,0 +1,25 @@
+--- a/Projects/UOContent/Skills/DetectHidden.cs
++++ b/Projects/UOContent/Skills/DetectHidden.cs
+@@ -142,7 +142,9 @@
+         {
+             var foundAnyone = false;
+             var srcSkill = src.Skills.DetectHidden.Value;
+-            var range = (int)(srcSkill / 10.0);
++            // cc-P66 A: the radius counts a player's skill at most at OSI's top (100), 10 tiles; the contest below
++            // still reads the whole skill.
++            var range = (int)(ClusterFSkillClamps.DetectHiddenRangeSkill(src) / 10.0);
+ 
+             if (targ is TrappableContainer container && container.TrapType != TrapType.None)
+             {
+@@ -258,6 +260,11 @@
+             {
+                 src.SendLocalizedMessage(500817); // You can see nothing hidden there.
+             }
++            else
++            {
++                // cc-P66 B: past the scan's stock top (100), Detect Hidden gains only when it found a hider or a trap
++                ClusterFSkillGain.DetectHiddenFound(src);
++            }
+ 
+             // Calculate how much time has passed since the targeter was opened
+             var ticksSinceTargeter = (int)(Core.TickCount - (src.NextSkillTime - 30000));

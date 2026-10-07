@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Skills/Stealing.cs
++++ b/Projects/UOContent/Skills/Stealing.cs
+@@ -338,7 +338,9 @@
+                         _thief.SendLocalizedMessage(502723); // You fail to steal the item.
+                     }
+ 
+-                    caught = _thief.Skills.Stealing.Value < Utility.Random(150);
++                    // cc-P66 A: a player thief counts at most OSI's top Stealing (120) here, so worn bonuses above
++                    // the cap (D-113) or skill trained past 120 never make a thief uncatchable. Same at every 120 or less.
++                    caught = ClusterFSkillClamps.StealingCaughtSkill(_thief) < Utility.Random(150);
+                 }
+             }
+ 

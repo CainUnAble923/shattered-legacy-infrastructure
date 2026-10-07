@@ -1,0 +1,22 @@
+--- a/Projects/UOContent/Items/Weapons/BaseWeapon.cs
++++ b/Projects/UOContent/Items/Weapons/BaseWeapon.cs
+@@ -1525,7 +1525,8 @@
+                 chance = chance * (20 + defender.Dex) / 100;
+             }
+ 
+-            return defender.CheckSkill(SkillName.Parry, chance);
++            // cc-P66 A: a player's block chance stops at OSI's highest (Parry and Bushido 120, Evasion, two-hander)
++            return defender.CheckSkill(SkillName.Parry, ClusterFSkillClamps.BlockChance(defender, chance));
+         }
+ 
+         if (defender.Weapon is Fists or BaseRanged)
+@@ -1566,7 +1567,8 @@
+ 
+         if (chance > aosChance)
+         {
+-            return defender.CheckSkill(SkillName.Parry, chance);
++            // cc-P66 A: as above
++            return defender.CheckSkill(SkillName.Parry, ClusterFSkillClamps.BlockChance(defender, chance));
+         }
+ 
+         // Only skillcheck if wielding a shield & there's no effect from Bushido

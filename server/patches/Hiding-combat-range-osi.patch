@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Skills/Hiding.cs
++++ b/Projects/UOContent/Skills/Hiding.cs
+@@ -50,7 +50,9 @@
+ 
+             // int range = 18 - (int)(m.Skills.Hiding.Value / 10);
+             // Cap of 18 not OSI-exact, intentional difference
+-            var range = Math.Min((int)((100 - m.Skills.Hiding.Value) / 2) + 8, 18);
++            // cc-P66 A: a player counts at most OSI's top Hiding (100), so the range never falls below 8 and a
++            // hider past 100 cannot hide next to a combatant. Creatures as pinned.
++            var range = Math.Min((int)((100 - ClusterFSkillClamps.HidingCombatSkill(m)) / 2) + 8, 18);
+ 
+             var badCombat = !CombatOverride && m.Combatant != null && m.InRange(m.Combatant.Location, range) &&
+                             m.Combatant.InLOS(m);

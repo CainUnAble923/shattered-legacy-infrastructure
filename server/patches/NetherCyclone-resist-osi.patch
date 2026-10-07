@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Spells/Mysticism/NetherCycloneSpell.cs
++++ b/Projects/UOContent/Spells/Mysticism/NetherCycloneSpell.cs
+@@ -78,7 +78,8 @@
+                     Caster.DoHarmful(m);
+                     SpellHelper.Damage(this, m, damage, 0, 0, 0, 0, 0, 100);
+ 
+-                    var resistedReduction = reduction - m.Skills.MagicResist.Value / 800.0;
++                    // cc-P66 A: a player's Resisting Spells counts at most OSI's top (120) against the drain
++                    var resistedReduction = reduction - ClusterFSkillClamps.NetherCycloneResistSkill(m) / 800.0;
+ 
+                     m.Stam -= (int)(m.StamMax * resistedReduction);
+                     m.Mana -= (int)(m.ManaMax * resistedReduction);

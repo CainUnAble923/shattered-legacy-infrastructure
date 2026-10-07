@@ -1,0 +1,36 @@
+--- a/Projects/UOContent/Skills/Peacemaking.cs
++++ b/Projects/UOContent/Skills/Peacemaking.cs
+@@ -161,7 +161,8 @@
+                         else
+                         {
+                             var diff = m_Instrument.GetDifficultyFor(targ) - 10.0;
+-                            var music = from.Skills.Musicianship.Value;
++                            // cc-P66 A: a player's Musicianship counts at most OSI's top (120), so the reduction stops at 10
++                        var music = ClusterFSkillClamps.MusicianshipReductionSkill(from);
+ 
+                             if (music > 100.0)
+                             {
+--- a/Projects/UOContent/Skills/Provocation.cs
++++ b/Projects/UOContent/Skills/Provocation.cs
+@@ -130,7 +130,8 @@
+ 
+                         var diff =
+                             (m_Instrument.GetDifficultyFor(m_Creature) + m_Instrument.GetDifficultyFor(creature)) * 0.5 - 5.0;
+-                        var music = from.Skills.Musicianship.Value;
++                        // cc-P66 A: a player's Musicianship counts at most OSI's top (120), so the reduction stops at 10
++                        var music = ClusterFSkillClamps.MusicianshipReductionSkill(from);
+ 
+                         if (music > 100.0)
+                         {
+--- a/Projects/UOContent/Skills/Discordance.cs
++++ b/Projects/UOContent/Skills/Discordance.cs
+@@ -152,7 +152,8 @@
+                     else if (!targ.Player)
+                     {
+                         var diff = m_Instrument.GetDifficultyFor(targ) - 10.0;
+-                        var music = from.Skills.Musicianship.Value;
++                        // cc-P66 A: a player's Musicianship counts at most OSI's top (120), so the reduction stops at 10
++                        var music = ClusterFSkillClamps.MusicianshipReductionSkill(from);
+ 
+                         if (music > 100.0)
+                         {

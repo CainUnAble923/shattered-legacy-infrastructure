@@ -473,6 +473,29 @@ apply_patch "$PATCHES/Ore-smelt-at-forge.patch"
 # Argued in shard-migration/notes/cc-P57-batch-6.md, Part G; pinned by StealingStackWeightVerification (proved red).
 apply_patch "$PATCHES/Stealing-stack-weight.patch"
 
+# cc-P66 Part A (batch X, cc-P54 B.4/B.5, Chase's decision 9: clamps before any gain path past OSI's tops). Seven pinned
+# effects read a skill with no upper bound, so a player's skill above OSI's top made them certain or immune. Each patched
+# line now reads the player's skill through customizations ClusterFSkillClamps, which counts it at most at OSI's top
+# Value (the power-scroll cap, else 100); creatures read theirs as pinned, and every value at or below OSI's top is
+# unchanged. Stealing's caught test (applied after the stack patch above, same file): a thief at 150 by worn bonuses was
+# never caught; now caught as at 120. Hiding's combat range: from Hiding 118 a hider could hide beside a combatant; never
+# below 8 tiles now. Detect Hidden's radius: 20 tiles at 200, past the screen; 10 now (the contest still reads the whole
+# skill), plus one call into ClusterFSkillGain when the scan found something (Part B). The bard skills: Musicianship's
+# reduction of difficulty was (Mus - 100) / 2 uncapped, 50 at 200; at most 10 now (three files, one patch). Block: the
+# final chance at Parry 200, Bushido 120, Evasion, a two-hander was 0.95; at most OSI's own highest, 0.600036. Tracking's
+# radius: 210 tiles at 200; 110 now. Nether Cyclone: a resister past 160 against a 120/120 mystic got stamina and mana back;
+# resist counts at most 120 now. Rejected for all seven: clamping the skill everywhere (the skills are meant to grow past
+# OSI, only these effects break), customizations alone (each line is inside a pinned method or a private target class with
+# no hook), and clamping creatures too (ServUO's creatures above OSI's tops would change). Argued in
+# shard-migration/notes/cc-P66-clamps-and-hook-g.md, Part A; pinned by SkillClampsVerification (proved red).
+apply_patch "$PATCHES/Stealing-caught-osi-skill.patch"
+apply_patch "$PATCHES/Hiding-combat-range-osi.patch"
+apply_patch "$PATCHES/DetectHidden-osi-radius-found-gain.patch"
+apply_patch "$PATCHES/Bard-musicianship-reduction-osi.patch"
+apply_patch "$PATCHES/BaseWeapon-block-chance-osi.patch"
+apply_patch "$PATCHES/Tracking-radius-osi.patch"
+apply_patch "$PATCHES/NetherCyclone-resist-osi.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

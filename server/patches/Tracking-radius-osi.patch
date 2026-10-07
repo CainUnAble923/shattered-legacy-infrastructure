@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Skills/Tracking/Tracking.cs
++++ b/Projects/UOContent/Skills/Tracking/Tracking.cs
+@@ -163,7 +163,8 @@
+         from.CheckSkill(SkillName.Tracking, 21.1, 100.0); // Passive gain
+ 
+         // 10 tiles base + 10 tiles per 10 skill
+-        var range = 10 + (int)from.Skills.Tracking.Value / 10 * 10;
++        // cc-P66 A: a player's Tracking counts at most OSI's top (100) here, 110 tiles
++        var range = 10 + (int)ClusterFSkillClamps.TrackingRangeSkill(from) / 10 * 10;
+ 
+         var mobs = GetClosestMobs(from, range, type);
+ 
