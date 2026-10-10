@@ -12,6 +12,13 @@
 //
 // Each method is called from one patched pinned line, named beside it. Notes: shard-migration
 // notes/cc-P66-clamps-and-hook-g.md, Part A.
+//
+// cc-P67 (cc-P54 B.3/B.4, decision 11): four more, shipped before the skills behind them climb. Tinkering's trap damage
+// and the axe's Lumberjacking damage bonus (Part A, Tinkering now climbs with the shard's metals; Lumberjacking already
+// reaches 148 on the extended woods), and potion strength and the deep-water fishing finds (Part B, before Alchemy and
+// Fishing get their content). Tinkering and Fishing count at most 120, OSI's tops with the power scrolls pinned does not
+// carry (OSI's tinker bulk orders and High Seas fishing; pinned PowerScroll.cs:63-66 lists Fishing, commented out);
+// Lumberjacking and Alchemy 100. Notes: shard-migration notes/cc-P67-craft-ceilings.md.
 
 using System;
 
@@ -27,6 +34,10 @@ public static class ClusterFSkillClamps
     public const double OsiMagicResist = 120.0;
     public const double OsiParry = 120.0;
     public const double OsiBushido = 120.0;
+    public const double OsiTinkering = 120.0;
+    public const double OsiLumberjacking = 100.0;
+    public const double OsiAlchemy = 100.0;
+    public const double OsiFishing = 120.0;
 
     /// <summary>
     /// The highest block chance pinned's CheckParry gives at OSI's tops (Items/Weapons/BaseWeapon.cs:1491-1574): no shield,
@@ -66,6 +77,28 @@ public static class ClusterFSkillClamps
     /// a 120/120 mystic's drain negative (the spell gave stamina and mana back).
     /// </summary>
     public static double NetherCycloneResistSkill(Mobile m) => AtMost(m, SkillName.MagicResist, OsiMagicResist);
+
+    /// <summary>
+    /// Engines/Craft/DefTinkering.cs:678-682: a trap's level is Tinkering / 10 and sets both its damage (TrapLevel,
+    /// TrappableContainer.ExecuteTrap.cs:65, :107, :128: explosion 10-30 x level) and its disarm difficulty
+    /// (TrapPower = level x 9, Skills/RemoveTrap.cs:61). Only the damage level is counted at most at OSI's top (12): the
+    /// power keeps growing with Tinkering, so Remove Trap still has harder traps to train on.
+    /// </summary>
+    public static int TrapDamageLevel(Mobile tinker) => (int)(AtMost(tinker, SkillName.Tinkering, OsiTinkering) / 10);
+
+    /// <summary>Items/Weapons/BaseWeapon.cs:2544, an axe's damage bonus 0.2% per Lumberjacking point + 10% at 100: at most 30%.</summary>
+    public static double AxeLumberjackingSkill(Mobile m) => AtMost(m, SkillName.Lumberjacking, OsiLumberjacking);
+
+    /// <summary>Items/Skill Items/Magical/Potions/BasePotion.cs:210, Alchemy x 10 / 33 percent potion strength: at most 30.</summary>
+    public static double PotionAlchemySkill(Mobile m) => AtMost(m, SkillName.Alchemy, OsiAlchemy);
+
+    /// <summary>
+    /// Engines/Harvest/Fishing.cs:183, the deep-water finds (net, big fish, treasure map, bottle: (Fishing - 80) / 4000
+    /// each, 0.5% at 100, 3% at 200): a chance that grows with Fishing counts it at most at 120 (1%). The entries whose
+    /// chance falls as Fishing rises (rare fish, boots, nothing) read the whole skill.
+    /// </summary>
+    public static double FishingFindSkill(Mobile m, double value, bool growsWithSkill) =>
+        growsWithSkill && m.Player ? Math.Min(value, OsiFishing) : value;
 
     /// <summary>Items/Weapons/BaseWeapon.cs:1528, :1569: a player's final block chance, at most <see cref="OsiMaxBlockChance" />.</summary>
     public static double BlockChance(Mobile defender, double chance) =>

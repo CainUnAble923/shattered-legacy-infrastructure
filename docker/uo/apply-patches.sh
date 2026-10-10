@@ -256,6 +256,7 @@ echo "[patches] Applying .patch files..."
 # post-Valorite metal can raise Blacksmithy's gain ceiling. The roll is pinned's own Mobile.CheckSkill; only its window
 # moves, and only from the item's maximum up; the success chance below it still reads the item's own range. A hook
 # cannot do it without a patch: the skill-check handlers do not know the craft's metal. Notes: notes/cc-P61-batch-7.md.
+# cc-P67 reuses the same hunk, unchanged, for Carpentry, Fletching and Tinkering (ClusterFCraftGain.CeilingFor).
 apply_patch "$PATCHES/CraftItem-shard-hooks.patch"
 apply_patch "$PATCHES/CraftContext-shard-hooks.patch"
 apply_patch "$PATCHES/PlayerMobile-individual-stat-cap.patch"
@@ -271,6 +272,9 @@ apply_patch "$PATCHES/SmallSmithBOD-PostValorite.patch"
 # Blacksmithy: an overload CreateRandomFor(m, teachingOnly) with two calls into customizations ClusterFSmithTeaching; the
 # one-argument form, which regular smiths call, is unchanged. Alternatives (a copy of the generator in customizations)
 # argued in shard-migration/notes/cc-P42-defect-batch-3.md, Part G; pinned by SmithOrdersTeachVerification.
+# cc-P67 Part C 1 (Chase 2026-10-05): with the character's setting on, the post-Valorite metal roll goes through
+# ClusterFSmithTeaching.TeachingMetal (the metals that still teach the smith); in this patch because teachingOnly is
+# this patch's parameter. Notes: shard-migration/notes/cc-P67-craft-ceilings.md; pinned by CraftCeilingsVerification.
 apply_patch "$PATCHES/SmallSmithBOD-teaching-orders.patch"
 # cc-P46 Part A (bug-list D55). Pinned's ore rule covers DullCopper..Valorite only, so a Platinum..Celestial deed took
 # any item (an iron one included). SmallBOD: GetMaterial maps our eight post-Valorite CraftResources, and the item
@@ -495,6 +499,22 @@ apply_patch "$PATCHES/Bard-musicianship-reduction-osi.patch"
 apply_patch "$PATCHES/BaseWeapon-block-chance-osi.patch"
 apply_patch "$PATCHES/Tracking-radius-osi.patch"
 apply_patch "$PATCHES/NetherCyclone-resist-osi.patch"
+
+# cc-P67 (cc-P54 B.3/B.4, Chase's decisions 10 and 11): four more effects read a skill with no upper bound, and the skills
+# behind them climb past OSI's tops now or will. Each patched line reads the player's skill through ClusterFSkillClamps,
+# as cc-P66's seven; creatures as pinned, and every value at or below OSI's top is unchanged. Tinkering's trap damage
+# (DefTinkering TrapCraft): the level was Tinkering / 10, so a Tinkering 200 trap exploded for 200-600; the damage level
+# counts at most 120 (12) while the trap's power, Remove Trap's difficulty, still reads the whole skill (cc-P54 B.3: they
+# are separate fields, and capping the power would stall Remove Trap at 138). The axe's Lumberjacking damage bonus
+# (BaseWeapon, applied after the block patch above, same file): 50% at 200, outside the damage cap; at most 30% (GM's).
+# Potion strength (BasePotion): Alchemy's share was Alchemy x 10 / 33, 60 at 200; at most 30. Fishing's deep-water finds
+# (Fishing.MutateType): (Fishing - 80) / 4000 each, 3% at 200; a chance that grows with Fishing counts at most 120 (1%).
+# Rejected, as for cc-P66's: clamping the skill everywhere, customizations alone (each is a local inside a pinned method),
+# clamping creatures. Argued in shard-migration/notes/cc-P67-craft-ceilings.md; pinned by CraftCeilingsVerification.
+apply_patch "$PATCHES/Tinkering-trap-damage-osi.patch"
+apply_patch "$PATCHES/BaseWeapon-axe-bonus-osi.patch"
+apply_patch "$PATCHES/BasePotion-alchemy-bonus-osi.patch"
+apply_patch "$PATCHES/Fishing-deep-water-finds-osi.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.

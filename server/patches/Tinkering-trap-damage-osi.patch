@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Engines/Craft/DefTinkering.cs
++++ b/Projects/UOContent/Engines/Craft/DefTinkering.cs
+@@ -679,7 +679,9 @@
+ 
+             Container.TrapType = TrapType;
+             Container.TrapPower = trapLevel * 9;
+-            Container.TrapLevel = trapLevel;
++            // cc-P67 A: the damage level counts a player's Tinkering at most at OSI's top (120, level 12); the power
++            // above (Remove Trap's difficulty) still grows with the whole skill.
++            Container.TrapLevel = ClusterFSkillClamps.TrapDamageLevel(From);
+             Container.TrapOnLockpick = true;
+ 
+             message = 1005639; // Trap is disabled until you lock the chest.

@@ -281,6 +281,9 @@ public static class ClusterFLumberjackingExtension
     /// <summary>
     /// Appends extended board types to DefCarpentry.CraftSystem sub-resources.
     /// Must run after DefCarpentry.Initialize() — called from ServerStarted.
+    /// cc-P67 A (F-28 item 3): each wood needs its tier (ClusterFWoodTiers, Ironwood 100 .. Starwood 200); all 100 until then.
+    /// Generic name and message as stock's woods (DefCarpentry.cs:601-607): 1044041 and 1072652 "You cannot work this strange
+    /// and unusual wood." (they were the ingots' 1044036 and 1044268, so a carpenter below a wood read "... metal.").
     /// </summary>
     private static void ExtendCarpentrySubResources()
     {
@@ -291,14 +294,14 @@ public static class ClusterFLumberjackingExtension
             return;
         }
 
-        carpentry.AddSubRes(typeof(IronwoodBoard),   "Ironwood",   100.0, 1044036, 1044268);
-        carpentry.AddSubRes(typeof(GhostwoodBoard),  "Ghostwood",  100.0, 1044036, 1044268);
-        carpentry.AddSubRes(typeof(EmberbarkBoard),  "Emberbark",  100.0, 1044036, 1044268);
-        carpentry.AddSubRes(typeof(FrostbarkBoard),  "Frostbark",  100.0, 1044036, 1044268);
-        carpentry.AddSubRes(typeof(ShadowbarkBoard), "Shadowbark", 100.0, 1044036, 1044268);
-        carpentry.AddSubRes(typeof(RunewoodBoard),   "Runewood",   100.0, 1044036, 1044268);
-        carpentry.AddSubRes(typeof(VoidwoodBoard),   "Voidwood",   100.0, 1044036, 1044268);
-        carpentry.AddSubRes(typeof(StarwoodBoard),   "Starwood",   100.0, 1044036, 1044268);
+        carpentry.AddSubRes(typeof(IronwoodBoard),   "Ironwood",   ClusterFWoodTiers.Ironwood, 1044041, 1072652);
+        carpentry.AddSubRes(typeof(GhostwoodBoard),  "Ghostwood",  ClusterFWoodTiers.Ghostwood, 1044041, 1072652);
+        carpentry.AddSubRes(typeof(EmberbarkBoard),  "Emberbark",  ClusterFWoodTiers.Emberbark, 1044041, 1072652);
+        carpentry.AddSubRes(typeof(FrostbarkBoard),  "Frostbark",  ClusterFWoodTiers.Frostbark, 1044041, 1072652);
+        carpentry.AddSubRes(typeof(ShadowbarkBoard), "Shadowbark", ClusterFWoodTiers.Shadowbark, 1044041, 1072652);
+        carpentry.AddSubRes(typeof(RunewoodBoard),   "Runewood",   ClusterFWoodTiers.Runewood, 1044041, 1072652);
+        carpentry.AddSubRes(typeof(VoidwoodBoard),   "Voidwood",   ClusterFWoodTiers.Voidwood, 1044041, 1072652);
+        carpentry.AddSubRes(typeof(StarwoodBoard),   "Starwood",   ClusterFWoodTiers.Starwood, 1044041, 1072652);
 
         Console.WriteLine("[ClusterFLumberjackingExtension] Carpentry sub-resources registered: Ironwood through Starwood.");
     }
@@ -309,6 +312,7 @@ public static class ClusterFLumberjackingExtension
     /// valid ingredients by the craft system but aren't in the sub-resource
     /// picker, which breaks the default Log entry in the fletching menu.
     /// Must run after DefBowFletching.Initialize() — called from ServerStarted.
+    /// cc-P67 A (F-28 item 3): the same tiers as Carpentry (ClusterFWoodTiers).
     /// </summary>
     private static void ExtendFletchingSubResources()
     {
@@ -319,14 +323,14 @@ public static class ClusterFLumberjackingExtension
             return;
         }
 
-        fletching.AddSubRes(typeof(IronwoodLog),   "Ironwood",   100.0, 1044041, 1072652);
-        fletching.AddSubRes(typeof(GhostwoodLog),  "Ghostwood",  100.0, 1044041, 1072652);
-        fletching.AddSubRes(typeof(EmberbarkLog),  "Emberbark",  100.0, 1044041, 1072652);
-        fletching.AddSubRes(typeof(FrostbarkLog),  "Frostbark",  100.0, 1044041, 1072652);
-        fletching.AddSubRes(typeof(ShadowbarkLog), "Shadowbark", 100.0, 1044041, 1072652);
-        fletching.AddSubRes(typeof(RunewoodLog),   "Runewood",   100.0, 1044041, 1072652);
-        fletching.AddSubRes(typeof(VoidwoodLog),   "Voidwood",   100.0, 1044041, 1072652);
-        fletching.AddSubRes(typeof(StarwoodLog),   "Starwood",   100.0, 1044041, 1072652);
+        fletching.AddSubRes(typeof(IronwoodLog),   "Ironwood",   ClusterFWoodTiers.Ironwood, 1044041, 1072652);
+        fletching.AddSubRes(typeof(GhostwoodLog),  "Ghostwood",  ClusterFWoodTiers.Ghostwood, 1044041, 1072652);
+        fletching.AddSubRes(typeof(EmberbarkLog),  "Emberbark",  ClusterFWoodTiers.Emberbark, 1044041, 1072652);
+        fletching.AddSubRes(typeof(FrostbarkLog),  "Frostbark",  ClusterFWoodTiers.Frostbark, 1044041, 1072652);
+        fletching.AddSubRes(typeof(ShadowbarkLog), "Shadowbark", ClusterFWoodTiers.Shadowbark, 1044041, 1072652);
+        fletching.AddSubRes(typeof(RunewoodLog),   "Runewood",   ClusterFWoodTiers.Runewood, 1044041, 1072652);
+        fletching.AddSubRes(typeof(VoidwoodLog),   "Voidwood",   ClusterFWoodTiers.Voidwood, 1044041, 1072652);
+        fletching.AddSubRes(typeof(StarwoodLog),   "Starwood",   ClusterFWoodTiers.Starwood, 1044041, 1072652);
 
         Console.WriteLine("[ClusterFLumberjackingExtension] Fletching sub-resources registered: Ironwood through Starwood.");
     }

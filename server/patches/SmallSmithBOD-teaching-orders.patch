@@ -23,7 +23,23 @@
  
              var entries = useMaterials ? SmallBulkEntry.BlacksmithArmor : SmallBulkEntry.BlacksmithWeapons;
  
-@@ -191,6 +202,14 @@
+@@ -140,7 +151,14 @@
+             // ClusterF: post-Valorite upgrade - 30% chance for extended smiths (skill > 100)
+             if (useMaterials && theirSkill > 100.0 && Utility.RandomDouble() < 0.30)
+             {
+-                var postVal = GetRandomMaterial(BulkMaterialType.Platinum, m_PostValMaterialChances);
++                // cc-P67 C1: with "Orders that still teach me" on, the metal is rolled among the metals that still teach this
++                // smith (ClusterFSmithTeaching.TeachingMetal); when none does, or the setting is off, the roll is as before.
++                var teachingMetal = teachingOnly
++                    ? ClusterFSmithTeaching.TeachingMetal(m, m_PostValMaterialChances)
++                    : BulkMaterialType.None;
++                var postVal = teachingMetal != BulkMaterialType.None
++                    ? teachingMetal
++                    : GetRandomMaterial(BulkMaterialType.Platinum, m_PostValMaterialChances);
+                 // ClusterFMetalTiers: each metal's Blacksmithy requirement on the 200 cap (cc-P53; was 105 .. 300).
+                 var postValReq = ClusterFMetalTiers.PostValoriteRequiredSkill(postVal);
+ 
+@@ -181,6 +199,14 @@
                  }
              }
  

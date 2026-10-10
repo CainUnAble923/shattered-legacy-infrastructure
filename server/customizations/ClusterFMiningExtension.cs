@@ -52,6 +52,7 @@ public static class ClusterFMiningExtension
     private static void OnServerStarted()
     {
         ExtendBlacksmithySubResources();
+        ExtendTinkeringSubResources();
     }
 
     // ── Mining vein extension ─────────────────────────────────────────────────
@@ -191,5 +192,38 @@ public static class ClusterFMiningExtension
         smithy.AddSubRes(typeof(CelestialIngot),  "Celestial",  ClusterFMetalTiers.Celestial, 1044036, 1044268);
 
         Console.WriteLine("[ClusterFMiningExtension] Blacksmithy sub-resources registered: Platinum through Celestial.");
+    }
+
+    /// <summary>
+    /// cc-P67 Part A (cc-P54 decision 10, Chase 2026-10-05): the eight post-Valorite ingots become Tinkering materials, at
+    /// the same tiers (ClusterFMetalTiers) as Blacksmithy, as stock's colored ingots carry Blacksmithy's numbers into
+    /// Tinkering (pinned DefTinkering.cs:589-597, Dull Copper 65 .. Valorite 99, the same as DefBlacksmithy.cs:687-704).
+    /// So a tinker can carry Tinkering past its stock items (WindChimes, 130) with ClusterFCraftGain's ceilings.
+    /// Must run after DefTinkering.Initialize(), called from ServerStarted.
+    /// </summary>
+    public static void ExtendTinkeringSubResources()
+    {
+        var tinkering = DefTinkering.CraftSystem;
+        if (tinkering == null)
+        {
+            Console.WriteLine("[ClusterFMiningExtension] WARNING: DefTinkering.CraftSystem is null; extended sub-resources not registered.");
+            return;
+        }
+
+        if (tinkering.CraftSubRes.SearchFor(typeof(PlatinumIngot)) != null)
+        {
+            return;
+        }
+
+        tinkering.AddSubRes(typeof(PlatinumIngot),   "Platinum",   ClusterFMetalTiers.Platinum, 1044036, 1044268);
+        tinkering.AddSubRes(typeof(ToxicIngot),      "Toxic",      ClusterFMetalTiers.Toxic, 1044036, 1044268);
+        tinkering.AddSubRes(typeof(BlazeIngot),      "Blaze",      ClusterFMetalTiers.Blaze, 1044036, 1044268);
+        tinkering.AddSubRes(typeof(FrostIngot),      "Frost",      ClusterFMetalTiers.Frost, 1044036, 1044268);
+        tinkering.AddSubRes(typeof(ObsidianIngot),   "Obsidian",   ClusterFMetalTiers.Obsidian, 1044036, 1044268);
+        tinkering.AddSubRes(typeof(MythrilIngot),    "Mythril",    ClusterFMetalTiers.Mythril, 1044036, 1044268);
+        tinkering.AddSubRes(typeof(AdamantiumIngot), "Adamantium", ClusterFMetalTiers.Adamantium, 1044036, 1044268);
+        tinkering.AddSubRes(typeof(CelestialIngot),  "Celestial",  ClusterFMetalTiers.Celestial, 1044036, 1044268);
+
+        Console.WriteLine("[ClusterFMiningExtension] Tinkering sub-resources registered: Platinum through Celestial.");
     }
 }

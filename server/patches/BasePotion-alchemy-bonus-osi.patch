@@ -1,0 +1,12 @@
+--- "a/Projects/UOContent/Items/Skill Items/Magical/Potions/BasePotion.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Magical/Potions/BasePotion.cs"
+@@ -207,7 +207,8 @@
+     public static int EnhancePotions(Mobile m)
+     {
+         var EP = AosAttributes.GetValue(m, AosAttribute.EnhancePotions);
+-        var skillBonus = (int)(m.Skills.Alchemy.Value * 10 / 33);
++        // cc-P67 B: a player's Alchemy counts at most at OSI's top (100) here, so its share stops at 30
++        var skillBonus = (int)(ClusterFSkillClamps.PotionAlchemySkill(m) * 10 / 33);
+ 
+         if (Core.ML && EP > 50 && m.AccessLevel <= AccessLevel.Player)
+         {

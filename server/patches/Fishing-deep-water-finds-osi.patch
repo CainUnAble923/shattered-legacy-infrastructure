@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Engines/Harvest/Fishing.cs
++++ b/Projects/UOContent/Engines/Harvest/Fishing.cs
+@@ -180,7 +180,9 @@
+ 
+                 if (skillBase >= entry.m_ReqSkill)
+                 {
+-                    var chance = (skillValue - entry.m_MinSkill) / (entry.m_MaxSkill - entry.m_MinSkill);
++                    // cc-P67 B: a chance that grows with Fishing counts a player at most at OSI's top (120)
++                    var value = ClusterFSkillClamps.FishingFindSkill(from, skillValue, entry.m_MaxSkill > entry.m_MinSkill);
++                    var chance = (value - entry.m_MinSkill) / (entry.m_MaxSkill - entry.m_MinSkill);
+ 
+                     if (chance > Utility.RandomDouble())
+                     {

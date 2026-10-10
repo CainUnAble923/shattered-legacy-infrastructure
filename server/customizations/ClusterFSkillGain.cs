@@ -10,7 +10,9 @@
 //    includes item and temporary bonuses, so a use whose window ends at the skill's cap stopped gaining at Base = cap - bonus.
 //    Every pinned call that passes the cap as its maximum (BaseWeapon.cs:2524, :2527, Spell.cs:625, and the gated
 //    MagerySpell.cs:55, :82, MysticSpell.cs:121; our Meditation.cs:115) is a gain-only roll, so for a player such a window
-//    ends at Cap + (Value - Base) instead: the roll stops when Base reaches the cap, whatever is worn.
+//    ends at Cap + (Value - Base) instead: the roll stops when Base reaches the cap, whatever is worn. cc-P67 Part E: craft
+//    gain ceilings below the cap follow the same rule in ClusterFCraftGain, which adds the bonus itself and calls
+//    CheckSkillWornBonusIncluded so it is not added twice.
 //
 // 3. Hook G (cc-P66 B, Chase's decision 8). A stock use that says "no challenge" (Value at or above its maximum) gains
 //    nothing, so sixteen skills stopped at 100, 120 or 142 with no harder target anywhere. For the uses in TryRow, a player
@@ -196,9 +198,33 @@ public static class ClusterFSkillGain
     /// bonus no longer stops the roll before Base reaches the cap. Any other maximum is returned unchanged.
     /// </summary>
     public static double EffectiveMax(Mobile from, Skill skill, double maxSkill) =>
-        from?.Player == true && maxSkill == skill.Cap && skill.Value > skill.Base
-            ? skill.Cap + (skill.Value - skill.Base)
+        !_wornBonusIncluded && maxSkill == skill.Cap && WornBonus(from, skill) > 0.0
+            ? skill.Cap + WornBonus(from, skill)
             : maxSkill;
+
+    /// <summary>A player's worn and temporary bonus on <paramref name="skill"/> (Value - Base), or 0.</summary>
+    public static double WornBonus(Mobile from, Skill skill) =>
+        from?.Player == true && skill.Value > skill.Base ? skill.Value - skill.Base : 0.0;
+
+    // cc-P67 Part E: set while a craft's gain roll runs on a window whose top already carries the worn bonus
+    // (ClusterFCraftGain), so EffectiveMax does not add it twice when that top lands exactly on the cap (Mythril's
+    // 187.5 ceiling plus a +12.5 item is 200).
+    [ThreadStatic]
+    private static bool _wornBonusIncluded;
+
+    /// <summary>Mobile.CheckSkill on a window whose top already counts the worn bonus (see EffectiveMax).</summary>
+    public static bool CheckSkillWornBonusIncluded(Mobile from, SkillName skill, double minSkill, double maxSkill)
+    {
+        _wornBonusIncluded = true;
+        try
+        {
+            return from.CheckSkill(skill, minSkill, maxSkill);
+        }
+        finally
+        {
+            _wornBonusIncluded = false;
+        }
+    }
 
     // The chance pinned's CheckLocation/CheckTarget would roll for this window (SkillCheck.cs:58-70, :180-192), or NaN where
     // it makes no roll (too difficult, no challenge).

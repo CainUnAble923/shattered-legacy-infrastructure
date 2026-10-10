@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Server.Engines.BulkOrders;
 using Server.Engines.Craft;
 
 namespace Server;
@@ -34,6 +35,10 @@ namespace Server;
 /// order still teaches while the smith is below that metal's ceiling. Where the metal is known before the pick (small
 /// orders, both kinds of commission) it is passed in; a large order's metal is rolled after its set (stock's order of
 /// rolls, LargeSmithBOD.CreateRandomFor), so its pick reads the item's own range, as before.
+///
+/// cc-P67 Part C 1 (Chase 2026-10-05): with the setting on, a Society order's post-Valorite metal is rolled only among the
+/// metals that still teach the smith (TeachingMetal), so a post-Valorite order teaches; Part C 2 and E change the window
+/// (ClusterFCraftGain) and Teaches follows it, worn bonus included.
 /// </summary>
 public static class ClusterFSmithTeaching
 {
@@ -78,8 +83,60 @@ public static class ClusterFSmithTeaching
         }
 
         var value = m.Skills[Smithing.MainSkill].Value;
-        var (min, max) = ClusterFCraftGain.Window(value, skill.MinSkill, skill.MaxSkill, item.UseSubRes2 ? 0.0 : gainCeiling);
+        var (min, max) = ClusterFCraftGain.Window(m, Smithing.MainSkill, skill.MinSkill, skill.MaxSkill, item.UseSubRes2 ? 0.0 : gainCeiling);
         return value >= min && value < max;
+    }
+
+    /// <summary>
+    /// cc-P67 Part C 1: the post-Valorite metal of a Society order for a smith whose setting is on, rolled with the order's
+    /// own weights (<paramref name="chances"/>, Platinum first, as GetRandomMaterial reads them) renormalized over the
+    /// metals that still teach: the smith can work it (Base at its requirement) and Base is below its gain ceiling. With
+    /// the tiers in even steps that is one metal at any Base from 112.5 to 199.9 (Frost from 150 to 162.4, Obsidian from
+    /// 162.5 to 174.9, ...). None when no metal qualifies; the caller then rolls as stock.
+    /// </summary>
+    public static BulkMaterialType TeachingMetal(Mobile m, double[] chances)
+    {
+        var skill = m.Skills[Smithing.MainSkill].Base;
+
+        bool Teaches(int i)
+        {
+            var mat = BulkMaterialType.Platinum + i;
+            return skill >= ClusterFMetalTiers.PostValoriteRequiredSkill(mat) && skill < ClusterFMetalTiers.GainCeiling(mat);
+        }
+
+        var total = 0.0;
+        for (var i = 0; i < chances.Length; i++)
+        {
+            if (Teaches(i))
+            {
+                total += chances[i];
+            }
+        }
+
+        if (total <= 0.0)
+        {
+            return BulkMaterialType.None;
+        }
+
+        var roll = Utility.RandomDouble() * total;
+        var last = BulkMaterialType.None;
+        for (var i = 0; i < chances.Length; i++)
+        {
+            if (!Teaches(i))
+            {
+                continue;
+            }
+
+            last = BulkMaterialType.Platinum + i;
+            if (roll < chances[i])
+            {
+                return last;
+            }
+
+            roll -= chances[i];
+        }
+
+        return last;
     }
 
     /// <summary>The item's Blacksmithy maximum (where gains stop), or -infinity for an item Blacksmithy cannot make.</summary>

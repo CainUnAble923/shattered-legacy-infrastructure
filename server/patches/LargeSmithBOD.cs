@@ -120,7 +120,16 @@ namespace Server.Engines.BulkOrders
             // ClusterF: post-Valorite upgrade — 15% chance for extended smiths (skill > 100)
             if (bod.Material != BulkMaterialType.None && theirSkill > 100.0 && Utility.RandomDouble() < 0.15)
             {
-                var postVal = GetRandomMaterial(BulkMaterialType.Platinum, m_PostValMaterialChances);
+                // cc-P67 C1 (Chase 2026-10-05): with "Orders that still teach me" on, the metal is rolled among the metals that
+                // still teach this smith, as the small order's (ClusterFSmithTeaching.TeachingMetal). The set is still picked
+                // first, as stock rolls; in such a metal every piece the smith can make teaches (below its own maximum by
+                // the item's window, past it by the metal's band, ClusterFCraftGain). Off, or no such metal: as before.
+                var teachingMetal = ClusterFSmithTeaching.WantsTeaching(m)
+                    ? ClusterFSmithTeaching.TeachingMetal(m, m_PostValMaterialChances)
+                    : BulkMaterialType.None;
+                var postVal = teachingMetal != BulkMaterialType.None
+                    ? teachingMetal
+                    : GetRandomMaterial(BulkMaterialType.Platinum, m_PostValMaterialChances);
                 // ClusterFMetalTiers: each metal's Blacksmithy requirement on the 200 cap (cc-P53; was 105 .. 300).
                 var postValReq = ClusterFMetalTiers.PostValoriteRequiredSkill(postVal);
                 if (theirSkill >= postValReq)

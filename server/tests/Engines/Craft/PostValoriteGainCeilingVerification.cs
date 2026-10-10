@@ -10,15 +10,18 @@
 //       ClusterFMetalTiers; iron and the stock metals have none. The chain has no gap: stock items teach to 140, past
 //       Platinum's 112.5, and each ceiling is a requirement, so the next metal opens exactly where the last stops.
 //   A2. The craft's own gain roll (the window GetSuccessChance hands Mobile.CheckSkill): a smith at 150 crafting Frost
-//       plate rolls in (112.5, 162.5), at 162.5 gets no roll; Valorite plate at 140 stays stock (75, 125); below the
-//       item's maximum every metal keeps the item's own window.
+//       plate rolls in (75, 162.5), at 162.5 gets no roll; Valorite plate at 140 stays stock (75, 125); below the
+//       item's maximum every metal keeps the item's own window. cc-P67 Part C 2: past the item's maximum the band runs
+//       from the item's own minimum to the ceiling (cc-P61 slid the item's width up: (112.5, 162.5)); more in
+//       CraftCeilingsVerification.
 //   A3. A real gain through pinned's SkillCheck: 150 with Frost plate gains, 162.5 with Frost and 140 with Valorite do not.
 //   A4. Success chance is stock: GetSuccessChance equals pinned's formula on the item's own range, with or without the
 //       gain roll, for every case of A2.
 //   A5. "Orders that still teach me" agrees with the roll: for 17 metals, every Blacksmithy bulk order item and skills
 //       from 100 to 200, Teaches(smith, item, metal's ceiling) is exactly "the craft's window can gain". At 150 a Society
 //       small order in Frost (the only metal offered at 150 whose ceiling is above it) teaches and is picked from every
-//       armor piece, not only the fallback; in any other metal it is the fallback, as before.
+//       armor piece, not only the fallback; in any other metal it is the fallback, as before. cc-P67 Part C 1: with the
+//       setting on, the post-Valorite roll gives only Frost at 150.
 
 using System;
 using System.Collections.Generic;
@@ -176,15 +179,15 @@ public class PostValoriteGainCeilingVerification
     public static readonly TheoryData<double, string, string, double, double, bool> Windows = new()
     {
         // skill, item, ingot, window min, window max, can gain
-        { 150.0, nameof(PlateChest), nameof(FrostIngot), 112.5, 162.5, true },
-        { 162.5, nameof(PlateChest), nameof(FrostIngot), 112.5, 162.5, false },
+        { 150.0, nameof(PlateChest), nameof(FrostIngot), 75.0, 162.5, true },
+        { 162.5, nameof(PlateChest), nameof(FrostIngot), 75.0, 162.5, false },
         { 140.0, nameof(PlateChest), nameof(ValoriteIngot), 75.0, 125.0, false },
-        { 140.0, nameof(PlateChest), nameof(BlazeIngot), 100.0, 150.0, true },
-        { 187.5, nameof(PlateChest), nameof(AdamantiumIngot), 150.0, 200.0, true },
-        { 200.0, nameof(PlateChest), nameof(CelestialIngot), 150.0, 200.0, false },
+        { 140.0, nameof(PlateChest), nameof(BlazeIngot), 75.0, 150.0, true },
+        { 187.5, nameof(PlateChest), nameof(AdamantiumIngot), 75.0, 200.0, true },
+        { 200.0, nameof(PlateChest), nameof(CelestialIngot), 75.0, 200.0, false },
         // Below the item's own maximum: the item's window, whatever the metal.
         { 115.0, nameof(PlateChest), nameof(PlatinumIngot), 75.0, 125.0, true },
-        { 150.0, nameof(Broadsword), nameof(FrostIngot), 112.5, 162.5, true },
+        { 150.0, nameof(Broadsword), nameof(FrostIngot), 35.4, 162.5, true },
         { 30.0, nameof(Broadsword), nameof(IronIngot), 35.4, 85.4, false },
         { 60.0, nameof(Broadsword), nameof(IronIngot), 35.4, 85.4, true }
     };
@@ -362,8 +365,8 @@ public class PostValoriteGainCeilingVerification
             _out.WriteLine($"at 150: {inMetal.Count} of 400 in a metal that teaches ({kinds} kinds: " +
                            $"{string.Join(", ", inMetal.GroupBy(n => n).OrderByDescending(g => g.Count()).Select(g => $"{g.Key} x{g.Count()}"))}); {others} others");
 
-            // At 150 only Frost (ceiling 162.5) of the metals a 150 smith is offered still teaches; the order's metal roll
-            // gives Frost about 2% of the time (30% post-Valorite x 1/16), so the draws above are a sample, not a count.
+            // At 150 only Frost (ceiling 162.5) of the metals a 150 smith is offered still teaches; since cc-P67 C1 the
+            // order's post-Valorite roll (30% of armor orders) gives only Frost, so the draws above are a sample, not a count.
             // The pick itself, deterministic: in Frost every armor piece the smith can make teaches; with no metal only
             // the fallback, the hardest (PlateChest).
             var armor = SmallBulkEntry.BlacksmithArmor;
