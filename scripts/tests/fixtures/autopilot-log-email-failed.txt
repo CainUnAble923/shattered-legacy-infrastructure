@@ -1,0 +1,3 @@
+2026-10-12 15:49:41  Stop         handed P74 (cc-P74-autopilot-console.md) Autopilot is starting the queue.
+2026-10-12 16:20:03  Notification EMAIL FAILED: [Shard CC] NEEDS YOU: Claude needs your permission to use Bash  (Failure sending mail.)
+2026-10-12 16:30:00  Notification emailed: [Shard CC] Queue empty, P73 done and pushed

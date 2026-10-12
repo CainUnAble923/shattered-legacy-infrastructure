@@ -988,7 +988,7 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
-        Assert-Equal 'Test shard,Snapshots,World setup,Diagnostics,Commit,Player package,LIVE shard' ($tabs -join ',')
+        Assert-Equal 'Test shard,Snapshots,World setup,Diagnostics,Commit,Player package,Autopilot,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot; LIVE stays last'
         Assert-Equal 'Preview commit,Commit and push' (@($script:ui.CommitButtons | ForEach-Object { $_.Text }) -join ',') 'cc-P60'
         Assert-Equal 'package.build,package.publish,package.check' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P63, and cc-P68''s Check selected'
         Assert-True ($null -ne $script:ui.CommitForce -and -not $script:ui.CommitForce.Checked) 'cc-P68: the Force box, unticked'
@@ -2571,6 +2571,269 @@ Fact 'P73_TheShardsLinesAreReadWithOrWithoutTimestamps' {
     Assert-Equal $null $y.Outcome 'a census is not an outcome'
     Assert-Equal 'already' (ConvertFrom-WipeLog '[AccountWipe] ALREADY DONE: request x').Outcome
     Assert-Equal 'failed' (ConvertFrom-WipeLog '[AccountWipe] FAILED: the wipe threw').Outcome
+}
+
+# --- cc-P74: the AUTOPILOT tile and the Autopilot tab ---------------------------------------------
+# autopilot-log-2026-10-12.txt and autopilot-state-running-2026-10-12.json are copies of the real
+# D:\UO\cc-autopilot\autopilot.log and state.json from the moment the hook handed CC this prompt.
+# The other autopilot-log-*.txt are built line by line from the hook's own format strings
+# (cc-autopilot.ps1:51 for the line, :79 and :81 for mail, :139 handed, :181 STOPPED, :204 DONE,
+# :214 commit exit, :229 stopped without DONE), with the real output of Commit-ShardWork.ps1 -DryRun
+# (2026-10-12) pasted in where the hook pastes a commit's output. Nothing here reads the real folder.
+
+function Read-ApLog([string]$Name) { @(Get-Content -LiteralPath (Join-Path $fixture $Name)) }
+function Read-ApText([string]$Name) { [IO.File]::ReadAllText((Join-Path $fixture $Name)) }
+$apRunning = Read-ApText 'autopilot-state-running-2026-10-12.json'
+$apStarted = [datetime]::new(2026, 10, 12, 15, 49, 41)
+$apIdleAfterStop = '{ "current": "", "currentFile": "", "lastHandled": 74, "startedAt": "2026-10-12T15:49:41" }'
+
+function Get-ApTile {
+    param($Enabled = $true, $StateText, [string]$Log, [string[]]$Queue = @(), [string[]]$Errors, [int]$Minutes = 42)
+    $lines = @()
+    if ($Log) { $lines = Read-ApLog $Log }
+    Get-AutopilotGlance -Enabled $Enabled -StateText $StateText -LogLines $lines -QueueNames $Queue -Errors $Errors -Now $apStarted.AddMinutes($Minutes)
+}
+
+Fact 'P74_OffIsGreyAndSaysTheQueue' {
+    $t = Get-ApTile -Enabled $false -StateText $apRunning -Log 'autopilot-log-2026-10-12.txt' -Queue @('cc-P83-play-test-queue.md')
+    Assert-Equal 'OFF' $t.Word
+    Assert-Equal 'gray' $t.Color
+    Assert-Equal 'not handing out prompts; 1 queued' $t.Detail
+}
+
+Fact 'P74_RunningIsGreenWithThePromptItsAgeAndTheQueue' {
+    # The real state.json and log at hand-off, with P83 queued behind it.
+    $t = Get-ApTile -StateText $apRunning -Log 'autopilot-log-2026-10-12.txt' -Queue @('cc-P83-play-test-queue.md', 'cc-P90-later.md')
+    Assert-Equal 'RUNNING' $t.Word
+    Assert-Equal 'green' $t.Color $t.Detail
+    Assert-Equal 'P74 for 42m 0s, 2 queued' $t.Detail
+}
+
+Fact 'P74_IdleSaysGoOnlyWhenSomethingIsQueued' {
+    # No state.json is the hook's own default (Get-State): nothing running, nothing handled yet.
+    $t = Get-ApTile -StateText $null -Log 'autopilot-log-2026-10-12.txt' -Queue @('cc-P75-next.md')
+    Assert-Equal 'IDLE' $t.Word
+    Assert-Equal 'gray' $t.Color
+    Assert-Equal '1 queued; send CC "go" to start' $t.Detail
+    $e = Get-ApTile -StateText $null -Queue @()
+    Assert-Equal 'IDLE' $e.Word
+    Assert-Equal 'queue empty' $e.Detail
+}
+
+Fact 'P74_AnUnnumberedFileIsNamedAsIgnored' {
+    # Exactly what happened on 2026-10-12 15:30: the draft was in the queue before the overseer numbered it.
+    $t = Get-ApTile -StateText $null -Log 'autopilot-log-2026-10-12.txt' -Queue @('cc-P-autopilot-console.md')
+    Assert-Equal 'queue empty; 1 unnumbered file(s) ignored' $t.Detail
+    $v = Get-AutopilotView -Enabled $true -StateText $null -LogLines (Read-ApLog 'autopilot-log-2026-10-12.txt') -QueueNames @('cc-P-autopilot-console.md', 'cc-P74-x.md')
+    $panel = @(Format-AutopilotPanel -View $v -Config $config -Now $apStarted) | ForEach-Object { $_.Text }
+    Assert-True (@($panel | Where-Object { $_ -match 'IGNORED cc-P-autopilot-console\.md \(unnumbered' }).Count -eq 1) ($panel -join ' | ')
+    Assert-True (@($panel | Where-Object { $_ -match '1\. cc-P74-x\.md' }).Count -eq 1) 'the numbered one is in run order'
+}
+
+Fact 'P74_TheQueueRunsInNumberOrderNotNameOrder' {
+    $q = Get-AutopilotQueue @('cc-P10-b.md', 'cc-P9-a.md', 'notes.txt', 'cc-P100-c.md', 'readme.md', 'cc-P11-d.md.txt')
+    Assert-Equal 'cc-P9-a.md,cc-P10-b.md,cc-P100-c.md' ($q.Runs -join ',') 'the hook sorts by the number'
+    Assert-Equal 'readme.md' ($q.Ignored -join ',') 'only .md files are logged as ignored; other files are not prompts'
+}
+
+Fact 'P74_NeedsYouWhenCcStoppedMidTask' {
+    $t = Get-ApTile -StateText $apRunning -Log 'autopilot-log-needs-you.txt' -Queue @('cc-P83-play-test-queue.md')
+    Assert-Equal 'NEEDS YOU' $t.Word
+    Assert-Equal 'amber' $t.Color
+    Assert-Equal 'NEEDS YOU: P74 stopped mid-task' $t.Detail
+}
+
+Fact 'P74_NeedsYouAfterStoppedAndCommitFailed' {
+    # Both clear current in state.json, so without the log the tile would say IDLE.
+    $s = Get-ApTile -StateText $apIdleAfterStop -Log 'autopilot-log-stopped.txt' -Queue @('cc-P83-play-test-queue.md')
+    Assert-Equal 'NEEDS YOU' $s.Word
+    Assert-Equal 'P74 STOPPED, needs you' $s.Detail
+    $c = Get-ApTile -StateText $apIdleAfterStop -Log 'autopilot-log-commit-failed.txt' -Queue @('cc-P83-play-test-queue.md')
+    Assert-Equal 'NEEDS YOU' $c.Word
+    Assert-Equal 'amber' $c.Color
+    Assert-Equal 'P74 done but COMMIT FAILED, needs you' $c.Detail
+}
+
+Fact 'P74_AFailedEmailTurnsTheTileAmber' {
+    $t = Get-ApTile -StateText $apRunning -Log 'autopilot-log-email-failed.txt'
+    Assert-Equal 'RUNNING' $t.Word 'the newest mail that went is not an alert'
+    Assert-Equal 'amber' $t.Color
+    Assert-True ($t.Detail.EndsWith('; email failing')) $t.Detail
+}
+
+Fact 'P74_CommitOutputIsSkippedAndAHandOffClearsAnOldAlert' {
+    $lines = Read-ApLog 'autopilot-log-commit-output.txt'
+    $acts = @(ConvertFrom-AutopilotLog $lines)
+    Assert-Equal 4 $acts.Count ('the pasted Commit-ShardWork.ps1 output is not actions: ' + (($acts | ForEach-Object { $_.Text }) -join ' | '))
+    Assert-True ($lines.Count -gt 10) 'the fixture does carry the pasted output'
+    Assert-Equal 'Notification' $acts[1].Event
+    $st = '{ "current": "P83", "currentFile": "cc-P83-play-test-queue.md", "lastHandled": 74, "startedAt": "2026-10-12T17:02:31" }'
+    $t = Get-AutopilotGlance -Enabled $true -StateText $st -LogLines $lines -QueueNames @() -Now ([datetime]::new(2026, 10, 12, 17, 12, 31))
+    Assert-Equal 'RUNNING' $t.Word 'the NEEDS YOU before the hand-off was answered'
+    Assert-Equal 'P83 for 10m 0s, queue empty' $t.Detail
+    $v = Get-AutopilotView -Enabled $true -StateText $st -LogLines $lines -QueueNames @()
+    $log = @(Format-AutopilotPanel -View $v -Config $config) | Where-Object { $_.Text -match '^\d{4}-' }
+    Assert-Equal 4 @($log).Count 'the panel lists actions only'
+}
+
+Fact 'P74_AnythingUnreadableIsGreyUnknownNeverRed' {
+    $bad = Read-ApText 'autopilot-state-unreadable.json'
+    $cases = @(
+        @{ Name = 'unreadable state.json'; Tile = (Get-ApTile -StateText $bad -Log 'autopilot-log-2026-10-12.txt') },
+        @{ Name = 'empty state.json'; Tile = (Get-ApTile -StateText '' -Log 'autopilot-log-2026-10-12.txt') },
+        @{ Name = 'ENABLED unknown'; Tile = (Get-ApTile -Enabled $null -StateText $apRunning -Errors @('ENABLED: access denied')) },
+        @{ Name = 'queue unlistable'; Tile = (Get-AutopilotGlance -Enabled $true -StateText $apRunning -LogLines @() -QueueNames $null -Errors @('queue: not found')) },
+        @{ Name = 'log unreadable'; Tile = (Get-ApTile -StateText $apRunning -Errors @('autopilot.log: in use')) })
+    foreach ($c in $cases) {
+        Assert-Equal 'UNKNOWN' $c.Tile.Word ($c.Name + ': ' + $c.Tile.Detail)
+        Assert-Equal 'gray' $c.Tile.Color $c.Name
+    }
+    Assert-True ($cases[0].Tile.Detail -match 'state\.json unreadable') $cases[0].Tile.Detail
+}
+
+Fact 'P74_AnEmptyLogIsNotAProblem' {
+    $t = Get-AutopilotGlance -Enabled $true -StateText $apRunning -LogLines @() -QueueNames @() -Now $apStarted.AddMinutes(5)
+    Assert-Equal 'RUNNING' $t.Word
+    Assert-Equal 'green' $t.Color
+    $v = Get-AutopilotView -Enabled $true -StateText $null -LogLines @() -QueueNames @()
+    $panel = @(Format-AutopilotPanel -View $v -Config $config) | ForEach-Object { $_.Text }
+    Assert-True ($panel -contains '(nothing logged)') ($panel -join ' | ')
+    Assert-True ($panel -contains 'last      : none yet') 'lastHandled 0'
+}
+
+Fact 'P74_TheStatusReportListsTheAutopilotTileAfterTheThree' {
+    $t = Get-ApTile -StateText $apRunning -Log 'autopilot-log-needs-you.txt'
+    $lines = @(Format-StatusReport $state $config @($t))
+    Assert-True ($lines[4].Text -match '^AUTOPILOT\s+: NEEDS YOU\s+NEEDS YOU: P74 stopped mid-task$') $lines[4].Text
+    Assert-Equal 'amber' $lines[4].Color
+    Assert-Equal 'STATUS PUBLISHER' (($lines[3].Text -split ':')[0].Trim()) 'after the three'
+    Assert-Equal (@(Format-StatusReport $state $config).Count + 1) $lines.Count 'one line more, nothing else changes'
+}
+
+$apFactsOn = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; Present = @{} }
+foreach ($f in @($config.Autopilot.Start, $config.Autopilot.Stop, $config.Autopilot.Setup, $config.Autopilot.TestEmail)) { $apFactsOn.Present[$f] = $true }
+
+Fact 'P74_TurnOnIsRefusedUntilEmailIsSetUp' {
+    $no = [pscustomobject]@{ EmailConfigured = $false; CredStored = $false; LogExists = $true; Present = $apFactsOn.Present }
+    $p = @(Get-ActionPlan -Action 'autopilot.on' -Config $config -AutopilotFacts $no)
+    Assert-Equal 1 $p.Count
+    Assert-Equal 'refuse' $p[0].Kind
+    Assert-True ($p[0].Text.StartsWith('Run Email setup first')) $p[0].Text
+    $t = @(Get-ActionPlan -Action 'autopilot.test' -Config $config -AutopilotFacts $no)
+    Assert-Equal 'refuse' $t[0].Kind 'nothing to send with'
+    $cfgOnly = [pscustomobject]@{ EmailConfigured = $true; CredStored = $false; LogExists = $true; Present = $apFactsOn.Present }
+    Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'autopilot.test' -Config $config -AutopilotFacts $cfgOnly))[0].Kind 'no password stored'
+}
+
+Fact 'P74_EachButtonRunsItsOwnScriptInAWindowOfItsOwn' {
+    $want = @{ 'autopilot.on' = $config.Autopilot.Start; 'autopilot.off' = $config.Autopilot.Stop; 'autopilot.email' = $config.Autopilot.Setup; 'autopilot.test' = $config.Autopilot.TestEmail }
+    foreach ($k in $want.Keys) {
+        $p = @(Get-ActionPlan -Action $k -Config $config -AutopilotFacts $apFactsOn)
+        $w = @($p | Where-Object { $_.Kind -eq 'window' })
+        Assert-Equal 1 $w.Count $k
+        Assert-Equal ('powershell.exe -NoProfile -ExecutionPolicy Bypass -File ' + $want[$k]) (Format-CommandLine $w[0].Exe $w[0].Arguments) $k
+        Assert-Equal 0 @(Test-PlanSafety $p $config).Count ($k + ': ' + (@(Test-PlanSafety $p $config) -join '; '))
+        Assert-Equal 0 @($p | Where-Object { $_.Kind -in @('exec', 'script', 'confirm') }).Count ($k + ': nothing runs in the console itself')
+        Assert-Equal 1 @($p | Where-Object { $_.Kind -eq 'log' }).Count ($k + ': logged')
+    }
+    $off = (@(Get-ActionPlan -Action 'autopilot.off' -Config $config -AutopilotFacts $apFactsOn) | Where-Object { $_.Kind -eq 'say' })[0].Text
+    Assert-True ($off -match 'still finishes') $off
+    $q = @(Get-ActionPlan -Action 'autopilot.queue' -Config $config -AutopilotFacts $apFactsOn)
+    Assert-Equal 'explorer.exe' $q[0].Path
+    Assert-Equal $config.Autopilot.Queue $q[0].Arguments[0]
+    $l = @(Get-ActionPlan -Action 'autopilot.log' -Config $config -AutopilotFacts $apFactsOn)
+    Assert-Equal $config.Autopilot.Notepad $l[0].Path
+    Assert-Equal $config.Autopilot.LogFile $l[0].Arguments[0]
+    Assert-Equal 0 @(Test-PlanSafety $l $config).Count 'Notepad on the log'
+    $none = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $false; Present = @{} }
+    Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'autopilot.log' -Config $config -AutopilotFacts $none))[0].Kind 'no log yet'
+    Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'autopilot.off' -Config $config -AutopilotFacts $none))[0].Kind 'a missing script is named, not run'
+}
+
+Fact 'P74_TheSafetyCheckNeverRunsTheHookOrAnythingElseInItsFolder' {
+    $ap = $config.Autopilot
+    $hook = Join-Path $ap.Root 'cc-autopilot.ps1'
+    foreach ($bad in @(
+        @{ Name = 'the hook, in a window'; Step = (New-PlanStep -Kind window -Exe 'powershell.exe' -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $hook)) },
+        @{ Name = 'the hook, exec'; Step = (New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-File', $hook, '-Event', 'Stop')) },
+        @{ Name = 'a start script run in the console'; Step = (New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ap.Start)) },
+        @{ Name = 'another file in its folder'; Step = (New-PlanStep -Kind window -Exe 'powershell.exe' -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $ap.Root 'Other.ps1'))) },
+        @{ Name = 'opening the credential'; Step = (New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @($ap.CredFile)) },
+        @{ Name = 'Notepad on anything else'; Step = (New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @('C:\Windows\win.ini')) })) {
+        Assert-True (@(Test-PlanSafety @($bad.Step) $config).Count -ge 1) $bad.Name
+    }
+}
+
+Fact 'P74_TurningOnOrOffNeedsAModeHeadless' {
+    Assert-Equal 'refuse' (Resolve-RunMode -Action 'autopilot.on') 'D37: a lost mode fails safe'
+    Assert-Equal 'refuse' (Resolve-RunMode -Action 'autopilot.test') 'sending mail changes something outside'
+    Assert-Equal 'execute' (Resolve-RunMode -Action 'autopilot.log') 'only opens'
+    $b = Get-ModeBanner -RunMode 'execute' -Action 'autopilot.on' -ShardKey 'autopilot'
+    Assert-True ($b.Title.StartsWith('AUTOPILOT - autopilot.on (autopilot)')) $b.Title
+    Assert-True (-not (($b.Lines -join ' ') -match 'shard\.$')) 'it does not say it acts on a shard'
+}
+
+Fact 'P74_TheFactsTailTheLogAndOnlyCheckTheCredentialExists' {
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p74-' + [guid]::NewGuid().ToString('N'))
+    $q = Join-Path $dir 'queue'
+    New-Item -ItemType Directory -Path $q -Force | Out-Null
+    try {
+        $cfg = Get-ConsoleConfig -RepoRoot $repo
+        $cfg.Autopilot = New-AutopilotConfig (Join-Path $dir 'ap') $q
+        $cfg.Autopilot.TailLines = 50
+        $f = Get-AutopilotFacts $cfg
+        Assert-Equal $false $f.Enabled 'no folder: off, not an error'
+        Assert-Equal $null $f.StateText
+        Assert-Equal 0 @($f.Errors).Count (@($f.Errors) -join '; ')
+        New-Item -ItemType Directory -Path $cfg.Autopilot.Root -Force | Out-Null
+        Set-Content -LiteralPath $cfg.Autopilot.Enabled -Value '' -Encoding ASCII
+        Set-Content -LiteralPath $cfg.Autopilot.StateFile -Value $apRunning -Encoding ASCII
+        Set-Content -LiteralPath $cfg.Autopilot.CredFile -Value 'not a clixml: opening it would throw' -Encoding ASCII
+        Set-Content -LiteralPath $cfg.Autopilot.EmailFile -Value '{}' -Encoding ASCII
+        $many = @(1..300 | ForEach-Object { '2026-10-12 15:{0:00}:{1:00}  Stop         idle stop, queue empty' -f [int][Math]::Floor($_ / 60), ($_ % 60) })
+        Set-Content -LiteralPath $cfg.Autopilot.LogFile -Value $many -Encoding ASCII
+        Set-Content -LiteralPath (Join-Path $q 'cc-P83-play-test-queue.md') -Value '# x' -Encoding ASCII
+        Set-Content -LiteralPath (Join-Path $q 'cc-P-draft.md') -Value '# x' -Encoding ASCII
+        $f = Get-AutopilotFacts $cfg
+        Assert-Equal $true $f.Enabled
+        Assert-Equal 50 @($f.LogLines).Count 'the tail, not the whole log'
+        Assert-Equal $many[-1] @($f.LogLines)[-1] 'the newest lines'
+        Assert-Equal 2 @($f.QueueNames).Count (@($f.QueueNames) -join ',')
+        Assert-True (@($f.QueueNames) -contains 'cc-P-draft.md' -and @($f.QueueNames) -contains 'cc-P83-play-test-queue.md') 'both names, as they are'
+        Assert-True ($f.EmailConfigured -and $f.CredStored) 'both exist'
+        Assert-Equal 0 @($f.Errors).Count (@($f.Errors) -join '; ')
+        $a = Get-AutopilotViewNow $cfg
+        Assert-Equal 'RUNNING' $a.Tile.Word $a.Tile.Detail
+        Assert-True ($a.Tile.Detail -match ', 1 queued; 1 unnumbered file\(s\) ignored$') $a.Tile.Detail
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P74_TheTileAndTheTabAreBuiltAndDrawn' {
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p74-form-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $dir 'ap') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $dir 'queue') -Force | Out-Null
+    $script:NetProbeDisabled = $true
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.Autopilot = New-AutopilotConfig (Join-Path $dir 'ap') (Join-Path $dir 'queue')
+    Set-Content -LiteralPath $cfg.Autopilot.Enabled -Value '' -Encoding ASCII
+    Copy-Item -LiteralPath (Join-Path $fixture 'autopilot-log-needs-you.txt') -Destination $cfg.Autopilot.LogFile
+    Set-Content -LiteralPath $cfg.Autopilot.StateFile -Value $apRunning -Encoding ASCII
+    $form = New-ConsoleForm -Config $cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-True ($null -ne $script:ui.AutopilotTile) 'the fifth tile exists'
+        Assert-Equal 'AUTOPILOT: NEEDS YOU' $script:ui.AutopilotTile.Word.Text
+        Assert-Equal (Get-TileColors 'amber')[0] $script:ui.AutopilotTile.Panel.BackColor 'amber tile'
+        Assert-Equal 'Autopilot' $script:ui.AutopilotPage.Text
+        Assert-Equal 'autopilot.on,autopilot.off,autopilot.email,autopilot.test,autopilot.queue,autopilot.log' (($script:ui.AutopilotButtons | ForEach-Object { $_.Tag }) -join ',')
+        Assert-True ($script:ui.Tabs.TabPages.Contains($script:ui.AutopilotPage)) 'the tab is in the tab control'
+        Assert-True ($script:ui.AutopilotPanel.Text -match 'needs you : NEEDS YOU: P74 stopped mid-task') 'the panel is drawn'
+        Assert-True ($script:ui.Status.Text -match 'AUTOPILOT\s+: NEEDS YOU') 'the status panel lists it too'
+        $cap = $script:ui.CommitPage.Controls[0].Controls[0].Text
+        Assert-True ($cap -match 'While autopilot is on it commits and pushes after each P<nn> DONE') $cap
+        Remove-Item -LiteralPath $cfg.Autopilot.Enabled
+        [void](Update-AutopilotView)
+        Assert-Equal 'AUTOPILOT: OFF' $script:ui.AutopilotTile.Word.Text 'redrawn from disk'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

@@ -32,7 +32,11 @@
   DNS (cc-P52, bug-list D47), goes red when a VPN carries this PC's traffic or public DNS for
   shatteredlegacyuo.com is not this house: "VPN on: public DNS points at <ip>. Turn the VPN off."
   Its check runs in a runspace of its own, so it never holds the window; a check that failed is
-  grey UNKNOWN, never red. Get-DnsGlance says which signals it reads and why.
+  grey UNKNOWN, never red. Get-DnsGlance says which signals it reads and why. A fifth, AUTOPILOT
+  (cc-P74), says what Chase's CC autopilot is doing: OFF, IDLE, RUNNING (P74 for 42m, 3 queued) or
+  NEEDS YOU (the hook emailed him since it last handed CC a prompt). It reads D:\UO\cc-autopilot's
+  ENABLED, state.json and the tail of autopilot.log, and lists D:\UO\cc-prompts\queue, on every
+  refresh; Get-AutopilotGlance judges them. A file it could not read is grey UNKNOWN, never red.
 
   IT CALLS THE EXISTING SCRIPTS AND DOES NOT REIMPLEMENT THEM.
     docker/uo/Start-TestShard.ps1  starts, stops and rebuilds the test shard, seeds its accounts
@@ -65,6 +69,12 @@
                                    modernuo-test\account-wipe-request.json and starts it. The shard
                                    wipes before it listens (server/customizations/Misc/TestAccountWipe.cs)
                                    and refuses any request on live. Not Start fresh: the world stays.
+    D:\UO\cc-autopilot\*.ps1       the Autopilot tab (cc-P74): Turn on (Start-Autopilot.ps1, refused
+                                   with no email.json), Turn off (Stop-Autopilot.ps1), Email setup
+                                   (Setup-Email.ps1, which asks the password in its own window) and
+                                   Send test email (Send-TestEmail.ps1), each in a PowerShell window
+                                   of its own that stays open. Its hook, cc-autopilot.ps1, which
+                                   commits and pushes, is never run from here (Test-PlanSafety).
 
   WHAT NO BUTTON DOES
     - docker compose on docker/uo/docker-compose.yml. That file has build: and no image:
@@ -123,6 +133,27 @@ $script:SavesOnStopLine = '[SaveOnShutdown] listening for SIGTERM: a stop saves 
 $script:CommitPublicWarning = 'Both repos are PUBLIC on GitHub: a commit that is pushed cannot be taken back.'
 # cc-P63: said above the phrase before a publish. Publish-PlayerPackage.ps1 serves version.json, which every launcher reads.
 $script:PublishPublicWarning = 'This is PUBLIC: every player''s launcher is offered this package at its next start.'
+
+function New-AutopilotConfig {
+    # cc-P74. The autopilot's files, by its folder and its queue, so the facts can point both at fixtures.
+    param([string]$Root, [string]$Queue)
+    [pscustomobject]@{
+        Root      = $Root
+        Enabled   = (Join-Path $Root 'ENABLED')
+        StateFile = (Join-Path $Root 'state.json')
+        LogFile   = (Join-Path $Root 'autopilot.log')
+        EmailFile = (Join-Path $Root 'email.json')
+        CredFile  = (Join-Path $Root 'smtp-cred.xml')
+        Start     = (Join-Path $Root 'Start-Autopilot.ps1')
+        Stop      = (Join-Path $Root 'Stop-Autopilot.ps1')
+        Setup     = (Join-Path $Root 'Setup-Email.ps1')
+        TestEmail = (Join-Path $Root 'Send-TestEmail.ps1')
+        Queue     = $Queue
+        Notepad   = (Join-Path $env:WINDIR 'notepad.exe')
+        # The log is tailed, never read whole: Commit-ShardWork.ps1's output is pasted into it after every commit.
+        TailLines = 400
+    }
+}
 
 function Get-ConsoleConfig {
     param([Parameter(Mandatory = $true)][string]$RepoRoot)
@@ -196,6 +227,10 @@ function Get-ConsoleConfig {
         # (RequestFileName). Test-PlanSafety allows no other path.
         WipeRequestFile    = (Join-Path (Join-Path $RepoRoot 'server\lib\uo\modernuo-test') 'account-wipe-request.json')
         WipeWaitSeconds    = 300
+        # cc-P74, the AUTOPILOT tile and the Autopilot tab. Chase's CC autopilot lives outside both
+        # repos (D:\UO\cc-autopilot\README.md); the console runs its scripts as they are and reads its
+        # files. cc-autopilot.ps1 is its hook and is never run from here: it commits and pushes.
+        Autopilot          = (New-AutopilotConfig 'D:\UO\cc-autopilot' 'D:\UO\cc-prompts\queue')
     }
 }
 
@@ -676,6 +711,7 @@ function Get-ModeBanner {
     $what = $Action + ' (' + $ShardKey + ')'
     if ($Action -like 'commit.*') { $what = $Action + ' (both repos)' }
     if ($Action -like 'package.*') { $what = $Action + ' (player package)' }
+    if ($Action -like 'autopilot.*') { $what = $Action + ' (autopilot)' }
     switch ($RunMode) {
         'dry' {
             [pscustomobject]@{ Color = 'amber'; Title = ('DRY RUN - ' + $what + ' - Shard Console'); Lines = @(
@@ -704,6 +740,11 @@ function Get-ModeBanner {
         { $_ -eq 'execute' -and $Action -eq 'test.wipe' } {
             [pscustomobject]@{ Color = 'red'; Title = ('RUNNING FOR REAL - ' + $what + ' - Shard Console'); Lines = @(
                 $bar, ('  RUNNING FOR REAL  ' + $what), '  This deletes every account and character on the TEST shard. It asks for the new admin password below.', $bar) }
+            break
+        }
+        { $_ -eq 'execute' -and $Action -like 'autopilot.*' } {
+            [pscustomobject]@{ Color = 'amber'; Title = ('AUTOPILOT - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  AUTOPILOT  ' + $what), '  Opens the autopilot''s own script in a window of its own, or its folder or log. No shard is touched.', $bar) }
             break
         }
         { $_ -eq 'execute' -and $Action -eq 'package.publish' } {
@@ -753,6 +794,14 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'package.build';    Group = 'Player package'; Label = 'Build package';                   Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'package.publish';  Group = 'Player package'; Label = 'Publish package';                 Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'package.check';    Group = 'Player package'; Label = 'Check selected';                  Mutates = $false; RunIn = 'window' }
+        # cc-P74. Each opens one of the autopilot's own scripts in a window of its own (a 'window' step),
+        # so RunIn is 'here': the console only opens it, and the script's window stays open to be read.
+        [pscustomobject]@{ Key = 'autopilot.on';     Group = 'Autopilot';   Label = 'Turn on';                            Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'autopilot.off';    Group = 'Autopilot';   Label = 'Turn off';                           Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'autopilot.email';  Group = 'Autopilot';   Label = 'Email setup';                        Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'autopilot.test';   Group = 'Autopilot';   Label = 'Send test email';                    Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'autopilot.queue';  Group = 'Autopilot';   Label = 'Open the queue folder';              Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'autopilot.log';    Group = 'Autopilot';   Label = 'Open autopilot.log';                 Mutates = $false; RunIn = 'here' }
     )
 }
 
@@ -1303,8 +1352,10 @@ function Get-ActionPlan {
         [string]$SnapshotName, [string]$Snapshot, [datetime]$Now = [datetime]::MinValue,
         [string]$CommitMessage, $CommitFacts,
         [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag, [switch]$CommitForce,
-        $WipeFacts, [string]$WipeAdmin
+        $WipeFacts, [string]$WipeAdmin, $AutopilotFacts
     )
+    # cc-P74: the autopilot buttons read only the autopilot's folder.
+    if ($Action -like 'autopilot.*') { return (Get-AutopilotPlan -Action $Action -Config $Config -Facts $AutopilotFacts) }
     # The commit buttons read git and the notes, not docker, so they need no $State (cc-P60).
     if ($Action -like 'commit.*') { return (Get-CommitPlan -Action $Action -Config $Config -Facts $CommitFacts -Message $CommitMessage -Force:$CommitForce) }
     # Nor do the package buttons; they read git, dist\ and the notes (cc-P63, cc-P68).
@@ -1560,6 +1611,24 @@ function Test-PlanSafety {
                 if ($full.StartsWith($liveRoot, [StringComparison]::OrdinalIgnoreCase)) { $v.Add('a wipe request is never placed in the live world folder: ' + $s.Path) }
             }
             if ($s.Kind -eq 'wipewait' -and $s.Container -cne $Config.Shards['test'].Container) { $v.Add('a wipe is waited for only on ' + $Config.Shards['test'].Container + ': ' + $s.Container) }
+        }
+        if ($Config.Autopilot) {
+            # cc-P74. The autopilot's scripts run only as themselves, each in a window of its own, and its
+            # hook (cc-autopilot.ps1, which commits and pushes) never. Notepad opens only its log.
+            $ap = $Config.Autopilot
+            $apRoot = $ap.Root.TrimEnd('\') + '\'
+            $named = @(@($s.Exe) + @($s.Arguments) + @($s.Path) + @($s.From) + @($s.To) | Where-Object { $_ } | ForEach-Object { [string]$_ })
+            $inRoot = @($named | Where-Object { $_.StartsWith($apRoot, [StringComparison]::OrdinalIgnoreCase) -or $_ -ieq $ap.Root })
+            if (@($named | Where-Object { $_ -match '(?i)cc-autopilot\.ps1' }).Count) { $v.Add('the autopilot''s hook is never run from the console: it commits and pushes on its own') }
+            elseif ($inRoot.Count) {
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail)
+                $sa = @($s.Arguments)
+                $ok = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -eq 5 -and
+                    (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
+                $okLog = ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and $sa.Count -eq 1 -and $sa[0] -ieq $ap.LogFile)
+                if (-not $ok -and -not $okLog) { $v.Add('the autopilot''s folder is reached only by its four scripts, each in a window of its own, or its log in Notepad: ' + ($named -join ' ')) }
+            }
+            if ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and -not (@($s.Arguments).Count -eq 1 -and @($s.Arguments)[0] -ieq $ap.LogFile)) { $v.Add('Notepad opens only ' + $ap.LogFile) }
         }
         if ($s.Kind -eq 'move') {
             $from = [IO.Path]::GetFullPath($s.From).TrimEnd('\')
@@ -2023,14 +2092,286 @@ function Get-DnsGlance {
     [pscustomobject]$t
 }
 
+# --- the CC autopilot (cc-P74) -------------------------------------------------------------------
+# Chase's autopilot (D:\UO\cc-autopilot) hands CC the next queued prompt when the last one ends
+# "P<nn> DONE", running Commit-ShardWork.ps1 in between, and emails him when CC needs him. Its hook,
+# cc-autopilot.ps1, keeps everything this reads:
+#   ENABLED        present means on. The hook removes it itself when the queue runs dry.
+#   state.json     current (P74, empty when idle), currentFile, lastHandled, startedAt (local, 's').
+#                  No file is the hook's own default: nothing running, nothing handled yet.
+#   autopilot.log  "yyyy-MM-dd HH:mm:ss  <Event padded to 12> <text>", one line per action, with
+#                  Commit-ShardWork.ps1's raw output pasted in after a commit. Mail it sent is logged
+#                  "emailed: [Shard CC] <subject>", mail that failed "EMAIL FAILED: <subject>  (why)".
+#   queue\         cc-P<nn>-*.md run lowest number first; any other .md is ignored (and logged).
+# The shell tails the log and lists the queue (Get-AutopilotFacts); everything is judged here.
+
+$script:AutopilotLinePattern = '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})  ([A-Za-z]+) +(.*)$'
+$script:AutopilotSubject     = '[Shard CC] '
+
+function ConvertFrom-AutopilotLog {
+    # The action lines of a log tail, oldest first. Anything else is pasted commit output, skipped.
+    param([string[]]$Lines)
+    $out = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($l in @($Lines)) {
+        if ($null -eq $l) { continue }
+        $m = [regex]::Match([string]$l, $script:AutopilotLinePattern)
+        if (-not $m.Success) { continue }
+        $out.Add([pscustomobject]@{
+            Time  = [datetime]::ParseExact($m.Groups[1].Value, 'yyyy-MM-dd HH:mm:ss', $script:Invariant)
+            Event = $m.Groups[2].Value
+            Text  = $m.Groups[3].Value.TrimEnd()
+            Line  = ([string]$l).TrimEnd()
+        })
+    }
+    $out.ToArray()
+}
+
+function Get-AutopilotQueue {
+    # The queue folder's file names, as the hook reads them: what runs, in order, and what it ignores.
+    param([string[]]$Names)
+    $runs = @(@($Names) | Where-Object { $_ -match '^cc-P(\d+)-.*\.md$' } |
+        Sort-Object { [int]([regex]::Match($_, '^cc-P(\d+)-').Groups[1].Value) }, { $_ })
+    $ignored = @(@($Names) | Where-Object { $_ -match '\.md$' -and $_ -notmatch '^cc-P\d+-' } | Sort-Object)
+    [pscustomobject]@{ Runs = $runs; Ignored = $ignored }
+}
+
+function ConvertFrom-AutopilotState {
+    # state.json, or the hook's own default when there is no file ($null). Throws when it cannot be read.
+    param($Text)
+    $s = [pscustomobject]@{ Current = ''; CurrentFile = ''; LastHandled = 0; StartedAt = $null }
+    if ($null -eq $Text) { return $s }
+    $Text = [string]$Text
+    if (-not $Text.Trim()) { throw 'state.json is empty' }
+    $j = $Text | ConvertFrom-Json
+    if ($null -eq $j -or $j -isnot [pscustomobject]) { throw 'state.json is not a JSON object' }
+    $s.Current = [string]$j.current
+    $s.CurrentFile = [string]$j.currentFile
+    $n = 0
+    if ($null -ne $j.lastHandled -and -not [int]::TryParse([string]$j.lastHandled, [ref]$n)) { throw ('lastHandled is not a number: ' + $j.lastHandled) }
+    $s.LastHandled = $n
+    if ($j.startedAt -is [datetime]) { $s.StartedAt = $j.startedAt }
+    elseif ([string]$j.startedAt) {
+        $t = [datetime]::MinValue
+        if ([datetime]::TryParseExact([string]$j.startedAt, 'yyyy-MM-ddTHH:mm:ss', $script:Invariant, [Globalization.DateTimeStyles]::None, [ref]$t)) { $s.StartedAt = $t }
+    }
+    $s
+}
+
+function Test-AutopilotAlert {
+    # An emailed subject that means Chase is needed: the hook's NEEDS YOU, STOPPED and COMMIT FAILED mail.
+    param([string]$Subject)
+    ($Subject -match '^NEEDS YOU' -or $Subject -cmatch '\bSTOPPED\b' -or $Subject -cmatch '\bCOMMIT FAILED\b')
+}
+
+function Get-AutopilotView {
+    # Everything the tile and the tab say, from the four facts. $Enabled is $true, $false, or $null when
+    # it could not be checked. $StateText is $null when there is no state.json. $QueueNames is $null when
+    # the queue could not be listed. $Errors are the shell's read failures, each a short sentence.
+    param($Enabled, $StateText, [string[]]$LogLines, $QueueNames, [string[]]$Errors)
+    $problems = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($e in @($Errors)) { if ($e) { $problems.Add($e) } }
+    $state = $null
+    try { $state = ConvertFrom-AutopilotState $StateText }
+    catch { $problems.Add('state.json unreadable: ' + $_.Exception.Message) }
+    $queue = $null
+    if ($null -ne $QueueNames) { $queue = Get-AutopilotQueue @($QueueNames) }
+    $actions = @(ConvertFrom-AutopilotLog $LogLines)
+    # The hand-off is the line the hook writes when it gives CC a prompt: "handed P74 (file) why".
+    $since = $actions
+    for ($i = $actions.Count - 1; $i -ge 0; $i--) {
+        if ($actions[$i].Text -match '^handed P\d+') { $since = @($actions | Select-Object -Skip ($i + 1)); break }
+    }
+    $alert = $null
+    $mail = @($since | Where-Object { $_.Text -like 'emailed: *' })
+    if ($mail.Count) {
+        $subject = $mail[-1].Text.Substring(9).Trim()
+        if ($subject.StartsWith($script:AutopilotSubject)) { $subject = $subject.Substring($script:AutopilotSubject.Length).Trim() }
+        if (Test-AutopilotAlert $subject) { $alert = $subject }
+    }
+    $failing = @($since | Where-Object { $_.Text -like 'EMAIL FAILED*' })
+    [pscustomobject]@{
+        Enabled      = $Enabled
+        State        = $state
+        Queue        = $queue
+        Actions      = $actions
+        Alert        = $alert
+        EmailFailing = ($failing.Count -gt 0)
+        LastFailure  = $(if ($failing.Count) { $failing[-1].Text } else { $null })
+        Problems     = $problems.ToArray()
+    }
+}
+
+function Format-AutopilotQueueCount {
+    param($Queue)
+    if ($null -eq $Queue) { return 'queue unreadable' }
+    $n = @($Queue.Runs).Count
+    if ($n -eq 0) { return 'queue empty' }
+    [string]$n + ' queued'
+}
+
+function Get-AutopilotGlance {
+    # The AUTOPILOT tile. Pure: ENABLED, state.json's text, the log tail and the queue listing in, a
+    # tile out. A fact that could not be read makes it grey UNKNOWN, never red (the DNS tile's rule).
+    param($Enabled, $StateText, [string[]]$LogLines, $QueueNames, [string[]]$Errors,
+        [datetime]$Now = [datetime]::Now, $View)
+    if (-not $View) { $View = Get-AutopilotView -Enabled $Enabled -StateText $StateText -LogLines $LogLines -QueueNames $QueueNames -Errors $Errors }
+    $t = [ordered]@{ Title = 'AUTOPILOT'; Word = 'UNKNOWN'; Color = 'gray'; Detail = '' }
+    $q = $View.Queue
+    if ($null -eq $View.Enabled) {
+        $t.Detail = 'could not tell whether it is on'
+        if (@($View.Problems).Count) { $t.Detail += ' (' + @($View.Problems)[0] + ')' }
+        return [pscustomobject]$t
+    }
+    if (-not $View.Enabled) {
+        $t.Word = 'OFF'
+        $t.Detail = 'not handing out prompts; ' + (Format-AutopilotQueueCount $q)
+        return [pscustomobject]$t
+    }
+    if (@($View.Problems).Count -or $null -eq $View.State -or $null -eq $q) {
+        $t.Detail = 'on, but ' + (@($View.Problems) + @('the queue could not be listed'))[0]
+        return [pscustomobject]$t
+    }
+    $s = $View.State
+    $ignored = ''
+    if (@($q.Ignored).Count) { $ignored = '; ' + @($q.Ignored).Count + ' unnumbered file(s) ignored' }
+    if ($View.Alert) {
+        $t.Word = 'NEEDS YOU'; $t.Color = 'amber'
+        $a = $View.Alert
+        if ($a.Length -gt 90) { $a = $a.Substring(0, 87) + '...' }
+        $t.Detail = $a
+    } elseif ($s.Current) {
+        $t.Word = 'RUNNING'; $t.Color = 'green'
+        $t.Detail = $s.Current
+        if ($s.StartedAt) { $t.Detail += ' for ' + (Format-Age ($Now - $s.StartedAt)) }
+        $t.Detail += ', ' + (Format-AutopilotQueueCount $q) + $ignored
+    } else {
+        $t.Word = 'IDLE'
+        $t.Detail = Format-AutopilotQueueCount $q
+        if (@($q.Runs).Count) { $t.Detail += '; send CC "go" to start' }
+        $t.Detail += $ignored
+    }
+    if ($View.EmailFailing) {
+        $t.Color = 'amber'
+        $t.Detail += '; email failing'
+    }
+    [pscustomobject]$t
+}
+
+function Format-AutopilotPanel {
+    # The Autopilot tab's read-only panel, as lines with a colour name like Format-StatusReport's.
+    param($View, $Config, [datetime]$Now = [datetime]::Now, [int]$LogLines = 20)
+    $o = New-Object 'System.Collections.Generic.List[object]'
+    $add = { param($t, $c) $o.Add([pscustomobject]@{ Text = $t; Color = $(if ($c) { $c } else { 'normal' }) }) }
+    $ap = $Config.Autopilot
+    $tile = Get-AutopilotGlance -View $View -Now $Now
+    & $add ('AUTOPILOT : ' + $tile.Word + '. ' + $tile.Detail) $tile.Color
+    foreach ($p in @($View.Problems)) { & $add ('could not read: ' + $p) 'gray' }
+    if ($null -eq $View.Enabled) { & $add 'on or off: unknown' 'gray' }
+    elseif ($View.Enabled) { & $add ('on or off: ON (' + $ap.Enabled + ' is there)') 'green' }
+    else { & $add 'on or off: OFF (no ENABLED file). Turn on starts it; CC then picks up the queue at its next stop.' 'gray' }
+    $s = $View.State
+    if ($s) {
+        if ($s.Current) {
+            $run = 'running   : ' + $s.Current
+            if ($s.CurrentFile) { $run += ' (' + $s.CurrentFile + ')' }
+            if ($s.StartedAt) { $run += ' for ' + (Format-Age ($Now - $s.StartedAt)) + ', since ' + $s.StartedAt.ToString('yyyy-MM-dd HH:mm:ss', $script:Invariant) }
+            & $add $run 'green'
+        } else {
+            & $add 'running   : nothing' 'normal'
+        }
+        $last = 'none yet'
+        if ($s.LastHandled) { $last = 'P' + $s.LastHandled + ' (said DONE or STOPPED)' }
+        & $add ('last      : ' + $last) 'normal'
+    }
+    if ($View.Alert) { & $add ('needs you : ' + $View.Alert + '. Answer CC; it was emailed.') 'amber' }
+    if ($View.EmailFailing) { & $add ('email     : FAILING since the last hand-off. ' + $View.LastFailure) 'red' }
+    $q = $View.Queue
+    if ($null -eq $q) {
+        & $add ('queue     : could not be listed (' + $ap.Queue + ')') 'gray'
+    } else {
+        $head = 'queue     : ' + $ap.Queue + ', ' + (Format-AutopilotQueueCount $q) + ', in run order'
+        if (-not @($q.Runs).Count) { $head = 'queue     : ' + $ap.Queue + ' is empty' }
+        & $add $head 'normal'
+        $i = 0
+        foreach ($r in @($q.Runs)) { $i++; & $add ('            ' + $i + '. ' + $r) 'normal' }
+        foreach ($x in @($q.Ignored)) { & $add ('            IGNORED ' + $x + ' (unnumbered: only cc-P<nn>-*.md runs; the overseer numbers it)') 'amber' }
+    }
+    & $add '' 'normal'
+    & $add ('== autopilot.log, the last ' + $LogLines + ' actions (commit output skipped) ' + ('=' * 20)) 'head'
+    $acts = @($View.Actions)
+    if (-not $acts.Count) { & $add '(nothing logged)' 'gray' }
+    foreach ($a in @($acts | Select-Object -Last $LogLines)) {
+        $c = 'normal'
+        if ($a.Text -like 'EMAIL FAILED*') { $c = 'red' }
+        elseif ($a.Text -like 'emailed: *' -and (Test-AutopilotAlert ($a.Text -replace '^emailed: (\[Shard CC\] )?', ''))) { $c = 'amber' }
+        elseif ($a.Text -match '^handed P\d+|DONE, committing') { $c = 'green' }
+        elseif ($a.Text -match '^(queue: ignoring|idle stop|dry run:)') { $c = 'gray' }
+        & $add $a.Line $c
+    }
+    $o.ToArray()
+}
+
+function Get-AutopilotPlan {
+    # The Autopilot tab's buttons. Each opens one of the autopilot's own scripts in a PowerShell window
+    # of its own, which stays open to be read, or opens the queue folder or the log. $Facts is
+    # Get-AutopilotFacts': only whether files exist is used here.
+    param([string]$Action, $Config, $Facts)
+    $ap = $Config.Autopilot
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    $ps = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File')
+    $need = {
+        param($Path, $What)
+        if (-not ($Facts.Present -and $Facts.Present[$Path])) { $steps.Add((New-PlanStep -Kind refuse -Text ($What + ' was not found: ' + $Path + '. Nothing was run.'))); return $false }
+        $true
+    }
+    switch ($Action) {
+        'autopilot.on' {
+            if (-not $Facts.EmailConfigured) { $steps.Add((New-PlanStep -Kind refuse -Text ('Run Email setup first: there is no ' + $ap.EmailFile + ', and autopilot emails you whenever CC needs you.'))); break }
+            if (-not (& $need $ap.Start 'Start-Autopilot.ps1')) { break }
+            $steps.Add((New-PlanStep -Kind say -Text ('Turn on: Start-Autopilot.ps1 creates ENABLED and lists the queue. Nothing runs yet: at CC''s next stop the hook hands it the lowest-numbered prompt, and after each P<nn> DONE it commits and pushes both repos to GitHub before handing over the next.')))
+            $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.Start) -Text 'In a window of its own, which stays open.'))
+            $steps.Add((New-PlanStep -Kind log -Text 'autopilot.on'))
+        }
+        'autopilot.off' {
+            if (-not (& $need $ap.Stop 'Stop-Autopilot.ps1')) { break }
+            $steps.Add((New-PlanStep -Kind say -Text 'Turn off: Stop-Autopilot.ps1 removes ENABLED. A prompt CC is running still finishes, but nothing is committed after it and nothing new is handed over; commit by hand.'))
+            $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.Stop) -Text 'In a window of its own, which stays open.'))
+            $steps.Add((New-PlanStep -Kind log -Text 'autopilot.off'))
+        }
+        'autopilot.email' {
+            if (-not (& $need $ap.Setup 'Setup-Email.ps1')) { break }
+            $steps.Add((New-PlanStep -Kind say -Text 'Email setup: Setup-Email.ps1 asks for the sender Gmail address, the address to alert and the sender''s app password, in its own window and never on a command line. The password is stored with Windows DPAPI in smtp-cred.xml. It then sends a test email.'))
+            $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.Setup) -Text 'In a window of its own, which stays open.'))
+            $steps.Add((New-PlanStep -Kind log -Text 'autopilot.email'))
+        }
+        'autopilot.test' {
+            if (-not $Facts.EmailConfigured -or -not $Facts.CredStored) { $steps.Add((New-PlanStep -Kind refuse -Text ('Run Email setup first: ' + $ap.EmailFile + ' and ' + $ap.CredFile + ' are both needed to send.'))); break }
+            if (-not (& $need $ap.TestEmail 'Send-TestEmail.ps1')) { break }
+            $steps.Add((New-PlanStep -Kind say -Text 'Send test email: Send-TestEmail.ps1 sends one email to the address in email.json the way the hook does, and prints sent or the error. It changes nothing.'))
+            $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.TestEmail) -Text 'In a window of its own, which stays open.'))
+            $steps.Add((New-PlanStep -Kind log -Text 'autopilot.test'))
+        }
+        'autopilot.queue' {
+            $steps.Add((New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($ap.Queue) -Text 'Opening the queue folder. Only cc-P<nn>-*.md runs, lowest number first; numbers belong to the overseer.'))
+        }
+        'autopilot.log' {
+            if (-not $Facts.LogExists) { $steps.Add((New-PlanStep -Kind refuse -Text ('There is no ' + $ap.LogFile + ' yet: the hook writes it the first time it acts.'))); break }
+            $steps.Add((New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @($ap.LogFile) -Text 'Opening autopilot.log in Notepad. Read it there; the hook appends to it.'))
+        }
+        default { $steps.Add((New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them."))) }
+    }
+    $steps.ToArray()
+}
+
 function Format-StatusReport {
-    # Lines with a colour name: normal, head, green, amber, red, gray.
-    param($State, $Config)
+    # Lines with a colour name: normal, head, green, amber, red, gray. $ExtraTiles (cc-P74) are tiles
+    # judged outside the docker state, such as AUTOPILOT, listed after the three.
+    param($State, $Config, [object[]]$ExtraTiles)
     $o = New-Object 'System.Collections.Generic.List[object]'
     $add = { param($t, $c) $o.Add([pscustomobject]@{ Text = $t; Color = $(if ($c) { $c } else { 'normal' }) }) }
     $ind = '            '
     & $add ('Status as of ' + (Format-LocalTime $State.Now) + ', read from ' + $State.Source) 'gray'
-    foreach ($t in (Get-AtAGlance $State $Config)) {
+    foreach ($t in @(@(Get-AtAGlance $State $Config) + @($ExtraTiles | Where-Object { $_ }))) {
         & $add (('{0,-17}: {1,-15} {2}' -f $t.Title, $t.Word, $t.Detail)) $t.Color
     }
     if ($State.DockerError) { & $add ('DOCKER NOT REACHABLE: ' + $State.DockerError) 'red' }
@@ -2655,6 +2996,55 @@ function Get-WipeFacts {
     }
 }
 
+function Get-AutopilotFacts {
+    # cc-P74: what the AUTOPILOT tile and the Autopilot tab read, on every refresh. Cheap on purpose:
+    # three small files, the last TailLines of the log (never all of it) and one folder listing. Only
+    # whether email.json and smtp-cred.xml exist is checked; neither is ever opened here. A read that
+    # fails is recorded beside it, for Get-AutopilotGlance to say UNKNOWN rather than guess.
+    param($Config)
+    $ap = $Config.Autopilot
+    $errors = New-Object 'System.Collections.Generic.List[string]'
+    $enabled = $null
+    try { $enabled = [bool](Test-Path -LiteralPath $ap.Enabled -PathType Leaf -ErrorAction Stop) } catch { $errors.Add('ENABLED: ' + $_.Exception.Message) }
+    $stateText = $null
+    if (Test-Path -LiteralPath $ap.StateFile -PathType Leaf) {
+        try { $stateText = [IO.File]::ReadAllText($ap.StateFile) } catch { $errors.Add('state.json: ' + $_.Exception.Message) }
+    }
+    $logLines = @()
+    $logExists = [bool](Test-Path -LiteralPath $ap.LogFile -PathType Leaf)
+    if ($logExists) {
+        try { $logLines = @(Get-Content -LiteralPath $ap.LogFile -Tail $ap.TailLines -ErrorAction Stop) } catch { $errors.Add('autopilot.log: ' + $_.Exception.Message) }
+    }
+    $names = $null
+    try { $names = @(Get-ChildItem -LiteralPath $ap.Queue -File -ErrorAction Stop | ForEach-Object { $_.Name }) } catch { $errors.Add('queue: ' + $_.Exception.Message) }
+    $present = @{}
+    foreach ($f in @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail)) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) }
+    [pscustomobject]@{
+        Enabled         = $enabled
+        StateText       = $stateText
+        LogLines        = $logLines
+        LogExists       = $logExists
+        QueueNames      = $names
+        EmailConfigured = [bool](Test-Path -LiteralPath $ap.EmailFile -PathType Leaf)
+        CredStored      = [bool](Test-Path -LiteralPath $ap.CredFile -PathType Leaf)
+        Present         = $present
+        Errors          = $errors.ToArray()
+    }
+}
+
+function Get-AutopilotViewNow {
+    # The facts read now, judged. Never throws: a failure is an UNKNOWN tile.
+    param($Config)
+    try {
+        $f = Get-AutopilotFacts $Config
+        $v = Get-AutopilotView -Enabled $f.Enabled -StateText $f.StateText -LogLines $f.LogLines -QueueNames $f.QueueNames -Errors $f.Errors
+    } catch {
+        $f = $null
+        $v = Get-AutopilotView -Enabled $null -StateText $null -LogLines @() -QueueNames $null -Errors @($_.Exception.Message)
+    }
+    [pscustomobject]@{ Facts = $f; View = $v; Tile = (Get-AutopilotGlance -View $v -Now ([datetime]::Now)) }
+}
+
 function Read-WipePassword {
     # The new admin password, typed twice in this window and not shown. $null is a cancel: empty, or
     # the two differ. The plaintext lives in this process only, as long as New-WipePasswordHash needs it.
@@ -3183,14 +3573,41 @@ function Update-GlanceTiles {
     if ($script:ui.Form) { $script:ui.Form.Text = $prefix + ' - ' + ($titleBits -join ' | ') }
 }
 
+function Set-TileLook {
+    param($Tile, $Glance)
+    $cols = Get-TileColors $Glance.Color
+    $Tile.Panel.BackColor = $cols[0]
+    $Tile.Word.ForeColor = $cols[1]
+    $Tile.Detail.ForeColor = $cols[1]
+    $Tile.Word.Text = $Glance.Title + ': ' + $Glance.Word
+    $Tile.Detail.Text = $Glance.Detail
+}
+
+function Update-AutopilotView {
+    # cc-P74: the AUTOPILOT tile and, when it exists, the Autopilot tab's panel. Read from disk on
+    # every status refresh (and when the tab is opened), never from the capture file: it is not docker.
+    $a = Get-AutopilotViewNow $script:cfg
+    $script:autopilot = $a
+    if ($script:ui.AutopilotTile) { Set-TileLook $script:ui.AutopilotTile $a.Tile }
+    $box = $script:ui.AutopilotPanel
+    if ($box) {
+        $box.Clear()
+        foreach ($l in (Format-AutopilotPanel -View $a.View -Config $script:cfg -Now ([datetime]::Now))) { Add-RichLine $box $l.Text $l.Color }
+        $box.SelectionStart = 0
+        $box.ScrollToCaret()
+    }
+    $a
+}
+
 function Update-ConsoleStatus {
     try {
         $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:fromCapture -StatusFrom $script:statusFrom
         $script:lastState = $state
         Update-GlanceTiles $state
+        $ap = Update-AutopilotView
         $box = $script:ui.Status
         $box.Clear()
-        foreach ($l in (Format-StatusReport $state $script:cfg)) { Add-RichLine $box $l.Text $l.Color }
+        foreach ($l in (Format-StatusReport $state $script:cfg @($ap.Tile))) { Add-RichLine $box $l.Text $l.Color }
         $box.SelectionStart = 0
         $box.ScrollToCaret()
         Update-SnapshotList
@@ -3551,14 +3968,19 @@ function Invoke-ConsoleButton {
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
         $isCommit = ($ActionKey -like 'commit.*')
         $isPackage = ($ActionKey -like 'package.*')
-        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' } }
+        $isAutopilot = ($ActionKey -like 'autopilot.*')
+        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'autopilot' } }
         # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
         # status is a capture file". Only the second decides where the state comes from.
         if ($script:fromCapture -and -not $script:dry) { throw 'the status is from a capture file, so nothing may run for real. Relaunch without -DryRun.' }
         $facts = $null
         $pkgFacts = $null
+        $apFacts = $null
         $now = Get-Date
-        if ($isCommit) {
+        if ($isAutopilot) {
+            # cc-P74: the autopilot's folder, never docker.
+            $apFacts = Get-AutopilotFacts $script:cfg
+        } elseif ($isCommit) {
             # The commit buttons read git and the notes, never docker (cc-P60).
             $facts = Get-CommitFacts $script:cfg
         } elseif ($isPackage) {
@@ -3586,7 +4008,7 @@ function Invoke-ConsoleButton {
                 if (-not $WipeAdmin) { Write-ConsoleLine ($ActionKey + ': cancelled. Nothing was changed.') 'gray'; return }
             }
         }
-        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin)
+        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
         $dryTag = ''
@@ -3621,6 +4043,7 @@ function Invoke-ConsoleButton {
         } else {
             if ($script:dry) { throw 'a dry run reached the executor' }
             [void](Invoke-Plan -Plan $plan -Config $script:cfg -ActionKey $ActionKey -ShardKey $ShardKey -ConfirmLive $phrase -Yes:$answeredYes)
+            if ($isAutopilot) { [void](Update-AutopilotView) }
         }
     } catch {
         Write-ConsoleLine ($ActionKey + ' failed: ' + $_.Exception.Message) 'red'
@@ -3703,9 +4126,9 @@ function New-ConsoleForm {
     $glance = New-Object Windows.Forms.TableLayoutPanel
     $glance.Dock = 'Fill'
     $glance.RowCount = 1
-    $glance.ColumnCount = 4
+    $glance.ColumnCount = 5
     $glance.Margin = New-Object Windows.Forms.Padding(0)
-    foreach ($i in 1..4) { [void]$glance.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 25))) }
+    foreach ($i in 1..5) { [void]$glance.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 20))) }
     $script:ui.Tiles = @()
     $col = 0
     foreach ($title in @('LIVE', 'TEST', 'STATUS PUBLISHER')) {
@@ -3717,7 +4140,11 @@ function New-ConsoleForm {
     # cc-P52 Part H: public DNS and VPN. Drawn by Update-NetworkTile, not by the status refresh.
     $script:ui.NetTile = New-StatusTile 'PUBLIC DNS'
     $glance.Controls.Add($script:ui.NetTile.Panel, $col, 0)
+    $col++
     $script:netProbe = $null; $script:netResult = $null; $script:netResultAt = $null
+    # cc-P74: the CC autopilot. Drawn by Update-AutopilotView on every status refresh.
+    $script:ui.AutopilotTile = New-StatusTile 'AUTOPILOT'
+    $glance.Controls.Add($script:ui.AutopilotTile.Panel, $col, 0)
 
     # status
     $statusGroup = New-Object Windows.Forms.GroupBox
@@ -3964,7 +4391,7 @@ function New-ConsoleForm {
     }
     $where = $Config.CommitScript
     if (-not (Test-Path -LiteralPath $Config.CommitScript -PathType Leaf)) { $where += ' (NOT FOUND: both buttons will say so and do nothing)' }
-    $commitPage = New-ButtonPage 'Commit' ('Runs ' + $where + ' in a window of its own, which stays open so you can read its own table at the end. Preview passes its -DryRun and changes nothing. Commit and push asks for the phrase ''commit shard work'' first: both repos are public on GitHub, so a pushed commit cannot be taken back. It is refused when this console runs as SYSTEM, when both repos are clean, or while a CC prompt has not said DONE or a pending file changed in the last ' + (Format-QuietWindow $Config.CommitQuietSeconds) + '; Preview still runs and names them. Force skips only that last wait, for one commit; the confirmation names the files.') $commitBtns
+    $commitPage = New-ButtonPage 'Commit' ('Runs ' + $where + ' in a window of its own, which stays open so you can read its own table at the end. Preview passes its -DryRun and changes nothing. Commit and push asks for the phrase ''commit shard work'' first: both repos are public on GitHub, so a pushed commit cannot be taken back. It is refused when this console runs as SYSTEM, when both repos are clean, or while a CC prompt has not said DONE or a pending file changed in the last ' + (Format-QuietWindow $Config.CommitQuietSeconds) + '; Preview still runs and names them. Force skips only that last wait, for one commit; the confirmation names the files.' + "`r`n" + 'While autopilot is on it commits and pushes after each P<nn> DONE by itself (Autopilot tab), so a manual commit is rarely needed.') $commitBtns
     $msgLabel = New-Caption 'Message (blank: the script''s default, "Shard work, <date> <time>"):' 400
     $msgBox = New-Object Windows.Forms.TextBox
     $msgBox.Width = 700
@@ -4062,7 +4489,35 @@ function New-ConsoleForm {
     $script:ui.PackageButtons = @($buildBtn, $publishBtn, $checkBtn)
     Update-PackageList
 
-    $tabs.TabPages.AddRange(@($testPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $livePage))
+    # autopilot (cc-P74): Chase's CC autopilot, through its own scripts. The panel only reads.
+    $apPage = New-Object Windows.Forms.TabPage('Autopilot')
+    $apTop = New-Object Windows.Forms.FlowLayoutPanel
+    $apTop.Dock = 'Top'
+    $apTop.AutoSize = $true
+    $apTop.WrapContents = $true
+    $apCap = New-Caption ('Autopilot hands CC the next prompt in ' + $Config.Autopilot.Queue + ' (cc-P<nn>-*.md, lowest number first) each time the running one ends "P<nn> DONE", and emails you when CC stops to ask something, stops early or a commit fails. After every P<nn> DONE it commits AND PUSHES both repos to GitHub on its own, through Commit-ShardWork.ps1, with nobody asked. Turn off stops the hand-offs; a prompt CC is running still finishes. Each button opens the autopilot''s own script from ' + $Config.Autopilot.Root + ' in a window of its own. The console never reorders or renumbers the queue: numbers belong to the overseer.') 1100
+    $apTop.Controls.Add($apCap)
+    $apTop.SetFlowBreak($apCap, $true)
+    $apBtns = @()
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Autopilot' })) {
+        $b = New-ConsoleButton $a.Label $a.Key 170
+        $apBtns += $b
+        $apTop.Controls.Add($b)
+    }
+    $apPanel = New-Object Windows.Forms.RichTextBox
+    $apPanel.Dock = 'Fill'
+    $apPanel.ReadOnly = $true
+    $apPanel.BackColor = [Drawing.Color]::White
+    $apPanel.Font = $script:MonoFont
+    $apPanel.WordWrap = $false
+    $apPanel.DetectUrls = $false
+    $apPage.Controls.Add($apPanel)
+    $apPage.Controls.Add($apTop)
+    $script:ui.AutopilotPage = $apPage
+    $script:ui.AutopilotPanel = $apPanel
+    $script:ui.AutopilotButtons = $apBtns
+
+    $tabs.TabPages.AddRange(@($testPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $apPage, $livePage))
 
     # output
     $outGroup = New-Object Windows.Forms.GroupBox
@@ -4098,7 +4553,10 @@ function New-ConsoleForm {
     $cdTimer.Interval = 1000
     $cdTimer.Add_Tick({ Update-CommitCountdown })
     $cdTimer.Start()
-    $tabs.Add_SelectedIndexChanged({ Update-CommitCountdown -Reread })
+    $tabs.Add_SelectedIndexChanged({
+        Update-CommitCountdown -Reread
+        if ($script:ui.Tabs.SelectedTab -eq $script:ui.AutopilotPage) { [void](Update-AutopilotView) }
+    })
     $script:commitFactsCache = $null
     $script:commitFactsAt = $null
     $form.Add_FormClosed({
@@ -4141,6 +4599,7 @@ if ($Action -eq 'list') {
     Write-Host 'package.check takes -PackageZip <name in player-package\dist>; it only reads.'
     Write-Host 'test.deploy takes -ImageTag sl-modernuo:cc-pNN and -ConfirmLive ''deploy to test''.'
     Write-Host 'test.wipe takes -WipeAdmin <new admin name> and -ConfirmLive ''WIPE TEST ACCOUNTS''; it asks for the password in its own window.'
+    Write-Host 'autopilot.on, .off, .email and .test need -Mode Execute; each opens the autopilot''s own script in a window of its own. autopilot.queue and .log only open.'
     exit 0
 }
 
@@ -4153,7 +4612,9 @@ if ($WorldCommands) {
 
 if ($Status) {
     $st = Get-ConsoleState -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom
-    foreach ($l in (Format-StatusReport $st $config)) { Write-ConsoleLine $l.Text $l.Color }
+    # cc-P74: the AUTOPILOT tile is read from its folder even under -DryRun; it is not docker.
+    $ap = Get-AutopilotViewNow $config
+    foreach ($l in (Format-StatusReport $st $config @($ap.Tile))) { Write-ConsoleLine $l.Text $l.Color }
     exit 0
 }
 
@@ -4163,6 +4624,7 @@ if ($Action) {
     if ($Action -like 'test.*') { $sk = 'test' }
     if ($Action -like 'commit.*') { $sk = 'repos' }
     if ($Action -like 'package.*') { $sk = 'package' }
+    if ($Action -like 'autopilot.*') { $sk = 'autopilot' }
     # The mode is decided and shown before anything is read or run (D37).
     $run = Resolve-RunMode -Action $Action -Mode $Mode -DryRun:$DryRun
     $banner = Get-ModeBanner -RunMode $run -Action $Action -ShardKey $sk
@@ -4173,8 +4635,12 @@ if ($Action) {
     $st = $null
     $facts = $null
     $pkgFacts = $null
+    $apFacts = $null
     $now = Get-Date
-    if ($Action -like 'commit.*') {
+    if ($Action -like 'autopilot.*') {
+        # cc-P74: the autopilot's folder, never docker.
+        $apFacts = Get-AutopilotFacts $config
+    } elseif ($Action -like 'commit.*') {
         # From a click the message comes as base64 (Get-ChildArgumentLine); -CommitMessage is for a person.
         if ($CommitMessageB64) { $CommitMessage = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($CommitMessageB64)) }
         $facts = Get-CommitFacts $config
@@ -4190,7 +4656,7 @@ if ($Action) {
     # cc-P73: the wipe re-reads its facts here, so the child plans from the shard as it is now.
     $wFacts = $null
     if ($Action -eq 'test.wipe') { $wFacts = Get-WipeFacts $config $st }
-    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin)
+    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts)
     $viol = @(Test-PlanSafety $plan $config)
     $header = 'PLAN'
     if ($isDry) { $header = 'DRY RUN' }

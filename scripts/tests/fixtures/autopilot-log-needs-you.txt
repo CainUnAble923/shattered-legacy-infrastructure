@@ -1,0 +1,3 @@
+2026-10-12 15:49:41  Stop         handed P74 (cc-P74-autopilot-console.md) Autopilot is starting the queue.
+2026-10-12 16:40:12  Stop         P74 stopped without DONE: emailing
+2026-10-12 16:40:14  Stop         emailed: [Shard CC] NEEDS YOU: P74 stopped mid-task
