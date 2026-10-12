@@ -1,0 +1,19 @@
+--- "a/Projects/UOContent/Items/Skill Items/Misc/FireHorn.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Misc/FireHorn.cs"
+@@ -122,10 +122,12 @@
+ 
+             if (Core.AOS)
+             {
+-                var musicScaled = music + Math.Max(0, music - 900) * 2;
+-                var provScaled = prov + Math.Max(0, prov - 900) * 2;
+-                var discScaled = disc + Math.Max(0, disc - 900) * 2;
+-                var peaceScaled = peace + Math.Max(0, peace - 900) * 2;
++                // cc-P71: pinned to 120 in each bard skill; past it a player's follows the shard curve, so all four at
++                // 200 deal 1.10 times the damage at 120 (config) instead of 2.33 times.
++                var musicScaled = ClusterFSkillClamps.FireHornScaled(from, music);
++                var provScaled = ClusterFSkillClamps.FireHornScaled(from, prov);
++                var discScaled = ClusterFSkillClamps.FireHornScaled(from, disc);
++                var peaceScaled = ClusterFSkillClamps.FireHornScaled(from, peace);
+ 
+                 var weightAvg = (musicScaled + provScaled * 3 + discScaled * 3 + peaceScaled) / 80;
+ 

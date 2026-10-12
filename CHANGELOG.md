@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.10
+
+### Changed
+- Nerve Strike's paralysis is never certain: 90% at Bushido 120, rising to 95% at 200.
+- Stable slots from Animal Taming, Animal Lore and Veterinary rise to 23 at 200 in all three (14 at 120).
+- Fire Horn damage rises to a tenth more than at 120 when all four bard skills reach 200.
+- Stealth steps rise to 34 at Stealth 200 (24 at 120).
+- A bandage heals about 72 on average at Healing and Anatomy 200 (about 57 at 120); Veterinary and Animal Lore on pets the same.
+
 ## 2026.10.07
 
 ### Added

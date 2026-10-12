@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Mobiles/Vendors/NPC/AnimalTrainer.cs
++++ b/Projects/UOContent/Mobiles/Vendors/NPC/AnimalTrainer.cs
+@@ -96,7 +96,9 @@
+                 max += (int)((vetern - 90.0) / 10);
+             }
+ 
+-            return max;
++            // cc-P71: each skill's share is pinned's to 120 (3); past it a player's follows the shard curve to 6 at
++            // 200 (config), summed before one truncation, so 23 slots at 200/200/200 instead of 38.
++            return ClusterFSkillClamps.StableSlots(from, max, taming, anlore, vetern);
+         }
+ 
+         private static void CloseClaimList(Mobile from)

@@ -1,0 +1,14 @@
+--- a/Projects/UOContent/Items/Weapons/Abilities/NerveStrike.cs
++++ b/Projects/UOContent/Items/Weapons/Abilities/NerveStrike.cs
+@@ -63,8 +63,9 @@
+                     0
+                 ); // 0-25
+ 
+-                if (!cantpara && (150.0 / 7.0 + 4.0 * attacker.Skills.Bushido.Value / 7.0) / 100.0 >
+-                    Utility.RandomDouble())
++                // cc-P71: pinned to Bushido 120 (90 percent); past it a player's chance follows the shard curve to
++                // 95 percent at 200 (config), never certain. Creatures as pinned.
++                if (!cantpara && ClusterFSkillClamps.NerveStrikeChance(attacker) > Utility.RandomDouble())
+                 {
+                     defender.Paralyze(TimeSpan.FromSeconds(2.0));
+                     Items.ParalyzingBlow.BeginImmunity(defender, Items.ParalyzingBlow.FreezeDelayDuration);

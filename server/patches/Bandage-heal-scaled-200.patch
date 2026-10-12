@@ -1,0 +1,17 @@
+--- "a/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
+@@ -394,8 +394,12 @@
+ 
+                 if (Core.AOS)
+                 {
+-                    min = anatomy / 8.0 + healing / 5.0 + 4.0;
+-                    max = anatomy / 6.0 + healing / 2.5 + 4.0;
++                    // cc-P71: the amount reads each skill as pinned to 120 (57.5 average at 120/120); past it a
++                    // player healer's follows the shard curve to 72 at 200/200 (config). Chance as pinned.
++                    var anatomyHeal = ClusterFSkillClamps.BandageHealSkill(Healer, anatomy);
++                    var healingHeal = ClusterFSkillClamps.BandageHealSkill(Healer, healing);
++                    min = anatomyHeal / 8.0 + healingHeal / 5.0 + 4.0;
++                    max = anatomyHeal / 6.0 + healingHeal / 2.5 + 4.0;
+                 }
+                 else
+                 {

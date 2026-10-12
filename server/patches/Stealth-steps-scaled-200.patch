@@ -1,0 +1,16 @@
+--- a/Projects/UOContent/Skills/Stealth.cs
++++ b/Projects/UOContent/Skills/Stealth.cs
+@@ -99,7 +99,12 @@
+                     (Core.AOS ? 60.0 : 80.0) + armorRating * 2
+                 ))
+                 {
+-                    m.AllowedStealthSteps = Math.Max((int)(m.Skills.Stealth.Value / (Core.AOS ? 5.0 : 10.0)), 1);
++                    // cc-P71: pinned to Stealth 120 (24 steps); past it a player's follow the shard curve to 34 at 200
++                    // (config). Creatures as pinned.
++                    m.AllowedStealthSteps = Math.Max(
++                        ClusterFSkillClamps.StealthSteps(m, (int)(m.Skills.Stealth.Value / (Core.AOS ? 5.0 : 10.0))),
++                        1
++                    );
+ 
+                     if (m is PlayerMobile pm)
+                     {

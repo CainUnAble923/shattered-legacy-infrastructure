@@ -516,6 +516,22 @@ apply_patch "$PATCHES/BaseWeapon-axe-bonus-osi.patch"
 apply_patch "$PATCHES/BasePotion-alchemy-bonus-osi.patch"
 apply_patch "$PATCHES/Fishing-deep-water-finds-osi.patch"
 
+# cc-P71 (cc-P66 decision 4, Chase 2026-10-06: "update these to appropriate levels at 200"): five effects that kept growing
+# past OSI's top now scale instead. Each patched line reads the player's skill through ClusterFSkillClamps, which returns
+# pinned's own number at or below OSI's top and past it one diminishing-returns curve to a value at 200 that lives in
+# modernuo.json (clusterf.skillScaling.*): Nerve Strike's paralysis (certain from Bushido 137.5; 95 percent at 200), the
+# stable slots from Taming, Lore and Veterinary (38 at 200/200/200; 23), Fire Horn damage (2.33x at four bard skills 200;
+# 1.10x), Stealth steps (40 at 200; 34) and the heal per bandage (93.2 average at 200/200; 72). Creatures as pinned.
+# Rejected: clamping at OSI (Chase asked for 200 to be better than OSI's top, not equal); customizations alone (each read
+# is a local inside a pinned method, AnimalTrainer.GetMaxStabled is static with one caller and no hook); a curve per
+# effect (one curve, one bend key, tuned in one place). Bandage's applies after Bandage-pet-mimic-targeting.patch above.
+# Argued in shard-migration/notes/cc-P71-high-skill-effect-scaling.md; pinned by SkillScalingVerification (proved red).
+apply_patch "$PATCHES/NerveStrike-paralyze-scaled-200.patch"
+apply_patch "$PATCHES/AnimalTrainer-stable-slots-scaled-200.patch"
+apply_patch "$PATCHES/FireHorn-damage-scaled-200.patch"
+apply_patch "$PATCHES/Stealth-steps-scaled-200.patch"
+apply_patch "$PATCHES/Bandage-heal-scaled-200.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
