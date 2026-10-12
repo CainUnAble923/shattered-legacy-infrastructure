@@ -73,6 +73,28 @@
             - field: nightsLeft
               label: Nights left
 
+    # cc-P83. sl-play-tests on this box. The widget is fetched by Homepage's own server inside sl-dashboard
+    # (network sl-dashboard-net), which reaches the host's published port at its LAN address, as the 8092
+    # widgets above do. LAN only: the href is the address this dashboard itself is reached at.
+    - Play tests:
+        icon: /icons/shattered_legacy_logo.png
+        href: "http://192.168.1.58:8093/"
+        description: Waiting play-tests. Mark Pass or Fail. LAN only
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8093/api/summary
+          refreshInterval: 60000
+          mappings:
+            - field: open
+              label: Open
+              format: number
+            - field: failed
+              label: Failed
+              format: number
+            - field: passed
+              label: Passed
+              format: number
+
     - Wiki:
         icon: /icons/shattered_legacy_logo.png
         href: "https://wiki.shatteredlegacyuo.com"

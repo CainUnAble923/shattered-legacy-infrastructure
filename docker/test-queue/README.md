@@ -1,15 +1,45 @@
-# Client test queue viewer
+# Play-test queue
 
-> **This runs on the Windows box (`192.168.1.58`), not on Haven,** because the file it shows lives
-> here. LAN only: http://192.168.1.58:8093/ . **Never route it through NPM**; it is an internal
-> checklist. Start or recreate it with `Start-TestQueue.ps1` in this folder.
+> **This runs on the Windows box (`192.168.1.58`), not on Haven,** because the files it reads and writes
+> live here. LAN only: http://192.168.1.58:8093/ . **Never route it through NPM**; it is an internal
+> checklist with no login. Start or recreate it with `Start-TestQueue.ps1` in this folder.
 
-A read-only page over `D:\UO\shard-migration\docs\client-test-queue.md`. It re-reads the file every
-10 seconds, so a status changed in the file (by Chase or by any chat) shows up without a rebuild,
-and the changed card flashes once. The page never writes to the file: the file's own header has the
-rules for adding and settling items, and it stays the only record.
+cc-P83 (2026-10-12). One page listing every play-test that is waiting, grouped by prompt, newest first.
+Chase marks each **Pass**, **Fail** (with a one-line note) or **Later** from any browser on the home
+network, phone included. It replaced `sl-test-queue`, the read-only nginx view of
+`docs/client-test-queue.md`.
 
-It parses the file's own shapes: `## A. ...` section headings, table rows starting `| T-NNN |`,
-the status word in the second column (OPEN, PASS, FAIL, BLOCKED, MOOT), and result lines under
-`## Results` shaped `- T-NNN, yyyy-mm-dd: text`. A row in another shape will not show; keep to the
-file's format.
+## It fills itself
+
+`server.py` runs the importer on start and every 60 seconds. A prompt whose notes file
+(`D:\UO\shard-migration\notes\cc-Pnn-*.md`) ends with the line `Pnn DONE` has its in-game checklist on the
+page within a minute, with no overseer or Chase step. The rules for what counts as a play-test step are in
+`D:\UO\shard-migration\tools\playtests.py` (top of the file). That is the only copy: `server.py` imports it,
+and `D:\UO\shard-migration\tools\Import-PlayTests.ps1` runs it from the host.
+
+## Where the data is
+
+- `D:\UO\shard-migration\testing\play-tests.json`: every item and its result. Pretty-printed, stable key
+  order, so git diffs read. The `summary` block at the top has the counts and every Fail.
+- `D:\UO\shard-migration\testing\SUMMARY.md`: the same, rewritten on every write, for the overseer.
+
+Every write is under a lock file (`play-tests.json.lock`) and goes through a temp file and a rename. So two
+browser tabs, the service's own importer and `Import-PlayTests.ps1` on the host never lose each other's
+results.
+
+## API
+
+| Call | What |
+|---|---|
+| `GET /api/items` | the whole document |
+| `GET /api/summary` | `open`, `failed`, `passed`, `later`, `blocked`, `total`, `unloggedFails`, `generatedAt`. The dashboard's Play tests widget reads this |
+| `POST /api/result` | `{"id", "status": "pass|fail|later|open", "note"}`; a fail needs a note |
+| `POST /api/bug` | `{"id", "bug": "D86"}`: the Fail is logged in `bug-list.md` |
+| `POST /api/manual` | `{"what", "expect"}`: adds an `M-NNN` item |
+| `POST /api/import` | runs the importer now |
+
+## Run it by hand (testing)
+
+```
+python server.py --root <a copy of shard-migration> --lib D:\UO\shard-migration\tools --bind 127.0.0.1 --port 18093
+```

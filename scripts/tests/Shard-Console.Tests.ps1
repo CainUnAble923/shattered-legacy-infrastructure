@@ -2836,6 +2836,89 @@ Fact 'P74_TheTileAndTheTabAreBuiltAndDrawn' {
     } finally { $form.Dispose(); $script:NetProbeDisabled = $false; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# --- cc-P83: the PLAY TESTS tile and the two links --------------------------------------------------
+# play-tests-2026-10-12.json is the real D:\UO\shard-migration\testing\play-tests.json as first imported
+# (P56 to P74 and the 49 T-rows of docs/client-test-queue.md). The other shapes are that file, changed.
+
+$ptReal = [IO.File]::ReadAllText((Join-Path $fixture 'play-tests-2026-10-12.json'))
+function Set-PtStatus([string]$Text, [hashtable]$Status, [hashtable]$Bug) {
+    $d = $Text | ConvertFrom-Json
+    foreach ($i in $d.items) {
+        if ($Status.ContainsKey($i.id)) { $i.status = $Status[$i.id] }
+        if ($Bug -and $Bug.ContainsKey($i.id)) { $i.bug = $Bug[$i.id] }
+    }
+    $d | ConvertTo-Json -Depth 6
+}
+
+Fact 'P83_PlayTestsCountsTheRealBacklog' {
+    $t = Get-PlayTestGlance $ptReal
+    Assert-Equal 'PLAY TESTS' $t.Title
+    Assert-Equal '111 OPEN' $t.Word $t.Detail
+    Assert-Equal 'gray' $t.Color 'T-040 failed but is logged as D41'
+    Assert-Equal '111 open, 1 failed, 18 passed' $t.Detail
+}
+
+Fact 'P83_AFailNotYetLoggedTurnsItAmber' {
+    $t = Get-PlayTestGlance (Set-PtStatus $ptReal @{ 'P71-2' = 'fail' } @{})
+    Assert-Equal 'amber' $t.Color
+    Assert-Equal '1 FAIL NOT LOGGED' $t.Word
+    Assert-Equal '110 open, 2 failed (1 not logged), 18 passed' $t.Detail
+    $logged = Get-PlayTestGlance (Set-PtStatus $ptReal @{ 'P71-2' = 'fail' } @{ 'P71-2' = 'D86' })
+    Assert-Equal 'gray' $logged.Color 'logged in the bug list: no longer amber'
+}
+
+Fact 'P83_LaterAndBlockedStillCountAsOpenAndNothingOpenIsGreen' {
+    $st = @{}
+    foreach ($i in ($ptReal | ConvertFrom-Json).items) { if ($i.status -in @('open', 'blocked', 'later')) { $st[$i.id] = 'pass' } }
+    $st['P56-1'] = 'later'
+    Assert-Equal '1 OPEN' (Get-PlayTestGlance (Set-PtStatus $ptReal $st @{})).Word 'Later is still waiting'
+    $st['P56-1'] = 'pass'
+    $g = Get-PlayTestGlance (Set-PtStatus $ptReal $st @{})
+    Assert-Equal 'ALL TESTED' $g.Word
+    Assert-Equal 'green' $g.Color
+}
+
+Fact 'P83_NoFileOrABadOneIsGreyUnknownNeverRed' {
+    foreach ($c in @(
+        @{ Name = 'no file'; Tile = (Get-PlayTestGlance $null) },
+        @{ Name = 'not JSON'; Tile = (Get-PlayTestGlance '{ "schema": 1, "items": [') },
+        @{ Name = 'another schema'; Tile = (Get-PlayTestGlance '{ "schema": 2, "items": [] }') },
+        @{ Name = 'read failed'; Tile = (Get-PlayTestGlance $null -ReadError 'in use') })) {
+        Assert-Equal 'UNKNOWN' $c.Tile.Word $c.Name
+        Assert-Equal 'gray' $c.Tile.Color $c.Name
+    }
+    Assert-True ((Get-PlayTestGlance $null).Detail -match 'Import-PlayTests\.ps1') 'says how to make one'
+}
+
+Fact 'P83_TheLinksOpenTheTwoPagesAndNothingElse' {
+    foreach ($k in @('links.playtests', 'links.dashboard')) {
+        $p = @(Get-ActionPlan -Action $k -Config $config)
+        Assert-Equal 1 $p.Count $k
+        Assert-Equal 'launch' $p[0].Kind $k
+        Assert-Equal 'explorer.exe' $p[0].Path $k
+        Assert-Equal 0 @(Test-PlanSafety $p $config).Count $k
+        Assert-Equal 'execute' (Resolve-RunMode -Action $k) ($k + ': only opens, so no mode is needed')
+    }
+    Assert-Equal 'http://localhost:8093/' (@(Get-ActionPlan -Action 'links.playtests' -Config $config))[0].Arguments[0]
+    Assert-Equal 'http://localhost:3000/' (@(Get-ActionPlan -Action 'links.dashboard' -Config $config))[0].Arguments[0]
+}
+
+Fact 'P83_TheTileHasItsTwoLinksAndTheAutopilotTabHasThemToo' {
+    $script:NetProbeDisabled = $true
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.PlayTestsFile = Join-Path $fixture 'play-tests-2026-10-12.json'
+    $form = New-ConsoleForm -Config $cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-Equal 'PLAY TESTS: 111 OPEN' $script:ui.PlayTestTile.Word.Text
+        Assert-Equal 'links.playtests,links.dashboard' (($script:ui.LinkButtons | ForEach-Object { $_.Tag }) -join ',')
+        Assert-True ($script:ui.PlayTestTile.Panel.Controls.Contains($script:ui.LinkButtons[0].Parent)) 'the buttons sit in the tile'
+        $onTab = @($script:ui.AutopilotPage.Controls[1].Controls | Where-Object { $_.Tag -like 'links.*' } | ForEach-Object { $_.Tag })
+        Assert-Equal 'links.playtests,links.dashboard' ($onTab -join ',') 'also on the Autopilot tab'
+        Assert-Equal 6 @($script:ui.AutopilotButtons).Count 'P74''s own six are unchanged'
+        Assert-True ($script:ui.Status.Text -match 'PLAY TESTS\s+: 111 OPEN') 'the status panel lists it'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 
 $failed =@($results | Where-Object { -not $_.Passed }).Count

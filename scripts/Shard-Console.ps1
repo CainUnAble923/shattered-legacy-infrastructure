@@ -37,6 +37,10 @@
   NEEDS YOU (the hook emailed him since it last handed CC a prompt). It reads D:\UO\cc-autopilot's
   ENABLED, state.json and the tail of autopilot.log, and lists D:\UO\cc-prompts\queue, on every
   refresh; Get-AutopilotGlance judges them. A file it could not read is grey UNKNOWN, never red.
+  A sixth, PLAY TESTS (cc-P83), counts what is waiting in D:\UO\shard-migration\testing\play-tests.json
+  (sl-play-tests, docker/test-queue) and turns amber while a Fail is not yet logged in the bug list. Its
+  two buttons open the play-test page (8093) and the Homepage dashboard (3000); so do two on the
+  Autopilot tab. Get-PlayTestGlance judges the file.
 
   IT CALLS THE EXISTING SCRIPTS AND DOES NOT REIMPLEMENT THEM.
     docker/uo/Start-TestShard.ps1  starts, stops and rebuilds the test shard, seeds its accounts
@@ -231,6 +235,11 @@ function Get-ConsoleConfig {
         # repos (D:\UO\cc-autopilot\README.md); the console runs its scripts as they are and reads its
         # files. cc-autopilot.ps1 is its hook and is never run from here: it commits and pushes.
         Autopilot          = (New-AutopilotConfig 'D:\UO\cc-autopilot' 'D:\UO\cc-prompts\queue')
+        # cc-P83, the PLAY TESTS tile and its two links. The data is written by sl-play-tests
+        # (docker/test-queue) and by shard-migration\tools\Import-PlayTests.ps1; the console only reads it.
+        PlayTestsFile      = 'D:\UO\shard-migration\testing\play-tests.json'
+        PlayTestsUrl       = 'http://localhost:8093/'
+        DashboardUrl       = 'http://localhost:3000/'
     }
 }
 
@@ -802,6 +811,9 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'autopilot.test';   Group = 'Autopilot';   Label = 'Send test email';                    Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'autopilot.queue';  Group = 'Autopilot';   Label = 'Open the queue folder';              Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'autopilot.log';    Group = 'Autopilot';   Label = 'Open autopilot.log';                 Mutates = $false; RunIn = 'here' }
+        # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
+        [pscustomobject]@{ Key = 'links.playtests';  Group = 'Links';       Label = 'Play tests';                         Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
     )
 }
 
@@ -1354,6 +1366,8 @@ function Get-ActionPlan {
         [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag, [switch]$CommitForce,
         $WipeFacts, [string]$WipeAdmin, $AutopilotFacts
     )
+    # cc-P83: the two links read nothing.
+    if ($Action -like 'links.*') { return (Get-LinkPlan -Action $Action -Config $Config) }
     # cc-P74: the autopilot buttons read only the autopilot's folder.
     if ($Action -like 'autopilot.*') { return (Get-AutopilotPlan -Action $Action -Config $Config -Facts $AutopilotFacts) }
     # The commit buttons read git and the notes, not docker, so they need no $State (cc-P60).
@@ -2363,6 +2377,50 @@ function Get-AutopilotPlan {
     $steps.ToArray()
 }
 
+# --- the play-test queue (cc-P83) ---------------------------------------------------------------
+# D:\UO\shard-migration\testing\play-tests.json, written by sl-play-tests (docker/test-queue/server.py)
+# and tools\Import-PlayTests.ps1 through the same tools\playtests.py. Statuses: open, later and blocked
+# are waiting; pass, fail, moot are settled. A Fail with an empty "bug" has not been logged in the bug
+# list yet, which is the overseer's job: that is what turns the tile amber.
+
+function Get-PlayTestGlance {
+    # The PLAY TESTS tile. Pure: the file's text in ($null when there is no file), a tile out. The counts
+    # come from the items, not from the summary block, so a hand-edited file cannot disagree with itself.
+    param($JsonText, [string]$ReadError)
+    $t = [ordered]@{ Title = 'PLAY TESTS'; Word = 'UNKNOWN'; Color = 'gray'; Detail = '' }
+    if ($ReadError) { $t.Detail = 'play-tests.json could not be read (' + $ReadError + ')'; return [pscustomobject]$t }
+    if ($null -eq $JsonText) { $t.Detail = 'no play-tests.json yet: start sl-play-tests or run Import-PlayTests.ps1'; return [pscustomobject]$t }
+    try {
+        $doc = ([string]$JsonText) | ConvertFrom-Json
+        if ($null -eq $doc -or $doc.schema -ne 1 -or $null -eq $doc.items) { throw 'not schema 1' }
+    } catch {
+        $t.Detail = 'play-tests.json is not readable (' + $_.Exception.Message + ')'
+        return [pscustomobject]$t
+    }
+    $items = @($doc.items)
+    $open = @($items | Where-Object { $_.status -in @('open', 'later', 'blocked') }).Count
+    $fails = @($items | Where-Object { $_.status -eq 'fail' })
+    $unlogged = @($fails | Where-Object { -not [string]$_.bug }).Count
+    $passed = @($items | Where-Object { $_.status -eq 'pass' }).Count
+    $t.Word = [string]$open + ' OPEN'
+    $t.Detail = [string]$open + ' open, ' + $fails.Count + ' failed'
+    if ($unlogged) { $t.Detail += ' (' + $unlogged + ' not logged)' }
+    $t.Detail += ', ' + $passed + ' passed'
+    if ($unlogged) { $t.Color = 'amber'; $t.Word = [string]$unlogged + ' FAIL NOT LOGGED' }
+    elseif ($open -eq 0) { $t.Color = 'green'; $t.Word = 'ALL TESTED' }
+    [pscustomobject]$t
+}
+
+function Get-LinkPlan {
+    # Play tests and Dashboard: open the page in the default browser. Read nothing, change nothing.
+    param([string]$Action, $Config)
+    switch ($Action) {
+        'links.playtests' { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.PlayTestsUrl) -Text 'Opening the play-test page (sl-play-tests, port 8093) in the default browser.') }
+        'links.dashboard' { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.DashboardUrl) -Text 'Opening the Homepage dashboard (sl-dashboard, port 3000) in the default browser.') }
+        default { @(New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them.")) }
+    }
+}
+
 function Format-StatusReport {
     # Lines with a colour name: normal, head, green, amber, red, gray. $ExtraTiles (cc-P74) are tiles
     # judged outside the docker state, such as AUTOPILOT, listed after the three.
@@ -3032,6 +3090,15 @@ function Get-AutopilotFacts {
     }
 }
 
+function Get-PlayTestGlanceNow {
+    # cc-P83: the PLAY TESTS tile, read now. One small file; never throws.
+    param($Config)
+    $text = $null; $err = $null
+    try { if (Test-Path -LiteralPath $Config.PlayTestsFile -PathType Leaf) { $text = [IO.File]::ReadAllText($Config.PlayTestsFile) } }
+    catch { $err = $_.Exception.Message }
+    Get-PlayTestGlance -JsonText $text -ReadError $err
+}
+
 function Get-AutopilotViewNow {
     # The facts read now, judged. Never throws: a failure is an UNKNOWN tile.
     param($Config)
@@ -3605,9 +3672,11 @@ function Update-ConsoleStatus {
         $script:lastState = $state
         Update-GlanceTiles $state
         $ap = Update-AutopilotView
+        $pt = Get-PlayTestGlanceNow $script:cfg
+        if ($script:ui.PlayTestTile) { Set-TileLook $script:ui.PlayTestTile $pt }
         $box = $script:ui.Status
         $box.Clear()
-        foreach ($l in (Format-StatusReport $state $script:cfg @($ap.Tile))) { Add-RichLine $box $l.Text $l.Color }
+        foreach ($l in (Format-StatusReport $state $script:cfg @($ap.Tile, $pt))) { Add-RichLine $box $l.Text $l.Color }
         $box.SelectionStart = 0
         $box.ScrollToCaret()
         Update-SnapshotList
@@ -3969,7 +4038,7 @@ function Invoke-ConsoleButton {
         $isCommit = ($ActionKey -like 'commit.*')
         $isPackage = ($ActionKey -like 'package.*')
         $isAutopilot = ($ActionKey -like 'autopilot.*')
-        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'autopilot' } }
+        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'autopilot' }; if ($ActionKey -like 'links.*') { $ShardKey = 'links' } }
         # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
         # status is a capture file". Only the second decides where the state comes from.
         if ($script:fromCapture -and -not $script:dry) { throw 'the status is from a capture file, so nothing may run for real. Relaunch without -DryRun.' }
@@ -3977,7 +4046,9 @@ function Invoke-ConsoleButton {
         $pkgFacts = $null
         $apFacts = $null
         $now = Get-Date
-        if ($isAutopilot) {
+        if ($ActionKey -like 'links.*') {
+            # cc-P83: a link reads nothing.
+        } elseif ($isAutopilot) {
             # cc-P74: the autopilot's folder, never docker.
             $apFacts = Get-AutopilotFacts $script:cfg
         } elseif ($isCommit) {
@@ -4117,7 +4188,7 @@ function New-ConsoleForm {
     $grid.Dock = 'Fill'
     $grid.RowCount = 4
     $grid.ColumnCount = 1
-    [void]$grid.RowStyles.Add((New-Object Windows.Forms.RowStyle('Absolute', 84)))
+    [void]$grid.RowStyles.Add((New-Object Windows.Forms.RowStyle('Absolute', 104)))
     [void]$grid.RowStyles.Add((New-Object Windows.Forms.RowStyle('Percent', 48)))
     [void]$grid.RowStyles.Add((New-Object Windows.Forms.RowStyle('Percent', 32)))
     [void]$grid.RowStyles.Add((New-Object Windows.Forms.RowStyle('Percent', 20)))
@@ -4126,9 +4197,9 @@ function New-ConsoleForm {
     $glance = New-Object Windows.Forms.TableLayoutPanel
     $glance.Dock = 'Fill'
     $glance.RowCount = 1
-    $glance.ColumnCount = 5
+    $glance.ColumnCount = 6
     $glance.Margin = New-Object Windows.Forms.Padding(0)
-    foreach ($i in 1..5) { [void]$glance.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 20))) }
+    foreach ($i in 1..6) { [void]$glance.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 16.66))) }
     $script:ui.Tiles = @()
     $col = 0
     foreach ($title in @('LIVE', 'TEST', 'STATUS PUBLISHER')) {
@@ -4145,6 +4216,24 @@ function New-ConsoleForm {
     # cc-P74: the CC autopilot. Drawn by Update-AutopilotView on every status refresh.
     $script:ui.AutopilotTile = New-StatusTile 'AUTOPILOT'
     $glance.Controls.Add($script:ui.AutopilotTile.Panel, $col, 0)
+    $col++
+    # cc-P83: PLAY TESTS, with the two links beside it (inside the tile, under its line).
+    $script:ui.PlayTestTile = New-StatusTile 'PLAY TESTS'
+    $linkBar = New-Object Windows.Forms.FlowLayoutPanel
+    $linkBar.Dock = 'Bottom'
+    $linkBar.Height = 30
+    $linkBar.Margin = New-Object Windows.Forms.Padding(0)
+    $script:ui.LinkButtons = @()
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Links' })) {
+        $lb = New-ConsoleButton $a.Label $a.Key 84
+        $lb.Height = 26
+        $lb.Margin = New-Object Windows.Forms.Padding(4, 0, 0, 2)
+        $linkBar.Controls.Add($lb)
+        $script:ui.LinkButtons += $lb
+    }
+    $script:ui.PlayTestTile.Panel.Controls.Add($linkBar)
+    $script:ui.PlayTestTile.Detail.BringToFront()
+    $glance.Controls.Add($script:ui.PlayTestTile.Panel, $col, 0)
 
     # status
     $statusGroup = New-Object Windows.Forms.GroupBox
@@ -4504,6 +4593,11 @@ function New-ConsoleForm {
         $apBtns += $b
         $apTop.Controls.Add($b)
     }
+    # cc-P83: the play-test page and the dashboard, reachable from here too. Not in AutopilotButtons.
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Links' })) {
+        $lb = New-ConsoleButton ('Open ' + $a.Label.ToLower()) $a.Key 170
+        $apTop.Controls.Add($lb)
+    }
     $apPanel = New-Object Windows.Forms.RichTextBox
     $apPanel.Dock = 'Fill'
     $apPanel.ReadOnly = $true
@@ -4599,6 +4693,7 @@ if ($Action -eq 'list') {
     Write-Host 'package.check takes -PackageZip <name in player-package\dist>; it only reads.'
     Write-Host 'test.deploy takes -ImageTag sl-modernuo:cc-pNN and -ConfirmLive ''deploy to test''.'
     Write-Host 'test.wipe takes -WipeAdmin <new admin name> and -ConfirmLive ''WIPE TEST ACCOUNTS''; it asks for the password in its own window.'
+    Write-Host 'links.playtests and links.dashboard open the play-test page (8093) and the dashboard (3000) in the browser.'
     Write-Host 'autopilot.on, .off, .email and .test need -Mode Execute; each opens the autopilot''s own script in a window of its own. autopilot.queue and .log only open.'
     exit 0
 }
@@ -4614,7 +4709,9 @@ if ($Status) {
     $st = Get-ConsoleState -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom
     # cc-P74: the AUTOPILOT tile is read from its folder even under -DryRun; it is not docker.
     $ap = Get-AutopilotViewNow $config
-    foreach ($l in (Format-StatusReport $st $config @($ap.Tile))) { Write-ConsoleLine $l.Text $l.Color }
+    # cc-P83: and PLAY TESTS, from shard-migration\testing\play-tests.json.
+    $pt = Get-PlayTestGlanceNow $config
+    foreach ($l in (Format-StatusReport $st $config @($ap.Tile, $pt))) { Write-ConsoleLine $l.Text $l.Color }
     exit 0
 }
 
@@ -4625,6 +4722,7 @@ if ($Action) {
     if ($Action -like 'commit.*') { $sk = 'repos' }
     if ($Action -like 'package.*') { $sk = 'package' }
     if ($Action -like 'autopilot.*') { $sk = 'autopilot' }
+    if ($Action -like 'links.*') { $sk = 'links' }
     # The mode is decided and shown before anything is read or run (D37).
     $run = Resolve-RunMode -Action $Action -Mode $Mode -DryRun:$DryRun
     $banner = Get-ModeBanner -RunMode $run -Action $Action -ShardKey $sk
@@ -4637,7 +4735,9 @@ if ($Action) {
     $pkgFacts = $null
     $apFacts = $null
     $now = Get-Date
-    if ($Action -like 'autopilot.*') {
+    if ($Action -like 'links.*') {
+        # cc-P83: a link reads nothing.
+    } elseif ($Action -like 'autopilot.*') {
         # cc-P74: the autopilot's folder, never docker.
         $apFacts = Get-AutopilotFacts $config
     } elseif ($Action -like 'commit.*') {
