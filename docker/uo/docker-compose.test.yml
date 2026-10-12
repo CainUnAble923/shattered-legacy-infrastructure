@@ -46,6 +46,9 @@ services:
       - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
     environment:
       TZ: ${TZ:-America/Chicago}
+      # cc-P73: one of the three locks on the test account wipe (server/customizations/Misc/TestAccountWipe.cs).
+      # Only this file sets it; the live compose file never may.
+      SL_SHARD_ROLE: test
     stdin_open: true
     tty: true
     security_opt:

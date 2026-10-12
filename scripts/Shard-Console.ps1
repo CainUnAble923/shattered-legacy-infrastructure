@@ -58,6 +58,13 @@
     docker tag + Start-TestShard.ps1   Test shard > Deploy built image (cc-P63): sl-modernuo:cc-p*
                                    onto sl-modernuo:latest after 'deploy to test', then -Down and
                                    -SkipBuild. The only docker tag the console makes; never live.
+    Start-TestShard.ps1 + a request file   Test shard > Wipe test accounts (cc-P73): after the phrase
+                                   'WIPE TEST ACCOUNTS' and a new admin name, its window asks the
+                                   password (never on a command line; only a PBKDF2 hash is written),
+                                   stops the test shard, backs up its save to Saves.aside-<time>, writes
+                                   modernuo-test\account-wipe-request.json and starts it. The shard
+                                   wipes before it listens (server/customizations/Misc/TestAccountWipe.cs)
+                                   and refuses any request on live. Not Start fresh: the world stays.
 
   WHAT NO BUTTON DOES
     - docker compose on docker/uo/docker-compose.yml. That file has build: and no image:
@@ -95,7 +102,8 @@ param(
     [string]$PackageNotes,
     [string]$PackageNotesB64,
     [string]$PackageZip,
-    [string]$ImageTag
+    [string]$ImageTag,
+    [string]$WipeAdmin
 )
 
 # =============================================================================================
@@ -183,6 +191,11 @@ function Get-ConsoleConfig {
         PublishScript      = 'D:\UO\haven-migration\Publish-PlayerPackage.ps1'
         # The images Deploy built image offers: build.sh -t sl-modernuo:cc-pNN, one per prompt.
         DeployTagPattern   = '^sl-modernuo:cc-p[A-Za-z0-9._-]*$'
+        # cc-P73, Test shard > Wipe test accounts. The request goes in the TEST world folder, the one
+        # docker-compose.test.yml mounts as /var/lib/uo/modernuo; TestAccountWipe.cs reads it there
+        # (RequestFileName). Test-PlanSafety allows no other path.
+        WipeRequestFile    = (Join-Path (Join-Path $RepoRoot 'server\lib\uo\modernuo-test') 'account-wipe-request.json')
+        WipeWaitSeconds    = 300
     }
 }
 
@@ -560,6 +573,7 @@ function Get-ConfirmPhrase {
         'commit.run'       { 'commit shard work' }
         'package.publish'  { 'publish player package' }
         'test.deploy'      { 'deploy to test' }
+        'test.wipe'        { 'WIPE TEST ACCOUNTS' }
         default            { 'confirm live' }
     }
 }
@@ -571,6 +585,7 @@ function Get-ConfirmSubject {
         'commit.run'      { 'Commit and push' }
         'package.publish' { 'Publish player package' }
         'test.deploy'     { 'Deploy to test' }
+        'test.wipe'       { 'Wipe test accounts' }
         default           { 'LIVE shard' }
     }
 }
@@ -579,6 +594,12 @@ function Get-ConfirmPreface {
     # D36: a stop saves nothing. When a plan stops a shard, say so first in the confirmation,
     # above the plan, where it is read before the phrase is typed rather than inside step 3.
     param($Plan)
+    # cc-P73: a wipe says what it deletes first, and the D36 warning with it when the stop does not save.
+    if (@($Plan | Where-Object { $_.Kind -eq 'wiperequest' }).Count) {
+        $w = 'BEFORE YOU TYPE: this deletes every account and character on the TEST shard. The whole test save is backed up first.'
+        if (@($Plan | Where-Object { $_.Text -and $_.Text.Contains($script:NoSaveWarning) }).Count) { $w += ' ' + $script:NoSaveWarning + ' (D36)' }
+        return $w
+    }
     if (@($Plan | Where-Object { $_.Text -and $_.Text.Contains($script:NoSaveWarning) }).Count) {
         return ('BEFORE YOU TYPE: ' + $script:NoSaveWarning + ' (D36)')
     }
@@ -605,7 +626,7 @@ function Get-ChildArgumentLine {
         [string]$SelfPath, [string]$ActionKey, [string]$ShardKey, [string]$SnapshotName,
         [string]$Snapshot, [string]$ConfirmLive, [switch]$Yes, [switch]$DryRun, [string]$StatusFrom,
         [switch]$StatusFromDocker, [string]$CommitMessage, [string]$PackageNotes, [string]$PackageZip,
-        [string]$ImageTag, [switch]$CommitForce
+        [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin
     )
     $mode = 'Execute'
     if ($DryRun) { $mode = 'DryRun' }
@@ -630,6 +651,9 @@ function Get-ChildArgumentLine {
     if ($PackageNotes) { $a += ' -PackageNotesB64 ' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($PackageNotes)) }
     if ($PackageZip) { $a += ' -PackageZip "' + ($PackageZip -replace '"', '') + '"' }
     if ($ImageTag) { $a += ' -ImageTag "' + ($ImageTag -replace '"', '') + '"' }
+    # cc-P73: the new admin's name, which Test-WipeAdminName keeps to one word. Never the password:
+    # the child asks for that itself.
+    if ($WipeAdmin) { $a += ' -WipeAdmin "' + ($WipeAdmin -replace '"', '') + '"' }
     $a
 }
 
@@ -677,6 +701,11 @@ function Get-ModeBanner {
                 $bar, ('  CHECKING  ' + $what), '  Build-PlayerPackage.ps1 -CheckZip: it reads the zip and changes nothing.', $bar) }
             break
         }
+        { $_ -eq 'execute' -and $Action -eq 'test.wipe' } {
+            [pscustomobject]@{ Color = 'red'; Title = ('RUNNING FOR REAL - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  RUNNING FOR REAL  ' + $what), '  This deletes every account and character on the TEST shard. It asks for the new admin password below.', $bar) }
+            break
+        }
         { $_ -eq 'execute' -and $Action -eq 'package.publish' } {
             [pscustomobject]@{ Color = 'red'; Title = ('RUNNING FOR REAL - ' + $what + ' - Shard Console'); Lines = @(
                 $bar, ('  RUNNING FOR REAL  ' + $what), ('  ' + $script:PublishPublicWarning + ' Publish-PlayerPackage.ps1 asks "Type yes" itself, below.'), $bar) }
@@ -701,6 +730,7 @@ function Get-ConsoleActions {
     @(
         [pscustomobject]@{ Key = 'test.start';       Group = 'Test shard'; Label = 'Start';                               Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'test.fresh';       Group = 'Test shard'; Label = 'Start fresh';                         Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'test.wipe';        Group = 'Test shard'; Label = 'Wipe test accounts';                  Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'test.stop';        Group = 'Test shard'; Label = 'Stop';                                Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'test.rebuild';     Group = 'Test shard'; Label = 'Rebuild through the gates and start'; Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'test.deploy';      Group = 'Test shard'; Label = 'Deploy built image';                  Mutates = $true;  RunIn = 'window' }
@@ -729,7 +759,7 @@ function Get-ConsoleActions {
 function New-PlanStep {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'checkzip', 'gatecheck', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log')]
+        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'checkzip', 'gatecheck', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log', 'secret', 'wiperequest', 'wipewait')]
         [string]$Kind,
         [string]$Text, [string]$Exe, [string[]]$Arguments, [string]$From, [string]$To,
         [string]$Path, [string]$Phrase, [string]$Container, [switch]$IfExists,
@@ -1113,6 +1143,158 @@ function Get-DeployPlan {
     $steps.ToArray()
 }
 
+# --- the test account wipe (cc-P73) ------------------------------------------------------------
+# Test shard > Wipe test accounts. Every account and character on the TEST shard goes, with what they
+# own; the world stays. The wipe itself is server/customizations/Misc/TestAccountWipe.cs, run by the
+# shard at its next start from a request file in the test world folder. The console only stops the
+# shard, backs up the save, places the request and starts it again. Not Start fresh: that replaces the
+# whole world and copies the LIVE accounts in (D19); this keeps the world and copies nothing from live.
+# The password is asked for in the action's own window, never on a command line, and only a PBKDF2 hash
+# of it is written (New-WipePasswordHash). The census and outcome lines are TestAccountWipe.cs's
+# CensusLine, DoneLine, RefusedLine and FailedLine: change both together.
+
+$script:WipeTag = '[AccountWipe]'
+
+function Test-WipeAdminName {
+    # Returns why a new admin name is refused, or $null. A subset of what the shard accepts
+    # (AccountHandler.IsValidUsername: no <>:"/\|?*, no space at either end, no final dot), so it also
+    # crosses a command line as one word.
+    param([string]$Name)
+    if (-not $Name) { return 'name the new admin account' }
+    if ($Name.Length -gt 30) { return 'account names here are at most 30 characters' }
+    if ($Name -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') { return 'use letters, digits, dot, dash and underscore, starting with a letter or digit' }
+    if ($Name.EndsWith('.')) { return 'an account name cannot end with a dot (the shard refuses it)' }
+    $null
+}
+
+function New-WipePasswordHash {
+    # The hash the shard installs on the new admin: pinned's PBKDF2PasswordProtection format
+    # (UOContent/Accounting/Security/PBKDF2PasswordProtection.cs): iterations as two bytes little-endian,
+    # an 8-byte salt, then 32 bytes of PBKDF2-HMAC-SHA256 over the UTF-8 password, as UPPERCASE hex
+    # (HexStringConverter.GetBytes reads only A-F). The first login rehashes it to Argon2.
+    param([Parameter(Mandatory = $true)][string]$Password, [byte[]]$Salt, [int]$Iterations = 0)
+    if (-not $Salt) { $Salt = New-Object byte[] 8; ([Security.Cryptography.RandomNumberGenerator]::Create()).GetBytes($Salt) }
+    if ($Salt.Length -ne 8) { throw 'the salt is 8 bytes' }
+    if ($Iterations -eq 0) { $Iterations = 1024 + (Get-Random -Minimum 0 -Maximum 513) }
+    if ($Iterations -lt 1024 -or $Iterations -gt 1536) { throw 'iterations are 1024 to 1536, as the shard writes them' }
+    $kdf = New-Object Security.Cryptography.Rfc2898DeriveBytes($Password, $Salt, $Iterations, [Security.Cryptography.HashAlgorithmName]::SHA256)
+    try { $hash = $kdf.GetBytes(32) } finally { $kdf.Dispose() }
+    $out = New-Object byte[] 42
+    $out[0] = [byte]($Iterations -band 0xFF); $out[1] = [byte](($Iterations -shr 8) -band 0xFF)
+    [Array]::Copy($Salt, 0, $out, 2, 8)
+    [Array]::Copy($hash, 0, $out, 10, 32)
+    -join ($out | ForEach-Object { $_.ToString('X2') })
+}
+
+function New-WipeRequestText {
+    # The request file, as TestAccountWipe.cs reads it. It names the admin and carries the hash,
+    # never the password. The id lets the shard recognise a request it has already carried out.
+    param([string]$Admin, [string]$Hash, [string]$Id, [datetime]$Now, [string]$By)
+    $o = [ordered]@{
+        version        = 1
+        id             = $Id
+        admin          = $Admin
+        passwordPbkdf2 = $Hash
+        requestedAt    = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', $script:Invariant)
+        requestedBy    = $By
+    }
+    $o | ConvertTo-Json
+}
+
+function ConvertFrom-WipeLog {
+    # What the shard said about wipes in a docker log (with or without --timestamps): the newest
+    # census, and how the newest request ended. Outcome is done, refused, failed, already or $null.
+    param([string]$Text)
+    $r = [ordered]@{ Census = $null; Outcome = $null; Line = $null; Audit = $null }
+    $tag = [regex]::Escape($script:WipeTag)
+    foreach ($l in @((Remove-Ansi $Text) -split "`n")) {
+        $at = $null
+        if ($l -match '^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z) ') { $at = ConvertFrom-DockerTime $Matches[1] }
+        if ($l -match ($tag + ' census: (\d+) accounts?, (\d+) characters?, (\d+) houses?')) {
+            $r.Census = [pscustomobject]@{ Accounts = [int]$Matches[1]; Characters = [int]$Matches[2]; Houses = [int]$Matches[3]; At = $at }
+        }
+        $i = $l.IndexOf($script:WipeTag)
+        if ($i -lt 0) { continue }
+        $msg = $l.Substring($i).Trim()
+        if ($msg -match ($tag + ' audit: ')) { $r.Audit = $msg }
+        elseif ($msg -match ($tag + ' DONE: ')) { $r.Outcome = 'done'; $r.Line = $msg }
+        elseif ($msg -match ($tag + ' REFUSED: ')) { $r.Outcome = 'refused'; $r.Line = $msg }
+        elseif ($msg -match ($tag + ' FAILED: ')) { $r.Outcome = 'failed'; $r.Line = $msg }
+        elseif ($msg -match ($tag + ' ALREADY DONE: ')) { $r.Outcome = 'already'; $r.Line = $msg }
+    }
+    [pscustomobject]$r
+}
+
+function Get-WipeRefusals {
+    # Why the wipe cannot go ahead, from the facts Get-WipeFacts read. Empty means it can.
+    param($Config, $State, $Facts)
+    $out = New-Object 'System.Collections.Generic.List[string]'
+    if (-not $Facts) { $out.Add('The test shard''s state was not read, so nothing is run.'); return $out.ToArray() }
+    if ($Facts.IsSystem) {
+        $out.Add('This console is running as ' + $Facts.Identity + '. The wipe asks for the new admin password in its own window and writes into the test world folder as you; run the console from your own Windows login.')
+    }
+    $sh = $Config.Shards['test']
+    $c = $State.Shards['test'].Container
+    if (-not ($c.Exists -and $c.Running)) {
+        $out.Add('The test shard is not running, so it cannot say how many accounts and characters it has. Start it (Test shard > Start), then wipe.')
+    } elseif (-not $Facts.Census) {
+        $out.Add('The running test shard has not reported its accounts and characters (no "' + $script:WipeTag + ' census" line in its log since it started). Its image has no wipe (cc-P73): deploy one that does (Test shard > Deploy built image), then wipe.')
+    }
+    if ($Facts.RequestExists) {
+        $out.Add('A wipe request is already waiting at ' + $Config.WipeRequestFile + '. The shard carries it out at its next start; start the test shard, or delete that file, before asking again.')
+    }
+    $need = [long]($State.Shards['test'].Save.Bytes * 1.1) + 1GB
+    if (-not $State.Shards['test'].Save.Exists) {
+        $out.Add('There is no test save at ' + $sh.Saves + ' to wipe.')
+    } elseif ($null -eq $Facts.FreeBytes) {
+        $out.Add('Could not read the free space on the drive of ' + $sh.Saves + ', so the backup is not started.')
+    } elseif ($Facts.FreeBytes -lt $need) {
+        $out.Add('The backup of the test save needs ' + (Format-Bytes $need) + ' free (the save is ' + (Format-Bytes $State.Shards['test'].Save.Bytes) + ', plus room for the next save) and the drive has ' + (Format-Bytes $Facts.FreeBytes) + '.')
+    }
+    $out.ToArray()
+}
+
+function Get-WipeSummary {
+    # What goes, what stays, and how it differs from Start fresh. Said in the dialogs and the plan.
+    param($Facts, [string]$Admin)
+    $n = $Facts.Census
+    $when = ''
+    if ($n.At) { $when = ' (as the test shard reported at ' + (Format-LocalTime $n.At) + ')' }
+    $who = 'the new admin'
+    if ($Admin) { $who = "'" + $Admin + "'" }
+    'This deletes all ' + $n.Accounts + ' accounts and ' + $n.Characters + ' characters on the TEST shard' + $when + ', aetherion included, with everything they own: packs, banks, pets and stabled pets, vendors, boats and their ' + $n.Houses + ' houses with what is in them, and their League, achievements, discoveries and recipes. ' +
+    'The world stays: spawners, decorations, server-placed buildings, staff travel spots and the NPC guilds. ' +
+    'The shard then makes one Owner account, ' + $who + ', whose password is asked for in the next window. ' +
+    'This is not Start fresh: Start fresh replaces the whole test world with a new one and copies the LIVE accounts in; this keeps the world and copies nothing from live.'
+}
+
+function Get-WipePlan {
+    param($Config, $State, $Facts, [string]$Admin, [datetime]$Now)
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($x in @(Get-WipeRefusals -Config $Config -State $State -Facts $Facts)) { $steps.Add((New-PlanStep -Kind refuse -Text $x)) }
+    if ($steps.Count) { return $steps.ToArray() }
+    $bad = Test-WipeAdminName $Admin
+    if ($bad) { $steps.Add((New-PlanStep -Kind refuse -Text ("New admin '" + $Admin + "': " + $bad))); return $steps.ToArray() }
+    $sh = $Config.Shards['test']
+    $ss = $State.Shards['test']
+    $ps = $Config.PowerShell
+    $sts = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Config.StartTestShard)
+    $aside = New-AsideName $sh.Saves $Now
+    $stopNote = $script:NoSaveWarning
+    if ($ss.SavesOnStop) { $stopNote = $script:SavesOnStopNote }
+    $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase 'test.wipe') -Text (Get-WipeSummary $Facts $Admin)))
+    $steps.Add((New-PlanStep -Kind secret -Named ([ordered]@{ Admin = $Admin }) -Text ("The new admin password for '" + $Admin + "', typed twice and not shown. Nothing has changed yet: leave it empty to cancel. Only a PBKDF2 hash of it is written, never the password.")))
+    $steps.Add((New-PlanStep -Kind exec -Exe $ps -Arguments ($sts + '-Down') -Text ('docker/uo/Start-TestShard.ps1 -Down: stops the test shard (compose down on sl-uo-test only, D22). ' + $stopNote)))
+    $steps.Add((New-PlanStep -Kind stopped -Container $sh.Container -Text ('Checking ' + $sh.Container + ' is not running.')))
+    $steps.Add((New-PlanStep -Kind copy -From $sh.Saves -To $aside -Text 'Backing up the whole test save beside it, accounts included. The wipe can be undone by putting this back (Snapshots or Explorer).'))
+    $steps.Add((New-PlanStep -Kind verify -From $sh.Saves -To $aside -Text 'Checking the backup has the same files and bytes.'))
+    $steps.Add((New-PlanStep -Kind wiperequest -Path $Config.WipeRequestFile -Named ([ordered]@{ Admin = $Admin }) -Text ("Placing the wipe request for admin '" + $Admin + "'. Up to here nothing in the world has changed; from here the shard wipes at its next start.")))
+    $steps.Add((New-PlanStep -Kind exec -Exe $ps -Arguments ($sts + '-SkipBuild') -Text 'docker/uo/Start-TestShard.ps1 -SkipBuild: starts the test shard, which wipes before it listens, then waits for the listener.'))
+    $steps.Add((New-PlanStep -Kind wipewait -Container $sh.Container -Path $Config.WipeRequestFile -Text ('Waiting up to ' + $Config.WipeWaitSeconds + ' seconds for the shard to say the wipe is saved, and showing its counts.')))
+    $steps.Add((New-PlanStep -Kind log -Text ('test.wipe admin=' + $Admin + ', backup ' + $aside)))
+    $steps.ToArray()
+}
+
 function Get-ActionPlan {
     # Every button is a plan: a list of steps, built here from the status and nothing else. The
     # shell runs it or, under -DryRun, prints it. So what -DryRun prints is exactly what runs.
@@ -1120,7 +1302,8 @@ function Get-ActionPlan {
         [string]$Action, [string]$ShardKey = 'test', $Config, $State,
         [string]$SnapshotName, [string]$Snapshot, [datetime]$Now = [datetime]::MinValue,
         [string]$CommitMessage, $CommitFacts,
-        [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag, [switch]$CommitForce
+        [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag, [switch]$CommitForce,
+        $WipeFacts, [string]$WipeAdmin
     )
     # The commit buttons read git and the notes, not docker, so they need no $State (cc-P60).
     if ($Action -like 'commit.*') { return (Get-CommitPlan -Action $Action -Config $Config -Facts $CommitFacts -Message $CommitMessage -Force:$CommitForce) }
@@ -1128,6 +1311,7 @@ function Get-ActionPlan {
     if ($Action -in @('package.build', 'package.publish', 'package.check')) { return (Get-PackagePlan -Action $Action -Config $Config -Facts $PackageFacts -Notes $PackageNotes -Zip $PackageZip) }
     if ($Action -eq 'test.deploy') { return (Get-DeployPlan -Config $Config -State $State -ImageTag $ImageTag) }
     if ($Now -eq [datetime]::MinValue) { $Now = $State.Now }
+    if ($Action -eq 'test.wipe') { return (Get-WipePlan -Config $Config -State $State -Facts $WipeFacts -Admin $WipeAdmin -Now $Now) }
     if ($Action -like 'live.*') { $ShardKey = 'live' }
     if ($Action -like 'test.*') { $ShardKey = 'test' }
     $steps = New-Object 'System.Collections.Generic.List[object]'
@@ -1363,6 +1547,20 @@ function Test-PlanSafety {
                 if ($full -ieq $sv -or $full.StartsWith($sv + '\', [StringComparison]::OrdinalIgnoreCase)) { $v.Add('deletes a world save: ' + $full) }
             }
         }
+        if ($s.Kind -in @('wiperequest', 'secret', 'wipewait')) {
+            # cc-P73. A wipe request is written only to the TEST world folder, only after the phrase, in a
+            # plan that names nothing live. TestAccountWipe.cs refuses one on live anyway: the second lock.
+            if (-not @($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -ceq (Get-ConfirmPhrase 'test.wipe') }).Count) { $v.Add('a wipe step runs only after the typed phrase ' + (Get-ConfirmPhrase 'test.wipe') + ': ' + $s.Kind) }
+            $liveWords = @($plan | ForEach-Object { @($_.Arguments) + @($_.Container) + @($_.Path) + @($_.From) + @($_.To) } | Where-Object { $_ -and ([string]$_ -ceq $live.Container) })
+            if ($liveWords.Count) { $v.Add('a wipe plan names the live container ' + $live.Container) }
+            $liveRoot = [IO.Path]::GetFullPath((Split-Path $live.Saves -Parent)).TrimEnd('\') + '\'
+            if ($s.Kind -ne 'secret') {
+                $full = [IO.Path]::GetFullPath([string]$s.Path)
+                if ($full -ine [IO.Path]::GetFullPath($Config.WipeRequestFile)) { $v.Add('a wipe request goes only to ' + $Config.WipeRequestFile + ': ' + $s.Path) }
+                if ($full.StartsWith($liveRoot, [StringComparison]::OrdinalIgnoreCase)) { $v.Add('a wipe request is never placed in the live world folder: ' + $s.Path) }
+            }
+            if ($s.Kind -eq 'wipewait' -and $s.Container -cne $Config.Shards['test'].Container) { $v.Add('a wipe is waited for only on ' + $Config.Shards['test'].Container + ': ' + $s.Container) }
+        }
         if ($s.Kind -eq 'move') {
             $from = [IO.Path]::GetFullPath($s.From).TrimEnd('\')
             if (-not ($saves -icontains $from) -or -not $s.To.StartsWith($s.From.TrimEnd('\') + '.aside-')) {
@@ -1407,6 +1605,9 @@ function Format-PlanStep {
         'stopped' { $out.Add($n + 'CHECK    docker inspect says ' + $Step.Container + ' is not running; stop here if it is') }
         'remove-snapshot' { $out.Add($n + 'DELETE   ' + $Step.Path); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'log'     { $out.Add($n + 'LOG      one timestamped line: ' + $Step.Text) }
+        'secret'  { $out.Add($n + 'ASK      in this window, not shown: ' + $Step.Text) }
+        'wiperequest' { $out.Add($n + 'WRITE    ' + $Step.Path + '   (refuses if it exists)'); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
+        'wipewait' { $out.Add($n + 'WAIT     for the ' + $script:WipeTag + ' DONE line in the ' + $Step.Container + ' log; stop here on REFUSED, FAILED or no answer, and remove ' + $Step.Path + ' if it is still there'); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
     }
     $out.ToArray()
 }
@@ -2429,6 +2630,51 @@ function Get-PackageFacts {
     }
 }
 
+function Get-WipeFacts {
+    # What Get-WipePlan reads, all read-only (cc-P73): who this console runs as, whether a request
+    # is already waiting, the free space where the backup goes, and the newest census the running
+    # test shard logged (TestAccountWipe.cs logs one at start and after any save that changed it).
+    # The whole log since this start, not the 15 minutes the status panel reads.
+    param($Config, $State)
+    $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $sh = $Config.Shards['test']
+    $free = $null
+    try { $free = (New-Object IO.DriveInfo ([IO.Path]::GetPathRoot([IO.Path]::GetFullPath($sh.Saves)))).AvailableFreeSpace } catch { $free = $null }
+    $census = $null
+    $c = $State.Shards['test'].Container
+    if ($c.Exists -and $c.Running -and $c.StartedAtRaw) {
+        $l = Invoke-DockerRead @('logs', '--timestamps', '--since', $c.StartedAtRaw, $sh.Container) 60000
+        $census = (ConvertFrom-WipeLog ($l.Out + "`n" + $l.Err)).Census
+    }
+    [pscustomobject]@{
+        Identity      = $id.Name
+        IsSystem      = [bool]$id.IsSystem
+        RequestExists = [bool](Test-Path -LiteralPath $Config.WipeRequestFile)
+        FreeBytes     = $free
+        Census        = $census
+    }
+}
+
+function Read-WipePassword {
+    # The new admin password, typed twice in this window and not shown. $null is a cancel: empty, or
+    # the two differ. The plaintext lives in this process only, as long as New-WipePasswordHash needs it.
+    param([string]$Admin)
+    $a = Read-Host -AsSecureString ("  New password for '" + $Admin + "' (empty cancels)")
+    if ($a.Length -eq 0) { return $null }
+    $b = Read-Host -AsSecureString '  The same password again'
+    $pa = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($a)
+    $pb = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($b)
+    try {
+        $x = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pa)
+        $y = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($pb)
+        if ($x -cne $y) { Write-ConsoleLine '  The two passwords differ.' 'amber'; return $null }
+        return $x
+    } finally {
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pa)
+        [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($pb)
+    }
+}
+
 function Get-CommandSourceFiles {
     # Every .cs under server/customizations, path relative to it -> text, for
     # ConvertFrom-CommandSources. Read only.
@@ -2663,6 +2909,8 @@ function Invoke-Plan {
     $planStarted = [datetime]::UtcNow.AddSeconds(-1)
     $script:PlanCancelled = $false
     $checkFailed = $false
+    $wipeHash = $null
+    $wipePlaced = $false
     $i = 0
     foreach ($s in $plan) {
         $i++
@@ -2781,9 +3029,58 @@ function Invoke-Plan {
                     Write-ConsoleLine ('      ' + $s.Path) 'gray'
                     Remove-Item -LiteralPath $s.Path -Recurse -Force -ErrorAction Stop
                 }
+                'secret' {
+                    # cc-P73: nothing has changed before this step, so a cancel here leaves everything as it was.
+                    Write-ConsoleLine ($tag + $s.Text) 'head'
+                    $pw = Read-WipePassword ([string]$s.Named['Admin'])
+                    if (-not $pw) {
+                        Write-ConsoleLine 'Wipe cancelled at the password. Nothing was changed.' 'amber'
+                        $script:PlanCancelled = $true
+                        if ($logged) { Write-ConsoleLog $Config ('CANCELLED ' + $ActionKey + ' shard=' + $ShardKey + ': no password given, nothing changed') }
+                        return $false
+                    }
+                    $wipeHash = New-WipePasswordHash $pw
+                    $pw = $null
+                    Write-ConsoleLine '      password taken; only its hash is kept.' 'gray'
+                }
+                'wiperequest' {
+                    Write-ConsoleLine ($tag + $s.Text) 'head'
+                    if (-not $wipeHash) { throw 'there is no password hash: the password step did not run' }
+                    if (Test-Path -LiteralPath $s.Path) { throw ($s.Path + ' already exists; not writing over it') }
+                    $rid = (Get-Date).ToString('yyyyMMdd-HHmmss', $script:Invariant) + '-' + ([guid]::NewGuid().ToString('N').Substring(0, 8))
+                    $body = New-WipeRequestText -Admin ([string]$s.Named['Admin']) -Hash $wipeHash -Id $rid -Now (Get-Date) -By ([Security.Principal.WindowsIdentity]::GetCurrent().Name)
+                    [IO.File]::WriteAllText($s.Path, $body, (New-Object Text.UTF8Encoding $false))
+                    $wipeHash = $null
+                    $wipePlaced = $true
+                    Write-ConsoleLine ('      request ' + $rid + ' placed at ' + $s.Path) 'gray'
+                }
+                'wipewait' {
+                    Write-ConsoleLine ($tag + $s.Text) 'head'
+                    $since = (Invoke-DockerRead @('inspect', '-f', '{{.State.StartedAt}}', $s.Container)).Out.Trim()
+                    $seen = $null
+                    $deadline = (Get-Date).AddSeconds($Config.WipeWaitSeconds)
+                    while ((Get-Date) -lt $deadline) {
+                        $l = Invoke-DockerRead @('logs', '--since', $since, $s.Container) 60000
+                        $seen = ConvertFrom-WipeLog ($l.Out + "`n" + $l.Err)
+                        if ($seen.Outcome) { break }
+                        Start-Sleep -Seconds 3
+                    }
+                    $left = Test-Path -LiteralPath $s.Path
+                    if ($left) {
+                        # Whatever happened, no hash stays on disk once this run is over.
+                        Remove-Item -LiteralPath $s.Path -Force -ErrorAction Stop
+                        Write-ConsoleLine ('      ' + $s.Path + ' was still there; removed, so no password hash stays on disk.') 'amber'
+                    }
+                    if (-not $seen -or -not $seen.Outcome) { throw ('the shard said nothing about the wipe within ' + $Config.WipeWaitSeconds + ' s. Read: docker logs ' + $s.Container + '. The backup is the aside named in this window.') }
+                    if ($seen.Outcome -ne 'done') { throw $seen.Line }
+                    if ($left) { throw ('the shard wiped (' + $seen.Line + ') but left its request behind, so its save may not have finished. Read: docker logs ' + $s.Container) }
+                    Write-ConsoleLine ('      ' + $seen.Line) 'green'
+                    if ($seen.Audit) { Write-ConsoleLine ('      ' + $seen.Audit) 'green' }
+                    if ($seen.Census) { Write-ConsoleLine ('      the test shard now has ' + $seen.Census.Accounts + ' account(s), ' + $seen.Census.Characters + ' character(s), ' + $seen.Census.Houses + ' player house(s).') 'green' }
+                }
                 'window' {
                     Write-ConsoleLine ($tag + $s.Text) 'normal'
-                    $cmd = "`$host.UI.RawUI.WindowTitle = '" + ((Format-CommandLine $s.Exe $s.Arguments) -replace "'", "''") + "'; " + (Format-CommandLine $s.Exe $s.Arguments)
+                    $cmd ="`$host.UI.RawUI.WindowTitle = '" + ((Format-CommandLine $s.Exe $s.Arguments) -replace "'", "''") + "'; " + (Format-CommandLine $s.Exe $s.Arguments)
                     Start-Process -FilePath $Config.PowerShell -ArgumentList ('-NoProfile -NoExit -Command ' + $cmd) | Out-Null
                 }
                 'launch' {
@@ -2795,6 +3092,14 @@ function Invoke-Plan {
             }
         } catch {
             Write-ConsoleLine ('FAILED at step ' + $i + ': ' + $_.Exception.Message) 'red'
+            # cc-P73: a wipe request this run placed never outlives it, so no password hash stays on disk.
+            # If the shard had not read it yet, nothing was wiped; if it had, it carries on without it.
+            foreach ($wr in @($plan | Where-Object { $_.Kind -eq 'wiperequest' })) {
+                if ($wipePlaced -and (Test-Path -LiteralPath $wr.Path)) {
+                    try { Remove-Item -LiteralPath $wr.Path -Force -ErrorAction Stop; Write-ConsoleLine ('Removed the wipe request ' + $wr.Path + ' so no hash stays on disk.') 'red' }
+                    catch { Write-ConsoleLine ('Could not remove the wipe request ' + $wr.Path + ': ' + $_.Exception.Message + '. Delete it by hand.') 'red' }
+                }
+            }
             if ($moved.Count) {
                 Write-ConsoleLine 'Already moved (nothing was deleted). To undo, rename these back in Explorer:' 'red'
                 foreach ($m in $moved) { Write-ConsoleLine ('      ' + $m) 'red' }
@@ -3187,6 +3492,51 @@ function Set-ConsoleDryRun {
     }
 }
 
+function Show-WipeAdminPicker {
+    # Test shard > Wipe test accounts (cc-P73), first dialog: what goes and what stays, with the counts
+    # the test shard reported, and the name of the new admin. Returns the name, or $null on Cancel.
+    # The phrase is asked next, by Show-TypedConfirm as for every other action; the password last, in
+    # the action's own window, so it never sits in this form or crosses a command line.
+    param([string]$Summary)
+    $d = New-Object Windows.Forms.Form
+    $d.Text = 'Wipe test accounts: the new admin'
+    if ($script:dry) { $d.Text = 'DRY RUN - ' + $d.Text }
+    $d.Size = New-Object Drawing.Size(640, 360)
+    $d.FormBorderStyle = 'FixedDialog'
+    $d.StartPosition = 'CenterParent'
+    $d.MaximizeBox = $false
+    $d.MinimizeBox = $false
+    $body = New-Object Windows.Forms.TextBox
+    $body.Multiline = $true; $body.ReadOnly = $true; $body.ScrollBars = 'Vertical'; $body.Dock = 'Fill'
+    $body.Text = $Summary
+    $bottom = New-Object Windows.Forms.Panel
+    $bottom.Dock = 'Bottom'
+    $bottom.Height = 76
+    $label = New-Object Windows.Forms.Label
+    $label.Text = 'Name of the new Owner account (letters, digits, . _ -):'
+    $label.SetBounds(10, 6, 600, 20)
+    $tb = New-Object Windows.Forms.TextBox
+    $tb.SetBounds(10, 30, 360, 24)
+    $ok = New-Object Windows.Forms.Button
+    $ok.Text = 'Next'; $ok.Enabled = $false; $ok.DialogResult = 'OK'; $ok.SetBounds(390, 28, 100, 28)
+    $cancel = New-Object Windows.Forms.Button
+    $cancel.Text = 'Cancel'; $cancel.DialogResult = 'Cancel'; $cancel.SetBounds(500, 28, 100, 28)
+    $script:wipeNameBox = $tb
+    $script:wipeNameOk = $ok
+    $tb.Add_TextChanged({ $script:wipeNameOk.Enabled = -not (Test-WipeAdminName $script:wipeNameBox.Text) })
+    $bottom.Controls.AddRange(@($label, $tb, $ok, $cancel))
+    $d.Controls.Add($body)
+    $d.Controls.Add($bottom)
+    $d.AcceptButton = $ok
+    $d.CancelButton = $cancel
+    $d.Add_Shown({ $script:wipeNameBox.Focus() })
+    $result = $d.ShowDialog()
+    $name = $tb.Text
+    $d.Dispose()
+    if ($result -ne 'OK' -or (Test-WipeAdminName $name)) { return $null }
+    $name
+}
+
 function Show-YesNo {
     param([string]$Text)
     $title = 'Shard Console'
@@ -3196,7 +3546,7 @@ function Show-YesNo {
 
 function Invoke-ConsoleButton {
     param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage,
-        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce)
+        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin)
     try {
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
         $isCommit = ($ActionKey -like 'commit.*')
@@ -3224,7 +3574,19 @@ function Invoke-ConsoleButton {
             $ImageTag = Show-ImagePicker $state
             if (-not $ImageTag) { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
         }
-        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce)
+        $wFacts = $null
+        if ($ActionKey -eq 'test.wipe') {
+            # cc-P73: refused before any dialog when the facts already rule it out (SYSTEM, no census,
+            # a waiting request, no room for the backup); otherwise the counts, then the new admin's name.
+            $wFacts = Get-WipeFacts $script:cfg $state
+            $no = @(Get-WipeRefusals -Config $script:cfg -State $state -Facts $wFacts)
+            if ($no.Count) { foreach ($x in $no) { Write-ConsoleLine ($ActionKey + ': ' + $x) 'amber' }; return }
+            if (-not $WipeAdmin) {
+                $WipeAdmin = Show-WipeAdminPicker (Get-WipeSummary $wFacts '')
+                if (-not $WipeAdmin) { Write-ConsoleLine ($ActionKey + ': cancelled. Nothing was changed.') 'gray'; return }
+            }
+        }
+        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
         $dryTag = ''
@@ -3252,7 +3614,7 @@ function Invoke-ConsoleButton {
             $answeredYes = $true
         }
         if ($def.RunIn -eq 'window') {
-            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:($CommitForce -and $ActionKey -eq 'commit.run')
+            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:($CommitForce -and $ActionKey -eq 'commit.run') -WipeAdmin $WipeAdmin
             Start-Process -FilePath $script:cfg.PowerShell -ArgumentList $argLine | Out-Null
             if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in its own window. It prints the plan and runs nothing.') 'amber' }
             else { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): running in its own window. Refresh the status when it finishes.') 'head' }
@@ -3403,9 +3765,10 @@ function New-ConsoleForm {
     $tabs.Dock = 'Fill'
     $script:ui.Tabs = $tabs
 
-    $testPage = New-ButtonPage 'Test shard' 'The throwaway test shard (sl-modernuo-test, port 2594, its own save in modernuo-test\Saves). No confirmation: it is throwaway. Start, Stop and Rebuild call docker/uo/Start-TestShard.ps1; Rebuild is the only one that builds, and it builds through build.sh and its gates. Deploy built image (cc-P63) points sl-modernuo:latest at an image a prompt already built through the gates (sl-modernuo:cc-pNN), after the phrase ''deploy to test'', then stops and starts the test shard on it. It never touches the live container.' @(
+    $testPage = New-ButtonPage 'Test shard' 'The throwaway test shard (sl-modernuo-test, port 2594, its own save in modernuo-test\Saves). No confirmation: it is throwaway. Start, Stop and Rebuild call docker/uo/Start-TestShard.ps1; Rebuild is the only one that builds, and it builds through build.sh and its gates. Deploy built image (cc-P63) points sl-modernuo:latest at an image a prompt already built through the gates (sl-modernuo:cc-pNN), after the phrase ''deploy to test'', then stops and starts the test shard on it. It never touches the live container. START FRESH and WIPE TEST ACCOUNTS are different: Start fresh moves the whole test save aside and starts a NEW WORLD, with the LIVE accounts copied in. Wipe test accounts (cc-P73) keeps the WORLD and deletes every test account and character with all they own (houses, pets, vendors, banks), copies nothing from live, and makes one new admin; it backs up the test save first and asks for the phrase ''WIPE TEST ACCOUNTS''.' @(
         (New-ConsoleButton 'Start' 'test.start'),
-        (New-ConsoleButton 'Start fresh (old save moved aside)' 'test.fresh'),
+        (New-ConsoleButton 'Start fresh (new world, live accounts)' 'test.fresh' 260),
+        (New-ConsoleButton 'Wipe test accounts (keep world)...' 'test.wipe' 260),
         (New-ConsoleButton 'Stop' 'test.stop'),
         (New-ConsoleButton 'Rebuild through the gates and start' 'test.rebuild' 300),
         (New-ConsoleButton 'Deploy built image...' 'test.deploy'),
@@ -3777,6 +4140,7 @@ if ($Action -eq 'list') {
     Write-Host 'package.build takes -PackageNotes; package.publish takes -PackageZip <name in player-package\dist> and -ConfirmLive ''publish player package''.'
     Write-Host 'package.check takes -PackageZip <name in player-package\dist>; it only reads.'
     Write-Host 'test.deploy takes -ImageTag sl-modernuo:cc-pNN and -ConfirmLive ''deploy to test''.'
+    Write-Host 'test.wipe takes -WipeAdmin <new admin name> and -ConfirmLive ''WIPE TEST ACCOUNTS''; it asks for the password in its own window.'
     exit 0
 }
 
@@ -3823,7 +4187,10 @@ if ($Action) {
         $st = Get-ConsoleState -Config $config -DryRun:$fromCapture -StatusFrom $StatusFrom
         if ($fromCapture) { $now = $st.Now.ToLocalTime() }
     }
-    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce)
+    # cc-P73: the wipe re-reads its facts here, so the child plans from the shard as it is now.
+    $wFacts = $null
+    if ($Action -eq 'test.wipe') { $wFacts = Get-WipeFacts $config $st }
+    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin)
     $viol = @(Test-PlanSafety $plan $config)
     $header = 'PLAN'
     if ($isDry) { $header = 'DRY RUN' }
@@ -3832,7 +4199,8 @@ if ($Action) {
     Write-ConsoleLine '' 'normal'
     $ok = Invoke-Plan -Plan $plan -Config $config -ActionKey $Action -ShardKey $sk -ConfirmLive $ConfirmLive -Yes:$Yes
     if ($ok) { Write-ConsoleLine ($Action + ': done.') 'green'; exit 0 }
-    # cc-P68: a declined publish already said "Publish cancelled. Nothing was published." last.
+    # cc-P68: a declined publish already said "Publish cancelled. Nothing was published." last. A wipe
+    # cancelled at its password (cc-P73) is the same: exit 3, nothing changed.
     if ($script:PlanCancelled) { exit 3 }
     exit 1
 }

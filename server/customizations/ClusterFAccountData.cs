@@ -865,6 +865,18 @@ public class ClusterFAccountPersistence : Item
     public static IReadOnlyDictionary<string, ClusterFAccountData> All => _data;
 
     /// <summary>
+    /// Drops every account's record: League, achievements' points, discoveries, restorations, guild and
+    /// exploration data. Only the test account wipe calls it (cc-P73, Misc/TestAccountWipe.cs), after every
+    /// account is deleted, since an account recreated under the same name would otherwise inherit its record.
+    /// </summary>
+    internal static int ClearAll()
+    {
+        var n = _data.Count;
+        _data.Clear();
+        return n;
+    }
+
+    /// <summary>
     /// This character's guild data (cc-P18, F-7), created if missing. The character must have an
     /// account, as for GetOrCreate(IAccount).
     /// </summary>

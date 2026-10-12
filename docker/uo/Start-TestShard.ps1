@@ -102,6 +102,14 @@ $j0 = [IO.File]::ReadAllText($mj)
 $j  = $j0 -replace '"0\.0\.0\.0:2593"', '"0.0.0.0:2594"'
 $j  = $j  -replace '"serverListing\.address":\s*("[^"]*"|null)', '"serverListing.address": "192.168.1.58"'
 $j  = $j  -replace '"serverListing\.serverName":\s*"[^"]*"', '"serverListing.serverName": "Shattered Legacy TEST"'
+# cc-P73: the test account wipe (server/customizations/Misc/TestAccountWipe.cs) runs only where this key is True, and
+# only Configuration-test gets it, here. Live's Configuration never has it; the shard reads it without writing it.
+if ($j -notmatch '"clusterf\.testShard\.allowAccountWipe"') {
+    $j = $j -replace '("settings":\s*\{)', ('$1' + "`n" + '    "clusterf.testShard.allowAccountWipe": "True",')
+}
+if ($j -notmatch '"clusterf\.testShard\.allowAccountWipe":\s*"True"') {
+    throw "$mj does not set clusterf.testShard.allowAccountWipe to True. Fix it by hand; not starting."
+}
 if ($j -notmatch '"0\.0\.0\.0:2594"' -or $j -match ':2593"') {
     throw "$mj does not listen on 0.0.0.0:2594 only. Fix its listeners by hand; not starting."
 }
