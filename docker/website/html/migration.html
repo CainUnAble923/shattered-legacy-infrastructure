@@ -162,6 +162,21 @@
     </p>
   </div>
 
+  <h2>Art and scripts collected</h2>
+  <div class="panel">
+    <div class="figures">
+      <div class="figure"><span class="n" id="a-done">&middot;</span><span class="k">Art packs in hand</span></div>
+      <div class="figure"><span class="n" id="a-left">&middot;</span><span class="k">Art packs to go</span></div>
+      <div class="figure"><span class="n" id="s-done">&middot;</span><span class="k">Script packs in hand</span></div>
+    </div>
+    <div class="bar"><i id="a-bar"></i></div>
+    <p class="muted">
+      Community art and server scripts, gathered from ServUO five a night, which is all the site
+      allows. Scripts are rewritten for our engine rather than dropped in.
+      <span id="dl-extra"></span>
+    </p>
+  </div>
+
   <p class="muted" id="asof"></p>
   <p class="muted" id="err">Status is not available right now.</p>
 
@@ -233,5 +248,22 @@
   setInterval(poll, 60 * 1000);
 })();
 </script>
-</body>
+<script>
+(function () {
+  function set(id, v) { document.getElementById(id).textContent = v; }
+  fetch('/api/downloads.json', { cache: 'no-store' })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (d) {
+      set('a-done', d.art.done);
+      set('a-left', d.art.todo + d.art.blocked);
+      set('s-done', d.code.done + ' of ' + (d.code.total - d.code.skipped));
+      var pct = d.art.percent;
+      document.getElementById('a-bar').style.width = (pct > 0 ? pct : 0) + '%';
+      var extra = 'About ' + d.nightsLeft + ' more nights at this pace.';
+      if (d.code.blocked > 0) extra += ' ' + d.code.blocked + ' script packs wait on a paid pass.';
+      set('dl-extra', extra);
+    })
+    .catch(function () { set('dl-extra', 'Counts are not available right now.'); });
+})();
+</script></body>
 </html>

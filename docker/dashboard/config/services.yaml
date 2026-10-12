@@ -52,6 +52,27 @@
                 content: reachableFiles
               label: In reach
 
+    - Art and script downloads:
+        icon: /icons/shattered_legacy_logo.png
+        href: "https://shatteredlegacyuo.com/migration.html"
+        description: servuo.dev queue, 5 a night (D:\UO\third-party\download-queue.md)
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8092/downloads.json
+          refreshInterval: 300000
+          mappings:
+            - field:
+                art: done
+              label: Art done
+            - field:
+                art: todo
+              label: Art to go
+            - field:
+                code: done
+              label: Scripts done
+            - field: nightsLeft
+              label: Nights left
+
     - Wiki:
         icon: /icons/shattered_legacy_logo.png
         href: "https://wiki.shatteredlegacyuo.com"
