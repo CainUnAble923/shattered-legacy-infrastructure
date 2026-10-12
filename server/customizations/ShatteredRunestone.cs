@@ -23,8 +23,8 @@ using ModernUO.Serialization;
 namespace Server
 {
     /// <summary>
-    /// Our own art IDs that need tiledata on the server (cc-P26). The values are records.json's: change the two together
-    /// (player-package\tests\Build-UoOverrides.Tests.ps1 compares them).
+    /// Our own art IDs that need tiledata on the server (cc-P26; cc-P62 the fox ears; cc-P34 the winter decor). The values
+    /// are records.json's: change the two together (player-package\tests\Build-UoOverrides.Tests.ps1 compares them).
     /// </summary>
     public static class ShatteredLegacyArt
     {
@@ -47,6 +47,10 @@ namespace Server
 
             // cc-P62: the fox ears and tail's icon, which names its layer and Animation number.
             Items.KitsuneEarsTail.ApplyTileData();
+
+            // cc-P34: the winter decor that animates or blocks (statue, firepit, stoves, tree, fireplace, sleigh). Its
+            // table is ClusterFWinterDecorArt.Records, compared with records.json the same way.
+            ClusterFWinterDecorArt.Apply();
         }
     }
 }

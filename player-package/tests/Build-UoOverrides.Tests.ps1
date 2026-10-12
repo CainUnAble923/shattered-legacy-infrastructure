@@ -133,8 +133,20 @@ Fact 'TheRecordsLandAsTheExpectedBytesAtTheExpectedOffsetsAndNothingElseChanges'
     Assert-Equal $kitsuneExpected (Get-Bytes (Join-Path $out 'tiledata.mul') $kitsuneAt 41) 'tiledata record 15420'
     $changedT = 0; for ($i = 0; $i -lt $tile.Length; $i++) { if ($tile[$i] -ne $t2[$i]) { $changedT++ } }
     $changedA = 0; for ($i = 0; $i -lt $anim.Length; $i++) { if ($anim[$i] -ne $a2[$i]) { $changedA++ } }
-    Assert-Equal 120 $changedT 'tiledata: 4 stone records and the kitsune icon, 24 non-zero bytes each, nothing else'
-    Assert-Equal 48 $changedA 'animdata: 4 records x 12 non-zero bytes, nothing else'
+    # cc-P34: the count depends on the records (the winter decor added 7 tiledata and 4 animdata records), so the rule is
+    # now by place: every changed byte is inside one of records.json's own records, and each record was written.
+    $rj = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $tSpans = @($rj.tiledata | ForEach-Object { $i = [int]$_.id; 493568 + [Math]::Floor($i / 32) * 1316 + 4 + ($i % 32) * 41 })
+    $aSpans = @($rj.animdata | ForEach-Object { $i = [int]$_.id; $i * 68 + 4 * ([Math]::Floor($i / 8) + 1) })
+    $outsideT = 0; for ($i = 0; $i -lt $tile.Length; $i++) { if ($tile[$i] -ne $t2[$i] -and -not ($tSpans | Where-Object { $i -ge $_ -and $i -lt $_ + 41 })) { $outsideT++ } }
+    $outsideA = 0; for ($i = 0; $i -lt $anim.Length; $i++) { if ($anim[$i] -ne $a2[$i] -and -not ($aSpans | Where-Object { $i -ge $_ -and $i -lt $_ + 68 })) { $outsideA++ } }
+    Assert-Equal 0 $outsideT "tiledata: nothing changed outside the $($tSpans.Count) records ($changedT bytes changed in all)"
+    Assert-Equal 0 $outsideA "animdata: nothing changed outside the $($aSpans.Count) records ($changedA bytes changed in all)"
+    Assert-True ($changedT -ge 120) 'the stone and kitsune records at least'
+    foreach ($t in @($rj.tiledata | Where-Object { [int]$_.id -ge 15424 })) {
+        $o = 493568 + [Math]::Floor([int]$t.id / 32) * 1316 + 4 + ([int]$t.id % 32) * 41
+        Assert-Equal $t.name ([Text.Encoding]::ASCII.GetString($t2, $o + 21, 20).TrimEnd([char]0)) "winter record $($t.id) written with its name"
+    }
     # The player's own files are untouched.
     Assert-Equal ((Get-FileHash -InputStream ([IO.MemoryStream]::new($tile))).Hash) (Get-FileHash (Join-Path $uo 'tiledata.mul')).Hash 'source tiledata'
     $list = [IO.File]::ReadAllLines((Join-Path $out 'files-override.txt'))
@@ -226,11 +238,12 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     $ids = [regex]::Match($cs, 'DesignItemIds = \{ ([^}]+) \}').Groups[1].Value.Split(',') | ForEach-Object { [Convert]::ToInt32($_.Trim(), 16) }
     $stones = @($rec.tiledata | Where-Object { $_.name -eq 'shattered runestone' })
     Assert-Equal (@($stones.id) -join ',') ($ids -join ',') 'design base IDs'
-    Assert-Equal (@($rec.animdata.id) -join ',') ($ids -join ',') 'animdata IDs'
+    # cc-P34: the winter decor (15424-15470) has records of its own, checked by the next fact.
+    Assert-Equal (@($rec.animdata | Where-Object { [int]$_.id -lt 15424 } | ForEach-Object { $_.id }) -join ',') ($ids -join ',') 'animdata IDs'
 
     # cc-P62: the fox ears and tail. KitsuneEarsTail.cs carries the server's copy of its record.
     $kc = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\KitsuneEarsTail.cs'))
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' })
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -261,13 +274,59 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
         Assert-Equal $h $t.height 'height'
         Assert-Equal $n $t.name 'name'
     }
-    foreach ($a in $rec.animdata) {
+    foreach ($a in @($rec.animdata | Where-Object { [int]$_.id -lt 15424 })) {
         foreach ($f in $a.frames) {
             Assert-True (@($reg | Where-Object { [int]$_.id -eq ([int]$a.id + [int]$f) }).Count -eq 1) "frame $([int]$a.id + [int]$f) is registered"
         }
     }
-    Assert-Equal 47 $reg.Count 'registry rows'
-    Assert-Equal 45 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+    # cc-P34 added the 47 winter decor IDs (15424-15470).
+    Assert-Equal 94 $reg.Count 'registry rows'
+    Assert-Equal 92 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+}
+
+Fact 'TheWinterDecorRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
+    # cc-P34 (F-22). ClusterFWinterDecorSeeder.cs carries the server's copy of the winter records
+    # (ClusterFWinterDecorArt.Records); records.json carries the players'. Same values, every frame registered,
+    # every registered art ID has its PNG and no PNG is unregistered (P26's rule: the build counts PNGs from the registry).
+    $cs  = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\ClusterFWinterDecorSeeder.cs'))
+    $rec = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $flagValue = @{ Background = 0x1; Wall = 0x10; Impassable = 0x40; Surface = 0x200; NoShoot = 0x2000; ArticleA = 0x4000; ArticleAn = 0x8000; LightSource = 0x800000; Animation = 0x1000000 }
+    $csRows = @([regex]::Matches($cs, 'new\((0x[0-9A-F]+), "([^"]+)", ([^,]+), (\d+), (\d+)\)') | ForEach-Object {
+        $v = 0
+        foreach ($nm in ($_.Groups[3].Value -split '\|' | ForEach-Object { $_.Trim() -replace '^TileFlag\.', '' })) {
+            if (-not $flagValue.ContainsKey($nm)) { throw "unknown flag $nm in C#" }
+            $v = $v -bor $flagValue[$nm]
+        }
+        [pscustomobject]@{ Id = [Convert]::ToInt32($_.Groups[1].Value, 16); Name = $_.Groups[2].Value; Flags = $v; Weight = [int]$_.Groups[4].Value; Height = [int]$_.Groups[5].Value }
+    })
+    $winter = @($rec.tiledata | Where-Object { [int]$_.id -ge 15424 -and [int]$_.id -le 15470 })
+    Assert-Equal 7 $csRows.Count 'seven records in C#'
+    Assert-Equal (@($csRows.Id) -join ',') (@($winter | ForEach-Object { [int]$_.id }) -join ',') 'the same IDs, in the same order'
+    for ($i = 0; $i -lt $winter.Count; $i++) {
+        $j = $winter[$i]; $c = $csRows[$i]
+        Assert-Equal $c.Name $j.name "name of $($c.Id)"
+        Assert-Equal $c.Flags ([Convert]::ToInt32(($j.flags -replace '^0x', ''), 16)) "flags of $($c.Id)"
+        Assert-Equal $c.Weight ([int]$j.weight) "weight of $($c.Id)"
+        Assert-Equal $c.Height ([int]$j.height) "height of $($c.Id)"
+        Assert-True ($j.name.Length -le 19) "name of $($c.Id) fits 19 characters"
+    }
+    $anims = @($rec.animdata | Where-Object { [int]$_.id -ge 15424 })
+    Assert-Equal '15424,15429,15434,15438' (@($anims | ForEach-Object { [int]$_.id }) -join ',') 'statue, firepit, two stoves'
+    foreach ($a in $anims) {
+        Assert-True (@($winter | Where-Object { [int]$_.id -eq [int]$a.id }).Count -eq 1) "$($a.id) has a tiledata record too"
+        foreach ($f in $a.frames) {
+            Assert-True (@($reg | Where-Object { [int]$_.id -eq ([int]$a.id + [int]$f) -and $_.kind -eq 'art' }).Count -eq 1) "frame $([int]$a.id + [int]$f) is registered"
+        }
+    }
+    $art = Join-Path $pkg 'vendor\shattered-legacy-art\art'
+    foreach ($r in @($reg | Where-Object { $_.kind -eq 'art' -and [int]$_.id -ge 15424 -and [int]$_.id -le 15470 })) {
+        Assert-True (Test-Path -LiteralPath (Join-Path $art ($r.id + '.png'))) "PNG for $($r.id)"
+        Assert-True ($r.license -like 'none stated*') "license of $($r.id)"
+    }
+    $pngs = @(Get-ChildItem -LiteralPath $art -Filter '*.png' | ForEach-Object { [int]$_.BaseName })
+    Assert-Equal @($reg | Where-Object { $_.kind -eq 'art' }).Count $pngs.Count 'PNG count equals the registry art rows'
+    foreach ($p in $pngs) { Assert-True (@($reg | Where-Object { [int]$_.id -eq $p -and $_.kind -eq 'art' }).Count -eq 1) "$p.png is registered" }
 }
 
 # --- cc-P62: worn-item animations ----------------------------------------------------------

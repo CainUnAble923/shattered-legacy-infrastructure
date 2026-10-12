@@ -80,3 +80,34 @@ positions are unchanged.
 Tiledata record (records.json): flags 0x00400002 (Wearable, and 0x2, which pinned names Weapon and nothing reads),
 weight 1, layer 0x12 (Earrings), height 1, as OSI's earrings 0x1087 read from the client's tiledata.mul on 2026-10-05;
 animId 4783 and the name ("fox ears and tail") are ours.
+
+Winter decor (cc-P34, F-22): IDs 15424-15470 (0x3C40-0x3C6E)
+--------------------------------------------------------------
+Two community packs, downloaded 2026-09-30 by Chase and kept at D:\UO\third-party\winter-holiday\
+(originals in _zips\, contact sheets sheet-*.png). Neither pack carries a license file, and neither page
+states one: LICENSE NONE STATED. Credit both authors wherever the shard credits art.
+  MrRiots, "Winter/Christmas Related stuff" (2024), https://www.servuo.dev/archive/mrriots-winter-christmas-related-stuff.2388/
+           folder "For ServUO 2": the animated Father Christmas statue, raised firepit and two stoves, the
+           candy cane arches, holiday food, snow-covered paintings and shields, and snow patches.
+  Vrark,   "Christmas sprites" (2025), https://www.servuo.dev/archive/christmas-sprites.2545/
+           folder "Christmas sprites\BMP": the Christmas tree, Santa's bag, three presents, the Christmas
+           fireplace, two garlands, four holiday paintings and the sleigh.
+           Vrark's two animated Christmas trees are NOT used: his page says they come from other games.
+Every ID's file is in registry.csv. The frames of the animated pieces, in order:
+  15424-15428  father christmas   MrRiots Statues\Father Christmas\1.bmp .. 5.bmp (one facing of two)
+  15429-15433  raised firepit     MrRiots Raised Firepit\1.bmp .. 5.bmp
+  15434-15437  iron stove         MrRiots Stoves\1\1.bmp .. 4.bmp (one facing of two)
+  15438-15441  stone stove        MrRiots Stoves\2\1.bmp .. 4.bmp (one facing of two)
+What was done to the pixels (notes\cc-P34-tools\convert_art.py, scripts\anchor-art-frames.py
+--keep-geometry --black-transparent): the 24-bit BMP became a PNG, and pure black (0,0,0) became
+transparent, as UO art means it. Nothing else: no recolouring, no scaling, no redrawing, no cut and no
+pad (both authors laid their art out on the canvas the way the art file holds it). Near-black pixels stay
+opaque. The tool re-reads every PNG and checks it against its source.
+Records (records.json), written by hand, the flags from OSI's own art as read from the client's
+tiledata.mul on 2026-10-12: father christmas 0x01004040 height 20 (OSI's statue 0x1224 is 0x4000 and
+height 0; ours adds Animation and Impassable so the statue blocks); raised firepit 0x01806240 height 0
+(OSI's animated fire pit 0x29FD); iron and stone stove 0x0180A050 height 20 (OSI's animated oven 0x462,
+height ours); christmas tree 0x00004041 height 20 (OSI's tree 0xCCA); christmas fireplace 0x00006050
+height 20 (OSI's fireplace 0x45D); christmas sleigh 0x00004040 height 10 (ours). Animdata: frames
+0..n-1, interval 2, as OSI's fire 0x19AB and campfire 0xDE3 (about 200 ms a frame). The packs give no
+timing of their own.
