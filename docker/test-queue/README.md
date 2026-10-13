@@ -31,6 +31,7 @@ results.
 
 | Call | What |
 |---|---|
+| `GET /nav.js` | the shared menu (cc-P88): Play tests, Shard status, Dashboard. The one source for all three pages; its `PAGES` table holds each page's address |
 | `GET /api/items` | the whole document |
 | `GET /api/summary` | `open`, `failed`, `passed`, `later`, `blocked`, `total`, `unloggedFails`, `generatedAt`. The dashboard's Play tests widget reads this |
 | `POST /api/result` | `{"id", "status": "pass|fail|later|open", "note"}`; a fail needs a note |

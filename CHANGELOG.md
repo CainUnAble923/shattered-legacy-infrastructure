@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.10
+
+### Staff
+- The play-test page, the shard status page and the Homepage dashboard share one menu bar (Play tests, Shard status, Dashboard) with the page you are on marked, from one file; Homepage shows it once sl-play-tests is restarted.
+
 ## 2026.10.13.9
 
 ### Staff

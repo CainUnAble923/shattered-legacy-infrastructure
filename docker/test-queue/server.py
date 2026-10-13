@@ -4,6 +4,7 @@ Serves html/index.html and a small JSON API over D:\\UO\\shard-migration\\testin
   GET  /                 the page
   GET  /status           the shard status dashboard (cc-P85): shard-migration/dashboard.html, read from disk on every
                          request and sent with Cache-Control: no-store, so it is always the file as it is now
+  GET  /nav.js           the shared menu (cc-P88): html/nav.js, used by both pages here and by Homepage
   GET  /api/items        the whole document (summary, prompts, items)
   GET  /api/summary      counts only, for the Homepage dashboard's customapi widget
   POST /api/result       {"id": "P71-3", "status": "pass|fail|later|open", "note": "..."}  (a fail needs a note)
@@ -99,6 +100,13 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, f.read(), "text/html; charset=utf-8")
             except OSError as e:
                 return self.send(500, "page missing: %s" % e, "text/plain; charset=utf-8")
+        if p == "/nav.js":
+            # cc-P88: the one menu file, read fresh each time like the page itself.
+            try:
+                with open(os.path.join(args.html, "nav.js"), "rb") as f:
+                    return self.send(200, f.read(), "text/javascript; charset=utf-8")
+            except OSError as e:
+                return self.send(404, "// nav.js missing: %s" % e, "text/javascript; charset=utf-8")
         if p in ("/status", "/status/"):
             # cc-P85: the dashboard, read fresh each time (progress.py rewrites it on every commit).
             try:

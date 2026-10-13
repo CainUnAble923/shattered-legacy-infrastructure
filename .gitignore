@@ -44,9 +44,9 @@ docker/mc-status/
 docker/portainer/
 
 # Home lab dashboard config. docker/dashboard/config/services.yaml IS tracked
-# (it lists the shard's own services); these five are not.
+# (it lists the shard's own services), and so is custom.js since cc-P88 (it loads
+# the shared Shattered Legacy menu); these four are not.
 docker/dashboard/config/custom.css
-docker/dashboard/config/custom.js
 docker/dashboard/config/kubernetes.yaml
 docker/dashboard/config/proxmox.yaml
 docker/dashboard/config/widgets.yaml

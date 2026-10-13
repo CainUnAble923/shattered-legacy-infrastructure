@@ -59,11 +59,12 @@ footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
 </style>
 </head>
 <body>
+<!-- cc-P88: the shared menu (Play tests, Shard status, Dashboard). Until sl-play-tests is restarted with the
+     /nav.js route, the old service answers 404 and the page says so in one line instead. -->
+<script src="/nav.js" data-sl-page="playtests" onerror="this.insertAdjacentHTML('afterend', '<p style=&quot;margin:0;padding:8px 16px;font:14px system-ui,sans-serif&quot;>Menu not loaded: restart sl-play-tests with Start-TestQueue.ps1. <a href=&quot;/status&quot;>Shard status</a></p>')"></script>
 <header>
   <div class="top">
     <h1>Play tests</h1>
-    <a href="/status">Status</a>
-    <a id="dash" href="#">Dashboard</a>
     <a href="#add">Add an item</a>
   </div>
   <div class="counts" id="counts"></div>
@@ -85,9 +86,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
 </main>
 <script>
 // cc-P83. Items come from server.py, which imports every prompt whose notes end "Pnn DONE".
-// The Dashboard link is built from the host this page was reached at, so it works from a phone on the LAN.
-var host = window.location.hostname;
-document.getElementById('dash').href = window.location.protocol + '//' + host + ':3000/';
+// cc-P88: the links to the other pages are the shared menu (nav.js), not this page's own.
 var filter = 'open';
 try { filter = localStorage.getItem('pt-filter') || 'open'; } catch (e) {}
 var data = null;
