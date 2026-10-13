@@ -243,7 +243,8 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
 
     # cc-P62: the fox ears and tail. KitsuneEarsTail.cs carries the server's copy of its record.
     $kc = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\KitsuneEarsTail.cs'))
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) })
+    # cc-P50: the chest mimic (15472-15489) has records of its own, checked by its own fact.
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -279,9 +280,56 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
             Assert-True (@($reg | Where-Object { [int]$_.id -eq ([int]$a.id + [int]$f) }).Count -eq 1) "frame $([int]$a.id + [int]$f) is registered"
         }
     }
-    # cc-P34 added the 47 winter decor IDs (15424-15470).
-    Assert-Equal 94 $reg.Count 'registry rows'
-    Assert-Equal 92 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+    # cc-P34 added the 47 winter decor IDs (15424-15470); cc-P50 the 18 chest mimic IDs (15472-15489).
+    Assert-Equal 112 $reg.Count 'registry rows'
+    Assert-Equal 110 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+}
+
+Fact 'TheChestMimicRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
+    # cc-P50 (F-32). ChestMimic.cs carries the server's copy of the mimic's records (ChestMimicArt.Records);
+    # records.json carries the players'. Same values, the two idle loops' frames registered, every mimic ID a PNG.
+    $cs  = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\Mobiles\Normal\ChestMimic.cs'))
+    $rec = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $flagValue = @{ Impassable = 0x40; ArticleA = 0x4000; Animation = 0x1000000 }
+    $csRows = @([regex]::Matches($cs, 'new\((0x3C[0-9A-F]+), "([^"]+)", ([^,]+), (\d+), (\d+)\)') | ForEach-Object {
+        $v = 0
+        foreach ($nm in ($_.Groups[3].Value -split '\|' | ForEach-Object { $_.Trim() -replace '^TileFlag\.', '' })) {
+            if (-not $flagValue.ContainsKey($nm)) { throw "unknown flag $nm in C#" }
+            $v = $v -bor $flagValue[$nm]
+        }
+        [pscustomobject]@{ Id = [Convert]::ToInt32($_.Groups[1].Value, 16); Name = $_.Groups[2].Value; Flags = $v; Weight = [int]$_.Groups[4].Value; Height = [int]$_.Groups[5].Value }
+    })
+    $mimic = @($rec.tiledata | Where-Object { [int]$_.id -ge 15472 -and [int]$_.id -le 15489 })
+    Assert-Equal 16 $csRows.Count 'sixteen records in C#'
+    Assert-Equal (@($csRows.Id) -join ',') (@($mimic | ForEach-Object { [int]$_.id }) -join ',') 'the same IDs, in the same order'
+    for ($i = 0; $i -lt $mimic.Count; $i++) {
+        $j = $mimic[$i]; $c = $csRows[$i]
+        Assert-Equal $c.Name $j.name "name of $($c.Id)"
+        Assert-Equal $c.Flags ([Convert]::ToInt32(($j.flags -replace '^0x', ''), 16)) "flags of $($c.Id)"
+        Assert-Equal $c.Weight ([int]$j.weight) "weight of $($c.Id)"
+        Assert-Equal $c.Height ([int]$j.height) "height of $($c.Id)"
+    }
+    $anims = @($rec.animdata | Where-Object { [int]$_.id -ge 15472 })
+    Assert-Equal '15477,15486' (@($anims | ForEach-Object { [int]$_.id }) -join ',') 'the two idle loops'
+    foreach ($a in $anims) {
+        Assert-True (@($mimic | Where-Object { [int]$_.id -eq [int]$a.id }).Count -eq 1) "$($a.id) has a tiledata record too"
+        foreach ($f in $a.frames) {
+            Assert-True (@($reg | Where-Object { [int]$_.id -eq ([int]$a.id + [int]$f) -and $_.kind -eq 'art' }).Count -eq 1) "frame $([int]$a.id + [int]$f) is registered"
+        }
+        # Build-UoOverrides.ps1 skips an animation whose frame (other than its base) has records of its own.
+        foreach ($f in @($a.frames | Where-Object { [int]$_ -ne 0 })) {
+            Assert-True (@($rec.tiledata | Where-Object { [int]$_.id -eq ([int]$a.id + [int]$f) }).Count -eq 0) "loop frame $([int]$a.id + [int]$f) has no record"
+        }
+    }
+    $art = Join-Path $pkg 'vendor\shattered-legacy-art\art'
+    $rows = @($reg | Where-Object { $_.kind -eq 'art' -and [int]$_.id -ge 15472 -and [int]$_.id -le 15489 })
+    Assert-Equal 18 $rows.Count 'eighteen mimic IDs registered'
+    foreach ($r in $rows) {
+        Assert-True (Test-Path -LiteralPath (Join-Path $art ($r.id + '.png'))) "PNG for $($r.id)"
+        Assert-True ($r.license -like 'none stated*') "license of $($r.id)"
+        Assert-True ($r.source -like '*Archaaz*') "source of $($r.id)"
+    }
 }
 
 Fact 'TheWinterDecorRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
@@ -311,7 +359,7 @@ Fact 'TheWinterDecorRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
         Assert-Equal $c.Height ([int]$j.height) "height of $($c.Id)"
         Assert-True ($j.name.Length -le 19) "name of $($c.Id) fits 19 characters"
     }
-    $anims = @($rec.animdata | Where-Object { [int]$_.id -ge 15424 })
+    $anims = @($rec.animdata | Where-Object { [int]$_.id -ge 15424 -and [int]$_.id -le 15470 })
     Assert-Equal '15424,15429,15434,15438' (@($anims | ForEach-Object { [int]$_.id }) -join ',') 'statue, firepit, two stoves'
     foreach ($a in $anims) {
         Assert-True (@($winter | Where-Object { [int]$_.id -eq [int]$a.id }).Count -eq 1) "$($a.id) has a tiledata record too"

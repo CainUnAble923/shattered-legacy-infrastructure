@@ -1,5 +1,5 @@
 {
-  "about": "Our own tiledata and animdata records (cc-P26, F-8), and our worn-item animations (cc-P62, F-35), and the winter decor records (cc-P34, F-22: OSI's statue 0x1224, animated fire pit 0x29FD, animated oven 0x462, tree 0xCCA and fireplace 0x45D give the flags; the statue adds Impassable; frame interval 2 as OSI's fire 0x19AB and campfire 0xDE3). Nothing here is copied from EA's files: every value is ours, and the tiledata values follow OSI's animated runestone 0xADBA 'Runestone01 Glow01' and OSI's earrings 0x1087 (flags, weight, layer and height read from the client's tiledata.mul; see SOURCE.txt). app\\Play.ps1 writes the tiledata and animdata records into copies of the player's own tiledata.mul and animdata.mul, and gives each equipAnims body a Bodyconv.def line, in a copy of the player's own Bodyconv.def, that sends it to slot 'slot' of app\\sl-anim7.bin (scripts\\build-equip-anims.py). Change only together with registry.csv.",
+  "about": "Our own tiledata and animdata records (cc-P26, F-8), and our worn-item animations (cc-P62, F-35), and the winter decor records (cc-P34, F-22: OSI's statue 0x1224, animated fire pit 0x29FD, animated oven 0x462, tree 0xCCA and fireplace 0x45D give the flags; the statue adds Impassable; frame interval 2 as OSI's fire 0x19AB and campfire 0xDE3). Nothing here is copied from EA's files: every value is ours, and the tiledata values follow OSI's animated runestone 0xADBA 'Runestone01 Glow01' and OSI's earrings 0x1087 (flags, weight, layer and height read from the client's tiledata.mul; see SOURCE.txt). app\\Play.ps1 writes the tiledata and animdata records into copies of the player's own tiledata.mul and animdata.mul, and gives each equipAnims body a Bodyconv.def line, in a copy of the player's own Bodyconv.def, that sends it to slot 'slot' of app\\sl-anim7.bin (scripts\\build-equip-anims.py). Change only together with registry.csv. cc-P50 (F-32), the chest mimic: flags and height follow OSI's wooden chest 0xE43 (Impassable | ArticleA, without Container, since the mimic is not a container); its idle loop adds Animation, interval 4; the two dead tiles are ArticleA only.",
   "tiledata": [
     { "id": 15376, "name": "shattered runestone", "flags": "0x01040040", "weight": 1, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 3 },
     { "id": 15387, "name": "shattered runestone", "flags": "0x01040040", "weight": 1, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 3 },
@@ -12,7 +12,23 @@
     { "id": 15438, "name": "stone stove", "flags": "0x0180A050", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 20 },
     { "id": 15442, "name": "christmas tree", "flags": "0x00004041", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 20 },
     { "id": 15456, "name": "christmas fireplace", "flags": "0x00006050", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 20 },
-    { "id": 15470, "name": "christmas sleigh", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 10 }
+    { "id": 15470, "name": "christmas sleigh", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 10 },
+    { "id": 15472, "name": "mimic", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15473, "name": "mimic", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15474, "name": "mimic", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15475, "name": "mimic", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15476, "name": "mimic", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15477, "name": "mimic", "flags": "0x01004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15479, "name": "dead mimic", "flags": "0x00004000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15480, "name": "dead mimic", "flags": "0x00004000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15481, "name": "mimic", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15482, "name": "mimic", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15483, "name": "mimic", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15484, "name": "mimic", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15485, "name": "mimic", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15486, "name": "mimic", "flags": "0x01004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15488, "name": "dead mimic", "flags": "0x00004000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 },
+    { "id": 15489, "name": "dead mimic", "flags": "0x00004000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 4 }
   ],
   "animdata": [
     { "id": 15376, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "interval": 1, "start": 0 },
@@ -22,7 +38,9 @@
     { "id": 15424, "frames": [0, 1, 2, 3, 4], "interval": 2, "start": 0 },
     { "id": 15429, "frames": [0, 1, 2, 3, 4], "interval": 2, "start": 0 },
     { "id": 15434, "frames": [0, 1, 2, 3], "interval": 2, "start": 0 },
-    { "id": 15438, "frames": [0, 1, 2, 3], "interval": 2, "start": 0 }
+    { "id": 15438, "frames": [0, 1, 2, 3], "interval": 2, "start": 0 },
+    { "id": 15477, "frames": [0, 1], "interval": 4, "start": 0 },
+    { "id": 15486, "frames": [0, 1], "interval": 4, "start": 0 }
   ],
   "equipAnims": [
     { "anim": 4783, "slot": 400, "name": "fox ears and tail" }

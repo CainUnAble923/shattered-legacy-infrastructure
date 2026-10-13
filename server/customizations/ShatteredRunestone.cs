@@ -51,6 +51,9 @@ namespace Server
             // cc-P34: the winter decor that animates or blocks (statue, firepit, stoves, tree, fireplace, sleigh). Its
             // table is ClusterFWinterDecorArt.Records, compared with records.json the same way.
             ClusterFWinterDecorArt.Apply();
+
+            // cc-P50: the chest mimic's stills, idle loop and dead tiles (ChestMimicArt.Records).
+            ChestMimicArt.Apply();
         }
     }
 }

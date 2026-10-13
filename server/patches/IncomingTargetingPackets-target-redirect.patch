@@ -1,0 +1,16 @@
+--- a/Projects/UOContent/Network/Packets/IncomingTargetingPackets.cs	2026-10-12 20:40:52.657072000 -0500
++++ b/Projects/UOContent/Network/Packets/IncomingTargetingPackets.cs	2026-10-12 20:41:00.827946000 -0500
+@@ -120,6 +120,13 @@
+             else if (serial.IsItem)
+             {
+                 toTarget = World.FindItem(serial);
++
++                // Shattered Legacy (cc-P50): an item that stands in for a mobile (the chest mimic's look) hands the
++                // target to that mobile, so spells, pets, taming and attacks aimed at what the player sees land on it.
++                if (toTarget is ITargetRedirect redirect)
++                {
++                    toTarget = redirect.RedirectTarget(from, t) ?? toTarget;
++                }
+             }
+             else
+             {

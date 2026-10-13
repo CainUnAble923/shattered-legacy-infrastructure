@@ -532,6 +532,13 @@ apply_patch "$PATCHES/FireHorn-damage-scaled-200.patch"
 apply_patch "$PATCHES/Stealth-steps-scaled-200.patch"
 apply_patch "$PATCHES/Bandage-heal-scaled-200.patch"
 
+# cc-P50: the chest mimic is drawn by an item (ChestMimicShell) over a mobile whose body draws nothing, so players can
+# only click the item. TazUO picks a mobile by the pixels of its body frames (MobileView.cs:1112-1125, 1214-1235), and
+# Target.Invoke refuses an item for a SpellTarget<Mobile> before any item hook runs (Target.cs:163-178), so no
+# override can hand the target over. One hunk: an item that implements ITargetRedirect names the mobile instead.
+# Alternatives argued in shard-migration/notes/cc-P50-chest-mimic-monster.md section 3.
+apply_patch "$PATCHES/IncomingTargetingPackets-target-redirect.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
