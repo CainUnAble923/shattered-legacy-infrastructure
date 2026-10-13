@@ -1,0 +1,22 @@
+UO Paperdoll Project (Siege of Sosaria) Builder's Kit 3.1, by Zigholtul.
+https://www.servuo.dev/archive/uo-paperdoll-project-siege-of-sosaria-builders-kit-pngs-etc-included.2426/
+Downloaded 2026-10-02 by Chase (D:\UO\third-party\paperdoll-siege-of-sosaria\SOURCE.txt). No license file in the
+download; terms none stated. Credit: Zigholtul, the UO Paperdoll Project. Vendored here by cc-P81 (2026-10-13).
+
+What is here (SFW only; made by design\paperdoll-sos\tools\select.py from the kit, never by hand):
+  ExternalImages\gumps\<id>.png   1,575 gump PNGs, into app\tazuo\ExternalImages\gumps\ (TazUO's gump override folder,
+                                  beside Fiddle-Me-This's and ours):
+                                    1,372  PNGs\#01 Default Gumps (its six body gumps are identical to the SFW swaps)
+                                      121  PNGs\#03 Spell Icon Upgrades
+                                       68  PNGs\DLC top level, without 9001 (0x2329, the author's own login splash;
+                                           ours stays) and without 62000-62026 (Fiddle-Me-This's own gumps use those
+                                           numbers for its XML gumps; listed in the cc-P81 notes)
+                                       14  PNGs\DLC\Paperdoll Templates\#01 Default Versions\Grayscale (hueable)
+  bodies-sfw\<id>.png             the six SFW body gumps (12, 13, 14, 15, 665, 666), into app\paperdoll-sfw\, so the
+                                  launcher can put them back after a local NSFW swap (app\Paperdoll-Bodies.ps1).
+  nsfw-sha256.txt                 SHA-256 of every Topless and Nude file in the kit that is not also an SFW file (the
+                                  male templates' "topless" are the defaults). The package build refuses any file in
+                                  the zip with one of these hashes. Hashes only: no art.
+
+Never shipped: MUL Files\ (modified EA data), any Topless or Nude folder, the Animation VDs, Equipconv.def, BMPs\,
+Gimp Files\, the TazUO paperdoll layout json (not needed; see the cc-P81 notes).

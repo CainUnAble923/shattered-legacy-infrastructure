@@ -78,3 +78,8 @@ __pycache__/
 # Scratch previews and backups next to the website source (not deployed).
 docker/website/preview-*.html
 docker/website/*.bak
+
+# cc-P81: the Siege of Sosaria builder's kit (718 MB, includes Topless and Nude art) and Chase's local NSFW paperdoll
+# add-on never go in git or in the player package. Only our own small files in design/paperdoll-sos/ are tracked.
+design/paperdoll-sos/kit/
+client-addons/

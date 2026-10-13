@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.4
+
+### Added
+- New paperdoll art: every body and most worn items on your paperdoll are redrawn (the UO Paperdoll Project, Siege of Sosaria, by Zigholtul), with sharper spell icons. It installs with the next player package update; nothing to do on your side.
+
+### Staff
+- The art ships as gump PNGs in the player package (vendor\paperdoll-sos, SFW only), checked by the package build.
+
 ## 2026.10.13.3
 
 ### Added

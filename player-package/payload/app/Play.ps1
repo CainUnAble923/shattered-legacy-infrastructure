@@ -34,7 +34,8 @@
 #>
 [CmdletBinding()]
 param([switch]$Lan, [switch]$Test, [string]$Account, [string]$UoPath,
-      [switch]$NoUpdate, [switch]$Update, [string]$UpdateBase = 'https://get.shatteredlegacyuo.com')
+      [switch]$NoUpdate, [switch]$Update, [string]$UpdateBase = 'https://get.shatteredlegacyuo.com',
+      [ValidateSet('sfw', 'topless', 'nude')][string]$PaperdollBodies, [string]$PaperdollFolder)
 
 $ErrorActionPreference = 'Stop'
 $app   = $PSScriptRoot
@@ -43,6 +44,9 @@ $taz   = Join-Path $app 'tazuo'
 $tazExe = Join-Path $taz 'TazUO.exe'
 
 . (Join-Path $app 'Launch-Settings.ps1')
+. (Join-Path $app 'Paperdoll-Bodies.ps1')
+# cc-P81: a local-only paperdoll choice for a computer that holds the add-on (Paperdoll-Bodies.ps1). Never shipped.
+if ($PaperdollBodies) { Write-Host "  $(Set-PaperdollSetting -Root $root -Mode $PaperdollBodies -Folder $PaperdollFolder)" -ForegroundColor Gray }
 $targetArgs = @{ Lan = $Lan; Test = $Test }
 if ($PSBoundParameters.ContainsKey('Account')) { $targetArgs.Account = $Account }
 try { $target = Get-LaunchTarget @targetArgs }
@@ -301,6 +305,14 @@ try {
     Write-Host "  Shattered Legacy art could not be prepared ($($_.Exception.Message)). Starting without it." -ForegroundColor Yellow
 }
 if ($uoOverride) { $tazArgs += @('-uofilesoverride', "`"$uoOverride`"") }
+
+# cc-P81: the paperdoll's six body gumps: the shipped SFW set, or this computer's local add-on when chosen.
+try {
+    $pdLine = Sync-PaperdollBodies -App $app -Root $root
+    if ($pdLine) { Write-Host $pdLine -ForegroundColor Gray }
+} catch {
+    Write-Host "  Paperdoll bodies could not be checked ($($_.Exception.Message)). Starting anyway." -ForegroundColor Yellow
+}
 
 # Launch-Settings.ps1's Start-TazUO: on a PC with no OpenGL 2.1 driver it switches the client to its
 # automatic graphics driver (force_driver 3) and starts it again (cc-P52, D61). Waits up to 20 seconds.

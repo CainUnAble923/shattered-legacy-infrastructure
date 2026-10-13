@@ -102,6 +102,29 @@ $slIds      = @($slRegistry | Where-Object { -not $_.kind -or $_.kind -eq 'art' 
 $slGumpIds  = @($slRegistry | Where-Object { $_.kind -eq 'gump' } | ForEach-Object { [int]$_.id })
 $slAnimIds  = @($slRegistry | Where-Object { $_.kind -eq 'anim' } | ForEach-Object { [int]$_.id })
 $slAnimFiles = @('sl-anim7.bin', 'sl-anim7-idx.bin')
+# cc-P81: the Siege of Sosaria paperdoll art, SFW only (vendor\paperdoll-sos\SOURCE.txt). Its gump PNGs go into
+# ExternalImages\gumps\ beside Fiddle-Me-This's and ours, never over either; its six SFW body gumps also go into
+# app\paperdoll-sfw\, which the launcher restores from after a local swap (app\Paperdoll-Bodies.ps1).
+# THE NSFW GATE: the Topless and Nude art lives only in Chase's local add-on (client-addons\paperdoll-nsfw\, git
+# ignored) and in the kit. The zip may hold no file whose SHA-256 is one of theirs (vendor\paperdoll-sos\nsfw-sha256.txt,
+# plus every file under client-addons\ when this machine has it, less any hash an SFW file shares), and no path
+# naming them.
+$pdDir    = Join-Path $PSScriptRoot 'vendor\paperdoll-sos'
+$pdGumps  = @(Get-ChildItem -LiteralPath (Join-Path $pdDir 'ExternalImages\gumps') -File)
+$pdBodies = @(Get-ChildItem -LiteralPath (Join-Path $pdDir 'bodies-sfw') -File)
+$pdBodyIds = @(12, 13, 14, 15, 665, 666)
+$pdNsfw = @{}
+foreach ($h in Get-Content -LiteralPath (Join-Path $pdDir 'nsfw-sha256.txt')) { if ($h.Trim()) { $pdNsfw[$h.Trim().ToLowerInvariant()] = $true } }
+$pdAddons = Join-Path (Split-Path $PSScriptRoot -Parent) 'client-addons'
+if (Test-Path -LiteralPath $pdAddons) {
+    $pdSfw = @{}
+    foreach ($f in $pdGumps + $pdBodies) { $pdSfw[(Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant()] = $true }
+    foreach ($f in Get-ChildItem -LiteralPath $pdAddons -Recurse -File) {
+        $h = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+        if (-not $pdSfw.ContainsKey($h)) { $pdNsfw[$h] = $true }
+    }
+}
+$pdNsfwPath = '(?i)(topless|nude|client-addons|paperdoll-nsfw)'
 # The equipment-animation gate: the two anim files hold blocks only in the slots records.json's equipAnims name,
 # for registered Animation numbers, and every block lies inside sl-anim7.bin. Run on vendor\ before staging and
 # on the zip (gate 4).
@@ -198,7 +221,20 @@ function Test-PackageZip([string]$path) {
         $names = @($rel.Keys)
 
         $png = @($names | Where-Object { $_ -match '^app/tazuo/ExternalImages/gumps/[^/]+\.png$' })
-        if ($png.Count -ne $fmtPngCount + $slGumpIds.Count) { $fail += "$($png.Count) PNGs under app/tazuo/ExternalImages/gumps/, expected $fmtPngCount (Fiddle-Me-This) + $($slGumpIds.Count) (ours, registry.csv)" }
+        if ($png.Count -ne $fmtPngCount + $slGumpIds.Count + $pdGumps.Count) { $fail += "$($png.Count) PNGs under app/tazuo/ExternalImages/gumps/, expected $fmtPngCount (Fiddle-Me-This) + $($slGumpIds.Count) (ours, registry.csv) + $($pdGumps.Count) (the paperdoll art)" }
+        # cc-P81: the six SFW body gumps the launcher restores from, and THE NSFW GATE over every file in the zip.
+        $pdSfwNames = @($names | Where-Object { $_ -like 'app/paperdoll-sfw/*' })
+        if ($pdSfwNames.Count -ne $pdBodyIds.Count) { $fail += "$($pdSfwNames.Count) files under app/paperdoll-sfw/, expected $($pdBodyIds.Count)" }
+        foreach ($g in $pdBodyIds) { if ($names -notcontains "app/paperdoll-sfw/$g.png") { $fail += "no app/paperdoll-sfw/$g.png" } }
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try {
+            foreach ($n in $names) {
+                if ($n -match $pdNsfwPath) { $fail += "NSFW GATE: $n has a name that only the local NSFW add-on may use" }
+                $st = $rel[$n].Open()
+                try { $h = -join ($sha.ComputeHash($st) | ForEach-Object { $_.ToString('x2') }) } finally { $st.Dispose() }
+                if ($pdNsfw.ContainsKey($h)) { $fail += "NSFW GATE: $n is a Topless or Nude file from the paperdoll kit" }
+            }
+        } finally { $sha.Dispose() }
         foreach ($g in $slGumpIds) { if ($names -notcontains "app/tazuo/ExternalImages/gumps/$g.png") { $fail += "no app/tazuo/ExternalImages/gumps/$g.png, a registered gump" } }
         $xml = @($names | Where-Object { $_ -like 'app/tazuo/Data/XmlGumps/*' })
         if ($xml.Count -ne $fmtXmlCount) { $fail += "$($xml.Count) files under app/tazuo/Data/XmlGumps/, expected $fmtXmlCount" }
@@ -573,6 +609,20 @@ if ($slGumps.Count -ne $slGumpIds.Count) { throw "vendor\shattered-legacy-art\gu
 $clash = @($slGumps | Where-Object { ($fmtOrig + $fmtCust).Name -contains $_.Name } | ForEach-Object Name)
 if ($clash.Count) { throw "our gumps clash with Fiddle-Me-This's: $($clash -join ', '). Not building." }
 foreach ($f in $slGumps) { $vendored += ,@($f.FullName, (Join-Path $fmtGumps $f.Name)) }
+# cc-P81: the Siege of Sosaria paperdoll art, never over Fiddle-Me-This's or ours, and the six SFW bodies.
+$extra = @($pdGumps | Where-Object { $_.Name -notmatch '^\d+\.png$' } | ForEach-Object Name)
+if ($extra.Count) { throw "vendor\paperdoll-sos\ExternalImages\gumps holds files not named by gump ID: $($extra -join ', '). Not building." }
+$clash = @($pdGumps | Where-Object { ($fmtOrig + $fmtCust + $slGumps).Name -contains $_.Name } | ForEach-Object Name)
+if ($clash.Count) { throw "the paperdoll art clashes with Fiddle-Me-This's or our gumps: $($clash -join ', '). Not building." }
+$pdHave = (@($pdBodies.Name) | Sort-Object) -join ','
+$pdWant = (@($pdBodyIds | ForEach-Object { "$_.png" }) | Sort-Object) -join ','
+if ($pdHave -ne $pdWant) { throw "vendor\paperdoll-sos\bodies-sfw must hold exactly $($pdBodyIds -join ', '). Not building." }
+$pdBad = @(($pdGumps + $pdBodies) | Where-Object { $pdNsfw.ContainsKey((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()) } | ForEach-Object FullName)
+if ($pdBad.Count) { throw "NSFW GATE: vendor\paperdoll-sos holds Topless or Nude art: $($pdBad -join ', '). Not building." }
+foreach ($f in $pdGumps) { $vendored += ,@($f.FullName, (Join-Path $fmtGumps $f.Name)) }
+$pdSfwOut = Join-Path $stage 'app\paperdoll-sfw'
+New-Item -ItemType Directory -Path $pdSfwOut -Force | Out-Null
+foreach ($f in $pdBodies) { $vendored += ,@($f.FullName, (Join-Path $pdSfwOut $f.Name)) }
 $slRecords = [IO.File]::ReadAllText((Join-Path $slArt 'records.json')) | ConvertFrom-Json
 if (@($slRecords.equipAnims | Where-Object { $_ }).Count) {
     $eqFail = @(Test-EquipAnims $slRecords ([IO.File]::ReadAllBytes((Join-Path $slArt 'sl-anim7.bin'))) ([IO.File]::ReadAllBytes((Join-Path $slArt 'sl-anim7-idx.bin'))) 'vendor\shattered-legacy-art\records.json')
