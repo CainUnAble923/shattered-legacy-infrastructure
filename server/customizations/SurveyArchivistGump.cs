@@ -32,6 +32,9 @@ public class SurveyArchivistGump : Gump
     // Internal so the Prospector's Logbook remote-submit feature can preview rewards.
     internal static readonly Dictionary<string, (int Standing, int Vouchers, int Gold)> RewardTable = new()
     {
+        // cc-P36: the dungeon's starter ore, about half of Dull Copper. Without its own row an unknown key pays the Dull
+        // Copper rate (the fallback in the payout).
+        { "Dawnstone",   (  25,  1,   250) },
         // Vanilla ore tier (DullCopper -> Valorite)
         { "DullCopper",  (  50,  2,   500) },
         { "ShadowIron",  (  75,  3,   750) },
@@ -216,6 +219,7 @@ public class SurveyArchivistGump : Gump
     // Canonical ore display order
     private static readonly string[] _oreOrder =
     {
+        "Dawnstone", // cc-P36
         "DullCopper", "ShadowIron", "Copper", "Bronze", "Gold",
         "Agapite", "Verite", "Valorite",
         "Platinum", "Toxic", "Blaze", "Frost",

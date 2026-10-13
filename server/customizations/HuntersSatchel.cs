@@ -4,32 +4,32 @@ using Server.Mobiles;
 
 namespace Server.Items;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hunter's Satchel — three-tier resource bag for the Rangers' League.
+// -----------------------------------------------------------------------------
+// Hunter's Satchel - three-tier resource bag for the Rangers' League.
 //
 // Accepts: BaseLeather, BaseHides, Bone, Wool, Feather, raw meats
 // (covers all leather/hide subtypes via base-class check)
 //
-// T1 — Hunter's Satchel        (issued on guild join): 30% weight, 350-stone
-//   • Auto-converts hides into cut leather on entry
-//   • Auto-grabs accepted items from carved corpses (via Corpse.OnItemAdded hook)
-//   • Auto-routes accepted items that land in the backpack (via PlayerMobile.OnSubItemAdded)
+// T1 - Hunter's Satchel        (issued on guild join): 30% weight, 350-stone
+//   * Auto-converts hides into cut leather on entry
+//   * Auto-grabs accepted items from carved corpses (via Corpse.OnItemAdded hook)
+//   * Auto-routes accepted items that land in the backpack (via PlayerMobile.OnSubItemAdded)
 //
-// T2 — Seasoned Hunter's Satchel                     : 40% weight, 500-stone
-//   • All T1 abilities
-//   • Auto-skins nearby (2-tile) carvable corpses every 5s
-//   • Auto-shears nearby (3-tile) woolly sheep every 5s
+// T2 - Seasoned Hunter's Satchel                     : 40% weight, 500-stone
+//   * All T1 abilities
+//   * Auto-skins nearby (2-tile) carvable corpses every 5s
+//   * Auto-shears nearby (3-tile) woolly sheep every 5s
 //
-// T3 — Warden's Field Satchel                        : 50% weight, 700-stone
-//   • All T2 abilities
-// ─────────────────────────────────────────────────────────────────────────────
+// T3 - Warden's Field Satchel                        : 50% weight, 700-stone
+//   * All T2 abilities
+// -----------------------------------------------------------------------------
 
-// ── T1 ────────────────────────────────────────────────────────────────────────
+// -- T1 ------------------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class HuntersSatchel : Container
 {
-    // ── Accepted types ────────────────────────────────────────────────────────
+    // -- Accepted types --------------------------------------------------------
 
     private static readonly Type[] _acceptedTypes =
     {
@@ -54,27 +54,32 @@ public partial class HuntersSatchel : Container
         return false;
     }
 
-    // ── Hide → leather conversion ─────────────────────────────────────────────
+    // -- Hide -> leather conversion ---------------------------------------------
 
     /// <summary>
     /// Converts a BaseHides item into its cut-leather equivalent.
     /// Returns the leather item (caller must delete the original hides).
-    /// Returns null if the item is not a hide type.
+    /// Returns null for a hide type it does not know, which is then stored as hides, uncut.
+    /// cc-P36 (cc-P24 F4): the fallback used to be plain Leather for ANY unknown subclass, so a new hide such as Burrowhide
+    /// silently became regular leather and lost its resource. Each known type is now listed, and an unknown one keeps its
+    /// hides rather than being downgraded.
     /// </summary>
     public static Item? ConvertHidesToLeather(BaseHides hides) => hides switch
     {
-        SpinedHides h => new SpinedLeather(h.Amount),
-        HornedHides h => new HornedLeather(h.Amount),
-        BarbedHides h => new BarbedLeather(h.Amount),
-        _             => new Leather(hides.Amount),   // Hides or any unrecognised subclass
+        SpinedHides h     => new SpinedLeather(h.Amount),
+        HornedHides h     => new HornedLeather(h.Amount),
+        BarbedHides h     => new BarbedLeather(h.Amount),
+        BurrowhideHides h => new BurrowhideLeather(h.Amount), // cc-P36
+        Hides h           => new Leather(h.Amount),
+        _                 => null,
     };
 
-    // ── Tier-overridable stats ────────────────────────────────────────────────
+    // -- Tier-overridable stats ------------------------------------------------
 
     protected virtual int TierWeightReductionPct => 30;
     protected virtual int TierMaxContentWeight   => 350;
 
-    // ── Weight reduction ──────────────────────────────────────────────────────
+    // -- Weight reduction ------------------------------------------------------
 
     public override int GetTotal(TotalType type)
     {
@@ -84,7 +89,7 @@ public partial class HuntersSatchel : Container
         return total;
     }
 
-    // ── Auto-route: called by external loot hooks ─────────────────────────────
+    // -- Auto-route: called by external loot hooks -----------------------------
 
     /// <summary>
     /// Attempts to route <paramref name="item"/> into this satchel.
@@ -98,7 +103,7 @@ public partial class HuntersSatchel : Container
         return TryDropItem(owner, item, false);
     }
 
-    // ── Construction ─────────────────────────────────────────────────────────
+    // -- Construction ---------------------------------------------------------
 
     [Constructible]
     public HuntersSatchel() : base(0xA272)   // satchel/pouch graphic
@@ -111,7 +116,7 @@ public partial class HuntersSatchel : Container
 
     private void Deserialize(IGenericReader reader, int version) { }
 
-    // ── Properties ────────────────────────────────────────────────────────────
+    // -- Properties ------------------------------------------------------------
 
     public override void GetProperties(IPropertyList list)
     {
@@ -122,14 +127,13 @@ public partial class HuntersSatchel : Container
         list.Add($"Capacity: {TierMaxContentWeight} stones");
     }
 
-    // ── Override to restrict and convert on entry ─────────────────────────────
+    // -- Override to restrict and convert on entry -----------------------------
 
     public override bool TryDropItem(Mobile from, Item dropped, bool sendFullMessage)
     {
         // Auto-convert hides to leather before storing
-        if (dropped is BaseHides hides)
+        if (dropped is BaseHides hides && ConvertHidesToLeather(hides) is { } leather)
         {
-            var leather = ConvertHidesToLeather(hides);
             var success = base.TryDropItem(from, leather, sendFullMessage);
             if (success)
                 hides.Delete();
@@ -149,9 +153,8 @@ public partial class HuntersSatchel : Container
     public override bool OnDragDrop(Mobile from, Item dropped)
     {
         // Auto-convert hides to leather when dragged in
-        if (dropped is BaseHides hides)
+        if (dropped is BaseHides hides && ConvertHidesToLeather(hides) is { } leather)
         {
-            var leather = ConvertHidesToLeather(hides);
             var success = base.OnDragDrop(from, leather);
             if (success)
                 hides.Delete();
@@ -169,7 +172,7 @@ public partial class HuntersSatchel : Container
     }
 }
 
-// ── T2 ────────────────────────────────────────────────────────────────────────
+// -- T2 ------------------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class SeasonedHuntersSatchel : HuntersSatchel
@@ -188,7 +191,7 @@ public partial class SeasonedHuntersSatchel : HuntersSatchel
 
     private void Deserialize(IGenericReader reader, int version) { }
 
-    // ── Auto-harvest timer lifecycle ──────────────────────────────────────────
+    // -- Auto-harvest timer lifecycle ------------------------------------------
 
     public override void OnAdded(IEntity parent)
     {
@@ -243,7 +246,7 @@ public partial class SeasonedHuntersSatchel : HuntersSatchel
             if (item is Corpse corpse && !corpse.Deleted && !corpse.Carved && corpse.Owner is BaseCreature)
             {
                 ((ICarvable)corpse).Carve(pm, this);
-                break;   // one per tick — avoid spam
+                break;   // one per tick - avoid spam
             }
         }
 
@@ -253,7 +256,7 @@ public partial class SeasonedHuntersSatchel : HuntersSatchel
             if (mob is Sheep sheep && !sheep.Deleted && Core.Now >= sheep.NextWoolTime)
             {
                 ((ICarvable)sheep).Carve(pm, this);
-                // Wool lands in backpack → PlayerMobile.OnSubItemAdded routes it here
+                // Wool lands in backpack -> PlayerMobile.OnSubItemAdded routes it here
                 break;   // one per tick
             }
         }
@@ -267,7 +270,7 @@ public partial class SeasonedHuntersSatchel : HuntersSatchel
     }
 }
 
-// ── T3 ────────────────────────────────────────────────────────────────────────
+// -- T3 ------------------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class WardensFieldSatchel : SeasonedHuntersSatchel

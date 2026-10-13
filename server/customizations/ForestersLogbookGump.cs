@@ -37,6 +37,7 @@ public class ForestersLogbookGump : Gump
     // Display order: vanilla colored woods first, then extended
     private static readonly string[] WoodOrder =
     {
+        "Rootwood", // cc-P36: the dungeon's starter wood, listed with the known timbers (not gated, no reward)
         "OakWood", "AshWood", "YewWood", "Heartwood", "Bloodwood", "Frostwood",
         "Ironwood", "Ghostwood", "Emberbark", "Frostbark",
         "Shadowbark", "Runewood", "Voidwood", "Starwood",
@@ -51,6 +52,7 @@ public class ForestersLogbookGump : Gump
 
     private static readonly Dictionary<string, (string Name, string Color)> WoodDisplay = new()
     {
+        { "Rootwood",   ("Rootwood",  "#6E3C28") }, // cc-P36
         { "OakWood",    ("Oak",       "#8B7355") },
         { "AshWood",    ("Ash",       "#C8B888") },
         { "YewWood",    ("Yew",       "#8B6914") },

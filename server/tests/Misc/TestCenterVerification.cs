@@ -336,8 +336,10 @@ public class TestCenterVerification
 
         try
         {
-            // 8 ores and 8 ingots (ClusterFExtendedOres.cs), 8 logs and 8 boards (ClusterFExtendedLumber.cs).
-            Assert.Equal(32, added.Count);
+            // 8 ores and 8 ingots (ClusterFExtendedOres.cs), 8 logs and 8 boards (ClusterFExtendedLumber.cs), and cc-P36's
+            // seven: Dawnstone ore and ingot, Burrowhide hides and leather, Rootwood log and board, Gloomsilk cloth
+            // (ClusterFStarterResources.cs).
+            Assert.Equal(39, added.Count);
 
             var types = new HashSet<Type>();
             foreach (var entry in added)

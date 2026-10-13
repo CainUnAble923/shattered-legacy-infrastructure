@@ -2,23 +2,23 @@ using ModernUO.Serialization;
 
 namespace Server.Items;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Shattered Legacy — Extended Ore and Ingot types
+// -----------------------------------------------------------------------------
+// Shattered Legacy - Extended Ore and Ingot types
 //
-// Tiers 10–17 in the CraftResource enum (Platinum through Celestial).
+// Tiers 10-17 in the CraftResource enum (Platinum through Celestial).
 // These ores are mined via normal Mining once GM skill is reached, with
 // probability weights set in ClusterFMiningExtension.
 //
-// Ore classes inherit BaseOre — hue is auto-set from CraftResources.GetHue().
-// Ingot classes inherit BaseIngot — same hue behaviour.
+// Ore classes inherit BaseOre - hue is auto-set from CraftResources.GetHue().
+// Ingot classes inherit BaseIngot - same hue behaviour.
 // Both display their name via GetProperties (BaseOre/BaseIngot calls
 //   CraftResources.GetName() when Number == 0, which it is for extended ores).
 //
-// All classes use SerializationGenerator(0, false) — no migration files needed
+// All classes use SerializationGenerator(0, false) - no migration files needed
 // because these are brand-new types with no existing world saves.
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
-// ── Ore classes ──────────────────────────────────────────────────────────────
+// -- Ore classes --------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class PlatinumOre : BaseOre
@@ -92,7 +92,7 @@ public partial class CelestialOre : BaseOre
     public override BaseIngot GetIngot() => new CelestialIngot();
 }
 
-// ── Ingot classes ─────────────────────────────────────────────────────────────
+// -- Ingot classes -------------------------------------------------------------
 
 [SerializationGenerator(0, false)]
 public partial class PlatinumIngot : BaseIngot
@@ -148,4 +148,68 @@ public partial class CelestialIngot : BaseIngot
 {
     [Constructible]
     public CelestialIngot(int amount = 1) : base(CraftResource.Celestial, amount) { }
+}
+
+// -- Granite classes (cc-P36 Part A, F1) ----------------------------------------
+//
+// Pinned Mining.GetResourceType hands a GM miner with stone mining on resource.Types[1], 10% of the time
+// (patches/Mining.cs:284-288, unchanged from pinned). These ores had one type each, so that roll threw
+// IndexOutOfRangeException inside the harvest timer. Every stock colored ore has a matching granite as Types[1]
+// (pinned Mining.cs:115-187), so these follow it; Masonry takes each at its metal's tier, as stock's granites
+// (DefMasonry.cs:139-147) sit at their ores' requirements (ClusterFMiningExtension.ExtendMasonrySubResources).
+
+[SerializationGenerator(0, false)]
+public partial class PlatinumGranite : BaseGranite
+{
+    [Constructible]
+    public PlatinumGranite() : base(CraftResource.Platinum) { }
+}
+
+[SerializationGenerator(0, false)]
+public partial class ToxicGranite : BaseGranite
+{
+    [Constructible]
+    public ToxicGranite() : base(CraftResource.Toxic) { }
+}
+
+[SerializationGenerator(0, false)]
+public partial class BlazeGranite : BaseGranite
+{
+    [Constructible]
+    public BlazeGranite() : base(CraftResource.Blaze) { }
+}
+
+[SerializationGenerator(0, false)]
+public partial class FrostGranite : BaseGranite
+{
+    [Constructible]
+    public FrostGranite() : base(CraftResource.Frost) { }
+}
+
+[SerializationGenerator(0, false)]
+public partial class ObsidianGranite : BaseGranite
+{
+    [Constructible]
+    public ObsidianGranite() : base(CraftResource.Obsidian) { }
+}
+
+[SerializationGenerator(0, false)]
+public partial class MythrilGranite : BaseGranite
+{
+    [Constructible]
+    public MythrilGranite() : base(CraftResource.Mythril) { }
+}
+
+[SerializationGenerator(0, false)]
+public partial class AdamantiumGranite : BaseGranite
+{
+    [Constructible]
+    public AdamantiumGranite() : base(CraftResource.Adamantium) { }
+}
+
+[SerializationGenerator(0, false)]
+public partial class CelestialGranite : BaseGranite
+{
+    [Constructible]
+    public CelestialGranite() : base(CraftResource.Celestial) { }
 }

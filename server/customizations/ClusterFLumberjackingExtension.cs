@@ -10,21 +10,21 @@ using Server.Mobiles;
 namespace Server.Engines.Harvest;
 
 /// <summary>
-/// Shattered Legacy — Lumberjacking extension.
+/// Shattered Legacy - Lumberjacking extension.
 ///
-/// Registers extended lumber veins (Ironwood through Starwood, Tiers 308–315) into the
+/// Registers extended lumber veins (Ironwood through Starwood, Tiers 308-315) into the
 /// existing Lumberjacking harvest definition, and adds the matching board types to the
 /// Carpentry craft sub-resource list.
 ///
 /// Also overrides Lumberjacking.Give() to implement the wood discovery gate:
-///   - First chop of an extended log → record Discovered, substitute a regular Log,
+///   - First chop of an extended log -> record Discovered, substitute a regular Log,
 ///     show a guidance message pointing the player to the Foresters' Guildmaster.
-///   - After the player reports at the Guildmaster (Discovered → Reported) the real
+///   - After the player reports at the Guildmaster (Discovered -> Reported) the real
 ///     extended log is delivered normally.
 ///
 /// Startup timing mirrors ClusterFMiningExtension:
-///   Configure() → EventSink.WorldLoad  — extend veins (Lumberjacking.System available)
-///   Configure() → EventSink.ServerStarted — extend Carpentry sub-resources (after
+///   Configure() -> EventSink.WorldLoad  - extend veins (Lumberjacking.System available)
+///   Configure() -> EventSink.ServerStarted - extend Carpentry sub-resources (after
 ///                                           DefCarpentry.Initialize())
 /// </summary>
 public partial class Lumberjacking
@@ -43,7 +43,7 @@ public partial class Lumberjacking
     };
 
     // Vanilla log types tracked for the logbook (not gated, auto-Reported on first find).
-    // Regular Log is now included as the baseline wood — its TotalChopped is tracked
+    // Regular Log is now included as the baseline wood - its TotalChopped is tracked
     // for the logbook even though it requires no reporting.
     private static readonly Dictionary<Type, string> _vanillaLogDiscoveryKeys = new()
     {
@@ -54,6 +54,7 @@ public partial class Lumberjacking
         { typeof(HeartwoodLog), "Heartwood"   },
         { typeof(BloodwoodLog), "Bloodwood"   },
         { typeof(FrostwoodLog), "Frostwood"   },
+        { typeof(RootwoodLog),  "Rootwood"    }, // cc-P36: the dungeon's starter wood; logged like the OSI woods, never gated
     };
 
     public override bool Give(Mobile m, Item item, bool placeAtFeet)
@@ -86,7 +87,7 @@ public partial class Lumberjacking
             if (!wasAlreadyKnown && m is PlayerMobile pmMsg)
             {
                 pmMsg.SendMessage(0x44,
-                    "The bark crumbles before you can properly process it — you don't " +
+                    "The bark crumbles before you can properly process it - you don't " +
                     "recognise this timber. Bring your discovery notes to the Foresters' " +
                     "Guildmaster to learn how to work it.");
             }
@@ -96,11 +97,11 @@ public partial class Lumberjacking
         if (TryRouteToSatchel(m, item))
             return true;
 
-        // Fall back to vanilla behaviour (backpack → feet).
+        // Fall back to vanilla behaviour (backpack -> feet).
         return base.Give(m, item, placeAtFeet);
     }
 
-    // ── Lumber Satchel routing ────────────────────────────────────────────────
+    // -- Lumber Satchel routing ------------------------------------------------
 
     private static bool TryRouteToSatchel(Mobile m, Item item)
     {
@@ -110,7 +111,7 @@ public partial class Lumberjacking
         var satchel = m.Backpack.FindItemByType<Items.ForestersLumberSatchel>();
         if (satchel == null) return false;
 
-        // TryDropItem respects the satchel's CheckHold — returns false if full.
+        // TryDropItem respects the satchel's CheckHold - returns false if full.
         return satchel.TryDropItem(m, item, false);
     }
 
@@ -151,7 +152,7 @@ public partial class Lumberjacking
         var entry = new WoodDiscoveryEntry(woodKey) { TotalChopped = item.Amount };
         entry.AddLocation(facetName, regionName, m.Location).AmountChopped = item.Amount;
 
-        // Vanilla colored woods don't require reporting — mark Reported immediately.
+        // Vanilla colored woods don't require reporting - mark Reported immediately.
         if (isVanilla)
             entry.State = DiscoveryState.Reported;
 
@@ -160,13 +161,13 @@ public partial class Lumberjacking
         if (!isVanilla)
         {
             pm.SendMessage(0x59,
-                $"You've found a piece of unusual timber — {woodKey}. " +
+                $"You've found a piece of unusual timber - {woodKey}. " +
                 "Check your Forester's Logbook to report your discovery.");
         }
     }
 }
 
-// ── Static configure/extend wiring ───────────────────────────────────────────
+// -- Static configure/extend wiring -------------------------------------------
 
 public static class ClusterFLumberjackingExtension
 {
@@ -185,7 +186,7 @@ public static class ClusterFLumberjackingExtension
     {
         ExtendCarpentrySubResources();
         ExtendFletchingSubResources();
-        // NOTE: Extended log/board equivalence pairs (IronwoodLog↔IronwoodBoard etc.) are
+        // NOTE: Extended log/board equivalence pairs (IronwoodLog<->IronwoodBoard etc.) are
         // registered directly in CraftItem.cs m_TypesTable because that field is initonly
         // and cannot be patched via reflection in .NET 10.  See the "Shattered Legacy"
         // comment block in CraftItem.cs.
@@ -222,7 +223,7 @@ public static class ClusterFLumberjackingExtension
     /// </summary>
     public static int ApplyExtendedVeins(HarvestDefinition def)
     {
-        // Reuse frostwood message cliloc (1072546) — "You chop some frostwood logs."
+        // Reuse frostwood message cliloc (1072546) - "You chop some frostwood logs."
         // Generic enough for any rare timber; exact text doesn't matter since the gate
         // intercepts extended logs before the player sees them until reported.
         var extResources = new HarvestResource[]
@@ -280,7 +281,7 @@ public static class ClusterFLumberjackingExtension
 
     /// <summary>
     /// Appends extended board types to DefCarpentry.CraftSystem sub-resources.
-    /// Must run after DefCarpentry.Initialize() — called from ServerStarted.
+    /// Must run after DefCarpentry.Initialize() - called from ServerStarted.
     /// cc-P67 A (F-28 item 3): each wood needs its tier (ClusterFWoodTiers, Ironwood 100 .. Starwood 200); all 100 until then.
     /// Generic name and message as stock's woods (DefCarpentry.cs:601-607): 1044041 and 1072652 "You cannot work this strange
     /// and unusual wood." (they were the ingots' 1044036 and 1044268, so a carpenter below a wood read "... metal.").
@@ -290,7 +291,7 @@ public static class ClusterFLumberjackingExtension
         var carpentry = DefCarpentry.CraftSystem;
         if (carpentry == null)
         {
-            Console.WriteLine("[ClusterFLumberjackingExtension] WARNING: DefCarpentry.CraftSystem is null — extended sub-resources not registered.");
+            Console.WriteLine("[ClusterFLumberjackingExtension] WARNING: DefCarpentry.CraftSystem is null - extended sub-resources not registered.");
             return;
         }
 
@@ -303,7 +304,11 @@ public static class ClusterFLumberjackingExtension
         carpentry.AddSubRes(typeof(VoidwoodBoard),   "Voidwood",   ClusterFWoodTiers.Voidwood, 1044041, 1072652);
         carpentry.AddSubRes(typeof(StarwoodBoard),   "Starwood",   ClusterFWoodTiers.Starwood, 1044041, 1072652);
 
-        Console.WriteLine("[ClusterFLumberjackingExtension] Carpentry sub-resources registered: Ironwood through Starwood.");
+        // cc-P36: the starter wood, appended last because the menu remembers a material by its index
+        // (CraftContext.LastResourceIndex); before Oak it would shift every saved choice.
+        carpentry.AddSubRes(typeof(RootwoodBoard),   "Rootwood",   ClusterFWoodTiers.Rootwood, 1044041, 1072652);
+
+        Console.WriteLine("[ClusterFLumberjackingExtension] Carpentry sub-resources registered: Ironwood through Starwood, and Rootwood.");
     }
 
     /// <summary>
@@ -311,7 +316,7 @@ public static class ClusterFLumberjackingExtension
     /// Fixes the bug where Log subclasses (IronwoodLog etc.) are counted as
     /// valid ingredients by the craft system but aren't in the sub-resource
     /// picker, which breaks the default Log entry in the fletching menu.
-    /// Must run after DefBowFletching.Initialize() — called from ServerStarted.
+    /// Must run after DefBowFletching.Initialize() - called from ServerStarted.
     /// cc-P67 A (F-28 item 3): the same tiers as Carpentry (ClusterFWoodTiers).
     /// </summary>
     private static void ExtendFletchingSubResources()
@@ -319,7 +324,7 @@ public static class ClusterFLumberjackingExtension
         var fletching = DefBowFletching.CraftSystem;
         if (fletching == null)
         {
-            Console.WriteLine("[ClusterFLumberjackingExtension] WARNING: DefBowFletching.CraftSystem is null — extended fletching sub-resources not registered.");
+            Console.WriteLine("[ClusterFLumberjackingExtension] WARNING: DefBowFletching.CraftSystem is null - extended fletching sub-resources not registered.");
             return;
         }
 
@@ -331,7 +336,8 @@ public static class ClusterFLumberjackingExtension
         fletching.AddSubRes(typeof(RunewoodLog),   "Runewood",   ClusterFWoodTiers.Runewood, 1044041, 1072652);
         fletching.AddSubRes(typeof(VoidwoodLog),   "Voidwood",   ClusterFWoodTiers.Voidwood, 1044041, 1072652);
         fletching.AddSubRes(typeof(StarwoodLog),   "Starwood",   ClusterFWoodTiers.Starwood, 1044041, 1072652);
+        fletching.AddSubRes(typeof(RootwoodLog),   "Rootwood",   ClusterFWoodTiers.Rootwood, 1044041, 1072652); // cc-P36, last
 
-        Console.WriteLine("[ClusterFLumberjackingExtension] Fletching sub-resources registered: Ironwood through Starwood.");
+        Console.WriteLine("[ClusterFLumberjackingExtension] Fletching sub-resources registered: Ironwood through Starwood, and Rootwood.");
     }
 }

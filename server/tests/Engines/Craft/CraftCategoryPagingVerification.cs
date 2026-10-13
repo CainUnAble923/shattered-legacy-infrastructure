@@ -380,9 +380,11 @@ public class CraftCategoryPagingVerification
         ]);
         AssertStock("Masonry", DefMasonry.CraftSystem.CraftSubRes, "Normal", Ingots("Normal"));
 
-        // Ours are untouched and still last.
-        Assert.Equal("Celestial", DefBlacksmithy.CraftSystem.CraftSubRes[^1].Name.String);
-        Assert.Equal("Starwood", DefCarpentry.CraftSystem.CraftSubRes[^1].Name.String);
+        // Ours are untouched and still last; cc-P36 appended its starter materials after them.
+        Assert.Equal("Celestial", DefBlacksmithy.CraftSystem.CraftSubRes[^2].Name.String);
+        Assert.Equal("Dawnstone", DefBlacksmithy.CraftSystem.CraftSubRes[^1].Name.String);
+        Assert.Equal("Starwood", DefCarpentry.CraftSystem.CraftSubRes[^2].Name.String);
+        Assert.Equal("Rootwood", DefCarpentry.CraftSystem.CraftSubRes[^1].Name.String);
 
         // No system that has no materials gained any.
         foreach (var (name, system) in Systems())

@@ -1,6 +1,6 @@
 --- a/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
 +++ b/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
-@@ -74,6 +74,15 @@
+@@ -74,6 +74,18 @@
                  [typeof(OakLog), typeof(OakBoard)],
                  [typeof(AshLog), typeof(AshBoard)],
                  [typeof(YewLog), typeof(YewBoard)],
@@ -13,10 +13,13 @@
 +                [typeof(RunewoodLog), typeof(RunewoodBoard)],
 +                [typeof(VoidwoodLog), typeof(VoidwoodBoard)],
 +                [typeof(StarwoodLog), typeof(StarwoodBoard)],
++                // cc-P36: the New Haven dungeon's starter wood and leather
++                [typeof(RootwoodLog), typeof(RootwoodBoard)],
++                [typeof(BurrowhideLeather), typeof(BurrowhideHides)],
                  [typeof(Leather), typeof(Hides)],
                  [typeof(SpinedLeather), typeof(SpinedHides)],
                  [typeof(HornedLeather), typeof(HornedHides)],
-@@ -589,6 +598,10 @@
+@@ -589,6 +601,10 @@
                  return false;
              }
  
@@ -27,7 +30,7 @@
              if (NeedHeat && !Find(from, m_HeatSources))
              {
                  message = 1044487; // You must be near a fire source to cook.
-@@ -649,7 +662,7 @@
+@@ -649,7 +665,7 @@
                  // For stackable items that can be crafted more than one at a time
                  if (UseAllRes)
                  {
@@ -36,7 +39,7 @@
                      tempAmount /= amounts[i];
                      if (tempAmount < maxAmount)
                      {
-@@ -862,6 +875,13 @@
+@@ -862,6 +878,13 @@
              out bool allRequiredSkills
          )
          {
@@ -50,7 +53,7 @@
              var minMainSkill = 0.0;
              var maxMainSkill = 0.0;
              var valMainSkill = 0.0;
-@@ -890,7 +910,8 @@
+@@ -890,7 +913,8 @@
  
                  if (gainSkills) // This is a passive check. Success chance is entirely dependant on the main skill
                  {
@@ -60,7 +63,7 @@
                  }
              }
  
-@@ -916,21 +937,25 @@
+@@ -916,21 +940,25 @@
              if (!from.BeginAction<CraftSystem>())
              {
                  from.SendLocalizedMessage(500119); // You must wait to perform another action
@@ -95,7 +98,7 @@
                  return;
              }
  
-@@ -943,7 +968,7 @@
+@@ -943,7 +971,7 @@
                  {
                      from.SendAsciiMessage("You lack the required skill to craft this item.");
                  }
@@ -104,7 +107,7 @@
                  {
                      from.SendGump(
                          new CraftGump(
-@@ -961,14 +986,17 @@
+@@ -961,14 +989,17 @@
              if (Recipe != null && (from as PlayerMobile)?.HasRecipe(Recipe) == false)
              {
                  from.EndAction<CraftSystem>();
@@ -130,7 +133,7 @@
                  return;
              }
  
-@@ -977,7 +1005,10 @@
+@@ -977,7 +1008,10 @@
              if (badCraft > 0)
              {
                  from.EndAction<CraftSystem>();
@@ -142,7 +145,7 @@
                  return;
              }
  
-@@ -988,7 +1019,10 @@
+@@ -988,7 +1022,10 @@
              if (!ConsumeRes(from, typeRes, craftSystem, ref resHue, ref maxAmount, ConsumeType.None, ref message))
              {
                  from.EndAction<CraftSystem>();
@@ -154,7 +157,7 @@
                  return;
              }
  
-@@ -997,7 +1031,10 @@
+@@ -997,7 +1034,10 @@
              if (!ConsumeAttributes(from, ref message, false))
              {
                  from.EndAction<CraftSystem>();
@@ -166,7 +169,7 @@
                  return;
              }
  
-@@ -1318,7 +1355,10 @@
+@@ -1318,7 +1358,10 @@
  
              if (badCraft > 0)
              {
@@ -178,7 +181,7 @@
                  {
                      ShowCraftMenu(from, craftSystem, tool, badCraft);
                  }
-@@ -1347,7 +1387,10 @@
+@@ -1347,7 +1390,10 @@
              // Not enough resource to craft it
              if (!(consumeRes && ConsumeAttributes(from, ref checkMessage, false)))
              {
@@ -190,7 +193,7 @@
                  {
                      ShowCraftMenu(from, craftSystem, tool, checkMessage);
                  }
-@@ -1387,7 +1430,10 @@
+@@ -1387,7 +1433,10 @@
                  // Not enough resource to craft it
                  if (!(consumeRes && ConsumeAttributes(from, ref message, true)))
                  {
@@ -202,7 +205,7 @@
                      {
                          ShowCraftMenu(from, craftSystem, tool, message);
                      }
-@@ -1423,6 +1469,12 @@
+@@ -1423,6 +1472,12 @@
                          }
                      }
  
@@ -215,7 +218,7 @@
                      if (tool.UsesRemaining < 1 && tool.BreakOnDepletion)
                      {
                          toolBroken = true;
-@@ -1477,6 +1529,29 @@
+@@ -1477,6 +1532,29 @@
  
                      from.AddToBackpack(item);
  
@@ -245,7 +248,7 @@
                      if (from.AccessLevel > AccessLevel.Player)
                      {
                          CommandLogging.WriteLine(
-@@ -1546,6 +1621,10 @@
+@@ -1546,6 +1624,10 @@
                          )
                      );
                  }
@@ -256,7 +259,7 @@
                  else if (tool?.Deleted == false && tool.UsesRemaining > 0)
                  {
                      if (T2ACraftSystem.Enabled)
-@@ -1571,7 +1650,10 @@
+@@ -1571,7 +1653,10 @@
  
              if (!allRequiredSkills)
              {
@@ -268,7 +271,7 @@
                  {
                      from.SendAsciiMessage("You lack the required skill to craft this item.");
                  }
-@@ -1587,7 +1669,10 @@
+@@ -1587,7 +1672,10 @@
              // Not enough resource to craft it
              if (!ConsumeRes(from, typeRes, craftSystem, ref resHue, ref maxAmount, consumeType, ref message, true))
              {
@@ -280,7 +283,7 @@
                  {
                      ShowCraftMenu(from, craftSystem, tool, message);
                  }
-@@ -1624,7 +1709,11 @@
+@@ -1624,7 +1712,11 @@
              // SkillCheck failed.
              num = craftSystem.PlayEndingEffect(from, true, true, toolBroken, endquality, false, this);
  
@@ -293,7 +296,7 @@
              {
                  ShowCraftMenu(from, craftSystem, tool, num);
              }
-@@ -1880,7 +1969,10 @@
+@@ -1880,7 +1972,10 @@
  
                  if (badCraft > 0)
                  {
@@ -305,7 +308,7 @@
                      {
                          ShowCraftMenu(m_From, m_CraftSystem, m_Tool, badCraft);
                      }
-@@ -1932,8 +2024,10 @@
+@@ -1932,8 +2027,10 @@
                  }
  
                  // T2A menus always prompt for maker's mark (no auto-mark/don't-mark options)

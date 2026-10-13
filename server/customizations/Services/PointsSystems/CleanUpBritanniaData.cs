@@ -325,6 +325,11 @@ public class CleanUpBritanniaData : PointsSystem
         >= CraftResource.Platinum and <= CraftResource.Celestial => ExtendedValue(resource),
         >= CraftResource.Ironwood and <= CraftResource.Starwood  => ExtendedValue(resource),
 
+        // cc-P36: the New Haven dungeon's starter materials are not Clean Up Britannia turn-ins (their ores, ingots, hides,
+        // leather, logs and boards earn nothing), so what is made from them earns nothing either. The .1 below would let
+        // free dungeon ore out-earn itself (CleanUpBritanniaPointsVerification's invariant).
+        CraftResource.Dawnstone or CraftResource.BurrowhideLeather or CraftResource.Rootwood => 0,
+
         _ => .1
     };
 

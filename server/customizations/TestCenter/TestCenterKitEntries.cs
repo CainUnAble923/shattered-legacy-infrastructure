@@ -53,5 +53,14 @@ public static class TestCenterKitEntries
         TestCenterKit.Register(() => new RunewoodBoard(), 5000);
         TestCenterKit.Register(() => new VoidwoodBoard(), 5000);
         TestCenterKit.Register(() => new StarwoodBoard(), 5000);
+
+        // ClusterFStarterResources.cs (cc-P36): the New Haven dungeon's four starter resources
+        TestCenterKit.Register(() => new DawnstoneOre(), 1000);
+        TestCenterKit.Register(() => new DawnstoneIngot(), 5000);
+        TestCenterKit.Register(() => new BurrowhideHides(), 1000);
+        TestCenterKit.Register(() => new BurrowhideLeather(), 5000);
+        TestCenterKit.Register(() => new RootwoodLog(), 1000);
+        TestCenterKit.Register(() => new RootwoodBoard(), 5000);
+        TestCenterKit.Register(() => new GloomsilkCloth(), 1000);
     }
 }

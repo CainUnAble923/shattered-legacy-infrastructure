@@ -26,10 +26,17 @@ namespace Server.Items
         Adamantium,
         Celestial,
 
+        // cc-P36: the New Haven dungeon's STARTER metal (45 Mining and Blacksmithy). Appended because values are saved as
+        // ints; it is not post-Valorite and never counts as one (ClusterFMetalTiers.IsPostValorite).
+        Dawnstone,
+
         RegularLeather = 101,
         SpinedLeather,
         HornedLeather,
         BarbedLeather,
+
+        // cc-P36: the New Haven dungeon's starter leather (45 Tailoring).
+        BurrowhideLeather,
 
         RedScales = 201,
         YellowScales,
@@ -46,7 +53,7 @@ namespace Server.Items
         Bloodwood,
         Frostwood,
 
-        // Shattered Legacy extended lumber (308–315)
+        // Shattered Legacy extended lumber (308-315)
         Ironwood,
         Ghostwood,
         Emberbark,
@@ -54,7 +61,11 @@ namespace Server.Items
         Shadowbark,
         Runewood,
         Voidwood,
-        Starwood
+        Starwood,
+
+        // cc-P36: the New Haven dungeon's starter wood (45 Lumberjacking, Carpentry and Fletching). Cosmetic, like the
+        // eight above: no bow bonus until the BaseRanged batch (decisions file item 12).
+        Rootwood
     }
 
     public enum CraftResourceType
@@ -76,6 +87,9 @@ namespace Server.Items
 
         // Shattered Legacy extended ores
         public static readonly CraftAttributeInfo Platinum, Toxic, Blaze, Frost, Obsidian, Mythril, Adamantium, Celestial;
+
+        // cc-P36 starter resources (Rootwood is hue-only, like the extended lumber)
+        public static readonly CraftAttributeInfo Dawnstone, Burrowhide, Rootwood;
 
         // Shattered Legacy extended lumber
         public static readonly CraftAttributeInfo Ironwood, Ghostwood, Emberbark, Frostbark, Shadowbark, Runewood, Voidwood, Starwood;
@@ -257,9 +271,9 @@ namespace Server.Items
                 valorite.RunicMaxIntensity = 100;
             }
 
-            // ── Shattered Legacy extended ores ────────────────────────────
+            // -- Shattered Legacy extended ores ----------------------------
 
-            // Platinum (T10) — Hardened silver ore. Physical + cold, enhanced durability.
+            // Platinum (T10) - Hardened silver ore. Physical + cold, enhanced durability.
             var platinum = Platinum = new CraftAttributeInfo();
             platinum.ArmorPhysicalResist = 5;
             platinum.ArmorColdResist     = 4;
@@ -273,7 +287,7 @@ namespace Server.Items
             platinum.RunicMinIntensity   = 88;
             platinum.RunicMaxIntensity   = 100;
 
-            // Toxic (T11) — Corroded ore suffused with poison. Poison focus.
+            // Toxic (T11) - Corroded ore suffused with poison. Poison focus.
             var toxic = Toxic = new CraftAttributeInfo();
             toxic.ArmorPhysicalResist = 4;
             toxic.ArmorPoisonResist   = 7;
@@ -287,7 +301,7 @@ namespace Server.Items
             toxic.RunicMinIntensity   = 88;
             toxic.RunicMaxIntensity   = 100;
 
-            // Blaze (T12) — Fire-infused volcanic ore. Fire and energy focus.
+            // Blaze (T12) - Fire-infused volcanic ore. Fire and energy focus.
             var blaze = Blaze = new CraftAttributeInfo();
             blaze.ArmorPhysicalResist = 4;
             blaze.ArmorFireResist     = 6;
@@ -302,7 +316,7 @@ namespace Server.Items
             blaze.RunicMinIntensity   = 88;
             blaze.RunicMaxIntensity   = 100;
 
-            // Frost (T13) — Glacial ore from deep frozen veins. Cold focus, fire penalty.
+            // Frost (T13) - Glacial ore from deep frozen veins. Cold focus, fire penalty.
             var frost = Frost = new CraftAttributeInfo();
             frost.ArmorPhysicalResist = 4;
             frost.ArmorFireResist     = -2;
@@ -316,7 +330,7 @@ namespace Server.Items
             frost.RunicMinIntensity   = 90;
             frost.RunicMaxIntensity   = 100;
 
-            // Obsidian (T14) — Volcanic glass ore. Superior physical resistance and durability.
+            // Obsidian (T14) - Volcanic glass ore. Superior physical resistance and durability.
             var obsidian = Obsidian = new CraftAttributeInfo();
             obsidian.ArmorPhysicalResist = 6;
             obsidian.ArmorFireResist     = 4;
@@ -331,7 +345,7 @@ namespace Server.Items
             obsidian.RunicMinIntensity   = 90;
             obsidian.RunicMaxIntensity   = 100;
 
-            // Mythril (T15) — Magical ore attuned to energy and the arcane. Energy focus + luck.
+            // Mythril (T15) - Magical ore attuned to energy and the arcane. Energy focus + luck.
             var mythril = Mythril = new CraftAttributeInfo();
             mythril.ArmorPhysicalResist = 4;
             mythril.ArmorFireResist     = 3;
@@ -347,7 +361,7 @@ namespace Server.Items
             mythril.RunicMinIntensity   = 90;
             mythril.RunicMaxIntensity   = 100;
 
-            // Adamantium (T16) — Nearly indestructible ore. Physical focus with massive durability.
+            // Adamantium (T16) - Nearly indestructible ore. Physical focus with massive durability.
             var adamantium = Adamantium = new CraftAttributeInfo();
             adamantium.ArmorPhysicalResist = 7;
             adamantium.ArmorFireResist     = 3;
@@ -363,7 +377,7 @@ namespace Server.Items
             adamantium.RunicMinIntensity   = 92;
             adamantium.RunicMaxIntensity   = 100;
 
-            // Celestial (T17) — Divine ore of legend. All resists, all damage types, blessed luck.
+            // Celestial (T17) - Divine ore of legend. All resists, all damage types, blessed luck.
             var celestial = Celestial = new CraftAttributeInfo();
             celestial.ArmorPhysicalResist = 6;
             celestial.ArmorFireResist     = 5;
@@ -382,7 +396,16 @@ namespace Server.Items
             celestial.RunicMinIntensity   = 95;
             celestial.RunicMaxIntensity   = 100;
 
-            // ── Leather ───────────────────────────────────────────────────
+            // Dawnstone (cc-P36): about half of Dull Copper, the lowest stock tier (armour phys 6, durability 50, lower
+            // requirements 20; weapon durability 100, lower requirements 50). No runic numbers: no Dawnstone runic tools.
+            var dawnstone = Dawnstone = new CraftAttributeInfo();
+            dawnstone.ArmorPhysicalResist     = 3;
+            dawnstone.ArmorDurability         = 25;
+            dawnstone.ArmorLowerRequirements  = 10;
+            dawnstone.WeaponDurability        = 50;
+            dawnstone.WeaponLowerRequirements = 25;
+
+            // -- Leather ---------------------------------------------------
 
             var spined = Spined = new CraftAttributeInfo();
 
@@ -420,6 +443,11 @@ namespace Server.Items
                 horned.RunicMinIntensity = 30;
                 horned.RunicMaxIntensity = 70;
             }
+
+            // Burrowhide (cc-P36): about half of Spined (phys 5, luck 40). No runic numbers.
+            var burrowhide = Burrowhide = new CraftAttributeInfo();
+            burrowhide.ArmorPhysicalResist = 2;
+            burrowhide.ArmorLuck = 20;
 
             var barbed = Barbed = new CraftAttributeInfo();
 
@@ -485,7 +513,7 @@ namespace Server.Items
 
             var frostwood = Frostwood = new CraftAttributeInfo();
 
-            // Extended lumber — no attributes yet; hue only
+            // Extended lumber - no attributes yet; hue only
             var ironwood   = Ironwood   = new CraftAttributeInfo();
             var ghostwood  = Ghostwood  = new CraftAttributeInfo();
             var emberbark  = Emberbark  = new CraftAttributeInfo();
@@ -494,6 +522,7 @@ namespace Server.Items
             var runewood   = Runewood   = new CraftAttributeInfo();
             var voidwood   = Voidwood   = new CraftAttributeInfo();
             var starwood   = Starwood   = new CraftAttributeInfo();
+            var rootwood   = Rootwood   = new CraftAttributeInfo(); // cc-P36
         }
 
         public int WeaponFireDamage { get; set; }
@@ -671,7 +700,7 @@ namespace Server.Items
                 typeof(ValoriteGranite)
             ),
 
-            // ── Shattered Legacy extended ores ────────────────────────────────
+            // -- Shattered Legacy extended ores --------------------------------
             new(
                 0x0481, // Silver-grey
                 0,
@@ -679,7 +708,8 @@ namespace Server.Items
                 CraftAttributeInfo.Platinum,
                 CraftResource.Platinum,
                 typeof(PlatinumIngot),
-                typeof(PlatinumOre)
+                typeof(PlatinumOre),
+                typeof(PlatinumGranite) // cc-P36 F1
             ),
             new(
                 0x04F6, // Acid green
@@ -688,7 +718,8 @@ namespace Server.Items
                 CraftAttributeInfo.Toxic,
                 CraftResource.Toxic,
                 typeof(ToxicIngot),
-                typeof(ToxicOre)
+                typeof(ToxicOre),
+                typeof(ToxicGranite) // cc-P36 F1
             ),
             new(
                 0x0026, // Fire red
@@ -697,7 +728,8 @@ namespace Server.Items
                 CraftAttributeInfo.Blaze,
                 CraftResource.Blaze,
                 typeof(BlazeIngot),
-                typeof(BlazeOre)
+                typeof(BlazeOre),
+                typeof(BlazeGranite) // cc-P36 F1
             ),
             new(
                 0x076D, // Ice blue
@@ -706,7 +738,8 @@ namespace Server.Items
                 CraftAttributeInfo.Frost,
                 CraftResource.Frost,
                 typeof(FrostIngot),
-                typeof(FrostOre)
+                typeof(FrostOre),
+                typeof(FrostGranite) // cc-P36 F1
             ),
             new(
                 0x0455, // Near-black
@@ -715,7 +748,8 @@ namespace Server.Items
                 CraftAttributeInfo.Obsidian,
                 CraftResource.Obsidian,
                 typeof(ObsidianIngot),
-                typeof(ObsidianOre)
+                typeof(ObsidianOre),
+                typeof(ObsidianGranite) // cc-P36 F1
             ),
             new(
                 0x022C, // Violet-purple
@@ -724,7 +758,8 @@ namespace Server.Items
                 CraftAttributeInfo.Mythril,
                 CraftResource.Mythril,
                 typeof(MythrilIngot),
-                typeof(MythrilOre)
+                typeof(MythrilOre),
+                typeof(MythrilGranite) // cc-P36 F1
             ),
             new(
                 0x0413, // Dark charcoal
@@ -733,7 +768,8 @@ namespace Server.Items
                 CraftAttributeInfo.Adamantium,
                 CraftResource.Adamantium,
                 typeof(AdamantiumIngot),
-                typeof(AdamantiumOre)
+                typeof(AdamantiumOre),
+                typeof(AdamantiumGranite) // cc-P36 F1
             ),
             new(
                 0x08AF, // Radiant gold
@@ -742,7 +778,20 @@ namespace Server.Items
                 CraftAttributeInfo.Celestial,
                 CraftResource.Celestial,
                 typeof(CelestialIngot),
-                typeof(CelestialOre)
+                typeof(CelestialOre),
+                typeof(CelestialGranite) // cc-P36 F1
+            ),
+            // cc-P36: index 17 = Dawnstone - Iron. Must stay directly after Celestial (GetIndex is resource - start).
+            // Hue: the first of the cc-P36 candidates; Chase picks in a client (T-row).
+            new(
+                0x0A5B, // pale rose-gold
+                0,
+                "Dawnstone",
+                CraftAttributeInfo.Dawnstone,
+                CraftResource.Dawnstone,
+                typeof(DawnstoneIngot),
+                typeof(DawnstoneOre),
+                typeof(DawnstoneGranite)
             )
         };
 
@@ -835,6 +884,16 @@ namespace Server.Items
                 CraftResource.BarbedLeather,
                 typeof(BarbedLeather),
                 typeof(BarbedHides)
+            ),
+            // cc-P36: index 4 = BurrowhideLeather - RegularLeather. Hue: first cc-P36 candidate; Chase picks.
+            new(
+                0x071D, // earthy grey-brown
+                0,
+                "Burrowhide",
+                CraftAttributeInfo.Burrowhide,
+                CraftResource.BurrowhideLeather,
+                typeof(BurrowhideLeather),
+                typeof(BurrowhideHides)
             )
         };
 
@@ -875,6 +934,16 @@ namespace Server.Items
                 CraftResource.BarbedLeather,
                 typeof(BarbedLeather),
                 typeof(BarbedHides)
+            ),
+            // cc-P36: index 4 = BurrowhideLeather - RegularLeather. Hue: first cc-P36 candidate; Chase picks.
+            new(
+                0x071D, // earthy grey-brown
+                0,
+                "Burrowhide",
+                CraftAttributeInfo.Burrowhide,
+                CraftResource.BurrowhideLeather,
+                typeof(BurrowhideLeather),
+                typeof(BurrowhideHides)
             )
         };
 
@@ -944,7 +1013,7 @@ namespace Server.Items
                 typeof(FrostwoodBoard)
             ),
 
-            // ── Shattered Legacy extended lumber ────────────────────────────
+            // -- Shattered Legacy extended lumber ----------------------------
             new(
                 0x0966,
                 0,
@@ -1016,6 +1085,16 @@ namespace Server.Items
                 CraftResource.Starwood,
                 typeof(StarwoodLog),
                 typeof(StarwoodBoard)
+            ),
+            // cc-P36: index 15 = Rootwood - RegularWood. Hue: first cc-P36 candidate; Chase picks.
+            new(
+                0x0745, // dark red-brown
+                0,
+                "Rootwood",
+                CraftAttributeInfo.Rootwood,
+                CraftResource.Rootwood,
+                typeof(RootwoodLog),
+                typeof(RootwoodBoard)
             )
         };
 
@@ -1089,10 +1168,10 @@ namespace Server.Items
         public static CraftResourceType GetType(CraftResource resource) =>
             resource switch
             {
-                >= CraftResource.Iron and <= CraftResource.Celestial                => CraftResourceType.Metal,
-                >= CraftResource.RegularLeather and <= CraftResource.BarbedLeather => CraftResourceType.Leather,
+                >= CraftResource.Iron and <= CraftResource.Dawnstone                => CraftResourceType.Metal,
+                >= CraftResource.RegularLeather and <= CraftResource.BurrowhideLeather => CraftResourceType.Leather,
                 >= CraftResource.RedScales and <= CraftResource.BlueScales         => CraftResourceType.Scales,
-                >= CraftResource.RegularWood and <= CraftResource.Frostwood        => CraftResourceType.Wood,
+                >= CraftResource.RegularWood and <= CraftResource.Rootwood         => CraftResourceType.Wood, // cc-P36 F3: was <= Frostwood
                 _                                                                  => CraftResourceType.None
             };
 

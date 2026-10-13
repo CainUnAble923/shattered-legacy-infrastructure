@@ -26,6 +26,19 @@ public static class ClusterFMetalTiers
     public const double Adamantium = 187.5;
     public const double Celestial  = 200.0;
 
+    /// <summary>
+    /// cc-P36: the New Haven dungeon's STARTER metal, worked from 45 Blacksmithy and Tinkering and mined from 45 Mining. Its
+    /// enum value (18) sits after Celestial only because values are saved as ints; it is not post-Valorite. It has no
+    /// gain ceiling (it teaches as the stock metals do), no bulk-order material and no post-Valorite value anywhere.
+    /// </summary>
+    public const double Dawnstone  = 45.0;
+
+    /// <summary>
+    /// True for the eight metals after Valorite, Platinum .. Celestial, and nothing else. Dawnstone is never one (cc-P36):
+    /// use this, not a comparison with Valorite or Platinum, wherever "post-Valorite" is meant.
+    /// </summary>
+    public static bool IsPostValorite(CraftResource r) => r is >= CraftResource.Platinum and <= CraftResource.Celestial;
+
     /// <summary>Blacksmithy (Base) needed to work the metal: 0 for iron and the stock metals' own values below 100.</summary>
     public static double RequiredSkill(CraftResource r) => r switch
     {
@@ -45,13 +58,14 @@ public static class ClusterFMetalTiers
         CraftResource.Mythril    => Mythril,
         CraftResource.Adamantium => Adamantium,
         CraftResource.Celestial  => Celestial,
+        CraftResource.Dawnstone  => Dawnstone, // cc-P36: below 99, so the smelt patch's post-Valorite branch never takes it
         _                        => 0.0
     };
 
     /// <summary>
     /// cc-P61 Part A (D83, Chase 2026-10-05): the Blacksmithy a craft in this metal can teach up to, the next metal's
     /// requirement (Celestial, the last, to the cap: its own 200). 0 for iron and the stock metals, whose crafts teach
-    /// to the item's own maximum as stock (ClusterFCraftGain).
+    /// to the item's own maximum as stock (ClusterFCraftGain), and 0 for Dawnstone, which teaches as they do (cc-P36).
     /// </summary>
     public static double GainCeiling(CraftResource r) => r switch
     {

@@ -11,14 +11,14 @@ namespace Server;
 /// Gump for the Prospector's Logbook.
 ///
 /// Two views:
-///   Logbook     — scrollable HTML list of every ore discovery, all vein locations,
+///   Logbook     - scrollable HTML list of every ore discovery, all vein locations,
 ///                 first-found dates, region/facet, coordinates, amount mined.
 ///                 Reported veins shown in gold. Unreported count shown in footer.
 ///                 "Field Report" button opens the submission view if veins are pending.
 ///
-///   FieldReport — table of unreported veins with per-vein reward previews.
+///   FieldReport - table of unreported veins with per-vein reward previews.
 ///                 "Submit Field Report" does the same reward grant as visiting
-///                 Velara Thorne in person — standing, vouchers, and gold to bank.
+///                 Velara Thorne in person - standing, vouchers, and gold to bank.
 ///                 Remote submission is the primary quality-of-life use of the logbook.
 /// </summary>
 public class ProspectorsLogbookGump : Gump
@@ -32,9 +32,10 @@ public class ProspectorsLogbookGump : Gump
     private const int W = 540;
     private const int H = 510;
 
-    // Ore display order — standard tiers first, then extended.
+    // Ore display order - standard tiers first, then extended. cc-P36: Dawnstone, the dungeon's starter ore, first.
     private static readonly string[] OreOrder =
     {
+        "Dawnstone",
         "DullCopper", "ShadowIron", "Copper", "Bronze", "Gold",
         "Agapite", "Verite", "Valorite",
         "Platinum", "Toxic", "Blaze", "Frost",
@@ -44,6 +45,7 @@ public class ProspectorsLogbookGump : Gump
     // Ore display name and HTML color per ore key.
     private static readonly Dictionary<string, (string Name, string Color)> OreDisplay = new()
     {
+        { "Dawnstone",   ("Dawnstone",    "#E8B096") }, // cc-P36
         { "DullCopper",  ("Dull Copper",  "#A0522D") },
         { "ShadowIron",  ("Shadow Iron",  "#8899AA") },
         { "Copper",      ("Copper",       "#B87333") },
@@ -78,7 +80,7 @@ public class ProspectorsLogbookGump : Gump
         AddBackground(0, 0, W, H, 9270);
         AddAlphaRegion(6, 6, W - 12, H - 12);
 
-        // ── Header ────────────────────────────────────────────────────────────
+        // -- Header ------------------------------------------------------------
         AddLabel(W / 2 - 80, 12, 1154, "Prospector's Logbook");
         AddLabel(W / 2 - 60, 28, 999,  pm.Name);
         AddImageTiled(10, 48, W - 20, 2, 9304);
@@ -90,7 +92,7 @@ public class ProspectorsLogbookGump : Gump
         }
     }
 
-    // ── Logbook view ──────────────────────────────────────────────────────────
+    // -- Logbook view ----------------------------------------------------------
 
     private void DrawLogbook()
     {
@@ -100,16 +102,16 @@ public class ProspectorsLogbookGump : Gump
         {
             AddLabel(18, 62, 999,  "No ore discoveries recorded yet.");
             AddLabel(18, 80, 999,  "Mine colored ore to log your findings.");
-            AddLabel(18, 98, 0x22, "Iron is not tracked — only colored and rare ores.");
+            AddLabel(18, 98, 0x22, "Iron is not tracked - only colored and rare ores.");
         }
         else
         {
-            // Scrollable body: y=56, height=400 → ends at y=456
+            // Scrollable body: y=56, height=400 -> ends at y=456
             var html = BuildHtml(discoveries);
             AddHtml(10, 56, W - 20, 400, html, false, true);
         }
 
-        // ── Footer ────────────────────────────────────────────────────────────
+        // -- Footer ------------------------------------------------------------
         AddImageTiled(10, H - 46, W - 20, 2, 9304);
 
         var unreported   = SurveyArchivistGump.CountUnreportedVeins(_data);
@@ -126,7 +128,7 @@ public class ProspectorsLogbookGump : Gump
 
         if (unreported > 0)
         {
-            // "Field Report" button — left of X, shows pending count
+            // "Field Report" button - left of X, shows pending count
             AddButton(W - 200, H - 36, 4011, 4012, 10);
             AddLabel(W - 174,  H - 34, 1154, $"Field Report ({unreported})");
         }
@@ -157,7 +159,7 @@ public class ProspectorsLogbookGump : Gump
 
             sb.Append(
                 $"<BASEFONT COLOR={disp.Color}><B>{disp.Name}</B></BASEFONT>" +
-                $"<BASEFONT COLOR=#AAAAAA> — {entry.Locations.Count} vein{(entry.Locations.Count != 1 ? "s" : "")}, " +
+                $"<BASEFONT COLOR=#AAAAAA> - {entry.Locations.Count} vein{(entry.Locations.Count != 1 ? "s" : "")}, " +
                 $"{entry.TotalMined:N0} total mined{stateTag}</BASEFONT><BR>");
 
             // Location rows
@@ -166,7 +168,7 @@ public class ProspectorsLogbookGump : Gump
                 var dateStr  = loc.DiscoveredAt.ToString("yyyy-MM-dd");
                 var repColor = loc.Reported ? "#44AA44" : "#888888";
                 sb.Append(
-                    $"<BASEFONT COLOR={repColor}>  • {dateStr} | " +
+                    $"<BASEFONT COLOR={repColor}>  * {dateStr} | " +
                     $"{loc.RegionName}, {loc.FacetName} | " +
                     $"({loc.Location.X}, {loc.Location.Y}) | " +
                     $"{loc.AmountMined:N0} ore</BASEFONT><BR>");
@@ -176,7 +178,7 @@ public class ProspectorsLogbookGump : Gump
         return sb.ToString();
     }
 
-    // ── Field Report view ─────────────────────────────────────────────────────
+    // -- Field Report view -----------------------------------------------------
 
     private void DrawFieldReport()
     {
@@ -190,7 +192,7 @@ public class ProspectorsLogbookGump : Gump
         if (pending.Count == 0)
         {
             AddLabel(18, 82, 999, "All vein discoveries have been submitted.");
-            AddLabel(18, 100, 999, "Continue mining — every new deposit is reportable.");
+            AddLabel(18, 100, 999, "Continue mining - every new deposit is reportable.");
 
             // Footer
             AddImageTiled(10, H - 46, W - 20, 2, 9304);
@@ -245,7 +247,7 @@ public class ProspectorsLogbookGump : Gump
         AddLabel(18,  totY + 6, 1154, "Total:");
         AddLabel(270, totY + 6, 0x44, $"+{totStand} Standing");
         AddLabel(345, totY + 6, 0x44, $"+{totVouch} Vouchers");
-        AddLabel(420, totY + 6, 0x44, $"{totGold:N0}gp → Bank");
+        AddLabel(420, totY + 6, 0x44, $"{totGold:N0}gp -> Bank");
 
         // Submit button
         AddButton(18,     totY + 28, 4011, 4012, 30);
@@ -260,7 +262,7 @@ public class ProspectorsLogbookGump : Gump
         AddLabel(W - 28,  H - 34, 1154, "X");
     }
 
-    // ── Response ──────────────────────────────────────────────────────────────
+    // -- Response --------------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {

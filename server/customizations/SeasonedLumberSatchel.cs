@@ -8,7 +8,7 @@ using Server.Mobiles;
 namespace Server.Items;
 
 /// <summary>
-/// Shattered Legacy — Seasoned Lumber Satchel (Tier 2).
+/// Shattered Legacy - Seasoned Lumber Satchel (Tier 2).
 ///
 /// Upgrade from Foresters' Lumber Satchel (Tier 1) via the Foresters' Guildmaster.
 ///
@@ -16,20 +16,20 @@ namespace Server.Items;
 ///   - 55% weight reduction on contents
 ///   - 600-stone content capacity (270 effective after reduction)
 ///   - Accepts: same as T1 (all log and board types)
-///   - Blessed — not dropped on death
+///   - Blessed - not dropped on death
 ///
-/// Tier 2 Feature — Process All Logs:
+/// Tier 2 Feature - Process All Logs:
 ///   Right-click context menu "* Magically Chops Logs into Boards *" (cliloc 1158775, cc-P55 Part C).
 ///   Requires the player to have a hatchet or axe equipped (Layer.TwoHanded).
 ///   Converts all logs in the satchel to their matching board types at a 1:1 ratio.
 ///   Boards are placed back into the satchel first; overflow goes to backpack.
-///   The player does not need to be near a saw bench — this tier represents
+///   The player does not need to be near a saw bench - this tier represents
 ///   field-grade milling proficiency.
 /// </summary>
 [SerializationGenerator(0, false)]
 public partial class SeasonedLumberSatchel : ForestersLumberSatchel
 {
-    private const int TierHue = 0x0060; // forest green — matches Forester's Logbook
+    private const int TierHue = 0x0060; // forest green - matches Forester's Logbook
 
     protected override int TierWeightReductionPct => 80;   // 80% reduction
     protected override int TierMaxContentWeight    => 4000; // ~2,000 boards/logs
@@ -42,7 +42,7 @@ public partial class SeasonedLumberSatchel : ForestersLumberSatchel
         Name = "Seasoned Lumber Satchel";
     }
 
-    // ── Log → Board conversion map ────────────────────────────────────────────
+    // -- Log -> Board conversion map --------------------------------------------
 
     private static readonly Dictionary<Type, Func<Item>> _logToBoard = new()
     {
@@ -61,9 +61,10 @@ public partial class SeasonedLumberSatchel : ForestersLumberSatchel
         { typeof(RunewoodLog),   () => new RunewoodBoard()  },
         { typeof(VoidwoodLog),   () => new VoidwoodBoard()  },
         { typeof(StarwoodLog),   () => new StarwoodBoard()  },
+        { typeof(RootwoodLog),   () => new RootwoodBoard()  }, // cc-P36
     };
 
-    // ── Context menu ──────────────────────────────────────────────────────────
+    // -- Context menu ----------------------------------------------------------
 
     public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
     {
@@ -88,7 +89,7 @@ public partial class SeasonedLumberSatchel : ForestersLumberSatchel
         return m.FindItemOnLayer(Layer.TwoHanded) is BaseAxe;
     }
 
-    // ── Process All Logs ──────────────────────────────────────────────────────
+    // -- Process All Logs ------------------------------------------------------
 
     public void ProcessAllLogs(Mobile from)
     {
@@ -125,7 +126,7 @@ public partial class SeasonedLumberSatchel : ForestersLumberSatchel
         {
             if (!_logToBoard.TryGetValue(log.GetType(), out var factory))
             {
-                // Unknown log subtype — skip rather than silently lose it.
+                // Unknown log subtype - skip rather than silently lose it.
                 skipped++;
                 continue;
             }
@@ -150,7 +151,7 @@ public partial class SeasonedLumberSatchel : ForestersLumberSatchel
             from.SendMessage($"{skipped} log type(s) could not be processed and were left in the satchel.");
     }
 
-    // ── Context menu entry ────────────────────────────────────────────────────
+    // -- Context menu entry ----------------------------------------------------
 
     public sealed class ProcessAllLogsEntry : ContextMenuEntry
     {
@@ -171,7 +172,7 @@ public partial class SeasonedLumberSatchel : ForestersLumberSatchel
         }
     }
 
-    // ── Serialization (v0 — no custom fields) ─────────────────────────────────
+    // -- Serialization (v0 - no custom fields) ---------------------------------
 
     private void Deserialize(IGenericReader reader, int version) { }
 }

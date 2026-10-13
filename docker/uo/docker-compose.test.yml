@@ -43,7 +43,9 @@ services:
       # the upgraded engine publishes a save by renaming Saves, which a bind mount cannot be
       # (cc-P30 run 2b). It was server/lib/uo/modernuo/Saves-test until P37.
       - ${SERVER_PATH}/lib/uo/modernuo-test:/var/lib/uo/modernuo
-      - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
+      # cc-P36 (Q-063): the test shard can run a different client-data folder from live, so the move to
+      # 7.0.117.0 is tested before live follows. Unset, it falls back to live's folder as before.
+      - ${CLIENT_DATA_PATH_TEST:-${CLIENT_DATA_PATH}}:/var/lib/uo/client-data/classic-client:ro
     environment:
       TZ: ${TZ:-America/Chicago}
       # cc-P73: one of the three locks on the test account wipe (server/customizations/Misc/TestAccountWipe.cs).

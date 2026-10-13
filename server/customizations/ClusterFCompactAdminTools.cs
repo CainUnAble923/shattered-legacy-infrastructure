@@ -374,7 +374,7 @@ public static class ClusterFCompactAdminTools
     // -- [CompactSeedDiscoveries -----------------------------------------------
 
     [Usage("[CompactSeedDiscoveries [Discovered|Reported]")]
-    [Description("Seeds all 16 ore types into a targeted player's logbook. State defaults to Discovered (unreported). Use 'Reported' to skip straight to reported state.")]
+    [Description("Seeds all 16 ore types, and Dawnstone, into a targeted player's logbook. State defaults to Discovered (unreported). Use 'Reported' to skip straight to reported state.")]
     [ShardCommand(CommandCategory.DevTool)]
     private static void CompactSeedDiscoveries_OnCommand(CommandEventArgs e)
     {
@@ -388,9 +388,10 @@ public static class ClusterFCompactAdminTools
 
             var data = ClusterFAccountPersistence.GetOrCreate(acct);
 
-            // All 16 tracked ore keys in tier order
+            // All 16 tracked ore keys in tier order, and cc-P36's starter Dawnstone
             var oreKeys = new[]
             {
+                "Dawnstone",
                 "DullCopper", "ShadowIron", "Copper", "Bronze", "Gold",
                 "Agapite", "Verite", "Valorite",
                 "Platinum", "Toxic", "Blaze", "Frost",

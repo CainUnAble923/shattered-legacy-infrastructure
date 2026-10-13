@@ -67,6 +67,7 @@ public partial class SmithGuildSalvageBag : Bag
         CraftResource.Platinum or CraftResource.Toxic or CraftResource.Blaze or CraftResource.Frost
             or CraftResource.Obsidian or CraftResource.Mythril or CraftResource.Adamantium
             or CraftResource.Celestial => ClusterFMetalTiers.RequiredSkill(r),
+        CraftResource.Dawnstone   =>  ClusterFMetalTiers.Dawnstone, // cc-P36: its own 45, not iron's free pass
         _                         =>   0.0,  // Iron - no check
     };
 
@@ -75,7 +76,7 @@ public partial class SmithGuildSalvageBag : Bag
 
     private static int SealReward(CraftResource r) => r switch
     {
-        CraftResource.Iron                               => 1,
+        CraftResource.Iron or CraftResource.Dawnstone    => 1, // cc-P36: the starter metal pays iron's seal
         CraftResource.DullCopper or CraftResource.ShadowIron => 2,
         CraftResource.Copper     or CraftResource.Bronze     => 3,
         CraftResource.Gold       or CraftResource.Agapite    => 5,

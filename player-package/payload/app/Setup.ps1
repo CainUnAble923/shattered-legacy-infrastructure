@@ -23,11 +23,12 @@ $ErrorActionPreference = 'Stop'
 $app      = $PSScriptRoot
 $pathFile = Join-Path $app 'uo-path.txt'
 
-# The live shard's data auto-detects as 7.0.114.40 and clientVerification kicks anything
-# older (modernuo.json: clientVerification.enable True, invalidClientResponse Kick). EA's
-# installer is 7.0.24.0 until its launcher patches it, so an unpatched install connects
-# and is kicked 20 seconds later. Refuse it here, with the reason, instead.
-$minVersion = [version]'7.0.114.40'
+# The server's data is EA's 7.0.117.0 (cc-P36) and clientVerification kicks anything older
+# (modernuo.json: clientVerification.minRequired 7.0.117.0, invalidClientResponse Kick). EA's
+# installer is 7.0.24.0 until its launcher patches it, and an install patched before the
+# 117 release is 7.0.114.x, so either would connect and be kicked 20 seconds later. Refuse
+# it here, with the reason, instead. Ship this floor before the server enforces it.
+$minVersion = [version]'7.0.117.0'
 
 # Files TazUO cannot run without. A folder missing any of these is not a UO install.
 $required = @('client.exe','tiledata.mul','hues.mul','cliloc.enu',

@@ -10,7 +10,7 @@ using Server.Targeting;
 namespace Server.Items;
 
 /// <summary>
-/// Shattered Legacy — Compact Ore Satchel (Tier 1).
+/// Shattered Legacy - Compact Ore Satchel (Tier 1).
 ///
 /// A Miners' Compact logistics item issued to members.
 ///
@@ -19,18 +19,18 @@ namespace Server.Items;
 ///   - 400-stone content capacity (200 effective after reduction)
 ///   - Accepts: ore, ingots, granite, saltpeter
 ///   - Auto-routes newly mined ore via CompactOreSatchelRoutingHook (Mining.Give override)
-///   - Blessed — not dropped on death
+///   - Blessed - not dropped on death
 ///
 /// Acquisition:
 ///   Issued by the Compact Liaison when a member first joins the Compact.
 ///   Restorable via MinersCompactLiaisonGump (ReplaceKit view, 5 vouchers).
 ///
 /// Tier Progression (all inherit from this class):
-///   T1  Compact Ore Satchel        — issued on join, 50% reduction, 400 max
-///   T2  Reinforced Ore Satchel     — 55% reduction, 600 max  (ReinforcedOreSatchel.cs)
-///   T3  Surveyor's Ore Satchel     — 60% reduction, 800 max  (SurveyorsSatchel.cs)
-///   T4  Deepdelver's Ore Satchel   — 65% reduction, 1000 max (DeepdelversSatchel.cs)
-///   T5  Master Expedition Satchel  — 70% reduction, 1200 max (MasterExpeditionSatchel.cs)
+///   T1  Compact Ore Satchel        - issued on join, 50% reduction, 400 max
+///   T2  Reinforced Ore Satchel     - 55% reduction, 600 max  (ReinforcedOreSatchel.cs)
+///   T3  Surveyor's Ore Satchel     - 60% reduction, 800 max  (SurveyorsSatchel.cs)
+///   T4  Deepdelver's Ore Satchel   - 65% reduction, 1000 max (DeepdelversSatchel.cs)
+///   T5  Master Expedition Satchel  - 70% reduction, 1200 max (MasterExpeditionSatchel.cs)
 ///
 /// Each higher tier is obtained via upgrade at the Miners' Compact Liaison (Upgrade Satchel view).
 /// Upgrades consume the current tier satchel and pay vouchers + ingots + gold.
@@ -50,7 +50,7 @@ namespace Server.Items;
 [SerializationGenerator(0, false)]
 public partial class CompactOreSatchel : Container
 {
-    // ── Item type sets accepted by this satchel ───────────────────────────────
+    // -- Item type sets accepted by this satchel -------------------------------
 
     private static readonly Type[] _acceptedTypes =
     {
@@ -64,6 +64,9 @@ public partial class CompactOreSatchel : Container
         typeof(FrostOre), typeof(ObsidianOre), typeof(MythrilOre),
         typeof(AdamantiumOre), typeof(CelestialOre),
 
+        // cc-P36: the New Haven dungeon's starter ore
+        typeof(DawnstoneOre),
+
         // Smelted ingots (vanilla)
         typeof(IronIngot), typeof(DullCopperIngot), typeof(ShadowIronIngot),
         typeof(CopperIngot), typeof(BronzeIngot), typeof(GoldIngot),
@@ -74,17 +77,20 @@ public partial class CompactOreSatchel : Container
         typeof(FrostIngot), typeof(ObsidianIngot), typeof(MythrilIngot),
         typeof(AdamantiumIngot), typeof(CelestialIngot),
 
+        // cc-P36
+        typeof(DawnstoneIngot),
+
         // Mining bonus resources
         typeof(Granite),
     };
 
-    // ── Container configuration ───────────────────────────────────────────────
+    // -- Container configuration -----------------------------------------------
 
     private const int SatchelGraphic = 0xA272; // ore satchel art
 
     // Override in subclasses to change tier stats without duplicating logic.
     protected virtual int TierWeightReductionPct => 50;
-    protected virtual int TierMaxContentWeight    => 400; // before reduction → 200 stones effective
+    protected virtual int TierMaxContentWeight    => 400; // before reduction -> 200 stones effective
 
     // -- Tier hue (cc-P55 Part E) ----------------------------------------------
 
@@ -104,7 +110,7 @@ public partial class CompactOreSatchel : Container
     public override double DefaultWeight => 3.0;
     public override int DefaultMaxWeight => TierMaxContentWeight;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
+    // -- Constructor -----------------------------------------------------------
 
     [Constructible]
     public CompactOreSatchel() : base(SatchelGraphic)
@@ -114,7 +120,7 @@ public partial class CompactOreSatchel : Container
         LootType  = LootType.Blessed;
     }
 
-    // ── Weight reduction ──────────────────────────────────────────────────────
+    // -- Weight reduction ------------------------------------------------------
 
     public override int GetTotal(TotalType type)
     {
@@ -149,7 +155,7 @@ public partial class CompactOreSatchel : Container
         InvalidateCarrierWeight();
     }
 
-    // ── Item acceptance filter ─────────────────────────────────────────────────
+    // -- Item acceptance filter -------------------------------------------------
 
     /// <summary>Returns true if the item type is accepted by any Compact Ore Satchel.</summary>
     public static bool Accepts(Item item)
@@ -173,7 +179,7 @@ public partial class CompactOreSatchel : Container
         return base.CheckHold(m, item, message, checkItems, plusItems, plusWeight);
     }
 
-    // ── Properties display ────────────────────────────────────────────────────
+    // -- Properties display ----------------------------------------------------
 
     public override void GetProperties(IPropertyList list)
     {
@@ -324,7 +330,7 @@ public partial class CompactOreSatchel : Container
         }
     }
 
-    // ── Serialization (v0 — no custom fields) ─────────────────────────────────
+    // -- Serialization (v0 - no custom fields) ---------------------------------
 
     private void Deserialize(IGenericReader reader, int version) { }
 

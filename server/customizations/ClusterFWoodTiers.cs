@@ -25,7 +25,14 @@ public static class ClusterFWoodTiers
     public const double Voidwood   = 185.0;
     public const double Starwood   = 200.0;
 
-    /// <summary>Carpentry or Fletching (Base) needed to work the wood; 0 for anything that is not an extended wood.</summary>
+    /// <summary>
+    /// cc-P36: the New Haven dungeon's STARTER wood, 45 in Lumberjacking, Carpentry and Fletching. Kept out of the gain
+    /// chain above (GainCeiling 0): it teaches as the OSI woods do, to the item's own maximum. Its enum value (316) follows
+    /// Starwood only because values are saved as ints.
+    /// </summary>
+    public const double Rootwood   = 45.0;
+
+    /// <summary>Carpentry or Fletching (Base) needed to work the wood; 0 for the OSI woods (pinned keeps their numbers).</summary>
     public static double RequiredSkill(CraftResource r) => r switch
     {
         CraftResource.Ironwood   => Ironwood,
@@ -36,6 +43,7 @@ public static class ClusterFWoodTiers
         CraftResource.Runewood   => Runewood,
         CraftResource.Voidwood   => Voidwood,
         CraftResource.Starwood   => Starwood,
+        CraftResource.Rootwood   => Rootwood, // cc-P36
         _                        => 0.0
     };
 

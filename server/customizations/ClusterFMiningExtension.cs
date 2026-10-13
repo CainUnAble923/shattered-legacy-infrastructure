@@ -6,14 +6,14 @@ using Server.Items;
 namespace Server;
 
 /// <summary>
-/// Shattered Legacy — Mining extension.
+/// Shattered Legacy - Mining extension.
 ///
-/// Registers extended ore veins (Platinum through Celestial, Tiers 10–17) into the
+/// Registers extended ore veins (Platinum through Celestial, Tiers 10-17) into the
 /// existing Mining harvest definition, and adds the matching ingot types to the
 /// Blacksmithy craft sub-resource list.
 ///
 /// Startup timing:
-///   Configure() fires before World.Load() — we hook EventSink.WorldLoad here so
+///   Configure() fires before World.Load() - we hook EventSink.WorldLoad here so
 ///   the vein extension runs during world load (Mining.System is lazily initialized
 ///   and is always available).
 ///
@@ -25,7 +25,7 @@ namespace Server;
 /// Vein weight design:
 ///   Vanilla ore vein weights total 1000 (Iron 496 through Valorite 14).
 ///   Extended ores add 36 total weight, making the new pool 1036.
-///   Extended ore combined probability ≈ 3.5%; Celestial ≈ 0.1%.
+///   Extended ore combined probability ~ 3.5%; Celestial ~ 0.1%.
 ///   Each needs its metal's tier in Mining (ClusterFMetalTiers, cc-P57 Part C), as the stock colors need their own.
 ///
 /// Felucca yield (+100%):
@@ -40,22 +40,23 @@ public static class ClusterFMiningExtension
         EventSink.ServerStarted += OnServerStarted;
     }
 
-    // ── WorldLoad — extend Mining veins ──────────────────────────────────────
+    // -- WorldLoad - extend Mining veins --------------------------------------
 
     private static void OnWorldLoad()
     {
         ExtendMiningVeins();
     }
 
-    // ── ServerStarted — extend Blacksmithy (fires after DefBlacksmithy.Initialize) ──
+    // -- ServerStarted - extend Blacksmithy (fires after DefBlacksmithy.Initialize) --
 
     private static void OnServerStarted()
     {
         ExtendBlacksmithySubResources();
         ExtendTinkeringSubResources();
+        ExtendMasonrySubResources();
     }
 
-    // ── Mining vein extension ─────────────────────────────────────────────────
+    // -- Mining vein extension -------------------------------------------------
 
     /// <summary>
     /// Appends extended ore HarvestResources and HarvestVeins to Mining.System.OreAndStone.
@@ -69,14 +70,14 @@ public static class ClusterFMiningExtension
         var mining = Mining.System;
         if (mining == null)
         {
-            Console.WriteLine("[ClusterFMiningExtension] WARNING: Mining.System is null — extended veins not registered.");
+            Console.WriteLine("[ClusterFMiningExtension] WARNING: Mining.System is null - extended veins not registered.");
             return;
         }
 
         var def = mining.OreAndStone;
         if (def == null)
         {
-            Console.WriteLine("[ClusterFMiningExtension] WARNING: OreAndStone definition is null — extended veins not registered.");
+            Console.WriteLine("[ClusterFMiningExtension] WARNING: OreAndStone definition is null - extended veins not registered.");
             return;
         }
 
@@ -101,14 +102,14 @@ public static class ClusterFMiningExtension
         // Until cc-P57 every one of these needed 100 Mining.
         var extResources = new HarvestResource[]
         {
-            Ore(ClusterFMetalTiers.Platinum, typeof(PlatinumOre)),
-            Ore(ClusterFMetalTiers.Toxic, typeof(ToxicOre)),
-            Ore(ClusterFMetalTiers.Blaze, typeof(BlazeOre)),
-            Ore(ClusterFMetalTiers.Frost, typeof(FrostOre)),
-            Ore(ClusterFMetalTiers.Obsidian, typeof(ObsidianOre)),
-            Ore(ClusterFMetalTiers.Mythril, typeof(MythrilOre)),
-            Ore(ClusterFMetalTiers.Adamantium, typeof(AdamantiumOre)),
-            Ore(ClusterFMetalTiers.Celestial, typeof(CelestialOre))
+            Ore(ClusterFMetalTiers.Platinum, typeof(PlatinumOre), typeof(PlatinumGranite)),
+            Ore(ClusterFMetalTiers.Toxic, typeof(ToxicOre), typeof(ToxicGranite)),
+            Ore(ClusterFMetalTiers.Blaze, typeof(BlazeOre), typeof(BlazeGranite)),
+            Ore(ClusterFMetalTiers.Frost, typeof(FrostOre), typeof(FrostGranite)),
+            Ore(ClusterFMetalTiers.Obsidian, typeof(ObsidianOre), typeof(ObsidianGranite)),
+            Ore(ClusterFMetalTiers.Mythril, typeof(MythrilOre), typeof(MythrilGranite)),
+            Ore(ClusterFMetalTiers.Adamantium, typeof(AdamantiumOre), typeof(AdamantiumGranite)),
+            Ore(ClusterFMetalTiers.Celestial, typeof(CelestialOre), typeof(CelestialGranite))
         };
 
         // Combine existing resources with extended ones
@@ -143,7 +144,7 @@ public static class ClusterFMiningExtension
 
         // Permanent veins: disable random re-roll on respawn.
         // Each 8x8 bank cell's ore type is determined by a stable coordinate-based seed
-        // (x * 17 + y * 11 + mapID * 3) and never changes — not after respawn, not after
+        // (x * 17 + y * 11 + mapID * 3) and never changes - not after respawn, not after
         // a server restart. This ensures Tier 2 logbook travel always leads back to the
         // correct ore type at the recorded location.
         def.RandomizeVeins = false;
@@ -154,17 +155,19 @@ public static class ClusterFMiningExtension
     /// <summary>cc-P57 Part C: stock's pattern for a colored ore: required = the tier, window tier - 40 to tier + 40.</summary>
     public const double HarvestWindow = 40.0;
 
-    private static HarvestResource Ore(double tier, Type ore) =>
-        new(tier, tier - HarvestWindow, tier + HarvestWindow, 1007072, ore);
+    // cc-P36 Part A (F1): two types, ore and granite, as every stock colored ore (pinned Mining.cs:115-187). With one,
+    // GetResourceType's stone-mining roll (Types[1], patches/Mining.cs:284-288) threw IndexOutOfRange in the harvest timer.
+    private static HarvestResource Ore(double tier, Type ore, Type granite) =>
+        new(tier, tier - HarvestWindow, tier + HarvestWindow, 1007072, ore, granite);
 
-    // ── Blacksmithy sub-resource extension ────────────────────────────────────
+    // -- Blacksmithy sub-resource extension ------------------------------------
 
     /// <summary>
     /// Appends extended ingot types to DefBlacksmithy.CraftSystem sub-resources.
     ///
-    /// Must run after DefBlacksmithy.Initialize() — called from ServerStarted handler.
+    /// Must run after DefBlacksmithy.Initialize() - called from ServerStarted handler.
     ///
-    /// Uses string TextDefinition names (no cliloc required) — these display correctly
+    /// Uses string TextDefinition names (no cliloc required) - these display correctly
     /// in the craft menu dropdown since ModernUO's AddSubRes accepts TextDefinition.
     ///
     /// Skill requirements per extended ingot: ClusterFMetalTiers, even 12.5 steps from Platinum 112.5 to Celestial 200.0,
@@ -178,7 +181,7 @@ public static class ClusterFMiningExtension
         var smithy = DefBlacksmithy.CraftSystem;
         if (smithy == null)
         {
-            Console.WriteLine("[ClusterFMiningExtension] WARNING: DefBlacksmithy.CraftSystem is null — extended sub-resources not registered.");
+            Console.WriteLine("[ClusterFMiningExtension] WARNING: DefBlacksmithy.CraftSystem is null - extended sub-resources not registered.");
             return;
         }
 
@@ -191,7 +194,11 @@ public static class ClusterFMiningExtension
         smithy.AddSubRes(typeof(AdamantiumIngot), "Adamantium", ClusterFMetalTiers.Adamantium, 1044036, 1044268);
         smithy.AddSubRes(typeof(CelestialIngot),  "Celestial",  ClusterFMetalTiers.Celestial, 1044036, 1044268);
 
-        Console.WriteLine("[ClusterFMiningExtension] Blacksmithy sub-resources registered: Platinum through Celestial.");
+        // cc-P36: the starter metal, appended last because the craft menu remembers a material by its index
+        // (CraftContext.LastResourceIndex), so inserting it before Dull Copper would shift every saved choice.
+        smithy.AddSubRes(typeof(DawnstoneIngot),  "Dawnstone",  ClusterFMetalTiers.Dawnstone, 1044036, 1044268);
+
+        Console.WriteLine("[ClusterFMiningExtension] Blacksmithy sub-resources registered: Platinum through Celestial, and Dawnstone.");
     }
 
     /// <summary>
@@ -210,8 +217,11 @@ public static class ClusterFMiningExtension
             return;
         }
 
+        // cc-P36: Dawnstone, the first jewelry-tier metal (a later batch), on its own guard so a list that already holds the
+        // post-Valorite eight still gets it, and appended last for the same reason as Blacksmithy.
         if (tinkering.CraftSubRes.SearchFor(typeof(PlatinumIngot)) != null)
         {
+            AddDawnstoneTinkering(tinkering);
             return;
         }
 
@@ -223,7 +233,49 @@ public static class ClusterFMiningExtension
         tinkering.AddSubRes(typeof(MythrilIngot),    "Mythril",    ClusterFMetalTiers.Mythril, 1044036, 1044268);
         tinkering.AddSubRes(typeof(AdamantiumIngot), "Adamantium", ClusterFMetalTiers.Adamantium, 1044036, 1044268);
         tinkering.AddSubRes(typeof(CelestialIngot),  "Celestial",  ClusterFMetalTiers.Celestial, 1044036, 1044268);
+        AddDawnstoneTinkering(tinkering);
 
-        Console.WriteLine("[ClusterFMiningExtension] Tinkering sub-resources registered: Platinum through Celestial.");
+        Console.WriteLine("[ClusterFMiningExtension] Tinkering sub-resources registered: Platinum through Celestial, and Dawnstone.");
+    }
+
+    private static void AddDawnstoneTinkering(CraftSystem tinkering)
+    {
+        if (tinkering.CraftSubRes.SearchFor(typeof(DawnstoneIngot)) == null)
+        {
+            tinkering.AddSubRes(typeof(DawnstoneIngot), "Dawnstone", ClusterFMetalTiers.Dawnstone, 1044036, 1044268);
+        }
+    }
+
+    /// <summary>
+    /// cc-P36 Part A (F1): the granites a stone miner now gets from the post-Valorite veins and from Dawnstone, as Masonry
+    /// materials at their metal's tier, as stock's granites sit at their ores' requirements (pinned DefMasonry.cs:139-147,
+    /// Dull Copper 65 .. Valorite 99). Generic name 1044514 "granite" and message 1044527 as stock's colored granites.
+    /// Appended after Valorite Granite, so saved menu choices keep their index. Must run after DefMasonry.Initialize().
+    /// </summary>
+    public static void ExtendMasonrySubResources()
+    {
+        var masonry = DefMasonry.CraftSystem;
+        if (masonry == null)
+        {
+            Console.WriteLine("[ClusterFMiningExtension] WARNING: DefMasonry.CraftSystem is null; granite sub-resources not registered.");
+            return;
+        }
+
+        if (masonry.CraftSubRes.SearchFor(typeof(PlatinumGranite)) != null)
+        {
+            return;
+        }
+
+        masonry.AddSubRes(typeof(PlatinumGranite),   "Platinum",   ClusterFMetalTiers.Platinum, 1044514, 1044527);
+        masonry.AddSubRes(typeof(ToxicGranite),      "Toxic",      ClusterFMetalTiers.Toxic, 1044514, 1044527);
+        masonry.AddSubRes(typeof(BlazeGranite),      "Blaze",      ClusterFMetalTiers.Blaze, 1044514, 1044527);
+        masonry.AddSubRes(typeof(FrostGranite),      "Frost",      ClusterFMetalTiers.Frost, 1044514, 1044527);
+        masonry.AddSubRes(typeof(ObsidianGranite),   "Obsidian",   ClusterFMetalTiers.Obsidian, 1044514, 1044527);
+        masonry.AddSubRes(typeof(MythrilGranite),    "Mythril",    ClusterFMetalTiers.Mythril, 1044514, 1044527);
+        masonry.AddSubRes(typeof(AdamantiumGranite), "Adamantium", ClusterFMetalTiers.Adamantium, 1044514, 1044527);
+        masonry.AddSubRes(typeof(CelestialGranite),  "Celestial",  ClusterFMetalTiers.Celestial, 1044514, 1044527);
+        masonry.AddSubRes(typeof(DawnstoneGranite),  "Dawnstone",  ClusterFMetalTiers.Dawnstone, 1044514, 1044527);
+
+        Console.WriteLine("[ClusterFMiningExtension] Masonry sub-resources registered: Platinum through Celestial granite, and Dawnstone.");
     }
 }

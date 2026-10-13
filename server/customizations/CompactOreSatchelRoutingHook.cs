@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Server;
 using Server.Accounting;
 using Server.Items;
@@ -205,7 +206,15 @@ public partial class Mining
         { typeof(MythrilOre),     "Mythril"     },
         { typeof(AdamantiumOre),  "Adamantium"  },
         { typeof(CelestialOre),   "Celestial"   },
+        { typeof(DawnstoneOre),   "Dawnstone"   }, // cc-P36: logged, but never one of the Ore Bingo types (below)
     };
+
+    /// <summary>
+    /// cc-P36: the discoveries the Ore Bingo achievements count. Both are counts of discovered types (8 standard, 16 all,
+    /// ClusterFAchievements "collection.ore_standard"/"ore_full"), so Dawnstone, the dungeon's starter ore, must not stand
+    /// in for one of the sixteen.
+    /// </summary>
+    public static int BingoCount(IEnumerable<string> discovered) => discovered.Count(k => k != "Dawnstone");
 
     private static void TryLogDiscovery(Mobile m, Item item)
     {
@@ -238,8 +247,11 @@ public partial class Mining
             pm.SendMessage(0x44,
                 $"Discovery recorded: {displayName} ore in {regionName}, {facetName} " +
                 $"({m.Location.X}, {m.Location.Y}). Check your Prospector's Logbook.");
-            pm.SendMessage(0x44,
-                "Report this discovery to Velara Thorne at the south mine to unlock work orders.");
+            if (oreKey != "Dawnstone") // cc-P36: Dawnstone has no work orders
+            {
+                pm.SendMessage(0x44,
+                    "Report this discovery to Velara Thorne at the south mine to unlock work orders.");
+            }
 
             // -- T3+ Prospector's Insight: +3 Mining Vouchers on new discovery --
             // Applies to T3 (Prospector), T4 (Deepdelver), and T5 (Worldbreaker).
@@ -253,7 +265,7 @@ public partial class Mining
             }
 
             // -- Achievement: ore discovery count -----------------------------
-            ClusterFAchievementSystem.NotifyOreDiscoveryCount(pm, data.OreDiscoveries.Count);
+            ClusterFAchievementSystem.NotifyOreDiscoveryCount(pm, BingoCount(data.OreDiscoveries.Keys));
         }
         else
         {
