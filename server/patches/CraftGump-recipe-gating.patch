@@ -1,0 +1,88 @@
+--- a/Projects/UOContent/Engines/Craft/Core/CraftGump.cs
++++ b/Projects/UOContent/Engines/Craft/Core/CraftGump.cs
+@@ -364,29 +364,41 @@ public class CraftGump : DynamicGump
+         var craftGroup = _craftSystem.CraftGroups[selectedGroup];
+         var craftItemCol = craftGroup.CraftItems;
+ 
+-        for (var i = 0; i < craftItemCol.Count; ++i)
+-        {
+-            var index = i % 10;
++        // ClusterF (cc-P78, F-43): recipe gating. Only the items this account knows are listed, each keeping its own index
++        // in the group for its buttons (so OnResponse needs no change), followed by hint lines for the hidden ones.
++        // Rows page as pinned's items did, by row.
++        var rows = ClusterFRecipeGate.ItemRows(_from, _craftSystem, craftGroup);
+ 
+-            var craftItem = craftItemCol[i];
++        for (var row = 0; row < rows.Count; ++row)
++        {
++            var index = row % 10;
++            var i = rows[row].Index;
+ 
+             if (index == 0)
+             {
+-                if (i > 0)
++                if (row > 0)
+                 {
+-                    builder.AddButton(370, 260, 4005, 4007, 0, GumpButtonType.Page, i / 10 + 1);
++                    builder.AddButton(370, 260, 4005, 4007, 0, GumpButtonType.Page, row / 10 + 1);
+                     builder.AddHtmlLocalized(405, 263, 100, 18, 1044045, LabelColor); // NEXT PAGE
+                 }
+ 
+-                builder.AddPage(i / 10 + 1);
++                builder.AddPage(row / 10 + 1);
+ 
+-                if (i > 0)
++                if (row > 0)
+                 {
+-                    builder.AddButton(220, 260, 4014, 4015, 0, GumpButtonType.Page, i / 10);
++                    builder.AddButton(220, 260, 4014, 4015, 0, GumpButtonType.Page, row / 10);
+                     builder.AddHtmlLocalized(255, 263, 100, 18, 1044044, LabelColor); // PREV PAGE
+                 }
+             }
+ 
++            if (i < 0)
++            {
++                ClusterFRecipeGate.AddHintRow(ref builder, rows[row], index);
++                continue;
++            }
++
++            var craftItem = craftItemCol[i];
++
+             builder.AddButton(220, 60 + index * 20, 4005, 4007, GetButtonID(1, i));
+ 
+             if (craftItem.NameNumber > 0)
+@@ -520,6 +532,12 @@ public class CraftGump : DynamicGump
+             return; // Canceled
+         }
+ 
++        // ClusterF (cc-P78, F-43): a recipe hint line opens its help page.
++        if (ClusterFRecipeGate.OnHintButton(_from, _craftSystem, _tool, info.ButtonID))
++        {
++            return;
++        }
++
+         var buttonID = info.ButtonID - 1;
+         var type = buttonID % 7;
+         var index = buttonID / 7;
+--- a/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
++++ b/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
+@@ -993,7 +993,8 @@ namespace Server.Engines.Craft
+                 return;
+             }
+ 
+-            if (Recipe != null && (from as PlayerMobile)?.HasRecipe(Recipe) == false)
++            // ClusterF (cc-P78, F-43): pinned's recipe check, made account-wide, and recipe gating (ClusterFRecipeGate).
++            if (!ClusterFRecipeGate.IsKnown(from, craftSystem, this))
+             {
+                 from.EndAction<CraftSystem>();
+                 if (!ClusterFCraftRun.Refused(from, craftSystem, 1072847, MakeXStop.CannotCraft))
+@@ -1094,7 +1095,8 @@ namespace Server.Engines.Craft
+                 return;
+             }
+ 
+-            if (Recipe != null && (from as PlayerMobile)?.HasRecipe(Recipe) == false)
++            // ClusterF (cc-P78, F-43): pinned's recipe check, made account-wide, and recipe gating (ClusterFRecipeGate).
++            if (!ClusterFRecipeGate.IsKnown(from, craftSystem, this))
+             {
+                 from.EndAction<CraftSystem>();
+                 from.SendGump(

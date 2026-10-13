@@ -36,7 +36,13 @@ public class MakeXRepeatVerification
 {
     private readonly ITestOutputHelper _out;
 
-    public MakeXRepeatVerification(ITestOutputHelper output) => _out = output;
+    public MakeXRepeatVerification(ITestOutputHelper output)
+    {
+        _out = output;
+        // cc-P78 (F-43): these facts are about the craft run, not recipes; recipe gating is off for them
+        // (RecipeGatingVerification turns it on for its own).
+        Server.Engines.Craft.ClusterFRecipeGate.Enabled = false;
+    }
 
     // Every draw returns Value: 0.0 makes every chance succeed, 0.999 makes a 50% chance fail.
     private sealed class ConstantRandom : System.Random

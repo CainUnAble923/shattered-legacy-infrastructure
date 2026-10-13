@@ -587,9 +587,9 @@ public class AccountDataSerializerVerification
             AssertSameGuild(o, GuildData(copy)[serial]);
         AssertSameStarterRecords(original, copy);
 
-        // Written again it is version 16, and it reads back whole.
+        // Written again it is the current version (17 since cc-P78), and it reads back whole.
         var (v16, v16Length) = Write(copy.Serialize);
-        Assert.Equal(16, VersionOf(v16));
+        Assert.Equal(17, VersionOf(v16));
         var again = new BufferReader(v16);
         var reread = new ClusterFAccountData(again);
         Assert.Equal(v16Length, again.Position);
@@ -649,10 +649,10 @@ public class AccountDataSerializerVerification
         Assert.Equal(0, copy.GuildDataCount);
         Assert.True(copy.DroppedAccountGuildData);
 
-        // Written again it is the current version (16 since cc-P48), and it reads back whole.
+        // Written again it is the current version (17 since cc-P78), and it reads back whole.
         var (v15, v15Length) = Write(copy.Serialize);
         Assert.Equal(ClusterFAccountData.CurrentVersion, VersionOf(v15));
-        Assert.Equal(16, VersionOf(v15));
+        Assert.Equal(17, VersionOf(v15));
         var again = new BufferReader(v15);
         new ClusterFAccountData(again);
         Assert.Equal(v15Length, again.Position);
@@ -691,9 +691,9 @@ public class AccountDataSerializerVerification
         Assert.Equal(Chunks(original).Keys.OrderBy(k => k), Chunks(copy).Keys.OrderBy(k => k));
         AssertSameStarterRecords(original, copy);
 
-        // Written again it is the current version (16 since cc-P48), and it reads back whole with nothing more dropped.
+        // Written again it is the current version (17 since cc-P78), and it reads back whole with nothing more dropped.
         var (v15, v15Length) = Write(copy.Serialize);
-        Assert.Equal(16, VersionOf(v15));
+        Assert.Equal(17, VersionOf(v15));
         var again = new BufferReader(v15);
         var reread = new ClusterFAccountData(again);
         Assert.Equal(v15Length, again.Position);

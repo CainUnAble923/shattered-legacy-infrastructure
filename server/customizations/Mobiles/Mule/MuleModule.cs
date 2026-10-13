@@ -6,7 +6,9 @@
 // matches resources by type only, so CraftItem-mule-module-tier.patch adds the one check (MuleModuleCrafts.CheckPreviousTier).
 //
 // Recipes are pinned's own (Recipe, PlayerMobile.AcquireRecipe), registered as quest recipes so no loot or satchel hands
-// them out, ids 9000 + module x 10 + tier (stock stops at 602). F-43 (cc-P78) will move them to an account store.
+// them out, ids 9000 + module x 10 + tier (stock stops at 602). cc-P78 (F-43 Part G): a schematic is learned once by the
+// account (ClusterFRecipeStore key recipe:<id>), never consumed by crafting; ClusterFRecipeStore.Sync writes it onto each
+// character for pinned's own recipe check.
 
 using System;
 using System.Collections.Generic;

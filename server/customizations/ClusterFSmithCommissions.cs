@@ -661,6 +661,10 @@ public static class SmithCommissionSystem
         var (skillMin, skillMax) = GetSkillRange(c.Material, c.RequireExceptional);
         pm.CheckSkill(SkillName.Blacksmith, skillMin, skillMax);
         pm.PlaySound(0x3D);
+
+        // cc-P78 Part F (F-43, F-37): the custom recipe hook for recurring clients. Its table is empty until custom
+        // recipes exist, so this pays nothing yet.
+        ClusterFRecipeRewards.TryCommissionScroll(pm);
     }
 
     // -- Turn-in validation ----------------------------------------------------

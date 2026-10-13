@@ -472,9 +472,9 @@ namespace Server.Mobiles
 
     public static class MuleSchematics
     {
-        // Guild rank index needed per module tier (ClusterFGuildSystem.GuildRankIndex): Apprentice, Journeyman, Master as the
-        // cc-P70 brief says. (cc-P78 Part G proposes 1, 2, 4; one line to change here.)
-        public static readonly int[] RankFor = { 1, 2, 3, 4, 4 };
+        // Guild rank index needed per module tier (ClusterFGuildSystem.GuildRankIndex). cc-P78 Part G (F-43, F-33): tier I at
+        // 1, II at 2, III at 4 (Chase, the recipe chat 2026-10-11); IV and V, if module tiers ever go to 5, at 4 and 5.
+        public static readonly int[] RankFor = { 1, 2, 4, 4, 5 };
 
         public static readonly int[] ScripCost = { 20, 50, 120, 250, 500 };
         public static readonly int[] VoucherCost = { 5, 10, 25, 50, 100 };
@@ -489,9 +489,10 @@ namespace Server.Mobiles
                 return "There is no such schematic.";
             }
 
-            if (pm.HasRecipe(MuleModuleCrafts.RecipeId(id, tier)))
+            // cc-P78 Part G: a schematic is learned once, by the account (ClusterFRecipeStore), like an ML recipe.
+            if (ClusterFRecipeStore.Knows(pm, ClusterFRecipeStore.RecipeKey(MuleModuleCrafts.RecipeId(id, tier))))
             {
-                return "You already know that schematic.";
+                return "Your account already knows that schematic.";
             }
 
             if (!guild.JoinedGuilds.Contains(info.GuildKey))
@@ -558,7 +559,7 @@ namespace Server.Mobiles
             }
 
             guild.GuildCurrency["mining"] = guild.GuildCurrency["mining"] - VoucherCost[tier - 1];
-            pm.AcquireRecipe(MuleModuleCrafts.RecipeId(id, tier));
+            ClusterFRecipeStore.Learn(pm, ClusterFRecipeStore.RecipeKey(MuleModuleCrafts.RecipeId(id, tier)));
             pm.SendMessage(0x44, $"You learn the {info.Name} {MuleData.GradeName(tier)} schematic ({MuleModuleCrafts.Row(id)?.SystemName}).");
             return true;
         }

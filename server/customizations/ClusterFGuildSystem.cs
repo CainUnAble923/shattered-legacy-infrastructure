@@ -415,6 +415,7 @@ public static class ClusterFGuildSystem
 
         pm.SendMessage(54, $"You are now {GetRankName(def.Key, data)} of the {def.Name}.");
         pm.SendMessage(999, $"Awarded: {def.JoinReputation} reputation and {def.JoinScrip} scrip with the {def.Name}.");
+        ClusterFGuildPromotion.Update(pm, def.Key); // cc-P78: a craft guild's rank 1 grant
         reason = string.Empty;
         return true;
     }
@@ -443,7 +444,10 @@ public static class ClusterFGuildSystem
         ClusterFGuildStarter.GiveTools(pm, def);
 
         if (newMember)
+        {
+            ClusterFGuildPromotion.StartTracking(pm, def.Key); // cc-P78: craft guilds rank by skill as well as standing
             ClusterFLeagueSystem.OnGuildJoined(pm);
+        }
     }
 
     /// <summary>The guild's own join bonus, once per character with its tools (fixes PT-06).</summary>
@@ -528,6 +532,7 @@ public static class ClusterFGuildSystem
     public static void OpenGuildHall(PlayerMobile pm, GuildDef def, Mobile guildmaster)
     {
         if (pm.Account is not IAccount acct) return;
+        ClusterFGuildPromotion.Update(pm, def.Key); // cc-P78: promotion is checked at the hall
         pm.CloseGump<GuildTaskDetailGump>();
         pm.SendGump(new GuildTaskDetailGump(pm, def, acct, guildmaster));
     }
@@ -654,7 +659,14 @@ public static class ClusterFGuildSystem
     /// done (the same bump GetRankName(key, data) shows). Membership is not checked here; callers that need a member
     /// check IsJoined.
     /// </summary>
-    public static int GuildRankIndex(string guildKey, CharacterGuildData data)
+    public static int GuildRankIndex(string guildKey, CharacterGuildData data) =>
+        ClusterFGuildPromotion.Effective(guildKey, data, StandingRankIndex(guildKey, data));
+
+    /// <summary>
+    /// The rank standing alone gives (with the Apprentice bump): the whole rank for a guild that is not tracked, and the
+    /// ceiling under the promotion cap for a craft guild that is (cc-P78 Part E, ClusterFGuildPromotion).
+    /// </summary>
+    public static int StandingRankIndex(string guildKey, CharacterGuildData data)
     {
         var index = GuildRankIndex(guildKey, data.GetReputation(guildKey));
         return IsApprentice(data, guildKey) ? Math.Max(index, RankApprentice) : index;
@@ -680,6 +692,15 @@ public static class ClusterFGuildSystem
         var standing = data.GetReputation(guildKey);
         if (IsApprentice(data, guildKey))
             standing = Math.Max(standing, SecondRankStanding(guildKey));
+
+        // cc-P78: a craft guild whose skill has not caught up with its standing shows the rank it holds.
+        if (ClusterFGuildPromotion.IsTracked(data, guildKey))
+        {
+            var held = GuildRankIndex(guildKey, data);
+            if (GuildRankIndex(guildKey, standing) != held)
+                return ClusterFGuildPromotion.RankNameForIndex(guildKey, held);
+        }
+
         return GetRankName(guildKey, standing);
     }
 
@@ -744,6 +765,9 @@ public static class ClusterFGuildSystem
     {
         if (e.Mobile is not PlayerMobile pm) return;
         if (pm.Account is not IAccount acct) return;
+        if (ClusterFAccountPersistence.GetGuild(pm) is { } joined) // cc-P78: promotion is checked here too
+            foreach (var key in new List<string>(joined.JoinedGuilds))
+                ClusterFGuildPromotion.Update(pm, key);
         pm.CloseGump<GuildProgressGump>();
         e.Mobile.SendGump(new GuildProgressGump(pm, acct));
     }
@@ -1020,6 +1044,7 @@ public class GuildTaskDetailGump : Gump
     public const int BtnServices   = 5;
     public const int BtnDirectory  = 6;
     public const int BtnSchematics = 7; // cc-P70: mule module schematics
+    public const int BtnRecipes    = 8; // cc-P78: the guild's pattern books and recipe scrolls
 
     public GuildTaskDetailGump(PlayerMobile pm, GuildDef def, IAccount acct) : this(pm, def, acct, null) { }
 
@@ -1102,6 +1127,14 @@ public class GuildTaskDetailGump : Gump
         {
             AddButton(20, y, 4005, 4007, BtnSchematics);
             AddLabel(55, y + 2, 999, "Mule module schematics");
+            y += 28;
+        }
+
+        // cc-P78 (F-43): a craft guild's pattern books and recipe scrolls, for members at the guildmaster.
+        if (atMaster && isMember && Server.Engines.Craft.RecipeOwners.GatedSkillsOf(def.Key).Count > 0)
+        {
+            AddButton(20, y, 4005, 4007, BtnRecipes);
+            AddLabel(55, y + 2, 999, "Pattern books and recipe scrolls");
             y += 28;
         }
 
@@ -1194,6 +1227,11 @@ public class GuildTaskDetailGump : Gump
                     _pm.SendGump(new Server.Mobiles.GuildSchematicsGump(_pm, _def.Key, _guildmaster));
                 return;
 
+            case BtnRecipes:
+                if (atMaster && ClusterFGuildSystem.IsJoined(_pm, _def.Key))
+                    _pm.SendGump(new GuildRecipeShopGump(_pm, _def.Key, _guildmaster));
+                return;
+
             default:
                 return;
         }
@@ -1255,6 +1293,9 @@ public static class ClusterFGuildAdminCommands
         data.GuildReputation.Remove(key);
         data.GuildCurrency.Remove(key);
         data.ApprenticeGuilds.Remove(key);
+        data.RankCap.Remove(key);      // cc-P78
+        data.PromotedRank.Remove(key);
+        data.TrialsPassed.Remove(key);
         ClusterFAccountPersistence.GetGuildStarter(pm)?.ToolsTaken.Remove(key);
 
         // Guild-specific data cleanup

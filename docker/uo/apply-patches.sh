@@ -461,6 +461,18 @@ apply_patch "$PATCHES/PlayerMobile-skill-bonus-above-cap.patch"
 # column (200 pixels wide). Argued in the same notes, Part E; pinned by CraftCategoryPagingVerification (proved red).
 apply_patch "$PATCHES/CraftGump-category-pages.patch"
 
+# cc-P78 (F-43, Chase 2026-10-11). Recipe-gated crafting. Two seams, one rule (ClusterFRecipeGate): CraftGump.CreateItemList
+# lists only the items the account knows, each keeping its own index in the group for its buttons (so OnResponse is
+# untouched), then hint lines for the hidden ones, paged by row as pinned paged items; OnResponse hands a hint line's
+# button to the gate first. CraftItem.Craft's two recipe checks become the gate's, which still holds pinned's own recipe
+# rule (made account-wide), so Make Last, Last Ten, Make X, forged button ids and the T2A menus are all held to it.
+# Rejected: no patch (nothing in pinned or ours can filter the list, and pinned's per-character HasRecipe cannot carry
+# account-wide band books); hiding in CraftGump only (every path that skips the list would still craft); a CraftSystem
+# subclass per craft (eleven replacements of pinned's Def files); renumbering the list (breaks the button-to-item
+# mapping). Applies on top of CraftItem-shard-hooks and CraftGump-category-pages. Argued in shard-migration/notes/
+# cc-P78-recipe-gating.md; pinned by RecipeGatingVerification (proved red).
+apply_patch "$PATCHES/CraftGump-recipe-gating.patch"
+
 # cc-P55 Part B (D70, Chase 2026-10-05). The ore satchels' Smelt Ore smelts each pile exactly as the forge does, through
 # the forge's own step rather than a copy of its ratio and skill check: BaseOre's private target becomes internal, gains
 # SmeltAt (its own OnTarget, with the forge the satchel found) and an optional IngotDestination so the ingots go back into

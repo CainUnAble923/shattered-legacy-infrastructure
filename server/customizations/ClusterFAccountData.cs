@@ -19,6 +19,9 @@ namespace Server;
 ///     scrip, work orders, smith commissions, the Artificer order
 ///   - Guild starter records (GuildStarterRecord, v14, cc-P15)
 ///   - League rank, promotion jobs and trials done (CharacterLeagueData, v16, cc-P48)
+///
+/// Account-wide again: learned craft recipes (LearnedRecipes, v17, cc-P78 F-43): band books, single recipes and the
+/// Masonry and Glassblowing books, kept through loops and character changes (ClusterFRecipeStore).
 ///   - Exploration (fog of war chunks)
 ///
 /// Guild keys are short lowercase identifiers:
@@ -38,6 +41,10 @@ public class ClusterFAccountData
     // spending Renown never lowers it, so buying from a shop never costs rank. Fed by GrantRenown; a save
     // before v16 starts it at the account's Renown then.
     public int LifetimeRenown    { get; set; }
+
+    // Learned craft recipes, account-wide (v17, cc-P78 F-43): keys from ClusterFRecipeStore ("book:Blacksmith:2",
+    // "recipe:12", "item:Blacksmith:PlatinumKryss", "flag:Masonry"). Never cleared by a loop.
+    public HashSet<string> LearnedRecipes { get; } = new(StringComparer.Ordinal);
 
     // -- Guild systems ----------------------------------------------------
     // Membership, reputation, scrip, work orders, commissions and the Artificer order are per
@@ -362,6 +369,16 @@ public class ClusterFAccountData
             LifetimeRenown = Renown;
         }
 
+        // v17 (cc-P78, F-43): the account's learned recipes, by key (ClusterFRecipeStore). Before v17 there were none
+        // on the account; pinned's per-character recipes and the Masonry and Glassblowing flags are copied in when each
+        // character next logs in or crafts (ClusterFRecipeStore.Sync).
+        if (version >= 17)
+        {
+            var recipeCount = r.ReadInt();
+            for (var i = 0; i < recipeCount; i++)
+                LearnedRecipes.Add(r.ReadString());
+        }
+
         // v8-only saves (no EncounteredCreatures yet): just read chunks.
         if (version == 8)
             ReadExploration(r);
@@ -393,7 +410,8 @@ public class ClusterFAccountData
     }
 
     // 15: cc-P18, guild data per character. 16: cc-P48, LifetimeRenown and CharacterLeagueData.
-    public const int CurrentVersion = 16;
+    // 17: cc-P78, LearnedRecipes.
+    public const int CurrentVersion = 17;
 
     public void Serialize(IGenericWriter w)
     {
@@ -479,6 +497,11 @@ public class ClusterFAccountData
             w.Write(serial);
             record.Serialize(w);
         }
+
+        // v17: learned recipes
+        w.Write(LearnedRecipes.Count);
+        foreach (var key in LearnedRecipes)
+            w.Write(key);
     }
 
     // -- Flag helpers ------------------------------------------------------
@@ -625,7 +648,8 @@ public sealed class CharacterLeagueData
 public sealed class CharacterGuildData
 {
     // 0: cc-P18. 1: cc-P46 Part B, SmithTeachingOrders. 2: cc-P55 Part H, SmithTurnIn.
-    public const int CurrentVersion = 2;
+    // 3: cc-P78 Part E, RankCap, PromotedRank, TrialsPassed.
+    public const int CurrentVersion = 3;
 
     // -- Membership ---------------------------------------------------------
     public HashSet<string> JoinedGuilds { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -665,12 +689,23 @@ public sealed class CharacterGuildData
     // Ask shows the two-button choice at each turn-in (ClusterFSmithBODPayout). A v0 or v1 record reads as Bank.
     public SmithTurnInMode SmithTurnIn { get; set; } = SmithTurnInMode.Bank;
 
+    // -- Craft guild promotion (v3, cc-P78 Part E, F-43) ----------------------
+    // RankCap: per craft guild, the highest rank index this character's craft skill (and, for rank 5, the guild trial)
+    // has ever allowed. It only rises, so a loop's skill reset never lowers a rank. A guild with no entry is not
+    // tracked and ranks by standing alone, as before cc-P78 (non-craft guilds, and records built by hand).
+    // PromotedRank: the highest rank whose grants were handed over. TrialsPassed: guild trials done (rank 5).
+    // ClusterFGuildPromotion keeps all three.
+    public Dictionary<string, int> RankCap      { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, int> PromotedRank { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string>         TrialsPassed { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public bool IsEmpty =>
         JoinedGuilds.Count == 0 && ApprenticeGuilds.Count == 0 &&
         GuildReputation.Count == 0 && GuildCurrency.Count == 0 &&
         ActiveWorkOrders.Count == 0 && CompletedWorkOrders.Count == 0 &&
         SmithCommissions.Count == 0 && SmithLargeCommissions.Count == 0 &&
-        !HasActiveArtificerOrder && SmithTeachingOrders && SmithTurnIn == SmithTurnInMode.Bank;
+        !HasActiveArtificerOrder && SmithTeachingOrders && SmithTurnIn == SmithTurnInMode.Bank &&
+        RankCap.Count == 0 && PromotedRank.Count == 0 && TrialsPassed.Count == 0;
 
     public CharacterGuildData() { }
 
@@ -727,6 +762,27 @@ public sealed class CharacterGuildData
                 throw new System.IO.InvalidDataException($"CharacterGuildData turn-in mode {mode} is not one this build knows.");
             SmithTurnIn = (SmithTurnInMode)mode;
         }
+
+        if (version >= 3)
+        {
+            var caps = r.ReadInt();
+            for (var i = 0; i < caps; i++)
+                RankCap[r.ReadString()] = r.ReadInt();
+
+            var promoted = r.ReadInt();
+            for (var i = 0; i < promoted; i++)
+                PromotedRank[r.ReadString()] = r.ReadInt();
+
+            var trials = r.ReadInt();
+            for (var i = 0; i < trials; i++)
+                TrialsPassed.Add(r.ReadString());
+        }
+        else
+        {
+            // Before v3, craft guild rank was standing alone. Each joined craft guild starts tracked at the rank it had,
+            // so nobody loses a rank; higher ranks need the craft skill from now on.
+            ClusterFGuildPromotion.SeedFromStanding(this);
+        }
     }
 
     public void Serialize(IGenericWriter w)
@@ -762,6 +818,14 @@ public sealed class CharacterGuildData
 
         w.Write(SmithTeachingOrders); // v1
         w.Write((byte)SmithTurnIn);   // v2
+
+        // v3
+        w.Write(RankCap.Count);
+        foreach (var (k, v) in RankCap) { w.Write(k); w.Write(v); }
+        w.Write(PromotedRank.Count);
+        foreach (var (k, v) in PromotedRank) { w.Write(k); w.Write(v); }
+        w.Write(TrialsPassed.Count);
+        foreach (var k in TrialsPassed) w.Write(k);
     }
 
     // -- Guild helpers -----------------------------------------------------

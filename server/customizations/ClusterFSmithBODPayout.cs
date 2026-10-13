@@ -184,6 +184,12 @@ namespace Server.Mobiles
 
             BlacksmithGuildmaster.RollTurnInSkillChecks(pm, deed, skillChecks);
 
+            // cc-P78 Part F (F-43, F-20): a large order has a small chance at a Band V recipe scroll for its craft.
+            if (deed is Server.Engines.BulkOrders.LargeBOD)
+            {
+                ClusterFRecipeRewards.TryLargeBodScroll(pm, SkillName.Blacksmith);
+            }
+
             // At a regular smith, the stock turn-in's own effects: the order timer reset (SE) and the ML inspection pause.
             if (counter is BaseVendor vendor && ClusterFRegularSmithBODs.IsRegularSmith(vendor))
             {

@@ -37,7 +37,13 @@ public class CraftXVerification
 {
     private readonly ITestOutputHelper _out;
 
-    public CraftXVerification(ITestOutputHelper output) => _out = output;
+    public CraftXVerification(ITestOutputHelper output)
+    {
+        _out = output;
+        // cc-P78 (F-43): these facts are about the craft run, not recipes; recipe gating is off for them
+        // (RecipeGatingVerification turns it on for its own).
+        Server.Engines.Craft.ClusterFRecipeGate.Enabled = false;
+    }
 
     private sealed class ConstantRandom : System.Random
     {

@@ -42,6 +42,9 @@ public class HammerFamiliarityVerification
         _out = output;
         ShardTestHost.EnsureCraftSystems();
         ShardTestHost.EnsureSkillChecks();
+        // cc-P78 (F-43): these facts are about the craft run, not recipes; recipe gating is off for them
+        // (RecipeGatingVerification turns it on for its own).
+        Server.Engines.Craft.ClusterFRecipeGate.Enabled = false;
     }
 
     // Every roll reads Value: 0.0 makes every craft succeed (as CraftXVerification does).

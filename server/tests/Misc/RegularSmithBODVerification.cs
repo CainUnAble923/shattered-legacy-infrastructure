@@ -409,7 +409,7 @@ public class RegularSmithBODVerification
         ClusterFAccountPersistence.Get(s.Account)?.ClearGuildData();
         Assert.Equal(SmithTurnInMode.Bank, ClusterFSmithBODPayout.GetMode(s.Pm));
         Assert.Equal(SmithTurnInMode.Bank, new CharacterGuildData().SmithTurnIn);
-        Assert.Equal(2, CharacterGuildData.CurrentVersion);
+        Assert.Equal(3, CharacterGuildData.CurrentVersion); // cc-P78: v3 adds the craft guild promotion records
 
         // A v1 record (cc-P46): v0's layout and the teaching bool.
         var buffer1 = new byte[4096];

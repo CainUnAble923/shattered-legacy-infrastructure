@@ -29,6 +29,24 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13
+
+### Added
+- Crafting now has recipes. Anything that needs 30 skill or less is always known. Higher items stay out of the craft menu until your account learns them.
+- Pattern books teach a whole band of a craft at once: Band I (30 to 50 skill), II (50 to 70), III (70 to 90) and IV (90 to 100). Designs above 100 come one at a time on recipe scrolls.
+- Everything you learn is learned by your whole account, for every character and every loop. Unread books and scrolls can be traded.
+- The craft menu tells you what you are missing: "4 more patterns: Society of Smiths, rank Apprentice." Click the line to see where to go.
+- Each crafting guild sells its pattern books for guild currency, one band ahead of your rank, and from rank 4 a daily selection of Band V scrolls.
+- Rising in a crafting guild hands you that rank's pattern book. Large bulk orders have a small chance at a Band V scroll.
+
+### Changed
+- Crafting guild ranks now need the guild's craft skill as well as standing: 30 for the second rank, then 50, 70, 90 and 100. A rank you have reached is never lost, even when a loop resets your skills.
+- Mule module schematics are learned once by your whole account. Tier III schematics now need guild rank 4.
+- Recipes you learned before, and the Masonry and Glassblowing books, now count for your whole account.
+
+### Staff
+- [Recipes (list, grant, revoke, learnall, forgetall) targets a player's account. [RecipeGating lists the bands and books per craft; [RecipeGating reload reads Configuration/recipe-gating.json. crafting.recipeGating.enabled turns gating off.
+
 ## 2026.10.12.10
 
 ### Added
