@@ -3234,6 +3234,132 @@ Fact 'P84_TheUOLookAddsUnderASecondToTheStart' {
     } finally { $script:NetProbeDisabled = $false; $script:theme = Get-ConsoleTheme 'Plain'; Remove-Item -LiteralPath $cfg.CacheFolder -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# --- cc-P86: Disconnect VPN -----------------------------------------------------------------------------------------
+# Facts are built from hand-made VpnFacts (Proton up, a WireGuard tunnel up, another app's tunnel, an unknown VPN,
+# none). Nothing here connects or disconnects a VPN; the one real read is Get-VpnFacts on this PC with no VPN up.
+
+function New-VpnFacts {
+    param([switch]$Admin, [switch]$System, $Adapters = @(), $Tunnels = @(), [switch]$ProtonTunnel, $RouteIsLan = $true)
+    $id = 'DESKTOP\chase'
+    if ($System) { $id = 'NT AUTHORITY\SYSTEM' }
+    [pscustomobject]@{ Identity = $id; IsSystem = [bool]$System; IsAdmin = [bool]$Admin; RouteIsLan = $RouteIsLan
+        VpnAdapters = @($Adapters); WireGuardTunnels = @($Tunnels); ProtonTunnelRunning = [bool]$ProtonTunnel
+        ProtonLauncher = 'C:\Program Files\Proton\VPN\ProtonVPN.Launcher.exe' }
+}
+$p86Proton = [pscustomobject]@{ Name = 'ProtonVPN'; Description = 'ProtonVPN Tunnel'; Type = 'Unknown'; Up = $true }
+$p86WgOwn = [pscustomobject]@{ Name = 'WireGuardTunnel$home'; Tunnel = 'home'; Running = $true; Exe = 'C:\Program Files\WireGuard\wireguard.exe'; Owner = 'WireGuard' }
+$p86WgApp = [pscustomobject]@{ Name = 'WireGuardTunnel$wg30c06d17'; Tunnel = 'wg30c06d17'; Running = $true; Exe = 'C:\Program Files\WiFiman Desktop\WireGuard\wireguard.exe'; Owner = 'WiFiman Desktop' }
+$p86Other = [pscustomobject]@{ Name = 'NordLynx'; Description = 'NordLynx Tunnel'; Type = 'Unknown'; Up = $true }
+
+Fact 'P86_TheButtonIsOnOnlyWhenAVpnIsUp' {
+    Assert-True (-not (Test-VpnButtonEnabled ([pscustomobject]@{ Word = 'OK' }) (New-VpnFacts))) 'nothing up: greyed'
+    Assert-True (-not (Test-VpnButtonEnabled $null $null)) 'nothing known: greyed'
+    Assert-True (Test-VpnButtonEnabled ([pscustomobject]@{ Word = 'VPN ON' }) (New-VpnFacts)) 'the tile says VPN ON'
+    Assert-True (Test-VpnButtonEnabled ([pscustomobject]@{ Word = 'OK' }) (New-VpnFacts -Adapters @($p86Other))) 'an adapter is up'
+    Assert-True (Test-VpnButtonEnabled $null (New-VpnFacts -Tunnels @($p86WgOwn))) 'a tunnel is running'
+    Assert-True (Test-VpnButtonEnabled $null (New-VpnFacts -ProtonTunnel)) 'Proton''s tunnel service runs'
+    Assert-True (Test-VpnButtonEnabled $null (New-VpnFacts -RouteIsLan $false)) 'the route leaves the LAN'
+    $stopped = [pscustomobject]@{ Name = 'WireGuardTunnel$x'; Tunnel = 'x'; Running = $false; Exe = 'C:\Program Files\WireGuard\wireguard.exe'; Owner = 'WireGuard' }
+    Assert-True (-not (Test-VpnButtonEnabled $null (New-VpnFacts -Tunnels @($stopped)))) 'a stopped tunnel service is not a VPN up'
+}
+
+Fact 'P86_WithNoVpnUpThePlanIsACleanNoOp' {
+    $p = @(Get-ActionPlan -Action 'vpn.disconnect' -Config $config -VpnFacts (New-VpnFacts))
+    Assert-Equal 1 $p.Count
+    Assert-Equal 'refuse' $p[0].Kind
+    Assert-Equal 'No VPN is up: nothing to disconnect.' $p[0].Text
+}
+
+Fact 'P86_ProtonIsOpenedWithWhatToClickAndNeverStopped' {
+    $p = @(Get-ActionPlan -Action 'vpn.disconnect' -Config $config -VpnFacts (New-VpnFacts -Adapters @($p86Proton) -RouteIsLan $false))
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count
+    Assert-True ($p[0].Kind -eq 'say' -and $p[0].Text -match 'no supported way to disconnect from a script' -and $p[0].Text -match 'Advanced kill switch') $p[0].Text
+    $l = @($p | Where-Object { $_.Kind -eq 'launch' })
+    Assert-Equal 1 $l.Count 'opens Proton'
+    Assert-Equal 'C:\Program Files\Proton\VPN\ProtonVPN.Launcher.exe' $l[0].Path
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -eq 'exec' }).Count 'runs nothing against Proton'
+    # The same through Proton's WireGuard protocol service, with no adapter named Proton.
+    $q = @(Get-ActionPlan -Action 'vpn.disconnect' -Config $config -VpnFacts (New-VpnFacts -ProtonTunnel))
+    Assert-Equal 1 @($q | Where-Object { $_.Kind -eq 'launch' }).Count
+}
+
+Fact 'P86_AWireGuardTunnelIsEndedByItsOwnExeOnlyWhenElevated' {
+    $p = @(Get-ActionPlan -Action 'vpn.disconnect' -Config $config -VpnFacts (New-VpnFacts -Admin -Tunnels @($p86WgOwn)))
+    $e = @($p | Where-Object { $_.Kind -eq 'exec' })
+    Assert-Equal 1 $e.Count
+    Assert-Equal 'C:\Program Files\WireGuard\wireguard.exe /uninstalltunnelservice home' (($e[0].Exe, $e[0].Arguments) | ForEach-Object { $_ }) -join ' '
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count
+    $n = @(Get-ActionPlan -Action 'vpn.disconnect' -Config $config -VpnFacts (New-VpnFacts -Tunnels @($p86WgOwn)))
+    Assert-Equal 0 @($n | Where-Object { $_.Kind -eq 'exec' }).Count 'not elevated: nothing runs'
+    Assert-True (@($n | Where-Object { $_.Text -match 'needs an elevated console' }).Count -eq 1) 'and it says so'
+    Assert-True (Test-VpnNeedsElevation (New-VpnFacts -Tunnels @($p86WgOwn))) 'the console offers to relaunch elevated'
+    Assert-True (-not (Test-VpnNeedsElevation (New-VpnFacts -Admin -Tunnels @($p86WgOwn)))) 'not when it already is'
+}
+
+Fact 'P86_AnotherAppsTunnelAndAnUnknownVpnAreNamedNotTouched' {
+    $p = @(Get-ActionPlan -Action 'vpn.disconnect' -Config $config -VpnFacts (New-VpnFacts -Admin -Tunnels @($p86WgApp) -Adapters @($p86Other)))
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -in @('exec', 'launch', 'window') }).Count 'runs nothing'
+    Assert-True (@($p | Where-Object { $_.Text -eq 'The WireGuard tunnel wg30c06d17 belongs to WiFiman Desktop: disconnect it in that app.' }).Count -eq 1) 'WiFiman named'
+    Assert-True (@($p | Where-Object { $_.Text -like 'NordLynx (NordLynx Tunnel) looks like a VPN: disconnect it in its app.' }).Count -eq 1) 'the unknown one named'
+    $r = @(Get-ActionPlan -Action 'vpn.disconnect' -Config $config -VpnFacts (New-VpnFacts -RouteIsLan $false))
+    Assert-True (@($r | Where-Object { $_.Text -like 'Traffic leaves through a route that is not the LAN*' }).Count -eq 1) 'a route with no name'
+}
+
+Fact 'P86_RefusedAsSystem' {
+    $p = @(Get-ActionPlan -Action 'vpn.disconnect' -Config $config -VpnFacts (New-VpnFacts -System -Adapters @($p86Proton)))
+    Assert-Equal 1 $p.Count
+    Assert-True ($p[0].Kind -eq 'refuse' -and $p[0].Text -like '*NT AUTHORITY\SYSTEM*') $p[0].Text
+    Assert-Equal 'refuse' (Resolve-RunMode -Action 'vpn.disconnect') 'it changes something, so a lost mode fails safe'
+}
+
+Fact 'P86_TheSafetyCheckRefusesEveryUnsafeWayToEndAVpn' {
+    foreach ($bad in @(
+            (New-PlanStep -Kind exec -Exe 'net' -Arguments @('stop', 'ProtonVPN Service')),
+            (New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-Command', 'Stop-Service ProtonVPNService')),
+            (New-PlanStep -Kind exec -Exe 'taskkill.exe' -Arguments @('/IM', 'ProtonVPN.Client.exe', '/F')),
+            (New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-Command', 'Disable-NetAdapter ProtonVPN')),
+            (New-PlanStep -Kind launch -Path 'C:\Program Files\Proton\VPN\v5.1.8\ProtonVPN.RestoreInternet.exe'),
+            (New-PlanStep -Kind exec -Exe 'C:\Program Files\WireGuard\wireguard.exe' -Arguments @('/installtunnelservice', 'x.conf')),
+            (New-PlanStep -Kind exec -Exe 'C:\Program Files\WireGuard\wireguard.exe' -Arguments @('/uninstalltunnelservice', 'a b'))
+        )) {
+        Assert-True (@(Test-PlanSafety @($bad) $config).Count -ge 1) ('allowed: ' + $bad.Exe + ' ' + ($bad.Arguments -join ' ') + ' ' + $bad.Path)
+    }
+}
+
+Fact 'P86_TheDdnsRestartIsOfferedAsASafePlan' {
+    $p = @(Get-DdnsRestartPlan $config)
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count
+    $e = @($p | Where-Object { $_.Kind -eq 'exec' })
+    Assert-Equal 'docker restart sl-ddns' ((@($e[0].Exe) + $e[0].Arguments) -join ' ')
+    $self = Get-Content -Raw (Resolve-Path $script).Path
+    Assert-True ($self -match "Show-YesNo 'The VPN is off, but public DNS still has the VPN''s address") 'only after a yes'
+}
+
+Fact 'P86_TheButtonsSitByTheTileAndOnDiagnosticsGreyedWithNoVpn' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-Equal 2 @($script:ui.VpnButtons).Count
+        Assert-True ($script:ui.NetTile.Panel.Controls.Contains($script:ui.VpnButtons[0].Parent)) 'in the PUBLIC DNS tile'
+        Assert-Equal 'vpn.disconnect' $script:ui.VpnButtons[1].Tag
+        Assert-True ($script:ui.Tabs.TabPages[3].Controls[0].Controls.Contains($script:ui.VpnButtons[1])) 'on the Diagnostics tab'
+        foreach ($b in $script:ui.VpnButtons) { Assert-True (-not $b.Enabled) 'greyed: no VPN is known' }
+        $script:netResult = [pscustomobject]@{ RouteIsLan = $false; RouteInterface = 'ProtonVPN'; VpnAdapters = @('ProtonVPN'); DnsIps = @('159.26.100.68') }
+        Update-VpnButtons
+        foreach ($b in $script:ui.VpnButtons) { Assert-True $b.Enabled 'on when the tile says VPN ON' }
+    } finally { $form.Dispose(); $script:netResult = $null; $script:NetProbeDisabled = $false }
+}
+
+Fact 'P86_OnThisPcWithNoVpnUpTheRealFactsGiveANoOp' {
+    $f = Get-VpnFacts $config
+    Write-Host ('        this PC: route on LAN ' + $f.RouteIsLan + ', ' + @($f.VpnAdapters).Count + ' VPN adapter(s) up, ' + @($f.WireGuardTunnels | Where-Object { $_.Running }).Count + ' tunnel(s) running of ' + @($f.WireGuardTunnels).Count + ', Proton tunnel ' + $f.ProtonTunnelRunning + ', admin ' + $f.IsAdmin)
+    foreach ($t in $f.WireGuardTunnels) { Write-Host ('        tunnel ' + $t.Tunnel + ' owner ' + $t.Owner + ' running ' + $t.Running) }
+    $up = Test-VpnButtonEnabled $null $f
+    if ($up) { Write-Host '        (a VPN is up on this PC now; the no-op half is skipped)'; return }
+    $p = @(Get-ActionPlan -Action 'vpn.disconnect' -Config $config -VpnFacts $f)
+    Assert-Equal 'No VPN is up: nothing to disconnect.' $p[0].Text
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 
 $failed =@($results | Where-Object { -not $_.Passed }).Count

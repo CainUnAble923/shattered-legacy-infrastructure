@@ -743,6 +743,7 @@ function Get-ModeBanner {
     if ($Action -like 'commit.*') { $what = $Action + ' (both repos)' }
     if ($Action -like 'package.*') { $what = $Action + ' (player package)' }
     if ($Action -like 'autopilot.*') { $what = $Action + ' (autopilot)' }
+    if ($Action -like 'vpn.*') { $what = $Action + ' (this PC''s VPN)' }
     switch ($RunMode) {
         'dry' {
             [pscustomobject]@{ Color = 'amber'; Title = ('DRY RUN - ' + $what + ' - Shard Console'); Lines = @(
@@ -776,6 +777,12 @@ function Get-ModeBanner {
         { $_ -eq 'execute' -and $Action -like 'autopilot.*' } {
             [pscustomobject]@{ Color = 'amber'; Title = ('AUTOPILOT - ' + $what + ' - Shard Console'); Lines = @(
                 $bar, ('  AUTOPILOT  ' + $what), '  Opens the autopilot''s own script in a window of its own, or its folder or log. No shard is touched.', $bar) }
+            break
+        }
+        { $_ -eq 'execute' -and $Action -like 'vpn.*' } {
+            # cc-P86: no shard is touched; a WireGuard tunnel may be ended, Proton is only opened.
+            [pscustomobject]@{ Color = 'amber'; Title = ('VPN - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  VPN  ' + $what), '  Ends a WireGuard for Windows tunnel, opens Proton VPN, or names the VPN to disconnect in its app. No shard is touched.', $bar) }
             break
         }
         { $_ -eq 'execute' -and $Action -eq 'package.publish' } {
@@ -838,6 +845,9 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
         # cc-P85: the shard status page, beside the two above.
         [pscustomobject]@{ Key = 'links.status';     Group = 'Links';       Label = 'Status';                             Mutates = $false; RunIn = 'here' }
+        # cc-P86: beside the PUBLIC DNS tile and on the Diagnostics tab. 'here': it opens Proton or ends a WireGuard
+        # tunnel from this console, then the tile re-checks.
+        [pscustomobject]@{ Key = 'vpn.disconnect';   Group = 'Network';     Label = 'Disconnect VPN';                     Mutates = $true;  RunIn = 'here' }
     )
 }
 
@@ -963,6 +973,7 @@ function Get-ConsoleTooltips {
         'autopilot.log'    = 'Opens autopilot.log in Notepad. Changes nothing.'
         'links.playtests'  = 'Opens the play-test page (port 8093) in your browser. Changes nothing here.'
         'links.dashboard'  = 'Opens the Homepage dashboard (port 3000) in your browser. Changes nothing here.'
+        'vpn.disconnect'   = 'Turns off the VPN this PC is on, so sl-ddns stops publishing the VPN''s address. Ends a WireGuard for Windows tunnel (elevated); opens Proton VPN with what to click; names any other VPN to disconnect in its app. Never stops a VPN service or disables an adapter.'
         'links.status'     = 'Opens the shard status page (port 8093, /status): playable gates, the CC queue, play tests and how old the judgment is. Changes nothing.'
         # controls without an action key
         'refresh'          = 'Reads docker and the disk again and redraws the tiles and the status. Read-only.'
@@ -995,7 +1006,7 @@ function Get-ConsoleTooltips {
         'tab.Test shard'   = 'The throwaway test shard: start, stop, rebuild, deploy, wipe, tail and a client.'
         'tab.Snapshots'    = 'Named copies of a shard''s save: create, restore, delete.'
         'tab.World setup'  = 'In-game commands to paste into a client, read from the code. The console cannot run them.'
-        'tab.Diagnostics'  = 'The two read-only health checks and their folder.'
+        'tab.Diagnostics'  = 'The two read-only health checks and their folder, and Disconnect VPN.'
         'tab.Commit'       = 'Preview, or commit and push, both repos.'
         'tab.Player package' = 'Build, check and publish the player package.'
         'tab.Autopilot'    = 'The CC autopilot: its state, queue and log, and its own scripts.'
@@ -1628,10 +1639,12 @@ function Get-ActionPlan {
         [string]$SnapshotName, [string]$Snapshot, [datetime]$Now = [datetime]::MinValue,
         [string]$CommitMessage, $CommitFacts,
         [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag, [switch]$CommitForce,
-        $WipeFacts, [string]$WipeAdmin, $AutopilotFacts
+        $WipeFacts, [string]$WipeAdmin, $AutopilotFacts, $VpnFacts
     )
     # cc-P83: the two links read nothing.
     if ($Action -like 'links.*') { return (Get-LinkPlan -Action $Action -Config $Config) }
+    # cc-P86: the VPN button reads this PC's adapters, route and services (VpnFacts), never docker.
+    if ($Action -eq 'vpn.disconnect') { return (Get-VpnPlan -Config $Config -Facts $VpnFacts) }
     # cc-P74: the autopilot buttons read only the autopilot's folder.
     if ($Action -like 'autopilot.*') { return (Get-AutopilotPlan -Action $Action -Config $Config -Facts $AutopilotFacts) }
     # The commit buttons read git and the notes, not docker, so they need no $State (cc-P60).
@@ -1818,6 +1831,15 @@ function Test-PlanSafety {
     foreach ($s in $plan) {
         $words = @(@($s.Exe) + @($s.Arguments) | Where-Object { $_ })
         $line = $words -join ' '
+        # cc-P86: a VPN is never ended by stopping its service, killing a process or disabling an adapter: Proton's
+        # kill switch can leave the PC offline, and a disabled adapter stays disabled. A WireGuard tunnel is ended only
+        # by its own wireguard.exe /uninstalltunnelservice <tunnel>.
+        if ($s.Kind -in @('exec', 'window', 'launch') -and ($line + ' ' + [string]$s.Path) -match '(?i)ProtonVPNService|ProtonVPN\.WireGuardService|RestoreInternet|taskkill|\bnet(\.exe)?\s+stop|Stop-Service|Stop-Process|Disable-NetAdapter|netsh\s+interface') {
+            $v.Add('a VPN is never ended by stopping a service, killing a process or disabling an adapter: ' + ($line + ' ' + [string]$s.Path).Trim())
+        }
+        if ($s.Kind -eq 'exec' -and [string]$s.Exe -match '(?i)\\wireguard\.exe$' -and -not (@($s.Arguments).Count -eq 2 -and $s.Arguments[0] -ceq '/uninstalltunnelservice' -and [string]$s.Arguments[1] -match '^[A-Za-z0-9_=+.-]{1,32}$')) {
+            $v.Add('wireguard.exe runs here only as /uninstalltunnelservice <tunnel>: ' + $line)
+        }
         if ($s.Kind -in @('exec', 'window')) {
             if ($line -match '\bcompose\b') { $v.Add('runs docker compose itself; compose is reached only through Start-TestShard.ps1: ' + $line) }
             if ($s.Exe -eq 'docker' -and @($s.Arguments).Count -and $s.Arguments[0] -in $forbidden) { $v.Add('docker ' + $s.Arguments[0] + ' is not something this console runs: ' + $line) }
@@ -2368,6 +2390,97 @@ function Get-DnsGlance {
     $t.Word = 'WRONG IP'; $t.Color = 'red'
     $t.Detail = 'VPN on: public DNS points at ' + $dnsText + ', not this house (' + $Probe.PublicIp + '). Turn the VPN off; ddns puts it back within 10 minutes.'
     [pscustomobject]$t
+}
+
+# --- Disconnect VPN (cc-P86) ---------------------------------------------------------------------------------------
+# The PUBLIC DNS tile says "VPN ON ... Turn the VPN off"; this button does what can be done safely, per VPN, and says
+# the rest. Research: shard-migration notes/cc-P86-console-vpn-disconnect.md, Part A.
+#   Proton VPN   Proton's Windows app (v5.1.8 here) has no command line, no local API and no working URI command for
+#                a disconnect (its protonvpn: and proton-vpn: keys carry no shell\open\command). Stopping or killing
+#                ProtonVPNService is refused: Proton's Advanced kill switch keeps blocking every connection outside
+#                the tunnel after a disconnect or a stopped service, which would leave Chase offline. So the button
+#                brings Proton's window up (its own launcher) and says what to click, and that the Advanced kill
+#                switch must be off first.
+#   WireGuard    a tunnel service run by WireGuard for Windows (C:\Program Files\WireGuard\wireguard.exe) is ended by
+#                wireguard.exe /uninstalltunnelservice <tunnel>, what WireGuard's own Deactivate does; its config
+#                stays, and the tunnel's firewall rules go with the service. Needs an elevated console.
+#   Other apps   a WireGuard tunnel another app installed (WiFiman Desktop here) and any other VPN adapter: the
+#                button names it and says to disconnect it in its app. No adapter is ever disabled (that needs admin
+#                and can leave the adapter off).
+# Never as SYSTEM: Proton's app runs in Chase's session.
+
+$script:ProtonPattern = '(?i)proton'
+
+function Test-VpnButtonEnabled {
+    # On when the tile says VPN ON or anything VPN-shaped is up; otherwise the button is greyed.
+    param($Glance, $Facts)
+    if ($Glance -and $Glance.Word -eq 'VPN ON') { return $true }
+    if (-not $Facts) { return $false }
+    return (@($Facts.VpnAdapters).Count -gt 0) -or (@($Facts.WireGuardTunnels | Where-Object { $_.Running }).Count -gt 0) -or [bool]$Facts.ProtonTunnelRunning -or ($Facts.RouteIsLan -eq $false)
+}
+
+function Get-VpnParts {
+    # What is up, sorted by who can end it: Proton, WireGuard for Windows tunnels, another app's tunnels, other adapters.
+    param($Facts)
+    $tunnels = @($Facts.WireGuardTunnels | Where-Object { $_.Running })
+    $own = @($tunnels | Where-Object { $_.Owner -eq 'WireGuard' })
+    $apps = @($tunnels | Where-Object { $_.Owner -ne 'WireGuard' })
+    $adapters = @($Facts.VpnAdapters)
+    $proton = [bool]$Facts.ProtonTunnelRunning -or @($adapters | Where-Object { ([string]$_.Name + ' ' + [string]$_.Description) -match $script:ProtonPattern }).Count -gt 0
+    $tunnelNames = @($tunnels | ForEach-Object { $_.Tunnel })
+    $other = @($adapters | Where-Object { -not (([string]$_.Name + ' ' + [string]$_.Description) -match $script:ProtonPattern) -and ($tunnelNames -notcontains [string]$_.Name) })
+    [pscustomobject]@{ Proton = $proton; OwnTunnels = $own; AppTunnels = $apps; OtherAdapters = $other
+        RouteOnly = (-not $proton -and -not $tunnels.Count -and -not $other.Count -and $Facts.RouteIsLan -eq $false) }
+}
+
+function Test-VpnNeedsElevation {
+    param($Facts)
+    $p = Get-VpnParts $Facts
+    return ($p.OwnTunnels.Count -gt 0 -and -not $Facts.IsAdmin)
+}
+
+function Get-VpnPlan {
+    param($Config, $Facts)
+    if (-not $Facts) { return @(New-PlanStep -Kind refuse -Text 'Could not read this PC''s VPN state. Nothing was done.') }
+    if ($Facts.IsSystem) { return @(New-PlanStep -Kind refuse -Text ('This console is running as ' + $Facts.Identity + '. Proton''s app runs in your own Windows session, so disconnect from your own login.')) }
+    $p = Get-VpnParts $Facts
+    if (-not $p.Proton -and -not $p.OwnTunnels.Count -and -not $p.AppTunnels.Count -and -not $p.OtherAdapters.Count -and -not $p.RouteOnly) {
+        return @(New-PlanStep -Kind refuse -Text 'No VPN is up: nothing to disconnect.')
+    }
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    if ($p.Proton) {
+        $steps.Add((New-PlanStep -Kind say -Text 'Proton VPN is connected. Its Windows app has no supported way to disconnect from a script, so the console opens it: click Disconnect. If its Advanced kill switch is on, turn it off first (Settings > Connection > Kill switch), or this PC stays offline after the disconnect.'))
+        if ($Facts.ProtonLauncher) { $steps.Add((New-PlanStep -Kind launch -Path $Facts.ProtonLauncher -Text 'Opening Proton VPN.')) }
+        else { $steps.Add((New-PlanStep -Kind say -Text 'Proton VPN''s launcher was not found where it installs (C:\Program Files\Proton\VPN). Open it from the tray.')) }
+    }
+    foreach ($t in $p.OwnTunnels) {
+        if ($Facts.IsAdmin) {
+            $steps.Add((New-PlanStep -Kind exec -Exe $t.Exe -Arguments @('/uninstalltunnelservice', $t.Tunnel) -Text ('Ending the WireGuard tunnel ' + $t.Tunnel + ' (its config stays in WireGuard).')))
+        } else {
+            $steps.Add((New-PlanStep -Kind say -Text ('The WireGuard tunnel ' + $t.Tunnel + ' needs an elevated console to end: run the console as administrator, or deactivate it in WireGuard.')))
+        }
+    }
+    foreach ($t in $p.AppTunnels) {
+        $steps.Add((New-PlanStep -Kind say -Text ('The WireGuard tunnel ' + $t.Tunnel + ' belongs to ' + $t.Owner + ': disconnect it in that app.')))
+    }
+    foreach ($a in $p.OtherAdapters) {
+        $steps.Add((New-PlanStep -Kind say -Text ($a.Name + ' (' + $a.Description + ') looks like a VPN: disconnect it in its app.')))
+    }
+    if ($p.RouteOnly) {
+        $steps.Add((New-PlanStep -Kind say -Text 'Traffic leaves through a route that is not the LAN, but no VPN adapter or tunnel could be named: disconnect the VPN in its app.'))
+    }
+    $steps.Add((New-PlanStep -Kind say -Text 'The PUBLIC DNS tile checks again in a few seconds and says whether the VPN is off.'))
+    $steps.ToArray()
+}
+
+function Get-DdnsRestartPlan {
+    # Offered, never automatic: after the VPN is off, a restart makes sl-ddns publish this house's address now instead
+    # of within its interval. The same container, restarted; nothing else changes.
+    param($Config)
+    @(
+        (New-PlanStep -Kind say -Text 'Restarting sl-ddns so it publishes this house''s address now (it checks on start).'),
+        (New-PlanStep -Kind exec -Exe 'docker' -Arguments @('restart', 'sl-ddns') -Text 'docker restart sl-ddns')
+    )
 }
 
 # --- the CC autopilot (cc-P74) -------------------------------------------------------------------
@@ -4604,6 +4717,86 @@ function Get-NetworkProbe {
     [pscustomobject]$r
 }
 
+function Get-VpnFacts {
+    # cc-P86: what the Disconnect VPN plan needs, read now. Read only: the route, the adapters, the services and who
+    # this console runs as. Never throws.
+    param($Config)
+    $id = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $f = [ordered]@{
+        Identity = $id.Name; IsSystem = [bool]$id.IsSystem
+        IsAdmin = ([Security.Principal.WindowsPrincipal]$id).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        RouteIsLan = $null; VpnAdapters = @(); WireGuardTunnels = @(); ProtonTunnelRunning = $false; ProtonLauncher = $null
+    }
+    try {
+        $src = @(Find-NetRoute -RemoteIPAddress '1.1.1.1' -ErrorAction Stop | Where-Object { $_.IPAddress }) | Select-Object -First 1
+        if ($src) { $f.RouteIsLan = ([string]$src.IPAddress -eq '192.168.1.58') }
+    } catch { }
+    try {
+        $f.VpnAdapters = @([System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | ForEach-Object {
+                [pscustomobject]@{ Name = $_.Name; Description = $_.Description; Type = [string]$_.NetworkInterfaceType; Up = ($_.OperationalStatus -eq 'Up') }
+            } | Where-Object { Test-VpnAdapter $_ })
+    } catch { }
+    try {
+        $wgHome = Join-Path $env:ProgramFiles 'WireGuard'
+        $f.WireGuardTunnels = @(Get-CimInstance Win32_Service -Filter "Name LIKE 'WireGuardTunnel$%'" -ErrorAction Stop | ForEach-Object {
+                $exe = ''
+                if ([string]$_.PathName -match '^"([^"]+)"') { $exe = $Matches[1] } elseif ([string]$_.PathName -match '^(\S+)') { $exe = $Matches[1] }
+                $owner = 'WireGuard'
+                if (-not $exe.StartsWith($wgHome + '\', [StringComparison]::OrdinalIgnoreCase)) {
+                    $owner = Split-Path (Split-Path $exe -Parent) -Leaf
+                    if ($owner -ieq 'WireGuard') { $owner = Split-Path (Split-Path (Split-Path $exe -Parent) -Parent) -Leaf }
+                }
+                [pscustomobject]@{ Name = $_.Name; Tunnel = ($_.Name -replace '^WireGuardTunnel\$', ''); Running = ($_.State -eq 'Running'); Exe = $exe; Owner = $owner }
+            })
+    } catch { }
+    try { $f.ProtonTunnelRunning = (@(Get-Service -Name 'ProtonVPN WireGuard' -ErrorAction Stop | Where-Object { $_.Status -eq 'Running' }).Count -gt 0) } catch { }
+    $launcher = Join-Path $env:ProgramFiles 'Proton\VPN\ProtonVPN.Launcher.exe'
+    if (Test-Path -LiteralPath $launcher -PathType Leaf) { $f.ProtonLauncher = $launcher }
+    [pscustomobject]$f
+}
+
+function Update-VpnButtons {
+    # Enabled only when the tile says VPN ON or a VPN is up; the facts are re-read at most every 30 s.
+    $btns = @($script:ui.VpnButtons)
+    if (-not $btns.Count) { return }
+    if (-not $script:vpnFactsAt -or ([datetime]::UtcNow - $script:vpnFactsAt).TotalSeconds -ge 30) {
+        if (-not $script:NetProbeDisabled) { $script:vpnFacts = Get-VpnFacts $script:cfg }
+        $script:vpnFactsAt = [datetime]::UtcNow
+    }
+    $on = Test-VpnButtonEnabled (Get-DnsGlance $script:netResult) $script:vpnFacts
+    $tip = (Get-ConsoleTooltips)['vpn.disconnect']
+    if (-not $on) { $tip = 'No VPN is on: nothing to disconnect. ' + $tip }
+    foreach ($b in $btns) {
+        $b.Enabled = $on
+        if ($script:ui.ToolTip) { $script:ui.ToolTip.SetToolTip($b, $tip) }
+    }
+}
+
+function Update-VpnRecheck {
+    # After a Disconnect VPN click: report the next tile result that says the VPN is off, or what is still up after
+    # two minutes. When public DNS still points elsewhere, offer to restart sl-ddns (never automatic).
+    if (-not $script:vpnRecheckSince -or -not $script:netResultAt -or $script:netResultAt -le $script:vpnRecheckSince) { return }
+    $t = Get-DnsGlance $script:netResult
+    $elapsed = ([datetime]::UtcNow - $script:vpnRecheckSince).TotalSeconds
+    if ($t.Word -eq 'OK') {
+        $script:vpnRecheckSince = $null
+        Write-ConsoleLine 'VPN off: PUBLIC DNS is green, and public DNS points at this house.' 'green'
+    } elseif ($t.Word -eq 'WRONG IP') {
+        $script:vpnRecheckSince = $null
+        Write-ConsoleLine ('VPN off, but public DNS still points elsewhere: ' + $t.Detail) 'amber'
+        if ((Show-YesNo 'The VPN is off, but public DNS still has the VPN''s address. Restart sl-ddns now so it publishes this house''s address? (Otherwise ddns corrects it within its interval.)') -eq 'Yes') {
+            [void](Invoke-Plan -Plan @(Get-DdnsRestartPlan $script:cfg) -Config $script:cfg -ActionKey 'vpn.ddns' -ShardKey 'network')
+            $script:netResultAt = $null
+        } else { Write-ConsoleLine 'sl-ddns left alone: it corrects public DNS within its interval.' 'gray' }
+    } elseif ($elapsed -gt 120) {
+        $script:vpnRecheckSince = $null
+        Write-ConsoleLine ('Still up after two minutes: ' + $t.Detail) 'amber'
+    } else {
+        # Keep checking: Proton is disconnected by hand. Ask for the next probe now rather than in 30 s.
+        if (([datetime]::UtcNow - $script:netResultAt).TotalSeconds -ge 5) { $script:netResultAt = $null }
+    }
+}
+
 # Set by the facts so a form built in a test never reaches the network.
 $script:NetProbeDisabled = $false
 
@@ -4647,6 +4840,8 @@ function Update-NetworkTile {
         $script:ui.NetTile.Word.Text = $t.Title + ': ' + $t.Word
         $script:ui.NetTile.Detail.Text = $t.Detail
     }
+    Update-VpnRecheck
+    Update-VpnButtons
     if (-not $script:NetProbeDisabled -and -not $script:netProbe -and (-not $script:netResultAt -or ([datetime]::UtcNow - $script:netResultAt).TotalSeconds -ge 30)) {
         Start-NetworkProbe
     }
@@ -4921,6 +5116,8 @@ function Invoke-ConsoleButton {
         $isCommit = ($ActionKey -like 'commit.*')
         $isPackage = ($ActionKey -like 'package.*')
         $isAutopilot = ($ActionKey -like 'autopilot.*')
+        $isVpn = ($ActionKey -like 'vpn.*')
+        if (-not $ShardKey -and $isVpn) { $ShardKey = 'network' }
         if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'autopilot' }; if ($ActionKey -like 'links.*') { $ShardKey = 'links' } }
         # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
         # status is a capture file". Only the second decides where the state comes from.
@@ -4929,8 +5126,13 @@ function Invoke-ConsoleButton {
         $pkgFacts = $null
         $apFacts = $null
         $now = Get-Date
+        $vpnFacts = $null
         if ($ActionKey -like 'links.*') {
             # cc-P83: a link reads nothing.
+        } elseif ($isVpn) {
+            # cc-P86: this PC's adapters, route and services, read now.
+            $vpnFacts = Get-VpnFacts $script:cfg
+            $script:vpnFacts = $vpnFacts; $script:vpnFactsAt = [datetime]::UtcNow
         } elseif ($isAutopilot) {
             # cc-P74: the autopilot's folder, never docker.
             $apFacts = Get-AutopilotFacts $script:cfg
@@ -4962,7 +5164,7 @@ function Invoke-ConsoleButton {
                 if (-not $WipeAdmin) { Write-ConsoleLine ($ActionKey + ': cancelled. Nothing was changed.') 'gray'; return }
             }
         }
-        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts)
+        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
         $dryTag = ''
@@ -5021,6 +5223,15 @@ function Invoke-ConsoleButton {
                 [void](Invoke-Plan -Plan $plan -Config $script:cfg -ActionKey $ActionKey -ShardKey $ShardKey -ConfirmLive $phrase -Yes:$answeredYes)
             }
             if ($isAutopilot) { [void](Update-AutopilotView) }
+            if ($isVpn -and -not @($plan | Where-Object { $_.Kind -eq 'refuse' }).Count) {
+                # cc-P86: re-probe now and report the result (Update-VpnRecheck, on the tile's timer).
+                $script:vpnRecheckSince = [datetime]::UtcNow
+                $script:netResultAt = $null
+                $script:vpnFactsAt = $null
+                if ((Test-VpnNeedsElevation $vpnFacts) -and (Show-YesNo 'A WireGuard tunnel needs an elevated console to end. Open the Shard Console again as administrator? (This one stays open.)') -eq 'Yes') {
+                    Start-Process -FilePath $script:cfg.PowerShell -Verb RunAs -ArgumentList ('-NoProfile -ExecutionPolicy Bypass -File "' + $script:SelfPath + '"') | Out-Null
+                }
+            }
         }
     } catch {
         Write-ConsoleLine ($ActionKey + ' failed: ' + $_.Exception.Message) 'red'
@@ -5128,6 +5339,23 @@ function New-ConsoleForm {
     }
     # cc-P52 Part H: public DNS and VPN. Drawn by Update-NetworkTile, not by the status refresh.
     $script:ui.NetTile = New-StatusTile 'PUBLIC DNS'
+    # cc-P86: Disconnect VPN, under the tile's line, as P83's links sit in the PLAY TESTS tile.
+    $vpnBar = New-Object Windows.Forms.FlowLayoutPanel
+    $vpnBar.Dock = 'Bottom'
+    $vpnBar.Height = 30
+    $vpnBar.Margin = New-Object Windows.Forms.Padding(0)
+    $vpnBtn = New-ConsoleButton 'Disconnect VPN' 'vpn.disconnect' 60
+    $vpnBtn.AutoSize = $true
+    $vpnBtn.AutoSizeMode = 'GrowAndShrink'
+    $vpnBtn.Font = New-Object Drawing.Font($form.Font.FontFamily, 8.25)
+    $vpnBtn.Height = 26
+    $vpnBtn.Margin = New-Object Windows.Forms.Padding(4, 0, 0, 2)
+    $vpnBtn.Enabled = $false
+    $vpnBar.Controls.Add($vpnBtn)
+    $script:ui.NetTile.Panel.Controls.Add($vpnBar)
+    $script:ui.NetTile.Detail.BringToFront()
+    $script:ui.VpnButtons = @($vpnBtn)
+    $script:vpnFacts = $null; $script:vpnFactsAt = $null; $script:vpnRecheckSince = $null
     $glance.Controls.Add($script:ui.NetTile.Panel, $col, 0)
     $col++
     $script:netProbe = $null; $script:netResult = $null; $script:netResultAt = $null
@@ -5414,11 +5642,16 @@ function New-ConsoleForm {
     }
     $worldPage.Controls.Add($worldTable)
 
-    $diagPage = New-ButtonPage 'Diagnostics' ('Two read-only health checks. Each writes one timestamped file in ' + $Config.DiagFolder + '. The shard check reads the TEST container only.') @(
+    $diagPage = New-ButtonPage 'Diagnostics' ('Two read-only health checks. Each writes one timestamped file in ' + $Config.DiagFolder + '. The shard check reads the TEST container only. Disconnect VPN turns off a VPN that is making sl-ddns publish the wrong address.') @(
         (New-ConsoleButton 'Check Docker' 'diag.docker'),
         (New-ConsoleButton 'Check the test shard' 'diag.shard'),
-        (New-ConsoleButton 'Open the folder they write to' 'diag.folder')
+        (New-ConsoleButton 'Open the folder they write to' 'diag.folder'),
+        (New-ConsoleButton 'Disconnect VPN' 'vpn.disconnect')
     )
+    # cc-P86: greyed until a VPN is up, like the one in the PUBLIC DNS tile.
+    $diagVpn = @($diagPage.Controls[0].Controls | Where-Object { $_.Tag -eq 'vpn.disconnect' })[0]
+    $diagVpn.Enabled = $false
+    $script:ui.VpnButtons += $diagVpn
 
     $livePage = New-ButtonPage 'LIVE shard' 'LIVE: sl-modernuo, the real world save, real players. Every button here asks you to type a phrase first. Start, Stop and Restart act on the existing container only; this console never creates it, never runs compose on it and never deploys. Each plan says whether a stop saves first.' @(
         (New-ConsoleButton 'Start' 'live.start'),
@@ -5719,6 +5952,7 @@ if ($Action -eq 'list') {
     Write-Host 'package.check takes -PackageZip <name in player-package\dist>; it only reads.'
     Write-Host 'test.deploy takes -ImageTag sl-modernuo:cc-pNN and -ConfirmLive ''deploy to test''.'
     Write-Host 'test.wipe takes -WipeAdmin <new admin name> and -ConfirmLive ''WIPE TEST ACCOUNTS''; it asks for the password in its own window.'
+    Write-Host 'vpn.disconnect needs -Mode Execute: it ends a WireGuard for Windows tunnel (elevated), opens Proton VPN, or names the VPN to disconnect in its app.'
     Write-Host 'links.playtests, links.dashboard and links.status open the play-test page (8093), the dashboard (3000) and the status page (8093/status) in the browser.'
     Write-Host 'autopilot.on, .off, .email and .test need -Mode Execute; each opens the autopilot''s own script in a window of its own. autopilot.queue and .log only open.'
     exit 0
@@ -5749,6 +5983,7 @@ if ($Action) {
     if ($Action -like 'package.*') { $sk = 'package' }
     if ($Action -like 'autopilot.*') { $sk = 'autopilot' }
     if ($Action -like 'links.*') { $sk = 'links' }
+    if ($Action -like 'vpn.*') { $sk = 'network' }
     # The mode is decided and shown before anything is read or run (D37).
     $run = Resolve-RunMode -Action $Action -Mode $Mode -DryRun:$DryRun
     $banner = Get-ModeBanner -RunMode $run -Action $Action -ShardKey $sk
@@ -5761,8 +5996,11 @@ if ($Action) {
     $pkgFacts = $null
     $apFacts = $null
     $now = Get-Date
+    $vpnFacts = $null
     if ($Action -like 'links.*') {
         # cc-P83: a link reads nothing.
+    } elseif ($Action -like 'vpn.*') {
+        $vpnFacts = Get-VpnFacts $config
     } elseif ($Action -like 'autopilot.*') {
         # cc-P74: the autopilot's folder, never docker.
         $apFacts = Get-AutopilotFacts $config
@@ -5782,7 +6020,7 @@ if ($Action) {
     # cc-P73: the wipe re-reads its facts here, so the child plans from the shard as it is now.
     $wFacts = $null
     if ($Action -eq 'test.wipe') { $wFacts = Get-WipeFacts $config $st }
-    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts)
+    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts)
     $viol = @(Test-PlanSafety $plan $config)
     $header = 'PLAN'
     if ($isDry) { $header = 'DRY RUN' }

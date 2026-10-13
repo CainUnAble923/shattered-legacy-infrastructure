@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.8
+
+### Staff
+- The Shard Console has a Disconnect VPN button by the PUBLIC DNS tile and on Diagnostics: it ends a WireGuard tunnel, opens Proton VPN with what to click (Proton has no scripted disconnect), or names any other VPN to turn off, then re-checks public DNS and offers to restart sl-ddns.
+
 ## 2026.10.13.7
 
 ### Staff
