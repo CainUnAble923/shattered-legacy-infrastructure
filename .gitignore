@@ -88,3 +88,8 @@ client-addons/
 # screenshots that show that art.
 scripts/shard-console-settings.json
 scripts/shard-console-cache/
+
+# cc-P91: the play-test bot. Its password file (the scratch admin and player) and Python caches never go in git.
+tools/playtest-bot/secrets.local.json
+tools/playtest-bot/**/__pycache__/
+tools/playtest-bot/cache/

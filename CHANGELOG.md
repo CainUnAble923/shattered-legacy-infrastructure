@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.12
+
+### Staff
+- An overnight play-test bot: one command makes a scratch copy of the test world with its own accounts, runs the open play tests a bot can settle three times each, soaks the shard, and emails a morning report; it never marks results, and never touches the live or test shard.
+
 ## 2026.10.13.11
 
 ### Staff

@@ -1,0 +1,33 @@
+# The play-test bot's SCRATCH shard (cc-P91). Started and stopped only by Run-OvernightPlaytests.ps1.
+#
+# Its own compose project (sl-uo-bot: never "uo" or "sl-uo-test", bug-list D22), its own container (sl-modernuo-bot), its
+# own image tag (sl-modernuo:bot, never latest, which the test compose file runs), its own world folder and Configuration
+# copy under BOT_ROOT (D:\UO\bot-shard, outside both repos), and LOOPBACK ONLY: 127.0.0.1:2595. The ports match inside
+# and out for the reason in docker/uo/docker-compose.test.yml (D8: the relay packet carries the port), and the
+# Configuration copy advertises 127.0.0.1, so the relay can only ever say 127.0.0.1:2595.
+#
+# Never the live shard (2593, sl-modernuo) or the real test shard (2594, sl-modernuo-test): this file names neither.
+name: sl-uo-bot
+
+services:
+  modernuo-bot:
+    image: sl-modernuo:bot
+    container_name: sl-modernuo-bot
+    restart: "no"
+    stop_grace_period: 60s
+    ports:
+      - "127.0.0.1:2595:2595"
+    volumes:
+      - ${SERVER_PATH}/customizations:/modernuo-projects:ro
+      - ${BOT_ROOT}/Configuration:/modernuo/Configuration
+      - ${BOT_ROOT}/world:/var/lib/uo/modernuo
+      - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
+    environment:
+      TZ: ${TZ:-America/Chicago}
+      # One of TestAccountWipe's three locks (server/customizations/Misc/TestAccountWipe.cs). A scratch copy of the test
+      # world is a test shard; the other two locks are allowAccountWipe in the bot's Configuration copy and no 2593.
+      SL_SHARD_ROLE: test
+    stdin_open: true
+    tty: true
+    security_opt:
+      - seccomp:unconfined
