@@ -95,6 +95,13 @@
               label: Passed
               format: number
 
+    # cc-P85. The shard status dashboard (shard-migration/dashboard.html), served by sl-play-tests at /status. LAN
+    # only, like the play-test page; refreshed by tools/progress.py on every commit.
+    - Shard status:
+        icon: /icons/shattered_legacy_logo.png
+        href: "http://192.168.1.58:8093/status"
+        description: Playable gates, the CC queue, play tests and how old the judgment is. LAN only
+
     - Wiki:
         icon: /icons/shattered_legacy_logo.png
         href: "https://wiki.shatteredlegacyuo.com"

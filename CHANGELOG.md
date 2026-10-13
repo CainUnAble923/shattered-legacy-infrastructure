@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.7
+
+### Staff
+- The shard status dashboard says how old its judgment is, lists the CC queue and the play-test counts, and is served on the home network at port 8093 /status beside the play-test page (after its redeploy); the Shard Console, the play-test page and Homepage link to it.
+
 ## 2026.10.13.6
 
 ### Staff

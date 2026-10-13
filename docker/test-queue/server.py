@@ -2,6 +2,8 @@
 
 Serves html/index.html and a small JSON API over D:\\UO\\shard-migration\\testing\\play-tests.json:
   GET  /                 the page
+  GET  /status           the shard status dashboard (cc-P85): shard-migration/dashboard.html, read from disk on every
+                         request and sent with Cache-Control: no-store, so it is always the file as it is now
   GET  /api/items        the whole document (summary, prompts, items)
   GET  /api/summary      counts only, for the Homepage dashboard's customapi widget
   POST /api/result       {"id": "P71-3", "status": "pass|fail|later|open", "note": "..."}  (a fail needs a note)
@@ -32,6 +34,8 @@ ap.add_argument("--html", default=os.environ.get("PLAYTESTS_HTML", os.path.join(
 ap.add_argument("--bind", default=os.environ.get("PLAYTESTS_BIND", "0.0.0.0"))
 ap.add_argument("--port", type=int, default=int(os.environ.get("PLAYTESTS_PORT", "8000")))
 ap.add_argument("--import-seconds", type=int, default=int(os.environ.get("IMPORT_SECONDS", "60")))
+ap.add_argument("--status-page", default=os.environ.get("STATUS_PAGE", "/data/site/dashboard.html"),
+                help="cc-P85: the dashboard file served at /status (read only)")
 args = ap.parse_args()
 
 sys.path.insert(0, args.lib)
@@ -95,6 +99,13 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, f.read(), "text/html; charset=utf-8")
             except OSError as e:
                 return self.send(500, "page missing: %s" % e, "text/plain; charset=utf-8")
+        if p in ("/status", "/status/"):
+            # cc-P85: the dashboard, read fresh each time (progress.py rewrites it on every commit).
+            try:
+                with open(args.status_page, "rb") as f:
+                    return self.send(200, f.read(), "text/html; charset=utf-8")
+            except OSError as e:
+                return self.send(500, "dashboard missing: %s" % e, "text/plain; charset=utf-8")
         if p == "/api/items":
             try:
                 doc = read_doc()

@@ -23,6 +23,8 @@ services:
       - D:/UO/shard-migration/notes:/data/notes:ro
       - D:/UO/shard-migration/docs:/data/docs:ro
       - D:/UO/shard-migration/testing:/data/testing
+      # cc-P85: the repo root, read only, for /status (dashboard.html). A folder, for the same reason as above.
+      - D:/UO/shard-migration:/data/site:ro
     environment:
       TZ: ${TZ:-America/Chicago}
       PLAYTESTS_ROOT: /data
@@ -30,6 +32,7 @@ services:
       PLAYTESTS_HTML: /app/svc/html
       PLAYTESTS_PORT: "8000"
       IMPORT_SECONDS: "60"
+      STATUS_PAGE: /data/site/dashboard.html
       PYTHONDONTWRITEBYTECODE: "1"
 
 networks:

@@ -250,6 +250,8 @@ function Get-ConsoleConfig {
         PlayTestsFile      = 'D:\UO\shard-migration\testing\play-tests.json'
         PlayTestsUrl       = 'http://localhost:8093/'
         DashboardUrl       = 'http://localhost:3000/'
+        # cc-P85: the shard status dashboard, which sl-play-tests serves at /status.
+        StatusUrl          = 'http://localhost:8093/status'
         # cc-P84: the look and where actions show their output, remembered on this PC (git-ignored); the gump cache
         # (git-ignored: it holds EA's art); the client file the gumps are read from (read only); and our own crest.
         SettingsFile       = (Join-Path $RepoRoot 'scripts\shard-console-settings.json')
@@ -834,6 +836,8 @@ function Get-ConsoleActions {
         # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
         [pscustomobject]@{ Key = 'links.playtests';  Group = 'Links';       Label = 'Play tests';                         Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
+        # cc-P85: the shard status page, beside the two above.
+        [pscustomobject]@{ Key = 'links.status';     Group = 'Links';       Label = 'Status';                             Mutates = $false; RunIn = 'here' }
     )
 }
 
@@ -959,6 +963,7 @@ function Get-ConsoleTooltips {
         'autopilot.log'    = 'Opens autopilot.log in Notepad. Changes nothing.'
         'links.playtests'  = 'Opens the play-test page (port 8093) in your browser. Changes nothing here.'
         'links.dashboard'  = 'Opens the Homepage dashboard (port 3000) in your browser. Changes nothing here.'
+        'links.status'     = 'Opens the shard status page (port 8093, /status): playable gates, the CC queue, play tests and how old the judgment is. Changes nothing.'
         # controls without an action key
         'refresh'          = 'Reads docker and the disk again and redraws the tiles and the status. Read-only.'
         'autoRefresh'      = 'Refreshes the status every 30 seconds while ticked. Read-only.'
@@ -2676,6 +2681,7 @@ function Get-LinkPlan {
     switch ($Action) {
         'links.playtests' { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.PlayTestsUrl) -Text 'Opening the play-test page (sl-play-tests, port 8093) in the default browser.') }
         'links.dashboard' { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.DashboardUrl) -Text 'Opening the Homepage dashboard (sl-dashboard, port 3000) in the default browser.') }
+        'links.status'    { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.StatusUrl) -Text 'Opening the shard status page (sl-play-tests, port 8093, /status) in the default browser.') }
         default { @(New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them.")) }
     }
 }
@@ -4230,13 +4236,14 @@ function Set-ControlTheme {
                 break
             }
             { $_ -is [Windows.Forms.Button] } {
+                $small = ($x.Parent -and $x.Parent.Parent -and $x.Parent.Parent.Tag -eq 'tile')
                 $x.FlatStyle = 'Flat'
                 $x.UseVisualStyleBackColor = $false
                 $x.BackColor = ConvertTo-DrawingColor $c.ButtonBack
                 $x.ForeColor = ConvertTo-DrawingColor $c.ButtonText
                 $x.FlatAppearance.BorderColor = ConvertTo-DrawingColor $c.ButtonBorder
                 $x.FlatAppearance.MouseOverBackColor = ConvertTo-DrawingColor $c.ButtonHover
-                $x.Font = $ui
+                if ($small) { $x.Font = New-Object Drawing.Font($Theme.Fonts.Ui, [single]8.25) } else { $x.Font = $ui }
                 break
             }
             { $_ -is [Windows.Forms.RichTextBox] } {
@@ -5136,7 +5143,11 @@ function New-ConsoleForm {
     $linkBar.Margin = New-Object Windows.Forms.Padding(0)
     $script:ui.LinkButtons = @()
     foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Links' })) {
-        $lb = New-ConsoleButton $a.Label $a.Key 84
+        # cc-P85: three now (Status beside Play tests and Dashboard), so each is sized to its word to fit the tile.
+        $lb = New-ConsoleButton $a.Label $a.Key 60
+        $lb.AutoSize = $true
+        $lb.AutoSizeMode = 'GrowAndShrink'
+        $lb.Font = New-Object Drawing.Font($form.Font.FontFamily, 8.25)
         $lb.Height = 26
         $lb.Margin = New-Object Windows.Forms.Padding(4, 0, 0, 2)
         $linkBar.Controls.Add($lb)
@@ -5708,7 +5719,7 @@ if ($Action -eq 'list') {
     Write-Host 'package.check takes -PackageZip <name in player-package\dist>; it only reads.'
     Write-Host 'test.deploy takes -ImageTag sl-modernuo:cc-pNN and -ConfirmLive ''deploy to test''.'
     Write-Host 'test.wipe takes -WipeAdmin <new admin name> and -ConfirmLive ''WIPE TEST ACCOUNTS''; it asks for the password in its own window.'
-    Write-Host 'links.playtests and links.dashboard open the play-test page (8093) and the dashboard (3000) in the browser.'
+    Write-Host 'links.playtests, links.dashboard and links.status open the play-test page (8093), the dashboard (3000) and the status page (8093/status) in the browser.'
     Write-Host 'autopilot.on, .off, .email and .test need -Mode Execute; each opens the autopilot''s own script in a window of its own. autopilot.queue and .log only open.'
     exit 0
 }
