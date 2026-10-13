@@ -29,6 +29,25 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.5
+
+### Added
+- Imbuing is now learned. Every account knows the basics (resists, stats, regens and the plain utilities) at a Basic strength; the Artificers' Order sells formula books, one per rank, for Essence Shards, and each teaches your whole account new properties and stronger tiers (Basic, Refined, Full) of the ones it knows.
+- The Master Formulary (top rank, after the Order's trial) lets your items carry a sixth imbued property.
+- Beyond the books, the strongest Overcharged tiers and rare properties come from quests, commissions, loot boxes and bosses. Overcharged imbuing needs a soul forge: the Queen's Soulforge or an Artificers' hall forge.
+- Eleven new custom properties, one per item, each with its own monster part: Bountiful, Prospector, Butcher's Eye and Mastercraft for gatherers and crafters, Time Slip, Shatter, Spell Leech and Bond for fighters and tamers, and Fortune's Favor (better loot box contents) from boxes and bosses. Echo of the Loop and Renowned are learnable now and take effect when their systems arrive.
+- Skill bonuses can be imbued: combat and magic skills on jewelry (one per skill group, up to +15, more with Overcharged), crafting and gathering skills on aprons.
+- Mule owners with the Imbued Barding Socket can imbue near their mule: up to Refined at II, up to Full with the soul forge bonus at III.
+- Two secret achievements for the superstitious.
+
+### Changed
+- The imbue menu shows only what your account knows, with one line per category on where to learn more.
+- Self Repair is no longer locked to Master Artificers; every account knows it at Basic. It still costs more than any other property.
+- Imbue slots and strength now come from what your account has learned, not from your Artificers' standing.
+
+### Staff
+- [ImbueKnowledge opens a player's account imbue knowledge to view, grant or revoke tiers; [ImbueKnowledge reload reads Configuration/imbuing.json. Staff place an Artificers' hall forge with [add ArtificersSoulForge.
+
 ## 2026.10.13.4
 
 ### Added

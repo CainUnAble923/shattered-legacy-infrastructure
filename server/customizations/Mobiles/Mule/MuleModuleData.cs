@@ -117,9 +117,11 @@ namespace Server.Mobiles
                 new[] { "25% chance to resist being dismounted", "50% chance", "cannot be dismounted; shorter remount delay" },
                 MuleModuleState.Stubbed, "waits on a pinned change to the dismount paths (planned)"),
             new(MuleModuleId.ImbuedBardingSocket, "artificers", "Artificers' Order", "Imbued Barding Socket", 0x0F16, new[] { 1, 2, 3 },
-                new[] { "Imbuing can add 1 property to the mule", "2 properties, and unravel anywhere near the mule",
-                        "3 properties, and imbue anywhere near the mule" }, MuleModuleState.Partial,
-                "the property sockets work; unravel and imbue near the mule follow the imbue research (notes)")
+                new[] { "Imbuing can add 1 property to the mule",
+                        "2 properties; near the mule, imbue your known properties up to Refined (no forge bonus)",
+                        "3 properties; near the mule, imbue up to Full with the soul forge bonus (never Overcharged)" },
+                MuleModuleState.Partial,
+                "the soul forge near the mule works (cc-P82, ImbueSites); nothing in game adds a property socket to the mule yet")
         };
 
         public static MuleModuleInfo Info(MuleModuleId id) => Modules.FirstOrDefault(m => m.Id == id);

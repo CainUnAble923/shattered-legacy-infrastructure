@@ -252,7 +252,8 @@ namespace Server.Mobiles
             {
                 if (entry.Damager is EvoPet { Deleted: false, Controlled: true, ControlMaster: not null } pet)
                 {
-                    pet.AwardXp(XpForKill(victim, (double)entry.DamageGiven / hitsMax));
+                    // cc-P82: Bond on the master's gear adds its percent.
+                    pet.AwardXp(ClusterFImbueEffects.BondXp(pet, XpForKill(victim, (double)entry.DamageGiven / hitsMax)));
                 }
             }
         }

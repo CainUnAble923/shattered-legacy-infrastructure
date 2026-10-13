@@ -1,0 +1,79 @@
+--- a/Projects/UOContent/Items/Weapons/BaseWeapon.cs
++++ b/Projects/UOContent/Items/Weapons/BaseWeapon.cs
+@@ -1877,6 +1877,7 @@
+ 
+         bcAtt?.AlterMeleeDamageTo(defender, ref damage);
+         bcDef?.AlterMeleeDamageFrom(attacker, ref damage);
++        ClusterFImbueEffects.AlterMeleeDamage(attacker, defender, ref damage); // ClusterF cc-P82: Bond
+ 
+         damage = AbsorbDamage(attacker, defender, damage);
+ 
+@@ -2213,7 +2214,9 @@
+         bcAtt?.OnGaveMeleeAttack(defender, damage);
+         bcDef?.OnGotMeleeAttack(attacker, damage);
+ 
++        var manaBeforeAbility = attacker.Mana; // ClusterF cc-P82: Time Slip refunds what the special move took
+         a?.OnHit(attacker, defender, damage, defLoc);
++        ClusterFImbueEffects.OnWeaponHit(attacker, defender, a, manaBeforeAbility); // ClusterF cc-P82: Time Slip, Shatter
+         move?.OnHit(attacker, defender, damage);
+ 
+         ForceOfNature.OnHit(attacker, defender);
+--- a/Projects/UOContent/Items/Weapons/Abilities/WeaponAbility.cs
++++ b/Projects/UOContent/Items/Weapons/Abilities/WeaponAbility.cs
+@@ -489,6 +489,9 @@
+ 
+     private static bool OnCooldown(Mobile m) => _abilityCooldown.ContainsKey(m);
+ 
++    // ClusterF cc-P82: Time Slip ends the 3 second window in which a second special move costs double.
++    public static void ClearCooldown(Mobile m) => RemoveCooldown(m);
++
+     private class WeaponAbilityTimer : Timer
+     {
+         private readonly Mobile _mobile;
+--- a/Projects/UOContent/Spells/Base/SpellHelper.cs
++++ b/Projects/UOContent/Spells/Base/SpellHelper.cs
+@@ -999,6 +999,7 @@
+                 StaminaSystem.DFA = dfa;
+ 
+                 var damageGiven = AOS.Damage(target, from, dmg, phys, fire, cold, pois, nrgy, chaos);
++                ClusterFImbueEffects.OnSpellDamage(from, target, damageGiven); // ClusterF cc-P82: Spell Leech
+                 Mysticism.SpellPlagueSpell.OnMobileDamaged(target);
+ 
+                 StaminaSystem.DFA = DFAlgorithm.Standard;
+--- a/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
++++ b/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
+@@ -847,6 +847,8 @@
+                 bonus = talisman.ExceptionalBonus / 100.0;
+             }
+ 
++            bonus += ClusterFImbueEffects.MastercraftBonus(from); // ClusterF cc-P82: Mastercraft on worn gear
++
+             chance = system.ECA switch
+             {
+                 CraftECA.FiftyPercentChanceMinusTenPercent => chance * 0.5 - 0.1,
+--- a/Projects/Server/Items/Item.cs
++++ b/Projects/Server/Items/Item.cs
+@@ -875,8 +875,13 @@
+     {
+         AddNameProperties(list);
+         AppendChildNameProperties(list);
++        ExtraProperties?.Invoke(this, list);
+     }
+ 
++    // Shattered Legacy (cc-P82): extra tooltip lines kept outside the item (an imbued custom property). Every item's
++    // GetProperties reaches this one through base.GetProperties.
++    public static Action<Item, IPropertyList> ExtraProperties;
++
+     [IgnoreDupe]
+     [CommandProperty(AccessLevel.GameMaster, readOnly: true)]
+     public DateTime Created { get; set; } = Core.Now;
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -1687,6 +1687,7 @@
+         public override void OnItemAdded(Item item)
+         {
+             base.OnItemAdded(item);
++            ClusterFImbueEffects.OnEquipped(this, item); // ClusterF cc-P82: when luck gear went on
+ 
+             if (item is BaseArmor or BaseWeapon)
+             {

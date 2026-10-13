@@ -137,6 +137,9 @@ public static class LootBoxRoller
         public int Renown;
         public readonly List<(Item Item, bool Rare)> Items = new();
         public readonly List<BoxPool> Pools = new();
+
+        // cc-P82: the tier the contents rolled at (the box's own, or one higher on a Fortune's Favor roll).
+        public int QualityTier;
     }
 
     /// <summary>Rolls a box's whole contents for this character now. Nothing is rolled again at opening.</summary>
@@ -153,8 +156,14 @@ public static class LootBoxRoller
         r.Gold = t.Gold[tier - 1];
         r.Renown = t.Renown[tier - 1];
 
+        // cc-P82 Fortune's Favor: the contents may roll one quality tier higher. The number of slots and the currency
+        // slot's gold stay this box's own tier's, so the number of items never changes; what fills each slot (and a
+        // theme stack's size, as tier always set it) follows the quality tier.
+        var quality = ClusterFImbueEffects.FortuneQualityTier(pm, tier);
+        r.QualityTier = quality;
+
         // The theme slot.
-        foreach (var item in ThemeSlot(pm, theme, tier, craft, account, sourceName, r))
+        foreach (var item in ThemeSlot(pm, theme, quality, craft, account, sourceName, r))
         {
             r.Items.Add((item, false));
         }
@@ -162,9 +171,9 @@ public static class LootBoxRoller
         // The general pool: every slot past theme and currency.
         for (var i = 2; i < t.SlotsFor(tier); i++)
         {
-            var pool = PickPool(tier);
+            var pool = PickPool(quality);
             r.Pools.Add(pool);
-            var item = PoolItem(pool, pm, tier, level, account, theme);
+            var item = PoolItem(pool, pm, quality, level, account, theme);
             if (item != null)
             {
                 r.Items.Add((item, pool == BoxPool.Rare));

@@ -129,6 +129,9 @@ public partial class Mining
                 item.Amount += 1;
         }
 
+        // -- cc-P82: Bountiful (more of the stack) and Prospector (a rare find), from worn imbued gear --------
+        ClusterFImbueEffects.OnGathered(m, item, "mining");
+
         // -- Mining depletion broadcast -----------------------------------------
         // After consuming from the harvest bank (done by the base harvest system
         // before Give() fires), check if this 8x8 chunk is now empty.  If so,

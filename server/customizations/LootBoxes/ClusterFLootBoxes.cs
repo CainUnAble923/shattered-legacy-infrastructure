@@ -109,6 +109,7 @@ public static class ClusterFLootBoxes
 
         box = MakeBox(pm, theme, tier, skill, label, null);
         ClusterFGuildPromotion.Deliver(pm, box);
+        ClusterFImbueEffects.OnLootBoxEarned(pm, source); // cc-P82: the Fortune's Favor achievements
         var level = tier >= 4 ? FanfareLevel.Major : FanfareLevel.Minor;
         ClusterFFanfare.Play(pm, level, FanfareLines.BoxAwarded, new FanfareVars(Tier: box.BoxName), tier,
             voiceKey: $"box:{box.BoxName}");

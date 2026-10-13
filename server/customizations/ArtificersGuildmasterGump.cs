@@ -200,12 +200,16 @@ public class ArtificersGuildmasterGump : Gump
             "spent at the Imbuing Table to add and enhance magical properties on items. " +
             "Earn more Shards by disenchanting unwanted magical items.</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#AAAAAA>Artificers' Standing tracks your rank within the Order. " +
-            "Higher rank unlocks greater imbuing capabilities:</BASEFONT><BR><BR>" +
-            "<BASEFONT COLOR=#888888>Apprentice (0): max 5 props, vanilla intensity caps</BASEFONT><BR>" +
-            "<BASEFONT COLOR=#888888>Journeyman (1,000): imbue magic items, +1 prop slot, 120% caps</BASEFONT><BR>" +
-            "<BASEFONT COLOR=#888888>Artificer (5,000): +1 prop slot, 150% caps</BASEFONT><BR>" +
-            "<BASEFONT COLOR=#888888>Master Artificer (15,000): +1 prop slot, 175% caps</BASEFONT><BR>" +
-            "<BASEFONT COLOR=#888888>Arcane Artisan (40,000+): 8 prop slots, 200% caps</BASEFONT>";
+            "Each rank sells a formula book that teaches your whole account more imbue properties, " +
+            "and higher tiers of those it knows (Basic, Refined, Full):</BASEFONT><BR><BR>" +
+            "<BASEFONT COLOR=#888888>Free to every account: resists, stats, regens, and the plain utilities</BASEFONT><BR>" +
+            "<BASEFONT COLOR=#888888>Journeyman (1,000): the Apprentice Formulary</BASEFONT><BR>" +
+            "<BASEFONT COLOR=#888888>Artificer (5,000): the Journeyman Formulary</BASEFONT><BR>" +
+            "<BASEFONT COLOR=#888888>Master Artificer (15,000): the Artificer's Formulary</BASEFONT><BR>" +
+            "<BASEFONT COLOR=#888888>Arcane Artisan (40,000+): the Arcane Formulary, and the Master Formulary after " +
+            "the Order's trial (a sixth property slot)</BASEFONT><BR>" +
+            "<BASEFONT COLOR=#888888>Beyond: Overcharged tiers and rare properties come from the 140+ path " +
+            "(quests, commissions, loot boxes, bosses), and Overcharged needs a soul forge.</BASEFONT>";
 
         AddHtml(16, 78, W - 32, H - 128, html, false, true);
     }
@@ -218,8 +222,11 @@ public class ArtificersGuildmasterGump : Gump
         guild.GuildReputation.TryGetValue("artificers", out var standing);
         guild.GuildCurrency.TryGetValue("artificers",   out var shards);
         var rank    = GetRankName(standing);
-        var maxCap  = ArtificersImbueGump.GetIntensityCap(standing);
-        var maxSlots= ArtificersImbueGump.GetMaxPropertySlots(standing);
+        var data    = _pm.Account is IAccount a ? ClusterFAccountPersistence.GetOrCreate(a) : null;
+        var maxSlots= ClusterFImbueKnowledge.MaxSlots(data);
+        var known   = 0;
+        foreach (var key in ImbueFamilies.AllKeys())
+            if (ClusterFImbueKnowledge.KnownTier(data, key) >= ImbueTier.Basic) known++;
 
         var html =
             $"<BASEFONT COLOR=#FFD700>Rank: {rank}</BASEFONT><BR>" +
@@ -227,7 +234,7 @@ public class ArtificersGuildmasterGump : Gump
             $"<BASEFONT COLOR=#AAAAAA>Essence Shards: {shards}</BASEFONT><BR><BR>" +
             $"<BASEFONT COLOR=#CCCCCC>Your imbuing limits:</BASEFONT><BR>" +
             $"<BASEFONT COLOR=#AAAAAA>  Max property slots: {maxSlots}</BASEFONT><BR>" +
-            $"<BASEFONT COLOR=#AAAAAA>  Max intensity: {maxCap}%</BASEFONT><BR><BR>" +
+            $"<BASEFONT COLOR=#AAAAAA>  Imbue properties your account knows: {known}</BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#888888>Apprentice (0) -> Journeyman (1,000) -> Artificer (5,000)</BASEFONT><BR>" +
             "<BASEFONT COLOR=#888888>Master Artificer (15,000) -> Arcane Artisan (40,000)</BASEFONT>";
 
@@ -245,6 +252,9 @@ public class ArtificersGuildmasterGump : Gump
 
         AddButton(18, 338, 4011, 4012, 52);
         AddLabel(44, 340, 1154, "Civic Mule Exchange (mule upgrades)");
+
+        AddButton(18, 366, 4011, 4012, 53);
+        AddLabel(44, 368, 1154, "Formula Books (imbue properties)");
     }
 
     // -- Rank helpers ----------------------------------------------------------
@@ -257,29 +267,6 @@ public class ArtificersGuildmasterGump : Gump
         >= 1000  => "Journeyman",
         _        => "Apprentice"
     };
-
-    /// <summary>
-    /// Returns the minimum standing required to attempt imbuing a property
-    /// based on its discovery threshold (a proxy for power level).
-    ///
-    ///   Threshold  3  (GoldBase &lt;  500) -> Apprentice - 0 standing
-    ///   Threshold  5  (GoldBase &lt; 1500) -> Journeyman - 1,000 standing
-    ///   Threshold  8  (GoldBase &lt; 3000) -> Artificer  - 5,000 standing
-    ///   Threshold 10  (GoldBase >= 3000 + all slayers) -> Master Artificer - 15,000 standing
-    /// </summary>
-    public static int GetMinStanding(int discoveryThreshold) => discoveryThreshold switch
-    {
-        >= 10 => 15000,
-        >= 8  => 5000,
-        >= 5  => 1000,
-        _     => 0
-    };
-
-    /// <summary>
-    /// Returns the rank name required for a given discovery threshold.
-    /// </summary>
-    public static string GetRequiredRankName(int discoveryThreshold) =>
-        GetRankName(GetMinStanding(discoveryThreshold));
 
     // -- Response --------------------------------------------------------------
 
@@ -315,6 +302,7 @@ public class ArtificersGuildmasterGump : Gump
             case 50: _pm.SendGump(new ArtificersImbueGump(_pm));                             break;
             case 51: _pm.SendGump(new ArtificersImbueGump(_pm));                             break; // non-member access
             case 52: _pm.SendGump(new CrossGuildExchangeGump(_pm, p => p.SendGump(new ArtificersGuildmasterGump(p, View.MemberDashboard)))); break;
+            case 53: _pm.SendGump(new ImbueFormulaShopGump(_pm));                           break; // cc-P82
         }
     }
 }

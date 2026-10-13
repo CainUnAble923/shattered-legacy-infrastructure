@@ -1,32 +1,28 @@
 // ImbueSelfRepairGateVerification.cs
 //
-// cc-P42 Part A (Chase, 2026-10-02). After F-27 (Self Repair 1 in 500 from high-end loot only), the Artificers' imbue
-// stays a way to Self Repair, but much more expensive and only from Master Artificer (15,000 standing). Before this
-// the gump sold it at 5 shards / 2,000 gold base from Artificer (5,000), the tier its discovery threshold gave.
-// Numbers and the comparison table: shard-migration notes/cc-P42-defect-batch-3.md, Part A.
+// cc-P42 Part A (Chase, 2026-10-02) made Self Repair dear and gated it at Master Artificer (15,000 standing). cc-P82 (the
+// Artificers' Imbuing rework, shard-migration docs/artificers-imbuing-design.md) gates imbuing by property and tier
+// instead, and its ladder makes Self Repair free: every account knows it at Basic, and the formula books raise it. The
+// price floor of cc-P46 Part C stays. Notes: shard-migration notes/cc-P82-artificers-imbuing.md.
 //
 // Every imbue goes through the Imbuing Table's own buttons (Imbue target, the property's row, a tier, Apply), as a
-// player's client would send them; the refusal is the server's own check, not a missing button.
+// player's client would send them; a refusal is the server's own check, not a missing button.
 //
 // Facts:
-//   1. Below Master (14,999 standing) the Self Repair row reads "[req: Master Artificer]", and Apply refuses: no
-//      property, no shards, no gold taken. Weapon and armor alike.
-//   2. At Master, Self Repair 6 on a weapon costs 70 shards and 70,000 gold (was 8 and 3,500).
-//   3. Every other property keeps its base price and its threshold tier; Swing Speed Increase at Master still costs
-//      what it did (14 shards, 6,125 gold at 78).
-//
-// cc-P46 Part C (Chase, 2026-10-03): a floor. Self Repair 1 cost 11 shards, fewer than a slayer (15) or Lower Reagent
-// Cost 100 (17 at Master). Notes: shard-migration notes/cc-P46-smith-orders-2.md, Part C.
-//   4. At Master and at Arcane Artisan, every Self Repair value (1 to the rank's maximum) costs more shards and more
-//      gold than the most expensive value of every other property in the catalogue, computed from the catalogue.
-//   5. That floor is what the table charges: the lowest tier of Self Repair at Master, applied through the buttons,
-//      takes the floored price, above every other property's.
+//   1. At 0 standing, with nothing learned, Self Repair is listed on a weapon and on armor, and its Basic tier is
+//      imbued: no rank gate (the cc-P42 gate is gone).
+//   2. Its Full tier (5) is refused until the account knows Full, then imbued at the floored price.
+//   3. Every Self Repair value (1 to its top) costs more shards and more gold than the highest value of every other
+//      property in the catalogue, computed from the catalogue (cc-P46 Part C, now standing-free).
+//   4. That floor is what the table charges: Self Repair's Basic tier, through the buttons, takes the floored price.
+//   5. Another property keeps its scaling: Swing Speed Increase at Full (60, once known) costs its base 8 shards and
+//      3,500 gold.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Server;
 using Server.Accounting;
-using Server.Accounting.Security;
 using Server.Gumps;
 using Server.Items;
 using Server.Misc;
@@ -42,35 +38,30 @@ namespace ShatteredLegacy.Tests;
 public class ImbueSelfRepairGateVerification
 {
     // ArtificersImbueGump.BtnId: ImbueTarget 1, NextPage 4, ApplyImbue 5, PropBase 100 (+ index), ConfirmBase 1000
-    // (+ tier).
-    private const int BtnImbueTarget = 1;
-    private const int BtnNextPage = 4;
-    private const int BtnApplyImbue = 5;
-    private const int BtnPropBase = 100;
-    private const int BtnConfirmBase = 1000;
+    // (+ tier: 1 Basic, 2 Refined, 3 Full, 4 Overcharged).
+    internal const int BtnImbueTarget = 1;
+    internal const int BtnNextPage = 4;
+    internal const int BtnApplyImbue = 5;
+    internal const int BtnPropBase = 100;
+    internal const int BtnConfirmBase = 1000;
 
-    private const int Shards = 1000;
-    private const int Gold = 200000;
+    internal const int Shards = 1000;
+    internal const int Gold = 200000;
 
     private readonly ITestOutputHelper _out;
 
     public ImbueSelfRepairGateVerification(ITestOutputHelper output)
     {
         _out = output;
-        EnsureStartupHooks();
-        ClusterFGuildSystem.EnsureRegistered();
-    }
-
-    // cc-P46 Part F: the shared host setup, so the imbue's skill check is the server's in any order (ShardTestHost).
-    private static void EnsureStartupHooks()
-    {
         ShardTestHost.EnsureAccounts();
         ShardTestHost.EnsureSkillChecks();
+        ClusterFGuildSystem.EnsureRegistered();
+        ImbuingTable.Current = ImbuingTable.Defaults;
     }
 
-    private sealed class Artificer : IDisposable
+    internal sealed class Artificer : IDisposable
     {
-        public readonly Account Account = new($"p42{Guid.NewGuid():N}"[..16], "p42-test-only");
+        public readonly Account Account = new($"p82{Guid.NewGuid():N}"[..16], "p82-test-only");
         public readonly PlayerMobile Pm;
         public readonly NetState Ns;
         public readonly CharacterGuildData Guild;
@@ -81,8 +72,8 @@ public class ImbueSelfRepairGateVerification
             Pm = new PlayerMobile { Player = true, Race = Race.Human };
             Pm.AddItem(new Backpack());
             Pm.RawStr = Pm.RawDex = Pm.RawInt = 50;
-            // Above the hardest tier's top (difficulty 115 + 20 at Master, 120 + 20 at Arcane), so the skill check is
-            // "no challenge" and always succeeds: the facts are about price and gate, not luck.
+            // Above the hardest tier's top (difficulty 120 + 20), so the skill check is "no challenge" and always
+            // succeeds: the facts are about price and gate, not luck.
             Pm.Skills[SkillName.Imbuing].Cap = 200.0;
             Pm.Skills[SkillName.Imbuing].Base = 200.0;
             Account[0] = Pm;
@@ -122,11 +113,11 @@ public class ImbueSelfRepairGateVerification
         }
     }
 
-    private static void Press(Gump gump, NetState ns, int buttonId) =>
+    internal static void Press(Gump gump, NetState ns, int buttonId) =>
         gump.OnResponse(ns, new RelayInfo(buttonId, ReadOnlySpan<int>.Empty, ReadOnlySpan<ushort>.Empty,
             ReadOnlySpan<Range>.Empty, ReadOnlySpan<byte>.Empty));
 
-    private static ArtificersImbueGump Next(Artificer a, Gump gump, int buttonId)
+    internal static ArtificersImbueGump Next(Artificer a, Gump gump, int buttonId)
     {
         while (a.Pm.CloseGump<ArtificersImbueGump>())
         {
@@ -136,7 +127,7 @@ public class ImbueSelfRepairGateVerification
         return a.Pm.FindGump<ArtificersImbueGump>();
     }
 
-    private static ArtificersImbueGump View(Artificer a, Item item)
+    internal static ArtificersImbueGump View(Artificer a, Item item)
     {
         var table = new ArtificersImbueGump(a.Pm);
         Press(table, a.Ns, BtnImbueTarget);
@@ -152,9 +143,9 @@ public class ImbueSelfRepairGateVerification
         return view;
     }
 
-    // The table, the item, the property's row, the tier (5 = the rank's maximum), Apply. Buttons are pressed whether
+    // The table, the item, the property's row, the tier (1 Basic to 4 Overcharged), Apply. Buttons are pressed whether
     // or not the gump drew them, as a client could.
-    private static void Imbue(Artificer a, Item item, string property, int tier)
+    internal static void Imbue(Artificer a, Item item, string property, int tier)
     {
         var index = ImbueCatalogue.ForItem(item).FindIndex(d => d.Name == property);
         Assert.True(index >= 0, $"{property} is not in the catalogue for {item.GetType().Name}");
@@ -166,30 +157,29 @@ public class ImbueSelfRepairGateVerification
         Next(a, confirm, BtnApplyImbue);
     }
 
-    // The row's second label (value and note), paging with Next until the row shows.
-    private static string RowNote(Artificer a, Item item, string property)
+    // Every label on the table for this item, paging with Next to the end.
+    internal static List<string> AllLabels(Artificer a, Item item)
     {
+        var labels = new List<string>();
         var gump = View(a, item);
-        for (var page = 0; page < 10 && gump != null; page++)
+        for (var page = 0; page < 20 && gump != null; page++)
         {
-            var labels = gump.Entries.OfType<GumpLabel>().ToList();
-            var row = labels.FindIndex(l => l.Text == property);
-            if (row >= 0)
+            labels.AddRange(gump.Entries.OfType<GumpLabel>().Select(l => l.Text));
+            if (!gump.Entries.OfType<GumpButton>().Any(b => b.ButtonID == BtnNextPage))
             {
-                return labels[row + 1].Text;
+                break;
             }
 
             gump = Next(a, gump, BtnNextPage);
         }
 
-        Assert.Fail($"no {property} row on the table");
-        return null;
+        return labels;
     }
 
     [Fact]
-    public void BelowMasterSelfRepairIsRefusedOnWeaponAndArmor()
+    public void SelfRepairIsFreeAtBasicWithNoRank()
     {
-        using var a = new Artificer(14999);
+        using var a = new Artificer(0);
         var sword = new Longsword();
         var chest = new PlateChest();
         a.Pm.Backpack.DropItem(sword);
@@ -197,110 +187,67 @@ public class ImbueSelfRepairGateVerification
 
         foreach (var (item, property) in new (Item, string)[] { (sword, "Self Repair"), (chest, "Self Repair (Armor)") })
         {
-            var def = ImbueCatalogue.ForItem(item).Find(d => d.Name == property);
-            Assert.Equal(15000, def.RequiredStanding);
-            Assert.Equal("Master Artificer", def.RequiredRankName);
-
-            var note = RowNote(a, item, property);
-            _out.WriteLine($"{property} at 14,999: '{note}'");
-            Assert.EndsWith("[req: Master Artificer]", note);
-
-            Imbue(a, item, property, 5);
+            Assert.Equal(ImbueTier.Basic, ClusterFImbueKnowledge.KnownTier(a.Data, property));
+            Assert.Contains(property, AllLabels(a, item));
+            Imbue(a, item, property, 1);
         }
 
+        var basic = ImbueTiers.MaxFor(ImbueCatalogue.All.First(d => d.Name == "Self Repair"), ImbueTier.Basic);
+        _out.WriteLine($"Self Repair Basic = {basic}; sword {sword.WeaponAttributes.SelfRepair}, chest {chest.ArmorAttributes.SelfRepair}");
+        Assert.Equal(basic, sword.WeaponAttributes.SelfRepair);
+        Assert.Equal(basic, chest.ArmorAttributes.SelfRepair);
+    }
+
+    [Fact]
+    public void FullNeedsTheTierThenTakesTheFlooredPrice()
+    {
+        using var a = new Artificer(0);
+        var sword = new Longsword();
+        a.Pm.Backpack.DropItem(sword);
+        var def = ImbueCatalogue.ForItem(sword).Find(d => d.Name == "Self Repair");
+
+        Imbue(a, sword, "Self Repair", 3);
         Assert.Equal(0, sword.WeaponAttributes.SelfRepair);
-        Assert.Equal(0, chest.ArmorAttributes.SelfRepair);
         Assert.Equal(Shards, a.ShardsLeft);
         Assert.Equal(Gold, a.GoldLeft);
+
+        ClusterFImbueKnowledge.Grant(a.Data, "Self Repair", ImbueTier.Full);
+        Imbue(a, sword, "Self Repair", 3);
+        _out.WriteLine($"Self Repair 5: {def.ShardsFor(5)} shards, {def.GoldFor(5):N0} gold");
+        Assert.Equal(5, sword.WeaponAttributes.SelfRepair);
+        Assert.Equal(Shards - def.ShardsFor(5), a.ShardsLeft);
+        Assert.Equal(Gold - def.GoldFor(5), a.GoldLeft);
     }
 
     [Fact]
-    public void AtMasterSelfRepairIsImbuedAtTheNewPrice()
+    public void EverySelfRepairValueCostsMoreThanEveryOtherProperty()
     {
-        using var a = new Artificer(15000);
-        var sword = new Longsword();
-        a.Pm.Backpack.DropItem(sword);
-
-        var def = ImbueCatalogue.ForItem(sword).Find(d => d.Name == "Self Repair");
-        Assert.Equal(6, def.GetMaxForStanding(15000));
-        _out.WriteLine($"Self Repair 6 at Master: {def.ShardsFor(6, 15000)} shards, {def.GoldFor(6, 15000):N0} gold");
-
-        Imbue(a, sword, "Self Repair", 5);
-
-        Assert.Equal(6, sword.WeaponAttributes.SelfRepair);
-        Assert.Equal(Shards - 70, a.ShardsLeft);
-        Assert.Equal(Gold - 70000, a.GoldLeft);
-    }
-
-    [Fact]
-    public void OtherPropertiesKeepTheirPriceAndTier()
-    {
-        foreach (var def in ImbueCatalogue.All)
-        {
-            if (def.Name.StartsWith("Self Repair", StringComparison.Ordinal))
-            {
-                Assert.Equal(ImbueCatalogue.SelfRepairShards, def.ShardBase);
-                Assert.Equal(ImbueCatalogue.SelfRepairGold, def.GoldBase);
-                continue;
-            }
-
-            Assert.Equal(-1, def.MinStandingOverride);
-            Assert.Equal(ArtificersGuildmasterGump.GetMinStanding(def.DiscoveryThreshold), def.RequiredStanding);
-            Assert.True(def.ShardBase < ImbueCatalogue.SelfRepairShards, def.Name);
-            Assert.True(def.GoldBase < ImbueCatalogue.SelfRepairGold, def.Name);
-        }
-
-        using var a = new Artificer(15000);
-        var sword = new Longsword();
-        a.Pm.Backpack.DropItem(sword);
-        Imbue(a, sword, "Swing Speed Increase", 5);
-
-        Assert.Equal(78, sword.Attributes.WeaponSpeed);
-        Assert.Equal(Shards - 14, a.ShardsLeft);
-        Assert.Equal(Gold - 6125, a.GoldLeft);
-    }
-
-    // ---------------------------------------------------------------- 4 (cc-P46 Part C)
-
-    [Theory]
-    [InlineData(15000, "Master Artificer")]
-    [InlineData(40000, "Arcane Artisan")]
-    public void EverySelfRepairValueCostsMoreThanEveryOtherProperty(int standing, string rank)
-    {
-        Assert.Equal(rank, ArtificersGuildmasterGump.GetRankName(standing));
-
-        // The dearest value of every other property at this standing, from the catalogue.
         var others = ImbueCatalogue.All.Where(d => !d.Name.StartsWith("Self Repair", StringComparison.Ordinal)).ToList();
-        var mostShards = others.Max(d => d.ShardsFor(d.GetMaxForStanding(standing), standing));
-        var mostGold = others.Max(d => d.GoldFor(d.GetMaxForStanding(standing), standing));
-        var dearestShards = others.First(d => d.ShardsFor(d.GetMaxForStanding(standing), standing) == mostShards);
-        var dearestGold = others.First(d => d.GoldFor(d.GetMaxForStanding(standing), standing) == mostGold);
-        _out.WriteLine($"{rank} ({standing:N0}): dearest other in shards {dearestShards.Name} {mostShards}, " +
-                       $"in gold {dearestGold.Name} {mostGold:N0}");
+        var mostShards = others.Max(d => d.ShardsFor(d.TopValue));
+        var mostGold = others.Max(d => d.GoldFor(d.TopValue));
+        var dearestShards = others.First(d => d.ShardsFor(d.TopValue) == mostShards);
+        var dearestGold = others.First(d => d.GoldFor(d.TopValue) == mostGold);
+        _out.WriteLine($"dearest other in shards {dearestShards.Name} {mostShards}, in gold {dearestGold.Name} {mostGold:N0}");
 
         foreach (var sr in ImbueCatalogue.All.Where(d => d.Name.StartsWith("Self Repair", StringComparison.Ordinal)))
         {
-            for (var v = 1; v <= sr.GetMaxForStanding(standing); v++)
+            Assert.True(sr.PricedAboveAll);
+            for (var v = 1; v <= sr.TopValue; v++)
             {
-                var shards = sr.ShardsFor(v, standing);
-                var gold = sr.GoldFor(v, standing);
-                _out.WriteLine($"  {sr.Name} {v}: before {sr.ScaledShardsFor(v, standing)} / " +
-                               $"{sr.ScaledGoldFor(v, standing):N0}, now {shards} / {gold:N0}");
-                Assert.True(shards > mostShards, $"{sr.Name} {v} at {rank}: {shards} shards, {dearestShards.Name} {mostShards}");
-                Assert.True(gold > mostGold, $"{sr.Name} {v} at {rank}: {gold} gold, {dearestGold.Name} {mostGold}");
-                // Above the floor the scaling is kept.
-                Assert.Equal(Math.Max(sr.ScaledShardsFor(v, standing), mostShards + 1), shards);
-                Assert.Equal(Math.Max(sr.ScaledGoldFor(v, standing), mostGold + 1), gold);
+                var shards = sr.ShardsFor(v);
+                var gold = sr.GoldFor(v);
+                Assert.True(shards > mostShards, $"{sr.Name} {v}: {shards} shards, {dearestShards.Name} {mostShards}");
+                Assert.True(gold > mostGold, $"{sr.Name} {v}: {gold} gold, {dearestGold.Name} {mostGold}");
+                Assert.Equal(Math.Max(sr.ScaledShardsFor(v), mostShards + 1), shards);
+                Assert.Equal(Math.Max(sr.ScaledGoldFor(v), mostGold + 1), gold);
             }
         }
     }
-
-    // ---------------------------------------------------------------- 5 (cc-P46 Part C)
 
     [Fact]
     public void TheTableChargesTheFloor()
     {
-        using var a = new Artificer(15000);
+        using var a = new Artificer(0);
         var sword = new Longsword();
         a.Pm.Backpack.DropItem(sword);
 
@@ -308,14 +255,26 @@ public class ImbueSelfRepairGateVerification
 
         var value = sword.WeaponAttributes.SelfRepair;
         var def = ImbueCatalogue.ForItem(sword).Find(d => d.Name == "Self Repair");
-        var others = ImbueCatalogue.All.Where(d => !d.Name.StartsWith("Self Repair", StringComparison.Ordinal)).ToList();
-        var mostShards = others.Max(d => d.ShardsFor(d.GetMaxForStanding(15000), 15000));
-        _out.WriteLine($"lowest tier at Master: Self Repair {value}, took {Shards - a.ShardsLeft} shards and " +
-                       $"{Gold - a.GoldLeft:N0} gold; dearest other property {mostShards} shards");
+        _out.WriteLine($"Basic: Self Repair {value}, took {Shards - a.ShardsLeft} shards and {Gold - a.GoldLeft:N0} gold");
 
-        Assert.InRange(value, 1, 6);
-        Assert.Equal(def.ShardsFor(value, 15000), Shards - a.ShardsLeft);
-        Assert.Equal(def.GoldFor(value, 15000), Gold - a.GoldLeft);
-        Assert.True(Shards - a.ShardsLeft > mostShards);
+        Assert.InRange(value, 1, 5);
+        Assert.Equal(def.ShardsFor(value), Shards - a.ShardsLeft);
+        Assert.Equal(def.GoldFor(value), Gold - a.GoldLeft);
+        Assert.True(Shards - a.ShardsLeft > ImbueCatalogue.MostShardsOfOthers());
+    }
+
+    [Fact]
+    public void AnotherPropertyKeepsItsScaling()
+    {
+        using var a = new Artificer(0);
+        var sword = new Longsword();
+        a.Pm.Backpack.DropItem(sword);
+        ClusterFImbueKnowledge.Grant(a.Data, "Swing Speed Increase", ImbueTier.Full);
+
+        Imbue(a, sword, "Swing Speed Increase", 3);
+
+        Assert.Equal(60, sword.Attributes.WeaponSpeed);
+        Assert.Equal(Shards - 8, a.ShardsLeft);
+        Assert.Equal(Gold - 3500, a.GoldLeft);
     }
 }

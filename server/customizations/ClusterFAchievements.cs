@@ -62,6 +62,7 @@ public enum TriggerKind
     Logins,
     TutorialSkipped,   // cc-P80: skipped the New Haven tutorial
     TutorialRemedial,  // cc-P80: finished it after skipping it
+    LuckyGearBoxes,    // cc-P82: loot boxes earned with Fortune's Favor gear put on less than a minute before
 }
 
 public sealed class AchievementTrigger
@@ -138,6 +139,9 @@ public sealed class AchievementTrigger
             TriggerKind.Logins             => $"logged in {n:N0} times",
             TriggerKind.TutorialSkipped    => "skipped the New Haven tutorial",
             TriggerKind.TutorialRemedial   => "completed the tutorial after skipping it",
+            TriggerKind.LuckyGearBoxes     => n == 1
+                ? "a loot box with luck gear equipped less than a minute earlier"
+                : $"{n:N0} loot boxes with luck gear equipped less than a minute earlier",
             _                              => Kind.ToString()
         };
     }
@@ -1038,6 +1042,42 @@ public static class ClusterFAchievementSystem
             flavor:          "Better late. Noted, with only a little smugness.",
             itemGumpId:      0x0FF4,
             prerequisiteKey: "tutorial.skipped");
+
+        // cc-P82 (the Imbuing rework, design "Achievements"): hidden; counted by ClusterFImbueEffects.OnLootBoxEarned when
+        // a box is earned with Fortune's Favor gear put on less than a minute before. The earn's own loot box is the reward.
+        Reg(DressedKey,
+            "Dressed for the Occasion",
+            "Earned a loot box with luck gear equipped less than a minute earlier.",
+            AchievementCategory.Legacy, ap: 10, renown: 0,
+            trigger:         T.Count(TriggerKind.LuckyGearBoxes, 1),
+            flavor:          "The System notes you changed into your lucky underwear seconds before achieving greatness. " +
+                             "The System is not impressed. The System is taking notes.",
+            itemGumpId:      0, // no icon: the design's flavor text needs the popup's full width
+            hidden:          true,
+            progressCounter: LuckyGearCounter);
+
+        Reg(HabitKey,
+            "Creature of Habit",
+            "Earned 25 loot boxes with luck gear equipped less than a minute earlier.",
+            AchievementCategory.Legacy, ap: 25, renown: 0,
+            trigger:         T.Count(TriggerKind.LuckyGearBoxes, 25),
+            flavor:          "Twenty-five times. The System has stopped taking notes and opened a file. " +
+                             "It is labeled 'Superstitions, Ongoing,' and it is getting thick.",
+            itemGumpId:      0x0FF4,
+            hidden:          true,
+            prerequisiteKey: DressedKey,
+            progressCounter: LuckyGearCounter);
+    }
+
+    public const string DressedKey = "imbue.dressed_for_the_occasion";
+    public const string HabitKey = "imbue.creature_of_habit";
+    public const string LuckyGearCounter = "lucky_gear_boxes";
+
+    /// <summary>cc-P82: a loot box earned with Fortune's Favor gear just put on (ClusterFImbueEffects.OnLootBoxEarned).</summary>
+    public static void NotifyLuckyGearBox(PlayerMobile pm)
+    {
+        if (pm.Account is not IAccount acct) return;
+        GrantCounted(acct, TriggerKind.LuckyGearBoxes, Increment(acct.Username, LuckyGearCounter));
     }
 
     private static void Reg(string key, string title, string desc,

@@ -557,6 +557,16 @@ apply_patch "$PATCHES/Bandage-heal-scaled-200.patch"
 # Alternatives argued in shard-migration/notes/cc-P50-chest-mimic-monster.md section 3.
 apply_patch "$PATCHES/IncomingTargetingPackets-target-redirect.patch"
 
+# cc-P82: the Imbuing rework's custom properties, one call each where its system runs, all into ClusterFImbueEffects:
+# BaseWeapon.OnHit (Bond on a companion's damage; Time Slip and Shatter after the special move), WeaponAbility (a
+# public ClearCooldown for Time Slip's refund; the window is private), SpellHelper.Damage (Spell Leech, the one place
+# immediate and delayed spell damage both pass), CraftItem.GetExceptionalChance (Mastercraft; non-virtual),
+# Item.GetProperties (one static delegate for the custom property's tooltip line), and PlayerMobile.OnItemAdded (when
+# Fortune's Favor gear went on, for the 60 second achievements). No override reaches any of these. Applies last, on top
+# of CraftItem-shard-hooks, CraftItem-mule-module-tier, BaseWeapon-talisman-durability, BaseWeapon-block-chance-osi,
+# BaseWeapon-axe-bonus-osi and the PlayerMobile patches. Argued in shard-migration/notes/cc-P82-artificers-imbuing.md.
+apply_patch "$PATCHES/Imbue-custom-property-hooks.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

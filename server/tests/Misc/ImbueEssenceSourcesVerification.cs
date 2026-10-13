@@ -4,8 +4,8 @@
 // GuildResources (F-11), with its order and exclusions. Notes in shard-migration notes/cc-P27-defect-batch-1.md.
 //
 // Every fact imbues through the Imbuing Table's own buttons (target the item, pick the property, pick tier 1,
-// Apply), as a player would. The property is Swing Speed Increase, the first weapon property; at standing 15,000
-// its tier 1 has difficulty about 54, so Imbuing 100 always passes the skill check.
+// Apply), as a player would. The property is Swing Speed Increase, the first weapon property; its tier 1 (Basic, 20,
+// known by grant since cc-P82) has difficulty 60, so Imbuing 100 always passes the skill check.
 //
 // Facts:
 //   1. An essence in the pack only: the imbue succeeds and takes it.
@@ -106,6 +106,9 @@ public class ImbueEssenceSourcesVerification
             guild.JoinedGuilds.Add("artificers");
             guild.GuildCurrency["artificers"] = Shards;
             guild.GuildReputation["artificers"] = 15000;
+
+            // cc-P82: imbuing needs the property known; Swing Speed Increase is a rank 4 formula, so it is granted here.
+            ClusterFImbueKnowledge.Grant(ClusterFAccountPersistence.GetOrCreate(Account), Property, ImbueTier.Basic);
 
             Pack.DropItem(new Gold(StartGold));
             Sword = new Longsword();

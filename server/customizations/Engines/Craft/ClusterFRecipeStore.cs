@@ -224,6 +224,8 @@ namespace Server
                     return parts.Length > 1 ? $"the {parts[1]} book" : key;
                 case "map":
                     return parts.Length > 1 ? $"map of {parts[1]}" : key;
+                case "imbue": // cc-P82: imbue knowledge shares the account's learned set
+                    return ClusterFImbueKnowledge.Describe(key);
                 default:
                     return key;
             }

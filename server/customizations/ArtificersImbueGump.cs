@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Server.Accounting;
 using Server.Gumps;
 using Server.Items;
@@ -28,39 +29,40 @@ internal enum ImbuableItem
 internal sealed class ImbuePropertyDef
 {
     public string       Name;         // Display name (also used as discovery key)
-    public string       Group;        // "General", "Weapon", "Defense", "Skills", "Slayer"
-    public int          MaxVanilla;   // Cap at 100% guild rank
-    public int          MaxGuild;     // Cap at 200% guild rank (highest tier)
-    public int          ShardBase;    // Shards at vanilla max
-    public int          GoldBase;     // Gold at vanilla max
+    public string       Group;        // "General", "Stats", "Weapon", "Defense", "Slayer", "Skills", "Custom"
+    public int          MaxVanilla;   // OSI max: the Full tier (cc-P82)
+    public int          MaxGuild;     // The built-in Overcharged maximum (Configuration/imbuing.json overchargedMax wins)
+    public int          ShardBase;    // Shards at the Full value
+    public int          GoldBase;     // Gold at the Full value
     public bool         IsBool;       // 1/0 on/off property
     public ImbuableItem Applies;
 
     /// <summary>
     /// How many times a player must successfully imbue this property (using an essence)
     /// before they "master" it and no longer need an essence.
-    /// Computed from GoldBase by ImbueCatalogue.ComputeThreshold.
+    /// Computed from GoldBase by ImbueCatalogue.ComputeThreshold. 0 for a custom property (it takes its ingredient).
     /// </summary>
     public int DiscoveryThreshold;
 
     /// <summary>
-    /// Standing required to imbue this property, when it is set above the tier the discovery threshold gives
-    /// (-1: use the tier). cc-P42 Part A: Self Repair.
+    /// cc-P82: what the account must know to imbue this row (ClusterFImbueKnowledge): the row's own name, or a family
+    /// several rows share (ImbueFamilies: slayers, elemental damages, +skill).
     /// </summary>
-    public int MinStandingOverride = -1;
+    public string KnowledgeKey;
 
-    /// <summary>Standing required to imbue this property.</summary>
-    public int RequiredStanding => MinStandingOverride >= 0
-        ? MinStandingOverride
-        : ArtificersGuildmasterGump.GetMinStanding(DiscoveryThreshold);
+    /// <summary>cc-P82: one of the design's custom properties (ImbueCustomStore holds the value; one per item).</summary>
+    public bool IsCustom;
 
-    /// <summary>Rank name of RequiredStanding, as the gump shows it ("[req: Master Artificer]").</summary>
-    public string RequiredRankName => ArtificersGuildmasterGump.GetRankName(RequiredStanding);
+    /// <summary>cc-P82: a further test on the item beyond Applies (a ranged weapon, crafter gear), or null.</summary>
+    public Func<Item, bool> Allows;
+
+    /// <summary>cc-P82: why this row cannot go on this item now (the +skill group's slot, a second custom), or null.</summary>
+    public Func<Item, string> BlockedBy;
 
     /// <summary>
     /// cc-P46 Part C: every value of this property costs at least one shard and one gold more than the most expensive
-    /// other property at the same standing (ImbueCatalogue.MostShardsOfOthers / MostGoldOfOthers); above that floor
-    /// the usual scaling applies. Self Repair.
+    /// value of any other property (ImbueCatalogue.MostShardsOfOthers / MostGoldOfOthers); above that floor the usual
+    /// scaling applies. Self Repair.
     /// </summary>
     public bool PricedAboveAll;
 
@@ -71,60 +73,65 @@ internal sealed class ImbuePropertyDef
     /// <summary>Returns how many property slots this property currently consumes.</summary>
     public int CountSlots(Item item) => Get(item) != 0 ? 1 : 0;
 
-    /// <summary>Returns the allowed max based on standing (guild intensity cap).</summary>
-    public int GetMaxForStanding(int standing)
-    {
-        if (IsBool) return 1;
-        var pct = ArtificersImbueGump.GetIntensityCap(standing);
-        var raw = MaxVanilla + (MaxGuild - MaxVanilla) * Math.Max(0, pct - 100) / 100;
-        return Math.Clamp(raw, MaxVanilla, MaxGuild);
-    }
+    /// <summary>cc-P82: the Full value (the OSI max; a custom property's from the config).</summary>
+    public int FullMax => IsCustom ? ImbuingTable.Current.CustomOf(Name)?.Full ?? MaxVanilla : MaxVanilla;
+
+    /// <summary>cc-P82: the item kinds this row goes on (a custom property's from the config).</summary>
+    public ImbuableItem AppliesNow =>
+        IsCustom && ImbuingTable.Current.CustomOf(Name) is { } c ? ImbueFamilies.ParseApplies(c.Applies) : Applies;
+
+    private int BaseShards => IsCustom ? ImbuingTable.Current.CustomOf(Name)?.Shards ?? ShardBase : ShardBase;
+    private int BaseGold => IsCustom ? ImbuingTable.Current.CustomOf(Name)?.Gold ?? GoldBase : GoldBase;
+
+    /// <summary>The highest value this row can ever take (its top tier's).</summary>
+    public int TopValue => ImbueTiers.MaxFor(this, ImbueTiers.TopTier(this));
 
     /// <summary>Returns Essence Shard cost to set this property to targetValue.</summary>
-    public int ShardsFor(int targetValue, int standing)
+    public int ShardsFor(int targetValue)
     {
-        var scaled = ScaledShardsFor(targetValue, standing);
-        return PricedAboveAll ? Math.Max(scaled, ImbueCatalogue.MostShardsOfOthers(standing) + 1) : scaled;
+        var scaled = ScaledShardsFor(targetValue);
+        return PricedAboveAll ? Math.Max(scaled, ImbueCatalogue.MostShardsOfOthers() + 1) : scaled;
     }
 
-    /// <summary>The shard cost from the scaling alone, before any floor (cc-P46 Part C).</summary>
-    public int ScaledShardsFor(int targetValue, int standing)
+    /// <summary>The shard cost from the scaling alone, before any floor (cc-P46 Part C): by value over Full (cc-P82).</summary>
+    public int ScaledShardsFor(int targetValue)
     {
-        if (IsBool) return ShardBase;
-        var maxAllowed = GetMaxForStanding(standing);
-        var fraction   = maxAllowed > 0 ? (float)targetValue / maxAllowed : 1f;
-        var pct  = ArtificersImbueGump.GetIntensityCap(standing);
-        var mult = 1.0f + Math.Max(0, pct - 100) / 100.0f;
-        return Math.Max(1, (int)(ShardBase * fraction * mult));
+        if (IsBool) return BaseShards;
+        return Math.Max(1, (int)(BaseShards * (double)targetValue / Math.Max(1, FullMax)));
     }
 
     /// <summary>Returns gold cost to set this property to targetValue.</summary>
-    public int GoldFor(int targetValue, int standing)
+    public int GoldFor(int targetValue)
     {
-        var scaled = ScaledGoldFor(targetValue, standing);
-        return PricedAboveAll ? Math.Max(scaled, ImbueCatalogue.MostGoldOfOthers(standing) + 1) : scaled;
+        var scaled = ScaledGoldFor(targetValue);
+        return PricedAboveAll ? Math.Max(scaled, ImbueCatalogue.MostGoldOfOthers() + 1) : scaled;
     }
 
     /// <summary>The gold cost from the scaling alone, before any floor (cc-P46 Part C).</summary>
-    public int ScaledGoldFor(int targetValue, int standing)
+    public int ScaledGoldFor(int targetValue)
     {
-        if (IsBool) return GoldBase;
-        var maxAllowed = GetMaxForStanding(standing);
-        var fraction   = maxAllowed > 0 ? (float)targetValue / maxAllowed : 1f;
-        var pct  = ArtificersImbueGump.GetIntensityCap(standing);
-        var mult = 1.0f + Math.Max(0, pct - 100) / 100.0f;
-        return Math.Max(100, (int)(GoldBase * fraction * mult));
+        if (IsBool) return BaseGold;
+        return Math.Max(100, (int)(BaseGold * (double)targetValue / Math.Max(1, FullMax)));
     }
 
-    /// <summary>Success-check difficulty: 0-120 skill range.</summary>
-    public double SkillDifficulty(int targetValue, int standing)
+    /// <summary>
+    /// Success-check difficulty (cc-P82): 40 at nothing to 100 at Full, then up to 120 at the top of Overcharged (the
+    /// 200 skill cap's tier).
+    /// </summary>
+    public double SkillDifficulty(int targetValue)
     {
-        var maxAllowed = GetMaxForStanding(standing);
-        var fraction   = maxAllowed > 0 ? (float)targetValue / maxAllowed : 1f;
-        var pct = ArtificersImbueGump.GetIntensityCap(standing);
-        var maxDiff = pct <= 100 ? 100.0 : 100.0 + (pct - 100) * 0.2;
-        return 40.0 + (maxDiff - 40.0) * fraction;
+        var full = Math.Max(1, FullMax);
+        if (IsBool || targetValue <= full)
+        {
+            return 40.0 + 60.0 * Math.Min(1.0, (double)targetValue / full);
+        }
+
+        var top = Math.Max(full + 1, TopValue);
+        return 100.0 + 20.0 * Math.Min(1.0, (double)(targetValue - full) / (top - full));
     }
+
+    /// <summary>The intensity this value takes of the item budget, in percent of Full (budget mode only).</summary>
+    public int IntensityPercent(int value) => IsBool ? (value != 0 ? 100 : 0) : value * 100 / Math.Max(1, FullMax);
 
     /// <summary>Shard cost to craft one PropertyEssence for this property (mastered players only).</summary>
     public int CraftShards => ShardBase * 2;
@@ -140,36 +147,35 @@ internal static class ImbueCatalogue
     public static readonly List<ImbuePropertyDef> All;
 
     // cc-P42 Part A. Self Repair (weapon and armor): shards and gold at the vanilla maximum, scaled like every other
-    // property by target value and rank, and the standing required (Master Artificer). Was 5 shards, 2,000 gold, and
-    // the Artificer tier its threshold gave.
+    // property by target value. cc-P82: no longer gated at Master Artificer; the design makes it free (known at Basic).
     public const int SelfRepairShards      = 40;
     public const int SelfRepairGold        = 40000;
-    public const int SelfRepairMinStanding = 15000;
 
-    // cc-P46 Part C (Chase, 2026-10-03): a floor, so Self Repair 1 no longer costs fewer shards than a slayer. The most
-    // a property without the floor costs at its highest value for this standing; Self Repair costs at least one more.
-    public static int MostShardsOfOthers(int standing)
+    // cc-P46 Part C (Chase, 2026-10-03): a floor, so Self Repair 1 never costs fewer shards than another property. The
+    // most any property without the floor costs at its highest value (cc-P82: its top tier, Overcharged where it has one);
+    // Self Repair costs at least one more.
+    public static int MostShardsOfOthers()
     {
         var most = 0;
         foreach (var d in All)
         {
             if (!d.PricedAboveAll)
             {
-                most = Math.Max(most, d.ScaledShardsFor(d.GetMaxForStanding(standing), standing));
+                most = Math.Max(most, d.ScaledShardsFor(d.TopValue));
             }
         }
 
         return most;
     }
 
-    public static int MostGoldOfOthers(int standing)
+    public static int MostGoldOfOthers()
     {
         var most = 0;
         foreach (var d in All)
         {
             if (!d.PricedAboveAll)
             {
-                most = Math.Max(most, d.ScaledGoldFor(d.GetMaxForStanding(standing), standing));
+                most = Math.Max(most, d.ScaledGoldFor(d.TopValue));
             }
         }
 
@@ -343,13 +349,12 @@ internal static class ImbueCatalogue
             i => ((BaseWeapon)i).WeaponAttributes.HitDispel,
             (i, v) => ((BaseWeapon)i).WeaponAttributes.HitDispel = v);
 
-        // cc-P42 Part A (Chase, 2026-10-02): Self Repair is kept but priced far above every other property and
-        // gated at Master Artificer. With F-27 (1 in 500 from high-end loot) this keeps it rare. Numbers and the
-        // comparison table: shard-migration notes/cc-P42-defect-batch-3.md, Part A.
+        // cc-P42 Part A (Chase, 2026-10-02): Self Repair is kept but priced far above every other property. With F-27
+        // (1 in 500 from high-end loot) this keeps it rare. Numbers: shard-migration notes/cc-P42-defect-batch-3.md,
+        // Part A. cc-P82: the Master Artificer gate is gone (the design's ladder makes Self Repair free).
         Add("Self Repair",       "Weapon", 5, 7, shards: SelfRepairShards, gold: SelfRepairGold, ImbuableItem.Weapon,
             i => ((BaseWeapon)i).WeaponAttributes.SelfRepair,
-            (i, v) => ((BaseWeapon)i).WeaponAttributes.SelfRepair = v,
-            minStanding: SelfRepairMinStanding);
+            (i, v) => ((BaseWeapon)i).WeaponAttributes.SelfRepair = v);
         All[^1].PricedAboveAll = true; // cc-P46 Part C: the floor above every other property
 
         Add("Lower Stat Req (Weapon)", "Weapon", 100, 100, shards: 4, gold: 1500, ImbuableItem.Weapon,
@@ -380,8 +385,7 @@ internal static class ImbueCatalogue
 
         Add("Self Repair (Armor)",   "Defense",  5,  7, shards: SelfRepairShards, gold: SelfRepairGold, ImbuableItem.Armor,
             i => ((BaseArmor)i).ArmorAttributes.SelfRepair,
-            (i, v) => ((BaseArmor)i).ArmorAttributes.SelfRepair = v,
-            minStanding: SelfRepairMinStanding);
+            (i, v) => ((BaseArmor)i).ArmorAttributes.SelfRepair = v);
         All[^1].PricedAboveAll = true; // cc-P46 Part C
 
         Add("Lower Stat Req (Armor)", "Defense", 100, 100, shards: 4, gold: 1500, ImbuableItem.Armor,
@@ -411,9 +415,190 @@ internal static class ImbueCatalogue
         AddSlayer("Slayer: Spider's Death",    SlayerName.SpidersDeath);
         AddSlayer("Slayer: Scorpion's Bane",   SlayerName.ScorpionsBane);
         AddSlayer("Slayer: Ophidian",          SlayerName.Ophidian);
+
+        // -- cc-P82: the design ladder's rows the catalogue lacked (appended, so earlier rows keep their indexes) --------
+
+        Add("Hit Point Increase", "Stats", 5, 7, shards: 5, gold: 2000, ImbuableItem.All,
+            i => GetAttr(i).BonusHits, (i, v) => GetAttr(i).BonusHits = v);
+        Add("Stamina Increase", "Stats", 8, 12, shards: 5, gold: 2000, ImbuableItem.All,
+            i => GetAttr(i).BonusStam, (i, v) => GetAttr(i).BonusStam = v);
+        Add("Mana Increase", "Stats", 8, 12, shards: 5, gold: 2000, ImbuableItem.All,
+            i => GetAttr(i).BonusMana, (i, v) => GetAttr(i).BonusMana = v);
+
+        Add("Durability (Weapon)", "Weapon", 100, 150, shards: 3, gold: 1000, ImbuableItem.Weapon,
+            i => ((BaseWeapon)i).WeaponAttributes.DurabilityBonus,
+            (i, v) => ((BaseWeapon)i).WeaponAttributes.DurabilityBonus = v);
+        Add("Durability (Armor)", "Defense", 100, 150, shards: 3, gold: 1000, ImbuableItem.Armor,
+            i => ((BaseArmor)i).ArmorAttributes.DurabilityBonus,
+            (i, v) => ((BaseArmor)i).ArmorAttributes.DurabilityBonus = v);
+
+        // Elemental damage conversion: one knowledge family; the rest of the hit stays physical (pinned BaseWeapon
+        // GetDamageTypes: physical is 100 less the others), so the elements together never pass 100.
+        AddElement("Fire Damage",   e => e.Fire,   (e, v) => e.Fire = v);
+        AddElement("Cold Damage",   e => e.Cold,   (e, v) => e.Cold = v);
+        AddElement("Poison Damage", e => e.Poison, (e, v) => e.Poison = v);
+        AddElement("Energy Damage", e => e.Energy, (e, v) => e.Energy = v);
+
+        Add("Balanced", "Weapon", 1, 1, shards: 6, gold: 2500, isBool: true, ImbuableItem.Weapon,
+            i => ((BaseRanged)i).Balanced ? 1 : 0, (i, v) => ((BaseRanged)i).Balanced = v != 0);
+        All[^1].Allows = i => i is BaseRanged;
+        Add("Velocity", "Weapon", 50, 60, shards: 6, gold: 2500, ImbuableItem.Weapon,
+            i => ((BaseRanged)i).Velocity, (i, v) => ((BaseRanged)i).Velocity = v);
+        All[^1].Allows = i => i is BaseRanged;
+
+        // Mage Weapon: the stored value v reads "Mage Weapon -(30 - v) skill" (pinned AOS.cs), so 15 is OSI's -15.
+        Add("Mage Weapon", "Weapon", 15, 20, shards: 6, gold: 2500, ImbuableItem.Weapon,
+            i => ((BaseWeapon)i).WeaponAttributes.MageWeapon,
+            (i, v) => ((BaseWeapon)i).WeaponAttributes.MageWeapon = v);
+
+        // +Skill (design "+Skill properties"): jewelry takes OSI's combat and magic skills, one per OSI group, in the
+        // group's own AosSkillBonuses slot (ServUO Imbuing.cs m_SkillGroups; slot j is group j). Crafter gear (aprons, and
+        // the types in imbuing.json crafterGearTypes) takes crafting skills in slot 0 and gathering skills in slot 1.
+        for (var g = 0; g < JewelrySkillGroups.Length; g++)
+        {
+            foreach (var skill in JewelrySkillGroups[g])
+            {
+                AddSkill(skill, g, ImbuableItem.Jewel, ImbueFamilies.JewelrySkill, null);
+            }
+        }
+
+        for (var g = 0; g < CrafterSkillGroups.Length; g++)
+        {
+            foreach (var skill in CrafterSkillGroups[g])
+            {
+                AddSkill(skill, g, ImbuableItem.All, ImbueFamilies.CrafterSkill, IsCrafterGear);
+            }
+        }
+
+        // The design's custom properties: values, kinds and costs from imbuing.json (custom); one per item.
+        foreach (var (name, c) in ImbuingTable.DefaultCustom())
+        {
+            AddCustom(name, c);
+        }
     }
 
+    // ServUO Imbuing.cs m_SkillGroups (OSI's five +skill groups).
+    public static readonly SkillName[][] JewelrySkillGroups =
+    [
+        [SkillName.Fencing, SkillName.Macing, SkillName.Swords, SkillName.Musicianship, SkillName.Magery],
+        [SkillName.Wrestling, SkillName.AnimalTaming, SkillName.SpiritSpeak, SkillName.Tactics, SkillName.Provocation],
+        [SkillName.Focus, SkillName.Parry, SkillName.Stealth, SkillName.Meditation, SkillName.AnimalLore, SkillName.Discordance],
+        [SkillName.Mysticism, SkillName.Bushido, SkillName.Necromancy, SkillName.Veterinary, SkillName.Stealing, SkillName.EvalInt,
+         SkillName.Anatomy],
+        [SkillName.Peacemaking, SkillName.Ninjitsu, SkillName.Chivalry, SkillName.Archery, SkillName.MagicResist, SkillName.Healing,
+         SkillName.Throwing],
+    ];
+
+    // cc-P82: crafter gear's two groups, crafting then gathering.
+    public static readonly SkillName[][] CrafterSkillGroups =
+    [
+        [SkillName.Blacksmith, SkillName.Tailoring, SkillName.Carpentry, SkillName.Fletching, SkillName.Tinkering,
+         SkillName.Alchemy, SkillName.Inscribe, SkillName.Cooking, SkillName.Cartography],
+        [SkillName.Mining, SkillName.Lumberjacking, SkillName.Fishing],
+    ];
+
+    public static bool IsCrafterGear(Item item) =>
+        Array.Exists(ImbuingTable.Current.CrafterGearTypes, n =>
+        {
+            for (var t = item.GetType(); t != null; t = t.BaseType)
+            {
+                if (t.Name == n) return true;
+            }
+
+            return false;
+        });
+
+    public static string SkillRowName(SkillName skill) => $"Skill: {SkillInfo.Table[(int)skill].Name}";
+
+    private static AosSkillBonuses SkillBonusesOf(Item item) => item switch
+    {
+        BaseJewel j    => j.SkillBonuses,
+        BaseClothing c => c.SkillBonuses,
+        BaseWeapon w   => w.SkillBonuses,
+        BaseArmor a    => a.SkillBonuses,
+        _              => null
+    };
+
+    private static void AddSkill(SkillName skill, int slot, ImbuableItem applies, string family, Func<Item, bool> allows)
+    {
+        var sk = skill;
+        All.Add(new ImbuePropertyDef
+        {
+            Name               = SkillRowName(sk),
+            Group              = "Skills",
+            MaxVanilla         = 15,
+            MaxGuild           = 25,
+            ShardBase          = 6,
+            GoldBase           = 2500,
+            DiscoveryThreshold = ComputeThreshold(2500),
+            KnowledgeKey       = family,
+            Applies            = applies,
+            Allows             = allows,
+            Get = item => SkillBonusesOf(item) is { } b && b.GetBonus(slot) > 0 && b.GetSkill(slot) == sk ? (int)b.GetBonus(slot) : 0,
+            Set = (item, v) =>
+            {
+                if (SkillBonusesOf(item) is not { } b) return;
+                if (v > 0) b.SetValues(slot, sk, v);
+                else if (b.GetSkill(slot) == sk) b.SetValues(slot, SkillName.Alchemy, 0);
+            },
+            // One skill per group: the group's slot holds another skill.
+            BlockedBy = item => SkillBonusesOf(item) is { } b && b.GetBonus(slot) > 0 && b.GetSkill(slot) != sk
+                ? $"one skill per group: this item already has {SkillInfo.Table[(int)b.GetSkill(slot)].Name}"
+                : null
+        });
+    }
+
+    private static void AddElement(string name, Func<AosElementAttributes, int> get, Action<AosElementAttributes, int> set)
+    {
+        Add(name, "Weapon", 100, 100, shards: 6, gold: 2500, ImbuableItem.Weapon,
+            i => get(((BaseWeapon)i).AosElementDamages),
+            (i, v) =>
+            {
+                var e = ((BaseWeapon)i).AosElementDamages;
+                var others = e.Fire + e.Cold + e.Poison + e.Energy + e.Chaos + e.Direct - get(e);
+                set(e, Math.Clamp(v, 0, Math.Max(0, 100 - others)));
+            });
+        All[^1].KnowledgeKey = ImbueFamilies.ElementalDamage;
+    }
+
+    private static void AddCustom(string name, ImbueCustomConfig c)
+    {
+        var n = name;
+        All.Add(new ImbuePropertyDef
+        {
+            Name               = n,
+            Group              = "Custom",
+            MaxVanilla         = c.Full,
+            MaxGuild           = c.Overcharged,
+            ShardBase          = c.Shards,
+            GoldBase           = c.Gold,
+            DiscoveryThreshold = 0, // no essence: a custom property takes its ingredient instead
+            KnowledgeKey       = n,
+            IsCustom           = true,
+            Applies            = ImbueFamilies.ParseApplies(c.Applies),
+            Get                = item => ImbueCustomStore.Get(item, n),
+            Set                = (item, v) => ImbueCustomStore.Set(item, n, v),
+            BlockedBy          = item => ImbueCustomStore.Of(item) is { } p && !p.Name.Equals(n, StringComparison.OrdinalIgnoreCase)
+                ? $"one custom property per item: this item already has {p.Name}"
+                : null
+        });
+    }
+
+    /// <summary>The ingredient a custom property takes on each successful imbue (imbuing.json custom), or null.</summary>
+    public static GuildCost CustomIngredient(ImbuePropertyDef def) =>
+        def.IsCustom && ImbuingTable.Current.CustomOf(def.Name) is { IngredientAmount: > 0 } c &&
+        AssemblyHandler.FindTypeByName(c.Ingredient) is { } type
+            ? GuildCost.Of(type, c.IngredientAmount)
+            : null;
+
     // -- Slayer helper ---------------------------------------------------------
+
+    // cc-P82: OSI's super slayers (the design's rank 4); the rest are single slayers (rank 3).
+    private static readonly HashSet<SlayerName> SuperSlayers =
+    [
+        SlayerName.Silver, SlayerName.Repond, SlayerName.ReptilianDeath, SlayerName.ArachnidDoom, SlayerName.Fey,
+        SlayerName.ElementalBan, SlayerName.Exorcism
+    ];
 
     private static void AddSlayer(string name, SlayerName slayer)
     {
@@ -430,6 +615,7 @@ internal static class ImbueCatalogue
             GoldBase           = 6000,
             IsBool             = true,
             DiscoveryThreshold = 10,
+            KnowledgeKey       = SuperSlayers.Contains(sn) ? ImbueFamilies.SuperSlayer : ImbueFamilies.Slayer,
             Applies            = ImbuableItem.Weapon,
             // Get: returns 1 if item already has this slayer, else 0
             Get = item =>
@@ -466,7 +652,7 @@ internal static class ImbueCatalogue
         string name, string group, int maxVanilla, int maxGuild,
         int shards, int gold, ImbuableItem applies,
         Func<Item, int> get, Action<Item, int> set,
-        bool isBool = false, int minStanding = -1)
+        bool isBool = false)
     {
         All.Add(new ImbuePropertyDef
         {
@@ -478,7 +664,7 @@ internal static class ImbueCatalogue
             GoldBase           = gold,
             IsBool             = isBool,
             DiscoveryThreshold = ComputeThreshold(gold),
-            MinStandingOverride = minStanding,
+            KnowledgeKey       = name,
             Applies            = applies,
             Get                = get,
             Set                = set
@@ -523,7 +709,7 @@ internal static class ImbueCatalogue
         var flag   = GetItemFlag(item);
         var result = new List<ImbuePropertyDef>();
         foreach (var def in All)
-            if ((def.Applies & flag) != 0)
+            if ((def.AppliesNow & flag) != 0 && def.Allows?.Invoke(item) != false)
                 result.Add(def);
         return result;
     }
@@ -538,6 +724,15 @@ internal static class ImbueCatalogue
     };
 
     public static bool IsImbuable(Item item) => GetItemFlag(item) != ImbuableItem.None;
+
+    /// <summary>cc-P82: the item's total intensity, each property's value over its Full value, in percent (budget mode).</summary>
+    public static int TotalIntensity(Item item)
+    {
+        var total = 0;
+        foreach (var def in ForItem(item))
+            total += def.IntensityPercent(def.Get(item));
+        return total;
+    }
 
     /// <summary>Counts how many imbue-tracked properties the item currently has.</summary>
     public static int CountActiveProperties(Item item)
@@ -716,7 +911,7 @@ public sealed class ArtificersImbueGump : Gump
         // Count mastered properties
         var masteredCount = 0;
         foreach (var def in ImbueCatalogue.All)
-            if (data.IsMastered(def.Name, def.DiscoveryThreshold))
+            if (!def.IsCustom && data.IsMastered(def.Name, def.DiscoveryThreshold))
                 masteredCount++;
 
         if (masteredCount == 0)
@@ -737,18 +932,25 @@ public sealed class ArtificersImbueGump : Gump
     }
 
     // -- Stage: View Item (imbue mode) -----------------------------------------
+    //
+    // cc-P82: only what the account knows is listed (ClusterFImbueKnowledge), each up to the tier it knows and the place
+    // allows (ImbueSites); then one hint line per category with anything locked. Rows keep their index in
+    // ImbueCatalogue.ForItem(item) as their button (PropBase + index).
 
     private void DrawViewItem(ClusterFAccountData data, int standing, bool isMember)
     {
         if (_item == null || _item.Deleted) { DrawSelectItem(data, standing); return; }
 
-        var maxSlots  = GetMaxPropertySlots(standing);
+        var site      = ImbueSites.Resolve(_pm);
+        var maxSlots  = ClusterFImbueKnowledge.MaxSlots(data);
+        var budget    = ClusterFImbueKnowledge.IntensityBudget(data);
         var itemProps = ImbueCatalogue.ForItem(_item);
         var usedSlots = ImbueCatalogue.CountActiveProperties(_item);
-        var intensPct = GetIntensityCap(standing);
 
         AddLabel(18, 60, 1154, $"Item: {_item.Name ?? _item.GetType().Name}");
-        AddLabel(18, 78, 999,  $"Properties: {usedSlots}/{maxSlots}  |  Intensity cap: {intensPct}%");
+        var budgetStr = budget > 0 ? $"  |  Intensity: {ImbueCatalogue.TotalIntensity(_item)}/{budget}%" : "";
+        AddLabel(18, 78, 999,  $"Properties: {usedSlots}/{maxSlots}{budgetStr}  |  Here: up to {site.Cap}" +
+                               (site.BonusPercent > 0 ? $", +{site.BonusPercent}% success" : ""));
 
         AddLabel(18, 98, 1153, "Current Enchantments:");
         AddImageTiled(10, 114, W - 20, 1, 9304);
@@ -759,8 +961,7 @@ public sealed class ArtificersImbueGump : Gump
         {
             var cur = def.Get(_item);
             if (cur == 0) continue;
-            var maxV   = def.GetMaxForStanding(standing);
-            var pctStr = def.IsBool ? "(on)" : $"{cur}/{maxV}";
+            var pctStr = def.IsBool ? "(on)" : $"{cur} ({ImbueTiers.TierOf(def, cur)})";
             AddLabel(18,  y, 999,  def.Name);
             AddLabel(340, y, 1154, pctStr);
             y  += 18;
@@ -775,65 +976,64 @@ public sealed class ArtificersImbueGump : Gump
         var rowH     = 22;
         var rowsMax  = Math.Max(1, listH / rowH);
         var startIdx = _page * rowsMax;
-        var pageIdx  = 0;
-        var rowIdx   = 0;
 
-        AddLabel(18, listY - 18, 1153, "Available Properties (click to imbue/upgrade):");
+        AddLabel(18, listY - 18, 1153, "Known Properties (click to imbue/upgrade):");
 
+        // The list: known rows, then the hint lines (a category with nothing known still gets its hint).
+        var entries = new List<(ImbuePropertyDef Def, string Hint)>();
         foreach (var def in itemProps)
+            if (ClusterFImbueKnowledge.KnownTier(data, def.KnowledgeKey) >= ImbueTier.Basic)
+                entries.Add((def, null));
+        foreach (var group in itemProps.Select(d => d.Group).Distinct())
+            if (ClusterFImbueKnowledge.HintFor(data, group, itemProps) is { } hint)
+                entries.Add((null, hint));
+
+        for (var e = startIdx; e < entries.Count && e < startIdx + rowsMax; e++)
         {
-            if (pageIdx < startIdx) { pageIdx++; continue; }
-            if (rowIdx  >= rowsMax) break;
+            var (def, hint) = entries[e];
+            if (def == null)
+            {
+                AddLabel(18, listY, 0x3B2, hint);
+                listY += rowH;
+                continue;
+            }
 
             var propIdx  = itemProps.IndexOf(def);
             var cur      = def.Get(_item);
-            var maxAllow = def.GetMaxForStanding(standing);
-            var atMax    = def.IsBool ? (cur == 1) : (cur >= maxAllow);
-            var wouldAddSlot = cur == 0;
-            var noRoom   = wouldAddSlot && usedSlots >= maxSlots;
-            var blocked  = cur != 0 && !isMember && standing < 1000;
-
-            // Rank gate: property tier vs player standing
-            var minStanding   = def.RequiredStanding;
-            var rankLocked    = standing < minStanding;
-            var reqRankName   = def.RequiredRankName;
+            var top      = AllowedTier(data, def, site);
+            var maxAllow = top >= ImbueTier.Basic ? ImbueTiers.MaxFor(def, top) : 0;
+            var atMax    = cur >= maxAllow;
+            var noRoom   = cur == 0 && usedSlots >= maxSlots;
+            var blockedBy = def.BlockedBy?.Invoke(_item);
 
             // Discovery status
             var mastered = data.IsMastered(def.Name, def.DiscoveryThreshold);
             var discCount = data.GetDiscoveryCount(def.Name);
-            var essCount  = CountEssencesFor(def.Name);
-            var needsEss  = !mastered && essCount == 0 && !atMax && !rankLocked;
+            var essCount  = mastered ? 0 : CountEssencesFor(def.Name);
+            var needsEss  = !mastered && essCount == 0 && !atMax;
 
-            var hue = rankLocked ? 0x3B2 :
-                      atMax      ? 0x3B2 :
-                      noRoom     ? 0x22  :
-                      blocked    ? 0x22  :
-                      needsEss   ? 0x3B2 : 999;
+            var hue = atMax           ? 0x3B2 :
+                      noRoom          ? 0x22  :
+                      blockedBy != null ? 0x22 :
+                      needsEss        ? 0x3B2 : 999;
 
-            var btnActive = !rankLocked && !atMax && !noRoom && !blocked && !needsEss;
-
+            var btnActive = !atMax && !noRoom && blockedBy == null && !needsEss;
             if (btnActive)
-            {
-                var bid = (int)BtnId.PropBase + propIdx;
-                AddButton(18, listY, 4011, 4012, bid);
-            }
+                AddButton(18, listY, 4011, 4012, (int)BtnId.PropBase + propIdx);
 
             var curStr  = def.IsBool ? (cur == 1 ? "ON" : "off") : $"{cur}";
             var maxStr  = def.IsBool ? "" : $"/ {maxAllow}";
-            var discStr = mastered ? " [mastered]" :
+            var discStr = mastered ? (def.IsCustom ? "" : " [mastered]") :
                           needsEss ? $" [need essence {discCount}/{def.DiscoveryThreshold}]" :
                           essCount > 0 ? $" [essence ready {discCount}/{def.DiscoveryThreshold}]" : "";
-            var note    = rankLocked ? $" [req: {reqRankName}]" :
-                          atMax      ? " [MAX]"        :
-                          noRoom     ? " [slots full]" :
-                          blocked    ? " [rank req'd]" : discStr;
+            var note    = atMax           ? " [MAX]"        :
+                          noRoom          ? " [slots full]" :
+                          blockedBy != null ? " [one per group/item]" : discStr;
 
             AddLabel(44,  listY, hue, def.Name);
             AddLabel(300, listY, hue, $"{curStr} {maxStr}{note}");
 
             listY += rowH;
-            rowIdx++;
-            pageIdx++;
         }
 
         var footY = H - 56;
@@ -842,7 +1042,7 @@ public sealed class ArtificersImbueGump : Gump
             AddButton(18, footY, 4014, 4015, (int)BtnId.PrevPage);
             AddLabel(40, footY + 2, 999, "Prev");
         }
-        if (startIdx + rowsMax < itemProps.Count)
+        if (startIdx + rowsMax < entries.Count)
         {
             AddButton(120, footY, 4005, 4006, (int)BtnId.NextPage);
             AddLabel(142, footY + 2, 999, "Next");
@@ -850,6 +1050,14 @@ public sealed class ArtificersImbueGump : Gump
 
         AddButton(W - 180, footY, 4011, 4012, (int)BtnId.ImbueTarget);
         AddLabel(W - 154,  footY + 2, 999, "Change Item");
+    }
+
+    /// <summary>cc-P82: the highest tier this account may imbue this row at here: what it knows, what the place allows.</summary>
+    internal static ImbueTier AllowedTier(ClusterFAccountData data, ImbuePropertyDef def, ImbueSite site)
+    {
+        var known = ClusterFImbueKnowledge.KnownTier(data, def.KnowledgeKey);
+        var top   = (ImbueTier)Math.Min((int)known, Math.Min((int)site.Cap, (int)ImbueTiers.TopTier(def)));
+        return top;
     }
 
     // -- Stage: Select Target Value --------------------------------------------
@@ -863,28 +1071,24 @@ public sealed class ArtificersImbueGump : Gump
         var def = itemProps[_selectedPropIdx];
         var cur = def.Get(_item);
 
-        var mastered    = data.IsMastered(def.Name, def.DiscoveryThreshold);
-        var discCount   = data.GetDiscoveryCount(def.Name);
-        var essCount    = CountEssencesFor(def.Name);
-        var minStanding = def.RequiredStanding;
-        var rankLocked  = standing < minStanding;
-        var reqRankName = def.RequiredRankName;
+        var mastered  = data.IsMastered(def.Name, def.DiscoveryThreshold);
+        var discCount = data.GetDiscoveryCount(def.Name);
+        var essCount  = mastered ? 0 : CountEssencesFor(def.Name);
+        var known     = ClusterFImbueKnowledge.KnownTier(data, def.KnowledgeKey);
 
         AddLabel(18, 60, 1154, $"Imbue: {def.Name}");
         AddLabel(18, 80, 999,  $"Current value: {(def.IsBool ? (cur == 1 ? "ON" : "OFF") : cur.ToString())}");
 
-        // Rank gate - show locked message and bail out of controls
-        if (rankLocked)
+        // cc-P82: an unknown property is not offered (a client could still press its button).
+        if (known < ImbueTier.Basic)
         {
-            AddLabel(18, 98,  0x22, $"Requires {reqRankName} rank ({minStanding:N0} standing).");
-            AddLabel(18, 116, 0x3B2, "You have not yet earned the standing to attempt this property.");
-            AddButton(18, H - 56, 4014, 4015, (int)BtnId.ImbueTarget);
-            AddLabel(44, H - 54, 999, "Back");
+            AddLabel(18, 98, 0x22, "Your account does not know this property.");
             return;
         }
 
-        // Discovery status bar
-        if (mastered)
+        if (def.IsCustom)
+            AddLabel(18, 98, 1154, $"Ingredient: {DescribeIngredient(def)}");
+        else if (mastered)
             AddLabel(18, 98, 0x44, $"Mastered - no essence required. (Uses: {discCount}/{def.DiscoveryThreshold})");
         else
         {
@@ -897,15 +1101,15 @@ public sealed class ArtificersImbueGump : Gump
         AddImageTiled(10, 114, W - 20, 1, 9304);
 
         if (def.IsBool)
-            DrawBoolChoice(def, standing, cur);
+            DrawBoolChoice(def, cur);
         else
-            DrawValueChoice(def, standing, cur, isMember);
+            DrawValueChoice(data, def, cur);
     }
 
-    private void DrawBoolChoice(ImbuePropertyDef def, int standing, int cur)
+    private void DrawBoolChoice(ImbuePropertyDef def, int cur)
     {
-        var shards = def.ShardBase;
-        var gold   = def.GoldBase;
+        var shards = def.ShardsFor(1);
+        var gold   = def.GoldFor(1);
         var y      = 120;
 
         if (cur == 0)
@@ -914,7 +1118,7 @@ public sealed class ArtificersImbueGump : Gump
             y += 20;
             AddLabel(18, y, 1154, $"Cost: {shards} Essence Shard(s) + {gold:N0} gold");
             y += 30;
-            AddButton(18, y, 4005, 4006, (int)BtnId.ConfirmBase + 1);
+            AddButton(18, y, 4005, 4006, (int)BtnId.ConfirmBase + (int)ImbueTier.Basic);
             AddLabel(44, y + 2, 0x44, "Apply");
         }
         else
@@ -923,48 +1127,60 @@ public sealed class ArtificersImbueGump : Gump
         }
     }
 
-    private void DrawValueChoice(ImbuePropertyDef def, int standing, int cur, bool isMember)
+    // cc-P82: one choice per tier the account knows (locked tiers are not shown). A known tier the place does not allow
+    // is shown without a button, with where it can be reached.
+    private void DrawValueChoice(ClusterFAccountData data, ImbuePropertyDef def, int cur)
     {
-        var y          = 120;
-        var vanillaMax = def.MaxVanilla;
-        var guildMax   = def.GetMaxForStanding(standing);
+        var y     = 120;
+        var site  = ImbueSites.Resolve(_pm);
+        var known = ClusterFImbueKnowledge.KnownTier(data, def.KnowledgeKey);
 
         AddLabel(18, y, 1153, "Available imbue tiers:");
         y += 22;
 
-        TryDrawTier(def, standing, cur, y, (int)(vanillaMax * 0.25f), 1); y += 50;
-        TryDrawTier(def, standing, cur, y, (int)(vanillaMax * 0.50f), 2); y += 50;
-        TryDrawTier(def, standing, cur, y, vanillaMax, 3); y += 50;
-
-        if (standing >= 1000 && guildMax > vanillaMax)
+        for (var tier = ImbueTier.Basic; tier <= ImbueTiers.TopTier(def) && tier <= known; tier++)
         {
-            var mid4 = vanillaMax + (guildMax - vanillaMax) / 2;
-            if (mid4 > vanillaMax) { TryDrawTier(def, standing, cur, y, mid4, 4); y += 50; }
-            TryDrawTier(def, standing, cur, y, guildMax, 5);
+            var target = ImbueTiers.MaxFor(def, tier);
+            if (tier > site.Cap)
+            {
+                AddLabel(28, y, 0x3B2, $"{tier} ({target}): {(tier == ImbueTier.Overcharged ? "needs a soul forge" : "not here")}");
+                y += 30;
+                continue;
+            }
+
+            TryDrawTier(def, cur, y, target, tier, site.BonusPercent);
+            y += 50;
         }
     }
 
-    private void TryDrawTier(ImbuePropertyDef def, int standing, int cur, int y, int target, int tier)
+    private void TryDrawTier(ImbuePropertyDef def, int cur, int y, int target, ImbueTier tier, int bonus)
     {
         if (target <= 0) return;
         var isUpgrade = target > cur;
         var isAtValue = target == cur;
-        var shards    = def.ShardsFor(target, standing);
-        var gold      = def.GoldFor(target, standing);
-        var diff      = def.SkillDifficulty(target, standing);
+        var shards    = def.ShardsFor(target);
+        var gold      = def.GoldFor(target);
+        var diff      = EffectiveDifficulty(def, target, bonus);
         var chance    = ComputeSuccessChance(_pm.Skills[SkillName.Imbuing].Value, diff);
         var chanceHue = chance >= 75 ? 0x44 : chance >= 40 ? 999 : 0x22;
         var hue       = isAtValue ? 0x3B2 : (isUpgrade ? 999 : 0x3B2);
         var note      = isAtValue ? " [current]" : (!isUpgrade ? " [downgrade]" : "");
-        var label     = $"Set to {target}{note} - {shards} Shard(s) + {gold:N0} gold";
+        var label     = $"{tier}: set to {target}{note} - {shards} Shard(s) + {gold:N0} gold";
 
         AddLabel(28, y, hue, label);
         if (isUpgrade)
         {
             AddLabel(28, y + 16, chanceHue, $"  Success: {chance}%  (skill {_pm.Skills[SkillName.Imbuing].Value:F1} vs difficulty {diff:F0})");
-            AddButton(18, y, 4005, 4006, (int)BtnId.ConfirmBase + tier);
+            AddButton(18, y, 4005, 4006, (int)BtnId.ConfirmBase + (int)tier);
         }
     }
+
+    /// <summary>cc-P82: the difficulty with the place's success bonus taken off (1 point of chance is 0.4 skill on the 40-point window).</summary>
+    internal static double EffectiveDifficulty(ImbuePropertyDef def, int target, int bonusPercent) =>
+        def.SkillDifficulty(target) - bonusPercent * 0.4;
+
+    private static string DescribeIngredient(ImbuePropertyDef def) =>
+        ImbuingTable.Current.CustomOf(def.Name) is { IngredientAmount: > 0 } c ? $"{c.IngredientAmount} {c.Ingredient}" : "none";
 
     // -- Stage: Confirm Imbue --------------------------------------------------
 
@@ -977,13 +1193,14 @@ public sealed class ArtificersImbueGump : Gump
         if (_selectedPropIdx >= itemProps.Count) { DrawSelectItem(data, standing); return; }
         var def    = itemProps[_selectedPropIdx];
         var cur    = def.Get(_item);
-        var shards = def.ShardsFor(_targetValue, standing);
-        var gold   = def.GoldFor(_targetValue, standing);
-        var diff   = def.SkillDifficulty(_targetValue, standing);
+        var site   = ImbueSites.Resolve(_pm);
+        var shards = def.ShardsFor(_targetValue);
+        var gold   = def.GoldFor(_targetValue);
+        var diff   = EffectiveDifficulty(def, _targetValue, site.BonusPercent);
 
         var mastered  = data.IsMastered(def.Name, def.DiscoveryThreshold);
         var discCount = data.GetDiscoveryCount(def.Name);
-        var essCount  = CountEssencesFor(def.Name);
+        var essCount  = mastered ? 0 : CountEssencesFor(def.Name);
         var pmShards  = guild.GetCurrency("artificers");
         var pmGold    = CompactGoldHelper.GetTotalGold(_pm);
         var canAfford = pmShards >= shards && pmGold >= gold;
@@ -992,21 +1209,23 @@ public sealed class ArtificersImbueGump : Gump
         AddLabel(18, 60, 1154, "Confirm Imbue");
         AddImageTiled(10, 78, W - 20, 1, 9304);
 
-        var essLine = mastered
+        var essLine = def.IsCustom
+            ? $"<BASEFONT COLOR=#AACCFF>Ingredient: {DescribeIngredient(def)}</BASEFONT><BR>"
+            : mastered
             ? "<BASEFONT COLOR=#44FF44>Mastered - no essence required.</BASEFONT><BR>"
             : $"<BASEFONT COLOR={(essCount > 0 ? "#AACCFF" : "#FF4444")}>Requires: 1 Essence of {def.Name} " +
               $"(you have {DescribeEssences(_pm, def.Name)})  Discovery: {discCount}/{def.DiscoveryThreshold}</BASEFONT><BR>";
-
         var chance     = ComputeSuccessChance(_pm.Skills[SkillName.Imbuing].Value, diff);
         var chanceColor = chance >= 75 ? "#44FF44" : chance >= 40 ? "#FFD700" : "#FF4444";
+        var siteLine   = site.BonusPercent > 0 ? $"  |  {site.Name}: +{site.BonusPercent}%" : "";
 
         var html =
             $"<BASEFONT COLOR=#CCCCCC>Property: {def.Name}</BASEFONT><BR>" +
-            $"<BASEFONT COLOR=#AAAAAA>Current value: {cur}  ->  Target: {_targetValue}</BASEFONT><BR>" +
+            $"<BASEFONT COLOR=#AAAAAA>Current value: {cur}  ->  Target: {_targetValue} ({ImbueTiers.TierOf(def, _targetValue)})</BASEFONT><BR>" +
             $"{essLine}" +
             $"<BASEFONT COLOR=#FFD700>Essence Shards: {shards}  (you have: {pmShards})</BASEFONT><BR>" +
             $"<BASEFONT COLOR=#FFD700>Gold: {gold:N0}  (you have: {pmGold:N0})</BASEFONT><BR><BR>" +
-            $"<BASEFONT COLOR=#AAAAAA>Difficulty: {diff:F0}  |  Your Imbuing: {_pm.Skills[SkillName.Imbuing].Value:F1}</BASEFONT><BR>" +
+            $"<BASEFONT COLOR=#AAAAAA>Difficulty: {diff:F0}  |  Your Imbuing: {_pm.Skills[SkillName.Imbuing].Value:F1}{siteLine}</BASEFONT><BR>" +
             $"<BASEFONT COLOR={chanceColor}><B>Success Chance: {chance}%</B></BASEFONT><BR><BR>" +
             "<BASEFONT COLOR=#888888>Failure does NOT consume resources but the item may lose " +
             "10 durability. The essence is consumed on success.</BASEFONT>";
@@ -1183,7 +1402,7 @@ public sealed class ArtificersImbueGump : Gump
 
         foreach (var def in ImbueCatalogue.All)
         {
-            if (!data.IsMastered(def.Name, def.DiscoveryThreshold)) continue;
+            if (def.IsCustom || !data.IsMastered(def.Name, def.DiscoveryThreshold)) continue;
 
             if (pageIdx < startIdx) { pageIdx++; continue; }
             if (rowIdx  >= rowsMax) break;
@@ -1369,20 +1588,12 @@ public sealed class ArtificersImbueGump : Gump
             var itemProps = ImbueCatalogue.ForItem(_item);
             if (_selectedPropIdx >= itemProps.Count) return;
 
-            var def        = itemProps[_selectedPropIdx];
-            var vanillaMax = def.MaxVanilla;
-            var guildMax   = def.GetMaxForStanding(standing);
-            int target     = tier switch
-            {
-                1 => (int)(vanillaMax * 0.25f),
-                2 => (int)(vanillaMax * 0.50f),
-                3 => vanillaMax,
-                4 => vanillaMax + (guildMax - vanillaMax) / 2,
-                5 => guildMax,
-                _ => 0
-            };
+            // cc-P82: tier 1 to 4 is Basic, Refined, Full, Overcharged; the value is that tier's. Whether the account
+            // knows it and the place allows it is checked again at Apply.
+            var def    = itemProps[_selectedPropIdx];
+            var target = tier is >= 1 and <= 4 ? ImbueTiers.MaxFor(def, (ImbueTier)tier) : 0;
 
-            if (def.IsBool) target = 1;
+            if (def.IsBool && tier >= 1) target = 1;
 
             if (target > 0)
                 _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.Confirm, _selectedPropIdx, target, _page));
@@ -1420,34 +1631,64 @@ public sealed class ArtificersImbueGump : Gump
 
         var def    = itemProps[_selectedPropIdx];
         var cur    = def.Get(_item);
-        var shards = def.ShardsFor(_targetValue, standing);
-        var gold   = def.GoldFor(_targetValue, standing);
-        var diff   = def.SkillDifficulty(_targetValue, standing);
+        var site   = ImbueSites.Resolve(_pm);
+        var shards = def.ShardsFor(_targetValue);
+        var gold   = def.GoldFor(_targetValue);
+        var diff   = EffectiveDifficulty(def, _targetValue, site.BonusPercent);
 
-        // Rank gate: property tier vs player standing
-        var minStanding = def.RequiredStanding;
-        if (standing < minStanding)
+        // cc-P82: the account must know the property at the target's tier, and the place must allow that tier. (The
+        // cc-P42 Master Artificer gate on Self Repair and the Journeyman gate on enchanted items are gone: imbuing is
+        // gated by property and intensity, not by item.)
+        var need  = ImbueTiers.TierOf(def, _targetValue);
+        var known = ClusterFImbueKnowledge.KnownTier(data, def.KnowledgeKey);
+        if (_targetValue <= 0 || _targetValue > def.TopValue || known < need)
         {
-            var reqRank = def.RequiredRankName;
-            _pm.SendMessage(0x22, $"You need {reqRank} rank ({minStanding:N0} standing) to imbue {def.Name}.");
+            _pm.SendMessage(0x22, known < ImbueTier.Basic
+                ? $"Your account does not know {def.Name}."
+                : $"Your account knows {def.Name} only up to {known}.");
             _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
             return;
         }
 
-        // Rank gate for existing-magic-item imbuing
-        if (cur != 0 && !isMember && standing < 1000)
+        if (need > site.Cap)
         {
-            _pm.SendMessage(0x22, "Journeyman (1,000 Standing) or higher required to imbue already-enchanted items.");
+            _pm.SendMessage(0x22, need == ImbueTier.Overcharged
+                ? "Overcharged imbuing needs a soul forge: the Queen's Soulforge or an Artificers' hall forge."
+                : $"Here you can imbue only up to {site.Cap}.");
             _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
             return;
         }
 
-        // Slot limit
-        var maxSlots  = GetMaxPropertySlots(standing);
+        if (def.BlockedBy?.Invoke(_item) is { } why)
+        {
+            _pm.SendMessage(0x22, $"You cannot: {why}.");
+            _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
+            return;
+        }
+
+        // Slot limit (rank 5's Master Formulary raises it), or in budget mode the item's intensity budget.
+        var maxSlots  = ClusterFImbueKnowledge.MaxSlots(data);
         var usedSlots = ImbueCatalogue.CountActiveProperties(_item);
         if (cur == 0 && usedSlots >= maxSlots)
         {
-            _pm.SendMessage(0x22, $"This item has reached its maximum of {maxSlots} imbued properties for your rank.");
+            _pm.SendMessage(0x22, $"This item has reached your maximum of {maxSlots} imbued properties.");
+            _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
+            return;
+        }
+
+        var budget = ClusterFImbueKnowledge.IntensityBudget(data);
+        if (budget > 0 && ImbueCatalogue.TotalIntensity(_item) - def.IntensityPercent(cur) + def.IntensityPercent(_targetValue) > budget)
+        {
+            _pm.SendMessage(0x22, $"That would take the item past your intensity budget of {budget}%.");
+            _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
+            return;
+        }
+
+        // A custom property's ingredient (pack first, then bank: GuildResources).
+        var ingredient = ImbueCatalogue.CustomIngredient(def);
+        if (ingredient != null && !GuildResources.Has(_pm, ingredient))
+        {
+            _pm.SendMessage(0x22, $"You need {DescribeIngredient(def)} in your backpack or bank to imbue {def.Name}.");
             _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
             return;
         }
@@ -1497,6 +1738,13 @@ public sealed class ArtificersImbueGump : Gump
         if (essence != null && !GuildResources.TryConsume(_pm, essence))
         {
             _pm.SendMessage(0x22, $"You need an Essence of {def.Name} in your backpack or bank to imbue this property.");
+            _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
+            return;
+        }
+
+        if (ingredient != null && !GuildResources.TryConsume(_pm, ingredient))
+        {
+            _pm.SendMessage(0x22, $"You need {DescribeIngredient(def)} in your backpack or bank to imbue {def.Name}.");
             _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.ViewItem, -1, 0, _page));
             return;
         }
@@ -1643,7 +1891,7 @@ public sealed class ArtificersImbueGump : Gump
 
         var def = ImbueCatalogue.All[_selectedPropIdx];
 
-        if (!data.IsMastered(def.Name, def.DiscoveryThreshold))
+        if (def.IsCustom || !data.IsMastered(def.Name, def.DiscoveryThreshold))
         {
             _pm.SendMessage(0x22, $"You have not mastered {def.Name} yet.");
             _pm.SendGump(new ArtificersImbueGump(_pm, null, Stage.CraftSelect, -1, 0, _page));
@@ -1762,21 +2010,4 @@ public sealed class ArtificersImbueGump : Gump
         var chance = (skill - (diff - 20.0)) / 40.0 * 100.0;
         return (int)Math.Clamp(chance, 0.0, 100.0);
     }
-
-    public static int GetIntensityCap(int standing) => standing switch
-    {
-        >= 40000 => 200,
-        >= 15000 => 175,
-        >= 5000  => 150,
-        >= 1000  => 120,
-        _        => 100
-    };
-
-    public static int GetMaxPropertySlots(int standing) => standing switch
-    {
-        >= 15000 => 8,
-        >= 5000  => 7,
-        >= 1000  => 6,
-        _        => 5
-    };
 }

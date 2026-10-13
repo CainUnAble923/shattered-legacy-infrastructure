@@ -35,6 +35,7 @@ namespace Server.Items
         public override void OnItemAdded(Item item)
         {
             base.OnItemAdded(item);
+            ClusterFImbueEffects.OnCarvedItem(this, item); // cc-P82 Butcher's Eye, before the satchel takes it
             TryRouteCarvedItemToSatchel(item);
         }
 

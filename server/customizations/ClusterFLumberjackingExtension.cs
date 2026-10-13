@@ -93,6 +93,9 @@ public partial class Lumberjacking
             }
         }
 
+        // cc-P82: Bountiful (more of the stack) and Prospector (a rare find), from worn imbued gear.
+        ClusterFImbueEffects.OnGathered(m, item, "lumber");
+
         // Attempt to route into the Foresters' Lumber Satchel first.
         if (TryRouteToSatchel(m, item))
             return true;
