@@ -29,6 +29,20 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.12.9
+
+### Added
+- Pack mules take modules: seventeen of them, one from each guild, three tiers each, fitted by dropping one on your mule. A mule carries as many as its tier.
+- Each guild's hall sells the schematics for its module; a schematic teaches you the recipe for good, and you craft the module in that guild's craft, with a monster part. A higher tier is built on the tier below it.
+- Ore satchels from the Surveyor's on, and the top lumber and hunting satchels, can unload straight into your mule.
+- Your mule's new Options menu takes modules off, tracks your treasure maps, trashes and salvages, sells cargo and opens your bank, as its modules allow.
+
+### Changed
+- Mule traits now strengthen the matching modules (Emberblood the smelter, Stoneback the barding, and so on).
+
+### Staff
+- [add MuleModule <module> <tier> makes any module. Steady Hoof Wraps can be crafted and fitted but does nothing yet; the Field Medic Pack's ranged bandaging, the Clockwork Scavenger and imbuing the Barding Socket are still to come (their tooltips say so).
+
 ## 2026.10.12.8
 
 ### Added

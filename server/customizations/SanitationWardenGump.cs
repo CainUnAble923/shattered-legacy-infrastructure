@@ -31,6 +31,7 @@ public class SanitationWardenGump : Gump
     private const int BtnJoin     = 1;
     private const int BtnStore    = 3;
     private const int BtnTrashBag = 5;
+    private const int BtnSchematics = 6; // cc-P70: the Salvage Bin's mule module schematics
 
     // A store trader this close lets the gump open the store (ServUO's confirm range, BaseRewardGump.cs:238).
     public const int StoreRange = 5;
@@ -54,7 +55,7 @@ public class SanitationWardenGump : Gump
         Resizable  = false;
 
         var isMember = ClusterFGuildSystem.IsJoined(pm, "custodians");
-        var H        = isMember ? 415 : 380;
+        var H        = isMember ? 445 : 380; // cc-P70: +30 for the schematics row
 
         AddPage(0);
         AddBackground(0, 0, W, H, 9270);
@@ -146,6 +147,9 @@ public class SanitationWardenGump : Gump
             $"({thresholds} lifetime Clean Up points; spending points never lowers your rank)" +
             "</BASEFONT>",
             false, false);
+
+        AddButton(18, 406, 4005, 4007, BtnSchematics, GumpButtonType.Reply, 0);
+        AddLabel(54, 408, 1154, "Mule module schematics (Salvage Bin)");
     }
 
     // -- Join view -------------------------------------------------------------
@@ -197,6 +201,19 @@ public class SanitationWardenGump : Gump
 
             case BtnTrashBag:
                 HandleTrashBag(pm);
+                break;
+
+            case BtnSchematics:
+                foreach (var m in pm.GetMobilesInRange(StoreRange))
+                {
+                    if (m is SanitationWarden)
+                    {
+                        pm.SendGump(new Server.Mobiles.GuildSchematicsGump(pm, "custodians", m));
+                        return;
+                    }
+                }
+
+                pm.SendMessage(0x22, "Speak with the Sanitation Warden in person to buy a schematic.");
                 break;
         }
     }

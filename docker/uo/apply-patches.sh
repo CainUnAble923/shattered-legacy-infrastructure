@@ -258,6 +258,12 @@ echo "[patches] Applying .patch files..."
 # cannot do it without a patch: the skill-check handlers do not know the craft's metal. Notes: notes/cc-P61-batch-7.md.
 # cc-P67 reuses the same hunk, unchanged, for Carpentry, Fletching and Tinkering (ClusterFCraftGain.CeilingFor).
 apply_patch "$PATCHES/CraftItem-shard-hooks.patch"
+# cc-P70: a mule module above tier I is crafted from the same module one tier lower. AddRes matches by type only
+# (Container.ConsumeTotal, IsInstanceOfType), so it cannot ask for "the tier I Ore Hopper"; the alternative is 51 sibling
+# types (17 modules x 3 tiers, more if Chase raises the tier count). One check in ConsumeAttributes, which runs with
+# consume=false on every check and consume=true only on a successful craft. Applies on top of CraftItem-shard-hooks.
+# Argued in shard-migration/notes/cc-P70-mule-modules.md section 3.
+apply_patch "$PATCHES/CraftItem-mule-module-tier.patch"
 apply_patch "$PATCHES/CraftContext-shard-hooks.patch"
 apply_patch "$PATCHES/PlayerMobile-individual-stat-cap.patch"
 apply_patch "$PATCHES/Healer-resurrection-policy.patch"

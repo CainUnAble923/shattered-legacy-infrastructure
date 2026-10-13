@@ -169,6 +169,11 @@ public static class ClusterFSkillGain
             return false;
         }
 
+        // cc-P70: Minstrel's Bells III eases the owner's Peacemaking, Provocation and Discordance near the mule.
+        var bardEase = Server.Mobiles.MuleModules.BardSkillEase(from, skillName);
+        minSkill -= bardEase;
+        maxSkill -= bardEase;
+
         maxSkill = EffectiveMax(from, skill, maxSkill);
         var result = ObserveAttempt(from, skill, () => _baseTargetHandler(from, skillName, target, minSkill, maxSkill));
 

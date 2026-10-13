@@ -1005,6 +1005,7 @@ public class GuildTaskDetailGump : Gump
     public const int BtnApprentice = 4;
     public const int BtnServices   = 5;
     public const int BtnDirectory  = 6;
+    public const int BtnSchematics = 7; // cc-P70: mule module schematics
 
     public GuildTaskDetailGump(PlayerMobile pm, GuildDef def, IAccount acct) : this(pm, def, acct, null) { }
 
@@ -1079,6 +1080,14 @@ public class GuildTaskDetailGump : Gump
         {
             AddButton(20, y, 4005, 4007, BtnStarter);
             AddLabel(55, y + 2, 999, $"Starter items ({starters})");
+            y += 28;
+        }
+
+        // cc-P70 (F-33): the guild's mule module schematics, for members at the guildmaster.
+        if (atMaster && isMember && Array.Exists(Server.Mobiles.MuleModuleData.Modules, m => m.GuildKey == def.Key))
+        {
+            AddButton(20, y, 4005, 4007, BtnSchematics);
+            AddLabel(55, y + 2, 999, "Mule module schematics");
             y += 28;
         }
 
@@ -1164,6 +1173,11 @@ public class GuildTaskDetailGump : Gump
 
             case BtnDirectory:
                 _pm.SendGump(new GuildProgressGump(_pm, _acct));
+                return;
+
+            case BtnSchematics:
+                if (atMaster)
+                    _pm.SendGump(new Server.Mobiles.GuildSchematicsGump(_pm, _def.Key, _guildmaster));
                 return;
 
             default:

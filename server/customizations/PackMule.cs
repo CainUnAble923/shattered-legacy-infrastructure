@@ -40,6 +40,16 @@ namespace Server.Mobiles
         /// <summary>The one check for the pack on death: false drops it to the corpse (Chase: "drop, until a gear
         /// upgrade"). Soul Tether II or a barding upgrade sets it true.</summary>
         public bool KeepPackOnDeath;
+
+        // cc-P70: the modules' numbers (MuleModules.Apply).
+        /// <summary>Percent less damage taken (Expedition Barding).</summary>
+        public int DamageReduction;
+
+        /// <summary>Stamina regen points, added in RegenRates (Trailwise Tack, the Imbued Barding Socket).</summary>
+        public int StamRegen;
+
+        /// <summary>Hits healed every module tick (two seconds) out of combat (the Imbued Barding Socket).</summary>
+        public int HitsRegen;
     }
 
     [SerializationGenerator(1, false)]
@@ -215,6 +225,14 @@ namespace Server.Mobiles
             }
 
             list.Add($"Module slots: {Modules.Count} / {ModuleSlots}");
+
+            foreach (var item in Modules)
+            {
+                if (item is MuleModule module)
+                {
+                    list.Add($"Module: {module.Name}");
+                }
+            }
         }
 
         // --- the one place every number comes from -------------------------------------------------------------------
@@ -396,30 +414,91 @@ namespace Server.Mobiles
             NextBreedTime = until;
         }
 
-        // Deepdelver: less damage taken in a dungeon.
-        private void ScaleInDungeon(ref int damage)
+        // Every kind of damage reaches Mobile.Damage (melee, spells, poison, AOS.Damage; pinned Mobile.cs:5956), so the
+        // scaling is applied once, here: Deepdelver in a dungeon, and Expedition Barding (cc-P70). Before cc-P70 the
+        // dungeon scale sat in the melee and spell hooks only.
+        public override void Damage(int amount, Mobile from = null, bool informMount = true, bool ignoreEvilOmen = false)
         {
-            if (Region.IsPartOf<DungeonRegion>())
-            {
-                var scale = Compute(this).DungeonDamageScale;
+            base.Damage(MuleModules.ScaleIncoming(this, amount), from, informMount, ignoreEvilOmen);
+        }
 
-                if (scale < 1.0)
+        // Arcane Ward Harness II: the ward absorbs one damage spell, then recharges.
+        public override void AlterSpellDamageFrom(Mobile from, ref int damage)
+        {
+            base.AlterSpellDamageFrom(from, ref damage);
+            MuleModules.WardAbsorb(this, ref damage);
+        }
+
+        public override void OnDamage(int amount, Mobile from, bool willKill)
+        {
+            base.OnDamage(amount, from, willKill);
+            MuleModules.OnMuleDamaged(this, from, willKill);
+        }
+
+        // Shadow Cloak II: a cloaked mule walking beside its stealthing owner stays hidden (base Mobile.OnMove reveals).
+        protected override bool OnMove(Direction d) =>
+            Hidden && MuleModules.StaysHiddenMoving(this, d) || base.OnMove(d);
+
+        // Soul Tether III: no skill loss on resurrection (the loss is taken by the caller after ResurrectPet returns).
+        private double[] _skillsBeforeRes;
+
+        /// <summary>The skills saved at the last resurrection with Soul Tether III (null otherwise).</summary>
+        public double[] SkillsBeforeResurrect => _skillsBeforeRes;
+
+        public override void OnBeforeResurrect()
+        {
+            base.OnBeforeResurrect();
+            _skillsBeforeRes = MuleModules.TierOf(this, MuleModuleId.SoulTether) >= 3
+                ? new double[Skills.Length]
+                : null;
+
+            if (_skillsBeforeRes != null)
+            {
+                for (var i = 0; i < Skills.Length; i++)
                 {
-                    damage = (int)Math.Round(damage * scale);
+                    _skillsBeforeRes[i] = Skills[i].Base;
                 }
             }
         }
 
-        public override void AlterMeleeDamageFrom(Mobile from, ref int damage)
+        public override void OnAfterResurrect()
         {
-            base.AlterMeleeDamageFrom(from, ref damage);
-            ScaleInDungeon(ref damage);
+            base.OnAfterResurrect();
+
+            if (_skillsBeforeRes is { } saved)
+            {
+                _skillsBeforeRes = null;
+                Timer.DelayCall(() => RestoreSkills(saved));
+            }
         }
 
-        public override void AlterSpellDamageFrom(Mobile from, ref int damage)
+        public void RestoreSkills(double[] saved)
         {
-            base.AlterSpellDamageFrom(from, ref damage);
-            ScaleInDungeon(ref damage);
+            for (var i = 0; i < Skills.Length && i < saved.Length; i++)
+            {
+                if (Skills[i].Base < saved[i])
+                {
+                    Skills[i].Base = saved[i];
+                }
+            }
+        }
+
+        protected override void OnLocationChange(Point3D oldLocation)
+        {
+            base.OnLocationChange(oldLocation);
+            MuleModules.OnMuleMoved(this);
+        }
+
+        protected override void OnMapChange(Map oldMap)
+        {
+            base.OnMapChange(oldMap);
+            MuleModules.OnMuleMoved(this);
+        }
+
+        public override void OnAfterDelete()
+        {
+            MuleModules.OnMuleDeleted(this);
+            base.OnAfterDelete();
         }
 
         // --- migration from v0 (before cc-P69) ------------------------------------------------------------------------
@@ -452,6 +531,7 @@ namespace Server.Mobiles
         {
             _modules ??= new List<Item>();
             _traits ??= Array.Empty<int>();
+            MuleModules.Track(this);
 
             if (_qualityHits < 0)
             {
@@ -546,6 +626,12 @@ namespace Server.Mobiles
                 return false; // the satchel itself stays with the player
             }
 
+            // cc-P70: a module dropped on the mule is attached (refused, it goes back to the player, never deleted).
+            if (item is MuleModule module)
+            {
+                return MuleModules.TryAttach(from, this, module);
+            }
+
             AddToBackpack(item);
             return true;
         }
@@ -560,6 +646,7 @@ namespace Server.Mobiles
             if (from is PlayerMobile pm && pm == ControlMaster && !IsDeadPet)
             {
                 list.Add(new PackMuleBreedEntry(this));
+                list.Add(new MuleOptionsEntry(this)); // cc-P70: the module actions
             }
         }
 

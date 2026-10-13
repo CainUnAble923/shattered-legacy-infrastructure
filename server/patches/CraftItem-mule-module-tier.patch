@@ -1,0 +1,16 @@
+--- a/Projects/UOContent/Engines/Craft/Core/CraftItem.cs	2026-10-12 22:17:03.538009300 -0500
++++ b/Projects/UOContent/Engines/Craft/Core/CraftItem.cs	2026-10-12 22:17:03.540683300 -0500
+@@ -328,6 +328,13 @@
+                 return false;
+             }
+ 
++            // ClusterF (cc-P70): a mule module above tier I needs the same module one tier lower in the pack, and takes it
++            // only here with consume set, which is a successful craft (a failed one never reaches this with consume).
++            if (!Server.Mobiles.MuleModuleCrafts.CheckPreviousTier(from, this, consume, ref message))
++            {
++                return false;
++            }
++
+             if (consume)
+             {
+                 from.Mana -= Mana;

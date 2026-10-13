@@ -22,7 +22,7 @@ public class SmithGuildmasterGump : Gump
     // -- Layout constants ------------------------------------------------------
 
     private const int W = 380;
-    private const int H = 630;  // member view includes rank progression table + mule exchange
+    private const int H = 662;  // cc-P70: +32 for the schematics row  // member view includes rank progression table + mule exchange
 
     private const int BtnBulkOrders   = 1;
     private const int BtnWorkOrders   = 2;  // Guild Contracts
@@ -31,6 +31,7 @@ public class SmithGuildmasterGump : Gump
     private const int BtnCommissions  = 5;
     private const int BtnCatalog      = 6;
     private const int BtnMuleExchange = 20;
+    private const int BtnSchematics   = 21; // cc-P70: mule module schematics
     private const int BtnJoin         = 10;
 
     // Smith rank thresholds - mirrors Phase 4 design doc
@@ -201,6 +202,10 @@ public class SmithGuildmasterGump : Gump
         AddLabel(54, btnY + 2, 1154, "Civic Mule Exchange (mule upgrades)");
         btnY += 32;
 
+        AddButton(18, btnY, 4005, 4007, BtnSchematics, GumpButtonType.Reply, 0);
+        AddLabel(54, btnY + 2, 1154, "Mule module schematics");
+        btnY += 32;
+
         AddImageTiled(10, btnY + 4, W - 20, 2, 9304);
 
         // Footer flavour
@@ -280,6 +285,10 @@ public class SmithGuildmasterGump : Gump
 
             case BtnMuleExchange:
                 pm.SendGump(new CrossGuildExchangeGump(pm, Reopen));
+                break;
+
+            case BtnSchematics:
+                pm.SendGump(new Server.Mobiles.GuildSchematicsGump(pm, "smithing", _npc));
                 break;
 
             case BtnJoin:

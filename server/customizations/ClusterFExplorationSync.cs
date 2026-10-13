@@ -59,9 +59,13 @@ public static class ClusterFExplorationManager
 
         var delta = new List<(ushort cx, ushort cy)>();
 
-        for (int dy = -ExploreRadius; dy <= ExploreRadius; dy++)
+        // cc-P70: the Survey Saddle Roll widens the reveal by a chunk while the owner's mule is near (F-33, Chase:
+        // the wider reveal counts like walked chunks).
+        var radius = ExploreRadius + Server.Mobiles.MuleModules.ExploreBonus(pm);
+
+        for (int dy = -radius; dy <= radius; dy++)
         {
-            for (int dx = -ExploreRadius; dx <= ExploreRadius; dx++)
+            for (int dx = -radius; dx <= radius; dx++)
             {
                 int cx = centerCX + dx;
                 int cy = centerCY + dy;

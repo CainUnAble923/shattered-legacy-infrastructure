@@ -170,6 +170,13 @@ public partial class HuntersSatchel : Container
         }
         return base.OnDragDrop(from, dropped);
     }
+
+    // cc-P70 (F-33): from tier 3, "Unload" sends the satchel's contents to the owner's mule.
+    public override void GetContextMenuEntries(Mobile from, ref Server.Collections.PooledRefList<Server.ContextMenus.ContextMenuEntry> list)
+    {
+        base.GetContextMenuEntries(from, ref list);
+        Server.Mobiles.MuleSatchels.AddUnloadEntry(this, from, ref list);
+    }
 }
 
 // -- T2 ------------------------------------------------------------------------

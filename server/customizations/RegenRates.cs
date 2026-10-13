@@ -101,6 +101,9 @@ namespace Server.Misc
                 points += 40;
             }
 
+            // cc-P70: Trailwise Tack I and the Imbued Barding Socket's stamina regen on a pack mule.
+            points += Server.Mobiles.MuleModules.StamRegenBonus(from);
+
             var cappedPoints = AosAttributes.GetValue(from, AosAttribute.RegenStam);
 
             if (TransformationSpellHelper.UnderTransformation(from, typeof(VampiricEmbraceSpell)))

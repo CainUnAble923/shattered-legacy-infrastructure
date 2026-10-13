@@ -196,6 +196,9 @@ public partial class CompactOreSatchel : Container
 
         if (CanSmeltOre && from.Alive)
             list.Add(new SmeltOreEntry(IsChildOf(from.Backpack) && HasOre()));
+
+        // cc-P70 (F-33): from tier 3, "Unload" sends the satchel's contents to the owner's mule.
+        Server.Mobiles.MuleSatchels.AddUnloadEntry(this, from, ref list);
     }
 
     private bool HasOre()
