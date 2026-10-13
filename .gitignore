@@ -83,3 +83,8 @@ docker/website/*.bak
 # add-on never go in git or in the player package. Only our own small files in design/paperdoll-sos/ are tracked.
 design/paperdoll-sos/kit/
 client-addons/
+
+# cc-P84: the Shard Console's per-PC settings, and its cache of client gump art (EA's: never in git) and of
+# screenshots that show that art.
+scripts/shard-console-settings.json
+scripts/shard-console-cache/

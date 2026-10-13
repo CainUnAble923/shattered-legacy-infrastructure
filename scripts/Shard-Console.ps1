@@ -42,6 +42,16 @@
   two buttons open the play-test page (8093) and the Homepage dashboard (3000); so do two on the
   Autopilot tab. Get-PlayTestGlance judges the file.
 
+  THE LOOK, TOOLTIPS AND THE ACTION OUTPUT PANE (cc-P84). Look: UO (stone, parchment, gold, the crest, Palatino
+  Linotype) or Plain (the console as it was), chosen in the status bar and remembered in
+  scripts\shard-console-settings.json (git-ignored); every color and font is in Get-ConsoleTheme. UO draws the client's
+  gumps 3604 (stone) and 9304 (paper) behind the window and the tabs, read once from
+  client-data\classic-client\gumpartLegacyMUL.uop into scripts\shard-console-cache\ (git-ignored: EA's art), and its
+  own colors when they are missing. Every control has a tooltip from Get-ConsoleTooltips. A 'window' action, and a log
+  tail, streams into the Action output pane (Copy, Clear, Stop, Show/Hide) instead of a window of its own, unless it
+  asks a person something ($script:InteractiveActions: the wipe's password, the publish script's "Type yes") or
+  "actions in their own windows" is ticked. Get-OutputRoute decides. Nothing a button does changes with either.
+
   IT CALLS THE EXISTING SCRIPTS AND DOES NOT REIMPLEMENT THEM.
     docker/uo/Start-TestShard.ps1  starts, stops and rebuilds the test shard, seeds its accounts
                                    (D19) and waits for the listener.
@@ -240,6 +250,12 @@ function Get-ConsoleConfig {
         PlayTestsFile      = 'D:\UO\shard-migration\testing\play-tests.json'
         PlayTestsUrl       = 'http://localhost:8093/'
         DashboardUrl       = 'http://localhost:3000/'
+        # cc-P84: the look and where actions show their output, remembered on this PC (git-ignored); the gump cache
+        # (git-ignored: it holds EA's art); the client file the gumps are read from (read only); and our own crest.
+        SettingsFile       = (Join-Path $RepoRoot 'scripts\shard-console-settings.json')
+        CacheFolder        = (Join-Path $RepoRoot 'scripts\shard-console-cache')
+        GumpFile           = (Join-Path $RepoRoot 'client-data\classic-client\gumpartLegacyMUL.uop')
+        CrestFile          = (Join-Path $RepoRoot 'branding\intro\crest-128.png')
     }
 }
 
@@ -670,11 +686,15 @@ function Get-ChildArgumentLine {
         [string]$SelfPath, [string]$ActionKey, [string]$ShardKey, [string]$SnapshotName,
         [string]$Snapshot, [string]$ConfirmLive, [switch]$Yes, [switch]$DryRun, [string]$StatusFrom,
         [switch]$StatusFromDocker, [string]$CommitMessage, [string]$PackageNotes, [string]$PackageZip,
-        [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin
+        [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [switch]$ForPane
     )
     $mode = 'Execute'
     if ($DryRun) { $mode = 'DryRun' }
-    $a = '-NoProfile -ExecutionPolicy Bypass -NoExit -File "' + $SelfPath + '" -Mode ' + $mode + ' -Action ' + $ActionKey
+    # cc-P84: a run streamed into the Action output pane must end when its work does, and must never wait on a
+    # keyboard it does not have: -NonInteractive instead of -NoExit. Everything after it is the same line.
+    $keep = '-NoExit'
+    if ($ForPane) { $keep = '-NonInteractive' }
+    $a = '-NoProfile -ExecutionPolicy Bypass ' + $keep + ' -File "' + $SelfPath + '" -Mode ' + $mode + ' -Action ' + $ActionKey
     if ($ShardKey -in @('test', 'live')) { $a += ' -Shard ' + $ShardKey }
     # A dry child reads a capture file unless told otherwise. When the parent's status came from
     # docker (the toggle, not -DryRun), the child reads docker too, so it prints the same plan.
@@ -815,6 +835,245 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'links.playtests';  Group = 'Links';       Label = 'Play tests';                         Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
     )
+}
+
+# --- cc-P84: the theme table, the tooltip table, the settings and where an action's output goes ----------------
+# Everything the drawing code needs to know about a look is in Get-ConsoleTheme; nothing else in this file names a
+# color or a font for a themed control. Colors are R,G,B integers here (CORE has no System.Drawing); the SHELL turns
+# them into Drawing.Color. 'Plain' is the console as it looked before cc-P84, value for value: a Plain field that is
+# $null means "leave the WinForms default", which is what the form did then.
+
+function Get-ConsoleTheme {
+    param([ValidateSet('UO', 'Plain')][string]$Name = 'Plain')
+    $plain = [pscustomobject]@{
+        Name   = 'Plain'
+        Fonts  = [pscustomobject]@{ Ui = 'Segoe UI'; UiSize = 9; Tile = 'Segoe UI'; TileSize = 13; Detail = 'Segoe UI'; DetailSize = 9; Mono = 'Consolas'; MonoSize = 9; Title = $null; TitleSize = 0 }
+        # A tile's state color: its background and its text. The meaning is the same in every theme.
+        Tiles  = [ordered]@{
+            green = [pscustomobject]@{ Back = @(222, 244, 226); Fore = @(20, 100, 40) }
+            amber = [pscustomobject]@{ Back = @(255, 238, 204); Fore = @(150, 80, 0) }
+            red   = [pscustomobject]@{ Back = @(250, 218, 218); Fore = @(150, 20, 20) }
+            grey  = [pscustomobject]@{ Back = @(234, 234, 234); Fore = @(80, 80, 80) }
+        }
+        # The output, status and autopilot boxes: their background and each line color Write-ConsoleLine names.
+        LineBack = @(255, 255, 255)
+        Lines  = [ordered]@{
+            normal = @(0, 0, 0); head = @(0, 0, 128); green = @(34, 139, 34); amber = @(255, 140, 0); red = @(178, 34, 34); gray = @(105, 105, 105)
+        }
+        # The window's own chrome. $null: the WinForms default (Plain draws none of it).
+        Chrome = $null
+        # Client gump art (read at start from the client data into the ignored cache; never in git). None for Plain.
+        Gumps  = $null
+        Header = $false
+    }
+    if ($Name -eq 'Plain') { return $plain }
+    [pscustomobject]@{
+        Name   = 'UO'
+        # Palatino Linotype ships with Windows (Vista and later), is a book serif in the spirit of the UO client's
+        # gump text, and stays legible at 9 to 10 points, where Book Antiqua's narrow strokes start to break up.
+        Fonts  = [pscustomobject]@{ Ui = 'Palatino Linotype'; UiSize = 9.75; Tile = 'Palatino Linotype'; TileSize = 11.5; Detail = 'Palatino Linotype'; DetailSize = 9.75; Mono = 'Consolas'; MonoSize = 9; Title = 'Palatino Linotype'; TitleSize = 17 }
+        Tiles  = [ordered]@{
+            green = [pscustomobject]@{ Back = @(214, 232, 200); Fore = @(24, 84, 30) }
+            amber = [pscustomobject]@{ Back = @(246, 226, 180); Fore = @(122, 62, 0) }
+            red   = [pscustomobject]@{ Back = @(240, 206, 196); Fore = @(128, 20, 16) }
+            grey  = [pscustomobject]@{ Back = @(220, 212, 196); Fore = @(70, 62, 52) }
+        }
+        LineBack = @(246, 238, 218)
+        Lines  = [ordered]@{
+            normal = @(40, 28, 16); head = @(24, 40, 110); green = @(24, 100, 30); amber = @(138, 74, 0); red = @(150, 22, 18); gray = @(92, 82, 70)
+        }
+        Chrome = [pscustomobject]@{
+            # The frame and header: dark stone, with parchment-colored text and gold trim.
+            StoneBack = @(46, 44, 42); StoneText = @(238, 226, 196); Gold = @(232, 196, 104)
+            # Tab pages, captions and group boxes: parchment, with dark brown ink.
+            PageBack = @(230, 206, 160); PageText = @(60, 38, 20); PageDim = @(72, 54, 34); PageWarn = @(112, 16, 12)
+            # Gump-style buttons: dark wood, pale gold lettering, a gold border.
+            ButtonBack = @(92, 70, 44); ButtonText = @(246, 226, 170); ButtonHover = @(118, 92, 58); ButtonBorder = @(232, 196, 104)
+            # Text boxes and lists the person types into or reads from.
+            FieldBack = @(250, 244, 228); FieldText = @(40, 28, 16)
+        }
+        # Gump IDs from the classic client's gumpartLegacyMUL.uop: 3604, the middle tile of the dark stone background
+        # 3600-3608, behind the header and the window; 9304, the middle tile of the paper background 9300-9308, behind
+        # the tab pages. Each tiles, so only the middle piece is needed. StoneBack and PageBack above are their
+        # average colors (measured 2026-10-13: 44,44,44 and 228,202,155) and stand in when the art is missing.
+        # Worst: the pixel of each that is closest to the text drawn on it (measured the same day), so the facts can
+        # check that text on the real art keeps its contrast without the art being in git.
+        Gumps  = [pscustomobject]@{ Stone = 3604; Parchment = 9304; StoneWorst = @(74, 74, 74); ParchmentWorst = @(222, 164, 131) }
+        Header = $true
+    }
+}
+
+function Get-RelativeLuminance {
+    # WCAG 2.x relative luminance of an R,G,B triple (0 to 255 each).
+    param([int[]]$Rgb)
+    $ch = foreach ($v in $Rgb[0..2]) {
+        $s = $v / 255.0
+        if ($s -le 0.03928) { $s / 12.92 } else { [math]::Pow(($s + 0.055) / 1.055, 2.4) }
+    }
+    0.2126 * $ch[0] + 0.7152 * $ch[1] + 0.0722 * $ch[2]
+}
+
+function Get-ContrastRatio {
+    # WCAG contrast ratio between two colors, 1 to 21. 4.5 is the floor for body text.
+    param([int[]]$A, [int[]]$B)
+    $la = Get-RelativeLuminance $A
+    $lb = Get-RelativeLuminance $B
+    ([math]::Max($la, $lb) + 0.05) / ([math]::Min($la, $lb) + 0.05)
+}
+
+function Get-ConsoleTooltips {
+    # One or two plain sentences per button, tile, tab, box and field: what it does, whether it changes
+    # anything (live, test, git, a save), and what it refuses. Keyed by action key (Get-ConsoleActions) or by
+    # the control's name; the drawing code only looks them up.
+    [ordered]@{
+        'test.start'       = 'Starts the test shard (sl-modernuo-test) on the image it already has. Changes only the test shard; it builds nothing.'
+        'test.fresh'       = 'Moves the test save aside and starts a NEW WORLD with the LIVE accounts copied in. The old test save is kept beside it, never deleted.'
+        'test.wipe'        = 'Keeps the test WORLD and deletes every test account and character, then makes one new admin. Backs up the test save first, asks for WIPE TEST ACCOUNTS and asks the password in its own window. Refused on live.'
+        'test.stop'        = 'Stops the test shard. Play since the last autosave is lost unless the shard saves on stop (the plan says which).'
+        'test.rebuild'     = 'Builds a new image through build.sh and all its test gates, then starts the test shard on it. Long; nothing changes if a gate fails.'
+        'test.deploy'      = 'Points sl-modernuo:latest at an image a prompt already built (sl-modernuo:cc-pNN), after the phrase deploy to test, then restarts the TEST shard on it. Never touches live.'
+        'test.tail'        = 'Follows the test shard log as it is written. Read-only; Stop (or closing its window) ends it.'
+        'test.client'      = 'Opens a game client pointed at the test shard (port 2594). Changes nothing.'
+        'live.start'       = 'docker start on the existing live container, after a typed phrase. Never creates a container and never runs compose.'
+        'live.stop'        = 'docker stop on the live container, after a typed phrase. Real players are disconnected; the plan says whether the stop saves first.'
+        'live.restart'     = 'docker restart on the live container, after a typed phrase. Real players are disconnected.'
+        'live.tail'        = 'Follows the live shard log. Read-only.'
+        'live.client'      = 'Opens a game client pointed at the live shard (port 2593). Changes nothing.'
+        'snapshot.create'  = 'Copies the selected shard''s Saves folder into a named snapshot. Stops the shard while it copies and starts it again; live asks for a phrase.'
+        'snapshot.list'    = 'Prints the snapshots of the selected shard with their size and accounts. Read-only.'
+        'snapshot.restore' = 'Replaces the selected shard''s save with the selected snapshot. The current save is snapshotted first (PRE-RESTORE) and moved aside, never deleted; live asks for a phrase.'
+        'snapshot.delete'  = 'Deletes the selected snapshot folder, after you confirm. The only thing this console ever deletes.'
+        'diag.docker'      = 'Runs Check-Docker.ps1 and writes check-HHmmss.txt in the repo folder. Read-only.'
+        'diag.shard'       = 'Runs Check-Shard.ps1 on the TEST container and writes shard-HHmmss.txt. Read-only.'
+        'diag.folder'      = 'Opens the folder the two checks write to. Changes nothing.'
+        'commit.preview'   = 'Runs Commit-ShardWork.ps1 -DryRun: lists what would be committed in both repos and changes nothing.'
+        'commit.run'       = 'Commits and PUSHES both repos to GitHub after the phrase commit shard work; a pushed commit cannot be taken back. Refused as SYSTEM, when both repos are clean, or while a prompt has not said DONE.'
+        'package.build'    = 'Builds a player package zip in player-package\dist and checks it. Publishes nothing; refused while the shard repo has uncommitted changes.'
+        'package.publish'  = 'Publishes the selected zip: every player''s launcher is offered it. Asks for publish player package, then the script asks you to type yes in its own window.'
+        'package.check'    = 'Runs the package gates on the selected zip. Read-only.'
+        'autopilot.on'     = 'Turns the CC autopilot on: it hands CC the next queued prompt and commits and pushes after each DONE. Refused without email.json. Opens in its own window.'
+        'autopilot.off'    = 'Turns the autopilot off: no more hand-offs. A prompt CC is running still finishes.'
+        'autopilot.email'  = 'Opens Setup-Email.ps1 in its own window, which asks for the mail password there. Writes the autopilot''s email settings.'
+        'autopilot.test'   = 'Sends one test email through the autopilot''s settings. Changes nothing else.'
+        'autopilot.queue'  = 'Opens the prompt queue folder in Explorer. Changes nothing.'
+        'autopilot.log'    = 'Opens autopilot.log in Notepad. Changes nothing.'
+        'links.playtests'  = 'Opens the play-test page (port 8093) in your browser. Changes nothing here.'
+        'links.dashboard'  = 'Opens the Homepage dashboard (port 3000) in your browser. Changes nothing here.'
+        # controls without an action key
+        'refresh'          = 'Reads docker and the disk again and redraws the tiles and the status. Read-only.'
+        'autoRefresh'      = 'Refreshes the status every 30 seconds while ticked. Read-only.'
+        'dryRun'           = 'While ticked, every button prints the plan it would run and runs nothing; a window action opens a window that only prints.'
+        'theme'            = 'The look: UO (stone, parchment, gold) or Plain (the old look). Remembered on this PC; takes effect the next time the console opens. Changes no behavior.'
+        'outputInWindows'  = 'Ticked: every action runs in a PowerShell window of its own, as before. Unticked: non-interactive actions stream into the Action output pane here.'
+        'snapTest'         = 'Snapshots of the test shard.'
+        'snapLive'         = 'Snapshots of the LIVE shard. Every action here asks you to type a phrase.'
+        'snapName'         = 'The name for a new snapshot: letters, digits, dot, dash and underscore.'
+        'snapList'         = 'The snapshots of the selected shard. Select one for Restore or Delete.'
+        'commitMessage'    = 'The commit message. Blank uses the script''s default, Shard work, <date> <time>.'
+        'commitForce'      = 'For one commit, skips only the wait for files changed in the last minute. Not the DONE check, SYSTEM or the phrase.'
+        'packageNotes'     = 'One line of What is new for the package. Required to build.'
+        'packageList'      = 'The zips in player-package\dist, newest first. Select one to check or publish.'
+        'packageRefresh'   = 'Reads player-package\dist again. Read-only.'
+        'worldCopy'        = 'Copies this one command to the clipboard, to paste in a game client. The console cannot run it.'
+        'worldCopyGroup'   = 'Copies the whole group, one command a line.'
+        'worldTick'        = 'A tick for your own checklist, this session only. Saves nothing.'
+        'paneCopy'         = 'Copies everything in the Action output pane to the clipboard.'
+        'paneClear'        = 'Clears the Action output pane. Stops nothing.'
+        'paneStop'         = 'Ends the running action and every process it started. A build or tail stops where it is; a half-run plan says what it had done.'
+        'paneHide'         = 'Hides or shows the Action output pane. A running action keeps running.'
+        'tile.LIVE'        = 'The live container: running or not, and whether its image drifted from latest.'
+        'tile.TEST'        = 'The test container: running or not, and whether its image drifted from latest.'
+        'tile.STATUS PUBLISHER' = 'Whether status.json for the website is fresh (written in the last 3 minutes) and served on 8092.'
+        'tile.PUBLIC DNS'  = 'Whether public DNS for shatteredlegacyuo.com points at this house. Red usually means a VPN is on. Grey: the check failed.'
+        'tile.AUTOPILOT'   = 'What the CC autopilot is doing: off, idle, running a prompt, or NEEDS YOU after it emailed you.'
+        'tile.PLAY TESTS'  = 'How many play tests wait in the queue; amber while a Fail is not in the bug list yet.'
+        'tab.Test shard'   = 'The throwaway test shard: start, stop, rebuild, deploy, wipe, tail and a client.'
+        'tab.Snapshots'    = 'Named copies of a shard''s save: create, restore, delete.'
+        'tab.World setup'  = 'In-game commands to paste into a client, read from the code. The console cannot run them.'
+        'tab.Diagnostics'  = 'The two read-only health checks and their folder.'
+        'tab.Commit'       = 'Preview, or commit and push, both repos.'
+        'tab.Player package' = 'Build, check and publish the player package.'
+        'tab.Autopilot'    = 'The CC autopilot: its state, queue and log, and its own scripts.'
+        'tab.LIVE shard'   = 'The real shard with real players. Every button asks for a typed phrase.'
+    }
+}
+
+function ConvertFrom-ConsoleSettings {
+    # The console's own settings file (cc-P84): Theme UO or Plain (default UO) and OutputIn pane or window
+    # (default pane). Anything missing or unreadable falls back to the default, so a bad file never stops it.
+    param([string]$Text)
+    $s = [pscustomobject]@{ Theme = 'UO'; OutputIn = 'pane' }
+    if (-not $Text) { return $s }
+    try { $j = $Text | ConvertFrom-Json } catch { return $s }
+    if ($j.Theme -in @('UO', 'Plain')) { $s.Theme = [string]$j.Theme }
+    if ($j.OutputIn -in @('pane', 'window')) { $s.OutputIn = [string]$j.OutputIn }
+    $s
+}
+
+function ConvertTo-ConsoleSettings {
+    param($Settings)
+    ([ordered]@{ Theme = $Settings.Theme; OutputIn = $Settings.OutputIn } | ConvertTo-Json)
+}
+
+# The actions whose run asks a person something in its own console, so they always get a window of their own and
+# never the output pane (which has no keyboard). Decided from the code each one runs:
+#   test.wipe        its 'secret' step, Read-WipePassword: Read-Host -AsSecureString, twice.
+#   package.publish  Publish-PlayerPackage.ps1 line 70: Read-Host '... Type yes'.
+# Every other 'window' action was read: Start-TestShard.ps1, Check-Docker.ps1, Check-Shard.ps1,
+# Commit-ShardWork.ps1 and Build-PlayerPackage.ps1 have no Read-Host, prompt or -it docker call; the typed phrases
+# and yes/no questions are asked by this console's own dialogs before the run and passed as -ConfirmLive / -Yes.
+# The autopilot buttons (RunIn 'here') open the autopilot's own scripts in windows of their own on purpose
+# (Setup-Email.ps1 asks a password) and are not routed either.
+$script:InteractiveActions = @('test.wipe', 'package.publish')
+
+function Get-OutputRoute {
+    # Where an action's run is shown: 'pane' (streamed into the console) or 'window' (a PowerShell window of its
+    # own, as before cc-P84). Only 'window' actions and the two log tails can use the pane, never an interactive
+    # one, and only when the pane exists and is free.
+    param([string]$ActionKey, [string]$OutputIn = 'pane', [bool]$PaneAvailable = $true, [bool]$PaneBusy = $false)
+    $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
+    if (-not $def) { return 'window' }
+    if ($ActionKey -in $script:InteractiveActions) { return 'window' }
+    $paneable = ($def.RunIn -eq 'window') -or ($ActionKey -in @('test.tail', 'live.tail'))
+    if (-not $paneable -or $OutputIn -ne 'pane' -or -not $PaneAvailable -or $PaneBusy) { return 'window' }
+    'pane'
+}
+
+# A child run streaming into the pane marks each line with its color, so the pane draws it as the window would.
+$script:PaneMarker = '[[shard-console:'
+
+function Format-PaneLine {
+    param([string]$Text, [string]$Color = 'normal')
+    $script:PaneMarker + $Color + ']]' + $Text
+}
+
+function ConvertFrom-PaneLine {
+    # A line from a pane child: its color and text. An unmarked line (a native command's own output) is normal on
+    # stdout and gray on stderr, which docker uses for progress, not for errors.
+    param([string]$Line, [bool]$IsError = $false)
+    if ($null -ne $Line -and $Line.StartsWith($script:PaneMarker)) {
+        $end = $Line.IndexOf(']]', $script:PaneMarker.Length)
+        if ($end -gt 0) {
+            $c = $Line.Substring($script:PaneMarker.Length, $end - $script:PaneMarker.Length)
+            if ($c -in @('normal', 'head', 'green', 'amber', 'red', 'gray')) {
+                return [pscustomobject]@{ Color = $c; Text = $Line.Substring($end + 2) }
+            }
+        }
+    }
+    $color = 'normal'
+    if ($IsError) { $color = 'gray' }
+    [pscustomobject]@{ Color = $color; Text = [string]$Line }
+}
+
+function Format-PaneExit {
+    # The pane's last line for a run that ended by itself.
+    param([int]$Code)
+    switch ($Code) {
+        0 { [pscustomobject]@{ Color = 'green'; Text = '== exited with 0 (done)' } }
+        2 { [pscustomobject]@{ Color = 'red'; Text = '== exited with 2 (refused: no mode)' } }
+        3 { [pscustomobject]@{ Color = 'amber'; Text = '== exited with 3 (cancelled, nothing changed)' } }
+        default { [pscustomobject]@{ Color = 'red'; Text = ('== exited with ' + $Code + ' (failed)') } }
+    }
 }
 
 function New-PlanStep {
@@ -2853,6 +3112,9 @@ function Write-ConsoleLine {
     param([string]$Text, [string]$Color = 'normal')
     if ($script:OutputBox) {
         Add-RichLine $script:OutputBox $Text $Color
+    } elseif ($env:SHARD_CONSOLE_PANE -eq '1') {
+        # cc-P84: a run streaming into the console's Action output pane. Each line carries its color.
+        [Console]::Out.WriteLine((Format-PaneLine $Text $Color))
     } else {
         $map = @{ normal = 'Gray'; head = 'Cyan'; green = 'Green'; amber = 'Yellow'; red = 'Red'; gray = 'DarkGray' }
         Write-Host $Text -ForegroundColor $map[$Color]
@@ -3571,30 +3833,630 @@ function Invoke-Plan {
     $true
 }
 
+# --- cc-P84: settings, the native helper, gump art, the theme, tooltips and the Action output pane --------------
+
+function Read-ConsoleSettings {
+    param($Config)
+    $text = $null
+    try { if (Test-Path -LiteralPath $Config.SettingsFile -PathType Leaf) { $text = [IO.File]::ReadAllText($Config.SettingsFile) } } catch { $text = $null }
+    ConvertFrom-ConsoleSettings $text
+}
+
+function Save-ConsoleSettings {
+    param($Config, $Settings)
+    try {
+        [IO.File]::WriteAllText($Config.SettingsFile, (ConvertTo-ConsoleSettings $Settings), (New-Object Text.UTF8Encoding $false))
+        $true
+    } catch {
+        Write-ConsoleLine ('Could not save ' + $Config.SettingsFile + ': ' + $_.Exception.Message) 'amber'
+        $false
+    }
+}
+
+# The C# behind the pane (reading a process without blocking the window) and the gump reader. Compiled on first
+# use only: the pane's first job, or a gump missing from the cache. A normal start with a full cache compiles nothing.
+$script:NativeSource = @'
+using System;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.IO.Compression;
+using System.Runtime.InteropServices;
+
+namespace ShardConsoleNative
+{
+    // cc-P84: one action's process, read without blocking the window. stdout and stderr arrive on thread-pool
+    // threads through the Process events and wait in Lines ("O" or "E" and the line); the console's 150 ms timer
+    // takes them on its own thread. stdin is closed at once: the pane has no keyboard, so a prompt fails instead of
+    // waiting forever (the interactive actions never come here; this is the second guard).
+    public sealed class PaneJob
+    {
+        public readonly Process Proc;
+        public readonly ConcurrentQueue<string> Lines = new ConcurrentQueue<string>();
+        private volatile bool _outDone;
+        private volatile bool _errDone;
+
+        public PaneJob(string exe, string args, string envName)
+        {
+            var psi = new ProcessStartInfo(exe, args);
+            psi.UseShellExecute = false;
+            psi.RedirectStandardOutput = true;
+            psi.RedirectStandardError = true;
+            psi.RedirectStandardInput = true;
+            psi.CreateNoWindow = true;
+            if (!String.IsNullOrEmpty(envName)) { psi.EnvironmentVariables[envName] = "1"; }
+            Proc = new Process();
+            Proc.StartInfo = psi;
+            Proc.EnableRaisingEvents = true;
+            Proc.OutputDataReceived += delegate(object s, DataReceivedEventArgs e) { if (e.Data == null) { _outDone = true; } else { Lines.Enqueue("O" + e.Data); } };
+            Proc.ErrorDataReceived += delegate(object s, DataReceivedEventArgs e) { if (e.Data == null) { _errDone = true; } else { Lines.Enqueue("E" + e.Data); } };
+            Proc.Start();
+            Proc.StandardInput.Close();
+            Proc.BeginOutputReadLine();
+            Proc.BeginErrorReadLine();
+        }
+
+        public int Id { get { return Proc.Id; } }
+
+        // Ended, and both streams read to their end, so no line is still on its way.
+        public bool Finished { get { return _outDone && _errDone && Proc.HasExited; } }
+
+        public int ExitCode { get { return Proc.ExitCode; } }
+
+        // Ends the process and every process it started (taskkill /T). Returns taskkill's exit code.
+        public int KillTree()
+        {
+            try
+            {
+                var psi = new ProcessStartInfo("taskkill.exe", "/PID " + Proc.Id + " /T /F");
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                var k = Process.Start(psi);
+                k.WaitForExit(15000);
+                return k.ExitCode;
+            }
+            catch (Exception) { return -1; }
+        }
+    }
+
+    // cc-P84: reads one gump from the classic client's gumpartLegacyMUL.uop. Ported from TazUO at 3212623f
+    // (ClassicUO.IO/UOFileUop.cs CreateHash, ClassicUO.Utility/BwtDecompress.cs; BSD 2-Clause, Copyright (c) 2025,
+    // andreakarasho), and the gump format from ClassicUO.Assets/GumpsLoader.cs. The art is EA's: it is written only
+    // to the console's git-ignored cache, never to the repo.
+    public static class Gumps
+    {
+        public static ulong CreateHash(string s)
+        {
+            uint eax, ecx, edx, ebx, esi, edi;
+            eax = ecx = edx = ebx = esi = edi = 0;
+            ebx = edi = esi = (uint)s.Length + 0xDEADBEEF;
+            int i = 0;
+            for (i = 0; i + 12 < s.Length; i += 12)
+            {
+                edi = (uint)((s[i + 7] << 24) | (s[i + 6] << 16) | (s[i + 5] << 8) | s[i + 4]) + edi;
+                esi = (uint)((s[i + 11] << 24) | (s[i + 10] << 16) | (s[i + 9] << 8) | s[i + 8]) + esi;
+                edx = (uint)((s[i + 3] << 24) | (s[i + 2] << 16) | (s[i + 1] << 8) | s[i]) - esi;
+                edx = (edx + ebx) ^ (esi >> 28) ^ (esi << 4);
+                esi += edi;
+                edi = (edi - edx) ^ (edx >> 26) ^ (edx << 6);
+                edx += esi;
+                esi = (esi - edi) ^ (edi >> 24) ^ (edi << 8);
+                edi += edx;
+                ebx = (edx - esi) ^ (esi >> 16) ^ (esi << 16);
+                esi += edi;
+                edi = (edi - ebx) ^ (ebx >> 13) ^ (ebx << 19);
+                ebx += esi;
+                esi = (esi - edi) ^ (edi >> 28) ^ (edi << 4);
+                edi += ebx;
+            }
+
+            int r = s.Length - i;
+            if (r > 0)
+            {
+                if (r >= 12) esi += (uint)s[i + 11] << 24;
+                if (r >= 11) esi += (uint)s[i + 10] << 16;
+                if (r >= 10) esi += (uint)s[i + 9] << 8;
+                if (r >= 9) esi += s[i + 8];
+                if (r >= 8) edi += (uint)s[i + 7] << 24;
+                if (r >= 7) edi += (uint)s[i + 6] << 16;
+                if (r >= 6) edi += (uint)s[i + 5] << 8;
+                if (r >= 5) edi += s[i + 4];
+                if (r >= 4) ebx += (uint)s[i + 3] << 24;
+                if (r >= 3) ebx += (uint)s[i + 2] << 16;
+                if (r >= 2) ebx += (uint)s[i + 1] << 8;
+                ebx += s[i];
+
+                esi = (esi ^ edi) - ((edi >> 18) ^ (edi << 14));
+                ecx = (esi ^ ebx) - ((esi >> 21) ^ (esi << 11));
+                edi = (edi ^ ecx) - ((ecx >> 7) ^ (ecx << 25));
+                esi = (esi ^ edi) - ((edi >> 16) ^ (edi << 16));
+                edx = (esi ^ ecx) - ((esi >> 28) ^ (esi << 4));
+                edi = (edi ^ edx) - ((edx >> 18) ^ (edx << 14));
+                eax = (esi ^ edi) - ((edi >> 8) ^ (edi << 24));
+                return ((ulong)edi << 32) | eax;
+            }
+
+            return ((ulong)esi << 32) | eax;
+        }
+
+        // The gump, or null when the file does not hold it.
+        public static Bitmap Read(string uopPath, int gumpId)
+        {
+            ulong want = CreateHash("build/gumpartlegacymul/" + gumpId.ToString("D8") + ".tga");
+            using (var fs = File.OpenRead(uopPath))
+            using (var br = new BinaryReader(fs))
+            {
+                br.ReadUInt32(); br.ReadUInt32(); br.ReadUInt32();
+                long next = br.ReadInt64();
+                while (next != 0)
+                {
+                    fs.Seek(next, SeekOrigin.Begin);
+                    int n = br.ReadInt32();
+                    next = br.ReadInt64();
+                    for (int i = 0; i < n; i++)
+                    {
+                        long off = br.ReadInt64();
+                        int headerLen = br.ReadInt32();
+                        int compLen = br.ReadInt32();
+                        int decompLen = br.ReadInt32();
+                        ulong hash = br.ReadUInt64();
+                        br.ReadUInt32();
+                        short flag = br.ReadInt16();
+                        if (off == 0 || hash != want) continue;
+                        fs.Seek(off + headerLen, SeekOrigin.Begin);
+                        byte[] data = br.ReadBytes(compLen);
+                        if (flag == 1 || flag == 3) data = Inflate(data, decompLen);
+                        if (flag == 3) data = Bwt(data);
+                        return Decode(data);
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static byte[] Inflate(byte[] data, int size)
+        {
+            // zlib: a two byte header, then deflate.
+            using (var ms = new MemoryStream(data, 2, data.Length - 2))
+            using (var z = new DeflateStream(ms, CompressionMode.Decompress))
+            using (var o = new MemoryStream(size > 0 ? size : 4096))
+            {
+                z.CopyTo(o);
+                return o.ToArray();
+            }
+        }
+
+        private static Bitmap Decode(byte[] d)
+        {
+            int w = (int)BitConverter.ToUInt32(d, 0);
+            int h = (int)BitConverter.ToUInt32(d, 4);
+            if (w <= 0 || h <= 0 || w > 4096 || h > 4096) return null;
+            var argb = new int[w * h];
+            for (int y = 0; y < h; y++)
+            {
+                int off = 8 + (int)BitConverter.ToUInt32(d, 8 + y * 4) * 4;
+                int x = 0;
+                while (x < w && off + 4 <= d.Length)
+                {
+                    int c = BitConverter.ToUInt16(d, off);
+                    int run = BitConverter.ToUInt16(d, off + 2);
+                    off += 4;
+                    if (c != 0)
+                    {
+                        int r = ((c >> 10) & 31) * 255 / 31, g = ((c >> 5) & 31) * 255 / 31, b = (c & 31) * 255 / 31;
+                        int px = unchecked((int)0xFF000000) | (r << 16) | (g << 8) | b;
+                        for (int k = 0; k < run && x + k < w; k++) argb[y * w + x + k] = px;
+                    }
+                    x += run;
+                }
+            }
+
+            var bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+            var bits = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+            for (int y = 0; y < h; y++) Marshal.Copy(argb, y * w, IntPtr.Add(bits.Scan0, y * bits.Stride), w);
+            bmp.UnlockBits(bits);
+            return bmp;
+        }
+
+        private static byte[] Bwt(byte[] buf)
+        {
+            var table = new ushort[65536];
+            for (int t = 0; t < 65536; t++) table[t] = (ushort)t; // BuildTable's values, sorted
+            var list = new byte[buf.Length - 4];
+            int i = 0;
+            byte first = buf[4];
+            int pos = 5;
+            while (pos < buf.Length)
+            {
+                int c = first;
+                ushort val = table[c];
+                for (int k = c; k > 0; k--) table[k] = table[k - 1];
+                table[0] = val;
+                list[i++] = (byte)val;
+                first = buf[pos++];
+            }
+
+            return BwtInternal(list);
+        }
+
+        private static byte[] BwtInternal(byte[] input)
+        {
+            var sym = new int[256];
+            var part = new int[256 * 3];
+            for (int k = 0; k < 256; k++) { sym[k] = k; part[k] = BitConverter.ToInt32(input, k * 4); }
+            int total = 0;
+            for (int k = 0; k < 256; k++) total += part[k];
+            var output = new byte[total];
+            var tmp = new int[256];
+            Array.Copy(part, tmp, 256);
+            var freq = new int[256];
+            for (int k = 0; k < 256; k++)
+            {
+                int value = 0, index = 0;
+                for (int j = 0; j < 256; j++) if (tmp[j] > value) { index = j; value = tmp[j]; }
+                if (value == 0) break;
+                freq[k] = index;
+                tmp[index] = 0;
+            }
+
+            int nz = 0;
+            for (int k = 0; k < 256; k++) if (part[k] != 0) nz++;
+            for (int k = 0, m = 0; k < nz; k++)
+            {
+                int f = freq[k];
+                sym[input[m + 1024]] = f;
+                part[f + 256] = m + 1;
+                m += part[f];
+                part[f + 512] = m;
+            }
+
+            int val = sym[0];
+            for (int count = 0; count < total; count++)
+            {
+                output[count] = (byte)val;
+                if (part[val + 256] >= part[val + 512])
+                {
+                    if (nz > 0)
+                    {
+                        nz--;
+                        for (int k = 0; k < nz; k++) sym[k] = sym[k + 1];
+                        val = sym[0];
+                    }
+                }
+                else
+                {
+                    int idx = input[part[val + 256] + 1024];
+                    part[val + 256]++;
+                    if (idx != 0)
+                    {
+                        for (int k = 0; k < idx; k++) sym[k] = sym[k + 1];
+                        sym[idx] = val;
+                        val = sym[0];
+                    }
+                }
+            }
+
+            return output;
+        }
+    }
+}
+'@
+
+function Initialize-ConsoleNative {
+    if (-not ('ShardConsoleNative.PaneJob' -as [type])) {
+        Add-Type -TypeDefinition $script:NativeSource -ReferencedAssemblies System.Drawing
+    }
+}
+
+function Get-GumpImage {
+    # One client gump as an image: from the cache (CacheFolder\gumps\<id>.png), or read once from the client's
+    # gumpartLegacyMUL.uop into it. $null when neither exists or anything fails: the theme's solid color is drawn
+    # instead. The cache folder is git-ignored; EA's art never goes in either repo.
+    param($Config, [int]$Id)
+    try {
+        $dir = Join-Path $Config.CacheFolder 'gumps'
+        $png = Join-Path $dir ([string]$Id + '.png')
+        if (-not (Test-Path -LiteralPath $png -PathType Leaf)) {
+            if (-not (Test-Path -LiteralPath $Config.GumpFile -PathType Leaf)) { return $null }
+            Initialize-ConsoleNative
+            $bmp = [ShardConsoleNative.Gumps]::Read($Config.GumpFile, $Id)
+            if (-not $bmp) { return $null }
+            if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            try { $bmp.Save($png, [Drawing.Imaging.ImageFormat]::Png) } finally { $bmp.Dispose() }
+        }
+        # From a copy in memory, so the cache file is never held open.
+        $ms = New-Object IO.MemoryStream(, [IO.File]::ReadAllBytes($png))
+        [Drawing.Image]::FromStream($ms)
+    } catch { $null }
+}
+
+function ConvertTo-DrawingColor {
+    param([int[]]$Rgb)
+    [Drawing.Color]::FromArgb($Rgb[0], $Rgb[1], $Rgb[2])
+}
+
+function Get-ThemeFont {
+    # 'Ui', 'Tile', 'Detail', 'Mono' or 'Title', from the theme in force (Plain until the form sets one).
+    param([string]$Which, [Drawing.FontStyle]$Style = [Drawing.FontStyle]::Regular)
+    $t = $script:theme
+    if (-not $t) { $t = Get-ConsoleTheme 'Plain' }
+    New-Object Drawing.Font($t.Fonts.$Which, [single]$t.Fonts.($Which + 'Size'), $Style)
+}
+
+function Test-OnPage {
+    # Whether a control sits on a tab page (parchment) rather than on the window itself (stone).
+    param($Control)
+    for ($p = $Control.Parent; $p; $p = $p.Parent) { if ($p -is [Windows.Forms.TabPage]) { return $true } }
+    $false
+}
+
+function Set-ControlTheme {
+    # Draws one control and everything inside it in the theme's chrome. Plain has none, so Plain draws nothing
+    # here and every control keeps the WinForms look it had before cc-P84. Tiles (Tag 'tile') are drawn by
+    # Set-TileLook and kept out; the boxes keep their own line colors.
+    param($Control, $Theme, $Images)
+    if (-not $Theme.Chrome) { return }
+    $c = $Theme.Chrome
+    $ui = Get-ThemeFont 'Ui'
+    $stack = New-Object System.Collections.Stack
+    $stack.Push($Control)
+    while ($stack.Count) {
+        $x = $stack.Pop()
+        if ($x.Tag -eq 'tile') {
+            # A status tile: its own colors. Only its link buttons take the button look.
+            foreach ($k in $x.Controls) { if ($k -is [Windows.Forms.FlowLayoutPanel]) { $k.BackColor = [Drawing.Color]::Transparent; foreach ($b in $k.Controls) { $stack.Push($b) } } }
+            continue
+        }
+        $page = Test-OnPage $x
+        $text = $c.StoneText; if ($page) { $text = $c.PageText }
+        switch ($x) {
+            { $_ -is [Windows.Forms.Form] } {
+                $x.BackColor = ConvertTo-DrawingColor $c.StoneBack
+                $x.ForeColor = ConvertTo-DrawingColor $c.StoneText
+                if ($Images.Stone) { $x.BackgroundImage = $Images.Stone; $x.BackgroundImageLayout = 'Tile' }
+                $x.Font = $ui
+                break
+            }
+            { $_ -is [Windows.Forms.TabPage] } {
+                $x.UseVisualStyleBackColor = $false
+                $x.BackColor = ConvertTo-DrawingColor $c.PageBack
+                $x.ForeColor = ConvertTo-DrawingColor $c.PageText
+                if ($Images.Parchment) { $x.BackgroundImage = $Images.Parchment; $x.BackgroundImageLayout = 'Tile' }
+                break
+            }
+            { $_ -is [Windows.Forms.Button] } {
+                $x.FlatStyle = 'Flat'
+                $x.UseVisualStyleBackColor = $false
+                $x.BackColor = ConvertTo-DrawingColor $c.ButtonBack
+                $x.ForeColor = ConvertTo-DrawingColor $c.ButtonText
+                $x.FlatAppearance.BorderColor = ConvertTo-DrawingColor $c.ButtonBorder
+                $x.FlatAppearance.MouseOverBackColor = ConvertTo-DrawingColor $c.ButtonHover
+                $x.Font = $ui
+                break
+            }
+            { $_ -is [Windows.Forms.RichTextBox] } {
+                $x.BackColor = ConvertTo-DrawingColor $Theme.LineBack
+                $x.ForeColor = ConvertTo-DrawingColor $Theme.Lines.normal
+                break
+            }
+            { $_ -is [Windows.Forms.TextBox] -or $_ -is [Windows.Forms.ListView] -or $_ -is [Windows.Forms.ComboBox] } {
+                $x.BackColor = ConvertTo-DrawingColor $c.FieldBack
+                $x.ForeColor = ConvertTo-DrawingColor $c.FieldText
+                break
+            }
+            { $_ -is [Windows.Forms.GroupBox] } {
+                $x.BackColor = [Drawing.Color]::Transparent
+                $x.ForeColor = ConvertTo-DrawingColor $c.Gold
+                $x.Font = Get-ThemeFont 'Ui' ([Drawing.FontStyle]::Bold)
+                break
+            }
+            { $_ -is [Windows.Forms.Label] -or $_ -is [Windows.Forms.CheckBox] -or $_ -is [Windows.Forms.RadioButton] } {
+                $x.BackColor = [Drawing.Color]::Transparent
+                # The meaning a caption's color carried stays: a warning stays a warning, a quiet line stays quiet.
+                $was = $x.ForeColor
+                if ($was -eq [Drawing.Color]::Firebrick -or $was -eq [Drawing.Color]::DarkRed) { $x.ForeColor = ConvertTo-DrawingColor $c.PageWarn }
+                elseif ($was -eq [Drawing.Color]::DimGray -and $page) { $x.ForeColor = ConvertTo-DrawingColor $c.PageDim }
+                else { $x.ForeColor = ConvertTo-DrawingColor $text }
+                if ($x.Font.Name -ne $Theme.Fonts.Mono) { $x.Font = New-Object Drawing.Font($Theme.Fonts.Ui, [single]$Theme.Fonts.UiSize, $x.Font.Style) }
+                break
+            }
+            { $_ -is [Windows.Forms.Panel] -or $_ -is [Windows.Forms.SplitContainer] } {
+                $x.BackColor = [Drawing.Color]::Transparent
+                break
+            }
+        }
+        foreach ($k in $x.Controls) { $stack.Push($k) }
+    }
+}
+
+function Set-TabTheme {
+    # The tab headers: drawn by hand in UO (WinForms draws them in the system's colors otherwise). Plain: untouched.
+    param($Tabs, $Theme)
+    if (-not $Theme.Chrome) { return }
+    $script:tabTheme = $Theme
+    $Tabs.DrawMode = 'OwnerDrawFixed'
+    $Tabs.Padding = New-Object Drawing.Point(14, 5)
+    $Tabs.Add_DrawItem({
+        param($s, $e)
+        $c = $script:tabTheme.Chrome
+        $page = $s.TabPages[$e.Index]
+        $selected = ($e.Index -eq $s.SelectedIndex)
+        $back = ConvertTo-DrawingColor $c.ButtonBack; $fore = ConvertTo-DrawingColor $c.ButtonText
+        if ($selected) { $back = ConvertTo-DrawingColor $c.PageBack; $fore = ConvertTo-DrawingColor $c.PageText }
+        # The LIVE tab keeps its warning color, as the LIVE caption does.
+        if ($page.Text -eq 'LIVE shard' -and $selected) { $fore = ConvertTo-DrawingColor $c.PageWarn }
+        $b = New-Object Drawing.SolidBrush($back)
+        $e.Graphics.FillRectangle($b, $e.Bounds)
+        $pen = New-Object Drawing.Pen((ConvertTo-DrawingColor $c.Gold))
+        $e.Graphics.DrawRectangle($pen, $e.Bounds.X, $e.Bounds.Y, $e.Bounds.Width - 1, $e.Bounds.Height - 1)
+        [Windows.Forms.TextRenderer]::DrawText($e.Graphics, $page.Text, $s.Font, $e.Bounds, $fore, [Windows.Forms.TextFormatFlags]'HorizontalCenter, VerticalCenter')
+        $b.Dispose(); $pen.Dispose()
+    })
+}
+
+function Set-ConsoleTooltips {
+    # Every control with an action key (its Tag) or a name in Get-ConsoleTooltips gets that text; a tab page gets
+    # 'tab.<its title>'. One ToolTip for the window.
+    param($Root, $Tips, $ToolTip)
+    $stack = New-Object System.Collections.Stack
+    $stack.Push($Root)
+    while ($stack.Count) {
+        $x = $stack.Pop()
+        $key = $null
+        if ($x.Tag -is [string] -and $Tips.Contains($x.Tag)) { $key = $x.Tag }
+        elseif ($x.Name -and $Tips.Contains($x.Name)) { $key = $x.Name }
+        if ($key) { $ToolTip.SetToolTip($x, $Tips[$key]) }
+        if ($x -is [Windows.Forms.TabPage] -and $Tips.Contains('tab.' + $x.Text)) { $x.ToolTipText = $Tips['tab.' + $x.Text] }
+        foreach ($k in $x.Controls) { $stack.Push($k) }
+    }
+}
+
+function Format-ArgumentList {
+    # A plan step's arguments as one Windows command line (a space or quote is quoted).
+    param([string[]]$Arguments)
+    (@($Arguments) | ForEach-Object { if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ } }) -join ' '
+}
+
+function Start-PaneJob {
+    # Starts a process whose output streams into the Action output pane. The window never waits on it: the pane's
+    # timer (Update-PaneJob) takes what has arrived every 150 ms.
+    param([string]$Exe, [string]$Arguments, [string]$Title)
+    Initialize-ConsoleNative
+    $p = $script:ui.Pane
+    $p.Box.Clear()
+    Add-RichLine $p.Box ('== ' + $Title + '  (' + (Get-Date).ToString('HH:mm:ss', $script:Invariant) + ')') 'head'
+    $script:paneStopped = $false
+    $script:paneJob = New-Object ShardConsoleNative.PaneJob($Exe, $Arguments, 'SHARD_CONSOLE_PANE')
+    $script:paneJobTitle = $Title
+    $p.State.Text = 'Running: ' + $Title + ' (PID ' + $script:paneJob.Id + ')'
+    $p.Stop.Enabled = $true
+    Show-OutputPane $true
+    $p.Timer.Start()
+}
+
+function Update-PaneJob {
+    $job = $script:paneJob
+    if (-not $job) { $script:ui.Pane.Timer.Stop(); return }
+    $box = $script:ui.Pane.Box
+    $line = $null
+    $n = 0
+    while ($n -lt 400 -and $job.Lines.TryDequeue([ref]$line)) {
+        $l = ConvertFrom-PaneLine $line.Substring(1) ($line[0] -eq 'E')
+        Add-RichLine $box $l.Text $l.Color
+        $n++
+    }
+    if ($n) { $box.SelectionStart = $box.TextLength; $box.ScrollToCaret() }
+    if ($job.Finished -and $job.Lines.IsEmpty) {
+        $code = $job.ExitCode
+        if ($script:paneStopped) { Add-RichLine $box ('== stopped (exit ' + $code + ')') 'amber' }
+        else { $e = Format-PaneExit $code; Add-RichLine $box $e.Text $e.Color }
+        $script:ui.Pane.State.Text = 'Last: ' + $script:paneJobTitle + ', exit ' + $code
+        $script:ui.Pane.Stop.Enabled = $false
+        $script:paneJob = $null
+        $script:ui.Pane.Timer.Stop()
+        Write-ConsoleLine ($script:paneJobTitle + ': finished in the Action output pane (exit ' + $code + '). Refresh the status if it changed anything.') 'gray'
+    }
+}
+
+function Stop-PaneJob {
+    $job = $script:paneJob
+    if (-not $job) { return }
+    $script:paneStopped = $true
+    $rc = $job.KillTree()
+    $what = 'ended ' + $script:paneJobTitle + ' (PID ' + $job.Id + ') and every process it started'
+    if ($rc -ne 0) { $what = 'tried to end ' + $script:paneJobTitle + ' (taskkill said ' + $rc + '; it may have finished already)' }
+    Add-RichLine $script:ui.Pane.Box ('== Stop: ' + $what + '.') 'amber'
+    Write-ConsoleLine ('Stopped: ' + $what + '. A plan stopped part way says above what it had done.') 'amber'
+}
+
+function Show-OutputPane {
+    param([bool]$Show)
+    $p = $script:ui.Pane
+    if (-not $p) { return }
+    $p.Split.Panel2Collapsed = -not $Show
+    $p.Hide.Text = 'Hide'
+    if (-not $Show) { $p.Hide.Text = 'Show' }
+}
+
+function New-OutputPane {
+    # The Action output pane (cc-P84): read-only, monospaced, scrolling, with Copy, Clear, Stop and Show/Hide on
+    # a bar that stays visible. It sits beside the console's own output, collapsed until a job starts.
+    param($OutBox, $Group)
+    $split = New-Object Windows.Forms.SplitContainer
+    $split.Dock = 'Fill'
+    $split.Orientation = 'Vertical'
+    $split.Panel1.Controls.Add($OutBox)
+    $box = New-Object Windows.Forms.RichTextBox
+    $box.Dock = 'Fill'
+    $box.ReadOnly = $true
+    $box.BackColor = ConvertTo-DrawingColor $script:theme.LineBack
+    $box.Font = $script:MonoFont
+    $box.WordWrap = $false
+    $box.DetectUrls = $false
+    $split.Panel2.Controls.Add($box)
+    $bar = New-Object Windows.Forms.FlowLayoutPanel
+    $bar.Dock = 'Top'
+    $bar.Height = 30
+    $state = New-Object Windows.Forms.Label
+    $state.Text = 'Action output: nothing has run here yet'
+    $state.AutoSize = $true
+    $state.Margin = New-Object Windows.Forms.Padding(6, 7, 12, 0)
+    $mk = {
+        param($t, $n)
+        $b = New-Object Windows.Forms.Button
+        $b.Text = $t; $b.Name = $n; $b.Width = 70; $b.Height = 24
+        $b.Margin = New-Object Windows.Forms.Padding(3, 2, 3, 2)
+        $b
+    }
+    $hide = & $mk 'Show' 'paneHide'
+    $copy = & $mk 'Copy' 'paneCopy'
+    $clear = & $mk 'Clear' 'paneClear'
+    $stop = & $mk 'Stop' 'paneStop'
+    $stop.Enabled = $false
+    $hide.Add_Click({ Show-OutputPane $script:ui.Pane.Split.Panel2Collapsed })
+    $copy.Add_Click({ if ($script:ui.Pane.Box.TextLength) { [Windows.Forms.Clipboard]::SetText($script:ui.Pane.Box.Text); Write-ConsoleLine 'copied the Action output pane' 'gray' } })
+    $clear.Add_Click({ $script:ui.Pane.Box.Clear() })
+    $stop.Add_Click({ Stop-PaneJob })
+    $bar.Controls.AddRange(@($state, $hide, $copy, $clear, $stop))
+    $Group.Controls.Add($split)
+    $Group.Controls.Add($bar)
+    $timer = New-Object Windows.Forms.Timer
+    $timer.Interval = 150
+    $timer.Add_Tick({ Update-PaneJob })
+    $split.Panel2Collapsed = $true
+    [pscustomobject]@{ Split = $split; Box = $box; Bar = $bar; State = $state; Hide = $hide; Copy = $copy; Clear = $clear; Stop = $stop; Timer = $timer }
+}
+
 # --- the form ------------------------------------------------------------------------------
 
 function Add-RichLine {
     param($Box, [string]$Text, [string]$Color = 'normal')
-    $map = @{
-        normal = [Drawing.Color]::Black; head = [Drawing.Color]::Navy; green = [Drawing.Color]::ForestGreen
-        amber = [Drawing.Color]::DarkOrange; red = [Drawing.Color]::Firebrick; gray = [Drawing.Color]::DimGray
-    }
+    # cc-P84: the line colors are the theme's (Plain: Black, Navy, ForestGreen, DarkOrange, Firebrick, DimGray, as before).
+    $t = $script:theme
+    if (-not $t) { $t = Get-ConsoleTheme 'Plain' }
+    $rgb = $t.Lines[$Color]
+    if (-not $rgb) { $rgb = $t.Lines['normal'] }
     $Box.SelectionStart = $Box.TextLength
     $Box.SelectionLength = 0
-    $Box.SelectionColor = $map[$Color]
+    $Box.SelectionColor = ConvertTo-DrawingColor $rgb
     if ($Color -eq 'head' -or $Color -eq 'red') { $Box.SelectionFont = $script:BoldFont } else { $Box.SelectionFont = $script:MonoFont }
     $Box.AppendText($Text + "`n")
     $Box.SelectionColor = $Box.ForeColor
 }
 
 function Get-TileColors {
+    # Background and text for a tile state, from the theme (cc-P84). Any state but green, amber and red is grey.
     param([string]$Color)
-    switch ($Color) {
-        'green' { @([Drawing.Color]::FromArgb(222, 244, 226), [Drawing.Color]::FromArgb(20, 100, 40)) }
-        'amber' { @([Drawing.Color]::FromArgb(255, 238, 204), [Drawing.Color]::FromArgb(150, 80, 0)) }
-        'red'   { @([Drawing.Color]::FromArgb(250, 218, 218), [Drawing.Color]::FromArgb(150, 20, 20)) }
-        default { @([Drawing.Color]::FromArgb(234, 234, 234), [Drawing.Color]::FromArgb(80, 80, 80)) }
-    }
+    $t = $script:theme
+    if (-not $t) { $t = Get-ConsoleTheme 'Plain' }
+    $k = $Color
+    if ($k -notin @('green', 'amber', 'red')) { $k = 'grey' }
+    @((ConvertTo-DrawingColor $t.Tiles[$k].Back), (ConvertTo-DrawingColor $t.Tiles[$k].Fore))
 }
 
 function New-StatusTile {
@@ -3603,15 +4465,20 @@ function New-StatusTile {
     $panel.Dock = 'Fill'
     $panel.Margin = New-Object Windows.Forms.Padding(4)
     $panel.BorderStyle = 'FixedSingle'
+    # cc-P84: named for its tooltip, tagged so the theme leaves its state colors alone.
+    $panel.Name = 'tile.' + $Title
+    $panel.Tag = 'tile'
     $word = New-Object Windows.Forms.Label
     $word.Dock = 'Top'
     $word.Height = 30
-    $word.Font = New-Object Drawing.Font('Segoe UI', 13, [Drawing.FontStyle]::Bold)
+    $word.Name = 'tile.' + $Title
+    $word.Font = Get-ThemeFont 'Tile' ([Drawing.FontStyle]::Bold)
     $word.Text = $Title + ': ...'
     $word.Padding = New-Object Windows.Forms.Padding(6, 4, 0, 0)
     $detail = New-Object Windows.Forms.Label
     $detail.Dock = 'Fill'
-    $detail.Font = New-Object Drawing.Font('Segoe UI', 9)
+    $detail.Name = 'tile.' + $Title
+    $detail.Font = Get-ThemeFont 'Detail'
     $detail.Padding = New-Object Windows.Forms.Padding(8, 2, 4, 0)
     $panel.Controls.Add($detail)
     $panel.Controls.Add($word)
@@ -3853,6 +4720,7 @@ function Show-TypedConfirm {
     $d.AcceptButton = $ok
     $d.CancelButton = $cancel
     $d.Add_Shown({ $script:confirmBox.Focus() })
+    Set-ControlTheme $d $script:theme $script:themeImages # cc-P84: nothing for Plain
     $result = $d.ShowDialog()
     $typed = $tb.Text
     $d.Dispose()
@@ -3902,6 +4770,7 @@ function Show-ListPicker {
     $d.AcceptButton = $ok
     $d.CancelButton = $cancel
     $lv.Add_DoubleClick({ $this.FindForm().DialogResult = 'OK' })
+    Set-ControlTheme $d $script:theme $script:themeImages # cc-P84: nothing for Plain
     $result = $d.ShowDialog()
     $pick = $null
     if ($result -eq 'OK' -and $lv.SelectedItems.Count) { $pick = [string]$lv.SelectedItems[0].Tag }
@@ -3968,8 +4837,14 @@ function Set-ConsoleDryRun {
     $box = $script:ui.DryBox
     if ($box) {
         if ($box.Checked -ne $On) { $box.Checked = $On }
-        if ($On) { $box.BackColor = [Drawing.Color]::FromArgb(255, 238, 204); $box.ForeColor = [Drawing.Color]::FromArgb(150, 80, 0) }
-        else { $box.BackColor = [Drawing.Color]::Transparent; $box.ForeColor = [Drawing.Color]::Black }
+        # cc-P84: the amber tile's colors when on; off, the theme's text color for where the box sits (Plain: Black).
+        $cols = Get-TileColors 'amber'
+        if ($On) { $box.BackColor = $cols[0]; $box.ForeColor = $cols[1] }
+        else {
+            $box.BackColor = [Drawing.Color]::Transparent
+            $box.ForeColor = [Drawing.Color]::Black
+            if ($script:theme -and $script:theme.Chrome) { $box.ForeColor = ConvertTo-DrawingColor $script:theme.Chrome.StoneText }
+        }
     }
     if ($script:lastState) { Update-GlanceTiles $script:lastState }
     if ($changed) {
@@ -4016,6 +4891,7 @@ function Show-WipeAdminPicker {
     $d.AcceptButton = $ok
     $d.CancelButton = $cancel
     $d.Add_Shown({ $script:wipeNameBox.Focus() })
+    Set-ControlTheme $d $script:theme $script:themeImages # cc-P84: nothing for Plain
     $result = $d.ShowDialog()
     $name = $tb.Text
     $d.Dispose()
@@ -4106,14 +4982,37 @@ function Invoke-ConsoleButton {
             if ((Show-YesNo ($dryTag + $ask[0].Text)) -ne 'Yes') { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
             $answeredYes = $true
         }
+        # cc-P84: the Action output pane, when the console has one (a normal start; not the facts' forms) and the
+        # setting says so. Get-OutputRoute keeps every interactive action in a window of its own.
+        $route = 'window'
+        $wanted = $false
+        if ($script:PaneReady -and $script:ui.Pane) {
+            $route = Get-OutputRoute -ActionKey $ActionKey -OutputIn $script:settings.OutputIn -PaneAvailable $true -PaneBusy ([bool]$script:paneJob)
+            $wanted = ((Get-OutputRoute -ActionKey $ActionKey -OutputIn $script:settings.OutputIn -PaneAvailable $true) -eq 'pane')
+        }
         if ($def.RunIn -eq 'window') {
-            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:($CommitForce -and $ActionKey -eq 'commit.run') -WipeAdmin $WipeAdmin
-            Start-Process -FilePath $script:cfg.PowerShell -ArgumentList $argLine | Out-Null
-            if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in its own window. It prints the plan and runs nothing.') 'amber' }
-            else { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): running in its own window. Refresh the status when it finishes.') 'head' }
+            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:($CommitForce -and $ActionKey -eq 'commit.run') -WipeAdmin $WipeAdmin -ForPane:($route -eq 'pane')
+            if ($route -eq 'pane') {
+                Start-PaneJob -Exe $script:cfg.PowerShell -Arguments $argLine -Title ($ActionKey + ' (' + $ShardKey + ')')
+                if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in the Action output pane. It prints the plan and runs nothing.') 'amber' }
+                else { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): running in the Action output pane. Refresh the status when it finishes.') 'head' }
+            } else {
+                Start-Process -FilePath $script:cfg.PowerShell -ArgumentList $argLine | Out-Null
+                if ($wanted) { Write-ConsoleLine 'The Action output pane is busy, so this one runs in a window of its own.' 'gray' }
+                if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in its own window. It prints the plan and runs nothing.') 'amber' }
+                else { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): running in its own window. Refresh the status when it finishes.') 'head' }
+            }
         } else {
             if ($script:dry) { throw 'a dry run reached the executor' }
-            [void](Invoke-Plan -Plan $plan -Config $script:cfg -ActionKey $ActionKey -ShardKey $ShardKey -ConfirmLive $phrase -Yes:$answeredYes)
+            $tail = @($plan | Where-Object { $_.Kind -eq 'window' })
+            if ($route -eq 'pane' -and $tail.Count -eq 1 -and @($plan | Where-Object { $_.Kind -notin @('window', 'say') }).Count -eq 0) {
+                # A log tail: the same docker logs -f, streamed into the pane, ended by Stop.
+                Write-ConsoleLine $tail[0].Text 'normal'
+                Start-PaneJob -Exe $tail[0].Exe -Arguments (Format-ArgumentList $tail[0].Arguments) -Title ($ActionKey + ': ' + (Format-CommandLine $tail[0].Exe $tail[0].Arguments))
+            } else {
+                if ($wanted -and $tail.Count) { Write-ConsoleLine 'The Action output pane is busy, so this one opens a window of its own.' 'gray' }
+                [void](Invoke-Plan -Plan $plan -Config $script:cfg -ActionKey $ActionKey -ShardKey $ShardKey -ConfirmLive $phrase -Yes:$answeredYes)
+            }
             if ($isAutopilot) { [void](Update-AutopilotView) }
         }
     } catch {
@@ -4161,7 +5060,9 @@ function New-ButtonPage {
 }
 
 function New-ConsoleForm {
-    param($Config, [switch]$DryRun, [string]$StatusFrom)
+    # cc-P84: -Theme is the look (Plain unless the entry passes the setting; Plain is the console as it was) and
+    # -Pane builds the Action output pane and lets actions use it. The facts build forms without either.
+    param($Config, [switch]$DryRun, [string]$StatusFrom, [ValidateSet('UO', 'Plain')][string]$Theme = 'Plain', [switch]$Pane, $Settings)
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
     [Windows.Forms.Application]::EnableVisualStyles()
@@ -4171,8 +5072,18 @@ function New-ConsoleForm {
     $script:statusFrom = $StatusFrom
     $script:lastState = $null
     $script:ui = @{}
-    $script:MonoFont = New-Object Drawing.Font('Consolas', 9)
-    $script:BoldFont = New-Object Drawing.Font('Consolas', 9, [Drawing.FontStyle]::Bold)
+    $script:theme = Get-ConsoleTheme $Theme
+    $script:themeImages = @{}
+    if ($script:theme.Gumps) {
+        $script:themeImages.Stone = Get-GumpImage $Config $script:theme.Gumps.Stone
+        $script:themeImages.Parchment = Get-GumpImage $Config $script:theme.Gumps.Parchment
+    }
+    $script:settings = $Settings
+    if (-not $script:settings) { $script:settings = ConvertFrom-ConsoleSettings $null }
+    $script:PaneReady = [bool]$Pane
+    $script:paneJob = $null
+    $script:MonoFont = Get-ThemeFont 'Mono'
+    $script:BoldFont = Get-ThemeFont 'Mono' ([Drawing.FontStyle]::Bold)
 
     $form = New-Object Windows.Forms.Form
     $form.Text = 'Shard Console'
@@ -4180,7 +5091,7 @@ function New-ConsoleForm {
     $form.Size = New-Object Drawing.Size(1200, 1000)
     $form.MinimumSize = New-Object Drawing.Size(900, 700)
     $form.StartPosition = 'CenterScreen'
-    $form.Font = New-Object Drawing.Font('Segoe UI', 9)
+    $form.Font = Get-ThemeFont 'Ui'
 
     $script:ui.Form = $form
 
@@ -4244,17 +5155,20 @@ function New-ConsoleForm {
     $bar.Height = 34
     $refresh = New-Object Windows.Forms.Button
     $refresh.Text = 'Refresh'
+    $refresh.Name = 'refresh'
     $refresh.Width = 100
     $refresh.Add_Click({ Update-ConsoleStatus })
     $auto = New-Object Windows.Forms.CheckBox
     $auto.Text = 'refresh every 30 s'
+    $auto.Name = 'autoRefresh'
     $auto.AutoSize = $true
     $auto.Checked = -not $DryRun
     $auto.Margin = New-Object Windows.Forms.Padding(12, 8, 3, 3)
     $dryBox = New-Object Windows.Forms.CheckBox
     $dryBox.Text = 'DRY RUN: buttons print, nothing runs'
+    $dryBox.Name = 'dryRun'
     $dryBox.AutoSize = $true
-    $dryBox.Font = New-Object Drawing.Font('Segoe UI', 9, [Drawing.FontStyle]::Bold)
+    $dryBox.Font = Get-ThemeFont 'Ui' ([Drawing.FontStyle]::Bold)
     $dryBox.Margin = New-Object Windows.Forms.Padding(24, 8, 3, 3)
     if ($DryRun) {
         # Launched with -DryRun the status is a capture file, so this stays on.
@@ -4263,6 +5177,41 @@ function New-ConsoleForm {
     }
     $dryBox.Add_CheckedChanged({ Set-ConsoleDryRun $this.Checked })
     $bar.Controls.AddRange(@($refresh, $auto, $dryBox))
+    # cc-P84: the look and where actions show their output, remembered in SettingsFile. Only with the pane (a normal
+    # start): the facts' forms have neither.
+    if ($Pane) {
+        $lookLabel = New-Object Windows.Forms.Label
+        $lookLabel.Text = 'Look:'
+        $lookLabel.AutoSize = $true
+        $lookLabel.Margin = New-Object Windows.Forms.Padding(24, 9, 0, 3)
+        $look = New-Object Windows.Forms.ComboBox
+        $look.Name = 'theme'
+        $look.DropDownStyle = 'DropDownList'
+        $look.Width = 70
+        $look.Margin = New-Object Windows.Forms.Padding(3, 6, 3, 3)
+        [void]$look.Items.AddRange(@('UO', 'Plain'))
+        $look.SelectedItem = $script:theme.Name
+        $look.Add_SelectedIndexChanged({
+            $script:settings.Theme = [string]$this.SelectedItem
+            if (Save-ConsoleSettings $script:cfg $script:settings) { Write-ConsoleLine ('Look set to ' + $script:settings.Theme + '. It takes effect the next time the console opens.') 'gray' }
+        })
+        $own = New-Object Windows.Forms.CheckBox
+        $own.Name = 'outputInWindows'
+        $own.Text = 'actions in their own windows'
+        $own.AutoSize = $true
+        $own.Checked = ($script:settings.OutputIn -eq 'window')
+        $own.Margin = New-Object Windows.Forms.Padding(12, 8, 3, 3)
+        $own.Add_CheckedChanged({
+            $script:settings.OutputIn = 'pane'
+            if ($this.Checked) { $script:settings.OutputIn = 'window' }
+            [void](Save-ConsoleSettings $script:cfg $script:settings)
+            if ($this.Checked) { Write-ConsoleLine 'Actions now run in windows of their own.' 'gray' }
+            else { Write-ConsoleLine 'Non-interactive actions now stream into the Action output pane; the interactive ones keep their own windows.' 'gray' }
+        })
+        $bar.Controls.AddRange(@($lookLabel, $look, $own))
+        $script:ui.Look = $look
+        $script:ui.OwnWindows = $own
+    }
     $status = New-Object Windows.Forms.RichTextBox
     $status.Dock = 'Fill'
     $status.ReadOnly = $true
@@ -4281,7 +5230,7 @@ function New-ConsoleForm {
     $tabs.Dock = 'Fill'
     $script:ui.Tabs = $tabs
 
-    $testPage = New-ButtonPage 'Test shard' 'The throwaway test shard (sl-modernuo-test, port 2594, its own save in modernuo-test\Saves). No confirmation: it is throwaway. Start, Stop and Rebuild call docker/uo/Start-TestShard.ps1; Rebuild is the only one that builds, and it builds through build.sh and its gates. Deploy built image (cc-P63) points sl-modernuo:latest at an image a prompt already built through the gates (sl-modernuo:cc-pNN), after the phrase ''deploy to test'', then stops and starts the test shard on it. It never touches the live container. START FRESH and WIPE TEST ACCOUNTS are different: Start fresh moves the whole test save aside and starts a NEW WORLD, with the LIVE accounts copied in. Wipe test accounts (cc-P73) keeps the WORLD and deletes every test account and character with all they own (houses, pets, vendors, banks), copies nothing from live, and makes one new admin; it backs up the test save first and asks for the phrase ''WIPE TEST ACCOUNTS''.' @(
+    $testPage = New-ButtonPage 'Test shard' 'The throwaway test shard (sl-modernuo-test, port 2594, its own save). No confirmation except Deploy and Wipe: it is throwaway, and nothing here touches live. Rebuild is the only button that builds, through every test gate. START FRESH and WIPE TEST ACCOUNTS are different: Start fresh starts a NEW WORLD, with the LIVE accounts copied in; Wipe test accounts keeps the WORLD, deletes every test account and copies nothing from live. Hover a button for what it does.' @(
         (New-ConsoleButton 'Start' 'test.start'),
         (New-ConsoleButton 'Start fresh (new world, live accounts)' 'test.fresh' 260),
         (New-ConsoleButton 'Wipe test accounts (keep world)...' 'test.wipe' 260),
@@ -4299,10 +5248,12 @@ function New-ConsoleForm {
     $snapTop.Height = 32
     $rTest = New-Object Windows.Forms.RadioButton
     $rTest.Text = 'Test shard'
+    $rTest.Name = 'snapTest'
     $rTest.Checked = $true
     $rTest.AutoSize = $true
     $rLive = New-Object Windows.Forms.RadioButton
     $rLive.Text = 'LIVE shard (every action asks you to type a phrase)'
+    $rLive.Name = 'snapLive'
     $rLive.AutoSize = $true
     $rLive.ForeColor = [Drawing.Color]::Firebrick
     $rTest.Add_CheckedChanged({ Update-SnapshotList })
@@ -4313,6 +5264,7 @@ function New-ConsoleForm {
     $snapTop.Controls.AddRange(@($rTest, $rLive, $snapPath))
     $list = New-Object Windows.Forms.ListView
     $list.Dock = 'Fill'
+    $list.Name = 'snapList'
     $list.View = 'Details'
     $list.FullRowSelect = $true
     $list.MultiSelect = $false
@@ -4328,15 +5280,18 @@ function New-ConsoleForm {
     $nameLabel.AutoSize = $true
     $nameLabel.Margin = New-Object Windows.Forms.Padding(6, 14, 3, 3)
     $nameBox = New-Object Windows.Forms.TextBox
+    $nameBox.Name = 'snapName'
     $nameBox.Width = 220
     $nameBox.Margin = New-Object Windows.Forms.Padding(3, 10, 3, 3)
     $create = New-Object Windows.Forms.Button
     $create.Text = 'Create named snapshot'
+    $create.Name = 'snapshot.create'
     $create.Width = 170
     $create.Height = 32
     $create.Add_Click({ Invoke-ConsoleButton -ActionKey 'snapshot.create' -ShardKey (Get-SelectedSnapshotShard) -SnapshotName $script:ui.SnapName.Text.Trim() })
     $restore = New-Object Windows.Forms.Button
     $restore.Text = 'Restore selected'
+    $restore.Name = 'snapshot.restore'
     $restore.Width = 150
     $restore.Height = 32
     $restore.Margin = New-Object Windows.Forms.Padding(40, 3, 3, 3)
@@ -4347,6 +5302,7 @@ function New-ConsoleForm {
     })
     $delete = New-Object Windows.Forms.Button
     $delete.Text = 'Delete selected'
+    $delete.Name = 'snapshot.delete'
     $delete.Width = 130
     $delete.Height = 32
     $delete.Margin = New-Object Windows.Forms.Padding(40, 3, 3, 3)
@@ -4357,6 +5313,7 @@ function New-ConsoleForm {
     })
     $listBtn = New-Object Windows.Forms.Button
     $listBtn.Text = 'List'
+    $listBtn.Name = 'snapshot.list'
     $listBtn.Width = 80
     $listBtn.Height = 32
     $listBtn.Add_Click({ Invoke-ConsoleButton -ActionKey 'snapshot.list' -ShardKey (Get-SelectedSnapshotShard) })
@@ -4383,7 +5340,7 @@ function New-ConsoleForm {
     [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 100)))
     $worldCmds = @()
     try { $worldCmds = @(ConvertFrom-CommandSources (Get-CommandSourceFiles $Config.Customizations)) } catch { }
-    $head = New-Caption ('In-game commands, run by hand in a client. The console cannot run them and cannot see whether this world has had them: that is a fact about the save. Read from the [ShardCommand] each command declares in ' + $Config.Customizations + ' (' + $worldCmds.Count + ' registrations; the tab shows only those that change a world). Fresh-world generation is a different job from changing a world that already exists: check which shard your client is on before you paste. Each row is one command: its Copy puts that line on the clipboard, and a dry run is its own row just above the command it previews. Copy group puts the whole group, one line each, for a text file beside the client. The ticks are for this session only.') 1100
+    $head = New-Caption ('In-game commands to paste into a client by hand: the console cannot run them, and cannot see whether this world has had them. Read from the code (' + $worldCmds.Count + ' registrations; only those that change a world are shown). Check which shard your client is on before you paste. A dry run is its own row just above the command it previews; the ticks are for this session only.') 1100
     $worldTable.Controls.Add($head, 0, 0)
     $worldTable.SetColumnSpan($head, 3)
     $row = 1
@@ -4402,6 +5359,7 @@ function New-ConsoleForm {
         if ($group.CopyAll -and @($group.Items).Count) {
             $all = New-Object Windows.Forms.Button
             $all.Text = 'Copy group'
+            $all.Name = 'worldCopyGroup'
             $all.Width = 90
             $all.Tag = Get-GroupClipboardText $group
             $all.Add_Click({ [Windows.Forms.Clipboard]::SetText([string]$this.Tag); Write-ConsoleLine ('copied a group of ' + @(([string]$this.Tag).Trim() -split "`r`n").Count + ' commands') 'gray' })
@@ -4420,11 +5378,13 @@ function New-ConsoleForm {
         foreach ($item in $group.Items) {
             $cb = New-Object Windows.Forms.CheckBox
             $cb.Text = $item.Command
+            $cb.Name = 'worldTick'
             $cb.AutoSize = $true
             $cb.Font = $script:MonoFont
             $cb.Margin = New-Object Windows.Forms.Padding(6, 5, 3, 3)
             $copy = New-Object Windows.Forms.Button
             $copy.Text = 'Copy'
+            $copy.Name = 'worldCopy'
             $copy.Width = 60
             $copy.Tag = $item.Command
             $copy.Add_Click($copyClick)
@@ -4443,13 +5403,13 @@ function New-ConsoleForm {
     }
     $worldPage.Controls.Add($worldTable)
 
-    $diagPage = New-ButtonPage 'Diagnostics' ('Each writes one timestamped file in ' + $Config.DiagFolder + ' (check-HHmmss.txt, shard-HHmmss.txt). Check-Shard.ps1 reads the TEST container only.') @(
-        (New-ConsoleButton 'Run Check-Docker.ps1' 'diag.docker'),
-        (New-ConsoleButton 'Run Check-Shard.ps1' 'diag.shard'),
+    $diagPage = New-ButtonPage 'Diagnostics' ('Two read-only health checks. Each writes one timestamped file in ' + $Config.DiagFolder + '. The shard check reads the TEST container only.') @(
+        (New-ConsoleButton 'Check Docker' 'diag.docker'),
+        (New-ConsoleButton 'Check the test shard' 'diag.shard'),
         (New-ConsoleButton 'Open the folder they write to' 'diag.folder')
     )
 
-    $livePage = New-ButtonPage 'LIVE shard' 'LIVE: sl-modernuo, the real world save, real players. Every button here asks you to type a phrase first. Start, Stop and Restart are docker start / stop / restart on the existing container; this console never runs compose on the live file (D29) and never deploys. Whether a stop saves (D36) depends on what the container runs; each plan says which.' @(
+    $livePage = New-ButtonPage 'LIVE shard' 'LIVE: sl-modernuo, the real world save, real players. Every button here asks you to type a phrase first. Start, Stop and Restart act on the existing container only; this console never creates it, never runs compose on it and never deploys. Each plan says whether a stop saves first.' @(
         (New-ConsoleButton 'Start' 'live.start'),
         (New-ConsoleButton 'Stop' 'live.stop'),
         (New-ConsoleButton 'Restart' 'live.restart'),
@@ -4480,9 +5440,10 @@ function New-ConsoleForm {
     }
     $where = $Config.CommitScript
     if (-not (Test-Path -LiteralPath $Config.CommitScript -PathType Leaf)) { $where += ' (NOT FOUND: both buttons will say so and do nothing)' }
-    $commitPage = New-ButtonPage 'Commit' ('Runs ' + $where + ' in a window of its own, which stays open so you can read its own table at the end. Preview passes its -DryRun and changes nothing. Commit and push asks for the phrase ''commit shard work'' first: both repos are public on GitHub, so a pushed commit cannot be taken back. It is refused when this console runs as SYSTEM, when both repos are clean, or while a CC prompt has not said DONE or a pending file changed in the last ' + (Format-QuietWindow $Config.CommitQuietSeconds) + '; Preview still runs and names them. Force skips only that last wait, for one commit; the confirmation names the files.' + "`r`n" + 'While autopilot is on it commits and pushes after each P<nn> DONE by itself (Autopilot tab), so a manual commit is rarely needed.') $commitBtns
+    $commitPage = New-ButtonPage 'Commit' ('Runs ' + $where + '. Preview changes nothing. Commit and push asks for the phrase ''commit shard work'': both repos are public on GitHub, so a pushed commit cannot be taken back. It waits ' + (Format-QuietWindow $Config.CommitQuietSeconds) + ' after the last change and until every CC prompt has said DONE; Preview names what it waits on.' + "`r`n" + 'While autopilot is on it commits and pushes after each P<nn> DONE by itself (Autopilot tab), so a manual commit is rarely needed.') $commitBtns
     $msgLabel = New-Caption 'Message (blank: the script''s default, "Shard work, <date> <time>"):' 400
     $msgBox = New-Object Windows.Forms.TextBox
+    $msgBox.Name = 'commitMessage'
     $msgBox.Width = 700
     $msgBox.Margin = New-Object Windows.Forms.Padding(6)
     $flow = $commitPage.Controls[0]
@@ -4493,6 +5454,7 @@ function New-ConsoleForm {
     $flow.SetFlowBreak($msgBox, $true)
     # cc-P68: the Force box, after the buttons, and the live countdown under them.
     $forceBox = New-Object Windows.Forms.CheckBox
+    $forceBox.Name = 'commitForce'
     $forceBox.Text = ('Force: skip the ' + (Format-QuietWindow $Config.CommitQuietSeconds) + ' wait for recently changed files (not the DONE check, SYSTEM or the phrase)')
     $forceBox.AutoSize = $true
     $forceBox.Margin = New-Object Windows.Forms.Padding(12, 14, 6, 6)
@@ -4516,11 +5478,12 @@ function New-ConsoleForm {
     $pkgTop.WrapContents = $true
     $pubWhere = $Config.PublishScript
     if (-not (Test-Path -LiteralPath $Config.PublishScript -PathType Leaf)) { $pubWhere += ' (NOT FOUND: Publish will say so and do nothing)' }
-    $pkgCap = New-Caption ('Build package runs player-package\Build-PlayerPackage.ps1 -Notes, then its -CheckZip on the new zip, in a window of its own; nothing is published, and it is refused while D:\ShatteredLegacy has uncommitted changes. Publish package runs ' + $pubWhere + ' -Zip on the zip chosen below, after the phrase ''publish player package'' (it is public: every launcher is offered it), and the script then asks you to type yes in its window.') 1100
+    $pkgCap = New-Caption ('Build package makes and checks a zip in player-package\dist and publishes nothing; it is refused while the shard repo has uncommitted changes. Publish selected runs ' + $pubWhere + ' after the phrase ''publish player package'': it is public, every launcher is offered it, and the script asks you to type yes in its own window.') 1100
     $pkgTop.Controls.Add($pkgCap)
     $pkgTop.SetFlowBreak($pkgCap, $true)
     $notesLabel = New-Caption 'Notes ("What is new", one line):' 300
     $notesBox = New-Object Windows.Forms.TextBox
+    $notesBox.Name = 'packageNotes'
     $notesBox.Width = 600
     $notesBox.Margin = New-Object Windows.Forms.Padding(6)
     $buildBtn = New-Object Windows.Forms.Button
@@ -4531,6 +5494,7 @@ function New-ConsoleForm {
     $buildBtn.Add_Click({ Invoke-ConsoleButton -ActionKey 'package.build' -PackageNotes $script:ui.PackageNotes.Text.Trim() })
     $pkgTop.Controls.AddRange(@($notesLabel, $notesBox, $buildBtn))
     $pkgList = New-Object Windows.Forms.ListView
+    $pkgList.Name = 'packageList'
     $pkgList.Dock = 'Fill'
     $pkgList.View = 'Details'
     $pkgList.FullRowSelect = $true
@@ -4544,6 +5508,7 @@ function New-ConsoleForm {
     $pkgBottom.Height = 42
     $pkgRefresh = New-Object Windows.Forms.Button
     $pkgRefresh.Text = 'Refresh list'
+    $pkgRefresh.Name = 'packageRefresh'
     $pkgRefresh.Width = 110
     $pkgRefresh.Height = 30
     $pkgRefresh.Add_Click({ Update-PackageList })
@@ -4584,7 +5549,7 @@ function New-ConsoleForm {
     $apTop.Dock = 'Top'
     $apTop.AutoSize = $true
     $apTop.WrapContents = $true
-    $apCap = New-Caption ('Autopilot hands CC the next prompt in ' + $Config.Autopilot.Queue + ' (cc-P<nn>-*.md, lowest number first) each time the running one ends "P<nn> DONE", and emails you when CC stops to ask something, stops early or a commit fails. After every P<nn> DONE it commits AND PUSHES both repos to GitHub on its own, through Commit-ShardWork.ps1, with nobody asked. Turn off stops the hand-offs; a prompt CC is running still finishes. Each button opens the autopilot''s own script from ' + $Config.Autopilot.Root + ' in a window of its own. The console never reorders or renumbers the queue: numbers belong to the overseer.') 1100
+    $apCap = New-Caption ('Autopilot hands CC the next prompt in ' + $Config.Autopilot.Queue + ' each time the running one ends "P<nn> DONE", and emails you when CC needs you. After every DONE it commits AND PUSHES both repos to GitHub on its own. Turn off stops the hand-offs; a running prompt still finishes. Each button opens the autopilot''s own script in a window of its own; the console never reorders the queue.') 1100
     $apTop.Controls.Add($apCap)
     $apTop.SetFlowBreak($apCap, $true)
     $apBtns = @()
@@ -4623,7 +5588,12 @@ function New-ConsoleForm {
     $out.BackColor = [Drawing.Color]::White
     $out.Font = $script:MonoFont
     $out.DetectUrls = $false
-    $outGroup.Controls.Add($out)
+    if ($Pane) {
+        $outGroup.Text = 'Console output, and the Action output pane'
+        $script:ui.Pane = New-OutputPane $out $outGroup
+    } else {
+        $outGroup.Controls.Add($out)
+    }
     $script:OutputBox = $out
 
     $grid.Controls.Add($glance, 0, 0)
@@ -4631,6 +5601,49 @@ function New-ConsoleForm {
     $grid.Controls.Add($tabs, 0, 2)
     $grid.Controls.Add($outGroup, 0, 3)
     $form.Controls.Add($grid)
+    if ($Pane) {
+        # cc-P84: the output row grows a little to hold the pane beside the console's own output.
+        $grid.RowStyles[1].Height = 44; $grid.RowStyles[2].Height = 30; $grid.RowStyles[3].Height = 26
+    }
+    if ($script:theme.Header) {
+        # cc-P84: the crest and the name, on stone, above the tiles. Our own art (branding\intro), not EA's.
+        $header = New-Object Windows.Forms.Panel
+        $header.Dock = 'Top'
+        $header.Height = 62
+        $crest = New-Object Windows.Forms.PictureBox
+        $crest.SetBounds(10, 4, 54, 54)
+        $crest.SizeMode = 'Zoom'
+        $crest.BackColor = [Drawing.Color]::Transparent
+        try { if (Test-Path -LiteralPath $Config.CrestFile -PathType Leaf) { $crest.Image = [Drawing.Image]::FromStream((New-Object IO.MemoryStream(, [IO.File]::ReadAllBytes($Config.CrestFile)))) } } catch { }
+        $name = New-Object Windows.Forms.Label
+        $name.Text = 'Shattered Legacy  -  Shard Console'
+        $name.AutoSize = $true
+        $name.Location = New-Object Drawing.Point(72, 14)
+        $name.Font = Get-ThemeFont 'Title' ([Drawing.FontStyle]::Bold)
+        $name.Name = 'title'
+        $trim = New-Object Windows.Forms.Panel
+        $trim.Dock = 'Bottom'
+        $trim.Height = 2
+        $trim.BackColor = ConvertTo-DrawingColor $script:theme.Chrome.Gold
+        $header.Controls.AddRange(@($crest, $name, $trim))
+        $form.Controls.Add($header)
+        $grid.BringToFront()
+        $script:ui.Header = $header
+    }
+    Set-ControlTheme $form $script:theme $script:themeImages
+    Set-TabTheme $tabs $script:theme
+    if ($script:theme.Header) {
+        # The title in gold, the trim kept gold (the walker made both stone-colored).
+        $script:ui.Header.Controls[1].ForeColor = ConvertTo-DrawingColor $script:theme.Chrome.Gold
+        $script:ui.Header.Controls[2].BackColor = ConvertTo-DrawingColor $script:theme.Chrome.Gold
+    }
+    # cc-P84: a tooltip on every button, tile, tab, box and field, in both looks.
+    $tips = New-Object Windows.Forms.ToolTip
+    $tips.AutoPopDelay = 20000
+    $tips.InitialDelay = 500
+    $tabs.ShowToolTips = $true
+    Set-ConsoleTooltips $form (Get-ConsoleTooltips) $tips
+    $script:ui.ToolTip = $tips
 
     $timer = New-Object Windows.Forms.Timer
     $timer.Interval = 30000
@@ -4655,6 +5668,8 @@ function New-ConsoleForm {
     $script:commitFactsAt = $null
     $form.Add_FormClosed({
         $script:ui.Timer.Stop(); $script:ui.NetTimer.Stop(); $script:ui.CountdownTimer.Stop(); $script:OutputBox = $null
+        # cc-P84: a job still streaming into the pane is ended with the window, so nothing runs on unseen.
+        if ($script:ui.Pane) { $script:ui.Pane.Timer.Stop(); if ($script:paneJob) { [void]$script:paneJob.KillTree(); $script:paneJob = $null } }
         if ($script:netProbe) { try { $script:netProbe.PS.Stop(); $script:netProbe.PS.Dispose() } catch { } }
     })
     $script:ui.Timer = $timer
@@ -4771,6 +5786,8 @@ if ($Action) {
     exit 1
 }
 
-$form = New-ConsoleForm -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom
+# cc-P84: the look and the Action output pane, from the settings remembered on this PC.
+$settings = Read-ConsoleSettings $config
+$form = New-ConsoleForm -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom -Theme $settings.Theme -Pane -Settings $settings
 [void]$form.ShowDialog()
 $form.Dispose()

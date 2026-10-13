@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.6
+
+### Staff
+- The Shard Console has a UO look (stone, parchment, gold and the crest; Plain is the old look, switched in its status bar), a tooltip on every control, and an Action output pane that streams non-interactive actions and log tails inside the window, with Stop.
+
 ## 2026.10.13.5
 
 ### Added

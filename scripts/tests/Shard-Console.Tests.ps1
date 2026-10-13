@@ -734,7 +734,8 @@ Fact 'PlayerCommandsNeverAppearInTheWorldTab' {
     foreach ($p in $players) {
         Assert-True ($shown -notcontains $p.Name) "$($p.Name) is a player command"
     }
-    Assert-Equal 'achievements,cleanup,cleanupall,guild,ResetMyAccount,SelfRes,stats,TCFill,version' ((@($players | ForEach-Object { $_.Name }) | Sort-Object) -join ',')
+    # cc-P84: FanfareMute (cc-P79's player command) added; this list had gone stale since P79.
+    Assert-Equal 'achievements,cleanup,cleanupall,FanfareMute,guild,ResetMyAccount,SelfRes,stats,TCFill,version' ((@($players | ForEach-Object { $_.Name }) | Sort-Object) -join ',')
 }
 
 Fact 'EveryStepOfTheOrderListIsARegisteredWorldCommandWithAFlagItsUsageLists' {
@@ -2917,6 +2918,317 @@ Fact 'P83_TheTileHasItsTwoLinksAndTheAutopilotTabHasThemToo' {
         Assert-Equal 6 @($script:ui.AutopilotButtons).Count 'P74''s own six are unchanged'
         Assert-True ($script:ui.Status.Text -match 'PLAY TESTS\s+: 111 OPEN') 'the status panel lists it'
     } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
+# --- cc-P84: the UO look, tooltips and the Action output pane ---------------------------------------------------
+# The theme table, the tooltip table and the routing are CORE and checked as data. The forms are built from the
+# capture, as above. The pane facts run real child processes: a cmd echo, a sleeping PowerShell, and this script as
+# a -Mode DryRun child, which prints a plan and runs nothing. No fact here touches docker, git or either shard.
+
+$p84Rgb = @{ Black = @(0, 0, 0); Navy = @(0, 0, 128); ForestGreen = @(34, 139, 34); DarkOrange = @(255, 140, 0); Firebrick = @(178, 34, 34); DimGray = @(105, 105, 105) }
+
+Fact 'P84_EveryActionHasATooltipOfOneOrTwoPlainSentences' {
+    $tips = Get-ConsoleTooltips
+    foreach ($a in Get-ConsoleActions) {
+        Assert-True $tips.Contains($a.Key) ($a.Key + ' has no tooltip')
+    }
+    foreach ($k in $tips.Keys) {
+        $t = [string]$tips[$k]
+        Assert-True ($t.Length -gt 10) ($k + ': empty')
+        $sentences = @(($t -split '(?<=[.!?])\s+') | Where-Object { $_ })
+        Assert-True ($sentences.Count -le 3) ($k + ': ' + $sentences.Count + ' sentences')
+        Assert-True (-not ($t -match '[^\x20-\x7E]')) ($k + ': not plain ASCII')
+        Assert-True (-not ($t -match '\bcc-P\d|\bD\d{2}\b')) ($k + ': internal codes belong in the notes')
+    }
+}
+
+Fact 'P84_EveryTileStateKeepsItsMeaningAndAt45ToOneInBothLooks' {
+    foreach ($name in 'Plain', 'UO') {
+        $t = Get-ConsoleTheme $name
+        Assert-Equal 'green,amber,red,grey' (@($t.Tiles.Keys) -join ',') ($name + ': the four states')
+        foreach ($k in $t.Tiles.Keys) {
+            $r = Get-ContrastRatio $t.Tiles[$k].Fore $t.Tiles[$k].Back
+            Write-Host ('        ' + $name + ' tile ' + $k + ': ' + [math]::Round($r, 2) + ':1')
+            Assert-True ($r -ge 4.5) ($name + ' ' + $k + ': ' + $r)
+        }
+        # The hues keep their meaning: green is greenest, red is reddest, amber is between, grey is grey.
+        $g = $t.Tiles['green'].Back; $rd = $t.Tiles['red'].Back; $am = $t.Tiles['amber'].Back; $gy = $t.Tiles['grey'].Back
+        Assert-True ($g[1] -gt $g[0] -and $g[1] -gt $g[2]) ($name + ' green')
+        Assert-True ($rd[0] -gt $rd[1] -and $rd[0] -gt $rd[2]) ($name + ' red')
+        Assert-True ($am[0] -gt $am[2] -and $am[1] -gt $am[2]) ($name + ' amber')
+        Assert-True ([math]::Abs($gy[0] - $gy[2]) -le 30) ($name + ' grey')
+    }
+    $saved = $script:theme
+    try {
+        $script:theme = Get-ConsoleTheme 'UO'
+        Assert-Equal (ConvertTo-DrawingColor $script:theme.Tiles['grey'].Back) (Get-TileColors 'unknown')[0] 'any other state is grey'
+        Assert-Equal (ConvertTo-DrawingColor $script:theme.Tiles['red'].Fore) (Get-TileColors 'red')[1]
+    } finally { $script:theme = $saved }
+}
+
+Fact 'P84_UOTextKeepsAt45ToOneOnEveryBackgroundAndOnTheArt' {
+    $t = Get-ConsoleTheme 'UO'
+    foreach ($k in $t.Lines.Keys) {
+        $r = Get-ContrastRatio $t.Lines[$k] $t.LineBack
+        Write-Host ('        UO line ' + $k + ': ' + [math]::Round($r, 2) + ':1')
+        Assert-True ($r -ge 4.5) ('line ' + $k + ': ' + $r)
+    }
+    $c = $t.Chrome
+    $pairs = @(
+        @('StoneText on StoneBack', $c.StoneText, $c.StoneBack), @('Gold on StoneBack', $c.Gold, $c.StoneBack),
+        @('PageText on PageBack', $c.PageText, $c.PageBack), @('PageDim on PageBack', $c.PageDim, $c.PageBack),
+        @('PageWarn on PageBack', $c.PageWarn, $c.PageBack), @('ButtonText on ButtonBack', $c.ButtonText, $c.ButtonBack),
+        @('ButtonText on ButtonHover', $c.ButtonText, $c.ButtonHover), @('FieldText on FieldBack', $c.FieldText, $c.FieldBack),
+        # Measured on the gumps themselves: the pixel of each that is closest to the text drawn on it.
+        @('StoneText on the stone gump', $c.StoneText, $t.Gumps.StoneWorst), @('Gold on the stone gump', $c.Gold, $t.Gumps.StoneWorst),
+        @('PageText on the parchment gump', $c.PageText, $t.Gumps.ParchmentWorst), @('PageDim on the parchment gump', $c.PageDim, $t.Gumps.ParchmentWorst),
+        @('PageWarn on the parchment gump', $c.PageWarn, $t.Gumps.ParchmentWorst)
+    )
+    foreach ($p in $pairs) {
+        $r = Get-ContrastRatio $p[1] $p[2]
+        Write-Host ('        UO ' + $p[0] + ': ' + [math]::Round($r, 2) + ':1')
+        Assert-True ($r -ge 4.5) ($p[0] + ': ' + $r)
+    }
+    Assert-Equal 21 ([math]::Round((Get-ContrastRatio @(0, 0, 0) @(255, 255, 255)), 2)) 'the WCAG formula'
+}
+
+Fact 'P84_PlainIsTheOldLookValueForValue' {
+    $t = Get-ConsoleTheme 'Plain'
+    Assert-Equal $null $t.Chrome 'no chrome: every control keeps the WinForms default'
+    Assert-Equal $null $t.Gumps 'no client art'
+    Assert-Equal 'Segoe UI|9|Segoe UI|13|Consolas|9' (@($t.Fonts.Ui, $t.Fonts.UiSize, $t.Fonts.Tile, $t.Fonts.TileSize, $t.Fonts.Mono, $t.Fonts.MonoSize) -join '|')
+    Assert-Equal '222,244,226|20,100,40|255,238,204|150,80,0|250,218,218|150,20,20|234,234,234|80,80,80' ((@('green', 'amber', 'red', 'grey') | ForEach-Object { ($t.Tiles[$_].Back -join ','), ($t.Tiles[$_].Fore -join ',') }) -join '|')
+    $named = @{ normal = 'Black'; head = 'Navy'; green = 'ForestGreen'; amber = 'DarkOrange'; red = 'Firebrick'; gray = 'DimGray' }
+    foreach ($k in $named.Keys) {
+        Assert-Equal ($p84Rgb[$named[$k]] -join ',') ($t.Lines[$k] -join ',') ('line ' + $k + ' is ' + $named[$k])
+        $d = [Drawing.Color]::($named[$k])
+        Assert-Equal (@($d.R, $d.G, $d.B) -join ',') ($t.Lines[$k] -join ',') ('and that is the named color')
+        # Plain's own line colors, as they were, against white (DarkOrange and ForestGreen are below 4.5: see the notes).
+        Write-Host ('        Plain line ' + $k + ': ' + [math]::Round((Get-ContrastRatio $t.Lines[$k] $t.LineBack), 2) + ':1')
+    }
+}
+
+Fact 'P84_APlainFormIsBuiltAsBefore' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-Equal 'Plain' $script:theme.Name 'Plain unless asked'
+        Assert-Equal 1 $form.Controls.Count 'no header: the grid only'
+        Assert-Equal ([Drawing.SystemColors]::Control) $form.BackColor 'the default back color'
+        Assert-Equal 'Segoe UI' $form.Font.Name
+        Assert-Equal 'Normal' ([string]$script:ui.Tabs.DrawMode) 'tabs drawn by Windows'
+        Assert-Equal ([Drawing.Color]::White) $script:ui.Status.BackColor
+        Assert-Equal $null $script:ui.Pane 'no pane without -Pane'
+        $b = @($script:ui.Tabs.TabPages[0].Controls[0].Controls | Where-Object { $_ -is [Windows.Forms.Button] })[0]
+        Assert-Equal 'Standard' ([string]$b.FlatStyle) 'buttons as before'
+        Assert-Equal ([Drawing.Color]::FromArgb(234, 234, 234)) (Get-TileColors 'grey')[0] 'Plain grey'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
+Fact 'P84_AUOFormIsThemedAndFallsBackWithoutTheClientArt' {
+    $script:NetProbeDisabled = $true
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.GumpFile = Join-Path $env:TEMP ('no-such-client-' + [guid]::NewGuid().ToString('N') + '.uop')
+    $cfg.CacheFolder = Join-Path $env:TEMP ('sl-console-cache-' + [guid]::NewGuid().ToString('N'))
+    $form = New-ConsoleForm -Config $cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -Theme UO
+    try {
+        $t = Get-ConsoleTheme 'UO'
+        Assert-Equal 'UO' $script:theme.Name
+        Assert-Equal (ConvertTo-DrawingColor $t.Chrome.StoneBack) $form.BackColor 'stone, drawn: the art is missing'
+        Assert-Equal $null $form.BackgroundImage 'no art, no image'
+        Assert-Equal 'Palatino Linotype' $form.Font.Name
+        Assert-Equal 'OwnerDrawFixed' ([string]$script:ui.Tabs.DrawMode)
+        Assert-True ($null -ne $script:ui.Header) 'the crest header'
+        Assert-Equal 'Shattered Legacy  -  Shard Console' $script:ui.Header.Controls[1].Text
+        $b = @($script:ui.Tabs.TabPages[0].Controls[0].Controls | Where-Object { $_ -is [Windows.Forms.Button] })[0]
+        Assert-Equal 'Flat' ([string]$b.FlatStyle)
+        Assert-Equal (ConvertTo-DrawingColor $t.Chrome.ButtonBorder) $b.FlatAppearance.BorderColor 'gold border'
+        Assert-Equal (ConvertTo-DrawingColor $t.LineBack) $script:ui.Status.BackColor
+        Assert-Equal (ConvertTo-DrawingColor $t.Tiles['red'].Back) (Get-TileColors 'red')[0]
+        Assert-Equal 'TEST: STOPPED' $script:ui.Tiles[1].Word.Text 'the same words'
+        # Behavior is untouched: the same buttons with the same keys, in the same tabs.
+        $tags = @($script:ui.Tabs.TabPages[0].Controls[0].Controls | Where-Object { $_ -is [Windows.Forms.Button] } | ForEach-Object { $_.Tag })
+        Assert-Equal 'test.start,test.fresh,test.wipe,test.stop,test.rebuild,test.deploy,test.tail,test.client' ($tags -join ',')
+        Assert-True (-not (Test-Path -LiteralPath $cfg.CacheFolder)) 'nothing cached when there is nothing to read'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false; $script:theme = Get-ConsoleTheme 'Plain' }
+}
+
+Fact 'P84_EveryControlInTheWindowHasATooltip' {
+    $script:NetProbeDisabled = $true
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.SettingsFile = Join-Path $env:TEMP ('sl-console-settings-' + [guid]::NewGuid().ToString('N') + '.json')
+    $form = New-ConsoleForm -Config $cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -Pane -Settings (ConvertFrom-ConsoleSettings $null)
+    try {
+        $missing = New-Object 'System.Collections.Generic.List[string]'
+        $stack = New-Object System.Collections.Stack
+        $stack.Push($form)
+        $n = 0
+        while ($stack.Count) {
+            $x = $stack.Pop()
+            $want = $x -is [Windows.Forms.ButtonBase] -or $x -is [Windows.Forms.TextBox] -or $x -is [Windows.Forms.ListView] -or $x -is [Windows.Forms.ComboBox] -or ($x.Name -like 'tile.*')
+            if ($want) {
+                $n++
+                if (-not $script:ui.ToolTip.GetToolTip($x)) { $missing.Add(($x.GetType().Name + ' ' + $x.Name + ' ' + $x.Text)) }
+            }
+            if ($x -is [Windows.Forms.TabPage] -and -not $x.ToolTipText) { $missing.Add('tab ' + $x.Text) }
+            foreach ($k in $x.Controls) { $stack.Push($k) }
+        }
+        Write-Host ('        ' + $n + ' controls checked')
+        Assert-Equal 0 $missing.Count ($missing -join '; ')
+        Assert-True $script:ui.Tabs.ShowToolTips 'tab tooltips are shown'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false; $script:PaneReady = $false; $script:ui.Pane = $null }
+}
+
+Fact 'P84_InteractiveActionsNeverGoToThePaneAndTheRestOnlyWhenAsked' {
+    foreach ($a in Get-ConsoleActions) {
+        foreach ($setting in 'pane', 'window') {
+            $r = Get-OutputRoute -ActionKey $a.Key -OutputIn $setting
+            if ($a.Key -in $script:InteractiveActions) { Assert-Equal 'window' $r ($a.Key + ' asks a person something') }
+            elseif ($setting -eq 'window') { Assert-Equal 'window' $r ($a.Key + ': the setting says windows') }
+            elseif ($a.RunIn -eq 'window' -or $a.Key -like '*.tail') { Assert-Equal 'pane' $r $a.Key }
+            else { Assert-Equal 'window' $r ($a.Key + ' opens something; it has nothing to stream') }
+        }
+    }
+    Assert-Equal 'test.wipe,package.publish' ($script:InteractiveActions -join ',')
+    Assert-Equal 'window' (Get-OutputRoute -ActionKey 'test.stop' -PaneBusy $true) 'a busy pane sends it to a window'
+    Assert-Equal 'window' (Get-OutputRoute -ActionKey 'test.stop' -PaneAvailable $false) 'no pane, a window'
+    Assert-Equal 'window' (Get-OutputRoute -ActionKey 'no.such.action') 'an unknown key, a window'
+    # The two interactive ones, from their code: the wipe's password and the publish script's "Type yes".
+    $self = Get-Content -Raw (Resolve-Path $script).Path
+    Assert-True ($self -match "function Read-WipePassword[\s\S]{0,400}Read-Host -AsSecureString") 'the wipe asks a password'
+    if (Test-Path -LiteralPath $config.PublishScript) { Assert-True ((Get-Content -Raw $config.PublishScript) -match 'Read-Host') 'publish asks yes' }
+    # And the scripts the paneable window actions run ask nothing, so the pane cannot strand one at a prompt.
+    foreach ($f in @($config.StartTestShard, $config.CheckDocker, $config.CheckShard, $config.CommitScript, $config.BuildPackage)) {
+        if (Test-Path -LiteralPath $f) { Assert-True (-not ((Get-Content -Raw $f) -match 'Read-Host|PromptForChoice|Get-Credential|ReadKey')) ($f + ' prompts') }
+    }
+}
+
+Fact 'P84_APaneChildEndsByItselfAndMarksEachLineWithItsColor' {
+    $plainLine = Get-ChildArgumentLine -SelfPath 'C:\x.ps1' -ActionKey 'test.stop' -ShardKey 'test' -DryRun
+    $paneLine = Get-ChildArgumentLine -SelfPath 'C:\x.ps1' -ActionKey 'test.stop' -ShardKey 'test' -DryRun -ForPane
+    Assert-True ($plainLine -match ' -NoExit ') 'a window stays open, as before'
+    Assert-Equal ($plainLine -replace ' -NoExit ', ' -NonInteractive ') $paneLine 'the pane line differs only there'
+    Assert-Equal 'amber|hello' ((ConvertFrom-PaneLine (Format-PaneLine 'hello' 'amber')) | ForEach-Object { $_.Color + '|' + $_.Text })
+    Assert-Equal 'gray|docker progress' ((ConvertFrom-PaneLine 'docker progress' $true) | ForEach-Object { $_.Color + '|' + $_.Text }) 'stderr is quiet, not red'
+    Assert-Equal 'normal|[[shard-console:purple]]x' ((ConvertFrom-PaneLine '[[shard-console:purple]]x') | ForEach-Object { $_.Color + '|' + $_.Text }) 'an unknown color is just text'
+    Initialize-ConsoleNative
+    $args2 = Get-ChildArgumentLine -SelfPath (Resolve-Path $script).Path -ActionKey 'test.stop' -ShardKey 'test' -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -ForPane
+    $job = New-Object ShardConsoleNative.PaneJob('powershell.exe', $args2, 'SHARD_CONSOLE_PANE')
+    $deadline = (Get-Date).AddSeconds(60)
+    while (-not $job.Finished -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 100 }
+    Assert-True $job.Finished 'the dry child ended by itself'
+    $lines = New-Object 'System.Collections.Generic.List[object]'
+    $l = $null
+    while ($job.Lines.TryDequeue([ref]$l)) { $lines.Add((ConvertFrom-PaneLine $l.Substring(1) ($l[0] -eq 'E'))) }
+    Assert-Equal 0 $job.ExitCode
+    $banner = @($lines | Where-Object { $_.Text -like '  DRY RUN  test.stop (test)*' })
+    Assert-Equal 1 $banner.Count (($lines | ForEach-Object { $_.Color + ' ' + $_.Text }) -join ' / ')
+    Assert-Equal 'amber' $banner[0].Color 'the banner keeps its color'
+}
+
+Fact 'P84_StopEndsTheWholeProcessTree' {
+    Initialize-ConsoleNative
+    $job = New-Object ShardConsoleNative.PaneJob('powershell.exe', '-NoProfile -NonInteractive -Command "ping -n 60 127.0.0.1"', $null)
+    $kid = $null
+    $deadline = (Get-Date).AddSeconds(20)
+    while (-not $kid -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 200
+        $kid = @(Get-CimInstance Win32_Process -Filter ('ParentProcessId=' + $job.Id) | Where-Object { $_.Name -eq 'PING.EXE' })[0]
+    }
+    Assert-True ($null -ne $kid) 'the child started its own child'
+    Assert-Equal 0 $job.KillTree() 'taskkill /T'
+    $deadline = (Get-Date).AddSeconds(15)
+    while (-not $job.Finished -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 100 }
+    Assert-True $job.Finished 'the job ended'
+    Assert-Equal $null (Get-Process -Id $kid.ProcessId -ErrorAction SilentlyContinue) 'and so did its child'
+}
+
+Fact 'P84_ThePaneStreamsWhileTheWindowRunsAndAClickGoesThere' {
+    $script:NetProbeDisabled = $true
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.SettingsFile = Join-Path $env:TEMP ('sl-console-settings-' + [guid]::NewGuid().ToString('N') + '.json')
+    $saved = $script:SelfPath
+    $script:SelfPath = (Resolve-Path $script).Path
+    $form = New-ConsoleForm -Config $cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -Pane -Settings (ConvertFrom-ConsoleSettings $null)
+    try {
+        $pane = $script:ui.Pane
+        Assert-True $pane.Split.Panel2Collapsed 'collapsed until a job'
+        Start-PaneJob -Exe 'cmd.exe' -Arguments '/c echo one& echo two 1>&2& exit 0' -Title 'echo'
+        Assert-True (-not $pane.Split.Panel2Collapsed) 'shown when a job starts'
+        Assert-True $pane.Stop.Enabled 'Stop while it runs'
+        $deadline = (Get-Date).AddSeconds(20)
+        while ($script:paneJob -and (Get-Date) -lt $deadline) { [Windows.Forms.Application]::DoEvents(); Update-PaneJob; Start-Sleep -Milliseconds 50 }
+        Assert-True ($pane.Box.Text -match 'one' -and $pane.Box.Text -match 'two') $pane.Box.Text
+        Assert-True ($pane.Box.Text -match '== exited with 0 \(done\)') 'the exit code at the end'
+        Assert-True (-not $pane.Stop.Enabled) 'Stop off when it ends'
+        # A window action clicked dry in the default setting: the same dry child, in the pane.
+        Invoke-ConsoleButton -ActionKey 'test.stop'
+        Assert-True ($null -ne $script:paneJob) 'the click started a pane job'
+        $deadline = (Get-Date).AddSeconds(60)
+        while ($script:paneJob -and (Get-Date) -lt $deadline) { [Windows.Forms.Application]::DoEvents(); Update-PaneJob; Start-Sleep -Milliseconds 50 }
+        Assert-True ($pane.Box.Text -match 'DRY RUN  test\.stop \(test\)') $pane.Box.Text
+        Assert-True ($script:OutputBox.Text -match 'test\.stop \(test\): DRY RUN in the Action output pane') 'the console says where it went'
+    } finally {
+        if ($script:paneJob) { [void]$script:paneJob.KillTree() }
+        $form.Dispose(); $script:NetProbeDisabled = $false; $script:PaneReady = $false; $script:ui.Pane = $null; $script:paneJob = $null
+        $script:SelfPath = $saved; $script:OutputBox = $null
+    }
+}
+
+Fact 'P84_TheGumpCacheFillsFromTheClientOnceAndFallsBackWithoutIt' {
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.CacheFolder = Join-Path $env:TEMP ('sl-console-cache-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $real = $cfg.GumpFile
+        $cfg.GumpFile = Join-Path $env:TEMP 'no-such-client.uop'
+        Assert-Equal $null (Get-GumpImage $cfg 3604) 'no client, no cache: null, and the drawn color is used'
+        if (-not (Test-Path -LiteralPath $real)) { Write-Host '        (this PC has no client data: the extraction half is skipped)'; return }
+        $cfg.GumpFile = $real
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        $img = Get-GumpImage $cfg 3604
+        Write-Host ('        first read, from the client: ' + $sw.ElapsedMilliseconds + ' ms')
+        Assert-True ($null -ne $img -and $img.Width -eq 128) 'gump 3604 read'
+        Assert-True (Test-Path -LiteralPath (Join-Path $cfg.CacheFolder 'gumps\3604.png')) 'and cached'
+        $cfg.GumpFile = Join-Path $env:TEMP 'no-such-client.uop'
+        $sw.Restart()
+        $again = Get-GumpImage $cfg 3604
+        Write-Host ('        second read, from the cache: ' + $sw.ElapsedMilliseconds + ' ms')
+        Assert-True ($null -ne $again -and $again.Width -eq 128) 'the cache alone is enough'
+        $p = Get-GumpImage $cfg 9304
+        Assert-Equal $null $p 'a gump not cached, with no client: null'
+    } finally { Remove-Item -LiteralPath $cfg.CacheFolder -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P84_TheSettingsDefaultToUOAndThePaneAndABadFileFallsBack' {
+    $d = ConvertFrom-ConsoleSettings $null
+    Assert-Equal 'UO|pane' ($d.Theme + '|' + $d.OutputIn)
+    $s = ConvertFrom-ConsoleSettings '{ "Theme": "Plain", "OutputIn": "window" }'
+    Assert-Equal 'Plain|window' ($s.Theme + '|' + $s.OutputIn)
+    $back = ConvertFrom-ConsoleSettings (ConvertTo-ConsoleSettings $s)
+    Assert-Equal 'Plain|window' ($back.Theme + '|' + $back.OutputIn) 'round trip'
+    foreach ($bad in @('not json', '{ "Theme": "Neon", "OutputIn": "printer" }', '[]', '')) {
+        $b = ConvertFrom-ConsoleSettings $bad
+        Assert-Equal 'UO|pane' ($b.Theme + '|' + $b.OutputIn) $bad
+    }
+}
+
+Fact 'P84_TheUOLookAddsUnderASecondToTheStart' {
+    $script:NetProbeDisabled = $true
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.CacheFolder = Join-Path $env:TEMP ('sl-console-cache-' + [guid]::NewGuid().ToString('N'))
+    try {
+        # Warm: the cache filled once, as after the first start.
+        [void](Get-GumpImage $cfg 3604); [void](Get-GumpImage $cfg 9304)
+        $times = @{}
+        foreach ($name in 'Plain', 'UO', 'Plain', 'UO') {
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $form = New-ConsoleForm -Config $cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -Theme $name
+            $times[$name] = $sw.ElapsedMilliseconds
+            $form.Dispose()
+        }
+        Write-Host ('        build the window: Plain ' + $times['Plain'] + ' ms, UO ' + $times['UO'] + ' ms (warm cache)')
+        Assert-True (($times['UO'] - $times['Plain']) -lt 1000) ('UO adds ' + ($times['UO'] - $times['Plain']) + ' ms')
+    } finally { $script:NetProbeDisabled = $false; $script:theme = Get-ConsoleTheme 'Plain'; Remove-Item -LiteralPath $cfg.CacheFolder -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
