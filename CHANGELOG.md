@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.13
+
+### Staff
+- Status page tracks the ServUO port list instead of every ServUO file.
+
 ## 2026.10.13.12
 
 ### Staff
