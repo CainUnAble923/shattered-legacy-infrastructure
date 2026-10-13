@@ -3360,6 +3360,155 @@ Fact 'P86_OnThisPcWithNoVpnUpTheRealFactsGiveANoOp' {
     Assert-Equal 'No VPN is up: nothing to disconnect.' $p[0].Text
 }
 
+# --- cc-P87: the UO look's readability pass ---------------------------------------------------
+
+function New-P87Form {
+    # A UO form without the client art (the facts never need EA's art), shown off screen so that layout and
+    # painting run as they do for Chase.
+    param([switch]$Pane)
+    $script:NetProbeDisabled = $true
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.GumpFile = Join-Path $env:TEMP ('no-such-client-' + [guid]::NewGuid().ToString('N') + '.uop')
+    $cfg.CacheFolder = Join-Path $env:TEMP ('sl-console-cache-' + [guid]::NewGuid().ToString('N'))
+    $cfg.SettingsFile = Join-Path $env:TEMP ('sl-console-settings-' + [guid]::NewGuid().ToString('N') + '.json')
+    $form = New-ConsoleForm -Config $cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -Theme UO -Pane:$Pane -Settings (ConvertFrom-ConsoleSettings $null)
+    $form.StartPosition = 'Manual'
+    $form.Location = New-Object Drawing.Point(-6000, -6000)
+    $form.ShowInTaskbar = $false
+    $form.Show()
+    foreach ($i in 1..5) { [Windows.Forms.Application]::DoEvents() }
+    $form
+}
+
+function Test-P87TileFits {
+    # Nothing in the tile is cut off: the title fits its label, the detail fits what is left, and every button
+    # lies wholly inside the tile.
+    param($Tile, [string]$Label)
+    $p = $Tile.Panel
+    $w = $Tile.Word
+    $m = [Windows.Forms.TextRenderer]::MeasureText($w.Text, $w.Font, (New-Object Drawing.Size(($w.ClientSize.Width - $w.Padding.Horizontal), 0)), [Windows.Forms.TextFormatFlags]'WordBreak')
+    Assert-True ($m.Height + $w.Padding.Vertical -le $w.ClientSize.Height + 1) ($Label + ': title "' + $w.Text + '" needs ' + ($m.Height + $w.Padding.Vertical) + ' px, has ' + $w.ClientSize.Height)
+    Assert-True ($m.Width -le $w.ClientSize.Width - $w.Padding.Horizontal) ($Label + ': title "' + $w.Text + '" is ' + $m.Width + ' px wide in ' + ($w.ClientSize.Width - $w.Padding.Horizontal))
+    $d = $Tile.Detail
+    $dm = [Windows.Forms.TextRenderer]::MeasureText($d.Text, $d.Font, (New-Object Drawing.Size(($d.ClientSize.Width - $d.Padding.Horizontal), 0)), [Windows.Forms.TextFormatFlags]'WordBreak')
+    Assert-True ($dm.Height + $d.Padding.Vertical -le $d.ClientSize.Height + 1) ($Label + ': detail needs ' + ($dm.Height + $d.Padding.Vertical) + ' px, has ' + $d.ClientSize.Height + ' at ' + $d.Font.Size + ' pt')
+    foreach ($bar in @($p.Controls | Where-Object { $_ -is [Windows.Forms.FlowLayoutPanel] })) {
+        foreach ($b in $bar.Controls) {
+            $r = $p.RectangleToClient($b.RectangleToScreen($b.ClientRectangle))
+            Assert-True ($p.ClientRectangle.Contains($r)) ($Label + ': button "' + $b.Text + '" at ' + $r + ' is outside the tile ' + $p.ClientRectangle)
+            Assert-True ($bar.ClientRectangle.Contains($bar.RectangleToClient($b.RectangleToScreen($b.ClientRectangle)))) ($Label + ': button "' + $b.Text + '" is cut by its bar')
+        }
+    }
+}
+
+Fact 'P87_EveryUOTextPairMeetsItsFloorOnTheArtsLightestAndDarkest' {
+    $pairs = @(Get-ThemeContrastPairs (Get-ConsoleTheme 'UO'))
+    foreach ($q in $pairs) {
+        Write-Host ('        ' + $q.Where + ': ' + $q.Ratio + ':1 (floor ' + $q.Floor + ')')
+        Assert-True ($q.Ratio -ge $q.Floor) ($q.Where + ': ' + $q.Ratio + ' under ' + $q.Floor)
+    }
+    Assert-Equal 35 $pairs.Count 'every pair the UO look draws, the two Windows draws itself included'
+    foreach ($k in 'normal', 'large', 'disabled') { Assert-True (@($pairs | Where-Object { $_.Kind -eq $k }).Count) ('a ' + $k + ' pair') }
+    # The colored lines read as easily as a black one: 7:1, not just 4.5.
+    $t = Get-ConsoleTheme 'UO'
+    foreach ($k in 'green', 'amber', 'red', 'gray') { Assert-True ((Get-ContrastRatio $t.Lines[$k] $t.LineBack) -ge 7) ('line ' + $k + ' at 7:1') }
+    Assert-Equal 0 @(Get-ThemeContrastPairs (Get-ConsoleTheme 'Plain')).Count 'Plain draws no chrome of its own'
+    Assert-Equal '35,33,32' ((Get-BlendedColor @(24, 22, 20) 200 @(74, 74, 74)) -join ',') 'the blend'
+}
+
+Fact 'P87_TextOnTheStoneSitsOnTheBacking' {
+    $form = New-P87Form -Pane
+    try {
+        $c = (Get-ConsoleTheme 'UO').Chrome
+        $want = [Drawing.Color]::FromArgb($c.BackingAlpha, $c.Backing[0], $c.Backing[1], $c.Backing[2])
+        $groups = @($script:ui.Grid.Controls | Where-Object { $_ -is [Windows.Forms.GroupBox] })
+        Assert-Equal 2 $groups.Count 'Status, and Console output'
+        foreach ($g in $groups) { Assert-Equal $want.ToArgb() $g.BackColor.ToArgb() ($g.Text + ' on the backing') }
+        Assert-Equal $want.ToArgb() $script:ui.Header.BackColor.ToArgb() 'the header'
+        Assert-True ($script:ui.OwnWindows.Visible -and $script:ui.Look.Visible) 'the options row is all there'
+        # The options row wraps and grows rather than hide its last box, at the narrowest window.
+        $form.Size = New-Object Drawing.Size(900, 700)
+        foreach ($i in 1..5) { [Windows.Forms.Application]::DoEvents() }
+        $bar = $script:ui.OwnWindows.Parent
+        $r = $bar.RectangleToClient($script:ui.OwnWindows.RectangleToScreen($script:ui.OwnWindows.ClientRectangle))
+        Assert-True ($bar.ClientRectangle.Contains($r)) ('"actions in their own windows" at ' + $r + ' outside its bar ' + $bar.ClientRectangle)
+    } finally { $form.Close(); $form.Dispose(); $script:NetProbeDisabled = $false; $script:theme = Get-ConsoleTheme 'Plain' }
+}
+
+Fact 'P87_ADisabledUOButtonIsDrawnInItsOwnLegibleColors' {
+    $form = New-P87Form
+    try {
+        $c = (Get-ConsoleTheme 'UO').Chrome
+        $b = $script:ui.VpnButtons[1]
+        Assert-True (-not $b.Enabled) 'Disconnect VPN is greyed: no VPN is known'
+        $script:ui.Tabs.SelectedIndex = 3
+        foreach ($i in 1..5) { [Windows.Forms.Application]::DoEvents() }
+        $bmp = New-Object Drawing.Bitmap($b.Width, $b.Height)
+        $b.DrawToBitmap($bmp, (New-Object Drawing.Rectangle(0, 0, $b.Width, $b.Height)))
+        $seen = @{}
+        for ($x = 1; $x -lt $b.Width - 1; $x++) { for ($y = 1; $y -lt $b.Height - 1; $y++) { $q = $bmp.GetPixel($x, $y); $seen[('{0},{1},{2}' -f $q.R, $q.G, $q.B)] = 1 } }
+        $bmp.Dispose()
+        Assert-True $seen.ContainsKey(($c.DisabledBack -join ',')) 'its face is DisabledBack'
+        Assert-True $seen.ContainsKey(($c.DisabledText -join ',')) 'its text is DisabledText'
+        Assert-True (-not $seen.ContainsKey(($c.ButtonBack -join ','))) 'not the enabled face'
+        # Enabled again, it is an ordinary button on the wood face.
+        $b.Enabled = $true
+        $bmp = New-Object Drawing.Bitmap($b.Width, $b.Height)
+        $b.DrawToBitmap($bmp, (New-Object Drawing.Rectangle(0, 0, $b.Width, $b.Height)))
+        $mid = $bmp.GetPixel(3, [int]($b.Height / 2)); $bmp.Dispose()
+        Assert-Equal ($c.ButtonBack -join ',') ('{0},{1},{2}' -f $mid.R, $mid.G, $mid.B) 'the enabled face'
+    } finally { $form.Close(); $form.Dispose(); $script:NetProbeDisabled = $false; $script:theme = Get-ConsoleTheme 'Plain' }
+}
+
+Fact 'P87_UOTilesNeverClipFromTheNarrowestWindowToAWideOne' {
+    $form = New-P87Form
+    try {
+        $all = @($script:ui.Tiles) + @($script:ui.NetTile, $script:ui.AutopilotTile, $script:ui.PlayTestTile)
+        # The words and details these tiles said on 2026-10-13, when Chase found them clipped.
+        $long = @(
+            @('LIVE', 'STARTING?', 'up 23h 40m, not listening yet; OLD IMAGE'),
+            @('TEST', 'RUNNING', 'up 13h 47m, listening on :2594; image current'),
+            @('STATUS PUBLISHER', 'NOT PUBLISHING', 'no status.json; feed up, nothing to serve'),
+            @('PUBLIC DNS', 'OK', 'shatteredlegacyuo.com = 216.247.206.76, this house. No VPN.'),
+            @('AUTOPILOT', 'NEEDS YOU', 'P86 done but COMMIT FAILED, needs you'),
+            @('PLAY TESTS', '152 OPEN', '152 open, 1 failed, 18 passed')
+        )
+        # 900 is the smallest window. PowerShell's WinForms is DPI-unaware, so at 125% and 150% Windows scales the
+        # whole window: 1024 x 768 is 1280 x 960 at 125%, and 900 x 700 is 1350 x 1050 at 150%.
+        foreach ($size in @(@(900, 700), @(1024, 768), @(1280, 1000), @(1300, 1000), @(1600, 1000), @(2400, 1000))) {
+            $form.Size = New-Object Drawing.Size($size[0], $size[1])
+            for ($k = 0; $k -lt $all.Count; $k++) { Set-TileLook $all[$k] ([pscustomobject]@{ Color = 'amber'; Title = $long[$k][0]; Word = $long[$k][1]; Detail = $long[$k][2] }) }
+            foreach ($i in 1..5) { [Windows.Forms.Application]::DoEvents() }
+            $cols = $script:ui.Glance.ColumnCount
+            Write-Host ('        ' + $size[0] + ' x ' + $size[1] + ': ' + $cols + ' across, tile row ' + $script:ui.Grid.RowStyles[0].Height + ' px, smallest title ' + (($all | ForEach-Object { $_.Word.Font.Size } | Measure-Object -Minimum).Minimum) + ' pt, smallest detail ' + (($all | ForEach-Object { $_.Detail.Font.Size } | Measure-Object -Minimum).Minimum) + ' pt')
+            foreach ($tile in $all) { Test-P87TileFits $tile ([string]$size[0] + ' wide, ' + ($tile.Word.Text -split ':')[0]) }
+            $gr = $script:ui.Glance
+            Assert-True ($gr.Right -le $form.ClientSize.Width) ('the tiles end at ' + $gr.Right + ' inside ' + $form.ClientSize.Width)
+        }
+        Assert-Equal 6 $script:ui.Glance.ColumnCount 'six across on a wide window'
+        $form.Size = New-Object Drawing.Size(1280, 1000)
+        foreach ($i in 1..5) { [Windows.Forms.Application]::DoEvents() }
+        Assert-Equal 3 $script:ui.Glance.ColumnCount 'three across, two rows, at 1280'
+    } finally { $form.Close(); $form.Dispose(); $script:NetProbeDisabled = $false; $script:theme = Get-ConsoleTheme 'Plain' }
+}
+
+Fact 'P87_PlainKeepsItsOneRowOfSixAndItsOwnLook' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-Equal 6 $script:ui.Glance.ColumnCount
+        Assert-Equal 104 $script:ui.Grid.RowStyles[0].Height
+        Assert-Equal 0 $script:ui.Grid.ColumnStyles.Count 'the grid has no column style, as before'
+        $form.Size = New-Object Drawing.Size(900, 700)
+        Update-TileFit
+        Assert-Equal 6 $script:ui.Glance.ColumnCount 'Plain never wraps its tiles'
+        foreach ($g in @($script:ui.Grid.Controls | Where-Object { $_ -is [Windows.Forms.GroupBox] })) { Assert-Equal ([Drawing.SystemColors]::Control).ToArgb() $g.BackColor.ToArgb() ($g.Text + ': the WinForms default') }
+        Assert-Equal 'Normal' ([string]$script:ui.Tabs.DrawMode) 'Windows draws the Plain tabs'
+        Assert-Equal 'Consolas|9' ($script:MonoFont.Name + '|' + $script:MonoFont.Size)
+        Assert-Equal 'Segoe UI|8.25' ($script:ui.VpnButtons[0].Font.Name + '|' + $script:ui.VpnButtons[0].Font.Size) 'the tile buttons as before'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 
 $failed =@($results | Where-Object { -not $_.Passed }).Count

@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.9
+
+### Staff
+- The Shard Console's UO look is easier to read: text on the stone sits on a dark backing, tabs and tile buttons are bolder, greyed buttons stay legible, colored status lines are darker, and the status tiles wrap to a second row instead of cutting off words on a narrow window.
+
 ## 2026.10.13.8
 
 ### Staff

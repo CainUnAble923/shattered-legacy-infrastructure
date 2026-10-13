@@ -885,7 +885,9 @@ function Get-ConsoleTheme {
         Name   = 'UO'
         # Palatino Linotype ships with Windows (Vista and later), is a book serif in the spirit of the UO client's
         # gump text, and stays legible at 9 to 10 points, where Book Antiqua's narrow strokes start to break up.
-        Fonts  = [pscustomobject]@{ Ui = 'Palatino Linotype'; UiSize = 9.75; Tile = 'Palatino Linotype'; TileSize = 11.5; Detail = 'Palatino Linotype'; DetailSize = 9.75; Mono = 'Consolas'; MonoSize = 9; Title = 'Palatino Linotype'; TitleSize = 17 }
+        # cc-P87: the boxes' Consolas up from 9 to 9.75, the tiles' buttons 9 bold (were 8.25), and the floors a tile's
+        # title and detail may shrink to so that they fit their tile (Update-TileFit) rather than clip.
+        Fonts  = [pscustomobject]@{ Ui = 'Palatino Linotype'; UiSize = 9.75; Tile = 'Palatino Linotype'; TileSize = 11.5; Detail = 'Palatino Linotype'; DetailSize = 9.75; Mono = 'Consolas'; MonoSize = 9.75; Title = 'Palatino Linotype'; TitleSize = 17; TileButtonSize = 9; TileFloor = 9; DetailFloor = 8.25 }
         Tiles  = [ordered]@{
             green = [pscustomobject]@{ Back = @(214, 232, 200); Fore = @(24, 84, 30) }
             amber = [pscustomobject]@{ Back = @(246, 226, 180); Fore = @(122, 62, 0) }
@@ -893,10 +895,18 @@ function Get-ConsoleTheme {
             grey  = [pscustomobject]@{ Back = @(220, 212, 196); Fore = @(70, 62, 52) }
         }
         LineBack = @(246, 238, 218)
+        # cc-P87: green, amber and gray darkened to at least 7:1 on LineBack (were 6.30, 5.93 and 6.60): Consolas is thin,
+        # and a colored line has to read as easily as a black one.
         Lines  = [ordered]@{
-            normal = @(40, 28, 16); head = @(24, 40, 110); green = @(24, 100, 30); amber = @(138, 74, 0); red = @(150, 22, 18); gray = @(92, 82, 70)
+            normal = @(40, 28, 16); head = @(24, 40, 110); green = @(18, 86, 24); amber = @(120, 62, 0); red = @(150, 22, 18); gray = @(84, 74, 62)
         }
         Chrome = [pscustomobject]@{
+            # cc-P87: a dark, semi-opaque backing behind every piece of text that sits on the stone (the header, the
+            # Status and output groups and their bars). The art still shows through it, but its speckle no longer
+            # does: over the stone's lightest pixel, 74,74,74, it is 35,33,32.
+            Backing = @(24, 22, 20); BackingAlpha = 200
+            # cc-P87: a disabled button is drawn by hand, flat and grey-brown with no gold, so it looks off and still reads.
+            DisabledBack = @(72, 66, 58); DisabledText = @(190, 178, 156); DisabledBorder = @(120, 108, 90)
             # The frame and header: dark stone, with parchment-colored text and gold trim.
             StoneBack = @(46, 44, 42); StoneText = @(238, 226, 196); Gold = @(232, 196, 104)
             # Tab pages, captions and group boxes: parchment, with dark brown ink.
@@ -912,7 +922,9 @@ function Get-ConsoleTheme {
         # average colors (measured 2026-10-13: 44,44,44 and 228,202,155) and stand in when the art is missing.
         # Worst: the pixel of each that is closest to the text drawn on it (measured the same day), so the facts can
         # check that text on the real art keeps its contrast without the art being in git.
-        Gumps  = [pscustomobject]@{ Stone = 3604; Parchment = 9304; StoneWorst = @(74, 74, 74); ParchmentWorst = @(222, 164, 131) }
+        # cc-P87: the lightest and darkest pixel of each (measured 2026-10-13 from the cached PNGs, single pixels and 3x3
+        # and 6x6 averages; the single pixels are the extremes). Text is checked against both ends, not the average.
+        Gumps  = [pscustomobject]@{ Stone = 3604; Parchment = 9304; StoneWorst = @(74, 74, 74); ParchmentWorst = @(222, 164, 131); StoneLight = @(74, 74, 74); StoneDark = @(16, 16, 16); ParchmentLight = @(246, 222, 172); ParchmentDark = @(222, 164, 131) }
         Header = $true
     }
 }
@@ -933,6 +945,59 @@ function Get-ContrastRatio {
     $la = Get-RelativeLuminance $A
     $lb = Get-RelativeLuminance $B
     ([math]::Max($la, $lb) + 0.05) / ([math]::Min($la, $lb) + 0.05)
+}
+
+function Get-BlendedColor {
+    # cc-P87: what the eye sees where a color at Alpha (0 to 255) is painted over another: the backing over the stone.
+    param([int[]]$Color, [int]$Alpha, [int[]]$Over)
+    $a = $Alpha / 255.0
+    @(0..2 | ForEach-Object { [int][math]::Round($a * $Color[$_] + (1 - $a) * $Over[$_]) })
+}
+
+# cc-P87: two pairs the console does not color itself, measured from screenshots on 2026-10-13 (Windows 11, 100%): a
+# tooltip (Windows draws it: 87,87,87 on 249,249,249) and the DRY RUN box locked on under -DryRun (a disabled check
+# box: Windows draws its text 128,94,15 on the amber the console gives it).
+$script:MeasuredPairs = @(
+    [pscustomobject]@{ Where = 'Tooltip text (drawn by Windows)'; Fore = @(87, 87, 87); Back = @(249, 249, 249); Kind = 'normal' },
+    [pscustomobject]@{ Where = 'DRY RUN box, locked on (drawn disabled by Windows)'; Fore = @(128, 94, 15); Back = @(246, 226, 180); Kind = 'disabled' }
+)
+
+function Get-ThemeContrastPairs {
+    # cc-P87: every text and background pair the UO look draws, each with the floor it must meet: 'normal' 4.5:1,
+    # 'large' 3:1 (18 px and up, or 14 px and up in bold), 'disabled' 3:1. Text on the art is checked against the
+    # art's lightest and darkest pixel, under the backing where there is one. Plain draws none of its own chrome.
+    param($Theme)
+    $c = $Theme.Chrome
+    if (-not $c) { return @() }
+    $gm = $Theme.Gumps
+    $floor = @{ normal = 4.5; large = 3.0; disabled = 3.0 }
+    $p = New-Object System.Collections.ArrayList
+    $add = { param($w, $f, $b, $k) [void]$p.Add([pscustomobject]@{ Where = $w; Fore = $f; Back = $b; Kind = $k; Floor = $floor[$k]; Ratio = [math]::Round((Get-ContrastRatio $f $b), 2) }) }
+    $stones = [ordered]@{ 'stone art, lightest' = $gm.StoneLight; 'stone art, darkest' = $gm.StoneDark; 'stone, drawn (no art)' = $c.StoneBack }
+    foreach ($s in $stones.Keys) {
+        $under = Get-BlendedColor $c.Backing $c.BackingAlpha $stones[$s]
+        & $add ('Window title (gold, 17 pt bold) on backing over ' + $s) $c.Gold $under 'large'
+        & $add ('Group titles (gold, bold) on backing over ' + $s) $c.Gold $under 'normal'
+        & $add ('Options row and pane label text on backing over ' + $s) $c.StoneText $under 'normal'
+    }
+    foreach ($s in @('ParchmentLight', 'ParchmentDark')) {
+        $n = 'parchment art, ' + @{ ParchmentLight = 'lightest'; ParchmentDark = 'darkest' }[$s]
+        & $add ('Page text on ' + $n) $c.PageText $gm.$s 'normal'
+        & $add ('Page dim text on ' + $n) $c.PageDim $gm.$s 'normal'
+        & $add ('Page warning text on ' + $n) $c.PageWarn $gm.$s 'normal'
+    }
+    & $add 'Page text on parchment, drawn (no art)' $c.PageText $c.PageBack 'normal'
+    & $add 'Button text on button' $c.ButtonText $c.ButtonBack 'normal'
+    & $add 'Button text on button, hover' $c.ButtonText $c.ButtonHover 'normal'
+    & $add 'Button text, disabled' $c.DisabledText $c.DisabledBack 'disabled'
+    & $add 'Tab, not selected' $c.ButtonText $c.ButtonBack 'normal'
+    & $add 'Tab, selected' $c.PageText $c.PageBack 'normal'
+    & $add 'Tab, LIVE shard selected' $c.PageWarn $c.PageBack 'normal'
+    & $add 'Field and list text' $c.FieldText $c.FieldBack 'normal'
+    foreach ($k in $Theme.Lines.Keys) { & $add ('Status and output line, ' + $k) $Theme.Lines[$k] $Theme.LineBack 'normal' }
+    foreach ($k in $Theme.Tiles.Keys) { & $add ('Tile, ' + $k) $Theme.Tiles[$k].Fore $Theme.Tiles[$k].Back 'normal' }
+    foreach ($m in $script:MeasuredPairs) { & $add $m.Where $m.Fore $m.Back $m.Kind }
+    $p.ToArray()
 }
 
 function Get-ConsoleTooltips {
@@ -4356,7 +4421,22 @@ function Set-ControlTheme {
                 $x.ForeColor = ConvertTo-DrawingColor $c.ButtonText
                 $x.FlatAppearance.BorderColor = ConvertTo-DrawingColor $c.ButtonBorder
                 $x.FlatAppearance.MouseOverBackColor = ConvertTo-DrawingColor $c.ButtonHover
-                if ($small) { $x.Font = New-Object Drawing.Font($Theme.Fonts.Ui, [single]8.25) } else { $x.Font = $ui }
+                # cc-P87: a tile's buttons in bold at TileButtonSize (they were 8.25 regular and hard to read).
+                if ($small) { $x.Font = New-Object Drawing.Font($Theme.Fonts.Ui, [single]$Theme.Fonts.TileButtonSize, [Drawing.FontStyle]::Bold) } else { $x.Font = $ui }
+                # cc-P87: WinForms draws a disabled flat button's text in its own grey, close to invisible on dark wood.
+                # Drawn over by hand when disabled; only the colors are captured, so the closure needs no function.
+                $dBack = ConvertTo-DrawingColor $c.DisabledBack; $dText = ConvertTo-DrawingColor $c.DisabledText; $dLine = ConvertTo-DrawingColor $c.DisabledBorder
+                $x.Add_Paint({
+                    param($s, $e)
+                    if ($s.Enabled) { return }
+                    $r = $s.ClientRectangle
+                    $br = New-Object Drawing.SolidBrush($dBack)
+                    $e.Graphics.FillRectangle($br, $r)
+                    $pen = New-Object Drawing.Pen($dLine)
+                    $e.Graphics.DrawRectangle($pen, 0, 0, $r.Width - 1, $r.Height - 1)
+                    [Windows.Forms.TextRenderer]::DrawText($e.Graphics, $s.Text, $s.Font, $r, $dText, [Windows.Forms.TextFormatFlags]'HorizontalCenter, VerticalCenter, WordBreak')
+                    $br.Dispose(); $pen.Dispose()
+                }.GetNewClosure())
                 break
             }
             { $_ -is [Windows.Forms.RichTextBox] } {
@@ -4370,7 +4450,9 @@ function Set-ControlTheme {
                 break
             }
             { $_ -is [Windows.Forms.GroupBox] } {
+                # cc-P87: on the stone, the group (its title and its bar of buttons and boxes) sits on the backing.
                 $x.BackColor = [Drawing.Color]::Transparent
+                if (-not $page) { $x.BackColor = [Drawing.Color]::FromArgb($c.BackingAlpha, $c.Backing[0], $c.Backing[1], $c.Backing[2]) }
                 $x.ForeColor = ConvertTo-DrawingColor $c.Gold
                 $x.Font = Get-ThemeFont 'Ui' ([Drawing.FontStyle]::Bold)
                 break
@@ -4400,7 +4482,10 @@ function Set-TabTheme {
     if (-not $Theme.Chrome) { return }
     $script:tabTheme = $Theme
     $Tabs.DrawMode = 'OwnerDrawFixed'
-    $Tabs.Padding = New-Object Drawing.Point(14, 5)
+    # cc-P87: the labels are drawn bold (they were thin), so each tab is padded wider to hold the bolder word; the
+    # pages keep the regular font. The selected tab is parchment with a thick gold bar along its top.
+    $Tabs.Padding = New-Object Drawing.Point(20, 6)
+    $script:tabFont = Get-ThemeFont 'Ui' ([Drawing.FontStyle]::Bold)
     $Tabs.Add_DrawItem({
         param($s, $e)
         $c = $script:tabTheme.Chrome
@@ -4410,11 +4495,17 @@ function Set-TabTheme {
         if ($selected) { $back = ConvertTo-DrawingColor $c.PageBack; $fore = ConvertTo-DrawingColor $c.PageText }
         # The LIVE tab keeps its warning color, as the LIVE caption does.
         if ($page.Text -eq 'LIVE shard' -and $selected) { $fore = ConvertTo-DrawingColor $c.PageWarn }
+        $gold = ConvertTo-DrawingColor $c.Gold
         $b = New-Object Drawing.SolidBrush($back)
         $e.Graphics.FillRectangle($b, $e.Bounds)
-        $pen = New-Object Drawing.Pen((ConvertTo-DrawingColor $c.Gold))
+        $pen = New-Object Drawing.Pen($gold)
         $e.Graphics.DrawRectangle($pen, $e.Bounds.X, $e.Bounds.Y, $e.Bounds.Width - 1, $e.Bounds.Height - 1)
-        [Windows.Forms.TextRenderer]::DrawText($e.Graphics, $page.Text, $s.Font, $e.Bounds, $fore, [Windows.Forms.TextFormatFlags]'HorizontalCenter, VerticalCenter')
+        if ($selected) {
+            $bar = New-Object Drawing.SolidBrush($gold)
+            $e.Graphics.FillRectangle($bar, $e.Bounds.X, $e.Bounds.Y, $e.Bounds.Width, 4)
+            $bar.Dispose()
+        }
+        [Windows.Forms.TextRenderer]::DrawText($e.Graphics, $page.Text, $script:tabFont, $e.Bounds, $fore, [Windows.Forms.TextFormatFlags]'HorizontalCenter, VerticalCenter, NoPadding')
         $b.Dispose(); $pen.Dispose()
     })
 }
@@ -4625,6 +4716,7 @@ function Update-GlanceTiles {
     $prefix = 'Shard Console'
     if ($script:dry) { $prefix = 'Shard Console - DRY RUN' }
     if ($script:ui.Form) { $script:ui.Form.Text = $prefix + ' - ' + ($titleBits -join ' | ') }
+    Update-TileFit
 }
 
 function Set-TileLook {
@@ -4635,6 +4727,118 @@ function Set-TileLook {
     $Tile.Detail.ForeColor = $cols[1]
     $Tile.Word.Text = $Glance.Title + ': ' + $Glance.Word
     $Tile.Detail.Text = $Glance.Detail
+    Update-TileFit
+}
+
+function Get-TileFitFont {
+    # The largest size from $Size down to $Floor (0.25 point steps) at which $Text fits $Width, and $Height when
+    # it is not 0 (wrapping at word breaks). The floor when none does.
+    param([string]$Text, [string]$Family, [single]$Size, [single]$Floor, [Drawing.FontStyle]$Style, [int]$Width, [int]$Height = 0)
+    $flags = [Windows.Forms.TextFormatFlags]'WordBreak'
+    if (-not $Height) { $flags = [Windows.Forms.TextFormatFlags]'SingleLine' }
+    for ($s = $Size; $s -ge $Floor; $s -= 0.25) {
+        $f = New-Object Drawing.Font($Family, [single]$s, $Style)
+        $m = [Windows.Forms.TextRenderer]::MeasureText($Text, $f, (New-Object Drawing.Size($Width, 0)), $flags)
+        if ($m.Width -le $Width -and (-not $Height -or $m.Height -le $Height)) { return $f }
+        $f.Dispose()
+    }
+    New-Object Drawing.Font($Family, [single]$Floor, $Style)
+}
+
+function Update-CaptionFit {
+    # cc-P87, UO only: a wide caption (made 1,100 px wide by New-Caption) wraps to its page's width instead of running
+    # past it when the window is narrower than that.
+    $tabs = $script:ui.Tabs
+    if (-not $tabs -or -not $script:ui.Form -or -not $script:theme -or -not $script:theme.Chrome) { return }
+    $stack = New-Object System.Collections.Stack
+    foreach ($pg in $tabs.TabPages) { $stack.Push($pg) }
+    while ($stack.Count) {
+        $x = $stack.Pop()
+        if ($x -is [Windows.Forms.Label] -and $x.MaximumSize.Width -ge 1000) {
+            $w = [math]::Max(300, [math]::Min(1100, $script:ui.Form.ClientSize.Width - 50))
+            if ($x.MaximumSize.Width -ne $w) { $x.MaximumSize = New-Object Drawing.Size($w, 0) }
+        }
+        foreach ($k in $x.Controls) { $stack.Push($k) }
+    }
+}
+
+function Update-TileFit {
+    # cc-P87, UO only (Plain keeps its fixed row of six, as before): no tile ever clips. Six across while every
+    # tile's buttons fit a sixth of the width, otherwise three across in two rows. Then in each tile the title
+    # shrinks toward Fonts.TileFloor and wraps onto a second line only if it still does not fit, the buttons wrap
+    # onto a second row if they must, and the detail shrinks toward Fonts.DetailFloor until it fits what is left.
+    $g = $script:ui.Glance
+    $t = $script:theme
+    if (-not $g -or -not $t -or -not $t.Chrome -or $script:tileFitting) { return }
+    $script:tileFitting = $true
+    try {
+        $tiles = @(@($script:ui.Tiles) + @($script:ui.NetTile, $script:ui.AutopilotTile, $script:ui.PlayTestTile) | Where-Object { $_ })
+        if ($g.ClientSize.Width -le 0) { return }
+        # The widest row of buttons a tile holds, unwrapped; a tile is its 4 px margins and a 1 px border wider.
+        $need = 0
+        foreach ($tile in $tiles) {
+            foreach ($bar in @($tile.Panel.Controls | Where-Object { $_ -is [Windows.Forms.FlowLayoutPanel] })) {
+                $w = $bar.Padding.Horizontal
+                foreach ($k in $bar.Controls) { $w += $k.PreferredSize.Width + $k.Margin.Horizontal }
+                if ($w -gt $need) { $need = $w }
+            }
+        }
+        $cols = 6
+        if (($g.ClientSize.Width / 6) - 10 -lt [math]::Max($need, 190)) { $cols = 3 }
+        $rows = [int](6 / $cols)
+        # Each row as tall as its tallest tile needs at full size (title, detail and buttons at this width), from 96
+        # to 130 px; past that the detail shrinks instead.
+        $colW = [int]($g.ClientSize.Width / $cols) - 10
+        $tall = 96
+        foreach ($tile in $tiles) {
+            $tf = New-Object Drawing.Font($t.Fonts.Tile, [single]$t.Fonts.TileFloor, [Drawing.FontStyle]::Bold)
+            $h = [math]::Max(30, [Windows.Forms.TextRenderer]::MeasureText($tile.Word.Text, $tf, (New-Object Drawing.Size(($colW - $tile.Word.Padding.Horizontal - 2), 0)), [Windows.Forms.TextFormatFlags]'WordBreak').Height + $tile.Word.Padding.Vertical + 2)
+            $tf.Dispose()
+            $df = New-Object Drawing.Font($t.Fonts.Detail, [single]$t.Fonts.DetailSize)
+            $h += [Windows.Forms.TextRenderer]::MeasureText($tile.Detail.Text, $df, (New-Object Drawing.Size(($colW - $tile.Detail.Padding.Horizontal - 2), 0)), [Windows.Forms.TextFormatFlags]'WordBreak').Height + $tile.Detail.Padding.Vertical
+            $df.Dispose()
+            foreach ($bar in @($tile.Panel.Controls | Where-Object { $_ -is [Windows.Forms.FlowLayoutPanel] })) { $h += [math]::Max(30, $bar.GetPreferredSize((New-Object Drawing.Size($colW, 0))).Height) }
+            if ($h + 12 -gt $tall) { $tall = $h + 12 }
+        }
+        $tall = [math]::Min(130, $tall)
+        if ($script:ui.Grid -and $script:ui.Grid.RowStyles[0].Height -ne ($tall * $rows + 8)) {
+            $script:ui.Grid.RowStyles[0].Height = $tall * $rows + 8
+            $script:ui.Grid.PerformLayout()
+        }
+        if ($g.ColumnCount -ne $cols) {
+            $g.SuspendLayout()
+            $g.ColumnStyles.Clear(); $g.RowStyles.Clear()
+            $g.ColumnCount = $cols; $g.RowCount = $rows
+            foreach ($i in 1..$cols) { [void]$g.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', (100.0 / $cols)))) }
+            foreach ($i in 1..$rows) { [void]$g.RowStyles.Add((New-Object Windows.Forms.RowStyle('Percent', (100.0 / $rows)))) }
+            for ($i = 0; $i -lt $tiles.Count; $i++) {
+                $g.SetCellPosition($tiles[$i].Panel, (New-Object Windows.Forms.TableLayoutPanelCellPosition(($i % $cols), [math]::Floor($i / $cols))))
+            }
+            $g.ResumeLayout($true)
+            if ($script:ui.Grid) { $script:ui.Grid.PerformLayout() }
+        }
+        $bold = [Drawing.FontStyle]::Bold
+        foreach ($tile in $tiles) {
+            $inner = $tile.Panel.ClientSize.Width
+            if ($inner -le 0) { continue }
+            $word = $tile.Word
+            $ww = $inner - $word.Padding.Horizontal - 2
+            $f = Get-TileFitFont $word.Text $t.Fonts.Tile $t.Fonts.TileSize $t.Fonts.TileFloor $bold $ww
+            if ($word.Font.Size -ne $f.Size) { $word.Font = $f } else { $f.Dispose() }
+            $one = [Windows.Forms.TextRenderer]::MeasureText($word.Text, $word.Font, (New-Object Drawing.Size($ww, 0)), [Windows.Forms.TextFormatFlags]'WordBreak')
+            $word.Height = [math]::Max(30, $one.Height + $word.Padding.Vertical + 2)
+            $barH = 0
+            foreach ($bar in @($tile.Panel.Controls | Where-Object { $_ -is [Windows.Forms.FlowLayoutPanel] })) {
+                $bar.Height = [math]::Max(30, $bar.GetPreferredSize((New-Object Drawing.Size($inner, 0))).Height)
+                $barH += $bar.Height
+            }
+            $d = $tile.Detail
+            $dw = $inner - $d.Padding.Horizontal - 2
+            $dh = $tile.Panel.ClientSize.Height - $word.Height - $barH - $d.Padding.Vertical
+            $f = Get-TileFitFont $d.Text $t.Fonts.Detail $t.Fonts.DetailSize $t.Fonts.DetailFloor ([Drawing.FontStyle]::Regular) $dw ([math]::Max($dh, 1))
+            if ($d.Font.Size -ne $f.Size) { $d.Font = $f } else { $f.Dispose() }
+        }
+    } finally { $script:tileFitting = $false }
 }
 
 function Update-AutopilotView {
@@ -5321,6 +5525,9 @@ function New-ConsoleForm {
     [void]$grid.RowStyles.Add((New-Object Windows.Forms.RowStyle('Percent', 48)))
     [void]$grid.RowStyles.Add((New-Object Windows.Forms.RowStyle('Percent', 32)))
     [void]$grid.RowStyles.Add((New-Object Windows.Forms.RowStyle('Percent', 20)))
+    # cc-P87, UO only: the one column is the window's width. Without a style it grows to its widest caption
+    # (1,100 px), so below that the tiles' third column and the bars ran off the right edge. Plain is left as it was.
+    if ($script:theme.Chrome) { [void]$grid.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 100))) }
 
     # at a glance: what is running, big enough to read from across the room
     $glance = New-Object Windows.Forms.TableLayoutPanel
@@ -5329,6 +5536,12 @@ function New-ConsoleForm {
     $glance.ColumnCount = 6
     $glance.Margin = New-Object Windows.Forms.Padding(0)
     foreach ($i in 1..6) { [void]$glance.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 16.66))) }
+    # cc-P87: in UO the tiles wrap to two rows rather than clip (Update-TileFit); Plain keeps one row of six.
+    $script:ui.Glance = $glance
+    $script:ui.Grid = $grid
+    $glance.Add_Resize({ Update-TileFit })
+    $form.Add_Resize({ Update-CaptionFit })
+    $form.Add_Shown({ Update-TileFit; Update-CaptionFit })
     $script:ui.Tiles = @()
     $col = 0
     foreach ($title in @('LIVE', 'TEST', 'STATUS PUBLISHER')) {
@@ -5451,6 +5664,8 @@ function New-ConsoleForm {
         $script:ui.Look = $look
         $script:ui.OwnWindows = $own
     }
+    # cc-P87, UO only: the bar wraps onto a second line, and grows to show it, when the window is too narrow for it.
+    if ($script:theme.Chrome) { $bar.AutoSize = $true; $bar.AutoSizeMode = 'GrowAndShrink'; $bar.MinimumSize = New-Object Drawing.Size(0, 34) }
     $status = New-Object Windows.Forms.RichTextBox
     $status.Dock = 'Fill'
     $status.ReadOnly = $true
@@ -5880,7 +6095,12 @@ function New-ConsoleForm {
         # The title in gold, the trim kept gold (the walker made both stone-colored).
         $script:ui.Header.Controls[1].ForeColor = ConvertTo-DrawingColor $script:theme.Chrome.Gold
         $script:ui.Header.Controls[2].BackColor = ConvertTo-DrawingColor $script:theme.Chrome.Gold
+        # cc-P87: the header on the same backing as the groups, so the title does not sit on the stone's speckle.
+        $bk = $script:theme.Chrome
+        $script:ui.Header.BackColor = [Drawing.Color]::FromArgb($bk.BackingAlpha, $bk.Backing[0], $bk.Backing[1], $bk.Backing[2])
     }
+    Update-TileFit
+    Update-CaptionFit
     # cc-P84: a tooltip on every button, tile, tab, box and field, in both looks.
     $tips = New-Object Windows.Forms.ToolTip
     $tips.AutoPopDelay = 20000
