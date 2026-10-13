@@ -2891,6 +2891,19 @@ Fact 'P83_NoFileOrABadOneIsGreyUnknownNeverRed' {
     Assert-True ((Get-PlayTestGlance $null).Detail -match 'Import-PlayTests\.ps1') 'says how to make one'
 }
 
+Fact 'P90_NewIdeasAreAddedToThePlayTestsDetailNeverToItsWord' {
+    $ideas = '{ "schema": 1, "nextId": 4, "ideas": [ { "id": "I-001", "status": "new" }, { "id": "I-002", "status": "taken" }, { "id": "I-003", "status": "new" } ] }'
+    $plain = Get-PlayTestGlance $ptReal
+    $with = Get-PlayTestGlance $ptReal -IdeasText $ideas
+    Assert-Equal $plain.Word $with.Word 'the word is the play tests alone'
+    Assert-Equal $plain.Color $with.Color
+    Assert-Equal ($plain.Detail + '; 2 new ideas') $with.Detail
+    Assert-Equal ($plain.Detail + '; 1 new idea') (Get-PlayTestGlance $ptReal -IdeasText '{ "schema": 1, "ideas": [ { "id": "I-009", "status": "new" } ] }').Detail
+    foreach ($bad in @($null, '{ "schema": 1, "ideas": [', '{ "schema": 2, "ideas": [ { "status": "new" } ] }', '{ "schema": 1, "ideas": [] }')) {
+        Assert-Equal $plain.Detail (Get-PlayTestGlance $ptReal -IdeasText $bad).Detail 'no ideas, no file or a bad one: nothing added'
+    }
+}
+
 Fact 'P83_TheLinksOpenTheTwoPagesAndNothingElse' {
     foreach ($k in @('links.playtests', 'links.dashboard', 'links.status')) {
         $p = @(Get-ActionPlan -Action $k -Config $config)

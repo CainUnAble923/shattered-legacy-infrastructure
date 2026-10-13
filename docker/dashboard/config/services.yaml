@@ -94,6 +94,10 @@
             - field: passed
               label: Passed
               format: number
+            # cc-P90: new feature ideas waiting for the features chat.
+            - field: ideas_new
+              label: New ideas
+              format: number
 
     # cc-P85. The shard status dashboard (shard-migration/dashboard.html), served by sl-play-tests at /status. LAN
     # only, like the play-test page; refreshed by tools/progress.py on every commit.

@@ -56,6 +56,23 @@ form input { width: 100%; min-height: 44px; margin: 4px 0 8px; padding: 8px; bor
 .empty, .err { color: var(--muted); padding: 24px 0; }
 .err { color: var(--fail); }
 footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
+/* cc-P90: the Ideas tab */
+.count.ideas { color: var(--accent); cursor: pointer; }
+.badge { display: inline-block; min-width: 1.4em; padding: 0 6px; border-radius: 999px; background: var(--accent); color: var(--bg); font-size: 13px; }
+.filters button[aria-pressed="true"] .badge { background: var(--bg); color: var(--accent); }
+form textarea, form select { width: 100%; min-height: 44px; margin: 4px 0 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+form textarea { min-height: 88px; resize: vertical; }
+.row2 { display: flex; gap: 8px; flex-wrap: wrap; } .row2 > div { flex: 1 1 220px; }
+.hint { font-size: 14px; color: var(--later); background: var(--later-bg); border-radius: 6px; padding: 6px 8px; margin: 0 0 8px; }
+.hint:empty { display: none; }
+.idea { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--accent); border-radius: 8px; padding: 10px 12px; margin: 8px 0; overflow-wrap: anywhere; }
+.idea.taken { border-left-color: var(--later); } .idea.became { border-left-color: var(--pass); } .idea.declined { border-left-color: var(--muted); opacity: .85; }
+.idea .desc { white-space: pre-wrap; margin-top: 4px; }
+.copybar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+#copy-out { width: 100%; min-height: 120px; font: 13px ui-monospace, Consolas, monospace; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.fq { margin: 2px 0; padding: 6px 8px; border-radius: 6px; } .fq:target { background: var(--later-bg); }
+.fq b { font-weight: 700; } .fq small { color: var(--muted); }
+#ideas button { min-height: 44px; min-width: 64px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -72,6 +89,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
     <button data-f="open" aria-pressed="true">Open</button>
     <button data-f="fail" aria-pressed="false">Failed</button>
     <button data-f="all" aria-pressed="false">All</button>
+    <button data-f="ideas" aria-pressed="false">Ideas <span class="badge" id="ideas-n" hidden></span></button>
   </div>
 </header>
 <main>
@@ -82,6 +100,29 @@ footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
     <label for="expect">What should happen</label><input id="expect" maxlength="500">
     <button type="submit">Add</button>
   </form>
+  <!-- cc-P90: the feature-ideas inbox. The features chat turns ideas into F-NN entries; this page never edits docs/. -->
+  <section id="ideas" hidden>
+    <form id="idea-form" autocomplete="off">
+      <h2>New idea</h2>
+      <label for="i-title">Idea (a short title)</label><input id="i-title" maxlength="140" required>
+      <div class="hint" id="i-hint" aria-live="polite"></div>
+      <div class="row2">
+        <div><label for="i-area">Area</label><select id="i-area"><option value="">(none)</option></select></div>
+        <div><label for="i-pt">From play test (optional)</label><input id="i-pt" maxlength="12" placeholder="P71-3"></div>
+      </div>
+      <label for="i-desc">Details (optional)</label><textarea id="i-desc" maxlength="2000"></textarea>
+      <button type="submit">Add idea</button>
+    </form>
+    <div class="copybar">
+      <button type="button" id="copy-new">Copy new ideas</button>
+      <span id="copy-msg"></span>
+    </div>
+    <textarea id="copy-out" readonly hidden aria-label="New ideas as text"></textarea>
+    <div id="idea-list"></div>
+    <h2>Already in the feature queue <small>(docs/feature-queue.md, read only)</small></h2>
+    <input id="fq-filter" placeholder="Filter by words or F-number" aria-label="Filter the feature queue">
+    <div id="fq"></div>
+  </section>
   <footer id="foot"></footer>
 </main>
 <script>
@@ -113,13 +154,21 @@ function shown(it) {
 }
 
 function render() {
+  var ideasView = filter === 'ideas';
+  document.getElementById('ideas').hidden = !ideasView;
+  document.getElementById('list').hidden = ideasView;
+  document.getElementById('add').hidden = ideasView;
+  Array.prototype.forEach.call(document.querySelectorAll('.filters button'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-f') === filter ? 'true' : 'false'); });
+  renderIdeaCount();
+  if (ideasView) renderIdeas();
   if (!data) return;  // a filter clicked before the first load: load() renders when it arrives
   var s = data.summary;
   document.getElementById('counts').innerHTML =
     '<span class="count">' + s.open + ' open</span>' +
     '<span class="count fail">' + s.failed + ' failed' + (s.unloggedFails ? ' (' + s.unloggedFails + ' not logged)' : '') + '</span>' +
     '<span class="count pass">' + s.passed + ' passed</span>' +
-    (s.later ? '<span class="count">' + s.later + ' later</span>' : '');
+    (s.later ? '<span class="count">' + s.later + ' later</span>' : '') +
+    (ideas && ideas.summary.new ? '<span class="count ideas" data-go="ideas">' + ideas.summary.new + ' new idea' + (ideas.summary.new === 1 ? '' : 's') + '</span>' : '');
   Array.prototype.forEach.call(document.querySelectorAll('.filters button'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-f') === filter ? 'true' : 'false'); });
   var groups = {};
   data.items.forEach(function (it) { if (shown(it)) { (groups[group(it)] = groups[group(it)] || []).push(it); } });
@@ -157,6 +206,7 @@ function card(it) {
   if (it.status !== 'later') h += '<button class="later" data-id="' + esc(it.id) + '" data-s="later">Later</button>';
   if (it.status !== 'open') h += '<button data-id="' + esc(it.id) + '" data-s="open">Reopen</button>';
   if (it.status === 'fail') h += '<button data-id="' + esc(it.id) + '" data-s="bug">Bug id</button>';
+  h += '<button data-idea-from="' + esc(it.id) + '" title="Jot a feature idea linked to this play test">Idea from this</button>';
   return h + '</div></div>';
 }
 
@@ -165,18 +215,25 @@ function api(path, body) {
     .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
 }
 function load() {
-  return api('/api/items').then(function (j) { data = j; render(); })
+  var a = api('/api/items').then(function (j) { data = j; })
     .catch(function (e) { document.getElementById('list').innerHTML = '<p class="err">Could not load: ' + esc(e.message) + '</p>'; });
+  // cc-P90: the ideas load beside the items; an older service without /api/ideas says so on the Ideas tab only.
+  var b = api('/api/ideas').then(function (j) { ideas = j; ideasError = ''; })
+    .catch(function (e) { ideasError = e.message; });
+  return Promise.all([a, b]).then(render);
 }
 
 document.querySelector('.filters').addEventListener('click', function (e) {
-  var f = e.target.getAttribute('data-f');
+  var t = e.target.closest('button');
+  var f = t && t.getAttribute('data-f');
   if (!f) return;
   filter = f;
   try { localStorage.setItem('pt-filter', f); } catch (x) {}
   render();
 });
 document.getElementById('list').addEventListener('click', function (e) {
+  var from = e.target.closest('button[data-idea-from]');
+  if (from) { ideaFrom(from.getAttribute('data-idea-from')); return; }
   var b = e.target.closest('button[data-id]');
   if (!b) return;
   var id = b.getAttribute('data-id'), s = b.getAttribute('data-s');
@@ -203,9 +260,160 @@ document.getElementById('add').addEventListener('submit', function (e) {
   api('/api/manual', { what: w.value, expect: x.value }).then(function () { w.value = ''; x.value = ''; return load(); })
     .catch(function (err) { window.alert('Not added: ' + err.message); });
 });
+// --- cc-P90: the Ideas tab ---------------------------------------------------------------------------
+var ideas = null, ideasError = '', editing = '';
+var STOP = {};
+('with that this from have when what into than then they them their there should would could about after before ' +
+ 'also more less some only just make made does need needs like want most much very each other over under onto your ' +
+ 'ours were been being idea ideas feature features').split(' ').forEach(function (w) { STOP[w] = 1; });
+function words(t) {
+  var out = {};
+  String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').split(' ').forEach(function (w) { if (w.length >= 4 && !STOP[w]) out[w] = 1; });
+  return out;
+}
+// The duplicate hint: every feature-queue entry and idea that shares two or more significant words (4+ letters, not
+// a common word) with the title being typed, or one when the title has only one or two such words. Top three.
+function dupHint(title) {
+  var w = words(title), n = Object.keys(w).length;
+  if (!n || !ideas) return [];
+  var need = n <= 2 ? 1 : 2, hits = [];
+  function score(id, t, where) {
+    var k = 0, x = words(t);
+    for (var key in x) if (w[key]) k++;
+    if (k >= need) hits.push({ id: id, title: t, where: where, k: k });
+  }
+  (ideas.features || []).forEach(function (f) { score(f.id, f.title, f.section); });
+  (ideas.ideas || []).forEach(function (i) { score(i.id, i.title, ideas.statuses[i.status] || i.status); });
+  return hits.sort(function (a, b) { return b.k - a.k; }).slice(0, 3);
+}
+function renderIdeaCount() {
+  var n = ideas && ideas.summary ? ideas.summary.new : 0, el = document.getElementById('ideas-n');
+  el.textContent = n; el.hidden = !n;
+  if (window.SLMenu && window.SLMenu.setBadge) window.SLMenu.setBadge('playtests', n, n + ' new idea' + (n === 1 ? '' : 's'));
+}
+function fLink(fid) { return '<a href="#f-' + esc(fid.toLowerCase()) + '">' + esc(fid) + '</a>'; }
+function ideaCard(it) {
+  var chips = ['<span class="chip">' + esc(it.id) + '</span>'];
+  if (it.area) chips.push('<span class="chip">' + esc(it.area) + '</span>');
+  chips.push('<span class="chip">' + esc((it.createdAt || '').slice(0, 10)) + '</span>');
+  var st = it.status === 'became' ? 'became ' + fLink(it.feature) : esc(ideas.statuses[it.status] || it.status);
+  chips.push('<span class="chip ' + (it.status === 'became' ? 'st-pass' : it.status === 'taken' ? 'st-later' : '') + '">' + st + '</span>');
+  if (it.playtest) chips.push('<span class="chip">from <a href="#i-' + esc(it.playtest) + '" data-show="' + esc(it.playtest) + '">' + esc(it.playtest) + '</a></span>');
+  var h = '<div class="idea ' + esc(it.status) + '" id="idea-' + esc(it.id) + '"><div class="meta">' + chips.join('') + '</div>';
+  if (editing === it.id) {
+    var opts = '<option value="">(none)</option>' + ideas.areas.map(function (a) { return '<option' + (a === it.area ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join('');
+    return h + '<form class="edit" data-edit="' + esc(it.id) + '"><label>Idea</label><input name="title" maxlength="140" required value="' + esc(it.title) + '">' +
+      '<div class="row2"><div><label>Area</label><select name="area">' + opts + '</select></div><div><label>From play test</label><input name="playtest" maxlength="12" value="' + esc(it.playtest) + '"></div></div>' +
+      '<label>Details</label><textarea name="description" maxlength="2000">' + esc(it.description) + '</textarea>' +
+      '<div class="actions"><button type="submit">Save</button><button type="button" data-a="cancel">Cancel</button></div></form></div>';
+  }
+  h += '<div class="label">' + esc(it.title) + '</div>';
+  if (it.description) h += '<div class="desc">' + esc(it.description) + '</div>';
+  if (it.status === 'declined' && it.reason) h += '<div class="note ok">Declined: ' + esc(it.reason) + '</div>';
+  h += '<div class="actions">';
+  if (it.status !== 'taken') h += '<button data-a="taken" data-i="' + esc(it.id) + '">Taken to features chat</button>';
+  if (it.status !== 'became') h += '<button class="pass" data-a="became" data-i="' + esc(it.id) + '">Became F-NN</button>';
+  if (it.status !== 'declined') h += '<button class="fail" data-a="declined" data-i="' + esc(it.id) + '">Declined</button>';
+  if (it.status !== 'new') h += '<button data-a="new" data-i="' + esc(it.id) + '">Back to new</button>';
+  h += '<button data-a="edit" data-i="' + esc(it.id) + '">Edit</button><button data-a="delete" data-i="' + esc(it.id) + '">Delete</button>';
+  return h + '</div></div>';
+}
+function renderIdeas() {
+  var list = document.getElementById('idea-list');
+  if (ideasError || !ideas) {
+    list.innerHTML = '<p class="err">' + (ideasError ? 'Ideas are not available: ' + esc(ideasError) + '. The service needs a restart (Start-TestQueue.ps1).' : 'Loading...') + '</p>';
+    return;
+  }
+  var sel = document.getElementById('i-area');
+  if (sel.options.length === 1) ideas.areas.forEach(function (a) { var o = document.createElement('option'); o.textContent = a; sel.appendChild(o); });
+  var items = ideas.ideas.slice().sort(function (a, b) { return parseInt(b.id.slice(2), 10) - parseInt(a.id.slice(2), 10); });
+  list.innerHTML = items.length ? items.map(ideaCard).join('') : '<p class="empty">No ideas yet. Add one above, or use "Idea from this" on a play test.</p>';
+  renderQueue();
+}
+function renderQueue() {
+  var q = (document.getElementById('fq-filter').value || '').toLowerCase().trim(), out = [], last = '';
+  (ideas.features || []).forEach(function (f) {
+    var line = (f.id + ' ' + f.title).toLowerCase();
+    if (q && line.indexOf(q) < 0) return;
+    if (f.section !== last) { out.push('<h3>' + esc(f.section) + '</h3>'); last = f.section; }
+    out.push('<div class="fq" id="f-' + esc(f.id.toLowerCase()) + '"><b>' + esc(f.id) + '</b> ' + esc(f.title) +
+      ' <small>' + (f.added ? 'added ' + esc(f.added) : '') + (f.batched.length ? '; batched in ' + esc(f.batched.join(', ')) : '') + '</small></div>');
+  });
+  document.getElementById('fq').innerHTML = out.length ? out.join('') : '<p class="empty">No entry matches.</p>';
+}
+function showIdeas() {
+  filter = 'ideas';
+  try { localStorage.setItem('pt-filter', filter); } catch (x) {}
+  render();
+}
+function ideaFrom(pid) {
+  showIdeas();
+  document.getElementById('i-pt').value = pid;
+  // Below the sticky header, which is tall on a phone; focus without the browser's own scroll first.
+  var form = document.getElementById('idea-form'), head = document.querySelector('header');
+  window.scrollTo(0, form.getBoundingClientRect().top + window.pageYOffset - head.offsetHeight - 8);
+  document.getElementById('i-title').focus({ preventScroll: true });
+}
+function ideaCall(path, body) { return api(path, body).then(load).catch(function (x) { window.alert('Not saved: ' + x.message); }); }
+document.getElementById('counts').addEventListener('click', function (e) { if (e.target.closest('[data-go="ideas"]')) showIdeas(); });
+document.getElementById('i-title').addEventListener('input', function () {
+  var hits = dupHint(this.value);
+  document.getElementById('i-hint').innerHTML = hits.length ? 'Similar: ' + hits.map(function (h) {
+    return (/^F-/.test(h.id) ? fLink(h.id) : esc(h.id)) + ' ' + esc(h.title) + ' (' + esc(h.where) + ')';
+  }).join('; ') : '';
+});
+document.getElementById('fq-filter').addEventListener('input', function () { if (ideas) renderQueue(); });
+document.getElementById('idea-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var t = document.getElementById('i-title'), d = document.getElementById('i-desc'), a = document.getElementById('i-area'), p = document.getElementById('i-pt');
+  api('/api/ideas/add', { title: t.value, description: d.value, area: a.value, playtest: p.value.trim() })
+    .then(function () { t.value = ''; d.value = ''; a.value = ''; p.value = ''; document.getElementById('i-hint').innerHTML = ''; return load(); })
+    .catch(function (x) { window.alert('Not added: ' + x.message); });
+});
+document.getElementById('idea-list').addEventListener('click', function (e) {
+  var show = e.target.closest('[data-show]');
+  if (show) {
+    e.preventDefault();
+    filter = 'all'; render();
+    var el = document.getElementById('i-' + show.getAttribute('data-show'));
+    if (el) el.scrollIntoView();
+    return;
+  }
+  var b = e.target.closest('button[data-a]');
+  if (!b) return;
+  var a = b.getAttribute('data-a'), id = b.getAttribute('data-i');
+  if (a === 'cancel') { editing = ''; renderIdeas(); return; }
+  if (a === 'edit') { editing = id; renderIdeas(); return; }
+  if (a === 'delete') { if (window.confirm('Delete ' + id + '? Its number is never reused.')) ideaCall('/api/ideas/delete', { id: id }); return; }
+  var body = { id: id, status: a };
+  if (a === 'became') { var f = window.prompt(id + ' became which feature? (for example F-44)', 'F-'); if (f === null) return; body.feature = f.trim(); }
+  if (a === 'declined') { var r = window.prompt(id + ' declined. One line: why?', ''); if (r === null) return; body.reason = r; }
+  ideaCall('/api/ideas/status', body);
+});
+document.getElementById('idea-list').addEventListener('submit', function (e) {
+  var f = e.target.closest('form[data-edit]');
+  if (!f) return;
+  e.preventDefault();
+  var body = { id: f.getAttribute('data-edit'), title: f.elements.title.value, area: f.elements.area.value, playtest: f.elements.playtest.value.trim(), description: f.elements.description.value };
+  api('/api/ideas/edit', body).then(function () { editing = ''; return load(); }).catch(function (x) { window.alert('Not saved: ' + x.message); });
+});
+document.getElementById('copy-new').addEventListener('click', function () {
+  var msg = document.getElementById('copy-msg'), box = document.getElementById('copy-out');
+  api('/api/ideas/copy').then(function (j) {
+    if (!j.text) { msg.textContent = 'No new ideas to copy.'; box.hidden = true; return; }
+    box.value = j.text; box.hidden = false; box.focus(); box.select();
+    var copied = false;
+    // The clipboard API needs https or localhost; on the LAN the selected box and execCommand do it.
+    try { copied = document.execCommand('copy'); } catch (x) {}
+    if (!copied && navigator.clipboard) { navigator.clipboard.writeText(j.text).then(function () { msg.textContent = 'Copied.'; }, function () {}); }
+    msg.textContent = copied ? 'Copied ' + j.ids.length + ' idea(s).' : 'Select the text below and copy it.';
+    if (window.confirm('Mark these ' + j.ids.length + ' idea(s) as taken to the features chat?')) ideaCall('/api/ideas/taken', { ids: j.ids });
+  }).catch(function (x) { msg.textContent = 'Could not copy: ' + x.message; });
+});
+
 load();
 // Refresh every 30 s, but never while something is being typed.
-setInterval(function () { var a = document.activeElement; if (!a || a.tagName !== 'INPUT') load(); }, 30000);
+setInterval(function () { var a = document.activeElement; if ((!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) && !editing) load(); }, 30000);
 </script>
 </body>
 </html>

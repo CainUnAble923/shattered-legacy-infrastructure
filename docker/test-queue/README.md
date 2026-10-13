@@ -22,6 +22,9 @@ and `D:\UO\shard-migration\tools\Import-PlayTests.ps1` runs it from the host.
 - `D:\UO\shard-migration\testing\play-tests.json`: every item and its result. Pretty-printed, stable key
   order, so git diffs read. The `summary` block at the top has the counts and every Fail.
 - `D:\UO\shard-migration\testing\SUMMARY.md`: the same, rewritten on every write, for the overseer.
+- `D:\UO\shard-migration\testing\feature-ideas.json` (cc-P90): the Ideas tab's inbox. Ids `I-NNN` come from a
+  stored counter and are never reused. The same atomic write, under its own lock (`feature-ideas.json.lock`).
+  The rules are in `D:\UO\shard-migration\tools\ideas.py`.
 
 Every write is under a lock file (`play-tests.json.lock`) and goes through a temp file and a rename. So two
 browser tabs, the service's own importer and `Import-PlayTests.ps1` on the host never lose each other's
@@ -33,11 +36,14 @@ results.
 |---|---|
 | `GET /nav.js` | the shared menu (cc-P88): Play tests, Shard status, Dashboard. The one source for all three pages; its `PAGES` table holds each page's address |
 | `GET /api/items` | the whole document |
-| `GET /api/summary` | `open`, `failed`, `passed`, `later`, `blocked`, `total`, `unloggedFails`, `generatedAt`. The dashboard's Play tests widget reads this |
+| `GET /api/summary` | `open`, `failed`, `passed`, `later`, `blocked`, `total`, `unloggedFails`, `generatedAt`, and `ideas_new` (cc-P90). The dashboard's Play tests widget reads this |
 | `POST /api/result` | `{"id", "status": "pass|fail|later|open", "note"}`; a fail needs a note |
 | `POST /api/bug` | `{"id", "bug": "D86"}`: the Fail is logged in `bug-list.md` |
 | `POST /api/manual` | `{"what", "expect"}`: adds an `M-NNN` item |
 | `POST /api/import` | runs the importer now |
+| `GET /api/ideas` | cc-P90: the ideas, their counts, the areas and statuses, and the F-NN entries of `docs/feature-queue.md` (read only) |
+| `GET /api/ideas/copy` | every `new` idea as plain text for the features chat, and their ids |
+| `POST /api/ideas/add`, `/edit`, `/status`, `/taken`, `/delete` | change an idea |
 
 ## Run it by hand (testing)
 

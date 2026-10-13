@@ -2828,7 +2828,8 @@ function Get-AutopilotPlan {
 function Get-PlayTestGlance {
     # The PLAY TESTS tile. Pure: the file's text in ($null when there is no file), a tile out. The counts
     # come from the items, not from the summary block, so a hand-edited file cannot disagree with itself.
-    param($JsonText, [string]$ReadError)
+    # cc-P90: -IdeasText is feature-ideas.json beside it; its 'new' ideas are added to the detail, never to the word.
+    param($JsonText, [string]$ReadError, $IdeasText)
     $t = [ordered]@{ Title = 'PLAY TESTS'; Word = 'UNKNOWN'; Color = 'gray'; Detail = '' }
     if ($ReadError) { $t.Detail = 'play-tests.json could not be read (' + $ReadError + ')'; return [pscustomobject]$t }
     if ($null -eq $JsonText) { $t.Detail = 'no play-tests.json yet: start sl-play-tests or run Import-PlayTests.ps1'; return [pscustomobject]$t }
@@ -2848,9 +2849,23 @@ function Get-PlayTestGlance {
     $t.Detail = [string]$open + ' open, ' + $fails.Count + ' failed'
     if ($unlogged) { $t.Detail += ' (' + $unlogged + ' not logged)' }
     $t.Detail += ', ' + $passed + ' passed'
+    $newIdeas = Get-NewIdeaCount $IdeasText
+    if ($newIdeas) { $t.Detail += '; ' + $newIdeas + ' new idea' + $(if ($newIdeas -eq 1) { '' } else { 's' }) }
     if ($unlogged) { $t.Color = 'amber'; $t.Word = [string]$unlogged + ' FAIL NOT LOGGED' }
     elseif ($open -eq 0) { $t.Color = 'green'; $t.Word = 'ALL TESTED' }
     [pscustomobject]$t
+}
+
+function Get-NewIdeaCount {
+    # cc-P90: how many ideas in feature-ideas.json are still 'new'. 0 for no file or a file that cannot be read: the
+    # count is a hint on the tile, never a reason to call the tile unknown.
+    param($JsonText)
+    if ($null -eq $JsonText) { return 0 }
+    try {
+        $doc = ([string]$JsonText) | ConvertFrom-Json
+        if ($null -eq $doc -or $doc.schema -ne 1) { return 0 }
+        @($doc.ideas | Where-Object { $_.status -eq 'new' }).Count
+    } catch { 0 }
 }
 
 function Get-LinkPlan {
@@ -3542,7 +3557,13 @@ function Get-PlayTestGlanceNow {
     $text = $null; $err = $null
     try { if (Test-Path -LiteralPath $Config.PlayTestsFile -PathType Leaf) { $text = [IO.File]::ReadAllText($Config.PlayTestsFile) } }
     catch { $err = $_.Exception.Message }
-    Get-PlayTestGlance -JsonText $text -ReadError $err
+    # cc-P90: feature-ideas.json sits beside play-tests.json.
+    $ideas = $null
+    try {
+        $ip = Join-Path (Split-Path -Parent $Config.PlayTestsFile) 'feature-ideas.json'
+        if (Test-Path -LiteralPath $ip -PathType Leaf) { $ideas = [IO.File]::ReadAllText($ip) }
+    } catch { }
+    Get-PlayTestGlance -JsonText $text -ReadError $err -IdeasText $ideas
 }
 
 function Get-AutopilotViewNow {

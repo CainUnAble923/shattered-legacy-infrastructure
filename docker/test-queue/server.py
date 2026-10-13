@@ -11,6 +11,14 @@ Serves html/index.html and a small JSON API over D:\\UO\\shard-migration\\testin
   POST /api/bug          {"id": "P71-3", "bug": "D86"}  marks a Fail as logged in the bug list
   POST /api/manual       {"what": "...", "expect": "..."}  adds an M-NNN item
   POST /api/import       runs the importer now
+  cc-P90, the feature-ideas inbox (shard-migration/tools/ideas.py; data testing/feature-ideas.json):
+  GET  /api/ideas        {ideas, nextId, summary, areas, statuses, features (docs/feature-queue.md, read only)}
+  GET  /api/ideas/copy   every 'new' idea as plain text for the features chat ({"text", "ids"})
+  POST /api/ideas/add    {"title", "description", "area", "playtest"}
+  POST /api/ideas/edit   {"id", and any of "title", "description", "area", "playtest"}
+  POST /api/ideas/status {"id", "status": "new|taken|became|declined", "feature": "F-NN", "reason"}
+  POST /api/ideas/taken  {"ids": [...]}  marks copied ideas 'taken to features chat'
+  POST /api/ideas/delete {"id"}  (the id is never reused)
 
 All parsing and merging is in shard-migration/tools/playtests.py, the same file Import-PlayTests.ps1 runs, so
 there is one set of rules. This file only serves. The importer runs on start and every IMPORT_SECONDS, so a
@@ -41,6 +49,7 @@ args = ap.parse_args()
 
 sys.path.insert(0, args.lib)
 import playtests as pt  # noqa: E402
+import ideas  # noqa: E402  (cc-P90)
 
 STATE = {"lastImport": "", "lastImportError": ""}
 MAX_BODY = 16 * 1024
@@ -126,7 +135,29 @@ class Handler(BaseHTTPRequestHandler):
                 s = read_doc()["summary"]
             except Exception as e:
                 return self.send_json(500, {"error": str(e)})
-            return self.send_json(200, {k: s[k] for k in ("open", "failed", "passed", "later", "blocked", "total", "unloggedFails", "generatedAt")})
+            out = {k: s[k] for k in ("open", "failed", "passed", "later", "blocked", "total", "unloggedFails", "generatedAt")}
+            # cc-P90: new ideas, for the Homepage widget, the shared menu's badge and the Shard Console.
+            try:
+                out["ideas_new"] = ideas.summary(ideas.load(args.root))["new"]
+            except Exception:
+                out["ideas_new"] = None
+            return self.send_json(200, out)
+        if p == "/api/ideas":
+            try:
+                doc = ideas.load(args.root)
+            except Exception as e:
+                return self.send_json(500, {"error": str(e)})
+            doc = ideas.ordered_doc(doc)
+            doc.update(summary=ideas.summary(doc), areas=list(ideas.AREAS), statuses=ideas.STATUSES,
+                       features=ideas.read_feature_queue(args.root))
+            return self.send_json(200, doc)
+        if p == "/api/ideas/copy":
+            try:
+                doc = ideas.load(args.root)
+                text = ideas.copy_text(doc, read_doc())
+            except Exception as e:
+                return self.send_json(500, {"error": str(e)})
+            return self.send_json(200, {"text": text, "ids": [i["id"] for i in doc["ideas"] if i["status"] == "new"]})
         return self.send_json(404, {"error": "not found"})
 
     def do_POST(self):
@@ -149,6 +180,28 @@ class Handler(BaseHTTPRequestHandler):
                 item = pt.add_manual(args.root, str(body.get("what", "")), str(body.get("expect", "")))
                 log("manual %s: %s" % (item["id"], item["what"]))
                 return self.send_json(200, {"item": item})
+            if p == "/api/ideas/add":
+                it = ideas.add(args.root, str(body.get("title", "")), str(body.get("description", "")),
+                               str(body.get("area", "")), str(body.get("playtest", "")))
+                log("idea %s: %s" % (it["id"], it["title"]))
+                return self.send_json(200, {"idea": it})
+            if p == "/api/ideas/edit":
+                kw = {k: str(body[k]) for k in ("title", "description", "area", "playtest") if k in body}
+                return self.send_json(200, {"idea": ideas.edit(args.root, str(body.get("id", "")), **kw)})
+            if p == "/api/ideas/status":
+                it = ideas.set_status(args.root, str(body.get("id", "")), str(body.get("status", "")),
+                                      str(body.get("feature", "")), str(body.get("reason", "")))
+                log("idea %s = %s %s%s" % (it["id"], it["status"], it["feature"], it["reason"]))
+                return self.send_json(200, {"idea": it})
+            if p == "/api/ideas/taken":
+                ids = body.get("ids", [])
+                if not isinstance(ids, list):
+                    raise ValueError("ids must be a list")
+                return self.send_json(200, {"taken": ideas.mark_taken(args.root, [str(i) for i in ids])})
+            if p == "/api/ideas/delete":
+                gone = ideas.delete(args.root, str(body.get("id", "")))
+                log("idea %s deleted" % gone)
+                return self.send_json(200, {"deleted": gone})
             if p == "/api/import":
                 run_import()
                 return self.send_json(200, {"service": STATE})

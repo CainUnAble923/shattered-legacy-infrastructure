@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.11
+
+### Staff
+- The play-test page has an Ideas tab: jot a feature idea mid-session (or from any play test), see the existing feature queue to avoid duplicates, and copy the new ones for the features chat; the count of new ideas shows on the page, the menu, Homepage and the Shard Console.
+
 ## 2026.10.13.10
 
 ### Staff

@@ -8,7 +8,7 @@
 
    A fourth page is one more row in PAGES. Moving a page (to Haven, say) is that page's row: set its host, and its
    port and path if they change. host null means "the host the browser used to reach this page", so the links work
-   from a phone on the LAN and never point at localhost. A page with no host at all (file:///) uses FALLBACK_HOST.
+   from a phone on the LAN, never only from this PC. A page with no host at all (file:///) uses FALLBACK_HOST.
    Plain script, no build step, no dependencies. ASCII only. */
 (function () {
   'use strict';
@@ -30,7 +30,10 @@
     'color:#f1f4f7;text-decoration:none;white-space:nowrap}' +
     '#sl-menu a:hover,#sl-menu a:focus-visible{background:#2d3b4a;outline:none}' +
     '#sl-menu a:focus-visible{box-shadow:0 0 0 2px #d9a93a}' +
-    '#sl-menu a[aria-current="page"]{background:#d9a93a;color:#1b2530}';
+    '#sl-menu a[aria-current="page"]{background:#d9a93a;color:#1b2530}' +
+    '#sl-menu .sl-badge{margin-left:6px;min-width:1.4em;padding:1px 6px;border-radius:999px;background:#d9a93a;' +
+    'color:#1b2530;font-size:12px;text-align:center}' +
+    '#sl-menu a[aria-current="page"] .sl-badge{background:#1b2530;color:#d9a93a}';
 
   function here() {
     var l = window.location;
@@ -94,9 +97,33 @@
     else document.body.insertBefore(nav, document.body.firstChild);
   }
 
+  // cc-P90: a small count beside a page's label (new feature ideas beside Play tests). A page sets its own; n 0 clears.
+  function setBadge(pageKey, n, title) {
+    var a = document.querySelector('#sl-menu a[data-sl-page="' + pageKey + '"]');
+    if (!a) return;
+    var b = a.querySelector('.sl-badge');
+    if (!n) { if (b) a.removeChild(b); return; }
+    if (!b) { b = document.createElement('span'); b.className = 'sl-badge'; a.appendChild(b); }
+    b.textContent = String(n);
+    b.title = title || '';
+    a.setAttribute('aria-label', a.firstChild.nodeValue + ' (' + (title || n) + ')');
+  }
+
+  // Another page served by the same service as Play tests (Shard status at /status) asks it for the count. A page
+  // on another origin (Homepage) does not: it would need CORS on the API.
+  function fetchBadge(key) {
+    var pt = PAGES[0];
+    for (var i = 0; i < PAGES.length; i++) if (PAGES[i].key === 'playtests') pt = PAGES[i];
+    if (key === 'playtests' || !window.fetch || url(pt).indexOf(window.location.protocol + '//' + window.location.host + '/') !== 0) return;
+    fetch('/api/summary', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      if (j && j.ideas_new) setBadge('playtests', j.ideas_new, j.ideas_new + ' new idea' + (j.ideas_new === 1 ? '' : 's'));
+    }).catch(function () {});
+  }
+
   var tag = document.currentScript;
   var key = current(tag);
-  window.SLMenu = { pages: PAGES, url: url, fallbackHost: FALLBACK_HOST, current: key };
-  if (document.body) mount(key);
-  else document.addEventListener('DOMContentLoaded', function () { mount(key); });
+  window.SLMenu = { pages: PAGES, url: url, fallbackHost: FALLBACK_HOST, current: key, setBadge: setBadge };
+  function start() { mount(key); fetchBadge(key); }
+  if (document.body) start();
+  else document.addEventListener('DOMContentLoaded', start);
 })();
