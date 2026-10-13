@@ -45,7 +45,9 @@ public static class GuildSkillTable
         {
             ["warriors"]   = [SkillName.Swords, SkillName.Macing, SkillName.Fencing, SkillName.Wrestling, SkillName.Tactics, SkillName.Parry, SkillName.Chivalry, SkillName.Focus, SkillName.Throwing],
             ["arcane"]     = [SkillName.Magery, SkillName.EvalInt, SkillName.Meditation, SkillName.MagicResist, SkillName.Inscribe, SkillName.Mysticism, SkillName.Spellweaving],
-            ["healers"]    = [SkillName.Healing, SkillName.Anatomy, SkillName.Alchemy, SkillName.TasteID],
+            ["healers"]    = [SkillName.Healing, SkillName.Anatomy], // cc-P77: Alchemy and Taste ID to the Order of the Alembic
+            // cc-P77 (F-43): guild 18. Glassblowing follows Alchemy (a book unlock in the Alchemy menu, not a SkillName).
+            [ClusterFAlembicGuild.Key] = [SkillName.Alchemy, SkillName.TasteID],
             ["rangers"]    = [SkillName.Archery, SkillName.Tracking, SkillName.AnimalTaming, SkillName.AnimalLore, SkillName.Herding, SkillName.Veterinary, SkillName.Camping],
             ["mining"]     = [SkillName.Mining],
             ["smithing"]   = [SkillName.Blacksmith, SkillName.ArmsLore],
@@ -225,6 +227,10 @@ public static class GuildLocations
         new("bards",      "Bardic Guild", "New Haven",                     typeof(BardGuildmaster),                 GuildLocation.TrammelIndex, 3410, 2608, 55, true),
         new("artificers", "New Haven Magery School", "New Haven",          typeof(ArtificersGuildmaster),           GuildLocation.TrammelIndex, 3483, 2501, 52, true, Direction.South, new Point3D(3490, 2627, 0)),
         new("artificers", "Royal City", "Ter Mur",                         typeof(ArtificersGuildmaster),           GuildLocation.TerMurIndex,  797,  3431, -10, false, Direction.West),
+        // cc-P77: the Little Shop of Alchemy (pinned's Alchemist spawns at 3461,2566,37 on its z35 floor). The tile
+        // fits at z35 with the hall props placed, and every tile around it is reachable from both doors
+        // (notes/cc-P77-tools/walk.py, the CanFit port).
+        new(ClusterFAlembicGuild.Key, "Little Shop of Alchemy", "New Haven", typeof(AlembicGuildmaster),             GuildLocation.TrammelIndex, 3463, 2565, 35, true),
     ];
 
     // Guild members who are not guildmasters and only send players on to one (cc-P22, the F-9 follow-up). Kept out of

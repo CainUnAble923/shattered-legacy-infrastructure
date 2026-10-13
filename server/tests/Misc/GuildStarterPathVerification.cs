@@ -176,12 +176,13 @@ public class GuildStarterPathVerification
             Assert.Contains("healers", ClusterFGuildStarter.GetRecord(pm).ToolsTaken);
             Assert.Equal("Initiate", ClusterFGuildSystem.GetRankName("healers", ClusterFAccountPersistence.GetOrCreateGuild(pm)));
 
-            // Healing, Anatomy, Alchemy and Taste ID at creation: 50 bandages and scissors, 3 bandages
-            // and a robe, 4 bottles, a mortar and a robe, nothing. No type twice: Anatomy's bandages
-            // and Alchemy's robe are dropped.
+            // Healing and Anatomy at creation: 50 bandages and scissors, 3 bandages and a robe. No type
+            // twice: Anatomy's bandages are dropped. cc-P77: Alchemy and Taste ID are the Order of the
+            // Alembic's now, so its bottles and mortar are not in the Healers' kit
+            // (AlembicGuildVerification has them).
             Assert.Equal(1, CountOf<Scissors>(pm));
-            Assert.Equal(1, CountOf<MortarPestle>(pm));
-            Assert.Equal(1, CountOf<Bottle>(pm));
+            Assert.Equal(0, CountOf<MortarPestle>(pm));
+            Assert.Equal(0, CountOf<Bottle>(pm));
             Assert.Equal(1, CountOf<Robe>(pm));
             Assert.Contains(owned, i => i is Bandage { Amount: 50 });
             Assert.DoesNotContain(owned, i => i is Bandage { Amount: 3 });
@@ -440,8 +441,8 @@ public class GuildStarterPathVerification
         Assert.True(twice.Count == 0, "in more than one: " + string.Join("; ", twice));
         Assert.Equal(skills.Length, GuildSkillTable.Skills.Sum(g => g.Value.Length));
 
-        // The table and the registered guilds are the same 17.
-        Assert.Equal(17, ClusterFGuildSystem.AllGuilds.Count);
+        // The table and the registered guilds are the same 18 (cc-P77: the Order of the Alembic).
+        Assert.Equal(18, ClusterFGuildSystem.AllGuilds.Count);
         Assert.Equal(
             ClusterFGuildSystem.AllGuilds.Keys.OrderBy(k => k),
             GuildSkillTable.Skills.Keys.OrderBy(k => k));

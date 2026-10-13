@@ -274,6 +274,18 @@ public static class ClusterFGuildSystem
             typeof(GraveDust), 10,
             joinRep: 25, joinScrip: 10));
 
+        // cc-P77 (F-43): guild 18, so every craft skill has one owning guild. Alchemy and Taste ID move here from the
+        // Healers' Covenant (GuildSkillTable); ClusterFAlembicGuild.cs has its guildmaster, ranks and hall.
+        Register(new GuildDef(
+            ClusterFAlembicGuild.Key, ClusterFAlembicGuild.Name,
+            "Every cure, every poison, every flask of fire began in a still. Come and learn to read the vapors.",
+            "Demonstrate Alchemy of at least 50.0, or bring 10 Empty Bottles as tribute.",
+            typeof(AlembicGuildmaster),
+            GuildTaskType.SkillOrItem,
+            SkillName.Alchemy, 50.0,
+            typeof(Bottle), 10,
+            joinRep: 25, joinScrip: 10));
+
         // A guild's other guildmaster types (the Miners' Compact Liaison) resolve to it too.
         foreach (var loc in GuildLocations.All)
             if (!_byNpc.ContainsKey(loc.NpcType) && _byKey.TryGetValue(loc.GuildKey, out var def))
@@ -582,6 +594,7 @@ public static class ClusterFGuildSystem
             "custodians"  => ClusterFCustodianSystem.GetCustodianRank(standing),
             "artificers"  => ArtificersGuildmasterGump.GetRankName(standing),
             "mining"      => MinersCompactLiaisonGump.GetRankName(standing), // cc-P48: was missing (cc-P47)
+            ClusterFAlembicGuild.Key => ClusterFAlembicGuild.GetRankName(standing), // cc-P77
             _             => GenericRank(standing),
         };
 
@@ -603,7 +616,8 @@ public static class ClusterFGuildSystem
 
     /// <summary>
     /// The standing at which each rank of this guild's ladder starts, lowest first: the same steps GetRankName
-    /// takes (GuildRankIndexVerification holds the two together). Generic and Smithing have 6 ranks; Mining,
+    /// takes (GuildRankIndexVerification holds the two together). Generic, Smithing and the Order of the Alembic
+    /// (cc-P77, its own names on the generic steps) have 6 ranks; Mining,
     /// Outriders and Foresters 7; Artificers and Custodians 5.
     /// </summary>
     public static int[] RankThresholds(string guildKey) =>

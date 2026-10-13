@@ -32,14 +32,15 @@ namespace Server
 
         public static MuleUpgradeStep StepFrom(int tier) => Steps.FirstOrDefault(s => s.FromTier == tier);
 
-        // The four named currencies; the rest show as "<guild> scrip".
+        // The named currencies; the rest show as "<guild> scrip".
         private static readonly Dictionary<string, string> CurrencyNames = new(StringComparer.OrdinalIgnoreCase)
         {
             ["mining"] = "Mining Vouchers",
             ["smithing"] = "Smithing Seals",
             ["rangers"] = "Trail Marks",
             ["foresters"] = "Timber Tokens",
-            ["artificers"] = "Essence Shards"
+            ["artificers"] = "Essence Shards",
+            [ClusterFAlembicGuild.Key] = ClusterFAlembicGuild.CurrencyName // cc-P77, a placeholder name
         };
 
         public static string CurrencyName(string key)

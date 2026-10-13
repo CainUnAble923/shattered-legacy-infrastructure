@@ -8,7 +8,7 @@
 //
 // Facts (the brief's numbering). Each reads the gump as built and presses its own buttons:
 //   1. A world with two guildmasters for one guild renders one row for it.
-//   2. With seventeen guilds registered, the directory renders seventeen rows whatever the NPC count.
+//   2. With eighteen guilds registered (seventeen before cc-P77), the directory renders that many rows whatever the NPC count.
 //   3. "Show me the way" from Trammel prefers a Trammel guildmaster when one exists, and names the town.
 //   4. A guild whose guildmaster is deleted renders and reports the absence without an arrow.
 
@@ -166,9 +166,9 @@ public class GuildDirectoryRowsVerification
     // ---------------------------------------------------------------- 2
 
     [Fact]
-    public void SeventeenGuildsAreSeventeenRowsWhateverTheNpcCount()
+    public void EighteenGuildsAreEighteenRowsWhateverTheNpcCount()
     {
-        Assert.Equal(17, ClusterFGuildSystem.AllGuilds.Count);
+        Assert.Equal(18, ClusterFGuildSystem.AllGuilds.Count); // cc-P77: the Order of the Alembic is guild 18
 
         var pm = Online(new Point3D(3500, 2570, 14), Map.Trammel, out _);
         var placed = new List<Mobile>();
