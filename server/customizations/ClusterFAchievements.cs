@@ -1129,6 +1129,9 @@ public static class ClusterFAchievementSystem
             SpawnRewardItems(acct, def);
 
         NotifyOnlinePlayer(acct, def);
+
+        // cc-P79 (F-40, F-41): the earn's fanfare and its loot box, on the account's online character.
+        Server.LootBoxes.ClusterFLootBoxes.OnAchievementEarned(acct, def);
         return true;
     }
 
@@ -2027,6 +2030,10 @@ public class AchievementsGump : Gump
             if (def.RewardItems.Length > 0)
                 earnedLine.Add(("#558855", $" (+{def.RewardItems.Length} item)"));
             lines.Add(earnedLine);
+
+            // cc-P79 (F-40): once loops exist, the loops it was earned on ("Earned on loops 1, 3, 7").
+            if (Server.LootBoxes.ClusterFLootBoxes.LoopsLine(username, def.Key) is { } loopsLine)
+                lines.Add([("#6A8A6A", loopsLine)]);
         }
         else
         {

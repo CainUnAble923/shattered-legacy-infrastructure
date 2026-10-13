@@ -381,6 +381,9 @@ namespace Server
             message = LeagueLadderTable.Current.For(report.To).IsMilestone
                 ? $"The League names you {RankName(report.To)}, a milestone rank. Your bank box now holds {ClusterFBankLimit.GetMaxItems(pm):N0} items."
                 : $"The League names you {RankName(report.To)}.";
+
+            // cc-P79 (F-40): a League box for each rank reached, the first time.
+            Server.LootBoxes.ClusterFLootBoxes.OnLeagueRank(pm, report.To, RankName(report.To));
             return true;
         }
 

@@ -174,6 +174,24 @@ public class ClusterFAccountData
     /// <summary>Clears every character's League rank record on this account (the reset's "League, flags").</summary>
     public void ClearLeagueData() => _leagueData.Clear();
 
+    // -- Per character: loot box firsts and fanfare mute (v18, cc-P79 F-40 / F-41) --
+    private readonly Dictionary<uint, CharacterLootRecord> _lootData = new();
+
+    public CharacterLootRecord GetOrCreateLootRecord(Serial serial)
+    {
+        var key = (uint)serial;
+        if (!_lootData.TryGetValue(key, out var record))
+            _lootData[key] = record = new CharacterLootRecord();
+        return record;
+    }
+
+    public CharacterLootRecord? GetLootRecord(Serial serial) =>
+        _lootData.TryGetValue((uint)serial, out var record) ? record : null;
+
+    public int LootRecordCount => _lootData.Count;
+
+    public IEnumerable<CharacterLootRecord> LootRecords => _lootData.Values;
+
     /// <summary>
     /// True when this record was read from a save before v15 that held account-level guild data
     /// (membership, Apprentice marks, reputation, scrip, work orders, commissions or an Artificer
@@ -379,6 +397,17 @@ public class ClusterFAccountData
                 LearnedRecipes.Add(r.ReadString());
         }
 
+        // v18 (cc-P79, F-40 / F-41): each character's loot box firsts (source and loops) and fanfare mute.
+        if (version >= 18)
+        {
+            var lootCount = r.ReadInt();
+            for (var i = 0; i < lootCount; i++)
+            {
+                var serial = r.ReadUInt();
+                _lootData[serial] = new CharacterLootRecord(r);
+            }
+        }
+
         // v8-only saves (no EncounteredCreatures yet): just read chunks.
         if (version == 8)
             ReadExploration(r);
@@ -410,8 +439,8 @@ public class ClusterFAccountData
     }
 
     // 15: cc-P18, guild data per character. 16: cc-P48, LifetimeRenown and CharacterLeagueData.
-    // 17: cc-P78, LearnedRecipes.
-    public const int CurrentVersion = 17;
+    // 17: cc-P78, LearnedRecipes. 18: cc-P79, CharacterLootRecord per character.
+    public const int CurrentVersion = 18;
 
     public void Serialize(IGenericWriter w)
     {
@@ -502,6 +531,14 @@ public class ClusterFAccountData
         w.Write(LearnedRecipes.Count);
         foreach (var key in LearnedRecipes)
             w.Write(key);
+
+        // v18: loot box records
+        w.Write(_lootData.Count);
+        foreach (var (serial, record) in _lootData)
+        {
+            w.Write(serial);
+            record.Serialize(w);
+        }
     }
 
     // -- Flag helpers ------------------------------------------------------
@@ -1027,5 +1064,71 @@ public class ClusterFAccountPersistence : Item
             Console.WriteLine(
                 $"[ClusterFAccountPersistence] Cleared account-level guild data on {dropped} account(s): " +
                 "guild membership, reputation and scrip are per character from this build (cc-P18).");
+    }
+}
+
+/// <summary>
+/// One character's loot box record (cc-P79, F-40 / F-41; ClusterFAccountData v18): for each box source (an achievement,
+/// a boss, a League rank, a dungeon clear, a loop) the loops it was earned on, and whether the character has muted its
+/// own fanfare. Carries its own version (the D40 rule).
+/// </summary>
+public sealed class CharacterLootRecord
+{
+    public const int CurrentVersion = 0;
+
+    // Source key ("ach:mining.first_ore", "boss:Harrower", "league:5", "clear:<dungeon>", "loop:3") to the loops earned on.
+    public Dictionary<string, List<int>> Earned { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public bool FanfareMuted { get; set; }
+
+    public CharacterLootRecord() { }
+
+    public CharacterLootRecord(IGenericReader r)
+    {
+        var version = r.ReadInt();
+        if (version is < 0 or > CurrentVersion)
+            throw new System.IO.InvalidDataException(
+                $"CharacterLootRecord version {version} is not one this build reads (0 to {CurrentVersion}).");
+
+        var count = r.ReadInt();
+        for (var i = 0; i < count; i++)
+        {
+            var key = r.ReadString();
+            var loops = new List<int>();
+            var n = r.ReadInt();
+            for (var j = 0; j < n; j++)
+                loops.Add(r.ReadInt());
+            Earned[key] = loops;
+        }
+
+        FanfareMuted = r.ReadBool();
+    }
+
+    public void Serialize(IGenericWriter w)
+    {
+        w.Write(CurrentVersion);
+        w.Write(Earned.Count);
+        foreach (var (key, loops) in Earned)
+        {
+            w.Write(key);
+            w.Write(loops.Count);
+            foreach (var loop in loops)
+                w.Write(loop);
+        }
+
+        w.Write(FanfareMuted);
+    }
+
+    public int CountOf(string source) => Earned.TryGetValue(source, out var loops) ? loops.Count : 0;
+
+    /// <summary>Records an earn on a loop. Returns true when this is the first earn of the source on that loop.</summary>
+    public bool Record(string source, int loop)
+    {
+        if (!Earned.TryGetValue(source, out var loops))
+            Earned[source] = loops = new List<int>();
+        if (loops.Contains(loop))
+            return false;
+        loops.Add(loop);
+        return true;
     }
 }
