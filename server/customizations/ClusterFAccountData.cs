@@ -550,7 +550,8 @@ public enum RenownSource
 /// </summary>
 public sealed class CharacterLeagueData
 {
-    public const int CurrentVersion = 0;
+    // v1 (cc-P69): the Compact Mule errand's stage and whether this character was granted its mule.
+    public const int CurrentVersion = 1;
 
     // 0 = not promoted past what registration gives (Iron on a registered account); 1 = Iron ... 17 = Celestial.
     public int Rank { get; set; }
@@ -561,14 +562,20 @@ public sealed class CharacterLeagueData
     // Story trial chapters this character has finished (1 to 6).
     public HashSet<int> TrialsDone { get; } = new();
 
+    // cc-P69 (F-33): the Compact Mule errand (MuleErrand): 0 not taken, 1 taken, 2 delivered (mule waiting), 3 done.
+    public int MuleErrandStage { get; set; }
+
+    // The errand's mule was handed over (one per character; a lost one is replaced, for a fee, not re-earned).
+    public bool MuleGranted { get; set; }
+
     public CharacterLeagueData() { }
 
     public CharacterLeagueData(IGenericReader r)
     {
         var version = r.ReadInt();
-        if (version != 0)
+        if (version < 0 || version > CurrentVersion)
             throw new System.IO.InvalidDataException(
-                $"CharacterLeagueData version {version} is not one this build reads (0).");
+                $"CharacterLeagueData version {version} is not one this build reads (0 to {CurrentVersion}).");
 
         Rank = r.ReadInt();
 
@@ -579,6 +586,12 @@ public sealed class CharacterLeagueData
         var trials = r.ReadInt();
         for (var i = 0; i < trials; i++)
             TrialsDone.Add(r.ReadInt());
+
+        if (version >= 1)
+        {
+            MuleErrandStage = r.ReadInt();
+            MuleGranted = r.ReadBool();
+        }
     }
 
     public void Serialize(IGenericWriter w)
@@ -591,6 +604,9 @@ public sealed class CharacterLeagueData
 
         w.Write(TrialsDone.Count);
         foreach (var chapter in TrialsDone) w.Write(chapter);
+
+        w.Write(MuleErrandStage);
+        w.Write(MuleGranted);
     }
 }
 

@@ -4,77 +4,74 @@ using Server.Mobiles;
 
 namespace Server;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Pack Mule Breeding System
+// -----------------------------------------------------------------------------------------------------------------------
+// Pack Mule breeding (F-33; cc-P69 Part D).
 //
-// Two Pack Mules owned by the same player (one male, one female) can breed
-// once every 7 real days each.  After a 24-hour gestation the owner receives
-// a BredPackMuleDeed in their bank box.
-//
-// Usage flow:
-//   1. Player right-clicks a PackMule → breeding entry → targets the mate
-//   2. PackMule.PackMuleBreedTarget calls PackMuleBreedingSystem.StartBreeding(...)
-//   3. Both mules receive a 7-day cooldown; a one-shot Timer fires after 24 h
-//   4. Timer delivers a BredPackMuleDeed to the owner's bank box
-//
-// Note on timer persistence:
-//   The gestation timer is NOT serialized.  If the server restarts during the
-//   24-hour window the deed will not be delivered.  This is accepted behaviour
-//   for a controlled shard with infrequent restarts.  A fully-persistent
-//   solution would require storing pending breeds in a TimerRegistry entry.
-// ─────────────────────────────────────────────────────────────────────────────
+// Two mules one player owns, one male and one female, each ready (7-day cooldown), breed. The foal's genes are rolled at
+// once (MuleGenes.Breed: strong parents pass on quality and traits, the breeder's Animal Lore 120-200 helps) into a
+// BredPackMuleDeed, which waits on the internal map for the 24-hour gestation with its due time and owner saved, then goes
+// to the owner's bank. Before cc-P69 the gestation was an unsaved timer and a restart lost the foal.
+// -----------------------------------------------------------------------------------------------------------------------
 
 public static class PackMuleBreedingSystem
 {
-    private static readonly TimeSpan BreedingCooldown = TimeSpan.FromDays(7);
-    private static readonly TimeSpan GestationTime    = TimeSpan.FromHours(24);
+    /// <summary>Why these two cannot breed now, or null if they can.</summary>
+    public static string CanBreed(PackMule a, PackMule b, PlayerMobile owner)
+    {
+        if (a == b)
+        {
+            return "A mule cannot breed with itself.";
+        }
+
+        if (a.ControlMaster != owner || b.ControlMaster != owner)
+        {
+            return "You can only breed mules that you own.";
+        }
+
+        if (a.IsMale == b.IsMale)
+        {
+            return $"Both mules are {a.GenderLabel}: you need one male and one female.";
+        }
+
+        if (a.IsDeadPet || b.IsDeadPet)
+        {
+            return "That mule is dead.";
+        }
+
+        foreach (var m in new[] { a, b })
+        {
+            if (!m.CanBreedNow)
+            {
+                var rem = m.NextBreedTime - DateTime.UtcNow;
+                return $"That mule cannot breed for another {(int)rem.TotalDays}d {rem.Hours}h.";
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
-    /// Initiates breeding between <paramref name="muleA"/> and <paramref name="muleB"/>.
-    /// Both mules receive a 7-day cooldown.  After <see cref="GestationTime"/> the
-    /// owner's bank box receives a <see cref="BredPackMuleDeed"/>.
+    /// Breeds the two (the caller has checked CanBreed): both get the cooldown, and the foal deed, its genes rolled now,
+    /// starts its gestation. Returns the pending deed.
     /// </summary>
-    public static void StartBreeding(PackMule muleA, PackMule muleB, PlayerMobile owner)
+    public static BredPackMuleDeed StartBreeding(PackMule a, PackMule b, PlayerMobile owner)
     {
-        var cooldownUntil = DateTime.UtcNow + BreedingCooldown;
+        var now = DateTime.UtcNow;
+        var cooldownUntil = now + MuleBreeding.Cooldown;
 
-        muleA.SetBreedCooldown(cooldownUntil);
-        muleB.SetBreedCooldown(cooldownUntil);
+        a.SetBreedCooldown(cooldownUntil);
+        b.SetBreedCooldown(cooldownUntil);
+
+        var genes = MuleGenes.Breed(a, b, owner.Skills.AnimalLore.Value);
+        var deed = new BredPackMuleDeed(genes);
+        deed.BeginGestation(owner, now + MuleBreeding.Gestation);
 
         owner.SendMessage(0x44,
             "The mules seem quite taken with each other. " +
-            $"A foal deed will arrive in your bank box in {(int)GestationTime.TotalHours} hours.");
+            $"A foal deed will arrive in your bank box in {(int)MuleBreeding.Gestation.TotalHours} hours.");
 
-        muleA.PlaySound(0xA8);
-        muleB.PlaySound(0xA8);
-
-        // Capture a weak reference so the mobile is not pinned in memory if the
-        // owner logs out during the gestation window.
-        var ownerRef = new WeakReference<PlayerMobile>(owner);
-        Timer.StartTimer(GestationTime, () => DeliverFoal(ownerRef));
-    }
-
-    // ── Gestation callback ────────────────────────────────────────────────────
-
-    private static void DeliverFoal(WeakReference<PlayerMobile> ownerRef)
-    {
-        if (!ownerRef.TryGetTarget(out var owner) || owner.Deleted)
-            return;
-
-        var bank = owner.BankBox;
-        if (bank == null)
-            return;
-
-        var deed = new BredPackMuleDeed();
-        bank.DropItem(deed);
-
-        // Notify the player if they are currently online.
-        if (owner.NetState != null)
-        {
-            owner.SendMessage(0x44,
-                "A bred pack mule deed has been delivered to your bank box. " +
-                "The lineage continues.");
-            owner.PlaySound(0x3D);
-        }
+        a.PlaySound(0xA8);
+        b.PlaySound(0xA8);
+        return deed;
     }
 }

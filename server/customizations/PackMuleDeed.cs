@@ -1,22 +1,16 @@
-using System;
 using ModernUO.Serialization;
-using Server.Items;
 using Server.Mobiles;
 
 namespace Server.Items
 {
-    // ─────────────────────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------------------------------------------------
     // Pack Mule Deed
     //
-    // Delivered by the Cross-Guild Exchange after spending scrip from all four
-    // trade guilds.  Double-clicking the deed summons a PackMule at the player's
-    // feet, pre-bonded and ready for service.
-    //
-    // Restrictions:
-    //   • Must be in the player's backpack to use.
-    //   • Player must have enough free follower slots (mule costs 1 control slot).
-    //   • Player must be alive and not a ghost.
-    // ─────────────────────────────────────────────────────────────────────────────
+    // cc-P69: nothing sells it any more. The base mule is earned through the League's Compact Mule errand (MuleErrand,
+    // which summons the mule itself); this deed stays for staff and as a reward item. Double-clicked in the backpack, it
+    // summons a bonded tier 1 Compact Mule with a fresh bloodline at the player's feet, if they have a free follower slot
+    // (1: PackMule.Compute's SlotCost, the one place the cost is set).
+    // -------------------------------------------------------------------------------------------------------------------
 
     [SerializationGenerator(0, false)]
     public partial class PackMuleDeed : Item
@@ -24,8 +18,8 @@ namespace Server.Items
         [Constructible]
         public PackMuleDeed() : base(0x14F0) // standard deed parchment graphic
         {
-            Name  = "a pack mule deed";
-            Hue   = 1161; // warm brown to hint at the mule's heritage
+            Name = "a pack mule deed";
+            Hue = 1161; // warm brown to hint at the mule's heritage
             LootType = LootType.Blessed;
         }
 
@@ -34,7 +28,9 @@ namespace Server.Items
         public override void OnDoubleClick(Mobile from)
         {
             if (from is not PlayerMobile pm)
+            {
                 return;
+            }
 
             if (!IsChildOf(pm.Backpack))
             {
@@ -42,38 +38,11 @@ namespace Server.Items
                 return;
             }
 
-            if (!pm.Alive)
+            if (PackMule.SummonFor(pm, MuleData.MinTier, MuleGenes.Fresh(),
+                    "Your pack mule arrives, sturdy and dependable. It is pre-bonded and will follow you faithfully.") != null)
             {
-                pm.SendMessage(0x22, "You cannot summon a pack mule while dead.");
-                return;
+                Delete();
             }
-
-            // Check follower slot capacity (mule costs 2 control slots like a Nightmare).
-            if (pm.Followers + 2 > pm.FollowersMax)
-            {
-                pm.SendMessage(0x22,
-                    "You have too many followers to summon your pack mule. " +
-                    "Stable or dismiss a current follower first.");
-                return;
-            }
-
-            // Create the mule, bond it, and place it at the player's feet.
-            var mule = new PackMule();
-
-            mule.Controlled      = true;
-            mule.ControlMaster   = pm;
-            mule.IsBonded        = true;
-            mule.BondingBegin    = DateTime.UtcNow;
-            mule.OwnerAbandonTime = DateTime.MinValue;
-
-            mule.MoveToWorld(pm.Location, pm.Map);
-
-            pm.SendMessage(0x44,
-                "Your pack mule arrives, sturdy and dependable. " +
-                "It is pre-bonded and will follow you faithfully.");
-            pm.PlaySound(0xA8); // horse whinny
-
-            Delete(); // consume the deed
         }
     }
 }

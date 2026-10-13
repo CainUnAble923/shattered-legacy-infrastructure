@@ -198,7 +198,7 @@ public class SmithGuildmasterGump : Gump
         btnY += 18;
 
         AddButton(18, btnY, 4005, 4007, BtnMuleExchange, GumpButtonType.Reply, 0);
-        AddLabel(54, btnY + 2, 1154, "Cross-Guild Exchange (Pack Mule)");
+        AddLabel(54, btnY + 2, 1154, "Civic Mule Exchange (mule upgrades)");
         btnY += 32;
 
         AddImageTiled(10, btnY + 4, W - 20, 2, 9304);

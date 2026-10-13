@@ -1,0 +1,8 @@
+{
+  "version": 0,
+  "type": "Server.Mobiles.PackMule",
+  "properties": [
+    { "name": "IsMale",        "type": "bool",            "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] },
+    { "name": "NextBreedTime", "type": "System.DateTime", "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] }
+  ]
+}

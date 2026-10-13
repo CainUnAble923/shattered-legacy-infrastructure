@@ -254,7 +254,7 @@ public class OutridersGuildmasterGump : Gump
         AddImageTiled(10, 308, W - 20, 1, 9304);
 
         AddButton(18, 316, 4011, 4012, 50);
-        AddLabel(44, 318, 1154, "Cross-Guild Exchange (Pack Mule)");
+        AddLabel(44, 318, 1154, "Civic Mule Exchange (mule upgrades)");
     }
 
     // -- Helpers ---------------------------------------------------------------

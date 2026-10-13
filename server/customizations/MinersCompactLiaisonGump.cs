@@ -328,7 +328,7 @@ public class MinersCompactLiaisonGump : Gump
         AddImageTiled(10, 348, W - 20, 1, 9304);
 
         AddButton(18, 356, 4011, 4012, 100);
-        AddLabel(44, 358, 1154, "Cross-Guild Exchange (Pack Mule)");
+        AddLabel(44, 358, 1154, "Civic Mule Exchange (mule upgrades)");
     }
 
     /// <summary>

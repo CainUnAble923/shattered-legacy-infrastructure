@@ -29,6 +29,24 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.12.8
+
+### Added
+- Pack mules now come in five tiers, from the Compact mule to the Celestial mule: each tier is tougher, carries more and wears its metal's color.
+- Every mule has a bloodline: how well it rolled within its tier, up to three inherited traits, and a family name. Strong parents pass their traits to their foals, and Animal Lore above 120 helps.
+- The League Registrar has a new errand, The Compact's Mule: League citizens of Dull Copper rank or higher can earn a bonded pack mule from the Miners' Compact.
+
+### Changed
+- A pack mule now takes one follower slot instead of two.
+- The Civic Mule Exchange no longer sells mules. It raises your mule's tier instead, and its first step costs what a mule used to.
+- A foal deed shows the foal's sex, quality, traits and family before you use it.
+
+### Fixed
+- A foal no longer goes missing if the server restarts during the 24-hour wait.
+
+### Staff
+- [add PackMule <tier> makes a mule of that tier; pack mule deeds remain for staff and rewards only. Existing mules became Shadowhide (tier 3) mules with their old strength.
+
 ## 2026.10.12.7
 
 ### Staff

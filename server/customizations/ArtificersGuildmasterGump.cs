@@ -244,7 +244,7 @@ public class ArtificersGuildmasterGump : Gump
         AddImageTiled(10, 328, W - 20, 1, 9304);
 
         AddButton(18, 338, 4011, 4012, 52);
-        AddLabel(44, 340, 1154, "Cross-Guild Exchange (Pack Mule)");
+        AddLabel(44, 340, 1154, "Civic Mule Exchange (mule upgrades)");
     }
 
     // -- Rank helpers ----------------------------------------------------------

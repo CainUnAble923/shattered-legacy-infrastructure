@@ -17,16 +17,24 @@ namespace Server;
 ///   GuildReferrals -- the Guild Directory (cc-P15): the same rows as the board's first page and [guild
 ///   WhereToStart   -- step-by-step guidance for new arrivals
 ///   Rank           -- (cc-P48) the character's League rank, the next one, the four promotion checks, Promote
+///   MuleErrand     -- (cc-P69) the Compact's Mule errand: take it, deliver ore and ingots, collect the mule, replace a lost one
 ///
 /// Opened by: LeagueRegistrar.OnDoubleClick
 /// </summary>
 public class LeagueRegistrarGump : Gump
 {
-    public enum View { MainMenu, CitizenStatus, AboutRenown, GuildReferrals, WhereToStart, Rank }
+    public enum View { MainMenu, CitizenStatus, AboutRenown, GuildReferrals, WhereToStart, Rank, MuleErrand }
 
     // cc-P48: the main menu's League Rank entry and the Rank page's Promote (the free IDs from 18).
     public const int BtnRank    = 18;
     public const int BtnPromote = 19;
+
+    // cc-P69: the main menu's errand entry and its page's actions (the free IDs from 21).
+    public const int BtnMuleErrand = 21;
+    public const int BtnMuleAccept = 22;
+    public const int BtnMuleDeliver = 23;
+    public const int BtnMuleCollect = 24;
+    public const int BtnMuleReplace = 25;
 
     private readonly PlayerMobile _pm;
     private readonly View         _view;
@@ -69,6 +77,7 @@ public class LeagueRegistrarGump : Gump
             case View.GuildReferrals: DrawGuildReferrals(data); break;
             case View.WhereToStart:  DrawWhereToStart(data);  break;
             case View.Rank:          DrawRank(data);          break;
+            case View.MuleErrand:    DrawMuleErrand();        break;
         }
 
         // -- Footer --------------------------------------------------------
@@ -119,7 +128,61 @@ public class LeagueRegistrarGump : Gump
         AddButton(18, y, 4011, 4012, 15); AddLabel(44, y + 2, 999, "Guild Referrals");   y += 28;
         AddButton(18, y, 4011, 4012, 16); AddLabel(44, y + 2, 999, "League Dispatch");   y += 28;
         AddButton(18, y, 4011, 4012, 17); AddLabel(44, y + 2, 999, "Where to go first?"); y += 28;
-        AddButton(18, y, 4011, 4012, BtnRank); AddLabel(44, y + 2, 999, "League Rank");
+        AddButton(18, y, 4011, 4012, BtnRank); AddLabel(44, y + 2, 999, "League Rank"); y += 28;
+        AddButton(18, y, 4011, 4012, BtnMuleErrand); AddLabel(44, y + 2, 999, "The Compact's Mule (errand)");
+    }
+
+    // cc-P69: the Compact's Mule errand (MuleErrand). The page says where the character is; every button re-checks.
+    private void DrawMuleErrand()
+    {
+        AddLabel(18, 56, 1154, "The Compact's Mule");
+        AddImageTiled(10, 72, W - 20, 1, 9304);
+
+        var stage = MuleErrand.Stage(_pm);
+        var refusal = MuleErrand.RefuseOffer(_pm);
+        string text;
+        var button = 0;
+        var buttonLabel = "";
+
+        switch (stage)
+        {
+            case MuleErrand.NotTaken when refusal == null:
+                text = "The Miners' Compact lends a hardy pack mule to League citizens who can prove they work a vein. " +
+                       $"Bring {MuleErrand.OreCount} iron ore and {MuleErrand.IngotCount} iron ingots you mined and smelted, " +
+                       "and the mule is yours, bonded to you. One per citizen.";
+                button = BtnMuleAccept; buttonLabel = "Take the errand";
+                break;
+            case MuleErrand.NotTaken:
+                text = refusal;
+                break;
+            case MuleErrand.Taken:
+                text = $"Bring {MuleErrand.OreCount} iron ore and {MuleErrand.IngotCount} iron ingots (backpack or bank; satchels count).";
+                button = BtnMuleDeliver; buttonLabel = "Deliver the ore and ingots";
+                break;
+            case MuleErrand.Delivered:
+                text = "Your mule is waiting. It needs one free follower slot.";
+                button = BtnMuleCollect; buttonLabel = "Collect my mule";
+                break;
+            default:
+                text = MuleErrand.CanReplace(_pm)
+                    ? $"You have no mule. The Compact will find you another for {MuleErrand.ReplaceGold:N0} gold and {MuleErrand.ReplaceVouchers} Mining Vouchers."
+                    : "You have your mule. Raise its tier at the Civic Mule Exchange in any trade guild's hall.";
+
+                if (MuleErrand.CanReplace(_pm))
+                {
+                    button = BtnMuleReplace; buttonLabel = "Replace my mule";
+                }
+
+                break;
+        }
+
+        AddHtml(16, 82, W - 32, 200, $"<BASEFONT COLOR=#AAAAAA>{text}</BASEFONT>", false, false);
+
+        if (button != 0)
+        {
+            AddButton(18, 300, 4011, 4012, button);
+            AddLabel(44, 302, 0x44, buttonLabel);
+        }
     }
 
     private void DrawCitizenStatus(ClusterFAccountData data)
@@ -326,6 +389,28 @@ public class LeagueRegistrarGump : Gump
 
             case 20: // Open the Guild Directory. Its "Show me the way" replaces the Miners' Compact arrow.
                 _pm.SendGump(new GuildProgressGump(_pm, acct));
+                break;
+
+            case BtnMuleErrand:
+                _pm.SendGump(new LeagueRegistrarGump(_pm, View.MuleErrand));
+                break;
+
+            case BtnMuleAccept or BtnMuleDeliver or BtnMuleCollect or BtnMuleReplace when _view == View.MuleErrand:
+                {
+                    string msg;
+                    var ok = info.ButtonID switch
+                    {
+                        BtnMuleAccept  => MuleErrand.Accept(_pm, out msg),
+                        BtnMuleDeliver => MuleErrand.Deliver(_pm, out msg),
+                        BtnMuleCollect => MuleErrand.Collect(_pm, out msg) != null,
+                        _              => MuleErrand.Replace(_pm, out msg) != null
+                    };
+
+                    if (msg != null)
+                        _pm.SendMessage(ok ? 0x44 : 0x22, msg);
+
+                    _pm.SendGump(new LeagueRegistrarGump(_pm, View.MuleErrand));
+                }
                 break;
 
             case BtnRank: // League Rank (cc-P48)
