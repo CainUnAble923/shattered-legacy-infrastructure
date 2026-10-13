@@ -60,6 +60,8 @@ public enum TriggerKind
     AchievementPoints,
     Renown,
     Logins,
+    TutorialSkipped,   // cc-P80: skipped the New Haven tutorial
+    TutorialRemedial,  // cc-P80: finished it after skipping it
 }
 
 public sealed class AchievementTrigger
@@ -134,6 +136,8 @@ public sealed class AchievementTrigger
             TriggerKind.AchievementPoints  => $"reached {n:N0} Achievement Points",
             TriggerKind.Renown             => $"reached {n:N0} Renown",
             TriggerKind.Logins             => $"logged in {n:N0} times",
+            TriggerKind.TutorialSkipped    => "skipped the New Haven tutorial",
+            TriggerKind.TutorialRemedial   => "completed the tutorial after skipping it",
             _                              => Kind.ToString()
         };
     }
@@ -1016,6 +1020,24 @@ public static class ClusterFAchievementSystem
             hidden:          true,
             prerequisiteKey: "league.veteran",
             progressCounter: "login_count");
+
+        // cc-P80 (the New Haven tutorial, Chase 2026-10-11): granted by ClusterFTutorial, once per account.
+        Reg("tutorial.skipped",
+            "Didn't Read the Manual",
+            "Skipped the New Haven tutorial.",
+            AchievementCategory.League, ap: 5, renown: 0,
+            trigger:    T.Event(TriggerKind.TutorialSkipped),
+            flavor:     "Confident. Possibly correct. We'll see.",
+            itemGumpId: 0x0FF4);
+
+        Reg("tutorial.remedial",
+            "Read the Manual Eventually",
+            "Completed the tutorial after skipping it.",
+            AchievementCategory.League, ap: 10, renown: 25,
+            trigger:         T.Event(TriggerKind.TutorialRemedial),
+            flavor:          "Better late. Noted, with only a little smugness.",
+            itemGumpId:      0x0FF4,
+            prerequisiteKey: "tutorial.skipped");
     }
 
     private static void Reg(string key, string title, string desc,

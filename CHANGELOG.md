@@ -29,6 +29,21 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.13.3
+
+### Added
+- New characters are met in New Haven by a League recruiter, who runs the new player tutorial: a short core (moving, your paperdoll and backpack, chat, death, the bank, travel, the League and a vision of the loop), then optional wings for every kind of skill.
+- The tutorial stations are placeholders for now: each shows what it will teach and counts as done.
+- You can skip the tutorial. The System will ask twice, and remember. Skippers can come back for remedial training any time.
+- Graduating gives you your first loot box and your choice of a starter pet: a dog, a cat, a fox or a bird.
+- Two new achievements: "Didn't Read the Manual" and "Read the Manual Eventually".
+
+### Changed
+- Young status now also ends at your first real loop. The tutorial's vision of the loop does not count.
+
+### Staff
+- Place the recruiter with [ClusterFSeedTutorial (dry run first; test shard first). [Tutorial status|enter|station|skip|remedial|graduate|reset targets a player (test shard). tutorial.enabled turns new entries off.
+
 ## 2026.10.13.2
 
 ### Added

@@ -1,0 +1,290 @@
+// TutorialVerification.cs
+//
+// cc-P80: the New Haven tutorial framework. Notes in shard-migration notes/cc-P80-new-player-tutorial.md.
+//
+// Facts (the brief's tests):
+//   1. A new character enters the core, and the state saves (the account record round-trips) and holds across a relog.
+//   2. Skip: both confirmations are needed; "Didn't Read the Manual" is granted once; remedial training completes and
+//      grants "Read the Manual Eventually".
+//   3. The tutorial runs once per account: a second character on the account is never entered.
+//   4. The loop demo leaves level, skills, loop count and Young as they were; a real loop ends Young.
+//   5. A player not in the tutorial is not engaged by tutorial creatures; the tutorial player is.
+// And: every station Chase listed is registered; walking the core opens the wings; graduation gives the first loot box.
+
+using System;
+using System.Linq;
+using Server;
+using Server.Accounting;
+using Server.Accounting.Security;
+using Server.Gumps;
+using Server.Items;
+using Server.LootBoxes;
+using Server.Misc;
+using Server.Mobiles;
+using Server.Network;
+using Server.Tests.Network;
+using Server.Tutorial;
+using Xunit;
+using Xunit.Abstractions;
+
+namespace ShatteredLegacy.Tests;
+
+[Collection("Sequential UOContent Tests")]
+public class TutorialVerification
+{
+    private readonly ITestOutputHelper _out;
+
+    public TutorialVerification(ITestOutputHelper output)
+    {
+        _out = output;
+        if (!_startupHooksRun)
+        {
+            Accounts.Configure();
+            WelcomeTimer.Initialize();
+            _startupHooksRun = true;
+        }
+
+        if (AccountSecurity.CurrentAlgorithm == PasswordProtectionAlgorithm.None)
+        {
+            AccountSecurity.CurrentAlgorithm = PasswordProtectionAlgorithm.PBKDF2;
+        }
+
+        if (ClusterFAchievementSystem.Definitions.Count == 0)
+        {
+            ClusterFAchievementSystem.Configure();
+        }
+
+        ClusterFTutorial.Enabled = true;
+        ClusterFLootBoxes.LoopProvider = _ => 1;
+    }
+
+    private static bool _startupHooksRun;
+
+    private sealed class Player : IDisposable
+    {
+        public readonly Account Account;
+        public readonly PlayerMobile Pm;
+        public readonly NetState Ns;
+
+        public Player(Account? account = null, int slot = 0)
+        {
+            Account = account ?? new Account($"p80{Guid.NewGuid():N}"[..16], "p80-test-only");
+            Pm = new PlayerMobile { Player = true, Race = Race.Human, Name = "Newbie" };
+            Pm.AddItem(new Backpack());
+            Account[slot] = Pm;
+            Pm.MoveToWorld(new Point3D(1700, 1700 + slot, 0), Map.Trammel);
+            Ns = PacketTestUtilities.CreateTestNetState();
+            Pm.NetState = Ns;
+            Ns.Mobile = Pm;
+        }
+
+        public TutorialRecord Record => ClusterFTutorial.RecordOf(Pm)!;
+
+        public void Dispose()
+        {
+            ClusterFFanfare.FlushAll();
+            Pm.NetState = null;
+            Ns.Mobile = null;
+            for (var i = 0; i < Account.Length; i++)
+            {
+                Account[i]?.Delete();
+            }
+
+            Accounts.Remove(Account);
+        }
+    }
+
+    private static void WalkTheCore(PlayerMobile pm)
+    {
+        foreach (var station in TutorialStations.Core.ToList())
+        {
+            ClusterFTutorial.RunStation(pm, station);
+        }
+    }
+
+    // ---------------------------------------------------------------- 1
+
+    [Fact]
+    public void ANewCharacterEntersTheCoreAndTheStateSavesAndHoldsAcrossARelog()
+    {
+        using var p = new Player();
+        Assert.Equal(TutorialState.NotStarted, p.Record.State);
+
+        ClusterFTutorial.OnLogin(p.Pm);
+        Assert.Equal(TutorialState.InCore, p.Record.State);
+        Assert.Equal((uint)p.Pm.Serial, p.Record.CharacterSerial);
+        ClusterFTutorial.CompleteStation(p.Pm, "core.movement");
+
+        // A relog: the login hook again changes nothing.
+        ClusterFTutorial.OnLogin(p.Pm);
+        Assert.Equal(TutorialState.InCore, p.Record.State);
+        Assert.Contains("core.movement", p.Record.StationsDone);
+
+        // A save and a load.
+        var data = ClusterFAccountPersistence.GetOrCreate(p.Account);
+        var w = new BufferWriter(true);
+        data.Serialize(w);
+        var copy = new ClusterFAccountData(new BufferReader(w.Buffer));
+        Assert.Equal(TutorialState.InCore, copy.Tutorial.State);
+        Assert.Equal((uint)p.Pm.Serial, copy.Tutorial.CharacterSerial);
+        Assert.Contains("core.movement", copy.Tutorial.StationsDone);
+    }
+
+    // ---------------------------------------------------------------- 2
+
+    [Fact]
+    public void SkippingNeedsBothConfirmationsGrantsItsAchievementOnceAndRemedialGrantsTheSecond()
+    {
+        using var p = new Player();
+        ClusterFTutorial.OnLogin(p.Pm);
+
+        // The first confirmation alone skips nothing.
+        new TutorialSkipGump(1).OnResponse(p.Ns, new RelayInfo(TutorialSkipGump.BtnYes, default, default, default, default));
+        Assert.Equal(TutorialState.InCore, p.Record.State);
+
+        // Saying no at the second skips nothing either.
+        new TutorialSkipGump(2).OnResponse(p.Ns, new RelayInfo(0, default, default, default, default));
+        Assert.Equal(TutorialState.InCore, p.Record.State);
+
+        new TutorialSkipGump(2).OnResponse(p.Ns, new RelayInfo(TutorialSkipGump.BtnYes, default, default, default, default));
+        Assert.Equal(TutorialState.Skipped, p.Record.State);
+        Assert.True(ClusterFAchievementSystem.HasEarned(p.Account, ClusterFTutorial.SkippedAchievement));
+        Assert.False(ClusterFAchievementSystem.TryGrant(p.Account, ClusterFTutorial.SkippedAchievement)); // once
+        Assert.False(ClusterFTutorial.Skip(p.Pm)); // a skipped account cannot skip again
+
+        // Remedial: the full tutorial, then the second achievement.
+        Assert.True(ClusterFTutorial.StartRemedial(p.Pm));
+        Assert.Equal(TutorialState.Remedial, p.Record.State);
+        Assert.False(ClusterFAchievementSystem.HasEarned(p.Account, ClusterFTutorial.RemedialAchievement));
+        WalkTheCore(p.Pm);
+        Assert.Null(ClusterFTutorial.Graduate(p.Pm));
+        Assert.Equal(TutorialState.Graduated, p.Record.State);
+        Assert.True(ClusterFAchievementSystem.HasEarned(p.Account, ClusterFTutorial.RemedialAchievement));
+    }
+
+    // ---------------------------------------------------------------- 3
+
+    [Fact]
+    public void TheTutorialRunsOncePerAccount()
+    {
+        using var first = new Player();
+        ClusterFTutorial.OnLogin(first.Pm);
+        Assert.Equal(TutorialState.InCore, first.Record.State);
+
+        using var second = new Player(first.Account, 1);
+        Assert.False(ClusterFTutorial.TryEnter(second.Pm));
+        Assert.Equal((uint)first.Pm.Serial, second.Record.CharacterSerial);
+        Assert.False(ClusterFTutorial.IsParticipant(second.Pm));
+        Assert.True(ClusterFTutorial.IsParticipant(first.Pm));
+
+        // Graduated, nobody on the account enters again.
+        WalkTheCore(first.Pm);
+        Assert.Null(ClusterFTutorial.Graduate(first.Pm));
+        Assert.False(ClusterFTutorial.TryEnter(first.Pm));
+        Assert.False(ClusterFTutorial.TryEnter(second.Pm));
+    }
+
+    // ---------------------------------------------------------------- 4
+
+    [Fact]
+    public void TheLoopVisionChangesNothingAndARealLoopEndsYoung()
+    {
+        using var p = new Player();
+        p.Account.Young = true;
+        p.Pm.Young = true;
+        ClusterFTutorial.OnLogin(p.Pm);
+        p.Pm.Skills[SkillName.Swords].Base = 45.0;
+        p.Pm.Skills[SkillName.Mining].Base = 30.0;
+
+        var skillsBefore = Enum.GetValues<SkillName>().Select(s => p.Pm.Skills[s].Base).ToArray();
+        var levelBefore = ClusterFLootBoxes.LevelOf(p.Pm);
+        var loopBefore = ClusterFLootBoxes.CurrentLoop(p.Pm);
+
+        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.loop")!);
+
+        Assert.Contains("core.loop", p.Record.StationsDone);
+        Assert.Equal(skillsBefore, Enum.GetValues<SkillName>().Select(s => p.Pm.Skills[s].Base).ToArray());
+        Assert.Equal(levelBefore, ClusterFLootBoxes.LevelOf(p.Pm));
+        Assert.Equal(loopBefore, ClusterFLootBoxes.CurrentLoop(p.Pm));
+        Assert.True(p.Account.Young);
+        Assert.True(p.Pm.Young);
+
+        // A real loop ends Young for the account and its characters.
+        ClusterFLoops.CompleteLoop(p.Pm, 2);
+        Assert.False(p.Account.Young);
+        Assert.False(p.Pm.Young);
+    }
+
+    // ---------------------------------------------------------------- 5
+
+    [Fact]
+    public void TutorialCreaturesEngageOnlyTheTutorialPlayer()
+    {
+        using var newbie = new Player();
+        using var veteran = new Player();
+        ClusterFTutorial.OnLogin(newbie.Pm);
+        veteran.Record.State = TutorialState.Graduated;
+
+        var echo = new TutorialEcho();
+        echo.MoveToWorld(new Point3D(1701, 1701, 0), Map.Trammel);
+        try
+        {
+            Assert.True(echo.IsEnemy(newbie.Pm));
+            Assert.False(echo.IsEnemy(veteran.Pm));
+            Assert.False(echo.CanBeHarmful(veteran.Pm, false, false));
+
+            var hits = echo.Hits;
+            echo.Damage(5, veteran.Pm);
+            Assert.Equal(hits, echo.Hits); // a veteran's blows do nothing
+
+            echo.Damage(5, newbie.Pm);
+            Assert.True(echo.Hits < hits);
+            Assert.True(echo.NoKillAwards);
+            Assert.True(echo.IgnoreYoungProtection);
+        }
+        finally
+        {
+            echo.Delete();
+        }
+    }
+
+    // ---------------------------------------------------------------- framework
+
+    [Fact]
+    public void EveryStationIsRegisteredAndWalkingTheCoreOpensTheWingsAndGraduationGivesTheFirstBox()
+    {
+        string[] expected =
+        [
+            "core.movement", "core.paperdoll", "core.backpack", "core.chat", "core.death", "core.banking", "core.travel",
+            "core.league", "core.loop", "combat.weapons", "combat.healing", "magic.magery", "magic.necromancy",
+            "magic.chivalry", "magic.bushido", "magic.ninjitsu", "magic.mysticism", "gathering.mining",
+            "gathering.lumberjacking", "gathering.fishing", "gathering.camping", "crafting.blacksmithy",
+            "crafting.tailoring", "crafting.carpentry", "crafting.tinkering", "crafting.alchemy", "crafting.fletching",
+            "crafting.cooking", "crafting.inscription", "crafting.cartography", "animals.taming", "bard.trial",
+            "thieving.trial", "housing.basics", "travel.wing", "reputation.wing", "shard.systems"
+        ];
+        Assert.Equal(expected.OrderBy(k => k), TutorialStations.All.Select(s => s.Key).OrderBy(k => k));
+        Assert.Equal(9, TutorialStations.Core.Count());
+
+        using var p = new Player();
+        ClusterFTutorial.OnLogin(p.Pm);
+        Assert.Equal("Finish the core first.", ClusterFTutorial.Graduate(p.Pm));
+
+        WalkTheCore(p.Pm);
+        Assert.Equal(TutorialState.InWings, p.Record.State);
+
+        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("crafting.alchemy")!);
+        Assert.Contains("crafting.alchemy", p.Record.StationsDone);
+
+        Assert.Null(ClusterFTutorial.Graduate(p.Pm));
+        Assert.Equal(TutorialState.Graduated, p.Record.State);
+        var boxes = 0;
+        foreach (var _ in p.Pm.Backpack.FindItemsByType<LootBox>())
+        {
+            boxes++;
+        }
+
+        Assert.Equal(1, boxes);
+        Assert.False(ClusterFAchievementSystem.HasEarned(p.Account, ClusterFTutorial.RemedialAchievement));
+    }
+}

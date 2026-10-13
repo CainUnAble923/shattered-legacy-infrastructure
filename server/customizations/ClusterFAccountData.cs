@@ -192,6 +192,11 @@ public class ClusterFAccountData
 
     public IEnumerable<CharacterLootRecord> LootRecords => _lootData.Values;
 
+    // -- The New Haven tutorial, once per account (v19, cc-P80) --------------
+    public TutorialRecord Tutorial { get; private set; } = new();
+
+    public void ResetTutorial() => Tutorial = new TutorialRecord();
+
     /// <summary>
     /// True when this record was read from a save before v15 that held account-level guild data
     /// (membership, Apprentice marks, reputation, scrip, work orders, commissions or an Artificer
@@ -408,6 +413,10 @@ public class ClusterFAccountData
             }
         }
 
+        // v19 (cc-P80): the account's tutorial record. Before v19 no account had started it.
+        if (version >= 19)
+            Tutorial = new TutorialRecord(r);
+
         // v8-only saves (no EncounteredCreatures yet): just read chunks.
         if (version == 8)
             ReadExploration(r);
@@ -439,8 +448,8 @@ public class ClusterFAccountData
     }
 
     // 15: cc-P18, guild data per character. 16: cc-P48, LifetimeRenown and CharacterLeagueData.
-    // 17: cc-P78, LearnedRecipes. 18: cc-P79, CharacterLootRecord per character.
-    public const int CurrentVersion = 18;
+    // 17: cc-P78, LearnedRecipes. 18: cc-P79, CharacterLootRecord per character. 19: cc-P80, TutorialRecord.
+    public const int CurrentVersion = 19;
 
     public void Serialize(IGenericWriter w)
     {
@@ -539,6 +548,9 @@ public class ClusterFAccountData
             w.Write(serial);
             record.Serialize(w);
         }
+
+        // v19: the tutorial record
+        Tutorial.Serialize(w);
     }
 
     // -- Flag helpers ------------------------------------------------------
@@ -1131,4 +1143,76 @@ public sealed class CharacterLootRecord
         loops.Add(loop);
         return true;
     }
+}
+
+/// <summary>Where an account is in the New Haven tutorial (cc-P80).</summary>
+public enum TutorialState : byte
+{
+    NotStarted,
+    InCore,
+    InWings,
+    Graduated,
+    Skipped,
+    Remedial
+}
+
+/// <summary>
+/// The account's New Haven tutorial record (cc-P80; ClusterFAccountData v19). One per account: the tutorial runs once
+/// per account, for the character that started it. Carries its own version (the D40 rule).
+/// </summary>
+public sealed class TutorialRecord
+{
+    public const int CurrentVersion = 0;
+
+    public TutorialState State { get; set; } = TutorialState.NotStarted;
+
+    // The character doing it (0 when none).
+    public uint CharacterSerial { get; set; }
+
+    // Station keys finished (TutorialStations).
+    public HashSet<string> StationsDone { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    // Set once the account skipped; remedial completion then earns "Read the Manual Eventually".
+    public bool WasSkipped { get; set; }
+
+    public DateTime StartedAt { get; set; }
+    public DateTime FinishedAt { get; set; }
+
+    public TutorialRecord() { }
+
+    public TutorialRecord(IGenericReader r)
+    {
+        var version = r.ReadInt();
+        if (version is < 0 or > CurrentVersion)
+            throw new System.IO.InvalidDataException(
+                $"TutorialRecord version {version} is not one this build reads (0 to {CurrentVersion}).");
+
+        var state = r.ReadByte();
+        if (state > (byte)TutorialState.Remedial)
+            throw new System.IO.InvalidDataException($"TutorialRecord state {state} is not one this build knows.");
+        State = (TutorialState)state;
+        CharacterSerial = r.ReadUInt();
+        var n = r.ReadInt();
+        for (var i = 0; i < n; i++)
+            StationsDone.Add(r.ReadString());
+        WasSkipped = r.ReadBool();
+        StartedAt = r.ReadDateTime();
+        FinishedAt = r.ReadDateTime();
+    }
+
+    public void Serialize(IGenericWriter w)
+    {
+        w.Write(CurrentVersion);
+        w.Write((byte)State);
+        w.Write(CharacterSerial);
+        w.Write(StationsDone.Count);
+        foreach (var key in StationsDone)
+            w.Write(key);
+        w.Write(WasSkipped);
+        w.Write(StartedAt);
+        w.Write(FinishedAt);
+    }
+
+    /// <summary>In the tutorial now: the core, the wings, or remedial training.</summary>
+    public bool IsActive => State is TutorialState.InCore or TutorialState.InWings or TutorialState.Remedial;
 }

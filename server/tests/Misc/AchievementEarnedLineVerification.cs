@@ -11,7 +11,7 @@
 // Notes: shard-migration notes/cc-P55-bug-batch-5.md, Parts F and G.
 //
 // Facts:
-//   F1. All 74 registered achievements have an Earned line written from their trigger.
+//   F1. All 76 registered achievements (74 before cc-P80) have an Earned line written from their trigger.
 //   F2. For a sample of every counted and skill trigger kind, one short of the threshold awards nothing, the threshold
 //       awards it, and the Earned line carries that threshold.
 //   F3. The earn popup and an earned list row both show the Earned line next to the flavor text.
@@ -97,7 +97,7 @@ public class AchievementEarnedLineVerification
     public void EveryRegisteredAchievementHasAnEarnedLine()
     {
         var defs = ClusterFAchievementSystem.Definitions.Values.ToList();
-        Assert.Equal(74, defs.Count);
+        Assert.Equal(76, defs.Count); // cc-P80: the two tutorial achievements
 
         foreach (var def in defs.OrderBy(d => d.Key))
         {
@@ -320,7 +320,7 @@ public class AchievementEarnedLineVerification
             var (count, total) = ClusterFAchievementSystem.ProgressCount(p.Account.Username);
             _out.WriteLine($"holder: earned {count} of {total} (retired held, not counted)");
             Assert.Equal(2, count);
-            Assert.Equal(74 - RetiredKeys.Length, total);
+            Assert.Equal(76 - RetiredKeys.Length, total); // cc-P80: 76 registered
 
             // Every page of the Skills tab (five rows a page; the Retired section is last).
             var pages = Enumerable.Range(0, 20).Select(i => new AchievementsGump(p.Pm, AchievementCategory.Skills, false, i)).ToList();
