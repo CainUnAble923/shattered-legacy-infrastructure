@@ -59,6 +59,7 @@ footer { color: var(--muted); font-size: 13px; margin-top: 24px; }
 /* cc-P90: the Ideas tab */
 .count.ideas { color: var(--accent); cursor: pointer; }
 .badge { display: inline-block; min-width: 1.4em; padding: 0 6px; border-radius: 999px; background: var(--accent); color: var(--bg); font-size: 13px; }
+.badge[hidden] { display: none; } /* cc-P97: display above beat the hidden attribute, so a zero showed as "0" */
 .filters button[aria-pressed="true"] .badge { background: var(--bg); color: var(--accent); }
 form textarea, form select { width: 100%; min-height: 44px; margin: 4px 0 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
 form textarea { min-height: 88px; resize: vertical; }
@@ -72,6 +73,19 @@ form textarea { min-height: 88px; resize: vertical; }
 #copy-out { width: 100%; min-height: 120px; font: 13px ui-monospace, Consolas, monospace; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
 .fq { margin: 2px 0; padding: 6px 8px; border-radius: 6px; } .fq:target { background: var(--later-bg); }
 .fq b { font-weight: 700; } .fq small { color: var(--muted); }
+/* cc-P97: the Bugs tab */
+.count.bugs { color: var(--fail); cursor: pointer; }
+.bug { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--fail); border-radius: 8px; padding: 10px 12px; margin: 8px 0; overflow-wrap: anywhere; }
+.bug.taken { border-left-color: var(--later); } .bug.fixed { border-left-color: var(--pass); } .bug.duplicate, .bug.notbug { border-left-color: var(--muted); opacity: .85; }
+.bug .desc { white-space: pre-wrap; margin-top: 2px; } .bug .desc b { color: var(--muted); font-weight: 600; }
+.shots { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+.shots img { width: 96px; height: 96px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); display: block; }
+.shots .pending { position: relative; } .shots .pending button { position: absolute; top: 2px; right: 2px; min-height: 32px; min-width: 32px; padding: 2px 8px; }
+.paste { border: 2px dashed var(--line); border-radius: 8px; padding: 10px; margin: 4px 0 8px; color: var(--muted); font-size: 14px; }
+.ver { font-size: 14px; color: var(--muted); margin: 0 0 8px; }
+#bug-copy-out { width: 100%; min-height: 120px; font: 13px ui-monospace, Consolas, monospace; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+#bugs button { min-height: 44px; min-width: 64px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+#bugs input[type=file] { min-height: 44px; }
 #ideas button { min-height: 44px; min-width: 64px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
 </style>
 </head>
@@ -90,6 +104,7 @@ form textarea { min-height: 88px; resize: vertical; }
     <button data-f="fail" aria-pressed="false">Failed</button>
     <button data-f="all" aria-pressed="false">All</button>
     <button data-f="ideas" aria-pressed="false">Ideas <span class="badge" id="ideas-n" hidden></span></button>
+    <button data-f="bugs" aria-pressed="false">Bugs <span class="badge" id="bugs-n" hidden></span></button>
   </div>
 </header>
 <main>
@@ -123,6 +138,38 @@ form textarea { min-height: 88px; resize: vertical; }
     <input id="fq-filter" placeholder="Filter by words or F-number" aria-label="Filter the feature queue">
     <div id="fq"></div>
   </section>
+  <!-- cc-P97: the bug-reports inbox. The overseer gives the real ones D-numbers in docs/bug-list.md; this page never
+       edits docs/. -->
+  <section id="bugs" hidden>
+    <form id="bug-form" autocomplete="off">
+      <h2>Report a bug</h2>
+      <label for="b-title">Bug (a short title)</label><input id="b-title" maxlength="140" required>
+      <label for="b-happened">What happened</label><textarea id="b-happened" maxlength="2000"></textarea>
+      <label for="b-expected">What you expected</label><textarea id="b-expected" maxlength="2000"></textarea>
+      <label for="b-steps">Steps (optional)</label><textarea id="b-steps" maxlength="2000" placeholder="1. ...&#10;2. ..."></textarea>
+      <div class="row2">
+        <div><label for="b-sev">Severity</label><select id="b-sev"><option value="">(none)</option></select></div>
+        <div><label for="b-area">Area</label><select id="b-area"><option value="">(none)</option></select></div>
+      </div>
+      <div class="row2">
+        <div><label for="b-pt">From play test (optional)</label><input id="b-pt" maxlength="12" placeholder="P71-3"></div>
+        <div><label for="b-char">Character (optional)</label><input id="b-char" maxlength="140"></div>
+        <div><label for="b-loc">Location (optional)</label><input id="b-loc" maxlength="140" placeholder="Minoc forge, 2510 560"></div>
+      </div>
+      <label for="b-shots">Screenshots (up to 3, PNG or JPG)</label>
+      <input id="b-shots" type="file" accept="image/png,image/jpeg,image/*" multiple>
+      <div class="paste" id="b-paste" tabindex="0">Or paste a screenshot here (Ctrl+V, or long-press and Paste on a phone).</div>
+      <div class="shots" id="b-pending"></div>
+      <p class="ver" id="b-ver"></p>
+      <button type="submit">Add bug</button>
+    </form>
+    <div class="copybar">
+      <button type="button" id="copy-bugs">Copy new bugs</button>
+      <span id="bug-copy-msg"></span>
+    </div>
+    <textarea id="bug-copy-out" readonly hidden aria-label="New bug reports as text"></textarea>
+    <div id="bug-list"></div>
+  </section>
   <footer id="foot"></footer>
 </main>
 <script>
@@ -154,13 +201,15 @@ function shown(it) {
 }
 
 function render() {
-  var ideasView = filter === 'ideas';
+  var ideasView = filter === 'ideas', bugsView = filter === 'bugs';
   document.getElementById('ideas').hidden = !ideasView;
-  document.getElementById('list').hidden = ideasView;
-  document.getElementById('add').hidden = ideasView;
+  document.getElementById('bugs').hidden = !bugsView;
+  document.getElementById('list').hidden = ideasView || bugsView;
+  document.getElementById('add').hidden = ideasView || bugsView;
   Array.prototype.forEach.call(document.querySelectorAll('.filters button'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-f') === filter ? 'true' : 'false'); });
   renderIdeaCount();
   if (ideasView) renderIdeas();
+  if (bugsView) renderBugs();
   if (!data) return;  // a filter clicked before the first load: load() renders when it arrives
   var s = data.summary;
   document.getElementById('counts').innerHTML =
@@ -168,7 +217,8 @@ function render() {
     '<span class="count fail">' + s.failed + ' failed' + (s.unloggedFails ? ' (' + s.unloggedFails + ' not logged)' : '') + '</span>' +
     '<span class="count pass">' + s.passed + ' passed</span>' +
     (s.later ? '<span class="count">' + s.later + ' later</span>' : '') +
-    (ideas && ideas.summary.new ? '<span class="count ideas" data-go="ideas">' + ideas.summary.new + ' new idea' + (ideas.summary.new === 1 ? '' : 's') + '</span>' : '');
+    (ideas && ideas.summary.new ? '<span class="count ideas" data-go="ideas">' + ideas.summary.new + ' new idea' + (ideas.summary.new === 1 ? '' : 's') + '</span>' : '') +
+    (bugsDoc && bugsDoc.summary.new ? '<span class="count bugs" data-go="bugs">' + bugsDoc.summary.new + ' new bug' + (bugsDoc.summary.new === 1 ? '' : 's') + '</span>' : '');
   Array.prototype.forEach.call(document.querySelectorAll('.filters button'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-f') === filter ? 'true' : 'false'); });
   var groups = {};
   data.items.forEach(function (it) { if (shown(it)) { (groups[group(it)] = groups[group(it)] || []).push(it); } });
@@ -207,6 +257,7 @@ function card(it) {
   if (it.status !== 'open') h += '<button data-id="' + esc(it.id) + '" data-s="open">Reopen</button>';
   if (it.status === 'fail') h += '<button data-id="' + esc(it.id) + '" data-s="bug">Bug id</button>';
   h += '<button data-idea-from="' + esc(it.id) + '" title="Jot a feature idea linked to this play test">Idea from this</button>';
+  h += '<button data-bug-from="' + esc(it.id) + '" title="Report a bug linked to this play test">Bug from this</button>';
   return h + '</div></div>';
 }
 
@@ -220,7 +271,10 @@ function load() {
   // cc-P90: the ideas load beside the items; an older service without /api/ideas says so on the Ideas tab only.
   var b = api('/api/ideas').then(function (j) { ideas = j; ideasError = ''; })
     .catch(function (e) { ideasError = e.message; });
-  return Promise.all([a, b]).then(render);
+  // cc-P97: and the bug reports, the same way.
+  var c = api('/api/bugs').then(function (j) { bugsDoc = j; bugsError = ''; })
+    .catch(function (e) { bugsError = e.message; });
+  return Promise.all([a, b, c]).then(render);
 }
 
 document.querySelector('.filters').addEventListener('click', function (e) {
@@ -234,6 +288,8 @@ document.querySelector('.filters').addEventListener('click', function (e) {
 document.getElementById('list').addEventListener('click', function (e) {
   var from = e.target.closest('button[data-idea-from]');
   if (from) { ideaFrom(from.getAttribute('data-idea-from')); return; }
+  var bfrom = e.target.closest('button[data-bug-from]');
+  if (bfrom) { bugFrom(bfrom.getAttribute('data-bug-from'), ''); return; }
   var b = e.target.closest('button[data-id]');
   if (!b) return;
   var id = b.getAttribute('data-id'), s = b.getAttribute('data-s');
@@ -252,7 +308,10 @@ document.getElementById('list').addEventListener('click', function (e) {
     call = api('/api/result', { id: id, status: s, note: note });
   }
   b.disabled = true;
-  call.then(load).catch(function (x) { b.disabled = false; window.alert('Not saved: ' + x.message); });
+  call.then(load).then(function () {
+    // cc-P97: a Fail is often a bug. Offer the report, prefilled with this play test and the note (Cancel skips it).
+    if (s === 'fail' && window.confirm(id + ' marked Fail. Report a bug for this?')) bugFrom(id, note);
+  }).catch(function (x) { b.disabled = false; window.alert('Not saved: ' + x.message); });
 });
 document.getElementById('add').addEventListener('submit', function (e) {
   e.preventDefault();
@@ -289,7 +348,13 @@ function dupHint(title) {
 function renderIdeaCount() {
   var n = ideas && ideas.summary ? ideas.summary.new : 0, el = document.getElementById('ideas-n');
   el.textContent = n; el.hidden = !n;
-  if (window.SLMenu && window.SLMenu.setBadge) window.SLMenu.setBadge('playtests', n, n + ' new idea' + (n === 1 ? '' : 's'));
+  // cc-P97: the Bugs badge, and the menu's badge counts both.
+  var nb = bugsDoc && bugsDoc.summary ? bugsDoc.summary.new : 0, eb = document.getElementById('bugs-n');
+  eb.textContent = nb; eb.hidden = !nb;
+  var parts = [];
+  if (n) parts.push(n + ' new idea' + (n === 1 ? '' : 's'));
+  if (nb) parts.push(nb + ' new bug' + (nb === 1 ? '' : 's'));
+  if (window.SLMenu && window.SLMenu.setBadge) window.SLMenu.setBadge('playtests', n + nb, parts.join(', '));
 }
 function fLink(fid) { return '<a href="#f-' + esc(fid.toLowerCase()) + '">' + esc(fid) + '</a>'; }
 function ideaCard(it) {
@@ -309,7 +374,7 @@ function ideaCard(it) {
   }
   h += '<div class="label">' + esc(it.title) + '</div>';
   if (it.description) h += '<div class="desc">' + esc(it.description) + '</div>';
-  if (it.status === 'declined' && it.reason) h += '<div class="note ok">Declined: ' + esc(it.reason) + '</div>';
+  if (it.status === 'declined') h += '<div class="note ok">Declined: ' + (it.reason ? esc(it.reason) : 'no reason recorded') + '</div>';
   h += '<div class="actions">';
   if (it.status !== 'taken') h += '<button data-a="taken" data-i="' + esc(it.id) + '">Taken to features chat</button>';
   if (it.status !== 'became') h += '<button class="pass" data-a="became" data-i="' + esc(it.id) + '">Became F-NN</button>';
@@ -355,7 +420,10 @@ function ideaFrom(pid) {
   document.getElementById('i-title').focus({ preventScroll: true });
 }
 function ideaCall(path, body) { return api(path, body).then(load).catch(function (x) { window.alert('Not saved: ' + x.message); }); }
-document.getElementById('counts').addEventListener('click', function (e) { if (e.target.closest('[data-go="ideas"]')) showIdeas(); });
+document.getElementById('counts').addEventListener('click', function (e) {
+  if (e.target.closest('[data-go="ideas"]')) showIdeas();
+  if (e.target.closest('[data-go="bugs"]')) showBugs();
+});
 document.getElementById('i-title').addEventListener('input', function () {
   var hits = dupHint(this.value);
   document.getElementById('i-hint').innerHTML = hits.length ? 'Similar: ' + hits.map(function (h) {
@@ -384,10 +452,20 @@ document.getElementById('idea-list').addEventListener('click', function (e) {
   var a = b.getAttribute('data-a'), id = b.getAttribute('data-i');
   if (a === 'cancel') { editing = ''; renderIdeas(); return; }
   if (a === 'edit') { editing = id; renderIdeas(); return; }
-  if (a === 'delete') { if (window.confirm('Delete ' + id + '? Its number is never reused.')) ideaCall('/api/ideas/delete', { id: id }); return; }
+  if (a === 'delete') {
+    // cc-P97 (Q17): a delete needs a reason, kept with the id, so nobody forgets why.
+    var why = window.prompt('Delete ' + id + '? Its number is never reused. One line: why?', '');
+    if (why === null) return;
+    if (!why.trim()) { window.alert('Deleting an idea needs a reason.'); return; }
+    ideaCall('/api/ideas/delete', { id: id, reason: why }); return;
+  }
   var body = { id: id, status: a };
   if (a === 'became') { var f = window.prompt(id + ' became which feature? (for example F-44)', 'F-'); if (f === null) return; body.feature = f.trim(); }
-  if (a === 'declined') { var r = window.prompt(id + ' declined. One line: why?', ''); if (r === null) return; body.reason = r; }
+  if (a === 'declined') {
+    var r = window.prompt(id + ' declined. One line: why?', ''); if (r === null) return;
+    if (!r.trim()) { window.alert('Declining an idea needs a reason.'); return; }
+    body.reason = r;
+  }
   ideaCall('/api/ideas/status', body);
 });
 document.getElementById('idea-list').addEventListener('submit', function (e) {
@@ -411,9 +489,220 @@ document.getElementById('copy-new').addEventListener('click', function () {
   }).catch(function (x) { msg.textContent = 'Could not copy: ' + x.message; });
 });
 
+// --- cc-P97: the Bugs tab -----------------------------------------------------------------------------
+var bugsDoc = null, bugsError = '', bugEditing = '', pendingShots = [];
+var MAX_SHOT = 2 * 1024 * 1024, MAX_SHOTS = 3;
+function bugStatusText(b) {
+  if (b.status === 'taken') return b.dnum ? 'became ' + esc(b.dnum) : 'taken, pending number';
+  if (b.status === 'duplicate') return 'duplicate of ' + esc(b.duplicateOf);
+  if (b.status === 'fixed') return 'fixed' + (b.dnum ? ' (' + esc(b.dnum) + ')' : '');
+  return esc(bugsDoc.statuses[b.status] || b.status);
+}
+function opts(list, cur) { return '<option value="">(none)</option>' + list.map(function (a) { return '<option' + (a === cur ? ' selected' : '') + '>' + esc(a) + '</option>'; }).join(''); }
+function bugCard(b) {
+  var chips = ['<span class="chip">' + esc(b.id) + '</span>'];
+  if (b.severity) chips.push('<span class="chip' + (b.severity === 'blocks play' ? ' st-fail' : '') + '">' + esc(b.severity) + '</span>');
+  if (b.area) chips.push('<span class="chip">' + esc(b.area) + '</span>');
+  chips.push('<span class="chip">' + esc((b.createdAt || '').slice(0, 10)) + '</span>');
+  chips.push('<span class="chip ' + (b.status === 'fixed' ? 'st-pass' : b.status === 'taken' ? 'st-later' : '') + '">' + bugStatusText(b) + '</span>');
+  if (b.playtest) chips.push('<span class="chip">from <a href="#i-' + esc(b.playtest) + '" data-show="' + esc(b.playtest) + '">' + esc(b.playtest) + '</a></span>');
+  if (b.version) chips.push('<span class="chip">' + esc(b.version) + '</span>');
+  var h = '<div class="bug ' + esc(b.status) + '" id="bug-' + esc(b.id) + '"><div class="meta">' + chips.join('') + '</div>';
+  if (bugEditing === b.id) {
+    return h + '<form class="edit" data-bedit="' + esc(b.id) + '"><label>Bug</label><input name="title" maxlength="140" required value="' + esc(b.title) + '">' +
+      '<label>What happened</label><textarea name="happened" maxlength="2000">' + esc(b.happened) + '</textarea>' +
+      '<label>What you expected</label><textarea name="expected" maxlength="2000">' + esc(b.expected) + '</textarea>' +
+      '<label>Steps</label><textarea name="steps" maxlength="2000">' + esc(b.steps) + '</textarea>' +
+      '<div class="row2"><div><label>Severity</label><select name="severity">' + opts(bugsDoc.severities, b.severity) + '</select></div>' +
+      '<div><label>Area</label><select name="area">' + opts(bugsDoc.areas, b.area) + '</select></div></div>' +
+      '<div class="row2"><div><label>From play test</label><input name="playtest" maxlength="12" value="' + esc(b.playtest) + '"></div>' +
+      '<div><label>Character</label><input name="character" maxlength="140" value="' + esc(b.character) + '"></div>' +
+      '<div><label>Location</label><input name="location" maxlength="140" value="' + esc(b.location) + '"></div></div>' +
+      (b.shots.length < MAX_SHOTS ? '<label>Add screenshots</label><input name="shots" type="file" accept="image/png,image/jpeg,image/*" multiple>' : '') +
+      '<div class="actions"><button type="submit">Save</button><button type="button" data-b="cancel">Cancel</button></div></form></div>';
+  }
+  h += '<div class="label">' + esc(b.title) + '</div>';
+  [['What happened', b.happened], ['Expected', b.expected], ['Steps', b.steps]].forEach(function (f) {
+    if (f[1]) h += '<div class="desc"><b>' + f[0] + ':</b> ' + esc(f[1]) + '</div>';
+  });
+  if (b.character || b.location) h += '<div class="desc"><b>Where:</b> ' + esc([b.character, b.location].filter(Boolean).join(', ')) + '</div>';
+  if (b.shots.length) h += '<div class="shots">' + b.shots.map(function (n) { return '<a href="/api/bugs/file/' + esc(n) + '" target="_blank" rel="noopener"><img src="/api/bugs/file/' + esc(n) + '" alt="' + esc(n) + '" loading="lazy"></a>'; }).join('') + '</div>';
+  if (b.status === 'notbug') h += '<div class="note ok">Not a bug: ' + esc(b.reason) + '</div>';
+  h += '<div class="actions">';
+  if (!(b.status === 'taken' && b.dnum)) h += '<button class="pass" data-b="became" data-i="' + esc(b.id) + '">Became D-NN</button>';
+  if (b.status !== 'taken') h += '<button data-b="taken" data-i="' + esc(b.id) + '">Taken, pending number</button>';
+  if (b.status !== 'duplicate') h += '<button data-b="duplicate" data-i="' + esc(b.id) + '">Duplicate</button>';
+  if (b.status !== 'notbug') h += '<button class="fail" data-b="notbug" data-i="' + esc(b.id) + '">Not a bug</button>';
+  if (b.status !== 'fixed') h += '<button data-b="fixed" data-i="' + esc(b.id) + '">Fixed</button>';
+  if (b.status !== 'new') h += '<button data-b="new" data-i="' + esc(b.id) + '">Back to new</button>';
+  h += '<button data-b="edit" data-i="' + esc(b.id) + '">Edit</button><button data-b="delete" data-i="' + esc(b.id) + '">Delete</button>';
+  return h + '</div></div>';
+}
+function renderBugs() {
+  var list = document.getElementById('bug-list');
+  if (bugsError || !bugsDoc) {
+    list.innerHTML = '<p class="err">' + (bugsError ? 'Bug reports are not available: ' + esc(bugsError) + '. The service needs a restart (Start-TestQueue.ps1).' : 'Loading...') + '</p>';
+    return;
+  }
+  var sev = document.getElementById('b-sev'), area = document.getElementById('b-area');
+  if (sev.options.length === 1) bugsDoc.severities.forEach(function (a) { var o = document.createElement('option'); o.textContent = a; sev.appendChild(o); });
+  if (area.options.length === 1) bugsDoc.areas.forEach(function (a) { var o = document.createElement('option'); o.textContent = a; area.appendChild(o); });
+  document.getElementById('b-ver').textContent = 'Shard version: ' + (bugsDoc.version || 'unknown (the test shard has not reported one)') + '. Filled in by the server.';
+  var items = bugsDoc.bugs.slice().sort(function (a, b) { return parseInt(b.id.slice(2), 10) - parseInt(a.id.slice(2), 10); });
+  list.innerHTML = items.length ? items.map(bugCard).join('') : '<p class="empty">No bug reports yet. Add one above, or use "Bug from this" on a play test.</p>';
+}
+function renderPending() {
+  document.getElementById('b-pending').innerHTML = pendingShots.map(function (d, i) {
+    return '<div class="pending"><img src="' + d + '" alt="screenshot ' + (i + 1) + '"><button type="button" data-unshot="' + i + '" aria-label="Remove screenshot ' + (i + 1) + '">x</button></div>';
+  }).join('');
+}
+function bytesOf(dataUrl) { var b64 = dataUrl.split(',')[1] || ''; return Math.floor(b64.length * 3 / 4); }
+// A PNG or JPG of 2 MB or less goes as it is. Anything else (larger, or another format the browser can draw) is redrawn
+// as a JPG, smaller each try, until it fits. The server checks the bytes again and refuses what is not PNG or JPG.
+function prepareShot(file) {
+  return new Promise(function (resolve, reject) {
+    var ok = /^image\/(png|jpeg)$/.test(file.type);
+    var rd = new FileReader();
+    rd.onerror = function () { reject(new Error('could not read the picture')); };
+    rd.onload = function () {
+      var url = rd.result;
+      if (ok && file.size <= MAX_SHOT) { resolve(url); return; }
+      var img = new Image();
+      img.onerror = function () { reject(new Error('not a picture this browser can read')); };
+      img.onload = function () {
+        var scale = Math.min(1, 2400 / Math.max(img.width, img.height)), out = '';
+        for (var t = 0; t < 8; t++) {
+          var c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(img.width * scale)); c.height = Math.max(1, Math.round(img.height * scale));
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          out = c.toDataURL('image/jpeg', 0.85);
+          if (bytesOf(out) <= MAX_SHOT) { resolve(out); return; }
+          scale *= 0.75;
+        }
+        reject(new Error('could not make it 2 MB or smaller'));
+      };
+      img.src = url;
+    };
+    rd.readAsDataURL(file);
+  });
+}
+function takeFiles(files, room, done) {
+  var list = Array.prototype.slice.call(files || []).filter(function (f) { return /^image\//.test(f.type); });
+  if (list.length > room) { window.alert('A report holds at most ' + MAX_SHOTS + ' screenshots; ' + (list.length - room) + ' left out.'); list = list.slice(0, room); }
+  return Promise.all(list.map(function (f) { return prepareShot(f).catch(function (x) { window.alert('Screenshot left out: ' + x.message); return null; }); }))
+    .then(function (urls) { done(urls.filter(Boolean)); });
+}
+function uploadShots(id, urls) {
+  return urls.reduce(function (p, u) {
+    return p.then(function () { return api('/api/bugs/shot', { id: id, data: u }).catch(function (x) { window.alert('Screenshot not saved: ' + x.message); }); });
+  }, Promise.resolve());
+}
+function showBugs() {
+  filter = 'bugs';
+  try { localStorage.setItem('pt-filter', filter); } catch (x) {}
+  render();
+}
+function bugFrom(pid, note) {
+  showBugs();
+  document.getElementById('b-pt').value = pid;
+  if (note && !document.getElementById('b-happened').value) document.getElementById('b-happened').value = note;
+  var form = document.getElementById('bug-form'), head = document.querySelector('header');
+  window.scrollTo(0, form.getBoundingClientRect().top + window.pageYOffset - head.offsetHeight - 8);
+  document.getElementById('b-title').focus({ preventScroll: true });
+}
+function bugCall(path, body) { return api(path, body).then(load).catch(function (x) { window.alert('Not saved: ' + x.message); }); }
+document.getElementById('b-shots').addEventListener('change', function () {
+  var input = this;
+  takeFiles(input.files, MAX_SHOTS - pendingShots.length, function (urls) { pendingShots = pendingShots.concat(urls); input.value = ''; renderPending(); });
+});
+// Paste anywhere on the Bugs tab (a phone pastes into the box with a long press).
+document.addEventListener('paste', function (e) {
+  if (filter !== 'bugs' || !e.clipboardData) return;
+  var files = [];
+  Array.prototype.forEach.call(e.clipboardData.items || [], function (it) { if (it.kind === 'file' && /^image\//.test(it.type)) files.push(it.getAsFile()); });
+  if (!files.length) return;
+  e.preventDefault();
+  takeFiles(files, MAX_SHOTS - pendingShots.length, function (urls) { pendingShots = pendingShots.concat(urls); renderPending(); });
+});
+document.getElementById('b-pending').addEventListener('click', function (e) {
+  var b = e.target.closest('button[data-unshot]');
+  if (b) { pendingShots.splice(parseInt(b.getAttribute('data-unshot'), 10), 1); renderPending(); }
+});
+document.getElementById('bug-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var g = function (id) { return document.getElementById(id); };
+  var body = { title: g('b-title').value, happened: g('b-happened').value, expected: g('b-expected').value, steps: g('b-steps').value,
+    severity: g('b-sev').value, area: g('b-area').value, playtest: g('b-pt').value.trim(), character: g('b-char').value, location: g('b-loc').value };
+  var btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+  api('/api/bugs/add', body).then(function (j) { return uploadShots(j.bug.id, pendingShots); })
+    .then(function () {
+      ['b-title', 'b-happened', 'b-expected', 'b-steps', 'b-sev', 'b-area', 'b-pt', 'b-char', 'b-loc'].forEach(function (id) { g(id).value = ''; });
+      pendingShots = []; renderPending(); return load();
+    })
+    .catch(function (x) { window.alert('Not added: ' + x.message); })
+    .then(function () { btn.disabled = false; });
+});
+document.getElementById('bug-list').addEventListener('click', function (e) {
+  var show = e.target.closest('[data-show]');
+  if (show) {
+    e.preventDefault();
+    filter = 'all'; render();
+    var el = document.getElementById('i-' + show.getAttribute('data-show'));
+    if (el) el.scrollIntoView();
+    return;
+  }
+  var b = e.target.closest('button[data-b]');
+  if (!b) return;
+  var a = b.getAttribute('data-b'), id = b.getAttribute('data-i');
+  if (a === 'cancel') { bugEditing = ''; renderBugs(); return; }
+  if (a === 'edit') { bugEditing = id; renderBugs(); return; }
+  if (a === 'delete') {
+    var why = window.prompt('Delete ' + id + '? Its number is never reused. One line: why?', '');
+    if (why === null) return;
+    if (!why.trim()) { window.alert('Deleting a report needs a reason.'); return; }
+    bugCall('/api/bugs/delete', { id: id, reason: why }); return;
+  }
+  var body = { id: id, status: a };
+  if (a === 'became') { var d = window.prompt(id + ' became which bug-list row? (for example D91)', 'D'); if (d === null) return; body.status = 'taken'; body.dnum = d.trim(); }
+  if (a === 'duplicate') { var o = window.prompt(id + ' duplicates which? A D-number (D89) or a report (B-003).', ''); if (o === null) return; body.duplicateOf = o.trim(); }
+  if (a === 'notbug') {
+    var r = window.prompt(id + ' is not a bug. One line: why?', ''); if (r === null) return;
+    if (!r.trim()) { window.alert('"Not a bug" needs a reason.'); return; }
+    body.reason = r;
+  }
+  if (a === 'fixed') { var cur = bugsDoc.bugs.filter(function (x) { return x.id === id; })[0]; if (cur && cur.dnum) body.dnum = cur.dnum; }
+  bugCall('/api/bugs/status', body);
+});
+document.getElementById('bug-list').addEventListener('submit', function (e) {
+  var f = e.target.closest('form[data-bedit]');
+  if (!f) return;
+  e.preventDefault();
+  var id = f.getAttribute('data-bedit'), el = f.elements;
+  var body = { id: id, title: el.title.value, happened: el.happened.value, expected: el.expected.value, steps: el.steps.value,
+    severity: el.severity.value, area: el.area.value, playtest: el.playtest.value.trim(), character: el.character.value, location: el.location.value };
+  var cur = bugsDoc.bugs.filter(function (x) { return x.id === id; })[0];
+  var room = MAX_SHOTS - (cur ? cur.shots.length : 0), files = el.shots ? el.shots.files : [];
+  api('/api/bugs/edit', body).then(function () {
+    return new Promise(function (res) { takeFiles(files, room, function (urls) { res(uploadShots(id, urls)); }); });
+  }).then(function () { bugEditing = ''; return load(); }).catch(function (x) { window.alert('Not saved: ' + x.message); });
+});
+document.getElementById('copy-bugs').addEventListener('click', function () {
+  var msg = document.getElementById('bug-copy-msg'), box = document.getElementById('bug-copy-out');
+  api('/api/bugs/copy').then(function (j) {
+    if (!j.text) { msg.textContent = 'No new bug reports to copy.'; box.hidden = true; return; }
+    box.value = j.text; box.hidden = false; box.focus(); box.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (x) {}
+    if (!copied && navigator.clipboard) { navigator.clipboard.writeText(j.text).then(function () { msg.textContent = 'Copied.'; }, function () {}); }
+    msg.textContent = copied ? 'Copied ' + j.ids.length + ' report(s).' : 'Select the text below and copy it.';
+    if (window.confirm('Mark these ' + j.ids.length + ' report(s) taken by the overseer, pending a D-number?')) bugCall('/api/bugs/taken', { ids: j.ids });
+  }).catch(function (x) { msg.textContent = 'Could not copy: ' + x.message; });
+});
+
 load();
 // Refresh every 30 s, but never while something is being typed.
-setInterval(function () { var a = document.activeElement; if ((!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) && !editing) load(); }, 30000);
+setInterval(function () { var a = document.activeElement; if ((!a || !/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) && !editing && !bugEditing && !pendingShots.length) load(); }, 30000);
 </script>
 </body>
 </html>

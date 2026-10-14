@@ -18,7 +18,19 @@ Serves html/index.html and a small JSON API over D:\\UO\\shard-migration\\testin
   POST /api/ideas/edit   {"id", and any of "title", "description", "area", "playtest"}
   POST /api/ideas/status {"id", "status": "new|taken|became|declined", "feature": "F-NN", "reason"}
   POST /api/ideas/taken  {"ids": [...]}  marks copied ideas 'taken to features chat'
-  POST /api/ideas/delete {"id"}  (the id is never reused)
+  POST /api/ideas/delete {"id", "reason"}  (cc-P97: a reason is required; the id is never reused)
+  cc-P97, the bug-reports inbox (shard-migration/tools/bugs.py; data testing/bug-reports.json, screenshots in
+  testing/bug-reports/files/):
+  GET  /api/bugs         {bugs, deleted, nextId, summary, severities, areas, statuses, version}
+  GET  /api/bugs/copy    every 'new' report as plain text for the overseer chat ({"text", "ids"})
+  GET  /api/bugs/file/B-001-1.png   a screenshot
+  POST /api/bugs/add     {"title", "happened", "expected", "steps", "severity", "area", "playtest", "character",
+                          "location"}  (the shard version is filled in here, never sent)
+  POST /api/bugs/edit    {"id", and any of the fields above}
+  POST /api/bugs/status  {"id", "status": "new|taken|duplicate|notbug|fixed", "dnum", "duplicateOf", "reason"}
+  POST /api/bugs/taken   {"ids": [...]}  marks copied reports taken, pending their D-number
+  POST /api/bugs/delete  {"id", "reason"}  (a reason is required; the id is never reused)
+  POST /api/bugs/shot    {"id", "data": "<data URL or base64>"}  one PNG or JPG, 2 MB at most, 3 per report
 
 All parsing and merging is in shard-migration/tools/playtests.py, the same file Import-PlayTests.ps1 runs, so
 there is one set of rules. This file only serves. The importer runs on start and every IMPORT_SECONDS, so a
@@ -45,14 +57,21 @@ ap.add_argument("--port", type=int, default=int(os.environ.get("PLAYTESTS_PORT",
 ap.add_argument("--import-seconds", type=int, default=int(os.environ.get("IMPORT_SECONDS", "60")))
 ap.add_argument("--status-page", default=os.environ.get("STATUS_PAGE", "/data/site/dashboard.html"),
                 help="cc-P85: the dashboard file served at /status (read only)")
+ap.add_argument("--host-root", default=os.environ.get("PLAYTESTS_HOST_ROOT", "D:\\UO\\shard-migration"),
+                help="cc-P97: where --root is on the Windows box, for the screenshot paths in Copy new bugs")
+ap.add_argument("--deployed", default=os.environ.get("SHARD_DEPLOYED", "/data/testworld/shard-commit.json"),
+                help="cc-P97: the record Start-TestShard.ps1 writes after a healthy start; its version goes on a report")
 args = ap.parse_args()
 
 sys.path.insert(0, args.lib)
 import playtests as pt  # noqa: E402
 import ideas  # noqa: E402  (cc-P90)
+import bugs  # noqa: E402  (cc-P97)
 
 STATE = {"lastImport": "", "lastImportError": ""}
 MAX_BODY = 16 * 1024
+# cc-P97: one screenshot, base64 (4/3 of 2 MB) in a small JSON object.
+MAX_SHOT_BODY = 3 * 1024 * 1024
 
 
 def log(msg):
@@ -80,6 +99,21 @@ def importer_loop():
 def read_doc():
     path = os.path.join(args.root, pt.DATA_REL)
     return pt.ordered_doc(pt.load(path))
+
+
+def deployed_version():
+    """cc-P97: the test shard's version as deployed, from the record Start-TestShard.ps1 writes after a healthy start
+    (cc-P96). Empty when there is none, so a report says (unknown) rather than a guess."""
+    try:
+        with open(args.deployed, "r", encoding="utf-8-sig") as f:
+            rec = json.load(f)
+    except (OSError, ValueError):
+        return ""
+    v = str(rec.get("version") or "").strip()
+    c = str(rec.get("commit") or "").strip()[:7]
+    if v and c:
+        return "%s (test shard, %s)" % (v, c)
+    return v
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -141,7 +175,35 @@ class Handler(BaseHTTPRequestHandler):
                 out["ideas_new"] = ideas.summary(ideas.load(args.root))["new"]
             except Exception:
                 out["ideas_new"] = None
+            # cc-P97: new bug reports, beside the ideas.
+            try:
+                out["bugs_new"] = bugs.summary(bugs.load(args.root))["new"]
+            except Exception:
+                out["bugs_new"] = None
             return self.send_json(200, out)
+        if p == "/api/bugs":
+            try:
+                doc = bugs.ordered_doc(bugs.load(args.root))
+            except Exception as e:
+                return self.send_json(500, {"error": str(e)})
+            doc.update(summary=bugs.summary(doc), severities=list(bugs.SEVERITIES), areas=list(bugs.AREAS),
+                       statuses=bugs.STATUSES, version=deployed_version())
+            return self.send_json(200, doc)
+        if p == "/api/bugs/copy":
+            try:
+                doc = bugs.load(args.root)
+                text = bugs.copy_text(doc, read_doc(), args.host_root)
+            except Exception as e:
+                return self.send_json(500, {"error": str(e)})
+            return self.send_json(200, {"text": text, "ids": [b["id"] for b in doc["bugs"] if b["status"] == "new"]})
+        if p.startswith("/api/bugs/file/"):
+            name = p[len("/api/bugs/file/"):]
+            try:
+                with open(bugs.shot_path(args.root, name), "rb") as f:
+                    data = f.read()
+            except (KeyError, OSError):
+                return self.send_json(404, {"error": "no such screenshot"})
+            return self.send(200, data, "image/png" if name.endswith(".png") else "image/jpeg")
         if p == "/api/ideas":
             try:
                 doc = ideas.load(args.root)
@@ -164,8 +226,8 @@ class Handler(BaseHTTPRequestHandler):
         p = self.path.split("?", 1)[0]
         try:
             n = int(self.headers.get("Content-Length") or 0)
-            if n > MAX_BODY:
-                return self.send_json(413, {"error": "too large"})
+            if n > (MAX_SHOT_BODY if p == "/api/bugs/shot" else MAX_BODY):
+                return self.send_json(413, {"error": "too large: a screenshot can be at most 2 MB" if p == "/api/bugs/shot" else "too large"})
             body = json.loads(self.rfile.read(n).decode("utf-8") or "{}") if n else {}
             if not isinstance(body, dict):
                 raise ValueError("send a JSON object")
@@ -199,9 +261,38 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError("ids must be a list")
                 return self.send_json(200, {"taken": ideas.mark_taken(args.root, [str(i) for i in ids])})
             if p == "/api/ideas/delete":
-                gone = ideas.delete(args.root, str(body.get("id", "")))
+                gone = ideas.delete(args.root, str(body.get("id", "")), str(body.get("reason", "")))
                 log("idea %s deleted" % gone)
                 return self.send_json(200, {"deleted": gone})
+            # cc-P97: bug reports.
+            if p == "/api/bugs/add":
+                kw = {k: str(body.get(k, "")) for k in ("happened", "expected", "steps", "severity", "area", "playtest",
+                                                        "character", "location")}
+                b = bugs.add(args.root, str(body.get("title", "")), version=deployed_version(), by="", **kw)
+                log("bug %s: %s" % (b["id"], b["title"]))
+                return self.send_json(200, {"bug": b})
+            if p == "/api/bugs/edit":
+                kw = {k: str(body[k]) for k in ("title", "happened", "expected", "steps", "severity", "area", "playtest",
+                                                "character", "location") if k in body}
+                return self.send_json(200, {"bug": bugs.edit(args.root, str(body.get("id", "")), **kw)})
+            if p == "/api/bugs/status":
+                b = bugs.set_status(args.root, str(body.get("id", "")), str(body.get("status", "")),
+                                    str(body.get("dnum", "")), str(body.get("duplicateOf", "")), str(body.get("reason", "")))
+                log("bug %s = %s %s%s%s" % (b["id"], b["status"], b["dnum"], b["duplicateOf"], b["reason"]))
+                return self.send_json(200, {"bug": b})
+            if p == "/api/bugs/taken":
+                ids = body.get("ids", [])
+                if not isinstance(ids, list):
+                    raise ValueError("ids must be a list")
+                return self.send_json(200, {"taken": bugs.mark_taken(args.root, [str(i) for i in ids])})
+            if p == "/api/bugs/delete":
+                gone = bugs.delete(args.root, str(body.get("id", "")), str(body.get("reason", "")))
+                log("bug %s deleted" % gone)
+                return self.send_json(200, {"deleted": gone})
+            if p == "/api/bugs/shot":
+                name = bugs.add_shot(args.root, str(body.get("id", "")), bugs.decode_shot(body.get("data", "")))
+                log("bug screenshot %s" % name)
+                return self.send_json(200, {"shot": name})
             if p == "/api/import":
                 run_import()
                 return self.send_json(200, {"service": STATE})

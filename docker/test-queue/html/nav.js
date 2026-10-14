@@ -116,7 +116,11 @@
     for (var i = 0; i < PAGES.length; i++) if (PAGES[i].key === 'playtests') pt = PAGES[i];
     if (key === 'playtests' || !window.fetch || url(pt).indexOf(window.location.protocol + '//' + window.location.host + '/') !== 0) return;
     fetch('/api/summary', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-      if (j && j.ideas_new) setBadge('playtests', j.ideas_new, j.ideas_new + ' new idea' + (j.ideas_new === 1 ? '' : 's'));
+      // cc-P97: new ideas and new bug reports, together.
+      var ni = (j && j.ideas_new) || 0, nb = (j && j.bugs_new) || 0, parts = [];
+      if (ni) parts.push(ni + ' new idea' + (ni === 1 ? '' : 's'));
+      if (nb) parts.push(nb + ' new bug' + (nb === 1 ? '' : 's'));
+      if (ni + nb) setBadge('playtests', ni + nb, parts.join(', '));
     }).catch(function () {});
   }
 

@@ -3363,7 +3363,8 @@ function Get-PlayTestGlance {
     # The PLAY TESTS tile. Pure: the file's text in ($null when there is no file), a tile out. The counts
     # come from the items, not from the summary block, so a hand-edited file cannot disagree with itself.
     # cc-P90: -IdeasText is feature-ideas.json beside it; its 'new' ideas are added to the detail, never to the word.
-    param($JsonText, [string]$ReadError, $IdeasText)
+    # cc-P97: -BugsText is bug-reports.json, added the same way after the ideas.
+    param($JsonText, [string]$ReadError, $IdeasText, $BugsText)
     $t = [ordered]@{ Title = 'PLAY TESTS'; Word = 'UNKNOWN'; Color = 'gray'; Detail = '' }
     if ($ReadError) { $t.Detail = 'play-tests.json could not be read (' + $ReadError + ')'; return [pscustomobject]$t }
     if ($null -eq $JsonText) { $t.Detail = 'no play-tests.json yet: start sl-play-tests or run Import-PlayTests.ps1'; return [pscustomobject]$t }
@@ -3385,6 +3386,8 @@ function Get-PlayTestGlance {
     $t.Detail += ', ' + $passed + ' passed'
     $newIdeas = Get-NewIdeaCount $IdeasText
     if ($newIdeas) { $t.Detail += '; ' + $newIdeas + ' new idea' + $(if ($newIdeas -eq 1) { '' } else { 's' }) }
+    $newBugs = Get-NewBugCount $BugsText
+    if ($newBugs) { $t.Detail += '; ' + $newBugs + ' new bug' + $(if ($newBugs -eq 1) { '' } else { 's' }) }
     if ($unlogged) { $t.Color = 'amber'; $t.Word = [string]$unlogged + ' FAIL NOT LOGGED' }
     elseif ($open -eq 0) { $t.Color = 'green'; $t.Word = 'ALL TESTED' }
     [pscustomobject]$t
@@ -3399,6 +3402,17 @@ function Get-NewIdeaCount {
         $doc = ([string]$JsonText) | ConvertFrom-Json
         if ($null -eq $doc -or $doc.schema -ne 1) { return 0 }
         @($doc.ideas | Where-Object { $_.status -eq 'new' }).Count
+    } catch { 0 }
+}
+
+function Get-NewBugCount {
+    # cc-P97: how many reports in bug-reports.json are still 'new'. 0 for no file or one that cannot be read, as above.
+    param($JsonText)
+    if ($null -eq $JsonText) { return 0 }
+    try {
+        $doc = ([string]$JsonText) | ConvertFrom-Json
+        if ($null -eq $doc -or $doc.schema -ne 1) { return 0 }
+        @($doc.bugs | Where-Object { $_.status -eq 'new' }).Count
     } catch { 0 }
 }
 
@@ -4166,7 +4180,13 @@ function Get-PlayTestGlanceNow {
         $ip = Join-Path (Split-Path -Parent $Config.PlayTestsFile) 'feature-ideas.json'
         if (Test-Path -LiteralPath $ip -PathType Leaf) { $ideas = [IO.File]::ReadAllText($ip) }
     } catch { }
-    Get-PlayTestGlance -JsonText $text -ReadError $err -IdeasText $ideas
+    # cc-P97: and bug-reports.json.
+    $bugs = $null
+    try {
+        $bp = Join-Path (Split-Path -Parent $Config.PlayTestsFile) 'bug-reports.json'
+        if (Test-Path -LiteralPath $bp -PathType Leaf) { $bugs = [IO.File]::ReadAllText($bp) }
+    } catch { }
+    Get-PlayTestGlance -JsonText $text -ReadError $err -IdeasText $ideas -BugsText $bugs
 }
 
 function Get-AutopilotViewNow {

@@ -3173,6 +3173,22 @@ Fact 'P90_NewIdeasAreAddedToThePlayTestsDetailNeverToItsWord' {
     }
 }
 
+Fact 'P97_NewBugsAreAddedToThePlayTestsDetailBesideTheIdeas' {
+    # cc-P97: bug-reports.json sits beside feature-ideas.json; its 'new' reports go in the detail, never the word.
+    $bugs = '{ "schema": 1, "nextId": 3, "copiedAt": "", "bugs": [ { "id": "B-001", "status": "new" }, { "id": "B-002", "status": "taken" } ], "deleted": [] }'
+    $oneIdea = '{ "schema": 1, "ideas": [ { "id": "I-009", "status": "new" } ] }'
+    $plain = Get-PlayTestGlance $ptReal
+    $with = Get-PlayTestGlance $ptReal -IdeasText $oneIdea -BugsText $bugs
+    Assert-Equal $plain.Word $with.Word 'the word is the play tests alone'
+    Assert-Equal $plain.Color $with.Color
+    Assert-Equal ($plain.Detail + '; 1 new idea; 1 new bug') $with.Detail
+    $two = $bugs -replace '"taken"', '"new"'
+    Assert-Equal ($plain.Detail + '; 2 new bugs') (Get-PlayTestGlance $ptReal -BugsText $two).Detail
+    foreach ($bad in @($null, '{ "schema": 1, "bugs": [', '{ "schema": 2, "bugs": [ { "status": "new" } ] }', '{ "schema": 1, "bugs": [] }')) {
+        Assert-Equal $plain.Detail (Get-PlayTestGlance $ptReal -BugsText $bad).Detail 'no reports, no file or a bad one: nothing added'
+    }
+}
+
 Fact 'P83_TheLinksOpenTheTwoPagesAndNothingElse' {
     foreach ($k in @('links.playtests', 'links.dashboard', 'links.status')) {
         $p = @(Get-ActionPlan -Action $k -Config $config)

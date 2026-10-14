@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.4
+
+### Staff
+- The play-test page has a Bugs tab: report a bug with screenshots, from scratch or straight from a play test (or when marking one Fail), and copy the new ones for the bug list. Declining or deleting an idea now asks why.
+
 ## 2026.10.14.3
 
 ### Staff

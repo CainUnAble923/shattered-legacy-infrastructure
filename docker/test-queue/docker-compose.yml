@@ -25,6 +25,9 @@ services:
       - D:/UO/shard-migration/testing:/data/testing
       # cc-P85: the repo root, read only, for /status (dashboard.html). A folder, for the same reason as above.
       - D:/UO/shard-migration:/data/site:ro
+      # cc-P97: the test world folder, read only, for the one file a bug report reads from it: shard-commit.json, which
+      # Start-TestShard.ps1 writes after a healthy start (cc-P96), so a report carries the deployed version.
+      - D:/ShatteredLegacy/server/lib/uo/modernuo-test:/data/testworld:ro
     environment:
       TZ: ${TZ:-America/Chicago}
       PLAYTESTS_ROOT: /data
@@ -33,6 +36,8 @@ services:
       PLAYTESTS_PORT: "8000"
       IMPORT_SECONDS: "60"
       STATUS_PAGE: /data/site/dashboard.html
+      SHARD_DEPLOYED: /data/testworld/shard-commit.json
+      PLAYTESTS_HOST_ROOT: 'D:\UO\shard-migration'
       PYTHONDONTWRITEBYTECODE: "1"
 
 networks:

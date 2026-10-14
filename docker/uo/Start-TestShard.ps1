@@ -259,8 +259,12 @@ if ($good) {
 } else {
     Write-Host "  healthy, but the image has no sl.commit label (built before cc-P96), so it is not tagged good." -ForegroundColor Yellow
 }
+# cc-P97: the version the shard itself printed at this start (ShardVersion.cs), for bug reports on the play-test page.
+$shardVersion = $null
+if ((Remove-HealthAnsi $log) -match '\[ShardVersion\] Shattered Legacy (\S+)') { $shardVersion = $Matches[1] }
 $record = [ordered]@{
     commit  = $(if ($lc -match '^[0-9a-f]{7,40}$') { $lc } else { $null })
+    version = $shardVersion
     dirty   = ($ld -eq '1')
     image   = $(if ($Image) { $Image } else { 'sl-modernuo:latest' })
     imageId = $imageId

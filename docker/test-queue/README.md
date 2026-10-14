@@ -24,7 +24,13 @@ and `D:\UO\shard-migration\tools\Import-PlayTests.ps1` runs it from the host.
 - `D:\UO\shard-migration\testing\SUMMARY.md`: the same, rewritten on every write, for the overseer.
 - `D:\UO\shard-migration\testing\feature-ideas.json` (cc-P90): the Ideas tab's inbox. Ids `I-NNN` come from a
   stored counter and are never reused. The same atomic write, under its own lock (`feature-ideas.json.lock`).
-  The rules are in `D:\UO\shard-migration\tools\ideas.py`.
+  The rules are in `D:\UO\shard-migration\tools\ideas.py`. cc-P97: declining or deleting needs a reason; a deleted
+  idea keeps its id, title and reason under `deleted`.
+- `D:\UO\shard-migration\testing\bug-reports.json` (cc-P97): the Bugs tab's inbox. Ids `B-NNN` from a stored
+  counter, never reused; a deleted report keeps its id, title and reason under `deleted`. Screenshots (PNG or JPG,
+  2 MB at most, 3 per report) are in `testing\bug-reports\files\`. Same lock and atomic write. The rules are in
+  `D:\UO\shard-migration\tools\bugs.py`. A report's shard version comes from the test world's `shard-commit.json`
+  (written by `Start-TestShard.ps1` after a healthy start), mounted read only.
 
 Every write is under a lock file (`play-tests.json.lock`) and goes through a temp file and a rename. So two
 browser tabs, the service's own importer and `Import-PlayTests.ps1` on the host never lose each other's
@@ -36,14 +42,18 @@ results.
 |---|---|
 | `GET /nav.js` | the shared menu (cc-P88): Play tests, Shard status, Dashboard. The one source for all three pages; its `PAGES` table holds each page's address |
 | `GET /api/items` | the whole document |
-| `GET /api/summary` | `open`, `failed`, `passed`, `later`, `blocked`, `total`, `unloggedFails`, `generatedAt`, and `ideas_new` (cc-P90). The dashboard's Play tests widget reads this |
+| `GET /api/summary` | `open`, `failed`, `passed`, `later`, `blocked`, `total`, `unloggedFails`, `generatedAt`, `ideas_new` (cc-P90) and `bugs_new` (cc-P97). The dashboard's Play tests widget reads this |
 | `POST /api/result` | `{"id", "status": "pass|fail|later|open", "note"}`; a fail needs a note |
 | `POST /api/bug` | `{"id", "bug": "D86"}`: the Fail is logged in `bug-list.md` |
 | `POST /api/manual` | `{"what", "expect"}`: adds an `M-NNN` item |
 | `POST /api/import` | runs the importer now |
 | `GET /api/ideas` | cc-P90: the ideas, their counts, the areas and statuses, and the F-NN entries of `docs/feature-queue.md` (read only) |
 | `GET /api/ideas/copy` | every `new` idea as plain text for the features chat, and their ids |
-| `POST /api/ideas/add`, `/edit`, `/status`, `/taken`, `/delete` | change an idea |
+| `POST /api/ideas/add`, `/edit`, `/status`, `/taken`, `/delete` | change an idea (cc-P97: `/delete` needs a `reason`) |
+| `GET /api/bugs` | cc-P97: the reports, their counts, severities, areas and statuses, and the deployed test-shard version |
+| `GET /api/bugs/copy` | every `new` report as plain text for the overseer chat, and their ids |
+| `GET /api/bugs/file/B-001-1.png` | a screenshot |
+| `POST /api/bugs/add`, `/edit`, `/status`, `/taken`, `/delete`, `/shot` | change a report; `/shot` takes one picture as base64 |
 
 ## Run it by hand (testing)
 
