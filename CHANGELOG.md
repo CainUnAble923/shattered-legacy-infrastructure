@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14
+
+### Staff
+- The Shard Console autopilot tile shows which prompt is running, how far through the run and its steps it is, and when it last did anything; the Autopilot tab adds the run cap, the settings and a button to open them.
+
 ## 2026.10.13.13
 
 ### Staff

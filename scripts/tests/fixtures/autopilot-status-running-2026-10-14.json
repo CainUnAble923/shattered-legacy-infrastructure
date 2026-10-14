@@ -1,0 +1,33 @@
+{
+    "schema":  1,
+    "generatedAt":  "2026-10-14T06:24:33",
+    "state":  "RUNNING",
+    "enabled":  true,
+    "current":  "P94",
+    "currentFile":  "cc-P94-autopilot-progress-console.md",
+    "startedAt":  "2026-10-14T06:23:34",
+    "position":  1,
+    "total":  10,
+    "runDone":  0,
+    "runStarted":  "2026-10-14T05:49:20",
+    "maxPerRun":  6,
+    "lastHandled":  94,
+    "queued":  [
+                   "cc-P95-imbue-boot-fix.md",
+                   "cc-P96-bug-reports.md",
+                   "cc-P97-building-duplicator.md",
+                   "cc-P98-visual-builder.md",
+                   "cc-P99-console-websites.md",
+                   "cc-P100-bot-nightly-archive.md",
+                   "cc-P101-tazuo-client-command.md",
+                   "cc-P102-uorespawn-read.md",
+                   "cc-P103-haven-h1-host-agnostic.md"
+               ],
+    "stepsDone":  0,
+    "stepsTotal":  0,
+    "stepNow":  "",
+    "lastActivityUtc":  "2026-10-14T11:24:33",
+    "lastTool":  "Bash",
+    "toolStartedUtc":  "2026-10-14T11:24:33",
+    "needsYou":  ""
+}

@@ -2825,7 +2825,10 @@ Fact 'P74_TheTileAndTheTabAreBuiltAndDrawn' {
         Assert-Equal 'AUTOPILOT: NEEDS YOU' $script:ui.AutopilotTile.Word.Text
         Assert-Equal (Get-TileColors 'amber')[0] $script:ui.AutopilotTile.Panel.BackColor 'amber tile'
         Assert-Equal 'Autopilot' $script:ui.AutopilotPage.Text
-        Assert-Equal 'autopilot.on,autopilot.off,autopilot.email,autopilot.test,autopilot.queue,autopilot.log' (($script:ui.AutopilotButtons | ForEach-Object { $_.Tag }) -join ',')
+        Assert-Equal 'autopilot.on,autopilot.off,autopilot.email,autopilot.test,autopilot.queue,autopilot.log,autopilot.settings' (($script:ui.AutopilotButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P94 adds Open settings.json last'
+        $apCap = @($script:ui.AutopilotPage.Controls | ForEach-Object { @($_.Controls) } | Where-Object { $_.Text -like 'Autopilot hands CC*' })
+        Assert-Equal 1 $apCap.Count 'the caption'
+        Assert-True ($apCap[0].Text -match 'After maxPerRun prompts \(settings\.json\) autopilot stops and keeps the queue: start a new CC session before turning it back on\.') $apCap[0].Text
         Assert-True ($script:ui.Tabs.TabPages.Contains($script:ui.AutopilotPage)) 'the tab is in the tab control'
         Assert-True ($script:ui.AutopilotPanel.Text -match 'needs you : NEEDS YOU: P74 stopped mid-task') 'the panel is drawn'
         Assert-True ($script:ui.Status.Text -match 'AUTOPILOT\s+: NEEDS YOU') 'the status panel lists it too'
@@ -2835,6 +2838,227 @@ Fact 'P74_TheTileAndTheTabAreBuiltAndDrawn' {
         [void](Update-AutopilotView)
         Assert-Equal 'AUTOPILOT: OFF' $script:ui.AutopilotTile.Word.Text 'redrawn from disk'
     } finally { $form.Dispose(); $script:NetProbeDisabled = $false; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# --- cc-P94: the AUTOPILOT tile and tab read status.json ------------------------------------------
+# autopilot-status-running-2026-10-14.json is the real D:\UO\cc-autopilot\status.json as this prompt
+# started (P94 handed, no task list yet, Bash running), and autopilot-settings-2026-10-14.json the real
+# settings.json. Every other shape is that file with fields changed by Set-ApStatus, the way the hook's
+# Write-Status (cc-autopilot.ps1:187) would write them. Times are set as minutes before $apsNow, because
+# the hook writes startedAt and generatedAt in local time and the activity times in UTC: built from one
+# clock, the facts hold in any time zone.
+
+$apsReal     = Read-ApText 'autopilot-status-running-2026-10-14.json'
+$apsSettings = Read-ApText 'autopilot-settings-2026-10-14.json'
+$apsNow      = [datetime]::new(2026, 10, 14, 6, 40, 0)
+
+function Set-ApStatus {
+    param([hashtable]$Set = @{}, $Started, $Generated = 0, $Activity, $Tool)
+    $d = $apsReal | ConvertFrom-Json
+    $loc = { param($m) $apsNow.AddMinutes(-$m).ToString('s') }
+    $utc = { param($m) $apsNow.AddMinutes(-$m).ToUniversalTime().ToString('s') }
+    if ($null -ne $Started) { $d.startedAt = & $loc $Started }
+    $d.generatedAt = & $loc $Generated
+    if ($null -ne $Activity) { $d.lastActivityUtc = & $utc $Activity }
+    $d.toolStartedUtc = $(if ($null -ne $Tool) { & $utc $Tool } else { '' })
+    foreach ($k in $Set.Keys) { $d.$k = $Set[$k] }
+    $d | ConvertTo-Json -Depth 4
+}
+
+function Get-ApsView([string]$Status, [string[]]$Log = @(), $Settings = $apsSettings) {
+    Get-AutopilotView -Enabled $true -StateText $null -LogLines $Log -QueueNames @() -StatusText $Status -SettingsText $Settings
+}
+function Get-ApsTile([string]$Status, [string[]]$Log = @(), $Settings = $apsSettings) {
+    Get-AutopilotGlance -View (Get-ApsView $Status $Log $Settings) -Now $apsNow
+}
+
+$apsSteps = @{ current = 'P92'; currentFile = 'cc-P92-port-list-target.md'; position = 2; total = 5; runDone = 1
+    stepsDone = 3; stepsTotal = 6; stepNow = '  Writing the tile  '; queued = @('cc-P93-a.md', 'cc-P94-b.md', 'cc-P95-c.md') }
+
+Fact 'P94_TheRealStatusJsonReadsAsSchemaOne' {
+    $s = ConvertFrom-AutopilotStatus $apsReal
+    Assert-Equal 'RUNNING' $s.State
+    Assert-Equal 'P94' $s.Current
+    Assert-Equal '1 of 10' ([string]$s.Position + ' of ' + $s.Total)
+    Assert-Equal 9 @($s.Queued).Count
+    Assert-Equal 'cc-P95-imbue-boot-fix.md' @($s.Queued)[0] 'in run order, as the hook lists them'
+    Assert-Equal ([DateTimeKind]::Utc) $s.LastActivity.Kind 'lastActivityUtc is UTC'
+    Assert-Equal ([datetime]::new(2026, 10, 14, 6, 23, 34)) $s.StartedAt 'startedAt is local, as written'
+    Assert-Equal 6 $s.MaxPerRun
+}
+
+Fact 'P94_RunningWithStepsSaysPositionStepAndAgeOverTheStepAndLastActivity' {
+    $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2)
+    Assert-Equal 'RUNNING' $t.Word
+    Assert-Equal 'green' $t.Color
+    Assert-Equal ("P92  2 of 5  step 3/6  14m`nWriting the tile; last activity 2m ago") $t.Detail 'stepNow is trimmed'
+}
+
+Fact 'P94_RunningWithoutStepsOmitsTheStepPart' {
+    # The real file: P94 just handed, CC has made no task list.
+    $t = Get-ApsTile (Set-ApStatus -Started 14 -Activity 2)
+    Assert-Equal 'RUNNING' $t.Word
+    Assert-Equal ("P94  1 of 10  14m`nlast activity 2m ago") $t.Detail
+    Assert-True ($t.Detail -notmatch '0/0') 'never step 0/0'
+}
+
+Fact 'P94_ARunningToolIsNamedWithHowLongItHasRun' {
+    $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 30 -Activity 9 -Tool 9)
+    Assert-Equal 'green' $t.Color '9 minutes is under stallMinutes 45'
+    Assert-Equal ("P92  2 of 5  step 3/6  30m`nWriting the tile; running Bash for 9m") $t.Detail
+}
+
+Fact 'P94_QuietPastStallMinutesTurnsTheTileAmber' {
+    $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 60 -Activity 52)
+    Assert-Equal 'RUNNING' $t.Word 'still running: the watch task emails, the tile only shows it'
+    Assert-Equal 'amber' $t.Color
+    Assert-Equal ("P92  2 of 5  step 3/6  1h 0m`nWriting the tile; quiet for 52m") $t.Detail
+    $tool = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 60 -Activity 52 -Tool 52)
+    Assert-True ($tool.Detail.EndsWith('quiet for 52m (Bash still running)')) $tool.Detail
+    $patient = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 60 -Activity 52) -Settings '{ "stallMinutes": 60 }'
+    Assert-Equal 'green' $patient.Color 'stallMinutes comes from settings.json'
+    Assert-True ($patient.Detail.EndsWith('last activity 52m ago')) $patient.Detail
+}
+
+Fact 'P94_NeedsYouIsAmberWithTheHooksOwnWords' {
+    # cc-autopilot.ps1:501 writes this needsYou when CC stops without DONE.
+    $t = Get-ApsTile (Set-ApStatus -Set @{ state = 'NEEDS YOU'; needsYou = 'P94 stopped mid-task (question?)' } -Started 5 -Activity 1)
+    Assert-Equal 'NEEDS YOU' $t.Word
+    Assert-Equal 'amber' $t.Color
+    Assert-Equal 'P94 stopped mid-task (question?)' $t.Detail
+}
+
+Fact 'P94_AStaleStatusWhileRunningIsAmberAndSaysWhy' {
+    $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 50 -Activity 41 -Generated 40)
+    Assert-Equal 'RUNNING' $t.Word
+    Assert-Equal 'amber' $t.Color 'amber, not red'
+    Assert-True ($t.Detail.EndsWith("`nstatus 40 min old; watch task not running?")) $t.Detail
+    $fresh = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 50 -Activity 2 -Generated 14)
+    Assert-Equal 'green' $fresh.Color '14 minutes old is within the watch task''s 10 minute beat'
+    $idle = Get-ApsTile (Set-ApStatus -Set @{ state = 'IDLE'; current = ''; position = 0 } -Generated 300)
+    Assert-Equal 'gray' $idle.Color 'nothing rewrites status.json while idle, so its age means nothing then'
+}
+
+Fact 'P94_AMissingOrUnreadableStatusJsonFallsBackToTheOldReading' {
+    $lines = Read-ApLog 'autopilot-log-2026-10-12.txt'
+    $q = @('cc-P83-play-test-queue.md', 'cc-P90-later.md')
+    foreach ($c in @(
+        @{ Name = 'missing'; Text = $null; Note = '^no status\.json' },
+        @{ Name = 'not JSON'; Text = '{ "schema": 1, "state": '; Note = '^status\.json unreadable' },
+        @{ Name = 'another schema'; Text = '{ "schema": 2, "state": "RUNNING" }'; Note = 'schema 2, not 1' },
+        @{ Name = 'an unknown state'; Text = '{ "schema": 1, "state": "BUSY" }'; Note = 'not one of OFF' })) {
+        $v = Get-AutopilotView -Enabled $true -StateText $apRunning -LogLines $lines -QueueNames $q -StatusText $c.Text -SettingsText $apsSettings
+        Assert-Equal $null $v.Status $c.Name
+        Assert-True ($v.StatusNote -match $c.Note) ($c.Name + ': ' + $v.StatusNote)
+        $t = Get-AutopilotGlance -View $v -Now $apStarted.AddMinutes(42)
+        Assert-Equal 'RUNNING' $t.Word $c.Name
+        Assert-Equal 'P74 for 42m 0s, 2 queued' $t.Detail ($c.Name + ': exactly the cc-P74 tile')
+        Assert-Equal 0 @($v.Problems).Count ($c.Name + ': a fallback is not a problem')
+    }
+    $e = Get-AutopilotView -Enabled $true -StateText $apRunning -LogLines $lines -QueueNames $q -StatusError 'in use by another process'
+    Assert-True ($e.StatusNote -match 'could not be read \(in use') $e.StatusNote
+    $panel = @(Format-AutopilotPanel -View $e -Config $config -Now $apStarted) | ForEach-Object { $_.Text }
+    Assert-True (@($panel | Where-Object { $_ -like 'status    : status.json could not be read*' }).Count -eq 1) ($panel -join ' | ')
+}
+
+Fact 'P94_QueuedWithOneItemAndWithNone' {
+    $idle = @{ state = 'IDLE'; current = ''; currentFile = ''; position = 0; total = 1; queued = @('cc-P95-imbue-boot-fix.md') }
+    $one = Get-ApsTile (Set-ApStatus -Set $idle)
+    Assert-Equal 'IDLE' $one.Word
+    Assert-Equal '1 queued; send CC "go" to start' $one.Detail
+    $idle.queued = @(); $idle.total = 0
+    $none = Get-ApsTile (Set-ApStatus -Set $idle)
+    Assert-Equal 'queue empty' $none.Detail
+    $idle.runDone = 3
+    Assert-Equal 'queue empty; 3 done this run' (Get-ApsTile (Set-ApStatus -Set $idle)).Detail 'runDone when above 0'
+    $off = Get-ApsTile (Set-ApStatus -Set @{ state = 'OFF'; enabled = $false; current = ''; position = 0; runDone = 2; queued = @('cc-P95-imbue-boot-fix.md') })
+    Assert-Equal 'OFF' $off.Word
+    Assert-Equal 'gray' $off.Color
+    Assert-Equal 'not handing out prompts; 1 queued; 2 done this run' $off.Detail
+    $lone = '{ "schema": 1, "state": "IDLE", "queued": "cc-P95-imbue-boot-fix.md" }'
+    Assert-Equal 1 @((ConvertFrom-AutopilotStatus $lone).Queued).Count 'a one-item array written as a bare string still counts one'
+    Assert-Equal 0 @((ConvertFrom-AutopilotStatus '{ "schema": 1, "state": "IDLE" }').Queued).Count 'no queued at all is none'
+}
+
+Fact 'P94_FailingEmailStillTurnsTheStatusTileAmber' {
+    $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2) (Read-ApLog 'autopilot-log-email-failed.txt')
+    Assert-Equal 'amber' $t.Color
+    Assert-True ($t.Detail.EndsWith('last activity 2m ago; email failing')) $t.Detail
+}
+
+Fact 'P94_ThePanelSaysTheRunTheStepsTheActivityAndTheSettings' {
+    $v = Get-ApsView (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2)
+    $p = @(Format-AutopilotPanel -View $v -Config $config -Now $apsNow) | ForEach-Object { $_.Text }
+    $want = @(
+        'AUTOPILOT : RUNNING. P92  2 of 5  step 3/6  14m',
+        '            Writing the tile; last activity 2m ago',
+        'run       : 2 of 5, cap 6, 1 done, started 2026-10-14 05:49:20',
+        'steps     : 3 of 6 done, now: Writing the tile',
+        'activity  : last activity 2m ago (Bash)',
+        'settings  : progressEmails true, maxPerRun 6, stallMinutes 45 (settings.json)')
+    foreach ($w in $want) { Assert-True ($p -contains $w) ('missing [' + $w + '] in: ' + ($p -join ' | ')) }
+    Assert-True (@($p | Where-Object { $_ -like 'status    : D:\UO\cc-autopilot\status.json, written 2026-10-14 06:40:00 (0s ago)' }).Count -eq 1) ($p -join ' | ')
+    $none = Get-ApsView (Set-ApStatus -Set @{ maxPerRun = 0 } -Started 1) -Settings $null
+    $q = @(Format-AutopilotPanel -View $none -Config $config -Now $apsNow) | ForEach-Object { $_.Text }
+    Assert-True ($q -contains 'steps     : none reported (CC''s task list is empty for this prompt)') ($q -join ' | ')
+    Assert-True (@($q | Where-Object { $_ -like 'run       : 1 of 10, no cap,*' }).Count -eq 1) 'maxPerRun 0 is no cap'
+    Assert-True ($q -contains 'settings  : progressEmails true, maxPerRun 6, stallMinutes 45 (no settings.json: the hook''s defaults)') ($q -join ' | ')
+}
+
+Fact 'P94_TheStatusReportIndentsTheTilesSecondLine' {
+    $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2)
+    $lines = @(Format-StatusReport $state $config @($t))
+    Assert-True ($lines[4].Text -match '^AUTOPILOT\s+: RUNNING\s+P92  2 of 5  step 3/6  14m$') $lines[4].Text
+    Assert-Equal ((' ' * 35) + 'Writing the tile; last activity 2m ago') $lines[5].Text
+    Assert-Equal 'green' $lines[5].Color
+}
+
+Fact 'P94_OpenSettingsOpensOnlySettingsJsonInNotepad' {
+    $ap = $config.Autopilot
+    $yes = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; SettingsExists = $true; Present = @{} }
+    $p = @(Get-ActionPlan -Action 'autopilot.settings' -Config $config -AutopilotFacts $yes)
+    $l = @($p | Where-Object { $_.Kind -eq 'launch' })
+    Assert-Equal 1 $l.Count
+    Assert-Equal $ap.Notepad $l[0].Path
+    Assert-Equal $ap.SettingsFile @($l[0].Arguments)[0]
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count (@(Test-PlanSafety $p $config) -join '; ')
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -in @('exec', 'script', 'confirm', 'window') }).Count 'it opens, nothing more'
+    Assert-Equal 'execute' (Resolve-RunMode -Action 'autopilot.settings') 'only opens, so no mode is needed'
+    $no = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; SettingsExists = $false; Present = @{} }
+    Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'autopilot.settings' -Config $config -AutopilotFacts $no))[0].Kind 'no file: the hook uses its defaults'
+    foreach ($bad in @($ap.StateFile, $ap.StatusFile, $ap.CredFile, (Join-Path $ap.Root 'email.json'))) {
+        Assert-True (@(Test-PlanSafety @((New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @($bad))) $config).Count -ge 1) ('Notepad on ' + $bad)
+    }
+}
+
+Fact 'P94_TheFactsReadStatusAndSettingsAndTheTileUsesThem' {
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p94-' + [guid]::NewGuid().ToString('N'))
+    $q = Join-Path $dir 'queue'
+    New-Item -ItemType Directory -Path $q -Force | Out-Null
+    try {
+        $cfg = Get-ConsoleConfig -RepoRoot $repo
+        $cfg.Autopilot = New-AutopilotConfig (Join-Path $dir 'ap') $q
+        New-Item -ItemType Directory -Path $cfg.Autopilot.Root -Force | Out-Null
+        Set-Content -LiteralPath $cfg.Autopilot.Enabled -Value '' -Encoding ASCII
+        Set-Content -LiteralPath $cfg.Autopilot.StateFile -Value $apRunning -Encoding ASCII
+        $f = Get-AutopilotFacts $cfg
+        Assert-Equal $null $f.StatusText 'no status.json'
+        Assert-Equal $false $f.SettingsExists
+        Assert-Equal 'RUNNING' (Get-AutopilotViewNow $cfg).Tile.Word 'the fallback reading'
+        $now = [datetime]::Now
+        $d = $apsReal | ConvertFrom-Json
+        $d.generatedAt = $now.ToString('s'); $d.startedAt = $now.AddMinutes(-3).AddSeconds(-5).ToString('s')
+        $d.lastActivityUtc = $now.ToUniversalTime().ToString('s'); $d.toolStartedUtc = ''
+        Set-Content -LiteralPath $cfg.Autopilot.StatusFile -Value ($d | ConvertTo-Json -Depth 4) -Encoding ASCII
+        Set-Content -LiteralPath $cfg.Autopilot.SettingsFile -Value '{ "stallMinutes": 30 }' -Encoding ASCII
+        $f = Get-AutopilotFacts $cfg
+        Assert-True ($null -ne $f.StatusText) 'status.json read'
+        Assert-True $f.SettingsExists 'settings.json seen'
+        $a = Get-AutopilotViewNow $cfg
+        Assert-Equal 'RUNNING' $a.Tile.Word
+        Assert-True ($a.Tile.Detail -match '^P94  1 of 10  3m') $a.Tile.Detail
+        Assert-Equal 30 $a.View.Settings.StallMinutes
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 # --- cc-P83: the PLAY TESTS tile and the two links --------------------------------------------------
@@ -2930,7 +3154,7 @@ Fact 'P83_TheTileHasItsTwoLinksAndTheAutopilotTabHasThemToo' {
         Assert-True ($script:ui.PlayTestTile.Panel.Controls.Contains($script:ui.LinkButtons[0].Parent)) 'the buttons sit in the tile'
         $onTab = @($script:ui.AutopilotPage.Controls[1].Controls | Where-Object { $_.Tag -like 'links.*' } | ForEach-Object { $_.Tag })
         Assert-Equal 'links.playtests,links.dashboard,links.status' ($onTab -join ',') 'also on the Autopilot tab'
-        Assert-Equal 6 @($script:ui.AutopilotButtons).Count 'P74''s own six are unchanged'
+        Assert-Equal 7 @($script:ui.AutopilotButtons).Count 'P74''s own six and cc-P94''s Open settings.json; the links are not among them'
         Assert-True ($script:ui.Status.Text -match 'PLAY TESTS\s+: 111 OPEN') 'the status panel lists it'
     } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
 }

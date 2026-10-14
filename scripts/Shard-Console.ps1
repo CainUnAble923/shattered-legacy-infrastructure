@@ -37,6 +37,9 @@
   NEEDS YOU (the hook emailed him since it last handed CC a prompt). It reads D:\UO\cc-autopilot's
   ENABLED, state.json and the tail of autopilot.log, and lists D:\UO\cc-prompts\queue, on every
   refresh; Get-AutopilotGlance judges them. A file it could not read is grey UNKNOWN, never red.
+  cc-P94: status.json (the hook's own summary, schema 1) is read first when it is there and readable:
+  RUNNING says "P92  2 of 5  step 3/6  14m" over the step and the last activity, amber when CC has
+  been quiet past stallMinutes or status.json is over 15 minutes old. Without it, as above.
   A sixth, PLAY TESTS (cc-P83), counts what is waiting in D:\UO\shard-migration\testing\play-tests.json
   (sl-play-tests, docker/test-queue) and turns amber while a Fail is not yet logged in the bug list. Its
   two buttons open the play-test page (8093) and the Homepage dashboard (3000); so do two on the
@@ -87,7 +90,8 @@
                                    with no email.json), Turn off (Stop-Autopilot.ps1), Email setup
                                    (Setup-Email.ps1, which asks the password in its own window) and
                                    Send test email (Send-TestEmail.ps1), each in a PowerShell window
-                                   of its own that stays open. Its hook, cc-autopilot.ps1, which
+                                   of its own that stays open. autopilot.log and (cc-P94)
+                                   settings.json open in Notepad. Its hook, cc-autopilot.ps1, which
                                    commits and pushes, is never run from here (Test-PlanSafety).
 
   WHAT NO BUTTON DOES
@@ -162,6 +166,9 @@ function New-AutopilotConfig {
         Stop      = (Join-Path $Root 'Stop-Autopilot.ps1')
         Setup     = (Join-Path $Root 'Setup-Email.ps1')
         TestEmail = (Join-Path $Root 'Send-TestEmail.ps1')
+        # cc-P94: the hook's own summary (status.json, schema 1) and its three settings.
+        StatusFile   = (Join-Path $Root 'status.json')
+        SettingsFile = (Join-Path $Root 'settings.json')
         Queue     = $Queue
         Notepad   = (Join-Path $env:WINDIR 'notepad.exe')
         # The log is tailed, never read whole: Commit-ShardWork.ps1's output is pasted into it after every commit.
@@ -840,6 +847,8 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'autopilot.test';   Group = 'Autopilot';   Label = 'Send test email';                    Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'autopilot.queue';  Group = 'Autopilot';   Label = 'Open the queue folder';              Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'autopilot.log';    Group = 'Autopilot';   Label = 'Open autopilot.log';                 Mutates = $false; RunIn = 'here' }
+        # cc-P94: opens settings.json in Notepad; the console itself changes nothing.
+        [pscustomobject]@{ Key = 'autopilot.settings'; Group = 'Autopilot'; Label = 'Open settings.json';                 Mutates = $false; RunIn = 'here' }
         # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
         [pscustomobject]@{ Key = 'links.playtests';  Group = 'Links';       Label = 'Play tests';                         Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
@@ -1036,6 +1045,7 @@ function Get-ConsoleTooltips {
         'autopilot.test'   = 'Sends one test email through the autopilot''s settings. Changes nothing else.'
         'autopilot.queue'  = 'Opens the prompt queue folder in Explorer. Changes nothing.'
         'autopilot.log'    = 'Opens autopilot.log in Notepad. Changes nothing.'
+        'autopilot.settings' = 'Opens the autopilot''s settings.json in Notepad: progressEmails, maxPerRun, stallMinutes. The console changes nothing; what you save there counts from the hook''s next event.'
         'links.playtests'  = 'Opens the play-test page (port 8093) in your browser. Changes nothing here.'
         'links.dashboard'  = 'Opens the Homepage dashboard (port 3000) in your browser. Changes nothing here.'
         'vpn.disconnect'   = 'Turns off the VPN this PC is on, so sl-ddns stops publishing the VPN''s address. Ends a WireGuard for Windows tunnel (elevated); opens Proton VPN with what to click; names any other VPN to disconnect in its app. Never stops a VPN service or disables an adapter.'
@@ -1990,10 +2000,12 @@ function Test-PlanSafety {
                 $sa = @($s.Arguments)
                 $ok = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -eq 5 -and
                     (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
-                $okLog = ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and $sa.Count -eq 1 -and $sa[0] -ieq $ap.LogFile)
-                if (-not $ok -and -not $okLog) { $v.Add('the autopilot''s folder is reached only by its four scripts, each in a window of its own, or its log in Notepad: ' + ($named -join ' ')) }
+                # cc-P94: and settings.json, the same way.
+            $readable = @($ap.LogFile, $ap.SettingsFile) | Where-Object { $_ }
+            $okLog = ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and $sa.Count -eq 1 -and $readable -icontains $sa[0])
+                if (-not $ok -and -not $okLog) { $v.Add('the autopilot''s folder is reached only by its four scripts, each in a window of its own, or its log or settings.json in Notepad: ' + ($named -join ' ')) }
             }
-            if ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and -not (@($s.Arguments).Count -eq 1 -and @($s.Arguments)[0] -ieq $ap.LogFile)) { $v.Add('Notepad opens only ' + $ap.LogFile) }
+            if ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and -not (@($s.Arguments).Count -eq 1 -and (@($ap.LogFile, $ap.SettingsFile) | Where-Object { $_ }) -icontains @($s.Arguments)[0])) { $v.Add('Notepad opens only ' + $ap.LogFile + ' or ' + $ap.SettingsFile) }
         }
         if ($s.Kind -eq 'move') {
             $from = [IO.Path]::GetFullPath($s.From).TrimEnd('\')
@@ -2619,11 +2631,108 @@ function Test-AutopilotAlert {
     ($Subject -match '^NEEDS YOU' -or $Subject -cmatch '\bSTOPPED\b' -or $Subject -cmatch '\bCOMMIT FAILED\b')
 }
 
+# cc-P94: status.json, the one file cc-autopilot.ps1 (Write-Status) rewrites, tmp then rename, on every hand-off,
+# stop, tool use and every 10 minutes from the scheduled task "Shard CC Autopilot Watch". Schema 1:
+#   state (OFF | IDLE | RUNNING | NEEDS YOU), enabled, current, currentFile, startedAt (local 's'), position and
+#   total (prompt N of M in this run), runDone, runStarted, maxPerRun, lastHandled, queued (names, in run order),
+#   stepsDone, stepsTotal, stepNow (CC's task list), lastActivityUtc, lastTool, toolStartedUtc (set while a tool
+#   runs; all three UTC 's'), needsYou (empty when nothing is needed), generatedAt (local 's').
+# settings.json: progressEmails, maxPerRun, stallMinutes; the hook's defaults (Get-Settings) when a key is missing.
+$script:AutopilotStaleMinutes = 15
+$script:AutopilotSettingDefaults = [ordered]@{ progressEmails = $true; maxPerRun = 6; stallMinutes = 45 }
+
+function ConvertFrom-AutopilotTime {
+    # A 's' time from the hook, as written ($Kind Local or Utc), or $null. ConvertFrom-Json in PowerShell 7
+    # already makes a DateTime of it; 5.1 leaves the string.
+    param($Value, [DateTimeKind]$Kind)
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [datetime]) { return [datetime]::SpecifyKind($Value, $Kind) }
+    $t = [datetime]::MinValue
+    if ([datetime]::TryParseExact([string]$Value, 'yyyy-MM-ddTHH:mm:ss', $script:Invariant, [Globalization.DateTimeStyles]::None, [ref]$t)) { return [datetime]::SpecifyKind($t, $Kind) }
+    $null
+}
+
+function ConvertFrom-AutopilotStatus {
+    # status.json, or $null when there is none. Throws when it cannot be read or is not schema 1.
+    param($Text)
+    if ($null -eq $Text) { return $null }
+    $Text = [string]$Text
+    if (-not $Text.Trim()) { throw 'status.json is empty' }
+    $j = $Text | ConvertFrom-Json
+    if ($null -eq $j -or $j -isnot [pscustomobject]) { throw 'status.json is not a JSON object' }
+    if ([string]$j.schema -ne '1') { throw ('status.json is schema ' + $(if ($null -eq $j.schema) { '(none)' } else { [string]$j.schema }) + ', not 1') }
+    $state = ([string]$j.state).Trim().ToUpperInvariant()
+    if (@('OFF', 'IDLE', 'RUNNING', 'NEEDS YOU') -notcontains $state) { throw ('status.json state is not one of OFF, IDLE, RUNNING, NEEDS YOU: ' + $j.state) }
+    $int = { param($v) $n = 0; if ($null -ne $v) { [void][int]::TryParse([string]$v, [ref]$n) }; $n }
+    # The hook writes queued as an array; a one-item array written by another ConvertTo-Json can arrive as a string.
+    $queued = @(@($j.queued) | Where-Object { $_ } | ForEach-Object { [string]$_ })
+    [pscustomobject]@{
+        State          = $state
+        Enabled        = [bool]$j.enabled
+        Current        = [string]$j.current
+        CurrentFile    = [string]$j.currentFile
+        StartedAt      = (ConvertFrom-AutopilotTime $j.startedAt 'Local')
+        Position       = (& $int $j.position)
+        Total          = (& $int $j.total)
+        RunDone        = (& $int $j.runDone)
+        RunStarted     = (ConvertFrom-AutopilotTime $j.runStarted 'Local')
+        MaxPerRun      = (& $int $j.maxPerRun)
+        LastHandled    = (& $int $j.lastHandled)
+        Queued         = $queued
+        StepsDone      = (& $int $j.stepsDone)
+        StepsTotal     = (& $int $j.stepsTotal)
+        StepNow        = ([string]$j.stepNow).Trim()
+        LastActivity   = (ConvertFrom-AutopilotTime $j.lastActivityUtc 'Utc')
+        LastTool       = [string]$j.lastTool
+        ToolStarted    = (ConvertFrom-AutopilotTime $j.toolStartedUtc 'Utc')
+        NeedsYou       = ([string]$j.needsYou).Trim()
+        GeneratedAt    = (ConvertFrom-AutopilotTime $j.generatedAt 'Local')
+    }
+}
+
+function ConvertFrom-AutopilotSettings {
+    # settings.json as the hook reads it: each key it has, the hook's default for each it lacks. $Text $null is
+    # no file. Source says which, for the tab. Never throws: an unreadable file is the defaults, as in the hook.
+    param($Text)
+    $s = [ordered]@{}
+    foreach ($k in $script:AutopilotSettingDefaults.Keys) { $s[$k] = $script:AutopilotSettingDefaults[$k] }
+    $source = 'no settings.json: the hook''s defaults'
+    if ($null -ne $Text) {
+        try {
+            $j = ([string]$Text) | ConvertFrom-Json
+            if ($j -isnot [pscustomobject]) { throw 'not an object' }
+            foreach ($k in @($s.Keys)) { if ($j.PSObject.Properties.Name -contains $k -and $null -ne $j.$k) { $s[$k] = $j.$k } }
+            $source = 'settings.json'
+        } catch { $source = 'settings.json unreadable: the hook''s defaults' }
+    }
+    [pscustomobject]@{ ProgressEmails = [bool]$s.progressEmails; MaxPerRun = [int]$s.maxPerRun; StallMinutes = [int]$s.stallMinutes; Source = $source }
+}
+
+function Format-ShortAge {
+    # '14m', '1h 5m', '2d 3h', '40s': the tile's short form of Format-Age.
+    param([TimeSpan]$Span)
+    if ($Span.TotalSeconds -lt 0) { $Span = [TimeSpan]::Zero }
+    if ($Span.TotalDays -ge 1)    { return ('{0}d {1}h' -f [int][Math]::Floor($Span.TotalDays), $Span.Hours) }
+    if ($Span.TotalHours -ge 1)   { return ('{0}h {1}m' -f [int][Math]::Floor($Span.TotalHours), $Span.Minutes) }
+    if ($Span.TotalMinutes -ge 1) { return ('{0}m' -f [int][Math]::Floor($Span.TotalMinutes)) }
+    '{0}s' -f [int][Math]::Floor($Span.TotalSeconds)
+}
+
 function Get-AutopilotView {
     # Everything the tile and the tab say, from the four facts. $Enabled is $true, $false, or $null when
     # it could not be checked. $StateText is $null when there is no state.json. $QueueNames is $null when
     # the queue could not be listed. $Errors are the shell's read failures, each a short sentence.
-    param($Enabled, $StateText, [string[]]$LogLines, $QueueNames, [string[]]$Errors)
+    # cc-P94: $StatusText is status.json ($null: none), preferred when it reads as schema 1; otherwise Status is
+    # $null and StatusNote says why, and the four facts are judged as before. $SettingsText is settings.json.
+    param($Enabled, $StateText, [string[]]$LogLines, $QueueNames, [string[]]$Errors,
+        $StatusText, [string]$StatusError, $SettingsText)
+    $status = $null
+    $statusNote = 'no status.json (an autopilot from before 2026-10-13): read ENABLED, state.json and the log'
+    if ($StatusError) { $statusNote = 'status.json could not be read (' + $StatusError + '): read ENABLED, state.json and the log' }
+    elseif ($null -ne $StatusText) {
+        try { $status = ConvertFrom-AutopilotStatus $StatusText; $statusNote = '' }
+        catch { $statusNote = 'status.json unreadable (' + $_.Exception.Message + '): read ENABLED, state.json and the log' }
+    }
     $problems = New-Object 'System.Collections.Generic.List[string]'
     foreach ($e in @($Errors)) { if ($e) { $problems.Add($e) } }
     $state = $null
@@ -2646,6 +2755,9 @@ function Get-AutopilotView {
     }
     $failing = @($since | Where-Object { $_.Text -like 'EMAIL FAILED*' })
     [pscustomobject]@{
+        Status       = $status
+        StatusNote   = $statusNote
+        Settings     = (ConvertFrom-AutopilotSettings $SettingsText)
         Enabled      = $Enabled
         State        = $state
         Queue        = $queue
@@ -2671,6 +2783,7 @@ function Get-AutopilotGlance {
     param($Enabled, $StateText, [string[]]$LogLines, $QueueNames, [string[]]$Errors,
         [datetime]$Now = [datetime]::Now, $View)
     if (-not $View) { $View = Get-AutopilotView -Enabled $Enabled -StateText $StateText -LogLines $LogLines -QueueNames $QueueNames -Errors $Errors }
+    if ($View.Status) { return (Get-AutopilotStatusGlance -View $View -Now $Now) }
     $t = [ordered]@{ Title = 'AUTOPILOT'; Word = 'UNKNOWN'; Color = 'gray'; Detail = '' }
     $q = $View.Queue
     if ($null -eq $View.Enabled) {
@@ -2713,6 +2826,83 @@ function Get-AutopilotGlance {
     [pscustomobject]$t
 }
 
+function Get-AutopilotActivity {
+    # cc-P94: what CC is doing, from status.json: the step, the tool or the last activity, and whether it has
+    # been quiet past stallMinutes. Shared by the tile and the tab.
+    param($Status, $Settings, [datetime]$Now)
+    $nowUtc = $Now.ToUniversalTime()
+    $a = [ordered]@{ Steps = ''; Activity = ''; Quiet = $false; QuietFor = $null; Stale = $false; StaleFor = $null }
+    if ($Status.StepsTotal -gt 0) { $a.Steps = 'step ' + $Status.StepsDone + '/' + $Status.StepsTotal }
+    if ($Status.LastActivity) {
+        $since = $nowUtc - $Status.LastActivity
+        if ($Status.State -eq 'RUNNING' -and $Settings.StallMinutes -gt 0 -and $since.TotalMinutes -gt $Settings.StallMinutes) {
+            $a.Quiet = $true; $a.QuietFor = $since
+        }
+        if ($Status.ToolStarted -and $Status.LastTool) { $a.Activity = 'running ' + $Status.LastTool + ' for ' + (Format-ShortAge ($nowUtc - $Status.ToolStarted)) }
+        else { $a.Activity = 'last activity ' + (Format-ShortAge $since) + ' ago' }
+        if ($a.Quiet) { $a.Activity = 'quiet for ' + (Format-ShortAge $since) + $(if ($Status.ToolStarted -and $Status.LastTool) { ' (' + $Status.LastTool + ' still running)' } else { '' }) }
+    }
+    if ($Status.GeneratedAt) {
+        $old = $Now - $Status.GeneratedAt
+        if ($Status.State -eq 'RUNNING' -and $old.TotalMinutes -gt $script:AutopilotStaleMinutes) { $a.Stale = $true; $a.StaleFor = $old }
+    }
+    [pscustomobject]$a
+}
+
+function Get-AutopilotStatusGlance {
+    # cc-P94: the AUTOPILOT tile from status.json. Two lines when running: where the run is, then what CC is
+    # doing. Amber for NEEDS YOU, for quiet past stallMinutes, for a status.json the watch task stopped
+    # rewriting, and for failing email (from the log). Never red: the hook emails about all of these itself.
+    param($View, [datetime]$Now = [datetime]::Now)
+    $s = $View.Status
+    $t = [ordered]@{ Title = 'AUTOPILOT'; Word = $s.State; Color = 'gray'; Detail = '' }
+    $n = @($s.Queued).Count
+    $queued = $(if ($n) { [string]$n + ' queued' } else { 'queue empty' })
+    $ignored = ''
+    if ($View.Queue -and @($View.Queue.Ignored).Count) { $ignored = '; ' + @($View.Queue.Ignored).Count + ' unnumbered file(s) ignored' }
+    $doneRun = ''
+    if ($s.RunDone -gt 0) { $doneRun = '; ' + $s.RunDone + ' done this run' }
+    $act = Get-AutopilotActivity -Status $s -Settings $View.Settings -Now $Now
+    $lines = New-Object 'System.Collections.Generic.List[string]'
+    switch ($s.State) {
+        'OFF' { $lines.Add('not handing out prompts; ' + $queued + $doneRun + $ignored) }
+        'IDLE' {
+            $l = $queued
+            if ($n) { $l += '; send CC "go" to start' }
+            $lines.Add($l + $doneRun + $ignored)
+        }
+        'NEEDS YOU' {
+            $t.Color = 'amber'
+            $a = $s.NeedsYou
+            if (-not $a) { $a = 'status.json says NEEDS YOU' }
+            if ($a.Length -gt 90) { $a = $a.Substring(0, 87) + '...' }
+            $lines.Add($a)
+        }
+        'RUNNING' {
+            $t.Color = 'green'
+            $parts = New-Object 'System.Collections.Generic.List[string]'
+            $parts.Add($(if ($s.Current) { $s.Current } else { 'a prompt' }))
+            if ($s.Position -gt 0 -and $s.Total -gt 0) { $parts.Add([string]$s.Position + ' of ' + $s.Total) }
+            if ($act.Steps) { $parts.Add($act.Steps) }
+            if ($s.StartedAt) { $parts.Add((Format-ShortAge ($Now - $s.StartedAt))) }
+            $lines.Add(($parts -join '  ') + $ignored)
+            $second = @(@($s.StepNow, $act.Activity) | Where-Object { $_ }) -join '; '
+            if ($second) { $lines.Add($second) }
+            if ($act.Quiet) { $t.Color = 'amber' }
+            if ($act.Stale) {
+                $t.Color = 'amber'
+                $lines.Add('status ' + [int][Math]::Floor($act.StaleFor.TotalMinutes) + ' min old; watch task not running?')
+            }
+        }
+    }
+    if ($View.EmailFailing) {
+        $t.Color = 'amber'
+        $lines[$lines.Count - 1] += '; email failing'
+    }
+    $t.Detail = $lines -join "`n"
+    [pscustomobject]$t
+}
+
 function Format-AutopilotPanel {
     # The Autopilot tab's read-only panel, as lines with a colour name like Format-StatusReport's.
     param($View, $Config, [datetime]$Now = [datetime]::Now, [int]$LogLines = 20)
@@ -2720,11 +2910,46 @@ function Format-AutopilotPanel {
     $add = { param($t, $c) $o.Add([pscustomobject]@{ Text = $t; Color = $(if ($c) { $c } else { 'normal' }) }) }
     $ap = $Config.Autopilot
     $tile = Get-AutopilotGlance -View $View -Now $Now
-    & $add ('AUTOPILOT : ' + $tile.Word + '. ' + $tile.Detail) $tile.Color
+    $tl = @(([string]$tile.Detail) -split "`n")
+    & $add ('AUTOPILOT : ' + $tile.Word + '. ' + $tl[0]) $tile.Color
+    foreach ($x in @($tl | Select-Object -Skip 1)) { & $add ('            ' + $x) $tile.Color }
     foreach ($p in @($View.Problems)) { & $add ('could not read: ' + $p) 'gray' }
     if ($null -eq $View.Enabled) { & $add 'on or off: unknown' 'gray' }
     elseif ($View.Enabled) { & $add ('on or off: ON (' + $ap.Enabled + ' is there)') 'green' }
     else { & $add 'on or off: OFF (no ENABLED file). Turn on starts it; CC then picks up the queue at its next stop.' 'gray' }
+    # cc-P94: the run, the steps and the activity, from status.json; the three settings, from settings.json.
+    $st = $View.Status
+    if ($st) {
+        $fmt = { param($d) $d.ToString('yyyy-MM-dd HH:mm:ss', $script:Invariant) }
+        $act = Get-AutopilotActivity -Status $st -Settings $View.Settings -Now $Now
+        $line = 'status    : ' + $ap.StatusFile
+        if ($st.GeneratedAt) { $line += ', written ' + (& $fmt $st.GeneratedAt) + ' (' + (Format-ShortAge ($Now - $st.GeneratedAt)) + ' ago)' }
+        if ($act.Stale) { & $add ($line + '. Older than ' + $script:AutopilotStaleMinutes + ' min while running: is the scheduled task "Shard CC Autopilot Watch" running?') 'amber' }
+        else { & $add $line 'gray' }
+        $cap = $(if ($st.MaxPerRun -gt 0) { 'cap ' + $st.MaxPerRun } else { 'no cap' })
+        $run = $(if ($st.Position -gt 0) { [string]$st.Position + ' of ' + $st.Total + ', ' + $cap } else { 'no prompt running, ' + $cap })
+        $run += ', ' + $st.RunDone + ' done'
+        if ($st.RunStarted) { $run += ', started ' + (& $fmt $st.RunStarted) }
+        & $add ('run       : ' + $run) 'normal'
+        if ($st.StepsTotal -gt 0) {
+            $steps = [string]$st.StepsDone + ' of ' + $st.StepsTotal + ' done'
+            if ($st.StepNow) { $steps += ', now: ' + $st.StepNow }
+            & $add ('steps     : ' + $steps) 'normal'
+        } else {
+            & $add 'steps     : none reported (CC''s task list is empty for this prompt)' 'gray'
+        }
+        if ($st.LastActivity) {
+            $line = 'activity  : ' + $act.Activity
+            if ($st.LastTool -and -not $st.ToolStarted) { $line += ' (' + $st.LastTool + ')' }
+            & $add $line $(if ($act.Quiet) { 'amber' } else { 'normal' })
+        } else {
+            & $add 'activity  : none reported yet' 'gray'
+        }
+    } else {
+        & $add ('status    : ' + $View.StatusNote) 'gray'
+    }
+    $set = $View.Settings
+    & $add ('settings  : progressEmails ' + $set.ProgressEmails.ToString().ToLowerInvariant() + ', maxPerRun ' + $set.MaxPerRun + ', stallMinutes ' + $set.StallMinutes + ' (' + $set.Source + ')') 'normal'
     $s = $View.State
     if ($s) {
         if ($s.Current) {
@@ -2814,6 +3039,11 @@ function Get-AutopilotPlan {
             if (-not $Facts.LogExists) { $steps.Add((New-PlanStep -Kind refuse -Text ('There is no ' + $ap.LogFile + ' yet: the hook writes it the first time it acts.'))); break }
             $steps.Add((New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @($ap.LogFile) -Text 'Opening autopilot.log in Notepad. Read it there; the hook appends to it.'))
         }
+        'autopilot.settings' {
+            # cc-P94. Opens it and nothing more: whatever is saved there the hook reads at its next event.
+            if (-not $Facts.SettingsExists) { $steps.Add((New-PlanStep -Kind refuse -Text ('There is no ' + $ap.SettingsFile + ': the hook uses its defaults (progressEmails true, maxPerRun 6, stallMinutes 45). Nothing was opened.'))); break }
+            $steps.Add((New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @($ap.SettingsFile) -Text 'Opening settings.json in Notepad. A saved change counts from the hook''s next event: progressEmails (true or false), maxPerRun (0 is no cap), stallMinutes.'))
+        }
         default { $steps.Add((New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them."))) }
     }
     $steps.ToArray()
@@ -2888,7 +3118,10 @@ function Format-StatusReport {
     $ind = '            '
     & $add ('Status as of ' + (Format-LocalTime $State.Now) + ', read from ' + $State.Source) 'gray'
     foreach ($t in @(@(Get-AtAGlance $State $Config) + @($ExtraTiles | Where-Object { $_ }))) {
-        & $add (('{0,-17}: {1,-15} {2}' -f $t.Title, $t.Word, $t.Detail)) $t.Color
+        # cc-P94: a tile can say two lines (AUTOPILOT while running); the second is indented under the first.
+        $dl = @(([string]$t.Detail) -split "`n")
+        & $add (('{0,-17}: {1,-15} {2}' -f $t.Title, $t.Word, $dl[0])) $t.Color
+        foreach ($x in @($dl | Select-Object -Skip 1)) { & $add ((' ' * 35) + $x) $t.Color }
     }
     if ($State.DockerError) { & $add ('DOCKER NOT REACHABLE: ' + $State.DockerError) 'red' }
     if ($State.Latest.Exists) {
@@ -3536,10 +3769,23 @@ function Get-AutopilotFacts {
     }
     $names = $null
     try { $names = @(Get-ChildItem -LiteralPath $ap.Queue -File -ErrorAction Stop | ForEach-Object { $_.Name }) } catch { $errors.Add('queue: ' + $_.Exception.Message) }
+    # cc-P94: status.json and settings.json. A failed read here is not an error of the tile's: the view falls
+    # back to ENABLED, state.json and the log, and says why.
+    $statusText = $null; $statusError = $null
+    if ($ap.StatusFile -and (Test-Path -LiteralPath $ap.StatusFile -PathType Leaf)) {
+        try { $statusText = [IO.File]::ReadAllText($ap.StatusFile) } catch { $statusError = $_.Exception.Message }
+    }
+    $settingsText = $null
+    $settingsExists = [bool]($ap.SettingsFile -and (Test-Path -LiteralPath $ap.SettingsFile -PathType Leaf))
+    if ($settingsExists) { try { $settingsText = [IO.File]::ReadAllText($ap.SettingsFile) } catch { } }
     $present = @{}
     foreach ($f in @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail)) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) }
     [pscustomobject]@{
         Enabled         = $enabled
+        StatusText      = $statusText
+        StatusError     = $statusError
+        SettingsText    = $settingsText
+        SettingsExists  = $settingsExists
         StateText       = $stateText
         LogLines        = $logLines
         LogExists       = $logExists
@@ -3571,7 +3817,7 @@ function Get-AutopilotViewNow {
     param($Config)
     try {
         $f = Get-AutopilotFacts $Config
-        $v = Get-AutopilotView -Enabled $f.Enabled -StateText $f.StateText -LogLines $f.LogLines -QueueNames $f.QueueNames -Errors $f.Errors
+        $v = Get-AutopilotView -Enabled $f.Enabled -StateText $f.StateText -LogLines $f.LogLines -QueueNames $f.QueueNames -Errors $f.Errors -StatusText $f.StatusText -StatusError $f.StatusError -SettingsText $f.SettingsText
     } catch {
         $f = $null
         $v = Get-AutopilotView -Enabled $null -StateText $null -LogLines @() -QueueNames $null -Errors @($_.Exception.Message)
@@ -6029,7 +6275,7 @@ function New-ConsoleForm {
     $apTop.Dock = 'Top'
     $apTop.AutoSize = $true
     $apTop.WrapContents = $true
-    $apCap = New-Caption ('Autopilot hands CC the next prompt in ' + $Config.Autopilot.Queue + ' each time the running one ends "P<nn> DONE", and emails you when CC needs you. After every DONE it commits AND PUSHES both repos to GitHub on its own. Turn off stops the hand-offs; a running prompt still finishes. Each button opens the autopilot''s own script in a window of its own; the console never reorders the queue.') 1100
+    $apCap = New-Caption ('Autopilot hands CC the next prompt in ' + $Config.Autopilot.Queue + ' each time the running one ends "P<nn> DONE", and emails you when CC needs you. After every DONE it commits AND PUSHES both repos to GitHub on its own. Turn off stops the hand-offs; a running prompt still finishes. Each button opens the autopilot''s own script in a window of its own; the console never reorders the queue. After maxPerRun prompts (settings.json) autopilot stops and keeps the queue: start a new CC session before turning it back on.') 1100
     $apTop.Controls.Add($apCap)
     $apTop.SetFlowBreak($apCap, $true)
     $apBtns = @()
@@ -6195,7 +6441,7 @@ if ($Action -eq 'list') {
     Write-Host 'test.wipe takes -WipeAdmin <new admin name> and -ConfirmLive ''WIPE TEST ACCOUNTS''; it asks for the password in its own window.'
     Write-Host 'vpn.disconnect needs -Mode Execute: it ends a WireGuard for Windows tunnel (elevated), opens Proton VPN, or names the VPN to disconnect in its app.'
     Write-Host 'links.playtests, links.dashboard and links.status open the play-test page (8093), the dashboard (3000) and the status page (8093/status) in the browser.'
-    Write-Host 'autopilot.on, .off, .email and .test need -Mode Execute; each opens the autopilot''s own script in a window of its own. autopilot.queue and .log only open.'
+    Write-Host 'autopilot.on, .off, .email and .test need -Mode Execute; each opens the autopilot''s own script in a window of its own. autopilot.queue, .log and .settings only open.'
     exit 0
 }
 

@@ -1,0 +1,5 @@
+{
+  "progressEmails": true,
+  "maxPerRun": 6,
+  "stallMinutes": 45
+}
