@@ -11,7 +11,8 @@
   The process waits on stdin there, so it never exits and nothing outside it fails.
 
   ASCII only, saved as UTF-8 with no BOM: PowerShell 5.1 reads a BOM-less file as Windows-1252.
-  Facts: scripts/tests/Shard-Console.Tests.ps1 (the P96_ ones).
+  cc-P106 adds the console questions a shard can wait on (Get-ShardQuestion and its answer table, at the end).
+  Facts: scripts/tests/Shard-Console.Tests.ps1 (the P96_ and P106_ ones).
 #>
 
 # Printed by pinned Server/Main.cs:433 for a terminating exception, after the exception itself (:410).
@@ -91,9 +92,13 @@ function Get-HealthState {
     # One word for the test shard, from docker's own health check (docker-compose.test.yml) and the log.
     # A crash outranks health: the process at "press return to exit" stays up, and until the check's
     # start period runs out docker still says "starting".
-    param([bool]$Exists, [bool]$Running, [string]$Health, $Crash)
+    param([bool]$Exists, [bool]$Running, [string]$Health, $Crash, $Question)
     $crashed = [bool]($Crash -and $Crash.Crashed)
     if (-not $Exists) { return [pscustomobject]@{ State = 'NO CONTAINER'; Detail = 'there is no container' } }
+    # cc-P106: a shard waiting on its console is never healthy, whatever docker's check says. A fatal is still CRASHED.
+    if ($Running -and $Question -and $Question.Kind -ne 'fatal') {
+        return [pscustomobject]@{ State = 'WAITING'; Detail = 'waiting for an answer on its console: ' + (Get-QuestionLine $Question) + ' (Shard question tab)' }
+    }
     if ($crashed) {
         $where = 'after it had started'
         if ($Crash.AtStart) { $where = 'at start' }
@@ -192,4 +197,162 @@ function Test-SaveNewerThanImage {
     $b = $ImageCommit.Substring(0, [Math]::Min(7, $ImageCommit.Length))
     if ($a -eq $b) { return $false }
     [bool]$ImageIsAncestorOfSave
+}
+
+# --- cc-P106: a shard waiting for an answer on its console (bug-list D94) --------------------------------------------
+# On 2026-10-14 live (sl-modernuo) sat from 08:06 at "Delete the object and continue? (y/n/a)" after a bad deserialize,
+# with Docker showing it Up. Every console read pinned ModernUO makes at start or save (D:\UO\ModernUO-pinned, read for
+# cc-P106), what it prints first, and what each answer does:
+#
+#   object   Server/Serialization/GenericEntityPersistence.cs:756-771  "***** Bad deserialize of <Type> (<serial>) *****",
+#            the exception, then Console.Write "Delete the object and continue? (y/n/a): ". y deletes that object and
+#            loads on; a deletes it and every later bad object of that file without asking; anything else throws
+#            "Deserialization failed.", and the load ends at the fatal line below.
+#   file     GenericPersistence.cs:123-130 and AdhocPersistence.cs:101-107  "***** Bad deserialize of <file> *****", the
+#            exception, then "Skip this file and continue? (y/n): ". y skips the file (what it held is gone at the next
+#            save); anything else throws, as above.
+#   type     GenericEntityPersistence.cs:399-415  "failed", then "Error: Type '<name>' was not found|marked abstract.
+#            Delete all of those types? (y/n): ". y drops every saved object of that type; anything else throws "Bad type".
+#   fatal    Server/Main.cs:433-434  "This exception is fatal, press return to exit", then ReadLine; any line ends the
+#            process (DoKill), and Docker's restart policy (unless-stopped) starts it again.
+#   owner    UOContent/Misc/AccountPrompt.cs:15-31  only with no accounts: "Do you want to create the owner account now?
+#            (y/n):". y asks a username and a password on the console (not answered here); anything else goes on with none.
+#   restore  UOContent/World Saves/AutoArchive.cs:230-389, 454-510  only when there is no valid save: a list of backups,
+#            then Console.Write "... or Enter to start fresh: " (or "[1]> "). A number restores it; Enter starts with no
+#            world. Only Stop is offered here: picking a backup is done at the console.
+#   (UOContent/Engines/Pathing/PathCacheCommands.cs:73 asks too, but only after a staff command, never on its own.)
+#
+# docker logs records a line only once it ends, so a Console.Write prompt never shows: a question is known by what it
+# prints before it, on a running container that has then been silent for QuietSeconds.
+
+$script:QuestionPrompts = @{
+    object  = 'Delete the object and continue? (y/n/a)'
+    file    = 'Skip this file and continue? (y/n)'
+    type    = 'Delete all of those types? (y/n)'
+    fatal   = 'This exception is fatal, press return to exit'
+    owner   = 'Do you want to create the owner account now? (y/n)'
+    restore = 'Restore a backup, or press Enter to start with no world?'
+}
+
+function Get-QuestionAnswers {
+    # The answers this console offers for a question, the safe one first. Send is what is typed before Enter.
+    # Rows go through List.Add, one at a time: an array literal of one row would be unrolled into its fields.
+    param([string]$Kind, [string]$What = 'this object')
+    $fails = 'Loading stops: the server prints "This exception is fatal, press return to exit" and waits again.'
+    $rows = New-Object 'System.Collections.Generic.List[object]'
+    switch ($Kind) {
+        'object' {
+            $rows.Add(@('n', 'n', $false, ('Do not delete. ' + $fails + ' Nothing is lost; the save stays as it is.')))
+            $rows.Add(@('y', 'y', $true, ('Delete this one object (' + $What + ') and keep loading. What it held is gone once the world saves.')))
+            $rows.Add(@('a', 'a', $true, 'Delete this object and every other bad object in the same save file without asking again, and keep loading.'))
+        }
+        'file' {
+            $rows.Add(@('n', 'n', $false, ('Do not skip. ' + $fails + ' Nothing is lost.')))
+            $rows.Add(@('y', 'y', $true, 'Skip this file and keep loading. Everything it held is gone once the world saves.'))
+        }
+        'type' {
+            $rows.Add(@('n', 'n', $false, ('Do not delete. ' + $fails + ' Nothing is lost.')))
+            $rows.Add(@('y', 'y', $true, 'Delete every saved object of the missing type and keep loading.'))
+        }
+        'fatal' {
+            $rows.Add(@('enter', '', $false, 'Let the server exit. Live (restart: unless-stopped) is started again by Docker and will most likely stop at the same place; the test shard (restart: no) stays stopped. Stop the shard instead to be sure it stays down.'))
+        }
+        'owner' {
+            $rows.Add(@('n', 'n', $false, 'Do not create an owner account now; the server keeps starting with no accounts. (To create one, answer y at the console: it asks a name and a password.)'))
+        }
+    }
+    foreach ($r in $rows) { [pscustomobject]@{ Key = $r[0]; Send = $r[1]; Deletes = $r[2]; Explain = $r[3] } }
+}
+
+function ConvertFrom-StampedLog {
+    # docker logs -t lines as Time (UTC, or $null for an unstamped line) and Text (colour codes removed).
+    param([string]$LogText)
+    foreach ($l in @((Remove-HealthAnsi $LogText) -replace "`r", '' -split "`n")) {
+        if ($l -match '^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?Z (.*)$') {
+            $t = [datetime]::ParseExact($Matches[1], 'yyyy-MM-ddTHH:mm:ss', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]'AssumeUniversal,AdjustToUniversal')
+            [pscustomobject]@{ Time = $t; Text = $Matches[3] }
+        } else {
+            [pscustomobject]@{ Time = $null; Text = $l }
+        }
+    }
+}
+
+function Get-ShardQuestion {
+    # The question a running shard is waiting on, from its docker logs -t tail, or $null. Only the current run counts
+    # (from the last "[SL] Starting"); and a shard that printed within QuietSeconds of Now is still talking.
+    param([string]$LogText, [bool]$Running, [datetime]$Now, [int]$QuietSeconds = 20)
+    if (-not $Running -or -not $LogText) { return $null }
+    $all = @(ConvertFrom-StampedLog $LogText)
+    $from = 0
+    for ($i = $all.Count - 1; $i -ge 0; $i--) { if ($all[$i].Text -match '^\[SL\] Starting ') { $from = $i; break } }
+    $lines = @($all[$from..($all.Count - 1)] | Where-Object { $_.Text.Trim() })
+    if (-not $lines.Count) { return $null }
+    $last = $lines[$lines.Count - 1]
+    if ($last.Time -and $Now -ne [datetime]::MinValue -and ($Now - $last.Time).TotalSeconds -lt $QuietSeconds) { return $null }
+    $kind = $null; $since = $last.Time; $type = ''; $serial = ''; $file = ''; $exc = ''; $frames = @()
+    $stack = '^\s+at |^\s*---> |^\s*--- End of |^[A-Za-z_][\w.`]*(Exception|Error)\b|^Serialized object was \d+ bytes'
+    if ($last.Text.Contains('This exception is fatal')) {
+        $kind = 'fatal'
+        $rep = Get-CrashReport (($lines | ForEach-Object { $_.Text }) -join "`n")
+        if ($rep.Crashed -and $rep.Type) { $exc = $rep.Type + ': ' + $rep.Message; $frames = @($rep.Frames) }
+    } elseif ($last.Text -match 'create the owner account now\? \(y/n\)') {
+        $kind = 'owner'
+    } elseif ($last.Text.Trim() -ceq 'failed') {
+        $kind = 'type'
+    } else {
+        $b = -1
+        for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($lines[$i].Text -match '^\*{5} Bad deserialize of (.+?) \*{5}\s*$') { $b = $i; break } }
+        if ($b -ge 0) {
+            $after = @(); if ($b + 1 -le $lines.Count - 1) { $after = @($lines[($b + 1)..($lines.Count - 1)]) }
+            if (-not @($after | Where-Object { $_.Text -notmatch $stack }).Count) {
+                $what = ([regex]::Match($lines[$b].Text, '^\*{5} Bad deserialize of (.+?) \*{5}')).Groups[1].Value
+                if ($what -match '^(\S+) \((0x[0-9A-Fa-f]+)\)$') { $kind = 'object'; $type = $Matches[1]; $serial = $Matches[2] }
+                else { $kind = 'file'; $file = $what }
+                $since = $lines[$b].Time
+                $first = @($after | Where-Object { $_.Text -notmatch '^\s+at ' } | Select-Object -First 1)
+                if ($first.Count) { $exc = $first[0].Text.Trim() }
+                $frames = @($after | Where-Object { $_.Text -match '^\s+at (.+)$' } | ForEach-Object { ($_.Text -replace '^\s+at ', '') -replace ' in /\S+$', '' })
+            }
+        } else {
+            $av = -1
+            for ($i = $lines.Count - 1; $i -ge [Math]::Max(0, $lines.Count - 40); $i--) { if ($lines[$i].Text -match '^Available backups and archives') { $av = $i; break } }
+            if ($av -ge 0 -and -not @($lines[$av..($lines.Count - 1)] | Where-Object { $_.Text -notmatch '^Available backups|^\s+\d+\) |^\s*\[[np]\]' }).Count) { $kind = 'restore'; $since = $lines[$av].Time }
+        }
+    }
+    if (-not $kind) { return $null }
+    $what = 'this object'
+    if ($type) { $what = $type + ' ' + $serial }
+    $frame = ''
+    if ($frames.Count) { $frame = $frames[0] }
+    $sig = $kind + '|' + $(if ($since) { $since.ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture) } else { '' }) + '|' + $type + $serial + $file
+    [pscustomobject]@{
+        Kind = $kind; Prompt = $script:QuestionPrompts[$kind]; Type = $type; Serial = $serial; File = $file
+        Exception = $exc; Frame = $frame; Frames = $frames; Since = $since; Signature = $sig
+        Answers = @(Get-QuestionAnswers -Kind $kind -What $what)
+    }
+}
+
+function Get-QuestionLine {
+    # The question in one line, for the tile: the prompt, what failed and how, since when.
+    param($Question)
+    if (-not $Question) { return '' }
+    $t = $Question.Prompt
+    if ($Question.Type) { $t += ' ' + $Question.Type + ' ' + $Question.Serial }
+    elseif ($Question.File) { $t += ' ' + $Question.File }
+    if ($Question.Exception) { $t += ': ' + (($Question.Exception -split ':')[0] -split '\.')[-1] }
+    if ($Question.Frame) { $t += ' at ' + $Question.Frame }
+    if ($Question.Since) { $t += ', since ' + $Question.Since.ToLocalTime().ToString('HH:mm', [Globalization.CultureInfo]::InvariantCulture) }
+    $t
+}
+
+function Test-QuestionStillAsked {
+    # The answer goes only to the question it was chosen for: the same kind, start and object, still waiting.
+    param([string]$Signature, $Question)
+    [bool]($Question -and $Signature -and $Question.Signature -ceq $Signature)
+}
+
+function Get-AnswerKeystrokes {
+    # What is written to the console: the answer and Enter (CR, as a terminal sends it; the pty turns it into a newline).
+    param([string]$Send)
+    [string]$Send + "`r"
 }

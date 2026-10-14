@@ -1034,7 +1034,7 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
-        Assert-Equal 'Test shard,Fix test shard,Snapshots,World setup,Diagnostics,Commit,Player package,Golem,Websites,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot (Golem since cc-P99), cc-P101 Websites, cc-P96 Fix test shard beside Test shard; LIVE stays last'
+        Assert-Equal 'Test shard,Fix test shard,Shard question,Snapshots,World setup,Diagnostics,Commit,Player package,Golem,Websites,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot (Golem since cc-P99), cc-P101 Websites, cc-P96 Fix test shard beside Test shard, cc-P106 Shard question after it; LIVE stays last'
         Assert-Equal 'Preview commit,Commit and push' (@($script:ui.CommitButtons | ForEach-Object { $_.Text }) -join ',') 'cc-P60'
         Assert-Equal 'package.build,package.publish,package.check' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P63, and cc-P68''s Check selected'
         Assert-True ($null -ne $script:ui.CommitForce -and -not $script:ui.CommitForce.Checked) 'cc-P68: the Force box, unticked'
@@ -1111,6 +1111,33 @@ function Invoke-ClickCapture {
     $rec
 }
 
+# cc-P106: the question states the window cases and the P106_ facts use (more on them with the P106_ facts below).
+function Read-P106Text { param([string]$Name) [IO.File]::ReadAllText((Join-Path $fixture $Name)) }
+$p106D94 = Read-P106Text 'live-shard-question-d94-2026-10-14.txt'
+function Add-P106Stamps {
+    # A log captured without -t, as docker logs -t would print it: one line every 10 ms from a start time.
+    param([string]$Text, [datetime]$Start)
+    $i = 0
+    (@(($Text -replace "`r", '') -split "`n") | ForEach-Object { $Start.AddMilliseconds(10 * $i++).ToString("yyyy-MM-ddTHH:mm:ss.fffffff'Z'", $script:Invariant) + ' ' + $_ }) -join "`n"
+}
+$p106T0 = [datetime]::SpecifyKind([datetime]'2026-10-14T13:06:17', 'Utc')
+$p106Fatal = Add-P106Stamps (Read-P106Text 'test-shard-crash-d89-2026-10-14.txt') $p106T0
+$p106Healthy = Add-P106Stamps (Read-P106Text 'test-shard-start-healthy-2026-10-14.txt') $p106T0
+function New-P106State {
+    # The capture, with a shard running and its timestamped log tail, read at $At.
+    param([string]$Key = 'live', [string]$Tail, [datetime]$At = $p106T0.AddMinutes(5), [switch]$Stopped)
+    $sec = [ordered]@{}
+    foreach ($k in $cap.Keys) { $sec[$k] = $cap[$k] }
+    $sec['meta'] = 'captured-at ' + (Format-DockerTime $At) + "`nsource docker"
+    $c = $config.Shards[$Key].Container
+    if ($Tail) { $sec['logtail ' + $c] = $Tail }
+    $s = New-ConsoleState -Config $config -Sections $sec
+    $s.Shards[$Key].Container.Running = -not $Stopped
+    $s.Shards[$Key].Container.Status = $(if ($Stopped) { 'exited' } else { 'running' })
+    # The question is read again with the container's state as the test sets it.
+    $s.Shards[$Key].Question = Get-ShardQuestion -LogText $Tail -Running (-not $Stopped) -Now $At -QuietSeconds $config.QuestionQuietSeconds
+    $s
+}
 # Every window action on every shard it can act on.
 $windowCases = @(foreach ($a in @(Get-ConsoleActions | Where-Object { $_.RunIn -eq 'window' })) {
     $shards = @('test')
@@ -1118,12 +1145,15 @@ $windowCases = @(foreach ($a in @(Get-ConsoleActions | Where-Object { $_.RunIn -
     if ($a.Key -like 'snapshot.*') { $shards = @('test', 'live') }
     if ($a.Key -like 'commit.*') { $shards = @('') }   # no shard: the click names both repos
     if ($a.Key -like 'package.*') { $shards = @('') }  # nor the player package (cc-P63)
+    if ($a.Key -like 'question.*') { $shards = @('live', 'test') }  # cc-P106: the shard picked on its tab
     foreach ($sk in $shards) {
         $st = $snapState
         if ($a.Key -eq 'live.start') { $st = $liveStoppedState }
         if ($a.Key -eq 'test.deploy') { $st = $deployState }
         if ($a.Key -eq 'test.wipe') { $st = $wipeState }
         if ($a.Key -like 'fix.*') { $st = $p96CrashState }  # cc-P96: good tags, images to prune, a crash
+        # cc-P106: a shard asking D94's question (Enter: the fatal one), on each shard.
+        if ($a.Key -like 'question.*') { $st = $(if ($a.Key -eq 'question.enter') { New-P106State -Key $sk -Tail $p106Fatal } else { New-P106State -Key $sk -Tail $p106D94 }) }
         [pscustomobject]@{ Key = $a.Key; Shard = $sk; State = $st }
     }
 })
@@ -4485,6 +4515,222 @@ Fact 'P101_EveryWebsiteButtonRunHeadlessWithDryRunRunsNothing' {
         Assert-True ($out -match '\(dry run: nothing was run\)') ($a[0] + ': ' + $out)
         Assert-True ($out -notmatch 'REFUSE') ($a[0] + ': ' + $out)
     }
+}
+
+# --- cc-P106: a shard waiting for an answer on its console (D94) --------------------------------------------------
+# fixtures\live-shard-question-d94-2026-10-14.txt is `docker logs -t --tail 60 sl-modernuo` read on 2026-10-14 while live
+# sat at "Delete the object and continue? (y/n/a)" (bug-list D94), with the two lines naming accounts dropped
+# (Remove-AccountLines). The prompt itself is Console.Write with no newline, so docker logs never shows it: the reader
+# knows it by the banner and the silence after it. The other questions are the real D89 and healthy-start logs, given
+# timestamps here because they were captured without -t.
+
+function Get-P106Plan { param([string]$Action, [string]$Key = 'live', $State) @(Get-ActionPlan -Action $Action -ShardKey $Key -Config $config -State $State -Now $State.Now) }
+
+Fact 'P106_TheD94LogIsADeserializeQuestionWithItsTypeSerialExceptionAndFrame' {
+    $q = Get-ShardQuestion -LogText $p106D94 -Running $true -Now $p106T0.AddMinutes(5) -QuietSeconds 20
+    Assert-True ($null -ne $q) 'live at 08:06 was waiting'
+    Assert-Equal 'object' $q.Kind
+    Assert-Equal 'Delete the object and continue? (y/n/a)' $q.Prompt
+    Assert-Equal 'Server.ClusterFAccountPersistence' $q.Type
+    Assert-Equal '0x40128E03' $q.Serial
+    Assert-True ($q.Exception -match '^System\.ArgumentOutOfRangeException: Ticks must be between') $q.Exception
+    Assert-Equal 'System.DateTime.ThrowTicksOutOfRange()' $q.Frame
+    Assert-True ($q.Frames -contains 'Server.WoodDiscoveryEntry..ctor(IGenericReader r)') 'the frames name the field that failed'
+    Assert-Equal '2026-10-14T13:06:17' $q.Since.ToString('yyyy-MM-ddTHH:mm:ss', $script:Invariant) 'since the banner'
+    Assert-Equal 'n,y,a' ((@($q.Answers) | ForEach-Object { $_.Key }) -join ',') 'the safe answer first'
+}
+
+Fact 'P106_AShardStillTalkingOrStoppedIsNotWaiting' {
+    Assert-True ($null -eq (Get-ShardQuestion -LogText $p106D94 -Running $true -Now $p106T0.AddSeconds(5) -QuietSeconds 20)) 'five seconds after the banner it may still be printing'
+    Assert-True ($null -eq (Get-ShardQuestion -LogText $p106D94 -Running $false -Now $p106T0.AddMinutes(5) -QuietSeconds 20)) 'a stopped container asks nothing'
+    Assert-True ($null -eq (Get-ShardQuestion -LogText '' -Running $true -Now $p106T0 -QuietSeconds 20)) 'no log, no question'
+}
+
+Fact 'P106_TheFatalPressReturnIsAQuestionAndAHealthyStartAsksNothing' {
+    $q = Get-ShardQuestion -LogText $p106Fatal -Running $true -Now $p106T0.AddMinutes(5) -QuietSeconds 20
+    Assert-Equal 'fatal' $q.Kind
+    Assert-Equal 'This exception is fatal, press return to exit' $q.Prompt
+    Assert-True ($q.Exception -match 'IndexOutOfRangeException') $q.Exception
+    Assert-Equal 'enter' ((@($q.Answers) | ForEach-Object { $_.Key }) -join ',')
+    Assert-True ($null -eq (Get-ShardQuestion -LogText $p106Healthy -Running $true -Now $p106T0.AddMinutes(5) -QuietSeconds 20)) 'listening, asking nothing'
+}
+
+Fact 'P106_AnAnsweredQuestionIsNoLongerWaiting' {
+    $later = $p106T0.AddMinutes(2).ToString("yyyy-MM-ddTHH:mm:ss.fffffff'Z'", $script:Invariant)
+    foreach ($after in @('Loading world done (12.3 seconds)', 'Types will not be deleted. An exception will be thrown.', '[SL] Starting Shattered Legacy ModernUO...')) {
+        $t = $p106D94 + "`n" + $later + ' ' + $after
+        Assert-True ($null -eq (Get-ShardQuestion -LogText $t -Running $true -Now $p106T0.AddMinutes(5) -QuietSeconds 20)) ('then: ' + $after)
+    }
+}
+
+Fact 'P106_EveryStartupQuestionIsKnownByWhatItPrints' {
+    $stamp = { param([string[]]$Lines) Add-P106Stamps ($Lines -join "`n") $p106T0 }
+    $cases = @(
+        ,@('file', 'Skip this file and continue? (y/n)', 'n,y', @('Loading world', '***** Bad deserialize of /var/lib/uo/modernuo/Saves/Misc/Thing.bin *****', 'System.IO.EndOfStreamException: Unable to read beyond the end of the stream.', '   at System.IO.BinaryReader.ReadByte()'))
+        ,@('type', "Delete all of those types? (y/n)", 'n,y', @('Loading world', 'failed'))
+        ,@('owner', 'Do you want to create the owner account now? (y/n)', 'n', @('Loading world done', 'Do you want to create the owner account now? (y/n):'))
+        ,@('restore', 'Restore a backup, or press Enter to start with no world?', '', @('No valid save data found.', 'Available backups and archives (2 total):', '    1) 2026-10-13 19:25:00  2026-10-13-19-25-00', '    2) 2026-10-12 19:25:00  2026-10-12-19-25-00'))
+    )
+    foreach ($c in $cases) {
+        $q = Get-ShardQuestion -LogText (& $stamp $c[3]) -Running $true -Now $p106T0.AddMinutes(5) -QuietSeconds 20
+        Assert-True ($null -ne $q) ($c[0] + ' is a question')
+        Assert-Equal $c[0] $q.Kind
+        Assert-Equal $c[1] $q.Prompt
+        Assert-Equal $c[2] ((@($q.Answers) | ForEach-Object { $_.Key }) -join ',') ($c[0] + ' answers')
+    }
+}
+
+Fact 'P106_TheAnswerTableSaysWhatEachKeyDoesAndWhichDelete' {
+    $q = Get-ShardQuestion -LogText $p106D94 -Running $true -Now $p106T0.AddMinutes(5) -QuietSeconds 20
+    $byKey = @{}; foreach ($a in $q.Answers) { $byKey[$a.Key] = $a }
+    Assert-Equal 'n' $byKey['n'].Send
+    Assert-Equal $false $byKey['n'].Deletes
+    Assert-True ($byKey['n'].Explain -match 'press return to exit') $byKey['n'].Explain
+    Assert-True ($byKey['y'].Deletes -and $byKey['a'].Deletes) 'y and a delete'
+    Assert-True ($byKey['y'].Explain -match 'Server\.ClusterFAccountPersistence 0x40128E03') $byKey['y'].Explain
+    Assert-True ($byKey['a'].Explain -match 'every other bad object') $byKey['a'].Explain
+    $f = Get-ShardQuestion -LogText $p106Fatal -Running $true -Now $p106T0.AddMinutes(5) -QuietSeconds 20
+    Assert-Equal '' $f.Answers[0].Send 'Enter is an empty line'
+    Assert-True ($f.Answers[0].Explain -match 'restart') $f.Answers[0].Explain
+    $loss = Get-QuestionLoss -Question $q -Config $config
+    Assert-True ($loss -match "every account's ClusterF data") $loss
+}
+
+Fact 'P106_TheTileSaysWaitingForAnAnswerInAmberWithTheQuestion' {
+    $s = New-P106State -Tail $p106D94
+    $g = Get-ShardGlance -Shard $config.Shards['live'] -ShardState $s.Shards['live'] -Now $s.Now -Config $config
+    Assert-Equal 'WAITING FOR AN ANSWER' $g.Word
+    Assert-Equal 'amber' $g.Color
+    Assert-True ($g.Detail -match '^Delete the object and continue\? \(y/n/a\) Server\.ClusterFAccountPersistence 0x40128E03: ArgumentOutOfRangeException') $g.Detail
+    Assert-True ($g.Detail -match 'Shard question tab') $g.Detail
+    $f = New-P106State -Key 'test' -Tail $p106Fatal
+    $gt = Get-ShardGlance -Shard $config.Shards['test'] -ShardState $f.Shards['test'] -Now $f.Now -Config $config
+    Assert-True ($gt.Word -like 'CRASHED*' -and $gt.Color -eq 'red') ('a fatal stays CRASHED: ' + $gt.Word)
+    Assert-True ($gt.Detail -match 'press return') $gt.Detail
+}
+
+Fact 'P106_TheHealthCheckNeverCallsAWaitingShardHealthy' {
+    $q = Get-ShardQuestion -LogText $p106D94 -Running $true -Now $p106T0.AddMinutes(5) -QuietSeconds 20
+    foreach ($h in 'healthy', 'starting', 'unhealthy', '') {
+        $r = Get-HealthState -Exists $true -Running $true -Health $h -Crash $null -Question $q
+        Assert-Equal 'WAITING' $r.State ('docker said ' + $h)
+        Assert-True ($r.Detail -match 'Delete the object and continue') $r.Detail
+    }
+    Assert-Equal 'HEALTHY' (Get-HealthState -Exists $true -Running $true -Health 'healthy' -Crash $null).State 'no question: as before'
+}
+
+Fact 'P106_OneEmailPerQuestion' {
+    $s = New-P106State -Tail $p106D94
+    $m = @(Get-QuestionMails -State $s -Config $config -Sent @())
+    Assert-Equal 1 $m.Count
+    Assert-Equal '[Shard] Live is waiting for an answer: Delete the object and continue? (y/n/a)' $m[0].Subject
+    Assert-True ($m[0].Body -match 'Server\.ClusterFAccountPersistence' -and $m[0].Body -match 'Shard question tab') $m[0].Body
+    Assert-Equal 0 @(Get-QuestionMails -State $s -Config $config -Sent @($m[0].Signature)).Count 'the same question is not mailed twice'
+    $s2 = New-P106State -Tail ($p106D94 -replace '13:06:17\.988048937Z', '13:07:17.988048937Z')
+    Assert-Equal 1 @(Get-QuestionMails -State $s2 -Config $config -Sent @($m[0].Signature)).Count 'a new question is'
+}
+
+Fact 'P106_DeleteAnswersNeedTheTypedPhraseAndAVerifiedBackupFirst' {
+    $s = New-P106State -Tail $p106D94
+    foreach ($k in 'question.y', 'question.a') {
+        $p = Get-P106Plan $k -State $s
+        Assert-Equal 0 @($p | Where-Object { $_.Kind -eq 'refuse' }).Count ($k + ' is allowed for this question')
+        $conf = @($p | Where-Object { $_.Kind -eq 'confirm' })
+        Assert-Equal 'delete on live' $conf[0].Phrase
+        Assert-True ($conf[0].Text -match "every account's ClusterF data") ('it says what is lost first: ' + $conf[0].Text)
+        $kinds = @($p | ForEach-Object { $_.Kind })
+        $copy = [array]::IndexOf($kinds, 'copy'); $ver = [array]::IndexOf($kinds, 'verify'); $ans = [array]::IndexOf($kinds, 'answer')
+        Assert-True ($copy -ge 0 -and $ver -gt $copy -and $ans -gt $ver) ($k + ': copy, verify, then answer: ' + ($kinds -join ','))
+        Assert-True ($p[$copy].To -like ((Join-Path $config.SnapshotRoot 'live') + '\*_pre-answer-*')) $p[$copy].To
+        Assert-Equal $config.Shards['live'].Saves $p[$copy].From
+        Assert-Equal $k.Substring(9) $p[$ans].Phrase 'the answer step carries the key it sends'
+        Assert-Equal 1 @($p | Where-Object { $_.Kind -eq 'log' }).Count 'logged'
+        Assert-Equal 0 @(Test-PlanSafety $p $config).Count ((Test-PlanSafety $p $config) -join ' | ')
+    }
+}
+
+Fact 'P106_TheSafetyCheckRefusesADeleteAnswerWithoutItsBackupOrPhrase' {
+    $s = New-P106State -Tail $p106D94
+    $p = Get-P106Plan 'question.y' -State $s
+    $noBackup = @($p | Where-Object { $_.Kind -notin @('copy', 'verify') })
+    Assert-True (@(Test-PlanSafety $noBackup $config) -match 'backup').Count 'no backup: refused'
+    $noPhrase = @($p | Where-Object { $_.Kind -ne 'confirm' })
+    Assert-True (@(Test-PlanSafety $noPhrase $config) -match 'delete on live').Count 'no phrase: refused'
+    $weak = @($p | ForEach-Object { if ($_.Kind -eq 'confirm') { $c = $_.PSObject.Copy(); $c.Phrase = 'answer live'; $c } else { $_ } })
+    Assert-True (@(Test-PlanSafety $weak $config) -match 'delete on live').Count 'the answer phrase is not enough for a delete'
+    $odd = @($p | ForEach-Object { if ($_.Kind -eq 'answer') { $c = $_.PSObject.Copy(); $c.Container = 'sl-ddns'; $c } else { $_ } })
+    Assert-True (@(Test-PlanSafety $odd $config) -match 'only to a shard').Count 'an answer goes only to a shard container'
+}
+
+Fact 'P106_OtherAnswersAndStopNeedTheirOwnPhrase' {
+    $s = New-P106State -Tail $p106D94
+    $p = Get-P106Plan 'question.n' -State $s
+    Assert-Equal 'answer live' @($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -in @('copy', 'verify') }).Count 'n deletes nothing, so nothing to back up'
+    Assert-Equal 'n' @($p | Where-Object { $_.Kind -eq 'answer' })[0].Phrase
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count ((Test-PlanSafety $p $config) -join ' | ')
+    $st = Get-P106Plan 'question.stop' -State $s
+    Assert-Equal 'stop live' @($st | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase
+    $x = @($st | Where-Object { $_.Kind -eq 'exec' })[0]
+    Assert-Equal 'docker stop -t 60 sl-modernuo' ((@($x.Exe) + $x.Arguments) -join ' ') 'never compose for live (D29)'
+    Assert-Equal 0 @(Test-PlanSafety $st $config).Count ((Test-PlanSafety $st $config) -join ' | ')
+}
+
+Fact 'P106_AnAnswerTheQuestionDoesNotOfferIsRefused' {
+    $f = New-P106State -Key 'test' -Tail $p106Fatal
+    foreach ($k in 'question.y', 'question.a', 'question.n') { Assert-True (@(Get-P106Plan $k 'test' $f | Where-Object { $_.Kind -eq 'refuse' }).Count) ($k + ' on a fatal') }
+    Assert-Equal 0 @(Get-P106Plan 'question.enter' 'test' $f | Where-Object { $_.Kind -eq 'refuse' }).Count 'Enter is its answer'
+    $none = New-P106State -Tail $p106Healthy
+    Assert-True (@(Get-P106Plan 'question.n' -State $none | Where-Object { $_.Kind -eq 'refuse' }).Count) 'no question, nothing to answer'
+    Assert-Equal 0 @(Get-P106Plan 'question.stop' -State $none | Where-Object { $_.Kind -eq 'refuse' }).Count 'Stop works whenever the shard runs'
+}
+
+Fact 'P106_ShowPrintsTheQuestionItsContextAndEveryAnswerAndChangesNothing' {
+    $s = New-P106State -Tail $p106D94
+    $p = Get-P106Plan 'question.show' -State $s
+    $t = (@($p | Where-Object { $_.Kind -eq 'say' }) | ForEach-Object { $_.Text }) -join "`n"
+    foreach ($want in 'Delete the object and continue\? \(y/n/a\)', 'Server\.ClusterFAccountPersistence', 'ArgumentOutOfRangeException', '(?m)^  n: ', '(?m)^  y: ', '(?m)^  a: ', "every account's ClusterF data") {
+        Assert-True ($t -match $want) ('Show says ' + $want + "`n" + $t)
+    }
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -in @('confirm', 'exec', 'copy', 'answer') }).Count 'it only reads'
+}
+
+Fact 'P106_TheAnswerIsSentOnlyIfTheQuestionIsStillTheSame' {
+    $q = Get-ShardQuestion -LogText $p106D94 -Running $true -Now $p106T0.AddMinutes(5) -QuietSeconds 20
+    Assert-True (Test-QuestionStillAsked -Signature $q.Signature -Question $q) 'the same'
+    $moved = Get-ShardQuestion -LogText ($p106D94 -replace '13:06:17\.988048937Z', '13:09:17.988048937Z') -Running $true -Now $p106T0.AddMinutes(9) -QuietSeconds 20
+    Assert-True (-not (Test-QuestionStillAsked -Signature $q.Signature -Question $moved)) 'a later question is another one'
+    Assert-True (-not (Test-QuestionStillAsked -Signature $q.Signature -Question $null)) 'gone'
+    Assert-Equal ('n' + "`r") (Get-AnswerKeystrokes 'n') 'a key and Enter'
+    Assert-Equal "`r" (Get-AnswerKeystrokes '') 'Enter alone'
+}
+
+Fact 'P106_EveryQuestionButtonIsOnItsOwnTabWithAPhraseAndATooltip' {
+    $acts = @(Get-ConsoleActions | Where-Object { $_.Key -like 'question.*' })
+    Assert-Equal 'question.show,question.n,question.y,question.a,question.enter,question.stop' (($acts | ForEach-Object { $_.Key }) -join ',')
+    foreach ($a in $acts) {
+        Assert-Equal 'Shard question' $a.Group $a.Key
+        Assert-True ([string](Get-ConsoleTooltips)[$a.Key]) ($a.Key + ' has a tooltip')
+    }
+}
+
+Fact 'P106_EveryQuestionButtonRunHeadlessWithDryRunRunsNothing' {
+    # A capture with live waiting at D94, as -Capture would write it, read by the child exactly as a click runs it.
+    $capText = Read-P106Text 'console-capture-2026-09-29.txt'
+    $capText = $capText -replace 'captured-at \S+', ('captured-at ' + (Format-DockerTime $p106T0.AddMinutes(5)))
+    $capText = $capText -replace '(?s)("State": \{\s*"Status": )"\w+",(\s*"Running": )\w+', '$1"running",$2true'
+    $capText += "`n" + $script:CaptureMarker + 'logtail sl-modernuo #####' + "`n" + $p106D94 + "`n"
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p106-capture-' + [guid]::NewGuid().ToString('N') + '.txt')
+    [IO.File]::WriteAllText($tmp, $capText, (New-Object Text.UTF8Encoding $false))
+    try {
+        foreach ($k in 'question.show', 'question.n', 'question.y', 'question.a', 'question.stop') {
+            $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Resolve-Path $script).Path -DryRun -StatusFrom $tmp -Action $k -Shard live 2>&1 | Out-String)
+            Assert-Equal 0 $LASTEXITCODE ($k + ': ' + $out)
+            Assert-True ($out -match ('== DRY RUN: ' + [regex]::Escape($k))) ($k + ': ' + $out)
+            Assert-True ($out -match '\(dry run: nothing was run\)') ($k + ': ' + $out)
+            Assert-True ($out -cnotmatch '(?m)^\s*\d+\. REFUSE ') ($k + ': ' + $out)
+        }
+    } finally { Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

@@ -1,5 +1,5 @@
 {
-  "_comment": "cc-P96. The Shard Console's Fix test shard tab reads this. knownCrashes: plain text (not a pattern) found in a crash's exception text, and the bug-list row it is; copy the text straight out of a stack frame. keepGood: how many of the newest sl-modernuo:good-* tags Prune images keeps. keepTags: sl-modernuo tags Prune images never offers (with or without the sl-modernuo: prefix).",
+  "_comment": "cc-P96. The Shard Console's Fix test shard tab reads this. knownCrashes: plain text (not a pattern) found in a crash's exception text, and the bug-list row it is; copy the text straight out of a stack frame. keepGood: how many of the newest sl-modernuo:good-* tags Prune images keeps. keepTags: sl-modernuo tags Prune images never offers (with or without the sl-modernuo: prefix). cc-P106: questionLosses: what a delete answer to a shard's console question loses, when the object or file the question names contains match.",
   "knownCrashes": [
     {
       "match": "ImbueCatalogue..cctor",
@@ -8,5 +8,11 @@
     }
   ],
   "keepGood": 5,
-  "keepTags": []
+  "keepTags": [],
+  "questionLosses": [
+    {
+      "match": "ClusterFAccountPersistence",
+      "lost": "every account's ClusterF data: renown and achievement points, learned recipes, guild membership, ranks, reputation and work orders, ore, wood and imbuing discoveries, the tutorial record, and exploration. It is one object (ClusterFAccountPersistence) holding all of it for every account."
+    }
+  ]
 }

@@ -204,6 +204,10 @@ for ($i = 0; $i -lt $HealthTimeout; $i += 2) {
     if ((Remove-HealthAnsi $log) -match 'create the owner account') { $state = 'prompt'; break }
     $crash = Get-CrashReport $log
     if ($crash.Crashed) { $state = 'crashed'; break }
+    # cc-P106: a load question (a bad deserialize, a missing type) waits on the console and never listens.
+    $tail = (docker logs -t --tail 80 sl-modernuo-test 2>&1 | ForEach-Object { [string]$_ }) -join "`n"
+    $question = Get-ShardQuestion -LogText $tail -Running $true -Now ([datetime]::UtcNow) -QuietSeconds 20
+    if ($question -and $question.Kind -ne 'fatal') { $state = 'question'; break }
     $health = ((docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}|{{.State.Running}}' sl-modernuo-test) | Out-String).Trim()
     if ($health -like 'healthy|*')   { $state = 'healthy'; break }
     if ($health -like 'unhealthy|*') { $state = 'unhealthy'; break }
@@ -219,6 +223,13 @@ if ($state -eq 'prompt') {
     Write-Host "  type y, a username, a password (each then Enter), then detach with Ctrl+P Ctrl+Q." -ForegroundColor Red
     Write-Host "  (Ctrl+C would stop the shard.)" -ForegroundColor Red
     throw "test shard blocked at the owner-account prompt"
+}
+if ($state -eq 'question') {
+    Write-Host ""
+    Write-Host "  THE TEST SHARD IS WAITING FOR AN ANSWER on its console and will not listen until it gets one." -ForegroundColor Red
+    Write-Host ("  " + (Get-QuestionLine $question)) -ForegroundColor Red
+    Write-Host "  Shard Console > Shard question: it shows what each answer does and sends it (a delete answer backs up the save first)." -ForegroundColor Yellow
+    throw ("test shard waiting for an answer: " + $question.Prompt)
 }
 if ($state -eq 'crashed') {
     $where = 'after it had started'

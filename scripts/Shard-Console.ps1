@@ -158,6 +158,8 @@ param(
 $script:Invariant       = [Globalization.CultureInfo]::InvariantCulture
 $script:CaptureMarker   = '##### SHARD-CONSOLE-CAPTURE '
 $script:SnapshotPattern = '^(\d{8}-\d{6})_([A-Za-z0-9._-]+)$'
+# cc-P106: what answering y or a to D94's question deletes (ClusterFAccountData.cs, one object for every account).
+$script:D94Loss = "every account's ClusterF data: renown and achievement points, learned recipes, guild membership, ranks, reputation and work orders, ore, wood and imbuing discoveries, the tutorial record, and exploration. It is one object (ClusterFAccountPersistence) holding all of it for every account."
 $script:NoSaveWarning   = 'A stop does not save: play since the last autosave (every 5 minutes) is lost. [save in game first if that matters.'
 # D36 fixed: said instead for a container whose log since this start has $script:SavesOnStopLine.
 $script:SavesOnStopNote = 'The shard saves on stop (D36 fix, seen in its log since this start). If the stop times out, play since the last autosave is lost.'
@@ -276,6 +278,11 @@ function Get-ConsoleConfig {
         DefaultCapture   = (Join-Path $RepoRoot 'scripts\tests\fixtures\console-capture-2026-09-29.txt')
         StopTimeout      = 60
         LogWindowMinutes = 15
+        # cc-P106: a running shard silent this long after a console question's lead-in is waiting on it; the tail read
+        # for it (docker logs -t); and the questions already emailed, outside both repos.
+        QuestionQuietSeconds = 20
+        QuestionTailLines = 80
+        QuestionMailFile = (Join-Path $env:LOCALAPPDATA 'ShardConsole\question-mail.json')
         StaleSaveMinutes = 15
         Shards           = $shards
         # The shard status publisher (docker/uo-status/README.md). The shard writes status.json
@@ -762,6 +769,7 @@ function Get-ConfirmSubject {
         'fix.rollback'    { 'Roll back the test shard' }
         'fix.rebuild'     { 'Rebuild the test shard' }
         'fix.prune'       { 'Prune images' }
+        { $_ -like 'question.*' } { 'Answer the shard''s question' }
         default           { 'LIVE shard' }
     }
 }
@@ -940,6 +948,13 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'fix.rollback';     Group = 'Fix test shard'; Label = 'Roll back to last good';          Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'fix.rebuild';      Group = 'Fix test shard'; Label = 'Rebuild a commit';                Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'fix.prune';        Group = 'Fix test shard'; Label = 'Prune images';                    Mutates = $true;  RunIn = 'window' }
+        # cc-P106: its own tab, for both shards (the shard picked on the tab). Show only reads; each answer and Stop confirm with a phrase.
+        [pscustomobject]@{ Key = 'question.show';    Group = 'Shard question'; Label = 'Show the question';               Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'question.n';       Group = 'Shard question'; Label = 'Answer n';                        Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'question.y';       Group = 'Shard question'; Label = 'Answer y (deletes)';              Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'question.a';       Group = 'Shard question'; Label = 'Answer a (deletes all)';          Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'question.enter';   Group = 'Shard question'; Label = 'Press Enter';                     Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'question.stop';    Group = 'Shard question'; Label = 'Stop the shard';                  Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'live.start';       Group = 'LIVE shard'; Label = 'Start';                               Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'live.stop';        Group = 'LIVE shard'; Label = 'Stop';                                Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'live.restart';     Group = 'LIVE shard'; Label = 'Restart';                             Mutates = $true;  RunIn = 'window' }
@@ -1152,6 +1167,16 @@ function Get-ConsoleTooltips {
         'test.tail'        = 'Follows the test shard log as it is written. Read-only; Stop (or closing its window) ends it.'
         'test.client'      = 'Opens a game client pointed at the test shard (port 2594). Changes nothing.'
         'fix.diagnose'     = 'Reads the test shard: status, health, image and commit, uptime, and for a crash its exception, first five frames and the bug-list row it matches. Changes nothing.'
+        'tab.Shard question' = 'When a shard waits for an answer on its console (a save it cannot load, a fatal error), this shows the question and sends an answer. Delete answers back up the save first and need the phrase delete on live or delete on test.'
+        'qLive'            = 'Answer the LIVE shard''s question. Every answer asks for a typed phrase.'
+        'qTest'            = 'Answer the test shard''s question. Every answer asks for a typed phrase.'
+        'qText'            = 'The question the picked shard is waiting on, what failed, and what each answer does.'
+        'question.show'    = 'Shows the question the picked shard waits on, what failed, and what each answer does. It only reads.'
+        'question.n'       = 'Types n and Enter at the picked shard''s question after the phrase answer live or answer test: nothing is deleted and loading stops. It is sent only if the shard is still asking that question.'
+        'question.y'       = 'Types y after the phrase delete on live or delete on test and a verified backup of the save: the one bad object (or file) is deleted and loading goes on. The confirmation says first what is lost.'
+        'question.a'       = 'Types a after the phrase delete on live or delete on test and a verified backup: this and every later bad object in that file are deleted without asking.'
+        'question.enter'   = 'Presses Enter at "press return to exit" after the phrase answer live or answer test: the server exits and Docker starts it again.'
+        'question.stop'    = 'Stops the picked shard with docker stop -t 60 after the phrase stop live or stop test. Safe while it waits: nothing has loaded.'
         'fix.restart'      = 'Restarts the test container on the image it has, after the phrase restart test, then waits for it to listen or crash. Never touches live.'
         'fix.rollback'     = 'Backs up the test save, then starts the test shard on the newest sl-modernuo:good-* image, after the phrase roll back test. Warns if the save is newer than that image. latest is not moved.'
         'fix.rebuild'      = 'Builds a commit you pick through every test gate (in a worktree outside the repo) and starts the test shard on it, after the phrase rebuild test. Minutes.'
@@ -1317,11 +1342,11 @@ function Format-PaneExit {
 function New-PlanStep {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'checkzip', 'gatecheck', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log', 'secret', 'wiperequest', 'wipewait', 'healthwait')]
+        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'checkzip', 'gatecheck', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log', 'secret', 'wiperequest', 'wipewait', 'healthwait', 'answer')]
         [string]$Kind,
         [string]$Text, [string]$Exe, [string[]]$Arguments, [string]$From, [string]$To,
         [string]$Path, [string]$Phrase, [string]$Container, [switch]$IfExists,
-        [Collections.IDictionary]$Named, [int]$Seconds
+        [Collections.IDictionary]$Named, [int]$Seconds, [string]$Signature
     )
     $a = @()
     if ($Arguments) { $a = @($Arguments) }
@@ -1332,6 +1357,8 @@ function New-PlanStep {
     [pscustomobject]@{
         Kind = $Kind; Text = $Text; Exe = $Exe; Arguments = $a; From = $From; To = $To
         Path = $Path; Phrase = $Phrase; Container = $Container; IfExists = [bool]$IfExists; Named = $n; Seconds = $Seconds
+        # cc-P106: an answer step's question (Get-ShardQuestion's Signature); the answer goes only to that question.
+        Signature = $Signature
     }
 }
 
@@ -1868,6 +1895,8 @@ function ConvertFrom-FixConfig {
         KnownCrashes = @([pscustomobject]@{ Match = 'ImbueCatalogue..cctor'; Bug = 'D89'; Title = 'the Imbuing catalogue read the skill table too early' })
         KeepGood     = 5
         KeepTags     = @()
+        # cc-P106: for a question's delete answers, what is lost when the object or file named contains Match.
+        QuestionLosses = @([pscustomobject]@{ Match = 'ClusterFAccountPersistence'; Lost = $script:D94Loss })
         Error        = $null
     }
     if (-not $Json) { return $cfg }
@@ -1878,6 +1907,10 @@ function ConvertFrom-FixConfig {
     }
     if ($j.keepGood -is [int] -or $j.keepGood -is [long]) { $cfg.KeepGood = [Math]::Max(1, [int]$j.keepGood) }
     if ($j.keepTags) { $cfg.KeepTags = @($j.keepTags | ForEach-Object { [string]$_ } | Where-Object { $_ }) }
+    if ($j.questionLosses) {
+        $cfg.QuestionLosses = @($j.questionLosses | Where-Object { $_.match -and $_.lost } | ForEach-Object {
+            [pscustomobject]@{ Match = [string]$_.match; Lost = [string]$_.lost } })
+    }
     $cfg
 }
 
@@ -2100,6 +2133,8 @@ function Get-ActionPlan {
     if ($Now -eq [datetime]::MinValue) { $Now = $State.Now }
     if ($Action -eq 'test.wipe') { return (Get-WipePlan -Config $Config -State $State -Facts $WipeFacts -Admin $WipeAdmin -Now $Now) }
     # cc-P96: the Fix test shard tab. Its facts are git's and the test world's save record (Get-FixFacts).
+    # cc-P106: the Shard question tab, for the shard picked on it (-Shard).
+    if ($Action -like 'question.*') { return (Get-QuestionPlan -Action $Action -ShardKey $ShardKey -Config $Config -State $State -Now $Now) }
     if ($Action -like 'fix.*') { return (Get-FixPlan -Action $Action -Config $Config -State $State -Facts $FixFacts -ImageTag $ImageTag -Commit $Commit -Now $Now) }
     if ($Action -like 'live.*') { $ShardKey = 'live' }
     if ($Action -like 'test.*') { $ShardKey = 'test' }
@@ -2337,6 +2372,29 @@ function Test-PlanSafety {
                 if (-not @($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -ceq (Get-ConfirmPhrase 'web.deploy') }).Count) { $v.Add('a Haven deploy runs only after the typed phrase ' + (Get-ConfirmPhrase 'web.deploy')) }
             }
         }
+        if ($s.Kind -eq 'answer') {
+            # cc-P106: an answer goes only to a shard's console, as n, y, a or Enter, after its phrase; a delete answer (y,
+            # a) only after delete on <shard> and a verified copy of that shard's save into the snapshot folder.
+            $owner = @($Config.Shards.Values | Where-Object { $_.Container -ceq $s.Container })[0]
+            if (-not $owner) { $v.Add('an answer goes only to a shard container (' + ((@($Config.Shards.Values) | ForEach-Object { $_.Container }) -join ', ') + '): ' + $s.Container) }
+            else {
+                if (@('n', 'y', 'a', 'enter') -cnotcontains $s.Phrase) { $v.Add('an answer is n, y, a or Enter: ' + $s.Phrase) }
+                $deletes = @('y', 'a') -ccontains $s.Phrase
+                $need = 'answer ' + $owner.Key
+                if ($deletes) { $need = 'delete on ' + $owner.Key }
+                if (-not @($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -ceq $need }).Count) { $v.Add('the answer ' + $s.Phrase + ' is sent only after the typed phrase ' + $need) }
+                if (-not $s.Signature) { $v.Add('an answer names the question it answers') }
+                if ($deletes) {
+                    $at = [array]::IndexOf($plan, $s)
+                    $pre = @(); if ($at -gt 0) { $pre = @($plan[0..($at - 1)]) }
+                    $savesFull = [IO.Path]::GetFullPath($owner.Saves).TrimEnd('\')
+                    $under = $snapRoot + $owner.Key + '\'
+                    $copies = @($pre | Where-Object { $_.Kind -eq 'copy' -and $_.From -and $_.To -and [IO.Path]::GetFullPath($_.From).TrimEnd('\') -ieq $savesFull -and [IO.Path]::GetFullPath($_.To).StartsWith($under, [StringComparison]::OrdinalIgnoreCase) })
+                    $verified = @($copies | Where-Object { $t0 = $_.To; @($pre | Where-Object { $_.Kind -eq 'verify' -and $_.To -eq $t0 }).Count })
+                    if (-not $verified.Count) { $v.Add('a delete answer is sent only after a backup: the ' + $owner.Label + ' save copied under ' + $under + ' and the copy verified') }
+                }
+            }
+        }
         if ($s.Kind -eq 'healthwait' -and $s.Container -cne $Config.Shards['test'].Container) { $v.Add('a health wait is only ever on ' + $Config.Shards['test'].Container + ': ' + $s.Container) }
         if ($s.Kind -eq 'gatecheck') {
             # cc-P68: Check selected runs the build script's -CheckZip on one zip in dist\, nothing else.
@@ -2462,6 +2520,7 @@ function Format-PlanStep {
         'stopped' { $out.Add($n + 'CHECK    docker inspect says ' + $Step.Container + ' is not running; stop here if it is') }
         'remove-snapshot' { $out.Add($n + 'DELETE   ' + $Step.Path); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'log'     { $out.Add($n + 'LOG      one timestamped line: ' + $Step.Text) }
+        'answer'  { $out.Add($n + 'ANSWER   type ' + $(if ($Step.Phrase -eq 'enter') { 'Enter' } else { $Step.Phrase + ' and Enter' }) + ' on ' + $Step.Container + " console (Docker engine API, attached for this only), only if it is still asking the same question; stop here if not"); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'healthwait' { $out.Add($n + 'WAIT     up to ' + $Step.Seconds + ' s for ' + $Step.Container + ' to be healthy (listening) or to crash; stop here unless healthy'); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'secret'  { $out.Add($n + 'ASK      in this window, not shown: ' + $Step.Text) }
         'wiperequest' { $out.Add($n + 'WRITE    ' + $Step.Path + '   (refuses if it exists)'); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
@@ -2571,6 +2630,8 @@ function New-ConsoleState {
             SavesOnStop  = [bool]($c.Exists -and (Test-SavesOnStop ([string]$Sections['logs ' + $sh.Container])))
             # cc-P96: a terminating exception in the log since this start ("This exception is fatal").
             Crash        = (Get-CrashReport ([string]$Sections['logs ' + $sh.Container]))
+            # cc-P106: the console question the shard is waiting on, from its timestamped tail, or $null.
+            Question     = (Get-ShardQuestion -LogText ([string]$Sections['logtail ' + $sh.Container]) -Running ([bool]($c.Exists -and $c.Running)) -Now $now -QuietSeconds $Config.QuestionQuietSeconds)
             Save         = (Get-SaveSummary (ConvertFrom-FileListing $Sections['saves ' + $sh.Key]))
             Snapshots    = @(ConvertFrom-SnapshotListing $Sections['snapshots ' + $sh.Key])
             Asides       = $asides
@@ -2764,6 +2825,18 @@ function Get-ShardGlance {
     } elseif ($c.Exists -and $c.Running -and $c.Health -eq 'healthy' -and $word -eq 'RUNNING') {
         $detail += ', healthy'
     }
+    # cc-P106: a question the shard waits on outranks everything but a crash, and a crash's own "press return to exit" says
+    # that it waits. Neither is RUNNING, whatever docker's health check says.
+    $q = $ShardState.Question
+    if ($c.Exists -and $c.Running -and $q) {
+        if ($q.Kind -eq 'fatal') {
+            if ($word -notlike 'CRASHED*') { $word = 'CRASHED'; $color = 'red'; $detail = Get-QuestionLine $q }
+            $detail += '; waiting at "press return to exit" (Shard question tab)'
+        } else {
+            $word = 'WAITING FOR AN ANSWER'; $color = 'amber'
+            $detail = (Get-QuestionLine $q) + ' (Shard question tab)'
+        }
+    }
     if ($c.Exists) {
         if ($ShardState.Drift.Verdict -eq 'DRIFTED') {
             $detail += '; OLD IMAGE'
@@ -2773,6 +2846,119 @@ function Get-ShardGlance {
         }
     }
     [pscustomobject]@{ Title = $Shard.Label; Word = $word; Color = $color; Detail = $detail }
+}
+
+function Get-QuestionLoss {
+    # cc-P106: what a delete answer to this question loses, in plain words.
+    param($Question, $Config)
+    if (-not $Question) { return '' }
+    $named = [string]$Question.Type + ' ' + [string]$Question.File
+    foreach ($l in @($Config.Fix.QuestionLosses)) { if ($l -and $l.Match -and $named.Contains([string]$l.Match)) { return [string]$l.Lost } }
+    switch ($Question.Kind) {
+        'object' { return ('the whole object ' + $Question.Type + ' ' + $Question.Serial + ' and everything it holds') }
+        'file'   { return ('everything in ' + $Question.File) }
+        'type'   { return 'every saved object of the missing type (the type is named in the question line, which docker logs does not show)' }
+    }
+    ''
+}
+
+function Get-QuestionText {
+    # cc-P106: the Shard question panel, Show the question and the email: the question, what failed, and each answer.
+    param($Question, $Shard, $Config)
+    $out = New-Object 'System.Collections.Generic.List[string]'
+    $since = ''
+    if ($Question.Since) { $since = ' since ' + $Question.Since.ToLocalTime().ToString('yyyy-MM-dd HH:mm', $script:Invariant) }
+    $out.Add('The ' + $Shard.Label + ' shard (' + $Shard.Container + ') is waiting on its console' + $since + '.')
+    $out.Add('Question: ' + $Question.Prompt)
+    if ($Question.Type) { $out.Add('Could not load: ' + $Question.Type + ' ' + $Question.Serial) }
+    if ($Question.File) { $out.Add('Could not load: ' + $Question.File) }
+    if ($Question.Exception) { $out.Add('Error: ' + $Question.Exception) }
+    foreach ($f in @($Question.Frames | Select-Object -First 4)) { $out.Add('  at ' + $f) }
+    $out.Add('Answers:')
+    $deletes = $false
+    foreach ($a in @($Question.Answers)) {
+        $need = ' (phrase: answer ' + $Shard.Key + ')'
+        if ($a.Deletes) { $deletes = $true; $need = ' (phrase: delete on ' + $Shard.Key + '; the save is backed up first)' }
+        $out.Add('  ' + $a.Key + ': ' + $a.Explain + $need)
+    }
+    if (-not @($Question.Answers).Count) { $out.Add('  none from here: answer it at the console (docker attach ' + $Shard.Container + '), or stop the shard.') }
+    if ($deletes) { $out.Add('A delete answer loses ' + (Get-QuestionLoss $Question $Config)) }
+    $out.Add('Or Stop the shard (phrase: stop ' + $Shard.Key + '): safe while it waits, since nothing has loaded.')
+    $out.ToArray()
+}
+
+function Get-QuestionMails {
+    # cc-P106: one email per new question. Sent holds the signatures already mailed (container|kind|since|object).
+    param($State, $Config, [string[]]$Sent = @())
+    foreach ($k in @('live', 'test')) {
+        $ss = $State.Shards[$k]
+        if (-not $ss -or -not $ss.Question) { continue }
+        $sh = $Config.Shards[$k]
+        $sig = $sh.Container + '|' + $ss.Question.Signature
+        if (@($Sent) -contains $sig) { continue }
+        $name = $sh.Label.Substring(0, 1) + $sh.Label.Substring(1).ToLowerInvariant()
+        $body = @(Get-QuestionText $ss.Question $sh $Config) + @('', 'Answer it in the Shard Console, on the Shard question tab. This email is sent once per question.')
+        [pscustomobject]@{ Shard = $k; Signature = $sig; Subject = ('[Shard] ' + $name + ' is waiting for an answer: ' + $ss.Question.Prompt); Body = ($body -join "`r`n") }
+    }
+}
+
+function Get-QuestionPlan {
+    # cc-P106: Show the question, the answers and Stop, for either shard.
+    param([string]$Action, [string]$ShardKey, $Config, $State, [datetime]$Now)
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    $sh = $Config.Shards[$ShardKey]
+    $ss = $State.Shards[$ShardKey]
+    $c = $ss.Container
+    $q = $ss.Question
+    $who = 'The ' + $sh.Label + ' shard (' + $sh.Container + ')'
+    switch ($Action) {
+        'question.show' {
+            if ($q) { foreach ($l in (Get-QuestionText $q $sh $Config)) { $steps.Add((New-PlanStep -Kind say -Text $l)) } }
+            elseif ($c.Exists -and $c.Running) { $steps.Add((New-PlanStep -Kind say -Text ($who + ' is not waiting on a console question.'))) }
+            else { $steps.Add((New-PlanStep -Kind say -Text ($who + ' is not running, so it is not asking anything.'))) }
+            $steps.Add((New-PlanStep -Kind log -Text ('question.show ' + $ShardKey + ': ' + $(if ($q) { $q.Kind + ' ' + (Get-QuestionLine $q) } else { 'no question' }))))
+        }
+        'question.stop' {
+            if (-not $c.Exists -or -not $c.Running) { $steps.Add((New-PlanStep -Kind refuse -Text ($who + ' is not running; there is nothing to stop.'))); break }
+            $t = 'This stops the ' + $sh.Label + ' shard (' + $sh.Container + ') with docker stop -t ' + $Config.StopTimeout + '. '
+            if ($q) { $t += 'It is waiting at "' + $q.Prompt + '", so nothing has loaded and stopping loses nothing. ' }
+            else { $t += $script:NoSaveWarning + ' ' }
+            $t += 'It stays stopped (restart: unless-stopped does not restart a container that was stopped) until it is started again.'
+            $steps.Add((New-PlanStep -Kind confirm -Phrase ('stop ' + $ShardKey) -Text $t))
+            $steps.Add((New-PlanStep -Kind exec -Exe 'docker' -Arguments @('stop', '-t', [string]$Config.StopTimeout, $sh.Container) -Text ('docker stop, never compose (D29). ' + $(if ($q) { 'Nothing is loaded yet.' } else { '' }))))
+            $steps.Add((New-PlanStep -Kind stopped -Container $sh.Container -Text ('Checking ' + $sh.Container + ' is not running.')))
+            $steps.Add((New-PlanStep -Kind log -Text ('question.stop ' + $ShardKey + ': ' + $(if ($q) { $q.Kind + ' ' + $q.Signature } else { 'no question' }))))
+        }
+        default {
+            $key = $Action.Substring('question.'.Length)
+            if (-not $q) { $steps.Add((New-PlanStep -Kind refuse -Text ($who + ' is not waiting on a console question, so there is nothing to answer.'))); break }
+            $ans = @(@($q.Answers) | Where-Object { $_.Key -ceq $key })[0]
+            if (-not $ans) {
+                $keys = (@($q.Answers) | ForEach-Object { $_.Key }) -join ', '
+                if (-not $keys) { $keys = 'none from here' }
+                $steps.Add((New-PlanStep -Kind refuse -Text ('"' + $key + '" is not an answer this console sends to "' + $q.Prompt + '". Its answers: ' + $keys + '.'))); break
+            }
+            $shown = $key
+            if ($key -eq 'enter') { $shown = 'Enter' }
+            $text = $who + ' is asking: ' + (Get-QuestionLine $q) + '. Answer ' + $shown + ': ' + $ans.Explain
+            $phrase = 'answer ' + $ShardKey
+            $dest = $null
+            if ($ans.Deletes) {
+                if (-not $ss.Save.Exists) { $steps.Add((New-PlanStep -Kind refuse -Text ('There is no save at ' + $sh.Saves + ' to back up, so a delete answer is not sent.'))); break }
+                $phrase = 'delete on ' + $ShardKey
+                $dest = Join-Path (Join-Path $Config.SnapshotRoot $sh.Key) (New-SnapshotFolderName ('pre-answer-' + $key) $Now)
+                $text = 'BEFORE YOU TYPE: this deletes ' + (Get-QuestionLoss $q $Config) + ' The ' + $sh.Label + ' save is backed up first, to ' + $dest + '. ' + $text
+            }
+            $steps.Add((New-PlanStep -Kind confirm -Phrase $phrase -Text $text))
+            if ($dest) {
+                $steps.Add((New-PlanStep -Kind copy -From $sh.Saves -To $dest -Text ('Backing up the ' + $sh.Label + ' save to ' + $dest + '. The shard is blocked in its load, so it is writing nothing.')))
+                $steps.Add((New-PlanStep -Kind verify -From $sh.Saves -To $dest -Text 'Checking the backup has the same files and bytes.'))
+            }
+            $steps.Add((New-PlanStep -Kind answer -Container $sh.Container -Phrase $key -Signature $q.Signature -Text ('Typing ' + $shown + ' at "' + $q.Prompt + '" if the shard is still asking exactly that question.')))
+            $steps.Add((New-PlanStep -Kind log -Text ('question.' + $key + ' ' + $ShardKey + ' answered ' + $shown + ' to ' + $q.Kind + ': ' + (Get-QuestionLine $q) + $(if ($dest) { '; save backed up to ' + $dest } else { '' }))))
+        }
+    }
+    $steps.ToArray()
 }
 
 function Get-AtAGlance {
@@ -4421,6 +4607,83 @@ function Get-WipeFacts {
     }
 }
 
+function Get-ShardQuestionNow {
+    # cc-P106: the question a shard is waiting on right now, read from docker (inspect and logs -t).
+    param($Config, [string]$Container)
+    $r = Invoke-DockerRead @('inspect', '-f', '{{.State.Running}}', $Container)
+    $running = ($r.Out.Trim() -eq 'true')
+    $t = Invoke-DockerRead @('logs', '-t', '--tail', [string]$Config.QuestionTailLines, $Container)
+    Get-ShardQuestion -LogText ($t.Out + "`n" + $t.Err) -Running $running -Now ([datetime]::UtcNow) -QuietSeconds $Config.QuestionQuietSeconds
+}
+
+function Send-ContainerInput {
+    # cc-P106: writes Text to a container's console, as typing at it would, through the Docker engine API on its named
+    # pipe: attach with stdin only, write, close. Nothing stays attached, and the container's stdin stays open
+    # (stdin_open: true, tty: true in compose; StdinOnce is false). docker attach itself refuses a script on a tty.
+    param([string]$Container, [string]$Text)
+    if ($Container -notmatch '^[A-Za-z0-9][A-Za-z0-9_.-]*$') { throw ('not a container name: ' + $Container) }
+    $pipe = New-Object System.IO.Pipes.NamedPipeClientStream('.', 'docker_engine', [System.IO.Pipes.PipeDirection]::InOut)
+    $pipe.Connect(5000)
+    try {
+        $req = 'POST /containers/' + $Container + '/attach?stream=1&stdin=1 HTTP/1.1' + "`r`n" + 'Host: docker' + "`r`n" + 'Upgrade: tcp' + "`r`n" + 'Connection: Upgrade' + "`r`n" + 'Content-Length: 0' + "`r`n`r`n"
+        $b = [Text.Encoding]::ASCII.GetBytes($req)
+        $pipe.Write($b, 0, $b.Length)
+        $pipe.Flush()
+        $buf = New-Object byte[] 4096
+        $head = ''
+        $deadline = [datetime]::UtcNow.AddSeconds(5)
+        while ($head -notmatch "`r`n`r`n" -and [datetime]::UtcNow -lt $deadline) {
+            $task = $pipe.ReadAsync($buf, 0, $buf.Length)
+            if (-not $task.Wait(5000)) { break }
+            if ($task.Result -le 0) { break }
+            $head += [Text.Encoding]::ASCII.GetString($buf, 0, $task.Result)
+        }
+        $first = ($head -split "`r`n")[0]
+        if ($first -notmatch '^HTTP/1\.[01] (101|200) ') { throw ('the Docker engine would not attach to ' + $Container + ': ' + $first) }
+        $k = [Text.Encoding]::ASCII.GetBytes($Text)
+        $pipe.Write($k, 0, $k.Length)
+        $pipe.Flush()
+        Start-Sleep -Milliseconds 500
+    } finally { $pipe.Dispose() }
+}
+
+function Send-ConsoleMail {
+    # cc-P106: one email through the Golem's mail settings (email.json and the DPAPI smtp-cred.xml in its folder, or
+    # cc-autopilot's before the cutover), read only, the way tools\playtest-bot\Send-BotReport.ps1 does. True if sent.
+    param($Config, [string]$Subject, [string]$Body)
+    $ap = $Config.Autopilot
+    if (-not $ap -or -not (Test-Path -LiteralPath $ap.EmailFile) -or -not (Test-Path -LiteralPath $ap.CredFile)) { return $false }
+    try {
+        $mc = Get-Content -LiteralPath $ap.EmailFile -Raw | ConvertFrom-Json
+        $cred = Import-Clixml -LiteralPath $ap.CredFile
+        $msg = New-Object System.Net.Mail.MailMessage($mc.from, $mc.to, $Subject, $Body)
+        $smtp = New-Object System.Net.Mail.SmtpClient('smtp.gmail.com', 587)
+        $smtp.EnableSsl = $true
+        $smtp.Credentials = New-Object System.Net.NetworkCredential($cred.UserName, $cred.GetNetworkCredential().Password)
+        $smtp.Send($msg)
+        $msg.Dispose(); $smtp.Dispose()
+        return $true
+    } catch { return $false }
+}
+
+function Invoke-QuestionMail {
+    # cc-P106: emails each new question once (Get-QuestionMails), and remembers it in QuestionMailFile. Only for a state
+    # read from docker, never a capture.
+    param($Config, $State)
+    if (-not $State -or $State.Source -ne 'docker') { return }
+    $sent = @()
+    try { $sent = @((Get-Content -LiteralPath $Config.QuestionMailFile -Raw -ErrorAction Stop | ConvertFrom-Json).sent) } catch { $sent = @() }
+    foreach ($m in @(Get-QuestionMails -State $State -Config $Config -Sent $sent)) {
+        if (Send-ConsoleMail -Config $Config -Subject $m.Subject -Body $m.Body) {
+            $sent = @(@($sent) + $m.Signature | Select-Object -Last 50)
+            $dir = Split-Path $Config.QuestionMailFile -Parent
+            if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            [IO.File]::WriteAllText($Config.QuestionMailFile, (([pscustomobject]@{ sent = $sent }) | ConvertTo-Json), (New-Object Text.UTF8Encoding $false))
+            Write-ConsoleLog $Config ('MAIL  ' + $m.Subject)
+        }
+    }
+}
+
 function Get-FixFacts {
     # cc-P96: what the Fix test shard plans read besides docker, all read-only. HEAD and the last 15 commits
     # (Rebuild's list), the save record a healthy start writes (Start-TestShard.ps1), and whether that save is
@@ -4640,6 +4903,9 @@ function Get-DockerSections {
             foreach ($ref in @($c.ConfigImage, $c.ImageId)) { if ($ref -and -not $refs.Contains($ref)) { $refs.Add($ref) } }
             $l = Invoke-DockerRead (Get-LogWindowArgs $c $Config.LogWindowMinutes)
             $sec['logs ' + $sh.Container] = ($l.Out + "`n" + $l.Err).Trim()
+            # cc-P106: the last lines with docker's timestamps: a console question, and how long the shard has been quiet.
+            $t = Invoke-DockerRead @('logs', '-t', '--tail', [string]$Config.QuestionTailLines, $sh.Container)
+            $sec['logtail ' + $sh.Container] = ($t.Out + "`n" + $t.Err).Trim()
         }
     }
     foreach ($ref in $refs) {
@@ -4902,6 +5168,20 @@ function Invoke-Plan {
                     Write-ConsoleLine ($tag + $s.Text) 'head'
                     $r = Invoke-DockerRead @('inspect', '-f', '{{.State.Running}}', $s.Container)
                     if ($r.Out.Trim() -eq 'true') { throw ($s.Container + ' is still running') }
+                }
+                'answer' {
+                    # cc-P106: the question is read again now; the keys go only to the one this plan was made for.
+                    Write-ConsoleLine ($tag + $s.Text) 'head'
+                    $nowQ = Get-ShardQuestionNow -Config $Config -Container $s.Container
+                    if (-not (Test-QuestionStillAsked -Signature $s.Signature -Question $nowQ)) { throw ('the question has changed or was answered since this plan was made; nothing was sent. Show the question reads it again.') }
+                    $send = @(@($nowQ.Answers) | Where-Object { $_.Key -ceq $s.Phrase })[0]
+                    if (-not $send) { throw ($s.Phrase + ' is not an answer to ' + $nowQ.Prompt + '; nothing was sent') }
+                    $sentAt = [datetime]::UtcNow
+                    Send-ContainerInput -Container $s.Container -Text (Get-AnswerKeystrokes $send.Send)
+                    Write-ConsoleLine ('      sent. What the shard printed in the next 10 s:') 'gray'
+                    Start-Sleep -Seconds 10
+                    $after = Invoke-DockerRead @('logs', '--since', (Format-DockerTime $sentAt.AddSeconds(-1)), $s.Container)
+                    foreach ($l in @(((Remove-Ansi ($after.Out + "`n" + $after.Err)) -replace "`r", '' -split "`n") | Where-Object { $_.Trim() } | Select-Object -First 30)) { Write-ConsoleLine ('      | ' + $l) 'gray' }
                 }
                 'healthwait' {
                     # cc-P96: healthy, or stop here and say why (crashed, unhealthy, stopped, no health check, timeout).
@@ -5878,6 +6158,9 @@ function Update-ConsoleStatus {
         $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:fromCapture -StatusFrom $script:statusFrom
         $script:lastState = $state
         Update-GlanceTiles $state
+        # cc-P106: the Shard question tab, and one email per new question (only for a state read from docker).
+        Update-QuestionPanel $state
+        if (-not $script:dry) { Invoke-QuestionMail -Config $script:cfg -State $state }
         $ap = Update-AutopilotView
         $pt = Get-PlayTestGlanceNow $script:cfg
         if ($script:ui.PlayTestTile) { Set-TileLook $script:ui.PlayTestTile $pt }
@@ -6170,6 +6453,26 @@ function New-WebsiteButton {
     $b.Margin = New-Object Windows.Forms.Padding(6)
     $b.Add_Click({ Invoke-ConsoleButton -ActionKey $this.Tag -Site (Get-SelectedWebsite) })
     $b
+}
+
+function Get-SelectedQuestionShard {
+    # cc-P106: the shard picked on the Shard question tab.
+    if ($script:ui.QuestionLive -and $script:ui.QuestionLive.Checked) { return 'live' }
+    'test'
+}
+
+function Update-QuestionPanel {
+    # cc-P106: the picked shard's question and answers, and only its answers' buttons enabled (Show and Stop always).
+    param($State)
+    if (-not $script:ui -or -not $script:ui.QuestionText -or -not $State) { return }
+    $k = Get-SelectedQuestionShard
+    $sh = $script:cfg.Shards[$k]
+    $q = $State.Shards[$k].Question
+    $lines = @('The ' + $sh.Label + ' shard (' + $sh.Container + ') is not waiting on a console question.')
+    if ($q) { $lines = @(Get-QuestionText $q $sh $script:cfg) }
+    $script:ui.QuestionText.Text = $lines -join "`r`n"
+    $keys = @(@($(if ($q) { $q.Answers } else { @() })) | ForEach-Object { 'question.' + $_.Key })
+    foreach ($b in @($script:ui.QuestionButtons)) { $b.Enabled = ($b.Tag -in @('question.show', 'question.stop') -or $keys -contains $b.Tag) }
 }
 
 function Get-SelectedSnapshotShard {
@@ -6865,6 +7168,51 @@ function New-ConsoleForm {
         (New-ConsoleButton 'Prune images' 'fix.prune')
     )
 
+    # cc-P106: Shard question, for both shards: what the picked shard is waiting on, and one button per answer.
+    $qPage = New-Object Windows.Forms.TabPage('Shard question')
+    $qTop = New-Object Windows.Forms.FlowLayoutPanel
+    $qTop.Dock = 'Top'
+    $qTop.Height = 32
+    $qLive = New-Object Windows.Forms.RadioButton
+    $qLive.Text = 'LIVE shard'
+    $qLive.Name = 'qLive'
+    $qLive.AutoSize = $true
+    $qLive.ForeColor = [Drawing.Color]::Firebrick
+    $qTest = New-Object Windows.Forms.RadioButton
+    $qTest.Text = 'Test shard'
+    $qTest.Name = 'qTest'
+    $qTest.AutoSize = $true
+    $qLive.Checked = $true
+    $qLive.Add_CheckedChanged({ Update-QuestionPanel $script:lastState })
+    $qTop.Controls.AddRange(@($qLive, $qTest))
+    $qText = New-Object Windows.Forms.TextBox
+    $qText.Name = 'qText'
+    $qText.Multiline = $true
+    $qText.ReadOnly = $true
+    $qText.ScrollBars = 'Vertical'
+    $qText.Dock = 'Fill'
+    $qText.Font = New-Object Drawing.Font('Consolas', 9)
+    $qButtons = New-Object Windows.Forms.FlowLayoutPanel
+    $qButtons.Dock = 'Bottom'
+    $qButtons.Height = 52
+    $script:ui.QuestionButtons = @()
+    foreach ($pair in @(@('Show the question', 'question.show'), @('Answer n', 'question.n'), @('Answer y (deletes)', 'question.y'), @('Answer a (deletes all)', 'question.a'), @('Press Enter', 'question.enter'), @('Stop the shard', 'question.stop'))) {
+        $qb = New-Object Windows.Forms.Button
+        $qb.Text = $pair[0]
+        $qb.Tag = $pair[1]
+        $qb.Width = 180
+        $qb.Height = 36
+        $qb.Margin = New-Object Windows.Forms.Padding(6)
+        $qb.Add_Click({ Invoke-ConsoleButton -ActionKey $this.Tag -ShardKey (Get-SelectedQuestionShard) })
+        $qButtons.Controls.Add($qb)
+        $script:ui.QuestionButtons += $qb
+    }
+    $qPage.Controls.Add($qText)
+    $qPage.Controls.Add($qButtons)
+    $qPage.Controls.Add($qTop)
+    $script:ui.QuestionLive = $qLive
+    $script:ui.QuestionText = $qText
+
     # snapshots
     $snapPage = New-Object Windows.Forms.TabPage('Snapshots')
     $snapTop = New-Object Windows.Forms.FlowLayoutPanel
@@ -7250,7 +7598,7 @@ function New-ConsoleForm {
     $script:ui.WebsitesPanel = $webPanel
     $script:ui.WebsiteButtons = $webBtns
 
-    $tabs.TabPages.AddRange(@($testPage, $fixPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $apPage, $webPage, $livePage))
+    $tabs.TabPages.AddRange(@($testPage, $fixPage, $qPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $apPage, $webPage, $livePage))
 
     # output
     $outGroup = New-Object Windows.Forms.GroupBox
@@ -7375,7 +7723,7 @@ $config = Get-ConsoleConfig -RepoRoot $RepoRoot
 
 if ($Capture) {
     $sec = Get-DockerSections $config
-    foreach ($k in @($sec.Keys)) { if ($k -like 'logs *') { $sec[$k] = Remove-AccountLines $sec[$k] } }
+    foreach ($k in @($sec.Keys)) { if ($k -like 'logs *' -or $k -like 'logtail *') { $sec[$k] = Remove-AccountLines $sec[$k] } }
     [IO.File]::WriteAllText($Capture, (ConvertTo-CaptureFile $sec), (New-Object Text.UTF8Encoding $false))
     Write-Host ('wrote ' + $Capture) -ForegroundColor Green
     exit 0
@@ -7406,6 +7754,8 @@ if ($WorldCommands) {
 
 if ($Status) {
     $st = Get-ConsoleState -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom
+    # cc-P106: a question a shard waits on is emailed once, from here too (a scheduled -Status reaches Chase with the console shut).
+    if (-not $DryRun) { Invoke-QuestionMail -Config $config -State $st }
     # cc-P74: the GOLEM tile is read from its folder even under -DryRun; it is not docker.
     $ap = Get-AutopilotViewNow $config
     # cc-P83: and PLAY TESTS, from shard-migration\testing\play-tests.json.

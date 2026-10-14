@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.12
+
+### Staff
+- The Shard Console now shows when a shard is stuck waiting for an answer at its console, such as a save it cannot load: its tile turns amber and says the question, and an email goes out once per question. A new Shard question tab says what each answer would do and sends it, backing up the save first and asking for a typed phrase before any answer that deletes, with a Stop button beside them.
+
 ## 2026.10.14.11
 
 ### Staff
