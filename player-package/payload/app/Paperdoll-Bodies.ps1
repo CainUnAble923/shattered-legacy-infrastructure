@@ -63,16 +63,41 @@ function Set-PaperdollSetting {
     return "Paperdoll bodies: $Mode."
 }
 
+# cc-P111: true when the client in app\tazuo is our TazUO build with the in-game "Paperdoll bodies" option (client patch
+# 0002, listed in the build stamp sl-build.txt that client\Build-Client.ps1 writes beside TazUO.exe). A stock TazUO, or
+# one of our builds from before that patch, has no stamp line for it.
+function Test-ClientPaperdollOption {
+    param([string]$App)
+    $stamp = Join-Path $App 'tazuo\sl-build.txt'
+    if (-not (Test-Path -LiteralPath $stamp)) { return $false }
+    return [bool](Select-String -LiteralPath $stamp -Pattern '^patch \d+-paperdoll-bodies-option\.patch ' -Quiet)
+}
+
 # Before each start: the chosen local set when it is on and present, else the shipped SFW six. Returns a line to show,
 # or $null. Never throws for a missing folder: the game always starts.
+# cc-P111: with a client that has the in-game option, this stands down: it puts the shipped SFW six back (undoing any
+# swap an older launcher made) and leaves the choice to the client, which reads the add-on where it is. A folder named
+# in paperdoll-bodies.txt is carried into the settings file being launched (sl_paperdoll_folder), only if that file
+# names none, so the client finds the same add-on. The mode is not carried: the client's own choice starts at SFW.
 function Sync-PaperdollBodies {
-    param([string]$App, [string]$Root)
+    param([string]$App, [string]$Root, [string]$SettingsPath)
     $gumps = Join-Path $App 'tazuo\ExternalImages\gumps'
     $sfw   = Join-Path $App 'paperdoll-sfw'
     if (-not (Test-Path -LiteralPath $gumps) -or -not (Test-Path -LiteralPath $sfw)) { return $null }
 
     $s = Get-PaperdollSetting -Root $Root
-    $useLocal = $s.Mode -ne 'sfw' -and (Test-PaperdollAddon -Folder $s.Folder -Mode $s.Mode)
+    $inClient = Test-ClientPaperdollOption -App $App
+    if ($inClient) {
+        $default = Join-Path $Root 'client-addons\paperdoll-nsfw'
+        if ($SettingsPath -and $s.Folder -ne $default -and (Test-Path -LiteralPath $SettingsPath)) {
+            $j = [IO.File]::ReadAllText($SettingsPath) | ConvertFrom-Json
+            if (-not $j.PSObject.Properties['sl_paperdoll_folder'] -or -not [string]$j.sl_paperdoll_folder) {
+                $j | Add-Member -NotePropertyName sl_paperdoll_folder -NotePropertyValue $s.Folder -Force
+                [IO.File]::WriteAllText($SettingsPath, ($j | ConvertTo-Json -Depth 10), (New-Object Text.UTF8Encoding $false))
+            }
+        }
+    }
+    $useLocal = -not $inClient -and $s.Mode -ne 'sfw' -and (Test-PaperdollAddon -Folder $s.Folder -Mode $s.Mode)
     foreach ($id in $script:PaperdollBodyIds) {
         $from = if ($useLocal) { Join-Path $s.Folder "$($s.Mode)\$id.png" } else { Join-Path $sfw "$id.png" }
         $to   = Join-Path $gumps "$id.png"
@@ -80,6 +105,10 @@ function Sync-PaperdollBodies {
         $same = (Test-Path -LiteralPath $to) -and
                 (Get-FileHash -LiteralPath $from -Algorithm SHA256).Hash -eq (Get-FileHash -LiteralPath $to -Algorithm SHA256).Hash
         if (-not $same) { Copy-Item -LiteralPath $from -Destination $to -Force }
+    }
+    if ($inClient) {
+        if ($s.Mode -ne 'sfw') { return "  Paperdoll bodies: chosen in the game now (Options, Paperdoll tab); paperdoll-bodies.txt is no longer used." }
+        return $null
     }
     if ($useLocal) { return "  Paperdoll bodies: local $($s.Mode) set (this computer only)." }
     if ($s.Mode -ne 'sfw') { return "  Paperdoll bodies: '$($s.Mode)' is set but its add-on is missing; showing SFW." }

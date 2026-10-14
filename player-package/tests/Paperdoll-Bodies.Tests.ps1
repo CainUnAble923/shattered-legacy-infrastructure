@@ -104,6 +104,54 @@ try {
         $null = Sync-PaperdollBodies -App $i.App -Root $i.Root
         Assert-True (@(Bodies $i | Where-Object { $_ -notlike 'topless-*' }).Count -eq 0) 'the named folder was not used'
     }
+
+    # cc-P111: a client with the in-game option. The build stamp is the line client\Build-Client.ps1 writes.
+    function Set-Stamp($i, [string[]]$patches) {
+        $lines = @('TazUO upstream 3212623f63436be1c0f4e3b308b202b29597c026 built 2026-10-14 17:35') + @($patches | ForEach-Object { "patch $_ sha256 $('0' * 64)" })
+        Set-Content -LiteralPath (Join-Path $i.App 'tazuo\sl-build.txt') -Value $lines -Encoding ASCII
+    }
+
+    Fact 'Only a client built with the paperdoll option patch counts as having it' {
+        $i = New-Install
+        Assert-True (-not (Test-ClientPaperdollOption -App $i.App)) 'no stamp (the stock TazUO) counted'
+        Set-Stamp $i @('0001-enhanced-packet-client-command.patch')
+        Assert-True (-not (Test-ClientPaperdollOption -App $i.App)) 'a build from before the option counted'
+        Set-Stamp $i @('0001-enhanced-packet-client-command.patch', '0002-paperdoll-bodies-option.patch')
+        Assert-True (Test-ClientPaperdollOption -App $i.App) 'our build with the option did not count'
+    }
+
+    Fact 'With the in-game option the launcher stands down: SFW files back, the choice left to the client' {
+        $i = New-Install
+        New-Addon $i.Root 'nude'
+        $null = Set-PaperdollSetting -Root $i.Root -Mode 'nude'
+        $null = Sync-PaperdollBodies -App $i.App -Root $i.Root
+        Assert-True (@(Bodies $i | Where-Object { $_ -notlike 'nude-*' }).Count -eq 0) 'setup: the old path should swap nude in'
+        Set-Stamp $i @('0002-paperdoll-bodies-option.patch')
+        $line = Sync-PaperdollBodies -App $i.App -Root $i.Root
+        Assert-True (@(Bodies $i | Where-Object { $_ -notlike 'sfw-*' }).Count -eq 0) 'the shipped SFW six were not put back'
+        Assert-True ($line -like '*chosen in the game now*') "no line saying where the choice is now: $line"
+        $null = Set-PaperdollSetting -Root $i.Root -Mode 'sfw'
+        Assert-True ($null -eq (Sync-PaperdollBodies -App $i.App -Root $i.Root)) 'an SFW install with the option should say nothing'
+    }
+
+    Fact 'With the in-game option a named add-on folder is carried into the launch settings, once' {
+        $i = New-Install
+        Set-Stamp $i @('0002-paperdoll-bodies-option.patch')
+        $folder = Join-Path $work 'elsewhere2\client-addons\paperdoll-nsfw'
+        New-Addon (Join-Path $work 'elsewhere2') 'topless'
+        $null = Set-PaperdollSetting -Root $i.Root -Mode 'topless' -Folder $folder
+        $settings = Join-Path $i.App 'tazuo\settings.test.json'
+        [IO.File]::WriteAllText($settings, '{"username":"keepme","port":2594}')
+        $null = Sync-PaperdollBodies -App $i.App -Root $i.Root -SettingsPath $settings
+        $j = [IO.File]::ReadAllText($settings) | ConvertFrom-Json
+        Assert-True ($j.sl_paperdoll_folder -eq $folder) "the folder was not carried: $($j.sl_paperdoll_folder)"
+        Assert-True ($j.username -eq 'keepme' -and $j.port -eq 2594) 'other settings were not kept'
+        Assert-True (-not $j.PSObject.Properties['sl_paperdoll_bodies']) 'the mode was carried; the client chooses it'
+        $j | Add-Member -NotePropertyName sl_paperdoll_folder -NotePropertyValue 'D:\set-in-game' -Force
+        [IO.File]::WriteAllText($settings, ($j | ConvertTo-Json))
+        $null = Sync-PaperdollBodies -App $i.App -Root $i.Root -SettingsPath $settings
+        Assert-True ((([IO.File]::ReadAllText($settings)) | ConvertFrom-Json).sl_paperdoll_folder -eq 'D:\set-in-game') 'a folder already set was overwritten'
+    }
 } finally {
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 }

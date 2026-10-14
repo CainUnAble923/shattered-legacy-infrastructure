@@ -121,6 +121,7 @@ pinned upstream commit, applied with `git apply` (no fuzz), so a patch that no l
 | Patch | Upstream base | Since | Description |
 | --- | --- | --- | --- |
 | `0001-enhanced-packet-client-command.patch` | `3212623f` (v26.0909.63) | 2026.10.14.10 (cc-P103) | Enhanced packet 0xCE id 4, ClientCommand: the server can run a whitelisted client command, so tutorial buttons open the World Map, the Journal and the options window |
+| `0002-paperdoll-bodies-option.patch` | `3212623f` plus 0001 | 2026.10.14.17 (cc-P111) | Options > Paperdoll > Shattered Legacy > **Paperdoll bodies**: SFW, and Topless or Nude only when a local add-on folder holds that set's six bodies (12, 13, 14, 15, 665, 666). Read from the add-on folder at run time, applied live; never copied into ExternalImages or a build. Global setting `sl_paperdoll_bodies` (and `sl_paperdoll_folder`). Client-side only |
 
 The player package ships the stock TazUO until our build goes through the package pipeline (cc-P40's P-a). Until then
 these patches change nothing for players.

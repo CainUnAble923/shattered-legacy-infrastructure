@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.17
+
+### Staff
+- Our own TazUO build has a Paperdoll bodies choice in Options (Paperdoll tab) that changes the paperdoll at once; the launcher leaves the choice to it.
+
 ## 2026.10.14.16
 
 ### Staff

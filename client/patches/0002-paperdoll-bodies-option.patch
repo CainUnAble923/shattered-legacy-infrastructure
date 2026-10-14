@@ -1,0 +1,428 @@
+From df84b202ad925b0481ed7d8f434d17af8c774171 Mon Sep 17 00:00:00 2001
+From: Chase Fleming <ckfleming@gmail.com>
+Date: Wed, 14 Oct 2026 17:34:17 -0500
+Subject: [PATCH] Paperdoll bodies option: SFW, and Topless or Nude from a
+ local add-on folder (Shattered Legacy cc-P111)
+
+---
+ src/ClassicUO.Assets/ExternalImageLoader.cs   |  30 +++-
+ src/ClassicUO.Client/Client.cs                |   3 +
+ .../Configuration/Settings.cs                 |   6 +
+ .../Game/Managers/PaperdollBodies.cs          | 121 ++++++++++++++++
+ .../MyraWindows/Options/Tabs/PaperdollTab.cs  |  26 ++++
+ src/ClassicUO.Renderer/Gumps/Gump.cs          |   8 ++
+ .../Game/PaperdollBodiesTests.cs              | 130 ++++++++++++++++++
+ 7 files changed, 323 insertions(+), 1 deletion(-)
+ create mode 100644 src/ClassicUO.Client/Game/Managers/PaperdollBodies.cs
+ create mode 100644 tests/ClassicUO.UnitTests/Game/PaperdollBodiesTests.cs
+
+diff --git a/src/ClassicUO.Assets/ExternalImageLoader.cs b/src/ClassicUO.Assets/ExternalImageLoader.cs
+index e321c5436..66714ca8d 100644
+--- a/src/ClassicUO.Assets/ExternalImageLoader.cs
++++ b/src/ClassicUO.Assets/ExternalImageLoader.cs
+@@ -81,7 +81,9 @@ namespace ClassicUO.Assets
+ 
+         public GumpInfo LoadGumpTexture(uint graphic)
+         {
+-            if (!gump_availableFilePaths.TryGetValue(graphic, out string fullImagePath))
++            // Shattered Legacy (cc-P111): a run-time override, read from where it is (never copied into ExternalImages).
++            if (!gump_overridePaths.TryGetValue(graphic, out string fullImagePath) &&
++                !gump_availableFilePaths.TryGetValue(graphic, out fullImagePath))
+                 return new GumpInfo();
+ 
+             if (gump_textureCache.TryGetValue(graphic, out (uint[] pixels, int width, int height) cached))
+@@ -585,6 +587,32 @@ namespace ClassicUO.Assets
+ 
+         public void ClearGumpPixelCache(uint graphic) => gump_textureCache.Remove(graphic);
+ 
++        // Shattered Legacy (cc-P111): gump ids drawn from a file outside ExternalImages, by full path, ahead of both the
++        // ExternalImages folder and the client's own gumps. Replaces the whole set; returns every id whose source changed
++        // (added, removed or moved), with its cached pixels dropped, so the caller can redraw exactly those.
++        private readonly Dictionary<uint, string> gump_overridePaths = new Dictionary<uint, string>();
++
++        public List<uint> SetGumpOverrides(IReadOnlyDictionary<uint, string> overrides)
++        {
++            var changed = new List<uint>();
++            foreach (KeyValuePair<uint, string> old in gump_overridePaths)
++                if (overrides == null || !overrides.TryGetValue(old.Key, out string now) || now != old.Value)
++                    changed.Add(old.Key);
++            if (overrides != null)
++                foreach (KeyValuePair<uint, string> now in overrides)
++                    if (!gump_overridePaths.ContainsKey(now.Key))
++                        changed.Add(now.Key);
++            gump_overridePaths.Clear();
++            if (overrides != null)
++                foreach (KeyValuePair<uint, string> now in overrides)
++                    gump_overridePaths[now.Key] = now.Value;
++            foreach (uint id in changed)
++                gump_textureCache.Remove(id);
++            return changed;
++        }
++
++        public string GetGumpOverride(uint graphic) => gump_overridePaths.TryGetValue(graphic, out string p) ? p : null;
++
+         public void ClearAllPixelCaches()
+         {
+             art_textureCache.Clear();
+diff --git a/src/ClassicUO.Client/Client.cs b/src/ClassicUO.Client/Client.cs
+index 7c1d2ba22..9784ca091 100644
+--- a/src/ClassicUO.Client/Client.cs
++++ b/src/ClassicUO.Client/Client.cs
+@@ -214,6 +214,9 @@ namespace ClassicUO
+                 Environment.Exit(0);
+             }
+ 
++            // Shattered Legacy (cc-P111): the paperdoll bodies set, before anything is drawn.
++            PaperdollBodies.Apply();
++
+             StaticFilters.Load(FileManager.TileData);
+             BuffTable.Load();
+             ChairTable.Load();
+diff --git a/src/ClassicUO.Client/Configuration/Settings.cs b/src/ClassicUO.Client/Configuration/Settings.cs
+index a50302de6..c1e30df7b 100644
+--- a/src/ClassicUO.Client/Configuration/Settings.cs
++++ b/src/ClassicUO.Client/Configuration/Settings.cs
+@@ -99,6 +99,12 @@ namespace ClassicUO.Configuration
+ 
+         [JsonPropertyName("encryption")] public byte Encryption { get; set; }
+ 
++        // Shattered Legacy (cc-P111): the paperdoll bodies set (sfw, topless or nude; see PaperdollBodies) and, optionally,
++        // the add-on folder holding topless\ and nude\. Global, not per profile: the add-on is per machine.
++        [JsonPropertyName("sl_paperdoll_bodies")] public string SlPaperdollBodies { get; set; } = "sfw";
++
++        [JsonPropertyName("sl_paperdoll_folder")] public string SlPaperdollFolder { get; set; } = string.Empty;
++
+         [JsonPropertyName("plugins")] public string[] Plugins { get; set; } = { "" };
+ 
+         /// <summary>
+diff --git a/src/ClassicUO.Client/Game/Managers/PaperdollBodies.cs b/src/ClassicUO.Client/Game/Managers/PaperdollBodies.cs
+new file mode 100644
+index 000000000..43cd21f34
+--- /dev/null
++++ b/src/ClassicUO.Client/Game/Managers/PaperdollBodies.cs
+@@ -0,0 +1,121 @@
++// SPDX-License-Identifier: BSD-2-Clause
++// Shattered Legacy patch (cc-P111): the "Paperdoll bodies" option, SFW, Topless or Nude.
++//
++// The shipped client draws the six paperdoll body gumps from ExternalImages\gumps\<id>.png, the SFW set (cc-P81).
++// Topless and Nude exist only in a local add-on folder that never ships: <folder>\topless\<id>.png and
++// <folder>\nude\<id>.png. A set is offered only when its folder holds all six bodies, so without the add-on the option
++// shows SFW alone and names nothing else. The chosen set's files are read where they are, at run time
++// (ExternalImageLoader.SetGumpOverrides); nothing is copied into ExternalImages, the client folder or a build.
++//
++// Purely client-side: no packet, no server flag; other players see nothing different.
++
++using System;
++using System.Collections.Generic;
++using System.IO;
++using ClassicUO.Assets;
++using ClassicUO.Configuration;
++using ClassicUO.Utility.Logging;
++
++namespace ClassicUO.Game.Managers
++{
++    internal static class PaperdollBodies
++    {
++        public const string Sfw = "sfw", Topless = "topless", Nude = "nude";
++
++        // The six body gumps: male and female, and the two gargoyle bodies (cc-P81, player-package\vendor\paperdoll-sos\bodies-sfw).
++        public static readonly uint[] BodyIds = { 12, 13, 14, 15, 665, 666 };
++
++        private static readonly string[] _addonSets = { Topless, Nude };
++
++        public static string Label(string set) => set switch
++        {
++            Topless => "Topless",
++            Nude => "Nude",
++            _ => "SFW"
++        };
++
++        /// <summary>The add-on folder: the configured one if it is set, else the first of
++        /// <client>\..\client-addons\paperdoll-nsfw and <client>\..\..\client-addons\paperdoll-nsfw that exists
++        /// (the second is the player install's own folder, beside app\, where cc-P81's launcher looks). Null if none.</summary>
++        public static string ResolveFolder(string configured, string clientDir)
++        {
++            if (!string.IsNullOrWhiteSpace(configured))
++                return Directory.Exists(configured) ? configured : null;
++
++            if (string.IsNullOrEmpty(clientDir))
++                return null;
++
++            foreach (string up in new[] { "..", Path.Combine("..", "..") })
++            {
++                string candidate = Path.GetFullPath(Path.Combine(clientDir, up, "client-addons", "paperdoll-nsfw"));
++                if (Directory.Exists(candidate))
++                    return candidate;
++            }
++
++            return null;
++        }
++
++        /// <summary>The six body files of one add-on set, by gump id, or null unless all six are there.</summary>
++        public static Dictionary<uint, string> SetFiles(string folder, string set)
++        {
++            if (folder == null || Array.IndexOf(_addonSets, set) < 0)
++                return null;
++
++            var files = new Dictionary<uint, string>();
++            foreach (uint id in BodyIds)
++            {
++                string path = Path.Combine(folder, set, id + ".png");
++                if (!File.Exists(path))
++                    return null;
++                files[id] = path;
++            }
++
++            return files;
++        }
++
++        /// <summary>SFW always, then each add-on set whose folder holds all six bodies.</summary>
++        public static List<string> Available(string folder)
++        {
++            var sets = new List<string> { Sfw };
++            foreach (string set in _addonSets)
++                if (SetFiles(folder, set) != null)
++                    sets.Add(set);
++            return sets;
++        }
++
++        /// <summary>The set that is drawn: the chosen one if it is available, else SFW (a missing body falls back).</summary>
++        public static string Effective(string chosen, string folder) =>
++            Available(folder).Contains(chosen) ? chosen : Sfw;
++
++        /// <summary>The overrides for a choice: the add-on set's six files, or none (SFW: the shipped PNGs).</summary>
++        public static Dictionary<uint, string> Overrides(string chosen, string folder) =>
++            SetFiles(folder, Effective(chosen, folder)) ?? new Dictionary<uint, string>();
++
++        public static string Folder => ResolveFolder(Settings.GlobalSettings.SlPaperdollFolder, AppContext.BaseDirectory);
++
++        /// <summary>Applies the saved choice: at start (before anything is drawn) and after the option changes. Every body
++        /// whose source changed is dropped from the gump atlas, so an open paperdoll redraws with the new set next frame.</summary>
++        public static void Apply()
++        {
++            string folder = Folder;
++            string chosen = Settings.GlobalSettings.SlPaperdollBodies ?? Sfw;
++            string effective = Effective(chosen, folder);
++            if (effective != chosen)
++                Log.Info($"Paperdoll bodies: '{chosen}' is not available here, drawing SFW.");
++
++            List<uint> changed = ExternalImageLoader.Instance.SetGumpOverrides(Overrides(chosen, folder));
++            var gumps = Client.Game?.UO?.Gumps;
++            if (gumps != null)
++                foreach (uint id in changed)
++                    gumps.Invalidate(id);
++        }
++
++        /// <summary>The option's choice: saved at once (not only at exit) and applied live.</summary>
++        public static void Choose(string set)
++        {
++            Settings.GlobalSettings.SlPaperdollBodies = set;
++            Settings.GlobalSettings.Save();
++            Apply();
++        }
++    }
++}
+diff --git a/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/PaperdollTab.cs b/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/PaperdollTab.cs
+index e6fb94777..3033e743f 100644
+--- a/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/PaperdollTab.cs
++++ b/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/PaperdollTab.cs
+@@ -1,5 +1,9 @@
++using System;
++using System.Collections.Generic;
++using System.Linq;
+ using ClassicUO.Common;
+ using ClassicUO.Configuration;
++using ClassicUO.Game.Managers;
+ using ClassicUO.Game.UI.Gumps;
+ using ClassicUO.Game.UI.MyraWindows.Widgets;
+ 
+@@ -12,10 +16,32 @@ public class PaperdollTab
+     internal static IOptionSource GetContent()
+     {
+         return OptionsUi.Vertical(
++            GetShatteredLegacySection(),
+             GetModernPaperdollSection()
+         ).WithSearch(new SearchMetadata(TazLang.Get("mog_buttonpaperdoll"), [TazLang.Get("mog_kw_paperdoll"), TazLang.Get("mog_kw_character"), TazLang.Get("mog_kw_equipment")]));
+     }
+ 
++    // Shattered Legacy (cc-P111): Paperdoll bodies. SFW always; Topless and Nude listed only when the local add-on folder
++    // holds that set's six bodies (PaperdollBodies.Available), so without the add-on this lists SFW alone. Applies live.
++    private static OptionFragment GetShatteredLegacySection()
++    {
++        List<string> sets = PaperdollBodies.Available(PaperdollBodies.Folder);
++        string current = PaperdollBodies.Effective(Settings.GlobalSettings.SlPaperdollBodies, PaperdollBodies.Folder);
++        string[] labels = sets.Select(PaperdollBodies.Label).ToArray();
++
++        return OptionsUi.VisualContainer(
++            new VisualContainerProps { LabelText = "Shattered Legacy" },
++            Option.ComboBox(
++                "Paperdoll bodies",
++                Math.Max(0, sets.IndexOf(current)),
++                labels,
++                i => PaperdollBodies.Choose(sets[Math.Clamp(i, 0, sets.Count - 1)]),
++                tooltip: "The art of the paperdoll body. Changes at once, also on an open paperdoll.",
++                search: new SearchMetadata("Paperdoll bodies", Keywords: ["paperdoll", "body", "shattered legacy"])
++            )
++        );
++    }
++
+     private static OptionFragment GetModernPaperdollSection()
+     {
+         Profile profile = ProfileManager.CurrentProfile;
+diff --git a/src/ClassicUO.Renderer/Gumps/Gump.cs b/src/ClassicUO.Renderer/Gumps/Gump.cs
+index 0f1f2f58a..08bccb531 100644
+--- a/src/ClassicUO.Renderer/Gumps/Gump.cs
++++ b/src/ClassicUO.Renderer/Gumps/Gump.cs
+@@ -58,5 +58,13 @@ namespace ClassicUO.Renderer.Gumps
+         }
+ 
+         public bool PixelCheck(uint idx, int x, int y, double scale = 1f) => _picker.Get(idx, x, y, scale: scale);
++
++        // Shattered Legacy (cc-P111): forget one gump's sprite, so the next draw loads it again (from an override, a PNG
++        // or the client's files). Its old atlas space is not reclaimed: a few small bodies per switch.
++        public void Invalidate(uint idx)
++        {
++            if (idx < _spriteInfos.Length)
++                _spriteInfos[idx] = default;
++        }
+     }
+ }
+diff --git a/tests/ClassicUO.UnitTests/Game/PaperdollBodiesTests.cs b/tests/ClassicUO.UnitTests/Game/PaperdollBodiesTests.cs
+new file mode 100644
+index 000000000..298ba3a8a
+--- /dev/null
++++ b/tests/ClassicUO.UnitTests/Game/PaperdollBodiesTests.cs
+@@ -0,0 +1,130 @@
++// Shattered Legacy patch (cc-P111): the Paperdoll bodies option. The add-on folders here hold empty stand-in files named
++// like the bodies: the option only checks that all six exist, and no art is ever needed (or allowed) in a test.
++using System;
++using System.Collections.Generic;
++using System.IO;
++using System.Text.Json;
++using ClassicUO.Assets;
++using ClassicUO.Configuration;
++using ClassicUO.Game.Managers;
++using FluentAssertions;
++using Xunit;
++
++namespace ClassicUO.UnitTests.Game
++{
++    public class PaperdollBodiesTests : IDisposable
++    {
++        private readonly string _root = Path.Combine(Path.GetTempPath(), "sl-paperdoll-" + Guid.NewGuid().ToString("N"));
++
++        public void Dispose()
++        {
++            if (Directory.Exists(_root))
++                Directory.Delete(_root, true);
++        }
++
++        private string MakeSet(string folder, string set, params uint[] ids)
++        {
++            string dir = Path.Combine(folder, set);
++            Directory.CreateDirectory(dir);
++            foreach (uint id in ids)
++                File.WriteAllBytes(Path.Combine(dir, id + ".png"), Array.Empty<byte>());
++            return dir;
++        }
++
++        [Fact]
++        public void The_bodies_are_cc_P81s_six()
++        {
++            PaperdollBodies.BodyIds.Should().Equal(12u, 13u, 14u, 15u, 665u, 666u);
++        }
++
++        [Fact]
++        public void Without_the_add_on_only_SFW_is_offered()
++        {
++            PaperdollBodies.Available(null).Should().Equal("sfw");
++            PaperdollBodies.Available(Path.Combine(_root, "missing")).Should().Equal("sfw");
++            PaperdollBodies.ResolveFolder(null, Path.Combine(_root, "client")).Should().BeNull();
++        }
++
++        [Fact]
++        public void A_set_with_all_six_bodies_is_offered()
++        {
++            string folder = Path.Combine(_root, "paperdoll-nsfw");
++            MakeSet(folder, "topless", PaperdollBodies.BodyIds);
++            MakeSet(folder, "nude", PaperdollBodies.BodyIds);
++            PaperdollBodies.Available(folder).Should().Equal("sfw", "topless", "nude");
++        }
++
++        [Fact]
++        public void A_set_missing_one_body_is_not_offered_and_falls_back_to_SFW()
++        {
++            string folder = Path.Combine(_root, "paperdoll-nsfw");
++            MakeSet(folder, "topless", PaperdollBodies.BodyIds);
++            MakeSet(folder, "nude", 12, 13, 14, 15, 665);
++            PaperdollBodies.Available(folder).Should().Equal("sfw", "topless");
++            PaperdollBodies.Effective("nude", folder).Should().Be("sfw");
++            PaperdollBodies.Overrides("nude", folder).Should().BeEmpty();
++        }
++
++        [Fact]
++        public void The_chosen_set_is_read_from_the_add_on_folder_where_it_is()
++        {
++            string folder = Path.Combine(_root, "paperdoll-nsfw");
++            string dir = MakeSet(folder, "nude", PaperdollBodies.BodyIds);
++            Dictionary<uint, string> o = PaperdollBodies.Overrides("nude", folder);
++            o.Keys.Should().BeEquivalentTo(PaperdollBodies.BodyIds);
++            o[665].Should().Be(Path.Combine(dir, "665.png"));
++            PaperdollBodies.Overrides("sfw", folder).Should().BeEmpty("SFW draws the shipped PNGs");
++            PaperdollBodies.Overrides("bogus", folder).Should().BeEmpty();
++        }
++
++        [Fact]
++        public void The_folder_is_the_configured_one_else_beside_the_client_or_the_install()
++        {
++            string install = Path.Combine(_root, "install");
++            string client = Path.Combine(install, "app", "tazuo");
++            Directory.CreateDirectory(client);
++            PaperdollBodies.ResolveFolder("", client).Should().BeNull();
++
++            string atInstall = Path.Combine(install, "client-addons", "paperdoll-nsfw");
++            Directory.CreateDirectory(atInstall);
++            PaperdollBodies.ResolveFolder("", client).Should().Be(Path.GetFullPath(atInstall), "<client>\\..\\..: cc-P81's place");
++
++            string besideClient = Path.Combine(install, "app", "client-addons", "paperdoll-nsfw");
++            Directory.CreateDirectory(besideClient);
++            PaperdollBodies.ResolveFolder("", client).Should().Be(Path.GetFullPath(besideClient), "<client>\\.. first");
++
++            string named = Path.Combine(_root, "elsewhere");
++            Directory.CreateDirectory(named);
++            PaperdollBodies.ResolveFolder(named, client).Should().Be(named);
++            PaperdollBodies.ResolveFolder(Path.Combine(_root, "gone"), client).Should().BeNull("a named folder that is gone is no add-on");
++        }
++
++        [Fact]
++        public void The_choice_persists_in_the_global_settings_file_and_defaults_to_SFW()
++        {
++            new Settings().SlPaperdollBodies.Should().Be("sfw");
++
++            var s = new Settings { SlPaperdollBodies = "topless", SlPaperdollFolder = @"D:\addons" };
++            string json = JsonSerializer.Serialize(s, SettingsJsonContext.RealDefault.Settings);
++            json.Should().Contain("\"sl_paperdoll_bodies\"").And.Contain("\"sl_paperdoll_folder\"");
++            Settings back = JsonSerializer.Deserialize(json, SettingsJsonContext.RealDefault.Settings);
++            back.SlPaperdollBodies.Should().Be("topless");
++            back.SlPaperdollFolder.Should().Be(@"D:\addons");
++
++            Settings old = JsonSerializer.Deserialize("{\"ip\":\"127.0.0.1\"}", SettingsJsonContext.RealDefault.Settings);
++            old.SlPaperdollBodies.Should().Be("sfw", "a settings file from before the option reads as SFW");
++        }
++
++        [Fact]
++        public void Overrides_win_over_the_folder_and_report_exactly_the_bodies_that_changed()
++        {
++            var loader = new ExternalImageLoader();
++            loader.SetGumpOverrides(new Dictionary<uint, string> { [12] = "a12", [13] = "a13" }).Should().BeEquivalentTo(new uint[] { 12, 13 });
++            loader.GetGumpOverride(12).Should().Be("a12");
++            loader.SetGumpOverrides(new Dictionary<uint, string> { [12] = "a12", [13] = "b13" }).Should().BeEquivalentTo(new uint[] { 13 });
++            loader.SetGumpOverrides(new Dictionary<uint, string>()).Should().BeEquivalentTo(new uint[] { 12, 13 }, "back to SFW redraws both");
++            loader.GetGumpOverride(12).Should().BeNull();
++            loader.SetGumpOverrides(null).Should().BeEmpty();
++        }
++    }
++}
+-- 
+2.51.2.windows.1
+

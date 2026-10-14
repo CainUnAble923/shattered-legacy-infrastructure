@@ -308,7 +308,7 @@ if ($uoOverride) { $tazArgs += @('-uofilesoverride', "`"$uoOverride`"") }
 
 # cc-P81: the paperdoll's six body gumps: the shipped SFW set, or this computer's local add-on when chosen.
 try {
-    $pdLine = Sync-PaperdollBodies -App $app -Root $root
+    $pdLine = Sync-PaperdollBodies -App $app -Root $root -SettingsPath $settingsPath
     if ($pdLine) { Write-Host $pdLine -ForegroundColor Gray }
 } catch {
     Write-Host "  Paperdoll bodies could not be checked ($($_.Exception.Message)). Starting anyway." -ForegroundColor Yellow
