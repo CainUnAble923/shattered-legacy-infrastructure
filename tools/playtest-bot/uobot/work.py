@@ -121,8 +121,8 @@ def find_work(repo, plays_path, runs_root, commit, check_ids, force=False):
             "run": bool(items) or bool(force), "items": items, "checks": len(check_ids)}
 
 
-def estimate_minutes(runs_root, check_ids, runs=3, soak_minutes=120):
-    """Build and boot, the soak, and each check's seconds from its newest run (60 s if never run), times runs."""
+def check_seconds(runs_root):
+    """Each check's mean seconds per run, from its newest run that has timings. (cc-P112: shared with uobot.tonight.)"""
     seconds = {}
     for stamp in sorted(os.listdir(runs_root)) if os.path.isdir(runs_root) else []:
         res = _load(os.path.join(runs_root, stamp, "results.json")) or {}
@@ -130,6 +130,12 @@ def estimate_minutes(runs_root, check_ids, runs=3, soak_minutes=120):
             per = [r.get("seconds", 0.0) for r in c.get("runs", [])]
             if per:
                 seconds[c["id"]] = sum(per) / len(per)
+    return seconds
+
+
+def estimate_minutes(runs_root, check_ids, runs=3, soak_minutes=120):
+    """Build and boot, the soak, and each check's seconds from its newest run (60 s if never run), times runs."""
+    seconds = check_seconds(runs_root)
     total = BUILD_AND_BOOT_MINUTES * 60.0 + soak_minutes * 60.0
     for cid in check_ids:
         total += runs * seconds.get(cid, UNKNOWN_CHECK_SECONDS)

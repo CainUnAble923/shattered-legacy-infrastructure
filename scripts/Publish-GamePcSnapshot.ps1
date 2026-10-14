@@ -14,10 +14,28 @@
   Installed by Install-GamePcSnapshotTask.ps1 as a scheduled task. ASCII only.
 #>
 [CmdletBinding()]
-param([switch]$DryRun, [switch]$Force, [string]$Api, [string]$TokenFile, [string]$Config)
+param([switch]$DryRun, [switch]$Force, [string]$Api, [string]$TokenFile, [string]$Config,
+      # cc-P112: tonight's bot plan, for the play-test page's robot icons. -NoBotPlan skips it (the tests).
+      [string]$BotPlan = 'D:\UO\shard-migration\testing\bot-tonight.json', [switch]$NoBotPlan)
 $ErrorActionPreference = 'Stop'
 if (-not $Config) { $Config = Join-Path $PSScriptRoot 'haven-ops.json' }
 if ([Security.Principal.WindowsIdentity]::GetCurrent().IsSystem) { Write-Host 'REFUSED: runs as Chase, never as SYSTEM.'; exit 2 }
+
+# cc-P112: refresh tonight's bot plan (tools\playtest-bot\uobot\tonight.py, which asks the runner's own work check, read
+# only), at most every 5 minutes, in every mode: the game PC's play-test page reads this file, and after the cutover
+# Haven's reads the same plan from this snapshot (botTonight). It never stops the snapshot: a failure leaves the file
+# saying the plan is unavailable, or the old file in place.
+if (-not $NoBotPlan) {
+    $bot = Join-Path (Split-Path $PSScriptRoot -Parent) 'tools\playtest-bot'
+    $migration = Split-Path (Split-Path $BotPlan -Parent) -Parent
+    Push-Location -LiteralPath $bot
+    try {
+        $ErrorActionPreference = 'Continue'
+        $null = & python -B -m uobot.tonight --repo (Split-Path $PSScriptRoot -Parent) --plays (Join-Path $migration 'testing\play-tests.json') `
+            --runs-root (Join-Path $migration 'testing\bot-runs') --triage (Join-Path $migration 'testing\bot-triage.md') --out $BotPlan --max-age 300 2>&1
+    } catch { } finally { $ErrorActionPreference = 'Stop'; Pop-Location }
+}
+
 $cfg = Get-Content -LiteralPath $Config -Raw | ConvertFrom-Json
 $mode = 'local'
 try { $mode = [string](Get-Content -LiteralPath $cfg.stateFile -Raw | ConvertFrom-Json).mode } catch { $mode = 'local' }
@@ -67,6 +85,16 @@ $snap = [ordered]@{
     docker     = ($LASTEXITCODE -eq 0)
 }
 $json = $snap | ConvertTo-Json -Depth 5 -Compress
+# cc-P112: the bot plan rides along as botTonight, as the file's own JSON text (valid JSON checked first; no PowerShell
+# round trip, which would reshape it), and only while it leaves the snapshot well under Haven's 64 KB limit.
+if (-not $NoBotPlan) {
+    $planText = ''
+    try { $planText = [IO.File]::ReadAllText($BotPlan); $null = $planText | ConvertFrom-Json } catch { $planText = '' }
+    # One line, as the rest of the snapshot: JSON escapes every newline inside a string, so the only raw newlines are
+    # between tokens, and a reader of the dry run's single line still gets the whole document.
+    $planText = ($planText -replace '\r?\n\s*', '').Trim()
+    if ($planText -and ($json.Length + $planText.Length) -lt 48KB) { $json = $json.Substring(0, $json.Length - 1) + ',"botTonight":' + $planText + '}' }
+}
 if ($DryRun) { Write-Host ('DRY RUN: would POST ' + $json.Length + ' bytes to ' + $Api + '/api/ingest/gamepc'); Write-Host $json; exit 0 }
 
 $token = ''

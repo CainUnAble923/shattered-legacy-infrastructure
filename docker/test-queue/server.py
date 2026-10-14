@@ -7,6 +7,9 @@ Serves html/index.html and a small JSON API over D:\\UO\\shard-migration\\testin
   GET  /nav.js           the shared menu (cc-P88): html/nav.js, used by both pages here and by Homepage
   GET  /api/items        the whole document (summary, prompts, items)
   GET  /api/summary      counts only, for the Homepage dashboard's customapi widget
+  GET  /api/bot-tonight  cc-P112: what tonight's overnight bot run tries (the page's robot icons), from
+                         testing/bot-tonight.json (the game PC) or the game PC snapshot's botTonight (Haven); 5-minute cache
+  GET  /bot-runs/<run>/report   a bot run's report.md, with an anchor on each item's row (#item-<id>)
   POST /api/result       {"id": "P71-3", "status": "pass|fail|later|open", "note": "..."}  (a fail needs a note)
   POST /api/bug          {"id": "P71-3", "bug": "D86"}  marks a Fail as logged in the bug list
   POST /api/manual       {"what": "...", "expect": "..."}  adds an M-NNN item
@@ -98,6 +101,7 @@ import ideas  # noqa: E402  (cc-P90)
 import bugs  # noqa: E402  (cc-P97)
 import opsdata  # noqa: E402  (cc-P105)
 import accessjwt  # noqa: E402  (cc-P105)
+import bottonight  # noqa: E402  (cc-P112)
 
 # cc-P105: testing/ lives here; the notes and docs stay under args.root.
 DATA = args.data or args.root
@@ -159,6 +163,43 @@ def service_state(identity):
     st["repo"] = repo_as_of()
     st["identity"] = {"by": identity["by"], "access": VERIFIER is not None}
     return st
+
+
+_BOT = {"at": 0.0, "value": None}
+BOT_CACHE_SECONDS = 300
+
+
+def bot_runs_roots():
+    """cc-P112: where run folders are: the game PC's testing/bot-runs, else the notes clone's (Haven: in the repo)."""
+    return [os.path.join(DATA, "testing", "bot-runs"), os.path.join(args.root, "testing", "bot-runs")]
+
+
+def bot_report_path(stamp):
+    if not bottonight.STAMP.match(stamp or ""):
+        return None
+    for r in bot_runs_roots():
+        p = os.path.join(r, stamp, "report.md")
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def bot_tonight():
+    """cc-P112: the robot icons' data. Never runs the work check here (no git, no subprocess): it reads the plan the game
+    PC writes (testing/bot-tonight.json), or on Haven the copy inside the game PC snapshot. Looked up at most every
+    5 minutes. Anything missing or broken gives available false and one quiet line on the page, never an error."""
+    if _BOT["value"] is not None and time.time() - _BOT["at"] < BOT_CACHE_SECONDS:
+        return _BOT["value"]
+    plan, source = bottonight.load(os.path.join(DATA, bottonight.PLAN_REL)), "file"
+    if plan is None:
+        snap = (opsdata.gamepc_status(DATA) or {}).get("snapshot") or {}
+        plan, source = (snap.get("botTonight") if isinstance(snap, dict) else None), "snapshot"
+    try:
+        value = bottonight.shape(plan, source, lambda stamp: bot_report_path(stamp) is not None)
+    except Exception as e:  # never let a bad plan break the page
+        value = bottonight.unavailable("bad bot plan: %s" % e)
+    _BOT.update(at=time.time(), value=value)
+    return value
 
 
 def deployed_version():
@@ -247,6 +288,19 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(500, {"error": str(e)})
             doc["service"] = service_state(me)
             return self.send_json(200, doc)
+        if p == "/api/bot-tonight":
+            return self.send_json(200, bot_tonight())
+        if p.startswith("/bot-runs/") and p.endswith("/report"):
+            path = bot_report_path(p[len("/bot-runs/"):-len("/report")])
+            if not path:
+                return self.send(404, "no such bot run", "text/plain; charset=utf-8")
+            with open(path, "r", encoding="utf-8") as f:
+                item = ""
+                if "?" in self.path:
+                    for kv in self.path.split("?", 1)[1].split("&"):
+                        if kv.startswith("item="):
+                            item = kv[5:]
+                return self.send(200, bottonight.report_html(f.read(), item).encode("utf-8"), "text/html; charset=utf-8")
         if p == "/api/summary":
             try:
                 s = read_doc()["summary"]

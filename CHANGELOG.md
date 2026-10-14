@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.18
+
+### Staff
+- The play-test page marks with a robot every item the overnight bot will try tonight (and, dimmer, the ones it already checked), shows its last bot result with a link to the report, and adds a "Bot tonight" count and filter.
+
 ## 2026.10.14.17
 
 ### Staff
