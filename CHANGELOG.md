@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.5
+
+### Staff
+- [CaptureLayout saves a box of the world (up to 64 by 64) as a layout file, and [StampLayout places it elsewhere as decoration, with nudge and undo.
+
 ## 2026.10.14.4
 
 ### Staff
