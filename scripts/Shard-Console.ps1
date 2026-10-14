@@ -301,6 +301,9 @@ function Get-ConsoleConfig {
         DiagFolder       = $RepoRoot
         SnapshotRoot     = (Join-Path $lib 'Snapshots')
         LogFile          = (Join-Path $RepoRoot 'scripts\shard-console.log')
+        # cc-P113: the window icon, the same file the desktop shortcut "Shard Console" shows (the website's favicon),
+        # from the repo, not copied. Loaded once by Get-ConsoleIcon; missing or unreadable keeps the default icon.
+        WindowIconFile   = (Join-Path $RepoRoot 'docker\website\html\favicon.ico')
         DefaultCapture   = (Join-Path $RepoRoot 'scripts\tests\fixtures\console-capture-2026-09-29.txt')
         StopTimeout      = 60
         LogWindowMinutes = 15
@@ -4576,6 +4579,34 @@ function Write-ConsoleLog {
     [IO.File]::AppendAllText($Config.LogFile, $line + "`r`n", (New-Object Text.UTF8Encoding $false))
 }
 
+# cc-P113: the window icon. Loaded once per file and kept (every form shares the one Icon). Missing or unreadable:
+# $null, one line in the action log, and the form keeps Windows' default icon; never a popup, never a failure.
+$script:ConsoleIcons = @{}
+function Get-ConsoleIcon {
+    param($Config)
+    $path = [string]$Config.WindowIconFile
+    if ($script:ConsoleIcons.ContainsKey($path)) { return $script:ConsoleIcons[$path] }
+    $icon = $null
+    try {
+        if (-not $path) { throw 'no WindowIconFile in the config' }
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw ('no file at ' + $path) }
+        Add-Type -AssemblyName System.Drawing
+        $icon = New-Object Drawing.Icon $path
+    } catch {
+        $icon = $null
+        try { Write-ConsoleLog $Config ('icon not loaded: ' + $_.Exception.Message) } catch { }
+    }
+    $script:ConsoleIcons[$path] = $icon
+    $icon
+}
+
+function Set-ConsoleIcon {
+    # Every form the console makes calls this once, right after New-Object Windows.Forms.Form.
+    param($Form, $Config)
+    $icon = Get-ConsoleIcon $Config
+    if ($icon) { $Form.Icon = $icon }
+}
+
 function Invoke-DockerRead {
     # Read-only docker calls. stdout and stderr kept apart, so 5.1 cannot wrap either in an
     # ErrorRecord, and a hung daemon cannot hang the form for more than the timeout.
@@ -6742,6 +6773,7 @@ function Update-SnapshotList {
 function Show-TypedConfirm {
     param([string]$Phrase, [string]$Text, $Plan, [string]$What = 'LIVE shard')
     $d = New-Object Windows.Forms.Form
+    Set-ConsoleIcon $d $script:cfg
     $d.Text = $What + ': type to confirm'
     if ($script:dry) { $d.Text = 'DRY RUN - ' + $What + ': type to confirm (the window it opens only prints)' }
     $d.Size = New-Object Drawing.Size(640, 420)
@@ -6798,6 +6830,7 @@ function Show-ListPicker {
     # A small dialog: a list with columns, OK and Cancel. Returns the Tag of the row picked, or $null.
     param([string]$Title, [string]$Caption, [object[]]$Columns, [object[]]$Rows)
     $d = New-Object Windows.Forms.Form
+    Set-ConsoleIcon $d $script:cfg
     $d.Text = $Title
     if ($script:dry) { $d.Text = 'DRY RUN - ' + $Title }
     $d.Size = New-Object Drawing.Size(900, 460)
@@ -6947,6 +6980,7 @@ function Show-WipeAdminPicker {
     # the action's own window, so it never sits in this form or crosses a command line.
     param([string]$Summary)
     $d = New-Object Windows.Forms.Form
+    Set-ConsoleIcon $d $script:cfg
     $d.Text = 'Wipe test accounts: the new admin'
     if ($script:dry) { $d.Text = 'DRY RUN - ' + $d.Text }
     $d.Size = New-Object Drawing.Size(640, 360)
@@ -7204,6 +7238,8 @@ function New-ConsoleForm {
     $script:BoldFont = Get-ThemeFont 'Mono' ([Drawing.FontStyle]::Bold)
 
     $form = New-Object Windows.Forms.Form
+    # cc-P113: the shortcut's icon in the title bar, the taskbar and Alt+Tab.
+    Set-ConsoleIcon $form $Config
     $form.Text = 'Shard Console'
     if ($DryRun) { $form.Text = 'Shard Console - DRY RUN (buttons print, status from a capture file)' }
     $form.Size = New-Object Drawing.Size(1200, 1000)

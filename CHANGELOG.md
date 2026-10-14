@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.19
+
+### Staff
+- The Shard Console's window, taskbar button and dialogs show the same icon as its desktop shortcut.
+
 ## 2026.10.14.18
 
 ### Staff

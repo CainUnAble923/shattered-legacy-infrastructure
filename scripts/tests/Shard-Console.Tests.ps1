@@ -5171,6 +5171,66 @@ Fact 'P110_TheHavenHomepageIsPinnedLanOnlyAndReadsDockerOnlyThroughTheProxy' {
     Assert-True ($s -match "StaleName -eq 'sl-dashboard' -or \`$PcDashboard -eq 'sl-dashboard'") 'the proof can never stop a real sl-dashboard'
 }
 
+# --- cc-P113: the window icon is the desktop shortcut's ----------------------------------------------------------------
+
+Fact 'P113_TheIconIsTheShortcutsFileResolvedFromTheRepoRoot' {
+    $want = Join-Path $repo 'docker\website\html\favicon.ico'
+    Assert-Equal $want $config.WindowIconFile 'from the repo root, not an absolute path'
+    Assert-True (Test-Path -LiteralPath $want -PathType Leaf) 'the file is in the repo'
+    $lnk = 'C:\Users\ckfle\Desktop\Shard Console.lnk'
+    if (Test-Path -LiteralPath $lnk) {
+        $loc = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk).IconLocation
+        Assert-True ($loc -like ('*\docker\website\html\favicon.ico,0')) ('the same file as the shortcut: ' + $loc)
+    }
+}
+
+Fact 'P113_TheMainFormAndEveryDialogGetTheIcon' {
+    $script:ConsoleIcons = @{}
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        $icon = Get-ConsoleIcon $config
+        Assert-True ($null -ne $icon) 'the icon loads'
+        Assert-True ([object]::ReferenceEquals($form.Icon, $icon)) 'the main form shows it'
+        Assert-Equal 1 @($script:ConsoleIcons.Keys).Count 'loaded once and shared'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+    # The three dialogs block on ShowDialog, so their wiring is read: every form the console makes is followed by the helper.
+    $src = [IO.File]::ReadAllLines($script)
+    $made = 0
+    for ($i = 0; $i -lt $src.Length; $i++) {
+        if ($src[$i] -match '^\s*(\$\w+) = New-Object Windows\.Forms\.Form\s*$') {
+            $made++
+            $var = $Matches[1]   # before -notmatch below, which overwrites $Matches
+            $next = @($src[($i + 1)..($i + 2)] | Where-Object { $_ -notmatch '^\s*#' })[0]
+            Assert-True ($next -match ('^\s*Set-ConsoleIcon ' + [regex]::Escape($var) + ' ')) ('line ' + ($i + 1) + ' makes a form without the icon')
+        }
+    }
+    Assert-Equal 4 $made 'the main form and three dialogs (Show-TypedConfirm, Show-ListPicker, Show-WipeAdminPicker)'
+}
+
+Fact 'P113_AMissingIconKeepsTheDefaultAndLogsOneLine' {
+    $script:ConsoleIcons = @{}
+    $log = Join-Path ([IO.Path]::GetTempPath()) ('p113-' + [guid]::NewGuid().ToString('N') + '.log')
+    $c = [pscustomobject]@{ WindowIconFile = (Join-Path ([IO.Path]::GetTempPath()) 'no-such-icon.ico'); LogFile = $log }
+    $f = New-Object Windows.Forms.Form
+    try {
+        $before = $f.Icon
+        Set-ConsoleIcon $f $c
+        Set-ConsoleIcon $f $c
+        Assert-True ([object]::ReferenceEquals($f.Icon, $before)) 'the default icon stays'
+        $lines = @(Get-Content -LiteralPath $log)
+        Assert-Equal 1 $lines.Count ('one line, however many forms: ' + ($lines -join ' | '))
+        Assert-True ($lines[0] -match 'icon not loaded: no file at .*no-such-icon\.ico$') $lines[0]
+        $bad = Join-Path ([IO.Path]::GetTempPath()) ('p113-' + [guid]::NewGuid().ToString('N') + '.ico')
+        [IO.File]::WriteAllText($bad, 'not an icon')
+        $c.WindowIconFile = $bad
+        Set-ConsoleIcon $f $c
+        Assert-True ([object]::ReferenceEquals($f.Icon, $before)) 'an unreadable file keeps the default too'
+        Assert-True ((@(Get-Content -LiteralPath $log)[1]) -match '^.* icon not loaded: ') 'and logs its own line'
+        Remove-Item -LiteralPath $bad -ErrorAction SilentlyContinue
+    } finally { $f.Dispose(); Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue; $script:ConsoleIcons = @{} }
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 
 $failed =@($results | Where-Object { -not $_.Passed }).Count
