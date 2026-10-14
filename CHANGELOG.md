@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.6
+
+### Staff
+- The autopilot is now the Golem: the Shard Console says Golem (Wake the Golem, Rest the Golem, a GOLEM tile and tab), it starts when you say "Golem, please work on the shard tasks" in CC, and it no longer misses a prompt that was retried or sends false "stopped mid-task" emails.
+
 ## 2026.10.14.5
 
 ### Staff

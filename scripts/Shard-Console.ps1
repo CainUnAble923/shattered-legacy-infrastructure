@@ -32,18 +32,21 @@
   DNS (cc-P52, bug-list D47), goes red when a VPN carries this PC's traffic or public DNS for
   shatteredlegacyuo.com is not this house: "VPN on: public DNS points at <ip>. Turn the VPN off."
   Its check runs in a runspace of its own, so it never holds the window; a check that failed is
-  grey UNKNOWN, never red. Get-DnsGlance says which signals it reads and why. A fifth, AUTOPILOT
-  (cc-P74), says what Chase's CC autopilot is doing: OFF, IDLE, RUNNING (P74 for 42m, 3 queued) or
-  NEEDS YOU (the hook emailed him since it last handed CC a prompt). It reads D:\UO\cc-autopilot's
-  ENABLED, state.json and the tail of autopilot.log, and lists D:\UO\cc-prompts\queue, on every
-  refresh; Get-AutopilotGlance judges them. A file it could not read is grey UNKNOWN, never red.
+  grey UNKNOWN, never red. Get-DnsGlance says which signals it reads and why. A fifth, GOLEM
+  (cc-P74 as AUTOPILOT, renamed by cc-P99), says what the Golem, Chase's CC queue runner, is doing: OFF,
+  IDLE, RUNNING (P74 for 42m, 3 queued) or NEEDS YOU (the hook emailed him since it last handed CC a
+  prompt). It reads the active folder's ENABLED, state.json and the tail of its log, and lists
+  D:\UO\cc-prompts\queue, on every refresh; Get-AutopilotGlance judges them. A file it could not read is
+  grey UNKNOWN, never red. The active folder (cc-P99): D:\UO\golem once Move-ToGolem.ps1 has written its
+  ACTIVE file, else D:\UO\cc-autopilot, the Golem's predecessor, so the console works before and after
+  the cutover (Get-GolemConfig). The Golem tab says which one it is reading.
   cc-P94: status.json (the hook's own summary, schema 1) is read first when it is there and readable:
   RUNNING says "P92  2 of 5  step 3/6  14m" over the step and the last activity, amber when CC has
   been quiet past stallMinutes or status.json is over 15 minutes old. Without it, as above.
   A sixth, PLAY TESTS (cc-P83), counts what is waiting in D:\UO\shard-migration\testing\play-tests.json
   (sl-play-tests, docker/test-queue) and turns amber while a Fail is not yet logged in the bug list. Its
   two buttons open the play-test page (8093) and the Homepage dashboard (3000); so do two on the
-  Autopilot tab. Get-PlayTestGlance judges the file.
+  Golem tab. Get-PlayTestGlance judges the file.
 
   THE LOOK, TOOLTIPS AND THE ACTION OUTPUT PANE (cc-P84). Look: UO (stone, parchment, gold, the crest, Palatino
   Linotype) or Plain (the console as it was), chosen in the status bar and remembered in
@@ -86,13 +89,17 @@
                                    modernuo-test\account-wipe-request.json and starts it. The shard
                                    wipes before it listens (server/customizations/Misc/TestAccountWipe.cs)
                                    and refuses any request on live. Not Start fresh: the world stays.
-    D:\UO\cc-autopilot\*.ps1       the Autopilot tab (cc-P74): Turn on (Start-Autopilot.ps1, refused
-                                   with no email.json), Turn off (Stop-Autopilot.ps1), Email setup
-                                   (Setup-Email.ps1, which asks the password in its own window) and
-                                   Send test email (Send-TestEmail.ps1), each in a PowerShell window
-                                   of its own that stays open. autopilot.log and (cc-P94)
-                                   settings.json open in Notepad. Its hook, cc-autopilot.ps1, which
-                                   commits and pushes, is never run from here (Test-PlanSafety).
+    D:\UO\golem\*.ps1              the Golem tab (cc-P74 as Autopilot, cc-P99): Wake the Golem
+    (or D:\UO\cc-autopilot\*.ps1    (Start-Golem.ps1, refused with no email.json), Rest the Golem
+     before the cutover)            (Stop-Golem.ps1), Golem email setup (Setup-Email.ps1, which asks
+                                   the password in its own window), Send test email (Send-TestEmail.ps1)
+                                   and Move to the Golem (Move-ToGolem.ps1, after the typed phrase 'move
+                                   to the golem'; it prints its dry run and asks again), each in a
+                                   PowerShell window of its own that stays open. Golem log and (cc-P94)
+                                   Golem settings open in Notepad; Open Golem folder opens Explorer. The
+                                   hooks, golem.ps1 and cc-autopilot.ps1, which commit and push, are
+                                   never run from here (Test-PlanSafety). autopilot.* keys still work
+                                   as aliases of golem.*.
 
   WHAT NO BUTTON DOES
     - docker compose on docker/uo/docker-compose.yml. That file has build: and no image:
@@ -157,17 +164,32 @@ $script:PublishPublicWarning = 'This is PUBLIC: every player''s launcher is offe
 . (Join-Path $PSScriptRoot 'Shard-Health.ps1')
 
 function New-AutopilotConfig {
-    # cc-P74. The autopilot's files, by its folder and its queue, so the facts can point both at fixtures.
-    param([string]$Root, [string]$Queue)
+    # cc-P74. The queue runner's files, by its folder and its queue, so the facts can point both at fixtures.
+    # cc-P99: -Kind golem is D:\UO\golem's names (golem.log, Start-Golem.ps1, golem.ps1); autopilot is the old
+    # folder's. -GolemRoot is where Move-ToGolem.ps1 lives whichever one is active; -Why says why this one.
+    param([string]$Root, [string]$Queue, [ValidateSet('autopilot', 'golem')][string]$Kind = 'autopilot', [string]$GolemRoot, [string]$AutopilotRoot, [string]$Why)
+    $g = ($Kind -eq 'golem')
+    if (-not $GolemRoot) { $GolemRoot = $(if ($g) { $Root } else { 'D:\UO\golem' }) }
+    if (-not $AutopilotRoot) { $AutopilotRoot = $(if ($g) { 'D:\UO\cc-autopilot' } else { $Root }) }
     [pscustomobject]@{
+        Kind      = $Kind
+        Name      = $(if ($g) { 'the Golem' } else { 'cc-autopilot' })
+        Why       = $Why
         Root      = $Root
+        GolemRoot = $GolemRoot
+        AutopilotRoot = $AutopilotRoot
+        MoveScript = (Join-Path $GolemRoot 'Move-ToGolem.ps1')
+        GolemActiveFile = (Join-Path $GolemRoot 'ACTIVE')
+        Hooks     = @((Join-Path $GolemRoot 'golem.ps1'), (Join-Path $AutopilotRoot 'cc-autopilot.ps1'))
+        WatchTask = $(if ($g) { 'Golem Watch' } else { 'Shard CC Autopilot Watch' })
         Enabled   = (Join-Path $Root 'ENABLED')
         StateFile = (Join-Path $Root 'state.json')
-        LogFile   = (Join-Path $Root 'autopilot.log')
+        LogName   = $(if ($g) { 'golem.log' } else { 'autopilot.log' })
+        LogFile   = (Join-Path $Root $(if ($g) { 'golem.log' } else { 'autopilot.log' }))
         EmailFile = (Join-Path $Root 'email.json')
         CredFile  = (Join-Path $Root 'smtp-cred.xml')
-        Start     = (Join-Path $Root 'Start-Autopilot.ps1')
-        Stop      = (Join-Path $Root 'Stop-Autopilot.ps1')
+        Start     = (Join-Path $Root $(if ($g) { 'Start-Golem.ps1' } else { 'Start-Autopilot.ps1' }))
+        Stop      = (Join-Path $Root $(if ($g) { 'Stop-Golem.ps1' } else { 'Stop-Autopilot.ps1' }))
         Setup     = (Join-Path $Root 'Setup-Email.ps1')
         TestEmail = (Join-Path $Root 'Send-TestEmail.ps1')
         # cc-P94: the hook's own summary (status.json, schema 1) and its three settings.
@@ -178,6 +200,34 @@ function New-AutopilotConfig {
         # The log is tailed, never read whole: Commit-ShardWork.ps1's output is pasted into it after every commit.
         TailLines = 400
     }
+}
+
+function Select-GolemKind {
+    # cc-P99. Pure: which folder the console reads and whose scripts its buttons run. The Golem once the cutover
+    # (Move-ToGolem.ps1) has written D:\UO\golem\ACTIVE and its Start-Golem.ps1 is there; cc-autopilot before
+    # that, or after -Rollback (which removes ACTIVE).
+    param([bool]$GolemStartPresent, [bool]$GolemActive)
+    if ($GolemStartPresent -and $GolemActive) { return [pscustomobject]@{ Kind = 'golem'; Why = 'the Golem is active (ACTIVE is there)' } }
+    if ($GolemStartPresent) { return [pscustomobject]@{ Kind = 'autopilot'; Why = 'the Golem is built but not moved to yet (no ACTIVE): Move to the Golem' } }
+    [pscustomobject]@{ Kind = 'autopilot'; Why = 'there is no Golem yet (no Start-Golem.ps1)' }
+}
+
+function Get-GolemConfig {
+    # cc-P99. The shell side of Select-GolemKind: two Test-Paths, so it is re-read on every refresh and a
+    # cutover made while the console is open shows at the next one.
+    param([string]$GolemRoot, [string]$AutopilotRoot, [string]$Queue)
+    $k = Select-GolemKind -GolemStartPresent ([bool](Test-Path -LiteralPath (Join-Path $GolemRoot 'Start-Golem.ps1') -PathType Leaf)) `
+        -GolemActive ([bool](Test-Path -LiteralPath (Join-Path $GolemRoot 'ACTIVE') -PathType Leaf))
+    $root = $(if ($k.Kind -eq 'golem') { $GolemRoot } else { $AutopilotRoot })
+    New-AutopilotConfig -Root $root -Queue $Queue -Kind $k.Kind -GolemRoot $GolemRoot -AutopilotRoot $AutopilotRoot -Why $k.Why
+}
+
+function Resolve-ActionAlias {
+    # cc-P99. The Golem's buttons were the autopilot's: autopilot.on is golem.on, and so on, so old shortcuts,
+    # scripts and tests still resolve. Every other key is returned as it is.
+    param([string]$Action)
+    if ($Action -like 'autopilot.*') { return ('golem.' + $Action.Substring(10)) }
+    $Action
 }
 
 function Get-ConsoleConfig {
@@ -256,10 +306,11 @@ function Get-ConsoleConfig {
         # (RequestFileName). Test-PlanSafety allows no other path.
         WipeRequestFile    = (Join-Path (Join-Path $RepoRoot 'server\lib\uo\modernuo-test') 'account-wipe-request.json')
         WipeWaitSeconds    = 300
-        # cc-P74, the AUTOPILOT tile and the Autopilot tab. Chase's CC autopilot lives outside both
-        # repos (D:\UO\cc-autopilot\README.md); the console runs its scripts as they are and reads its
-        # files. cc-autopilot.ps1 is its hook and is never run from here: it commits and pushes.
-        Autopilot          = (New-AutopilotConfig 'D:\UO\cc-autopilot' 'D:\UO\cc-prompts\queue')
+        # cc-P74, the GOLEM tile and the Golem tab (AUTOPILOT until cc-P99). The Golem lives outside both
+        # repos (D:\UO\golem\README.md); the console runs its scripts as they are and reads its files.
+        # golem.ps1 (and cc-autopilot.ps1 before it) is the hook and is never run from here: it commits and pushes.
+        # Get-GolemConfig picks D:\UO\golem once it is active, else D:\UO\cc-autopilot; re-read on every refresh.
+        Autopilot          = (Get-GolemConfig 'D:\UO\golem' 'D:\UO\cc-autopilot' 'D:\UO\cc-prompts\queue')
         # cc-P83, the PLAY TESTS tile and its two links. The data is written by sl-play-tests
         # (docker/test-queue) and by shard-migration\tools\Import-PlayTests.ps1; the console only reads it.
         PlayTestsFile      = 'D:\UO\shard-migration\testing\play-tests.json'
@@ -675,6 +726,7 @@ function Get-ConfirmPhrase {
         'fix.rollback'     { 'roll back test' }
         'fix.rebuild'      { 'rebuild test' }
         'fix.prune'        { 'prune images' }
+        'golem.move'       { 'move to the golem' }
         default            { 'confirm live' }
     }
 }
@@ -688,6 +740,7 @@ function Get-ConfirmSubject {
         'test.deploy'     { 'Deploy to test' }
         'test.wipe'       { 'Wipe test accounts' }
         'fix.restart'     { 'Restart the test shard' }
+        'golem.move'      { 'Move to the Golem' }
         'fix.rollback'    { 'Roll back the test shard' }
         'fix.rebuild'     { 'Rebuild the test shard' }
         'fix.prune'       { 'Prune images' }
@@ -773,6 +826,7 @@ function Resolve-RunMode {
     # at all, an action that changes something is refused rather than run, so a mode lost on the
     # way from the parent fails safe (D37). Actions that only read or open still run.
     param([string]$Action, [string]$Mode, [switch]$DryRun)
+    $Action = Resolve-ActionAlias $Action
     if ($DryRun -or $Mode -eq 'DryRun') { return 'dry' }
     if ($Mode -eq 'Execute') { return 'execute' }
     $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $Action })[0]
@@ -783,11 +837,12 @@ function Resolve-RunMode {
 function Get-ModeBanner {
     # The first thing a spawned window says, before it reads any state or runs anything.
     param([string]$RunMode, [string]$Action, [string]$ShardKey)
+    $Action = Resolve-ActionAlias $Action
     $bar = '=' * 78
     $what = $Action + ' (' + $ShardKey + ')'
     if ($Action -like 'commit.*') { $what = $Action + ' (both repos)' }
     if ($Action -like 'package.*') { $what = $Action + ' (player package)' }
-    if ($Action -like 'autopilot.*') { $what = $Action + ' (autopilot)' }
+    if ($Action -like 'golem.*') { $what = $Action + ' (golem)' }
     if ($Action -like 'vpn.*') { $what = $Action + ' (this PC''s VPN)' }
     switch ($RunMode) {
         'dry' {
@@ -819,9 +874,9 @@ function Get-ModeBanner {
                 $bar, ('  RUNNING FOR REAL  ' + $what), '  This deletes every account and character on the TEST shard. It asks for the new admin password below.', $bar) }
             break
         }
-        { $_ -eq 'execute' -and $Action -like 'autopilot.*' } {
-            [pscustomobject]@{ Color = 'amber'; Title = ('AUTOPILOT - ' + $what + ' - Shard Console'); Lines = @(
-                $bar, ('  AUTOPILOT  ' + $what), '  Opens the autopilot''s own script in a window of its own, or its folder or log. No shard is touched.', $bar) }
+        { $_ -eq 'execute' -and $Action -like 'golem.*' } {
+            [pscustomobject]@{ Color = 'amber'; Title = ('GOLEM - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  GOLEM  ' + $what), '  Opens the Golem''s own script in a window of its own, or its folder or log. No shard is touched.', $bar) }
             break
         }
         { $_ -eq 'execute' -and $Action -like 'vpn.*' } {
@@ -883,16 +938,20 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'package.build';    Group = 'Player package'; Label = 'Build package';                   Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'package.publish';  Group = 'Player package'; Label = 'Publish package';                 Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'package.check';    Group = 'Player package'; Label = 'Check selected';                  Mutates = $false; RunIn = 'window' }
-        # cc-P74. Each opens one of the autopilot's own scripts in a window of its own (a 'window' step),
+        # cc-P74. Each opens one of the Golem's own scripts in a window of its own (a 'window' step),
         # so RunIn is 'here': the console only opens it, and the script's window stays open to be read.
-        [pscustomobject]@{ Key = 'autopilot.on';     Group = 'Autopilot';   Label = 'Turn on';                            Mutates = $true;  RunIn = 'here' }
-        [pscustomobject]@{ Key = 'autopilot.off';    Group = 'Autopilot';   Label = 'Turn off';                           Mutates = $true;  RunIn = 'here' }
-        [pscustomobject]@{ Key = 'autopilot.email';  Group = 'Autopilot';   Label = 'Email setup';                        Mutates = $true;  RunIn = 'here' }
-        [pscustomobject]@{ Key = 'autopilot.test';   Group = 'Autopilot';   Label = 'Send test email';                    Mutates = $true;  RunIn = 'here' }
-        [pscustomobject]@{ Key = 'autopilot.queue';  Group = 'Autopilot';   Label = 'Open the queue folder';              Mutates = $false; RunIn = 'here' }
-        [pscustomobject]@{ Key = 'autopilot.log';    Group = 'Autopilot';   Label = 'Open autopilot.log';                 Mutates = $false; RunIn = 'here' }
+        # cc-P99: the autopilot.* keys of cc-P74 are aliases of these (Resolve-ActionAlias).
+        [pscustomobject]@{ Key = 'golem.on';         Group = 'Golem';       Label = 'Wake the Golem';                     Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.off';        Group = 'Golem';       Label = 'Rest the Golem';                     Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.email';      Group = 'Golem';       Label = 'Golem email setup';                  Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.test';       Group = 'Golem';       Label = 'Send test email';                    Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.queue';      Group = 'Golem';       Label = 'Open the queue folder';              Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.log';        Group = 'Golem';       Label = 'Golem log';                          Mutates = $false; RunIn = 'here' }
         # cc-P94: opens settings.json in Notepad; the console itself changes nothing.
-        [pscustomobject]@{ Key = 'autopilot.settings'; Group = 'Autopilot'; Label = 'Open settings.json';                 Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.settings';   Group = 'Golem';       Label = 'Golem settings';                     Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.folder';     Group = 'Golem';       Label = 'Open Golem folder';                  Mutates = $false; RunIn = 'here' }
+        # cc-P99: the cutover, after a typed phrase; the script shows its own dry run and asks again.
+        [pscustomobject]@{ Key = 'golem.move';       Group = 'Golem';       Label = 'Move to the Golem';                  Mutates = $true;  RunIn = 'here' }
         # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
         [pscustomobject]@{ Key = 'links.playtests';  Group = 'Links';       Label = 'Play tests';                         Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
@@ -1088,13 +1147,15 @@ function Get-ConsoleTooltips {
         'package.build'    = 'Builds a player package zip in player-package\dist and checks it. Publishes nothing; refused while the shard repo has uncommitted changes.'
         'package.publish'  = 'Publishes the selected zip: every player''s launcher is offered it. Asks for publish player package, then the script asks you to type yes in its own window.'
         'package.check'    = 'Runs the package gates on the selected zip. Read-only.'
-        'autopilot.on'     = 'Turns the CC autopilot on: it hands CC the next queued prompt and commits and pushes after each DONE. Refused without email.json. Opens in its own window.'
-        'autopilot.off'    = 'Turns the autopilot off: no more hand-offs. A prompt CC is running still finishes.'
-        'autopilot.email'  = 'Opens Setup-Email.ps1 in its own window, which asks for the mail password there. Writes the autopilot''s email settings.'
-        'autopilot.test'   = 'Sends one test email through the autopilot''s settings. Changes nothing else.'
-        'autopilot.queue'  = 'Opens the prompt queue folder in Explorer. Changes nothing.'
-        'autopilot.log'    = 'Opens autopilot.log in Notepad. Changes nothing.'
-        'autopilot.settings' = 'Opens the autopilot''s settings.json in Notepad: progressEmails, maxPerRun, stallMinutes. The console changes nothing; what you save there counts from the hook''s next event.'
+        'golem.on'         = 'Wakes the Golem, which hands CC the next queued prompt and commits and pushes after each DONE; in CC you can also say Golem, please work on the shard tasks. Refused without email.json, and opens in its own window.'
+        'golem.off'        = 'Rests the Golem now: no more hand-offs, and a prompt CC is running still finishes but is not committed (saying Golem, stop in CC rests after it is committed).'
+        'golem.email'      = 'Opens Setup-Email.ps1 in its own window, which asks for the mail password there. Writes the Golem''s email settings.'
+        'golem.test'       = 'Sends one test email through the Golem''s settings. Changes nothing else.'
+        'golem.queue'      = 'Opens the prompt queue folder in Explorer. Changes nothing.'
+        'golem.log'        = 'Opens the Golem''s log in Notepad. Changes nothing.'
+        'golem.settings'   = 'Opens the Golem''s settings.json in Notepad: progressEmails, maxPerRun, stallMinutes. The console changes nothing; what you save there counts from the hook''s next event.'
+        'golem.folder'     = 'Opens the Golem''s folder in Explorer. Changes nothing.'
+        'golem.move'       = 'Moves the CC queue from cc-autopilot to the Golem with Move-ToGolem.ps1: the hooks, the scheduled task and the state. Asks for move to the golem, then shows its dry run in its own window and asks you to type move; refused while a prompt runs.'
         'links.playtests'  = 'Opens the play-test page (port 8093) in your browser. Changes nothing here.'
         'links.dashboard'  = 'Opens the Homepage dashboard (port 3000) in your browser. Changes nothing here.'
         'vpn.disconnect'   = 'Turns off the VPN this PC is on, so sl-ddns stops publishing the VPN''s address. Ends a WireGuard for Windows tunnel (elevated); opens Proton VPN with what to click; names any other VPN to disconnect in its app. Never stops a VPN service or disables an adapter.'
@@ -1125,7 +1186,7 @@ function Get-ConsoleTooltips {
         'tile.TEST'        = 'The test container: running or not, and whether its image drifted from latest.'
         'tile.STATUS PUBLISHER' = 'Whether status.json for the website is fresh (written in the last 3 minutes) and served on 8092.'
         'tile.PUBLIC DNS'  = 'Whether public DNS for shatteredlegacyuo.com points at this house. Red usually means a VPN is on. Grey: the check failed.'
-        'tile.AUTOPILOT'   = 'What the CC autopilot is doing: off, idle, running a prompt, or NEEDS YOU after it emailed you.'
+        'tile.GOLEM'       = 'What the Golem (the CC queue runner) is doing: off, idle, running a prompt, or NEEDS YOU after it emailed you.'
         'tile.PLAY TESTS'  = 'How many play tests wait in the queue; amber while a Fail is not in the bug list yet.'
         'tab.Test shard'   = 'The throwaway test shard: start, stop, rebuild, deploy, wipe, tail and a client.'
         'tab.Fix test shard' = 'When the test shard will not start: diagnose it, restart it, roll back to the last good image, rebuild a commit, prune old images.'
@@ -1134,7 +1195,7 @@ function Get-ConsoleTooltips {
         'tab.Diagnostics'  = 'The two read-only health checks and their folder, and Disconnect VPN.'
         'tab.Commit'       = 'Preview, or commit and push, both repos.'
         'tab.Player package' = 'Build, check and publish the player package.'
-        'tab.Autopilot'    = 'The CC autopilot: its state, queue and log, and its own scripts.'
+        'tab.Golem'        = 'The Golem, the CC queue runner: its state, queue and log, its own scripts, and the move from cc-autopilot.'
         'tab.LIVE shard'   = 'The real shard with real players. Every button asks for a typed phrase.'
     }
 }
@@ -1163,7 +1224,7 @@ function ConvertTo-ConsoleSettings {
 # Every other 'window' action was read: Start-TestShard.ps1, Check-Docker.ps1, Check-Shard.ps1,
 # Commit-ShardWork.ps1 and Build-PlayerPackage.ps1 have no Read-Host, prompt or -it docker call; the typed phrases
 # and yes/no questions are asked by this console's own dialogs before the run and passed as -ConfirmLive / -Yes.
-# The autopilot buttons (RunIn 'here') open the autopilot's own scripts in windows of their own on purpose
+# The Golem buttons (RunIn 'here') open the Golem's own scripts in windows of their own on purpose
 # (Setup-Email.ps1 asks a password) and are not routed either.
 $script:InteractiveActions = @('test.wipe', 'package.publish')
 
@@ -1990,8 +2051,9 @@ function Get-ActionPlan {
     if ($Action -like 'links.*') { return (Get-LinkPlan -Action $Action -Config $Config) }
     # cc-P86: the VPN button reads this PC's adapters, route and services (VpnFacts), never docker.
     if ($Action -eq 'vpn.disconnect') { return (Get-VpnPlan -Config $Config -Facts $VpnFacts) }
-    # cc-P74: the autopilot buttons read only the autopilot's folder.
-    if ($Action -like 'autopilot.*') { return (Get-AutopilotPlan -Action $Action -Config $Config -Facts $AutopilotFacts) }
+    # cc-P74: the Golem buttons read only the Golem's folder (cc-P99: autopilot.* are aliases).
+    $Action = Resolve-ActionAlias $Action
+    if ($Action -like 'golem.*') { return (Get-AutopilotPlan -Action $Action -Config $Config -Facts $AutopilotFacts) }
     # The commit buttons read git and the notes, not docker, so they need no $State (cc-P60).
     if ($Action -like 'commit.*') { return (Get-CommitPlan -Action $Action -Config $Config -Facts $CommitFacts -Message $CommitMessage -Force:$CommitForce) }
     # Nor do the package buttons; they read git, dist\ and the notes (cc-P63, cc-P68).
@@ -2273,22 +2335,25 @@ function Test-PlanSafety {
             if ($s.Kind -eq 'wipewait' -and $s.Container -cne $Config.Shards['test'].Container) { $v.Add('a wipe is waited for only on ' + $Config.Shards['test'].Container + ': ' + $s.Container) }
         }
         if ($Config.Autopilot) {
-            # cc-P74. The autopilot's scripts run only as themselves, each in a window of its own, and its
-            # hook (cc-autopilot.ps1, which commits and pushes) never. Notepad opens only its log.
+            # cc-P74. The Golem's scripts run only as themselves, each in a window of its own, and its
+            # hook (golem.ps1, or cc-autopilot.ps1 before it, which commit and push) never. Notepad opens only its
+            # log or settings. cc-P99: both folders count, and Move-ToGolem.ps1 is the one script outside the active one.
             $ap = $Config.Autopilot
-            $apRoot = $ap.Root.TrimEnd('\') + '\'
+            $roots = @(@($ap.Root, $ap.GolemRoot, $ap.AutopilotRoot) | Where-Object { $_ } | Select-Object -Unique)
             $named = @(@($s.Exe) + @($s.Arguments) + @($s.Path) + @($s.From) + @($s.To) | Where-Object { $_ } | ForEach-Object { [string]$_ })
-            $inRoot = @($named | Where-Object { $_.StartsWith($apRoot, [StringComparison]::OrdinalIgnoreCase) -or $_ -ieq $ap.Root })
-            if (@($named | Where-Object { $_ -match '(?i)cc-autopilot\.ps1' }).Count) { $v.Add('the autopilot''s hook is never run from the console: it commits and pushes on its own') }
+            $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
+            if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail)
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript)
                 $sa = @($s.Arguments)
                 $ok = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -eq 5 -and
                     (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # cc-P94: and settings.json, the same way.
             $readable = @($ap.LogFile, $ap.SettingsFile) | Where-Object { $_ }
             $okLog = ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and $sa.Count -eq 1 -and $readable -icontains $sa[0])
-                if (-not $ok -and -not $okLog) { $v.Add('the autopilot''s folder is reached only by its four scripts, each in a window of its own, or its log or settings.json in Notepad: ' + ($named -join ' ')) }
+                # cc-P99: and Explorer on the folder itself (Open Golem folder).
+                $okDir = ($s.Kind -eq 'launch' -and $s.Path -ieq 'explorer.exe' -and $sa.Count -eq 1 -and $sa[0] -ieq $ap.Root)
+                if (-not $ok -and -not $okLog -and -not $okDir) { $v.Add('the Golem''s folder is reached only by its five scripts, each in a window of its own, its log or settings.json in Notepad, or the folder in Explorer: ' + ($named -join ' ')) }
             }
             if ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and -not (@($s.Arguments).Count -eq 1 -and (@($ap.LogFile, $ap.SettingsFile) | Where-Object { $_ }) -icontains @($s.Arguments)[0])) { $v.Add('Notepad opens only ' + $ap.LogFile + ' or ' + $ap.SettingsFile) }
         }
@@ -2864,21 +2929,21 @@ function Get-DdnsRestartPlan {
     )
 }
 
-# --- the CC autopilot (cc-P74) -------------------------------------------------------------------
-# Chase's autopilot (D:\UO\cc-autopilot) hands CC the next queued prompt when the last one ends
+# --- the Golem, the CC queue runner (cc-P74 as the autopilot; renamed by cc-P99) -------------------
+# The Golem (D:\UO\golem; D:\UO\cc-autopilot before the cutover) hands CC the next queued prompt when the last one ends
 # "P<nn> DONE", running Commit-ShardWork.ps1 in between, and emails him when CC needs him. Its hook,
 # cc-autopilot.ps1, keeps everything this reads:
 #   ENABLED        present means on. The hook removes it itself when the queue runs dry.
 #   state.json     current (P74, empty when idle), currentFile, lastHandled, startedAt (local, 's').
 #                  No file is the hook's own default: nothing running, nothing handled yet.
-#   autopilot.log  "yyyy-MM-dd HH:mm:ss  <Event padded to 12> <text>", one line per action, with
-#                  Commit-ShardWork.ps1's raw output pasted in after a commit. Mail it sent is logged
-#                  "emailed: [Shard CC] <subject>", mail that failed "EMAIL FAILED: <subject>  (why)".
+#   golem.log      "yyyy-MM-dd HH:mm:ss  <Event padded to 12> <text>", one line per action, with
+#   (autopilot.log) Commit-ShardWork.ps1's raw output pasted in after a commit. Mail it sent is logged
+#                  "emailed: [Golem] <subject>" ([Shard CC] before cc-P99), mail that failed "EMAIL FAILED: <subject>  (why)".
 #   queue\         cc-P<nn>-*.md run lowest number first; any other .md is ignored (and logged).
 # The shell tails the log and lists the queue (Get-AutopilotFacts); everything is judged here.
 
 $script:AutopilotLinePattern = '^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})  ([A-Za-z]+) +(.*)$'
-$script:AutopilotSubject     = '[Shard CC] '
+$script:AutopilotSubjects    = @('[Golem] ', '[Shard CC] ')
 
 function ConvertFrom-AutopilotLog {
     # The action lines of a log tail, oldest first. Anything else is pasted commit output, skipped.
@@ -2936,7 +3001,7 @@ function Test-AutopilotAlert {
 }
 
 # cc-P94: status.json, the one file cc-autopilot.ps1 (Write-Status) rewrites, tmp then rename, on every hand-off,
-# stop, tool use and every 10 minutes from the scheduled task "Shard CC Autopilot Watch". Schema 1:
+# stop, tool use and every 10 minutes from the scheduled task "Golem Watch" ("Shard CC Autopilot Watch" before cc-P99). Schema 1:
 #   state (OFF | IDLE | RUNNING | NEEDS YOU), enabled, current, currentFile, startedAt (local 's'), position and
 #   total (prompt N of M in this run), runDone, runStarted, maxPerRun, lastHandled, queued (names, in run order),
 #   stepsDone, stepsTotal, stepNow (CC's task list), lastActivityUtc, lastTool, toolStartedUtc (set while a tool
@@ -2990,6 +3055,8 @@ function ConvertFrom-AutopilotStatus {
         LastTool       = [string]$j.lastTool
         ToolStarted    = (ConvertFrom-AutopilotTime $j.toolStartedUtc 'Utc')
         NeedsYou       = ([string]$j.needsYou).Trim()
+        # cc-P99 (D91): a plain word for a running prompt that is not a question, e.g. 'waiting on background agents'.
+        Note           = ([string]$j.note).Trim()
         GeneratedAt    = (ConvertFrom-AutopilotTime $j.generatedAt 'Local')
     }
 }
@@ -3029,7 +3096,7 @@ function Get-AutopilotView {
     # cc-P94: $StatusText is status.json ($null: none), preferred when it reads as schema 1; otherwise Status is
     # $null and StatusNote says why, and the four facts are judged as before. $SettingsText is settings.json.
     param($Enabled, $StateText, [string[]]$LogLines, $QueueNames, [string[]]$Errors,
-        $StatusText, [string]$StatusError, $SettingsText)
+        $StatusText, [string]$StatusError, $SettingsText, [string]$Kind = 'autopilot')
     $status = $null
     $statusNote = 'no status.json (an autopilot from before 2026-10-13): read ENABLED, state.json and the log'
     if ($StatusError) { $statusNote = 'status.json could not be read (' + $StatusError + '): read ENABLED, state.json and the log' }
@@ -3054,7 +3121,7 @@ function Get-AutopilotView {
     $mail = @($since | Where-Object { $_.Text -like 'emailed: *' })
     if ($mail.Count) {
         $subject = $mail[-1].Text.Substring(9).Trim()
-        if ($subject.StartsWith($script:AutopilotSubject)) { $subject = $subject.Substring($script:AutopilotSubject.Length).Trim() }
+        foreach ($pre in $script:AutopilotSubjects) { if ($subject.StartsWith($pre)) { $subject = $subject.Substring($pre.Length).Trim(); break } }
         if (Test-AutopilotAlert $subject) { $alert = $subject }
     }
     $failing = @($since | Where-Object { $_.Text -like 'EMAIL FAILED*' })
@@ -3070,6 +3137,8 @@ function Get-AutopilotView {
         EmailFailing = ($failing.Count -gt 0)
         LastFailure  = $(if ($failing.Count) { $failing[-1].Text } else { $null })
         Problems     = $problems.ToArray()
+        # cc-P99: whose folder this was read from, golem or autopilot.
+        Kind         = $Kind
     }
 }
 
@@ -3088,7 +3157,7 @@ function Get-AutopilotGlance {
         [datetime]$Now = [datetime]::Now, $View)
     if (-not $View) { $View = Get-AutopilotView -Enabled $Enabled -StateText $StateText -LogLines $LogLines -QueueNames $QueueNames -Errors $Errors }
     if ($View.Status) { return (Get-AutopilotStatusGlance -View $View -Now $Now) }
-    $t = [ordered]@{ Title = 'AUTOPILOT'; Word = 'UNKNOWN'; Color = 'gray'; Detail = '' }
+    $t = [ordered]@{ Title = 'GOLEM'; Word = 'UNKNOWN'; Color = 'gray'; Detail = '' }
     $q = $View.Queue
     if ($null -eq $View.Enabled) {
         $t.Detail = 'could not tell whether it is on'
@@ -3159,7 +3228,7 @@ function Get-AutopilotStatusGlance {
     # rewriting, and for failing email (from the log). Never red: the hook emails about all of these itself.
     param($View, [datetime]$Now = [datetime]::Now)
     $s = $View.Status
-    $t = [ordered]@{ Title = 'AUTOPILOT'; Word = $s.State; Color = 'gray'; Detail = '' }
+    $t = [ordered]@{ Title = 'GOLEM'; Word = $s.State; Color = 'gray'; Detail = '' }
     $n = @($s.Queued).Count
     $queued = $(if ($n) { [string]$n + ' queued' } else { 'queue empty' })
     $ignored = ''
@@ -3172,7 +3241,7 @@ function Get-AutopilotStatusGlance {
         'OFF' { $lines.Add('not handing out prompts; ' + $queued + $doneRun + $ignored) }
         'IDLE' {
             $l = $queued
-            if ($n) { $l += '; send CC "go" to start' }
+            if ($n) { $l += $(if ($View.Kind -eq 'golem') { '; say "Golem, work" in CC to start' } else { '; send CC "go" to start' }) }
             $lines.Add($l + $doneRun + $ignored)
         }
         'NEEDS YOU' {
@@ -3190,7 +3259,7 @@ function Get-AutopilotStatusGlance {
             if ($act.Steps) { $parts.Add($act.Steps) }
             if ($s.StartedAt) { $parts.Add((Format-ShortAge ($Now - $s.StartedAt))) }
             $lines.Add(($parts -join '  ') + $ignored)
-            $second = @(@($s.StepNow, $act.Activity) | Where-Object { $_ }) -join '; '
+            $second = @(@($s.StepNow, $act.Activity, $s.Note) | Where-Object { $_ }) -join '; '
             if ($second) { $lines.Add($second) }
             if ($act.Quiet) { $t.Color = 'amber' }
             if ($act.Stale) {
@@ -3208,19 +3277,23 @@ function Get-AutopilotStatusGlance {
 }
 
 function Format-AutopilotPanel {
-    # The Autopilot tab's read-only panel, as lines with a colour name like Format-StatusReport's.
+    # The Golem tab's read-only panel, as lines with a colour name like Format-StatusReport's.
     param($View, $Config, [datetime]$Now = [datetime]::Now, [int]$LogLines = 20)
     $o = New-Object 'System.Collections.Generic.List[object]'
     $add = { param($t, $c) $o.Add([pscustomobject]@{ Text = $t; Color = $(if ($c) { $c } else { 'normal' }) }) }
     $ap = $Config.Autopilot
     $tile = Get-AutopilotGlance -View $View -Now $Now
     $tl = @(([string]$tile.Detail) -split "`n")
-    & $add ('AUTOPILOT : ' + $tile.Word + '. ' + $tl[0]) $tile.Color
+    & $add ('GOLEM     : ' + $tile.Word + '. ' + $tl[0]) $tile.Color
     foreach ($x in @($tl | Select-Object -Skip 1)) { & $add ('            ' + $x) $tile.Color }
+    # cc-P99: the start phrase, and which folder is active (the console reads it, the buttons run its scripts).
+    & $add 'In a CC session, say: "Golem, please work on the shard tasks"' 'head'
+    if ($ap.Kind -eq 'golem') { & $add ('active    : the Golem (' + $ap.Root + '). ' + $ap.Why + '.') 'green' }
+    else { & $add ('active    : cc-autopilot (' + $ap.Root + '), the Golem''s predecessor. ' + $ap.Why + '. Until then the phrase is not hooked up; send CC "go".') 'amber' }
     foreach ($p in @($View.Problems)) { & $add ('could not read: ' + $p) 'gray' }
     if ($null -eq $View.Enabled) { & $add 'on or off: unknown' 'gray' }
     elseif ($View.Enabled) { & $add ('on or off: ON (' + $ap.Enabled + ' is there)') 'green' }
-    else { & $add 'on or off: OFF (no ENABLED file). Turn on starts it; CC then picks up the queue at its next stop.' 'gray' }
+    else { & $add 'on or off: OFF (no ENABLED file). Wake the Golem starts it; CC then picks up the queue at its next stop.' 'gray' }
     # cc-P94: the run, the steps and the activity, from status.json; the three settings, from settings.json.
     $st = $View.Status
     if ($st) {
@@ -3228,7 +3301,7 @@ function Format-AutopilotPanel {
         $act = Get-AutopilotActivity -Status $st -Settings $View.Settings -Now $Now
         $line = 'status    : ' + $ap.StatusFile
         if ($st.GeneratedAt) { $line += ', written ' + (& $fmt $st.GeneratedAt) + ' (' + (Format-ShortAge ($Now - $st.GeneratedAt)) + ' ago)' }
-        if ($act.Stale) { & $add ($line + '. Older than ' + $script:AutopilotStaleMinutes + ' min while running: is the scheduled task "Shard CC Autopilot Watch" running?') 'amber' }
+        if ($act.Stale) { & $add ($line + '. Older than ' + $script:AutopilotStaleMinutes + ' min while running: is the scheduled task "' + $ap.WatchTask + '" running?') 'amber' }
         else { & $add $line 'gray' }
         $cap = $(if ($st.MaxPerRun -gt 0) { 'cap ' + $st.MaxPerRun } else { 'no cap' })
         $run = $(if ($st.Position -gt 0) { [string]$st.Position + ' of ' + $st.Total + ', ' + $cap } else { 'no prompt running, ' + $cap })
@@ -3249,6 +3322,7 @@ function Format-AutopilotPanel {
         } else {
             & $add 'activity  : none reported yet' 'gray'
         }
+        if ($st.Note) { & $add ('note      : ' + $st.Note) 'normal' }
     } else {
         & $add ('status    : ' + $View.StatusNote) 'gray'
     }
@@ -3282,13 +3356,13 @@ function Format-AutopilotPanel {
         foreach ($x in @($q.Ignored)) { & $add ('            IGNORED ' + $x + ' (unnumbered: only cc-P<nn>-*.md runs; the overseer numbers it)') 'amber' }
     }
     & $add '' 'normal'
-    & $add ('== autopilot.log, the last ' + $LogLines + ' actions (commit output skipped) ' + ('=' * 20)) 'head'
+    & $add ('== ' + $ap.LogName + ', the last ' + $LogLines + ' actions (commit output skipped) ' + ('=' * 20)) 'head'
     $acts = @($View.Actions)
     if (-not $acts.Count) { & $add '(nothing logged)' 'gray' }
     foreach ($a in @($acts | Select-Object -Last $LogLines)) {
         $c = 'normal'
         if ($a.Text -like 'EMAIL FAILED*') { $c = 'red' }
-        elseif ($a.Text -like 'emailed: *' -and (Test-AutopilotAlert ($a.Text -replace '^emailed: (\[Shard CC\] )?', ''))) { $c = 'amber' }
+        elseif ($a.Text -like 'emailed: *' -and (Test-AutopilotAlert ($a.Text -replace '^emailed: (\[(Shard CC|Golem)\] )?', ''))) { $c = 'amber' }
         elseif ($a.Text -match '^handed P\d+|DONE, committing') { $c = 'green' }
         elseif ($a.Text -match '^(queue: ignoring|idle stop|dry run:)') { $c = 'gray' }
         & $add $a.Line $c
@@ -3297,10 +3371,12 @@ function Format-AutopilotPanel {
 }
 
 function Get-AutopilotPlan {
-    # The Autopilot tab's buttons. Each opens one of the autopilot's own scripts in a PowerShell window
-    # of its own, which stays open to be read, or opens the queue folder or the log. $Facts is
-    # Get-AutopilotFacts': only whether files exist is used here.
+    # The Golem tab's buttons. Each opens one of the Golem's own scripts in a PowerShell window
+    # of its own, which stays open to be read, or opens the queue folder, its folder or its log. $Facts is
+    # Get-AutopilotFacts': only whether files exist is used here. cc-P99: $Config.Autopilot is whichever of the
+    # Golem and cc-autopilot is active (Get-GolemConfig), so before the cutover these run cc-autopilot's scripts.
     param([string]$Action, $Config, $Facts)
+    $Action = Resolve-ActionAlias $Action
     $ap = $Config.Autopilot
     $steps = New-Object 'System.Collections.Generic.List[object]'
     $ps = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File')
@@ -3309,44 +3385,57 @@ function Get-AutopilotPlan {
         if (-not ($Facts.Present -and $Facts.Present[$Path])) { $steps.Add((New-PlanStep -Kind refuse -Text ($What + ' was not found: ' + $Path + '. Nothing was run.'))); return $false }
         $true
     }
+    $who = $(if ($ap.Kind -eq 'golem') { 'the Golem' } else { 'cc-autopilot (the Golem is not moved to yet)' })
     switch ($Action) {
-        'autopilot.on' {
-            if (-not $Facts.EmailConfigured) { $steps.Add((New-PlanStep -Kind refuse -Text ('Run Email setup first: there is no ' + $ap.EmailFile + ', and autopilot emails you whenever CC needs you.'))); break }
-            if (-not (& $need $ap.Start 'Start-Autopilot.ps1')) { break }
-            $steps.Add((New-PlanStep -Kind say -Text ('Turn on: Start-Autopilot.ps1 creates ENABLED and lists the queue. Nothing runs yet: at CC''s next stop the hook hands it the lowest-numbered prompt, and after each P<nn> DONE it commits and pushes both repos to GitHub before handing over the next.')))
+        'golem.on' {
+            if (-not $Facts.EmailConfigured) { $steps.Add((New-PlanStep -Kind refuse -Text ('Run Golem email setup first: there is no ' + $ap.EmailFile + ', and the Golem emails you whenever CC needs you.'))); break }
+            if (-not (& $need $ap.Start (Split-Path -Leaf $ap.Start))) { break }
+            $steps.Add((New-PlanStep -Kind say -Text ('Wake the Golem (' + $who + '): ' + (Split-Path -Leaf $ap.Start) + ' creates ENABLED and lists the queue. Nothing runs yet: at CC''s next stop the hook hands it the lowest-numbered prompt, and after each P<nn> DONE it commits and pushes both repos to GitHub before handing over the next.')))
             $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.Start) -Text 'In a window of its own, which stays open.'))
-            $steps.Add((New-PlanStep -Kind log -Text 'autopilot.on'))
+            $steps.Add((New-PlanStep -Kind log -Text 'golem.on'))
         }
-        'autopilot.off' {
-            if (-not (& $need $ap.Stop 'Stop-Autopilot.ps1')) { break }
-            $steps.Add((New-PlanStep -Kind say -Text 'Turn off: Stop-Autopilot.ps1 removes ENABLED. A prompt CC is running still finishes, but nothing is committed after it and nothing new is handed over; commit by hand.'))
+        'golem.off' {
+            if (-not (& $need $ap.Stop (Split-Path -Leaf $ap.Stop))) { break }
+            $steps.Add((New-PlanStep -Kind say -Text ('Rest the Golem (' + $who + '): ' + (Split-Path -Leaf $ap.Stop) + ' removes ENABLED. A prompt CC is running still finishes, but nothing is committed after it and nothing new is handed over; commit by hand.')))
             $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.Stop) -Text 'In a window of its own, which stays open.'))
-            $steps.Add((New-PlanStep -Kind log -Text 'autopilot.off'))
+            $steps.Add((New-PlanStep -Kind log -Text 'golem.off'))
         }
-        'autopilot.email' {
+        'golem.email' {
             if (-not (& $need $ap.Setup 'Setup-Email.ps1')) { break }
-            $steps.Add((New-PlanStep -Kind say -Text 'Email setup: Setup-Email.ps1 asks for the sender Gmail address, the address to alert and the sender''s app password, in its own window and never on a command line. The password is stored with Windows DPAPI in smtp-cred.xml. It then sends a test email.'))
+            $steps.Add((New-PlanStep -Kind say -Text 'Golem email setup: Setup-Email.ps1 asks for the sender Gmail address, the address to alert and the sender''s app password, in its own window and never on a command line. The password is stored with Windows DPAPI in smtp-cred.xml. It then sends a test email.'))
             $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.Setup) -Text 'In a window of its own, which stays open.'))
-            $steps.Add((New-PlanStep -Kind log -Text 'autopilot.email'))
+            $steps.Add((New-PlanStep -Kind log -Text 'golem.email'))
         }
-        'autopilot.test' {
-            if (-not $Facts.EmailConfigured -or -not $Facts.CredStored) { $steps.Add((New-PlanStep -Kind refuse -Text ('Run Email setup first: ' + $ap.EmailFile + ' and ' + $ap.CredFile + ' are both needed to send.'))); break }
+        'golem.test' {
+            if (-not $Facts.EmailConfigured -or -not $Facts.CredStored) { $steps.Add((New-PlanStep -Kind refuse -Text ('Run Golem email setup first: ' + $ap.EmailFile + ' and ' + $ap.CredFile + ' are both needed to send.'))); break }
             if (-not (& $need $ap.TestEmail 'Send-TestEmail.ps1')) { break }
             $steps.Add((New-PlanStep -Kind say -Text 'Send test email: Send-TestEmail.ps1 sends one email to the address in email.json the way the hook does, and prints sent or the error. It changes nothing.'))
             $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.TestEmail) -Text 'In a window of its own, which stays open.'))
-            $steps.Add((New-PlanStep -Kind log -Text 'autopilot.test'))
+            $steps.Add((New-PlanStep -Kind log -Text 'golem.test'))
         }
-        'autopilot.queue' {
+        'golem.queue' {
             $steps.Add((New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($ap.Queue) -Text 'Opening the queue folder. Only cc-P<nn>-*.md runs, lowest number first; numbers belong to the overseer.'))
         }
-        'autopilot.log' {
+        'golem.log' {
             if (-not $Facts.LogExists) { $steps.Add((New-PlanStep -Kind refuse -Text ('There is no ' + $ap.LogFile + ' yet: the hook writes it the first time it acts.'))); break }
-            $steps.Add((New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @($ap.LogFile) -Text 'Opening autopilot.log in Notepad. Read it there; the hook appends to it.'))
+            $steps.Add((New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @($ap.LogFile) -Text ('Opening ' + $ap.LogName + ' in Notepad. Read it there; the hook appends to it.')))
         }
-        'autopilot.settings' {
+        'golem.settings' {
             # cc-P94. Opens it and nothing more: whatever is saved there the hook reads at its next event.
             if (-not $Facts.SettingsExists) { $steps.Add((New-PlanStep -Kind refuse -Text ('There is no ' + $ap.SettingsFile + ': the hook uses its defaults (progressEmails true, maxPerRun 6, stallMinutes 45). Nothing was opened.'))); break }
             $steps.Add((New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @($ap.SettingsFile) -Text 'Opening settings.json in Notepad. A saved change counts from the hook''s next event: progressEmails (true or false), maxPerRun (0 is no cap), stallMinutes.'))
+        }
+        'golem.folder' {
+            $steps.Add((New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($ap.Root) -Text ('Opening ' + $ap.Root + ' (' + $who + ') in Explorer.')))
+        }
+        'golem.move' {
+            # cc-P99. The cutover. Its own script refuses while a prompt runs; it is asked here first so the phrase is not wasted.
+            if ($ap.Kind -eq 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text ('The Golem is already active (' + $ap.GolemActiveFile + '). To go back: ' + $ap.MoveScript + ' -Rollback, in a PowerShell window.'))); break }
+            if (-not (& $need $ap.MoveScript 'Move-ToGolem.ps1')) { break }
+            if ($Facts.Running) { $steps.Add((New-PlanStep -Kind refuse -Text ('A prompt is running (' + $Facts.Running + '): the move waits until it has said DONE and been committed, or STOPPED. Nothing was run.'))); break }
+            $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ('This moves the CC queue from cc-autopilot to the Golem: it rests cc-autopilot, points the CC hooks in both repos at ' + (Join-Path $ap.GolemRoot 'golem.ps1') + ', replaces the scheduled task "Shard CC Autopilot Watch" with "Golem Watch", copies the state and wakes the Golem. Move-ToGolem.ps1 then prints its dry run in its own window and asks you to type move before it changes anything. Rollback: Move-ToGolem.ps1 -Rollback.')))
+            $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.MoveScript) -Text 'In a window of its own, which stays open. Start a new CC session afterwards: hooks load at start.'))
+            $steps.Add((New-PlanStep -Kind log -Text 'golem.move'))
         }
         default { $steps.Add((New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them."))) }
     }
@@ -4120,7 +4209,7 @@ function Wait-TestShardHealth {
 }
 
 function Get-AutopilotFacts {
-    # cc-P74: what the AUTOPILOT tile and the Autopilot tab read, on every refresh. Cheap on purpose:
+    # cc-P74: what the GOLEM tile and the Golem tab read, on every refresh. Cheap on purpose:
     # three small files, the last TailLines of the log (never all of it) and one folder listing. Only
     # whether email.json and smtp-cred.xml exist is checked; neither is ever opened here. A read that
     # fails is recorded beside it, for Get-AutopilotGlance to say UNKNOWN rather than guess.
@@ -4136,7 +4225,7 @@ function Get-AutopilotFacts {
     $logLines = @()
     $logExists = [bool](Test-Path -LiteralPath $ap.LogFile -PathType Leaf)
     if ($logExists) {
-        try { $logLines = @(Get-Content -LiteralPath $ap.LogFile -Tail $ap.TailLines -ErrorAction Stop) } catch { $errors.Add('autopilot.log: ' + $_.Exception.Message) }
+        try { $logLines = @(Get-Content -LiteralPath $ap.LogFile -Tail $ap.TailLines -ErrorAction Stop) } catch { $errors.Add($ap.LogName + ': ' + $_.Exception.Message) }
     }
     $names = $null
     try { $names = @(Get-ChildItem -LiteralPath $ap.Queue -File -ErrorAction Stop | ForEach-Object { $_.Name }) } catch { $errors.Add('queue: ' + $_.Exception.Message) }
@@ -4150,7 +4239,10 @@ function Get-AutopilotFacts {
     $settingsExists = [bool]($ap.SettingsFile -and (Test-Path -LiteralPath $ap.SettingsFile -PathType Leaf))
     if ($settingsExists) { try { $settingsText = [IO.File]::ReadAllText($ap.SettingsFile) } catch { } }
     $present = @{}
-    foreach ($f in @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail)) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) }
+    foreach ($f in @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
+    # cc-P99: the prompt running, from state.json, for Move to the Golem (which refuses while one runs).
+    $running = ''
+    if ($stateText) { try { $running = [string]($stateText | ConvertFrom-Json).current } catch { } }
     [pscustomobject]@{
         Enabled         = $enabled
         StatusText      = $statusText
@@ -4164,6 +4256,7 @@ function Get-AutopilotFacts {
         EmailConfigured = [bool](Test-Path -LiteralPath $ap.EmailFile -PathType Leaf)
         CredStored      = [bool](Test-Path -LiteralPath $ap.CredFile -PathType Leaf)
         Present         = $present
+        Running         = $running
         Errors          = $errors.ToArray()
     }
 }
@@ -4194,7 +4287,7 @@ function Get-AutopilotViewNow {
     param($Config)
     try {
         $f = Get-AutopilotFacts $Config
-        $v = Get-AutopilotView -Enabled $f.Enabled -StateText $f.StateText -LogLines $f.LogLines -QueueNames $f.QueueNames -Errors $f.Errors -StatusText $f.StatusText -StatusError $f.StatusError -SettingsText $f.SettingsText
+        $v = Get-AutopilotView -Enabled $f.Enabled -StateText $f.StateText -LogLines $f.LogLines -QueueNames $f.QueueNames -Errors $f.Errors -StatusText $f.StatusText -StatusError $f.StatusError -SettingsText $f.SettingsText -Kind ([string]$Config.Autopilot.Kind)
     } catch {
         $f = $null
         $v = Get-AutopilotView -Enabled $null -StateText $null -LogLines @() -QueueNames $null -Errors @($_.Exception.Message)
@@ -5493,8 +5586,11 @@ function Update-TileFit {
 }
 
 function Update-AutopilotView {
-    # cc-P74: the AUTOPILOT tile and, when it exists, the Autopilot tab's panel. Read from disk on
+    # cc-P74: the GOLEM tile and, when it exists, the Golem tab's panel. Read from disk on
     # every status refresh (and when the tab is opened), never from the capture file: it is not docker.
+    # cc-P99: which folder is active is re-read too, so a cutover shows at the next refresh.
+    $g = $script:cfg.Autopilot
+    if ($g -and $g.GolemRoot -and $g.AutopilotRoot) { $script:cfg.Autopilot = Get-GolemConfig $g.GolemRoot $g.AutopilotRoot $g.Queue }
     $a = Get-AutopilotViewNow $script:cfg
     $script:autopilot = $a
     if ($script:ui.AutopilotTile) { Set-TileLook $script:ui.AutopilotTile $a.Tile }
@@ -5987,13 +6083,14 @@ function Invoke-ConsoleButton {
     param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage,
         [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [string]$Commit)
     try {
+        $ActionKey = Resolve-ActionAlias $ActionKey
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
         $isCommit = ($ActionKey -like 'commit.*')
         $isPackage = ($ActionKey -like 'package.*')
-        $isAutopilot = ($ActionKey -like 'autopilot.*')
+        $isAutopilot = ($ActionKey -like 'golem.*')
         $isVpn = ($ActionKey -like 'vpn.*')
         if (-not $ShardKey -and $isVpn) { $ShardKey = 'network' }
-        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'autopilot' }; if ($ActionKey -like 'links.*') { $ShardKey = 'links' } }
+        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'golem' }; if ($ActionKey -like 'links.*') { $ShardKey = 'links' } }
         # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
         # status is a capture file". Only the second decides where the state comes from.
         if ($script:fromCapture -and -not $script:dry) { throw 'the status is from a capture file, so nothing may run for real. Relaunch without -DryRun.' }
@@ -6009,7 +6106,7 @@ function Invoke-ConsoleButton {
             $vpnFacts = Get-VpnFacts $script:cfg
             $script:vpnFacts = $vpnFacts; $script:vpnFactsAt = [datetime]::UtcNow
         } elseif ($isAutopilot) {
-            # cc-P74: the autopilot's folder, never docker.
+            # cc-P74: the Golem's folder, never docker.
             $apFacts = Get-AutopilotFacts $script:cfg
         } elseif ($isCommit) {
             # The commit buttons read git and the notes, never docker (cc-P60).
@@ -6257,8 +6354,8 @@ function New-ConsoleForm {
     $glance.Controls.Add($script:ui.NetTile.Panel, $col, 0)
     $col++
     $script:netProbe = $null; $script:netResult = $null; $script:netResultAt = $null
-    # cc-P74: the CC autopilot. Drawn by Update-AutopilotView on every status refresh.
-    $script:ui.AutopilotTile = New-StatusTile 'AUTOPILOT'
+    # cc-P74: the Golem (AUTOPILOT until cc-P99). Drawn by Update-AutopilotView on every status refresh.
+    $script:ui.AutopilotTile = New-StatusTile 'GOLEM'
     $glance.Controls.Add($script:ui.AutopilotTile.Panel, $col, 0)
     $col++
     # cc-P83: PLAY TESTS, with the two links beside it (inside the tile, under its line).
@@ -6593,7 +6690,7 @@ function New-ConsoleForm {
     }
     $where = $Config.CommitScript
     if (-not (Test-Path -LiteralPath $Config.CommitScript -PathType Leaf)) { $where += ' (NOT FOUND: both buttons will say so and do nothing)' }
-    $commitPage = New-ButtonPage 'Commit' ('Runs ' + $where + '. Preview changes nothing. Commit and push asks for the phrase ''commit shard work'': both repos are public on GitHub, so a pushed commit cannot be taken back. It waits ' + (Format-QuietWindow $Config.CommitQuietSeconds) + ' after the last change and until every CC prompt has said DONE; Preview names what it waits on.' + "`r`n" + 'While autopilot is on it commits and pushes after each P<nn> DONE by itself (Autopilot tab), so a manual commit is rarely needed.') $commitBtns
+    $commitPage = New-ButtonPage 'Commit' ('Runs ' + $where + '. Preview changes nothing. Commit and push asks for the phrase ''commit shard work'': both repos are public on GitHub, so a pushed commit cannot be taken back. It waits ' + (Format-QuietWindow $Config.CommitQuietSeconds) + ' after the last change and until every CC prompt has said DONE; Preview names what it waits on.' + "`r`n" + 'While the Golem is awake it commits and pushes after each P<nn> DONE by itself (Golem tab), so a manual commit is rarely needed.') $commitBtns
     $msgLabel = New-Caption 'Message (blank: the script''s default, "Shard work, <date> <time>"):' 400
     $msgBox = New-Object Windows.Forms.TextBox
     $msgBox.Name = 'commitMessage'
@@ -6696,22 +6793,22 @@ function New-ConsoleForm {
     $script:ui.PackageButtons = @($buildBtn, $publishBtn, $checkBtn)
     Update-PackageList
 
-    # autopilot (cc-P74): Chase's CC autopilot, through its own scripts. The panel only reads.
-    $apPage = New-Object Windows.Forms.TabPage('Autopilot')
+    # Golem (cc-P74 as Autopilot, cc-P99): the CC queue runner, through its own scripts. The panel only reads.
+    $apPage = New-Object Windows.Forms.TabPage('Golem')
     $apTop = New-Object Windows.Forms.FlowLayoutPanel
     $apTop.Dock = 'Top'
     $apTop.AutoSize = $true
     $apTop.WrapContents = $true
-    $apCap = New-Caption ('Autopilot hands CC the next prompt in ' + $Config.Autopilot.Queue + ' each time the running one ends "P<nn> DONE", and emails you when CC needs you. After every DONE it commits AND PUSHES both repos to GitHub on its own. Turn off stops the hand-offs; a running prompt still finishes. Each button opens the autopilot''s own script in a window of its own; the console never reorders the queue. After maxPerRun prompts (settings.json) autopilot stops and keeps the queue: start a new CC session before turning it back on.') 1100
+    $apCap = New-Caption ('The Golem hands CC the next prompt in ' + $Config.Autopilot.Queue + ' each time the running one ends "P<nn> DONE", and emails you when CC needs you. After every DONE it commits AND PUSHES both repos to GitHub on its own. In a CC session, say: "Golem, please work on the shard tasks" (or "Golem, stop" to rest after the running prompt). Rest the Golem stops the hand-offs at once; a running prompt still finishes. Each button opens the Golem''s own script in a window of its own; the console never reorders the queue. After maxPerRun prompts (settings.json) the Golem rests and keeps the queue: start a new CC session before waking it. Until Move to the Golem, the buttons run cc-autopilot''s scripts; the panel says which is active.') 1100
     $apTop.Controls.Add($apCap)
     $apTop.SetFlowBreak($apCap, $true)
     $apBtns = @()
-    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Autopilot' })) {
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Golem' })) {
         $b = New-ConsoleButton $a.Label $a.Key 170
         $apBtns += $b
         $apTop.Controls.Add($b)
     }
-    # cc-P83: the play-test page and the dashboard, reachable from here too. Not in AutopilotButtons.
+    # cc-P83: the play-test page and the dashboard, reachable from here too. Not in AutopilotButtons (the Golem's).
     foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Links' })) {
         $lb = New-ConsoleButton ('Open ' + $a.Label.ToLower()) $a.Key 170
         $apTop.Controls.Add($lb)
@@ -6869,7 +6966,7 @@ if ($Action -eq 'list') {
     Write-Host 'fix.diagnose only reads. fix.restart, fix.rollback, fix.rebuild and fix.prune take -ConfirmLive ''restart test'', ''roll back test'', ''rebuild test'', ''prune images''; fix.rebuild takes -Commit <hash from its list, or HEAD>; fix.rollback takes -ImageTag sl-modernuo:good-<commit> (default: the newest).'
     Write-Host 'vpn.disconnect needs -Mode Execute: it ends a WireGuard for Windows tunnel (elevated), opens Proton VPN, or names the VPN to disconnect in its app.'
     Write-Host 'links.playtests, links.dashboard and links.status open the play-test page (8093), the dashboard (3000) and the status page (8093/status) in the browser.'
-    Write-Host 'autopilot.on, .off, .email and .test need -Mode Execute; each opens the autopilot''s own script in a window of its own. autopilot.queue, .log and .settings only open.'
+    Write-Host 'golem.on, .off, .email, .test and .move need -Mode Execute; each opens the Golem''s own script in a window of its own (golem.move after -ConfirmLive ''move to the golem''). golem.queue, .log, .settings and .folder only open. autopilot.* still work as aliases.'
     exit 0
 }
 
@@ -6882,7 +6979,7 @@ if ($WorldCommands) {
 
 if ($Status) {
     $st = Get-ConsoleState -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom
-    # cc-P74: the AUTOPILOT tile is read from its folder even under -DryRun; it is not docker.
+    # cc-P74: the GOLEM tile is read from its folder even under -DryRun; it is not docker.
     $ap = Get-AutopilotViewNow $config
     # cc-P83: and PLAY TESTS, from shard-migration\testing\play-tests.json.
     $pt = Get-PlayTestGlanceNow $config
@@ -6891,12 +6988,14 @@ if ($Status) {
 }
 
 if ($Action) {
+    # cc-P99: autopilot.* are the Golem's buttons under their old names.
+    $Action = Resolve-ActionAlias $Action
     $sk = $Shard
     if ($Action -like 'live.*') { $sk = 'live' }
     if ($Action -like 'test.*') { $sk = 'test' }
     if ($Action -like 'commit.*') { $sk = 'repos' }
     if ($Action -like 'package.*') { $sk = 'package' }
-    if ($Action -like 'autopilot.*') { $sk = 'autopilot' }
+    if ($Action -like 'golem.*') { $sk = 'golem' }
     if ($Action -like 'links.*') { $sk = 'links' }
     if ($Action -like 'vpn.*') { $sk = 'network' }
     # The mode is decided and shown before anything is read or run (D37).
@@ -6916,8 +7015,8 @@ if ($Action) {
         # cc-P83: a link reads nothing.
     } elseif ($Action -like 'vpn.*') {
         $vpnFacts = Get-VpnFacts $config
-    } elseif ($Action -like 'autopilot.*') {
-        # cc-P74: the autopilot's folder, never docker.
+    } elseif ($Action -like 'golem.*') {
+        # cc-P74: the Golem's folder, never docker.
         $apFacts = Get-AutopilotFacts $config
     } elseif ($Action -like 'commit.*') {
         # From a click the message comes as base64 (Get-ChildArgumentLine); -CommitMessage is for a person.

@@ -63,6 +63,9 @@ function Read-Fixture {
 
 $repo   = (Resolve-Path (Join-Path $here '..\..')).Path
 $config = Get-ConsoleConfig -RepoRoot $repo
+# cc-P99: Get-ConsoleConfig picks D:\UO\golem once it is ACTIVE. The facts were written against cc-autopilot's
+# folder, so they pin it; the Golem's own config has facts of its own (P99_*).
+$config.Autopilot = New-AutopilotConfig 'D:\UO\cc-autopilot' 'D:\UO\cc-prompts\queue'
 $cap    = Read-Fixture 'console-capture-2026-09-29.txt'
 $probe  = Read-Fixture 'console-capture-probe-2026-09-29.txt'
 $state  = New-ConsoleState -Config $config -Sections $cap
@@ -1031,7 +1034,7 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
-        Assert-Equal 'Test shard,Fix test shard,Snapshots,World setup,Diagnostics,Commit,Player package,Autopilot,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot, cc-P96 Fix test shard beside Test shard; LIVE stays last'
+        Assert-Equal 'Test shard,Fix test shard,Snapshots,World setup,Diagnostics,Commit,Player package,Golem,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot (Golem since cc-P99), cc-P96 Fix test shard beside Test shard; LIVE stays last'
         Assert-Equal 'Preview commit,Commit and push' (@($script:ui.CommitButtons | ForEach-Object { $_.Text }) -join ',') 'cc-P60'
         Assert-Equal 'package.build,package.publish,package.check' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P63, and cc-P68''s Check selected'
         Assert-True ($null -ne $script:ui.CommitForce -and -not $script:ui.CommitForce.Checked) 'cc-P68: the Force box, unticked'
@@ -2750,7 +2753,7 @@ Fact 'P74_AnEmptyLogIsNotAProblem' {
 Fact 'P74_TheStatusReportListsTheAutopilotTileAfterTheThree' {
     $t = Get-ApTile -StateText $apRunning -Log 'autopilot-log-needs-you.txt'
     $lines = @(Format-StatusReport $state $config @($t))
-    Assert-True ($lines[4].Text -match '^AUTOPILOT\s+: NEEDS YOU\s+NEEDS YOU: P74 stopped mid-task$') $lines[4].Text
+    Assert-True ($lines[4].Text -match '^GOLEM\s+: NEEDS YOU\s+NEEDS YOU: P74 stopped mid-task$') $lines[4].Text
     Assert-Equal 'amber' $lines[4].Color
     Assert-Equal 'STATUS PUBLISHER' (($lines[3].Text -split ':')[0].Trim()) 'after the three'
     Assert-Equal (@(Format-StatusReport $state $config).Count + 1) $lines.Count 'one line more, nothing else changes'
@@ -2764,7 +2767,7 @@ Fact 'P74_TurnOnIsRefusedUntilEmailIsSetUp' {
     $p = @(Get-ActionPlan -Action 'autopilot.on' -Config $config -AutopilotFacts $no)
     Assert-Equal 1 $p.Count
     Assert-Equal 'refuse' $p[0].Kind
-    Assert-True ($p[0].Text.StartsWith('Run Email setup first')) $p[0].Text
+    Assert-True ($p[0].Text.StartsWith('Run Golem email setup first')) $p[0].Text
     $t = @(Get-ActionPlan -Action 'autopilot.test' -Config $config -AutopilotFacts $no)
     Assert-Equal 'refuse' $t[0].Kind 'nothing to send with'
     $cfgOnly = [pscustomobject]@{ EmailConfigured = $true; CredStored = $false; LogExists = $true; Present = $apFactsOn.Present }
@@ -2815,7 +2818,8 @@ Fact 'P74_TurningOnOrOffNeedsAModeHeadless' {
     Assert-Equal 'refuse' (Resolve-RunMode -Action 'autopilot.test') 'sending mail changes something outside'
     Assert-Equal 'execute' (Resolve-RunMode -Action 'autopilot.log') 'only opens'
     $b = Get-ModeBanner -RunMode 'execute' -Action 'autopilot.on' -ShardKey 'autopilot'
-    Assert-True ($b.Title.StartsWith('AUTOPILOT - autopilot.on (autopilot)')) $b.Title
+    # cc-P99: autopilot.on is an alias, and the banner names what it resolved to.
+    Assert-True ($b.Title.StartsWith('GOLEM - golem.on (golem)')) $b.Title
     Assert-True (-not (($b.Lines -join ' ') -match 'shard\.$')) 'it does not say it acts on a shard'
 }
 
@@ -2867,21 +2871,21 @@ Fact 'P74_TheTileAndTheTabAreBuiltAndDrawn' {
     $form = New-ConsoleForm -Config $cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         Assert-True ($null -ne $script:ui.AutopilotTile) 'the fifth tile exists'
-        Assert-Equal 'AUTOPILOT: NEEDS YOU' $script:ui.AutopilotTile.Word.Text
+        Assert-Equal 'GOLEM: NEEDS YOU' $script:ui.AutopilotTile.Word.Text
         Assert-Equal (Get-TileColors 'amber')[0] $script:ui.AutopilotTile.Panel.BackColor 'amber tile'
-        Assert-Equal 'Autopilot' $script:ui.AutopilotPage.Text
-        Assert-Equal 'autopilot.on,autopilot.off,autopilot.email,autopilot.test,autopilot.queue,autopilot.log,autopilot.settings' (($script:ui.AutopilotButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P94 adds Open settings.json last'
-        $apCap = @($script:ui.AutopilotPage.Controls | ForEach-Object { @($_.Controls) } | Where-Object { $_.Text -like 'Autopilot hands CC*' })
+        Assert-Equal 'Golem' $script:ui.AutopilotPage.Text
+        Assert-Equal 'golem.on,golem.off,golem.email,golem.test,golem.queue,golem.log,golem.settings,golem.folder,golem.move' (($script:ui.AutopilotButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P94 adds Golem settings; cc-P99 adds the folder and the move'
+        $apCap = @($script:ui.AutopilotPage.Controls | ForEach-Object { @($_.Controls) } | Where-Object { $_.Text -like 'The Golem hands CC*' })
         Assert-Equal 1 $apCap.Count 'the caption'
-        Assert-True ($apCap[0].Text -match 'After maxPerRun prompts \(settings\.json\) autopilot stops and keeps the queue: start a new CC session before turning it back on\.') $apCap[0].Text
+        Assert-True ($apCap[0].Text -match 'After maxPerRun prompts \(settings\.json\) the Golem rests and keeps the queue: start a new CC session before waking it\.') $apCap[0].Text
         Assert-True ($script:ui.Tabs.TabPages.Contains($script:ui.AutopilotPage)) 'the tab is in the tab control'
         Assert-True ($script:ui.AutopilotPanel.Text -match 'needs you : NEEDS YOU: P74 stopped mid-task') 'the panel is drawn'
-        Assert-True ($script:ui.Status.Text -match 'AUTOPILOT\s+: NEEDS YOU') 'the status panel lists it too'
+        Assert-True ($script:ui.Status.Text -match 'GOLEM\s+: NEEDS YOU') 'the status panel lists it too'
         $cap = $script:ui.CommitPage.Controls[0].Controls[0].Text
-        Assert-True ($cap -match 'While autopilot is on it commits and pushes after each P<nn> DONE') $cap
+        Assert-True ($cap -match 'While the Golem is awake it commits and pushes after each P<nn> DONE') $cap
         Remove-Item -LiteralPath $cfg.Autopilot.Enabled
         [void](Update-AutopilotView)
-        Assert-Equal 'AUTOPILOT: OFF' $script:ui.AutopilotTile.Word.Text 'redrawn from disk'
+        Assert-Equal 'GOLEM: OFF' $script:ui.AutopilotTile.Word.Text 'redrawn from disk'
     } finally { $form.Dispose(); $script:NetProbeDisabled = $false; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
@@ -3035,7 +3039,7 @@ Fact 'P94_ThePanelSaysTheRunTheStepsTheActivityAndTheSettings' {
     $v = Get-ApsView (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2)
     $p = @(Format-AutopilotPanel -View $v -Config $config -Now $apsNow) | ForEach-Object { $_.Text }
     $want = @(
-        'AUTOPILOT : RUNNING. P92  2 of 5  step 3/6  14m',
+        'GOLEM     : RUNNING. P92  2 of 5  step 3/6  14m',
         '            Writing the tile; last activity 2m ago',
         'run       : 2 of 5, cap 6, 1 done, started 2026-10-14 05:49:20',
         'steps     : 3 of 6 done, now: Writing the tile',
@@ -3053,9 +3057,160 @@ Fact 'P94_ThePanelSaysTheRunTheStepsTheActivityAndTheSettings' {
 Fact 'P94_TheStatusReportIndentsTheTilesSecondLine' {
     $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2)
     $lines = @(Format-StatusReport $state $config @($t))
-    Assert-True ($lines[4].Text -match '^AUTOPILOT\s+: RUNNING\s+P92  2 of 5  step 3/6  14m$') $lines[4].Text
+    Assert-True ($lines[4].Text -match '^GOLEM\s+: RUNNING\s+P92  2 of 5  step 3/6  14m$') $lines[4].Text
     Assert-Equal ((' ' * 35) + 'Writing the tile; last activity 2m ago') $lines[5].Text
     Assert-Equal 'green' $lines[5].Color
+}
+
+# --- cc-P99: the Golem ------------------------------------------------------------------------------
+# Autopilot became the Golem (Chase, 2026-10-14). The labels, the tile, the tab and the window titles say Golem;
+# autopilot.* keys are aliases of golem.*; the console reads D:\UO\golem once it is ACTIVE, else cc-autopilot.
+
+Fact 'P99_TheButtonsHaveTheGolemsLabels' {
+    $want = [ordered]@{ 'golem.on' = 'Wake the Golem'; 'golem.off' = 'Rest the Golem'; 'golem.email' = 'Golem email setup'; 'golem.test' = 'Send test email';
+        'golem.queue' = 'Open the queue folder'; 'golem.log' = 'Golem log'; 'golem.settings' = 'Golem settings'; 'golem.folder' = 'Open Golem folder'; 'golem.move' = 'Move to the Golem' }
+    $acts = @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Golem' })
+    Assert-Equal (@($want.Keys) -join ',') (($acts | ForEach-Object { $_.Key }) -join ',') 'the Golem group, in order'
+    foreach ($a in $acts) { Assert-Equal $want[$a.Key] $a.Label $a.Key }
+    Assert-Equal 0 @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Autopilot' -or $_.Key -like 'autopilot.*' -or $_.Label -match '(?i)autopilot' }).Count 'no Autopilot button is left'
+    $tips = Get-ConsoleTooltips
+    foreach ($k in @($want.Keys) + @('tile.GOLEM', 'tab.Golem')) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
+    Assert-True (-not $tips.Contains('tile.AUTOPILOT') -and -not $tips.Contains('tab.Autopilot')) 'no old tooltip keys'
+}
+
+Fact 'P99_AutopilotKeysAreAliasesOfTheGolemsKeys' {
+    foreach ($k in 'on', 'off', 'email', 'test', 'queue', 'log', 'settings', 'folder', 'move') { Assert-Equal ('golem.' + $k) (Resolve-ActionAlias ('autopilot.' + $k)) $k }
+    Assert-Equal 'test.start' (Resolve-ActionAlias 'test.start') 'other keys are left alone'
+    $apFacts = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; SettingsExists = $true; Present = @{}; Running = '' }
+    foreach ($f in @($config.Autopilot.Start, $config.Autopilot.Stop, $config.Autopilot.Setup, $config.Autopilot.TestEmail)) { $apFacts.Present[$f] = $true }
+    foreach ($k in 'on', 'off', 'email', 'test', 'queue', 'log', 'settings') {
+        $old = @(Get-ActionPlan -Action ('autopilot.' + $k) -Config $config -AutopilotFacts $apFacts) | ForEach-Object { $_.Kind + ':' + $_.Text + ':' + (@($_.Arguments) -join ' ') }
+        $new = @(Get-ActionPlan -Action ('golem.' + $k) -Config $config -AutopilotFacts $apFacts) | ForEach-Object { $_.Kind + ':' + $_.Text + ':' + (@($_.Arguments) -join ' ') }
+        Assert-Equal ($new -join '|') ($old -join '|') ('autopilot.' + $k + ' plans exactly what golem.' + $k + ' does')
+        Assert-True (@($old | Where-Object { $_ -like 'refuse:Unknown action*' }).Count -eq 0) ('autopilot.' + $k + ' is known')
+    }
+    Assert-Equal (Resolve-RunMode -Action 'golem.on') (Resolve-RunMode -Action 'autopilot.on') 'the same mode rule'
+    Assert-Equal 'execute' (Resolve-RunMode -Action 'autopilot.folder') 'only opens'
+}
+
+Fact 'P99_WindowTitlesSayGolem' {
+    foreach ($k in 'golem.on', 'autopilot.off', 'golem.move') {
+        $b = Get-ModeBanner -RunMode 'execute' -Action $k -ShardKey 'golem'
+        Assert-True ($b.Title -match '^GOLEM - golem\.\w+ \(golem\) - Shard Console$') $b.Title
+        Assert-True (($b.Lines -join ' ') -match 'the Golem''s own script') ($b.Lines -join ' ')
+    }
+    $d = Get-ModeBanner -RunMode 'dry' -Action 'autopilot.log' -ShardKey 'golem'
+    Assert-True ($d.Title -eq 'DRY RUN - golem.log (golem) - Shard Console') $d.Title
+}
+
+Fact 'P99_TheConsoleReadsTheGolemFirstAndFallsBackToTheAutopilot' {
+    Assert-Equal 'golem' (Select-GolemKind -GolemStartPresent $true -GolemActive $true).Kind 'after the cutover'
+    Assert-Equal 'autopilot' (Select-GolemKind -GolemStartPresent $true -GolemActive $false).Kind 'built, not moved to'
+    Assert-Equal 'autopilot' (Select-GolemKind -GolemStartPresent $false -GolemActive $true).Kind 'an ACTIVE file with no Golem scripts is not trusted'
+    Assert-Equal 'autopilot' (Select-GolemKind -GolemStartPresent $false -GolemActive $false).Kind 'no Golem at all'
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p99-' + [guid]::NewGuid().ToString('N'))
+    $g = Join-Path $dir 'golem'; $a = Join-Path $dir 'cc-autopilot'; $q = Join-Path $dir 'queue'
+    foreach ($d in $g, $a, $q) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
+    try {
+        $c0 = Get-GolemConfig $g $a $q
+        Assert-Equal 'autopilot' $c0.Kind 'nothing in the Golem folder'
+        Assert-Equal (Join-Path $a 'Start-Autopilot.ps1') $c0.Start
+        Assert-Equal (Join-Path $a 'autopilot.log') $c0.LogFile
+        Set-Content -LiteralPath (Join-Path $g 'Start-Golem.ps1') -Value '' -Encoding ASCII
+        $c1 = Get-GolemConfig $g $a $q
+        Assert-Equal 'autopilot' $c1.Kind 'built but no ACTIVE'
+        Assert-Equal (Join-Path $g 'Move-ToGolem.ps1') $c1.MoveScript 'the move is the Golem''s script even before'
+        Set-Content -LiteralPath (Join-Path $g 'ACTIVE') -Value 'x' -Encoding ASCII
+        $c2 = Get-GolemConfig $g $a $q
+        Assert-Equal 'golem' $c2.Kind 'ACTIVE: the Golem'
+        Assert-Equal $g $c2.Root
+        Assert-Equal (Join-Path $g 'Start-Golem.ps1') $c2.Start
+        Assert-Equal (Join-Path $g 'Stop-Golem.ps1') $c2.Stop
+        Assert-Equal (Join-Path $g 'golem.log') $c2.LogFile
+        Assert-Equal (Join-Path $g 'status.json') $c2.StatusFile
+        Assert-Equal 'Golem Watch' $c2.WatchTask
+        # The form re-reads it on every refresh: a cutover made while it is open shows at the next one.
+        $cfg = Get-ConsoleConfig -RepoRoot $repo
+        $cfg.Autopilot = $c1
+        $script:cfg = $cfg
+        $script:ui = @{}
+        [void](Update-AutopilotView)
+        Assert-Equal 'golem' $script:cfg.Autopilot.Kind 'Update-AutopilotView picked up ACTIVE'
+        # The panel says which one is active, and the start phrase.
+        $v = Get-AutopilotView -Enabled $false -StateText $null -LogLines @() -QueueNames @() -Kind 'golem'
+        $pg = @(Format-AutopilotPanel -View $v -Config ([pscustomobject]@{ Autopilot = $c2 }) -Now (Get-Date)) | ForEach-Object { $_.Text }
+        Assert-True ($pg -contains 'In a CC session, say: "Golem, please work on the shard tasks"') ($pg -join ' | ')
+        Assert-True (@($pg | Where-Object { $_ -like ('active    : the Golem (' + $g + ')*') }).Count -eq 1) ($pg -join ' | ')
+        Assert-True ($pg -contains '== golem.log, the last 20 actions (commit output skipped) ====================') 'the log is named by its own name'
+        $va = Get-AutopilotView -Enabled $false -StateText $null -LogLines @() -QueueNames @()
+        $pa = @(Format-AutopilotPanel -View $va -Config ([pscustomobject]@{ Autopilot = $c1 }) -Now (Get-Date)) | ForEach-Object { $_.Text }
+        Assert-True (@($pa | Where-Object { $_ -like ('active    : cc-autopilot (' + $a + '), the Golem''s predecessor.*Move to the Golem*') }).Count -eq 1) ($pa -join ' | ')
+        # And the buttons run the active one's scripts.
+        $facts = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; SettingsExists = $true; Present = @{ $c2.Start = $true; $c1.Start = $true }; Running = '' }
+        $pw = @(Get-ActionPlan -Action 'golem.on' -Config ([pscustomobject]@{ Autopilot = $c2; PowerShell = 'powershell.exe' }) -AutopilotFacts $facts | Where-Object { $_.Kind -eq 'window' })
+        Assert-Equal (Join-Path $g 'Start-Golem.ps1') @($pw[0].Arguments)[4] 'the Golem''s Start-Golem.ps1'
+        $pa2 = @(Get-ActionPlan -Action 'golem.on' -Config ([pscustomobject]@{ Autopilot = $c1; PowerShell = 'powershell.exe' }) -AutopilotFacts $facts | Where-Object { $_.Kind -eq 'window' })
+        Assert-Equal (Join-Path $a 'Start-Autopilot.ps1') @($pa2[0].Arguments)[4] 'before the cutover, cc-autopilot''s'
+    } finally { $script:ui = $null; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P99_MoveToTheGolemAsksAPhraseAndRunsTheCutoverInAWindow' {
+    $ap = $config.Autopilot
+    $facts = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; SettingsExists = $true; Present = @{ $ap.MoveScript = $true }; Running = '' }
+    $p = @(Get-ActionPlan -Action 'golem.move' -Config $config -AutopilotFacts $facts)
+    Assert-Equal 'confirm,window,log' (($p | ForEach-Object { $_.Kind }) -join ',') ($p | ForEach-Object { $_.Kind + ' ' + $_.Text })
+    Assert-Equal 'move to the golem' $p[0].Phrase
+    Assert-Equal 'Move to the Golem' (Get-ConfirmSubject 'golem.move')
+    Assert-Equal ('powershell.exe -NoProfile -ExecutionPolicy Bypass -File ' + $ap.MoveScript) (Format-CommandLine $p[1].Exe $p[1].Arguments) 'no -Yes: the script shows its dry run and asks again'
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count (@(Test-PlanSafety $p $config) -join '; ')
+    Assert-Equal 'refuse' (Resolve-RunMode -Action 'golem.move') 'it changes something: refused headless without a mode'
+    $busy = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; SettingsExists = $true; Present = @{ $ap.MoveScript = $true }; Running = 'P99' }
+    $r = @(Get-ActionPlan -Action 'golem.move' -Config $config -AutopilotFacts $busy)
+    Assert-True ($r.Count -eq 1 -and $r[0].Kind -eq 'refuse' -and $r[0].Text -match 'A prompt is running \(P99\)') ($r | ForEach-Object { $_.Text })
+    $gone = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; SettingsExists = $true; Present = @{}; Running = '' }
+    Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'golem.move' -Config $config -AutopilotFacts $gone))[0].Kind 'no script, no move'
+    $active = [pscustomobject]@{ Autopilot = (New-AutopilotConfig 'D:\UO\golem' 'D:\UO\cc-prompts\queue' -Kind golem); PowerShell = 'powershell.exe' }
+    $x = @(Get-ActionPlan -Action 'golem.move' -Config $active -AutopilotFacts $facts)
+    Assert-True ($x[0].Kind -eq 'refuse' -and $x[0].Text -match 'already active.*-Rollback') $x[0].Text
+}
+
+Fact 'P99_TheSafetyCheckNeverRunsEitherHook' {
+    $g = New-AutopilotConfig 'D:\UO\golem' 'D:\UO\cc-prompts\queue' -Kind golem
+    $cfgG = Get-ConsoleConfig -RepoRoot $repo
+    $cfgG.Autopilot = $g
+    foreach ($hook in 'D:\UO\golem\golem.ps1', 'D:\UO\cc-autopilot\cc-autopilot.ps1') {
+        foreach ($c in $cfgG, $config) {
+            $st = New-PlanStep -Kind window -Exe $c.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $hook)
+            Assert-True (@(Test-PlanSafety @($st) $c) -match 'hook is never run').Count ($hook + ' under ' + $c.Autopilot.Kind)
+        }
+    }
+    $ok = New-PlanStep -Kind window -Exe $cfgG.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $g.Start)
+    Assert-Equal 0 @(Test-PlanSafety @($ok) $cfgG).Count 'Start-Golem.ps1 in a window is fine'
+    $dir = New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($g.Root)
+    Assert-Equal 0 @(Test-PlanSafety @($dir) $cfgG).Count 'Explorer on the folder is fine'
+    $other = New-PlanStep -Kind window -Exe $cfgG.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'D:\UO\golem\tests\Golem.Tests.ps1')
+    Assert-True (@(Test-PlanSafety @($other) $cfgG).Count -ge 1) 'nothing else in its folder'
+    $yes = New-PlanStep -Kind window -Exe $cfgG.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $g.MoveScript, '-Yes')
+    Assert-True (@(Test-PlanSafety @($yes) $cfgG).Count -ge 1) 'the move never skips its own question'
+}
+
+Fact 'P99_TheTileSaysGolemAndShowsANote' {
+    $j = (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2) | ConvertFrom-Json
+    $j | Add-Member -NotePropertyName note -NotePropertyValue 'waiting on background agents' -Force
+    $v = Get-ApsView ($j | ConvertTo-Json -Depth 4)
+    $t = Get-AutopilotGlance -View $v -Now $apsNow
+    Assert-Equal 'GOLEM' $t.Title
+    Assert-Equal 'RUNNING' $t.Word
+    Assert-True ($t.Detail -match 'waiting on background agents') $t.Detail
+    $p = @(Format-AutopilotPanel -View $v -Config $config -Now $apsNow) | ForEach-Object { $_.Text }
+    Assert-True ($p -contains 'note      : waiting on background agents') ($p -join ' | ')
+    $idle = Get-ApsView (Set-ApStatus -Set @{ state = 'IDLE'; current = ''; position = 0; queued = @('cc-P100-a.md') })
+    $idle.Kind = 'golem'
+    Assert-True ((Get-AutopilotGlance -View $idle -Now $apsNow).Detail -match 'say "Golem, work" in CC to start') 'idle, the Golem: the phrase'
+    $old = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($l in @('2026-10-14 10:00:00  Stop         handed P100 (cc-P100-a.md) x', '2026-10-14 10:05:00  Stop         emailed: [Golem] NEEDS YOU: P100 stopped mid-task')) { $old.Add($l) }
+    $vv = Get-AutopilotView -Enabled $true -StateText '{ "current": "P100", "currentFile": "cc-P100-a.md", "lastHandled": 99, "startedAt": "2026-10-14T10:00:00" }' -LogLines $old.ToArray() -QueueNames @()
+    Assert-Equal 'NEEDS YOU: P100 stopped mid-task' $vv.Alert 'a [Golem] subject is read like a [Shard CC] one'
 }
 
 Fact 'P94_OpenSettingsOpensOnlySettingsJsonInNotepad' {
@@ -3214,8 +3369,8 @@ Fact 'P83_TheTileHasItsTwoLinksAndTheAutopilotTabHasThemToo' {
         Assert-Equal 'links.playtests,links.dashboard,links.status' (($script:ui.LinkButtons | ForEach-Object { $_.Tag }) -join ',')
         Assert-True ($script:ui.PlayTestTile.Panel.Controls.Contains($script:ui.LinkButtons[0].Parent)) 'the buttons sit in the tile'
         $onTab = @($script:ui.AutopilotPage.Controls[1].Controls | Where-Object { $_.Tag -like 'links.*' } | ForEach-Object { $_.Tag })
-        Assert-Equal 'links.playtests,links.dashboard,links.status' ($onTab -join ',') 'also on the Autopilot tab'
-        Assert-Equal 7 @($script:ui.AutopilotButtons).Count 'P74''s own six and cc-P94''s Open settings.json; the links are not among them'
+        Assert-Equal 'links.playtests,links.dashboard,links.status' ($onTab -join ',') 'also on the Golem tab'
+        Assert-Equal 9 @($script:ui.AutopilotButtons).Count 'P74''s own six, cc-P94''s Golem settings, cc-P99''s Open Golem folder and Move to the Golem; the links are not among them'
         Assert-True ($script:ui.Status.Text -match 'PLAY TESTS\s+: 111 OPEN') 'the status panel lists it'
     } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
 }
@@ -3768,7 +3923,7 @@ Fact 'P87_UOTilesNeverClipFromTheNarrowestWindowToAWideOne' {
             @('TEST', 'RUNNING', 'up 13h 47m, listening on :2594; image current'),
             @('STATUS PUBLISHER', 'NOT PUBLISHING', 'no status.json; feed up, nothing to serve'),
             @('PUBLIC DNS', 'OK', 'shatteredlegacyuo.com = 216.247.206.76, this house. No VPN.'),
-            @('AUTOPILOT', 'NEEDS YOU', 'P86 done but COMMIT FAILED, needs you'),
+            @('GOLEM', 'NEEDS YOU', 'P86 done but COMMIT FAILED, needs you'),
             @('PLAY TESTS', '152 OPEN', '152 open, 1 failed, 18 passed')
         )
         # 900 is the smallest window. PowerShell's WinForms is DPI-unaware, so at 125% and 150% Windows scales the

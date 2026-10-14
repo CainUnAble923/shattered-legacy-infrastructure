@@ -15,7 +15,7 @@
   4. Starts it as compose project sl-uo-bot, container sl-modernuo-bot, published on 127.0.0.1:2595 only.
   5. Runs the checks (python -m uobot.run), each -Runs times; then the soak, unless -SkipSoak.
   6. Tears it down (docker compose -p sl-uo-bot down -t 60), keeps the world folder, writes the report to
-     D:\UO\shard-migration\testing\bot-runs\<yyyy-MM-dd-HHmm>\, and emails the headline with the autopilot's mail
+     D:\UO\shard-migration\testing\bot-runs\<yyyy-MM-dd-HHmm>\, and emails the headline with the Golem's mail
      settings (read only), unless -NoEmail.
   ASCII only.
 #>

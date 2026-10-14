@@ -33,7 +33,7 @@ transcripts; the shard's logs stay out of git).
   - The wipe leaves one admin, `slbot-admin`.
   - Players `slbot-player`, `slbot-player2` to `4` are auto-created at first login.
   - Their random passwords are only in `secrets.local.json` (git-ignored), and are never printed.
-- **Email:** only the morning report, through the autopilot's own mail settings, read only (`Send-BotReport.ps1`).
+- **Email:** only the morning report, through the Golem's own mail settings (cc-autopilot's before the cutover), read only (`Send-BotReport.ps1`).
 
 ## Layout
 
