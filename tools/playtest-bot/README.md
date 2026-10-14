@@ -6,8 +6,34 @@ Chase in the morning. **It never marks a result**: it produces evidence, and Cha
 
 ```
 powershell -NoProfile -ExecutionPolicy Bypass -File D:\ShatteredLegacy\tools\playtest-bot\Run-OvernightPlaytests.ps1
-    [-Commit <sha>] [-SkipBuild] [-SkipSoak] [-Only T-041,P64-1] [-SoakMinutes 120] [-Runs 3] [-NoEmail] [-KeepUp]
+    [-Force] [-Commit <sha>] [-SkipBuild] [-SkipSoak] [-Only T-041,P64-1] [-SoakMinutes 120] [-Runs 3] [-NoEmail] [-KeepUp]
 ```
+
+## Nightly (cc-P102)
+
+- **Only when there is work.** Before anything is built, `uobot/work.py` asks whether an **open** play-test item has a
+  bot check that has not run against the code it would test (HEAD, or `-Commit`).
+  - "The same code" means no change in `server/`, `docker/uo/` or `tools/playtest-bot/uobot/` between the run's commit
+    and tonight's, so a docs-only commit is not work.
+  - New items, items whose last run is on older code, and items re-opened after their last run (`reopenedAt`, written
+    by the play-test page) count. Nothing else does.
+  - A night with no work writes one line to `D:\UO\bot-shard\overnight.log`, sends nothing and exits 0.
+  - `-Force` runs anyway; `-Only` runs the named checks whatever the work check says.
+  - A night with work runs **all** checks (P64-2 reads P64-1's runs).
+- **Emails**, all through `Send-BotReport.ps1`, all silenced by `-NoEmail`:
+  - before: "Overnight play tests starting: N checks on <commit>", with the item ids, the expected length and how to stop it;
+  - after: the summary "Overnight play tests: N pass, N fail, N flaky", with the report path and the archive line;
+  - on a crash or a shard that will not boot: "Overnight play tests FAILED on <commit>: <reason>", with the last 40
+    lines of run.log.
+- **The task:** `Install-OvernightTask.ps1` registers "SL overnight play tests", daily at 01:30, as the user who runs
+  it, when logged on, waking the PC if wake timers allow. `-DryRun` prints the call; `-Uninstall` removes it.
+- **14 days, then iCloud Drive:** after each run, `uobot/archive.py` handles each run's `transcripts\` older than 14 days.
+  - It copies them to `D:\Cloud Drives\iCloudDrive\Shattered Legacy\bot-runs\<stamp>\transcripts\`.
+  - It verifies the copy (file count, total bytes, SHA-256 of every file), and only then removes the repo's copy,
+    leaving `transcripts-archived.json`.
+  - `report.md` and `results.json` stay forever.
+  - A missing iCloud folder or a copy that does not verify removes nothing, and the after email says so.
+- Settings: `overnight.json` (task name, time, retention days, archive drive and path, play-tests.json).
 
 Results: `D:\UO\shard-migration\testing\bot-runs\<yyyy-MM-dd-HHmm>\` (report.md, results.json, email.txt, the
 transcripts; the shard's logs stay out of git).
@@ -33,15 +59,20 @@ transcripts; the shard's logs stay out of git).
   - The wipe leaves one admin, `slbot-admin`.
   - Players `slbot-player`, `slbot-player2` to `4` are auto-created at first login.
   - Their random passwords are only in `secrets.local.json` (git-ignored), and are never printed.
-- **Email:** only the morning report, through the Golem's own mail settings (cc-autopilot's before the cutover), read only (`Send-BotReport.ps1`).
+- **Email:** the starting, summary and crashed mails (cc-P102), through the Golem's own mail settings (cc-autopilot's before the cutover), read only (`Send-BotReport.ps1`).
 
 ## Layout
 
 | File | What |
 |---|---|
-| `Run-OvernightPlaytests.ps1` | The one entry point: rule 1, build, world, wipe, start, checks, soak, down, report, email |
+| `Run-OvernightPlaytests.ps1` | The one entry point: work check, rule 1, build, world, wipe, start, checks, soak, down, archive, report, email |
+| `Install-OvernightTask.ps1` | Registers the nightly task (`-DryRun`, `-Uninstall`); Chase runs it once |
+| `overnight.json` | The nightly settings |
 | `docker-compose.bot.yml` | The scratch shard |
-| `Send-BotReport.ps1` | Emails `email.txt` |
+| `Send-BotReport.ps1` | Emails `email.txt`, or `-TextFile` (the starting and crashed mails) |
+| `uobot/work.py` | Does tonight have work? |
+| `uobot/notify.py` | The starting and crashed mail texts |
+| `uobot/archive.py` | 14 days in the repo, then iCloud Drive, verified |
 | `uobot/client.py` | The client: login, characters, actions, and the model of what the server said |
 | `uobot/packets.py` | Every packet built or read, with its pinned citation |
 | `uobot/huffman.py` | The game connection's decompression (pinned's table) |
@@ -50,7 +81,7 @@ transcripts; the shard's logs stay out of git).
 | `uobot/run.py` | Runs the checks N times each; PASS 3/3, FAIL 0/3, else FLAKY; ERROR when it cannot be set up |
 | `uobot/soak.py` | The soak: walker, miner, fighter; memory and loud log lines every minute |
 | `uobot/report.py` | report.md and email.txt |
-| `tests/test_bot.py` | `python -m unittest discover -s tests` |
+| `tests/test_bot.py`, `tests/test_overnight.py` | `python -m unittest discover -s tests` |
 
 ## The login, as the bot does it
 

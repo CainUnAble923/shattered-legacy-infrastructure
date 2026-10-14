@@ -9,14 +9,15 @@
   when its email.json is there, else D:\UO\cc-autopilot (the Golem's predecessor, before the cutover). The text it sends is
   email.txt in the run folder (written by uobot\report.py); its first line is the subject,
   "Overnight play tests: N pass, N fail, N flaky". -WhatIf prints the mail instead of sending it. ASCII only.
+  cc-P102: -TextFile sends another text of the same shape (the "starting" and "crashed" mails, uobot\notify.py).
 #>
-param([Parameter(Mandatory = $true)][string]$RunDir, [switch]$WhatIf)
+param([Parameter(Mandatory = $true)][string]$RunDir, [switch]$WhatIf, [string]$TextFile)
 $Root = 'D:\UO\golem'
 if (-not (Test-Path -LiteralPath (Join-Path $Root 'email.json'))) { $Root = 'D:\UO\cc-autopilot' }
 $CfgFile = Join-Path $Root 'email.json'
 $CredFile = Join-Path $Root 'smtp-cred.xml'
-$textFile = Join-Path $RunDir 'email.txt'
-if (-not (Test-Path -LiteralPath $textFile)) { Write-Host ('No email.txt in ' + $RunDir + ': nothing sent.'); exit 1 }
+$textFile = $(if ($TextFile) { $TextFile } else { Join-Path $RunDir 'email.txt' })
+if (-not (Test-Path -LiteralPath $textFile)) { Write-Host ('No ' + $textFile + ': nothing sent.'); exit 1 }
 $lines = @(Get-Content -LiteralPath $textFile)
 $subject = $lines[0]
 $body = ($lines | Select-Object -Skip 2) -join "`r`n"

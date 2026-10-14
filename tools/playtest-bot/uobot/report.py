@@ -22,6 +22,7 @@ def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--rule1-changed", default="")
+    ap.add_argument("--archive-note", default="")     # cc-P102: what the 14-day archive did, one line
     a = ap.parse_args(argv)
     res = load(os.path.join(a.out, "results.json"), {"checks": []})
     world = load(os.path.join(a.out, "world.json"), {})
@@ -84,6 +85,8 @@ def main(argv):
             ("; " + "; ".join(soak["errors"])) if soak.get("errors") else ""))
     if a.rule1_changed:
         mail.append("RULE 1: these real shards changed during the run: " + a.rule1_changed)
+    if a.archive_note:
+        mail.append(a.archive_note)
     mail += ["", "Report: " + os.path.join(a.out, "report.md")]
     with open(os.path.join(a.out, "email.txt"), "w", encoding="ascii", errors="replace", newline="\n") as f:
         f.write("\n".join(mail) + "\n")

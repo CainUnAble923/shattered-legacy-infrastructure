@@ -1,0 +1,9 @@
+{
+    "_comment": "cc-P102: the nightly run's settings. Read by Run-OvernightPlaytests.ps1 and Install-OvernightTask.ps1.",
+    "taskName": "SL overnight play tests",
+    "scheduleTime": "01:30",
+    "retentionDays": 14,
+    "archiveDrive": "D:\\Cloud Drives\\iCloudDrive",
+    "archivePath": "Shattered Legacy\\bot-runs",
+    "playTests": "D:\\UO\\shard-migration\\testing\\play-tests.json"
+}

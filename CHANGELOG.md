@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.9
+
+### Staff
+- The overnight play-test bot can run every night at 01:30, but only when an open play test it can check has not been checked on the current code. It emails before it starts and again when it finishes or fails, and moves bot transcripts older than 14 days to iCloud Drive after checking every file arrived.
+
 ## 2026.10.14.8
 
 ### Staff
