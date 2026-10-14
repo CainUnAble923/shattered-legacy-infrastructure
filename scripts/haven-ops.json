@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "_about": "cc-P107 (Haven H2 and H3): where the ops pages (Play tests, Ideas, Bug reports, Shard status) live. Read by the Shard Console, Publish-GamePcSnapshot.ps1, the commit script's mirror refresh (shard-migration tools/opsmirror.py) and docker/ops/Deploy-HavenOps.ps1. Which side is serving right now is NOT here: it is the mode in stateFile, written by the cutover and the rollback, so this file never changes at a cutover. No token, key or password ever goes in this file.",
+  "haven": {
+    "ssh": "chase@192.168.1.61",
+    "pageUrl": "http://192.168.1.61:8093/",
+    "statusUrl": "http://192.168.1.61:8093/status",
+    "opsApi": "http://192.168.1.61:8094",
+    "root": "/home/chase/sl-ops",
+    "_root": "The stack, its data and the clones live under chase's home on Haven, so nothing needs sudo. P89 proposed /srv/sl-ops; this is the same layout one place over."
+  },
+  "gamePc": {
+    "pageUrl": "http://localhost:8093/",
+    "statusUrl": "http://localhost:8093/status",
+    "container": "sl-play-tests",
+    "start": "docker\\test-queue\\Start-TestQueue.ps1",
+    "_gamePc": "Today's service, and the fallback: the rollback starts it again."
+  },
+  "stateFile": "D:\\UO\\haven-ops\\state.json",
+  "tokenFile": "D:\\UO\\haven-ops\\token.txt",
+  "_files": "Both outside both repos. state.json is {mode: local|haven, since, by}. token.txt is the bearer token of Haven's token listener (export, ingest); the deploy writes it once, from a prompt, and never prints it.",
+  "repos": {
+    "shard-migration": "git@github.com:CainUnAble923/shard-migration.git",
+    "shattered-legacy": "https://github.com/CainUnAble923/shattered-legacy-infrastructure.git",
+    "_repos": "shard-migration is private (an anonymous git ls-remote is refused, 2026-10-14), so Haven reads it over SSH with a read-only deploy key the deploy makes on Haven; the infrastructure repo is public and read anonymously."
+  }
+}

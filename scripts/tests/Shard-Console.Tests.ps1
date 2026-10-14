@@ -4259,7 +4259,7 @@ Fact 'P101_TheRealConfigReadsAsSevenSitesTwoDeploysAndTheNpmTunnel' {
     Assert-Equal (Join-Path $repo 'docker\dashboard\Start-Dashboard.ps1') (@($w.Sites)[2]).Start
     Assert-Equal 'http://192.168.1.61/' (@($w.Sites)[6]).Check 'the NPM light checks the proxy port, not the tunnel'
     Assert-True ((@($w.Sites)[6]).IsNpm) 'the NPM row'
-    Assert-Equal 'website,wiki-macros' (@($w.Deploys.Keys) -join ',')
+    Assert-Equal 'website,wiki-macros,ops-pages,ops-cutover,ops-rollback' (@($w.Deploys.Keys) -join ',') 'cc-P107 added the three ops deploys'
     Assert-Equal 'chase@192.168.1.61' $w.HavenSsh
     Assert-Equal 'http://localhost:8081/|8081|localhost:81' ($w.Npm.Url + '|' + $w.Npm.LocalPort + '|' + $w.Npm.Remote)
     Assert-True (Test-Path -LiteralPath (Join-Path $repo 'scripts\websites.json')) 'the console reads scripts\websites.json'
@@ -4332,7 +4332,7 @@ Fact 'P101_DeployIsRefusedForAScriptNotInTheAllowlist' {
     $c = Get-WebConfig
     # A Haven site with no deploy, a game-PC site, and a site whose deploy is not in the list (built by hand: the
     # config reader already drops such a site, so this is the plan's own check, not the reader's).
-    Assert-True ((@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'vault'))[0].Text -match '^Vaultwarden has no deploy in websites.json\. The allowlist: website, wiki-macros\.$') 'no deploy'
+    Assert-True ((@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'vault'))[0].Text -match '^Vaultwarden has no deploy in websites.json\. The allowlist: website, wiki-macros, ops-pages, ops-cutover, ops-rollback\.$') 'no deploy'
     Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'homepage'))[0].Kind 'a game-PC site'
     Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'nope'))[0].Kind 'no such site'
     @($c.Websites.Sites | Where-Object { $_.Key -eq 'wiki' })[0].Deploy = 'haven-ops'
@@ -4479,8 +4479,8 @@ Fact 'P101_TheTileAndTheTabAreBuiltAndDrawn' {
         Assert-True ($script:ui.WebsitesTile.Word.Text -match '^WEBSITES: (CHECKING|UNKNOWN)$') $script:ui.WebsitesTile.Word.Text
         Assert-Equal 'Websites' $script:ui.WebsitesPage.Text
         Assert-True ($script:ui.Tabs.TabPages.Contains($script:ui.WebsitesPage)) 'in the tab control'
-        Assert-Equal 'web.open,web.restart,web.redeploy,web.logs,web.deploy,web.npm' (($script:ui.WebsiteButtons | ForEach-Object { $_.Tag }) -join ',')
-        Assert-Equal 'Open,Restart,Redeploy,Logs (last 200),Deploy to Haven,Open NPM' (($script:ui.WebsiteButtons | ForEach-Object { $_.Text }) -join ',')
+        Assert-Equal 'web.open,web.restart,web.redeploy,web.logs,web.deploy,web.npm,web.ops-pages,web.ops-cutover,web.ops-rollback' (($script:ui.WebsiteButtons | ForEach-Object { $_.Tag }) -join ',')
+        Assert-Equal 'Open,Restart,Redeploy,Logs (last 200),Deploy to Haven,Open NPM,Ops pages: deploy,Ops pages: cut over,Ops pages: roll back' (($script:ui.WebsiteButtons | ForEach-Object { $_.Text }) -join ',')
         Assert-Equal @($config.Websites.Sites).Count $script:ui.WebsitePick.Items.Count 'one line per site'
         Assert-Equal 'Play tests  (this PC)' $script:ui.WebsitePick.Items[0]
         $script:ui.WebsitePick.SelectedIndex = 3
@@ -4731,6 +4731,150 @@ Fact 'P106_EveryQuestionButtonRunHeadlessWithDryRunRunsNothing' {
             Assert-True ($out -cnotmatch '(?m)^\s*\d+\. REFUSE ') ($k + ': ' + $out)
         }
     } finally { Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }
+}
+
+# --- cc-P107: the ops pages on Haven (H2 and H3) ----------------------------------------------------------------------
+# scripts\haven-ops.json is the real file. A mode is a state.json written to a temp folder here; nothing reaches Haven.
+
+$p107Ops = ''
+if (Test-Path -LiteralPath (Join-Path $repo 'scripts\haven-ops.json')) { $p107Ops = [IO.File]::ReadAllText((Join-Path $repo 'scripts\haven-ops.json')) }
+function New-P107Config {
+    # The console's config with its state file in a temp folder, in the given mode ('' for no state file).
+    param([string]$Mode)
+    $c = Get-ConsoleConfig -RepoRoot $repo
+    $c.Ops.StateFile = Join-Path ([IO.Path]::GetTempPath()) ('p107-state-' + [guid]::NewGuid().ToString('N') + '.json')
+    if ($Mode) { [IO.File]::WriteAllText($c.Ops.StateFile, ('{"mode": "' + $Mode + '"}')) }
+    # As Get-ConsoleConfig does at start, now that the mode is this one.
+    Set-OpsSites -Websites $c.Websites -Mode (Get-OpsMode $c)
+    $c
+}
+
+Fact 'P107_TheRealOpsConfigNamesHavensPagesTheGamePcFallbackAndTheStateFile' {
+    $o = ConvertFrom-OpsConfig $p107Ops
+    Assert-Equal $null $o.Error
+    Assert-Equal 'http://192.168.1.61:8093/' $o.HavenPageUrl
+    Assert-Equal 'http://192.168.1.61:8093/status' $o.HavenStatusUrl
+    Assert-Equal 'http://192.168.1.61:8094' $o.OpsApi
+    Assert-Equal 'http://localhost:8093/' $o.GamePcPageUrl
+    Assert-Equal 'D:\UO\haven-ops\state.json' $o.StateFile
+    Assert-True ($p107Ops -notmatch '(?i)"(password|secret|key)"\s*:|PLAYTESTS_TOKEN=') 'no secret in the file'
+    $none = ConvertFrom-OpsConfig $null
+    Assert-Equal '' $none.HavenPageUrl 'no file: the game PC only'
+}
+
+Fact 'P107_TheModeIsHavenOnlyWhenTheCutoverWroteIt' {
+    Assert-Equal 'local' (Get-OpsMode $config -StateText $null) 'no state file'
+    Assert-Equal 'haven' (Get-OpsMode $config -StateText '{"mode": "haven", "since": "2026-10-14T15:00:00-05:00"}')
+    Assert-Equal 'local' (Get-OpsMode $config -StateText '{"mode": "local"}')
+    Assert-Equal 'local' (Get-OpsMode $config -StateText 'not json')
+    Assert-Equal 'local' (Get-OpsMode $config -StateText '{"mode": "HAVEN"}') 'only exactly haven'
+}
+
+Fact 'P107_LinksAndSitesPointAtHavenAfterTheCutoverAndAtThisPcBefore' {
+    $before = Get-OpsLinks $config 'local'
+    Assert-Equal 'http://localhost:8093/' $before.PlayTests
+    Assert-Equal 'http://localhost:8093/status' $before.Status
+    $after = Get-OpsLinks $config 'haven'
+    Assert-Equal 'http://192.168.1.61:8093/' $after.PlayTests
+    Assert-Equal 'http://192.168.1.61:8093/status' $after.Status
+    Assert-Equal 'http://localhost:8093/' $after.Fallback 'the game PC stays the fallback'
+    $h = New-P107Config 'haven'
+    try {
+        $p = @(Get-ActionPlan -Action 'links.playtests' -Config $h -State $state)
+        Assert-Equal 'http://192.168.1.61:8093/' $p[0].Arguments[0]
+        Assert-True ($p[0].Text -match 'on Haven' -and $p[0].Text -match 'ops-rollback') $p[0].Text
+        Assert-Equal 'http://192.168.1.61:8093/status' @(Get-ActionPlan -Action 'links.status' -Config $h -State $state)[0].Arguments[0]
+        $site = @($h.Websites.Sites | Where-Object { $_.Key -eq 'playtests' })[0]
+        Assert-Equal 'http://192.168.1.61:8093/' $site.Url
+        Assert-Equal 'haven' $site.Where 'Restart and Redeploy (game PC only) no longer apply'
+        Assert-Equal 'http://localhost:3000/' @($h.Websites.Sites | Where-Object { $_.Key -eq 'homepage' })[0].Url 'Homepage does not move (H5)'
+    } finally { Remove-Item -LiteralPath $h.Ops.StateFile -ErrorAction SilentlyContinue }
+    $l = New-P107Config ''
+    Assert-Equal 'http://localhost:8093/' @(Get-ActionPlan -Action 'links.playtests' -Config $l -State $state)[0].Arguments[0] 'no state file: as before'
+    Assert-Equal 'pc' @($l.Websites.Sites | Where-Object { $_.Key -eq 'playtests' })[0].Where
+}
+
+Fact 'P107_ThePlayTestsTileFallsBackToTheMirrorWhenHavenDoesNotAnswer' {
+    $h = New-P107Config 'haven'
+    try {
+        $h.Ops.HavenPageUrl = 'http://127.0.0.1:9/'      # nothing listens on the discard port
+        $h.PlayTestsFile = Join-Path $fixture 'play-tests-2026-10-12.json'
+        $g = Get-PlayTestGlanceNow $h
+        Assert-True ($g.Detail -match 'from the last commit \(Haven unreachable\)$') $g.Detail
+        Assert-True ($g.Word -ne 'UNKNOWN') ('the mirror is read: ' + $g.Word)
+    } finally { Remove-Item -LiteralPath $h.Ops.StateFile -ErrorAction SilentlyContinue }
+    $l = New-P107Config ''
+    $l.PlayTestsFile = Join-Path $fixture 'play-tests-2026-10-12.json'
+    Assert-True ((Get-PlayTestGlanceNow $l).Detail -notmatch 'Haven') 'before the cutover the tile is as it was'
+}
+
+Fact 'P107_TheThreeOpsDeploysAreInTheAllowlistAndRunOnlyTheirLaunchers' {
+    $w = $config.Websites
+    foreach ($k in 'ops-pages', 'ops-cutover', 'ops-rollback') {
+        Assert-True $w.Deploys.Contains($k) ($k + ' is a deploy')
+        Assert-True ($w.Deploys[$k].Script -like 'D:\UO\haven-migration\Deploy-HavenOps-*.ps1') $w.Deploys[$k].Script
+    }
+    foreach ($f in 'Pages', 'Cutover', 'Rollback') {
+        $t = [IO.File]::ReadAllText('D:\UO\haven-migration\Deploy-HavenOps-' + $f + '.ps1')
+        $mode = $(if ($f -eq 'Pages') { 'Deploy' } else { $f })
+        Assert-True ($t -match ([regex]::Escape("& 'D:\ShatteredLegacy\docker\ops\Deploy-HavenOps.ps1' -Mode " + $mode))) ('the ' + $f + ' launcher runs only its mode')
+    }
+    foreach ($k in 'web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') {
+        $p = @(Get-ActionPlan -Action $k -Config $config -State $state)
+        Assert-Equal 'confirm,window,log' (($p | ForEach-Object { $_.Kind }) -join ',') $k
+        Assert-Equal 'deploy to haven' $p[0].Phrase
+        Assert-Equal ('-Deploy ' + $k.Substring(4)) ((@($p[1].Arguments) | Select-Object -Last 2) -join ' ')
+        Assert-Equal 0 @(Test-PlanSafety $p $config).Count ((Test-PlanSafety $p $config) -join ' | ')
+        Assert-True ([string](Get-ConsoleTooltips)[$k]) ($k + ' has a tooltip')
+    }
+    $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'scripts\Invoke-WebsiteDeploy.ps1') -Deploy ops-cutover -DryRun 2>&1 | Out-String)
+    Assert-Equal 0 $LASTEXITCODE $out
+    Assert-True ($out -match 'Deploy-HavenOps-Cutover\.ps1' -and $out -match 'DRY RUN: nothing was run') $out
+}
+
+Fact 'P107_TheHavenScriptsRefuseSystemHaveADryRunAndKeepTheTokenOffTheCommandLine' {
+    $d = [IO.File]::ReadAllText((Join-Path $repo 'docker\ops\Deploy-HavenOps.ps1'))
+    foreach ($want in 'IsSystem', '\[switch\]\$DryRun', "Confirm-Go 'deploy'", "Confirm-Go 'cut over'", "Confirm-Go 'roll back'", 'Read-Host -AsSecureString', '-InputText \(''PLAYTESTS_TOKEN=''', 'umask 077') {
+        Assert-True ($d -match $want) ('Deploy-HavenOps.ps1 has ' + $want)
+    }
+    Assert-True ($d -notmatch 'Write-Host[^\r\n]*\$tok\b') 'the token is never printed'
+    foreach ($s in 'Publish-GamePcSnapshot.ps1', 'Install-GamePcSnapshotTask.ps1') {
+        $t = [IO.File]::ReadAllText((Join-Path $repo ('scripts\' + $s)))
+        Assert-True ($t -match 'IsSystem' -and $t -match '\[switch\]\$DryRun') ($s + ': refuses SYSTEM, has -DryRun')
+    }
+    $c = [IO.File]::ReadAllText((Join-Path $repo 'docker\ops\docker-compose.yml'))
+    Assert-True ($c -match '\$\{BIND:-192\.168\.1\.61\}:\$\{PAGE_PORT:-8093\}:8000' -and $c -match '\$\{BIND:-192\.168\.1\.61\}:\$\{LAN_PORT:-8094\}:8001') 'LAN address only'
+    Assert-True ($c -match '/repo:ro' -and $c -match 'PLAYTESTS_DATA: /data/ops') 'clones read only; data apart'
+    Assert-True ($c -notmatch 'PLAYTESTS_TOKEN:') 'the token comes from ops.env, not the file'
+}
+
+Fact 'P107_TheSnapshotSendsNothingBeforeTheCutoverAndDryRunPrintsItsJson' {
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p107-ops-' + [guid]::NewGuid().ToString('N') + '.json')
+    $j = $p107Ops | ConvertFrom-Json
+    $j.stateFile = Join-Path ([IO.Path]::GetTempPath()) 'p107-no-such-state.json'
+    [IO.File]::WriteAllText($tmp, ($j | ConvertTo-Json -Depth 5))
+    try {
+        $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'scripts\Publish-GamePcSnapshot.ps1') -Config $tmp 2>&1 | Out-String)
+        Assert-Equal 0 $LASTEXITCODE $out
+        Assert-True ($out -match 'not cut over to Haven \(mode local\): nothing sent') $out
+        $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'scripts\Publish-GamePcSnapshot.ps1') -Config $tmp -DryRun 2>&1 | Out-String)
+        Assert-Equal 0 $LASTEXITCODE $out
+        Assert-True ($out -match 'DRY RUN: would POST \d+ bytes to http://192\.168\.1\.61:8094/api/ingest/gamepc') $out
+        $json = @(($out -split "`n") | Where-Object { $_ -match '^\{' })[0] | ConvertFrom-Json
+        Assert-True ($json.golem.PSObject.Properties.Name -contains 'queue' -and $json.PSObject.Properties.Name -contains 'containers') 'the Golem and the containers'
+        $i = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'scripts\Install-GamePcSnapshotTask.ps1') -DryRun 2>&1 | Out-String)
+        Assert-True ($i -match 'RepetitionInterval \(New-TimeSpan -Minutes 1\)' -and $i -match 'DRY RUN: nothing registered') $i
+        Assert-True (-not (Get-ScheduledTask -TaskName 'SL game PC snapshot' -ErrorAction SilentlyContinue)) 'the dry run registered nothing'
+    } finally { Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }
+}
+
+Fact 'P107_TheMenuFollowsTheHostThatServedItAndHomepageTriesHavenFirst' {
+    $nav = [IO.File]::ReadAllText((Join-Path $repo 'docker\test-queue\html\nav.js'))
+    Assert-True ($nav -match 'var host = p\.host \|\| SCRIPT_HOST \|\| window\.location\.hostname \|\| FALLBACK_HOST;') 'host null: the host that served nav.js'
+    Assert-True ($nav -match "key: 'dashboard', label: 'Dashboard',    host: '192\.168\.1\.58', port: 3000") 'Homepage stays on the game PC until H5'
+    Assert-True ($nav -match "key: 'playtests', label: 'Play tests',   host: null, port: 8093") 'Play tests follows the page'
+    $cj = [IO.File]::ReadAllText((Join-Path $repo 'docker\dashboard\config\custom.js'))
+    Assert-True ($cj -match "NAV_AT = \[\{ host: '192\.168\.1\.61', port: 8093 \}, \{ host: null, port: 8093 \}\]" -and $cj -match 'onerror') 'Haven first, then this PC'
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

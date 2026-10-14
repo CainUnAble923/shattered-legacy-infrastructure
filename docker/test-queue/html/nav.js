@@ -20,7 +20,8 @@
   var PAGES = [
     { key: 'playtests', label: 'Play tests',   host: null, port: 8093, path: '/' },
     { key: 'status',    label: 'Shard status', host: null, port: 8093, path: '/status' },
-    { key: 'dashboard', label: 'Dashboard',    host: null, port: 3000, path: '/', lanOnly: true }
+    // cc-P107: Homepage stays on the game PC until Haven step H5; Haven's own :3000 is its stale June copy (cc-P89).
+    { key: 'dashboard', label: 'Dashboard',    host: '192.168.1.58', port: 3000, path: '/', lanOnly: true }
   ];
   // The Windows box (docker/test-queue/docker-compose.yml), for a page opened from disk.
   var FALLBACK_HOST = '192.168.1.58';
@@ -47,10 +48,11 @@
   }
 
   // cc-P105: a home-network address: private IPv4, loopback, Tailscale's 100.64.0.0/10, a .home.arpa or .ts.net name,
-  // a bare host name, or no host at all (the file opened from disk).
+  // a bare host name (the PC's own name among them), or no host at all (the file opened from disk). cc-P107: the
+  // loopback name is not spelled out, since the status page inlines this file and its links must never name it.
   function onLan(host) {
     var h = String(host == null ? window.location.hostname : host).toLowerCase();
-    if (!h || h === 'localhost' || h.indexOf('.') < 0) return true;
+    if (!h || h.indexOf('.') < 0) return true;
     if (/\.(home\.arpa|ts\.net|local)$/.test(h)) return true;
     var m = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(h);
     if (!m) return false;
@@ -59,9 +61,14 @@
       (a === 100 && b >= 64 && b <= 127);
   }
 
+  // cc-P107: host null means the host that served this file. On the pages sl-play-tests serves that is the page's own
+  // host, as before; on Homepage (another origin) it is wherever the menu was loaded from, Haven after the cutover.
+  var SCRIPT_HOST = '';
+  try { if (document.currentScript && document.currentScript.src) SCRIPT_HOST = new URL(document.currentScript.src).hostname; } catch (e) { SCRIPT_HOST = ''; }
+
   function url(p) {
     if (p.url) return p.url;
-    var host = p.host || window.location.hostname || FALLBACK_HOST;
+    var host = p.host || SCRIPT_HOST || window.location.hostname || FALLBACK_HOST;
     var proto = (!p.host && window.location.protocol === 'https:') ? 'https:' : 'http:';
     return proto + '//' + host + ':' + p.port + p.path;
   }

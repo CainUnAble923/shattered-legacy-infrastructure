@@ -1,0 +1,72 @@
+# cc-P107 (Haven step H3): the ops pages on HAVEN. Play tests, Ideas and Bug reports (with their screenshots) and
+# /status (dashboard.html), served by the same sl-play-tests code as on the game PC, in Haven mode (cc-P105):
+#   - git-pull keeps read-only clones of both repos up to date, every PULL_SECONDS (120): the notes, docs, tools and
+#     dashboard.html come from shard-migration, the service code and the page from shattered-legacy.
+#   - play-tests reads the clones and writes ONLY its data folder (OPS_ROOT/data), the one writer of results, ideas and
+#     bug reports after the cutover. The game PC mirrors that folder into git before each commit (/api/export).
+# Published on Haven's LAN address only: the page on :8093 (as the game PC served it) and the token listener (export,
+# ingest, the game PC snapshot) on :8094. Never routed by NPM; Cloudflare Access is Haven step H4.
+# Deployed, cut over and rolled back only by docker/ops/Deploy-HavenOps.ps1, from the Shard Console's Websites tab.
+# The same file runs on the game PC for the proof, with BIND, the ports, OPS_ROOT and the names set to scratch values.
+# ASCII only.
+name: ${OPS_PROJECT:-sl-ops}
+services:
+  git-pull:
+    image: alpine/git:latest
+    container_name: ${GIT_PULL_NAME:-sl-ops-git-pull}
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/ops/git-pull.sh"]
+    environment:
+      SHARD_MIGRATION_URL: ${SHARD_MIGRATION_URL:-git@github.com:CainUnAble923/shard-migration.git}
+      SHATTERED_LEGACY_URL: ${SHATTERED_LEGACY_URL:-https://github.com/CainUnAble923/shattered-legacy-infrastructure.git}
+      PULL_SECONDS: ${PULL_SECONDS:-120}
+      # shard-migration is private: a read-only deploy key the deploy made on Haven (OPS_ROOT/keys, never in git).
+      GIT_SSH_COMMAND: ssh -i /keys/shard-migration -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/repo/.known_hosts
+    volumes:
+      - ${OPS_ROOT:-/home/chase/sl-ops}/repo:/repo
+      - ${OPS_ROOT:-/home/chase/sl-ops}/keys:/keys:ro
+      - ./git-pull.sh:/ops/git-pull.sh:ro
+    healthcheck:
+      test: ["CMD", "sh", "-c", "test -f /repo/stamp-shard-migration.txt && test -f /repo/stamp-shattered-legacy.txt"]
+      interval: 10s
+      retries: 60
+
+  play-tests:
+    image: python:3-alpine
+    container_name: ${PLAY_TESTS_NAME:-sl-play-tests}
+    restart: unless-stopped
+    # A small init as PID 1, so a stop reaches python as a signal and it exits at once, not after a kill.
+    init: true
+    command: ["python", "-u", "/repo/shattered-legacy/docker/test-queue/server.py"]
+    depends_on:
+      git-pull:
+        condition: service_healthy
+    ports:
+      - "${BIND:-192.168.1.61}:${PAGE_PORT:-8093}:8000"
+      - "${BIND:-192.168.1.61}:${LAN_PORT:-8094}:8001"
+    volumes:
+      - ${OPS_ROOT:-/home/chase/sl-ops}/repo:/repo:ro
+      - ${OPS_ROOT:-/home/chase/sl-ops}/data:/data/ops
+    # PLAYTESTS_TOKEN, written by the deploy from a prompt (chmod 600), never in git or on a command line.
+    env_file:
+      - ${OPS_ROOT:-/home/chase/sl-ops}/ops.env
+    environment:
+      TZ: ${TZ:-America/Chicago}
+      PLAYTESTS_ROOT: /repo/shard-migration
+      PLAYTESTS_LIB: /repo/shard-migration/tools
+      PLAYTESTS_HTML: /repo/shattered-legacy/docker/test-queue/html
+      PLAYTESTS_DATA: /data/ops
+      PLAYTESTS_PORT: "8000"
+      PLAYTESTS_LAN_PORT: "8001"
+      IMPORT_SECONDS: "60"
+      STATUS_PAGE: /repo/shard-migration/dashboard.html
+      REPO_STAMP: /repo/stamp-shard-migration.txt
+      # Bug reports carry the test shard's version from the game PC's shard-commit.json; Haven has none yet (H5's
+      # snapshot can carry it), so a report made on Haven says (unknown).
+      SHARD_DEPLOYED: /data/ops/shard-commit.json
+      PLAYTESTS_HOST_ROOT: 'D:\UO\shard-migration'
+      PYTHONDONTWRITEBYTECODE: "1"
+
+networks:
+  default:
+    name: ${OPS_PROJECT:-sl-ops}-net

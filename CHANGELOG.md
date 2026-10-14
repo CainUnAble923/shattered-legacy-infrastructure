@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.13
+
+### Staff
+- The Play tests, Ideas, Bug reports and Shard status pages can now move to Haven and back from the Shard Console's Websites tab: one button sets them up on Haven, one moves them over (checking every file arrived), and one brings them back to the game PC without losing anything marked on Haven. Until the move nothing changes; after it, each commit carries Haven's results, and the game PC tells Haven every minute whether the Golem and the shards are up.
+
 ## 2026.10.14.12
 
 ### Staff

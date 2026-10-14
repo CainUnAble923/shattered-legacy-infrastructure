@@ -263,7 +263,11 @@ function Get-ConsoleConfig {
             Client = 'D:\UO\Play-SL-Admin.bat'
         }
     }
-    [pscustomobject]@{
+    # cc-P107: where the ops pages live (Haven or this PC), and which one is serving now (its state file).
+    $opsFile = Join-Path $RepoRoot 'scripts\haven-ops.json'
+    $opsJson = $null
+    if (Test-Path -LiteralPath $opsFile) { $opsJson = [IO.File]::ReadAllText($opsFile) }
+    $c = [pscustomobject]@{
         RepoRoot         = $RepoRoot
         LatestTag        = 'sl-modernuo:latest'
         PowerShell       = 'powershell.exe'
@@ -353,6 +357,63 @@ function Get-ConsoleConfig {
         FixConfigFile      = $fixFile
         FixWorktree        = 'D:\UO\test-shard-src'
         SaveRecordFile     = (Join-Path (Join-Path $RepoRoot 'server\lib\uo\modernuo-test') 'shard-commit.json')
+        # cc-P107, Haven H2 and H3: the ops pages' two homes (scripts\haven-ops.json) and the mode file.
+        OpsFile            = $opsFile
+        Ops                = (ConvertFrom-OpsConfig $opsJson)
+    }
+    # After the cutover the Play tests and Shard status sites are Haven's: their lights check Haven, and Restart and
+    # Redeploy (game-PC only) no longer apply to them. The game PC URLs come back with the rollback.
+    Set-OpsSites -Websites $c.Websites -Mode (Get-OpsMode $c)
+    $c
+}
+
+function ConvertFrom-OpsConfig {
+    # cc-P107: scripts\haven-ops.json in, the two homes' URLs and the state and token file paths out. Missing or broken:
+    # the game PC only, as before P107.
+    param($Json)
+    $o = [pscustomobject]@{
+        HavenPageUrl = ''; HavenStatusUrl = ''; OpsApi = ''; HavenSsh = ''
+        GamePcPageUrl = 'http://localhost:8093/'; GamePcStatusUrl = 'http://localhost:8093/status'
+        StateFile = ''; TokenFile = ''; Error = $null
+    }
+    if (-not $Json) { return $o }
+    try { $j = $Json | ConvertFrom-Json } catch { $o.Error = 'haven-ops.json is not JSON: ' + $_.Exception.Message; return $o }
+    if ($j.haven) {
+        $o.HavenPageUrl = [string]$j.haven.pageUrl; $o.HavenStatusUrl = [string]$j.haven.statusUrl
+        $o.OpsApi = [string]$j.haven.opsApi; $o.HavenSsh = [string]$j.haven.ssh
+    }
+    if ($j.gamePc -and $j.gamePc.pageUrl) { $o.GamePcPageUrl = [string]$j.gamePc.pageUrl; $o.GamePcStatusUrl = [string]$j.gamePc.statusUrl }
+    $o.StateFile = [string]$j.stateFile; $o.TokenFile = [string]$j.tokenFile
+    $o
+}
+
+function Get-OpsMode {
+    # cc-P107: 'haven' once the cutover wrote it to the state file, else 'local' (also with no file, or a broken one).
+    param($Config, [string]$StateText)
+    # A [string] parameter turns $null into '', so "was it given" is the question, not "is it null".
+    if (-not $PSBoundParameters.ContainsKey('StateText') -and $Config.Ops -and $Config.Ops.StateFile) {
+        try { if (Test-Path -LiteralPath $Config.Ops.StateFile) { $StateText = [IO.File]::ReadAllText($Config.Ops.StateFile) } } catch { $StateText = $null }
+    }
+    try { if ($StateText -and ([string]($StateText | ConvertFrom-Json).mode) -ceq 'haven') { return 'haven' } } catch { }
+    'local'
+}
+
+function Get-OpsLinks {
+    # cc-P107: the Play tests and Shard status addresses for a mode, with the game PC's as the fallback.
+    param($Config, [string]$Mode)
+    $o = $Config.Ops
+    if ($Mode -ceq 'haven' -and $o.HavenPageUrl) {
+        return [pscustomobject]@{ PlayTests = $o.HavenPageUrl; Status = $o.HavenStatusUrl; Where = 'Haven'; Fallback = $o.GamePcPageUrl }
+    }
+    [pscustomobject]@{ PlayTests = $Config.PlayTestsUrl; Status = $Config.StatusUrl; Where = 'this PC'; Fallback = '' }
+}
+
+function Set-OpsSites {
+    # cc-P107: in Haven mode a site with a havenUrl (websites.json) is Haven's. Changes the parsed sites in place.
+    param($Websites, [string]$Mode)
+    if ($Mode -cne 'haven' -or -not $Websites) { return }
+    foreach ($site in @($Websites.Sites)) {
+        if ($site.HavenUrl) { $site.Url = $site.HavenUrl; $site.Check = $site.HavenUrl; $site.Where = 'haven' }
     }
 }
 
@@ -751,6 +812,7 @@ function Get-ConfirmPhrase {
         'fix.prune'        { 'prune images' }
         'golem.move'       { 'move to the golem' }
         'web.deploy'       { 'deploy to haven' }
+        { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'deploy to haven' }
         default            { 'confirm live' }
     }
 }
@@ -766,6 +828,7 @@ function Get-ConfirmSubject {
         'fix.restart'     { 'Restart the test shard' }
         'golem.move'      { 'Move to the Golem' }
         'web.deploy'      { 'Deploy to Haven' }
+        { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'Ops pages on Haven' }
         'fix.rollback'    { 'Roll back the test shard' }
         'fix.rebuild'     { 'Rebuild the test shard' }
         'fix.prune'       { 'Prune images' }
@@ -998,6 +1061,10 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'web.logs';         Group = 'Websites';    Label = 'Logs (last 200)';                    Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'web.deploy';       Group = 'Websites';    Label = 'Deploy to Haven';                    Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'web.npm';          Group = 'Websites';    Label = 'Open NPM';                           Mutates = $false; RunIn = 'here' }
+        # cc-P107: the ops pages' three Haven deploys. Not tied to the picked site: each runs its named deploy.
+        [pscustomobject]@{ Key = 'web.ops-pages';    Group = 'Websites';    Label = 'Ops pages: deploy';                  Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'web.ops-cutover';  Group = 'Websites';    Label = 'Ops pages: cut over';                Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'web.ops-rollback'; Group = 'Websites';    Label = 'Ops pages: roll back';               Mutates = $true;  RunIn = 'here' }
         # cc-P86: beside the PUBLIC DNS tile and on the Diagnostics tab. 'here': it opens Proton or ends a WireGuard
         # tunnel from this console, then the tile re-checks.
         [pscustomobject]@{ Key = 'vpn.disconnect';   Group = 'Network';     Label = 'Disconnect VPN';                     Mutates = $true;  RunIn = 'here' }
@@ -1213,6 +1280,9 @@ function Get-ConsoleTooltips {
         'web.redeploy'     = 'Runs the picked game-PC site''s own start script, which recreates its container and checks it answers, in its own window.'
         'web.logs'         = 'Shows the last 200 lines of the picked game-PC site''s container in a window. Changes nothing.'
         'web.deploy'       = 'Deploys the picked Haven site with its allowlisted script from websites.json, after the phrase deploy to haven, using your own SSH key. The window keeps a log.'
+        'web.ops-pages'    = 'Puts the ops pages stack on Haven (docker/ops) and keeps it current, after the phrase deploy to haven. Its window reads Haven first, prints the plan, and changes nothing until you type deploy there.'
+        'web.ops-cutover'  = 'Moves Play tests, Ideas, Bug reports and Shard status from this PC to Haven, after the phrase deploy to haven. Its window shows the plan and waits for cut over.'
+        'web.ops-rollback' = 'Brings the ops pages back to this PC with everything marked on Haven, after the phrase deploy to haven. Its window shows the plan and waits for roll back.'
         'web.npm'          = 'Opens Nginx Proxy Manager: an SSH tunnel to Haven in its own window (your own key), then the admin page in your browser. No password is stored here.'
         'golem.move'       = 'Moves the CC queue from cc-autopilot to the Golem with Move-ToGolem.ps1: the hooks, the scheduled task and the state. Asks for move to the golem, then shows its dry run in its own window and asks you to type move; refused while a prompt runs.'
         'links.playtests'  = 'Opens the play-test page (port 8093) in your browser. Changes nothing here.'
@@ -3756,9 +3826,9 @@ function Get-LinkPlan {
     # Play tests and Dashboard: open the page in the default browser. Read nothing, change nothing.
     param([string]$Action, $Config)
     switch ($Action) {
-        'links.playtests' { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.PlayTestsUrl) -Text 'Opening the play-test page (sl-play-tests, port 8093) in the default browser.') }
+        'links.playtests' { $l = Get-OpsLinks $Config (Get-OpsMode $Config); @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($l.PlayTests) -Text ('Opening the play-test page (on ' + $l.Where + ') in the default browser.' + $(if ($l.Fallback) { ' If Haven does not answer, the rollback (Websites tab, ops-rollback) brings back ' + $l.Fallback + '.' } else { '' }))) }
         'links.dashboard' { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.DashboardUrl) -Text 'Opening the Homepage dashboard (sl-dashboard, port 3000) in the default browser.') }
-        'links.status'    { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.StatusUrl) -Text 'Opening the shard status page (sl-play-tests, port 8093, /status) in the default browser.') }
+        'links.status'    { $l = Get-OpsLinks $Config (Get-OpsMode $Config); @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($l.Status) -Text ('Opening the shard status page (on ' + $l.Where + ', /status) in the default browser.')) }
         default { @(New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them.")) }
     }
 }
@@ -3826,7 +3896,7 @@ function ConvertFrom-WebsiteConfig {
         if ($why.Count) { $problems.Add(('site ' + $i + ' (' + $(if ($name) { $name } elseif ($key) { $key } else { 'no name' }) + '): missing or wrong ' + ($why -join ', ') + '; left out')); continue }
         $seen[$key] = $true
         $sites.Add([pscustomobject]@{
-            Key = $key; Name = $name; Url = $url; Check = $check; Where = $where
+            Key = $key; Name = $name; Url = $url; Check = $check; Where = $where; HavenUrl = (& $str $s 'havenUrl')
             Container = $container; Start = $(if ($start) { Join-Path $RepoRoot $start } else { '' })
             Deploy = $deploy; IsNpm = [bool]($s.PSObject.Properties.Name -contains 'npm' -and $s.npm -eq $true)
         })
@@ -3922,6 +3992,15 @@ function Get-WebsitePlan {
         $steps.Add((New-PlanStep -Kind say -Text ('Open NPM: its admin page listens only on Haven itself, so an SSH tunnel with your own key carries it to ' + $web.Npm.Url + '. Leave the tunnel window open while you use NPM; close it when done. Log in with NPM''s own account.')))
         $steps.Add((New-PlanStep -Kind window -Exe 'ssh' -Arguments @('-N', '-L', ([string]$web.Npm.LocalPort + ':' + $web.Npm.Remote), $web.HavenSsh) -Text 'The tunnel, in a window of its own. If it asks for a passphrase, that is your SSH key''s, in that window.'))
         $steps.Add((New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($web.Npm.Url) -Text ('Opening ' + $web.Npm.Url + ' in the default browser. Refresh once the tunnel has connected.')))
+        return $steps.ToArray()
+    }
+    # cc-P107: the ops pages' three deploys, whatever site is picked: the same helper, allowlist and phrase as Deploy.
+    if ($Action -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback')) {
+        $d = $web.Deploys[$Action.Substring(4)]
+        if (-not $d) { $steps.Add((New-PlanStep -Kind refuse -Text ($Action.Substring(4) + ' is not in the deploys allowlist in websites.json. Nothing was run.'))); return $steps.ToArray() }
+        $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase 'web.deploy') -Text ('This runs ' + $d.Name + ': ' + $d.Script + ' ' + $d.What + '. Its window first reads Haven and prints the plan, and changes nothing until you type its word there. It uses your own SSH key; the window keeps a log under scripts\shard-console-output\deploys.')))
+        $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + @($Config.WebsiteDeployScript, '-Deploy', $d.Name)) -Text 'In a window of its own, which stays open. It checks the allowlist again before it runs anything.'))
+        $steps.Add((New-PlanStep -Kind log -Text ('web.deploy ops ' + $d.Name)))
         return $steps.ToArray()
     }
     $s = @($web.Sites | Where-Object { $_.Key -ceq $Site })[0]
@@ -4792,6 +4871,43 @@ function Get-AutopilotFacts {
 
 function Get-PlayTestGlanceNow {
     # cc-P83: the PLAY TESTS tile, read now. One small file; never throws.
+    # cc-P107: once the pages are on Haven, the same three documents come from Haven's API; if Haven does not answer,
+    # the mirror (testing\ as of the last commit) is read and the tile says so.
+    param($Config)
+    if ((Get-OpsMode $Config) -ceq 'haven' -and $Config.Ops.HavenPageUrl) {
+        $base = $Config.Ops.HavenPageUrl.TrimEnd('/')
+        try {
+            $items = (Invoke-WebRequest -UseBasicParsing -Uri ($base + '/api/items') -TimeoutSec 4).Content
+            $hi = $null; $hb = $null
+            try { $hi = (Invoke-WebRequest -UseBasicParsing -Uri ($base + '/api/ideas') -TimeoutSec 4).Content } catch { }
+            try { $hb = (Invoke-WebRequest -UseBasicParsing -Uri ($base + '/api/bugs') -TimeoutSec 4).Content } catch { }
+            $g = Get-PlayTestGlance -JsonText $items -IdeasText $hi -BugsText $hb
+            $age = Get-HavenSnapshotAge $Config
+            $g.Detail += '; on Haven' + $(if ($null -ne $age) { ', game PC snapshot received ' + (Format-Age ([timespan]::FromSeconds($age))) + ' ago' } else { '' })
+            return $g
+        } catch {
+            $g = Get-PlayTestGlanceFile $Config
+            $g.Detail += '; from the last commit (Haven unreachable)'
+            return $g
+        }
+    }
+    Get-PlayTestGlanceFile $Config
+}
+
+function Get-HavenSnapshotAge {
+    # cc-P107: seconds since Haven last received the game PC snapshot, or $null (no token, Haven down, never sent).
+    param($Config)
+    try {
+        $tok = ([IO.File]::ReadAllText($Config.Ops.TokenFile)).Trim()
+        if (-not $tok) { return $null }
+        $r = Invoke-WebRequest -UseBasicParsing -Uri ($Config.Ops.OpsApi.TrimEnd('/') + '/api/gamepc') -Headers @{ Authorization = 'Bearer ' + $tok } -TimeoutSec 4
+        $a = ($r.Content | ConvertFrom-Json).ageSeconds
+        if ($null -eq $a) { return $null }
+        return [int]$a
+    } catch { return $null }
+}
+
+function Get-PlayTestGlanceFile {
     param($Config)
     $text = $null; $err = $null
     try { if (Test-Path -LiteralPath $Config.PlayTestsFile -PathType Leaf) { $text = [IO.File]::ReadAllText($Config.PlayTestsFile) } }
