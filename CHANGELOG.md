@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.7
+
+### Staff
+- [VBuild opens a Visual Builder palette: search the art by name or number, then paint, fill, erase, wipe, hue and nudge decorations. Every step can be undone, a wipe included, and the undo history survives a restart.
+
 ## 2026.10.14.6
 
 ### Staff
