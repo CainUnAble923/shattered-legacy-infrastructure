@@ -3,7 +3,11 @@
 > **This runs on the Windows box (`192.168.1.58`), not on Haven,** because it serves files the
 > shard writes on this machine. Start or recreate it with `Start-UoStatus.ps1` in this folder
 > (it sets `SERVER_PATH`, which this folder has no `.env` for). Haven reaches it through NPM's
-> `/api/` route. `sl-shard-probe` (up/down for ports 2593 and 2594) runs beside it.
+> `/api/` route. `sl-shard-probe` (up/down for the test shard on 2594) runs beside it.
+>
+> **cc-P108, 2026-10-14: live is retired** (returns as a fresh 1.0 world). The probe checks 2593 only while
+> `scripts/live.json` says `liveEnabled` true, so `shards.json` lists the test shard alone and the website
+> hides its Live dot. `status.json` was written only by live, so it is no longer written; the panel shows offline.
 
 The website runs on **Haven**. The shard runs on the **Windows box**. So the page cannot read
 Docker, and something has to carry the facts across. This is that something, and it is deliberately
@@ -59,7 +63,7 @@ for a build with none. Still schema 1: a reader that does not know the field ign
 
 | Piece | Machine | What it does |
 |---|---|---|
-| `ShardStatusPublisher.cs` | in `sl-modernuo` | writes `status.json` every 30s |
+| `ShardStatusPublisher.cs` | in `sl-modernuo` (retired 2026-10-14) | wrote `status.json` every 30s |
 | bind mount | Windows box | `server/lib/uo/modernuo/status` to `/var/lib/uo/modernuo/status` |
 | `sl-uo-status` | Windows box | nginx, serves that folder on **8092**, read-only |
 | NPM custom location | Haven | `/api/` to `http://192.168.1.58:8092/` |

@@ -237,8 +237,12 @@
       .then(function (d) {
         var age = Date.now() - Date.parse(d && d.generatedAt);
         var fresh = age > -SKEW_MS && age < STALE_MS;
+        // cc-P108: a shard the probe does not list is not shown at all (live is retired and is not probed).
+        ['live', 'test'].forEach(function (id) { document.getElementById('sd-' + id).parentNode.hidden = true; });
         (d.shards || []).forEach(function (s) {
-          if (s.id === 'live' || s.id === 'test') set(s.id, fresh ? (s.up ? 'up' : 'down') : 'unknown');
+          if (s.id !== 'live' && s.id !== 'test') return;
+          document.getElementById('sd-' + s.id).parentNode.hidden = false;
+          set(s.id, fresh ? (s.up ? 'up' : 'down') : 'unknown');
         });
         box.hidden = false;
       })

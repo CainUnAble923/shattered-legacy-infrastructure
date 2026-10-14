@@ -1,0 +1,46 @@
+# RETIRED 2026-10-14 (cc-P108): the live shard's service, kept as a record and NOT RUNNABLE.
+# Chase, 2026-10-14: live is deleted and forgotten; the test shard is the only one worked with. Live returns only as a
+# fresh 1.0 world, built new then. The container sl-modernuo, its images (uo-modernuo:latest, :f1-verify) and its
+# world data were removed the same day by the overseer.
+#
+# Why this cannot start anything: the service sits under x-retired-live, not services, so `docker compose up` on this
+# file finds no service; its paths are relative to docker/uo, not this folder; and there is no .env here. It was taken
+# out of docker/uo/docker-compose.yml, which now holds only sl-ddns, so `docker compose up` there (or `scripts\sl.ps1
+# up uo`, which adds --build) can no longer build an ungated image and recreate sl-modernuo (bug-list D29).
+#
+# At 1.0: scripts\live.json liveEnabled true turns the console, probe and scripts back on. A new world's service is
+# written then; this block is where the old one's settings are (D50's stop_grace_period, the parent world mount of
+# cc-P37, seccomp for io_uring). It is exactly what docker/uo/docker-compose.yml held until 2026-10-14.
+x-retired-live:
+  modernuo:
+    build:
+      context: ../..
+      dockerfile: docker/uo/Dockerfile
+      args:
+        DOTNET_VERSION: "10.0.203"
+        MODERNUO_COMMIT: "d4531cd94b739613155225c234900de9f47d2c88"
+    container_name: sl-modernuo
+    restart: unless-stopped
+    stop_grace_period: 60s   # D50: was 1 s, which SIGKILLed D36's shutdown save mid-write. Takes effect when live is next recreated (fresh-world wipe).
+    ports:
+      - "2593:2593"
+      - "2593:2593/udp"
+    volumes:
+      # Canonical custom scripts, synced into the container on each start
+      - ${SERVER_PATH}/customizations:/modernuo-projects:ro
+      # Server configuration (modernuo.json, etc.)
+      - ${SERVER_PATH}/uo/modernuo/Configuration:/modernuo/Configuration
+      # World data, one mount for the whole folder (cc-P37): Saves, Backups, Archives, temp, and
+      # status/ (the public status.json, written by ShardStatusPublisher and served by sl-uo-status).
+      # Mount the PARENT, never Saves on its own. The upgraded engine (upstream d4531cd9, #2612)
+      # publishes a save by renaming the Saves folder, and a bind-mount target cannot be renamed:
+      # with Saves mounted alone the first save fails and leaves the host's Saves EMPTY (cc-P30 run 2b).
+      - ${SERVER_PATH}/lib/uo/modernuo:/var/lib/uo/modernuo
+      # UO client data (maps, art, tiledata, etc.)
+      - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
+    environment:
+      TZ: ${TZ:-America/Chicago}
+    stdin_open: true   # allows: docker attach sl-modernuo
+    tty: true
+    security_opt:
+      - seccomp:unconfined   # io_uring requires relaxed seccomp (WSL2/Docker Desktop)

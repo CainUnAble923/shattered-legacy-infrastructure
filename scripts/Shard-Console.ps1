@@ -171,6 +171,8 @@ $script:CommitPublicWarning = 'Both repos are PUBLIC on GitHub: a commit that is
 $script:PublishPublicWarning = 'This is PUBLIC: every player''s launcher is offered this package at its next start.'
 # cc-P96: the test shard's health and crash judgments, shared with docker/uo/Start-TestShard.ps1. Pure functions.
 . (Join-Path $PSScriptRoot 'Shard-Health.ps1')
+# cc-P108: scripts\live.json, the one switch for the live shard (Get-LiveSwitch). Pure apart from reading that file.
+. (Join-Path $PSScriptRoot 'Live-Switch.ps1')
 
 function New-AutopilotConfig {
     # cc-P74. The queue runner's files, by its folder and its queue, so the facts can point both at fixtures.
@@ -239,8 +241,23 @@ function Resolve-ActionAlias {
     $Action
 }
 
+function Test-LiveRetired {
+    # cc-P108: true while scripts\live.json says liveEnabled false (Get-ConsoleConfig puts it on the live shard).
+    param($Config)
+    [bool]($Config -and $Config.Shards -and $Config.Shards.Contains('live') -and $Config.Shards['live'].Retired)
+}
+
+function Test-LiveActionKey {
+    # cc-P108: an action that acts on live: live.*, or a snapshot or Shard question action with the LIVE shard picked.
+    param([string]$Action, [string]$ShardKey)
+    ($Action -like 'live.*') -or ($ShardKey -eq 'live' -and ($Action -like 'snapshot.*' -or $Action -like 'question.*'))
+}
+
 function Get-ConsoleConfig {
-    param([Parameter(Mandatory = $true)][string]$RepoRoot)
+    # cc-P108: -LiveEnabled overrides scripts\live.json (the facts pin both states with it); unset, the file decides.
+    param([Parameter(Mandatory = $true)][string]$RepoRoot, [Nullable[bool]]$LiveEnabled = $null)
+    $liveSwitch = Get-LiveSwitch -RepoRoot $RepoRoot
+    if ($null -ne $LiveEnabled) { $liveSwitch.Enabled = [bool]$LiveEnabled; $liveSwitch.Problem = $null }
     # cc-P96: the one file this reads. Missing or broken, ConvertFrom-FixConfig gives the defaults.
     $fixFile = Join-Path $RepoRoot 'scripts\fix-test-shard.json'
     $fixJson = $null
@@ -252,13 +269,15 @@ function Get-ConsoleConfig {
     $lib = Join-Path $RepoRoot 'server\lib\uo\modernuo'
     $shards = [ordered]@{
         test = [pscustomobject]@{
-            Key = 'test'; Label = 'TEST'; Container = 'sl-modernuo-test'; IsLive = $false
+            Key = 'test'; Label = 'TEST'; Container = 'sl-modernuo-test'; IsLive = $false; Retired = $false
             # cc-P37: the test world has its own folder, mounted whole (docker-compose.test.yml).
             Saves = (Join-Path (Join-Path $RepoRoot 'server\lib\uo\modernuo-test') 'Saves'); GamePort = 2594
             Client = 'D:\UO\Play-SL-Admin-TEST.bat'
         }
         live = [pscustomobject]@{
-            Key = 'live'; Label = 'LIVE'; Container = 'sl-modernuo'; IsLive = $true
+            # cc-P108: Retired while scripts\live.json says liveEnabled false. It stays in Shards so the safety checks
+            # still name its container and save; nothing reads, probes, mails or acts on a retired shard.
+            Key = 'live'; Label = 'LIVE'; Container = 'sl-modernuo'; IsLive = $true; Retired = (-not $liveSwitch.Enabled)
             Saves = (Join-Path $lib 'Saves'); GamePort = 2593
             Client = 'D:\UO\Play-SL-Admin.bat'
         }
@@ -269,6 +288,9 @@ function Get-ConsoleConfig {
     if (Test-Path -LiteralPath $opsFile) { $opsJson = [IO.File]::ReadAllText($opsFile) }
     $c = [pscustomobject]@{
         RepoRoot         = $RepoRoot
+        # cc-P108: the live switch (Enabled, RetiredOn, Returns, Line, Refusal, Problem) and its shorthand.
+        Live             = $liveSwitch
+        LiveEnabled      = [bool]$liveSwitch.Enabled
         LatestTag        = 'sl-modernuo:latest'
         PowerShell       = 'powershell.exe'
         StartTestShard   = (Join-Path $RepoRoot 'docker\uo\Start-TestShard.ps1')
@@ -1756,6 +1778,8 @@ function Get-DeployLiveLine {
     # created from, not assumed: on 2026-10-05 sl-modernuo was created from 'uo-modernuo', which
     # docker/uo/docker-compose.yml (build: and no image:, D29) names after its own project.
     param($State, $Config)
+    # cc-P108: while live is retired the deploy confirmation does not mention it at all.
+    if (Test-LiveRetired $Config) { return $null }
     $c = $State.Shards['live'].Container
     if (-not $c -or -not $c.Exists) { return 'There is no live container (sl-modernuo), so nothing live uses this tag.' }
     if ((ConvertTo-ImageRef $c.ConfigImage) -eq (ConvertTo-ImageRef $Config.LatestTag)) {
@@ -2150,6 +2174,8 @@ function Get-FixPlan {
         'fix.prune' {
             $protect = @()
             foreach ($k in 'test', 'live') {
+                # cc-P108: a retired live has no container to protect (and is never read), so only test's image is.
+                if ($Config.Shards[$k].Retired) { continue }
                 $cc = $State.Shards[$k].Container
                 if ($cc -and $cc.Exists -and $cc.ImageId) { $protect += $cc.ImageId }
             }
@@ -2201,6 +2227,10 @@ function Get-ActionPlan {
     if ($Action -in @('package.build', 'package.publish', 'package.check')) { return (Get-PackagePlan -Action $Action -Config $Config -Facts $PackageFacts -Notes $PackageNotes -Zip $PackageZip) }
     if ($Action -eq 'test.deploy') { return (Get-DeployPlan -Config $Config -State $State -ImageTag $ImageTag) }
     if ($Now -eq [datetime]::MinValue) { $Now = $State.Now }
+    # cc-P108: while live is retired, every action on it refuses before anything is read or planned.
+    if ((Test-LiveRetired $Config) -and (Test-LiveActionKey -Action $Action -ShardKey $ShardKey)) {
+        return @(New-PlanStep -Kind refuse -Text $Config.Live.Refusal)
+    }
     if ($Action -eq 'test.wipe') { return (Get-WipePlan -Config $Config -State $State -Facts $WipeFacts -Admin $WipeAdmin -Now $Now) }
     # cc-P96: the Fix test shard tab. Its facts are git's and the test world's save record (Get-FixFacts).
     # cc-P106: the Shard question tab, for the shard picked on it (-Shard).
@@ -2252,6 +2282,12 @@ function Get-ActionPlan {
             $steps.Add((New-PlanStep -Kind log -Text 'test.start'))
         }
         'test.fresh' {
+            # cc-P108: a new test world took its accounts from the live save, which went with live. Without them it blocks
+            # at the owner account prompt for ever (D19), so this refuses rather than make a world nobody can log in to.
+            if (Test-LiveRetired $Config) {
+                $steps.Add((New-PlanStep -Kind refuse -Text ('Start fresh copied the accounts from the live save, and ' + $Config.Live.Refusal + ' A new world with no accounts blocks at the owner account prompt (D19). Wipe test accounts keeps the world and makes one new admin instead.')))
+                break
+            }
             $aside = New-AsideName $sh.Saves $Now
             $steps.Add((New-PlanStep -Kind say -Text ('Start fresh. Start-TestShard.ps1 -Fresh would DELETE the test save (modernuo-test\Saves), and no button here deletes a world save, so instead: stop the test shard, move that save aside, and start without -Fresh. Start-TestShard.ps1 then finds no test save and seeds a new one exactly as -Fresh does (accounts and SerializedTypes.db from the live save, D19). No build.')))
             $steps.Add((New-PlanStep -Kind exec -Exe $ps -Arguments ($sts + '-Down') -Text 'docker/uo/Start-TestShard.ps1 -Down'))
@@ -2680,9 +2716,13 @@ function New-ConsoleState {
     $latest = ConvertFrom-ImageInspect $Sections['image ' + $Config.LatestTag]
     $dockerError = $null
     $shards = [ordered]@{}
+    $all = $Sections
     foreach ($sh in $Config.Shards.Values) {
+        # cc-P108: a retired shard is read from nothing, even when a capture holds sections for it, so it can never
+        # be judged down, missing, crashed or waiting.
+        $Sections = $(if ($sh.Retired) { @{} } else { $all })
         $c = ConvertFrom-ContainerInspect $Sections['inspect ' + $sh.Container]
-        if (-not $c.Exists -and $c.Error -match 'connect|pipe|daemon is not running|could not be started') { $dockerError = $c.Error }
+        if (-not $sh.Retired -and -not $c.Exists -and $c.Error -match 'connect|pipe|daemon is not running|could not be started') { $dockerError = $c.Error }
         $cfgRef = $null; $run = $null
         if ($c.Exists) {
             $cfgRef = ConvertFrom-ImageInspect $Sections['image ' + $c.ConfigImage]
@@ -2705,15 +2745,20 @@ function New-ConsoleState {
             Save         = (Get-SaveSummary (ConvertFrom-FileListing $Sections['saves ' + $sh.Key]))
             Snapshots    = @(ConvertFrom-SnapshotListing $Sections['snapshots ' + $sh.Key])
             Asides       = $asides
+            Retired      = [bool]$sh.Retired
         }
     }
+    $Sections = $all
+    # cc-P108: no warning about the live compose file while live is retired (it is in docker\uo\retired, not runnable).
+    $compose = [pscustomobject]@{ Read = $false; HasBuild = $false; HasImage = $false; Warning = $null }
+    if (-not (Test-LiveRetired $Config)) { $compose = Test-LiveComposeFile $Sections['compose live'] }
     [pscustomobject]@{
         Now         = $now
         Source      = $Source
         Latest      = $latest
         # cc-P63: every sl-modernuo image, newest first, for Deploy built image.
         Images      = @(ConvertFrom-ImageTagListing ([string]$Sections['images sl-modernuo']))
-        Compose     = (Test-LiveComposeFile $Sections['compose live'])
+        Compose     = $compose
         DockerError = $dockerError
         Shards      = $shards
         Publisher   = (Get-PublisherState -Config $Config -Sections $Sections -Shards $shards -Now $now)
@@ -2845,7 +2890,15 @@ function Get-PublisherState {
 
     # What the website ends up showing depends on the feed too.
     if ($r.State -eq 'PUBLISHING' -and $r.FeedState -notin @('SERVING', 'UP', 'UNKNOWN')) { $r.Color = 'amber' }
-    if ($writers -contains 'test' -and -not ($writers -contains 'live')) {
+    # cc-P108: live was the only writer. While it is retired, no writer is expected: grey and said so, never red.
+    $liveRetired = Test-LiveRetired $Config
+    if ($liveRetired -and -not $writers.Count -and $r.State -in @('NOT PUBLISHING', 'STALE')) {
+        $r.Color = 'gray'
+        $why = 'Live is retired and was its only writer, so nothing publishes it and the website shows the shard offline.'
+        if ($r.State -eq 'NOT PUBLISHING') { $r.Detail = 'there is no status.json in ' + $p.Folder + '. ' + $why }
+        else { $r.Detail += ' ' + $why }
+    }
+    if (-not $liveRetired -and $writers -contains 'test' -and -not ($writers -contains 'live')) {
         if ($r.Color -eq 'green') { $r.Color = 'amber' }
         $lines.Add('WARNING    : only the TEST container has the status folder mounted, so the website shows the TEST shard, not live.')
     }
@@ -2861,6 +2914,12 @@ function Get-PublisherState {
 function Get-ShardGlance {
     # One word and one line per shard, for the tiles at the top of the window.
     param($Shard, $ShardState, [datetime]$Now, $Config)
+    # cc-P108: a retired shard is one grey line and nothing else: not down, not missing, not unknown.
+    if ($Shard.Retired) {
+        $line = 'retired 2026-10-14 (returns as a fresh 1.0 world)'
+        if ($Config -and $Config.Live) { $line = $Config.Live.Line }
+        return [pscustomobject]@{ Title = $Shard.Label; Word = 'RETIRED'; Color = 'gray'; Detail = $line; Retired = $true }
+    }
     $c = $ShardState.Container
     $l = $ShardState.Listener
     $word = 'UNKNOWN'; $color = 'gray'; $detail = ''
@@ -2964,6 +3023,8 @@ function Get-QuestionMails {
         $ss = $State.Shards[$k]
         if (-not $ss -or -not $ss.Question) { continue }
         $sh = $Config.Shards[$k]
+        # cc-P108: no email for a retired shard (its state never has a question anyway).
+        if ($sh.Retired) { continue }
         $sig = $sh.Container + '|' + $ss.Question.Signature
         if (@($Sent) -contains $sig) { continue }
         $name = $sh.Label.Substring(0, 1) + $sh.Label.Substring(1).ToLowerInvariant()
@@ -3047,7 +3108,7 @@ function Get-AtAGlance {
         $pd = 'last written ' + (Format-Age $p.Age) + ' ago; website shows offline'
     } elseif ($p.State -eq 'NOT PUBLISHING') {
         $pd = 'no status.json'
-        if (-not $p.Writers.Count) { $pd += '; no shard has the status mount' }
+        if (-not $p.Writers.Count) { $pd += $(if (Test-LiveRetired $Config) { '; live, its only writer, is retired' } else { '; no shard has the status mount' }) }
     } elseif ($p.State -eq 'UNREADABLE') {
         $pd = 'status.json is not schema 1'
     }
@@ -4070,6 +4131,8 @@ function Format-StatusReport {
     if ($State.Compose.Warning) { & $add ('LIVE COMPOSE FILE: ' + $State.Compose.Warning) 'amber' }
 
     foreach ($sh in $Config.Shards.Values) {
+        # cc-P108: a retired shard has its one tile line above and no section: nothing about it is checked.
+        if ($sh.Retired) { continue }
         $s = $State.Shards[$sh.Key]
         $c = $s.Container
         & $add '' 'normal'
@@ -5011,7 +5074,9 @@ function Get-DockerSections {
     $sec['meta'] = 'captured-at ' + (Format-DockerTime ([datetime]::UtcNow)) + "`nsource docker"
     $refs = New-Object 'System.Collections.Generic.List[string]'
     $refs.Add($Config.LatestTag)
-    foreach ($sh in $Config.Shards.Values) {
+    # cc-P108: a retired shard is never read: no docker inspect, no logs, no save or snapshot listing.
+    $active = @($Config.Shards.Values | Where-Object { -not $_.Retired })
+    foreach ($sh in $active) {
         $r = Invoke-DockerRead @('inspect', $sh.Container)
         $sec['inspect ' + $sh.Container] = ($r.Out + "`n" + $r.Err).Trim()
         $c = ConvertFrom-ContainerInspect $sec['inspect ' + $sh.Container]
@@ -5031,14 +5096,14 @@ function Get-DockerSections {
     # cc-P63: the images Deploy built image chooses from.
     $r = Invoke-DockerRead @('images', 'sl-modernuo', '--format', '{{.Repository}}:{{.Tag}}|{{.ID}}|{{.CreatedAt}}|{{.Size}}')
     $sec['images sl-modernuo'] = ($r.Out + "`n" + $r.Err).Trim()
-    foreach ($sh in $Config.Shards.Values) {
+    foreach ($sh in $active) {
         $sec['saves ' + $sh.Key] = Get-FileListing $sh.Saves
         $sec['snapshots ' + $sh.Key] = Get-SnapshotListingText (Join-Path $Config.SnapshotRoot $sh.Key)
         $parent = Split-Path $sh.Saves -Parent
         $leaf = Split-Path $sh.Saves -Leaf
         $sec['asides ' + $sh.Key] = @(Get-ChildItem -LiteralPath $parent -Directory -Filter ($leaf + '.aside-*') -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) -join "`n"
     }
-    if (Test-Path -LiteralPath $Config.LiveCompose) { $sec['compose live'] = [IO.File]::ReadAllText($Config.LiveCompose) }
+    if (-not (Test-LiveRetired $Config) -and (Test-Path -LiteralPath $Config.LiveCompose)) { $sec['compose live'] = [IO.File]::ReadAllText($Config.LiveCompose) }
     # The status publisher: the file it writes, the feed that serves it, and what the feed says.
     $p = $Config.Publisher
     $r = Invoke-DockerRead @('inspect', $p.FeedContainer)
@@ -5914,6 +5979,46 @@ function Set-TabTheme {
         [Windows.Forms.TextRenderer]::DrawText($e.Graphics, $page.Text, $script:tabFont, $e.Bounds, $fore, [Windows.Forms.TextFormatFlags]'HorizontalCenter, VerticalCenter, NoPadding')
         $b.Dispose(); $pen.Dispose()
     })
+}
+
+function Get-LiveRetiredControls {
+    # cc-P108: the controls greyed while live is retired, by action key (a button's Tag) or name, with their tooltip.
+    # Every live.* button, the LIVE choice on Shard question and Snapshots, and Start fresh (it seeded from live's save).
+    param($Config)
+    $t = [ordered]@{}
+    if (-not (Test-LiveRetired $Config)) { return $t }
+    $why = $script:LiveRetiredText + ': ' + $Config.Live.Line + '.'
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Key -like 'live.*' })) { $t[$a.Key] = $why }
+    $t['qLive'] = $why
+    $t['snapLive'] = $why
+    $t['test.fresh'] = $why + ' Start fresh copied its accounts from the live save; Wipe test accounts makes a new admin instead.'
+    $t
+}
+
+function Set-LiveRetiredLook {
+    # cc-P108: greys and disables every control Get-LiveRetiredControls names and gives it that tooltip. WinForms shows no
+    # tooltip over a disabled control, so the LIVE shard tab's caption says the same words.
+    param($Root, $Config, $ToolTip)
+    $keys = Get-LiveRetiredControls $Config
+    if (-not $keys.Count) { return 0 }
+    $n = 0
+    $stack = New-Object System.Collections.Stack
+    $stack.Push($Root)
+    while ($stack.Count) {
+        $x = $stack.Pop()
+        $key = $null
+        if ($x.Tag -is [string] -and $keys.Contains($x.Tag)) { $key = $x.Tag }
+        elseif ($x.Name -and $keys.Contains($x.Name)) { $key = $x.Name }
+        if ($key) {
+            if ($x -is [Windows.Forms.RadioButton] -and $x.Checked) { $x.Checked = $false }
+            $x.Enabled = $false
+            $x.ForeColor = [Drawing.Color]::Gray
+            if ($ToolTip) { $ToolTip.SetToolTip($x, $keys[$key]) }
+            $n++
+        }
+        foreach ($k in $x.Controls) { $stack.Push($k) }
+    }
+    $n
 }
 
 function Set-ConsoleTooltips {
@@ -7264,7 +7369,10 @@ function New-ConsoleForm {
     $tabs.Dock = 'Fill'
     $script:ui.Tabs = $tabs
 
-    $testPage = New-ButtonPage 'Test shard' 'The throwaway test shard (sl-modernuo-test, port 2594, its own save). No confirmation except Deploy and Wipe: it is throwaway, and nothing here touches live. Rebuild is the only button that builds, through every test gate. START FRESH and WIPE TEST ACCOUNTS are different: Start fresh starts a NEW WORLD, with the LIVE accounts copied in; Wipe test accounts keeps the WORLD, deletes every test account and copies nothing from live. Hover a button for what it does.' @(
+    $testCaption = 'The throwaway test shard (sl-modernuo-test, port 2594, its own save). No confirmation except Deploy and Wipe: it is throwaway, and nothing here touches live. Rebuild is the only button that builds, through every test gate. START FRESH and WIPE TEST ACCOUNTS are different: Start fresh starts a NEW WORLD, with the LIVE accounts copied in; Wipe test accounts keeps the WORLD, deletes every test account and copies nothing from live. Hover a button for what it does.'
+    # cc-P108: while live is retired, the caption says nothing about it but why Start fresh is greyed.
+    if (Test-LiveRetired $Config) { $testCaption = 'The throwaway test shard (sl-modernuo-test, port 2594, its own save). No confirmation except Deploy and Wipe: it is throwaway. Rebuild is the only button that builds, through every test gate. Start fresh is greyed: it copied its accounts from the live save, and live is retired. WIPE TEST ACCOUNTS keeps the WORLD, deletes every test account and makes one new admin. Hover a button for what it does.' }
+    $testPage = New-ButtonPage 'Test shard' $testCaption @(
         (New-ConsoleButton 'Start' 'test.start'),
         (New-ConsoleButton 'Start fresh (new world, live accounts)' 'test.fresh' 260),
         (New-ConsoleButton 'Wipe test accounts (keep world)...' 'test.wipe' 260),
@@ -7299,6 +7407,8 @@ function New-ConsoleForm {
     $qTest.Name = 'qTest'
     $qTest.AutoSize = $true
     $qLive.Checked = $true
+    # cc-P108: the test shard is the one picked while live is retired (its choice is greyed by Set-LiveRetiredLook).
+    if (Test-LiveRetired $Config) { $qTest.Checked = $true }
     $qLive.Add_CheckedChanged({ Update-QuestionPanel $script:lastState })
     $qTop.Controls.AddRange(@($qLive, $qTest))
     $qText = New-Object Windows.Forms.TextBox
@@ -7502,13 +7612,17 @@ function New-ConsoleForm {
     $diagVpn.Enabled = $false
     $script:ui.VpnButtons += $diagVpn
 
-    $livePage = New-ButtonPage 'LIVE shard' 'LIVE: sl-modernuo, the real world save, real players. Every button here asks you to type a phrase first. Start, Stop and Restart act on the existing container only; this console never creates it, never runs compose on it and never deploys. Each plan says whether a stop saves first.' @(
+    $liveCaption = 'LIVE: sl-modernuo, the real world save, real players. Every button here asks you to type a phrase first. Start, Stop and Restart act on the existing container only; this console never creates it, never runs compose on it and never deploys. Each plan says whether a stop saves first.'
+    $liveColor = [Drawing.Color]::Firebrick
+    # cc-P108: the tab stays, grey, with every button greyed (Set-LiveRetiredLook); scripts\live.json brings it back.
+    if (Test-LiveRetired $Config) { $liveCaption = 'LIVE ' + $Config.Live.Line + '. ' + $script:LiveRetiredText + ': every button here is greyed and nothing checks, probes or emails about live. scripts\live.json liveEnabled true brings this tab back as it was.'; $liveColor = [Drawing.Color]::Gray }
+    $livePage = New-ButtonPage 'LIVE shard' $liveCaption @(
         (New-ConsoleButton 'Start' 'live.start'),
         (New-ConsoleButton 'Stop' 'live.stop'),
         (New-ConsoleButton 'Restart' 'live.restart'),
         (New-ConsoleButton 'Tail the log' 'live.tail'),
         (New-ConsoleButton 'Open a client' 'live.client')
-    ) ([Drawing.Color]::Firebrick)
+    ) $liveColor
 
     # commit (cc-P60): Commit-ShardWork.ps1, as it is, in a window of its own
     $commitBtns = @()
@@ -7786,6 +7900,8 @@ function New-ConsoleForm {
     $tips.InitialDelay = 500
     $tabs.ShowToolTips = $true
     Set-ConsoleTooltips $form (Get-ConsoleTooltips) $tips
+    # cc-P108: after the tooltips, so a greyed live control's tooltip says Live is retired.
+    [void](Set-LiveRetiredLook $form $Config $tips)
     $script:ui.ToolTip = $tips
 
     $timer = New-Object Windows.Forms.Timer

@@ -1,37 +1,8 @@
+# docker/uo's compose project "uo": since 2026-10-14 (cc-P108) only sl-ddns, the public DNS updater.
+# The live shard's service (sl-modernuo) was retired that day and moved, not runnable, to
+# retired/docker-compose.live.yml. Live returns only as a fresh 1.0 world, built new then.
+# The test shard is docker-compose.test.yml (project sl-uo-test), started by Start-TestShard.ps1.
 services:
-  modernuo:
-    build:
-      context: ../..
-      dockerfile: docker/uo/Dockerfile
-      args:
-        DOTNET_VERSION: "10.0.203"
-        MODERNUO_COMMIT: "d4531cd94b739613155225c234900de9f47d2c88"
-    container_name: sl-modernuo
-    restart: unless-stopped
-    stop_grace_period: 60s   # D50: was 1 s, which SIGKILLed D36's shutdown save mid-write. Takes effect when live is next recreated (fresh-world wipe).
-    ports:
-      - "2593:2593"
-      - "2593:2593/udp"
-    volumes:
-      # Canonical custom scripts, synced into the container on each start
-      - ${SERVER_PATH}/customizations:/modernuo-projects:ro
-      # Server configuration (modernuo.json, etc.)
-      - ${SERVER_PATH}/uo/modernuo/Configuration:/modernuo/Configuration
-      # World data, one mount for the whole folder (cc-P37): Saves, Backups, Archives, temp, and
-      # status/ (the public status.json, written by ShardStatusPublisher and served by sl-uo-status).
-      # Mount the PARENT, never Saves on its own. The upgraded engine (upstream d4531cd9, #2612)
-      # publishes a save by renaming the Saves folder, and a bind-mount target cannot be renamed:
-      # with Saves mounted alone the first save fails and leaves the host's Saves EMPTY (cc-P30 run 2b).
-      - ${SERVER_PATH}/lib/uo/modernuo:/var/lib/uo/modernuo
-      # UO client data (maps, art, tiledata, etc.)
-      - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
-    environment:
-      TZ: ${TZ:-America/Chicago}
-    stdin_open: true   # allows: docker attach sl-modernuo
-    tty: true
-    security_opt:
-      - seccomp:unconfined   # io_uring requires relaxed seccomp (WSL2/Docker Desktop)
-
   ddns-updater:
     image: qmcgaw/ddns-updater:latest
     container_name: sl-ddns

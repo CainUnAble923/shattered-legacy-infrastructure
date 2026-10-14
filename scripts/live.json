@@ -1,0 +1,8 @@
+{
+  "_about": "cc-P108. The one switch for the live shard. Read by scripts\\Live-Switch.ps1 (Get-LiveSwitch), which the Shard Console, Deploy-StatusPublisher.ps1, Publish-PatchNotes.ps1, Publish-GamePcSnapshot.ps1 and docker\\uo-status\\Start-UoStatus.ps1 (the probe's SL_LIVE_ENABLED) all use.",
+  "_false": "Live is retired: the console shows one grey LIVE tile and greyed live buttons, nothing checks, probes, mails or deploys to live, and nothing counts it as down.",
+  "_true": "At 1.0: today's live behaviour comes back with no code change. The live compose service is kept, not runnable, in docker\\uo\\retired\\docker-compose.live.yml; a fresh 1.0 world is built new then.",
+  "liveEnabled": false,
+  "retiredOn": "2026-10-14",
+  "returns": "returns as a fresh 1.0 world"
+}

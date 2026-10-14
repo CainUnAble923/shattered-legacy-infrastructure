@@ -62,6 +62,14 @@ function Read-Fixture {
 }
 
 $repo   = (Resolve-Path (Join-Path $here '..\..')).Path
+# cc-P108: scripts\live.json retires live, and every fact before P108 was written with live in service. Those facts
+# pin liveEnabled true, which is also the proof that true brings today's behaviour back unchanged; the P108 facts
+# pass -LiveEnabled $false, or $null to read the real file. A child process a fact starts reads the real file.
+$script:RealGetConsoleConfig = ${function:Get-ConsoleConfig}
+function Get-ConsoleConfig {
+    param([string]$RepoRoot, [Nullable[bool]]$LiveEnabled = $true)
+    & $script:RealGetConsoleConfig -RepoRoot $RepoRoot -LiveEnabled $LiveEnabled
+}
 $config = Get-ConsoleConfig -RepoRoot $repo
 # cc-P99: Get-ConsoleConfig picks D:\UO\golem once it is ACTIVE. The facts were written against cc-autopilot's
 # folder, so they pin it; the Golem's own config has facts of its own (P99_*).
@@ -4715,16 +4723,17 @@ Fact 'P106_EveryQuestionButtonIsOnItsOwnTabWithAPhraseAndATooltip' {
 }
 
 Fact 'P106_EveryQuestionButtonRunHeadlessWithDryRunRunsNothing' {
-    # A capture with live waiting at D94, as -Capture would write it, read by the child exactly as a click runs it.
+    # A capture with a shard waiting at D94, as -Capture would write it, read by the child exactly as a click runs it.
+    # cc-P108: the child reads the real scripts\live.json, so this is the TEST shard (it was live until live retired).
     $capText = Read-P106Text 'console-capture-2026-09-29.txt'
     $capText = $capText -replace 'captured-at \S+', ('captured-at ' + (Format-DockerTime $p106T0.AddMinutes(5)))
     $capText = $capText -replace '(?s)("State": \{\s*"Status": )"\w+",(\s*"Running": )\w+', '$1"running",$2true'
-    $capText += "`n" + $script:CaptureMarker + 'logtail sl-modernuo #####' + "`n" + $p106D94 + "`n"
+    $capText += "`n" + $script:CaptureMarker + 'logtail sl-modernuo-test #####' + "`n" + $p106D94 + "`n"
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p106-capture-' + [guid]::NewGuid().ToString('N') + '.txt')
     [IO.File]::WriteAllText($tmp, $capText, (New-Object Text.UTF8Encoding $false))
     try {
         foreach ($k in 'question.show', 'question.n', 'question.y', 'question.a', 'question.stop') {
-            $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Resolve-Path $script).Path -DryRun -StatusFrom $tmp -Action $k -Shard live 2>&1 | Out-String)
+            $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Resolve-Path $script).Path -DryRun -StatusFrom $tmp -Action $k -Shard test 2>&1 | Out-String)
             Assert-Equal 0 $LASTEXITCODE ($k + ': ' + $out)
             Assert-True ($out -match ('== DRY RUN: ' + [regex]::Escape($k))) ($k + ': ' + $out)
             Assert-True ($out -match '\(dry run: nothing was run\)') ($k + ': ' + $out)
@@ -4875,6 +4884,201 @@ Fact 'P107_TheMenuFollowsTheHostThatServedItAndHomepageTriesHavenFirst' {
     Assert-True ($nav -match "key: 'playtests', label: 'Play tests',   host: null, port: 8093") 'Play tests follows the page'
     $cj = [IO.File]::ReadAllText((Join-Path $repo 'docker\dashboard\config\custom.js'))
     Assert-True ($cj -match "NAV_AT = \[\{ host: '192\.168\.1\.61', port: 8093 \}, \{ host: null, port: 8093 \}\]" -and $cj -match 'onerror') 'Haven first, then this PC'
+}
+
+# --- cc-P108: live retired. scripts\live.json liveEnabled false greys it; true brings it back -------------------------
+# The capture (console-capture-2026-09-29.txt) still holds live's sections, which is the point: a retired live must ignore
+# them. $p108Off and $p108On are the same repo's config with the switch pinned each way.
+
+$p108Off = Get-ConsoleConfig -RepoRoot $repo -LiveEnabled $false
+$p108On  = Get-ConsoleConfig -RepoRoot $repo -LiveEnabled $true
+$p108Line = 'retired 2026-10-14 (returns as a fresh 1.0 world)'
+
+Fact 'P108_TheRepoFileSaysLiveIsRetired' {
+    $c = Get-ConsoleConfig -RepoRoot $repo -LiveEnabled $null
+    Assert-Equal $false $c.LiveEnabled 'scripts\live.json liveEnabled'
+    Assert-True ($c.Shards['live'].Retired -and -not $c.Shards['test'].Retired) 'live retired, test not'
+    Assert-Equal $p108Line $c.Live.Line
+    Assert-True ($null -eq $c.Live.Problem) ('the file reads cleanly: ' + $c.Live.Problem)
+    Assert-True ($c.Live.Refusal -like 'Live is retired*') $c.Live.Refusal
+}
+
+Fact 'P108_TheSwitchReadsTrueAndFalseAndAnythingElseIsRetired' {
+    Assert-True (ConvertFrom-LiveSwitchJson '{"liveEnabled": true}').Enabled 'true'
+    Assert-True (-not (ConvertFrom-LiveSwitchJson '{"liveEnabled": false}').Enabled) 'false'
+    foreach ($bad in @($null, '', 'not json', '{}', '{"liveEnabled": "true"}', '{"liveEnabled": 1}')) {
+        $s = ConvertFrom-LiveSwitchJson $bad
+        Assert-True (-not $s.Enabled -and $s.Problem) ('retired, and says why, for: ' + $bad)
+    }
+}
+
+Fact 'P108_RetiredLiveIsOneGreyTileAndNoChecks' {
+    $st = New-ConsoleState -Config $p108Off -Sections $cap
+    $t = @(Get-AtAGlance $st $p108Off)[0]
+    Assert-Equal 'LIVE' $t.Title
+    Assert-Equal 'RETIRED' $t.Word
+    Assert-Equal 'gray' $t.Color
+    Assert-Equal $p108Line $t.Detail
+    $text = (@(Format-StatusReport -State $st -Config $p108Off) | ForEach-Object { $_.Text }) -join "`n"
+    Assert-True ($text -match ('(?m)^LIVE\s+: RETIRED\s+' + [regex]::Escape($p108Line) + '$')) $text
+    Assert-True ($text -notmatch '== LIVE shard') 'no LIVE section'
+    Assert-True ($text -notmatch 'LIVE COMPOSE FILE') 'no compose warning'
+    Assert-True ($text -cnotmatch 'sl-modernuo(?![-:])') ('nothing names the live container: ' + $text)
+    Assert-True ($text -notmatch '(?i)live[^\n]*(down|missing|unknown|no container)') 'live is never down, missing or unknown'
+}
+
+Fact 'P108_LiveEnabledTrueShowsLiveExactlyAsBefore' {
+    $st = New-ConsoleState -Config $p108On -Sections $cap
+    $t = @(Get-AtAGlance $st $p108On)[0]
+    Assert-Equal 'LIVE' $t.Title
+    Assert-True ($t.Word -ne 'RETIRED') $t.Word
+    $text = (@(Format-StatusReport -State $st -Config $p108On) | ForEach-Object { $_.Text }) -join "`n"
+    Assert-True ($text -match '== LIVE shard: sl-modernuo ') 'the LIVE section is back'
+    Assert-True ($st.Shards['live'].Container.Exists -and -not $st.Shards['live'].Retired) 'read from the capture'
+}
+
+Fact 'P108_ARetiredLiveIgnoresWhatACaptureSaysAboutIt' {
+    $sec = [ordered]@{}
+    foreach ($k in $cap.Keys) { $sec[$k] = $cap[$k] }
+    $sec['inspect sl-modernuo'] = 'error during connect: open //./pipe/docker_engine: The system cannot find the file specified.'
+    $sec['logtail sl-modernuo'] = $p106D94
+    $off = New-ConsoleState -Config $p108Off -Sections $sec
+    $l = $off.Shards['live']
+    Assert-True ($l.Retired -and -not $l.Container.Exists -and $null -eq $l.Question -and -not $l.Save.Exists -and -not @($l.Snapshots).Count) 'nothing read'
+    Assert-True ($null -eq $off.DockerError) 'a live read error is not a docker error'
+    $on = New-ConsoleState -Config $p108On -Sections $sec
+    Assert-True ($null -ne $on.DockerError) 'enabled, the same section is a docker error, as before'
+}
+
+Fact 'P108_EveryLiveActionRefusesWhileRetired' {
+    $st = New-ConsoleState -Config $p108Off -Sections $cap
+    $acts = @(@(Get-ConsoleActions | Where-Object { $_.Key -like 'live.*' } | ForEach-Object { $_.Key }) +
+              @('snapshot.create', 'snapshot.restore', 'snapshot.delete', 'snapshot.list', 'question.show', 'question.n', 'question.y', 'question.a', 'question.enter', 'question.stop'))
+    Assert-Equal 15 $acts.Count ('the five live.* buttons and ten snapshot and question actions: ' + ($acts -join ','))
+    foreach ($a in $acts) {
+        $plan = @(Get-ActionPlan -Action $a -ShardKey 'live' -Config $p108Off -State $st -SnapshotName 'x' -Snapshot 'y')
+        Assert-Equal 1 $plan.Count ($a + ': one step')
+        Assert-Equal 'refuse' $plan[0].Kind $a
+        Assert-True ($plan[0].Text -like 'Live is retired*') ($a + ': ' + $plan[0].Text)
+    }
+    $on = New-ConsoleState -Config $p108On -Sections $cap
+    $plan = @(Get-ActionPlan -Action 'live.restart' -Config $p108On -State $on)
+    Assert-True (-not @($plan | Where-Object { $_.Text -like 'Live is retired*' }).Count -and @($plan | Where-Object { $_.Kind -eq 'confirm' }).Count) 'enabled: the typed confirmation, as before'
+    $plan = @(Get-ActionPlan -Action 'snapshot.list' -ShardKey 'test' -Config $p108Off -State $st)
+    Assert-True (-not @($plan | Where-Object { $_.Kind -eq 'refuse' }).Count) 'the test shard is untouched by the switch'
+}
+
+Fact 'P108_StartFreshRefusesWhileRetiredBecauseItsAccountsCameFromLive' {
+    $st = New-ConsoleState -Config $p108Off -Sections $cap
+    $plan = @(Get-ActionPlan -Action 'test.fresh' -Config $p108Off -State $st)
+    Assert-Equal 1 $plan.Count
+    Assert-True ($plan[0].Kind -eq 'refuse' -and $plan[0].Text -match 'owner account prompt \(D19\)' -and $plan[0].Text -match 'Wipe test accounts') $plan[0].Text
+    $on = New-ConsoleState -Config $p108On -Sections $cap
+    Assert-True (@(Get-ActionPlan -Action 'test.fresh' -Config $p108On -State $on | Where-Object { $_.Kind -eq 'move' }).Count) 'enabled: moves the save aside, as before'
+}
+
+Fact 'P108_NoQuestionEmailForARetiredLive' {
+    $sec = [ordered]@{}
+    foreach ($k in $cap.Keys) { $sec[$k] = $cap[$k] }
+    $sec['meta'] = 'captured-at ' + (Format-DockerTime $p106T0.AddMinutes(5)) + "`nsource capture"
+    $sec['inspect sl-modernuo'] = $sec['inspect sl-modernuo'] -replace '(?s)("State": \{\s*"Status": )"\w+",(\s*"Running": )\w+', '$1"running",$2true'
+    $sec['logtail sl-modernuo'] = $p106D94
+    $on = New-ConsoleState -Config $p108On -Sections $sec
+    Assert-True ($null -ne $on.Shards['live'].Question) 'enabled: live is waiting at D94'
+    Assert-Equal 1 @(Get-QuestionMails -State $on -Config $p108On).Count 'enabled: one email, as before'
+    $off = New-ConsoleState -Config $p108Off -Sections $sec
+    Assert-Equal 0 @(Get-QuestionMails -State $off -Config $p108Off).Count 'retired: none'
+    Assert-Equal 0 @(Get-QuestionMails -State $on -Config $p108Off).Count 'retired, even given a state that has the question'
+}
+
+Fact 'P108_TheDockerReadNeverNamesARetiredLive' {
+    $script:p108Reads = New-Object 'System.Collections.Generic.List[string]'
+    # Shims for this fact only (PowerShell resolves functions through the caller's scope): no docker, no network.
+    function Invoke-DockerRead { param([string[]]$Arguments, [int]$TimeoutMs) $script:p108Reads.Add($Arguments -join ' '); [pscustomobject]@{ Out = ''; Err = 'Error: No such object'; Code = 1 } }
+    function Get-FeedHttpCode { param($Url) '' }
+    $sec = Get-DockerSections -Config $p108Off
+    $reads = $script:p108Reads -join "`n"
+    Assert-True ($reads -match 'inspect sl-modernuo-test') ('the test shard is read: ' + $reads)
+    # 'images sl-modernuo' lists the image repository the test shard runs from; no read names the live container.
+    $named = @($script:p108Reads | Where-Object { $_ -notlike 'images sl-modernuo *' -and $_ -cmatch '(^| )sl-modernuo( |$)' })
+    Assert-Equal 0 $named.Count ('reads naming sl-modernuo: ' + ($named -join ' | '))
+    Assert-True (-not @($sec.Keys | Where-Object { $_ -match '^(inspect|logs|logtail) sl-modernuo$| live$' }).Count) ('no live section: ' + (@($sec.Keys) -join ', '))
+    $script:p108Reads.Clear()
+    [void](Get-DockerSections -Config $p108On)
+    Assert-True (($script:p108Reads -join "`n") -match '(?m)^inspect sl-modernuo$') 'enabled: live is read, as before'
+}
+
+Fact 'P108_TheWindowGreysEveryLiveControlAndPicksTheTestShard' {
+    $script:NetProbeDisabled = $true
+    foreach ($mode in 'off', 'on') {
+        $cfg = $(if ($mode -eq 'off') { $p108Off } else { $p108On })
+        $form = New-ConsoleForm -Config $cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+        try {
+            $all = New-Object 'System.Collections.Generic.List[object]'
+            $stack = New-Object System.Collections.Stack; $stack.Push($form)
+            while ($stack.Count) { $x = $stack.Pop(); $all.Add($x); foreach ($k in $x.Controls) { $stack.Push($k) } }
+            $liveCtl = @($all | Where-Object { ($_.Tag -is [string] -and ($_.Tag -like 'live.*' -or $_.Tag -eq 'test.fresh')) -or $_.Name -in @('qLive', 'snapLive') })
+            Assert-Equal 8 $liveCtl.Count ('five live buttons, Start fresh, and the two LIVE choices: ' + (@($liveCtl | ForEach-Object { [string]$_.Tag + $_.Name }) -join ','))
+            $page = @($script:ui.Tabs.TabPages | Where-Object { $_.Text -eq 'LIVE shard' })[0]
+            Assert-True ($null -ne $page) 'the LIVE shard tab is still there'
+            if ($mode -eq 'off') {
+                foreach ($x in $liveCtl) {
+                    Assert-True (-not $x.Enabled) ([string]$x.Tag + $x.Name + ' is disabled')
+                    Assert-True ($script:ui.ToolTip.GetToolTip($x) -like 'Live is retired*') ([string]$x.Tag + $x.Name + ': ' + $script:ui.ToolTip.GetToolTip($x))
+                }
+                Assert-True ($script:ui.Tiles[0].Word.Text -match 'RETIRED') $script:ui.Tiles[0].Word.Text
+                Assert-Equal 'test' (Get-SelectedQuestionShard) 'Shard question picks the test shard'
+                Assert-Equal 'test' (Get-SelectedSnapshotShard) 'Snapshots picks the test shard'
+                Assert-True ((@($page.Controls[0].Controls | Where-Object { $_ -is [Windows.Forms.Label] }) | ForEach-Object { $_.Text }) -join ' ' -match ('LIVE ' + [regex]::Escape($p108Line))) 'the tab caption says it'
+            } else {
+                foreach ($x in $liveCtl) { Assert-True $x.Enabled ([string]$x.Tag + $x.Name + ' is enabled, as before') }
+                Assert-Equal 'live' (Get-SelectedQuestionShard) 'Shard question picks LIVE first, as before'
+            }
+        } finally { $form.Dispose() }
+    }
+    $script:NetProbeDisabled = $false
+}
+
+Fact 'P108_TheProbeListsTheTestShardOnlyUnlessLiveIsEnabled' {
+    $probeDir = Join-Path $repo 'docker\uo-status'
+    $py = "import sys; sys.path.insert(0, r'" + $probeDir + "'); import probe; print(probe.targets(False)); print(probe.targets(True)); print(probe.LIVE_ENABLED)"
+    $out = (& python -I -c $py 2>&1 | Out-String)
+    Assert-Equal 0 $LASTEXITCODE $out
+    $l = @($out -split "`r?`n" | Where-Object { $_ })
+    Assert-Equal "[('test', 'Test shard', 2594)]" $l[0]
+    Assert-Equal "[('live', 'Live shard', 2593), ('test', 'Test shard', 2594)]" $l[1]
+    Assert-Equal 'False' $l[2] 'SL_LIVE_ENABLED unset reads as retired'
+    $dc = [IO.File]::ReadAllText((Join-Path $probeDir 'docker-compose.yml'))
+    Assert-True ($dc -match 'SL_LIVE_ENABLED: \$\{SL_LIVE_ENABLED:-0\}') 'compose passes it, retired by default'
+    $su = [IO.File]::ReadAllText((Join-Path $probeDir 'Start-UoStatus.ps1'))
+    Assert-True ($su -match 'Get-LiveSwitch' -and $su -match 'env:SL_LIVE_ENABLED') 'Start-UoStatus.ps1 sets it from scripts\live.json'
+}
+
+Fact 'P108_NothingCanComposeTheOldLiveContainer' {
+    $uo = [IO.File]::ReadAllText((Join-Path $repo 'docker\uo\docker-compose.yml'))
+    Assert-True ($uo -notmatch '(?m)^\s+container_name:\s*sl-modernuo\s*$' -and $uo -notmatch '(?m)^  modernuo:') 'docker/uo/docker-compose.yml has no live service'
+    Assert-True ($uo -match '(?m)^  ddns-updater:' -and $uo -match 'container_name: sl-ddns') 'it keeps sl-ddns'
+    $ret = [IO.File]::ReadAllText((Join-Path $repo 'docker\uo\retired\docker-compose.live.yml'))
+    Assert-True ($ret -notmatch '(?m)^services:' -and $ret -match '(?m)^x-retired-live:') 'the retired file has no services: key'
+    Assert-True ($ret -match 'RETIRED 2026-10-14') 'and says why and when'
+}
+
+Fact 'P108_TheLiveDeployAndPublishPathsRefuseWhileRetired' {
+    # Copies of the two scripts beside a live.json that says false, so the refusal is proved without any chance of a build,
+    # a docker exec or a restart, whatever the real file says.
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p108-' + [guid]::NewGuid().ToString('N'))
+    $sd = Join-Path $tmp 'scripts'
+    New-Item -ItemType Directory -Path $sd -Force | Out-Null
+    try {
+        foreach ($f in 'Deploy-StatusPublisher.ps1', 'Publish-PatchNotes.ps1', 'Live-Switch.ps1') { Copy-Item (Join-Path $repo ('scripts\' + $f)) $sd }
+        [IO.File]::WriteAllText((Join-Path $sd 'live.json'), '{"liveEnabled": false, "retiredOn": "2026-10-14", "returns": "returns as a fresh 1.0 world"}')
+        $o = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $sd 'Deploy-StatusPublisher.ps1') 2>&1 | Out-String)
+        Assert-Equal 2 $LASTEXITCODE $o
+        Assert-True ($o -match 'Live is retired' -and $o -match 'nothing was built or restarted') $o
+        $o = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $sd 'Publish-PatchNotes.ps1') -Container sl-modernuo 2>&1 | Out-String)
+        Assert-Equal 2 $LASTEXITCODE $o
+        Assert-True ($o -match 'Live is retired' -and $o -notmatch 'Version in') $o
+    } finally { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

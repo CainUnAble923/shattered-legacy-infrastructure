@@ -18,6 +18,10 @@
 param()
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path "$PSScriptRoot\..").Path
+# cc-P108: this deploys to live only. While scripts\live.json says liveEnabled false it refuses before building anything.
+. (Join-Path $PSScriptRoot 'Live-Switch.ps1')
+$live = Get-LiveSwitch -RepoRoot $repo
+if (-not $live.Enabled) { Write-Host ($live.Refusal + ' Deploy-StatusPublisher.ps1 deploys only to live; nothing was built or restarted.') -ForegroundColor Yellow; exit 2 }
 Set-Location $repo
 $pub = 'server\customizations\ShardStatusPublisher.cs'
 

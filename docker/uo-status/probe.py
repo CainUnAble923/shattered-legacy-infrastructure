@@ -18,7 +18,19 @@ generatedAt (older than 3 minutes) as "unknown", never as "down".
 import json, os, socket, time, datetime
 
 HOST = os.environ.get("PROBE_HOST", "host.docker.internal")
-TARGETS = [("live", "Live shard", 2593), ("test", "Test shard", 2594)]
+# cc-P108: live is probed only while scripts/live.json says liveEnabled true. Start-UoStatus.ps1 reads that file and
+# sets SL_LIVE_ENABLED; unset (compose run by hand) means retired, so live is never probed or reported by accident.
+LIVE_ENABLED = os.environ.get("SL_LIVE_ENABLED", "0").strip().lower() in ("1", "true", "yes")
+
+
+def targets(live_enabled):
+    t = [("test", "Test shard", 2594)]
+    if live_enabled:
+        t.insert(0, ("live", "Live shard", 2593))
+    return t
+
+
+TARGETS = targets(LIVE_ENABLED)
 INTERVAL = int(os.environ.get("PROBE_INTERVAL", "30"))
 HOLD = float(os.environ.get("PROBE_HOLD", "1.5"))
 OUT = "/status/shards.json"
@@ -49,12 +61,17 @@ def now():
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-while True:
-    shards = [{"id": i, "name": n, "port": p, "up": probe(p)} for i, n, p in TARGETS]
-    payload = {"schema": 1, "generatedAt": now(), "shards": shards}
-    tmp = OUT + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2)
-    os.replace(tmp, OUT)
-    print(payload["generatedAt"], " ".join("%s=%s" % (s["id"], "up" if s["up"] else "down") for s in shards), flush=True)
-    time.sleep(INTERVAL)
+def main():
+    while True:
+        shards = [{"id": i, "name": n, "port": p, "up": probe(p)} for i, n, p in TARGETS]
+        payload = {"schema": 1, "generatedAt": now(), "shards": shards}
+        tmp = OUT + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+        os.replace(tmp, OUT)
+        print(payload["generatedAt"], " ".join("%s=%s" % (s["id"], "up" if s["up"] else "down") for s in shards), flush=True)
+        time.sleep(INTERVAL)
+
+
+if __name__ == "__main__":
+    main()

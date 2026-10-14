@@ -47,6 +47,9 @@ $golemFacts = [ordered]@{
 }
 
 $names = @('sl-modernuo', 'sl-modernuo-test', 'sl-play-tests', 'sl-uo-status', 'sl-shard-probe', 'sl-dashboard', 'atm10')
+# cc-P108: live's container is not reported while scripts\live.json says it is retired.
+. (Join-Path $PSScriptRoot 'Live-Switch.ps1')
+if (-not (Get-LiveSwitch -RepoRoot (Split-Path $PSScriptRoot -Parent)).Enabled) { $names = @($names | Where-Object { $_ -cne 'sl-modernuo' }) }
 $containers = @()
 $ps = & docker ps -a --format '{{.Names}}|{{.State}}|{{.Status}}|{{.Image}}' 2>$null
 if ($LASTEXITCODE -eq 0) {

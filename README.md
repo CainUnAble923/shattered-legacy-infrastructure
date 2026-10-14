@@ -7,7 +7,7 @@ Infrastructure-as-code for the **Shattered Legacy** Ultima Online shard. Everyth
 
 | Machine | Address | Runs |
 |---|---|---|
-| **Windows box** (CHASES-TOWER, Docker Desktop) | `192.168.1.58` | the shard `sl-modernuo` (2593), the test shard `sl-modernuo-test` (2594, when up), `sl-ddns`, and the status feed `sl-uo-status` + `sl-shard-probe` (8092). This repo lives here, at `D:\ShatteredLegacy`. |
+| **Windows box** (CHASES-TOWER, Docker Desktop) | `192.168.1.58` | the test shard `sl-modernuo-test` (2594, when up), `sl-ddns`, and the status feed `sl-uo-status` + `sl-shard-probe` (8092). This repo lives here, at `D:\ShatteredLegacy`. |
 | **Haven** (Lenovo ThinkCentre, Debian 13) | `192.168.1.61` | **all the web stuff**: `sl-proxy` (Nginx Proxy Manager), `sl-website`, `sl-wiki`, `sl-downloads`, `sl-dashboard`. Its copies of these folders are in `~/shattered-legacy/docker/` there. `ssh chase@192.168.1.61` |
 
 The router forwards 80 and 443 to Haven and 2593 to the Windows box.
@@ -20,7 +20,7 @@ them on the Windows box.** Each folder's README says how it deploys.
 
 | Service | Folder | Machine | Access |
 |---|---|---|---|
-| ModernUO game server | `docker/uo` | Windows box | Public, `shatteredlegacyuo.com:2593` |
+| ModernUO live shard | `docker/uo/retired` | - | **Retired 2026-10-14** (cc-P108); returns as a fresh 1.0 world, built new then |
 | Test shard | `docker/uo` (`docker-compose.test.yml`) | Windows box | `shatteredlegacyuo.com:2594` |
 | Cloudflare DDNS | `docker/uo` (`sl-ddns`) | Windows box | Internal |
 | Status feed and shard probe | `docker/uo-status` | Windows box | via NPM, `https://shatteredlegacyuo.com/api/` |
@@ -47,15 +47,19 @@ ShatteredLegacy/
 ```
 
 Working agreements for agents are in `AGENTS.md`. Do not run `docker compose up` in `docker/`
-as a whole: there is no single stack any more, and the live shard's project must never be taken
-down (`docker/uo` holds both `sl-modernuo` and `sl-ddns`).
+as a whole: there is no single stack any more. `docker/uo`'s own project holds only `sl-ddns` (public DNS).
+
+**The live shard was retired on 2026-10-14 and returns as a fresh 1.0 world, built new.** Its container,
+images and world data are gone; its compose service is kept, not runnable, in
+`docker/uo/retired/docker-compose.live.yml`. `scripts/live.json` (`liveEnabled`) is the one switch every
+script reads: false greys live on the Shard Console and silences every check, probe, email and deploy.
 
 ## Shard Details
 
 - **Name:** Shattered Legacy
 - **Engine:** ModernUO, pinned upstream commit `d4531cd94` (.NET 10; `7c9215d97` until cc-P38, 2026-10-02)
 - **Client:** TazUO, shipped in the player package
-- **Port:** 2593
+- **Port:** 2594 (test shard, LAN). The public 2593 is unused while live is retired.
 
 ## Migration Source
 

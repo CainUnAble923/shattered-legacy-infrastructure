@@ -4,7 +4,8 @@
 
       .\scripts\Publish-PatchNotes.ps1                 dry run: shows the page and whether the wiki differs
       .\scripts\Publish-PatchNotes.ps1 -Publish        writes the page on the wiki
-      .\scripts\Publish-PatchNotes.ps1 -Container sl-modernuo -Publish     from the live shard instead
+      .\scripts\Publish-PatchNotes.ps1 -Container sl-modernuo -Publish     from the live shard instead (refused while
+                                                                         scripts\live.json says live is retired)
 
   Nothing here parses CHANGELOG.md. The server does that at start (server/customizations/ShardVersion.cs) and writes
   the rendered DokuWiki page inside its container, at /modernuo/Data/ShatteredLegacy/patch_notes.txt. So the page
@@ -21,6 +22,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# cc-P108: the live path (-Container sl-modernuo) refuses while scripts\live.json says liveEnabled false; the test
+# shard (the default) is unchanged.
+. (Join-Path $PSScriptRoot 'Live-Switch.ps1')
+$live = Get-LiveSwitch
+if ($Container -ceq 'sl-modernuo' -and -not $live.Enabled) { Write-Host ($live.Refusal + ' Publish from the test shard (the default, sl-modernuo-test).') -ForegroundColor Yellow; exit 2 }
 $Source = '/modernuo/Data/ShatteredLegacy/patch_notes.txt'
 $Page = '/storage/data/pages/uo/patch_notes.txt'
 $Url = 'https://wiki.shatteredlegacyuo.com/uo:patch_notes'

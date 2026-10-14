@@ -14,8 +14,9 @@ services:
     environment:
       TZ: ${TZ:-America/Chicago}
 
-  # Up/down for the live (2593) and test (2594) shards. See probe.py for why a plain
-  # connect is not enough behind Docker Desktop. Not published on any port.
+  # Up/down for the test shard (2594), and the live one (2593) only while scripts/live.json says
+  # liveEnabled true (cc-P108: Start-UoStatus.ps1 passes it as SL_LIVE_ENABLED; unset means retired).
+  # See probe.py for why a plain connect is not enough behind Docker Desktop. Not published on any port.
   shard-probe:
     image: python:3-alpine
     container_name: sl-shard-probe
@@ -28,6 +29,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       TZ: ${TZ:-America/Chicago}
+      SL_LIVE_ENABLED: ${SL_LIVE_ENABLED:-0}
 
 networks:
   default:

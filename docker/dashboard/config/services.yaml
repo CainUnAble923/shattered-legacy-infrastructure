@@ -4,31 +4,15 @@
 # A ping at the wrong address is a green light that means nothing.
 
 - Shattered Legacy:
-    - UO Server:
+    # cc-P108: the live shard (sl-modernuo, 2593) and its Who's Online widget (status.json, which only live wrote)
+    # were retired on 2026-10-14; live returns as a fresh 1.0 world. The test shard is the one worked with.
+    - UO Test Shard:
         icon: /icons/shattered_legacy_logo.png
-        href: "http://shatteredlegacyuo.com:2593"
-        description: ModernUO, port 2593
+        description: ModernUO test shard, LAN port 2594
         server: my-docker
-        container: sl-modernuo
+        container: sl-modernuo-test
         showStats: true
         ping: 192.168.1.58
-
-    - UO Who's Online:
-        icon: /icons/shattered_legacy_logo.png
-        href: "https://shatteredlegacyuo.com"
-        description: Characters in world right now
-        widget:
-          type: customapi
-          url: http://192.168.1.58:8092/status.json
-          refreshInterval: 30000
-          mappings:
-            - field:
-                players: count
-              label: Online
-            - field:
-                shard: uptimeSeconds
-              label: Uptime
-              format: duration
 
     - Website:
         icon: nginx

@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.14
+
+### Staff
+- The live shard is retired until it returns as a fresh 1.0 world: the Shard Console shows one grey LIVE tile and greys every live button, and nothing checks, probes, emails or deploys to live any more. The test shard is the only shard, and Start fresh is greyed because its accounts came from live.
+
 ## 2026.10.14.13
 
 ### Staff
