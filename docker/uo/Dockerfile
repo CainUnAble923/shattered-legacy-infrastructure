@@ -61,8 +61,12 @@ RUN sed -i 's/\r$//' /apply-patches.sh \
     && /apply-patches.sh
 
 # Publish full solution
+# NuGetAuditLevel=critical (D93, Chase 2026-10-14): pinned Directory.Build.props sets TreatWarningsAsErrors,
+# so a moderate or high advisory on a transitive package (System.Security.Cryptography.Pkcs 10.0.0, which
+# UOContent.csproj already drops from the output) failed every build. Critical advisories still fail it.
 WORKDIR /build/modernuo
 RUN dotnet publish ModernUO.slnx -c Release -o /modernuo/Distribution \
+    /p:NuGetAuditLevel=critical \
     /p:PublishTrimmed=false \
     /p:PublishAot=false \
     /p:PublishSingleFile=false
