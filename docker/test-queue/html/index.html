@@ -233,13 +233,17 @@ function render() {
   document.getElementById('list').innerHTML = out.length ? out.join('') : '<p class="empty">Nothing here.' + (filter === 'open' ? ' Every item has a result.' : '') + '</p>';
   var svc = data.service || {};
   document.getElementById('foot').textContent = 'Data: testing/play-tests.json in shard-migration. Last import ' + (svc.lastImport || 'not yet') +
-    (svc.lastImportError ? ', FAILED: ' + svc.lastImportError : '') + '. A prompt that says DONE appears within a minute.';
+    (svc.lastImportError ? ', FAILED: ' + svc.lastImportError : '') + '. A prompt that says DONE appears within a minute.' +
+    // cc-P105: on Haven, how fresh the notes are and whether the game PC is reporting. Empty on the game PC: no change.
+    (svc.repo && svc.repo.at ? ' Repo as of ' + svc.repo.at.replace('T', ' ').slice(0, 16) + (svc.repo.commit ? ' (' + svc.repo.commit.slice(0, 7) + ')' : '') + '.' : '') +
+    (svc.gamepc && svc.gamepc.offline ? ' Game PC offline since ' + svc.gamepc.offlineSince.replace('T', ' ').slice(0, 16) + ' UTC.' : '') +
+    (svc.identity && svc.identity.by ? ' Signed in as ' + svc.identity.by + '.' : '');
 }
 
 function card(it) {
   var chips = ['<span class="chip">' + esc(it.id) + '</span>'];
   if (it.version) chips.push('<span class="chip">needs ' + esc(it.version) + '</span>');
-  if (it.status !== 'open') chips.push('<span class="chip st-' + esc(it.status) + '">' + esc(it.status) + (it.resultAt ? ' ' + esc(it.resultAt.slice(0, 10)) : '') + '</span>');
+  if (it.status !== 'open') chips.push('<span class="chip st-' + esc(it.status) + '">' + esc(it.status) + (it.resultAt ? ' ' + esc(it.resultAt.slice(0, 10)) : '') + (it.by ? ' by ' + esc(it.by) : '') + '</span>');
   if (it.status === 'fail') chips.push('<span class="chip ' + (it.bug ? '' : 'warn') + '">' + (it.bug ? 'logged ' + esc(it.bug) : 'not logged yet') + '</span>');
   if (it.textChanged) chips.push('<span class="chip warn">text changed</span>');
   if (it.removedFromNotes) chips.push('<span class="chip warn">no longer in the notes</span>');
@@ -360,7 +364,7 @@ function fLink(fid) { return '<a href="#f-' + esc(fid.toLowerCase()) + '">' + es
 function ideaCard(it) {
   var chips = ['<span class="chip">' + esc(it.id) + '</span>'];
   if (it.area) chips.push('<span class="chip">' + esc(it.area) + '</span>');
-  chips.push('<span class="chip">' + esc((it.createdAt || '').slice(0, 10)) + '</span>');
+  chips.push('<span class="chip">' + esc((it.createdAt || '').slice(0, 10)) + (it.by ? ' by ' + esc(it.by) : '') + '</span>');
   var st = it.status === 'became' ? 'became ' + fLink(it.feature) : esc(ideas.statuses[it.status] || it.status);
   chips.push('<span class="chip ' + (it.status === 'became' ? 'st-pass' : it.status === 'taken' ? 'st-later' : '') + '">' + st + '</span>');
   if (it.playtest) chips.push('<span class="chip">from <a href="#i-' + esc(it.playtest) + '" data-show="' + esc(it.playtest) + '">' + esc(it.playtest) + '</a></span>');
@@ -503,7 +507,7 @@ function bugCard(b) {
   var chips = ['<span class="chip">' + esc(b.id) + '</span>'];
   if (b.severity) chips.push('<span class="chip' + (b.severity === 'blocks play' ? ' st-fail' : '') + '">' + esc(b.severity) + '</span>');
   if (b.area) chips.push('<span class="chip">' + esc(b.area) + '</span>');
-  chips.push('<span class="chip">' + esc((b.createdAt || '').slice(0, 10)) + '</span>');
+  chips.push('<span class="chip">' + esc((b.createdAt || '').slice(0, 10)) + (b.by ? ' by ' + esc(b.by) : '') + '</span>');
   chips.push('<span class="chip ' + (b.status === 'fixed' ? 'st-pass' : b.status === 'taken' ? 'st-later' : '') + '">' + bugStatusText(b) + '</span>');
   if (b.playtest) chips.push('<span class="chip">from <a href="#i-' + esc(b.playtest) + '" data-show="' + esc(b.playtest) + '">' + esc(b.playtest) + '</a></span>');
   if (b.version) chips.push('<span class="chip">' + esc(b.version) + '</span>');

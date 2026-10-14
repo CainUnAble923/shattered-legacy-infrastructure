@@ -32,6 +32,21 @@ Serves html/index.html and a small JSON API over D:\\UO\\shard-migration\\testin
   POST /api/bugs/delete  {"id", "reason"}  (a reason is required; the id is never reused)
   POST /api/bugs/shot    {"id", "data": "<data URL or base64>"}  one PNG or JPG, 2 MB at most, 3 per report
 
+cc-P105 (Haven step H1): the same service can run on Haven. All of it is off by default, so on the game PC it serves
+and writes exactly what it did before.
+  PLAYTESTS_DATA         where testing/ (play tests, SUMMARY.md, ideas, bug reports and their screenshots) is read and
+                         written; default the notes root, as before. On Haven, a data volume apart from the notes clone.
+  PLAYTESTS_LAN_PORT     a second listener, every request needing "Authorization: Bearer <PLAYTESTS_TOKEN>"
+                         (or the token in PLAYTESTS_TOKEN_FILE); off (0) by default, and not started without a token:
+    GET  /api/export          every file under testing/ as one bundle (shard-migration/tools/opsdata.py)
+    POST /api/ingest/gamepc   the game PC's snapshot, at most 64 KB, kept with the time it arrived
+    GET  /api/gamepc          that snapshot, its age, and "offline since" once it is over 3 minutes old
+  ACCESS_TEAM_DOMAIN and ACCESS_AUD   both set: every request but /nav.js must carry a valid Cloudflare Access token
+                         (shard-migration/tools/accessjwt.py), and its email is the writer identity, "by", on every
+                         result, manual item, idea and bug report. Unset: no check, and "by" stays empty.
+  REPO_STAMP             the notes clone's pull stamp ("<commit> <time>"), for "repo as of"; else git, else empty.
+  /api/items "service" gains gamepc (receivedAt, offline, offlineSince), repo (commit, at) and identity (by, access).
+
 All parsing and merging is in shard-migration/tools/playtests.py, the same file Import-PlayTests.ps1 runs, so
 there is one set of rules. This file only serves. The importer runs on start and every IMPORT_SECONDS, so a
 prompt whose notes end "Pnn DONE" is on the page within a minute with nobody doing anything.
@@ -40,6 +55,7 @@ LAN only: docker-compose.yml publishes it on 192.168.1.58 and 127.0.0.1, never t
 login: anyone on the home network can mark results. Standard library only (python:3-alpine). ASCII only.
 """
 import argparse
+import hmac
 import json
 import os
 import sys
@@ -61,12 +77,39 @@ ap.add_argument("--host-root", default=os.environ.get("PLAYTESTS_HOST_ROOT", "D:
                 help="cc-P97: where --root is on the Windows box, for the screenshot paths in Copy new bugs")
 ap.add_argument("--deployed", default=os.environ.get("SHARD_DEPLOYED", "/data/testworld/shard-commit.json"),
                 help="cc-P97: the record Start-TestShard.ps1 writes after a healthy start; its version goes on a report")
+# cc-P105, Haven step H1. Every one of these is off, or the old behaviour, by default.
+ap.add_argument("--data", default=os.environ.get("PLAYTESTS_DATA", ""),
+                help="cc-P105: where testing/ is read and written (default: --root, as before)")
+ap.add_argument("--lan-bind", default=os.environ.get("PLAYTESTS_LAN_BIND", "0.0.0.0"))
+ap.add_argument("--lan-port", type=int, default=int(os.environ.get("PLAYTESTS_LAN_PORT", "0") or 0),
+                help="cc-P105: the token-guarded listener for export, ingest and the game PC snapshot (0: off)")
+ap.add_argument("--token-file", default=os.environ.get("PLAYTESTS_TOKEN_FILE", ""))
+ap.add_argument("--access-team", default=os.environ.get("ACCESS_TEAM_DOMAIN", ""),
+                help="cc-P105: the Cloudflare Access team domain, e.g. sl.cloudflareaccess.com (with --access-aud: on)")
+ap.add_argument("--access-aud", default=os.environ.get("ACCESS_AUD", ""))
+ap.add_argument("--access-certs", default=os.environ.get("ACCESS_CERTS_URL", ""),
+                help="cc-P105: tests only; default https://<team>/cdn-cgi/access/certs")
+ap.add_argument("--repo-stamp", default=os.environ.get("REPO_STAMP", ""))
 args = ap.parse_args()
 
 sys.path.insert(0, args.lib)
 import playtests as pt  # noqa: E402
 import ideas  # noqa: E402  (cc-P90)
 import bugs  # noqa: E402  (cc-P97)
+import opsdata  # noqa: E402  (cc-P105)
+import accessjwt  # noqa: E402  (cc-P105)
+
+# cc-P105: testing/ lives here; the notes and docs stay under args.root.
+DATA = args.data or args.root
+TOKEN = os.environ.get("PLAYTESTS_TOKEN", "").strip()
+if not TOKEN and args.token_file:
+    try:
+        with open(args.token_file, "r", encoding="ascii") as _f:
+            TOKEN = _f.read().strip()
+    except OSError:
+        TOKEN = ""
+VERIFIER = accessjwt.AccessVerifier(args.access_team, args.access_aud, certs_url=args.access_certs) if (args.access_team and args.access_aud) else None
+_REPO = {"at": 0.0, "value": {"commit": "", "at": "", "source": ""}}
 
 STATE = {"lastImport": "", "lastImportError": ""}
 MAX_BODY = 16 * 1024
@@ -80,7 +123,7 @@ def log(msg):
 
 def run_import():
     try:
-        changed, _ = pt.import_all(args.root, write=True, log=log)
+        changed, _ = pt.import_all(args.root, write=True, log=log, data=DATA)
         STATE["lastImport"] = pt.now_iso()
         STATE["lastImportError"] = ""
         if changed:
@@ -97,8 +140,25 @@ def importer_loop():
 
 
 def read_doc():
-    path = os.path.join(args.root, pt.DATA_REL)
+    path = os.path.join(DATA, pt.DATA_REL)
     return pt.ordered_doc(pt.load(path))
+
+
+def repo_as_of():
+    """cc-P105: how fresh the notes are, looked up at most once a minute (git is a subprocess)."""
+    if time.time() - _REPO["at"] > 60:
+        _REPO["value"] = opsdata.repo_as_of(args.root, args.repo_stamp)
+        _REPO["at"] = time.time()
+    return _REPO["value"]
+
+
+def service_state(identity):
+    st = dict(STATE)
+    g = opsdata.gamepc_status(DATA)
+    st["gamepc"] = {k: g[k] for k in ("receivedAt", "ageSeconds", "offline", "offlineSince")}
+    st["repo"] = repo_as_of()
+    st["identity"] = {"by": identity["by"], "access": VERIFIER is not None}
+    return st
 
 
 def deployed_version():
@@ -135,8 +195,31 @@ class Handler(BaseHTTPRequestHandler):
     def send_json(self, code, obj):
         self.send(code, json.dumps(obj, indent=1))
 
+    def identity(self):
+        """cc-P105: who is asking. Cloudflare Access (when configured) is the one source today; the shard login (H6)
+        becomes a second source here, tried in turn. Returns {"by", "source"}; raises AccessDenied when Access is on
+        and the request does not carry a valid token."""
+        if VERIFIER is None:
+            return {"by": "", "source": ""}
+        claims = VERIFIER.verify(accessjwt.token_from(self.headers))
+        return {"by": str(claims["email"]).strip().lower()[:60], "source": "access"}
+
+    def who(self, p):
+        """identity(), or None after answering 403 (every route but /nav.js, which holds no data)."""
+        try:
+            return self.identity()
+        except accessjwt.AccessDenied as e:
+            if p == "/nav.js":
+                return {"by": "", "source": ""}
+            log("access refused %s: %s" % (p, e))
+            self.send_json(403, {"error": "Cloudflare Access is required: %s" % e})
+            return None
+
     def do_GET(self):
         p = self.path.split("?", 1)[0]
+        me = self.who(p)
+        if me is None:
+            return
         if p in ("/", "/index.html"):
             try:
                 with open(os.path.join(args.html, "index.html"), "rb") as f:
@@ -162,7 +245,7 @@ class Handler(BaseHTTPRequestHandler):
                 doc = read_doc()
             except Exception as e:
                 return self.send_json(500, {"error": str(e)})
-            doc["service"] = dict(STATE)
+            doc["service"] = service_state(me)
             return self.send_json(200, doc)
         if p == "/api/summary":
             try:
@@ -172,18 +255,18 @@ class Handler(BaseHTTPRequestHandler):
             out = {k: s[k] for k in ("open", "failed", "passed", "later", "blocked", "total", "unloggedFails", "generatedAt")}
             # cc-P90: new ideas, for the Homepage widget, the shared menu's badge and the Shard Console.
             try:
-                out["ideas_new"] = ideas.summary(ideas.load(args.root))["new"]
+                out["ideas_new"] = ideas.summary(ideas.load(DATA))["new"]
             except Exception:
                 out["ideas_new"] = None
             # cc-P97: new bug reports, beside the ideas.
             try:
-                out["bugs_new"] = bugs.summary(bugs.load(args.root))["new"]
+                out["bugs_new"] = bugs.summary(bugs.load(DATA))["new"]
             except Exception:
                 out["bugs_new"] = None
             return self.send_json(200, out)
         if p == "/api/bugs":
             try:
-                doc = bugs.ordered_doc(bugs.load(args.root))
+                doc = bugs.ordered_doc(bugs.load(DATA))
             except Exception as e:
                 return self.send_json(500, {"error": str(e)})
             doc.update(summary=bugs.summary(doc), severities=list(bugs.SEVERITIES), areas=list(bugs.AREAS),
@@ -191,7 +274,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, doc)
         if p == "/api/bugs/copy":
             try:
-                doc = bugs.load(args.root)
+                doc = bugs.load(DATA)
                 text = bugs.copy_text(doc, read_doc(), args.host_root)
             except Exception as e:
                 return self.send_json(500, {"error": str(e)})
@@ -199,14 +282,14 @@ class Handler(BaseHTTPRequestHandler):
         if p.startswith("/api/bugs/file/"):
             name = p[len("/api/bugs/file/"):]
             try:
-                with open(bugs.shot_path(args.root, name), "rb") as f:
+                with open(bugs.shot_path(DATA, name), "rb") as f:
                     data = f.read()
             except (KeyError, OSError):
                 return self.send_json(404, {"error": "no such screenshot"})
             return self.send(200, data, "image/png" if name.endswith(".png") else "image/jpeg")
         if p == "/api/ideas":
             try:
-                doc = ideas.load(args.root)
+                doc = ideas.load(DATA)
             except Exception as e:
                 return self.send_json(500, {"error": str(e)})
             doc = ideas.ordered_doc(doc)
@@ -215,7 +298,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, doc)
         if p == "/api/ideas/copy":
             try:
-                doc = ideas.load(args.root)
+                doc = ideas.load(DATA)
                 text = ideas.copy_text(doc, read_doc())
             except Exception as e:
                 return self.send_json(500, {"error": str(e)})
@@ -224,6 +307,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         p = self.path.split("?", 1)[0]
+        me = self.who(p)
+        if me is None:
+            return
+        by = me["by"]
         try:
             n = int(self.headers.get("Content-Length") or 0)
             if n > (MAX_SHOT_BODY if p == "/api/bugs/shot" else MAX_BODY):
@@ -232,26 +319,26 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(body, dict):
                 raise ValueError("send a JSON object")
             if p == "/api/result":
-                item = pt.set_result(args.root, str(body.get("id", "")), str(body.get("status", "")), str(body.get("note", "")))
+                item = pt.set_result(DATA, str(body.get("id", "")), str(body.get("status", "")), str(body.get("note", "")), by=by)
                 log("result %s = %s %s" % (item["id"], item["status"], item["note"]))
                 return self.send_json(200, {"item": item})
             if p == "/api/bug":
-                item = pt.set_bug(args.root, str(body.get("id", "")), str(body.get("bug", "")))
+                item = pt.set_bug(DATA, str(body.get("id", "")), str(body.get("bug", "")))
                 return self.send_json(200, {"item": item})
             if p == "/api/manual":
-                item = pt.add_manual(args.root, str(body.get("what", "")), str(body.get("expect", "")))
+                item = pt.add_manual(DATA, str(body.get("what", "")), str(body.get("expect", "")), by=by)
                 log("manual %s: %s" % (item["id"], item["what"]))
                 return self.send_json(200, {"item": item})
             if p == "/api/ideas/add":
-                it = ideas.add(args.root, str(body.get("title", "")), str(body.get("description", "")),
-                               str(body.get("area", "")), str(body.get("playtest", "")))
+                it = ideas.add(DATA, str(body.get("title", "")), str(body.get("description", "")),
+                               str(body.get("area", "")), str(body.get("playtest", "")), by=by)
                 log("idea %s: %s" % (it["id"], it["title"]))
                 return self.send_json(200, {"idea": it})
             if p == "/api/ideas/edit":
                 kw = {k: str(body[k]) for k in ("title", "description", "area", "playtest") if k in body}
-                return self.send_json(200, {"idea": ideas.edit(args.root, str(body.get("id", "")), **kw)})
+                return self.send_json(200, {"idea": ideas.edit(DATA, str(body.get("id", "")), **kw)})
             if p == "/api/ideas/status":
-                it = ideas.set_status(args.root, str(body.get("id", "")), str(body.get("status", "")),
+                it = ideas.set_status(DATA, str(body.get("id", "")), str(body.get("status", "")),
                                       str(body.get("feature", "")), str(body.get("reason", "")))
                 log("idea %s = %s %s%s" % (it["id"], it["status"], it["feature"], it["reason"]))
                 return self.send_json(200, {"idea": it})
@@ -259,24 +346,24 @@ class Handler(BaseHTTPRequestHandler):
                 ids = body.get("ids", [])
                 if not isinstance(ids, list):
                     raise ValueError("ids must be a list")
-                return self.send_json(200, {"taken": ideas.mark_taken(args.root, [str(i) for i in ids])})
+                return self.send_json(200, {"taken": ideas.mark_taken(DATA, [str(i) for i in ids])})
             if p == "/api/ideas/delete":
-                gone = ideas.delete(args.root, str(body.get("id", "")), str(body.get("reason", "")))
+                gone = ideas.delete(DATA, str(body.get("id", "")), str(body.get("reason", "")), by=by)
                 log("idea %s deleted" % gone)
                 return self.send_json(200, {"deleted": gone})
             # cc-P97: bug reports.
             if p == "/api/bugs/add":
                 kw = {k: str(body.get(k, "")) for k in ("happened", "expected", "steps", "severity", "area", "playtest",
                                                         "character", "location")}
-                b = bugs.add(args.root, str(body.get("title", "")), version=deployed_version(), by="", **kw)
+                b = bugs.add(DATA, str(body.get("title", "")), version=deployed_version(), by=by, **kw)
                 log("bug %s: %s" % (b["id"], b["title"]))
                 return self.send_json(200, {"bug": b})
             if p == "/api/bugs/edit":
                 kw = {k: str(body[k]) for k in ("title", "happened", "expected", "steps", "severity", "area", "playtest",
                                                 "character", "location") if k in body}
-                return self.send_json(200, {"bug": bugs.edit(args.root, str(body.get("id", "")), **kw)})
+                return self.send_json(200, {"bug": bugs.edit(DATA, str(body.get("id", "")), **kw)})
             if p == "/api/bugs/status":
-                b = bugs.set_status(args.root, str(body.get("id", "")), str(body.get("status", "")),
+                b = bugs.set_status(DATA, str(body.get("id", "")), str(body.get("status", "")),
                                     str(body.get("dnum", "")), str(body.get("duplicateOf", "")), str(body.get("reason", "")))
                 log("bug %s = %s %s%s%s" % (b["id"], b["status"], b["dnum"], b["duplicateOf"], b["reason"]))
                 return self.send_json(200, {"bug": b})
@@ -284,13 +371,13 @@ class Handler(BaseHTTPRequestHandler):
                 ids = body.get("ids", [])
                 if not isinstance(ids, list):
                     raise ValueError("ids must be a list")
-                return self.send_json(200, {"taken": bugs.mark_taken(args.root, [str(i) for i in ids])})
+                return self.send_json(200, {"taken": bugs.mark_taken(DATA, [str(i) for i in ids])})
             if p == "/api/bugs/delete":
-                gone = bugs.delete(args.root, str(body.get("id", "")), str(body.get("reason", "")))
+                gone = bugs.delete(DATA, str(body.get("id", "")), str(body.get("reason", "")), by=by)
                 log("bug %s deleted" % gone)
                 return self.send_json(200, {"deleted": gone})
             if p == "/api/bugs/shot":
-                name = bugs.add_shot(args.root, str(body.get("id", "")), bugs.decode_shot(body.get("data", "")))
+                name = bugs.add_shot(DATA, str(body.get("id", "")), bugs.decode_shot(body.get("data", "")))
                 log("bug screenshot %s" % name)
                 return self.send_json(200, {"shot": name})
             if p == "/api/import":
@@ -303,11 +390,63 @@ class Handler(BaseHTTPRequestHandler):
         return self.send_json(404, {"error": "not found"})
 
 
+class LanHandler(BaseHTTPRequestHandler):
+    """cc-P105: the second listener (export, ingest, the game PC snapshot). Every request needs the bearer token."""
+    server_version = "sl-play-tests-lan/1"
+    send = Handler.send
+    send_json = Handler.send_json
+
+    def log_message(self, fmt, *a):
+        log("lan %s %s" % (self.address_string(), fmt % a))
+
+    def authorised(self):
+        got = (self.headers.get("Authorization") or "").strip()
+        ok = bool(TOKEN) and got.startswith("Bearer ") and hmac.compare_digest(
+            got[len("Bearer "):].strip().encode("utf-8"), TOKEN.encode("utf-8"))
+        if not ok:
+            self.send_json(401, {"error": "a bearer token is required"})
+        return ok
+
+    def do_GET(self):
+        if not self.authorised():
+            return
+        p = self.path.split("?", 1)[0]
+        if p == "/api/export":
+            return self.send_json(200, opsdata.export_bundle(DATA))
+        if p == "/api/gamepc":
+            return self.send_json(200, opsdata.gamepc_status(DATA))
+        return self.send_json(404, {"error": "not found"})
+
+    def do_POST(self):
+        if not self.authorised():
+            return
+        p = self.path.split("?", 1)[0]
+        if p != "/api/ingest/gamepc":
+            return self.send_json(404, {"error": "not found"})
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+            if n > opsdata.MAX_SNAPSHOT:
+                return self.send_json(413, {"error": "too large"})
+            rec = opsdata.save_gamepc(DATA, json.loads(self.rfile.read(n).decode("utf-8") or "null"))
+        except ValueError as e:
+            return self.send_json(400, {"error": str(e)})
+        return self.send_json(200, {"receivedAt": rec["receivedAt"]})
+
+
 def main():
     run_import()
     threading.Thread(target=importer_loop, daemon=True).start()
+    if args.lan_port:
+        if TOKEN:
+            lan = ThreadingHTTPServer((args.lan_bind, args.lan_port), LanHandler)
+            threading.Thread(target=lan.serve_forever, daemon=True).start()
+            log("token listener on %s:%d (export, ingest, game PC)" % (args.lan_bind, args.lan_port))
+        else:
+            log("token listener NOT started: PLAYTESTS_LAN_PORT is set but there is no PLAYTESTS_TOKEN")
     srv = ThreadingHTTPServer((args.bind, args.port), Handler)
-    log("serving %s:%d, data %s, import every %d s" % (args.bind, args.port, os.path.join(args.root, pt.DATA_REL), args.import_seconds))
+    log("serving %s:%d, data %s, import every %d s%s" % (args.bind, args.port, os.path.join(DATA, pt.DATA_REL),
+                                                          args.import_seconds,
+                                                          ", Cloudflare Access required" if VERIFIER else ""))
     srv.serve_forever()
 
 

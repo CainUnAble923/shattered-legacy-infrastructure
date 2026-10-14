@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.11
+
+### Staff
+- The play-test page can now run on Haven as well as the game PC: its data can live apart from the notes, a token-protected side door hands its data back for each commit and takes in the game PC's status, and when Cloudflare Access is set up it signs each result, idea and bug report with who made it. Nothing changes on the game PC until it is configured.
+
 ## 2026.10.14.10
 
 ### Staff

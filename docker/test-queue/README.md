@@ -60,3 +60,35 @@ results.
 ```
 python server.py --root <a copy of shard-migration> --lib D:\UO\shard-migration\tools --bind 127.0.0.1 --port 18093
 ```
+
+## Running on Haven (cc-P105, step H1 of cc-P89's plan)
+
+All of this is **off by default**: with none of it set, the service serves the same routes and writes the same files
+as before (checked side by side against the previous `server.py`; notes `cc-P105-haven-h1-host-agnostic.md`).
+
+| Setting | What |
+|---|---|
+| `PLAYTESTS_DATA` (`--data`) | Where `testing/` is read and written: play tests, `SUMMARY.md`, ideas, bug reports and their screenshots. Default: the notes root, as before. On Haven, a data volume apart from the read-only notes clone. |
+| `PLAYTESTS_LAN_PORT` (`--lan-port`), `PLAYTESTS_LAN_BIND` | A second listener, for Haven's LAN address only. Every request needs `Authorization: Bearer <token>`. Not started without a token. |
+| `PLAYTESTS_TOKEN` or `PLAYTESTS_TOKEN_FILE` | That token. Never in git. |
+| `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` | Both set: every request but `/nav.js` must carry a valid Cloudflare Access token (`Cf-Access-Jwt-Assertion` or the `CF_Authorization` cookie), checked by `shard-migration/tools/accessjwt.py`, and its email is the writer, `by`. |
+| `REPO_STAMP` | The pull container's stamp file (`<commit> <ISO time>`), for "repo as of". Without it, git when installed, else empty. |
+
+The token listener:
+
+- `GET /api/export`: every file under `testing/` as one bundle (`shard-migration/tools/opsdata.py`; `write_bundle`
+  puts it back as files, checked against each file's SHA-256).
+- `POST /api/ingest/gamepc`: the game PC's snapshot (JSON, 64 KB at most), stored in `<data>/ops/gamepc.json` with the
+  time it arrived.
+- `GET /api/gamepc`: that snapshot, its age, and `offlineSince` once it is older than 3 minutes.
+
+`/api/items` `service` also has `gamepc`, `repo` and `identity`. The page shows "Repo as of", "Game PC offline since"
+and "Signed in as" in its footer, and "by" on results, ideas and bug reports, when there is something to show.
+
+A scratch Haven-mode run, as cc-P105 did it:
+
+```
+set PLAYTESTS_DATA=<scratch>\data
+set PLAYTESTS_TOKEN_FILE=<scratch>\token.txt
+python server.py --root D:\UO\shard-migration --lib D:\UO\shard-migration\tools --bind 127.0.0.1 --port 18093 --lan-port 18094 --lan-bind 127.0.0.1
+```

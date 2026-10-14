@@ -6,6 +6,10 @@
                                                               menu also works when the file is opened as file:///
      Dashboard      Homepage       http://<host>:3000/        docker/dashboard/config/custom.js loads it from :8093
 
+   cc-P105 (Haven step H1): a row may give a whole url instead of host, port and path (the Haven pages behind
+   Cloudflare Access will: https://ops.shatteredlegacyuo.com/...), and lanOnly: true shows a row only when this page
+   was reached from a home-network or tailnet address (Homepage is never published outside). With the rows below,
+   nothing changes: every page is still host and port, and they are all reached on the LAN.
    A fourth page is one more row in PAGES. Moving a page (to Haven, say) is that page's row: set its host, and its
    port and path if they change. host null means "the host the browser used to reach this page", so the links work
    from a phone on the LAN, never only from this PC. A page with no host at all (file:///) uses FALLBACK_HOST.
@@ -16,7 +20,7 @@
   var PAGES = [
     { key: 'playtests', label: 'Play tests',   host: null, port: 8093, path: '/' },
     { key: 'status',    label: 'Shard status', host: null, port: 8093, path: '/status' },
-    { key: 'dashboard', label: 'Dashboard',    host: null, port: 3000, path: '/' }
+    { key: 'dashboard', label: 'Dashboard',    host: null, port: 3000, path: '/', lanOnly: true }
   ];
   // The Windows box (docker/test-queue/docker-compose.yml), for a page opened from disk.
   var FALLBACK_HOST = '192.168.1.58';
@@ -42,7 +46,21 @@
     return { port: port, path: path || '/' };
   }
 
+  // cc-P105: a home-network address: private IPv4, loopback, Tailscale's 100.64.0.0/10, a .home.arpa or .ts.net name,
+  // a bare host name, or no host at all (the file opened from disk).
+  function onLan(host) {
+    var h = String(host == null ? window.location.hostname : host).toLowerCase();
+    if (!h || h === 'localhost' || h.indexOf('.') < 0) return true;
+    if (/\.(home\.arpa|ts\.net|local)$/.test(h)) return true;
+    var m = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(h);
+    if (!m) return false;
+    var a = +m[1], b = +m[2];
+    return a === 10 || a === 127 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) ||
+      (a === 100 && b >= 64 && b <= 127);
+  }
+
   function url(p) {
+    if (p.url) return p.url;
     var host = p.host || window.location.hostname || FALLBACK_HOST;
     var proto = (!p.host && window.location.protocol === 'https:') ? 'https:' : 'http:';
     return proto + '//' + host + ':' + p.port + p.path;
@@ -53,8 +71,13 @@
     var k = tag && tag.getAttribute('data-sl-page');
     if (k) return k;
     var h = here();
+    var at = window.location.protocol + '//' + window.location.host + window.location.pathname;
     for (var i = 0; i < PAGES.length; i++) {
       var p = PAGES[i];
+      if (p.url) {
+        if (p.url.replace(/(.)\/$/, '$1') === at.replace(/\/index\.html$/, '/').replace(/(.)\/$/, '$1')) return p.key;
+        continue;
+      }
       if (String(p.port) === h.port && (p.path.replace(/(.)\/$/, '$1') === h.path) &&
           (!p.host || p.host === window.location.hostname)) return p.key;
     }
@@ -70,6 +93,7 @@
     brand.textContent = 'Shattered Legacy';
     nav.appendChild(brand);
     for (var i = 0; i < PAGES.length; i++) {
+      if (PAGES[i].lanOnly && !onLan()) continue;
       var a = document.createElement('a');
       a.href = url(PAGES[i]);
       a.textContent = PAGES[i].label;
@@ -126,7 +150,7 @@
 
   var tag = document.currentScript;
   var key = current(tag);
-  window.SLMenu = { pages: PAGES, url: url, fallbackHost: FALLBACK_HOST, current: key, setBadge: setBadge };
+  window.SLMenu = { pages: PAGES, url: url, onLan: onLan, fallbackHost: FALLBACK_HOST, current: key, setBadge: setBadge };
   function start() { mount(key); fetchBadge(key); }
   if (document.body) start();
   else document.addEventListener('DOMContentLoaded', start);
