@@ -1,0 +1,231 @@
+From 761d2456d1b80de62511fc8d66cd9925a8864aaa Mon Sep 17 00:00:00 2001
+From: Shattered Legacy <noreply@example.invalid>
+Date: Wed, 14 Oct 2026 12:43:55 -0500
+Subject: [PATCH] Enhanced packet 4, ClientCommand: a server runs one
+ whitelisted client command (Shattered Legacy cc-P103)
+
+---
+ .../Game/Managers/CommandManager.cs           |  5 ++
+ .../EnhancedPackets/EnhancedClientCommand.cs  | 87 +++++++++++++++++++
+ .../EnhancedPackets/EnhancedPacketHandler.cs  |  2 +
+ .../EnhancedPackets/EnhancedPacketTypeEnum.cs |  3 +-
+ .../Network/EnhancedClientCommandTests.cs     | 68 +++++++++++++++
+ 5 files changed, 164 insertions(+), 1 deletion(-)
+ create mode 100644 src/ClassicUO.Client/Network/EnhancedPackets/EnhancedClientCommand.cs
+ create mode 100644 tests/ClassicUO.UnitTests/Network/EnhancedClientCommandTests.cs
+
+diff --git a/src/ClassicUO.Client/Game/Managers/CommandManager.cs b/src/ClassicUO.Client/Game/Managers/CommandManager.cs
+index 9ad88beff..32872b547 100644
+--- a/src/ClassicUO.Client/Game/Managers/CommandManager.cs
++++ b/src/ClassicUO.Client/Game/Managers/CommandManager.cs
+@@ -219,6 +219,11 @@ namespace ClassicUO.Game.Managers
+ 
+             });
+ 
++            // Shattered Legacy patch (cc-P103): windows a server may open through ClientCommand (EnhancedClientCommand.cs).
++            Register("worldmap", s => GameActions.OpenWorldMap(_world));
++            Register("journal", s => GameActions.OpenJournal(_world));
++            Register("options", s => GameActions.OpenSettings(_world));
++
+             Register("optlink", (s) =>
+             {
+                 ModernOptionsGump g = UIManager.GetGump<ModernOptionsGump>();
+diff --git a/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedClientCommand.cs b/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedClientCommand.cs
+new file mode 100644
+index 000000000..f1e822814
+--- /dev/null
++++ b/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedClientCommand.cs
+@@ -0,0 +1,87 @@
++// SPDX-License-Identifier: BSD-2-Clause
++// Shattered Legacy patch (cc-P103): enhanced packet 4, ClientCommand. A server runs one whitelisted client command for
++// the player, so a tutorial button can open the World Map, the Journal or the options window.
++//
++// Server -> client: HEADER (ushort id 4, ushort version 0), then the command line as null-terminated ASCII, without
++// the leading "-" (for example "worldmap" or "radius 5"). It runs only if its first word is on the whitelist, through
++// CommandManager.Execute, and only behind the enhanced-packet opt-in (EnhancedPacketHandler.Enabled). Anything else is
++// ignored and logged once per command name.
++//
++// Client -> server: when the server's EnableEnhancedPacket lists id 4, the client answers HEADER with id 4, so the
++// server knows this client can run commands. A client without this patch never answers id 4.
++
++using System;
++using System.Collections.Generic;
++using ClassicUO.Game;
++using ClassicUO.IO;
++using ClassicUO.Utility.Logging;
++
++namespace ClassicUO.Network;
++
++public static class EnhancedClientCommand
++{
++    public const int MaxLength = 100;
++
++    public static readonly string[] Whitelist = { "optlink", "paperdoll", "marktile", "radius", "worldmap", "journal", "options" };
++
++    private static readonly HashSet<string> _logged = new(StringComparer.OrdinalIgnoreCase);
++
++    /// <summary>The command split on spaces, if its first word is on the whitelist and it is plain printable ASCII.</summary>
++    public static bool TryParse(string line, out string[] parts)
++    {
++        parts = Array.Empty<string>();
++        if (string.IsNullOrWhiteSpace(line) || line.Length > MaxLength)
++            return false;
++
++        foreach (char c in line)
++        {
++            if (c < 0x20 || c > 0x7E)
++                return false;
++        }
++
++        string[] split = line.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
++        if (split.Length == 0 || Array.IndexOf(Whitelist, split[0].ToLowerInvariant()) < 0)
++            return false;
++
++        parts = split;
++        return true;
++    }
++
++    /// <summary>True the first time a refused command name is seen, so each is logged once.</summary>
++    public static bool ShouldLogRefusal(string line)
++    {
++        string head = (line ?? "").Trim().Split(' ', 2)[0];
++        return _logged.Add(head.Length > 32 ? head.Substring(0, 32) : head);
++    }
++
++    internal static void Handle(ref StackDataReader p, int version)
++    {
++        string line = p.ReadASCII();
++
++        if (!TryParse(line, out string[] parts))
++        {
++            if (ShouldLogRefusal(line))
++                Log.Warn($"Server ClientCommand ignored, not on the whitelist: '{line}'");
++            return;
++        }
++
++        World world = Client.Game?.UO?.World;
++        if (world?.Player == null)
++            return;
++
++        world.CommandManager.Execute(parts[0], parts);
++    }
++
++    /// <summary>Tells the server this client runs ClientCommand, if the server asked for it.</summary>
++    public static void SendAck(this AsyncNetClient socket)
++    {
++        if (!EnhancedOutgoingPackets.EnabledPackets.Contains(EnhancedPacketType.ClientCommand))
++            return;
++
++        StackDataWriter f = Extensions.GetWriter(EnhancedPacketType.ClientCommand);
++        ref StackDataWriter writer = ref f;
++        writer.FinalLength();
++        socket.Send(writer.BufferWritten, true);
++        writer.Dispose();
++    }
++}
+diff --git a/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedPacketHandler.cs b/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedPacketHandler.cs
+index 2d9a85e58..0c237a601 100644
+--- a/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedPacketHandler.cs
++++ b/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedPacketHandler.cs
+@@ -22,6 +22,7 @@ public class EnhancedPacketHandler
+         
+         Handler.Add(EnhancedPacketType.EnableEnhancedPacket, EnableEnhancedPacket);
+         Handler.Add(EnhancedPacketType.DisableFeatures, DisableFeatures);
++        Handler.Add(EnhancedPacketType.ClientCommand, EnhancedClientCommand.Handle);
+     }
+ 
+     /// <summary>
+@@ -47,6 +48,7 @@ public class EnhancedPacketHandler
+         }
+         
+         AsyncNetClient.Socket.SendEnhancedPacket(); //Confirm we are ready to receive enhanced packets.
++        AsyncNetClient.Socket.SendAck(); //Shattered Legacy patch (cc-P103): say we run ClientCommand, if asked.
+     }
+ 
+     /// <summary>
+diff --git a/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedPacketTypeEnum.cs b/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedPacketTypeEnum.cs
+index 4cc0343e6..81c6ee195 100644
+--- a/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedPacketTypeEnum.cs
++++ b/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedPacketTypeEnum.cs
+@@ -5,5 +5,6 @@ public enum EnhancedPacketType : ushort
+     None,
+     EnableEnhancedPacket,
+     TazUO_Identifier,
+-    DisableFeatures
++    DisableFeatures,
++    ClientCommand = 4 // Shattered Legacy patch (cc-P103): EnhancedClientCommand.cs
+ }
+diff --git a/tests/ClassicUO.UnitTests/Network/EnhancedClientCommandTests.cs b/tests/ClassicUO.UnitTests/Network/EnhancedClientCommandTests.cs
+new file mode 100644
+index 000000000..df3196f20
+--- /dev/null
++++ b/tests/ClassicUO.UnitTests/Network/EnhancedClientCommandTests.cs
+@@ -0,0 +1,68 @@
++// Shattered Legacy patch (cc-P103): the ClientCommand whitelist.
++using ClassicUO.Network;
++using FluentAssertions;
++using Xunit;
++
++namespace ClassicUO.UnitTests.Network
++{
++    public class EnhancedClientCommandTests
++    {
++        [Theory]
++        [InlineData("worldmap", new[] { "worldmap" })]
++        [InlineData("journal", new[] { "journal" })]
++        [InlineData("options", new[] { "options" })]
++        [InlineData("optlink", new[] { "optlink" })]
++        [InlineData("paperdoll", new[] { "paperdoll" })]
++        [InlineData("marktile -r", new[] { "marktile", "-r" })]
++        [InlineData("  radius 5 33 ", new[] { "radius", "5", "33" })]
++        [InlineData("WorldMap", new[] { "WorldMap" })]
++        public void Whitelisted_commands_parse(string line, string[] expected)
++        {
++            EnhancedClientCommand.TryParse(line, out string[] parts).Should().BeTrue();
++            parts.Should().Equal(expected);
++        }
++
++        [Theory]
++        [InlineData("cast Fireball")]
++        [InlineData("organizer")]
++        [InlineData("playlscript evil.py")]
++        [InlineData("sb")]
++        [InlineData("")]
++        [InlineData("   ")]
++        [InlineData("-worldmap")]
++        [InlineData("journal\n-cast Kill")]
++        [InlineData("worldmapé")]
++        public void Anything_else_is_refused(string line)
++        {
++            EnhancedClientCommand.TryParse(line, out string[] parts).Should().BeFalse();
++            parts.Should().BeEmpty();
++        }
++
++        [Fact]
++        public void Too_long_is_refused()
++        {
++            EnhancedClientCommand.TryParse("radius " + new string('5', 100), out _).Should().BeFalse();
++        }
++
++        [Fact]
++        public void The_whitelist_is_the_seven()
++        {
++            EnhancedClientCommand.Whitelist.Should().Equal("optlink", "paperdoll", "marktile", "radius", "worldmap", "journal", "options");
++        }
++
++        [Fact]
++        public void A_refusal_is_logged_once_per_name()
++        {
++            EnhancedClientCommand.ShouldLogRefusal("p103test-unknown a").Should().BeTrue();
++            EnhancedClientCommand.ShouldLogRefusal("p103test-unknown b").Should().BeFalse();
++            EnhancedClientCommand.ShouldLogRefusal("P103TEST-UNKNOWN").Should().BeFalse();
++            EnhancedClientCommand.ShouldLogRefusal("p103test-other").Should().BeTrue();
++        }
++
++        [Fact]
++        public void ClientCommand_is_enhanced_packet_4()
++        {
++            ((ushort)EnhancedPacketType.ClientCommand).Should().Be(4);
++        }
++    }
++}

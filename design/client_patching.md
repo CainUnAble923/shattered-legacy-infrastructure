@@ -10,6 +10,9 @@ Client patches are used when:
 - New structural layouts are needed that cannot be reproduced with server-side item placement
 - Exterior signage, banners, or architectural changes require permanent statics edits
 
+Changes to the client **program** (our TazUO build) are a different kind of patch, recorded in `client\` (see
+"Client code patches" at the end).
+
 ## What `.mul` Files Are
 
 UO stores world data across several binary file pairs:
@@ -108,3 +111,16 @@ See: [`client-patcher/README.md`](../client-patcher/README.md)
 | Patch ID | Version | Facet | Coords | Description |
 | --- | --- | --- | --- | --- |
 | `newhaven-league-office` | `1.0.0` | Trammel | `3459, 2598` | League of Extraordinary Citizens field office conversion |
+
+## Client code patches
+
+Our TazUO build is upstream TazUO at a pinned commit plus our own source patches. The pin, the patches and the build
+script live in [`client/`](../client/README.md); the TazUO source does not. Each patch is one rebasable change on the
+pinned upstream commit, applied with `git apply` (no fuzz), so a patch that no longer applies fails the build.
+
+| Patch | Upstream base | Since | Description |
+| --- | --- | --- | --- |
+| `0001-enhanced-packet-client-command.patch` | `3212623f` (v26.0909.63) | 2026.10.14.10 (cc-P103) | Enhanced packet 0xCE id 4, ClientCommand: the server can run a whitelisted client command, so tutorial buttons open the World Map, the Journal and the options window |
+
+The player package ships the stock TazUO until our build goes through the package pipeline (cc-P40's P-a). Until then
+these patches change nothing for players.

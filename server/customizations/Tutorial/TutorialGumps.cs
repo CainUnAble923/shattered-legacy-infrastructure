@@ -3,6 +3,9 @@
 // TazUO (our client) takes ordinary server gumps only: no command a server can send opens one of its own windows or
 // highlights a control (Part A item 5). So each station teaches its TazUO features in words, names the key, menu or
 // "-command" to use, and links the tazuo.org wiki page in the gump text (an htmlgump link opens only when clicked).
+// cc-P103: our patched TazUO also runs a whitelisted client command the server sends (TazUOClientCommand). A station
+// whose TazUO features name the World Map, the Journal or the options window gets a button that opens it, for a client
+// that answered that handshake; every other client keeps the words only.
 
 #nullable enable
 
@@ -10,6 +13,7 @@ using System;
 using Server.Gumps;
 using Server.Mobiles;
 using Server.Network;
+using Server.TazUO;
 
 namespace Server.Tutorial;
 
@@ -147,9 +151,37 @@ public class TutorialSkipGump : Gump
 public class TutorialStationGump : Gump
 {
     public const string WikiBase = "https://tazuo.org/";
+    public const int BtnWindowBase = 1;
 
-    public TutorialStationGump(TutorialStation s) : base(100, 100)
+    /// <summary>A station's TazUO feature, the client command that opens its window, and the button's words (cc-P103).</summary>
+    public static readonly (string Feature, string Command, string Label)[] Windows =
+    [
+        ("World Map", "worldmap", "Open the World Map"),
+        ("Journal and filters", "journal", "Open the Journal"),
+        ("Options", "options", "Open the options")
+    ];
+
+    private readonly TutorialStation _station;
+
+    /// <summary>The commands this gump offers as buttons, in button order (empty for a client that cannot run them).</summary>
+    public readonly string[] Offered;
+
+    public TutorialStationGump(TutorialStation s, bool canOpenWindows = false) : base(100, 100)
     {
+        _station = s;
+        var offered = new System.Collections.Generic.List<(string Command, string Label)>();
+        if (canOpenWindows)
+        {
+            foreach (var w in Windows)
+            {
+                if (Array.IndexOf(s.TazUO, w.Feature) >= 0)
+                {
+                    offered.Add((w.Command, w.Label));
+                }
+            }
+        }
+
+        Offered = offered.ConvertAll(o => o.Command).ToArray();
         var lines = new System.Collections.Generic.List<string>
         {
             $"Where: {s.Where}.",
@@ -162,14 +194,34 @@ public class TutorialStationGump : Gump
         };
         lines.RemoveAll(string.IsNullOrEmpty);
 
+        var buttons = offered.Count * 24;
         AddPage(0);
-        AddBackground(0, 0, 460, 70 + lines.Count * 36, 9270);
-        AddAlphaRegion(10, 10, 440, 50 + lines.Count * 36);
+        AddBackground(0, 0, 460, 70 + lines.Count * 36 + buttons, 9270);
+        AddAlphaRegion(10, 10, 440, 50 + lines.Count * 36 + buttons);
         AddLabel(24, 18, 1154, s.Title);
         for (var i = 0; i < lines.Count; i++)
         {
             AddHtml(24, 44 + i * 36, 412, 34, $"<BASEFONT COLOR=#DDDDDD>{lines[i]}</BASEFONT>", false, false);
         }
+
+        var y = 44 + lines.Count * 36;
+        for (var i = 0; i < offered.Count; i++, y += 24)
+        {
+            AddButton(24, y, 4005, 4007, BtnWindowBase + i);
+            AddLabel(60, y + 2, 1154, offered[i].Label);
+        }
+    }
+
+    public override void OnResponse(NetState sender, in RelayInfo info)
+    {
+        var i = info.ButtonID - BtnWindowBase;
+        if (sender.Mobile is not PlayerMobile pm || i < 0 || i >= Offered.Length)
+        {
+            return;
+        }
+
+        TazUOClientCommand.Send(pm, Offered[i]);
+        pm.SendGump(new TutorialStationGump(_station, TazUOClientCommand.CanRunCommands(pm.NetState)));
     }
 }
 

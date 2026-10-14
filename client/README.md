@@ -1,0 +1,33 @@
+# Our TazUO build (cc-P103)
+
+Shattered Legacy's client is TazUO (BSD 2-Clause, `player-package\LICENSE-TazUO.txt`) at a pinned upstream commit,
+plus our own small patches. This folder holds the pin and the patches, never the TazUO source.
+
+| File | What |
+|---|---|
+| `TAZUO_COMMIT` | The upstream commit every patch is based on: `3212623f63436be1c0f4e3b308b202b29597c026` (v26.0909.63, the TazUO the player package ships) |
+| `patches\*.patch` | Our changes, applied in file order with `git apply` (no fuzz). One change per patch, each rebasable on its own |
+| `nuget.config` | nuget.org only (the build PC has no NuGet source) |
+| `Build-Client.ps1` | Worktree at the pin, submodules copied and checked, patches, unit tests, `dotnet publish` to `D:\UO\tazuo-sl-build\client` |
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File D:\ShatteredLegacy\client\Build-Client.ps1
+```
+
+It needs a TazUO clone with its submodules (`-Source`, default `D:\UO\cc-p40-work\tazuo-3212623f`) and the .NET 10 SDK.
+
+## Patches
+
+| Patch | Upstream base | What | Server side |
+|---|---|---|---|
+| `0001-enhanced-packet-client-command.patch` | `3212623f` | Enhanced packet 0xCE id 4, **ClientCommand**: the server runs one whitelisted client command (`optlink`, `paperdoll`, `marktile`, `radius`, and three new ones, `worldmap`, `journal`, `options`, which open the World Map, the Journal and the options window). Behind TazUO's enhanced-packet opt-in; anything else is ignored and logged once. The client answers id 4 when the server's EnableEnhancedPacket asks for it, so the server can tell our client from a stock TazUO. New file `EnhancedClientCommand.cs`, 9 lines in three upstream files, 21 unit tests | `server\customizations\TazUO\TazUOClientCommand.cs`; the tutorial stations' buttons (`Tutorial\TutorialGumps.cs`) |
+
+## Rebasing onto a newer upstream
+
+In a TazUO clone: `git switch -c sl/rebase <new upstream commit>`, then `git am client\patches\*.patch`. Fix any
+conflict, run the unit tests, `git format-patch` the result back into `patches\`, and put the new commit in `TAZUO_COMMIT`.
+
+## Not yet
+
+The player package still ships the stock TazUO (`Build-PlayerPackage.ps1 -TazUO D:\UO\TazUO\client`). Shipping this
+build is cc-P40's P-a pipeline: version stamp `-sl.N`, a smoke start, the package gates, and our own crash webhook or none.

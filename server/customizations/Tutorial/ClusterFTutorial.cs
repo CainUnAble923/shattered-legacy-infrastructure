@@ -121,7 +121,7 @@ public static class ClusterFTutorial
         }
 
         // TODO (trial prompts): the station's trial. Until then the stub shows the plan and counts it done.
-        pm.SendGump(new TutorialStationGump(station));
+        pm.SendGump(new TutorialStationGump(station, Server.TazUO.TazUOClientCommand.CanRunCommands(pm.NetState)));
         CompleteStation(pm, station.Key);
     }
 

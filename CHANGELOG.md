@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.10
+
+### Staff
+- Our own TazUO build can now be made from a pinned TazUO with our patches, and its first patch lets the server open the World Map, the Journal or the options window for the player. Tutorial stations that teach those windows show a button for each to that client only; every other client keeps the written directions. Players get it when the build ships in the player package.
+
 ## 2026.10.14.9
 
 ### Staff
