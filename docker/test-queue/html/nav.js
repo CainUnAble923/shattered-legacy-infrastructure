@@ -20,8 +20,9 @@
   var PAGES = [
     { key: 'playtests', label: 'Play tests',   host: null, port: 8093, path: '/' },
     { key: 'status',    label: 'Shard status', host: null, port: 8093, path: '/status' },
-    // cc-P107: Homepage stays on the game PC until Haven step H5; Haven's own :3000 is its stale June copy (cc-P89).
-    { key: 'dashboard', label: 'Dashboard',    host: '192.168.1.58', port: 3000, path: '/', lanOnly: true }
+    // cc-P110 (Haven step H5): Homepage is Haven's. Haven's :3000 always answers: the stale June copy until the Mega
+    // dashboard deploy, the real one after it, and the stale one again after its rollback.
+    { key: 'dashboard', label: 'Dashboard',    host: '192.168.1.61', port: 3000, path: '/', lanOnly: true }
   ];
   // The Windows box (docker/test-queue/docker-compose.yml), for a page opened from disk.
   var FALLBACK_HOST = '192.168.1.58';

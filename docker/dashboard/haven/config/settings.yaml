@@ -1,0 +1,16 @@
+# cc-P110: the one Homepage, on Haven. Three groups, in this order. ASCII only.
+title: Haven - Shattered Legacy, Sunflower and home lab
+theme: dark
+color: slate
+headerStyle: boxed
+statusStyle: dot
+layout:
+  Shattered Legacy:
+    style: row
+    columns: 3
+  Sunflower Custom Gifts:
+    style: row
+    columns: 3
+  Home lab:
+    style: row
+    columns: 3

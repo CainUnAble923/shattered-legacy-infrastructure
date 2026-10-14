@@ -1,0 +1,42 @@
+# cc-P110 (P89 H5, widened): THE Homepage, on Haven. Shattered Legacy, Sunflower Custom Gifts and the home lab in one.
+# Deployed and rolled back only by docker/dashboard/haven/Deploy-MegaDashboard.ps1, from the Shard Console's Websites tab.
+# Home and tailnet only: it lists containers and the home lab's layout, so it is never routed by NPM or Cloudflare, and
+# HOMEPAGE_ALLOWED_HOSTS names only LAN addresses (not dashboard.shatteredlegacyuo.com, which is public DNS).
+# Haven's containers are read through a socket proxy that allows container listing and stats only (decision 7);
+# Homepage itself never mounts the Docker socket.
+# The same file runs on the game PC for the proof, with DASH_ROOT, the bind, the port and the names set to scratch values.
+# ASCII only.
+name: ${DASH_PROJECT:-sl-home}
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:v1.13.1
+    container_name: ${DASH_NAME:-sl-homepage}
+    restart: unless-stopped
+    depends_on: [dockerproxy]
+    ports:
+      - "${DASH_BIND:-0.0.0.0}:${DASH_PORT:-3000}:3000"
+    volumes:
+      - ${DASH_ROOT:-/home/chase/sl-home}/config:/app/config
+      - ${DASH_ROOT:-/home/chase/sl-home}/config/icons:/app/public/icons:ro
+    # dashboard.env (made by the deploy on Haven, chmod 600, never in git): HOMEPAGE_VAR_OPS_TOKEN for the game PC
+    # snapshot, and the Sunflower URLs (HOMEPAGE_VAR_SPOOLMAN_URL, HOMEPAGE_VAR_GRAPHS_URL) once Chase knows them.
+    env_file:
+      - ${DASH_ROOT:-/home/chase/sl-home}/dashboard.env
+    environment:
+      TZ: America/Chicago
+      HOMEPAGE_ALLOWED_HOSTS: ${DASH_ALLOWED_HOSTS:-192.168.1.61:3000,192.168.1.61,haven:3000,localhost:3000}
+
+  # Read-only: GET on /containers (list, json, stats) and /version only; every POST and every other endpoint is refused.
+  dockerproxy:
+    image: tecnativa/docker-socket-proxy:v0.4.1
+    container_name: ${DASH_PROXY_NAME:-sl-homepage-dockerproxy}
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+networks:
+  default:
+    name: ${DASH_NETWORK:-sl-home-net}

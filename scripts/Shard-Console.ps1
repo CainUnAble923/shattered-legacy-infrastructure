@@ -359,7 +359,8 @@ function Get-ConsoleConfig {
         # (docker/test-queue) and by shard-migration\tools\Import-PlayTests.ps1; the console only reads it.
         PlayTestsFile      = 'D:\UO\shard-migration\testing\play-tests.json'
         PlayTestsUrl       = 'http://localhost:8093/'
-        DashboardUrl       = 'http://localhost:3000/'
+        # cc-P110: Haven's Homepage (H5). Haven's :3000 answers before the Mega dashboard deploy (its stale copy) too.
+        DashboardUrl       = 'http://192.168.1.61:3000/'
         # cc-P85: the shard status dashboard, which sl-play-tests serves at /status.
         StatusUrl          = 'http://localhost:8093/status'
         # cc-P101, the WEBSITES tile and the Websites tab: the sites, the deploy allowlist, Haven's SSH target and NPM's
@@ -836,6 +837,7 @@ function Get-ConfirmPhrase {
         'web.deploy'       { 'deploy to haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'deploy to haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'deploy to haven' }
+        { $_ -in @('web.mega-dashboard', 'web.mega-dashboard-rollback') } { 'deploy to haven' }
         default            { 'confirm live' }
     }
 }
@@ -853,6 +855,7 @@ function Get-ConfirmSubject {
         'web.deploy'      { 'Deploy to Haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'Ops pages on Haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'Print queue on Haven' }
+        { $_ -in @('web.mega-dashboard', 'web.mega-dashboard-rollback') } { 'Mega dashboard on Haven' }
         'fix.rollback'    { 'Roll back the test shard' }
         'fix.rebuild'     { 'Rebuild the test shard' }
         'fix.prune'       { 'Prune images' }
@@ -1092,6 +1095,9 @@ function Get-ConsoleActions {
         # cc-P109: the Sunflower print queue's two Haven deploys, the same way.
         [pscustomobject]@{ Key = 'web.print-queue';  Group = 'Websites';    Label = 'Print queue: deploy';                Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'web.print-queue-rollback'; Group = 'Websites'; Label = 'Print queue: roll back';        Mutates = $true;  RunIn = 'here' }
+        # cc-P110: the one Homepage on Haven, the same way.
+        [pscustomobject]@{ Key = 'web.mega-dashboard'; Group = 'Websites';  Label = 'Mega dashboard: deploy';             Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'web.mega-dashboard-rollback'; Group = 'Websites'; Label = 'Mega dashboard: roll back';  Mutates = $true;  RunIn = 'here' }
         # cc-P86: beside the PUBLIC DNS tile and on the Diagnostics tab. 'here': it opens Proton or ends a WireGuard
         # tunnel from this console, then the tile re-checks.
         [pscustomobject]@{ Key = 'vpn.disconnect';   Group = 'Network';     Label = 'Disconnect VPN';                     Mutates = $true;  RunIn = 'here' }
@@ -1312,6 +1318,8 @@ function Get-ConsoleTooltips {
         'web.ops-rollback' = 'Brings the ops pages back to this PC with everything marked on Haven, after the phrase deploy to haven. Its window shows the plan and waits for roll back.'
         'web.print-queue'  = 'Puts the Sunflower print queue on Haven, and the first time moves its data there from this PC, after the phrase deploy to haven. Its window reads Haven first, prints the plan, and changes nothing until you type deploy there.'
         'web.print-queue-rollback' = 'Brings the Sunflower print queue back to this PC with every edit made on Haven, after the phrase deploy to haven. Its window shows the plan and waits for roll back.'
+        'web.mega-dashboard' = 'Puts the one Homepage (Shattered Legacy, Sunflower, home lab) on Haven and stops the stale one there and this PC''s, after the phrase deploy to haven. Its window prints Haven''s containers and ports first, then the plan, and changes nothing until you type deploy there.'
+        'web.mega-dashboard-rollback' = 'Stops Haven''s new Homepage and starts the stale one and this PC''s dashboard again, after the phrase deploy to haven. Its window shows the plan and waits for roll back.'
         'web.npm'          = 'Opens Nginx Proxy Manager: an SSH tunnel to Haven in its own window (your own key), then the admin page in your browser. No password is stored here.'
         'golem.move'       = 'Moves the CC queue from cc-autopilot to the Golem with Move-ToGolem.ps1: the hooks, the scheduled task and the state. Asks for move to the golem, then shows its dry run in its own window and asks you to type move; refused while a prompt runs.'
         'links.playtests'  = 'Opens the play-test page (port 8093) in your browser. Changes nothing here.'
@@ -3895,7 +3903,7 @@ function Get-LinkPlan {
     param([string]$Action, $Config)
     switch ($Action) {
         'links.playtests' { $l = Get-OpsLinks $Config (Get-OpsMode $Config); @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($l.PlayTests) -Text ('Opening the play-test page (on ' + $l.Where + ') in the default browser.' + $(if ($l.Fallback) { ' If Haven does not answer, the rollback (Websites tab, ops-rollback) brings back ' + $l.Fallback + '.' } else { '' }))) }
-        'links.dashboard' { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.DashboardUrl) -Text 'Opening the Homepage dashboard (sl-dashboard, port 3000) in the default browser.') }
+        'links.dashboard' { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.DashboardUrl) -Text 'Opening the Homepage dashboard on Haven (port 3000) in the default browser.') }
         'links.status'    { $l = Get-OpsLinks $Config (Get-OpsMode $Config); @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($l.Status) -Text ('Opening the shard status page (on ' + $l.Where + ', /status) in the default browser.')) }
         default { @(New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them.")) }
     }
@@ -4063,13 +4071,13 @@ function Get-WebsitePlan {
         return $steps.ToArray()
     }
     # cc-P107: the ops pages' three deploys, whatever site is picked: the same helper, allowlist and phrase as Deploy.
-    # cc-P109: and the print queue's two.
-    if ($Action -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback', 'web.print-queue', 'web.print-queue-rollback')) {
+    # cc-P109: and the print queue's two; cc-P110: and the mega dashboard's two.
+    if ($Action -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback', 'web.print-queue', 'web.print-queue-rollback', 'web.mega-dashboard', 'web.mega-dashboard-rollback')) {
         $d = $web.Deploys[$Action.Substring(4)]
         if (-not $d) { $steps.Add((New-PlanStep -Kind refuse -Text ($Action.Substring(4) + ' is not in the deploys allowlist in websites.json. Nothing was run.'))); return $steps.ToArray() }
         $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase 'web.deploy') -Text ('This runs ' + $d.Name + ': ' + $d.Script + ' ' + $d.What + '. Its window first reads Haven and prints the plan, and changes nothing until you type its word there. It uses your own SSH key; the window keeps a log under scripts\shard-console-output\deploys.')))
         $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + @($Config.WebsiteDeployScript, '-Deploy', $d.Name)) -Text 'In a window of its own, which stays open. It checks the allowlist again before it runs anything.'))
-        $steps.Add((New-PlanStep -Kind log -Text ('web.deploy ' + $(if ($d.Name -like 'print-queue*') { 'print-queue ' } else { 'ops ' }) + $d.Name)))
+        $steps.Add((New-PlanStep -Kind log -Text ('web.deploy ' + $(if ($d.Name -like 'print-queue*') { 'print-queue ' } elseif ($d.Name -like 'mega-dashboard*') { 'mega-dashboard ' } else { 'ops ' }) + $d.Name)))
         return $steps.ToArray()
     }
     $s = @($web.Sites | Where-Object { $_.Key -ceq $Site })[0]

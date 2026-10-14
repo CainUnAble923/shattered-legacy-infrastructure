@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.16
+
+### Staff
+- One dashboard on Haven for Shattered Legacy, Sunflower Custom Gifts and the home lab, set up from the Shard Console's Websites tab with a matching roll back. It replaces the old Homepage on Haven and the game PC's; the print queue now reports its order counts to it.
+
 ## 2026.10.14.15
 
 ### Staff

@@ -1,0 +1,6 @@
+# cc-P110: Haven's Docker, read only, through the socket proxy beside Homepage (docker-compose.yml: dockerproxy).
+# Container listing and stats only (decision 7). The game PC's Docker is never reached from Haven: its containers come
+# from the game PC snapshot (decision 6).
+haven:
+  host: dockerproxy
+  port: 2375

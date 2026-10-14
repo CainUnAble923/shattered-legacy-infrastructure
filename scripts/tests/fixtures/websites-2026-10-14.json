@@ -21,7 +21,9 @@
     { "key": "npm", "name": "Nginx Proxy Manager", "url": "http://localhost:8081/", "check": "http://192.168.1.61/", "where": "haven", "npm": true,
       "_check": "The admin page is only reachable through the tunnel, so the light checks NPM's proxy port on Haven instead: any answer means NPM is up." },
     { "key": "printqueue", "name": "Print queue", "url": "http://192.168.1.61:8787/", "where": "haven", "deploy": "print-queue",
-      "_printqueue": "cc-P109: the Sunflower opener print queue (Sunflower Custom Gifts, not the shard), LAN only. Its code is in C:\\dev\\sunflower\\print-queue, outside both shard repos; the light reads down until the first print-queue deploy." }
+      "_printqueue": "cc-P109: the Sunflower opener print queue (Sunflower Custom Gifts, not the shard), LAN only. Its code is in C:\\dev\\sunflower\\print-queue, outside both shard repos; the light reads down until the first print-queue deploy." },
+    { "key": "megadash", "name": "Mega dashboard", "url": "http://192.168.1.61:3000/", "where": "haven", "deploy": "mega-dashboard",
+      "_megadash": "cc-P110: the one Homepage on Haven (Shattered Legacy, Sunflower, home lab), from docker\\dashboard\\haven. Home and tailnet only. Until its deploy, port 3000 on Haven is the stale Homepage, so the light can read up before the real one runs." }
   ],
   "deploys": {
     "website": { "script": "D:\\UO\\haven-migration\\Deploy-Website.ps1", "what": "copies the website page, its images and the intro video from docker\\website\\html to Haven (scp, then chmod)" },
@@ -30,7 +32,9 @@
     "ops-cutover": { "script": "D:\\UO\\haven-migration\\Deploy-HavenOps-Cutover.ps1", "what": "cc-P107: stops the game PC's Play tests page, seeds Haven's data from testing, starts Haven's page and checks it file by file, then switches the console and the commit to Haven. Typed word: cut over" },
     "ops-rollback": { "script": "D:\\UO\\haven-migration\\Deploy-HavenOps-Rollback.ps1", "what": "cc-P107: takes Haven's data into testing, stops Haven's page and starts the game PC's again. Typed word: roll back" },
     "print-queue": { "script": "D:\\UO\\haven-migration\\Deploy-PrintQueue.ps1", "what": "cc-P109: puts the Sunflower print queue on Haven (C:\\dev\\sunflower\\print-queue\\haven\\Deploy-PrintQueue.ps1), makes its own SSH key for the Sunflower site the first time (public half printed once, for Hostinger), and the first time moves its data from this PC. Discovery and the plan first, then the typed word deploy" },
-    "print-queue-rollback": { "script": "D:\\UO\\haven-migration\\Deploy-PrintQueue-Rollback.ps1", "what": "cc-P109: takes Haven's print queue data back to this PC, stops Haven's container and starts the game PC server again. Typed word: roll back" }
+    "print-queue-rollback": { "script": "D:\\UO\\haven-migration\\Deploy-PrintQueue-Rollback.ps1", "what": "cc-P109: takes Haven's print queue data back to this PC, stops Haven's container and starts the game PC server again. Typed word: roll back" },
+    "mega-dashboard": { "script": "D:\\UO\\haven-migration\\Deploy-MegaDashboard.ps1", "what": "cc-P110: puts the one Homepage on Haven (docker\\dashboard\\haven) with its read-only Docker proxy, writes its env file the first time (the ops token copied on Haven), stops the stale Homepage there and then this PC's sl-dashboard (both stopped, not removed). Discovery (Haven's containers and ports) and the plan first, then the typed word deploy" },
+    "mega-dashboard-rollback": { "script": "D:\\UO\\haven-migration\\Deploy-MegaDashboard-Rollback.ps1", "what": "cc-P110: stops the new Homepage, starts the stale one on Haven and this PC's sl-dashboard again. Typed word: roll back" }
   },
   "_deploySlots": {
     "haven-ops": "cc-P107 filled this slot: ops-pages, ops-cutover and ops-rollback above (docker/ops/Deploy-HavenOps.ps1 behind three one-line launchers in D:\\UO\\haven-migration). The Play tests and Shard status sites carry havenUrl, which the console uses after the cutover.",

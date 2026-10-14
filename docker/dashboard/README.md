@@ -1,5 +1,29 @@
 # Dashboard (Homepage)
 
+## Which Homepage is real (cc-P110, 2026-10-14)
+
+**The real one is Haven's, from `docker/dashboard/haven/`:** container `sl-homepage` (with its read-only Docker proxy
+`sl-homepage-dockerproxy`), compose project `sl-home`, files in `~/sl-home` on Haven, at `http://192.168.1.61:3000/`.
+Three groups: Shattered Legacy, Sunflower Custom Gifts and Home lab. Home and tailnet only: never routed by NPM or
+Cloudflare, and `HOMEPAGE_ALLOWED_HOSTS` names LAN addresses only.
+
+- **Deploy and roll back** only from the Shard Console's Websites tab: **Mega dashboard: deploy** and **Mega dashboard:
+  roll back** (`haven/Deploy-MegaDashboard.ps1`, through the one-line launchers in `D:\UO\haven-migration`). Each first
+  prints Haven's running containers and listening ports, then the plan, then waits for a typed word.
+- **Until that deploy has run**, the two below are what is running.
+- **Retired by the deploy, stopped and not removed** (the rollback starts both again):
+  - Haven's stale Homepage, `sl-dashboard` from `~/shattered-legacy/docker/dashboard` (a June hand-maintained checkout;
+    decision 9 leaves its files alone);
+  - the game PC's `sl-dashboard`, from this folder's `docker-compose.yml` and `config/` (port 3000 on the game PC).
+    Those files stay as the rollback's config; edit `haven/config` instead.
+- `dashboard.env` is never in git: the deploy writes `~/sl-home/dashboard.env` on Haven (the ops token, copied there
+  from `~/sl-ops/ops.env`, and the Spoolman and graphing app URLs).
+
+## Before cc-P110 (history)
+
+> The note below was written before the game PC's `sl-dashboard` existed and is kept as history. The Haven container it
+> names is the stale Homepage above.
+>
 > **This runs on Haven, not on this machine.**
 > Haven is the Debian box at `192.168.1.61` (`ssh chase@192.168.1.61`). The container
 > (`sl-dashboard`) and its live copy of this folder, `~/shattered-legacy/docker/dashboard/`, are there.

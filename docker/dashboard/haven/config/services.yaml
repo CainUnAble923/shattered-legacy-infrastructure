@@ -1,0 +1,299 @@
+# cc-P110 (P89 H5, widened): the one Homepage, on Haven (192.168.1.61:3000). Home and tailnet only.
+# Two machines, and the dashboard must not blur them (bug-list D30):
+#   192.168.1.58  the game PC: the test shard, the status feed (8092), the dev store, Portainer
+#   192.168.1.61  Haven: this dashboard, the web stack, the ops pages (8093, 8094), the print queue (8787)
+# Every widget below is fetched by Homepage's own server on Haven, over the LAN. "server: haven" entries read Haven's
+# Docker through the read-only socket proxy (docker.yaml). The game PC's Docker is never reached from here: its
+# containers come from the game PC snapshot (decision 6). Values in {{HOMEPAGE_VAR_...}} come from dashboard.env on
+# Haven, which the deploy writes (never in git). ASCII only.
+
+- Shattered Legacy:
+    # cc-P83, cc-P90, cc-P97: the ops page on Haven (cc-P107). /api/summary is counts only and needs no token.
+    - Play tests:
+        icon: /icons/shattered_legacy_logo.png
+        href: "http://192.168.1.61:8093/"
+        description: Waiting play tests. Mark Pass or Fail
+        server: haven
+        container: sl-play-tests
+        widget:
+          type: customapi
+          url: http://192.168.1.61:8093/api/summary
+          refreshInterval: 60000
+          mappings:
+            - field: open
+              label: Open
+              format: number
+            - field: failed
+              label: Failed
+              format: number
+            - field: passed
+              label: Passed
+              format: number
+            - field: blocked
+              label: Blocked
+              format: number
+
+    - Ideas:
+        icon: /icons/shattered_legacy_logo.png
+        href: "http://192.168.1.61:8093/"
+        description: New feature ideas, waiting for the features chat (Ideas tab)
+        widget:
+          type: customapi
+          url: http://192.168.1.61:8093/api/summary
+          refreshInterval: 60000
+          mappings:
+            - field: ideas_new
+              label: New ideas
+              format: number
+
+    - Bug reports:
+        icon: /icons/shattered_legacy_logo.png
+        href: "http://192.168.1.61:8093/"
+        description: New bug reports, waiting for the overseer (Bugs tab)
+        widget:
+          type: customapi
+          url: http://192.168.1.61:8093/api/summary
+          refreshInterval: 60000
+          mappings:
+            - field: bugs_new
+              label: New bugs
+              format: number
+            - field: unloggedFails
+              label: Fails not logged
+              format: number
+
+    # cc-P85: shard-migration's dashboard.html, served by the ops page at /status.
+    - Shard status:
+        icon: /icons/shattered_legacy_logo.png
+        href: "http://192.168.1.61:8093/status"
+        description: Playable gates, the CC queue, play tests and how old the judgment is
+
+    # The status feed on the game PC (8092). cc-P108: live is retired, so shards.json lists the test shard only.
+    - Test shard:
+        icon: /icons/shattered_legacy_logo.png
+        description: Up or down, from sl-shard-probe on the game PC (LAN port 2594)
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8092/shards.json
+          refreshInterval: 30000
+          mappings:
+            - field: shards.0.name
+              label: Shard
+            - field: shards.0.up
+              label: State
+              remap:
+                - value: true
+                  to: Up
+                - value: false
+                  to: Down
+            - field: generatedAt
+              label: Probed
+              format: relativeDate
+
+    # Decision 6: what only the game PC knows, from the snapshot it pushes to Haven every minute (cc-P107). The token
+    # listener needs the ops token; the deploy copies it from Haven's ops.env into dashboard.env.
+    - Game PC:
+        icon: mdi-desktop-tower
+        description: Pushed every minute; reads offline 3 minutes after the last push
+        widget:
+          type: customapi
+          url: http://192.168.1.61:8094/api/gamepc
+          refreshInterval: 60000
+          headers:
+            Authorization: "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}"
+          mappings:
+            - field: offline
+              label: Game PC
+              remap:
+                - value: false
+                  to: Online
+                - value: true
+                  to: Offline
+                - any: true
+                  to: No snapshot yet
+            - field: receivedAt
+              label: Last push
+              format: relativeDate
+            - field: snapshot.golem.running
+              label: Golem running
+            - field: snapshot.golem.queue
+              label: Queued
+              format: size
+
+    - Game PC containers:
+        icon: mdi-docker
+        description: The shard and page containers on the game PC, from the same snapshot
+        widget:
+          type: customapi
+          url: http://192.168.1.61:8094/api/gamepc
+          refreshInterval: 60000
+          headers:
+            Authorization: "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}"
+          display: dynamic-list
+          mappings:
+            items: snapshot.containers
+            name: name
+            label: status
+
+    - Website:
+        icon: /icons/shattered_legacy_logo.png
+        href: "https://shatteredlegacyuo.com"
+        description: Landing page and download
+        server: haven
+        container: sl-website
+
+    - Wiki:
+        icon: /icons/shattered_legacy_logo.png
+        href: "https://wiki.shatteredlegacyuo.com"
+        description: DokuWiki
+        server: haven
+        container: sl-wiki
+        siteMonitor: "https://wiki.shatteredlegacyuo.com"
+
+    # Decision 11: was "Migration status".
+    - Public progress page:
+        icon: /icons/shattered_legacy_logo.png
+        href: "https://shatteredlegacyuo.com/migration.html"
+        description: Defects and content reach, as players see them
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8092/migration.json
+          refreshInterval: 300000
+          mappings:
+            - field: defects.open
+              label: Open defects
+            - field: content.reachableFiles
+              label: In reach
+
+    - Art and script downloads:
+        icon: /icons/shattered_legacy_logo.png
+        href: "https://shatteredlegacyuo.com/migration.html"
+        description: servuo.dev queue, 5 a night
+        widget:
+          type: customapi
+          url: http://192.168.1.58:8092/downloads.json
+          refreshInterval: 300000
+          mappings:
+            - field: art.done
+              label: Art done
+            - field: art.todo
+              label: Art to go
+            - field: code.done
+              label: Scripts done
+            - field: nightsLeft
+              label: Nights left
+
+- Sunflower Custom Gifts:
+    # cc-P109: the opener print queue on Haven. /api/summary (cc-P110) is counts only: no name, code or order detail.
+    - Print queue:
+        icon: mdi-printer-3d
+        href: "http://192.168.1.61:8787/"
+        description: Opener orders and the public lead-time page
+        server: haven
+        container: sunflower-print-queue
+        widget:
+          type: customapi
+          url: http://192.168.1.61:8787/api/summary
+          refreshInterval: 60000
+          mappings:
+            - field: active
+              label: Orders
+              format: number
+            - field: printing
+              label: Printing
+              format: number
+            - field: backlogPlates
+              label: Plates to print
+              format: number
+            # Not lastPush as a date: before the first push it is null, which Homepage dates to 1970 ("57 years ago",
+            # seen in the proof).
+            - field: pushOk
+              label: Lead-time page
+              remap:
+                - value: true
+                  to: Updated
+                - value: false
+                  to: Push failing
+                - any: true
+                  to: Not pushed yet
+
+    # NOT FOUND YET (cc-P110). Chase: "the one with Spoolman and the graphing app". Nothing on the game PC or in
+    # Haven's old discovery runs either; the deploy's Discover prints Haven's containers and ports. Once its address
+    # is known, set HOMEPAGE_VAR_SPOOLMAN_URL in Haven's dashboard.env (the deploy asks) and uncomment the widget:
+    # Homepage 1.13.1 ships a spoolman widget (src/widgets/spoolman; https://gethomepage.dev/widgets/services/spoolman/),
+    # which reads Spoolman's own API at that url and shows up to four spools' remaining filament.
+    - Spoolman:
+        icon: mdi-printer-3d-nozzle
+        href: "{{HOMEPAGE_VAR_SPOOLMAN_URL}}"
+        description: Filament spools. Address not known yet (cc-P110 decision 1)
+        # widget:
+        #   type: spoolman
+        #   url: "{{HOMEPAGE_VAR_SPOOLMAN_URL}}"
+
+    - Graphing app:
+        icon: mdi-chart-line
+        href: "{{HOMEPAGE_VAR_GRAPHS_URL}}"
+        description: Which app and where not known yet (cc-P110 decision 1)
+
+    - Live store:
+        icon: mdi-storefront
+        href: "https://sunflowercustomgiftshop.com"
+        description: Sunflower Custom Gifts (Hostinger)
+        siteMonitor: "https://sunflowercustomgiftshop.com"
+
+    # sunflower-devstack's WordPress on the game PC (C:\dev\sunflower\sunflower-devstack, port 8080). LAN only, and
+    # only while that stack is up: a red dot here means it is not running, which is its usual state.
+    - Dev store:
+        icon: mdi-storefront-outline
+        href: "http://192.168.1.58:8080"
+        description: Local copy on the game PC, LAN only; red unless the devstack is running
+        siteMonitor: "http://192.168.1.58:8080"
+
+- Home lab:
+    # Haven's containers through the read-only socket proxy (decision 7).
+    - Ops pages repo pull:
+        icon: mdi-source-pull
+        description: sl-ops git-pull, keeps Haven's clones of both repos current
+        server: haven
+        container: sl-ops-git-pull
+
+    - Downloads:
+        icon: nginx
+        href: "https://get.shatteredlegacyuo.com"
+        description: Client files and patches
+        server: haven
+        container: sl-downloads
+
+    - This dashboard:
+        icon: homepage
+        description: Homepage on Haven, and its read-only Docker proxy
+        server: haven
+        container: sl-homepage
+
+    # Links only, by design.
+    - Password vault:
+        icon: bitwarden
+        href: "https://vault.chasekfleming.com"
+        description: Vaultwarden on Haven. A link only
+
+    - Nginx Proxy Manager:
+        icon: nginx-proxy-manager
+        href: "http://localhost:8081/"
+        description: Admin page through an SSH tunnel; Shard Console > Websites > Open NPM opens both. A link only
+
+    - Portainer (game PC):
+        icon: portainer
+        href: "https://192.168.1.58:9443"
+        description: Docker on the game PC. A link only
+
+    - Status feed:
+        icon: nginx
+        href: "http://192.168.1.58:8092/shards.json"
+        description: What the website reads, served by sl-uo-status on the game PC
+        siteMonitor: "http://192.168.1.58:8092/shards.json"
+
+    - ATM10 Minecraft:
+        icon: minecraft
+        href: "http://atm10.shatteredlegacyuo.com:8100"
+        description: All the Mods 10 family server and its live map, on the game PC
+        siteMonitor: "http://192.168.1.58:8091/"
