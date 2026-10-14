@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.8
+
+### Staff
+- The Shard Console has a Websites tab and tile: a light for every site (play tests, status, Homepage, the website, the wiki, Vaultwarden and Nginx Proxy Manager), with open, restart, redeploy and logs for the ones on the game PC, Open NPM, and a one-click deploy of the website or the wiki macros to Haven after a typed phrase.
+
 ## 2026.10.14.7
 
 ### Staff

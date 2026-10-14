@@ -46,7 +46,12 @@
   A sixth, PLAY TESTS (cc-P83), counts what is waiting in D:\UO\shard-migration\testing\play-tests.json
   (sl-play-tests, docker/test-queue) and turns amber while a Fail is not yet logged in the bug list. Its
   two buttons open the play-test page (8093) and the Homepage dashboard (3000); so do two on the
-  Golem tab. Get-PlayTestGlance judges the file.
+  Golem tab.
+  A seventh, WEBSITES (cc-P101), checks every site in scripts\websites.json (one GET each, 4 s timeout, every
+  60 s, in a runspace of its own): "6 OF 7 UP", amber with the down ones named. The Websites tab lists them with
+  Open, Restart, Redeploy and Logs (game-PC sites), Deploy (a Haven site with an allowlisted deploy script, after
+  the phrase 'deploy to haven', through scripts\Invoke-WebsiteDeploy.ps1) and Open NPM (an SSH tunnel with
+  Chase's own key, then the admin page). Get-WebsitesGlance and Get-WebsitePlan judge; the site list is config. Get-PlayTestGlance judges the file.
 
   THE LOOK, TOOLTIPS AND THE ACTION OUTPUT PANE (cc-P84). Look: UO (stone, parchment, gold, the crest, Palatino
   Linotype) or Plain (the console as it was), chosen in the status bar and remembered in
@@ -117,6 +122,8 @@
 [CmdletBinding()]
 param(
     [switch]$DryRun,
+    # cc-P101: a Websites action's site, by its key in scripts\websites.json.
+    [string]$Site,
     [ValidateSet('DryRun', 'Execute')][string]$Mode,
     [string]$StatusFrom,
     [switch]$StatusFromDocker,
@@ -236,6 +243,10 @@ function Get-ConsoleConfig {
     $fixFile = Join-Path $RepoRoot 'scripts\fix-test-shard.json'
     $fixJson = $null
     if (Test-Path -LiteralPath $fixFile) { $fixJson = [IO.File]::ReadAllText($fixFile) }
+    # cc-P101: and the Websites tab's site list. Missing or broken, the tile says so and nothing is guessed.
+    $webFile = Join-Path $RepoRoot 'scripts\websites.json'
+    $webJson = $null
+    if (Test-Path -LiteralPath $webFile) { $webJson = [IO.File]::ReadAllText($webFile) }
     $lib = Join-Path $RepoRoot 'server\lib\uo\modernuo'
     $shards = [ordered]@{
         test = [pscustomobject]@{
@@ -318,6 +329,11 @@ function Get-ConsoleConfig {
         DashboardUrl       = 'http://localhost:3000/'
         # cc-P85: the shard status dashboard, which sl-play-tests serves at /status.
         StatusUrl          = 'http://localhost:8093/status'
+        # cc-P101, the WEBSITES tile and the Websites tab: the sites, the deploy allowlist, Haven's SSH target and NPM's
+        # tunnel, all from scripts\websites.json; Deploy runs scripts\Invoke-WebsiteDeploy.ps1, which checks it again.
+        WebsitesFile       = $webFile
+        Websites           = (ConvertFrom-WebsiteConfig $webJson $RepoRoot)
+        WebsiteDeployScript = (Join-Path $RepoRoot 'scripts\Invoke-WebsiteDeploy.ps1')
         # cc-P84: the look and where actions show their output, remembered on this PC (git-ignored); the gump cache
         # (git-ignored: it holds EA's art); the client file the gumps are read from (read only); and our own crest.
         SettingsFile       = (Join-Path $RepoRoot 'scripts\shard-console-settings.json')
@@ -727,6 +743,7 @@ function Get-ConfirmPhrase {
         'fix.rebuild'      { 'rebuild test' }
         'fix.prune'        { 'prune images' }
         'golem.move'       { 'move to the golem' }
+        'web.deploy'       { 'deploy to haven' }
         default            { 'confirm live' }
     }
 }
@@ -741,6 +758,7 @@ function Get-ConfirmSubject {
         'test.wipe'       { 'Wipe test accounts' }
         'fix.restart'     { 'Restart the test shard' }
         'golem.move'      { 'Move to the Golem' }
+        'web.deploy'      { 'Deploy to Haven' }
         'fix.rollback'    { 'Roll back the test shard' }
         'fix.rebuild'     { 'Rebuild the test shard' }
         'fix.prune'       { 'Prune images' }
@@ -843,6 +861,7 @@ function Get-ModeBanner {
     if ($Action -like 'commit.*') { $what = $Action + ' (both repos)' }
     if ($Action -like 'package.*') { $what = $Action + ' (player package)' }
     if ($Action -like 'golem.*') { $what = $Action + ' (golem)' }
+    if ($Action -like 'web.*') { $what = $Action + ' (websites)' }
     if ($Action -like 'vpn.*') { $what = $Action + ' (this PC''s VPN)' }
     switch ($RunMode) {
         'dry' {
@@ -957,6 +976,13 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
         # cc-P85: the shard status page, beside the two above.
         [pscustomobject]@{ Key = 'links.status';     Group = 'Links';       Label = 'Status';                             Mutates = $false; RunIn = 'here' }
+        # cc-P101: the Websites tab. Each acts on the site picked there (-Site from the command line).
+        [pscustomobject]@{ Key = 'web.open';         Group = 'Websites';    Label = 'Open';                               Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'web.restart';      Group = 'Websites';    Label = 'Restart';                            Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'web.redeploy';     Group = 'Websites';    Label = 'Redeploy';                           Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'web.logs';         Group = 'Websites';    Label = 'Logs (last 200)';                    Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'web.deploy';       Group = 'Websites';    Label = 'Deploy to Haven';                    Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'web.npm';          Group = 'Websites';    Label = 'Open NPM';                           Mutates = $false; RunIn = 'here' }
         # cc-P86: beside the PUBLIC DNS tile and on the Diagnostics tab. 'here': it opens Proton or ends a WireGuard
         # tunnel from this console, then the tile re-checks.
         [pscustomobject]@{ Key = 'vpn.disconnect';   Group = 'Network';     Label = 'Disconnect VPN';                     Mutates = $true;  RunIn = 'here' }
@@ -1155,6 +1181,14 @@ function Get-ConsoleTooltips {
         'golem.log'        = 'Opens the Golem''s log in Notepad. Changes nothing.'
         'golem.settings'   = 'Opens the Golem''s settings.json in Notepad: progressEmails, maxPerRun, stallMinutes. The console changes nothing; what you save there counts from the hook''s next event.'
         'golem.folder'     = 'Opens the Golem''s folder in Explorer. Changes nothing.'
+        'web.pick'         = 'The site the buttons beside it act on, from websites.json.'
+        'web.check'        = 'Checks every site again now instead of waiting for the next 60 s check. Changes nothing.'
+        'web.open'         = 'Opens the picked site in your browser. Changes nothing.'
+        'web.restart'      = 'Restarts the picked game-PC site''s container (docker restart), in its own window. The page is down for a few seconds.'
+        'web.redeploy'     = 'Runs the picked game-PC site''s own start script, which recreates its container and checks it answers, in its own window.'
+        'web.logs'         = 'Shows the last 200 lines of the picked game-PC site''s container in a window. Changes nothing.'
+        'web.deploy'       = 'Deploys the picked Haven site with its allowlisted script from websites.json, after the phrase deploy to haven, using your own SSH key. The window keeps a log.'
+        'web.npm'          = 'Opens Nginx Proxy Manager: an SSH tunnel to Haven in its own window (your own key), then the admin page in your browser. No password is stored here.'
         'golem.move'       = 'Moves the CC queue from cc-autopilot to the Golem with Move-ToGolem.ps1: the hooks, the scheduled task and the state. Asks for move to the golem, then shows its dry run in its own window and asks you to type move; refused while a prompt runs.'
         'links.playtests'  = 'Opens the play-test page (port 8093) in your browser. Changes nothing here.'
         'links.dashboard'  = 'Opens the Homepage dashboard (port 3000) in your browser. Changes nothing here.'
@@ -1186,6 +1220,7 @@ function Get-ConsoleTooltips {
         'tile.TEST'        = 'The test container: running or not, and whether its image drifted from latest.'
         'tile.STATUS PUBLISHER' = 'Whether status.json for the website is fresh (written in the last 3 minutes) and served on 8092.'
         'tile.PUBLIC DNS'  = 'Whether public DNS for shatteredlegacyuo.com points at this house. Red usually means a VPN is on. Grey: the check failed.'
+        'tile.WEBSITES'    = 'How many of the sites in websites.json answer, checked every 60 s; amber names the ones that do not.'
         'tile.GOLEM'       = 'What the Golem (the CC queue runner) is doing: off, idle, running a prompt, or NEEDS YOU after it emailed you.'
         'tile.PLAY TESTS'  = 'How many play tests wait in the queue; amber while a Fail is not in the bug list yet.'
         'tab.Test shard'   = 'The throwaway test shard: start, stop, rebuild, deploy, wipe, tail and a client.'
@@ -1195,6 +1230,7 @@ function Get-ConsoleTooltips {
         'tab.Diagnostics'  = 'The two read-only health checks and their folder, and Disconnect VPN.'
         'tab.Commit'       = 'Preview, or commit and push, both repos.'
         'tab.Player package' = 'Build, check and publish the player package.'
+        'tab.Websites'     = 'The websites, on this PC and on Haven: status, open, restart, redeploy, logs, deploy, and NPM.'
         'tab.Golem'        = 'The Golem, the CC queue runner: its state, queue and log, its own scripts, and the move from cc-autopilot.'
         'tab.LIVE shard'   = 'The real shard with real players. Every button asks for a typed phrase.'
     }
@@ -2045,8 +2081,10 @@ function Get-ActionPlan {
         [string]$SnapshotName, [string]$Snapshot, [datetime]$Now = [datetime]::MinValue,
         [string]$CommitMessage, $CommitFacts,
         [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag, [switch]$CommitForce,
-        $WipeFacts, [string]$WipeAdmin, $AutopilotFacts, $VpnFacts, $FixFacts, [string]$Commit
+        $WipeFacts, [string]$WipeAdmin, $AutopilotFacts, $VpnFacts, $FixFacts, [string]$Commit, [string]$Site
     )
+    # cc-P101: the Websites buttons read websites.json only (it is in $Config).
+    if ($Action -like 'web.*') { return (Get-WebsitePlan -Action $Action -Config $Config -Site $Site) }
     # cc-P83: the two links read nothing.
     if ($Action -like 'links.*') { return (Get-LinkPlan -Action $Action -Config $Config) }
     # cc-P86: the VPN button reads this PC's adapters, route and services (VpnFacts), never docker.
@@ -2274,6 +2312,29 @@ function Test-PlanSafety {
                 if (-not $confirmed) { $v.Add('moves ' + $Config.LatestTag + ' without a typed confirmation: ' + $line) }
                 $liveWords = @($plan | ForEach-Object { @($_.Arguments) + @($_.Container) + @($_.Path) } | Where-Object { $_ -and ([string]$_ -ceq $live.Container) })
                 if ($liveWords.Count) { $v.Add('a deploy to test names the live container ' + $live.Container) }
+            }
+        }
+        if ($Config.Websites) {
+            # cc-P101, the Websites tab. A window's docker restart only ever names a game-PC site's container from
+            # websites.json, never a shard; ssh only ever runs as NPM's tunnel to haven.ssh; and the deploy helper only
+            # with an allowlisted name, after the typed phrase, exactly as Get-WebsitePlan writes it.
+            $web = $Config.Websites
+            $sa = @($s.Arguments)
+            $shardCs = @($Config.Shards.Values | ForEach-Object { $_.Container })
+            if ($s.Kind -eq 'window' -and $s.Exe -eq 'docker' -and $sa.Count -and $sa[0] -ceq 'restart') {
+                $webCs = @(@($web.Sites) | Where-Object { $_.Where -ceq 'pc' } | ForEach-Object { $_.Container })
+                if ($sa.Count -ne 2 -or $webCs -cnotcontains $sa[1] -or $shardCs -ccontains $sa[1]) { $v.Add('a website restart names only a game-PC site''s container from websites.json, never a shard: ' + $line) }
+            }
+            if ([string]$s.Exe -match '(?i)(^|\\)ssh(\.exe)?$') {
+                $want = @('-N', '-L', ([string]$web.Npm.LocalPort + ':' + $web.Npm.Remote), $web.HavenSsh)
+                if (-not $web.Npm -or $s.Kind -ne 'window' -or ($sa -join ' ') -cne ($want -join ' ')) { $v.Add('ssh runs here only as NPM''s tunnel, ssh ' + ($want -join ' ') + ', in a window: ' + $line) }
+            }
+            $named = @(@($s.Exe) + $sa + @($s.Path) | Where-Object { $_ } | ForEach-Object { [string]$_ })
+            if ($Config.WebsiteDeployScript -and @($named | Where-Object { $_ -ieq $Config.WebsiteDeployScript }).Count) {
+                $ok = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -eq 7 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and
+                    $sa[4] -ieq $Config.WebsiteDeployScript -and $sa[5] -ceq '-Deploy' -and $web.Deploys.Contains([string]$sa[6]))
+                if (-not $ok) { $v.Add('the deploy helper runs only as -Deploy <a name in the deploys allowlist>, in a window: ' + $line) }
+                if (-not @($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -ceq (Get-ConfirmPhrase 'web.deploy') }).Count) { $v.Add('a Haven deploy runs only after the typed phrase ' + (Get-ConfirmPhrase 'web.deploy')) }
             }
         }
         if ($s.Kind -eq 'healthwait' -and $s.Container -cne $Config.Shards['test'].Container) { $v.Add('a health wait is only ever on ' + $Config.Shards['test'].Container + ': ' + $s.Container) }
@@ -3514,6 +3575,211 @@ function Get-LinkPlan {
         'links.status'    { @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($Config.StatusUrl) -Text 'Opening the shard status page (sl-play-tests, port 8093, /status) in the default browser.') }
         default { @(New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them.")) }
     }
+}
+
+# --- the websites (cc-P101) -----------------------------------------------------------------------
+# scripts\websites.json lists every site the Websites tab and the WEBSITES tile show: where it runs (the game PC or
+# Haven), its URL, the URL its light checks if that differs, and for a game-PC site its container and start script.
+# "deploys" is the allowlist of Haven deploy scripts the Deploy button may run (Invoke-WebsiteDeploy.ps1 checks it
+# again). A site the file gets wrong is left out and named in Problems, never guessed. Nothing in the file is secret.
+
+$script:WebsiteKeyPattern = '^[a-z0-9][a-z0-9-]{0,39}$'
+$script:WebsiteTimeoutSec = 4
+
+function ConvertFrom-WebsiteConfig {
+    # websites.json's text ($null: no file) in; the sites, the deploy allowlist, Haven's SSH target, NPM's tunnel and
+    # every problem out. Pure: $RepoRoot only turns a game-PC site's relative start script into a full path.
+    param($Text, [string]$RepoRoot = '.')
+    $problems = New-Object 'System.Collections.Generic.List[string]'
+    $sites = New-Object 'System.Collections.Generic.List[object]'
+    $deploys = [ordered]@{}
+    $out = { param($ssh, $npm) [pscustomobject]@{ Sites = $sites.ToArray(); Deploys = $deploys; HavenSsh = $ssh; Npm = $npm; Problems = $problems.ToArray() } }
+    if ($null -eq $Text) { $problems.Add('there is no websites.json'); return (& $out $null $null) }
+    try { $j = ([string]$Text) | ConvertFrom-Json } catch { $problems.Add('websites.json is not JSON: ' + $_.Exception.Message); return (& $out $null $null) }
+    if ($null -eq $j -or [string]$j.schema -ne '1') { $problems.Add('websites.json is not schema 1'); return (& $out $null $null) }
+    $str = { param($o, $n) if ($null -ne $o -and $o.PSObject.Properties.Name -contains $n -and $null -ne $o.$n) { ([string]$o.$n).Trim() } else { '' } }
+
+    $ssh = & $str $j.haven 'ssh'
+    if ($ssh -and $ssh -notmatch '^[a-z0-9._-]+@[A-Za-z0-9.-]+$') { $problems.Add('haven.ssh is not user@host: ' + $ssh); $ssh = '' }
+    if (-not $ssh) { $problems.Add('haven.ssh is missing: Open NPM needs it for the tunnel') }
+
+    $npm = $null
+    $nu = & $str $j.npm 'url'; $np = & $str $j.npm 'tunnelLocalPort'; $nr = & $str $j.npm 'tunnelRemote'
+    $port = 0
+    if (-not $nu -or $nu -notmatch '^https?://' -or -not [int]::TryParse($np, [ref]$port) -or $port -lt 1024 -or $port -gt 65535 -or $nr -notmatch '^[A-Za-z0-9.-]+:\d{1,5}$') {
+        $problems.Add('npm needs url (http or https), tunnelLocalPort (1024 to 65535) and tunnelRemote (host:port)')
+    } else { $npm = [pscustomobject]@{ Url = $nu; LocalPort = $port; Remote = $nr } }
+
+    if ($j.deploys) {
+        foreach ($p in $j.deploys.PSObject.Properties) {
+            $sc = & $str $p.Value 'script'
+            if ($p.Name -notmatch $script:WebsiteKeyPattern) { $problems.Add('deploy ' + $p.Name + ': the name must be lower-case letters, digits and -') }
+            elseif ($sc -notmatch '(?i)^[A-Z]:\\.+\.ps1$') { $problems.Add('deploy ' + $p.Name + ': script must be a full path to a .ps1') }
+            else { $deploys[$p.Name] = [pscustomobject]@{ Name = $p.Name; Script = $sc; What = (& $str $p.Value 'what') } }
+        }
+    }
+
+    $seen = @{}
+    $i = 0
+    foreach ($s in @($j.sites)) {
+        $i++
+        $key = & $str $s 'key'; $name = & $str $s 'name'; $url = & $str $s 'url'; $where = & $str $s 'where'
+        $why = @()
+        if ($key -notmatch $script:WebsiteKeyPattern) { $why += 'key' }
+        elseif ($seen.ContainsKey($key)) { $why += 'key (used twice)' }
+        if (-not $name) { $why += 'name' }
+        if ($url -notmatch '^https?://') { $why += 'url' }
+        if ($where -cnotin @('pc', 'haven')) { $why += 'where (pc or haven)' }
+        $check = & $str $s 'check'; if (-not $check) { $check = $url } elseif ($check -notmatch '^https?://') { $why += 'check' }
+        $container = & $str $s 'container'; $start = & $str $s 'start'; $deploy = & $str $s 'deploy'
+        if ($where -ceq 'pc') {
+            if ($container -notmatch '^sl-[a-z0-9-]+$') { $why += 'container (sl-...)' }
+            if ($start -notmatch '(?i)^[^:]+\.ps1$') { $why += 'start (a .ps1 in the repo)' }
+        }
+        if ($deploy -and -not $deploys.Contains($deploy)) { $why += ('deploy (' + $deploy + ' is not in deploys)') }
+        if ($why.Count) { $problems.Add(('site ' + $i + ' (' + $(if ($name) { $name } elseif ($key) { $key } else { 'no name' }) + '): missing or wrong ' + ($why -join ', ') + '; left out')); continue }
+        $seen[$key] = $true
+        $sites.Add([pscustomobject]@{
+            Key = $key; Name = $name; Url = $url; Check = $check; Where = $where
+            Container = $container; Start = $(if ($start) { Join-Path $RepoRoot $start } else { '' })
+            Deploy = $deploy; IsNpm = [bool]($s.PSObject.Properties.Name -contains 'npm' -and $s.npm -eq $true)
+        })
+    }
+    if (-not $sites.Count) { $problems.Add('no usable site in websites.json') }
+    & $out $ssh $npm
+}
+
+function Get-WebsiteState {
+    # One check's result in, up / down / timeout / unknown out. Any 2xx or 3xx is up: a redirect is a site answering.
+    param($Result)
+    if ($null -eq $Result) { return 'unknown' }
+    if ($Result.TimedOut) { return 'timeout' }
+    if ([int]$Result.Code -ge 200 -and [int]$Result.Code -lt 400) { return 'up' }
+    'down'
+}
+
+function Format-WebsiteResult {
+    param($Result)
+    switch (Get-WebsiteState $Result) {
+        'unknown' { 'not checked yet' }
+        'timeout' { 'no answer within ' + $script:WebsiteTimeoutSec + ' s' }
+        default {
+            if ([int]$Result.Code -gt 0) { 'HTTP ' + $Result.Code + ' in ' + [int]$Result.Ms + ' ms' }
+            else { 'no answer: ' + $Result.Error }
+        }
+    }
+}
+
+function Get-WebsitesGlance {
+    # The WEBSITES tile. $Results: site key to check result, or $null before the first check finished.
+    param($Web, $Results)
+    $t = [ordered]@{ Title = 'WEBSITES'; Word = 'UNKNOWN'; Color = 'gray'; Detail = '' }
+    $sites = @($Web.Sites)
+    $prob = @($Web.Problems)
+    $probNote = $(if ($prob.Count) { 'websites.json: ' + $prob.Count + ' problem(s), ' + $prob[0] } else { '' })
+    if (-not $sites.Count) { $t.Detail = $probNote; return [pscustomobject]$t }
+    if ($null -eq $Results) { $t.Word = 'CHECKING'; $t.Detail = [string]$sites.Count + ' sites, first check running'; return [pscustomobject]$t }
+    $up = @($sites | Where-Object { (Get-WebsiteState $Results[$_.Key]) -eq 'up' })
+    $down = @($sites | Where-Object { (Get-WebsiteState $Results[$_.Key]) -ne 'up' })
+    $t.Word = [string]$up.Count + ' OF ' + $sites.Count + ' UP'
+    if ($down.Count) {
+        $t.Color = 'amber'
+        $t.Detail = 'down: ' + (($down | ForEach-Object { $_.Name + ' (' + (Format-WebsiteResult $Results[$_.Key]) + ')' }) -join ', ')
+    } else {
+        $t.Color = 'green'
+        $t.Detail = 'all answering'
+    }
+    if ($probNote) { $t.Color = 'amber'; $t.Detail += '; ' + $probNote }
+    [pscustomobject]$t
+}
+
+function Format-WebsitesPanel {
+    # The Websites tab's read-only panel, as lines with a colour name like Format-StatusReport's.
+    param($Web, $Results, [string]$CheckedAt)
+    $o = New-Object 'System.Collections.Generic.List[object]'
+    $add = { param($t, $c) $o.Add([pscustomobject]@{ Text = $t; Color = $(if ($c) { $c } else { 'normal' }) }) }
+    $tile = Get-WebsitesGlance $Web $Results
+    & $add ('WEBSITES : ' + $tile.Word + '. ' + $tile.Detail) $tile.Color
+    if ($CheckedAt) { & $add ('checked  : ' + $CheckedAt + ', every 60 s (Check now to check again)') 'gray' }
+    & $add '' 'normal'
+    foreach ($s in @($Web.Sites)) {
+        $r = $null; if ($Results) { $r = $Results[$s.Key] }
+        $st = Get-WebsiteState $r
+        $mark = @{ up = '[UP]     '; down = '[DOWN]   '; timeout = '[NO ANS] '; unknown = '[ ? ]    ' }[$st]
+        $where = $(if ($s.Where -ceq 'pc') { 'game PC, ' + $s.Container } else { 'Haven' })
+        $line = $mark + $s.Name.PadRight(20) + ' ' + $where.PadRight(24) + ' ' + $s.Url
+        if ($s.Check -ne $s.Url) { $line += ' (checked at ' + $s.Check + ')' }
+        $line += '  ' + (Format-WebsiteResult $r)
+        if ($s.Deploy) { $line += '  deploy: ' + $s.Deploy }
+        & $add $line $(if ($st -eq 'up') { 'green' } elseif ($st -eq 'unknown') { 'gray' } else { 'amber' })
+    }
+    & $add '' 'normal'
+    if ($Web.Npm) { & $add ('NPM      : ' + $Web.Npm.Url + ' through ssh -N -L ' + $Web.Npm.LocalPort + ':' + $Web.Npm.Remote + ' ' + $Web.HavenSsh + ' (Open NPM opens both; your own key)') 'normal' }
+    if (@($Web.Deploys.Keys).Count) {
+        & $add 'deploys  : the allowlist, from websites.json; each runs only after the phrase "deploy to haven"' 'normal'
+        foreach ($d in $Web.Deploys.Values) { & $add ('           ' + $d.Name + ': ' + $d.Script + ' (' + $d.What + ')') 'normal' }
+    } else { & $add 'deploys  : none in websites.json, so Deploy refuses every site' 'gray' }
+    foreach ($p in @($Web.Problems)) { & $add ('problem  : ' + $p) 'amber' }
+    $o.ToArray()
+}
+
+function Get-WebsitePlan {
+    # The Websites tab's buttons, for one site by key. Open and Open NPM only open; Restart, Redeploy and Logs are
+    # for game-PC sites, each in a window of its own; Deploy is for a Haven site with an allowlisted deploy, after
+    # the phrase, through Invoke-WebsiteDeploy.ps1 in a window of its own.
+    param([string]$Action, $Config, [string]$Site)
+    $web = $Config.Websites
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    $ps = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File')
+    if ($Action -eq 'web.npm') {
+        if (-not $web.Npm -or -not $web.HavenSsh) { $steps.Add((New-PlanStep -Kind refuse -Text ('websites.json has no usable npm and haven.ssh: ' + ((@($web.Problems) | Where-Object { $_ -match 'npm|haven' }) -join '; ')))); return $steps.ToArray() }
+        $steps.Add((New-PlanStep -Kind say -Text ('Open NPM: its admin page listens only on Haven itself, so an SSH tunnel with your own key carries it to ' + $web.Npm.Url + '. Leave the tunnel window open while you use NPM; close it when done. Log in with NPM''s own account.')))
+        $steps.Add((New-PlanStep -Kind window -Exe 'ssh' -Arguments @('-N', '-L', ([string]$web.Npm.LocalPort + ':' + $web.Npm.Remote), $web.HavenSsh) -Text 'The tunnel, in a window of its own. If it asks for a passphrase, that is your SSH key''s, in that window.'))
+        $steps.Add((New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($web.Npm.Url) -Text ('Opening ' + $web.Npm.Url + ' in the default browser. Refresh once the tunnel has connected.')))
+        return $steps.ToArray()
+    }
+    $s = @($web.Sites | Where-Object { $_.Key -ceq $Site })[0]
+    if (-not $s) {
+        $steps.Add((New-PlanStep -Kind refuse -Text ("No site '" + $Site + "' in websites.json. Pick one on the Websites tab, or -Site with one of: " + ((@($web.Sites) | ForEach-Object { $_.Key }) -join ', ') + '.')))
+        return $steps.ToArray()
+    }
+    $pcOnly = {
+        if ($s.Where -cne 'pc') { $steps.Add((New-PlanStep -Kind refuse -Text ($s.Name + ' runs on Haven, not this PC: only Open' + $(if ($s.Deploy) { ' and Deploy' } else { '' }) + ' apply to it.'))); return $false }
+        $true
+    }
+    switch ($Action) {
+        'web.open' {
+            if ($s.IsNpm) { return (Get-WebsitePlan -Action 'web.npm' -Config $Config) }
+            $steps.Add((New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($s.Url) -Text ('Opening ' + $s.Name + ' (' + $s.Url + ') in the default browser.')))
+        }
+        'web.restart' {
+            if (-not (& $pcOnly)) { break }
+            $steps.Add((New-PlanStep -Kind say -Text ('Restart ' + $s.Name + ': docker restart ' + $s.Container + '. The page is down for a few seconds; nothing else is touched.')))
+            $steps.Add((New-PlanStep -Kind window -Exe 'docker' -Arguments @('restart', $s.Container) -Text 'In a window of its own.'))
+            $steps.Add((New-PlanStep -Kind log -Text ('web.restart ' + $s.Key)))
+        }
+        'web.redeploy' {
+            if (-not (& $pcOnly)) { break }
+            $steps.Add((New-PlanStep -Kind say -Text ('Redeploy ' + $s.Name + ': ' + (Split-Path -Leaf $s.Start) + ' recreates ' + $s.Container + ' from its compose file and checks it answers. Down for a few seconds.')))
+            $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $s.Start) -Text 'In a window of its own, which stays open.'))
+            $steps.Add((New-PlanStep -Kind log -Text ('web.redeploy ' + $s.Key)))
+        }
+        'web.logs' {
+            if (-not (& $pcOnly)) { break }
+            $steps.Add((New-PlanStep -Kind window -Exe 'docker' -Arguments @('logs', '--tail', '200', $s.Container) -Text ('The last 200 lines of ' + $s.Container + ', in a window of its own. Changes nothing.')))
+        }
+        'web.deploy' {
+            if ($s.Where -cne 'haven') { $steps.Add((New-PlanStep -Kind refuse -Text ($s.Name + ' runs on this PC: Redeploy is its button, not Deploy.'))); break }
+            if (-not $s.Deploy) { $steps.Add((New-PlanStep -Kind refuse -Text ($s.Name + ' has no deploy in websites.json. The allowlist: ' + $(if (@($web.Deploys.Keys).Count) { @($web.Deploys.Keys) -join ', ' } else { 'empty' }) + '.'))); break }
+            $d = $web.Deploys[$s.Deploy]
+            if (-not $d) { $steps.Add((New-PlanStep -Kind refuse -Text ($s.Deploy + ' is not in the deploys allowlist. Nothing was run.'))); break }
+            $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ('This deploys ' + $s.Name + ' to Haven: ' + $d.Script + ' ' + $d.What + '. It uses your own SSH key; the window keeps a log under scripts\shard-console-output\deploys.')))
+            $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + @($Config.WebsiteDeployScript, '-Deploy', $d.Name)) -Text 'In a window of its own, which stays open. It checks the allowlist again before it runs anything.'))
+            $steps.Add((New-PlanStep -Kind log -Text ('web.deploy ' + $s.Key + ' ' + $d.Name)))
+        }
+        default { $steps.Add((New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them."))) }
+    }
+    $steps.ToArray()
 }
 
 function Format-StatusReport {
@@ -5516,7 +5782,7 @@ function Update-TileFit {
     if (-not $g -or -not $t -or -not $t.Chrome -or $script:tileFitting) { return }
     $script:tileFitting = $true
     try {
-        $tiles = @(@($script:ui.Tiles) + @($script:ui.NetTile, $script:ui.AutopilotTile, $script:ui.PlayTestTile) | Where-Object { $_ })
+        $tiles = @(@($script:ui.Tiles) + @($script:ui.NetTile, $script:ui.AutopilotTile, $script:ui.PlayTestTile, $script:ui.WebsitesTile) | Where-Object { $_ })
         if ($g.ClientSize.Width -le 0) { return }
         # The widest row of buttons a tile holds, unwrapped; a tile is its 4 px margins and a 1 px border wider.
         $need = 0
@@ -5527,11 +5793,13 @@ function Update-TileFit {
                 if ($w -gt $need) { $need = $w }
             }
         }
-        $cols = 6
-        if (($g.ClientSize.Width / 6) - 10 -lt [math]::Max($need, 190)) { $cols = 3 }
-        $rows = [int](6 / $cols)
+        # cc-P101: seven tiles now. All in one row while each fits, otherwise half (rounded up) in each of two rows.
+        $n = [math]::Max(1, $tiles.Count)
+        $cols = $n
+        if (($g.ClientSize.Width / $n) - 10 -lt [math]::Max($need, 190)) { $cols = [int][math]::Ceiling($n / 2) }
+        $rows = [int][math]::Ceiling($n / $cols)
         # Each row as tall as its tallest tile needs at full size (title, detail and buttons at this width), from 96
-        # to 130 px; past that the detail shrinks instead.
+        # to 150 px (cc-P101; was 130); past that the detail shrinks instead.
         $colW = [int]($g.ClientSize.Width / $cols) - 10
         $tall = 96
         foreach ($tile in $tiles) {
@@ -5544,7 +5812,8 @@ function Update-TileFit {
             foreach ($bar in @($tile.Panel.Controls | Where-Object { $_ -is [Windows.Forms.FlowLayoutPanel] })) { $h += [math]::Max(30, $bar.GetPreferredSize((New-Object Drawing.Size($colW, 0))).Height) }
             if ($h + 12 -gt $tall) { $tall = $h + 12 }
         }
-        $tall = [math]::Min(130, $tall)
+        # cc-P101: 150 (was 130): four across at 900 px is narrower than three was, so a detail needs a line more.
+        $tall = [math]::Min(150, $tall)
         if ($script:ui.Grid -and $script:ui.Grid.RowStyles[0].Height -ne ($tall * $rows + 8)) {
             $script:ui.Grid.RowStyles[0].Height = $tall * $rows + 8
             $script:ui.Grid.PerformLayout()
@@ -5784,18 +6053,123 @@ function Update-NetworkTile {
     }
     if ($script:ui.NetTile) {
         $t = Get-DnsGlance $script:netResult
-        $cols = Get-TileColors $t.Color
-        $script:ui.NetTile.Panel.BackColor = $cols[0]
-        $script:ui.NetTile.Word.ForeColor = $cols[1]
-        $script:ui.NetTile.Detail.ForeColor = $cols[1]
-        $script:ui.NetTile.Word.Text = $t.Title + ': ' + $t.Word
-        $script:ui.NetTile.Detail.Text = $t.Detail
+        # cc-P101: through Set-TileLook (which re-fits the tiles) when the words change. Four across, a title such as
+        # PUBLIC DNS: CHECKING wraps, and set directly it was never re-fitted. Same words: only the colours, as before.
+        if ($script:ui.NetTile.Word.Text -cne ($t.Title + ': ' + $t.Word) -or $script:ui.NetTile.Detail.Text -cne $t.Detail) { Set-TileLook $script:ui.NetTile $t }
+        else {
+            $cols = Get-TileColors $t.Color
+            $script:ui.NetTile.Panel.BackColor = $cols[0]
+            $script:ui.NetTile.Word.ForeColor = $cols[1]
+            $script:ui.NetTile.Detail.ForeColor = $cols[1]
+        }
     }
     Update-VpnRecheck
     Update-VpnButtons
     if (-not $script:NetProbeDisabled -and -not $script:netProbe -and (-not $script:netResultAt -or ([datetime]::UtcNow - $script:netResultAt).TotalSeconds -ge 30)) {
         Start-NetworkProbe
     }
+}
+
+# --- the websites (cc-P101) -----------------------------------------------------------------------
+# One GET per site, redirects not followed (a redirect is a site answering), a short timeout each. Run in a runspace
+# of its own every 60 s (Start-WebsiteProbe), as the DNS tile's check is, so a dead site never holds the window.
+
+function Get-WebsiteProbe {
+    param($Checks, [int]$TimeoutSec = 4)
+    $out = @{}
+    foreach ($c in @($Checks)) {
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        $r = [pscustomobject]@{ Code = 0; Error = ''; TimedOut = $false; Ms = 0 }
+        try {
+            $req = [Net.HttpWebRequest]::Create([string]$c.Url)
+            $req.Method = 'GET'
+            $req.AllowAutoRedirect = $false
+            $req.Timeout = $TimeoutSec * 1000
+            $req.ReadWriteTimeout = $TimeoutSec * 1000
+            $req.UserAgent = 'ShardConsole-Websites'
+            $resp = $req.GetResponse()
+            $r.Code = [int]$resp.StatusCode
+            $resp.Close()
+        } catch [Net.WebException] {
+            $e = $_.Exception
+            if ($e.Response) { $r.Code = [int]$e.Response.StatusCode; $e.Response.Close() }
+            elseif ($e.Status -eq [Net.WebExceptionStatus]::Timeout) { $r.TimedOut = $true }
+            else { $r.Error = [string]$e.Status }
+        } catch {
+            $r.Error = $_.Exception.Message
+        }
+        $r.Ms = [int]$sw.ElapsedMilliseconds
+        $out[[string]$c.Key] = $r
+    }
+    $out
+}
+
+function Get-WebsiteChecks {
+    param($Config)
+    @($Config.Websites.Sites | ForEach-Object { [pscustomobject]@{ Key = $_.Key; Url = $_.Check } })
+}
+
+function Start-WebsiteProbe {
+    $ps = [PowerShell]::Create()
+    $code = 'param($checks, $t) function Get-WebsiteProbe {' + (Get-Item 'function:Get-WebsiteProbe').Definition + '}' + "`nGet-WebsiteProbe `$checks `$t"
+    [void]$ps.AddScript($code).AddArgument((Get-WebsiteChecks $script:cfg)).AddArgument($script:WebsiteTimeoutSec)
+    $script:webProbe = [pscustomobject]@{ PS = $ps; Handle = $ps.BeginInvoke(); Started = [datetime]::UtcNow }
+}
+
+function Update-WebsitesView {
+    # The WEBSITES tile and, when it exists, the Websites tab's panel, from the last finished check.
+    $t = Get-WebsitesGlance $script:cfg.Websites $script:webResults
+    if ($script:ui.WebsitesTile) { Set-TileLook $script:ui.WebsitesTile $t }
+    $box = $script:ui.WebsitesPanel
+    if ($box) {
+        $box.Clear()
+        $at = $(if ($script:webResultAt) { $script:webResultAt.ToLocalTime().ToString('HH:mm:ss', $script:Invariant) } else { '' })
+        foreach ($l in (Format-WebsitesPanel $script:cfg.Websites $script:webResults $at)) { Add-RichLine $box $l.Text $l.Color }
+        $box.SelectionStart = 0
+        $box.ScrollToCaret()
+    }
+}
+
+function Update-WebsitesTile {
+    # On the 1 s UI timer: collect a finished check (never waits), draw, start the next every 60 s or when asked.
+    $p = $script:webProbe
+    if ($p) {
+        if ($p.Handle.IsCompleted) {
+            try {
+                $out = @($p.PS.EndInvoke($p.Handle))
+                $r0 = $(if ($out.Count) { $out[-1] } else { @{} })
+                if ($r0 -is [psobject]) { $r0 = $r0.psobject.BaseObject }
+                $script:webResults = $r0
+            } catch { $script:webResults = @{} }
+            $p.PS.Dispose(); $script:webProbe = $null; $script:webResultAt = [datetime]::UtcNow
+            Update-WebsitesView
+        } elseif (([datetime]::UtcNow - $p.Started).TotalSeconds -gt 60) {
+            try { $p.PS.Stop(); $p.PS.Dispose() } catch { }
+            $script:webProbe = $null; $script:webResultAt = [datetime]::UtcNow
+        }
+    }
+    if (-not $script:NetProbeDisabled -and -not $script:webProbe -and @($script:cfg.Websites.Sites).Count -and (-not $script:webResultAt -or ([datetime]::UtcNow - $script:webResultAt).TotalSeconds -ge 60)) {
+        Start-WebsiteProbe
+    }
+}
+
+function Get-SelectedWebsite {
+    $pick = $script:ui.WebsitePick
+    if (-not $pick -or $pick.SelectedIndex -lt 0) { return '' }
+    [string]@($script:cfg.Websites.Sites)[$pick.SelectedIndex].Key
+}
+
+function New-WebsiteButton {
+    # A Websites tab button: the same as New-ConsoleButton, but it hands over the site picked in the list.
+    param([string]$Text, [string]$ActionKey, [int]$Width = 170)
+    $b = New-Object Windows.Forms.Button
+    $b.Text = $Text
+    $b.Tag = $ActionKey
+    $b.Width = $Width
+    $b.Height = 36
+    $b.Margin = New-Object Windows.Forms.Padding(6)
+    $b.Add_Click({ Invoke-ConsoleButton -ActionKey $this.Tag -Site (Get-SelectedWebsite) })
+    $b
 }
 
 function Get-SelectedSnapshotShard {
@@ -6081,7 +6455,7 @@ function Show-YesNo {
 
 function Invoke-ConsoleButton {
     param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage,
-        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [string]$Commit)
+        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [string]$Commit, [string]$Site)
     try {
         $ActionKey = Resolve-ActionAlias $ActionKey
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
@@ -6090,7 +6464,7 @@ function Invoke-ConsoleButton {
         $isAutopilot = ($ActionKey -like 'golem.*')
         $isVpn = ($ActionKey -like 'vpn.*')
         if (-not $ShardKey -and $isVpn) { $ShardKey = 'network' }
-        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'golem' }; if ($ActionKey -like 'links.*') { $ShardKey = 'links' } }
+        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'golem' }; if ($ActionKey -like 'links.*') { $ShardKey = 'links' }; if ($ActionKey -like 'web.*') { $ShardKey = 'websites' } }
         # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
         # status is a capture file". Only the second decides where the state comes from.
         if ($script:fromCapture -and -not $script:dry) { throw 'the status is from a capture file, so nothing may run for real. Relaunch without -DryRun.' }
@@ -6099,8 +6473,8 @@ function Invoke-ConsoleButton {
         $apFacts = $null
         $now = Get-Date
         $vpnFacts = $null
-        if ($ActionKey -like 'links.*') {
-            # cc-P83: a link reads nothing.
+        if ($ActionKey -like 'links.*' -or $ActionKey -like 'web.*') {
+            # cc-P83: a link reads nothing. cc-P101: nor does a Websites button (websites.json is in the config).
         } elseif ($isVpn) {
             # cc-P86: this PC's adapters, route and services, read now.
             $vpnFacts = Get-VpnFacts $script:cfg
@@ -6150,7 +6524,7 @@ function Invoke-ConsoleButton {
                 if (-not $WipeAdmin) { Write-ConsoleLine ($ActionKey + ': cancelled. Nothing was changed.') 'gray'; return }
             }
         }
-        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fxFacts -Commit $Commit)
+        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fxFacts -Commit $Commit -Site $Site)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
         $dryTag = ''
@@ -6315,9 +6689,9 @@ function New-ConsoleForm {
     $glance = New-Object Windows.Forms.TableLayoutPanel
     $glance.Dock = 'Fill'
     $glance.RowCount = 1
-    $glance.ColumnCount = 6
+    $glance.ColumnCount = 7
     $glance.Margin = New-Object Windows.Forms.Padding(0)
-    foreach ($i in 1..6) { [void]$glance.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 16.66))) }
+    foreach ($i in 1..7) { [void]$glance.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 14.28))) }
     # cc-P87: in UO the tiles wrap to two rows rather than clip (Update-TileFit); Plain keeps one row of six.
     $script:ui.Glance = $glance
     $script:ui.Grid = $grid
@@ -6379,6 +6753,11 @@ function New-ConsoleForm {
     $script:ui.PlayTestTile.Panel.Controls.Add($linkBar)
     $script:ui.PlayTestTile.Detail.BringToFront()
     $glance.Controls.Add($script:ui.PlayTestTile.Panel, $col, 0)
+    $col++
+    # cc-P101: WEBSITES. Drawn by Update-WebsitesTile on the 1 s timer, from a check that runs every 60 s.
+    $script:ui.WebsitesTile = New-StatusTile 'WEBSITES'
+    $glance.Controls.Add($script:ui.WebsitesTile.Panel, $col, 0)
+    $script:webProbe = $null; $script:webResults = $null; $script:webResultAt = $null
 
     # status
     $statusGroup = New-Object Windows.Forms.GroupBox
@@ -6826,7 +7205,52 @@ function New-ConsoleForm {
     $script:ui.AutopilotPanel = $apPanel
     $script:ui.AutopilotButtons = $apBtns
 
-    $tabs.TabPages.AddRange(@($testPage, $fixPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $apPage, $livePage))
+    # cc-P101: Websites. Pick a site; each button acts on it. The panel only reads.
+    $webPage = New-Object Windows.Forms.TabPage('Websites')
+    $webTop = New-Object Windows.Forms.FlowLayoutPanel
+    $webTop.Dock = 'Top'
+    $webTop.AutoSize = $true
+    $webTop.WrapContents = $true
+    $webCap = New-Caption ('The websites in ' + $Config.WebsitesFile + ', on this PC and on Haven. The lights check each one every 60 s. Pick a site, then: Open; for a game-PC site, Restart, Redeploy (its own start script) or Logs; for a Haven site with a deploy in the allowlist, Deploy to Haven (asks for deploy to haven, then runs it in a window with your own SSH key and keeps a log). Open NPM opens an SSH tunnel to Haven and then its admin page. No key or password is stored by the console.') 1100
+    $webTop.Controls.Add($webCap)
+    $webTop.SetFlowBreak($webCap, $true)
+    $webPick = New-Object Windows.Forms.ComboBox
+    $webPick.DropDownStyle = 'DropDownList'
+    $webPick.Name = 'web.pick'
+    $webPick.Width = 300
+    $webPick.Margin = New-Object Windows.Forms.Padding(6, 12, 6, 6)
+    foreach ($ws in @($Config.Websites.Sites)) { [void]$webPick.Items.Add($ws.Name + $(if ($ws.Where -ceq 'pc') { '  (this PC)' } else { '  (Haven)' })) }
+    if ($webPick.Items.Count) { $webPick.SelectedIndex = 0 }
+    $webTop.Controls.Add($webPick)
+    $script:ui.WebsitePick = $webPick
+    $webBtns = @()
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Websites' })) {
+        $b = New-WebsiteButton $a.Label $a.Key 150
+        $webBtns += $b
+        $webTop.Controls.Add($b)
+    }
+    $webCheck = New-Object Windows.Forms.Button
+    $webCheck.Text = 'Check now'
+    $webCheck.Name = 'web.check'
+    $webCheck.Width = 120
+    $webCheck.Height = 36
+    $webCheck.Margin = New-Object Windows.Forms.Padding(6)
+    $webCheck.Add_Click({ if (-not $script:webProbe) { $script:webResultAt = $null; Update-WebsitesTile; Write-ConsoleLine 'Websites: checking every site now.' 'gray' } })
+    $webTop.Controls.Add($webCheck)
+    $webPanel = New-Object Windows.Forms.RichTextBox
+    $webPanel.Dock = 'Fill'
+    $webPanel.ReadOnly = $true
+    $webPanel.BackColor = [Drawing.Color]::White
+    $webPanel.Font = $script:MonoFont
+    $webPanel.WordWrap = $false
+    $webPanel.DetectUrls = $false
+    $webPage.Controls.Add($webPanel)
+    $webPage.Controls.Add($webTop)
+    $script:ui.WebsitesPage = $webPage
+    $script:ui.WebsitesPanel = $webPanel
+    $script:ui.WebsiteButtons = $webBtns
+
+    $tabs.TabPages.AddRange(@($testPage, $fixPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $apPage, $webPage, $livePage))
 
     # output
     $outGroup = New-Object Windows.Forms.GroupBox
@@ -6907,7 +7331,7 @@ function New-ConsoleForm {
     # The DNS tile: a 1 s tick that only collects a finished check and starts the next every 30 s.
     $netTimer = New-Object Windows.Forms.Timer
     $netTimer.Interval = 1000
-    $netTimer.Add_Tick({ Update-NetworkTile })
+    $netTimer.Add_Tick({ Update-NetworkTile; Update-WebsitesTile })
     $netTimer.Start()
     # cc-P68: the Commit tab's countdown. A 1 s tick that does nothing unless the Commit tab is the
     # one showing; the repos are re-read every CommitPollSeconds, so a new change restarts it.
@@ -6926,11 +7350,13 @@ function New-ConsoleForm {
         # cc-P84: a job still streaming into the pane is ended with the window, so nothing runs on unseen.
         if ($script:ui.Pane) { $script:ui.Pane.Timer.Stop(); if ($script:paneJob) { [void]$script:paneJob.KillTree(); $script:paneJob = $null } }
         if ($script:netProbe) { try { $script:netProbe.PS.Stop(); $script:netProbe.PS.Dispose() } catch { } }
+        if ($script:webProbe) { try { $script:webProbe.PS.Stop(); $script:webProbe.PS.Dispose() } catch { } }
     })
     $script:ui.Timer = $timer
     $script:ui.NetTimer = $netTimer
     $script:ui.CountdownTimer = $cdTimer
     Update-NetworkTile
+    Update-WebsitesView
 
     if ($DryRun) { Write-ConsoleLine 'DRY RUN: every button prints the plan it would run. The status panel is read from a capture file, not docker.' 'amber' }
     Set-ConsoleDryRun ([bool]$DryRun)
@@ -6966,6 +7392,7 @@ if ($Action -eq 'list') {
     Write-Host 'fix.diagnose only reads. fix.restart, fix.rollback, fix.rebuild and fix.prune take -ConfirmLive ''restart test'', ''roll back test'', ''rebuild test'', ''prune images''; fix.rebuild takes -Commit <hash from its list, or HEAD>; fix.rollback takes -ImageTag sl-modernuo:good-<commit> (default: the newest).'
     Write-Host 'vpn.disconnect needs -Mode Execute: it ends a WireGuard for Windows tunnel (elevated), opens Proton VPN, or names the VPN to disconnect in its app.'
     Write-Host 'links.playtests, links.dashboard and links.status open the play-test page (8093), the dashboard (3000) and the status page (8093/status) in the browser.'
+    Write-Host 'web.open, .logs and .npm only open; web.restart, .redeploy and .deploy need -Mode Execute. Each takes -Site <key in scripts\websites.json>; web.deploy also -ConfirmLive ''deploy to haven''.'
     Write-Host 'golem.on, .off, .email, .test and .move need -Mode Execute; each opens the Golem''s own script in a window of its own (golem.move after -ConfirmLive ''move to the golem''). golem.queue, .log, .settings and .folder only open. autopilot.* still work as aliases.'
     exit 0
 }
@@ -6983,7 +7410,9 @@ if ($Status) {
     $ap = Get-AutopilotViewNow $config
     # cc-P83: and PLAY TESTS, from shard-migration\testing\play-tests.json.
     $pt = Get-PlayTestGlanceNow $config
-    foreach ($l in (Format-StatusReport $st $config @($ap.Tile, $pt))) { Write-ConsoleLine $l.Text $l.Color }
+    # cc-P101: and WEBSITES, checked now (one GET each, 4 s timeout).
+    $wt = Get-WebsitesGlance $config.Websites (Get-WebsiteProbe (Get-WebsiteChecks $config) $script:WebsiteTimeoutSec)
+    foreach ($l in (Format-StatusReport $st $config @($ap.Tile, $pt, $wt))) { Write-ConsoleLine $l.Text $l.Color }
     exit 0
 }
 
@@ -6998,6 +7427,7 @@ if ($Action) {
     if ($Action -like 'golem.*') { $sk = 'golem' }
     if ($Action -like 'links.*') { $sk = 'links' }
     if ($Action -like 'vpn.*') { $sk = 'network' }
+    if ($Action -like 'web.*') { $sk = 'websites' }
     # The mode is decided and shown before anything is read or run (D37).
     $run = Resolve-RunMode -Action $Action -Mode $Mode -DryRun:$DryRun
     $banner = Get-ModeBanner -RunMode $run -Action $Action -ShardKey $sk
@@ -7011,8 +7441,8 @@ if ($Action) {
     $apFacts = $null
     $now = Get-Date
     $vpnFacts = $null
-    if ($Action -like 'links.*') {
-        # cc-P83: a link reads nothing.
+    if ($Action -like 'links.*' -or $Action -like 'web.*') {
+        # cc-P83: a link reads nothing. cc-P101: nor does a Websites action.
     } elseif ($Action -like 'vpn.*') {
         $vpnFacts = Get-VpnFacts $config
     } elseif ($Action -like 'golem.*') {
@@ -7037,7 +7467,7 @@ if ($Action) {
     # cc-P96: Fix test shard re-reads git and the save record here, as the wipe re-reads its facts.
     $fixFacts = $null
     if ($Action -like 'fix.*') { $fixFacts = Get-FixFacts $config $st -NoDocker:$fromCapture }
-    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fixFacts -Commit $Commit)
+    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fixFacts -Commit $Commit -Site $Site)
     $viol = @(Test-PlanSafety $plan $config)
     $header = 'PLAN'
     if ($isDry) { $header = 'DRY RUN' }

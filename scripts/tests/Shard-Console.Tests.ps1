@@ -1034,7 +1034,7 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
-        Assert-Equal 'Test shard,Fix test shard,Snapshots,World setup,Diagnostics,Commit,Player package,Golem,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot (Golem since cc-P99), cc-P96 Fix test shard beside Test shard; LIVE stays last'
+        Assert-Equal 'Test shard,Fix test shard,Snapshots,World setup,Diagnostics,Commit,Player package,Golem,Websites,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot (Golem since cc-P99), cc-P101 Websites, cc-P96 Fix test shard beside Test shard; LIVE stays last'
         Assert-Equal 'Preview commit,Commit and push' (@($script:ui.CommitButtons | ForEach-Object { $_.Text }) -join ',') 'cc-P60'
         Assert-Equal 'package.build,package.publish,package.check' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P63, and cc-P68''s Check selected'
         Assert-True ($null -ne $script:ui.CommitForce -and -not $script:ui.CommitForce.Checked) 'cc-P68: the Force box, unticked'
@@ -3916,15 +3916,16 @@ Fact 'P87_ADisabledUOButtonIsDrawnInItsOwnLegibleColors' {
 Fact 'P87_UOTilesNeverClipFromTheNarrowestWindowToAWideOne' {
     $form = New-P87Form
     try {
-        $all = @($script:ui.Tiles) + @($script:ui.NetTile, $script:ui.AutopilotTile, $script:ui.PlayTestTile)
-        # The words and details these tiles said on 2026-10-13, when Chase found them clipped.
+        $all = @($script:ui.Tiles) + @($script:ui.NetTile, $script:ui.AutopilotTile, $script:ui.PlayTestTile, $script:ui.WebsitesTile)
+        # The words and details these tiles said on 2026-10-13, when Chase found them clipped (cc-P101 adds WEBSITES).
         $long = @(
             @('LIVE', 'STARTING?', 'up 23h 40m, not listening yet; OLD IMAGE'),
             @('TEST', 'RUNNING', 'up 13h 47m, listening on :2594; image current'),
             @('STATUS PUBLISHER', 'NOT PUBLISHING', 'no status.json; feed up, nothing to serve'),
             @('PUBLIC DNS', 'OK', 'shatteredlegacyuo.com = 216.247.206.76, this house. No VPN.'),
             @('GOLEM', 'NEEDS YOU', 'P86 done but COMMIT FAILED, needs you'),
-            @('PLAY TESTS', '152 OPEN', '152 open, 1 failed, 18 passed')
+            @('PLAY TESTS', '152 OPEN', '152 open, 1 failed, 18 passed'),
+            @('WEBSITES', '6 OF 7 UP', 'down: Public website (no answer: ConnectFailure)')
         )
         # 900 is the smallest window. PowerShell's WinForms is DPI-unaware, so at 125% and 150% Windows scales the
         # whole window: 1024 x 768 is 1280 x 960 at 125%, and 900 x 700 is 1350 x 1050 at 150%.
@@ -3938,23 +3939,24 @@ Fact 'P87_UOTilesNeverClipFromTheNarrowestWindowToAWideOne' {
             $gr = $script:ui.Glance
             Assert-True ($gr.Right -le $form.ClientSize.Width) ('the tiles end at ' + $gr.Right + ' inside ' + $form.ClientSize.Width)
         }
-        Assert-Equal 6 $script:ui.Glance.ColumnCount 'six across on a wide window'
+        Assert-Equal 7 $script:ui.Glance.ColumnCount 'all seven across on a wide window (cc-P101; six before)'
         $form.Size = New-Object Drawing.Size(1280, 1000)
         foreach ($i in 1..5) { [Windows.Forms.Application]::DoEvents() }
-        Assert-Equal 3 $script:ui.Glance.ColumnCount 'three across, two rows, at 1280'
+        Assert-Equal 4 $script:ui.Glance.ColumnCount 'four across, two rows, at 1280 (cc-P101; three before)'
     } finally { $form.Close(); $form.Dispose(); $script:NetProbeDisabled = $false; $script:theme = Get-ConsoleTheme 'Plain' }
 }
 
 Fact 'P87_PlainKeepsItsOneRowOfSixAndItsOwnLook' {
+    # cc-P101: seven now, with WEBSITES; still one row, never wrapped.
     $script:NetProbeDisabled = $true
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
-        Assert-Equal 6 $script:ui.Glance.ColumnCount
+        Assert-Equal 7 $script:ui.Glance.ColumnCount
         Assert-Equal 104 $script:ui.Grid.RowStyles[0].Height
         Assert-Equal 0 $script:ui.Grid.ColumnStyles.Count 'the grid has no column style, as before'
         $form.Size = New-Object Drawing.Size(900, 700)
         Update-TileFit
-        Assert-Equal 6 $script:ui.Glance.ColumnCount 'Plain never wraps its tiles'
+        Assert-Equal 7 $script:ui.Glance.ColumnCount 'Plain never wraps its tiles'
         foreach ($g in @($script:ui.Grid.Controls | Where-Object { $_ -is [Windows.Forms.GroupBox] })) { Assert-Equal ([Drawing.SystemColors]::Control).ToArgb() $g.BackColor.ToArgb() ($g.Text + ': the WinForms default') }
         Assert-Equal 'Normal' ([string]$script:ui.Tabs.DrawMode) 'Windows draws the Plain tabs'
         Assert-Equal 'Consolas|9' ($script:MonoFont.Name + '|' + $script:MonoFont.Size)
@@ -4206,6 +4208,282 @@ Fact 'P96_EveryFixButtonRunHeadlessWithDryRunRunsNothing' {
         Assert-Equal 0 $LASTEXITCODE ($k + ': ' + $out)
         Assert-True ($out -match ('== DRY RUN: ' + [regex]::Escape($k))) ($k + ': ' + $out)
         Assert-True ($out -match '\(dry run: nothing was run\)') ($k + ': ' + $out)
+    }
+}
+
+# --- cc-P101: the Websites tab, the WEBSITES tile, Open NPM and Haven deploys --------------------------------------
+# fixtures\websites-2026-10-14.json is scripts\websites.json as P101 wrote it. Other shapes are that file changed in
+# memory. Nothing here reaches a real site: the probe fact serves its own answers on 127.0.0.1.
+
+$webText = [IO.File]::ReadAllText((Join-Path $fixture 'websites-2026-10-14.json'))
+function Get-WebFixture { param([scriptblock]$Change) $j = $webText | ConvertFrom-Json; if ($Change) { & $Change $j }; $j | ConvertTo-Json -Depth 8 }
+function Get-WebConfig { param($Text = $webText) $c = Get-ConsoleConfig -RepoRoot $repo; $c.Websites = ConvertFrom-WebsiteConfig $Text $repo; $c }
+function Get-WebResults { param([hashtable]$Codes) $r = @{}; foreach ($k in $Codes.Keys) { $v = $Codes[$k]; $r[$k] = $(if ($v -eq 'timeout') { [pscustomobject]@{ Code = 0; Error = ''; TimedOut = $true; Ms = 4000 } } elseif ($v -is [string]) { [pscustomobject]@{ Code = 0; Error = $v; TimedOut = $false; Ms = 3 } } else { [pscustomobject]@{ Code = $v; Error = ''; TimedOut = $false; Ms = 12 } }) }; $r }
+$webAllUp = @{ playtests = 200; status = 200; homepage = 200; website = 200; wiki = 200; vault = 200; npm = 301 }
+
+Fact 'P101_TheRealConfigReadsAsSevenSitesTwoDeploysAndTheNpmTunnel' {
+    $w = ConvertFrom-WebsiteConfig $webText $repo
+    Assert-Equal 0 @($w.Problems).Count (@($w.Problems) -join ' | ')
+    Assert-Equal 'playtests,status,homepage,website,wiki,vault,npm' ((@($w.Sites) | ForEach-Object { $_.Key }) -join ',')
+    Assert-Equal 'pc,pc,pc,haven,haven,haven,haven' ((@($w.Sites) | ForEach-Object { $_.Where }) -join ',')
+    Assert-Equal (Join-Path $repo 'docker\dashboard\Start-Dashboard.ps1') (@($w.Sites)[2]).Start
+    Assert-Equal 'http://192.168.1.61/' (@($w.Sites)[6]).Check 'the NPM light checks the proxy port, not the tunnel'
+    Assert-True ((@($w.Sites)[6]).IsNpm) 'the NPM row'
+    Assert-Equal 'website,wiki-macros' (@($w.Deploys.Keys) -join ',')
+    Assert-Equal 'chase@192.168.1.61' $w.HavenSsh
+    Assert-Equal 'http://localhost:8081/|8081|localhost:81' ($w.Npm.Url + '|' + $w.Npm.LocalPort + '|' + $w.Npm.Remote)
+    Assert-True (Test-Path -LiteralPath (Join-Path $repo 'scripts\websites.json')) 'the console reads scripts\websites.json'
+    Assert-Equal $webText ([IO.File]::ReadAllText((Join-Path $repo 'scripts\websites.json'))) 'the fixture is the real file'
+}
+
+Fact 'P101_AConfigMissingAFieldLeavesThatSiteOutAndSaysWhy' {
+    $t = Get-WebFixture {
+        param($j)
+        $j.sites[0].PSObject.Properties.Remove('url')
+        $j.sites[2].PSObject.Properties.Remove('container')
+        $j.sites[4].deploy = 'haven-ops'
+        $j.sites[5].key = 'website'
+    }
+    $w = ConvertFrom-WebsiteConfig $t $repo
+    Assert-Equal 'status,website,npm' ((@($w.Sites) | ForEach-Object { $_.Key }) -join ',') 'the four bad ones are left out, not guessed'
+    $p = @($w.Problems) -join ' | '
+    Assert-True ($p -match 'site 1 \(Play tests\): missing or wrong url; left out') $p
+    Assert-True ($p -match 'site 3 \(Homepage\): missing or wrong container') $p
+    Assert-True ($p -match 'site 5 \(Wiki\): missing or wrong deploy \(haven-ops is not in deploys\)') $p
+    Assert-True ($p -match 'site 6 \(Vaultwarden\): missing or wrong key \(used twice\)') $p
+    $tile = Get-WebsitesGlance $w (Get-WebResults @{ status = 200; website = 200; npm = 200 })
+    Assert-Equal 'amber' $tile.Color 'a broken config is amber even when the rest are up'
+    Assert-True ($tile.Detail -match 'websites.json: 4 problem\(s\)') $tile.Detail
+    foreach ($bad in @($null, 'not json {', '{ "schema": 2, "sites": [] }')) {
+        $x = ConvertFrom-WebsiteConfig $bad $repo
+        Assert-Equal 0 @($x.Sites).Count ('no sites from ' + $bad)
+        $g = Get-WebsitesGlance $x $null
+        Assert-Equal 'UNKNOWN' $g.Word
+        Assert-Equal 'gray' $g.Color
+    }
+    $n = ConvertFrom-WebsiteConfig (Get-WebFixture { param($j) $j.npm.tunnelLocalPort = 80; $j.haven.ssh = 'not a target' }) $repo
+    Assert-True ($null -eq $n.Npm) 'a privileged port is refused'
+    Assert-True ((@($n.Problems) -join ' | ') -match 'haven.ssh is not user@host') (@($n.Problems) -join ' | ')
+}
+
+Fact 'P101_EachResultReadsAsUpDownOrTimeout' {
+    $r = Get-WebResults @{ a = 200; b = 301; c = 404; d = 502; e = 'timeout'; f = 'ConnectFailure' }
+    Assert-Equal 'up,up,down,down,timeout,down' ((@('a', 'b', 'c', 'd', 'e', 'f') | ForEach-Object { Get-WebsiteState $r[$_] }) -join ',')
+    Assert-Equal 'unknown' (Get-WebsiteState $null)
+    Assert-Equal 'HTTP 502 in 12 ms' (Format-WebsiteResult $r['d'])
+    Assert-Equal 'no answer within 4 s' (Format-WebsiteResult $r['e'])
+    Assert-Equal 'no answer: ConnectFailure' (Format-WebsiteResult $r['f'])
+}
+
+Fact 'P101_TheTileCountsTheSitesUpAndTurnsAmberNamingTheDownOnes' {
+    $w = ConvertFrom-WebsiteConfig $webText $repo
+    $all = Get-WebsitesGlance $w (Get-WebResults $webAllUp)
+    Assert-Equal 'WEBSITES|7 OF 7 UP|green|all answering' ($all.Title + '|' + $all.Word + '|' + $all.Color + '|' + $all.Detail)
+    $codes = $webAllUp.Clone(); $codes.website = 'ConnectFailure'
+    $one = Get-WebsitesGlance $w (Get-WebResults $codes)
+    Assert-Equal '6 OF 7 UP|amber|down: Public website (no answer: ConnectFailure)' ($one.Word + '|' + $one.Color + '|' + $one.Detail)
+    $codes.vault = 'timeout'; $codes.homepage = 502
+    $three = Get-WebsitesGlance $w (Get-WebResults $codes)
+    Assert-Equal '4 OF 7 UP' $three.Word
+    Assert-Equal 'down: Homepage (HTTP 502 in 12 ms), Public website (no answer: ConnectFailure), Vaultwarden (no answer within 4 s)' $three.Detail 'in the file''s order'
+    $first = Get-WebsitesGlance $w $null
+    Assert-Equal 'CHECKING|gray' ($first.Word + '|' + $first.Color) 'before the first check finishes'
+    $missing = Get-WebsitesGlance $w (Get-WebResults @{ playtests = 200 })
+    Assert-Equal '1 OF 7 UP' $missing.Word 'a site with no result yet is not counted up'
+    $panel = @(Format-WebsitesPanel $w (Get-WebResults $codes) '11:30:00') | ForEach-Object { $_.Text }
+    Assert-True ($panel[0] -eq ('WEBSITES : 4 OF 7 UP. ' + $three.Detail)) $panel[0]
+    Assert-True (@($panel | Where-Object { $_ -like '`[DOWN`]   Homepage*game PC, sl-dashboard*HTTP 502 in 12 ms' }).Count -eq 1) ($panel -join ' | ')
+    Assert-True (@($panel | Where-Object { $_ -like '`[NO ANS`] Vaultwarden*Haven*no answer within 4 s' }).Count -eq 1) ($panel -join ' | ')
+    Assert-True (@($panel | Where-Object { $_ -like '*Nginx Proxy Manager*(checked at http://192.168.1.61/)*' }).Count -eq 1) 'the NPM row says what its light checks'
+    Assert-True ($panel -contains '           website: D:\UO\haven-migration\Deploy-Website.ps1 (copies the website page, its images and the intro video from docker\website\html to Haven (scp, then chmod))') ($panel -join ' | ')
+}
+
+Fact 'P101_DeployIsRefusedForAScriptNotInTheAllowlist' {
+    $c = Get-WebConfig
+    # A Haven site with no deploy, a game-PC site, and a site whose deploy is not in the list (built by hand: the
+    # config reader already drops such a site, so this is the plan's own check, not the reader's).
+    Assert-True ((@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'vault'))[0].Text -match '^Vaultwarden has no deploy in websites.json\. The allowlist: website, wiki-macros\.$') 'no deploy'
+    Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'homepage'))[0].Kind 'a game-PC site'
+    Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'nope'))[0].Kind 'no such site'
+    @($c.Websites.Sites | Where-Object { $_.Key -eq 'wiki' })[0].Deploy = 'haven-ops'
+    $p = @(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'wiki')
+    Assert-Equal 1 $p.Count; Assert-Equal 'refuse' $p[0].Kind
+    Assert-True ($p[0].Text -match 'haven-ops is not in the deploys allowlist') $p[0].Text
+    # The safety check holds whatever a plan says: the helper with a name not in the list, or with no phrase.
+    $ps = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $c.WebsiteDeployScript)
+    $confirm = New-PlanStep -Kind confirm -Phrase 'deploy to haven' -Text 'x'
+    $bad = New-PlanStep -Kind window -Exe $c.PowerShell -Arguments ($ps + @('-Deploy', 'haven-ops'))
+    Assert-True ((@(Test-PlanSafety @($confirm, $bad) $c) -join ' | ') -match 'only as -Deploy <a name in the deploys allowlist>') 'not in the list'
+    $good = New-PlanStep -Kind window -Exe $c.PowerShell -Arguments ($ps + @('-Deploy', 'website'))
+    Assert-Equal 0 @(Test-PlanSafety @($confirm, $good) $c).Count (@(Test-PlanSafety @($confirm, $good) $c) -join ' | ')
+    Assert-True ((@(Test-PlanSafety @($good) $c) -join ' | ') -match 'only after the typed phrase deploy to haven') 'no phrase'
+    $extra = New-PlanStep -Kind window -Exe $c.PowerShell -Arguments ($ps + @('-Deploy', 'website', '-AllowedFolder', 'C:\'))
+    Assert-True (@(Test-PlanSafety @($confirm, $extra) $c).Count -ge 1) 'no extra arguments'
+    # And the helper refuses on its own, with exit 2, when run against a list that lacks the name.
+    $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $c.WebsiteDeployScript -Deploy 'haven-ops' -ConfigFile (Join-Path $fixture 'websites-2026-10-14.json') 2>&1 | Out-String
+    Assert-Equal 2 $LASTEXITCODE $out
+    Assert-True ($out -match "REFUSED: 'haven-ops' is not in the deploys allowlist") $out
+}
+
+Fact 'P101_DeployDryRunPrintsTheExactCommandAndRunsNothing' {
+    $c = Get-WebConfig
+    $p = @(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'website')
+    Assert-Equal 'confirm,window,log' (($p | ForEach-Object { $_.Kind }) -join ',')
+    Assert-Equal 'deploy to haven' $p[0].Phrase
+    Assert-Equal 'Deploy to Haven' (Get-ConfirmSubject 'web.deploy')
+    Assert-Equal ('powershell.exe -NoProfile -ExecutionPolicy Bypass -File ' + $c.WebsiteDeployScript + ' -Deploy website') (Format-CommandLine $p[1].Exe $p[1].Arguments)
+    Assert-Equal 0 @(Test-PlanSafety $p $c).Count (@(Test-PlanSafety $p $c) -join ' | ')
+    Assert-Equal 'refuse' (Resolve-RunMode -Action 'web.deploy') 'it changes something: no mode, no run'
+    # The helper's own -DryRun, against a stand-in deploy script that would leave a mark if it ran.
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p101-' + [guid]::NewGuid().ToString('N'))
+    $allowed = Join-Path $dir 'haven'
+    New-Item -ItemType Directory -Path $allowed -Force | Out-Null
+    try {
+        $mark = Join-Path $dir 'ran.txt'
+        Set-Content -LiteralPath (Join-Path $allowed 'Deploy-Stub.ps1') -Value ("Set-Content -LiteralPath '" + $mark + "' -Value ran") -Encoding ASCII
+        $cfgFile = Join-Path $dir 'websites.json'
+        Get-WebFixture { param($j) $j.deploys.website.script = (Join-Path $allowed 'Deploy-Stub.ps1') } | Set-Content -LiteralPath $cfgFile -Encoding ASCII
+        $logs = Join-Path $dir 'logs'
+        $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $c.WebsiteDeployScript -Deploy website -DryRun -ConfigFile $cfgFile -LogFolder $logs -AllowedFolder $allowed 2>&1 | Out-String
+        Assert-Equal 0 $LASTEXITCODE $out
+        Assert-True ($out -match [regex]::Escape("command : & '" + (Join-Path $allowed 'Deploy-Stub.ps1') + "'")) $out
+        Assert-True ($out -match 'DRY RUN: nothing was run\.') $out
+        Assert-True (-not (Test-Path -LiteralPath $mark)) 'the deploy script did not run'
+        Assert-True (-not (Test-Path -LiteralPath $logs)) 'no log folder was made'
+        # For real, the same stub runs and its transcript is kept.
+        $out2 = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $c.WebsiteDeployScript -Deploy website -ConfigFile $cfgFile -LogFolder $logs -AllowedFolder $allowed 2>&1 | Out-String
+        Assert-Equal 0 $LASTEXITCODE $out2
+        Assert-True (Test-Path -LiteralPath $mark) 'run for real, it ran'
+        $log = @(Get-ChildItem -LiteralPath $logs -Filter '*_website.log')
+        Assert-Equal 1 $log.Count 'one transcript'
+        # A script outside the allowed folder is refused even when the list names it.
+        Get-WebFixture { param($j) $j.deploys.website.script = 'C:\Windows\System32\evil.ps1' } | Set-Content -LiteralPath $cfgFile -Encoding ASCII
+        $out3 = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $c.WebsiteDeployScript -Deploy website -DryRun -ConfigFile $cfgFile -AllowedFolder $allowed 2>&1 | Out-String
+        Assert-Equal 2 $LASTEXITCODE $out3
+    } finally { Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+    Assert-True ((Get-Content -LiteralPath (Join-Path $repo '.gitignore') -Raw) -match '(?m)^\*\.log\s*$') 'deploy logs are *.log, which .gitignore ignores'
+}
+
+Fact 'P101_OpenNpmUsesTheConfigUrlAndTunnel' {
+    $c = Get-WebConfig (Get-WebFixture { param($j) $j.npm.url = 'http://localhost:9181/'; $j.npm.tunnelLocalPort = 9181; $j.haven.ssh = 'admin@10.0.0.9' })
+    foreach ($p in @((Get-ActionPlan -Action 'web.npm' -Config $c), (Get-ActionPlan -Action 'web.open' -Config $c -Site 'npm'))) {
+        $p = @($p)
+        Assert-Equal 'say,window,launch' (($p | ForEach-Object { $_.Kind }) -join ',')
+        Assert-Equal 'ssh -N -L 9181:localhost:81 admin@10.0.0.9' (Format-CommandLine $p[1].Exe $p[1].Arguments)
+        Assert-Equal 'explorer.exe|http://localhost:9181/' ($p[2].Path + '|' + $p[2].Arguments[0])
+        Assert-Equal 0 @(Test-PlanSafety $p $c).Count (@(Test-PlanSafety $p $c) -join ' | ')
+    }
+    Assert-Equal 'execute' (Resolve-RunMode -Action 'web.npm') 'only opens'
+    $other = New-PlanStep -Kind window -Exe 'ssh' -Arguments @('admin@10.0.0.9', 'rm -rf ~')
+    Assert-True ((@(Test-PlanSafety @($other) $c) -join ' | ') -match 'ssh runs here only as NPM''s tunnel') 'no other ssh'
+    $none = Get-WebConfig (Get-WebFixture { param($j) $j.PSObject.Properties.Remove('npm') })
+    Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'web.npm' -Config $none))[0].Kind 'no npm in the file: refused, not guessed'
+}
+
+Fact 'P101_RestartRedeployAndLogsAreForGamePcSitesAndNeverAShard' {
+    $c = Get-WebConfig
+    $r = @(Get-ActionPlan -Action 'web.restart' -Config $c -Site 'homepage')
+    Assert-Equal 'docker restart sl-dashboard' (Format-CommandLine @($r | Where-Object { $_.Kind -eq 'window' })[0].Exe @($r | Where-Object { $_.Kind -eq 'window' })[0].Arguments)
+    Assert-Equal 0 @(Test-PlanSafety $r $c).Count (@(Test-PlanSafety $r $c) -join ' | ')
+    $d = @(Get-ActionPlan -Action 'web.redeploy' -Config $c -Site 'homepage')
+    Assert-Equal ('powershell.exe -NoProfile -ExecutionPolicy Bypass -File ' + (Join-Path $repo 'docker\dashboard\Start-Dashboard.ps1')) (Format-CommandLine @($d | Where-Object { $_.Kind -eq 'window' })[0].Exe @($d | Where-Object { $_.Kind -eq 'window' })[0].Arguments)
+    Assert-Equal 0 @(Test-PlanSafety $d $c).Count (@(Test-PlanSafety $d $c) -join ' | ')
+    Assert-True (Test-Path -LiteralPath (Join-Path $repo 'docker\dashboard\Start-Dashboard.ps1')) 'the start script exists'
+    $l = @(Get-ActionPlan -Action 'web.logs' -Config $c -Site 'playtests')
+    Assert-Equal 'docker logs --tail 200 sl-play-tests' (Format-CommandLine $l[0].Exe $l[0].Arguments)
+    foreach ($k in 'web.restart', 'web.redeploy', 'web.logs') { Assert-True ((@(Get-ActionPlan -Action $k -Config $c -Site 'wiki'))[0].Text -match '^Wiki runs on Haven, not this PC') $k }
+    foreach ($ct in 'sl-modernuo', 'sl-modernuo-test', 'sl-uo-status') {
+        $bad = New-PlanStep -Kind window -Exe 'docker' -Arguments @('restart', $ct)
+        Assert-True ((@(Test-PlanSafety @($bad) $c) -join ' | ') -match 'a website restart names only a game-PC site') $ct
+    }
+    Assert-Equal 'execute' (Resolve-RunMode -Action 'web.logs') 'Logs only reads'
+    Assert-Equal 'refuse' (Resolve-RunMode -Action 'web.restart') 'Restart changes something'
+}
+
+Fact 'P101_TheProbeReadsUpDownAndNoAnswerFromRealSockets' {
+    # Three listeners on 127.0.0.1: one answers 200, one 503, one accepts and never answers. The probe runs in a
+    # runspace while this thread answers.
+    $ls = @(1..3 | ForEach-Object { $t = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, 0); $t.Start(); $t })
+    $port = { param($i) $ls[$i].LocalEndpoint.Port }
+    $checks = @(
+        [pscustomobject]@{ Key = 'ok'; Url = ('http://127.0.0.1:' + (& $port 0) + '/') },
+        [pscustomobject]@{ Key = 'bad'; Url = ('http://127.0.0.1:' + (& $port 1) + '/') },
+        [pscustomobject]@{ Key = 'mute'; Url = ('http://127.0.0.1:' + (& $port 2) + '/') },
+        [pscustomobject]@{ Key = 'closed'; Url = 'http://127.0.0.1:1/' })
+    $ps = [PowerShell]::Create()
+    [void]$ps.AddScript('param($c) function Get-WebsiteProbe {' + (Get-Item 'function:Get-WebsiteProbe').Definition + '}; Get-WebsiteProbe $c 1').AddArgument($checks)
+    $h = $ps.BeginInvoke()
+    $held = @()
+    try {
+        $answers = @("HTTP/1.1 200 OK`r`nContent-Length: 2`r`nConnection: close`r`n`r`nok", "HTTP/1.1 503 Service Unavailable`r`nContent-Length: 0`r`nConnection: close`r`n`r`n", $null)
+        for ($i = 0; $i -lt 3; $i++) {
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            while (-not $ls[$i].Pending() -and $sw.ElapsedMilliseconds -lt 5000) { Start-Sleep -Milliseconds 20 }
+            $cl = $ls[$i].AcceptTcpClient()
+            $st = $cl.GetStream()
+            Start-Sleep -Milliseconds 100
+            if ($answers[$i]) { $b = [Text.Encoding]::ASCII.GetBytes($answers[$i]); $st.Write($b, 0, $b.Length); $st.Flush(); $cl.Close() } else { $held += $cl }
+        }
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        while (-not $h.IsCompleted -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 50 }
+        $r = @($ps.EndInvoke($h))[-1]
+        if ($r -is [psobject]) { $r = $r.psobject.BaseObject }
+        Assert-Equal 'up|200' ((Get-WebsiteState $r['ok']) + '|' + $r['ok'].Code)
+        Assert-Equal 'down|503' ((Get-WebsiteState $r['bad']) + '|' + $r['bad'].Code)
+        Assert-Equal 'timeout' (Get-WebsiteState $r['mute'])
+        # Windows retries a refused connection for about 2 s, past this 1 s timeout, so a closed port reads either way.
+        Assert-True ((Get-WebsiteState $r['closed']) -in @('down', 'timeout')) (Get-WebsiteState $r['closed'])
+    } finally {
+        foreach ($c in $held) { $c.Close() }
+        foreach ($t in $ls) { $t.Stop() }
+        $ps.Dispose()
+    }
+}
+
+Fact 'P101_TheTileAndTheTabAreBuiltAndDrawn' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-True ($null -ne $script:ui.WebsitesTile) 'the seventh tile'
+        Assert-Equal 7 $script:ui.Glance.ColumnCount 'Plain: one row of seven'
+        Assert-True ($script:ui.WebsitesTile.Word.Text -match '^WEBSITES: (CHECKING|UNKNOWN)$') $script:ui.WebsitesTile.Word.Text
+        Assert-Equal 'Websites' $script:ui.WebsitesPage.Text
+        Assert-True ($script:ui.Tabs.TabPages.Contains($script:ui.WebsitesPage)) 'in the tab control'
+        Assert-Equal 'web.open,web.restart,web.redeploy,web.logs,web.deploy,web.npm' (($script:ui.WebsiteButtons | ForEach-Object { $_.Tag }) -join ',')
+        Assert-Equal 'Open,Restart,Redeploy,Logs (last 200),Deploy to Haven,Open NPM' (($script:ui.WebsiteButtons | ForEach-Object { $_.Text }) -join ',')
+        Assert-Equal @($config.Websites.Sites).Count $script:ui.WebsitePick.Items.Count 'one line per site'
+        Assert-Equal 'Play tests  (this PC)' $script:ui.WebsitePick.Items[0]
+        $script:ui.WebsitePick.SelectedIndex = 3
+        Assert-Equal 'website' (Get-SelectedWebsite)
+        # A finished check, drawn.
+        $codes = $webAllUp.Clone(); $codes.website = 'ConnectFailure'
+        $script:webResults = Get-WebResults $codes; $script:webResultAt = [datetime]::UtcNow
+        Update-WebsitesView
+        Assert-Equal 'WEBSITES: 6 OF 7 UP' $script:ui.WebsitesTile.Word.Text
+        Assert-Equal (Get-TileColors 'amber')[0] $script:ui.WebsitesTile.Panel.BackColor 'amber'
+        Assert-True ($script:ui.WebsitesPanel.Text -match '\[DOWN\]   Public website') 'the panel is drawn'
+        $tips = Get-ConsoleTooltips
+        foreach ($k in 'tile.WEBSITES', 'tab.Websites', 'web.open', 'web.restart', 'web.redeploy', 'web.logs', 'web.deploy', 'web.npm') { Assert-True ($tips.Contains($k)) ('a tooltip for ' + $k) }
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false; $script:webResults = $null; $script:webResultAt = $null }
+}
+
+Fact 'P101_NothingSecretIsInTheConfigOrTheNewScripts' {
+    foreach ($f in 'scripts\websites.json', 'scripts\Invoke-WebsiteDeploy.ps1', 'docker\dashboard\Start-Dashboard.ps1') {
+        $t = [IO.File]::ReadAllText((Join-Path $repo $f))
+        Assert-True ($t -notmatch '(?i)"(password|passwd|token|secret|apikey|api_key|private_key)"\s*:') ($f + ': a secret-looking key')
+        Assert-True ($t -notmatch '-----BEGIN [A-Z ]*PRIVATE KEY-----') ($f + ': a private key')
+        Assert-True ($t -notmatch '(?i)\b(ssh-rsa|ssh-ed25519) AAAA') ($f + ': a key')
+        Assert-True ($t -notmatch '(?i)sshpass|-pw\s|PasswordAuthentication|ConvertTo-SecureString') ($f + ': a password route')
+    }
+}
+
+Fact 'P101_EveryWebsiteButtonRunHeadlessWithDryRunRunsNothing' {
+    foreach ($a in @(@('web.open', 'homepage'), @('web.restart', 'homepage'), @('web.redeploy', 'playtests'), @('web.logs', 'status'), @('web.deploy', 'wiki'), @('web.npm', 'npm'))) {
+        $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Resolve-Path $script).Path -DryRun -Action $a[0] -Site $a[1] 2>&1 | Out-String)
+        Assert-Equal 0 $LASTEXITCODE ($a[0] + ': ' + $out)
+        Assert-True ($out -match ('== DRY RUN: ' + [regex]::Escape($a[0]) + ' \(websites\)')) ($a[0] + ': ' + $out)
+        Assert-True ($out -match '\(dry run: nothing was run\)') ($a[0] + ': ' + $out)
+        Assert-True ($out -notmatch 'REFUSE') ($a[0] + ': ' + $out)
     }
 }
 

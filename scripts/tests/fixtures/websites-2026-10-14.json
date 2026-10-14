@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "_about": "cc-P101: the Shard Console's Websites tab reads this file. One entry per site. When a site moves (P89 H3, the move to Haven), change it here, not in the console. No key, password or token ever goes in this file: Haven is reached with Chase's own SSH key (agent or ~/.ssh), and NPM's login stays in his password manager.",
+  "haven": {
+    "ssh": "chase@192.168.1.61",
+    "_ssh": "From D:\\UO\\haven-migration\\Deploy-Website.ps1 and the other Haven scripts there."
+  },
+  "npm": {
+    "url": "http://localhost:8081/",
+    "tunnelLocalPort": 8081,
+    "tunnelRemote": "localhost:81",
+    "_npm": "NPM's admin page listens only on Haven's own 127.0.0.1:81 (haven-proxy-fix.sh step 2, proxy-discovery.txt line 278), so it is reached through an SSH tunnel, as Haven-Website-Runbook.original.md step 3 says: ssh -N -L 8081:localhost:81 chase@192.168.1.61, then http://localhost:8081."
+  },
+  "sites": [
+    { "key": "playtests", "name": "Play tests", "url": "http://localhost:8093/", "where": "pc", "container": "sl-play-tests", "start": "docker\\test-queue\\Start-TestQueue.ps1" },
+    { "key": "status", "name": "Shard status", "url": "http://localhost:8093/status", "where": "pc", "container": "sl-play-tests", "start": "docker\\test-queue\\Start-TestQueue.ps1" },
+    { "key": "homepage", "name": "Homepage", "url": "http://localhost:3000/", "where": "pc", "container": "sl-dashboard", "start": "docker\\dashboard\\Start-Dashboard.ps1" },
+    { "key": "website", "name": "Public website", "url": "https://shatteredlegacyuo.com/", "where": "haven", "deploy": "website" },
+    { "key": "wiki", "name": "Wiki", "url": "https://wiki.shatteredlegacyuo.com/", "where": "haven", "deploy": "wiki-macros" },
+    { "key": "vault", "name": "Vaultwarden", "url": "https://vault.chasekfleming.com/", "where": "haven" },
+    { "key": "npm", "name": "Nginx Proxy Manager", "url": "http://localhost:8081/", "check": "http://192.168.1.61/", "where": "haven", "npm": true,
+      "_check": "The admin page is only reachable through the tunnel, so the light checks NPM's proxy port on Haven instead: any answer means NPM is up." }
+  ],
+  "deploys": {
+    "website": { "script": "D:\\UO\\haven-migration\\Deploy-Website.ps1", "what": "copies the website page, its images and the intro video from docker\\website\\html to Haven (scp, then chmod)" },
+    "wiki-macros": { "script": "D:\\UO\\haven-migration\\Publish-WikiMacros.ps1", "what": "rebuilds the wiki's Macros pages from the TazUO Legion scripts and pushes them to Haven" }
+  },
+  "_deploySlots": {
+    "haven-ops": "P89 H3: Deploy-HavenOps.ps1 (the ops pages on Haven). Not written yet. When it exists, add \"haven-ops\": { \"script\": \"D:\\\\UO\\\\haven-migration\\\\Deploy-HavenOps.ps1\", \"what\": \"...\" } to deploys and \"deploy\": \"haven-ops\" to its site.",
+    "_notListed": "Haven-Wiki-Update.ps1 (updates the DokuWiki container; the wiki is down about a minute) and Haven-Website-Deploy.ps1 (the first-time setup) are deliberately not deploys here."
+  }
+}
