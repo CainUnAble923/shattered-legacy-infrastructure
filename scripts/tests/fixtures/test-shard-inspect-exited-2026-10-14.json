@@ -1,0 +1,274 @@
+[
+    {
+        "Id": "f7652b37333e01e032c7793c910a52ff1fc603eced849bb90598fe928b5859c4",
+        "Created": "2026-10-14T12:07:26.353732692Z",
+        "Path": "/entrypoint.sh",
+        "Args": [],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 255,
+            "Error": "",
+            "StartedAt": "2026-10-14T12:07:27.991600209Z",
+            "FinishedAt": "2026-10-14T13:06:04.991863939Z"
+        },
+        "Image": "sha256:178e2bdafef4e502c246296dc42370cf3fc25aae9fcb798d6f2e22f814b47839",
+        "ResolvConfPath": "/var/lib/docker/containers/f7652b37333e01e032c7793c910a52ff1fc603eced849bb90598fe928b5859c4/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/f7652b37333e01e032c7793c910a52ff1fc603eced849bb90598fe928b5859c4/hostname",
+        "HostsPath": "/var/lib/docker/containers/f7652b37333e01e032c7793c910a52ff1fc603eced849bb90598fe928b5859c4/hosts",
+        "LogPath": "/var/lib/docker/containers/f7652b37333e01e032c7793c910a52ff1fc603eced849bb90598fe928b5859c4/f7652b37333e01e032c7793c910a52ff1fc603eced849bb90598fe928b5859c4-json.log",
+        "Name": "/sl-modernuo-test",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "D:/ShatteredLegacy/client-data/classic-client:/var/lib/uo/client-data/classic-client:ro",
+                "D:/ShatteredLegacy/server/customizations:/modernuo-projects:ro",
+                "D:/ShatteredLegacy/server/uo/modernuo/Configuration-test:/modernuo/Configuration:rw",
+                "D:/ShatteredLegacy/server/lib/uo/modernuo-test:/var/lib/uo/modernuo:rw"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "sl-uo-test_default",
+            "PortBindings": {
+                "2594/tcp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "2594"
+                    }
+                ],
+                "2594/udp": [
+                    {
+                        "HostIp": "",
+                        "HostPort": "2594"
+                    }
+                ]
+            },
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": [],
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": [],
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": [
+                "seccomp:unconfined"
+            ],
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 0,
+            "NanoCpus": 0,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": null,
+            "BlkioDeviceReadBps": null,
+            "BlkioDeviceWriteBps": null,
+            "BlkioDeviceReadIOps": null,
+            "BlkioDeviceWriteIOps": null,
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": null,
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 0,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/customizations",
+                "Destination": "/modernuo-projects",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/uo/modernuo/Configuration-test",
+                "Destination": "/modernuo/Configuration",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/client-data/classic-client",
+                "Destination": "/var/lib/uo/client-data/classic-client",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "D:/ShatteredLegacy/server/lib/uo/modernuo-test",
+                "Destination": "/var/lib/uo/modernuo",
+                "Mode": "rw",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "f7652b37333e",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "ExposedPorts": {
+                "2593/tcp": {},
+                "2594/tcp": {},
+                "2594/udp": {}
+            },
+            "Tty": true,
+            "OpenStdin": true,
+            "StdinOnce": false,
+            "Env": [
+                "TZ=America/Chicago",
+                "SL_SHARD_ROLE=test",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/dotnet",
+                "SL_MODERNUO_COMMIT=d4531cd94b739613155225c234900de9f47d2c88",
+                "DOTNET_ROOT=/usr/local/dotnet",
+                "DOTNET_RUNNING_IN_CONTAINER=true",
+                "DOTNET_EnableDiagnostics=0"
+            ],
+            "Cmd": null,
+            "Image": "sl-modernuo:latest",
+            "Volumes": null,
+            "WorkingDir": "/modernuo",
+            "Entrypoint": [
+                "/entrypoint.sh"
+            ],
+            "Labels": {
+                "com.docker.compose.config-hash": "64ccadb3336977471eab11271fd759dd34af1a76629e47561865909014863c53",
+                "com.docker.compose.container-number": "1",
+                "com.docker.compose.depends_on": "",
+                "com.docker.compose.image": "sha256:178e2bdafef4e502c246296dc42370cf3fc25aae9fcb798d6f2e22f814b47839",
+                "com.docker.compose.oneoff": "False",
+                "com.docker.compose.project": "sl-uo-test",
+                "com.docker.compose.project.config_files": "D:\\ShatteredLegacy\\docker\\uo\\docker-compose.test.yml",
+                "com.docker.compose.project.working_dir": "D:\\ShatteredLegacy\\docker\\uo",
+                "com.docker.compose.replace": "sl-modernuo-test",
+                "com.docker.compose.service": "modernuo-test",
+                "com.docker.compose.version": "5.1.3"
+            },
+            "StopTimeout": 60
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "sl-uo-test_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "sl-modernuo-test",
+                        "modernuo-test"
+                    ],
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "5fa30505a5a34a1667ff77bb9830241fd472da2b3d37589f9ba35e6faf6a6a4b",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "sl-modernuo-test",
+                        "modernuo-test",
+                        "f7652b37333e"
+                    ]
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:8934a7367d55509d8adf1916019781da183093eb86b2b40cf1de2866b8f8c76e",
+            "size": 2381,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    }
+]

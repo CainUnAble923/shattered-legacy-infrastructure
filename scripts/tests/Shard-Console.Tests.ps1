@@ -33,6 +33,8 @@ $results = New-Object 'System.Collections.Generic.List[object]'
 
 function Fact {
     param([string]$Name, [scriptblock]$Body)
+    # cc-P96: SL_FACT_FILTER (a regex on the name) runs a subset while working; unset, every fact runs.
+    if ($env:SL_FACT_FILTER -and $Name -notmatch $env:SL_FACT_FILTER) { return }
     try {
         & $Body
         $results.Add([pscustomobject]@{ Name = $Name; Passed = $true; Message = '' })
@@ -179,6 +181,46 @@ function New-StateWithSnapshots {
 }
 $snapState = New-StateWithSnapshots @('20260929-101500_before-gargoyle-fix')
 $twoState  = New-StateWithSnapshots @('20260929-101500_before-gargoyle-fix', '20260929-111500_PRE-RESTORE_before-restoring-x')
+
+# cc-P96, Fix test shard. Real fixtures: this morning's D89 crash log (the test container's own, 2026-10-14
+# 07:07, account lines dropped), a healthy start's log (the bot's scratch shard on the P95 fix, 08:19, cut after
+# its listeners), the test container's inspect while crashed and unhealthy (cc-P96's health check, 08:34) and
+# while healthy, the pre-P96 exited one (no health check), and a real `docker images sl-modernuo` listing with
+# sizes. Good tags do not exist yet in any real listing, so six are added as literals, one hour apart.
+$p96CrashLog   = [IO.File]::ReadAllText((Join-Path $fixture 'test-shard-crash-d89-2026-10-14.txt'))
+$p96HealthyLog = [IO.File]::ReadAllText((Join-Path $fixture 'test-shard-start-healthy-2026-10-14.txt'))
+$p96ImagesText = [IO.File]::ReadAllText((Join-Path $fixture 'docker-images-sl-modernuo-2026-10-14.txt'))
+$p96GoodLines  = @(1..6 | ForEach-Object { 'sl-modernuo:good-{0}|{1}|2026-10-14 {2:00}:00:00 -0500 CDT|1.29GB' -f ([string]$_ * 7), ('{0}' -f ([string]$_ * 12)), (8 + $_) })
+$p96LiveId     = 'sha256:bc04a35bf344c49b3f7599703b9c135d63730e2e4784b4356ee85b4e9a4df2ef'
+$p96Facts = [pscustomobject]@{
+    Head       = '61db33c0a1b2c3d4e5f60718293a4b5c6d7e8f90'
+    Commits    = @(
+        [pscustomobject]@{ Sha = '61db33c0a1b2c3d4e5f60718293a4b5c6d7e8f90'; Short = '61db33c'; Date = '2026-10-14'; Subject = 'CC task P95: Fix D89' },
+        [pscustomobject]@{ Sha = '10f4088aa1b2c3d4e5f60718293a4b5c6d7e8f90'; Short = '10f4088'; Date = '2026-10-14'; Subject = 'Shard work, 2026-10-14 07:05' }
+    )
+    SaveRecord = $null
+    SaveNewer  = $null
+}
+function New-P96State {
+    # The captured state with the 2026-10-14 image listing (and good tags unless -NoGood), optionally the test
+    # container running with a given log since its start.
+    param([string]$TestLog, [switch]$TestRunning, [switch]$NoGood)
+    $sec = [ordered]@{}
+    foreach ($k in $cap.Keys) { $sec[$k] = $cap[$k] }
+    $lines = @($p96ImagesText.TrimEnd())
+    if (-not $NoGood) { $lines = @($p96GoodLines) + $lines }
+    $sec['images sl-modernuo'] = $lines -join "`n"
+    if ($TestLog) { $sec['logs sl-modernuo-test'] = $TestLog }
+    $s = New-ConsoleState -Config $config -Sections $sec
+    if ($TestRunning) { $s.Shards['test'].Container.Running = $true; $s.Shards['test'].Container.Status = 'running' }
+    $s
+}
+$p96GoodState  = New-P96State
+$p96CrashState = New-P96State -TestLog $p96CrashLog -TestRunning
+function Get-FixActionPlan {
+    param([string]$Action, $State = $p96GoodState, $Facts = $p96Facts, [string]$Commit, [string]$ImageTag)
+    @(Get-ActionPlan -Action $Action -ShardKey 'test' -Config $config -State $State -Now $now -FixFacts $Facts -Commit $Commit -ImageTag $ImageTag)
+}
 
 Write-Host ""
 Write-Host "Shard-Console core facts" -ForegroundColor Cyan
@@ -989,7 +1031,7 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
-        Assert-Equal 'Test shard,Snapshots,World setup,Diagnostics,Commit,Player package,Autopilot,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot; LIVE stays last'
+        Assert-Equal 'Test shard,Fix test shard,Snapshots,World setup,Diagnostics,Commit,Player package,Autopilot,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot, cc-P96 Fix test shard beside Test shard; LIVE stays last'
         Assert-Equal 'Preview commit,Commit and push' (@($script:ui.CommitButtons | ForEach-Object { $_.Text }) -join ',') 'cc-P60'
         Assert-Equal 'package.build,package.publish,package.check' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P63, and cc-P68''s Check selected'
         Assert-True ($null -ne $script:ui.CommitForce -and -not $script:ui.CommitForce.Checked) 'cc-P68: the Force box, unticked'
@@ -1027,7 +1069,7 @@ function Invoke-ClickCapture {
     # the toggle in a console whose status is live from docker.
     param([string]$ActionKey, [string]$ShardKey, [bool]$Dry, $State = $snapState, $FromCapture = $null, $CommitFacts = $commitFactsOk, [string]$CommitMessage,
         $PackageFacts = $pkgFactsOk, [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [string]$Picked = 'sl-modernuo:cc-p61', [switch]$CommitForce,
-        $WipeFacts = $wipeFactsOk, [string]$WipeName = 'newadmin')
+        $WipeFacts = $wipeFactsOk, [string]$WipeName = 'newadmin', $FixFacts = $p96Facts, [string]$PickedCommit = '61db33c0a1b2c3d4e5f60718293a4b5c6d7e8f90')
     if ($null -eq $FromCapture) { $FromCapture = $Dry }
     $rec = [pscustomobject]@{
         Spawned = New-Object 'System.Collections.Generic.List[string]'
@@ -1048,6 +1090,8 @@ function Invoke-ClickCapture {
     function Get-PackageFacts { $PackageFacts }
     function Show-ImagePicker { $rec.Pickers++; $Picked }
     function Get-WipeFacts { $WipeFacts }
+    function Get-FixFacts { $FixFacts }
+    function Show-CommitPicker { $rec.Pickers++; $PickedCommit }
     function Show-WipeAdminPicker { param($Summary) $rec.WipeDialogs.Add([string]$Summary); if ($WipeName) { $WipeName } else { $null } }
     function Write-ConsoleLine { param([string]$Text, [string]$Color) $rec.Lines.Add($Text) }
     $saved = @($script:dry, $script:cfg, $script:statusFrom, $script:SelfPath, $script:fromCapture)
@@ -1076,6 +1120,7 @@ $windowCases = @(foreach ($a in @(Get-ConsoleActions | Where-Object { $_.RunIn -
         if ($a.Key -eq 'live.start') { $st = $liveStoppedState }
         if ($a.Key -eq 'test.deploy') { $st = $deployState }
         if ($a.Key -eq 'test.wipe') { $st = $wipeState }
+        if ($a.Key -like 'fix.*') { $st = $p96CrashState }  # cc-P96: good tags, images to prune, a crash
         [pscustomobject]@{ Key = $a.Key; Shard = $sk; State = $st }
     }
 })
@@ -3579,7 +3624,7 @@ Fact 'P86_TheButtonsSitByTheTileAndOnDiagnosticsGreyedWithNoVpn' {
         Assert-Equal 2 @($script:ui.VpnButtons).Count
         Assert-True ($script:ui.NetTile.Panel.Controls.Contains($script:ui.VpnButtons[0].Parent)) 'in the PUBLIC DNS tile'
         Assert-Equal 'vpn.disconnect' $script:ui.VpnButtons[1].Tag
-        Assert-True ($script:ui.Tabs.TabPages[3].Controls[0].Controls.Contains($script:ui.VpnButtons[1])) 'on the Diagnostics tab'
+        Assert-True (@($script:ui.Tabs.TabPages | Where-Object { $_.Text -eq 'Diagnostics' })[0].Controls[0].Controls.Contains($script:ui.VpnButtons[1])) 'on the Diagnostics tab'
         foreach ($b in $script:ui.VpnButtons) { Assert-True (-not $b.Enabled) 'greyed: no VPN is known' }
         $script:netResult = [pscustomobject]@{ RouteIsLan = $false; RouteInterface = 'ProtonVPN'; VpnAdapters = @('ProtonVPN'); DnsIps = @('159.26.100.68') }
         Update-VpnButtons
@@ -3744,6 +3789,253 @@ Fact 'P87_PlainKeepsItsOneRowOfSixAndItsOwnLook' {
         Assert-Equal 'Consolas|9' ($script:MonoFont.Name + '|' + $script:MonoFont.Size)
         Assert-Equal 'Segoe UI|8.25' ($script:ui.VpnButtons[0].Font.Name + '|' + $script:ui.VpnButtons[0].Font.Size) 'the tile buttons as before'
     } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
+# --- cc-P96: Fix test shard -------------------------------------------------------------------------------------
+
+Write-Host ""
+Write-Host "cc-P96 Fix test shard facts" -ForegroundColor Cyan
+
+Fact 'P96_TheD89LogGivesItsInnermostExceptionAndFirstFiveFrames' {
+    $r = Get-CrashReport $p96CrashLog
+    Assert-True $r.Crashed 'the log ends at "This exception is fatal"'
+    Assert-True $r.AtStart 'it never reached Listening'
+    Assert-Equal 'System.IndexOutOfRangeException' $r.Type 'the cause, not the reflection wrapper'
+    Assert-Equal 'Index was outside the bounds of the array.' $r.Message
+    Assert-Equal 'System.Reflection.TargetInvocationException,System.TypeInitializationException,System.IndexOutOfRangeException' ((@($r.Chain) | ForEach-Object { $_.Type }) -join ',')
+    Assert-Equal 5 @($r.Frames).Count
+    Assert-Equal 'Server.ImbueCatalogue.SkillRowName(SkillName skill)' $r.Frames[0]
+    Assert-Equal 'Server.ImbueCatalogue..cctor()' $r.Frames[2]
+    Assert-Equal 'Server.ImbuingTable.get_Defaults()' $r.Frames[4]
+    Assert-Equal 'IndexOutOfRangeException: Index was outside the bounds of the array. at Server.ImbueCatalogue.SkillRowName(SkillName skill)' $r.Headline
+}
+
+Fact 'P96_AHealthyStartIsNoCrashAndACrashAfterListeningIsNotAtStart' {
+    Assert-True (-not (Get-CrashReport $p96HealthyLog).Crashed) 'the healthy start log has no fatal line'
+    $lines = @($p96CrashLog -split "`n")
+    $at = [array]::IndexOf(@($lines | ForEach-Object { (Remove-Ansi $_).Trim() }), 'Error:')
+    Assert-True ($at -gt 0) 'the fixture has its Error: line'
+    $tail = ($lines | Select-Object -Skip $at) -join "`n"
+    $late = Get-CrashReport ($p96HealthyLog + "`n" + $tail)
+    Assert-True $late.Crashed 'a crash after the listener is still a crash'
+    Assert-True (-not $late.AtStart) 'but not at start'
+}
+
+Fact 'P96_HealthReadsListeningCrashedAndStarting' {
+    $starting = ($p96HealthyLog -split "`n" | Select-Object -First 20) -join "`n"
+    Assert-Equal 'HEALTHY' (Get-HealthState $true $true 'healthy' (Get-CrashReport $p96HealthyLog)).State
+    Assert-Equal 'STARTING' (Get-HealthState $true $true 'starting' (Get-CrashReport $starting)).State
+    $c = Get-HealthState $true $true 'starting' (Get-CrashReport $p96CrashLog)
+    Assert-Equal 'CRASHED' $c.State 'a crash outranks starting: docker says starting for its 120 s start period'
+    Assert-True ($c.Detail -match '^crashed at start: IndexOutOfRangeException' -and $c.Detail -match 'Docker still says Up') $c.Detail
+    Assert-Equal 'CRASHED' (Get-HealthState $true $true 'unhealthy' (Get-CrashReport $p96CrashLog)).State
+    Assert-Equal 'UNHEALTHY' (Get-HealthState $true $true 'unhealthy' $null).State
+    Assert-Equal 'NO HEALTH CHECK' (Get-HealthState $true $true '' $null).State 'a container from before the health check'
+    Assert-Equal 'STOPPED' (Get-HealthState $true $false '' $null).State
+    Assert-Equal 'NO CONTAINER' (Get-HealthState $false $false '' $null).State
+}
+
+Fact 'P96_TheRealInspectsGiveTheHealthDockerReported' {
+    $u = ConvertFrom-ContainerInspect ([IO.File]::ReadAllText((Join-Path $fixture 'test-shard-inspect-unhealthy-2026-10-14.json')))
+    Assert-Equal 'unhealthy' $u.Health 'docker ps said "Up 2 minutes (unhealthy)"'
+    Assert-True $u.Running 'and Up: the crashed process waits on stdin'
+    $h = ConvertFrom-ContainerInspect ([IO.File]::ReadAllText((Join-Path $fixture 'test-shard-inspect-healthy-2026-10-14.json')))
+    Assert-Equal 'healthy' $h.Health
+    $x = ConvertFrom-ContainerInspect ([IO.File]::ReadAllText((Join-Path $fixture 'test-shard-inspect-exited-2026-10-14.json')))
+    Assert-Equal '' ([string]$x.Health) 'created before cc-P96: no health check'
+}
+
+Fact 'P96_KnownBugD89IsMatchedFromTheConfigTable' {
+    Assert-True (@($config.Fix.KnownCrashes).Count -ge 1) 'scripts/fix-test-shard.json is read into the config'
+    $k = Find-KnownCrash (Get-CrashReport $p96CrashLog) $config.Fix.KnownCrashes
+    Assert-Equal 'D89' $k.Bug
+    $other = Get-CrashReport ($p96CrashLog -replace 'ImbueCatalogue', 'SomethingElse')
+    Assert-True $other.Crashed
+    Assert-True ($null -eq (Find-KnownCrash $other $config.Fix.KnownCrashes)) 'another crash is not D89'
+    Assert-True ($null -eq (Find-KnownCrash (Get-CrashReport $p96HealthyLog) $config.Fix.KnownCrashes)) 'no crash, no bug'
+}
+
+Fact 'P96_LastGoodIsTheNewestGoodTag' {
+    $g = Get-LastGoodImage $p96GoodState.Images
+    Assert-Equal 'sl-modernuo:good-6666666' $g.Tag
+    Assert-True ($null -eq (Get-LastGoodImage (New-P96State -NoGood).Images)) 'the real 2026-10-14 listing has no good tag'
+    Assert-Equal 'sl-modernuo:good-61db33c' (Get-GoodTag '61db33c0a1b2c3d4e5f60718293a4b5c6d7e8f90' $false)
+    Assert-Equal 'sl-modernuo:good-61db33c-dirty' (Get-GoodTag '61db33c0a1b2c3d4e5f60718293a4b5c6d7e8f90' $true)
+    Assert-True ($null -eq (Get-GoodTag 'unknown' $false)) 'no label, no tag'
+    Assert-Equal '1234567' (Get-GoodTagCommit 'sl-modernuo:good-1234567-dirty')
+    Assert-True ($null -eq (Get-GoodTagCommit 'sl-modernuo:goodish')) 'only good-<7 hex>'
+}
+
+Fact 'P96_PruneKeepsLatestGoodRollbackPreBumpNamedAndWhatContainersRun' {
+    $rows = @($p96GoodState.Images) + @(
+        [pscustomobject]@{ Tag = 'sl-modernuo:same-as-live'; Id = 'bc04a35bf344'; Created = [datetime]'2026-09-01'; Size = 1290000000 },
+        [pscustomobject]@{ Tag = 'uo-modernuo:latest'; Id = 'bc04a35bf344'; Created = [datetime]'2026-09-01'; Size = 1290000000 })
+    $set = Get-PruneSet -Images $rows -KeepGood 5 -KeepTags @('sl-modernuo:cc-p82', 'cc-p80') -ProtectIds @('sha256:178e2bdafef4aaaa', $p96LiveId)
+    $keep = @($set.Keep | ForEach-Object { $_.Tag })
+    $gone = @($set.Remove | ForEach-Object { $_.Tag })
+    foreach ($t in 'latest', 'rollback-live-20260927', 'pre-bump-7c9215d97', 'pre-bump-purge-7c9215d97', 'good-6666666', 'good-2222222', 'cc-p82', 'cc-p80', 'same-as-live') {
+        Assert-True ($keep -contains ('sl-modernuo:' + $t)) ('kept: ' + $t)
+    }
+    Assert-True ($gone -contains 'sl-modernuo:good-1111111') 'the sixth newest good tag is offered'
+    Assert-True ($gone -contains 'sl-modernuo:s1' -and $gone -contains 'sl-modernuo:cc-p79') 'old builds are offered'
+    Assert-Equal 0 @(@($keep) + @($gone) | Where-Object { $_ -notlike 'sl-modernuo:*' }).Count 'uo-modernuo is never listed, kept or removed'
+    Assert-Equal (@($rows).Count - 1) ($keep.Count + $gone.Count) 'every sl-modernuo row is kept or offered'
+    Assert-True ($set.FreedBytes -gt 0) 'some space is freed'
+    Assert-Equal 'a container runs this image' (@($set.Keep | Where-Object { $_.Tag -eq 'sl-modernuo:same-as-live' })[0].Why)
+}
+
+Fact 'P96_TheTestTileSaysCrashedAtStartInRedWithTheKnownBug' {
+    $g = Get-ShardGlance -Shard $config.Shards['test'] -ShardState $p96CrashState.Shards['test'] -Now $p96CrashState.Now -Config $config
+    Assert-Equal 'CRASHED AT START' $g.Word
+    Assert-Equal 'red' $g.Color
+    Assert-True ($g.Detail -match 'IndexOutOfRangeException' -and $g.Detail -match 'Known bug D89') $g.Detail
+    $tiles = Get-AtAGlance -State $p96CrashState -Config $config
+    Assert-Equal 'CRASHED AT START' $tiles[1].Word 'and the tile row says it'
+}
+
+Fact 'P96_DiagnoseShowsStatusHealthImageUptimeTheCrashAndTheKnownBug' {
+    $p = Get-FixActionPlan 'fix.diagnose' -State $p96CrashState
+    $t = (@($p | Where-Object { $_.Kind -eq 'say' }) | ForEach-Object { $_.Text }) -join "`n"
+    foreach ($want in '^Container: sl-modernuo-test, running, up ', '(?m)^Health: CRASHED', '(?m)^Image: ', '(?m)^Last good: sl-modernuo:good-6666666',
+                      'IndexOutOfRangeException: Index was outside the bounds of the array\.', 'TypeInitializationException',
+                      '(?m)^  at Server\.ImbueCatalogue\.SkillRowName', '(?m)^  at Server\.ImbuingTable\.get_Defaults', '(?m)^Known bug D89') {
+        Assert-True ($t -match $want) ('Diagnose says ' + $want + "`n" + $t)
+    }
+    Assert-Equal 5 @(([regex]::Matches($t, '(?m)^  at '))).Count 'five frames'
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -in @('confirm', 'exec', 'copy', 'move') }).Count 'it reads; it changes nothing'
+    Assert-Equal 1 @($p | Where-Object { $_.Kind -eq 'log' }).Count 'and logs that it ran'
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count
+}
+
+Fact 'P96_RollbackBacksUpTheTestSaveBeforeItRunsTheLastGoodImage' {
+    Assert-True $p96GoodState.Shards['test'].Save.Exists 'the capture has a test save'
+    $p = Get-FixActionPlan 'fix.rollback'
+    Assert-Equal 'roll back test' @($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase
+    $kinds = @($p | ForEach-Object { $_.Kind })
+    $down  = [array]::IndexOf(@($p | ForEach-Object { ($_.Kind -eq 'exec') -and (@($_.Arguments) -contains '-Down') }), $true)
+    $copy  = [array]::IndexOf($kinds, 'copy')
+    $ver   = [array]::IndexOf($kinds, 'verify')
+    $run   = [array]::IndexOf(@($p | ForEach-Object { ($_.Kind -eq 'exec') -and (@($_.Arguments) -contains '-Image') }), $true)
+    Assert-True ($down -ge 0 -and $copy -gt $down -and $ver -gt $copy -and $run -gt $ver) ('stop, back up, verify, then run: ' + ($kinds -join ','))
+    $c = $p[$copy]
+    Assert-Equal ([IO.Path]::GetFullPath($config.Shards['test'].Saves)) ([IO.Path]::GetFullPath($c.From))
+    Assert-True ($c.To.StartsWith((Join-Path $config.SnapshotRoot 'test') + '\') -and $c.To -match '_pre-rollback-6666666$') $c.To
+    Assert-True ((@($p | Where-Object { $_.Kind -eq 'confirm' })[0].Text).Contains($c.To)) 'the backup path is shown before the phrase'
+    $args = @($p[$run].Arguments)
+    Assert-Equal 'sl-modernuo:good-6666666' $args[[array]::IndexOf($args, '-Image') + 1]
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count
+}
+
+Fact 'P96_RollbackWarnsWhenTheSaveIsNewerThanTheImage' {
+    $newer = $p96Facts.PSObject.Copy(); $newer.SaveNewer = $true
+    $newer.SaveRecord = [pscustomobject]@{ commit = '61db33c0a1b2c3d4e5f60718293a4b5c6d7e8f90'; good = 'sl-modernuo:good-61db33c'; at = '2026-10-14T13:40:00Z' }
+    $t = (@(Get-FixActionPlan 'fix.rollback' -Facts $newer | Where-Object { $_.Kind -in @('say', 'confirm') }) | ForEach-Object { $_.Text }) -join "`n"
+    Assert-True ($t -match 'WARNING: the test save was last written by 61db33c, a newer commit than 6666666') $t
+    $older = $p96Facts.PSObject.Copy(); $older.SaveNewer = $false
+    $t2 = (@(Get-FixActionPlan 'fix.rollback' -Facts $older | Where-Object { $_.Kind -in @('say', 'confirm') }) | ForEach-Object { $_.Text }) -join "`n"
+    Assert-True ($t2 -notmatch 'WARNING') $t2
+    $t3 = (@(Get-FixActionPlan 'fix.rollback' | Where-Object { $_.Kind -eq 'say' }) | ForEach-Object { $_.Text }) -join "`n"
+    Assert-True ($t3 -match 'not known which commit last wrote the test save') $t3
+}
+
+Fact 'P96_RollbackRefusesWithNoGoodImage' {
+    $p = Get-FixActionPlan 'fix.rollback' -State (New-P96State -NoGood)
+    Assert-Equal 1 @($p | Where-Object { $_.Kind -eq 'refuse' }).Count
+    Assert-True ($p[0].Text -match 'no sl-modernuo:good-\* image') $p[0].Text
+    Assert-Equal 0 @($p | Where-Object { $_.Kind -in @('exec', 'copy') }).Count
+}
+
+Fact 'P96_RebuildBuildsAPickedCommitAndRefusesOthers' {
+    $p = Get-FixActionPlan 'fix.rebuild' -Commit '10f4088aa1b2c3d4e5f60718293a4b5c6d7e8f90'
+    Assert-Equal 'rebuild test' @($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase
+    $e = @($p | Where-Object { $_.Kind -eq 'exec' })
+    Assert-Equal 1 $e.Count
+    Assert-Equal ($config.StartTestShard + '|-Commit|10f4088aa1b2c3d4e5f60718293a4b5c6d7e8f90') ((@($e[0].Arguments) | Select-Object -Skip 4) -join '|')
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count
+    foreach ($bad in 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef', '', 'HEAD; rm -rf') {
+        $q = Get-FixActionPlan 'fix.rebuild' -Commit $bad
+        Assert-Equal 1 @($q | Where-Object { $_.Kind -eq 'refuse' }).Count ('refused: [' + $bad + ']')
+    }
+    $g = Get-FixActionPlan 'fix.rebuild' -Commit '6666666'
+    Assert-Equal 0 @($g | Where-Object { $_.Kind -eq 'refuse' }).Count 'the last good commit is on the list too'
+}
+
+Fact 'P96_PrunePlanRemovesTagsOneByOneAfterThePhrase' {
+    $p = Get-FixActionPlan 'fix.prune'
+    Assert-Equal 'prune images' @($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase
+    $e = @($p | Where-Object { $_.Kind -eq 'exec' })
+    Assert-True ($e.Count -gt 50) ('found ' + $e.Count)
+    foreach ($s in $e) {
+        Assert-Equal 'docker' $s.Exe
+        Assert-Equal 2 @($s.Arguments).Count ('one tag per step: ' + ($s.Arguments -join ' '))
+        Assert-Equal 'rmi' $s.Arguments[0]
+        Assert-True ($s.Arguments[1] -like 'sl-modernuo:*' -and $s.Arguments[1] -notin @('sl-modernuo:latest', 'sl-modernuo:good-6666666', 'sl-modernuo:rollback-live-20260927')) $s.Arguments[1]
+    }
+    Assert-True (((@($p | Where-Object { $_.Kind -eq 'confirm' })[0]).Text) -match 'up to [\d.]+ GB') 'the space freed is shown before the phrase'
+    # With docker system df -v's unique sizes (a real capture, 2026-10-14), a lower bound too.
+    $uf = $p96Facts.PSObject.Copy()
+    $uf | Add-Member -NotePropertyName UniqueSizes -NotePropertyValue (ConvertFrom-DockerDfImages ([IO.File]::ReadAllText((Join-Path $fixture 'docker-system-df-images-2026-10-14.json')))) -Force
+    Assert-True ($uf.UniqueSizes.Count -gt 50) ('unique sizes read: ' + $uf.UniqueSizes.Count)
+    $t = (@(Get-FixActionPlan 'fix.prune' -Facts $uf | Where-Object { $_.Kind -eq 'confirm' })[0]).Text
+    Assert-True ($t -match 'at least [\d.]+ [GM]B \(layers only those images use\) and up to [\d.]+ GB') $t
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count
+}
+
+Fact 'P96_TheSafetyCheckAllowsOnlyAConfirmedRmiOfOneSlModernuoTag' {
+    $ok = New-PlanStep -Kind confirm -Phrase 'prune images'
+    $rmi = { param([string[]]$a) New-PlanStep -Kind exec -Exe 'docker' -Arguments (@('rmi') + $a) }
+    Assert-Equal 0 @(Test-PlanSafety @($ok, (& $rmi @('sl-modernuo:cc-p50'))) $config).Count 'the one allowed shape'
+    foreach ($bad in @(@('uo-modernuo:latest'), @('sl-modernuo:latest'), @('-f', 'sl-modernuo:cc-p50'), @('sl-modernuo:cc-p50', 'sl-modernuo:cc-p51'), @('sl-modernuo:rollback-live-20260927'), @('sl-modernuo:pre-bump-7c9215d97'), @('bc04a35bf344'))) {
+        Assert-True (@(Test-PlanSafety @($ok, (& $rmi $bad)) $config).Count -gt 0) ('refused: rmi ' + ($bad -join ' '))
+    }
+    Assert-True (@(Test-PlanSafety @((& $rmi @('sl-modernuo:cc-p50'))) $config).Count -gt 0) 'refused without the phrase'
+    $liveNamed = @($ok, (& $rmi @('sl-modernuo:cc-p50')), (New-PlanStep -Kind say -Text 'x'), (New-PlanStep -Kind exec -Exe 'docker' -Arguments @('inspect', 'sl-modernuo')))
+    Assert-True (@(Test-PlanSafety $liveNamed $config).Count -gt 0) 'refused in a plan that names the live container'
+}
+
+Fact 'P96_RestartRestartsOnlyTheTestContainerAfterThePhraseThenWaits' {
+    $p = Get-FixActionPlan 'fix.restart' -State $p96CrashState
+    Assert-Equal 'restart test' @($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase
+    $e = @($p | Where-Object { $_.Kind -eq 'exec' })
+    Assert-Equal 'docker restart -t 60 sl-modernuo-test' (Format-CommandLine $e[0].Exe $e[0].Arguments)
+    $w = @($p | Where-Object { $_.Kind -eq 'healthwait' })
+    Assert-Equal 1 $w.Count 'it waits for healthy or a crash'
+    Assert-Equal 'sl-modernuo-test' $w[0].Container
+    Assert-Equal 0 @(Test-PlanSafety $p $config).Count
+    $live = @((New-PlanStep -Kind confirm -Phrase 'restart test'), (New-PlanStep -Kind healthwait -Container 'sl-modernuo'))
+    Assert-True (@(Test-PlanSafety $live $config).Count -gt 0) 'a health wait is only ever on the test container'
+    $gone = New-P96State
+    $gone.Shards['test'].Container = ConvertFrom-ContainerInspect $cap['inspect sl-console-missing']
+    Assert-Equal 1 @(Get-FixActionPlan 'fix.restart' -State $gone | Where-Object { $_.Kind -eq 'refuse' }).Count 'no container, nothing to restart'
+}
+
+Fact 'P96_EveryFixButtonHasAPhraseExceptDiagnoseAndIsOnItsOwnTab' {
+    $fix = @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Fix test shard' })
+    Assert-Equal 'fix.diagnose,fix.restart,fix.rollback,fix.rebuild,fix.prune' (($fix | ForEach-Object { $_.Key }) -join ',')
+    Assert-Equal 'restart test|roll back test|rebuild test|prune images' ((@('fix.restart', 'fix.rollback', 'fix.rebuild', 'fix.prune') | ForEach-Object { Get-ConfirmPhrase $_ }) -join '|')
+    Assert-True (-not ($fix | Where-Object { $_.Key -eq 'fix.diagnose' }).Mutates) 'Diagnose only reads'
+}
+
+Fact 'P96_EveryFixButtonClickedDryPrintsItsPlanAndRunsNothing' {
+    foreach ($k in 'fix.diagnose', 'fix.restart', 'fix.rollback', 'fix.rebuild', 'fix.prune') {
+        $r = Invoke-ClickCapture $k 'test' $true $p96CrashState
+        Assert-Equal 0 $r.Executed.Count ($k + ' runs nothing in the console')
+        Assert-True (@($r.Lines | Where-Object { $_ -match '^== DRY RUN: ' + [regex]::Escape($k) }).Count -eq 1) ($k + ' prints its plan: ' + ($r.Lines -join ' | '))
+        if ($k -eq 'fix.diagnose') { Assert-Equal 0 $r.Spawned.Count 'Diagnose prints here' }
+        else { Assert-True ($r.Spawned.Count -eq 1 -and $r.Spawned[0] -match ' -Mode DryRun ') ($k + ': ' + ($r.Spawned -join ' | ')) }
+    }
+}
+
+Fact 'P96_EveryFixButtonRunHeadlessWithDryRunRunsNothing' {
+    # The child a click opens, run for real with -DryRun: it reads the capture file, prints the plan, runs nothing.
+    foreach ($k in 'fix.diagnose', 'fix.restart', 'fix.rollback', 'fix.rebuild', 'fix.prune') {
+        $extra = @()
+        if ($k -eq 'fix.rebuild') { $extra = @('-Commit', 'HEAD') }
+        $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Resolve-Path $script).Path -DryRun -Action $k @extra 2>&1 | Out-String)
+        Assert-Equal 0 $LASTEXITCODE ($k + ': ' + $out)
+        Assert-True ($out -match ('== DRY RUN: ' + [regex]::Escape($k))) ($k + ': ' + $out)
+        Assert-True ($out -match '\(dry run: nothing was run\)') ($k + ': ' + $out)
+    }
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

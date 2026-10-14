@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.3
+
+### Staff
+- The Shard Console has a Fix test shard tab: diagnose a test shard that will not start, restart it, roll it back to the last build that came up healthy, rebuild a chosen commit, and prune old images. The test shard now reports healthy only once it is listening.
+
 ## 2026.10.14.2
 
 ### Staff

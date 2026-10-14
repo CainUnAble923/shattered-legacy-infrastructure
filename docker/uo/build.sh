@@ -124,7 +124,13 @@ fi
 
 echo
 echo "== 3/3 building runtime image $IMAGE_TAG ================================="
-docker build -t "$IMAGE_TAG" -f docker/uo/Dockerfile .
+# cc-P96: the commit the image was built from, as labels on the image only (no layer changes). The test
+# shard's Diagnose shows it, and Start-TestShard.ps1 names the good-<commit> tag after it. Dirty means
+# server/ or docker/ had changes git had not committed, so the image is not exactly that commit.
+SL_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo unknown)
+if git status --porcelain -- server docker 2>/dev/null | grep -q .; then SL_DIRTY=1; else SL_DIRTY=0; fi
+echo "[label] sl.commit=$SL_COMMIT sl.dirty=$SL_DIRTY"
+docker build -t "$IMAGE_TAG" --label "sl.commit=$SL_COMMIT" --label "sl.dirty=$SL_DIRTY" -f docker/uo/Dockerfile .
 
 echo
 echo "Built $IMAGE_TAG with patches applied and $passed shard test(s) passing."

@@ -1,0 +1,48 @@
+[SL] Starting Shattered Legacy ModernUO...
+[?1h=[SL] Commit: d4531cd94b739613155225c234900de9f47d2c88  .NET: 10.0.203
+[SL] Syncing Projects from bind mount...
+[?1h=[39;49m[32mModernUO - [https://github.com/modernuo/modernuo] Version 0.15.6.208
+[39;49m[39;49m[30mCopyright 2019-2026 ModernUO Development Team
+This program comes with ABSOLUTELY NO WARRANTY;
+This is free software, and you are welcome to redistribute it under certain conditions.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+[39;49m[39;49m[30m[[39;49m[39;49m[37m07:07:33[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mReading server configuration from [39;49m[39;49m[36mConfiguration/modernuo.json[39;49m[39;49m[37m...[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.ServerConfiguration[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m07:07:33[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mReading server configuration [39;49m[39;49m[36mdone[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.ServerConfiguration[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m07:07:33[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mRunning on [39;49m[39;49m[36m.NET 10.0.7[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Core[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m07:07:34[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading Map Definitions[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.MapLoader[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m07:07:34[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mLoading map definitions [39;49m[39;49m[36mdone[39;49m[39;49m[37m ([39;49m[39;49m[35m7[39;49m[39;49m[37m maps, [39;49m[39;49m[35m0[39;49m[39;49m[37m failures) ([39;49m[39;49m[35m0.01[39;49m[39;49m[37m seconds)[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.MapLoader[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m07:07:34[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mEmail configuration read from [39;49m[39;49m[36mConfiguration/email-settings.json[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Configurations.EmailConfiguration[39;49m[39;49m[30m>[39;49m
+[SaveOnShutdown] listening for SIGTERM: a stop saves the world first (D36)
+[39;49m[30m[[39;49m[39;49m[37m07:07:34[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mRegistered connection filter '[39;49m[39;49m[36mfirewall[39;49m[39;49m[37m'[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.ConnectionFilters[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m07:07:34[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mRegistered connection filter '[39;49m[39;49m[36mauto-denylist[39;49m[39;49m[37m'[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.ConnectionFilters[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m07:07:34[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mBan channel registered reporter '[39;49m[39;49m[36mauto-denylist[39;49m[39;49m[37m'[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.Bans.BanChannel[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m07:07:34[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mBan channel registered reporter '[39;49m[39;49m[36mcrowdsec[39;49m[39;49m[37m'[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.Bans.BanChannel[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m07:07:34[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mRegistered connection filter '[39;49m[39;49m[36mblocklist[39;49m[39;49m[37m'[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.ConnectionFilters[39;49m[39;49m[30m>[39;49m
+[League] Loaded the League ladder table from /modernuo/Configuration/league-ladder.json.
+ClusterF skill scaling: curve 1.5; at 200: Nerve Strike 0.9 -> 0.95, stable slots per skill 3 -> 6, Fire Horn x1.1, Stealth steps 24 -> 34, bandage average 57.5 -> 72.
+[39;49m[30m[[39;49m[39;49m[37m07:07:34[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mEncryption support enabled: [39;49m[39;49m[32mBoth[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.Network.EncryptionManager[39;49m[39;49m[30m>[39;49m
+[39;49m[30m[[39;49m[39;49m[37m07:07:34[39;49m[39;49m[30m [39;49m[39;49m[37mINF[39;49m[39;49m[30m] [39;49m[39;49m[37mAutomatically detected client version [39;49m[39;49m[36m7.0.114.40[39;49m[39;49m[30m <s:[39;49m[39;49m[37mServer.UOClient[39;49m[39;49m[30m>[39;49m
+Error:
+System.Reflection.TargetInvocationException: Exception has been thrown by the target of an invocation.
+ ---> System.TypeInitializationException: The type initializer for 'Server.ImbueCatalogue' threw an exception.
+ ---> System.IndexOutOfRangeException: Index was outside the bounds of the array.
+   at Server.ImbueCatalogue.SkillRowName(SkillName skill)
+   at Server.ImbueCatalogue.AddSkill(SkillName skill, Int32 slot, ImbuableItem applies, String family, Func`2 allows)
+   at Server.ImbueCatalogue..cctor()
+   --- End of inner exception stack trace ---
+   at Server.ImbuingTable.BuildDefaults()
+   at Server.ImbuingTable.get_Defaults()
+   at Server.ImbuingTable.LoadOrWriteDefaults(String path)
+   at Server.ClusterFImbueKnowledge.Configure()
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+   --- End of inner exception stack trace ---
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+   at Server.AssemblyHandler.Invoke(String method) in /build/modernuo/Projects/Server/AssemblyHandler.cs:line 147
+   at Server.Core.Setup(Assembly applicationAssembly, Process process) in /build/modernuo/Projects/Server/Main.cs:line 667
+   at Server.Application.Main(String[] args) in /build/modernuo/Projects/Application/Application.cs:line 10
+This exception is fatal, press return to exit

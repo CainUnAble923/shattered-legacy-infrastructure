@@ -1,0 +1,12 @@
+{
+  "_comment": "cc-P96. The Shard Console's Fix test shard tab reads this. knownCrashes: plain text (not a pattern) found in a crash's exception text, and the bug-list row it is; copy the text straight out of a stack frame. keepGood: how many of the newest sl-modernuo:good-* tags Prune images keeps. keepTags: sl-modernuo tags Prune images never offers (with or without the sl-modernuo: prefix).",
+  "knownCrashes": [
+    {
+      "match": "ImbueCatalogue..cctor",
+      "bug": "D89",
+      "title": "the Imbuing catalogue read the skill table before SkillsInfo.Configure filled it; fixed by cc-P95"
+    }
+  ],
+  "keepGood": 5,
+  "keepTags": []
+}

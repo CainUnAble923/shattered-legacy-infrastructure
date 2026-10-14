@@ -131,7 +131,9 @@ param(
     [string]$PackageNotesB64,
     [string]$PackageZip,
     [string]$ImageTag,
-    [string]$WipeAdmin
+    [string]$WipeAdmin,
+    # cc-P96: Fix test shard > Rebuild's commit (a hash from its list, or HEAD).
+    [string]$Commit
 )
 
 # =============================================================================================
@@ -151,6 +153,8 @@ $script:SavesOnStopLine = '[SaveOnShutdown] listening for SIGTERM: a stop saves 
 $script:CommitPublicWarning = 'Both repos are PUBLIC on GitHub: a commit that is pushed cannot be taken back.'
 # cc-P63: said above the phrase before a publish. Publish-PlayerPackage.ps1 serves version.json, which every launcher reads.
 $script:PublishPublicWarning = 'This is PUBLIC: every player''s launcher is offered this package at its next start.'
+# cc-P96: the test shard's health and crash judgments, shared with docker/uo/Start-TestShard.ps1. Pure functions.
+. (Join-Path $PSScriptRoot 'Shard-Health.ps1')
 
 function New-AutopilotConfig {
     # cc-P74. The autopilot's files, by its folder and its queue, so the facts can point both at fixtures.
@@ -178,6 +182,10 @@ function New-AutopilotConfig {
 
 function Get-ConsoleConfig {
     param([Parameter(Mandatory = $true)][string]$RepoRoot)
+    # cc-P96: the one file this reads. Missing or broken, ConvertFrom-FixConfig gives the defaults.
+    $fixFile = Join-Path $RepoRoot 'scripts\fix-test-shard.json'
+    $fixJson = $null
+    if (Test-Path -LiteralPath $fixFile) { $fixJson = [IO.File]::ReadAllText($fixFile) }
     $lib = Join-Path $RepoRoot 'server\lib\uo\modernuo'
     $shards = [ordered]@{
         test = [pscustomobject]@{
@@ -265,6 +273,12 @@ function Get-ConsoleConfig {
         CacheFolder        = (Join-Path $RepoRoot 'scripts\shard-console-cache')
         GumpFile           = (Join-Path $RepoRoot 'client-data\classic-client\gumpartLegacyMUL.uop')
         CrestFile          = (Join-Path $RepoRoot 'branding\intro\crest-128.png')
+        # cc-P96, Fix test shard: known crash signatures and the prune keep list (scripts/fix-test-shard.json), where
+        # Start-TestShard.ps1 builds a chosen commit, and the record of what last wrote the test save.
+        Fix                = (ConvertFrom-FixConfig $fixJson)
+        FixConfigFile      = $fixFile
+        FixWorktree        = 'D:\UO\test-shard-src'
+        SaveRecordFile     = (Join-Path (Join-Path $RepoRoot 'server\lib\uo\modernuo-test') 'shard-commit.json')
     }
 }
 
@@ -315,7 +329,7 @@ function ConvertFrom-ContainerInspect {
         Exists = $false; Error = $r.Error; Name = $null; ImageId = $null; ConfigImage = $null
         Status = 'missing'; Running = $false; StartedAtRaw = $null; StartedAt = $null
         FinishedAt = $null; ExitCode = $null; GamePort = $null; ComposeProject = $null
-        MountTargets = @(); Mounts = @()
+        MountTargets = @(); Mounts = @(); Health = ''
     }
     if ($r.Items.Count -gt 0) {
         $c = $r.Items[0]
@@ -339,6 +353,8 @@ function ConvertFrom-ContainerInspect {
         $rec.ExitCode = $c.State.ExitCode
         $rec.GamePort = $port
         $rec.ComposeProject = $project
+        # cc-P96: docker's own health check (docker-compose.test.yml); empty for a container made without one.
+        if ($c.State.Health) { $rec.Health = [string]$c.State.Health.Status }
         if ($c.Mounts) {
             $rec.MountTargets = @($c.Mounts | ForEach-Object { [string]$_.Destination } | Where-Object { $_ })
             # cc-P42 Part E: the host side too, so a parent mount can be traced to the folder it serves.
@@ -353,12 +369,19 @@ function ConvertFrom-ImageInspect {
     param([string]$Text)
     $r = ConvertFrom-DockerJson $Text
     if ($r.Items.Count -eq 0) {
-        return [pscustomobject]@{ Exists = $false; Id = $null; RepoTags = @(); Created = $null; Error = $r.Error }
+        return [pscustomobject]@{ Exists = $false; Id = $null; RepoTags = @(); Created = $null; Error = $r.Error; Commit = $null; Dirty = $false }
     }
     $i = $r.Items[0]
+    # cc-P96: build.sh labels the image with the commit it was built from (sl.commit) and whether the tree had changes.
+    $commit = $null; $dirty = $false
+    if ($i.Config -and $i.Config.Labels) {
+        $lc = [string]$i.Config.Labels.'sl.commit'
+        if ($lc -match '^[0-9a-f]{40}$') { $commit = $lc }
+        $dirty = ([string]$i.Config.Labels.'sl.dirty' -eq '1')
+    }
     [pscustomobject]@{
         Exists = $true; Id = $i.Id; RepoTags = @($i.RepoTags)
-        Created = (ConvertFrom-DockerTime $i.Created); Error = $null
+        Created = (ConvertFrom-DockerTime $i.Created); Error = $null; Commit = $commit; Dirty = $dirty
     }
 }
 
@@ -369,7 +392,12 @@ function ConvertFrom-ImageTagListing {
     $out = foreach ($l in @((Remove-Ansi $Text) -split "`n")) {
         if ($l.Trim() -notmatch '^([^|\s]+)\|([0-9a-f]{12,})\|(\d{4}-\d\d-\d\d) (\d\d:\d\d:\d\d) ([+-]\d\d)(\d\d)') { continue }
         $created = [DateTimeOffset]::Parse($Matches[3] + 'T' + $Matches[4] + $Matches[5] + ':' + $Matches[6], $script:Invariant).UtcDateTime
-        [pscustomobject]@{ Tag = $Matches[1]; Id = (Format-ShortId $Matches[2]); Created = $created }
+        $tag = $Matches[1]; $id = (Format-ShortId $Matches[2])
+        # cc-P96: a fourth field, {{.Size}}, for Prune images. Listings from before it have none.
+        $parts = @($l.Trim() -split '\|')
+        $size = $null
+        if ($parts.Count -ge 4) { $size = ConvertFrom-ImageSize $parts[3] }
+        [pscustomobject]@{ Tag = $tag; Id = $id; Created = $created; Size = $size }
     }
     @($out | Sort-Object Created -Descending)
 }
@@ -643,6 +671,10 @@ function Get-ConfirmPhrase {
         'package.publish'  { 'publish player package' }
         'test.deploy'      { 'deploy to test' }
         'test.wipe'        { 'WIPE TEST ACCOUNTS' }
+        'fix.restart'      { 'restart test' }
+        'fix.rollback'     { 'roll back test' }
+        'fix.rebuild'      { 'rebuild test' }
+        'fix.prune'        { 'prune images' }
         default            { 'confirm live' }
     }
 }
@@ -655,6 +687,10 @@ function Get-ConfirmSubject {
         'package.publish' { 'Publish player package' }
         'test.deploy'     { 'Deploy to test' }
         'test.wipe'       { 'Wipe test accounts' }
+        'fix.restart'     { 'Restart the test shard' }
+        'fix.rollback'    { 'Roll back the test shard' }
+        'fix.rebuild'     { 'Rebuild the test shard' }
+        'fix.prune'       { 'Prune images' }
         default           { 'LIVE shard' }
     }
 }
@@ -695,7 +731,7 @@ function Get-ChildArgumentLine {
         [string]$SelfPath, [string]$ActionKey, [string]$ShardKey, [string]$SnapshotName,
         [string]$Snapshot, [string]$ConfirmLive, [switch]$Yes, [switch]$DryRun, [string]$StatusFrom,
         [switch]$StatusFromDocker, [string]$CommitMessage, [string]$PackageNotes, [string]$PackageZip,
-        [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [switch]$ForPane
+        [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [switch]$ForPane, [string]$Commit
     )
     $mode = 'Execute'
     if ($DryRun) { $mode = 'DryRun' }
@@ -727,6 +763,8 @@ function Get-ChildArgumentLine {
     # cc-P73: the new admin's name, which Test-WipeAdminName keeps to one word. Never the password:
     # the child asks for that itself.
     if ($WipeAdmin) { $a += ' -WipeAdmin "' + ($WipeAdmin -replace '"', '') + '"' }
+    # cc-P96: a commit picked from Rebuild's list; only hex or HEAD crosses, and the plan refuses one not on the list.
+    if ($Commit -match '^([0-9a-fA-F]{7,40}|HEAD)$') { $a += ' -Commit ' + $Commit }
     $a
 }
 
@@ -822,6 +860,12 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'test.deploy';      Group = 'Test shard'; Label = 'Deploy built image';                  Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'test.tail';        Group = 'Test shard'; Label = 'Tail the log';                        Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'test.client';      Group = 'Test shard'; Label = 'Open a client';                       Mutates = $false; RunIn = 'here' }
+        # cc-P96: its own tab. Diagnose only reads and prints here; the other four confirm with a phrase and run in a window.
+        [pscustomobject]@{ Key = 'fix.diagnose';     Group = 'Fix test shard'; Label = 'Diagnose';                        Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'fix.restart';      Group = 'Fix test shard'; Label = 'Restart';                         Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'fix.rollback';     Group = 'Fix test shard'; Label = 'Roll back to last good';          Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'fix.rebuild';      Group = 'Fix test shard'; Label = 'Rebuild a commit';                Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'fix.prune';        Group = 'Fix test shard'; Label = 'Prune images';                    Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'live.start';       Group = 'LIVE shard'; Label = 'Start';                               Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'live.stop';        Group = 'LIVE shard'; Label = 'Stop';                                Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'live.restart';     Group = 'LIVE shard'; Label = 'Restart';                             Mutates = $true;  RunIn = 'window' }
@@ -1022,6 +1066,11 @@ function Get-ConsoleTooltips {
         'test.deploy'      = 'Points sl-modernuo:latest at an image a prompt already built (sl-modernuo:cc-pNN), after the phrase deploy to test, then restarts the TEST shard on it. Never touches live.'
         'test.tail'        = 'Follows the test shard log as it is written. Read-only; Stop (or closing its window) ends it.'
         'test.client'      = 'Opens a game client pointed at the test shard (port 2594). Changes nothing.'
+        'fix.diagnose'     = 'Reads the test shard: status, health, image and commit, uptime, and for a crash its exception, first five frames and the bug-list row it matches. Changes nothing.'
+        'fix.restart'      = 'Restarts the test container on the image it has, after the phrase restart test, then waits for it to listen or crash. Never touches live.'
+        'fix.rollback'     = 'Backs up the test save, then starts the test shard on the newest sl-modernuo:good-* image, after the phrase roll back test. Warns if the save is newer than that image. latest is not moved.'
+        'fix.rebuild'      = 'Builds a commit you pick through every test gate (in a worktree outside the repo) and starts the test shard on it, after the phrase rebuild test. Minutes.'
+        'fix.prune'        = 'Removes old sl-modernuo tags after the phrase prune images, listing them and the space freed. Keeps latest, the newest good-* tags, rollback-*, pre-bump-*, the keep list and what any container runs.'
         'live.start'       = 'docker start on the existing live container, after a typed phrase. Never creates a container and never runs compose.'
         'live.stop'        = 'docker stop on the live container, after a typed phrase. Real players are disconnected; the plan says whether the stop saves first.'
         'live.restart'     = 'docker restart on the live container, after a typed phrase. Real players are disconnected.'
@@ -1079,6 +1128,7 @@ function Get-ConsoleTooltips {
         'tile.AUTOPILOT'   = 'What the CC autopilot is doing: off, idle, running a prompt, or NEEDS YOU after it emailed you.'
         'tile.PLAY TESTS'  = 'How many play tests wait in the queue; amber while a Fail is not in the bug list yet.'
         'tab.Test shard'   = 'The throwaway test shard: start, stop, rebuild, deploy, wipe, tail and a client.'
+        'tab.Fix test shard' = 'When the test shard will not start: diagnose it, restart it, roll back to the last good image, rebuild a commit, prune old images.'
         'tab.Snapshots'    = 'Named copies of a shard''s save: create, restore, delete.'
         'tab.World setup'  = 'In-game commands to paste into a client, read from the code. The console cannot run them.'
         'tab.Diagnostics'  = 'The two read-only health checks and their folder, and Disconnect VPN.'
@@ -1170,11 +1220,11 @@ function Format-PaneExit {
 function New-PlanStep {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'checkzip', 'gatecheck', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log', 'secret', 'wiperequest', 'wipewait')]
+        [ValidateSet('confirm', 'ask', 'say', 'refuse', 'exec', 'script', 'checkzip', 'gatecheck', 'window', 'launch', 'move', 'copy', 'verify', 'stopped', 'remove-snapshot', 'log', 'secret', 'wiperequest', 'wipewait', 'healthwait')]
         [string]$Kind,
         [string]$Text, [string]$Exe, [string[]]$Arguments, [string]$From, [string]$To,
         [string]$Path, [string]$Phrase, [string]$Container, [switch]$IfExists,
-        [Collections.IDictionary]$Named
+        [Collections.IDictionary]$Named, [int]$Seconds
     )
     $a = @()
     if ($Arguments) { $a = @($Arguments) }
@@ -1184,7 +1234,7 @@ function New-PlanStep {
     if ($Named) { foreach ($k in $Named.Keys) { $n[$k] = $Named[$k] } }
     [pscustomobject]@{
         Kind = $Kind; Text = $Text; Exe = $Exe; Arguments = $a; From = $From; To = $To
-        Path = $Path; Phrase = $Phrase; Container = $Container; IfExists = [bool]$IfExists; Named = $n
+        Path = $Path; Phrase = $Phrase; Container = $Container; IfExists = [bool]$IfExists; Named = $n; Seconds = $Seconds
     }
 }
 
@@ -1706,6 +1756,226 @@ function Get-WipePlan {
     $steps.ToArray()
 }
 
+# --- cc-P96: Fix test shard ----------------------------------------------------------------------------------
+# Chase, 2026-10-14 07:11: "we need a test shard fix button. it will not start right now." That morning the
+# 07:07 deploy built HEAD, the shard threw at start (bug-list D89) and sat at "press return to exit" while
+# Docker said Up. The tab: Diagnose (reads), Restart, Roll back to last good, Rebuild a commit, Prune images.
+# The health and crash judgments are scripts/Shard-Health.ps1's, shared with Start-TestShard.ps1, which tags
+# sl-modernuo:good-<commit> after a healthy start (Part C) and writes shard-commit.json in the test world.
+
+function ConvertFrom-FixConfig {
+    # scripts/fix-test-shard.json: known crash signatures, how many good tags prune keeps, and tags it never offers.
+    # A missing or unreadable file gives the defaults, with D89's signature, so the tile still names it.
+    param([string]$Json)
+    $cfg = [pscustomobject]@{
+        KnownCrashes = @([pscustomobject]@{ Match = 'ImbueCatalogue..cctor'; Bug = 'D89'; Title = 'the Imbuing catalogue read the skill table too early' })
+        KeepGood     = 5
+        KeepTags     = @()
+        Error        = $null
+    }
+    if (-not $Json) { return $cfg }
+    try { $j = $Json | ConvertFrom-Json } catch { $cfg.Error = 'fix-test-shard.json is not JSON: ' + $_.Exception.Message; return $cfg }
+    if ($j.knownCrashes) {
+        $cfg.KnownCrashes = @($j.knownCrashes | Where-Object { $_.match -and $_.bug } | ForEach-Object {
+            [pscustomobject]@{ Match = [string]$_.match; Bug = [string]$_.bug; Title = [string]$_.title } })
+    }
+    if ($j.keepGood -is [int] -or $j.keepGood -is [long]) { $cfg.KeepGood = [Math]::Max(1, [int]$j.keepGood) }
+    if ($j.keepTags) { $cfg.KeepTags = @($j.keepTags | ForEach-Object { [string]$_ } | Where-Object { $_ }) }
+    $cfg
+}
+
+function ConvertFrom-GitLogLines {
+    # git log --format=%H|%cs|%s, one commit per line, newest first.
+    param([string]$Text)
+    @(foreach ($l in @(([string]$Text -replace "`r", '') -split "`n")) {
+        if ($l -match '^([0-9a-f]{40})\|(\d{4}-\d\d-\d\d)\|(.*)$') {
+            [pscustomobject]@{ Sha = $Matches[1]; Short = $Matches[1].Substring(0, 7); Date = $Matches[2]; Subject = $Matches[3] }
+        }
+    })
+}
+
+function ConvertFrom-DockerDfImages {
+    # `docker system df -v --format {{json .Images}}`: each image's UniqueSize, by 12-character id. $null if unreadable.
+    param([string]$Text)
+    # Windows PowerShell 5.1 hands a JSON array on as one object, so enumerate it.
+    try { $rows = @(([string]$Text).Trim() | ConvertFrom-Json | ForEach-Object { $_ }) } catch { return $null }
+    $h = @{}
+    foreach ($r in $rows) {
+        $id = Format-ShortId ([string]$r.ID)
+        $b = ConvertFrom-ImageSize ([string]$r.UniqueSize)
+        if ($id -and $null -ne $b) { $h[$id] = $b }
+    }
+    $h
+}
+
+function Get-ImageTagsFor {
+    # Every sl-modernuo tag on one image id (short or long), from the state's listing.
+    param($State, [string]$Id)
+    if (-not $Id) { return @() }
+    $short = Format-ShortId $Id
+    @(@($State.Images) | Where-Object { $_.Id -eq $short } | ForEach-Object { $_.Tag })
+}
+
+function Get-FixDiagnosis {
+    # Diagnose's lines: the test container, its health, its image and commit, uptime, the last good image, what
+    # last wrote the save, and for a crash its type, message, chain, first five frames and the bug it matches.
+    param($Config, $State, $Facts)
+    $sh = $Config.Shards['test']
+    $ss = $State.Shards['test']
+    $c = $ss.Container
+    $out = New-Object 'System.Collections.Generic.List[string]'
+    $crash = $ss.Crash
+    if (-not $c.Exists) {
+        $out.Add('Container: there is no ' + $sh.Container + ' container. Rebuild or Roll back creates it.')
+    } elseif ($c.Running) {
+        $out.Add('Container: ' + $sh.Container + ', running, up ' + (Format-Age ($State.Now - $c.StartedAt)) + ' (started ' + (Format-LocalTime $c.StartedAt) + ')')
+    } else {
+        $f = ''
+        if ($c.FinishedAt) { $f = ', stopped ' + (Format-Age ($State.Now - $c.FinishedAt)) + ' ago' }
+        $out.Add('Container: ' + $sh.Container + ', ' + $c.Status + ' (exit code ' + $c.ExitCode + ')' + $f)
+    }
+    $h = Get-HealthState -Exists $c.Exists -Running $c.Running -Health ([string]$c.Health) -Crash $crash
+    $out.Add('Health: ' + $h.State + ' - ' + $h.Detail)
+    if ($c.Exists) {
+        $tags = @(Get-ImageTagsFor $State $c.ImageId)
+        $tagText = 'no sl-modernuo tag'
+        if ($tags.Count) { $tagText = $tags -join ', ' }
+        $img = 'Image: ' + $tagText + ' (' + (Format-ShortId $c.ImageId) + ')'
+        $ri = $ss.RunningImage
+        if ($ri -and $ri.Exists -and $ri.Created) { $img += ', built ' + (Format-LocalTime $ri.Created) }
+        if ($ri -and $ri.Commit) {
+            $img += '; commit ' + $ri.Commit.Substring(0, [Math]::Min(7, $ri.Commit.Length))
+            if ($ri.Dirty) { $img += ' with uncommitted changes' }
+        } else {
+            $fromTag = @($tags | ForEach-Object { Get-GoodTagCommit $_ } | Where-Object { $_ })
+            if ($fromTag.Count) { $img += '; commit ' + $fromTag[0] + ' (from its good tag)' }
+            else { $img += '; commit unknown (no sl.commit label: built before cc-P96)' }
+        }
+        $out.Add($img)
+    }
+    $lg = Get-LastGoodImage $State.Images
+    if ($lg) { $out.Add('Last good: ' + $lg.Tag + ' (' + $lg.Id + ', built ' + (Format-LocalTime $lg.Created) + '). Roll back runs it.') }
+    else { $out.Add('Last good: none yet. Start-TestShard.ps1 tags sl-modernuo:good-<commit> after each healthy start (cc-P96).') }
+    if ($Facts -and $Facts.SaveRecord -and $Facts.SaveRecord.commit) {
+        $out.Add('Save last written by: commit ' + ([string]$Facts.SaveRecord.commit).Substring(0, 7) + ' (' + [string]$Facts.SaveRecord.image + ', healthy start at ' + [string]$Facts.SaveRecord.at + ')')
+    } else {
+        $out.Add('Save last written by: not known (shard-commit.json is written by a healthy start from cc-P96 on).')
+    }
+    if ($crash -and $crash.Crashed) {
+        $where = 'after it had started'
+        if ($crash.AtStart) { $where = 'at start' }
+        $out.Add('Crashed ' + $where + ': ' + $crash.Type + ': ' + $crash.Message)
+        if (@($crash.Chain).Count -gt 1) { $out.Add('Exception chain: ' + ((@($crash.Chain) | ForEach-Object { ($_.Type -split '\.')[-1] }) -join ' -> ')) }
+        foreach ($f in @($crash.Frames)) { $out.Add('  at ' + $f) }
+        $k = Find-KnownCrash $crash $Config.Fix.KnownCrashes
+        if ($k) { $out.Add('Known bug ' + $k.Bug + ': ' + $k.Title + '. Roll back runs the last good image; Rebuild a commit with the fix.') }
+        else { $out.Add('No known bug matches. If it is one, add a line of its stack to scripts\fix-test-shard.json (knownCrashes).') }
+    } elseif ($h.State -eq 'UNHEALTHY') {
+        $out.Add('Not listening, and no crash in the log since this start: tail the log, or Restart.')
+    }
+    $out.ToArray()
+}
+
+function Get-FixPlan {
+    param([string]$Action, $Config, $State, $Facts, [string]$ImageTag, [string]$Commit, [datetime]$Now)
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    $sh = $Config.Shards['test']
+    $ss = $State.Shards['test']
+    $c = $ss.Container
+    $sts = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Config.StartTestShard)
+    $noSave = $script:NoSaveWarning
+    if ($ss.SavesOnStop) { $noSave = $script:SavesOnStopNote }
+    switch ($Action) {
+        'fix.diagnose' {
+            foreach ($l in (Get-FixDiagnosis -Config $Config -State $State -Facts $Facts)) { $steps.Add((New-PlanStep -Kind say -Text $l)) }
+            $steps.Add((New-PlanStep -Kind log -Text 'fix.diagnose'))
+        }
+        'fix.restart' {
+            if (-not $c.Exists) { $steps.Add((New-PlanStep -Kind refuse -Text ('There is no ' + $sh.Container + ' container to restart. Rebuild or Roll back creates one.'))); break }
+            $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ('This restarts the TEST shard (' + $sh.Container + ') on the image it has, then waits for it to listen or crash. ' + $noSave)))
+            $steps.Add((New-PlanStep -Kind exec -Exe 'docker' -Arguments @('restart', '-t', [string]$Config.StopTimeout, $sh.Container) -Text ('docker restart: the same container and the same image. ' + $noSave)))
+            $steps.Add((New-PlanStep -Kind healthwait -Container $sh.Container -Seconds 300 -Text 'Waiting for the health check to say healthy, or for a crash in the log.'))
+            $steps.Add((New-PlanStep -Kind log -Text 'fix.restart'))
+        }
+        'fix.rollback' {
+            $good = @(@($State.Images) | Where-Object { Get-GoodTagCommit $_.Tag })
+            $pick = $null
+            if ($ImageTag) { $pick = @($good | Where-Object { $_.Tag -ceq $ImageTag })[0] }
+            else { $pick = Get-LastGoodImage $State.Images }
+            if (-not $pick) {
+                $t = 'There is no sl-modernuo:good-* image to roll back to. Start-TestShard.ps1 tags one after each healthy start (cc-P96); until then, Test shard > Deploy built image runs a cc-p* build.'
+                if ($ImageTag) { $t = $ImageTag + ' is not a good-* image in docker images sl-modernuo.' }
+                $steps.Add((New-PlanStep -Kind refuse -Text $t)); break
+            }
+            $imgCommit = Get-GoodTagCommit $pick.Tag
+            $dest = Join-Path (Join-Path $Config.SnapshotRoot $sh.Key) (New-SnapshotFolderName ('pre-rollback-' + $imgCommit) $Now)
+            $back = 'backs up its save to ' + $dest
+            if (-not $ss.Save.Exists) { $back = 'has no save to back up' }
+            $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ('This stops the TEST shard, ' + $back + ', and starts it on ' + $pick.Tag + ' (' + $pick.Id + ', built ' + (Format-LocalTime $pick.Created) + '). ' + $Config.LatestTag + ' is not moved and nothing live is touched.')))
+            if ($Facts -and $Facts.SaveNewer -eq $true) {
+                $sc = ([string]$Facts.SaveRecord.commit).Substring(0, 7)
+                $steps.Add((New-PlanStep -Kind say -Text ('WARNING: the test save was last written by ' + $sc + ', a newer commit than ' + $imgCommit + '. An older build may not read what a newer one saved (a new type or field). The backup below is the way back.')))
+            } elseif (-not $Facts -or $null -eq $Facts.SaveNewer) {
+                $steps.Add((New-PlanStep -Kind say -Text ('It is not known which commit last wrote the test save (shard-commit.json is written by a healthy start from cc-P96 on), so whether it is newer than ' + $imgCommit + ' is unknown.')))
+            }
+            $steps.Add((New-PlanStep -Kind exec -Exe $Config.PowerShell -Arguments ($sts + '-Down') -Text ('docker/uo/Start-TestShard.ps1 -Down, so nothing writes the save while it is copied. ' + $noSave)))
+            $steps.Add((New-PlanStep -Kind stopped -Container $sh.Container -Text ('Checking ' + $sh.Container + ' is not running.')))
+            if ($ss.Save.Exists) {
+                $steps.Add((New-PlanStep -Kind copy -From $sh.Saves -To $dest -Text ('Backing up the test save to ' + $dest)))
+                $steps.Add((New-PlanStep -Kind verify -From $sh.Saves -To $dest -Text 'Checking the backup has the same files and bytes.'))
+            } else {
+                $steps.Add((New-PlanStep -Kind say -Text ('There is no test save at ' + $sh.Saves + ', so there is nothing to back up.')))
+            }
+            $steps.Add((New-PlanStep -Kind exec -Exe $Config.PowerShell -Arguments ($sts + @('-Image', $pick.Tag)) -Text ('docker/uo/Start-TestShard.ps1 -Image ' + $pick.Tag + ': starts the test shard on it and waits for healthy or a crash.')))
+            $steps.Add((New-PlanStep -Kind log -Text ('fix.rollback to ' + $pick.Tag + ' (' + $pick.Id + '); save backed up to ' + $dest)))
+        }
+        'fix.rebuild' {
+            $rows = @()
+            if ($Facts) { $rows = @($Facts.Commits) }
+            $want = $Commit
+            if ($want -eq 'HEAD' -and $Facts) { $want = $Facts.Head }
+            $lgc = Get-GoodTagCommit ([string](Get-LastGoodImage $State.Images).Tag)
+            $hit = $null
+            if ($want -match '^[0-9a-f]{7,40}$') {
+                $hit = @($rows | Where-Object { $_.Sha.StartsWith($want) -or ($want.Length -ge 7 -and $want.StartsWith($_.Short)) })[0]
+                if (-not $hit -and $lgc -and $want.StartsWith($lgc)) { $hit = [pscustomobject]@{ Sha = $want; Short = $lgc; Subject = 'the last good image''s commit' } }
+            }
+            if (-not $hit) {
+                $steps.Add((New-PlanStep -Kind refuse -Text ('Choose a commit from the list (HEAD, the recent commits, or the last good one): ''' + $Commit + ''' is not one of them.'))); break
+            }
+            $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ('This builds commit ' + $hit.Short + ' (' + $hit.Subject + ') through build.sh and every test gate, in a worktree outside the repo (' + $Config.FixWorktree + '), as sl-modernuo:test-' + $hit.Short + ', then restarts the TEST shard on it and waits for healthy or a crash. Minutes. ' + $Config.LatestTag + ' is not moved; nothing live is touched. ' + $noSave)))
+            $steps.Add((New-PlanStep -Kind exec -Exe $Config.PowerShell -Arguments ($sts + @('-Commit', $hit.Sha)) -Text ('docker/uo/Start-TestShard.ps1 -Commit ' + $hit.Short + ': build, start, wait; tagged good-' + $hit.Short + ' if it comes up healthy.')))
+            $steps.Add((New-PlanStep -Kind log -Text ('fix.rebuild ' + $hit.Sha)))
+        }
+        'fix.prune' {
+            $protect = @()
+            foreach ($k in 'test', 'live') {
+                $cc = $State.Shards[$k].Container
+                if ($cc -and $cc.Exists -and $cc.ImageId) { $protect += $cc.ImageId }
+            }
+            $uniq = $null
+            if ($Facts -and $Facts.UniqueSizes) { $uniq = $Facts.UniqueSizes }
+            $set = Get-PruneSet -Images $State.Images -KeepGood $Config.Fix.KeepGood -KeepTags $Config.Fix.KeepTags -ProtectIds $protect -UniqueSizes $uniq
+            if (-not @($set.Remove).Count) { $steps.Add((New-PlanStep -Kind refuse -Text ('Nothing to prune: every sl-modernuo tag is kept (' + @($set.Keep).Count + ' tags).'))); break }
+            # docker images' sizes count every shared layer again, so their sum is only an upper bound; the unique
+            # sizes docker system df -v reports are the layers no other image uses, a lower bound.
+            $freed = 'up to ' + (Format-Bytes $set.FreedBytes) + ' (full image sizes; most layers are shared, so the real figure is lower)'
+            if ($null -ne $set.AtLeastBytes) { $freed = 'at least ' + (Format-Bytes $set.AtLeastBytes) + ' (layers only those images use) and ' + $freed }
+            if ($set.SizeUnknown) { $freed += ' (some sizes unknown)' }
+            $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ('This removes ' + @($set.Remove).Count + ' sl-modernuo tags and keeps ' + @($set.Keep).Count + ', freeing ' + $freed + '. An image that still has another tag only loses this one; layers shared with a kept image stay. uo-modernuo and anything a container runs are never removed.')))
+            foreach ($k in $set.Keep) { $steps.Add((New-PlanStep -Kind say -Text ('keep    ' + $k.Tag + '  (' + $k.Why + ')'))) }
+            foreach ($r in $set.Remove) {
+                $sz = ''
+                if ($null -ne $r.Size) { $sz = ', ' + (Format-Bytes $r.Size) }
+                $steps.Add((New-PlanStep -Kind exec -Exe 'docker' -Arguments @('rmi', $r.Tag) -Text ('remove ' + $r.Tag + ' (' + $r.Id + $sz + ', built ' + (Format-LocalTime $r.Created) + ')')))
+            }
+            $steps.Add((New-PlanStep -Kind log -Text ('fix.prune removed ' + @($set.Remove).Count + ' tags, ' + $freed)))
+        }
+        default { $steps.Add((New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'."))) }
+    }
+    $steps.ToArray()
+}
+
 function Get-ActionPlan {
     # Every button is a plan: a list of steps, built here from the status and nothing else. The
     # shell runs it or, under -DryRun, prints it. So what -DryRun prints is exactly what runs.
@@ -1714,7 +1984,7 @@ function Get-ActionPlan {
         [string]$SnapshotName, [string]$Snapshot, [datetime]$Now = [datetime]::MinValue,
         [string]$CommitMessage, $CommitFacts,
         [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag, [switch]$CommitForce,
-        $WipeFacts, [string]$WipeAdmin, $AutopilotFacts, $VpnFacts
+        $WipeFacts, [string]$WipeAdmin, $AutopilotFacts, $VpnFacts, $FixFacts, [string]$Commit
     )
     # cc-P83: the two links read nothing.
     if ($Action -like 'links.*') { return (Get-LinkPlan -Action $Action -Config $Config) }
@@ -1729,6 +1999,8 @@ function Get-ActionPlan {
     if ($Action -eq 'test.deploy') { return (Get-DeployPlan -Config $Config -State $State -ImageTag $ImageTag) }
     if ($Now -eq [datetime]::MinValue) { $Now = $State.Now }
     if ($Action -eq 'test.wipe') { return (Get-WipePlan -Config $Config -State $State -Facts $WipeFacts -Admin $WipeAdmin -Now $Now) }
+    # cc-P96: the Fix test shard tab. Its facts are git's and the test world's save record (Get-FixFacts).
+    if ($Action -like 'fix.*') { return (Get-FixPlan -Action $Action -Config $Config -State $State -Facts $FixFacts -ImageTag $ImageTag -Commit $Commit -Now $Now) }
     if ($Action -like 'live.*') { $ShardKey = 'live' }
     if ($Action -like 'test.*') { $ShardKey = 'test' }
     $steps = New-Object 'System.Collections.Generic.List[object]'
@@ -1917,7 +2189,19 @@ function Test-PlanSafety {
         }
         if ($s.Kind -in @('exec', 'window')) {
             if ($line -match '\bcompose\b') { $v.Add('runs docker compose itself; compose is reached only through Start-TestShard.ps1: ' + $line) }
-            if ($s.Exe -eq 'docker' -and @($s.Arguments).Count -and $s.Arguments[0] -in $forbidden) { $v.Add('docker ' + $s.Arguments[0] + ' is not something this console runs: ' + $line) }
+            if ($s.Exe -eq 'docker' -and @($s.Arguments).Count -and $s.Arguments[0] -ceq 'rmi') {
+                # cc-P96, Prune images: the one removal this console makes. One sl-modernuo:<tag> per step, never -f (so
+                # docker itself refuses an image a container uses), never latest, rollback-*, pre-bump-* or a kept tag,
+                # only after the phrase, and in a plan that names nothing live.
+                $ra = @($s.Arguments)
+                $keepNamed = @(@($Config.Fix.KeepTags) | ForEach-Object { if ([string]$_ -like 'sl-modernuo:*') { [string]$_ } else { 'sl-modernuo:' + $_ } })
+                if ($ra.Count -ne 2 -or [string]$ra[1] -cnotmatch '^sl-modernuo:[A-Za-z0-9._-]+$' -or $ra[1] -ceq $Config.LatestTag -or [string]$ra[1] -cmatch '^sl-modernuo:(rollback-|pre-bump-)' -or $keepNamed -ccontains $ra[1]) {
+                    $v.Add('the only image this console removes is one sl-modernuo:<tag> per step, never latest, rollback-*, pre-bump-* or a kept tag, and never with -f: ' + $line)
+                }
+                if (-not $confirmed) { $v.Add('removes an image without a typed confirmation: ' + $line) }
+                $liveWords = @($plan | ForEach-Object { @($_.Arguments) + @($_.Container) + @($_.Path) } | Where-Object { $_ -and ([string]$_ -ceq $live.Container) })
+                if ($liveWords.Count) { $v.Add('a prune names the live container ' + $live.Container) }
+            } elseif ($s.Exe -eq 'docker' -and @($s.Arguments).Count -and $s.Arguments[0] -in $forbidden) { $v.Add('docker ' + $s.Arguments[0] + ' is not something this console runs: ' + $line) }
             if ($line -match 'build\.sh') { $v.Add('build.sh is reached only through Start-TestShard.ps1: ' + $line) }
             if (@($s.Arguments) -contains '-Fresh') { $v.Add('-Fresh deletes the test save; this console moves it aside instead') }
             if (@($s.Arguments) -contains $live.Container -and -not $confirmed) { $v.Add('touches ' + $live.Container + ' without a typed confirmation: ' + $line) }
@@ -1930,6 +2214,7 @@ function Test-PlanSafety {
                 if ($liveWords.Count) { $v.Add('a deploy to test names the live container ' + $live.Container) }
             }
         }
+        if ($s.Kind -eq 'healthwait' -and $s.Container -cne $Config.Shards['test'].Container) { $v.Add('a health wait is only ever on ' + $Config.Shards['test'].Container + ': ' + $s.Container) }
         if ($s.Kind -eq 'gatecheck') {
             # cc-P68: Check selected runs the build script's -CheckZip on one zip in dist\, nothing else.
             $full = $null
@@ -2051,6 +2336,7 @@ function Format-PlanStep {
         'stopped' { $out.Add($n + 'CHECK    docker inspect says ' + $Step.Container + ' is not running; stop here if it is') }
         'remove-snapshot' { $out.Add($n + 'DELETE   ' + $Step.Path); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'log'     { $out.Add($n + 'LOG      one timestamped line: ' + $Step.Text) }
+        'healthwait' { $out.Add($n + 'WAIT     up to ' + $Step.Seconds + ' s for ' + $Step.Container + ' to be healthy (listening) or to crash; stop here unless healthy'); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'secret'  { $out.Add($n + 'ASK      in this window, not shown: ' + $Step.Text) }
         'wiperequest' { $out.Add($n + 'WRITE    ' + $Step.Path + '   (refuses if it exists)'); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
         'wipewait' { $out.Add($n + 'WAIT     for the ' + $script:WipeTag + ' DONE line in the ' + $Step.Container + ' log; stop here on REFUSED, FAILED or no answer, and remove ' + $Step.Path + ' if it is still there'); if ($Step.Text) { $out.Add($pad + '  # ' + $Step.Text) } }
@@ -2157,6 +2443,8 @@ function New-ConsoleState {
             Drift        = (Get-ImageDrift -Shard $sh -Container $c -Latest $latest -ConfigRef $cfgRef -RunningImage $run -LatestTag $Config.LatestTag)
             Listener     = (Get-ListenerState -Container $c -LogText $Sections['logs ' + $sh.Container] -GamePort $port)
             SavesOnStop  = [bool]($c.Exists -and (Test-SavesOnStop ([string]$Sections['logs ' + $sh.Container])))
+            # cc-P96: a terminating exception in the log since this start ("This exception is fatal").
+            Crash        = (Get-CrashReport ([string]$Sections['logs ' + $sh.Container]))
             Save         = (Get-SaveSummary (ConvertFrom-FileListing $Sections['saves ' + $sh.Key]))
             Snapshots    = @(ConvertFrom-SnapshotListing $Sections['snapshots ' + $sh.Key])
             Asides       = $asides
@@ -2315,7 +2603,7 @@ function Get-PublisherState {
 
 function Get-ShardGlance {
     # One word and one line per shard, for the tiles at the top of the window.
-    param($Shard, $ShardState, [datetime]$Now)
+    param($Shard, $ShardState, [datetime]$Now, $Config)
     $c = $ShardState.Container
     $l = $ShardState.Listener
     $word = 'UNKNOWN'; $color = 'gray'; $detail = ''
@@ -2334,6 +2622,22 @@ function Get-ShardGlance {
         $word = 'STARTING?'; $color = 'amber'
         $detail = 'up ' + (Format-Age ($Now - $c.StartedAt)) + ', not listening yet'
     }
+    # cc-P96: a crash outranks everything else the tile could say. The process waits at "press return to exit", so
+    # the container is Up; and a running shard docker's health check calls unhealthy is not RUNNING.
+    $crash = $ShardState.Crash
+    if ($c.Exists -and $crash -and $crash.Crashed) {
+        $word = 'CRASHED'; $color = 'red'
+        if ($crash.AtStart) { $word = 'CRASHED AT START' }
+        $detail = $crash.Headline
+        $known = $null
+        if ($Config -and $Config.Fix) { $known = Find-KnownCrash $crash $Config.Fix.KnownCrashes }
+        if ($known) { $detail = 'Known bug ' + $known.Bug + '. ' + $detail }
+        $detail += ' (Fix test shard tab)'
+    } elseif ($c.Exists -and $c.Running -and $c.Health -eq 'unhealthy') {
+        $word = 'UNHEALTHY'; $color = 'red'; $detail = 'up ' + (Format-Age ($Now - $c.StartedAt)) + ', not listening on :' + $Shard.GamePort + ' (docker health check)'
+    } elseif ($c.Exists -and $c.Running -and $c.Health -eq 'healthy' -and $word -eq 'RUNNING') {
+        $detail += ', healthy'
+    }
     if ($c.Exists) {
         if ($ShardState.Drift.Verdict -eq 'DRIFTED') {
             $detail += '; OLD IMAGE'
@@ -2350,7 +2654,7 @@ function Get-AtAGlance {
     param($State, $Config)
     $tiles = New-Object 'System.Collections.Generic.List[object]'
     foreach ($k in @('live', 'test')) {
-        $tiles.Add((Get-ShardGlance -Shard $Config.Shards[$k] -ShardState $State.Shards[$k] -Now $State.Now))
+        $tiles.Add((Get-ShardGlance -Shard $Config.Shards[$k] -ShardState $State.Shards[$k] -Now $State.Now -Config $Config))
     }
     $p = $State.Publisher
     $pd = $p.Detail
@@ -3748,6 +4052,59 @@ function Get-WipeFacts {
     }
 }
 
+function Get-FixFacts {
+    # cc-P96: what the Fix test shard plans read besides docker, all read-only. HEAD and the last 15 commits
+    # (Rebuild's list), the save record a healthy start writes (Start-TestShard.ps1), and whether that save is
+    # newer than the last good image: git merge-base --is-ancestor <image commit> <save commit>.
+    param($Config, $State, [switch]$NoDocker)
+    $repo = $Config.RepoRoot
+    $head = (Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'rev-parse', 'HEAD')).Out.Trim()
+    $log = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'log', '-15', '--format=%H|%cs|%s')
+    $rec = $null
+    if (Test-Path -LiteralPath $Config.SaveRecordFile) {
+        try { $rec = [IO.File]::ReadAllText($Config.SaveRecordFile) | ConvertFrom-Json } catch { $rec = $null }
+    }
+    $newer = $null
+    $lg = $null
+    if ($State) { $lg = Get-LastGoodImage $State.Images }
+    if ($rec -and $rec.commit -and $lg) {
+        $ic = Get-GoodTagCommit $lg.Tag
+        $a = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'merge-base', '--is-ancestor', $ic, [string]$rec.commit)
+        $anc = $null
+        if ($a.Code -eq 0) { $anc = $true } elseif ($a.Code -eq 1) { $anc = $false }
+        $newer = Test-SaveNewerThanImage ([string]$rec.commit) $ic $anc
+    }
+    # Prune's lower bound: each image's unique size. Skipped when the status came from a capture file.
+    $uniq = $null
+    if (-not $NoDocker) { $u = Invoke-DockerRead @('system', 'df', '-v', '--format', '{{json .Images}}') 60000; $uniq = ConvertFrom-DockerDfImages $u.Out }
+    [pscustomobject]@{
+        UniqueSizes = $uniq
+        Head       = $(if ($head -match '^[0-9a-f]{40}$') { $head } else { $null })
+        Commits    = @(ConvertFrom-GitLogLines $log.Out)
+        SaveRecord = $rec
+        SaveNewer  = $newer
+    }
+}
+
+function Wait-TestShardHealth {
+    # cc-P96: a 'healthwait' step. Polls docker's health check and the log since this start every 2 s.
+    param([string]$Container, [int]$Seconds = 300)
+    $deadline = [datetime]::UtcNow.AddSeconds([Math]::Max(10, $Seconds))
+    $h = $null
+    do {
+        $c = ConvertFrom-ContainerInspect (Invoke-DockerRead @('inspect', $Container)).Out
+        $crash = $null
+        if ($c.Exists -and $c.StartedAtRaw) {
+            $l = Invoke-DockerRead @('logs', '--since', $c.StartedAtRaw, $Container) 60000
+            $crash = Get-CrashReport ($l.Out + "`n" + $l.Err)
+        }
+        $h = Get-HealthState -Exists $c.Exists -Running $c.Running -Health ([string]$c.Health) -Crash $crash
+        if ($h.State -notin @('STARTING')) { return $h }
+        Start-Sleep -Seconds 2
+    } while ([datetime]::UtcNow -lt $deadline)
+    [pscustomobject]@{ State = 'TIMEOUT'; Detail = ('still not healthy after ' + $Seconds + ' s (' + $h.Detail + ')') }
+}
+
 function Get-AutopilotFacts {
     # cc-P74: what the AUTOPILOT tile and the Autopilot tab read, on every refresh. Cheap on purpose:
     # three small files, the last TailLines of the log (never all of it) and one folder listing. Only
@@ -3911,7 +4268,7 @@ function Get-DockerSections {
         $sec['image ' + $ref] = ($r.Out + "`n" + $r.Err).Trim()
     }
     # cc-P63: the images Deploy built image chooses from.
-    $r = Invoke-DockerRead @('images', 'sl-modernuo', '--format', '{{.Repository}}:{{.Tag}}|{{.ID}}|{{.CreatedAt}}')
+    $r = Invoke-DockerRead @('images', 'sl-modernuo', '--format', '{{.Repository}}:{{.Tag}}|{{.ID}}|{{.CreatedAt}}|{{.Size}}')
     $sec['images sl-modernuo'] = ($r.Out + "`n" + $r.Err).Trim()
     foreach ($sh in $Config.Shards.Values) {
         $sec['saves ' + $sh.Key] = Get-FileListing $sh.Saves
@@ -4166,6 +4523,13 @@ function Invoke-Plan {
                     Write-ConsoleLine ($tag + $s.Text) 'head'
                     $r = Invoke-DockerRead @('inspect', '-f', '{{.State.Running}}', $s.Container)
                     if ($r.Out.Trim() -eq 'true') { throw ($s.Container + ' is still running') }
+                }
+                'healthwait' {
+                    # cc-P96: healthy, or stop here and say why (crashed, unhealthy, stopped, no health check, timeout).
+                    Write-ConsoleLine ($tag + $s.Text) 'head'
+                    $h = Wait-TestShardHealth -Container $s.Container -Seconds $s.Seconds
+                    if ($h.State -eq 'HEALTHY') { Write-ConsoleLine ('      HEALTHY: ' + $h.Detail) 'green' }
+                    else { throw ($s.Container + ' is ' + $h.State + ': ' + $h.Detail) }
                 }
                 'move' {
                     Write-ConsoleLine ($tag + $s.Text) 'head'
@@ -5451,6 +5815,26 @@ function Show-ListPicker {
     $pick
 }
 
+function Show-CommitPicker {
+    # cc-P96, Fix test shard > Rebuild: HEAD, the recent commits, and the last good image's commit.
+    param($State, $Facts)
+    $rows = New-Object 'System.Collections.Generic.List[object]'
+    $lg = Get-LastGoodImage $State.Images
+    $lgc = $null
+    if ($lg) { $lgc = Get-GoodTagCommit $lg.Tag }
+    foreach ($c in @($Facts.Commits)) {
+        $note = ''
+        if ($c.Sha -eq $Facts.Head) { $note = 'HEAD' }
+        if ($lgc -and $c.Sha.StartsWith($lgc)) { $note = ($note + ' last good').Trim() }
+        $rows.Add([pscustomobject]@{ Tag = $c.Sha; Cells = @($c.Short, $c.Date, $note, $c.Subject) })
+    }
+    if ($lgc -and -not @($Facts.Commits | Where-Object { $_.Sha.StartsWith($lgc) }).Count) {
+        $rows.Add([pscustomobject]@{ Tag = $lgc; Cells = @($lgc, '', 'last good', ('the commit of ' + $lg.Tag)) })
+    }
+    if (-not $rows.Count) { Write-ConsoleLine 'fix.rebuild: git gave no commits to choose from.' 'amber'; return $null }
+    Show-ListPicker -Title 'Rebuild the TEST shard from a commit' -Caption 'Pick the commit to build through every test gate. The test shard restarts on it after you type the phrase; latest is not moved.' -Columns @(@('Commit', 90), @('Date', 100), @('', 110), @('Subject', 560)) -Rows $rows.ToArray()
+}
+
 function Show-ImagePicker {
     # Test shard > Deploy built image: which sl-modernuo:cc-p* to put on the test shard (cc-P63).
     param($State)
@@ -5581,7 +5965,7 @@ function Show-YesNo {
 
 function Invoke-ConsoleButton {
     param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage,
-        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin)
+        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [string]$Commit)
     try {
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
         $isCommit = ($ActionKey -like 'commit.*')
@@ -5623,6 +6007,20 @@ function Invoke-ConsoleButton {
             $ImageTag = Show-ImagePicker $state
             if (-not $ImageTag) { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
         }
+        $fxFacts = $null
+        if ($ActionKey -like 'fix.*') {
+            # cc-P96: git and the test world's save record, read now. Roll back pins the image it will run, so the
+            # window it opens cannot pick a different one; Rebuild asks which commit.
+            $fxFacts = Get-FixFacts $script:cfg $state -NoDocker:$script:fromCapture
+            if ($ActionKey -eq 'fix.rollback' -and -not $ImageTag) {
+                $lg = Get-LastGoodImage $state.Images
+                if ($lg) { $ImageTag = $lg.Tag }
+            }
+            if ($ActionKey -eq 'fix.rebuild' -and -not $Commit) {
+                $Commit = Show-CommitPicker $state $fxFacts
+                if (-not $Commit) { Write-ConsoleLine ($ActionKey + ': cancelled.') 'gray'; return }
+            }
+        }
         $wFacts = $null
         if ($ActionKey -eq 'test.wipe') {
             # cc-P73: refused before any dialog when the facts already rule it out (SYSTEM, no census,
@@ -5635,7 +6033,7 @@ function Invoke-ConsoleButton {
                 if (-not $WipeAdmin) { Write-ConsoleLine ($ActionKey + ': cancelled. Nothing was changed.') 'gray'; return }
             }
         }
-        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts)
+        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fxFacts -Commit $Commit)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
         $dryTag = ''
@@ -5671,7 +6069,7 @@ function Invoke-ConsoleButton {
             $wanted = ((Get-OutputRoute -ActionKey $ActionKey -OutputIn $script:settings.OutputIn -PaneAvailable $true) -eq 'pane')
         }
         if ($def.RunIn -eq 'window') {
-            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:($CommitForce -and $ActionKey -eq 'commit.run') -WipeAdmin $WipeAdmin -ForPane:($route -eq 'pane')
+            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:($CommitForce -and $ActionKey -eq 'commit.run') -WipeAdmin $WipeAdmin -ForPane:($route -eq 'pane') -Commit $Commit
             if ($route -eq 'pane') {
                 Start-PaneJob -Exe $script:cfg.PowerShell -Arguments $argLine -Title ($ActionKey + ' (' + $ShardKey + ')')
                 if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in the Action output pane. It prints the plan and runs nothing.') 'amber' }
@@ -5960,6 +6358,15 @@ function New-ConsoleForm {
         (New-ConsoleButton 'Deploy built image...' 'test.deploy'),
         (New-ConsoleButton 'Tail the log' 'test.tail'),
         (New-ConsoleButton 'Open a client' 'test.client')
+    )
+
+    # cc-P96: Fix test shard, beside the Test shard tab.
+    $fixPage = New-ButtonPage 'Fix test shard' 'When the test shard will not start. DIAGNOSE first: it reads the container, its health, its image and commit, and any crash, and names a known bug. RESTART restarts it as it is. ROLL BACK backs up the test save, then runs the newest good image (each healthy start tags one, sl-modernuo:good-<commit>). REBUILD builds a commit you pick through every test gate. PRUNE removes old image tags. Each of the four asks for a phrase; none touches live.' @(
+        (New-ConsoleButton 'Diagnose' 'fix.diagnose'),
+        (New-ConsoleButton 'Restart' 'fix.restart'),
+        (New-ConsoleButton 'Roll back to last good' 'fix.rollback'),
+        (New-ConsoleButton 'Rebuild a commit...' 'fix.rebuild'),
+        (New-ConsoleButton 'Prune images' 'fix.prune')
     )
 
     # snapshots
@@ -6302,7 +6709,7 @@ function New-ConsoleForm {
     $script:ui.AutopilotPanel = $apPanel
     $script:ui.AutopilotButtons = $apBtns
 
-    $tabs.TabPages.AddRange(@($testPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $apPage, $livePage))
+    $tabs.TabPages.AddRange(@($testPage, $fixPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $apPage, $livePage))
 
     # output
     $outGroup = New-Object Windows.Forms.GroupBox
@@ -6439,6 +6846,7 @@ if ($Action -eq 'list') {
     Write-Host 'package.check takes -PackageZip <name in player-package\dist>; it only reads.'
     Write-Host 'test.deploy takes -ImageTag sl-modernuo:cc-pNN and -ConfirmLive ''deploy to test''.'
     Write-Host 'test.wipe takes -WipeAdmin <new admin name> and -ConfirmLive ''WIPE TEST ACCOUNTS''; it asks for the password in its own window.'
+    Write-Host 'fix.diagnose only reads. fix.restart, fix.rollback, fix.rebuild and fix.prune take -ConfirmLive ''restart test'', ''roll back test'', ''rebuild test'', ''prune images''; fix.rebuild takes -Commit <hash from its list, or HEAD>; fix.rollback takes -ImageTag sl-modernuo:good-<commit> (default: the newest).'
     Write-Host 'vpn.disconnect needs -Mode Execute: it ends a WireGuard for Windows tunnel (elevated), opens Proton VPN, or names the VPN to disconnect in its app.'
     Write-Host 'links.playtests, links.dashboard and links.status open the play-test page (8093), the dashboard (3000) and the status page (8093/status) in the browser.'
     Write-Host 'autopilot.on, .off, .email and .test need -Mode Execute; each opens the autopilot''s own script in a window of its own. autopilot.queue, .log and .settings only open.'
@@ -6507,7 +6915,10 @@ if ($Action) {
     # cc-P73: the wipe re-reads its facts here, so the child plans from the shard as it is now.
     $wFacts = $null
     if ($Action -eq 'test.wipe') { $wFacts = Get-WipeFacts $config $st }
-    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts)
+    # cc-P96: Fix test shard re-reads git and the save record here, as the wipe re-reads its facts.
+    $fixFacts = $null
+    if ($Action -like 'fix.*') { $fixFacts = Get-FixFacts $config $st -NoDocker:$fromCapture }
+    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fixFacts -Commit $Commit)
     $viol = @(Test-PlanSafety $plan $config)
     $header = 'PLAN'
     if ($isDry) { $header = 'DRY RUN' }

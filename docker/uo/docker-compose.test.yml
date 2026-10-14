@@ -28,7 +28,9 @@ name: sl-uo-test
 
 services:
   modernuo-test:
-    image: sl-modernuo:latest
+    # cc-P96: Start-TestShard.ps1 -Image (the console's Roll back and Rebuild) runs another sl-modernuo tag
+    # through SL_TEST_IMAGE without moving latest. Unset, it is latest, as before.
+    image: ${SL_TEST_IMAGE:-sl-modernuo:latest}
     container_name: sl-modernuo-test
     restart: "no"
     stop_grace_period: 60s   # D50: was 1 s, which SIGKILLed D36's shutdown save mid-write
@@ -53,5 +55,15 @@ services:
       SL_SHARD_ROLE: test
     stdin_open: true
     tty: true
+    # cc-P96: healthy only when the shard listens on its game port. Read from the kernel's socket table, not
+    # by connecting (a probe connection every 10 s would be a login attempt in the log). 0A22 is 2594 and
+    # 0A is LISTEN. A shard that threw at start sits at "press return to exit" (Main.cs:433) and never
+    # listens, so it goes unhealthy once the start period ends, though Docker still says Up.
+    healthcheck:
+      test: ["CMD-SHELL", "awk '$$4==\"0A\" && $$2 ~ /:0A22$$/ {f=1} END {exit !f}' /proc/net/tcp /proc/net/tcp6"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
     security_opt:
       - seccomp:unconfined
