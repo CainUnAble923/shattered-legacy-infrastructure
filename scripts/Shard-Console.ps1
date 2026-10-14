@@ -835,6 +835,7 @@ function Get-ConfirmPhrase {
         'golem.move'       { 'move to the golem' }
         'web.deploy'       { 'deploy to haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'deploy to haven' }
+        { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'deploy to haven' }
         default            { 'confirm live' }
     }
 }
@@ -851,6 +852,7 @@ function Get-ConfirmSubject {
         'golem.move'      { 'Move to the Golem' }
         'web.deploy'      { 'Deploy to Haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'Ops pages on Haven' }
+        { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'Print queue on Haven' }
         'fix.rollback'    { 'Roll back the test shard' }
         'fix.rebuild'     { 'Rebuild the test shard' }
         'fix.prune'       { 'Prune images' }
@@ -1087,6 +1089,9 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'web.ops-pages';    Group = 'Websites';    Label = 'Ops pages: deploy';                  Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'web.ops-cutover';  Group = 'Websites';    Label = 'Ops pages: cut over';                Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'web.ops-rollback'; Group = 'Websites';    Label = 'Ops pages: roll back';               Mutates = $true;  RunIn = 'here' }
+        # cc-P109: the Sunflower print queue's two Haven deploys, the same way.
+        [pscustomobject]@{ Key = 'web.print-queue';  Group = 'Websites';    Label = 'Print queue: deploy';                Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'web.print-queue-rollback'; Group = 'Websites'; Label = 'Print queue: roll back';        Mutates = $true;  RunIn = 'here' }
         # cc-P86: beside the PUBLIC DNS tile and on the Diagnostics tab. 'here': it opens Proton or ends a WireGuard
         # tunnel from this console, then the tile re-checks.
         [pscustomobject]@{ Key = 'vpn.disconnect';   Group = 'Network';     Label = 'Disconnect VPN';                     Mutates = $true;  RunIn = 'here' }
@@ -1305,6 +1310,8 @@ function Get-ConsoleTooltips {
         'web.ops-pages'    = 'Puts the ops pages stack on Haven (docker/ops) and keeps it current, after the phrase deploy to haven. Its window reads Haven first, prints the plan, and changes nothing until you type deploy there.'
         'web.ops-cutover'  = 'Moves Play tests, Ideas, Bug reports and Shard status from this PC to Haven, after the phrase deploy to haven. Its window shows the plan and waits for cut over.'
         'web.ops-rollback' = 'Brings the ops pages back to this PC with everything marked on Haven, after the phrase deploy to haven. Its window shows the plan and waits for roll back.'
+        'web.print-queue'  = 'Puts the Sunflower print queue on Haven, and the first time moves its data there from this PC, after the phrase deploy to haven. Its window reads Haven first, prints the plan, and changes nothing until you type deploy there.'
+        'web.print-queue-rollback' = 'Brings the Sunflower print queue back to this PC with every edit made on Haven, after the phrase deploy to haven. Its window shows the plan and waits for roll back.'
         'web.npm'          = 'Opens Nginx Proxy Manager: an SSH tunnel to Haven in its own window (your own key), then the admin page in your browser. No password is stored here.'
         'golem.move'       = 'Moves the CC queue from cc-autopilot to the Golem with Move-ToGolem.ps1: the hooks, the scheduled task and the state. Asks for move to the golem, then shows its dry run in its own window and asks you to type move; refused while a prompt runs.'
         'links.playtests'  = 'Opens the play-test page (port 8093) in your browser. Changes nothing here.'
@@ -4056,12 +4063,13 @@ function Get-WebsitePlan {
         return $steps.ToArray()
     }
     # cc-P107: the ops pages' three deploys, whatever site is picked: the same helper, allowlist and phrase as Deploy.
-    if ($Action -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback')) {
+    # cc-P109: and the print queue's two.
+    if ($Action -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback', 'web.print-queue', 'web.print-queue-rollback')) {
         $d = $web.Deploys[$Action.Substring(4)]
         if (-not $d) { $steps.Add((New-PlanStep -Kind refuse -Text ($Action.Substring(4) + ' is not in the deploys allowlist in websites.json. Nothing was run.'))); return $steps.ToArray() }
         $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase 'web.deploy') -Text ('This runs ' + $d.Name + ': ' + $d.Script + ' ' + $d.What + '. Its window first reads Haven and prints the plan, and changes nothing until you type its word there. It uses your own SSH key; the window keeps a log under scripts\shard-console-output\deploys.')))
         $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + @($Config.WebsiteDeployScript, '-Deploy', $d.Name)) -Text 'In a window of its own, which stays open. It checks the allowlist again before it runs anything.'))
-        $steps.Add((New-PlanStep -Kind log -Text ('web.deploy ops ' + $d.Name)))
+        $steps.Add((New-PlanStep -Kind log -Text ('web.deploy ' + $(if ($d.Name -like 'print-queue*') { 'print-queue ' } else { 'ops ' }) + $d.Name)))
         return $steps.ToArray()
     }
     $s = @($web.Sites | Where-Object { $_.Key -ceq $Site })[0]

@@ -4257,17 +4257,18 @@ $webText = [IO.File]::ReadAllText((Join-Path $fixture 'websites-2026-10-14.json'
 function Get-WebFixture { param([scriptblock]$Change) $j = $webText | ConvertFrom-Json; if ($Change) { & $Change $j }; $j | ConvertTo-Json -Depth 8 }
 function Get-WebConfig { param($Text = $webText) $c = Get-ConsoleConfig -RepoRoot $repo; $c.Websites = ConvertFrom-WebsiteConfig $Text $repo; $c }
 function Get-WebResults { param([hashtable]$Codes) $r = @{}; foreach ($k in $Codes.Keys) { $v = $Codes[$k]; $r[$k] = $(if ($v -eq 'timeout') { [pscustomobject]@{ Code = 0; Error = ''; TimedOut = $true; Ms = 4000 } } elseif ($v -is [string]) { [pscustomobject]@{ Code = 0; Error = $v; TimedOut = $false; Ms = 3 } } else { [pscustomobject]@{ Code = $v; Error = ''; TimedOut = $false; Ms = 12 } }) }; $r }
-$webAllUp = @{ playtests = 200; status = 200; homepage = 200; website = 200; wiki = 200; vault = 200; npm = 301 }
+$webAllUp = @{ playtests = 200; status = 200; homepage = 200; website = 200; wiki = 200; vault = 200; npm = 301; printqueue = 200 }
 
 Fact 'P101_TheRealConfigReadsAsSevenSitesTwoDeploysAndTheNpmTunnel' {
+    # cc-P109 added the eighth site (Print queue, on Haven) and its two deploys; the name keeps P101's count.
     $w = ConvertFrom-WebsiteConfig $webText $repo
     Assert-Equal 0 @($w.Problems).Count (@($w.Problems) -join ' | ')
-    Assert-Equal 'playtests,status,homepage,website,wiki,vault,npm' ((@($w.Sites) | ForEach-Object { $_.Key }) -join ',')
-    Assert-Equal 'pc,pc,pc,haven,haven,haven,haven' ((@($w.Sites) | ForEach-Object { $_.Where }) -join ',')
+    Assert-Equal 'playtests,status,homepage,website,wiki,vault,npm,printqueue' ((@($w.Sites) | ForEach-Object { $_.Key }) -join ',')
+    Assert-Equal 'pc,pc,pc,haven,haven,haven,haven,haven' ((@($w.Sites) | ForEach-Object { $_.Where }) -join ',')
     Assert-Equal (Join-Path $repo 'docker\dashboard\Start-Dashboard.ps1') (@($w.Sites)[2]).Start
     Assert-Equal 'http://192.168.1.61/' (@($w.Sites)[6]).Check 'the NPM light checks the proxy port, not the tunnel'
     Assert-True ((@($w.Sites)[6]).IsNpm) 'the NPM row'
-    Assert-Equal 'website,wiki-macros,ops-pages,ops-cutover,ops-rollback' (@($w.Deploys.Keys) -join ',') 'cc-P107 added the three ops deploys'
+    Assert-Equal 'website,wiki-macros,ops-pages,ops-cutover,ops-rollback,print-queue,print-queue-rollback' (@($w.Deploys.Keys) -join ',') 'cc-P107 added the three ops deploys, cc-P109 the print queue''s two'
     Assert-Equal 'chase@192.168.1.61' $w.HavenSsh
     Assert-Equal 'http://localhost:8081/|8081|localhost:81' ($w.Npm.Url + '|' + $w.Npm.LocalPort + '|' + $w.Npm.Remote)
     Assert-True (Test-Path -LiteralPath (Join-Path $repo 'scripts\websites.json')) 'the console reads scripts\websites.json'
@@ -4283,7 +4284,7 @@ Fact 'P101_AConfigMissingAFieldLeavesThatSiteOutAndSaysWhy' {
         $j.sites[5].key = 'website'
     }
     $w = ConvertFrom-WebsiteConfig $t $repo
-    Assert-Equal 'status,website,npm' ((@($w.Sites) | ForEach-Object { $_.Key }) -join ',') 'the four bad ones are left out, not guessed'
+    Assert-Equal 'status,website,npm,printqueue' ((@($w.Sites) | ForEach-Object { $_.Key }) -join ',') 'the four bad ones are left out, not guessed (printqueue, cc-P109, is untouched)'
     $p = @($w.Problems) -join ' | '
     Assert-True ($p -match 'site 1 \(Play tests\): missing or wrong url; left out') $p
     Assert-True ($p -match 'site 3 \(Homepage\): missing or wrong container') $p
@@ -4316,20 +4317,20 @@ Fact 'P101_EachResultReadsAsUpDownOrTimeout' {
 Fact 'P101_TheTileCountsTheSitesUpAndTurnsAmberNamingTheDownOnes' {
     $w = ConvertFrom-WebsiteConfig $webText $repo
     $all = Get-WebsitesGlance $w (Get-WebResults $webAllUp)
-    Assert-Equal 'WEBSITES|7 OF 7 UP|green|all answering' ($all.Title + '|' + $all.Word + '|' + $all.Color + '|' + $all.Detail)
+    Assert-Equal 'WEBSITES|8 OF 8 UP|green|all answering' ($all.Title + '|' + $all.Word + '|' + $all.Color + '|' + $all.Detail)
     $codes = $webAllUp.Clone(); $codes.website = 'ConnectFailure'
     $one = Get-WebsitesGlance $w (Get-WebResults $codes)
-    Assert-Equal '6 OF 7 UP|amber|down: Public website (no answer: ConnectFailure)' ($one.Word + '|' + $one.Color + '|' + $one.Detail)
+    Assert-Equal '7 OF 8 UP|amber|down: Public website (no answer: ConnectFailure)' ($one.Word + '|' + $one.Color + '|' + $one.Detail)
     $codes.vault = 'timeout'; $codes.homepage = 502
     $three = Get-WebsitesGlance $w (Get-WebResults $codes)
-    Assert-Equal '4 OF 7 UP' $three.Word
+    Assert-Equal '5 OF 8 UP' $three.Word
     Assert-Equal 'down: Homepage (HTTP 502 in 12 ms), Public website (no answer: ConnectFailure), Vaultwarden (no answer within 4 s)' $three.Detail 'in the file''s order'
     $first = Get-WebsitesGlance $w $null
     Assert-Equal 'CHECKING|gray' ($first.Word + '|' + $first.Color) 'before the first check finishes'
     $missing = Get-WebsitesGlance $w (Get-WebResults @{ playtests = 200 })
-    Assert-Equal '1 OF 7 UP' $missing.Word 'a site with no result yet is not counted up'
+    Assert-Equal '1 OF 8 UP' $missing.Word 'a site with no result yet is not counted up'
     $panel = @(Format-WebsitesPanel $w (Get-WebResults $codes) '11:30:00') | ForEach-Object { $_.Text }
-    Assert-True ($panel[0] -eq ('WEBSITES : 4 OF 7 UP. ' + $three.Detail)) $panel[0]
+    Assert-True ($panel[0] -eq ('WEBSITES : 5 OF 8 UP. ' + $three.Detail)) $panel[0]
     Assert-True (@($panel | Where-Object { $_ -like '`[DOWN`]   Homepage*game PC, sl-dashboard*HTTP 502 in 12 ms' }).Count -eq 1) ($panel -join ' | ')
     Assert-True (@($panel | Where-Object { $_ -like '`[NO ANS`] Vaultwarden*Haven*no answer within 4 s' }).Count -eq 1) ($panel -join ' | ')
     Assert-True (@($panel | Where-Object { $_ -like '*Nginx Proxy Manager*(checked at http://192.168.1.61/)*' }).Count -eq 1) 'the NPM row says what its light checks'
@@ -4340,7 +4341,7 @@ Fact 'P101_DeployIsRefusedForAScriptNotInTheAllowlist' {
     $c = Get-WebConfig
     # A Haven site with no deploy, a game-PC site, and a site whose deploy is not in the list (built by hand: the
     # config reader already drops such a site, so this is the plan's own check, not the reader's).
-    Assert-True ((@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'vault'))[0].Text -match '^Vaultwarden has no deploy in websites.json\. The allowlist: website, wiki-macros, ops-pages, ops-cutover, ops-rollback\.$') 'no deploy'
+    Assert-True ((@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'vault'))[0].Text -match '^Vaultwarden has no deploy in websites.json\. The allowlist: website, wiki-macros, ops-pages, ops-cutover, ops-rollback, print-queue, print-queue-rollback\.$') 'no deploy'
     Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'homepage'))[0].Kind 'a game-PC site'
     Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'nope'))[0].Kind 'no such site'
     @($c.Websites.Sites | Where-Object { $_.Key -eq 'wiki' })[0].Deploy = 'haven-ops'
@@ -4487,8 +4488,8 @@ Fact 'P101_TheTileAndTheTabAreBuiltAndDrawn' {
         Assert-True ($script:ui.WebsitesTile.Word.Text -match '^WEBSITES: (CHECKING|UNKNOWN)$') $script:ui.WebsitesTile.Word.Text
         Assert-Equal 'Websites' $script:ui.WebsitesPage.Text
         Assert-True ($script:ui.Tabs.TabPages.Contains($script:ui.WebsitesPage)) 'in the tab control'
-        Assert-Equal 'web.open,web.restart,web.redeploy,web.logs,web.deploy,web.npm,web.ops-pages,web.ops-cutover,web.ops-rollback' (($script:ui.WebsiteButtons | ForEach-Object { $_.Tag }) -join ',')
-        Assert-Equal 'Open,Restart,Redeploy,Logs (last 200),Deploy to Haven,Open NPM,Ops pages: deploy,Ops pages: cut over,Ops pages: roll back' (($script:ui.WebsiteButtons | ForEach-Object { $_.Text }) -join ',')
+        Assert-Equal 'web.open,web.restart,web.redeploy,web.logs,web.deploy,web.npm,web.ops-pages,web.ops-cutover,web.ops-rollback,web.print-queue,web.print-queue-rollback' (($script:ui.WebsiteButtons | ForEach-Object { $_.Tag }) -join ',')
+        Assert-Equal 'Open,Restart,Redeploy,Logs (last 200),Deploy to Haven,Open NPM,Ops pages: deploy,Ops pages: cut over,Ops pages: roll back,Print queue: deploy,Print queue: roll back' (($script:ui.WebsiteButtons | ForEach-Object { $_.Text }) -join ',')
         Assert-Equal @($config.Websites.Sites).Count $script:ui.WebsitePick.Items.Count 'one line per site'
         Assert-Equal 'Play tests  (this PC)' $script:ui.WebsitePick.Items[0]
         $script:ui.WebsitePick.SelectedIndex = 3
@@ -4497,7 +4498,7 @@ Fact 'P101_TheTileAndTheTabAreBuiltAndDrawn' {
         $codes = $webAllUp.Clone(); $codes.website = 'ConnectFailure'
         $script:webResults = Get-WebResults $codes; $script:webResultAt = [datetime]::UtcNow
         Update-WebsitesView
-        Assert-Equal 'WEBSITES: 6 OF 7 UP' $script:ui.WebsitesTile.Word.Text
+        Assert-Equal 'WEBSITES: 7 OF 8 UP' $script:ui.WebsitesTile.Word.Text
         Assert-Equal (Get-TileColors 'amber')[0] $script:ui.WebsitesTile.Panel.BackColor 'amber'
         Assert-True ($script:ui.WebsitesPanel.Text -match '\[DOWN\]   Public website') 'the panel is drawn'
         $tips = Get-ConsoleTooltips
@@ -5079,6 +5080,49 @@ Fact 'P108_TheLiveDeployAndPublishPathsRefuseWhileRetired' {
         Assert-Equal 2 $LASTEXITCODE $o
         Assert-True ($o -match 'Live is retired' -and $o -notmatch 'Version in') $o
     } finally { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# --- cc-P109: the Sunflower print queue's one-click Haven deploys ------------------------------------------------------
+# The print queue's code is Sunflower's, in C:\dev\sunflower\print-queue (outside both shard repos); the console only
+# allowlists its two launchers in D:\UO\haven-migration, as cc-P107 did for the ops pages.
+
+Fact 'P109_ThePrintQueueDeploysAreAllowlistedAndRunOnlyTheirLaunchers' {
+    $w = $config.Websites
+    $s = @($w.Sites | Where-Object { $_.Key -eq 'printqueue' })[0]
+    Assert-True ($s -and $s.Where -eq 'haven' -and $s.Url -eq 'http://192.168.1.61:8787/' -and $s.Deploy -eq 'print-queue') 'the Print queue row, on Haven, LAN only'
+    foreach ($k in 'print-queue', 'print-queue-rollback') {
+        Assert-True $w.Deploys.Contains($k) ($k + ' is a deploy')
+        Assert-True ($w.Deploys[$k].Script -like 'D:\UO\haven-migration\Deploy-PrintQueue*.ps1') $w.Deploys[$k].Script
+    }
+    foreach ($f in @(@('Deploy-PrintQueue.ps1', 'Deploy'), @('Deploy-PrintQueue-Rollback.ps1', 'Rollback'))) {
+        $t = [IO.File]::ReadAllText('D:\UO\haven-migration\' + $f[0])
+        Assert-True ($t -match ([regex]::Escape("& 'C:\dev\sunflower\print-queue\haven\Deploy-PrintQueue.ps1' -Mode " + $f[1]) + '\r?\n')) ($f[0] + ' runs only its mode')
+    }
+    foreach ($k in 'web.print-queue', 'web.print-queue-rollback') {
+        $p = @(Get-ActionPlan -Action $k -Config $config -State $state)
+        Assert-Equal 'confirm,window,log' (($p | ForEach-Object { $_.Kind }) -join ',') $k
+        Assert-Equal 'deploy to haven' $p[0].Phrase
+        Assert-Equal ('-Deploy ' + $k.Substring(4)) ((@($p[1].Arguments) | Select-Object -Last 2) -join ' ')
+        Assert-Equal 0 @(Test-PlanSafety $p $config).Count ((Test-PlanSafety $p $config) -join ' | ')
+        Assert-True ([string](Get-ConsoleTooltips)[$k]) ($k + ' has a tooltip')
+        Assert-Equal 'Print queue on Haven' (Get-ConfirmSubject $k)
+    }
+    $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'scripts\Invoke-WebsiteDeploy.ps1') -Deploy print-queue -DryRun 2>&1 | Out-String)
+    Assert-Equal 0 $LASTEXITCODE $out
+    Assert-True ($out -match 'Deploy-PrintQueue\.ps1' -and $out -match 'DRY RUN: nothing was run') $out
+}
+
+Fact 'P109_TheDeployScriptRefusesSystemPinsTheHostKeyAndNeverCopiesChasesKey' {
+    $d = [IO.File]::ReadAllText('C:\dev\sunflower\print-queue\haven\Deploy-PrintQueue.ps1')
+    Assert-True ($d -match 'IsSystem\) \{ Write-Host .REFUSED') 'refuses SYSTEM'
+    Assert-True ($d -match '\[switch\]\$DryRun' -and $d -match "'DRY RUN: stopping here; nothing was changed\.'") 'has a dry run'
+    Assert-True ($d -match "Mode = 'Discover'" -and $d -match 'Confirm-Go .deploy.' -and $d -match 'Confirm-Go .roll back.') 'Discover by default; typed words before Deploy and Rollback'
+    Assert-True ($d -match 'StrictHostKeyChecking yes' -and $d -match 'ssh-keygen -F') 'the host key is pinned from known_hosts, never accepted blindly'
+    Assert-True ($d -notmatch 'accept-new|StrictHostKeyChecking=no|StrictHostKeyChecking no') 'no blind acceptance'
+    Assert-True ($d -notmatch '(?i)\.ssh\\id_|id_ed25519|id_rsa') 'Chase''s key is never named, so never copied'
+    Assert-True ($d -match 'ssh-keygen -q -t ed25519 -N "" -C "sunflower print queue on haven') 'the container''s own key is made on Haven'
+    $gi = [IO.File]::ReadAllText('C:\dev\sunflower\print-queue\.gitignore')
+    foreach ($x in 'data/', 'data.moved-*/', 'logs/', 'keys/') { Assert-True ($gi -match ('(?m)^' + [regex]::Escape($x) + '$')) ('the print queue repo ignores ' + $x) }
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

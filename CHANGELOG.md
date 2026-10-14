@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.15
+
+### Staff
+- The Shard Console's Websites tab can now move the Sunflower print queue to Haven and back: one button sets it up and moves its orders over (checking every file arrived), one brings it back to the game PC with every edit made on Haven. Until the move nothing changes.
+
 ## 2026.10.14.14
 
 ### Staff
