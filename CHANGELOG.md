@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.14.2
+
+### Staff
+- Fixed a start-up crash in the Imbuing catalogue.
+
 ## 2026.10.14
 
 ### Staff

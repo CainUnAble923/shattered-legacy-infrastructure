@@ -93,6 +93,9 @@ public static class ClusterFImbueKnowledge
     public const string Prefix = "imbue:";
     public const string MasterKey = "imbue:formulary:master";
 
+    // cc-P95 (D89): after SkillsInfo.Configure (default priority 50). The table's defaults read the catalogue, whose
+    // skill rows read SkillInfo.Table; AssemblyHandler.Invoke runs equal priorities in no promised order.
+    [CallPriority(100)]
     public static void Configure()
     {
         foreach (var line in ImbuingTable.LoadOrWriteDefaults(ImbuingTable.FilePath))

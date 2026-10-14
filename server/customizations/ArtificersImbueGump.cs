@@ -144,7 +144,16 @@ internal sealed class ImbuePropertyDef
 
 internal static class ImbueCatalogue
 {
-    public static readonly List<ImbuePropertyDef> All;
+    // cc-P95 (D89): built on first use, not in a static initializer. The skill rows read SkillInfo.Table, which pinned
+    // SkillsInfo.Configure fills; a static initializer that ran first threw a TypeInitializationException and the shard
+    // did not start. ClusterFImbueKnowledge.Configure, the first user at start, now runs after it (its CallPriority).
+    private static List<ImbuePropertyDef>? _all;
+    private static List<ImbuePropertyDef>? _building;
+
+    public static List<ImbuePropertyDef> All => _all ??= Build();
+
+    // The list Build is filling; the Add helpers below append to it.
+    private static List<ImbuePropertyDef> Rows => _building!;
 
     // cc-P42 Part A. Self Repair (weapon and armor): shards and gold at the vanilla maximum, scaled like every other
     // property by target value. cc-P82: no longer gated at Master Artificer; the design makes it free (known at Basic).
@@ -182,9 +191,16 @@ internal static class ImbueCatalogue
         return most;
     }
 
-    static ImbueCatalogue()
+    internal static List<ImbuePropertyDef> Build()
     {
-        All = new List<ImbuePropertyDef>();
+        if (SkillInfo.Table.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "The imbuing catalogue was used before SkillsInfo.Configure filled SkillInfo.Table (D89)."
+            );
+        }
+
+        _building = new List<ImbuePropertyDef>();
 
         // -- General - apply to most item types -------------------------------
 
@@ -355,7 +371,7 @@ internal static class ImbueCatalogue
         Add("Self Repair",       "Weapon", 5, 7, shards: SelfRepairShards, gold: SelfRepairGold, ImbuableItem.Weapon,
             i => ((BaseWeapon)i).WeaponAttributes.SelfRepair,
             (i, v) => ((BaseWeapon)i).WeaponAttributes.SelfRepair = v);
-        All[^1].PricedAboveAll = true; // cc-P46 Part C: the floor above every other property
+        Rows[^1].PricedAboveAll = true; // cc-P46 Part C: the floor above every other property
 
         Add("Lower Stat Req (Weapon)", "Weapon", 100, 100, shards: 4, gold: 1500, ImbuableItem.Weapon,
             i => ((BaseWeapon)i).WeaponAttributes.LowerStatReq,
@@ -386,7 +402,7 @@ internal static class ImbueCatalogue
         Add("Self Repair (Armor)",   "Defense",  5,  7, shards: SelfRepairShards, gold: SelfRepairGold, ImbuableItem.Armor,
             i => ((BaseArmor)i).ArmorAttributes.SelfRepair,
             (i, v) => ((BaseArmor)i).ArmorAttributes.SelfRepair = v);
-        All[^1].PricedAboveAll = true; // cc-P46 Part C
+        Rows[^1].PricedAboveAll = true; // cc-P46 Part C
 
         Add("Lower Stat Req (Armor)", "Defense", 100, 100, shards: 4, gold: 1500, ImbuableItem.Armor,
             i => ((BaseArmor)i).ArmorAttributes.LowerStatReq,
@@ -441,10 +457,10 @@ internal static class ImbueCatalogue
 
         Add("Balanced", "Weapon", 1, 1, shards: 6, gold: 2500, isBool: true, ImbuableItem.Weapon,
             i => ((BaseRanged)i).Balanced ? 1 : 0, (i, v) => ((BaseRanged)i).Balanced = v != 0);
-        All[^1].Allows = i => i is BaseRanged;
+        Rows[^1].Allows = i => i is BaseRanged;
         Add("Velocity", "Weapon", 50, 60, shards: 6, gold: 2500, ImbuableItem.Weapon,
             i => ((BaseRanged)i).Velocity, (i, v) => ((BaseRanged)i).Velocity = v);
-        All[^1].Allows = i => i is BaseRanged;
+        Rows[^1].Allows = i => i is BaseRanged;
 
         // Mage Weapon: the stored value v reads "Mage Weapon -(30 - v) skill" (pinned AOS.cs), so 15 is OSI's -15.
         Add("Mage Weapon", "Weapon", 15, 20, shards: 6, gold: 2500, ImbuableItem.Weapon,
@@ -475,6 +491,10 @@ internal static class ImbueCatalogue
         {
             AddCustom(name, c);
         }
+
+        var rows = Rows;
+        _building = null;
+        return rows;
     }
 
     // ServUO Imbuing.cs m_SkillGroups (OSI's five +skill groups).
@@ -522,7 +542,7 @@ internal static class ImbueCatalogue
     private static void AddSkill(SkillName skill, int slot, ImbuableItem applies, string family, Func<Item, bool> allows)
     {
         var sk = skill;
-        All.Add(new ImbuePropertyDef
+        Rows.Add(new ImbuePropertyDef
         {
             Name               = SkillRowName(sk),
             Group              = "Skills",
@@ -558,13 +578,13 @@ internal static class ImbueCatalogue
                 var others = e.Fire + e.Cold + e.Poison + e.Energy + e.Chaos + e.Direct - get(e);
                 set(e, Math.Clamp(v, 0, Math.Max(0, 100 - others)));
             });
-        All[^1].KnowledgeKey = ImbueFamilies.ElementalDamage;
+        Rows[^1].KnowledgeKey = ImbueFamilies.ElementalDamage;
     }
 
     private static void AddCustom(string name, ImbueCustomConfig c)
     {
         var n = name;
-        All.Add(new ImbuePropertyDef
+        Rows.Add(new ImbuePropertyDef
         {
             Name               = n,
             Group              = "Custom",
@@ -605,7 +625,7 @@ internal static class ImbueCatalogue
         // Slayers are expensive to master (threshold 10) and costly to imbue.
         // They are boolean: either applied or not.
         var sn = slayer;
-        All.Add(new ImbuePropertyDef
+        Rows.Add(new ImbuePropertyDef
         {
             Name               = name,
             Group              = "Slayer",
@@ -654,7 +674,7 @@ internal static class ImbueCatalogue
         Func<Item, int> get, Action<Item, int> set,
         bool isBool = false)
     {
-        All.Add(new ImbuePropertyDef
+        Rows.Add(new ImbuePropertyDef
         {
             Name               = name,
             Group              = group,
