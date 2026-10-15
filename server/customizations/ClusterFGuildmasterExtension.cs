@@ -24,6 +24,10 @@ public abstract partial class BaseGuildmaster
     {
         base.AddCustomContextEntries(from, ref list);
 
+        // cc-P123: a guild master who gives its craft's bulk orders (Tailors' Circle, Tinkers' Union, Arcane Society,
+        // Maritime Brotherhood) shows Bulk Order Info to its members; pinned shows it only at a selling vendor.
+        BulkOrderGivers.AddGuildmasterEntries(this, from, ref list);
+
         if (from is not PlayerMobile pm) return;
         if (pm.Account is not IAccount acct) return;
 

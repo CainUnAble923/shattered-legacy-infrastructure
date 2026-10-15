@@ -1,0 +1,10 @@
+--- "a/Projects/UOContent/Items/Skill Items/Magical/Spellbook.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Magical/Spellbook.cs"
+@@ -196,6 +196,7 @@
+             }
+ 
+             var propertyCount = propertyCounts.RandomElement();
++            propertyCount += GuaranteedSpellbookImprovementTalisman.ExtraProperty(from); // ClusterF cc-P123 (2016 BOD reward)
+ 
+             BaseRunicTool.ApplyAttributesTo(this, true, 0, propertyCount, minIntensity, maxIntensity);
+         }

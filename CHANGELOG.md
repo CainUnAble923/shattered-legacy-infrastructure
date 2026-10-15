@@ -29,6 +29,23 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.15.8
+
+### Added
+- Bulk orders for six more crafts, on the same 2016 rules as smithing and tailoring: carpentry at Carpenters, fletching at Bowyers, tinkering at Tinkers, cooking at Cooks and Bakers, alchemy at Alchemists and inscription at Scribes. Each craft has its own three offers, its own deeds, small and large, and its own rewards list.
+- Guild masters give and take their own craft's bulk orders for members: the Foresters' Union (carpentry and fletching), the Tinkers' Union, the Maritime Brotherhood (cooking), the Order of the Alembic (alchemy) and the Arcane Society (inscription).
+- New rewards: the Master Chef's Apron (a bonus to making exceptional items while worn), a keg for powder of fortification, a plum tree for your house, natural dyes in five colours (some for spellbooks only), and a talisman that adds a property to each spellbook you scribe while wearing it. Dr. Spector's lenses and the kotl black rod exist on the shard too, though nothing makes them yet.
+- A deed made of a wood (oak, ash, yew, heartwood, bloodwood, frostwood) asks for items made of that wood.
+
+### Changed
+- Bulk order books hold the new crafts' deeds, and the filter lists all eight crafts with their metals and woods. The blacksmith metal filters now show only blacksmith deeds.
+
+### Fixed
+- The Tailors' Circle guild master now shows Bulk Order Info to its members; before, a member had no way to ask.
+
+### Staff
+- Bulk orders part 2 (the six crafts). Rewards still to come are listed in the rewards gump as "not on the shard yet" and cannot be bought: reward title deeds, recipes, smelter's and woodsman's talismans, harvest maps, runic mallets and chisels, cauldrons of transmutation, the fermentation barrel and the automaton and blackrock rewards. Cooked food, potions, scrolls and most furniture cannot be exceptional or of a wood on this shard, so deeds for them never ask for either. A few items ServUO's lists name are not on the shard (sweet cocoa butter, the three-tiered cake, enchanted apples, grapes of wrath, the runic atlas, clippers, the metal container engraver, the nexus core) and are left out of the deeds.
+
 ## 2026.10.15.7
 
 ### Changed

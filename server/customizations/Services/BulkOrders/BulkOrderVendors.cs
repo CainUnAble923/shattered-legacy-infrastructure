@@ -5,9 +5,16 @@
 // vendor runs pinned's code exactly as before.
 //
 // Which vendors (Chase's answers to P118, 2026-10-15): the town vendors, on OSI's 2016 rules for all eight crafts (option
-// A), and each craft's owning guild master for its members. Smith and tailor deeds exist now; the six other crafts are P123.
-//   Smith:  Blacksmith, Weaponsmith (and their subclasses: GeorgeHephaestus, our GargoyleWeaponsmith)
-//   Tailor: Tailor, Weaver, and the Tailors' Circle guild master (TailorGuildmaster, below) for its members
+// A), and each craft's owning guild master for its members (P118's giver table; cc-P123 adds the six crafts):
+//   Smith:       Blacksmith, Weaponsmith (and their subclasses: GeorgeHephaestus, our GargoyleWeaponsmith)
+//   Tailor:      Tailor, Weaver, and the Tailors' Circle guild master (TailorGuildmaster, below) for its members
+//   Carpentry:   Carpenter (and GargoyleCarpenter); the Foresters' Union guild master (BulkOrderGivers.cs)
+//   Fletching:   Bowyer (and New Haven's Robyn); the Foresters' Union guild master
+//   Tinkering:   Tinker (GargoyleTinker, New Haven's Amelia Youngstone); the Tinkers' Union guild master (TinkerGuildmaster)
+//   Cooking:     Cook, Baker (GargoyleBaker); the Maritime Brotherhood guild master (FisherGuildmaster)
+//   Alchemy:     Alchemist (GargoyleAlchemist); the Order of the Alembic guild master (BulkOrderGivers.cs)
+//   Inscription: Scribe (GargoyleScribe); the Arcane Society guild master (MageGuildmaster)
+// ServUO's Baker gives no deeds; P118's table (Chase's answer) puts cooking deeds at bakers too.
 // The Society of Smiths is not here: its guild master takes smith deeds entirely by its own rules, and at a regular smith
 // a member's deed is paid the Society's way before this file is reached (ClusterFSmithBODPayout.cs). Its choice gump at
 // the regular smiths takes its offers from the 2016 rule (ClusterFRegularSmithBODs.CreateChosen).
@@ -32,9 +39,15 @@ public static class BulkOrderVendors
     public static BODType? GetVendorBODType(BaseVendor vendor) =>
         vendor switch
         {
-            Blacksmith or Weaponsmith            => BODType.Smith,
-            Tailor or Weaver or TailorGuildmaster => BODType.Tailor,
-            _                                    => null
+            Blacksmith or Weaponsmith                   => BODType.Smith,
+            Tailor or Weaver or TailorGuildmaster        => BODType.Tailor,
+            Carpenter                                   => BODType.Carpentry,
+            Bowyer                                      => BODType.Fletching,
+            Tinker or TinkerGuildmaster                 => BODType.Tinkering,
+            Cook or Baker or FisherGuildmaster          => BODType.Cooking,
+            Alchemist                                   => BODType.Alchemy,
+            Scribe or MageGuildmaster                   => BODType.Inscription,
+            _                                           => null
         };
 
     public static bool IsNewSystemVendor(BaseVendor vendor) =>
@@ -50,18 +63,21 @@ public static class BulkOrderVendors
             return false;
         }
 
-        var type = GetVendorBODType(vendor)!.Value;
+        Offer(vendor, pm, GetVendorBODType(vendor)!.Value);
+        return true;
+    }
 
+    /// <summary>An offer of this craft if one is waiting, else when the next comes (ServUO :168-182).</summary>
+    public static void Offer(Mobile giver, PlayerMobile pm, BODType type)
+    {
         if (BulkOrderSystem.CanGetBulkOrder(pm, type) || pm.AccessLevel > AccessLevel.Player)
         {
             ShowOffer(pm, BulkOrderSystem.CreateBulkOrder(pm, type, true));
         }
         else
         {
-            SayNextOffer(vendor, pm, type);
+            SayNextOffer(giver, pm, type);
         }
-
-        return true;
     }
 
     public static void ShowOffer(PlayerMobile pm, Item bulkOrder)
@@ -78,7 +94,7 @@ public static class BulkOrderVendors
         }
     }
 
-    public static void SayNextOffer(BaseVendor vendor, PlayerMobile pm, BODType type)
+    public static void SayNextOffer(Mobile vendor, PlayerMobile pm, BODType type)
     {
         var ts = BulkOrderSystem.GetNextBulkOrder(type, pm);
         var totalMinutes = Math.Max(0, ((int)ts.TotalSeconds + 59) / 60);
@@ -133,25 +149,26 @@ public static class BulkOrderVendors
     /// <summary>ServUO ClaimRewardsEntry.OnClick (:279-307).</summary>
     public static void ClaimRewards(BaseVendor vendor, PlayerMobile pm)
     {
-        var type = GetVendorBODType(vendor);
-
-        if (type == null)
+        if (GetVendorBODType(vendor) is { } type)
         {
-            return;
+            ClaimRewards(vendor, pm, type);
         }
+    }
 
+    public static void ClaimRewards(Mobile vendor, PlayerMobile pm, BODType type)
+    {
         var context = BulkOrderSystem.GetContext(pm);
-        var pending = context.GetPendingRewardFor(type.Value);
+        var pending = context.GetPendingRewardFor(type);
 
         if (pending > 0)
         {
             if (context.PointsMode == PointsMode.Enabled)
             {
-                pm.SendGump(new BODConfirmBankPointsGump(pm, vendor, type.Value, pending, pending * 0.02));
+                pm.SendGump(new BODConfirmBankPointsGump(pm, vendor, type, pending, pending * 0.02));
             }
             else
             {
-                pm.SendGump(new BODRewardsGump(vendor, pm, type.Value, pending));
+                pm.SendGump(new BODRewardsGump(vendor, pm, type, pending));
             }
         }
         else if (!BulkOrderSystem.CanClaimRewards(pm))
@@ -161,7 +178,7 @@ public static class BulkOrderVendors
         }
         else
         {
-            pm.SendGump(new BODRewardsGump(vendor, pm, type.Value));
+            pm.SendGump(new BODRewardsGump(vendor, pm, type));
         }
     }
 
@@ -264,32 +281,52 @@ public static class BulkOrderVendors
             return true; // the deed goes back to the pack, upgraded or not
         }
 
+        accepted = TurnIn(
+            vendor, pm, bod, GetVendorBODType(vendor)!.Value,
+            vendor.IsValidBulkOrder(dropped) && vendor.SupportsBulkOrders(from)
+        );
+
+        if (accepted)
+        {
+            vendor.OnSuccessfulBulkOrderReceive(from);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// The turn-in proper (ServUO :1186-1291), at a vendor or a guild master: the pause, the right giver, unclaimed points,
+    /// completion; then gold to the bank, fame, and the points by the player's mode. True when the deed was taken.
+    /// </summary>
+    public static bool TurnIn(Mobile vendor, PlayerMobile pm, BaseBOD bod, BODType type, bool valid)
+    {
+        Mobile from = pm;
+
         if (Core.ML && pm.NextBODTurnInTime > Core.Now)
         {
             vendor.SayTo(from, 1079976, 0x3B2); // You'll have to wait a few seconds while I inspect the last order.
-            return true;
+            return false;
         }
 
-        if (!vendor.IsValidBulkOrder(dropped) || !vendor.SupportsBulkOrders(from))
+        if (!valid)
         {
             vendor.SayTo(from, 1045130, 0x3B2); // That order is for some other shopkeeper.
-            return true;
+            return false;
         }
 
         if (!BulkOrderSystem.CanClaimRewards(from))
         {
             // You must claim your last turn-in reward in order for us to continue doing business.
             vendor.SayTo(from, 1157083, 0x3B2);
-            return true;
+            return false;
         }
 
         if (!bod.Complete)
         {
             vendor.SayTo(from, 1045131, 0x3B2); // You have not completed the order yet.
-            return true;
+            return false;
         }
 
-        var type = GetVendorBODType(vendor)!.Value;
         var gold = BulkOrderSystem.ComputeGold(bod);
         var fame = bod.ComputeFame();
 
@@ -321,15 +358,12 @@ public static class BulkOrderVendors
 
         Titles.AwardFame(from, fame, true);
 
-        vendor.OnSuccessfulBulkOrderReceive(from);
-
         if (Core.ML)
         {
             pm.NextBODTurnInTime = Core.Now + TimeSpan.FromSeconds(2.0);
         }
 
-        dropped.Delete();
-        accepted = true;
+        bod.Delete();
         return true;
     }
 
@@ -369,5 +403,109 @@ public partial class TailorGuildmaster
     public override bool IsValidBulkOrder(Item item) => item is SmallTailorBOD or LargeTailorBOD;
 
     // Offers come through Bulk Order Info (BulkOrderVendors.TryOffer); a sale to the guild master never brings one.
+    public override Item CreateBulkOrder(Mobile from, bool fromContextMenu) => null;
+}
+
+// -- cc-P123: the six crafts' town vendors (ServUO Carpenter.cs:55-72, Bowyer.cs:61-78, Tinker.cs:47-64, Cook.cs:53-70,
+// Alchemist.cs:19-36, Scribe.cs:57-74). Pinned's declare none of these, so partial declarations add them. Offers come
+// through Bulk Order Info, as at every 2016 vendor; a sale never brings one (pinned's CreateBulkOrder, null). ServUO's
+// OnSuccessfulBulkOrderReceive clears the old system's per-craft timer, which pinned's PlayerMobile does not have.
+
+public partial class Carpenter
+{
+    public override bool SupportsBulkOrders(Mobile from) =>
+        BulkOrderSystem.NewSystemEnabled && from is PlayerMobile && from.Skills.Carpentry.Base > 0;
+
+    public override bool IsValidBulkOrder(Item item) => item is SmallCarpentryBOD or LargeCarpentryBOD;
+}
+
+public partial class Bowyer
+{
+    public override bool SupportsBulkOrders(Mobile from) =>
+        BulkOrderSystem.NewSystemEnabled && from is PlayerMobile && from.Skills.Fletching.Base > 0;
+
+    public override bool IsValidBulkOrder(Item item) => item is SmallFletchingBOD or LargeFletchingBOD;
+}
+
+public partial class Tinker
+{
+    public override bool SupportsBulkOrders(Mobile from) =>
+        BulkOrderSystem.NewSystemEnabled && from is PlayerMobile && from.Skills.Tinkering.Base > 0;
+
+    public override bool IsValidBulkOrder(Item item) => item is SmallTinkerBOD or LargeTinkerBOD;
+}
+
+public partial class Cook
+{
+    public override bool SupportsBulkOrders(Mobile from) =>
+        BulkOrderSystem.NewSystemEnabled && from is PlayerMobile && from.Skills.Cooking.Base > 0;
+
+    public override bool IsValidBulkOrder(Item item) => item is SmallCookingBOD or LargeCookingBOD;
+}
+
+/// <summary>P118's giver table: bakers take cooking deeds beside cooks (ServUO's Baker gives none).</summary>
+public partial class Baker
+{
+    public override bool SupportsBulkOrders(Mobile from) =>
+        BulkOrderSystem.NewSystemEnabled && from is PlayerMobile && from.Skills.Cooking.Base > 0;
+
+    public override bool IsValidBulkOrder(Item item) => item is SmallCookingBOD or LargeCookingBOD;
+}
+
+public partial class Alchemist
+{
+    public override bool SupportsBulkOrders(Mobile from) =>
+        BulkOrderSystem.NewSystemEnabled && from is PlayerMobile && from.Skills.Alchemy.Base > 0;
+
+    public override bool IsValidBulkOrder(Item item) => item is SmallAlchemyBOD or LargeAlchemyBOD;
+}
+
+public partial class Scribe
+{
+    public override bool SupportsBulkOrders(Mobile from) =>
+        BulkOrderSystem.NewSystemEnabled && from is PlayerMobile && from.Skills.Inscribe.Base > 0;
+
+    public override bool IsValidBulkOrder(Item item) => item is SmallInscriptionBOD or LargeInscriptionBOD;
+}
+
+// -- cc-P123: the guild masters who are shopkeepers give and take their craft's deeds for their members, on the stock
+// rules (Chase's answer 2 to P118), as the Tailors' Circle's does above. Their own guild payouts are F-18, F-20, F-25.
+
+/// <summary>The Tinkers' Union: tinkering deeds for members.</summary>
+public partial class TinkerGuildmaster
+{
+    public const string GuildKey = "tinkers";
+
+    public override bool SupportsBulkOrders(Mobile from) =>
+        BulkOrderGivers.IsMemberWithSkill(from, GuildKey, SkillName.Tinkering);
+
+    public override bool IsValidBulkOrder(Item item) => item is SmallTinkerBOD or LargeTinkerBOD;
+
+    public override Item CreateBulkOrder(Mobile from, bool fromContextMenu) => null;
+}
+
+/// <summary>The Arcane Society: inscription deeds for members.</summary>
+public partial class MageGuildmaster
+{
+    public const string GuildKey = "arcane";
+
+    public override bool SupportsBulkOrders(Mobile from) =>
+        BulkOrderGivers.IsMemberWithSkill(from, GuildKey, SkillName.Inscribe);
+
+    public override bool IsValidBulkOrder(Item item) => item is SmallInscriptionBOD or LargeInscriptionBOD;
+
+    public override Item CreateBulkOrder(Mobile from, bool fromContextMenu) => null;
+}
+
+/// <summary>The Maritime Brotherhood: cooking deeds for members.</summary>
+public partial class FisherGuildmaster
+{
+    public const string GuildKey = "maritime";
+
+    public override bool SupportsBulkOrders(Mobile from) =>
+        BulkOrderGivers.IsMemberWithSkill(from, GuildKey, SkillName.Cooking);
+
+    public override bool IsValidBulkOrder(Item item) => item is SmallCookingBOD or LargeCookingBOD;
+
     public override Item CreateBulkOrder(Mobile from, bool fromContextMenu) => null;
 }

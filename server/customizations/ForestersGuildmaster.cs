@@ -78,6 +78,8 @@ public partial class ForestersGuildmaster : BaseCreature
 
         if (from is PlayerMobile pm && pm.InRange(Location, 4))
             list.Add(new TalkEntry(pm, this));
+
+        BulkOrderGivers.AddContextEntries(this, from, ref list); // cc-P123: carpentry and fletching deeds for members
     }
 
     public override bool HandlesOnSpeech(Mobile from) =>

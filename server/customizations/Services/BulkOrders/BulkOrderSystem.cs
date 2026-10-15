@@ -17,6 +17,11 @@
 // BaseVendor, whose save formats are untouched. A world saved before this file existed has none and loads with every
 // player's offers full, as ServUO's first-contact rule (LastBulkOrder unset) gives them.
 //
+// cc-P123 adds the six other 2016 crafts: their deeds (CraftBOD.cs and one file per ServUO deed), lists
+// (CraftBulkEntries.cs), calculators (CraftRewardCalculators.cs), the book's share (BulkOrderBooks.cs) and the guild masters
+// who are not shopkeepers (BulkOrderGivers.cs); here, the crafts in CreateBulkOrder, GetBODType, GetCalculator and the
+// exceptional and material rules (notes/cc-P123-port-bulk-orders-crafts.md).
+//
 // Changes from ServUO, each argued in notes/cc-P122-port-bulk-orders-core.md:
 //  - the book filter stays on the book (pinned's BOBFilter is per book, ServUO's per player);
 //  - ServUO's GenericBuyInfo.BuyPrices (filled by whichever vendor was constructed last) is built here once, from every
@@ -180,8 +185,8 @@ public static class BulkOrderSystem
         };
 
     /// <summary>
-    /// A new deed of this craft for the player (ServUO :247-289): large at 70.1 with ServUO's roll, else small. Only smith
-    /// and tailor deeds exist yet; the six other crafts are P123.
+    /// A new deed of this craft for the player (ServUO :247-289): large at 70.1 with ServUO's roll, else small. The six
+    /// 2016 crafts' deeds are cc-P123's (CraftBODs.cs).
     /// </summary>
     public static Item CreateBulkOrder(Mobile m, BODType type, bool fromContextMenu)
     {
@@ -201,6 +206,18 @@ public static class BulkOrderSystem
                     return doLarge ? new LargeSmithBOD() : SmallSmithBOD.CreateRandomFor(pm);
                 case BODType.Tailor:
                     return doLarge ? new LargeTailorBOD() : SmallTailorBOD.CreateRandomFor(pm);
+                case BODType.Alchemy:
+                    return doLarge ? new LargeAlchemyBOD() : SmallAlchemyBOD.CreateRandomFor(pm);
+                case BODType.Inscription:
+                    return doLarge ? new LargeInscriptionBOD() : SmallInscriptionBOD.CreateRandomFor(pm);
+                case BODType.Tinkering:
+                    return doLarge ? new LargeTinkerBOD() : SmallTinkerBOD.CreateRandomFor(pm);
+                case BODType.Cooking:
+                    return doLarge ? new LargeCookingBOD() : SmallCookingBOD.CreateRandomFor(pm);
+                case BODType.Fletching:
+                    return doLarge ? new LargeFletchingBOD() : SmallFletchingBOD.CreateRandomFor(pm);
+                case BODType.Carpentry:
+                    return doLarge ? new LargeCarpentryBOD() : SmallCarpentryBOD.CreateRandomFor(pm);
             }
         }
 
@@ -212,16 +229,28 @@ public static class BulkOrderSystem
     public static BODType? GetBODType(Item bod) =>
         bod switch
         {
-            SmallSmithBOD or LargeSmithBOD   => BODType.Smith,
-            SmallTailorBOD or LargeTailorBOD => BODType.Tailor,
-            _                                => null
+            SmallSmithBOD or LargeSmithBOD             => BODType.Smith,
+            SmallTailorBOD or LargeTailorBOD           => BODType.Tailor,
+            SmallAlchemyBOD or LargeAlchemyBOD         => BODType.Alchemy,
+            SmallInscriptionBOD or LargeInscriptionBOD => BODType.Inscription,
+            SmallTinkerBOD or LargeTinkerBOD           => BODType.Tinkering,
+            SmallCookingBOD or LargeCookingBOD         => BODType.Cooking,
+            SmallFletchingBOD or LargeFletchingBOD     => BODType.Fletching,
+            SmallCarpentryBOD or LargeCarpentryBOD     => BODType.Carpentry,
+            _                                          => null
         };
 
     public static RewardCalculator GetCalculator(BODType type) =>
         type switch
         {
-            BODType.Tailor => TailorRewardCalculator.Instance,
-            _              => SmithRewardCalculator.Instance
+            BODType.Tailor      => TailorRewardCalculator.Instance,
+            BODType.Alchemy     => AlchemyRewardCalculator.Instance,
+            BODType.Inscription => InscriptionRewardCalculator.Instance,
+            BODType.Tinkering   => TinkeringRewardCalculator.Instance,
+            BODType.Cooking     => CookingRewardCalculator.Instance,
+            BODType.Fletching   => FletchingRewardCalculator.Instance,
+            BODType.Carpentry   => CarpentryRewardCalculator.Instance,
+            _                   => SmithRewardCalculator.Instance
         };
 
     // -- Points and gold ---------------------------------------------------------------------------------------------
@@ -342,14 +371,45 @@ public static class BulkOrderSystem
             _                                              => null
         };
 
-    public static bool CanBeExceptional(BaseBOD bod) => true; // smith and tailor: always (ServUO :503-515)
+    /// <summary>
+    /// ServUO :503-515: alchemy and inscription never; tinkering, cooking and fletching unless the item is on ServUO's
+    /// excluded list. cc-P123: and never for an item that cannot be exceptional on this shard (CraftBOD.CanBeExceptional),
+    /// which ServUO's own IQuality check would refuse at the combine.
+    /// </summary>
+    public static bool CanBeExceptional(BaseBOD bod) =>
+        GetBODType(bod) switch
+        {
+            BODType.Smith or BODType.Tailor             => true,
+            BODType.Alchemy or BODType.Inscription      => false,
+            BODType.Tinkering or BODType.Cooking or BODType.Fletching =>
+                !IsInExceptionalExcludeList(bod) && CraftBOD.CanBeExceptional(GetTypeFromBOD(bod)),
+            _ => CraftBOD.CanBeExceptional(GetTypeFromBOD(bod))
+        };
 
+    /// <summary>ServUO :529-543, and (cc-P123) only for an item that records its material on this shard.</summary>
     public static bool CanUseMaterial(BaseBOD bod) =>
         GetBODType(bod) switch
         {
+            BODType.Smith                                                => true,
             BODType.Tailor => BGTClassifier.Classify(BODType.Tailor, GetTypeFromBOD(bod)) == BulkGenericType.Leather,
-            _              => true
+            BODType.Alchemy or BODType.Inscription or BODType.Cooking    => false,
+            BODType.Tinkering or BODType.Fletching =>
+                !IsInExceptionalExcludeList(bod) && CraftBOD.CanUseMaterial(GetTypeFromBOD(bod)),
+            _ => CraftBOD.CanUseMaterial(GetTypeFromBOD(bod))
         };
+
+    private static bool IsInExceptionalExcludeList(BaseBOD bod) =>
+        GetTypeFromBOD(bod) is { } t && Array.IndexOf(_exceptionalExcluded, t) >= 0;
+
+    // ServUO :545-555. Not on the shard, so not listed: EnchantedApple, GrapesOfWrath, MetalContainerEngraver.
+    private static readonly Type[] _exceptionalExcluded =
+    [
+        typeof(Arrow), typeof(Bolt), typeof(Kindling), typeof(Shaft),
+        typeof(TribalPaint), typeof(EggBomb), typeof(CookedBird), typeof(FishSteak), typeof(FriedEggs), typeof(LambLeg),
+        typeof(Ribs),
+        typeof(Gears), typeof(Axle), typeof(Springs), typeof(AxleGears), typeof(ClockParts), typeof(Clock), typeof(PotionKeg),
+        typeof(ClockFrame)
+    ];
 
     /// <summary>The top of each material line: a bribe never moves a deed past it.</summary>
     public static bool IsTopMaterial(BulkMaterialType m) =>
@@ -433,6 +493,9 @@ public static class BulkOrderSystem
                             break;
                         case BulkGenericType.Leather:
                             bod.Material = BulkMaterialType.Spined;
+                            break;
+                        case BulkGenericType.Wood:
+                            bod.Material = BulkMaterialType.OakWood;
                             break;
                     }
                 }
@@ -525,7 +588,7 @@ public static class BulkOrderSystem
     /// </summary>
     public static string Census()
     {
-        int smith = 0, tailor = 0, books = 0, entries = 0;
+        int smith = 0, tailor = 0, crafts = 0, books = 0, entries = 0;
 
         foreach (var item in World.Items.Values)
         {
@@ -537,6 +600,9 @@ public static class BulkOrderSystem
                 case BaseBOD bod when GetBODType(bod) == BODType.Tailor:
                     tailor++;
                     break;
+                case BaseBOD bod when GetBODType(bod) != null: // cc-P123: the six 2016 crafts
+                    crafts++;
+                    break;
                 case BulkOrderBook book:
                     books++;
                     entries += book.Entries.Count;
@@ -545,6 +611,7 @@ public static class BulkOrderSystem
         }
 
         return $"[BulkOrders] 2016 rules {(NewSystemEnabled ? "on" : "off")}: {smith} smith and {tailor} tailor deeds, " +
+               $"{crafts} of the six other crafts', " +
                $"{books} books holding {entries} deeds, {_contexts.Count} players' offers on file.";
     }
 

@@ -59,9 +59,19 @@ public static class ShardClilocs
     /// <summary>"All items must be made with Celestial ingots."</summary>
     public const int CelestialIngots = 1_900_010;
 
-    /// <summary>The deed line for a post-Valorite material; 0 (no line, pinned's value) for any other.</summary>
+    /// <summary>
+    /// The deed line for a post-Valorite material, and (cc-P123) for the woods, EA's lines as ServUO's
+    /// SmallBODGump.GetMaterialNumberFor gives them (:123-132); 0 (no line, pinned's value) for any other. Pinned's gumps
+    /// call this for every material past its own metals and leathers.
+    /// </summary>
     public static int PostValoriteMaterial(BulkMaterialType material) => material switch
     {
+        BulkMaterialType.OakWood    => 1071428,
+        BulkMaterialType.AshWood    => 1071429,
+        BulkMaterialType.YewWood    => 1071430,
+        BulkMaterialType.Heartwood  => 1071432,
+        BulkMaterialType.Bloodwood  => 1071431,
+        BulkMaterialType.Frostwood  => 1071433,
         BulkMaterialType.Platinum   => PlatinumIngots,
         BulkMaterialType.Toxic      => ToxicIngots,
         BulkMaterialType.Blaze      => BlazeIngots,

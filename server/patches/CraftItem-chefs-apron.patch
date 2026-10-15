@@ -1,0 +1,10 @@
+--- "a/Projects/UOContent/Engines/Craft/Core/CraftItem.cs"
++++ "b/Projects/UOContent/Engines/Craft/Core/CraftItem.cs"
+@@ -848,6 +848,7 @@
+             }
+ 
+             bonus += ClusterFImbueEffects.MastercraftBonus(from); // ClusterF cc-P82: Mastercraft on worn gear
++            bonus += MasterChefsApron.ExceptionalBonusFor(from); // ClusterF cc-P123: the Master Chef's Apron (2016 BOD reward)
+ 
+             chance = system.ECA switch
+             {

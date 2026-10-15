@@ -1,4 +1,5 @@
 using System;
+using Server.Engines.Craft;
 using Server.Items;
 
 namespace Server.Engines.BulkOrders
@@ -40,21 +41,43 @@ namespace Server.Engines.BulkOrders
     {
         Iron,
         Cloth,
-        Leather
+        Leather,
+        Wood // cc-P123: ServUO's fourth, for carpentry, fletching and wooden tinker work
     }
 
     public static class BGTClassifier
     {
+        // cc-P123: ServUO pub57 BulkMaterialType.cs:37-70 for the six 2016 crafts. Smith and tailor read as before.
         public static BulkGenericType Classify(BODType deedType, Type itemType)
         {
-            if (deedType != BODType.Tailor)
+            if (deedType == BODType.Tailor)
             {
-                return BulkGenericType.Iron;
+                return itemType?.IsSubclassOf(typeof(BaseArmor)) != false || itemType.IsSubclassOf(typeof(BaseShoes))
+                    ? BulkGenericType.Leather
+                    : BulkGenericType.Cloth;
             }
 
-            return itemType?.IsSubclassOf(typeof(BaseArmor)) != false || itemType.IsSubclassOf(typeof(BaseShoes))
-                ? BulkGenericType.Leather
-                : BulkGenericType.Cloth;
+            if (deedType == BODType.Tinkering && itemType != null)
+            {
+                if (itemType == typeof(Clock) || itemType.IsSubclassOf(typeof(Clock)))
+                {
+                    return BulkGenericType.Wood;
+                }
+
+                var item = DefTinkering.CraftSystem.CraftItems.SearchFor(itemType);
+                var typeRes = item?.Resources.Count > 0 ? item.Resources[0].ItemType : null;
+
+                if (typeRes == typeof(Board) || typeRes == typeof(Log))
+                {
+                    return BulkGenericType.Wood;
+                }
+            }
+            else if (deedType is BODType.Fletching or BODType.Carpentry)
+            {
+                return BulkGenericType.Wood;
+            }
+
+            return BulkGenericType.Iron;
         }
     }
 }

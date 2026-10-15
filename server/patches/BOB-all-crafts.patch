@@ -1,0 +1,184 @@
+--- "a/Projects/UOContent/Engines/Bulk Orders/Books/BOBSmallEntry.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/Books/BOBSmallEntry.cs"
+@@ -26,14 +26,7 @@
+         _itemType = bod.Type;
+         RequireExceptional = bod.RequireExceptional;
+ 
+-        if (bod is SmallTailorBOD)
+-        {
+-            DeedType = BODType.Tailor;
+-        }
+-        else if (bod is SmallSmithBOD)
+-        {
+-            DeedType = BODType.Smith;
+-        }
++        DeedType = BulkOrderBooks.DeedTypeOf(bod, DeedType); // ClusterF cc-P123: all eight crafts (smith, tailor as before)
+ 
+         Material = bod.Material;
+         _amountCur = bod.AmountCur;
+@@ -55,6 +48,11 @@
+             bod = new SmallTailorBOD(AmountCur, AmountMax, ItemType, Number, Graphic, RequireExceptional, Material);
+         }
+ 
++        // ClusterF cc-P123: the six 2016 crafts' deeds
++        bod ??= BulkOrderBooks.ReconstructSmall(
++            DeedType, AmountCur, AmountMax, ItemType, Number, Graphic, RequireExceptional, Material
++        );
++
+         return bod;
+     }
+ 
+--- "a/Projects/UOContent/Engines/Bulk Orders/Books/BOBLargeEntry.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/Books/BOBLargeEntry.cs"
+@@ -16,7 +16,7 @@
+         {
+             LargeTailorBOD => BODType.Tailor,
+             LargeSmithBOD  => BODType.Smith,
+-            _              => DeedType
++            _              => BulkOrderBooks.DeedTypeOf(bod, DeedType) // ClusterF cc-P123: the six 2016 crafts
+         };
+ 
+         Material = bod.Material;
+@@ -36,7 +36,8 @@
+         {
+             BODType.Smith  => new LargeSmithBOD(AmountMax, RequireExceptional, Material, ReconstructEntries()),
+             BODType.Tailor => new LargeTailorBOD(AmountMax, RequireExceptional, Material, ReconstructEntries()),
+-            _              => null
++            // ClusterF cc-P123: the six 2016 crafts' deeds
++            _              => BulkOrderBooks.ReconstructLarge(DeedType, AmountMax, RequireExceptional, Material, ReconstructEntries())
+         };
+ 
+         for (var i = 0; i < bod?.Entries.Length; ++i)
+--- "a/Projects/UOContent/Engines/Bulk Orders/Books/BOBGump.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/Books/BOBGump.cs"
+@@ -369,21 +369,23 @@
+         {
+             1  => deedType == BODType.Smith,
+             2  => deedType == BODType.Tailor,
+-            3  => mat == BulkMaterialType.None && BGTClassifier.Classify(deedType, itemType) == BulkGenericType.Iron,
+-            4  => mat == BulkMaterialType.DullCopper,
+-            5  => mat == BulkMaterialType.ShadowIron,
+-            6  => mat == BulkMaterialType.Copper,
+-            7  => mat == BulkMaterialType.Bronze,
+-            8  => mat == BulkMaterialType.Gold,
+-            9  => mat == BulkMaterialType.Agapite,
+-            10 => mat == BulkMaterialType.Verite,
+-            11 => mat == BulkMaterialType.Valorite,
++            // ClusterF cc-P123: the smith metals name the craft, as ServUO's do (tinkering deeds use the same metals)
++            3  => deedType == BODType.Smith && mat == BulkMaterialType.None &&
++                  BGTClassifier.Classify(deedType, itemType) == BulkGenericType.Iron,
++            4  => deedType == BODType.Smith && mat == BulkMaterialType.DullCopper,
++            5  => deedType == BODType.Smith && mat == BulkMaterialType.ShadowIron,
++            6  => deedType == BODType.Smith && mat == BulkMaterialType.Copper,
++            7  => deedType == BODType.Smith && mat == BulkMaterialType.Bronze,
++            8  => deedType == BODType.Smith && mat == BulkMaterialType.Gold,
++            9  => deedType == BODType.Smith && mat == BulkMaterialType.Agapite,
++            10 => deedType == BODType.Smith && mat == BulkMaterialType.Verite,
++            11 => deedType == BODType.Smith && mat == BulkMaterialType.Valorite,
+             12 => mat == BulkMaterialType.None && BGTClassifier.Classify(deedType, itemType) == BulkGenericType.Cloth,
+             13 => mat == BulkMaterialType.None && BGTClassifier.Classify(deedType, itemType) == BulkGenericType.Leather,
+             14 => mat == BulkMaterialType.Spined,
+             15 => mat == BulkMaterialType.Horned,
+             16 => mat == BulkMaterialType.Barbed,
+-            _  => true
++            _  => BulkOrderBooks.CheckFilter(f.Material, mat, deedType) // ClusterF cc-P123: the six 2016 crafts
+         };
+     }
+ 
+@@ -514,7 +516,7 @@
+                        itemType.IsSubclassOf(typeof(BaseShoes)) => 1062235,
+                 _                       => 1044286
+             },
+-            _ => TextDefinition.Empty
++            _ => BulkOrderBooks.GetMaterialName(mat, type, itemType) // ClusterF cc-P123: the six 2016 crafts
+         };
+ 
+     public override void SendTo(NetState ns)
+--- "a/Projects/UOContent/Engines/Bulk Orders/Books/BOBFilterGump.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/Books/BOBFilterGump.cs"
+@@ -52,21 +52,24 @@
+             { 1062239, 3 }  // 20
+         };
+ 
++        // ClusterF cc-P123: pinned's smith and tailor rows, then the six 2016 crafts' (BulkOrderBooks.NewCraftFilters)
++        private static readonly int[,] _allMaterialFilters = BulkOrderBooks.AllFilters(_materialFilters);
++
+         private static readonly int[][,] _filters =
+         {
+             _typeFilters,
+             _qualityFilters,
+-            _materialFilters,
++            _allMaterialFilters,
+             _amountFilters
+         };
+ 
+         private static readonly int[] _xOffsets_Type = [0, 75, 170];
+         private static readonly int[] _xOffsets_Quality = [0, 75, 170];
+         private static readonly int[] _xOffsets_Amount = [0, 75, 180, 275];
+-        private static readonly int[] _xOffsets_Material = [0, 105, 210, 305, 390, 485];
++        private static readonly int[] _xOffsets_Material = [0, 108, 212, 307, 392, 487]; // ClusterF cc-P123: ServUO's new-system offsets
+ 
+         private static readonly int[] _xWidths_Small = [50, 50, 70, 50];
+-        private static readonly int[] _xWidths_Large = [80, 50, 50, 50, 50, 50];
++        private static readonly int[] _xWidths_Large = [80, 60, 60, 60, 60, 60]; // ClusterF cc-P123: ServUO's
+ 
+         private readonly BulkOrderBook _book;
+         private readonly PlayerMobile _from;
+@@ -85,15 +88,16 @@
+ 
+             builder.AddPage();
+ 
+-            builder.AddBackground(10, 10, 600, 439, 5054);
++            // ClusterF cc-P123: ServUO's new-system layout (BOBFilterGump.cs:180-218), eight crafts tall
++            builder.AddBackground(10, 10, 600, 695, 5054);
+ 
+-            builder.AddImageTiled(18, 20, 583, 420, 2624);
+-            builder.AddAlphaRegion(18, 20, 583, 420);
++            builder.AddImageTiled(18, 20, 583, 676, 2624);
++            builder.AddAlphaRegion(18, 20, 583, 676);
+ 
+             builder.AddImage(5, 5, 10460);
+             builder.AddImage(585, 5, 10460);
+-            builder.AddImage(5, 424, 10460);
+-            builder.AddImage(585, 424, 10460);
++            builder.AddImage(5, 690, 10460);
++            builder.AddImage(585, 690, 10460);
+ 
+             builder.AddHtmlLocalized(270, 32, 200, 32, 1062223, LabelColor); // Filter Preference
+ 
+@@ -103,23 +107,23 @@
+             builder.AddHtmlLocalized(320, 64, 50, 32, 1062215, LabelColor); // Quality
+             AddFilterList(ref builder, 320, 96, _xOffsets_Quality, 40, _qualityFilters, _xWidths_Small, f.Quality, 1);
+ 
+-            builder.AddHtmlLocalized(26, 160, 120, 32, 1062232, LabelColor); // Material Type
+-            AddFilterList(ref builder, 25, 192, _xOffsets_Material, 40, _materialFilters, _xWidths_Large, f.Material, 2);
++            builder.AddHtmlLocalized(26, 130, 120, 32, 1062232, LabelColor); // Material Type
++            AddFilterList(ref builder, 25, 162, _xOffsets_Material, 35, _allMaterialFilters, _xWidths_Large, f.Material, 2);
+ 
+-            builder.AddHtmlLocalized(26, 320, 120, 32, 1062217, LabelColor); // Amount
+-            AddFilterList(ref builder, 25, 352, _xOffsets_Amount, 40, _amountFilters, _xWidths_Small, f.Quantity, 3);
++            builder.AddHtmlLocalized(26, 608, 120, 32, 1062217, LabelColor); // Amount
++            AddFilterList(ref builder, 25, 640, _xOffsets_Amount, 40, _amountFilters, _xWidths_Small, f.Quantity, 3);
+ 
+-            builder.AddHtmlLocalized(75, 416, 120, 32, 1062477, _from.UseOwnFilter ? LabelColor : 16927); // Set Book Filter
+-            builder.AddButton(40, 416, 4005, 4007, 1);
++            builder.AddHtmlLocalized(75, 670, 120, 32, 1062477, _from.UseOwnFilter ? LabelColor : 16927); // Set Book Filter
++            builder.AddButton(40, 670, 4005, 4007, 1);
+ 
+-            builder.AddHtmlLocalized(235, 416, 120, 32, 1062478, _from.UseOwnFilter ? 16927 : LabelColor); // Set Your Filter
+-            builder.AddButton(200, 416, 4005, 4007, 2);
++            builder.AddHtmlLocalized(235, 670, 120, 32, 1062478, _from.UseOwnFilter ? 16927 : LabelColor); // Set Your Filter
++            builder.AddButton(200, 670, 4005, 4007, 2);
+ 
+-            builder.AddHtmlLocalized(405, 416, 120, 32, 1062231, LabelColor); // Clear Filter
+-            builder.AddButton(370, 416, 4005, 4007, 3);
++            builder.AddHtmlLocalized(405, 670, 120, 32, 1062231, LabelColor); // Clear Filter
++            builder.AddButton(370, 670, 4005, 4007, 3);
+ 
+-            builder.AddHtmlLocalized(540, 416, 50, 32, 1011046, LabelColor); // APPLY
+-            builder.AddButton(505, 416, 4017, 4018, 0);
++            builder.AddHtmlLocalized(540, 670, 50, 32, 1011046, LabelColor); // APPLY
++            builder.AddButton(505, 670, 4017, 4018, 0);
+         }
+ 
+         private void AddFilterList(ref DynamicGumpBuilder builder,

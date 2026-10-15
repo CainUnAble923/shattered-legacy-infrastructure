@@ -594,6 +594,19 @@ apply_patch "$PATCHES/BODType-all-crafts.patch"
 apply_patch "$PATCHES/BaseVendor-bulk-orders-2016.patch"
 apply_patch "$PATCHES/BOD-gumps-points-mode.patch"
 
+# cc-P123: Bulk orders part 2, the six 2016 crafts (carpentry, fletching, tinkering, cooking, alchemy, inscription) and
+# their guild givers. Their deeds are new types in customizations/Services/BulkOrders/; these three patches reach the
+# pinned files that cannot be hooked otherwise. BOB-all-crafts: pinned's book stores, rebuilds, names and filters smith
+# and tailor deeds only; each of its four files sends any other craft to BulkOrderBooks (the filter keeps pinned's
+# numbers 0..16 for saved filters and the smith metals now name their craft, as ServUO's do). CraftItem-chefs-apron: the
+# Master Chef's Apron's exceptional bonus beside cc-P82's Mastercraft line (GetExceptionalChance is not virtual).
+# Spellbook-improvement-talisman: the Guaranteed Spellbook Improvement Talisman's extra property in Spellbook.OnCraft.
+# Applies after CraftItem-shard-hooks and its followers. Alternatives argued in
+# shard-migration/notes/cc-P123-port-bulk-orders-crafts.md; pinned by BulkOrderCraftsVerification.
+apply_patch "$PATCHES/BOB-all-crafts.patch"
+apply_patch "$PATCHES/CraftItem-chefs-apron.patch"
+apply_patch "$PATCHES/Spellbook-improvement-talisman.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
