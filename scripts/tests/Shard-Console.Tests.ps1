@@ -128,7 +128,7 @@ function New-PackageZipRow {
     [pscustomobject]@{ Name = $Name; FullName = (Join-Path $config.PackageDist $Name); Bytes = 83886080; LastWriteUtc = $p60Now.AddHours(-1); Json = $j }
 }
 function New-PackageFacts {
-    param([string[]]$Dirty = @(), [string]$RepoError, [switch]$NoBuild, [switch]$NoPublish, $Zips, $Picked, [string]$Changelog, $LatestNote, [string]$BuildDiff = 'same')
+    param([string[]]$Dirty = @(), [string]$RepoError, [switch]$NoBuild, [switch]$NoPublish, $Zips, $Picked, [string]$Changelog, $LatestNote, [string]$BuildDiff = 'same', $Client)
     if ($null -eq $Zips) { $Zips = @(New-PackageZipRow) }
     if ($null -eq $Picked) { $Picked = [pscustomobject]@{ Name = $pkgZipName; Sha256 = $pkgSha; InnerVersion = '2026.10.05.1329'; Error = $null } }
     if (-not $Changelog) { $Changelog = "# Shattered Legacy changelog`n<!--`n## 2026.10.02`n-->`n`n## 2026.10.05.2`n`n### Fixed`n- Smith deeds say which ingots they need.`n" }
@@ -136,6 +136,7 @@ function New-PackageFacts {
     [pscustomobject]@{
         BuildExists = (-not $NoBuild); PublishExists = (-not $NoPublish); RepoPath = 'D:\ShatteredLegacy'; RepoPaths = @($Dirty)
         RepoError = $RepoError; Head = '9ab57e4'; BuildDiff = $BuildDiff; Zips = @($Zips); Picked = $Picked; Changelog = $Changelog; LatestNote = $LatestNote
+        Client = $Client   # cc-P124: Get-PackageClientFacts; $null in the facts written before it, which then say nothing of it
     }
 }
 $pkgFactsOk = New-PackageFacts
@@ -5413,6 +5414,63 @@ Fact 'P116_TheGolemTileCountsTheQueueFolderWhileStatusJsonIsStale' {
         [IO.File]::WriteAllText((Join-Path $root 'status.json'), '{ "schema": 1, "state": "IDLE", "enabled": true, "queued": ["cc-P120-x.md"] }')
         Assert-True ((Get-AutopilotViewNow $gone).Tile.Detail -match '^1 queued') 'no folder listing: status.json''s list'
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+# --- cc-P124: the Player package tab ships our client build, and shows it ----------------------------------------------
+# A made-up client folder (a TazUO.exe and an sl-build.txt) in a temp folder; the patch list is the repo's own.
+
+function New-P124Client {
+    param([string]$Name, [switch]$Stale, [switch]$NoSlBuild)
+    $d = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p124-' + $Name + '-' + [guid]::NewGuid().ToString('N').Substring(0, 6))
+    New-Item -ItemType Directory -Path $d -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $d 'TazUO.exe'), 'x')
+    $rp = Get-RepoClientPatches $repo
+    $lines = @(('TazUO upstream ' + $rp.Upstream), 'built 2026-10-15 09:00') + @($rp.Patches | ForEach-Object { 'patch ' + $_.Name + ' sha256 ' + $_.Sha256 })
+    if ($Stale) { $lines = $lines[0..2] }
+    if (-not $NoSlBuild) { [IO.File]::WriteAllLines((Join-Path $d 'sl-build.txt'), [string[]]$lines) }
+    $d
+}
+
+Fact 'P124_TheConsoleShipsOurClientBuildByDefault' {
+    $c = Get-ConsoleConfig -RepoRoot $repo
+    Assert-Equal 'D:\UO\tazuo-sl-build\client' $c.PackageClient 'the Player package tab and Build-PlayerPackage.ps1 read the one default'
+    Assert-Equal (Get-PackageClientDefault) $c.PackageClient 'from PackageClient.ps1'
+}
+
+Fact 'P124_ThePackageTabShowsTheClientFolderAndItsSlBuildTxt' {
+    $script:NetProbeDisabled = $true
+    $good = New-P124Client 'tab'
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.PackageClient = $good
+    $form = New-ConsoleForm -Config $cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        $box = $script:ui.PackageClient
+        Assert-True ($null -ne $box) 'the Player package tab has the client box'
+        Assert-True ($box.Text.Contains($good)) ('it names the folder: ' + $box.Text)
+        foreach ($l in [IO.File]::ReadAllLines((Join-Path $good 'sl-build.txt'))) { Assert-True ($box.Text.Contains($l)) ('and shows sl-build.txt line ' + $l + ': ' + $box.Text) }
+        Assert-True ($box.Text -match 'TazUO [0-9a-f]{8} \+ \d+ patch') ('and the version: ' + $box.Text)
+        # A stale build says so in the tab, before Build runs.
+        $cfg.PackageClient = New-P124Client 'tabstale' -Stale
+        Update-PackageList
+        Assert-True ($script:ui.PackageClient.Text -match 'STALE CLIENT BUILD') ('stale: ' + $script:ui.PackageClient.Text)
+        $cfg.PackageClient = New-P124Client 'tabstock' -NoSlBuild
+        Update-PackageList
+        Assert-True ($script:ui.PackageClient.Text -match 'has no sl-build\.txt') ('stock: ' + $script:ui.PackageClient.Text)
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
+Fact 'P124_ABuildPlanNamesTheClientAndRefusesAStaleOne' {
+    $good = Get-PackageClientFacts -ClientDir (New-P124Client 'plan') -RepoRoot $repo
+    $p = Get-Plan 'package.build' -PackageNotes 'x' -PackageFacts (New-PackageFacts -Client $good)
+    Assert-Equal 'say,script,checkzip,log' (@($p | ForEach-Object { $_.Kind }) -join ',') 'the same steps'
+    $say = @($p | Where-Object { $_.Kind -eq 'say' })[0].Text
+    Assert-True ($say.Contains($good.Dir) -and $say -match 'TazUO [0-9a-f]{8} \+ \d+ patches') ('the plan names the client: ' + $say)
+    $stale = Get-PackageClientFacts -ClientDir (New-P124Client 'planstale' -Stale) -RepoRoot $repo
+    $ref = @(Get-Plan 'package.build' -PackageNotes 'x' -PackageFacts (New-PackageFacts -Client $stale) | Where-Object { $_.Kind -eq 'refuse' })
+    Assert-Equal 1 $ref.Count 'a stale client is refused before the script runs'
+    Assert-True ($ref[0].Text -match 'STALE CLIENT BUILD' -and $ref[0].Text -match 'Build-Client\.ps1') $ref[0].Text
+    $r = Invoke-ClickCapture 'package.build' '' $false -PackageNotes 'x' -PackageFacts (New-PackageFacts -Client $stale)
+    Assert-Equal 0 $r.Spawned.Count 'no window'
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

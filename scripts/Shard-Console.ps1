@@ -150,6 +150,10 @@ param(
     [string]$Commit
 )
 
+# cc-P124: which TazUO the player package ships (the one default, and reading and checking its sl-build.txt), shared
+# with player-package\Build-PlayerPackage.ps1. Functions only; it reads nothing when loaded.
+. (Join-Path (Split-Path $PSScriptRoot -Parent) 'player-package\PackageClient.ps1')
+
 # =============================================================================================
 # CORE. Strings in, objects or strings out. No docker, no files, no WinForms below this line
 # until the SHELL marker, so every function here can be given captured output and checked.
@@ -345,6 +349,8 @@ function Get-ConsoleConfig {
         # outside the repo and overseer-owned; the console runs it as it is.
         BuildPackage       = (Join-Path $RepoRoot 'player-package\Build-PlayerPackage.ps1')
         PackageDist        = (Join-Path $RepoRoot 'player-package\dist')
+        # cc-P124: the client folder Build package ships, from PackageClient.ps1 (Build-PlayerPackage.ps1's own default).
+        PackageClient      = (Get-PackageClientDefault)
         PublishScript      = 'D:\UO\haven-migration\Publish-PlayerPackage.ps1'
         # The images Deploy built image offers: build.sh -t sl-modernuo:cc-pNN, one per prompt.
         DeployTagPattern   = '^sl-modernuo:cc-p[A-Za-z0-9._-]*$'
@@ -1344,6 +1350,7 @@ function Get-ConsoleTooltips {
         'packageNotes'     = 'One line of What is new for the package. Required to build.'
         'packageList'      = 'The zips in player-package\dist, newest first. Select one to check or publish.'
         'packageRefresh'   = 'Reads player-package\dist again. Read-only.'
+        'packageClient'    = 'The client folder Build package ships (our TazUO build), its sl-build.txt, and whether it matches client\patches. Refresh list reads it again. Read-only.'
         'worldCopy'        = 'Copies this one command to the clipboard, to paste in a game client. The console cannot run it.'
         'worldCopyGroup'   = 'Copies the whole group, one command a line.'
         'worldTick'        = 'A tick for your own checklist, this session only. Saves nothing.'
@@ -1709,6 +1716,24 @@ function Get-RolloutReminder {
     'Reminder: ' + ($where -join ' and ') + ' says package first, then the server. The server deploy follows this publish; it is not part of this button.'
 }
 
+function Format-PackageClientText {
+    # cc-P124: what the Player package tab says about the client Build package will ship, from Get-PackageClientFacts:
+    # the folder, its sl-build.txt as it is, and whether it may ship (the client gate's own words when not).
+    param($Client)
+    if (-not $Client) { return 'The client folder was not read.' }
+    $l = New-Object 'System.Collections.Generic.List[string]'
+    $ver = ''
+    if ($Client.Version) { $ver = ' (TazUO ' + $Client.Version + ')' }
+    $l.Add('Build package ships the client in ' + $Client.Dir + $ver + '.')
+    if ($Client.SlBuildText) {
+        $l.Add('Its sl-build.txt:')
+        foreach ($x in @($Client.SlBuildText -split "`r?`n" | Where-Object { $_.Trim() })) { $l.Add('    ' + $x.Trim()) }
+    }
+    if (@($Client.Problems).Count) { foreach ($x in @($Client.Problems)) { $l.Add('NOT BUILDABLE: ' + $x) } }
+    else { $l.Add('It matches client\patches\ and client\TAZUO_COMMIT: ready to build.') }
+    $l -join "`r`n"
+}
+
 function Get-PackagePlan {
     param([string]$Action, $Config, $Facts, [string]$Notes, [string]$Zip)
     $steps = New-Object 'System.Collections.Generic.List[object]'
@@ -1727,8 +1752,18 @@ function Get-PackagePlan {
             if ($all.Count -gt $shown.Count) { $more = ' and ' + ($all.Count - $shown.Count) + ' more' }
             $steps.Add((New-PlanStep -Kind refuse -Text ($Facts.RepoPath + ' has ' + $all.Count + ' uncommitted file(s), so the package would not be built from a commit: ' + ($shown -join ', ') + $more + '. Commit first (Commit tab), then build.')))
         }
+        # cc-P124: the client it ships, said before the script runs; a stale or stock client is refused here as the
+        # script's client gate would refuse it.
+        $clientSay = ''
+        if ($Facts.Client) {
+            if (@($Facts.Client.Problems).Count) {
+                foreach ($x in @($Facts.Client.Problems)) { $steps.Add((New-PlanStep -Kind refuse -Text ('Not building: ' + $x))) }
+            } else {
+                $clientSay = ' The client is ' + $Facts.Client.Dir + ', TazUO ' + $Facts.Client.Version + ' (its sl-build.txt matches client\patches\).'
+            }
+        }
         if (-not $Facts.RepoError -and -not @($Facts.RepoPaths).Count) {
-            $steps.Add((New-PlanStep -Kind say -Text ('Building from ' + $Facts.RepoPath + ' at ' + $Facts.Head + ', committed and clean. The zip goes to ' + $Config.PackageDist + '; nothing is published.')))
+            $steps.Add((New-PlanStep -Kind say -Text ('Building from ' + $Facts.RepoPath + ' at ' + $Facts.Head + ', committed and clean. The zip goes to ' + $Config.PackageDist + '; nothing is published.' + $clientSay)))
         }
         $steps.Add((New-PlanStep -Kind script -Path $Config.BuildPackage -Named ([ordered]@{ Notes = $Notes }) -Text 'Build-PlayerPackage.ps1: stage, gates 1 to 3, zip, gates 4 to 6, version.json. A failing gate stops it and deletes the zip.'))
         $steps.Add((New-PlanStep -Kind checkzip -Path $Config.BuildPackage -To $Config.PackageDist -Text 'Build-PlayerPackage.ps1 -CheckZip on the zip the step above wrote: gates 4, 6 and 5 again, on the file itself.'))
@@ -4717,6 +4752,21 @@ function Read-ZipPackageVersion {
     } finally { $za.Dispose() }
 }
 
+function Get-PackageClientFacts {
+    # cc-P124: the client folder Build package ships, read: its sl-build.txt, the version it reports and the client
+    # gate's verdict (PackageClient.ps1, the same functions Build-PlayerPackage.ps1 runs). Read-only.
+    param([string]$ClientDir, [string]$RepoRoot)
+    $info = $null; $problems = @(); $ver = $null
+    try {
+        $info = Read-ClientBuildInfo $ClientDir
+        $problems = @(Test-PackageClient $ClientDir $RepoRoot)
+        $ver = Get-ClientBuildVersion $ClientDir
+    } catch { $problems = @('could not read ' + $ClientDir + ': ' + $_.Exception.Message) }
+    $text = $null
+    if ($info -and $info.Exists) { $text = $info.Text }
+    [pscustomobject]@{ Dir = $ClientDir; SlBuildText = $text; Version = $ver; Problems = $problems }
+}
+
 function Get-PackageFacts {
     # What Get-PackagePlan reads, all read-only: the two scripts, the shard repo's git status and
     # HEAD (a git failure is kept as an error, never read as clean, D66), the zips in dist\, the
@@ -4771,6 +4821,7 @@ function Get-PackageFacts {
         Picked        = $picked
         Changelog     = $changelog
         LatestNote    = $latestNote
+        Client        = (Get-PackageClientFacts -ClientDir $Config.PackageClient -RepoRoot $repo)
     }
 }
 
@@ -6959,7 +7010,10 @@ function Show-ImagePicker {
 }
 
 function Update-PackageList {
-    # The Player package tab's list of zips in dist\, newest first.
+    # The Player package tab's list of zips in dist\, newest first, and (cc-P124) the client Build package ships.
+    if ($script:ui.PackageClient) {
+        $script:ui.PackageClient.Text = Format-PackageClientText (Get-PackageClientFacts -ClientDir $script:cfg.PackageClient -RepoRoot $script:cfg.RepoRoot)
+    }
     $lv = $script:ui.PackageList
     if (-not $lv) { return }
     $lv.BeginUpdate()
@@ -7803,6 +7857,17 @@ function New-ConsoleForm {
     $buildBtn.Height = 30
     $buildBtn.Add_Click({ Invoke-ConsoleButton -ActionKey 'package.build' -PackageNotes $script:ui.PackageNotes.Text.Trim() })
     $pkgTop.Controls.AddRange(@($notesLabel, $notesBox, $buildBtn))
+    $pkgTop.SetFlowBreak($buildBtn, $true)
+    # cc-P124: the client Build package will ship, and its sl-build.txt, before Build runs. Refresh list reads it again.
+    $clientBox = New-Object Windows.Forms.TextBox
+    $clientBox.Name = 'packageClient'
+    $clientBox.Multiline = $true
+    $clientBox.ReadOnly = $true
+    $clientBox.ScrollBars = 'Vertical'
+    $clientBox.Width = 1080
+    $clientBox.Height = 96
+    $clientBox.Margin = New-Object Windows.Forms.Padding(6)
+    $pkgTop.Controls.Add($clientBox)
     $pkgList = New-Object Windows.Forms.ListView
     $pkgList.Name = 'packageList'
     $pkgList.Dock = 'Fill'
@@ -7851,6 +7916,7 @@ function New-ConsoleForm {
     $pkgPage.Controls.Add($pkgBottom)
     $script:ui.PackageNotes = $notesBox
     $script:ui.PackageList = $pkgList
+    $script:ui.PackageClient = $clientBox
     $script:ui.PackageButtons = @($buildBtn, $publishBtn, $checkBtn)
     Update-PackageList
 

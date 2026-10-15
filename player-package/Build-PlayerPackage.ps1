@@ -3,12 +3,20 @@
   Build the Shattered Legacy player zip from what is already on this machine.
 
       .\player-package\Build-PlayerPackage.ps1
-      .\player-package\Build-PlayerPackage.ps1 -TazUO D:\UO\TazUO\client -Out D:\somewhere
+      .\player-package\Build-PlayerPackage.ps1 -TazUO D:\UO\tazuo-sl-build\client -Out D:\somewhere
+
+  cc-P124: the client is OUR TazUO build by default (PackageClient.ps1 holds the one default, which the console's
+  Player package tab reads too): upstream at client\TAZUO_COMMIT plus client\patches\, built by client\Build-Client.ps1
+  into D:\UO\tazuo-sl-build\client with an sl-build.txt naming the pin and each patch's SHA-256. The client gate refuses
+  a folder with no sl-build.txt (the stock TazUO has none) or one whose patches are not the repo's (a stale build),
+  and says how to rebuild. The package reports that build's version ("<upstream> + N patches") in app\VERSION.txt
+  and the summary. Nothing under client-addons\ or paperdoll-nsfw\ in the client folder is copied, and gate 4 holds
+  every shipped body gump to the vendored SFW set.
 
   Runs on Chase's machine only. It assembles:
       payload\                 the in-zip scripts and README (this folder, tracked)
       LICENSE-TazUO.txt        TazUO's BSD 2-Clause licence, which it must travel with
-      <TazUO>\                 the TazUO client, copied WITHOUT anything personal
+      <TazUO>\                 the TazUO client (our build, cc-P124), copied WITHOUT anything personal
       vendor\fiddle-me-this\   Fiddle-Me-This gump art and XML gumps (CC0), see its SOURCE.txt
       vendor\shattered-legacy-art\   our own art (art\<id>.png, into app\tazuo\ExternalImages\art\)
                                and our tiledata and animdata records (records.json, shipped as
@@ -75,7 +83,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$TazUO = 'D:\UO\TazUO\client',
+    [string]$TazUO,   # cc-P124: empty means Get-PackageClientDefault (PackageClient.ps1), our build
     [string]$Out,
     [switch]$GateSelfTest,
     [string]$CheckZip,
@@ -84,6 +92,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'PackageClient.ps1')
+if (-not $TazUO) { $TazUO = Get-PackageClientDefault }
 
 # --- gate 4: what the zip actually holds ----------------------------------------------
 # Reads the finished zip, not the staging folder, so it sees exactly what players get.
@@ -125,6 +135,14 @@ if (Test-Path -LiteralPath $pdAddons) {
     }
 }
 $pdNsfwPath = '(?i)(topless|nude|client-addons|paperdoll-nsfw)'
+# cc-P124: whatever the client folder holds, every body gump the zip ships (app\paperdoll-sfw\<id>.png, and
+# app\tazuo\ExternalImages\gumps\<id>.png for the six body IDs) must be the vendored SFW file, byte for byte. The
+# hash list above catches the kit's known art; this catches any body art it has never seen.
+$pdSfwBody = @{}
+foreach ($f in $pdBodies) { $pdSfwBody[$f.BaseName] = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
+$pdSfwGump = @{}
+foreach ($f in $pdGumps) { $pdSfwGump[$f.Name] = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
+$pdBodyPath = '^(app/paperdoll-sfw|app/tazuo/ExternalImages/gumps)/(' + ($pdBodyIds -join '|') + ')\.png$'
 # The equipment-animation gate: the two anim files hold blocks only in the slots records.json's equipAnims name,
 # for registered Animation numbers, and every block lies inside sl-anim7.bin. Run on vendor\ before staging and
 # on the zip (gate 4).
@@ -233,6 +251,11 @@ function Test-PackageZip([string]$path) {
                 $st = $rel[$n].Open()
                 try { $h = -join ($sha.ComputeHash($st) | ForEach-Object { $_.ToString('x2') }) } finally { $st.Dispose() }
                 if ($pdNsfw.ContainsKey($h)) { $fail += "NSFW GATE: $n is a Topless or Nude file from the paperdoll kit" }
+                elseif ($n -match $pdBodyPath) {
+                    $id = $Matches[2]
+                    $ok = ($h -eq $pdSfwBody[$id]) -or ($Matches[1] -ne 'app/paperdoll-sfw' -and $h -eq $pdSfwGump["$id.png"])
+                    if (-not $ok) { $fail += "NSFW GATE: $n is not the SFW body (vendor\paperdoll-sos\bodies-sfw\$id.png); only the SFW set ships" }
+                }
             }
         } finally { $sha.Dispose() }
         foreach ($g in $slGumpIds) { if ($names -notcontains "app/tazuo/ExternalImages/gumps/$g.png") { $fail += "no app/tazuo/ExternalImages/gumps/$g.png, a registered gump" } }
@@ -521,6 +544,9 @@ $vjson   = Join-Path $Out "$name.version.json"
 if ($Notes -match '[^\x20-\x7E]') { throw '-Notes must be one line of plain ASCII (launchers print it in a PowerShell 5.1 console).' }
 
 if (-not (Test-Path (Join-Path $TazUO 'TazUO.exe'))) { throw "No TazUO.exe in $TazUO" }
+# cc-P124, the client gate: our build, and not a stale one (PackageClient.ps1, Test-PackageClient).
+$clientFail = @(Test-PackageClient $TazUO (Split-Path $here -Parent))
+if ($clientFail.Count) { throw ("CLIENT GATE: " + ($clientFail -join ' ') + " Not building.") }
 
 # --- stage --------------------------------------------------------------------
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
@@ -549,6 +575,9 @@ $files = Get-ChildItem -LiteralPath $srcRoot -Recurse -File | Where-Object {
     $rel = $_.FullName.Substring($srcRoot.Length + 1)
     $top = $rel.Split('\')[0]
     if ($rel.Contains('\') -and $excludeDirs -contains $top) { return $false }
+    # cc-P124: a local test client may hold the NSFW paperdoll add-on (client-addons\paperdoll-nsfw\, P111); none of
+    # it ships, at any depth. Gate 4 checks the zip for its names and hashes as well.
+    if ($rel -match '(?i)(^|\\)(client-addons|paperdoll-nsfw)(\\|$)') { return $false }
     foreach ($pat in $excludeFiles) { if ($_.Name -like $pat) { return $false } }
     return $true
 }
@@ -651,7 +680,10 @@ $vendored += ,@($vcr, (Join-Path $tazOut 'vcruntime140.dll'))
 
 foreach ($p in $vendored) { Copy-Item -LiteralPath $p[0] -Destination $p[1] }
 
-$tazVersion = if (Test-Path (Join-Path $srcRoot 'v.txt')) { (Get-Content (Join-Path $srcRoot 'v.txt') -TotalCount 1).Trim() } else { 'unknown' }
+# cc-P124: our build's version is its sl-build.txt (upstream short commit plus patch count), which the client gate
+# above has just checked; a stock TazUO's v.txt was read before, and our build has none ("TazUO unknown").
+$tazVersion = Get-ClientBuildVersion $srcRoot
+if (-not $tazVersion) { $tazVersion = if (Test-Path (Join-Path $srcRoot 'v.txt')) { (Get-Content (Join-Path $srcRoot 'v.txt') -TotalCount 1).Trim() } else { 'unknown' } }
 $commit = (& git -C (Split-Path $here -Parent) rev-parse --short HEAD 2>$null)
 $dirty  = (& git -C (Split-Path $here -Parent) status --porcelain -- player-package 2>$null)
 if ($dirty) { $commit = "$commit + uncommitted player-package changes" }

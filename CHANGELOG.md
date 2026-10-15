@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.15.9
+
+### Staff
+- The player package now ships our own TazUO build (with the shard's client patches) by default, and refuses to build from a client that is out of date with the repo's patches or has no build record; the Player package tab shows which client it will ship before you build. Only the safe-for-work paperdoll art can ship, whatever is in the client folder.
+
 ## 2026.10.15.8
 
 ### Added
