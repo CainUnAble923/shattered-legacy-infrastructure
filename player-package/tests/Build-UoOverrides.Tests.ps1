@@ -444,6 +444,7 @@ function New-Sandbox([string]$name, [byte[]]$tile, [byte[]]$anim) {
     New-Item -ItemType Directory -Path (Join-Path $app 'tazuo') -Force | Out-Null
     Copy-Item (Join-Path $pkg 'payload\app\Play.ps1') $app
     Copy-Item (Join-Path $pkg 'payload\app\Launch-Settings.ps1') $app
+    Copy-Item (Join-Path $pkg 'payload\app\Paperdoll-Bodies.ps1') $app
     Copy-Item $builder $app
     Copy-Item $records (Join-Path $app 'art-records.json')
     Copy-Item $animMul, $animIdx $app

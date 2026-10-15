@@ -152,6 +152,36 @@ try {
         $null = Sync-PaperdollBodies -App $i.App -Root $i.Root -SettingsPath $settings
         Assert-True ((([IO.File]::ReadAllText($settings)) | ConvertFrom-Json).sl_paperdoll_folder -eq 'D:\set-in-game') 'a folder already set was overwritten'
     }
+    # cc-P114: Play.ps1 -Test -ClientDir starts our build from its own folder, with the package's settings file.
+    Fact 'A client started from another folder is the one checked, and is told where the install''s add-on is' {
+        $i = New-Install
+        Remove-Item -LiteralPath (Join-Path $i.App 'paperdoll-sfw') -Recurse -Force   # an install from before cc-P81
+        New-Addon $i.Root 'topless'
+        $client = Join-Path $work ([Guid]::NewGuid().ToString('N').Substring(0, 6) + '-ourbuild')
+        $cg = Join-Path $client 'ExternalImages\gumps'
+        New-Item -ItemType Directory -Path $cg -Force | Out-Null
+        foreach ($id in $ids) { [IO.File]::WriteAllText((Join-Path $cg "$id.png"), "sfw-$id") }
+        $stamp = @('TazUO upstream 3212623f63436be1c0f4e3b308b202b29597c026 built 2026-10-14 17:35', "patch 0002-paperdoll-bodies-option.patch sha256 $('0' * 64)")
+        Set-Content -LiteralPath (Join-Path $client 'sl-build.txt') -Value $stamp -Encoding ASCII
+        Assert-True (Test-ClientPaperdollOption -TazDir $client) 'the client folder''s stamp was not read'
+        Assert-True (-not (Test-ClientPaperdollOption -App $i.App)) 'the package''s stock client counted'
+
+        $settings = Join-Path $i.App 'tazuo\settings.test.human.json'
+        [IO.File]::WriteAllText($settings, '{"username":"keepme","autologin":true}')
+        $null = Sync-PaperdollBodies -App $i.App -Root $i.Root -SettingsPath $settings -TazDir $client
+        $j = [IO.File]::ReadAllText($settings) | ConvertFrom-Json
+        $default = Join-Path $i.Root 'client-addons\paperdoll-nsfw'
+        Assert-True ($j.sl_paperdoll_folder -eq $default) "the install's add-on was not named for a client that cannot find it beside itself: [$($j.sl_paperdoll_folder)]"
+        Assert-True ($j.username -eq 'keepme' -and $j.autologin) 'other settings were not kept'
+        Assert-True (@($ids | ForEach-Object { [IO.File]::ReadAllText((Join-Path $cg "$_.png")) } | Where-Object { $_ -notlike 'sfw-*' }).Count -eq 0) 'the client''s bodies are not SFW'
+
+        # A client elsewhere, and no add-on in the install: nothing is named.
+        $j2 = Join-Path $i.App 'tazuo\settings.test.elf.json'
+        [IO.File]::WriteAllText($j2, '{"username":"elf"}')
+        Remove-Item -LiteralPath (Join-Path $i.Root 'client-addons') -Recurse -Force
+        $null = Sync-PaperdollBodies -App $i.App -Root $i.Root -SettingsPath $j2 -TazDir $client
+        Assert-True (-not (([IO.File]::ReadAllText($j2)) | ConvertFrom-Json).PSObject.Properties['sl_paperdoll_folder']) 'a missing add-on was named'
+    }
 } finally {
     Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 }

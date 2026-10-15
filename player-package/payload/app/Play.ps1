@@ -15,6 +15,12 @@
   it. -Account without -Test is refused, so live is never logged in automatically.
   Play-Test.bat passes it through: Play-Test.bat -Account gargoyle.
 
+  Another client, TEST only (cc-P114): Chase's test shortcuts start our own TazUO build.
+      Play.ps1 -Test -Account human -ClientDir D:\UO\tazuo-sl-build\client
+  Starts that folder's TazUO.exe with this install's settings file, autologin and overrides,
+  and this install's character profiles (Data\Profiles). Refused without -Test, as -Account
+  is, so live never runs a development build. Players never need it.
+
   Runs Setup.ps1 first whenever the Ultima Online files are not known yet.
 
   Before that it asks get.shatteredlegacyuo.com/version.json whether a newer package is
@@ -33,7 +39,7 @@
   Windows-1252, and a non-ASCII character can become syntax.
 #>
 [CmdletBinding()]
-param([switch]$Lan, [switch]$Test, [string]$Account, [string]$UoPath,
+param([switch]$Lan, [switch]$Test, [string]$Account, [string]$UoPath, [string]$ClientDir,
       [switch]$NoUpdate, [switch]$Update, [string]$UpdateBase = 'https://get.shatteredlegacyuo.com',
       [ValidateSet('sfw', 'topless', 'nude')][string]$PaperdollBodies, [string]$PaperdollFolder)
 
@@ -49,6 +55,7 @@ $tazExe = Join-Path $taz 'TazUO.exe'
 if ($PaperdollBodies) { Write-Host "  $(Set-PaperdollSetting -Root $root -Mode $PaperdollBodies -Folder $PaperdollFolder)" -ForegroundColor Gray }
 $targetArgs = @{ Lan = $Lan; Test = $Test }
 if ($PSBoundParameters.ContainsKey('Account')) { $targetArgs.Account = $Account }
+if ($PSBoundParameters.ContainsKey('ClientDir')) { $targetArgs.ClientDir = $ClientDir }
 try { $target = Get-LaunchTarget @targetArgs }
 catch { Write-Host "  $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
 $server = $target.Server; $port = $target.Port; $settingsName = $target.SettingsName; $label = $target.Label
@@ -283,6 +290,7 @@ Write-Host ''
 Write-Host "  $label" -ForegroundColor Cyan
 Write-Host "  server   $server`:$port"            -ForegroundColor Gray
 Write-Host "  UO files $uoDir ($clientVersion)"   -ForegroundColor Gray
+if ($target.ClientDir) { Write-Host "  client   $($target.ClientDir)" -ForegroundColor Gray }
 if ($Test) { Write-Host '  TEST SHARD: nothing here is kept.' -ForegroundColor Yellow }
 Write-Host ''
 Write-Host '  First time? Type any account name and password you like. The first login' -ForegroundColor Gray
@@ -293,22 +301,26 @@ Write-Host ''
 # Patched copies of this computer's own tiledata.mul and animdata.mul, so our art animates
 # (Build-UoOverrides.ps1, cc-P26). Fast when nothing changed. Any failure there is one yellow
 # line and the game starts without them: our art then shows still, never the game not at all.
-$tazArgs = @('-settings', "`"$settingsPath`"")
-# A profile logs straight in. TazUO's autologin alone does not: on a cold start it only
-# connects with -skiploginscreen (LoginScene.Load), and then only when the file holds a
-# saved username, so a profile with none yet stops at the login screen.
-if ($target.Profile) { $tazArgs += '-skiploginscreen' }
 $uoOverride = $null
 try {
     $uoOverride = & (Join-Path $app 'Build-UoOverrides.ps1') -UoDir $uoDir
 } catch {
     Write-Host "  Shattered Legacy art could not be prepared ($($_.Exception.Message)). Starting without it." -ForegroundColor Yellow
 }
-if ($uoOverride) { $tazArgs += @('-uofilesoverride', "`"$uoOverride`"") }
+# Launch-Settings.ps1's Get-TazUOLaunch: the settings file, -skiploginscreen for a profile, the overrides, and for
+# -ClientDir that folder's client with this install's profiles.
+$launch = Get-TazUOLaunch -TazDir $taz -Target $target -SettingsPath $settingsPath -UoOverride $uoOverride
+if ($target.ClientDir) {
+    try {
+        foreach ($c in @(Sync-ClientDirData -TazDir $taz -ClientDir $target.ClientDir)) { Write-Host "  copied to that client: $c" -ForegroundColor Gray }
+    } catch {
+        Write-Host "  This install's data could not be copied to that client ($($_.Exception.Message)). Starting anyway." -ForegroundColor Yellow
+    }
+}
 
 # cc-P81: the paperdoll's six body gumps: the shipped SFW set, or this computer's local add-on when chosen.
 try {
-    $pdLine = Sync-PaperdollBodies -App $app -Root $root -SettingsPath $settingsPath
+    $pdLine = Sync-PaperdollBodies -App $app -Root $root -SettingsPath $settingsPath -TazDir $launch.Dir
     if ($pdLine) { Write-Host $pdLine -ForegroundColor Gray }
 } catch {
     Write-Host "  Paperdoll bodies could not be checked ($($_.Exception.Message)). Starting anyway." -ForegroundColor Yellow
@@ -317,5 +329,5 @@ try {
 # Launch-Settings.ps1's Start-TazUO: on a PC with no OpenGL 2.1 driver it switches the client to its
 # automatic graphics driver (force_driver 3) and starts it again (cc-P52, D61). Waits up to 20 seconds.
 Write-Host '  Starting the game...' -ForegroundColor Gray
-$null = Start-TazUO -Exe $tazExe -Arguments $tazArgs -TazDir $taz -SettingsPath $settingsPath
+$null = Start-TazUO -Exe $launch.Exe -Arguments $launch.Arguments -TazDir $launch.Dir -SettingsDir $taz -SettingsPath $settingsPath
 exit 0

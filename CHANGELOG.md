@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.15
+
+### Staff
+- Chase's Human, Admin, Gargoyle and Elf test shortcuts start our own TazUO build, still logged straight in, with each character's gump layout, macros and hotkeys.
+
 ## 2026.10.14.19
 
 ### Staff

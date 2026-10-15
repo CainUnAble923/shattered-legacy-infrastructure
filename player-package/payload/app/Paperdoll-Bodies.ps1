@@ -65,10 +65,12 @@ function Set-PaperdollSetting {
 
 # cc-P111: true when the client in app\tazuo is our TazUO build with the in-game "Paperdoll bodies" option (client patch
 # 0002, listed in the build stamp sl-build.txt that client\Build-Client.ps1 writes beside TazUO.exe). A stock TazUO, or
-# one of our builds from before that patch, has no stamp line for it.
+# one of our builds from before that patch, has no stamp line for it. -TazDir names the client's folder instead
+# (cc-P114: a client started from its own folder with Play.ps1 -Test -ClientDir).
 function Test-ClientPaperdollOption {
-    param([string]$App)
-    $stamp = Join-Path $App 'tazuo\sl-build.txt'
+    param([string]$App, [string]$TazDir)
+    if (-not $TazDir) { $TazDir = Join-Path $App 'tazuo' }
+    $stamp = Join-Path $TazDir 'sl-build.txt'
     if (-not (Test-Path -LiteralPath $stamp)) { return $false }
     return [bool](Select-String -LiteralPath $stamp -Pattern '^patch \d+-paperdoll-bodies-option\.patch ' -Quiet)
 }
@@ -79,17 +81,23 @@ function Test-ClientPaperdollOption {
 # swap an older launcher made) and leaves the choice to the client, which reads the add-on where it is. A folder named
 # in paperdoll-bodies.txt is carried into the settings file being launched (sl_paperdoll_folder), only if that file
 # names none, so the client finds the same add-on. The mode is not carried: the client's own choice starts at SFW.
+# cc-P114: -TazDir is the client's folder when it is not app\tazuo (Play.ps1 -Test -ClientDir). That client looks for
+# the add-on beside its own folder, not in this install, so the install's add-on folder is carried for it even when
+# it is the default one, if it is there.
 function Sync-PaperdollBodies {
-    param([string]$App, [string]$Root, [string]$SettingsPath)
-    $gumps = Join-Path $App 'tazuo\ExternalImages\gumps'
+    param([string]$App, [string]$Root, [string]$SettingsPath, [string]$TazDir)
+    $ownTaz = Join-Path $App 'tazuo'
+    if (-not $TazDir) { $TazDir = $ownTaz }
+    $elsewhere = $TazDir.TrimEnd('\') -ne $ownTaz.TrimEnd('\')
+    $gumps = Join-Path $TazDir 'ExternalImages\gumps'
     $sfw   = Join-Path $App 'paperdoll-sfw'
-    if (-not (Test-Path -LiteralPath $gumps) -or -not (Test-Path -LiteralPath $sfw)) { return $null }
 
     $s = Get-PaperdollSetting -Root $Root
-    $inClient = Test-ClientPaperdollOption -App $App
+    $inClient = Test-ClientPaperdollOption -TazDir $TazDir
     if ($inClient) {
         $default = Join-Path $Root 'client-addons\paperdoll-nsfw'
-        if ($SettingsPath -and $s.Folder -ne $default -and (Test-Path -LiteralPath $SettingsPath)) {
+        $carry = $s.Folder -ne $default -or ($elsewhere -and (Test-Path -LiteralPath $s.Folder))
+        if ($SettingsPath -and $carry -and (Test-Path -LiteralPath $SettingsPath)) {
             $j = [IO.File]::ReadAllText($SettingsPath) | ConvertFrom-Json
             if (-not $j.PSObject.Properties['sl_paperdoll_folder'] -or -not [string]$j.sl_paperdoll_folder) {
                 $j | Add-Member -NotePropertyName sl_paperdoll_folder -NotePropertyValue $s.Folder -Force
@@ -97,6 +105,7 @@ function Sync-PaperdollBodies {
             }
         }
     }
+    if (-not (Test-Path -LiteralPath $gumps) -or -not (Test-Path -LiteralPath $sfw)) { return $null }
     $useLocal = -not $inClient -and $s.Mode -ne 'sfw' -and (Test-PaperdollAddon -Folder $s.Folder -Mode $s.Mode)
     foreach ($id in $script:PaperdollBodyIds) {
         $from = if ($useLocal) { Join-Path $s.Folder "$($s.Mode)\$id.png" } else { Join-Path $sfw "$id.png" }

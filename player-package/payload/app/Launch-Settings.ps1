@@ -15,9 +15,18 @@
 # elf, or any 1 to 24 of a-z, 0-9 and "-". Lower case only, because Windows file names are
 # not case-sensitive and "Elf" and "elf" would share a file. It becomes part of a file name,
 # so nothing else gets through. TEST only: a shortcut must never log anyone in to live.
+#
+# cc-P114: -ClientDir <folder> starts the TazUO.exe in that folder instead of app\tazuo's (our own build, for
+# Chase's test shortcuts). TEST only, like -Account, so live never runs a development build. Everything else is
+# the same launch: the same settings file, autologin and overrides (Get-TazUOLaunch).
 function Get-LaunchTarget {
-    param([switch]$Lan, [switch]$Test, [string]$Account)
+    param([switch]$Lan, [switch]$Test, [string]$Account, [string]$ClientDir)
     if ($Lan -and $Test) { throw 'Pick one of -Lan or -Test.' }
+    $hasClient = $PSBoundParameters.ContainsKey('ClientDir')
+    if ($hasClient -and -not $Test) { throw '-ClientDir works only with -Test, so the live shard never runs a development build.' }
+    if ($hasClient -and -not ($ClientDir -and (Test-Path -LiteralPath (Join-Path $ClientDir 'TazUO.exe') -PathType Leaf))) {
+        throw "-ClientDir '$ClientDir' holds no TazUO.exe."
+    }
     $hasAccount = $PSBoundParameters.ContainsKey('Account')
     if ($hasAccount -and -not $Test) { throw '-Account works only with -Test, so the live shard is never logged in automatically.' }
     if ($hasAccount -and $Account -cnotmatch '^[a-z0-9-]{1,24}$') { throw "-Account '$Account' is not a profile name: use 1 to 24 of a-z, 0-9 and -." }
@@ -30,7 +39,81 @@ function Get-LaunchTarget {
         $t.SettingsName = "settings.test.$Account.json"
         $t.Label        = "TEST SHARD (throwaway), profile: $Account"
     }
+    $t.ClientDir = ''
+    if ($hasClient) { $t.ClientDir = (Resolve-Path -LiteralPath $ClientDir).ProviderPath.TrimEnd('\') }
     return [pscustomobject]$t
+}
+
+# What Play.ps1 starts: which TazUO.exe, in which folder, with which arguments. $TazDir is the package's
+# app\tazuo, which holds the settings files. A -ClientDir target starts that folder's client with the same
+# arguments plus -profilespath, so it reads and writes the package's per-character profiles (Data\Profiles\
+# <account>\<server>\<character>: gump layout, macros, hotkeys, spell bars, ...) instead of starting empty
+# beside its own exe. TazUO reads the argument after its settings file and never saves it (Settings.cs).
+function Get-TazUOLaunch {
+    param([string]$TazDir, $Target, [string]$SettingsPath, [string]$UoOverride)
+    $a = @('-settings', "`"$SettingsPath`"")
+    # A profile logs straight in. TazUO's autologin alone does not: on a cold start it only
+    # connects with -skiploginscreen (LoginScene.Load), and then only when the file holds a
+    # saved username, so a profile with none yet stops at the login screen.
+    if ($Target.Profile) { $a += '-skiploginscreen' }
+    if ($UoOverride) { $a += @('-uofilesoverride', "`"$UoOverride`"") }
+    $dir = $TazDir
+    if ($Target.ClientDir) {
+        $dir = $Target.ClientDir
+        $a += @('-profilespath', "`"$(Join-Path $TazDir 'Data\Profiles')`"")
+    }
+    return [pscustomobject]@{ Exe = (Join-Path $dir 'TazUO.exe'); Dir = $dir; Arguments = $a }
+}
+
+# cc-P114: what TazUO keeps only beside its own exe, which -profilespath does not move, copied from the package's
+# app\tazuo into a -ClientDir client when that client lacks it:
+#   - the last character per account and server (Data\Profiles\lastcharacter.json, LastCharacterManager), which
+#     autologin enters the world as; entries the client already has are its own and are kept;
+#   - the Fiddle-Me-This HUD gumps the package ships (Data\XmlGumps\*.xml);
+#   - the player's own Legion scripts (LegionScripts\*.py, but not API.py or __builtins__.py, which each client
+#     writes for itself).
+# Never overwrites a file in the client folder and never changes the package. Returns what it copied.
+function Sync-ClientDirData {
+    param([string]$TazDir, [string]$ClientDir)
+    $copied = @()
+
+    $pkgLast = Join-Path $TazDir 'Data\Profiles\lastcharacter.json'
+    $cliLast = Join-Path $ClientDir 'Data\Profiles\lastcharacter.json'
+    if (Test-Path -LiteralPath $pkgLast) {
+        # 5.1's ConvertFrom-Json passes a JSON array on as one object; ForEach-Object unrolls it.
+        $from = @(); $to = @()
+        try { $from = @([IO.File]::ReadAllText($pkgLast) | ConvertFrom-Json | ForEach-Object { $_ }) } catch {}
+        if (Test-Path -LiteralPath $cliLast) {
+            try { $to = @([IO.File]::ReadAllText($cliLast) | ConvertFrom-Json | ForEach-Object { $_ }) } catch { $from = @() }   # unreadable: leave it to TazUO
+        }
+        $added = @()
+        foreach ($e in $from) {
+            if (-not $e -or -not $e.AccountName) { continue }
+            # TazUO matches both names exactly (LastCharacterManager.GetLastCharacter).
+            if (@($to | Where-Object { $_.AccountName -ceq $e.AccountName -and $_.ServerName -ceq $e.ServerName }).Count) { continue }
+            $to += $e; $added += $e.AccountName
+        }
+        if ($added.Count) {
+            New-Item -ItemType Directory -Path (Split-Path $cliLast -Parent) -Force | Out-Null
+            # No BOM, as Write-LaunchSettings.
+            [IO.File]::WriteAllText($cliLast, (ConvertTo-Json -InputObject @($to) -Depth 5 -Compress), (New-Object Text.UTF8Encoding $false))
+            $copied += "Data\Profiles\lastcharacter.json ($($added -join ', '))"
+        }
+    }
+
+    foreach ($set in @(@{ Dir = 'Data\XmlGumps'; Filter = '*.xml' }, @{ Dir = 'LegionScripts'; Filter = '*.py' })) {
+        $src = Join-Path $TazDir $set.Dir
+        if (-not (Test-Path -LiteralPath $src)) { continue }
+        foreach ($f in @(Get-ChildItem -LiteralPath $src -Filter $set.Filter -File | Sort-Object Name)) {
+            if ($f.Name -in @('API.py', '__builtins__.py')) { continue }
+            $dest = Join-Path (Join-Path $ClientDir $set.Dir) $f.Name
+            if (Test-Path -LiteralPath $dest) { continue }
+            New-Item -ItemType Directory -Path (Split-Path $dest -Parent) -Force | Out-Null
+            Copy-Item -LiteralPath $f.FullName -Destination $dest
+            $copied += "$($set.Dir)\$($f.Name)"
+        }
+    }
+    return $copied
 }
 
 # Writes the TazUO settings file at $Path for $Target. Keeps everything already in it (the
@@ -147,12 +230,15 @@ function Set-GraphicsFallback {
 # waits up to $WaitSeconds; if TazUO exits having logged that crash, switches to 3 and starts it once
 # more. Returns 'running' (still up when the wait ended), 'exited', 'crashed' (the crash, on a player's
 # own force_driver, left alone) or 'fallback' (started again on 3).
+# $TazDir is the client's folder (its working folder and Logs); $SettingsDir holds the settings files, the same
+# folder unless the client was started from another one (-ClientDir, cc-P114).
 function Start-TazUO {
-    param([string]$Exe, [string[]]$Arguments, [string]$TazDir, [string]$SettingsPath, [int]$WaitSeconds = 20)
+    param([string]$Exe, [string[]]$Arguments, [string]$TazDir, [string]$SettingsPath, [int]$WaitSeconds = 20, [string]$SettingsDir)
     $logs = Join-Path $TazDir 'Logs'
+    if (-not $SettingsDir) { $SettingsDir = $TazDir }
 
     if ((Get-ForceDriver $SettingsPath) -eq 0 -and (Find-OpenGlCrash $logs)) {
-        $null = Set-GraphicsFallback $TazDir
+        $null = Set-GraphicsFallback $SettingsDir
         Write-Host '  This computer has no OpenGL 2.1 driver; the game uses its automatic graphics driver.' -ForegroundColor Yellow
     }
 
@@ -169,7 +255,7 @@ function Start-TazUO {
         return 'crashed'
     }
 
-    $null = Set-GraphicsFallback $TazDir
+    $null = Set-GraphicsFallback $SettingsDir
     Write-Host '  This computer has no OpenGL 2.1 driver. Starting the game again with its automatic graphics driver.' -ForegroundColor Yellow
     Start-Process -FilePath $Exe -ArgumentList $Arguments -WorkingDirectory $TazDir | Out-Null
     return 'fallback'

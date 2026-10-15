@@ -293,6 +293,7 @@ Fact 'PlayStartsTheGameWithTheTextOverride' {
     New-Item -ItemType Directory -Path (Join-Path $app 'tazuo') -Force | Out-Null
     Copy-Item (Join-Path $pkg 'payload\app\Play.ps1') $app
     Copy-Item (Join-Path $pkg 'payload\app\Launch-Settings.ps1') $app
+    Copy-Item (Join-Path $pkg 'payload\app\Paperdoll-Bodies.ps1') $app
     Copy-Item $builder $app
     Copy-Item $entries (Join-Path $app 'cliloc-entries.json')
     Copy-Item $stubExe (Join-Path $app 'tazuo\TazUO.exe')
