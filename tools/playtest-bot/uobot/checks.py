@@ -570,6 +570,66 @@ def p61_3(ctx):
     return ok, "rat killed by the player: %s; row %r; other rows with progress: %d" % (killed, (row or "")[:220], len(progress_elsewhere))
 
 
+# -- P119-1: a sample of cc-P119's ported creatures, fought by a player ------------------------------------------------
+
+# (type, body) from the ports (server/customizations/Mobiles/Normal/*.cs, cc-P119): one per kind of AI and body family.
+# Not Ortanord: its 80-90 physical resistance is ServUO's, and it turns a wrestling hit into 0 damage even at 1 hit point,
+# so it never dies to a bare-handed player (the second cc-P119 run, 60 s of swings). Lifestealer (45-55) instead.
+P119_SAMPLE = (("IceHound", 98), ("OrcChopper", 7), ("Lifestealer", 303), ("EffeteUndeadGargoyle", 722), ("Wight", 252))
+
+
+@check("P119-1", "Five of cc-P119's ported creatures spawn, fight back and die to a player, leaving a corpse")
+def p119_1(ctx):
+    # P61-3's fair kill, five times: the admin [add]s each type beside the player and pins it at 1 hit point and
+    # CantWalk; the player, at Wrestling and Tactics 100, attacks. A pass is the creature showing with the port's body,
+    # leaving the player's view when it dies, and a corpse (0x2006, amount = the body, Corpse.cs) landing where it died.
+    # The first run used the shared 55-hit player, and the orc chopper's crushing blow killed it, so every later kill in
+    # that run and the next was a ghost's (cc-P119 notes). So: a fresh character each run, at Str 250 and 175 hits
+    # (AOS HitsMax 50 + Str/2), and its hits are part of the evidence.
+    a = ctx.ensure_admin()
+    p = ctx.fresh(label="p119")
+    try:
+        return _p119_fight(a, p)
+    finally:
+        ctx.done(p)
+
+
+def _p119_fight(a, p):
+    for sk in ("Wrestling", "Tactics"):
+        staff_target(a, "[SetSkill %s 100" % sk, p)
+    staff_target(a, "[set RawStr 250 Hits 175", p)
+    results = []
+    for type_name, body in P119_SAMPLE:
+        near(a, p)
+        before_m = set(p.mobiles)
+        before_i = set(p.items)
+        a.command("[add " + type_name, 0.2)
+        if a.wait_target(8):
+            x, y, z = p.pos[:3]
+            a.target_xyz(x + 1, y, z)
+        mob = p.wait(lambda: next((s for s, m in p.mobiles.items()
+                                   if s not in before_m and s != p.serial and m.get("body") == body), None), 8)
+        if not mob:
+            results.append((type_name, False, "never appeared with body %d" % body))
+            continue
+        a.command("[set CantWalk true Hits 1", 0.2)
+        if a.wait_target(8):
+            a.target_obj(mob)
+        p.sleep(0.5)
+        p.send(P.war_mode(True))
+        p.sleep(0.3)
+        p.send(P.attack(mob))
+        killed = bool(p.wait(lambda: mob not in p.mobiles, 60))
+        p.send(P.war_mode(False))
+        corpse = p.wait(lambda: next((s for s, it in p.items.items() if s not in before_i and it.get("world")
+                                      and it.get("graphic") == 0x2006 and it.get("amount") == body), None), 8) if killed else None
+        results.append((type_name, killed and bool(corpse), "killed %s, corpse %s" % (killed, bool(corpse))))
+        p.sleep(1.0)
+    ok = all(r[1] for r in results)
+    return ok, "; ".join("%s: %s" % (t, e) for t, _, e in results) + "; player hits at the end %s/%s" % (
+        p.status.get("hits"), p.status.get("hitsMax"))
+
+
 # -- reset (ClusterFResetStone.cs, ClusterFDevTools.cs) ---------------------------------------------------------------
 
 @check("T-046", "Reset stone and [ResetMyAccount open the same gump", kind="BOT-PARTIAL",

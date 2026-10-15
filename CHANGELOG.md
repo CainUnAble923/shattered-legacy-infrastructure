@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.15.5
+
+### Added
+- Twenty-nine more creatures now exist on the shard, among them the Night Terror, the Abyssal Abomination, the Arch Daemon, the Dread Warhorse, the Ice Hound, the Orc Chopper, the Skeletal Drake, the Wight, the Treefellow Guardian, the Black Order Master and the Fire Rabbit. They are not placed in the world yet.
+- The Black Order Master drops a tiger claw key, the Fire Rabbit animal pheromones and the Treefellow Guardian treefellow wood.
+
+### Staff
+- Port list, Creatures part 1: 29 ServUO creatures and three items they drop. None is on a spawner yet; [add any of them by type name. The Wight cannot use Cold Wind yet, so it always uses Mortal Strike. A new overnight bot check (P119-1) fights five of them.
+
 ## 2026.10.15.4
 
 ### Fixed
