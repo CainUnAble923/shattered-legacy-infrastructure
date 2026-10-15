@@ -10,7 +10,8 @@
 // What reads it:
 //   - the bulletin gump on login (ClusterFBulletinSystem.OnLogin): "Shattered Legacy <version>", the short list and an
 //     All patch notes button, once per account per version (the account's FlagValues[SeenVersionKey]; no saved type
-//     changes);
+//     changes). cc-P117: the notes are the newest version at or below the current one that has player lines, so a
+//     Staff-only version still shows a new account the latest player notes, under the current version's title;
 //   - [version, for any player: the version, and the Patch History gump (cc-P64, PatchHistoryGump.cs): every version
 //     in the changelog, newest first, paged, each line wrapped;
 //   - status.json (ShardStatusPublisher), shard.version;
@@ -303,16 +304,63 @@ public static class ShardVersion
         File.WriteAllText(Path.Combine(DataDirectory, "patch_notes.txt"), PatchNotes.RenderDokuWiki(_versions));
     }
 
-    /// <summary>The notes this account has not been shown yet: the current version's, once. Null when none.</summary>
+    /// <summary>
+    /// The notes this account has not been shown yet, once: the newest version at or below the current one that has
+    /// player lines. Null when the account was shown those (or newer ones), or there are none.
+    /// cc-P117: before, only the current version's own notes counted, so a version with only a Staff list (most of them
+    /// since 2026-10-14) showed nobody anything, and a fresh account's first login had no bulletin at all (bot P64-1,
+    /// 2026-10-15). The title still names the version the shard runs (BulletinGump).
+    /// </summary>
     public static PatchNoteVersion UnseenNotesFor(IAccount acct)
     {
-        if (acct == null || CurrentNotes == null || CurrentNotes.IsEmpty)
+        var latest = LatestPlayerNotes();
+        if (acct == null || latest == null)
         {
             return null;
         }
 
         var seen = ClusterFAccountPersistence.GetOrCreate(acct).GetFlagValue(SeenVersionKey);
-        return seen == CurrentNotes.Version ? null : CurrentNotes;
+        return seen != null && CompareVersions(seen, latest.Version) >= 0 ? null : latest;
+    }
+
+    /// <summary>cc-P117: the newest version at or below Current with at least one player line; null when there is none.</summary>
+    public static PatchNoteVersion LatestPlayerNotes()
+    {
+        if (CurrentNotes == null)
+        {
+            return null;
+        }
+
+        for (var i = _versions.IndexOf(CurrentNotes); i >= 0 && i < _versions.Count; i++)
+        {
+            if (!_versions[i].IsEmpty)
+            {
+                return _versions[i];
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// cc-P117: date versions compared part by part as numbers, so 2026.10.13.10 is after 2026.10.13.4 and 2026.10.13.2
+    /// after 2026.10.13. A part that is not a number compares as 0.
+    /// </summary>
+    public static int CompareVersions(string a, string b)
+    {
+        var pa = (a ?? "").Split('.');
+        var pb = (b ?? "").Split('.');
+        for (var i = 0; i < Math.Max(pa.Length, pb.Length); i++)
+        {
+            var x = i < pa.Length && int.TryParse(pa[i], out var xv) ? xv : 0;
+            var y = i < pb.Length && int.TryParse(pb[i], out var yv) ? yv : 0;
+            if (x != y)
+            {
+                return x.CompareTo(y);
+            }
+        }
+
+        return 0;
     }
 
     public static void MarkSeen(IAccount acct, PatchNoteVersion notes)

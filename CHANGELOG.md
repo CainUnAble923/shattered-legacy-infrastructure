@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.15.4
+
+### Fixed
+- A new player's first login shows the patch-notes bulletin again, with the latest notes for players, even when the newest update only changed things for staff.
+
 ## 2026.10.15.3
 
 ### Staff

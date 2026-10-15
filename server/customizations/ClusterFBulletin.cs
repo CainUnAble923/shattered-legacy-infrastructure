@@ -104,7 +104,8 @@ public static class ClusterFBulletinSystem
 
         var unread = UnreadFor(acct);
 
-        // F-15 (cc-P22): the current version's patch notes, once per account per version (ShardVersion).
+        // F-15 (cc-P22): the newest player patch notes this account has not been shown, once (ShardVersion.UnseenNotesFor;
+        // cc-P117: at or below the current version, so a Staff-only version still shows a fresh account the latest ones).
         var notes = ShardVersion.UnseenNotesFor(acct);
 
         if (unread.Count == 0 && notes == null) return;
@@ -433,8 +434,12 @@ public class BulletinGump : Gump
         // -- Header ----------------------------------------------------------
         if (notes != null)
         {
-            AddLabel(GumpWidth / 2 - 90, 14, 1154, $"{ShardVersion.ShardName} {notes.Version}");
-            AddLabel(GumpWidth / 2 - 95, 34, 999,  visibleCount > 0 ? "What changed, and new notices:" : "What changed in this version:");
+            // cc-P117: the title is the version the shard runs. When its own notes are Staff-only, the newest player notes
+            // are shown below it, under a heading that names their version.
+            var current = ShardVersion.Current.Length > 0 ? ShardVersion.Current : notes.Version;
+            AddLabel(GumpWidth / 2 - 90, 14, 1154, $"{ShardVersion.ShardName} {current}");
+            AddLabel(GumpWidth / 2 - 95, 34, 999,  visibleCount > 0 ? "What changed, and new notices:"
+                : notes.Version == current ? "What changed in this version:" : "What changed most recently:");
         }
         else
         {
@@ -450,7 +455,9 @@ public class BulletinGump : Gump
         // -- Patch notes (F-15) ----------------------------------------------
         if (notes != null)
         {
-            AddLabel(20, y + 4, 1154, "Patch notes");
+            AddLabel(20, y + 4, 1154, notes.Version == ShardVersion.Current || ShardVersion.Current.Length == 0
+                ? "Patch notes"
+                : $"Patch notes ({notes.Version})");
             y += 30;
 
             for (var i = 0; i < shownNotes; i++)

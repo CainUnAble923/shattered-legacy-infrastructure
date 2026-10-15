@@ -13,6 +13,7 @@
 //   4. [version says the version and shows the notes (cc-P64: in the Patch History gump).
 
 using System;
+using System.Linq;
 using System.Text;
 using Server;
 using Server.Accounting;
@@ -177,6 +178,93 @@ public class PatchNotesVerification : IDisposable
             ns.Mobile = null;
             pm.Delete();
             Accounts.Remove(account);
+        }
+    }
+
+    // ---------------------------------------------------------------- 2b (cc-P117)
+
+    // The real shape since 2026-10-14: the newest versions hold only a Staff list. The bot's P64-1 (2026-10-15, at
+    // 68631cb, version 2026.10.14.19) saw no bulletin on a fresh account's first login: the current version had no
+    // player lines, so UnseenNotesFor said there was nothing to show, and a new player never saw the latest notes.
+    private const string StaffOnlyOnTop = """
+        # Shattered Legacy changelog
+
+        ## 2026.10.03.2
+
+        ### Staff
+        - The console's icon.
+
+        ## 2026.10.03
+
+        ### Staff
+        - The play-test page's robot.
+
+        ## 2026.10.02.2
+
+        ### Fixed
+        - The lookout no longer faces the wall.
+
+        ## 2026.10.02
+
+        ### Added
+        - A Thieves' Den lookout sits by the fighting pit.
+        """;
+
+    [Fact]
+    public void AStaffOnlyVersionStillShowsAFreshAccountTheNewestPlayerNotesUnderTheCurrentVersion()
+    {
+        ShardVersion.Load(StaffOnlyOnTop, "2026.10.03.2");
+
+        var account = new Account($"p117{Guid.NewGuid():N}"[..16], "p117-test-only");
+        var seenBefore = new Account($"p117{Guid.NewGuid():N}"[..16], "p117-test-only");
+        var pm = new PlayerMobile { Player = true, Race = Race.Human };
+        account[0] = pm;
+        pm.MoveToWorld(new Point3D(1252, 1250, 0), Map.Trammel);
+        var ns = PacketTestUtilities.CreateTestNetState();
+        pm.NetState = ns;
+        ns.Mobile = pm;
+
+        try
+        {
+            // A fresh account: the newest notes that have player lines, 2026.10.02.2.
+            var notes = Assert.IsType<PatchNoteVersion>(ShardVersion.UnseenNotesFor(account));
+            Assert.Equal("2026.10.02.2", notes.Version);
+
+            // The title is the version the shard runs; the notes say which version they are from.
+            var gump = new BulletinGump(pm, ClusterFBulletinSystem.UnreadFor(account), notes);
+            Assert.Contains(gump.Entries.OfType<GumpLabel>(), l => l.Text == "Shattered Legacy 2026.10.03.2");
+            Assert.Contains(gump.Entries.OfType<GumpLabel>(), l => l.Text == "Patch notes (2026.10.02.2)");
+            Assert.Contains(gump.Entries.OfType<GumpLabel>(), l => l.Text == "All patch notes");
+            Assert.DoesNotContain(gump.Entries.OfType<GumpLabel>(), l => l.Text.Contains("wiki", StringComparison.OrdinalIgnoreCase));
+
+            // All patch notes marks them seen: a relog shows nothing.
+            gump.OnResponse(ns, new RelayInfo(BulletinGump.AllNotesButton, ReadOnlySpan<int>.Empty,
+                ReadOnlySpan<ushort>.Empty, ReadOnlySpan<Range>.Empty, ReadOnlySpan<byte>.Empty));
+            Assert.Null(ShardVersion.UnseenNotesFor(account));
+
+            // An account shown 2026.10.02.2 before the Staff-only versions arrived is not shown it again.
+            ShardVersion.MarkSeen(seenBefore, notes);
+            Assert.Null(ShardVersion.UnseenNotesFor(seenBefore));
+
+            // The next version with player lines shows again, under its own title, with the plain heading.
+            ShardVersion.Load(StaffOnlyOnTop.Replace("## 2026.10.03.2", "## 2026.10.04\n\n### Added\n- Banks hold 1,000 items.\n\n## 2026.10.03.2"), "2026.10.04");
+            var next = Assert.IsType<PatchNoteVersion>(ShardVersion.UnseenNotesFor(account));
+            Assert.Equal("2026.10.04", next.Version);
+            var g2 = new BulletinGump(pm, ClusterFBulletinSystem.UnreadFor(account), next);
+            Assert.Contains(g2.Entries.OfType<GumpLabel>(), l => l.Text == "Shattered Legacy 2026.10.04");
+            Assert.Contains(g2.Entries.OfType<GumpLabel>(), l => l.Text == "Patch notes");
+
+            // A changelog with no player lines at all has nothing to show.
+            ShardVersion.Load("## 2026.10.05\n\n### Staff\n- Only staff.\n", "2026.10.05");
+            Assert.Null(ShardVersion.UnseenNotesFor(seenBefore));
+        }
+        finally
+        {
+            pm.NetState = null;
+            ns.Mobile = null;
+            pm.Delete();
+            Accounts.Remove(account);
+            Accounts.Remove(seenBefore);
         }
     }
 
