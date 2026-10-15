@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.15.2
+
+### Staff
+- Every open play-test item shows who tests it (You, Bot, Bot then you, You decide, or CC) and how: where, what to do and what a pass looks like, one click away. New Mine, Bot and CC filters, and a count for each in the header.
+
 ## 2026.10.15
 
 ### Staff

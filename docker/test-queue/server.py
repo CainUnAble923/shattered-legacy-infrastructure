@@ -5,7 +5,9 @@ Serves html/index.html and a small JSON API over D:\\UO\\shard-migration\\testin
   GET  /status           the shard status dashboard (cc-P85): shard-migration/dashboard.html, read from disk on every
                          request and sent with Cache-Control: no-store, so it is always the file as it is now
   GET  /nav.js           the shared menu (cc-P88): html/nav.js, used by both pages here and by Homepage
-  GET  /api/items        the whole document (summary, prompts, items)
+  GET  /api/items        the whole document (summary, prompts, items). cc-P115: each open, later or blocked item also
+                         carries "who" (from testing/bot-triage.md) and "steps" (testing/playtest-steps.json), and the
+                         document "who" (counts per Who); merged here on every read by tools/playwho.py, never written
   GET  /api/summary      counts only, for the Homepage dashboard's customapi widget
   GET  /api/bot-tonight  cc-P112: what tonight's overnight bot run tries (the page's robot icons), from
                          testing/bot-tonight.json (the game PC) or the game PC snapshot's botTonight (Haven); 5-minute cache
@@ -102,6 +104,7 @@ import bugs  # noqa: E402  (cc-P97)
 import opsdata  # noqa: E402  (cc-P105)
 import accessjwt  # noqa: E402  (cc-P105)
 import bottonight  # noqa: E402  (cc-P112)
+import playwho  # noqa: E402  (cc-P115)
 
 # cc-P105: testing/ lives here; the notes and docs stay under args.root.
 DATA = args.data or args.root
@@ -287,6 +290,12 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 return self.send_json(500, {"error": str(e)})
             doc["service"] = service_state(me)
+            # cc-P115: Who and the steps. The notes clone first: on Haven testing/ is a data volume, and both files are
+            # committed. A missing or broken triage leaves the items as they were and says so in doc["who"].
+            try:
+                playwho.annotate(doc, *playwho.load_sources([args.root, DATA]))
+            except Exception as e:  # never let the triage break the page
+                doc["who"] = {"available": False, "error": str(e)}
             return self.send_json(200, doc)
         if p == "/api/bot-tonight":
             return self.send_json(200, bot_tonight())

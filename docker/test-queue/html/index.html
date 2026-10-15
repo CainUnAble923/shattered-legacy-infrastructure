@@ -48,6 +48,15 @@ h2 small { color: var(--muted); font-weight: 400; }
 .chip.bot { text-decoration: none; color: var(--text); } .chip.bot-PASS { background: var(--pass-bg); color: var(--pass); }
 .chip.bot-FAIL { background: var(--fail-bg); color: var(--fail); } .chip.bot-FLAKY, .chip.bot-ERROR { background: var(--later-bg); color: var(--later); }
 .count.quiet { font-weight: 400; color: var(--muted); border-style: dashed; }
+/* cc-P115: who tests it. The badge is the standing answer; the robot (above) is tonight's plan. */
+.who { border-radius: 6px; padding: 1px 7px; font-weight: 700; cursor: help; border: 1px solid transparent; }
+.who-you { background: var(--accent); color: var(--bg); } .who-decide { background: var(--later-bg); color: var(--later); border-color: var(--later); }
+.who-botyou { background: var(--card); color: var(--accent); border-color: var(--accent); }
+.who-bot { background: var(--chip); color: var(--muted); } .who-cc { background: var(--chip); color: var(--text); border-color: var(--line); }
+.who-unsorted { background: transparent; color: var(--muted); border: 1px dashed var(--line); font-weight: 400; }
+.count.who-count { cursor: pointer; font-weight: 600; }
+details.steps { margin-top: 6px; } details.steps summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; }
+details.steps ol { margin: 4px 0; padding-left: 22px; } .steps .step b { color: var(--muted); font-weight: 600; }
 .label { font-weight: 700; }
 .expect { margin-top: 4px; } .expect b { color: var(--muted); font-weight: 600; }
 .note { margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: var(--fail-bg); color: var(--fail); }
@@ -109,6 +118,9 @@ form textarea { min-height: 88px; resize: vertical; }
     <button data-f="fail" aria-pressed="false">Failed</button>
     <button data-f="all" aria-pressed="false">All</button>
     <button data-f="bot" aria-pressed="false" title="Only the items the overnight bot tries tonight">Bot tonight</button>
+    <button data-f="mine" aria-pressed="false" title="Open items that need you: You, Bot then you, and You decide">Mine</button>
+    <button data-f="whobot" aria-pressed="false" title="Open items the overnight bot settles on its own">Bot</button>
+    <button data-f="cc" aria-pressed="false" title="Open items Claude Code can settle from files, logs or tests">CC</button>
     <button data-f="ideas" aria-pressed="false">Ideas <span class="badge" id="ideas-n" hidden></span></button>
     <button data-f="bugs" aria-pressed="false">Bugs <span class="badge" id="bugs-n" hidden></span></button>
   </div>
@@ -201,8 +213,14 @@ function groupRank(g) {
   if (m) return 100000 - parseInt(m[1], 10);
   return g === 'Added by hand' ? 0 : 200000;
 }
+// cc-P115: who tests it, from the service (testing/bot-triage.md through tools/playwho.py).
+var MINE = { you: 1, botyou: 1, decide: 1 };
+function whoKey(it) { return (it.who && it.who.key) || ''; }
 function shown(it) {
   if (filter === 'bot') return botInfo(it.id).state === 'tonight';
+  if (filter === 'mine') return !!OPEN[it.status] && !!MINE[whoKey(it)];
+  if (filter === 'whobot') return !!OPEN[it.status] && whoKey(it) === 'bot';
+  if (filter === 'cc') return !!OPEN[it.status] && whoKey(it) === 'cc';
   if (filter === 'open') return !!OPEN[it.status];
   if (filter === 'fail') return it.status === 'fail';
   return true;
@@ -228,6 +246,7 @@ function render() {
     (ideas && ideas.summary.new ? '<span class="count ideas" data-go="ideas">' + ideas.summary.new + ' new idea' + (ideas.summary.new === 1 ? '' : 's') + '</span>' : '') +
     (bugsDoc && bugsDoc.summary.new ? '<span class="count bugs" data-go="bugs">' + bugsDoc.summary.new + ' new bug' + (bugsDoc.summary.new === 1 ? '' : 's') + '</span>' : '') +
     botCount();
+  document.getElementById('counts').insertAdjacentHTML('beforeend', whoCounts());
   Array.prototype.forEach.call(document.querySelectorAll('.filters button'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-f') === filter ? 'true' : 'false'); });
   var groups = {};
   data.items.forEach(function (it) { if (shown(it)) { (groups[group(it)] = groups[group(it)] || []).push(it); } });
@@ -269,8 +288,42 @@ function botCount() {
   return '<span class="count bot" data-go="bot" title="The overnight run on ' + esc(bot.short) + ' takes about ' + bot.minutes + ' min' + (bot.asOf ? '; plan as of ' + esc(bot.asOf) : '') + '">Bot tonight: ' + bot.count + '</span>';
 }
 
+// cc-P115: the Who badge, the header counts per Who, and the steps. Nothing is hidden, sorted or greyed by them.
+function whoBadge(it) {
+  var w = it.who;
+  if (!w || !w.key) return '';
+  var title = 'Who tests it: ' + w.label + (w.kind ? ' (' + w.kind + ')' : '') + (w.reason ? '. ' + w.reason : '');
+  return '<span class="who who-' + esc(w.key) + '" title="' + esc(title) + '">' + esc(w.label) + '</span>';
+}
+function whoCounts() {
+  var w = data && data.who;
+  if (!w || !w.available) return '';
+  var order = [['you', 'mine'], ['botyou', 'mine'], ['decide', 'mine'], ['bot', 'whobot'], ['cc', 'cc'], ['unsorted', '']], out = [];
+  order.forEach(function (p) {
+    var n = w.counts[p[0]] || 0, go = p[1];
+    if (p[0] === 'unsorted' && !n) return;
+    out.push('<span class="count who-count" data-go="' + go + '" title="Open items: ' + esc(w.labels[p[0]]) + '">' +
+             '<span class="who who-' + p[0] + '">' + esc(w.labels[p[0]]) + '</span> ' + n + '</span>');
+  });
+  return out.join('');
+}
+function stepsHtml(it) {
+  var s = it.steps;
+  if (!s) return '';
+  var rows = [];
+  if (s.unknown) rows.push('<div class="step"><b>Steps unknown:</b> ' + md(s.unknown) + '</div>');
+  if (s.where) rows.push('<div class="step"><b>Where:</b> ' + md(s.where) + '</div>');
+  if (s.do && s.do.length) rows.push('<div class="step"><b>Do:</b><ol>' + s.do.map(function (d) { return '<li>' + md(d) + '</li>'; }).join('') + '</ol></div>');
+  if (s.pass) rows.push('<div class="step"><b>Pass looks like:</b> ' + md(s.pass) + '</div>');
+  if (s.check) rows.push('<div class="step"><b>Check:</b> ' + md(s.check) + '</div>');
+  var head = s.where ? ': ' + md(s.where) : s.unknown ? ': steps unknown' : s.check ? ': ' + (whoKey(it) === 'cc' ? 'CC checks it' : 'the bot checks it') : '';
+  return '<details class="steps"><summary>How to test' + head + '</summary>' + rows.join('') + '</details>';
+}
+
 function card(it) {
   var chips = ['<span class="chip">' + esc(it.id) + '</span>'];
+  var wb = whoBadge(it);
+  if (wb) chips.push(wb);
   var rb = robot(it);
   if (rb) chips.push(rb);
   if (it.version) chips.push('<span class="chip">needs ' + esc(it.version) + '</span>');
@@ -283,6 +336,7 @@ function card(it) {
   if (it.label) h += '<div class="label">' + md(it.label) + '</div>';
   h += '<div>' + md(it.what || it.text) + '</div>';
   if (it.expect) h += '<div class="expect"><b>Expect:</b> ' + md(it.expect) + '</div>';
+  h += stepsHtml(it);
   if (it.note) h += '<div class="note' + (it.status === 'fail' ? '' : ' ok') + '">' + esc(it.note) + '</div>';
   if (it.textChanged && it.previousText) h += '<div class="prev">Before the notes changed: ' + md(it.previousText) + '</div>';
   h += '<div class="actions">';
@@ -463,6 +517,9 @@ document.getElementById('counts').addEventListener('click', function (e) {
   if (e.target.closest('[data-go="bugs"]')) showBugs();
   // cc-P112: the "Bot tonight" count opens its filter.
   if (e.target.closest('[data-go="bot"]')) { filter = 'bot'; try { localStorage.setItem('pt-filter', 'bot'); } catch (x) {} render(); }
+  // cc-P115: a Who count opens its filter (You, Bot then you and You decide all open Mine).
+  var g = e.target.closest('[data-go="mine"], [data-go="whobot"], [data-go="cc"]');
+  if (g) { filter = g.getAttribute('data-go'); try { localStorage.setItem('pt-filter', filter); } catch (x) {} render(); }
 });
 document.getElementById('i-title').addEventListener('input', function () {
   var hits = dupHint(this.value);
