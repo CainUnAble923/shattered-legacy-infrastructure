@@ -5473,6 +5473,178 @@ Fact 'P124_ABuildPlanNamesTheClientAndRefusesAStaleOne' {
     Assert-Equal 0 $r.Spawned.Count 'no window'
 }
 
+# --- cc-P125: the Golem's long run, winding down, usage bars and what each prompt is -----------------------------------
+# Status texts and prompt files are written out here; the plans point at D:\UO\golem's scripts (the Golem config), and
+# nothing is run.
+
+$p125Now = [datetime]::new(2026, 10, 15, 9, 45, 0)
+function New-P125Status {
+    param([string]$State = 'RUNNING', [string]$Current = 'P125', [string]$Winding = '', [string]$RestReason = '', [string]$RestAfter = '',
+        [string]$WaitingFor = '', [bool]$StopTold = $false, $LongRun = $null)
+    $o = [ordered]@{
+        schema = 1; generatedAt = $p125Now.AddMinutes(-1).ToString('s'); state = $State; enabled = $true; current = $Current
+        currentFile = $(if ($Current) { 'cc-' + $Current + '-golem-long-run-toggle.md' } else { '' }); startedAt = $p125Now.AddMinutes(-42).ToString('s')
+        position = 3; total = 8; runDone = 2; runStarted = $p125Now.AddHours(-3).ToString('s'); maxPerRun = 12; lastHandled = 124; queued = @('cc-P126-a.md')
+        stepsDone = 2; stepsTotal = 9; stepNow = 'Console buttons'; lastActivityUtc = $p125Now.ToUniversalTime().AddMinutes(-1).ToString('s'); lastTool = 'Bash'
+        toolStartedUtc = ''; needsYou = ''; note = ''; winding = $Winding; stopTold = $StopTold; restReason = $RestReason; restAfter = $RestAfter
+        waitingForModel = $WaitingFor; longRun = $LongRun
+    }
+    $o | ConvertTo-Json -Depth 4
+}
+$p125Prompt = "# CC task P125: A ""Long run"" toggle for the Golem, for overnight and weekend runs`n`n**Model:** Opus`n`n" +
+    "Written 2026-10-15 by the overseer. Chase wants to maximize output.`nMore of the same paragraph.`n`n**Kind:** golem.ps1 and the console. Medium.`n`n## Before you start`n"
+function New-P125View {
+    param([string]$StatusText, $Extra)
+    if (-not $Extra) { $Extra = [pscustomobject]@{ PromptTexts = @{ 'cc-P125-golem-long-run-toggle.md' = $p125Prompt }; TreeClean = $null } }
+    Get-AutopilotView -Enabled $true -StateText '{"current":"P125","currentFile":"cc-P125-golem-long-run-toggle.md","lastHandled":124}' -LogLines @() -QueueNames @('cc-P126-a.md') -Errors @() -StatusText $StatusText -Kind golem -Extra $Extra
+}
+$p125Cfg = Get-ConsoleConfig -RepoRoot $repo
+$p125Cfg.Autopilot = New-AutopilotConfig 'D:\UO\golem' 'D:\UO\cc-prompts\queue' -Kind golem
+$p125Facts = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; Present = @{}; Running = 'P125'; StatusText = (New-P125Status) }
+foreach ($f in @($p125Cfg.Autopilot.LongRunStart, $p125Cfg.Autopilot.LongRunEnd, $p125Cfg.Autopilot.WrapUp, $p125Cfg.Autopilot.StopPoint)) { if ($f) { $p125Facts.Present[$f] = $true } }
+
+Fact 'P125_APromptParsesItsTitleModelKindAndFirstParagraph' {
+    $i = Get-PromptInfo 'cc-P125-golem-long-run-toggle.md' $p125Prompt
+    Assert-Equal 125 $i.Number
+    Assert-Equal 'A "Long run" toggle for the Golem, for overnight and weekend runs' $i.Title
+    Assert-Equal 'Opus' $i.Model
+    Assert-Equal 'golem.ps1 and the console. Medium.' $i.Kind
+    Assert-Equal 'Written 2026-10-15 by the overseer. Chase wants to maximize output. More of the same paragraph.' $i.Para
+    $odd = Get-PromptInfo 'cc-P126-odd.md' "no heading here`n"
+    Assert-Equal 'cc-P126-odd.md' $odd.Title 'an odd file shows its file name'
+    Assert-Equal 'cc-P127-gone.md' (Get-PromptInfo 'cc-P127-gone.md' $null).Title 'and a missing one too'
+    Assert-True (Get-PromptInfo 'cc-P140-cont-x.md' '# CC task P140: x').Cont 'a continuation is marked'
+}
+
+Fact 'P125_TheNotesHeadlineIsTheFirstBulletUnderHeadlines' {
+    $n = "# cc-P124: x`n`n## Headlines`n`n- **Build package now ships our client.** More.`n- second`n`n## What changed`n- not this`n"
+    Assert-Equal 'Build package now ships our client. More.' (Get-NotesHeadline $n)
+    Assert-Equal '' (Get-NotesHeadline "# no headlines`n- a bullet")
+}
+
+Fact 'P125_TheQueueIsListedInTheGolemsOrderContinuationsFirst' {
+    $q = Get-AutopilotQueue @('cc-P101-b.md', 'cc-P140-cont-z.md', 'cc-P99-a.md', 'cc-P130-cont-y.md')
+    Assert-Equal 'cc-P130-cont-y.md,cc-P140-cont-z.md,cc-P99-a.md,cc-P101-b.md' ($q.Runs -join ',')
+}
+
+Fact 'P125_UsageBarsShowKnownStaleAndUnknownData' {
+    $reset = [DateTimeOffset]::new($p125Now.AddHours(2).AddMinutes(14)).ToUnixTimeSeconds()
+    $week = [DateTimeOffset]::new($p125Now.AddDays(5)).ToUnixTimeSeconds()
+    $fresh = '{ "updatedUtc": "' + $p125Now.ToUniversalTime().AddMinutes(-3).ToString('s') + '", "fiveHour": { "pct": 12, "resetsAt": ' + $reset + ' }, "sevenDay": { "pct": 8, "resetsAt": ' + $week + ' } }'
+    $r = @(Get-UsageBars -UsageText $fresh -Now $p125Now)
+    Assert-Equal 'head,Current session,This week,Fable this week' (($r | ForEach-Object { $_.Name }) -join ',') 'the app''s order'
+    Assert-True ($r[1].Text -match '12% used  resets in 2 h 14 m, at 11:59') $r[1].Text
+    Assert-True ($r[1].Text -match '^Current session\s+\[##\.{18}\]') ('a bar: ' + $r[1].Text)
+    Assert-True ($r[2].Text -match '8% used  resets in 5 d 0 h, at Tue 09:45') $r[2].Text
+    Assert-True ($r[3].Text -match 'not reported' -and $r[3].Color -eq 'gray') 'Fable: Claude Code does not report it'
+    $old = $fresh.Replace($p125Now.ToUniversalTime().AddMinutes(-3).ToString('s'), $p125Now.ToUniversalTime().AddMinutes(-25).ToString('s'))
+    $s = @(Get-UsageBars -UsageText $old -Now $p125Now)
+    Assert-True ($s[1].Text -match 'unknown' -and $s[1].Color -eq 'gray' -and $null -eq $s[1].Pct) ('older than 10 min: ' + $s[1].Text)
+    Assert-True ($s[0].Text -match 'too old') $s[0].Text
+    $none = @(Get-UsageBars -UsageText $null -Now $p125Now)
+    Assert-True ($none[1].Text -match 'unknown' -and $none[0].Text -match 'not reported yet') $none[0].Text
+}
+
+Fact 'P125_TheEstimateIsLabelledAndHasNoPercentage' {
+    $r = @(Get-UsageBars -UsageText $null -Now $p125Now -Estimate ([pscustomobject]@{ Tokens = 1234567; Sessions = 2 }))
+    $e = @($r | Where-Object { $_.Name -eq 'estimate' })
+    Assert-Equal 1 $e.Count
+    Assert-True ($e[0].Text.StartsWith('estimate, not Anthropic''s figure: 1,234,567 tokens')) $e[0].Text
+    Assert-True ($e[0].Text -notmatch '\d+%') 'no percentage'
+}
+
+Fact 'P125_TheTileSaysEachStateAndKeepsTheRunInfo' {
+    $lr = [ordered]@{ cap = 5; until = $p125Now.AddDays(3).ToString('s'); done = 2; active = $true }
+    $cases = @(
+        @{ S = (New-P125Status -LongRun $lr); Want = 'long run: 2 of 5, until Sun 09:45'; Color = 'green' },
+        @{ S = (New-P125Status -Winding 'after-current'); Want = 'Wrapping up after P125'; Color = 'amber' },
+        @{ S = (New-P125Status -Winding 'stopping-point'); Want = 'Finding a stopping point in P125 (CC is told at its next tool use)'; Color = 'amber' },
+        @{ S = (New-P125Status -Winding 'stopping-point' -StopTold $true); Want = 'Finding a stopping point in P125 (CC has been told)'; Color = 'amber' },
+        @{ S = (New-P125Status -State 'IDLE' -Current '' -RestReason 'wrap up' -RestAfter 'P125'); Want = 'Resting after P125 (wrap up)'; Color = 'gray' },
+        @{ S = (New-P125Status -State 'IDLE' -Current '' -RestReason 'stopping point' -RestAfter 'P125'); Want = 'Paused at a stopping point in P125'; Color = 'gray' },
+        @{ S = (New-P125Status -State 'IDLE' -Current '' -RestReason 'model' -WaitingFor 'Fable'); Want = 'Waiting for a Fable session'; Color = 'gray' }
+    )
+    foreach ($c in $cases) {
+        $t = Get-AutopilotGlance -View (New-P125View $c.S) -Now $p125Now
+        Assert-True ($t.Detail.Contains($c.Want)) ($c.Want + ' | tile: ' + $t.Detail)
+        Assert-Equal $c.Color $t.Color ($c.Want)
+    }
+    # The running prompt's number, title, model and time, and its run position, are still there.
+    $t = Get-AutopilotGlance -View (New-P125View (New-P125Status -Winding 'after-current')) -Now $p125Now
+    Assert-True ($t.Detail -match 'P125 A "Long run" toggle for the Golem, for overnight and weekend runs \(Opus\)') $t.Detail
+    Assert-True ($t.Detail -match '3 of 8' -and $t.Detail -match 'last activity|running') $t.Detail
+    # At rest with both repos clean.
+    $x = [pscustomobject]@{ PromptTexts = @{}; TreeClean = $true }
+    $t2 = Get-AutopilotGlance -View (New-P125View (New-P125Status -State 'IDLE' -Current '' -RestReason 'wrap up' -RestAfter 'P125') $x) -Now $p125Now
+    Assert-True ($t2.Detail -match 'Resting after P125 \(wrap up\)\. Tree clean, safe to package') $t2.Detail
+}
+
+Fact 'P125_StartLongRunRunsItsScriptWithTheCapAndEndAfterThePhrase' {
+    $f = $p125Facts.PSObject.Copy()
+    $f | Add-Member -NotePropertyName LongRunCap -NotePropertyValue 'all' -Force
+    $f | Add-Member -NotePropertyName LongRunUntil -NotePropertyValue '2099-10-19 06:00' -Force
+    $p = @(Get-ActionPlan -Action 'golem.longrun' -Config $p125Cfg -AutopilotFacts $f)
+    Assert-Equal 'start long run' (@($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase)
+    $w = @($p | Where-Object { $_.Kind -eq 'window' })
+    Assert-Equal ('powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\UO\golem\Start-LongRun.ps1 -Cap 0 -Until 2099-10-19T06:00:00') (Format-CommandLine $w[0].Exe $w[0].Arguments)
+    Assert-Equal 0 @(Test-PlanSafety $p $p125Cfg).Count (@(Test-PlanSafety $p $p125Cfg) -join '; ')
+    $f.LongRunCap = '4'
+    $w = @(@(Get-ActionPlan -Action 'golem.longrun' -Config $p125Cfg -AutopilotFacts $f) | Where-Object { $_.Kind -eq 'window' })
+    Assert-True ((Format-CommandLine $w[0].Exe $w[0].Arguments).Contains('-Cap 4 -Until')) 'a number'
+    foreach ($bad in @(@('x', '2099-10-19 06:00'), @('4', 'monday'), @('4', '2001-01-01 06:00'))) {
+        $f.LongRunCap = $bad[0]; $f.LongRunUntil = $bad[1]
+        $r = @(Get-ActionPlan -Action 'golem.longrun' -Config $p125Cfg -AutopilotFacts $f)
+        Assert-Equal 'refuse' $r[0].Kind ('refused: ' + ($bad -join ' / '))
+    }
+    $e = @(Get-ActionPlan -Action 'golem.endlongrun' -Config $p125Cfg -AutopilotFacts $p125Facts)
+    Assert-Equal ('powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\UO\golem\End-LongRun.ps1') (Format-CommandLine @($e | Where-Object { $_.Kind -eq 'window' })[0].Exe @($e | Where-Object { $_.Kind -eq 'window' })[0].Arguments)
+}
+
+Fact 'P125_WrapUpAndStoppingPointAskThePhraseAndToggleToCancel' {
+    $p = @(Get-ActionPlan -Action 'golem.wrapup' -Config $p125Cfg -AutopilotFacts $p125Facts)
+    Assert-Equal 'wrap up golem' (@($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase)
+    Assert-True ((Format-CommandLine @($p | Where-Object { $_.Kind -eq 'window' })[0].Exe @($p | Where-Object { $_.Kind -eq 'window' })[0].Arguments).EndsWith('Wrap-Up.ps1'))
+    $wound = $p125Facts.PSObject.Copy(); $wound.StatusText = (New-P125Status -Winding 'after-current')
+    $c = @(Get-ActionPlan -Action 'golem.wrapup' -Config $p125Cfg -AutopilotFacts $wound)
+    Assert-Equal 0 @($c | Where-Object { $_.Kind -eq 'confirm' }).Count 'cancelling asks nothing'
+    Assert-True ((Format-CommandLine @($c | Where-Object { $_.Kind -eq 'window' })[0].Exe @($c | Where-Object { $_.Kind -eq 'window' })[0].Arguments).EndsWith('Wrap-Up.ps1 -Cancel'))
+    $s = @(Get-ActionPlan -Action 'golem.stoppoint' -Config $p125Cfg -AutopilotFacts $p125Facts)
+    Assert-Equal 'find a stopping point' (@($s | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase)
+    $idle = $p125Facts.PSObject.Copy(); $idle.Running = ''; $idle.StatusText = (New-P125Status -State 'IDLE' -Current '')
+    Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'golem.stoppoint' -Config $p125Cfg -AutopilotFacts $idle))[0].Kind 'nothing running'
+    $told = $p125Facts.PSObject.Copy(); $told.StatusText = (New-P125Status -Winding 'stopping-point' -StopTold $true)
+    $t = @(Get-ActionPlan -Action 'golem.stoppoint' -Config $p125Cfg -AutopilotFacts $told)
+    Assert-True (@($t | Where-Object { $_.Kind -eq 'say' -and $_.Text -match 'already been told' }).Count -eq 1) 'cancelling after CC was told says it changes nothing'
+    foreach ($pl in @($p, $c, $s, $t)) { Assert-Equal 0 @(Test-PlanSafety $pl $p125Cfg).Count (@(Test-PlanSafety $pl $p125Cfg) -join '; ') }
+    $r = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts $p125Facts)
+    Assert-True ($r[0].Kind -eq 'refuse' -and $r[0].Text -match 'P131') 'Resume waits for P131'
+}
+
+Fact 'P125_TheGolemHookItselfIsStillNeverRunFromTheConsole' {
+    $bad = @(New-PlanStep -Kind window -Exe 'powershell.exe' -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'D:\UO\golem\golem.ps1', '-Event', 'LongRun'))
+    Assert-True (@(Test-PlanSafety $bad $p125Cfg) -match 'never run from the console').Count 'golem.ps1 itself is refused'
+    $extra = @(New-PlanStep -Kind window -Exe 'powershell.exe' -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'D:\UO\golem\Wrap-Up.ps1', '-Root', 'C:\x'))
+    Assert-True (@(Test-PlanSafety $extra $p125Cfg).Count -gt 0) 'and a button script only with its own arguments'
+}
+
+Fact 'P125_TheGolemTabHasTheNewButtonsTheListsAndAGreyResume' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        # Their own row and group ('Golem run'): the nine Golem buttons cc-P74 to cc-P99 pinned stay exactly as they were.
+        $tags = @($script:ui.GolemRunButtons | ForEach-Object { $_.Tag })
+        Assert-Equal 'golem.longrun,golem.endlongrun,golem.wrapup,golem.stoppoint' ($tags -join ',') 'the four run buttons, in order'
+        Assert-Equal 9 @($script:ui.AutopilotButtons).Count 'the Golem group is unchanged'
+        $tips = Get-ConsoleTooltips
+        foreach ($k in @($tags) + @('golem.resume', 'golem.cap', 'golem.until', 'golemQueue', 'golemPreview', 'golemFinished', 'golem.openprompt', 'golem.opennotes')) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
+        $res = $script:ui.GolemResume
+        Assert-True ($null -ne $res -and -not $res.Enabled -and $res.Text -match 'needs P131') 'Resume Golem is shown, disabled, needs P131'
+        Assert-True ($null -ne $script:ui.LongRunCap -and $null -ne $script:ui.LongRunUntil) 'the cap and end-time boxes'
+        Assert-True ($null -ne $script:ui.GolemQueueList -and $null -ne $script:ui.GolemPreview -and $null -ne $script:ui.GolemFinishedList) 'the queue, its preview and the finished list'
+        Assert-True ($script:ui.GolemPreview.ReadOnly) 'the preview is read-only'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 
 $failed =@($results | Where-Object { -not $_.Passed }).Count

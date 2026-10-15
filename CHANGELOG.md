@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.15.10
+
+### Staff
+- The console's Golem tab can start a long run (a cap of prompts, or until the queue is empty, and an end time), tell the Golem to wrap up after the current task or find a stopping point in it, and shows Claude Code's reported plan usage, each queued prompt's title and model, and the last ten finished prompts. The Golem now rests (and emails once) on a usage limit, a stall, a full context window or a prompt that wants a different model, and keeps clear of the 01:30 play-test bot.
+
 ## 2026.10.15.9
 
 ### Staff

@@ -211,6 +211,15 @@ function New-AutopilotConfig {
         StatusFile   = (Join-Path $Root 'status.json')
         SettingsFile = (Join-Path $Root 'settings.json')
         Queue     = $Queue
+        # cc-P125: the run buttons' scripts (the Golem's only), the plan usage the status line writes, and the prompts.
+        LongRunStart = (Join-Path $Root 'Start-LongRun.ps1')
+        LongRunEnd   = (Join-Path $Root 'End-LongRun.ps1')
+        WrapUp       = (Join-Path $Root 'Wrap-Up.ps1')
+        StopPoint    = (Join-Path $Root 'Find-StoppingPoint.ps1')
+        UsageFile    = (Join-Path $Root 'usage.json')
+        PromptDir    = $(if ($Queue) { Split-Path -Parent $Queue } else { '' })
+        CompletedDir = $(if ($Queue) { Join-Path (Split-Path -Parent $Queue) 'completed' } else { '' })
+        ClaudeProjects = $(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE '.claude\projects' } else { '' })
         Notepad   = (Join-Path $env:WINDIR 'notepad.exe')
         # The log is tailed, never read whole: Commit-ShardWork.ps1's output is pasted into it after every commit.
         TailLines = 400
@@ -843,6 +852,9 @@ function Get-ConfirmPhrase {
         'fix.rebuild'      { 'rebuild test' }
         'fix.prune'        { 'prune images' }
         'golem.move'       { 'move to the golem' }
+        'golem.longrun'    { 'start long run' }
+        'golem.wrapup'     { 'wrap up golem' }
+        'golem.stoppoint'  { 'find a stopping point' }
         'web.deploy'       { 'deploy to haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'deploy to haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'deploy to haven' }
@@ -1085,6 +1097,11 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.folder';     Group = 'Golem';       Label = 'Open Golem folder';                  Mutates = $false; RunIn = 'here' }
         # cc-P99: the cutover, after a typed phrase; the script shows its own dry run and asks again.
         [pscustomobject]@{ Key = 'golem.move';       Group = 'Golem';       Label = 'Move to the Golem';                  Mutates = $true;  RunIn = 'here' }
+        # cc-P125: the run buttons, a row of their own on the Golem tab. Wrap up and Find a stopping point toggle to Cancel.
+        [pscustomobject]@{ Key = 'golem.longrun';    Group = 'Golem run';   Label = 'Start long run';                     Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.endlongrun'; Group = 'Golem run';   Label = 'End long run';                       Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.wrapup';     Group = 'Golem run';   Label = 'Wrap up after this task';            Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.stoppoint';  Group = 'Golem run';   Label = 'Find a stopping point';              Mutates = $true;  RunIn = 'here' }
         # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
         [pscustomobject]@{ Key = 'links.playtests';  Group = 'Links';       Label = 'Play tests';                         Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
@@ -1330,6 +1347,18 @@ function Get-ConsoleTooltips {
         'web.mega-dashboard' = 'Puts the one Homepage (Shattered Legacy, Sunflower, home lab) on Haven and stops the stale one there and this PC''s, after the phrase deploy to haven. Its window prints Haven''s containers and ports first, then the plan, and changes nothing until you type deploy there.'
         'web.mega-dashboard-rollback' = 'Stops Haven''s new Homepage and starts the stale one and this PC''s dashboard again, after the phrase deploy to haven. Its window shows the plan and waits for roll back.'
         'web.npm'          = 'Opens Nginx Proxy Manager: an SSH tunnel to Haven in its own window (your own key), then the admin page in your browser. No password is stored here.'
+        'golem.longrun'    = 'Starts a long run: up to the cap (a number, or all for until the queue is empty) until the end time, then back to maxPerRun by itself. Asks start long run; runs Start-LongRun.ps1 in its own window.'
+        'golem.endlongrun' = 'Ends a long run now: maxPerRun counts again. Runs End-LongRun.ps1 in its own window.'
+        'golem.wrapup'     = 'Wrap up after this task: the running prompt goes to DONE, is committed and pushed, then the Golem rests with ENABLED kept. Asks wrap up golem, and says Cancel wrap up while set.'
+        'golem.stoppoint'  = 'Find a stopping point: CC finishes its step, leaves both repos green, writes a continuation prompt and ends PAUSED, then the Golem commits and rests. Asks find a stopping point, and says Cancel stopping point while set.'
+        'golem.resume'     = 'Resume Golem: needs P131 (waking the Golem from the console). For now say Golem, please work on the shard tasks in CC.'
+        'golem.cap'        = 'The long run''s cap: a number of prompts, or all (until the queue is empty).'
+        'golem.until'      = 'When the long run ends, a local date and time like 2026-10-19 06:00. Then maxPerRun counts again.'
+        'golemQueue'       = 'The queue in hand-off order (continuations first): number, title, model and Kind. Click one to read its first paragraph. Read only.'
+        'golemPreview'     = 'The picked prompt''s first paragraph: who asked for it and why. Read only.'
+        'golemFinished'    = 'The last 10 finished prompts: DONE, STOPPED or PAUSED, when, and the first headline of each one''s notes. Read only.'
+        'golem.openprompt' = 'Opens the picked queued prompt in Notepad. The console never edits, reorders or deletes a prompt.'
+        'golem.opennotes'  = 'Opens the picked finished prompt''s notes in Notepad.'
         'golem.move'       = 'Moves the CC queue from cc-autopilot to the Golem with Move-ToGolem.ps1: the hooks, the scheduled task and the state. Asks for move to the golem, then shows its dry run in its own window and asks you to type move; refused while a prompt runs.'
         'links.playtests'  = 'Opens the play-test page (port 8093) in your browser. Changes nothing here.'
         'links.dashboard'  = 'Opens the Homepage dashboard (port 3000) in your browser. Changes nothing here.'
@@ -2622,10 +2651,14 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript)
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart) | Where-Object { $_ }
                 $sa = @($s.Arguments)
-                $ok = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -eq 5 -and
-                    (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
+                $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
+                $ok = ($head -and $sa.Count -eq 5 -and $sa[4] -ine $ap.LongRunStart)
+                # cc-P125: Start-LongRun.ps1 only with -Cap <n> -Until <time>; Wrap-Up.ps1 and Find-StoppingPoint.ps1 also with -Cancel.
+                $tmpT = [datetime]::MinValue
+                if ($head -and $sa[4] -ieq $ap.LongRunStart -and $sa.Count -eq 9 -and $sa[5] -ceq '-Cap' -and $sa[6] -match '^\d+$' -and $sa[7] -ceq '-Until' -and [datetime]::TryParse($sa[8], [ref]$tmpT)) { $ok = $true }
+                if ($head -and $sa.Count -eq 6 -and $sa[5] -ceq '-Cancel' -and @($ap.WrapUp, $ap.StopPoint) -icontains $sa[4]) { $ok = $true }
                 # cc-P94: and settings.json, the same way.
             $readable = @($ap.LogFile, $ap.SettingsFile) | Where-Object { $_ }
             $okLog = ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and $sa.Count -eq 1 -and $readable -icontains $sa[0])
@@ -2633,7 +2666,11 @@ function Test-PlanSafety {
                 $okDir = ($s.Kind -eq 'launch' -and $s.Path -ieq 'explorer.exe' -and $sa.Count -eq 1 -and $sa[0] -ieq $ap.Root)
                 if (-not $ok -and -not $okLog -and -not $okDir) { $v.Add('the Golem''s folder is reached only by its five scripts, each in a window of its own, its log or settings.json in Notepad, or the folder in Explorer: ' + ($named -join ' ')) }
             }
-            if ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and -not (@($s.Arguments).Count -eq 1 -and (@($ap.LogFile, $ap.SettingsFile) | Where-Object { $_ }) -icontains @($s.Arguments)[0])) { $v.Add('Notepad opens only ' + $ap.LogFile + ' or ' + $ap.SettingsFile) }
+            # cc-P125: and a prompt (queue, running or completed) or a cc-P notes file, read only.
+            $np = @($s.Arguments)
+            $okRead = ($np.Count -eq 1 -and [string]$np[0] -match '[\\/]cc-P\d+-[^\\/]*\.md$' -and (
+                @(@($ap.PromptDir, $ap.Queue, $ap.CompletedDir, $Config.NotesFolder) | Where-Object { $_ } | Where-Object { (Split-Path -Parent ([string]$np[0])) -ieq $_ }).Count))
+            if ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and -not $okRead -and -not ($np.Count -eq 1 -and (@($ap.LogFile, $ap.SettingsFile) | Where-Object { $_ }) -icontains $np[0])) { $v.Add('Notepad opens only ' + $ap.LogFile + ', ' + $ap.SettingsFile + ', a cc-P prompt or a cc-P notes file') }
         }
         if ($s.Kind -eq 'move') {
             $from = [IO.Path]::GetFullPath($s.From).TrimEnd('\')
@@ -3397,8 +3434,9 @@ function ConvertFrom-AutopilotLog {
 function Get-AutopilotQueue {
     # The queue folder's file names, as the hook reads them: what runs, in order, and what it ignores.
     param([string[]]$Names)
+    # cc-P125: the Golem's order: continuations (cc-P<nn>-cont-*.md) first, then lowest number first.
     $runs = @(@($Names) | Where-Object { $_ -match '^cc-P(\d+)-.*\.md$' } |
-        Sort-Object { [int]([regex]::Match($_, '^cc-P(\d+)-').Groups[1].Value) }, { $_ })
+        Sort-Object { if ($_ -match '^cc-P\d+-cont-') { 0 } else { 1 } }, { [int]([regex]::Match($_, '^cc-P(\d+)-').Groups[1].Value) }, { $_ })
     $ignored = @(@($Names) | Where-Object { $_ -match '\.md$' -and $_ -notmatch '^cc-P\d+-' } | Sort-Object)
     [pscustomobject]@{ Runs = $runs; Ignored = $ignored }
 }
@@ -3489,6 +3527,13 @@ function ConvertFrom-AutopilotStatus {
         # cc-P99 (D91): a plain word for a running prompt that is not a question, e.g. 'waiting on background agents'.
         Note           = ([string]$j.note).Trim()
         GeneratedAt    = (ConvertFrom-AutopilotTime $j.generatedAt 'Local')
+        # cc-P125: winding down and resting with ENABLED kept, the long run, the model the next prompt waits for.
+        Winding         = ([string]$j.winding).Trim()
+        StopTold        = [bool]$j.stopTold
+        RestReason      = ([string]$j.restReason).Trim()
+        RestAfter       = ([string]$j.restAfter).Trim()
+        WaitingForModel = ([string]$j.waitingForModel).Trim()
+        LongRun         = $j.longRun
     }
 }
 
@@ -3527,7 +3572,7 @@ function Get-AutopilotView {
     # cc-P94: $StatusText is status.json ($null: none), preferred when it reads as schema 1; otherwise Status is
     # $null and StatusNote says why, and the four facts are judged as before. $SettingsText is settings.json.
     param($Enabled, $StateText, [string[]]$LogLines, $QueueNames, [string[]]$Errors,
-        $StatusText, [string]$StatusError, $SettingsText, [string]$Kind = 'autopilot')
+        $StatusText, [string]$StatusError, $SettingsText, [string]$Kind = 'autopilot', $Extra)
     $status = $null
     $statusNote = 'no status.json (an autopilot from before 2026-10-13): read ENABLED, state.json and the log'
     if ($StatusError) { $statusNote = 'status.json could not be read (' + $StatusError + '): read ENABLED, state.json and the log' }
@@ -3570,7 +3615,195 @@ function Get-AutopilotView {
         Problems     = $problems.ToArray()
         # cc-P99: whose folder this was read from, golem or autopilot.
         Kind         = $Kind
+        # cc-P125 ($Extra, from Get-AutopilotFacts): what each prompt is, the finished ones, the plan usage, the trees.
+        CurrentPrompt = $(if ($status -and $status.CurrentFile) { Get-PromptInfo $status.CurrentFile (Get-ExtraText $Extra 'PromptTexts' $status.CurrentFile) } elseif ($state -and $state.CurrentFile) { Get-PromptInfo $state.CurrentFile (Get-ExtraText $Extra 'PromptTexts' $state.CurrentFile) } else { $null })
+        QueueInfo     = @(if ($queue) { foreach ($r in @($queue.Runs)) { Get-PromptInfo $r (Get-ExtraText $Extra 'PromptTexts' $r) } })
+        Finished      = @(foreach ($fp in @(Get-FinishedPrompts $actions 10)) {
+                            $ct = Get-ExtraText $Extra 'CompletedTexts' ([string]$fp.Number)
+                            $info = Get-PromptInfo ('cc-P' + $fp.Number + '-') $ct
+                            [pscustomobject]@{ Number = $fp.Number; Result = $fp.Result; Time = $fp.Time; Title = $(if ($info.Readable) { $info.Title } else { 'P' + $fp.Number }); Headline = (Get-NotesHeadline (Get-ExtraText $Extra 'NotesTexts' ([string]$fp.Number))) }
+                        })
+        UsageText     = $(if ($Extra) { $Extra.UsageText } else { $null })
+        Estimate      = $(if ($Extra) { $Extra.Estimate } else { $null })
+        TreeClean     = $(if ($Extra) { $Extra.TreeClean } else { $null })
     }
+}
+
+function Get-ExtraText {
+    # cc-P125: one text from Get-AutopilotFacts' Extra (a hashtable by file name or prompt number), or $null.
+    param($Extra, [string]$Table, [string]$Key)
+    if (-not $Extra -or -not $Extra.$Table) { return $null }
+    $t = $Extra.$Table
+    if ($t.Contains($Key)) { return $t[$Key] }
+    $null
+}
+
+# --- cc-P125: long runs, winding down, usage bars and what each prompt is -------------------------------------------------
+# The Golem (golem.ps1) writes status.json's winding, restReason, restAfter, waitingForModel, stopTold and longRun, and
+# usage.json from Claude Code's documented status line JSON (rate_limits.five_hour / seven_day: used_percentage 0-100 and
+# resets_at, Unix seconds; https://code.claude.com/docs/en/statusline.md). Everything below is pure: text in, lines out.
+
+$script:UsageStaleMinutes = 10
+
+function Get-PromptInfo {
+    # A prompt file's number, title ("# CC task Pnnn: <title>"), Model and Kind lines and its first paragraph (who asked
+    # for it and why). A missing or odd file gives its file name as the title, never an error.
+    param([string]$Name, $Text)
+    $num = 0
+    $m = [regex]::Match([string]$Name, '^cc-P(\d+)-')
+    if ($m.Success) { $num = [int]$m.Groups[1].Value }
+    $o = [ordered]@{ Name = $Name; Number = $num; Title = $Name; Model = ''; Kind = ''; Para = ''; Cont = ([string]$Name -match '^cc-P\d+-cont-'); Readable = $false }
+    if ($null -eq $Text) { return [pscustomobject]$o }
+    $lines = @(([string]$Text) -split "`r?`n")
+    $h = @($lines | Where-Object { $_ -match '^\s*#\s+' } | Select-Object -First 1)
+    if ($h.Count) {
+        $t = ($h[0] -replace '^\s*#\s+', '').Trim()
+        $t = ($t -replace '^CC task\s+P\d+\s*:\s*', '').Trim()
+        if ($t) { $o.Title = $t; $o.Readable = $true }
+    }
+    foreach ($l in $lines) {
+        if (-not $o.Model -and $l -match '^\s*\*\*Model:\*\*\s*(\w+)') { $o.Model = $Matches[1] }
+        if (-not $o.Kind -and $l -match '^\s*\*\*Kind:\*\*\s*(.+)$') { $o.Kind = ($Matches[1] -replace '\*\*', '').Trim() }
+    }
+    # The first paragraph after the title that is prose: not the Model line, not a heading.
+    $buf = New-Object 'System.Collections.Generic.List[string]'
+    $started = $false
+    foreach ($l in @($lines | Select-Object -Skip 1)) {
+        $x = $l.Trim()
+        if (-not $x) { if ($started) { break } else { continue } }
+        if ($x -match '^#' -or $x -match '^\*\*(Model|Kind):\*\*') { if ($started) { break } else { continue } }
+        $started = $true
+        $buf.Add($x)
+    }
+    $o.Para = ($buf -join ' ')
+    [pscustomobject]$o
+}
+
+function Get-NotesHeadline {
+    # The first bullet under "## Headlines" in a notes file, without its markdown, or ''.
+    param($Text)
+    if ($null -eq $Text) { return '' }
+    $in = $false
+    foreach ($l in @(([string]$Text) -split "`r?`n")) {
+        if ($l -match '^##\s+Headlines') { $in = $true; continue }
+        if ($in -and $l -match '^##\s') { break }
+        if ($in -and $l -match '^\s*-\s+(.+)$') { return (($Matches[1] -replace '\*\*|`', '').Trim()) }
+    }
+    ''
+}
+
+function Get-FinishedPrompts {
+    # The last $Count prompts the Golem finished, newest first, from its log's action lines: "P124 DONE, committing: ...",
+    # "P123 STOPPED, no commit", and (cc-P125) PAUSED, which the log writes as "resting (stopping point) after P<nn>".
+    param($Actions, [int]$Count = 10)
+    $out = New-Object 'System.Collections.Generic.List[object]'
+    $seen = @{}
+    foreach ($a in @(@($Actions) | Sort-Object Time -Descending)) {
+        $n = 0; $how = ''
+        if ($a.Text -match '^P(\d+) DONE, committing') { $n = [int]$Matches[1]; $how = 'DONE' }
+        elseif ($a.Text -match '^P(\d+) STOPPED') { $n = [int]$Matches[1]; $how = 'STOPPED' }
+        elseif ($a.Text -match '^resting \(stopping point\) after P(\d+)') { $n = [int]$Matches[1]; $how = 'PAUSED' }
+        if (-not $n -or $seen.ContainsKey($n)) { continue }
+        $seen[$n] = $true
+        $out.Add([pscustomobject]@{ Number = $n; Result = $how; Time = $a.Time })
+        if ($out.Count -ge $Count) { break }
+    }
+    $out.ToArray()
+}
+
+function Format-ResetIn {
+    # "resets in 2 h 14 m, at 11:59" (and the day when it is not today).
+    param([datetime]$At, [datetime]$Now)
+    $span = $At - $Now
+    if ($span.TotalSeconds -lt 0) { return ('reset at ' + $At.ToString('HH:mm', $script:Invariant)) }
+    $d = [int][Math]::Floor($span.TotalDays); $hh = $span.Hours; $mm = $span.Minutes
+    $in = $(if ($d -gt 0) { [string]$d + ' d ' + $hh + ' h' } elseif ($hh -gt 0) { [string]$hh + ' h ' + $mm + ' m' } else { [string]$mm + ' m' })
+    $when = $At.ToString('HH:mm', $script:Invariant)
+    if ($At.Date -ne $Now.Date) { $when = $At.ToString('ddd HH:mm', $script:Invariant) }
+    'resets in ' + $in + ', at ' + $when
+}
+
+function Format-UsageBar {
+    param([double]$Pct, [int]$Width = 20)
+    $p = [Math]::Max(0, [Math]::Min(100, $Pct))
+    $f = [int][Math]::Round($p / 100 * $Width, [MidpointRounding]::AwayFromZero)
+    '[' + ('#' * $f) + ('.' * ($Width - $f)) + ']'
+}
+
+function Get-UsageBars {
+    # The Golem tab's usage rows, in the Claude app's order: the current session (Claude Code's five_hour window), the
+    # week (seven_day, all models), then a separate weekly limit for Fable, which Claude Code does not report (no field in
+    # the status line JSON). $UsageText is usage.json ($null: none). Each row: Name, Pct ($null when unknown), Text, Color.
+    # Data older than $script:UsageStaleMinutes is greyed out as unknown. $Estimate, when given and there is no usage.json,
+    # is the local token count over the last 5 hours, labelled as an estimate, with no percentage.
+    param($UsageText, [datetime]$Now, $Estimate)
+    $rows = New-Object 'System.Collections.Generic.List[object]'
+    $u = $null; $err = ''
+    if ($null -ne $UsageText) { try { $u = ([string]$UsageText) | ConvertFrom-Json } catch { $err = $_.Exception.Message } }
+    $updated = $null
+    if ($u) { $updated = ConvertFrom-AutopilotTime $u.updatedUtc 'Utc' }
+    $stale = (-not $updated) -or (($Now.ToUniversalTime() - $updated).TotalMinutes -gt $script:UsageStaleMinutes)
+    $age = $(if ($updated) { Format-ShortAge ($Now.ToUniversalTime() - $updated) } else { '' })
+    $head = 'plan usage: from Claude Code''s status line (usage.json)'
+    if ($u) { $head += $(if ($stale) { ', last reported ' + $age + ' ago: too old, shown as unknown' } else { ', reported ' + $age + ' ago' }) }
+    elseif ($err) { $head = 'plan usage: usage.json unreadable (' + $err + ')' }
+    else { $head = 'plan usage: not reported yet (Claude Code''s status line writes usage.json once a session has had an answer)' }
+    $rows.Add([pscustomobject]@{ Name = 'head'; Pct = $null; Text = $head + '. The plan name is not in Claude Code''s data.'; Color = 'head' })
+    foreach ($w in @(@('fiveHour', 'Current session', '5-hour window'), @('sevenDay', 'This week', '7-day window, all models'))) {
+        $x = $null
+        if ($u) { $x = $u.($w[0]) }
+        $label = ('{0,-16}' -f $w[1])
+        if ($x -and -not $stale) {
+            $pct = [double]$x.pct
+            $at = [DateTimeOffset]::FromUnixTimeSeconds([long]$x.resetsAt).LocalDateTime
+            $c = $(if ($pct -ge 90) { 'red' } elseif ($pct -ge 70) { 'amber' } else { 'normal' })
+            $rows.Add([pscustomobject]@{ Name = $w[1]; Pct = $pct; Text = ($label + (Format-UsageBar $pct) + (' {0,3}% used  ' -f [int][Math]::Round($pct, [MidpointRounding]::AwayFromZero)) + (Format-ResetIn $at $Now) + '  (' + $w[2] + ')'); Color = $c })
+        } else {
+            $rows.Add([pscustomobject]@{ Name = $w[1]; Pct = $null; Text = ($label + '[' + ('-' * 20) + '] unknown  (' + $w[2] + ')'); Color = 'gray' })
+        }
+    }
+    $rows.Add([pscustomobject]@{ Name = 'Fable this week'; Pct = $null; Text = (('{0,-16}' -f 'Fable this week') + '[' + ('-' * 20) + '] not reported: Claude Code''s status line has no per-model weekly limit'); Color = 'gray' })
+    if (-not $u -and $Estimate) {
+        $rows.Add([pscustomobject]@{ Name = 'estimate'; Pct = $null; Text = ('estimate, not Anthropic''s figure: ' + ('{0:N0}' -f [long]$Estimate.Tokens) + ' tokens in ' + $Estimate.Sessions + ' session log(s) over the last 5 hours (no percentage: the limit is not readable)'); Color = 'gray' })
+    }
+    $rows.ToArray()
+}
+
+function Get-LongRunLine {
+    # "long run: 2 of 5, until Mon 06:00" while one is on; '' otherwise.
+    param($LongRun, [datetime]$Now)
+    if (-not $LongRun) { return '' }
+    $until = ConvertFrom-AutopilotTime $LongRun.until 'Local'
+    if (-not $until -or $until -le $Now) { return '' }
+    $done = 0; [void][int]::TryParse([string]$LongRun.done, [ref]$done)
+    $cap = 0; [void][int]::TryParse([string]$LongRun.cap, [ref]$cap)
+    $of = $(if ($cap -gt 0) { [string]$done + ' of ' + $cap } else { [string]$done + ', until the queue is empty' })
+    'long run: ' + $of + ', until ' + $until.ToString('ddd HH:mm', $script:Invariant)
+}
+
+function Get-WindingLine {
+    # cc-P125: the one line under the tile's and the tab's run lines while the Golem winds down or rests with ENABLED kept.
+    # $TreeClean: $true when both repos are clean (read only at rest), $null when not read.
+    param($Status, $TreeClean)
+    if (-not $Status) { return '' }
+    $cur = [string]$Status.Current
+    $l = ''
+    switch ([string]$Status.Winding) {
+        'after-current'  { $l = 'Wrapping up after ' + $cur }
+        'stopping-point' { $l = 'Finding a stopping point in ' + $cur + $(if ($Status.StopTold) { ' (CC has been told)' } else { ' (CC is told at its next tool use)' }) }
+    }
+    if (-not $l) {
+        $after = [string]$Status.RestAfter
+        switch ([string]$Status.RestReason) {
+            'wrap up'        { $l = 'Resting after ' + $after + ' (wrap up)' }
+            'stopping point' { $l = 'Paused at a stopping point in ' + $after }
+            'context'        { $l = 'Resting after ' + $after + ': context full, start a new CC session' }
+            'model'          { $l = 'Waiting for a ' + [string]$Status.WaitingForModel + ' session' }
+            'usage limit'    { $l = 'Paused: usage limit' + $(if ($cur) { ' in ' + $cur } else { '' }) }
+        }
+        if ($l -and $Status.RestReason -ne 'usage limit' -and $TreeClean -eq $true) { $l += '. Tree clean, safe to package' }
+    }
+    $l
 }
 
 function Format-AutopilotQueueCount {
@@ -3688,7 +3921,12 @@ function Get-AutopilotStatusGlance {
         'RUNNING' {
             $t.Color = 'green'
             $parts = New-Object 'System.Collections.Generic.List[string]'
-            $parts.Add($(if ($s.Current) { $s.Current } else { 'a prompt' }))
+            # cc-P125: the running prompt's number, title and model.
+            $who = $(if ($s.Current) { $s.Current } else { 'a prompt' })
+            $cp = $View.CurrentPrompt
+            if ($cp -and $cp.Readable) { $who += ' ' + $cp.Title }
+            if ($cp -and $cp.Model) { $who += ' (' + $cp.Model + ')' }
+            $parts.Add($who)
             if ($s.Position -gt 0 -and $s.Total -gt 0) { $parts.Add([string]$s.Position + ' of ' + $s.Total) }
             if ($act.Steps) { $parts.Add($act.Steps) }
             if ($s.StartedAt) { $parts.Add((Format-ShortAge ($Now - $s.StartedAt))) }
@@ -3701,6 +3939,16 @@ function Get-AutopilotStatusGlance {
                 $lines.Add('status ' + [int][Math]::Floor($act.StaleFor.TotalMinutes) + ' min old; watch task not running?')
             }
         }
+    }
+    # cc-P125: the long run, then winding down (amber) or resting with ENABLED kept (dark).
+    $lrl = Get-LongRunLine $s.LongRun $Now
+    if ($lrl) { $lines.Add($lrl) }
+    $wl = Get-WindingLine $s $View.TreeClean
+    if ($wl) {
+        $lines.Add($wl)
+        if ($s.Winding) { $t.Color = 'amber' }
+        elseif ($s.State -ne 'NEEDS YOU' -and $s.RestReason -ne 'usage limit') { $t.Color = 'gray' }
+        elseif ($s.RestReason -eq 'usage limit') { $t.Color = 'amber' }
     }
     if ($View.EmailFailing) {
         $t.Color = 'amber'
@@ -3722,6 +3970,8 @@ function Format-AutopilotPanel {
     foreach ($x in @($tl | Select-Object -Skip 1)) { & $add ('            ' + $x) $tile.Color }
     # cc-P99: the start phrase, and which folder is active (the console reads it, the buttons run its scripts).
     & $add 'In a CC session, say: "Golem, please work on the shard tasks"' 'head'
+    # cc-P125: the plan usage, as the Claude app shows it (Claude Code's status line figures), refreshed with the tab.
+    foreach ($ub in @(Get-UsageBars -UsageText $View.UsageText -Now $Now -Estimate $View.Estimate)) { & $add ('usage     : ' + $ub.Text) $ub.Color }
     if ($ap.Kind -eq 'golem') { & $add ('active    : the Golem (' + $ap.Root + '). ' + $ap.Why + '.') 'green' }
     else { & $add ('active    : cc-autopilot (' + $ap.Root + '), the Golem''s predecessor. ' + $ap.Why + '. Until then the phrase is not hooked up; send CC "go".') 'amber' }
     foreach ($p in @($View.Problems)) { & $add ('could not read: ' + $p) 'gray' }
@@ -3742,6 +3992,10 @@ function Format-AutopilotPanel {
         $run += ', ' + $st.RunDone + ' done'
         if ($st.RunStarted) { $run += ', started ' + (& $fmt $st.RunStarted) }
         & $add ('run       : ' + $run) 'normal'
+        $lrl = Get-LongRunLine $st.LongRun $Now
+        if ($lrl) { & $add ('            ' + $lrl) 'green' }
+        $wl = Get-WindingLine $st $View.TreeClean
+        if ($wl) { & $add ('winding   : ' + $wl) $(if ($st.Winding) { 'amber' } else { 'gray' }) }
         if ($st.StepsTotal -gt 0) {
             $steps = [string]$st.StepsDone + ' of ' + $st.StepsTotal + ' done'
             if ($st.StepNow) { $steps += ', now: ' + $st.StepNow }
@@ -3786,8 +4040,25 @@ function Format-AutopilotPanel {
         if (-not @($q.Runs).Count) { $head = 'queue     : ' + $ap.Queue + ' is empty' }
         & $add $head 'normal'
         $i = 0
-        foreach ($r in @($q.Runs)) { $i++; & $add ('            ' + $i + '. ' + $r) 'normal' }
+        foreach ($r in @($q.Runs)) {
+            $i++
+            # cc-P125: number, title, model and Kind (size); the list below the panel shows each one's first paragraph.
+            $pi = @(@($View.QueueInfo) | Where-Object { $_.Name -eq $r } | Select-Object -First 1)
+            $line = '            ' + $i + '. ' + $r
+            if ($pi.Count -and $pi[0].Readable) { $line = '            ' + $i + '. P' + $pi[0].Number + '  ' + $pi[0].Title + $(if ($pi[0].Model) { '  [' + $pi[0].Model + ']' } else { '' }) + $(if ($pi[0].Kind) { '  ' + $pi[0].Kind } else { '' }) + $(if ($pi[0].Cont) { '  (continuation: goes first)' } else { '' }) }
+            & $add $line 'normal'
+        }
         foreach ($x in @($q.Ignored)) { & $add ('            IGNORED ' + $x + ' (unnumbered: only cc-P<nn>-*.md runs; the overseer numbers it)') 'amber' }
+    }
+    # cc-P125: the last ten finished prompts, with the headline of each one's notes.
+    $fin = @($View.Finished)
+    if ($fin.Count) {
+        & $add ('finished  : the last ' + $fin.Count + ', newest first') 'normal'
+        foreach ($x in $fin) {
+            $c = $(if ($x.Result -eq 'STOPPED') { 'amber' } else { 'normal' })
+            & $add ('            P' + $x.Number + ' ' + $x.Result + '  ' + $x.Time.ToString('MM-dd HH:mm', $script:Invariant) + '  ' + $x.Title) $c
+            if ($x.Headline) { & $add ('                ' + $(if ($x.Headline.Length -gt 140) { $x.Headline.Substring(0, 137) + '...' } else { $x.Headline })) 'gray' }
+        }
     }
     & $add '' 'normal'
     & $add ('== ' + $ap.LogName + ', the last ' + $LogLines + ' actions (commit output skipped) ' + ('=' * 20)) 'head'
@@ -3861,6 +4132,73 @@ function Get-AutopilotPlan {
         }
         'golem.folder' {
             $steps.Add((New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @($ap.Root) -Text ('Opening ' + $ap.Root + ' (' + $who + ') in Explorer.')))
+        }
+        # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
+        # in a window of its own; the hook itself never runs from here.
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes') } {
+            if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
+            $st = $null
+            if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
+            $running = [string]$Facts.Running
+            switch ($Action) {
+                'golem.longrun' {
+                    if (-not (& $need $ap.LongRunStart 'Start-LongRun.ps1')) { break }
+                    $capText = ([string]$Facts.LongRunCap).Trim()
+                    $cap = -1
+                    if ($capText -match '^(?i)(all|0|until.*empty|)$') { $cap = 0 } elseif (-not [int]::TryParse($capText, [ref]$cap) -or $cap -lt 0) { $steps.Add((New-PlanStep -Kind refuse -Text ("The cap is a number of prompts, or all (until the queue is empty): '" + $capText + "'."))); break }
+                    $until = [datetime]::MinValue
+                    if (-not [datetime]::TryParse(([string]$Facts.LongRunUntil).Trim(), $script:Invariant, [Globalization.DateTimeStyles]::None, [ref]$until)) { $steps.Add((New-PlanStep -Kind refuse -Text ("The end time is a date and time, like 2026-10-19 06:00: '" + $Facts.LongRunUntil + "'."))); break }
+                    if ($until -le [datetime]::Now) { $steps.Add((New-PlanStep -Kind refuse -Text ('The end time ' + $until.ToString('yyyy-MM-dd HH:mm', $script:Invariant) + ' is in the past.'))); break }
+                    $what = $(if ($cap -gt 0) { [string]$cap + ' prompts' } else { 'until the queue is empty' })
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ('A long run: ' + $what + ', until ' + $until.ToString('ddd yyyy-MM-dd HH:mm', $script:Invariant) + '. The Golem then drops back to maxPerRun by itself; settings.json is not changed. It still commits and pushes after every DONE, and rests for a fresh session when the context is full.')))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.LongRunStart + @('-Cap', [string]$cap, '-Until', $until.ToString('s', $script:Invariant))) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.longrun'))
+                }
+                'golem.endlongrun' {
+                    if (-not (& $need $ap.LongRunEnd 'End-LongRun.ps1')) { break }
+                    $steps.Add((New-PlanStep -Kind say -Text 'End long run: maxPerRun counts again from the next hand-off.'))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.LongRunEnd) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.endlongrun'))
+                }
+                'golem.wrapup' {
+                    if (-not (& $need $ap.WrapUp 'Wrap-Up.ps1')) { break }
+                    if ($st -and $st.Winding -eq 'after-current') {
+                        $steps.Add((New-PlanStep -Kind say -Text ('Cancel wrap up: the queue goes on after ' + $running + '.')))
+                        $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.WrapUp + @('-Cancel')) -Text 'In a window of its own, which stays open.'))
+                    } else {
+                        $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ($(if ($running) { $running + ' runs to DONE, is committed and pushed, then the Golem rests (it stays ENABLED). ' } else { 'Nothing is running: the Golem rests now (it stays ENABLED). ' }) + 'Both repos are then committed: a good moment to build or publish a package. Resume: say "Golem, please work on the shard tasks" in CC.')))
+                        $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.WrapUp) -Text 'In a window of its own, which stays open.'))
+                    }
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.wrapup'))
+                }
+                'golem.stoppoint' {
+                    if (-not (& $need $ap.StopPoint 'Find-StoppingPoint.ps1')) { break }
+                    if ($st -and $st.Winding -eq 'stopping-point') {
+                        if ($st.StopTold) { $steps.Add((New-PlanStep -Kind say -Text ('CC has already been told to find a stopping point in ' + $running + ': cancelling changes nothing for ' + $running + '; it will still end PAUSED.'))) }
+                        else { $steps.Add((New-PlanStep -Kind say -Text 'Cancel stopping point: CC has not been told yet, so nothing changes.')) }
+                        $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.StopPoint + @('-Cancel')) -Text 'In a window of its own, which stays open.'))
+                    } else {
+                        if (-not $running) { $steps.Add((New-PlanStep -Kind refuse -Text 'Nothing is running, so there is nothing to stop. Wrap up rests the Golem now.')); break }
+                        $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ('At its next tool use CC is told to finish the step it is on in ' + $running + ', leave both repos building and green, write a continuation prompt (cc-P<next>-cont-<topic>.md, which goes first when the Golem resumes) and end ' + $running + ' PAUSED. The Golem then commits, pushes and rests (ENABLED kept). There is no hard stop.')))
+                        $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.StopPoint) -Text 'In a window of its own, which stays open.'))
+                    }
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.stoppoint'))
+                }
+                'golem.resume' {
+                    # Hook point for cc-P131 (wake the Golem from the console): replace this refusal with its plan.
+                    $steps.Add((New-PlanStep -Kind refuse -Text 'Resume Golem needs P131 (waking the Golem from the console). For now say in a CC session: Golem, please work on the shard tasks.'))
+                }
+                'golem.openprompt' {
+                    $f = [string]$Facts.OpenFile
+                    if (-not $f) { $steps.Add((New-PlanStep -Kind refuse -Text 'Pick a prompt in the queue list first.')); break }
+                    $steps.Add((New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @($f) -Text ('Opening ' + $f + ' in Notepad. Read only here: nothing in the console edits, reorders or deletes a prompt.')))
+                }
+                'golem.opennotes' {
+                    $f = [string]$Facts.OpenFile
+                    if (-not $f) { $steps.Add((New-PlanStep -Kind refuse -Text 'Pick a finished prompt that has notes first.')); break }
+                    $steps.Add((New-PlanStep -Kind launch -Path $ap.Notepad -Arguments @($f) -Text ('Opening ' + $f + ' in Notepad.')))
+                }
+            }
         }
         'golem.move' {
             # cc-P99. The cutover. Its own script refuses while a prompt runs; it is asked here first so the phrase is not wasted.
@@ -5014,7 +5352,11 @@ function Get-AutopilotFacts {
     foreach ($f in @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
     # cc-P99: the prompt running, from state.json, for Move to the Golem (which refuses while one runs).
     $running = ''
-    if ($stateText) { try { $running = [string]($stateText | ConvertFrom-Json).current } catch { } }
+    $runningFile = ''
+    if ($stateText) { try { $sj = ($stateText | ConvertFrom-Json); $running = [string]$sj.current; $runningFile = [string]$sj.currentFile } catch { } }
+    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
+    $extra = $null
+    try { $extra = Get-GolemExtra -Config $Config -QueueNames $names -RunningFile $runningFile -LogLines $logLines -StatusText $statusText } catch { $errors.Add('prompt details: ' + $_.Exception.Message) }
     [pscustomobject]@{
         Enabled         = $enabled
         StatusText      = $statusText
@@ -5030,7 +5372,75 @@ function Get-AutopilotFacts {
         Present         = $present
         Running         = $running
         Errors          = $errors.ToArray()
+        Extra           = $extra
     }
+}
+
+function Get-GolemExtra {
+    # cc-P125, SHELL. What Get-AutopilotView's Extra holds, read now: the head of each queued and the running prompt, the
+    # completed prompt and the notes of each finished one, usage.json, the local token estimate when there is no
+    # usage.json (cached 5 minutes), and whether both repos are clean (only while resting, as the tile asks then).
+    param($Config, $QueueNames, [string]$RunningFile, [string[]]$LogLines, $StatusText)
+    $ap = $Config.Autopilot
+    $head = { param($path) try { (Get-Content -LiteralPath $path -TotalCount 40 -ErrorAction Stop) -join "`n" } catch { $null } }
+    $prompts = @{}
+    foreach ($n in @($QueueNames | Where-Object { $_ -match '^cc-P\d+-.*\.md$' })) { $prompts[$n] = & $head (Join-Path $ap.Queue $n) }
+    if ($RunningFile -and $ap.PromptDir) { $prompts[$RunningFile] = & $head (Join-Path $ap.PromptDir $RunningFile) }
+    $completed = @{}; $notes = @{}
+    foreach ($fp in @(Get-FinishedPrompts (ConvertFrom-AutopilotLog $LogLines) 10)) {
+        $k = [string]$fp.Number
+        foreach ($d in @($ap.CompletedDir, $ap.PromptDir)) {
+            if (-not $d -or $completed.ContainsKey($k)) { continue }
+            $c = @(Get-ChildItem -LiteralPath $d -Filter ('cc-P' + $k + '-*.md') -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+            if ($c.Count) { $completed[$k] = & $head $c[0].FullName }
+        }
+        if ($Config.NotesFolder) {
+            $nf = @(Get-ChildItem -LiteralPath $Config.NotesFolder -Filter ('cc-P' + $k + '-*.md') -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+            if ($nf.Count) { $notes[$k] = & $head $nf[0].FullName; $notes[$k + '.path'] = $nf[0].FullName }
+        }
+    }
+    $usage = $null
+    if ($ap.UsageFile -and (Test-Path -LiteralPath $ap.UsageFile -PathType Leaf)) { try { $usage = [IO.File]::ReadAllText($ap.UsageFile) } catch { } }
+    $estimate = $null
+    if (-not $usage) { $estimate = Get-UsageEstimate $ap.ClaudeProjects }
+    $clean = $null
+    $st = $null
+    if ($StatusText) { try { $st = ConvertFrom-AutopilotStatus $StatusText } catch { } }
+    if ($st -and $st.RestReason -and -not $st.Current) {
+        $clean = $true
+        foreach ($r in @($Config.CommitRepos)) {
+            $g = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $r.Path, '--no-optional-locks', 'status', '--porcelain')
+            if ($g.Code -ne 0) { $clean = $null; break }
+            if (([string]$g.Out).Trim()) { $clean = $false }
+        }
+    }
+    [pscustomobject]@{ PromptTexts = $prompts; CompletedTexts = $completed; NotesTexts = $notes; UsageText = $usage; Estimate = $estimate; TreeClean = $clean }
+}
+
+function Get-UsageEstimate {
+    # cc-P125, SHELL. The fallback when Claude Code's status line has not written usage.json: the tokens in Claude Code's
+    # own session logs (~\.claude\projects\*\*.jsonl) over the last 5 hours, counted from each answer's usage line. The
+    # log format is Claude Code's internal one (not documented), so this is only ever shown as an estimate. Cached 5 min.
+    param([string]$Projects)
+    if ($script:usageEstimate -and $script:usageEstimateAt -and ([datetime]::UtcNow - $script:usageEstimateAt).TotalMinutes -lt 5) { return $script:usageEstimate }
+    $script:usageEstimateAt = [datetime]::UtcNow
+    $script:usageEstimate = $null
+    if (-not $Projects -or -not (Test-Path -LiteralPath $Projects)) { return $null }
+    $since = [datetime]::UtcNow.AddHours(-5)
+    $tokens = [long]0; $sessions = 0
+    foreach ($f in @(Get-ChildItem -LiteralPath $Projects -Recurse -Filter '*.jsonl' -File -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTimeUtc -ge $since })) {
+        $sessions++
+        foreach ($m in @(Select-String -LiteralPath $f.FullName -Pattern '"output_tokens":\s*(\d+)' -AllMatches -ErrorAction SilentlyContinue)) {
+            $line = $m.Line
+            if ($line -match '"timestamp":"([^"]+)"') { $t = [datetime]::MinValue; if ([datetime]::TryParse($Matches[1], [ref]$t) -and $t.ToUniversalTime() -lt $since) { continue } }
+            foreach ($k in 'input_tokens', 'output_tokens', 'cache_creation_input_tokens') {
+                $x = [regex]::Match($line, '"' + $k + '":\s*(\d+)')
+                if ($x.Success) { $tokens += [long]$x.Groups[1].Value }
+            }
+        }
+    }
+    $script:usageEstimate = [pscustomobject]@{ Tokens = $tokens; Sessions = $sessions }
+    $script:usageEstimate
 }
 
 function Get-PlayTestGlanceNow {
@@ -5096,7 +5506,7 @@ function Get-AutopilotViewNow {
     param($Config)
     try {
         $f = Get-AutopilotFacts $Config
-        $v = Get-AutopilotView -Enabled $f.Enabled -StateText $f.StateText -LogLines $f.LogLines -QueueNames $f.QueueNames -Errors $f.Errors -StatusText $f.StatusText -StatusError $f.StatusError -SettingsText $f.SettingsText -Kind ([string]$Config.Autopilot.Kind)
+        $v = Get-AutopilotView -Enabled $f.Enabled -StateText $f.StateText -LogLines $f.LogLines -QueueNames $f.QueueNames -Errors $f.Errors -StatusText $f.StatusText -StatusError $f.StatusError -SettingsText $f.SettingsText -Kind ([string]$Config.Autopilot.Kind) -Extra $f.Extra
     } catch {
         $f = $null
         $v = Get-AutopilotView -Enabled $null -StateText $null -LogLines @() -QueueNames $null -Errors @($_.Exception.Message)
@@ -6515,7 +6925,49 @@ function Update-AutopilotView {
         $box.SelectionStart = 0
         $box.ScrollToCaret()
     }
+    Update-GolemRunControls $a.View
     $a
+}
+
+function Update-GolemRunControls {
+    # cc-P125: Wrap up and Find a stopping point say Cancel while set; the queue and finished lists from the view.
+    param($View)
+    $st = $View.Status
+    foreach ($b in @($script:ui.GolemRunButtons)) {
+        if ($b.Tag -eq 'golem.wrapup') { $b.Text = $(if ($st -and $st.Winding -eq 'after-current') { 'Cancel wrap up' } else { 'Wrap up after this task' }) }
+        if ($b.Tag -eq 'golem.stoppoint') { $b.Text = $(if ($st -and $st.Winding -eq 'stopping-point') { 'Cancel stopping point' } else { 'Find a stopping point' }) }
+    }
+    $q = $script:ui.GolemQueueList
+    if ($q) {
+        $sel = $(if ($q.SelectedItems.Count) { $q.SelectedItems[0].Text } else { '' })
+        $q.BeginUpdate(); $q.Items.Clear()
+        foreach ($pi in @($View.QueueInfo)) {
+            $it = New-Object Windows.Forms.ListViewItem(('P' + $pi.Number))
+            [void]$it.SubItems.Add($(if ($pi.Cont) { '(continuation) ' } else { '' }) + $pi.Title)
+            [void]$it.SubItems.Add($pi.Model)
+            [void]$it.SubItems.Add($pi.Kind)
+            $it.Tag = (Join-Path $script:cfg.Autopilot.Queue $pi.Name)
+            $it.ToolTipText = $(if ($pi.Para) { $pi.Para } else { '(no first paragraph: ' + $pi.Name + ')' })
+            [void]$q.Items.Add($it)
+            if ($it.Text -eq $sel) { $it.Selected = $true }
+        }
+        $q.EndUpdate()
+    }
+    $f = $script:ui.GolemFinishedList
+    if ($f) {
+        $f.BeginUpdate(); $f.Items.Clear()
+        foreach ($x in @($View.Finished)) {
+            $it = New-Object Windows.Forms.ListViewItem(('P' + $x.Number))
+            [void]$it.SubItems.Add($x.Result)
+            [void]$it.SubItems.Add($x.Time.ToString('MM-dd HH:mm', $script:Invariant))
+            [void]$it.SubItems.Add($x.Title)
+            [void]$it.SubItems.Add($x.Headline)
+            $np = @(Get-ChildItem -LiteralPath $script:cfg.NotesFolder -Filter ('cc-P' + $x.Number + '-*.md') -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+            $it.Tag = $(if ($np.Count) { $np[0].FullName } else { '' })
+            [void]$f.Items.Add($it)
+        }
+        $f.EndUpdate()
+    }
 }
 
 function Update-ConsoleStatus {
@@ -7156,6 +7608,13 @@ function Invoke-ConsoleButton {
         } elseif ($isAutopilot) {
             # cc-P74: the Golem's folder, never docker.
             $apFacts = Get-AutopilotFacts $script:cfg
+            # cc-P125: the long run's two boxes, and the file the Open buttons open (the picked queue or finished row).
+            if ($script:ui.LongRunCap) { $apFacts | Add-Member -NotePropertyName LongRunCap -NotePropertyValue $script:ui.LongRunCap.Text -Force }
+            if ($script:ui.LongRunUntil) { $apFacts | Add-Member -NotePropertyName LongRunUntil -NotePropertyValue $script:ui.LongRunUntil.Text -Force }
+            $openFile = ''
+            if ($ActionKey -eq 'golem.openprompt' -and $script:ui.GolemQueueList -and $script:ui.GolemQueueList.SelectedItems.Count) { $openFile = [string]$script:ui.GolemQueueList.SelectedItems[0].Tag }
+            if ($ActionKey -eq 'golem.opennotes' -and $script:ui.GolemFinishedList -and $script:ui.GolemFinishedList.SelectedItems.Count) { $openFile = [string]$script:ui.GolemFinishedList.SelectedItems[0].Tag }
+            $apFacts | Add-Member -NotePropertyName OpenFile -NotePropertyValue $openFile -Force
         } elseif ($isCommit) {
             # The commit buttons read git and the notes, never docker (cc-P60).
             $facts = Get-CommitFacts $script:cfg
@@ -7940,6 +8399,55 @@ function New-ConsoleForm {
         $lb = New-ConsoleButton ('Open ' + $a.Label.ToLower()) $a.Key 170
         $apTop.Controls.Add($lb)
     }
+    # cc-P125: the run row. A long run's cap and end, its two buttons, Wrap up and Find a stopping point (each toggles to
+    # Cancel while set), and Resume Golem, shown grey until cc-P131's console wake exists.
+    if ($apTop.Controls.Count) { $apTop.SetFlowBreak($apTop.Controls[$apTop.Controls.Count - 1], $true) }
+    $capLabel = New-Caption 'Long run: cap' 100
+    $capBox = New-Object Windows.Forms.TextBox
+    $capBox.Name = 'golem.cap'; $capBox.Width = 60; $capBox.Text = 'all'; $capBox.Margin = New-Object Windows.Forms.Padding(6, 12, 6, 6)
+    $untilLabel = New-Caption 'until' 40
+    $untilBox = New-Object Windows.Forms.TextBox
+    $untilBox.Name = 'golem.until'; $untilBox.Width = 140; $untilBox.Margin = New-Object Windows.Forms.Padding(6, 12, 6, 6)
+    $mon = [datetime]::Today.AddDays(((8 - [int][datetime]::Today.DayOfWeek) % 7)); if ($mon -le [datetime]::Today) { $mon = $mon.AddDays(7) }
+    $untilBox.Text = $mon.AddHours(6).ToString('yyyy-MM-dd HH:mm', $script:Invariant)
+    $apTop.Controls.AddRange(@($capLabel, $capBox, $untilLabel, $untilBox))
+    $runBtns = @()
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Golem run' })) {
+        $b = New-ConsoleButton $a.Label $a.Key 170
+        $runBtns += $b
+        $apTop.Controls.Add($b)
+    }
+    $resume = New-Object Windows.Forms.Button
+    $resume.Text = 'Resume Golem (needs P131)'
+    $resume.Tag = 'golem.resume'
+    $resume.Width = 200; $resume.Height = 36; $resume.Margin = New-Object Windows.Forms.Padding(6)
+    $resume.Enabled = $false   # cc-P131 wires this: enable it and its click when the console can wake the Golem.
+    $apTop.Controls.Add($resume)
+    # The queue (hand-off order), the picked prompt's first paragraph, and the last 10 finished prompts.
+    $apLists = New-Object Windows.Forms.TableLayoutPanel
+    $apLists.Dock = 'Fill'
+    $apLists.ColumnCount = 3
+    $apLists.RowCount = 1
+    [void]$apLists.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent, 38)))
+    [void]$apLists.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent, 24)))
+    [void]$apLists.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent, 38)))
+    [void]$apLists.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent, 100)))
+    $qList = New-Object Windows.Forms.ListView
+    $qList.Name = 'golemQueue'; $qList.Dock = 'Fill'; $qList.View = 'Details'; $qList.FullRowSelect = $true; $qList.MultiSelect = $false; $qList.HideSelection = $false
+    foreach ($col in @(@('#', 50), @('Queue (hand-off order)', 260), @('Model', 60), @('Kind', 200))) { [void]$qList.Columns.Add($col[0], $col[1]) }
+    $preview = New-Object Windows.Forms.TextBox
+    $preview.Name = 'golemPreview'; $preview.Dock = 'Fill'; $preview.Multiline = $true; $preview.ReadOnly = $true; $preview.ScrollBars = 'Vertical'
+    $fList = New-Object Windows.Forms.ListView
+    $fList.Name = 'golemFinished'; $fList.Dock = 'Fill'; $fList.View = 'Details'; $fList.FullRowSelect = $true; $fList.MultiSelect = $false; $fList.HideSelection = $false
+    foreach ($col in @(@('#', 50), @('Result', 70), @('When', 90), @('Title', 230), @('Headline', 400))) { [void]$fList.Columns.Add($col[0], $col[1]) }
+    $qList.Add_SelectedIndexChanged({
+        if ($script:ui.GolemQueueList.SelectedItems.Count) { $script:ui.GolemPreview.Text = [string]$script:ui.GolemQueueList.SelectedItems[0].ToolTipText }
+    })
+    # The two Open buttons sit in the run row, which the page scrolls (cc-P116); the lists below it may be short.
+    $openPrompt = New-ConsoleButton 'Open prompt in Notepad' 'golem.openprompt' 200
+    $openNotes = New-ConsoleButton 'Open notes in Notepad' 'golem.opennotes' 200
+    $apTop.Controls.AddRange(@($openPrompt, $openNotes))
+    $apLists.Controls.Add($qList, 0, 0); $apLists.Controls.Add($preview, 1, 0); $apLists.Controls.Add($fList, 2, 0)
     $apPanel = New-Object Windows.Forms.RichTextBox
     $apPanel.Dock = 'Fill'
     $apPanel.ReadOnly = $true
@@ -7947,11 +8455,28 @@ function New-ConsoleForm {
     $apPanel.Font = $script:MonoFont
     $apPanel.WordWrap = $false
     $apPanel.DetectUrls = $false
-    $apPage.Controls.Add($apPanel)
+    # The panel above, the lists below, in the space the panel alone had (cc-P116's scrolling of the top row is kept).
+    $apSplit = New-Object Windows.Forms.SplitContainer
+    $apSplit.Name = 'golemSplit'
+    $apSplit.Dock = 'Fill'
+    $apSplit.Orientation = 'Horizontal'
+    $apSplit.Panel1MinSize = 40
+    $apSplit.Panel2MinSize = 40
+    $apSplit.Panel1.Controls.Add($apPanel)
+    $apSplit.Panel2.Controls.Add($apLists)
+    $apSplit.Add_SizeChanged({ try { if ($this.Height -gt 300) { $this.SplitterDistance = $this.Height - 240 } } catch { } })
+    $apPage.Controls.Add($apSplit)
     $apPage.Controls.Add($apTop)
     $script:ui.AutopilotPage = $apPage
     $script:ui.AutopilotPanel = $apPanel
     $script:ui.AutopilotButtons = $apBtns
+    $script:ui.GolemRunButtons = $runBtns
+    $script:ui.GolemResume = $resume
+    $script:ui.LongRunCap = $capBox
+    $script:ui.LongRunUntil = $untilBox
+    $script:ui.GolemQueueList = $qList
+    $script:ui.GolemPreview = $preview
+    $script:ui.GolemFinishedList = $fList
 
     # cc-P101: Websites. Pick a site; each button acts on it. The panel only reads.
     $webPage = New-Object Windows.Forms.TabPage('Websites')
