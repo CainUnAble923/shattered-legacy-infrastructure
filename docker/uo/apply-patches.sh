@@ -582,6 +582,18 @@ apply_patch "$PATCHES/SpellHelper-pet-ability-hooks.patch"
 apply_patch "$PATCHES/Bandage-searing-wounds.patch"
 apply_patch "$PATCHES/MageAI-pet-magery-mastery.patch"
 
+# cc-P122: Bulk orders part 1, OSI's 2016 rules for smith and tailor deeds (Chase's option A and "guild masters now",
+# 2026-10-15). Pinned's deed and book types stay as they are (so every saved deed and book keeps its shape, and the BOD
+# patches above keep applying); customizations/Services/BulkOrders/ adds the 2016 system around them. BaseVendor: three
+# calls into BulkOrderVendors (the turn-in, the Bulk Order Info offer, the Bribe and Claim Rewards entries), each "not
+# mine" for any other vendor. BODType: the six 2016 crafts appended. The deed gumps: the points lines and the
+# points-mode button, drawn below EXIT so their earlier rows stay where BOD-combine-contained put them. Applies after
+# BOD-combine-contained and BOD-gumps-post-valorite-material. Alternatives argued in
+# shard-migration/notes/cc-P122-port-bulk-orders-core.md; pinned by BulkOrderSystemVerification.
+apply_patch "$PATCHES/BODType-all-crafts.patch"
+apply_patch "$PATCHES/BaseVendor-bulk-orders-2016.patch"
+apply_patch "$PATCHES/BOD-gumps-points-mode.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

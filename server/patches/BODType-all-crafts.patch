@@ -1,0 +1,18 @@
+--- "a/Projects/UOContent/Engines/Bulk Orders/Books/BODType.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/Books/BODType.cs"
+@@ -3,6 +3,14 @@
+     public enum BODType
+     {
+         Smith,
+-        Tailor
++        Tailor,
++
++        // Shattered Legacy (cc-P122): ServUO's 2016 crafts, appended so saved Smith and Tailor values stay put.
++        Alchemy,
++        Inscription,
++        Tinkering,
++        Fletching,
++        Carpentry,
++        Cooking
+     }
+ }

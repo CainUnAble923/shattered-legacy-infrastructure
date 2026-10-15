@@ -15,9 +15,10 @@
 // Facts:
 //   H1. A regular smith's menu has the choice entry in place of the stock one, and it opens Small/Large (both vendors).
 //   H2. Large is refused below 70.1 (no button; the rule checked again) and given at 70.1.
-//   H3. Either choice starts the stock timer, the same hours the stock request sets, and a second request waits; a
-//       choice the stock roll did not make is swapped for a stock deed of the kind chosen.
-//   H4. A non-member at a regular smith gets stock rewards (gold), and no Seals.
+//   H3. cc-P122 (Chase's option A): either choice takes one of OSI's 2016 offers (up to 3, one more every 6 hours) and
+//       gives the kind chosen; the fourth request waits. Was: the stock timer by skill (1, 2 or 6 hours).
+//   H4. cc-P122 (option A; was "stock rewards, gold in the pack"): a non-member at a regular smith gets OSI's 2016
+//       turn-in, gold to the bank and the points gump, and no Seals.
 //   H5. A member at a regular smith is paid the guild's way: banked Seals and standing, no gold.
 //   H6. Cash out pays half the OSI gold and can roll OSI's item (and does not when the roll misses); no Seals.
 //   H7. Banking pays more value than cash out for a small iron, a small Valorite exceptional and a large Valorite
@@ -239,35 +240,29 @@ public class RegularSmithBODVerification
     // ---------------------------------------------------------------- H3
 
     [Theory]
-    [InlineData(40.0, 1.0)]
-    [InlineData(60.0, 2.0)]
-    [InlineData(80.0, 6.0)]
-    public void EitherChoiceStartsTheStockTimer(double skill, double hours)
+    [InlineData(40.0)]
+    [InlineData(60.0)]
+    [InlineData(80.0)]
+    public void EitherChoiceTakesOneOfTheThreeOffers(double skill)
     {
         using var s = new Smith(skill, member: false);
-        using var stock = new Smith(skill, member: false);
         var vendor = s.Near(new Blacksmith());
 
-        // The stock request, for the same skill, on another character.
-        stock.Near(new Blacksmith(), 2).CreateBulkOrder(stock.Pm, true)?.Delete();
-
-        BuiltInRng.Generator = new ConstantRandom { Value = 0.0 }; // at 80 the stock roll says large: swapped for small
-        var deed = ClusterFRegularSmithBODs.CreateChosen(vendor, s.Pm, false);
+        BuiltInRng.Generator = new ConstantRandom { Value = 0.0 }; // the old large roll, were it still made, says large
+        var deeds = Enumerable.Range(0, 3).Select(_ => ClusterFRegularSmithBODs.CreateChosen(vendor, s.Pm, false)).ToList();
         BuiltInRng.Reset();
 
-        _out.WriteLine($"skill {skill}: chose small, got {deed?.GetType().Name}; timer {s.Pm.NextSmithBulkOrder.TotalHours:F2} h, " +
-                       $"stock {stock.Pm.NextSmithBulkOrder.TotalHours:F2} h");
-        Assert.IsType<SmallSmithBOD>(deed);
-        Assert.Equal(hours, Math.Round(s.Pm.NextSmithBulkOrder.TotalHours, 2));
-        Assert.Equal(Math.Round(stock.Pm.NextSmithBulkOrder.TotalHours, 2), Math.Round(s.Pm.NextSmithBulkOrder.TotalHours, 2));
-        Assert.Null(ClusterFRegularSmithBODs.CreateChosen(vendor, s.Pm, false)); // waiting
-        deed.Delete();
+        _out.WriteLine($"skill {skill}: three small choices gave {string.Join(", ", deeds.Select(d => d?.GetType().Name))}");
+        Assert.All(deeds, d => Assert.IsType<SmallSmithBOD>(d));
+        Assert.Equal(TimeSpan.Zero, s.Pm.NextSmithBulkOrder); // the stock timer is no longer used
+        Assert.Null(ClusterFRegularSmithBODs.CreateChosen(vendor, s.Pm, false)); // the fourth waits
+        deeds.ForEach(d => d.Delete());
     }
 
     // ---------------------------------------------------------------- H4
 
     [Fact]
-    public void ANonMemberGetsStockRewards()
+    public void ANonMemberGetsThe2016TurnIn()
     {
         using var s = new Smith(80.0, member: false);
         var vendor = s.Near(new Blacksmith());
@@ -275,11 +270,12 @@ public class RegularSmithBODVerification
         s.Pm.Backpack.DropItem(deed);
         s.Ready();
 
-        var gold = s.Gold;
+        var gold = s.Pm.BankBox.GetAmount(typeof(Gold));
         Assert.True(vendor.OnDragDrop(s.Pm, deed));
-        _out.WriteLine($"non-member: +{s.Gold - gold} gold, seals {s.Seals}");
+        _out.WriteLine($"non-member: +{s.Pm.BankBox.GetAmount(typeof(Gold)) - gold} gold to the bank, seals {s.Seals}");
         Assert.True(deed.Deleted);
-        Assert.True(s.Gold > gold);
+        Assert.True(s.Pm.BankBox.GetAmount(typeof(Gold)) > gold);
+        Assert.NotNull(s.Pm.FindGump<BODConfirmBankPointsGump>()); // points: bank them or claim a reward
         Assert.Equal(0, s.Seals);
     }
 

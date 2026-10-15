@@ -1,0 +1,94 @@
+--- "a/Projects/UOContent/Engines/Bulk Orders/SmallBODGump.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/SmallBODGump.cs"
+@@ -16,14 +16,17 @@
+             builder.AddPage();
+ 
+             // Shattered Legacy (F-17): one row taller for "Combine this deed with contained items".
+-            builder.AddBackground(50, 10, 455, 284, 5054);
+-            builder.AddImageTiled(58, 20, 438, 265, 2624);
+-            builder.AddAlphaRegion(58, 20, 438, 265);
++            // Shattered Legacy (cc-P122): and two rows taller for OSI's 2016 points lines below EXIT (BulkOrderDeedGumpLines).
++            var extra = BulkOrderDeedGumpLines.Height(_deed);
++
++            builder.AddBackground(50, 10, 455, 284 + extra, 5054);
++            builder.AddImageTiled(58, 20, 438, 265 + extra, 2624);
++            builder.AddAlphaRegion(58, 20, 438, 265 + extra);
+ 
+             builder.AddImage(45, 5, 10460);
+             builder.AddImage(480, 5, 10460);
+-            builder.AddImage(45, 269, 10460);
+-            builder.AddImage(480, 269, 10460);
++            builder.AddImage(45, 269 + extra, 10460);
++            builder.AddImage(480, 269 + extra, 10460);
+ 
+             builder.AddHtmlLocalized(225, 25, 120, 20, 1045133, 0x7FFF); // A bulk order
+ 
+@@ -68,6 +71,8 @@
+ 
+             builder.AddButton(125, 240, 4005, 4007, 1);
+             builder.AddHtmlLocalized(160, 240, 120, 20, 1011441, 0x7FFF); // EXIT
++
++            BulkOrderDeedGumpLines.Add(ref builder, _deed, 264); // cc-P122: points worth, points mode, below EXIT
+         }
+ 
+         public override void OnResponse(NetState sender, in RelayInfo info)
+@@ -89,6 +94,11 @@
+                 from.SendGump(new SmallBODGump(_deed));
+                 BODCombineContained.Begin(from, _deed);
+             }
++            else if (info.ButtonID == BulkOrderDeedGumpLines.ToggleButton) // Points mode (cc-P122)
++            {
++                BulkOrderDeedGumpLines.Toggle(from);
++                from.SendGump(new SmallBODGump(_deed));
++            }
+         }
+ 
+         public static int GetMaterialNumberFor(BulkMaterialType material)
+--- "a/Projects/UOContent/Engines/Bulk Orders/LargeBODGump.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/LargeBODGump.cs"
+@@ -18,15 +18,18 @@
+             builder.AddPage();
+ 
+             // Shattered Legacy (F-17): one row taller for "Combine this deed with contained items".
+-            builder.AddBackground(50, 10, 455, 260 + entries.Length * 24, 5054);
++            // Shattered Legacy (cc-P122): and two rows taller for OSI's 2016 points lines below EXIT (BulkOrderDeedGumpLines).
++            var extra = BulkOrderDeedGumpLines.Height(_deed);
+ 
+-            builder.AddImageTiled(58, 20, 438, 241 + entries.Length * 24, 2624);
+-            builder.AddAlphaRegion(58, 20, 438, 241 + entries.Length * 24);
++            builder.AddBackground(50, 10, 455, 260 + entries.Length * 24 + extra, 5054);
++
++            builder.AddImageTiled(58, 20, 438, 241 + entries.Length * 24 + extra, 2624);
++            builder.AddAlphaRegion(58, 20, 438, 241 + entries.Length * 24 + extra);
+ 
+             builder.AddImage(45, 5, 10460);
+             builder.AddImage(480, 5, 10460);
+-            builder.AddImage(45, 245 + entries.Length * 24, 10460);
+-            builder.AddImage(480, 245 + entries.Length * 24, 10460);
++            builder.AddImage(45, 245 + entries.Length * 24 + extra, 10460);
++            builder.AddImage(480, 245 + entries.Length * 24 + extra, 10460);
+ 
+             builder.AddHtmlLocalized(225, 25, 120, 20, 1045134, 0x7FFF); // A large bulk order
+ 
+@@ -96,6 +99,9 @@
+ 
+             builder.AddButton(125, 216 + entries.Length * 24, 4005, 4007, 1);
+             builder.AddHtmlLocalized(160, 216 + entries.Length * 24, 120, 20, 1011441, 0x7FFF); // EXIT
++
++            // cc-P122: points worth, points mode, below EXIT.
++            BulkOrderDeedGumpLines.Add(ref builder, _deed, 240 + entries.Length * 24);
+         }
+ 
+         public override void OnResponse(NetState sender, in RelayInfo info)
+@@ -117,6 +123,11 @@
+                 sender.SendGump(new LargeBODGump(_deed));
+                 BODCombineContained.Begin(from, _deed);
+             }
++            else if (info.ButtonID == BulkOrderDeedGumpLines.ToggleButton) // Points mode (cc-P122)
++            {
++                BulkOrderDeedGumpLines.Toggle(from);
++                sender.SendGump(new LargeBODGump(_deed));
++            }
+         }
+ 
+         public static int GetMaterialNumberFor(BulkMaterialType material)

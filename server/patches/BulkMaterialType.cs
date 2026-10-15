@@ -26,6 +26,14 @@ namespace Server.Engines.BulkOrders
         Mythril    = 17,
         Adamantium = 18,
         Celestial  = 19,
+        // ServUO's 2016 woods (cc-P122). ServUO numbers them 12..17, which this shard's metals already hold in saved
+        // deeds, so they follow Celestial. Carpentry and Fletching deeds (P123) use them; the bribe rules name them now.
+        OakWood    = 20,
+        AshWood    = 21,
+        YewWood    = 22,
+        Heartwood  = 23,
+        Bloodwood  = 24,
+        Frostwood  = 25,
     }
 
     public enum BulkGenericType

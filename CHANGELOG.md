@@ -29,6 +29,21 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.15.7
+
+### Changed
+- Bulk orders at town Blacksmiths, Weaponsmiths, Tailors and Weavers now follow the 2016 rules: you can hold up to three offers per craft, with one more every six hours, and a turn-in pays gold into your bank plus reward points that you spend on a reward of your choice or bank for later.
+- The deed shows what it is worth in points, and a button sets whether you are asked to bank, always claim, or always bank.
+- Vendors can be bribed to improve a bulk order deed that has not been started.
+- Society of Smiths members are paid exactly as before.
+
+### Added
+- The Tailors' Circle guild master now gives and takes tailoring bulk orders for members.
+- Two new bulk order rewards: the rock hammer and the master craftsman talisman.
+
+### Staff
+- Bulk orders part 1 (the 2016 system, smith and tailor). Rewards still to come are listed in the rewards gump as "not on the shard yet" and cannot be bought: reward title deeds, smelter's talismans and harvest maps. The other six crafts' deeds come with part 2. Offers, points and vendors' bribe state save in their own file, BulkOrderSystem.
+
 ## 2026.10.15.6
 
 ### Changed

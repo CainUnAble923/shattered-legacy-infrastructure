@@ -1,0 +1,37 @@
+--- a/Projects/UOContent/Mobiles/Vendors/BaseVendor.cs
++++ b/Projects/UOContent/Mobiles/Vendors/BaseVendor.cs
+@@ -1093,6 +1093,13 @@
+ 
+             var pm = from as PlayerMobile;
+ 
++            // Shattered Legacy (cc-P122): OSI's 2016 turn-in (gold to the bank, points and the rewards gump, bribes) at the
++            // vendors BulkOrderVendors names; every other vendor goes on below exactly as before.
++            if (BulkOrderVendors.TryTurnIn(this, from, dropped, out var turnedIn))
++            {
++                return turnedIn;
++            }
++
+             if (Core.ML && pm?.NextBODTurnInTime > Core.Now)
+             {
+                 SayTo(from, 1079976); // You'll have to wait a few seconds while I inspect the last order.
+@@ -1330,6 +1337,7 @@
+                 if (ContentFeatureFlags.BulkOrders && SupportsBulkOrders(from))
+                 {
+                     list.Add(new BulkOrderInfoEntry());
++                    BulkOrderVendors.AddContextEntries(this, from, ref list); // Shattered Legacy (cc-P122): Bribe, Claim Rewards
+                 }
+ 
+                 if (ContentFeatureFlags.VendorPurchase && IsActiveSeller)
+@@ -1374,6 +1382,12 @@
+                 {
+                     return;
+                 }
++
++                // Shattered Legacy (cc-P122): a 2016 vendor's offer (up to 3 cached, one per 6 hours, per craft).
++                if (BulkOrderVendors.TryOffer(vendor, from))
++                {
++                    return;
++                }
+ 
+                 var ts = vendor.GetNextBulkOrder(from);
+ 

@@ -359,6 +359,18 @@ namespace Server.Mobiles
                 return null;
             }
 
+            // cc-P122 (Chase's option A, 2026-10-15): a regular smith's offers follow OSI's 2016 rule, up to 3 at a time and
+            // one more every 6 hours (BulkOrderSystem.CanGetBulkOrder), and the chosen kind is made directly.
+            if (BulkOrderVendors.IsNewSystemVendor(vendor))
+            {
+                if (!BulkOrderSystem.CanGetBulkOrder(pm, BODType.Smith) && pm.AccessLevel == AccessLevel.Player)
+                {
+                    return null;
+                }
+
+                return large ? new LargeSmithBOD() : SmallSmithBOD.CreateRandomFor(pm);
+            }
+
             if (vendor.GetNextBulkOrder(pm).TotalSeconds >= 1)
             {
                 return null;
@@ -396,6 +408,10 @@ namespace Server.Mobiles
             else if (bod is SmallSmithBOD smallBod)
             {
                 pm.SendGump(new SmallBODAcceptGump(smallBod));
+            }
+            else if (BulkOrderVendors.IsNewSystemVendor(vendor) && (!large || MeetsLargeSkill(pm)))
+            {
+                BulkOrderVendors.SayNextOffer(vendor, pm, BODType.Smith); // cc-P122: when the next offer comes
             }
             else if (!large || MeetsLargeSkill(pm))
             {
@@ -538,7 +554,7 @@ namespace Server.Mobiles
                 AddLabel(18, 104, 0x3B2, $"(yours is {pm.Skills.Blacksmith.Base:F1})");
             }
 
-            AddLabel(18, 130, 0x3B2, "Either choice starts your wait for the next order.");
+            AddLabel(18, 130, 0x3B2, "Each order uses one offer: up to 3, one more every 6 hours.");
 
             AddButton(W - 50, H - 34, 4017, 4019, 0);
             AddLabel(W - 90, H - 32, 999, "Close");
