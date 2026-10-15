@@ -1,0 +1,12 @@
+--- "a/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
+@@ -423,6 +423,9 @@
+                     toHeal -= Slips * 4;
+                 }
+ 
++                // Shattered Legacy (cc-P121): Pet Training's Searing Wounds halves the heal, ServUO Bandage.cs:548-552.
++                toHeal = PetTrainingHooks.SearingWoundsHeal(Patient, toHeal);
++
+                 if (toHeal < 1)
+                 {
+                     toHeal = 1;

@@ -57,6 +57,9 @@ namespace Server.Misc
                 points += 40;
             }
 
+            // cc-P121: a pet's trained hit regeneration (ServUO BaseCreature.DefaultHitsRegen, AbilityProfile.RegenHits).
+            points += PetTrainingHooks.RegenHits(from);
+
             if (Core.ML && from is PlayerMobile) // does racial bonus go before/after?
             {
                 if (from.Race == Race.Human)
@@ -103,6 +106,9 @@ namespace Server.Misc
 
             // cc-P70: Trailwise Tack I and the Imbued Barding Socket's stamina regen on a pack mule.
             points += Server.Mobiles.MuleModules.StamRegenBonus(from);
+
+            // cc-P121: a pet's trained stamina regeneration (ServUO BaseCreature.DefaultStamRegen).
+            points += PetTrainingHooks.RegenStam(from);
 
             var cappedPoints = AosAttributes.GetValue(from, AosAttribute.RegenStam);
 
@@ -173,6 +179,9 @@ namespace Server.Misc
                 {
                     totalPoints += 40;
                 }
+
+                // cc-P121: a pet's trained mana regeneration (ServUO BaseCreature.DefaultManaRegen).
+                totalPoints += PetTrainingHooks.RegenMana(from);
 
                 var cappedPoints = AosAttributes.GetValue(from, AosAttribute.RegenMana);
 

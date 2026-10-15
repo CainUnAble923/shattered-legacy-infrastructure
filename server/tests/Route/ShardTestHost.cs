@@ -51,6 +51,19 @@ public static class ShardTestHost
     }
 
     /// <summary>
+    /// The poisons (cc-P121). Nothing in the host runs pinned PoisonKinds.Configure, so Poison.Poisons is empty and
+    /// Poison.Lesser..Lethal are all null: ApplyPoison(from, null) cures, and Assert.Same(Poison.Lethal, x.HitPoison)
+    /// passes for any creature whose poison is also null. Registers them once, as the server does at Configure.
+    /// </summary>
+    public static void EnsurePoisons()
+    {
+        if (Poison.Poisons.Count == 0)
+        {
+            PoisonKinds.Configure();
+        }
+    }
+
+    /// <summary>
     /// Every craft system with our registrations and extended resources, as at ServerStarted
     /// (CleanUpCraftHost.EnsureCraftSystems; DefBlacksmithy.CraftSystem is null until something builds it).
     /// </summary>

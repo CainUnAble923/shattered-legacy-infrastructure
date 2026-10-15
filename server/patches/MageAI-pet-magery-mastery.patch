@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Mobiles/AI/MageAI.cs
++++ b/Projects/UOContent/Mobiles/AI/MageAI.cs
+@@ -65,7 +65,11 @@
+     {
+     }
+ 
+-    public virtual bool SmartAI => Mobile is BaseVendor or BaseEscortable or Changeling;
++    // Shattered Legacy (cc-P121): ServUO's SmartAI is the Magery Mastery school (MageAI.cs:40-43). Pinned's vendors,
++    // escorts and changelings keep theirs.
++    public virtual bool SmartAI =>
++        Mobile is BaseVendor or BaseEscortable or Changeling ||
++        AbilityProfile.HasMagicalAbility(Mobile, MagicalAbility.MageryMastery);
+ 
+     public virtual bool IsNecromancer => Core.AOS && Mobile.Skills.Necromancy.Value > 50;
+ 

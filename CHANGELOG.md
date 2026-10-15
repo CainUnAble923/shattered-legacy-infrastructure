@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.15.6
+
+### Changed
+- A tamed creature that poisons now does it the way trained pets do: its Poisoning skill decides how often a hit poisons and how strong the poison is, up to Lethal at 100.
+- Poisoning hits from creatures show a green flash on the victim.
+
+### Staff
+- Pet Training part 1, the ability core: creatures can now carry OSI's special abilities (29), area effects (7) and magical schools, the way ServUO's creatures call them. `[props` a creature's AbilityProfile to see them; a stock dragon lists its breath, a cu sidhe its healing. Nothing in the world uses the new ones yet: the creatures that do come with Creatures part 2, and training itself (points, the training gumps, the Animal Trainer) is part 2 of Pet Training. Profiles save in their own file, PetAbilityProfiles.
+
 ## 2026.10.15.5
 
 ### Added

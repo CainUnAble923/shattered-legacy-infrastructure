@@ -567,6 +567,21 @@ apply_patch "$PATCHES/IncomingTargetingPackets-target-redirect.patch"
 # BaseWeapon-axe-bonus-osi and the PlayerMobile patches. Argued in shard-migration/notes/cc-P82-artificers-imbuing.md.
 apply_patch "$PATCHES/Imbue-custom-property-hooks.patch"
 
+# cc-P121: Pet Training part 1, the ability core (Chase's decisions 1a and 2a, 2026-10-15). Each patch adds one call into
+# customizations/Services/Pet Training/PetTrainingHooks.cs, where ServUO makes the same call: BaseCreature (OnThink's
+# think triggers, OnMovement's approach trigger, OnGaveMeleeAttack's trained hit poison and Colossal Rage's blow), AOS
+# (AOS.Damage's combat trigger, which may change the damage, and GetValue's debuff penalties), SpellHelper (spell damage
+# marked as spell for that trigger, which pinned's AOS.Damage cannot tell apart; Searing Wounds on a spell heal),
+# Bandage (Searing Wounds on a bandage heal) and MageAI (SmartAI for the Magery Mastery school). Profiles themselves live
+# in a side table with its own save file (AbilityProfileStore.cs), so BaseCreature's save format is untouched. The
+# SpellHelper and AOS patches apply after Imbue-custom-property-hooks and the AOS patches above, whose lines they meet.
+# Alternatives argued in shard-migration/notes/cc-P121-pet-ability-core.md; pinned by PetAbilityCoreVerification.
+apply_patch "$PATCHES/BaseCreature-pet-ability-hooks.patch"
+apply_patch "$PATCHES/AOS-pet-ability-triggers.patch"
+apply_patch "$PATCHES/SpellHelper-pet-ability-hooks.patch"
+apply_patch "$PATCHES/Bandage-searing-wounds.patch"
+apply_patch "$PATCHES/MageAI-pet-magery-mastery.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

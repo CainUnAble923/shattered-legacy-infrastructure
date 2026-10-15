@@ -1,0 +1,24 @@
+--- a/Projects/UOContent/Spells/Base/SpellHelper.cs
++++ b/Projects/UOContent/Spells/Base/SpellHelper.cs
+@@ -998,6 +998,7 @@
+ 
+                 StaminaSystem.DFA = dfa;
+ 
++                PetTrainingHooks.MarkSpellDamage(from, target); // Shattered Legacy (cc-P121): spell damage, for Pet Training
+                 var damageGiven = AOS.Damage(target, from, dmg, phys, fire, cold, pois, nrgy, chaos);
+                 ClusterFImbueEffects.OnSpellDamage(from, target, damageGiven); // ClusterF cc-P82: Spell Leech
+                 Mysticism.SpellPlagueSpell.OnMobileDamaged(target);
+@@ -1044,6 +1045,13 @@
+         }
+         public static void Heal(int amount, Mobile target, Mobile from, bool message = true)
+         {
++            // Shattered Legacy (cc-P121): Pet Training's Searing Wounds halves a player's heal on another player, as
++            // ServUO SpellHelper.Heal (:1514-1520).
++            if (amount > 0 && target != from && from is PlayerMobile && target is PlayerMobile)
++            {
++                amount = (int)PetTrainingHooks.SearingWoundsHeal(target, amount);
++            }
++
+             // TODO: All Healing *spells* go through ArcaneEmpowerment
+             target.Heal(amount, from, message);
+         }

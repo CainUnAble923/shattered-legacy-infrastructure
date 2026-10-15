@@ -1,0 +1,61 @@
+--- a/Projects/UOContent/Mobiles/BaseCreature.cs
++++ b/Projects/UOContent/Mobiles/BaseCreature.cs
+@@ -2688,13 +2688,25 @@
+ 
+         public virtual void OnGaveMeleeAttack(Mobile defender, int damage)
+         {
+-            var p = _isParagon ? PoisonImpl.IncreaseLevel(HitPoison) : HitPoison;
++            // Shattered Legacy (cc-P121): Pet Training's hit poison, as ServUO BaseCreature.OnGaveMeleeAttack
++            // (:3923-3961): a tame with the Poisoning school poisons by its skill and gains Poisoning on a poisoned hit.
++            // A wild creature still rolls HitPoisonChance. PetTrainingHooks.cs holds the logic.
++            var p = PetTrainingHooks.GetHitPoison(this);
++            p = _isParagon ? PoisonImpl.IncreaseLevel(p) : p;
+ 
+-            if (p != null && HitPoisonChance >= Utility.RandomDouble())
++            if (p != null)
+             {
+-                defender.ApplyPoison(this, p);
++                if (PetTrainingHooks.TryHitPoison(this))
++                {
++                    if (Core.TOL)
++                    {
++                        defender.FixedEffect(0x3779, 1, 10, 1271, 0);
++                    }
++
++                    defender.ApplyPoison(this, p);
++                }
+ 
+-                if (Controlled)
++                if (Controlled && PetTrainingHooks.GainsPoisoning(this))
+                 {
+                     CheckSkill(SkillName.Poisoning, 0, Skills.Poisoning.Cap);
+                 }
+@@ -2706,6 +2718,8 @@
+                 Dispel(creature);
+             }
+ 
++            PetTrainingHooks.OnGaveMeleeAttack(this, defender); // Shattered Legacy (cc-P121): Colossal Rage's blow
++
+             TriggerAbility(MonsterAbilityTrigger.GiveMeleeDamage, defender);
+         }
+ 
+@@ -3078,6 +3092,9 @@
+                 ForceReacquire();
+             }
+ 
++            // Shattered Legacy (cc-P121): Pet Training's approach trigger (True Fear), as ServUO (BaseCreature.cs:4914).
++            PetTrainingHooks.OnMovement(this, m, oldLocation);
++
+             SpeechType?.OnMovement(this, m, oldLocation);
+ 
+             // Notice sound
+@@ -3876,6 +3893,9 @@
+         {
+             var tc = Core.TickCount;
+ 
++            // Shattered Legacy (cc-P121): Pet Training's think triggers, first, as ServUO (BaseCreature.cs:7416-7420).
++            PetTrainingHooks.OnThink(this);
++
+             if (EnableRummaging && CanRummageCorpses && !Summoned && !Controlled && tc - m_NextRummageTime >= 0)
+             {
+                 double min, max;

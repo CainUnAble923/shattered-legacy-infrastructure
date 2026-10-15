@@ -1,0 +1,34 @@
+--- a/Projects/UOContent/Misc/AOS.cs
++++ b/Projects/UOContent/Misc/AOS.cs
+@@ -49,6 +49,9 @@
+             int nrgy, int chaos = 0, int direct = 0, bool keepAlive = false, bool archer = false, bool deathStrike = false
+         )
+         {
++            // Shattered Legacy (cc-P121): spell or melee for Pet Training's combat trigger, taken before any return.
++            var petDamageType = PetTrainingHooks.TakeDamageType(from, m);
++
+             if (m?.Deleted != false || !m.Alive || damage <= 0)
+             {
+                 return 0;
+@@ -242,6 +245,10 @@
+                 DamageEaterContext.CheckDamage(m, totalDamage, phys, fire, cold, pois, nrgy, direct);
+             }
+ 
++            // Shattered Legacy (cc-P121): Pet Training's combat trigger, ServUO Misc/AOS.cs:325-329. An ability may change
++            // the damage (Repel returns half and takes it to 0).
++            PetTrainingHooks.OnDamage(from, m, ref totalDamage, petDamageType);
++
+             if (totalDamage <= 0)
+             {
+                 return 0;
+@@ -745,6 +752,10 @@
+                 }
+             }
+ 
++            // Shattered Legacy (cc-P121): Pet Training debuffs (Howl of Cacophony, Aura of Nausea, Sticky Skin), where
++            // ServUO's GetValue applies them (Misc/AOS.cs:699-817).
++            value += PetTrainingHooks.AttributeModifier(m, attribute);
++
+             return value;
+         }
+ 
