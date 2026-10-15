@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.15.3
+
+### Staff
+- The Shard Console's tabs scroll when their buttons do not fit (the Golem tab's were cut off), and the GOLEM tile counts the prompts actually waiting in the queue folder.
+
 ## 2026.10.15.2
 
 ### Staff

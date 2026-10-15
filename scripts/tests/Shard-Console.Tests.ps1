@@ -35,6 +35,10 @@ function Fact {
     param([string]$Name, [scriptblock]$Body)
     # cc-P96: SL_FACT_FILTER (a regex on the name) runs a subset while working; unset, every fact runs.
     if ($env:SL_FACT_FILTER -and $Name -notmatch $env:SL_FACT_FILTER) { return }
+    # cc-P116: each fact starts from the pinned cc-autopilot folder. A form built on $config re-picks the active folder
+    # on its refresh (Update-AutopilotView, cc-P99), and since the real Golem cutover that swapped $config.Autopilot for
+    # D:\UO\golem for every fact after it (P99_MoveToTheGolem... then failed in a full run, though it passed alone).
+    if ($script:PinnedAutopilot) { $config.Autopilot = $script:PinnedAutopilot }
     try {
         & $Body
         $results.Add([pscustomobject]@{ Name = $Name; Passed = $true; Message = '' })
@@ -74,6 +78,7 @@ $config = Get-ConsoleConfig -RepoRoot $repo
 # cc-P99: Get-ConsoleConfig picks D:\UO\golem once it is ACTIVE. The facts were written against cc-autopilot's
 # folder, so they pin it; the Golem's own config has facts of its own (P99_*).
 $config.Autopilot = New-AutopilotConfig 'D:\UO\cc-autopilot' 'D:\UO\cc-prompts\queue'
+$script:PinnedAutopilot = $config.Autopilot
 $cap    = Read-Fixture 'console-capture-2026-09-29.txt'
 $probe  = Read-Fixture 'console-capture-probe-2026-09-29.txt'
 $state  = New-ConsoleState -Config $config -Sections $cap
@@ -2902,7 +2907,10 @@ Fact 'P74_TheTileAndTheTabAreBuiltAndDrawn' {
     New-Item -ItemType Directory -Path (Join-Path $dir 'queue') -Force | Out-Null
     $script:NetProbeDisabled = $true
     $cfg = Get-ConsoleConfig -RepoRoot $repo
-    $cfg.Autopilot = New-AutopilotConfig (Join-Path $dir 'ap') (Join-Path $dir 'queue')
+    # cc-P116: a Golem root of its own with no ACTIVE file. Update-AutopilotView re-picks the active folder on every
+    # refresh (cc-P99), and since the real cutover (D:\UO\golem\ACTIVE, 2026-10-14) the default root picked the real
+    # Golem, so this fact read its live status (RUNNING) instead of the fixture.
+    $cfg.Autopilot = New-AutopilotConfig (Join-Path $dir 'ap') (Join-Path $dir 'queue') -GolemRoot (Join-Path $dir 'golem')
     Set-Content -LiteralPath $cfg.Autopilot.Enabled -Value '' -Encoding ASCII
     Copy-Item -LiteralPath (Join-Path $fixture 'autopilot-log-needs-you.txt') -Destination $cfg.Autopilot.LogFile
     Set-Content -LiteralPath $cfg.Autopilot.StateFile -Value $apRunning -Encoding ASCII
@@ -2952,8 +2960,10 @@ function Set-ApStatus {
     $d | ConvertTo-Json -Depth 4
 }
 
-function Get-ApsView([string]$Status, [string[]]$Log = @(), $Settings = $apsSettings) {
-    Get-AutopilotView -Enabled $true -StateText $null -LogLines $Log -QueueNames @() -StatusText $Status -SettingsText $Settings
+# cc-P116: -Queue is the folder listing; $null (the default) is a folder that could not be listed, so the tile counts
+# status.json's own queued, which is what these cc-P94 facts are about. The folder rule has facts of its own (P116_*).
+function Get-ApsView([string]$Status, [string[]]$Log = @(), $Settings = $apsSettings, $Queue = $null) {
+    Get-AutopilotView -Enabled $true -StateText $null -LogLines $Log -QueueNames $Queue -StatusText $Status -SettingsText $Settings
 }
 function Get-ApsTile([string]$Status, [string[]]$Log = @(), $Settings = $apsSettings) {
     Get-AutopilotGlance -View (Get-ApsView $Status $Log $Settings) -Now $apsNow
@@ -4873,9 +4883,13 @@ Fact 'P107_TheSnapshotSendsNothingBeforeTheCutoverAndDryRunPrintsItsJson' {
         Assert-True ($out -match 'DRY RUN: would POST \d+ bytes to http://192\.168\.1\.61:8094/api/ingest/gamepc') $out
         $json = @(($out -split "`n") | Where-Object { $_ -match '^\{' })[0] | ConvertFrom-Json
         Assert-True ($json.golem.PSObject.Properties.Name -contains 'queue' -and $json.PSObject.Properties.Name -contains 'containers') 'the Golem and the containers'
+        # cc-P116: "registered nothing" is the task as it was before the dry run, not "no task": Chase has since
+        # installed it for real (cc-P107 For Chase step 2), and the old "no such task" assertion then always failed.
+        $taskXml = { try { Export-ScheduledTask -TaskName 'SL game PC snapshot' -ErrorAction Stop } catch { '(none)' } }
+        $taskBefore = & $taskXml
         $i = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'scripts\Install-GamePcSnapshotTask.ps1') -DryRun 2>&1 | Out-String)
         Assert-True ($i -match 'RepetitionInterval \(New-TimeSpan -Minutes 1\)' -and $i -match 'DRY RUN: nothing registered') $i
-        Assert-True (-not (Get-ScheduledTask -TaskName 'SL game PC snapshot' -ErrorAction SilentlyContinue)) 'the dry run registered nothing'
+        Assert-Equal $taskBefore (& $taskXml) 'the dry run registered nothing: the task is exactly as it was'
     } finally { Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }
 }
 
@@ -5229,6 +5243,176 @@ Fact 'P113_AMissingIconKeepsTheDefaultAndLogsOneLine' {
         Assert-True ((@(Get-Content -LiteralPath $log)[1]) -match '^.* icon not loaded: ') 'and logs its own line'
         Remove-Item -LiteralPath $bad -ErrorAction SilentlyContinue
     } finally { $f.Dispose(); Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue; $script:ConsoleIcons = @{} }
+}
+
+# --- cc-P116: every tab page scrolls when its content does not fit; the GOLEM tile counts the queue folder ----------
+# The form is shown off screen (it has to be, for the layout to run), at the console's minimum and default sizes, in
+# the UO look with the Action output pane (a normal start) and in Plain without it (the facts' forms). A control is
+# reachable when every ancestor up to its tab page either shows it inside its client area or scrolls (AutoScroll)
+# with a viewport at least one button tall.
+$script:P116Sizes = @(
+    @{ Look = 'UO'; Pane = $true; W = 900; H = 700 }, @{ Look = 'UO'; Pane = $true; W = 1200; H = 1000 },
+    @{ Look = 'Plain'; Pane = $false; W = 900; H = 700 }, @{ Look = 'Plain'; Pane = $false; W = 1200; H = 1000 })
+
+function Show-P116Form {
+    param([string]$Look, [bool]$Pane, [int]$W, [int]$H)
+    $script:NetProbeDisabled = $true
+    $f = New-ConsoleForm -Config $config -DryRun -Theme $Look -Pane:$Pane -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    $f.StartPosition = 'Manual'
+    $f.Location = New-Object Drawing.Point(-8000, 0)
+    $f.ShowInTaskbar = $false
+    $f.Size = New-Object Drawing.Size($W, $H)
+    $f.Show()
+    [Windows.Forms.Application]::DoEvents()
+    $f
+}
+
+function Close-P116Form($f) {
+    if ($script:ui.Pane -and $script:ui.Pane.Timer) { $script:ui.Pane.Timer.Stop() }
+    $f.Close(); $f.Dispose(); $script:NetProbeDisabled = $false
+}
+
+function Get-P116Unreachable {
+    param($Page)
+    $bad = New-Object 'System.Collections.Generic.List[string]'
+    $stack = New-Object System.Collections.Stack
+    foreach ($c in $Page.Controls) { $stack.Push($c) }
+    while ($stack.Count) {
+        $c = $stack.Pop()
+        foreach ($k in $c.Controls) { $stack.Push($k) }
+        if (-not ($c -is [Windows.Forms.ButtonBase] -or $c -is [Windows.Forms.TextBox] -or $c -is [Windows.Forms.ComboBox])) { continue }
+        if (-not $c.Visible -or ($c -is [Windows.Forms.TextBox] -and $c.Multiline)) { continue }
+        $x = $c; $why = ''
+        while ($x -ne $Page -and -not $why) {
+            $p = $x.Parent
+            if (($p -is [Windows.Forms.ScrollableControl]) -and $p.AutoScroll) {
+                if ($p.ClientSize.Height -lt [Math]::Min(36, $x.Height) -or $p.ClientSize.Width -lt 150) { $why = 'its scrolling parent is ' + $p.ClientSize }
+            } else {
+                $r = $x.Bounds; $cr = $p.ClientRectangle
+                if ($r.Bottom -gt $cr.Bottom -or $r.Right -gt $cr.Right -or $r.Top -lt 0 -or $r.Left -lt 0) { $why = 'outside ' + $p.GetType().Name + ' ' + $cr.Size + ' at ' + $r }
+            }
+            $x = $p
+        }
+        if ($why) { $bad.Add(('[' + ($c.Text -replace '\s+', ' ') + '] ' + $why)) }
+    }
+    $bad.ToArray()
+}
+
+Fact 'P116_EveryTabScrollsOrFitsAtTheMinimumAndDefaultSize' {
+    # Chase, 2026-10-14 20:12, 1187x1200: "Can't see all of the Golem tab menu, no scroll bar".
+    foreach ($sz in $script:P116Sizes) {
+        $f = Show-P116Form @sz
+        try {
+            $where = $sz.Look + $(if ($sz.Pane) { '+pane' } else { '' }) + ' ' + $sz.W + 'x' + $sz.H
+            foreach ($pg in $script:ui.Tabs.TabPages) {
+                $script:ui.Tabs.SelectedTab = $pg
+                [Windows.Forms.Application]::DoEvents()
+                $bad = @(Get-P116Unreachable $pg)
+                Assert-Equal 0 $bad.Count ($where + ', ' + $pg.Text + ': ' + ($bad -join '; '))
+            }
+            if ($sz.Look -eq 'UO') {
+                # cc-P87's one column is the window's width, so no tab runs off the right edge either.
+                Assert-True ($script:ui.Tabs.Right -le $f.ClientSize.Width) ($where + ': the tabs are ' + $script:ui.Tabs.Width + ' wide in a ' + $f.ClientSize.Width + ' window')
+            }
+        } finally { Close-P116Form $f }
+    }
+}
+
+Fact 'P116_TheGolemButtonsShowAtTheDefaultSizeAndScrollIntoViewAtTheMinimum' {
+    $f = Show-P116Form -Look 'UO' -Pane $true -W 1200 -H 1000
+    try {
+        $pg = $script:ui.AutopilotPage
+        $script:ui.Tabs.SelectedTab = $pg
+        [Windows.Forms.Application]::DoEvents()
+        Assert-Equal 0 $pg.VerticalScroll.Value 'the page opens at its top, caption and all, not scrolled to its first button'
+        foreach ($b in @($script:ui.AutopilotButtons)) {
+            $r = $pg.RectangleToClient($b.RectangleToScreen($b.ClientRectangle))
+            Assert-True ($r.Top -ge 0 -and $r.Bottom -le $pg.ClientSize.Height) ('default size, no scrolling: [' + $b.Text + '] at ' + $r + ' in a page ' + $pg.ClientSize)
+        }
+    } finally { Close-P116Form $f }
+    $f = Show-P116Form -Look 'UO' -Pane $true -W 900 -H 700
+    try {
+        $pg = $script:ui.AutopilotPage
+        $script:ui.Tabs.SelectedTab = $pg
+        [Windows.Forms.Application]::DoEvents()
+        $btns = @($pg.Controls | ForEach-Object { $_.Controls } | Where-Object { $_ -is [Windows.Forms.Button] })
+        $last = $btns | Sort-Object { $_.Bottom }, { $_.Right } | Select-Object -Last 1
+        Assert-True ($pg.AutoScroll -and $pg.VerticalScroll.Visible) ('the page scrolls at the minimum: ' + $pg.ClientSize + ', need ' + $pg.AutoScrollMinSize)
+        $pg.ScrollControlIntoView($last)
+        [Windows.Forms.Application]::DoEvents()
+        $r = $pg.RectangleToClient($last.RectangleToScreen($last.ClientRectangle))
+        Assert-True ($r.Top -ge 0 -and $r.Bottom -le $pg.ClientSize.Height) ('the bottom button [' + $last.Text + '] scrolled into view: ' + $r + ' in ' + $pg.ClientSize)
+    } finally { Close-P116Form $f }
+}
+
+if (-not ('P116Wheel' -as [type])) {
+    Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class P116Wheel { [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, int msg, IntPtr w, IntPtr l); }'
+}
+
+Fact 'P116_TheMouseWheelOverAPageScrollsThatPage' {
+    $f = Show-P116Form -Look 'UO' -Pane $true -W 900 -H 700
+    try {
+        $pg = $script:ui.AutopilotPage
+        $script:ui.Tabs.SelectedTab = $pg
+        [Windows.Forms.Application]::DoEvents()
+        $b = @($script:ui.AutopilotButtons)[0]
+        $before = $pg.VerticalScroll.Value
+        $pt = $b.PointToScreen((New-Object Drawing.Point(5, 5)))
+        $l = [IntPtr](($pt.Y -band 0xFFFF) * 65536 + ($pt.X -band 0xFFFF))
+        # WM_MOUSEWHEEL, one notch down (-120 in the high word), as Windows sends it to the control under the mouse.
+        [void][P116Wheel]::SendMessage($b.Handle, 0x020A, [IntPtr]([int]0xFF880000), $l)
+        [Windows.Forms.Application]::DoEvents()
+        Assert-True ($pg.VerticalScroll.Value -gt $before) ('one notch over a button scrolls its page: ' + $before + ' -> ' + $pg.VerticalScroll.Value)
+    } finally { Close-P116Form $f }
+}
+
+Fact 'P116_LongCaptionsWrapToThePageWidth' {
+    foreach ($sz in @(@{ Look = 'UO'; Pane = $true; W = 900; H = 700 }, @{ Look = 'Plain'; Pane = $false; W = 900; H = 700 })) {
+        $f = Show-P116Form @sz
+        try {
+            foreach ($pg in $script:ui.Tabs.TabPages) {
+                $script:ui.Tabs.SelectedTab = $pg
+                [Windows.Forms.Application]::DoEvents()
+                $stack = New-Object System.Collections.Stack
+                foreach ($c in $pg.Controls) { $stack.Push($c) }
+                while ($stack.Count) {
+                    $c = $stack.Pop()
+                    foreach ($k in $c.Controls) { $stack.Push($k) }
+                    if ($c -isnot [Windows.Forms.Label] -or $c.MaximumSize.Width -lt 300 -or -not $c.Visible) { continue }
+                    $r = $pg.RectangleToClient($c.RectangleToScreen($c.ClientRectangle))
+                    Assert-True ($r.Right -le $pg.ClientSize.Width) ($sz.Look + ' ' + $pg.Text + ': a caption ' + $r.Width + ' wide runs to ' + $r.Right + ' in a page ' + $pg.ClientSize.Width + ' wide')
+                }
+            }
+        } finally { Close-P116Form $f }
+    }
+}
+
+Fact 'P116_TheGolemTileCountsTheQueueFolderWhileStatusJsonIsStale' {
+    # 2026-10-14 20:12: "queue empty" while D:\UO\cc-prompts\queue held P114 and P115. status.json is written by the
+    # hook and the watch task only, so it goes stale while the Golem rests; the folder is listed on every refresh.
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('p116-' + [guid]::NewGuid().ToString('N'))
+    $queue = Join-Path $root 'queue'
+    New-Item -ItemType Directory -Path $queue -Force | Out-Null
+    try {
+        $c = [pscustomobject]@{ Autopilot = (New-AutopilotConfig $root $queue -Kind golem) }
+        [IO.File]::WriteAllText((Join-Path $root 'ENABLED'), '')
+        foreach ($state in @('IDLE', 'OFF')) {
+            [IO.File]::WriteAllText((Join-Path $root 'status.json'), ('{ "schema": 1, "state": "' + $state + '", "enabled": ' + $(if ($state -eq 'OFF') { 'false' } else { 'true' }) + ', "queued": [], "generatedAt": "2026-10-14T18:00:00" }'))
+            Get-ChildItem -LiteralPath $queue -File | Remove-Item
+            Assert-True ((Get-AutopilotViewNow $c).Tile.Detail -match 'queue empty') ($state + ': an empty folder is empty')
+            foreach ($n in 'cc-P114-test-shortcuts-our-build.md', 'cc-P115-playtest-who-and-how.md', 'notes for later.md') {
+                [IO.File]::WriteAllText((Join-Path $queue $n), '# a prompt')
+            }
+            $t = (Get-AutopilotViewNow $c).Tile
+            Assert-Equal $state $t.Word
+            Assert-True ($t.Detail -match '(^|; )2 queued') ($state + ': the two numbered files, though status.json still says none: ' + $t.Detail)
+            Assert-True ($t.Detail.EndsWith('; 1 unnumbered file(s) ignored')) ($state + ': ' + $t.Detail)
+        }
+        # The folder cannot be listed: status.json's own list is the best there is.
+        $gone = [pscustomobject]@{ Autopilot = (New-AutopilotConfig $root (Join-Path $root 'no-such-queue') -Kind golem) }
+        [IO.File]::WriteAllText((Join-Path $root 'status.json'), '{ "schema": 1, "state": "IDLE", "enabled": true, "queued": ["cc-P120-x.md"] }')
+        Assert-True ((Get-AutopilotViewNow $gone).Tile.Detail -match '^1 queued') 'no folder listing: status.json''s list'
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue

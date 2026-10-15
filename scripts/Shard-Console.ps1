@@ -3625,7 +3625,10 @@ function Get-AutopilotStatusGlance {
     param($View, [datetime]$Now = [datetime]::Now)
     $s = $View.Status
     $t = [ordered]@{ Title = 'GOLEM'; Word = $s.State; Color = 'gray'; Detail = '' }
-    $n = @($s.Queued).Count
+    # cc-P116: the queue folder as listed on this refresh (Get-AutopilotQueue, the runner's cc-P<nn>-*.md rule), not
+    # status.json's queued: the hook and the watch task write that, so it goes stale while the Golem rests (it said
+    # "queue empty" on 2026-10-14 with P114 and P115 waiting). status.json's list only when the folder could not be read.
+    $n = $(if ($View.Queue) { @($View.Queue.Runs).Count } else { @($s.Queued).Count })
     $queued = $(if ($n) { [string]$n + ' queued' } else { 'queue empty' })
     $ignored = ''
     if ($View.Queue -and @($View.Queue.Ignored).Count) { $ignored = '; ' + @($View.Queue.Ignored).Count + ' unnumbered file(s) ignored' }
@@ -6304,19 +6307,62 @@ function Get-TileFitFont {
 }
 
 function Update-CaptionFit {
-    # cc-P87, UO only: a wide caption (made 1,100 px wide by New-Caption) wraps to its page's width instead of running
-    # past it when the window is narrower than that.
+    # cc-P87: a wide caption (made 1,100 px wide by New-Caption) wraps to its page's width instead of running past it
+    # when the window is narrower than that. cc-P116: in both looks (Plain too), to the tab page's own width less a
+    # scroll bar, and then each page's scrolling is worked out again (Update-PageScroll), since the captions' heights
+    # changed. A caption that has been fitted keeps its 1100 in Tag, so it can widen again.
     $tabs = $script:ui.Tabs
-    if (-not $tabs -or -not $script:ui.Form -or -not $script:theme -or -not $script:theme.Chrome) { return }
+    if (-not $tabs -or -not $script:ui.Form) { return }
+    $page = $tabs.DisplayRectangle.Width
+    if ($page -le 0) { $page = $script:ui.Form.ClientSize.Width }
+    $w = [math]::Max(300, [math]::Min(1100, [math]::Min($page, $script:ui.Form.ClientSize.Width) - 40))
     $stack = New-Object System.Collections.Stack
     foreach ($pg in $tabs.TabPages) { $stack.Push($pg) }
     while ($stack.Count) {
         $x = $stack.Pop()
-        if ($x -is [Windows.Forms.Label] -and $x.MaximumSize.Width -ge 1000) {
-            $w = [math]::Max(300, [math]::Min(1100, $script:ui.Form.ClientSize.Width - 50))
+        if ($x -is [Windows.Forms.Label] -and ($x.MaximumSize.Width -ge 1000 -or [string]$x.Tag -eq 'caption')) {
+            $x.Tag = 'caption'
             if ($x.MaximumSize.Width -ne $w) { $x.MaximumSize = New-Object Drawing.Size($w, 0) }
         }
         foreach ($k in $x.Controls) { $stack.Push($k) }
+    }
+    Update-PageScroll
+}
+
+$script:PageFillMin = 80
+
+function Update-PageScroll {
+    # cc-P116: every tab page whose content does not fit gets scroll bars (Chase, 2026-10-14: the Golem tab's buttons
+    # were cut off with no scroll bar). A page that is one scrolling panel already (the button pages, World setup)
+    # is left to it. Any other page scrolls once it is smaller than what its docked parts need: each top or bottom
+    # part at its own height (a wrapping one at the height it wraps to at this width), PageFillMin for the list or
+    # text that fills the rest, and as wide as its widest single control. The mouse wheel over a page scrolls it:
+    # a button or label passes the wheel up to its page (Windows sends it to the control under the mouse).
+    $tabs = $script:ui.Tabs
+    if (-not $tabs) { return }
+    foreach ($pg in $tabs.TabPages) {
+        $kids = @($pg.Controls)
+        $fill = @($kids | Where-Object { $_.Dock -eq 'Fill' })
+        if ($kids.Count -eq 1 -and $fill.Count -eq 1 -and $fill[0] -is [Windows.Forms.ScrollableControl] -and $fill[0].AutoScroll) {
+            if ($pg.AutoScroll) { $pg.AutoScroll = $false }
+            continue
+        }
+        $w = $pg.ClientSize.Width
+        $h = 0; $minW = 0
+        foreach ($k in $kids) {
+            if ($k.Dock -eq 'Fill') { $h += $script:PageFillMin; continue }
+            $kh = $k.Height
+            if ($k.AutoSize) { $kh = $k.GetPreferredSize((New-Object Drawing.Size([math]::Max(1, $w), 0))).Height }
+            $h += $kh
+            foreach ($c in @($k.Controls)) {
+                if ($c -is [Windows.Forms.Label] -and [string]$c.Tag -eq 'caption') { continue }
+                $cw = $c.Width + $c.Margin.Horizontal + $k.Padding.Horizontal
+                if ($cw -gt $minW) { $minW = $cw }
+            }
+        }
+        $need = New-Object Drawing.Size($minW, $h)
+        if (-not $pg.AutoScroll) { $pg.AutoScroll = $true }
+        if ($pg.AutoScrollMinSize -ne $need) { $pg.AutoScrollMinSize = $need }
     }
 }
 
@@ -7473,6 +7519,8 @@ function New-ConsoleForm {
     $qButtons = New-Object Windows.Forms.FlowLayoutPanel
     $qButtons.Dock = 'Bottom'
     $qButtons.Height = 52
+    # cc-P116: the six answers wrap onto a second row, and the row grows to show it, when the page is narrow.
+    $qButtons.AutoSize = $true; $qButtons.AutoSizeMode = 'GrowAndShrink'
     $script:ui.QuestionButtons = @()
     foreach ($pair in @(@('Show the question', 'question.show'), @('Answer n', 'question.n'), @('Answer y (deletes)', 'question.y'), @('Answer a (deletes all)', 'question.a'), @('Press Enter', 'question.enter'), @('Stop the shard', 'question.stop'))) {
         $qb = New-Object Windows.Forms.Button
@@ -7525,6 +7573,7 @@ function New-ConsoleForm {
     $snapBottom = New-Object Windows.Forms.FlowLayoutPanel
     $snapBottom.Dock = 'Bottom'
     $snapBottom.Height = 46
+    $snapBottom.AutoSize = $true; $snapBottom.AutoSizeMode = 'GrowAndShrink'  # cc-P116, as the Shard question buttons
     $nameLabel = New-Object Windows.Forms.Label
     $nameLabel.Text = 'Name:'
     $nameLabel.AutoSize = $true
@@ -7735,6 +7784,8 @@ function New-ConsoleForm {
     $pkgTop.Dock = 'Top'
     $pkgTop.Height = 96
     $pkgTop.WrapContents = $true
+    # cc-P116: as tall as its caption, notes box and Build button wrap to (96 px cut Build package off in the UO look).
+    $pkgTop.AutoSize = $true; $pkgTop.AutoSizeMode = 'GrowAndShrink'
     $pubWhere = $Config.PublishScript
     if (-not (Test-Path -LiteralPath $Config.PublishScript -PathType Leaf)) { $pubWhere += ' (NOT FOUND: Publish will say so and do nothing)' }
     $pkgCap = New-Caption ('Build package makes and checks a zip in player-package\dist and publishes nothing; it is refused while the shard repo has uncommitted changes. Publish selected runs ' + $pubWhere + ' after the phrase ''publish player package'': it is public, every launcher is offered it, and the script asks you to type yes in its own window.') 1100
@@ -7765,6 +7816,7 @@ function New-ConsoleForm {
     $pkgBottom = New-Object Windows.Forms.FlowLayoutPanel
     $pkgBottom.Dock = 'Bottom'
     $pkgBottom.Height = 42
+    $pkgBottom.AutoSize = $true; $pkgBottom.AutoSizeMode = 'GrowAndShrink'  # cc-P116
     $pkgRefresh = New-Object Windows.Forms.Button
     $pkgRefresh.Text = 'Refresh list'
     $pkgRefresh.Name = 'packageRefresh'
@@ -7881,6 +7933,13 @@ function New-ConsoleForm {
     $script:ui.WebsiteButtons = $webBtns
 
     $tabs.TabPages.AddRange(@($testPage, $fixPage, $qPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $apPage, $webPage, $livePage))
+    # cc-P116: a page's scrolling is worked out again when it is shown (its wrapping parts only measure true then), and
+    # it opens at its top: choosing a tab focuses its first button, and a scrolling page would otherwise scroll down to
+    # it and cut off the caption above. Posted, so it runs after that focus change.
+    $tabs.Add_SelectedIndexChanged({
+        Update-PageScroll
+        $script:ui.Form.BeginInvoke([Action]{ $p = $script:ui.Tabs.SelectedTab; if ($p -and $p.AutoScroll) { $p.AutoScrollPosition = New-Object Drawing.Point(0, 0) } }) | Out-Null
+    })
 
     # output
     $outGroup = New-Object Windows.Forms.GroupBox
@@ -7907,7 +7966,9 @@ function New-ConsoleForm {
     $form.Controls.Add($grid)
     if ($Pane) {
         # cc-P84: the output row grows a little to hold the pane beside the console's own output.
-        $grid.RowStyles[1].Height = 44; $grid.RowStyles[2].Height = 30; $grid.RowStyles[3].Height = 26
+        # cc-P116: the tabs take 38 (was 30) from the status box (36, was 44), so a tab's caption and its buttons show
+        # without scrolling at the default size (the Golem tab's two rows did not); a page scrolls when they still do not fit.
+        $grid.RowStyles[1].Height = 36; $grid.RowStyles[2].Height = 38; $grid.RowStyles[3].Height = 26
     }
     if ($script:theme.Header) {
         # cc-P84: the crest and the name, on stone, above the tiles. Our own art (branding\intro), not EA's.
