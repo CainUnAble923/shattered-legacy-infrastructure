@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.16
+
+### Added
+- Treasure maps are the Forgotten Treasures kind: five levels (stash, supply, cache, hoard, trove) in five themes (artisan, assassin, mage, ranger, warrior), dropped by monsters on every facet for that facet, decoded and dug with Cartography, with a rusty, standard or gold chest by your skill. A dug chest is trapped: pick the lock, use Remove Trap (a failed try wakes an ancient chest guardian), then open it for gold, gems, skill scrolls and themed gear.
+- Stealing from a monster's pack in a Felucca dungeon or at a champion spawn can turn up a thief's prize (balms, lotions, a seed of life, a mana draught, a Gem of Salvation), once per creature, from Stealing 100, and trains Stealing past 120 against the creature's fame.
+
 ## 2026.10.15.10
 
 ### Staff

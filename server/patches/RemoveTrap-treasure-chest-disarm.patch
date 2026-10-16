@@ -1,0 +1,236 @@
+--- a/Projects/UOContent/Skills/RemoveTrap.cs
++++ b/Projects/UOContent/Skills/RemoveTrap.cs
+@@ -1,6 +1,8 @@
+ using System;
++using System.Collections.Generic;
+ using Server.Factions;
+ using Server.Items;
++using Server.Network;
+ using Server.Targeting;
+ 
+ namespace Server.SkillHandlers
+@@ -48,6 +50,47 @@
+                     if (targ.TrapType == TrapType.None)
+                     {
+                         from.SendLocalizedMessage(502373); // That doesn't appear to be trapped
++                        return;
++                    }
++
++                    // cc-P127: ServUO RemoveTrap.cs:66-114 (the Forgotten Treasures revamp). A dug chest is unlocked
++                    // first, only its owner works it, and the disarm is a timed contest that raises an ancient chest
++                    // guardian on every failure (customizations Services/TreasureMaps, patches/TreasureMapChest.cs).
++                    if (targ is TreasureMapChest tChest && TreasureMapInfo.NewSystem)
++                    {
++                        from.Direction = from.GetDirectionTo(targ);
++
++                        if (tChest.Locked)
++                        {
++                            from.SendLocalizedMessage(501283); // That is locked.
++                        }
++                        else if (tChest.Owner != from)
++                        {
++                            from.SendLocalizedMessage(1159010); // That is not your chest!
++                        }
++                        else if (IsDisarming(from, tChest))
++                        {
++                            from.SendLocalizedMessage(1159059); // You are already manipulating the trigger mechanism...
++                        }
++                        else if (IsBeingDisarmed(tChest))
++                        {
++                            from.SendLocalizedMessage(1159063); // That trap is already being disarmed.
++                        }
++                        else if (tChest.HasAncientGuardian())
++                        {
++                            // *Your attempt fails as the the mechanism jams and you are attacked by an Ancient Chest Guardian!*
++                            from.PrivateOverheadMessage(MessageType.Regular, 1150, 1159060, from.NetState);
++                        }
++                        else
++                        {
++                            from.PlaySound(0x241);
++
++                            // *You delicately manipulate the trigger mechanism...*
++                            from.PrivateOverheadMessage(MessageType.Regular, 1150, 1159057, from.NetState);
++
++                            StartChestDisarmTimer(from, tChest);
++                        }
++
+                         return;
+                     }
+ 
+@@ -132,6 +175,176 @@
+                     from.SendLocalizedMessage(502373); // That doesn't appear to be trapped
+                 }
+             }
++
++            protected override void OnTargetOutOfRange(Mobile from, object targeted)
++            {
++                // cc-P127: ServUO RemoveTrap.cs:235-251.
++                if (targeted is TreasureMapChest && TreasureMapInfo.NewSystem)
++                {
++                    // put here to prevent abuse
++                    if (from.NextSkillTime > Core.TickCount)
++                    {
++                        from.NextSkillTime = Core.TickCount;
++                    }
++
++                    from.SendLocalizedMessage(1159058); // You are too far away from the chest to manipulate the trigger mechanism.
++                }
++                else
++                {
++                    base.OnTargetOutOfRange(from, targeted);
++                }
++            }
++        }
++
++        // cc-P127: ServUO RemoveTrap.cs:254-291.
++        private static Dictionary<Mobile, RemoveTrapTimer> _table;
++
++        public static void StartChestDisarmTimer(Mobile from, TreasureMapChest chest)
++        {
++            _table ??= new Dictionary<Mobile, RemoveTrapTimer>();
++            _table[from] = new RemoveTrapTimer(from, chest, from.Skills[SkillName.RemoveTrap].Value >= 100);
++        }
++
++        public static void EndChestDisarmTimer(Mobile from)
++        {
++            if (_table == null || !_table.TryGetValue(from, out var timer))
++            {
++                return;
++            }
++
++            timer?.Stop();
++            _table.Remove(from);
++
++            if (_table.Count == 0)
++            {
++                _table = null;
++            }
++        }
++
++        public static bool IsDisarming(Mobile from, TreasureMapChest chest) => _table?.ContainsKey(from) == true;
++
++        public static bool IsBeingDisarmed(TreasureMapChest chest)
++        {
++            if (_table == null)
++            {
++                return false;
++            }
++
++            foreach (var timer in _table.Values)
++            {
++                if (timer.Chest == chest)
++                {
++                    return true;
++                }
++            }
++
++            return false;
++        }
++    }
++
++    // cc-P127: ServUO RemoveTrap.cs:293-400. A GM remover (100+) has a safety window after the dig in which the trap
++    // simply yields; before it, and for everyone below 100, each 10-second tick rolls Remove Trap and a failure sets
++    // the trap off and raises an ancient chest guardian.
++    public class RemoveTrapTimer : Timer
++    {
++        public Mobile From { get; }
++        public TreasureMapChest Chest { get; }
++        public DateTime SafetyEndTime { get; }
++        public bool GMRemover { get; }
++
++        public RemoveTrapTimer(Mobile from, TreasureMapChest chest, bool gmRemover)
++            : base(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10))
++        {
++            From = from;
++            Chest = chest;
++            GMRemover = gmRemover;
++
++            if (gmRemover)
++            {
++                var duration = (TreasureLevel)chest.Level switch
++                {
++                    TreasureLevel.Supply => TimeSpan.FromSeconds(60),
++                    TreasureLevel.Cache  => TimeSpan.FromSeconds(180),
++                    TreasureLevel.Hoard  => TimeSpan.FromSeconds(420),
++                    TreasureLevel.Trove  => TimeSpan.FromSeconds(540),
++                    _                    => TimeSpan.FromSeconds(20)
++                };
++
++                SafetyEndTime = chest.DigTime + duration;
++            }
++
++            Start();
++        }
++
++        protected override void OnTick()
++        {
++            if (Chest.Deleted)
++            {
++                RemoveTrap.EndChestDisarmTimer(From);
++                return;
++            }
++
++            if (!From.Alive)
++            {
++                From.SendLocalizedMessage(1159061); // Your ghostly fingers cannot manipulate the mechanism...
++                RemoveTrap.EndChestDisarmTimer(From);
++            }
++            else if (!From.InRange(Chest.GetWorldLocation(), 16))
++            {
++                From.SendLocalizedMessage(1159058); // You are too far away from the chest to manipulate the trigger mechanism.
++                RemoveTrap.EndChestDisarmTimer(From);
++            }
++            else if (GMRemover)
++            {
++                From.RevealingAction();
++
++                if (SafetyEndTime < Core.Now)
++                {
++                    DisarmTrap();
++                }
++                else if (From.CheckTargetSkill(SkillName.RemoveTrap, Chest, 80, 120 + Chest.Level * 10))
++                {
++                    DisarmTrap();
++                }
++                else
++                {
++                    Chest.SpawnAncientGuardian(From);
++                }
++
++                RemoveTrap.EndChestDisarmTimer(From);
++            }
++            else
++            {
++                From.RevealingAction();
++
++                var min = Math.Ceiling(From.Skills[SkillName.RemoveTrap].Value * .75);
++
++                if (From.CheckTargetSkill(SkillName.RemoveTrap, Chest, min, min > 50 ? min + 50 : 100))
++                {
++                    DisarmTrap();
++                    RemoveTrap.EndChestDisarmTimer(From);
++                }
++                else
++                {
++                    Chest.SpawnAncientGuardian(From);
++
++                    if (From.Alive)
++                    {
++                        // *You delicately manipulate the trigger mechanism...*
++                        From.PrivateOverheadMessage(MessageType.Regular, 1150, 1159057, From.NetState);
++                    }
++                }
++            }
++        }
++
++        private void DisarmTrap()
++        {
++            Chest.TrapPower = 0;
++            Chest.TrapLevel = 0;
++            Chest.TrapType = TrapType.None;
++            Chest.InvalidateProperties();
++
++            From.PrivateOverheadMessage(MessageType.Regular, 1150, 1159009, From.NetState); // You successfully disarm the trap!
+         }
+     }
+ }

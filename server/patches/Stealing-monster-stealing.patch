@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Skills/Stealing.cs
++++ b/Projects/UOContent/Skills/Stealing.cs
+@@ -363,6 +363,12 @@
+                     root = mobile;
+                     stolen = TryStealItem(pack.Items.RandomElement(), ref caught);
+                 }
++
++                // cc-P127: ServUO Stealing.cs:419-423, Monster Stealables (customizations Services/Monster Stealing/).
++                if (mobile is BaseCreature bc && from is PlayerMobile thief)
++                {
++                    Server.Engines.CreatureStealing.StealingHandler.HandleSteal(bc, thief);
++                }
+             }
+             else
+             {

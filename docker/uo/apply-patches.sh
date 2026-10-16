@@ -243,6 +243,12 @@ replace_file "$PATCHES/LargeSmithBOD.cs"    "Projects/UOContent/Engines/Bulk Ord
 replace_file "$PATCHES/JacobsPickaxe.cs"    "Projects/UOContent/Items/New Haven Quest Rewards/JacobsPickaxe.cs"
 replace_file "$CUSTOMIZATIONS/RegenRates.cs"   "Projects/UOContent/Misc/RegenRates.cs"
 replace_file "$CUSTOMIZATIONS/ResourceInfo.cs" "Projects/UOContent/Misc/ResourceInfo.cs"
+# cc-P127. The Forgotten Treasures revamp (ServUO Services/TreasureMaps): pinned's map (915 lines) and chest (558) become
+# ServUO's (1,786 and 1,014), and the diff is the whole of each file, so they are replacements, with every pinned caller's
+# constructor and static kept. Argued in shard-migration/notes/cc-P127-port-treasure-maps-monster-stealing.md; pinned by
+# TreasureMapRevampVerification (proved red).
+replace_file "$PATCHES/TreasureMap.cs"      "Projects/UOContent/Items/Maps/TreasureMap.cs"
+replace_file "$PATCHES/TreasureMapChest.cs" "Projects/UOContent/Items/Containers/TreasureMapChest.cs"
 echo "[patches] Full-file replacements done."
 
 echo "[patches] Applying .patch files..."
@@ -606,6 +612,19 @@ apply_patch "$PATCHES/BOD-gumps-points-mode.patch"
 apply_patch "$PATCHES/BOB-all-crafts.patch"
 apply_patch "$PATCHES/CraftItem-chefs-apron.patch"
 apply_patch "$PATCHES/Spellbook-improvement-talisman.patch"
+
+# cc-P127 (ported). The Forgotten Treasures revamp reaches four pinned files that have no hook: Stealing.cs gets ServUO's
+# five-line call into the monster-stealing handler (Services/Monster Stealing); LockPick.cs marks a revamp chest whose pick
+# failed (the grubber) and, classic, may break one item; Unlock.cs takes full Magery against 50/80/100 by revamp level;
+# RemoveTrap.cs gains ServUO's timed disarm with ancient chest guardians; BaseCreature.cs drops maps on every facet, for
+# the facet. Each is ServUO's own lines at its own place. Alternatives argued in shard-migration
+# notes/cc-P127-port-treasure-maps-monster-stealing.md; pinned by TreasureMapRevampVerification and
+# MonsterStealingVerification (each proved red).
+apply_patch "$PATCHES/Stealing-monster-stealing.patch"
+apply_patch "$PATCHES/LockPick-treasure-chest-failed-pick.patch"
+apply_patch "$PATCHES/Unlock-treasure-chest-levels.patch"
+apply_patch "$PATCHES/RemoveTrap-treasure-chest-disarm.patch"
+apply_patch "$PATCHES/BaseCreature-treasure-map-all-facets.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.

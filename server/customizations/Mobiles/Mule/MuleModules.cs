@@ -902,7 +902,8 @@ namespace Server.Mobiles
         }
 
         /// <summary>Survey III: the mule digs the tracked treasure map's chest, when the owner stands within 6 tiles of the
-        /// spot on its facet: no shovel, no Mining check; the guardians spawn as for any dig (TreasureMap.cs:788-812).</summary>
+        /// spot on its facet: no shovel, no Mining check; the map fills the chest and spawns the guardians as for any dig
+        /// (TreasureMap.OnDug, cc-P127).</summary>
         public static TreasureMapChest Dig(PackMule m, PlayerMobile owner)
         {
             if (TierOf(m, MuleModuleId.SurveySaddleRoll) < 3 || State(m).TrackedMap is not TreasureMap { Completed: false, Deleted: false } tm ||
@@ -913,20 +914,11 @@ namespace Server.Mobiles
 
             var x = tm.ChestLocation.X;
             var y = tm.ChestLocation.Y;
-            var chest = new TreasureMapChest(owner, tm.Level);
+            // cc-P127: the chest is raised empty (temporary) and the map fills it and spawns its guardians, as a
+            // shovel dig does, so the revamp's quality, loot and guardian rules apply here too.
+            var chest = new TreasureMapChest(owner, tm.Level, true);
             chest.MoveToWorld(new Point3D(x, y, tm.ChestMap.GetAverageZ(x, y)), tm.ChestMap);
-            tm.Completed = true;
-            tm.CompletedBy = owner;
-
-            var guardians = tm.Level == 0 ? 3 : tm.Level == 1 ? 0 : 4;
-
-            for (var i = 0; i < guardians; i++)
-            {
-                if (TreasureMap.Spawn(tm.Level, chest.Location, chest.Map, null, true) is { } bc)
-                {
-                    chest.Guardians?.Add(bc);
-                }
-            }
+            tm.OnDug(owner, chest);
 
             m.PlaySound(0x125);
             owner.QuestArrow = null;

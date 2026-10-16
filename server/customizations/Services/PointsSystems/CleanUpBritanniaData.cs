@@ -16,8 +16,9 @@
 //   * IVvVItem (:39): pinned has no Vice vs Virtue, so nothing is a VvV item.
 //   * Bait (:113): pinned has no Bait item.
 //   * Treasure maps (:118-149): ServUO picks the new-system values when TreasureMapInfo.NewSystem (Core.EJ, true on
-//     this shard). Pinned's maps are the old system (levels 0-7, pinned Items/Maps/TreasureMap.cs), so the old-system
-//     column is the one that describes the maps this shard drops.
+//     this shard). Since cc-P127 the shard's maps are the revamp's (levels 0-4, server/patches/TreasureMap.cs), so the
+//     new-system column applies; the old-system column (25, 50, 100, 250, 500, 750, 1000, 1000 for levels 0-7) served
+//     while the maps were pinned's.
 //   * Craft systems: ServUO walks CraftSystem.Systems, filled in first-use order. Pinned has no such list; ours walks
 //     the eleven pinned systems in a fixed order (CraftSystems below).
 //   * Ours, marked "Shattered Legacy" below: values for the extended ingots and boards (ResourceInfo.cs) and their
@@ -183,16 +184,13 @@ public class CleanUpBritanniaData : PointsSystem
         }
         else if (item is TreasureMap tmap)
         {
-            // ServUO :136-148, the old-system column (see the header).
+            // ServUO :123-134, the new-system column (see the header): Stash and Supply 50, Cache 250, Hoard 750, Trove 1000.
             return tmap.Level switch
             {
-                1      => 50,
-                2      => 100,
-                3      => 250,
-                4      => 500,
-                5      => 750,
-                6 or 7 => 1000,
-                _      => 25
+                2 => 250,
+                3 => 750,
+                4 => 1000,
+                _ => 50
             };
         }
         else if (item is MidnightBracers && item.LootType == LootType.Cursed)

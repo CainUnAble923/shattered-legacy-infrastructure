@@ -1,0 +1,17 @@
+--- a/Projects/UOContent/Mobiles/BaseCreature.cs
++++ b/Projects/UOContent/Mobiles/BaseCreature.cs
+@@ -3246,9 +3246,11 @@
+                     {
+                         PackItem(new ParagonChest(Name, treasureLevel));
+                     }
+-                    else if ((Map == Map.Felucca || Map == Map.Trammel) && Utility.RandomDouble() < TreasureMap.LootChance)
+-                    {
+-                        PackItem(new TreasureMap(treasureLevel, Map));
++                    // cc-P127: ServUO BaseCreature.cs:5902-5910. The revamp's maps drop on every facet, for the facet
++                    // (TreasureMap converts the classic level and reads the Eodon flag).
++                    else if (Utility.RandomDouble() < TreasureMap.LootChance)
++                    {
++                        PackItem(new TreasureMap(treasureLevel, Map, TreasureMapInfo.IsEodon(Map, Location)));
+                     }
+                 }
+ 

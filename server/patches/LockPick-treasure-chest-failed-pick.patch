@@ -1,0 +1,30 @@
+--- "a/Projects/UOContent/Items/Skill Items/Thief/LockPick.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Thief/LockPick.cs"
+@@ -137,6 +137,27 @@
+                     // The player failed to pick the lock
+                     BrokeLockPickTest();
+                     item.SendLocalizedMessageTo(_from, 502075); // You are unable to pick the lock.
++
++                    // cc-P127: ServUO LockPick.cs:158-180. A revamp chest remembers the failed pick (a grubber comes
++                    // when it is picked); a classic chest may lose one item.
++                    if (item is TreasureMapChest chest)
++                    {
++                        if (TreasureMapInfo.NewSystem)
++                        {
++                            chest.FailedLockpick = true;
++                        }
++                        else if (chest.Items.Count > 0 && 0.25 > Utility.RandomDouble())
++                        {
++                            var toBreak = chest.Items[Utility.Random(chest.Items.Count)];
++
++                            if (toBreak is not Container)
++                            {
++                                toBreak.Delete();
++                                Effects.PlaySound(item.Location, item.Map, 0x1DE);
++                                _from.SendMessage(0x20, "The sound of gas escaping is heard from the chest.");
++                            }
++                        }
++                    }
+                 }
+             }
+         }

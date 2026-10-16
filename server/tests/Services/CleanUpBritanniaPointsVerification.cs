@@ -117,7 +117,9 @@ public class CleanUpBritanniaPointsVerification
 
         Assert.Equal(20.0, Points(new ScrollofTranscendence(SkillName.Swords, 1.0)), 6); // value / 0.1 * 2
 
-        int[] expected = [25, 50, 100, 250, 500, 750, 1000, 1000];
+        // cc-P127: a map made with a classic level (0-7) becomes a revamp level (Stash, Stash, Supply, Supply, Cache,
+        // Cache, Hoard, Trove), and ServUO's new-system column pays 50, 50, 250, 750, 1000 by revamp level.
+        int[] expected = [50, 50, 50, 50, 250, 250, 750, 1000];
         for (var level = 0; level <= 7; level++)
         {
             Assert.Equal(expected[level], Points(new TreasureMap(level, Map.Trammel)), 6);

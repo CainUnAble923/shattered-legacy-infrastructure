@@ -1,0 +1,102 @@
+{
+  "version": 5,
+  "type": "Server.Items.TreasureMapChest",
+  "properties": [
+    {
+      "name": "Guardians",
+      "type": "System.Collections.Generic.List<Server.Mobile>",
+      "rule": "ListMigrationRule",
+      "ruleArguments": [
+        "@Tidy",
+        "@CanBeNull",
+        "Server.Mobile",
+        "SerializableInterfaceMigrationRule"
+      ]
+    },
+    {
+      "name": "Temporary",
+      "type": "bool",
+      "rule": "PrimitiveTypeMigrationRule",
+      "ruleArguments": [
+        ""
+      ]
+    },
+    {
+      "name": "Owner",
+      "type": "Server.Mobile",
+      "rule": "SerializableInterfaceMigrationRule"
+    },
+    {
+      "name": "Level",
+      "type": "int",
+      "rule": "PrimitiveTypeMigrationRule",
+      "ruleArguments": [
+        ""
+      ]
+    },
+    {
+      "name": "ExpireTimer",
+      "type": "Server.Timer",
+      "rule": "TimerMigrationRule",
+      "ruleArguments": [
+        "@TimerDrift"
+      ]
+    },
+    {
+      "name": "Lifted",
+      "type": "System.Collections.Generic.HashSet<Server.Item>",
+      "rule": "HashSetMigrationRule",
+      "ruleArguments": [
+        "@Tidy",
+        "@CanBeNull",
+        "Server.Item",
+        "SerializableInterfaceMigrationRule"
+      ]
+    },
+    {
+      "name": "FailedLockpick",
+      "type": "bool",
+      "rule": "PrimitiveTypeMigrationRule",
+      "ruleArguments": [
+        ""
+      ]
+    },
+    {
+      "name": "Quality",
+      "type": "Server.Items.ChestQuality",
+      "rule": "EnumMigrationRule"
+    },
+    {
+      "name": "DigTime",
+      "type": "System.DateTime",
+      "rule": "PrimitiveTypeMigrationRule",
+      "ruleArguments": [
+        ""
+      ]
+    },
+    {
+      "name": "AncientGuardians",
+      "type": "System.Collections.Generic.List<Server.Mobile>",
+      "rule": "ListMigrationRule",
+      "ruleArguments": [
+        "@Tidy",
+        "@CanBeNull",
+        "Server.Mobile",
+        "SerializableInterfaceMigrationRule"
+      ]
+    },
+    {
+      "name": "FirstOpenedByOwner",
+      "type": "bool",
+      "rule": "PrimitiveTypeMigrationRule",
+      "ruleArguments": [
+        ""
+      ]
+    },
+    {
+      "name": "TreasureMap",
+      "type": "Server.Items.TreasureMap",
+      "rule": "SerializableInterfaceMigrationRule"
+    }
+  ]
+}

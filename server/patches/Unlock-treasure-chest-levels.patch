@@ -1,0 +1,21 @@
+--- a/Projects/UOContent/Spells/Third/Unlock.cs
++++ b/Projects/UOContent/Spells/Third/Unlock.cs
+@@ -62,8 +62,17 @@
+                 else
+                 {
+                     var level = (int)(Caster.Skills.Magery.Value * 0.8) - 4;
++                    var reqSkill = cont.RequiredSkill;
+ 
+-                    if (level >= cont.RequiredSkill &&
++                    // cc-P127: ServUO Unlock.cs:85-96. A revamp chest up to Cache takes the caster's full Magery
++                    // against 50 (Stash), 80 (Supply) or 100 (Cache); Hoard and Trove stay beyond the spell.
++                    if (cont is TreasureMapChest { Level: <= 2 } tChest && TreasureMapInfo.NewSystem)
++                    {
++                        level = (int)Caster.Skills.Magery.Value;
++                        reqSkill = tChest.Level switch { 1 => 80, 2 => 100, _ => 50 };
++                    }
++
++                    if (level >= reqSkill &&
+                         !(cont is TreasureMapChest chest && chest.Level > 2))
+                     {
+                         cont.Locked = false;
