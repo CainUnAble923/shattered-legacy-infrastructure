@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Skills/SkillCheck.cs
++++ b/Projects/UOContent/Skills/SkillCheck.cs
+@@ -240,7 +240,9 @@
+             return;
+         }
+ 
+-        if (skill.SkillName == SkillName.Focus && from is BaseCreature)
++        // Shattered Legacy (cc-P130): a pet in training gains Focus (ServUO SkillCheck.cs:372-374).
++        if (skill.SkillName == SkillName.Focus && from is BaseCreature focusCreature &&
++            (!PetTrainingHelper.Enabled || !focusCreature.Controlled))
+         {
+             return;
+         }

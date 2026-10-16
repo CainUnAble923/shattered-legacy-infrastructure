@@ -332,7 +332,7 @@ public class CC6Batch2CreatureVerification
         Assert.Equal(FoodType.FruitsAndVeggies, ruddy.FavoriteFood);
 
         var plains = new HighPlainsBoura();
-        Assert.Equal(3, plains.ControlSlots);
+        Assert.Equal(2, plains.ControlSlots); // cc-P130 (2026-10-16): the constructor's 3 clamps to HighPlainsBoura's definition minimum 2 (ServUO BaseCreature.cs:3843-3861)
         Assert.Equal(47.1, plains.MinTameSkill);
         Assert.Equal(22, plains.Hides);
         Assert.Equal(HideType.Horned, plains.HideType);
@@ -405,7 +405,7 @@ public class CC6Batch2CreatureVerification
 
         var stone = new StoneSlith();
         Assert.True(stone.Tamable);
-        Assert.Equal(2, stone.ControlSlots);
+        Assert.Equal(1, stone.ControlSlots); // cc-P130 (2026-10-16): the constructor's 2 clamps to StoneSlith's definition minimum 1 (ServUO BaseCreature.cs:3843-3861)
         Assert.Equal(65.1, stone.MinTameSkill);
         Assert.Same(WeaponAbility.BleedAttack, stone.GetWeaponAbility());
         Assert.Equal(HideType.Spined, stone.HideType);

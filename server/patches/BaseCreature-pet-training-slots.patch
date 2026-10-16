@@ -1,0 +1,81 @@
+--- a/Projects/UOContent/Mobiles/BaseCreature.cs
++++ b/Projects/UOContent/Mobiles/BaseCreature.cs
+@@ -502,8 +502,10 @@
+ 
+         private bool ShouldSerializeSummonEnd() => _summoned;
+ 
++        // Shattered Legacy (cc-P130): Pet Training computes the slot range on the first assignment, as ServUO's
++        // hand-written setter does (BaseCreature.cs:3843-3861). BaseCreature.PetTraining.cs holds OnControlSlotsChanged.
+         [EncodedInt]
+-        [SerializableField(23)]
++        [SerializableField(23, fieldChanged: nameof(OnControlSlotsChanged))]
+         [SaveFlag(nameof(ShouldSerializeControlSlots), nameof(ControlSlotsDefaultValue))]
+         [SerializedCommandProperty(AccessLevel.Administrator)]
+         private int _controlSlots = 1;
+@@ -5011,6 +5013,7 @@
+             }
+ 
+             HitsMaxSeed = Utility.RandomMinMax(min, max);
++            PetTrainingHooks.SetAverage(this, min, max, HitsMaxSeed); // Shattered Legacy (cc-P130): ServUO :5078
+             Hits = HitsMax;
+         }
+ 
+@@ -5023,6 +5026,7 @@
+         public void SetStam(int min, int max)
+         {
+             StamMaxSeed = Utility.RandomMinMax(min, max);
++            PetTrainingHooks.SetAverage(this, min, max, StamMaxSeed); // Shattered Legacy (cc-P130): ServUO :5091
+             Stam = StamMax;
+         }
+ 
+@@ -5035,6 +5039,7 @@
+         public void SetMana(int min, int max)
+         {
+             ManaMaxSeed = Utility.RandomMinMax(min, max);
++            PetTrainingHooks.SetAverage(this, min, max, ManaMaxSeed); // Shattered Legacy (cc-P130): ServUO :5104
+             Mana = ManaMax;
+         }
+ 
+@@ -5047,6 +5052,7 @@
+         public void SetStr(int min, int max)
+         {
+             RawStr = Utility.RandomMinMax(min, max);
++            PetTrainingHooks.SetAverage(this, min, max, RawStr); // Shattered Legacy (cc-P130): ServUO :5117
+             Hits = HitsMax;
+         }
+ 
+@@ -5059,6 +5065,7 @@
+         public void SetDex(int min, int max)
+         {
+             RawDex = Utility.RandomMinMax(min, max);
++            PetTrainingHooks.SetAverage(this, min, max, RawDex); // Shattered Legacy (cc-P130): ServUO :5130
+             Stam = StamMax;
+         }
+ 
+@@ -5071,6 +5078,7 @@
+         public void SetInt(int min, int max)
+         {
+             RawInt = Utility.RandomMinMax(min, max);
++            PetTrainingHooks.SetAverage(this, min, max, RawInt); // Shattered Legacy (cc-P130): ServUO :5143
+             Mana = ManaMax;
+         }
+ 
+@@ -5113,7 +5121,9 @@
+ 
+         public void SetResistance(ResistanceType type, int min, int max)
+         {
+-            SetResistance(type, Utility.RandomMinMax(min, max));
++            var val = Utility.RandomMinMax(min, max);
++            PetTrainingHooks.SetAverage(this, min, max, val); // Shattered Legacy (cc-P130): ServUO :5182
++            SetResistance(type, val);
+         }
+ 
+         public void SetResistance(ResistanceType type, int val)
+@@ -5172,6 +5182,7 @@
+             var maxFixed = (int)(max * 10);
+ 
+             Skills[name].BaseFixedPoint = Utility.RandomMinMax(minFixed, maxFixed);
++            PetTrainingHooks.SetAverage(this, min, max, Skills[name].Base); // Shattered Legacy (cc-P130): ServUO :5234
+ 
+             if (Skills[name].Base > Skills[name].Cap)
+             {

@@ -96,6 +96,18 @@ public partial class CrimsonDrake : BaseCreature, IElementalCreature
         SetSpecialAbility(SpecialAbility.DragonBreath);
     }
 
+    // cc-P130: ServUO CrimsonDrake.cs:98-117, a poison drake's own training definition: the table's row with
+    // AreaEffectArea2 in place of AreaEffectArea1 (PetTrainingHelper.GetTrainingDefinition asks the creature first).
+    private static TrainingDefinition _poisonDrakeDefinition;
+
+    public override TrainingDefinition TrainingDefinition =>
+        ElementType == ElementType.Poison
+            ? _poisonDrakeDefinition ??= new TrainingDefinition(
+                typeof(CrimsonDrake), Class.None, MagicalAbility.Dragon2, PetTrainingHelper.SpecialAbilityNone,
+                PetTrainingHelper.WepAbility2, PetTrainingHelper.AreaEffectArea2, 2, 5
+            )
+            : base.TrainingDefinition;
+
     public override string CorpseName => "a crimson drake corpse";
     public override string DefaultName => "Crimson Drake";
 

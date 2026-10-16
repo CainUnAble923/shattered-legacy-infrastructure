@@ -335,7 +335,7 @@ public class CC6Batch1CreatureVerification
 
         var skree = new Skree();
         Assert.True(skree.Tamable);
-        Assert.Equal(4, skree.ControlSlots);
+        Assert.Equal(3, skree.ControlSlots); // cc-P130 (2026-10-16): the constructor's 4 clamps to Skree's definition minimum 3 (ServUO BaseCreature.cs:3843-3861)
         Assert.Equal(95.1, skree.MinTameSkill);
         Assert.Equal(AIType.AI_Mage, skree.AI); // deviation: ServUO AI_Mystic
         Assert.True(skree.Skills.Mysticism.Value >= 80);

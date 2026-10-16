@@ -328,8 +328,39 @@ public class AbilityProfile
             AddMagicalAbility(magical);
         }
 
-        // ServUO then raises the skills and adds the weapon abilities the ability's TrainingPoint requires (:248-270).
-        // Training points arrive with P130.
+        // ServUO AbilityProfile.cs:248-270 (cc-P130): the skills and weapon abilities the ability's TrainingPoint requires.
+        var trainPoint = PetTrainingHelper.GetTrainingPoint(newAbility);
+
+        if (trainPoint?.Requirements != null)
+        {
+            foreach (var req in trainPoint.Requirements)
+            {
+                if (req == null)
+                {
+                    continue;
+                }
+
+                if (req.Requirement is SkillName skillName)
+                {
+                    var skill = Creature.Skills[skillName].Base;
+                    double toAdd = req.Cost == 100 ? 20 : 40;
+
+                    if (skillName == SkillName.Hiding)
+                    {
+                        toAdd = 100;
+                    }
+
+                    if (skill < toAdd)
+                    {
+                        Creature.Skills[skillName].Base = toAdd;
+                    }
+                }
+                else if (req.Requirement is WeaponAbility weaponAbility)
+                {
+                    AddAbility(weaponAbility);
+                }
+            }
+        }
     }
 
     public void AddPetAdvancement(object o)

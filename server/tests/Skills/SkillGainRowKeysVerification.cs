@@ -65,7 +65,8 @@ public class SkillGainRowKeysVerification
         // Animal Lore (0, 120) on a creature; past 120 the creature's tame window (Taming's, no owners).
         { "Skills/AnimalLore.cs", "from.CheckTargetSkill(SkillName.AnimalLore, c, 0.0, 120.0)", 1, 1 },
         { "Skills/AnimalTaming.cs", "m_Tamer.CheckTargetSkill(SkillName.AnimalLore, m_Creature, 0.0, 120.0);", 2, 2 },
-        { "Skills/AnimalTaming.cs", "var minSkill = m_Creature.MinTameSkill + m_Creature.Owners.Count * 6.0;", 1, 1 },
+        // cc-P130 (2026-10-16): AnimalTaming-pet-training.patch reads CurrentTameSkill here (ServUO AnimalTaming.cs:402).
+        { "Skills/AnimalTaming.cs", "var minSkill = m_Creature.CurrentTameSkill + m_Creature.Owners.Count * 6.0;", 1, 1 },
         { "Skills/AnimalTaming.cs", "minSkill += 24.9;", 1, 1 },
         {
             "Skills/AnimalTaming.cs",

@@ -655,6 +655,26 @@ apply_patch "$PATCHES/CraftItem-plant-hue-tables.patch"
 # CCP129CreatureVerification (the parrot facts).
 apply_patch "$PATCHES/ParrotPerchAddon-pet-parrot.patch"
 
+# cc-P130: Pet Training part 2, training itself (decision 2a again: the training state lives in
+# customizations/Services/Pet Training/PetTrainingStore.cs, its own save file; BaseCreature's save format is untouched).
+# Five seams, each where ServUO has the same line:
+#   BaseCreature: `fieldChanged:` on the ControlSlots field (the generator calls OnControlSlotsChanged, in
+#     BaseCreature.PetTraining.cs, where ServUO's hand-written setter computes the slot range on a constructor's
+#     assignment, :3843-3861) and SetAverage in the eight min/max setters (:5078-5234), which is what decides a slot
+#     lowering. A partial class cannot reach a generated setter or the bodies of SetHits and its kin, so it is a patch.
+#   AnimalTaming: CurrentTameSkill in place of MinTameSkill at both checks (a trained pet asks for more, :184, :402)
+#     and PetTrainingHooks.OnTamed after the tame (OnAfterTame and the profile's OnTame, :450-457).
+#   AnimalLore: the training lore gump for a player while training is on, one at a time (:17-20, :36-42).
+#   SkillCheck: a pet in training gains Focus (:372-374).
+#   BaseWeapon: TryGetWeaponAbility, the trained weapon ability before the natural one (:1692), the seam cc-P121 left.
+# They apply last, after every patch above (their context is the fully patched tree). Alternatives argued in
+# shard-migration/notes/cc-P130-pet-training.md; pinned by PetTrainingVerification.
+apply_patch "$PATCHES/BaseCreature-pet-training-slots.patch"
+apply_patch "$PATCHES/AnimalTaming-pet-training.patch"
+apply_patch "$PATCHES/AnimalLore-pet-training-gump.patch"
+apply_patch "$PATCHES/SkillCheck-pet-focus-gain.patch"
+apply_patch "$PATCHES/BaseWeapon-trained-weapon-ability.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

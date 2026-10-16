@@ -372,7 +372,7 @@ public class CC6Batch3CreatureVerification
 
         var spider = new WolfSpider();
         Assert.True(spider.Tamable);
-        Assert.Equal(2, spider.ControlSlots);
+        Assert.Equal(1, spider.ControlSlots); // cc-P130 (2026-10-16): the constructor's 2 clamps to GiantSpider's definition minimum 1 (ServUO BaseCreature.cs:3843-3861)
         Assert.Equal(59.1, spider.MinTameSkill);
         Assert.Equal(PackInstinct.Arachnid, spider.PackInstinct);
         Assert.Same(Poison.Regular, spider.HitPoison);

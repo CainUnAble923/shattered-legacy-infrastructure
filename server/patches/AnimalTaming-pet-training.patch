@@ -1,0 +1,30 @@
+--- a/Projects/UOContent/Skills/AnimalTaming.cs
++++ b/Projects/UOContent/Skills/AnimalTaming.cs
+@@ -181,7 +181,7 @@
+                     return;
+                 }
+ 
+-                if (!(CheckMastery(from, creature) || from.Skills.AnimalTaming.Value >= creature.MinTameSkill))
++                if (!(CheckMastery(from, creature) || from.Skills.AnimalTaming.Value >= creature.CurrentTameSkill)) // Shattered Legacy (cc-P130): a trained pet asks for more (ServUO :184)
+                 {
+                     // You have no chance of taming this creature.
+                     creature.PrivateOverheadMessage(MessageType.Regular, 0x3B2, 502806, from.NetState);
+@@ -393,7 +393,7 @@
+                             m_Tamer.CheckTargetSkill(SkillName.AnimalLore, m_Creature, 0.0, 120.0);
+                         }
+ 
+-                        var minSkill = m_Creature.MinTameSkill + m_Creature.Owners.Count * 6.0;
++                        var minSkill = m_Creature.CurrentTameSkill + m_Creature.Owners.Count * 6.0; // Shattered Legacy (cc-P130): ServUO :402
+ 
+                         if (minSkill > -24.9 && CheckMastery(m_Tamer, m_Creature))
+                         {
+@@ -442,6 +442,9 @@
+ 
+                             m_Creature.SetControlMaster(m_Tamer);
+                             m_Creature.IsBonded = false;
++
++                            // Shattered Legacy (cc-P130): OnAfterTame and the profile's OnTame (ServUO :450-457).
++                            PetTrainingHooks.OnTamed(m_Creature, m_Tamer);
+                             m_Creature.ControlTarget = m_Tamer;
+                             m_Creature.ControlOrder = OrderType.Follow;
+                         }

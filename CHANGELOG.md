@@ -29,6 +29,21 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.16.4
+
+### Added
+- Pet training. Use Animal Lore on a pet you control and press Begin Animal Training: from then on its battles against wild creatures fill a training bar (the pet says how much it learned from each kill, and the first hour of fighting each day counts double). When the bar is full, Pet Training Options opens the animal training menu: spend the pet's training points on strength, dexterity, intelligence, hits, stamina, mana, regeneration, base damage, the five resistances, higher skill caps (with the matching power scroll in your pack), magical schools, special abilities, special moves and area effects, each with its cost and its limits. Every pet starts at the minimum control slots for its kind and rises one slot per training level up to its maximum, asking for more Animal Taming as it goes; a real-time tracker shows every pet in training, and a planning mode lets you line choices up before spending.
+- Animal Lore's gump has new pages: regeneration, all of a pet's skills with their caps, its pet slots (current and maximum) and the taming skill it asks for, its abilities, and the advancements it has trained.
+- Animal trainers mention the new taming techniques when you walk up.
+
+### Changed
+- Tameable creatures use the Time of Legends control slots: a dragon is 4 slots (5 fully trained), a white wyrm 4, a nightmare 3, a bear 1 (3 fully trained), and so on through every tameable. Pets already in the world that sat below their kind's new minimum were raised to it once, at the first start on this version.
+- A pet that has been trained needs the Animal Taming its training raised it to, not its wild requirement, to be tamed again.
+- A pet's trained special moves (Armor Ignore, Bleed Attack, Dismount and the rest) are the ones it uses in combat; pets in training gain Focus.
+
+### Staff
+- `[PetTrainTest <type>` spawns a tamed, bonded pet of that type at your feet, its skills scaled as a tame's are. `[add PetTrainingGate` (a pet in training that crosses it is instantly ready to train), `[add PetBondRemoveGate` (bonds a pet at once) and `[add PowerScrollGiver` (a bag of 120 power scrolls for every trainable skill) are the testing items.
+
 ## 2026.10.16.3
 
 ### Added

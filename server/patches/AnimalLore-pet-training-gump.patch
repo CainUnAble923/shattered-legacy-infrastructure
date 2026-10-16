@@ -1,0 +1,28 @@
+--- a/Projects/UOContent/Skills/AnimalLore.cs
++++ b/Projects/UOContent/Skills/AnimalLore.cs
+@@ -15,6 +15,13 @@
+ 
+         public static TimeSpan OnUse(Mobile m)
+         {
++            // Shattered Legacy (cc-P130): one training lore gump at a time (ServUO AnimalLore.cs:17-20).
++            if (PetTrainingHelper.Enabled && m.HasGump<NewAnimalLoreGump>())
++            {
++                m.SendLocalizedMessage(500118); // You must wait a few moments to use another skill.
++                return TimeSpan.FromSeconds(1.0);
++            }
++
+             m.Target = new InternalTarget();
+ 
+             m.SendLocalizedMessage(500328); // What animal should I look at?
+@@ -60,6 +67,11 @@
+                 {
+                     from.SendLocalizedMessage(500334); // You can't think of anything you know offhand.
+                 }
++                else if (PetTrainingHelper.Enabled && from is PlayerMobile pm)
++                {
++                    // Shattered Legacy (cc-P130): the training lore gump, a second on (ServUO AnimalLore.cs:36-42).
++                    Timer.DelayCall(TimeSpan.FromSeconds(1), () => pm.SendGump(new NewAnimalLoreGump(pm, c)));
++                }
+                 else
+                 {
+                     AnimalLoreGump.DisplayTo(from, c);

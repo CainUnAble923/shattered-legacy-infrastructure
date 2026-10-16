@@ -90,6 +90,18 @@ public partial class PlatinumDrake : BaseCreature, IElementalCreature
         PackReg(3);
     }
 
+    // cc-P130: ServUO PlatinumDrake.cs:98-117, a poison drake's own training definition: the table's row with
+    // AreaEffectArea2 in place of AreaEffectArea1 (PetTrainingHelper.GetTrainingDefinition asks the creature first).
+    private static TrainingDefinition _poisonDrakeDefinition;
+
+    public override TrainingDefinition TrainingDefinition =>
+        ElementType == ElementType.Poison
+            ? _poisonDrakeDefinition ??= new TrainingDefinition(
+                typeof(PlatinumDrake), Class.None, MagicalAbility.Dragon2, PetTrainingHelper.SpecialAbilityNone,
+                PetTrainingHelper.WepAbility2, PetTrainingHelper.AreaEffectArea2, 2, 5
+            )
+            : base.TrainingDefinition;
+
     public override string CorpseName => "a platinum drake corpse";
     public override string DefaultName => "Platinum Drake";
 

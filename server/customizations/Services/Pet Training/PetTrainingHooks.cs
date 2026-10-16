@@ -132,7 +132,45 @@ public static class PetTrainingHooks
         if (from is BaseCreature || m is BaseCreature)
         {
             SpecialAbility.CheckCombatTrigger(from, m, ref totalDamage, type);
+
+            // cc-P130: ServUO Misc/AOS.cs:330-352. Training progress for a pet that hit or was hit by a creature, and a
+            // customized pet's damage to a player halved.
+            if (PetTrainingHelper.Enabled)
+            {
+                if (from is BaseCreature attacker && m is BaseCreature defender)
+                {
+                    attacker.TrainingProfile?.CheckProgress(defender);
+
+                    var profile = defender.TrainingProfile;
+
+                    if (profile != null && 0.3 > Utility.RandomDouble())
+                    {
+                        profile.CheckProgress(attacker);
+                    }
+                }
+
+                if (from is BaseCreature { Controlled: true } pet && m.Player &&
+                    PetTrainingHelper.GetAbilityProfile(pet)?.HasCustomized() == true)
+                {
+                    totalDamage /= 2;
+                }
+            }
         }
+    }
+
+    // -- cc-P130: training ------------------------------------------------------------------------------------------
+
+    /// <summary>Pinned's SetHits/SetStam/SetMana/SetStr/SetDex/SetInt/SetResistance/SetSkill(min, max) call this (the patch).</summary>
+    public static void SetAverage(BaseCreature bc, double min, double max, double value) => bc.SetAverage(min, max, value);
+
+    /// <summary>
+    /// Pinned's AnimalTaming calls this after a successful tame (the patch), where ServUO calls OnAfterTame and the
+    /// profile's OnTame (AnimalTaming.cs:450-457).
+    /// </summary>
+    public static void OnTamed(BaseCreature bc, Mobile tamer)
+    {
+        bc.OnAfterTame(tamer);
+        PetTrainingHelper.GetAbilityProfile(bc, true).OnTame();
     }
 
     /// <summary>The debuffs' penalties, where ServUO's AosAttributes.GetValue applies them (Misc/AOS.cs:699-817).</summary>

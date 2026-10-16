@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Items/Weapons/BaseWeapon.cs
++++ b/Projects/UOContent/Items/Weapons/BaseWeapon.cs
+@@ -870,7 +870,8 @@
+ 
+                 // Only change direction if they are not a player.
+                 attacker.Direction = attacker.GetDirectionTo(defender);
+-                var ab = bc.GetWeaponAbility();
++                // Shattered Legacy (cc-P130): a trained weapon ability first (ServUO BaseWeapon.cs:1692).
++                var ab = bc.TryGetWeaponAbility();
+ 
+                 if (ab != null)
+                 {
