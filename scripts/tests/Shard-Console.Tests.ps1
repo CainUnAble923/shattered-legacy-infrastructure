@@ -5500,8 +5500,8 @@ function New-P125View {
 }
 $p125Cfg = Get-ConsoleConfig -RepoRoot $repo
 $p125Cfg.Autopilot = New-AutopilotConfig 'D:\UO\golem' 'D:\UO\cc-prompts\queue' -Kind golem
-$p125Facts = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; Present = @{}; Running = 'P125'; StatusText = (New-P125Status) }
-foreach ($f in @($p125Cfg.Autopilot.LongRunStart, $p125Cfg.Autopilot.LongRunEnd, $p125Cfg.Autopilot.WrapUp, $p125Cfg.Autopilot.StopPoint)) { if ($f) { $p125Facts.Present[$f] = $true } }
+$p125Facts = [pscustomobject]@{ EmailConfigured = $true; CredStored = $true; LogExists = $true; Present = @{}; Running = 'P125'; StatusText = (New-P125Status); Enabled = $true; QueueNames = @('cc-P126-a.md'); SettingsText = $null; Extra = $null }
+foreach ($f in @($p125Cfg.Autopilot.LongRunStart, $p125Cfg.Autopilot.LongRunEnd, $p125Cfg.Autopilot.WrapUp, $p125Cfg.Autopilot.StopPoint, $p125Cfg.Autopilot.WakeScript, $p125Cfg.Autopilot.AutoWakeScript, $p125Cfg.Autopilot.NightShiftScript, $p125Cfg.Autopilot.CliCheckScript)) { if ($f) { $p125Facts.Present[$f] = $true } }
 
 Fact 'P125_APromptParsesItsTitleModelKindAndFirstParagraph' {
     $i = Get-PromptInfo 'cc-P125-golem-long-run-toggle.md' $p125Prompt
@@ -5616,8 +5616,9 @@ Fact 'P125_WrapUpAndStoppingPointAskThePhraseAndToggleToCancel' {
     $t = @(Get-ActionPlan -Action 'golem.stoppoint' -Config $p125Cfg -AutopilotFacts $told)
     Assert-True (@($t | Where-Object { $_.Kind -eq 'say' -and $_.Text -match 'already been told' }).Count -eq 1) 'cancelling after CC was told says it changes nothing'
     foreach ($pl in @($p, $c, $s, $t)) { Assert-Equal 0 @(Test-PlanSafety $pl $p125Cfg).Count (@(Test-PlanSafety $pl $p125Cfg) -join '; ') }
-    $r = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts $p125Facts)
-    Assert-True ($r[0].Kind -eq 'refuse' -and $r[0].Text -match 'P131') 'Resume waits for P131'
+    # cc-P131: Wake the Golem (CC session) exists now; with P125 running in a live session it refuses for that reason.
+    $r = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts $p125Facts -Now $p125Now)
+    Assert-True ($r[0].Kind -eq 'refuse' -and $r[0].Text -match 'P125 is running') ('the wake refuses while P125 runs: ' + $r[0].Text)
 }
 
 Fact 'P125_TheGolemHookItselfIsStillNeverRunFromTheConsole' {
@@ -5637,11 +5638,227 @@ Fact 'P125_TheGolemTabHasTheNewButtonsTheListsAndAGreyResume' {
         Assert-Equal 9 @($script:ui.AutopilotButtons).Count 'the Golem group is unchanged'
         $tips = Get-ConsoleTooltips
         foreach ($k in @($tags) + @('golem.resume', 'golem.cap', 'golem.until', 'golemQueue', 'golemPreview', 'golemFinished', 'golem.openprompt', 'golem.opennotes')) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
+        # cc-P131: the wake button is real now; it is dark while the fixture's P125 runs in a live session.
         $res = $script:ui.GolemResume
-        Assert-True ($null -ne $res -and -not $res.Enabled -and $res.Text -match 'needs P131') 'Resume Golem is shown, disabled, needs P131'
+        Assert-True ($null -ne $res -and -not $res.Enabled -and $res.Text -eq 'Wake the Golem (CC session)') 'Wake the Golem (CC session) is shown and dark while P125 runs'
         Assert-True ($null -ne $script:ui.LongRunCap -and $null -ne $script:ui.LongRunUntil) 'the cap and end-time boxes'
         Assert-True ($null -ne $script:ui.GolemQueueList -and $null -ne $script:ui.GolemPreview -and $null -ne $script:ui.GolemFinishedList) 'the queue, its preview and the finished list'
         Assert-True ($script:ui.GolemPreview.ReadOnly) 'the preview is read-only'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
+# --- cc-P131: waking a CC session from the console, self-wake and the night shift, resting said plainly -------------------
+# Status texts carry the Golem's new fields; the plans point at D:\UO\golem's scripts; nothing is run and no CLI is touched
+# (the CLI facts are given to the plan, never looked up here).
+
+function New-P131Status {
+    # New-P125Status plus the cc-P131 fields (readyAt local 's', readyHow, stoppedPrompt, autoWake, nightShift, cli).
+    param([string]$State = 'RUNNING', [string]$Current = 'P125', [string]$RestReason = '', [string]$RestAfter = '', [string]$WaitingFor = '',
+        $ReadyAt = $null, [string]$ReadyHow = '', [string]$StoppedPrompt = '', [string]$NeedsYou = '', [bool]$AutoWake = $true, $NightShift = $null, $Cli = $null, $WakePending = $null)
+    $j = (New-P125Status -State $(if ($State -in @('RESTING', 'STOPPED')) { 'IDLE' } else { $State }) -Current $Current -RestReason $RestReason -RestAfter $RestAfter -WaitingFor $WaitingFor) | ConvertFrom-Json
+    $j.state = $State
+    $j.needsYou = $NeedsYou
+    $j | Add-Member -NotePropertyName readyAt -NotePropertyValue $(if ($ReadyAt) { ([datetime]$ReadyAt).ToString('s') } else { $null }) -Force
+    $j | Add-Member -NotePropertyName readyHow -NotePropertyValue $ReadyHow -Force
+    $j | Add-Member -NotePropertyName stoppedPrompt -NotePropertyValue $StoppedPrompt -Force
+    $j | Add-Member -NotePropertyName autoWake -NotePropertyValue $AutoWake -Force
+    $j | Add-Member -NotePropertyName wakePending -NotePropertyValue $WakePending -Force
+    $j | Add-Member -NotePropertyName lastSelfWake -NotePropertyValue $null -Force
+    $j | Add-Member -NotePropertyName nightShift -NotePropertyValue $NightShift -Force
+    $j | Add-Member -NotePropertyName cli -NotePropertyValue $Cli -Force
+    $j | ConvertTo-Json -Depth 5
+}
+$p131Night = [ordered]@{ enabled = $true; start = '22:30'; end = '06:30'; next = $p125Now.Date.AddHours(22).AddMinutes(30).ToString('s'); until = $p125Now.Date.AddDays(1).AddHours(6).AddMinutes(30).ToString('s'); whyNot = ''; running = $false }
+$p131Settings = '{ "progressEmails": true, "maxPerRun": 12, "stallMinutes": 45, "autoWake": true, "nightShiftEnabled": true, "nightShiftStart": "22:30", "nightShiftEnd": "06:30" }'
+$p131Prompt = "# CC task P126: a thing`n`n**Model:** Opus`n`nWritten by the overseer.`n`n**Kind:** small.`n"
+function New-P131Facts {
+    param([bool]$Enabled = $true, $Queue = @('cc-P126-a.md'), [string]$Running = '', [string]$StatusText = (New-P131Status -State 'IDLE' -Current ''),
+        [string]$SettingsText = $p131Settings, $CliCheck = ([pscustomobject]@{ Path = 'C:\Users\x\.local\bin\claude.exe'; SignedIn = $true; Note = '' }), [string]$WakeModel = '', [string]$NightStart = '', [string]$NightEnd = '')
+    $f = [pscustomobject]@{ Enabled = $Enabled; EmailConfigured = $true; CredStored = $true; LogExists = $true; Present = @{}; Running = $Running; StatusText = $StatusText
+        SettingsText = $SettingsText; QueueNames = $Queue; Extra = ([pscustomobject]@{ PromptTexts = @{ 'cc-P126-a.md' = $p131Prompt }; TreeClean = $null })
+        CliCheck = $CliCheck; WakeModel = $WakeModel; NightStart = $NightStart; NightEnd = $NightEnd; OpenFile = '' }
+    $ap = $p125Cfg.Autopilot
+    foreach ($s in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript)) { if ($s) { $f.Present[$s] = $true } }
+    $f
+}
+function Get-P131Window($plan) { $w = @($plan | Where-Object { $_.Kind -eq 'window' }); if ($w.Count) { Format-CommandLine $w[0].Exe $w[0].Arguments } else { '' } }
+
+Fact 'P131_WakeTheGolemAsksThePhraseAndRunsWakeGolemWithTheModel' {
+    $p = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts (New-P131Facts -WakeModel 'Fable'))
+    Assert-Equal 'wake the golem' (@($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase)
+    $c = @($p | Where-Object { $_.Kind -eq 'confirm' })[0].Text
+    Assert-True ($c.Contains('claude --model fable --permission-mode auto --name "Golem P126" "Golem, please work on the shard tasks."')) ('the confirm shows the command line it will run: ' + $c)
+    Assert-True ($c -match 'never skipped') 'and says what happens to a prompt mid-run when the window is closed'
+    Assert-Equal 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\UO\golem\Wake-Golem.ps1 -Model Fable' (Get-P131Window $p)
+    Assert-Equal 0 @(Test-PlanSafety $p $p125Cfg).Count (@(Test-PlanSafety $p $p125Cfg) -join '; ')
+    Assert-True (@($p | Where-Object { $_.Kind -eq 'log' -and $_.Text -eq 'golem.resume' }).Count -eq 1) 'logged'
+    # No model picked: the next prompt's Model line (P126 asks for Opus).
+    $p2 = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts (New-P131Facts))
+    Assert-True ((Get-P131Window $p2).EndsWith('Wake-Golem.ps1 -Model Opus')) ('the prompt''s model: ' + (Get-P131Window $p2))
+    Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts (New-P131Facts -WakeModel 'Haiku')))[0].Kind 'an unknown model is refused'
+}
+
+Fact 'P131_WakeTheGolemRefusesForEachReasonWithItsReasonOnScreen' {
+    $cases = @(
+        @{ Name = 'off';          Facts = (New-P131Facts -Enabled $false);                                                                                  Want = 'The Golem is off' },
+        @{ Name = 'queue empty';  Facts = (New-P131Facts -Queue @());                                                                                       Want = 'The queue is empty' },
+        @{ Name = 'running';      Facts = (New-P131Facts -Running 'P125' -StatusText (New-P131Status));                                                    Want = 'P125 is running in a CC session' },
+        @{ Name = 'no CLI';       Facts = (New-P131Facts -CliCheck ([pscustomobject]@{ Path = ''; SignedIn = $null; Note = 'not installed' }));              Want = 'not installed' },
+        @{ Name = 'not signed';   Facts = (New-P131Facts -CliCheck ([pscustomobject]@{ Path = 'C:\x\claude.exe'; SignedIn = $false; Note = 'not signed in' })); Want = 'is not signed in' }
+    )
+    foreach ($c in $cases) {
+        $p = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts $c.Facts -Now $p125Now)
+        Assert-Equal 'refuse' $p[0].Kind ($c.Name + ': refused')
+        Assert-True ($p[0].Text.Contains($c.Want)) ($c.Name + ': says why: ' + $p[0].Text)
+        Assert-Equal 0 @($p | Where-Object { $_.Kind -eq 'window' }).Count ($c.Name + ': nothing opened')
+    }
+    # A prompt whose session has gone quiet past stallMinutes (closed?) is handed again, said so.
+    $quiet = (New-P131Status) | ConvertFrom-Json
+    $quiet.lastActivityUtc = $p125Now.ToUniversalTime().AddMinutes(-90).ToString('s'); $quiet.generatedAt = $p125Now.AddMinutes(-80).ToString('s')
+    $p = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts (New-P131Facts -Running 'P125' -StatusText ($quiet | ConvertTo-Json -Depth 5)) -Now $p125Now)
+    $cf = @($p | Where-Object { $_.Kind -eq 'confirm' })
+    Assert-True ($cf.Count -eq 1 -and $cf[0].Text -match 'P125 is the running prompt but its session has been quiet' -and $cf[0].Text -match 'nothing is skipped') ('quiet: handed again: ' + ($p | ForEach-Object { $_.Kind + ':' + $_.Text }) -join ' | ')
+    Assert-True ((Get-P131Window $p).EndsWith('-Model Opus')) 'and the window line is built'
+}
+
+Fact 'P131_TheSafetyCheckAllowsOnlyTheExactWakeAndToggleArguments' {
+    $ps = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File')
+    $ok = @(
+        @('D:\UO\golem\Wake-Golem.ps1', '-Model', 'Fable'), @('D:\UO\golem\Wake-Golem.ps1', '-Model', 'Opus'),
+        @('D:\UO\golem\Set-AutoWake.ps1', '-On'), @('D:\UO\golem\Set-AutoWake.ps1', '-Off'),
+        @('D:\UO\golem\Set-NightShift.ps1', '-Off'), @('D:\UO\golem\Set-NightShift.ps1', '-On', '-Start', '22:30', '-End', '06:30'),
+        @('D:\UO\golem\Check-Cli.ps1'))
+    foreach ($a in $ok) { $v = @(Test-PlanSafety @(New-PlanStep -Kind window -Exe 'powershell.exe' -Arguments ($ps + $a)) $p125Cfg); Assert-Equal 0 $v.Count (($a -join ' ') + ': ' + ($v -join '; ')) }
+    $bad = @(
+        @('D:\UO\golem\Wake-Golem.ps1'), @('D:\UO\golem\Wake-Golem.ps1', '-Model', 'Haiku'), @('D:\UO\golem\Wake-Golem.ps1', '-Model', 'Fable', '-Root', 'C:\x'),
+        @('D:\UO\golem\Set-AutoWake.ps1'), @('D:\UO\golem\Set-AutoWake.ps1', '-Maybe'),
+        @('D:\UO\golem\Set-NightShift.ps1', '-On'), @('D:\UO\golem\Set-NightShift.ps1', '-On', '-Start', 'tonight', '-End', '06:30'), @('D:\UO\golem\Set-NightShift.ps1', '-Off', '-Start', '22:30'),
+        @('D:\UO\golem\Check-Cli.ps1', '-Root', 'C:\x'))
+    foreach ($a in $bad) { Assert-True (@(Test-PlanSafety @(New-PlanStep -Kind window -Exe 'powershell.exe' -Arguments ($ps + $a)) $p125Cfg).Count -gt 0) (($a -join ' ') + ' is refused') }
+}
+
+Fact 'P131_StatusParsesRestingAndStoppedWithWhenItCanRunAgain' {
+    $s = ConvertFrom-AutopilotStatus (New-P131Status -State 'RESTING' -Current '' -RestReason 'usage limit' -RestAfter 'P125' -ReadyAt $p125Now.AddHours(2) -ReadyHow 'Ready at 11:45 AM (in 2 h 0 m)' -NightShift $p131Night -Cli ([ordered]@{ path = 'C:\x\claude.exe'; signedIn = $true; checkedUtc = $p125Now.ToUniversalTime().ToString('s'); note = '' }))
+    Assert-Equal 'RESTING' $s.State
+    Assert-True ($s.ReadyAt -eq $p125Now.AddHours(2) -and $s.ReadyAt.Kind -eq 'Local') ('readyAt as a local time: ' + $s.ReadyAt)
+    Assert-Equal 'Ready at 11:45 AM (in 2 h 0 m)' $s.ReadyHow
+    Assert-True ($s.NightShift.enabled -and $s.NightShift.start -eq '22:30' -and $s.Cli.signedIn) 'the night shift and the CLI are carried'
+    $t = ConvertFrom-AutopilotStatus (New-P131Status -State 'STOPPED' -Current '' -StoppedPrompt 'P125' -NeedsYou 'P125 stopped early: which layout?')
+    Assert-True ($t.State -eq 'STOPPED' -and $t.StoppedPrompt -eq 'P125' -and $null -eq $t.ReadyAt -and $t.AutoWake) ('stopped: ' + $t.State + ' / ' + $t.StoppedPrompt)
+    Assert-True ((ConvertFrom-AutopilotStatus (New-P125Status)).AutoWake) 'a cc-P125 status (no autoWake field) reads as on'
+}
+
+Fact 'P131_TheTileSaysRestingOrStoppedWithTheReasonAndACountdown' {
+    $x = [pscustomobject]@{ PromptTexts = @{}; TreeClean = $null }
+    $cases = @(
+        @{ S = (New-P131Status -State 'RESTING' -Current '' -RestReason 'usage limit' -RestAfter 'P125' -ReadyAt $p125Now.AddHours(2).AddMinutes(14) -ReadyHow 'Ready at 11:59 AM');
+           Word = 'RESTING'; Want = @('Paused: usage limit', 'ready in 2h 14m (11:59 AM)'); Color = 'amber' },
+        @{ S = (New-P131Status -State 'RESTING' -Current '' -RestReason 'usage limit' -RestAfter 'P125' -ReadyAt $p125Now.AddMinutes(-5) -ReadyHow 'Ready now');
+           Word = 'RESTING'; Want = @('ready now (since 9:40 AM)'); Color = 'amber' },
+        @{ S = (New-P131Status -State 'RESTING' -Current '' -RestReason 'run cap' -RestAfter 'P125' -ReadyHow 'Ready now: new session, then the phrase (a new run)');
+           Word = 'RESTING'; Want = @('Resting after P125 (run cap)', 'Ready now: new session, then the phrase (a new run)'); Color = 'gray' },
+        @{ S = (New-P131Status -State 'RESTING' -Current '' -RestReason 'context' -RestAfter 'P125' -ReadyHow 'Waking itself at 3:00 AM (the overnight bot has the working tree until 03:00)');
+           Word = 'RESTING'; Want = @('Resting after P125 (session full)', 'Waking itself at 3:00 AM'); Color = 'gray' },
+        @{ S = (New-P131Status -State 'RESTING' -Current '' -RestReason 'night shift ended' -RestAfter 'P125' -ReadyAt $p125Now.Date.AddHours(22).AddMinutes(30) -ReadyHow 'Next night shift 10:30 PM');
+           Word = 'RESTING'; Want = @('Resting after P125 (night shift ended)', 'ready in 12h 45m (10:30 PM)'); Color = 'gray' },
+        @{ S = (New-P131Status -State 'RESTING' -Current '' -RestReason 'bot window' -RestAfter 'P125' -ReadyAt $p125Now.AddMinutes(80) -ReadyHow 'Resumes at 03:00 by itself');
+           Word = 'RESTING'; Want = @('Resting after P125 (overnight bot window)', 'ready in 1h 20m'); Color = 'gray' },
+        @{ S = (New-P131Status -State 'STOPPED' -Current '' -StoppedPrompt 'P125' -NeedsYou 'P125 stopped early: which layout do you want?');
+           Word = 'STOPPED'; Want = @('P125 stopped early: which layout do you want?'); Color = 'amber' }
+    )
+    foreach ($c in $cases) {
+        $t = Get-AutopilotGlance -View (New-P125View $c.S $x) -Now $p125Now
+        Assert-Equal $c.Word $t.Word ($c.Want[0])
+        foreach ($w in $c.Want) { Assert-True ($t.Detail.Contains($w)) ($w + ' | tile: ' + $t.Detail) }
+        Assert-Equal $c.Color $t.Color ($c.Want[0])
+    }
+    # The panel: the ready line, the night shift line, self-wake and the CLI.
+    $st = (New-P131Status -State 'RESTING' -Current '' -RestReason 'usage limit' -RestAfter 'P125' -ReadyAt $p125Now.AddHours(2).AddMinutes(14) -ReadyHow 'Ready at 11:59 AM' -NightShift $p131Night -Cli ([ordered]@{ path = 'C:\x\claude.exe'; signedIn = $false; checkedUtc = $p125Now.ToUniversalTime().AddMinutes(-3).ToString('s'); note = 'not signed in' }))
+    $v = Get-AutopilotView -Enabled $true -StateText '{"current":"","currentFile":"","lastHandled":125}' -LogLines @() -QueueNames @('cc-P126-a.md') -Errors @() -StatusText $st -SettingsText $p131Settings -Kind golem -Extra $x
+    $lines = @(Format-AutopilotPanel -View $v -Config $p125Cfg -Now $p125Now | ForEach-Object { $_.Text })
+    Assert-True (@($lines | Where-Object { $_ -match '^ready     : ready in 2h 14m \(11:59 AM\)' }).Count -eq 1) ('the ready line: ' + (($lines | Where-Object { $_ -like 'ready*' }) -join ' | '))
+    Assert-True (@($lines | Where-Object { $_ -eq 'night     : Night shift: on, 22:30 to 06:30, next run tonight at 22:30' }).Count -eq 1) ('the night line: ' + (($lines | Where-Object { $_ -like 'night*' }) -join ' | '))
+    Assert-True (@($lines | Where-Object { $_ -eq 'self-wake : on' }).Count -eq 1) 'self-wake'
+    Assert-True (@($lines | Where-Object { $_ -match '^cli       : C:\\x\\claude\.exe, NOT signed in: run claude auth login' }).Count -eq 1) ('the cli line: ' + (($lines | Where-Object { $_ -like 'cli*' }) -join ' | '))
+    Assert-True (@($lines | Where-Object { $_ -match 'autoWake true, nightShift true 22:30 to 06:30' }).Count -eq 1) 'the settings line'
+}
+
+Fact 'P131_TheNightShiftLineSaysOnOffRunningOrWhyNot' {
+    $set = ConvertFrom-AutopilotSettings $p131Settings
+    $on = ConvertFrom-AutopilotStatus (New-P131Status -State 'IDLE' -Current '' -NightShift $p131Night)
+    Assert-Equal 'Night shift: on, 22:30 to 06:30, next run tonight at 22:30' (Get-NightShiftLine $on $set $p125Now)
+    $why = [ordered]@{} + $p131Night; $why.whyNot = 'the queue is empty'; $why.next = $p125Now.Date.AddDays(1).AddHours(22).AddMinutes(30).ToString('s')
+    Assert-Equal 'Night shift: on, 22:30 to 06:30, next run tomorrow at 22:30; will not run as things stand: the queue is empty' (Get-NightShiftLine (ConvertFrom-AutopilotStatus (New-P131Status -State 'IDLE' -Current '' -NightShift $why)) $set $p125Now)
+    $off = [ordered]@{} + $p131Night; $off.enabled = $false
+    Assert-Equal 'Night shift: off (22:30 to 06:30 when on)' (Get-NightShiftLine (ConvertFrom-AutopilotStatus (New-P131Status -State 'IDLE' -Current '' -NightShift $off)) $set $p125Now)
+    $run = [ordered]@{} + $p131Night; $run.running = $true
+    Assert-True ((Get-NightShiftLine (ConvertFrom-AutopilotStatus (New-P131Status -NightShift $run)) $set $p125Now) -match '^Night shift: running now, until \w{3} 06:30$') 'running'
+    # No status (a cc-P125 status.json): settings.json alone.
+    Assert-Equal 'Night shift: on, 22:30 to 06:30' (Get-NightShiftLine (ConvertFrom-AutopilotStatus (New-P125Status)) $set $p125Now)
+}
+
+Fact 'P131_WakeTheGolemLightsOnlyWhenTheGolemIsReady' {
+    $x = [pscustomobject]@{ PromptTexts = @{}; TreeClean = $null }
+    $view = { param($st, $en = $true, $q = @('cc-P126-a.md')) Get-AutopilotView -Enabled $en -StateText '{"current":"","currentFile":"","lastHandled":125}' -LogLines @() -QueueNames $q -Errors @() -StatusText $st -SettingsText $p131Settings -Kind golem -Extra $x }
+    Assert-True (Test-GolemWakeReady -View (& $view (New-P131Status -State 'IDLE' -Current '')) -Now $p125Now) 'idle with a queue: ready'
+    Assert-True (Test-GolemWakeReady -View (& $view (New-P131Status -State 'RESTING' -Current '' -RestReason 'run cap' -ReadyHow 'Ready now')) -Now $p125Now) 'resting, ready now: ready'
+    Assert-True (-not (Test-GolemWakeReady -View (& $view (New-P131Status -State 'RESTING' -Current '' -RestReason 'usage limit' -ReadyAt $p125Now.AddHours(1))) -Now $p125Now)) 'resting until later: not yet'
+    Assert-True (Test-GolemWakeReady -View (& $view (New-P131Status -State 'RESTING' -Current '' -RestReason 'usage limit' -ReadyAt $p125Now.AddHours(-1))) -Now $p125Now) 'the reset time passed: ready'
+    Assert-True (-not (Test-GolemWakeReady -View (& $view (New-P131Status)) -Now $p125Now)) 'P125 running in a live session: not ready'
+    $quiet = (New-P131Status) | ConvertFrom-Json; $quiet.lastActivityUtc = $p125Now.ToUniversalTime().AddMinutes(-90).ToString('s')
+    Assert-True (Test-GolemWakeReady -View (& $view ($quiet | ConvertTo-Json -Depth 5)) -Now $p125Now) 'running but quiet past stallMinutes: ready (handed again)'
+    Assert-True (-not (Test-GolemWakeReady -View (& $view (New-P131Status -State 'STOPPED' -Current '' -StoppedPrompt 'P125')) -Now $p125Now)) 'STOPPED: not ready (waits for Chase)'
+    Assert-True (-not (Test-GolemWakeReady -View (& $view (New-P131Status -State 'IDLE' -Current '') $false) -Now $p125Now)) 'the Golem off: not ready'
+    Assert-True (-not (Test-GolemWakeReady -View (& $view (New-P131Status -State 'IDLE' -Current '') $true @()) -Now $p125Now)) 'an empty queue: not ready'
+}
+
+Fact 'P131_TheTogglesRunTheirScriptsWithExactArgumentsAndAskThePhraseToTurnTheNightShiftOn' {
+    $onSet = $p131Settings
+    $offSet = '{ "progressEmails": true, "maxPerRun": 12, "stallMinutes": 45, "autoWake": false, "nightShiftEnabled": false, "nightShiftStart": "22:30", "nightShiftEnd": "06:30" }'
+    $a = @(Get-ActionPlan -Action 'golem.autowake' -Config $p125Cfg -AutopilotFacts (New-P131Facts -SettingsText $onSet))
+    Assert-True ((Get-P131Window $a).EndsWith('Set-AutoWake.ps1 -Off') -and @($a | Where-Object { $_.Kind -eq 'confirm' }).Count -eq 0) ('on -> off, no phrase: ' + (Get-P131Window $a))
+    $a2 = @(Get-ActionPlan -Action 'golem.autowake' -Config $p125Cfg -AutopilotFacts (New-P131Facts -SettingsText $offSet))
+    Assert-True ((Get-P131Window $a2).EndsWith('Set-AutoWake.ps1 -On')) ('off -> on: ' + (Get-P131Window $a2))
+    $n = @(Get-ActionPlan -Action 'golem.nightshift' -Config $p125Cfg -AutopilotFacts (New-P131Facts -SettingsText $onSet))
+    Assert-True ((Get-P131Window $n).EndsWith('Set-NightShift.ps1 -Off') -and @($n | Where-Object { $_.Kind -eq 'confirm' }).Count -eq 0) ('on -> off: ' + (Get-P131Window $n))
+    $n2 = @(Get-ActionPlan -Action 'golem.nightshift' -Config $p125Cfg -AutopilotFacts (New-P131Facts -SettingsText $offSet -NightStart '23:00' -NightEnd '05:30'))
+    Assert-Equal 'night shift on' (@($n2 | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase)
+    Assert-True ((Get-P131Window $n2).EndsWith('Set-NightShift.ps1 -On -Start 23:00 -End 05:30')) ('off -> on with the boxes: ' + (Get-P131Window $n2))
+    $n3 = @(Get-ActionPlan -Action 'golem.nightshift' -Config $p125Cfg -AutopilotFacts (New-P131Facts -SettingsText $offSet -NightStart 'tonight'))
+    Assert-Equal 'refuse' $n3[0].Kind 'a bad time is refused'
+    $c = @(Get-ActionPlan -Action 'golem.clicheck' -Config $p125Cfg -AutopilotFacts (New-P131Facts))
+    Assert-True ((Get-P131Window $c).EndsWith('Check-Cli.ps1')) ('the check: ' + (Get-P131Window $c))
+    foreach ($pl in @($a, $a2, $n, $n2, $c)) { Assert-Equal 0 @(Test-PlanSafety $pl $p125Cfg).Count (@(Test-PlanSafety $pl $p125Cfg) -join '; ') }
+}
+
+Fact 'P131_TheGolemTabHasTheWakeRowAndTheToggleLabelsFollowTheSettings' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        $tags = @($script:ui.GolemWakeButtons | ForEach-Object { $_.Tag })
+        Assert-Equal 'golem.resume,golem.autowake,golem.nightshift,golem.clicheck' ($tags -join ',') 'the wake row, in order'
+        Assert-Equal 'golem.longrun,golem.endlongrun,golem.wrapup,golem.stoppoint' (@($script:ui.GolemRunButtons | ForEach-Object { $_.Tag }) -join ',') 'the cc-P125 run row is unchanged'
+        Assert-True ($null -ne $script:ui.GolemModel -and (@($script:ui.GolemModel.Items) -join ',') -eq 'Fable,Opus') 'the model picker: Fable, Opus'
+        Assert-True ($null -ne $script:ui.NightStart -and $null -ne $script:ui.NightEnd) 'the night shift''s two boxes'
+        $tips = Get-ConsoleTooltips
+        foreach ($k in @('golem.resume', 'golem.model', 'golem.autowake', 'golem.nightshift', 'golem.nightstart', 'golem.nightend', 'golem.clicheck')) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
+        $x = [pscustomobject]@{ PromptTexts = @{ 'cc-P126-a.md' = $p131Prompt }; TreeClean = $null }
+        $offSet = '{ "autoWake": false, "nightShiftEnabled": false, "nightShiftStart": "23:00", "nightShiftEnd": "05:30" }'
+        $v = Get-AutopilotView -Enabled $true -StateText '{"current":"","currentFile":"","lastHandled":125}' -LogLines @() -QueueNames @('cc-P126-a.md') -Errors @() -StatusText (New-P131Status -State 'IDLE' -Current '') -SettingsText $offSet -Kind golem -Extra $x
+        Update-GolemRunControls $v
+        $labels = @{}; foreach ($b in @($script:ui.GolemWakeButtons)) { $labels[[string]$b.Tag] = $b.Text }
+        Assert-Equal 'Self-wake: off (turn on)' $labels['golem.autowake']
+        Assert-Equal 'Night shift: off (turn on)' $labels['golem.nightshift']
+        Assert-True ($script:ui.GolemResume.Enabled) 'idle with a queue: the wake button lights'
+        Assert-Equal 'Opus' ([string]$script:ui.GolemModel.SelectedItem) 'the picker follows the next prompt''s Model line'
+        Assert-True ($script:ui.NightStart.Text -eq '23:00' -and $script:ui.NightEnd.Text -eq '05:30') 'the boxes show the settings'
+        # The form judges "live" from the real clock, so this status is active now.
+        $live = (New-P131Status) | ConvertFrom-Json; $live.lastActivityUtc = (Get-Date).ToUniversalTime().ToString('s'); $live.generatedAt = (Get-Date).ToString('s')
+        $v2 = Get-AutopilotView -Enabled $true -StateText '{"current":"P125","currentFile":"cc-P125-x.md","lastHandled":124}' -LogLines @() -QueueNames @('cc-P126-a.md') -Errors @() -StatusText ($live | ConvertTo-Json -Depth 5) -SettingsText $p131Settings -Kind golem -Extra $x
+        Update-GolemRunControls $v2
+        Assert-True (-not $script:ui.GolemResume.Enabled) 'P125 running: dark'
+        $labels = @{}; foreach ($b in @($script:ui.GolemWakeButtons)) { $labels[[string]$b.Tag] = $b.Text }
+        Assert-Equal 'Self-wake: on (turn off)' $labels['golem.autowake']
     } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
 }
 

@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.16.5
+
+### Staff
+- The Shard Console's Golem tab can open a Claude Code session itself (Wake the Golem, with a model picker), and the Golem opens the next one on its own after a context rest, a model switch or the run cap, runs a night shift from 22:30 to 06:30 when the usage leaves room, and says plainly when it is resting and when it can run again, on the tile, by email and as a Windows notification.
+
 ## 2026.10.16.4
 
 ### Added
