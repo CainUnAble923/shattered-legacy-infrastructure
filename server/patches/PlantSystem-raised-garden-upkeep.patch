@@ -1,0 +1,53 @@
+--- a/Projects/UOContent/Engines/Plants/PlantSystem.cs
++++ b/Projects/UOContent/Engines/Plants/PlantSystem.cs
+@@ -396,14 +396,22 @@
+             plantSystem.GrowthIndicator = GrowthIndicator;
+         }
+ 
+-        public int GetLocalizedDirtStatus() =>
+-            Water switch
++        public int GetLocalizedDirtStatus()
++        {
++            // Shattered Legacy (cc-P128): a mound that needs no upkeep is always soft (ServUO PlantSystem.cs:335).
++            if (!Plant.RequiresUpkeep)
++            {
++                return 1060827; // soft
++            }
++
++            return Water switch
+             {
+                 <= 1 => 1060826, // hard
+                 <= 2 => 1060827, // soft
+                 <= 3 => 1060828, // squishy
+                 _    => 1060829  // sappy wet
+             };
++        }
+ 
+         public int GetLocalizedHealth()
+         {
+@@ -588,6 +596,12 @@
+ 
+         private bool ApplyMaladiesEffects()
+         {
++            // Shattered Legacy (cc-P128): no water or malady damage without upkeep (ServUO PlantSystem.cs:523).
++            if (!Plant.RequiresUpkeep)
++            {
++                return true;
++            }
++
+             var damage = 0;
+ 
+             if (Infestation > 0)
+@@ -671,6 +685,12 @@
+ 
+         private void UpdateMaladies()
+         {
++            // Shattered Legacy (cc-P128): no new maladies without upkeep (ServUO PlantSystem.cs:597).
++            if (!Plant.RequiresUpkeep)
++            {
++                return;
++            }
++
+             var infestationChance = 0.30 - StrengthPotion * 0.075 + (Water - 2) * 0.10;
+ 
+             var typeInfo = PlantTypeInfo.GetInfo(Plant.PlantType);

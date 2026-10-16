@@ -60,6 +60,9 @@ namespace Server.Misc
             // cc-P121: a pet's trained hit regeneration (ServUO BaseCreature.DefaultHitsRegen, AbilityProfile.RegenHits).
             points += PetTrainingHooks.RegenHits(from);
 
+            // cc-P128: the Barrab hemolymph concentrate (ServUO RegenRates.cs:236).
+            points += BarrabHemolymphConcentrate.HPRegenBonus(from);
+
             if (Core.ML && from is PlayerMobile) // does racial bonus go before/after?
             {
                 if (from.Race == Race.Human)

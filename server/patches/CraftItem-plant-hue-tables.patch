@@ -1,0 +1,25 @@
+--- "a/Projects/UOContent/Engines/Craft/Core/CraftItem.cs"
++++ "b/Projects/UOContent/Engines/Craft/Core/CraftItem.cs"
+@@ -108,7 +108,10 @@
+         private static readonly Type[] m_ColoredItemTable =
+         {
+             typeof(BaseWeapon), typeof(BaseArmor), typeof(BaseClothing),
+-            typeof(BaseJewel), typeof(DragonBardingDeed)
++            typeof(BaseJewel), typeof(DragonBardingDeed),
++            // Shattered Legacy (cc-P128): ServUO CraftItem.cs:395, what takes its colour from plant resources.
++            typeof(PlantPigment), typeof(SoftenedReeds), typeof(DryReeds), typeof(PlantClippings),
++            typeof(BaseContainer)
+         };
+ 
+         private static readonly Type[] m_ColoredResourceTable =
+@@ -116,7 +119,9 @@
+             typeof(BaseIngot), typeof(BaseOre),
+             typeof(BaseLeather), typeof(BaseHides),
+             typeof(UncutCloth), typeof(Cloth),
+-            typeof(BaseGranite), typeof(BaseScales)
++            typeof(BaseGranite), typeof(BaseScales),
++            // Shattered Legacy (cc-P128): ServUO CraftItem.cs:415-416, the plant resources whose colour carries.
++            typeof(PlantClippings), typeof(DryReeds), typeof(SoftenedReeds), typeof(PlantPigment)
+         };
+ 
+         private static readonly Type[] m_MarkableTable =

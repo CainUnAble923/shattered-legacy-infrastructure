@@ -1,0 +1,22 @@
+--- "a/Projects/UOContent/Items/Skill Items/Magical/Potions/BasePotion.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Magical/Potions/BasePotion.cs"
+@@ -36,7 +36,18 @@
+     Invisibility,
+     Parasitic,
+     Darkglow,
+-    FlintsPungentBrew
++    FlintsPungentBrew,
++    // Shattered Legacy (cc-P128): ServUO's SA and TOL potions (ServUO BasePotion.cs:38-48), appended after pinned's last
++    // value so every saved potion keeps its number. Each potion names its own LabelNumber.
++    ExplodingTarPotion,
++    Barrab,
++    Jukari,
++    Kurak,
++    Barako,
++    Urali,
++    Sakkhra,
++    Shatter,
++    FearEssence
+ }
+ 
+ [SerializationGenerator(2, false)]

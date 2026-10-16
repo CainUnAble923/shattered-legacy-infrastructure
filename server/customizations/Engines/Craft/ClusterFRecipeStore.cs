@@ -179,7 +179,7 @@ namespace Server
         /// <summary>Every key there is today: every book, every scroll item, every pinned recipe, both system books.</summary>
         public static List<string> AllKeys()
         {
-            var keys = new List<string> { FlagMasonry, FlagGlassblowing };
+            var keys = new List<string> { FlagMasonry, FlagGlassblowing, Items.BasketWeaving.Flag }; // cc-P128
 
             foreach (var id in Recipe.Recipes.Keys)
             {

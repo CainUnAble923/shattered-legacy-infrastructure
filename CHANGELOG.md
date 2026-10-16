@@ -29,6 +29,17 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.16.2
+
+### Added
+- Cooks and alchemists have the Mondain's Legacy and Stygian Abyss tables: the enchanted apple (lifts every curse) and the grapes of wrath (a burst of weapon and spell damage), the fruit bowl, parrot wafers, and the six Eodon tribal potions (hemolymph concentrate, burn poultice, ambusher's essence, draft of might, trance tonic, prophylaxis) brewed from Eodon's eggsacs, lava berries, perfect bananas, river moss and blue corn, plus the elixir of rebirth that revives a dead bonded pet from Medusa's blood.
+- New things to find or be handed: thrown fear essence, shatter and exploding tar potions, tasty treats for pets (three strengths), poppies dust that identifies seeds, a skin tingeing tincture, Valentine chocolates, the Thanksgiving table (sweet potato pie, a basket of rolls, a turkey platter) and chocolate nutcrackers.
+- Basket weaving: a Grandmaster Tinker who reads "Making valuables with Basket Weaving" cuts decorative plants into clippings or reeds with clippers (Tinkering 50), softens reeds with scouring toxin, and weaves eleven baskets in the reeds' colour. Plant clippings make plant pigment (Alchemy or Cooking), pigments mix, and pigment with colour fixative makes a five-use natural dye for cloth, leather, metal, books, jewellery and locked-down furniture.
+- Raised garden beds (a deed, four shapes) for houses: a seed on a plot raises a mound that grows with no watering and no pests; a potted coffee plant that yields coffee pods.
+
+### Changed
+- The begging rewards (cheese, cookies, dates, fish steaks, bread, pizza, sake, a shirt, stew, a turnip, wine, a flower garland and three pitchers) exist, marked "Acquired by begging"; Begging itself does not hand them out yet.
+
 ## 2026.10.16
 
 ### Added

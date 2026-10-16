@@ -626,6 +626,26 @@ apply_patch "$PATCHES/Unlock-treasure-chest-levels.patch"
 apply_patch "$PATCHES/RemoveTrap-treasure-chest-disarm.patch"
 apply_patch "$PATCHES/BaseCreature-treasure-map-all-facets.patch"
 
+# cc-P128 (ported). Consumables and crafting gaps: BasePotion.cs gains ServUO's nine SA/TOL PotionEffect values (appended,
+# so saved potions keep their numbers); AOS.cs applies the grapes of wrath where ServUO does (+35 weapon, +15 spell
+# damage); BaseCreature.cs applies a tasty treat's damage bonus in AlterMeleeDamageTo; PlayerMobile.cs and Spell.cs read
+# the Urali trance tonic (max mana, casting at Protection's penalty); PlantItem.cs, PlantSystem.cs and Seed.cs gain
+# ServUO's raised-garden hooks (no-upkeep mounds with their own art and messages, a seed on a garden plot). Each is
+# ServUO's own lines at its own place. Alternatives argued in shard-migration
+# notes/cc-P128-port-consumables-crafting-gaps.md; pinned by ConsumablesVerification, BasketWeavingVerification and
+# RaisedGardenVerification (each proved red).
+apply_patch "$PATCHES/BasePotion-sa-potion-effects.patch"
+apply_patch "$PATCHES/AOS-grapes-of-wrath.patch"
+apply_patch "$PATCHES/BaseCreature-tasty-treat-damage.patch"
+apply_patch "$PATCHES/PlayerMobile-urali-mana.patch"
+apply_patch "$PATCHES/Spell-urali-trance.patch"
+apply_patch "$PATCHES/PlantItem-raised-garden-hooks.patch"
+apply_patch "$PATCHES/PlantSystem-raised-garden-upkeep.patch"
+apply_patch "$PATCHES/Seed-raised-garden-plot.patch"
+# cc-P128: CraftItem.cs's colour tables gain ServUO's plant resources (CraftItem.cs:395, :415-416): reeds, clippings
+# and pigment pass their hue to what is made from them, and a basket takes its reeds' colour.
+apply_patch "$PATCHES/CraftItem-plant-hue-tables.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

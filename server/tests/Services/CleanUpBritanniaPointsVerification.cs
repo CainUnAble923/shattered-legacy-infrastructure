@@ -382,6 +382,10 @@ internal static class CleanUpCraftHost
         TailoringCraftRegistrations.Register();
         TinkeringCraftRegistrations.Register();
         CarpentryCraftRegistrations.Register();
+        // cc-P128: the consumables and crafting-gap entries.
+        AlchemyCraftRegistrations.Register();
+        CookingCraftRegistrations.Register();
+        BasketWeavingCraftRegistrations.Register();
 
         // Our extended ingots, boards and logs join the craft menus at ServerStarted (ClusterFMiningExtension.cs:52,
         // ClusterFLumberjackingExtension.cs:184), which the host never raises. Run those handlers once.

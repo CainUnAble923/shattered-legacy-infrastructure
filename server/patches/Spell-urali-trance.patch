@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Spells/Base/Spell.cs
++++ b/Projects/UOContent/Spells/Base/Spell.cs
+@@ -709,7 +709,8 @@
+ 
+             var fc = Math.Min(AosAttributes.GetValue(Caster, AosAttribute.CastSpeed), fcMax);
+ 
+-            if (ProtectionSpell.Registry.ContainsKey(Caster))
++            // Shattered Legacy (cc-P128): the Urali trance tonic casts at Protection's penalty (ServUO Spell.cs:1062).
++            if (ProtectionSpell.Registry.ContainsKey(Caster) || EodonianPotion.IsUnderEffects(Caster, PotionEffect.Urali))
+             {
+                 fc -= 2;
+             }

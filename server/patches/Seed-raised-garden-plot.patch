@@ -1,0 +1,39 @@
+--- a/Projects/UOContent/Engines/Plants/Seed.cs
++++ b/Projects/UOContent/Engines/Plants/Seed.cs
+@@ -1,4 +1,7 @@
+ using ModernUO.Serialization;
++using Server.Gumps;
++using Server.Items;
++using Server.Multis;
+ using Server.Targeting;
+ 
+ namespace Server.Engines.Plants;
+@@ -208,6 +211,28 @@
+             {
+                 plant.PlantSeed(from, _seed);
+             }
++            else if (targeted is GardenAddonComponent addon)
++            {
++                // Shattered Legacy (cc-P128): a raised garden plot (ServUO Seed.cs:214-241): a plant already, no house,
++                // or a new mound on the plot, fertile if the planter has fertile dirt and says so.
++                if (addon.Plant != null)
++                {
++                    from.SendLocalizedMessage(1150367); // This plot already has a plant!
++                }
++                else if (BaseHouse.FindHouseAt(addon) != null)
++                {
++                    var fertileDirt = from.Backpack?.GetAmount(typeof(FertileDirt), false) ?? 0;
++
++                    if (fertileDirt > 0)
++                    {
++                        from.SendGump(new FertileDirtGump(_seed, fertileDirt, addon));
++                    }
++                    else
++                    {
++                        FertileDirtGump.Plant(from, _seed, addon, false);
++                    }
++                }
++            }
+             else if (targeted is Item item)
+             {
+                 item.LabelTo(from, 1061919); // You must use a seed on a bowl of dirt!

@@ -1,0 +1,26 @@
+--- a/Projects/UOContent/Misc/AOS.cs
++++ b/Projects/UOContent/Misc/AOS.cs
+@@ -756,6 +756,23 @@
+             // ServUO's GetValue applies them (Misc/AOS.cs:699-817).
+             value += PetTrainingHooks.AttributeModifier(m, attribute);
+ 
++            // Shattered Legacy (cc-P128): the grapes of wrath, where ServUO's GetValue applies them (Misc/AOS.cs:629-631,
++            // :668-669): +35 weapon damage and +15 spell damage while the influence lasts.
++            if (attribute == AosAttribute.WeaponDamage)
++            {
++                if (BaseMagicalFood.IsUnderInfluence(m, MagicalFood.GrapesOfWrath))
++                {
++                    value += 35;
++                }
++            }
++            else if (attribute == AosAttribute.SpellDamage)
++            {
++                if (BaseMagicalFood.IsUnderInfluence(m, MagicalFood.GrapesOfWrath))
++                {
++                    value += 15;
++                }
++            }
++
+             return value;
+         }
+ 

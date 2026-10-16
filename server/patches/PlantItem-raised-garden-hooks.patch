@@ -1,0 +1,112 @@
+--- a/Projects/UOContent/Engines/Plants/PlantItem.cs
++++ b/Projects/UOContent/Engines/Plants/PlantItem.cs
+@@ -35,6 +35,15 @@
+ {
+     public static List<PlantItem> Plants { get; } = [];
+ 
++    // Shattered Legacy (cc-P128): ServUO PlantItem.cs:63-70, the hooks a raised garden mound (Services/Plants/Raised
++    // Garden Beds/RaisedGardenPlantItem.cs) overrides: no upkeep, its own dirt and green art, its own three messages.
++    public virtual bool RequiresUpkeep => true;
++    public virtual int BowlOfDirtID => 0x1602;
++    public virtual int GreenBowlID => 0x1600;
++    public virtual int ContainerLocalization => 1150435; // bowl
++    public virtual int OnPlantLocalization => 1061922;   // You plant the seed in the bowl of dirt.
++    public virtual int CantUseLocalization => 1061921;   // The bowl of dirt must be in your pack, or you must lock it down.
++
+     [SerializedIgnoreDupe]
+     [SerializableField(0)]
+     [SaveFlag(nameof(ShouldSerializeSecureLevel))]
+@@ -165,7 +174,7 @@
+     private bool ShouldSerializeShowType() => _showType;
+ 
+     [CommandProperty(AccessLevel.GameMaster)]
+-    public bool ValidGrowthLocation
++    public virtual bool ValidGrowthLocation
+     {
+         get
+         {
+@@ -250,12 +259,12 @@
+         }
+         else if (_plantStatus >= PlantStatus.Plant)
+         {
+-            ItemID = 0x1600;
++            ItemID = GreenBowlID;
+             Hue = 0;
+         }
+         else
+         {
+-            ItemID = 0x1602;
++            ItemID = BowlOfDirtID;
+             Hue = 0;
+         }
+ 
+@@ -451,7 +460,7 @@
+         }
+     }
+ 
+-    public bool IsUsableBy(Mobile from) =>
++    public virtual bool IsUsableBy(Mobile from) =>
+         IsChildOf(from.Backpack) || IsChildOf(from.FindBankNoCreate()) || IsLockedDown && IsAccessibleTo(from) ||
+         RootParent is Item root && root.IsSecure && root.IsAccessibleTo(from);
+ 
+@@ -490,14 +499,21 @@
+         }
+         else if (!IsUsableBy(from))
+         {
+-            LabelTo(from, 1061921); // The bowl of dirt must be in your pack, or you must lock it down.
++            LabelTo(from, CantUseLocalization); // The bowl of dirt must be in your pack, or you must lock it down.
+         }
+         else if (_plantStatus != PlantStatus.BowlOfDirt)
+         {
+-            // This bowl of dirt already has a ~1_val~ in it!
+-            from.SendLocalizedMessage(1080389, $"#{GetLocalizedPlantStatus()}");
++            if (RequiresUpkeep)
++            {
++                // This bowl of dirt already has a ~1_val~ in it!
++                from.SendLocalizedMessage(1080389, $"#{GetLocalizedPlantStatus()}");
++            }
++            else
++            {
++                from.SendLocalizedMessage(1150441); // This mound of dirt already has a seed in it!
++            }
+         }
+-        else if (PlantSystem.Water < 2)
++        else if (RequiresUpkeep && PlantSystem.Water < 2)
+         {
+             LabelTo(from, 1061920); // The dirt needs to be softened first.
+         }
+@@ -513,7 +529,7 @@
+ 
+             PlantSystem.Reset(false);
+ 
+-            LabelTo(from, 1061922); // You plant the seed in the bowl of dirt.
++            LabelTo(from, OnPlantLocalization); // You plant the seed in the bowl of dirt.
+         }
+     }
+ 
+@@ -543,6 +559,12 @@
+             return;
+         }
+ 
++        if (!RequiresUpkeep)
++        {
++            LabelTo(from, 1150619); // You don't need to water it.
++            return;
++        }
++
+         if (!IsUsableBy(from))
+         {
+             LabelTo(from, 1061856); // You must have the item in your backpack or locked down in order to use it.
+@@ -609,6 +631,12 @@
+             return false;
+         }
+ 
++        if (!RequiresUpkeep)
++        {
++            message = 1150619; // You don't need to water it.
++            return false;
++        }
++
+         if (_plantStatus == PlantStatus.BowlOfDirt)
+         {
+             message = 1053066; // You should only pour potions on a plant or seed!

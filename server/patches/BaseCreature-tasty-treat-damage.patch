@@ -1,0 +1,18 @@
+--- a/Projects/UOContent/Mobiles/BaseCreature.cs
++++ b/Projects/UOContent/Mobiles/BaseCreature.cs
+@@ -4464,6 +4464,15 @@
+         public virtual void AlterMeleeDamageTo(Mobile to, ref int damage)
+         {
+             TriggerAbilityAlterDamage(MonsterAbilityTrigger.GiveMeleeDamage, to, ref damage);
++
++            // Shattered Legacy (cc-P128): a tasty treat's damage bonus (ServUO BaseCreature.cs:2093-2097, TempDamageBonus:
++            // damage += damage / bonus while the treat lasts; the value lives on TastyTreat, pinned has no field for it).
++            var treatBonus = TastyTreat.DamageBonusOf(this);
++
++            if (treatBonus > 0)
++            {
++                damage += damage / treatBonus;
++            }
+         }
+ 
+         public virtual bool CheckFoodPreference(Item f) =>

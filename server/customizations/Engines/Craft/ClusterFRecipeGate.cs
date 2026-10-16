@@ -51,6 +51,9 @@ public static class ClusterFRecipeGate
     // recipes, as before cc-P78.
     public static bool Enabled { get; set; } = true;
 
+    /// <summary>cc-P128: craft item types that need one more key than their band (type -> key), see IsKnown.</summary>
+    public static Dictionary<Type, string> RequiredKeys { get; } = new();
+
     // Hint line buttons: HintButtonBase + skill * 16 + band (band 0: the wild line). Far above pinned's own ids
     // (CraftGump.GetButtonID: 1 + type + index * 7).
     public const int HintButtonBase = 1_000_000;
@@ -245,6 +248,13 @@ public static class ClusterFRecipeGate
         if (from is not PlayerMobile pm || pm.AccessLevel >= AccessLevel.GameMaster)
         {
             return true;
+        }
+
+        // cc-P128: an item that also needs a key of its own, whatever its band and whether gating is on: ServUO's
+        // SetRequiresBasketWeaving (the basket-weaving book) registered by BasketWeavingCraftRegistrations.
+        if (RequiredKeys.TryGetValue(item.ItemType, out var required) && !ClusterFRecipeStore.Knows(pm, required))
+        {
+            return false;
         }
 
         var c = Classify(system, item);

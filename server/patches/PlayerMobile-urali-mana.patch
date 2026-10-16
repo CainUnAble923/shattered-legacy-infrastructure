@@ -1,0 +1,14 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -582,8 +582,10 @@
+         public override int StamMax => base.StamMax + AosAttributes.GetValue(this, AosAttribute.BonusStam);
+ 
+         [CommandProperty(AccessLevel.GameMaster)]
++        // Shattered Legacy (cc-P128): + the Urali trance tonic's max mana (ServUO PlayerMobile.cs:1993-1999).
+         public override int ManaMax => base.ManaMax + AosAttributes.GetValue(this, AosAttribute.BonusMana) +
+-                                       (Core.ML && Race == Race.Elf ? 20 : 0);
++                                       (Core.ML && Race == Race.Elf ? 20 : 0) +
++                                       UraliTranceTonic.GetManaBuff(this);
+ 
+         [CommandProperty(AccessLevel.GameMaster)]
+         public override int Str
