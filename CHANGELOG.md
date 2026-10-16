@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.16.6
+
+### Staff
+- The Shard Console resizes properly (the status, tabs and output panes have draggable splitters, the tiles wrap, and the window remembers its size and place), opens in a new Enhanced Client look with green, amber and red status crystals on every tile and a Golem that glows while it works, reads art from scripts\console-art (a spec for making it is in the docs repo), draws every confirm phrase and warning in colors that read on the stone, and shows two new lights: whether the test shard needs a rebuild, and whether the player package needs a build or a publish.
+
 ## 2026.10.16.5
 
 ### Staff

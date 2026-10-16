@@ -398,6 +398,12 @@ function Get-ConsoleConfig {
         CacheFolder        = (Join-Path $RepoRoot 'scripts\shard-console-cache')
         GumpFile           = (Join-Path $RepoRoot 'client-data\classic-client\gumpartLegacyMUL.uop')
         CrestFile          = (Join-Path $RepoRoot 'branding\intro\crest-128.png')
+        # cc-P132: the art slots (Get-ArtSlots), the per-user window state (outside the repo), the lights' JSON (in the
+        # git-ignored cache folder), and the published package's version.json.
+        ArtFolder          = (Join-Path $RepoRoot 'scripts\console-art')
+        WindowStateFile    = $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'ShatteredLegacy\shard-console-window.json' } else { Join-Path $RepoRoot 'scripts\shard-console-cache\window.json' })
+        LightsFile         = (Join-Path $RepoRoot 'scripts\shard-console-cache\lights.json')
+        PublishedVersionUrl = 'https://get.shatteredlegacyuo.com/version.json'
         # cc-P96, Fix test shard: known crash signatures and the prune keep list (scripts/fix-test-shard.json), where
         # Start-TestShard.ps1 builds a chosen commit, and the record of what last wrote the test save.
         Fix                = (ConvertFrom-FixConfig $fixJson)
@@ -1150,10 +1156,19 @@ function Get-ConsoleActions {
 # $null means "leave the WinForms default", which is what the form did then.
 
 function Get-ConsoleTheme {
-    param([ValidateSet('UO', 'Plain')][string]$Name = 'Plain')
+    # cc-P132: three looks. Plain (the console as it was), UO (cc-P84, client gump art), Enhanced (the default: dark slate
+    # and stone drawn in code, bronze trim, runes, crystals and a Golem figure, with art slots in scripts\console-art).
+    # Every look carries Text, the named text colors (section 5): normal, muted, warning, danger, success, link, each
+    # chosen to pass WCAG AA on the page it is drawn on; a themed look also carries Plate, the plain dark plate a
+    # confirm phrase sits on, and StoneWarn / StoneDanger for warning words drawn on the stone rather than a page.
+    param([ValidateSet('UO', 'Plain', 'Enhanced')][string]$Name = 'Plain')
     $plain = [pscustomobject]@{
         Name   = 'Plain'
         Fonts  = [pscustomobject]@{ Ui = 'Segoe UI'; UiSize = 9; Tile = 'Segoe UI'; TileSize = 13; Detail = 'Segoe UI'; DetailSize = 9; Mono = 'Consolas'; MonoSize = 9; Title = $null; TitleSize = 0 }
+        # cc-P132: the named text colors, on Plain's white and light-grey backgrounds (the WinForms defaults).
+        Text   = [pscustomobject]@{ Normal = @(0, 0, 0); Muted = @(96, 96, 96); Warning = @(140, 72, 0); Danger = @(170, 28, 28); Success = @(24, 110, 24); Link = @(0, 0, 128) }
+        Plate  = $null
+        Crystals = $false
         # A tile's state color: its background and its text. The meaning is the same in every theme.
         Tiles  = [ordered]@{
             green = [pscustomobject]@{ Back = @(222, 244, 226); Fore = @(20, 100, 40) }
@@ -1173,8 +1188,15 @@ function Get-ConsoleTheme {
         Header = $false
     }
     if ($Name -eq 'Plain') { return $plain }
+    if ($Name -eq 'Enhanced') { return (Get-EnhancedTheme) }
     [pscustomobject]@{
         Name   = 'UO'
+        # cc-P132: the named text colors on parchment (PageText, PageDim and PageWarn were already these roles), the
+        # warning words on stone (on the backing, where the dark PageWarn could not be read: Chase, 10-16 07:34), and
+        # the plate a confirm phrase sits on: the backing, solid, with the gold on it.
+        Text   = [pscustomobject]@{ Normal = @(60, 38, 20); Muted = @(72, 54, 34); Warning = @(96, 48, 0); Danger = @(112, 16, 12); Success = @(12, 66, 18); Link = @(24, 40, 110) }
+        Plate  = [pscustomobject]@{ Back = @(24, 22, 20); Text = @(246, 214, 120); Size = 14 }
+        Crystals = $false
         # Palatino Linotype ships with Windows (Vista and later), is a book serif in the spirit of the UO client's
         # gump text, and stays legible at 9 to 10 points, where Book Antiqua's narrow strokes start to break up.
         # cc-P87: the boxes' Consolas up from 9 to 9.75, the tiles' buttons 9 bold (were 8.25), and the floors a tile's
@@ -1207,6 +1229,8 @@ function Get-ConsoleTheme {
             ButtonBack = @(92, 70, 44); ButtonText = @(246, 226, 170); ButtonHover = @(118, 92, 58); ButtonBorder = @(232, 196, 104)
             # Text boxes and lists the person types into or reads from.
             FieldBack = @(250, 244, 228); FieldText = @(40, 28, 16)
+            # cc-P132: warning and danger words drawn on the stone (under the backing): light, so they read on the dark.
+            StoneWarn = @(255, 200, 120); StoneDanger = @(255, 160, 140)
         }
         # Gump IDs from the classic client's gumpartLegacyMUL.uop: 3604, the middle tile of the dark stone background
         # 3600-3608, behind the header and the window; 9304, the middle tile of the paper background 9300-9308, behind
@@ -1217,6 +1241,51 @@ function Get-ConsoleTheme {
         # cc-P87: the lightest and darkest pixel of each (measured 2026-10-13 from the cached PNGs, single pixels and 3x3
         # and 6x6 averages; the single pixels are the extremes). Text is checked against both ends, not the average.
         Gumps  = [pscustomobject]@{ Stone = 3604; Parchment = 9304; StoneWorst = @(74, 74, 74); ParchmentWorst = @(222, 164, 131); StoneLight = @(74, 74, 74); StoneDark = @(16, 16, 16); ParchmentLight = @(246, 222, 172); ParchmentDark = @(222, 164, 131) }
+        Header = $true
+    }
+}
+
+function Get-EnhancedTheme {
+    # cc-P132: the Enhanced Client look (Chase, 10-15 11:07: "more Enhanced Client, thinking runes/sigils, a glowing
+    # golem when golem is working, dark when deactivated, spinning green red amber crystals for statuses"). Dark slate
+    # stone drawn in code (Texture: a seeded speckle between StoneDark and StoneLight, so the contrast facts can check
+    # text against its real extremes), bronze trim, slate tab pages with light type, a glow color per state, crystals
+    # on every tile and a Golem figure. Art drops into scripts\console-art (Get-ArtSlots) a piece at a time.
+    [pscustomobject]@{
+        Name   = 'Enhanced'
+        Fonts  = [pscustomobject]@{ Ui = 'Segoe UI'; UiSize = 9.75; Tile = 'Segoe UI'; TileSize = 11.5; Detail = 'Segoe UI'; DetailSize = 9.75; Mono = 'Consolas'; MonoSize = 9.75; Title = 'Palatino Linotype'; TitleSize = 17; TileButtonSize = 9; TileFloor = 9; DetailFloor = 8.25 }
+        # Dark plates, light text, the hue in both. The same four meanings as every look.
+        Tiles  = [ordered]@{
+            green = [pscustomobject]@{ Back = @(30, 58, 38);  Fore = @(196, 246, 204) }
+            amber = [pscustomobject]@{ Back = @(72, 52, 18);  Fore = @(255, 218, 136) }
+            red   = [pscustomobject]@{ Back = @(76, 28, 28);  Fore = @(255, 176, 166) }
+            grey  = [pscustomobject]@{ Back = @(48, 48, 54);  Fore = @(200, 200, 204) }
+        }
+        LineBack = @(24, 25, 29)
+        # Every line color at 7:1 or better on LineBack (cc-P87's rule for thin Consolas).
+        Lines  = [ordered]@{
+            normal = @(232, 228, 218); head = @(160, 198, 255); green = @(140, 226, 150); amber = @(255, 202, 112); red = @(255, 156, 146); gray = @(180, 178, 172)
+        }
+        Text   = [pscustomobject]@{ Normal = @(234, 230, 220); Muted = @(188, 182, 170); Warning = @(255, 196, 118); Danger = @(255, 150, 140); Success = @(156, 232, 166); Link = @(156, 200, 255) }
+        Plate  = [pscustomobject]@{ Back = @(14, 14, 17); Text = @(250, 214, 120); Size = 14 }
+        Crystals = $true
+        # A glow color per state: the crystal and the Golem figure are lit with it.
+        Glow   = [ordered]@{ green = @(120, 255, 150); amber = @(255, 200, 90); red = @(255, 110, 100); grey = @(130, 130, 140); golem = @(255, 196, 96) }
+        Chrome = [pscustomobject]@{
+            Backing = @(14, 15, 18); BackingAlpha = 215
+            DisabledBack = @(44, 44, 50); DisabledText = @(156, 156, 160); DisabledBorder = @(92, 92, 100)
+            # The window: slate, with parchment-pale text and bronze trim (Gold is the trim color in every themed look).
+            StoneBack = @(40, 42, 47); StoneText = @(228, 222, 210); Gold = @(220, 178, 98)
+            # Tab pages: darker slate with light type (not parchment: the Enhanced Client's panels are dark).
+            PageBack = @(50, 52, 58); PageText = @(234, 230, 220); PageDim = @(188, 182, 170); PageWarn = @(255, 196, 118)
+            # Buttons: dark bronze, pale lettering, a bronze border.
+            ButtonBack = @(70, 60, 48); ButtonText = @(244, 232, 200); ButtonHover = @(98, 86, 68); ButtonBorder = @(220, 178, 98)
+            FieldBack = @(28, 29, 33); FieldText = @(228, 226, 216)
+            StoneWarn = @(255, 200, 120); StoneDanger = @(255, 160, 140)
+        }
+        Gumps  = $null
+        # The drawn textures (Get-ThemeImages): the stone's and the page's speckle stays inside these, measured, bounds.
+        Texture = [pscustomobject]@{ StoneBase = @(40, 42, 47); StoneSpread = 10; StoneLight = @(50, 52, 57); StoneDark = @(30, 32, 37); PageBase = @(50, 52, 58); PageSpread = 6; PageLight = @(56, 58, 64); PageDark = @(44, 46, 52); Seed = 1327 }
         Header = $true
     }
 }
@@ -1265,20 +1334,39 @@ function Get-ThemeContrastPairs {
     $floor = @{ normal = 4.5; large = 3.0; disabled = 3.0 }
     $p = New-Object System.Collections.ArrayList
     $add = { param($w, $f, $b, $k) [void]$p.Add([pscustomobject]@{ Where = $w; Fore = $f; Back = $b; Kind = $k; Floor = $floor[$k]; Ratio = [math]::Round((Get-ContrastRatio $f $b), 2) }) }
-    $stones = [ordered]@{ 'stone art, lightest' = $gm.StoneLight; 'stone art, darkest' = $gm.StoneDark; 'stone, drawn (no art)' = $c.StoneBack }
+    # cc-P132: the stone's extremes come from the client art (UO) or the drawn texture (Enhanced); the page's likewise.
+    $stones = [ordered]@{}
+    $pages = [ordered]@{}
+    if ($gm) {
+        $stones['stone art, lightest'] = $gm.StoneLight; $stones['stone art, darkest'] = $gm.StoneDark
+        $pages['parchment art, lightest'] = $gm.ParchmentLight; $pages['parchment art, darkest'] = $gm.ParchmentDark
+    }
+    if ($Theme.Texture) {
+        $stones['drawn stone, lightest'] = $Theme.Texture.StoneLight; $stones['drawn stone, darkest'] = $Theme.Texture.StoneDark
+        $pages['drawn page, lightest'] = $Theme.Texture.PageLight; $pages['drawn page, darkest'] = $Theme.Texture.PageDark
+    }
+    $stones['stone, drawn (no art)'] = $c.StoneBack
+    $pages['page, drawn (no art)'] = $c.PageBack
     foreach ($s in $stones.Keys) {
         $under = Get-BlendedColor $c.Backing $c.BackingAlpha $stones[$s]
         & $add ('Window title (gold, 17 pt bold) on backing over ' + $s) $c.Gold $under 'large'
         & $add ('Group titles (gold, bold) on backing over ' + $s) $c.Gold $under 'normal'
         & $add ('Options row and pane label text on backing over ' + $s) $c.StoneText $under 'normal'
+        # cc-P132: warning and danger words on the stone (a caption, the DRY RUN box, a countdown) and on the bare stone too.
+        & $add ('Warning words on backing over ' + $s) $c.StoneWarn $under 'normal'
+        & $add ('Danger words on backing over ' + $s) $c.StoneDanger $under 'normal'
+        & $add ('Stone text on bare ' + $s) $c.StoneText $stones[$s] 'normal'
+        & $add ('Danger words on bare ' + $s) $c.StoneDanger $stones[$s] 'normal'
     }
-    foreach ($s in @('ParchmentLight', 'ParchmentDark')) {
-        $n = 'parchment art, ' + @{ ParchmentLight = 'lightest'; ParchmentDark = 'darkest' }[$s]
-        & $add ('Page text on ' + $n) $c.PageText $gm.$s 'normal'
-        & $add ('Page dim text on ' + $n) $c.PageDim $gm.$s 'normal'
-        & $add ('Page warning text on ' + $n) $c.PageWarn $gm.$s 'normal'
+    foreach ($s in $pages.Keys) {
+        & $add ('Page text on ' + $s) $c.PageText $pages[$s] 'normal'
+        & $add ('Page dim text on ' + $s) $c.PageDim $pages[$s] 'normal'
+        & $add ('Page warning text on ' + $s) $c.PageWarn $pages[$s] 'normal'
+        # cc-P132: the six named text colors, on the page.
+        foreach ($k in 'Normal', 'Muted', 'Warning', 'Danger', 'Success', 'Link') { & $add ('Text.' + $k + ' on ' + $s) $Theme.Text.$k $pages[$s] 'normal' }
     }
-    & $add 'Page text on parchment, drawn (no art)' $c.PageText $c.PageBack 'normal'
+    # cc-P132: the confirm phrase, large and bold on its plate (Show-TypedConfirm).
+    if ($Theme.Plate) { & $add 'Confirm phrase (bold, 14 pt) on its plate' $Theme.Plate.Text $Theme.Plate.Back 'large' }
     & $add 'Button text on button' $c.ButtonText $c.ButtonBack 'normal'
     & $add 'Button text on button, hover' $c.ButtonText $c.ButtonHover 'normal'
     & $add 'Button text, disabled' $c.DisabledText $c.DisabledBack 'disabled'
@@ -1290,6 +1378,227 @@ function Get-ThemeContrastPairs {
     foreach ($k in $Theme.Tiles.Keys) { & $add ('Tile, ' + $k) $Theme.Tiles[$k].Fore $Theme.Tiles[$k].Back 'normal' }
     foreach ($m in $script:MeasuredPairs) { & $add $m.Where $m.Fore $m.Back $m.Kind }
     $p.ToArray()
+}
+
+# --- cc-P132: art slots, the window state, and the rebuild and package lights (CORE: strings and facts in, objects out) ---
+
+function Get-ArtSlots {
+    # The art the console reads from scripts\console-art at start: one fixed file name per slot (PNG, or for an
+    # animated slot a horizontal sprite strip PNG with its frames and fps in art.json, or an animated GIF). Size is
+    # the displayed size at 100%; Budget is the file's size cap in KB (the folder stays far under the 5 MB rule:
+    # the budgets sum to about 1.9 MB). A missing or bad file is drawn in code instead (New-FallbackImage).
+    @(
+        [pscustomobject]@{ Name = 'crystal-green';  File = 'crystal-green.png';  Kind = 'animated'; Size = 32;  Budget = 120; Purpose = 'the green crystal: running, healthy, latest' }
+        [pscustomobject]@{ Name = 'crystal-amber';  File = 'crystal-amber.png';  Kind = 'animated'; Size = 32;  Budget = 120; Purpose = 'the amber crystal: warning, waiting, needs a rebuild' }
+        [pscustomobject]@{ Name = 'crystal-red';    File = 'crystal-red.png';    Kind = 'animated'; Size = 32;  Budget = 120; Purpose = 'the red crystal: down, failed, blocked' }
+        [pscustomobject]@{ Name = 'crystal-grey';   File = 'crystal-grey.png';   Kind = 'static';   Size = 32;  Budget = 60;  Purpose = 'the dull grey crystal: off, retired, unknown' }
+        [pscustomobject]@{ Name = 'golem-running';  File = 'golem-running.png';  Kind = 'animated'; Size = 64;  Budget = 300; Purpose = 'the Golem, glowing: running a prompt' }
+        [pscustomobject]@{ Name = 'golem-idle';     File = 'golem-idle.png';     Kind = 'static';   Size = 64;  Budget = 120; Purpose = 'the Golem, a soft glow: awake, nothing running' }
+        [pscustomobject]@{ Name = 'golem-dark';     File = 'golem-dark.png';     Kind = 'static';   Size = 64;  Budget = 120; Purpose = 'the Golem, dark: resting or off' }
+        [pscustomobject]@{ Name = 'rune-tab';       File = 'rune-tab.png';       Kind = 'static';   Size = 16;  Budget = 30;  Purpose = 'the rune before each tab header' }
+        [pscustomobject]@{ Name = 'rune-corner';    File = 'rune-corner.png';    Kind = 'static';   Size = 16;  Budget = 30;  Purpose = 'the sigil in a tile corner' }
+        [pscustomobject]@{ Name = 'spinner';        File = 'spinner.png';        Kind = 'animated'; Size = 24;  Budget = 100; Purpose = 'the working sigil: something is running' }
+        [pscustomobject]@{ Name = 'header-band';    File = 'header-band.png';    Kind = 'static';   Size = 64;  Budget = 250; Purpose = 'the band behind the title, tiled across' }
+        [pscustomobject]@{ Name = 'stone';          File = 'stone.png';          Kind = 'tile';     Size = 256; Budget = 200; Purpose = 'the window stone, tiled' }
+        [pscustomobject]@{ Name = 'page';           File = 'page.png';           Kind = 'tile';     Size = 256; Budget = 200; Purpose = 'the tab pages, tiled' }
+        [pscustomobject]@{ Name = 'icon-live';      File = 'icon-live.png';      Kind = 'static';   Size = 32;  Budget = 40;  Purpose = 'the LIVE tile icon' }
+        [pscustomobject]@{ Name = 'icon-test';      File = 'icon-test.png';      Kind = 'static';   Size = 32;  Budget = 40;  Purpose = 'the TEST tile icon' }
+        [pscustomobject]@{ Name = 'icon-publisher'; File = 'icon-publisher.png'; Kind = 'static';   Size = 32;  Budget = 40;  Purpose = 'the STATUS PUBLISHER tile icon' }
+        [pscustomobject]@{ Name = 'icon-dns';       File = 'icon-dns.png';       Kind = 'static';   Size = 32;  Budget = 40;  Purpose = 'the PUBLIC DNS tile icon' }
+        [pscustomobject]@{ Name = 'icon-golem';     File = 'icon-golem.png';     Kind = 'static';   Size = 32;  Budget = 40;  Purpose = 'the GOLEM tile icon' }
+        [pscustomobject]@{ Name = 'icon-playtests'; File = 'icon-playtests.png'; Kind = 'static';   Size = 32;  Budget = 40;  Purpose = 'the PLAY TESTS tile icon' }
+        [pscustomobject]@{ Name = 'icon-websites';  File = 'icon-websites.png';  Kind = 'static';   Size = 32;  Budget = 40;  Purpose = 'the WEBSITES tile icon' }
+    )
+}
+
+function ConvertFrom-ArtManifest {
+    # scripts\console-art\art.json: { "slots": { "crystal-green": { "frames": 12, "fps": 8 } } }. Only animated slots need
+    # an entry, and only when the file is a sprite strip (a GIF carries its own timing). Missing or broken: no entries,
+    # every strip is taken as one frame, and the reason comes back in Problem.
+    param([string]$Text)
+    $o = [pscustomobject]@{ Slots = @{}; Problem = $null }
+    if (-not $Text) { return $o }
+    try { $j = $Text | ConvertFrom-Json } catch { $o.Problem = 'art.json does not parse: ' + $_.Exception.Message; return $o }
+    if (-not $j -or -not $j.slots) { return $o }
+    foreach ($p in $j.slots.PSObject.Properties) {
+        $frames = 1; $fps = 8
+        if ($null -ne $p.Value.frames) { [void][int]::TryParse([string]$p.Value.frames, [ref]$frames) }
+        if ($null -ne $p.Value.fps) { [void][int]::TryParse([string]$p.Value.fps, [ref]$fps) }
+        if ($frames -lt 1) { $frames = 1 }
+        if ($fps -lt 1 -or $fps -gt 60) { $fps = 8 }
+        $o.Slots[[string]$p.Name] = [pscustomobject]@{ Frames = $frames; Fps = $fps }
+    }
+    $o
+}
+
+function Test-ArtFile {
+    # One slot's file, judged from what the shell read (never a popup): Ok, or Why. A missing file is not an error
+    # (Missing), it is the fallback. Bad: the wrong extension, over the slot's budget, unreadable, or too small to be
+    # the piece; a strip whose width is not frames x height is bad too (the frames would tear).
+    param($Slot, [bool]$Exists, [long]$Length = 0, [string]$Extension = '', [int]$Width = 0, [int]$Height = 0, [bool]$Readable = $true, [int]$Frames = 1)
+    $r = [pscustomobject]@{ Ok = $false; Missing = (-not $Exists); Why = '' }
+    if (-not $Exists) { return $r }
+    $ext = $Extension.ToLowerInvariant()
+    if ($ext -notin @('.png', '.gif')) { $r.Why = $Slot.File + ': not a PNG or GIF (' + $Extension + ')'; return $r }
+    if ($ext -eq '.gif' -and $Slot.Kind -ne 'animated') { $r.Why = $Slot.File + ': a GIF in a static slot (use a PNG)'; return $r }
+    if ($Length -gt ($Slot.Budget * 1024)) { $r.Why = $Slot.File + ': ' + [math]::Round($Length / 1024) + ' KB is over the slot''s ' + $Slot.Budget + ' KB budget'; return $r }
+    if (-not $Readable) { $r.Why = $Slot.File + ': could not be read as an image'; return $r }
+    if ($Width -lt 8 -or $Height -lt 8) { $r.Why = $Slot.File + ': ' + $Width + 'x' + $Height + ' is too small'; return $r }
+    if ($Slot.Kind -eq 'animated' -and $ext -eq '.png' -and $Frames -gt 1 -and ($Width % $Frames) -ne 0) { $r.Why = $Slot.File + ': ' + $Width + ' px wide is not ' + $Frames + ' frames of equal width'; return $r }
+    $r.Ok = $true
+    $r
+}
+
+function ConvertFrom-WindowState {
+    # The per-user window file (outside the repo): size, position, maximized, the two splitters and the pane's. Any
+    # missing, wrong or broken value falls back to its default, so a bad file never stops the console.
+    param([string]$Text)
+    $s = [pscustomobject]@{ Width = 1200; Height = 1000; X = $null; Y = $null; Maximized = $false; Split1 = 0; Split2 = 0; PaneSplit = 0 }
+    if (-not $Text) { return $s }
+    try { $j = $Text | ConvertFrom-Json } catch { return $s }
+    if (-not $j) { return $s }
+    $int = { param($v, $min, $max) $n = 0; if ($null -ne $v -and [int]::TryParse([string]$v, [ref]$n) -and $n -ge $min -and $n -le $max) { return $n }; $null }
+    $w = & $int $j.Width 900 20000; if ($null -ne $w) { $s.Width = $w }
+    $h = & $int $j.Height 700 20000; if ($null -ne $h) { $s.Height = $h }
+    $s.X = & $int $j.X -20000 20000
+    $s.Y = & $int $j.Y -20000 20000
+    if ($null -ne $j.Maximized) { $s.Maximized = ([string]$j.Maximized -eq 'True' -or [string]$j.Maximized -eq 'true') }
+    foreach ($k in 'Split1', 'Split2', 'PaneSplit') { $v = & $int $j.$k 0 20000; if ($null -ne $v) { $s.$k = $v } }
+    $s
+}
+
+function ConvertTo-WindowState {
+    param($State)
+    ([ordered]@{ Width = $State.Width; Height = $State.Height; X = $State.X; Y = $State.Y; Maximized = [bool]$State.Maximized; Split1 = $State.Split1; Split2 = $State.Split2; PaneSplit = $State.PaneSplit } | ConvertTo-Json)
+}
+
+function Resolve-WindowBounds {
+    # Where the window goes: the saved place when at least 200x100 of it is on one of the screens (a monitor that was
+    # unplugged is not a reason to open the console off screen), else centered on the first screen. $Screens are
+    # rectangles (X, Y, Width, Height); the shell passes each screen's working area.
+    param($State, [object[]]$Screens)
+    $w = [math]::Max(900, [int]$State.Width); $h = [math]::Max(700, [int]$State.Height)
+    $first = $null
+    if ($Screens -and @($Screens).Count) { $first = @($Screens)[0] }
+    if ($first) { $w = [math]::Min($w, [int]$first.Width); $h = [math]::Min($h, [int]$first.Height) }
+    $onScreen = $false
+    if ($null -ne $State.X -and $null -ne $State.Y) {
+        foreach ($sc in @($Screens)) {
+            $ix = [math]::Min([int]$State.X + $w, [int]$sc.X + [int]$sc.Width) - [math]::Max([int]$State.X, [int]$sc.X)
+            $iy = [math]::Min([int]$State.Y + $h, [int]$sc.Y + [int]$sc.Height) - [math]::Max([int]$State.Y, [int]$sc.Y)
+            if ($ix -ge 200 -and $iy -ge 100) { $onScreen = $true; break }
+        }
+    }
+    if ($onScreen) { return [pscustomobject]@{ X = [int]$State.X; Y = [int]$State.Y; Width = $w; Height = $h; Placed = $true } }
+    $x = 0; $y = 0
+    if ($first) { $x = [int]$first.X + [int](([int]$first.Width - $w) / 2); $y = [int]$first.Y + [int](([int]$first.Height - $h) / 2) }
+    [pscustomobject]@{ X = $x; Y = $y; Width = $w; Height = $h; Placed = $false }
+}
+
+# The paths whose commits change what the test shard runs (section 6) and what players get (section 7). A commit
+# counts when any file it touched starts with one of these.
+$script:ServerPaths = @('server/', 'docker/uo/', 'CHANGELOG.md', 'VERSION')
+$script:ShipPaths = @('player-package/', 'client/patches/', 'TAZUO_COMMIT', 'client/Build-Client.ps1')
+
+function ConvertFrom-GitLogWithFiles {
+    # `git log --format=%H|%h|%s --name-only <from>..HEAD`: blocks of one header line and the files it touched, blank
+    # line between. Newest first, as git prints them.
+    param([string]$Text)
+    $out = New-Object 'System.Collections.Generic.List[object]'
+    $cur = $null
+    foreach ($raw in @(([string]$Text) -split "`n")) {
+        $l = $raw.TrimEnd("`r")
+        if ($l -match '^([0-9a-f]{40})\|([0-9a-f]{4,})\|(.*)$') {
+            $cur = [pscustomobject]@{ Sha = $Matches[1]; Short = $Matches[2]; Subject = $Matches[3].Trim(); Files = @(); Prompt = '' }
+            if ($cur.Subject -match '\bP(\d+)\b') { $cur.Prompt = 'P' + $Matches[1] }
+            $out.Add($cur)
+        } elseif ($cur -and $l.Trim()) { $cur.Files += $l.Trim() }
+    }
+    $out.ToArray()
+}
+
+function Select-CommitsTouching {
+    # The commits (from ConvertFrom-GitLogWithFiles) that touch any of $Paths, with the files that did.
+    param([object[]]$Commits, [string[]]$Paths)
+    @(foreach ($c in @($Commits)) {
+        $hit = @($c.Files | Where-Object { $f = $_; @($Paths | Where-Object { $f -eq $_ -or $f.StartsWith($_) }).Count })
+        if ($hit.Count) { [pscustomobject]@{ Sha = $c.Sha; Short = $c.Short; Subject = $c.Subject; Prompt = $c.Prompt; Files = $hit } }
+    })
+}
+
+function Format-CommitPrompts {
+    # "3 commits: P127, P128, P129" (a commit with no P number is named by its short hash).
+    param([object[]]$Commits)
+    $n = @($Commits).Count
+    $names = @($Commits | ForEach-Object { if ($_.Prompt) { $_.Prompt } else { $_.Short } } | Select-Object -Unique)
+    [string]$n + ' commit' + $(if ($n -ne 1) { 's' } else { '' }) + $(if ($names.Count) { ': ' + ($names -join ', ') } else { '' })
+}
+
+function Get-RebuildLight {
+    # Section 6: does the test shard need a rebuild? Green: built from HEAD, or nothing since its build touches the
+    # server. Amber: server commits since the build and a rebuild can go now. Red: it is needed but blocked (a build
+    # already running, the Golem running a prompt, uncommitted changes). Grey: the running image's commit is unknown
+    # (no sl.commit label: built before cc-P96) or there is no running shard. Hover lists the commits and files.
+    param([string]$ImageCommit, [bool]$ImageDirty, [string]$Head, [object[]]$Commits, [string]$GolemRunning, [int]$Uncommitted, [bool]$BuildRunning, [bool]$Running = $true, [string[]]$Paths = $script:ServerPaths)
+    $o = [pscustomobject]@{ Color = 'grey'; Word = 'UNKNOWN'; Detail = ''; Commits = @(); Hover = '' }
+    if (-not $Running) { $o.Detail = 'no running test shard to compare'; return $o }
+    if (-not $ImageCommit) { $o.Detail = 'the running image has no sl.commit label (built before cc-P96): rebuild once to get one'; return $o }
+    $server = @(Select-CommitsTouching $Commits $Paths)
+    $o.Commits = $server
+    $hover = @($server | ForEach-Object { $_.Short + ' ' + $_.Subject + "`n    " + ($_.Files -join "`n    ") })
+    $o.Hover = $(if ($hover.Count) { 'Server changes since the running build (' + $ImageCommit.Substring(0, 7) + '):' + "`n" + ($hover -join "`n") } else { 'No server change since the running build (' + $ImageCommit.Substring(0, 7) + ').' })
+    $dirtyNote = $(if ($ImageDirty) { '; the running image was built with uncommitted changes' } else { '' })
+    if (-not $server.Count) {
+        $o.Color = 'green'; $o.Word = 'LATEST'
+        $all = @($Commits).Count
+        $o.Detail = $(if ($Head -and $ImageCommit -eq $Head) { 'built from HEAD' } elseif ($all) { [string]$all + ' commit' + $(if ($all -ne 1) { 's' } else { '' }) + ' since the build, none touch the server' } else { 'built from HEAD' }) + $dirtyNote
+        return $o
+    }
+    $what = Format-CommitPrompts $server
+    if ($BuildRunning) { $o.Color = 'red'; $o.Word = 'BLOCKED'; $o.Detail = 'rebuild needed (' + $what + ') but a build is already running'; return $o }
+    if ($GolemRunning) { $o.Color = 'red'; $o.Word = 'BLOCKED'; $o.Detail = 'rebuild needed (' + $what + ') but the Golem is running ' + $GolemRunning; return $o }
+    if ($Uncommitted -gt 0) { $o.Color = 'red'; $o.Word = 'BLOCKED'; $o.Detail = 'rebuild needed (' + $what + ') but ' + $Uncommitted + ' uncommitted file(s) in the code repo: commit first'; return $o }
+    $o.Color = 'amber'; $o.Word = 'REBUILD'
+    $o.Detail = $what + ' touch the server since the running build: Rebuild can go now' + $dirtyNote
+    $o
+}
+
+function Get-PackageLight {
+    # Section 7: does the player package need a build or a publish? Green: the published package was built from the
+    # newest commit that changes what players get. Amber: "changes since the published package: Build package" (the
+    # commits), or "built, not published: Publish package" when the newest zip already holds them. Red, with the reason:
+    # the Golem running, uncommitted changes, a stale client, a build running, or the download site unreachable.
+    param([string]$PublishedVersion, [string]$PublishedCommit, [string]$NewestZipVersion, [string]$NewestZipCommit, [string]$Head, [object[]]$Commits, [object[]]$CommitsSinceZip,
+        [string]$GolemRunning, [int]$Uncommitted, [string]$ClientStale, [bool]$BuildRunning, [bool]$SiteReachable = $true, [string]$SiteError = '', [string[]]$Paths = $script:ShipPaths)
+    $o = [pscustomobject]@{ Color = 'grey'; Word = 'UNKNOWN'; Detail = ''; Commits = @(); Hover = '' }
+    if (-not $SiteReachable) { $o.Color = 'red'; $o.Word = 'BLOCKED'; $o.Detail = 'the download site could not be reached to compare' + $(if ($SiteError) { ' (' + $SiteError + ')' } else { '' }); return $o }
+    if (-not $PublishedVersion) { $o.Detail = 'no published package (version.json has no version)'; return $o }
+    if (-not $PublishedCommit) { $o.Detail = 'published ' + $PublishedVersion + ', but no zip in dist\ says what it was built from (' + $PublishedVersion + ')'; return $o }
+    if ($PublishedCommit -match 'uncommitted') { $o.Color = 'amber'; $o.Word = 'BUILD'; $o.Detail = 'the published package ' + $PublishedVersion + ' was built from uncommitted changes (its VERSION.txt says so): Build package from a commit'; return $o }
+    $ship = @(Select-CommitsTouching $Commits $Paths)
+    $o.Commits = $ship
+    $hover = @($ship | ForEach-Object { $_.Short + ' ' + $_.Subject + "`n    " + ($_.Files -join "`n    ") })
+    $o.Hover = $(if ($hover.Count) { 'Player-facing changes since the published package (' + $PublishedVersion + ', ' + $PublishedCommit.Substring(0, [math]::Min(7, $PublishedCommit.Length)) + '):' + "`n" + ($hover -join "`n") } else { 'Nothing player-facing has changed since the published package (' + $PublishedVersion + ').' })
+    if (-not $ship.Count) { $o.Color = 'green'; $o.Word = 'LATEST'; $o.Detail = 'published ' + $PublishedVersion + ' holds every player-facing change'; return $o }
+    $what = Format-CommitPrompts $ship
+    if ($BuildRunning) { $o.Color = 'red'; $o.Word = 'BLOCKED'; $o.Detail = 'changes since the published package (' + $what + ') but a build is already running'; return $o }
+    if ($GolemRunning) { $o.Color = 'red'; $o.Word = 'BLOCKED'; $o.Detail = 'changes since the published package (' + $what + ') but the Golem is running ' + $GolemRunning; return $o }
+    if ($Uncommitted -gt 0) { $o.Color = 'red'; $o.Word = 'BLOCKED'; $o.Detail = 'changes since the published package (' + $what + ') but ' + $Uncommitted + ' uncommitted file(s) in the code repo: commit first'; return $o }
+    if ($ClientStale) { $o.Color = 'red'; $o.Word = 'BLOCKED'; $o.Detail = 'changes since the published package (' + $what + ') but the client is stale: ' + $ClientStale; return $o }
+    # Does the newest zip already hold them? Only when it was built from a commit no shipping change follows.
+    $sinceZip = @(Select-CommitsTouching $CommitsSinceZip $Paths)
+    if ($NewestZipCommit -and $NewestZipCommit -notmatch 'uncommitted' -and $NewestZipVersion -ne $PublishedVersion -and -not $sinceZip.Count) {
+        $o.Color = 'amber'; $o.Word = 'PUBLISH'; $o.Detail = 'built, not published: Publish package (' + $NewestZipVersion + ' holds ' + $what + ')'; return $o
+    }
+    $o.Color = 'amber'; $o.Word = 'BUILD'; $o.Detail = 'changes since the published package: Build package (' + $what + ')'
+    $o
+}
+
+function ConvertTo-LightsJson {
+    # status.json-style output for P143's remote console and the status page: both lights, as judged, with their commits.
+    param($Rebuild, $Package, [datetime]$Now)
+    $one = { param($l) if (-not $l) { return $null }; [ordered]@{ color = $l.Color; word = $l.Word; detail = $l.Detail; commits = @($l.Commits | ForEach-Object { [ordered]@{ short = $_.Short; prompt = $_.Prompt; subject = $_.Subject; files = @($_.Files) } }) } }
+    ([ordered]@{ schema = 1; generatedAt = $Now.ToString('s'); rebuild = (& $one $Rebuild); package = (& $one $Package) } | ConvertTo-Json -Depth 6)
 }
 
 function Get-ConsoleTooltips {
@@ -1371,6 +1680,11 @@ function Get-ConsoleTooltips {
         'golem.nightstart' = 'When the night shift starts (HH:mm, default 22:30).'
         'golem.nightend'   = 'When the night shift ends (HH:mm, default 06:30): no new prompt is handed after it.'
         'golem.clicheck'   = 'Checks the Claude Code CLI: installed, and signed in (claude auth status). Run it after signing in so the Golem tab sees it. Read-only; runs Check-Cli.ps1 in its own window.'
+        # cc-P132: the lights, the Golem figure and the header rune.
+        'rebuild.light'    = 'Whether the test shard needs a rebuild: green built from the latest server change, amber server commits since the running build (Rebuild can go), red needed but blocked with the reason. Hover for the commits and files; it only reads and never builds.'
+        'package.light'    = 'Whether the player package needs a build or a publish: green the published package holds every player-facing change, amber Build package (or Publish package when a built zip holds them), red blocked with the reason. Hover for the commits; it only reads.'
+        'golemFigure'      = 'The Golem: glowing while it runs a prompt, a soft glow when awake with nothing running, dark when resting or off. Art drops into scripts\console-art (notes\console-art-spec.md).'
+        'headerRune'       = 'The header sigil (a drawn stand-in until art lands in scripts\console-art\header-band.png).'
         'golem.cap'        = 'The long run''s cap: a number of prompts, or all (until the queue is empty).'
         'golem.until'      = 'When the long run ends, a local date and time like 2026-10-19 06:00. Then the Golem rests; the phrase starts a new run.'
         'golemQueue'       = 'The queue in hand-off order (continuations first): number, title, model and Kind. Click one to read its first paragraph. Read only.'
@@ -1430,10 +1744,11 @@ function ConvertFrom-ConsoleSettings {
     # The console's own settings file (cc-P84): Theme UO or Plain (default UO) and OutputIn pane or window
     # (default pane). Anything missing or unreadable falls back to the default, so a bad file never stops it.
     param([string]$Text)
-    $s = [pscustomobject]@{ Theme = 'UO'; OutputIn = 'pane' }
+    # cc-P132: Enhanced is the default look; UO and Plain are kept.
+    $s = [pscustomobject]@{ Theme = 'Enhanced'; OutputIn = 'pane' }
     if (-not $Text) { return $s }
     try { $j = $Text | ConvertFrom-Json } catch { return $s }
-    if ($j.Theme -in @('UO', 'Plain')) { $s.Theme = [string]$j.Theme }
+    if ($j.Theme -in @('UO', 'Plain', 'Enhanced')) { $s.Theme = [string]$j.Theme }
     if ($j.OutputIn -in @('pane', 'window')) { $s.OutputIn = [string]$j.OutputIn }
     $s
 }
@@ -5133,9 +5448,10 @@ function Write-ConsoleLine {
 }
 
 function Write-ConsoleLog {
+    # cc-P132: never throws: a config with no log file (a fact's, or none) drops the line.
     param($Config, [string]$Text)
     $line = '{0} {1} {2}' -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss', $script:Invariant), $env:USERNAME, $Text
-    [IO.File]::AppendAllText($Config.LogFile, $line + "`r`n", (New-Object Text.UTF8Encoding $false))
+    try { if ($Config -and $Config.LogFile) { [IO.File]::AppendAllText($Config.LogFile, $line + "`r`n", (New-Object Text.UTF8Encoding $false)) } } catch { }
 }
 
 # cc-P113: the window icon. Loaded once per file and kept (every form shares the one Icon). Missing or unreadable:
@@ -6558,12 +6874,507 @@ function ConvertTo-DrawingColor {
     [Drawing.Color]::FromArgb($Rgb[0], $Rgb[1], $Rgb[2])
 }
 
+# --- cc-P132 SHELL: drawn textures, the art folder and its fallbacks, DPI, the window state, the lights' facts ----------
+
+function New-SpeckleTexture {
+    # A tileable stone or slate texture drawn in code: every pixel is Base plus a seeded speckle within +/- Spread, so
+    # its lightest and darkest pixel are exactly Base +/- Spread (the theme's Texture bounds the contrast facts use).
+    param([int[]]$Base, [int]$Spread, [int]$Size = 160, [int]$Seed = 1)
+    $bmp = New-Object Drawing.Bitmap($Size, $Size, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $rect = New-Object Drawing.Rectangle(0, 0, $Size, $Size)
+    $data = $bmp.LockBits($rect, [Drawing.Imaging.ImageLockMode]::WriteOnly, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $bytes = New-Object byte[] ($data.Stride * $Size)
+    $rnd = New-Object System.Random($Seed)
+    for ($y = 0; $y -lt $Size; $y++) {
+        $row = $y * $data.Stride
+        for ($x = 0; $x -lt $Size; $x++) {
+            # A faint grain: every fourth row leans dark, the rest is speckle. Both stay inside the spread.
+            $d = $rnd.Next(-$Spread, $Spread + 1)
+            if (($y % 4) -eq 0 -and $d -gt 0) { $d = -$d }
+            $i = $row + $x * 4
+            $bytes[$i] = [byte][math]::Max(0, [math]::Min(255, $Base[2] + $d))
+            $bytes[$i + 1] = [byte][math]::Max(0, [math]::Min(255, $Base[1] + $d))
+            $bytes[$i + 2] = [byte][math]::Max(0, [math]::Min(255, $Base[0] + $d))
+            $bytes[$i + 3] = 255
+        }
+    }
+    [Runtime.InteropServices.Marshal]::Copy($bytes, 0, $data.Scan0, $bytes.Length)
+    $bmp.UnlockBits($data)
+    $bmp
+}
+
+function Get-ThemeImages {
+    # The window's and the pages' backgrounds: the client gumps (UO), or the drawn textures (Enhanced), or art dropped
+    # into the stone and page slots.
+    param($Config, $Theme)
+    $im = @{}
+    if ($Theme.Gumps) {
+        $im.Stone = Get-GumpImage $Config $Theme.Gumps.Stone
+        $im.Parchment = Get-GumpImage $Config $Theme.Gumps.Parchment
+    }
+    if ($Theme.Texture) {
+        $t = $Theme.Texture
+        $im.Stone = Get-ArtImage 'stone'
+        if (-not $im.Stone) { $im.Stone = New-SpeckleTexture $t.StoneBase $t.StoneSpread 160 $t.Seed }
+        $im.Parchment = Get-ArtImage 'page'
+        if (-not $im.Parchment) { $im.Parchment = New-SpeckleTexture $t.PageBase $t.PageSpread 160 ($t.Seed + 1) }
+    }
+    $im
+}
+
+function Get-ConsoleArt {
+    # Reads scripts\console-art once at start: each slot's file (Get-ArtSlots), judged by Test-ArtFile. A bad file is
+    # one line in the log and the drawn fallback; the missing slots are one line naming them. Never a popup.
+    param($Config)
+    $dir = $Config.ArtFolder
+    $manifest = ConvertFrom-ArtManifest $(if ($dir -and (Test-Path -LiteralPath (Join-Path $dir 'art.json') -PathType Leaf)) { [IO.File]::ReadAllText((Join-Path $dir 'art.json')) } else { $null })
+    $slots = @{}; $missing = New-Object 'System.Collections.Generic.List[string]'; $bad = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($slot in Get-ArtSlots) {
+        $path = $(if ($dir) { Join-Path $dir $slot.File } else { '' })
+        if ($slot.Kind -eq 'animated' -and $path -and -not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            $gif = $path -replace '\.png$', '.gif'
+            if (Test-Path -LiteralPath $gif -PathType Leaf) { $path = $gif }
+        }
+        $exists = [bool]($path -and (Test-Path -LiteralPath $path -PathType Leaf))
+        $len = 0; $ext = ''; $img = $null; $readable = $true; $w = 0; $h = 0
+        $frames = 1; $fps = 8
+        if ($manifest.Slots.ContainsKey($slot.Name)) { $frames = $manifest.Slots[$slot.Name].Frames; $fps = $manifest.Slots[$slot.Name].Fps }
+        if ($exists) {
+            try {
+                $fi = Get-Item -LiteralPath $path
+                $len = $fi.Length; $ext = $fi.Extension
+                $img = [Drawing.Image]::FromStream((New-Object IO.MemoryStream(, [IO.File]::ReadAllBytes($path))))
+                $w = $img.Width; $h = $img.Height
+                if ($ext -ieq '.gif') { try { $frames = $img.GetFrameCount([Drawing.Imaging.FrameDimension]::Time) } catch { $frames = 1 } }
+            } catch { $readable = $false }
+        }
+        $v = Test-ArtFile -Slot $slot -Exists $exists -Length $len -Extension $ext -Width $w -Height $h -Readable $readable -Frames $frames
+        if ($v.Ok) {
+            $kind = $(if ($ext -ieq '.gif') { 'gif' } elseif ($slot.Kind -eq 'animated' -and $frames -gt 1) { 'strip' } else { 'static' })
+            $slots[$slot.Name] = [pscustomobject]@{ Name = $slot.Name; Image = $img; Frames = $frames; Fps = $fps; Kind = $kind; File = $path }
+        } elseif ($v.Missing) { $missing.Add($slot.Name) }
+        else { $bad.Add($v.Why); if ($img) { $img.Dispose() } }
+    }
+    $total = @(Get-ArtSlots).Count
+    $line = 'console-art: ' + $slots.Count + ' of ' + $total + ' slots have art in ' + $dir + $(if ($missing.Count) { '; drawn fallbacks for ' + ($missing -join ', ') } else { '' })
+    Write-ConsoleLog $Config $line
+    foreach ($b in $bad) { Write-ConsoleLog $Config ('console-art: bad file, drawn fallback used: ' + $b) }
+    if ($manifest.Problem) { Write-ConsoleLog $Config ('console-art: ' + $manifest.Problem) }
+    [pscustomobject]@{ Folder = $dir; Slots = $slots; Missing = $missing.ToArray(); Bad = $bad.ToArray(); Manifest = $manifest; Lines = @(@($line) + @($bad | ForEach-Object { 'console-art: bad file, drawn fallback used: ' + $_ })) }
+}
+
+function Get-ArtImage {
+    # The art for a slot (its first frame, at the slot's size) or $null when the slot has none; see Get-ArtOrFallback
+    # for the drawn stand-in. A strip's first frame is cut out; a GIF's first frame is the image itself.
+    param([string]$Name)
+    if (-not $script:art -or -not $script:art.Slots.ContainsKey($Name)) { return $null }
+    $s = $script:art.Slots[$Name]
+    if ($s.Kind -eq 'strip' -and $s.Frames -gt 1) {
+        $fw = [int]($s.Image.Width / $s.Frames)
+        $bmp = New-Object Drawing.Bitmap($fw, $s.Image.Height)
+        $g = [Drawing.Graphics]::FromImage($bmp)
+        $g.DrawImage($s.Image, (New-Object Drawing.Rectangle(0, 0, $fw, $s.Image.Height)), (New-Object Drawing.Rectangle(0, 0, $fw, $s.Image.Height)), [Drawing.GraphicsUnit]::Pixel)
+        $g.Dispose()
+        return $bmp
+    }
+    $s.Image
+}
+
+function Get-ArtOrFallback {
+    # The image a slot shows: its art, else the drawn fallback at $Size px (cached by name and size).
+    param([string]$Name, [int]$Size = 32)
+    if (-not $script:artCache) { $script:artCache = @{} }
+    $key = $Name + '@' + $Size
+    if ($script:artCache.ContainsKey($key)) { return $script:artCache[$key] }
+    $img = Get-ArtImage $Name
+    if (-not $img) { $img = New-FallbackImage $Name $Size }
+    $script:artCache[$key] = $img
+    $img
+}
+
+function Get-GlowColor {
+    param([string]$Key)
+    $t = $script:theme
+    if ($t -and $t.Glow -and $t.Glow.Contains($Key)) { return $t.Glow[$Key] }
+    @{ green = @(120, 255, 150); amber = @(255, 200, 90); red = @(255, 110, 100); grey = @(130, 130, 140); golem = @(255, 196, 96) }[$Key]
+}
+
+function New-FallbackImage {
+    # The drawn stand-in for a slot: a faceted crystal per color (a dull one for grey), a Golem silhouette whose glow
+    # follows its state, a rune circle, a spinner sigil, a header band, a tile icon (the rune circle with the tile's
+    # letter), or a speckle texture. Transparent background, anti-aliased, $Size square (the band is 8x wide).
+    param([string]$Name, [int]$Size = 32)
+    if ($Name -in @('stone', 'page')) {
+        $t = $script:theme.Texture
+        if (-not $t) { $t = (Get-EnhancedTheme).Texture }
+        if ($Name -eq 'stone') { return (New-SpeckleTexture $t.StoneBase $t.StoneSpread 160 $t.Seed) }
+        return (New-SpeckleTexture $t.PageBase $t.PageSpread 160 ($t.Seed + 1))
+    }
+    $w = $Size; if ($Name -eq 'header-band') { $w = $Size * 8 }
+    $bmp = New-Object Drawing.Bitmap($w, $Size, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $g = [Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode = [Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.Clear([Drawing.Color]::Transparent)
+    $r = New-Object Drawing.Rectangle(0, 0, $w, $Size)
+    switch -Regex ($Name) {
+        '^crystal-(\w+)$' { Draw-CrystalFallback $g $r $Matches[1] }
+        '^golem-(\w+)$'   { Draw-GolemFallback $g $r $Matches[1] }
+        '^rune-'          { Draw-RuneFallback $g $r '' }
+        '^spinner$'       { Draw-SpinnerFallback $g $r }
+        '^header-band$'   { Draw-HeaderBandFallback $g $r }
+        '^icon-(\w+)$'    { Draw-RuneFallback $g $r (@{ live = 'L'; test = 'T'; publisher = 'P'; dns = 'D'; golem = 'G'; playtests = 'Y'; websites = 'W' }[$Matches[1]]) }
+        default           { Draw-RuneFallback $g $r '?' }
+    }
+    $g.Dispose()
+    $bmp
+}
+
+function Draw-CrystalFallback {
+    # A six-faceted gem standing on its point, lit from the upper left, with a soft halo in its glow color. Grey is dull:
+    # darker, no halo.
+    param($G, [Drawing.Rectangle]$R, [string]$Color)
+    $glow = Get-GlowColor $Color
+    $dull = ($Color -eq 'grey')
+    $cx = $R.X + $R.Width / 2.0; $cy = $R.Y + $R.Height / 2.0
+    $hw = $R.Width * 0.30; $hh = $R.Height * 0.46
+    if (-not $dull) {
+        $halo = New-Object Drawing.Drawing2D.GraphicsPath
+        $halo.AddEllipse([single]($cx - $R.Width * 0.48), [single]($cy - $R.Height * 0.48), [single]($R.Width * 0.96), [single]($R.Height * 0.96))
+        $hb = New-Object Drawing.Drawing2D.PathGradientBrush($halo)
+        $hb.CenterColor = [Drawing.Color]::FromArgb(150, $glow[0], $glow[1], $glow[2])
+        $hb.SurroundColors = @([Drawing.Color]::FromArgb(0, $glow[0], $glow[1], $glow[2]))
+        $G.FillPath($hb, $halo)
+        $hb.Dispose(); $halo.Dispose()
+    }
+    $pts = @((New-Object Drawing.PointF([single]$cx, [single]($cy - $hh))), (New-Object Drawing.PointF([single]($cx + $hw), [single]($cy - $hh * 0.45))),
+             (New-Object Drawing.PointF([single]($cx + $hw * 0.8), [single]($cy + $hh * 0.35))), (New-Object Drawing.PointF([single]$cx, [single]($cy + $hh))),
+             (New-Object Drawing.PointF([single]($cx - $hw * 0.8), [single]($cy + $hh * 0.35))), (New-Object Drawing.PointF([single]($cx - $hw), [single]($cy - $hh * 0.45))))
+    $dark = @([int]($glow[0] * 0.35), [int]($glow[1] * 0.35), [int]($glow[2] * 0.35))
+    $light = @([math]::Min(255, [int]($glow[0] * 0.75 + 90)), [math]::Min(255, [int]($glow[1] * 0.75 + 90)), [math]::Min(255, [int]($glow[2] * 0.75 + 90)))
+    if ($dull) { $dark = @(60, 60, 66); $light = @(150, 150, 158) }
+    $body = New-Object Drawing.Drawing2D.LinearGradientBrush((New-Object Drawing.PointF([single]($cx - $hw), [single]($cy - $hh))), (New-Object Drawing.PointF([single]($cx + $hw), [single]($cy + $hh))), (ConvertTo-DrawingColor $light), (ConvertTo-DrawingColor $dark))
+    $G.FillPolygon($body, $pts)
+    $body.Dispose()
+    # The facets: a line from the top point and the bottom point to each shoulder, and the waist.
+    $pen = New-Object Drawing.Pen([Drawing.Color]::FromArgb(140, 255, 255, 255), 1)
+    $G.DrawLine($pen, $pts[0], $pts[2]); $G.DrawLine($pen, $pts[0], $pts[4]); $G.DrawLine($pen, $pts[3], $pts[1]); $G.DrawLine($pen, $pts[3], $pts[5])
+    $G.DrawLine($pen, $pts[1], $pts[5])
+    $pen.Dispose()
+    $edge = New-Object Drawing.Pen([Drawing.Color]::FromArgb(200, $dark[0], $dark[1], $dark[2]), 1)
+    $G.DrawPolygon($edge, $pts)
+    $edge.Dispose()
+}
+
+function Draw-GolemFallback {
+    # A golem silhouette: a squat body, a round head, two arms and two legs. Running: bronze, lit, a halo and bright
+    # eyes. Idle: a softer light and dim eyes. Dark: slate, no light, no eyes.
+    param($G, [Drawing.Rectangle]$R, [string]$State)
+    $glow = Get-GlowColor 'golem'
+    $s = $R.Width / 64.0
+    $body = @(120, 100, 70); $eyes = @(255, 236, 140); $haloA = 170
+    if ($State -eq 'idle') { $body = @(96, 82, 60); $eyes = @(200, 170, 90); $haloA = 70 }
+    if ($State -eq 'dark') { $body = @(56, 54, 52); $eyes = $null; $haloA = 0 }
+    if ($haloA -gt 0) {
+        $halo = New-Object Drawing.Drawing2D.GraphicsPath
+        $halo.AddEllipse([single]($R.X + 2 * $s), [single]($R.Y + 2 * $s), [single](60 * $s), [single](60 * $s))
+        $hb = New-Object Drawing.Drawing2D.PathGradientBrush($halo)
+        $hb.CenterColor = [Drawing.Color]::FromArgb($haloA, $glow[0], $glow[1], $glow[2])
+        $hb.SurroundColors = @([Drawing.Color]::FromArgb(0, $glow[0], $glow[1], $glow[2]))
+        $G.FillPath($hb, $halo); $hb.Dispose(); $halo.Dispose()
+    }
+    $br = New-Object Drawing.SolidBrush((ConvertTo-DrawingColor $body))
+    $ox = $R.X; $oy = $R.Y
+    # Legs, body, arms, head: proportions of a 64 px figure.
+    $G.FillRectangle($br, [single]($ox + 20 * $s), [single]($oy + 44 * $s), [single](9 * $s), [single](16 * $s))
+    $G.FillRectangle($br, [single]($ox + 35 * $s), [single]($oy + 44 * $s), [single](9 * $s), [single](16 * $s))
+    $G.FillRectangle($br, [single]($ox + 17 * $s), [single]($oy + 22 * $s), [single](30 * $s), [single](24 * $s))
+    $G.FillRectangle($br, [single]($ox + 8 * $s), [single]($oy + 24 * $s), [single](8 * $s), [single](20 * $s))
+    $G.FillRectangle($br, [single]($ox + 48 * $s), [single]($oy + 24 * $s), [single](8 * $s), [single](20 * $s))
+    $G.FillEllipse($br, [single]($ox + 22 * $s), [single]($oy + 4 * $s), [single](20 * $s), [single](18 * $s))
+    $br.Dispose()
+    $line = New-Object Drawing.Pen([Drawing.Color]::FromArgb(120, 0, 0, 0), [single][math]::Max(1, $s))
+    $G.DrawLine($line, [single]($ox + 17 * $s), [single]($oy + 34 * $s), [single]($ox + 47 * $s), [single]($oy + 34 * $s))
+    $line.Dispose()
+    if ($eyes) {
+        $eb = New-Object Drawing.SolidBrush((ConvertTo-DrawingColor $eyes))
+        $G.FillEllipse($eb, [single]($ox + 27 * $s), [single]($oy + 11 * $s), [single](3 * $s), [single](3 * $s))
+        $G.FillEllipse($eb, [single]($ox + 34 * $s), [single]($oy + 11 * $s), [single](3 * $s), [single](3 * $s))
+        $eb.Dispose()
+    }
+}
+
+function Draw-RuneFallback {
+    # A rune circle in the trim color: a ring and three strokes (or a letter, for a tile icon).
+    param($G, [Drawing.Rectangle]$R, [string]$Letter)
+    $gold = $(if ($script:theme -and $script:theme.Chrome) { $script:theme.Chrome.Gold } else { @(220, 178, 98) })
+    $pen = New-Object Drawing.Pen((ConvertTo-DrawingColor $gold), [single][math]::Max(1, $R.Width / 16.0))
+    $m = [single]($R.Width * 0.08)
+    $G.DrawEllipse($pen, [single]($R.X + $m), [single]($R.Y + $m), [single]($R.Width - 2 * $m), [single]($R.Height - 2 * $m))
+    if ($Letter) {
+        $f = New-Object Drawing.Font('Palatino Linotype', [single][math]::Max(6, $R.Height * 0.5), [Drawing.FontStyle]::Bold)
+        $fmt = New-Object Drawing.StringFormat; $fmt.Alignment = 'Center'; $fmt.LineAlignment = 'Center'
+        $b = New-Object Drawing.SolidBrush((ConvertTo-DrawingColor $gold))
+        $G.DrawString($Letter, $f, $b, (New-Object Drawing.RectangleF($R.X, $R.Y, $R.Width, $R.Height)), $fmt)
+        $b.Dispose(); $f.Dispose(); $fmt.Dispose()
+    } else {
+        $cx = $R.X + $R.Width / 2.0; $cy = $R.Y + $R.Height / 2.0; $q = $R.Width * 0.22
+        $G.DrawLine($pen, [single]$cx, [single]($cy - $q * 1.2), [single]$cx, [single]($cy + $q * 1.2))
+        $G.DrawLine($pen, [single]$cx, [single]($cy - $q * 1.2), [single]($cx + $q), [single]($cy - $q * 0.3))
+        $G.DrawLine($pen, [single]$cx, [single]($cy - $q * 0.2), [single]($cx + $q), [single]($cy + $q * 0.7))
+    }
+    $pen.Dispose()
+}
+
+function Draw-SpinnerFallback {
+    # Eight spokes fading around the ring: the working sigil.
+    param($G, [Drawing.Rectangle]$R)
+    $gold = $(if ($script:theme -and $script:theme.Chrome) { $script:theme.Chrome.Gold } else { @(220, 178, 98) })
+    $cx = $R.X + $R.Width / 2.0; $cy = $R.Y + $R.Height / 2.0; $r1 = $R.Width * 0.22; $r2 = $R.Width * 0.46
+    for ($i = 0; $i -lt 8; $i++) {
+        $a = $i * [math]::PI / 4
+        $pen = New-Object Drawing.Pen([Drawing.Color]::FromArgb([int](40 + 215 * $i / 7), $gold[0], $gold[1], $gold[2]), [single][math]::Max(1, $R.Width / 12.0))
+        $G.DrawLine($pen, [single]($cx + $r1 * [math]::Cos($a)), [single]($cy + $r1 * [math]::Sin($a)), [single]($cx + $r2 * [math]::Cos($a)), [single]($cy + $r2 * [math]::Sin($a)))
+        $pen.Dispose()
+    }
+}
+
+function Draw-HeaderBandFallback {
+    # The band behind the title: the backing, a bronze rule along the bottom, and a rune at each end.
+    param($G, [Drawing.Rectangle]$R)
+    $c = $(if ($script:theme -and $script:theme.Chrome) { $script:theme.Chrome } else { (Get-EnhancedTheme).Chrome })
+    $b = New-Object Drawing.SolidBrush((ConvertTo-DrawingColor $c.Backing))
+    $G.FillRectangle($b, $R); $b.Dispose()
+    $pen = New-Object Drawing.Pen((ConvertTo-DrawingColor $c.Gold), 2)
+    $G.DrawLine($pen, $R.X, $R.Bottom - 2, $R.Right, $R.Bottom - 2); $pen.Dispose()
+    $sz = [int]($R.Height * 0.6)
+    Draw-RuneFallback $G (New-Object Drawing.Rectangle(($R.Right - $sz - 10), [int](($R.Height - $sz) / 2), $sz, $sz)) ''
+}
+
+function Set-ConsoleDpiAwareness {
+    # Per-monitor DPI before any window exists, so text and art are drawn crisp at 125% and 150% instead of scaled up
+    # by Windows. Shcore's SetProcessDpiAwareness (Windows 8.1+), else user32's SetProcessDPIAware. Says which.
+    try {
+        if (-not ('ShardConsole.DpiNative' -as [type])) {
+            Add-Type -Namespace ShardConsole -Name DpiNative -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("shcore.dll")] public static extern int SetProcessDpiAwareness(int value);
+[System.Runtime.InteropServices.DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+'@
+        }
+        $hr = [ShardConsole.DpiNative]::SetProcessDpiAwareness(2)
+        if ($hr -eq 0) { return 'per-monitor DPI aware' }
+        if ($hr -eq -2147024891 -or $hr -eq 0x80070005) { return 'DPI awareness was already set by the host' }
+        if ([ShardConsole.DpiNative]::SetProcessDPIAware()) { return 'system DPI aware (shcore said ' + $hr + ')' }
+        'DPI awareness unchanged (' + $hr + ')'
+    } catch { 'DPI awareness unchanged: ' + $_.Exception.Message }
+}
+
+function Read-WindowState {
+    param($Config)
+    $text = $null
+    try { if ($Config.WindowStateFile -and (Test-Path -LiteralPath $Config.WindowStateFile -PathType Leaf)) { $text = [IO.File]::ReadAllText($Config.WindowStateFile) } } catch { $text = $null }
+    ConvertFrom-WindowState $text
+}
+
+function Save-WindowState {
+    # On closing: the window's normal bounds (RestoreBounds while maximized), whether it is maximized, and the splitters.
+    param($Config, $Form)
+    try {
+        $b = $Form.Bounds
+        $max = ($Form.WindowState -eq 'Maximized')
+        if ($max) { $b = $Form.RestoreBounds }
+        $s = [pscustomobject]@{ Width = $b.Width; Height = $b.Height; X = $b.X; Y = $b.Y; Maximized = $max; Split1 = 0; Split2 = 0; PaneSplit = 0 }
+        if ($script:ui.Split1) { $s.Split1 = $script:ui.Split1.SplitterDistance }
+        if ($script:ui.Split2) { $s.Split2 = $script:ui.Split2.SplitterDistance }
+        if ($script:ui.Pane -and $script:ui.Pane.Split -and -not $script:ui.Pane.Split.Panel2Collapsed) { $s.PaneSplit = $script:ui.Pane.Split.SplitterDistance }
+        $dir = Split-Path -Parent $Config.WindowStateFile
+        if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        [IO.File]::WriteAllText($Config.WindowStateFile, (ConvertTo-WindowState $s), (New-Object Text.UTF8Encoding $false))
+        $true
+    } catch { Write-ConsoleLog $Config ('window state not saved: ' + $_.Exception.Message); $false }
+}
+
+function Restore-WindowBounds {
+    # The saved size and place when it is on a screen (Resolve-WindowBounds), maximized if it was; else the default.
+    param($Form, $State)
+    try {
+        $screens = @([Windows.Forms.Screen]::AllScreens | ForEach-Object { $wa = $_.WorkingArea; [pscustomobject]@{ X = $wa.X; Y = $wa.Y; Width = $wa.Width; Height = $wa.Height } })
+        $b = Resolve-WindowBounds $State $screens
+        if ($b.Placed) { $Form.StartPosition = 'Manual'; $Form.Location = New-Object Drawing.Point($b.X, $b.Y) }
+        $Form.Size = New-Object Drawing.Size($b.Width, $b.Height)
+        if ($State.Maximized) { $Form.WindowState = 'Maximized' }
+    } catch { Write-ConsoleLog $script:cfg ('window state not restored: ' + $_.Exception.Message) }
+}
+
+function Restore-WindowSplitters {
+    param($State)
+    if (-not $State) { return }
+    Set-SplitterSafely $script:ui.Split1 ([int]$State.Split1)
+    Set-SplitterSafely $script:ui.Split2 ([int]$State.Split2)
+    if ($script:ui.Pane -and $script:ui.Pane.Split -and [int]$State.PaneSplit -gt 0) { Set-SplitterSafely $script:ui.Pane.Split ([int]$State.PaneSplit) }
+}
+
+function Set-SplitterSafely {
+    # A splitter distance inside what the container allows now; a value that does not fit is left alone.
+    param($Split, [int]$Distance)
+    if (-not $Split -or $Distance -le 0) { return }
+    $len = $(if ($Split.Orientation -eq 'Horizontal') { $Split.Height } else { $Split.Width })
+    $max = $len - $Split.Panel2MinSize - $Split.SplitterWidth
+    if ($Distance -ge $Split.Panel1MinSize -and $Distance -le $max) { try { $Split.SplitterDistance = $Distance } catch { } }
+}
+
+function Get-RebuildFacts {
+    # Section 6, SHELL: what Get-RebuildLight judges. The running test image's commit and dirty flag (its sl.commit and
+    # sl.dirty labels, already in the state), the commits since it with their files, uncommitted files in the code
+    # repo, the Golem's running prompt, and whether a build is running (a Start-TestShard.ps1, build.sh or docker build
+    # process, or this console's own test.rebuild child).
+    param($Config, $State)
+    $f = [pscustomobject]@{ Running = $false; ImageCommit = ''; ImageDirty = $false; Head = ''; Commits = @(); Uncommitted = 0; GolemRunning = ''; BuildRunning = $false; Note = '' }
+    try {
+        $t = $State.Shards['test']
+        if ($t -and $t.Container -and $t.Container.Exists -and $t.Container.Running) { $f.Running = $true }
+        if ($t -and $t.RunningImage -and $t.RunningImage.Commit) { $f.ImageCommit = [string]$t.RunningImage.Commit; $f.ImageDirty = [bool]$t.RunningImage.Dirty }
+        $repo = $Config.RepoRoot
+        $f.Head = (Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'rev-parse', 'HEAD')).Out.Trim()
+        if ($f.ImageCommit) {
+            $log = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'log', '--format=%H|%h|%s', '--name-only', ($f.ImageCommit + '..HEAD'))
+            if ($log.Code -eq 0) { $f.Commits = @(ConvertFrom-GitLogWithFiles $log.Out) } else { $f.Note = 'git log failed: ' + ([string]$log.Err).Trim(); $f.ImageCommit = '' }
+        }
+        $st = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'status', '--porcelain', '--untracked-files=all')
+        if ($st.Code -eq 0) { $f.Uncommitted = @(@($st.Out -split "`n") | Where-Object { $_.Trim() }).Count }
+        $f.GolemRunning = Get-GolemRunningPrompt $Config
+        $f.BuildRunning = Test-ProcessRunning 'Start-TestShard\.ps1|build\.sh|docker(\.exe)?\s+build|-Action\s+(test\.rebuild|fix\.rebuild)'
+    } catch { $f.Note = $_.Exception.Message }
+    $f
+}
+
+function Get-GolemRunningPrompt {
+    # The prompt the Golem is running, from its status.json, or ''.
+    param($Config)
+    try {
+        $ap = $Config.Autopilot
+        if ($ap -and $ap.StatusFile -and (Test-Path -LiteralPath $ap.StatusFile -PathType Leaf)) {
+            $s = ConvertFrom-AutopilotStatus ([IO.File]::ReadAllText($ap.StatusFile))
+            if ($s -and $s.State -in @('RUNNING', 'NEEDS YOU') -and $s.Current) { return [string]$s.Current }
+        }
+    } catch { }
+    ''
+}
+
+function Test-ProcessRunning {
+    # Whether any process on this PC has a command line matching $Pattern (this console's own process excluded).
+    param([string]$Pattern)
+    try {
+        $me = $PID
+        foreach ($p in @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe' OR Name='bash.exe' OR Name='docker.exe' OR Name='cmd.exe'" -ErrorAction Stop)) {
+            if ($p.ProcessId -eq $me) { continue }
+            if ([string]$p.CommandLine -match $Pattern) { return $true }
+        }
+    } catch { }
+    $false
+}
+
+function Read-ZipBuiltFrom {
+    # "built from ShatteredLegacy <commit>" in <top>/app/VERSION.txt inside a package zip (cc-P124 writes it), or $null.
+    param([string]$Path)
+    try {
+        Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+        $za = [IO.Compression.ZipFile]::OpenRead($Path)
+        try {
+            $e = @($za.Entries | Where-Object { $_.FullName -match '^[^/]+/app/VERSION\.txt$' })
+            if ($e.Count -ne 1) { return $null }
+            $sr = New-Object IO.StreamReader($e[0].Open())
+            try { $txt = $sr.ReadToEnd() } finally { $sr.Dispose() }
+            if ($txt -match 'built from ShatteredLegacy\s+(.+)') { return $Matches[1].Trim() }
+            $null
+        } finally { $za.Dispose() }
+    } catch { $null }
+}
+
+function Get-PublishedPackageVersion {
+    # The live version.json at the download site, kept 10 minutes (one GET of 4 s at most; the refresh runs every 30 s).
+    param($Config)
+    if ($script:publishedAt -and ([datetime]::UtcNow - $script:publishedAt).TotalMinutes -lt 10) { return $script:published }
+    $o = [pscustomobject]@{ Reachable = $false; Version = ''; Error = '' }
+    try {
+        $r = Invoke-WebRequest -UseBasicParsing -Uri $Config.PublishedVersionUrl -TimeoutSec 4
+        $j = $r.Content | ConvertFrom-Json
+        $o.Reachable = $true; $o.Version = [string]$j.version
+    } catch { $o.Error = $_.Exception.Message }
+    $script:published = $o; $script:publishedAt = [datetime]::UtcNow
+    $o
+}
+
+function Get-PackageLightFacts {
+    # Section 7, SHELL: what Get-PackageLight judges. The published version and the zip in dist\ it came from (its
+    # VERSION.txt names the commit), the newest zip's commit, the shipping commits since each, the client gate, and the
+    # same running-prompt, uncommitted and build-running facts as the rebuild light.
+    param($Config)
+    $f = [pscustomobject]@{ SiteReachable = $false; SiteError = ''; PublishedVersion = ''; PublishedCommit = ''; NewestZipVersion = ''; NewestZipCommit = ''; Head = ''; Commits = @(); CommitsSinceZip = @(); GolemRunning = ''; Uncommitted = 0; ClientStale = ''; BuildRunning = $false; Note = '' }
+    try {
+        $pub = Get-PublishedPackageVersion $Config
+        $f.SiteReachable = $pub.Reachable; $f.SiteError = $pub.Error; $f.PublishedVersion = $pub.Version
+        $zips = @(Get-PackageZips $Config.PackageDist)
+        if ($f.PublishedVersion) {
+            $pz = @($zips | Where-Object { $_.Json -and $_.Json.Version -eq $f.PublishedVersion })
+            if ($pz.Count) { $f.PublishedCommit = [string](Read-ZipBuiltFrom $pz[0].FullName) }
+        }
+        if ($zips.Count) { $f.NewestZipVersion = [string]$zips[0].Json.Version; $f.NewestZipCommit = [string](Read-ZipBuiltFrom $zips[0].FullName) }
+        $repo = $Config.RepoRoot
+        $f.Head = (Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'rev-parse', 'HEAD')).Out.Trim()
+        foreach ($pair in @(@('Commits', $f.PublishedCommit), @('CommitsSinceZip', $f.NewestZipCommit))) {
+            $c = [string]$pair[1]
+            if ($c -and $c -notmatch 'uncommitted') {
+                $sha = ($c -split '\s+')[0]
+                $log = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'log', '--format=%H|%h|%s', '--name-only', ($sha + '..HEAD'))
+                if ($log.Code -eq 0) { $f.($pair[0]) = @(ConvertFrom-GitLogWithFiles $log.Out) } else { $f.Note = 'git log failed: ' + ([string]$log.Err).Trim() }
+            }
+        }
+        $st = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'status', '--porcelain', '--untracked-files=all')
+        if ($st.Code -eq 0) { $f.Uncommitted = @(@($st.Out -split "`n") | Where-Object { $_.Trim() }).Count }
+        $cf = Get-PackageClientFacts -ClientDir $Config.PackageClient -RepoRoot $repo
+        $stale = @($cf.Problems | Where-Object { $_ -match 'STALE|stale' })
+        if ($stale.Count) { $f.ClientStale = [string]$stale[0] }
+        $f.GolemRunning = Get-GolemRunningPrompt $Config
+        $f.BuildRunning = Test-ProcessRunning 'Build-PlayerPackage\.ps1|-Action\s+package\.build'
+    } catch { $f.Note = $_.Exception.Message }
+    $f
+}
+
 function Get-ThemeFont {
     # 'Ui', 'Tile', 'Detail', 'Mono' or 'Title', from the theme in force (Plain until the form sets one).
     param([string]$Which, [Drawing.FontStyle]$Style = [Drawing.FontStyle]::Regular)
     $t = $script:theme
     if (-not $t) { $t = Get-ConsoleTheme 'Plain' }
     New-Object Drawing.Font($t.Fonts.$Which, [single]$t.Fonts.($Which + 'Size'), $Style)
+}
+
+function Get-StateTextColor {
+    # cc-P132: a Drawing.Color for a meaning ('Normal', 'Muted', 'Warning', 'Danger', 'Success', 'Link') on a tab page in
+    # the theme in force (Plain's named colors when no form has set one).
+    param([string]$Kind)
+    $t = $script:theme
+    if (-not $t) { $t = Get-ConsoleTheme 'Plain' }
+    ConvertTo-DrawingColor $t.Text.$Kind
+}
+
+function Get-ThemedTextColor {
+    # cc-P132: the theme's color for a control's meaning, read from the WinForms color it was given (Firebrick or DarkRed:
+    # danger; DarkOrange: warning; ForestGreen: success; DimGray: muted; Navy: link; else normal), on a page or on the
+    # stone. The meaning stays; only the color changes to one that reads where it sits.
+    param($Theme, [Drawing.Color]$Was, [bool]$OnPage)
+    $c = $Theme.Chrome
+    $kind = 'Normal'
+    if ($Was -eq [Drawing.Color]::Firebrick -or $Was -eq [Drawing.Color]::DarkRed -or $Was -eq [Drawing.Color]::Red) { $kind = 'Danger' }
+    elseif ($Was -eq [Drawing.Color]::DarkOrange) { $kind = 'Warning' }
+    elseif ($Was -eq [Drawing.Color]::ForestGreen -or $Was -eq [Drawing.Color]::Green) { $kind = 'Success' }
+    elseif ($Was -eq [Drawing.Color]::DimGray -or $Was -eq [Drawing.Color]::Gray) { $kind = 'Muted' }
+    elseif ($Was -eq [Drawing.Color]::Navy) { $kind = 'Link' }
+    if ($OnPage -and $Theme.Text) { return $Theme.Text.$kind }
+    switch ($kind) {
+        'Danger'  { return $c.StoneDanger }
+        'Warning' { return $c.StoneWarn }
+        default   { return $c.StoneText }
+    }
 }
 
 function Test-OnPage {
@@ -6590,9 +7401,15 @@ function Set-ControlTheme {
             foreach ($k in $x.Controls) { if ($k -is [Windows.Forms.FlowLayoutPanel]) { $k.BackColor = [Drawing.Color]::Transparent; foreach ($b in $k.Controls) { $stack.Push($b) } } }
             continue
         }
+        # cc-P132: a plate (the confirm phrase's) keeps its own colors; what sits on it (the box, the buttons) is themed.
+        if ($x.Tag -eq 'plate') {
+            if ($x -is [Windows.Forms.Panel]) { foreach ($k in $x.Controls) { if ($k.Tag -ne 'plate') { $stack.Push($k) } } }
+            continue
+        }
         $page = Test-OnPage $x
         $text = $c.StoneText; if ($page) { $text = $c.PageText }
         switch ($x) {
+            { $_ -is [Windows.Forms.PictureBox] } { $x.BackColor = [Drawing.Color]::Transparent; break }
             { $_ -is [Windows.Forms.Form] } {
                 $x.BackColor = ConvertTo-DrawingColor $c.StoneBack
                 $x.ForeColor = ConvertTo-DrawingColor $c.StoneText
@@ -6654,10 +7471,9 @@ function Set-ControlTheme {
             { $_ -is [Windows.Forms.Label] -or $_ -is [Windows.Forms.CheckBox] -or $_ -is [Windows.Forms.RadioButton] } {
                 $x.BackColor = [Drawing.Color]::Transparent
                 # The meaning a caption's color carried stays: a warning stays a warning, a quiet line stays quiet.
-                $was = $x.ForeColor
-                if ($was -eq [Drawing.Color]::Firebrick -or $was -eq [Drawing.Color]::DarkRed) { $x.ForeColor = ConvertTo-DrawingColor $c.PageWarn }
-                elseif ($was -eq [Drawing.Color]::DimGray -and $page) { $x.ForeColor = ConvertTo-DrawingColor $c.PageDim }
-                else { $x.ForeColor = ConvertTo-DrawingColor $text }
+                # cc-P132: through the theme's named text colors, and on the stone through StoneWarn / StoneDanger (the
+                # dark page colors could not be read there: Chase's confirm-phrase example, 10-16 07:34).
+                $x.ForeColor = ConvertTo-DrawingColor (Get-ThemedTextColor $Theme $x.ForeColor $page)
                 if ($x.Font.Name -ne $Theme.Fonts.Mono) { $x.Font = New-Object Drawing.Font($Theme.Fonts.Ui, [single]$Theme.Fonts.UiSize, $x.Font.Style) }
                 break
             }
@@ -6678,8 +7494,10 @@ function Set-TabTheme {
     $Tabs.DrawMode = 'OwnerDrawFixed'
     # cc-P87: the labels are drawn bold (they were thin), so each tab is padded wider to hold the bolder word; the
     # pages keep the regular font. The selected tab is parchment with a thick gold bar along its top.
-    $Tabs.Padding = New-Object Drawing.Point(20, 6)
+    # cc-P132: a look with crystals draws the rune slot before each header, so the tabs are padded wider for it.
+    $Tabs.Padding = New-Object Drawing.Point($(if ($Theme.Crystals) { 28 } else { 20 }), 6)
     $script:tabFont = Get-ThemeFont 'Ui' ([Drawing.FontStyle]::Bold)
+    $script:tabRune = $(if ($Theme.Crystals) { Get-ArtOrFallback 'rune-tab' 16 } else { $null })
     $Tabs.Add_DrawItem({
         param($s, $e)
         $c = $script:tabTheme.Chrome
@@ -6699,7 +7517,12 @@ function Set-TabTheme {
             $e.Graphics.FillRectangle($bar, $e.Bounds.X, $e.Bounds.Y, $e.Bounds.Width, 4)
             $bar.Dispose()
         }
-        [Windows.Forms.TextRenderer]::DrawText($e.Graphics, $page.Text, $script:tabFont, $e.Bounds, $fore, [Windows.Forms.TextFormatFlags]'HorizontalCenter, VerticalCenter, NoPadding')
+        $textBounds = $e.Bounds
+        if ($script:tabRune) {
+            $e.Graphics.DrawImage($script:tabRune, (New-Object Drawing.Rectangle(($e.Bounds.X + 6), ($e.Bounds.Y + [int](($e.Bounds.Height - 16) / 2)), 16, 16)))
+            $textBounds = New-Object Drawing.Rectangle(($e.Bounds.X + 20), $e.Bounds.Y, ($e.Bounds.Width - 20), $e.Bounds.Height)
+        }
+        [Windows.Forms.TextRenderer]::DrawText($e.Graphics, $page.Text, $script:tabFont, $textBounds, $fore, [Windows.Forms.TextFormatFlags]'HorizontalCenter, VerticalCenter, NoPadding')
         $b.Dispose(); $pen.Dispose()
     })
 }
@@ -6905,7 +7728,10 @@ function Get-TileColors {
 }
 
 function New-StatusTile {
-    param([string]$Title)
+    # cc-P132: in a look with crystals (Enhanced) the tile's state is also a crystal in its top-right corner (a child of the
+    # word label, so Update-TileFit's measuring is untouched), and -Figure adds the Golem figure at the right of the detail.
+    param([string]$Title, [switch]$Figure)
+    $crystals = [bool]($script:theme -and $script:theme.Crystals)
     $panel = New-Object Windows.Forms.Panel
     $panel.Dock = 'Fill'
     $panel.Margin = New-Object Windows.Forms.Padding(4)
@@ -6919,15 +7745,48 @@ function New-StatusTile {
     $word.Name = 'tile.' + $Title
     $word.Font = Get-ThemeFont 'Tile' ([Drawing.FontStyle]::Bold)
     $word.Text = $Title + ': ...'
-    $word.Padding = New-Object Windows.Forms.Padding(6, 4, 0, 0)
+    $word.Padding = New-Object Windows.Forms.Padding(6, 4, $(if ($crystals) { 34 } else { 0 }), 0)
     $detail = New-Object Windows.Forms.Label
     $detail.Dock = 'Fill'
     $detail.Name = 'tile.' + $Title
     $detail.Font = Get-ThemeFont 'Detail'
-    $detail.Padding = New-Object Windows.Forms.Padding(8, 2, 4, 0)
+    $detail.Padding = New-Object Windows.Forms.Padding(8, 2, $(if ($crystals -and $Figure) { 62 } else { 4 }), 0)
+    $crystal = $null; $fig = $null
+    if ($crystals) {
+        $crystal = New-Object Windows.Forms.PictureBox
+        $crystal.Name = 'tile.' + $Title
+        $crystal.Size = New-Object Drawing.Size(28, 28)
+        $crystal.SizeMode = 'Zoom'
+        $crystal.BackColor = [Drawing.Color]::Transparent
+        $crystal.Anchor = 'Top, Right'
+        $crystal.Location = New-Object Drawing.Point([math]::Max(0, $word.Width - 32), 1)
+        $crystal.Image = Get-ArtOrFallback 'crystal-grey' 28
+        $word.Controls.Add($crystal)
+        if ($Figure) {
+            $fig = New-Object Windows.Forms.PictureBox
+            $fig.Name = 'tile.' + $Title
+            $fig.Size = New-Object Drawing.Size(56, 56)
+            $fig.SizeMode = 'Zoom'
+            $fig.BackColor = [Drawing.Color]::Transparent
+            $fig.Anchor = 'Top, Right'
+            $fig.Location = New-Object Drawing.Point([math]::Max(0, $detail.Width - 60), 2)
+            $fig.Image = Get-ArtOrFallback 'golem-dark' 56
+            $detail.Controls.Add($fig)
+        }
+    }
     $panel.Controls.Add($detail)
     $panel.Controls.Add($word)
-    [pscustomobject]@{ Panel = $panel; Word = $word; Detail = $detail }
+    [pscustomobject]@{ Panel = $panel; Word = $word; Detail = $detail; Crystal = $crystal; Figure = $fig }
+}
+
+function Set-TileCrystal {
+    # cc-P132: the crystal that matches a tile's state (green, amber, red; anything else is the dull grey one).
+    param($Tile, [string]$Color)
+    if (-not $Tile -or -not $Tile.Crystal) { return }
+    $k = $Color
+    if ($k -notin @('green', 'amber', 'red')) { $k = 'grey' }
+    $img = Get-ArtOrFallback ('crystal-' + $k) 28
+    if ($Tile.Crystal.Image -ne $img) { $Tile.Crystal.Image = $img }
 }
 
 function Update-GlanceTiles {
@@ -6942,6 +7801,7 @@ function Update-GlanceTiles {
         $ui.Detail.ForeColor = $cols[1]
         $ui.Word.Text = $t.Title + ': ' + $t.Word
         $ui.Detail.Text = $t.Detail
+        Set-TileCrystal $ui $t.Color
         $short = $t.Title
         if ($short -eq 'STATUS PUBLISHER') { $short = 'publisher' }
         $titleBits += ($short + ' ' + $t.Word.ToLower())
@@ -6961,7 +7821,100 @@ function Set-TileLook {
     $Tile.Detail.ForeColor = $cols[1]
     $Tile.Word.Text = $Glance.Title + ': ' + $Glance.Word
     $Tile.Detail.Text = $Glance.Detail
+    Set-TileCrystal $Tile $Glance.Color
     Update-TileFit
+}
+
+function Set-GolemFigure {
+    # cc-P132: the Golem figure on the GOLEM tile and the Golem tab follows the Golem's state: glowing while it runs a
+    # prompt, a soft glow when awake with nothing running, dark when resting, stopped or off.
+    param($View)
+    $state = 'dark'
+    $s = $(if ($View) { $View.Status } else { $null })
+    $word = $(if ($s) { $s.State } elseif ($View -and $View.Enabled) { 'IDLE' } else { 'OFF' })
+    if ($word -in @('RUNNING', 'NEEDS YOU')) { $state = 'running' }
+    elseif ($word -eq 'IDLE') { $state = 'idle' }
+    $img = Get-ArtOrFallback ('golem-' + $state) 56
+    if ($script:ui.AutopilotTile -and $script:ui.AutopilotTile.Figure -and $script:ui.AutopilotTile.Figure.Image -ne $img) { $script:ui.AutopilotTile.Figure.Image = $img }
+    if ($script:ui.GolemFigure) { $big = Get-ArtOrFallback ('golem-' + $state) 64; if ($script:ui.GolemFigure.Image -ne $big) { $script:ui.GolemFigure.Image = $big } }
+    $state
+}
+
+function New-LightLabel {
+    # cc-P132: a status light beside a button: a crystal (in a look with crystals) and a line of words, named for its
+    # tooltip. Update-Lights fills it.
+    param([string]$Name)
+    $row = New-Object Windows.Forms.FlowLayoutPanel
+    $row.Name = $Name
+    $row.AutoSize = $true; $row.AutoSizeMode = 'GrowAndShrink'
+    $row.WrapContents = $false
+    $row.Margin = New-Object Windows.Forms.Padding(6, 8, 6, 6)
+    $row.BackColor = [Drawing.Color]::Transparent
+    $pic = New-Object Windows.Forms.PictureBox
+    $pic.Name = $Name
+    $pic.Size = New-Object Drawing.Size(22, 22)
+    $pic.SizeMode = 'Zoom'
+    $pic.BackColor = [Drawing.Color]::Transparent
+    $pic.Margin = New-Object Windows.Forms.Padding(0, 2, 4, 0)
+    $pic.Visible = [bool]($script:theme -and $script:theme.Crystals)
+    $lbl = New-Object Windows.Forms.Label
+    $lbl.Name = $Name
+    $lbl.AutoSize = $true
+    $lbl.MaximumSize = New-Object Drawing.Size(700, 0)
+    $lbl.Margin = New-Object Windows.Forms.Padding(0, 4, 0, 0)
+    $lbl.Font = Get-ThemeFont 'Ui' ([Drawing.FontStyle]::Bold)
+    $lbl.Text = '...'
+    $row.Controls.AddRange(@($pic, $lbl))
+    [pscustomobject]@{ Row = $row; Picture = $pic; Label = $lbl }
+}
+
+function Set-LightLabel {
+    # The words and the crystal of a light, in the theme's state text color (the words carry the meaning; the color
+    # and the crystal only repeat it).
+    param($Light, $Judged, [string]$Lead)
+    if (-not $Light -or -not $Judged) { return }
+    $Light.Label.Text = $Lead + $Judged.Word + ': ' + $Judged.Detail
+    $t = $script:theme
+    $key = @{ green = 'Success'; amber = 'Warning'; red = 'Danger' }[$Judged.Color]
+    if ($t -and $t.Text) { $Light.Label.ForeColor = ConvertTo-DrawingColor $(if ($key) { $t.Text.$key } else { $t.Text.Muted }) }
+    else { $Light.Label.ForeColor = @{ green = [Drawing.Color]::ForestGreen; amber = [Drawing.Color]::DarkOrange; red = [Drawing.Color]::Firebrick }[$Judged.Color]; if (-not $key) { $Light.Label.ForeColor = [Drawing.Color]::DimGray } }
+    $k = $Judged.Color; if ($k -notin @('green', 'amber', 'red')) { $k = 'grey' }
+    $img = Get-ArtOrFallback ('crystal-' + $k) 22
+    if ($Light.Picture.Image -ne $img) { $Light.Picture.Image = $img }
+    if ($script:ui.ToolTip) { $script:ui.ToolTip.SetToolTip($Light.Label, $Judged.Hover); $script:ui.ToolTip.SetToolTip($Light.Picture, $Judged.Hover) }
+}
+
+function Update-Lights {
+    # cc-P132 sections 6 and 7: the rebuild light (TEST tile and the Test shard tab) and the package light (the Player
+    # package tab), judged from facts read now; both written to LightsFile for the status page and P143.
+    param($State)
+    if (-not $State) { return }
+    try {
+        $rf = Get-RebuildFacts $script:cfg $State
+        $rb = Get-RebuildLight -ImageCommit $rf.ImageCommit -ImageDirty $rf.ImageDirty -Head $rf.Head -Commits $rf.Commits -GolemRunning $rf.GolemRunning -Uncommitted $rf.Uncommitted -BuildRunning $rf.BuildRunning -Running $rf.Running
+        Set-LightLabel $script:ui.RebuildLight $rb 'Rebuild: '
+        # The TEST tile's second line.
+        if ($script:ui.Tiles -and $script:ui.Tiles.Count -gt 1 -and $script:ui.Tiles[1].Word.Text -like 'TEST*') {
+            $d = $script:ui.Tiles[1].Detail
+            $first = (([string]$d.Text) -split "`n")[0]
+            $d.Text = $first + "`n" + 'rebuild: ' + $rb.Word.ToLower() + ', ' + $rb.Detail
+        }
+        $pf = $null; $pk = $null
+        if (-not $script:fromCapture) {
+            $pf = Get-PackageLightFacts $script:cfg
+            $pk = Get-PackageLight -PublishedVersion $pf.PublishedVersion -PublishedCommit $pf.PublishedCommit -NewestZipVersion $pf.NewestZipVersion -NewestZipCommit $pf.NewestZipCommit -Head $pf.Head -Commits $pf.Commits -CommitsSinceZip $pf.CommitsSinceZip -GolemRunning $pf.GolemRunning -Uncommitted $pf.Uncommitted -ClientStale $pf.ClientStale -BuildRunning $pf.BuildRunning -SiteReachable $pf.SiteReachable -SiteError $pf.SiteError
+        } else {
+            $pk = [pscustomobject]@{ Color = 'grey'; Word = 'UNKNOWN'; Detail = 'not judged under DRY RUN (the status is a capture file)'; Commits = @(); Hover = '' }
+        }
+        Set-LightLabel $script:ui.PackageLight $pk 'Package: '
+        $script:lights = [pscustomobject]@{ Rebuild = $rb; Package = $pk; RebuildFacts = $rf; PackageFacts = $pf }
+        if ($script:cfg.LightsFile) {
+            $dir = Split-Path -Parent $script:cfg.LightsFile
+            if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            [IO.File]::WriteAllText($script:cfg.LightsFile, (ConvertTo-LightsJson $rb $pk ([datetime]::Now)), (New-Object Text.UTF8Encoding $false))
+        }
+        Update-TileFit
+    } catch { Write-ConsoleLine ('lights: ' + $_.Exception.Message) 'gray' }
 }
 
 function Get-TileFitFont {
@@ -7130,6 +8083,8 @@ function Update-AutopilotView {
     $a = Get-AutopilotViewNow $script:cfg
     $script:autopilot = $a
     if ($script:ui.AutopilotTile) { Set-TileLook $script:ui.AutopilotTile $a.Tile }
+    # cc-P132: the Golem figure follows the state.
+    [void](Set-GolemFigure $a.View)
     $box = $script:ui.AutopilotPanel
     if ($box) {
         $box.Clear()
@@ -7224,6 +8179,8 @@ function Update-ConsoleStatus {
         Update-QuestionPanel $state
         if (-not $script:dry) { Invoke-QuestionMail -Config $script:cfg -State $state }
         $ap = Update-AutopilotView
+        # cc-P132: the rebuild and package lights, after the tiles and the Golem.
+        Update-Lights $state
         $pt = Get-PlayTestGlanceNow $script:cfg
         if ($script:ui.PlayTestTile) { Set-TileLook $script:ui.PlayTestTile $pt }
         $box = $script:ui.Status
@@ -7564,13 +8521,16 @@ function Update-SnapshotList {
     $script:ui.SnapPath.Text = 'save: ' + $script:cfg.Shards[$k].Saves + '    snapshots: ' + (Join-Path $script:cfg.SnapshotRoot $k)
 }
 
-function Show-TypedConfirm {
+function New-TypedConfirmForm {
+    # cc-P132: the typed-confirmation dialog, built but not shown (Show-TypedConfirm shows it; the facts and the
+    # screenshot script build it). The phrase line is large and bright on a plain plate (the theme's Plate), never a
+    # dark red on the stone (Chase, 10-16 07:34: "Type exactly: publish player package" could barely be read).
     param([string]$Phrase, [string]$Text, $Plan, [string]$What = 'LIVE shard')
     $d = New-Object Windows.Forms.Form
     Set-ConsoleIcon $d $script:cfg
     $d.Text = $What + ': type to confirm'
     if ($script:dry) { $d.Text = 'DRY RUN - ' + $What + ': type to confirm (the window it opens only prints)' }
-    $d.Size = New-Object Drawing.Size(640, 420)
+    $d.Size = New-Object Drawing.Size(640, 440)
     $d.FormBorderStyle = 'FixedDialog'
     $d.StartPosition = 'CenterParent'
     $d.MaximizeBox = $false
@@ -7586,23 +8546,39 @@ function Show-TypedConfirm {
     $body.Text = ($pre + $Text + "`r`n`r`nThis will run:`r`n" + ((Format-Plan -Action '' -ShardKey 'live' -Plan $Plan -Header 'PLAN' | Select-Object -Skip 1) -join "`r`n"))
     $bottom = New-Object Windows.Forms.Panel
     $bottom.Dock = 'Bottom'
-    $bottom.Height = 76
+    $bottom.Height = 92
+    $bottom.Name = 'confirmPlate'
     $label = New-Object Windows.Forms.Label
     $label.Text = "Type exactly:  $Phrase"
-    $label.Font = $script:BoldFont
-    $label.ForeColor = [Drawing.Color]::Firebrick
-    $label.SetBounds(10, 6, 600, 20)
+    $label.Name = 'confirmPhrase'
+    $label.SetBounds(10, 8, 610, 32)
+    $plate = $(if ($script:theme) { $script:theme.Plate } else { $null })
+    $t = $script:theme
+    if ($plate) {
+        $bottom.Tag = 'plate'; $label.Tag = 'plate'
+        $bottom.BackColor = ConvertTo-DrawingColor $plate.Back
+        $label.ForeColor = ConvertTo-DrawingColor $plate.Text
+        $label.BackColor = [Drawing.Color]::Transparent
+        $label.Font = New-Object Drawing.Font($t.Fonts.Ui, [single]$plate.Size, [Drawing.FontStyle]::Bold)
+    } else {
+        $label.Font = New-Object Drawing.Font('Segoe UI', 12, [Drawing.FontStyle]::Bold)
+        $label.ForeColor = ConvertTo-DrawingColor $(if ($t -and $t.Text) { $t.Text.Danger } else { @(170, 28, 28) })
+    }
     $tb = New-Object Windows.Forms.TextBox
-    $tb.SetBounds(10, 30, 360, 24)
+    $tb.Name = 'confirmTyped'
+    $tb.Font = New-Object Drawing.Font($(if ($t) { $t.Fonts.Ui } else { 'Segoe UI' }), 11)
+    $tb.SetBounds(10, 48, 360, 28)
     $ok = New-Object Windows.Forms.Button
     $ok.Text = 'Do it'
+    $ok.Name = 'confirmDo'
     $ok.Enabled = $false
     $ok.DialogResult = 'OK'
-    $ok.SetBounds(390, 28, 100, 28)
+    $ok.SetBounds(390, 46, 100, 30)
     $cancel = New-Object Windows.Forms.Button
     $cancel.Text = 'Cancel'
+    $cancel.Name = 'confirmCancel'
     $cancel.DialogResult = 'Cancel'
-    $cancel.SetBounds(500, 28, 100, 28)
+    $cancel.SetBounds(500, 46, 100, 30)
     $script:confirmPhrase = $Phrase
     $script:confirmBox = $tb
     $script:confirmOk = $ok
@@ -7614,8 +8590,15 @@ function Show-TypedConfirm {
     $d.CancelButton = $cancel
     $d.Add_Shown({ $script:confirmBox.Focus() })
     Set-ControlTheme $d $script:theme $script:themeImages # cc-P84: nothing for Plain
+    [pscustomobject]@{ Form = $d; Body = $body; Plate = $bottom; Label = $label; Box = $tb; Ok = $ok; Cancel = $cancel }
+}
+
+function Show-TypedConfirm {
+    param([string]$Phrase, [string]$Text, $Plan, [string]$What = 'LIVE shard')
+    $c = New-TypedConfirmForm -Phrase $Phrase -Text $Text -Plan $Plan -What $What
+    $d = $c.Form
     $result = $d.ShowDialog()
-    $typed = $tb.Text
+    $typed = $c.Box.Text
     $d.Dispose()
     ($result -eq 'OK') -and (Test-TypedConfirmation $Phrase $typed)
 }
@@ -7738,11 +8721,12 @@ function Update-CommitCountdown {
     $now = [datetime]::UtcNow
     if ($Reread -or -not $script:commitFactsCache -or -not $script:commitFactsAt -or ($now - $script:commitFactsAt).TotalSeconds -ge $script:cfg.CommitPollSeconds) {
         try { $script:commitFactsCache = Get-CommitFacts $script:cfg; $script:commitFactsAt = $now }
-        catch { $ui.CommitCountdown.Text = 'Could not read the repos: ' + $_.Exception.Message; $ui.CommitCountdown.ForeColor = [Drawing.Color]::Firebrick; return }
+        catch { $ui.CommitCountdown.Text = 'Could not read the repos: ' + $_.Exception.Message; $ui.CommitCountdown.ForeColor = Get-StateTextColor 'Danger'; return }
     }
     $t = Get-CommitCountdown -Facts $script:commitFactsCache -Config $script:cfg -Now $now -Force:$ui.CommitForce.Checked
     if ($ui.CommitCountdown.Text -ne $t) { $ui.CommitCountdown.Text = $t }
-    if ($t -eq 'Ready to commit') { $ui.CommitCountdown.ForeColor = [Drawing.Color]::ForestGreen } else { $ui.CommitCountdown.ForeColor = [Drawing.Color]::DarkOrange }
+    # cc-P132: the theme's success and warning colors (ForestGreen on parchment measured 3.7:1, under AA).
+    if ($t -eq 'Ready to commit') { $ui.CommitCountdown.ForeColor = Get-StateTextColor 'Success' } else { $ui.CommitCountdown.ForeColor = Get-StateTextColor 'Warning' }
 }
 
 function Set-ConsoleDryRun {
@@ -7759,8 +8743,8 @@ function Set-ConsoleDryRun {
         if ($On) { $box.BackColor = $cols[0]; $box.ForeColor = $cols[1] }
         else {
             $box.BackColor = [Drawing.Color]::Transparent
-            $box.ForeColor = [Drawing.Color]::Black
-            if ($script:theme -and $script:theme.Chrome) { $box.ForeColor = ConvertTo-DrawingColor $script:theme.Chrome.StoneText }
+            # cc-P132: the theme's normal text for where the box sits (the stone in a themed look).
+            $box.ForeColor = ConvertTo-DrawingColor $(if ($script:theme -and $script:theme.Chrome) { $script:theme.Chrome.StoneText } elseif ($script:theme -and $script:theme.Text) { $script:theme.Text.Normal } else { @(0, 0, 0) })
         }
     }
     if ($script:lastState) { Update-GlanceTiles $script:lastState }
@@ -8024,7 +9008,7 @@ function New-ButtonPage {
 function New-ConsoleForm {
     # cc-P84: -Theme is the look (Plain unless the entry passes the setting; Plain is the console as it was) and
     # -Pane builds the Action output pane and lets actions use it. The facts build forms without either.
-    param($Config, [switch]$DryRun, [string]$StatusFrom, [ValidateSet('UO', 'Plain')][string]$Theme = 'Plain', [switch]$Pane, $Settings)
+    param($Config, [switch]$DryRun, [string]$StatusFrom, [ValidateSet('UO', 'Plain', 'Enhanced')][string]$Theme = 'Plain', [switch]$Pane, $Settings, [switch]$RestoreWindow)
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
     [Windows.Forms.Application]::EnableVisualStyles()
@@ -8035,11 +9019,11 @@ function New-ConsoleForm {
     $script:lastState = $null
     $script:ui = @{}
     $script:theme = Get-ConsoleTheme $Theme
-    $script:themeImages = @{}
-    if ($script:theme.Gumps) {
-        $script:themeImages.Stone = Get-GumpImage $Config $script:theme.Gumps.Stone
-        $script:themeImages.Parchment = Get-GumpImage $Config $script:theme.Gumps.Parchment
-    }
+    # cc-P132: the art folder, read once; then the window's backgrounds (gumps, drawn textures, or art).
+    $script:artCache = @{}
+    $script:art = Get-ConsoleArt $Config
+    $script:themeImages = Get-ThemeImages $Config $script:theme
+    $script:lights = $null
     $script:settings = $Settings
     if (-not $script:settings) { $script:settings = ConvertFrom-ConsoleSettings $null }
     $script:PaneReady = [bool]$Pane
@@ -8055,6 +9039,9 @@ function New-ConsoleForm {
     $form.Size = New-Object Drawing.Size(1200, 1000)
     $form.MinimumSize = New-Object Drawing.Size(900, 700)
     $form.StartPosition = 'CenterScreen'
+    # cc-P132: laid out for 96 DPI and scaled by WinForms at 125% and 150% (the process is made DPI aware at the entry).
+    $form.AutoScaleDimensions = New-Object Drawing.SizeF(96, 96)
+    $form.AutoScaleMode = 'Dpi'
     $form.Font = Get-ThemeFont 'Ui'
 
     $script:ui.Form = $form
@@ -8115,7 +9102,8 @@ function New-ConsoleForm {
     $col++
     $script:netProbe = $null; $script:netResult = $null; $script:netResultAt = $null
     # cc-P74: the Golem (AUTOPILOT until cc-P99). Drawn by Update-AutopilotView on every status refresh.
-    $script:ui.AutopilotTile = New-StatusTile 'GOLEM'
+    # cc-P132: with the Golem figure, lit by its state.
+    $script:ui.AutopilotTile = New-StatusTile 'GOLEM' -Figure
     $glance.Controls.Add($script:ui.AutopilotTile.Panel, $col, 0)
     $col++
     # cc-P83: PLAY TESTS, with the two links beside it (inside the tile, under its line).
@@ -8186,9 +9174,9 @@ function New-ConsoleForm {
         $look = New-Object Windows.Forms.ComboBox
         $look.Name = 'theme'
         $look.DropDownStyle = 'DropDownList'
-        $look.Width = 70
+        $look.Width = 92
         $look.Margin = New-Object Windows.Forms.Padding(3, 6, 3, 3)
-        [void]$look.Items.AddRange(@('UO', 'Plain'))
+        [void]$look.Items.AddRange(@('Enhanced', 'UO', 'Plain'))
         $look.SelectedItem = $script:theme.Name
         $look.Add_SelectedIndexChanged({
             $script:settings.Theme = [string]$this.SelectedItem
@@ -8244,6 +9232,12 @@ function New-ConsoleForm {
         (New-ConsoleButton 'Tail the log' 'test.tail'),
         (New-ConsoleButton 'Open a client' 'test.client')
     )
+    # cc-P132: the rebuild light, right after the Rebuild button (Update-Lights fills it on every refresh).
+    $script:ui.RebuildLight = New-LightLabel 'rebuild.light'
+    $testFlow = $testPage.Controls[0]
+    $testFlow.Controls.Add($script:ui.RebuildLight.Row)
+    $rbBtn = @($testFlow.Controls | Where-Object { $_.Tag -eq 'test.rebuild' })
+    if ($rbBtn.Count) { $testFlow.Controls.SetChildIndex($script:ui.RebuildLight.Row, $testFlow.Controls.GetChildIndex($rbBtn[0]) + 1) }
 
     # cc-P96: Fix test shard, beside the Test shard tab.
     $fixPage = New-ButtonPage 'Fix test shard' 'When the test shard will not start. DIAGNOSE first: it reads the container, its health, its image and commit, and any crash, and names a known bug. RESTART restarts it as it is. ROLL BACK backs up the test save, then runs the newest good image (each healthy start tags one, sl-modernuo:good-<commit>). REBUILD builds a commit you pick through every test gate. PRUNE removes old image tags. Each of the four asks for a phrase; none touches live.' @(
@@ -8567,7 +9561,10 @@ function New-ConsoleForm {
     $buildBtn.Height = 30
     $buildBtn.Add_Click({ Invoke-ConsoleButton -ActionKey 'package.build' -PackageNotes $script:ui.PackageNotes.Text.Trim() })
     $pkgTop.Controls.AddRange(@($notesLabel, $notesBox, $buildBtn))
-    $pkgTop.SetFlowBreak($buildBtn, $true)
+    # cc-P132: the package light beside Build package.
+    $script:ui.PackageLight = New-LightLabel 'package.light'
+    $pkgTop.Controls.Add($script:ui.PackageLight.Row)
+    $pkgTop.SetFlowBreak($script:ui.PackageLight.Row, $true)
     # cc-P124: the client Build package will ship, and its sl-build.txt, before Build runs. Refresh list reads it again.
     $clientBox = New-Object Windows.Forms.TextBox
     $clientBox.Name = 'packageClient'
@@ -8694,6 +9691,17 @@ function New-ConsoleForm {
             $nsEnd.Name = 'golem.nightend'; $nsEnd.Width = 50; $nsEnd.Text = '06:30'; $nsEnd.Margin = New-Object Windows.Forms.Padding(2, 12, 6, 6)
             $apTop.Controls.AddRange(@($nsLabel, $nsStart, $nsTo, $nsEnd))
         }
+    }
+    # cc-P132: the Golem figure on its tab too (a look with crystals).
+    $script:ui.GolemFigure = $null
+    if ($script:theme.Crystals) {
+        $gf = New-Object Windows.Forms.PictureBox
+        $gf.Name = 'golemFigure'
+        $gf.Size = New-Object Drawing.Size(64, 64); $gf.SizeMode = 'Zoom'; $gf.BackColor = [Drawing.Color]::Transparent
+        $gf.Margin = New-Object Windows.Forms.Padding(12, 2, 6, 2)
+        $gf.Image = Get-ArtOrFallback 'golem-dark' 64
+        $apTop.Controls.Add($gf)
+        $script:ui.GolemFigure = $gf
     }
     $script:ui.GolemModel = $modelPick
     $script:ui.GolemModelAuto = $true
@@ -8827,22 +9835,67 @@ function New-ConsoleForm {
     }
     $script:OutputBox = $out
 
+    # cc-P132: the three rows under the tiles are two draggable splitters: Status over (tabs over output). The first
+    # layout keeps cc-P116's shares (status 36, tabs 38, output 26 with the pane; 48, 32, 20 without); a saved window
+    # state (Restore-WindowState) then puts the splitters where they were.
+    $split1 = New-Object Windows.Forms.SplitContainer
+    $split1.Name = 'splitStatus'; $split1.Orientation = 'Horizontal'
+    $split1.Size = New-Object Drawing.Size(1100, 800)   # a size first: the minimums below must fit inside one
+    $split1.Panel1MinSize = 90; $split1.Panel2MinSize = 220; $split1.SplitterWidth = 6
+    $split1.Dock = 'Fill'
+    $split2 = New-Object Windows.Forms.SplitContainer
+    $split2.Name = 'splitOutput'; $split2.Orientation = 'Horizontal'
+    $split2.Size = New-Object Drawing.Size(1100, 500)
+    $split2.Panel1MinSize = 120; $split2.Panel2MinSize = 90; $split2.SplitterWidth = 6
+    $split2.Dock = 'Fill'
+    $split1.Panel1.Controls.Add($statusGroup)
+    $split2.Panel1.Controls.Add($tabs)
+    $split2.Panel2.Controls.Add($outGroup)
+    $split1.Panel2.Controls.Add($split2)
+    $grid.RowCount = 2
+    $grid.RowStyles.Clear()
+    [void]$grid.RowStyles.Add((New-Object Windows.Forms.RowStyle('Absolute', 104)))
+    [void]$grid.RowStyles.Add((New-Object Windows.Forms.RowStyle('Percent', 100)))
     $grid.Controls.Add($glance, 0, 0)
-    $grid.Controls.Add($statusGroup, 0, 1)
-    $grid.Controls.Add($tabs, 0, 2)
-    $grid.Controls.Add($outGroup, 0, 3)
+    $grid.Controls.Add($split1, 0, 1)
     $form.Controls.Add($grid)
-    if ($Pane) {
-        # cc-P84: the output row grows a little to hold the pane beside the console's own output.
-        # cc-P116: the tabs take 38 (was 30) from the status box (36, was 44), so a tab's caption and its buttons show
-        # without scrolling at the default size (the Golem tab's two rows did not); a page scrolls when they still do not fit.
-        $grid.RowStyles[1].Height = 36; $grid.RowStyles[2].Height = 38; $grid.RowStyles[3].Height = 26
+    $script:ui.Split1 = $split1
+    $script:ui.Split2 = $split2
+    $script:ui.SplitShares = $(if ($Pane) { @(0.36, 0.38, 0.26) } else { @(0.48, 0.32, 0.20) })
+    $script:ui.SplitsPlaced = $false
+    $placeSplits = {
+        # Once, at the first size: the shares above; afterwards the person's drag is kept.
+        if ($script:ui.SplitsPlaced -or -not $script:ui.Split1 -or $script:ui.Split1.Height -le 0) { return }
+        $sh = $script:ui.SplitShares
+        $h = $script:ui.Split1.Height
+        Set-SplitterSafely $script:ui.Split1 ([int]($h * $sh[0]))
+        $h2 = $script:ui.Split2.Height
+        Set-SplitterSafely $script:ui.Split2 ([int]($h2 * ($sh[1] / ($sh[1] + $sh[2]))))
+        $script:ui.SplitsPlaced = $true
+        if ($script:ui.WindowState) { Restore-WindowSplitters $script:ui.WindowState }
     }
+    $split1.Add_SizeChanged($placeSplits)
+    $form.Add_Shown($placeSplits)
+    & $placeSplits
     if ($script:theme.Header) {
         # cc-P84: the crest and the name, on stone, above the tiles. Our own art (branding\intro), not EA's.
+        # cc-P132: in a look with crystals, the band slot (art, or the drawn band with a rune at its right end).
         $header = New-Object Windows.Forms.Panel
         $header.Dock = 'Top'
         $header.Height = 62
+        if ($script:theme.Crystals) {
+            $band = Get-ArtImage 'header-band'
+            if ($band) { $header.BackgroundImage = $band; $header.BackgroundImageLayout = 'Tile' }
+            else {
+                $rune = New-Object Windows.Forms.PictureBox
+                $rune.Name = 'headerRune'
+                $rune.Size = New-Object Drawing.Size(56, 56); $rune.SizeMode = 'Zoom'; $rune.BackColor = [Drawing.Color]::Transparent
+                $rune.Dock = 'Right'
+                $rune.Padding = New-Object Windows.Forms.Padding(8)
+                $rune.Image = Get-ArtOrFallback 'rune-corner' 40
+                $header.Controls.Add($rune)
+            }
+        }
         $crest = New-Object Windows.Forms.PictureBox
         $crest.SetBounds(10, 4, 54, 54)
         $crest.SizeMode = 'Zoom'
@@ -8871,7 +9924,13 @@ function New-ConsoleForm {
         $script:ui.Header.Controls[2].BackColor = ConvertTo-DrawingColor $script:theme.Chrome.Gold
         # cc-P87: the header on the same backing as the groups, so the title does not sit on the stone's speckle.
         $bk = $script:theme.Chrome
-        $script:ui.Header.BackColor = [Drawing.Color]::FromArgb($bk.BackingAlpha, $bk.Backing[0], $bk.Backing[1], $bk.Backing[2])
+        if (-not $script:ui.Header.BackgroundImage) { $script:ui.Header.BackColor = [Drawing.Color]::FromArgb($bk.BackingAlpha, $bk.Backing[0], $bk.Backing[1], $bk.Backing[2]) }
+    }
+    # cc-P132: the window state (a normal start only; the facts' forms are placed by the facts) and its saving on close.
+    if ($RestoreWindow) {
+        $script:ui.WindowState = Read-WindowState $Config
+        Restore-WindowBounds $form $script:ui.WindowState
+        $form.Add_FormClosing({ [void](Save-WindowState $script:cfg $script:ui.Form) })
     }
     Update-TileFit
     Update-CaptionFit
@@ -9047,6 +10106,8 @@ if ($Action) {
 
 # cc-P84: the look and the Action output pane, from the settings remembered on this PC.
 $settings = Read-ConsoleSettings $config
-$form = New-ConsoleForm -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom -Theme $settings.Theme -Pane -Settings $settings
+# cc-P132: DPI awareness before the first window, and the remembered window state (size, place, splitters).
+Write-ConsoleLog $config ('DPI: ' + (Set-ConsoleDpiAwareness))
+$form = New-ConsoleForm -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom -Theme $settings.Theme -Pane -Settings $settings -RestoreWindow
 [void]$form.ShowDialog()
 $form.Dispose()

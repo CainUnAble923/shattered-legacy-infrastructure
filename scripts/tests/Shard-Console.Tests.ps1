@@ -3704,15 +3704,17 @@ Fact 'P84_TheGumpCacheFillsFromTheClientOnceAndFallsBackWithoutIt' {
 }
 
 Fact 'P84_TheSettingsDefaultToUOAndThePaneAndABadFileFallsBack' {
+    # cc-P132: the default look is Enhanced now; UO and Plain are kept and a saved UO still loads.
     $d = ConvertFrom-ConsoleSettings $null
-    Assert-Equal 'UO|pane' ($d.Theme + '|' + $d.OutputIn)
+    Assert-Equal 'Enhanced|pane' ($d.Theme + '|' + $d.OutputIn)
     $s = ConvertFrom-ConsoleSettings '{ "Theme": "Plain", "OutputIn": "window" }'
     Assert-Equal 'Plain|window' ($s.Theme + '|' + $s.OutputIn)
+    Assert-Equal 'UO' (ConvertFrom-ConsoleSettings '{ "Theme": "UO" }').Theme 'a saved UO look still loads'
     $back = ConvertFrom-ConsoleSettings (ConvertTo-ConsoleSettings $s)
     Assert-Equal 'Plain|window' ($back.Theme + '|' + $back.OutputIn) 'round trip'
     foreach ($bad in @('not json', '{ "Theme": "Neon", "OutputIn": "printer" }', '[]', '')) {
         $b = ConvertFrom-ConsoleSettings $bad
-        Assert-Equal 'UO|pane' ($b.Theme + '|' + $b.OutputIn) $bad
+        Assert-Equal 'Enhanced|pane' ($b.Theme + '|' + $b.OutputIn) $bad
     }
 }
 
@@ -3909,7 +3911,8 @@ Fact 'P87_EveryUOTextPairMeetsItsFloorOnTheArtsLightestAndDarkest' {
         Write-Host ('        ' + $q.Where + ': ' + $q.Ratio + ':1 (floor ' + $q.Floor + ')')
         Assert-True ($q.Ratio -ge $q.Floor) ($q.Where + ': ' + $q.Ratio + ' under ' + $q.Floor)
     }
-    Assert-Equal 35 $pairs.Count 'every pair the UO look draws, the two Windows draws itself included'
+    # cc-P132: 68 (was 35): the named text colors on each page extreme, warning and danger words on the stone, the plate.
+    Assert-Equal 68 $pairs.Count 'every pair the UO look draws, the two Windows draws itself included'
     foreach ($k in 'normal', 'large', 'disabled') { Assert-True (@($pairs | Where-Object { $_.Kind -eq $k }).Count) ('a ' + $k + ' pair') }
     # The colored lines read as easily as a black one: 7:1, not just 4.5.
     $t = Get-ConsoleTheme 'UO'
@@ -3923,7 +3926,8 @@ Fact 'P87_TextOnTheStoneSitsOnTheBacking' {
     try {
         $c = (Get-ConsoleTheme 'UO').Chrome
         $want = [Drawing.Color]::FromArgb($c.BackingAlpha, $c.Backing[0], $c.Backing[1], $c.Backing[2])
-        $groups = @($script:ui.Grid.Controls | Where-Object { $_ -is [Windows.Forms.GroupBox] })
+        # cc-P132: the two groups sit in the splitters' panels now (Status in the first's top, the output in the second's bottom).
+        $groups = @(@($script:ui.Split1.Panel1.Controls) + @($script:ui.Split2.Panel2.Controls) | Where-Object { $_ -is [Windows.Forms.GroupBox] })
         Assert-Equal 2 $groups.Count 'Status, and Console output'
         foreach ($g in $groups) { Assert-Equal $want.ToArgb() $g.BackColor.ToArgb() ($g.Text + ' on the backing') }
         Assert-Equal $want.ToArgb() $script:ui.Header.BackColor.ToArgb() 'the header'
@@ -5860,6 +5864,333 @@ Fact 'P131_TheGolemTabHasTheWakeRowAndTheToggleLabelsFollowTheSettings' {
         $labels = @{}; foreach ($b in @($script:ui.GolemWakeButtons)) { $labels[[string]$b.Tag] = $b.Text }
         Assert-Equal 'Self-wake: on (turn off)' $labels['golem.autowake']
     } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
+# --- cc-P132: resizing, the Enhanced look, art slots, readable text, the rebuild and package lights ------------------------
+# Forms are built from the capture fixture with no art folder (every slot falls back) and placed off screen; nothing is
+# run and no site is reached (the package light is not judged under a capture).
+
+function New-P132Config {
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.Autopilot = New-AutopilotConfig 'D:\UO\cc-autopilot' 'D:\UO\cc-prompts\queue'
+    $cfg.ArtFolder = Join-Path $env:TEMP ('sl-art-none-' + [guid]::NewGuid().ToString('N'))
+    $cfg.WindowStateFile = Join-Path $env:TEMP ('sl-window-' + [guid]::NewGuid().ToString('N') + '.json')
+    $cfg.LightsFile = Join-Path $env:TEMP ('sl-lights-' + [guid]::NewGuid().ToString('N') + '.json')
+    $cfg.SettingsFile = Join-Path $env:TEMP ('sl-settings-' + [guid]::NewGuid().ToString('N') + '.json')
+    $cfg
+}
+function Show-P132Form {
+    param([string]$Look, [int]$W = 1200, [int]$H = 1000, $Cfg)
+    $script:NetProbeDisabled = $true
+    if (-not $Cfg) { $Cfg = New-P132Config }
+    $f = New-ConsoleForm -Config $Cfg -DryRun -Theme $Look -Pane -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -Settings (ConvertFrom-ConsoleSettings ('{"Theme":"' + $Look + '"}'))
+    $f.StartPosition = 'Manual'; $f.Location = New-Object Drawing.Point(-8000, 0); $f.ShowInTaskbar = $false
+    $f.Size = New-Object Drawing.Size($W, $H)
+    $f.Show(); [Windows.Forms.Application]::DoEvents()
+    $f
+}
+function Close-P132Form($f) {
+    if ($script:ui.Pane -and $script:ui.Pane.Timer) { $script:ui.Pane.Timer.Stop() }
+    $f.Close(); $f.Dispose(); $script:NetProbeDisabled = $false; $script:PaneReady = $false; $script:ui.Pane = $null
+}
+function Find-P132Control($Root, [string]$Name) {
+    $stack = New-Object System.Collections.Stack; $stack.Push($Root)
+    while ($stack.Count) { $x = $stack.Pop(); if ($x.Name -eq $Name) { return $x }; foreach ($k in $x.Controls) { $stack.Push($k) } }
+    $null
+}
+$p132Commit = { param($short, $subject, $files) [pscustomobject]@{ Sha = ($short * 8).Substring(0, 40); Short = $short; Subject = $subject; Prompt = $(if ($subject -match '\bP(\d+)\b') { 'P' + $Matches[1] } else { '' }); Files = @($files) } }
+
+Fact 'P132_EveryLookPassesAAOnItsTextColorsTilesAndPlate' {
+    # Seen failing first: on the console before this change Get-ConsoleTheme had no Enhanced look, no Text and no Plate.
+    foreach ($name in 'Plain', 'UO', 'Enhanced') {
+        $t = Get-ConsoleTheme $name
+        Assert-Equal 'green,amber,red,grey' (@($t.Tiles.Keys) -join ',') ($name + ': the four states')
+        foreach ($k in $t.Tiles.Keys) { Assert-True ((Get-ContrastRatio $t.Tiles[$k].Fore $t.Tiles[$k].Back) -ge 4.5) ($name + ' tile ' + $k) }
+        Assert-Equal 'Normal,Muted,Warning,Danger,Success,Link' (@($t.Text.PSObject.Properties.Name) -join ',') ($name + ': the six named text colors')
+        $bad = @(Get-ThemeContrastPairs $t | Where-Object { $_.Ratio -lt $_.Floor })
+        Assert-Equal 0 $bad.Count ($name + ': ' + (($bad | ForEach-Object { $_.Where + ' ' + $_.Ratio }) -join '; '))
+        if ($t.Chrome) {
+            Assert-True ($null -ne $t.Plate) ($name + ' has a plate')
+            Assert-True ((Get-ContrastRatio $t.Plate.Text $t.Plate.Back) -ge 7) ($name + ': the plate at 7:1 or better')
+            Assert-True ((Get-ContrastRatio $t.Chrome.StoneDanger $t.Chrome.StoneBack) -ge 4.5) ($name + ': danger words on the stone')
+        }
+    }
+    $e = Get-ConsoleTheme 'Enhanced'
+    Assert-True ($e.Crystals -and $e.Glow -and $e.Texture -and $null -eq $e.Gumps) 'Enhanced draws its own stone and has crystals'
+    foreach ($k in $e.Lines.Keys) { Assert-True ((Get-ContrastRatio $e.Lines[$k] $e.LineBack) -ge 7) ('Enhanced line ' + $k + ' at 7:1') }
+    Assert-True (@(Get-ThemeContrastPairs $e | Where-Object { $_.Where -like 'Text.* on drawn page*' }).Count -ge 12) 'the named colors are checked on the drawn page''s lightest and darkest pixel'
+    # Today's colors, the example Chase gave: the dark page red on the stone, which the old dialog drew.
+    $u = Get-ConsoleTheme 'UO'
+    Assert-True ((Get-ContrastRatio $u.Chrome.PageWarn $u.Gumps.StoneLight) -lt 3) 'the old confirm-phrase color on the stone fails AA (why the plate exists)'
+}
+
+Fact 'P132_TheConfirmPhraseIsLargeAndBrightOnAPlateInEveryLook' {
+    $saved = @($script:theme, $script:themeImages, $script:MonoFont, $script:BoldFont, $script:cfg)
+    try {
+        $script:cfg = Get-ConsoleConfig -RepoRoot $repo
+        $plan = @((New-PlanStep -Kind confirm -Phrase 'publish player package' -Text 'x'), (New-PlanStep -Kind say -Text 'y'))
+        foreach ($look in 'UO', 'Enhanced', 'Plain') {
+            $script:theme = Get-ConsoleTheme $look
+            $script:themeImages = @{}
+            $script:MonoFont = Get-ThemeFont 'Mono'; $script:BoldFont = Get-ThemeFont 'Mono' ([Drawing.FontStyle]::Bold)
+            $c = New-TypedConfirmForm -Phrase 'publish player package' -Text 'This publishes the zip.' -Plan $plan -What 'Player package'
+            try {
+                Assert-True ($c.Label.Text -eq 'Type exactly:  publish player package') ($look + ': the phrase line')
+                Assert-True ($c.Label.Font.Bold -and $c.Label.Font.Size -ge 12) ($look + ': large and bold: ' + $c.Label.Font.Size)
+                if ($script:theme.Plate) {
+                    Assert-Equal (ConvertTo-DrawingColor $script:theme.Plate.Back) $c.Plate.BackColor ($look + ': on the plate')
+                    Assert-Equal (ConvertTo-DrawingColor $script:theme.Plate.Text) $c.Label.ForeColor ($look + ': bright on it (the walker left it alone)')
+                    Assert-True ($c.Label.Font.Size -ge 14) ($look + ': 14 pt')
+                    $plateColor = @($c.Plate.BackColor.R, $c.Plate.BackColor.G, $c.Plate.BackColor.B); $textColor = @($c.Label.ForeColor.R, $c.Label.ForeColor.G, $c.Label.ForeColor.B)
+                    Assert-True ((Get-ContrastRatio $textColor $plateColor) -ge 7) ($look + ': measured on the controls themselves')
+                } else {
+                    Assert-Equal (ConvertTo-DrawingColor $script:theme.Text.Danger) $c.Label.ForeColor 'Plain: the named danger color'
+                }
+                Assert-True (-not $c.Ok.Enabled) ($look + ': Do it waits for the phrase')
+                $c.Box.Text = 'publish player package'
+                Assert-True ($c.Ok.Enabled) ($look + ': the typed phrase enables it')
+            } finally { $c.Form.Dispose() }
+        }
+    } finally { $script:theme = $saved[0]; $script:themeImages = $saved[1]; $script:MonoFont = $saved[2]; $script:BoldFont = $saved[3]; $script:cfg = $saved[4] }
+}
+
+Fact 'P132_NamedTextColorsReplaceTheHardCodedOnes' {
+    $saved = $script:theme
+    try {
+        foreach ($look in 'UO', 'Enhanced') {
+            $script:theme = Get-ConsoleTheme $look
+            $t = $script:theme
+            Assert-Equal (ConvertTo-DrawingColor $t.Text.Success) (Get-StateTextColor 'Success') ($look + ': success')
+            $rgb = { param($c) @($c) -join ',' }
+            Assert-Equal (& $rgb $t.Text.Danger) (& $rgb (Get-ThemedTextColor $t ([Drawing.Color]::Firebrick) $true)) ($look + ': Firebrick on a page is the named danger')
+            Assert-Equal (& $rgb $t.Chrome.StoneDanger) (& $rgb (Get-ThemedTextColor $t ([Drawing.Color]::Firebrick) $false)) ($look + ': Firebrick on the stone is the light danger')
+            Assert-Equal (& $rgb $t.Text.Success) (& $rgb (Get-ThemedTextColor $t ([Drawing.Color]::ForestGreen) $true)) ($look + ': ForestGreen is success')
+            Assert-Equal (& $rgb $t.Text.Warning) (& $rgb (Get-ThemedTextColor $t ([Drawing.Color]::DarkOrange) $true)) ($look + ': DarkOrange is warning')
+            Assert-Equal (& $rgb $t.Text.Muted) (& $rgb (Get-ThemedTextColor $t ([Drawing.Color]::DimGray) $true)) ($look + ': DimGray is muted')
+            Assert-Equal (& $rgb $t.Chrome.StoneText) (& $rgb (Get-ThemedTextColor $t ([Drawing.Color]::Black) $false)) ($look + ': anything else on the stone is the stone text')
+        }
+        # The spot that measured under AA before: ForestGreen on parchment.
+        $u = Get-ConsoleTheme 'UO'
+        Assert-True ((Get-ContrastRatio @(34, 139, 34) $u.Gumps.ParchmentWorst) -lt 4.5) 'ForestGreen on the darkest parchment failed AA'
+        Assert-True ((Get-ContrastRatio $u.Text.Success $u.Gumps.ParchmentWorst) -ge 4.5) 'Text.Success passes there'
+    } finally { $script:theme = $saved }
+}
+
+Fact 'P132_EachLookRendersWithItsOwnChromeAndTheTabsStretch' {
+    foreach ($look in 'Enhanced', 'UO', 'Plain') {
+        $f = Show-P132Form -Look $look
+        try {
+            $t = $script:theme
+            Assert-Equal $look $t.Name ($look + ' is in force')
+            Assert-True ($null -ne $script:ui.Split1 -and $null -ne $script:ui.Split2) ($look + ': the two splitters')
+            Assert-True ($script:ui.Split1.SplitterDistance -gt 0 -and $script:ui.Split2.SplitterDistance -gt 0) ($look + ': placed')
+            Assert-True ([math]::Abs($script:ui.Tabs.Width - $script:ui.Split2.Panel1.ClientSize.Width) -le 2) ($look + ': the tabs stretch to the splitter panel: ' + $script:ui.Tabs.Width + ' vs ' + $script:ui.Split2.Panel1.ClientSize.Width)
+            $crystal = $script:ui.Tiles[1].Crystal
+            if ($look -eq 'Enhanced') {
+                Assert-True ($null -ne $f.BackgroundImage) 'the drawn stone is tiled behind the window'
+                Assert-True ($null -ne $crystal -and $null -ne $crystal.Image) 'a crystal on the TEST tile'
+                Assert-True ($null -ne $script:ui.AutopilotTile.Figure -and $null -ne $script:ui.AutopilotTile.Figure.Image) 'the Golem figure on its tile'
+                Assert-True ($null -ne $script:ui.GolemFigure) 'and on its tab'
+                Assert-True ($null -ne (Find-P132Control $f 'headerRune')) 'the header rune'
+                Assert-Equal 28 $script:ui.Tabs.Padding.X 'the tabs are padded for the rune'
+                $pix = $f.BackgroundImage.GetPixel(10, 10)
+                Assert-True ($pix.R -ge $t.Texture.StoneDark[0] -and $pix.R -le $t.Texture.StoneLight[0]) ('the stone''s pixels stay inside the measured bounds: ' + $pix)
+            } else {
+                Assert-True ($null -eq $crystal) ($look + ': no crystal')
+                Assert-True ($null -eq $script:ui.AutopilotTile.Figure) ($look + ': no figure')
+            }
+            Assert-True ($script:ui.RebuildLight.Label.Text.StartsWith('Rebuild: ')) ($look + ': the rebuild light says something: ' + $script:ui.RebuildLight.Label.Text)
+            Assert-True ($script:ui.PackageLight.Label.Text -match '^Package: UNKNOWN: not judged under DRY RUN') ($look + ': the package light is not judged from a capture')
+            Assert-True ($script:ui.Tiles[1].Detail.Text -match "`nrebuild: ") ($look + ': the TEST tile''s second line')
+            Assert-True (Test-Path -LiteralPath $script:cfg.LightsFile) ($look + ': lights.json written')
+        } finally { Close-P132Form $f }
+    }
+}
+
+Fact 'P132_TilesWrapAtNarrowWidths' {
+    $f = Show-P132Form -Look 'Enhanced' -W 900 -H 700
+    try {
+        Update-TileFit; [Windows.Forms.Application]::DoEvents()
+        Assert-True ($script:ui.Glance.ColumnCount -le 4 -and $script:ui.Glance.RowCount -ge 2) ('narrow: two rows, ' + $script:ui.Glance.ColumnCount + ' across')
+        foreach ($tile in $script:ui.Tiles) { Assert-True ($tile.Panel.Width -ge 150) ('a tile keeps its width: ' + $tile.Panel.Width) }
+        $f.Size = New-Object Drawing.Size(1700, 1000); [Windows.Forms.Application]::DoEvents(); Update-TileFit; [Windows.Forms.Application]::DoEvents()
+        Assert-Equal 7 $script:ui.Glance.ColumnCount 'wide: one row of seven'
+        Assert-True ($script:ui.Tiles[1].Crystal.Right -le $script:ui.Tiles[1].Word.Width) 'the crystal stays inside its tile'
+    } finally { Close-P132Form $f }
+}
+
+Fact 'P132_SplittersAndTheWindowStatePersistAndSurviveACorruptFile' {
+    # Pure: the file's values, with their floors, and a bad file.
+    $d = ConvertFrom-WindowState 'this is not json'
+    Assert-Equal '1200|1000|False|0' ([string]$d.Width + '|' + $d.Height + '|' + $d.Maximized + '|' + $d.Split1) 'garbage: the defaults'
+    $x = ConvertFrom-WindowState '{ "Width": 50, "Height": -3, "X": 100, "Y": 200, "Maximized": true, "Split1": "x", "Split2": 300, "PaneSplit": 7 }'
+    Assert-Equal '1200|1000|100|200|True|0|300|7' ([string]$x.Width + '|' + $x.Height + '|' + $x.X + '|' + $x.Y + '|' + $x.Maximized + '|' + $x.Split1 + '|' + $x.Split2 + '|' + $x.PaneSplit) 'a too-small size falls back, the rest is kept'
+    $rt = ConvertFrom-WindowState (ConvertTo-WindowState $x)
+    Assert-Equal 300 $rt.Split2 'round trip'
+    $screens = @([pscustomobject]@{ X = 0; Y = 0; Width = 1920; Height = 1040 })
+    $on = Resolve-WindowBounds ([pscustomobject]@{ Width = 1200; Height = 1000; X = 300; Y = 20; Maximized = $false }) $screens
+    Assert-True ($on.Placed -and $on.X -eq 300 -and $on.Y -eq 20) 'on screen: kept'
+    $off = Resolve-WindowBounds ([pscustomobject]@{ Width = 1200; Height = 1000; X = -5000; Y = 20; Maximized = $false }) $screens
+    Assert-True (-not $off.Placed -and $off.X -eq 360 -and $off.Y -eq 20) ('off screen (an unplugged monitor): centered: ' + $off.X + ',' + $off.Y)
+    $big = Resolve-WindowBounds ([pscustomobject]@{ Width = 4000; Height = 3000; X = $null; Y = $null; Maximized = $false }) $screens
+    Assert-True ($big.Width -eq 1920 -and $big.Height -eq 1040) 'never larger than the screen'
+    # The form: drag a splitter, save, read back; a corrupt file reads as the defaults; the splitters restore.
+    $cfg = New-P132Config
+    $f = Show-P132Form -Look 'Enhanced' -Cfg $cfg
+    try {
+        Set-SplitterSafely $script:ui.Split1 300
+        Assert-Equal 300 $script:ui.Split1.SplitterDistance 'dragged'
+        Assert-True (Save-WindowState $cfg $f) 'saved'
+        $r = Read-WindowState $cfg
+        Assert-True ($r.Split1 -eq 300 -and $r.Width -eq 1200 -and $r.Height -eq 1000 -and -not $r.Maximized) ('read back: ' + (ConvertTo-WindowState $r))
+        [IO.File]::WriteAllText($cfg.WindowStateFile, '{ not json at all')
+        $c = Read-WindowState $cfg
+        Assert-Equal 1200 $c.Width 'a corrupt file: the defaults, no error'
+        Restore-WindowSplitters ([pscustomobject]@{ Split1 = 260; Split2 = 0; PaneSplit = 0 })
+        Assert-Equal 260 $script:ui.Split1.SplitterDistance 'restored'
+        Set-SplitterSafely $script:ui.Split1 99999
+        Assert-Equal 260 $script:ui.Split1.SplitterDistance 'a value that does not fit is left alone'
+    } finally { Close-P132Form $f; Remove-Item -LiteralPath $cfg.WindowStateFile -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P132_EverySlotLoadsASamplePngAndFallsBackWhenMissingAndABadFileLogsOneLine' {
+    $saved = $script:theme
+    $script:theme = Get-ConsoleTheme 'Enhanced'
+    $dir = Join-Path $env:TEMP ('sl-art-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $cfg = New-P132Config; $cfg.ArtFolder = $dir
+    try {
+        $slots = @(Get-ArtSlots)
+        Assert-Equal 20 $slots.Count 'twenty slots'
+        Assert-True (($slots | Measure-Object -Property Budget -Sum).Sum * 1024 -lt 2.5MB) 'the budgets stay far under the 5 MB rule'
+        # A sample PNG in every slot (the drawn fallbacks, saved), two of them strips with an art.json entry.
+        foreach ($s in $slots) {
+            $img = New-FallbackImage $s.Name $(if ($s.Kind -eq 'tile') { 64 } else { $s.Size })
+            if ($s.Name -in @('crystal-green', 'spinner')) {
+                $strip = New-Object Drawing.Bitmap(($img.Width * 4), $img.Height)
+                $g = [Drawing.Graphics]::FromImage($strip); foreach ($i in 0..3) { $g.DrawImage($img, ($i * $img.Width), 0) }; $g.Dispose()
+                $strip.Save((Join-Path $dir $s.File), [Drawing.Imaging.ImageFormat]::Png); $strip.Dispose()
+            } else { $img.Save((Join-Path $dir $s.File), [Drawing.Imaging.ImageFormat]::Png) }
+            $img.Dispose()
+        }
+        [IO.File]::WriteAllText((Join-Path $dir 'art.json'), '{ "slots": { "crystal-green": { "frames": 4, "fps": 8 }, "spinner": { "frames": 4, "fps": 10 } } }')
+        $art = Get-ConsoleArt $cfg
+        Assert-Equal 20 $art.Slots.Count ('every slot loaded: missing ' + ($art.Missing -join ',') + ' bad ' + ($art.Bad -join ';'))
+        Assert-Equal 'strip' $art.Slots['crystal-green'].Kind 'a strip with an art.json entry'
+        Assert-Equal 4 $art.Slots['crystal-green'].Frames
+        Assert-True ($art.Lines[0] -match '^console-art: 20 of 20 slots have art') $art.Lines[0]
+        $script:art = $art; $script:artCache = @{}
+        $first = Get-ArtImage 'crystal-green'
+        Assert-True ($null -ne $first -and $first.Width -eq 32) 'the first frame is cut from the strip'
+        Assert-True ($null -ne (Get-ArtOrFallback 'golem-idle' 64)) 'the art is what the tile gets'
+        # Nothing in the folder: every slot falls back, said in one line that names them.
+        Remove-Item -Path (Join-Path $dir '*') -Force
+        $none = Get-ConsoleArt $cfg
+        Assert-Equal 0 $none.Slots.Count 'nothing loaded'
+        Assert-Equal 20 $none.Missing.Count 'twenty missing'
+        Assert-Equal 1 $none.Lines.Count 'one line'
+        Assert-True ($none.Lines[0] -match '0 of 20 slots have art' -and $none.Lines[0] -match 'crystal-green') $none.Lines[0]
+        $script:art = $none; $script:artCache = @{}
+        Assert-True ($null -eq (Get-ArtImage 'crystal-green')) 'no art'
+        Assert-True ($null -ne (Get-ArtOrFallback 'crystal-green' 28)) 'so the drawn crystal'
+        # Two bad files: text named as a PNG, and an oversized one. Each is one line; the fallback is drawn for both.
+        [IO.File]::WriteAllText((Join-Path $dir 'crystal-red.png'), 'this is not a picture')
+        $bytes = New-Object byte[] (130 * 1024); (New-Object Random(1)).NextBytes($bytes); [IO.File]::WriteAllBytes((Join-Path $dir 'golem-dark.png'), $bytes)
+        $bad = Get-ConsoleArt $cfg
+        Assert-Equal 2 $bad.Bad.Count ($bad.Bad -join '; ')
+        Assert-True (@($bad.Lines | Where-Object { $_ -like 'console-art: bad file, drawn fallback used: *' }).Count -eq 2) 'one line per bad file'
+        Assert-True (@($bad.Bad | Where-Object { $_ -match 'crystal-red\.png: could not be read' }).Count -eq 1) ($bad.Bad -join '; ')
+        Assert-True (@($bad.Bad | Where-Object { $_ -match 'golem-dark\.png: 130 KB is over the slot''s 120 KB budget' }).Count -eq 1) ($bad.Bad -join '; ')
+        Assert-Equal 18 $bad.Missing.Count 'the other eighteen are missing, not bad'
+        # The judge itself.
+        $slot = @($slots | Where-Object { $_.Name -eq 'crystal-grey' })[0]
+        Assert-True (-not (Test-ArtFile -Slot $slot -Exists $true -Length 100 -Extension '.gif' -Width 32 -Height 32).Ok) 'a GIF in a static slot is refused'
+        $anim = @($slots | Where-Object { $_.Name -eq 'crystal-green' })[0]
+        Assert-True (Test-ArtFile -Slot $anim -Exists $true -Length 100 -Extension '.gif' -Width 32 -Height 32).Ok 'a GIF in an animated slot is fine'
+        Assert-True (-not (Test-ArtFile -Slot $anim -Exists $true -Length 100 -Extension '.png' -Width 100 -Height 32 -Frames 3).Ok) 'a strip whose width is not frames x width is refused'
+        Assert-True (Test-ArtFile -Slot $anim -Exists $true -Length 100 -Extension '.png' -Width 96 -Height 32 -Frames 3).Ok 'and one that is, is fine'
+        Assert-True (Test-ArtFile -Slot $slot -Exists $false).Missing 'a missing file is missing, not bad'
+        $m = ConvertFrom-ArtManifest '{ "slots": { "x": { "frames": 0, "fps": 999 } } }'
+        Assert-True ($m.Slots['x'].Frames -eq 1 -and $m.Slots['x'].Fps -eq 8) 'silly values fall back'
+        Assert-True ((ConvertFrom-ArtManifest 'nope').Problem -match 'does not parse') 'a broken art.json says so'
+    } finally { $script:theme = $saved; $script:art = $null; $script:artCache = @{}; Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P132_TheGolemFigureFollowsTheGolemsState' {
+    $saved = @($script:theme, $script:ui)
+    try {
+        $script:theme = Get-ConsoleTheme 'Enhanced'; $script:ui = @{}; $script:artCache = @{}; $script:art = $null
+        $x = [pscustomobject]@{ PromptTexts = @{}; TreeClean = $null }
+        Assert-Equal 'running' (Set-GolemFigure (New-P125View (New-P125Status) $x)) 'running a prompt: glowing'
+        Assert-Equal 'idle' (Set-GolemFigure (New-P125View (New-P125Status -State 'IDLE' -Current '') $x)) 'awake, nothing running: a soft glow'
+        Assert-Equal 'dark' (Set-GolemFigure (New-P125View (New-P131Status -State 'RESTING' -Current '' -RestReason 'run cap') $x)) 'resting: dark'
+        Assert-Equal 'dark' (Set-GolemFigure (New-P125View (New-P131Status -State 'STOPPED' -Current '' -StoppedPrompt 'P125') $x)) 'stopped: dark'
+        Assert-Equal 'dark' (Set-GolemFigure (New-P125View (New-P131Status -State 'OFF' -Current '') $x)) 'off: dark'
+        foreach ($s in 'running', 'idle', 'dark') { Assert-True ($null -ne (New-FallbackImage ('golem-' + $s) 64)) ('a drawn golem, ' + $s) }
+    } finally { $script:theme = $saved[0]; $script:ui = $saved[1] }
+}
+
+Fact 'P132_TheRebuildLightSaysEachColourFromFixtures' {
+    $head = 'b' * 40
+    $img = 'a' * 40
+    $server = @((& $p132Commit 'c127c127' 'CC task P127: Port list, Treasure maps' @('server/customizations/Items/TreasureMap.cs', 'CHANGELOG.md')),
+                (& $p132Commit 'c128c128' 'CC task P128: Consumables' @('server/customizations/Items/Food.cs')))
+    $docs = @((& $p132Commit 'd001d001' 'CC task P131: Wake the Golem' @('scripts/Shard-Console.ps1', 'scripts/tests/Shard-Console.Tests.ps1', 'VERSION')),
+              (& $p132Commit 'd002d002' 'notes only' @('docs/x.md')))
+    $g = Get-RebuildLight -ImageCommit $head -Head $head -Commits @() -Running $true
+    Assert-True ($g.Color -eq 'green' -and $g.Word -eq 'LATEST' -and $g.Detail -eq 'built from HEAD') ('built from HEAD: ' + $g.Detail)
+    $g2 = Get-RebuildLight -ImageCommit $img -Head $head -Commits @((& $p132Commit 'd002d002' 'notes only' @('docs/x.md')), (& $p132Commit 'd003d003' 'console' @('scripts/Shard-Console.ps1'))) -Running $true
+    Assert-True ($g2.Color -eq 'green' -and $g2.Detail -eq '2 commits since the build, none touch the server') ('docs and console only: ' + $g2.Detail)
+    $a = Get-RebuildLight -ImageCommit $img -Head $head -Commits ($server + $docs) -Running $true
+    Assert-True ($a.Color -eq 'amber' -and $a.Word -eq 'REBUILD') ('server changes: ' + $a.Detail)
+    Assert-True ($a.Detail -match '^3 commits: P127, P128, P131 touch the server since the running build: Rebuild can go now') ('counted with their prompts (VERSION counts as a server file): ' + $a.Detail)
+    Assert-True ($a.Hover -match 'c127c127 CC task P127' -and $a.Hover -match 'server/customizations/Items/TreasureMap\.cs' -and $a.Hover -notmatch 'docs/x\.md') 'the hover lists the commits and the server files'
+    $r1 = Get-RebuildLight -ImageCommit $img -Head $head -Commits $server -GolemRunning 'P130' -Running $true
+    Assert-True ($r1.Color -eq 'red' -and $r1.Detail -match 'the Golem is running P130') ('blocked by the Golem: ' + $r1.Detail)
+    $r2 = Get-RebuildLight -ImageCommit $img -Head $head -Commits $server -Uncommitted 3 -Running $true
+    Assert-True ($r2.Color -eq 'red' -and $r2.Detail -match '3 uncommitted file\(s\) in the code repo: commit first') ('blocked by uncommitted changes: ' + $r2.Detail)
+    $r3 = Get-RebuildLight -ImageCommit $img -Head $head -Commits $server -BuildRunning $true -Running $true
+    Assert-True ($r3.Color -eq 'red' -and $r3.Detail -match 'a build is already running') ('blocked by a build: ' + $r3.Detail)
+    $u = Get-RebuildLight -ImageCommit '' -Head $head -Commits @() -Running $true
+    Assert-True ($u.Color -eq 'grey' -and $u.Detail -match 'no sl\.commit label') ('no label: ' + $u.Detail)
+    $n = Get-RebuildLight -ImageCommit $img -Head $head -Commits $server -Running $false
+    Assert-True ($n.Color -eq 'grey' -and $n.Detail -match 'no running test shard') 'nothing running'
+    $dirty = Get-RebuildLight -ImageCommit $head -ImageDirty $true -Head $head -Commits @() -Running $true
+    Assert-True ($dirty.Detail -match 'built with uncommitted changes') 'a dirty image says so'
+    $j = ConvertTo-LightsJson $a $r1 ([datetime]'2026-10-16T12:00:00') | ConvertFrom-Json
+    Assert-True ($j.rebuild.color -eq 'amber' -and @($j.rebuild.commits).Count -eq 3 -and $j.package.color -eq 'red' -and $j.schema -eq 1) 'the status.json-style output carries both'
+}
+
+Fact 'P132_ThePackageLightSaysEachColourFromFixtures' {
+    $head = 'h' * 40
+    $ship = @((& $p132Commit 'p124p124' 'CC task P124: the package ships our TazUO' @('player-package/Build-PlayerPackage.ps1', 'TAZUO_COMMIT')))
+    $notShip = @((& $p132Commit 'p130p130' 'CC task P130: Pet training' @('server/customizations/x.cs', 'docs/y.md')))
+    $g = Get-PackageLight -PublishedVersion '2026.10.15.1354' -PublishedCommit 'abc1234' -NewestZipVersion '2026.10.15.1354' -NewestZipCommit 'abc1234' -Head $head -Commits $notShip -CommitsSinceZip $notShip
+    Assert-True ($g.Color -eq 'green' -and $g.Detail -match 'published 2026\.10\.15\.1354 holds every player-facing change') ('server-only changes do not count: ' + $g.Detail)
+    $b = Get-PackageLight -PublishedVersion '2026.10.15.1354' -PublishedCommit 'abc1234' -NewestZipVersion '2026.10.15.1354' -NewestZipCommit 'abc1234' -Head $head -Commits ($ship + $notShip) -CommitsSinceZip ($ship + $notShip)
+    Assert-True ($b.Color -eq 'amber' -and $b.Word -eq 'BUILD' -and $b.Detail -eq 'changes since the published package: Build package (1 commit: P124)') ('build: ' + $b.Detail)
+    $p = Get-PackageLight -PublishedVersion '2026.10.15.1354' -PublishedCommit 'abc1234' -NewestZipVersion '2026.10.16.0900' -NewestZipCommit $head.Substring(0, 7) -Head $head -Commits $ship -CommitsSinceZip @()
+    Assert-True ($p.Color -eq 'amber' -and $p.Word -eq 'PUBLISH' -and $p.Detail -match '^built, not published: Publish package \(2026\.10\.16\.0900 holds 1 commit: P124\)') ('publish: ' + $p.Detail)
+    $r1 = Get-PackageLight -PublishedVersion '2026.10.15.1354' -PublishedCommit 'abc1234' -Head $head -Commits $ship -GolemRunning 'P132'
+    Assert-True ($r1.Color -eq 'red' -and $r1.Detail -match 'the Golem is running P132') ('golem: ' + $r1.Detail)
+    $r2 = Get-PackageLight -PublishedVersion '2026.10.15.1354' -PublishedCommit 'abc1234' -Head $head -Commits $ship -Uncommitted 2
+    Assert-True ($r2.Color -eq 'red' -and $r2.Detail -match '2 uncommitted') ('uncommitted: ' + $r2.Detail)
+    $r3 = Get-PackageLight -PublishedVersion '2026.10.15.1354' -PublishedCommit 'abc1234' -Head $head -Commits $ship -ClientStale 'STALE CLIENT BUILD: a patch changed after the build'
+    Assert-True ($r3.Color -eq 'red' -and $r3.Detail -match 'the client is stale: STALE CLIENT BUILD') ('stale client: ' + $r3.Detail)
+    $r4 = Get-PackageLight -PublishedVersion '2026.10.15.1354' -PublishedCommit 'abc1234' -Head $head -Commits $ship -BuildRunning $true
+    Assert-True ($r4.Color -eq 'red' -and $r4.Detail -match 'a build is already running') ('build running: ' + $r4.Detail)
+    $r5 = Get-PackageLight -SiteReachable $false -SiteError 'timed out'
+    Assert-True ($r5.Color -eq 'red' -and $r5.Detail -match 'could not be reached to compare \(timed out\)') ('site down: ' + $r5.Detail)
+    $u = Get-PackageLight -PublishedVersion '2026.10.15.1354' -PublishedCommit '' -Head $head -Commits @()
+    Assert-True ($u.Color -eq 'grey' -and $u.Detail -match 'no zip in dist') ('no zip to read: ' + $u.Detail)
+    $un = Get-PackageLight -PublishedVersion '2026.10.15.1354' -PublishedCommit 'abc1234 + uncommitted player-package changes' -Head $head -Commits @()
+    Assert-True ($un.Color -eq 'amber' -and $un.Detail -match 'built from uncommitted changes') ('VERSION.txt says uncommitted: ' + $un.Detail)
+    # The git log parser the shell feeds both lights with.
+    $log = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|aaaaaaa|CC task P127: Treasure maps`nserver/customizations/Items/TreasureMap.cs`nCHANGELOG.md`n`nbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb|bbbbbbb|notes`ndocs/x.md`n"
+    $c = @(ConvertFrom-GitLogWithFiles $log)
+    Assert-True ($c.Count -eq 2 -and $c[0].Prompt -eq 'P127' -and @($c[0].Files).Count -eq 2 -and $c[1].Files[0] -eq 'docs/x.md') 'two commits with their files'
+    Assert-Equal 1 @(Select-CommitsTouching $c @('server/')).Count 'one touches the server'
+    Assert-True ((Read-ZipBuiltFrom (Join-Path $env:TEMP 'no-such-package.zip')) -eq $null) 'a missing zip reads as unknown, not an error'
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
