@@ -594,13 +594,43 @@ def p119_1(ctx):
         ctx.done(p)
 
 
-def _p119_fight(a, p):
+# -- P129-1: a sample of cc-P129's ported creatures (Pet Training callers and the leftovers), the same fight ------------
+
+# (type, body or bodies) from the ports (cc-P129): two tameables with profile abilities (Blood Fox: Grasping Claw and
+# bleed; Ossein Ram: Life Leech and Mortal Strike), the leather wolf's pack fellow, the gargish outcast (a gargoyle of
+# either sex), Chief Paroxysmus' barded swamp dragon and ServUO's Drelgor. A fair kill (a Wrestling 100 player at 175
+# hits, bare hands) is for creatures that cannot kill the player first: not the frost dragon or the giant turkey (85-92
+# physical, 25,000 hits), not the dragon wolf or the cold drake (their DragonBreath, fired through the profile before the
+# pin to 1 hit, deals 16% of the breather's hits: 90 of 175 in the wolf's first second, cc-P129's first two runs), not
+# the macaw (Dex 400-500, Wrestling 120-140: dead in 13 s) or the stygian drake (its spells: dead in 8 s), the third run.
+P129_SAMPLE = (("BloodFox", 0x58f), ("OsseinRam", 0x591), ("LeatherWolfFellow", 739), ("GargishOutcast", (666, 667)),
+               ("ParoxysmusSwampDragon", 0x31F), ("Drelgor", 147))
+
+
+@check("P129-1", "Six of cc-P129's ported creatures spawn, fight back and die to a player, leaving a corpse")
+def p129_1(ctx):
+    # P119-1's fight over this prompt's sample. The outcast's body is one of two (666 or 667), so it is matched by
+    # either; everything else as P119-1.
+    a = ctx.ensure_admin()
+    p = ctx.fresh(label="p129")
+    try:
+        return _p119_fight(a, p, P129_SAMPLE)
+    finally:
+        ctx.done(p)
+
+
+def _p119_fight(a, p, sample=P119_SAMPLE):
     for sk in ("Wrestling", "Tactics"):
         staff_target(a, "[SetSkill %s 100" % sk, p)
-    staff_target(a, "[set RawStr 250 Hits 175", p)
+    # cc-P129: Dex 100 as well, so the swings come fast enough to land the kill before a hard hitter lands several.
+    staff_target(a, "[set RawStr 250 RawDex 100 Hits 175", p)
     results = []
-    for type_name, body in P119_SAMPLE:
+    for type_name, body in sample:
+        bodies = body if isinstance(body, tuple) else (body,)
         near(a, p)
+        # cc-P129: a full refill before each fight. The first P129-1 run showed the fights add up: the blood fox's bleed
+        # and the cold drake's aura (15 cold every 5 s) left the player dead at the third creature, every run.
+        staff_target(a, "[set Hits 175 Stam 100", p)
         before_m = set(p.mobiles)
         before_i = set(p.items)
         a.command("[add " + type_name, 0.2)
@@ -608,10 +638,11 @@ def _p119_fight(a, p):
             x, y, z = p.pos[:3]
             a.target_xyz(x + 1, y, z)
         mob = p.wait(lambda: next((s for s, m in p.mobiles.items()
-                                   if s not in before_m and s != p.serial and m.get("body") == body), None), 8)
+                                   if s not in before_m and s != p.serial and m.get("body") in bodies), None), 8)
         if not mob:
-            results.append((type_name, False, "never appeared with body %d" % body))
+            results.append((type_name, False, "never appeared with body %s" % (bodies,)))
             continue
+        body = p.mobiles[mob].get("body")
         a.command("[set CantWalk true Hits 1", 0.2)
         if a.wait_target(8):
             a.target_obj(mob)

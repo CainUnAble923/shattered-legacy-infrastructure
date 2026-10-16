@@ -164,7 +164,8 @@ public class CC6Batch1CreatureVerification
         // Part B: SlasherOfVeils and StygianDragon ported (two names), so it is now 20.
         // Part D: Medusa ported (one name), so it is now 19.
         // CC9 close (2026-09-29): Niporailem ported as the Epiphany suites' gate (one name), so it is now 18.
-        Assert.Equal(18, unresolved.Count);
+        // cc-P129 (2026-10-16): IronBeetle ported (one name), so it is now 17.
+        Assert.Equal(17, unresolved.Count);
         // Counted the same day from the same files: 46 entries name the twenty (GrayGoblin 6, GreenGoblin 5, ...).
         Assert.Equal(46, referenced);
     }

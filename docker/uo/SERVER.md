@@ -478,10 +478,10 @@ ClusterF adds two custom creature types and a spawner seeder:
 | Item | Value |
 | --- | --- |
 | Repository source (mage) | `containers/uo/customizations/OldHavenMage.cs` |
-| Repository source (boss) | `containers/uo/customizations/DrelgorTheImpaler.cs` |
+| Repository source (boss) | `containers/uo/customizations/VorlakTheImpaler.cs` (DrelgorTheImpaler until cc-P129) |
 | Repository source (seeder) | `containers/uo/customizations/ClusterFOldHavenSeeder.cs` |
 | Installed source (mage) | `/opt/uo/modernuo/Projects/UOContent/Misc/OldHavenMage.cs` |
-| Installed source (boss) | `/opt/uo/modernuo/Projects/UOContent/Misc/DrelgorTheImpaler.cs` |
+| Installed source (boss) | `/opt/uo/modernuo/Projects/UOContent/Misc/VorlakTheImpaler.cs` |
 | Installed source (seeder) | `/opt/uo/modernuo/Projects/UOContent/Misc/ClusterFOldHavenSeeder.cs` |
 | Seed command | `[ClusterFSeedOldHaven [missing\|dryrun\|replace]` |
 | Enabled setting | `clusterf.oldHavenSeeder.enabled=True` |
@@ -489,13 +489,16 @@ ClusterF adds two custom creature types and a spawner seeder:
 
 **OldHavenMage** (`AI_Mage`, Magery 65–80, EvalInt 65–80, HP 90–130): spectral caster wearing a blue-grey robe. Casts 3rd–5th circle spells (Fireball, Lightning, Energy Bolt). Low enough HP that players survive while taking hits — designed for **Magic Resist** skill gains. Fame 1500.
 
-**DrelgorTheImpaler** (`AI_Melee`, 450–550 HP): undead warlord in dark plate armour with a viking sword. Mini-boss feel — single instance with an 8–15 minute respawn. Fame 8000, drops Rich + Average loot.
+**VorlakTheImpaler** (`AI_Melee`, 450–550 HP; named DrelgorTheImpaler until cc-P129, when ServUO's own Drelgor the Impaler was ported under that name): undead warlord in dark plate armour with a viking sword. Mini-boss feel — single instance with an 8–15 minute respawn. Fame 8000, drops Rich + Average loot.
+
+**Drelgor** (ServUO's, cc-P129): the "Cleansing Old Haven" quest target, seeded where ServUO's spawn data puts him, (3651, 2509), one at a time, 30-minute respawn.
 
 Spawner locations (all Trammel):
 
 | Spawner | Coords | Count | Respawn |
 | --- | --- | --- | --- |
-| Drelgor the Impaler | `(3622, 2488)` | 1 | 8–15 min |
+| Vorlak the Impaler | `(3622, 2488)` | 1 | 8–15 min |
+| Drelgor the Impaler (ServUO) | `(3651, 2509)` | 1 | 30 min |
 | Old Haven Mage – north gate | `(3588, 2457)` | 3 | 2–5 min |
 | Old Haven Mage – west ruins | `(3556, 2487)` | 2 | 2–5 min |
 | Old Haven Mage – town square | `(3600, 2510)` | 3 | 2–5 min |
@@ -1470,7 +1473,7 @@ ssh -i $env:USERPROFILE\.ssh\clusterf_boblin boblin@10.7.4.120 `
 | `combat.thousand` | Veteran of the Hunt | Combat | 35 | 75 | Kill 1,000 creatures |
 | `combat.ten_thousand` | Champion of Britannia | Combat | 100 | 250 | Kill 10,000 creatures |
 | `combat.oldhaven_mage` | Mage Hunter | Combat | 20 | 50 | Kill 25 Old Haven Mages |
-| `combat.drelgor` | The Impaler Falls | Combat | 25 | 100 | Kill Drelgor the Impaler |
+| `combat.drelgor` | The Impaler Falls | Combat | 25 | 100 | Kill Vorlak the Impaler (the id keeps its old name) |
 | `skills.apprentice` | The Apprentice's Mark | Skills | 5 | 10 | Any skill reaches 50 |
 | `skills.journeyman` | Journeyman's Path | Skills | 15 | 35 | Any skill reaches 100 |
 | `skills.master` | Master of the Craft | Skills | 40 | 100 | Any skill reaches 200 |
@@ -1485,7 +1488,7 @@ ssh -i $env:USERPROFILE\.ssh\clusterf_boblin boblin@10.7.4.120 `
 | Skill scan on login | Wired via login hook | Catches all skill thresholds retroactively |
 | Creature kills | Wired via `[OnEvent(nameof(BaseCreature.CreatureDeathEvent))]` | `bc.LastKiller` gives the killer; only PlayerMobile killers count |
 | Old Haven Mage kills | Wired via kill hook | Checks `victim is OldHavenMage` |
-| Drelgor the Impaler kills | Wired via kill hook | Checks `victim is DrelgorTheImpaler` |
+| Vorlak the Impaler kills | Wired via kill hook | Checks `victim is VorlakTheImpaler` |
 | Old Haven visit | API-only (`NotifyOldHavenVisit`) | Wire to a zone/movement hook when location tracking is added |
 
 **Kill hook:** `BaseCreature.CreatureDeathEvent` is a ModernUO code-generated event that fires when any `BaseCreature` dies. `bc.LastKiller` provides the killing mobile. The `NotifyKill(pm, victim)` static method is also available for direct calls from other systems (e.g. custom creature subclasses).

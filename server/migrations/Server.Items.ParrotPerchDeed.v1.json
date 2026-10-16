@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "type": "Server.Items.ParrotPerchDeed",
+  "properties": [
+    {
+      "name": "Parrot",
+      "type": "Server.Mobiles.PetParrot",
+      "rule": "SerializableInterfaceMigrationRule"
+    }
+  ]
+}

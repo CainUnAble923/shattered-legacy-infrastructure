@@ -4,17 +4,21 @@ using Server.Items;
 namespace Server.Mobiles;
 
 /// <summary>
-/// Drelgor the Impaler — the undead warlord who led the assault on Haven.
-/// Quest target for "Cleansing Old Haven" (Chivalry training). Moderately
-/// tough so new players can eventually defeat him.
+/// Vorlak the Impaler — the undead warlord who led the assault on Haven, the shard's own Old Haven mini-boss.
+/// Was DrelgorTheImpaler until cc-P129 (Chase, 2026-10-15: "rename our Drelgor for use elsewhere, he is not the
+/// right mob, but is a good miniboss"); ServUO's Drelgor, the "Cleansing Old Haven" quest target, is now ported
+/// under that name (Mobiles/Named/Drelgor.cs). Design, loot and abilities unchanged; the TypeAlias loads every saved
+/// DrelgorTheImpaler and resolves the old name in spawner entries (AssemblyHandler.FindTypeByName reads aliases).
+/// Moderately tough so new players can eventually defeat him.
 /// </summary>
+[TypeAlias("Server.Mobiles.DrelgorTheImpaler")]
 [SerializationGenerator(0, false)]
-public partial class DrelgorTheImpaler : BaseCreature
+public partial class VorlakTheImpaler : BaseCreature
 {
     [Constructible]
-    public DrelgorTheImpaler() : base(AIType.AI_Melee, FightMode.Closest, 10, 1)
+    public VorlakTheImpaler() : base(AIType.AI_Melee, FightMode.Closest, 10, 1)
     {
-        Name  = "Drelgor the Impaler";
+        Name  = "Vorlak the Impaler";
         Body  = 0x190;          // Male humanoid
         Hue   = 0x8421;         // Undead grey
         BaseSoundID = 0x480;    // Undead sounds
@@ -58,7 +62,7 @@ public partial class DrelgorTheImpaler : BaseCreature
         AddItem(new MetalShield  { Movable = false, Hue = 0x835 });
     }
 
-    public override string CorpseName  => "Drelgor's corpse";
+    public override string CorpseName  => "Vorlak's corpse";
     public override bool   AlwaysMurderer => true;
     public override bool   ShowFameTitle  => false;
     public override bool   IgnoreYoungProtection => true;

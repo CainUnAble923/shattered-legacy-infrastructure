@@ -646,6 +646,15 @@ apply_patch "$PATCHES/Seed-raised-garden-plot.patch"
 # and pigment pass their hue to what is made from them, and a basket takes its reeds' colour.
 apply_patch "$PATCHES/CraftItem-plant-hue-tables.patch"
 
+# cc-P129: the ML peerless bosses' pet parrot. ParrotItem and PetParrot are ports in customizations/Items/Addons/;
+# the perch they stand on is pinned's ParrotPerchAddon, which (unlike ServUO's) keeps no Parrot. This patch gives the
+# perch and its deed ServUO's Parrot field (version 0 -> 1 on each, migrated from pinned's v0 by the generator), the
+# perch moves the parrot with it and puts it away when chopped, and the deed carries it to the next placement. A
+# partial class could add the field but not the serialization, the deed hand-off or the OnAfterDelete, so it is a
+# patch. Alternatives argued in shard-migration/notes/cc-P129-port-creatures-part2.md; pinned by
+# CCP129CreatureVerification (the parrot facts).
+apply_patch "$PATCHES/ParrotPerchAddon-pet-parrot.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

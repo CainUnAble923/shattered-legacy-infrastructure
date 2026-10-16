@@ -10,8 +10,11 @@ namespace Server;
 /// Old Haven centre is near (3677, 2625) on Trammel.  The seeder places:
 ///   • Several OldHavenMage spawners scattered through the ruins — 2–3 mages
 ///     each, 2–5 minute respawn.  Ideal for Magic Resist training.
-///   • One DrelgorTheImpaler spawner (the warlord who led the assault) with a
-///     longer 8–15 minute respawn so he feels like a mini-boss.
+///   • One VorlakTheImpaler spawner (the warlord who led the assault; DrelgorTheImpaler
+///     until cc-P129) with a longer 8–15 minute respawn so he feels like a mini-boss.
+///   • One Drelgor spawner: ServUO's Drelgor the Impaler, the "Cleansing Old Haven" quest
+///     target, where ServUO's own spawn data puts him (Spawns/trammel.xml "Old Haven
+///     [Drelgor]": 3651,2509, range 50, one at a time). Added by cc-P129.
 ///
 /// Bounds check used to identify "Old Haven" world area:
 ///   X 3620–3760, Y 2420–2600 on Trammel
@@ -24,15 +27,29 @@ public static class ClusterFOldHavenSeeder
     // -----------------------------------------------------------------------
     private static readonly SpawnConfig[] Entries =
     {
-        // --- Drelgor the Impaler (mini-boss, 1 at a time, slow respawn) ---
+        // --- Vorlak the Impaler (mini-boss, 1 at a time, slow respawn). Was DrelgorTheImpaler until cc-P129: a
+        //     spawner placed under the old name is the same spawner (its entry still resolves through the alias). ---
         new(
-            label:    "Drelgor the Impaler",
-            typeName: "DrelgorTheImpaler",
+            label:    "Vorlak the Impaler",
+            typeName: "VorlakTheImpaler",
             x: 3622, y: 2488,
             count: 1,
             homeRange: 6,
             minDelay: TimeSpan.FromMinutes(8),
-            maxDelay: TimeSpan.FromMinutes(15)
+            maxDelay: TimeSpan.FromMinutes(15),
+            aliases:  new[] { "DrelgorTheImpaler" }
+        ),
+
+        // --- Drelgor the Impaler, ServUO's (cc-P129): the Old Haven quest target at ServUO's own spawn point.
+        //     ServUO's XmlSpawner entry: one Drelgor in a 50-tile home range with a 30-minute refractory. ---
+        new(
+            label:    "Drelgor the Impaler (ServUO)",
+            typeName: "Drelgor",
+            x: 3651, y: 2509,
+            count: 1,
+            homeRange: 50,
+            minDelay: TimeSpan.FromMinutes(30),
+            maxDelay: TimeSpan.FromMinutes(30)
         ),
 
         // --- OldHavenMage clusters (scattered through the ruins) ---
@@ -220,7 +237,7 @@ public static class ClusterFOldHavenSeeder
             var hasEntry = false;
             foreach (var e in spawner.Entries)
             {
-                if (string.Equals(e.SpawnedName, config.TypeName, StringComparison.OrdinalIgnoreCase))
+                if (config.Matches(e.SpawnedName))
                 {
                     hasEntry = true;
                     break;
@@ -247,7 +264,11 @@ public static class ClusterFOldHavenSeeder
     {
         var managed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var e in Entries)
+        {
             managed.Add(e.TypeName);
+            foreach (var alias in e.Aliases)
+                managed.Add(alias);
+        }
 
         var results = new List<Spawner>();
 
@@ -289,6 +310,8 @@ public static class ClusterFOldHavenSeeder
         public int       HomeRange { get; }
         public TimeSpan  MinDelay  { get; }
         public TimeSpan  MaxDelay  { get; }
+        /// <summary>Earlier type names this entry was seeded under (cc-P129): a spawner holding one is this entry's.</summary>
+        public string[]  Aliases   { get; }
 
         public SpawnConfig(
             string   label,
@@ -298,7 +321,8 @@ public static class ClusterFOldHavenSeeder
             int      count,
             int      homeRange,
             TimeSpan minDelay,
-            TimeSpan maxDelay)
+            TimeSpan maxDelay,
+            string[] aliases = null)
         {
             Label     = label;
             TypeName  = typeName;
@@ -308,6 +332,21 @@ public static class ClusterFOldHavenSeeder
             HomeRange = homeRange;
             MinDelay  = minDelay;
             MaxDelay  = maxDelay;
+            Aliases   = aliases ?? Array.Empty<string>();
+        }
+
+        public bool Matches(string spawnedName)
+        {
+            if (string.Equals(spawnedName, TypeName, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            foreach (var alias in Aliases)
+            {
+                if (string.Equals(spawnedName, alias, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+
+            return false;
         }
     }
 }

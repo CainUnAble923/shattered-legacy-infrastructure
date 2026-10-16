@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.16.3
+
+### Added
+- More creatures to find and tame: the blood fox, cold drake, crimson and platinum drakes (each in one of five elements), dragon wolf, frost dragon, frost mite, lion, ossein ram, saber-toothed tiger, triceratops, stygian drake, iron beetle (it mines ore for its owner) and the wild, white and black tigers (pelts when carved), plus the giant turkey, shadow dweller, Viscera, vicious macaws nesting around gold foil sheets, the stone monster, the leather wolf and its pack, the Butcher with his Jack O' Lantern carving kit, and the gargish outcast. Tameables bring their natural abilities (dragon breath, grasping claw, life leech, auras, howls) with them.
+- Four Mondain's Legacy peerless bosses: Chief Paroxysmus, the Crimson Dragon, Lady Melisande and the Monstrous Interred Grizzle, with their artifacts, statuettes and pet parrots. A pet parrot placed on a parrot perch in your house lives there, ages, repeats what it hears and takes parrot wafers.
+- Old Haven's Drelgor the Impaler, the Cleansing Old Haven quest target, now spawns in the ruins.
+
+### Changed
+- The shard's own Old Haven warlord is now Vorlak the Impaler (he was Drelgor); his spawner, loot and the achievement for slaying him are unchanged.
+
 ## 2026.10.16.2
 
 ### Added

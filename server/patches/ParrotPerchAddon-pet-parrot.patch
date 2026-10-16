@@ -1,0 +1,141 @@
+--- a/Projects/UOContent/Items/Addons/ParrotPerchAddon.cs
++++ b/Projects/UOContent/Items/Addons/ParrotPerchAddon.cs
+@@ -1,28 +1,132 @@
+ using ModernUO.Serialization;
++using Server.Mobiles;
+ 
+ namespace Server.Items
+ {
+-    [SerializationGenerator(0)]
++    // Shattered Legacy (cc-P129): the perch keeps its pet parrot, as ServUO's ParrotPerchAddon does
++    // (Items/Addons/ParrotPerchAddon.cs). The parrot (PetParrot, customizations) is placed by a ParrotItem, follows
++    // the perch when it moves or changes map, is put away when the perch is chopped, and travels in the deed so a
++    // re-placed perch gets it back. Version 0 -> 1 on both types: the one new field, migrated from pinned's v0.
++    [SerializationGenerator(1)]
+     public partial class ParrotPerchAddon : BaseAddon
+     {
++        [SerializableField(0)]
++        [SerializedCommandProperty(AccessLevel.GameMaster)]
++        private PetParrot _parrot;
++
+         [Constructible]
+-        public ParrotPerchAddon()
++        public ParrotPerchAddon() : this(null)
++        {
++        }
++
++        public ParrotPerchAddon(PetParrot parrot)
+         {
+             AddComponent(new AddonComponent(0x2FF4), 0, 0, 0);
++
++            _parrot = parrot;
++        }
++
++        public override BaseAddonDeed Deed => new ParrotPerchDeed(_parrot);
++        public override bool RetainDeedHue => true;
++
++        public override void OnLocationChange(Point3D oldLocation)
++        {
++            base.OnLocationChange(oldLocation);
++
++            if (_parrot != null)
++            {
++                _parrot.Location = new Point3D(X, Y, Z + 12);
++            }
+         }
+ 
+-        public override BaseAddonDeed Deed => new ParrotPerchDeed();
++        public override void OnMapChange()
++        {
++            base.OnMapChange();
++
++            if (_parrot != null)
++            {
++                _parrot.Map = Map;
++            }
++        }
++
++        public override void OnAfterDelete()
++        {
++            base.OnAfterDelete();
++
++            _parrot?.Internalize();
++        }
++
++        private void MigrateFrom(V0Content content)
++        {
++        }
+     }
+ 
+-    [SerializationGenerator(0)]
++    [SerializationGenerator(1)]
+     public partial class ParrotPerchDeed : BaseAddonDeed
+     {
++        [SerializableField(0)]
++        [SerializedCommandProperty(AccessLevel.GameMaster)]
++        [InvalidateProperties]
++        private PetParrot _parrot;
++
+         [Constructible]
+-        public ParrotPerchDeed()
++        public ParrotPerchDeed() : this(null)
++        {
++        }
++
++        public ParrotPerchDeed(PetParrot parrot)
+         {
++            LootType = LootType.Blessed;
++
++            _parrot = parrot;
+         }
+ 
+-        public override BaseAddon Addon => new ParrotPerchAddon();
++        public override BaseAddon Addon => new ParrotPerchAddon(_parrot);
+         public override int LabelNumber => 1072617; // parrot perch
++
++        public override void GetProperties(IPropertyList list)
++        {
++            base.GetProperties(list);
++
++            if (_parrot != null)
++            {
++                if (_parrot.Name != null)
++                {
++                    list.Add(1072624, _parrot.Name); // Includes a pet Parrot named ~1_NAME~
++                }
++                else
++                {
++                    list.Add(1072620); // Includes a pet Parrot
++                }
++
++                var weeks = PetParrot.GetWeeks(_parrot.Birth);
++
++                if (weeks == 1)
++                {
++                    list.Add(1072626); // 1 week old
++                }
++                else if (weeks > 1)
++                {
++                    list.Add(1072627, weeks.ToString()); // ~1_AGE~ weeks old
++                }
++            }
++        }
++
++        public override void OnAfterDelete()
++        {
++            base.OnAfterDelete();
++
++            // ServUO guards this with a flag its DeleteDeed sets when the deed is consumed by placement; pinned's
++            // BaseAddonDeed deletes the deed directly, so the guard is the parrot's own state: a parrot that is
++            // already standing on its new perch (in the world) is kept, one still put away dies with the deed.
++            if (_parrot != null && !_parrot.Deleted && _parrot.Map == Map.Internal)
++            {
++                _parrot.Delete();
++            }
++        }
++
++        private void MigrateFrom(V0Content content)
++        {
++        }
+     }
+ }

@@ -26,7 +26,7 @@ public enum TriggerKind
     FirstLogin,
     Kills,
     OldHavenMageKills,
-    KillDrelgor,
+    KillVorlak, // cc-P129: was KillDrelgor; the shard's Impaler is VorlakTheImpaler now, ServUO's Drelgor is another creature
     PlayerKill,
     UndeadKills,
     RatmanKills,
@@ -103,7 +103,7 @@ public sealed class AchievementTrigger
             TriggerKind.FirstLogin         => "logged in for the first time",
             TriggerKind.Kills              => n == 1 ? "slew your first creature" : $"slew {n:N0} creatures",
             TriggerKind.OldHavenMageKills  => $"slew {n:N0} Old Haven Mages",
-            TriggerKind.KillDrelgor        => "slew Drelgor the Impaler",
+            TriggerKind.KillVorlak         => "slew Vorlak the Impaler",
             TriggerKind.PlayerKill         => "killed another player",
             TriggerKind.UndeadKills        => $"slew {n:N0} undead",
             TriggerKind.RatmanKills        => $"slew {n:N0} ratmen",
@@ -360,14 +360,16 @@ public static class ClusterFAchievementSystem
             itemGumpId:      0x0E3B,    // Spellbook
             progressCounter: "oldhaven_mage_kills");
 
+        // cc-P129: the id stays "combat.drelgor" (it is the key under which earned achievements are saved); the boss
+        // it names is VorlakTheImpaler, the shard's own Impaler, renamed from DrelgorTheImpaler.
         Reg("combat.drelgor",
             "You Fought a Man Called 'The Impaler' and Won",
-            "Slay Drelgor the Impaler. His title was a warning. You did not take the hint. You were correct not to.",
+            "Slay Vorlak the Impaler. His title was a warning. You did not take the hint. You were correct not to.",
             AchievementCategory.Combat, ap: 25, renown: 100,
-            trigger:          T.Event(TriggerKind.KillDrelgor),
+            trigger:          T.Event(TriggerKind.KillVorlak),
             flavor:     "Bold strategy. Unambiguously effective.",
             itemGumpId: 0x0F49,         // Axe — heavy weapon energy
-            hidden:     true);          // secret — finding Drelgor is the discovery
+            hidden:     true);          // secret — finding Vorlak is the discovery
 
         // ── Skills ───────────────────────────────────────────────────────
         Reg("skills.apprentice",
@@ -1236,8 +1238,8 @@ public static class ClusterFAchievementSystem
         if (victim is OldHavenMage)
             GrantCounted(acct, TriggerKind.OldHavenMageKills, Increment(acct.Username, "oldhaven_mage_kills"));
 
-        if (victim is DrelgorTheImpaler)
-            GrantEvent(acct, TriggerKind.KillDrelgor);
+        if (victim is VorlakTheImpaler)
+            GrantEvent(acct, TriggerKind.KillVorlak);
 
         // ── PvP ────────────────────────────────────────────────────────────
         if (victim is PlayerMobile)

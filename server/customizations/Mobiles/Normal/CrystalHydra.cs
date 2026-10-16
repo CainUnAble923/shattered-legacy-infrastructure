@@ -71,8 +71,9 @@ public partial class CrystalHydra : BaseCreature
     {
         AddLoot(LootPack.UltraRich, 2);
         AddLoot(LootPack.HighScrolls);
-        // ServUO: AddLoot(LootPack.Parrot); -- a 10% ParrotItem. Pinned LootPack.cs:515-523 carries the same pack
-        // inside a comment block because ModernUO has no ParrotItem (D-72). Build A2 of batch 4 went red on it.
+        // ServUO: AddLoot(LootPack.Parrot), a 10% ParrotItem. Pinned LootPack.cs:515-523 carries the pack inside a
+        // comment block; cc-P129 ported the ParrotItem and reproduces the pack as ParrotItem.LootPack (D-72 retired).
+        AddLoot(ParrotItem.LootPack);
     }
 
     public override void OnDeath(Container c)

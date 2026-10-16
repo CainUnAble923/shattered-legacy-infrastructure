@@ -1113,7 +1113,8 @@ public class CC6Batch8Verification
         // 22 (BasePeerless is named by no entry, BaseSABoss is abstract, the items are named by no entry); Part B's
         // two bosses to 20; Part D's Medusa to 19 (MedusaClone and UndeadGargoyle are named by no entry). CC9 close's
         // Niporailem, the fourth BaseSABoss, takes it to 18 (NiporailemsTreasure is named by no entry).
-        Assert.Equal(18, unresolved.Count);
+        // cc-P129 (2026-10-16): IronBeetle ported (one name), so it is now 17.
+        Assert.Equal(17, unresolved.Count);
         Assert.Equal(4, referenced);
     }
 }
