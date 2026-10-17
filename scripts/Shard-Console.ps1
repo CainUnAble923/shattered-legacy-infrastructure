@@ -5904,13 +5904,51 @@ function Get-ClaudeCliFacts {
     $o
 }
 
+# cc-P154: what cannot change between refreshes unless a file does. The prompt and notes heads the Golem tab shows were
+# read on every refresh (every queued prompt, ten finished ones and their notes); now each is read again only when its
+# write time or length changed, and a folder is listed again only when its own write time changed (a file added,
+# removed or renamed in it). Both caches live where the read runs: the refresh runspace, under -BackgroundRefresh.
+$script:FileHeadCache = @{}
+$script:DirListCache = @{}
+
+function Get-FileHeadCached {
+    # The first $Lines lines of a file, joined by newlines; $null when it cannot be read.
+    param([string]$Path, [int]$Lines = 40)
+    if (-not $Path) { return $null }
+    try { $fi = New-Object IO.FileInfo($Path); if (-not $fi.Exists) { return $null } } catch { return $null }
+    $key = $Path + '|' + $Lines
+    $stamp = [string]$fi.LastWriteTimeUtc.Ticks + '|' + $fi.Length
+    $c = $script:FileHeadCache[$key]
+    if ($c -and $c.Stamp -eq $stamp) { return $c.Text }
+    try { $t = (Get-Content -LiteralPath $Path -TotalCount $Lines -ErrorAction Stop) -join "`n" } catch { return $null }
+    $script:FileHeadCache[$key] = @{ Stamp = $stamp; Text = $t }
+    $t
+}
+
+function Find-FileCached {
+    # The full path of the first file (by name) in $Dir matching $Filter (a -like pattern, as Get-ChildItem -Filter is
+    # used here); $null when none. The folder is listed again only when its write time changed.
+    param([string]$Dir, [string]$Filter)
+    if (-not $Dir) { return $null }
+    try { $di = New-Object IO.DirectoryInfo($Dir); if (-not $di.Exists) { return $null } } catch { return $null }
+    $stamp = $di.LastWriteTimeUtc.Ticks
+    $c = $script:DirListCache[$Dir]
+    if (-not $c -or $c.Stamp -ne $stamp) {
+        $c = @{ Stamp = $stamp; Files = @($di.GetFiles() | Sort-Object Name | ForEach-Object { $_.FullName }) }
+        $script:DirListCache[$Dir] = $c
+    }
+    foreach ($p in $c.Files) { if ([IO.Path]::GetFileName($p) -like $Filter) { return $p } }
+    $null
+}
+
 function Get-GolemExtra {
     # cc-P125, SHELL. What Get-AutopilotView's Extra holds, read now: the head of each queued and the running prompt, the
     # completed prompt and the notes of each finished one, usage.json, the local token estimate when there is no
     # usage.json (cached 5 minutes), and whether both repos are clean (only while resting, as the tile asks then).
     param($Config, $QueueNames, [string]$RunningFile, [string[]]$LogLines, $StatusText)
     $ap = $Config.Autopilot
-    $head = { param($path) try { (Get-Content -LiteralPath $path -TotalCount 40 -ErrorAction Stop) -join "`n" } catch { $null } }
+    # cc-P154: each head is read again only when its file's write time or length changed (Get-FileHeadCached).
+    $head = { param($path) Get-FileHeadCached $path 40 }
     $prompts = @{}
     foreach ($n in @($QueueNames | Where-Object { $_ -match '^cc-P\d+-.*\.md$' })) { $prompts[$n] = & $head (Join-Path $ap.Queue $n) }
     if ($RunningFile -and $ap.PromptDir) { $prompts[$RunningFile] = & $head (Join-Path $ap.PromptDir $RunningFile) }
@@ -5919,12 +5957,12 @@ function Get-GolemExtra {
         $k = [string]$fp.Number
         foreach ($d in @($ap.CompletedDir, $ap.PromptDir)) {
             if (-not $d -or $completed.ContainsKey($k)) { continue }
-            $c = @(Get-ChildItem -LiteralPath $d -Filter ('cc-P' + $k + '-*.md') -File -ErrorAction SilentlyContinue | Select-Object -First 1)
-            if ($c.Count) { $completed[$k] = & $head $c[0].FullName }
+            $c = Find-FileCached $d ('cc-P' + $k + '-*.md')
+            if ($c) { $completed[$k] = & $head $c }
         }
         if ($Config.NotesFolder) {
-            $nf = @(Get-ChildItem -LiteralPath $Config.NotesFolder -Filter ('cc-P' + $k + '-*.md') -File -ErrorAction SilentlyContinue | Select-Object -First 1)
-            if ($nf.Count) { $notes[$k] = & $head $nf[0].FullName; $notes[$k + '.path'] = $nf[0].FullName }
+            $nf = Find-FileCached $Config.NotesFolder ('cc-P' + $k + '-*.md')
+            if ($nf) { $notes[$k] = & $head $nf; $notes[$k + '.path'] = $nf }
         }
     }
     $usage = $null
@@ -7717,6 +7755,64 @@ function Add-RichLine {
     $Box.SelectionColor = $Box.ForeColor
 }
 
+function ConvertTo-RichLinesRtf {
+    # cc-P154: the RTF for a box of console lines ({Text, Color}), in one string, so a panel is filled with one .Rtf
+    # assignment: Add-RichLine took about 4 ms a line on the window's thread (the Golem panel's 75 lines: 0.8 s). The same
+    # look as Add-RichLine: the theme's line colors (normal for an unknown name), the mono font, head and red in bold.
+    # Bold holds each bold line's (start, length) in the box's text, for Set-RichLines to give the exact fonts (RTF
+    # sizes are in half points, and the theme's mono is 9.75).
+    param($Lines, $Theme, [string]$Font, [single]$Size)
+    if (-not $Theme) { $Theme = Get-ConsoleTheme 'Plain' }
+    $names = New-Object 'System.Collections.Generic.List[string]'
+    $sb = New-Object Text.StringBuilder
+    $bold = New-Object 'System.Collections.Generic.List[object]'
+    $at = 0
+    foreach ($l in @($Lines)) {
+        $c = [string]$l.Color
+        if (-not $Theme.Lines[$c]) { $c = 'normal' }
+        $i = $names.IndexOf($c)
+        if ($i -lt 0) { $names.Add($c); $i = $names.Count - 1 }
+        $isBold = ($c -eq 'head' -or $c -eq 'red')
+        [void]$sb.Append('\cf').Append($i + 1)
+        if ($isBold) { [void]$sb.Append('\b ') } else { [void]$sb.Append('\b0 ') }
+        $text = ([string]$l.Text).Replace("`r", '')
+        if ($isBold) { $bold.Add(@($at, ($text.Length + 1))) }
+        $at += $text.Length + 1
+        foreach ($ch in $text.ToCharArray()) {
+            $n = [int]$ch
+            if ($ch -eq '\' -or $ch -eq '{' -or $ch -eq '}') { [void]$sb.Append('\').Append($ch) }
+            elseif ($ch -eq "`n") { [void]$sb.Append('\par ') }
+            elseif ($ch -eq "`t") { [void]$sb.Append('\tab ') }
+            elseif ($n -gt 126) { [void]$sb.Append('\u').Append($(if ($n -gt 32767) { $n - 65536 } else { $n })).Append('?') }
+            else { [void]$sb.Append($ch) }
+        }
+        [void]$sb.Append('\par').Append("`n")
+    }
+    $tbl = New-Object Text.StringBuilder
+    foreach ($c in $names) { $rgb = $Theme.Lines[$c]; [void]$tbl.Append('\red').Append([int]$rgb[0]).Append('\green').Append([int]$rgb[1]).Append('\blue').Append([int]$rgb[2]).Append(';') }
+    # RichEdit drops the last paragraph mark, so one more: the text ends in a newline, as Add-RichLine's does.
+    [pscustomobject]@{
+        Rtf  = '{\rtf1\ansi\deff0{\fonttbl{\f0\fmodern ' + $Font + ';}}{\colortbl ;' + $tbl.ToString() + '}\f0\fs' + [int][math]::Round($Size * 2) + ' ' + $sb.ToString() + '\par}'
+        Bold = $bold.ToArray()
+    }
+}
+
+function Set-RichLines {
+    # cc-P154: replaces a box's text with these lines in one go (ConvertTo-RichLinesRtf), as clearing it and calling
+    # Add-RichLine for each would: same text, colors and fonts.
+    param($Box, $Lines)
+    $f = $script:MonoFont
+    if (-not $f) { $f = $Box.Font }
+    $b = $script:BoldFont
+    if (-not $b) { $b = New-Object Drawing.Font($f, [Drawing.FontStyle]::Bold) }
+    $r = ConvertTo-RichLinesRtf -Lines $Lines -Theme $script:theme -Font $f.Name -Size $f.SizeInPoints
+    $Box.Rtf = $r.Rtf
+    $Box.SelectAll()
+    $Box.SelectionFont = $f
+    foreach ($x in $r.Bold) { $Box.Select($x[0], $x[1]); $Box.SelectionFont = $b }
+    $Box.Select(0, 0)
+}
+
 function Get-TileColors {
     # Background and text for a tile state, from the theme (cc-P84). Any state but green, amber and red is grey.
     param([string]$Color)
@@ -7887,10 +7983,13 @@ function Set-LightLabel {
 function Update-Lights {
     # cc-P132 sections 6 and 7: the rebuild light (TEST tile and the Test shard tab) and the package light (the Player
     # package tab), judged from facts read now; both written to LightsFile for the status page and P143.
-    param($State)
+    # cc-P154: -Gathered draws from -RebuildFacts and -PackageFacts read elsewhere (the refresh runspace); with no package
+    # facts in this refresh (they are read on the Player package tab and every two minutes) the last package light stays.
+    param($State, $RebuildFacts, $PackageFacts, [switch]$Gathered)
     if (-not $State) { return }
     try {
-        $rf = Get-RebuildFacts $script:cfg $State
+        $rf = $(if ($Gathered) { $RebuildFacts } else { Get-RebuildFacts $script:cfg $State })
+        if (-not $rf) { return }
         $rb = Get-RebuildLight -ImageCommit $rf.ImageCommit -ImageDirty $rf.ImageDirty -Head $rf.Head -Commits $rf.Commits -GolemRunning $rf.GolemRunning -Uncommitted $rf.Uncommitted -BuildRunning $rf.BuildRunning -Running $rf.Running
         Set-LightLabel $script:ui.RebuildLight $rb 'Rebuild: '
         # The TEST tile's second line.
@@ -7900,8 +7999,11 @@ function Update-Lights {
             $d.Text = $first + "`n" + 'rebuild: ' + $rb.Word.ToLower() + ', ' + $rb.Detail
         }
         $pf = $null; $pk = $null
-        if (-not $script:fromCapture) {
-            $pf = Get-PackageLightFacts $script:cfg
+        if (-not $script:fromCapture -and $Gathered -and -not $PackageFacts) {
+            if ($script:lights -and $script:lights.Package) { $pk = $script:lights.Package; $pf = $script:lights.PackageFacts }
+            else { $pk = [pscustomobject]@{ Color = 'grey'; Word = 'CHECKING'; Detail = 'read on the Player package tab, and within two minutes'; Commits = @(); Hover = '' } }
+        } elseif (-not $script:fromCapture) {
+            $pf = $(if ($Gathered) { $PackageFacts } else { Get-PackageLightFacts $script:cfg })
             $pk = Get-PackageLight -PublishedVersion $pf.PublishedVersion -PublishedCommit $pf.PublishedCommit -NewestZipVersion $pf.NewestZipVersion -NewestZipCommit $pf.NewestZipCommit -Head $pf.Head -Commits $pf.Commits -CommitsSinceZip $pf.CommitsSinceZip -GolemRunning $pf.GolemRunning -Uncommitted $pf.Uncommitted -ClientStale $pf.ClientStale -BuildRunning $pf.BuildRunning -SiteReachable $pf.SiteReachable -SiteError $pf.SiteError
         } else {
             $pk = [pscustomobject]@{ Color = 'grey'; Word = 'UNKNOWN'; Detail = 'not judged under DRY RUN (the status is a capture file)'; Commits = @(); Hover = '' }
@@ -7917,18 +8019,57 @@ function Update-Lights {
     } catch { Write-ConsoleLine ('lights: ' + $_.Exception.Message) 'gray' }
 }
 
+$script:TileFitSizes = @{}
+
+# cc-P154: the window's drawing turned off around a change of layout, then one repaint. In the themed looks every
+# see-through control repainted its parent as the layout moved it: a tile row 10 px taller held the window about 2 s,
+# and 0.19 s with drawing off (measured, notes/cc-P154-console-responsive.md). WM_SETREDRAW through WinForms' own
+# SendMessage, so nothing has to be compiled. Nested holds draw once, at the last release.
+$script:DrawHold = 0
+$script:SendMessageMethod = $null
+
+function Suspend-WindowDraw {
+    # $true when drawing was held (the caller then calls Resume-WindowDraw); $false with no window yet (the facts' forms).
+    $c = $(if ($script:ui) { $script:ui.Form } else { $null })
+    if (-not $c -or -not $c.IsHandleCreated) { return $false }
+    if (-not $script:SendMessageMethod) { $script:SendMessageMethod = [Windows.Forms.Control].GetMethod('SendMessage', [Reflection.BindingFlags]'NonPublic, Instance', $null, [type[]]@([int], [int], [int]), $null) }
+    if (-not $script:SendMessageMethod) { return $false }
+    if ($script:DrawHold -eq 0) { [void]$script:SendMessageMethod.Invoke($c, @(11, 0, 0)) }
+    $script:DrawHold++
+    $true
+}
+
+function Resume-WindowDraw {
+    # -Only: the one control whose part of the window changed (a tab switch: the tabs); unset, the whole window.
+    param($Only)
+    if ($script:DrawHold -le 0) { return }
+    $script:DrawHold--
+    $c = $(if ($script:ui) { $script:ui.Form } else { $null })
+    if ($script:DrawHold -eq 0 -and $c -and $c.IsHandleCreated -and $script:SendMessageMethod) {
+        [void]$script:SendMessageMethod.Invoke($c, @(11, 1, 0))
+        if ($Only) { $Only.Invalidate($true) } else { $c.Invalidate($true) }
+    }
+}
+
 function Get-TileFitFont {
     # The largest size from $Size down to $Floor (0.25 point steps) at which $Text fits $Width, and $Height when
     # it is not 0 (wrapping at word breaks). The floor when none does.
     param([string]$Text, [string]$Family, [single]$Size, [single]$Floor, [Drawing.FontStyle]$Style, [int]$Width, [int]$Height = 0)
+    # cc-P154: the size found is remembered for the same text, font and box, so a tile whose words did not change is not
+    # measured again at every step down (the first fill of the window spent 2.4 s here). At most 500 kept.
+    $key = [string]$Family + '|' + $Size + '|' + $Floor + '|' + [int]$Style + '|' + $Width + '|' + $Height + '|' + $Text
+    $known = $script:TileFitSizes[$key]
+    if ($known) { return (New-Object Drawing.Font($Family, [single]$known, $Style)) }
+    if ($script:TileFitSizes.Count -ge 500) { $script:TileFitSizes.Clear() }
     $flags = [Windows.Forms.TextFormatFlags]'WordBreak'
     if (-not $Height) { $flags = [Windows.Forms.TextFormatFlags]'SingleLine' }
     for ($s = $Size; $s -ge $Floor; $s -= 0.25) {
         $f = New-Object Drawing.Font($Family, [single]$s, $Style)
         $m = [Windows.Forms.TextRenderer]::MeasureText($Text, $f, (New-Object Drawing.Size($Width, 0)), $flags)
-        if ($m.Width -le $Width -and (-not $Height -or $m.Height -le $Height)) { return $f }
+        if ($m.Width -le $Width -and (-not $Height -or $m.Height -le $Height)) { $script:TileFitSizes[$key] = [single]$s; return $f }
         $f.Dispose()
     }
+    $script:TileFitSizes[$key] = [single]$Floor
     New-Object Drawing.Font($Family, [single]$Floor, $Style)
 }
 
@@ -8000,7 +8141,10 @@ function Update-TileFit {
     $g = $script:ui.Glance
     $t = $script:theme
     if (-not $g -or -not $t -or -not $t.Chrome -or $script:tileFitting) { return }
+    # cc-P154: while a refresh draws, once at its end (Show-ConsoleRefresh), not once per tile that changed.
+    if ($script:tileFitHold) { $script:tileFitWanted = $true; return }
     $script:tileFitting = $true
+    $held = $false
     try {
         $tiles = @(@($script:ui.Tiles) + @($script:ui.NetTile, $script:ui.AutopilotTile, $script:ui.PlayTestTile, $script:ui.WebsitesTile) | Where-Object { $_ })
         if ($g.ClientSize.Width -le 0) { return }
@@ -8034,6 +8178,8 @@ function Update-TileFit {
         }
         # cc-P101: 150 (was 130): four across at 900 px is narrower than three was, so a detail needs a line more.
         $tall = [math]::Min(150, $tall)
+        # cc-P154: a change of rows or columns lays the whole window out: with its drawing off (Suspend-WindowDraw).
+        if (($script:ui.Grid -and $script:ui.Grid.RowStyles[0].Height -ne ($tall * $rows + 8)) -or $g.ColumnCount -ne $cols) { $held = Suspend-WindowDraw }
         if ($script:ui.Grid -and $script:ui.Grid.RowStyles[0].Height -ne ($tall * $rows + 8)) {
             $script:ui.Grid.RowStyles[0].Height = $tall * $rows + 8
             $script:ui.Grid.PerformLayout()
@@ -8071,7 +8217,10 @@ function Update-TileFit {
             $f = Get-TileFitFont $d.Text $t.Fonts.Detail $t.Fonts.DetailSize $t.Fonts.DetailFloor ([Drawing.FontStyle]::Regular) $dw ([math]::Max($dh, 1))
             if ($d.Font.Size -ne $f.Size) { $d.Font = $f } else { $f.Dispose() }
         }
-    } finally { $script:tileFitting = $false }
+    } finally {
+        $script:tileFitting = $false
+        if ($held) { Resume-WindowDraw }
+    }
 }
 
 function Update-AutopilotView {
@@ -8080,20 +8229,30 @@ function Update-AutopilotView {
     # cc-P99: which folder is active is re-read too, so a cutover shows at the next refresh.
     $g = $script:cfg.Autopilot
     if ($g -and $g.GolemRoot -and $g.AutopilotRoot) { $script:cfg.Autopilot = Get-GolemConfig $g.GolemRoot $g.AutopilotRoot $g.Queue }
-    $a = Get-AutopilotViewNow $script:cfg
-    $script:autopilot = $a
-    if ($script:ui.AutopilotTile) { Set-TileLook $script:ui.AutopilotTile $a.Tile }
+    Show-AutopilotView (Get-AutopilotViewNow $script:cfg)
+}
+
+function Show-AutopilotView {
+    # cc-P154: draws a Golem view read elsewhere (Get-AutopilotViewNow, often in the refresh runspace): the tile, the
+    # figure, the run controls, and the Golem tab's panel. Under -BackgroundRefresh the panel is drawn only while its tab
+    # is showing; opening the tab draws the last view at once. Returns the view (the last one when given none).
+    param($A)
+    if (-not $A) { return $script:autopilot }
+    $script:autopilot = $A
+    if ($script:ui.AutopilotTile) { Set-TileLook $script:ui.AutopilotTile $A.Tile }
     # cc-P132: the Golem figure follows the state.
-    [void](Set-GolemFigure $a.View)
+    [void](Set-GolemFigure $A.View)
     $box = $script:ui.AutopilotPanel
-    if ($box) {
-        $box.Clear()
-        foreach ($l in (Format-AutopilotPanel -View $a.View -Config $script:cfg -Now ([datetime]::Now))) { Add-RichLine $box $l.Text $l.Color }
+    $shown = (-not $script:BackgroundRefresh) -or ($script:ui.Tabs -and $script:ui.Tabs.SelectedTab -eq $script:ui.AutopilotPage)
+    if ($box -and $shown) {
+        # cc-P154: in one go (Set-RichLines); line by line it held the window 0.8 s.
+        $lines = $(if ($A.PSObject.Properties['PanelLines']) { @($A.PanelLines) } else { @(Format-AutopilotPanel -View $A.View -Config $script:cfg -Now ([datetime]::Now)) })
+        Set-RichLines $box $lines
         $box.SelectionStart = 0
         $box.ScrollToCaret()
     }
-    Update-GolemRunControls $a.View
-    $a
+    Update-GolemRunControls $A.View
+    $A
 }
 
 function Test-GolemWakeReady {
@@ -8162,33 +8321,287 @@ function Update-GolemRunControls {
             [void]$it.SubItems.Add($x.Time.ToString('MM-dd HH:mm', $script:Invariant))
             [void]$it.SubItems.Add($x.Title)
             [void]$it.SubItems.Add($x.Headline)
-            $np = @(Get-ChildItem -LiteralPath $script:cfg.NotesFolder -Filter ('cc-P' + $x.Number + '-*.md') -File -ErrorAction SilentlyContinue | Select-Object -First 1)
-            $it.Tag = $(if ($np.Count) { $np[0].FullName } else { '' })
+            # cc-P154: from the notes folder's listing, read again only when the folder changed (Find-FileCached).
+            $np = Find-FileCached $script:cfg.NotesFolder ('cc-P' + $x.Number + '-*.md')
+            $it.Tag = $(if ($np) { $np } else { '' })
             [void]$f.Items.Add($it)
         }
         $f.EndUpdate()
     }
 }
 
-function Update-ConsoleStatus {
+# --- the refresh, off the window's thread (cc-P154) -----------------------------------------------------------------
+# Chase, 2026-10-17 13:10: "right now console is a little unresponsive". Measured on this PC: a status refresh held the
+# window for about 3.4 s (docker 1.0, the package light 0.9, the rebuild light 0.8, play-tests.json 0.4, the Golem up to
+# 0.25), the VPN facts 0.25 to 1.2 s every 30 s, and on the Commit tab git 0.7 s every 5 s. Under -BackgroundRefresh (the
+# console's own start) all of it is read in a runspace of its own and the window only draws what comes back; a click's
+# reads before its plan likewise (Start-ActionPrecheck). The facts' forms keep the old order: read and draw at once.
+
+$script:ConsoleScriptFile = $PSCommandPath
+$script:BackgroundRefresh = $false
+$script:rsJobs = @{}
+$script:rsPool = @{}
+$script:RefreshSkipped = 0
+# The facts' stub source: a script for the refresh runspace in place of Get-ConsoleRefreshData (same five arguments).
+$script:RefreshScript = $null
+# The package light's facts (git and the download site) are read on the Player package tab, and at least this often so
+# the lights file the status page reads stays current.
+$script:PackageFactsMaxAge = 120
+
+function Get-ConsoleRefreshData {
+    # cc-P154: everything one refresh reads, with no window, timed per source (Timings, ms). $Parts: 'tiles' (docker, the
+    # question mail, the Golem, the rebuild light, play-tests.json), 'golem' (the Golem alone), 'package' (the package
+    # light's git and the download site), 'commit' (the Commit tab's git), 'vpn' (this PC's adapters, route, services).
+    # Never throws: a source that fails is named in Errors and the others still come back.
+    param($Config, [bool]$FromCapture, [string]$StatusFrom, [string[]]$Parts = @('tiles'), [bool]$Dry)
+    $times = [ordered]@{}
+    $errs = New-Object 'System.Collections.Generic.List[string]'
+    $r = [ordered]@{ Parts = $Parts; At = [datetime]::UtcNow; State = $null; Autopilot = $null; AutopilotConfig = $null; RebuildFacts = $null; PackageFacts = $null; PlayTest = $null; VpnFacts = $null; CommitFacts = $null; Errors = $null; Timings = $times }
+    $sw = New-Object Diagnostics.Stopwatch
+    $all = [Diagnostics.Stopwatch]::StartNew()
+    $run = {
+        param([string]$Name, [scriptblock]$Read)
+        $sw.Restart()
+        try { & $Read } catch { $errs.Add($Name + ': ' + $_.Exception.Message) }
+        $times[$Name] = $sw.ElapsedMilliseconds
+    }
+    $tiles = (@($Parts) -contains 'tiles')
+    if ($tiles) {
+        & $run 'docker' { $r.State = Get-ConsoleState -Config $Config -DryRun:$FromCapture -StatusFrom $StatusFrom }
+        if (-not $Dry -and $r.State) { & $run 'question mail' { Invoke-QuestionMail -Config $Config -State $r.State } }
+    }
+    if ($tiles -or @($Parts) -contains 'golem') {
+        & $run 'golem' {
+            # cc-P99: which folder is active is re-read too. On a copy: the window's config changes only when it draws.
+            $c = $Config.PSObject.Copy()
+            $g = $Config.Autopilot
+            if ($g -and $g.GolemRoot -and $g.AutopilotRoot) { $c.Autopilot = Get-GolemConfig $g.GolemRoot $g.AutopilotRoot $g.Queue }
+            $r.AutopilotConfig = $c.Autopilot
+            $r.Autopilot = Get-AutopilotViewNow $c
+            # The Golem tab's lines too (pure, but 70 ms of the window's time when drawn there).
+            $r.Autopilot | Add-Member -NotePropertyName PanelLines -NotePropertyValue @(Format-AutopilotPanel -View $r.Autopilot.View -Config $c -Now ([datetime]::Now)) -Force
+        }
+    }
+    if ($tiles) {
+        if ($r.State) { & $run 'rebuild light' { $r.RebuildFacts = Get-RebuildFacts $Config $r.State } }
+        & $run 'play tests' { $r.PlayTest = Get-PlayTestGlanceNow $Config }
+    }
+    if (@($Parts) -contains 'package' -and -not $FromCapture) { & $run 'package light' { $r.PackageFacts = Get-PackageLightFacts $Config } }
+    if (@($Parts) -contains 'commit') { & $run 'commit' { $r.CommitFacts = Get-CommitFacts $Config } }
+    if (@($Parts) -contains 'vpn') { & $run 'vpn' { $r.VpnFacts = Get-VpnFacts $Config } }
+    $times['total'] = $all.ElapsedMilliseconds
+    $r.Errors = $errs.ToArray()
+    [pscustomobject]$r
+}
+
+function Show-ConsoleRefresh {
+    # cc-P154: draws one refresh (Get-ConsoleRefreshData) on the window's thread. Only drawing: nothing here reads docker,
+    # git, a process or the network. A refresh of some parts only (the Commit tab's, the VPN facts) draws only those.
+    param($Data)
+    if (-not $Data) { return }
+    foreach ($e in @($Data.Errors)) { Write-ConsoleLine ('Status refresh failed: ' + $e) 'red' }
+    if ($Data.VpnFacts) { $script:vpnFacts = $Data.VpnFacts; $script:vpnFactsAt = $Data.At }
+    if ($Data.CommitFacts) { $script:commitFactsCache = $Data.CommitFacts; $script:commitFactsAt = $Data.At }
+    if ($Data.PackageFacts) { $script:packageFactsAt = $Data.At }
+    $script:tileFitHold = $true
+    $script:tileFitWanted = $false
     try {
-        $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:fromCapture -StatusFrom $script:statusFrom
-        $script:lastState = $state
-        Update-GlanceTiles $state
-        # cc-P106: the Shard question tab, and one email per new question (only for a state read from docker).
-        Update-QuestionPanel $state
-        if (-not $script:dry) { Invoke-QuestionMail -Config $script:cfg -State $state }
-        $ap = Update-AutopilotView
+        if ($Data.AutopilotConfig) { $script:cfg.Autopilot = $Data.AutopilotConfig }
+        $state = $Data.State
+        if ($state) {
+            $script:lastState = $state
+            Update-GlanceTiles $state
+            # cc-P106: the Shard question tab (the email went from the read, Get-ConsoleRefreshData).
+            Update-QuestionPanel $state
+        }
+        $ap = $script:autopilot
+        if ($Data.Autopilot) { $ap = Show-AutopilotView $Data.Autopilot }
         # cc-P132: the rebuild and package lights, after the tiles and the Golem.
-        Update-Lights $state
-        $pt = Get-PlayTestGlanceNow $script:cfg
-        if ($script:ui.PlayTestTile) { Set-TileLook $script:ui.PlayTestTile $pt }
-        $box = $script:ui.Status
-        $box.Clear()
-        foreach ($l in (Format-StatusReport $state $script:cfg @($ap.Tile, $pt))) { Add-RichLine $box $l.Text $l.Color }
-        $box.SelectionStart = 0
-        $box.ScrollToCaret()
-        Update-SnapshotList
+        if ($state) { Update-Lights $state -RebuildFacts $Data.RebuildFacts -PackageFacts $Data.PackageFacts -Gathered }
+        $pt = $script:playTestGlance
+        if ($Data.PlayTest) {
+            $pt = $Data.PlayTest
+            $script:playTestGlance = $pt
+            if ($script:ui.PlayTestTile) { Set-TileLook $script:ui.PlayTestTile $pt }
+        }
+        if ($state) {
+            $box = $script:ui.Status
+            Set-RichLines $box @(Format-StatusReport $state $script:cfg @($(if ($ap) { $ap.Tile }), $pt))
+            $box.SelectionStart = 0
+            $box.ScrollToCaret()
+            Update-SnapshotList
+        }
+    } catch {
+        Write-ConsoleLine ('Status refresh failed: ' + $_.Exception.Message) 'red'
+    } finally {
+        $script:tileFitHold = $false
+        if ($script:tileFitWanted) { $script:tileFitWanted = $false; Update-TileFit }
+    }
+    if ($Data.CommitFacts) { Update-CommitCountdown }
+    if ($Data.VpnFacts -and $script:ui.VpnButtons) { Update-VpnButtons }
+}
+
+function Get-RefreshParts {
+    # cc-P154: what a 30 s refresh reads: the tiles always, and the open tab's detail besides (the package light's facts
+    # on the Player package tab, the Commit tab's on the Commit tab). The package facts also when older than
+    # PackageFactsMaxAge, so the lights file stays current with the tab closed.
+    $p = @('tiles', 'vpn')
+    $sel = $null
+    if ($script:ui -and $script:ui.Tabs) { $sel = $script:ui.Tabs.SelectedTab }
+    $old = (-not $script:packageFactsAt -or ([datetime]::UtcNow - $script:packageFactsAt).TotalSeconds -ge $script:PackageFactsMaxAge)
+    if (($sel -and $sel -eq $script:ui.PackagePage) -or $old) { $p += 'package' }
+    if ($sel -and $sel -eq $script:ui.CommitPage) { $p += 'commit' }
+    $p
+}
+
+function Start-ConsoleJob {
+    # cc-P154: runs $Script in the runspace kept for $Slot ('refresh', 'precheck'), loading the console's functions there
+    # the first time (about 0.2 s, once), and returns at once. One job per slot: $null while that slot is busy.
+    # Receive-ConsoleJobs hands the result to $Then on the window's thread, as & $Then <result> <job>.
+    param([string]$Slot, [string]$Script, [object[]]$Arguments, [scriptblock]$Then)
+    if ($script:rsJobs[$Slot]) { return $null }
+    $rs = $script:rsPool[$Slot]
+    if (-not $rs -or $rs.RunspaceStateInfo.State -ne 'Opened') {
+        $rs = [runspacefactory]::CreateRunspace()
+        $rs.Open()
+        $script:rsPool[$Slot] = $rs
+    }
+    $ps = [PowerShell]::Create()
+    $ps.Runspace = $rs
+    $q = [string][char]39
+    $boot = 'if (-not (Test-Path function:Get-ConsoleRefreshData)) { . ' + $q + ($script:ConsoleScriptFile -replace $q, ($q + $q)) + $q + ' -LoadOnly }'
+    [void]$ps.AddScript($boot).AddStatement().AddScript($Script)
+    foreach ($a in $Arguments) { [void]$ps.AddArgument($a) }
+    $job = [pscustomobject]@{ Slot = $Slot; PS = $ps; Handle = $null; Started = [datetime]::UtcNow; Then = $Then; Parts = @(); Bound = $null; Action = '' }
+    $job.Handle = $ps.BeginInvoke()
+    $script:rsJobs[$Slot] = $job
+    $job
+}
+
+function Receive-ConsoleJobs {
+    # cc-P154: on the window's 250 ms timer. Collects each finished job (never waits for one) and hands its result to its
+    # Then; a job running past 120 s is stopped and its runspace dropped, so the next one starts clean.
+    foreach ($slot in @($script:rsJobs.Keys)) {
+        $j = $script:rsJobs[$slot]
+        if (-not $j) { continue }
+        if ($j.Handle.IsCompleted) {
+            $script:rsJobs.Remove($slot)
+            $data = $null
+            $err = ''
+            try {
+                $out = @($j.PS.EndInvoke($j.Handle))
+                if ($out.Count) { $data = $out[-1] }
+                if (-not $data -and $j.PS.Streams.Error.Count) { $err = [string]$j.PS.Streams.Error[0] }
+            } catch { $err = $_.Exception.Message }
+            $j.PS.Dispose()
+            if ($err) { Write-ConsoleLine ('The background read (' + $slot + ') failed: ' + $err) 'red' }
+            try { & $j.Then $data $j } catch { Write-ConsoleLine ('Drawing the ' + $slot + ' read failed: ' + $_.Exception.Message) 'red' }
+        } elseif (([datetime]::UtcNow - $j.Started).TotalSeconds -gt 120) {
+            $script:rsJobs.Remove($slot)
+            try { $j.PS.Stop(); $j.PS.Dispose() } catch { }
+            try { $script:rsPool[$slot].Dispose() } catch { }
+            $script:rsPool[$slot] = $null
+            Write-ConsoleLine ('The ' + $slot + ' read took longer than 2 minutes and was abandoned; the next one starts afresh.') 'amber'
+        }
+    }
+}
+
+function Stop-ConsoleJobs {
+    # cc-P154: with the window: every job stopped and every runspace closed, so nothing reads on unseen.
+    foreach ($slot in @($script:rsJobs.Keys)) { $j = $script:rsJobs[$slot]; if ($j) { try { $j.PS.Stop(); $j.PS.Dispose() } catch { } } }
+    $script:rsJobs = @{}
+    foreach ($slot in @($script:rsPool.Keys)) { try { $script:rsPool[$slot].Dispose() } catch { } }
+    $script:rsPool = @{}
+    $script:refreshQueued = $null
+}
+
+function Start-ConsoleRefresh {
+    # cc-P154: one refresh in the background; the window draws it when it is back. Never two at once: while one runs, a
+    # tick is skipped (RefreshSkipped). -Queue (a click, a tab opened), or a tick that finds only a part-refresh running,
+    # asks for one more right after it.
+    param([string[]]$Parts = @('tiles', 'vpn'), [switch]$Queue)
+    $busy = $script:rsJobs['refresh']
+    if ($busy) {
+        $script:RefreshSkipped++
+        if ($Queue -or (($Parts -contains 'tiles') -and -not (@($busy.Parts) -contains 'tiles'))) {
+            $script:refreshQueued = @(@($script:refreshQueued) + $Parts | Where-Object { $_ } | Select-Object -Unique)
+        }
+        return $false
+    }
+    $code = $script:RefreshScript
+    if (-not $code) { $code = 'param($cfg, $fromCapture, $statusFrom, $parts, $dry) Get-ConsoleRefreshData -Config $cfg -FromCapture $fromCapture -StatusFrom $statusFrom -Parts $parts -Dry $dry' }
+    $then = {
+        param($Data, $Job)
+        $sw = [Diagnostics.Stopwatch]::StartNew()
+        Show-ConsoleRefresh $Data
+        $script:LastRefresh = [pscustomobject]@{ Data = $Data; Parts = $Job.Parts; ReadMs = [int]([datetime]::UtcNow - $Job.Started).TotalMilliseconds; DrawMs = $sw.ElapsedMilliseconds }
+        if ($script:refreshQueued) { $q = [string[]]@($script:refreshQueued); $script:refreshQueued = $null; [void](Start-ConsoleRefresh -Parts $q) }
+    }
+    $j = Start-ConsoleJob -Slot 'refresh' -Script $code -Arguments @($script:cfg, [bool]$script:fromCapture, [string]$script:statusFrom, ([string[]]$Parts), [bool]$script:dry) -Then $then
+    if (-not $j) { return $false }
+    $j.Parts = @($Parts)
+    $true
+}
+
+function Get-ActionFacts {
+    # cc-P154: what a button reads before its plan (docker, git, dist\, the Golem's folder, this PC's adapters), with no
+    # window, so a click reads in the background (Start-ActionPrecheck) and carries on when it is back. As before cc-P154,
+    # the same reads for the same keys (Invoke-ConsoleButton read them inline).
+    param($Config, [string]$ActionKey, [string]$PackageZip, [bool]$FromCapture, [string]$StatusFrom, [bool]$Dry)
+    $f = [ordered]@{ State = $null; Facts = $null; PackageFacts = $null; AutopilotFacts = $null; VpnFacts = $null; FixFacts = $null; WipeFacts = $null; CliCheck = $null }
+    if ($ActionKey -like 'links.*' -or $ActionKey -like 'web.*') {
+        # cc-P83: a link reads nothing. cc-P101: nor does a Websites button (websites.json is in the config).
+    } elseif ($ActionKey -like 'vpn.*') {
+        # cc-P86: this PC's adapters, route and services, read now.
+        $f.VpnFacts = Get-VpnFacts $Config
+    } elseif ($ActionKey -like 'golem.*') {
+        # cc-P74: the Golem's folder, never docker. cc-P131: a fresh sign-in check for the wake (not in a dry run).
+        $f.AutopilotFacts = Get-AutopilotFacts $Config
+        if ($ActionKey -eq 'golem.resume' -and -not $Dry) { $f.CliCheck = Get-ClaudeCliFacts -Check }
+    } elseif ($ActionKey -like 'commit.*') {
+        # The commit buttons read git and the notes, never docker (cc-P60).
+        $f.Facts = Get-CommitFacts $Config
+    } elseif ($ActionKey -like 'package.*') {
+        # So do the package buttons, and dist\ (cc-P63).
+        $f.PackageFacts = Get-PackageFacts $Config $PackageZip
+    } else {
+        $f.State = Get-ConsoleState -Config $Config -DryRun:$FromCapture -StatusFrom $StatusFrom
+        # cc-P96: git and the test world's save record. cc-P73: the wipe's facts.
+        if ($ActionKey -like 'fix.*') { $f.FixFacts = Get-FixFacts $Config $f.State -NoDocker:$FromCapture }
+        if ($ActionKey -eq 'test.wipe') { $f.WipeFacts = Get-WipeFacts $Config $f.State }
+    }
+    [pscustomobject]$f
+}
+
+function Start-ActionPrecheck {
+    # cc-P154: a click's reads in the background; the click carries on (Invoke-ConsoleButton -Prefetched) on the window's
+    # thread when they are back, dialogs and all. One at a time: a second click meanwhile is told to wait, never queued.
+    param([hashtable]$Bound)
+    $key = [string]$Bound['ActionKey']
+    $busy = $script:rsJobs['precheck']
+    if ($busy) { Write-ConsoleLine ('Still reading for ' + $busy.Action + '; click ' + $key + ' again when that is done.') 'amber'; return $false }
+    $code = 'param($cfg, $key, $zip, $fromCapture, $statusFrom, $dry) Get-ActionFacts -Config $cfg -ActionKey $key -PackageZip $zip -FromCapture $fromCapture -StatusFrom $statusFrom -Dry $dry'
+    $then = {
+        param($Data, $Job)
+        if (-not $Data) { Write-ConsoleLine ($Job.Action + ': the reads before its plan failed (above). Nothing was run.') 'red'; return }
+        $a = $Job.Bound
+        Invoke-ConsoleButton @a -Prefetched $Data
+    }
+    $j = Start-ConsoleJob -Slot 'precheck' -Script $code -Arguments @($script:cfg, $key, [string]$Bound['PackageZip'], [bool]$script:fromCapture, [string]$script:statusFrom, [bool]$script:dry) -Then $then
+    if (-not $j) { return $false }
+    $j.Bound = $Bound
+    $j.Action = $key
+    Write-ConsoleLine ($key + ': reading what its plan needs...') 'gray'
+    $true
+}
+
+function Update-ConsoleStatus {
+    # cc-P154: under -BackgroundRefresh this starts a refresh (Start-ConsoleRefresh) and returns at once; -Queue asks for
+    # one after a refresh still running. The facts' forms read and draw here, as before.
+    param([switch]$Queue)
+    if ($script:BackgroundRefresh) { [void](Start-ConsoleRefresh -Parts (Get-RefreshParts) -Queue:$Queue); return }
+    try {
+        Show-ConsoleRefresh (Get-ConsoleRefreshData -Config $script:cfg -FromCapture ([bool]$script:fromCapture) -StatusFrom $script:statusFrom -Parts @('tiles', 'package') -Dry ([bool]$script:dry))
     } catch {
         Write-ConsoleLine ('Status refresh failed: ' + $_.Exception.Message) 'red'
     }
@@ -8282,8 +8695,14 @@ function Update-VpnButtons {
     $btns = @($script:ui.VpnButtons)
     if (-not $btns.Count) { return }
     if (-not $script:vpnFactsAt -or ([datetime]::UtcNow - $script:vpnFactsAt).TotalSeconds -ge 30) {
-        if (-not $script:NetProbeDisabled) { $script:vpnFacts = Get-VpnFacts $script:cfg }
-        $script:vpnFactsAt = [datetime]::UtcNow
+        if ($script:BackgroundRefresh) {
+            # cc-P154: every refresh reads them in the refresh runspace; this asks for them alone only while Auto refresh
+            # is off (asked at the start, it held up the first status behind it).
+            if (-not $script:NetProbeDisabled -and $script:ui.Auto -and -not $script:ui.Auto.Checked) { [void](Start-ConsoleRefresh -Parts @('vpn')) }
+        } else {
+            if (-not $script:NetProbeDisabled) { $script:vpnFacts = Get-VpnFacts $script:cfg }
+            $script:vpnFactsAt = [datetime]::UtcNow
+        }
     }
     $on = Test-VpnButtonEnabled (Get-DnsGlance $script:netResult) $script:vpnFacts
     $tip = (Get-ConsoleTooltips)['vpn.disconnect']
@@ -8426,7 +8845,7 @@ function Update-WebsitesView {
     if ($box) {
         $box.Clear()
         $at = $(if ($script:webResultAt) { $script:webResultAt.ToLocalTime().ToString('HH:mm:ss', $script:Invariant) } else { '' })
-        foreach ($l in (Format-WebsitesPanel $script:cfg.Websites $script:webResults $at)) { Add-RichLine $box $l.Text $l.Color }
+        Set-RichLines $box @(Format-WebsitesPanel $script:cfg.Websites $script:webResults $at)
         $box.SelectionStart = 0
         $box.ScrollToCaret()
     }
@@ -8720,8 +9139,17 @@ function Update-CommitCountdown {
     if (-not $ui -or -not $ui.CommitCountdown -or -not $ui.Tabs -or $ui.Tabs.SelectedTab -ne $ui.CommitPage) { return }
     $now = [datetime]::UtcNow
     if ($Reread -or -not $script:commitFactsCache -or -not $script:commitFactsAt -or ($now - $script:commitFactsAt).TotalSeconds -ge $script:cfg.CommitPollSeconds) {
-        try { $script:commitFactsCache = Get-CommitFacts $script:cfg; $script:commitFactsAt = $now }
-        catch { $ui.CommitCountdown.Text = 'Could not read the repos: ' + $_.Exception.Message; $ui.CommitCountdown.ForeColor = Get-StateTextColor 'Danger'; return }
+        if ($script:BackgroundRefresh) {
+            # cc-P154: git in the refresh runspace, asked once per CommitPollSeconds; this tick counts from the last read.
+            if ($Reread -or -not $script:commitAskedAt -or ($now - $script:commitAskedAt).TotalSeconds -ge $script:cfg.CommitPollSeconds) {
+                $script:commitAskedAt = $now
+                [void](Start-ConsoleRefresh -Parts @('commit') -Queue)
+            }
+            if (-not $script:commitFactsCache) { if ($ui.CommitCountdown.Text -ne 'Reading the repos...') { $ui.CommitCountdown.Text = 'Reading the repos...' }; return }
+        } else {
+            try { $script:commitFactsCache = Get-CommitFacts $script:cfg; $script:commitFactsAt = $now }
+            catch { $ui.CommitCountdown.Text = 'Could not read the repos: ' + $_.Exception.Message; $ui.CommitCountdown.ForeColor = Get-StateTextColor 'Danger'; return }
+        }
     }
     $t = Get-CommitCountdown -Facts $script:commitFactsCache -Config $script:cfg -Now $now -Force:$ui.CommitForce.Checked
     if ($ui.CommitCountdown.Text -ne $t) { $ui.CommitCountdown.Text = $t }
@@ -8810,7 +9238,8 @@ function Show-YesNo {
 
 function Invoke-ConsoleButton {
     param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage,
-        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [string]$Commit, [string]$Site)
+        [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [string]$Commit, [string]$Site,
+        $Prefetched)
     try {
         $ActionKey = Resolve-ActionAlias $ActionKey
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
@@ -8823,20 +9252,30 @@ function Invoke-ConsoleButton {
         # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
         # status is a capture file". Only the second decides where the state comes from.
         if ($script:fromCapture -and -not $script:dry) { throw 'the status is from a capture file, so nothing may run for real. Relaunch without -DryRun.' }
-        $facts = $null
-        $pkgFacts = $null
-        $apFacts = $null
+        if (-not $Prefetched -and $script:BackgroundRefresh -and $ActionKey -notlike 'links.*' -and $ActionKey -notlike 'web.*') {
+            # cc-P154: the reads below (docker, git, dist\, the Golem's folder, the adapters) in the background first;
+            # this click carries on with them when they are back (Start-ActionPrecheck), and the window keeps painting.
+            $bound = @{}
+            foreach ($k in $PSBoundParameters.Keys) { $bound[$k] = $PSBoundParameters[$k] }
+            $bound['ActionKey'] = $ActionKey
+            [void](Start-ActionPrecheck -Bound $bound)
+            return
+        }
         $now = Get-Date
-        $vpnFacts = $null
+        $pre = $Prefetched
+        if (-not $pre) { $pre = Get-ActionFacts -Config $script:cfg -ActionKey $ActionKey -PackageZip $PackageZip -FromCapture ([bool]$script:fromCapture) -StatusFrom $script:statusFrom -Dry ([bool]$script:dry) }
+        $facts = $pre.Facts
+        $pkgFacts = $pre.PackageFacts
+        $apFacts = $pre.AutopilotFacts
+        $vpnFacts = $pre.VpnFacts
+        $state = $pre.State
         if ($ActionKey -like 'links.*' -or $ActionKey -like 'web.*') {
             # cc-P83: a link reads nothing. cc-P101: nor does a Websites button (websites.json is in the config).
         } elseif ($isVpn) {
-            # cc-P86: this PC's adapters, route and services, read now.
-            $vpnFacts = Get-VpnFacts $script:cfg
+            # cc-P86: this PC's adapters, route and services (Get-ActionFacts).
             $script:vpnFacts = $vpnFacts; $script:vpnFactsAt = [datetime]::UtcNow
         } elseif ($isAutopilot) {
-            # cc-P74: the Golem's folder, never docker.
-            $apFacts = Get-AutopilotFacts $script:cfg
+            # cc-P74: the Golem's folder, never docker (Get-ActionFacts).
             # cc-P125: the long run's two boxes, and the file the Open buttons open (the picked queue or finished row).
             if ($script:ui.LongRunCap) { $apFacts | Add-Member -NotePropertyName LongRunCap -NotePropertyValue $script:ui.LongRunCap.Text -Force }
             if ($script:ui.LongRunUntil) { $apFacts | Add-Member -NotePropertyName LongRunUntil -NotePropertyValue $script:ui.LongRunUntil.Text -Force }
@@ -8849,15 +9288,10 @@ function Invoke-ConsoleButton {
             if ($script:ui.NightStart) { $apFacts | Add-Member -NotePropertyName NightStart -NotePropertyValue $script:ui.NightStart.Text -Force }
             if ($script:ui.NightEnd) { $apFacts | Add-Member -NotePropertyName NightEnd -NotePropertyValue $script:ui.NightEnd.Text -Force }
             # A dry run runs nothing, the sign-in check included: the plan then reads cli.json as the Golem last wrote it.
-            if ($ActionKey -eq 'golem.resume' -and -not $script:dry) { $apFacts | Add-Member -NotePropertyName CliCheck -NotePropertyValue (Get-ClaudeCliFacts -Check) -Force }
-        } elseif ($isCommit) {
-            # The commit buttons read git and the notes, never docker (cc-P60).
-            $facts = Get-CommitFacts $script:cfg
-        } elseif ($isPackage) {
-            # So do the package buttons, and dist\ (cc-P63).
-            $pkgFacts = Get-PackageFacts $script:cfg $PackageZip
+            if ($ActionKey -eq 'golem.resume' -and -not $script:dry) { $apFacts | Add-Member -NotePropertyName CliCheck -NotePropertyValue $pre.CliCheck -Force }
+        } elseif ($isCommit -or $isPackage) {
+            # The commit buttons read git and the notes (cc-P60), the package buttons dist\ too (cc-P63); never docker.
         } else {
-            $state = Get-ConsoleState -Config $script:cfg -DryRun:$script:fromCapture -StatusFrom $script:statusFrom
             $script:lastState = $state
             if ($script:fromCapture) { $now = $state.Now.ToLocalTime() }
         }
@@ -8870,7 +9304,7 @@ function Invoke-ConsoleButton {
         if ($ActionKey -like 'fix.*') {
             # cc-P96: git and the test world's save record, read now. Roll back pins the image it will run, so the
             # window it opens cannot pick a different one; Rebuild asks which commit.
-            $fxFacts = Get-FixFacts $script:cfg $state -NoDocker:$script:fromCapture
+            $fxFacts = $(if ($pre.FixFacts) { $pre.FixFacts } else { Get-FixFacts $script:cfg $state -NoDocker:$script:fromCapture })
             if ($ActionKey -eq 'fix.rollback' -and -not $ImageTag) {
                 $lg = Get-LastGoodImage $state.Images
                 if ($lg) { $ImageTag = $lg.Tag }
@@ -8884,7 +9318,7 @@ function Invoke-ConsoleButton {
         if ($ActionKey -eq 'test.wipe') {
             # cc-P73: refused before any dialog when the facts already rule it out (SYSTEM, no census,
             # a waiting request, no room for the backup); otherwise the counts, then the new admin's name.
-            $wFacts = Get-WipeFacts $script:cfg $state
+            $wFacts = $(if ($pre.WipeFacts) { $pre.WipeFacts } else { Get-WipeFacts $script:cfg $state })
             $no = @(Get-WipeRefusals -Config $script:cfg -State $state -Facts $wFacts)
             if ($no.Count) { foreach ($x in $no) { Write-ConsoleLine ($ActionKey + ': ' + $x) 'amber' }; return }
             if (-not $WipeAdmin) {
@@ -8950,7 +9384,8 @@ function Invoke-ConsoleButton {
                 if ($wanted -and $tail.Count) { Write-ConsoleLine 'The Action output pane is busy, so this one opens a window of its own.' 'gray' }
                 [void](Invoke-Plan -Plan $plan -Config $script:cfg -ActionKey $ActionKey -ShardKey $ShardKey -ConfirmLive $phrase -Yes:$answeredYes)
             }
-            if ($isAutopilot) { [void](Update-AutopilotView) }
+            # cc-P154: the Golem's files in the background under -BackgroundRefresh, drawn when they are back.
+            if ($isAutopilot) { if ($script:BackgroundRefresh) { [void](Start-ConsoleRefresh -Parts @('golem') -Queue) } else { [void](Update-AutopilotView) } }
             if ($isVpn -and -not @($plan | Where-Object { $_.Kind -eq 'refuse' }).Count) {
                 # cc-P86: re-probe now and report the result (Update-VpnRecheck, on the tile's timer).
                 $script:vpnRecheckSince = [datetime]::UtcNow
@@ -9005,10 +9440,131 @@ function New-ButtonPage {
     $page
 }
 
+function New-WorldSetupTable {
+    # The World setup tab's table: every world-changing command registered in server/customizations, grouped, each with a
+    # tick, a Copy button and why. cc-P154: its own function so the console can build it on first open (Show-WorldSetupPage).
+    # -Commands: the registrations read already (the console reads them in the background); unset, read here.
+    param($Config, $Commands)
+    $worldTable = New-Object Windows.Forms.TableLayoutPanel
+    $worldTable.Dock = 'Fill'
+    $worldTable.AutoScroll = $true
+    $worldTable.ColumnCount = 3
+    [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('AutoSize')))
+    [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('AutoSize')))
+    [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 100)))
+    $worldCmds = @()
+    if ($null -ne $Commands) { $worldCmds = @($Commands) }
+    else { try { $worldCmds = @(ConvertFrom-CommandSources (Get-CommandSourceFiles $Config.Customizations)) } catch { } }
+    $head = New-Caption ('In-game commands to paste into a client by hand: the console cannot run them, and cannot see whether this world has had them. Read from the code (' + $worldCmds.Count + ' registrations; only those that change a world are shown). Check which shard your client is on before you paste. A dry run is its own row just above the command it previews; the ticks are for this session only.') 1100
+    $worldTable.Controls.Add($head, 0, 0)
+    $worldTable.SetColumnSpan($head, 3)
+    $row = 1
+    $copyClick = { [Windows.Forms.Clipboard]::SetText([string]$this.Tag); Write-ConsoleLine ('copied: ' + ([string]$this.Tag).Trim()) 'gray' }
+    # cc-P154: laid out once, after every row is in. Each Controls.Add on a laid-out table laid the whole table out again,
+    # and this loop alone took 26 of the 29 s the window took to build (measured, notes/cc-P154-console-responsive.md).
+    $worldTable.SuspendLayout()
+    foreach ($group in @(Get-WorldCommandGroups $worldCmds)) {
+        $title = New-Object Windows.Forms.Label
+        $title.Text = $group.Title
+        $title.AutoSize = $true
+        $title.Font = New-Object Drawing.Font($worldTable.Font, [Drawing.FontStyle]::Bold)
+        $title.Margin = New-Object Windows.Forms.Padding(6, 14, 3, 2)
+        if ($group.Key -eq 'unclassified' -and @($group.Items).Count) { $title.ForeColor = [Drawing.Color]::Firebrick }
+        $worldTable.Controls.Add($title, 0, $row)
+        $worldTable.SetColumnSpan($title, 3)
+        $row++
+        $src = New-Caption $group.Source 760 ([Drawing.Color]::DimGray)
+        if ($group.CopyAll -and @($group.Items).Count) {
+            $all = New-Object Windows.Forms.Button
+            $all.Text = 'Copy group'
+            $all.Name = 'worldCopyGroup'
+            $all.Width = 90
+            $all.Tag = Get-GroupClipboardText $group
+            $all.Add_Click({ [Windows.Forms.Clipboard]::SetText([string]$this.Tag); Write-ConsoleLine ('copied a group of ' + @(([string]$this.Tag).Trim() -split "`r`n").Count + ' commands') 'gray' })
+            $worldTable.Controls.Add($all, 1, $row)
+            $worldTable.Controls.Add($src, 2, $row)
+        } else {
+            $worldTable.Controls.Add($src, 0, $row)
+            $worldTable.SetColumnSpan($src, 3)
+        }
+        $row++
+        if (-not @($group.Items).Count) {
+            $none = New-Caption '(none)' 300 ([Drawing.Color]::DimGray)
+            $worldTable.Controls.Add($none, 0, $row)
+            $row++
+        }
+        foreach ($item in $group.Items) {
+            $cb = New-Object Windows.Forms.CheckBox
+            $cb.Text = $item.Command
+            $cb.Name = 'worldTick'
+            $cb.AutoSize = $true
+            $cb.Font = $script:MonoFont
+            $cb.Margin = New-Object Windows.Forms.Padding(6, 5, 3, 3)
+            $copy = New-Object Windows.Forms.Button
+            $copy.Text = 'Copy'
+            $copy.Name = 'worldCopy'
+            $copy.Width = 60
+            $copy.Tag = $item.Command
+            $copy.Add_Click($copyClick)
+            $worldTable.Controls.Add($cb, 0, $row)
+            $worldTable.Controls.Add($copy, 1, $row)
+            $why = New-Object Windows.Forms.Label
+            $why.Text = $item.Text
+            $why.AutoSize = $true
+            $why.MaximumSize = New-Object Drawing.Size(760, 0)
+            $why.ForeColor = [Drawing.Color]::DimGray
+            if ($item.Warn) { $why.ForeColor = [Drawing.Color]::DarkRed }
+            $why.Margin = New-Object Windows.Forms.Padding(6, 8, 3, 3)
+            $worldTable.Controls.Add($why, 2, $row)
+            $row++
+        }
+    }
+    $worldTable.ResumeLayout()
+    $worldTable
+}
+
+function Show-WorldSetupPage {
+    # cc-P154: builds the World setup page the first time it is opened (-BackgroundRefresh), in the look and with the
+    # tooltips the rest of the window was given at its start.
+    # The registrations come from the background read started with the window (Start-WorldCommandsRead); until they are
+    # back the page keeps saying loading, and they build it when they arrive with the page open.
+    if (-not $script:worldPending -or -not $script:ui.WorldPage -or $null -eq $script:worldCmds) { return }
+    $script:worldPending = $false
+    $pg = $script:ui.WorldPage
+    $tbl = New-WorldSetupTable $script:cfg $script:worldCmds
+    # Laid out once: themed while suspended (each themed font would otherwise lay the whole table out again), and drawn
+    # once (Suspend-WindowDraw).
+    $held = Suspend-WindowDraw
+    $tbl.SuspendLayout()
+    $pg.SuspendLayout()
+    $pg.Controls.Clear()
+    $pg.Controls.Add($tbl)
+    Set-ControlTheme $pg $script:theme $script:themeImages
+    if ($script:ui.ToolTip) { Set-ConsoleTooltips $pg (Get-ConsoleTooltips) $script:ui.ToolTip }
+    $tbl.ResumeLayout()
+    $pg.ResumeLayout()
+    Update-CaptionFit
+    if ($held) { Resume-WindowDraw }
+}
+
+function Start-WorldCommandsRead {
+    # cc-P154: the World setup tab's registrations (every .cs under server/customizations, parsed) read in the background
+    # when the window opens; the tab is built from them when it is first opened.
+    $then = {
+        param($Data, $Job)
+        $script:worldCmds = $(if ($Data) { @($Data.Commands) } else { @() })
+        if ($script:ui.Tabs -and $script:ui.Tabs.SelectedTab -eq $script:ui.WorldPage) { Show-WorldSetupPage }
+    }
+    [void](Start-ConsoleJob -Slot 'world' -Script 'param($root) $c = @(); try { $c = @(ConvertFrom-CommandSources (Get-CommandSourceFiles $root)) } catch { }; [pscustomobject]@{ Commands = $c }' -Arguments @($script:cfg.Customizations) -Then $then)
+}
+
 function New-ConsoleForm {
     # cc-P84: -Theme is the look (Plain unless the entry passes the setting; Plain is the console as it was) and
     # -Pane builds the Action output pane and lets actions use it. The facts build forms without either.
-    param($Config, [switch]$DryRun, [string]$StatusFrom, [ValidateSet('UO', 'Plain', 'Enhanced')][string]$Theme = 'Plain', [switch]$Pane, $Settings, [switch]$RestoreWindow)
+    # cc-P154: -BackgroundRefresh (the console's own start) reads the status, the lights, the Golem and a click's facts in
+    # runspaces of their own and only draws here, and builds the World setup tab when it is first opened.
+    param($Config, [switch]$DryRun, [string]$StatusFrom, [ValidateSet('UO', 'Plain', 'Enhanced')][string]$Theme = 'Plain', [switch]$Pane, $Settings, [switch]$RestoreWindow,
+        [switch]$BackgroundRefresh)
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Drawing
     [Windows.Forms.Application]::EnableVisualStyles()
@@ -9018,6 +9574,14 @@ function New-ConsoleForm {
     $script:statusFrom = $StatusFrom
     $script:lastState = $null
     $script:ui = @{}
+    $script:BackgroundRefresh = [bool]$BackgroundRefresh
+    $script:refreshQueued = $null
+    $script:RefreshSkipped = 0
+    $script:packageFactsAt = $null
+    $script:commitAskedAt = $null
+    $script:playTestGlance = $null
+    $script:autopilot = $null
+    $script:worldPending = $false
     $script:theme = Get-ConsoleTheme $Theme
     # cc-P132: the art folder, read once; then the window's backgrounds (gumps, drawn textures, or art).
     $script:artCache = @{}
@@ -9144,7 +9708,7 @@ function New-ConsoleForm {
     $refresh.Text = 'Refresh'
     $refresh.Name = 'refresh'
     $refresh.Width = 100
-    $refresh.Add_Click({ Update-ConsoleStatus })
+    $refresh.Add_Click({ Update-ConsoleStatus -Queue })
     $auto = New-Object Windows.Forms.CheckBox
     $auto.Text = 'refresh every 30 s'
     $auto.Name = 'autoRefresh'
@@ -9388,77 +9952,15 @@ function New-ConsoleForm {
 
     # world setup
     $worldPage = New-Object Windows.Forms.TabPage('World setup')
-    $worldTable = New-Object Windows.Forms.TableLayoutPanel
-    $worldTable.Dock = 'Fill'
-    $worldTable.AutoScroll = $true
-    $worldTable.ColumnCount = 3
-    [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('AutoSize')))
-    [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('AutoSize')))
-    [void]$worldTable.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle('Percent', 100)))
-    $worldCmds = @()
-    try { $worldCmds = @(ConvertFrom-CommandSources (Get-CommandSourceFiles $Config.Customizations)) } catch { }
-    $head = New-Caption ('In-game commands to paste into a client by hand: the console cannot run them, and cannot see whether this world has had them. Read from the code (' + $worldCmds.Count + ' registrations; only those that change a world are shown). Check which shard your client is on before you paste. A dry run is its own row just above the command it previews; the ticks are for this session only.') 1100
-    $worldTable.Controls.Add($head, 0, 0)
-    $worldTable.SetColumnSpan($head, 3)
-    $row = 1
-    $copyClick = { [Windows.Forms.Clipboard]::SetText([string]$this.Tag); Write-ConsoleLine ('copied: ' + ([string]$this.Tag).Trim()) 'gray' }
-    foreach ($group in @(Get-WorldCommandGroups $worldCmds)) {
-        $title = New-Object Windows.Forms.Label
-        $title.Text = $group.Title
-        $title.AutoSize = $true
-        $title.Font = New-Object Drawing.Font($worldTable.Font, [Drawing.FontStyle]::Bold)
-        $title.Margin = New-Object Windows.Forms.Padding(6, 14, 3, 2)
-        if ($group.Key -eq 'unclassified' -and @($group.Items).Count) { $title.ForeColor = [Drawing.Color]::Firebrick }
-        $worldTable.Controls.Add($title, 0, $row)
-        $worldTable.SetColumnSpan($title, 3)
-        $row++
-        $src = New-Caption $group.Source 760 ([Drawing.Color]::DimGray)
-        if ($group.CopyAll -and @($group.Items).Count) {
-            $all = New-Object Windows.Forms.Button
-            $all.Text = 'Copy group'
-            $all.Name = 'worldCopyGroup'
-            $all.Width = 90
-            $all.Tag = Get-GroupClipboardText $group
-            $all.Add_Click({ [Windows.Forms.Clipboard]::SetText([string]$this.Tag); Write-ConsoleLine ('copied a group of ' + @(([string]$this.Tag).Trim() -split "`r`n").Count + ' commands') 'gray' })
-            $worldTable.Controls.Add($all, 1, $row)
-            $worldTable.Controls.Add($src, 2, $row)
-        } else {
-            $worldTable.Controls.Add($src, 0, $row)
-            $worldTable.SetColumnSpan($src, 3)
-        }
-        $row++
-        if (-not @($group.Items).Count) {
-            $none = New-Caption '(none)' 300 ([Drawing.Color]::DimGray)
-            $worldTable.Controls.Add($none, 0, $row)
-            $row++
-        }
-        foreach ($item in $group.Items) {
-            $cb = New-Object Windows.Forms.CheckBox
-            $cb.Text = $item.Command
-            $cb.Name = 'worldTick'
-            $cb.AutoSize = $true
-            $cb.Font = $script:MonoFont
-            $cb.Margin = New-Object Windows.Forms.Padding(6, 5, 3, 3)
-            $copy = New-Object Windows.Forms.Button
-            $copy.Text = 'Copy'
-            $copy.Name = 'worldCopy'
-            $copy.Width = 60
-            $copy.Tag = $item.Command
-            $copy.Add_Click($copyClick)
-            $worldTable.Controls.Add($cb, 0, $row)
-            $worldTable.Controls.Add($copy, 1, $row)
-            $why = New-Object Windows.Forms.Label
-            $why.Text = $item.Text
-            $why.AutoSize = $true
-            $why.MaximumSize = New-Object Drawing.Size(760, 0)
-            $why.ForeColor = [Drawing.Color]::DimGray
-            if ($item.Warn) { $why.ForeColor = [Drawing.Color]::DarkRed }
-            $why.Margin = New-Object Windows.Forms.Padding(6, 8, 3, 3)
-            $worldTable.Controls.Add($why, 2, $row)
-            $row++
-        }
-    }
-    $worldPage.Controls.Add($worldTable)
+    # cc-P154: under -BackgroundRefresh (the console's own start) the page is built the first time it is opened, so the
+    # window does not wait for 274 .cs files to be read and the table laid out; until then it says loading.
+    if ($BackgroundRefresh) {
+        $worldWait = New-Caption 'loading the world commands...' 600 ([Drawing.Color]::DimGray)
+        $worldWait.Name = 'worldLoading'
+        $worldPage.Controls.Add($worldWait)
+        $script:worldPending = $true
+        $script:worldCmds = $null
+    } else { $worldPage.Controls.Add((New-WorldSetupTable $Config)) }
 
     $diagPage = New-ButtonPage 'Diagnostics' ('Two read-only health checks. Each writes one timestamped file in ' + $Config.DiagFolder + '. The shard check reads the TEST container only. Disconnect VPN turns off a VPN that is making sl-ddns publish the wrong address.') @(
         (New-ConsoleButton 'Check Docker' 'diag.docker'),
@@ -9809,6 +10311,8 @@ function New-ConsoleForm {
     $script:ui.WebsiteButtons = $webBtns
 
     $tabs.TabPages.AddRange(@($testPage, $fixPage, $qPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $apPage, $webPage, $livePage))
+    $script:ui.WorldPage = $worldPage
+    $script:ui.PackagePage = $pkgPage
     # cc-P116: a page's scrolling is worked out again when it is shown (its wrapping parts only measure true then), and
     # it opens at its top: choosing a tab focuses its first button, and a scrolling page would otherwise scroll down to
     # it and cut off the caption above. Posted, so it runs after that focus change.
@@ -9961,12 +10465,33 @@ function New-ConsoleForm {
     $cdTimer.Start()
     $tabs.Add_SelectedIndexChanged({
         Update-CommitCountdown -Reread
-        if ($script:ui.Tabs.SelectedTab -eq $script:ui.AutopilotPage) { [void](Update-AutopilotView) }
+        $sel = $script:ui.Tabs.SelectedTab
+        if ($script:BackgroundRefresh) {
+            # cc-P154: the tab opened shows what was last read at once, and its own reads are asked for in the background.
+            if ($sel -eq $script:ui.AutopilotPage) { [void](Show-AutopilotView $script:autopilot); [void](Start-ConsoleRefresh -Parts @('golem') -Queue) }
+            if ($sel -eq $script:ui.PackagePage) { [void](Start-ConsoleRefresh -Parts @('package') -Queue) }
+            if ($sel -eq $script:ui.WorldPage) { Show-WorldSetupPage }
+        } elseif ($sel -eq $script:ui.AutopilotPage) { [void](Update-AutopilotView) }
     })
+    if ($BackgroundRefresh) {
+        # cc-P154: a tab shown for the first time makes its controls and lays them out; with the window's drawing off
+        # until the handlers above are done, so it is drawn once (Suspend-WindowDraw).
+        $tabs.Add_Selecting({ if (-not $script:tabHeld) { $script:tabHeld = Suspend-WindowDraw } })
+        $tabs.Add_SelectedIndexChanged({ if ($script:ui.Form.IsHandleCreated) { $script:ui.Form.BeginInvoke([Action]{ if ($script:tabHeld) { $script:tabHeld = $false; Resume-WindowDraw -Only $script:ui.Tabs } }) | Out-Null } })
+        # cc-P154: collects the background reads (Receive-ConsoleJobs). Cheap: it only looks whether one has finished.
+        $rxTimer = New-Object Windows.Forms.Timer
+        $rxTimer.Interval = 250
+        $rxTimer.Add_Tick({ Receive-ConsoleJobs })
+        $rxTimer.Start()
+        $script:ui.ReceiveTimer = $rxTimer
+    }
     $script:commitFactsCache = $null
     $script:commitFactsAt = $null
     $form.Add_FormClosed({
         $script:ui.Timer.Stop(); $script:ui.NetTimer.Stop(); $script:ui.CountdownTimer.Stop(); $script:OutputBox = $null
+        # cc-P154: and the background reads.
+        if ($script:ui.ReceiveTimer) { $script:ui.ReceiveTimer.Stop() }
+        Stop-ConsoleJobs
         # cc-P84: a job still streaming into the pane is ended with the window, so nothing runs on unseen.
         if ($script:ui.Pane) { $script:ui.Pane.Timer.Stop(); if ($script:paneJob) { [void]$script:paneJob.KillTree(); $script:paneJob = $null } }
         if ($script:netProbe) { try { $script:netProbe.PS.Stop(); $script:netProbe.PS.Dispose() } catch { } }
@@ -9980,6 +10505,11 @@ function New-ConsoleForm {
 
     if ($DryRun) { Write-ConsoleLine 'DRY RUN: every button prints the plan it would run. The status panel is read from a capture file, not docker.' 'amber' }
     Set-ConsoleDryRun ([bool]$DryRun)
+    # cc-P154: under -BackgroundRefresh the window opens now and the first status fills in when it is read.
+    if ($BackgroundRefresh) {
+        Add-RichLine $script:ui.Status 'Reading the status (docker, git, the Golem) in the background...' 'gray'
+        Start-WorldCommandsRead
+    }
     Update-ConsoleStatus
     $form
 }
@@ -10108,6 +10638,6 @@ if ($Action) {
 $settings = Read-ConsoleSettings $config
 # cc-P132: DPI awareness before the first window, and the remembered window state (size, place, splitters).
 Write-ConsoleLog $config ('DPI: ' + (Set-ConsoleDpiAwareness))
-$form = New-ConsoleForm -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom -Theme $settings.Theme -Pane -Settings $settings -RestoreWindow
+$form = New-ConsoleForm -Config $config -DryRun:$DryRun -StatusFrom $StatusFrom -Theme $settings.Theme -Pane -Settings $settings -RestoreWindow -BackgroundRefresh
 [void]$form.ShowDialog()
 $form.Dispose()

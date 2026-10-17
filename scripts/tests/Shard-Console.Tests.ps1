@@ -6381,6 +6381,215 @@ Fact 'P133_TheRunbookAndTheRuleKeepTheInventoryAndTheDocsInStep' {
     }
 }
 
+# --- cc-P154: the console stays responsive. Reads in runspaces of their own; the window only draws -------------------
+
+function New-P154Form {
+    # A form as the console's own start builds it (-BackgroundRefresh), on the capture, never reaching the network, shown
+    # off screen so its timers tick. $Stub: the refresh runspace's script in place of Get-ConsoleRefreshData.
+    param([string]$Stub)
+    $script:NetProbeDisabled = $true
+    $script:RefreshScript = $Stub
+    $script:LastRefresh = $null
+    $f = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -BackgroundRefresh
+    $script:ui.Timer.Stop()
+    $f.StartPosition = 'Manual'
+    $f.Location = New-Object Drawing.Point(-3000, -3000)
+    $f
+}
+
+function Get-P154Controls($Root) {
+    $stack = New-Object System.Collections.Stack
+    $stack.Push($Root)
+    while ($stack.Count) { $x = $stack.Pop(); $x; foreach ($k in $x.Controls) { $stack.Push($k) } }
+}
+
+function Close-P154Form($f) {
+    try { $f.Close() } catch { }
+    try { $f.Dispose() } catch { }
+    Stop-ConsoleJobs
+    $script:RefreshScript = $null
+    $script:BackgroundRefresh = $false
+    $script:NetProbeDisabled = $false
+}
+
+function Wait-P154 {
+    # Pumps the window's messages until $Until is true or $Seconds pass; returns the longest gap between two ticks of a
+    # 15 ms timer on the window's thread (how long the window could not answer) and how many ticks there were.
+    param([double]$Seconds, [scriptblock]$Until)
+    $gaps = New-Object 'System.Collections.Generic.List[double]'
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $probe = New-Object Windows.Forms.Timer
+    $probe.Interval = 15
+    $probe.Add_Tick({ $gaps.Add($sw.Elapsed.TotalMilliseconds); $sw.Restart() }.GetNewClosure())
+    $probe.Start()
+    $w = [Diagnostics.Stopwatch]::StartNew()
+    try {
+        while ($w.Elapsed.TotalSeconds -lt $Seconds) {
+            [Windows.Forms.Application]::DoEvents()
+            if ($Until -and (& $Until)) { break }
+            Start-Sleep -Milliseconds 5
+        }
+    } finally { $probe.Stop(); $probe.Dispose() }
+    [pscustomobject]@{ Ticks = $gaps.Count; Longest = $(if ($gaps.Count) { ($gaps | Measure-Object -Maximum).Maximum } else { [double]::MaxValue }); Ms = $w.ElapsedMilliseconds }
+}
+
+$p154Sleep = 'param($cfg, $fromCapture, $statusFrom, $parts, $dry) $t0 = [datetime]::UtcNow; Start-Sleep -Milliseconds 2000; [pscustomobject]@{ Parts = @(); Marker = ''stub''; Started = $t0; Ended = [datetime]::UtcNow; Thread = [Threading.Thread]::CurrentThread.ManagedThreadId }'
+
+Fact 'P154_TheRefreshNeverRunsOnTheWindowsThread' {
+    # A stub source that sleeps 2 s: the build returns without waiting for it, and while it sleeps the window's thread
+    # still answers its timer; the stub ran on another thread, and its result is drawn when it is back.
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    $f = New-P154Form $p154Sleep
+    try {
+        $built = $sw.ElapsedMilliseconds
+        Assert-True (Test-Path variable:script:rsJobs) 'the jobs table'
+        Assert-True ($script:rsJobs['refresh']) 'the build started a refresh and did not wait for it'
+        $f.Show()
+        $p = Wait-P154 15 { $null -ne $script:LastRefresh }
+        Assert-True ($script:LastRefresh -and $script:LastRefresh.Data.Marker -eq 'stub') ('the stub''s result was drawn (waited ' + $p.Ms + ' ms)')
+        Assert-True ($script:LastRefresh.Data.Thread -ne [Threading.Thread]::CurrentThread.ManagedThreadId) 'it ran on a thread of its own'
+        Assert-True ($p.Ticks -ge 40) ('the window''s timer ticked ' + $p.Ticks + ' times while the source slept 2 s')
+        Assert-True ($p.Longest -lt 500) ('the longest the window could not answer: ' + [int]$p.Longest + ' ms (the source slept 2000)')
+        Assert-True ($built -lt 2000 + 15000) ('built in ' + $built + ' ms')
+    } finally { Close-P154Form $f }
+}
+
+Fact 'P154_NeverTwoRefreshesAtOnce' {
+    # While one runs a tick is skipped (and counted); a queued one starts only after the first has finished.
+    $f = New-P154Form $p154Sleep
+    try {
+        $f.Show()
+        [void](Wait-P154 15 { $null -ne $script:LastRefresh })
+        $script:LastRefresh = $null
+        $script:RefreshSkipped = 0
+        Assert-True (Start-ConsoleRefresh -Parts @('tiles')) 'the first starts'
+        $first = $script:rsJobs['refresh']
+        Assert-True (-not (Start-ConsoleRefresh -Parts @('tiles'))) 'a tick while it runs is skipped'
+        Assert-Equal 1 $script:RefreshSkipped 'and counted'
+        Assert-True ($script:rsJobs['refresh'] -eq $first) 'the one running is still the first'
+        Assert-Equal $null $script:refreshQueued 'a skipped tick asks for nothing more'
+        Assert-True (-not (Start-ConsoleRefresh -Parts @('commit') -Queue)) 'a click while it runs does not start a second either'
+        Assert-Equal 'commit' (@($script:refreshQueued) -join ',') 'it is queued'
+        $seen = New-Object 'System.Collections.Generic.List[object]'
+        [void](Wait-P154 20 { if ($script:LastRefresh -and ($seen.Count -eq 0 -or $seen[$seen.Count - 1] -ne $script:LastRefresh)) { $seen.Add($script:LastRefresh) }; $seen.Count -ge 2 })
+        Assert-Equal 2 $seen.Count 'the first, then the queued one'
+        Assert-True ($seen[1].Data.Started -ge $seen[0].Data.Ended) ('the second started ' + $seen[1].Data.Started.ToString('HH:mm:ss.fff') + ', after the first ended ' + $seen[0].Data.Ended.ToString('HH:mm:ss.fff'))
+        Assert-Equal 'commit' (@($seen[1].Parts) -join ',') 'with the parts it was asked for'
+    } finally { Close-P154Form $f }
+}
+
+Fact 'P154_OnlyTheVisibleTabsSourcesRun' {
+    # The tiles always; the Commit tab's git only on the Commit tab, the package light's facts on the Player package tab
+    # (and when two minutes old); and a refresh reads exactly the parts it was given.
+    $f = New-P154Form $p154Sleep
+    try {
+        $f.Show()
+        $script:packageFactsAt = [datetime]::UtcNow
+        $script:ui.Tabs.SelectedIndex = 0
+        Assert-Equal 'tiles,vpn' ((Get-RefreshParts) -join ',') 'the Test shard tab: the tiles only'
+        $script:ui.Tabs.SelectedTab = $script:ui.CommitPage
+        Assert-Equal 'tiles,vpn,commit' ((Get-RefreshParts) -join ',') 'the Commit tab: and its git'
+        $script:ui.Tabs.SelectedTab = $script:ui.PackagePage
+        Assert-Equal 'tiles,vpn,package' ((Get-RefreshParts) -join ',') 'the Player package tab: and the package light''s facts'
+        $script:ui.Tabs.SelectedTab = $script:ui.AutopilotPage
+        Assert-Equal 'tiles,vpn' ((Get-RefreshParts) -join ',') 'the Golem tab: its view is a tile''s, read with the tiles'
+        $script:packageFactsAt = [datetime]::UtcNow.AddSeconds(-1 - $script:PackageFactsMaxAge)
+        Assert-Equal 'tiles,vpn,package' ((Get-RefreshParts) -join ',') 'package facts two minutes old are read again, for the lights file'
+        $d = Get-ConsoleRefreshData -Config $config -FromCapture $true -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -Parts @('tiles') -Dry $true
+        Assert-Equal 'docker,golem,rebuild light,play tests,total' (@($d.Timings.Keys) -join ',') 'the tiles read docker, the Golem, the rebuild light and play-tests.json, and nothing else'
+        Assert-True ($d.State -and $d.Autopilot -and $null -eq $d.CommitFacts -and $null -eq $d.PackageFacts -and $null -eq $d.VpnFacts) 'and return only those'
+        $d = Get-ConsoleRefreshData -Config $config -FromCapture $true -StatusFrom '' -Parts @('golem') -Dry $true
+        Assert-Equal 'golem,total' (@($d.Timings.Keys) -join ',') 'the Golem alone reads the Golem alone'
+        # The Golem tab's panel is drawn only while its tab shows.
+        $script:ui.Tabs.SelectedIndex = 0
+        $script:ui.AutopilotPanel.Text = 'untouched'
+        [void](Show-AutopilotView $d.Autopilot)
+        Assert-Equal 'untouched' $script:ui.AutopilotPanel.Text 'not drawn while another tab shows'
+        $script:ui.Tabs.SelectedTab = $script:ui.AutopilotPage
+        [void](Show-AutopilotView $d.Autopilot)
+        Assert-True ($script:ui.AutopilotPanel.Text -ne 'untouched' -and $script:ui.AutopilotPanel.TextLength -gt 0) 'drawn when it shows'
+    } finally { Close-P154Form $f }
+}
+
+Fact 'P154_TheFileCachesReadAgainOnlyWhenAFileChanges' {
+    $d = Join-Path ([IO.Path]::GetTempPath()) ('p154-cache-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $d | Out-Null
+    try {
+        $p = Join-Path $d 'cc-P7-x.md'
+        [IO.File]::WriteAllText($p, "one`ntwo`n")
+        Assert-Equal "one`ntwo" (Get-FileHeadCached $p 40) 'read'
+        # Same length and write time: the cached text, so the file is not read again.
+        $t = (Get-Item -LiteralPath $p).LastWriteTimeUtc
+        [IO.File]::WriteAllText($p, "uno`ntwo`n")
+        (Get-Item -LiteralPath $p).LastWriteTimeUtc = $t
+        Assert-Equal "one`ntwo" (Get-FileHeadCached $p 40) 'unchanged by its write time and length: from the cache'
+        # A new write time: read again.
+        (Get-Item -LiteralPath $p).LastWriteTimeUtc = $t.AddSeconds(5)
+        Assert-Equal "uno`ntwo" (Get-FileHeadCached $p 40) 'a file changed is read again'
+        [IO.File]::WriteAllText($p, "uno`ntwo`nthree`n")
+        (Get-Item -LiteralPath $p).LastWriteTimeUtc = $t.AddSeconds(5)
+        Assert-Equal "uno`ntwo`nthree" (Get-FileHeadCached $p 40) 'and a new length is a change too'
+        Assert-Equal $null (Get-FileHeadCached (Join-Path $d 'none.md') 40) 'no file: null'
+        # The folder listing: again only when the folder's own write time changed (a file added, removed, renamed).
+        Assert-Equal $p (Find-FileCached $d 'cc-P7-*.md') 'found'
+        Assert-Equal $null (Find-FileCached $d 'cc-P8-*.md') 'not there yet'
+        $q = Join-Path $d 'cc-P8-y.md'
+        [IO.File]::WriteAllText($q, 'x')
+        $dt = (Get-Item -LiteralPath $d).LastWriteTimeUtc
+        (Get-Item -LiteralPath $d).LastWriteTimeUtc = $dt.AddSeconds(5)
+        Assert-Equal $q (Find-FileCached $d 'cc-P8-*.md') 'a file added is found'
+        Remove-Item -LiteralPath $q
+        (Get-Item -LiteralPath $d).LastWriteTimeUtc = $dt.AddSeconds(10)
+        Assert-Equal $null (Find-FileCached $d 'cc-P8-*.md') 'and a file removed is gone'
+    } finally { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P154_APanelFilledInOneGoLooksAsLineByLine' {
+    # Set-RichLines (one .Rtf) in place of Add-RichLine per line: the same text, colors, bold and font, in each look.
+    $f = New-Object Windows.Forms.Form
+    $a = New-Object Windows.Forms.RichTextBox; $b = New-Object Windows.Forms.RichTextBox
+    $f.Controls.AddRange(@($a, $b))
+    $f.StartPosition = 'Manual'; $f.Location = New-Object Drawing.Point(-3000, -3000)
+    $keep = @($script:theme, $script:MonoFont, $script:BoldFont)
+    try {
+        $f.Show()
+        $lines = foreach ($i in 0..13) { [pscustomobject]@{ Text = ('line {' + $i + '} a\b ' + [char]0x2192 + " x`ty"); Color = @('normal', 'head', 'green', 'amber', 'red', 'gray', 'nosuch')[$i % 7] } }
+        foreach ($look in 'Plain', 'UO', 'Enhanced') {
+            $script:theme = Get-ConsoleTheme $look
+            $script:MonoFont = Get-ThemeFont 'Mono'
+            $script:BoldFont = Get-ThemeFont 'Mono' ([Drawing.FontStyle]::Bold)
+            $a.Clear(); foreach ($l in $lines) { Add-RichLine $a $l.Text $l.Color }
+            Set-RichLines $b $lines
+            Assert-True ($a.Text -ceq $b.Text) ($look + ': the same text')
+            for ($i = 0; $i -lt $a.TextLength; $i++) {
+                $a.Select($i, 1); $b.Select($i, 1)
+                if ($a.SelectionColor.ToArgb() -ne $b.SelectionColor.ToArgb() -or $a.SelectionFont.Bold -ne $b.SelectionFont.Bold -or $a.SelectionFont.Name -ne $b.SelectionFont.Name -or [math]::Abs($a.SelectionFont.Size - $b.SelectionFont.Size) -gt 0.01) {
+                    throw ($look + ': character ' + $i + ' differs: ' + $a.SelectionColor + ' ' + $a.SelectionFont + ' against ' + $b.SelectionColor + ' ' + $b.SelectionFont)
+                }
+            }
+        }
+    } finally { $script:theme, $script:MonoFont, $script:BoldFont = $keep; $f.Close(); $f.Dispose() }
+}
+
+Fact 'P154_TheWorldSetupTabIsBuiltWhenFirstOpenedAndOnlyThen' {
+    $f = New-P154Form $p154Sleep
+    try {
+        Assert-True ($script:worldPending) 'not built with the window'
+        Assert-Equal 'worldLoading' $script:ui.WorldPage.Controls[0].Name 'it says loading'
+        $f.Show()
+        [void](Wait-P154 30 { $null -ne $script:worldCmds })
+        Assert-True ($null -ne $script:worldCmds) 'the registrations were read in the background'
+        Assert-True ($script:worldPending) 'and still not built: the tab is not open'
+        $script:ui.Tabs.SelectedTab = $script:ui.WorldPage
+        Assert-True (-not $script:worldPending) 'built on opening'
+        $ticks = @(Get-P154Controls $script:ui.WorldPage | Where-Object { $_.Name -eq 'worldTick' }).Count
+        Assert-True ($ticks -ge 1) ('ticks: ' + $ticks)
+        $eager = New-WorldSetupTable $config
+        Assert-Equal @(Get-P154Controls $eager | Where-Object { $_.Name -eq 'worldTick' }).Count $ticks 'the same rows the window used to build at its start'
+        $eager.Dispose()
+    } finally { Close-P154Form $f }
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 
 $failed =@($results | Where-Object { -not $_.Passed }).Count

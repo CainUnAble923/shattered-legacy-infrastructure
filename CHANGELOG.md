@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.2
+
+### Staff
+- The Shard Console no longer freezes: its window opens in about 2 seconds instead of about 40, the status, the lights, the Golem and each button's checks are read in the background while the window keeps answering, only the open tab's details are read, and the World setup tab is built the first time it is opened.
+
 ## 2026.10.17
 
 ### Staff
