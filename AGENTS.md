@@ -62,6 +62,11 @@ services are the source; Haven has its own copies. Never start a web container o
 and never assume a `docker` command here reaches Haven: `docker info --format "{{.Name}}"` says
 which daemon you are talking to. See the root `README.md` and each folder's README.
 
+**Every service on Haven and the game PC is in `docker/haven/services.json`** (cc-P133), with the prose in
+`shard-migration/notes/haven-runbook.md`. Any change that adds, moves or removes a service on Haven or the game PC updates
+`services.json` and `haven-runbook.md` (its "Changed on" log too) in the same prompt, then runs
+`docker/haven/Build-HavenDashboard.ps1`; the console facts `P133_*` fail when they disagree.
+
 ## Standing rules
 
 1. Verify against the source trees, not documentation. Neither ModernUO nor ServUO

@@ -5,7 +5,10 @@
 #   - play-tests reads the clones and writes ONLY its data folder (OPS_ROOT/data), the one writer of results, ideas and
 #     bug reports after the cutover. The game PC mirrors that folder into git before each commit (/api/export).
 # Published on Haven's LAN address only: the page on :8093 (as the game PC served it) and the token listener (export,
-# ingest, the game PC snapshot) on :8094. Never routed by NPM; Cloudflare Access is Haven step H4.
+# ingest, the game PC snapshot) on :8094. Never routed by NPM, never public.
+# cc-P133 (Chase, 2026-10-15: Tailscale only, nothing on the intranet ever public): the page also listens on Haven's
+# loopback, which is what Tailscale Serve forwards http://haven.tail81098d.ts.net:8093/ to (the Mega dashboard deploy
+# sets that up from docker/haven/services.json). The Cloudflare tunnel and Access plan (P89's H4) is dropped.
 # Deployed, cut over and rolled back only by docker/ops/Deploy-HavenOps.ps1, from the Shard Console's Websites tab.
 # The same file runs on the game PC for the proof, with BIND, the ports, OPS_ROOT and the names set to scratch values.
 # ASCII only.
@@ -44,6 +47,7 @@ services:
     ports:
       - "${BIND:-192.168.1.61}:${PAGE_PORT:-8093}:8000"
       - "${BIND:-192.168.1.61}:${LAN_PORT:-8094}:8001"
+      - "${LOOP_BIND:-127.0.0.1}:${LOOP_PAGE_PORT:-8093}:8000"
     volumes:
       - ${OPS_ROOT:-/home/chase/sl-ops}/repo:/repo:ro
       - ${OPS_ROOT:-/home/chase/sl-ops}/data:/data/ops

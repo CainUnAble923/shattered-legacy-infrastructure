@@ -6,10 +6,11 @@
                                                               menu also works when the file is opened as file:///
      Dashboard      Homepage       http://<host>:3000/        docker/dashboard/config/custom.js loads it from :8093
 
-   cc-P105 (Haven step H1): a row may give a whole url instead of host, port and path (the Haven pages behind
-   Cloudflare Access will: https://ops.shatteredlegacyuo.com/...), and lanOnly: true shows a row only when this page
-   was reached from a home-network or tailnet address (Homepage is never published outside). With the rows below,
-   nothing changes: every page is still host and port, and they are all reached on the LAN.
+   cc-P105 (Haven step H1): a row may give a whole url instead of host, port and path, and lanOnly: true shows a row
+   only when this page was reached from a home-network or tailnet address (Homepage is never published outside).
+   cc-P133 (Chase, 2026-10-15): Tailscale only. Nothing here is ever public; the Cloudflare tunnel and Access plan is
+   dropped. tailnetUrl is where a row lives when this page was reached by a tailnet (.ts.net) name, since the LAN
+   address does not answer away from home.
    A fourth page is one more row in PAGES. Moving a page (to Haven, say) is that page's row: set its host, and its
    port and path if they change. host null means "the host the browser used to reach this page", so the links work
    from a phone on the LAN, never only from this PC. A page with no host at all (file:///) uses FALLBACK_HOST.
@@ -22,7 +23,9 @@
     { key: 'status',    label: 'Shard status', host: null, port: 8093, path: '/status' },
     // cc-P110 (Haven step H5): Homepage is Haven's. Haven's :3000 always answers: the stale June copy until the Mega
     // dashboard deploy, the real one after it, and the stale one again after its rollback.
-    { key: 'dashboard', label: 'Dashboard',    host: '192.168.1.61', port: 3000, path: '/', lanOnly: true }
+    // cc-P133: on the tailnet the dashboard is Tailscale Serve's port 80 on Haven (docker/haven/services.json).
+    { key: 'dashboard', label: 'Dashboard',    host: '192.168.1.61', port: 3000, path: '/', lanOnly: true,
+      tailnetUrl: 'http://haven.tail81098d.ts.net/' }
   ];
   // The Windows box (docker/test-queue/docker-compose.yml), for a page opened from disk.
   var FALLBACK_HOST = '192.168.1.58';
@@ -67,8 +70,13 @@
   var SCRIPT_HOST = '';
   try { if (document.currentScript && document.currentScript.src) SCRIPT_HOST = new URL(document.currentScript.src).hostname; } catch (e) { SCRIPT_HOST = ''; }
 
+  function onTailnet() {
+    return /\.ts\.net$/i.test(String(window.location.hostname || '')) || /\.ts\.net$/i.test(SCRIPT_HOST);
+  }
+
   function url(p) {
     if (p.url) return p.url;
+    if (p.tailnetUrl && onTailnet()) return p.tailnetUrl;
     var host = p.host || SCRIPT_HOST || window.location.hostname || FALLBACK_HOST;
     var proto = (!p.host && window.location.protocol === 'https:') ? 'https:' : 'http:';
     return proto + '//' + host + ':' + p.port + p.path;

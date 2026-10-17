@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17
+
+### Staff
+- Haven's home dashboard is finished and reachable only over Tailscale (http://haven.tail81098d.ts.net/): five sections (Sunflower, Filament, Monitoring, Ultima Online / Shattered Legacy, Admin), a tile with live up or down for every service on Haven and on the game PC (which shows when it went offline while it sleeps), all generated from one service inventory with a runbook beside it, and the print queue now proves its Hostinger key from Haven before the tower copy stops.
+
 ## 2026.10.16.6
 
 ### Staff

@@ -5,7 +5,10 @@
    fallback, for before the ops cutover or after its rollback. If neither answers, Homepage shows with no menu.
    ASCII only. */
 (function () {
+  // cc-P133: reached by its tailnet name (Tailscale Serve), the menu comes from the same name's :8093 first, since the LAN
+  // addresses do not answer away from home.
   var NAV_AT = [{ host: '192.168.1.61', port: 8093 }, { host: '192.168.1.58', port: 8093 }];
+  if (/\.ts\.net$/i.test(window.location.hostname)) NAV_AT.unshift({ host: window.location.hostname, port: 8093 });
   function load(i) {
     if (i >= NAV_AT.length) return;
     var s = document.createElement('script');

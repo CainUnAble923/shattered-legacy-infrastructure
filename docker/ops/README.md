@@ -13,8 +13,10 @@ items 2 and 3. Notes: `shard-migration/notes/cc-P107-haven-ops-move.md`.
 | `~/sl-ops/ops.env` | `PLAYTESTS_TOKEN`, chmod 600, written by the deploy from a prompt |
 | `192.168.1.61:8093` | the page (as the game PC served it), LAN only |
 | `192.168.1.61:8094` | the token listener: `GET /api/export`, `POST /api/ingest/gamepc`, `GET /api/gamepc` |
+| `http://haven.tail81098d.ts.net:8093/` | the page on the tailnet (cc-P133): Tailscale Serve forwards it to the page's loopback port `127.0.0.1:8093`. Tailscale only: nothing here is ever public, and the Cloudflare tunnel and Access plan (P89's H4) is dropped |
 
-Nothing else on Haven is touched: Vaultwarden, NPM and its hosts, the website, the wiki, Kevin's Parts, and
+Every service on Haven and the game PC is listed in `docker/haven/services.json` (with the runbook,
+`shard-migration/notes/haven-runbook.md`). Nothing else on Haven is touched: Vaultwarden, NPM and its hosts, the website, the wiki, Kevin's Parts, and
 `~/shattered-legacy` (how those are deployed) all stay as they are.
 
 ## The three buttons (Shard Console, Websites tab, after the phrase `deploy to haven`)

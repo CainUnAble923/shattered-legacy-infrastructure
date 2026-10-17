@@ -1,0 +1,11 @@
+# Real: the Haven docker ps -a section of D:\UO\haven-migration\proxy-discovery.txt, 2026-09-29 10:53. Copied verbatim for cc-P133's coverage fact; nothing else from that file.
+===== containers =====
+NAMES               STATUS                    IMAGE                                 PORTS
+sl-wiki             Up 2 hours (healthy)      ghcr.io/dokuwiki/dokuwiki:latest      80/tcp, 8080/tcp
+sl-website          Up 4 hours                nginx:alpine                          80/tcp
+sl-vaultwarden      Up 4 hours (healthy)      vaultwarden/server:latest             80/tcp
+sl-proxy            Up 4 hours                jc21/nginx-proxy-manager:latest       0.0.0.0:80-81->80-81/tcp, [::]:80-81->80-81/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+sl-downloads        Up 4 hours                nginx:alpine                          80/tcp
+sl-dashboard        Up 4 hours (healthy)      ghcr.io/gethomepage/homepage:latest   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+sweet_payne         Exited (0) 3 months ago   hello-world                           
+stupefied_goodall   Exited (0) 3 months ago   hello-world                           

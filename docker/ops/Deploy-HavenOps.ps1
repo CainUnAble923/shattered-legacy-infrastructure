@@ -43,6 +43,8 @@ param(
     [string]$Bind = '192.168.1.61',
     [int]$PagePort = 8093,
     [int]$LanPort = 8094,
+    # cc-P133: the page's loopback port, for Tailscale Serve. The proof gives it a scratch one (PagePort + 1000).
+    [int]$LoopPort = 0,
     [string]$Project = 'sl-ops',
     [string]$PlayTestsName = 'sl-play-tests',
     [string]$GitPullName = 'sl-ops-git-pull',
@@ -112,7 +114,8 @@ function Copy-ToHaven {
     }
 }
 
-$composeEnv = 'OPS_ROOT=' + $composeRoot + ' BIND=' + $Bind + ' PAGE_PORT=' + $PagePort + ' LAN_PORT=' + $LanPort +
+if (-not $LoopPort) { $LoopPort = $(if ($Local) { $PagePort + 1000 } else { 8093 }) }
+$composeEnv = 'OPS_ROOT=' + $composeRoot + ' BIND=' + $Bind + ' PAGE_PORT=' + $PagePort + ' LAN_PORT=' + $LanPort + ' LOOP_PAGE_PORT=' + $LoopPort +
     ' OPS_PROJECT=' + $Project + ' PLAY_TESTS_NAME=' + $PlayTestsName + ' GIT_PULL_NAME=' + $GitPullName
 $composeFiles = '-f ' + $root + '/stack/docker-compose.yml'
 if ($ComposeOverride) { $composeFiles += ' -f ' + $root + '/stack/override.yml' }

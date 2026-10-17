@@ -68,6 +68,22 @@ $names = @('sl-modernuo', 'sl-modernuo-test', 'sl-play-tests', 'sl-uo-status', '
 # cc-P108: live's container is not reported while scripts\live.json says it is retired.
 . (Join-Path $PSScriptRoot 'Live-Switch.ps1')
 if (-not (Get-LiveSwitch -RepoRoot (Split-Path $PSScriptRoot -Parent)).Enabled) { $names = @($names | Where-Object { $_ -cne 'sl-modernuo' }) }
+# cc-P133: what Haven's dashboard shows for the game PC comes from docker\haven\services.json: every tile with a snapshot
+# key is reported in services (up or not, and a few words why), so the inventory, the dashboard and this snapshot name
+# the same things. A container, a process (the tower's print queue) or Tailscale's view of a node (Haven).
+$watch = @()
+$tailnetOf = @{}
+try {
+    $inv = Get-Content -LiteralPath (Join-Path (Split-Path $PSScriptRoot -Parent) 'docker\haven\services.json') -Raw | ConvertFrom-Json
+    foreach ($s in @($inv.services)) {
+        foreach ($t in @($s.tiles)) {
+            if (-not $t.snapshot) { continue }
+            $watch += [pscustomobject]@{ Key = [string]$t.snapshot; Container = $(if ($s.host -eq 'gamepc' -and $s.kind -eq 'container') { [string]$s.container } else { '' })
+                Process = [string]$s.process; Node = $(if ($s.kind -eq 'host-service' -and $s.key -eq 'tailscale') { [string]$inv.hosts.([string]$s.host).tailnet } else { '' }) }
+        }
+    }
+} catch { $watch = @() }
+foreach ($w in $watch) { if ($w.Container -and $names -notcontains $w.Container) { $names += $w.Container } }
 $containers = @()
 $ps = & docker ps -a --format '{{.Names}}|{{.State}}|{{.Status}}|{{.Image}}' 2>$null
 if ($LASTEXITCODE -eq 0) {
@@ -76,12 +92,30 @@ if ($LASTEXITCODE -eq 0) {
         if ($p.Count -eq 4 -and $names -contains $p[0]) { $containers += [ordered]@{ name = $p[0]; state = $p[1]; status = $p[2]; image = $p[3] } }
     }
 }
+$services = [ordered]@{}
+foreach ($w in $watch) {
+    if ($w.Container) {
+        $c = @($containers | Where-Object { $_.name -eq $w.Container })[0]
+        $services[$w.Key] = $(if ($c) { [ordered]@{ up = ($c.state -eq 'running'); detail = [string]$c.status } } else { [ordered]@{ up = $false; detail = 'no such container' } })
+    } elseif ($w.Process) {
+        $hit = @(Get-CimInstance Win32_Process -Filter ("CommandLine like '%" + $w.Process + "%'") -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(py|python)' })
+        $services[$w.Key] = [ordered]@{ up = ($hit.Count -gt 0); detail = $(if ($hit) { 'running (pid ' + $hit[0].ProcessId + ')' } else { 'not running' }) }
+    } elseif ($w.Node) {
+        $node = $null
+        try {
+            $tsj = (& 'C:\Program Files\Tailscale\tailscale.exe' status --json 2>$null | Out-String) | ConvertFrom-Json
+            $node = @($tsj.Peer.PSObject.Properties | ForEach-Object { $_.Value } | Where-Object { ([string]$_.DNSName).TrimEnd('.') -eq $w.Node })[0]
+        } catch { $node = $null }
+        $services[$w.Key] = $(if ($node) { [ordered]@{ up = [bool]$node.Online; detail = $(if ($node.Online) { 'online on the tailnet' } else { 'offline on the tailnet' }) } } else { [ordered]@{ up = $false; detail = 'not seen by this PC''s Tailscale' } })
+    }
+}
 $snap = [ordered]@{
     schema     = 1
     at         = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     host       = $env:COMPUTERNAME
     golem      = $golemFacts
     containers = $containers
+    services   = $services
     docker     = ($LASTEXITCODE -eq 0)
 }
 $json = $snap | ConvertTo-Json -Depth 5 -Compress

@@ -1,0 +1,11 @@
+# Real: the 'all containers' section of D:\UO\haven-migration\haven-discovery-output.txt, Haven, 2026-09-28 16:35 (docker ps -a). Copied verbatim for cc-P133's coverage fact; nothing else from that file.
+===== all containers =====
+NAMES               STATUS                    IMAGE                                 PORTS
+sl-vaultwarden      Up 2 months (healthy)     vaultwarden/server:latest             80/tcp
+sl-proxy            Up 3 months               jc21/nginx-proxy-manager:latest       0.0.0.0:80-81->80-81/tcp, [::]:80-81->80-81/tcp, 0.0.0.0:443->443/tcp, [::]:443->443/tcp
+sl-downloads        Up 3 months               nginx:alpine                          80/tcp
+sl-wiki             Up 3 months (healthy)     ghcr.io/dokuwiki/dokuwiki:latest      80/tcp, 8080/tcp
+sl-dashboard        Up 3 months (healthy)     ghcr.io/gethomepage/homepage:latest   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+sweet_payne         Exited (0) 3 months ago   hello-world                           
+stupefied_goodall   Exited (0) 3 months ago   hello-world                           
+

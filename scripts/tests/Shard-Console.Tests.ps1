@@ -5179,14 +5179,15 @@ Fact 'P110_TheHavenHomepageIsPinnedLanOnlyAndReadsDockerOnlyThroughTheProxy' {
     $dk = [IO.File]::ReadAllText((Join-Path $d 'config\docker.yaml'))
     Assert-True ($dk -match '(?m)^haven:\s*$' -and $dk -match 'host: dockerproxy' -and $dk -notmatch '2375[\s\S]*2375' -and $dk -notmatch 'host\.docker\.internal|192\.168\.1\.58') 'one Docker: Haven''s, through the proxy'
     $sv = [IO.File]::ReadAllText((Join-Path $d 'config\services.yaml'))
-    foreach ($g in '- Shattered Legacy:', '- Sunflower Custom Gifts:', '- Home lab:') { Assert-True ($sv.Contains($g)) $g }
-    Assert-True ($sv -match '- Public progress page:' -and $sv -notmatch 'Migration status:') 'decision 11'
+    # cc-P133: the five sections of the inventory replace P110's three groups (P133_TheDashboardIsGenerated... checks them).
+    foreach ($g in '- Sunflower:', '- Filament:', '- Monitoring:', '- "Ultima Online / Shattered Legacy":', '- Admin:') { Assert-True ($sv.Contains($g)) $g }
+    Assert-True ($sv -match '- "Public progress page":' -and $sv -notmatch 'Migration status') 'decision 11'
     Assert-True ($sv -notmatch 'server: my-docker') 'the game PC''s Docker is not read from Haven (decision 6)'
-    Assert-True ($sv -match 'Bearer \{\{HOMEPAGE_VAR_OPS_TOKEN\}\}' -and $sv -match '\{\{HOMEPAGE_VAR_SPOOLMAN_URL\}\}' -and $sv -match '\{\{HOMEPAGE_VAR_GRAPHS_URL\}\}') 'the token and the Sunflower URLs come from dashboard.env'
+    Assert-True ($sv -match 'Bearer \{\{HOMEPAGE_VAR_OPS_TOKEN\}\}') 'the token comes from dashboard.env (cc-P133: Spoolman''s address is known, so P110''s URL placeholders are gone)'
     $s = [IO.File]::ReadAllText((Join-Path $d 'Deploy-MegaDashboard.ps1'))
     Assert-True ($s -match 'IsSystem\) \{ Write-Host .REFUSED' -and $s -match "'DRY RUN: stopping here; nothing was changed\.'" -and $s -match "Mode = 'Discover'") 'refuses SYSTEM, has a dry run, Discover by default'
-    Assert-True ($s -match 'docker ps --format' -and $s -match 'listening ports') 'Discover prints Haven''s containers and listening ports'
-    Assert-True ($s -match 'api/revalidate' -and $s -match "notmatch 'Sunflower Custom Gifts'") 'the deploy rebuilds the page and checks it carries this config (the proof found the image''s sample page served first)'
+    Assert-True ($s -match 'docker ps (-a )?--format' -and $s -match 'listening ports') 'Discover prints Haven''s containers and listening ports'
+    Assert-True ($s -match 'api/revalidate' -and $s -match "notmatch 'Ultima Online / Shattered Legacy'") 'the deploy rebuilds the page and checks it carries this config (the proof found the image''s sample page served first)'
     Assert-True ($s -match "StaleName -eq 'sl-dashboard' -or \`$PcDashboard -eq 'sl-dashboard'") 'the proof can never stop a real sl-dashboard'
 }
 
@@ -6191,6 +6192,193 @@ Fact 'P132_ThePackageLightSaysEachColourFromFixtures' {
     Assert-True ($c.Count -eq 2 -and $c[0].Prompt -eq 'P127' -and @($c[0].Files).Count -eq 2 -and $c[1].Files[0] -eq 'docs/x.md') 'two commits with their files'
     Assert-Equal 1 @(Select-CommitsTouching $c @('server/')).Count 'one touches the server'
     Assert-True ((Read-ZipBuiltFrom (Join-Path $env:TEMP 'no-such-package.zip')) -eq $null) 'a missing zip reads as unknown, not an error'
+}
+
+# --- cc-P133: the Haven intranet. One inventory (docker\haven\services.json), the dashboard generated from it, Tailscale only
+
+. (Join-Path $repo 'docker\haven\HavenInventory.ps1')
+$p133Inv = Read-HavenInventory -Path (Join-Path $repo 'docker\haven\services.json')
+$p133Cfg = Join-Path $repo 'docker\dashboard\haven\config'
+function Get-P133Yaml([string]$Path) {
+    # Homepage's own parser, from the pinned image, when Docker answers; the facts below need the structure, not the text.
+    $out = & docker run --rm -v ((Split-Path $Path -Parent) + ':/cfg:ro') --entrypoint node ghcr.io/gethomepage/homepage:v1.13.1 -e ("const y=require('/app/node_modules/js-yaml');process.stdout.write(JSON.stringify(y.load(require('fs').readFileSync('/cfg/" + (Split-Path $Path -Leaf) + "','utf8'))))") 2>$null
+    if ($LASTEXITCODE -ne 0) { throw ('js-yaml could not read ' + $Path + ' (is Docker running?)') }
+    ($out -join '') | ConvertFrom-Json
+}
+$p133Tiles = { param($doc) foreach ($g in @($doc)) { $sec = @($g.PSObject.Properties)[0]; foreach ($t in @($sec.Value)) { $p = @($t.PSObject.Properties)[0]; [pscustomobject]@{ Section = $sec.Name; Name = $p.Name; Tile = $p.Value } } } }
+
+Fact 'P133_TheInventoryIsSoundAndHoldsNamesNeverSecretValues' {
+    Assert-Equal 0 @($p133Inv.Problems).Count (($p133Inv.Problems) -join ' | ')
+    Assert-Equal 'Sunflower|Filament|Monitoring|Ultima Online / Shattered Legacy|Admin' (@($p133Inv.sections) -join '|') 'the five sections, in order'
+    $text = [IO.File]::ReadAllText((Join-Path $repo 'docker\haven\services.json'))
+    Assert-True ($text -notmatch '-----BEGIN|ssh-(ed25519|rsa) AAAA|eyJ[A-Za-z0-9_-]{20,}|glsa_|ptr_[A-Za-z0-9]{10,}|"(password|token|apiKey|api_key|secret)"\s*:\s*"[^"{]') 'no key material, token or password value'
+    foreach ($s in @($p133Inv.services)) {
+        foreach ($e in @($s.env)) { Assert-True ([string]$e -match '^([A-Z][A-Z0-9_]*|see .+)$') ($s.key + ': env holds names only, not ' + $e) }
+        foreach ($f in 'compose', 'health', 'verified') { Assert-True ($s.PSObject.Properties.Name -contains $f) ($s.key + ' says ' + $f) }
+        Assert-True (@($s.backup).Count -ge 0) $s.key
+    }
+    foreach ($k in 'spoolman', 'vaultwarden', 'npm') { Assert-True ([string](@($p133Inv.services | Where-Object { $_.key -eq $k })[0].neverMove)) ($k + ' says what must never move') }
+    $vw = @($p133Inv.services | Where-Object { $_.key -eq 'vaultwarden' })[0]
+    Assert-True (@($vw.tiles | Where-Object { $_.widget }).Count -eq 0) 'Vaultwarden is a link tile only, never a widget'
+}
+
+Fact 'P133_TheDashboardIsGeneratedFromTheInventoryWithEverySectionAndTile' {
+    Assert-Equal (ConvertTo-HomepageServices -Inventory $p133Inv) ([IO.File]::ReadAllText((Join-Path $p133Cfg 'services.yaml')).TrimEnd("`n")) 'services.yaml is exactly what services.json makes (run docker\haven\Build-HavenDashboard.ps1)'
+    Assert-Equal (ConvertTo-HomepageSettings -Inventory $p133Inv) ([IO.File]::ReadAllText((Join-Path $p133Cfg 'settings.yaml')).TrimEnd("`n")) 'settings.yaml likewise'
+    $doc = Get-P133Yaml (Join-Path $p133Cfg 'services.yaml')
+    Assert-Equal 'Sunflower|Filament|Monitoring|Ultima Online / Shattered Legacy|Admin' ((@($doc) | ForEach-Object { @($_.PSObject.Properties)[0].Name }) -join '|') 'the five sections, in order, as Homepage reads them'
+    $tiles = @(& $p133Tiles $doc)
+    foreach ($s in @($p133Inv.services)) {
+        foreach ($t in @($s.tiles)) { Assert-True (@($tiles | Where-Object { $_.Section -eq $t.section -and $_.Name -eq $t.name }).Count -eq 1) ($t.name + ' is in ' + $t.section) }
+        if ($s.host -eq 'haven' -and $s.container) { Assert-True (@($tiles | Where-Object { $_.Tile.container -eq $s.container -and $_.Tile.server -eq 'haven' }).Count -ge 1) ('Haven container ' + $s.container + ' has a tile with its state') }
+    }
+    $set = Get-P133Yaml (Join-Path $p133Cfg 'settings.yaml')
+    Assert-Equal 'Sunflower|Filament|Monitoring|Ultima Online / Shattered Legacy|Admin' (@($set.layout.PSObject.Properties.Name) -join '|') 'the layout names the same five'
+    $old = [IO.File]::ReadAllText((Join-Path $p133Cfg 'services.yaml'))
+    Assert-True ($old -notmatch 'HOMEPAGE_VAR_SPOOLMAN_URL|HOMEPAGE_VAR_GRAPHS_URL|Graphing app') 'P110''s placeholders are gone: Spoolman''s address is known'
+}
+
+Fact 'P133_EveryTileShowsUpOrDown' {
+    $tiles = @(& $p133Tiles (Get-P133Yaml (Join-Path $p133Cfg 'services.yaml')))
+    Assert-True ($tiles.Count -ge 30) ('tiles: ' + $tiles.Count)
+    foreach ($t in $tiles) {
+        $w = $t.Tile.widget
+        $fields = @($(if ($w) { @($w.mappings) | ForEach-Object { [string]$_.field } }))
+        $live = ($t.Tile.container -and $t.Tile.server -eq 'haven') -or [string]$t.Tile.siteMonitor -or
+            ($fields | Where-Object { $_ -like 'up.*' -or $_ -eq 'offline' -or $_ -eq 'shards.0.up' })
+        Assert-True $live ($t.Section + ' / ' + $t.Name + ' shows no up or down')
+        if ($t.Tile.widget -and $t.Tile.widget.url -like '*/api/gamepc') { Assert-True ([string]$t.Tile.widget.headers.Authorization -eq 'Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}') ($t.Name + ': the snapshot needs the ops token') }
+    }
+    $pc = @($tiles | Where-Object { $_.Name -eq 'Game PC' })[0]
+    Assert-True ($pc -and @($pc.Tile.widget.mappings | Where-Object { $_.field -eq 'offlineSince' }).Count -eq 1) 'the game PC tile says offline since when it sleeps'
+    foreach ($k in 'sl-modernuo-test', 'sl-uo-status', 'sl-shard-probe', 'sl-ddns', 'sl-portainer') {
+        $svc = @($p133Inv.services | Where-Object { $_.container -eq $k -and $_.host -eq 'gamepc' })[0]
+        Assert-True $svc ('the game PC''s ' + $k + ' is in the inventory')
+    }
+}
+
+Fact 'P133_WidgetsThatNeedAKeyReadItFromTheEnvironmentNeverTheFile' {
+    $tiles = @(& $p133Tiles (Get-P133Yaml (Join-Path $p133Cfg 'services.yaml')))
+    $used = @{}
+    foreach ($t in $tiles) {
+        $w = $t.Tile.widget
+        if (-not $w) { continue }
+        foreach ($p in @($w.PSObject.Properties)) {
+            if ($p.Name -match '^(key|password|token|apiKey|username|env)$') { Assert-True ([string]$p.Value -match '^\{\{HOMEPAGE_VAR_[A-Z0-9_]+\}\}$') ($t.Name + ': ' + $p.Name + ' comes from the environment') }
+        }
+        if ($w.headers) { foreach ($h in @($w.headers.PSObject.Properties)) { Assert-True ([string]$h.Value -match '^(Bearer )?\{\{HOMEPAGE_VAR_[A-Z0-9_]+\}\}$') ($t.Name + ': header ' + $h.Name + ' comes from the environment') } }
+    }
+    $text = [IO.File]::ReadAllText((Join-Path $p133Cfg 'services.yaml'))
+    foreach ($m in [regex]::Matches($text, '\{\{(HOMEPAGE_VAR_[A-Z0-9_]+)\}\}')) { $used[$m.Groups[1].Value] = $true }
+    Assert-Equal 'HOMEPAGE_VAR_GRAFANA_TOKEN|HOMEPAGE_VAR_OPS_TOKEN|HOMEPAGE_VAR_PORTAINER_ENV|HOMEPAGE_VAR_PORTAINER_KEY' ((@($used.Keys) | Sort-Object) -join '|') 'the four names the dashboard reads from dashboard.env'
+    $d = [IO.File]::ReadAllText((Join-Path $repo 'docker\dashboard\haven\Deploy-MegaDashboard.ps1'))
+    foreach ($n in @($used.Keys)) { Assert-True ($d -match [regex]::Escape($n)) ('the deploy makes sure dashboard.env has ' + $n) }
+    Assert-True ($d -match 'grep -q "\^\$n=" ' -and $d -notmatch '(?i)Read-Host[^\r\n]*(token|key)') 'the deploy only adds missing names, empty, and never asks for or prints a token or key'
+}
+
+Fact 'P133_NoComposeOfOursPublishesOnAPublicInterface' {
+    $files = @((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'), (Join-Path $repo 'docker\ops\docker-compose.yml'), 'C:\dev\sunflower\print-queue\docker-compose.yml')
+    foreach ($f in $files) {
+        $c = [IO.File]::ReadAllText($f)
+        $inPorts = $false
+        $n = 0
+        foreach ($l in ($c -split "\r?\n")) {
+            if ($l -match '^\s+ports:\s*$') { $inPorts = $true; continue }
+            if ($inPorts -and $l -match '^\s+-\s*"?([^"]+)"?\s*$') {
+                $n++
+                $spec = $Matches[1] -replace '\$\{[A-Z_]+:-([^}]*)\}', '$1'
+                Assert-True ($spec -match '^(192\.168\.\d+\.\d+|127\.0\.0\.1):\d+:\d+$') ((Split-Path $f -Leaf) + ': ' + $Matches[1] + ' publishes on a LAN or loopback address only (it read as ' + $spec + ')')
+                continue
+            }
+            if ($inPorts -and $l -notmatch '^\s+#') { $inPorts = $false }
+        }
+        Assert-True ($n -ge 1) ('ports read from ' + $f)
+        Assert-True ($c -notmatch '0\.0\.0\.0|cloudflared|network_mode:\s*host') ($f + ': no all-interfaces bind, no tunnel, no host network')
+    }
+    $d = [IO.File]::ReadAllText((Join-Path $repo 'docker\dashboard\haven\Deploy-MegaDashboard.ps1'))
+    Assert-True ($d -notmatch "DASH_BIND=' \+ \`$\(if \(\`$Local\) \{ '127\.0\.0\.1' \} else \{ '0\.0\.0\.0' \}\)" -and $d -notmatch "'0\.0\.0\.0'") 'the deploy never passes 0.0.0.0'
+    Assert-True ($d -match 'tailscale serve --bg --http=' -and -not @($d -split "\r?\n" | Where-Object { $_ -match 'Invoke-Haven' -and $_ -match '(?i)funnel' }).Count) 'Tailscale Serve (tailnet only), never Funnel (public)'
+}
+
+Fact 'P133_TheDiscoveryIsParsedIntoTilesAndEveryRunningContainerIsInTheInventory' {
+    $real = @(Get-ChildItem -LiteralPath (Join-Path $repo 'docker\haven\discovery') -Filter 'haven-*.txt')
+    Assert-True ($real.Count -ge 2) 'the real discoveries on record'
+    $latest = 'D:\UO\haven-ops\discovery-latest.txt'
+    $files = @($real | ForEach-Object { $_.FullName }) + @($(if (Test-Path -LiteralPath $latest) { $latest }))
+    foreach ($f in $files) {
+        $d = ConvertFrom-HavenDiscovery -Text ([IO.File]::ReadAllText($f))
+        Assert-True (@($d.Containers | Where-Object { $_.Running }).Count -ge 1) ('containers read from ' + $f)
+        $cov = Test-HavenInventoryCoverage -Inventory $p133Inv -Discovery $d
+        Assert-Equal '' ($cov.Missing -join ', ') ('running on Haven in ' + (Split-Path $f -Leaf) + ' but not in docker\haven\services.json: add them')
+        $yaml = ConvertTo-HomepageServices -Inventory $p133Inv -Discovery $d
+        foreach ($c in @($d.Containers | Where-Object { $_.Running })) { Assert-True ($yaml -match ('container: "' + [regex]::Escape($c.Name) + '"')) ($c.Name + ' has a tile') }
+    }
+    $d = ConvertFrom-HavenDiscovery -Text ([IO.File]::ReadAllText($real[0].FullName))
+    Assert-Equal 'running' (@($d.Containers | Where-Object { $_.Name -eq 'sl-proxy' })[0].State) 'the docker ps table'
+    Assert-True (-not @($d.Containers | Where-Object { $_.Name -eq 'sweet_payne' })[0].Running) 'an exited container is not running'
+    # The deploy's own shape (cc-P133), literal because this tool writes it.
+    $mine = "host=haven`n-- containers`n  sl-proxy|running|Up 3 days|jc21/nginx-proxy-manager:latest|0.0.0.0:80->80/tcp|/home/chase/shattered-legacy/docker/proxy`n  mystery-box|running|Up 2 hours|nginx:alpine||/home/chase/x`n  old-thing|exited|Exited (0) 2 days ago|alpine||`n-- listening ports`n  0.0.0.0:80  `n  192.168.1.61:3000  `n-- tailscale`n  installed: yes`n  ip: 100.98.32.16`n  serve operator: no`n"
+    $d = ConvertFrom-HavenDiscovery -Text $mine
+    Assert-Equal 3 @($d.Containers).Count 'three containers'
+    Assert-Equal '/home/chase/shattered-legacy/docker/proxy' $d.Containers[0].Compose 'its compose folder'
+    Assert-Equal '0.0.0.0:80|192.168.1.61:3000' (@($d.Listening | ForEach-Object { ($_ -split '\s+')[0] }) -join '|') 'the listening addresses'
+    Assert-Equal '100.98.32.16' $d.Tailscale['ip'] 'Tailscale''s address'
+    $cov = Test-HavenInventoryCoverage -Inventory $p133Inv -Discovery $d
+    Assert-Equal 'mystery-box' ($cov.Missing -join ',') 'a running container nobody listed is named; an exited one is not'
+    $yaml = ConvertTo-HomepageServices -Inventory $p133Inv -Discovery $d
+    Assert-True ($yaml -match '"mystery-box \(not in the inventory\)":' -and $yaml -match 'container: "mystery-box"') 'and still gets a tile, in Admin, until the inventory has it'
+}
+
+Fact 'P133_TheDeployServesOnTheTailnetSavesItsDiscoveryAndBuildsFromTheInventory' {
+    $d = [IO.File]::ReadAllText((Join-Path $repo 'docker\dashboard\haven\Deploy-MegaDashboard.ps1'))
+    Assert-True ($d -match 'ss -tlnp' -and $d -match 'docker ps -a --format' -and $d -match 'tailscale ip -4') 'Discover prints every container, every listening port and Tailscale'
+    Assert-True ($d -match 'discovery-latest\.txt') 'and keeps it, outside both repos, for the coverage fact'
+    Assert-True ($d -match 'Build-HavenDashboard\.ps1' -and $d -match 'Test-HavenInventoryCoverage') 'the config is built from services.json and drift is printed in the plan'
+    Assert-True ($d -match "tailscaleServe" -and $d -match "http://127\.0\.0\.1:") 'Serve targets come from the inventory and are loopback only'
+    Assert-True ($d -match 'cp -p ' -and $d -match 'backup-') 'the compose, config and env on Haven are backed up before they are replaced'
+    foreach ($f in @((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'), (Join-Path $repo 'docker\ops\docker-compose.yml'), 'C:\dev\sunflower\print-queue\docker-compose.yml')) {
+        $c = [IO.File]::ReadAllText($f)
+        Assert-True (@([regex]::Matches($c, 'restart: unless-stopped')).Count -ge 1) ($f + ' survives a restart')
+    }
+    $c = [IO.File]::ReadAllText((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'))
+    Assert-True ($c -match 'haven\.tail81098d\.ts\.net') 'Homepage allows its tailnet name'
+    foreach ($f in @((Join-Path $repo 'docker\ops\docker-compose.yml'), (Join-Path $repo 'docker\ops\README.md'), (Join-Path $repo 'docker\test-queue\html\nav.js'))) {
+        Assert-True ([IO.File]::ReadAllText($f) -notmatch '(?i)ops\.shatteredlegacyuo\.com|Access is Haven step H4|behind\s+Cloudflare Access will') ($f + ': no Cloudflare tunnel or Access in the next steps')
+    }
+}
+
+Fact 'P133_ThePrintQueueProvesItsKeyFromHavenBeforeTheTowerStops' {
+    $s = [IO.File]::ReadAllText('C:\dev\sunflower\print-queue\haven\Deploy-PrintQueue.ps1')
+    $check = $s.IndexOf('Check the key from Haven')
+    $stop = $s.IndexOf('Stop-PcServer', $s.IndexOf("Step 'Move the data'"))
+    Assert-True ($check -gt 0 -and $stop -gt $check) 'the SSH check from Haven runs before the tower copy is stopped'
+    Assert-True ($s -match 'sunflower-live true' -and $s -match 'REFUSED: Hostinger does not accept') 'a refused key stops the move and the tower keeps pushing'
+    Assert-True ($s -match "Invoke-WebRequest -UseBasicParsing -Method Post -Uri \(\`$pageUrl \+ 'api/push'\)") 'the first push from Haven is made and checked right after the move'
+    Assert-True ($s -notmatch '(?i)\.ssh\\id_|id_ed25519|id_rsa|accept-new') 'still: never Chase''s key, never a blind host key'
+}
+
+Fact 'P133_TheSnapshotReportsEveryGamePcServiceTheDashboardShows' {
+    $keys = @($p133Inv.services | ForEach-Object { @($_.tiles) } | Where-Object { $_.snapshot } | ForEach-Object { [string]$_.snapshot } | Sort-Object -Unique)
+    $s = [IO.File]::ReadAllText((Join-Path $repo 'scripts\Publish-GamePcSnapshot.ps1'))
+    Assert-True ($s -match 'docker\\haven\\services\.json' -and $s -match 'services\s*=') 'the snapshot reads its list from the inventory and sends services'
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p133-ops-' + [guid]::NewGuid().ToString('N') + '.json')
+    $j = $p107Ops | ConvertFrom-Json
+    $j.stateFile = Join-Path ([IO.Path]::GetTempPath()) 'p133-no-such-state.json'
+    [IO.File]::WriteAllText($tmp, ($j | ConvertTo-Json -Depth 5))
+    try {
+        $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'scripts\Publish-GamePcSnapshot.ps1') -Config $tmp -DryRun -NoBotPlan 2>&1 | Out-String)
+        $json = @(($out -split "`n") | Where-Object { $_ -match '^\{' })[0] | ConvertFrom-Json
+        foreach ($k in $keys) { Assert-True ($json.services.PSObject.Properties.Name -contains $k) ('the snapshot reports ' + $k + ': ' + $out) }
+    } finally { Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }
+}
+
+Fact 'P133_TheRunbookAndTheRuleKeepTheInventoryAndTheDocsInStep' {
+    $rb = [IO.File]::ReadAllText('D:\UO\shard-migration\notes\haven-runbook.md')
+    foreach ($s in @($p133Inv.services)) { Assert-True ($rb -match ('(?m)^### .*`' + [regex]::Escape($s.key) + '`')) ('the runbook has a section for ' + $s.key) }
+    foreach ($h in '## The machines', '## Deploy buttons', '## Tokens and keys', '## Never move or expose', '## Changed on') { Assert-True ($rb.Contains($h)) ('the runbook has ' + $h) }
+    foreach ($a in @((Join-Path $repo 'AGENTS.md'), 'D:\UO\shard-migration\AGENTS.md')) {
+        Assert-True ([IO.File]::ReadAllText($a) -match 'services\.json[^\r\n]*haven-runbook\.md|haven-runbook\.md[^\r\n]*services\.json') ($a + ' carries the rule')
+    }
 }
 
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
