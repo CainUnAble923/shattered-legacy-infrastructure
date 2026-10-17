@@ -95,6 +95,8 @@ ap.add_argument("--access-aud", default=os.environ.get("ACCESS_AUD", ""))
 ap.add_argument("--access-certs", default=os.environ.get("ACCESS_CERTS_URL", ""),
                 help="cc-P105: tests only; default https://<team>/cdn-cgi/access/certs")
 ap.add_argument("--repo-stamp", default=os.environ.get("REPO_STAMP", ""))
+ap.add_argument("--reload-seconds", type=float, default=float(os.environ.get("RELOAD_SECONDS", "5") or 0),
+                help="cc-P137: how often to look for new code in --lib and this file (0: never)")
 args = ap.parse_args()
 
 sys.path.insert(0, args.lib)
@@ -105,6 +107,12 @@ import opsdata  # noqa: E402  (cc-P105)
 import accessjwt  # noqa: E402  (cc-P105)
 import bottonight  # noqa: E402  (cc-P112)
 import playwho  # noqa: E402  (cc-P115)
+import codereload  # noqa: E402  (cc-P137)
+
+# cc-P137: the tools modules, dependencies first (ideas and bugs import playtests), for codereload.reload_modules.
+MODULES = [pt, ideas, bugs, opsdata, accessjwt, bottonight, playwho]
+GATE = codereload.Gate()
+SELF = os.path.abspath(__file__)
 
 # cc-P105: testing/ lives here; the notes and docs stay under args.root.
 DATA = args.data or args.root
@@ -118,7 +126,9 @@ if not TOKEN and args.token_file:
 VERIFIER = accessjwt.AccessVerifier(args.access_team, args.access_aud, certs_url=args.access_certs) if (args.access_team and args.access_aud) else None
 _REPO = {"at": 0.0, "value": {"commit": "", "at": "", "source": ""}}
 
-STATE = {"lastImport": "", "lastImportError": ""}
+STATE = {"lastImport": "", "lastImportError": "",
+         # cc-P137: which tools code is running and since when (a short hash of the files' names, sizes and times).
+         "code": codereload.fingerprint(codereload.code_files(args.lib)), "codeLoadedAt": time.strftime("%Y-%m-%dT%H:%M:%S")}
 MAX_BODY = 16 * 1024
 # cc-P97: one screenshot, base64 (4/3 of 2 MB) in a small JSON object.
 MAX_SHOT_BODY = 3 * 1024 * 1024
@@ -129,6 +139,11 @@ def log(msg):
 
 
 def run_import():
+    with GATE.work():  # cc-P137: a reload waits for an import to finish
+        _run_import()
+
+
+def _run_import():
     try:
         changed, _ = pt.import_all(args.root, write=True, log=log, data=DATA)
         STATE["lastImport"] = pt.now_iso()
@@ -496,7 +511,56 @@ class LanHandler(BaseHTTPRequestHandler):
         return self.send_json(200, {"receivedAt": rec["receivedAt"]})
 
 
+def gated(handler):
+    """cc-P137: a request runs inside the gate, so a reload never starts while one is running and a request that
+    arrives during a reload waits for it."""
+    def run(self):
+        with GATE.work():
+            return handler(self)
+    run.__name__ = handler.__name__
+    return run
+
+
+for _cls in (Handler, LanHandler):
+    for _name in ("do_GET", "do_POST"):
+        setattr(_cls, _name, gated(getattr(_cls, _name)))
+
+
+def reload_tools():
+    """cc-P137: the tools modules changed. Wait for running work, reload them in place, open the gate. A module that
+    fails to load is reported and the old code keeps running (reload compiles before it runs anything)."""
+    global VERIFIER
+    if not GATE.drain(30):
+        log("new tools code: work still running after 30 s; will try again")
+        return False
+    try:
+        codereload.reload_modules(MODULES)
+        VERIFIER = accessjwt.AccessVerifier(args.access_team, args.access_aud, certs_url=args.access_certs) if (args.access_team and args.access_aud) else None
+        STATE["code"] = codereload.fingerprint(codereload.code_files(args.lib))
+        STATE["codeLoadedAt"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        log("new tools code loaded (%s)" % STATE["code"])
+    except Exception as e:
+        log("new tools code NOT loaded, still running the old: %s" % e)
+    finally:
+        GATE.reopen()
+    return True
+
+
+def restart_for_server_py():
+    """cc-P137: this file changed, which cannot be reloaded in place. Wait for running work, then exit: the
+    container's restart policy (unless-stopped) starts the service again on the new file."""
+    if not GATE.drain(30):
+        log("server.py changed: work still running after 30 s; will try again")
+        return False
+    log("server.py changed: exiting for the container to restart on it")
+    sys.stdout.flush()
+    os._exit(0)
+
+
 def main():
+    if args.reload_seconds > 0:
+        codereload.Watcher(lambda: codereload.code_files(args.lib), reload_tools, args.reload_seconds, log).start()
+        codereload.Watcher(lambda: [SELF], restart_for_server_py, args.reload_seconds, log).start()
     run_import()
     threading.Thread(target=importer_loop, daemon=True).start()
     if args.lan_port:

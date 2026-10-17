@@ -177,5 +177,55 @@ class Packets(unittest.TestCase):
         self.assertIn("text 10 10", g["layout"])
 
 
+
+class P119FightWatch(unittest.TestCase):
+    """cc-P137: P119-1 passed 2 of 3 on 10-16; in run 2 the fighter died (0/176) and the last three creatures were
+    reported as never killed. The fight now tops the fighter up below half its hits and says so when the fighter dies,
+    rather than blaming the creature."""
+
+    class Fake(object):
+        def __init__(self, hits=176, body=0x190):
+            self.serial = 0x1234
+            self.mobiles = {0x99: {"body": 303}}
+            self.status = {"hits": hits, "hitsMax": 176}
+            self.body = body
+            self.commands = []
+            self.ticks = 0
+            self.script = []
+
+        # the admin's side (staff_target): every command lands here
+        def command(self, text, delay=0.0):
+            self.commands.append(text)
+
+        def wait_target(self, seconds):
+            return True
+
+        def target_obj(self, serial):
+            pass
+
+        def sleep(self, seconds):
+            self.ticks += 1
+            if self.script:
+                self.script.pop(0)(self)
+
+    def test_the_fighter_is_topped_up_below_half_and_the_kill_is_seen(self):
+        from uobot import checks
+        f = self.Fake(hits=60)
+        f.script = [lambda s: None, lambda s: s.mobiles.pop(0x99)]
+        self.assertEqual("killed", checks._wait_kill(f, f, 0x99, seconds=30))
+        self.assertIn("[set Hits 175", f.commands)
+
+    def test_a_dead_fighter_is_reported_as_the_test_not_the_creature(self):
+        from uobot import checks
+        f = self.Fake(body=0x192)
+        self.assertEqual("fighter died", checks._wait_kill(f, f, 0x99, seconds=30))
+        f = self.Fake(hits=0)
+        self.assertEqual("fighter died", checks._wait_kill(f, f, 0x99, seconds=30))
+
+    def test_a_creature_that_never_dies_times_out(self):
+        from uobot import checks
+        f = self.Fake()
+        self.assertEqual("timed out", checks._wait_kill(f, f, 0x99, seconds=0.05))
+
 if __name__ == "__main__":
     unittest.main()

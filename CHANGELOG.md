@@ -29,6 +29,18 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.7
+
+### Added
+- With an Artificers' Essence Satchel in your backpack, the essences you unravel or disenchant, and the essences, magical residue and relic fragments you loot or pick up, go straight into it; a full satchel leaves them in your backpack.
+
+### Fixed
+- The ankh beside the League Registrar in New Haven now offers a ghost resurrection, like the shrine ankhs.
+- Disenchanting an item with no magic is refused ("There is no magic in this to unravel.") and no longer pays an Essence Shard.
+
+### Staff
+- [ClusterFAnkhSurvey lists every ankh in the world and whether it works; [ClusterFSeedAnkhs places the working ankhs OSI had that the world lacks. The play-test page picks up new code without a restart, and the overnight bot's creature fight keeps its fighter alive.
+
 ## 2026.10.17.6
 
 ### Staff

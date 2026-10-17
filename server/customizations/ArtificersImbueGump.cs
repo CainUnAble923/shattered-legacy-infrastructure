@@ -1279,9 +1279,9 @@ public sealed class ArtificersImbueGump : Gump
 
         if (activeProps.Count == 0)
         {
-            AddLabel(18, y, 0x3B2, "This item has no imbued properties to extract or disenchant.");
-            y += 20;
-            AddLabel(18, y, 0x3B2, "Full disenchanting an unenchanted item yields minimal shards.");
+            // cc-P137: OSI refuses to unravel an item with no magic, and so does every page here (it used to pay a shard).
+            AddLabel(18, y, 0x22, NoMagicToUnravel);
+            return;
         }
         else
         {
@@ -1354,10 +1354,15 @@ public sealed class ArtificersImbueGump : Gump
         var totalShards = 0;
         foreach (var (def, _) in activeProps)
             totalShards += Math.Max(1, def.ShardBase / 2);
-        if (activeProps.Count == 0) totalShards = 1;
 
         AddLabel(18, 60, 0x21, "Full Disenchant - FINAL CONFIRMATION");
         AddImageTiled(10, 78, W - 20, 1, 9304);
+
+        if (activeProps.Count == 0)
+        {
+            AddLabel(18, 84, 0x22, NoMagicToUnravel);
+            return;
+        }
 
         var html =
             $"<BASEFONT COLOR=#FF6666>You are about to permanently destroy:<BR>" +
@@ -1493,6 +1498,8 @@ public sealed class ArtificersImbueGump : Gump
 
     // -- Button IDs ------------------------------------------------------------
 
+    internal const string NoMagicToUnravel = "There is no magic in this to unravel.";
+
     private enum BtnId
     {
         ImbueTarget        = 1,
@@ -1555,7 +1562,12 @@ public sealed class ArtificersImbueGump : Gump
                 return;
 
             case (int)BtnId.FullDisenchantBtn:
-                if (_item != null && !_item.Deleted)
+                if (_item != null && !_item.Deleted && ImbueCatalogue.GetActiveProperties(_item).Count == 0)
+                {
+                    _pm.SendMessage(0x22, NoMagicToUnravel);
+                    _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.DisenchantView, -1, 0, 0));
+                }
+                else if (_item != null && !_item.Deleted)
                     _pm.SendGump(new ArtificersImbueGump(_pm, _item, Stage.DisenchantConfirm, -1, 0, 0));
                 return;
 
@@ -1805,12 +1817,19 @@ public sealed class ArtificersImbueGump : Gump
         if (_item.RootParent != _pm) { _pm.SendMessage(0x22, "You must have the item in your possession."); _pm.SendGump(new ArtificersImbueGump(_pm)); return; }
 
         var activeProps = ImbueCatalogue.GetActiveProperties(_item);
+
+        // cc-P137: an item with no magic is refused, never paid (it paid 1 shard, so vendor stock farmed shards).
+        if (activeProps.Count == 0)
+        {
+            _pm.SendMessage(0x22, NoMagicToUnravel);
+            _pm.SendGump(new ArtificersImbueGump(_pm));
+            return;
+        }
+
         var totalShards = 0;
 
         foreach (var (def, _) in activeProps)
             totalShards += Math.Max(1, def.ShardBase / 2);
-
-        if (activeProps.Count == 0) totalShards = 1; // bare minimum for unenchanted items
 
         // Shards to player
         guild.AddCurrency("artificers", totalShards);
@@ -1822,7 +1841,7 @@ public sealed class ArtificersImbueGump : Gump
             if (Utility.Random(4) == 0) // 25% chance
             {
                 var ess = new PropertyEssence(def.Name);
-                _pm.AddToBackpack(ess);
+                ArtificersSatchel.Deliver(_pm, ess); // cc-P137 (F-50): the satchel first, else the backpack
                 essencesDropped++;
             }
         }
@@ -1884,7 +1903,7 @@ public sealed class ArtificersImbueGump : Gump
 
         // Yield: essence + bonus shards
         var ess = new PropertyEssence(def.Name);
-        _pm.AddToBackpack(ess);
+        ArtificersSatchel.Deliver(_pm, ess); // cc-P137 (F-50): the satchel first, else the backpack
 
         var shardGain = Math.Max(1, def.ShardBase / 4);
         guild.AddCurrency("artificers", shardGain);
@@ -1977,6 +1996,13 @@ public sealed class ArtificersImbueGump : Gump
             if (!ImbueCatalogue.IsImbuable(item))
             {
                 from.SendMessage(0x22, "Only weapons, armour, jewellery, and clothing can be imbued or disenchanted.");
+                from.SendGump(new ArtificersImbueGump(_pm));
+                return;
+            }
+
+            if (_disenchant && ImbueCatalogue.GetActiveProperties(item).Count == 0)
+            {
+                from.SendMessage(0x22, NoMagicToUnravel);
                 from.SendGump(new ArtificersImbueGump(_pm));
                 return;
             }

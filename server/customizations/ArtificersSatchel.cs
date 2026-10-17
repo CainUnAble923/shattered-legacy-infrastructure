@@ -12,7 +12,8 @@ namespace Server.Items;
 /// Shattered Legacy — Artificers' Essence Satchel.
 ///
 /// A blessed container issued to Artificers' Order members on joining.
-/// Accepts only PropertyEssence items.
+/// Accepts what Unravel produces: PropertyEssence, and stock magical residue, enchanted essence and
+/// relic fragments (cc-P137, F-50).
 ///
 /// Double-clicking opens the Mastery Dashboard instead of the standard
 /// container gump — showing all imbue properties, how many essences of each
@@ -26,6 +27,8 @@ namespace Server.Items;
 [SerializationGenerator(0, false)]
 public partial class ArtificersSatchel : Container
 {
+    public const string FullMessage = "Your Artificers' Essence Satchel is full; that went into your backpack.";
+
     private const int SatchelGraphic = 0xA272;
     private const int SatchelHue     = 0x497;  // arcane blue-purple
 
@@ -45,13 +48,78 @@ public partial class ArtificersSatchel : Container
 
     public override bool CheckHold(Mobile m, Item item, bool message, bool checkItems, int plusItems, int plusWeight)
     {
-        if (item is not PropertyEssence)
+        if (!IsUnravelResult(item))
         {
             if (message)
-                m.SendMessage("The Artificers' Essence Satchel only holds PropertyEssences.");
+                m.SendMessage("The Artificers' Essence Satchel only holds essences, magical residue and relic fragments.");
             return false;
         }
         return base.CheckHold(m, item, message, checkItems, plusItems, plusWeight);
+    }
+
+    // ── Auto-fill (cc-P137, F-50; ours: OSI drops unravel results in the backpack) ──
+    //
+    // Everything Unravel produces goes straight in when a satchel is in the backpack, top level or nested, as the
+    // ore satchel finds its own (CompactOreSatchelRoutingHook.TryRouteToSatchel: FindItemByType, then TryDropItem,
+    // which refuses past MaxItems or MaxWeight). It fires on unravel and disenchant (ArtificersImbueGump) and when
+    // the player loots or picks one up (ClusterFBackpack.OnDragDrop below); never on trades, bank moves or crafting.
+    // A full satchel sends the item to the backpack as stock with a message; nothing is deleted.
+
+    public static bool IsUnravelResult(Item item) => item is PropertyEssence or MagicalResidue or EnchantedEssence or RelicFragment;
+
+    public static ArtificersSatchel Find(Mobile m) => m?.Backpack?.FindItemByType<ArtificersSatchel>();
+
+    /// <summary>Into the satchel if there is one with room. False (and a message, when full) otherwise.</summary>
+    public static bool TryStore(Mobile m, Item item)
+    {
+        if (!IsUnravelResult(item))
+        {
+            return false;
+        }
+
+        var satchel = Find(m);
+        if (satchel == null)
+        {
+            return false;
+        }
+
+        if (satchel.TryDropItem(m, item, false))
+        {
+            return true;
+        }
+
+        m.SendMessage(0x22, FullMessage);
+        return false;
+    }
+
+    /// <summary>The satchel first, else the backpack (stock behavior, which drops at the feet if that is full too).</summary>
+    public static void Deliver(Mobile m, Item item)
+    {
+        if (!TryStore(m, item))
+        {
+            m.AddToBackpack(item);
+        }
+    }
+
+    /// <summary>
+    /// A drag from the ground or from a container no mobile holds (a corpse, a chest): the item's bounce record
+    /// (pinned Mobile.Lift, Item.RecordBounce) still names where it was lifted from while it is being dropped.
+    /// From the player's own pack, bank, a pack animal or a trade window, the root is a mobile.
+    /// </summary>
+    public static bool IsLootPickup(Item item)
+    {
+        var bounce = item.GetBounce();
+        if (bounce == null)
+        {
+            return false;
+        }
+
+        return bounce.Parent switch
+        {
+            null       => true,
+            Item from  => from.RootParent is not Mobile && !from.Deleted,
+            _          => false
+        };
     }
 
     // ── Double-click opens Mastery Dashboard instead of container gump ───────

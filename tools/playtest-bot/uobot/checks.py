@@ -619,6 +619,30 @@ def p129_1(ctx):
         ctx.done(p)
 
 
+# Ghost bodies (human, elf, gargoyle; male and female): the fighter is dead.
+GHOST_BODIES = (0x192, 0x193, 0x25F, 0x260, 0x2B6, 0x2B7)
+
+
+def _wait_kill(a, p, mob, seconds=60, top_up_below=0.5):
+    """cc-P137: wait for `mob` to leave the fighter's view. Below half its hits the fighter is topped up ([set Hits
+    175, at most every 3 s), so one long fight cannot wear it down; P119-1's second run on 10-16 lost its fighter to
+    the third creature (0/176) and then blamed the last three for never dying. Returns "killed", "fighter died" (a
+    ghost body or 0 hits: the test's fault, not the creature's) or "timed out"."""
+    end = time.monotonic() + seconds
+    last_top_up = -999.0
+    while time.monotonic() < end:
+        if mob not in p.mobiles:
+            return "killed"
+        if p.body in GHOST_BODIES or p.status.get("hits") == 0:
+            return "fighter died"
+        hits, most = p.status.get("hits"), p.status.get("hitsMax")
+        if hits is not None and most and hits < most * top_up_below and time.monotonic() - last_top_up >= 3:
+            staff_target(a, "[set Hits 175", p)
+            last_top_up = time.monotonic()
+        p.sleep(1.0)
+    return "timed out"
+
+
 def _p119_fight(a, p, sample=P119_SAMPLE):
     for sk in ("Wrestling", "Tactics"):
         staff_target(a, "[SetSkill %s 100" % sk, p)
@@ -650,8 +674,15 @@ def _p119_fight(a, p, sample=P119_SAMPLE):
         p.send(P.war_mode(True))
         p.sleep(0.3)
         p.send(P.attack(mob))
-        killed = bool(p.wait(lambda: mob not in p.mobiles, 60))
+        outcome = _wait_kill(a, p, mob)
+        killed = outcome == "killed"
         p.send(P.war_mode(False))
+        if outcome == "fighter died":
+            # The rest are not fought by a ghost: the run says the test failed, not the creatures (cc-P137).
+            results.append((type_name, False, "the fighter died (a test problem, not this creature's)"))
+            for rest, _ in sample[len(results):]:
+                results.append((rest, False, "not fought: the fighter was dead"))
+            break
         corpse = p.wait(lambda: next((s for s, it in p.items.items() if s not in before_i and it.get("world")
                                       and it.get("graphic") == 0x2006 and it.get("amount") == body), None), 8) if killed else None
         results.append((type_name, killed and bool(corpse), "killed %s, corpse %s" % (killed, bool(corpse))))
