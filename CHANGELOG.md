@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.6
+
+### Staff
+- The shard status page keeps its own judgments current and opens with a "Needs overseer review" box listing what only the overseer or Chase can settle, each with the one command that settles it.
+
 ## 2026.10.17.5
 
 ### Staff
