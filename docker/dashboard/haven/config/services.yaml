@@ -325,6 +325,25 @@
             - field: "receivedAt"
               label: "As of"
               format: "relativeDate"
+    - "Web console":
+        icon: "mdi-monitor-dashboard"
+        href: "https://uoconsole.tail81098d.ts.net/"
+        description: "The Shard Console's status, read only, on the tailnet (Chase only) [Game PC]"
+        widget:
+          type: "customapi"
+          url: "http://192.168.1.61:8094/api/gamepc"
+          refreshInterval: 60000
+          headers:
+            Authorization: "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}"
+          mappings:
+            - field: "up.web-console"
+              label: "State"
+              remap:
+                - value: null
+                  to: "Not reported yet"
+            - field: "receivedAt"
+              label: "As of"
+              format: "relativeDate"
 - Admin:
     - "Nginx Proxy Manager":
         icon: "nginx-proxy-manager"
@@ -445,6 +464,25 @@
             Authorization: "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}"
           mappings:
             - field: "up.tailscale"
+              label: "State"
+              remap:
+                - value: null
+                  to: "Not reported yet"
+            - field: "receivedAt"
+              label: "As of"
+              format: "relativeDate"
+    - "uoconsole node":
+        icon: "tailscale"
+        href: "https://login.tailscale.com/admin/machines"
+        description: "The web console's own tailnet node (a container on the game PC) [Game PC]"
+        widget:
+          type: "customapi"
+          url: "http://192.168.1.61:8094/api/gamepc"
+          refreshInterval: 60000
+          headers:
+            Authorization: "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}"
+          mappings:
+            - field: "up.uoconsole-ts"
               label: "State"
               remap:
                 - value: null

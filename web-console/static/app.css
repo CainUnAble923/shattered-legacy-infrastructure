@@ -1,0 +1,70 @@
+/* cc-P155: the web console in the Shard Console's Enhanced look (Get-ConsoleTheme 'Enhanced'), phone first. */
+:root {
+  --stone: rgb(40, 42, 47); --stone-text: rgb(228, 222, 210); --page: rgb(50, 52, 58); --page-text: rgb(234, 230, 220);
+  --gold: rgb(220, 178, 98); --button: rgb(70, 60, 48); --button-text: rgb(244, 232, 200); --field: rgb(28, 29, 33);
+  --line: rgb(24, 25, 29); --backing: rgb(14, 15, 18);
+  --green: rgb(140, 226, 150); --amber: rgb(255, 202, 112); --red: rgb(255, 156, 146); --gray: rgb(180, 178, 172); --head: rgb(160, 198, 255);
+  --tile-green: rgb(28, 74, 40); --tile-amber: rgb(92, 66, 18); --tile-red: rgb(98, 30, 28); --tile-grey: rgb(58, 60, 66);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--stone); color: var(--stone-text); font: 15px/1.4 "Segoe UI", system-ui, -apple-system, sans-serif; }
+body.art-stone { background-image: url("/art/stone.png"); }
+a { color: var(--gold); }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding: 10px 16px;
+  background: var(--backing); border-bottom: 2px solid var(--gold); }
+.brand { color: var(--gold); font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+.brand small { color: var(--stone-text); font-weight: 400; font-size: 13px; }
+.rune { width: 14px; height: 14px; transform: rotate(45deg); border: 2px solid var(--gold); display: inline-block; }
+.fresh { font-size: 12px; color: var(--gray); }
+.fresh.stale { color: var(--amber); }
+nav { display: flex; overflow-x: auto; gap: 4px; padding: 6px 12px; background: rgba(14, 15, 18, 0.7); position: sticky; top: 0; z-index: 2; }
+nav a { flex: 0 0 auto; padding: 10px 12px; min-height: 44px; border-radius: 6px; color: var(--button-text); text-decoration: none; background: var(--button); border: 1px solid transparent; }
+nav a.on { border-color: var(--gold); color: var(--gold); }
+.badge { display: inline-block; min-width: 1.4em; padding: 0 5px; border-radius: 999px; background: var(--gold); color: var(--backing); font-size: 12px; text-align: center; }
+.badge:empty { display: none; }
+main { padding: 12px 16px 60px; max-width: 1200px; margin: 0 auto; }
+.tab { display: none; }
+.tab.on { display: block; }
+h2 { margin: 0 0 8px; font-size: 16px; color: var(--gold); }
+.card { background: var(--page); color: var(--page-text); border: 1px solid rgba(220, 178, 98, 0.35); border-radius: 8px; padding: 12px; margin: 0 0 12px; min-width: 0; }
+.tiles { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
+.tile { border-radius: 8px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; border: 1px solid rgba(0, 0, 0, 0.4); min-width: 0; }
+.tile .crystal { flex: 0 0 18px; height: 18px; margin-top: 2px; transform: rotate(45deg); border: 2px solid rgba(255, 255, 255, 0.6); }
+.tile img.crystal { transform: none; border: 0; width: 22px; height: 22px; }
+.tile .word { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+.tile .detail { font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tile.green { background: var(--tile-green); } .tile.green .crystal { background: var(--green); }
+.tile.amber { background: var(--tile-amber); } .tile.amber .crystal { background: var(--amber); }
+.tile.red { background: var(--tile-red); } .tile.red .crystal { background: var(--red); }
+.tile.grey, .tile.gray { background: var(--tile-grey); } .tile.grey .crystal, .tile.gray .crystal { background: var(--gray); }
+.lights { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 12px; }
+.light { background: var(--field); border-radius: 8px; padding: 8px 12px; border-left: 6px solid var(--gray); overflow-wrap: anywhere; }
+.light.green { border-left-color: var(--green); } .light.amber { border-left-color: var(--amber); } .light.red { border-left-color: var(--red); }
+.light b { color: var(--gold); }
+.cols { display: grid; grid-template-columns: 1fr; gap: 0 12px; }
+.list { margin: 0; padding-left: 20px; }
+.list li { margin: 6px 0; overflow-wrap: anywhere; }
+ul.body, ul.list { list-style: square; }
+.quiet { color: var(--gray); font-size: 13px; }
+.meta { color: var(--gray); font-size: 12px; }
+.kind { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--button); color: var(--button-text); margin-right: 6px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--gray); margin-right: 8px; vertical-align: middle; }
+.dot.up { background: var(--green); } .dot.down { background: var(--red); }
+.bar { height: 10px; background: var(--field); border-radius: 5px; overflow: hidden; margin: 4px 0 10px; }
+.bar span { display: block; height: 100%; background: var(--gold); }
+.bar.amber span { background: var(--amber); } .bar.red span { background: var(--red); }
+.logbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 8px; }
+.logbar label { display: flex; flex-direction: column; font-size: 12px; color: var(--gray); }
+input, select, button { font: inherit; min-height: 40px; background: var(--field); color: var(--page-text); border: 1px solid rgba(220, 178, 98, 0.5); border-radius: 6px; padding: 4px 8px; max-width: 100%; }
+button { background: var(--button); color: var(--button-text); cursor: pointer; }
+pre.log { background: var(--line); color: rgb(232, 228, 218); padding: 8px; border-radius: 6px; max-height: 70vh; overflow: auto; font: 12px/1.35 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; gap: 8px; padding: 8px 16px; font-size: 12px;
+  background: var(--backing); border-top: 1px solid var(--gold); color: var(--gray); }
+@media (min-width: 700px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lights { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1000px) {
+  .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

@@ -403,6 +403,8 @@ function Get-ConsoleConfig {
         ArtFolder          = (Join-Path $RepoRoot 'scripts\console-art')
         WindowStateFile    = $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'ShatteredLegacy\shard-console-window.json' } else { Join-Path $RepoRoot 'scripts\shard-console-cache\window.json' })
         LightsFile         = (Join-Path $RepoRoot 'scripts\shard-console-cache\lights.json')
+        # cc-P155: the status file both consoles read (Write-ConsoleStatusFile), git-ignored with the cache.
+        StatusFile         = (Join-Path $RepoRoot 'scripts\shard-console-cache\console-status.json')
         PublishedVersionUrl = 'https://get.shatteredlegacyuo.com/version.json'
         # cc-P96, Fix test shard: known crash signatures and the prune keep list (scripts/fix-test-shard.json), where
         # Start-TestShard.ps1 builds a chosen commit, and the record of what last wrote the test save.
@@ -1592,6 +1594,17 @@ function Get-PackageLight {
     }
     $o.Color = 'amber'; $o.Word = 'BUILD'; $o.Detail = 'changes since the published package: Build package (' + $what + ')'
     $o
+}
+
+function Get-LightsFromFacts {
+    # cc-P155: the rebuild and package lights judged from their facts, in one place for this console's lights and the
+    # status file (ConvertTo-ConsoleStatusDocument). A light with no facts is $null.
+    param($RebuildFacts, $PackageFacts)
+    $rb = $null; $pk = $null
+    $rf = $RebuildFacts; $pf = $PackageFacts
+    if ($rf) { $rb = Get-RebuildLight -ImageCommit $rf.ImageCommit -ImageDirty $rf.ImageDirty -Head $rf.Head -Commits $rf.Commits -GolemRunning $rf.GolemRunning -Uncommitted $rf.Uncommitted -BuildRunning $rf.BuildRunning -Running $rf.Running }
+    if ($pf) { $pk = Get-PackageLight -PublishedVersion $pf.PublishedVersion -PublishedCommit $pf.PublishedCommit -NewestZipVersion $pf.NewestZipVersion -NewestZipCommit $pf.NewestZipCommit -Head $pf.Head -Commits $pf.Commits -CommitsSinceZip $pf.CommitsSinceZip -GolemRunning $pf.GolemRunning -Uncommitted $pf.Uncommitted -ClientStale $pf.ClientStale -BuildRunning $pf.BuildRunning -SiteReachable $pf.SiteReachable -SiteError $pf.SiteError }
+    [pscustomobject]@{ Rebuild = $rb; Package = $pk }
 }
 
 function ConvertTo-LightsJson {
@@ -4006,7 +4019,7 @@ function Get-PromptInfo {
     $num = 0
     $m = [regex]::Match([string]$Name, '^cc-P(\d+)-')
     if ($m.Success) { $num = [int]$m.Groups[1].Value }
-    $o = [ordered]@{ Name = $Name; Number = $num; Title = $Name; Model = ''; Kind = ''; Para = ''; Cont = ([string]$Name -match '^cc-P\d+-cont-'); Readable = $false }
+    $o = [ordered]@{ Name = $Name; Number = $num; Title = $Name; Model = ''; Kind = ''; Para = ''; Cont = ([string]$Name -match '^cc-P\d+-cont-'); Readable = $false; Summary = '' }
     if ($null -eq $Text) { return [pscustomobject]$o }
     $lines = @(([string]$Text) -split "`r?`n")
     $h = @($lines | Where-Object { $_ -match '^\s*#\s+' } | Select-Object -First 1)
@@ -4018,6 +4031,8 @@ function Get-PromptInfo {
     foreach ($l in $lines) {
         if (-not $o.Model -and $l -match '^\s*\*\*Model:\*\*\s*(\w+)') { $o.Model = $Matches[1] }
         if (-not $o.Kind -and $l -match '^\s*\*\*Kind:\*\*\s*(.+)$') { $o.Kind = ($Matches[1] -replace '\*\*', '').Trim() }
+        # cc-P155: the one plain line the overseer writes under the Model line (cc-P153's queue notes).
+        if (-not $o.Summary -and $l -match '^\s*\*\*Summary:\*\*\s*(.+)$') { $o.Summary = ($Matches[1] -replace '\*\*', '').Trim() }
     }
     # The first paragraph after the title that is prose: not the Model line, not a heading.
     $buf = New-Object 'System.Collections.Generic.List[string]'
@@ -4025,7 +4040,7 @@ function Get-PromptInfo {
     foreach ($l in @($lines | Select-Object -Skip 1)) {
         $x = $l.Trim()
         if (-not $x) { if ($started) { break } else { continue } }
-        if ($x -match '^#' -or $x -match '^\*\*(Model|Kind):\*\*') { if ($started) { break } else { continue } }
+        if ($x -match '^#' -or $x -match '^\*\*(Model|Kind|Summary):\*\*') { if ($started) { break } else { continue } }
         $started = $true
         $buf.Add($x)
     }
@@ -7990,7 +8005,7 @@ function Update-Lights {
     try {
         $rf = $(if ($Gathered) { $RebuildFacts } else { Get-RebuildFacts $script:cfg $State })
         if (-not $rf) { return }
-        $rb = Get-RebuildLight -ImageCommit $rf.ImageCommit -ImageDirty $rf.ImageDirty -Head $rf.Head -Commits $rf.Commits -GolemRunning $rf.GolemRunning -Uncommitted $rf.Uncommitted -BuildRunning $rf.BuildRunning -Running $rf.Running
+        $rb = (Get-LightsFromFacts -RebuildFacts $rf).Rebuild
         Set-LightLabel $script:ui.RebuildLight $rb 'Rebuild: '
         # The TEST tile's second line.
         if ($script:ui.Tiles -and $script:ui.Tiles.Count -gt 1 -and $script:ui.Tiles[1].Word.Text -like 'TEST*') {
@@ -8004,7 +8019,7 @@ function Update-Lights {
             else { $pk = [pscustomobject]@{ Color = 'grey'; Word = 'CHECKING'; Detail = 'read on the Player package tab, and within two minutes'; Commits = @(); Hover = '' } }
         } elseif (-not $script:fromCapture) {
             $pf = $(if ($Gathered) { $PackageFacts } else { Get-PackageLightFacts $script:cfg })
-            $pk = Get-PackageLight -PublishedVersion $pf.PublishedVersion -PublishedCommit $pf.PublishedCommit -NewestZipVersion $pf.NewestZipVersion -NewestZipCommit $pf.NewestZipCommit -Head $pf.Head -Commits $pf.Commits -CommitsSinceZip $pf.CommitsSinceZip -GolemRunning $pf.GolemRunning -Uncommitted $pf.Uncommitted -ClientStale $pf.ClientStale -BuildRunning $pf.BuildRunning -SiteReachable $pf.SiteReachable -SiteError $pf.SiteError
+            $pk = (Get-LightsFromFacts -PackageFacts $pf).Package
         } else {
             $pk = [pscustomobject]@{ Color = 'grey'; Word = 'UNKNOWN'; Detail = 'not judged under DRY RUN (the status is a capture file)'; Commits = @(); Hover = '' }
         }
@@ -8330,6 +8345,134 @@ function Update-GolemRunControls {
     }
 }
 
+# --- the status file both consoles read (cc-P155) ------------------------------------------------------------------
+# One collector, one file. Get-ConsoleRefreshData (cc-P154) reads everything; ConvertTo-ConsoleStatusDocument turns one
+# refresh into plain data (schema 1) and Write-ConsoleStatusFile puts it in StatusFile atomically. Two writers, one
+# logic: the console's refresh runspace after each refresh, and scripts\Write-ConsoleStatus.ps1 (the web console's
+# collector loop), which skips a turn while the console has written the file recently. The web console
+# (web-console\server.py) reads only this file for its tiles, lights and Golem; this console paints its tiles from it at
+# its start (Show-StatusFileTiles), before its own first refresh is back. Nothing secret goes in it: tiles, lights, the
+# Golem's state and queue, play-test counts and the link checks.
+
+function Get-StatusTileKey {
+    # 'STATUS PUBLISHER' -> 'publisher', 'PUBLIC DNS' -> 'dns', 'PLAY TESTS' -> 'playtests'; otherwise lower case.
+    param([string]$Title)
+    switch ($Title) { 'STATUS PUBLISHER' { 'publisher' } 'PUBLIC DNS' { 'dns' } 'PLAY TESTS' { 'playtests' } default { ($Title.ToLower() -replace '[^a-z0-9]', '') } }
+}
+
+function Get-PromptSize {
+    # The size word at the end of a prompt's Kind line ("... Small to medium."), or ''.
+    param([string]$Kind)
+    $m = [regex]::Matches([string]$Kind, '(?i)\b(small to medium|medium to large|small|medium|large)\b')
+    if ($m.Count) { $m[$m.Count - 1].Value.ToLower() } else { '' }
+}
+
+function ConvertTo-ConsoleStatusDocument {
+    # One refresh as the status file's schema 1 (an ordered hashtable, ready for ConvertTo-Json). $Data is
+    # Get-ConsoleRefreshData's; $NetResult the DNS tile's probe; $WebResults the websites probe (by site key).
+    param($Data, $Config, $NetResult, $WebResults, [datetime]$Now = [datetime]::Now, [string]$By = 'console')
+    $iso = { param($t) if ($t -is [datetime]) { $t.ToString('s') } else { $null } }
+    $tile = { param($g) if (-not $g) { return $null }; [ordered]@{ key = (Get-StatusTileKey ([string]$g.Title)); title = [string]$g.Title; word = [string]$g.Word; detail = [string]$g.Detail; color = [string]$g.Color } }
+    $prompt = { param($p) if (-not $p) { return $null }; [ordered]@{ number = [int]$p.Number; name = [string]$p.Name; title = [string]$p.Title; summary = [string]$p.Summary; model = [string]$p.Model; kind = [string]$p.Kind; size = (Get-PromptSize $p.Kind); cont = [bool]$p.Cont; para = [string]$p.Para } }
+    $tiles = New-Object 'System.Collections.Generic.List[object]'
+    if ($Data.State) { foreach ($g in @(Get-AtAGlance $Data.State $Config)) { $tiles.Add((& $tile $g)) } }
+    $tiles.Add((& $tile (Get-DnsGlance $NetResult)))
+    $v = $null
+    if ($Data.Autopilot) { $tiles.Add((& $tile $Data.Autopilot.Tile)); $v = $Data.Autopilot.View }
+    if ($Data.PlayTest) { $tiles.Add((& $tile $Data.PlayTest)) }
+    if ($Config.Websites) { $tiles.Add((& $tile (Get-WebsitesGlance $Config.Websites $WebResults))) }
+    $lights = Get-LightsFromFacts -RebuildFacts $Data.RebuildFacts -PackageFacts $Data.PackageFacts
+    $light = { param($l) if (-not $l) { return $null }; [ordered]@{ color = [string]$l.Color; word = [string]$l.Word; detail = [string]$l.Detail; commits = @(@($l.Commits) | ForEach-Object { [ordered]@{ short = [string]$_.Short; prompt = [string]$_.Prompt; subject = [string]$_.Subject } }) } }
+    $golem = $null
+    if ($v) {
+        $s = $v.Status
+        $state = $(if ($s -and $s.State) { [string]$s.State } elseif ($v.Enabled -eq $false) { 'OFF' } else { 'UNKNOWN' })
+        $cur = $null
+        if ($v.CurrentPrompt) {
+            $cur = & $prompt $v.CurrentPrompt
+            if ($s) { $cur.startedAt = (& $iso $s.StartedAt); $cur.stepsDone = $s.StepsDone; $cur.stepsTotal = $s.StepsTotal; $cur.stepNow = $s.StepNow; $cur.lastActivity = (& $iso $s.LastActivity) }
+        }
+        $usage = @(Get-UsageBars $v.UsageText $Now $v.Estimate | Where-Object { $_.Name -ne 'head' } | ForEach-Object { [ordered]@{ name = [string]$_.Name; pct = $_.Pct; text = ([string]$_.Text).Trim(); color = [string]$_.Color } })
+        $golem = [ordered]@{
+            kind = [string]$v.Kind; state = $state; enabled = $v.Enabled
+            reason = [string]$(if ($s) { @(@($s.RestReason, $s.NeedsYou, $s.Note) | Where-Object { $_ }) | Select-Object -First 1 } else { $v.StatusNote })
+            needsYou = $(if ($s) { [string]$s.NeedsYou } else { '' })
+            readyAt = $(if ($s) { & $iso $s.ReadyAt } else { $null }); readyHow = $(if ($s) { [string]$s.ReadyHow } else { '' })
+            stoppedPrompt = $(if ($s) { [string]$s.StoppedPrompt } else { '' }); winding = $(if ($s) { [string]$s.Winding } else { '' })
+            current = $cur
+            queue = @(@($v.QueueInfo) | ForEach-Object { & $prompt $_ })
+            finished = @(@($v.Finished) | ForEach-Object { [ordered]@{ number = [int]$_.Number; result = [string]$_.Result; time = (& $iso $_.Time); title = [string]$_.Title; headline = [string]$_.Headline } })
+            autoWake = [bool]$v.Settings.AutoWake
+            nightShift = [ordered]@{ enabled = [bool]$v.Settings.NightShiftEnabled; start = [string]$v.Settings.NightShiftStart; end = [string]$v.Settings.NightShiftEnd }
+            usage = $usage
+            alert = [string]$v.Alert; emailFailing = [bool]$v.EmailFailing
+        }
+    }
+    $web = [ordered]@{}
+    foreach ($site in @($Config.Websites.Sites)) {
+        $r = $(if ($WebResults) { $WebResults[[string]$site.Key] } else { $null })
+        $web[[string]$site.Key] = [ordered]@{ name = [string]$site.Name; url = [string]$site.Url; code = $(if ($r) { [int]$r.Code } else { $null }); error = $(if ($r) { [string]$r.Error } else { '' }); timedOut = $(if ($r) { [bool]$r.TimedOut } else { $false }) }
+    }
+    [ordered]@{
+        schema = 1; generatedAt = $Now.ToString('s'); generatedBy = $By; host = $env:COMPUTERNAME
+        tiles = $tiles.ToArray()
+        lights = [ordered]@{ rebuild = (& $light $lights.Rebuild); package = (& $light $lights.Package) }
+        golem = $golem
+        websites = $web
+        timings = $Data.Timings
+        errors = @($Data.Errors)
+    }
+}
+
+function Write-ConsoleStatusFile {
+    # The document as JSON in $Config.StatusFile, written to a temporary file beside it and moved over it, so a reader
+    # never sees half a file. Returns the path.
+    param($Data, $Config, $NetResult, $WebResults, [string]$By = 'console', [string]$Path)
+    if (-not $Path) { $Path = $Config.StatusFile }
+    if (-not $Path) { return $null }
+    $doc = ConvertTo-ConsoleStatusDocument -Data $Data -Config $Config -NetResult $NetResult -WebResults $WebResults -Now ([datetime]::Now) -By $By
+    $dir = Split-Path -Parent $Path
+    if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    $tmp = $Path + '.' + [guid]::NewGuid().ToString('N') + '.tmp'
+    try {
+        [IO.File]::WriteAllText($tmp, ($doc | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding $false))
+        # [NullString]::Value: a plain $null reaches .NET as '' here, which Replace refuses ("not of a legal form").
+        if (Test-Path -LiteralPath $Path) { [IO.File]::Replace($tmp, $Path, [NullString]::Value) } else { [IO.File]::Move($tmp, $Path) }
+    } finally { if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue } }
+    $Path
+}
+
+function Read-ConsoleStatusFile {
+    # The status file as objects, with AgeSeconds; $null when there is none or it cannot be read.
+    param([string]$Path)
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    try {
+        $j = [IO.File]::ReadAllText($Path) | ConvertFrom-Json
+        if ($j.schema -ne 1) { return $null }
+        $at = [datetime]::Parse([string]$j.generatedAt, [Globalization.CultureInfo]::InvariantCulture)
+        $j | Add-Member -NotePropertyName AgeSeconds -NotePropertyValue ([int]([datetime]::Now - $at).TotalSeconds) -Force
+        $j
+    } catch { $null }
+}
+
+function Show-StatusFileTiles {
+    # cc-P155: at the start, the tiles as the status file last said, marked with its age, so the window shows something
+    # real before its own first refresh is back (a file older than $MaxAgeMinutes is left alone).
+    param([string]$Path, [int]$MaxAgeMinutes = 10)
+    $doc = Read-ConsoleStatusFile $Path
+    if (-not $doc -or $doc.AgeSeconds -gt $MaxAgeMinutes * 60 -or -not $script:ui) { return $false }
+    $byKey = @{}
+    foreach ($t in @($doc.tiles)) { if ($t) { $byKey[[string]$t.key] = $t } }
+    $age = Format-ShortAge ([TimeSpan]::FromSeconds([math]::Max(0, $doc.AgeSeconds)))
+    $one = { param($ui, $t) if ($ui -and $t) { Set-TileLook $ui ([pscustomobject]@{ Title = $t.title; Word = $t.word; Detail = ($t.detail + "`n(as of " + $age + ' ago)'); Color = $t.color }) } }
+    $uiTiles = @($script:ui.Tiles)
+    $order = @('live', 'test', 'publisher')
+    for ($i = 0; $i -lt $order.Count -and $i -lt $uiTiles.Count; $i++) { & $one $uiTiles[$i] $byKey[$order[$i]] }
+    & $one $script:ui.AutopilotTile $byKey['golem']
+    & $one $script:ui.PlayTestTile $byKey['playtests']
+    $true
+}
+
 # --- the refresh, off the window's thread (cc-P154) -----------------------------------------------------------------
 # Chase, 2026-10-17 13:10: "right now console is a little unresponsive". Measured on this PC: a status refresh held the
 # window for about 3.4 s (docker 1.0, the package light 0.9, the rebuild light 0.8, play-tests.json 0.4, the Golem up to
@@ -8529,7 +8672,9 @@ function Start-ConsoleRefresh {
         return $false
     }
     $code = $script:RefreshScript
-    if (-not $code) { $code = 'param($cfg, $fromCapture, $statusFrom, $parts, $dry) Get-ConsoleRefreshData -Config $cfg -FromCapture $fromCapture -StatusFrom $statusFrom -Parts $parts -Dry $dry' }
+    # cc-P155: a refresh of the tiles also writes the status file (Write-ConsoleStatusFile), there, not on the window's
+    # thread; never from a capture (a dry run's state is not this PC's).
+    if (-not $code) { $code = 'param($cfg, $fromCapture, $statusFrom, $parts, $dry, $net, $web) $d = Get-ConsoleRefreshData -Config $cfg -FromCapture $fromCapture -StatusFrom $statusFrom -Parts $parts -Dry $dry; if ((@($parts) -contains ''tiles'') -and -not $fromCapture) { try { [void](Write-ConsoleStatusFile -Data $d -Config $cfg -NetResult $net -WebResults $web -By ''console'') } catch { } }; $d' }
     $then = {
         param($Data, $Job)
         $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -8537,7 +8682,7 @@ function Start-ConsoleRefresh {
         $script:LastRefresh = [pscustomobject]@{ Data = $Data; Parts = $Job.Parts; ReadMs = [int]([datetime]::UtcNow - $Job.Started).TotalMilliseconds; DrawMs = $sw.ElapsedMilliseconds }
         if ($script:refreshQueued) { $q = [string[]]@($script:refreshQueued); $script:refreshQueued = $null; [void](Start-ConsoleRefresh -Parts $q) }
     }
-    $j = Start-ConsoleJob -Slot 'refresh' -Script $code -Arguments @($script:cfg, [bool]$script:fromCapture, [string]$script:statusFrom, ([string[]]$Parts), [bool]$script:dry) -Then $then
+    $j = Start-ConsoleJob -Slot 'refresh' -Script $code -Arguments @($script:cfg, [bool]$script:fromCapture, [string]$script:statusFrom, ([string[]]$Parts), [bool]$script:dry, $script:netResult, $script:webResults) -Then $then
     if (-not $j) { return $false }
     $j.Parts = @($Parts)
     $true
@@ -10507,6 +10652,9 @@ function New-ConsoleForm {
     Set-ConsoleDryRun ([bool]$DryRun)
     # cc-P154: under -BackgroundRefresh the window opens now and the first status fills in when it is read.
     if ($BackgroundRefresh) {
+        # cc-P155: the tiles as the status file last said (the web console's collector keeps it fresh), until this
+        # window's own first refresh is back.
+        if (-not $DryRun) { [void](Show-StatusFileTiles $Config.StatusFile) }
         Add-RichLine $script:ui.Status 'Reading the status (docker, git, the Golem) in the background...' 'gray'
         Start-WorldCommandsRead
     }

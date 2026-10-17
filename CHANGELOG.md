@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.3
+
+### Staff
+- A new web console, read only for now: the Shard Console's tiles and lights, the Golem with its queue and what each prompt is for, everything waiting on you, a timeline, the logs and the links, on your phone or the work PC at https://uoconsole.tail81098d.ts.net/ (Tailscale only, and only your login), once its Tailscale key is made and its installer run.
+- The Shard Console opens with the tiles as they last were, while it reads them fresh in the background.
+
 ## 2026.10.17.2
 
 ### Staff

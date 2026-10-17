@@ -6590,6 +6590,123 @@ Fact 'P154_TheWorldSetupTabIsBuiltWhenFirstOpenedAndOnlyThen' {
     } finally { Close-P154Form $f }
 }
 
+# --- cc-P155: the status file both consoles read (the web console reads only it) --------------------------------------
+
+function Test-P155PythonShape([string]$Path) {
+    # The web console's own check of the file (web-console/panels.py status_problems): '' when it reads it as schema 1.
+    $code = "import json,sys; sys.path.insert(0, r'" + (Join-Path $repo 'web-console') + "'); import panels; print(' | '.join(panels.status_problems(json.load(open(r'" + $Path + "', encoding='utf-8-sig')))))"
+    ((& python -I -c $code 2>&1) | Out-String).Trim()
+}
+
+Fact 'P155_ARefreshBecomesTheStatusFileAndBothConsolesReadIt' {
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p155-status-' + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        $d = Get-ConsoleRefreshData -Config $config -FromCapture $true -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -Parts @('tiles') -Dry $true
+        $net = [pscustomobject]@{ RouteIsLan = $true; RouteError = $null; VpnAdapters = @(); DnsIps = @('203.0.113.9'); DnsError = $null; PublicIp = '203.0.113.9'; PublicIpError = $null; At = [datetime]::UtcNow }
+        $p = Write-ConsoleStatusFile -Data $d -Config $config -NetResult $net -WebResults @{} -By 'console' -Path $tmp
+        Assert-Equal $tmp $p 'written where asked'
+        Assert-Equal $tmp (Write-ConsoleStatusFile -Data $d -Config $config -NetResult $net -WebResults @{} -By 'console' -Path $tmp) 'and written over, the second time (every refresh after the first)'
+        Assert-Equal 0 @(Get-ChildItem -LiteralPath (Split-Path $tmp -Parent) -Filter ((Split-Path $tmp -Leaf) + '.*.tmp')).Count 'no temporary file left beside it'
+        $j = [IO.File]::ReadAllText($tmp) | ConvertFrom-Json
+        Assert-Equal 1 $j.schema 'schema 1'
+        Assert-Equal 'console' $j.generatedBy 'who wrote it'
+        Assert-Equal 'live,test,publisher,dns,golem,playtests,websites' ((@($j.tiles) | ForEach-Object { $_.key }) -join ',') 'every tile the console shows, in its order'
+        $tiles = @(Get-AtAGlance $d.State $config)
+        Assert-Equal ($tiles[1].Title + ': ' + $tiles[1].Word) ($j.tiles[1].title + ': ' + $j.tiles[1].word) 'the TEST tile as the console judges it'
+        Assert-True ($j.golem -and $j.golem.state -and $null -ne $j.golem.queue) 'the Golem, with its queue'
+        Assert-True ($j.lights.PSObject.Properties.Name -contains 'rebuild' -and $j.lights.PSObject.Properties.Name -contains 'package') 'both lights'
+        Assert-Equal '' (Test-P155PythonShape $tmp) 'the web console reads the same file as schema 1'
+        $back = Read-ConsoleStatusFile $tmp
+        Assert-True ($back -and $back.AgeSeconds -ge 0 -and $back.AgeSeconds -lt 60) 'and this console reads it back, with its age'
+        [IO.File]::WriteAllText($tmp, '{"schema": 2}')
+        Assert-Equal $null (Read-ConsoleStatusFile $tmp) 'another schema is not read'
+        Assert-True (-not ([IO.File]::ReadAllText($p) -match '(?i)token|password')) 'nothing secret in it'
+    } finally { Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }
+}
+
+Fact 'P155_TheConsolePaintsItsTilesFromTheStatusFileAtItsStart' {
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p155-tiles-' + [guid]::NewGuid().ToString('N') + '.json')
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        $doc = [ordered]@{ schema = 1; generatedAt = ([datetime]::Now.AddSeconds(-30)).ToString('s'); generatedBy = 'collector'
+            tiles = @([ordered]@{ key = 'test'; title = 'TEST'; word = 'FROMFILE'; detail = 'read from the status file'; color = 'green' },
+                      [ordered]@{ key = 'golem'; title = 'GOLEM'; word = 'RESTING'; detail = 'until 16:00'; color = 'gray' }) }
+        [IO.File]::WriteAllText($tmp, ($doc | ConvertTo-Json -Depth 5))
+        Assert-True (Show-StatusFileTiles $tmp) 'a fresh file is painted'
+        Assert-Equal 'TEST: FROMFILE' $script:ui.Tiles[1].Word.Text 'the TEST tile, from the file'
+        Assert-True ($script:ui.Tiles[1].Detail.Text -match '\(as of \d+s ago\)') ('marked with its age: ' + $script:ui.Tiles[1].Detail.Text)
+        Assert-Equal 'GOLEM: RESTING' $script:ui.AutopilotTile.Word.Text 'the GOLEM tile too'
+        $doc.generatedAt = ([datetime]::Now.AddMinutes(-11)).ToString('s')
+        $doc.tiles[0].word = 'STALE'
+        [IO.File]::WriteAllText($tmp, ($doc | ConvertTo-Json -Depth 5))
+        Assert-True (-not (Show-StatusFileTiles $tmp)) 'a file older than ten minutes is left alone'
+        Assert-Equal 'TEST: FROMFILE' $script:ui.Tiles[1].Word.Text 'and the tile keeps what it had'
+        Assert-True (-not (Show-StatusFileTiles (Join-Path ([IO.Path]::GetTempPath()) 'p155-none.json'))) 'no file: nothing'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false; Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }
+}
+
+Fact 'P155_TheConsolesOwnRefreshWritesTheStatusFile' {
+    # The console's refresh runspace writes it after a refresh of the tiles (never from a capture: a dry run is not this PC).
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p155-own-' + [guid]::NewGuid().ToString('N') + '.json')
+    $f = New-P154Form $null
+    try {
+        $f.Show()
+        [void](Wait-P154 30 { $null -ne $script:LastRefresh })
+        $c = $config.PSObject.Copy()
+        $c.StatusFile = $tmp
+        $script:cfg = $c
+        $script:fromCapture = $false
+        $script:LastRefresh = $null
+        Assert-True (Start-ConsoleRefresh -Parts @('tiles')) 'a refresh of the tiles'
+        [void](Wait-P154 60 { $null -ne $script:LastRefresh })
+        Assert-True (Test-Path -LiteralPath $tmp) 'wrote the status file'
+        $j = [IO.File]::ReadAllText($tmp) | ConvertFrom-Json
+        Assert-Equal 'console' $j.generatedBy 'as the console'
+        Assert-Equal '' (Test-P155PythonShape $tmp) 'in the shape the web console reads'
+        Remove-Item -LiteralPath $tmp
+        $script:fromCapture = $true
+        $script:LastRefresh = $null
+        [void](Start-ConsoleRefresh -Parts @('tiles'))
+        [void](Wait-P154 60 { $null -ne $script:LastRefresh })
+        Assert-True (-not (Test-Path -LiteralPath $tmp)) 'from a capture it writes nothing'
+    } finally { Close-P154Form $f; Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }
+}
+
+Fact 'P155_ThePromptsSummaryAndSizeAreRead' {
+    $t = "# CC task P155: Web console, phase 1`n`n**Model:** Opus`n`n**Summary:** The new web console's first phase.`n`n**Kind:** a new Python service, tests. Large.`n`nWritten by the overseer for Chase.`n"
+    $i = Get-PromptInfo 'cc-P155-cont-web.md' $t
+    Assert-Equal "The new web console's first phase." $i.Summary 'the Summary line'
+    Assert-Equal 'Written by the overseer for Chase.' $i.Para 'the first paragraph is still the prose after it'
+    Assert-Equal 'large' (Get-PromptSize $i.Kind) 'the size from the Kind line'
+    Assert-Equal 'small to medium' (Get-PromptSize 'scripts and tests. Small to medium.') 'a range'
+    Assert-Equal '' (Get-PromptInfo 'cc-P1-x.md' "# CC task P1: x`n`n**Model:** Opus`n").Summary 'none: empty'
+}
+
+Fact 'P155_TheCollectorScriptWritesTheStatusFile' {
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p155-collector-' + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'scripts\Write-ConsoleStatus.ps1') -Out $tmp 2>&1 | Out-String)
+        Assert-True (Test-Path -LiteralPath $tmp) ('written: ' + $out)
+        Assert-Equal 'collector' (([IO.File]::ReadAllText($tmp) | ConvertFrom-Json).generatedBy) 'as the collector'
+        Assert-Equal '' (Test-P155PythonShape $tmp) 'in the shape the web console reads'
+        $s = [IO.File]::ReadAllText((Join-Path $repo 'scripts\Write-ConsoleStatus.ps1'))
+        Assert-True ($s -match 'Get-ConsoleRefreshData' -and $s -match 'Write-ConsoleStatusFile' -and $s -notmatch 'function Get-(AtAGlance|ShardGlance|RebuildLight)') 'the console''s own functions, no second copy'
+    } finally { Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }
+}
+
+Fact 'P155_TheWebConsoleListensOnTheLoopbackOnlyAndPublishesNothing' {
+    $py = [IO.File]::ReadAllText((Join-Path $repo 'web-console\server.py'))
+    Assert-True ($py -match 'default="127\.0\.0\.1"' -and $py -match 'if a\.bind not in \("127\.0\.0\.1", "::1"\)') 'server.py: 127.0.0.1 by default, and any other bind refused'
+    $out = & { $ErrorActionPreference = 'Continue'; (& python -I (Join-Path $repo 'web-console\server.py') --bind 0.0.0.0 --no-collector 2>&1 | ForEach-Object { [string]$_ }) -join "`n" }
+    Assert-True ($out -match 'refused: the web console listens on the loopback only') ('0.0.0.0 refused: ' + $out)
+    $c = [IO.File]::ReadAllText((Join-Path $repo 'web-console\tailscale\docker-compose.yml'))
+    Assert-True ($c -notmatch '(?m)^\s+ports:' -and $c -notmatch 'network_mode:\s*host') 'the sidecar publishes no port'
+    $sv = [IO.File]::ReadAllText((Join-Path $repo 'web-console\tailscale\serve.json')) | ConvertFrom-Json
+    Assert-True (@($sv.AllowFunnel.PSObject.Properties | Where-Object { $_.Value -ne $false }).Count -eq 0 -and @($sv.AllowFunnel.PSObject.Properties).Count -eq 1) 'Funnel off'
+    Assert-True ($c -match 'image: tailscale/tailscale:v\d+\.\d+\.\d+' -and $c -notmatch 'TS_AUTHKEY:\s*\S') 'a pinned image, and the key only from the env file'
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 
 $failed =@($results | Where-Object { -not $_.Passed }).Count

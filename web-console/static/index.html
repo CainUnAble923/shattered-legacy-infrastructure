@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shard Console</title>
+<link rel="stylesheet" href="/app.css">
+<script src="/app.js" defer></script>
+</head>
+<body>
+<!-- cc-P155: the web console, phase 1: read only. Everything below is filled by app.js from /api/status. -->
+<header id="top">
+  <div class="brand"><span class="rune" aria-hidden="true"></span><span>Shattered Legacy <small>Shard Console</small></span></div>
+  <div id="fresh" class="fresh" role="status">loading...</div>
+</header>
+<nav id="tabs" aria-label="Sections">
+  <a href="#today" data-tab="today">Today</a>
+  <a href="#golem" data-tab="golem">Golem</a>
+  <a href="#needs" data-tab="needs">Needs you <span id="needs-count" class="badge"></span></a>
+  <a href="#timeline" data-tab="timeline">Timeline</a>
+  <a href="#logs" data-tab="logs">Logs</a>
+  <a href="#links" data-tab="links">Links</a>
+</nav>
+<main>
+  <section id="today" class="tab">
+    <div id="tiles" class="tiles"></div>
+    <div id="lights" class="lights"></div>
+    <div class="cols">
+      <div class="card" id="today-golem"><h2>Golem</h2><div class="body"></div></div>
+      <div class="card" id="today-needs"><h2>Needs you</h2><ul class="body"></ul></div>
+      <div class="card" id="today-timeline"><h2>Lately</h2><ul class="body"></ul></div>
+    </div>
+  </section>
+  <section id="golem" class="tab">
+    <div class="card"><h2>State</h2><div id="golem-state"></div></div>
+    <div class="card"><h2>Running</h2><div id="golem-current"></div></div>
+    <div class="card"><h2>Queue</h2><ol id="golem-queue" class="list"></ol></div>
+    <div class="card"><h2>Finished lately</h2><ul id="golem-finished" class="list"></ul></div>
+    <div class="card"><h2>Usage</h2><div id="golem-usage"></div></div>
+  </section>
+  <section id="needs" class="tab">
+    <div class="card"><h2>Needs you</h2><ul id="needs-list" class="list"></ul><p id="needs-note" class="quiet"></p></div>
+  </section>
+  <section id="timeline" class="tab">
+    <div class="card"><h2>Timeline</h2><ul id="timeline-list" class="list"></ul></div>
+  </section>
+  <section id="logs" class="tab">
+    <div class="card">
+      <h2>Logs</h2>
+      <form id="log-form" class="logbar">
+        <label>Log <select id="log-source"></select></label>
+        <label>Search <input id="log-q" type="search" autocomplete="off"></label>
+        <label>Lines <select id="log-n"><option>100</option><option selected>200</option><option>500</option><option>1000</option></select></label>
+        <button type="submit">Show</button>
+      </form>
+      <p id="log-what" class="quiet"></p>
+      <pre id="log-lines" class="log"></pre>
+    </div>
+  </section>
+  <section id="links" class="tab">
+    <div class="card"><h2>Links</h2><ul id="links-list" class="list links"></ul></div>
+  </section>
+</main>
+<footer><span>Read only: phase 1 shows; it changes nothing.</span> <a href="/api/status?refresh=1" id="refresh">Refresh now</a></footer>
+</body>
+</html>

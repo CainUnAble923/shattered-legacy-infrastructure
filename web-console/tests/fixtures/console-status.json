@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-17T15:00:00",
+  "generatedBy": "collector",
+  "host": "FIXTURE",
+  "tiles": [
+    { "key": "live", "title": "LIVE", "word": "RETIRED", "detail": "the live shard is retired", "color": "grey" },
+    { "key": "test", "title": "TEST", "word": "RUNNING", "detail": "up 2h, 3 players\nrebuild: blocked, the Golem is running P155", "color": "green" },
+    { "key": "publisher", "title": "STATUS PUBLISHER", "word": "NOT PUBLISHING", "detail": "status.json is 40 minutes old", "color": "amber" },
+    { "key": "dns", "title": "PUBLIC DNS", "word": "OK", "detail": "shatteredlegacyuo.com points at this house", "color": "green" },
+    { "key": "golem", "title": "GOLEM", "word": "STOPPED", "detail": "P150 stopped: a decision for Chase", "color": "amber" },
+    { "key": "playtests", "title": "PLAY TESTS", "word": "1 FAIL NOT LOGGED", "detail": "an-unbroken-very-long-word-that-must-wrap-on-a-phone-screen-without-pushing-the-page-sideways-at-all", "color": "red" },
+    { "key": "websites", "title": "WEBSITES", "word": "8 OF 9 UP", "detail": "print queue: refused", "color": "amber" }
+  ],
+  "lights": {
+    "rebuild": { "color": "amber", "word": "BLOCKED", "detail": "the Golem is running P155", "commits": [] },
+    "package": { "color": "green", "word": "PUBLISH", "detail": "2026.10.17.2 is built and not published", "commits": [] }
+  },
+  "golem": {
+    "kind": "golem", "state": "STOPPED", "enabled": true, "reason": "P150 needs a decision", "needsYou": "",
+    "readyAt": null, "readyHow": "", "stoppedPrompt": "P150", "winding": "",
+    "current": null,
+    "queue": [
+      { "number": 151, "name": "cc-P151-guild-halls-survey.md", "title": "Guild halls survey", "summary": "Survey every guild hall.", "model": "Opus", "kind": "notes only. Small.", "size": "small", "cont": false, "para": "" },
+      { "number": 152, "name": "cc-P152-art-requests-openai.md", "title": "Art requests", "summary": "", "model": "Opus", "kind": "Medium.", "size": "medium", "cont": false, "para": "Chase asked for the art pipeline." }
+    ],
+    "finished": [
+      { "number": 150, "result": "STOPPED", "time": "2026-10-17T14:30:00", "title": "Requisitions and leads", "headline": "Needs a decision on the lead NPC." },
+      { "number": 149, "result": "DONE", "time": "2026-10-17T13:00:00", "title": "Away mode", "headline": "Away mode works." }
+    ],
+    "autoWake": true,
+    "nightShift": { "enabled": false, "start": "22:30", "end": "06:30" },
+    "usage": [ { "name": "Current session", "pct": 40, "text": "40% used", "color": "normal" }, { "name": "This week", "pct": null, "text": "unknown", "color": "gray" } ],
+    "alert": "", "emailFailing": false
+  },
+  "websites": {
+    "playtests": { "name": "Play tests", "url": "http://192.168.1.61:8093/", "code": 200, "error": "", "timedOut": false },
+    "printqueue": { "name": "Print queue", "url": "http://192.168.1.61:8787/", "code": null, "error": "ConnectFailure", "timedOut": false }
+  },
+  "timings": { "docker": 900, "total": 2000 },
+  "errors": ["fixture: a token=abc123secretvalue must never reach a page"]
+}

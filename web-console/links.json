@@ -1,0 +1,9 @@
+{
+  "_about": "cc-P155: the web console's links hub, besides the Shard Console's own websites (scripts/websites.json, checked by the status collector) and both GitHub repos (read from git). Each is checked by web-console/server.py every 60 s: any HTTP answer is up (a redirect or a 401 is a site answering); a refused connection or a timeout is down. A self-signed certificate is accepted for the check only. No token, key or password ever goes in this file.",
+  "links": [
+    { "key": "dashboard-tailnet", "name": "Haven dashboard (tailnet)", "url": "http://haven.tail81098d.ts.net/", "check": "http://haven.tail81098d.ts.net/" },
+    { "key": "portainer-haven", "name": "Portainer (Haven)", "url": "https://haven.tail81098d.ts.net:9443/", "check": "https://192.168.1.61:9443/api/system/status" },
+    { "key": "portainer-gamepc", "name": "Portainer (game PC)", "url": "https://localhost:9443/", "check": "http://127.0.0.1:9000/api/system/status" },
+    { "key": "downloads", "name": "Download site", "url": "https://get.shatteredlegacyuo.com/", "check": "https://get.shatteredlegacyuo.com/version.json" }
+  ]
+}

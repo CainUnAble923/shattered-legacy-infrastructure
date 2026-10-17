@@ -887,6 +887,115 @@
       "tiles": [
         { "section": "Admin", "name": "Tailscale", "icon": "tailscale", "href": "https://login.tailscale.com/admin/machines", "description": "The only way in from outside the house: Haven as the game PC's Tailscale sees it", "snapshot": "tailscale" }
       ]
+    },
+    {
+      "key": "web-console",
+      "name": "Web console (phase 1, read only)",
+      "host": "gamepc",
+      "owner": "Shattered Legacy",
+      "kind": "process",
+      "state": "built, not installed yet",
+      "container": "",
+      "process": "web-console",
+      "image": "",
+      "compose": "",
+      "start": "the scheduled task SL web console (at Chase's logon): pythonw D:\\ShatteredLegacy\\web-console\\server.py; installed by web-console\\Install-WebConsole.ps1",
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "127.0.0.1:8095 (this PC) and 127.0.0.1:8096 (the uoconsole sidecar only)",
+          "tailnet": "https://uoconsole.tail81098d.ts.net/ (through uoconsole-ts)",
+          "container": 0
+        }
+      ],
+      "volumes": [
+        {
+          "host": "D:\\UO\\web-console",
+          "container": "",
+          "what": "settings.json (allowed logins), tailscale.env (the auth key), access.log, collector.log; outside git"
+        }
+      ],
+      "env": [],
+      "secrets": [],
+      "health": "http://127.0.0.1:8095/api/health",
+      "dependsOn": [],
+      "neededBy": [
+        "uoconsole-ts"
+      ],
+      "backup": [],
+      "verified": "Built and tested by cc-P155 (2026-10-17); not installed yet (Chase runs Install-WebConsole.ps1).",
+      "_note": "Reads the status file the Shard Console and its collector (scripts\\Write-ConsoleStatus.ps1, started by this service) write: scripts\\shard-console-cache\\console-status.json. Read only in phase 1. Its allowed logins (D:\\UO\\web-console\\settings.json, optional; default this PC's own Tailscale login) are kept out of git.",
+      "tiles": [
+        {
+          "section": "Ultima Online / Shattered Legacy",
+          "name": "Web console",
+          "icon": "mdi-monitor-dashboard",
+          "href": "https://uoconsole.tail81098d.ts.net/",
+          "description": "The Shard Console's status, read only, on the tailnet (Chase only)",
+          "snapshot": "web-console"
+        }
+      ]
+    },
+    {
+      "key": "uoconsole-ts",
+      "name": "uoconsole (the web console's Tailscale node)",
+      "host": "gamepc",
+      "owner": "Shattered Legacy",
+      "kind": "container",
+      "state": "planned",
+      "container": "uoconsole-ts",
+      "image": "tailscale/tailscale:v1.88.3",
+      "compose": "D:\\ShatteredLegacy\\web-console\\tailscale\\docker-compose.yml (project uoconsole)",
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnet": "https://uoconsole.tail81098d.ts.net/ (Tailscale Serve, HTTPS, Funnel off)",
+          "container": 443
+        }
+      ],
+      "volumes": [
+        {
+          "host": "docker volume uoconsole_uoconsole-ts-state",
+          "container": "/var/lib/tailscale",
+          "what": "the node's identity and certificate state"
+        }
+      ],
+      "env": [
+        "TS_AUTHKEY",
+        "TS_HOSTNAME",
+        "TS_STATE_DIR",
+        "TS_USERSPACE",
+        "TS_SERVE_CONFIG",
+        "TS_EXTRA_ARGS",
+        "TS_ACCEPT_DNS"
+      ],
+      "secrets": [
+        {
+          "name": "TS_AUTHKEY",
+          "where": "D:\\UO\\web-console\\tailscale.env (outside git, never logged)",
+          "createdIn": "Tailscale admin console > Settings > Keys > Generate auth key, tagged tag:uoconsole"
+        }
+      ],
+      "health": "",
+      "dependsOn": [
+        "web-console"
+      ],
+      "neededBy": [],
+      "backup": [
+        "docker volume uoconsole_uoconsole-ts-state (or remove the node and log in again with a new key)"
+      ],
+      "verified": "Built by cc-P155; not deployed yet (no auth key yet).",
+      "tiles": [
+        {
+          "section": "Admin",
+          "name": "uoconsole node",
+          "icon": "tailscale",
+          "href": "https://login.tailscale.com/admin/machines",
+          "description": "The web console's own tailnet node (a container on the game PC)",
+          "snapshot": "uoconsole-ts"
+        }
+      ]
     }
   ]
 }
