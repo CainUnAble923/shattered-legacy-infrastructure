@@ -147,7 +147,11 @@ param(
     [string]$ImageTag,
     [string]$WipeAdmin,
     # cc-P96: Fix test shard > Rebuild's commit (a hash from its list, or HEAD).
-    [string]$Commit
+    [string]$Commit,
+    # cc-P135: Map and Art. The .vd file and body for art.checkvd, the other hues.mul for art.hues.
+    [string]$VdFile,
+    [string]$Body,
+    [string]$HuesFile
 )
 
 # cc-P124: which TazUO the player package ships (the one default, and reading and checking its sl-build.txt), shared
@@ -415,6 +419,12 @@ function Get-ConsoleConfig {
         # cc-P107, Haven H2 and H3: the ops pages' two homes (scripts\haven-ops.json) and the mode file.
         OpsFile            = $opsFile
         Ops                = (ConvertFrom-OpsConfig $opsJson)
+        # cc-P135, the Map and Art tab: validate-art.py (cc-P134; read only), the python it runs with, our own hues.mul
+        # the diff compares against, and the subcommands the console may run (never render, the one that writes PNGs).
+        ValidateArt        = (Join-Path $RepoRoot 'scripts\validate-art.py')
+        Python             = 'python'
+        OurHues            = (Join-Path $RepoRoot 'client-data\classic-client-7.0.117.0\hues.mul')
+        ArtSubcommands     = @('bodies', 'check-registry', 'check-vd', 'propose', 'hues-diff')
     }
     # After the cutover the Play tests and Shard status sites are Haven's: their lights check Haven, and Restart and
     # Redeploy (game-PC only) no longer apply to them. The game PC URLs come back with the rollback.
@@ -937,7 +947,8 @@ function Get-ChildArgumentLine {
         [string]$SelfPath, [string]$ActionKey, [string]$ShardKey, [string]$SnapshotName,
         [string]$Snapshot, [string]$ConfirmLive, [switch]$Yes, [switch]$DryRun, [string]$StatusFrom,
         [switch]$StatusFromDocker, [string]$CommitMessage, [string]$PackageNotes, [string]$PackageZip,
-        [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [switch]$ForPane, [string]$Commit
+        [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [switch]$ForPane, [string]$Commit,
+        [string]$VdFile, [string]$Body, [string]$HuesFile
     )
     $mode = 'Execute'
     if ($DryRun) { $mode = 'DryRun' }
@@ -971,6 +982,11 @@ function Get-ChildArgumentLine {
     if ($WipeAdmin) { $a += ' -WipeAdmin "' + ($WipeAdmin -replace '"', '') + '"' }
     # cc-P96: a commit picked from Rebuild's list; only hex or HEAD crosses, and the plan refuses one not on the list.
     if ($Commit -match '^([0-9a-fA-F]{7,40}|HEAD)$') { $a += ' -Commit ' + $Commit }
+    # cc-P135: the .vd and hues.mul paths are picked in a file dialog or typed; quoted so a space cannot split them, a
+    # quote in a path dropped (the plan then refuses a file that is not there). The body crosses only as digits.
+    if ($VdFile) { $a += ' -VdFile "' + ($VdFile -replace '"', '') + '"' }
+    if ($Body -match '^\d{1,5}$') { $a += ' -Body ' + $Body }
+    if ($HuesFile) { $a += ' -HuesFile "' + ($HuesFile -replace '"', '') + '"' }
     $a
 }
 
@@ -998,6 +1014,7 @@ function Get-ModeBanner {
     if ($Action -like 'golem.*') { $what = $Action + ' (golem)' }
     if ($Action -like 'web.*') { $what = $Action + ' (websites)' }
     if ($Action -like 'vpn.*') { $what = $Action + ' (this PC''s VPN)' }
+    if ($Action -like 'art.*' -or $Action -like 'map.*') { $what = $Action + ' (map and art)' }
     switch ($RunMode) {
         'dry' {
             [pscustomobject]@{ Color = 'amber'; Title = ('DRY RUN - ' + $what + ' - Shard Console'); Lines = @(
@@ -1037,6 +1054,12 @@ function Get-ModeBanner {
             # cc-P86: no shard is touched; a WireGuard tunnel may be ended, Proton is only opened.
             [pscustomobject]@{ Color = 'amber'; Title = ('VPN - ' + $what + ' - Shard Console'); Lines = @(
                 $bar, ('  VPN  ' + $what), '  Ends a WireGuard for Windows tunnel, opens Proton VPN, or names the VPN to disconnect in its app. No shard is touched.', $bar) }
+            break
+        }
+        { $_ -eq 'execute' -and ($Action -like 'art.*' -or $Action -like 'map.*') } {
+            # cc-P135: validate-art.py reads the client data and writes nothing; the map buttons only print.
+            [pscustomobject]@{ Color = 'amber'; Title = ('MAP AND ART - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  MAP AND ART  ' + $what), '  Runs scripts\validate-art.py, which reads the client data and writes nothing, or prints a command''s syntax. No shard is touched.', $bar) }
             break
         }
         { $_ -eq 'execute' -and $Action -eq 'package.publish' } {
@@ -1148,6 +1171,18 @@ function Get-ConsoleActions {
         # cc-P86: beside the PUBLIC DNS tile and on the Diagnostics tab. 'here': it opens Proton or ends a WireGuard
         # tunnel from this console, then the tile re-checks.
         [pscustomobject]@{ Key = 'vpn.disconnect';   Group = 'Network';     Label = 'Disconnect VPN';                     Mutates = $true;  RunIn = 'here' }
+        # cc-P135: the Map and Art tab. The four art checks run scripts\validate-art.py (read only) in the pane or a window
+        # of their own; the six map buttons only print an in-game command's syntax here.
+        [pscustomobject]@{ Key = 'art.registry';     Group = 'Map and Art';  Label = 'Check the art registry';            Mutates = $false; RunIn = 'window' }
+        [pscustomobject]@{ Key = 'art.bodies';       Group = 'Map and Art';  Label = 'Body table';                        Mutates = $false; RunIn = 'window' }
+        [pscustomobject]@{ Key = 'art.checkvd';      Group = 'Map and Art';  Label = 'Check a .vd';                       Mutates = $false; RunIn = 'window' }
+        [pscustomobject]@{ Key = 'art.hues';         Group = 'Map and Art';  Label = 'Compare a hues.mul with ours';      Mutates = $false; RunIn = 'window' }
+        [pscustomobject]@{ Key = 'map.footprint';    Group = 'Map commands'; Label = '[CheckFootprint';                   Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'map.spots';        Group = 'Map commands'; Label = '[ValidateSpots';                    Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'map.statics';      Group = 'Map commands'; Label = '[FindStaticProblems';               Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'map.walkable';     Group = 'Map commands'; Label = '[Walkable';                         Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'map.shore';        Group = 'Map commands'; Label = '[ShoreCheck';                       Mutates = $false; RunIn = 'here' }
+        [pscustomobject]@{ Key = 'map.export';       Group = 'Map commands'; Label = '[ExportPoints';                     Mutates = $false; RunIn = 'here' }
     )
 }
 
@@ -1740,10 +1775,27 @@ function Get-ConsoleTooltips {
         'tile.WEBSITES'    = 'How many of the sites in websites.json answer, checked every 60 s; amber names the ones that do not.'
         'tile.GOLEM'       = 'What the Golem (the CC queue runner) is doing: off, idle, running a prompt, or NEEDS YOU after it emailed you.'
         'tile.PLAY TESTS'  = 'How many play tests wait in the queue; amber while a Fail is not in the bug list yet.'
+        # cc-P135: the Map and Art tab.
+        'art.registry'     = 'Runs the art registry check of validate-art: rows that collide, art ids with EA art in the slot, anim and body rows the client would misread. Reads only.'
+        'art.bodies'       = 'Runs the body table of validate-art: every body the client data names or draws, with its type, file, slot, layout and actions. About 1,300 lines; reads only.'
+        'art.checkvd'      = 'Checks the animation file (.vd) against the body given, or proposes a free body and anim7 slot when the body box is empty. Registers nothing.'
+        'art.hues'         = 'Compares the hues file given with our own: the hues whose colours differ, and those that differ only in name. Changes neither file.'
+        'art.vdfile'       = 'The animation file (.vd) to check or to find a body for; Browse picks one.'
+        'art.browsevd'     = 'Picks an animation file (.vd).'
+        'art.body'         = 'The body number to check the file against, in decimal (2052); empty proposes a free one.'
+        'art.huesfile'     = 'The other hues file (hues.mul), compared against ours in client-data; Browse picks one.'
+        'art.browsehues'   = 'Picks a hues file (hues.mul).'
+        'map.footprint'    = 'Prints the syntax of [CheckFootprint: can a building footprint stand where you target. Typed in a client; the console only prints it.'
+        'map.spots'        = 'Prints the syntax of [ValidateSpots: every spot in a spawn, decoration or x,y file checked, the bad ones named. Typed in a client.'
+        'map.statics'      = 'Prints the syntax of [FindStaticProblems: duplicate, buried and unknown map statics in a box. Typed in a client.'
+        'map.walkable'     = 'Prints the syntax of [Walkable: blocked tiles in a box, listed or marked with runes that delete themselves (test shard). Typed in a client.'
+        'map.shore'        = 'Prints the syntax of [ShoreCheck: water touching land in a box, with coast heights. Typed in a client.'
+        'map.export'       = 'Prints the syntax of [ExportPoints: a targeted rectangle or points written as spawn-file JSON. Typed in a client.'
         'tab.Test shard'   = 'The throwaway test shard: start, stop, rebuild, deploy, wipe, tail and a client.'
         'tab.Fix test shard' = 'When the test shard will not start: diagnose it, restart it, roll back to the last good image, rebuild a commit, prune old images.'
         'tab.Snapshots'    = 'Named copies of a shard''s save: create, restore, delete.'
         'tab.World setup'  = 'In-game commands to paste into a client, read from the code. The console cannot run them.'
+        'tab.Map and Art'  = 'Art checks that run validate-art here, and the syntax of the in-game map checks to type in a client.'
         'tab.Diagnostics'  = 'The two read-only health checks and their folder, and Disconnect VPN.'
         'tab.Commit'       = 'Preview, or commit and push, both repos.'
         'tab.Player package' = 'Build, check and publish the player package.'
@@ -2631,6 +2683,77 @@ function Get-FixPlan {
     $steps.ToArray()
 }
 
+# --- cc-P135: the Map and Art tab --------------------------------------------------------------------------------
+# Four buttons run scripts\validate-art.py (cc-P134) and show its output: the registry check, the body table, a .vd
+# check (or a proposal when no body is given) and a hues diff against our own hues.mul. The script reads the client data
+# and the art registry and writes nothing; render, its one subcommand that writes PNGs, is never run from here
+# (Test-PlanSafety refuses it). Six more print the syntax of the in-game map commands
+# (server/customizations/StaffHub/ClusterFMapCheckCommands.cs), which the console cannot run: they are typed in a client,
+# as the World setup tab's are. Nothing here reads docker or touches a shard.
+
+function Get-MapCommandSyntax {
+    # The six in-game commands: usage and what each says. Kept in step with ClusterFMapCheckCommands.cs by hand; a fact
+    # checks each name against that source.
+    @(
+        [pscustomobject]@{ Key = 'map.footprint'; Command = 'CheckFootprint';     Usage = '[CheckFootprint <width> <height> [maxZSpread=5]'; Then = 'then target the top-left corner'; What = 'CAN or CANNOT a w x h building stand there: the blocked tiles (water, impassable land, an impassable non-surface static within 16 Z) and the land Z spread. Max 64x64.' }
+        [pscustomobject]@{ Key = 'map.spots';     Command = 'ValidateSpots';      Usage = '[ValidateSpots <file under Data> [map]';              Then = 'no target';                        What = 'Names each bad spot in a spawn .json, a decoration .cfg (give the map, or Britannia for both) or x,y[,z][,map] lines; at most 500 a file. The full report goes to the map-checks folder beside the saves.' }
+        [pscustomobject]@{ Key = 'map.statics';   Command = 'FindStaticProblems'; Usage = '[FindStaticProblems';                                Then = 'then target two corners (max 512x512)'; What = 'Duplicate statics (the same id and Z on a tile), statics buried 10 or more Z under the land, and ids with no tiledata entry.' }
+        [pscustomobject]@{ Key = 'map.walkable';  Command = 'Walkable';           Usage = '[Walkable [list|overlay [seconds]|clear]';            Then = 'then target two corners (max 512x512)'; What = 'The tiles a mobile cannot stand on, by cause. overlay marks each with a red rune that deletes itself (default 60 s, max 600; test shard only); clear removes every marker now.' }
+        [pscustomobject]@{ Key = 'map.shore';     Command = 'ShoreCheck';         Usage = '[ShoreCheck [stepThreshold]';                         Then = 'then target two corners (max 512x512)'; What = 'Water touching non-water land: coast heights in buckets, the water and shore tile ids, and any water surface outside -120..120.' }
+        [pscustomobject]@{ Key = 'map.export';    Command = 'ExportPoints';       Usage = '[ExportPoints <name> [rect|point|clear]';             Then = 'rect: two corners; point: one spot at a time'; What = 'Writes the rectangle (spawnBounds and its centre) or the points as spawn-file JSON to <world folder>\map-checks\<name>.json. [ValidateSpots <name>.json reads it back.' }
+    )
+}
+
+function Get-MapArtPlan {
+    param([string]$Action, $Config, [string]$VdFile, [string]$Body, [string]$HuesFile)
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    if ($Action -like 'map.*') {
+        $c = @(Get-MapCommandSyntax | Where-Object { $_.Key -eq $Action })[0]
+        if (-not $c) { $steps.Add((New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them."))); return $steps.ToArray() }
+        $steps.Add((New-PlanStep -Kind say -Text ($c.Usage + '   (GameMaster; ' + $c.Then + ')')))
+        $steps.Add((New-PlanStep -Kind say -Text $c.What))
+        $steps.Add((New-PlanStep -Kind say -Text 'Type it in a client on the shard you mean; the console cannot run in-game commands. It reads and reports, and nothing it places outlives its timer.'))
+        return $steps.ToArray()
+    }
+    $py = $Config.Python
+    $va = $Config.ValidateArt
+    if (-not (Test-Path -LiteralPath $va -PathType Leaf)) { $steps.Add((New-PlanStep -Kind refuse -Text ('scripts\validate-art.py is not there: ' + $va))); return $steps.ToArray() }
+    $note = 'validate-art.py reads the client data and the art registry and writes nothing. Exit 1 means it found problems to read above, not that it failed.'
+    $report = [ordered]@{ ReportExit = 1 }
+    switch ($Action) {
+        'art.registry' {
+            $steps.Add((New-PlanStep -Kind say -Text 'Check the art registry: rows registered twice, art ids with EA art in the slot, anim rows mobtypes names or records.json does not route, body rows with no mobtypes entry.'))
+            $steps.Add((New-PlanStep -Kind exec -Exe $py -Arguments @($va, 'check-registry') -Text $note -Named $report))
+        }
+        'art.bodies' {
+            $steps.Add((New-PlanStep -Kind say -Text 'The body table: every body the client data names or draws (about 1,300 lines): type, flags, classic or UOP, file, slot, layout, the actions it has frames for, and which line defines it. Copy from the pane, or read the run file in scripts\shard-console-output.'))
+            $steps.Add((New-PlanStep -Kind exec -Exe $py -Arguments @($va, 'bodies') -Text $note -Named $report))
+        }
+        'art.checkvd' {
+            if (-not $VdFile) { $steps.Add((New-PlanStep -Kind refuse -Text 'Pick a .vd file first (Browse, or type its path).')); break }
+            if ($VdFile -notmatch '(?i)\.vd$' -or -not (Test-Path -LiteralPath $VdFile -PathType Leaf)) { $steps.Add((New-PlanStep -Kind refuse -Text ('Not a .vd file that exists: ' + $VdFile))); break }
+            if ($Body) {
+                if ($Body -notmatch '^\d{1,5}$') { $steps.Add((New-PlanStep -Kind refuse -Text ('The body is a number in decimal, e.g. 2052: ' + $Body))); break }
+                $steps.Add((New-PlanStep -Kind say -Text ('Check ' + (Split-Path -Leaf $VdFile) + ' against body ' + $Body + ': its layout and actions, whether the body is free, where it lands, whether the layout fits, and what mobtypes must say.')))
+                $steps.Add((New-PlanStep -Kind exec -Exe $py -Arguments @($va, 'check-vd', $VdFile, $Body) -Text $note -Named $report))
+            } else {
+                $steps.Add((New-PlanStep -Kind say -Text ('No body given, so propose one: a free server body (from 0x800) and a free anim7 slot of the right layout for ' + (Split-Path -Leaf $VdFile) + ', then the check on it. Registers nothing.')))
+                $steps.Add((New-PlanStep -Kind exec -Exe $py -Arguments @($va, 'propose', $VdFile) -Text $note -Named $report))
+            }
+        }
+        'art.hues' {
+            if (-not $HuesFile) { $steps.Add((New-PlanStep -Kind refuse -Text 'Pick the other hues.mul first (Browse, or type its path).')); break }
+            if ($HuesFile -notmatch '(?i)\.mul$' -or -not (Test-Path -LiteralPath $HuesFile -PathType Leaf)) { $steps.Add((New-PlanStep -Kind refuse -Text ('Not a .mul file that exists: ' + $HuesFile))); break }
+            if (-not (Test-Path -LiteralPath $Config.OurHues -PathType Leaf)) { $steps.Add((New-PlanStep -Kind refuse -Text ('Our own hues.mul is not there: ' + $Config.OurHues))); break }
+            if ([IO.Path]::GetFullPath($HuesFile) -ieq [IO.Path]::GetFullPath($Config.OurHues)) { $steps.Add((New-PlanStep -Kind refuse -Text 'That is our own hues.mul; pick the other one.')); break }
+            $steps.Add((New-PlanStep -Kind say -Text ('Compare ' + $HuesFile + ' with ours (' + $Config.OurHues + '): the hues whose colours differ, and those that differ only in name or table range. Report only; neither file is changed.')))
+            $steps.Add((New-PlanStep -Kind exec -Exe $py -Arguments @($va, 'hues-diff', $Config.OurHues, $HuesFile) -Text $note -Named $report))
+        }
+        default { $steps.Add((New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them."))) }
+    }
+    $steps.ToArray()
+}
+
 function Get-ActionPlan {
     # Every button is a plan: a list of steps, built here from the status and nothing else. The
     # shell runs it or, under -DryRun, prints it. So what -DryRun prints is exactly what runs.
@@ -2639,10 +2762,13 @@ function Get-ActionPlan {
         [string]$SnapshotName, [string]$Snapshot, [datetime]$Now = [datetime]::MinValue,
         [string]$CommitMessage, $CommitFacts,
         [string]$PackageNotes, [string]$PackageZip, $PackageFacts, [string]$ImageTag, [switch]$CommitForce,
-        $WipeFacts, [string]$WipeAdmin, $AutopilotFacts, $VpnFacts, $FixFacts, [string]$Commit, [string]$Site
+        $WipeFacts, [string]$WipeAdmin, $AutopilotFacts, $VpnFacts, $FixFacts, [string]$Commit, [string]$Site,
+        [string]$VdFile, [string]$Body, [string]$HuesFile
     )
     # cc-P101: the Websites buttons read websites.json only (it is in $Config).
     if ($Action -like 'web.*') { return (Get-WebsitePlan -Action $Action -Config $Config -Site $Site) }
+    # cc-P135: the Map and Art buttons read nothing but the file names they are given.
+    if ($Action -like 'art.*' -or $Action -like 'map.*') { return (Get-MapArtPlan -Action $Action -Config $Config -VdFile $VdFile -Body $Body -HuesFile $HuesFile) }
     # cc-P83: the two links read nothing.
     if ($Action -like 'links.*') { return (Get-LinkPlan -Action $Action -Config $Config) }
     # cc-P86: the VPN button reads this PC's adapters, route and services (VpnFacts), never docker.
@@ -2906,6 +3032,19 @@ function Test-PlanSafety {
                 if (-not $ok) { $v.Add('the deploy helper runs only as -Deploy <a name in the deploys allowlist>, in a window: ' + $line) }
                 if (-not @($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -ceq (Get-ConfirmPhrase 'web.deploy') }).Count) { $v.Add('a Haven deploy runs only after the typed phrase ' + (Get-ConfirmPhrase 'web.deploy')) }
             }
+        }
+        # cc-P135: python runs here only as scripts\validate-art.py with one of its read-only subcommands, as an exec step
+        # (so its output lands in the pane or the window), never render (the one that writes files) and never another
+        # script; and that script is reached only that way.
+        $named135 = @(@($s.Exe) + @($s.Arguments) + @($s.Path) | Where-Object { $_ } | ForEach-Object { [string]$_ })
+        $isPy = ([string]$s.Exe -match '(?i)(^|[\\/])python(\d(\.\d+)?)?(\.exe)?$')
+        $namesVa = [bool]($Config.ValidateArt -and @($named135 | Where-Object { $_ -ieq $Config.ValidateArt -or $_ -match '(?i)validate-art\.py$' }).Count)
+        if ($isPy -or $namesVa) {
+            $sa = @($s.Arguments)
+            $sub = ''
+            if ($sa.Count -ge 2) { $sub = [string]$sa[1] }
+            $ok = ($s.Kind -eq 'exec' -and $isPy -and $Config.ValidateArt -and $sa.Count -ge 2 -and [string]$sa[0] -ieq $Config.ValidateArt -and @($Config.ArtSubcommands) -ccontains $sub -and -not @($sa | Where-Object { $_ -match '^--out' }).Count)
+            if (-not $ok) { $v.Add('python runs here only as ' + $Config.ValidateArt + ' with one of ' + (@($Config.ArtSubcommands) -join ', ') + ', never render: ' + $line) }
         }
         if ($s.Kind -eq 'answer') {
             # cc-P106: an answer goes only to a shard's console, as n, y, a or Enter, after its phrase; a delete answer (y,
@@ -6372,7 +6511,10 @@ function Invoke-Plan {
                     Write-ConsoleLine ('      > ' + $line) 'gray'
                     if (-not $outFile) { $outFile = New-ExecOutputFile $Config $ActionKey $ShardKey }
                     $code = Invoke-ExecStep -Exe $s.Exe -Arguments @($s.Arguments) -OutFile $outFile -Header ($tag + $line)
-                    if ($code -ne 0) { throw ($line + ' exited with ' + $code) }
+                    # cc-P135: a step may name one exit code that means "found something" (validate-art exits 1 when it
+                    # finds problems). That is said, in amber, and the plan goes on; any other non-zero exit fails it.
+                    if ($code -ne 0 -and $s.Named -and $s.Named.Contains('ReportExit') -and $code -eq [int]$s.Named['ReportExit']) { Write-ConsoleLine ('      exited with ' + $code + ': it found something; read the lines above. Not a failure.') 'amber' }
+                    elseif ($code -ne 0) { throw ($line + ' exited with ' + $code) }
                 }
                 'script' {
                     Write-ConsoleLine ($tag + $s.Text) 'head'
@@ -8694,8 +8836,8 @@ function Get-ActionFacts {
     # the same reads for the same keys (Invoke-ConsoleButton read them inline).
     param($Config, [string]$ActionKey, [string]$PackageZip, [bool]$FromCapture, [string]$StatusFrom, [bool]$Dry)
     $f = [ordered]@{ State = $null; Facts = $null; PackageFacts = $null; AutopilotFacts = $null; VpnFacts = $null; FixFacts = $null; WipeFacts = $null; CliCheck = $null }
-    if ($ActionKey -like 'links.*' -or $ActionKey -like 'web.*') {
-        # cc-P83: a link reads nothing. cc-P101: nor does a Websites button (websites.json is in the config).
+    if ($ActionKey -like 'links.*' -or $ActionKey -like 'web.*' -or $ActionKey -like 'art.*' -or $ActionKey -like 'map.*') {
+        # cc-P83: a link reads nothing. cc-P101: nor does a Websites button (websites.json is in the config). cc-P135: nor a Map and Art one.
     } elseif ($ActionKey -like 'vpn.*') {
         # cc-P86: this PC's adapters, route and services, read now.
         $f.VpnFacts = Get-VpnFacts $Config
@@ -9036,6 +9178,40 @@ function New-WebsiteButton {
     $b.Margin = New-Object Windows.Forms.Padding(6)
     $b.Add_Click({ Invoke-ConsoleButton -ActionKey $this.Tag -Site (Get-SelectedWebsite) })
     $b
+}
+
+function Get-MapArtInputs {
+    # cc-P135: the Map and Art tab's boxes, as a click hands them over.
+    $r = @{ VdFile = ''; Body = ''; HuesFile = '' }
+    if ($script:ui.VdFileBox) { $r.VdFile = ([string]$script:ui.VdFileBox.Text).Trim() }
+    if ($script:ui.BodyBox) { $r.Body = ([string]$script:ui.BodyBox.Text).Trim() }
+    if ($script:ui.HuesFileBox) { $r.HuesFile = ([string]$script:ui.HuesFileBox.Text).Trim() }
+    $r
+}
+
+function New-MapArtButton {
+    # cc-P135: a Map and Art button: as New-ConsoleButton, but it hands over the .vd, body and hues.mul boxes.
+    param([string]$Text, [string]$ActionKey, [int]$Width = 230)
+    $b = New-Object Windows.Forms.Button
+    $b.Text = $Text
+    $b.Tag = $ActionKey
+    $b.Width = $Width
+    $b.Height = 36
+    $b.Margin = New-Object Windows.Forms.Padding(6)
+    $b.Add_Click({ $i = Get-MapArtInputs; Invoke-ConsoleButton -ActionKey $this.Tag -VdFile $i.VdFile -Body $i.Body -HuesFile $i.HuesFile })
+    $b
+}
+
+function Show-FilePicker {
+    # cc-P135: one existing file, picked in the standard dialog; its path, or $null on Cancel.
+    param([string]$Filter, [string]$Title)
+    $d = New-Object Windows.Forms.OpenFileDialog
+    $d.Filter = $Filter
+    $d.Title = $Title
+    $d.CheckFileExists = $true
+    $d.Multiselect = $false
+    if ($d.ShowDialog() -eq [Windows.Forms.DialogResult]::OK) { return $d.FileName }
+    $null
 }
 
 function Get-SelectedQuestionShard {
@@ -9384,7 +9560,7 @@ function Show-YesNo {
 function Invoke-ConsoleButton {
     param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage,
         [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [string]$Commit, [string]$Site,
-        $Prefetched)
+        $Prefetched, [string]$VdFile, [string]$Body, [string]$HuesFile)
     try {
         $ActionKey = Resolve-ActionAlias $ActionKey
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
@@ -9393,11 +9569,11 @@ function Invoke-ConsoleButton {
         $isAutopilot = ($ActionKey -like 'golem.*')
         $isVpn = ($ActionKey -like 'vpn.*')
         if (-not $ShardKey -and $isVpn) { $ShardKey = 'network' }
-        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'golem' }; if ($ActionKey -like 'links.*') { $ShardKey = 'links' }; if ($ActionKey -like 'web.*') { $ShardKey = 'websites' } }
+        if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'golem' }; if ($ActionKey -like 'links.*') { $ShardKey = 'links' }; if ($ActionKey -like 'web.*') { $ShardKey = 'websites' }; if ($ActionKey -like 'art.*' -or $ActionKey -like 'map.*') { $ShardKey = 'mapart' } }
         # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
         # status is a capture file". Only the second decides where the state comes from.
         if ($script:fromCapture -and -not $script:dry) { throw 'the status is from a capture file, so nothing may run for real. Relaunch without -DryRun.' }
-        if (-not $Prefetched -and $script:BackgroundRefresh -and $ActionKey -notlike 'links.*' -and $ActionKey -notlike 'web.*') {
+        if (-not $Prefetched -and $script:BackgroundRefresh -and $ActionKey -notlike 'links.*' -and $ActionKey -notlike 'web.*' -and $ActionKey -notlike 'art.*' -and $ActionKey -notlike 'map.*') {
             # cc-P154: the reads below (docker, git, dist\, the Golem's folder, the adapters) in the background first;
             # this click carries on with them when they are back (Start-ActionPrecheck), and the window keeps painting.
             $bound = @{}
@@ -9414,8 +9590,8 @@ function Invoke-ConsoleButton {
         $apFacts = $pre.AutopilotFacts
         $vpnFacts = $pre.VpnFacts
         $state = $pre.State
-        if ($ActionKey -like 'links.*' -or $ActionKey -like 'web.*') {
-            # cc-P83: a link reads nothing. cc-P101: nor does a Websites button (websites.json is in the config).
+        if ($ActionKey -like 'links.*' -or $ActionKey -like 'web.*' -or $ActionKey -like 'art.*' -or $ActionKey -like 'map.*') {
+            # cc-P83: a link reads nothing. cc-P101: nor does a Websites button (websites.json is in the config). cc-P135: nor a Map and Art one.
         } elseif ($isVpn) {
             # cc-P86: this PC's adapters, route and services (Get-ActionFacts).
             $script:vpnFacts = $vpnFacts; $script:vpnFactsAt = [datetime]::UtcNow
@@ -9471,7 +9647,7 @@ function Invoke-ConsoleButton {
                 if (-not $WipeAdmin) { Write-ConsoleLine ($ActionKey + ': cancelled. Nothing was changed.') 'gray'; return }
             }
         }
-        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fxFacts -Commit $Commit -Site $Site)
+        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fxFacts -Commit $Commit -Site $Site -VdFile $VdFile -Body $Body -HuesFile $HuesFile)
         $viol = @(Test-PlanSafety $plan $script:cfg)
         Write-ConsoleLine '' 'normal'
         $dryTag = ''
@@ -9507,7 +9683,7 @@ function Invoke-ConsoleButton {
             $wanted = ((Get-OutputRoute -ActionKey $ActionKey -OutputIn $script:settings.OutputIn -PaneAvailable $true) -eq 'pane')
         }
         if ($def.RunIn -eq 'window') {
-            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:($CommitForce -and $ActionKey -eq 'commit.run') -WipeAdmin $WipeAdmin -ForPane:($route -eq 'pane') -Commit $Commit
+            $argLine = Get-ChildArgumentLine -SelfPath $script:SelfPath -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $SnapshotName -Snapshot $Snapshot -ConfirmLive $phrase -Yes:$answeredYes -DryRun:$script:dry -StatusFrom $script:statusFrom -StatusFromDocker:(-not $script:fromCapture) -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:($CommitForce -and $ActionKey -eq 'commit.run') -WipeAdmin $WipeAdmin -ForPane:($route -eq 'pane') -Commit $Commit -VdFile $VdFile -Body $Body -HuesFile $HuesFile
             if ($route -eq 'pane') {
                 Start-PaneJob -Exe $script:cfg.PowerShell -Arguments $argLine -Title ($ActionKey + ' (' + $ShardKey + ')')
                 if ($script:dry) { Write-ConsoleLine ($ActionKey + ' (' + $ShardKey + '): DRY RUN in the Action output pane. It prints the plan and runs nothing.') 'amber' }
@@ -10107,6 +10283,71 @@ function New-ConsoleForm {
         $script:worldCmds = $null
     } else { $worldPage.Controls.Add((New-WorldSetupTable $Config)) }
 
+    # cc-P135: Map and Art. The art checks run validate-art.py and show its output in the Action output pane (or a
+    # window); the map buttons print an in-game command's syntax. The boxes feed Check a .vd and Compare a hues.mul.
+    $artPage = New-Object Windows.Forms.TabPage('Map and Art')
+    $artFlow = New-Object Windows.Forms.FlowLayoutPanel
+    $artFlow.Dock = 'Fill'
+    $artFlow.AutoScroll = $true
+    $artFlow.FlowDirection = 'LeftToRight'
+    $artFlow.WrapContents = $true
+    $artCap = New-Caption ('ART CHECKS run scripts\validate-art.py (read only) and show its output in the Action output pane. Check the art registry and Body table need nothing. Check a .vd takes the file below and a body number (empty: a free body and anim7 slot are proposed). Compare a hues.mul takes the other hues.mul and compares it with ' + $Config.OurHues + '. Exit 1 in the pane means it found problems to read, not that it failed. MAP COMMANDS print the syntax of the six in-game map checks (GameMaster), which are typed in a client: the console cannot run them.') 1100
+    $artFlow.Controls.Add($artCap)
+    $artFlow.SetFlowBreak($artCap, $true)
+    $vdBox = New-Object Windows.Forms.TextBox
+    $vdBox.Name = 'art.vdfile'
+    $vdBox.Width = 520
+    $vdBox.Margin = New-Object Windows.Forms.Padding(6, 12, 6, 6)
+    $vdBrowse = New-Object Windows.Forms.Button
+    $vdBrowse.Text = 'Browse .vd'
+    $vdBrowse.Name = 'art.browsevd'
+    $vdBrowse.Width = 110
+    $vdBrowse.Height = 28
+    $vdBrowse.Margin = New-Object Windows.Forms.Padding(6, 10, 6, 6)
+    $vdBrowse.Add_Click({ $f = Show-FilePicker 'Animation file (*.vd)|*.vd|All files (*.*)|*.*' 'Pick a .vd file'; if ($f) { $script:ui.VdFileBox.Text = $f } })
+    $bodyLabel = New-Caption 'body' 60
+    $bodyLabel.Margin = New-Object Windows.Forms.Padding(6, 16, 0, 6)
+    $bodyBox = New-Object Windows.Forms.TextBox
+    $bodyBox.Name = 'art.body'
+    $bodyBox.Width = 70
+    $bodyBox.Margin = New-Object Windows.Forms.Padding(6, 12, 6, 6)
+    $artFlow.Controls.AddRange(@($vdBox, $vdBrowse, $bodyLabel, $bodyBox))
+    $artFlow.SetFlowBreak($bodyBox, $true)
+    $huesBox = New-Object Windows.Forms.TextBox
+    $huesBox.Name = 'art.huesfile'
+    $huesBox.Width = 520
+    $huesBox.Margin = New-Object Windows.Forms.Padding(6, 12, 6, 6)
+    $huesBrowse = New-Object Windows.Forms.Button
+    $huesBrowse.Text = 'Browse hues.mul'
+    $huesBrowse.Name = 'art.browsehues'
+    $huesBrowse.Width = 130
+    $huesBrowse.Height = 28
+    $huesBrowse.Margin = New-Object Windows.Forms.Padding(6, 10, 6, 6)
+    $huesBrowse.Add_Click({ $f = Show-FilePicker 'Hues file (*.mul)|*.mul|All files (*.*)|*.*' 'Pick the other hues.mul'; if ($f) { $script:ui.HuesFileBox.Text = $f } })
+    $artFlow.Controls.AddRange(@($huesBox, $huesBrowse))
+    $artFlow.SetFlowBreak($huesBrowse, $true)
+    $artBtns = @()
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Map and Art' })) {
+        $b = New-MapArtButton $a.Label $a.Key 230
+        $artBtns += $b
+        $artFlow.Controls.Add($b)
+    }
+    $artFlow.SetFlowBreak($artBtns[-1], $true)
+    $mapHead = New-Caption 'MAP COMMANDS (in-game, GameMaster): each button prints the syntax and what the command says.' 1100 ([Drawing.Color]::DimGray)
+    $artFlow.Controls.Add($mapHead)
+    $artFlow.SetFlowBreak($mapHead, $true)
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Map commands' })) {
+        $b = New-ConsoleButton $a.Label $a.Key 170
+        $artBtns += $b
+        $artFlow.Controls.Add($b)
+    }
+    $artPage.Controls.Add($artFlow)
+    $script:ui.MapArtPage = $artPage
+    $script:ui.MapArtButtons = $artBtns
+    $script:ui.VdFileBox = $vdBox
+    $script:ui.BodyBox = $bodyBox
+    $script:ui.HuesFileBox = $huesBox
+
     $diagPage = New-ButtonPage 'Diagnostics' ('Two read-only health checks. Each writes one timestamped file in ' + $Config.DiagFolder + '. The shard check reads the TEST container only. Disconnect VPN turns off a VPN that is making sl-ddns publish the wrong address.') @(
         (New-ConsoleButton 'Check Docker' 'diag.docker'),
         (New-ConsoleButton 'Check the test shard' 'diag.shard'),
@@ -10455,7 +10696,7 @@ function New-ConsoleForm {
     $script:ui.WebsitesPanel = $webPanel
     $script:ui.WebsiteButtons = $webBtns
 
-    $tabs.TabPages.AddRange(@($testPage, $fixPage, $qPage, $snapPage, $worldPage, $diagPage, $commitPage, $pkgPage, $apPage, $webPage, $livePage))
+    $tabs.TabPages.AddRange(@($testPage, $fixPage, $qPage, $snapPage, $worldPage, $artPage, $diagPage, $commitPage, $pkgPage, $apPage, $webPage, $livePage))
     $script:ui.WorldPage = $worldPage
     $script:ui.PackagePage = $pkgPage
     # cc-P116: a page's scrolling is worked out again when it is shown (its wrapping parts only measure true then), and
@@ -10691,6 +10932,7 @@ if ($Action -eq 'list') {
     Write-Host 'vpn.disconnect needs -Mode Execute: it ends a WireGuard for Windows tunnel (elevated), opens Proton VPN, or names the VPN to disconnect in its app.'
     Write-Host 'links.playtests, links.dashboard and links.status open the play-test page (8093), the dashboard (3000) and the status page (8093/status) in the browser.'
     Write-Host 'web.open, .logs and .npm only open; web.restart, .redeploy and .deploy need -Mode Execute. Each takes -Site <key in scripts\websites.json>; web.deploy also -ConfirmLive ''deploy to haven''.'
+    Write-Host 'art.registry and art.bodies run scripts\validate-art.py (read only); art.checkvd takes -VdFile <path> and -Body <n> (no body: a free one is proposed); art.hues takes -HuesFile <the other hues.mul>. map.* print an in-game command''s syntax.'
     Write-Host 'golem.on, .off, .email, .test and .move need -Mode Execute; each opens the Golem''s own script in a window of its own (golem.move after -ConfirmLive ''move to the golem''). golem.queue, .log, .settings and .folder only open. autopilot.* still work as aliases.'
     exit 0
 }
@@ -10728,6 +10970,7 @@ if ($Action) {
     if ($Action -like 'links.*') { $sk = 'links' }
     if ($Action -like 'vpn.*') { $sk = 'network' }
     if ($Action -like 'web.*') { $sk = 'websites' }
+    if ($Action -like 'art.*' -or $Action -like 'map.*') { $sk = 'mapart' }
     # The mode is decided and shown before anything is read or run (D37).
     $run = Resolve-RunMode -Action $Action -Mode $Mode -DryRun:$DryRun
     $banner = Get-ModeBanner -RunMode $run -Action $Action -ShardKey $sk
@@ -10741,8 +10984,8 @@ if ($Action) {
     $apFacts = $null
     $now = Get-Date
     $vpnFacts = $null
-    if ($Action -like 'links.*' -or $Action -like 'web.*') {
-        # cc-P83: a link reads nothing. cc-P101: nor does a Websites action.
+    if ($Action -like 'links.*' -or $Action -like 'web.*' -or $Action -like 'art.*' -or $Action -like 'map.*') {
+        # cc-P83: a link reads nothing. cc-P101: nor does a Websites action. cc-P135: nor a Map and Art one.
     } elseif ($Action -like 'vpn.*') {
         $vpnFacts = Get-VpnFacts $config
     } elseif ($Action -like 'golem.*') {
@@ -10767,7 +11010,7 @@ if ($Action) {
     # cc-P96: Fix test shard re-reads git and the save record here, as the wipe re-reads its facts.
     $fixFacts = $null
     if ($Action -like 'fix.*') { $fixFacts = Get-FixFacts $config $st -NoDocker:$fromCapture }
-    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fixFacts -Commit $Commit -Site $Site)
+    $plan = @(Get-ActionPlan -Action $Action -ShardKey $Shard -Config $config -State $st -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fixFacts -Commit $Commit -Site $Site -VdFile $VdFile -Body $Body -HuesFile $HuesFile)
     $viol = @(Test-PlanSafety $plan $config)
     $header = 'PLAN'
     if ($isDry) { $header = 'DRY RUN' }

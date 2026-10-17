@@ -1048,7 +1048,7 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
-        Assert-Equal 'Test shard,Fix test shard,Shard question,Snapshots,World setup,Diagnostics,Commit,Player package,Golem,Websites,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot (Golem since cc-P99), cc-P101 Websites, cc-P96 Fix test shard beside Test shard, cc-P106 Shard question after it; LIVE stays last'
+        Assert-Equal 'Test shard,Fix test shard,Shard question,Snapshots,World setup,Map and Art,Diagnostics,Commit,Player package,Golem,Websites,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot (Golem since cc-P99), cc-P101 Websites, cc-P96 Fix test shard beside Test shard, cc-P106 Shard question after it, cc-P135 Map and Art after World setup; LIVE stays last'
         Assert-Equal 'Preview commit,Commit and push' (@($script:ui.CommitButtons | ForEach-Object { $_.Text }) -join ',') 'cc-P60'
         Assert-Equal 'package.build,package.publish,package.check' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P63, and cc-P68''s Check selected'
         Assert-True ($null -ne $script:ui.CommitForce -and -not $script:ui.CommitForce.Checked) 'cc-P68: the Force box, unticked'
@@ -1081,13 +1081,30 @@ $liveStoppedState = New-StateWithSnapshots @($snapName)
 $liveStoppedState.Shards['live'].Container.Running = $false
 $liveStoppedState.Shards['live'].Container.Status = 'exited'
 
+# cc-P135: throwaway files for the Map and Art plans: a .vd with a valid header and empty records (int16 6, int16 layout
+# 0, 110 records of -1), and a few bytes named hues.mul. The plans check the name and that the file is there; nothing
+# here runs validate-art on them.
+$p135Dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p135-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $p135Dir -Force | Out-Null
+$p135Vd = Join-Path $p135Dir 'Sample.vd'
+$p135VdBytes = New-Object byte[] (4 + 110 * 12)
+$p135VdBytes[0] = 6
+for ($i = 4; $i -lt $p135VdBytes.Length; $i++) { $p135VdBytes[$i] = 0xFF }
+[IO.File]::WriteAllBytes($p135Vd, $p135VdBytes)
+$p135Hues = Join-Path $p135Dir 'hues.mul'
+[IO.File]::WriteAllBytes($p135Hues, (New-Object byte[] 64))
+
 function Invoke-ClickCapture {
     # FromCapture defaults to Dry: a console launched with -DryRun. Dry with FromCapture false is
     # the toggle in a console whose status is live from docker.
     param([string]$ActionKey, [string]$ShardKey, [bool]$Dry, $State = $snapState, $FromCapture = $null, $CommitFacts = $commitFactsOk, [string]$CommitMessage,
         $PackageFacts = $pkgFactsOk, [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [string]$Picked = 'sl-modernuo:cc-p61', [switch]$CommitForce,
-        $WipeFacts = $wipeFactsOk, [string]$WipeName = 'newadmin', $FixFacts = $p96Facts, [string]$PickedCommit = '61db33c0a1b2c3d4e5f60718293a4b5c6d7e8f90')
+        $WipeFacts = $wipeFactsOk, [string]$WipeName = 'newadmin', $FixFacts = $p96Facts, [string]$PickedCommit = '61db33c0a1b2c3d4e5f60718293a4b5c6d7e8f90',
+        [string]$VdFile, [string]$Body, [string]$HuesFile)
     if ($null -eq $FromCapture) { $FromCapture = $Dry }
+    # cc-P135: Check a .vd and Compare a hues.mul need a file to open a window; the facts' throwaway ones unless given.
+    if ($ActionKey -eq 'art.checkvd' -and -not $PSBoundParameters.ContainsKey('VdFile')) { $VdFile = $p135Vd }
+    if ($ActionKey -eq 'art.hues' -and -not $PSBoundParameters.ContainsKey('HuesFile')) { $HuesFile = $p135Hues }
     $rec = [pscustomobject]@{
         Spawned = New-Object 'System.Collections.Generic.List[string]'
         Lines = New-Object 'System.Collections.Generic.List[string]'
@@ -1120,7 +1137,7 @@ function Invoke-ClickCapture {
     # cc-P63: the package buttons need notes or a zip to open a window; a picked image is the picker's.
     if ($ActionKey -eq 'package.build' -and -not $PSBoundParameters.ContainsKey('PackageNotes')) { $PackageNotes = 'P63 window check' }
     if ($ActionKey -in @('package.publish', 'package.check') -and -not $PSBoundParameters.ContainsKey('PackageZip')) { $PackageZip = $pkgZipName }
-    try { Invoke-ConsoleButton -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $sn -Snapshot $s -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:$CommitForce }
+    try { Invoke-ConsoleButton -ActionKey $ActionKey -ShardKey $ShardKey -SnapshotName $sn -Snapshot $s -CommitMessage $CommitMessage -PackageNotes $PackageNotes -PackageZip $PackageZip -ImageTag $ImageTag -CommitForce:$CommitForce -VdFile $VdFile -Body $Body -HuesFile $HuesFile }
     finally { $script:dry, $script:cfg, $script:statusFrom, $script:SelfPath, $script:fromCapture = $saved }
     $rec
 }
@@ -6707,7 +6724,189 @@ Fact 'P155_TheWebConsoleListensOnTheLoopbackOnlyAndPublishesNothing' {
     Assert-True ($c -match 'image: tailscale/tailscale:v\d+\.\d+\.\d+' -and $c -notmatch 'TS_AUTHKEY:\s*\S') 'a pinned image, and the key only from the env file'
 }
 
+# --- cc-P135: the Map and Art tab. validate-art.py's checks from the console, read only; the in-game map commands' syntax ---
+
+Write-Host "cc-P135 Map and Art facts" -ForegroundColor Cyan
+
+function Get-MapArtActionPlan { param([string]$Action, [string]$VdFile, [string]$Body, [string]$HuesFile) @(Get-ActionPlan -Action $Action -ShardKey 'mapart' -Config $config -State $state -Now $now -VdFile $VdFile -Body $Body -HuesFile $HuesFile) }
+
+Fact 'P135_TheFourArtChecksRunOnlyValidateArtReadOnlyAndReportExitOne' {
+    $va = $config.ValidateArt
+    Assert-True (Test-Path -LiteralPath $va) $va
+    $want = @{ 'art.registry' = @('check-registry'); 'art.bodies' = @('bodies') }
+    foreach ($k in $want.Keys) {
+        $p = Get-MapArtActionPlan $k
+        $ex = @($p | Where-Object { $_.Kind -eq 'exec' })
+        Assert-Equal 1 $ex.Count ($k + ': one exec step')
+        Assert-Equal $config.Python $ex[0].Exe $k
+        Assert-Equal ($va + ' ' + ($want[$k] -join ' ')) ($ex[0].Arguments -join ' ') $k
+        Assert-Equal 1 $ex[0].Named['ReportExit'] ($k + ': exit 1 is problems found, not a failure')
+        Assert-Equal 0 @($p | Where-Object { $_.Kind -in @('confirm', 'ask', 'window', 'script', 'copy', 'move', 'remove-snapshot', 'log') }).Count ($k + ': reads only, confirms nothing, logs nothing')
+        Assert-Equal 0 @(Test-PlanSafety $p $config).Count ($k + ': ' + (@(Test-PlanSafety $p $config) -join '; '))
+    }
+    $p = Get-MapArtActionPlan 'art.checkvd' -VdFile $p135Vd -Body '2052'
+    $ex = @($p | Where-Object { $_.Kind -eq 'exec' })[0]
+    Assert-Equal ($va + ' check-vd ' + $p135Vd + ' 2052') ($ex.Arguments -join ' ') 'a body: check-vd on the file and body'
+    $p = Get-MapArtActionPlan 'art.checkvd' -VdFile $p135Vd
+    $ex = @($p | Where-Object { $_.Kind -eq 'exec' })[0]
+    Assert-Equal ($va + ' propose ' + $p135Vd) ($ex.Arguments -join ' ') 'no body: propose one'
+    Assert-True ((@($p | Where-Object { $_.Kind -eq 'say' })[0]).Text -match 'propose one') 'and the plan says so'
+    $p = Get-MapArtActionPlan 'art.hues' -HuesFile $p135Hues
+    $ex = @($p | Where-Object { $_.Kind -eq 'exec' })[0]
+    Assert-Equal ($va + ' hues-diff ' + $config.OurHues + ' ' + $p135Hues) ($ex.Arguments -join ' ') 'ours first, theirs second'
+    foreach ($k in 'art.checkvd', 'art.hues') { Assert-Equal 0 @(Test-PlanSafety (Get-MapArtActionPlan $k -VdFile $p135Vd -HuesFile $p135Hues) $config).Count $k }
+}
+
+Fact 'P135_CheckVdAndHuesRefuseAMissingWrongOrOwnFileAndANonNumericBody' {
+    $refuse = { param($p) @($p | Where-Object { $_.Kind -eq 'refuse' }) }
+    Assert-True ((& $refuse (Get-MapArtActionPlan 'art.checkvd'))[0].Text -match 'Pick a \.vd file first') 'no file'
+    Assert-True ((& $refuse (Get-MapArtActionPlan 'art.checkvd' -VdFile (Join-Path $p135Dir 'missing.vd')))[0].Text -match 'Not a \.vd file that exists') 'a missing file'
+    Assert-True ((& $refuse (Get-MapArtActionPlan 'art.checkvd' -VdFile $p135Hues))[0].Text -match 'Not a \.vd file') 'the wrong kind of file'
+    Assert-True ((& $refuse (Get-MapArtActionPlan 'art.checkvd' -VdFile $p135Vd -Body '0x804'))[0].Text -match 'number in decimal') 'hex is refused'
+    Assert-True ((& $refuse (Get-MapArtActionPlan 'art.checkvd' -VdFile $p135Vd -Body 'kirin'))[0].Text -match 'number in decimal') 'a word is refused'
+    Assert-True ((& $refuse (Get-MapArtActionPlan 'art.hues'))[0].Text -match 'Pick the other hues\.mul first') 'no hues file'
+    Assert-True ((& $refuse (Get-MapArtActionPlan 'art.hues' -HuesFile $p135Vd))[0].Text -match 'Not a \.mul file') 'a .vd is not a hues file'
+    if (Test-Path -LiteralPath $config.OurHues) { Assert-True ((& $refuse (Get-MapArtActionPlan 'art.hues' -HuesFile $config.OurHues))[0].Text -match 'our own hues\.mul') 'ours against ours is refused' }
+    foreach ($p in @((Get-MapArtActionPlan 'art.checkvd'), (Get-MapArtActionPlan 'art.hues'), (Get-MapArtActionPlan 'art.checkvd' -VdFile $p135Vd -Body 'kirin'))) {
+        Assert-Equal 0 @($p | Where-Object { $_.Kind -eq 'exec' }).Count 'a refused plan runs nothing'
+    }
+}
+
+Fact 'P135_TheSafetyCheckRefusesPythonOutsideValidateArtAndRenderOrAnyOtherSubcommand' {
+    $va = $config.ValidateArt
+    $bad = @(
+        @{ Why = 'render writes PNGs';        Step = (New-PlanStep -Kind exec -Exe 'python' -Arguments @($va, 'render', '132', '0', '2', '--out', 'D:\x')) },
+        @{ Why = 'another script';            Step = (New-PlanStep -Kind exec -Exe 'python' -Arguments @((Join-Path $repo 'scripts\find-free-art.py'), 'bodies')) },
+        @{ Why = 'python with -c';            Step = (New-PlanStep -Kind exec -Exe 'python' -Arguments @('-c', 'print(1)')) },
+        @{ Why = 'python3.exe too';           Step = (New-PlanStep -Kind exec -Exe 'C:\Python\python3.exe' -Arguments @('-m', 'http.server')) },
+        @{ Why = 'validate-art in a window';  Step = (New-PlanStep -Kind window -Exe 'python' -Arguments @($va, 'bodies')) },
+        @{ Why = 'validate-art through cmd';  Step = (New-PlanStep -Kind exec -Exe 'cmd.exe' -Arguments @('/c', 'python', $va, 'bodies')) },
+        @{ Why = 'a subcommand not listed';   Step = (New-PlanStep -Kind exec -Exe 'python' -Arguments @($va, 'actions', '132')) },
+        @{ Why = 'propose with --out';        Step = (New-PlanStep -Kind exec -Exe 'python' -Arguments @($va, 'propose', $p135Vd, '--out', 'D:\x')) }
+    )
+    foreach ($b in $bad) {
+        $v = @(Test-PlanSafety @($b.Step) $config)
+        Assert-True ($v.Count -ge 1 -and ($v -join ' ') -match 'python runs here only as') ($b.Why + ': ' + ($v -join '; '))
+    }
+    foreach ($sub in $config.ArtSubcommands) {
+        $args = @($va, $sub)
+        if ($sub -in @('check-vd', 'propose')) { $args += $p135Vd }
+        if ($sub -eq 'check-vd') { $args += '2052' }
+        if ($sub -eq 'hues-diff') { $args += @($config.OurHues, $p135Hues) }
+        Assert-Equal 0 @(Test-PlanSafety @((New-PlanStep -Kind exec -Exe 'python' -Arguments $args)) $config).Count ($sub + ' is allowed')
+    }
+    Assert-Equal 'bodies,check-registry,check-vd,propose,hues-diff' ($config.ArtSubcommands -join ',') 'and render is not among them'
+}
+
+Fact 'P135_EveryMapButtonPrintsItsCommandsSyntaxAndRunsNothing' {
+    $src = [IO.File]::ReadAllText((Join-Path $repo 'server\customizations\StaffHub\ClusterFMapCheckCommands.cs'))
+    $keys = @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Map commands' } | ForEach-Object { $_.Key })
+    Assert-Equal 'map.footprint,map.spots,map.statics,map.walkable,map.shore,map.export' ($keys -join ',')
+    foreach ($c in Get-MapCommandSyntax) {
+        Assert-True ($keys -contains $c.Key) ($c.Key + ' is a button')
+        Assert-True ($src -match ('CommandSystem\.Register\("' + [regex]::Escape($c.Command) + '", AccessLevel\.GameMaster')) ($c.Command + ' is registered GameMaster in ClusterFMapCheckCommands.cs')
+        Assert-True ($src -match ('\[Usage\("' + [regex]::Escape($c.Usage.Substring(1)) + '"\)')) ($c.Command + ': the usage printed is the one the command declares: ' + $c.Usage)
+        $p = Get-MapArtActionPlan $c.Key
+        Assert-Equal 'say,say,say' (@($p | ForEach-Object { $_.Kind }) -join ',') ($c.Key + ' only says')
+        Assert-True ($p[0].Text.StartsWith($c.Usage)) ($c.Key + ': ' + $p[0].Text)
+        Assert-True ($p[2].Text -match 'the console cannot run in-game commands') $c.Key
+        Assert-Equal 0 @(Test-PlanSafety $p $config).Count $c.Key
+        $r = Invoke-ClickCapture $c.Key 'mapart' $false
+        Assert-Equal 0 $r.Spawned.Count ($c.Key + ' opens no window')
+        Assert-Equal 1 $r.Executed.Count ($c.Key + ' prints here')
+    }
+    Assert-Equal 6 @(Get-MapCommandSyntax).Count
+}
+
+Fact 'P135_TheChildLineCarriesTheVdFileBodyAndHuesFileAndOnlyDigitsForTheBody' {
+    $l = Get-ChildArgumentLine -SelfPath 'C:\x\Shard-Console.ps1' -ActionKey 'art.checkvd' -ShardKey 'mapart' -VdFile 'D:\art\my kirin.vd' -Body '2052'
+    Assert-True ($l -match '-Mode Execute -Action art\.checkvd ') $l
+    Assert-True ($l -match ' -VdFile "D:\\art\\my kirin\.vd"') $l
+    Assert-True ($l -match ' -Body 2052') $l
+    Assert-True ($l -notmatch '-Shard ') 'no shard'
+    $l2 = Get-ChildArgumentLine -SelfPath 'C:\x\Shard-Console.ps1' -ActionKey 'art.checkvd' -ShardKey 'mapart' -VdFile 'D:\a".vd' -Body '0x804'
+    Assert-True ($l2 -match ' -VdFile "D:\\a\.vd"') ('a quote is dropped: ' + $l2)
+    Assert-True ($l2 -notmatch '-Body') ('a body that is not digits does not cross: ' + $l2)
+    $l3 = Get-ChildArgumentLine -SelfPath 'C:\x\Shard-Console.ps1' -ActionKey 'art.hues' -ShardKey 'mapart' -HuesFile 'E:\other\hues.mul' -DryRun
+    Assert-True ($l3 -match '-Mode DryRun -Action art\.hues ' -and $l3 -match ' -HuesFile "E:\\other\\hues\.mul"') $l3
+    # And a click hands the boxes over: dry, one window, with the file and body.
+    $r = Invoke-ClickCapture 'art.checkvd' 'mapart' $true -VdFile $p135Vd -Body '2052'
+    Assert-Equal 1 $r.Spawned.Count 'one window'
+    Assert-True ($r.Spawned[0] -match (' -VdFile "' + [regex]::Escape($p135Vd) + '" -Body 2052')) $r.Spawned[0]
+    Assert-True ($r.Spawned[0] -match '-Mode DryRun -Action art\.checkvd') $r.Spawned[0]
+    $r = Invoke-ClickCapture 'art.hues' 'mapart' $true -HuesFile $p135Hues
+    Assert-True ($r.Spawned[0] -match (' -HuesFile "' + [regex]::Escape($p135Hues) + '"')) $r.Spawned[0]
+    $r = Invoke-ClickCapture 'art.checkvd' 'mapart' $true -VdFile ''
+    Assert-Equal 0 $r.Spawned.Count 'no file, no window'
+    Assert-True (@($r.Lines | Where-Object { $_ -match 'Pick a \.vd file first' }).Count -ge 1) ('and the refusal is said: ' + ($r.Lines -join ' | '))
+}
+
+Fact 'P135_AReportedExitCodeIsSaidInAmberAndTheRunIsDoneAnyOtherFails' {
+    # A throwaway script that exits as told, as the D38 facts do; never validate-art itself.
+    $dir = Join-Path $p135Dir 'exit'
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $ps1 = Join-Path $dir 'child.ps1'
+    Set-Content -LiteralPath $ps1 -Encoding ASCII -Value @("Write-Output 'p135 found two problems'", 'exit ([int]$args[0])')
+    $cfg = Get-ConsoleConfig -RepoRoot $repo
+    $cfg.LogFile = Join-Path $dir 'shard-console.log'
+    $lines = New-Object 'System.Collections.Generic.List[string]'
+    function Write-ConsoleLine { param([string]$Text, [string]$Color) $lines.Add($Color + '|' + $Text) }
+    $one = New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ps1, '1') -Text 'exits 1' -Named ([ordered]@{ ReportExit = 1 })
+    $two = New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ps1, '2') -Text 'exits 2' -Named ([ordered]@{ ReportExit = 1 })
+    $plain = New-PlanStep -Kind exec -Exe 'powershell.exe' -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ps1, '1') -Text 'exits 1, not reported'
+    Assert-Equal $true (Invoke-Plan -Plan @($one) -Config $cfg -ActionKey 'fact' -ShardKey 'mapart') 'the reported exit is done'
+    Assert-True (@($lines | Where-Object { $_ -match '^amber\|.*exited with 1: it found something' }).Count -eq 1) ('said in amber: ' + ($lines -join ' | '))
+    Assert-True (@($lines | Where-Object { $_ -match 'p135 found two problems' }).Count -ge 1) 'the output is shown'
+    $lines.Clear()
+    Assert-Equal $false (Invoke-Plan -Plan @($two) -Config $cfg -ActionKey 'fact' -ShardKey 'mapart') 'another exit code fails'
+    Assert-True (@($lines | Where-Object { $_ -match 'exited with 2' }).Count -ge 1) ($lines -join ' | ')
+    $lines.Clear()
+    Assert-Equal $false (Invoke-Plan -Plan @($plain) -Config $cfg -ActionKey 'fact' -ShardKey 'mapart') 'exit 1 with nothing declared fails, as before'
+}
+
+Fact 'P135_TheTabIsBuiltWithItsBoxesButtonsAndTooltips' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-Equal 'Map and Art' $script:ui.MapArtPage.Text
+        Assert-True ($script:ui.Tabs.TabPages.Contains($script:ui.MapArtPage)) 'in the tab control'
+        Assert-Equal ([array]::IndexOf(@($script:ui.Tabs.TabPages | ForEach-Object { $_.Text }), 'World setup') + 1) ([array]::IndexOf(@($script:ui.Tabs.TabPages | ForEach-Object { $_.Text }), 'Map and Art')) 'right after World setup'
+        Assert-Equal 'art.registry,art.bodies,art.checkvd,art.hues,map.footprint,map.spots,map.statics,map.walkable,map.shore,map.export' (($script:ui.MapArtButtons | ForEach-Object { $_.Tag }) -join ',')
+        Assert-Equal 'Check the art registry,Body table,Check a .vd,Compare a hues.mul with ours,[CheckFootprint,[ValidateSpots,[FindStaticProblems,[Walkable,[ShoreCheck,[ExportPoints' (($script:ui.MapArtButtons | ForEach-Object { $_.Text }) -join ',')
+        Assert-Equal 'art.vdfile,art.body,art.huesfile' (@($script:ui.VdFileBox.Name, $script:ui.BodyBox.Name, $script:ui.HuesFileBox.Name) -join ',')
+        $script:ui.VdFileBox.Text = ' ' + $p135Vd + ' '
+        $script:ui.BodyBox.Text = '2052'
+        $script:ui.HuesFileBox.Text = $p135Hues
+        $i = Get-MapArtInputs
+        Assert-Equal $p135Vd $i.VdFile 'trimmed'
+        Assert-Equal '2052' $i.Body
+        Assert-Equal $p135Hues $i.HuesFile
+        $tips = Get-ConsoleTooltips
+        foreach ($k in 'tab.Map and Art', 'art.registry', 'art.bodies', 'art.checkvd', 'art.hues', 'art.vdfile', 'art.browsevd', 'art.body', 'art.huesfile', 'art.browsehues', 'map.footprint', 'map.spots', 'map.statics', 'map.walkable', 'map.shore', 'map.export') { Assert-True ($tips.Contains($k)) ('a tooltip for ' + $k) }
+        $browse = @($script:ui.MapArtPage.Controls[0].Controls | Where-Object { $_.Name -in @('art.browsevd', 'art.browsehues') })
+        Assert-Equal 2 $browse.Count 'two Browse buttons'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
+}
+
+Fact 'P135_EveryMapAndArtButtonRunHeadlessWithDryRunRunsNothing' {
+    $cases = @(@('art.registry', @()), @('art.bodies', @()), @('art.checkvd', @('-VdFile', $p135Vd, '-Body', '2052')), @('art.checkvd', @('-VdFile', $p135Vd)), @('art.hues', @('-HuesFile', $p135Hues)), @('map.footprint', @()), @('map.walkable', @()), @('map.export', @()))
+    foreach ($c in $cases) {
+        $extra = @($c[1])
+        $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Resolve-Path $script).Path -DryRun -Action $c[0] @extra 2>&1 | Out-String)
+        Assert-Equal 0 $LASTEXITCODE ($c[0] + ': ' + $out)
+        Assert-True ($out -match ('== DRY RUN: ' + [regex]::Escape($c[0]) + ' \(mapart\)')) ($c[0] + ': ' + $out)
+        Assert-True ($out -match '\(dry run: nothing was run\)') ($c[0] + ': ' + $out)
+        Assert-True ($out -notmatch 'REFUSE') ($c[0] + ': ' + $out)
+        if ($c[0] -like 'art.*') { Assert-True ($out -match 'RUN      python ') ($c[0] + ': the RUN line names python: ' + $out) }
+    }
+    # And without a mode, a read-only action still runs (none of these changes anything); its banner says so.
+    $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Resolve-Path $script).Path -Action map.shore 2>&1 | Out-String)
+    Assert-Equal 0 $LASTEXITCODE $out
+    Assert-True ($out -match 'MAP AND ART  map\.shore \(map and art\)' -and $out -match '\[ShoreCheck \[stepThreshold\]') $out
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $p135Dir -Recurse -Force -ErrorAction SilentlyContinue
 
 $failed =@($results | Where-Object { -not $_.Passed }).Count
 Write-Host ""

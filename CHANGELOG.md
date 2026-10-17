@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.5
+
+### Staff
+- Six map checks for staff, typed in a client: whether a building footprint can stand where you target and why not, every spot in a spawn or decoration file checked for water, cliffs and walls, duplicate or buried map statics in a box, the tiles nobody can walk on (listed, or marked for a minute with red runes on the test shard), where water meets land and how high the coast is, and a targeted rectangle or points written out in the spawn files' own JSON. The Shard Console has a Map and Art tab that runs the art checks and prints these commands' syntax.
+
 ## 2026.10.17.4
 
 ### Staff
