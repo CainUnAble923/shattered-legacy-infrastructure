@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.4
+
+### Staff
+- A creature art check for staff: before a downloaded animation is imported it says which body and animation slot are free, what the client needs to know about it (its type, a hover idle), and what a replacement would also change, can draw any frame to a picture, compares two hue files, and checks the art registry. Claude sessions can now also look things up in the client files directly (a map spot, every body, a hue).
+
 ## 2026.10.17.3
 
 ### Staff
