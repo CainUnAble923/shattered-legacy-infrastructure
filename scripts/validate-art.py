@@ -242,7 +242,9 @@ class Client:
             self.equip = j.get('equipAnims', [])
             self.bodies = j.get('bodyAnims', [])         # cc-P139: creature bodies, a .vd each, into anim7 too
             here = os.path.dirname(records)
-            sl_idx, sl_mul = os.path.join(here, 'sl-anim7-idx.bin'), os.path.join(here, 'sl-anim7.bin')
+            # cc-P140: the generated files live in build\ (git-ignored); beside records.json is the older place.
+            where = os.path.join(here, 'build') if os.path.exists(os.path.join(here, 'build', 'sl-anim7-idx.bin')) else here
+            sl_idx, sl_mul = os.path.join(where, 'sl-anim7-idx.bin'), os.path.join(where, 'sl-anim7.bin')
             if (self.equip or self.bodies) and os.path.exists(sl_idx) and os.path.exists(sl_mul) and OUR_FILE not in self.files:
                 self.files[OUR_FILE] = (np.fromfile(sl_idx, '<i4').reshape(-1, 3), sl_idx, sl_mul)
             extra = [(int(e['anim']), OUR_FILE, int(e['slot']), 'records.json equipAnims') for e in self.equip]

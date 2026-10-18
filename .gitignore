@@ -93,3 +93,8 @@ scripts/shard-console-cache/
 tools/playtest-bot/secrets.local.json
 tools/playtest-bot/**/__pycache__/
 tools/playtest-bot/cache/
+
+# cc-P140: the package's encoded animation files (sl-anim7.bin, sl-anim7-idx.bin) are generated from the committed
+# .vd and PNG sources by scripts/build-equip-anims.py and are about 26 MB, over the 5 MB rule; Build-PlayerPackage.ps1
+# regenerates and checks them before staging. The sources (anim-src/) stay committed.
+player-package/vendor/shattered-legacy-art/build/

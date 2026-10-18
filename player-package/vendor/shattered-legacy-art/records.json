@@ -46,6 +46,29 @@
     { "anim": 4783, "slot": 400, "name": "fox ears and tail" }
   ],
   "bodyAnims": [
-    { "body": 2048, "slot": 1, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2048.vd", "name": "burrow scamp slinger (kobold archer)" }
+    { "body": 2048, "slot": 1, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2048.vd", "name": "burrow scamp slinger (kobold archer)" },
+    { "body": 2049, "slot": 2, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2049.vd", "name": "gourdling" },
+    { "body": 2050, "slot": 3, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2050.vd", "name": "cackler scrapper" },
+    { "body": 2051, "slot": 4, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2051.vd", "name": "cackler slasher" },
+    { "body": 2052, "slot": 5, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2052.vd", "name": "cackler veteran" },
+    { "body": 2053, "slot": 6, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2053.vd", "name": "cackler packleader" },
+    { "body": 2054, "slot": 200, "type": "ANIMAL", "flags": 0, "vd": "anim-src/bodies/2054.vd", "name": "burrow hog" },
+    { "body": 2055, "slot": 7, "type": "MONSTER", "flags": 4, "vd": "anim-src/bodies/2055.vd", "name": "ledger bat" },
+    { "body": 2056, "slot": 8, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2056.vd", "name": "hoarding rat" },
+    { "body": 2057, "slot": 9, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2057.vd", "name": "the overdraft" },
+    { "body": 2058, "slot": 10, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2058.vd", "name": "burrow grub" },
+    { "body": 2059, "slot": 201, "type": "ANIMAL", "flags": 0, "vd": "anim-src/bodies/2059.vd", "name": "burrow scamp" },
+    { "body": 2060, "slot": 202, "type": "ANIMAL", "flags": 0, "vd": "anim-src/bodies/2060.vd", "name": "redcap scamp" },
+    { "body": 2061, "slot": 11, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2061.vd", "name": "the burrow mother" },
+    { "body": 2062, "slot": 12, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2062.vd", "name": "sporecap (red)" },
+    { "body": 2063, "slot": 13, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2063.vd", "name": "sporecap (blue)" },
+    { "body": 2064, "slot": 14, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2064.vd", "name": "bramblehulk" },
+    { "body": 2065, "slot": 15, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2065.vd", "name": "dawnshard" },
+    { "body": 2066, "slot": 16, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2066.vd", "name": "seamguard" },
+    { "body": 2067, "slot": 17, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2067.vd", "name": "gloomling" },
+    { "body": 2068, "slot": 18, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2068.vd", "name": "gloomspinner" },
+    { "body": 2069, "slot": 19, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2069.vd", "name": "gloomweaver" },
+    { "body": 2070, "slot": 20, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2070.vd", "name": "the gloom queen" },
+    { "body": 2071, "slot": 21, "type": "ANIMAL", "flags": 40, "vd": "anim-src/bodies/2071.vd", "name": "crop crow" }
   ]
 }

@@ -87,7 +87,7 @@ function Invoke-BuilderSaying([string]$uo, [string]$out, [string]$ent = $entries
     # cc-P62: the shipped records also name a worn-item animation; its two files are vendor's (Play.ps1's folder
     # gets them from the package build).
     $va = Join-Path $pkg 'vendor\shattered-legacy-art'
-    foreach ($x in @(& $builder -UoDir $uo -Records $rec -Clilocs $ent -OutDir $out -AnimMul (Join-Path $va 'sl-anim7.bin') -AnimIdx (Join-Path $va 'sl-anim7-idx.bin') 6>&1)) {
+    foreach ($x in @(& $builder -UoDir $uo -Records $rec -Clilocs $ent -OutDir $out -AnimMul (Join-Path $va 'build\sl-anim7.bin') -AnimIdx (Join-Path $va 'build\sl-anim7-idx.bin') 6>&1)) {
         if ($x -is [Management.Automation.InformationRecord]) { $said.Add("$x") } else { $res = $x }
     }
     return [pscustomobject]@{ Result = $res; Said = ($said -join ' | ') }

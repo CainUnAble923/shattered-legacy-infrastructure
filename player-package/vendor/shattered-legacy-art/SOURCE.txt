@@ -40,6 +40,69 @@ License:     NO LICENSE STATED. Cleared by Chase 2026-10-15: rip allowed, rename
                             "2048 -1 -1 -1 -1 -1 1" to its copy of the player's Bodyconv.def and "2048 MONSTER 0" to
                             its copy of mobtypes.txt. The server types body 2048 Monster (ShardBodyTypes.cs).
 
+Rootdeep Burrows creature bodies 2049-2071 (0x801-0x817) (cc-P140, F-45; the route is cc-P139's)
+------------------------------------------------------------------------------------------------
+Each is a UOFiddler .vd copied byte for byte to anim-src\bodies\<body>.vd and copied block for block into
+build\sl-anim7.bin at the anim7 slot records.json's bodyAnims gives it (scripts\build-equip-anims.py). Every
+pack below is in D:\UO\third-party\<folder>\ with its own SOURCE.txt; the terms there apply. Game rips are
+allowed since Chase's 2026-10-15 call, and every creature has an in-game name of ours (no Wizards of the Coast
+names in game). Credit the author; ship only inside the player package or the private repo; do not repost.
+
+  body  slot  mobtypes      in game             file (folder)                                   author, resource; terms
+  2049  2     MONSTER 0     Gourdling           H-SpookyPumpkin.vd (theart-critters)
+        TheArt, Custom Animation Set (servuo.dev 1697); none stated; EA-derived (TheArt). SHA-256 8517642ee1acdde282275067b0a505fbdae09a0e987162f552ccce4731f381bd, 261469 bytes
+  2050  3     MONSTER 0     Cackler Scrapper    Gnoll.vd (humanoids)
+        Vert-I-Go, Humanoids (servuo.dev 974); none stated; source game not stated; renamed in game (gnoll is a Wizards of the Coast name). SHA-256 10716bdd144d81caa8210f77450f6380ed107005ab471fc3140c688275b3af54, 511881 bytes
+  2051  4     MONSTER 0     Cackler Slasher     Gnoll Slasher.vd (gnolls)
+        Vert-I-Go, Gnolls (servuo.dev 2550); none stated; a Baldur's Gate rip, cleared by Chase 2026-10-15 (rip allowed, renamed in game). SHA-256 f138a7c056330af00dbe228afd910ff8307561b1fe5b40642349b6ac56f3be0d, 501440 bytes
+  2052  5     MONSTER 0     Cackler Veteran     Gnoll Veteran.vd (gnolls)
+        Vert-I-Go, Gnolls (servuo.dev 2550); none stated; a Baldur's Gate rip, cleared by Chase 2026-10-15 (rip allowed, renamed in game). SHA-256 ad4ad849f3c483ea5c8a1cf3bd8078ae457169b4375c7bfa023424c01b33007d, 489937 bytes
+  2053  6     MONSTER 0     Cackler Packleader  Gnoll Flind.vd (gnolls)
+        Vert-I-Go, Gnolls (servuo.dev 2550); none stated; a Baldur's Gate rip, cleared by Chase 2026-10-15 (rip allowed, renamed in game). SHA-256 9c7ec3c5ab645eb2af35e90947cd8e341a36acb95d9600329cb6f57a6e64a6f4, 555484 bytes
+  2054  200   ANIMAL 0      Burrow Hog          DND Final Boar Animal.vd (dnd-boar)
+        Skandraven, DND Boar 1.0 (servuo.dev 2688); none stated. SHA-256 f52d3a3ecab9980c742827bfec035ae9d9194ebd2d5fe18b8ca6144f47c945da, 695408 bytes
+  2055  7     MONSTER 4     Ledger Bat          VampireBat.vd (vampire-bat)
+        Thagoras, Vampire Bat 1.1 (servuo.dev 1712); none stated; flag 4 (IdleAt8Frame): action 8 is its hover idle. SHA-256 ed07056727f0bc461fcc023f08f936a48189c2937d2b175422573f5892fad22c, 996492 bytes
+  2056  8     MONSTER 0     Hoarding Rat        Ratman Lord.vd (humanoids)
+        Vert-I-Go, Humanoids (servuo.dev 974); none stated; likely an edit of an EA ratman body (SOURCE.txt). SHA-256 0996285095bc412a7ea9eb34d558a9e276c69b55a61c2e5d83ed9e5fb3f194d9, 2431848 bytes
+  2057  9     MONSTER 0     The Overdraft       overdraft-1.5x.vd (vrark-animations)
+        Vrark, My finished animations - combined (servuo.dev 2516), WoW creatures/Monster/cratecreature_monster_1.vd; none stated; a World of Warcraft rip, cleared by Chase 2026-10-13 and 2026-10-15 (rip allowed, renamed in game); upscaled 1.5x by cc-P140 (EPX scale2x then BOX, 256-colour median cut per block). SHA-256 94e51f12829d827553c46fd71c8fe5326110afbd6003c43a366d83981bc53804, 2022485 bytes
+  2058  10    MONSTER 0     Burrow Grub         Sand Maggot Small.vd (mobile-megapack)
+        Thagoras, Mobile Megapack 1.0 (servuo.dev 1982), Diablo 2 Pack; none stated; a Diablo 2 rip, cleared by Chase 2026-10-15 (rip allowed, renamed in game). SHA-256 851e62ee3d282e23fff4e7929eadcef50e8ca4c1f4af8d52737b06d26c5d4e36, 524020 bytes
+  2059  201   ANIMAL 0      Burrow Scamp        Vanguard kobold - L.vd (vrark-animations)
+        Vrark, My finished animations - combined (servuo.dev 2516), Vanguard kobold - L.vd; none stated; a Vanguard rip, cleared by Chase 2026-10-15 (rip allowed, renamed in game; kobold is a Wizards of the Coast name). SHA-256 1538ac15b2297e47720d3884acacf49a27a76c9a0917057a23bdff0f526e03f5, 290765 bytes
+  2060  202   ANIMAL 0      Redcap Scamp        Vanguard redcap kobold - L.vd (vrark-animations)
+        Vrark, My finished animations - combined (servuo.dev 2516), Vanguard redcap kobold - L.vd; none stated; a Vanguard rip, cleared by Chase 2026-10-15 (rip allowed, renamed in game). SHA-256 2b2f3980858055e1c4b66f1b211f4e15841059b6d0ba3463ddc6b0834ac48887, 296138 bytes
+  2061  11    MONSTER 0     The Burrow Mother   Sand Maggot Large.vd (mobile-megapack)
+        Thagoras, Mobile Megapack 1.0 (servuo.dev 1982), Diablo 2 Pack; none stated; a Diablo 2 rip, cleared by Chase 2026-10-15 (rip allowed, renamed in game). SHA-256 cdccd4c65e12e7ad0257201bd48264d74db80b6818cfb3cf0ad4371c5a7f19b5, 2053217 bytes
+  2062  12    MONSTER 0     Sporecap            Myconid Red.vd (plant-pack)
+        Thagoras, Plant Pack (servuo.dev 1981); none stated; from a sprite site, source game not stated; renamed in game (myconid is a Wizards of the Coast name). SHA-256 3f959e5f5310b828949d3e16bb14951290d9dda45e499cf2bdcdcf4887642822, 682762 bytes
+  2063  13    MONSTER 0     Sporecap            Myconid Blue.vd (plant-pack)
+        Thagoras, Plant Pack (servuo.dev 1981); none stated; from a sprite site, source game not stated; renamed in game. SHA-256 7feebefa77daf629e6c5c94f19ce90337cc7990b7874a2b9ae9a1e7ad2dfbdd2, 1091728 bytes
+  2064  14    MONSTER 0     Bramblehulk         Thorned Hulk.vd (plant-pack)
+        Thagoras, Plant Pack (servuo.dev 1981); none stated; from a sprite site, source game not stated; renamed in game. SHA-256 395fd4bd554d0e485bfc353d13b324ecdf2a0ec1b1732e21f866cadeadad6b5d, 1868359 bytes
+  2065  15    MONSTER 0     Dawnshard           CaveElemental.vd (elemental-pack)
+        Thagoras, Elemental Pack (servuo.dev 1980); none stated; source game not stated; renamed in game. SHA-256 af9d0451a8f991c91324ba90bd7b031e607da8782b4bdaeb91a1f5853a2cb19f, 726591 bytes
+  2066  16    MONSTER 0     Seamguard           Stone Golem.vd (elemental-pack)
+        Thagoras, Elemental Pack (servuo.dev 1980); none stated; an Arcanum rip, cleared by Chase 2026-10-15 (rip allowed, renamed in game). SHA-256 4bcaa9813305899770b0c24b6568fb5f2d07afb8382980a0d6e42259a2abcb63, 1919586 bytes
+  2067  17    MONSTER 0     Gloomling           Underdark Spider Hatchling.vd (underdark)
+        Vert-I-Go, Underdark Package (servuo.dev 971); none stated; source game not stated (likely a rip, cleared by Chase 2026-10-15); renamed in game. SHA-256 815c2f8f5cb9a9dd8c67df83ba36110de4ef745d26f75bed91247673b47a96a8, 1088149 bytes
+  2068  18    MONSTER 0     Gloomspinner        Underdark Spider.vd (underdark)
+        Vert-I-Go, Underdark Package (servuo.dev 971); none stated; source game not stated (likely a rip, cleared by Chase 2026-10-15); renamed in game. SHA-256 fd54c074cf47b1456916059fc3b966920668f6bf90ec900b82565d92e3b950a4, 1853286 bytes
+  2069  19    MONSTER 0     Gloomweaver         Underdark Spider Mage.vd (underdark)
+        Vert-I-Go, Underdark Package (servuo.dev 971); none stated; source game not stated (likely a rip, cleared by Chase 2026-10-15); renamed in game. SHA-256 b0c91aaa251f9421d71298edb528d0ba435bc6b7e6ebda21c402759a7ae94c1b, 1933944 bytes
+  2070  20    MONSTER 0     The Gloom Queen     Drider Female.vd (underdark)
+        Vert-I-Go, Underdark Package (servuo.dev 971); none stated; source game not stated (likely a rip, cleared by Chase 2026-10-15); renamed in game (drider is a Wizards of the Coast name). SHA-256 7d223739b552828178d19c218c343a320c522d936ee261a37ef6b5734c73472e, 1945333 bytes
+  2071  21    ANIMAL 28     Crop Crow           crop-crow-1.5x.vd (EA)
+        Electronic Arts (the stock bird, body 6), anim.mul of the 7.0.117.0 client, exported by the Burrows Bestiary chat as notes\art\bestiary\stock-body-6.vd; EA's art: ships only as our encoded blocks inside sl-anim7.bin (the EA-derived art rule), never as an EA file; upscaled 1.5x by cc-P140; type ANIMAL flags 28 as the stock bird (CanFlying, high layout). SHA-256 967feb3fc43ddb57a7d6f3acf35647b5b45cf6b5979f11098beb5e00ec8ccc80, 122814 bytes
+
+Two are derived here, not copied: 2057 (the Overdraft) is Vrark's cratecreature_monster_1.vd at 1.5x and 2071
+(the Crop Crow) is EA's stock bird body 6 at 1.5x, both by the Burrows Bestiary renderer's EPX scale2x then a
+BOX resize (notes\art\bestiary\up.py), alpha cut at 128, colours median-cut to 256 a block and snapped to 15
+bits (cc-P140 notes, Part B). The crow is EA-derived and ships only as encoded blocks, as the EA-derived PNG art does.
+Not registered: the three Tree Fellows (Rootling) are 213 to 390 px tall and 6 to 17 MB each (over the 5 MB
+rule); the Rootling wears a hued stock body instead (cc-P140 notes).
+
 Shattered runestone (IDs 15376-15419, 0x3C10-0x3C3B)
 ----------------------------------------------------
 Author:      Vrark

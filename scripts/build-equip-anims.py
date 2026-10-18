@@ -3,7 +3,8 @@ r"""
 build-equip-anims.py: our animations, encoded for TazUO as an extra anim file: worn items (cc-P62, F-35) and
 creature bodies (cc-P139, F-46).
 
-    python scripts/build-equip-anims.py            write vendor\shattered-legacy-art\sl-anim7.bin and sl-anim7-idx.bin
+    python scripts/build-equip-anims.py            write vendor\shattered-legacy-art\build\sl-anim7.bin and sl-anim7-idx.bin
+                                                   (git-ignored since cc-P140: about 26 MB; the sources are committed)
     python scripts/build-equip-anims.py --check    rebuild in memory; fail unless the committed files are identical,
                                                    and decode them back and compare with the sources (the PNGs, the .vd)
 
@@ -54,8 +55,11 @@ from PIL import Image
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ART = os.path.join(REPO, 'player-package', 'vendor', 'shattered-legacy-art')
-MUL_OUT = os.path.join(ART, 'sl-anim7.bin')
-IDX_OUT = os.path.join(ART, 'sl-anim7-idx.bin')
+# cc-P140: generated, git-ignored (vendor\shattered-legacy-art\build\): the files passed 5 MB with the Burrows bodies.
+# Build-PlayerPackage.ps1 runs this script, then --check, before staging; the sources are what is committed.
+BUILD = os.path.join(ART, 'build')
+MUL_OUT = os.path.join(BUILD, 'sl-anim7.bin')
+IDX_OUT = os.path.join(BUILD, 'sl-anim7-idx.bin')
 CANVAS = (130, 128)
 ORIGIN = (67, 98)
 ACTIONS, DIRECTIONS = 35, 5
@@ -298,6 +302,7 @@ def main():
     a = ap.parse_args()
     mul, idx, sources = build()
     if not a.check:
+        os.makedirs(BUILD, exist_ok=True)
         with open(MUL_OUT, 'wb') as f:
             f.write(mul)
         with open(IDX_OUT, 'wb') as f:

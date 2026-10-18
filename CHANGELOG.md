@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18
+
+### Staff
+- The Rootdeep Burrows' creatures exist for `[add` on the test shard: the tutorial farm's Gourdling, Crop Crow, Burrow Scamp Slinger, the four Cacklers and the Burrow Hog; the Vault's Ledger Bat, Penny Rat, Hoarding Rat, Safe Deposit Box and The Overdraft; the Warren's Burrow Grub, Burrow Scamp, Redcap Scamp and The Burrow Mother; the Tangle's Rootling, Sporecap and Bramblehulk; the Dawnseam's Dawnshard and Seamguard; the Gloom's Gloomling, Gloomspinner, Gloomweaver and The Gloom Queen. Nothing places them yet (the Burrows map and spawners are later prompts). Each family drops its part (burrower claws, rootheart sap, dawnstone shards, gloom glands), the hog and the grub carve Burrowhide, the bosses drop jewelry and a boss part, and the tutorial creatures drop fixed loot.
+- The player package carries 23 more creature bodies in its anim7 file (about 25 MB more), with a render sheet in the docs repo. The encoded animation files are now generated at package build time from the committed sources instead of being committed themselves.
+
 ## 2026.10.17.12
 
 ### Staff

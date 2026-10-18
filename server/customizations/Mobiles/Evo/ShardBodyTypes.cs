@@ -43,7 +43,32 @@ namespace Server
             // cc-P139, the creature body route (F-46): the first third-party creature body the package ships, past
             // every body bodyTable.cfg lists (its highest is 1973). Vert-I-Go's kobold archer .vd at anim7 slot 1;
             // BurrowScampSlingerBodyTest wears it, and F-45's Burrow Scamp Slinger (cc-P140) will.
-            (2048, BodyType.Monster, "burrow scamp slinger (the kobold archer), the body route's proof")
+            (2048, BodyType.Monster, "burrow scamp slinger (the kobold archer), the body route's proof"),
+            // cc-P140, the Rootdeep Burrows lineup (F-45): registry.csv kind body, records.json bodyAnims. Animal for the
+            // bodies in anim7's animal slots (the hog, the two Vanguard kobolds) and the crow (the stock bird's type).
+            (2049, BodyType.Monster, "gourdling"),
+            (2050, BodyType.Monster, "cackler scrapper"),
+            (2051, BodyType.Monster, "cackler slasher"),
+            (2052, BodyType.Monster, "cackler veteran"),
+            (2053, BodyType.Monster, "cackler packleader"),
+            (2054, BodyType.Animal, "burrow hog"),
+            (2055, BodyType.Monster, "ledger bat"),
+            (2056, BodyType.Monster, "hoarding rat"),
+            (2057, BodyType.Monster, "the Overdraft"),
+            (2058, BodyType.Monster, "burrow grub"),
+            (2059, BodyType.Animal, "burrow scamp"),
+            (2060, BodyType.Animal, "redcap scamp"),
+            (2061, BodyType.Monster, "the Burrow Mother"),
+            (2062, BodyType.Monster, "sporecap (red)"),
+            (2063, BodyType.Monster, "sporecap (blue)"),
+            (2064, BodyType.Monster, "bramblehulk"),
+            (2065, BodyType.Monster, "dawnshard"),
+            (2066, BodyType.Monster, "seamguard"),
+            (2067, BodyType.Monster, "gloomling"),
+            (2068, BodyType.Monster, "gloomspinner"),
+            (2069, BodyType.Monster, "gloomweaver"),
+            (2070, BodyType.Monster, "the Gloom Queen"),
+            (2071, BodyType.Animal, "crop crow (the stock bird at 1.5x)")
         };
 
         public static void Configure() => Apply();

@@ -635,6 +635,23 @@ def p139_1(ctx):
         ctx.done(p)
 
 
+# cc-P140: six of the Rootdeep Burrows' normal spawns, one per zone and the hog (the tutorial ones engage only a
+# tutorial participant, which the bot's fighter is not). Each shows with its registered body, fights back, dies and
+# leaves a corpse carrying the body; the Sporecap wears one of two bodies. How they draw is Chase's eyes (P140-3).
+P140_SAMPLE = (("BurrowHog", 2054), ("BurrowGrub", 2058), ("BurrowScamp", 2059), ("Rootling", 779),
+               ("Sporecap", (2062, 2063)), ("Gloomling", 2067))
+
+
+@check("P140-1", "Six Rootdeep Burrows spawns appear on their bodies, fight back and die to a player, leaving a corpse")
+def p140_1(ctx):
+    a = ctx.ensure_admin()
+    p = ctx.fresh(label="p140")
+    try:
+        return _p119_fight(a, p, P140_SAMPLE)
+    finally:
+        ctx.done(p)
+
+
 # Ghost bodies (human, elf, gargoyle; male and female): the fighter is dead.
 GHOST_BODIES = (0x192, 0x193, 0x25F, 0x260, 0x2B6, 0x2B7)
 
