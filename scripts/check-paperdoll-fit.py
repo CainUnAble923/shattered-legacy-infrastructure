@@ -18,8 +18,9 @@ only if its pixels are in the right place of the 260 x 237 canvas. This check sa
 What it checks, from vendor\shattered-legacy-art\paperdoll-fit.json:
   - every registry.csv gump has a fit entry and every entry has a PNG, 260 x 237, alpha 0 or 255 only, no stray
     specks (components under 3 pixels);
-  - the ears (the components that end above crown + 12 on every body the gump serves) stay out of the face box, end
-    within [crown - 1, crown + 6] (they rise out of the head, not float or sink), and are centred on the head;
+  - the ears (the components that end above crown + 12 on every body the gump serves) have no pixel in the face box, end
+    within [crown - 1, crown + 8] (they rise out of the head, not float or sink), and are centred on the head, and
+    over the head's middle leave at most a row of air above the bald scalp (cc-P166);
   - the tail (the largest other component) starts in the lower-back box: its root column, the one nearest the head's
     centre, lies inside the box, and no tail pixel is above the box's top;
   - each body's first opaque row is the fit's crown_y, so a changed body file is noticed;
@@ -42,8 +43,12 @@ ADDONS = os.path.join(REPO, 'client-addons', 'paperdoll-nsfw')
 CANVAS = (260, 237)
 STRAY = 3          # a component smaller than this is a speck, not art
 EARS_BELOW = 12    # a component ending within this many rows under the crown is an ear
-EARS_SIT = (-1, 6)  # the ears' bottom row relative to the crown
+EARS_SIT = (-1, 8)  # the ears' bottom row relative to the crown (cc-P166: 6 -> 8, the outer base corners hang beside the skull)
 EARS_CENTRE = 4    # the ears' centre column may be this far from the head's centre
+# cc-P166: over the head's middle (its centre +-EARS_REST_COLS columns), at most EARS_REST rows of air between the ears'
+# lowest pixel and the bald body's first row, so they rest on a bald scalp (hair, drawn under them, only adds height).
+EARS_REST = 1
+EARS_REST_COLS = 5
 
 
 def components(alpha):
@@ -168,7 +173,7 @@ class Fit:
                 if bid not in bodies:
                     self.fail.append('gump %s serves body %s, which has no fit entry or file' % (gid, bid))
                     continue
-                self.check_on_body(gid, comps, bid, fit['bodies'][bid])
+                self.check_on_body(gid, comps, bid, fit['bodies'][bid], bodies[bid][1])
 
         for setname in fit.get('addon_sets', []):
             folder = os.path.join(self.addons, setname)
@@ -200,7 +205,7 @@ class Fit:
                     self.info.append('add-on set %s body %s: crown row and the face and lower-back edges as the SFW body' % (setname, bid))
         return not self.fail
 
-    def check_on_body(self, gid, comps, bid, spec):
+    def check_on_body(self, gid, comps, bid, spec, body_alpha=None):
         crown = spec['crown_y']
         face = spec['face']
         back = spec['lower_back']
@@ -212,10 +217,24 @@ class Fit:
             self.fail.append('%s: no ears: nothing ends within %d rows of the crown (row %d); the lowest component ends at row %d' % (where, EARS_BELOW, crown, min(bbox(c)[3] for c in comps)))
         else:
             eb = bbox([p for c in ears for p in c])
-            if boxes_cross(eb, face):
-                self.fail.append('%s: the ears (box %s) cross the face box %s' % (where, eb, face))
+            # cc-P166: the ears' pixels, not their bounding box: the outer base corners hang beside the head, outside
+            # the face's columns, and the box around them reached the face box's top row with no ear pixel in it.
+            in_face = [p for c in ears for p in c if face[0] <= p[0] <= face[2] and face[1] <= p[1] <= face[3]]
+            if in_face:
+                self.fail.append('%s: the ears (box %s) cross the face box %s (%d pixels, first %s)' % (where, eb, face, len(in_face), min(in_face)))
             if not (crown + EARS_SIT[0] <= eb[3] <= crown + EARS_SIT[1]):
                 self.fail.append('%s: the ears end at row %d; they must sit on the crown, rows %d to %d' % (where, eb[3], crown + EARS_SIT[0], crown + EARS_SIT[1]))
+            if body_alpha is not None:
+                bpx = body_alpha.load()
+                ear_px = {p for c in ears for p in c}
+                air = []
+                for x in range(int(head_centre) - EARS_REST_COLS, int(head_centre) + EARS_REST_COLS + 1):
+                    ys = [y for (px, y) in ear_px if px == x]
+                    top = next((y for y in range(CANVAS[1]) if bpx[x, y]), None)
+                    if ys and top is not None:
+                        air.append(top - max(ys) - 1)
+                if air and max(air) > EARS_REST:
+                    self.fail.append('%s: %d rows of air between the ears and the bald scalp over the head (at most %d); they float on a bald head' % (where, max(air), EARS_REST))
             centre = (eb[0] + eb[2]) / 2.0
             if abs(centre - head_centre) > EARS_CENTRE:
                 self.fail.append('%s: the ears are centred on column %.1f, the head on %.1f' % (where, centre, head_centre))

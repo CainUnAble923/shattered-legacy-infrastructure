@@ -153,8 +153,10 @@ Author:      drawn for Shattered Legacy by the art chat for Chase, 2026-10-05 ("
                               (+2, -25) and (0, -14) to sit on the Siege of Sosaria female body 13 (and the
                               elf 15), cc-P138 (notes\cc-P138-scratch\refit_gumps.py in the docs repo).
                               The P62 file was placed for EA's body 13, whose head is 25 rows lower.
+                              cc-P166: the ears 3 rows lower again, to rest on a bald scalp
+                              (notes\cc-P166-scratch\lower_paperdoll_ears.py).
   gumps\54783.png             the same art moved (+2, -28) and (0, -16) for the male bodies 12 and 14
-                              (50000 + 4783), cc-P138.
+                              (50000 + 4783), cc-P138; cc-P166 the ears 2 rows lower.
   paperdoll-fit.json          where each gump must sit on each body; scripts\check-paperdoll-fit.py checks
                               it and Build-PlayerPackage.ps1 refuses to build when it fails (cc-P138).
   anim-src\4783\a00_d1_fNN    stage3-final\walk_dir1\walk_dir1_fNN.png, byte for byte: action 0 (walk
@@ -166,6 +168,9 @@ Author:      drawn for Shattered Legacy by the art chat for Chase, 2026-10-05 ("
   anim-src\4783\a02_dD_fNN   run (action 2): cc-P138, the same ears and tail placed on those poses by the
                               per-frame guides (direction 1 moved from the walk art, the others from the
                               stage-4 generator), notes\cc-P138-scratch\build_stand_run.py in the docs repo.
+  cc-P166 (notes\cc-P166-scratch\build_west.py): drawn direction 3 (server West, North mirrored) redrawn
+                              in walk, run and stand with a new tail path (out behind her past the hip, not
+                              flat down her legs), and every frame's ears 1 row lower (bald heads).
 Natural colours (hue 0); the _partialhue and _gray versions beside them are for later. Not drawn yet:
 every other action (war-mode walk and run, fidgets, attacks, ...); they draw nothing. The spec for them is
 notes\art\kitsune-ears-tail-remaining-actions.md in the docs repo.

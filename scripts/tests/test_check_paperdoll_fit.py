@@ -86,8 +86,9 @@ class CheckPaperdollFit(unittest.TestCase):
         self.assertNotIn('gump 54783 on body 12 (male human (0x190, 0x192)): the', text)   # the untouched gump still fits
 
     def test_ears_a_little_too_low_cross_the_face(self):
+        # cc-P166: 5 rows (was 8): the ears already sit 2 rows lower, and 8 more takes them past EARS_BELOW
         g = os.path.join(self.fx.art, 'gumps', '54783.png')
-        shifted(g, 0, 8, 0, 0).save(g)
+        shifted(g, 0, 5, 0, 0).save(g)
         code, text = self.fx.run()
         self.assertEqual(1, code, text)
         self.assertIn('cross the face box', text)
@@ -98,6 +99,16 @@ class CheckPaperdollFit(unittest.TestCase):
         code, text = self.fx.run()
         self.assertEqual(1, code, text)
         self.assertIn('must sit on the crown', text)
+
+    def test_ears_with_air_under_them_on_a_bald_head_fail(self):
+        # cc-P166: Chase, 2026-10-18, a bald Eve: the ears sat a little high. cc-P138's placement (3 rows up from the
+        # committed one) left 3 rows of air between the ears' band and the bald scalp; the kit's hair filled them.
+        g = os.path.join(self.fx.art, 'gumps', '64783.png')
+        shifted(g, 0, -3, 0, 0).save(g)
+        code, text = self.fx.run()
+        self.assertEqual(1, code, text)
+        self.assertIn('rows of air between the ears and the bald scalp', text)
+        self.assertIn('gump 64783 on body 13', text)
 
     def test_ears_off_centre_fail(self):
         g = os.path.join(self.fx.art, 'gumps', '64783.png')

@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.11
+
+### Fixed
+- Fox ears and tail: facing west or north, the tail now sweeps out behind you from the small of your back instead of lying flat down your legs.
+- Fox ears and tail: the ears sit down on the head instead of floating just above it, which showed most on a bald head, on your paperdoll and in the world.
+
+### Staff
+- The paperdoll fit check now also refuses ears that leave air above a bald scalp, and tests the face by the ears' pixels rather than their outline box.
+
 ## 2026.10.18.10
 
 ### Fixed
