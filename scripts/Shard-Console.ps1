@@ -4042,6 +4042,8 @@ function ConvertFrom-AutopilotStatus {
         LastSelfWake    = $j.lastSelfWake
         NightShift      = $j.nightShift
         Cli             = $j.cli
+        # cc-P161: the sessions the Golem opened (open, kept open for Chase after a PAUSED or STOPPED, last closed).
+        Sessions        = $j.sessions
     }
 }
 
@@ -4419,6 +4421,19 @@ function Get-ReadyLine {
     'ready now'
 }
 
+# cc-P161: the Golem's own sessions: how many are open, which are kept open for Chase (amber), and the last one closed.
+function Get-SessionsLine($s) {
+    if (-not $s) { return $null }
+    $open = @($s.open | Where-Object { $_ })
+    $kept = @($s.kept | Where-Object { $_ })
+    $last = @($s.closed | Where-Object { $_ }) | Select-Object -Last 1
+    $t = [string]$open.Count + ' open' + $(if ($open.Count) { ' (' + ((@($open | ForEach-Object { [string]$_.name })) -join ', ') + ')' } else { '' })
+    $t += $(if ([bool]$s.closeFinished) { '; finished ones close ' + [string]$s.closeAfterMinutes + ' min after their last turn' } else { '; closing is off (closeFinishedSessions false)' })
+    if ($kept.Count) { $t += '; KEPT OPEN: ' + ((@($kept | ForEach-Object { [string]$_.name + ' (' + [string]$_.why + ')' })) -join ', ') }
+    if ($last) { $t += '; last closed ' + [string]$last.name + ': ' + [string]$last.why }
+    [pscustomobject]@{ Text = $t; Color = $(if ($kept.Count) { 'amber' } else { 'gray' }) }
+}
+
 function Get-NightShiftLine {
     # cc-P131: "Night shift: on, 22:30 to 06:30, next run tonight at 22:30", or off, or why it will not run (status.json's
     # nightShift, written by the Golem; settings.json when the status has none).
@@ -4659,6 +4674,8 @@ function Format-AutopilotPanel {
         if ($st.WakePending) { $sw += '; pending for ' + [string]$st.WakePending.for + ' (' + [string]$st.WakePending.why + ')' }
         if ($st.LastSelfWake -and $st.LastSelfWake.at) { $lsw = ConvertFrom-AutopilotTime $st.LastSelfWake.at 'Local'; $sw += '; last woke a ' + [string]$st.LastSelfWake.model + ' session for ' + [string]$st.LastSelfWake.for + $(if ($lsw) { ' ' + (Format-ShortAge ($Now - $lsw)) + ' ago' } else { '' }) }
         & $add $sw 'normal'
+        $sl = Get-SessionsLine $st.Sessions
+        if ($sl) { & $add ('sessions  : ' + $sl.Text) $sl.Color }
         if ($st.Cli -and $st.Cli.path) {
             $cc = ConvertFrom-AutopilotTime $st.Cli.checkedUtc 'Utc'
             & $add ('cli       : ' + [string]$st.Cli.path + $(if ([bool]$st.Cli.signedIn) { ', signed in' } else { ', NOT signed in: run claude auth login in a terminal' }) + $(if ($cc) { ' (checked ' + (Format-ShortAge ($Now.ToUniversalTime() - $cc)) + ' ago)' } else { '' })) $(if ([bool]$st.Cli.signedIn) { 'green' } else { 'amber' })

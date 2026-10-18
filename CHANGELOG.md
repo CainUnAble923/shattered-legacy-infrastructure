@@ -29,6 +29,13 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.10
+
+### Staff
+- The Golem closes its own finished sessions: the previous one once the next has started and reported, and a finished one two minutes after its last turn when the Golem rests. It never closes the one running a prompt, one busy in the last five minutes, one that stopped or paused for you (the Golem tab says it is kept open), or any session it did not open.
+- The Golem's sessions open as tabs in one Windows Terminal window named golem instead of a new window each, and a second wake for the same prompt within two minutes is refused.
+- The console's Golem tab has a sessions line: how many Golem sessions are open, which are kept open for you, and the last one closed.
+
 ## 2026.10.17.9
 
 ### Staff

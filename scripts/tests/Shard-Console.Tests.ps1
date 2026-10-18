@@ -6953,6 +6953,27 @@ Fact 'P135_EveryMapAndArtButtonRunHeadlessWithDryRunRunsNothing' {
     Assert-True ($out -match 'MAP AND ART  map\.shore \(map and art\)' -and $out -match '\[ShoreCheck \[stepThreshold\]') $out
 }
 
+# --- cc-P161: the Golem tab says which Golem sessions are open, kept open for Chase, and last closed -----------------------
+Fact 'P161_TheGolemTabListsItsSessionsAndSaysWhichAreKeptOpen' {
+    $sx = [ordered]@{ closeFinished = $true; closeAfterMinutes = 2; window = 'tabs'
+        open = @([ordered]@{ name = 'Golem P160'; pid = 11; openedAt = '2026-10-17T20:00:00'; why = 'context'; reported = $true }, [ordered]@{ name = 'Golem P161'; pid = 12; openedAt = '2026-10-17T21:22:56'; why = 'console'; reported = $true })
+        kept = @([ordered]@{ name = 'Golem P160'; pid = 11; why = 'P160 STOPPED: left open until you have seen it' })
+        closed = @([ordered]@{ name = 'Golem P159'; at = '2026-10-17T19:00:00'; why = 'superseded by Golem P160' }) }
+    $j = (New-P131Status -State 'RUNNING' -Current 'P161') | ConvertFrom-Json
+    $j | Add-Member -NotePropertyName sessions -NotePropertyValue ([pscustomobject]$sx) -Force
+    $v = Get-AutopilotView -Enabled $true -StateText '{"current":"P161","currentFile":"cc-P161-a.md","lastHandled":160}' -LogLines @() -QueueNames @() -Errors @() -StatusText ($j | ConvertTo-Json -Depth 6) -SettingsText $p131Settings -Kind golem -Extra $x
+    $rows = @(Format-AutopilotPanel -View $v -Config $p125Cfg -Now $p125Now)
+    $row = @($rows | Where-Object { $_.Text -like 'sessions  :*' }) | Select-Object -First 1
+    Assert-True ($row) ('a sessions line: ' + (($rows | ForEach-Object { $_.Text }) -join ' | '))
+    if ($row) {
+        Assert-Equal 'sessions  : 2 open (Golem P160, Golem P161); finished ones close 2 min after their last turn; KEPT OPEN: Golem P160 (P160 STOPPED: left open until you have seen it); last closed Golem P159: superseded by Golem P160' $row.Text 'the line'
+        Assert-Equal 'amber' $row.Color 'amber while one is kept for Chase'
+    }
+    # No sessions field (a Golem before cc-P161): no line.
+    $v2 = Get-AutopilotView -Enabled $true -StateText '{"current":"P161","currentFile":"cc-P161-a.md","lastHandled":160}' -LogLines @() -QueueNames @() -Errors @() -StatusText (New-P131Status -State 'RUNNING' -Current 'P161') -SettingsText $p131Settings -Kind golem -Extra $x
+    Assert-True (-not @(Format-AutopilotPanel -View $v2 -Config $p125Cfg -Now $p125Now | Where-Object { $_.Text -like 'sessions  :*' }).Count) 'no sessions field: no line'
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $p135Dir -Recurse -Force -ErrorAction SilentlyContinue
 
