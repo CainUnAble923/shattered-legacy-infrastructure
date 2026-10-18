@@ -120,8 +120,8 @@ function Invoke-Remote {
         $files = @(Get-ChildItem -LiteralPath $StageDir -File | ForEach-Object { $_.FullName }) + @($sh)
         & scp -q @files ($t.Ssh + ':legion-staging/')
         if ($LASTEXITCODE -ne 0) { Stop-Here 'copy to Haven''s staging folder failed' }
-        $dry = $(if ($Dry) { 'DRYRUN=1 ' } else { '' })
-        & ssh $t.Ssh ("cd ~/legion-staging && sed -i 's/\r$//' legion-scripts.sh && " + $dry + 'bash legion-scripts.sh ' + ($ShArgs -join ' ')) 2>&1 |
+        $dryPrefix = $(if ($Dry) { 'DRYRUN=1 ' } else { '' })   # not $dry: PowerShell names are case-insensitive, so that was the [switch]$Dry param
+        & ssh $t.Ssh ("cd ~/legion-staging && sed -i 's/\r$//' legion-scripts.sh && " + $dryPrefix + 'bash legion-scripts.sh ' + ($ShArgs -join ' ')) 2>&1 |
             ForEach-Object { "$_" } | Tee-Object -FilePath $outFile | Out-Host
         return $LASTEXITCODE
     } finally { $ErrorActionPreference = $prev }
