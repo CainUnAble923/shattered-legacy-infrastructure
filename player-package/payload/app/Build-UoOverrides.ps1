@@ -41,13 +41,19 @@
     entirely ours), which the override list hands TazUO as anim7.mul and anim7.idx: EA's files stop at anim6, and
     TazUO opens anim.mul to anim10.mul by name through the list (AnimationsLoader.Load). Bodyconv.def sends body N
     there: a line "N -1 -1 -1 -1 -1 S" means slot S of anim7.mul (AnimationsLoader.ProcessBodyConvDef).
-    1. Reads records.json's "equipAnims" (anim N, slot S).
+    cc-P139: a creature body (records.json "bodyAnims": body N, slot S, TYPE, flags, as a .vd) goes the same way, with
+    a monster or animal slot (below 400) and one more line, "N TYPE FLAGS", in a copy of the player's mobtypes.txt
+    (TazUO reads mobtypes.txt by name through the same list, AnimationsLoader.Load), so the client types the body
+    as the server does (bodyTable.cfg, ShardBodyTypes.cs) and reads its flags.
+    1. Reads records.json's "equipAnims" (anim N, slot S) and "bodyAnims" (body N, slot S, type, flags).
     2. If app\uo-overrides\equip-stamp.txt matches the player's Bodyconv.def and mobtypes.txt (size and time),
        the records and both anim files (SHA-256), and the copy is there, it is done.
     3. Otherwise refuses if the player's folder has an anim7.mul or anim7.idx of its own (EA has begun to use the
        file), and skips, with a yellow line, any N that the player's Bodyconv.def or mobtypes.txt already names
-       (mobtypes would send N to the UOP files instead). Then writes the player's Bodyconv.def, unchanged, with
-       our lines added at the end, to app\uo-overrides\Bodyconv.def, then the stamp.
+       (mobtypes would send N to the UOP files instead), and any creature body N the player's files already name.
+       Then writes the player's Bodyconv.def, unchanged, with our lines added at the end, to
+       app\uo-overrides\Bodyconv.def, the player's mobtypes.txt the same way with our creature lines (only when a
+       creature body is shipped), then the stamp.
 
   Then files-override.txt lists whichever copies were made. The player's EA files are only ever
   read. app\uo-overrides\ is made here and never shipped; the updater leaves it alone and the
@@ -261,11 +267,13 @@ function Get-FileStamp([string]$path) {
     return "$($i.Length) $($i.LastWriteTimeUtc.Ticks)"
 }
 
-# Returns the worn-item animations' override lines ("name=path"), or none (cc-P62).
+# Returns the override lines ("name=path") of our worn-item animations (cc-P62) and creature bodies (cc-P139), or none.
 function Build-EquipAnim {
     if (-not (Test-Path -LiteralPath $Records)) { return }
-    $eq = @((([IO.File]::ReadAllText($Records) | ConvertFrom-Json).equipAnims) | Where-Object { $_ })
-    if ($eq.Count -eq 0) { return }
+    $recJson = [IO.File]::ReadAllText($Records) | ConvertFrom-Json
+    $eq = @($recJson.equipAnims | Where-Object { $_ })
+    $bodies = @($recJson.bodyAnims | Where-Object { $_ })
+    if ($eq.Count -eq 0 -and $bodies.Count -eq 0) { return }
     foreach ($f in $AnimMul, $AnimIdx) {
         if (-not (Test-Path -LiteralPath $f)) { throw "$(Split-Path $f -Leaf) is missing from the game folder" }
         if ($f.Contains('=')) { throw "the game folder's path has an '=' in it, which TazUO cannot read in an override list" }
@@ -277,8 +285,12 @@ function Build-EquipAnim {
     $mtSrc = Join-Path $UoDir 'mobtypes.txt'
     if (-not (Test-Path -LiteralPath $bcSrc)) { throw "Bodyconv.def is not in $UoDir" }
     $bcOut    = Join-Path $OutDir 'Bodyconv.def'
+    $mtOut    = Join-Path $OutDir 'mobtypes.txt'
     $stampOut = Join-Path $OutDir 'equip-stamp.txt'
-    $lines = { "bodyconv.def=$((Resolve-Path -LiteralPath $bcOut).Path)"; "anim7.mul=$AnimMul"; "anim7.idx=$AnimIdx" }
+    $lines = {
+        "bodyconv.def=$((Resolve-Path -LiteralPath $bcOut).Path)"; "anim7.mul=$AnimMul"; "anim7.idx=$AnimIdx"
+        if (Test-Path -LiteralPath $mtOut) { "mobtypes.txt=$((Resolve-Path -LiteralPath $mtOut).Path)" }
+    }
     $hash = { param($p) (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash }
     $stamp = "$EquipStampFormat`nBodyconv.def $(Get-FileStamp $bcSrc)`nmobtypes.txt $(Get-FileStamp $mtSrc)`nrecords $(& $hash $Records)`nanim $(& $hash $AnimMul) $(& $hash $AnimIdx)"
 
@@ -304,26 +316,56 @@ function Build-EquipAnim {
         }
         $add += "$n`t-1`t-1`t-1`t-1`t-1`t$s`t# $($e.name)"
     }
+    # cc-P139: creature bodies. The slot's layout is TazUO's for anim7 (CalculateTypeByGraphic, file index 6): below
+    # 200 monster (110 entries at slot x 110), below 400 animal (65 at 22000 + (slot - 200) x 65), else people.
+    $mobAdd = @()
+    foreach ($b in $bodies) {
+        $n = [int]$b.body; $s = [int]$b.slot
+        $why = $null
+        $need = if ($s -lt 1 -or $s -ge 2048) { [long]::MaxValue }
+                elseif ($s -lt 200) { 12 * (($s + 1) * 110) }
+                elseif ($s -lt 400) { 12 * (22000 + ($s - 199) * 65) }
+                else { 12 * (35000 + ($s - 399) * 175) }
+        if ($idxLength -lt $need) { $why = "its slot $s is not in sl-anim7-idx.bin" }
+        elseif ($used.Contains($n)) { $why = 'Bodyconv.def already names it' }
+        elseif ($mob.Contains($n)) { $why = 'mobtypes.txt already names it' }
+        if ($why) {
+            Say-Skip "Shattered Legacy art: skipping creature body ${n}: $why."
+            continue
+        }
+        $add += "$n`t-1`t-1`t-1`t-1`t-1`t$s`t# $($b.name)"
+        $mobAdd += "$n`t$(([string]$b.type).ToUpperInvariant())`t$('{0:X}' -f [int]$b.flags)`t# $($b.name)"
+    }
 
     if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
     if (Test-Path -LiteralPath $stampOut) { Remove-Item -LiteralPath $stampOut -Force }
+    if (Test-Path -LiteralPath $mtOut) { Remove-Item -LiteralPath $mtOut -Force }
     if ($add.Count -eq 0) {
         if (Test-Path -LiteralPath $bcOut) { Remove-Item -LiteralPath $bcOut -Force }
         return
     }
     # The player's file byte for byte, then ours. A line break first if their last line has none.
-    $src = [IO.File]::ReadAllBytes($bcSrc)
+    [IO.File]::WriteAllBytes($bcOut, (Add-OurLines $bcSrc "# Shattered Legacy's animations (app\Build-UoOverrides.ps1): body N is slot S of anim7.mul." $add))
+    if ($mobAdd.Count) {
+        # The player's mobtypes.txt the same way (an empty file when they have none; TazUO reads ours either way).
+        [IO.File]::WriteAllBytes($mtOut, (Add-OurLines $mtSrc "# Shattered Legacy's creature bodies (app\Build-UoOverrides.ps1): body TYPE flags (hex)." $mobAdd))
+    }
+    [IO.File]::WriteAllText($stampOut, $stamp, (New-Object Text.ASCIIEncoding))
+    & $lines
+}
+
+# The player's file byte for byte (none: nothing), a line break if its last line has none, our comment, our lines.
+function Add-OurLines([string]$srcPath, [string]$comment, [string[]]$ours) {
+    $src = if (Test-Path -LiteralPath $srcPath) { [IO.File]::ReadAllBytes($srcPath) } else { New-Object byte[] 0 }
     $tail = ''
     if ($src.Length -and $src[$src.Length - 1] -ne 10) { $tail = "`r`n" }
-    $tail += "# Shattered Legacy's worn-item animations (app\Build-UoOverrides.ps1): body N is slot S of anim7.mul.`r`n"
-    $tail += (($add | ForEach-Object { "$_`r`n" }) -join '')
+    $tail += "$comment`r`n"
+    $tail += (($ours | ForEach-Object { "$_`r`n" }) -join '')
     $b = [Text.Encoding]::ASCII.GetBytes($tail)
     $all = New-Object byte[] ($src.Length + $b.Length)
     [Array]::Copy($src, 0, $all, 0, $src.Length)
     [Array]::Copy($b, 0, $all, $src.Length, $b.Length)
-    [IO.File]::WriteAllBytes($bcOut, $all)
-    [IO.File]::WriteAllText($stampOut, $stamp, (New-Object Text.ASCIIEncoding))
-    & $lines
+    return ,$all
 }
 
 # The cliloc reader and writer, compiled once per PowerShell session (only when a copy is rebuilt).

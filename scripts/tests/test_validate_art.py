@@ -176,6 +176,23 @@ class ClientFacts(Fixture):
         r = self.client().resolve(4783)
         self.assertEqual((r['file'], r['slot'], r['group']), (6, 400, 'people'))
 
+    def test_our_body_anim_override_reaches_anim7_and_types_the_body(self):
+        # cc-P139: a creature body from records.json bodyAnims: a Bodyconv line into anim7 (slot 1, the high layout
+        # at records 110-219) and a mobtypes entry (MONSTER 0), both as the launcher writes them.
+        write_anim(self.pkg, 'x', 300, {110, 160})
+        os.replace(os.path.join(self.pkg, 'x.idx'), os.path.join(self.pkg, 'sl-anim7-idx.bin'))
+        os.replace(os.path.join(self.pkg, 'x.mul'), os.path.join(self.pkg, 'sl-anim7.bin'))
+        put(self.records, json.dumps({'bodyAnims': [{'body': 2048, 'slot': 1, 'type': 'MONSTER', 'flags': 0,
+                                                     'vd': 'anim-src/bodies/2048.vd'}]}), 'w')
+        c = self.client()
+        r = c.resolve(2048)
+        self.assertEqual((r['file'], r['slot'], r['group'], r['start']), (6, 1, 'high', 110))
+        self.assertEqual(c.mobtypes[2048], (0, 0, 'records.json bodyAnims'))
+        self.assertEqual(c.classic_actions(r), [0, 10])
+        # The player's own mobtypes.txt line wins over ours (the launcher skips a body the file names).
+        self.write('mobtypes.txt', '# ID TYPE FLAGS\n132\tANIMAL\t0\n5\tMONSTER\t0\n700\tMONSTER\t10000\n2048\tANIMAL\t0\n')
+        self.assertEqual(self.client().mobtypes[2048], (2, 0, 'mobtypes.txt:5'))
+
 
 class CheckVd(Fixture):
     def vd(self, layout, filled):
@@ -249,6 +266,24 @@ class Registry(Fixture):
         self.assertIn('body 3000 (0xBB8) a creature: missing: no mobtypes.txt entry', out)
         self.assertNotIn('body 5 (0x5) a creature on a stock body: missing: no mobtypes', out)
         self.assertIn('3 of 4 rows have problems', out)
+
+    def test_check_registry_passes_a_body_whose_lines_come_from_records(self):
+        # cc-P139: a body row is fine when records.json bodyAnims gives it its anim7 slot and its mobtypes line and
+        # the slot holds frames; it is a problem when the player's mobtypes.txt names the body (the launcher skips it).
+        write_anim(self.pkg, 'x', 300, {110})
+        os.replace(os.path.join(self.pkg, 'x.idx'), os.path.join(self.pkg, 'sl-anim7-idx.bin'))
+        os.replace(os.path.join(self.pkg, 'x.mul'), os.path.join(self.pkg, 'sl-anim7.bin'))
+        put(self.records, json.dumps({'bodyAnims': [{'body': 2048, 'slot': 1, 'type': 'MONSTER', 'flags': 0,
+                                                     'vd': 'anim-src/bodies/2048.vd'}]}), 'w')
+        reg = os.path.join(self.tmp, 'registry.csv')
+        put(reg, '# test\nid,id_hex,what,source,license,kind\n2048,0x800,our body,us,ours,body\n', 'w')
+        rc, out = self.run_main('--registry', reg, 'check-registry')
+        self.assertEqual(rc, 0, out)
+        self.assertIn('body 2048 (0x800) our body: ok [anim7 slot 1 high; mobtypes MONSTER 0 from records.json]', out)
+        self.write('mobtypes.txt', '# ID TYPE FLAGS\n2048\tANIMAL\t0\n')
+        rc, out = self.run_main('--registry', reg, 'check-registry')
+        self.assertEqual(rc, 1, out)
+        self.assertIn('collides: mobtypes.txt:2 names it; the launcher would skip our body', out)
 
 
 class Hues(Fixture):

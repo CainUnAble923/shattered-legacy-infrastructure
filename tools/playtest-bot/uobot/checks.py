@@ -619,6 +619,22 @@ def p129_1(ctx):
         ctx.done(p)
 
 
+# cc-P139: the creature body route's proof creature, on body 2048 (0x800), the first third-party body the package
+# ships (anim7 slot 1). The server half of the proof: it spawns with that body in the mobile packet, fights back with
+# its bow and dies to a player, and its corpse (0x2006) carries 2048 as its amount. How it draws is Chase's eyes.
+P139_SAMPLE = (("BurrowScampSlingerBodyTest", 2048),)
+
+
+@check("P139-1", "The body-route test creature spawns on body 2048, fights back with its bow and dies to a player, leaving a corpse")
+def p139_1(ctx):
+    a = ctx.ensure_admin()
+    p = ctx.fresh(label="p139")
+    try:
+        return _p119_fight(a, p, P139_SAMPLE)
+    finally:
+        ctx.done(p)
+
+
 # Ghost bodies (human, elf, gargoyle; male and female): the fighter is dead.
 GHOST_BODIES = (0x192, 0x193, 0x25F, 0x260, 0x2B6, 0x2B7)
 

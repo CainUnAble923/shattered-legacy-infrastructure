@@ -7,19 +7,38 @@ What is here
                   app\tazuo\ExternalImages\art\, where TazUO draws them instead of the art in the
                   player's artLegacyMUL.uop (TazUO ExternalImageLoader.Load and Art.LoadSourceArtInfo).
   registry.csv    every ID we use, one row each, with its kind: art (an art/item ID), anim (an Animation
-                  number) or gump (a gump ID). scripts\find-free-art.py reads it so a later pack never
+                  number), gump (a gump ID) or body (a creature body, cc-P139). scripts\find-free-art.py reads it so a later pack never
                   takes one of these IDs, and --check-registry re-tests each in its own space.
-  records.json    our tiledata and animdata records for the IDs that need them, and our worn-item
-                  animations (equipAnims). The build copies it to app\art-records.json. Play.ps1 writes
+  records.json    our tiledata and animdata records for the IDs that need them, our worn-item
+                  animations (equipAnims) and our creature bodies (bodyAnims, cc-P139). The build copies it to app\art-records.json. Play.ps1 writes
                   it into copies of the player's own tiledata.mul, animdata.mul and Bodyconv.def
                   (app\uo-overrides\), never into the player's EA files.
                   Nothing of EA's is shipped: not a file, not a part of one.
   gumps\<id>.png  gump overrides (cc-P62), into app\tazuo\ExternalImages\gumps\ beside Fiddle-Me-This's.
+  anim-src\bodies\<body>.vd
+                  a creature body's frames as a UOFiddler .vd (cc-P139), copied block for block into
+                  sl-anim7.bin at the anim7 slot records.json's bodyAnims gives it.
   anim-src\<N>\a<action>_d<direction>_f<frame>.png
                   the frames of worn-item animation N, 130 x 128, canvas (x, y) = run coordinates
                   (x - 67, y - 98). scripts\build-equip-anims.py encodes them into sl-anim7.bin and
                   sl-anim7-idx.bin (committed; --check proves they are what the PNGs build), which ship
                   as app\sl-anim7.bin and app\sl-anim7-idx.bin and which TazUO reads as anim7.mul/.idx.
+
+Burrow scamp slinger, creature body 2048 (0x800) (cc-P139, F-46; F-45's archer)
+--------------------------------------------------------------------------------
+Author:      Vert-I-Go, "Kobold-Bow", https://www.servuo.dev/archive/kobold-bow.2532/ (posted 2025-11-21).
+             The author's description: "Kobold with bow attack animation from Baldurs gate." A Baldur's Gate rip.
+Downloaded:  2026-10-13 by the daily art task. Original at D:\UO\third-party\kobold-bow\ (Kobold Bow.vd, 159,223 bytes).
+License:     NO LICENSE STATED. Cleared by Chase 2026-10-15: rip allowed, renamed in game (every creature on it gets
+             our own name; "kobold" is a Wizards of the Coast name and is not used in game). Credit Vert-I-Go; ship
+             only inside the player package or the private repo; do not repost.
+  anim-src\bodies\2048.vd   the download, byte for byte (SHA-256 be548c1f5527c1d7485410c412a2575d45a171a310dab133c0c8c2e1114ff0fd).
+                            A UOFiddler .vd: high (monster) layout, 22 actions x 5 directions, 40 blocks with frames
+                            (actions 0 walk, 1 stand, 2 and 3 die, 4 attack (the bow shot), 10 get hit, 17 and 18
+                            fidget), 185 frames. scripts\build-equip-anims.py copies each block unchanged into
+                            sl-anim7.bin at anim7 slot 1 (records.json bodyAnims); the launcher adds
+                            "2048 -1 -1 -1 -1 -1 1" to its copy of the player's Bodyconv.def and "2048 MONSTER 0" to
+                            its copy of mobtypes.txt. The server types body 2048 Monster (ShardBodyTypes.cs).
 
 Shattered runestone (IDs 15376-15419, 0x3C10-0x3C3B)
 ----------------------------------------------------

@@ -25,7 +25,8 @@ vseUOAware's (which follows an older client and differs in three places, listed 
   2. Bodyconv.def  "<body> <anim2> <anim3> <anim4> <anim5> [<anim6> ...]": column i sends the body to slot S of
                    anim(i+1).mul. Every column that is not -1 and whose file exists is applied in turn, so the LAST
                    one wins. AnimationsLoader.ProcessBodyConvDef. Our package adds "N -1 -1 -1 -1 -1 S" lines (anim7,
-                   our sl-anim7.bin) for records.json's equipAnims (player-package\payload\app\Build-UoOverrides.ps1).
+                   our sl-anim7.bin) for records.json's equipAnims, and (cc-P139) a Bodyconv line and a mobtypes
+                   entry for each of its bodyAnims (player-package\payload\app\Build-UoOverrides.ps1).
   3. The layout:   the mobtypes TYPE, or with no entry the slot number's range in that file (CalculateTypeByGraphic:
                    anim2 <200 monster else animal; anim3 <300 animal, <400 monster, else human; every other file
                    <200 monster, <400 animal, else human), then the flags (CalculateOffset):
@@ -86,7 +87,7 @@ def file_name(i):
 
 # --- the definition files ----------------------------------------------------------------------------
 def read_mobtypes(path):
-    """body -> (type index, flags, line number), as AnimationsLoader.Load reads mobtypes.txt."""
+    """body -> (type index, flags, where: "mobtypes.txt:<line>"), as AnimationsLoader.Load reads mobtypes.txt."""
     out = {}
     if not os.path.exists(path):
         return out
@@ -109,7 +110,7 @@ def read_mobtypes(path):
             continue
         t = parts[1].lower()
         if t in TYPES:
-            out[body] = (TYPES.index(t), flags, n)
+            out[body] = (TYPES.index(t), flags, 'mobtypes.txt:%d' % n)
     return out
 
 
@@ -235,15 +236,24 @@ class Client:
             if idx and mul:
                 self.files[i] = (np.fromfile(idx, '<i4').reshape(-1, 3), idx, mul)
         extra = []
-        self.equip = []
+        self.equip, self.bodies = [], []
         if overrides and os.path.exists(records):
-            self.equip = json.load(open(records, encoding='utf-8')).get('equipAnims', [])
+            j = json.load(open(records, encoding='utf-8'))
+            self.equip = j.get('equipAnims', [])
+            self.bodies = j.get('bodyAnims', [])         # cc-P139: creature bodies, a .vd each, into anim7 too
             here = os.path.dirname(records)
             sl_idx, sl_mul = os.path.join(here, 'sl-anim7-idx.bin'), os.path.join(here, 'sl-anim7.bin')
-            if self.equip and os.path.exists(sl_idx) and os.path.exists(sl_mul) and OUR_FILE not in self.files:
+            if (self.equip or self.bodies) and os.path.exists(sl_idx) and os.path.exists(sl_mul) and OUR_FILE not in self.files:
                 self.files[OUR_FILE] = (np.fromfile(sl_idx, '<i4').reshape(-1, 3), sl_idx, sl_mul)
             extra = [(int(e['anim']), OUR_FILE, int(e['slot']), 'records.json equipAnims') for e in self.equip]
+            extra += [(int(b['body']), OUR_FILE, int(b['slot']), 'records.json bodyAnims') for b in self.bodies]
         self.mobtypes = read_mobtypes(self._find('mobtypes.txt') or os.path.join(data, 'mobtypes.txt'))
+        # The launcher adds "body TYPE flags" for each creature body to its copy of mobtypes.txt (Build-UoOverrides.ps1),
+        # unless the player's file already names the body (then it skips the body, and the file's line stands).
+        for b in self.bodies:
+            tn = str(b.get('type', '')).lower()
+            if tn in TYPES and int(b['body']) not in self.mobtypes:
+                self.mobtypes[int(b['body'])] = (TYPES.index(tn), int(b.get('flags', 0)), 'records.json bodyAnims')
         self.bodyconv_path = self._find('Bodyconv.def') or os.path.join(data, 'Bodyconv.def')
         self.bodyconv = read_bodyconv(self.bodyconv_path, set(self.files), extra)
         self.named = ffa.anim_defs(data)        # mobtypes, Body.def, Corpse.def, Bodyconv.def, Equipconv.def
@@ -352,7 +362,7 @@ class Client:
             if r['start'] < end and start < r['end']:
                 why = []
                 if b in self.mobtypes:
-                    why.append('mobtypes.txt:%d' % self.mobtypes[b][2])
+                    why.append(self.mobtypes[b][2])
                 if conv:
                     why.append(conv[2])
                 if b in self.body_table:
@@ -399,7 +409,7 @@ def check_vd(c, vd, body, conv=None, mob=None, label=None):
     if body in c.mobtypes:
         t, f, n = c.mobtypes[body]
         if planned:
-            problems.append('mobtypes: already named; mobtypes.txt:%d says %s %X' % (n, TYPES[t].upper(), f))
+            problems.append('mobtypes: already named; %s says %s %X' % (n, TYPES[t].upper(), f))
     for f, (first, drawn) in c.redirects(body).items():
         # Body.def/Corpse.def apply only to a classic body left in anim.mul (Animation.cs:250-254 in TazUO).
         tgt = c.resolve(body, mob=mob, conv=conv)
@@ -461,7 +471,7 @@ def check_vd(c, vd, body, conv=None, mob=None, label=None):
     if mob is not None:
         out.append('mobtypes: planned %d %s %X' % (body, TYPES[mob[0]].upper(), mob[1]))
     elif body in c.mobtypes and not planned:
-        out.append('mobtypes: keeps mobtypes.txt:%d (%s %X)' % (c.mobtypes[body][2], TYPES[c.mobtypes[body][0]].upper(),
+        out.append('mobtypes: keeps %s (%s %X)' % (c.mobtypes[body][2], TYPES[c.mobtypes[body][0]].upper(),
                                                               c.mobtypes[body][1]))
     elif need:
         out.append('mobtypes: needs "%d %s %X"' % (body, t, f))
@@ -658,10 +668,10 @@ def parse_type(s):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[1].strip())
     ap.add_argument('--data', default=DEFAULT_DATA, help='EA Classic Client folder (default: client-data\\classic-client-7.0.117.0)')
-    ap.add_argument('--no-overrides', action='store_true', help='leave out our package (records.json equipAnims, sl-anim7)')
+    ap.add_argument('--no-overrides', action='store_true', help='leave out our package (records.json equipAnims and bodyAnims, sl-anim7)')
     ap.add_argument('--pinned', default=DEFAULT_PINNED)
     ap.add_argument('--registry', default=REGISTRY)
-    ap.add_argument('--records', default=RECORDS, help='records.json (its equipAnims, and sl-anim7*.bin beside it)')
+    ap.add_argument('--records', default=RECORDS, help='records.json (its equipAnims and bodyAnims, and sl-anim7*.bin beside it)')
     sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('bodies', help='every body the client data names or draws')
     p.add_argument('--all', action='store_true', help='also bodies with frames only by default slot (no def line)')
@@ -723,7 +733,7 @@ def main(argv=None):
             fl = '%X' % c.mobtypes[b][1] if b in c.mobtypes else '-'
             why = []
             if b in c.mobtypes:
-                why.append('mobtypes.txt:%d' % c.mobtypes[b][2])
+                why.append(c.mobtypes[b][2])
             if b in c.bodyconv:
                 why.append(c.bodyconv[b][2])
             print('%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' % (
@@ -810,16 +820,23 @@ def main(argv=None):
                     prob.append('collides: EA art is in slot %d' % i)
             elif k in ('anim', 'body'):
                 ea = [w for w in c.named.get(i, []) if 'records.json' not in w]
-                if i in c.bodyconv and c.bodyconv[i][2] != 'records.json equipAnims':
+                if i in c.bodyconv and not c.bodyconv[i][2].startswith('records.json'):
                     prob.append('collides: %s sends it elsewhere' % c.bodyconv[i][2])
                 if k == 'anim':
                     if i in c.mobtypes:
-                        prob.append('collides: mobtypes.txt:%d names it (TazUO would read UOP or another layout)' % c.mobtypes[i][2])
+                        prob.append('collides: %s names it (TazUO would read UOP or another layout)' % c.mobtypes[i][2])
                     if not any(int(e['anim']) == i for e in c.equip):
                         prob.append('missing: records.json equipAnims has no line for it')
                 else:
+                    ours = any(int(b['body']) == i for b in c.bodies)
                     if i not in c.mobtypes:
                         prob.append('missing: no mobtypes.txt entry')
+                    elif ours and c.mobtypes[i][2] != 'records.json bodyAnims':
+                        prob.append('collides: %s names it; the launcher would skip our body' % c.mobtypes[i][2])
+                    if not ours and i in c.bodyconv and c.bodyconv[i][2].startswith('records.json'):
+                        prob.append('collides: %s sends it elsewhere' % c.bodyconv[i][2])
+                    if not ours and i not in c.named and i not in c.bodyconv:
+                        prob.append('missing: records.json bodyAnims has no line for it')
                 for w in ea:
                     if not w.startswith(('mobtypes', 'Bodyconv')):
                         prob.append('collides: named in %s' % w)
@@ -835,6 +852,8 @@ def main(argv=None):
                     note = 'UOP'
                 if k == 'anim':
                     note += '; no mobtypes entry, as an equipment animation needs'
+                elif i in c.mobtypes and c.mobtypes[i][2] == 'records.json bodyAnims':
+                    note += '; mobtypes %s %X from records.json' % (TYPES[c.mobtypes[i][0]].upper(), c.mobtypes[i][1])
                 r['note'] = note
             print('%s %d (0x%X) %s: %s%s' % (k, i, i, r.get('what', '')[:70], 'ok' if not prob else '; '.join(prob),
                                             ' [%s]' % r['note'] if r.get('note') else ''))

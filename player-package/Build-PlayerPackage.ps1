@@ -23,7 +23,8 @@
                                app\art-records.json; Play.ps1 writes them into copies of the
                                player's own files). See its SOURCE.txt and registry.csv.
                                cc-P62: also gumps\<id>.png (into ExternalImages\gumps\) and the
-                               worn-item animation files sl-anim7.bin and sl-anim7-idx.bin (into app\),
+                               animation files sl-anim7.bin and sl-anim7-idx.bin (into app\; worn items
+                               and, since cc-P139, creature bodies),
                                after the equipment-animation gate. cc-P138: the paperdoll fit gate
                                (scripts\check-paperdoll-fit.py, paperdoll-fit.json) runs before staging.
       vendor\shattered-legacy-cliloc\   our own client text (cc-P57): entries.json, shipped as
@@ -108,10 +109,13 @@ $slArt      = Join-Path $PSScriptRoot 'vendor\shattered-legacy-art'
 $slRegistry = @(Get-Content -LiteralPath (Join-Path $slArt 'registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
 # cc-P62: the registry's "kind" says which ID space a row is in. art: one PNG in art\; gump: one PNG in gumps\
 # (into ExternalImages\gumps\ beside Fiddle-Me-This's); anim: an Animation number, whose frames are in
-# sl-anim7.bin and sl-anim7-idx.bin (scripts\build-equip-anims.py), shipped as app\ files of those names.
+# sl-anim7.bin and sl-anim7-idx.bin (scripts\build-equip-anims.py), shipped as app\ files of those names;
+# body (cc-P139): a creature body, its frames in the same two files from anim-src\bodies\<id>.vd (records.json
+# bodyAnims; the .vd itself does not ship).
 $slIds      = @($slRegistry | Where-Object { -not $_.kind -or $_.kind -eq 'art' } | ForEach-Object { [int]$_.id })
 $slGumpIds  = @($slRegistry | Where-Object { $_.kind -eq 'gump' } | ForEach-Object { [int]$_.id })
 $slAnimIds  = @($slRegistry | Where-Object { $_.kind -eq 'anim' } | ForEach-Object { [int]$_.id })
+$slBodyIds  = @($slRegistry | Where-Object { $_.kind -eq 'body' } | ForEach-Object { [int]$_.id })
 $slAnimFiles = @('sl-anim7.bin', 'sl-anim7-idx.bin')
 # cc-P81: the Siege of Sosaria paperdoll art, SFW only (vendor\paperdoll-sos\SOURCE.txt). Its gump PNGs go into
 # ExternalImages\gumps\ beside Fiddle-Me-This's and ours, never over either; its six SFW body gumps also go into
@@ -144,30 +148,46 @@ foreach ($f in $pdBodies) { $pdSfwBody[$f.BaseName] = (Get-FileHash -LiteralPath
 $pdSfwGump = @{}
 foreach ($f in $pdGumps) { $pdSfwGump[$f.Name] = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
 $pdBodyPath = '^(app/paperdoll-sfw|app/tazuo/ExternalImages/gumps)/(' + ($pdBodyIds -join '|') + ')\.png$'
-# The equipment-animation gate: the two anim files hold blocks only in the slots records.json's equipAnims name,
-# for registered Animation numbers, and every block lies inside sl-anim7.bin. Run on vendor\ before staging and
-# on the zip (gate 4).
+# The animation gate: the two anim files hold blocks only in the slots records.json's equipAnims (worn items,
+# people slots 400 up) and bodyAnims (creature bodies, cc-P139: any slot 1-2047, by TazUO's anim7 layout) name, for
+# registered Animation numbers and bodies, and every block lies inside sl-anim7.bin. Run on vendor\ before staging
+# and on the zip (gate 4).
+function Get-Anim7SlotEnd([int]$s) {
+    # The index entry after a slot's last (AnimationsLoader.CalculateHigh/Low/PeopleGroupOffset, file index 6).
+    if ($s -lt 200) { return ($s + 1) * 110 }
+    if ($s -lt 400) { return 22000 + ($s - 199) * 65 }
+    return 35000 + ($s - 399) * 175
+}
 function Test-EquipAnims($records, [byte[]]$mul, [byte[]]$idx, [string]$what) {
     $fail = @()
     $eq = @($records.equipAnims | Where-Object { $_ })
+    $bo = @($records.bodyAnims | Where-Object { $_ })
     $slots = @{}
     foreach ($e in $eq) {
         if ($slAnimIds -notcontains [int]$e.anim) { $fail += "$what has equipAnims $($e.anim), which registry.csv does not list as an anim" }
         if ([int]$e.slot -lt 400) { $fail += "$what puts $($e.anim) in slot $($e.slot); anim7 slots below 400 are not the people layout" }
+        if ($slots.ContainsKey([int]$e.slot)) { $fail += "$what uses anim7 slot $($e.slot) twice" }
         $slots[[int]$e.slot] = $true
     }
+    foreach ($b in $bo) {
+        if ($slBodyIds -notcontains [int]$b.body) { $fail += "$what has bodyAnims $($b.body), which registry.csv does not list as a body" }
+        if ([int]$b.slot -lt 1 -or [int]$b.slot -ge 2048) { $fail += "$what puts body $($b.body) in slot $($b.slot); anim7 slots are 1 to 2047" }
+        if ($slots.ContainsKey([int]$b.slot)) { $fail += "$what uses anim7 slot $($b.slot) twice" }
+        $slots[[int]$b.slot] = $true
+    }
     foreach ($n in $slAnimIds) { if (@($eq | Where-Object { [int]$_.anim -eq $n }).Count -ne 1) { $fail += "registry.csv lists anim $n; $what does not give it exactly one equipAnims entry" } }
-    if ($eq.Count -eq 0) { return $fail }
+    foreach ($n in $slBodyIds) { if (@($bo | Where-Object { [int]$_.body -eq $n }).Count -ne 1) { $fail += "registry.csv lists body $n; $what does not give it exactly one bodyAnims entry" } }
+    if ($eq.Count -eq 0 -and $bo.Count -eq 0) { return $fail }
     if ($idx.Length % 12) { $fail += "sl-anim7-idx.bin is $($idx.Length) bytes, not whole 12-byte entries" }
     for ($k = 0; $k + 12 -le $idx.Length; $k += 12) {
         $pos = [BitConverter]::ToInt32($idx, $k); $size = [BitConverter]::ToInt32($idx, $k + 4)
         if ($pos -eq -1) { continue }
         $i = $k / 12
-        $slot = if ($i -ge 35000) { 400 + [Math]::Floor(($i - 35000) / 175) } else { -1 }
+        $slot = if ($i -ge 35000) { 400 + [Math]::Floor(($i - 35000) / 175) } elseif ($i -ge 22000) { 200 + [Math]::Floor(($i - 22000) / 65) } else { [Math]::Floor($i / 110) }
         if (-not $slots.ContainsKey([int]$slot)) { $fail += "sl-anim7-idx.bin entry $i holds a block outside the slots records name"; continue }
         if ($pos -lt 0 -or $size -le 0 -or $pos + $size -gt $mul.Length) { $fail += "sl-anim7-idx.bin entry $i points outside sl-anim7.bin ($pos, $size)" }
     }
-    foreach ($s in $slots.Keys) { if ($idx.Length -lt 12 * (35000 + ($s - 399) * 175)) { $fail += "sl-anim7-idx.bin is too short for slot $s" } }
+    foreach ($s in $slots.Keys) { if ($idx.Length -lt 12 * (Get-Anim7SlotEnd $s)) { $fail += "sl-anim7-idx.bin is too short for slot $s" } }
     return $fail
 }
 # Our own client text (cc-P57 Part D). The cliloc gate: entries.json is plain ASCII (no BOM, every
@@ -290,12 +310,14 @@ function Test-PackageZip([string]$path) {
                 foreach ($id in @($j.tiledata | ForEach-Object id) + @($j.animdata | ForEach-Object id)) {
                     if ($slIds -notcontains [int]$id) { $fail += "app/art-records.json has a record for $id, which registry.csv does not list" }
                 }
-                # cc-P62: the worn-item animations, from the files that shipped.
+                # cc-P62: the worn-item animations, and cc-P139 the creature bodies, from the files that shipped.
                 $am = $rel['app/sl-anim7.bin']; $ai = $rel['app/sl-anim7-idx.bin']
-                if (@($j.equipAnims | Where-Object { $_ }).Count) {
-                    if (-not $am -or -not $ai) { $fail += 'app/art-records.json has equipAnims but app/sl-anim7.bin or app/sl-anim7-idx.bin is missing' }
+                if (@($j.equipAnims | Where-Object { $_ }).Count + @($j.bodyAnims | Where-Object { $_ }).Count) {
+                    if (-not $am -or -not $ai) { $fail += 'app/art-records.json has equipAnims or bodyAnims but app/sl-anim7.bin or app/sl-anim7-idx.bin is missing' }
                     else { $fail += @(Test-EquipAnims $j (Read-ZipBytes $am) (Read-ZipBytes $ai) 'app/art-records.json') }
-                } elseif ($am -or $ai) { $fail += 'app/sl-anim7*.bin shipped with no equipAnims in app/art-records.json' }
+                } elseif ($am -or $ai) { $fail += 'app/sl-anim7*.bin shipped with no equipAnims or bodyAnims in app/art-records.json' }
+                # cc-P139: the .vd sources stay in vendor\; none ships.
+                foreach ($p in $rel.Keys) { if ($p -match '\.vd$') { $fail += "$p shipped; a creature body's .vd source never ships, only its blocks in app/sl-anim7.bin" } }
             } catch { $fail += "app/art-records.json does not parse: $($_.Exception.Message)" }
         }
 
@@ -665,9 +687,19 @@ $pdSfwOut = Join-Path $stage 'app\paperdoll-sfw'
 New-Item -ItemType Directory -Path $pdSfwOut -Force | Out-Null
 foreach ($f in $pdBodies) { $vendored += ,@($f.FullName, (Join-Path $pdSfwOut $f.Name)) }
 $slRecords = [IO.File]::ReadAllText((Join-Path $slArt 'records.json')) | ConvertFrom-Json
-if (@($slRecords.equipAnims | Where-Object { $_ }).Count) {
+# cc-P139: every creature body's .vd is in anim-src\bodies\<id>.vd, exactly the registered bodies, and bodyAnims names it.
+$slVdDir = Join-Path $slArt 'anim-src\bodies'
+$slVds   = @(if (Test-Path -LiteralPath $slVdDir) { Get-ChildItem -LiteralPath $slVdDir -File })
+$extra   = @($slVds | Where-Object { $_.Name -notmatch '^(\d+)\.vd$' -or $slBodyIds -notcontains [int]$Matches[1] } | ForEach-Object Name)
+if ($extra.Count) { throw "vendor\shattered-legacy-art\anim-src\bodies holds files registry.csv does not list as bodies: $($extra -join ', '). Not building." }
+if ($slVds.Count -ne $slBodyIds.Count) { throw "vendor\shattered-legacy-art\anim-src\bodies holds $($slVds.Count) .vd files, registry.csv lists $($slBodyIds.Count) bodies. Not building." }
+foreach ($b in @($slRecords.bodyAnims | Where-Object { $_ })) {
+    if (-not (Test-Path -LiteralPath (Join-Path $slArt ([string]$b.vd).Replace('/', '\')))) { throw "records.json bodyAnims body $($b.body) names $($b.vd), which is not in vendor\shattered-legacy-art. Not building." }
+    if (([string]$b.vd) -ne "anim-src/bodies/$($b.body).vd") { throw "records.json bodyAnims body $($b.body) must name anim-src/bodies/$($b.body).vd, not $($b.vd). Not building." }
+}
+if (@($slRecords.equipAnims | Where-Object { $_ }).Count + @($slRecords.bodyAnims | Where-Object { $_ }).Count) {
     $eqFail = @(Test-EquipAnims $slRecords ([IO.File]::ReadAllBytes((Join-Path $slArt 'sl-anim7.bin'))) ([IO.File]::ReadAllBytes((Join-Path $slArt 'sl-anim7-idx.bin'))) 'vendor\shattered-legacy-art\records.json')
-    if ($eqFail.Count) { throw "EQUIPMENT ANIMATION GATE: $($eqFail -join '; '). Not building." }
+    if ($eqFail.Count) { throw "ANIMATION GATE: $($eqFail -join '; '). Not building." }
     foreach ($n in $slAnimFiles) { $vendored += ,@((Join-Path $slArt $n), (Join-Path $stage "app\$n")) }
 }
 

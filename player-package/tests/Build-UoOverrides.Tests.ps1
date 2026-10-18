@@ -282,7 +282,7 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     }
     # cc-P34 added the 47 winter decor IDs (15424-15470); cc-P50 the 18 chest mimic IDs (15472-15489); cc-P138 the male
     # paperdoll gump 54783 (one more gump row).
-    Assert-Equal 113 $reg.Count 'registry rows'
+    Assert-Equal 114 $reg.Count 'registry rows'   # cc-P139: + body 2048
     Assert-Equal 2 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783 and 54783'
     Assert-Equal 110 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
@@ -379,19 +379,27 @@ Fact 'TheWinterDecorRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
     foreach ($p in $pngs) { Assert-True (@($reg | Where-Object { [int]$_.id -eq $p -and $_.kind -eq 'art' }).Count -eq 1) "$p.png is registered" }
 }
 
-# --- cc-P62: worn-item animations ----------------------------------------------------------
+# --- cc-P62: worn-item animations; cc-P139: creature bodies -------------------------------------
 $ourLine = "4783`t-1`t-1`t-1`t-1`t-1`t400`t# fox ears and tail"
+$ourBodyLine = "2048`t-1`t-1`t-1`t-1`t-1`t1`t# burrow scamp slinger (kobold archer)"
+$ourMobLine  = "2048`tMONSTER`t0`t# burrow scamp slinger (kobold archer)"
+$bodyconvComment  = "# Shattered Legacy's animations (app\Build-UoOverrides.ps1): body N is slot S of anim7.mul.`r`n"
+$mobtypesComment  = "# Shattered Legacy's creature bodies (app\Build-UoOverrides.ps1): body TYPE flags (hex).`r`n"
 
-Fact 'TheWornAnimationGetsOneBodyconvLineAfterThePlayersFileAndTheAnim7Overrides' {
+Fact 'TheWornAnimationAndTheCreatureBodyGetTheirBodyconvLinesAndTheAnim7Overrides' {
     $uo = New-UoDir 'equip' (New-Tiledata) (New-Animdata)
     $out = Join-Path $work 'equip-out'
     $r = Invoke-BuilderSaying $uo $out
     Assert-Equal '' $r.Said 'a clean build says nothing'
-    $want = $bodyconvText + "`r`n# Shattered Legacy's worn-item animations (app\Build-UoOverrides.ps1): body N is slot S of anim7.mul.`r`n" + $ourLine + "`r`n"
-    Assert-Equal $want ([IO.File]::ReadAllText((Join-Path $out 'Bodyconv.def'))) 'the player''s file, a line break, our comment and line'
+    $want = $bodyconvText + "`r`n" + $bodyconvComment + $ourLine + "`r`n" + $ourBodyLine + "`r`n"
+    Assert-Equal $want ([IO.File]::ReadAllText((Join-Path $out 'Bodyconv.def'))) 'the player''s file, a line break, our comment and lines'
     Assert-Equal $bodyconvText ([IO.File]::ReadAllText((Join-Path $uo 'Bodyconv.def'))) 'the player''s own file is untouched'
+    # cc-P139: the creature body's mobtypes line, after the player's own file (which ends with a line break here).
+    $wantMob = $mobtypesText + $mobtypesComment + $ourMobLine + "`r`n"
+    Assert-Equal $wantMob ([IO.File]::ReadAllText((Join-Path $out 'mobtypes.txt'))) 'the player''s mobtypes.txt, our comment and line'
+    Assert-Equal $mobtypesText ([IO.File]::ReadAllText((Join-Path $uo 'mobtypes.txt'))) 'the player''s own mobtypes.txt is untouched'
     $list = [IO.File]::ReadAllLines((Join-Path $out 'files-override.txt'))
-    foreach ($l in "bodyconv.def=$out\Bodyconv.def", "anim7.mul=$animMul", "anim7.idx=$animIdx") {
+    foreach ($l in "bodyconv.def=$out\Bodyconv.def", "anim7.mul=$animMul", "anim7.idx=$animIdx", "mobtypes.txt=$out\mobtypes.txt") {
         Assert-True ($list -contains $l) "$l in: $($list -join ' | ')"
     }
     # Unchanged: not rewritten. The player's Bodyconv.def changes (an EA patch): rebuilt.
@@ -403,20 +411,38 @@ Fact 'TheWornAnimationGetsOneBodyconvLineAfterThePlayersFileAndTheAnim7Overrides
     (Get-Item (Join-Path $uo 'Bodyconv.def')).LastWriteTimeUtc = [DateTime]::UtcNow.AddMinutes(1)
     [void](Invoke-BuilderSaying $uo $out)
     $b = [IO.File]::ReadAllText((Join-Path $out 'Bodyconv.def'))
-    Assert-True ($b.Contains("1002`t-1`t-1`t-1`t5`t-1`r`n# Shattered Legacy") -and $b.EndsWith("$ourLine`r`n")) 'rebuilt from the new file, one line break kept'
+    Assert-True ($b.Contains("1002`t-1`t-1`t-1`t5`t-1`r`n# Shattered Legacy") -and $b.EndsWith("$ourLine`r`n$ourBodyLine`r`n")) 'rebuilt from the new file, one line break kept'
 }
 
-Fact 'AWornAnimationEANamesIsSkippedAndAnEAAnim7StopsOnlyThatPart' {
+Fact 'AWornAnimationOrBodyEANamesIsSkippedAndAnEAAnim7StopsOnlyThatPart' {
     $out = Join-Path $work 'equip-taken-out'
-    $r = Invoke-BuilderSaying (New-UoDir 'equip-bodyconv' (New-Tiledata) (New-Animdata) ($bodyconvText + "`r`n4783`t-1`t-1`t-1`t-1`t7`r`n")) $out
+    # Both of ours named by the player's Bodyconv.def: both skipped, nothing of the part ships, no copy is left.
+    $r = Invoke-BuilderSaying (New-UoDir 'equip-bodyconv' (New-Tiledata) (New-Animdata) ($bodyconvText + "`r`n4783`t-1`t-1`t-1`t-1`t7`r`n2048`t-1`t-1`t-1`t-1`t9`r`n")) $out
     Assert-True ($r.Said -match 'skipping worn animation 4783: Bodyconv\.def already names it') $r.Said
+    Assert-True ($r.Said -match 'skipping creature body 2048: Bodyconv\.def already names it') $r.Said
     $list = [IO.File]::ReadAllLines($r.Result)
-    Assert-True (-not ($list -match '^(bodyconv\.def|anim7\.)')) "no worn-animation lines: $($list -join ' | ')"
+    Assert-True (-not ($list -match '^(bodyconv\.def|anim7\.|mobtypes\.txt)')) "no animation lines: $($list -join ' | ')"
     Assert-True ($list -match '^tiledata\.mul=') 'the art part still ships'
-    Assert-True (-not (Test-Path (Join-Path $out 'Bodyconv.def'))) 'no copy left behind'
+    Assert-True (-not (Test-Path (Join-Path $out 'Bodyconv.def'))) 'no Bodyconv copy left behind'
+    Assert-True (-not (Test-Path (Join-Path $out 'mobtypes.txt'))) 'no mobtypes copy left behind'
 
     $r = Invoke-BuilderSaying (New-UoDir 'equip-mobtypes' (New-Tiledata) (New-Animdata) $bodyconvText ($mobtypesText + "4783`tEQUIPMENT`t10000`r`n")) $out
     Assert-True ($r.Said -match 'skipping worn animation 4783: mobtypes\.txt already names it') $r.Said
+
+    # cc-P139: only the body named by the player's mobtypes.txt: the worn item still ships, and no mobtypes copy is
+    # written (the player's own line stands; nothing of ours is left to add).
+    $r = Invoke-BuilderSaying (New-UoDir 'body-mobtypes' (New-Tiledata) (New-Animdata) $bodyconvText ($mobtypesText + "2048`tANIMAL`t0`r`n")) $out
+    Assert-True ($r.Said -match 'skipping creature body 2048: mobtypes\.txt already names it') $r.Said
+    $list = [IO.File]::ReadAllLines($r.Result)
+    Assert-True ($list -match '^bodyconv\.def=') 'the worn item still ships'
+    Assert-True (-not ($list -match '^mobtypes\.txt=')) "no mobtypes override: $($list -join ' | ')"
+    Assert-True (-not (Test-Path (Join-Path $out 'mobtypes.txt'))) 'no mobtypes copy'
+    Assert-Equal ($bodyconvText + "`r`n" + $bodyconvComment + $ourLine + "`r`n") ([IO.File]::ReadAllText((Join-Path $out 'Bodyconv.def'))) 'the worn item''s line alone'
+
+    # A player folder with no mobtypes.txt at all: our lines alone make the copy.
+    $r = Invoke-BuilderSaying (New-UoDir 'body-nomob' (New-Tiledata) (New-Animdata) $bodyconvText $null) $out
+    Assert-Equal '' $r.Said 'nothing to say'
+    Assert-Equal ($mobtypesComment + $ourMobLine + "`r`n") ([IO.File]::ReadAllText((Join-Path $out 'mobtypes.txt'))) 'our comment and line only'
 
     $uo = New-UoDir 'equip-anim7' (New-Tiledata) (New-Animdata)
     [IO.File]::WriteAllText((Join-Path $uo 'anim7.mul'), 'EA')

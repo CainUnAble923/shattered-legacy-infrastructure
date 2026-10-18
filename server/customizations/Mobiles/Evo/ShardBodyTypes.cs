@@ -1,4 +1,5 @@
-// cc-P65, F-35 Part D: body types for the unused client bodies our creatures use.
+// cc-P65, F-35 Part D: body types for the unused client bodies our creatures use; cc-P139 adds the first body that is
+// ours alone (a third-party .vd shipped in the player package, F-46).
 //
 // Pinned types each body from Distribution/Data/bodyTable.cfg (Server/Mobiles/Body.cs:40-73; an unlisted body is
 // Empty). A pet on a body typed Equipment or Empty can open doors (BaseCreature.CanOpenDoors => !Body.IsAnimal &&
@@ -38,7 +39,11 @@ namespace Server
             (1549, BodyType.Animal, "Saint Bernard, evo dog stage 3 pick"),
             (1551, BodyType.Animal, "Black Russian terrier, evo dog stage 3 pick"),
             (1552, BodyType.Animal, "Rottweiler, evo dog stage 3 pick"),
-            (1410, BodyType.Animal, "windrunner, evo dog stage 5 (bodyTable.cfg: Equipment)")
+            (1410, BodyType.Animal, "windrunner, evo dog stage 5 (bodyTable.cfg: Equipment)"),
+            // cc-P139, the creature body route (F-46): the first third-party creature body the package ships, past
+            // every body bodyTable.cfg lists (its highest is 1973). Vert-I-Go's kobold archer .vd at anim7 slot 1;
+            // BurrowScampSlingerBodyTest wears it, and F-45's Burrow Scamp Slinger (cc-P140) will.
+            (2048, BodyType.Monster, "burrow scamp slinger (the kobold archer), the body route's proof")
         };
 
         public static void Configure() => Apply();

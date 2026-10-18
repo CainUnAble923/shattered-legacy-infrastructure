@@ -12,3 +12,4 @@
 *.idx binary
 *.uop binary
 *.bin binary
+*.vd binary

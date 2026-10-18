@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.12
+
+### Staff
+- The player package can carry a creature body of our own. The first is body 2048, the burrow scamp slinger (a kobold archer from a third-party pack), drawn by TazUO from our anim7 file through the launcher's copies of Bodyconv.def and, new, mobtypes.txt; nothing of EA's ships. The package gates and the art checks (find-free-art, validate-art) know the registry's new body kind.
+- `[add BurrowScampSlingerBodyTest` spawns the proof creature on the test shard: a weak archer on that body whose bow plays its one attack animation on every shot.
+
 ## 2026.10.17.11
 
 ### Staff

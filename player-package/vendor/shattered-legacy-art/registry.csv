@@ -1,7 +1,9 @@
 # Art registry: every art ID our package uses for its own art, one row per ID. scripts/find-free-art.py reads
 # it, so a later pack (F-21 to F-23) never takes an ID listed here. Add rows; never reuse or renumber one.
 # kind (cc-P62): art = an art/item ID, one PNG in art\; anim = an Animation number (a worn item's
-# tiledata animId), its frames in sl-anim7.bin; gump = a gump ID, one PNG in gumps\.
+# tiledata animId), its frames in sl-anim7.bin; gump = a gump ID, one PNG in gumps\; body (cc-P139) = a
+# creature body (the server's Body, a mobtypes.txt line and a Bodyconv.def line into our anim7), its .vd in
+# anim-src\bodies\<id>.vd and its frames in sl-anim7.bin (records.json bodyAnims).
 id,id_hex,what,source,license,kind
 15376,0x3C10,shattered runestone design 1 frame 1 of 11 (base ID: the item ID; has our tiledata and animdata record),"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0001_top.png",no license stated; see SOURCE.txt,art
 15377,0x3C11,shattered runestone design 1 frame 2 of 11,"Vrark ""Animated Runestone"" (servuo.dev resource 2564) Test1_0002_top.png",no license stated; see SOURCE.txt,art
@@ -116,3 +118,4 @@ id,id_hex,what,source,license,kind
 15487,0x3C7F,"chest mimic (F-32) WE (stock wooden chest 0xE42 facing): idle loop frame 2 of 2, mouth open","Archaaz ""Animated Mimic"" (servuo.dev thread 12406) Mimic/Animations WE/3.bmp",none stated; see SOURCE.txt,art
 15488,0x3C80,"chest mimic (F-32) WE (stock wooden chest 0xE42 facing): dead, lid flung open (still; has our tiledata record)","Archaaz ""Animated Mimic"" (servuo.dev thread 12406) Mimic/Extra/5.bmp",none stated; see SOURCE.txt,art
 15489,0x3C81,"chest mimic (F-32) WE (stock wooden chest 0xE42 facing): dead, tongue out (still; has our tiledata record)","Archaaz ""Animated Mimic"" (servuo.dev thread 12406) Mimic/Extra/7.bmp",none stated; see SOURCE.txt,art
+2048,0x800,"burrow scamp slinger (the kobold archer): creature body, anim7 slot 1, MONSTER 0; proof of the creature body route (cc-P139, F-46); the staff test creature BurrowScampSlingerBodyTest wears it; the Rootdeep Burrows archer (F-45, cc-P140) will too","Vert-I-Go ""Kobold-Bow"" (servuo.dev resource 2532) Kobold Bow.vd, byte for byte as anim-src/bodies/2048.vd (sha256 be548c1f5527c1d7485410c412a2575d45a171a310dab133c0c8c2e1114ff0fd)","none stated; a Baldur's Gate rip, cleared by Chase 2026-10-15 (rip allowed, renamed in game); see SOURCE.txt",body

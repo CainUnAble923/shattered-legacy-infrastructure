@@ -54,8 +54,27 @@ A gump ID G is free when: G < 0x10000; gumpartLegacyMUL.uop has no entry for it;
 not name it; no ExternalImages\gumps PNG we ship names it (Fiddle-Me-This; ours are the registry's); it is not in
 code (hex or decimal); and it is not registered (kind "gump").
 
+Creature bodies (cc-P139, F-46: a third-party .vd shipped as a body of ours, into our anim7):
+
+    python scripts/find-free-art.py --explain-body 2048   why one server body is or is not free for a new creature
+    python scripts/find-free-art.py --body --from 0x800   free bodies in a range (to 0xFFF at most)
+
+A body N is free only when ALL hold:
+
+  range     0 <= N < 0x1000: the server types bodies from a 0x1000 table (Server\Mobiles\Body.cs:49)
+  defs      mobtypes.txt, Body.def, Corpse.def and Bodyconv.def do not name N, and Equipconv.def does not use it
+  anim.mul  the slot anim.idx gives N without a Bodyconv line (by TazUO's default layout for the number: below 200
+            monster, below 400 animal, else people) holds no frames
+  uop       no AnimationFrame*.uop entry for N, no AnimationSequence.uop record
+  server    pinned Distribution\Data\bodyTable.cfg does not type it (every typed body is an EA creature's)
+  code      no "Body = N", "new Body(N)", "(Body)N", mount "base(N, ...)" or ShardBodyTypes "(N, BodyType." in pinned
+            or our server code (a bare number is not enough: 0x800 is a flag everywhere). Our own server code naming a
+            registered body is its use, not a collision (--check-registry)
+  registry  not registered (kind "body", and not kind "anim" either: an Animation number is a body to the client)
+
 registry.csv's "kind" column says which space a row's id is in: art (an art/item ID, one PNG in art\), anim (an
-Animation number), gump (a gump ID, one PNG in gumps\). --check-registry re-tests every row in its own space.
+Animation number), gump (a gump ID, one PNG in gumps\), body (a creature body, its .vd in anim-src\bodies\).
+--check-registry re-tests every row in its own space.
 
 Reads EA's files, writes nothing. Python 3 with numpy and Pillow (Pillow only for --explain's picture).
 ASCII only.
@@ -72,8 +91,10 @@ REGISTRY = os.path.join(REPO, 'player-package', 'vendor', 'shattered-legacy-art'
 OUR_ART = os.path.join(REPO, 'player-package', 'vendor', 'shattered-legacy-art', 'art')
 OUR_GUMPS = os.path.join(REPO, 'player-package', 'vendor', 'shattered-legacy-art', 'gumps')
 # The TazUO source at the commit we ship (26.0909.63, 3212623f; notes\cc-P26 section 1). Optional: searched for
-# Animation numbers and gump IDs when present, with a warning when not.
-DEFAULT_TAZUO = r'D:\UO\cc-p40-work\tazuo-3212623f\src'
+# Animation numbers and gump IDs when present, with a warning when not. cc-P139: the P40 clone was archived on
+# 2026-10-17; client\Build-Client.ps1's worktree holds the same commit (plus our two patches, neither about
+# animation or gump numbers), so that is the default now.
+DEFAULT_TAZUO = r'D:\UO\tazuo-sl-build\src\src'
 ANIM_LO, ANIM_HI = 400, 5535
 FEMALE_GUMP, MALE_GUMP = 60000, 50000
 PEOPLE_ACTIONS = 35
@@ -362,8 +383,21 @@ def gump_defs(data):
 
 def people_slot_used(idx_bytes, n):
     """True when anim.idx's people slot for body n (AnimationsLoader.CalculatePeopleGroupOffset) holds frames."""
-    base = 35000 + (n - 400) * 175
-    for k in range(base, base + 175):
+    return slot_used(idx_bytes, 35000 + (n - 400) * 175, 175)
+
+
+def body_slot(n):
+    """(layout, first index entry, entries) anim.idx gives body n with no Bodyconv line: TazUO's CalculateTypeByGraphic
+    for file index 0 (below 200 monster, below 400 animal, else people) and CalculateHigh/Low/PeopleGroupOffset."""
+    if n < 200:
+        return 'monster', n * 110, 110
+    if n < 400:
+        return 'animal', 22000 + (n - 200) * 65, 65
+    return 'people', 35000 + (n - 400) * 175, 175
+
+
+def slot_used(idx_bytes, base, count):
+    for k in range(base, base + count):
         o = k * 12
         if o + 12 > len(idx_bytes):
             return False
@@ -371,6 +405,55 @@ def people_slot_used(idx_bytes, n):
         if pos != -1 and size > 0:
             return True
     return False
+
+
+def read_body_table(pinned):
+    """body -> (type, line) from pinned Distribution\\Data\\bodyTable.cfg (Server\\Mobiles\\Body.cs:42-72)."""
+    out = {}
+    p = os.path.join(pinned, 'Distribution', 'Data', 'bodyTable.cfg')
+    if os.path.exists(p):
+        for n, line in enumerate(open(p, 'r', encoding='latin1'), 1):
+            if not line.strip() or line.startswith('#'):
+                continue
+            s = line.rstrip('\r\n').split('\t')
+            if len(s) >= 2 and s[0].strip().isdigit():
+                out[int(s[0])] = (s[1].strip(), n)
+    return out
+
+
+# "Body = N;" (a statement: an enum member "Body = 0x800," is MobileDelta, not a body), "new Body(N)", "(Body)N" and
+# a mount's "base(N, ...)".
+BODY_CODE = re.compile(r'\bBody(?:Mod|Value)?\s*=\s*(0x[0-9A-Fa-f]+|\d+)\s*;|(?:\bnew Body\(\s*|\(Body\)\s*|\bbase\(\s*)(0x[0-9A-Fa-f]+|\d+)(?=\s*[,)])')
+BODY_TABLE_CODE = re.compile(r'\(\s*(0x[0-9A-Fa-f]+|\d+)\s*,\s*BodyType\.')
+
+
+def num(s):
+    """A C# integer literal: hex after 0x, else decimal (leading zeros allowed)."""
+    return int(s[2:], 16) if s.lower().startswith('0x') else int(s, 10)
+
+
+def body_code_numbers(roots):
+    """value -> one file where code gives a body that number: "Body = N;", "new Body(N)", "(Body)N", a mount's
+    "base(N, ...)" or a ShardBodyTypes "(N, BodyType." entry."""
+    found = {}
+    for root in roots:
+        if not os.path.isdir(root):
+            continue
+        for dp, dn, fn in os.walk(root):
+            dn[:] = [x for x in dn if x not in ('bin', 'obj', '.git')]
+            for f in fn:
+                if os.path.splitext(f)[1].lower() != '.cs':
+                    continue
+                p = os.path.join(dp, f)
+                try:
+                    text = open(p, 'r', encoding='utf-8', errors='replace').read()
+                except OSError:
+                    continue
+                for m in BODY_CODE.finditer(text):
+                    found.setdefault(num(m.group(1) or m.group(2)), p)
+                for m in BODY_TABLE_CODE.finditer(text):
+                    found.setdefault(num(m.group(1)), p)
+    return found
 
 
 def animseq_ids(data):
@@ -499,7 +582,7 @@ def parse_id(s):
         return None
 
 
-KINDS = ('art', 'anim', 'gump')
+KINDS = ('art', 'anim', 'gump', 'body')
 
 
 def read_registry(path):
@@ -535,6 +618,8 @@ class World:
         self.overrides = override_ids(os.path.join(REPO, 'player-package', 'vendor'))
         self.regs = read_registry(a.registry)
         self.registry = self.regs['art']
+        self.code_roots = roots
+        self.pinned = a.pinned
         self.tileart, self.tileart_targets = tileart_appearances(a.data)
         self._art = {}
         self._anim_ready = False
@@ -559,7 +644,35 @@ class World:
             self.taz_hex, self.taz_dec = code_numbers([self.tazuo])
         else:
             print('warning: TazUO source not found, not searched: %s' % self.tazuo, file=sys.stderr)
+        self.body_table = read_body_table(self.pinned)
+        self.body_code = body_code_numbers(self.code_roots)
         self._anim_ready = True
+
+    def body_reasons(self, n, ignore_registry=False):
+        """Why server body n is not free for a new creature (cc-P139); empty means free."""
+        self.anim_setup()
+        if not 0 <= n < 0x1000:
+            return ['range: server bodies are 0 to 0xFFF (Body.cs:49)']
+        r = ['defs: named in %s' % w for w in self.anim_named.get(n, [])]
+        layout, base, count = body_slot(n)
+        if slot_used(self.anim_idx, base, count):
+            r.append('anim.mul: its %s slot in anim.idx holds frames' % layout)
+        if n in self.animseq:
+            r.append('uop: AnimationSequence.uop has a record for it')
+        if n in self.body_table:
+            r.append('server: bodyTable.cfg:%d types it %s' % (self.body_table[n][1], self.body_table[n][0]))
+        if n in self.body_code:
+            r.append('code: a body in %s' % self.body_code[n])
+        if not ignore_registry and n in self.regs['body']:
+            r.append('registry: %s' % self.regs['body'][n].get('what', ''))
+        if n in self.regs['anim']:
+            r.append('registry: Animation number %s' % self.regs['anim'][n].get('what', ''))
+        if not r:    # the slow test last
+            for f, u in self.anim_uops:
+                if any(u.has('build/animationlegacyframe/%06d/%02d.bin' % (n, k)) for k in range(80)):
+                    r.append('uop: %s has frames for it' % f)
+                    break
+        return r
 
     def code_hits(self, v):
         r = []
@@ -694,6 +807,8 @@ def main():
     ap.add_argument('--anim', action='store_true', help='list free Animation numbers for a worn item (cc-P62)')
     ap.add_argument('--explain-anim', type=lambda s: int(s, 0), nargs='*')
     ap.add_argument('--explain-gump', type=lambda s: int(s, 0), nargs='*')
+    ap.add_argument('--body', action='store_true', help='list free server bodies for a creature between --from and --to (cc-P139)')
+    ap.add_argument('--explain-body', type=lambda s: int(s, 0), nargs='*')
     a = ap.parse_args()
 
     w = World(a)
@@ -703,6 +818,21 @@ def main():
           % (w.tile_bytes, w.n, w.anim_bytes, len(w.maps), len(w.multis), len(w.artdef), len(w.hexes),
              len(w.decs), len(w.overrides), len(w.tileart),
              ', '.join('%d %s' % (len(w.regs[k]), k) for k in KINDS)))
+
+    if a.explain_body:
+        for n in a.explain_body:
+            r = w.body_reasons(n)
+            print('body %d (0x%X): %s' % (n, n, 'FREE' if not r else 'not free'))
+            for x in r:
+                print('    ' + x)
+        return 0
+
+    if a.body:
+        lo, hi = max(a.lo, 0), min(a.hi, 0xFFF)
+        free = [n for n in range(lo, hi + 1) if not w.body_reasons(n)]
+        print('%d free server bodies between 0x%X and 0x%X (first %d):' % (len(free), lo, hi, min(len(free), a.top * 5)))
+        print('  ' + ' '.join(str(n) for n in free[:a.top * 5]))
+        return 0
 
     if a.explain_anim or a.explain_gump:
         for n in a.explain_anim or []:
@@ -750,6 +880,8 @@ def main():
                     r = w.anim_reasons(i, ignore_registry=True)
                     if not any(g in w.regs['gump'] for g in (FEMALE_GUMP + i, MALE_GUMP + i)):
                         r.append('registry: neither of its gumps (%d, %d) is registered' % (FEMALE_GUMP + i, MALE_GUMP + i))
+                elif kind == 'body':
+                    r = w.body_reasons(i, ignore_registry=True)
                 else:
                     r = w.gump_reasons(i, ignore_registry=True)
                     if not any(i - b in w.regs['anim'] for b in (FEMALE_GUMP, MALE_GUMP)):
