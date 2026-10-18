@@ -53,6 +53,8 @@ ul.body, ul.list { list-style: square; }
 .bar { height: 10px; background: var(--field); border-radius: 5px; overflow: hidden; margin: 4px 0 10px; }
 .bar span { display: block; height: 100%; background: var(--gold); }
 .bar.amber span { background: var(--amber); } .bar.red span { background: var(--red); }
+.bar { position: relative; } .bar i.pace { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--page-text); }
+.warn { color: var(--amber); font-size: 13px; }
 .logbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 8px; }
 .logbar label { display: flex; flex-direction: column; font-size: 12px; color: var(--gray); }
 input, select, button { font: inherit; min-height: 40px; background: var(--field); color: var(--page-text); border: 1px solid rgba(220, 178, 98, 0.5); border-radius: 6px; padding: 4px 8px; max-width: 100%; }

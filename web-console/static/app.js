@@ -124,8 +124,18 @@
       u.appendChild(el('div', null, r.name + (r.pct === null || r.pct === undefined ? ': unknown' : ': ' + Math.round(r.pct) + '% used')));
       var bar = el('div', 'bar ' + (r.color === 'red' ? 'red' : r.color === 'amber' ? 'amber' : ''));
       var fill = el('span'); fill.style.width = (r.pct ? Math.max(0, Math.min(100, r.pct)) : 0) + '%';
-      bar.appendChild(fill); u.appendChild(bar);
+      bar.appendChild(fill);
+      // cc-P160: the pace marker, where the Golem's pace rule allows this window to be now, and the reset time.
+      if (typeof r.marker === 'number') {
+        var mk = el('i', 'pace'); mk.style.left = Math.max(0, Math.min(100, r.marker)) + '%';
+        mk.title = 'pace allows ' + r.marker + '% now'; bar.appendChild(mk);
+      }
+      u.appendChild(bar);
+      var rs = /resets in [^(]+/.exec(r.text || '');
+      if (rs || typeof r.marker === 'number') u.appendChild(el('div', 'meta', (typeof r.marker === 'number' ? 'pace ' + r.marker + '%' + (rs ? ', ' : '') : '') + (rs ? rs[0].trim() : '')));
     });
+    // cc-P160: the plan usage page's lines: the pace warning, when it was last read, the free reset and the credits.
+    ((g && g.usageNotes) || []).forEach(function (n) { u.appendChild(el('p', n.color === 'amber' ? 'warn' : 'quiet', n.text)); });
     // Today's summary card.
     var t = clear(document.querySelector('#today-golem .body'));
     golemState(g).slice(0, 2).forEach(function (l) { t.appendChild(el('p', null, l)); });

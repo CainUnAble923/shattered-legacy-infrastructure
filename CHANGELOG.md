@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.9
+
+### Staff
+- The Golem paces itself through the day from the real plan usage page: it hands on a prompt only while the week (and, for a Fable prompt, the Fable week) is within its even pace plus a small head start, rests with the reason and the time it is back on pace, and wakes itself then.
+- A Fable prompt held by the Fable week lets the next Opus prompt go first when that one does not depend on it; claude.ai's "you'll run out" warning holds new hand-offs until the page stops showing it.
+- The Golem never uses a free limit reset or usage credits: it emails once a day to ask about a reset when the week is running short, and still stops at the plan limit with credits on.
+- The console's Golem tab and the web console show three usage bars (5-hour, week, Fable week) with a pace marker and reset time, the pace warning, when the usage page was last read, and the free reset and cloud credit.
+
 ## 2026.10.17.8
 
 ### Changed

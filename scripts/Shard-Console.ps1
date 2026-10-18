@@ -221,6 +221,8 @@ function New-AutopilotConfig {
         WrapUp       = (Join-Path $Root 'Wrap-Up.ps1')
         StopPoint    = (Join-Path $Root 'Find-StoppingPoint.ps1')
         UsageFile    = (Join-Path $Root 'usage.json')
+        # cc-P160: claude.ai/settings/usage as the overseer's reader writes it (the Fable week, the pace warning).
+        PlanUsageFile = (Join-Path $Root 'plan-usage.json')
         # cc-P131: waking a CC session from here, the two toggles, the sign-in check, and the CLI facts the Golem keeps.
         WakeScript   = (Join-Path $Root 'Wake-Golem.ps1')
         AutoWakeScript = (Join-Path $Root 'Set-AutoWake.ps1')
@@ -3971,7 +3973,8 @@ function Test-AutopilotAlert {
 # settings.json: progressEmails, maxPerRun, stallMinutes; the hook's defaults (Get-Settings) when a key is missing.
 $script:AutopilotStaleMinutes = 15
 # cc-P131: autoWake and the night shift keys too (the hook's defaults, Get-Settings in golem.ps1).
-$script:AutopilotSettingDefaults = [ordered]@{ progressEmails = $true; maxPerRun = 6; stallMinutes = 45; autoWake = $true; nightShiftEnabled = $true; nightShiftStart = '22:30'; nightShiftEnd = '06:30' }
+$script:AutopilotSettingDefaults = [ordered]@{ progressEmails = $true; maxPerRun = 6; stallMinutes = 45; autoWake = $true; nightShiftEnabled = $true; nightShiftStart = '22:30'; nightShiftEnd = '06:30'
+    dayWeekAheadPct = 3; weekReservePct = 10; planUsageMaxAgeHours = 4 }   # cc-P160: the Golem's day pace rule
 
 function ConvertFrom-AutopilotTime {
     # A 's' time from the hook, as written ($Kind Local or Utc), or $null. ConvertFrom-Json in PowerShell 7
@@ -4058,7 +4061,8 @@ function ConvertFrom-AutopilotSettings {
         } catch { $source = 'settings.json unreadable: the hook''s defaults' }
     }
     [pscustomobject]@{ ProgressEmails = [bool]$s.progressEmails; MaxPerRun = [int]$s.maxPerRun; StallMinutes = [int]$s.stallMinutes; Source = $source
-        AutoWake = [bool]$s.autoWake; NightShiftEnabled = [bool]$s.nightShiftEnabled; NightShiftStart = [string]$s.nightShiftStart; NightShiftEnd = [string]$s.nightShiftEnd }
+        AutoWake = [bool]$s.autoWake; NightShiftEnabled = [bool]$s.nightShiftEnabled; NightShiftStart = [string]$s.nightShiftStart; NightShiftEnd = [string]$s.nightShiftEnd
+        DayWeekAheadPct = [double]$s.dayWeekAheadPct; WeekReservePct = [double]$s.weekReservePct; PlanUsageMaxAgeHours = [double]$s.planUsageMaxAgeHours }
 }
 
 function Format-ShortAge {
@@ -4130,6 +4134,7 @@ function Get-AutopilotView {
                             [pscustomobject]@{ Number = $fp.Number; Result = $fp.Result; Time = $fp.Time; Title = $(if ($info.Readable) { $info.Title } else { 'P' + $fp.Number }); Headline = (Get-NotesHeadline (Get-ExtraText $Extra 'NotesTexts' ([string]$fp.Number))) }
                         })
         UsageText     = $(if ($Extra) { $Extra.UsageText } else { $null })
+        PlanUsageText = $(if ($Extra) { $Extra.PlanUsageText } else { $null })
         Estimate      = $(if ($Extra) { $Extra.Estimate } else { $null })
         TreeClean     = $(if ($Extra) { $Extra.TreeClean } else { $null })
     }
@@ -4232,10 +4237,50 @@ function Format-ResetIn {
 }
 
 function Format-UsageBar {
-    param([double]$Pct, [int]$Width = 20)
+    # cc-P160: $Marker (a percent, or $null) draws the pace marker '|' where the pace allows the window to be now.
+    param([double]$Pct, [int]$Width = 20, $Marker = $null)
     $p = [Math]::Max(0, [Math]::Min(100, $Pct))
     $f = [int][Math]::Round($p / 100 * $Width, [MidpointRounding]::AwayFromZero)
-    '[' + ('#' * $f) + ('.' * ($Width - $f)) + ']'
+    $c = (('#' * $f) + ('.' * ($Width - $f))).ToCharArray()
+    if ($null -ne $Marker) {
+        $i = [int][Math]::Round([Math]::Max([double]0, [Math]::Min([double]100, [double]$Marker)) / 100 * $Width, [MidpointRounding]::AwayFromZero) - 1
+        $c[[Math]::Max(0, [Math]::Min($Width - 1, $i))] = '|'
+    }
+    '[' + (-join $c) + ']'
+}
+
+function Get-UsagePace {
+    # cc-P160: where the Golem's pace rule (golem.ps1 Get-PaceAllowance) allows a window to be now: the share of the
+    # window gone since its last reset, plus the head start and capped by the reserve for the weekly ones. $null when the
+    # reset time is unknown.
+    param($ResetsAt, [datetime]$Now, [double]$Hours, [double]$Ahead = 0, [double]$Reserve = 0)
+    if (-not ($ResetsAt -is [datetime])) { return $null }
+    $since = $Hours - ($ResetsAt - $Now).TotalHours
+    if ($since -lt 0) { $since = 0 }; if ($since -gt $Hours) { $since = $Hours }
+    $a = ($since / $Hours) * 100 + $Ahead
+    if ($Reserve -gt 0 -and $a -gt 100 - $Reserve) { $a = 100 - $Reserve }
+    [Math]::Round([Math]::Max([double]0, [double]$a), 1)
+}
+
+function ConvertFrom-PlanUsage {
+    # cc-P160: plan-usage.json (claude.ai/settings/usage, written by the overseer's reader) as plain values: each window's
+    # pct and local reset time, the read time, Stale past $MaxAgeHours, the pace warning, the free full reset, the cloud
+    # session credit and the usage credits. $null for no file; Error for an unreadable one. Never throws.
+    param($Text, [datetime]$Now, [double]$MaxAgeHours = 4)
+    if ($null -eq $Text) { return $null }
+    try { $j = ([string]$Text) | ConvertFrom-Json } catch { return [pscustomobject]@{ Error = $_.Exception.Message } }
+    $local = { param($v) if (-not $v) { return $null }; if ($v -is [datetime]) { return $v.ToLocalTime() }; try { [DateTimeOffset]::Parse([string]$v, $script:Invariant).LocalDateTime } catch { $null } }
+    $win = { param($x) if (-not $x) { return $null }; $at = & $local $x.resets; $pct = [double]$x.pct; if ($at -and $at -le $Now) { $pct = 0 }; [pscustomobject]@{ Pct = $pct; At = $at } }
+    $read = & $local $j.readAt
+    $age = $(if ($read) { $Now - $read } else { $null })
+    [pscustomobject]@{
+        Error = ''; ReadAt = $read; Age = $age; Stale = ((-not $read) -or $age.TotalHours -gt $MaxAgeHours); MaxAgeHours = $MaxAgeHours; ReadBy = [string]$j.readBy; Plan = [string]$j.plan
+        Session = (& $win $j.session); Week = (& $win $j.week); Fable = (& $win $j.fableWeek)
+        Warning = ([string]$j.paceWarning).Trim()
+        FullReset = $(if ($j.limitResets -and $j.limitResets.full) { [pscustomobject]@{ Available = [bool]$j.limitResets.full.available; Expires = [string]$j.limitResets.full.expires } } else { $null })
+        Cloud = $(if ($j.cloudSessionCredit) { [pscustomobject]@{ Left = $j.cloudSessionCredit.left; Of = $j.cloudSessionCredit.of; Expires = (& $local $j.cloudSessionCredit.expires) } } else { $null })
+        Credits = $(if ($j.usageCredits) { [pscustomobject]@{ Balance = [double]$j.usageCredits.balance; On = [bool]$j.usageCredits.toggleOn } } else { $null })
+    }
 }
 
 function Get-UsageBars {
@@ -4244,7 +4289,12 @@ function Get-UsageBars {
     # the status line JSON). $UsageText is usage.json ($null: none). Each row: Name, Pct ($null when unknown), Text, Color.
     # Data older than $script:UsageStaleMinutes is greyed out as unknown. $Estimate, when given and there is no usage.json,
     # is the local token count over the last 5 hours, labelled as an estimate, with no percentage.
-    param($UsageText, [datetime]$Now, $Estimate)
+    # cc-P160: $PlanText is plan-usage.json (claude.ai/settings/usage, from the overseer's reader): the only source of the
+    # Fable week and the pace warning, and of the session and the week when it was read after the status line last
+    # reported. $Settings (ConvertFrom-AutopilotSettings) turns on the pace markers: '|' in each bar where the Golem's pace
+    # rule allows that window to be now (Marker), amber when a weekly window is past it. Then three plain lines: the pace
+    # warning, when the reader last ran, and the free reset with the cloud and usage credits. Bar says which rows are bars.
+    param($UsageText, [datetime]$Now, $Estimate, $PlanText, $Settings)
     $rows = New-Object 'System.Collections.Generic.List[object]'
     $u = $null; $err = ''
     if ($null -ne $UsageText) { try { $u = ([string]$UsageText) | ConvertFrom-Json } catch { $err = $_.Exception.Message } }
@@ -4252,27 +4302,61 @@ function Get-UsageBars {
     if ($u) { $updated = ConvertFrom-AutopilotTime $u.updatedUtc 'Utc' }
     $stale = (-not $updated) -or (($Now.ToUniversalTime() - $updated).TotalMinutes -gt $script:UsageStaleMinutes)
     $age = $(if ($updated) { Format-ShortAge ($Now.ToUniversalTime() - $updated) } else { '' })
+    $maxH = $(if ($Settings -and $Settings.PlanUsageMaxAgeHours) { [double]$Settings.PlanUsageMaxAgeHours } else { 4 })
+    $plan = ConvertFrom-PlanUsage $PlanText $Now $maxH
+    $planOk = ($plan -and -not $plan.Error -and -not $plan.Stale)
+    # The plan page stands in for the session and the week when it was read after the status line last reported.
+    $planNewer = ($planOk -and $plan.ReadAt -and ((-not $updated) -or $stale -or $plan.ReadAt.ToUniversalTime() -gt $updated))
     $head = 'plan usage: from Claude Code''s status line (usage.json)'
     if ($u) { $head += $(if ($stale) { ', last reported ' + $age + ' ago: too old, shown as unknown' } else { ', reported ' + $age + ' ago' }) }
     elseif ($err) { $head = 'plan usage: usage.json unreadable (' + $err + ')' }
     else { $head = 'plan usage: not reported yet (Claude Code''s status line writes usage.json once a session has had an answer)' }
-    $rows.Add([pscustomobject]@{ Name = 'head'; Pct = $null; Text = $head + '. The plan name is not in Claude Code''s data.'; Color = 'head' })
-    foreach ($w in @(@('fiveHour', 'Current session', '5-hour window'), @('sevenDay', 'This week', '7-day window, all models'))) {
+    if ($planNewer) { $head += '; the session and the week from the plan usage page (read later)' }
+    $rows.Add([pscustomobject]@{ Name = 'head'; Pct = $null; Text = $head + $(if ($plan -and $plan.Plan) { '. Plan: ' + $plan.Plan } else { '. The plan name is not in Claude Code''s data.' }); Color = 'head'; Bar = $false; Marker = $null })
+    $ahead = $(if ($Settings) { [double]$Settings.DayWeekAheadPct } else { 0 })
+    $reserve = $(if ($Settings) { [double]$Settings.WeekReservePct } else { 0 })
+    $bar = {
+        param([string]$Name, [double]$Pct, $At, [string]$Window, [double]$Hours, [bool]$Weekly)
+        $label = ('{0,-16}' -f $Name)
+        $mk = $null
+        if ($Settings) { $mk = $(if ($Weekly) { Get-UsagePace $At $Now $Hours $ahead $reserve } else { Get-UsagePace $At $Now $Hours }) }
+        $c = $(if ($Pct -ge 90) { 'red' } elseif ($Pct -ge 70) { 'amber' } elseif ($Weekly -and $null -ne $mk -and $Pct -gt $mk) { 'amber' } else { 'normal' })
+        $paceText = $(if ($null -ne $mk) { ' (pace ' + $mk.ToString('0.#', $script:Invariant) + '%' + $(if ($Weekly -and $Pct -gt $mk) { ', ahead' } else { '' }) + ')' } else { '' })
+        $reset = $(if ($At -is [datetime]) { Format-ResetIn $At $Now } else { 'reset time unknown' })
+        [pscustomobject]@{ Name = $Name; Pct = $Pct; Text = ($label + (Format-UsageBar $Pct -Marker $mk) + (' {0,3}% used{1}  ' -f [int][Math]::Round($Pct, [MidpointRounding]::AwayFromZero), $paceText) + $reset + '  (' + $Window + ')'); Color = $c; Bar = $true; Marker = $mk }
+    }
+    foreach ($w in @(@('fiveHour', 'Current session', '5-hour window', 5, $false, 'Session'), @('sevenDay', 'This week', '7-day window, all models', 168, $true, 'Week'))) {
         $x = $null
         if ($u) { $x = $u.($w[0]) }
         $label = ('{0,-16}' -f $w[1])
-        if ($x -and -not $stale) {
-            $pct = [double]$x.pct
+        if ($planNewer -and $plan.($w[5])) {
+            $px = $plan.($w[5])
+            $rows.Add((& $bar $w[1] $px.Pct $px.At ($w[2] + ', plan usage page') $w[3] $w[4]))
+        } elseif ($x -and -not $stale) {
             $at = [DateTimeOffset]::FromUnixTimeSeconds([long]$x.resetsAt).LocalDateTime
-            $c = $(if ($pct -ge 90) { 'red' } elseif ($pct -ge 70) { 'amber' } else { 'normal' })
-            $rows.Add([pscustomobject]@{ Name = $w[1]; Pct = $pct; Text = ($label + (Format-UsageBar $pct) + (' {0,3}% used  ' -f [int][Math]::Round($pct, [MidpointRounding]::AwayFromZero)) + (Format-ResetIn $at $Now) + '  (' + $w[2] + ')'); Color = $c })
+            $rows.Add((& $bar $w[1] ([double]$x.pct) $at $w[2] $w[3] $w[4]))
         } else {
-            $rows.Add([pscustomobject]@{ Name = $w[1]; Pct = $null; Text = ($label + '[' + ('-' * 20) + '] unknown  (' + $w[2] + ')'); Color = 'gray' })
+            $rows.Add([pscustomobject]@{ Name = $w[1]; Pct = $null; Text = ($label + '[' + ('-' * 20) + '] unknown  (' + $w[2] + ')'); Color = 'gray'; Bar = $true; Marker = $null })
         }
     }
-    $rows.Add([pscustomobject]@{ Name = 'Fable this week'; Pct = $null; Text = (('{0,-16}' -f 'Fable this week') + '[' + ('-' * 20) + '] not reported: Claude Code''s status line has no per-model weekly limit'); Color = 'gray' })
+    $fl = ('{0,-16}' -f 'Fable this week')
+    if ($planOk -and $plan.Fable) { $rows.Add((& $bar 'Fable this week' $plan.Fable.Pct $plan.Fable.At 'separate weekly limit for Fable, plan usage page' 168 $true)) }
+    elseif ($plan -and $plan.Error) { $rows.Add([pscustomobject]@{ Name = 'Fable this week'; Pct = $null; Text = ($fl + '[' + ('-' * 20) + '] unknown: plan-usage.json unreadable (' + $plan.Error + ')'); Color = 'gray'; Bar = $true; Marker = $null }) }
+    elseif ($plan -and $plan.Stale) { $rows.Add([pscustomobject]@{ Name = 'Fable this week'; Pct = $null; Text = ($fl + '[' + ('-' * 20) + '] unknown: the plan usage page was read ' + $(if ($plan.Age) { (Format-ShortAge $plan.Age) + ' ago' } else { 'at an unknown time' }) + ' (over planUsageMaxAgeHours ' + $plan.MaxAgeHours + '); the Golem does not hold Fable prompts for it'); Color = 'gray'; Bar = $true; Marker = $null }) }
+    else { $rows.Add([pscustomobject]@{ Name = 'Fable this week'; Pct = $null; Text = ($fl + '[' + ('-' * 20) + '] not reported: Claude Code''s status line has no per-model weekly limit'); Color = 'gray'; Bar = $true; Marker = $null }) }
+    if ($plan -and -not $plan.Error) {
+        if ($planOk -and $plan.Warning) { $rows.Add([pscustomobject]@{ Name = 'pace warning'; Pct = $null; Text = ('pace warning from claude.ai: ' + $plan.Warning + ' The Golem counts this as ahead of pace and holds new hand-offs until a read clears it.'); Color = 'amber'; Bar = $false; Marker = $null }) }
+        $rd = $(if ($plan.ReadAt) { 'plan usage page last read ' + $plan.ReadAt.ToString('ddd HH:mm', $script:Invariant) + ' (' + (Format-ShortAge $plan.Age) + ' ago' + $(if ($plan.ReadBy) { ', ' + $plan.ReadBy } else { '' }) + ')' } else { 'plan usage page: read time unknown' })
+        if ($plan.Stale) { $rd += ': too old (planUsageMaxAgeHours ' + $plan.MaxAgeHours + '), the Fable week is unknown' }
+        $rows.Add([pscustomobject]@{ Name = 'plan read'; Pct = $null; Text = $rd; Color = $(if ($plan.Stale) { 'gray' } else { 'normal' }); Bar = $false; Marker = $null })
+        $bits = @()
+        if ($plan.FullReset) { $bits += $(if ($plan.FullReset.Available) { 'free full reset: available until ' + $plan.FullReset.Expires + ' (yours to use; the Golem never uses it and asks you once a day when the week is short)' } else { 'free full reset: none' }) }
+        if ($plan.Cloud) { $bits += ('cloud session credit: ' + $plan.Cloud.Left + ' of ' + $plan.Cloud.Of + ' left' + $(if ($plan.Cloud.Expires) { ', until ' + $plan.Cloud.Expires.ToString('MMM d', $script:Invariant) } else { '' })) }
+        if ($plan.Credits) { $bits += ('usage credits: ' + $plan.Credits.Balance.ToString('0.##', $script:Invariant) + ', ' + $(if ($plan.Credits.On) { 'on' } else { 'off' }) + ' (the Golem stops at the plan limit and never spends them)') }
+        if ($bits.Count) { $rows.Add([pscustomobject]@{ Name = 'plan extras'; Pct = $null; Text = ($bits -join ' | '); Color = 'gray'; Bar = $false; Marker = $null }) }
+    }
     if (-not $u -and $Estimate) {
-        $rows.Add([pscustomobject]@{ Name = 'estimate'; Pct = $null; Text = ('estimate, not Anthropic''s figure: ' + ('{0:N0}' -f [long]$Estimate.Tokens) + ' tokens in ' + $Estimate.Sessions + ' session log(s) over the last 5 hours (no percentage: the limit is not readable)'); Color = 'gray' })
+        $rows.Add([pscustomobject]@{ Name = 'estimate'; Pct = $null; Text = ('estimate, not Anthropic''s figure: ' + ('{0:N0}' -f [long]$Estimate.Tokens) + ' tokens in ' + $Estimate.Sessions + ' session log(s) over the last 5 hours (no percentage: the limit is not readable)'); Color = 'gray'; Bar = $false; Marker = $null })
     }
     $rows.ToArray()
 }
@@ -4542,7 +4626,7 @@ function Format-AutopilotPanel {
     # cc-P99: the start phrase, and which folder is active (the console reads it, the buttons run its scripts).
     & $add 'In a CC session, say: "Golem, please work on the shard tasks"' 'head'
     # cc-P125: the plan usage, as the Claude app shows it (Claude Code's status line figures), refreshed with the tab.
-    foreach ($ub in @(Get-UsageBars -UsageText $View.UsageText -Now $Now -Estimate $View.Estimate)) { & $add ('usage     : ' + $ub.Text) $ub.Color }
+    foreach ($ub in @(Get-UsageBars -UsageText $View.UsageText -Now $Now -Estimate $View.Estimate -PlanText $View.PlanUsageText -Settings $View.Settings)) { & $add ('usage     : ' + $ub.Text) $ub.Color }
     if ($ap.Kind -eq 'golem') { & $add ('active    : the Golem (' + $ap.Root + '). ' + $ap.Why + '.') 'green' }
     else { & $add ('active    : cc-autopilot (' + $ap.Root + '), the Golem''s predecessor. ' + $ap.Why + '. Until then the phrase is not hooked up; send CC "go".') 'amber' }
     foreach ($p in @($View.Problems)) { & $add ('could not read: ' + $p) 'gray' }
@@ -6121,6 +6205,8 @@ function Get-GolemExtra {
     }
     $usage = $null
     if ($ap.UsageFile -and (Test-Path -LiteralPath $ap.UsageFile -PathType Leaf)) { try { $usage = [IO.File]::ReadAllText($ap.UsageFile) } catch { } }
+    $plan = $null
+    if ($ap.PlanUsageFile -and (Test-Path -LiteralPath $ap.PlanUsageFile -PathType Leaf)) { try { $plan = [IO.File]::ReadAllText($ap.PlanUsageFile) } catch { } }
     $estimate = $null
     if (-not $usage) { $estimate = Get-UsageEstimate $ap.ClaudeProjects }
     $clean = $null
@@ -6134,7 +6220,7 @@ function Get-GolemExtra {
             if (([string]$g.Out).Trim()) { $clean = $false }
         }
     }
-    [pscustomobject]@{ PromptTexts = $prompts; CompletedTexts = $completed; NotesTexts = $notes; UsageText = $usage; Estimate = $estimate; TreeClean = $clean }
+    [pscustomobject]@{ PromptTexts = $prompts; CompletedTexts = $completed; NotesTexts = $notes; UsageText = $usage; PlanUsageText = $plan; Estimate = $estimate; TreeClean = $clean }
 }
 
 function Get-UsageEstimate {
@@ -8534,7 +8620,11 @@ function ConvertTo-ConsoleStatusDocument {
             $cur = & $prompt $v.CurrentPrompt
             if ($s) { $cur.startedAt = (& $iso $s.StartedAt); $cur.stepsDone = $s.StepsDone; $cur.stepsTotal = $s.StepsTotal; $cur.stepNow = $s.StepNow; $cur.lastActivity = (& $iso $s.LastActivity) }
         }
-        $usage = @(Get-UsageBars $v.UsageText $Now $v.Estimate | Where-Object { $_.Name -ne 'head' } | ForEach-Object { [ordered]@{ name = [string]$_.Name; pct = $_.Pct; text = ([string]$_.Text).Trim(); color = [string]$_.Color } })
+        # cc-P160: the bars (with the pace marker, a percent) in usage; the plan lines (pace warning, last read, resets and
+        # credits) in usageNotes.
+        $ubs = @(Get-UsageBars -UsageText $v.UsageText -Now $Now -Estimate $v.Estimate -PlanText $v.PlanUsageText -Settings $v.Settings)
+        $usage = @($ubs | Where-Object { $_.Bar } | ForEach-Object { [ordered]@{ name = [string]$_.Name; pct = $_.Pct; text = ([string]$_.Text).Trim(); color = [string]$_.Color; marker = $_.Marker } })
+        $usageNotes = @($ubs | Where-Object { -not $_.Bar -and $_.Name -ne 'head' } | ForEach-Object { [ordered]@{ name = [string]$_.Name; text = ([string]$_.Text).Trim(); color = [string]$_.Color } })
         $golem = [ordered]@{
             kind = [string]$v.Kind; state = $state; enabled = $v.Enabled
             reason = [string]$(if ($s) { @(@($s.RestReason, $s.NeedsYou, $s.Note) | Where-Object { $_ }) | Select-Object -First 1 } else { $v.StatusNote })
@@ -8547,6 +8637,7 @@ function ConvertTo-ConsoleStatusDocument {
             autoWake = [bool]$v.Settings.AutoWake
             nightShift = [ordered]@{ enabled = [bool]$v.Settings.NightShiftEnabled; start = [string]$v.Settings.NightShiftStart; end = [string]$v.Settings.NightShiftEnd }
             usage = $usage
+            usageNotes = $usageNotes
             alert = [string]$v.Alert; emailFailing = [bool]$v.EmailFailing
         }
     }

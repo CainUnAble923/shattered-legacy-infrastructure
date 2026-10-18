@@ -5575,6 +5575,54 @@ Fact 'P125_TheEstimateIsLabelledAndHasNoPercentage' {
     Assert-True ($e[0].Text -notmatch '\d+%') 'no percentage'
 }
 
+# cc-P160: the plan usage page (plan-usage.json, the overseer's reader of claude.ai/settings/usage) on the Golem tab: the
+# Fable week, a pace marker in each bar, the pace warning, when the reader ran, the free reset and the credits.
+$p160Now = [datetime]::new(2026, 10, 17, 18, 45, 0)
+function New-P160Usage([double]$Week = 53) {
+    $five = [DateTimeOffset]::new([datetime]::new(2026, 10, 17, 21, 50, 0)).ToUnixTimeSeconds()
+    $wk = [DateTimeOffset]::new([datetime]::new(2026, 10, 21, 16, 0, 0)).ToUnixTimeSeconds()
+    '{ "updatedUtc": "' + $p160Now.ToUniversalTime().AddMinutes(-1).ToString('s') + '", "fiveHour": { "pct": 14, "resetsAt": ' + $five + ' }, "sevenDay": { "pct": ' + $Week + ', "resetsAt": ' + $wk + ' } }'
+}
+function New-P160Plan([double]$AgeHours = (2 / 60), [string]$Warning = 'Heads up. At this pace you will run out Tuesday afternoon, before the reset.') {
+    $off = { param($t) [DateTimeOffset]::new($t).ToString('yyyy-MM-ddTHH:mm:sszzz') }
+    $reset = & $off ([datetime]::new(2026, 10, 21, 16, 0, 0))
+    [ordered]@{ schema = 1; readAt = (& $off $p160Now.AddHours(-$AgeHours)); readBy = 'overseer'; plan = 'Max (20x)'
+        session = @{ pct = 11; resets = (& $off ([datetime]::new(2026, 10, 17, 21, 50, 0))) }; week = @{ pct = 53; resets = $reset }; fableWeek = @{ pct = 44; resets = $reset }
+        paceWarning = $Warning; limitResets = @{ full = @{ available = $true; expires = '2026-10-22' }; fiveHour = @{ available = $false } }
+        cloudSessionCredit = @{ left = 250; of = 250; expires = '2026-11-05T01:59:00-06:00' }; usageCredits = @{ balance = 0; toggleOn = $true } } | ConvertTo-Json -Depth 4
+}
+
+Fact 'P160_UsageBarsShowTheFableWeekPaceMarkersAndThePlanLines' {
+    $set = ConvertFrom-AutopilotSettings '{}'
+    Assert-Equal 3 $set.DayWeekAheadPct 'the head start default'
+    Assert-Equal 10 $set.WeekReservePct 'the reserve default'
+    Assert-Equal 4 $set.PlanUsageMaxAgeHours 'the plan file age default'
+    $r = @(Get-UsageBars -UsageText (New-P160Usage) -Now $p160Now -PlanText (New-P160Plan) -Settings $set)
+    Assert-Equal 'head,Current session,This week,Fable this week,pace warning,plan read,plan extras' (($r | ForEach-Object { $_.Name }) -join ',') 'three bars, then the plan lines'
+    Assert-Equal 'True,True,True' ((@($r[1..3]) | ForEach-Object { [string]$_.Bar }) -join ',') 'the three bars are bars'
+    Assert-True ($r[2].Text -match '53% used \(pace 47\.5%, ahead\)  resets in 3 d 21 h, at Wed 16:00' -and $r[2].Color -eq 'amber' -and $r[2].Marker -eq 47.5) ('the week, ahead: ' + $r[2].Text + ' / ' + $r[2].Color)
+    Assert-True ($r[2].Text -match '\[#*\|[#.]*\]') ('a pace marker in the bar: ' + $r[2].Text)
+    Assert-True ($r[1].Text -match '14% used \(pace 38\.3%\)' -and $r[1].Color -eq 'normal') ('the 5-hour window: ' + $r[1].Text)
+    Assert-True ($r[3].Pct -eq 44 -and $r[3].Text -match '44% used \(pace 47\.5%\)' -and $r[3].Color -eq 'normal') ('the Fable week from the plan page: ' + $r[3].Text)
+    Assert-True ($r[4].Text -match '^pace warning from claude\.ai: Heads up\.' -and $r[4].Color -eq 'amber') $r[4].Text
+    Assert-True ($r[5].Text -match '^plan usage page last read Sat 18:43 \(2m ago, overseer\)') $r[5].Text
+    Assert-True ($r[6].Text -match 'free full reset: available until 2026-10-22' -and $r[6].Text -match 'cloud session credit: 250 of 250 left, until Nov 5' -and $r[6].Text -match 'usage credits: 0, on \(the Golem stops at the plan limit and never spends them\)') $r[6].Text
+    Assert-True ($r[0].Text -match 'Plan: Max \(20x\)') $r[0].Text
+}
+
+Fact 'P160_AStalePlanPageGreysTheFableWeekAndDropsTheWarning' {
+    $set = ConvertFrom-AutopilotSettings '{}'
+    $r = @(Get-UsageBars -UsageText (New-P160Usage) -Now $p160Now -PlanText (New-P160Plan -AgeHours 6) -Settings $set)
+    $f = @($r | Where-Object { $_.Name -eq 'Fable this week' })[0]
+    Assert-True ($null -eq $f.Pct -and $f.Color -eq 'gray' -and $f.Text -match 'unknown: the plan usage page was read 6h 0m ago \(over planUsageMaxAgeHours 4\)') ('stale: ' + $f.Text)
+    Assert-Equal 0 @($r | Where-Object { $_.Name -eq 'pace warning' }).Count 'a stale warning is not shown'
+    Assert-True (@($r | Where-Object { $_.Name -eq 'plan read' })[0].Text -match 'too old') 'the read line says so'
+    # No plan file at all: as before P160.
+    $n = @(Get-UsageBars -UsageText (New-P160Usage) -Now $p160Now -Settings $set)
+    Assert-Equal 'head,Current session,This week,Fable this week' (($n | ForEach-Object { $_.Name }) -join ',') 'no plan lines'
+    Assert-True ($n[3].Text -match 'not reported') $n[3].Text
+}
+
 Fact 'P125_TheTileSaysEachStateAndKeepsTheRunInfo' {
     $lr = [ordered]@{ cap = 5; until = $p125Now.AddDays(3).ToString('s'); done = 2; active = $true }
     $cases = @(
