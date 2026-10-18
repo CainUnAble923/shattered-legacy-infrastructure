@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.5
+
+### Added
+- A combat script for TazUO, SL_Combat, in the Legion scripts set: it fights for you in Assist mode (you move, it targets, uses weapon specials and heals) or AFK mode (it also seeks targets around an anchor and walks back), bandages and drinks potions on your thresholds, bandages your companions and calls "all guard me" when you are hurt, with hotkeys to switch it on, change mode, pause and panic. It attacks reds, criminals and oranges, grays only when they attack you or are on your hunt list, and never blues, greens, your pets or your party.
+- The script's loot helper rates magic items against a weighted profile (Keep, Upgrade, Unravel, Sell, Junk), compares them with what you wear slot by slot, can sort them into bags, and a Suggest button writes a profile from your skills and gear with a plain explanation.
+- `[artificerrank` says your Artificers' Order rank and the imbue properties your account knows; the loot helper reads it so Unravel only flags essences you can use.
+
+### Staff
+- The combat script is phase 1 (melee and the rater): shard-migration notes/design-combat-script.md holds the roadmap for the archer, mage, tamer, stance and skill-training phases. The scripts are in the Legion scripts repo and need a Publish to dev and Promote to official to reach players.
+
 ## 2026.10.18.4
 
 ### Added

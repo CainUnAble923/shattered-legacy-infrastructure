@@ -16,6 +16,7 @@ Access levels:
 | `[achievements` | Opens your achievement records gump (AP, Renown, earned/locked list, New Haven quest tracker) |
 | `[guild` | Opens the Guild Progress gump — overview of all 12 guilds with membership status |
 | `[stats` | Opens the stat inspector gump — full breakdown of stats, skill modifiers, and item bonuses |
+| `[artificerrank` | Says your Artificers' Order rank and the imbue properties your account knows, in `[Artificer]` lines the SL_Combat loot helper reads from the journal (cc-P145) |
 | `[SelfRes` | Resurrects yourself from ghost form. Use this instead of waiting for a healer. |
 
 ---
