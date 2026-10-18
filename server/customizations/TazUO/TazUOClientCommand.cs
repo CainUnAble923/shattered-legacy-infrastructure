@@ -4,7 +4,7 @@
 // TazUO's enhanced packets (TazUO 3212623f, src/ClassicUO.Client/Network/EnhancedPackets/EnhancedPackets.md):
 //   server -> client  [0xCE][u16 length][u16 id][u16 version][payload]
 //   client -> server  [0xCE][u16 length][u16 id][payload]
-// The handshake: at connect the server sends id 1 (EnableEnhancedPacket) listing the ids it wants; a TazUO client with
+// The handshake: at login the server sends id 1 (EnableEnhancedPacket) listing the ids it wants; a TazUO client with
 // enhanced packets on (its opt-in, ServerSettings.EnableEnhancedPackets) answers id 1. Our patched client also
 // answers id 4 when id 4 was listed: it knows ClientCommand. A stock TazUO does not know id 4 and never answers it, and
 // other clients answer nothing. So Send goes only to a client that answered id 4; everyone else keeps the gump's words.
@@ -16,7 +16,13 @@
 // logged once per command name.
 //
 // The shard already sends a custom variable-length packet (0xF4, ClusterFExplorationManager) to every client at
-// connect; 0xCE id 1 follows the same rule. clusterf.tazuo.enhancedPackets False turns the handshake off.
+// login; 0xCE id 1 follows the same rule. clusterf.tazuo.enhancedPackets False turns the handshake off.
+//
+// cc-P165: WHEN it is sent. Until cc-P165 it went from EventSink.Connected, which ModernUO raises inside PlayCharacter
+// (and character creation) right after state.BlockAllPackets = true, so NetState.Send dropped it (CannotSendPackets) on
+// every real login: no client ever got the handshake, and P103's buttons and P147's Achievements button never showed.
+// It now goes from PlayerMobile.PlayerLoginEvent, which DoLogin raises last, after the LoginTimer has unblocked
+// packets and the client has its world. (The exploration packet waits 2 s after Connected, so it was never caught.)
 
 #nullable enable
 
@@ -24,7 +30,9 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using ModernUO.CodeGeneratedEvents;
 using Server.Logging;
+using Server.Mobiles;
 using Server.Network;
 
 namespace Server.TazUO;
@@ -79,13 +87,20 @@ public static class TazUOClientCommand
     {
         HandshakeEnabled = ServerConfiguration.GetOrUpdateSetting("clusterf.tazuo.enhancedPackets", true);
         IncomingPackets.Register(PacketId, 0, false, &OnEnhancedPacket);
-        EventSink.Connected += OnConnected;
     }
 
-    private static void OnConnected(Mobile m)
+    /// <summary>cc-P165: the handshake at the end of DoLogin, once packets flow (never from EventSink.Connected: blocked).</summary>
+    [OnEvent(nameof(PlayerMobile.PlayerLoginEvent))]
+    public static void OnLogin(PlayerMobile pm)
     {
-        if (HandshakeEnabled && m.NetState is { } ns)
+        if (HandshakeEnabled && pm.NetState is { } ns)
         {
+            if (ns.BlockAllPackets)
+            {
+                logger.Warning("TazUO handshake for {Name} not sent: packets are still blocked", pm.Name);
+                return;
+            }
+
             SendHandshake(ns);
         }
     }

@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.10
+
+### Fixed
+- The Achievements button now shows on your paperdoll and on the top bar in the Shattered Legacy client, and the tutorial's "Open the World Map", "Open the Journal" and "Open Options" buttons now appear too.
+
+### Staff
+- The server's TazUO handshake went out while ModernUO still blocks packets during login, so no client ever received it; it is now sent once the character is in the world. No client change: the current Shattered Legacy client works as it is.
+
 ## 2026.10.18.9
 
 ### Staff
