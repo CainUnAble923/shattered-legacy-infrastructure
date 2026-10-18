@@ -5,7 +5,8 @@
 //
 // Facts:
 //   1. It round-trips through the generated serializer as item 0x3C3C on the Earrings layer, named "fox ears and tail".
-//   2. A woman puts it on (it sits on Earrings); a man does not, and it stays where it was.
+//   2. A woman and a man put it on (it sits on Earrings); a gargoyle does not, and it stays where it was
+//      (cc-P138: men were refused until the male paperdoll art existed).
 //   3. The server's tiledata for 0x3C3C is ours (records.json's values): flags 0x00400002 (Wearable | Weapon, as OSI's
 //      earrings), weight 1, layer 0x12, Animation 4783, height 1. The test host loads no tiledata, so this reads the
 //      table, as the runestone's fact does.
@@ -41,9 +42,10 @@ public class KitsuneEarsTailVerification
         return copy;
     }
 
-    private static PlayerMobile Person(bool female)
+    private static PlayerMobile Person(bool female, Race race = null)
     {
-        var pm = new PlayerMobile { Player = true, Race = Race.Human, Female = female, Body = female ? 0x191 : 0x190 };
+        race ??= Race.Human;
+        var pm = new PlayerMobile { Player = true, Race = race, Female = female, Body = race.AliveBody(female) };
         pm.AddItem(new Backpack());
         pm.MoveToWorld(new Point3D(1240, 1240, 0), Map.Trammel);
         return pm;
@@ -69,30 +71,38 @@ public class KitsuneEarsTailVerification
     }
 
     [Fact]
-    public void AWomanPutsItOnAndAManDoesNot()
+    public void AWomanAndAManPutItOnAndAGargoyleDoesNot()
     {
         var woman = Person(true);
         var man = Person(false);
+        var gargoyle = Person(true, Race.Gargoyle);
         var hers = new KitsuneEarsTail();
         var his = new KitsuneEarsTail();
+        var theirs = new KitsuneEarsTail();
         try
         {
             Assert.True(woman.EquipItem(hers));
             Assert.Same(hers, woman.FindItemOnLayer(Layer.Earrings));
 
-            man.Backpack.DropItem(his);
-            var worn = man.EquipItem(his);
-            _out.WriteLine($"woman: {woman.FindItemOnLayer(Layer.Earrings)?.GetType().Name}; man: EquipItem {worn}, parent {his.Parent?.GetType().Name}");
+            Assert.True(man.EquipItem(his));
+            Assert.Same(his, man.FindItemOnLayer(Layer.Earrings));
+
+            gargoyle.Backpack.DropItem(theirs);
+            var worn = gargoyle.EquipItem(theirs);
+            _out.WriteLine($"woman: {woman.FindItemOnLayer(Layer.Earrings)?.GetType().Name}; man: {man.FindItemOnLayer(Layer.Earrings)?.GetType().Name}; gargoyle: EquipItem {worn}, parent {theirs.Parent?.GetType().Name}");
             Assert.False(worn);
-            Assert.Null(man.FindItemOnLayer(Layer.Earrings));
-            Assert.Same(man.Backpack, his.Parent);
+            Assert.Null(gargoyle.FindItemOnLayer(Layer.Earrings));
+            Assert.Same(gargoyle.Backpack, theirs.Parent);
+            Assert.Equal("Only humans and elves can wear this.", KitsuneEarsTail.RefusalForGargoyles);
         }
         finally
         {
             hers.Delete();
             his.Delete();
+            theirs.Delete();
             woman.Delete();
             man.Delete();
+            gargoyle.Delete();
         }
     }
 

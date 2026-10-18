@@ -24,7 +24,8 @@
                                player's own files). See its SOURCE.txt and registry.csv.
                                cc-P62: also gumps\<id>.png (into ExternalImages\gumps\) and the
                                worn-item animation files sl-anim7.bin and sl-anim7-idx.bin (into app\),
-                               after the equipment-animation gate.
+                               after the equipment-animation gate. cc-P138: the paperdoll fit gate
+                               (scripts\check-paperdoll-fit.py, paperdoll-fit.json) runs before staging.
       vendor\shattered-legacy-cliloc\   our own client text (cc-P57): entries.json, shipped as
                                app\cliloc-entries.json; Play.ps1 adds them to a copy of the player's
                                own Cliloc.enu. registry.csv holds our number block. Checked by the
@@ -547,6 +548,17 @@ if (-not (Test-Path (Join-Path $TazUO 'TazUO.exe'))) { throw "No TazUO.exe in $T
 # cc-P124, the client gate: our build, and not a stale one (PackageClient.ps1, Test-PackageClient).
 $clientFail = @(Test-PackageClient $TazUO (Split-Path $here -Parent))
 if ($clientFail.Count) { throw ("CLIENT GATE: " + ($clientFail -join ' ') + " Not building.") }
+# cc-P138, the paperdoll fit gate: every gump of ours sits on the bodies the client draws it over (ears on the
+# crown, out of the face; the tail from the lower back), per vendor\shattered-legacy-art\paperdoll-fit.json.
+# scripts\check-paperdoll-fit.py reads the vendored PNGs only; it needs Python 3 with Pillow, as the console's art
+# checks do. A missing python is a refusal too: a gate that cannot run has not passed.
+$fitScript = Join-Path (Split-Path $here -Parent) 'scripts\check-paperdoll-fit.py'
+$fitPy = $null
+foreach ($c in @('python', 'py')) { $cmd = Get-Command $c -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1; if ($cmd) { $fitPy = $cmd.Source; break } }
+if (-not $fitPy) { throw "PAPERDOLL FIT GATE: no python on PATH to run $fitScript. Not building." }
+$fitOut = @(& $fitPy '-P' $fitScript '-q' 2>&1 | ForEach-Object { [string]$_ })
+if ($LASTEXITCODE -ne 0) { throw ("PAPERDOLL FIT GATE: " + (($fitOut | Where-Object { $_ -match '^FAIL' }) -join ' ') + " Not building.") }
+Write-Host ("  paperdoll fit gate: " + ($fitOut | Select-Object -Last 1))
 
 # --- stage --------------------------------------------------------------------
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }

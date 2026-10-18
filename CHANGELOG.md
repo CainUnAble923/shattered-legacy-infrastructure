@@ -29,6 +29,18 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.8
+
+### Changed
+- The fox ears and tail can be worn by men as well as women (humans and elves; gargoyles are told they cannot).
+
+### Fixed
+- The fox ears sit on top of the head and the tail comes from the lower back on the paperdoll, instead of a fox face and a tail by the knees; a man's paperdoll shows them too.
+- The fox ears and tail stay on when you stand still or run, instead of vanishing until you walk.
+
+### Staff
+- Building the player package now refuses a paperdoll gump of ours that does not fit the shipped bodies (ears on the crown, tail from the lower back).
+
 ## 2026.10.17.7
 
 ### Added

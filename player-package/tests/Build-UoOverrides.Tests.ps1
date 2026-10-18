@@ -280,8 +280,10 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
             Assert-True (@($reg | Where-Object { [int]$_.id -eq ([int]$a.id + [int]$f) }).Count -eq 1) "frame $([int]$a.id + [int]$f) is registered"
         }
     }
-    # cc-P34 added the 47 winter decor IDs (15424-15470); cc-P50 the 18 chest mimic IDs (15472-15489).
-    Assert-Equal 112 $reg.Count 'registry rows'
+    # cc-P34 added the 47 winter decor IDs (15424-15470); cc-P50 the 18 chest mimic IDs (15472-15489); cc-P138 the male
+    # paperdoll gump 54783 (one more gump row).
+    Assert-Equal 113 $reg.Count 'registry rows'
+    Assert-Equal 2 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783 and 54783'
     Assert-Equal 110 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
 

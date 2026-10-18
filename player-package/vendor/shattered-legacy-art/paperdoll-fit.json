@@ -1,0 +1,14 @@
+{
+  "about": "cc-P138: where our paperdoll gumps must sit on the bodies TazUO draws them over, and which bodies each gump serves. scripts\\check-paperdoll-fit.py reads this; Build-PlayerPackage.ps1 runs it before staging. A body is a Siege of Sosaria body gump (vendor\\paperdoll-sos\\bodies-sfw, cc-P81), and TazUO picks it by the wearer's graphic (PaperDollInteractable.UpdateUI): 0x190/0x192 male human -> 12, 0x191/0x193 female human -> 13, 0x25D male elf -> 14, 0x25E female elf -> 15; the gargoyle bodies 665/666 are not served (KitsuneEarsTail refuses gargoyles). A worn item's gump is 60000 + animId for a woman and 50000 + animId for a man (GetAnimID), never by race, so one gump serves both the human and the elf body of its sex; the elf bodies have the same hips as the human ones and a crown row within one pixel (12 is row 29, 14 row 30; 13 and 15 row 33) (measured 2026-10-17, section 2 of the notes). Numbers are gump pixels (260 x 237 canvas, the same origin as the body). crown_y: the body's first opaque row. head_x: the head's widest span. face: a box the ears must stay out of (brow to chin). lower_back: the box the tail's root must start in (the hip at the viewer's left, where the tail leaves the body). The Topless and Nude add-on sets (never in a repo) are checked by silhouette against these same numbers when the folder exists.",
+  "bodies": {
+    "12": { "who": "male human (0x190, 0x192)",  "crown_y": 29, "head_x": [81, 103], "face": [82, 37, 102, 60], "lower_back": [72, 104, 84, 118] },
+    "13": { "who": "female human (0x191, 0x193)", "crown_y": 33, "head_x": [81, 104], "face": [82, 40, 103, 62], "lower_back": [72, 106, 84, 120] },
+    "14": { "who": "male elf (0x25D)",            "crown_y": 30, "head_x": [81, 103], "face": [82, 37, 102, 60], "lower_back": [72, 104, 84, 118] },
+    "15": { "who": "female elf (0x25E)",          "crown_y": 33, "head_x": [81, 104], "face": [82, 40, 103, 62], "lower_back": [72, 106, 84, 120] }
+  },
+  "gumps": {
+    "64783": { "what": "fox ears and tail, worn by a woman (60000 + Animation 4783)", "bodies": ["13", "15"], "hair": 60701, "hood": 60987 },
+    "54783": { "what": "fox ears and tail, worn by a man (50000 + Animation 4783)",   "bodies": ["12", "14"], "hair": 50701, "hood": 50987 }
+  },
+  "addon_sets": ["topless", "nude"]
+}

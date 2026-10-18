@@ -61,19 +61,32 @@ the client's tiledata.mul on 2026-10-01: flags 0x01040040 (Animation, PartialHue
 weight 1, height 3. Only the name ("shattered runestone") is ours. The flag values are facts about how
 OSI's item behaves, not EA data shipped: the record is written by hand here.
 
-Fox ears and tail (cc-P62, F-35): item 15420 (0x3C3C), Animation 4783, gump 64783
----------------------------------------------------------------------------------
+Fox ears and tail (cc-P62, F-35): item 15420 (0x3C3C), Animation 4783, gumps 64783 and 54783
+--------------------------------------------------------------------------------------------
 Author:      drawn for Shattered Legacy by the art chat for Chase, 2026-10-05 ("Moonrunner": tall pointed
              ears with dark tips, one long low tail with a cream tip). Ours. Source files, never edited
              here: D:\ShatteredLegacy\design\kitsune-ears-tail\.
   art\15420.png               icon_44.png, byte for byte
-  gumps\64783.png             stage2-final\paperdoll_260x237.png, byte for byte (female paperdoll,
-                              60000 + 4783)
+  gumps\64783.png             stage2-final\paperdoll_260x237.png with its ears and tail components moved
+                              (+2, -25) and (0, -14) to sit on the Siege of Sosaria female body 13 (and the
+                              elf 15), cc-P138 (notes\cc-P138-scratch\refit_gumps.py in the docs repo).
+                              The P62 file was placed for EA's body 13, whose head is 25 rows lower.
+  gumps\54783.png             the same art moved (+2, -28) and (0, -16) for the male bodies 12 and 14
+                              (50000 + 4783), cc-P138.
+  paperdoll-fit.json          where each gump must sit on each body; scripts\check-paperdoll-fit.py checks
+                              it and Build-PlayerPackage.ps1 refuses to build when it fails (cc-P138).
   anim-src\4783\a00_d1_fNN    stage3-final\walk_dir1\walk_dir1_fNN.png, byte for byte: action 0 (walk
                               unarmed), animation direction 1, frames 0 to 9. Drawn over body 401's own
                               walk frames, so frame i lines up with body 401's frame i.
+  anim-src\4783\a00_d{0,2,3,4}_fNN   stage4-final\walk_dirD\walk_dirD_fNN.png (2026-10-06), the stage-4
+                              generator's walk frames for the other four drawn directions.
+  anim-src\4783\a04_dD_f00   stand (action 4) and
+  anim-src\4783\a02_dD_fNN   run (action 2): cc-P138, the same ears and tail placed on those poses by the
+                              per-frame guides (direction 1 moved from the walk art, the others from the
+                              stage-4 generator), notes\cc-P138-scratch\build_stand_run.py in the docs repo.
 Natural colours (hue 0); the _partialhue and _gray versions beside them are for later. Not drawn yet:
-stand, run, and walk directions 0, 2, 3 and 4 (they draw nothing).
+every other action (war-mode walk and run, fidgets, attacks, ...); they draw nothing. The spec for them is
+notes\art\kitsune-ears-tail-remaining-actions.md in the docs repo.
 Encoding (scripts\build-equip-anims.py) changes only colour depth: the anim format holds 5 bits a
 channel, so each colour becomes the nearest one TazUO can draw (largest difference 4 of 255). Pixel
 positions are unchanged.
