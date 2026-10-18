@@ -9,6 +9,12 @@
 // answers id 4 when id 4 was listed: it knows ClientCommand. A stock TazUO does not know id 4 and never answers it, and
 // other clients answer nothing. So Send goes only to a client that answered id 4; everyone else keeps the gump's words.
 //
+// cc-P147, shard buttons (client/patches/0003-shard-buttons-achievements.patch): the other direction. Our client's
+// Achievements button (paperdoll and top bar) sends id 4 WITH a command, "achievements"; the bare id 4 stays the
+// acknowledgement above. The server answers only a client that acknowledged id 4 on this connection, and only a
+// command on ShardButtons with a page registered for it (RegisterShardButton). Anything else does nothing, and is
+// logged once per command name.
+//
 // The shard already sends a custom variable-length packet (0xF4, ClusterFExplorationManager) to every client at
 // connect; 0xCE id 1 follows the same rule. clusterf.tazuo.enhancedPackets False turns the handshake off.
 
@@ -16,6 +22,7 @@
 
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Server.Logging;
 using Server.Network;
@@ -27,6 +34,14 @@ public enum ClientCommandResult
     Sent,
     NotCapable,   // not a client that answered the handshake for id 4: nothing sent
     Refused       // off the whitelist, or not plain ASCII: nothing sent
+}
+
+/// <summary>cc-P147: what came of a shard button the client pressed.</summary>
+public enum ShardButtonResult
+{
+    Opened,
+    NotCapable,   // the client never acknowledged id 4 on this connection, or has no character: ignored
+    Refused       // not on ShardButtons, no page registered, or not plain ASCII: ignored
 }
 
 public static class TazUOClientCommand
@@ -41,6 +56,12 @@ public static class TazUOClientCommand
 
     /// <summary>The patch's whitelist, the same seven names in the same order (EnhancedClientCommand.cs).</summary>
     public static readonly string[] Whitelist = ["optlink", "paperdoll", "marktile", "radius", "worldmap", "journal", "options"];
+
+    /// <summary>cc-P147: the shard buttons the client may press, the same list as the patch's ShardButtons.All.</summary>
+    public static readonly string[] ShardButtons = ["achievements"];
+
+    private static readonly Dictionary<string, Action<Mobile>> _shardPages = new(StringComparer.Ordinal);
+    private static readonly HashSet<string> _loggedRefusals = new(StringComparer.OrdinalIgnoreCase);
 
     public static bool HandshakeEnabled { get; set; } = true;
 
@@ -96,6 +117,9 @@ public static class TazUOClientCommand
             case EnableEnhancedPacket:
                 seen.TazUO = true;
                 break;
+            case ClientCommand when reader.Remaining > 0:
+                HandleShardButton(ns, reader.ReadAscii());   // cc-P147: a shard button, not the acknowledgement
+                break;
             case ClientCommand:
                 seen.TazUO = true;
                 seen.ClientCommand = true;
@@ -104,6 +128,46 @@ public static class TazUOClientCommand
                 seen.TazUO = true;
                 seen.Version = reader.ReadAscii();
                 break;
+        }
+    }
+
+    /// <summary>cc-P147: the page a shard button opens. Only a name on ShardButtons can be registered.</summary>
+    public static void RegisterShardButton(string command, Action<Mobile> open)
+    {
+        if (Array.IndexOf(ShardButtons, command) < 0)
+        {
+            throw new ArgumentException($"{command} is not on TazUOClientCommand.ShardButtons", nameof(command));
+        }
+
+        _shardPages[command] = open;
+    }
+
+    /// <summary>cc-P147: a shard button pressed in our client. Opens its page for a client that acknowledged id 4.</summary>
+    public static ShardButtonResult HandleShardButton(NetState ns, string? command)
+    {
+        if (!CanRunCommands(ns) || ns.Mobile is not { Deleted: false } mobile)
+        {
+            LogRefusalOnce("from a client that never acknowledged id 4", command);
+            return ShardButtonResult.NotCapable;
+        }
+
+        if (command == null || command.Length > MaxCommandLength || Array.IndexOf(ShardButtons, command) < 0 ||
+            !_shardPages.TryGetValue(command, out var open))
+        {
+            LogRefusalOnce("not a shard button", command);
+            return ShardButtonResult.Refused;
+        }
+
+        open(mobile);
+        return ShardButtonResult.Opened;
+    }
+
+    private static void LogRefusalOnce(string why, string? command)
+    {
+        var head = (command ?? "").Split(' ', 2)[0];
+        if (_loggedRefusals.Add(why + ":" + (head.Length > 32 ? head[..32] : head)))
+        {
+            logger.Information("TazUO shard button ignored ({Why}): {Command}", why, head);
         }
     }
 

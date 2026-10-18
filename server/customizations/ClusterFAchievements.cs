@@ -288,8 +288,18 @@ public static class ClusterFAchievementSystem
     {
         RegisterAll();
         CommandSystem.Register("achievements",        AccessLevel.Player,        OnAchievementsCommand);
+        RegisterShardButton();
         CommandSystem.Register("ClusterFAchievement", AccessLevel.Administrator, OnAdminCommand);
     }
+
+    /// <summary>cc-P147: our TazUO's Achievements button (paperdoll and top bar) opens the same page as [achievements.
+    /// Safe to call again.</summary>
+    public static void RegisterShardButton() =>
+        Server.TazUO.TazUOClientCommand.RegisterShardButton("achievements", m =>
+        {
+            if (m is PlayerMobile pm)
+                pm.SendGump(new AchievementsGump(pm));
+        });
 
     // ── Achievement definitions ────────────────────────────────────────────
 

@@ -236,3 +236,14 @@ Records (records.json), written by hand: every still and the loop base 0x0000404
 height 4 weight 255, as OSI's wooden chest 0xE43 (0x00204040) without Container; the loop base adds
 Animation (0x01004040); the dead tiles 0x00004000 (ArticleA), height 4. Animdata: the loop base, frames
 0 and 1, interval 4 (about 400 ms a frame, twice the winter fire's 2). Server copy: ChestMimicArt.Records.
+
+Achievements paperdoll button, gumps 22456 (normal), 22457 (pressed), 22458 (hover) (cc-P147)
+--------------------------------------------------------------------------------------------
+A PLACEHOLDER until Chase's art chat draws the real one (brief: shard-migration notes\art\achievements-button\BRIEF.md).
+Frame:       the Help paperdoll button as the package already ships it (Fiddle-Me-This gumps 2031 to 2033), its
+             label cleared; the label "Achievements" drawn in Arial Narrow Bold in the Help button's own label colours.
+Style:       Castiel, "Classic Desktop Missing Paperdoll buttons" (servuo.dev 1519), gumps 22450 to 22455, the Quests and
+             Guild buttons; our IDs follow his. Credit Castiel.
+Made by:     notes\art\achievements-button\make_button.py in shard-migration (reproducible from the package's own art).
+Shown by:    our TazUO (client\patches\0003-shard-buttons-achievements.patch), in the paperdoll's Help slot, only on our
+             shard. Other clients never ask for these IDs.

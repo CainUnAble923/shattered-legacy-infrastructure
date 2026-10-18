@@ -789,6 +789,20 @@ def runs(w, length, lo, hi, placeholder_only):
     return out
 
 
+def our_patch_file(path):
+    """cc-P147: a TazUO source file that one of our client patches (client/patches/*.patch) adds as a new file, such as
+    the shard buttons' ShardButtons.cs. A file we only change (PaperdollGump.cs) is still TazUO's: its stock IDs are
+    not ours."""
+    added = []
+    pdir = os.path.join(REPO, 'client', 'patches')
+    for name in sorted(os.listdir(pdir)) if os.path.isdir(pdir) else []:
+        if name.endswith('.patch'):
+            text = open(os.path.join(pdir, name), encoding='utf-8', errors='replace').read()
+            added += re.findall(r'^diff --git a/(\S+) b/\S+\nnew file mode', text, re.M)
+    norm = path.replace('\\', '/').lower()
+    return any(norm.endswith('/' + a.lower()) for a in added)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--data', default=DEFAULT_DATA, help='EA Classic Client folder (default: the shard\'s client-data)')
@@ -867,8 +881,12 @@ def main():
 
         def mine(x):
             # Our own server code naming a registered ID is the ID in use, not a collision. Pinned is not ours,
-            # and neither is TazUO.
-            return ('code: ' in x) and x.lower().split(' in ', 1)[-1].startswith(ours)
+            # and neither is TazUO, except a file one of our client patches wrote (cc-P147: the client's shard
+            # buttons name their gumps); those carry the "Shattered Legacy patch" header.
+            where = x.split(' in ', 1)[-1]
+            if 'code: ' in x:
+                return where.lower().startswith(ours)
+            return 'tazuo: ' in x and our_patch_file(where)
 
         total = 0
         for kind in KINDS:
@@ -884,7 +902,9 @@ def main():
                     r = w.body_reasons(i, ignore_registry=True)
                 else:
                     r = w.gump_reasons(i, ignore_registry=True)
-                    if not any(i - b in w.regs['anim'] for b in (FEMALE_GUMP, MALE_GUMP)):
+                    # A gump at 50000 and up is a worn item's paperdoll gump and belongs to an Animation number;
+                    # below that it stands alone (cc-P147: the Achievements button's three states).
+                    if i >= MALE_GUMP and not any(i - b in w.regs['anim'] for b in (FEMALE_GUMP, MALE_GUMP)):
                         r.append('registry: not the paperdoll gump of a registered Animation number')
                 r = [x for x in r if not mine(x)]
                 print('%s %d (0x%X) %s: %s' % (kind, i, i, w.regs[kind][i].get('what', ''),

@@ -1,0 +1,410 @@
+From 6ad3b6602bffaa253be31e27b660b47fc219e2d9 Mon Sep 17 00:00:00 2001
+From: Chase Fleming <ckfleming@gmail.com>
+Date: Sun, 18 Oct 2026 08:22:11 -0500
+Subject: [PATCH] Shard buttons: Achievements on the paperdoll and the top bar,
+ through ClientCommand (Shattered Legacy cc-P147)
+
+---
+ .../Game/UI/Gumps/ModernPaperdoll.cs          | 18 +++-
+ .../Game/UI/Gumps/PaperdollGump.cs            | 40 +++++++-
+ .../Game/UI/Gumps/TopBarGump.cs               | 45 +++++++++
+ .../EnhancedPackets/EnhancedClientCommand.cs  |  3 +
+ .../Network/EnhancedPackets/ShardButtons.cs   | 95 +++++++++++++++++++
+ .../Network/ShardButtonsTests.cs              | 61 ++++++++++++
+ 6 files changed, 259 insertions(+), 3 deletions(-)
+ create mode 100644 src/ClassicUO.Client/Network/EnhancedPackets/ShardButtons.cs
+ create mode 100644 tests/ClassicUO.UnitTests/Network/ShardButtonsTests.cs
+
+diff --git a/src/ClassicUO.Client/Game/UI/Gumps/ModernPaperdoll.cs b/src/ClassicUO.Client/Game/UI/Gumps/ModernPaperdoll.cs
+index 015ad4f6b..73c22991c 100644
+--- a/src/ClassicUO.Client/Game/UI/Gumps/ModernPaperdoll.cs
++++ b/src/ClassicUO.Client/Game/UI/Gumps/ModernPaperdoll.cs
+@@ -6,6 +6,7 @@ using ClassicUO.Game.Managers;
+ using ClassicUO.Game.Scenes;
+ using ClassicUO.Game.UI.Controls;
+ using ClassicUO.Input;
++using ClassicUO.Network; // Shattered Legacy patch (cc-P147)
+ using ClassicUO.Renderer;
+ using Microsoft.Xna.Framework;
+ using Microsoft.Xna.Framework.Graphics;
+@@ -648,7 +649,9 @@ namespace ClassicUO.Game.UI.Gumps
+                 X = x;
+                 Y = y;
+                 Width = 150;
+-                Height = 281;
++                // Shattered Legacy patch (cc-P147): a line per shard button, on our shard and the player's own paperdoll.
++                ShardButtons.Entry[] shardButtons = ShardButtons.Available && localSerial == world.Player ? ShardButtons.All : Array.Empty<ShardButtons.Entry>();
++                Height = 281 + 20 * shardButtons.Length;
+                 AcceptMouseInput = true;
+ 
+                 Add(new AlphaBlendControl(0.85f) { Width = Width, Height = Height, AcceptMouseInput = false });
+@@ -706,6 +709,19 @@ namespace ClassicUO.Game.UI.Gumps
+                 };
+                 Add(quests);
+ 
++                foreach (ShardButtons.Entry entry in shardButtons)
++                {
++                    var shard = new NiceButton(1, 1 + 20 * i++, Width - 2, 20, ButtonAction.Activate, entry.Label);
++                    shard.MouseUp += (s, e) =>
++                    {
++                        if (e.Button == MouseButtonType.Left)
++                        {
++                            ShardButtons.Send(entry.Command);
++                        }
++                    };
++                    Add(shard);
++                }
++
+                 var skills = new NiceButton(1, 1 + 20 * i++, Width - 2, 20, ButtonAction.Activate, "Skills");
+                 skills.MouseUp += (s, e) =>
+                 {
+diff --git a/src/ClassicUO.Client/Game/UI/Gumps/PaperdollGump.cs b/src/ClassicUO.Client/Game/UI/Gumps/PaperdollGump.cs
+index f2427d64e..4e96c03a1 100644
+--- a/src/ClassicUO.Client/Game/UI/Gumps/PaperdollGump.cs
++++ b/src/ClassicUO.Client/Game/UI/Gumps/PaperdollGump.cs
+@@ -8,6 +8,7 @@ using ClassicUO.Game.Managers;
+ using ClassicUO.Game.Scenes;
+ using ClassicUO.Game.UI.Controls;
+ using ClassicUO.Input;
++using ClassicUO.Network; // Shattered Legacy patch (cc-P147)
+ using ClassicUO.Renderer;
+ using ClassicUO.Utility;
+ using Microsoft.Xna.Framework;
+@@ -38,6 +39,7 @@ namespace ClassicUO.Game.UI.Gumps
+         private Label _titleLabel;
+         private GumpPic _virtueMenuPic;
+         private Button _warModeBtn;
++        private Button _helpBtn, _shardBtn; // Shattered Legacy patch (cc-P147): the shard's button in Help's slot
+ 
+         public PaperDollGump(World world) : base(world, 0, 0)
+         {
+@@ -142,7 +144,7 @@ namespace ClassicUO.Game.UI.Gumps
+ 
+                 //HELP BUTTON
+                 Add(
+-                    new Button((int)Buttons.Help, Settings.Graphic_Button_Help_Normal, Settings.Graphic_Button_Help_Pressed, Settings.Graphic_Button_Help_Hover)
++                    _helpBtn = new Button((int)Buttons.Help, Settings.Graphic_Button_Help_Normal, Settings.Graphic_Button_Help_Pressed, Settings.Graphic_Button_Help_Hover)
+                     {
+                         X = Settings.Position_X_Help,
+                         Y = Settings.Position_Y_Help,
+@@ -150,6 +152,21 @@ namespace ClassicUO.Game.UI.Gumps
+                     }
+                 );
+ 
++                // Shattered Legacy patch (cc-P147): the shard's button (Achievements) takes Help's slot on our shard
++                if (ShardButtons.Paperdoll is { } shard)
++                {
++                    Add(
++                        _shardBtn = new Button((int)Buttons.Shard, shard.Normal, shard.Pressed, shard.Hover)
++                        {
++                            X = Settings.Position_X_Help,
++                            Y = Settings.Position_Y_Help,
++                            ButtonAction = ButtonAction.Activate,
++                            IsVisible = false
++                        }
++                    );
++                    _shardBtn.SetTooltip(shard.Label);
++                }
++
+                 //OPTIONS BUTTON
+                 Add(
+                     new Button((int)Buttons.Options, Settings.Graphic_Button_Options_Normal, Settings.Graphic_Button_Options_Pressed, Settings.Graphic_Button_Options_Hover)
+@@ -658,6 +675,19 @@ namespace ClassicUO.Game.UI.Gumps
+             }
+         }
+ 
++        public override void Update()
++        {
++            base.Update();
++
++            // Shattered Legacy patch (cc-P147): Help, or the shard's button once this connection offers it.
++            if (_shardBtn != null && _helpBtn != null && !_shardBtn.IsDisposed)
++            {
++                bool shard = ShardButtons.Available && Client.Game.UO.Gumps.GetGump(ShardButtons.Paperdoll.Normal).Texture != null;
++                _shardBtn.IsVisible = shard;
++                _helpBtn.IsVisible = !shard;
++            }
++        }
++
+         protected override void UpdateContents()
+         {
+             // Clear fake item preview and request a full UI update to ensure items render
+@@ -705,6 +735,11 @@ namespace ClassicUO.Game.UI.Gumps
+ 
+                     break;
+ 
++                case Buttons.Shard:
++                    ShardButtons.Send(ShardButtons.Paperdoll.Command);
++
++                    break;
++
+                 case Buttons.Options:
+                     GameActions.OpenSettings(World);
+ 
+@@ -809,7 +844,8 @@ namespace ClassicUO.Game.UI.Gumps
+             Skills,
+             Guild,
+             PeaceWarToggle,
+-            Status
++            Status,
++            Shard // Shattered Legacy patch (cc-P147)
+         }
+ 
+         private class EquipmentSlot : Control
+diff --git a/src/ClassicUO.Client/Game/UI/Gumps/TopBarGump.cs b/src/ClassicUO.Client/Game/UI/Gumps/TopBarGump.cs
+index 2fb50a499..f22b44148 100644
+--- a/src/ClassicUO.Client/Game/UI/Gumps/TopBarGump.cs
++++ b/src/ClassicUO.Client/Game/UI/Gumps/TopBarGump.cs
+@@ -19,6 +19,10 @@ namespace ClassicUO.Game.UI.Gumps
+     public class TopBarGump : Gump
+     {
+         private RighClickableButton XmlGumps;
++        // Shattered Legacy patch (cc-P147): the shard's buttons, at the end of the bar while this connection offers them.
++        private readonly List<RighClickableButton> _shardButtons = new();
++        private ResizePic _background;
++        private int _baseWidth, _shardWidth;
+ 
+         private TopBarGump(World world) : base(world, 0, 0)
+         {
+@@ -344,12 +348,53 @@ namespace ClassicUO.Game.UI.Gumps
+ 
+             background.Width = startX + 1;
+ 
++            // Shattered Legacy patch (cc-P147)
++            _background = background;
++            _baseWidth = background.Width;
++            foreach (ShardButtons.Entry entry in ShardButtons.All)
++            {
++                RighClickableButton shard;
++                Add(shard = new(998877, 0x098D, 0x098D, 0x098D, entry.Label, 1, true, 0, 0x0036)
++                {
++                    ButtonAction = ButtonAction.Activate,
++                    X = startX,
++                    Y = 1,
++                    FontCenter = true,
++                    IsVisible = false
++                }, 1);
++                shard.MouseUp += (s, e) =>
++                {
++                    if (e.Button == MouseButtonType.Left)
++                    {
++                        ShardButtons.Send(entry.Command);
++                    }
++                };
++                _shardButtons.Add(shard);
++                startX += largeWidth + 1;
++                _shardWidth += largeWidth + 1;
++            }
++
+             //layer
+             LayerOrder = UILayer.Over;
+         }
+ 
+         public bool IsMinimized { get; private set; }
+ 
++        public override void Update()
++        {
++            base.Update();
++
++            // Shattered Legacy patch (cc-P147): show the shard's buttons only while this connection offers them.
++            bool on = ShardButtons.Available;
++            if (_shardButtons.Count > 0 && _shardButtons[0].IsVisible != on)
++            {
++                foreach (RighClickableButton b in _shardButtons)
++                    b.IsVisible = on;
++                _background.Width = _baseWidth + (on ? _shardWidth : 0);
++                WantUpdateSize = true;
++            }
++        }
++
+         public void RefreshXmlGumps()
+         {
+             XmlGumps.ContextMenu?.Dispose();
+diff --git a/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedClientCommand.cs b/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedClientCommand.cs
+index f1e822814..3c3edd8ce 100644
+--- a/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedClientCommand.cs
++++ b/src/ClassicUO.Client/Network/EnhancedPackets/EnhancedClientCommand.cs
+@@ -75,9 +75,12 @@ public static class EnhancedClientCommand
+     /// <summary>Tells the server this client runs ClientCommand, if the server asked for it.</summary>
+     public static void SendAck(this AsyncNetClient socket)
+     {
++        ShardButtons.Reset(); // Shattered Legacy patch (cc-P147): the shard buttons follow this connection's answer
+         if (!EnhancedOutgoingPackets.EnabledPackets.Contains(EnhancedPacketType.ClientCommand))
+             return;
+ 
++        ShardButtons.MarkOffered(socket);
++
+         StackDataWriter f = Extensions.GetWriter(EnhancedPacketType.ClientCommand);
+         ref StackDataWriter writer = ref f;
+         writer.FinalLength();
+diff --git a/src/ClassicUO.Client/Network/EnhancedPackets/ShardButtons.cs b/src/ClassicUO.Client/Network/EnhancedPackets/ShardButtons.cs
+new file mode 100644
+index 000000000..3e10074f8
+--- /dev/null
++++ b/src/ClassicUO.Client/Network/EnhancedPackets/ShardButtons.cs
+@@ -0,0 +1,95 @@
++// SPDX-License-Identifier: BSD-2-Clause
++// Shattered Legacy patch (cc-P147): shard buttons. A button on the paperdoll or the top bar asks the server for one of
++// its own pages (Achievements first), through enhanced packet 4, ClientCommand, in the other direction.
++//
++// Client -> server: HEADER (ushort id 4), then the command as null-terminated ASCII (for example "achievements"). The
++// bare HEADER with no command stays cc-P103's acknowledgement. The server answers only a client that acknowledged id 4
++// and only a command on its own list, so the buttons show only after the server's EnableEnhancedPacket asked for id 4
++// on this connection: a stock TazUO never has them, and our client shows none on a shard that did not ask.
++//
++// One entry per button: the command the server knows, its label, and the paperdoll gumps (0: not on the paperdoll).
++
++using System;
++using ClassicUO.IO;
++
++namespace ClassicUO.Network;
++
++public static class ShardButtons
++{
++    public sealed class Entry
++    {
++        public Entry(string command, string label, ushort normal = 0, ushort pressed = 0, ushort hover = 0)
++        {
++            Command = command;
++            Label = label;
++            Normal = normal;
++            Pressed = pressed;
++            Hover = hover;
++        }
++
++        public string Command { get; }
++        public string Label { get; }
++        public ushort Normal { get; }
++        public ushort Pressed { get; }
++        public ushort Hover { get; }
++    }
++
++    /// <summary>The shard's buttons. Later pages (League, guild progress, loop status) are one line each.</summary>
++    public static readonly Entry[] All =
++    {
++        new("achievements", "Achievements", 22456, 22457, 22458),
++    };
++
++    /// <summary>The entry that takes the paperdoll's Help slot (the first with paperdoll art), or null.</summary>
++    public static Entry Paperdoll => Array.Find(All, e => e.Normal != 0);
++
++    private static bool _offered, _hooked;
++
++    /// <summary>True on a connection whose server asked for id 4 (our shard); false before, after and elsewhere.</summary>
++    public static bool Available => _offered;
++
++    /// <summary>Called with cc-P103's acknowledgement: this connection's server asked for id 4.</summary>
++    internal static void MarkOffered(AsyncNetClient socket)
++    {
++        _offered = true;
++        if (!_hooked && socket != null)
++        {
++            _hooked = true;
++            socket.Disconnected += (_, _) => _offered = false;
++        }
++    }
++
++    internal static void Reset() => _offered = false;
++
++    public static bool IsKnown(string command) => Array.Exists(All, e => string.Equals(e.Command, command, StringComparison.Ordinal));
++
++    /// <summary>The packet for one entry's command: [0xCE][u16 length][u16 4][ASCII command, 0]. Null for anything that is
++    /// not in the table.</summary>
++    public static byte[] Build(string command)
++    {
++        if (command == null || !IsKnown(command))
++            return null;
++
++        StackDataWriter f = Extensions.GetWriter(EnhancedPacketType.ClientCommand);
++        ref StackDataWriter writer = ref f;
++        writer.WriteASCII(command); // with its terminating 0
++        writer.FinalLength();
++        byte[] bytes = writer.BufferWritten.ToArray();
++        writer.Dispose();
++        return bytes;
++    }
++
++    /// <summary>Asks the server for the page, if this connection offers shard buttons. Returns whether it was sent.</summary>
++    public static bool Send(string command)
++    {
++        if (!Available)
++            return false;
++
++        byte[] bytes = Build(command);
++        if (bytes == null || AsyncNetClient.Socket == null)
++            return false;
++
++        AsyncNetClient.Socket.Send(bytes, true);
++        return true;
++    }
++}
+diff --git a/tests/ClassicUO.UnitTests/Network/ShardButtonsTests.cs b/tests/ClassicUO.UnitTests/Network/ShardButtonsTests.cs
+new file mode 100644
+index 000000000..3f154d770
+--- /dev/null
++++ b/tests/ClassicUO.UnitTests/Network/ShardButtonsTests.cs
+@@ -0,0 +1,61 @@
++// Shattered Legacy patch (cc-P147): the shard buttons (Achievements first).
++using System.Linq;
++using System.Text;
++using ClassicUO.Network;
++using FluentAssertions;
++using Xunit;
++
++namespace ClassicUO.UnitTests.Network
++{
++    public class ShardButtonsTests
++    {
++        [Fact]
++        public void The_table_holds_achievements_with_its_label_and_paperdoll_gumps()
++        {
++            ShardButtons.All.Select(e => e.Command).Should().Equal("achievements");
++            ShardButtons.All[0].Label.Should().Be("Achievements");
++            new[] { ShardButtons.All[0].Normal, ShardButtons.All[0].Pressed, ShardButtons.All[0].Hover }
++                .Should().Equal((ushort)22456, (ushort)22457, (ushort)22458);
++            ShardButtons.Paperdoll.Should().BeSameAs(ShardButtons.All[0]);
++        }
++
++        [Fact]
++        public void The_request_is_enhanced_packet_4_with_the_command()
++        {
++            byte[] expected = new byte[] { 0xCE, 0x00, 0x12, 0x00, 0x04 }
++                .Concat(Encoding.ASCII.GetBytes("achievements")).Concat(new byte[] { 0 }).ToArray();
++            ShardButtons.Build("achievements").Should().Equal(expected);
++        }
++
++        [Theory]
++        [InlineData("worldmap")]
++        [InlineData("Achievements")]
++        [InlineData("achievements ")]
++        [InlineData("cast Fireball")]
++        [InlineData("")]
++        [InlineData(null)]
++        public void Nothing_off_the_table_is_ever_built(string command)
++        {
++            ShardButtons.Build(command).Should().BeNull();
++        }
++
++        [Fact]
++        public void The_buttons_follow_the_connections_answer()
++        {
++            ShardButtons.Reset();
++            ShardButtons.Available.Should().BeFalse("a server that never asked for id 4 shows no shard buttons");
++            ShardButtons.Send("achievements").Should().BeFalse("nothing is sent before the server asked");
++            ShardButtons.MarkOffered(null);
++            ShardButtons.Available.Should().BeTrue();
++            ShardButtons.Reset();
++            ShardButtons.Available.Should().BeFalse("the next handshake starts again");
++        }
++
++        [Fact]
++        public void The_shard_buttons_are_not_commands_the_server_can_run_here()
++        {
++            foreach (ShardButtons.Entry e in ShardButtons.All)
++                EnhancedClientCommand.TryParse(e.Command, out _).Should().BeFalse(e.Command + " goes to the server, not the reverse");
++        }
++    }
++}
+-- 
+2.51.2.windows.1
+

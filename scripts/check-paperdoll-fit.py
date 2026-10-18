@@ -81,7 +81,9 @@ def boxes_cross(a, b):
 def registry_gumps(path):
     with open(path, newline='') as f:
         rows = [r for r in csv.DictReader(l for l in f if not l.startswith('#'))]
-    return sorted(int(r['id']) for r in rows if r.get('kind') == 'gump')
+    # cc-P147: only a worn item's paperdoll gump (50000 + or 60000 + an Animation number) sits on a body; a gump
+    # below 50000 (the Achievements button's states) is drawn by the paperdoll itself and needs no fit entry.
+    return sorted(int(r['id']) for r in rows if r.get('kind') == 'gump' and int(r['id']) >= 50000)
 
 
 def silhouette(path):

@@ -15,6 +15,8 @@
   5. The client's unit tests (dotnet test), unless -SkipTests.
   6. dotnet publish -c Release -r win-x64 into <Out>\client, and <Out>\client\sl-build.txt: the pin and each patch's
      SHA-256.
+  7. (cc-P147) The native DLLs in x64\ are also copied beside TazUO.exe, the layout the package has always shipped:
+     FAudio.dll and FNA3D.dll import SDL3.dll, and the package's gate 6 wants every import in app\tazuo\ itself.
   Out stays outside both repos. The full pipeline (version stamp, smoke start, package gates) is cc-P40's P-a. ASCII only.
 #>
 [CmdletBinding()]
@@ -75,6 +77,12 @@ Step ('publish to ' + $client)
 if (Test-Path -LiteralPath $client) { Remove-Item -LiteralPath $client -Recurse -Force }
 & dotnet publish (Join-Path $work 'src\ClassicUO.Client\ClassicUO.Client.csproj') -c Release -r win-x64 -o $client --nologo
 if ($LASTEXITCODE -ne 0) { Fail 'dotnet publish' }
+# cc-P147: a fresh publish keeps the natives in x64\ only; the folder the package shipped until now also had them beside
+# TazUO.exe, and gate 6 (native imports on a clean Windows) needs SDL3.dll there for FAudio.dll and FNA3D.dll.
+foreach ($dll in @(Get-ChildItem -LiteralPath (Join-Path $client 'x64') -Filter '*.dll' -File -ErrorAction SilentlyContinue)) {
+    $dest = Join-Path $client $dll.Name
+    if (-not (Test-Path -LiteralPath $dest)) { Copy-Item -LiteralPath $dll.FullName -Destination $dest }
+}
 $lines = @('TazUO upstream ' + $pin, 'built ' + (Get-Date).ToString('yyyy-MM-dd HH:mm'))
 foreach ($f in $patches) { $lines += ('patch ' + $f.Name + ' sha256 ' + (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash.ToLowerInvariant()) }
 [IO.File]::WriteAllLines((Join-Path $client 'sl-build.txt'), [string[]]$lines)

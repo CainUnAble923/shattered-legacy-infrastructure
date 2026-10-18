@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.7
+
+### Added
+- An Achievements button on your own paperdoll (where Help was) and on the top bar opens your achievements page, the same page as `[achievements`. It comes with the Shattered Legacy client in the next player download.
+
+### Staff
+- The Achievements button is our client's third patch (shard buttons, one table entry per page) with a placeholder button picture; Help is still in the top bar's More + menu. Players get it with the next Build package and Publish.
+
 ## 2026.10.18.6
 
 ### Staff

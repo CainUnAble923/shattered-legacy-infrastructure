@@ -127,6 +127,15 @@ class CheckPaperdollFit(unittest.TestCase):
         self.assertEqual(1, code, text)
         self.assertIn('gump 55555 is in registry.csv but paperdoll-fit.json says nothing', text)
 
+    def test_a_registered_button_gump_needs_no_fit_entry(self):
+        # cc-P147: a gump below 50000 is not a worn item's paperdoll gump (those are 50000 + and 60000 + an Animation
+        # number); the Achievements button's states are drawn by the paperdoll, never over a body.
+        with open(os.path.join(self.fx.art, 'registry.csv'), 'a', newline='\n') as f:
+            f.write('22456,0x57B8,a button gump,test,test,gump\n')
+        code, text = self.fx.run()
+        self.assertEqual(0, code, text)
+        self.assertNotIn('22456', text)
+
     def test_a_changed_body_file_is_noticed(self):
         p = os.path.join(self.fx.bodies, '13.png')
         im = Image.open(p).convert('RGBA')
