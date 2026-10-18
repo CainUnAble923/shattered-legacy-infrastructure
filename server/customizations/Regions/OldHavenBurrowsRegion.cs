@@ -31,8 +31,8 @@ namespace Server.Regions;
 
 public class OldHavenBurrowsRegion : DungeonRegion
 {
-    /// <summary>Working name (cc-P36 notes propose two player-facing names for Chase).</summary>
-    public const string RegionName = "the Burrows beneath Old Haven";
+    /// <summary>The player name, the Rootdeep Burrows (Chase, 2026-10-15, F-45; cc-P141). The class keeps the working name.</summary>
+    public const string RegionName = "the Rootdeep Burrows";
 
     /// <summary>x 5136-5247, y 1128-1263 inclusive (Rectangle3D's end is exclusive, Rectangle3D.cs:137-143).</summary>
     public static readonly Rectangle3D Area = new(new Point3D(5136, 1128, MinZ), new Point3D(5248, 1264, MaxZ));

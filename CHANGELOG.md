@@ -29,6 +29,13 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.2
+
+### Staff
+- The Rootdeep Burrows' tutorial Vault has its rules on the test shard: only a character in the tutorial (and their pet) can walk in from the landing, graduates and anyone else are turned back with a line from the Echo, and teleporting in is refused. When The Overdraft dies, everyone in the tutorial who fought it is credited, a crawlway in the strongroom's south wall opens for two minutes into the Warren, and the Vault stays sealed to them afterwards. A character who logs in inside the Vault without the right to be there wakes on the landing.
+- `[ClusterFSeedRootdeep [dryrun | force]` places the Burrows' 33 spawners, the landing's working ankh and the Vault's crawlway once the map batch has built the floors; until then it refuses (the area is still empty land). The dungeon's region now carries its player name, the Rootdeep Burrows.
+- The layout plan and the look choices for the Burrows are in the docs repo for Chase's approval before the map batch starts.
+
 ## 2026.10.18
 
 ### Staff

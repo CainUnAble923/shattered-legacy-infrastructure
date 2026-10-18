@@ -281,6 +281,10 @@ public partial class TheOverdraft : TutorialCreature
 
     public override void OnDeath(Container c)
     {
+        // cc-P141: its killers are credited and the crawlway into the Warren opens (Regions/RootdeepVault.cs). First,
+        // because base.OnDeath deletes the creature (Mobile.OnDeath, Mobile.cs:4900-4904), and with it its map.
+        Server.Regions.RootdeepVault.OnOverdraftDeath(this);
+
         base.OnDeath(c);
         c.DropItem(BurrowsLoot.CoinPouch(PouchGold, "a coin pouch from the vault"));
         c.DropItem(new DawnstoneIngot(1));
