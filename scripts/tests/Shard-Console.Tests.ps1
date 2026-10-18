@@ -4310,7 +4310,7 @@ Fact 'P101_TheRealConfigReadsAsSevenSitesTwoDeploysAndTheNpmTunnel' {
     Assert-Equal (Join-Path $repo 'docker\dashboard\Start-Dashboard.ps1') (@($w.Sites)[2]).Start
     Assert-Equal 'http://192.168.1.61/' (@($w.Sites)[6]).Check 'the NPM light checks the proxy port, not the tunnel'
     Assert-True ((@($w.Sites)[6]).IsNpm) 'the NPM row'
-    Assert-Equal 'website,wiki-macros,ops-pages,ops-cutover,ops-rollback,print-queue,print-queue-rollback,mega-dashboard,mega-dashboard-rollback' (@($w.Deploys.Keys) -join ',') 'cc-P107 added the three ops deploys, cc-P109 the print queue''s two, cc-P110 the mega dashboard''s two'
+    Assert-Equal 'website,wiki-macros,ops-pages,ops-cutover,ops-rollback,print-queue,print-queue-rollback,mega-dashboard,mega-dashboard-rollback,portainer-haven,portainer-haven-rollback' (@($w.Deploys.Keys) -join ',') 'cc-P107 added the three ops deploys, cc-P109 the print queue''s two, cc-P110 the mega dashboard''s two, cc-P163 Portainer''s two'
     Assert-Equal 'chase@192.168.1.61' $w.HavenSsh
     Assert-Equal 'http://localhost:8081/|8081|localhost:81' ($w.Npm.Url + '|' + $w.Npm.LocalPort + '|' + $w.Npm.Remote)
     Assert-True (Test-Path -LiteralPath (Join-Path $repo 'scripts\websites.json')) 'the console reads scripts\websites.json'
@@ -4383,7 +4383,7 @@ Fact 'P101_DeployIsRefusedForAScriptNotInTheAllowlist' {
     $c = Get-WebConfig
     # A Haven site with no deploy, a game-PC site, and a site whose deploy is not in the list (built by hand: the
     # config reader already drops such a site, so this is the plan's own check, not the reader's).
-    Assert-True ((@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'vault'))[0].Text -match '^Vaultwarden has no deploy in websites.json\. The allowlist: website, wiki-macros, ops-pages, ops-cutover, ops-rollback, print-queue, print-queue-rollback, mega-dashboard, mega-dashboard-rollback\.$') 'no deploy'
+    Assert-True ((@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'vault'))[0].Text -match '^Vaultwarden has no deploy in websites.json\. The allowlist: website, wiki-macros, ops-pages, ops-cutover, ops-rollback, print-queue, print-queue-rollback, mega-dashboard, mega-dashboard-rollback, portainer-haven, portainer-haven-rollback\.$') 'no deploy'
     Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'homepage'))[0].Kind 'a game-PC site'
     Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'web.deploy' -Config $c -Site 'nope'))[0].Kind 'no such site'
     @($c.Websites.Sites | Where-Object { $_.Key -eq 'wiki' })[0].Deploy = 'haven-ops'
@@ -4530,8 +4530,8 @@ Fact 'P101_TheTileAndTheTabAreBuiltAndDrawn' {
         Assert-True ($script:ui.WebsitesTile.Word.Text -match '^WEBSITES: (CHECKING|UNKNOWN)$') $script:ui.WebsitesTile.Word.Text
         Assert-Equal 'Websites' $script:ui.WebsitesPage.Text
         Assert-True ($script:ui.Tabs.TabPages.Contains($script:ui.WebsitesPage)) 'in the tab control'
-        Assert-Equal 'web.open,web.restart,web.redeploy,web.logs,web.deploy,web.npm,web.ops-pages,web.ops-cutover,web.ops-rollback,web.print-queue,web.print-queue-rollback,web.mega-dashboard,web.mega-dashboard-rollback' (($script:ui.WebsiteButtons | ForEach-Object { $_.Tag }) -join ',')
-        Assert-Equal 'Open,Restart,Redeploy,Logs (last 200),Deploy to Haven,Open NPM,Ops pages: deploy,Ops pages: cut over,Ops pages: roll back,Print queue: deploy,Print queue: roll back,Mega dashboard: deploy,Mega dashboard: roll back' (($script:ui.WebsiteButtons | ForEach-Object { $_.Text }) -join ',')
+        Assert-Equal 'web.open,web.restart,web.redeploy,web.logs,web.deploy,web.npm,web.ops-pages,web.ops-cutover,web.ops-rollback,web.print-queue,web.print-queue-rollback,web.mega-dashboard,web.mega-dashboard-rollback,web.portainer-haven,web.portainer-haven-rollback' (($script:ui.WebsiteButtons | ForEach-Object { $_.Tag }) -join ',')
+        Assert-Equal 'Open,Restart,Redeploy,Logs (last 200),Deploy to Haven,Open NPM,Ops pages: deploy,Ops pages: cut over,Ops pages: roll back,Print queue: deploy,Print queue: roll back,Mega dashboard: deploy,Mega dashboard: roll back,Portainer (Haven): deploy,Portainer (Haven): roll back' (($script:ui.WebsiteButtons | ForEach-Object { $_.Text }) -join ',')
         Assert-Equal @($config.Websites.Sites).Count $script:ui.WebsitePick.Items.Count 'one line per site'
         Assert-Equal 'Play tests  (this PC)' $script:ui.WebsitePick.Items[0]
         $script:ui.WebsitePick.SelectedIndex = 3
@@ -6303,6 +6303,7 @@ Fact 'P133_TheDashboardIsGeneratedFromTheInventoryWithEverySectionAndTile' {
     Assert-Equal 'Sunflower|Filament|Monitoring|Ultima Online / Shattered Legacy|Admin' ((@($doc) | ForEach-Object { @($_.PSObject.Properties)[0].Name }) -join '|') 'the five sections, in order, as Homepage reads them'
     $tiles = @(& $p133Tiles $doc)
     foreach ($s in @($p133Inv.services)) {
+        if ((Get-HavenTileMode $s) -eq 'none') { continue }   # cc-P163: planned, retired, not installed yet: no tile
         foreach ($t in @($s.tiles)) { Assert-True (@($tiles | Where-Object { $_.Section -eq $t.section -and $_.Name -eq $t.name }).Count -eq 1) ($t.name + ' is in ' + $t.section) }
         if ($s.host -eq 'haven' -and $s.container) { Assert-True (@($tiles | Where-Object { $_.Tile.container -eq $s.container -and $_.Tile.server -eq 'haven' }).Count -ge 1) ('Haven container ' + $s.container + ' has a tile with its state') }
     }
@@ -6320,7 +6321,9 @@ Fact 'P133_EveryTileShowsUpOrDown' {
         $fields = @($(if ($w) { @($w.mappings) | ForEach-Object { [string]$_.field } }))
         $live = ($t.Tile.container -and $t.Tile.server -eq 'haven') -or [string]$t.Tile.siteMonitor -or
             ($fields | Where-Object { $_ -like 'up.*' -or $_ -eq 'offline' -or $_ -eq 'shards.0.up' })
-        Assert-True $live ($t.Section + ' / ' + $t.Name + ' shows no up or down')
+        # cc-P163: a service stopped by design (kind on-demand) says so in words instead of a red dot.
+        $byHand = ([string]$t.Tile.description).StartsWith('Stopped, started by hand. ') -and -not $t.Tile.siteMonitor -and -not $t.Tile.container -and -not $t.Tile.widget
+        Assert-True ($live -or $byHand) ($t.Section + ' / ' + $t.Name + ' shows no up or down')
         if ($t.Tile.widget -and $t.Tile.widget.url -like '*/api/gamepc') { Assert-True ([string]$t.Tile.widget.headers.Authorization -eq 'Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}') ($t.Name + ': the snapshot needs the ops token') }
     }
     $pc = @($tiles | Where-Object { $_.Name -eq 'Game PC' })[0]
@@ -6352,7 +6355,7 @@ Fact 'P133_WidgetsThatNeedAKeyReadItFromTheEnvironmentNeverTheFile' {
 
 Fact 'P133_NoComposeOfOursPublishesOnAPublicInterface' {
     # cc-P144: and the Legion scripts' dev channel.
-    $files = @((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'), (Join-Path $repo 'docker\ops\docker-compose.yml'), 'C:\dev\sunflower\print-queue\docker-compose.yml', (Join-Path $repo 'docker\scripts-dev\docker-compose.yml'))
+    $files = @((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'), (Join-Path $repo 'docker\ops\docker-compose.yml'), 'C:\dev\sunflower\print-queue\docker-compose.yml', (Join-Path $repo 'docker\scripts-dev\docker-compose.yml'), (Join-Path $repo 'docker\portainer-haven\docker-compose.yml'))
     foreach ($f in $files) {
         $c = [IO.File]::ReadAllText($f)
         $inPorts = $false
@@ -6411,7 +6414,7 @@ Fact 'P133_TheDeployServesOnTheTailnetSavesItsDiscoveryAndBuildsFromTheInventory
     Assert-True ($d -match 'Build-HavenDashboard\.ps1' -and $d -match 'Test-HavenInventoryCoverage') 'the config is built from services.json and drift is printed in the plan'
     Assert-True ($d -match "tailscaleServe" -and $d -match "http://127\.0\.0\.1:") 'Serve targets come from the inventory and are loopback only'
     Assert-True ($d -match 'cp -p ' -and $d -match 'backup-') 'the compose, config and env on Haven are backed up before they are replaced'
-    foreach ($f in @((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'), (Join-Path $repo 'docker\ops\docker-compose.yml'), 'C:\dev\sunflower\print-queue\docker-compose.yml', (Join-Path $repo 'docker\scripts-dev\docker-compose.yml'))) {
+    foreach ($f in @((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'), (Join-Path $repo 'docker\ops\docker-compose.yml'), 'C:\dev\sunflower\print-queue\docker-compose.yml', (Join-Path $repo 'docker\scripts-dev\docker-compose.yml'), (Join-Path $repo 'docker\portainer-haven\docker-compose.yml'))) {
         $c = [IO.File]::ReadAllText($f)
         Assert-True (@([regex]::Matches($c, 'restart: unless-stopped')).Count -ge 1) ($f + ' survives a restart')
     }
@@ -6454,6 +6457,170 @@ Fact 'P133_TheRunbookAndTheRuleKeepTheInventoryAndTheDocsInStep' {
     foreach ($a in @((Join-Path $repo 'AGENTS.md'), 'D:\UO\shard-migration\AGENTS.md')) {
         Assert-True ([IO.File]::ReadAllText($a) -match 'services\.json[^\r\n]*haven-runbook\.md|haven-runbook\.md[^\r\n]*services\.json') ($a + ' carries the rule')
     }
+}
+
+# --- cc-P163: the dashboard after the first Haven deploy (2026-10-18), and Portainer on Haven -------------------------
+
+$p163Yaml = [IO.File]::ReadAllText((Join-Path $p133Cfg 'services.yaml'))
+$p163Disc = ConvertFrom-HavenDiscovery -Text ([IO.File]::ReadAllText((Join-Path $repo 'docker\haven\discovery\haven-2026-10-18.txt')))
+function Get-P163Svc([string]$Key) { @($p133Inv.services | Where-Object { $_.key -eq $Key })[0] }
+function Get-P163Tile([string]$Yaml, [string]$Name) {
+    # One generated tile's lines, from '    - "Name":' to the next tile or section. The YAML writer is ours (cc-P133), so
+    # its text is the contract here; P133's facts read the same file with Homepage's own parser.
+    $lines = $Yaml -split "`n"
+    $out = New-Object 'System.Collections.Generic.List[string]'
+    $in = $false
+    foreach ($l in $lines) {
+        if ($l -match ('^    - "?' + [regex]::Escape($Name) + '"?:$')) { $in = $true; $out.Add($l); continue }
+        if ($in -and $l -match '^(- |    - )') { break }
+        if ($in) { $out.Add($l) }
+    }
+    $(if ($out.Count) { $out -join "`n" } else { $null })
+}
+
+Fact 'P163_TheTowerPrintQueueIsRetiredAndHavensRuns' {
+    $tower = Get-P163Svc 'print-queue-tower'
+    Assert-True ([string]$tower.state -like 'retired 2026-10-18*') ('the tower copy is retired: ' + $tower.state)
+    Assert-Equal 0 @($tower.tiles).Count 'and has no tile'
+    $pq = Get-P163Svc 'print-queue'
+    Assert-Equal 'running' $pq.state
+    Assert-True ([string]$pq.verified -match '2026-10-18 08:56' -and [string]$pq.verified -notmatch 'not deployed') ('verified says the 10-18 deploy: ' + $pq.verified)
+    Assert-True ($p163Yaml -notmatch 'tower copy' -and $p163Yaml -notmatch 'localhost:8787') 'no tile for the tower copy, and nothing points at the tower''s port'
+    Assert-True (Get-P163Tile $p163Yaml 'Print queue') 'Haven''s print queue keeps its tile'
+}
+
+Fact 'P163_PlannedRetiredAndNotInstalledServicesGetNoTile' {
+    Assert-Equal 'none' (Get-HavenTileMode ([pscustomobject]@{ state = 'planned'; kind = 'container' })) 'planned'
+    Assert-Equal 'none' (Get-HavenTileMode ([pscustomobject]@{ state = 'retired 2026-10-18 (moved)'; kind = 'process' })) 'retired'
+    Assert-Equal 'none' (Get-HavenTileMode ([pscustomobject]@{ state = 'built, not installed yet'; kind = 'process' })) 'not installed yet'
+    Assert-Equal 'by-hand' (Get-HavenTileMode ([pscustomobject]@{ state = 'stopped (started by hand when needed)'; kind = 'on-demand' })) 'stopped by design'
+    Assert-Equal 'live' (Get-HavenTileMode ([pscustomobject]@{ state = 'running'; kind = 'container' })) 'running'
+    foreach ($s in @($p133Inv.services | Where-Object { (Get-HavenTileMode $_) -eq 'none' })) {
+        foreach ($tile in @($s.tiles)) { Assert-True (-not (Get-P163Tile $p163Yaml ([string]$tile.name))) ($s.key + ' (' + $s.state + ') has no tile, but ' + $tile.name + ' is there') }
+    }
+    # The rule on a copy: the Legion scripts' dev channel planned again loses its tile, and running gets it back.
+    $copy = [IO.File]::ReadAllText((Join-Path $repo 'docker\haven\services.json')) | ConvertFrom-Json
+    $dev = @($copy.services | Where-Object { $_.key -eq 'scripts-dev' })[0]
+    $dev.state = 'planned'
+    Assert-True (-not (Get-P163Tile (ConvertTo-HomepageServices -Inventory $copy) 'Legion scripts (dev)')) 'planned: no tile'
+    $dev.state = 'running'
+    Assert-True ((Get-P163Tile (ConvertTo-HomepageServices -Inventory $copy) 'Legion scripts (dev)') -match 'siteMonitor: "http://192\.168\.1\.61:8097/scripts\.json"') 'running: the tile, with its monitor'
+    Assert-Equal 'running' (Get-P163Svc 'scripts-dev').state 'the dev channel runs on Haven since 10-18 (Discover 09:46)'
+}
+
+Fact 'P163_TheDevStoreSaysStoppedStartedByHandInsteadOfARedMonitor' {
+    $t = Get-P163Tile $p163Yaml 'Dev store'
+    Assert-True $t 'the Dev store keeps its tile'
+    Assert-True ($t -match 'description: "Stopped, started by hand\. ') ('it says so: ' + $t)
+    Assert-True ($t -notmatch 'siteMonitor|widget|container:|server:') ('and has no monitor: ' + $t)
+    Assert-True ($t -match 'href: "http://192\.168\.1\.58:8080"') 'the link still opens it when it runs'
+}
+
+Fact 'P163_NpmIsWatchedAtItsFrontDoorAndItsAdminLinkStaysTheTunnel' {
+    $t = Get-P163Tile $p163Yaml 'Nginx Proxy Manager'
+    Assert-True ($t -match 'siteMonitor: "http://192\.168\.1\.61:80/"') ('NPM''s front door, which answers from inside Homepage''s container: ' + $t)
+    Assert-True ($t -match ('href: "' + [regex]::Escape([string]$config.Websites.Npm.Url) + '"') -and $config.Websites.Npm.Url -eq 'http://localhost:8081/') 'the admin link is still the console''s SSH tunnel'
+    Assert-True ($p163Yaml -notmatch 'siteMonitor: "https?://(localhost|127\.0\.0\.1)') 'no tile monitors localhost: inside Homepage''s container that is Homepage itself'
+}
+
+Fact 'P163_TheContainersDiscoverFoundAreInTheInventoryWithTheirRealPorts' {
+    foreach ($k in 'monitoring-grafana', 'monitoring-prometheus', 'npm-admin-tailnet') {
+        $s = Get-P163Svc $k
+        Assert-True $s ('services.json has ' + $k)
+        Assert-True ($s.container -eq $k -and $s.host -eq 'haven' -and $s.owner -eq 'home lab' -and $s.state -eq 'running') ($k + ': container, host, owner, state')
+        Assert-True ([string]$s.verified -match 'Discover 2026-10-18' -and @($s.backup).Count -ge 1 -and @($s.ports).Count -ge 1) ($k + ': where it came from, ports, backup')
+        foreach ($tile in @($s.tiles)) { Assert-True ((Get-P163Tile $p163Yaml ([string]$tile.name)) -match 'siteMonitor: "http://100\.98\.32\.16:') ($tile.name + ' is watched on Haven''s tailnet address, where it listens') }
+    }
+    Assert-Equal 0 @($p133Inv.services | Where-Object { $_.key -in 'grafana', 'prometheus' -or $_.container -in 'grafana', 'prometheus' }).Count 'the planned names are renamed, not kept beside the real ones'
+    Assert-Equal 'monitoring-prometheus' ((Get-P163Svc 'spoolman').neededBy -join ',') 'and the links follow the rename'
+    Assert-Equal '' ((Test-HavenInventoryCoverage -Inventory $p133Inv -Discovery $p163Disc).Missing -join ', ') 'every running container on 10-18 is in the inventory'
+    Assert-Equal '' (@(Compare-HavenDiscoveredPorts -Inventory $p133Inv -Discovery $p163Disc | ForEach-Object { $_.Name }) -join ', ') 'and publishes what its entry says, with the image it names'
+    $all = @(Compare-HavenDiscoveredPorts -Inventory $p133Inv -Discovery $p163Disc -All)
+    Assert-Equal '100.98.32.16:3001' (@($all | Where-Object { $_.Name -eq 'monitoring-grafana' })[0].Published -join ',') 'Grafana, from the 10-18 text'
+    Assert-Equal '0.0.0.0:443,0.0.0.0:80,127.0.0.1:81' (@($all | Where-Object { $_.Name -eq 'sl-proxy' })[0].Published -join ',') 'NPM, the [::] twins left out'
+    Assert-Equal '127.0.0.1:8093,192.168.1.61:8093,192.168.1.61:8094' (@($all | Where-Object { $_.Name -eq 'sl-play-tests' })[0].Published -join ',') 'the ops pages'
+}
+
+Fact 'P163_DiscoverParsesPortsAndMountsAndThePlanSaysWhatToFillIn' {
+    $p = @(ConvertFrom-DockerPorts '0.0.0.0:80-81->80-81/tcp, [::]:7912->8000/tcp, 2375/tcp')
+    Assert-Equal '0.0.0.0:80>80|0.0.0.0:81>81|[::]:7912>8000|:0>2375' (($p | ForEach-Object { $_.Bind + ':' + $_.HostPort + '>' + $_.Port }) -join '|') 'a range, an IPv6 twin and an exposed port'
+    Assert-Equal 0 @(ConvertFrom-DockerPorts '').Count 'no ports'
+    $text = [IO.File]::ReadAllText((Join-Path $repo 'docker\haven\discovery\haven-2026-10-18.txt'))
+    $moved = ($text -replace '100\.98\.32\.16:3001->3000', '100.98.32.16:3002->3000' -replace 'grafana/grafana:13\.1\.8', 'other/grafana:1') -replace '-- containers\r?\n', ("-- containers`n" + 'stray-box|running|Up 1 minute|nginx:alpine|192.168.1.61:8099->80/tcp|/home/chase/x' + "`n")
+    $r = @(Compare-HavenDiscoveredPorts -Inventory $p133Inv -Discovery (ConvertFrom-HavenDiscovery -Text $moved))
+    $g = @($r | Where-Object { $_.Name -eq 'monitoring-grafana' })[0]
+    Assert-True ($g -and ($g.NotListed -join ',') -eq '100.98.32.16:3002' -and ($g.NotPublished -join ',') -eq '100.98.32.16:3001' -and -not $g.ImageOk) 'a moved port and another image are named'
+    $x = @($r | Where-Object { $_.Name -eq 'stray-box' })[0]
+    Assert-True ($x -and $x.Key -eq '' -and ($x.Published -join ',') -eq '192.168.1.61:8099') 'a container with no entry is named with its ports'
+    Assert-Equal 2 $r.Count ('only those two: ' + (($r | ForEach-Object { $_.Name }) -join ', '))
+    $m = ConvertFrom-HavenDiscovery -Text ("-- mounts`n  /monitoring-grafana|grafana-data>/var/lib/grafana;/opt/monitoring/grafana.ini>/etc/grafana/grafana.ini;`n  /npm-admin-tailnet|`n")
+    Assert-Equal 'grafana-data>/var/lib/grafana|/opt/monitoring/grafana.ini>/etc/grafana/grafana.ini' ($m.Mounts['monitoring-grafana'] -join '|') 'mounts: a volume''s name, a bind''s path'
+    Assert-Equal 0 @($m.Mounts['npm-admin-tailnet']).Count 'a container with none'
+    $d = [IO.File]::ReadAllText((Join-Path $repo 'docker\dashboard\haven\Deploy-MegaDashboard.ps1'))
+    Assert-True ($d -match 'echo "-- mounts"' -and $d -match '\{\{range \.Mounts\}\}') 'Discover prints every running container''s mounts'
+    Assert-True ($d -match 'Compare-HavenDiscoveredPorts' -and $d -match 'PORTS OR IMAGES DIFFER' -and $d -match "like 'from Discover\*'") 'and the plan prints what differs and the mounts to fill in'
+    Assert-Equal 3 @($p133Inv.services | Where-Object { @(@($_.volumes) | Where-Object { [string]$_.host -like 'from Discover*' }).Count }).Count 'the three entries waiting on Discover say so'
+}
+
+Fact 'P163_PortainerOnHavenHasADeployAndARollBackLikeTheOthers' {
+    $w = $config.Websites
+    foreach ($f in @(@('Deploy-PortainerHaven.ps1', 'Deploy', 'portainer-haven'), @('Deploy-PortainerHaven-Rollback.ps1', 'Rollback', 'portainer-haven-rollback'))) {
+        Assert-Equal ('D:\UO\haven-migration\' + $f[0]) $w.Deploys[$f[2]].Script $f[2]
+        $t = [IO.File]::ReadAllText('D:\UO\haven-migration\' + $f[0])
+        Assert-True ($t -match ([regex]::Escape("& 'D:\ShatteredLegacy\docker\portainer-haven\Deploy-PortainerHaven.ps1' -Mode " + $f[1]) + '\r?\n')) ($f[0] + ' runs only its mode')
+    }
+    foreach ($k in 'web.portainer-haven', 'web.portainer-haven-rollback') {
+        $p = @(Get-ActionPlan -Action $k -Config $config -State $state)
+        Assert-Equal 'confirm,window,log' (($p | ForEach-Object { $_.Kind }) -join ',') $k
+        Assert-Equal 'deploy to haven' $p[0].Phrase
+        Assert-Equal ('-Deploy ' + $k.Substring(4)) ((@($p[1].Arguments) | Select-Object -Last 2) -join ' ')
+        Assert-Equal 0 @(Test-PlanSafety $p $config).Count ((Test-PlanSafety $p $config) -join ' | ')
+        Assert-True ([string](Get-ConsoleTooltips)[$k]) ($k + ' has a tooltip')
+        Assert-Equal 'Portainer on Haven' (Get-ConfirmSubject $k)
+        Assert-True ($p[2].Text -eq ('web.deploy portainer-haven ' + $k.Substring(4))) ('the log line: ' + $p[2].Text)
+    }
+    $c = [IO.File]::ReadAllText((Join-Path $repo 'docker\portainer-haven\docker-compose.yml'))
+    Assert-True ($c -match '(?m)^\s+image: portainer/portainer-ce:2\.45\.2\s*$') 'Portainer CE, pinned (2.45.2 is lts, the docs'' tag)'
+    Assert-True ($c -match 'portainer_data:/data' -and $c -match 'name: \$\{PT_VOLUME:-portainer_data\}' -and $c -match '/var/run/docker\.sock:/var/run/docker\.sock') 'the docs'' data volume, by its own name, and the Docker socket'
+    Assert-True ($c -notmatch ':8000' -and $c -match '\$\{PT_LOOP_BIND:-127\.0\.0\.1\}:\$\{PT_HTTP_LOOP_PORT:-9000\}:9000') 'no Edge port; plain HTTP on loopback only'
+    $s = Get-P163Svc 'portainer-haven'
+    Assert-True ([string]$s.image -eq 'portainer/portainer-ce:2.45.2' -and (@($s.backup) -join ' ') -match 'portainer_data' -and [string]$s.compose -match 'docker\\portainer-haven') 'the inventory names the same image, the volume in its backup, and the compose'
+    $serve = @($p133Inv.tailscaleServe | Where-Object { $_.service -eq 'portainer-haven' })[0]
+    Assert-True ($serve -and $serve.tailnetPort -eq 9000 -and $serve.target -eq 'http://127.0.0.1:9000') 'Serve: the tailnet''s 9000 to loopback HTTP (cc-P133''s rule)'
+    $t = Get-P163Tile $p163Yaml 'Portainer (Haven)'
+    Assert-True ($t -match 'href: "http://haven\.tail81098d\.ts\.net:9000/"' -and $t -match 'siteMonitor: "https://192\.168\.1\.61:9443/api/system/status"' -and $t -match 'url: "https://192\.168\.1\.61:9443"' -and $t -match 'key: "\{\{HOMEPAGE_VAR_PORTAINER_KEY\}\}"') ('the tile and widget point at it: ' + $t)
+    $d = [IO.File]::ReadAllText((Join-Path $repo 'docker\portainer-haven\Deploy-PortainerHaven.ps1'))
+    Assert-True ($d -match 'IsSystem\) \{ Write-Host .REFUSED' -and $d -match "'DRY RUN: stopping here; nothing was changed\.'" -and $d -match "Mode = 'Discover'") 'refuses SYSTEM, has a dry run, Discover by default'
+    Assert-True ($d -match 'MAKE THE ADMIN USER WITHIN 5 MINUTES' -and $d -match 'setup_token=' -and $d -match 'api/users/admin/check') 'the first login: the 5 minutes in big letters, with the setup token, only while no admin exists'
+    $tar = $d.IndexOf('tar czf'); $up = $d.IndexOf("Compose 'up -d")
+    Assert-True ($tar -gt 0 -and $up -gt $tar) 'the data volume is backed up before anything is replaced'
+    Assert-True ($d -match "is not this deploy''s" -and $d -notmatch '0\.0\.0\.0' -and -not @($d -split "\r?\n" | Where-Object { $_ -match 'Invoke-Haven' -and $_ -match '(?i)funnel' }).Count) 'never another project''s Portainer, never all interfaces, never Funnel'
+}
+
+Fact 'P163_ThePortainerDeployDryRunReadsPlansAndChangesNothing' {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('p163-proof-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+    $bin = Join-Path $root 'bin'
+    New-Item -ItemType Directory -Force -Path $bin | Out-Null
+    # A stand-in tailscale, so the dry run's Discover never reads or changes this PC's real one.
+    $ts = "#!/bin/sh`ncase `"`$1`" in`n  debug) echo '{ `"OperatorUser`": `"'`$(id -un)'`" }' ;;`n  serve) echo 'No serve config' ;;`n  ip) echo 100.64.0.9 ;;`nesac`n"
+    [IO.File]::WriteAllText((Join-Path $bin 'tailscale'), $ts, (New-Object Text.UTF8Encoding $false))
+    try {
+        $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'docker\portainer-haven\Deploy-PortainerHaven.ps1') -Mode Deploy -DryRun -Local -Root $root -ProofBin $bin `
+            -Name 'p163-proof-portainer' -Volume 'p163_proof_data' -Project 'p163-proof' -Port 19443 -HttpLoopPort 19000 2>&1 | Out-String)
+        $code = $LASTEXITCODE
+        Assert-Equal 0 $code $out
+        foreach ($want in '== Discover: this PC \(proof', '-- containers', '== Plan: Deploy', 'nothing to back up: p163_proof_data does not exist yet', '3\. docker compose -p p163-proof up -d \(portainer/portainer-ce:2\.45\.2',
+            'tailscale serve --bg --http=9000 http://127\.0\.0\.1:19000', 'first-login link, the 5-minute limit', 'DRY RUN: stopping here; nothing was changed\.') {
+            Assert-True ($out -match $want) ('the dry run says ' + $want + ': ' + $out)
+        }
+        Assert-Equal '' ((& docker ps -a --filter 'name=p163-proof-portainer' --format '{{.Names}}' 2>$null) -join ',') 'no container was made'
+        $ErrorActionPreference = 'Continue'
+        & docker volume inspect p163_proof_data 2>&1 | Out-Null
+        $vcode = $LASTEXITCODE
+        $ErrorActionPreference = 'Stop'
+        Assert-True ($vcode -ne 0) 'no volume was made'
+        Assert-Equal 'bin' ((@(Get-ChildItem -LiteralPath $root) | ForEach-Object { $_.Name }) -join ',') 'nothing was copied'
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 # --- cc-P154: the console stays responsive. Reads in runspaces of their own; the window only draws -------------------

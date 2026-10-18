@@ -39,7 +39,8 @@
     { "tailnetPort": 80, "target": "http://127.0.0.1:3000", "service": "homepage", "_why": "The dashboard at http://haven.tail81098d.ts.net/. Port 80 on Haven's own interfaces is NPM's (0.0.0.0:80, the public website), so the tailnet's port 80 is Tailscale Serve's, which answers only on the tailnet." },
     { "tailnetPort": 8093, "target": "http://127.0.0.1:8093", "service": "play-tests", "_why": "The ops pages on the same port as on the LAN." },
     { "tailnetPort": 8787, "target": "http://127.0.0.1:8787", "service": "print-queue", "_why": "The print queue on the same port as on the LAN, once P109's deploy has moved it." },
-    { "tailnetPort": 8097, "target": "http://127.0.0.1:8097", "service": "scripts-dev", "_why": "cc-P144: the Legion scripts' dev channel on the same port as on the LAN, once Publish-LegionScripts.ps1 -Mode SetupDev has started it. Chase's PCs flagged dev read http://haven.tail81098d.ts.net:8097/scripts.json." }
+    { "tailnetPort": 8097, "target": "http://127.0.0.1:8097", "service": "scripts-dev", "_why": "cc-P144: the Legion scripts' dev channel on the same port as on the LAN, once Publish-LegionScripts.ps1 -Mode SetupDev has started it. Chase's PCs flagged dev read http://haven.tail81098d.ts.net:8097/scripts.json." },
+    { "tailnetPort": 9000, "target": "http://127.0.0.1:9000", "service": "portainer-haven", "_why": "cc-P163: Portainer on the tailnet at http://haven.tail81098d.ts.net:9000/, its plain HTTP port on loopback (Serve forwards to loopback HTTP only). At home, https://192.168.1.61:9443/ too. Portainer (Haven): deploy sets it, and so does every Mega dashboard deploy once it answers." }
   ],
   "services": [
     {
@@ -48,7 +49,7 @@
       "host": "haven",
       "owner": "Sunflower",
       "kind": "container",
-      "state": "planned",
+      "state": "running",
       "container": "sunflower-print-queue",
       "image": "sunflower-print-queue:local (built on Haven from python:3-alpine)",
       "compose": "/home/chase/sunflower-print-queue/stack/docker-compose.yml (source: C:\\dev\\sunflower\\print-queue\\docker-compose.yml)",
@@ -69,14 +70,14 @@
       "neededBy": [],
       "backup": ["/home/chase/sunflower-print-queue/data", "/home/chase/sunflower-print-queue/keys"],
       "neverExpose": true,
-      "verified": "Built and proved on the game PC by cc-P109; not deployed to Haven yet (no deploy transcript).",
+      "verified": "Deployed to Haven 2026-10-18 08:56 by Print queue: deploy (scripts/shard-console-output/deploys/20261018-085610_print-queue.log: key proved from Haven, 7 files moved and checked by SHA-256, 6 orders served, first push from Haven OK). Discover 2026-10-18 09:46: Up (healthy) on 127.0.0.1:8787 and 192.168.1.61:8787.",
       "tiles": [
         {
           "section": "Sunflower",
           "name": "Print queue",
           "icon": "mdi-printer-3d",
           "href": "http://haven.tail81098d.ts.net:8787/",
-          "description": "Opener orders and the public lead-time page. On Haven after Print queue: deploy",
+          "description": "Opener orders and the public lead-time page. On Haven since 2026-10-18",
           "siteMonitor": "http://192.168.1.61:8787/api/push",
           "widget": {
             "type": "customapi",
@@ -98,32 +99,23 @@
       "host": "gamepc",
       "owner": "Sunflower",
       "kind": "process",
-      "state": "running until moved",
+      "state": "retired 2026-10-18 (moved to Haven by Print queue: deploy)",
       "container": "",
       "process": "queue_server.py",
       "image": "",
       "compose": "",
       "start": "C:\\dev\\sunflower\\print-queue\\Start Print Queue.cmd (py queue_server.py), the desktop shortcut Sunflower Print Queue",
       "ports": [ { "lan": "", "loopback": "127.0.0.1:8787", "tailnet": "", "container": 0 } ],
-      "volumes": [ { "host": "C:\\dev\\sunflower\\print-queue\\data", "container": "", "what": "queue.json and the daily backups, until the move; then data.moved-YYYYMMDD (kept)" } ],
+      "volumes": [ { "host": "C:\\dev\\sunflower\\print-queue\\data", "container": "", "what": "renamed data.moved-20261018 by the move (kept, not served); the queue lives on Haven now" } ],
       "env": [],
       "secrets": [ { "name": "Chase's own SSH key for sunflower-live", "where": "the game PC's ~/.ssh (never copied anywhere)", "createdIn": "already there" } ],
       "health": "",
       "dependsOn": ["sunflower-store"],
       "neededBy": [],
-      "backup": ["C:\\dev\\sunflower\\print-queue\\data"],
-      "verified": "cc-P109 (2026-10-14).",
+      "backup": ["C:\\dev\\sunflower\\print-queue\\data.moved-20261018 (the copy taken before the move; Haven's data is the live one)"],
+      "verified": "cc-P109 (2026-10-14). Retired 2026-10-18 08:56: the deploy found the game PC server not running and renamed its data data.moved-20261018 (20261018-085610_print-queue.log). cc-P163 removed its tile.",
       "_note": "Listens on the tower's loopback only, so Haven cannot see it; its up/down comes from the game PC snapshot, which looks for the process. Print queue: deploy stops it, and the two never push at once.",
-      "tiles": [
-        {
-          "section": "Sunflower",
-          "name": "Print queue (tower copy)",
-          "icon": "mdi-printer-3d-off",
-          "description": "Still on the game PC until Print queue: deploy; then it should read Down for good",
-          "href": "http://localhost:8787/",
-          "snapshot": "print-queue-tower"
-        }
-      ]
+      "tiles": []
     },
     {
       "key": "sunflower-store",
@@ -168,7 +160,7 @@
       "backup": ["C:\\dev\\sunflower\\sunflower-devstack (its own repo, no remote)"],
       "verified": "cc-P110 tile. Not running on 2026-10-17 (no container in docker ps -a).",
       "tiles": [
-        { "section": "Sunflower", "name": "Dev store", "icon": "mdi-storefront-outline", "href": "http://192.168.1.58:8080", "description": "Local copy on the game PC; Down unless the devstack is running, its usual state", "siteMonitor": "http://192.168.1.58:8080" }
+        { "section": "Sunflower", "name": "Dev store", "icon": "mdi-storefront-outline", "href": "http://192.168.1.58:8080", "description": "Local copy on the game PC (http://192.168.1.58:8080 while the devstack runs)", "siteMonitor": "http://192.168.1.58:8080" }
       ]
     },
     {
@@ -179,15 +171,15 @@
       "kind": "container",
       "state": "running (Chase's notes)",
       "container": "spoolman",
-      "image": "ghcr.io/donkie/spoolman (tag unverified)",
-      "compose": "unverified (Discover prints its compose folder)",
-      "ports": [ { "lan": "192.168.1.61:7912", "loopback": "", "tailnet": "http://haven.tail81098d.ts.net:7912/", "container": 8000 } ],
+      "image": "ghcr.io/donkie/spoolman:latest",
+      "compose": "/opt/spoolman (compose folder from Discover, 2026-10-18; not ours)",
+      "ports": [ { "lan": "0.0.0.0:7912 (all interfaces, and [::]:7912: its own compose, not ours)", "loopback": "", "tailnet": "http://haven.tail81098d.ts.net:7912/", "container": 8000 } ],
       "volumes": [ { "host": "unverified", "container": "/home/app/.local/share/spoolman", "what": "THE FILAMENT DATABASE. Never touch, never move without a backup." } ],
       "env": ["SPOOLMAN_METRICS_ENABLED", "TZ"],
       "secrets": [],
       "health": "http://192.168.1.61:7912/api/v1/health",
       "dependsOn": [],
-      "neededBy": ["prometheus"],
+      "neededBy": ["monitoring-prometheus"],
       "backup": ["Spoolman's data volume or folder (path unverified; Discover prints its mounts)"],
       "neverMove": "its database volume, except by the runbook's Spoolman steps",
       "verified": "Chase's notes from the Sunflower chat (2026-10-15): http://haven.tail81098d.ts.net:7912/, REST at /api/v1/, health /api/v1/health, no login. The container name, image tag, compose path and volume are unverified.",
@@ -204,71 +196,90 @@
       ]
     },
     {
-      "key": "prometheus",
+      "key": "monitoring-prometheus",
       "name": "Prometheus",
       "host": "haven",
       "owner": "home lab",
       "kind": "container",
-      "state": "planned",
-      "container": "prometheus",
-      "image": "prom/prometheus (planned)",
-      "compose": "/opt/monitoring (planned; config /opt/monitoring/prometheus.yml)",
-      "ports": [ { "lan": "192.168.1.61:9090", "loopback": "", "tailnet": "http://haven.tail81098d.ts.net:9090/", "container": 9090 } ],
-      "volumes": [ { "host": "/opt/monitoring (planned)", "container": "/prometheus", "what": "the time series, 5-year retention" } ],
+      "state": "running",
+      "container": "monitoring-prometheus",
+      "image": "prom/prometheus:v3.14.0",
+      "compose": "/opt/monitoring (compose folder from Discover, 2026-10-18; config /opt/monitoring/prometheus.yml per Chase's notes). Not ours: installed by hand",
+      "ports": [
+        { "lan": "", "loopback": "", "tailnetBind": "100.98.32.16:9090", "tailnet": "http://haven.tail81098d.ts.net:9090/", "container": 9090, "note": "from Discover: published on Haven's tailnet address only, so not on the LAN" }
+      ],
+      "volumes": [
+        { "host": "from Discover (the next Mega dashboard: deploy prints mounts)", "container": "/prometheus", "what": "the time series, 5-year retention (Chase's notes)" }
+      ],
       "env": [],
       "secrets": [],
-      "health": "http://192.168.1.61:9090/-/healthy",
+      "health": "http://100.98.32.16:9090/-/healthy",
       "dependsOn": ["spoolman"],
-      "neededBy": ["grafana"],
-      "backup": ["/opt/monitoring/prometheus.yml", "the Prometheus data folder"],
-      "verified": "Chase's notes: planned, scraping Spoolman's /metrics every 5 minutes. Not installed by this prompt; Discover says whether it runs.",
+      "neededBy": ["monitoring-grafana"],
+      "backup": ["/opt/monitoring/prometheus.yml", "the Prometheus data volume or folder (from Discover: the next deploy prints mounts)"],
+      "verified": "Discover 2026-10-18 09:46 (20261018-094603_mega-dashboard.log): monitoring-prometheus, prom/prometheus:v3.14.0, Up 3 days, 100.98.32.16:9090->9090/tcp, compose folder /opt/monitoring. /-/healthy answered 200 on 100.98.32.16 from the game PC (cc-P163). Volumes from Discover once it prints mounts. Was the planned entry 'prometheus' until cc-P163.",
       "tiles": [
         {
           "section": "Monitoring",
           "name": "Prometheus",
           "icon": "prometheus",
           "href": "http://haven.tail81098d.ts.net:9090/",
-          "description": "Metrics store (Spoolman every 5 minutes). Planned: Down until installed",
-          "siteMonitor": "http://192.168.1.61:9090/-/healthy",
-          "widget": { "type": "prometheus", "url": "http://192.168.1.61:9090" }
+          "description": "Metrics store (Spoolman every 5 minutes). Tailnet only",
+          "siteMonitor": "http://100.98.32.16:9090/-/healthy",
+          "widget": {
+            "type": "prometheus",
+            "url": "http://100.98.32.16:9090"
+          }
         }
       ]
     },
     {
-      "key": "grafana",
+      "key": "monitoring-grafana",
       "name": "Grafana",
       "host": "haven",
       "owner": "home lab",
       "kind": "container",
-      "state": "planned",
-      "container": "grafana",
-      "image": "grafana/grafana (planned)",
-      "compose": "/opt/monitoring (planned)",
-      "ports": [ { "lan": "192.168.1.61:3001", "loopback": "", "tailnet": "http://haven.tail81098d.ts.net:3001/", "container": 3000 } ],
-      "volumes": [ { "host": "/opt/monitoring (planned)", "container": "/var/lib/grafana", "what": "dashboards, users, the service account" } ],
+      "state": "running",
+      "container": "monitoring-grafana",
+      "image": "grafana/grafana:13.1.8",
+      "compose": "/opt/monitoring (compose folder from Discover, 2026-10-18). Not ours: installed by hand",
+      "ports": [
+        { "lan": "", "loopback": "", "tailnetBind": "100.98.32.16:3001", "tailnet": "http://haven.tail81098d.ts.net:3001/", "container": 3000, "note": "from Discover: published on Haven's tailnet address only, so not on the LAN" }
+      ],
+      "volumes": [
+        { "host": "from Discover (the next Mega dashboard: deploy prints mounts)", "container": "/var/lib/grafana", "what": "dashboards, users, the service account" }
+      ],
       "env": [],
       "secrets": [
-        { "name": "HOMEPAGE_VAR_GRAFANA_TOKEN", "where": "Haven /home/chase/sl-home/dashboard.env (chmod 600), pasted by Chase", "createdIn": "Grafana > Administration > Users and access > Service accounts > Add service account (role Viewer) > Add service account token" }
+        {
+          "name": "HOMEPAGE_VAR_GRAFANA_TOKEN",
+          "where": "Haven /home/chase/sl-home/dashboard.env (chmod 600), pasted by Chase",
+          "createdIn": "Grafana > Administration > Users and access > Service accounts > Add service account (role Viewer) > Add service account token"
+        }
       ],
-      "health": "http://192.168.1.61:3001/api/health",
-      "dependsOn": ["prometheus"],
+      "health": "http://100.98.32.16:3001/api/health",
+      "dependsOn": ["monitoring-prometheus"],
       "neededBy": [],
-      "backup": ["the Grafana data folder (/var/lib/grafana in the container)"],
-      "verified": "Chase's notes: planned on 3000. 3000 is the dashboard's LAN port on Haven, so the inventory says 3001; change both here and in Grafana's compose if it lands elsewhere.",
+      "backup": ["the Grafana data volume or folder (/var/lib/grafana in the container; from Discover: the next deploy prints mounts)"],
+      "verified": "Discover 2026-10-18 09:46 (20261018-094603_mega-dashboard.log): monitoring-grafana, grafana/grafana:13.1.8, Up 3 days, 100.98.32.16:3001->3000/tcp, compose folder /opt/monitoring. /api/health answered 200 on 100.98.32.16 from the game PC (cc-P163). Was the planned entry 'grafana' until cc-P163.",
       "tiles": [
         {
           "section": "Monitoring",
           "name": "Grafana",
           "icon": "grafana",
           "href": "http://haven.tail81098d.ts.net:3001/",
-          "description": "Graphs over Prometheus. Planned: Down until installed",
-          "siteMonitor": "http://192.168.1.61:3001/api/health",
+          "description": "Graphs over Prometheus. Tailnet only",
+          "siteMonitor": "http://100.98.32.16:3001/api/health",
           "widget": {
             "type": "customapi",
-            "url": "http://192.168.1.61:3001/api/search?type=dash-db&limit=5000",
+            "url": "http://100.98.32.16:3001/api/search?type=dash-db&limit=5000",
             "refreshInterval": 300000,
-            "headers": { "Authorization": "Bearer {{HOMEPAGE_VAR_GRAFANA_TOKEN}}" },
-            "mappings": [ { "label": "Dashboards", "format": "size" } ]
+            "headers": {
+              "Authorization": "Bearer {{HOMEPAGE_VAR_GRAFANA_TOKEN}}"
+            },
+            "mappings": [
+              { "label": "Dashboards", "format": "size" }
+            ]
           }
         }
       ]
@@ -432,7 +443,7 @@
       "host": "haven",
       "owner": "Shattered Legacy",
       "kind": "container",
-      "state": "planned",
+      "state": "running",
       "container": "sl-scripts-dev",
       "image": "nginx:alpine",
       "compose": "/home/chase/sl-scripts-dev/stack/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\scripts-dev, project sl-scripts-dev)",
@@ -444,7 +455,7 @@
       "dependsOn": ["tailscale"],
       "neededBy": [],
       "backup": ["~/backups/legion-scripts/dev/<version>/ (each dev set a publish replaced; the scripts themselves are in the scripts repo on GitHub)"],
-      "verified": "Built by cc-P144; not deployed yet (Chase's Publish-LegionScripts.ps1 -Mode SetupDev starts it).",
+      "verified": "Built by cc-P144. Running on Haven by 2026-10-18 09:45: Discover 09:46 shows sl-scripts-dev Up on 127.0.0.1:8097 and 192.168.1.61:8097, and that deploy set Serve 8097. scripts.json answered 200 from the game PC (cc-P163).",
       "tiles": [
         { "section": "Ultima Online / Shattered Legacy", "name": "Legion scripts (dev)", "icon": "mdi-script-text", "href": "http://haven.tail81098d.ts.net:8097/scripts.json", "description": "The dev channel: half-tested scripts for Chase's own PCs (Tailscale only)", "siteMonitor": "http://192.168.1.61:8097/scripts.json" }
       ]
@@ -638,12 +649,46 @@
       "secrets": [ { "name": "NPM admin login", "where": "the vault (Vaultwarden)", "createdIn": "NPM's admin page" } ],
       "health": "",
       "dependsOn": [],
-      "neededBy": ["website", "wiki", "downloads", "vaultwarden", "kevins-parts-wp"],
+      "neededBy": ["npm-admin-tailnet", "website", "wiki", "downloads", "vaultwarden", "kevins-parts-wp"],
       "backup": ["Docker volumes proxy_npm_data and proxy_npm_letsencrypt"],
       "neverMove": "its hosts and ports: the public website, wiki, downloads and vault all route through it. Nothing on the intranet is ever added to it.",
       "verified": "proxy-discovery.txt, 2026-09-29.",
       "tiles": [
-        { "section": "Admin", "name": "Nginx Proxy Manager", "icon": "nginx-proxy-manager", "href": "http://localhost:8081/", "description": "Admin page through an SSH tunnel: Shard Console > Websites > Open NPM opens both" }
+        { "section": "Admin", "name": "Nginx Proxy Manager", "icon": "nginx-proxy-manager", "href": "http://localhost:8081/", "description": "Up or down: its front door, port 80. The admin link is the SSH tunnel: Shard Console > Websites > Open NPM opens both", "siteMonitor": "http://192.168.1.61:80/" }
+      ]
+    },
+    {
+      "key": "npm-admin-tailnet",
+      "name": "NPM admin on the tailnet (socat)",
+      "host": "haven",
+      "owner": "home lab",
+      "kind": "container",
+      "state": "running",
+      "container": "npm-admin-tailnet",
+      "image": "alpine/socat:1.8.1.1",
+      "compose": "/home/chase/shattered-legacy/docker/npm-admin-tailnet (compose folder from Discover, 2026-10-18). Not in this repo: made by hand on Haven",
+      "ports": [
+        { "lan": "", "loopback": "", "tailnet": "http://haven.tail81098d.ts.net:81/", "container": 0, "note": "from Discover: no published ports, and Haven listens on 100.98.32.16:81, so it runs in the host network and forwards the tailnet's :81 to NPM's admin on 127.0.0.1:81 (inferred; its compose is not in the repo)" }
+      ],
+      "volumes": [
+        { "host": "from Discover (the next Mega dashboard: deploy prints mounts)", "container": "", "what": "probably none: a socat forwarder keeps no data" }
+      ],
+      "env": [],
+      "secrets": [],
+      "health": "http://100.98.32.16:81/",
+      "dependsOn": ["npm"],
+      "neededBy": [],
+      "backup": ["its compose folder /home/chase/shattered-legacy/docker/npm-admin-tailnet (it is not in git)"],
+      "verified": "Discover 2026-10-18 09:46 (20261018-094603_mega-dashboard.log): npm-admin-tailnet, alpine/socat:1.8.1.1, Up 3 days, no published ports; listening ports show 100.98.32.16:81. http://haven.tail81098d.ts.net:81/ answered 200 from the game PC (cc-P163). Who made it and when is not recorded.",
+      "tiles": [
+        {
+          "section": "Admin",
+          "name": "NPM admin (tailnet)",
+          "icon": "nginx-proxy-manager",
+          "href": "http://haven.tail81098d.ts.net:81/",
+          "description": "NPM's admin page over the tailnet, without the SSH tunnel (a socat forwarder)",
+          "siteMonitor": "http://100.98.32.16:81/"
+        }
       ]
     },
     {
@@ -676,7 +721,7 @@
       "host": "haven",
       "owner": "home lab",
       "kind": "container",
-      "state": "planned",
+      "state": "running",
       "container": "sl-homepage",
       "image": "ghcr.io/gethomepage/homepage:v1.13.1",
       "compose": "/home/chase/sl-home/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\dashboard\\haven, project sl-home)",
@@ -688,7 +733,7 @@
       "dependsOn": ["homepage-dockerproxy", "play-tests", "tailscale"],
       "neededBy": [],
       "backup": ["/home/chase/sl-home/dashboard.env (the config is regenerated from git)"],
-      "verified": "Built by cc-P110 and this prompt; not deployed yet (no deploy transcript).",
+      "verified": "Running on Haven since Mega dashboard: deploy, 2026-10-18 08:50 (redeployed 08:59 and 09:46; Discover 09:46: Up (healthy) on 127.0.0.1:3000 and 192.168.1.61:3000). Built by cc-P110 and this prompt; not deployed yet (no deploy transcript).",
       "tiles": [
         { "section": "Admin", "name": "This dashboard", "icon": "homepage", "href": "http://haven.tail81098d.ts.net/", "description": "Homepage on Haven. Generated from docker/haven/services.json" }
       ]
@@ -699,7 +744,7 @@
       "host": "haven",
       "owner": "home lab",
       "kind": "container",
-      "state": "planned",
+      "state": "running",
       "container": "sl-homepage-dockerproxy",
       "image": "tecnativa/docker-socket-proxy:v0.4.1",
       "compose": "/home/chase/sl-home/docker-compose.yml (project sl-home)",
@@ -711,7 +756,7 @@
       "dependsOn": [],
       "neededBy": ["homepage"],
       "backup": [],
-      "verified": "cc-P110 proof (403 on every POST).",
+      "verified": "cc-P110 proof (403 on every POST). Running on Haven since 2026-10-18 (Discover 09:46).",
       "tiles": [
         { "section": "Admin", "name": "Dashboard Docker proxy", "icon": "mdi-docker", "description": "Lets the dashboard read Haven's container states, nothing else" }
       ]
@@ -722,31 +767,55 @@
       "host": "haven",
       "owner": "home lab",
       "kind": "container",
-      "state": "running (Chase's notes)",
+      "state": "installed by Portainer (Haven): deploy (cc-P163)",
       "container": "portainer",
-      "image": "portainer/portainer-ce (tag unverified)",
-      "compose": "unverified (Discover prints its compose folder)",
-      "ports": [ { "lan": "192.168.1.61:9443 (unverified)", "loopback": "", "tailnet": "https://haven.tail81098d.ts.net:9443/", "container": 9443 } ],
-      "volumes": [ { "host": "unverified", "container": "/data", "what": "Portainer's own database" } ],
+      "image": "portainer/portainer-ce:2.45.2",
+      "compose": "/home/chase/sl-portainer/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\portainer-haven, project sl-portainer)",
+      "ports": [
+        { "lan": "192.168.1.61:9443", "loopback": "127.0.0.1:9443", "tailnet": "", "container": 9443, "note": "HTTPS, Portainer's own self-signed certificate" },
+        { "lan": "", "loopback": "127.0.0.1:9000", "tailnet": "http://haven.tail81098d.ts.net:9000/", "container": 9000, "note": "Portainer's plain HTTP port, loopback only, for Tailscale Serve (P133's rule: Serve forwards to loopback HTTP)" }
+      ],
+      "volumes": [
+        { "host": "Docker volume portainer_data", "container": "/data", "what": "Portainer's own database: the admin user, access tokens, settings" },
+        { "host": "/var/run/docker.sock", "container": "/var/run/docker.sock", "what": "Docker on Haven (read and write: Portainer manages it)" }
+      ],
       "env": [],
       "secrets": [
-        { "name": "HOMEPAGE_VAR_PORTAINER_KEY", "where": "Haven /home/chase/sl-home/dashboard.env (chmod 600), pasted by Chase", "createdIn": "Portainer > your user (top right) > My account > Access tokens > Add access token" },
-        { "name": "HOMEPAGE_VAR_PORTAINER_ENV (the environment ID: not a secret, kept beside the key)", "where": "the same file", "createdIn": "Portainer > Environments > click Haven's: the number in the address bar after /endpoints/" }
+        {
+          "name": "Portainer admin login",
+          "where": "the vault (Vaultwarden)",
+          "createdIn": "Portainer's first-time setup page, within 5 minutes of its first start (Portainer (Haven): deploy prints the link and the setup token)"
+        },
+        {
+          "name": "HOMEPAGE_VAR_PORTAINER_KEY",
+          "where": "Haven /home/chase/sl-home/dashboard.env (chmod 600), pasted by Chase",
+          "createdIn": "Portainer > your user (top right) > My account > Access tokens > Add access token"
+        },
+        {
+          "name": "HOMEPAGE_VAR_PORTAINER_ENV (the environment ID: not a secret, kept beside the key)",
+          "where": "the same file",
+          "createdIn": "Portainer > Environments > click Haven's: the number in the address bar after /endpoints/"
+        }
       ],
       "health": "https://192.168.1.61:9443/api/system/status",
       "dependsOn": [],
       "neededBy": [],
-      "backup": ["Portainer's data volume"],
-      "verified": "Chase's notes: Portainer runs on Haven, port to find. Name, port and compose unverified; Discover prints them.",
+      "backup": ["Docker volume portainer_data (Portainer (Haven): deploy also tars it to /home/chase/sl-portainer/backup-<time>.tgz before it replaces anything)"],
+      "verified": "cc-P163: the image and the data volume from Portainer's docs (docs.portainer.io/start/install-ce/server/docker/linux: portainer/portainer-ce:lts, volume portainer_data at /data; 2.45.2 is lts on Docker Hub, same digest, 2026-10-08). Not on Haven before (Discover 2026-10-18: 'in the inventory, not on Haven: portainer'). Set state to running after Portainer (Haven): deploy.",
       "tiles": [
         {
           "section": "Admin",
           "name": "Portainer (Haven)",
           "icon": "portainer",
-          "href": "https://haven.tail81098d.ts.net:9443/",
-          "description": "Docker on Haven. Stacks deployed by the console show as limited (made outside Portainer): edit them in git, not here",
+          "href": "http://haven.tail81098d.ts.net:9000/",
+          "description": "Docker on Haven (at home also https://192.168.1.61:9443/). Stacks deployed by the console show as limited (made outside Portainer): edit them in git, not here",
           "siteMonitor": "https://192.168.1.61:9443/api/system/status",
-          "widget": { "type": "portainer", "url": "https://192.168.1.61:9443", "env": "{{HOMEPAGE_VAR_PORTAINER_ENV}}", "key": "{{HOMEPAGE_VAR_PORTAINER_KEY}}" }
+          "widget": {
+            "type": "portainer",
+            "url": "https://192.168.1.61:9443",
+            "env": "{{HOMEPAGE_VAR_PORTAINER_ENV}}",
+            "key": "{{HOMEPAGE_VAR_PORTAINER_KEY}}"
+          }
         }
       ]
     },
@@ -802,7 +871,7 @@
       "host": "gamepc",
       "owner": "home lab",
       "kind": "container",
-      "state": "running until Mega dashboard: deploy stops it",
+      "state": "stopped on purpose by Mega dashboard: deploy (2026-10-18)",
       "container": "sl-dashboard",
       "image": "ghcr.io/gethomepage/homepage:latest",
       "compose": "D:\\ShatteredLegacy\\docker\\dashboard\\docker-compose.yml",

@@ -918,6 +918,7 @@ function Get-ConfirmPhrase {
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'deploy to haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'deploy to haven' }
         { $_ -in @('web.mega-dashboard', 'web.mega-dashboard-rollback') } { 'deploy to haven' }
+        { $_ -in @('web.portainer-haven', 'web.portainer-haven-rollback') } { 'deploy to haven' }
         default            { 'confirm live' }
     }
 }
@@ -938,6 +939,7 @@ function Get-ConfirmSubject {
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'Ops pages on Haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'Print queue on Haven' }
         { $_ -in @('web.mega-dashboard', 'web.mega-dashboard-rollback') } { 'Mega dashboard on Haven' }
+        { $_ -in @('web.portainer-haven', 'web.portainer-haven-rollback') } { 'Portainer on Haven' }
         'fix.rollback'    { 'Roll back the test shard' }
         'fix.rebuild'     { 'Rebuild the test shard' }
         'fix.prune'       { 'Prune images' }
@@ -1228,6 +1230,9 @@ function Get-ConsoleActions {
         # cc-P110: the one Homepage on Haven, the same way.
         [pscustomobject]@{ Key = 'web.mega-dashboard'; Group = 'Websites';  Label = 'Mega dashboard: deploy';             Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'web.mega-dashboard-rollback'; Group = 'Websites'; Label = 'Mega dashboard: roll back';  Mutates = $true;  RunIn = 'here' }
+        # cc-P163: Portainer CE on Haven, the same way.
+        [pscustomobject]@{ Key = 'web.portainer-haven'; Group = 'Websites'; Label = 'Portainer (Haven): deploy';       Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'web.portainer-haven-rollback'; Group = 'Websites'; Label = 'Portainer (Haven): roll back'; Mutates = $true; RunIn = 'here' }
         # cc-P86: beside the PUBLIC DNS tile and on the Diagnostics tab. 'here': it opens Proton or ends a WireGuard
         # tunnel from this console, then the tile re-checks.
         [pscustomobject]@{ Key = 'vpn.disconnect';   Group = 'Network';     Label = 'Disconnect VPN';                     Mutates = $true;  RunIn = 'here' }
@@ -1782,6 +1787,8 @@ function Get-ConsoleTooltips {
         'web.print-queue-rollback' = 'Brings the Sunflower print queue back to this PC with every edit made on Haven, after the phrase deploy to haven. Its window shows the plan and waits for roll back.'
         'web.mega-dashboard' = 'Puts the one Homepage (Shattered Legacy, Sunflower, home lab) on Haven and stops the stale one there and this PC''s, after the phrase deploy to haven. Its window prints Haven''s containers and ports first, then the plan, and changes nothing until you type deploy there.'
         'web.mega-dashboard-rollback' = 'Stops Haven''s new Homepage and starts the stale one and this PC''s dashboard again, after the phrase deploy to haven. Its window shows the plan and waits for roll back.'
+        'web.portainer-haven' = 'Puts Portainer CE on Haven (HTTPS on 192.168.1.61:9443, the tailnet on :9000), backing up its data volume first when it exists, after the phrase deploy to haven. Its window reads Haven first, prints the plan, and changes nothing until you type deploy there. The first time, it prints the first-login link: make the admin user within 5 minutes.'
+        'web.portainer-haven-rollback' = 'Stops Portainer on Haven (its data volume is kept) and turns off its tailnet port, after the phrase deploy to haven. Its window shows the plan and waits for roll back.'
         'web.npm'          = 'Opens Nginx Proxy Manager: an SSH tunnel to Haven in its own window (your own key), then the admin page in your browser. No password is stored here.'
         'golem.longrun'    = 'Starts a long run: up to the cap (a number, or all for until the queue is empty) until the end time, then back to maxPerRun by itself. Asks start long run; runs Start-LongRun.ps1 in its own window.'
         'golem.endlongrun' = 'Ends a long run now: maxPerRun counts again. Runs End-LongRun.ps1 in its own window.'
@@ -5356,13 +5363,13 @@ function Get-WebsitePlan {
         return $steps.ToArray()
     }
     # cc-P107: the ops pages' three deploys, whatever site is picked: the same helper, allowlist and phrase as Deploy.
-    # cc-P109: and the print queue's two; cc-P110: and the mega dashboard's two.
-    if ($Action -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback', 'web.print-queue', 'web.print-queue-rollback', 'web.mega-dashboard', 'web.mega-dashboard-rollback')) {
+    # cc-P109: and the print queue's two; cc-P110: and the mega dashboard's two; cc-P163: and Portainer's two.
+    if ($Action -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback', 'web.print-queue', 'web.print-queue-rollback', 'web.mega-dashboard', 'web.mega-dashboard-rollback', 'web.portainer-haven', 'web.portainer-haven-rollback')) {
         $d = $web.Deploys[$Action.Substring(4)]
         if (-not $d) { $steps.Add((New-PlanStep -Kind refuse -Text ($Action.Substring(4) + ' is not in the deploys allowlist in websites.json. Nothing was run.'))); return $steps.ToArray() }
         $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase 'web.deploy') -Text ('This runs ' + $d.Name + ': ' + $d.Script + ' ' + $d.What + '. Its window first reads Haven and prints the plan, and changes nothing until you type its word there. It uses your own SSH key; the window keeps a log under scripts\shard-console-output\deploys.')))
         $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + @($Config.WebsiteDeployScript, '-Deploy', $d.Name)) -Text 'In a window of its own, which stays open. It checks the allowlist again before it runs anything.'))
-        $steps.Add((New-PlanStep -Kind log -Text ('web.deploy ' + $(if ($d.Name -like 'print-queue*') { 'print-queue ' } elseif ($d.Name -like 'mega-dashboard*') { 'mega-dashboard ' } else { 'ops ' }) + $d.Name)))
+        $steps.Add((New-PlanStep -Kind log -Text ('web.deploy ' + $(if ($d.Name -like 'print-queue*') { 'print-queue ' } elseif ($d.Name -like 'mega-dashboard*') { 'mega-dashboard ' } elseif ($d.Name -like 'portainer-haven*') { 'portainer-haven ' } else { 'ops ' }) + $d.Name)))
         return $steps.ToArray()
     }
     $s = @($web.Sites | Where-Object { $_.Key -ceq $Site })[0]

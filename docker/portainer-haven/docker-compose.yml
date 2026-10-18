@@ -1,0 +1,27 @@
+# cc-P163: Portainer CE on HAVEN (Chase, 2026-10-18 09:02: "install it"). Not the game PC's (docker/portainer, sl-portainer).
+# The image and the data volume are Portainer's own install's (docs.portainer.io/start/install-ce/server/docker/linux:
+# portainer/portainer-ce:lts, volume portainer_data at /data, the Docker socket). Pinned to 2.45.2, which is lts on
+# Docker Hub (same digest, 2026-10-08). Port 8000 is left out: the docs say it is only for Edge agents.
+# HTTPS (Portainer's self-signed certificate) on Haven's LAN address and loopback, 9443; its plain HTTP port 9000 on
+# loopback only, for Tailscale Serve (http://haven.tail81098d.ts.net:9000/; docker/haven/services.json tailscaleServe).
+# Never on all interfaces, never routed by NPM, never public (the intranet rule, cc-P133).
+# Run by docker/portainer-haven/Deploy-PortainerHaven.ps1 (Portainer (Haven): deploy) as docker compose -p sl-portainer
+# up -d in ~/sl-portainer. ASCII only.
+name: ${PT_PROJECT:-sl-portainer}
+services:
+  portainer:
+    image: portainer/portainer-ce:2.45.2
+    container_name: ${PT_NAME:-portainer}
+    restart: unless-stopped
+    ports:
+      - "${PT_BIND:-192.168.1.61}:${PT_PORT:-9443}:9443"
+      - "${PT_LOOP_BIND:-127.0.0.1}:${PT_LOOP_PORT:-9443}:9443"
+      - "${PT_LOOP_BIND:-127.0.0.1}:${PT_HTTP_LOOP_PORT:-9000}:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    environment:
+      TZ: ${TZ:-America/Chicago}
+volumes:
+  portainer_data:
+    name: ${PT_VOLUME:-portainer_data}

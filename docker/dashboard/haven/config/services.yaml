@@ -5,7 +5,7 @@
     - "Print queue":
         icon: "mdi-printer-3d"
         href: "http://haven.tail81098d.ts.net:8787/"
-        description: "Opener orders and the public lead-time page. On Haven after Print queue: deploy [Haven]"
+        description: "Opener orders and the public lead-time page. On Haven since 2026-10-18 [Haven]"
         server: "haven"
         container: "sunflower-print-queue"
         siteMonitor: "http://192.168.1.61:8787/api/push"
@@ -32,25 +32,6 @@
                   to: "Push failing"
                 - any: true
                   to: "Not pushed yet"
-    - "Print queue (tower copy)":
-        icon: "mdi-printer-3d-off"
-        href: "http://localhost:8787/"
-        description: "Still on the game PC until Print queue: deploy; then it should read Down for good [Game PC]"
-        widget:
-          type: "customapi"
-          url: "http://192.168.1.61:8094/api/gamepc"
-          refreshInterval: 60000
-          headers:
-            Authorization: "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}"
-          mappings:
-            - field: "up.print-queue-tower"
-              label: "State"
-              remap:
-                - value: null
-                  to: "Not reported yet"
-            - field: "receivedAt"
-              label: "As of"
-              format: "relativeDate"
     - "Live store":
         icon: "mdi-storefront"
         href: "https://sunflowercustomgiftshop.com"
@@ -59,8 +40,7 @@
     - "Dev store":
         icon: "mdi-storefront-outline"
         href: "http://192.168.1.58:8080"
-        description: "Local copy on the game PC; Down unless the devstack is running, its usual state [Game PC]"
-        siteMonitor: "http://192.168.1.58:8080"
+        description: "Stopped, started by hand. Local copy on the game PC (http://192.168.1.58:8080 while the devstack runs) [Game PC]"
 - Filament:
     - Spoolman:
         icon: "spoolman"
@@ -76,23 +56,23 @@
     - Prometheus:
         icon: "prometheus"
         href: "http://haven.tail81098d.ts.net:9090/"
-        description: "Metrics store (Spoolman every 5 minutes). Planned: Down until installed [Haven]"
+        description: "Metrics store (Spoolman every 5 minutes). Tailnet only [Haven]"
         server: "haven"
-        container: "prometheus"
-        siteMonitor: "http://192.168.1.61:9090/-/healthy"
+        container: "monitoring-prometheus"
+        siteMonitor: "http://100.98.32.16:9090/-/healthy"
         widget:
           type: "prometheus"
-          url: "http://192.168.1.61:9090"
+          url: "http://100.98.32.16:9090"
     - Grafana:
         icon: "grafana"
         href: "http://haven.tail81098d.ts.net:3001/"
-        description: "Graphs over Prometheus. Planned: Down until installed [Haven]"
+        description: "Graphs over Prometheus. Tailnet only [Haven]"
         server: "haven"
-        container: "grafana"
-        siteMonitor: "http://192.168.1.61:3001/api/health"
+        container: "monitoring-grafana"
+        siteMonitor: "http://100.98.32.16:3001/api/health"
         widget:
           type: "customapi"
-          url: "http://192.168.1.61:3001/api/search?type=dash-db&limit=5000"
+          url: "http://100.98.32.16:3001/api/search?type=dash-db&limit=5000"
           refreshInterval: 300000
           headers:
             Authorization: "Bearer {{HOMEPAGE_VAR_GRAFANA_TOKEN}}"
@@ -332,32 +312,21 @@
             - field: "receivedAt"
               label: "As of"
               format: "relativeDate"
-    - "Web console":
-        icon: "mdi-monitor-dashboard"
-        href: "https://uoconsole.tail81098d.ts.net/"
-        description: "The Shard Console's status, read only, on the tailnet (Chase only) [Game PC]"
-        widget:
-          type: "customapi"
-          url: "http://192.168.1.61:8094/api/gamepc"
-          refreshInterval: 60000
-          headers:
-            Authorization: "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}"
-          mappings:
-            - field: "up.web-console"
-              label: "State"
-              remap:
-                - value: null
-                  to: "Not reported yet"
-            - field: "receivedAt"
-              label: "As of"
-              format: "relativeDate"
 - Admin:
     - "Nginx Proxy Manager":
         icon: "nginx-proxy-manager"
         href: "http://localhost:8081/"
-        description: "Admin page through an SSH tunnel: Shard Console > Websites > Open NPM opens both [Haven]"
+        description: "Up or down: its front door, port 80. The admin link is the SSH tunnel: Shard Console > Websites > Open NPM opens both [Haven]"
         server: "haven"
         container: "sl-proxy"
+        siteMonitor: "http://192.168.1.61:80/"
+    - "NPM admin (tailnet)":
+        icon: "nginx-proxy-manager"
+        href: "http://haven.tail81098d.ts.net:81/"
+        description: "NPM's admin page over the tailnet, without the SSH tunnel (a socat forwarder) [Haven]"
+        server: "haven"
+        container: "npm-admin-tailnet"
+        siteMonitor: "http://100.98.32.16:81/"
     - "Password vault":
         icon: "bitwarden"
         href: "https://vault.chasekfleming.com"
@@ -378,8 +347,8 @@
         container: "sl-homepage-dockerproxy"
     - "Portainer (Haven)":
         icon: "portainer"
-        href: "https://haven.tail81098d.ts.net:9443/"
-        description: "Docker on Haven. Stacks deployed by the console show as limited (made outside Portainer): edit them in git, not here [Haven]"
+        href: "http://haven.tail81098d.ts.net:9000/"
+        description: "Docker on Haven (at home also https://192.168.1.61:9443/). Stacks deployed by the console show as limited (made outside Portainer): edit them in git, not here [Haven]"
         server: "haven"
         container: "portainer"
         siteMonitor: "https://192.168.1.61:9443/api/system/status"
@@ -471,25 +440,6 @@
             Authorization: "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}"
           mappings:
             - field: "up.tailscale"
-              label: "State"
-              remap:
-                - value: null
-                  to: "Not reported yet"
-            - field: "receivedAt"
-              label: "As of"
-              format: "relativeDate"
-    - "uoconsole node":
-        icon: "tailscale"
-        href: "https://login.tailscale.com/admin/machines"
-        description: "The web console's own tailnet node (a container on the game PC) [Game PC]"
-        widget:
-          type: "customapi"
-          url: "http://192.168.1.61:8094/api/gamepc"
-          refreshInterval: 60000
-          headers:
-            Authorization: "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}"
-          mappings:
-            - field: "up.uoconsole-ts"
               label: "State"
               remap:
                 - value: null

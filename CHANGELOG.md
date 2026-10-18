@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.8
+
+### Staff
+- Haven's dashboard after the first deploys: the retired tower print queue and anything planned or not installed yet no longer show as down tiles, the Sunflower dev store says "Stopped, started by hand", Nginx Proxy Manager is watched at its front door, and Grafana, Prometheus and the tailnet NPM admin found running on Haven have their own tiles.
+- Portainer (Haven): deploy and roll back on the Shard Console's Websites tab install Portainer on Haven (backed up first, home and tailnet only); the first deploy shows the first-login link and its 5-minute limit.
+
 ## 2026.10.18.7
 
 ### Added

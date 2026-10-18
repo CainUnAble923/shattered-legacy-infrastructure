@@ -10,12 +10,14 @@
   which only reads and prints, then the plan, then waits for a typed word (anything else stops, changing nothing).
   -DryRun stops after the plan. -Yes skips the typed word (the proof only).
 
-  Discover  prints every container on Haven (name, state, image, ports, compose folder), every listening port (ss
-            -tlnp), Tailscale (installed, its address, who may change Serve, what Serve does now), the stale Homepage,
-            ~/sl-home and its dashboard.env, and this PC's sl-dashboard. Then checks it against docker/haven/services.json:
-            a running container the inventory does not list is named (and gets a tile anyway), as is an inventory
-            container Haven does not have. The whole discovery is kept in D:\UO\haven-ops\discovery-latest.txt, outside
-            both repos, where the console fact P133_TheDiscoveryIsParsed... fails until the inventory lists everything.
+  Discover  prints every container on Haven (name, state, image, ports, compose folder), every running container's
+            mounts (cc-P163), every listening port (ss -tlnp), Tailscale (installed, its address, who may change Serve,
+            what Serve does now), the stale Homepage, ~/sl-home and its dashboard.env, and this PC's sl-dashboard. Then
+            checks it against docker/haven/services.json: a running container the inventory does not list is named (and
+            gets a tile anyway), as is an inventory container Haven does not have; and (cc-P163) any running container
+            whose published ports or image differ from its entry, with the mounts of entries whose volumes say "from
+            Discover". The whole discovery is kept in D:\UO\haven-ops\discovery-latest.txt, outside both repos, where
+            the console fact P133_TheDiscoveryIsParsed... fails until the inventory lists everything.
             Changes nothing.
   Deploy    builds the config from docker/haven/services.json (Build-HavenDashboard.ps1, with this discovery); backs up
             what is on Haven first (~/sl-home/backup-<time>: compose, config, dashboard.env); copies the compose and the
@@ -161,6 +163,7 @@ $probeOpen = (($serve | ForEach-Object { 'if (exec 3<>/dev/tcp/127.0.0.1/' + $_.
 $probe = Invoke-Haven -Quiet ('echo host=$(hostname); docker --version; docker compose version; ' +
     'echo "-- containers"; docker ps -a --format "  {{.Names}}|{{.State}}|{{.Status}}|{{.Image}}|{{.Ports}}|{{.Label \"com.docker.compose.project.working_dir\"}}"; ' +
     'echo "-- listening ports"; if command -v ss >/dev/null 2>&1; then ss -tlnp | tail -n +2 | awk ''{print "  " $4 "  " $6}''; else netstat -an | grep LISTEN | awk ''{print "  " $2}''; fi | sort -u | head -80; ' +
+    'echo "-- mounts"; for c in $(docker ps -q); do docker inspect -f ''  {{.Name}}|{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}{{else}}{{.Source}}{{end}}>{{.Destination}};{{end}}'' $c; done; ' +
     'echo "-- tailscale"; if command -v tailscale >/dev/null 2>&1; then echo "  installed: yes"; echo "  ip: $(tailscale ip -4 2>/dev/null | head -1)"; ' +
     'o=$(tailscale debug prefs 2>/dev/null | grep -o "\"OperatorUser\": *\"[^\"]*\"" | sed "s/.*: *//; s/\"//g"); echo "  operator: ${o:-none}"; echo "  me: $(id -un)"; ' +
     'tailscale serve status 2>&1 | head -20 | sed "s/^/  serve now=  /"; else echo "  installed: no"; fi; ' +
@@ -187,6 +190,20 @@ Step 'Inventory check (docker\haven\services.json)'
 if ($cov.Missing) { Say ('  RUNNING ON HAVEN, NOT IN THE INVENTORY: ' + ($cov.Missing -join ', ') + '. They get a tile in Admin anyway; add them to services.json and the runbook.') 'Yellow' }
 else { Say ('  every running container on ' + $where + ' is in the inventory (' + @($disc.Containers | Where-Object { $_.Running }).Count + ' running)') 'Green' }
 if ($cov.Absent) { Say ('  in the inventory, not on Haven: ' + ($cov.Absent -join ', ') + ' (planned, or a name to correct in services.json)') }
+# cc-P163: what each running container publishes and runs, against services.json, and the mounts of any entry whose
+# volumes still say "from Discover", so the plan says what to fill in (and the runbook with it).
+$portDiff = @(Compare-HavenDiscoveredPorts -Inventory $inv -Discovery $disc)
+if ($portDiff.Count) {
+    Say '  PORTS OR IMAGES DIFFER from services.json (fill them in there and in the runbook):' 'Yellow'
+    foreach ($p in $portDiff) {
+        Say ('    ' + $p.Name + $(if ($p.Key) { ' (' + $p.Key + ')' } else { ' (no entry)' }) + ': image ' + $p.Image + '; publishes ' + $(if ($p.Published.Count) { $p.Published -join ', ' } else { 'nothing' }) +
+            $(if ($p.NotPublished.Count) { '; services.json also says ' + ($p.NotPublished -join ', ') } else { '' }) + $(if (-not $p.ImageOk) { '; services.json names another image' } else { '' })) 'Yellow'
+    }
+} else { Say '  ports and images: every running container matches services.json' 'Green' }
+foreach ($s in @($inv.services | Where-Object { $_.host -eq 'haven' -and @(@($_.volumes) | Where-Object { [string]$_.host -like 'from Discover*' }).Count })) {
+    $m = $disc.Mounts[[string]$s.container]
+    if ($m) { Say ('  mounts of ' + $s.container + ' (for its volumes and backup in services.json): ' + ($m -join '; ')) }
+}
 $ts = $disc.Tailscale
 $tsOk = ($ts['installed'] -eq 'yes')
 $canServe = $tsOk -and ($ts['operator'] -eq $ts['me'] -or $ts['me'] -eq 'root')
