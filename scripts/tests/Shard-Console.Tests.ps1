@@ -6974,6 +6974,24 @@ Fact 'P161_TheGolemTabListsItsSessionsAndSaysWhichAreKeptOpen' {
     Assert-True (-not @(Format-AutopilotPanel -View $v2 -Config $p125Cfg -Now $p125Now | Where-Object { $_.Text -like 'sessions  :*' }).Count) 'no sessions field: no line'
 }
 
+# --- cc-P162: the Golem tab says when the end-of-week window is spending what is left -----------------------------------
+Fact 'P162_TheGolemTabSaysWhenTheEndOfWeekWindowSpendsWhatIsLeft' {
+    $mk = { param($e) $j = (New-P131Status -State 'RUNNING' -Current 'P162') | ConvertFrom-Json; if ($e) { $j | Add-Member -NotePropertyName endOfWeek -NotePropertyValue ([pscustomobject]$e) -Force }
+        $v = Get-AutopilotView -Enabled $true -StateText '{"current":"P162","currentFile":"cc-P162-a.md","lastHandled":161}' -LogLines @() -QueueNames @() -Errors @() -StatusText ($j | ConvertTo-Json -Depth 6) -SettingsText $p131Settings -Kind golem -Extra $x
+        @(Format-AutopilotPanel -View $v -Config $p125Cfg -Now $p125Now | Where-Object { $_.Text -like 'end week  :*' }) }
+    $in = @(& $mk ([ordered]@{ on = $true; hours = 24; cap = 97; active = $true; until = '2026-10-21T16:00:00'; fableActive = $true; fableUntil = '2026-10-21T16:00:00'; opensAt = '2026-10-20T16:00:00'; weekPct = 80; fablePct = 45 }))
+    Assert-Equal 1 $in.Count 'one line inside the window'
+    if ($in.Count) {
+        Assert-Equal 'end week  : End of week: spending what is left until Wed 4:00 PM (week 80%, 17% left; Fable week 45%, 52% left)' $in[0].Text 'inside'
+        Assert-Equal 'green' $in[0].Color 'green inside'
+    }
+    $out = @(& $mk ([ordered]@{ on = $true; hours = 24; cap = 97; active = $false; until = $null; fableActive = $false; fableUntil = $null; opensAt = '2026-10-20T16:00:00'; weekPct = 40; fablePct = $null }))
+    Assert-True ($out.Count -eq 1 -and $out[0].Text -eq 'end week  : opens Tue 4:00 PM (24 h before the weekly reset): then it spends what is left, up to 97%') ('outside: ' + ($out | ForEach-Object { $_.Text }))
+    $off = @(& $mk ([ordered]@{ on = $false; hours = 24; cap = 97; active = $false }))
+    Assert-True ($off.Count -eq 1 -and $off[0].Text -match 'off \(endOfWeekSpend false\)') ('off: ' + ($off | ForEach-Object { $_.Text }))
+    Assert-Equal 0 @(& $mk $null).Count 'no endOfWeek field (a Golem before cc-P162): no line'
+}
+
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $p135Dir -Recurse -Force -ErrorAction SilentlyContinue
 

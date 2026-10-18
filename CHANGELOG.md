@@ -29,6 +29,13 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.17.11
+
+### Staff
+- In the last 24 hours before the weekly usage reset the Golem spends what is left of the week instead of letting it expire: it keeps handing on prompts until the week is at 97% (the last 3% stays yours), whatever the usual pace says, and ignores claude.ai's "you'll run out" warning. The Fable week does the same for Fable prompts by its own reset.
+- In that window the night shift runs without its pace check, and the Golem wakes itself when the window opens and after each 5-hour reset. It emails when the window opens and, after the reset, how much of the week and the Fable week went unused.
+- The console's Golem tab says when the end-of-week window is spending, when it opens next, or that it is off (endOfWeekSpend in the Golem's settings).
+
 ## 2026.10.17.10
 
 ### Staff

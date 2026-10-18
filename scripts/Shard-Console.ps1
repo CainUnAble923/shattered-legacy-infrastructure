@@ -4044,6 +4044,8 @@ function ConvertFrom-AutopilotStatus {
         Cli             = $j.cli
         # cc-P161: the sessions the Golem opened (open, kept open for Chase after a PAUSED or STOPPED, last closed).
         Sessions        = $j.sessions
+        # cc-P162: the end-of-week window (use it or lose it): on, active, until, the cap, the week and Fable week now.
+        EndOfWeek       = $j.endOfWeek
     }
 }
 
@@ -4421,6 +4423,22 @@ function Get-ReadyLine {
     'ready now'
 }
 
+# cc-P162: "End of week: spending what is left until Wed 4:00 PM (week 80%, 17% left; Fable week 45%, 52% left)" inside
+# the window (green); when it opens otherwise; or that it is off.
+function Get-EndOfWeekLine($e, [datetime]$Now) {
+    if (-not $e) { return $null }
+    $inv = [Globalization.CultureInfo]::InvariantCulture
+    $clock = { param($t) $d = ConvertFrom-AutopilotTime $t 'Local'; if ($d) { $d.ToString('ddd h:mm tt', $inv) } else { '' } }
+    $cap = [double]$e.cap
+    $left = { param($p) if ($null -eq $p) { 'unknown' } else { ('{0}%, {1}% left' -f [int][Math]::Round([double]$p, [MidpointRounding]::AwayFromZero), [int][Math]::Round([Math]::Max(0, $cap - [double]$p), [MidpointRounding]::AwayFromZero)) } }
+    if (-not [bool]$e.on) { return [pscustomobject]@{ Text = 'off (endOfWeekSpend false): the week keeps its even pace to the end'; Color = 'gray' } }
+    if ([bool]$e.active) {
+        return [pscustomobject]@{ Text = ('End of week: spending what is left until {0} (week {1}; Fable week {2}{3})' -f (& $clock $e.until), (& $left $e.weekPct), (& $left $e.fablePct), $(if ([bool]$e.fableActive) { '' } else { ', on its own pace' })); Color = 'green' }
+    }
+    $o = & $clock $e.opensAt
+    [pscustomobject]@{ Text = ('opens {0} ({1} h before the weekly reset): then it spends what is left, up to {2}%' -f $(if ($o) { $o } else { 'when the reset time is known' }), [double]$e.hours, $cap); Color = 'gray' }
+}
+
 # cc-P161: the Golem's own sessions: how many are open, which are kept open for Chase (amber), and the last one closed.
 function Get-SessionsLine($s) {
     if (-not $s) { return $null }
@@ -4676,6 +4694,8 @@ function Format-AutopilotPanel {
         & $add $sw 'normal'
         $sl = Get-SessionsLine $st.Sessions
         if ($sl) { & $add ('sessions  : ' + $sl.Text) $sl.Color }
+        $el = Get-EndOfWeekLine $st.EndOfWeek $Now
+        if ($el) { & $add ('end week  : ' + $el.Text) $el.Color }
         if ($st.Cli -and $st.Cli.path) {
             $cc = ConvertFrom-AutopilotTime $st.Cli.checkedUtc 'Utc'
             & $add ('cli       : ' + [string]$st.Cli.path + $(if ([bool]$st.Cli.signedIn) { ', signed in' } else { ', NOT signed in: run claude auth login in a terminal' }) + $(if ($cc) { ' (checked ' + (Format-ShortAge ($Now.ToUniversalTime() - $cc)) + ' ago)' } else { '' })) $(if ([bool]$st.Cli.signedIn) { 'green' } else { 'amber' })
