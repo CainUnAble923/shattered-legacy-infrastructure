@@ -93,6 +93,9 @@ public sealed class RecipeGatingTable
     [
         new("bandV", false, ["bandV:any"]),
         new("epic", true, []),
+        // cc-P142: what a monster steal's recipe draw pays three times in four (StealLootTables.DenRecipeKeys mirrors
+        // this list for a file whose rewardTables lack it): the three Den recipes and the Shadow Cloak schematics.
+        new("thieves", false, ["recipe:9400", "recipe:9401", "recipe:9402", "recipe:9121", "recipe:9122", "recipe:9123"]),
     ];
 
     public static RecipeGatingTable Defaults { get; } = new();

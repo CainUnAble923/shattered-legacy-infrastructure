@@ -1591,6 +1591,13 @@ public class LifeDrain : SpecialAbility
 
             var toDrain = GetDrainAmount(creature, m);
 
+            // cc-P142: ServUO SpecialAbility.cs:2582-2585, the Life Shield Lotion (Monster Stealing) halves or better a
+            // drain on a player under it; cc-P127 ported the lotion without this, its one call site in ServUO we have.
+            if (m is PlayerMobile pm)
+            {
+                toDrain = (int)LifeShieldLotion.HandleLifeDrain(pm, toDrain);
+            }
+
             creature.Hits += toDrain;
             AOS.Damage(m, creature, toDrain, false, 0, 0, 0, 0, 0, 0, 100);
         }

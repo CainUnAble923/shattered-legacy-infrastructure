@@ -2,10 +2,13 @@
 // pinned Skills/Stealing.cs through Stealing-monster-stealing.patch).
 //
 // Facts:
-//   1. ServUO's chance table: 2 at 100, 5 from 100.1, 8 from 110.1, 10 at 120, plus 1 to 5 by the creature's fame level.
-//   2. Only a Felucca dungeon (or a champion spawn) counts: the same dungeon on Trammel does not.
-//   3. A thief at 120 in a Felucca dungeon steals a special item from a famous creature within a few hundred tries, each
-//      creature gives once, a tame or summoned creature gives nothing, and below 100 nothing happens.
+//   1. ServUO's chance table (kept beside ours for the register, cc-P142): 2 at 100, 5 from 100.1, 8 from 110.1, 10 at
+//      120, plus 1 to 5 by the creature's fame level; and the fame line and the gain ceiling.
+//   2. A Felucca dungeon is OSI's place; the same dungeon on Trammel is a place of ours (cc-P142: Journeyman), open land
+//      none (the ladder itself is MonsterStealingShardRulesVerification).
+//   3. A Den member at 120 in a Felucca dungeon steals a special item from a famous creature within a few hundred tries,
+//      a creature gives once (cc-P142: once it has given; a miss leaves it open), a tame creature gives nothing, and
+//      below 60 nothing happens.
 //   4. The shard's rule: a monster steal rolls Stealing on (100, 100 + 2.5 x fame level), so a thief at 150 gains past
 //      pinned's 127.5 ceiling against a 30,000-fame creature.
 //   5. The balms: one effect at a time, +10 to the stat while it lasts, gone when it ends; Stone Skin's resistances.
@@ -56,7 +59,7 @@ public class MonsterStealingVerification
         public readonly List<Mobile> Marks = new();
         private readonly Region _den;
 
-        public Thief(double stealing, Map map, bool den = true)
+        public Thief(double stealing, Map map, bool den = true, bool member = true)
         {
             ShardTestClock.Arm();
             if (den)
@@ -71,6 +74,14 @@ public class MonsterStealingVerification
             Pm.Skills[SkillName.Stealing].Base = stealing;
             Account[0] = Pm;
             Pm.MoveToWorld(FelSpot, map);
+
+            if (member)
+            {
+                // cc-P142: monster stealing needs the Thieves' Den; an Initiate works OSI's places.
+                var data = ClusterFAccountPersistence.GetOrCreateGuild(Pm);
+                data.JoinedGuilds.Add(ThievesDenStealRules.GuildKey);
+                data.GuildReputation[ThievesDenStealRules.GuildKey] = 0;
+            }
 
             Ns = PacketTestUtilities.CreateTestNetState();
             Ns.Account = Account;
@@ -112,7 +123,7 @@ public class MonsterStealingVerification
     private static readonly Type[] PlainPrizes = StealingHandler.SpecialItemList.Take(StealingHandler.SpecialItemList.Length - 2).ToArray();
 
     [Fact]
-    public void TheChanceTableIsServUOs()
+    public void TheChanceTableIsServUOsBesideOurs()
     {
         var low = new Skeleton { Fame = 1 };
         var high = new Skeleton { Fame = 30000 };
@@ -124,15 +135,19 @@ public class MonsterStealingVerification
             Assert.Equal(40, StealingHandler.FameLevel(high));
             Assert.Equal(25, StealingHandler.FameLevel(mid));
 
-            Assert.Equal(2, StealingHandler.GetStealingChance(null, low, 100.0));
-            Assert.Equal(5, StealingHandler.GetStealingChance(null, low, 100.1));
-            Assert.Equal(5, StealingHandler.GetStealingChance(null, low, 110.0));
-            Assert.Equal(8, StealingHandler.GetStealingChance(null, low, 110.1));
-            Assert.Equal(8, StealingHandler.GetStealingChance(null, low, 119.9));
-            Assert.Equal(10, StealingHandler.GetStealingChance(null, low, 120.0));
-            Assert.Equal(15, StealingHandler.GetStealingChance(null, high, 120.0));
-            Assert.Equal(11, StealingHandler.GetStealingChance(null, mid, 120.0));
-            Assert.Equal(0, StealingHandler.GetStealingChance(null, low, 99.9));
+            Assert.Equal(2, StealingHandler.GetServUOStealingChance(null, low, 100.0));
+            Assert.Equal(5, StealingHandler.GetServUOStealingChance(null, low, 100.1));
+            Assert.Equal(5, StealingHandler.GetServUOStealingChance(null, low, 110.0));
+            Assert.Equal(8, StealingHandler.GetServUOStealingChance(null, low, 110.1));
+            Assert.Equal(8, StealingHandler.GetServUOStealingChance(null, low, 119.9));
+            Assert.Equal(10, StealingHandler.GetServUOStealingChance(null, low, 120.0));
+            Assert.Equal(15, StealingHandler.GetServUOStealingChance(null, high, 120.0));
+            Assert.Equal(11, StealingHandler.GetServUOStealingChance(null, mid, 120.0));
+            Assert.Equal(0, StealingHandler.GetServUOStealingChance(null, low, 99.9));
+
+            // Ours (cc-P142) is the live one: the same fame bonus on a line to 200.
+            Assert.Equal(16.0, StealingHandler.GetStealingChance(null, high, 120.0), 3);
+            Assert.Equal(1, StealingHandler.FameBonus(mid));
 
             Assert.Equal(200.0, StealingHandler.GainCeiling(high));
             Assert.Equal(100.0, StealingHandler.GainCeiling(low));
@@ -147,24 +162,29 @@ public class MonsterStealingVerification
     }
 
     [Fact]
-    public void OnlyAFeluccaDungeonCounts()
+    public void AFeluccaDungeonIsOSIsPlaceAndTrammelsIsOurs()
     {
         using (var fel = new Thief(120.0, Map.Felucca))
         {
             Assert.True(fel.Pm.Region.IsPartOf<DungeonRegion>(), "the fact's den is registered on Felucca");
-            Assert.True(StealingHandler.CheckLocation(fel.Pm, fel.Mark(1)));
+            Assert.Equal(StealPlace.FeluccaDungeon, ThievesDenStealRules.PlaceOf(fel.Pm));
+            Assert.True(ThievesDenStealRules.CheckPlaceAndRank(fel.Pm, fel.Mark(1), out _, out _), "an Initiate works OSI's places");
         }
 
         using (var tram = new Thief(120.0, Map.Trammel))
         {
             Assert.True(tram.Pm.Region.IsPartOf<DungeonRegion>());
-            Assert.False(StealingHandler.CheckLocation(tram.Pm, tram.Mark(1)), "the same dungeon on Trammel");
+            Assert.Equal(StealPlace.FacetDungeon, ThievesDenStealRules.PlaceOf(tram.Pm));
+            Assert.False(ThievesDenStealRules.CheckPlaceAndRank(tram.Pm, tram.Mark(1), out _, out var line), "the same dungeon on Trammel needs a Journeyman");
+            Assert.NotNull(line);
         }
 
         using (var open = new Thief(120.0, Map.Felucca, den: false))
         {
             Assert.False(open.Pm.Region.IsPartOf<DungeonRegion>(), "the dens are unregistered on dispose");
-            Assert.False(StealingHandler.CheckLocation(open.Pm, open.Mark(1)), "Felucca, no dungeon");
+            Assert.Equal(StealPlace.None, ThievesDenStealRules.PlaceOf(open.Pm));
+            Assert.False(ThievesDenStealRules.CheckPlaceAndRank(open.Pm, open.Mark(1), out _, out var line), "Felucca, no dungeon");
+            Assert.Null(line);
         }
     }
 
@@ -182,12 +202,12 @@ public class MonsterStealingVerification
             tries++;
             last = t.Mark(30000);
             StealingHandler.HandleSteal(last, t.Pm);
-            Assert.True(StealingHandler.HasBeenStolen(last), "every attempt marks the creature");
+            Assert.Equal(StealingHandler.LastOutcome == StealingHandler.Outcome.StoleSpecial, StealingHandler.HasBeenStolen(last)); // cc-P142: a success marks, a miss leaves it open
             prize = t.Pm.Backpack.Items.FirstOrDefault(i => PlainPrizes.Contains(i.GetType()));
         }
 
         Assert.NotNull(prize);
-        _out.WriteLine($"{prize.GetType().Name} on try {tries} (15% a try at 120 against fame 30,000)");
+        _out.WriteLine($"{prize.GetType().Name} on try {tries} (16% a try at 120 against fame 30,000; four in five successes an OSI item)");
 
         // Once per creature: no second prize from the same one.
         var before = t.Pm.Backpack.Items.Count;
@@ -204,10 +224,11 @@ public class MonsterStealingVerification
         StealingHandler.HandleSteal(pet, t.Pm);
         Assert.False(StealingHandler.HasBeenStolen(pet));
 
-        // Below 100 nothing happens either.
-        t.Pm.Skills[SkillName.Stealing].Base = 99.9;
+        // Below 60 nothing happens either (cc-P142: the lower tier starts at 60, where OSI starts at 100).
+        t.Pm.Skills[SkillName.Stealing].Base = 59.9;
         var novice = t.Mark(30000);
         StealingHandler.HandleSteal(novice, t.Pm);
+        Assert.Equal(StealingHandler.Outcome.TooLittleSkill, StealingHandler.LastOutcome);
         Assert.False(StealingHandler.HasBeenStolen(novice));
     }
 

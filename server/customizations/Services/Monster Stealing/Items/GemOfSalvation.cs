@@ -2,8 +2,8 @@
 // offers a self-resurrection two seconds after death, then is destroyed; six hours between uses.
 //
 // Changes from ServUO (notes/cc-P127-port-treasure-maps-monster-stealing.md): the six-hour timer lives on ServUO's
-// PlayerMobile (NextGemOfSalvationUse, serialized); pinned's PlayerMobile is not patched for it, so it is a table here
-// that a restart clears. ServUO reuses its ResurrectGump with a GemOfSalvation message id; pinned's ResurrectMessage has
+// PlayerMobile (NextGemOfSalvationUse, serialized); pinned's PlayerMobile is not patched for it. cc-P127 kept it in a
+// table a restart cleared; since cc-P142 it is in MonsterStealingStore's own save file, so it outlives a restart. ServUO reuses its ResurrectGump with a GemOfSalvation message id; pinned's ResurrectMessage has
 // no such member, so the gump is drawn here with the same layout and cliloc 1095129.
 
 using System;
@@ -20,7 +20,6 @@ namespace Server.Items;
 [SerializationGenerator(0, false)]
 public partial class GemOfSalvation : Item
 {
-    private static readonly Dictionary<Mobile, DateTime> _nextUse = new();
     public static readonly TimeSpan Cooldown = TimeSpan.FromHours(6);
 
     [Constructible]
@@ -32,9 +31,9 @@ public partial class GemOfSalvation : Item
 
     public override int LabelNumber => 1094939; // Gem of Salvation
 
-    public static DateTime NextUse(Mobile m) => _nextUse.TryGetValue(m, out var next) ? next : DateTime.MinValue;
+    public static DateTime NextUse(Mobile m) => Server.Engines.CreatureStealing.MonsterStealingStore.GemNextUse(m);
 
-    public static void SetNextUse(Mobile m, DateTime next) => _nextUse[m] = next;
+    public static void SetNextUse(Mobile m, DateTime next) => Server.Engines.CreatureStealing.MonsterStealingStore.SetGemNextUse(m, next);
 
     [OnEvent(nameof(PlayerMobile.PlayerDeathEvent))]
     public static void PlayerDeath(Mobile killed)

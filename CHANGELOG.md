@@ -29,6 +29,21 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.3
+
+### Added
+- Thieves' Den members can steal from monsters on every facet, not just Felucca: an Initiate works Felucca's dungeons, champion spawns and the Rootdeep Burrows (the tutorial dungeon, outside the Vault), a Journeyman every facet's dungeons, a Master bosses anywhere, the Burrows' own bosses among them. Too low a rank, or no Den, and the Den tells you so.
+- Monster stealing starts at Stealing 60 with a minor haul (coin, Den scrip, lockpicks, small potions, bandages); the special items start at 100 as before, and the odds now keep rising all the way to 200.
+- New things to steal from 100: five stolen-only components (shadowsilk thread, ember ash, whisperleaf, thief's wire, a lucky fang), recipe scrolls, the odd loop scroll fragment, and a Burrows creature sometimes gives up its family part.
+- Three Thieves' Den recipes, learned from stolen scrolls only: the Shadowsilk Cloak (Tailoring), the Thief's Smoke Bomb (Alchemy, hides on Hiding instead of Ninjitsu) and the Pickpocket's Charm (Tinkering).
+
+### Changed
+- A missed monster steal no longer uses the creature up: it turns on you and you can try again a few seconds later. One successful steal per creature, as before.
+- Every monster steal attempt can raise Stealing, up to your cap against famous enough creatures.
+
+### Fixed
+- A creature already stolen from, and the six-hour wait on a Gem of Salvation, now survive a server restart.
+
 ## 2026.10.18.2
 
 ### Staff

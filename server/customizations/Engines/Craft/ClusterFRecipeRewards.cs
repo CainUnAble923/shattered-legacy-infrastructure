@@ -26,7 +26,9 @@ public enum RecipeRewardSource
     Boss,
     Quest,
     Bod,
-    Commission
+    Commission,
+    /// <summary>cc-P142: a monster steal (StealLootTables.RecipeScroll); pays no epic table, like a quest.</summary>
+    Steal
 }
 
 public static class ClusterFRecipeRewards
