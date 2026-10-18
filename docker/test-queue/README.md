@@ -31,6 +31,11 @@ and `D:\UO\shard-migration\tools\Import-PlayTests.ps1` runs it from the host.
   2 MB at most, 3 per report) are in `testing\bug-reports\files\`. Same lock and atomic write. The rules are in
   `D:\UO\shard-migration\tools\bugs.py`. A report's shard version comes from the test world's `shard-commit.json`
   (written by `Start-TestShard.ps1` after a healthy start), mounted read only.
+- `D:\UO\shard-migration\testing\decisions.json` (cc-P146): the answers Chase gives to decisions on the page, each
+  with who and when, and the overseer's "taken into P<nn>". The decisions themselves are read from each notes file's
+  decisions section by `D:\UO\shard-migration\tools\decisions.py`, with the hand-written
+  `testing\decisions-overlay.json` (wording, older prompts only noted, answers given elsewhere, moot ones, and the
+  play-test items they replace). Same lock and atomic write; exported with the other marks.
 
 Every write is under a lock file (`play-tests.json.lock`) and goes through a temp file and a rename. So two
 browser tabs, the service's own importer and `Import-PlayTests.ps1` on the host never lose each other's
@@ -42,7 +47,7 @@ results.
 |---|---|
 | `GET /nav.js` | the shared menu (cc-P88): Play tests, Shard status, Dashboard. The one source for all three pages; its `PAGES` table holds each page's address |
 | `GET /api/items` | the whole document |
-| `GET /api/summary` | `open`, `failed`, `passed`, `later`, `blocked`, `total`, `unloggedFails`, `generatedAt`, `ideas_new` (cc-P90) and `bugs_new` (cc-P97). The dashboard's Play tests widget reads this |
+| `GET /api/summary` | `open`, `failed`, `passed`, `later`, `blocked`, `total`, `unloggedFails`, `generatedAt`, `ideas_new` (cc-P90), `bugs_new` (cc-P97) and `answers_new` (cc-P146). The dashboard's Play tests widget reads this |
 | `POST /api/result` | `{"id", "status": "pass|fail|later|open", "note"}`; a fail needs a note |
 | `POST /api/bug` | `{"id", "bug": "D86"}`: the Fail is logged in `bug-list.md` |
 | `POST /api/manual` | `{"what", "expect"}`: adds an `M-NNN` item |
@@ -54,6 +59,10 @@ results.
 | `GET /api/bugs/copy` | every `new` report as plain text for the overseer chat, and their ids |
 | `GET /api/bugs/file/B-001-1.png` | a screenshot |
 | `POST /api/bugs/add`, `/edit`, `/status`, `/taken`, `/delete`, `/shot` | change a report; `/shot` takes one picture as base64 |
+| `GET /api/decisions/copy` | cc-P146: the answers not yet taken, as plain text for the overseer, and their ids. `/api/items` carries the decisions themselves (`decisions`), each item's `where`, and the counts (`answers`) |
+| `POST /api/decisions/answer` | `{"id": "P77-D3", "choice": "<an option's label>" or "built", "text"}`: one or both; refused once taken |
+| `POST /api/decisions/later` | `{"id"}`: "Ask me later" |
+| `POST /api/decisions/taken` | `{"ids", "prompt": "P150"}`: the overseer took them into that prompt; `"undo": true` puts them back |
 
 ## Run it by hand (testing)
 

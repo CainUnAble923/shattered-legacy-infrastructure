@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.6
+
+### Staff
+- The play-test page asks your open decisions as questions you answer there (pick an option, keep what's built, write your own, or ask me later); answers are saved with who and when and reach the overseer on the next commit, and new Where chips (Questions, Outside the game, In game: Admin, In game: Player by test account) combine with Mine.
+
 ## 2026.10.18.5
 
 ### Added

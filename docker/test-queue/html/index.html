@@ -100,6 +100,23 @@ form textarea { min-height: 88px; resize: vertical; }
 #bug-copy-out { width: 100%; min-height: 120px; font: 13px ui-monospace, Consolas, monospace; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
 #bugs button { min-height: 44px; min-width: 64px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
 #bugs input[type=file] { min-height: 44px; }
+/* cc-P146: decisions as cards, and the Where chips */
+.item.decision { border-left-color: var(--later); } .item.decision.answered { border-left-color: var(--accent); }
+.item.decision.taken, .item.decision.elsewhere, .item.decision.moot, .item.decision.noted { border-left-color: var(--line); }
+.item .opts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.item .opts button { text-align: left; }
+.item button.chosen { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+.item textarea { width: 100%; min-height: 64px; margin-top: 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; resize: vertical; }
+.answer { margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: var(--pass-bg); color: var(--pass); white-space: pre-wrap; }
+.answer.other { background: var(--chip); color: var(--text); }
+.facts { margin-top: 4px; font-size: 14px; } .facts b { color: var(--muted); font-weight: 600; }
+.wherebar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.wherebar[hidden] { display: none; }
+.wherebar button { min-height: 40px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-size: 15px; cursor: pointer; }
+.wherebar button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+.wherebar button.sub { font-size: 14px; min-height: 36px; border-style: dashed; }
+.wherebar .n { opacity: .75; font-weight: 600; margin-left: 4px; }
+.count.answers { color: var(--accent); cursor: pointer; }
 #ideas button { min-height: 44px; min-width: 64px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
 </style>
 </head>
@@ -121,9 +138,12 @@ form textarea { min-height: 88px; resize: vertical; }
     <button data-f="mine" aria-pressed="false" title="Open items that need you: You, Bot then you, and You decide">Mine</button>
     <button data-f="whobot" aria-pressed="false" title="Open items the overnight bot settles on its own">Bot</button>
     <button data-f="cc" aria-pressed="false" title="Open items Claude Code can settle from files, logs or tests">CC</button>
+    <button data-f="answered" aria-pressed="false" title="Decisions you answered here that the overseer has not taken into a prompt yet">Answered, not yet taken</button>
     <button data-f="ideas" aria-pressed="false">Ideas <span class="badge" id="ideas-n" hidden></span></button>
     <button data-f="bugs" aria-pressed="false">Bugs <span class="badge" id="bugs-n" hidden></span></button>
   </div>
+  <!-- cc-P146: where each item is done; combines with the buttons above (Mine + In game: Player, say). -->
+  <div class="wherebar" id="where-chips" role="group" aria-label="Where"></div>
 </header>
 <main>
   <div id="list"><p class="empty">Loading...</p></div>
@@ -198,12 +218,16 @@ try { filter = localStorage.getItem('pt-filter') || 'open'; } catch (e) {}
 var data = null;
 var bot = null;  // cc-P112: GET /api/bot-tonight
 var OPEN = { open: 1, later: 1, blocked: 1 };
+// cc-P146: the Where chip ('' is any place) and the Player sub-chip ('' is every Player item).
+var where = '', chr = '';
+try { where = localStorage.getItem('pt-where') || ''; chr = localStorage.getItem('pt-char') || ''; } catch (e) {}
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 // Notes use markdown backticks and bold; show them as such, after escaping.
 function md(s) { return esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>'); }
 
 function group(it) {
+  if (it.kind === 'decision' && !/^P\d+$/.test(it.prompt)) return 'Older queue (docs/client-test-queue.md)';
   if (it.prompt) return it.prompt;
   if (it.source === 'manual') return 'Added by hand';
   return 'Older queue (docs/client-test-queue.md)';
@@ -216,7 +240,27 @@ function groupRank(g) {
 // cc-P115: who tests it, from the service (testing/bot-triage.md through tools/playwho.py).
 var MINE = { you: 1, botyou: 1, decide: 1 };
 function whoKey(it) { return (it.who && it.who.key) || ''; }
-function shown(it) {
+// cc-P146: the filter buttons, for an item or a decision (tools/playwhere.py primary() is the same rule), then the
+// Where chip and the Player sub-chip on top.
+var DEC_OPEN = { open: 1, later: 1, answered: 1 }, DEC_ASK = { open: 1, later: 1 };
+function shown(it) { return shownPrimary(it) && whereMatch(it, where, chr); }
+function whereMatch(it, w, c) {
+  if (!w) return true;
+  var x = it.where || {};
+  if (x.key !== w) return false;
+  if (w !== 'player' || !c) return true;
+  var cs = x.chars || [];
+  return c === 'any' ? !cs.length : cs.indexOf(c) >= 0;
+}
+function shownPrimary(it) {
+  if (it.replacedBy && filter !== 'all') return false;
+  if (it.kind === 'decision') {
+    if (filter === 'open') return !!DEC_OPEN[it.state];
+    if (filter === 'mine') return !!DEC_ASK[it.state];
+    if (filter === 'answered') return it.state === 'answered';
+    return filter === 'all';
+  }
+  if (filter === 'answered') return false;
   if (filter === 'bot') return botInfo(it.id).state === 'tonight';
   if (filter === 'mine') return !!OPEN[it.status] && !!MINE[whoKey(it)];
   if (filter === 'whobot') return !!OPEN[it.status] && whoKey(it) === 'bot';
@@ -231,6 +275,7 @@ function render() {
   document.getElementById('ideas').hidden = !ideasView;
   document.getElementById('bugs').hidden = !bugsView;
   document.getElementById('list').hidden = ideasView || bugsView;
+  document.getElementById('where-chips').hidden = ideasView || bugsView;
   document.getElementById('add').hidden = ideasView || bugsView;
   Array.prototype.forEach.call(document.querySelectorAll('.filters button'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-f') === filter ? 'true' : 'false'); });
   renderIdeaCount();
@@ -239,7 +284,8 @@ function render() {
   if (!data) return;  // a filter clicked before the first load: load() renders when it arrives
   var s = data.summary;
   document.getElementById('counts').innerHTML =
-    '<span class="count">' + s.open + ' open</span>' +
+    // cc-P146: the open count leaves out the items now asked as decisions (they show as questions).
+    '<span class="count">' + (s.open - (s.replaced || 0)) + ' open</span>' +
     '<span class="count fail">' + s.failed + ' failed' + (s.unloggedFails ? ' (' + s.unloggedFails + ' not logged)' : '') + '</span>' +
     '<span class="count pass">' + s.passed + ' passed</span>' +
     (s.later ? '<span class="count">' + s.later + ' later</span>' : '') +
@@ -247,17 +293,22 @@ function render() {
     (bugsDoc && bugsDoc.summary.new ? '<span class="count bugs" data-go="bugs">' + bugsDoc.summary.new + ' new bug' + (bugsDoc.summary.new === 1 ? '' : 's') + '</span>' : '') +
     botCount();
   document.getElementById('counts').insertAdjacentHTML('beforeend', whoCounts());
+  // cc-P146: answers given here that the overseer has not taken yet.
+  var na = data.answers && data.answers.new;
+  if (na) document.getElementById('counts').insertAdjacentHTML('beforeend', '<span class="count answers" data-go="answered" title="Answered here, not yet taken into a prompt by the overseer">' + na + ' new answer' + (na === 1 ? '' : 's') + '</span>');
+  renderWhere();
   Array.prototype.forEach.call(document.querySelectorAll('.filters button'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-f') === filter ? 'true' : 'false'); });
   var groups = {};
-  data.items.forEach(function (it) { if (shown(it)) { (groups[group(it)] = groups[group(it)] || []).push(it); } });
+  allItems().forEach(function (it) { if (shown(it)) { (groups[group(it)] = groups[group(it)] || []).push(it); } });
   var names = Object.keys(groups).sort(function (a, b) { return groupRank(a) - groupRank(b); });
   var out = [];
   names.forEach(function (g) {
     var p = data.prompts[g];
     var title = p && p.title ? ' <small>' + esc(p.title.replace(/^cc-P\S*:?\s*/, '')) + '</small>' : '';
     out.push('<h2>' + esc(g) + title + '</h2>');
-    groups[g].forEach(function (it) { out.push(card(it)); });
+    groups[g].forEach(function (it) { out.push(it.kind === 'decision' ? decisionCard(it) : card(it)); });
   });
+  if (filter === 'answered' && out.length) out.unshift('<div class="copybar"><button type="button" id="copy-answers">Copy new answers</button><span id="answers-msg"></span></div><textarea id="answers-out" readonly hidden aria-label="New answers as text"></textarea>');
   document.getElementById('list').innerHTML = out.length ? out.join('') : '<p class="empty">Nothing here.' + (filter === 'open' ? ' Every item has a result.' : '') + '</p>';
   var svc = data.service || {};
   document.getElementById('foot').textContent = 'Data: testing/play-tests.json in shard-migration. Last import ' + (svc.lastImport || 'not yet') +
@@ -267,6 +318,105 @@ function render() {
     (svc.gamepc && svc.gamepc.offline ? ' Game PC offline since ' + svc.gamepc.offlineSince.replace('T', ' ').slice(0, 16) + ' UTC.' : '') +
     (svc.identity && svc.identity.by ? ' Signed in as ' + svc.identity.by + '.' : '');
 }
+
+// --- cc-P146: decisions and the Where chips --------------------------------------------------------------
+function allItems() { return data.items.concat(data.decisions || []); }
+var WHERE_CHIPS = [['questions', 'Questions'], ['outside', 'Outside the game'], ['admin', 'In game: Admin'], ['player', 'In game: Player']];
+var CHAR_CHIPS = [['human', 'Human'], ['gargoyle', 'Gargoyle'], ['elf', 'Elf'], ['any', 'Any character']];
+// The count on each chip is what that chip would show with the button pressed now (Mine, Open...).
+function whereCount(w, c) { return allItems().filter(function (it) { return shownPrimary(it) && whereMatch(it, w, c); }).length; }
+function renderWhere() {
+  var out = ['<button data-w="" aria-pressed="' + (where ? 'false' : 'true') + '">Anywhere<span class="n">' + whereCount('', '') + '</span></button>'];
+  WHERE_CHIPS.forEach(function (w) {
+    out.push('<button data-w="' + w[0] + '" aria-pressed="' + (where === w[0] ? 'true' : 'false') + '">' + esc(w[1]) + '<span class="n">' + whereCount(w[0], '') + '</span></button>');
+  });
+  if (where === 'player') CHAR_CHIPS.forEach(function (c) {
+    out.push('<button class="sub" data-c="' + c[0] + '" aria-pressed="' + (chr === c[0] ? 'true' : 'false') + '">' + esc(c[1]) + '<span class="n">' + whereCount('player', c[0]) + '</span></button>');
+  });
+  document.getElementById('where-chips').innerHTML = out.join('');
+}
+document.getElementById('where-chips').addEventListener('click', function (e) {
+  var b = e.target.closest('button');
+  if (!b) return;
+  if (b.hasAttribute('data-w')) { where = b.getAttribute('data-w'); chr = ''; }
+  else if (b.hasAttribute('data-c')) { chr = chr === b.getAttribute('data-c') ? '' : b.getAttribute('data-c'); }
+  try { localStorage.setItem('pt-where', where); localStorage.setItem('pt-char', chr); } catch (x) {}
+  render();
+});
+function decisionById(id) { return (data.decisions || []).filter(function (d) { return d.id === id; })[0]; }
+function answerText(d) {
+  var a = d.answer || {};
+  var pick = a.choice === 'built' ? 'Keep what\'s built' : (a.choice || '');
+  return [pick, a.text || ''].filter(Boolean).join(': ');
+}
+function decisionCard(d) {
+  var chips = ['<span class="chip">' + esc(d.id) + '</span>', whoBadge(d)];
+  var stc = d.state === 'answered' ? 'st-pass' : d.state === 'later' ? 'st-later' : '';
+  chips.push('<span class="chip ' + stc + '">' + esc(d.stateLabel || d.state) + '</span>');
+  if (d.split) chips.push('<span class="chip" title="The notes section is prose; this question was split out by hand (testing/decisions-overlay.json)">split by hand</span>');
+  var h = '<div class="item decision ' + esc(d.state) + '" id="i-' + esc(d.id) + '"><div class="meta">' + chips.join('') + '</div>';
+  h += '<div class="label">' + md(d.question) + '</div>';
+  if (d.default) h += '<div class="facts"><b>Live today:</b> ' + md(d.default) + '</div>';
+  if (d.recommended) h += '<div class="facts"><b>Recommended:</b> ' + md(d.recommended) + '</div>';
+  var more = (d.detail ? '<div class="facts">' + md(d.detail).replace(/\n/g, '<br>') + '</div>' : '') +
+    (d.link ? '<div class="facts"><a href="' + esc(d.link) + '" target="_blank" rel="noopener">The notes: ' + esc(d.notesFile || d.prompt) + (d.section ? ', ' + esc(d.section) : '') + '</a></div>' : '');
+  if (more) h += '<details class="steps"><summary>More from the notes</summary>' + more + '</details>';
+  var a = d.answer;
+  if (a && d.state === 'answered') h += '<div class="answer">Your answer: ' + esc(answerText(d)) + ' (' + (a.by ? esc(a.by) + ', ' : '') + esc((a.at || '').slice(0, 10)) + '). You can change it until the overseer takes it.</div>';
+  if (a && d.state === 'taken') h += '<div class="answer other">Answer: ' + esc(answerText(d)) + '. Taken into ' + esc(a.takenInto) + ' on ' + esc((a.takenAt || '').slice(0, 10)) + '.</div>';
+  if (d.state === 'later') h += '<div class="answer other">You asked to be asked later' + (a && a.at ? ' (' + esc(a.at.slice(0, 10)) + ')' : '') + '.</div>';
+  if (d.state === 'elsewhere') h += '<div class="answer other">Answered elsewhere: ' + md(d.elsewhere) + (d.source ? ' (' + md(d.source) + ')' : '') + '</div>';
+  if (d.state === 'moot') h += '<div class="answer other">Moot: ' + md(d.reason) + '</div>';
+  if (d.state === 'noted') h += '<div class="answer other">An older deviation, never put as a question' + (d.reason ? ': ' + md(d.reason) : '') + '. You can still answer it.</div>';
+  if (d.state === 'taken' || d.state === 'moot') {
+    if (d.state === 'taken') h += '<div class="actions"><button data-d="untake" data-i="' + esc(d.id) + '" title="For the overseer: put it back to answered">Not taken</button></div>';
+    return h + '</div>';
+  }
+  var chosen = a && d.state === 'answered' ? a.choice : '';
+  var opts = (d.options || []).map(function (o, i) {
+    return '<button data-d="opt" data-o="' + i + '" data-i="' + esc(d.id) + '"' + (chosen === o.label ? ' class="chosen"' : '') + '>' + md(o.label) + (o.mark ? ' <small>(' + esc(o.mark) + ')</small>' : '') + '</button>';
+  });
+  if (d.built) opts.push('<button data-d="built" data-i="' + esc(d.id) + '"' + (chosen === 'built' ? ' class="chosen"' : '') + '>Keep what\'s built</button>');
+  if (opts.length) h += '<div class="opts">' + opts.join('') + '</div>';
+  h += '<textarea data-t="' + esc(d.id) + '" maxlength="2000" placeholder="Your answer in your own words (optional with a choice above)">' + esc(a && d.state === 'answered' ? a.text : '') + '</textarea>';
+  h += '<div class="actions"><button class="pass" data-d="text" data-i="' + esc(d.id) + '">Save answer</button>';
+  if (d.state !== 'later') h += '<button class="later" data-d="later" data-i="' + esc(d.id) + '">Ask me later</button>';
+  if (d.state === 'answered') h += '<button data-d="taken" data-i="' + esc(d.id) + '" title="For the overseer: the answer is in a prompt now">Taken into P...</button>';
+  return h + '</div></div>';
+}
+function decisionClick(b) {
+  var id = b.getAttribute('data-i'), act = b.getAttribute('data-d'), d = decisionById(id);
+  if (!d) return;
+  var box = document.querySelector('textarea[data-t="' + id + '"]'), text = box ? box.value : '';
+  var call;
+  if (act === 'opt') call = api('/api/decisions/answer', { id: id, choice: d.options[parseInt(b.getAttribute('data-o'), 10)].label, text: text });
+  else if (act === 'built') call = api('/api/decisions/answer', { id: id, choice: 'built', text: text });
+  else if (act === 'text') {
+    if (!text.trim()) { window.alert('Write an answer in the box, or press one of the choices.'); return; }
+    call = api('/api/decisions/answer', { id: id, choice: d.answer && d.state === 'answered' ? d.answer.choice : '', text: text });
+  }
+  else if (act === 'later') call = api('/api/decisions/later', { id: id });
+  else if (act === 'taken') {
+    var pr = window.prompt(id + ': taken into which prompt? (for example P150)', 'P');
+    if (pr === null) return;
+    call = api('/api/decisions/taken', { ids: [id], prompt: pr.trim() });
+  }
+  else if (act === 'untake') call = api('/api/decisions/taken', { ids: [id], undo: true });
+  if (!call) return;
+  b.disabled = true;
+  call.then(load).catch(function (x) { b.disabled = false; window.alert('Not saved: ' + x.message); });
+}
+document.getElementById('list').addEventListener('click', function (e) {
+  if (e.target.id !== 'copy-answers') return;
+  var msg = document.getElementById('answers-msg'), box = document.getElementById('answers-out');
+  api('/api/decisions/copy').then(function (j) {
+    if (!j.text) { msg.textContent = 'No new answers.'; return; }
+    box.value = j.text; box.hidden = false; box.focus(); box.select();
+    var copied = false;
+    try { copied = document.execCommand('copy'); } catch (x) {}
+    msg.textContent = copied ? 'Copied ' + j.ids.length + ' answer(s).' : 'Select the text below and copy it.';
+  }).catch(function (x) { msg.textContent = 'Could not copy: ' + x.message; });
+});
 
 // cc-P112: the robot icons only mark items; nothing is hidden, sorted or greyed. The plan and every word of the tooltips
 // come from the service (/api/bot-tonight), which reads the bot's own work check.
@@ -332,6 +482,7 @@ function card(it) {
   if (it.textChanged) chips.push('<span class="chip warn">text changed</span>');
   if (it.removedFromNotes) chips.push('<span class="chip warn">no longer in the notes</span>');
   if (it.unmarked) chips.push('<span class="chip">from For Chase, no in-game heading</span>');
+  if (it.replacedBy) chips.push('<span class="chip warn">now asked as ' + it.replacedBy.length + ' question' + (it.replacedBy.length === 1 ? '' : 's') + ': ' + esc(it.replacedBy.join(', ')) + '</span>');
   var h = '<div class="item ' + esc(it.status) + '" id="i-' + esc(it.id) + '"><div class="meta">' + chips.join('') + '</div>';
   if (it.label) h += '<div class="label">' + md(it.label) + '</div>';
   h += '<div>' + md(it.what || it.text) + '</div>';
@@ -382,6 +533,8 @@ document.getElementById('list').addEventListener('click', function (e) {
   if (from) { ideaFrom(from.getAttribute('data-idea-from')); return; }
   var bfrom = e.target.closest('button[data-bug-from]');
   if (bfrom) { bugFrom(bfrom.getAttribute('data-bug-from'), ''); return; }
+  var db = e.target.closest('button[data-d]');
+  if (db) { decisionClick(db); return; }
   var b = e.target.closest('button[data-id]');
   if (!b) return;
   var id = b.getAttribute('data-id'), s = b.getAttribute('data-s');
@@ -515,6 +668,8 @@ function ideaCall(path, body) { return api(path, body).then(load).catch(function
 document.getElementById('counts').addEventListener('click', function (e) {
   if (e.target.closest('[data-go="ideas"]')) showIdeas();
   if (e.target.closest('[data-go="bugs"]')) showBugs();
+  // cc-P146: "N new answers" opens Answered, not yet taken.
+  if (e.target.closest('[data-go="answered"]')) { filter = 'answered'; try { localStorage.setItem('pt-filter', filter); } catch (x) {} render(); }
   // cc-P112: the "Bot tonight" count opens its filter.
   if (e.target.closest('[data-go="bot"]')) { filter = 'bot'; try { localStorage.setItem('pt-filter', 'bot'); } catch (x) {} render(); }
   // cc-P115: a Who count opens its filter (You, Bot then you and You decide all open Mine).

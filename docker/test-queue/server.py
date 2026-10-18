@@ -16,6 +16,13 @@ Serves html/index.html and a small JSON API over D:\\UO\\shard-migration\\testin
   POST /api/bug          {"id": "P71-3", "bug": "D86"}  marks a Fail as logged in the bug list
   POST /api/manual       {"what": "...", "expect": "..."}  adds an M-NNN item
   POST /api/import       runs the importer now
+  cc-P146, Chase's decisions as items (shard-migration/tools/decisions.py; answers in testing/decisions.json, the
+  wording and older prompts in testing/decisions-overlay.json); /api/items carries them as "decisions", each item and
+  decision its "where" (tools/playwhere.py), and "answers" (the counts):
+  GET  /api/decisions/copy     the answers not yet taken, as plain text for the overseer ({"text", "ids"})
+  POST /api/decisions/answer   {"id": "P77-D3", "choice": "<an option's label>|built", "text": "..."}  (one or both)
+  POST /api/decisions/later    {"id"}  "ask me later"
+  POST /api/decisions/taken    {"ids": [...], "prompt": "P150"}  the overseer took them; "undo": true puts them back
   cc-P90, the feature-ideas inbox (shard-migration/tools/ideas.py; data testing/feature-ideas.json):
   GET  /api/ideas        {ideas, nextId, summary, areas, statuses, features (docs/feature-queue.md, read only)}
   GET  /api/ideas/copy   every 'new' idea as plain text for the features chat ({"text", "ids"})
@@ -108,9 +115,11 @@ import accessjwt  # noqa: E402  (cc-P105)
 import bottonight  # noqa: E402  (cc-P112)
 import playwho  # noqa: E402  (cc-P115)
 import codereload  # noqa: E402  (cc-P137)
+import decisions  # noqa: E402  (cc-P146)
+import playwhere  # noqa: E402  (cc-P146)
 
 # cc-P137: the tools modules, dependencies first (ideas and bugs import playtests), for codereload.reload_modules.
-MODULES = [pt, ideas, bugs, opsdata, accessjwt, bottonight, playwho]
+MODULES = [pt, ideas, bugs, opsdata, accessjwt, bottonight, playwho, decisions, playwhere]
 GATE = codereload.Gate()
 SELF = os.path.abspath(__file__)
 
@@ -164,6 +173,13 @@ def importer_loop():
 def read_doc():
     path = os.path.join(DATA, pt.DATA_REL)
     return pt.ordered_doc(pt.load(path))
+
+
+def current_decisions():
+    """cc-P146: every decision item: the notes and the overlay (the notes clone first, as for the triage) and the
+    answers given on the page (DATA)."""
+    return decisions.build(decisions.read_all_notes(args.root), decisions.load_overlay([args.root, DATA]),
+                           decisions.load(DATA))
 
 
 def repo_as_of():
@@ -311,6 +327,16 @@ class Handler(BaseHTTPRequestHandler):
                 playwho.annotate(doc, *playwho.load_sources([args.root, DATA]))
             except Exception as e:  # never let the triage break the page
                 doc["who"] = {"available": False, "error": str(e)}
+            # cc-P146: the decisions (they replace the "read the notes" items) and each item's Where.
+            try:
+                decisions.annotate(doc, current_decisions(), decisions.load_overlay([args.root, DATA]))
+            except Exception as e:  # never let a notes file or the overlay break the page
+                doc["decisions"] = []
+                doc["answers"] = {"available": False, "error": str(e)}
+            try:
+                playwhere.annotate(doc)
+            except Exception as e:
+                doc["where"] = {"available": False, "error": str(e)}
             return self.send_json(200, doc)
         if p == "/api/bot-tonight":
             return self.send_json(200, bot_tonight())
@@ -341,7 +367,18 @@ class Handler(BaseHTTPRequestHandler):
                 out["bugs_new"] = bugs.summary(bugs.load(DATA))["new"]
             except Exception:
                 out["bugs_new"] = None
+            # cc-P146: answers given on the page and not yet taken by the overseer.
+            try:
+                out["answers_new"] = sum(1 for d in current_decisions() if d["state"] == "answered")
+            except Exception:
+                out["answers_new"] = None
             return self.send_json(200, out)
+        if p == "/api/decisions/copy":
+            try:
+                ds = current_decisions()
+            except Exception as e:
+                return self.send_json(500, {"error": str(e)})
+            return self.send_json(200, {"text": decisions.copy_text(ds), "ids": [d["id"] for d in ds if d["state"] == "answered"]})
         if p == "/api/bugs":
             try:
                 doc = bugs.ordered_doc(bugs.load(DATA))
@@ -458,6 +495,23 @@ class Handler(BaseHTTPRequestHandler):
                 name = bugs.add_shot(DATA, str(body.get("id", "")), bugs.decode_shot(body.get("data", "")))
                 log("bug screenshot %s" % name)
                 return self.send_json(200, {"shot": name})
+            # cc-P146: answers to decisions, and the overseer's "taken into P<nn>".
+            if p in ("/api/decisions/answer", "/api/decisions/later"):
+                d = decisions.find(current_decisions(), str(body.get("id", "")))
+                if p.endswith("/later"):
+                    a = decisions.later(DATA, d, by=by)
+                else:
+                    a = decisions.answer(DATA, d, str(body.get("choice", "")), str(body.get("text", "")), by=by)
+                log("decision %s = %s %s %s" % (a["id"], a["status"], a["choice"], a["text"][:80]))
+                return self.send_json(200, {"answer": a})
+            if p == "/api/decisions/taken":
+                ids = body.get("ids", [])
+                if not isinstance(ids, list):
+                    raise ValueError("ids must be a list")
+                done = decisions.mark_taken(DATA, [str(i) for i in ids], str(body.get("prompt", "")), by=by,
+                                            undo=bool(body.get("undo")))
+                log("decisions %s %s %s" % ("untaken" if body.get("undo") else "taken into " + str(body.get("prompt", "")), len(done), ",".join(done)))
+                return self.send_json(200, {"taken": done})
             if p == "/api/import":
                 run_import()
                 return self.send_json(200, {"service": STATE})
