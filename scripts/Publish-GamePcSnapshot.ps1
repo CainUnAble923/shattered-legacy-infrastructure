@@ -16,9 +16,12 @@
 [CmdletBinding()]
 param([switch]$DryRun, [switch]$Force, [string]$Api, [string]$TokenFile, [string]$Config,
       # cc-P112: tonight's bot plan, for the play-test page's robot icons. -NoBotPlan skips it (the tests).
-      [string]$BotPlan = 'D:\UO\shard-migration\testing\bot-tonight.json', [switch]$NoBotPlan)
+      [string]$BotPlan = 'D:\UO\shard-migration\testing\bot-tonight.json', [switch]$NoBotPlan,
+      # cc-P164: the test shard's deploy record (Start-TestShard.ps1 writes it after a healthy start).
+      [string]$TestShardRecord)
 $ErrorActionPreference = 'Stop'
 if (-not $Config) { $Config = Join-Path $PSScriptRoot 'haven-ops.json' }
+if (-not $TestShardRecord) { $TestShardRecord = Join-Path (Split-Path $PSScriptRoot -Parent) 'server\lib\uo\modernuo-test\shard-commit.json' }
 if ([Security.Principal.WindowsIdentity]::GetCurrent().IsSystem) { Write-Host 'REFUSED: runs as Chase, never as SYSTEM.'; exit 2 }
 
 # cc-P112: refresh tonight's bot plan (tools\playtest-bot\uobot\tonight.py, which asks the runner's own work check, read
@@ -109,6 +112,13 @@ foreach ($w in $watch) {
         $services[$w.Key] = $(if ($node) { [ordered]@{ up = [bool]$node.Online; detail = $(if ($node.Online) { 'online on the tailnet' } else { 'offline on the tailnet' }) } } else { [ordered]@{ up = $false; detail = 'not seen by this PC''s Tailscale' } })
     }
 }
+# cc-P164: the test shard as deployed (commit, version, when), so Haven's play-test page can tag items whose prompt came
+# after it ("needs: rebuild test shard") and a bug report made there carries its version. Absent: null.
+$testShard = $null
+try {
+    $rec = Get-Content -LiteralPath $TestShardRecord -Raw -ErrorAction Stop | ConvertFrom-Json
+    $testShard = [ordered]@{ commit = [string]$rec.commit; version = [string]$rec.version; at = [string]$rec.at }
+} catch { $testShard = $null }
 $snap = [ordered]@{
     schema     = 1
     at         = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
@@ -117,6 +127,7 @@ $snap = [ordered]@{
     containers = $containers
     services   = $services
     docker     = ($LASTEXITCODE -eq 0)
+    testShard  = $testShard
 }
 $json = $snap | ConvertTo-Json -Depth 5 -Compress
 # cc-P112: the bot plan rides along as botTonight, as the file's own JSON text (valid JSON checked first; no PowerShell

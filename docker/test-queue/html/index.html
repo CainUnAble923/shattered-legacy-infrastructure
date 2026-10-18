@@ -118,6 +118,46 @@ form textarea { min-height: 88px; resize: vertical; }
 .wherebar .n { opacity: .75; font-weight: 600; margin-left: 4px; }
 .count.answers { color: var(--accent); cursor: pointer; }
 #ideas button { min-height: 44px; min-width: 64px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+/* cc-P164: Up next, the sessions. Phone first: one column, big tap targets, no tables. */
+body.nextview .filters button:not([data-f="next"]):not([data-f="items"]) { display: none; }
+.filters button[data-f="items"] { display: none; }
+body.nextview .filters button[data-f="items"] { display: inline-block; }
+body.nextview #counts, body.nextview #where-chips, body.nextview #add { display: none; }
+.sess { margin: 4px 0 16px; }
+.sess h2 { font-size: 22px; margin: 4px 0; }
+.sess .why { color: var(--muted); margin: 0 0 8px; }
+.sess .progress { font-weight: 700; margin: 0 0 10px; font-size: 17px; }
+.before { background: var(--later-bg); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 0 0 14px; }
+.before b { display: block; margin-bottom: 4px; }
+.before ul { margin: 0; padding-left: 20px; } .before li { margin: 4px 0; }
+.snav { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin: 6px 0 12px; }
+.snav span { color: var(--muted); font-size: 15px; text-align: center; flex: 1; }
+.snav button, .scard button, .sgo, .sall { min-height: 52px; min-width: 64px; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-size: 17px; font-weight: 600; cursor: pointer; }
+.scard { background: var(--card); border: 1px solid var(--line); border-left: 6px solid var(--line); border-radius: 12px; padding: 14px; margin: 0 0 12px; font-size: 17px; }
+.scard.todo { border-left-color: var(--accent); }
+.scard.done { padding: 8px 14px; opacity: .8; font-size: 15px; }
+.scard .sline { font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.scard .spass { margin-top: 6px; line-height: 1.4; overflow-wrap: anywhere; } .scard .spass b { color: var(--pass); }
+.scard .splace, .scard .sreason { margin-top: 6px; color: var(--muted); font-size: 15px; overflow-wrap: anywhere; }
+.scard .tag { display: inline-block; margin: 6px 6px 0 0; padding: 2px 8px; border-radius: 999px; background: var(--later-bg); color: var(--later); font-size: 14px; font-weight: 600; }
+.scard .sact { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.scard .sact button { flex: 1 1 30%; }
+.scard button.pass { background: var(--pass-bg); color: var(--pass); border-color: var(--pass); }
+.scard button.fail { background: var(--fail-bg); color: var(--fail); border-color: var(--fail); }
+.scard button.later { background: var(--later-bg); color: var(--later); border-color: var(--later); }
+.scard .sfail { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.scard .sfail[hidden] { display: none; }
+.scard .sfail input { flex: 1 1 100%; min-height: 48px; font: inherit; font-size: 17px; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+.scard .sid { margin-top: 8px; color: var(--muted); font-size: 12px; }
+.scard .sst { font-weight: 700; margin-right: 8px; } .scard .sst.pass { color: var(--pass); } .scard .sst.fail { color: var(--fail); } .scard .sst.later { color: var(--later); }
+.owed { color: var(--muted); margin: 12px 0; font-size: 15px; }
+.slist { list-style: none; padding: 0; margin: 8px 0 24px; }
+.slist li { margin: 0 0 8px; }
+.sgo { width: 100%; text-align: left; display: flex; justify-content: space-between; gap: 8px; }
+.sgo .n { color: var(--muted); white-space: nowrap; }
+.sgo.cur { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+.sgo.fin { min-height: 40px; font-weight: 400; font-size: 15px; color: var(--muted); }
+.sall { width: 100%; margin: 0 0 12px; }
 </style>
 </head>
 <body>
@@ -131,7 +171,10 @@ form textarea { min-height: 88px; resize: vertical; }
   </div>
   <div class="counts" id="counts"></div>
   <div class="filters" role="group" aria-label="Show">
-    <button data-f="open" aria-pressed="true">Open</button>
+    <!-- cc-P164: the page opens on Up next (a short session); All items is the full list below, unchanged. -->
+    <button data-f="next" aria-pressed="true" title="What to test now, in a short session">Up next</button>
+    <button data-f="items" aria-pressed="false" title="The full list and its filters">All items</button>
+    <button data-f="open" aria-pressed="false">Open</button>
     <button data-f="fail" aria-pressed="false">Failed</button>
     <button data-f="all" aria-pressed="false">All</button>
     <button data-f="bot" aria-pressed="false" title="Only the items the overnight bot tries tonight">Bot tonight</button>
@@ -213,8 +256,12 @@ form textarea { min-height: 88px; resize: vertical; }
 <script>
 // cc-P83. Items come from server.py, which imports every prompt whose notes end "Pnn DONE".
 // cc-P88: the links to the other pages are the shared menu (nav.js), not this page's own.
-var filter = 'open';
-try { filter = localStorage.getItem('pt-filter') || 'open'; } catch (e) {}
+// cc-P164: the page always opens on Up next; the full list's last filter is remembered for All items.
+var filter = 'next';
+var listFilter = 'open';
+try { listFilter = localStorage.getItem('pt-filter') || 'open'; } catch (e) {}
+if (listFilter === 'next' || listFilter === 'items') listFilter = 'open';
+var curSession = '', openDone = {};
 var data = null;
 var bot = null;  // cc-P112: GET /api/bot-tonight
 var OPEN = { open: 1, later: 1, blocked: 1 };
@@ -272,6 +319,7 @@ function shownPrimary(it) {
 
 function render() {
   var ideasView = filter === 'ideas', bugsView = filter === 'bugs';
+  document.body.classList.toggle('nextview', filter === 'next');
   document.getElementById('ideas').hidden = !ideasView;
   document.getElementById('bugs').hidden = !bugsView;
   document.getElementById('list').hidden = ideasView || bugsView;
@@ -282,6 +330,7 @@ function render() {
   if (ideasView) renderIdeas();
   if (bugsView) renderBugs();
   if (!data) return;  // a filter clicked before the first load: load() renders when it arrives
+  if (filter === 'next') { renderNext(); return; }
   var s = data.summary;
   document.getElementById('counts').innerHTML =
     // cc-P146: the open count leaves out the items now asked as decisions (they show as questions).
@@ -501,6 +550,98 @@ function card(it) {
   return h + '</div></div>';
 }
 
+// --- cc-P164: Up next. The sessions come from the service (tools/playsessions.py): seeded ones from
+// testing/sessions.json, automatic ones for the rest, and Probably stale. Each card: the line, its Pass, Pass / Fail /
+// Later; the id small underneath. Phone first.
+function sessions() { return (data && data.sessions && data.sessions.list) || []; }
+function sessionById(id) { return sessions().filter(function (s) { return s.id === id; })[0]; }
+function sessionItem(id) { for (var i = 0, l = sessions(); i < l.length; i++) { var x = l[i].items.filter(function (y) { return y.id === id; })[0]; if (x) return [l[i], x]; } return null; }
+function sessionCard(s, x) {
+  var todo = !x.done;
+  var h = '<div class="scard ' + (todo ? 'todo' : 'done') + '" id="s-' + esc(x.id) + '" data-item="' + esc(x.id) + '">';
+  if (!todo) h += '<span class="sst ' + esc(x.status) + '">' + esc(x.status === 'pass' ? 'Passed' : x.status === 'fail' ? 'Failed' : 'Later') + '</span>';
+  h += '<div class="sline"' + (todo ? '' : ' style="display:inline"') + '>' + md(x.line) + '</div>';
+  if (todo) {
+    if (x.pass) h += '<div class="spass"><b>Pass:</b> ' + md(x.pass) + '</div>';
+    if (x.place) h += '<div class="splace">Where: ' + md(x.place) + '</div>';
+    if (x.reason) h += '<div class="sreason">Probably stale: ' + esc(x.reason) + '</div>';
+    (x.needs || []).forEach(function (n) { h += '<span class="tag">needs: ' + esc(n) + '</span>'; });
+    h += '<div class="sact">';
+    if (s.kind === 'stale') h += '<button class="later" data-ss="stale" data-sid="' + esc(x.id) + '">Later: stale</button>';
+    h += '<button class="pass" data-ss="pass" data-sid="' + esc(x.id) + '">Pass</button>';
+    h += '<button class="fail" data-ss="fail" data-sid="' + esc(x.id) + '">Fail</button>';
+    if (s.kind !== 'stale') h += '<button class="later" data-ss="later" data-sid="' + esc(x.id) + '">Later</button>';
+    h += '</div><div class="sfail" hidden><input maxlength="500" aria-label="What happened" placeholder="One line: what happened?">' +
+      '<button class="fail" data-ss="failsave" data-sid="' + esc(x.id) + '">Save Fail</button></div>';
+  } else {
+    h += ' <button data-ss="open" data-sid="' + esc(x.id) + '" style="min-height:40px;font-size:15px">Reopen</button>';
+  }
+  return h + '<div class="sid">' + esc(x.id) + '</div></div>';
+}
+function renderNext() {
+  var S = data.sessions || {}, list = sessions(), out = [];
+  if (S.error) out.push('<p class="err">Sessions unavailable: ' + esc(S.error) + '. All items has everything.</p>');
+  if (!sessionById(curSession)) curSession = S.upNext || (list[0] && list[0].id) || '';
+  var s = sessionById(curSession), i = list.indexOf(s);
+  if (!s) {
+    out.push('<p class="empty">Nothing for you to test right now. All items has the full list.</p>');
+  } else {
+    out.push('<div class="snav"><button data-sn="-1"' + (i > 0 ? '' : ' disabled') + '>Previous</button><span>Session ' + (i + 1) + ' of ' + list.length +
+      (s.id === S.upNext ? ' (up next)' : '') + '</span><button data-sn="1"' + (i < list.length - 1 ? '' : ' disabled') + '>Next</button></div>');
+    out.push('<section class="sess" id="session"><h2>' + esc(s.title) + '</h2>');
+    if (s.why) out.push('<p class="why">' + esc(s.why) + '</p>');
+    out.push('<p class="progress" id="progress">' + s.doneCount + ' of ' + s.total + ' done' + (s.finished ? ' (finished ' + esc(s.finishedAt) + ')' : '') + '</p>');
+    if (s.finished && !openDone[s.id]) {
+      out.push('<button class="sall" data-sx="show">Show its ' + s.total + ' items</button>');
+    } else {
+      var before = (s.before || []).slice();
+      (s.needs || []).forEach(function (n) { if (n === 'rebuild test shard') before.unshift('Shard Console > Test shard: Rebuild (some items here came after the test shard was last deployed)'); if (n === 'newest player package') before.push('Install the newest player package'); });
+      if (before.length && !s.finished) out.push('<div class="before"><b>Before you start</b><ul>' + before.map(function (b) { return '<li>' + md(b) + '</li>'; }).join('') + '</ul></div>');
+      if (s.kind === 'stale' && !s.finished) out.push('<button class="sall later" data-sl="all">Mark all ' + (s.total - s.doneCount) + ' Later, each with its reason</button>');
+      s.items.forEach(function (x) { out.push(sessionCard(s, x)); });
+    }
+    out.push('</section>');
+  }
+  var o = S.owed || {};
+  if (o.bot || o.cc) out.push('<p class="owed">Not yours: the overnight bot still owes ' + (o.bot || 0) + ' and CC ' + (o.cc || 0) + '.</p>');
+  if (list.length) {
+    out.push('<h3>All sessions</h3><ul class="slist">');
+    list.forEach(function (x) {
+      out.push('<li><button class="sgo' + (x.id === curSession ? ' cur' : '') + (x.finished ? ' fin' : '') + '" data-sgo="' + esc(x.id) + '"><span>' + esc(x.title) + '</span><span class="n">' +
+        (x.finished ? 'done ' + esc(x.finishedAt) : x.doneCount + ' of ' + x.total) + '</span></button></li>');
+    });
+    out.push('</ul>');
+  }
+  document.getElementById('list').innerHTML = out.join('');
+}
+function sessionClick(e) {
+  var b = e.target.closest('button[data-sn],button[data-sgo],button[data-sx],button[data-sl],button[data-ss]');
+  if (!b) return false;
+  var list = sessions(), s = sessionById(curSession);
+  if (b.hasAttribute('data-sn')) { var j = list.indexOf(s) + parseInt(b.getAttribute('data-sn'), 10); if (list[j]) curSession = list[j].id; render(); window.scrollTo(0, 0); return true; }
+  if (b.hasAttribute('data-sgo')) { curSession = b.getAttribute('data-sgo'); render(); window.scrollTo(0, 0); return true; }
+  if (b.hasAttribute('data-sx')) { openDone[curSession] = true; render(); return true; }
+  if (b.hasAttribute('data-sl')) {
+    var rows = s.items.filter(function (x) { return !x.done; }).map(function (x) { return { id: x.id, note: 'probably stale: ' + (x.reason || '') }; });
+    if (!rows.length || !window.confirm('Mark ' + rows.length + ' items Later, each with its reason?')) return true;
+    b.disabled = true;
+    api('/api/sessions/later', { items: rows }).then(load).catch(function (x) { b.disabled = false; window.alert('Not saved: ' + x.message); });
+    return true;
+  }
+  var id = b.getAttribute('data-sid'), how = b.getAttribute('data-ss'), card = b.closest('.scard'), found = sessionItem(id);
+  if (how === 'fail') { var f = card.querySelector('.sfail'); f.hidden = !f.hidden; if (!f.hidden) f.querySelector('input').focus(); return true; }
+  var body = { id: id, status: how, note: '' };
+  if (how === 'failsave') {
+    body.status = 'fail';
+    body.note = card.querySelector('.sfail input').value.trim();
+    if (!body.note) { window.alert('A Fail needs one line: what happened?'); return true; }
+  }
+  if (how === 'stale') { body.status = 'later'; body.note = 'probably stale: ' + ((found && found[1].reason) || ''); }
+  b.disabled = true;
+  api('/api/result', body).then(load).catch(function (x) { b.disabled = false; window.alert('Not saved: ' + x.message); });
+  return true;
+}
+
 function api(path, body) {
   return fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {})
     .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
@@ -524,11 +665,13 @@ document.querySelector('.filters').addEventListener('click', function (e) {
   var t = e.target.closest('button');
   var f = t && t.getAttribute('data-f');
   if (!f) return;
+  if (f === 'items') f = listFilter;  // cc-P164: All items is the full list, on its last filter
   filter = f;
-  try { localStorage.setItem('pt-filter', f); } catch (x) {}
+  if (f !== 'next') { listFilter = f; try { localStorage.setItem('pt-filter', f); } catch (x) {} }
   render();
 });
 document.getElementById('list').addEventListener('click', function (e) {
+  if (filter === 'next' && sessionClick(e)) return;  // cc-P164
   var from = e.target.closest('button[data-idea-from]');
   if (from) { ideaFrom(from.getAttribute('data-idea-from')); return; }
   var bfrom = e.target.closest('button[data-bug-from]');

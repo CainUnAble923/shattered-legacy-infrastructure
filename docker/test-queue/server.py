@@ -16,6 +16,10 @@ Serves html/index.html and a small JSON API over D:\\UO\\shard-migration\\testin
   POST /api/bug          {"id": "P71-3", "bug": "D86"}  marks a Fail as logged in the bug list
   POST /api/manual       {"what": "...", "expect": "..."}  adds an M-NNN item
   POST /api/import       runs the importer now
+  cc-P164: /api/items also carries "sessions" (tools/playsessions.py): Chase's open items in short themed sessions, from
+  testing/sessions.json (the overseer's file) and automatic ones for the rest, and "Up next".
+  POST /api/sessions/later {"items": [{"id": "P62-2", "note": "replaced by P138"}, ...]}  marks each Later with its
+                         reason, in one write (the Probably stale group's "Mark all Later")
   cc-P146, Chase's decisions as items (shard-migration/tools/decisions.py; answers in testing/decisions.json, the
   wording and older prompts in testing/decisions-overlay.json); /api/items carries them as "decisions", each item and
   decision its "where" (tools/playwhere.py), and "answers" (the counts):
@@ -117,9 +121,10 @@ import playwho  # noqa: E402  (cc-P115)
 import codereload  # noqa: E402  (cc-P137)
 import decisions  # noqa: E402  (cc-P146)
 import playwhere  # noqa: E402  (cc-P146)
+import playsessions  # noqa: E402  (cc-P164)
 
 # cc-P137: the tools modules, dependencies first (ideas and bugs import playtests), for codereload.reload_modules.
-MODULES = [pt, ideas, bugs, opsdata, accessjwt, bottonight, playwho, decisions, playwhere]
+MODULES = [pt, ideas, bugs, opsdata, accessjwt, bottonight, playwho, decisions, playwhere, playsessions]
 GATE = codereload.Gate()
 SELF = os.path.abspath(__file__)
 
@@ -236,13 +241,27 @@ def bot_tonight():
     return value
 
 
-def deployed_version():
-    """cc-P97: the test shard's version as deployed, from the record Start-TestShard.ps1 writes after a healthy start
-    (cc-P96). Empty when there is none, so a report says (unknown) rather than a guess."""
+def deployed_record():
+    """cc-P164: the record Start-TestShard.ps1 writes after a healthy start (commit, version, at), from the file (the game
+    PC), else from the game PC snapshot's testShard (Haven, which has no test world). {} when neither has one."""
     try:
         with open(args.deployed, "r", encoding="utf-8-sig") as f:
             rec = json.load(f)
+        if isinstance(rec, dict):
+            return rec
     except (OSError, ValueError):
+        pass
+    snap = (opsdata.gamepc_status(DATA) or {}).get("snapshot") or {}
+    rec = snap.get("testShard") if isinstance(snap, dict) else None
+    return rec if isinstance(rec, dict) else {}
+
+
+def deployed_version():
+    """cc-P97: the test shard's version as deployed, from the record Start-TestShard.ps1 writes after a healthy start
+    (cc-P96). Empty when there is none, so a report says (unknown) rather than a guess. cc-P164: on Haven, from the
+    game PC snapshot."""
+    rec = deployed_record()
+    if not rec:
         return ""
     v = str(rec.get("version") or "").strip()
     c = str(rec.get("commit") or "").strip()[:7]
@@ -337,6 +356,13 @@ class Handler(BaseHTTPRequestHandler):
                 playwhere.annotate(doc)
             except Exception as e:
                 doc["where"] = {"available": False, "error": str(e)}
+            # cc-P164: Up next, the sessions. Needs who and where; a missing or broken sessions.json leaves the automatic
+            # sessions, and anything worse leaves the page on its full list.
+            try:
+                playsessions.annotate(doc, playsessions.load([args.root, DATA]), deployed_record(),
+                                      playsessions.load_package([args.root, DATA]))
+            except Exception as e:
+                doc["sessions"] = {"available": False, "error": str(e), "list": [], "upNext": ""}
             return self.send_json(200, doc)
         if p == "/api/bot-tonight":
             return self.send_json(200, bot_tonight())
@@ -437,6 +463,13 @@ class Handler(BaseHTTPRequestHandler):
                 item = pt.set_result(DATA, str(body.get("id", "")), str(body.get("status", "")), str(body.get("note", "")), by=by)
                 log("result %s = %s %s" % (item["id"], item["status"], item["note"]))
                 return self.send_json(200, {"item": item})
+            if p == "/api/sessions/later":
+                rows = body.get("items")
+                if not isinstance(rows, list) or not rows:
+                    raise ValueError("send items: [{id, note}, ...]")
+                done = pt.set_later_many(DATA, [(str((r or {}).get("id", "")), str((r or {}).get("note", ""))) for r in rows], by=by)
+                log("later %s" % ", ".join(i["id"] for i in done))
+                return self.send_json(200, {"items": done})
             if p == "/api/bug":
                 item = pt.set_bug(DATA, str(body.get("id", "")), str(body.get("bug", "")))
                 return self.send_json(200, {"item": item})

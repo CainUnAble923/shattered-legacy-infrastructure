@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.9
+
+### Staff
+- The play-test page opens on "Up next": one short session at a time (6 to 12 things to try, in order, with a "Before you start" box and big Pass, Fail and Later buttons), with the full list one tap away under All items. A "Probably stale" group lets old items go Later with their reason in one tap.
+
 ## 2026.10.18.8
 
 ### Staff

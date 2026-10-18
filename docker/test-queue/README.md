@@ -37,6 +37,13 @@ and `D:\UO\shard-migration\tools\Import-PlayTests.ps1` runs it from the host.
   `testing\decisions-overlay.json` (wording, older prompts only noted, answers given elsewhere, moot ones, and the
   play-test items they replace). Same lock and atomic write; exported with the other marks.
 
+- `D:\UO\shard-migration\testing\sessions.json` (cc-P164): **the overseer's file** (nothing writes it): the page's
+  sessions, each a title, a one-line why, a "before you start" list and item ids in order. `/api/items` carries
+  `sessions` (`tools/playsessions.py`): those, automatic ones for every other open item of Chase's (by Where, then
+  prompt, newest first, 12 at most), Probably stale, and `upNext`. The page opens on **Up next**; **All items** is the
+  full list. A "needs: rebuild test shard" tag compares a prompt's import time with the test shard's deploy record
+  (`--deployed`, or on Haven the game PC snapshot's `testShard`).
+
 Every write is under a lock file (`play-tests.json.lock`) and goes through a temp file and a rename. So two
 browser tabs, the service's own importer and `Import-PlayTests.ps1` on the host never lose each other's
 results.
@@ -52,6 +59,7 @@ results.
 | `POST /api/bug` | `{"id", "bug": "D86"}`: the Fail is logged in `bug-list.md` |
 | `POST /api/manual` | `{"what", "expect"}`: adds an `M-NNN` item |
 | `POST /api/import` | runs the importer now |
+| `POST /api/sessions/later` | cc-P164: `{"items": [{"id", "note"}, ...]}`: each item Later with its own note, in one write (Probably stale's "Mark all Later"); every id must exist or nothing changes |
 | `GET /api/ideas` | cc-P90: the ideas, their counts, the areas and statuses, and the F-NN entries of `docs/feature-queue.md` (read only) |
 | `GET /api/ideas/copy` | every `new` idea as plain text for the features chat, and their ids |
 | `POST /api/ideas/add`, `/edit`, `/status`, `/taken`, `/delete` | change an idea (cc-P97: `/delete` needs a `reason`) |
