@@ -28,6 +28,12 @@ Updates
   the game. Type n to skip it this time; it asks again next time. If the update
   server cannot be reached, the game just starts as usual.
 
+  Shattered Legacy's Legion scripts (SL_Mining, SL_Lumberjack and the rest, in
+  TazUO's script manager) update by themselves each time you play, without asking.
+  If you changed one of them, your copy is kept in app\tazuo\LegionScripts\backup\
+  first. Scripts of your own are never touched. "Update Scripts.bat" gets the newest
+  ones straight away.
+
 
 The TEST shard
 --------------

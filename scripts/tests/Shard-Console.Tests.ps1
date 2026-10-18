@@ -74,7 +74,15 @@ function Get-ConsoleConfig {
     param([string]$RepoRoot, [Nullable[bool]]$LiveEnabled = $true)
     & $script:RealGetConsoleConfig -RepoRoot $RepoRoot -LiveEnabled $LiveEnabled
 }
+# cc-P144: Get-ConsoleConfig reads this PC's Legion scripts settings (a third commit repo where there is a clone). The
+# facts pin "no clone" so they read the same on every PC; the P144_ facts point it at scratch files of their own.
+$env:SL_LEGION_SETTINGS = Join-Path ([IO.Path]::GetTempPath()) 'p144-no-legion-settings.json'
 $config = Get-ConsoleConfig -RepoRoot $repo
+# The window facts click every window action and expect a window; Publish to dev and Pull scripts need a clone to plan
+# one, so $config has a scratch one (an empty folder with .git: nothing in these facts runs git in it).
+$p144FactClone = Join-Path ([IO.Path]::GetTempPath()) 'p144-fact-clone'
+New-Item -ItemType Directory -Path (Join-Path $p144FactClone '.git') -Force | Out-Null
+$config.LegionRepo = $p144FactClone
 # cc-P99: Get-ConsoleConfig picks D:\UO\golem once it is ACTIVE. The facts were written against cc-autopilot's
 # folder, so they pin it; the Golem's own config has facts of its own (P99_*).
 $config.Autopilot = New-AutopilotConfig 'D:\UO\cc-autopilot' 'D:\UO\cc-prompts\queue'
@@ -3610,7 +3618,8 @@ Fact 'P84_InteractiveActionsNeverGoToThePaneAndTheRestOnlyWhenAsked' {
             else { Assert-Equal 'window' $r ($a.Key + ' opens something; it has nothing to stream') }
         }
     }
-    Assert-Equal 'test.wipe,package.publish' ($script:InteractiveActions -join ',')
+    # cc-P144: and the four Legion scripts buttons that ask something in their own window.
+    Assert-Equal 'test.wipe,package.publish,package.scripts.dev,package.scripts.promote,package.scripts.setup,package.scripts.key' ($script:InteractiveActions -join ',')
     Assert-Equal 'window' (Get-OutputRoute -ActionKey 'test.stop' -PaneBusy $true) 'a busy pane sends it to a window'
     Assert-Equal 'window' (Get-OutputRoute -ActionKey 'test.stop' -PaneAvailable $false) 'no pane, a window'
     Assert-Equal 'window' (Get-OutputRoute -ActionKey 'no.such.action') 'an unknown key, a window'
@@ -6342,7 +6351,8 @@ Fact 'P133_WidgetsThatNeedAKeyReadItFromTheEnvironmentNeverTheFile' {
 }
 
 Fact 'P133_NoComposeOfOursPublishesOnAPublicInterface' {
-    $files = @((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'), (Join-Path $repo 'docker\ops\docker-compose.yml'), 'C:\dev\sunflower\print-queue\docker-compose.yml')
+    # cc-P144: and the Legion scripts' dev channel.
+    $files = @((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'), (Join-Path $repo 'docker\ops\docker-compose.yml'), 'C:\dev\sunflower\print-queue\docker-compose.yml', (Join-Path $repo 'docker\scripts-dev\docker-compose.yml'))
     foreach ($f in $files) {
         $c = [IO.File]::ReadAllText($f)
         $inPorts = $false
@@ -6401,7 +6411,7 @@ Fact 'P133_TheDeployServesOnTheTailnetSavesItsDiscoveryAndBuildsFromTheInventory
     Assert-True ($d -match 'Build-HavenDashboard\.ps1' -and $d -match 'Test-HavenInventoryCoverage') 'the config is built from services.json and drift is printed in the plan'
     Assert-True ($d -match "tailscaleServe" -and $d -match "http://127\.0\.0\.1:") 'Serve targets come from the inventory and are loopback only'
     Assert-True ($d -match 'cp -p ' -and $d -match 'backup-') 'the compose, config and env on Haven are backed up before they are replaced'
-    foreach ($f in @((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'), (Join-Path $repo 'docker\ops\docker-compose.yml'), 'C:\dev\sunflower\print-queue\docker-compose.yml')) {
+    foreach ($f in @((Join-Path $repo 'docker\dashboard\haven\docker-compose.yml'), (Join-Path $repo 'docker\ops\docker-compose.yml'), 'C:\dev\sunflower\print-queue\docker-compose.yml', (Join-Path $repo 'docker\scripts-dev\docker-compose.yml'))) {
         $c = [IO.File]::ReadAllText($f)
         Assert-True (@([regex]::Matches($c, 'restart: unless-stopped')).Count -ge 1) ($f + ' survives a restart')
     }
@@ -6992,6 +7002,128 @@ Fact 'P162_TheGolemTabSaysWhenTheEndOfWeekWindowSpendsWhatIsLeft' {
     Assert-Equal 0 @(& $mk $null).Count 'no endOfWeek field (a Golem before cc-P162): no line'
 }
 
+# --- cc-P144: the Legion scripts row on the Player package tab -----------------------------------------------------------
+$p144Dir = Join-Path ([IO.Path]::GetTempPath()) ('sl-console-p144-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+New-Item -ItemType Directory -Path (Join-Path $p144Dir 'clone\.git') -Force | Out-Null
+$p144Clone = Join-Path $p144Dir 'clone'
+$p144Settings = Join-Path $p144Dir 'legion-scripts.json'
+[IO.File]::WriteAllText($p144Settings, (@{ dev = $true; repo = $p144Clone } | ConvertTo-Json))
+function Get-P144Plan([string]$Action, $Cfg, $Facts = $pkgFactsOk) {
+    @(Get-ActionPlan -Action $Action -ShardKey 'package' -Config $Cfg -State $state -Now $now -PackageFacts $Facts)
+}
+function Get-P144Config([switch]$WithRepo) {
+    $old = $env:SL_LEGION_SETTINGS
+    try {
+        if ($WithRepo) { $env:SL_LEGION_SETTINGS = $p144Settings }
+        Get-ConsoleConfig -RepoRoot $repo
+    } finally { $env:SL_LEGION_SETTINGS = $old }
+}
+
+Fact 'P144_TheLegionScriptsRowHasItsSixButtonsTooltipsPhrasesAndWindows' {
+    $a = @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Legion scripts' })
+    Assert-Equal 'package.scripts.check,package.scripts.dev,package.scripts.promote,package.scripts.pull,package.scripts.setup,package.scripts.key' (($a | ForEach-Object { $_.Key }) -join ',') 'the six, in order'
+    Assert-Equal 'Check scripts|Publish to dev|Promote to official|Pull scripts|Set up scripts repo|Set up publish key' (($a | ForEach-Object { $_.Label }) -join '|') 'their labels'
+    Assert-Equal 'False,True,True,True,True,True' (($a | ForEach-Object { $_.Mutates }) -join ',') 'Check only reads'
+    foreach ($x in $a) { Assert-True ([string](Get-ConsoleTooltips)[$x.Key]) ($x.Key + ' has a tooltip'); Assert-Equal 'window' $x.RunIn $x.Key }
+    Assert-Equal 'publish scripts to dev' (Get-ConfirmPhrase 'package.scripts.dev')
+    Assert-Equal 'promote scripts to official' (Get-ConfirmPhrase 'package.scripts.promote')
+    Assert-Equal 'Promote scripts to official' (Get-ConfirmSubject 'package.scripts.promote')
+    foreach ($k in 'package.scripts.dev', 'package.scripts.promote', 'package.scripts.setup', 'package.scripts.key') { Assert-True ($script:InteractiveActions -contains $k) ($k + ' asks something, so it gets a window of its own') }
+    foreach ($k in 'package.scripts.check', 'package.scripts.pull') { Assert-True ($script:InteractiveActions -notcontains $k) ($k + ' asks nothing') }
+    $b = Get-ModeBanner 'execute' 'package.scripts.promote' 'package'
+    Assert-True ($b.Color -eq 'red' -and ($b.Lines -join ' ') -match 'EVERY player' -and ($b.Lines -join ' ') -match 'No shard is touched') ($b.Lines -join ' | ')
+    Assert-True ((Get-ModeBanner 'execute' 'package.scripts.check' 'package').Lines[2] -match 'changes nothing') 'Check says it changes nothing'
+    Assert-Equal 'execute' (Resolve-RunMode -Action 'package.scripts.check') 'a read-only button runs with no mode'
+    Assert-Equal 'refuse' (Resolve-RunMode -Action 'package.scripts.dev') 'D37: one that changes something does not'
+}
+
+Fact 'P144_PublishAndPromoteRunTheScriptAfterTheirPhraseAndNeverForAShardRepoReason' {
+    $cfg = Get-P144Config -WithRepo
+    Assert-Equal $p144Clone $cfg.LegionRepo 'the clone from this PC''s settings'
+    $dev = @(Get-P144Plan 'package.scripts.dev' $cfg (New-PackageFacts -Dirty @('server/x.cs')))
+    Assert-Equal 'confirm,script,log' (($dev | ForEach-Object { $_.Kind }) -join ',') (Format-Plan -Action 'package.scripts.dev' -ShardKey 'package' -Plan $dev)
+    Assert-Equal 'publish scripts to dev' $dev[0].Phrase
+    Assert-Equal 'Dev' ([string]$dev[1].Named['Mode'])
+    Assert-Equal $cfg.LegionPublish $dev[1].Path
+    Assert-Equal 0 @(Test-PlanSafety $dev $cfg).Count (@(Test-PlanSafety $dev $cfg) -join ' | ')
+    $pro = @(Get-P144Plan 'package.scripts.promote' $cfg)
+    Assert-True ($pro[0].Phrase -eq 'promote scripts to official' -and [string]$pro[1].Named['Mode'] -eq 'Promote') (Format-Plan -Action 'package.scripts.promote' -ShardKey 'package' -Plan $pro)
+    $pull = @(Get-P144Plan 'package.scripts.pull' $cfg)
+    Assert-Equal ('-C|' + $p144Clone + '|pull|--ff-only') (@($pull[0].Arguments) -join '|') 'git pull --ff-only in the clone'
+    Assert-Equal 0 @(Test-PlanSafety $pull $cfg).Count (@(Test-PlanSafety $pull $cfg) -join ' | ')
+    # The safety check: no phrase, another mode, or git doing anything else, is refused whatever the plan says.
+    $noPhrase = @($dev | Where-Object { $_.Kind -ne 'confirm' })
+    Assert-True (@(Test-PlanSafety $noPhrase $cfg) -match 'only after the typed phrase publish scripts to dev').Count 'Dev without its phrase'
+    $other = @((New-PlanStep -Kind script -Path $cfg.LegionPublish -Named ([ordered]@{ Mode = 'SetupDev' }) -Text 'x'))
+    Assert-True (@(Test-PlanSafety $other $cfg) -match 'Check, Dev or Promote').Count 'SetupDev never from a button'
+    $push = @((New-PlanStep -Kind exec -Exe 'git' -Arguments @('-C', $p144Clone, 'push', '--force') -Text 'x'))
+    Assert-True (@(Test-PlanSafety $push $cfg) -match 'git runs here only as').Count 'git push is not a console step'
+    # Without a clone on this PC: Publish to dev and Pull say Set up first; Check, Promote and Setup still run.
+    $none = Get-P144Config
+    Assert-Equal '' $none.LegionRepo 'no clone'
+    foreach ($k in 'package.scripts.dev', 'package.scripts.pull') { $p = @(Get-P144Plan $k $none); Assert-True ($p.Count -eq 1 -and $p[0].Kind -eq 'refuse' -and $p[0].Text -match 'Set up scripts repo first') $k }
+    foreach ($k in 'package.scripts.check', 'package.scripts.promote', 'package.scripts.setup', 'package.scripts.key') { Assert-Equal 0 @(Get-P144Plan $k $none | Where-Object { $_.Kind -eq 'refuse' }).Count $k }
+    Assert-True (@(Get-P144Plan 'package.scripts.key' $none)[0].Path -like '*\scripts\legion\Setup-PublishKey.ps1') 'the key script'
+}
+
+Fact 'P144_ACancelledTypeYesIsACancelNotAFailure' {
+    $dir = Join-Path $p144Dir 'exec'
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $stand = Join-Path $dir 'Publish-LegionScripts.ps1'
+    $cfg = Get-P144Config -WithRepo
+    $cfg.LegionPublish = $stand
+    $cfg.LogFile = Join-Path $dir 'shard-console.log'
+    $p144Lines = New-Object 'System.Collections.Generic.List[string]'
+    function Write-ConsoleLine { param([string]$Text, [string]$Color) $p144Lines.Add($Text) }
+    $plan = @((New-PlanStep -Kind confirm -Phrase 'publish scripts to dev'), (New-PlanStep -Kind script -Path $stand -Named ([ordered]@{ Mode = 'Dev' }) -Text 'dev'), (New-PlanStep -Kind log -Text 'package.scripts.dev'))
+    $go = {
+        param([int]$Code)
+        Set-Content -LiteralPath $stand -Encoding ASCII -Value @('param([string]$Mode)', "Write-Host 'stand-in'", ('exit ' + $Code))
+        $p144Lines.Clear(); $script:PlanCancelled = $false
+        $ok = Invoke-Plan -Plan $plan -Config $cfg -ActionKey 'package.scripts.dev' -ShardKey 'package' -ConfirmLive 'publish scripts to dev'
+        [pscustomobject]@{ Ok = $ok; Cancelled = [bool]$script:PlanCancelled; Lines = @($p144Lines) }
+    }
+    $no = & $go 3
+    Assert-True (-not $no.Ok -and $no.Cancelled) ($no.Lines -join ' | ')
+    Assert-True (@($no.Lines | Where-Object { $_ -match 'Cancelled at its "Type yes"' }).Count) ($no.Lines -join ' | ')
+    $bad = & $go 1
+    Assert-True (-not $bad.Ok -and -not $bad.Cancelled) ('a failure: ' + ($bad.Lines -join ' | '))
+    $yes = & $go 0
+    Assert-True ($yes.Ok) ($yes.Lines -join ' | ')
+}
+
+Fact 'P144_TheCommitTabAndCommitShardWorkTakeTheScriptsRepoWithTheSameChecks' {
+    Assert-Equal 'code,docs' ((@((Get-P144Config).CommitRepos) | ForEach-Object { $_.Name }) -join ',') 'no clone: the two'
+    Assert-Equal 'code,docs,scripts' ((@((Get-P144Config -WithRepo).CommitRepos) | ForEach-Object { $_.Name }) -join ',') 'a clone: the third'
+    # Commit-ShardWork.ps1 -DryRun against a scratch scripts repo holding a zip: the same refusal as the shard repos.
+    $sr = Join-Path $p144Dir 'scripts-repo'
+    $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    & git init --quiet $sr 2>&1 | Out-Null
+    $ErrorActionPreference = $prev
+    [IO.File]::WriteAllText((Join-Path $sr 'SL_New.py'), 'print(1)')
+    [IO.File]::WriteAllText((Join-Path $sr 'oops.zip'), 'not really')
+    $set = Join-Path $p144Dir 'commit-settings.json'
+    [IO.File]::WriteAllText($set, (@{ dev = $true; repo = $sr } | ConvertTo-Json))
+    $old = $env:SL_LEGION_SETTINGS
+    try {
+        $env:SL_LEGION_SETTINGS = $set
+        $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'D:\UO\Commit-ShardWork.ps1' -DryRun 2>&1 | Out-String)
+    } finally { $env:SL_LEGION_SETTINGS = $old }
+    Assert-True ($out -match '=== scripts') ('the third repo is read: ' + $out)
+    Assert-True ($out -match 'pattern\s+oops\.zip') ('and refused like the others: ' + $out)
+    Assert-True ($out -match 'scripts\s+BLOCKED') 'BLOCKED in the result table'
+}
+
+Fact 'P144_ThePlayerPackageTabHasTheScriptsRow' {
+    $f = New-ConsoleForm -Config (Get-P144Config -WithRepo) -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-Equal 'package.scripts.check,package.scripts.dev,package.scripts.promote,package.scripts.pull,package.scripts.setup,package.scripts.key' (@($script:ui.ScriptsButtons | ForEach-Object { $_.Tag }) -join ',') 'six buttons'
+        Assert-True ($script:ui.ScriptsButtons[0].Parent.Parent.Text -eq 'Player package') 'on the Player package tab'
+        Assert-Equal 'package.build,package.publish,package.check' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'the zip buttons are as they were'
+    } finally { $f.Dispose() }
+}
+
+Remove-Item -LiteralPath $p144Dir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $p135Dir -Recurse -Force -ErrorAction SilentlyContinue
 

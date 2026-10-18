@@ -84,6 +84,13 @@
     D:\UO\haven-migration\Publish-PlayerPackage.ps1   Publish package runs it with -Zip after the
                                    phrase 'publish player package'; it asks its own "Type yes".
                                    Refused when the zip's version.json does not describe the zip.
+    scripts\legion\*.ps1           the Player package tab's Legion scripts row (cc-P144): Check scripts and
+                                   Publish to dev / Promote to official run Publish-LegionScripts.ps1 -Mode
+                                   Check, Dev or Promote (the last two after their phrases, and each asks "Type
+                                   yes" itself); Set up scripts repo runs Setup-ScriptsRepo.ps1 and Set up
+                                   publish key Setup-PublishKey.ps1, in windows of their own; Pull scripts is
+                                   git -C <the clone> pull --ff-only. Not refused for an uncommitted shard repo:
+                                   the scripts come from their own repo (CainUnAble923/shattered-legacy-scripts).
     docker tag + Start-TestShard.ps1   Test shard > Deploy built image (cc-P63): sl-modernuo:cc-p*
                                    onto sl-modernuo:latest after 'deploy to test', then -Down and
                                    -SkipBuild. The only docker tag the console makes; never live.
@@ -278,6 +285,19 @@ function Test-LiveActionKey {
     ($Action -like 'live.*') -or ($ShardKey -eq 'live' -and ($Action -like 'snapshot.*' -or $Action -like 'question.*'))
 }
 
+function Get-LegionRepoSetting {
+    # cc-P144: the scripts clone named in this PC's legion-scripts.json (SL_LEGION_SETTINGS moves it), when it is a git
+    # clone; else ''. The file is player-package\payload\app\LegionScripts.ps1's (Read-LegionSettings); only repo is read.
+    $p = $env:SL_LEGION_SETTINGS
+    if (-not $p -and $env:LOCALAPPDATA) { $p = Join-Path $env:LOCALAPPDATA 'ShatteredLegacy\legion-scripts.json' }
+    if (-not $p -or -not (Test-Path -LiteralPath $p -PathType Leaf)) { return '' }
+    try {
+        $r = [string]([IO.File]::ReadAllText($p) | ConvertFrom-Json).repo
+        if ($r -and (Test-Path -LiteralPath (Join-Path $r '.git'))) { return $r }
+    } catch {}
+    ''
+}
+
 function Get-ConsoleConfig {
     # cc-P108: -LiveEnabled overrides scripts\live.json (the facts pin both states with it); unset, the file decides.
     param([Parameter(Mandatory = $true)][string]$RepoRoot, [Nullable[bool]]$LiveEnabled = $null)
@@ -291,6 +311,8 @@ function Get-ConsoleConfig {
     $webFile = Join-Path $RepoRoot 'scripts\websites.json'
     $webJson = $null
     if (Test-Path -LiteralPath $webFile) { $webJson = [IO.File]::ReadAllText($webFile) }
+    # cc-P144: this PC's Legion scripts clone, if Set up scripts repo made one.
+    $legionRepo = Get-LegionRepoSetting
     $lib = Join-Path $RepoRoot 'server\lib\uo\modernuo'
     $shards = [ordered]@{
         test = [pscustomobject]@{
@@ -359,7 +381,14 @@ function Get-ConsoleConfig {
         CommitRepos        = @(
             [pscustomobject]@{ Name = 'code'; Path = 'D:\ShatteredLegacy' },
             [pscustomobject]@{ Name = 'docs'; Path = 'D:\UO\shard-migration' }
-        )
+        ) + @($(if ($legionRepo) { [pscustomobject]@{ Name = 'scripts'; Path = $legionRepo } }))
+        # cc-P144, the Legion scripts row on the Player package tab. LegionRepo is this PC's scripts clone, from its
+        # legion-scripts.json (Get-LegionRepoSetting; '' on a PC without one); Commit-ShardWork.ps1 reads the same file
+        # and commits it as a third repo, so CommitRepos lists it too.
+        LegionPublish      = (Join-Path $RepoRoot 'scripts\legion\Publish-LegionScripts.ps1')
+        LegionSetup        = (Join-Path $RepoRoot 'scripts\legion\Setup-ScriptsRepo.ps1')
+        LegionKey          = (Join-Path $RepoRoot 'scripts\legion\Setup-PublishKey.ps1')
+        LegionRepo         = $legionRepo
         NotesFolder        = 'D:\UO\shard-migration\notes'
         NotesDoneFrom      = 54
         # cc-P68: a pending file written less than this many seconds ago blocks Commit and push (was 5 minutes).
@@ -871,6 +900,8 @@ function Get-ConfirmPhrase {
         'snapshot.delete'  { 'delete live snapshot' }
         'commit.run'       { 'commit shard work' }
         'package.publish'  { 'publish player package' }
+        'package.scripts.dev'     { 'publish scripts to dev' }
+        'package.scripts.promote' { 'promote scripts to official' }
         'test.deploy'      { 'deploy to test' }
         'test.wipe'        { 'WIPE TEST ACCOUNTS' }
         'fix.restart'      { 'restart test' }
@@ -897,6 +928,8 @@ function Get-ConfirmSubject {
     switch ($Action) {
         'commit.run'      { 'Commit and push' }
         'package.publish' { 'Publish player package' }
+        'package.scripts.dev'     { 'Publish scripts to dev' }
+        'package.scripts.promote' { 'Promote scripts to official' }
         'test.deploy'     { 'Deploy to test' }
         'test.wipe'       { 'Wipe test accounts' }
         'fix.restart'     { 'Restart the test shard' }
@@ -1013,6 +1046,7 @@ function Get-ModeBanner {
     $what = $Action + ' (' + $ShardKey + ')'
     if ($Action -like 'commit.*') { $what = $Action + ' (both repos)' }
     if ($Action -like 'package.*') { $what = $Action + ' (player package)' }
+    if ($Action -like 'package.scripts.*') { $what = $Action + ' (Legion scripts)' }
     if ($Action -like 'golem.*') { $what = $Action + ' (golem)' }
     if ($Action -like 'web.*') { $what = $Action + ' (websites)' }
     if ($Action -like 'vpn.*') { $what = $Action + ' (this PC''s VPN)' }
@@ -1062,6 +1096,22 @@ function Get-ModeBanner {
             # cc-P135: validate-art.py reads the client data and writes nothing; the map buttons only print.
             [pscustomobject]@{ Color = 'amber'; Title = ('MAP AND ART - ' + $what + ' - Shard Console'); Lines = @(
                 $bar, ('  MAP AND ART  ' + $what), '  Runs scripts\validate-art.py, which reads the client data and writes nothing, or prints a command''s syntax. No shard is touched.', $bar) }
+            break
+        }
+        { $_ -eq 'execute' -and $Action -like 'package.scripts.*' } {
+            # cc-P144: no shard is touched. Dev and Promote change what Haven serves; each asks "Type yes" itself.
+            $why = switch ($Action) {
+                'package.scripts.check'   { 'Publish-LegionScripts.ps1 -Mode Check: your repo vs dev vs official. It changes nothing.' }
+                'package.scripts.dev'     { 'Publish-LegionScripts.ps1 -Mode Dev: your PCs'' dev channel on Haven. It asks "Type yes" itself, below.' }
+                'package.scripts.promote' { 'Publish-LegionScripts.ps1 -Mode Promote: EVERY player''s install pulls the official channel. It asks "Type yes" itself, below.' }
+                'package.scripts.pull'    { 'git pull --ff-only in your scripts repo.' }
+                'package.scripts.setup'   { 'Setup-ScriptsRepo.ps1: the clone and every client''s link to it. It may ask where the clone lives.' }
+                default                   { 'Setup-PublishKey.ps1: this PC''s SSH key on Haven. It asks Haven''s password once.' }
+            }
+            $col = 'amber'
+            if ($Action -eq 'package.scripts.promote') { $col = 'red' }
+            [pscustomobject]@{ Color = $col; Title = ('LEGION SCRIPTS - ' + $what + ' - Shard Console'); Lines = @(
+                $bar, ('  LEGION SCRIPTS  ' + $what), ('  ' + $why + ' No shard is touched.'), $bar) }
             break
         }
         { $_ -eq 'execute' -and $Action -eq 'package.publish' } {
@@ -1124,6 +1174,14 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'package.build';    Group = 'Player package'; Label = 'Build package';                   Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'package.publish';  Group = 'Player package'; Label = 'Publish package';                 Mutates = $true;  RunIn = 'window' }
         [pscustomobject]@{ Key = 'package.check';    Group = 'Player package'; Label = 'Check selected';                  Mutates = $false; RunIn = 'window' }
+        # cc-P144: the Legion scripts row on the Player package tab. Dev and Promote ask a phrase here and "Type yes" in
+        # their own window; Setup and the key ask in theirs. None is refused for an uncommitted shard repo.
+        [pscustomobject]@{ Key = 'package.scripts.check';   Group = 'Legion scripts'; Label = 'Check scripts';           Mutates = $false; RunIn = 'window' }
+        [pscustomobject]@{ Key = 'package.scripts.dev';     Group = 'Legion scripts'; Label = 'Publish to dev';          Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'package.scripts.promote'; Group = 'Legion scripts'; Label = 'Promote to official';     Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'package.scripts.pull';    Group = 'Legion scripts'; Label = 'Pull scripts';            Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'package.scripts.setup';   Group = 'Legion scripts'; Label = 'Set up scripts repo';     Mutates = $true;  RunIn = 'window' }
+        [pscustomobject]@{ Key = 'package.scripts.key';     Group = 'Legion scripts'; Label = 'Set up publish key';      Mutates = $true;  RunIn = 'window' }
         # cc-P74. Each opens one of the Golem's own scripts in a window of its own (a 'window' step),
         # so RunIn is 'here': the console only opens it, and the script's window stays open to be read.
         # cc-P99: the autopilot.* keys of cc-P74 are aliases of these (Resolve-ActionAlias).
@@ -1696,6 +1754,12 @@ function Get-ConsoleTooltips {
         'package.build'    = 'Builds a player package zip in player-package\dist and checks it. Publishes nothing; refused while the shard repo has uncommitted changes.'
         'package.publish'  = 'Publishes the selected zip: every player''s launcher is offered it. Asks for publish player package, then the script asks you to type yes in its own window.'
         'package.check'    = 'Runs the package gates on the selected zip. Read-only.'
+        'package.scripts.check'   = 'Shows your scripts repo, the dev channel and the official channel side by side, per script, with who published each and when, and whether this PC can publish. Changes nothing.'
+        'package.scripts.dev'     = 'Publishes your Legion scripts to the dev channel, which only your own PCs read. Shows what changed and asks you to type yes. Refused until the scripts repo is committed and pushed.'
+        'package.scripts.promote' = 'Copies the dev scripts you pick to the official channel, which every player''s install pulls, and tags the commit official-<version>. Shows hashes and asks you to type yes.'
+        'package.scripts.pull'    = 'git pull --ff-only in your scripts repo: what your other PC pushed. Every client here sees it at once (they link to the repo).'
+        'package.scripts.setup'   = 'Clones the scripts repo (asks where, once) and links every TazUO client on this PC to it. Safe to run again: it repairs a broken link and changes nothing else.'
+        'package.scripts.key'     = 'Once per PC: puts this PC''s SSH key on Haven so it can publish scripts. Asks Haven''s password one time.'
         'golem.on'         = 'Wakes the Golem, which hands CC the next queued prompt and commits and pushes after each DONE; in CC you can also say Golem, please work on the shard tasks. Refused without email.json, and opens in its own window.'
         'golem.off'        = 'Rests the Golem now: no more hand-offs, and a prompt CC is running still finishes but is not committed (saying Golem, stop in CC rests after it is committed).'
         'golem.email'      = 'Opens Setup-Email.ps1 in its own window, which asks for the mail password there. Writes the Golem''s email settings.'
@@ -1834,7 +1898,12 @@ function ConvertTo-ConsoleSettings {
 # and yes/no questions are asked by this console's own dialogs before the run and passed as -ConfirmLive / -Yes.
 # The Golem buttons (RunIn 'here') open the Golem's own scripts in windows of their own on purpose
 # (Setup-Email.ps1 asks a password) and are not routed either.
-$script:InteractiveActions = @('test.wipe', 'package.publish')
+# cc-P144, from Publish-LegionScripts.ps1, Setup-ScriptsRepo.ps1 and Setup-PublishKey.ps1:
+#   package.scripts.dev, .promote   Read-Host '... Type yes' (and Promote's "which?").
+#   package.scripts.setup           Read-Host for where the clone lives, the first time.
+#   package.scripts.key             ssh-keygen's passphrase and Haven's password.
+# Check scripts and Pull scripts ask nothing.
+$script:InteractiveActions = @('test.wipe', 'package.publish', 'package.scripts.dev', 'package.scripts.promote', 'package.scripts.setup', 'package.scripts.key')
 
 function Get-OutputRoute {
     # Where an action's run is shown: 'pane' (streamed into the console) or 'window' (a PowerShell window of its
@@ -2230,6 +2299,50 @@ function Get-PackagePlan {
     if ($remind) { $steps.Add((New-PlanStep -Kind say -Text $remind)) }
     $steps.Add((New-PlanStep -Kind script -Path $Config.PublishScript -Named ([ordered]@{ Zip = $z.FullName }) -Text 'Publish-PlayerPackage.ps1: shows the zip, asks you to type yes HERE, then gates, copies to Haven, swaps in and checks both URLs, rolling back on a mismatch. Exit 0 is published, 3 is cancelled (not yes), anything else failed.'))
     $steps.Add((New-PlanStep -Kind log -Text ('package.publish ' + $z.Name)))
+    $steps.ToArray()
+}
+
+# --- the Legion scripts (cc-P144) ------------------------------------------------------------------------------------
+# Each button runs one of scripts\legion\'s scripts as it is, or git pull in the clone. The scripts check the clone
+# against GitHub and Haven themselves; the console only refuses what cannot run at all (a script or the clone missing).
+
+function Get-ScriptsPlan {
+    param([string]$Action, $Config)
+    $steps = New-Object 'System.Collections.Generic.List[object]'
+    $need = @{ 'package.scripts.check' = $Config.LegionPublish; 'package.scripts.dev' = $Config.LegionPublish; 'package.scripts.promote' = $Config.LegionPublish
+               'package.scripts.setup' = $Config.LegionSetup; 'package.scripts.key' = $Config.LegionKey }
+    if (-not $need.ContainsKey($Action) -and $Action -ne 'package.scripts.pull') { $steps.Add((New-PlanStep -Kind refuse -Text ("Unknown action '" + $Action + "'. -Action list shows them."))); return $steps.ToArray() }
+    if ($need.ContainsKey($Action) -and -not (Test-Path -LiteralPath $need[$Action] -PathType Leaf)) { $steps.Add((New-PlanStep -Kind refuse -Text ($need[$Action] + ' is not there, so there is nothing to run.'))); return $steps.ToArray() }
+    if ($Action -in @('package.scripts.dev', 'package.scripts.pull') -and -not $Config.LegionRepo) {
+        $steps.Add((New-PlanStep -Kind refuse -Text 'This PC has no scripts repo yet. Click Set up scripts repo first.')); return $steps.ToArray()
+    }
+    switch ($Action) {
+        'package.scripts.check' {
+            $steps.Add((New-PlanStep -Kind script -Path $Config.LegionPublish -Named ([ordered]@{ Mode = 'Check' }) -Text 'Publish-LegionScripts.ps1 -Mode Check: your repo (fetched from GitHub), the dev channel and the official channel, per script, and whether this PC can publish. Changes nothing.'))
+        }
+        'package.scripts.dev' {
+            $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ('This publishes the scripts in ' + $Config.LegionRepo + ' to the dev channel on Haven, which only PCs flagged dev read (yours). It is refused unless that repo is committed and level with GitHub.')))
+            $steps.Add((New-PlanStep -Kind script -Path $Config.LegionPublish -Named ([ordered]@{ Mode = 'Dev' }) -Text 'Publish-LegionScripts.ps1 -Mode Dev: lists new, changed and removed scripts, asks you to type yes HERE, then stages, swaps and checks each file back from Haven, scripts.json last, rolling back on a mismatch. Exit 0 is done, 3 is cancelled (not yes), anything else failed.'))
+            $steps.Add((New-PlanStep -Kind log -Text 'package.scripts.dev'))
+        }
+        'package.scripts.promote' {
+            $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'This copies dev scripts you pick to the official channel on Haven, which EVERY player''s install pulls on its next start, and tags the commit official-<version> in the scripts repo. The exact dev bytes go out, never this PC''s files.'))
+            $steps.Add((New-PlanStep -Kind script -Path $Config.LegionPublish -Named ([ordered]@{ Mode = 'Promote' }) -Text 'Publish-LegionScripts.ps1 -Mode Promote: lists the dev scripts that differ from official with their hashes, asks which (Enter for all) and to type yes HERE, then copies on Haven with the same checks and rollback. Exit 0 is done, 3 is cancelled, anything else failed.'))
+            $steps.Add((New-PlanStep -Kind log -Text 'package.scripts.promote'))
+        }
+        'package.scripts.pull' {
+            $steps.Add((New-PlanStep -Kind exec -Exe 'git' -Arguments @('-C', $Config.LegionRepo, 'pull', '--ff-only') -Text ('git pull --ff-only in ' + $Config.LegionRepo + ': what your other PC pushed. A pull that is not a fast-forward stops and says so; nothing is merged for you.')))
+            $steps.Add((New-PlanStep -Kind log -Text 'package.scripts.pull'))
+        }
+        'package.scripts.setup' {
+            $steps.Add((New-PlanStep -Kind script -Path $Config.LegionSetup -Text 'Setup-ScriptsRepo.ps1: asks where the clone lives (once), clones it, and links every TazUO client on this PC to it, moving each old LegionScripts folder aside first. Safe to run again.'))
+            $steps.Add((New-PlanStep -Kind log -Text 'package.scripts.setup'))
+        }
+        'package.scripts.key' {
+            $steps.Add((New-PlanStep -Kind script -Path $Config.LegionKey -Text 'Setup-PublishKey.ps1: makes this PC''s SSH key if it has none and puts it on Haven (asks Haven''s password once), then proves a login without a password.'))
+            $steps.Add((New-PlanStep -Kind log -Text 'package.scripts.key'))
+        }
+    }
     $steps.ToArray()
 }
 
@@ -2782,6 +2895,8 @@ function Get-ActionPlan {
     if ($Action -like 'commit.*') { return (Get-CommitPlan -Action $Action -Config $Config -Facts $CommitFacts -Message $CommitMessage -Force:$CommitForce) }
     # Nor do the package buttons; they read git, dist\ and the notes (cc-P63, cc-P68).
     if ($Action -in @('package.build', 'package.publish', 'package.check')) { return (Get-PackagePlan -Action $Action -Config $Config -Facts $PackageFacts -Notes $PackageNotes -Zip $PackageZip) }
+    # cc-P144: the Legion scripts row reads only its config (the scripts' paths and this PC's clone).
+    if ($Action -like 'package.scripts.*') { return (Get-ScriptsPlan -Action $Action -Config $Config) }
     if ($Action -eq 'test.deploy') { return (Get-DeployPlan -Config $Config -State $State -ImageTag $ImageTag) }
     if ($Now -eq [datetime]::MinValue) { $Now = $State.Now }
     # cc-P108: while live is retired, every action on it refuses before anything is read or planned.
@@ -3035,6 +3150,18 @@ function Test-PlanSafety {
                 if (-not @($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -ceq (Get-ConfirmPhrase 'web.deploy') }).Count) { $v.Add('a Haven deploy runs only after the typed phrase ' + (Get-ConfirmPhrase 'web.deploy')) }
             }
         }
+        # cc-P144: Publish-LegionScripts.ps1 changes what Haven serves only after its typed phrase, and git runs here only
+        # as the Pull scripts button writes it: git -C <this PC's scripts clone> pull --ff-only.
+        if ($s.Kind -eq 'script' -and $Config.LegionPublish -and $s.Path -and [IO.Path]::GetFullPath([string]$s.Path) -ieq [IO.Path]::GetFullPath($Config.LegionPublish)) {
+            $lm = $(if ($s.Named) { [string]$s.Named['Mode'] } else { '' })
+            if ($lm -notin @('Check', 'Dev', 'Promote')) { $v.Add('Publish-LegionScripts.ps1 runs here only as -Mode Check, Dev or Promote, not ' + $lm) }
+            $lp = $(if ($lm -eq 'Dev') { Get-ConfirmPhrase 'package.scripts.dev' } elseif ($lm -eq 'Promote') { Get-ConfirmPhrase 'package.scripts.promote' } else { '' })
+            if ($lp -and -not @($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -ceq $lp }).Count) { $v.Add('Publish-LegionScripts.ps1 -Mode ' + $lm + ' runs only after the typed phrase ' + $lp) }
+        }
+        if ($s.Kind -in @('exec', 'window') -and [string]$s.Exe -match '(?i)(^|[\\/])git(\.exe)?$') {
+            $ga = @($s.Arguments)
+            if (-not $Config.LegionRepo -or $ga.Count -ne 4 -or $ga[0] -cne '-C' -or [string]$ga[1] -ine $Config.LegionRepo -or $ga[2] -cne 'pull' -or $ga[3] -cne '--ff-only') { $v.Add('git runs here only as git -C <the scripts clone> pull --ff-only: ' + $line) }
+        }
         # cc-P135: python runs here only as scripts\validate-art.py with one of its read-only subcommands, as an exec step
         # (so its output lands in the pane or the window), never render (the one that writes files) and never another
         # script; and that script is reached only that way.
@@ -3100,8 +3227,14 @@ function Test-PlanSafety {
                 $zp = [string]$s.Named['Zip']
                 $dist = [IO.Path]::GetFullPath($Config.PackageDist).TrimEnd('\') + '\'
                 if (-not $zp -or -not ([IO.Path]::GetFullPath($zp)).StartsWith($dist, [StringComparison]::OrdinalIgnoreCase) -or $zp -notmatch '\.zip$' -or @($s.Named.Keys).Count -ne 1) { $v.Add('the publish script runs only with -Zip on a zip in ' + $dist + ': ' + $call) }
+            } elseif ($Config.LegionPublish -and (& $is $Config.LegionPublish)) {
+                # cc-P144: -Mode only; Dev and Promote also need their phrase (the rule further down).
+                if (@($s.Named.Keys | Where-Object { $_ -ne 'Mode' }).Count) { $v.Add('Publish-LegionScripts.ps1 runs here with -Mode only: ' + $call) }
+            } elseif (($Config.LegionSetup -and (& $is $Config.LegionSetup)) -or ($Config.LegionKey -and (& $is $Config.LegionKey))) {
+                # cc-P144: Setup-ScriptsRepo.ps1 and Setup-PublishKey.ps1 with no parameters; each asks what it needs itself.
+                if ($s.Named -and @($s.Named.Keys).Count) { $v.Add((Split-Path ([string]$s.Path) -Leaf) + ' runs here with no parameters: ' + $call) }
             } else {
-                $v.Add('the only script this console runs in-process is one of ' + $Config.CommitScript + ', ' + $Config.BuildPackage + ' and ' + $Config.PublishScript + ': ' + $call)
+                $v.Add('the only script this console runs in-process is one of ' + $Config.CommitScript + ', ' + $Config.BuildPackage + ', ' + $Config.PublishScript + ' and the Legion scripts'' three (scripts\legion\): ' + $call)
             }
         }
         if ($s.Kind -eq 'launch' -and $s.Path -eq $live.Client -and -not $confirmed) { $v.Add('opens a live client without a typed confirmation') }
@@ -6646,7 +6779,18 @@ function Invoke-Plan {
                     if (-not (Test-Path -LiteralPath $s.Path -PathType Leaf)) { throw ('not found: ' + $s.Path) }
                     if (-not $outFile) { $outFile = New-ExecOutputFile $Config $ActionKey $ShardKey }
                     $code = Invoke-ScriptStep -Path $s.Path -Named $s.Named -OutFile $outFile -Header ($tag + $line)
-                    if ([IO.Path]::GetFullPath($s.Path) -ieq [IO.Path]::GetFullPath($Config.PublishScript)) {
+                    $isLegionPublish = ($Config.LegionPublish -and [IO.Path]::GetFullPath($s.Path) -ieq [IO.Path]::GetFullPath($Config.LegionPublish) -and $s.Named -and [string]$s.Named['Mode'] -in @('Dev', 'Promote'))
+                    if ($isLegionPublish) {
+                        # cc-P144: Publish-LegionScripts.ps1 exits 3 when its "Type yes" was declined, as the package's does.
+                        if ($code -eq 3) {
+                            Write-ConsoleLine '      Cancelled at its "Type yes". Nothing was published.' 'amber'
+                            $script:PlanCancelled = $true
+                            if ($logged) { Write-ConsoleLog $Config ('CANCELLED ' + $ActionKey + ' shard=' + $ShardKey + ': Publish-LegionScripts.ps1 exited 3, nothing was published') }
+                            return $false
+                        }
+                        if ($code -ne 0) { throw ($line + ' exited with ' + $code + '. Read its last lines above.') }
+                        Write-ConsoleLine '      Publish-LegionScripts.ps1 exited 0.' 'green'
+                    } elseif ([IO.Path]::GetFullPath($s.Path) -ieq [IO.Path]::GetFullPath($Config.PublishScript)) {
                         # cc-P68 Part B: 3 is a declined "Type yes", which is neither done nor failed.
                         $o = Get-PublishOutcome $code
                         if ($o.Result -eq 'failed') { throw $o.Text }
@@ -8976,6 +9120,8 @@ function Get-ActionFacts {
     } elseif ($ActionKey -like 'commit.*') {
         # The commit buttons read git and the notes, never docker (cc-P60).
         $f.Facts = Get-CommitFacts $Config
+    } elseif ($ActionKey -like 'package.scripts.*') {
+        # cc-P144: the Legion scripts row reads nothing here; its scripts read the clone and Haven themselves.
     } elseif ($ActionKey -like 'package.*') {
         # So do the package buttons, and dist\ (cc-P63).
         $f.PackageFacts = Get-PackageFacts $Config $PackageZip
@@ -10634,9 +10780,27 @@ function New-ConsoleForm {
         Invoke-ConsoleButton -ActionKey 'package.check' -PackageZip $sel
     })
     $pkgBottom.Controls.AddRange(@($pkgRefresh, $checkBtn, $publishBtn))
+    # cc-P144: the Legion scripts row, under the zip buttons. Its own caption says where the clone is on this PC.
+    $scrBar = New-Object Windows.Forms.FlowLayoutPanel
+    $scrBar.Dock = 'Bottom'
+    $scrBar.AutoSize = $true; $scrBar.AutoSizeMode = 'GrowAndShrink'
+    $scrBar.WrapContents = $true
+    $scrWhere = 'This PC has no scripts repo yet: Set up scripts repo makes one.'
+    if ($Config.LegionRepo) { $scrWhere = 'This PC''s scripts repo: ' + $Config.LegionRepo + '. Every TazUO client here links to it, so editing a script edits the repo.' }
+    $scrCap = New-Caption ('Legion scripts (their own repo, CainUnAble923/shattered-legacy-scripts). ' + $scrWhere + ' Publish to dev reaches only your own PCs; Promote to official reaches every player''s install. Neither needs the shard repo committed, only the scripts repo.') 1100
+    $scrBar.Controls.Add($scrCap)
+    $scrBar.SetFlowBreak($scrCap, $true)
+    $scrBtns = @()
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Legion scripts' })) {
+        $b = New-ConsoleButton $a.Label $a.Key 170
+        $scrBtns += $b
+        $scrBar.Controls.Add($b)
+    }
+    $script:ui.ScriptsButtons = $scrBtns
     $pkgPage.Controls.Add($pkgList)
     $pkgPage.Controls.Add($pkgTop)
     $pkgPage.Controls.Add($pkgBottom)
+    $pkgPage.Controls.Add($scrBar)
     $script:ui.PackageNotes = $notesBox
     $script:ui.PackageList = $pkgList
     $script:ui.PackageClient = $clientBox
@@ -11054,6 +11218,7 @@ if ($Action -eq 'list') {
     Write-Host 'commit.* take -CommitMessage (blank: the script''s default); commit.run needs -Mode Execute and -ConfirmLive ''commit shard work''; -CommitForce skips only the wait for recently changed files.'
     Write-Host 'package.build takes -PackageNotes; package.publish takes -PackageZip <name in player-package\dist> and -ConfirmLive ''publish player package''.'
     Write-Host 'package.check takes -PackageZip <name in player-package\dist>; it only reads.'
+    Write-Host 'package.scripts.check only reads. package.scripts.dev and .promote need -Mode Execute and -ConfirmLive ''publish scripts to dev'' or ''promote scripts to official''; each asks "Type yes" itself. .pull, .setup and .key need -Mode Execute.'
     Write-Host 'test.deploy takes -ImageTag sl-modernuo:cc-pNN and -ConfirmLive ''deploy to test''.'
     Write-Host 'test.wipe takes -WipeAdmin <new admin name> and -ConfirmLive ''WIPE TEST ACCOUNTS''; it asks for the password in its own window.'
     Write-Host 'fix.diagnose only reads. fix.restart, fix.rollback, fix.rebuild and fix.prune take -ConfirmLive ''restart test'', ''roll back test'', ''rebuild test'', ''prune images''; fix.rebuild takes -Commit <hash from its list, or HEAD>; fix.rollback takes -ImageTag sl-modernuo:good-<commit> (default: the newest).'
@@ -11123,6 +11288,8 @@ if ($Action) {
         # From a click the message comes as base64 (Get-ChildArgumentLine); -CommitMessage is for a person.
         if ($CommitMessageB64) { $CommitMessage = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($CommitMessageB64)) }
         $facts = Get-CommitFacts $config
+    } elseif ($Action -like 'package.scripts.*') {
+        # cc-P144: nothing to read first; the scripts read the clone and Haven themselves.
     } elseif ($Action -like 'package.*') {
         # cc-P63: the notes come as base64 from a click, as a commit message does.
         if ($PackageNotesB64) { $PackageNotes = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($PackageNotesB64)) }

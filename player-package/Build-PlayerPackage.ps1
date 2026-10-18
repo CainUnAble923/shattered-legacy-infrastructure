@@ -90,11 +90,15 @@ param(
     [switch]$GateSelfTest,
     [string]$CheckZip,
     [string]$Notes,
-    [string]$UoData
+    [string]$UoData,
+    # cc-P144: where the official Legion scripts are published; the package ships that set as it is at build time.
+    [string]$ScriptsBase = 'https://get.shatteredlegacyuo.com/scripts/'
 )
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'PackageClient.ps1')
+# cc-P144: the published-scripts functions the launcher uses, for shipping that set and gate 4's check of it.
+. (Join-Path $PSScriptRoot 'payload\app\LegionScripts.ps1')
 if (-not $TazUO) { $TazUO = Get-PackageClientDefault }
 
 # --- gate 4: what the zip actually holds ----------------------------------------------
@@ -242,6 +246,7 @@ function Test-RetiredLine([string]$p) {
     if ($p -match '[*?\[\]]') { return 'contains a wildcard' }
     $l = $p.ToLowerInvariant().TrimEnd('\')
     if ($l -eq 'app\tazuo\data' -or $l.StartsWith('app\tazuo\data\')) { return 'is under app\tazuo\Data\' }
+    if ($l -eq 'app\tazuo\legionscripts' -or $l.StartsWith('app\tazuo\legionscripts\')) { return 'is under app\tazuo\LegionScripts\' }
     if (@('', '.', 'app', 'app\tazuo', 'update-backup', 'app\uo-path.txt', 'app\uo-overrides') -contains $l -or $l -match '^app\\tazuo\\settings[^\\]*\.json$') { return 'is protected' }
     return $null
 }
@@ -339,6 +344,19 @@ function Test-PackageZip([string]$path) {
         # settings.db*, backups\ or gump_positions.db.
         $data = @($names | Where-Object { $_ -like 'app/tazuo/Data/*' -and $_ -notmatch '^app/tazuo/Data/XmlGumps/[^/]+\.xml$' })
         if ($data.Count) { $fail += "app/tazuo/Data/ holds more than XmlGumps: $($data -join ', ')" }
+
+        # cc-P144: LegionScripts holds only the published official set and its record (LegionScripts.ps1).
+        $lsFiles = @{}
+        $lsSha = [Security.Cryptography.SHA256]::Create()
+        try {
+            foreach ($n in @($names | Where-Object { $_ -like 'app/tazuo/LegionScripts/*' })) {
+                $st = $rel[$n].Open()
+                try { $lsFiles[$n.Substring(24)] = -join ($lsSha.ComputeHash($st) | ForEach-Object { $_.ToString('x2') }) } finally { $st.Dispose() }
+            }
+        } finally { $lsSha.Dispose() }
+        $lsRec = $null
+        if ($rel['app/tazuo/LegionScripts/.sl-scripts.json']) { $lsRec = Read-ZipText $rel['app/tazuo/LegionScripts/.sl-scripts.json'] }
+        $fail += @(Test-LegionShipped -Files $lsFiles -RecordText $lsRec)
 
         # The updater's side (cc-P5).
         $pv = $rel['app/package-version.txt']
@@ -598,7 +616,8 @@ $excludeDirs  = @('Data', 'LegionScripts', 'logs', 'Cache', 'osx', 'osx-arm', 'E
 #   ExternalImages whatever gump and art overrides are installed on this machine. TazUO
 #                  creates the folders empty; our overrides come from vendor\ only, so a
 #                  local experiment never ships by accident.
-#   LegionScripts  Chase's own scripts. TazUO writes its API.py there itself.
+#   LegionScripts  Chase's own scripts. TazUO writes its API.py there itself. The published official set
+#                  is added below instead (cc-P144), from get.shatteredlegacyuo.com/scripts/.
 #   logs, Cache    runtime output.
 #   osx, osx-arm   macOS natives; this package is Windows-only.
 $excludeFiles = @('settings*.json', '*.pdb')
@@ -743,6 +762,12 @@ if (Test-Path -LiteralPath (Join-Path $tazOut 'vcruntime140.dll')) { throw "$Taz
 $vendored += ,@($vcr, (Join-Path $tazOut 'vcruntime140.dll'))
 
 foreach ($p in $vendored) { Copy-Item -LiteralPath $p[0] -Destination $p[1] }
+
+# --- the official Legion scripts (cc-P144) ---------------------------------------------------------------------------
+# The set published at $ScriptsBase now, each file checked against its scripts.json, with the record the updater
+# keeps, so a new install starts current. Never Chase's own LegionScripts (excluded above), never the dev channel.
+$shipped = Copy-LegionPublishedSet -Base $ScriptsBase -Folder (Join-Path $tazOut 'LegionScripts')
+Write-Host ("  Legion scripts: " + $(if ($shipped.Count) { $shipped.Text } else { 'none shipped: ' + $shipped.Text })) -ForegroundColor Gray
 
 # cc-P124: our build's version is its sl-build.txt (upstream short commit plus patch count), which the client gate
 # above has just checked; a stock TazUO's v.txt was read before, and our build has none ("TazUO unknown").

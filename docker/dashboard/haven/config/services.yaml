@@ -255,6 +255,13 @@
         server: "haven"
         container: "sl-downloads"
         siteMonitor: "https://get.shatteredlegacyuo.com"
+    - "Legion scripts (dev)":
+        icon: "mdi-script-text"
+        href: "http://haven.tail81098d.ts.net:8097/scripts.json"
+        description: "The dev channel: half-tested scripts for Chase's own PCs (Tailscale only) [Haven]"
+        server: "haven"
+        container: "sl-scripts-dev"
+        siteMonitor: "http://192.168.1.61:8097/scripts.json"
     - "Public progress page":
         icon: "/icons/shattered_legacy_logo.png"
         href: "https://shatteredlegacyuo.com/migration.html"

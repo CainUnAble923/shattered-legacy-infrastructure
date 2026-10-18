@@ -30,6 +30,9 @@
       -Update              offer the update even when this install is current (testing)
       -UpdateBase <url>    ask another server instead (probes; default the real get.)
 
+  Then (cc-P144) it brings the Legion scripts up to date: Update-Scripts.ps1, quietly, applied without a prompt.
+      -NoScripts           skip it
+
   Safe to re-run. The saved username and password in each settings file are kept; only
   the server, the port and the client folder are rewritten. The live shard and the test
   shard keep separate settings files so a test login is never offered to live. Which
@@ -41,7 +44,8 @@
 [CmdletBinding()]
 param([switch]$Lan, [switch]$Test, [string]$Account, [string]$UoPath, [string]$ClientDir,
       [switch]$NoUpdate, [switch]$Update, [string]$UpdateBase = 'https://get.shatteredlegacyuo.com',
-      [ValidateSet('sfw', 'topless', 'nude')][string]$PaperdollBodies, [string]$PaperdollFolder)
+      [ValidateSet('sfw', 'topless', 'nude')][string]$PaperdollBodies, [string]$PaperdollFolder,
+      [switch]$NoScripts)
 
 $ErrorActionPreference = 'Stop'
 $app   = $PSScriptRoot
@@ -253,6 +257,29 @@ if (-not $NoUpdate) {
             if ($ans -match '^\s*(y|yes)?\s*$') { Install-Package $remote }
             else { Write-Host '  Skipped. You will be asked again next time.' -ForegroundColor Gray }
         }
+    }
+}
+
+# --- Legion scripts (cc-P144) ------------------------------------------------------
+# After the package check: the published scripts, quietly, applied without a prompt (low risk: a script the
+# player edited is backed up first, and one the manifest does not list is never touched). One line when something
+# changed. Offline or a server problem is one grey line and the game starts. Update-Scripts.ps1 says how.
+# A -ClientDir client is remembered in app\client-dirs.txt, so the updater (and Update Scripts.bat) keep it current.
+if ($target.ClientDir) {
+    try {
+        $cdFile = Join-Path $app 'client-dirs.txt'
+        $cdKnown = @()
+        if (Test-Path -LiteralPath $cdFile) { $cdKnown = @(Get-Content -LiteralPath $cdFile | ForEach-Object { $_.Trim() }) }
+        if ($cdKnown -notcontains $target.ClientDir) { Add-Content -LiteralPath $cdFile -Value $target.ClientDir -Encoding ascii }
+    } catch {}
+}
+if (-not $NoScripts) {
+    try {
+        $usArgs = @{ Root = $root; Quiet = $true; Offer = $true }
+        if ($target.ClientDir) { $usArgs.ClientDir = @($target.ClientDir) }
+        & (Join-Path $app 'Update-Scripts.ps1') @usArgs
+    } catch {
+        Write-Host "  Legion scripts not checked ($($_.Exception.Message)). Starting anyway." -ForegroundColor DarkGray
     }
 }
 

@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.4
+
+### Added
+- The game launcher now keeps Shattered Legacy's Legion scripts (like SL_Mining and SL_Lumberjack) up to date on every start, and a new package comes with the current ones. If you changed one of them yourself, your copy is kept in the LegionScripts\backup folder before the new one goes in, and your own scripts are never touched.
+- "Update Scripts" in the game folder gets the newest Legion scripts right away, without starting the game.
+
+### Staff
+- Chase's Legion scripts live in their own private repo now, linked into every TazUO client on his PCs: the Player package tab's Set up scripts repo makes the link (once per PC), Pull scripts updates it, and the Commit tab commits it with the shard's two repos.
+- Publish to dev sends the scripts to a Tailscale-only channel that only Chase's own PCs read; Promote to official copies the chosen dev scripts to every player's install. Check scripts shows the repo, dev and official side by side. Publishing is refused until the scripts repo is committed and pushed, so the home and work PCs never overwrite each other.
+
 ## 2026.10.18.3
 
 ### Added

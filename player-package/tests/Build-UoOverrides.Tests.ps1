@@ -17,6 +17,9 @@
 # up; nothing else is sent to it.
 
 $ErrorActionPreference = 'Stop'
+# cc-P144: Play.ps1 runs Update-Scripts.ps1, which reads this PC's Legion scripts settings. Pinned to none, so a
+# sandbox launch on a dev PC never links itself to that PC's scripts repo.
+$env:SL_LEGION_SETTINGS = Join-Path ([IO.Path]::GetTempPath()) 'sl-tests-no-legion-settings.json'
 $here     = $PSScriptRoot
 $pkg      = Split-Path $here -Parent
 $builder  = Join-Path $pkg 'payload\app\Build-UoOverrides.ps1'
@@ -492,6 +495,8 @@ function New-Sandbox([string]$name, [byte[]]$tile, [byte[]]$anim) {
     Copy-Item (Join-Path $pkg 'payload\app\Play.ps1') $app
     Copy-Item (Join-Path $pkg 'payload\app\Launch-Settings.ps1') $app
     Copy-Item (Join-Path $pkg 'payload\app\Paperdoll-Bodies.ps1') $app
+    Copy-Item (Join-Path $pkg 'payload\app\LegionScripts.ps1') $app
+    Copy-Item (Join-Path $pkg 'payload\app\Update-Scripts.ps1') $app
     Copy-Item $builder $app
     Copy-Item $records (Join-Path $app 'art-records.json')
     Copy-Item $animMul, $animIdx $app

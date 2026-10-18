@@ -13,6 +13,9 @@
 # test shard up; nothing else is sent to it.
 
 $ErrorActionPreference = 'Stop'
+# cc-P144: Play.ps1 runs Update-Scripts.ps1, which reads this PC's Legion scripts settings. Pinned to none, so a
+# sandbox launch on a dev PC never links itself to that PC's scripts repo.
+$env:SL_LEGION_SETTINGS = Join-Path ([IO.Path]::GetTempPath()) 'sl-tests-no-legion-settings.json'
 $here = $PSScriptRoot
 $pkg  = Split-Path $here -Parent
 $appSrc = Join-Path $pkg 'payload\app'
@@ -418,7 +421,7 @@ function New-Sandbox([string]$name) {
     $root = Join-Path $work $name
     $app = Join-Path $root 'app'
     New-Item -ItemType Directory -Path (Join-Path $app 'tazuo') -Force | Out-Null
-    foreach ($f in 'Play.ps1', 'Launch-Settings.ps1', 'Paperdoll-Bodies.ps1', 'Play-Test.bat', 'Play-Lan.bat', 'Update.ps1') { Copy-Item (Join-Path $appSrc $f) $app }
+    foreach ($f in 'Play.ps1', 'Launch-Settings.ps1', 'Paperdoll-Bodies.ps1', 'Play-Test.bat', 'Play-Lan.bat', 'Update.ps1', 'LegionScripts.ps1', 'Update-Scripts.ps1') { Copy-Item (Join-Path $appSrc $f) $app }
     Copy-Item $stubExe (Join-Path $app 'tazuo\TazUO.exe')
     $uo = Join-Path $work "$name-uo"
     New-Item -ItemType Directory -Path $uo -Force | Out-Null

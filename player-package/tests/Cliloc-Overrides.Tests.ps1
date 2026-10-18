@@ -14,6 +14,9 @@
 # The last fact runs the real Play.ps1 in a sandbox, as Build-UoOverrides.Tests.ps1 does, so it needs the test shard up.
 
 $ErrorActionPreference = 'Stop'
+# cc-P144: Play.ps1 runs Update-Scripts.ps1, which reads this PC's Legion scripts settings. Pinned to none, so a
+# sandbox launch on a dev PC never links itself to that PC's scripts repo.
+$env:SL_LEGION_SETTINGS = Join-Path ([IO.Path]::GetTempPath()) 'sl-tests-no-legion-settings.json'
 $here     = $PSScriptRoot
 $pkg      = Split-Path $here -Parent
 $builder  = Join-Path $pkg 'payload\app\Build-UoOverrides.ps1'
@@ -294,6 +297,8 @@ Fact 'PlayStartsTheGameWithTheTextOverride' {
     Copy-Item (Join-Path $pkg 'payload\app\Play.ps1') $app
     Copy-Item (Join-Path $pkg 'payload\app\Launch-Settings.ps1') $app
     Copy-Item (Join-Path $pkg 'payload\app\Paperdoll-Bodies.ps1') $app
+    Copy-Item (Join-Path $pkg 'payload\app\LegionScripts.ps1') $app
+    Copy-Item (Join-Path $pkg 'payload\app\Update-Scripts.ps1') $app
     Copy-Item $builder $app
     Copy-Item $entries (Join-Path $app 'cliloc-entries.json')
     Copy-Item $stubExe (Join-Path $app 'tazuo\TazUO.exe')

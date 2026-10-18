@@ -1,0 +1,22 @@
+# cc-P144: the Legion scripts' DEV channel on HAVEN. Half-tested scripts for Chase's own PCs (the tower and the work
+# PC), never for players: the official channel is https://get.shatteredlegacyuo.com/scripts/ (sl-downloads).
+# nginx serving ~/sl-scripts-dev/html read-only: scripts.json and the .py files Publish-LegionScripts.ps1 -Mode Dev
+# puts there (scripts\legion\, the Shard Console's Player package > Publish to dev). It only serves files.
+# Published on Haven's LAN address and loopback only (the intranet rule, cc-P133): Tailscale Serve forwards
+# http://haven.tail81098d.ts.net:8097/ to the loopback port (docker/haven/services.json tailscaleServe; the Mega
+# dashboard deploy sets it up). Never routed by NPM, never public, never on all interfaces.
+# Started once by Publish-LegionScripts.ps1 -Mode SetupDev, as docker compose -p sl-scripts-dev up -d in
+# ~/sl-scripts-dev/stack. ASCII only.
+name: ${SCRIPTS_DEV_PROJECT:-sl-scripts-dev}
+services:
+  scripts-dev:
+    image: nginx:alpine
+    container_name: ${SCRIPTS_DEV_NAME:-sl-scripts-dev}
+    restart: unless-stopped
+    ports:
+      - "${BIND:-192.168.1.61}:${DEV_PORT:-8097}:80"
+      - "${LOOP_BIND:-127.0.0.1}:${DEV_PORT:-8097}:80"
+    volumes:
+      - ${SCRIPTS_DEV_ROOT:-/home/chase/sl-scripts-dev}/html:/usr/share/nginx/html:ro
+    environment:
+      TZ: ${TZ:-America/Chicago}

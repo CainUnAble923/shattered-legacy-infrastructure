@@ -8,6 +8,9 @@
   Windows-1252, and a non-ASCII character can become syntax.
 #>
 
+# cc-P144: the Legion scripts' functions (published sets, the install record, the dev PCs' repo links).
+. (Join-Path $PSScriptRoot 'LegionScripts.ps1')
+
 # The target for -Lan, -Test or neither, and for -Test -Account <profile>. Throws one line,
 # meant to be shown in red, when the switches do not make sense together.
 #
@@ -73,6 +76,10 @@ function Get-TazUOLaunch {
 #   - the player's own Legion scripts (LegionScripts\*.py, but not API.py or __builtins__.py, which each client
 #     writes for itself).
 # Never overwrites a file in the client folder and never changes the package. Returns what it copied.
+# cc-P144: the published Legion scripts are the exception. One the install holds as published (its .sl-scripts.json
+# says so and the copy still matches) is updated in the client too when it changed, with the updater's rule: a copy
+# the player edited there is kept in LegionScripts\backup\ first (Install-LegionSet). A client whose LegionScripts is
+# a junction to the scripts repo (a dev PC) gets no scripts copied at all: they come from git.
 function Sync-ClientDirData {
     param([string]$TazDir, [string]$ClientDir)
     $copied = @()
@@ -101,11 +108,23 @@ function Sync-ClientDirData {
         }
     }
 
+    $cliScripts = Join-Path $ClientDir 'LegionScripts'
+    $scriptsLinked = (Test-LegionLink $cliScripts) -or (Test-LegionLink (Join-Path $TazDir 'LegionScripts'))
+    $published = @()
+    if (-not $scriptsLinked) {
+        $published = @(Get-LegionInstalledEntries (Join-Path $TazDir 'LegionScripts'))
+        if ($published.Count) {
+            $res = Install-LegionSet -Folder $cliScripts -Entries $published -Fetch { param($e, $t) Copy-Item -LiteralPath $e.Url -Destination $t -Force }
+            foreach ($l in @($res.Lines) + @($res.Failed)) { $copied += "LegionScripts\$l" }
+        }
+    }
     foreach ($set in @(@{ Dir = 'Data\XmlGumps'; Filter = '*.xml' }, @{ Dir = 'LegionScripts'; Filter = '*.py' })) {
+        if ($set.Dir -eq 'LegionScripts' -and $scriptsLinked) { continue }
         $src = Join-Path $TazDir $set.Dir
         if (-not (Test-Path -LiteralPath $src)) { continue }
         foreach ($f in @(Get-ChildItem -LiteralPath $src -Filter $set.Filter -File | Sort-Object Name)) {
             if ($f.Name -in @('API.py', '__builtins__.py')) { continue }
+            if ($set.Dir -eq 'LegionScripts' -and @($published | Where-Object { $_.Name -eq $f.Name }).Count) { continue }
             $dest = Join-Path (Join-Path $ClientDir $set.Dir) $f.Name
             if (Test-Path -LiteralPath $dest) { continue }
             New-Item -ItemType Directory -Path (Split-Path $dest -Parent) -Force | Out-Null

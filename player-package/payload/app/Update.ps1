@@ -26,7 +26,9 @@
        computer by Build-UoOverrides.ps1; a retired-files.txt line cannot remove it either,
        and a changed art-records.json makes it rebuild itself), or anything under app\tazuo\Data\
        (the player's profiles, and the XmlGumps where TazUO saves gump positions). A
-       Data\XmlGumps\*.xml that the install does not have yet is added.
+       Data\XmlGumps\*.xml that the install does not have yet is added. Nor anything under
+       app\tazuo\LegionScripts\ (cc-P144: Update-Scripts.ps1 owns that folder; on a dev PC it is a
+       junction to the scripts repo, so it is not backed up either, and no retired-files.txt line reaches it).
     4. Writes app\package-version.txt last, so an install that stopped halfway never
        claims the new version.
     5. On success deletes the backup; on any error copies it back. Then starts the game,
@@ -107,6 +109,7 @@ function Test-Kept([string]$rel) {
     if ($r -eq 'app\package-version.txt') { return $true }      # written last, separately
     if ($r.StartsWith('app\uo-overrides\')) { return $true }     # made on this computer by Build-UoOverrides.ps1
     if ($r -match '^app\\tazuo\\settings[^\\]*\.json$') { return $true }
+    if ($r.StartsWith('app\tazuo\legionscripts\')) { return $true }   # cc-P144: Update-Scripts.ps1's folder
     if ($r.StartsWith('app\tazuo\data\')) {
         # A new XML gump is added; an existing one holds the player's saved position.
         if ($r -match '^app\\tazuo\\data\\xmlgumps\\[^\\]+\.xml$' -and -not (Test-Path -LiteralPath (Join-Path $root $rel))) { return $false }
@@ -122,6 +125,7 @@ function Test-RetiredLine([string]$p) {
     if ($p -match '[*?\[\]]') { return 'contains a wildcard' }
     $l = $p.ToLowerInvariant().TrimEnd('\')
     if ($l -eq 'app\tazuo\data' -or $l.StartsWith('app\tazuo\data\')) { return 'is under app\tazuo\Data\' }
+    if ($l -eq 'app\tazuo\legionscripts' -or $l.StartsWith('app\tazuo\legionscripts\')) { return 'is under app\tazuo\LegionScripts\' }
     if (@('', '.', 'app', 'app\tazuo', 'update-backup', 'app\uo-path.txt', 'app\uo-overrides') -contains $l -or $l -match '^app\\tazuo\\settings[^\\]*\.json$') { return 'is protected' }
     return $null
 }
@@ -238,7 +242,16 @@ try {
         Say 'Backing up the current version...'
         New-Item -ItemType Directory -Path $backup -Force | Out-Null
         [IO.File]::WriteAllText($createdLog, '')
-        Copy-Item -LiteralPath (Join-Path $root 'app') -Destination (Join-Path $backup 'app') -Recurse -Force
+        # Everything in app\ but app\tazuo\LegionScripts, which this update never writes (Test-Kept). On a dev PC it
+        # is a junction to the scripts repo, and Copy-Item -Recurse would follow it into the clone (cc-P144).
+        $legion = Join-Path $root 'app\tazuo\LegionScripts'
+        foreach ($f in @(Get-ChildItem -LiteralPath (Join-Path $root 'app') -Recurse -Force | Where-Object { -not $_.PSIsContainer })) {
+            if ($f.FullName.StartsWith($legion + '\', [StringComparison]::OrdinalIgnoreCase)) { continue }
+            $b = Join-Path $backup $f.FullName.Substring($root.Length + 1)
+            $dir = Split-Path $b -Parent
+            if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            Copy-Item -LiteralPath $f.FullName -Destination $b -Force
+        }
         $outside = @($copy | Where-Object { -not $_.New } | ForEach-Object Rel) + $retired | Where-Object { -not $_.ToLowerInvariant().StartsWith('app\') }
         foreach ($r in $outside) {
             $b = Join-Path $backup $r

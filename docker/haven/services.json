@@ -38,7 +38,8 @@
   "tailscaleServe": [
     { "tailnetPort": 80, "target": "http://127.0.0.1:3000", "service": "homepage", "_why": "The dashboard at http://haven.tail81098d.ts.net/. Port 80 on Haven's own interfaces is NPM's (0.0.0.0:80, the public website), so the tailnet's port 80 is Tailscale Serve's, which answers only on the tailnet." },
     { "tailnetPort": 8093, "target": "http://127.0.0.1:8093", "service": "play-tests", "_why": "The ops pages on the same port as on the LAN." },
-    { "tailnetPort": 8787, "target": "http://127.0.0.1:8787", "service": "print-queue", "_why": "The print queue on the same port as on the LAN, once P109's deploy has moved it." }
+    { "tailnetPort": 8787, "target": "http://127.0.0.1:8787", "service": "print-queue", "_why": "The print queue on the same port as on the LAN, once P109's deploy has moved it." },
+    { "tailnetPort": 8097, "target": "http://127.0.0.1:8097", "service": "scripts-dev", "_why": "cc-P144: the Legion scripts' dev channel on the same port as on the LAN, once Publish-LegionScripts.ps1 -Mode SetupDev has started it. Chase's PCs flagged dev read http://haven.tail81098d.ts.net:8097/scripts.json." }
   ],
   "services": [
     {
@@ -413,16 +414,39 @@
       "image": "nginx:alpine",
       "compose": "/home/chase/shattered-legacy/docker/downloads/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\downloads)",
       "ports": [ { "lan": "", "loopback": "", "tailnet": "", "public": "https://get.shatteredlegacyuo.com through NPM (network sl-downloads-net)", "container": 80 } ],
-      "volumes": [ { "host": "/home/chase/sharttered-legacy/downloads (DOWNLOADS_PATH; the misspelling is the real folder, seen 2026-09-28)", "container": "/usr/share/nginx/html", "what": "client files and patches" } ],
+      "volumes": [ { "host": "/home/chase/sharttered-legacy/downloads (DOWNLOADS_PATH; the misspelling is the real folder, seen 2026-09-28)", "container": "/usr/share/nginx/html", "what": "client files and patches; scripts/ is the Legion scripts' OFFICIAL channel (cc-P144: scripts.json and the .py files, written only by Publish-LegionScripts.ps1 -Mode Promote, which finds this folder with docker inspect)" } ],
       "env": ["TZ", "DOWNLOADS_PATH"],
       "secrets": [],
       "health": "https://get.shatteredlegacyuo.com",
       "dependsOn": ["npm"],
       "neededBy": [],
-      "backup": ["the downloads folder (Publish-PlayerPackage.ps1 rebuilds it)"],
+      "backup": ["the downloads folder (Publish-PlayerPackage.ps1 rebuilds it)", "~/backups/legion-scripts/<version>/ (each official scripts set Promote replaced)"],
       "verified": "haven-discovery-output.txt, 2026-09-28.",
       "tiles": [
         { "section": "Ultima Online / Shattered Legacy", "name": "Downloads", "icon": "nginx", "href": "https://get.shatteredlegacyuo.com", "description": "Client files and patches (public, through NPM)", "siteMonitor": "https://get.shatteredlegacyuo.com" }
+      ]
+    },
+    {
+      "key": "scripts-dev",
+      "name": "Legion scripts: dev channel",
+      "host": "haven",
+      "owner": "Shattered Legacy",
+      "kind": "container",
+      "state": "planned",
+      "container": "sl-scripts-dev",
+      "image": "nginx:alpine",
+      "compose": "/home/chase/sl-scripts-dev/stack/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\scripts-dev, project sl-scripts-dev)",
+      "ports": [ { "lan": "192.168.1.61:8097", "loopback": "127.0.0.1:8097", "tailnet": "http://haven.tail81098d.ts.net:8097/", "container": 80 } ],
+      "volumes": [ { "host": "/home/chase/sl-scripts-dev/html", "container": "/usr/share/nginx/html", "what": "the dev channel: scripts.json and the .py files Publish-LegionScripts.ps1 -Mode Dev puts there (read only in the container)" } ],
+      "env": ["TZ"],
+      "secrets": [],
+      "health": "http://192.168.1.61:8097/scripts.json",
+      "dependsOn": ["tailscale"],
+      "neededBy": [],
+      "backup": ["~/backups/legion-scripts/dev/<version>/ (each dev set a publish replaced; the scripts themselves are in the scripts repo on GitHub)"],
+      "verified": "Built by cc-P144; not deployed yet (Chase's Publish-LegionScripts.ps1 -Mode SetupDev starts it).",
+      "tiles": [
+        { "section": "Ultima Online / Shattered Legacy", "name": "Legion scripts (dev)", "icon": "mdi-script-text", "href": "http://haven.tail81098d.ts.net:8097/scripts.json", "description": "The dev channel: half-tested scripts for Chase's own PCs (Tailscale only)", "siteMonitor": "http://192.168.1.61:8097/scripts.json" }
       ]
     },
     {
@@ -874,13 +898,13 @@
       "container": "",
       "image": "tailscaled (system service)",
       "compose": "",
-      "ports": [ { "lan": "", "loopback": "", "tailnet": "80, 8093, 8787 by Tailscale Serve (tailscaleServe above)", "container": 0 } ],
+      "ports": [ { "lan": "", "loopback": "", "tailnet": "80, 8093, 8787, 8097 by Tailscale Serve (tailscaleServe above)", "container": 0 } ],
       "volumes": [ { "host": "/var/lib/tailscale", "container": "", "what": "the node's identity and its Serve config" } ],
       "env": [],
       "secrets": [ { "name": "the node key", "where": "/var/lib/tailscale on Haven (root only)", "createdIn": "tailscale up (Chase's login)" } ],
       "health": "",
       "dependsOn": [],
-      "neededBy": ["homepage", "play-tests", "print-queue"],
+      "neededBy": ["homepage", "play-tests", "print-queue", "scripts-dev"],
       "backup": [],
       "verified": "tailscale status on the game PC, 2026-10-17: haven active, direct 192.168.1.61.",
       "_note": "Its tile reads the game PC snapshot (tailscale status --json on the game PC: is Haven's node online). A check from inside Haven would only reach Haven itself, not the tailnet.",
