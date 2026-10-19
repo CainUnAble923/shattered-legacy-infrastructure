@@ -515,6 +515,7 @@ internal static class CleanUpCraftHost
                 foreach (var res in tried)
                 {
                     var piece = craftItem.ItemType.CreateInstance<Item>();
+                    piece.PlayerConstructed = true; // as the craft marks it (pinned CraftItem.cs:1455); cc-P175 Part A reads it
                     SetResource(piece, res);
                     var piecePoints = CleanUpBritanniaData.GetPoints(piece);
                     piece.Delete();
@@ -532,8 +533,8 @@ internal static class CleanUpCraftHost
     }
 
     // A material and its other forms: what ResourceInfo lists for its resource, and its log or board twin by name.
-    // The twin is needed because ResourceInfo's CraftResources.GetType stops the wood range at Frostwood, so GetInfo is
-    // null for our eight extended woods (customizations/ResourceInfo.cs:1095; a defect of ours, noted in cc-P33).
+    // The twin was needed while ResourceInfo's CraftResources.GetType stopped the wood range at Frostwood (cc-P33's
+    // defect, fixed by cc-P36: ResourceInfo.cs:1174). It stays as a harmless second route to the same forms.
     public static List<Type> MaterialForms(Type material)
     {
         var forms = new List<Type> { material };

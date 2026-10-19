@@ -772,6 +772,29 @@ internal static class ImbueCatalogue
         return total;
     }
 
+    /// <summary>
+    /// cc-P175 Part A: ServUO's Imbuing.GetTotalWeight (Services/LootGeneration/Imbuing/Core/Imbuing.cs:1330-1452, each
+    /// property by GetIntensityForID :1986-2016, weight / max intensity x value) read from this catalogue, so Clean Up
+    /// Britannia sees exactly the properties the Imbuing Table sees. Our rows carry no per-property weight (ServUO's run 100
+    /// to 150), so each counts 100 at its Full value: the row's IntensityPercent. <paramref name="skipDamageIncrease"/> is
+    /// ServUO's id 12 for a weapon that is not DImodded (CleanUpBritanniaData.cs:811); pinned has no DImodded flag.
+    /// </summary>
+    public static int GetTotalWeight(Item item, bool skipDamageIncrease)
+    {
+        var total = 0;
+        foreach (var (def, value) in GetActiveProperties(item))
+        {
+            if (skipDamageIncrease && def.Name == "Damage Increase")
+            {
+                continue;
+            }
+
+            total += def.IntensityPercent(value);
+        }
+
+        return total;
+    }
+
     /// <summary>Counts how many imbue-tracked properties the item currently has.</summary>
     public static int CountActiveProperties(Item item)
     {

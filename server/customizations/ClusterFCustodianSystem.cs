@@ -17,7 +17,9 @@ namespace Server;
 // (shard-migration notes/cc-P33-clean-up-britannia.md):
 //
 //   * [cleanup, [cleanupall and the trash bag pay Clean Up points, valued by Clean Up's own table (GetPoints).
-//   * Corpses: Clean Up has no rule for them, so ours: CorpseBasePoints plus each item inside at its Clean Up value.
+//   * Corpses: Clean Up has no rule for them, so ours: a base by the creature that died (cc-P175 Part B,
+//     ClusterFCorpseValue: its Fame x 0.001, only for the Custodian who earned the kill), plus each item inside at its
+//     Clean Up value. Until cc-P175 the base was a flat 0.10 (CorpseBasePoints).
 //   * Ranks key on lifetime Clean Up points (CleanUpBritanniaEntry.Lifetime), which spending never lowers. The
 //     character's "custodians" guild standing is kept equal to it (SyncStanding), so every reader of guild standing
 //     (directory, rank names, work order gates) follows the lifetime total.
@@ -38,9 +40,6 @@ public static class ClusterFCustodianSystem
 {
     private const int CleanupAllRadius          = 10; // tiles
     private const int CleanupAllCooldownSeconds = 60; // seconds between uses per player
-
-    // Ours (F-3): what clearing a corpse is worth before its contents, one iron ingot's worth of Clean Up points.
-    public const double CorpseBasePoints = 0.10;
 
     // Ours (F-3): the rank ladder in lifetime Clean Up points. Civic Tokens paid at least 1 a piece and corpses 2 or
     // more (the old ladder was 100 / 500 / 2,000 / 5,000 tokens); Clean Up pays an iron weapon about 1 point, most
@@ -149,17 +148,21 @@ public static class ClusterFCustodianSystem
         return true;
     }
 
-    /// <summary>The Clean Up points an eligible item earns: Clean Up's own value, or the corpse rule.</summary>
-    public static double ComputePoints(Item item) =>
-        item is Corpse corpse ? ComputeCorpsePoints(corpse) : CleanUpBritanniaData.GetPoints(item);
+    /// <summary>
+    /// The Clean Up points an eligible item earns: Clean Up's own value, or the corpse rule for the Custodian
+    /// <paramref name="by"/> who clears it (no one: the contents only).
+    /// </summary>
+    public static double ComputePoints(Item item, Mobile by = null) =>
+        item is Corpse corpse ? ComputeCorpsePoints(corpse, by) : CleanUpBritanniaData.GetPoints(item);
 
     /// <summary>
-    /// Ours (F-3): Clean Up has no value for a corpse. Clearing one is worth CorpseBasePoints, plus every item
+    /// Ours (F-3, cc-P175 Part B): Clean Up has no value for a corpse. Clearing one is worth the creature's base for this
+    /// Custodian (ClusterFCorpseValue.BaseFor: Fame x 0.001 when the Custodian earned it, else 0), plus every item
     /// inside at its Clean Up value, so a corpse never pays more than its loot would in a trash barrel, plus the base.
     /// </summary>
-    public static double ComputeCorpsePoints(Corpse corpse)
+    public static double ComputeCorpsePoints(Corpse corpse, Mobile by = null)
     {
-        var points = CorpseBasePoints;
+        var points = Engines.CleanUpBritannia.ClusterFCorpseValue.BaseFor(corpse, by);
 
         foreach (var item in corpse.FindItemsByType<Item>())
         {
@@ -308,7 +311,7 @@ public static class ClusterFCustodianSystem
                 return;
             }
 
-            var points = ComputePoints(item);
+            var points = ComputePoints(item, pm);
 
             string msg;
             if (item is Corpse corpse)
@@ -378,7 +381,7 @@ public static class ClusterFCustodianSystem
             foreach (var it in eligible)
             {
                 if (it.Deleted) continue;
-                var points = ComputePoints(it);
+                var points = ComputePoints(it, pm);
                 total += points;
                 if (points > 0) valued++;
                 it.Delete();

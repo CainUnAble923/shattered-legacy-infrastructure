@@ -12,7 +12,8 @@
 //   3. Dumping the bag pays each item's Clean Up value, and only the owner can dump it.
 //   4. Custodian rank follows lifetime Clean Up points, from any source (a trash barrel too), and does not drop when
 //      points are spent. The guild's own rank reader agrees.
-//   5. A corpse pays CorpseBasePoints plus its contents at their Clean Up values; a player's corpse is not litter.
+//   5. A corpse pays its creature's base (cc-P175: 0 with no death on record, as here; ClusterFCorpseValueVerification)
+//      plus its contents at their Clean Up values; a player's corpse is not litter.
 //   6. Civic Tokens are gone from every path: no award (cleanup adds no "custodians" scrip), no spend (the Civic
 //      Contracts and the Apprentice task pay no scrip and no standing), no display (no gump says "token"), and a
 //      balance left in a save is cleared at load with the standing re-synced, idempotently.
@@ -272,10 +273,10 @@ public class CustodianLayerVerification
             corpse.MoveToWorld(Spot, Map.Trammel);
 
             Assert.True(ClusterFCustodianSystem.IsEligible(corpse));
-            Assert.Equal(ClusterFCustodianSystem.CorpseBasePoints + 6.0, ClusterFCustodianSystem.ComputePoints(corpse), 9);
+            Assert.Equal(6.0, ClusterFCustodianSystem.ComputePoints(corpse, a.Pm), 9); // no death on record: contents only
 
             var empty = new Corpse(rat, []);
-            Assert.Equal(ClusterFCustodianSystem.CorpseBasePoints, ClusterFCustodianSystem.ComputePoints(empty), 9);
+            Assert.Equal(0.0, ClusterFCustodianSystem.ComputePoints(empty, a.Pm), 9);
             empty.Delete();
 
             var playerCorpse = new Corpse(a.Pm, []);

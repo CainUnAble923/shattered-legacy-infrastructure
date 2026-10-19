@@ -235,13 +235,18 @@ public class RaisedGardenVerification
         // The same check on a stock bowl with dry dirt costs it hits (a seedling put in by hand; the host's bowl is in the pack).
         var bowl = g.Pack(new PlantItem { PlantType = PlantType.CampionFlowers, PlantHue = PlantHue.Red });
         bowl.PlantStatus = PlantStatus.Seed;
+        // cc-P175: at full hits. Dry dirt deals 2 x RandomMinMax(3, 6) = 6 to 12 (pinned PlantSystem.cs:619); from a new bowl's
+        // 10 hits (the empty bowl's maximum) that killed the seedling about half the time, and the fact asserted it lived. It
+        // lives with fewer hits or, on a 12, dies: either way the dry dirt cost it, and it never grows (asserted below).
+        bowl.PlantSystem.Hits = bowl.PlantSystem.MaxHits;
         bowl.PlantSystem.Water = 0;
         bowl.PlantSystem.NextGrowth = Core.Now;
         _out.WriteLine($"bowl before: status={bowl.PlantStatus} hits={bowl.PlantSystem.Hits} of {bowl.PlantSystem.MaxHits} water={bowl.PlantSystem.Water} valid={bowl.ValidGrowthLocation}");
         bowl.PlantSystem.DoGrowthCheck();
         _out.WriteLine($"bowl after: status={bowl.PlantStatus} hits={bowl.PlantSystem.Hits} of {bowl.PlantSystem.MaxHits} indicator={bowl.PlantSystem.GrowthIndicator}");
-        Assert.Equal(PlantStatus.Seed, bowl.PlantStatus);
-        Assert.True(bowl.PlantSystem.Hits < bowl.PlantSystem.MaxHits, $"bowl hits {bowl.PlantSystem.Hits} of {bowl.PlantSystem.MaxHits}");
+        Assert.True(bowl.PlantStatus is PlantStatus.Seed or PlantStatus.BowlOfDirt, $"the dry bowl grew: {bowl.PlantStatus}");
+        Assert.True(bowl.PlantStatus == PlantStatus.BowlOfDirt || bowl.PlantSystem.Hits < bowl.PlantSystem.MaxHits,
+            $"bowl hits {bowl.PlantSystem.Hits} of {bowl.PlantSystem.MaxHits}");
     }
 
     [Fact]

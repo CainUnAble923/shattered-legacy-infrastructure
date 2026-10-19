@@ -10,9 +10,10 @@
 //                             them, and they are listed in shard-migration notes/cc-P33-clean-up-britannia.md.
 //
 // Changed from ServUO, each argued in the notes:
-//   * Imbuing weight: ServUO adds Imbuing.GetTotalWeight(item) / 30 for magic properties (:800-805). Pinned has no
-//     imbuing and no item-property weight table (ServUO LootGeneration/Imbuing + ItemPropertyInfo, ~3,300 lines), so
-//     the term is 0 here: magic gear pays its materials only. A recorded gap, not a choice.
+//   * Imbuing weight (cc-P175 Part A): ServUO adds Imbuing.GetTotalWeight(item) / 30 for magic properties (:811-816).
+//     Ours reads the weight from the shard's imbue catalogue (ImbueCatalogue.GetTotalWeight, ArtificersImbueGump.cs),
+//     the properties the Imbuing Table sees, each 100 at its Full value (our rows have no per-property weight; ServUO's
+//     run 100 to 150). Until cc-P175 the term was 0, as pinned had no property-weight table.
 //   * IVvVItem (:39): pinned has no Vice vs Virtue, so nothing is a VvV item.
 //   * Bait (:113): pinned has no Bait item.
 //   * Treasure maps (:118-149): ServUO picks the new-system values when TreasureMapInfo.NewSystem (Core.EJ, true on
@@ -289,14 +290,31 @@ public class CleanUpBritanniaData : PointsSystem
             // Every equipment base carries a Resource in pinned, as ServUO's IResource does.
             var award = amount * GetEquipmentRate(GetResource(item));
 
-            // ServUO :800-805 adds Imbuing.GetTotalWeight(item, ...) / 30 here. Pinned has no imbuing weight
-            // table, so the term is 0 (see the header).
+            // ServUO :811-816: the magic properties, total weight / 30 (integer division, as ServUO's int weight).
+            var weight = PropertyWeight(item);
+
+            if (weight > 0)
+            {
+                award += weight / 30;
+            }
 
             return (int)award;
         }
 
         return 0;
     }
+
+    /// <summary>
+    /// cc-P175 Part A: the item's magic-property weight for Clean Up (ServUO :811: GetTotalWeight with id 12, Damage
+    /// Increase, left out for a weapon not DImodded; pinned has no DImodded, so every weapon).
+    /// Ours, the anti-farm rule (P33's: nothing a player makes pays more than its inputs): 0 for an item a player crafted
+    /// (Item.PlayerConstructed, set on every crafted item by pinned's CraftItem.cs:1455 and :1749, and saved). Runic
+    /// crafts, exceptional armor's resist bonuses (BaseArmor.cs:557-575) and the properties some items are made with all
+    /// came from the craft, and measured, they pay up to about twice the materials (cc-P175 notes). Loot, and loot a
+    /// player imbued, pay their properties: imbuing costs more gold than the points it adds (the measurement fact).
+    /// </summary>
+    public static int PropertyWeight(Item item) =>
+        item.PlayerConstructed ? 0 : ImbueCatalogue.GetTotalWeight(item, item is BaseWeapon);
 
     // ServUO :777-797, then ours.
     public static double GetEquipmentRate(CraftResource resource) => resource switch

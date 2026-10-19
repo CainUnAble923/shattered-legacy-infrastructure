@@ -29,6 +29,19 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.16
+
+### Added
+- Clean Up Britannia store: 73 more of OSI's rewards, 122 of 134 in all: the five named robes, lily pads, mushrooms, the Nocturne earrings, Sherry the Mouse statue, the chaos and eight virtue tiles, yucca, table lamp and bamboo, the horse barding, the snake skin and four creature boots, Nature's Tears, Primordial Decay and Arachnid Doom, the elven tapestries, both chests of drawers, the dragon head, the nest with eggs, the fire pit, the presentation stone, the beehive, all 24 pigments and the six charms.
+
+### Changed
+- Clean Up Britannia: magic items you find now pay extra for their magic properties, by how strong they are. Items you craft still pay what their materials are worth.
+- Custodians: clearing the corpse of a monster you killed now pays by how fearsome it was (about 1.5 points for an orc, 15 for a dragon), plus what is inside. Corpses of pets, summons and kills that were not yours pay only what is inside.
+
+### Staff
+- New checks: magic properties pay their weight / 30 on loot and nothing on crafted gear; no imbued property pays more than its imbuing gold; no runic craft pays more than the tool's use; corpse values by creature; each of the eight extended woods resolves; each new reward can be bought at OSI's price and survives a save.
+- A flaky plant test (a dry bowl's seedling died about half the time) now asserts what it meant.
+
 ## 2026.10.18.15
 
 ### Staff
