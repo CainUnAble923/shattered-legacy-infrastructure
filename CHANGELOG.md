@@ -29,6 +29,13 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.19
+
+### Staff
+- Art requests: every piece of art Chase has to make is now a request with its sizes, budget and destination, and the console has an Art tab listing them with thumbnails. From there: copy the prompt for ChatGPT, generate with Codex on the ChatGPT plan (or the OpenAI API under a $10 monthly cap), import a picture made elsewhere, approve or reject, and place.
+- Placing approved art sizes it, trims it, checks its edges, seams and file size, and builds the animated strips (the crystals turning, the Golem breathing, the spinner) from one still.
+- The Golem tab shows the ChatGPT plan's Codex limits beside the Claude bars, with the Golem's own share and a budget that keeps room for Chase's own use.
+
 ## 2026.10.18.17
 
 ### Added

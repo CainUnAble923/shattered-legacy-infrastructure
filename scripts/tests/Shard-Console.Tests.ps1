@@ -1056,7 +1056,7 @@ Fact 'TheFormBuildsFromACaptureWithoutBeingShown' {
     $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tabs = $script:ui.Tabs.TabPages | ForEach-Object { $_.Text }
-        Assert-Equal 'Test shard,Fix test shard,Shard question,Snapshots,World setup,Map and Art,Diagnostics,Commit,Player package,Golem,Websites,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot (Golem since cc-P99), cc-P101 Websites, cc-P96 Fix test shard beside Test shard, cc-P106 Shard question after it, cc-P135 Map and Art after World setup; LIVE stays last'
+        Assert-Equal 'Test shard,Fix test shard,Shard question,Snapshots,World setup,Map and Art,Diagnostics,Commit,Player package,Golem,Websites,Art,LIVE shard' ($tabs -join ',') 'cc-P74 adds Autopilot (Golem since cc-P99), cc-P101 Websites, cc-P96 Fix test shard beside Test shard, cc-P106 Shard question after it, cc-P135 Map and Art after World setup, cc-P152 Art before LIVE; LIVE stays last'
         Assert-Equal 'Preview commit,Commit and push' (@($script:ui.CommitButtons | ForEach-Object { $_.Text }) -join ',') 'cc-P60'
         Assert-Equal 'package.build,package.publish,package.check' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'cc-P63, and cc-P68''s Check selected'
         Assert-True ($null -ne $script:ui.CommitForce -and -not $script:ui.CommitForce.Checked) 'cc-P68: the Force box, unticked'
@@ -7288,6 +7288,81 @@ Fact 'P144_ThePlayerPackageTabHasTheScriptsRow' {
         Assert-True ($script:ui.ScriptsButtons[0].Parent.Parent.Text -eq 'Player package') 'on the Player package tab'
         Assert-Equal 'package.build,package.publish,package.check' (@($script:ui.PackageButtons | ForEach-Object { $_.Tag }) -join ',') 'the zip buttons are as they were'
     } finally { $f.Dispose() }
+}
+
+# cc-P152: the ChatGPT plan (Codex) rows on the Golem tab, and the thin Art tab.
+function New-P152CodexText([datetime]$Now, [double]$P = 12, [double]$W = 20, [double]$AgeHours = 1) {
+    $pr = [DateTimeOffset]::new($Now.AddHours(3)).ToUnixTimeSeconds(); $wr = [DateTimeOffset]::new($Now.AddDays(4)).ToUnixTimeSeconds()
+    ([ordered]@{ schema = 1; updatedAt = $Now.ToString('s'); limits = [ordered]@{ at = $Now.AddHours(-$AgeHours).ToString('yyyy-MM-ddTHH:mm:sszzz'); planType = 'team'
+            primary = [ordered]@{ usedPct = $P; windowMinutes = 300; resetsAt = $pr }; secondary = [ordered]@{ usedPct = $W; windowMinutes = 10080; resetsAt = $wr } }
+        today = [ordered]@{ date = $Now.ToString('yyyy-MM-dd'); runs = 2; images = 2; tokens = 439212 }
+        runs = @([ordered]@{ at = 'x'; primaryBefore = [ordered]@{ usedPct = 2; resetsAt = $pr }; primaryAfter = [ordered]@{ usedPct = 7; resetsAt = $pr }; secondaryBefore = [ordered]@{ usedPct = 19; resetsAt = $wr }; secondaryAfter = [ordered]@{ usedPct = 20; resetsAt = $wr } }) } | ConvertTo-Json -Depth 6)
+}
+
+Fact 'P152_TheCodexRowsSayBothWindowsTheGolemsShareAndToday' {
+    $now = [datetime]'2026-10-19T09:00:00'
+    $rows = @(Get-CodexUsageRows -CodexText (New-P152CodexText $now) -Now $now -Settings ([pscustomobject]@{ codexMaxPctPerWindow = 40; codexWeekReservePct = 30 }))
+    Assert-True ($rows[0].Text -match '^ChatGPT plan \(Codex\): reported 1h( 0m)? ago, plan team') $rows[0].Text
+    $five = @($rows | Where-Object { $_.Name -eq 'Codex 5-hour' })[0]; $week = @($rows | Where-Object { $_.Name -eq 'Codex week' })[0]
+    Assert-Equal 12 $five.Pct
+    Assert-True ($five.Text -match '12% used, the Golem 5%' -and $five.Bar) $five.Text
+    Assert-True ($week.Text -match '20% used, the Golem 1%') $week.Text
+    Assert-Equal 'normal' $week.Color
+    Assert-True ($rows[-1].Text -match '2 run\(s\), 2 image\(s\), 439,212 tokens' -and $rows[-1].Text -match 'leaves 30% of the week') $rows[-1].Text
+    $hot = @(Get-CodexUsageRows -CodexText (New-P152CodexText $now 50 75) -Now $now -Settings ([pscustomobject]@{ codexMaxPctPerWindow = 40; codexWeekReservePct = 30 }))
+    Assert-Equal 'amber' @($hot | Where-Object { $_.Name -eq 'Codex week' })[0].Color 'the week inside the reserve is amber'
+}
+
+Fact 'P152_TheCodexRowsAreUnknownWhenTheReadIsOldOrMissing' {
+    $now = [datetime]'2026-10-19T09:00:00'
+    $old = @(Get-CodexUsageRows -CodexText (New-P152CodexText $now -AgeHours 30) -Now $now)
+    Assert-True ($old[0].Text -match 'too old') $old[0].Text
+    Assert-True (@($old | Where-Object { $_.Bar -and $null -eq $_.Pct }).Count -eq 2) 'both bars unknown'
+    $none = @(Get-CodexUsageRows -CodexText $null -Now $now)
+    Assert-True ($none.Count -eq 1 -and $none[0].Text -match 'no codex-usage.json yet') $none[0].Text
+    $bad = @(Get-CodexUsageRows -CodexText '{nope' -Now $now)
+    Assert-True ($bad[0].Text -match 'unreadable') $bad[0].Text
+}
+
+Fact 'P152_TheGolemPanelShowsTheCodexRowsAfterTheClaudeBars' {
+    $now = [datetime]'2026-10-19T09:00:00'
+    $x = [pscustomobject]@{ PromptTexts = @{}; CompletedTexts = @{}; NotesTexts = @{}; UsageText = $null; PlanUsageText = $null; CodexUsageText = (New-P152CodexText $now); Estimate = $null; TreeClean = $null }
+    $v = Get-AutopilotView -Enabled $true -StateText $null -LogLines @() -QueueNames @() -Errors @() -Kind golem -Extra $x
+    $panel = @(Format-AutopilotPanel -View $v -Config $config -Now $now) | ForEach-Object { $_.Text }
+    $iu = [array]::FindLastIndex([string[]]$panel, [Predicate[string]]{ param($t) $t -like 'usage     :*' })
+    $ic = [array]::FindIndex([string[]]$panel, [Predicate[string]]{ param($t) $t -like 'codex     : ChatGPT plan (Codex)*' })
+    Assert-True ($iu -ge 0 -and $ic -eq $iu + 1) ('the codex rows follow the usage rows: ' + $iu + ', ' + $ic)
+    Assert-True (@($panel | Where-Object { $_ -match '^codex     : Codex week' }).Count -eq 1) 'the week bar'
+}
+
+Fact 'P152_ArtRowsPutWhatWaitsForReviewFirstAndFindAThumbnail' {
+    $t1 = '{"id":"b-placed","title":"B","status":"placed","askedBy":"P132","variants":[{"name":"v1","backend":"codex-app","verdict":"approved","file":"D:\\arch\\b\\v1.png"}],"approved":"v1","placed":[{"to":"D:\\console\\b.png"}]}'
+    $t2 = '{"id":"a-waiting","title":"A","status":"generated","askedBy":"P152","variants":[{"name":"v1","backend":"codex","verdict":"rejected","file":"D:\\rev\\a\\v1-codex.png"},{"name":"v2","backend":"api","verdict":"","file":"D:\\rev\\a\\v2-api.png"}],"approved":""}'
+    $exists = { param($p) $p -in @('D:\rev\a\v2-api.preview.png', 'D:\console\b.png') }
+    $rows = @(Get-ArtRequestRows @($t1, 'not json', $t2) $exists)
+    Assert-Equal 'a-waiting,b-placed,?' (($rows | ForEach-Object { $_.Id }) -join ',')
+    Assert-Equal 'D:\rev\a\v2-api.preview.png' $rows[0].Thumb 'the newest variant''s preview sheet'
+    Assert-Equal 'v1 codex (rejected), v2 api' $rows[0].Variants
+    Assert-Equal 'D:\console\b.png' $rows[1].Thumb 'no review file: the placed one'
+    Assert-Equal 'unreadable' $rows[2].Status
+}
+
+Fact 'P152_TheArtTabHasOneButtonPerCommandAndTheGolemPanelItsTooltip' {
+    $f = Show-P132Form -Look 'Enhanced'
+    try {
+        $tabs = $null; $stack = New-Object System.Collections.Stack; $stack.Push($f)
+        $byName = @{}
+        while ($stack.Count) { $x = $stack.Pop(); if ($x.Name) { $byName[$x.Name] = $x }; if ($x -is [Windows.Forms.TabControl]) { $tabs = $x }; foreach ($k in $x.Controls) { $stack.Push($k) } }
+        $titles = @($tabs.TabPages | ForEach-Object { $_.Text })
+        Assert-True ($titles -contains 'Art') ('an Art tab: ' + ($titles -join ', '))
+        Assert-Equal 'LIVE shard' $titles[-1] 'live stays last'
+        foreach ($k in @('art.refresh', 'art.prompt', 'art.generate', 'art.generateApi', 'art.import', 'art.approve', 'art.reject', 'art.regenerate', 'art.place', 'art.review')) { Assert-True $byName.ContainsKey($k) ('button ' + $k) }
+        Assert-True ($byName['artList'] -is [Windows.Forms.ListView]) 'the list'
+        $tips = Get-ConsoleTooltips
+        Assert-True ($tips['golemPanel'] -match 'ChatGPT plan') 'the Golem panel says what the codex rows are'
+        foreach ($k in @('tab.Art', 'art.generate', 'art.place')) { Assert-True ($tips.Contains($k)) ('tooltip ' + $k) }
+        Assert-True ($byName['golemPanel'] -is [Windows.Forms.RichTextBox]) 'the panel is named for its tooltip'
+    } finally { Close-P132Form $f }
 }
 
 Remove-Item -LiteralPath $p144Dir -Recurse -Force -ErrorAction SilentlyContinue

@@ -230,6 +230,8 @@ function New-AutopilotConfig {
         UsageFile    = (Join-Path $Root 'usage.json')
         # cc-P160: claude.ai/settings/usage as the overseer's reader writes it (the Fable week, the pace warning).
         PlanUsageFile = (Join-Path $Root 'plan-usage.json')
+        # cc-P152: the ChatGPT plan's Codex limits, written by Codex.ps1 after every run (and by its usage action).
+        CodexUsageFile = (Join-Path $Root 'codex-usage.json')
         # cc-P131: waking a CC session from here, the two toggles, the sign-in check, and the CLI facts the Golem keeps.
         WakeScript   = (Join-Path $Root 'Wake-Golem.ps1')
         AutoWakeScript = (Join-Path $Root 'Set-AutoWake.ps1')
@@ -436,6 +438,10 @@ function Get-ConsoleConfig {
         # cc-P132: the art slots (Get-ArtSlots), the per-user window state (outside the repo), the lights' JSON (in the
         # git-ignored cache folder), and the published package's version.json.
         ArtFolder          = (Join-Path $RepoRoot 'scripts\console-art')
+        # cc-P152: the art request pipeline (headless; the Art tab only calls it) and its store outside the repos.
+        ArtScript          = (Join-Path $RepoRoot 'scripts\art\Art.ps1')
+        ArtStore           = 'D:\UO\art'
+        ArtInbox           = 'D:\UO\art-inbox'
         WindowStateFile    = $(if ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA 'ShatteredLegacy\shard-console-window.json' } else { Join-Path $RepoRoot 'scripts\shard-console-cache\window.json' })
         LightsFile         = (Join-Path $RepoRoot 'scripts\shard-console-cache\lights.json')
         # cc-P155: the status file both consoles read (Write-ConsoleStatusFile), git-ignored with the cache.
@@ -1874,6 +1880,19 @@ function Get-ConsoleTooltips {
         'tab.Player package' = 'Build, check and publish the player package.'
         'tab.Websites'     = 'The websites, on this PC and on Haven: status, open, restart, redeploy, logs, deploy, and NPM.'
         'tab.Golem'        = 'The Golem, the CC queue runner: its state, queue and log, its own scripts, and the move from cc-autopilot.'
+        'golemPanel'       = 'The usage rows are the Claude plan (Claude Code''s status line and the plan usage page); the codex rows are the ChatGPT plan''s Codex limits, which art, reviews and the lane share, read from Codex''s own session logs. The Golem stops Codex at codexMaxPctPerWindow of a window and leaves codexWeekReservePct of the week to you (D:\UO\golem\settings.json).'
+        'tab.Art'          = 'Art requests: what is waiting, generated, approved and placed, with a thumbnail. Every button runs scripts\art\Art.ps1 in the output pane; nothing is placed until you approve it.'
+        'artList'          = 'Every art request, waiting for your review first, with a thumbnail of its review sheet or its placed file. Select one, then press a button below.'
+        'art.refresh'      = 'Reads the requests in D:\UO\art\requests again. Changes nothing.'
+        'art.prompt'       = 'Copies the selected request''s style and subject, ready to paste into ChatGPT, to the clipboard. Changes nothing.'
+        'art.generate'     = 'Generates one image for the selected request with Codex, on your ChatGPT plan: it shows the plan usage first and refuses past the budget unless you type yes. The result goes to review, never into place.'
+        'art.generateApi'  = 'Generates one image through the OpenAI API with the stored key: it shows the estimated cost first and refuses past the monthly cap. The result goes to review.'
+        'art.import'       = 'Adds a picture you made elsewhere (D:\UO\art-inbox, or any file) to the selected request as a variant for review.'
+        'art.approve'      = 'Approves the selected request''s newest variant that is not rejected. Approving places nothing; Place does.'
+        'art.reject'       = 'Rejects the selected request''s newest variant, with a note of why.'
+        'art.regenerate'   = 'Generates again with Codex with your note (for example make the golem squatter); Codex sees the last variant. Same budget check as Generate.'
+        'art.place'        = 'Processes the approved variant into its destination (sizes, trim, checks, strips) and archives the rest. Refused until a variant is approved.'
+        'art.review'       = 'Opens the selected request''s review folder in Explorer. Changes nothing.'
         'tab.LIVE shard'   = 'The real shard with real players. Every button asks for a typed phrase.'
     }
 }
@@ -4279,6 +4298,7 @@ function Get-AutopilotView {
                         })
         UsageText     = $(if ($Extra) { $Extra.UsageText } else { $null })
         PlanUsageText = $(if ($Extra) { $Extra.PlanUsageText } else { $null })
+        CodexUsageText = $(if ($Extra -and $Extra.PSObject.Properties.Name -contains 'CodexUsageText') { $Extra.CodexUsageText } else { $null })
         Estimate      = $(if ($Extra) { $Extra.Estimate } else { $null })
         TreeClean     = $(if ($Extra) { $Extra.TreeClean } else { $null })
     }
@@ -4503,6 +4523,70 @@ function Get-UsageBars {
         $rows.Add([pscustomobject]@{ Name = 'estimate'; Pct = $null; Text = ('estimate, not Anthropic''s figure: ' + ('{0:N0}' -f [long]$Estimate.Tokens) + ' tokens in ' + $Estimate.Sessions + ' session log(s) over the last 5 hours (no percentage: the limit is not readable)'); Color = 'gray'; Bar = $false; Marker = $null })
     }
     $rows.ToArray()
+}
+
+function Get-CodexUsageRows {
+    # cc-P152: the ChatGPT plan's Codex limits from codex-usage.json (D:\UO\golem\Codex.ps1 writes it after every run,
+    # from Codex's own session logs), labelled "ChatGPT plan (Codex)" beside the Claude bars: the 5-hour window and the
+    # week, each with the Golem's share of it (the rise in used_percent across its runs), then today's runs and images.
+    # Same row shape as Get-UsageBars. A window whose reset has passed shows 0; a read older than $MaxAgeHours is greyed
+    # as unknown (Codex only reports when something runs, Chase's own desktop use included). Never throws.
+    param($CodexText, [datetime]$Now, $Settings, [double]$MaxAgeHours = 12)
+    $rows = New-Object 'System.Collections.Generic.List[object]'
+    $lab = 'ChatGPT plan (Codex)'
+    if ($null -eq $CodexText) { $rows.Add([pscustomobject]@{ Name = 'codex head'; Pct = $null; Text = ($lab + ': no codex-usage.json yet (Codex.ps1 writes it after its first run)'); Color = 'gray'; Bar = $false; Marker = $null }); return $rows.ToArray() }
+    try { $j = ([string]$CodexText) | ConvertFrom-Json } catch { $rows.Add([pscustomobject]@{ Name = 'codex head'; Pct = $null; Text = ($lab + ': codex-usage.json unreadable (' + $_.Exception.Message + ')'); Color = 'gray'; Bar = $false; Marker = $null }); return $rows.ToArray() }
+    $l = $j.limits
+    $at = $null
+    if ($l -and $l.at) { try { $at = [DateTimeOffset]::Parse([string]$l.at, $script:Invariant).LocalDateTime } catch { } }
+    $stale = (-not $at) -or (($Now - $at).TotalHours -gt $MaxAgeHours)
+    $nowU = [DateTimeOffset]::new($Now).ToUnixTimeSeconds()
+    $head = $lab + ': ' + $(if (-not $l) { 'Codex has reported no limits; only runs and tokens are counted' } elseif ($stale) { 'last reported ' + $(if ($at) { (Format-ShortAge ($Now - $at)) + ' ago' } else { 'at an unknown time' }) + ', too old: shown as unknown' } else { 'reported ' + (Format-ShortAge ($Now - $at)) + ' ago' + $(if ($l.planType) { ', plan ' + $l.planType } else { '' }) })
+    $rows.Add([pscustomobject]@{ Name = 'codex head'; Pct = $null; Text = $head; Color = 'head'; Bar = $false; Marker = $null })
+    $maxPct = $(if ($Settings -and $Settings.PSObject.Properties.Name -contains 'codexMaxPctPerWindow') { [double]$Settings.codexMaxPctPerWindow } else { 40 })
+    $reserve = $(if ($Settings -and $Settings.PSObject.Properties.Name -contains 'codexWeekReservePct') { [double]$Settings.codexWeekReservePct } else { 30 })
+    foreach ($w in @(@('primary', 'Codex 5-hour', '5-hour window'), @('secondary', 'Codex week', '7-day window'))) {
+        $x = $(if ($l) { $l.($w[0]) } else { $null })
+        $label = ('{0,-16}' -f $w[1])
+        if (-not $x -or $stale) { $rows.Add([pscustomobject]@{ Name = $w[1]; Pct = $null; Text = ($label + '[' + ('-' * 20) + '] unknown  (' + $w[2] + ')'); Color = 'gray'; Bar = $true; Marker = $null }); continue }
+        $reset = [long]$x.resetsAt
+        $pct = $(if ($reset -gt 0 -and $reset -le $nowU) { 0.0 } else { [double]$x.usedPct })
+        $share = 0.0
+        foreach ($r in @($j.runs)) {
+            $b = $r.($w[0] + 'Before'); $a = $r.($w[0] + 'After')
+            if ($a -and $b -and [long]$a.resetsAt -eq $reset) { $d = [double]$a.usedPct - $(if ([long]$b.resetsAt -eq $reset) { [double]$b.usedPct } else { 0 }); if ($d -gt 0) { $share += $d } }
+        }
+        $limit = $(if ($w[0] -eq 'secondary') { 100 - $reserve } else { 100 })
+        $c = $(if ($pct -ge 90) { 'red' } elseif ($pct -ge $limit -or $share -ge $maxPct -or $pct -ge 70) { 'amber' } else { 'normal' })
+        $resetText = $(if ($reset -gt 0) { Format-ResetIn ([DateTimeOffset]::FromUnixTimeSeconds($reset).LocalDateTime) $Now } else { 'reset time unknown' })
+        $rows.Add([pscustomobject]@{ Name = $w[1]; Pct = $pct; Text = ($label + (Format-UsageBar $pct) + (' {0,3}% used, the Golem {1}%  ' -f [int][Math]::Round($pct, [MidpointRounding]::AwayFromZero), [Math]::Round($share, 1)) + $resetText + '  (' + $w[2] + ')'); Color = $c; Bar = $true; Marker = $null })
+    }
+    $t = $j.today
+    $rows.Add([pscustomobject]@{ Name = 'codex today'; Pct = $null; Text = ('Codex today: ' + $(if ($t) { [string]$t.runs + ' run(s), ' + $t.images + ' image(s), ' + ('{0:N0}' -f [long]$t.tokens) + ' tokens' } else { 'nothing' }) + '. Budget: the Golem stops at ' + $maxPct + '% of a window, leaves ' + $reserve + '% of the week to you, never spends credits.'); Color = 'gray'; Bar = $false; Marker = $null })
+    $rows.ToArray()
+}
+
+function Get-ArtRequestRows {
+    # cc-P152: the Art tab's list from the request files' texts (D:\UO\art\requests\*.json): id, title, status, who
+    # asked, the variants, and a thumbnail (the newest preview sheet, else the placed file). Generated first, then new,
+    # approved, rejected, placed. A file that does not read is a row saying so. Pure: texts in, rows out.
+    param([string[]]$Texts, [scriptblock]$Exists = { param($p) Test-Path -LiteralPath $p -PathType Leaf })
+    $order = @{ generated = 0; new = 1; approved = 2; rejected = 3; placed = 4 }
+    $rows = foreach ($t in @($Texts)) {
+        try { $r = $t | ConvertFrom-Json } catch { [pscustomobject]@{ Id = '?'; Title = 'unreadable request file'; Status = 'unreadable'; AskedBy = ''; Variants = ''; Approved = ''; Thumb = ''; Order = 9 }; continue }
+        $thumb = ''
+        foreach ($v in @(@($r.variants) | Where-Object { $_ -and $_.name -eq $r.approved }) + @(@($r.variants) | Select-Object -Last 1)) {
+            if (-not $v -or -not $v.file) { continue }
+            $pv = [IO.Path]::ChangeExtension([string]$v.file, '.preview.png')
+            if (& $Exists $pv) { $thumb = $pv; break }
+            if (& $Exists ([string]$v.file)) { $thumb = [string]$v.file; break }
+        }
+        if (-not $thumb) { foreach ($pl in @($r.placed)) { if ($pl -and $pl.to -and (& $Exists ([string]$pl.to))) { $thumb = [string]$pl.to; break } } }
+        [pscustomobject]@{ Id = [string]$r.id; Title = [string]$r.title; Status = [string]$r.status; AskedBy = [string]$r.askedBy
+            Variants = ((@($r.variants) | Where-Object { $_ } | ForEach-Object { $_.name + ' ' + $_.backend + $(if ($_.verdict) { ' (' + $_.verdict + ')' } else { '' }) }) -join ', ')
+            Approved = [string]$r.approved; Thumb = $thumb; Order = $(if ($order.ContainsKey([string]$r.status)) { $order[[string]$r.status] } else { 9 }) }
+    }
+    @($rows | Sort-Object Order, Id)
 }
 
 function Get-LongRunLine {
@@ -4800,6 +4884,10 @@ function Format-AutopilotPanel {
     & $add 'In a CC session, say: "Golem, please work on the shard tasks"' 'head'
     # cc-P125: the plan usage, as the Claude app shows it (Claude Code's status line figures), refreshed with the tab.
     foreach ($ub in @(Get-UsageBars -UsageText $View.UsageText -Now $Now -Estimate $View.Estimate -PlanText $View.PlanUsageText -Settings $View.Settings)) { & $add ('usage     : ' + $ub.Text) $ub.Color }
+    # cc-P152: the ChatGPT plan (Codex) beside them: art now, reviews and the lane later share these limits.
+    $cxSet = $null
+    if ($Config.Autopilot.SettingsFile -and (Test-Path -LiteralPath $Config.Autopilot.SettingsFile -PathType Leaf)) { try { $cxSet = [IO.File]::ReadAllText($Config.Autopilot.SettingsFile) | ConvertFrom-Json } catch { } }
+    foreach ($cb in @(Get-CodexUsageRows -CodexText $View.CodexUsageText -Now $Now -Settings $cxSet)) { & $add ('codex     : ' + $cb.Text) $cb.Color }
     if ($ap.Kind -eq 'golem') { & $add ('active    : the Golem (' + $ap.Root + '). ' + $ap.Why + '.') 'green' }
     else { & $add ('active    : cc-autopilot (' + $ap.Root + '), the Golem''s predecessor. ' + $ap.Why + '. Until then the phrase is not hooked up; send CC "go".') 'amber' }
     foreach ($p in @($View.Problems)) { & $add ('could not read: ' + $p) 'gray' }
@@ -6384,6 +6472,8 @@ function Get-GolemExtra {
     if ($ap.UsageFile -and (Test-Path -LiteralPath $ap.UsageFile -PathType Leaf)) { try { $usage = [IO.File]::ReadAllText($ap.UsageFile) } catch { } }
     $plan = $null
     if ($ap.PlanUsageFile -and (Test-Path -LiteralPath $ap.PlanUsageFile -PathType Leaf)) { try { $plan = [IO.File]::ReadAllText($ap.PlanUsageFile) } catch { } }
+    $codex = $null
+    if ($ap.CodexUsageFile -and (Test-Path -LiteralPath $ap.CodexUsageFile -PathType Leaf)) { try { $codex = [IO.File]::ReadAllText($ap.CodexUsageFile) } catch { } }
     $estimate = $null
     if (-not $usage) { $estimate = Get-UsageEstimate $ap.ClaudeProjects }
     $clean = $null
@@ -6397,7 +6487,7 @@ function Get-GolemExtra {
             if (([string]$g.Out).Trim()) { $clean = $false }
         }
     }
-    [pscustomobject]@{ PromptTexts = $prompts; CompletedTexts = $completed; NotesTexts = $notes; UsageText = $usage; PlanUsageText = $plan; Estimate = $estimate; TreeClean = $clean }
+    [pscustomobject]@{ PromptTexts = $prompts; CompletedTexts = $completed; NotesTexts = $notes; UsageText = $usage; PlanUsageText = $plan; CodexUsageText = $codex; Estimate = $estimate; TreeClean = $clean }
 }
 
 function Get-UsageEstimate {
@@ -8813,6 +8903,8 @@ function ConvertTo-ConsoleStatusDocument {
         $ubs = @(Get-UsageBars -UsageText $v.UsageText -Now $Now -Estimate $v.Estimate -PlanText $v.PlanUsageText -Settings $v.Settings)
         $usage = @($ubs | Where-Object { $_.Bar } | ForEach-Object { [ordered]@{ name = [string]$_.Name; pct = $_.Pct; text = ([string]$_.Text).Trim(); color = [string]$_.Color; marker = $_.Marker } })
         $usageNotes = @($ubs | Where-Object { -not $_.Bar -and $_.Name -ne 'head' } | ForEach-Object { [ordered]@{ name = [string]$_.Name; text = ([string]$_.Text).Trim(); color = [string]$_.Color } })
+        # cc-P152: the ChatGPT plan (Codex) rows, in the same shape.
+        $codexUsage = @(Get-CodexUsageRows -CodexText $(if ($v.PSObject.Properties.Name -contains 'CodexUsageText') { $v.CodexUsageText } else { $null }) -Now $Now | ForEach-Object { [ordered]@{ name = [string]$_.Name; pct = $_.Pct; text = ([string]$_.Text).Trim(); color = [string]$_.Color; bar = [bool]$_.Bar } })
         $golem = [ordered]@{
             kind = [string]$v.Kind; state = $state; enabled = $v.Enabled
             reason = [string]$(if ($s) { @(@($s.RestReason, $s.NeedsYou, $s.Note) | Where-Object { $_ }) | Select-Object -First 1 } else { $v.StatusNote })
@@ -8826,6 +8918,7 @@ function ConvertTo-ConsoleStatusDocument {
             nightShift = [ordered]@{ enabled = [bool]$v.Settings.NightShiftEnabled; start = [string]$v.Settings.NightShiftStart; end = [string]$v.Settings.NightShiftEnd }
             usage = $usage
             usageNotes = $usageNotes
+            codexUsage = $codexUsage
             alert = [string]$v.Alert; emailFailing = [bool]$v.EmailFailing
         }
     }
@@ -10015,6 +10108,129 @@ function New-ConsoleButton {
     $b
 }
 
+function New-ArtPage {
+    # cc-P152: the request list (thumbnail, status, title, variants) and one button per Art.ps1 command.
+    $page = New-Object Windows.Forms.TabPage('Art')
+    $list = New-Object Windows.Forms.ListView
+    $list.Name = 'artList'; $list.Dock = 'Fill'; $list.View = 'Details'; $list.FullRowSelect = $true; $list.MultiSelect = $false; $list.HideSelection = $false
+    $imgs = New-Object Windows.Forms.ImageList
+    $imgs.ImageSize = New-Object Drawing.Size(48, 48); $imgs.ColorDepth = 'Depth32Bit'
+    $list.SmallImageList = $imgs
+    foreach ($col in @(@('Request', 260), @('Status', 90), @('Asked by', 80), @('Variants', 300), @('Title', 420))) { [void]$list.Columns.Add($col[0], $col[1]) }
+    $bar = New-Object Windows.Forms.FlowLayoutPanel
+    # Two rows of buttons that wrap: an auto-sizing row would widen the tabs past the window at 900 px (cc-P116).
+    $bar.Dock = 'Bottom'; $bar.WrapContents = $true; $bar.Height = 84
+    $mk = {
+        param([string]$Key, [string]$Text, [scriptblock]$Click)
+        $b = New-Object Windows.Forms.Button
+        $b.Text = $Text; $b.Name = $Key; $b.Tag = $Key; $b.AutoSize = $true; $b.Height = 32
+        $b.Add_Click($Click)
+        $b
+    }
+    $bar.Controls.AddRange(@(
+        (& $mk 'art.refresh' 'Refresh' { Update-ArtList }),
+        (& $mk 'art.prompt' 'Copy prompt for ChatGPT' { Invoke-ArtButton 'prompt' }),
+        (& $mk 'art.generate' 'Generate (Codex)' { Invoke-ArtButton 'generate' }),
+        (& $mk 'art.generateApi' 'Generate (API)' { Invoke-ArtButton 'generate-api' }),
+        (& $mk 'art.import' 'Import...' { Invoke-ArtButton 'import' }),
+        (& $mk 'art.approve' 'Approve' { Invoke-ArtButton 'approve' }),
+        (& $mk 'art.reject' 'Reject...' { Invoke-ArtButton 'reject' }),
+        (& $mk 'art.regenerate' 'Regenerate with a note...' { Invoke-ArtButton 'regenerate' }),
+        (& $mk 'art.place' 'Place' { Invoke-ArtButton 'place' }),
+        (& $mk 'art.review' 'Open review folder' { Invoke-ArtButton 'review' })))
+    $cap = New-Caption 'Art requests from D:\UO\art\requests. Generate and Regenerate use Codex on your ChatGPT plan (or the API with your key and its monthly cap); results wait in review until you Approve, and Place puts them where they go. Prompts file requests with scripts\art\New-ArtRequest.ps1.' 820
+    $cap.Dock = 'Top'
+    $page.Controls.Add($list)
+    $page.Controls.Add($cap)
+    $page.Controls.Add($bar)
+    $script:ui.ArtList = $list
+    $page.Add_Enter({ if (-not $script:ui.ArtList.Items.Count) { Update-ArtList } })
+    $page
+}
+
+function Update-ArtList {
+    $list = $script:ui.ArtList
+    if (-not $list) { return }
+    $dir = Join-Path $script:cfg.ArtStore 'requests'
+    $texts = @(if (Test-Path -LiteralPath $dir) { Get-ChildItem -LiteralPath $dir -Filter '*.json' -File | ForEach-Object { try { [IO.File]::ReadAllText($_.FullName) } catch { '' } } })
+    $rows = Get-ArtRequestRows $texts
+    $list.BeginUpdate()
+    $list.Items.Clear(); $list.SmallImageList.Images.Clear()
+    foreach ($r in $rows) {
+        $it = New-Object Windows.Forms.ListViewItem($r.Id)
+        foreach ($x in @($r.Status, $r.AskedBy, $r.Variants, $r.Title)) { [void]$it.SubItems.Add([string]$x) }
+        if ($r.Thumb) {
+            try {
+                $src = [Drawing.Image]::FromFile($r.Thumb)
+                $th = New-Object Drawing.Bitmap(48, 48)
+                $g = [Drawing.Graphics]::FromImage($th); $g.InterpolationMode = 'HighQualityBicubic'
+                $sc = [Math]::Min(48.0 / $src.Width, 48.0 / $src.Height)
+                $g.DrawImage($src, [int]((48 - $src.Width * $sc) / 2), [int]((48 - $src.Height * $sc) / 2), [int]($src.Width * $sc), [int]($src.Height * $sc))
+                $g.Dispose(); $src.Dispose()
+                $list.SmallImageList.Images.Add($r.Id, $th); $it.ImageKey = $r.Id
+            } catch { }
+        }
+        $it.ToolTipText = $r.Title
+        [void]$list.Items.Add($it)
+    }
+    $list.EndUpdate()
+    Write-ConsoleLine ('Art: ' + $rows.Count + ' request(s), ' + @($rows | Where-Object { $_.Status -eq 'generated' }).Count + ' waiting for your review.') 'gray'
+}
+
+function Invoke-ArtButton {
+    # cc-P152: each button is one Art.ps1 command, run in the Action output pane. Generate asks Art.ps1 for the estimate
+    # first (no -Go: nothing is generated), shows it, and only then runs with -Go; a refusal it may override asks for yes.
+    param([string]$What)
+    $sel = $(if ($script:ui.ArtList.SelectedItems.Count) { $script:ui.ArtList.SelectedItems[0].Text } else { '' })
+    if (-not $sel) { Write-ConsoleLine 'Art: select a request first.' 'amber'; return }
+    $art = $script:cfg.ArtScript
+    $run = { param([string[]]$CmdArgs, [string]$Title) Start-PaneJob -Exe $script:cfg.PowerShell -Arguments (Format-ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $art) + $CmdArgs)) -Title $Title }
+    $ask = { param([string]$Text, [string]$Title) Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::InputBox($Text, $Title, '') }
+    switch ($What) {
+        'prompt' { & $run @('prompt', '-Id', $sel, '-Clip') ('Art: copy prompt ' + $sel) }
+        'approve' { & $run @('approve', '-Id', $sel) ('Art: approve ' + $sel) }
+        'place' { & $run @('place', '-Id', $sel) ('Art: place ' + $sel) }
+        'review' { $d = Join-Path (Join-Path $script:cfg.ArtStore 'review') $sel; if (Test-Path -LiteralPath $d) { Start-Process explorer.exe $d } else { Write-ConsoleLine ('Art: no review folder for ' + $sel + ' (placed requests are in D:\UO\art\archive).') 'amber' } }
+        'reject' { $n = & $ask 'Why? (kept in the request''s notes)' ('Reject ' + $sel); & $run @('reject', '-Id', $sel, '-Note', $n) ('Art: reject ' + $sel) }
+        'import' {
+            $dlg = New-Object Windows.Forms.OpenFileDialog
+            $dlg.Filter = 'Pictures (*.png;*.webp;*.jpg)|*.png;*.webp;*.jpg;*.jpeg'
+            $dlg.InitialDirectory = $script:cfg.ArtInbox
+            if ($dlg.ShowDialog() -eq 'OK') { & $run @('import', '-Id', $sel, '-File', $dlg.FileName) ('Art: import into ' + $sel) }
+        }
+        { $_ -in 'generate', 'generate-api', 'regenerate' } {
+            $backend = $(if ($What -eq 'generate-api') { 'api' } else { 'codex' })
+            $note = ''
+            if ($What -eq 'regenerate') { $note = & $ask 'What should change? (for example: make the golem squatter)' ('Regenerate ' + $sel); if (-not $note) { return } }
+            $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+            try { $t = (& $script:cfg.PowerShell -NoProfile -ExecutionPolicy Bypass -File $art generate -Id $sel -Backend $backend 2>$null) -join "`n" } finally { $ErrorActionPreference = $old }
+            $e = $null; try { $e = ($t.Substring([Math]::Max(0, $t.IndexOf('{')))) | ConvertFrom-Json } catch { }
+            if (-not $e -or -not $e.estimate) { Write-ConsoleLine ('Art: no estimate from Art.ps1: ' + $t) 'red'; return }
+            $override = ''
+            if ($backend -eq 'codex') {
+                $b = $e.estimate.codex.budget
+                $msg = 'Codex, on your ChatGPT plan (no money; an image uses the limits 3 to 5 times faster than a text turn).' + "`n`n" + ((@($b.lines) | ForEach-Object { [string]$_ }) -join "`n") + "`n`n" + [string]$b.why
+                if (-not $e.estimate.codex.available) { Write-ConsoleLine ('Art: Codex is not available: ' + $e.estimate.codex.login) 'red'; return }
+                if (-not $b.allowed) {
+                    if (-not $b.overridable) { [void][Windows.Forms.MessageBox]::Show($msg, 'Generate: refused', 'OK', 'Warning'); return }
+                    if ((& $ask ($msg + "`n`nType yes to run it anyway, once.") 'Generate: past the budget') -ne 'yes') { return }
+                    $override = 'yes'
+                } elseif ([string][Windows.Forms.MessageBox]::Show($msg + "`n`nGenerate one image for " + $sel + '?', 'Generate with Codex', 'YesNo', 'Question') -ne 'Yes') { return }
+            } else {
+                $api = $e.estimate.api
+                $msg = 'OpenAI API, ' + $api.model + ' ' + $api.quality + ' ' + $api.size + ': ' + [string]$api.why
+                if (-not $api.keyStored) { [void][Windows.Forms.MessageBox]::Show('No API key stored. Run: powershell -File ' + $art + ' set-key', 'Generate (API)', 'OK', 'Warning'); return }
+                if (-not $api.allowed) { [void][Windows.Forms.MessageBox]::Show($msg, 'Generate (API): refused', 'OK', 'Warning'); return }
+                if ([string][Windows.Forms.MessageBox]::Show($msg + "`n`nGenerate one image for " + $sel + '?', 'Generate with the API', 'YesNo', 'Question') -ne 'Yes') { return }
+            }
+            $cmdArgs = @($(if ($What -eq 'regenerate') { 'regenerate' } else { 'generate' }), '-Id', $sel, '-Backend', $backend, '-Go')
+            if ($note) { $cmdArgs += @('-Note', $note) }
+            if ($override) { $cmdArgs += @('-Override', $override) }
+            & $run $cmdArgs ('Art: ' + $What + ' ' + $sel)
+        }
+    }
+}
+
 function New-Caption {
     param([string]$Text, [int]$Width = 1100, $Color)
     $l = New-Object Windows.Forms.Label
@@ -10921,6 +11137,7 @@ function New-ConsoleForm {
     $apTop.Controls.AddRange(@($openPrompt, $openNotes))
     $apLists.Controls.Add($qList, 0, 0); $apLists.Controls.Add($preview, 1, 0); $apLists.Controls.Add($fList, 2, 0)
     $apPanel = New-Object Windows.Forms.RichTextBox
+    $apPanel.Name = 'golemPanel'
     $apPanel.Dock = 'Fill'
     $apPanel.ReadOnly = $true
     $apPanel.BackColor = [Drawing.Color]::White
@@ -10995,7 +11212,10 @@ function New-ConsoleForm {
     $script:ui.WebsitesPanel = $webPanel
     $script:ui.WebsiteButtons = $webBtns
 
-    $tabs.TabPages.AddRange(@($testPage, $fixPage, $qPage, $snapPage, $worldPage, $artPage, $diagPage, $commitPage, $pkgPage, $apPage, $webPage, $livePage))
+    # cc-P152: the Art tab, thin on purpose: the list and buttons that run scripts\art\Art.ps1 (the web console will
+    # call the same commands).
+    $reqPage = New-ArtPage
+    $tabs.TabPages.AddRange(@($testPage, $fixPage, $qPage, $snapPage, $worldPage, $artPage, $diagPage, $commitPage, $pkgPage, $apPage, $webPage, $reqPage, $livePage))
     $script:ui.WorldPage = $worldPage
     $script:ui.PackagePage = $pkgPage
     # cc-P116: a page's scrolling is worked out again when it is shown (its wrapping parts only measure true then), and
