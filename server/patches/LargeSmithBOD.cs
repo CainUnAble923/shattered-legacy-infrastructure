@@ -81,6 +81,9 @@ namespace Server.Engines.BulkOrders
         {
         }
 
+        // cc-P170: the sets the constructor gives a metal (rand 0-2; 3-7 are weapons, useMaterials false).
+        private static bool UsesMaterials(int rand) => rand is >= 0 and <= 2;
+
         // ClusterF (cc-P42 Part G1): the eight sets in the constructor's order.
         public static System.Type[] SetTypes(int rand) =>
             System.Array.ConvertAll(
@@ -112,10 +115,18 @@ namespace Server.Engines.BulkOrders
             // cc-P42 Part G1: a set whose pieces can all still raise the smith's Blacksmithy, or the closest when none
             // can (ClusterFSmithTeaching.PickSets). The exceptional roll is stock and comes first, since it decides
             // what the smith can make. cc-P46 Part B: with the character's setting off, any set it can make.
+            // cc-P170: the armor sets (ring, plate, chain: the constructor's useMaterials) count as teaching in the metal that
+            // still teaches the smith, since the deed can be made in it; the weapon sets carry no metal.
             var reqExceptional = Utility.RandomDouble() < 0.825;
-            var sets = ClusterFSmithTeaching.PickSets(m, new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, SetTypes, reqExceptional,
-                ClusterFSmithTeaching.WantsTeaching(m));
-            var bod = new LargeSmithBOD(sets.RandomElement(), reqExceptional);
+            var teaching = ClusterFSmithTeaching.WantsTeaching(m);
+            var teachingMetal = teaching
+                ? ClusterFSmithTeaching.TeachingMetal(m, m_PostValMaterialChances)
+                : BulkMaterialType.None;
+            var metalCeiling = ClusterFMetalTiers.GainCeiling(teachingMetal);
+            var sets = ClusterFSmithTeaching.PickSets(m, new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, SetTypes,
+                s => UsesMaterials(s) ? metalCeiling : 0.0, reqExceptional, teaching);
+            var set = sets.RandomElement();
+            var bod = new LargeSmithBOD(set, reqExceptional);
 
             // ClusterF: post-Valorite upgrade — 15% chance for extended smiths (skill > 100)
             if (bod.Material != BulkMaterialType.None && theirSkill > 100.0 && Utility.RandomDouble() < 0.15)
@@ -124,9 +135,6 @@ namespace Server.Engines.BulkOrders
                 // still teach this smith, as the small order's (ClusterFSmithTeaching.TeachingMetal). The set is still picked
                 // first, as stock rolls; in such a metal every piece the smith can make teaches (below its own maximum by
                 // the item's window, past it by the metal's band, ClusterFCraftGain). Off, or no such metal: as before.
-                var teachingMetal = ClusterFSmithTeaching.WantsTeaching(m)
-                    ? ClusterFSmithTeaching.TeachingMetal(m, m_PostValMaterialChances)
-                    : BulkMaterialType.None;
                 var postVal = teachingMetal != BulkMaterialType.None
                     ? teachingMetal
                     : GetRandomMaterial(BulkMaterialType.Platinum, m_PostValMaterialChances);
@@ -135,6 +143,11 @@ namespace Server.Engines.BulkOrders
                 if (theirSkill >= postValReq)
                     bod.Material = postVal;
             }
+
+            // cc-P170 (Chase 2026-10-18): the metal is still rolled after the set, but when an armor set teaches nothing in
+            // the rolled metal (past every piece's maximum, as at 144 Blacksmithy), the deed takes the metal that teaches.
+            if (teaching && UsesMaterials(set))
+                bod.Material = ClusterFSmithTeaching.OrderMetal(m, SetTypes(set), true, bod.Material, teachingMetal);
 
             return bod;
         }

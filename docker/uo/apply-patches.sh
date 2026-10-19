@@ -287,6 +287,10 @@ apply_patch "$PATCHES/SmallSmithBOD-PostValorite.patch"
 # cc-P67 Part C 1 (Chase 2026-10-05): with the character's setting on, the post-Valorite metal roll goes through
 # ClusterFSmithTeaching.TeachingMetal (the metals that still teach the smith); in this patch because teachingOnly is
 # this patch's parameter. Notes: shard-migration/notes/cc-P67-craft-ceilings.md; pinned by CraftCeilingsVerification.
+# cc-P170 (Chase 2026-10-18): that metal reached the order only through the 30% post-Valorite roll, so a 144 smith got iron
+# plate tunics; now an armor order whose rolled metal teaches nothing takes it (ClusterFSmithTeaching.OrderMetal), and the
+# armor/weapon choice counts armor in it. Notes: shard-migration/notes/cc-P170-smith-teaching-orders-fix.md; pinned by
+# SmithOrdersTeachHighSkillVerification.
 apply_patch "$PATCHES/SmallSmithBOD-teaching-orders.patch"
 # cc-P46 Part A (bug-list D55). Pinned's ore rule covers DullCopper..Valorite only, so a Platinum..Celestial deed took
 # any item (an iron one included). SmallBOD: GetMaterial maps our eight post-Valorite CraftResources, and the item

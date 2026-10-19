@@ -14,7 +14,9 @@
 //   1. At 30, 70, 100 and 120 Blacksmithy (and 130, past every BOD item's maximum), every small guild order's item
 //      teaches, or, when no BOD item teaches at all, is the hardest the smith can make.
 //   2. At 70.1, 100, 120 and 130, every large guild order's set teaches piece for piece, or is the set the fallback
-//      names (the most teaching pieces, then the highest lowest maximum): plate at 100, 120 and 130.
+//      names (the most teaching pieces, then the highest lowest maximum): plate at 100. cc-P170: at 120 and 130 a metal
+//      still teaches (Platinum, Toxic), so ring, chain and plate all teach in it and the deed is one of those in that
+//      metal (SmithOrdersTeachHighSkillVerification); plate only is the fallback below Platinum's 112.5.
 //   3. At 30, 70, 100, 120 and 130, every commission (small: its item; large: its set) teaches, or is a fallback.
 //   cc-P61 Part A: an order in a post-Valorite metal teaches up to the metal's gain ceiling (ClusterFCraftGain), so facts
 //   1, 3 and 4 read "teaches" in the order's own metal (ClusterFMetalTiers.GainCeiling of its material).
@@ -155,8 +157,8 @@ public class SmithOrdersTeachVerification
     [Theory]
     [InlineData(70.1, false)]
     [InlineData(100.0, true)]
-    [InlineData(120.0, true)]
-    [InlineData(130.0, true)]
+    [InlineData(120.0, false)]
+    [InlineData(130.0, false)]
     public void EveryLargeGuildOrderTeachesOrIsTheClosestSet(double skill, bool plateOnly)
     {
         var (account, pm) = Smith(skill);
@@ -175,7 +177,9 @@ public class SmithOrdersTeachVerification
                     Assert.Equal(LargeSmithBOD.SetTypes(1), types);
                 }
 
-                if (!types.All(t => ClusterFSmithTeaching.Teaches(pm, t)))
+                // cc-P170: the order's own metal, as the small facts read it.
+                var largeCeiling = ClusterFMetalTiers.GainCeiling(bod.Material);
+                if (!types.All(t => ClusterFSmithTeaching.Teaches(pm, t, largeCeiling)))
                 {
                     var anyFull = Enumerable.Range(0, 8).Any(s => LargeSmithBOD.SetTypes(s).All(t =>
                         ClusterFSmithTeaching.CanMake(pm, t, bod.RequireExceptional) && ClusterFSmithTeaching.Teaches(pm, t)));

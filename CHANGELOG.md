@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.12
+
+### Fixed
+- Society of Smiths: with "Orders that still teach me" on, a high-skill smith no longer gets iron (or other low-metal) plate tunic orders that teach nothing; armor orders, small and large, now come in the metal that still raises your Blacksmithy, such as Blaze at 144.
+
+### Staff
+- New checks ask for 100 Society orders on each path at 130, 144 (with and without a held Hammer of Hephaestus) and 160 Blacksmithy and require every one to teach; plain (iron) deeds still accept any metal, as in ModernUO and ServUO, pending a decision.
+
 ## 2026.10.18.11
 
 ### Fixed

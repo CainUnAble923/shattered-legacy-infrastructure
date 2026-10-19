@@ -39,6 +39,12 @@ namespace Server;
 /// cc-P67 Part C 1 (Chase 2026-10-05): with the setting on, a Society order's post-Valorite metal is rolled only among the
 /// metals that still teach the smith (TeachingMetal), so a post-Valorite order teaches; Part C 2 and E change the window
 /// (ClusterFCraftGain) and Teaches follows it, worn bonus included.
+///
+/// cc-P170 (Chase 2026-10-18, "iron plate tunic with 144 smithing ... training turned on"): C 1 only reached the metal
+/// inside the 30% (small) and 15% (large) post-Valorite roll, so past every BOD item's maximum most orders came in a stock
+/// metal, taught nothing and fell back to the hardest item in it. Now, with the setting on, an armor order (small or
+/// large) whose rolled metal teaches nothing takes the metal that still teaches (OrderMetal), and the armor/weapon choice
+/// and the large deed's set choice count armor in that metal as teaching. Off, and at regular smiths, nothing changed.
 /// </summary>
 public static class ClusterFSmithTeaching
 {
@@ -206,6 +212,14 @@ public static class ClusterFSmithTeaching
     public static List<T> PickSets<T>(
         Mobile m, IEnumerable<T> sets, Func<T, Type[]> typesOf, bool exceptional, bool teaching = true,
         double gainCeiling = 0.0
+    ) => PickSets(m, sets, typesOf, _ => gainCeiling, exceptional, teaching);
+
+    /// <summary>
+    /// The same with each set's own gain ceiling (cc-P170: a large deed's armor sets can be made in the metal that still
+    /// teaches the smith; its weapon sets carry no metal).
+    /// </summary>
+    public static List<T> PickSets<T>(
+        Mobile m, IEnumerable<T> sets, Func<T, Type[]> typesOf, Func<T, double> ceilingOf, bool exceptional, bool teaching
     )
     {
         var all = sets.ToList();
@@ -220,26 +234,50 @@ public static class ClusterFSmithTeaching
             return makeable;
         }
 
-        var full = makeable.Where(s => typesOf(s).All(t => Teaches(m, t, gainCeiling))).ToList();
+        var full = makeable.Where(s => typesOf(s).All(t => Teaches(m, t, ceilingOf(s)))).ToList();
         if (full.Count > 0)
         {
             return full;
         }
 
-        (int, double) Score(Type[] types) => (types.Count(t => Teaches(m, t, gainCeiling)), types.Min(MaxSkill));
+        (int, double) Score(T s) => (typesOf(s).Count(t => Teaches(m, t, ceilingOf(s))), typesOf(s).Min(MaxSkill));
 
-        var best = makeable.Select(s => Score(typesOf(s))).Max();
-        return makeable.Where(s => Score(typesOf(s)) == best).ToList();
+        var best = makeable.Select(Score).Max();
+        return makeable.Where(s => Score(s) == best).ToList();
+    }
+
+    /// <summary>
+    /// cc-P170: the metal of a Society order for a smith whose setting is on. <paramref name="rolled"/> (the stock rolls'
+    /// metal) when the order's items teach in it (any of them, or with <paramref name="everyOne"/> every one, as a large
+    /// deed's), or when <paramref name="teachingMetal"/> is None or teaches no better; otherwise
+    /// <paramref name="teachingMetal"/>. Past every BOD item's maximum no stock metal teaches, so without this the order
+    /// fell back to the hardest item in iron (Chase, 2026-10-18, at 144 Blacksmithy).
+    /// </summary>
+    public static BulkMaterialType OrderMetal(
+        Mobile m, IEnumerable<Type> types, bool everyOne, BulkMaterialType rolled, BulkMaterialType teachingMetal
+    )
+    {
+        var list = types.ToList();
+
+        bool TeachIn(BulkMaterialType mat)
+        {
+            var ceiling = ClusterFMetalTiers.GainCeiling(mat);
+            return list.Count > 0 && (everyOne ? list.All(t => Teaches(m, t, ceiling)) : list.Any(t => Teaches(m, t, ceiling)));
+        }
+
+        return teachingMetal == BulkMaterialType.None || TeachIn(rolled) || !TeachIn(teachingMetal) ? rolled : teachingMetal;
     }
 
     /// <summary>
     /// A small order's list: stock flips a coin between armor (with materials) and weapons (SmallSmithBOD.cs:76).
     /// When only one list has an item that teaches, that list; when neither does, the list with the hardest item the
-    /// smith can make; otherwise the coin.
+    /// smith can make; otherwise the coin. cc-P170: <paramref name="armorCeiling"/> is the gain ceiling of the metal that
+    /// still teaches the smith (TeachingMetal; 0 for none), since an armor order can be made in it and a weapon order
+    /// carries no metal (pinned SmallSmithBOD.cs:97).
     /// </summary>
-    public static bool UseArmorList(Mobile m, Type[] armor, Type[] weapons)
+    public static bool UseArmorList(Mobile m, Type[] armor, Type[] weapons, double armorCeiling = 0.0)
     {
-        var armorTeaches = armor.Any(t => CanMake(m, t, false) && Teaches(m, t));
+        var armorTeaches = armor.Any(t => CanMake(m, t, false) && (Teaches(m, t) || Teaches(m, t, armorCeiling)));
         var weaponsTeach = weapons.Any(t => CanMake(m, t, false) && Teaches(m, t));
 
         if (armorTeaches != weaponsTeach)
