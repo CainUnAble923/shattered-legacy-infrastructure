@@ -289,6 +289,16 @@ def status_problems(doc):
                 if not all(k in q for k in ("number", "title", "summary", "model", "size")):
                     p.append("a queued prompt lacks number, title, summary, model or size")
                     break
+            # cc-P184: the Golem cards (several Golems), optional; each names its Golem and its state.
+            cards = g.get("golems")
+            if cards is not None:
+                if not isinstance(cards, list):
+                    p.append("golem.golems is not a list")
+                else:
+                    for c in cards:
+                        if not isinstance(c, dict) or not isinstance(c.get("name"), str) or not isinstance(c.get("state"), str):
+                            p.append("a Golem card lacks name or state")
+                            break
     if not isinstance(doc.get("websites"), dict):
         p.append("websites is not an object")
     return p

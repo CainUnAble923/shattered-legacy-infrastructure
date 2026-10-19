@@ -169,8 +169,34 @@
     return row;
   }
 
+  // cc-P184: one card per Golem while several work the queue (status.golem.golems): name, lane, machine, state,
+  // the prompt and branch, the locks it holds. Hidden while multiGolem is off.
+  function golemCard(c) {
+    var li = el('li');
+    var head = c.name + ' (' + [c.lane, c.engine, c.machine].filter(function (x) { return x; }).join(', ') + ')' + (c.integrator ? ', integrator' : '');
+    li.appendChild(el('div', null, head));
+    var s = c.state + (c.current ? ': ' + c.current + (c.branch && c.branch !== 'main' ? ' on ' + c.branch : '') : '') + (c.restReason ? ' (' + c.restReason + ')' : '');
+    li.appendChild(el('div', c.state === 'RUNNING' ? 'ok' : (c.state === 'NEEDS YOU' || c.state === 'STOPPED' || c.state === 'UNKNOWN') ? 'warn' : 'quiet', s));
+    var bits = [];
+    if (c.locks && c.locks.length) bits.push('holds ' + c.locks.join(', '));
+    if (c.usageSource) bits.push('usage from the ' + c.usageSource);
+    if (c.hours) bits.push('hours ' + c.hours);
+    if (c.needsYou) bits.push('needs you: ' + c.needsYou);
+    if (bits.length) li.appendChild(el('div', 'meta', bits.join(' | ')));
+    return li;
+  }
+  function drawGolemTeam(g) {
+    var card = $('golem-team-card'); if (!card) return;
+    var list = clear($('golem-team'));
+    var cards = (g && g.golems) || [];
+    if (!g || !g.multiGolem || !cards.length) { card.hidden = true; return; }
+    card.hidden = false;
+    cards.forEach(function (c) { list.appendChild(golemCard(c)); });
+  }
+
   function drawGolem(g) {
     clear($('golem-state')).appendChild(figureRow(g, golemState(g)));
+    drawGolemTeam(g);
     var cur = clear($('golem-current'));
     if (g && g.current) {
       var c = g.current;
@@ -502,5 +528,5 @@
     setInterval(function () { poll(false); }, POLL_MS);
     setInterval(stepStrips, 50);
   });
-  window.UOConsole = { draw: draw, golemState: golemState, last: function () { return last; }, applies: applies };
+  window.UOConsole = { draw: draw, golemState: golemState, golemCard: golemCard, last: function () { return last; }, applies: applies };
 })();

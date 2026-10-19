@@ -52,6 +52,16 @@ function Read-Json([string]$Path) { try { Get-Content -LiteralPath $Path -Raw -E
 $golem = 'D:\UO\golem'
 if (-not (Test-Path -LiteralPath (Join-Path $golem 'ACTIVE'))) { $golem = 'D:\UO\cc-autopilot' }
 $st = Read-Json (Join-Path $golem 'state.json')
+# cc-P184: with several Golems (settings.json multiGolem), the integrator's state is state-<name>.json (golems.json says
+# which Golem integrates); the one-Golem state.json is only the migrated copy's backup source.
+try {
+    $gset = Read-Json (Join-Path $golem 'settings.json')
+    if ($gset -and [bool]$gset.multiGolem) {
+        $reg = Read-Json (Join-Path $golem 'golems.json')
+        $int = @($reg.golems | Where-Object { $_.integrator }) | Select-Object -First 1
+        if ($int) { $st2 = Read-Json (Join-Path $golem ('state-' + [string]$int.name + '.json')); if ($st2) { $st = $st2 } }
+    }
+} catch { }
 $queueDir = 'D:\UO\cc-prompts\queue'
 $queue = @()
 if (Test-Path -LiteralPath $queueDir) {

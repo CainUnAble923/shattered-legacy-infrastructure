@@ -243,6 +243,7 @@ function New-AutopilotConfig {
         RunNextScript = (Join-Path $Root 'Set-RunNext.ps1')
         RetryScript   = (Join-Path $Root 'Retry-Stopped.ps1')
         RunNextFile   = (Join-Path $Root 'RUN-NEXT')
+        IntegrateScript = (Join-Path $Root 'Integrate.ps1')   # cc-P184: the integrator merges the other Golems' branches now
         PromptDir    = $(if ($Queue) { Split-Path -Parent $Queue } else { '' })
         CompletedDir = $(if ($Queue) { Join-Path (Split-Path -Parent $Queue) 'completed' } else { '' })
         ClaudeProjects = $(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE '.claude\projects' } else { '' })
@@ -925,6 +926,7 @@ function Get-ConfirmPhrase {
         'golem.stoppoint'  { 'find a stopping point' }
         'golem.resume'     { 'wake the golem' }
         'golem.nightshift' { 'night shift on' }
+        'golem.integrate'  { 'merge branches' }
         'web.deploy'       { 'deploy to haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'deploy to haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'deploy to haven' }
@@ -946,6 +948,7 @@ function Get-ConfirmSubject {
         'test.wipe'       { 'Wipe test accounts' }
         'fix.restart'     { 'Restart the test shard' }
         'golem.move'      { 'Move to the Golem' }
+        'golem.integrate' { 'Merge branches now' }
         'web.deploy'      { 'Deploy to Haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'Ops pages on Haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'Print queue on Haven' }
@@ -1223,6 +1226,8 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.poke';       Group = 'Golem queue'; Label = 'Poke the Golem';                     Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.runnext';    Group = 'Golem queue'; Label = 'Run next (picked row)';              Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.retry';      Group = 'Golem queue'; Label = 'Retry stopped prompt';               Mutates = $true;  RunIn = 'here' }
+        # cc-P184: the integrator merges the other Golems' finished branches into main now (otherwise between its own prompts).
+        [pscustomobject]@{ Key = 'golem.integrate';  Group = 'Golem queue'; Label = 'Merge branches now';                 Mutates = $true;  RunIn = 'here' }
         # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
         [pscustomobject]@{ Key = 'links.playtests';  Group = 'Links';       Label = 'Play tests';                         Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
@@ -1819,6 +1824,7 @@ function Get-ConsoleTooltips {
         'golem.runnext'    = 'Run next: the queue row you picked is handed at the next hand-off, ahead of continuations (Set-RunNext.ps1; nothing is renamed). Asks the prompt number. With no row picked, it clears the pick.'
         'golem.retry'      = 'Retry stopped prompt: the STOPPED prompt goes back into the queue, first, stoppedPrompt is cleared and a session is woken on its own model (Retry-Stopped.ps1). Asks the prompt number. Lit only while a prompt is STOPPED.'
         'golem.clicheck'   = 'Checks the Claude Code CLI: installed, and signed in (claude auth status). Run it after signing in so the Golem tab sees it. Read-only; runs Check-Cli.ps1 in its own window.'
+        'golem.integrate'  = 'Merge branches now (cc-P184, several Golems): the integrator merges every finished Golem branch into main, one at a time, builds when the server changed, commits and pushes; a conflict or a red build becomes a fix-up prompt for that Golem. Only while nothing runs on the integrator and its trees are clean. Asks merge branches; runs Integrate.ps1 in its own window.'
         # cc-P132: the lights, the Golem figure and the header rune.
         'rebuild.light'    = 'Whether the test shard needs a rebuild: green built from the latest server change, amber server commits since the running build (Rebuild can go), red needed but blocked with the reason. Hover for the commits and files; it only reads and never builds.'
         'package.light'    = 'Whether the player package needs a build or a publish: green the published package holds every player-facing change, amber Build package (or Publish package when a built zip holds them), red blocked with the reason. Hover for the commits; it only reads.'
@@ -3310,7 +3316,7 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
@@ -4224,7 +4230,44 @@ function ConvertFrom-AutopilotStatus {
         Sessions        = $j.sessions
         # cc-P162: the end-of-week window (use it or lose it): on, active, until, the cap, the week and Fable week now.
         EndOfWeek       = $j.endOfWeek
+        # cc-P184: several Golems: the switch, which Golem wrote this file, one card per Golem, and a registry problem.
+        MultiGolem      = [bool]$j.multiGolem
+        GolemName       = [string]$j.golemName
+        Golems          = @(@($j.golems) | Where-Object { $_ })
+        RegistryError   = [string]$j.registryError
     }
+}
+
+function Get-GolemCardLines {
+    # cc-P184: one line per Golem in the registry (status.json's golems, written by whichever Golem's hook ran last):
+    # name, lane, machine, state, the running prompt and its branch, the locks it holds, where its usage figure comes
+    # from. Pure: status in, rows ({ Text, Color }) out. Nothing while multiGolem is off; the registry error when there
+    # is one.
+    param($Status, [datetime]$Now = [datetime]::Now)
+    $rows = New-Object 'System.Collections.Generic.List[object]'
+    if (-not $Status) { return $rows.ToArray() }
+    if ($Status.RegistryError) { $rows.Add([pscustomobject]@{ Text = ('golems    : REGISTRY INVALID: ' + $Status.RegistryError); Color = 'amber' }); return $rows.ToArray() }
+    if (-not $Status.MultiGolem) { return $rows.ToArray() }
+    $cards = @($Status.Golems)
+    $int = @($cards | Where-Object { $_.integrator } | ForEach-Object { [string]$_.name })
+    $rows.Add([pscustomobject]@{ Text = ('golems    : ' + $cards.Count + ' in the registry (multiGolem on); the integrator is ' + $(if ($int.Count) { $int[0] } else { 'nobody' }) + ', this file is ' + $(if ($Status.GolemName) { $Status.GolemName + '''s' } else { 'unsigned' })); Color = 'head' })
+    foreach ($c in $cards) {
+        $state = [string]$c.state
+        $t = '            ' + ('{0,-8}' -f [string]$c.name) + ('{0,-6}' -f [string]$c.lane) + ('{0,-7}' -f [string]$c.engine) + ('{0,-14}' -f [string]$c.machine) + $state
+        if ($c.current) { $t += ' ' + [string]$c.current + $(if ($c.branch -and [string]$c.branch -ne 'main') { ' on ' + [string]$c.branch } else { '' }) }
+        if ($c.restReason) { $t += ' (' + [string]$c.restReason + ')' }
+        if ($c.needsYou) { $t += '; needs you: ' + [string]$c.needsYou }
+        $locks = @($c.locks | Where-Object { $_ })
+        if ($locks.Count) { $t += '; holds ' + ($locks -join ', ') }
+        if ($c.usageSource) { $t += '; usage from the ' + [string]$c.usageSource }
+        if ($c.hours) { $t += '; hours ' + [string]$c.hours }
+        if ($c.integrator) { $t += '; integrator' }
+        if ($null -ne $c.ageMin -and [int]$c.ageMin -gt 15 -and $state -eq 'RUNNING') { $t += '; status ' + [int]$c.ageMin + ' min old' }
+        $color = switch ($state) { 'RUNNING' { 'green' } 'NEEDS YOU' { 'amber' } 'STOPPED' { 'amber' } 'UNKNOWN' { 'amber' } 'DISABLED' { 'gray' } default { 'gray' } }
+        if ($state -eq 'RUNNING' -and $null -ne $c.ageMin -and [int]$c.ageMin -gt 15) { $color = 'amber' }
+        $rows.Add([pscustomobject]@{ Text = $t; Color = $color })
+    }
+    $rows.ToArray()
 }
 
 function ConvertFrom-AutopilotSettings {
@@ -4985,6 +5028,8 @@ function Format-AutopilotPanel {
     }
     if ($View.Alert) { & $add ('needs you : ' + $View.Alert + '. Answer CC; it was emailed.') 'amber' }
     if ($View.EmailFailing) { & $add ('email     : FAILING since the last hand-off. ' + $View.LastFailure) 'red' }
+    # cc-P184: one card per Golem while several work the queue (status.json golems).
+    foreach ($gl in @(Get-GolemCardLines -Status $View.Status -Now $Now)) { & $add $gl.Text $gl.Color }
     $q = $View.Queue
     if ($null -eq $q) {
         & $add ('queue     : could not be listed (' + $ap.Queue + ')') 'gray'
@@ -5147,7 +5192,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -5264,6 +5309,14 @@ function Get-AutopilotPlan {
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.nightshift'))
                 }
                 # cc-P182: Poke, Run next and Retry stopped prompt (also the web console's buttons, through Get-WebActionPlan).
+                'golem.integrate' {
+                    # cc-P184: the integrator's merge round, now. The script says plainly when there is nothing to merge.
+                    if (-not (& $need $ap.IntegrateScript 'Integrate.ps1')) { break }
+                    $steps.Add((New-PlanStep -Kind say -Text 'Merge branches now: the integrator merges every finished Golem branch (merge-queue) into main, one at a time: a build when the server changed, then Commit-ShardWork.ps1 with every check it has, then a push. A conflict or a red build leaves main as it is and writes a fix-up prompt for the Golem that made the branch. Nothing happens while a prompt runs on the integrator, while its trees are dirty, or while multiGolem is off.'))
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'This writes main in both public repos (merge commits, pushed).'))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.IntegrateScript) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.integrate'))
+                }
                 'golem.poke' {
                     if (-not (& $need $ap.PokeScript 'Poke-Golem.ps1')) { break }
                     $steps.Add((New-PlanStep -Kind say -Text 'Poke the Golem: its 10-minute watch runs now, so it looks again at once (a stall, a rest whose time has come, a pending wake, its finished sessions). It changes nothing the watch would not change by itself.'))
@@ -6471,7 +6524,7 @@ function Get-AutopilotFacts {
     $running = ''
     $runningFile = ''
     if ($stateText) { try { $sj = ($stateText | ConvertFrom-Json); $running = [string]$sj.current; $runningFile = [string]$sj.currentFile } catch { } }
-    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
+    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
     # cc-P182: Run next's pick, a queue file name ('' when none).
     $runNext = ''
     if ($ap.RunNextFile -and (Test-Path -LiteralPath $ap.RunNextFile -PathType Leaf)) { try { $runNext = ([IO.File]::ReadAllText($ap.RunNextFile)).Trim() } catch { } }
@@ -9053,6 +9106,9 @@ function ConvertTo-ConsoleStatusDocument {
             usageNotes = $usageNotes
             codexUsage = $codexUsage
             alert = [string]$v.Alert; emailFailing = [bool]$v.EmailFailing
+            # cc-P184: the Golem cards (status.json golems), for the web console's Golems card.
+            multiGolem = $(if ($s) { [bool]$s.MultiGolem } else { $false })
+            golems = @($(if ($s) { @($s.Golems) } else { @() }) | ForEach-Object { [ordered]@{ name = [string]$_.name; machine = [string]$_.machine; engine = [string]$_.engine; lane = [string]$_.lane; state = [string]$_.state; current = [string]$_.current; branch = [string]$_.branch; locks = @(@($_.locks) | Where-Object { $_ } | ForEach-Object { [string]$_ }); usageSource = [string]$_.usageSource; integrator = [bool]$_.integrator; enabled = [bool]$_.enabled; restReason = [string]$_.restReason; needsYou = [string]$_.needsYou; hours = [string]$_.hours } })
         }
     }
     $web = [ordered]@{}

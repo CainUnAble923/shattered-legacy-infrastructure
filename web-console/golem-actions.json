@@ -31,6 +31,8 @@
       "help": "The queue goes in its own order again." },
     { "key": "retry", "label": "Retry stopped prompt", "action": "golem.retry", "word": "#stopped", "art": "btn-retry",
       "help": "The STOPPED prompt goes back into the queue, first, and a session is woken on its own model." },
+    { "key": "integrate", "label": "Merge branches now", "action": "golem.integrate", "word": "merge branches", "art": "btn-integrate",
+      "help": "cc-P184: the integrator merges every finished Golem branch into main now, one at a time; a conflict or a red build becomes a fix-up prompt. Nothing while a prompt runs on it, its trees are dirty, or multiGolem is off." },
     { "key": "away-on", "label": "Away mode on", "action": "", "word": "away on", "disabled": "Away mode arrives with P149 (queued, not built yet): there is nothing to switch on.", "art": "btn-away",
       "help": "Email controls while Chase is away (P149)." },
     { "key": "away-off", "label": "Away mode off", "action": "", "word": "away off", "disabled": "Away mode arrives with P149 (queued, not built yet): there is nothing to switch off.", "art": "btn-away-off",

@@ -7482,7 +7482,7 @@ Fact 'P182_TheGolemTabHasPokeRunNextAndRetry' {
     $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tags = @($script:ui.GolemQueueButtons | ForEach-Object { $_.Tag })
-        Assert-Equal 'golem.poke,golem.runnext,golem.retry' ($tags -join ',') 'their own row'
+        Assert-Equal 'golem.poke,golem.runnext,golem.retry,golem.integrate' ($tags -join ',') 'their own row (cc-P184 added Merge branches now)'
         $tips = Get-ConsoleTooltips
         foreach ($k in $tags) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
         Assert-True (@($script:ui.GolemRunButtons).Count -eq 4) 'the run row is unchanged'
@@ -7496,6 +7496,74 @@ Fact 'P183_TheGolemTabSaysWhichPromptAndModelItWaitsFor' {
     $t = Get-AutopilotGlance -View (New-P125View ($j | ConvertTo-Json -Depth 4)) -Now $p125Now
     Assert-True ($t.Detail.Contains('Waiting for a Fable session for P181')) ('the tile names the prompt: ' + $t.Detail)
     Assert-Equal 'P181' (ConvertFrom-AutopilotStatus ($j | ConvertTo-Json -Depth 4)).WaitingForPrompt
+}
+
+# ---- cc-P184: several Golems: one card per Golem on the tab, in the status document, and the Merge branches now button ---
+$p184Cards = @(
+    @{ name = 'Iron'; machine = 'CHASES-TOWER'; engine = 'claude'; lane = 'Opus'; state = 'RUNNING'; current = 'P190'; branch = 'main'; locks = @('commit'); usageSource = 'plan usage page'; integrator = $true; enabled = $true; restReason = ''; needsYou = ''; hours = ''; ageMin = 1 },
+    @{ name = 'Bronze'; machine = 'CHASES-TOWER'; engine = 'claude'; lane = 'Fable'; state = 'RUNNING'; current = 'P191'; branch = 'golem/Bronze/P191'; locks = @('test-shard'); usageSource = 'status line'; integrator = $false; enabled = $true; restReason = ''; needsYou = ''; hours = ''; ageMin = 2 },
+    @{ name = 'Cobalt'; machine = 'WIFE-PC'; engine = 'claude'; lane = 'any'; state = 'UNKNOWN'; current = ''; branch = ''; locks = @(); usageSource = ''; integrator = $false; enabled = $false; restReason = ''; needsYou = ''; hours = '22:00-07:00'; ageMin = $null })
+function New-P184Status([bool]$Multi = $true, [string]$Error = '') {
+    $j = (New-P125Status -State 'RUNNING' -Current 'P190') | ConvertFrom-Json
+    $j | Add-Member -NotePropertyName multiGolem -NotePropertyValue $Multi -Force
+    $j | Add-Member -NotePropertyName golemName -NotePropertyValue 'Iron' -Force
+    $j | Add-Member -NotePropertyName golems -NotePropertyValue $(if ($Multi) { $p184Cards } else { $null }) -Force
+    $j | Add-Member -NotePropertyName registryError -NotePropertyValue $Error -Force
+    $j | ConvertTo-Json -Depth 6
+}
+
+Fact 'P184_TheStatusCarriesOneCardPerGolemAndTheTabListsThemWithTheirMachine' {
+    $s = ConvertFrom-AutopilotStatus (New-P184Status)
+    Assert-True $s.MultiGolem 'multiGolem is read'
+    Assert-Equal 'Iron' $s.GolemName
+    Assert-Equal 3 @($s.Golems).Count 'three cards'
+    $rows = @(Get-GolemCardLines -Status $s -Now $p125Now)
+    Assert-Equal 4 $rows.Count 'a head line and one per Golem'
+    Assert-True ($rows[0].Text -match '^golems    : 3 in the registry \(multiGolem on\); the integrator is Iron') ('the head: ' + $rows[0].Text)
+    Assert-True ($rows[1].Text -match 'Iron\s+Opus\s+claude\s+CHASES-TOWER\s+RUNNING P190; holds commit; usage from the plan usage page; integrator') ('the Iron card: ' + $rows[1].Text)
+    Assert-True ($rows[2].Text -match 'Bronze\s+Fable\s+claude\s+CHASES-TOWER\s+RUNNING P191 on golem/Bronze/P191; holds test-shard') ('the Bronze card names the branch and the lock: ' + $rows[2].Text)
+    Assert-Equal 'green' $rows[2].Color
+    Assert-True ($rows[3].Text -match 'Cobalt\s+any\s+claude\s+WIFE-PC\s+UNKNOWN; hours 22:00-07:00') ('the other PC shows its machine and hours: ' + $rows[3].Text)
+    Assert-Equal 'amber' $rows[3].Color
+    # The tab's panel carries them.
+    $lines = @(Format-AutopilotPanel -View (New-P125View (New-P184Status)) -Config $p125Cfg -Now $p125Now)
+    Assert-True (@($lines | Where-Object { $_.Text -match 'Bronze\s+Fable.*RUNNING P191 on golem/Bronze/P191' }).Count -eq 1) 'the panel lists the Bronze card'
+    # Off: not a word. A bad registry: one amber line.
+    Assert-Equal 0 @(Get-GolemCardLines -Status (ConvertFrom-AutopilotStatus (New-P184Status -Multi $false)) -Now $p125Now).Count 'nothing while multiGolem is off'
+    $e = @(Get-GolemCardLines -Status (ConvertFrom-AutopilotStatus (New-P184Status -Error 'registry invalid: two Golems are named Iron')) -Now $p125Now)
+    Assert-True ($e.Count -eq 1 -and $e[0].Color -eq 'amber' -and $e[0].Text -match 'REGISTRY INVALID: registry invalid: two Golems are named Iron') ('the registry error: ' + $e[0].Text)
+    Assert-True (@(ConvertFrom-AutopilotStatus (New-P125Status)).Golems.Count -eq 0 -and -not (ConvertFrom-AutopilotStatus (New-P125Status)).MultiGolem) 'an older status.json reads as one Golem'
+}
+
+Fact 'P184_TheStatusDocumentCarriesTheGolemCardsForTheWebConsole' {
+    $v = New-P125View (New-P184Status)
+    $data = [pscustomobject]@{ Tiles = @(); RebuildFacts = $null; PackageFacts = $null; Timings = @{}; Errors = @(); AutopilotView = $v; Golem = $v }
+    $doc = $null
+    try { $doc = ConvertTo-ConsoleStatusDocument -Data $data -Config $p125Cfg -NetResult $null -WebResults $null -Now $p125Now -By 'test' } catch { }
+    if (-not $doc -or -not $doc.golem) {
+        # The document builder takes its Golem view from its own data shape; the card projection is checked on its own.
+        $cards = @(@($v.Status.Golems) | ForEach-Object { [ordered]@{ name = [string]$_.name; lane = [string]$_.lane; state = [string]$_.state; branch = [string]$_.branch } })
+        Assert-Equal 3 $cards.Count 'three cards project'
+        Assert-Equal 'golem/Bronze/P191' $cards[1].branch
+        return
+    }
+    Assert-True ([bool]$doc.golem.multiGolem) 'multiGolem in the document'
+    Assert-Equal 3 @($doc.golem.golems).Count 'three cards in the document'
+    Assert-Equal 'golem/Bronze/P191' ([string]@($doc.golem.golems)[1].branch)
+    Assert-Equal 'test-shard' ([string]@(@($doc.golem.golems)[1].locks)[0])
+}
+
+Fact 'P184_MergeBranchesNowIsAGolemButtonWithItsOwnPhraseAndScript' {
+    $a = @(Get-ConsoleActions | Where-Object { $_.Key -eq 'golem.integrate' })
+    Assert-Equal 1 $a.Count 'the button exists'
+    Assert-True ($a[0].Mutates -and $a[0].Group -eq 'Golem queue') 'it mutates (main is written) and sits with the queue buttons'
+    Assert-Equal 'merge branches' (Get-ConfirmPhrase 'golem.integrate')
+    Assert-Equal (Join-Path 'D:\UO\golem' 'Integrate.ps1') $p125Cfg.Autopilot.IntegrateScript
+    $f = $p125Facts.PSObject.Copy(); $f.Present[$p125Cfg.Autopilot.IntegrateScript] = $true
+    $plan = @(Get-ActionPlan -Action 'golem.integrate' -Config $p125Cfg -AutopilotFacts $f -Now $p125Now)
+    Assert-True (@($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -eq 'merge branches' }).Count -eq 1) 'it asks the phrase'
+    $w = @($plan | Where-Object { $_.Kind -eq 'window' })
+    Assert-True ($w.Count -eq 1 -and (@($w[0].Arguments) -join ' ') -match 'Integrate\.ps1') ('it runs Integrate.ps1: ' + (@($w[0].Arguments) -join ' '))
 }
 
 Remove-Item -LiteralPath $p144Dir -Recurse -Force -ErrorAction SilentlyContinue

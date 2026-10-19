@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.19.4
+
+### Staff
+- Several Golems can work the prompt queue at once, like a dev team: a registry names each one (the Iron Golem integrates on Opus, a Bronze Golem on Fable), every other Golem works in its own copy on its own branch, prompts carry a Touches line so two never edit the same area together, shared equipment (the test shard, Docker builds, the package, Haven, the commit) is a sign-up sheet, and the integrator merges finished branches into main one at a time, writing a fix-up prompt when one conflicts. Off until Chase turns it on.
+- The Golem tab and the web console show one card per Golem: lane, machine, state, the prompt and branch it runs, the locks it holds.
+- A Merge branches now button on the Golem tab and the web console runs the integrator's merge round by hand.
+- A setup guide and scripts for a second PC (a D: drive from a VHDX, the clones, the sign-in, a one-command check).
+
 ## 2026.10.19.3
 
 ### Staff

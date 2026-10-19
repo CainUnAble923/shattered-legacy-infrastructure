@@ -168,6 +168,19 @@ class StatusShape(unittest.TestCase):
         self.assertIn("a tile lacks one of key, title, word, detail, color", p)
         self.assertIn("a queued prompt lacks number, title, summary, model or size", p)
 
+    def test_golem_cards_are_optional_and_checked(self):
+        # cc-P184: several Golems: status.golem.golems, one card per Golem; absent on a one-Golem status.
+        d = load_fixture()
+        self.assertEqual([], panels.status_problems(d))
+        d["golem"]["multiGolem"] = True
+        d["golem"]["golems"] = [{"name": "Iron", "state": "RUNNING", "lane": "Opus", "machine": "CHASES-TOWER", "branch": "main", "locks": ["commit"]},
+                                {"name": "Bronze", "state": "IDLE", "lane": "Fable", "machine": "CHASES-TOWER", "branch": "", "locks": []}]
+        self.assertEqual([], panels.status_problems(d))
+        d["golem"]["golems"] = [{"name": "Iron"}]
+        self.assertIn("a Golem card lacks name or state", panels.status_problems(d))
+        d["golem"]["golems"] = "Iron"
+        self.assertIn("golem.golems is not a list", panels.status_problems(d))
+
     def test_the_file_on_this_pc_if_the_collector_wrote_one(self):
         path = os.path.join(REPO, "scripts", "shard-console-cache", "console-status.json")
         if not os.path.exists(path):
