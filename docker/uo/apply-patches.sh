@@ -675,6 +675,12 @@ apply_patch "$PATCHES/ParrotPerchAddon-pet-parrot.patch"
 # shard-migration/notes/cc-P130-pet-training.md; pinned by PetTrainingVerification.
 apply_patch "$PATCHES/BaseCreature-pet-training-slots.patch"
 apply_patch "$PATCHES/AnimalTaming-pet-training.patch"
+# cc-P171 (Chase 2026-10-18): the anger test (:208) calls ClusterFTamingAnger.Angers, a chance that falls with the tamer's
+# skill past the creature's minimum (settings clusterf.taming.anger*), in place of a flat 95%. A patch because the test is
+# an inline expression inside the private target's OnTarget; no event or virtual reaches it. After the pet-training patch,
+# whose context it is. Alternatives argued in shard-migration/notes/cc-P171-taming-anger-scales.md; pinned by
+# TamingAngerVerification.
+apply_patch "$PATCHES/AnimalTaming-anger-scales.patch"
 apply_patch "$PATCHES/AnimalLore-pet-training-gump.patch"
 apply_patch "$PATCHES/SkillCheck-pet-focus-gain.patch"
 apply_patch "$PATCHES/BaseWeapon-trained-weapon-ability.patch"

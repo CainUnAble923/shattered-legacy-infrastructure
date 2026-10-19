@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Skills/AnimalTaming.cs
++++ b/Projects/UOContent/Skills/AnimalTaming.cs
+@@ -205,7 +205,9 @@
+                     // Someone else is already taming this.
+                     creature.PrivateOverheadMessage(MessageType.Regular, 0x3B2, 502802, from.NetState);
+                 }
+-                else if (creature.CanAngerOnTame && Utility.RandomDouble() < 0.95)
++                // Shattered Legacy (cc-P171): the anger chance falls as the tamer's skill rises past the creature's minimum
++                // (ClusterFTamingAnger: 95% at the minimum, 1.5% less a point, 15% floor; was a flat 95%).
++                else if (ClusterFTamingAnger.Angers(from, creature))
+                 {
+                     // You seem to anger the beast!
+                     creature.PrivateOverheadMessage(MessageType.Regular, 0x3B2, 502805, from.NetState);

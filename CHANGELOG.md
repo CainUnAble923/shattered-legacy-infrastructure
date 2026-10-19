@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.13
+
+### Changed
+- Animal Taming: the chance to anger a beast that can be angered (dragons, nightmares, the Dread Warhorse and others) now falls as your skill rises above the creature's minimum: 95% at the minimum, about 77% twelve points above it, about 32% at forty-two, and 15% from about fifty-four points above it.
+
+### Staff
+- Three server settings tune it: clusterf.taming.angerBase (0.95), clusterf.taming.angerPerPoint (0.015) and clusterf.taming.angerFloor (0.15).
+
 ## 2026.10.18.12
 
 ### Fixed
