@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.15
+
+### Staff
+- The Golem no longer closes the session it has just opened when it was resting; that session now starts its prompt, and only the older, finished session is closed once the new one reports.
+
 ## 2026.10.18.14
 
 ### Fixed
