@@ -8,9 +8,10 @@
 <script src="/app.js" defer></script>
 </head>
 <body>
-<!-- cc-P155: the web console, phase 1: read only. Everything below is filled by app.js from /api/status. -->
+<!-- cc-P155: the web console. Everything below is filled by app.js from /api/status. cc-P182: the Golem's buttons, their
+     confirm sheet and the running action's output. -->
 <header id="top">
-  <div class="brand"><span class="rune" aria-hidden="true"></span><span>Shattered Legacy <small>Shard Console</small></span></div>
+  <div class="brand"><span id="rune" class="runebox" aria-hidden="true"></span><span>Shattered Legacy <small>Shard Console</small></span></div>
   <div id="fresh" class="fresh" role="status">loading...</div>
 </header>
 <nav id="tabs" aria-label="Sections">
@@ -33,6 +34,16 @@
   </section>
   <section id="golem" class="tab">
     <div class="card"><h2>State</h2><div id="golem-state"></div></div>
+    <div class="card" id="controls">
+      <h2>Controls</h2>
+      <p id="ctl-note" class="quiet"></p>
+      <div id="ctl-buttons" class="ctl-grid"></div>
+    </div>
+    <div class="card job" id="job" hidden>
+      <div class="jobhead"><h2 id="job-title"></h2><span id="job-spin"></span><button type="button" id="job-close" class="small">Hide</button></div>
+      <pre id="job-lines" class="log joblog"></pre>
+      <p id="job-result" class="result"></p>
+    </div>
     <div class="card"><h2>Running</h2><div id="golem-current"></div></div>
     <div class="card"><h2>Queue</h2><ol id="golem-queue" class="list"></ol></div>
     <div class="card"><h2>Finished lately</h2><ul id="golem-finished" class="list"></ul></div>
@@ -61,6 +72,22 @@
     <div class="card"><h2>Links</h2><ul id="links-list" class="list links"></ul></div>
   </section>
 </main>
-<footer><span>Read only: phase 1 shows; it changes nothing.</span> <a href="/api/status?refresh=1" id="refresh">Refresh now</a></footer>
+<div id="sheet" class="sheet" hidden>
+  <form id="sheet-form" class="sheetbox" role="dialog" aria-modal="true" aria-labelledby="sheet-title" autocomplete="off">
+    <h3 id="sheet-title"></h3>
+    <p id="sheet-help" class="quiet"></p>
+    <div id="sheet-inputs"></div>
+    <label id="sheet-confirm" class="field confirm">
+      <span>Type <b id="sheet-want"></b> to confirm</span>
+      <input id="sheet-word" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+    </label>
+    <p id="sheet-msg" class="warn" role="status"></p>
+    <div class="sheetbtns">
+      <button type="submit" id="sheet-run" class="go">Run</button>
+      <button type="button" id="sheet-cancel">Cancel</button>
+    </div>
+  </form>
+</div>
+<footer><span id="foot-note">Read only.</span> <a href="/api/status?refresh=1" id="refresh">Refresh now</a></footer>
 </body>
 </html>

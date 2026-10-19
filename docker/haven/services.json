@@ -983,7 +983,7 @@
     },
     {
       "key": "web-console",
-      "name": "Web console (phase 1, read only)",
+      "name": "Web console (status, and the Golem's buttons)",
       "host": "gamepc",
       "owner": "Shattered Legacy",
       "kind": "process",
@@ -1005,7 +1005,7 @@
         {
           "host": "D:\\UO\\web-console",
           "container": "",
-          "what": "settings.json (allowed logins), tailscale.env (the auth key), access.log, collector.log; outside git"
+          "what": "settings.json (allowed logins), tailscale.env (the auth key), proof.key (the sidecar's proof, cc-P182), access.log, actions.log (the Golem buttons pressed), collector.log; outside git"
         }
       ],
       "env": [],
@@ -1013,18 +1013,19 @@
       "health": "http://127.0.0.1:8095/api/health",
       "dependsOn": [],
       "neededBy": [
-        "uoconsole-ts"
+        "uoconsole-ts",
+        "uoconsole-proof"
       ],
       "backup": [],
       "verified": "Built and tested by cc-P155 (2026-10-17); not installed yet (Chase runs Install-WebConsole.ps1).",
-      "_note": "Reads the status file the Shard Console and its collector (scripts\\Write-ConsoleStatus.ps1, started by this service) write: scripts\\shard-console-cache\\console-status.json. Read only in phase 1. Its allowed logins (D:\\UO\\web-console\\settings.json, optional; default this PC's own Tailscale login) are kept out of git.",
+      "_note": "Reads the status file the Shard Console and its collector (scripts\\Write-ConsoleStatus.ps1, started by this service) write: scripts\\shard-console-cache\\console-status.json. cc-P182: the Golem's buttons, only through uoconsole with the proof forwarder's secret and Chase's login, each with a typed word, one at a time, through the Shard Console's own code (scripts\\Invoke-WebConsoleAction.ps1). Its allowed logins (D:\\UO\\web-console\\settings.json, optional; default this PC's own Tailscale login) are kept out of git.",
       "tiles": [
         {
           "section": "Ultima Online / Shattered Legacy",
           "name": "Web console",
           "icon": "mdi-monitor-dashboard",
           "href": "https://uoconsole.tail81098d.ts.net/",
-          "description": "The Shard Console's status, read only, on the tailnet (Chase only)",
+          "description": "The Shard Console's status and the Golem's buttons, on the tailnet (Chase only)",
           "snapshot": "web-console"
         }
       ]
@@ -1074,7 +1075,9 @@
       "dependsOn": [
         "web-console"
       ],
-      "neededBy": [],
+      "neededBy": [
+        "uoconsole-proof"
+      ],
       "backup": [
         "docker volume uoconsole_uoconsole-ts-state (or remove the node and log in again with a new key)"
       ],
@@ -1089,6 +1092,50 @@
           "snapshot": "uoconsole-ts"
         }
       ]
+    },
+    {
+      "key": "uoconsole-proof",
+      "name": "uoconsole proof forwarder (cc-P182)",
+      "host": "gamepc",
+      "owner": "Shattered Legacy",
+      "kind": "container",
+      "state": "planned",
+      "container": "uoconsole-proof",
+      "image": "python:3.12.7-alpine3.20",
+      "compose": "D:\\ShatteredLegacy\\web-console\\tailscale\\docker-compose.yml (project uoconsole)",
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "127.0.0.2:8097 inside uoconsole-ts's own network namespace only (Tailscale Serve's target)",
+          "tailnet": "",
+          "container": 8097
+        }
+      ],
+      "volumes": [
+        {
+          "host": "D:\\UO\\web-console\\proof.key",
+          "container": "/run/uoconsole/proof.key",
+          "what": "the secret it adds to every request (read only, outside git, never logged)"
+        }
+      ],
+      "env": [],
+      "secrets": [
+        {
+          "name": "proof.key",
+          "where": "D:\\UO\\web-console\\proof.key (outside git, never logged)",
+          "createdIn": "web-console\\Install-WebConsole.ps1 makes it once (32 random bytes as hex)"
+        }
+      ],
+      "health": "",
+      "dependsOn": [
+        "uoconsole-ts",
+        "web-console"
+      ],
+      "neededBy": [],
+      "backup": [],
+      "verified": "Built and tested by cc-P182 (the forwarder in a throwaway container of this image: binds 127.0.0.2, replaces a forged proof); not deployed yet (Install-WebConsole.ps1 -Tailscale).",
+      "_note": "network_mode service:tailscale: it shares the node's namespace and publishes nothing. Adds X-UOConsole-Proof, which the web console's tailnet listener demands, so a container on this PC that reaches 127.0.0.1:8096 directly cannot act as Chase (P155's Deviation 2).",
+      "tiles": []
     }
   ]
 }

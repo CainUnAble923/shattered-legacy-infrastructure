@@ -28,6 +28,10 @@ import panels  # noqa: E402
 import server  # noqa: E402
 
 EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+# cc-P182: the tailnet listener also needs the sidecar's proof (panels.decide); these P155 tests carry it, and
+# test_actions.py pins what happens without it.
+PROOF = "p155-test-proof-0123456789abcdef0123456789abcdef"
+P = {"X-UOConsole-Proof": PROOF}
 
 
 def load_fixture():
@@ -42,18 +46,18 @@ class Identity(unittest.TestCase):
         self.assertEqual((True, "local"), panels.decide(panels.LOCAL, {}, []))
 
     def test_the_allowed_login_on_the_tailnet_listener(self):
-        ok, why = panels.decide(panels.TAILNET, {"Tailscale-User-Login": "chase@example.com"}, self.ALLOWED)
+        ok, why = panels.decide(panels.TAILNET, dict(P, **{"Tailscale-User-Login": "chase@example.com"}), self.ALLOWED, PROOF)
         self.assertTrue(ok, why)
 
     def test_another_login_is_refused(self):
-        self.assertEqual((False, "login not allowed"), panels.decide(panels.TAILNET, {"Tailscale-User-Login": "someone@example.com"}, self.ALLOWED))
+        self.assertEqual((False, "login not allowed"), panels.decide(panels.TAILNET, dict(P, **{"Tailscale-User-Login": "someone@example.com"}), self.ALLOWED, PROOF))
 
     def test_no_identity_is_refused(self):
-        self.assertEqual((False, "no Tailscale identity"), panels.decide(panels.TAILNET, {}, self.ALLOWED))
-        self.assertEqual((False, "no Tailscale identity"), panels.decide(panels.TAILNET, {"Tailscale-User-Login": "  "}, self.ALLOWED))
+        self.assertEqual((False, "no Tailscale identity"), panels.decide(panels.TAILNET, dict(P), self.ALLOWED, PROOF))
+        self.assertEqual((False, "no Tailscale identity"), panels.decide(panels.TAILNET, dict(P, **{"Tailscale-User-Login": "  "}), self.ALLOWED, PROOF))
 
     def test_nobody_is_allowed_when_no_login_is_known(self):
-        self.assertFalse(panels.decide(panels.TAILNET, {"Tailscale-User-Login": "chase@example.com"}, [])[0])
+        self.assertFalse(panels.decide(panels.TAILNET, dict(P, **{"Tailscale-User-Login": "chase@example.com"}), [], PROOF)[0])
 
     def test_an_unknown_listener_is_refused(self):
         self.assertFalse(panels.decide("lan", {"Tailscale-User-Login": "chase@example.com"}, self.ALLOWED)[0])
@@ -75,6 +79,8 @@ class LiveServer(unittest.TestCase):
         cls.tmp = tempfile.mkdtemp(prefix="p155-web-")
         with open(os.path.join(cls.tmp, "settings.json"), "w", encoding="utf-8") as f:
             json.dump({"allowedLogins": ["chase@example.com"]}, f)
+        with open(os.path.join(cls.tmp, "proof.key"), "w", encoding="ascii") as f:
+            f.write(PROOF)
         cls.status = os.path.join(cls.tmp, "console-status.json")
         shutil.copy(os.path.join(FIX, "console-status.json"), cls.status)
         cls.console = server.Console(REPO, os.path.join(cls.tmp, "notes"), cls.tmp, cls.status, collector=False)
@@ -105,10 +111,10 @@ class LiveServer(unittest.TestCase):
         self.assertEqual(200, code, body)
 
     def test_tailnet_listener_answers_only_the_allowed_login(self):
-        self.assertEqual(200, self.get(self.tail_port, "/api/health", {"Tailscale-User-Login": "chase@example.com"})[0])
-        code, body, _ = self.get(self.tail_port, "/", {"Tailscale-User-Login": "daughter@example.com"})
+        self.assertEqual(200, self.get(self.tail_port, "/api/health", dict(P, **{"Tailscale-User-Login": "chase@example.com"}))[0])
+        code, body, _ = self.get(self.tail_port, "/", dict(P, **{"Tailscale-User-Login": "daughter@example.com"}))
         self.assertEqual((403, "not allowed\n"), (code, body))
-        code, body, _ = self.get(self.tail_port, "/api/status")
+        code, body, _ = self.get(self.tail_port, "/api/status", dict(P))
         self.assertEqual((403, "not allowed\n"), (code, body), "no identity")
         with open(os.path.join(self.tmp, "access.log"), encoding="utf-8") as f:
             log = f.read()

@@ -1,11 +1,13 @@
 """cc-P155: the web console's panels, as pure functions over what the service read (testable from fixtures).
 
-    decide(listener, headers, allowed)       who may look: the local listener (this PC) always; the tailnet listener only
-                                             with Tailscale Serve's identity header naming an allowed login
+    decide(listener, headers, allowed, proof)
+                                             who may look: the local listener (this PC) always; the tailnet listener only
+                                             with the sidecar's proof (cc-P182) and Tailscale Serve's identity header
+                                             naming an allowed login
     redact(text) / redact_tree(value)        tokens, keys and passwords blanked in anything sent to a page
     needs_you(status, playtests, decisions, chores, services)
                                              one list of what waits on Chase
-    timeline(commits, transcripts, deploys, finished, bot_runs)
+    timeline(commits, transcripts, deploys, finished, bot_runs, web_actions)
                                              what happened, newest first
     links(status, extra, checks, repos)      every link with its up dot
     tail(lines, n, query)                    the last n lines (of those matching query), redacted
@@ -13,27 +15,37 @@
 
 Nothing here reads a file, runs a process or touches the network; server.py does, and hands the results in.
 """
+import hmac
 import re
 
 PLAYTESTS_SHOWN = 10   # the first ten play-test items marked yours, then a count (85 were on 2026-10-17)
 LOCAL = "local"
 TAILNET = "tailnet"
 IDENTITY_HEADER = "Tailscale-User-Login"
+PROOF_HEADER = "X-UOConsole-Proof"   # cc-P182: set by the sidecar's proof forwarder (tailscale/proof_proxy.py) only
 
 
 # --- who may look ---------------------------------------------------------------------------------------------------
 
-def decide(listener, headers, allowed):
+def decide(listener, headers, allowed, proof=None):
     """(allowed, why). headers: a mapping (case-insensitive lookups are the caller's: http.server's message is).
 
     The local listener (127.0.0.1:8095) is this PC: anything on it is Chase at the game PC, as the PowerShell console
-    is. The tailnet listener (127.0.0.1:8096) is only ever reached through the uoconsole sidecar's Tailscale Serve, which
-    sets Tailscale-User-Login to the caller's login (and drops any the caller sent); a tagged device or a request with
-    no login gets no header, and is refused, as is every login not in allowed (compared without case)."""
+    is; it may look but never act (server.py). The tailnet listener (127.0.0.1:8096) is reached through the uoconsole
+    sidecar: Tailscale Serve sets Tailscale-User-Login to the caller's login (and drops any the caller sent), and its
+    proof forwarder sets X-UOConsole-Proof to the secret only the sidecar and this service hold (cc-P182, P155's
+    Deviation 2: a container on this PC's Docker can reach 127.0.0.1:8096 too and forge the login header, but not the
+    proof). No proof configured, or a missing or wrong one, refuses everything; then a tagged device or a request with
+    no login gets no header and is refused, as is every login not in allowed (compared without case)."""
     if listener == LOCAL:
         return True, "local"
     if listener != TAILNET:
         return False, "unknown listener"
+    if not proof:
+        return False, "no sidecar proof configured"
+    got = (headers.get(PROOF_HEADER) or "").strip()
+    if not got or not hmac.compare_digest(got.encode("utf-8"), proof.encode("utf-8")):
+        return False, "no sidecar proof"
     login = (headers.get(IDENTITY_HEADER) or "").strip()
     if not login:
         return False, "no Tailscale identity"
@@ -177,10 +189,14 @@ def parse_git_log(text, repo):
     return out
 
 
-def timeline(commits=None, transcripts=None, deploys=None, finished=None, bot_runs=None, limit=60):
+def timeline(commits=None, transcripts=None, deploys=None, finished=None, bot_runs=None, web_actions=None, limit=60):
     """Newest first. transcripts and deploys: file names; finished: the status file's golem.finished; bot_runs: run
-    folder names (yyyy-mm-dd-hhmm)."""
+    folder names (yyyy-mm-dd-hhmm); web_actions: the web console's action log entries (cc-P182)."""
     ev = list(commits or [])
+    for a in web_actions or []:
+        if a.get("time"):
+            ev.append({"time": a["time"][:19], "kind": "web", "text": "%s (web console): %s" % (a.get("label") or a.get("key"), a.get("result") or ""),
+                       "who": a.get("who") or ""})
     for name in transcripts or []:
         p = parse_transcript_name(name)
         if p:

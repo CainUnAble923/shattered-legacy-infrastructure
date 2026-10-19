@@ -238,6 +238,11 @@ function New-AutopilotConfig {
         NightShiftScript = (Join-Path $Root 'Set-NightShift.ps1')
         CliCheckScript = (Join-Path $Root 'Check-Cli.ps1')
         CliFile      = (Join-Path $Root 'cli.json')
+        # cc-P182: Poke (the watch now), Run next (RUN-NEXT holds the picked queue file) and Retry stopped prompt.
+        PokeScript    = (Join-Path $Root 'Poke-Golem.ps1')
+        RunNextScript = (Join-Path $Root 'Set-RunNext.ps1')
+        RetryScript   = (Join-Path $Root 'Retry-Stopped.ps1')
+        RunNextFile   = (Join-Path $Root 'RUN-NEXT')
         PromptDir    = $(if ($Queue) { Split-Path -Parent $Queue } else { '' })
         CompletedDir = $(if ($Queue) { Join-Path (Split-Path -Parent $Queue) 'completed' } else { '' })
         ClaudeProjects = $(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE '.claude\projects' } else { '' })
@@ -1214,6 +1219,10 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.autowake';   Group = 'Golem wake';  Label = 'Self-wake: on';                      Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.nightshift'; Group = 'Golem wake';  Label = 'Night shift: on';                    Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.clicheck';   Group = 'Golem wake';  Label = 'Check CLI sign-in';                  Mutates = $false; RunIn = 'here' }
+        # cc-P182: a row of their own: the watch now, the picked queue row first, and the STOPPED prompt back.
+        [pscustomobject]@{ Key = 'golem.poke';       Group = 'Golem queue'; Label = 'Poke the Golem';                     Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.runnext';    Group = 'Golem queue'; Label = 'Run next (picked row)';              Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.retry';      Group = 'Golem queue'; Label = 'Retry stopped prompt';               Mutates = $true;  RunIn = 'here' }
         # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
         [pscustomobject]@{ Key = 'links.playtests';  Group = 'Links';       Label = 'Play tests';                         Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
@@ -1806,6 +1815,9 @@ function Get-ConsoleTooltips {
         'golem.nightshift' = 'Night shift on or off: a scheduled task at the start time wakes the Golem for a long run until the end time, only when the queue has prompts, nothing runs or is STOPPED, and the usage leaves room. Asks night shift on when turning it on. Runs Set-NightShift.ps1 in its own window.'
         'golem.nightstart' = 'When the night shift starts (HH:mm, default 22:30).'
         'golem.nightend'   = 'When the night shift ends (HH:mm, default 06:30): no new prompt is handed after it.'
+        'golem.poke'       = 'Poke the Golem: runs its 10-minute watch now (Poke-Golem.ps1), so it looks again at once at a stall, a rest whose time has come or a pending wake. Changes nothing the watch would not.'
+        'golem.runnext'    = 'Run next: the queue row you picked is handed at the next hand-off, ahead of continuations (Set-RunNext.ps1; nothing is renamed). Asks the prompt number. With no row picked, it clears the pick.'
+        'golem.retry'      = 'Retry stopped prompt: the STOPPED prompt goes back into the queue, first, stoppedPrompt is cleared and a session is woken on its own model (Retry-Stopped.ps1). Asks the prompt number. Lit only while a prompt is STOPPED.'
         'golem.clicheck'   = 'Checks the Claude Code CLI: installed, and signed in (claude auth status). Run it after signing in so the Golem tab sees it. Read-only; runs Check-Cli.ps1 in its own window.'
         # cc-P132: the lights, the Golem figure and the header rune.
         'rebuild.light'    = 'Whether the test shard needs a rebuild: green built from the latest server change, amber server commits since the running build (Rebuild can go), red needed but blocked with the reason. Hover for the commits and files; it only reads and never builds.'
@@ -3298,11 +3310,11 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
-                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript) | Where-Object { $_ }
+                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript) | Where-Object { $_ }
                 $ok = ($head -and $sa.Count -eq 5 -and $withArgs -inotcontains $sa[4])
                 # cc-P125: Start-LongRun.ps1 only with -Cap <n> -Until <time>; Wrap-Up.ps1 and Find-StoppingPoint.ps1 also with -Cancel.
                 $tmpT = [datetime]::MinValue
@@ -3313,6 +3325,9 @@ function Test-PlanSafety {
                 if ($head -and $sa[4] -ieq $ap.WakeScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Model' -and $sa[6] -cin @('Fable', 'Opus', 'Sonnet')) { $ok = $true }
                 if ($head -and $sa[4] -ieq $ap.AutoWakeScript -and $sa.Count -eq 6 -and $sa[5] -cin @('-On', '-Off')) { $ok = $true }
                 if ($head -and $sa[4] -ieq $ap.NightShiftScript -and (($sa.Count -eq 6 -and $sa[5] -ceq '-Off') -or ($sa.Count -eq 10 -and $sa[5] -ceq '-On' -and $sa[6] -ceq '-Start' -and $sa[7] -match '^\d{1,2}:\d{2}$' -and $sa[8] -ceq '-End' -and $sa[9] -match '^\d{1,2}:\d{2}$'))) { $ok = $true }
+                # cc-P182: Set-RunNext.ps1 only with -Prompt P<nn> or -Cancel; Retry-Stopped.ps1 only with -Prompt P<nn>.
+                if ($head -and $ap.RunNextScript -and $sa[4] -ieq $ap.RunNextScript -and (($sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') -or ($sa.Count -eq 6 -and $sa[5] -ceq '-Cancel'))) { $ok = $true }
+                if ($head -and $ap.RetryScript -and $sa[4] -ieq $ap.RetryScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') { $ok = $true }
                 # cc-P94: and settings.json, the same way.
             $readable = @($ap.LogFile, $ap.SettingsFile) | Where-Object { $_ }
             $okLog = ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and $sa.Count -eq 1 -and $readable -icontains $sa[0])
@@ -4087,10 +4102,12 @@ function ConvertFrom-AutopilotLog {
 
 function Get-AutopilotQueue {
     # The queue folder's file names, as the hook reads them: what runs, in order, and what it ignores.
-    param([string[]]$Names)
+    param([string[]]$Names, [string]$RunNext)
     # cc-P125: the Golem's order: continuations (cc-P<nn>-cont-*.md) first, then lowest number first.
     $runs = @(@($Names) | Where-Object { $_ -match '^cc-P(\d+)-.*\.md$' } |
         Sort-Object { if ($_ -match '^cc-P\d+-cont-') { 0 } else { 1 } }, { [int]([regex]::Match($_, '^cc-P(\d+)-').Groups[1].Value) }, { $_ })
+    # cc-P182: Run next's pick (the Golem's RUN-NEXT) goes first; a name no longer queued is ignored, as the Golem does.
+    if ($RunNext -and $runs -contains $RunNext) { $runs = @(@($RunNext) + @($runs | Where-Object { $_ -ne $RunNext })) }
     $ignored = @(@($Names) | Where-Object { $_ -match '\.md$' -and $_ -notmatch '^cc-P\d+-' } | Sort-Object)
     [pscustomobject]@{ Runs = $runs; Ignored = $ignored }
 }
@@ -4245,7 +4262,7 @@ function Get-AutopilotView {
     # cc-P94: $StatusText is status.json ($null: none), preferred when it reads as schema 1; otherwise Status is
     # $null and StatusNote says why, and the four facts are judged as before. $SettingsText is settings.json.
     param($Enabled, $StateText, [string[]]$LogLines, $QueueNames, [string[]]$Errors,
-        $StatusText, [string]$StatusError, $SettingsText, [string]$Kind = 'autopilot', $Extra)
+        $StatusText, [string]$StatusError, $SettingsText, [string]$Kind = 'autopilot', $Extra, [string]$RunNext = '')
     $status = $null
     $statusNote = 'no status.json (an autopilot from before 2026-10-13): read ENABLED, state.json and the log'
     if ($StatusError) { $statusNote = 'status.json could not be read (' + $StatusError + '): read ENABLED, state.json and the log' }
@@ -4259,7 +4276,7 @@ function Get-AutopilotView {
     try { $state = ConvertFrom-AutopilotState $StateText }
     catch { $problems.Add('state.json unreadable: ' + $_.Exception.Message) }
     $queue = $null
-    if ($null -ne $QueueNames) { $queue = Get-AutopilotQueue @($QueueNames) }
+    if ($null -ne $QueueNames) { $queue = Get-AutopilotQueue @($QueueNames) -RunNext $RunNext }
     $actions = @(ConvertFrom-AutopilotLog $LogLines)
     # The hand-off is the line the hook writes when it gives CC a prompt: "handed P74 (file) why".
     $since = $actions
@@ -4291,6 +4308,7 @@ function Get-AutopilotView {
         # cc-P125 ($Extra, from Get-AutopilotFacts): what each prompt is, the finished ones, the plan usage, the trees.
         CurrentPrompt = $(if ($status -and $status.CurrentFile) { Get-PromptInfo $status.CurrentFile (Get-ExtraText $Extra 'PromptTexts' $status.CurrentFile) } elseif ($state -and $state.CurrentFile) { Get-PromptInfo $state.CurrentFile (Get-ExtraText $Extra 'PromptTexts' $state.CurrentFile) } else { $null })
         QueueInfo     = @(if ($queue) { foreach ($r in @($queue.Runs)) { Get-PromptInfo $r (Get-ExtraText $Extra 'PromptTexts' $r) } })
+        RunNext       = $(if ($queue -and $RunNext -and @($queue.Runs) -contains $RunNext) { $RunNext } else { '' })
         Finished      = @(foreach ($fp in @(Get-FinishedPrompts $actions 10)) {
                             $ct = Get-ExtraText $Extra 'CompletedTexts' ([string]$fp.Number)
                             $info = Get-PromptInfo ('cc-P' + $fp.Number + '-') $ct
@@ -5008,6 +5026,65 @@ function Format-AutopilotPanel {
     $o.ToArray()
 }
 
+function Get-WebActionPlan {
+    # cc-P182. One web console Golem button (an entry of web-console\golem-actions.json) to the Shard Console's own plan:
+    # the console action's Get-ActionPlan, with the page's inputs where the console's boxes would put them, refused when
+    # the button is disabled, when the Golem is not in the state the button is for (a stale page), when the plan
+    # refuses, or when the typed word is not the expected one (case ignored: phones capitalize). Phrase is the console's
+    # own confirm phrase (or the word), which goes on to Invoke-Plan unchanged so its own check holds too.
+    param($Entry, [string]$Typed, [hashtable]$Inputs, $Config, $Facts, [datetime]$Now = [datetime]::Now)
+    $o = [pscustomobject]@{ Ok = $false; Refusal = ''; Plan = @(); Phrase = ''; ActionKey = [string]$Entry.action; Label = [string]$Entry.label }
+    if ($Entry.disabled) { $o.Refusal = [string]$Entry.disabled; return $o }
+    if (-not $o.ActionKey) { $o.Refusal = 'This button runs nothing.'; return $o }
+    if (-not $Inputs) { $Inputs = @{} }
+    if ($Entry.fixed) { foreach ($p in $Entry.fixed.PSObject.Properties) { $Inputs[$p.Name] = [string]$p.Value } }
+    $f = $Facts.PSObject.Copy()
+    $map = @{ model = 'WakeModel'; cap = 'LongRunCap'; until = 'LongRunUntil'; start = 'NightStart'; end = 'NightEnd'; prompt = 'RunNextPrompt' }
+    foreach ($k in $map.Keys) { if ($Inputs.ContainsKey($k)) { $f | Add-Member -NotePropertyName $map[$k] -NotePropertyValue ([string]$Inputs[$k]) -Force } }
+    $st = $null
+    if ($f.StatusText) { try { $st = ConvertFrom-AutopilotStatus $f.StatusText } catch { } }
+    $gs = ConvertFrom-AutopilotSettings $f.SettingsText
+    $when = [string]$Entry.when
+    if ($when) {
+        $kind, $val = $when.Split(':', 2)
+        $wind = $(if ($st) { [string]$st.Winding } else { '' })
+        $ok = switch ($kind) {
+            'winding'    { $wind -eq $val }
+            'notWinding' { $wind -ne $val }
+            'nightShift' { [bool]$gs.NightShiftEnabled -eq ($val -eq 'on') }
+            'runNext'    { [bool][string]$f.RunNext }
+            default      { $false }
+        }
+        if (-not $ok) {
+            $why = switch ($kind) {
+                'winding'    { 'it is not set now' }
+                'notWinding' { $(if ($val -eq 'after-current') { 'wrap up is already set: the button is Cancel wrap up now' } else { 'a stopping point is already asked: the button is Cancel stopping point now' }) }
+                'nightShift' { 'the night shift is ' + $(if ($gs.NightShiftEnabled) { 'already on' } else { 'already off' }) }
+                'runNext'    { 'nothing is picked to go next' }
+                default      { 'the Golem is not in that state' }
+            }
+            $o.Refusal = 'Not now: ' + $why + '. Nothing was run; the page refreshes.'
+            return $o
+        }
+    }
+    $plan = @(Get-ActionPlan -Action $o.ActionKey -Config $Config -AutopilotFacts $f -Now $Now)
+    $o.Plan = $plan
+    $refuse = @($plan | Where-Object { $_.Kind -eq 'refuse' })
+    if ($refuse.Count) { $o.Refusal = [string]$refuse[0].Text; return $o }
+    $confirm = @($plan | Where-Object { $_.Kind -eq 'confirm' } | Select-Object -First 1)
+    $word = [string]$Entry.word
+    $expected = $(if ($word -like '#*') { $(if ($confirm.Count) { [string]$confirm[0].Phrase } else { '' }) } else { $word })
+    if ($word -eq '#prompt' -and $Inputs.ContainsKey('prompt') -and ([string]$Inputs['prompt']).Trim() -and $expected -and ($expected -ine (([string]$Inputs['prompt']).Trim() -replace '^(?i)(\d)', 'P$1'))) { $o.Refusal = 'The picked prompt and the plan disagree; refresh the page.'; return $o }
+    if (-not $expected) { $o.Refusal = 'This button has no word to confirm with; nothing was run.'; return $o }
+    if ($null -eq $Typed -or -not [string]::Equals($expected, $Typed.Trim(), [StringComparison]::OrdinalIgnoreCase)) {
+        $o.Refusal = 'Refused: type ' + $expected + ' to confirm. Nothing was run.'
+        return $o
+    }
+    $o.Phrase = $(if ($confirm.Count) { [string]$confirm[0].Phrase } else { $expected })
+    $o.Ok = $true
+    $o
+}
+
 function Get-AutopilotPlan {
     # The Golem tab's buttons. Each opens one of the Golem's own scripts in a PowerShell window
     # of its own, which stays open to be read, or opens the queue folder, its folder or its log. $Facts is
@@ -5068,7 +5145,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.clicheck') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -5183,6 +5260,42 @@ function Get-AutopilotPlan {
                         $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.NightShiftScript + @('-On', '-Start', $nStart, '-End', $nEnd)) -Text 'In a window of its own, which stays open.'))
                     }
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.nightshift'))
+                }
+                # cc-P182: Poke, Run next and Retry stopped prompt (also the web console's buttons, through Get-WebActionPlan).
+                'golem.poke' {
+                    if (-not (& $need $ap.PokeScript 'Poke-Golem.ps1')) { break }
+                    $steps.Add((New-PlanStep -Kind say -Text 'Poke the Golem: its 10-minute watch runs now, so it looks again at once (a stall, a rest whose time has come, a pending wake, its finished sessions). It changes nothing the watch would not change by itself.'))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.PokeScript) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.poke'))
+                }
+                'golem.runnext' {
+                    if (-not (& $need $ap.RunNextScript 'Set-RunNext.ps1')) { break }
+                    $want = ([string]$Facts.RunNextPrompt).Trim()
+                    if ($want -ieq 'cancel') {
+                        if (-not [string]$Facts.RunNext) { $steps.Add((New-PlanStep -Kind refuse -Text 'Nothing is picked to go next: pick a prompt in the queue list first.')); break }
+                        $steps.Add((New-PlanStep -Kind say -Text ('Clear Run next: ' + $Facts.RunNext + ' goes back to its own place in the queue.')))
+                        $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.RunNextScript + @('-Cancel')) -Text 'In a window of its own, which stays open.'))
+                        $steps.Add((New-PlanStep -Kind log -Text 'golem.runnext'))
+                        break
+                    }
+                    if ($want -notmatch '^(?i)P?(\d+)$') { $steps.Add((New-PlanStep -Kind refuse -Text ("Pick a queued prompt (P<nn>) first: '" + $want + "'."))); break }
+                    $num = [int]$Matches[1]
+                    $q = $(if ($null -ne $Facts.QueueNames) { Get-AutopilotQueue @($Facts.QueueNames) -RunNext ([string]$Facts.RunNext) } else { $null })
+                    $file = @(@($(if ($q) { $q.Runs } else { @() })) | Where-Object { $_ -match ('^cc-P' + $num + '-') }) | Select-Object -First 1
+                    if (-not $file) { $steps.Add((New-PlanStep -Kind refuse -Text ('P' + $num + ' is not in the queue (' + $ap.Queue + '): only a queued prompt can go next; the running one and finished ones cannot.'))); break }
+                    $order = @(@($file) + @($q.Runs | Where-Object { $_ -ne $file }) | Select-Object -First 6 | ForEach-Object { 'P' + [regex]::Match($_, '^cc-P(\d+)-').Groups[1].Value })
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase ('P' + $num) -Text ('Run next: P' + $num + ' is handed at the next hand-off' + $(if ($running) { ' (after ' + $running + ')' } else { '' }) + ', ahead of continuations. The new order: ' + ($order -join ', then ') + $(if (@($q.Runs).Count -gt 6) { ', ...' } else { '' }) + '. Nothing is renamed or renumbered: the Golem keeps the pick in RUN-NEXT and uses it once.')))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.RunNextScript + @('-Prompt', ('P' + $num))) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.runnext'))
+                }
+                'golem.retry' {
+                    if (-not (& $need $ap.RetryScript 'Retry-Stopped.ps1')) { break }
+                    $sp = $(if ($st) { [string]$st.StoppedPrompt } else { '' })
+                    if (-not $sp) { $steps.Add((New-PlanStep -Kind refuse -Text 'No prompt is STOPPED: there is nothing to retry.')); break }
+                    if (-not $Facts.Enabled) { $steps.Add((New-PlanStep -Kind refuse -Text ('The Golem is off (no ENABLED file): wake it first, then retry ' + $sp + '.'))); break }
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase $sp -Text ($sp + ' goes back into the queue and goes next, stoppedPrompt is cleared, and a new CC session opens on ' + $sp + '''s own model (a terminal window on this PC). Read why it stopped first: its notes and the Golem''s STOPPED email. Its DONE is committed as usual.')))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.RetryScript + @('-Prompt', $sp)) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.retry'))
                 }
                 'golem.clicheck' {
                     if (-not (& $need $ap.CliCheckScript 'Check-Cli.ps1')) { break }
@@ -6356,7 +6469,10 @@ function Get-AutopilotFacts {
     $running = ''
     $runningFile = ''
     if ($stateText) { try { $sj = ($stateText | ConvertFrom-Json); $running = [string]$sj.current; $runningFile = [string]$sj.currentFile } catch { } }
-    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
+    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
+    # cc-P182: Run next's pick, a queue file name ('' when none).
+    $runNext = ''
+    if ($ap.RunNextFile -and (Test-Path -LiteralPath $ap.RunNextFile -PathType Leaf)) { try { $runNext = ([IO.File]::ReadAllText($ap.RunNextFile)).Trim() } catch { } }
     # cc-P131: the CLI as the Golem last saw it (cli.json); the Wake button checks it afresh at the click (Get-ClaudeCliFacts).
     $cliInfo = $null
     if ($ap.CliFile -and (Test-Path -LiteralPath $ap.CliFile -PathType Leaf)) { try { $cliInfo = [IO.File]::ReadAllText($ap.CliFile) | ConvertFrom-Json } catch { } }
@@ -6379,6 +6495,7 @@ function Get-AutopilotFacts {
         Errors          = $errors.ToArray()
         Extra           = $extra
         CliInfo         = $cliInfo
+        RunNext         = $runNext
     }
 }
 
@@ -6579,7 +6696,7 @@ function Get-AutopilotViewNow {
     param($Config)
     try {
         $f = Get-AutopilotFacts $Config
-        $v = Get-AutopilotView -Enabled $f.Enabled -StateText $f.StateText -LogLines $f.LogLines -QueueNames $f.QueueNames -Errors $f.Errors -StatusText $f.StatusText -StatusError $f.StatusError -SettingsText $f.SettingsText -Kind ([string]$Config.Autopilot.Kind) -Extra $f.Extra
+        $v = Get-AutopilotView -Enabled $f.Enabled -StateText $f.StateText -LogLines $f.LogLines -QueueNames $f.QueueNames -Errors $f.Errors -StatusText $f.StatusText -StatusError $f.StatusError -SettingsText $f.SettingsText -Kind ([string]$Config.Autopilot.Kind) -Extra $f.Extra -RunNext $f.RunNext
     } catch {
         $f = $null
         $v = Get-AutopilotView -Enabled $null -StateText $null -LogLines @() -QueueNames $null -Errors @($_.Exception.Message)
@@ -7051,6 +7168,15 @@ function Invoke-Plan {
                     if ($seen.Census) { Write-ConsoleLine ('      the test shard now has ' + $seen.Census.Accounts + ' account(s), ' + $seen.Census.Characters + ' character(s), ' + $seen.Census.Houses + ' player house(s).') 'green' }
                 }
                 'window' {
+                    if ($script:WindowStepsInline) {
+                        # cc-P182: the web console (Invoke-WebConsoleAction.ps1). The same command, run in this process like an exec
+                        # step: its output on stdout as it comes and in the action's transcript, its exit code judged.
+                        Write-ConsoleLine ($tag + 'Running here for the web console: ' + (Format-CommandLine $s.Exe $s.Arguments)) 'head'
+                        if (-not $outFile) { $outFile = New-ExecOutputFile $Config $ActionKey $ShardKey }
+                        $code = Invoke-ExecStep -Exe $s.Exe -Arguments @($s.Arguments) -OutFile $outFile -Header ($tag + (Format-CommandLine $s.Exe $s.Arguments))
+                        if ($code -ne 0) { throw ((Split-Path -Leaf ([string]@($s.Arguments)[4])) + ' exited with ' + $code + ': read its lines above.') }
+                        break
+                    }
                     Write-ConsoleLine ($tag + $s.Text) 'normal'
                     $cmd ="`$host.UI.RawUI.WindowTitle = '" + ((Format-CommandLine $s.Exe $s.Arguments) -replace "'", "''") + "'; " + (Format-CommandLine $s.Exe $s.Arguments)
                     Start-Process -FilePath $Config.PowerShell -ArgumentList ('-NoProfile -NoExit -Command ' + $cmd) | Out-Null
@@ -8802,6 +8928,11 @@ function Update-GolemRunControls {
         if ($b.Tag -eq 'golem.wrapup') { $b.Text = $(if ($st -and $st.Winding -eq 'after-current') { 'Cancel wrap up' } else { 'Wrap up after this task' }) }
         if ($b.Tag -eq 'golem.stoppoint') { $b.Text = $(if ($st -and $st.Winding -eq 'stopping-point') { 'Cancel stopping point' } else { 'Find a stopping point' }) }
     }
+    # cc-P182: Retry lights only while a prompt is STOPPED, and names it.
+    foreach ($b in @($script:ui.GolemQueueButtons)) {
+        if ($b.Tag -eq 'golem.retry') { $sp = $(if ($st) { [string]$st.StoppedPrompt } else { '' }); $b.Enabled = [bool]$sp; $b.Text = $(if ($sp) { 'Retry stopped prompt (' + $sp + ')' } else { 'Retry stopped prompt' }) }
+        if ($b.Tag -eq 'golem.runnext') { $b.Text = $(if ($View.PSObject.Properties.Name -contains 'RunNext' -and $View.RunNext) { 'Run next (picked: ' + ([regex]::Match([string]$View.RunNext, '^cc-(P\d+)-').Groups[1].Value) + ')' } else { 'Run next (picked row)' }) }
+    }
     # cc-P131: the toggles say what they would do next; Wake the Golem lights when the Golem is ready for a new session.
     $gs = $View.Settings
     foreach ($b in @($script:ui.GolemWakeButtons)) {
@@ -8912,7 +9043,7 @@ function ConvertTo-ConsoleStatusDocument {
             readyAt = $(if ($s) { & $iso $s.ReadyAt } else { $null }); readyHow = $(if ($s) { [string]$s.ReadyHow } else { '' })
             stoppedPrompt = $(if ($s) { [string]$s.StoppedPrompt } else { '' }); winding = $(if ($s) { [string]$s.Winding } else { '' })
             current = $cur
-            queue = @(@($v.QueueInfo) | ForEach-Object { & $prompt $_ })
+            queue = @(@($v.QueueInfo) | ForEach-Object { & $prompt $_ }); runNext = $(if ($v.PSObject.Properties.Name -contains 'RunNext') { [string]$v.RunNext } else { '' })
             finished = @(@($v.Finished) | ForEach-Object { [ordered]@{ number = [int]$_.Number; result = [string]$_.Result; time = (& $iso $_.Time); title = [string]$_.Title; headline = [string]$_.Headline } })
             autoWake = [bool]$v.Settings.AutoWake
             nightShift = [ordered]@{ enabled = [bool]$v.Settings.NightShiftEnabled; start = [string]$v.Settings.NightShiftStart; end = [string]$v.Settings.NightShiftEnd }
@@ -9978,6 +10109,12 @@ function Invoke-ConsoleButton {
             if ($ActionKey -eq 'golem.openprompt' -and $script:ui.GolemQueueList -and $script:ui.GolemQueueList.SelectedItems.Count) { $openFile = [string]$script:ui.GolemQueueList.SelectedItems[0].Tag }
             if ($ActionKey -eq 'golem.opennotes' -and $script:ui.GolemFinishedList -and $script:ui.GolemFinishedList.SelectedItems.Count) { $openFile = [string]$script:ui.GolemFinishedList.SelectedItems[0].Tag }
             $apFacts | Add-Member -NotePropertyName OpenFile -NotePropertyValue $openFile -Force
+            # cc-P182: Run next takes the picked queue row; with none picked it clears the pick.
+            if ($ActionKey -eq 'golem.runnext') {
+                $rp = 'cancel'
+                if ($script:ui.GolemQueueList -and $script:ui.GolemQueueList.SelectedItems.Count) { $rp = [string]$script:ui.GolemQueueList.SelectedItems[0].Text }
+                $apFacts | Add-Member -NotePropertyName RunNextPrompt -NotePropertyValue $rp -Force
+            }
             # cc-P131: the picked model, the night shift's two times, and (for the wake only) a fresh sign-in check.
             if ($script:ui.GolemModel) { $apFacts | Add-Member -NotePropertyName WakeModel -NotePropertyValue ([string]$script:ui.GolemModel.SelectedItem) -Force }
             if ($script:ui.NightStart) { $apFacts | Add-Member -NotePropertyName NightStart -NotePropertyValue $script:ui.NightStart.Text -Force }
@@ -11095,6 +11232,15 @@ function New-ConsoleForm {
             $apTop.Controls.AddRange(@($nsLabel, $nsStart, $nsTo, $nsEnd))
         }
     }
+    # cc-P182: Poke, Run next and Retry stopped prompt, a row of their own.
+    $apTop.SetFlowBreak($apTop.Controls[$apTop.Controls.Count - 1], $true)
+    $queueBtns = @()
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Golem queue' })) {
+        $b = New-ConsoleButton $a.Label $a.Key 200
+        $queueBtns += $b
+        $apTop.Controls.Add($b)
+    }
+    $script:ui.GolemQueueButtons = $queueBtns
     # cc-P132: the Golem figure on its tab too (a look with crystals).
     $script:ui.GolemFigure = $null
     if ($script:theme.Crystals) {
@@ -11453,6 +11599,7 @@ if ($Action -eq 'list') {
     Write-Host 'links.playtests, links.dashboard and links.status open the play-test page (8093), the dashboard (3000) and the status page (8093/status) in the browser.'
     Write-Host 'web.open, .logs and .npm only open; web.restart, .redeploy and .deploy need -Mode Execute. Each takes -Site <key in scripts\websites.json>; web.deploy also -ConfirmLive ''deploy to haven''.'
     Write-Host 'art.registry and art.bodies run scripts\validate-art.py (read only); art.checkvd takes -VdFile <path> and -Body <n> (no body: a free one is proposed); art.hues takes -HuesFile <the other hues.mul>. map.* print an in-game command''s syntax.'
+    Write-Host 'golem.poke needs -Mode Execute; golem.runnext and golem.retry are the Golem tab''s (the picked queue row, the STOPPED prompt) and the web console''s (web-console\golem-actions.json).'
     Write-Host 'golem.on, .off, .email, .test and .move need -Mode Execute; each opens the Golem''s own script in a window of its own (golem.move after -ConfirmLive ''move to the golem''). golem.queue, .log, .settings and .folder only open. autopilot.* still work as aliases.'
     exit 0
 }

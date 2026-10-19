@@ -37,3 +37,12 @@ stone), the frame timing is exact, and the console draws the frames itself. A GI
 
 The whole folder stays well under the repo's 5 MB file rule: the budgets above add up to about 1.9 MB, and no single
 file may be over its budget (an oversized file is refused and the fallback drawn, with the reason in the log).
+
+## The web console (cc-P155, cc-P182)
+
+The web console (`web-console\server.py`) serves this folder by slot name too and picks up every slot above with no
+code change: the crystals on tiles and lights, the three Golem figures by its state, both runes, the spinner while a
+button runs, the header band, the stone and page textures, and the seven tile icons. A strip in `art.json` steps through
+its frames there as well. cc-P182 adds fifteen button slots, `btn-<name>.png` (28 px, static, 20 KB each), one per
+Golem button (`web-console\golem-actions.json`, `art`), listed in the spec (`notes\console-art-spec.md`, "The web
+console's Golem buttons"); until they land each button draws its stand-in.

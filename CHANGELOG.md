@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.19.2
+
+### Staff
+- The web console has the Golem's buttons: Wake, Turn on, Poke, Rest, Wrap up after this task, Find a stopping point, Long run, Night shift on and off, Run next and Retry stopped prompt (Away mode shows greyed until it is built). Each asks for a typed word in a sheet made for a phone, runs through the Shard Console's own code, streams its output back and goes on the Timeline. Only Chase, only over the tailnet, one at a time.
+- The web console's tailnet address now proves each request came through its own Tailscale node, with a secret only that node holds, so nothing else on the game PC can act as Chase.
+- The Shard Console's Golem tab has Poke the Golem, Run next (the picked queue row goes first, nothing renamed) and Retry stopped prompt (the STOPPED prompt goes back first and a session wakes on its model).
+- The web console now shows all the console art: the Golem figure by its state, the tile icons, the runes, the header band and the textures, and has a slot for each Golem button's icon.
+- Installing the web console no longer shows Docker's normal progress as red errors, and an update restarts the running web console.
+
 ## 2026.10.19
 
 ### Staff

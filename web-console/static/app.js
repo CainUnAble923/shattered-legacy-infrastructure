@@ -1,10 +1,15 @@
 /* cc-P155: the web console page. Polls /api/status every 5 s (a slow answer never stacks: one request at a time, each
    with a 10 s timeout) and draws every panel from it. Text is only ever set with textContent: nothing from the
-   status reaches the page as HTML. Read only: there is nothing here that changes anything. ASCII only. */
+   status reaches the page as HTML.
+   cc-P182: the Golem's buttons. Each opens a sheet (the inputs it takes, then "type <word> to confirm"); Run posts
+   /api/action, where the server checks the word again (and the console's runner a third time), and the output is
+   polled from /api/action once a second until the result line. Only on the tailnet page (canAct); this PC's own page
+   shows them greyed. Every console-art slot is drawn when its file exists (art, artFrames: a strip steps through its
+   frames), else its drawn stand-in. ASCII only. */
 (function () {
   'use strict';
-  var POLL_MS = 5000;
-  var last = null, busy = false, art = [];
+  var POLL_MS = 5000, JOB_MS = 1000;
+  var last = null, busy = false, art = [], frames = {}, sheetFor = null, jobSeen = 0, jobTimer = null, strips = [];
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -28,6 +33,63 @@
   function color(c) { c = String(c || 'grey').toLowerCase(); return c === 'gray' ? 'grey' : c; }
   function hasArt(name) { return art.indexOf(name) >= 0; }
 
+  // --- the art (cc-P132's slots in scripts/console-art) ---------------------------------------------------------------
+  // artNode('golem-idle', 64, 'figure'): an <img> for a still, a stepping strip for an animated slot named in art.json,
+  // or null when the slot has no file yet (the caller draws its stand-in).
+  function artNode(slot, size, cls) {
+    if (!slot) return null;
+    var file = slot + '.png';
+    if (!hasArt(file)) {
+      if (hasArt(slot + '.gif')) file = slot + '.gif'; else return null;
+    }
+    var f = frames[slot];
+    if (f && f.frames > 1 && /\.png$/.test(file)) {
+      var d = el('span', 'strip ' + (cls || ''));
+      d.style.width = size + 'px'; d.style.height = size + 'px';
+      d.style.backgroundImage = 'url("/art/' + file + '")';
+      d.style.backgroundSize = (f.frames * 100) + '% 100%';
+      d.setAttribute('aria-hidden', 'true');
+      strips.push({ node: d, frames: f.frames, fps: f.fps || 8, at: -1 });
+      return d;
+    }
+    var i = el('img', cls || '');
+    i.src = '/art/' + file; i.alt = ''; i.width = size; i.height = size;
+    return i;
+  }
+  function stepStrips() {
+    var now = Date.now();
+    strips = strips.filter(function (s) { return document.body.contains(s.node); });
+    strips.forEach(function (s) {
+      var n = Math.floor(now / (1000 / s.fps)) % s.frames;
+      if (n !== s.at) { s.at = n; s.node.style.backgroundPosition = (n * 100 / (s.frames - 1)) + '% 0'; }
+    });
+  }
+  function drawChrome() {
+    document.body.classList.toggle('art-stone', hasArt('stone.png'));
+    document.body.classList.toggle('art-page', hasArt('page.png'));
+    document.body.classList.toggle('art-band', hasArt('header-band.png'));
+    var r = clear($('rune'));
+    r.appendChild(artNode('rune-corner', 32, 'corner') || el('span', 'rune'));
+    var links = document.querySelectorAll('#tabs a');
+    for (var i = 0; i < links.length; i++) {
+      var old = links[i].querySelector('.tabrune');
+      if (old) old.parentNode.removeChild(old);
+      var t = artNode('rune-tab', 16, 'tabrune');
+      if (t) links[i].insertBefore(t, links[i].firstChild);
+    }
+  }
+  function golemFigure(g) {
+    var st = String((g && g.state) || '').toUpperCase();
+    var slot = st === 'RUNNING' ? 'golem-running' : (st === 'OFF' || st === 'RESTING' || st === 'STOPPED' || !st) ? 'golem-dark' : 'golem-idle';
+    var n = artNode(slot, 64, 'figure');
+    if (n) return n;
+    var f = el('span', 'figure stand-in ' + slot);
+    f.setAttribute('aria-hidden', 'true');
+    f.appendChild(el('span', 'eyes'));
+    return f;
+  }
+  function spinner() { return artNode('spinner', 24, 'spin') || el('span', 'spin stand-in'); }
+
   // --- tabs -------------------------------------------------------------------------------------------------------
   function showTab() {
     var key = (location.hash || '#today').slice(1);
@@ -47,11 +109,13 @@
       var c = color(t.color);
       var d = el('div', 'tile ' + c);
       d.setAttribute('data-key', t.key || '');
-      var slot = 'crystal-' + c + '.png';
-      if (hasArt(slot)) { var img = el('img', 'crystal'); img.src = '/art/' + slot; img.alt = ''; d.appendChild(img); }
-      else d.appendChild(el('span', 'crystal'));
-      var txt = el('div');
-      txt.appendChild(el('div', 'word', (t.title || '') + ': ' + (t.word || '')));
+      d.appendChild(artNode('crystal-' + c, 22, 'crystal') || el('span', 'crystal'));
+      var txt = el('div', 'tiletext');
+      var w = el('div', 'word');
+      var ic = artNode('icon-' + (t.key || ''), 20, 'icon');
+      if (ic) w.appendChild(ic);
+      w.appendChild(document.createTextNode((t.title || '') + ': ' + (t.word || '')));
+      txt.appendChild(w);
       txt.appendChild(el('div', 'detail', t.detail || ''));
       d.appendChild(txt);
       box.appendChild(d);
@@ -63,8 +127,9 @@
     [['Rebuild (test shard)', (lights || {}).rebuild], ['Player package', (lights || {}).package]].forEach(function (p) {
       var l = p[1];
       var d = el('div', 'light ' + color(l && l.color));
-      var b = el('b', null, p[0] + ': ');
-      d.appendChild(b);
+      var cr = artNode('crystal-' + color(l && l.color), 18, 'crystal small');
+      if (cr) d.appendChild(cr);
+      d.appendChild(el('b', null, p[0] + ': '));
       d.appendChild(document.createTextNode(l ? (l.word + ', ' + l.detail) : 'not judged yet'));
       box.appendChild(d);
     });
@@ -95,9 +160,17 @@
     return lines;
   }
 
+  function figureRow(g, lines) {
+    var row = el('div', 'figrow');
+    row.appendChild(golemFigure(g));
+    var words = el('div', 'figwords');
+    lines.forEach(function (l) { words.appendChild(el('p', null, l)); });
+    row.appendChild(words);
+    return row;
+  }
+
   function drawGolem(g) {
-    var st = clear($('golem-state'));
-    golemState(g).forEach(function (l) { st.appendChild(el('p', null, l)); });
+    clear($('golem-state')).appendChild(figureRow(g, golemState(g)));
     var cur = clear($('golem-current'));
     if (g && g.current) {
       var c = g.current;
@@ -109,7 +182,8 @@
       cur.appendChild(el('p', 'meta', bits.filter(function (x) { return x; }).join(' | ')));
     } else cur.appendChild(el('p', 'quiet', 'Nothing running.'));
     var q = clear($('golem-queue'));
-    ((g && g.queue) || []).forEach(function (p, i) { q.appendChild(promptLine(p, i === 0 ? 'next' : '')); });
+    var pick = (g && g.runNext) || '';
+    ((g && g.queue) || []).forEach(function (p, i) { q.appendChild(promptLine(p, i === 0 ? (pick && p.name === pick ? 'next (Run next)' : 'next') : '')); });
     if (!q.firstChild) q.appendChild(el('li', 'quiet', 'The queue is empty.'));
     var f = clear($('golem-finished'));
     ((g && g.finished) || []).forEach(function (x) {
@@ -138,9 +212,178 @@
     ((g && g.usageNotes) || []).forEach(function (n) { u.appendChild(el('p', n.color === 'amber' ? 'warn' : 'quiet', n.text)); });
     // Today's summary card.
     var t = clear(document.querySelector('#today-golem .body'));
-    golemState(g).slice(0, 2).forEach(function (l) { t.appendChild(el('p', null, l)); });
+    t.appendChild(figureRow(g, golemState(g).slice(0, 2)));
     if (g && g.current) t.appendChild(el('p', null, 'Running P' + g.current.number + ': ' + (g.current.summary || g.current.title)));
     if (g && g.queue && g.queue.length) t.appendChild(el('p', 'meta', g.queue.length + ' queued, next P' + g.queue[0].number + ': ' + (g.queue[0].summary || g.queue[0].title)));
+  }
+
+  // --- the Golem's buttons (cc-P182) ------------------------------------------------------------------------------
+  // Which of a pair applies now (wrap up or its cancel, night shift on or off); the server and the console check again.
+  function applies(b, g) {
+    var w = String(b.when || ''), i = w.indexOf(':'), kind = w.slice(0, i), val = w.slice(i + 1);
+    if (b.key === 'retry' && !(g && g.stoppedPrompt)) return false;
+    if (!w) return true;
+    if (kind === 'winding') return !!g && g.winding === val;
+    if (kind === 'notWinding') return !g || g.winding !== val;
+    if (kind === 'nightShift') return !!(g && g.nightShift && g.nightShift.enabled) === (val === 'on');
+    if (kind === 'runNext') return !!(g && g.runNext);
+    return true;
+  }
+  function wordFor(b, g, inputs) {
+    if (b.word === '#prompt') return inputs.prompt || '';
+    if (b.word === '#stopped') return (g && g.stoppedPrompt) || '';
+    return b.word || '';
+  }
+
+  function drawControls(j) {
+    var a = j.actions || {}, g = (j.status || {}).golem || null, job = a.job;
+    var box = clear($('ctl-buttons')), note = $('ctl-note');
+    var running = !!(job && job.running);
+    note.textContent = !a.canAct ? (a.why || 'Read only here.') : running ? ('Running: ' + job.label + '. One at a time.') : '';
+    (a.buttons || []).forEach(function (b) {
+      if (!applies(b, g)) return;
+      var btn = el('button', 'ctl');
+      btn.type = 'button';
+      btn.setAttribute('data-key', b.key);
+      btn.appendChild(artNode(b.art || '', 28, 'btnart') || el('span', 'glyph', (b.label || '?').charAt(0)));
+      btn.appendChild(el('span', 'label', b.key === 'retry' && g && g.stoppedPrompt ? b.label + ' (' + g.stoppedPrompt + ')' : b.label));
+      if (b.disabled) { btn.classList.add('off'); btn.title = b.disabled; }
+      btn.disabled = !a.canAct || running;
+      btn.addEventListener('click', function () { openSheet(b); });
+      box.appendChild(btn);
+    });
+    $('foot-note').textContent = a.canAct ? 'The Golem\'s buttons ask for a typed word; one runs at a time.' : 'Read only here.';
+    if (job && running && !jobTimer) { $('job').hidden = false; pollJob(); }
+  }
+
+  function field(label, input) {
+    var l = el('label', 'field');
+    l.appendChild(el('span', null, label));
+    l.appendChild(input);
+    return l;
+  }
+  function textInput(id, value) {
+    var i = el('input');
+    i.id = id; i.type = 'text'; i.value = value || '';
+    i.setAttribute('autocomplete', 'off'); i.setAttribute('autocapitalize', 'off'); i.setAttribute('spellcheck', 'false');
+    return i;
+  }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function tomorrowAt(h) {
+    var d = new Date(Date.now() + 86400000);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(h) + ':00';
+  }
+
+  function openSheet(b) {
+    var g = ((last || {}).status || {}).golem || {};
+    sheetFor = b;
+    $('sheet-title').textContent = b.label;
+    $('sheet-help').textContent = b.help || '';
+    $('sheet-msg').textContent = b.disabled || '';
+    var box = clear($('sheet-inputs'));
+    (b.inputs || []).forEach(function (name) {
+      if (name === 'model') {
+        var s = el('select'); s.id = 'in-model';
+        ['Fable', 'Opus', 'Sonnet'].forEach(function (m) { var o = el('option', null, m); o.value = m; s.appendChild(o); });
+        var want = (g.queue && g.queue[0] && g.queue[0].model) || 'Opus';
+        if (['Fable', 'Opus', 'Sonnet'].indexOf(want) >= 0) s.value = want;
+        box.appendChild(field('Model', s));
+      } else if (name === 'cap') {
+        box.appendChild(field('Prompts (a number, or all)', textInput('in-cap', 'all')));
+      } else if (name === 'until') {
+        box.appendChild(field('Until (YYYY-MM-DD HH:MM)', textInput('in-until', tomorrowAt(6))));
+      } else if (name === 'start' || name === 'end') {
+        var ns = g.nightShift || {};
+        box.appendChild(field(name === 'start' ? 'Starts (HH:MM)' : 'Ends (HH:MM)', textInput('in-' + name, name === 'start' ? (ns.start || '22:30') : (ns.end || '06:30'))));
+      } else if (name === 'prompt') {
+        var p = el('select'); p.id = 'in-prompt';
+        (g.queue || []).forEach(function (q) { var o = el('option', null, 'P' + q.number + ': ' + (q.summary || q.title)); o.value = 'P' + q.number; p.appendChild(o); });
+        if (!p.options.length) { var o0 = el('option', null, 'The queue is empty'); o0.value = ''; p.appendChild(o0); }
+        p.addEventListener('change', checkWord);
+        box.appendChild(field('Prompt to run next', p));
+      }
+    });
+    $('sheet-word').value = '';
+    $('sheet-confirm').hidden = !!b.disabled;
+    $('sheet-run').hidden = !!b.disabled;
+    checkWord();
+    $('sheet').hidden = false;
+    document.body.classList.add('sheet-open');
+    if (!b.disabled) $('sheet-word').focus();
+  }
+  function closeSheet() {
+    $('sheet').hidden = true;
+    document.body.classList.remove('sheet-open');
+    sheetFor = null;
+  }
+  function sheetInputs() {
+    var out = {};
+    ((sheetFor && sheetFor.inputs) || []).forEach(function (name) { var i = $('in-' + name); if (i) out[name] = String(i.value || '').trim(); });
+    return out;
+  }
+  function checkWord() {
+    if (!sheetFor) return;
+    var g = ((last || {}).status || {}).golem || {};
+    var want = wordFor(sheetFor, g, sheetInputs());
+    $('sheet-want').textContent = want || '(nothing to confirm)';
+    var typed = String($('sheet-word').value || '').trim().toLowerCase();
+    $('sheet-run').disabled = !want || typed !== want.toLowerCase();
+  }
+
+  function post(url, body, cb) {
+    var x = new XMLHttpRequest();
+    x.open('POST', url, true);
+    x.timeout = 15000;
+    x.setRequestHeader('Content-Type', 'application/json');
+    x.setRequestHeader('X-UOConsole-Action', '1');
+    x.onload = function () { var j = null; try { j = JSON.parse(x.responseText); } catch (e) { j = { error: x.responseText }; } cb(x.status, j); };
+    x.onerror = x.ontimeout = function () { cb(0, { error: 'no answer' }); };
+    x.send(JSON.stringify(body));
+  }
+
+  function run() {
+    if (!sheetFor) return;
+    var b = sheetFor;
+    $('sheet-run').disabled = true;
+    $('sheet-msg').textContent = 'Starting...';
+    post('/api/action', { key: b.key, typed: $('sheet-word').value, inputs: sheetInputs() }, function (code, j) {
+      if (code === 202) {
+        closeSheet();
+        jobSeen = 0;
+        clear($('job-lines'));
+        $('job').hidden = false;
+        $('job-title').textContent = b.label;
+        $('job-result').textContent = 'Running...';
+        pollJob();
+        return;
+      }
+      $('sheet-msg').textContent = (j && j.error) || ('refused (' + code + ')');
+      checkWord();
+    });
+  }
+
+  function drawJob(j) {
+    $('job').hidden = false;
+    $('job-title').textContent = j.label || j.key || '';
+    var sp = clear($('job-spin'));
+    if (j.running) sp.appendChild(spinner());
+    var pre = $('job-lines');
+    (j.lines || []).forEach(function (l) { pre.appendChild(el('span', 'ln ' + color(l.color), l.text + '\n')); });
+    if (typeof j.total === 'number') jobSeen = j.total;
+    pre.scrollTop = pre.scrollHeight;
+    var r = $('job-result');
+    r.textContent = j.running ? 'Running...' : (j.result || '');
+    r.className = 'result' + (j.running ? '' : j.code === 0 ? ' green' : j.code === 2 ? ' amber' : ' red');
+  }
+  function pollJob() {
+    if (jobTimer) clearTimeout(jobTimer);
+    jobTimer = -1;
+    get('/api/action?since=' + jobSeen, function (err, j) {
+      if (err) { $('job-result').textContent = 'The web console did not answer: ' + err.message; jobTimer = setTimeout(pollJob, JOB_MS * 3); return; }
+      drawJob(j);
+      if (j.running) jobTimer = setTimeout(pollJob, JOB_MS);
+      else { jobTimer = null; poll(true); }
+    });
   }
 
   function drawNeeds(items, built) {
@@ -186,7 +429,8 @@
   function draw(j) {
     last = j;
     art = j.art || [];
-    document.body.classList.toggle('art-stone', hasArt('stone.png'));
+    frames = j.artFrames || {};
+    drawChrome();
     var s = j.status || {};
     var f = $('fresh');
     if (!j.status) { f.textContent = 'No status yet: the collector has not written it.'; f.classList.add('stale'); }
@@ -197,6 +441,7 @@
     drawTiles(s.tiles);
     drawLights(s.lights);
     drawGolem(s.golem);
+    drawControls(j);
     var p = j.panels || {};
     drawNeeds(p.needsYou, p.decisionsBuilt);
     drawTimeline(p.timeline);
@@ -248,8 +493,14 @@
     showTab();
     $('log-form').addEventListener('submit', loadLog);
     $('refresh').addEventListener('click', function (e) { e.preventDefault(); poll(true); });
+    $('sheet-word').addEventListener('input', checkWord);
+    $('sheet-form').addEventListener('submit', function (e) { e.preventDefault(); if (!$('sheet-run').disabled) run(); });
+    $('sheet-cancel').addEventListener('click', closeSheet);
+    $('sheet').addEventListener('click', function (e) { if (e.target === $('sheet')) closeSheet(); });
+    $('job-close').addEventListener('click', function () { if (!jobTimer) $('job').hidden = true; });
     poll(false);
     setInterval(function () { poll(false); }, POLL_MS);
+    setInterval(stepStrips, 50);
   });
-  window.UOConsole = { draw: draw, golemState: golemState, last: function () { return last; } };
+  window.UOConsole = { draw: draw, golemState: golemState, last: function () { return last; }, applies: applies };
 })();

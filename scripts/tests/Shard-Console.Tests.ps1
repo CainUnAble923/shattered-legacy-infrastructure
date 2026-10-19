@@ -7365,6 +7365,130 @@ Fact 'P152_TheArtTabHasOneButtonPerCommandAndTheGolemPanelItsTooltip' {
     } finally { Close-P132Form $f }
 }
 
+# ---- cc-P182: the web console's Golem buttons, and Poke, Run next and Retry stopped prompt in the console too ---------
+$p182Actions = (Get-Content -LiteralPath (Join-Path $repo 'web-console\golem-actions.json') -Raw | ConvertFrom-Json).actions
+function New-P182Facts {
+    param([string]$StatusText = (New-P131Status -State 'IDLE' -Current ''), [string]$SettingsText = $p131Settings, [string]$RunNext = '', $Queue = @('cc-P126-a.md', 'cc-P130-b.md'), [bool]$Enabled = $true)
+    $f = New-P131Facts -StatusText $StatusText -SettingsText $SettingsText -Queue $Queue -Enabled $Enabled
+    $f | Add-Member -NotePropertyName RunNext -NotePropertyValue $RunNext -Force
+    $ap = $p125Cfg.Autopilot
+    foreach ($s in @($ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.Start, $ap.Stop)) { if ($s) { $f.Present[$s] = $true } }
+    $f
+}
+function Get-P182Entry([string]$key) { @($p182Actions | Where-Object { $_.key -eq $key })[0] }
+
+Fact 'P182_PokeRunNextAndRetryRunTheGolemsOwnScripts' {
+    $ap = $p125Cfg.Autopilot
+    Assert-True ($ap.PokeScript -and $ap.RunNextScript -and $ap.RetryScript) 'the three scripts are in the Golem config'
+    $p = @(Get-ActionPlan -Action 'golem.poke' -Config $p125Cfg -AutopilotFacts (New-P182Facts))
+    Assert-True ((Get-P131Window $p).EndsWith('Poke-Golem.ps1')) ('poke: ' + (Get-P131Window $p))
+    Assert-True (@($p | Where-Object { $_.Kind -eq 'log' -and $_.Text -eq 'golem.poke' }).Count -eq 1) 'poke is logged'
+    $f = New-P182Facts; $f | Add-Member -NotePropertyName RunNextPrompt -NotePropertyValue 'p130' -Force
+    $r = @(Get-ActionPlan -Action 'golem.runnext' -Config $p125Cfg -AutopilotFacts $f)
+    Assert-Equal 'P130' (@($r | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase) 'Run next asks the prompt number'
+    Assert-True ((Get-P131Window $r).EndsWith('Set-RunNext.ps1 -Prompt P130')) ('run next: ' + (Get-P131Window $r))
+    Assert-True (@($r | Where-Object { $_.Kind -eq 'confirm' })[0].Text -match 'P130, then P126') 'the new order is shown before confirming'
+    $f.RunNextPrompt = 'P125'
+    $x = @(Get-ActionPlan -Action 'golem.runnext' -Config $p125Cfg -AutopilotFacts $f)
+    Assert-True ($x[0].Kind -eq 'refuse' -and $x[0].Text -match 'not in the queue') ('a prompt not queued is refused: ' + $x[0].Text)
+    $c = New-P182Facts -RunNext 'cc-P130-b.md'; $c | Add-Member -NotePropertyName RunNextPrompt -NotePropertyValue 'cancel' -Force
+    $cp = @(Get-ActionPlan -Action 'golem.runnext' -Config $p125Cfg -AutopilotFacts $c)
+    Assert-True ((Get-P131Window $cp).EndsWith('Set-RunNext.ps1 -Cancel')) ('cancel: ' + (Get-P131Window $cp))
+    $st = New-P182Facts -StatusText (New-P131Status -State 'STOPPED' -Current '' -StoppedPrompt 'P120')
+    $t = @(Get-ActionPlan -Action 'golem.retry' -Config $p125Cfg -AutopilotFacts $st)
+    Assert-Equal 'P120' (@($t | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase) 'Retry asks the stopped prompt'
+    Assert-True ((Get-P131Window $t).EndsWith('Retry-Stopped.ps1 -Prompt P120')) ('retry: ' + (Get-P131Window $t))
+    $none = @(Get-ActionPlan -Action 'golem.retry' -Config $p125Cfg -AutopilotFacts (New-P182Facts))
+    Assert-True ($none[0].Kind -eq 'refuse' -and $none[0].Text -match 'No prompt is STOPPED') ('nothing stopped: ' + $none[0].Text)
+    foreach ($pl in @($p, $r, $cp, $t)) { Assert-Equal 0 @(Test-PlanSafety $pl $p125Cfg).Count (@(Test-PlanSafety $pl $p125Cfg) -join '; ') }
+    $bad = @(New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ap.RunNextScript, '-Prompt', 'P1; rm x'))
+    Assert-True (@(Test-PlanSafety $bad $p125Cfg).Count -gt 0) 'Run next only with a prompt number'
+    $bad2 = @(New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ap.RetryScript, '-Prompt', 'P120', '-NoWake'))
+    Assert-True (@(Test-PlanSafety $bad2 $p125Cfg).Count -gt 0) 'Retry only with its prompt'
+}
+
+Fact 'P182_TheQueueShowsTheRunNextPickFirst' {
+    $q = Get-AutopilotQueue @('cc-P101-b.md', 'cc-P140-cont-z.md', 'cc-P99-a.md') -RunNext 'cc-P101-b.md'
+    Assert-Equal 'cc-P101-b.md,cc-P140-cont-z.md,cc-P99-a.md' (@($q.Runs) -join ',')
+    $q2 = Get-AutopilotQueue @('cc-P101-b.md', 'cc-P99-a.md') -RunNext 'cc-P7-gone.md'
+    Assert-Equal 'cc-P99-a.md,cc-P101-b.md' (@($q2.Runs) -join ',') 'a pick no longer queued is ignored'
+}
+
+Fact 'P182_EveryWebButtonIsAConsoleActionAndItsWordIsTheConsolesPhrase' {
+    $keys = @(Get-ConsoleActions | ForEach-Object { $_.Key })
+    foreach ($e in @($p182Actions)) {
+        if ($e.disabled) { Assert-True (-not $e.action) ('a disabled button runs nothing: ' + $e.key); continue }
+        Assert-True ($keys -contains $e.action) ('a console action: ' + $e.key + ' -> ' + $e.action)
+        $phrase = Get-ConfirmPhrase $e.action
+        if ($phrase -ne 'confirm live' -and $e.word -notlike '#*' -and $e.key -notmatch 'cancel|off$') { Assert-Equal $phrase $e.word ('the console phrase for ' + $e.key) }
+    }
+    foreach ($k in @('wake', 'poke', 'rest', 'wrapup', 'stoppoint', 'longrun', 'nightshift-on', 'nightshift-off', 'runnext', 'away-on', 'away-off', 'retry')) { Assert-True (@($p182Actions | Where-Object { $_.key -eq $k }).Count -eq 1) ('a button ' + $k) }
+}
+
+Fact 'P182_AWebButtonCallsTheConsolesOwnPlanAndChecksTheWordOnTheServer' {
+    # A fake Get-ActionPlan records each call: every button reaches the console's own plan, with the console key.
+    $script:p182Calls = New-Object 'System.Collections.Generic.List[string]'
+    function Get-ActionPlan { param($Action, $Config, $AutopilotFacts, $Now) $script:p182Calls.Add($Action); @(New-PlanStep -Kind say -Text 'fake') }
+    try {
+        foreach ($e in @($p182Actions | Where-Object { -not $_.disabled })) {
+            $f = New-P182Facts -RunNext 'cc-P130-b.md' -StatusText (New-P131Status -State 'RUNNING' -Current 'P125')
+            $inputs = @{ prompt = 'P130'; model = 'Opus'; cap = '3'; until = '2026-10-20 06:00'; start = '22:30'; end = '06:30' }
+            $null = Get-WebActionPlan -Entry $e -Typed 'x' -Inputs $inputs -Config $p125Cfg -Facts $f -Now $p125Now
+        }
+    } finally { Remove-Item function:Get-ActionPlan -ErrorAction SilentlyContinue }
+    foreach ($e in @($p182Actions | Where-Object { -not $_.disabled -and -not $_.when })) { Assert-True ($script:p182Calls -contains $e.action) ('called for ' + $e.key + ': ' + ($script:p182Calls -join ',')) }
+    # The word, checked here as well as in the page and server.py: case ignored, anything else refused.
+    $f = New-P182Facts
+    $ok = Get-WebActionPlan -Entry (Get-P182Entry 'poke') -Typed ' Poke ' -Inputs @{} -Config $p125Cfg -Facts $f -Now $p125Now
+    Assert-True ($ok.Ok -and $ok.ActionKey -eq 'golem.poke') ('poke with its word: ' + $ok.Refusal)
+    $no = Get-WebActionPlan -Entry (Get-P182Entry 'poke') -Typed '' -Inputs @{} -Config $p125Cfg -Facts $f -Now $p125Now
+    Assert-True (-not $no.Ok -and $no.Refusal -match 'type poke') ('no word: ' + $no.Refusal)
+    $w = Get-WebActionPlan -Entry (Get-P182Entry 'wrapup') -Typed 'Wrap up golem' -Inputs @{} -Config $p125Cfg -Facts (New-P182Facts -StatusText (New-P125Status)) -Now $p125Now
+    Assert-True ($w.Ok -and $w.Phrase -ceq 'wrap up golem') ('the console phrase goes on to Invoke-Plan: ' + $w.Phrase + ' ' + $w.Refusal)
+    $wound = Get-WebActionPlan -Entry (Get-P182Entry 'wrapup') -Typed 'wrap up golem' -Inputs @{} -Config $p125Cfg -Facts (New-P182Facts -StatusText (New-P125Status -Winding 'after-current')) -Now $p125Now
+    Assert-True (-not $wound.Ok -and $wound.Refusal -match 'Cancel wrap up') ('a stale page cannot wrap up twice: ' + $wound.Refusal)
+    $rn = Get-WebActionPlan -Entry (Get-P182Entry 'runnext') -Typed 'p130' -Inputs @{ prompt = 'P130' } -Config $p125Cfg -Facts (New-P182Facts) -Now $p125Now
+    Assert-True ($rn.Ok -and $rn.Phrase -eq 'P130') ('Run next with the prompt number: ' + $rn.Refusal)
+    $rn2 = Get-WebActionPlan -Entry (Get-P182Entry 'runnext') -Typed 'P126' -Inputs @{ prompt = 'P130' } -Config $p125Cfg -Facts (New-P182Facts) -Now $p125Now
+    Assert-True (-not $rn2.Ok) 'another number is refused'
+    $aw = Get-WebActionPlan -Entry (Get-P182Entry 'away-on') -Typed 'away on' -Inputs @{} -Config $p125Cfg -Facts (New-P182Facts) -Now $p125Now
+    Assert-True (-not $aw.Ok -and $aw.Refusal -match 'P149') ('away mode is refused until P149: ' + $aw.Refusal)
+}
+
+Fact 'P182_WindowStepsRunInThisProcessForTheWebConsole' {
+    # The web console has no window to open: the Golem script runs here and its output comes back on stdout.
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p182-' + [guid]::NewGuid().ToString('N').Substring(0, 6))
+    New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+    try {
+        $s = Join-Path $tmp 'say.ps1'
+        Set-Content -LiteralPath $s -Value "Write-Host 'ran inline'; exit 0" -Encoding ASCII
+        $cfg = Get-ConsoleConfig -RepoRoot $repo
+        $cfg.Autopilot = $p125Cfg.Autopilot
+        $cfg.LogFile = (Join-Path $tmp 'shard-console.log')
+        $plan = @((New-PlanStep -Kind confirm -Phrase 'poke'), (New-PlanStep -Kind window -Exe $cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $s) -Text 'In a window of its own.'))
+        $script:WindowStepsInline = $true
+        try { $out = (& { Invoke-Plan -Plan $plan -Config $cfg -ActionKey 'golem.poke' -ShardKey 'golem' -ConfirmLive 'poke' } 6>&1 | Out-String) } finally { $script:WindowStepsInline = $false }
+        Assert-True ($out -match 'ran inline') ('the script ran here: ' + $out)
+        Set-Content -LiteralPath $s -Value "Write-Host 'refused'; exit 1" -Encoding ASCII
+        $bad = @((New-PlanStep -Kind window -Exe $cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $s)), (New-PlanStep -Kind say -Text 'after'))
+        $script:WindowStepsInline = $true
+        try { $out2 = (& { Invoke-Plan -Plan $bad -Config $cfg -ActionKey 'golem.poke' -ShardKey 'golem' } 6>&1 | Out-String) } finally { $script:WindowStepsInline = $false }
+        Assert-True ($out2 -match 'FAILED at step 1' -and $out2 -notmatch '\] after') ('a script that exits non-zero fails the plan: ' + $out2)
+    } finally { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+Fact 'P182_TheGolemTabHasPokeRunNextAndRetry' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        $tags = @($script:ui.GolemQueueButtons | ForEach-Object { $_.Tag })
+        Assert-Equal 'golem.poke,golem.runnext,golem.retry' ($tags -join ',') 'their own row'
+        $tips = Get-ConsoleTooltips
+        foreach ($k in $tags) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
+        Assert-True (@($script:ui.GolemRunButtons).Count -eq 4) 'the run row is unchanged'
+    } finally { $form.Dispose() }
+}
+
 Remove-Item -LiteralPath $p144Dir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $p135Dir -Recurse -Force -ErrorAction SilentlyContinue

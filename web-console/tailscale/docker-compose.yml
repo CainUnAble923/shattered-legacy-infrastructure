@@ -6,6 +6,10 @@
 # Started by web-console/Install-WebConsole.ps1 -Tailscale, with the auth key Chase made in D:\UO\web-console\tailscale.env
 # (TS_AUTHKEY=..., outside git, never logged). After the first login the node's state is in the uoconsole-ts-state
 # volume and the key is not needed again. ASCII only.
+# cc-P182: Serve now proxies to the proof forwarder (proof_proxy.py) on 127.0.0.2:8097 in this node's own network
+# namespace, which adds X-UOConsole-Proof (the secret in D:\UO\web-console\proof.key, made by the installer, never
+# logged) before passing each request on to 127.0.0.1:8096. The console refuses the tailnet listener without it, so a
+# container on this PC's Docker that reaches 8096 directly cannot act as Chase (P155's Deviation 2).
 name: uoconsole
 services:
   tailscale:
@@ -25,5 +29,16 @@ services:
     volumes:
       - uoconsole-ts-state:/var/lib/tailscale
       - ./serve.json:/config/serve.json:ro
+  proof:
+    image: python:3.12.7-alpine3.20
+    container_name: uoconsole-proof
+    restart: unless-stopped
+    network_mode: service:tailscale
+    depends_on:
+      - tailscale
+    command: ["python", "-I", "/app/proof_proxy.py"]
+    volumes:
+      - ./proof_proxy.py:/app/proof_proxy.py:ro
+      - ${UOCONSOLE_PROOF:-D:/UO/web-console/proof.key}:/run/uoconsole/proof.key:ro
 volumes:
   uoconsole-ts-state:
