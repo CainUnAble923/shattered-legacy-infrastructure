@@ -413,9 +413,7 @@ internal static class ImbueCatalogue
             (i, v) => ((BaseArmor)i).ArmorAttributes.MageArmor = v);
 
         // -- Slayer properties (weapons only) ----------------------------------
-        // NOTE: SlayerName enum values - verify against your ModernUO build if
-        //       you get CS0117 "SlayerName does not contain a definition for X".
-        //       Common alternatives: DaemonDismissal, Exorcism, GargoylesFoe.
+        // Every SlayerName but None has a row (cc-P173; ImbueAllSlayersVerification fails the build otherwise).
 
         AddSlayer("Slayer: Silver (Undead)",   SlayerName.Silver);
         AddSlayer("Slayer: Repond (Humanoid)", SlayerName.Repond);
@@ -431,6 +429,26 @@ internal static class ImbueCatalogue
         AddSlayer("Slayer: Spider's Death",    SlayerName.SpidersDeath);
         AddSlayer("Slayer: Scorpion's Bane",   SlayerName.ScorpionsBane);
         AddSlayer("Slayer: Ophidian",          SlayerName.Ophidian);
+
+        // cc-P173 (Chase 2026-10-18, a War Axe with Snow Elemental Slayer showed nothing to extract): the other 13 of pinned's
+        // SlayerName values (SlayerName.cs), so every slayer a weapon can carry can be extracted, disenchanted and imbued.
+        // The pinned name first, as the 14 above, then OSI's property name (SlayerEntry.cs m_AosTitles) where it differs.
+        // The 14 names above stay as they are: a saved essence's PropertyKey is the row's name. Super or lesser by
+        // SuperSlayers below. Balron Damnation is not imbuable on OSI (ServUO ItemPropertyInfo.cs skips IDs 109-110 with
+        // Daemon Dismissal, which this table already had): kept as a lesser slayer, as Daemon Dismissal is.
+        AddSlayer("Slayer: Orc Slaying",                      SlayerName.OrcSlaying);
+        AddSlayer("Slayer: Terathan",                         SlayerName.Terathan);
+        AddSlayer("Slayer: Lizardman Slaughter",              SlayerName.LizardmanSlaughter);
+        AddSlayer("Slayer: Gargoyle's Foe",                   SlayerName.GargoylesFoe);
+        AddSlayer("Slayer: Balron Damnation",                 SlayerName.BalronDamnation);
+        AddSlayer("Slayer: Exorcism (Demon)",                 SlayerName.Exorcism);
+        AddSlayer("Slayer: Flame Dousing (Fire Elemental)",   SlayerName.FlameDousing);
+        AddSlayer("Slayer: Water Dissipation (Water Elemental)", SlayerName.WaterDissipation);
+        AddSlayer("Slayer: Vacuum (Air Elemental)",           SlayerName.Vacuum);
+        AddSlayer("Slayer: Earth Shatter (Earth Elemental)",  SlayerName.EarthShatter);
+        AddSlayer("Slayer: Blood Drinking (Blood Elemental)", SlayerName.BloodDrinking);
+        AddSlayer("Slayer: Summer Wind (Snow Elemental)",     SlayerName.SummerWind);
+        AddSlayer("Slayer: Elemental Ban (Elemental)",        SlayerName.ElementalBan);
 
         // -- cc-P82: the design ladder's rows the catalogue lacked (appended, so earlier rows keep their indexes) --------
 

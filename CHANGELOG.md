@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.14
+
+### Fixed
+- Imbuing: every slayer can now be extracted, disenchanted and imbued, including Snow Elemental, the fire, water, air, earth and blood elemental slayers, Elemental Ban, Exorcism, Orc, Terathan, Lizardman, Gargoyle and Balron slayers. Before, a weapon with one of these showed no slayer at the Imbuing Table.
+
+### Staff
+- A check now fails the build if any slayer is missing from the imbuing table.
+
 ## 2026.10.18.13
 
 ### Changed
