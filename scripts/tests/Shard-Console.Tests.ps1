@@ -7489,6 +7489,15 @@ Fact 'P182_TheGolemTabHasPokeRunNextAndRetry' {
     } finally { $form.Dispose() }
 }
 
+Fact 'P183_TheGolemTabSaysWhichPromptAndModelItWaitsFor' {
+    # cc-P183: status.json's waitingForPrompt (the Golem's fresh read of the queue) beside the model.
+    $j = (New-P125Status -State 'IDLE' -Current '' -RestReason 'model' -WaitingFor 'Fable') | ConvertFrom-Json
+    $j | Add-Member -NotePropertyName waitingForPrompt -NotePropertyValue 'P181' -Force
+    $t = Get-AutopilotGlance -View (New-P125View ($j | ConvertTo-Json -Depth 4)) -Now $p125Now
+    Assert-True ($t.Detail.Contains('Waiting for a Fable session for P181')) ('the tile names the prompt: ' + $t.Detail)
+    Assert-Equal 'P181' (ConvertFrom-AutopilotStatus ($j | ConvertTo-Json -Depth 4)).WaitingForPrompt
+}
+
 Remove-Item -LiteralPath $p144Dir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $p135Dir -Recurse -Force -ErrorAction SilentlyContinue

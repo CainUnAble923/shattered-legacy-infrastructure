@@ -4207,6 +4207,8 @@ function ConvertFrom-AutopilotStatus {
         RestReason      = ([string]$j.restReason).Trim()
         RestAfter       = ([string]$j.restAfter).Trim()
         WaitingForModel = ([string]$j.waitingForModel).Trim()
+        # cc-P183: the prompt the model rest waits for, from the Golem's fresh read of the queue.
+        WaitingForPrompt = ([string]$j.waitingForPrompt).Trim()
         LongRun         = $j.longRun
         # cc-P131: when a rest can run again (readyAt local, readyHow words), the prompt that said STOPPED, the Golem's
         # own wakes, the night shift and the CLI as the Golem last saw them.
@@ -4637,7 +4639,7 @@ function Get-WindingLine {
             'wrap up'        { $l = 'Resting after ' + $after + ' (wrap up)' }
             'stopping point' { $l = 'Paused at a stopping point in ' + $after }
             'context'        { $l = 'Resting' + $aft + ' (session full)' }
-            'model'          { $l = 'Waiting for a ' + [string]$Status.WaitingForModel + ' session' }
+            'model'          { $l = 'Waiting for a ' + [string]$Status.WaitingForModel + ' session' + $(if ($Status.PSObject.Properties.Name -contains 'WaitingForPrompt' -and $Status.WaitingForPrompt) { ' for ' + $Status.WaitingForPrompt } else { '' }) }
             'usage limit'    { $l = 'Paused: usage limit' + $(if ($cur) { ' in ' + $cur } else { '' }) }
             # cc-P131: the reasons the Golem gained.
             'run cap'           { $l = 'Resting' + $aft + ' (run cap)' }

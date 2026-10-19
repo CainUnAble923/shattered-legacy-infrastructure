@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.19.3
+
+### Staff
+- The Golem always wakes a session on the model the next prompt asks for: it reads the queue again right before every wake, notices when the queue is renamed while it waits, and a session that started on the wrong model hands over at once instead of waiting five minutes.
+- One "Golem, please work on the shard tasks" now starts a new run after a full run that ended in a stopping point, a wrap up or any other rest (it used to need saying twice).
+- When the usage reading from claude.ai goes stale, the Golem keeps waking itself from Claude Code's own usage numbers and emails once a day to say the reading is old.
+- A prompt that stopped for Chase no longer blocks the Golem once it is back in the queue, or once both repos are committed when it stopped for that.
+
 ## 2026.10.19.2
 
 ### Staff
