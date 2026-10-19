@@ -836,6 +836,7 @@ internal static class ImbueCatalogue
 ///   DisenchantView    - show item enchantments + choose full disenchant or extract property
 ///   DisenchantConfirm - confirm destroying item (full disenchant)
 ///   ExtractConfirm    - confirm extracting a specific property
+///   UnravelContainerConfirm - confirm unravelling every magic item at the top level of a container (cc-P176)
 ///   CraftSelect       - list mastered properties available to craft essences from
 ///   CraftConfirm      - confirm crafting a specific PropertyEssence
 ///
@@ -858,6 +859,7 @@ public sealed class ArtificersImbueGump : Gump
         ExtractConfirm,
         CraftSelect,
         CraftConfirm,
+        UnravelContainerConfirm,
     }
 
     private const int W    = 530;
@@ -920,6 +922,7 @@ public sealed class ArtificersImbueGump : Gump
             case Stage.ExtractConfirm:    DrawExtractConfirm(data, standing);                break;
             case Stage.CraftSelect:       DrawCraftSelect(data, standing);                   break;
             case Stage.CraftConfirm:      DrawCraftConfirm(data, standing);                  break;
+            case Stage.UnravelContainerConfirm: DrawUnravelContainerConfirm(data, standing);   break;
         }
 
         // Footer
@@ -960,6 +963,10 @@ public sealed class ArtificersImbueGump : Gump
         y += 20;
         AddButton(18, y, 4011, 4012, (int)BtnId.DisenchantTarget);
         AddLabel(44, y + 2, 0x21, "Target an item to disenchant...");
+        y += 24;
+        // cc-P176: OSI's Unravel Container (ServUO pub57 ImbuingGump.cs:55, 153-158).
+        AddButton(18, y, 4011, 4012, (int)BtnId.UnravelContainerTarget);
+        AddLabel(44, y + 2, 0x21, "Unravel Container - every magic item in a bag...");
         y += 32;
 
         AddImageTiled(10, y, W - 20, 1, 9304);
@@ -1419,6 +1426,42 @@ public sealed class ArtificersImbueGump : Gump
         AddLabel(44, 284, 0x21, "Destroy Item and Collect Yield");
     }
 
+    // -- Stage: Unravel Container Confirm (cc-P176) ----------------------------
+    //
+    // OSI asks once before a container is unravelled (ServUO pub57 ImbuingGump.cs:302-336, cliloc 1112404); this page
+    // also says how many items go and how many stay.
+
+    private void DrawUnravelContainerConfirm(ClusterFAccountData data, int standing)
+    {
+        if (_item is not Container cont || cont.Deleted) { DrawSelectItem(data, standing); return; }
+
+        var unravel = UnravelableIn(_pm, cont).Count;
+        var skip    = cont.Items.Count - unravel;
+
+        AddLabel(18, 60, 0x21, "Unravel Container - FINAL CONFIRMATION");
+        AddImageTiled(10, 78, W - 20, 1, 9304);
+
+        if (unravel == 0)
+        {
+            AddLabel(18, 84, 0x22, "There is no magic item in this container to unravel.");
+            return;
+        }
+
+        var html =
+            $"<BASEFONT COLOR=#FF6666>You are about to unravel every magic item in:<BR>" +
+            $"<B>{cont.Name ?? cont.GetType().Name}</B></BASEFONT><BR><BR>" +
+            $"<BASEFONT COLOR=#FFCC44>{unravel} item(s) will be DESTROYED for their ingredients.</BASEFONT><BR>" +
+            $"<BASEFONT COLOR=#AACCFF>{skip} item(s) will be skipped and stay in the container: plain, blessed, " +
+            "insured and quest items, and containers inside it (only the top level is unravelled).</BASEFONT><BR><BR>" +
+            "<BASEFONT COLOR=#FF4444>This action CANNOT be undone.</BASEFONT>";
+
+        AddHtml(16, 84, W - 32, 180, html, false, false);
+        AddImageTiled(10, 276, W - 20, 1, 9304);
+
+        AddButton(18, 282, 4005, 4006, (int)BtnId.ApplyUnravelContainer);
+        AddLabel(44, 284, 0x21, $"Unravel {unravel} Item(s)");
+    }
+
     // -- Stage: Extract Property Confirm --------------------------------------
 
     private void DrawExtractConfirm(ClusterFAccountData data, int standing)
@@ -1554,6 +1597,8 @@ public sealed class ArtificersImbueGump : Gump
         ApplyExtract       = 9,
         CraftBtn           = 10,
         ApplyCraft         = 11,
+        UnravelContainerTarget = 12, // cc-P176
+        ApplyUnravelContainer  = 13, // cc-P176
         PropBase           = 100,    // + propIdx in ForItem list (imbue)
         ExtractPropBase    = 200,    // + propIdx in ForItem list (extract)
         CraftPropBase      = 300,    // + propIdx in All list (craft)
@@ -1584,6 +1629,15 @@ public sealed class ArtificersImbueGump : Gump
 
             case (int)BtnId.DisenchantTarget:
                 _pm.Target = new ImbueItemTarget(_pm, targetForDisenchant: true);
+                return;
+
+            case (int)BtnId.UnravelContainerTarget:
+                _pm.SendMessage(0x3B2, "Target a container in your backpack to unravel the magic items in it.");
+                _pm.Target = new UnravelContainerTarget(_pm);
+                return;
+
+            case (int)BtnId.ApplyUnravelContainer:
+                HandleUnravelContainer();
                 return;
 
             case (int)BtnId.CraftBtn:
@@ -1686,6 +1740,7 @@ public sealed class ArtificersImbueGump : Gump
             Stage.ExtractConfirm    => new ArtificersImbueGump(_pm, _item, Stage.DisenchantView, -1, 0, 0),
             Stage.CraftSelect       => new ArtificersImbueGump(_pm),
             Stage.CraftConfirm      => new ArtificersImbueGump(_pm, null, Stage.CraftSelect, -1, 0, _page),
+            Stage.UnravelContainerConfirm => new ArtificersImbueGump(_pm),
             _                       => new ArtificersImbueGump(_pm)
         });
     }
@@ -1852,20 +1907,71 @@ public sealed class ArtificersImbueGump : Gump
 
     private void HandleFullDisenchant(ClusterFAccountData data, int standing)
     {
-        var guild = data.GetOrCreateGuildData(_pm.Serial);
         if (!_pm.CheckAlive()) return;
         if (_item == null || _item.Deleted) { _pm.SendMessage(0x22, "The item is gone."); _pm.SendGump(new ArtificersImbueGump(_pm)); return; }
         if (_item.RootParent != _pm) { _pm.SendMessage(0x22, "You must have the item in your possession."); _pm.SendGump(new ArtificersImbueGump(_pm)); return; }
 
-        var activeProps = ImbueCatalogue.GetActiveProperties(_item);
-
         // cc-P137: an item with no magic is refused, never paid (it paid 1 shard, so vendor stock farmed shards).
-        if (activeProps.Count == 0)
+        // cc-P176: and OSI's other refusals (CanUnravel), the same ones Unravel Container skips on.
+        var refusal = CanUnravel(_pm, _item, fromContainer: false);
+        if (refusal != null)
         {
-            _pm.SendMessage(0x22, NoMagicToUnravel);
+            _pm.SendMessage(0x22, refusal);
             _pm.SendGump(new ArtificersImbueGump(_pm));
             return;
         }
+
+        var itemName = _item.Name ?? _item.GetType().Name;
+        var yield = UnravelOne(_pm, _item);
+
+        var msg = $"You disenchant the {itemName}, recovering {yield.Shards} Essence Shard(s)";
+        if (yield.Essences.Count > 0) msg += $" and {yield.Essences.Count} PropertyEssence(s)";
+        msg += "!";
+
+        _pm.PlaySound(0x1F5);
+        _pm.SendMessage(0x44, msg);
+        _pm.SendGump(new ArtificersImbueGump(_pm));
+    }
+
+    // -- One unravel (cc-P176) ---------------------------------------------------
+    //
+    // The one code path that unravels an item: Full Disenchant uses it for one item and Unravel Container for each item
+    // it takes, so each gets the same yield, the same skill check and the same gain.
+
+    internal const string BlessedRefusal = "You cannot unravel the magic of a blessed item.";          // OSI 1080421
+    internal const string NotInPackRefusal = "The item must be in your backpack to magically unravel it."; // OSI 1080424
+    internal const string CannotUnravel = "You cannot magically unravel this item.";                  // OSI 1080425
+    internal const string FactionRefusal = "You cannot magically unravel a faction reward item.";     // OSI 1112408
+    internal const string QuestRefusal = "You cannot magically unravel a quest item.";
+    internal const string InsuredSkip = "An insured item is never unravelled from a container.";
+
+    internal readonly record struct UnravelYield(int Shards, List<string> Essences);
+
+    /// <summary>
+    /// Why this item cannot be unravelled, or null when it can. OSI's rules (ServUO pub57 Imbuing.cs:134-176) where
+    /// pinned has the system: in the backpack (so never equipped), not blessed or newbied, an imbuable kind, not a
+    /// faction item; and it must hold magic (Imbuing.cs:749-758, cc-P137). Ours: never a quest item, and from a
+    /// container never an insured one (a bulk unravel should not take what the player chose to keep). Pinned has no
+    /// Enchant spell or focus attack, so ServUO's two refusals for those do not apply.
+    /// </summary>
+    internal static string? CanUnravel(PlayerMobile pm, Item item, bool fromContainer)
+    {
+        if (item.Deleted || !ImbueCatalogue.IsImbuable(item)) return CannotUnravel;
+        if (pm.Backpack == null || !item.IsChildOf(pm.Backpack)) return NotInPackRefusal;
+        if (item.LootType is LootType.Blessed or LootType.Newbied) return BlessedRefusal;
+        if (item is Server.Factions.IFactionItem { FactionItemState: not null }) return FactionRefusal;
+        if (item.QuestItem) return QuestRefusal;
+        if (fromContainer && item.Insured) return InsuredSkip;
+        if (ImbueCatalogue.GetActiveProperties(item).Count == 0) return NoMagicToUnravel;
+        return null;
+    }
+
+    /// <summary>Unravels an item CanUnravel passed: shards, a 25% essence chance per property, one skill check.</summary>
+    internal static UnravelYield UnravelOne(PlayerMobile pm, Item item)
+    {
+        var activeProps = ImbueCatalogue.GetActiveProperties(item);
+        var guild = (pm.Account is IAccount acct ? ClusterFAccountPersistence.GetOrCreate(acct) : new ClusterFAccountData())
+            .GetOrCreateGuildData(pm.Serial);
 
         var totalShards = 0;
 
@@ -1876,30 +1982,93 @@ public sealed class ArtificersImbueGump : Gump
         guild.AddCurrency("artificers", totalShards);
 
         // Chance at PropertyEssence per property
-        var essencesDropped = 0;
+        var essences = new List<string>();
         foreach (var (def, _) in activeProps)
         {
             if (Utility.Random(4) == 0) // 25% chance
             {
                 var ess = new PropertyEssence(def.Name);
-                ArtificersSatchel.Deliver(_pm, ess); // cc-P137 (F-50): the satchel first, else the backpack
-                essencesDropped++;
+                ArtificersSatchel.Deliver(pm, ess); // cc-P137 (F-50): the satchel first, else the backpack
+                essences.Add(def.Name);
             }
         }
 
         // Skill gain from disenchanting
-        _pm.CheckSkill(SkillName.Imbuing, 20.0, 80.0);
+        pm.CheckSkill(SkillName.Imbuing, 20.0, 80.0);
 
-        var itemName = _item.Name ?? _item.GetType().Name;
-        _item.Delete();
+        item.Delete();
+        return new UnravelYield(totalShards, essences);
+    }
 
-        var msg = $"You disenchant the {itemName}, recovering {totalShards} Essence Shard(s)";
-        if (essencesDropped > 0) msg += $" and {essencesDropped} PropertyEssence(s)";
-        msg += "!";
+    /// <summary>The top-level items of a container that would be unravelled (ServUO pub57 ImbuingGump.cs:272, 348).</summary>
+    internal static List<Item> UnravelableIn(PlayerMobile pm, Container cont) =>
+        cont.Items.Where(i => CanUnravel(pm, i, fromContainer: true) == null).ToList();
 
-        _pm.PlaySound(0x1F5);
-        _pm.SendMessage(0x44, msg);
+    // -- Unravel Container logic (cc-P176) ----------------------------------------
+
+    private void HandleUnravelContainer()
+    {
+        if (!_pm.CheckAlive()) return;
+        if (_item is not Container cont || cont.Deleted) { _pm.SendMessage(0x22, "The container is gone."); _pm.SendGump(new ArtificersImbueGump(_pm)); return; }
+
+        var refusal = ContainerRefusal(_pm, cont);
+        if (refusal != null)
+        {
+            _pm.SendMessage(0x22, refusal);
+            _pm.SendGump(new ArtificersImbueGump(_pm));
+            return;
+        }
+
+        UnravelContainer(_pm, cont);
         _pm.SendGump(new ArtificersImbueGump(_pm));
+    }
+
+    /// <summary>Why this container cannot be unravelled, or null (ServUO pub57 ImbuingGump.cs:260-268).</summary>
+    internal static string? ContainerRefusal(PlayerMobile pm, Container cont)
+    {
+        if (pm.Backpack == null || !cont.IsChildOf(pm.Backpack))
+            return "This item must be in your backpack to be used."; // OSI 1062334
+        if (cont is LockableContainer { Locked: true })
+            return "That container is locked. Unraveled: 0/0 items";  // OSI sends 1111814 "0\t0"
+        return null;
+    }
+
+    /// <summary>
+    /// Unravels every top-level item CanUnravel passes, each through UnravelOne, and sends the summary. Everything
+    /// else stays in the container with no skill check. Returns the yields.
+    /// </summary>
+    internal static List<UnravelYield> UnravelContainer(PlayerMobile pm, Container cont)
+    {
+        var all = cont.Items.ToList(); // a snapshot: unravelling deletes from cont.Items
+        var yields = new List<UnravelYield>();
+
+        foreach (var item in all)
+            if (CanUnravel(pm, item, fromContainer: true) == null)
+                yields.Add(UnravelOne(pm, item));
+
+        var shards = yields.Sum(y => y.Shards);
+        var essences = yields.SelectMany(y => y.Essences)
+            .GroupBy(n => n)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => $"{g.Count()} Essence of {g.Key}")
+            .ToList();
+
+        if (yields.Count > 0)
+        {
+            pm.PlaySound(0x1F5);
+            pm.SendMessage(0x44, "You magically unravel the items!"); // OSI 1080429, plural
+        }
+
+        pm.SendMessage(0x44, $"Unraveled: {yields.Count}/{all.Count} items"); // OSI 1111814
+        pm.SendMessage(0x44, $"Unraveled {yields.Count} item(s), skipped {all.Count - yields.Count}.");
+        if (yields.Count > 0)
+        {
+            var got = $"Ingredients: {shards} Essence Shard(s)";
+            if (essences.Count > 0) got += ", " + string.Join(", ", essences);
+            pm.SendMessage(0x44, got + ".");
+        }
+
+        return yields;
     }
 
     // -- Extract property logic ------------------------------------------------
@@ -2050,6 +2219,47 @@ public sealed class ArtificersImbueGump : Gump
 
             var nextStage = _disenchant ? Stage.DisenchantView : Stage.ViewItem;
             from.SendGump(new ArtificersImbueGump(_pm, item, nextStage, -1, 0, 0));
+        }
+
+        protected override void OnTargetCancel(Mobile from, TargetCancelType cancelType)
+        {
+            from.SendGump(new ArtificersImbueGump(_pm));
+        }
+    }
+
+    // cc-P176: ServUO pub57 ImbuingGump.cs:246-290. Not a container: nothing; outside the backpack or locked: refused;
+    // nothing to unravel: the summary at once (OSI's TryUnravelContainer); else the confirm page.
+    private sealed class UnravelContainerTarget : Target
+    {
+        private readonly PlayerMobile _pm;
+
+        public UnravelContainerTarget(PlayerMobile pm) : base(-1, false, TargetFlags.None) => _pm = pm;
+
+        protected override void OnTarget(Mobile from, object targeted)
+        {
+            if (targeted is not Container cont || cont.Deleted)
+            {
+                from.SendMessage(0x22, "That is not a container.");
+                from.SendGump(new ArtificersImbueGump(_pm));
+                return;
+            }
+
+            var refusal = ContainerRefusal(_pm, cont);
+            if (refusal != null)
+            {
+                from.SendMessage(0x22, refusal);
+                from.SendGump(new ArtificersImbueGump(_pm));
+                return;
+            }
+
+            if (UnravelableIn(_pm, cont).Count == 0)
+            {
+                UnravelContainer(_pm, cont); // unravels nothing: the 0/N summary, as OSI sends
+                from.SendGump(new ArtificersImbueGump(_pm));
+                return;
+            }
+
+            from.SendGump(new ArtificersImbueGump(_pm, cont, Stage.UnravelContainerConfirm, -1, 0, 0));
         }
 
         protected override void OnTargetCancel(Mobile from, TargetCancelType cancelType)

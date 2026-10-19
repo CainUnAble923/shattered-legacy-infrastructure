@@ -29,6 +29,17 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.18.17
+
+### Added
+- Imbuing table: Unravel Container. Target a bag in your backpack and every magic item in it is unraveled at once, each with its own skill check and ingredients. Plain, blessed, insured and quest items stay in the bag, as do bags inside it, and a summary tells you how many were unraveled, how many were skipped and what you got.
+
+### Changed
+- Imbuing table: a blessed item, an item you are wearing, a quest item or a faction reward can no longer be fully disenchanted, as on OSI.
+
+### Staff
+- Full Disenchant and Unravel Container now share one unravel path (yield, skill check, refusals).
+
 ## 2026.10.18.16
 
 ### Added
