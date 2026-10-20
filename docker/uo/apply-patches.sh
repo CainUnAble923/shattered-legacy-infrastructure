@@ -683,6 +683,12 @@ apply_patch "$PATCHES/AnimalTaming-pet-training.patch"
 apply_patch "$PATCHES/AnimalTaming-anger-scales.patch"
 apply_patch "$PATCHES/AnimalLore-pet-training-gump.patch"
 apply_patch "$PATCHES/SkillCheck-pet-focus-gain.patch"
+# cc-P172 (Chase 2026-10-18): inside pinned's controlled-creature branch of CheckSkill (SkillCheck.cs:140-143, the x2), the
+# gain chance is also multiplied by ClusterFPetGainSpeed.Multiplier (the owner's loops, Animal Taming and Lore above 100,
+# Outriders rank; 1 unless a player controls the creature). A patch because gc is a local of the static CheckSkill; no
+# event or virtual reaches it. It makes the roll likelier, never a free gain. After the Focus patch (same file, other hunk).
+# Alternatives argued in shard-migration/notes/cc-P172-pet-gain-speed.md; pinned by PetGainSpeedVerification.
+apply_patch "$PATCHES/SkillCheck-pet-gain-speed.patch"
 apply_patch "$PATCHES/BaseWeapon-trained-weapon-ability.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to

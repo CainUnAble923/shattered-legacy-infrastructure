@@ -199,9 +199,9 @@ public class PetTrainingVerification
 
     // -- the wire -------------------------------------------------------------------------------------------------------
 
-    private record WireGump(int Length, string Layout, List<string> Strings);
+    internal record WireGump(int Length, string Layout, List<string> Strings);
 
-    private static byte[] Inflate(ReadOnlySpan<byte> packed, int expectedLength)
+    internal static byte[] Inflate(ReadOnlySpan<byte> packed, int expectedLength)
     {
         using var input = new MemoryStream(packed.ToArray());
         using var zlib = new ZLibStream(input, CompressionMode.Decompress);
@@ -213,7 +213,7 @@ public class PetTrainingVerification
 
     // The LAST 0xDD for `gump` on `ns` (a Refresh resends it under the same serial and type id), found and decoded.
     // Fails if it never reached the wire.
-    private static WireGump OnTheWire(NetState ns, BaseGump gump)
+    internal static WireGump OnTheWire(NetState ns, BaseGump gump)
     {
         Assert.NotNull(gump);
         var span = ns.SendBuffer.GetReadSpan();

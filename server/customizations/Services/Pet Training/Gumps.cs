@@ -264,6 +264,7 @@ public class NewAnimalLoreGump : PetTrainingGump
         builder.AddImage(28, 76, 0x826);
 
         builder.AddHtmlLocalized(47, 74, 160, 18, 3001030, 0xC8); // Combat Ratings
+        AddGainSpeed(ref builder);
 
         AddSkill(ref builder, 92, 1044103, SkillName.Wrestling);
         AddSkill(ref builder, 110, 1044087, SkillName.Tactics);
@@ -283,6 +284,7 @@ public class NewAnimalLoreGump : PetTrainingGump
         builder.AddImage(28, 76, 0x826);
 
         builder.AddHtmlLocalized(47, 74, 160, 18, 3001032, 0xC8); // Lore & Knowledge
+        AddGainSpeed(ref builder);
 
         AddSkill(ref builder, 92, 1044085, SkillName.Magery);
         AddSkill(ref builder, 110, 1044076, SkillName.EvalInt);
@@ -302,6 +304,7 @@ public class NewAnimalLoreGump : PetTrainingGump
         builder.AddImage(28, 76, 0x826);
 
         builder.AddHtmlLocalized(47, 74, 160, 18, 3001032, 0xC8); // Lore & Knowledge
+        AddGainSpeed(ref builder);
 
         AddSkill(ref builder, 92, 1044112, SkillName.Bushido);
         AddSkill(ref builder, 110, 1044113, SkillName.Ninjitsu);
@@ -509,6 +512,15 @@ public class NewAnimalLoreGump : PetTrainingGump
     {
         builder.AddHtmlLocalized(53, y, 160, 18, cliloc, Label);
         builder.AddHtml(180, y, 100, 18, FormatSkill(Creature, skill));
+    }
+
+    // cc-P172: a player's pet's skill gain speed (ClusterFPetGainSpeed), right of each skill page's heading.
+    private void AddGainSpeed(ref DynamicGumpBuilder builder)
+    {
+        if (Creature is { Controlled: true, ControlMaster: PlayerMobile })
+        {
+            builder.AddHtml(160, 74, 120, 18, $"<div align=right>Learns {ClusterFPetGainSpeed.Describe(Creature)}</div>");
+        }
     }
 
     public override void OnResponse(NetState sender, in RelayInfo info)
