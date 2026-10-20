@@ -160,10 +160,13 @@ if ($page) {
 
 if ($web.Golem) {
     # cc-P186: which Golem of several. Unknown: refused. The integrator: the console's own, as without -Golem.
-    $g = $null
-    try { $g = @((Get-Content -LiteralPath (Join-Path $config.Autopilot.GolemRoot 'golems.json') -Raw | ConvertFrom-Json).golems | Where-Object { [string]$_.name -ieq $web.Golem }) | Select-Object -First 1 } catch { }
+    $g = $null; $regJ = $null
+    try { $regJ = Get-Content -LiteralPath (Join-Path $config.Autopilot.GolemRoot 'golems.json') -Raw | ConvertFrom-Json; $g = @($regJ.golems | Where-Object { [string]$_.name -ieq $web.Golem }) | Select-Object -First 1 } catch { }
     if (-not $g) { Write-ConsoleLine ('Refused: there is no ' + $web.Golem + ' Golem in golems.json. Nothing was run.') 'amber'; exit 2 }
-    if (-not [bool]$g.integrator) {
+    # cc-P208: the console's own Golem is the home one (the integrator, or Iron while Shadow Iron merges); the merge Golem
+    # itself takes no Golem button (its card's buttons run without -Golem).
+    if ([string]$g.engine -eq 'script') { Write-ConsoleLine ('Refused: the ' + [string]$g.name + ' Golem only merges; its buttons are on its card (Merge now, Pause merging, Resume merging). Nothing was run.') 'amber'; exit 2 }
+    if ([string]$g.name -ine (Get-GolemHomeName $regJ)) {
         if (-not $entry.anyGolem) { Write-ConsoleLine ('Refused: ' + $entry.label + ' is the integrator''s only, not the ' + [string]$g.name + ' Golem''s. Nothing was run.') 'amber'; exit 2 }
         $web.GolemName = [string]$g.name
         $config = Get-GolemScopedConfig -Config $config -Name $web.GolemName

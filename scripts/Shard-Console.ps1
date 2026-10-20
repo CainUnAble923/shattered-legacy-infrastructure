@@ -246,6 +246,7 @@ function New-AutopilotConfig {
         RetryScript   = (Join-Path $Root 'Retry-Stopped.ps1')
         RunNextFile   = (Join-Path $Root 'RUN-NEXT')
         IntegrateScript = (Join-Path $Root 'Integrate.ps1')   # cc-P184: the integrator merges the other Golems' branches now
+        MergeScript   = (Join-Path $Root 'ShadowIron.ps1')   # cc-P208: the merge Golem's runner (-Pause, -Resume)
         AssignScript  = (Join-Path $Root 'Assign-Prompt.ps1') # cc-P187: a queued prompt's **Golem:** line (and Run next for it)
         PromptDir    = $(if ($Queue) { Split-Path -Parent $Queue } else { '' })
         CompletedDir = $(if ($Queue) { Join-Path (Split-Path -Parent $Queue) 'completed' } else { '' })
@@ -930,6 +931,8 @@ function Get-ConfirmPhrase {
         'golem.resume'     { 'wake the golem' }
         'golem.nightshift' { 'night shift on' }
         'golem.integrate'  { 'merge branches' }
+        'golem.mergepause'  { 'pause merging' }    # cc-P208
+        'golem.mergeresume' { 'resume merging' }
         'web.deploy'       { 'deploy to haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'deploy to haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'deploy to haven' }
@@ -952,6 +955,8 @@ function Get-ConfirmSubject {
         'fix.restart'     { 'Restart the test shard' }
         'golem.move'      { 'Move to the Golem' }
         'golem.integrate' { 'Merge branches now' }
+        'golem.mergepause'  { 'Pause merging' }    # cc-P208
+        'golem.mergeresume' { 'Resume merging' }
         'web.deploy'      { 'Deploy to Haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'Ops pages on Haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'Print queue on Haven' }
@@ -1233,6 +1238,9 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.retry';      Group = 'Golem queue'; Label = 'Retry stopped prompt';               Mutates = $true;  RunIn = 'here' }
         # cc-P184: the integrator merges the other Golems' finished branches into main now (otherwise between its own prompts).
         [pscustomobject]@{ Key = 'golem.integrate';  Group = 'Golem queue'; Label = 'Merge branches now';                 Mutates = $true;  RunIn = 'here' }
+        # cc-P208: Shadow Iron, the merge Golem: no round runs while paused (its tickets wait); Resume runs one at once.
+        [pscustomobject]@{ Key = 'golem.mergepause';  Group = 'Golem merge'; Label = 'Pause merging';                     Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.mergeresume'; Group = 'Golem merge'; Label = 'Resume merging';                    Mutates = $true;  RunIn = 'here' }
         # cc-P187: the Golem picker's row: the picked queued prompt goes to the picked Golem (its **Golem:** line).
         [pscustomobject]@{ Key = 'golem.assign';     Group = 'Golem pick';  Label = 'Assign picked row to this Golem';    Mutates = $true;  RunIn = 'here' }
         # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
@@ -1836,7 +1844,9 @@ function Get-ConsoleTooltips {
         'golem.runnext'    = 'Run next: the queue row you picked is handed at the next hand-off, ahead of continuations (Set-RunNext.ps1; nothing is renamed). Asks the prompt number. With no row picked, it clears the pick.'
         'golem.retry'      = 'Retry stopped prompt: the STOPPED prompt goes back into the queue, first, stoppedPrompt is cleared and a session is woken on its own model (Retry-Stopped.ps1). Asks the prompt number. Lit only while a prompt is STOPPED.'
         'golem.clicheck'   = 'Checks the Claude Code CLI: installed, and signed in (claude auth status). Run it after signing in so the Golem tab sees it. Read-only; runs Check-Cli.ps1 in its own window.'
-        'golem.integrate'  = 'Merge branches now (several Golems): the integrator merges every finished Golem branch into main, one at a time, builds when the server changed, commits and pushes; a conflict or a red build becomes a fix-up prompt for that Golem. Only while nothing runs on the integrator and its trees are clean. Asks merge branches; runs Integrate.ps1 in its own window.'
+        'golem.integrate'  = 'Merge branches now (several Golems): the integrator merges every finished Golem branch into main, one at a time, builds when the server changed, commits and pushes; a conflict or a red build becomes a fix-up prompt for that Golem. Only while nothing runs on the integrator and its trees are clean (with Shadow Iron, settings.json mergeGolem, one of its rounds now). Asks merge branches; runs Integrate.ps1 in its own window.'
+        'golem.mergepause'  = 'Pause merging: Shadow Iron, the merge Golem, runs no round until Resume merging; finished branches wait in merge-queue. Asks pause merging; runs ShadowIron.ps1 -Pause in its own window.'
+        'golem.mergeresume' = 'Resume merging: Shadow Iron merges again, one round at once and then every 10 minutes. Asks resume merging; runs ShadowIron.ps1 -Resume in its own window.'
         # cc-P132: the lights, the Golem figure and the header rune.
         'rebuild.light'    = 'Whether the test shard needs a rebuild: green built from the latest server change, amber server commits since the running build (Rebuild can go), red needed but blocked with the reason. Hover for the commits and files; it only reads and never builds.'
         'package.light'    = 'Whether the player package needs a build or a publish: green the published package holds every player-facing change, amber Build package (or Publish package when a built zip holds them), red blocked with the reason. Hover for the commits; it only reads.'
@@ -3328,13 +3338,13 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 # cc-P186: a Golem script may also name one Golem of several (-Golem <name>, last); the rules below hold for the rest.
                 if ($sa.Count -ge 7 -and $sa[-2] -ceq '-Golem' -and $sa[-1] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' -and @(Get-GolemNamedScripts $ap) -icontains $sa[4]) { $sa = @($sa[0..($sa.Count - 3)]) }
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
-                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript) | Where-Object { $_ }
+                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript) | Where-Object { $_ }
                 $ok = ($head -and $sa.Count -eq 5 -and $withArgs -inotcontains $sa[4])
                 # cc-P125: Start-LongRun.ps1 only with -Cap <n> -Until <time>; Wrap-Up.ps1 and Find-StoppingPoint.ps1 also with -Cancel.
                 $tmpT = [datetime]::MinValue
@@ -3346,6 +3356,8 @@ function Test-PlanSafety {
                 if ($head -and $sa[4] -ieq $ap.AutoWakeScript -and $sa.Count -eq 6 -and $sa[5] -cin @('-On', '-Off')) { $ok = $true }
                 # cc-P200: Set-Marathon.ps1 only with -Mode auto|on|off.
                 if ($head -and $ap.MarathonScript -and $sa[4] -ieq $ap.MarathonScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Mode' -and $sa[6] -cin @('auto', 'on', 'off')) { $ok = $true }
+                # cc-P208: ShadowIron.ps1 only with -Pause or -Resume.
+                if ($head -and $ap.MergeScript -and $sa[4] -ieq $ap.MergeScript -and $sa.Count -eq 6 -and $sa[5] -cin @('-Pause', '-Resume')) { $ok = $true }
                 if ($head -and $sa[4] -ieq $ap.NightShiftScript -and (($sa.Count -eq 6 -and $sa[5] -ceq '-Off') -or ($sa.Count -eq 10 -and $sa[5] -ceq '-On' -and $sa[6] -ceq '-Start' -and $sa[7] -match '^\d{1,2}:\d{2}$' -and $sa[8] -ceq '-End' -and $sa[9] -match '^\d{1,2}:\d{2}$'))) { $ok = $true }
                 # cc-P182: Set-RunNext.ps1 only with -Prompt P<nn> or -Cancel; Retry-Stopped.ps1 only with -Prompt P<nn>.
                 if ($head -and $ap.RunNextScript -and $sa[4] -ieq $ap.RunNextScript -and (($sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') -or ($sa.Count -eq 6 -and $sa[5] -ceq '-Cancel'))) { $ok = $true }
@@ -4274,6 +4286,9 @@ function ConvertTo-GolemCardDocument {
         marathonDay = [bool]$c.marathonDay; noDaytimeMarathon = [bool]$c.noDaytimeMarathon   # cc-P200
         winding = [string]$c.winding; stoppedPrompt = [string]$c.stoppedPrompt; remote = [bool]$c.remote; online = [bool]$c.online
         lastSeen = $(if ($c.lastSeen) { [string]$c.lastSeen } else { $null }); portrait = [string]$c.portrait
+        # cc-P208: home (the console's own Golem), script (the merge Golem, Shadow Iron) and its merge block, its display name.
+        home = [bool]$c.home; script = [bool]$c.script; display = $(if ($c.display) { [string]$c.display } else { [string]$c.name })
+        merge = $(if ($c.merge) { $c.merge } else { $null })
         ready = $(if ($r -and $r.verdict) { [ordered]@{ verdict = [string]$r.verdict; at = [string]$r.at; summary = [string]$r.summary; machine = [string]$r.machine
                     failed = [object[]]@(@($r.failed) | Where-Object { $_ } | ForEach-Object { [string]$_ }); laptop = $(if ($r.laptop) { $r.laptop } else { $null }) } } else { $null }) }
 }
@@ -4306,9 +4321,13 @@ function Get-GolemPickRows {
     try { $reg = $RegistryText | ConvertFrom-Json } catch { }
     $multi = $false
     try { $multi = [bool](($SettingsText | ConvertFrom-Json).multiGolem) } catch { }
+    # cc-P208: the console's own Golem is the home one: the integrator, or with a script integrator (Shadow Iron, which
+    # has no buttons but its card's) the first Golem that claims on its PC. A script Golem is not in the picker.
+    $homeName = Get-GolemHomeName $reg
     $rows = foreach ($g in @($(if ($reg) { $reg.golems } else { @() }))) {
         if (-not $g -or [string]$g.name -notmatch '^[A-Za-z][A-Za-z0-9]{0,23}$') { continue }
-        $int = [bool]$g.integrator
+        if ([string]$g.engine -eq 'script') { continue }
+        $int = ([string]$g.name -ieq $homeName)
         $why = ''
         if (-not $int) {
             if (-not [bool]$g.enabled) { $why = 'disabled in golems.json' }
@@ -4321,6 +4340,26 @@ function Get-GolemPickRows {
             Text = ([string]$g.name + ' (' + $where + ')' + $(if ($int) { ', integrator' } else { '' }) + $(if ($why) { ': ' + $why } else { '' })) }
     }
     @($rows | Sort-Object @{ Expression = { -not $_.Integrator } }, Name)
+}
+
+function Test-MergePaused {
+    # cc-P208: is Shadow Iron (settings.json mergeGolem) paused? Its PAUSED-<name> file in the Golem folder.
+    param($Config, [string]$SettingsText)
+    $n = ''; try { $n = [string]($SettingsText | ConvertFrom-Json).mergeGolem } catch { }
+    if (-not $n -or -not $Config.Autopilot.GolemRoot) { return $false }
+    Test-Path -LiteralPath (Join-Path $Config.Autopilot.GolemRoot ('PAUSED-' + $n))
+}
+
+function Get-GolemHomeName {
+    # cc-P208: golems.json's home Golem (Golems.ps1 Get-GolemHome): the integrator, or with a script integrator the first
+    # Golem that claims on its PC. '' when there is no registry.
+    param($Registry)
+    $list = @($(if ($Registry) { @($Registry.golems) } else { @() }) | Where-Object { $_ })
+    $int = @($list | Where-Object { [bool]$_.integrator }) | Select-Object -First 1
+    if (-not $int) { return '' }
+    if ([string]$int.engine -ne 'script') { return [string]$int.name }
+    $h = @($list | Where-Object { [string]$_.engine -ne 'script' -and [string]$_.machine -ieq [string]$int.machine }) | Select-Object -First 1
+    $(if ($h) { [string]$h.name } else { [string]$int.name })
 }
 
 function Get-AnyGolemActionKeys {
@@ -4383,6 +4422,23 @@ function Get-GolemCardLines {
     $rows.Add([pscustomobject]@{ Text = ('golems    : ' + $cards.Count + ' in the registry (multiGolem on); the integrator is ' + $(if ($int.Count) { $int[0] } else { 'nobody' }) + ', this file is ' + $(if ($Status.GolemName) { $Status.GolemName + '''s' } else { 'unsigned' })); Color = 'head' })
     foreach ($c in $cards) {
         $state = [string]$c.state
+        if ($c.script) {
+            # cc-P208: Shadow Iron, the merge Golem: no lane, usage or Wake; its last round, what waits, the last merge and
+            # failure, a dirty tree and a pause. Pause merging / Resume merging and Merge branches now are its buttons.
+            $m = $c.merge
+            $t = '            ' + ('{0,-8}' -f [string]$c.name) + ('{0,-13}' -f 'merges') + ('{0,-14} ' -f [string]$c.machine) + $state
+            if ($m) {
+                $lr = ''; try { $lr = ([datetime]::Parse([string]$m.lastRound)).ToString('HH:mm') } catch { }
+                $t += '; last round ' + $lr + $(if ($m.result) { ' (' + [string]$m.result + ')' } else { '' }) + '; ' + [int]$m.waiting + ' waiting'
+                if ($m.lastMerge) { $t += '; last merge ' + [string]$m.lastMerge.prompt + ' from ' + [string]$m.lastMerge.golem }
+                if ($m.lastFailure) { $t += '; last failure ' + [string]$m.lastFailure.prompt + ': ' + [string]$m.lastFailure.why }
+                if ($m.paused) { $t += '; PAUSED (Resume merging)' }
+                if ($m.dirty) { $t += '; NOT CLEAN, waits: ' + [string]$m.dirty }
+            } else { $t += '; no round yet (the scheduled task Shadow Iron runs every 10 minutes)' }
+            if ($c.needsYou) { $t += '; needs you: ' + [string]$c.needsYou }
+            $rows.Add([pscustomobject]@{ Text = $t; Color = $(if ($state -eq 'NEEDS YOU' -or ($m -and ($m.dirty -or $m.paused))) { 'amber' } elseif ($state -eq 'DISABLED') { 'gray' } else { 'green' }) })
+            continue
+        }
         $t = '            ' + ('{0,-8}' -f [string]$c.name) + ('{0,-6}' -f [string]$c.lane) + ('{0,-7}' -f [string]$c.engine) + ('{0,-14} ' -f [string]$c.machine) + $state
         if ($c.current) { $t += ' ' + [string]$c.current + $(if ($c.branch -and [string]$c.branch -ne 'main') { ' on ' + [string]$c.branch } else { '' }) }
         if ($c.restReason) { $t += ' (' + [string]$c.restReason + ')' }
@@ -5277,6 +5333,7 @@ function Get-WebActionPlan {
             'autoWake'   { [bool]$gs.AutoWake -eq ($val -eq 'on') }
             'marathonNot' { [string]$gs.Marathon -ne $val }   # cc-P200
             'runNext'    { [bool][string]$f.RunNext }
+            'mergePaused' { (Test-MergePaused $Config $f.SettingsText) -eq ($val -eq 'on') }   # cc-P208
             default      { $false }
         }
         if (-not $ok) {
@@ -5287,6 +5344,7 @@ function Get-WebActionPlan {
                 'autoWake'   { 'self-wake is ' + $(if ($gs.AutoWake) { 'already on' } else { 'already off' }) }
                 'marathonNot' { 'marathon is already ' + $val }
                 'runNext'    { 'nothing is picked to go next' }
+                'mergePaused' { 'merging is ' + $(if ($val -eq 'on') { 'not paused' } else { 'already paused' }) }
                 default      { 'the Golem is not in that state' }
             }
             $o.Refusal = 'Not now: ' + $why + '. Nothing was run; the page refreshes.'
@@ -5446,7 +5504,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -5586,6 +5644,15 @@ function Get-AutopilotPlan {
                     $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'This writes main in both public repos (merge commits, pushed).'))
                     $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.IntegrateScript) -Text 'In a window of its own, which stays open.'))
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.integrate'))
+                }
+                { $_ -in @('golem.mergepause', 'golem.mergeresume') } {
+                    # cc-P208: Shadow Iron's pause (PAUSED-ShadowIron) and resume; the script says when mergeGolem is off.
+                    if (-not (& $need $ap.MergeScript 'ShadowIron.ps1')) { break }
+                    $pause = ($Action -eq 'golem.mergepause')
+                    $steps.Add((New-PlanStep -Kind say -Text $(if ($pause) { 'Pause merging: Shadow Iron, the merge Golem, runs no round until Resume merging. Finished branches wait in merge-queue; nothing else changes.' } else { 'Resume merging: Shadow Iron runs one round now (it merges what waits, oldest first) and then every 10 minutes again.' })))
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text $(if ($pause) { 'Merging stops until you resume it.' } else { 'This may write main in both public repos (merge commits, pushed).' })))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.MergeScript + @($(if ($pause) { '-Pause' } else { '-Resume' }))) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text $Action))
                 }
                 'golem.poke' {
                     if (-not (& $need $ap.PokeScript 'Poke-Golem.ps1')) { break }
@@ -6811,7 +6878,7 @@ function Get-AutopilotFacts {
     $running = ''
     $runningFile = ''
     if ($stateText) { try { $sj = ($stateText | ConvertFrom-Json); $running = [string]$sj.current; $runningFile = [string]$sj.currentFile } catch { } }
-    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.MarathonScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
+    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.MarathonScript, $ap.MergeScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
     # cc-P182: Run next's pick, a queue file name ('' when none).
     $runNext = ''
     if ($ap.RunNextFile -and (Test-Path -LiteralPath $ap.RunNextFile -PathType Leaf)) { try { $runNext = ([IO.File]::ReadAllText($ap.RunNextFile)).Trim() } catch { } }
@@ -11736,6 +11803,8 @@ function New-ConsoleForm {
         $apTop.Controls.Add($b)
     }
     $script:ui.GolemQueueButtons = $queueBtns
+    # cc-P208: Shadow Iron's Pause merging and Resume merging, beside Merge branches now.
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Golem merge' })) { $apTop.Controls.Add((New-ConsoleButton $a.Label $a.Key 200)) }
     # cc-P187: the Golem picker, a row of its own: which Golem the Golem buttons act for (golems.json; the integrator
     # first), Wake's model following its lane, and Assign (the picked queue row to the picked Golem, and run it next).
     $apTop.SetFlowBreak($apTop.Controls[$apTop.Controls.Count - 1], $true)

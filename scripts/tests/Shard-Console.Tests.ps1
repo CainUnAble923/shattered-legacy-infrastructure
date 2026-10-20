@@ -7998,6 +7998,43 @@ Remove-Item -LiteralPath $p144Dir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $p135Dir -Recurse -Force -ErrorAction SilentlyContinue
 
+# cc-P208: Shadow Iron, the merge Golem: out of the picker (Iron stays the console's own), a card line of its own, and
+# Pause merging / Resume merging run ShadowIron.ps1 with exactly -Pause or -Resume after their phrase.
+Fact 'P208_ShadowIronHasItsOwnCardLineAndButtonsAndIronStaysTheConsolesOwn' {
+    $reg = '{"schema":1,"golems":[{"name":"Iron","machine":"PC1","engine":"claude","lane":"Opus","enabled":true,"integrator":false},{"name":"Bronze","machine":"PC1","engine":"claude","lane":"Fable","enabled":true},{"name":"ShadowIron","machine":"PC1","engine":"script","lane":"","enabled":true,"integrator":true}]}'
+    $rows = @(Get-GolemPickRows -RegistryText $reg -SettingsText '{"multiGolem":true,"mergeGolem":"ShadowIron"}' -Machine 'PC1')
+    Assert-Equal 'Iron,Bronze' (($rows | ForEach-Object { $_.Name }) -join ',') 'Shadow Iron is not in the picker; Iron first'
+    Assert-True ($rows[0].Integrator -and -not $rows[1].Integrator) 'Iron is the console''s own (home), not Bronze'
+    Assert-Equal 'Iron' (Get-GolemHomeName ($reg | ConvertFrom-Json)) 'the home Golem'
+    $any = @(Get-AnyGolemActionKeys (Join-Path $repo 'web-console\golem-actions.json'))
+    $a = Get-GolemActionConfig -Config $p125Cfg -ActionKey 'golem.poke' -Golem 'Iron' -Rows $rows -AnyGolemActions $any
+    Assert-True (-not $a.Refusal -and -not $a.Name) 'Iron''s buttons are the console''s own, as before'
+    # Its card line.
+    $m = [pscustomobject]@{ lastRound = '2026-10-20T15:00:00'; result = 'P203 merged'; waiting = 1; tickets = @('P204'); lastMerge = [pscustomobject]@{ prompt = 'P203'; golem = 'Bronze' }; lastFailure = $null; dirty = 'D:\UO\shard-migration: notes/x.md'; paused = $false }
+    $st = [pscustomobject]@{ RegistryError = ''; MultiGolem = $true; GolemName = 'Iron'; Marathon = $null
+        Golems = @([pscustomobject]@{ name = 'ShadowIron'; machine = 'PC1'; engine = 'script'; lane = ''; state = 'WAITING'; integrator = $true; script = $true; merge = $m; needsYou = '' }) }
+    $lines = @(Get-GolemCardLines -Status $st -Now ([datetime]'2026-10-20T15:05:00'))
+    $sl = @($lines | Where-Object { $_.Text -match 'ShadowIron' -and $_.Text -match 'merges' })
+    Assert-True ($sl.Count -eq 1 -and $sl[0].Text -match 'last round 15:00 \(P203 merged\); 1 waiting; last merge P203 from Bronze; NOT CLEAN, waits: D:\\UO\\shard-migration: notes/x\.md' -and $sl[0].Color -eq 'amber') ('its line: ' + (($lines | ForEach-Object { $_.Text }) -join ' | '))
+    Assert-True ($sl[0].Text -notmatch 'usage from|hours ') 'no lane, usage or hours'
+    $doc = ConvertTo-GolemCardDocument $st.Golems[0]
+    Assert-True ($doc.script -and $doc.merge.lastMerge.prompt -eq 'P203' -and $doc.display -eq 'ShadowIron') 'the web console''s card carries script, merge and display'
+    # Pause merging and Resume merging.
+    foreach ($k in 'golem.mergepause', 'golem.mergeresume') {
+        $act = @(Get-ConsoleActions | Where-Object { $_.Key -eq $k })
+        Assert-True ($act.Count -eq 1 -and $act[0].Mutates) "$k is a console action"
+        $f = $p125Facts.PSObject.Copy(); $f.Present = @{}; $f.Present[$p125Cfg.Autopilot.MergeScript] = $true
+        $plan = @(Get-ActionPlan -Action $k -Config $p125Cfg -AutopilotFacts $f -Now $p125Now)
+        $ph = $(if ($k -eq 'golem.mergepause') { 'pause merging' } else { 'resume merging' })
+        Assert-True (@($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -eq $ph }).Count -eq 1) "$k asks $ph"
+        $w = @($plan | Where-Object { $_.Kind -eq 'window' })
+        Assert-True ($w.Count -eq 1 -and (@($w[0].Arguments) -join ' ') -match ('ShadowIron\.ps1 ' + $(if ($k -eq 'golem.mergepause') { '-Pause' } else { '-Resume' }) + '$')) ("$k runs ShadowIron.ps1: " + (@($w[0].Arguments) -join ' '))
+        Assert-Equal 0 @(Test-PlanSafety $plan $p125Cfg).Count ("$k passes the safety check: " + (@(Test-PlanSafety $plan $p125Cfg) -join ' | '))
+    }
+    $bad = @((New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $p125Cfg.Autopilot.MergeScript, '-Register')))
+    Assert-True (@(Test-PlanSafety $bad $p125Cfg).Count -gt 0) 'ShadowIron.ps1 with anything else (-Register) is refused'
+}
+
 $failed =@($results | Where-Object { -not $_.Passed }).Count
 Write-Host ""
 Write-Host ("{0} facts, {1} passed, {2} failed" -f $results.Count, ($results.Count - $failed), $failed) -ForegroundColor $(if ($failed) { 'Red' } else { 'Green' })

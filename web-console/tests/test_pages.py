@@ -389,6 +389,40 @@ class Pages(unittest.TestCase):
             with open(os.path.join(self.groot, "settings.json"), "w", encoding="utf-8") as f:
                 json.dump({"multiGolem": True}, f)
 
+    def test_shadow_iron_is_not_in_the_picker_and_iron_stays_the_consoles_own(self):
+        """cc-P208: with Shadow Iron (engine script) the integrator, the picker leaves it out, Iron is still the console's
+        own (home), a Golem button named for Shadow Iron is refused, and its card buttons are listed with card 'merge'."""
+        path = os.path.join(self.groot, "golems.json")
+        with open(path, encoding="utf-8") as f:
+            before = f.read()
+        doc = json.loads(before)
+        for g in doc["golems"]:
+            g["integrator"] = False
+        doc["golems"].append({"name": "ShadowIron", "machine": self.console.machine, "engine": "script", "lane": "", "areas": [],
+                              "work": {"code": "D:\\ShatteredLegacy", "docs": "D:\\UO\\shard-migration"}, "enabled": True, "integrator": True})
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(doc, f)
+            st = os.stat(path)
+            os.utime(path, (st.st_atime, st.st_mtime + 5))
+            self.assertEqual("Iron", self.console.home_name())
+            picker = self.req("/api/status")[1]["golemPicker"]
+            names = [g["name"] for g in picker]
+            self.assertNotIn("ShadowIron", names)
+            self.assertEqual("Iron", names[0], "Iron, the console's own, first")
+            self.assertTrue(picker[0]["integrator"], "own")
+            code, j = self.req("/api/action", {"key": "poke", "typed": "poke shadowiron", "golem": "ShadowIron"}, ACT)
+            self.assertIn(code, (403, 409), j)
+            cards = {b["key"]: b for b in self.console.public_buttons()}
+            self.assertEqual("merge", cards["merge-pause"]["card"])
+            self.assertEqual("mergePaused:off", cards["merge-pause"]["when"])
+            self.assertEqual("Merge now", cards["integrate"]["label"])
+        finally:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(before)
+            st = os.stat(path)
+            os.utime(path, (st.st_atime, st.st_mtime + 10))
+
     def test_the_word_names_the_picked_golem_and_assign_names_both(self):
         g = {b["key"]: b for b in self.console.buttons()}
         err, ok = self.console.check_request(g["wake"], "wake the golem", {"model": "Fable"}, "Bronze")

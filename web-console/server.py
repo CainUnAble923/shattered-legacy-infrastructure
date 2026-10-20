@@ -237,7 +237,7 @@ class Console:
         return self._buttons[1]
 
     def public_buttons(self):
-        keep = ("key", "label", "word", "inputs", "when", "disabled", "help", "art", "anyGolem", "golemWord")
+        keep = ("key", "label", "word", "inputs", "when", "disabled", "help", "art", "anyGolem", "golemWord", "card")   # cc-P208 card
         return [{k: b[k] for k in keep if k in b} for b in self.buttons()]
 
     def check_request(self, entry, typed, inputs, golem=None):
@@ -625,9 +625,13 @@ class Console:
         s = self._load_json(os.path.join(self.golem_root, "settings.json"), {}) or {}
         multi = bool(s.get("multiGolem")) if isinstance(s, dict) else False
         out = []
+        own = self.home_name()
         for e in reg:
+            if str(e.get("engine") or "") == "script":
+                continue   # cc-P208: the merge Golem (Shadow Iron) has its own card and buttons, not the picker
             c = cards.get(str(e["name"]).lower(), {})
-            integ = bool(e.get("integrator"))
+            # cc-P208: "integrator" here is the console's own Golem, the home one (the integrator, or Iron while Shadow Iron merges).
+            integ = str(e["name"]).lower() == own.lower()
             remote = self.is_remote(e)
             why, grey = "", ""
             if not integ and not e.get("enabled"):
@@ -657,6 +661,22 @@ class Console:
             gs = doc.get("golems") if isinstance(doc, dict) else None
             self._registry = (stamp, [g for g in (gs if isinstance(gs, list) else []) if isinstance(g, dict) and GOLEM_NAME.match(str(g.get("name") or ""))])
         return self._registry[1]
+
+    def home_name(self):
+        """cc-P208: the console's own Golem (golem.ps1's home Golem): the integrator, or with a script integrator (Shadow
+        Iron, the merge Golem) the first Golem that claims on its PC. '' with no registry."""
+        reg = self.registry()
+        integ = next((g for g in reg if g.get("integrator")), None)
+        if not integ:
+            return ""
+        if str(integ.get("engine") or "") != "script":
+            return str(integ["name"])
+        mach = str(integ.get("machine") or "").upper()
+        h = next((g for g in reg if str(g.get("engine") or "") != "script" and str(g.get("machine") or "").upper() == mach), None)
+        return str((h or integ)["name"])
+
+    def is_home(self, g):
+        return bool(g) and str(g.get("name") or "").lower() == self.home_name().lower()
 
     def golem(self, name):
         n = str(name or "").strip().lower()
@@ -1406,7 +1426,10 @@ def make_handler(console, listener, access_log=None):
                 if not g:
                     self._note(404, "no such Golem")
                     return self._json(404, {"error": "no such Golem in golems.json"})
-                if not g.get("integrator"):
+                if str(g.get("engine") or "") == "script":   # cc-P208: its card's buttons go without a Golem
+                    self._note(409, "action %s for %s" % (entry["key"], g["name"]))
+                    return self._json(409, {"error": "the %s Golem only merges: its buttons are on its card" % g["name"]})
+                if not console.is_home(g):
                     refuse = ("%s is the integrator's only" % (entry.get("label") or entry["key"])) if not entry.get("anyGolem") else (
                         "the %s Golem is disabled in golems.json" % g["name"] if not g.get("enabled") else "")
                     if refuse:

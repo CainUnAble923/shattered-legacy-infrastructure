@@ -204,7 +204,57 @@
     if (r.failed && r.failed.length && r.verdict !== 'READY') t += ' (failed: ' + r.failed.join(', ') + ')';
     return el('div', r.verdict === 'READY' ? 'ok' : 'warn', t);
   }
+  // cc-P208: Shadow Iron, the merge Golem (engine script): no lane, usage or Wake. Its last round, the tickets waiting,
+  // the last merge and failure, a dirty-tree warning, a pause; its buttons are those with card 'merge' (Merge now,
+  // Pause merging or Resume merging), run as the console's own (no Golem named: the scripts find the merge Golem).
+  function mergeCard(c, a) {
+    var li = el('li', 'golemcard mergecard');
+    var top = el('div', 'cardhead');
+    if (c.portraitUrl) {
+      var img = el('img', 'portrait');
+      img.src = c.portraitUrl; img.alt = (c.display || c.name) + ' Golem'; img.width = 48; img.height = 48;
+      top.appendChild(img);
+    }
+    top.appendChild(el('div', null, (c.display || c.name) + ' (merges every 10 minutes' + (c.machine ? ', ' + c.machine : '') + ')'));
+    li.appendChild(top);
+    var m = c.merge || null;
+    var cls = c.state === 'NEEDS YOU' || (m && (m.dirty || m.paused)) ? 'warn' : c.state === 'DISABLED' ? 'quiet' : 'ok';
+    li.appendChild(el('div', cls, c.state + (m && m.paused ? ': paused' : '')));
+    if (!m) li.appendChild(el('div', 'quiet', 'No round yet: the scheduled task Shadow Iron runs every 10 minutes.'));
+    else {
+      li.appendChild(el('div', 'meta', 'Last round: ' + (ago(m.lastRound) || 'never') + (m.result ? ' (' + m.result + ')' : '')));
+      li.appendChild(el('div', m.waiting ? 'meta' : 'quiet', 'Waiting: ' + (m.waiting ? m.waiting + ' (' + (m.tickets || []).join(', ') + ')' : 'none')));
+      if (m.lastMerge) li.appendChild(el('div', 'meta', 'Last merge: ' + m.lastMerge.prompt + ' from ' + m.lastMerge.golem + ', ' + ago(m.lastMerge.at)));
+      if (m.lastFailure) li.appendChild(el('div', 'warn', 'Last failure: ' + m.lastFailure.prompt + ' from ' + m.lastFailure.golem + ', ' + ago(m.lastFailure.at) + ': ' + m.lastFailure.why + (m.lastFailure.fixup ? ' (fix-up ' + m.lastFailure.fixup + ')' : ' (needs you)')));
+      if (m.dirty) li.appendChild(el('div', 'warn', 'Not merging: the real folders are not clean (since ' + ago(m.dirtySince) + '): ' + m.dirty));
+    }
+    if (c.needsYou) li.appendChild(el('div', 'warn', 'Needs you: ' + c.needsYou));
+    if (a) {
+      var box = el('div', 'ctl-grid mini');
+      var job = a.job, running = !!(job && job.running);
+      (a.buttons || []).forEach(function (b) {
+        if (b.card !== 'merge' || b.disabled || !applies(b, c)) return;
+        var btn = el('button', 'ctl small');
+        btn.type = 'button';
+        btn.setAttribute('data-key', b.key);
+        btn.appendChild(el('span', 'label', b.label));
+        btn.disabled = !a.canAct || running;
+        btn.addEventListener('click', function () { openSheet(b, null); });
+        box.appendChild(btn);
+      });
+      if (box.firstChild) li.appendChild(box);
+    }
+    return li;
+  }
+  function hasMergeCard() {
+    var cards = ((((last || {}).status || {}).golem || {}).golems) || [];
+    for (var i = 0; i < cards.length; i++) if (cards[i].script) return true;
+    return false;
+  }
+  // cc-P208: the console's own Golem: home on the card (the integrator, or Iron while Shadow Iron merges).
+  function isOwn(c) { return c.home !== undefined ? !!c.home : !!c.integrator; }
   function golemCard(c, a) {
+    if (c.script) return mergeCard(c, a);
     var li = el('li', 'golemcard');
     var head = c.name + ' (' + [c.lane, c.engine, c.machine].filter(function (x) { return x; }).join(', ') + ')' + (c.integrator ? ', integrator' : '');
     var top = el('div', 'cardhead');
@@ -235,7 +285,7 @@
         (x.label || x.key) + ': ' + (x.note || x.state) + (x.endedAt ? ' (' + when(x.endedAt) + ')' : '')));
     });
     // The same buttons as the integrator's (those marked anyGolem), for every other Golem that is enabled.
-    if (a && !c.integrator && c.enabled !== false) {
+    if (a && !isOwn(c) && c.enabled !== false) {
       var box = el('div', 'ctl-grid mini');
       var job = a.job, running = !!(job && job.running);
       (a.buttons || []).forEach(function (b) {
@@ -395,6 +445,7 @@
     if (kind === 'autoWake') return !!(g && g.autoWake) === (val === 'on');
     if (kind === 'marathonNot') return !g || !g.marathon || g.marathon.mode !== val;   // cc-P200
     if (kind === 'runNext') return !!(g && g.runNext);
+    if (kind === 'mergePaused') return !!(g && g.merge && g.merge.paused) === (val === 'on');   // cc-P208: g is Shadow Iron's card
     return true;
   }
   // cc-P187: for another Golem than the integrator a button with a golemWord wants that word and its name.
@@ -415,8 +466,11 @@
     var card = pickedCard();   // cc-P187: null for the integrator
     var gs = card || g;
     note.textContent = !a.canAct ? (a.why || 'Read only here.') : running ? ('Running: ' + job.label + '. One at a time.') : card ? ('For the ' + card.name + ' Golem (picked above).') : '';
+    var merging = hasMergeCard();
     (a.buttons || []).forEach(function (b) {
       if (card && !b.anyGolem && b.key !== 'assign') return;
+      // cc-P208: Shadow Iron's buttons are on its card; Merge now stays here while there is no such card.
+      if (b.card === 'merge' && (merging || b.key !== 'integrate')) return;
       if (!applies(b, gs)) return;
       var btn = el('button', 'ctl');
       btn.type = 'button';

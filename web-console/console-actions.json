@@ -190,7 +190,7 @@
     "golem.longrun": "longrun", "golem.endlongrun": "longrun-end", "golem.wrapup": "wrapup", "golem.stoppoint": "stoppoint",
     "golem.resume": "wake", "golem.autowake": "selfwake-on", "golem.nightshift": "nightshift-on", "golem.clicheck": "clicheck",
     "golem.marathon": "marathon-on (and marathon-auto, marathon-off: one button per mode)", "golem.marathonpick": "input:marathon (each web button names its mode)",
-    "golem.poke": "poke", "golem.runnext": "runnext", "golem.retry": "retry", "golem.integrate": "integrate",
+    "golem.poke": "poke", "golem.runnext": "runnext", "golem.retry": "retry", "golem.integrate": "integrate", "golem.mergepause": "merge-pause", "golem.mergeresume": "merge-resume",
     "golem.openprompt": "page:prompt (tap a queued prompt to read it)", "golem.opennotes": "page:notes (tap a finished prompt to read its notes)",
     "golem.pick": "page:picker (the Golem picker)", "golem.assign": "assign", "golem.assignnext": "input:next",
     "golem.cap": "input:cap", "golem.until": "input:until", "golem.model": "input:model", "golem.nightstart": "input:start", "golem.nightend": "input:end",
