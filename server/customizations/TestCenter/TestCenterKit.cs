@@ -59,7 +59,15 @@ public static class TestCenterKit
     // Never throws: a broken entry is logged and skipped, because this runs inside character creation.
     public static Bag PlaceKit(Mobile m)
     {
-        if (!TestCenter.Enabled || m?.BankBox == null || _entries.Count == 0)
+        if (!TestCenter.Enabled || m?.BankBox == null)
+        {
+            return null;
+        }
+
+        // cc-P190: a Test Crystal (Off) beside the kit, unless the character has one.
+        TestCrystal.EnsureFor(m);
+
+        if (_entries.Count == 0)
         {
             return null;
         }

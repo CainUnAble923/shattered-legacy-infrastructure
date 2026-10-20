@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.7
+
+### Staff
+- The Test Center no longer boosts everyone's skill gain: the test shard now trains at the real shard's rates. Each tester gets a Test Crystal in their bank instead ([TCFill puts one there); double-click it to set your own skill gain chance to Off, 2x, 5x, 10x or 25x. It affects only its owner, is saved with the character, and only works on a Test Center shard.
+- [GiveTestCrystal puts one in a targeted player's bank. testCenter.skillGainMultiplier is retired and does nothing; remove it from the test shard's modernuo.json.
+
 ## 2026.10.20.6
 
 ### Added

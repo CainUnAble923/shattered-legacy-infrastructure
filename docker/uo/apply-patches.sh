@@ -689,6 +689,11 @@ apply_patch "$PATCHES/SkillCheck-pet-focus-gain.patch"
 # event or virtual reaches it. It makes the roll likelier, never a free gain. After the Focus patch (same file, other hunk).
 # Alternatives argued in shard-migration/notes/cc-P172-pet-gain-speed.md; pinned by PetGainSpeedVerification.
 apply_patch "$PATCHES/SkillCheck-pet-gain-speed.patch"
+# cc-P190 (Chase 2026-10-19): right after pinned's `gc *= skill.Info.GainFactor` (SkillCheck.cs:133), the gain chance is
+# multiplied by the owner's Test Crystal strength (TestCrystal.GainScalar: 1 for anyone without one, and on any shard with
+# the Test Center off). It replaces the global testCenter.skillGainMultiplier, which changed GainFactor for everyone at
+# that same spot. A patch for the reason cc-P172 gives: gc is a local. Notes: shard-migration notes/cc-P190-cont-test-crystal.md.
+apply_patch "$PATCHES/SkillCheck-test-crystal.patch"
 apply_patch "$PATCHES/BaseWeapon-trained-weapon-ability.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to

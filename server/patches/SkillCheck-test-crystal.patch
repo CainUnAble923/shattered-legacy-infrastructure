@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Skills/SkillCheck.cs
++++ b/Projects/UOContent/Skills/SkillCheck.cs
+@@ -132,6 +132,9 @@
+ 
+                 gc *= skill.Info.GainFactor;
+ 
++                // Shattered Legacy (cc-P190): the owner's Test Crystal strength (Test Center only; 1 for everyone else).
++                gc *= Server.Items.TestCrystal.GainScalar(from);
++
+                 if (gc < 0.01)
+                 {
+                     gc = 0.01;

@@ -1,18 +1,12 @@
-// testCenter.skillGainMultiplier: scales every skill's GainFactor once at startup, on a Test Center shard only.
+// testCenter.skillGainMultiplier: RETIRED by cc-P190. It scaled every skill's GainFactor for everyone at startup on a
+// Test Center shard, so the test shard never ran at the real shard's rates and nothing that changes gain (P189's Old
+// Haven apprentice boost, P191's rate) could be play-tested there. The Test Crystal (TestCrystal.cs) replaces it: the
+// same multiplier at the same spot (the gain chance, SkillCheck.cs:133), for one character, Off until its owner sets it.
 //
-// GainFactor has exactly one reader in pinned: SkillCheck.cs:119, where it multiplies the chance of a gain (floored at
-// 0.01 just after). So this raises the odds of each gain roll and nothing else. ClusterFSkillGain's extra attempts
-// and extra gains (ClusterFSkillGain.cs:96-138) sit on top of it unchanged; its bonus gains call SkillCheck.Gain
-// directly and never read GainFactor.
-//
-// Read with GetSetting, not GetOrUpdateSetting, so a server that never sets the key does not have it written into its
-// modernuo.json: the live config stays byte-identical.
-//
-// Runs in Initialize: SkillInfo.Table is loaded in SkillsInfo.Configure (SkillsInfo.cs:135) and TestCenter.Enabled in
-// TestCenter.Configure, both at the default priority, so neither is reliably set during another Configure.
+// What is left: a startup line naming the key when a shard still sets it to anything but 1.0, so nobody believes it is
+// still in force. GainFactor is never changed. The key is read with GetSetting, not GetOrUpdateSetting, so a server that
+// never sets it does not have it written into its modernuo.json: the live config stays byte-identical, as before.
 
-using System;
-using System.Collections.Generic;
 using Server.Logging;
 
 namespace Server.Misc;
@@ -24,69 +18,23 @@ public static class TestCenterSkillGain
     public const string SettingKey = "testCenter.skillGainMultiplier";
     public const double DefaultMultiplier = 1.0;
 
-    // Each SkillInfo's factor as it was before the first Apply. Applying always starts from these, so a second call
-    // sets the same values instead of compounding.
-    private static readonly Dictionary<SkillInfo, double> _original = new();
+    public static void Initialize() => Notice(ServerConfiguration.GetSetting(SettingKey, DefaultMultiplier));
 
-    public static void Initialize() =>
-        Apply(TestCenter.Enabled, ServerConfiguration.GetSetting(SettingKey, DefaultMultiplier));
-
-    // Returns true when the table was changed.
-    public static bool Apply(bool testCenterEnabled, double multiplier)
+    // Returns true when the line was logged.
+    public static bool Notice(double multiplier)
     {
-        // Exactly 1.0 is the default and means nothing to do; any other value is a request.
         // ReSharper disable once CompareOfFloatsByEqualityOperator
         if (multiplier == DefaultMultiplier)
         {
             return false;
         }
 
-        if (!testCenterEnabled)
-        {
-            logger.Warning(
-                "{Key} is {Multiplier} but testCenter.enable is false; the multiplier only applies on a Test Center shard. Nothing changed.",
-                SettingKey,
-                multiplier
-            );
-            return false;
-        }
-
-        if (!double.IsFinite(multiplier) || multiplier <= 0)
-        {
-            logger.Error("{Key} is {Multiplier}; it must be a positive number. Nothing changed.", SettingKey, multiplier);
-            return false;
-        }
-
-        var table = SkillInfo.Table;
-
-        for (var i = 0; i < table.Length; i++)
-        {
-            var info = table[i];
-
-            if (!_original.TryGetValue(info, out var original))
-            {
-                _original[info] = original = info.GainFactor;
-            }
-
-            info.GainFactor = original * multiplier;
-        }
-
-        logger.Information(
-            "Test Center skill gain multiplier {Multiplier} applied to {Count} skills",
-            multiplier,
-            table.Length
+        logger.Warning(
+            "{Key} is {Multiplier}, but it is retired (cc-P190) and changes nothing. Each tester sets their own skill gain " +
+            "with a Test Crystal ([TCFill puts one in the bank). Remove the key from modernuo.json.",
+            SettingKey,
+            multiplier
         );
         return true;
-    }
-
-    // Puts every factor Apply changed back. For tests; nothing in the shard calls it.
-    public static void Restore()
-    {
-        foreach (var (info, original) in _original)
-        {
-            info.GainFactor = original;
-        }
-
-        _original.Clear();
     }
 }
