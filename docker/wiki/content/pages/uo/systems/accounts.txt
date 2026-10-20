@@ -7,6 +7,23 @@ Your first login creates your account. There is no sign-up page.
   * Type the exact account name you want the first time; that is the name you keep.
   * Write the name and password down. There is no "forgot password" link.
   * One account can hold several characters.
+  * New accounts are [[young_players|Young]] for two weeks of play time.
+
+===== Shared by the whole account =====
+
+Some things belong to the account, not the character:
+
+  * [[achievements|Achievements]] and the loot boxes they pay.
+  * Recipes, pattern books and imbuing formulae you have learned (see [[:uo:professions:recipes|Recipes]] and [[:uo:professions:imbuing|Imbuing]]).
+  * Your [[league|League]] registration and lifetime Renown.
+
+Guild membership, standing and League rank are per character.
+
+===== Your bank =====
+
+Your bank box holds **1,000 items**, not OSI's 125, and gains 100 more at each milestone League rank (up to 1,600 at Celestial Citizen). Backpacks and house containers keep the usual 125. Guild upgrades, restorations, turn-ins and imbuing take materials from your bank as well as your pack.
+
+Patch notes show in a bulletin when you log in after an update; ''[version'' shows them any time.
 
 ===== Trouble logging in =====
 

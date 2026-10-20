@@ -1,0 +1,50 @@
+====== Loot Boxes ======
+
+A loot box is a reward you get the first time you do something notable: earn an [[achievements|achievement]], slay a boss, or reach a [[league|League]] rank. What is inside is decided the moment you earn it, so holding on to a box changes nothing. Loot boxes are unique to Shattered Legacy.
+
+===== How you get one =====
+
+^ Source ^ When ^ Tier ^
+| An achievement | The first time your account earns it | By the achievement's AP: 1 to 6 |
+| A boss | Your first kill of each boss, for everyone with looting rights | 4 as a rule; 5 for a champion or a peerless boss; 6 for the Harrower |
+| A League rank | Each rank the first time you reach it | 1 at Iron, rising to 6 at Adamantium and Celestial |
+
+Graduating from the New Haven tutorial also hands you your first box. Doing the same deed again on a later loop gives no second box, only a line from the System and a count on your achievements page.
+
+===== Tiers and themes =====
+
+Boxes run from **tier 1 to tier 6**. A higher tier holds more and better things.
+
+^ Tier ^ Items inside ^ Gold ^ Renown ^
+| 1 | 2 | 250 | none |
+| 2 | 3 | 750 | 25 |
+| 3 | 3 | 2,000 | 50 |
+| 4 | 4 | 5,000 | 100 |
+| 5 | 5 | 12,000 | 200 |
+| 6 | 6 | 30,000 | 400 |
+
+Every box has a slot for its theme and a slot for gold (and Renown from tier 2). The rest is drawn from pools of consumables, resources, magic gear, recipe scrolls, cosmetics and rare things; low tiers lean toward consumables and resources, high tiers toward gear, cosmetics and rarities.
+
+A box is named for its theme and tier. The gathering and crafting themes take their names from the material ladders: a **Miner's** box is a Dull Copper, Bronze, Verite, Valorite, Mythril or Celestial Box; a **Woodsman's** box an Oak, Yew, Heartwood, Frostwood, Runewood or Celestial Box; a **Hunter's** box a Leather, Spined, Horned, Barbed or Celestial Box. Artisan's, Explorer's, Tamer's, Scholar's, Boss, Loop and League boxes run **Common, Uncommon, Rare, Epic, Legendary, Celestial**.
+
+Box gear is always weaker than exceptional crafted gear of the same tier.
+
+===== Opening a box =====
+
+  * Open it in a **guarded town**, or in a **house** where you are the owner, a co-owner or a friend. Anywhere else the System refuses.
+  * The box is **bound to your account**. So are the cosmetics inside it. Everything else inside can be traded.
+  * The box vanishes when it is empty. A box opened and left with things in it (a full bank, say) is cleared away after 7 days.
+
+===== Fanfare =====
+
+Earning a box plays a fanfare: fireworks and a line from the System. Tier 4 and above make a bigger show; a first boss kill is announced to the shard. ''[FanfareMute'' silences your own fanfare; shard-wide announcements always show.
+
+===== Needed images =====
+
+  * TODO image: a tier 4 Hunter's box (a Barbed Box) in a backpack with its tooltip.
+  * TODO image: the reveal when a box is opened in New Haven.
+
+===== Related pages =====
+
+  * [[achievements|Achievements]]
+  * [[league|The League]]

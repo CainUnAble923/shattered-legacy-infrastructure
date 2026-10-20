@@ -1,0 +1,37 @@
+====== Clean Up Britannia and the Custodians ======
+
+Throw unwanted things in a trash barrel for **Clean Up Britannia points**, and spend them in the Clean Up store on OSI's rewards. Clean Up Britannia is OSI's system, ported as it is; **the Custodians**, the guild built on top of it, are ours.
+
+===== Earning points =====
+
+  * Drop items in any **Clean Up trash barrel** (the one in your house counts). Each item is worth what OSI's table says. A magic item you found pays extra for its magic properties, by how strong they are; crafted items pay what their materials are worth.
+  * Members of the Custodians can also use ''[cleanup'' (target one item on the ground) and ''[cleanupall'' (sweep 10 tiles around you, once a minute), and every character gets one free **trash bag** to carry.
+  * **Corpses**: clearing the corpse of a monster you killed pays by how fearsome it was (about 1.5 points for an orc, 15 for a dragon), plus what is inside. Corpses of pets, summons and other people's kills pay only what is inside.
+
+Blessed, quest and player-named items, exceptional gear, gold, bank checks and other players' corpses cannot be cleaned up.
+
+===== Spending points =====
+
+The **Clean Up Britannia store** opens through a **Cleanup Officer** or a **Sanitation Warden**. It carries 122 of OSI's 134 rewards at OSI's prices: the named robes, the virtue and chaos tiles, lily pads and mushrooms, Sherry the Mouse, the horse barding, the creature boots, Nature's Tears, Primordial Decay and Arachnid Doom, the elven tapestries, the dragon head, the fire pit, the beehive, all 24 pigments, the six charms, and the rest.
+
+===== The Custodians =====
+
+The Custodians are Britannia's civic cleanup guild, open to everyone: speak to a **Sanitation Warden** and pledge your service. Rank follows your **lifetime** Clean Up points, which spending never lowers.
+
+^ Rank ^ Lifetime points ^
+| Volunteer | 0 |
+| Junior Custodian | 25 |
+| Custodian | 125 |
+| Senior Custodian | 500 |
+| Chief Custodian | 1,250 |
+
+The Custodians' Civic Contracts pay gold. The Custodians have no currency of their own and post no [[requisitions|requisitions]]; their module for a [[pack_mules|pack mule]] is the Salvage Bin.
+
+===== Needed images =====
+
+  * TODO image: the Clean Up Britannia store opened at a Sanitation Warden.
+
+===== Related pages =====
+
+  * [[guilds|Guilds]]
+  * [[pack_mules|Pack mules]]

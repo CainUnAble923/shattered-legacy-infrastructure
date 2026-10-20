@@ -1,0 +1,73 @@
+====== Pack Mules ======
+
+A pack mule is a bonded beast of burden that carries your haul, takes modules from the guilds, and can be bred for a better line. It takes **one follower slot**. Pack mules are unique to Shattered Legacy.
+
+===== Getting your first mule =====
+
+The League Registrar in New Haven runs an errand, **The Compact's Mule**:
+
+  - Be registered with the [[league|League]] at **Dull Copper Citizen** or higher.
+  - Bring the Registrar **50 iron ore and 25 iron ingots** (your pack, your bank and satchels all count).
+  - Collect a bonded tier 1 **Compact mule** at your feet, if you have a follower slot free.
+
+One mule per character this way. A mule lost for good can be replaced at the Registrar for a fee (5,000 gold and 10 Mining Vouchers), but only if you own no mule at all.
+
+===== Tiers =====
+
+A mule's tier sets its toughness, its pack and how many modules it takes. Each tier wears its metal's color.
+
+^ Tier ^ Name ^ Hit points ^ Carries ^ Module slots ^
+| 1 | Compact | 150 to 190 | 1,600 stones, 150 items | 1 |
+| 2 | Bronzeback | 200 to 250 | 2,400 stones, 225 items | 2 |
+| 3 | Shadowhide | 250 to 310 | 3,200 stones, 300 items | 3 |
+| 4 | Valorite-Barded | 320 to 400 | 4,000 stones, 400 items | 4 |
+| 5 | Celestial | 420 to 500 | 5,000 stones, 500 items | 5 |
+
+The **Civic Mule Exchange** at the Miners' Compact raises a mule's tier. The first step (1 to 2) costs 25 each of Mining Vouchers, Smithing Seals, Trail Marks and Timber Tokens plus 25,000 gold. Later steps cost more guild currency and gold and ask for a Miners' Compact rank: Journeyman for tier 3, Master for tier 4, Grandmaster for tier 5.
+
+===== Bloodlines and breeding =====
+
+Every mule has a **bloodline**: how well it rolled within its tier, up to three inherited **traits**, and a family name. The traits are Burdened Bloodline (more pack), Stoneback (physical resist), Emberblood (fire resist), Surefooted (stamina), Deepdelver (less damage in dungeons), Nightmare-Kin (Magic Resist) and the rare Celestial Tempered (a little of everything). Each trait comes in grades I to III.
+
+  * Use **Breed** on a mule to pair two. A foal deed arrives after 24 hours and shows the foal's sex, quality, traits and family before you use it. A mule can breed once a week.
+  * Strong parents pass their traits on, and the breeder's **Animal Lore above 120** improves every roll, fully at 200.
+  * Grade III traits need both parents at tier 4 or higher; Celestial Tempered only ever appears from two tier 5 parents.
+  * A line is **Legendary** once three generations in a row have reached tier 5.
+
+===== Modules =====
+
+Seventeen modules, one from each guild, three tiers each, fitted by dropping one on your mule. A mule carries as many as its tier allows. Each guild's hall sells the **schematic** for its module; a schematic teaches your whole account the recipe for good, and you craft the module in that guild's craft with a monster part. A higher tier is built on the tier below it.
+
+^ Guild ^ Module ^
+| Miners' Compact | Ore Hopper |
+| Foresters' Union | Timber Rack |
+| Tailors' Circle | Reinforced Saddlebags |
+| Tinkers' Union | Clockwork Load Harness |
+| Rangers' League | Trailwise Tack |
+| Healers' Covenant | Field Medic Pack |
+| Warriors' Brotherhood | Expedition Barding |
+| Arcane Society | Arcane Ward Harness |
+| Keepers of the Last Door | Soul Tether |
+| Society of Smiths | Field Smelter Rig |
+| Maritime Brotherhood | Survey Saddle Roll |
+| Thieves' Den | Shadow Cloak |
+| The Custodians | Salvage Bin |
+| Bards' Consortium | Minstrel's Bells |
+| Merchants' Exchange | Trader's Ledger |
+| Twin Paths Dojo | Steady Hoof Wraps |
+| Artificers' Order | Imbued Barding Socket |
+
+A mule's traits strengthen the matching modules: Emberblood makes the Field Smelter Rig smelt faster, Burdened helps the hopper, rack and harness, and so on. The mule's **Options** menu takes modules off, tracks your treasure maps, trashes and salvages, sells cargo and opens your bank, as its modules allow. Ore satchels from the Surveyor's on, and the top lumber and hunting satchels, unload straight into the mule.
+
+Not every module does its whole job yet: Steady Hoof Wraps can be fitted but does nothing, and the Field Medic Pack's ranged bandaging, the Clockwork Scavenger and imbuing through the Barding Socket are still to come. Their tooltips say so.
+
+===== Needed images =====
+
+  * TODO image: a Compact mule beside its owner in New Haven.
+  * TODO image: a foal deed's tooltip showing traits and family.
+
+===== Related pages =====
+
+  * [[league|The League]]
+  * [[guilds|Guilds]]
+  * [[:uo:professions:mining|Mining]]

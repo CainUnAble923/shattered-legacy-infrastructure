@@ -1,0 +1,9 @@
+====== Drafts ======
+
+Pages here describe things that are **on the test shard only** or not yet finished. They are kept out of the sidebar so a player does not go looking for something they cannot use yet. Each page says at the top why it is a draft.
+
+  * [[rootdeep_burrows|The Rootdeep Burrows]]: the dungeon under Old Haven, still being dug
+  * [[tutorial|The New Haven tutorial]]: the new player tutorial, stations still placeholders
+  * [[test_crystal|The Test Crystal]]: a testing aid for the test shard
+
+When a system goes live, its page moves to its proper namespace and gets a sidebar link.

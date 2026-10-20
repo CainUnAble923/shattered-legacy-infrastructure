@@ -4,23 +4,27 @@ Welcome to Shattered Legacy. This page should answer the first questions a new p
 
 ===== First Choices =====
 
-  * If you want to gather and craft, start with [[:uo:professions:mining|Mining]] and [[:uo:professions:blacksmithy|Blacksmithy]].
+  * If you want to gather and craft, start with [[:uo:professions:mining|Mining]] and [[:uo:professions:blacksmithy|Blacksmithy]], and read [[:uo:professions:recipes|Recipes]] to see how crafting is learned here.
   * If you want smoother combat training, read [[:uo:professions:focus|Focus]] and [[:uo:systems:skill_gain|Skill gain]].
   * If you want quests and NPC direction, start in [[:uo:world:new_haven|New Haven]].
+  * Whatever you pick, join a [[:uo:systems:guilds|guild]] and register with the [[:uo:systems:league|League]] early. They are free.
 
 ===== Quick Route =====
 
   - Connect using [[:uo:connection|Connection guide]].
-  - Create your character.
+  - Create your character. A League recruiter meets you on the New Haven plaza.
   - Find the nearest trainer using [[:uo:world:trainers|Trainer index]].
   - Pick up early quests from [[:uo:world:quests|Quest givers]].
   - Follow [[:uo:guides:first_hour|First hour route]].
+  - Type ''[guild'' to join a guild, and visit the League Registrar.
 
 ===== Server Differences =====
 
-  * Skill gains are faster than stock ModernUO.
+  * Every skill caps at 200, and gains come about twice as often as on a stock server.
   * Individual stats can reach 500.
-  * Total stats can reach 1500.
-  * Skill caps are configured for ClusterF progression.
+  * New accounts are Young for two weeks of play.
+  * Your bank holds 1,000 items.
+  * Crafting is learned from pattern books and recipe scrolls.
+  * Achievements, first boss kills and League ranks pay loot boxes.
 
 See [[:uo:systems:start|Server systems]] for the details.

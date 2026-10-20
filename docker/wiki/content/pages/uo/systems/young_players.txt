@@ -1,0 +1,27 @@
+====== Young Players ======
+
+A new account starts **Young**: monsters in the open world leave you alone, you can be resurrected by a healer for free, and death sends you back to town. The protection is OSI's; how long it lasts is ours.
+
+===== How long it lasts =====
+
+^ Ends when ^ On OSI ^ On Shattered Legacy ^
+| Play time | 40 hours | **2 weeks of play** (336 hours of time logged in, counted for the whole account) |
+| Skill total | 450 skill points | never; skill does not end it |
+| Your first loop | n/a | yes: completing a real loop ends Young for the account |
+| Attacking players | a murder count ends it | the same |
+
+Each login tells you how many days and hours of play time are left. The tutorial's vision of the loop does not count as a loop.
+
+===== Giving it up early =====
+
+Say **"I want to grow up!"** (any capitals, with or without the exclamation mark) and a window asks you to confirm. OSI's phrase, "I renounce my young player status", also works. A sentence that only contains the phrase does nothing, so a joke cannot end it by accident.
+
+===== In the Rootdeep Burrows =====
+
+The dungeon under Old Haven has its own rule: no more than **three** monsters at once can set on a Young player there. See [[:uo:drafts:rootdeep_burrows|Rootdeep Burrows]].
+
+===== Related pages =====
+
+  * [[skill_gain|Skill gain]]
+  * [[:uo:new_player_guide|New player guide]]
+  * [[accounts|Accounts]]

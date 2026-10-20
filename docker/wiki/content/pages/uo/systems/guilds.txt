@@ -1,0 +1,78 @@
+====== Guilds ======
+
+Shattered Legacy's guilds are not player guilds: they are **eighteen trade and combat guilds** with halls in New Haven, each teaching a set of skills, selling its own goods for its own currency, and ranking you by the work you do for it. They are the starter path for a new character and the backbone of the [[league|League]]. The guild system is unique to this shard.
+
+===== The guilds =====
+
+^ Guild ^ Teaches ^ To join, show ^
+| Society of Smiths | Blacksmithy | Blacksmithy 50, or 10 iron ingots |
+| Arcane Society | Magery, Inscription | Magery 50, or 5 blank scrolls |
+| Tailors' Circle | Tailoring | Tailoring 50, or 10 cloth |
+| Tinkers' Union | Tinkering | Tinkering 50, or 5 gears |
+| Healers' Covenant | Healing, Anatomy | Healing 50, or 25 bandages |
+| Order of the Alembic | Alchemy, Taste Identification | Alchemy 50, or 10 empty bottles |
+| Bards' Consortium | Musicianship and the bard skills | Musicianship 30 |
+| Thieves' Den | Stealing and the rogue skills | Stealing 20 |
+| Warriors' Brotherhood | Tactics and the weapon skills | Tactics 30 |
+| Twin Paths Dojo | Bushido, Ninjitsu | Bushido 30 |
+| Keepers of the Last Door | Necromancy, Spirit Speak, Forensics | Necromancy 30, or 10 grave dust |
+| Miners' Compact | Mining | Mining 50, or 20 iron ore |
+| Foresters' Union | Lumberjacking, Carpentry, Bowcraft/Fletching | Lumberjacking 50, or 20 boards |
+| Rangers' League | Archery, Animal Taming and the outdoor skills | Archery 30, or 25 arrows |
+| Maritime Brotherhood | Fishing, Cooking | Fishing 30, or 5 fish |
+| Merchants' Exchange | Trade | 500 gold |
+| Artificers' Order | Imbuing | Imbuing 20, or 3 diamonds |
+| The Custodians | Clean Up Britannia | Nothing: pledge to a Sanitation Warden |
+
+The "show" column is the **Apprentice task**, not a gate: joining is free and takes one click at the guildmaster. Meeting the task later pays your first standing and currency and raises you to Apprentice.
+
+===== Joining and the directory =====
+
+  - Talk to a guildmaster in New Haven. The guild's hall page opens.
+  - Press **Join**. You are an Initiate, and you get the guild's starter tools (the Order of the Alembic hands you bottles, a mortar and pestle and a robe, for example).
+  - Type ''[guild'' any time to open the **Guild Directory**: every guild, your standing and rank in each, and a **Show me the way** button that points you to the nearest guildmaster and names the town.
+
+You can join as many guilds as you like. Membership, standing and currency are per character.
+
+===== Standing, currency and rank =====
+
+Every guild keeps two numbers for you:
+
+  * **Standing**, earned by the guild's work: its bulk orders, work orders and commissions, [[requisitions|requisitions]], and for the Custodians your lifetime Clean Up points. Standing only rises.
+  * **Currency**, the guild's own scrip, spent in its shop: Smithing Seals, Mining Vouchers, Timber Tokens, Trail Marks, Essence Shards, and so on.
+
+Rank follows standing:
+
+^ Rank ^ Standing ^
+| Initiate | 0 |
+| Apprentice | 1,000 |
+| Journeyman | 5,000 |
+| Master | 15,000 |
+| Grandmaster | 50,000 |
+| Legendary | 100,000 |
+
+The Rangers' League uses its own rank names (Wanderer, Scout, Outrider, Trailblazer, Beastmaster, Warden of the Wild, Legendary Outrider) on the same idea.
+
+A **crafting guild** also asks for its craft skill: 30 for Apprentice, then 50, 70, 90 and 100 for Legendary. A rank you have reached is never lost, even when a loop resets your skills. Rising in a crafting guild hands you that rank's pattern book (see [[:uo:professions:recipes|Recipes and pattern books]]).
+
+===== What the guilds sell =====
+
+  * **Pattern books and recipe scrolls** for the guild's craft, one band ahead of your rank.
+  * **Bulk orders** for members, with better pay than the town vendors give (see [[:uo:professions:bulk_orders|Bulk orders]]).
+  * **Pack mule modules**: each guild's hall sells the schematics for its module (see [[pack_mules|Pack mules]]).
+  * Guild tools and upgrades, such as the Miners' Compact's ore satchels and Jacob's pickaxes, or the Smiths' Hammer of Hephaestus.
+
+Guild costs and turn-ins take materials from your **bank** as well as your backpack, pack first.
+
+===== Needed images =====
+
+  * TODO image: the Guild Directory ([guild) with a few guilds joined.
+  * TODO image: a guild hall page with the Join button.
+
+===== Related pages =====
+
+  * [[league|The League]]
+  * [[requisitions|Requisitions and the Appraiser]]
+  * [[:uo:professions:recipes|Recipes and pattern books]]
+  * [[:uo:professions:bulk_orders|Bulk orders]]
+  * [[:uo:world:new_haven|New Haven]]

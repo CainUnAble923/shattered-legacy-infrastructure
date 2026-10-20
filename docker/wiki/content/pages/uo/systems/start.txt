@@ -2,12 +2,27 @@
 
 {{:uo:media:skill_systems.svg?nolink&700|Skill and stat systems diagram}}
 
-This namespace explains how Shattered Legacy differs from stock ModernUO.
+This namespace explains how Shattered Legacy differs from a stock server, and the systems that exist nowhere else.
 
 ===== Progression =====
 
-  * [[skill_gain|Skill gain]]
+  * [[skill_gain|Skill gain]]: the rate, the 200 cap, and the skills that keep going
   * [[stats|Stats]]
+  * [[young_players|Young players]]
+  * [[achievements|Achievements]]
+  * [[loot_boxes|Loot boxes]]
+
+===== Guilds and the League =====
+
+  * [[guilds|Guilds]]: the eighteen trade and combat guilds
+  * [[league|The League of Extraordinary Citizens]]
+  * [[requisitions|Requisitions, the Appraiser and Leads]]
+  * [[clean_up_britannia|Clean Up Britannia and the Custodians]]
+
+===== Companions =====
+
+  * [[pet_training|Pet training]]
+  * [[pack_mules|Pack mules]]
 
 ===== Account And Access =====
 

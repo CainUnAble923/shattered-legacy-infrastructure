@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.5
+
+### Added
+- The player wiki catches up with the shard: new pages for achievements, loot boxes, Young players, the guilds, the League, requisitions and the Appraiser, Clean Up Britannia, pet training, pack mules, the shard's metals and woods, recipes and pattern books, bulk orders, imbuing and the Artificers' Order, and stealing from monsters; the skill gain, accounts, New Haven and new player pages are brought up to date; and draft pages for the Rootdeep Burrows, the tutorial and the Test Crystal wait in a drafts section until those go live. The pages are in the repo's wiki seed and reach the wiki with its next deploy.
+
 ## 2026.10.20.4
 
 ### Staff

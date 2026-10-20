@@ -1,0 +1,58 @@
+====== Requisitions, the Appraiser and Leads ======
+
+The League runs a **requisitions board**: every guild posts requests for magic items it wants, and you fill them with what you find or craft. Items no request wants go to the **Appraiser** for gold. Both are unique to Shattered Legacy.
+
+===== Requests =====
+
+Each guild posts **three requests a day** for you: a kind of item with a property it wants, such as a sword with Hit Chance Increase for the Warriors' Brotherhood, a spellbook with Lower Mana Cost for the Arcane Society, an undead slayer for the Keepers of the Last Door, a slayer instrument for the Bards. The Thieves' Den and the Artificers' Order take "anything magic" with enough properties. The Custodians post none.
+
+Open requests roll over at **05:00 UTC** every day. An unfilled request is simply replaced; nothing is lost and nothing is owed. A request with a live Lead (below) is kept until the Lead ends.
+
+Type ''[requisitions'' to list your open requests. The combat script's loot helper reads the same list.
+
+===== Tiers =====
+
+A request's tier is your rank in that guild, capped by your [[league|League]] rank. Higher tiers want stronger items with more properties and pay more.
+
+^ Tier ^ Your guild rank ^ League rank needed ^ Item needs ^ Pays ^
+| 0 | not a member | any | 1 property at 20% strength | 10 Renown, 40 standing |
+| 1 | Apprentice | Iron | 1 property at 30% | 20 Renown, 60 standing |
+| 2 | Journeyman | Bronze | 2 properties, the wanted one at 40% | 35 Renown, 90 standing |
+| 3 | Master | Verite | 2 properties at 55% | 55 Renown, 130 standing |
+| 4 | Grandmaster | Toxic | 3 properties at 70% | 80 Renown, 180 standing |
+| 5 | Legendary | Obsidian | 3 properties at 85% | 110 Renown, 250 standing |
+
+Every turn-in also pays gold equal to what the Appraiser would give for the item. Found and crafted items both count.
+
+===== Where to turn in =====
+
+  * The **board** in the League field office in New Haven.
+  * The guild's New Haven chapter: the guildmaster's **Requisitions** button.
+  * The **League Registrar**.
+  * The **Appraiser**.
+
+The item must be in your backpack. It is taken, and the slot stays empty until the next day's roll.
+
+===== The Appraiser =====
+
+The Appraiser is a League clerk who buys any magic item no request wants. Find one in the New Haven field office and by the banks of Britain, Trinsic, Minoc, Vesper, Moonglow, Skara Brae, Luna and the Royal City.
+
+  * **Drop an item on the Appraiser** for a quote, or ask which of your requests wants it.
+  * The price is a base by item kind (near what a shopkeeper pays), plus 25 gold per magic property, plus half a gold per point of property strength, capped at **500 gold**.
+
+===== Leads =====
+
+Some requests come with a **Lead**: a rumor naming a place and a kind of creature. For **three days**, kills of that kind in that place give you an extra chance at the wanted item, and the item is certain by about the **fortieth** kill. Only creatures worth a little fame (1,000 or more) count. A Lead that runs out just fades.
+
+Where a Lead can send you grows with League rank: the Britain Graveyard, the Rootdeep Burrows, Despise and the Orc Cave from the start; Covetous, Deceit, Shame and Wrong from Iron; the Orc Fortress and further places above that.
+
+===== Needed images =====
+
+  * TODO image: the requisitions board gump with three requests and one Lead.
+  * TODO image: the Appraiser at the Britain bank with a quote line.
+
+===== Related pages =====
+
+  * [[league|The League]]
+  * [[guilds|Guilds]]
+  * [[:uo:professions:imbuing|Imbuing and the Artificers' Order]]

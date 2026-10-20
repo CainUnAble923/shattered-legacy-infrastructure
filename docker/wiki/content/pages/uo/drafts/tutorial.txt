@@ -1,0 +1,27 @@
+====== The New Haven Tutorial ======
+
+**Draft: not finished.** The tutorial's framework is on the test shard and new characters are met by its recruiter, but its stations are placeholders that only say what they will teach. The shard owner has said every account is wiped when the finished tutorial ships, so this page describes the shape of it, not the lessons.
+
+New characters are met on the New Haven plaza by **Rook Hallowell**, a League recruiter, who runs the tutorial. It is unique to Shattered Legacy.
+
+===== The shape =====
+
+  - A short **core**: moving and the camera, your paperdoll, your backpack, speaking and the journal, death and resurrection, the bank, getting around, the League, and a **vision of the loop**.
+  - Optional **wings** for every kind of skill: gathering, crafting, fighting, healing, taming and magic.
+  - **Graduating** hands you your first [[:uo:systems:loot_boxes|loot box]] (open it here, in the guard zone, to learn the rule) and your choice of a starter pet: a dog, a cat, a fox or a bird. The pet stays with you.
+
+The tutorial runs **once per account**. A later character on the same account skips straight to the world.
+
+===== Skipping =====
+
+You can skip it. The System asks twice, remembers, and awards "Didn't Read the Manual". A skipper can come back to the recruiter for remedial training any time, and finishing it then awards "Read the Manual Eventually" and the normal rewards.
+
+===== The loop =====
+
+The tutorial's vision shows a loop happening: the sword strikes the Gem, the world folds shut, and you wake where you started with your level and skills back at the beginning and your League rank, recipes, achievements and guild ranks kept. It is only a vision; nothing about your character changes, and it does not end [[:uo:systems:young_players|Young status]].
+
+===== Related pages =====
+
+  * [[:uo:new_player_guide|New player guide]]
+  * [[rootdeep_burrows|The Rootdeep Burrows]] (the tutorial's Vault)
+  * [[:uo:systems:league|The League]]
