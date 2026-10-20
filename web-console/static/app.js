@@ -169,6 +169,11 @@
     if (g.stoppedPrompt) lines.push('Stopped prompt: ' + g.stoppedPrompt);
     var ns = g.nightShift || {};
     lines.push('Night shift: ' + (ns.enabled ? 'on, ' + ns.start + ' to ' + ns.end : 'off') + '. Self-wake: ' + (g.autoWake ? 'on' : 'off') + '.');
+    // cc-P200: where the week lands at its reset at this rate, the free reset advice, and marathon mode.
+    if (g.projection && g.projection.text) lines.push('The week: ' + g.projection.text + '.');
+    if (g.projection && g.projection.resetAdvice) lines.push('Free reset: ' + g.projection.resetAdvice);
+    var mar = g.marathon || {};
+    if (mar.mode) lines.push('Marathon: ' + mar.mode + ', ' + (mar.on ? 'ON' + (mar.why ? ' (' + mar.why + ')' : '') : 'off') + '.');
     if (g.alert) lines.push('Alert: ' + g.alert);
     if (g.emailFailing) lines.push('Email is failing (see the Golem log).');
     return lines;
@@ -215,7 +220,8 @@
     var bits = [];
     if (c.locks && c.locks.length) bits.push('holds ' + c.locks.join(', '));
     if (c.usageSource) bits.push('usage from the ' + c.usageSource);
-    if (c.hours) bits.push('hours ' + c.hours);
+    // cc-P200: while marathon is on an extra PC's hours are widened to the whole day (its back-off still holds).
+    if (c.hours) bits.push('hours ' + c.hours + (c.marathonDay ? ' (all day now: marathon)' : ''));
     if (c.needsYou) bits.push('needs you: ' + c.needsYou);
     if (bits.length) li.appendChild(el('div', 'meta', bits.join(' | ')));
     if (c.remote) {
@@ -387,6 +393,7 @@
     if (kind === 'notWinding') return !g || g.winding !== val;
     if (kind === 'nightShift') return !!(g && g.nightShift && g.nightShift.enabled) === (val === 'on');
     if (kind === 'autoWake') return !!(g && g.autoWake) === (val === 'on');
+    if (kind === 'marathonNot') return !g || !g.marathon || g.marathon.mode !== val;   // cc-P200
     if (kind === 'runNext') return !!(g && g.runNext);
     return true;
   }

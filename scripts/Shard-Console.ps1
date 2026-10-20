@@ -236,6 +236,8 @@ function New-AutopilotConfig {
         WakeScript   = (Join-Path $Root 'Wake-Golem.ps1')
         AutoWakeScript = (Join-Path $Root 'Set-AutoWake.ps1')
         NightShiftScript = (Join-Path $Root 'Set-NightShift.ps1')
+        # cc-P200: marathon mode's setting (auto, on, off).
+        MarathonScript = (Join-Path $Root 'Set-Marathon.ps1')
         CliCheckScript = (Join-Path $Root 'Check-Cli.ps1')
         CliFile      = (Join-Path $Root 'cli.json')
         # cc-P182: Poke (the watch now), Run next (RUN-NEXT holds the picked queue file) and Retry stopped prompt.
@@ -1222,6 +1224,8 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.resume';     Group = 'Golem wake';  Label = 'Wake the Golem (CC session)';        Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.autowake';   Group = 'Golem wake';  Label = 'Self-wake: on';                      Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.nightshift'; Group = 'Golem wake';  Label = 'Night shift: on';                    Mutates = $true;  RunIn = 'here' }
+        # cc-P200: marathon mode (auto, on or off: the pick beside it).
+        [pscustomobject]@{ Key = 'golem.marathon';   Group = 'Golem wake';  Label = 'Marathon: set';                      Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.clicheck';   Group = 'Golem wake';  Label = 'Check CLI sign-in';                  Mutates = $false; RunIn = 'here' }
         # cc-P182: a row of their own: the watch now, the picked queue row first, and the STOPPED prompt back.
         [pscustomobject]@{ Key = 'golem.poke';       Group = 'Golem queue'; Label = 'Poke the Golem';                     Mutates = $true;  RunIn = 'here' }
@@ -1821,6 +1825,8 @@ function Get-ConsoleTooltips {
         'golem.model'      = 'The model for the session Wake the Golem opens: Fable or Opus. Starts on what the next queued prompt''s Model line asks for.'
         'golem.autowake'   = 'Self-wake on or off (settings.json autoWake). On, the Golem opens the next CC session itself after a context rest, a model wait or the run cap, within its limits; never after a STOPPED or NEEDS YOU. Runs Set-AutoWake.ps1 in its own window.'
         'golem.nightshift' = 'Night shift on or off: a scheduled task at the start time wakes the Golem for a long run until the end time, only when the queue has prompts, nothing runs or is STOPPED, and the usage leaves room. Asks night shift on when turning it on. Runs Set-NightShift.ps1 in its own window.'
+        'golem.marathon'   = 'Marathon mode: sets settings.json marathon to the pick beside it (auto, on or off), asking marathon <mode> first; auto turns it on when the week''s projection falls short of 95% with over 6 hours left, and off at 95% or at usageLimitPct. While on, every awake Golem is woken on its lane with no rest after a Large prompt, no run cap, the night shift at full and the extra PCs also in the day, but the 5-hour window still holds.'
+        'golem.marathonpick' = 'The marathon mode Marathon: set writes: auto, on or off. Starts on the current setting.'
         'golem.nightstart' = 'When the night shift starts (HH:mm, default 22:30).'
         'golem.nightend'   = 'When the night shift ends (HH:mm, default 06:30): no new prompt is handed after it.'
         'golem.pick'       = 'Which Golem the Golem buttons act for: every Golem in golems.json, the integrator first. Another Golem on this PC gets its own files and name; one on another PC, a disabled one, or any but the integrator while multiGolem is off says why. Wake''s model follows the picked Golem''s lane.'
@@ -3322,13 +3328,13 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 # cc-P186: a Golem script may also name one Golem of several (-Golem <name>, last); the rules below hold for the rest.
                 if ($sa.Count -ge 7 -and $sa[-2] -ceq '-Golem' -and $sa[-1] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' -and @(Get-GolemNamedScripts $ap) -icontains $sa[4]) { $sa = @($sa[0..($sa.Count - 3)]) }
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
-                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript) | Where-Object { $_ }
+                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript) | Where-Object { $_ }
                 $ok = ($head -and $sa.Count -eq 5 -and $withArgs -inotcontains $sa[4])
                 # cc-P125: Start-LongRun.ps1 only with -Cap <n> -Until <time>; Wrap-Up.ps1 and Find-StoppingPoint.ps1 also with -Cancel.
                 $tmpT = [datetime]::MinValue
@@ -3338,6 +3344,8 @@ function Test-PlanSafety {
                 # with -Off, or -On -Start HH:mm -End HH:mm. The CLI itself (claude.exe) is never run from here: the script opens it.
                 if ($head -and $sa[4] -ieq $ap.WakeScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Model' -and $sa[6] -cin @('Fable', 'Opus', 'Sonnet')) { $ok = $true }
                 if ($head -and $sa[4] -ieq $ap.AutoWakeScript -and $sa.Count -eq 6 -and $sa[5] -cin @('-On', '-Off')) { $ok = $true }
+                # cc-P200: Set-Marathon.ps1 only with -Mode auto|on|off.
+                if ($head -and $ap.MarathonScript -and $sa[4] -ieq $ap.MarathonScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Mode' -and $sa[6] -cin @('auto', 'on', 'off')) { $ok = $true }
                 if ($head -and $sa[4] -ieq $ap.NightShiftScript -and (($sa.Count -eq 6 -and $sa[5] -ceq '-Off') -or ($sa.Count -eq 10 -and $sa[5] -ceq '-On' -and $sa[6] -ceq '-Start' -and $sa[7] -match '^\d{1,2}:\d{2}$' -and $sa[8] -ceq '-End' -and $sa[9] -match '^\d{1,2}:\d{2}$'))) { $ok = $true }
                 # cc-P182: Set-RunNext.ps1 only with -Prompt P<nn> or -Cancel; Retry-Stopped.ps1 only with -Prompt P<nn>.
                 if ($head -and $ap.RunNextScript -and $sa[4] -ieq $ap.RunNextScript -and (($sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') -or ($sa.Count -eq 6 -and $sa[5] -ceq '-Cancel'))) { $ok = $true }
@@ -4166,7 +4174,8 @@ function Test-AutopilotAlert {
 $script:AutopilotStaleMinutes = 15
 # cc-P131: autoWake and the night shift keys too (the hook's defaults, Get-Settings in golem.ps1).
 $script:AutopilotSettingDefaults = [ordered]@{ progressEmails = $true; maxPerRun = 6; stallMinutes = 45; autoWake = $true; nightShiftEnabled = $true; nightShiftStart = '22:30'; nightShiftEnd = '06:30'
-    dayWeekAheadPct = 3; weekReservePct = 10; planUsageMaxAgeHours = 4 }   # cc-P160: the Golem's day pace rule
+    dayWeekAheadPct = 3; weekReservePct = 10; planUsageMaxAgeHours = 4   # cc-P160: the Golem's day pace rule
+    marathon = 'auto' }   # cc-P200: marathon mode (auto, on, off)
 
 function ConvertFrom-AutopilotTime {
     # A 's' time from the hook, as written ($Kind Local or Utc), or $null. ConvertFrom-Json in PowerShell 7
@@ -4240,6 +4249,9 @@ function ConvertFrom-AutopilotStatus {
         Sessions        = $j.sessions
         # cc-P162: the end-of-week window (use it or lose it): on, active, until, the cap, the week and Fable week now.
         EndOfWeek       = $j.endOfWeek
+        # cc-P200: the week at its reset at the current rate (text, the figures, the free reset advice) and marathon mode.
+        Projection      = $j.projection
+        Marathon        = $j.marathon
         # cc-P184: several Golems: the switch, which Golem wrote this file, one card per Golem, and a registry problem.
         MultiGolem      = [bool]$j.multiGolem
         GolemName       = [string]$j.golemName
@@ -4259,6 +4271,7 @@ function ConvertTo-GolemCardDocument {
     [ordered]@{ name = [string]$c.name; machine = [string]$c.machine; engine = [string]$c.engine; lane = [string]$c.lane; state = [string]$c.state; current = [string]$c.current
         branch = [string]$c.branch; locks = @(@($c.locks) | Where-Object { $_ } | ForEach-Object { [string]$_ }); usageSource = [string]$c.usageSource; integrator = [bool]$c.integrator
         enabled = [bool]$c.enabled; restReason = [string]$c.restReason; needsYou = [string]$c.needsYou; hours = [string]$c.hours
+        marathonDay = [bool]$c.marathonDay; noDaytimeMarathon = [bool]$c.noDaytimeMarathon   # cc-P200
         winding = [string]$c.winding; stoppedPrompt = [string]$c.stoppedPrompt; remote = [bool]$c.remote; online = [bool]$c.online
         lastSeen = $(if ($c.lastSeen) { [string]$c.lastSeen } else { $null }); portrait = [string]$c.portrait
         ready = $(if ($r -and $r.verdict) { [ordered]@{ verdict = [string]$r.verdict; at = [string]$r.at; summary = [string]$r.summary; machine = [string]$r.machine
@@ -4377,7 +4390,8 @@ function Get-GolemCardLines {
         $locks = @($c.locks | Where-Object { $_ })
         if ($locks.Count) { $t += '; holds ' + ($locks -join ', ') }
         if ($c.usageSource) { $t += '; usage from the ' + [string]$c.usageSource }
-        if ($c.hours) { $t += '; hours ' + [string]$c.hours }
+        # cc-P200: while marathon is on, an extra PC's hours are widened to the whole day (its back-off still holds).
+        if ($c.hours) { $t += '; hours ' + [string]$c.hours + $(if ($c.marathonDay) { ' (all day now: marathon)' } elseif ($c.noDaytimeMarathon -and $Status.Marathon -and $Status.Marathon.on) { ' (kept: noDaytimeMarathon)' } else { '' }) }
         if ($c.integrator) { $t += '; integrator' }
         if ($null -ne $c.ageMin -and [int]$c.ageMin -gt 15 -and $state -eq 'RUNNING') { $t += '; status ' + [int]$c.ageMin + ' min old' }
         # cc-P186: a Golem on another PC says whether its agent is online (it polls the web console); every Golem says
@@ -4420,7 +4434,8 @@ function ConvertFrom-AutopilotSettings {
             $source = 'settings.json'
         } catch { $source = 'settings.json unreadable: the hook''s defaults' }
     }
-    [pscustomobject]@{ ProgressEmails = [bool]$s.progressEmails; MaxPerRun = [int]$s.maxPerRun; StallMinutes = [int]$s.stallMinutes; Source = $source
+    $mar = ([string]$s.marathon).Trim().ToLowerInvariant(); if ($mar -notin @('auto', 'on', 'off')) { $mar = 'auto' }
+    [pscustomobject]@{ ProgressEmails = [bool]$s.progressEmails; MaxPerRun = [int]$s.maxPerRun; StallMinutes = [int]$s.stallMinutes; Source = $source; Marathon = $mar
         AutoWake = [bool]$s.autoWake; NightShiftEnabled = [bool]$s.nightShiftEnabled; NightShiftStart = [string]$s.nightShiftStart; NightShiftEnd = [string]$s.nightShiftEnd
         DayWeekAheadPct = [double]$s.dayWeekAheadPct; WeekReservePct = [double]$s.weekReservePct; PlanUsageMaxAgeHours = [double]$s.planUsageMaxAgeHours }
 }
@@ -4847,6 +4862,25 @@ function Get-ReadyLine {
 
 # cc-P162: "End of week: spending what is left until Wed 4:00 PM (week 80%, 17% left; Fable week 45%, 52% left)" inside
 # the window (green); when it opens otherwise; or that it is off.
+# cc-P200: the week's projection ("on track for 82% by Wed 4:00 PM ...") and, with a free reset on offer, when to press it.
+function Get-ProjectionLines($p) {
+    if (-not $p) { return @() }
+    $rows = @([pscustomobject]@{ Text = ('week      : ' + [string]$p.text); Color = $(if ($p.known -and $p.week -and [double]$p.week.projected -lt [double]$p.target) { 'amber' } elseif ($p.known) { 'green' } else { 'gray' }) })
+    if ($p.resetAdvice) { $rows += [pscustomobject]@{ Text = ('            free reset: ' + [string]$p.resetAdvice); Color = 'normal' } }
+    $rows
+}
+# cc-P200: marathon mode: the setting, on or off now, since when and why, and the low-queue emails sent in this spell.
+function Get-MarathonLine($m, [datetime]$Now) {
+    if (-not $m) { return $null }
+    $on = [bool]$m.on
+    $t = [string]$m.mode + ', ' + $(if ($on) { 'ON' } else { 'off' })
+    $since = ConvertFrom-AutopilotTime $m.since 'Local'
+    if ($m.why) { $t += $(if ($since) { ' since ' + $since.ToString('ddd h:mm tt', [Globalization.CultureInfo]::InvariantCulture) } else { '' }) + ': ' + [string]$m.why }
+    if ([string]$m.mode -eq 'auto') { $t += ' (auto: on under ' + [string]$m.target + '% with more than ' + [string]$m.minHours + ' h left)' }
+    $low = @(@($m.queueLow) | Where-Object { $_ })
+    if ($on -and $low.Count) { $t += '; queue low told for ' + ($low -join ', ') }
+    [pscustomobject]@{ Text = ('marathon  : ' + $t); Color = $(if ($on) { 'green' } else { 'gray' }) }
+}
 function Get-EndOfWeekLine($e, [datetime]$Now) {
     if (-not $e) { return $null }
     $inv = [Globalization.CultureInfo]::InvariantCulture
@@ -5122,6 +5156,9 @@ function Format-AutopilotPanel {
         if ($sl) { & $add ('sessions  : ' + $sl.Text) $sl.Color }
         $el = Get-EndOfWeekLine $st.EndOfWeek $Now
         if ($el) { & $add ('end week  : ' + $el.Text) $el.Color }
+        foreach ($pl in @(Get-ProjectionLines $st.Projection)) { & $add $pl.Text $pl.Color }
+        $ml = Get-MarathonLine $st.Marathon $Now
+        if ($ml) { & $add $ml.Text $ml.Color }
         if ($st.Cli -and $st.Cli.path) {
             $cc = ConvertFrom-AutopilotTime $st.Cli.checkedUtc 'Utc'
             & $add ('cli       : ' + [string]$st.Cli.path + $(if ([bool]$st.Cli.signedIn) { ', signed in' } else { ', NOT signed in: run claude auth login in a terminal' }) + $(if ($cc) { ' (checked ' + (Format-ShortAge ($Now.ToUniversalTime() - $cc)) + ' ago)' } else { '' })) $(if ([bool]$st.Cli.signedIn) { 'green' } else { 'amber' })
@@ -5224,7 +5261,7 @@ function Get-WebActionPlan {
     if (-not $Inputs) { $Inputs = @{} }
     if ($Entry.fixed) { foreach ($p in $Entry.fixed.PSObject.Properties) { $Inputs[$p.Name] = [string]$p.Value } }
     $f = $Facts.PSObject.Copy()
-    $map = @{ model = 'WakeModel'; cap = 'LongRunCap'; until = 'LongRunUntil'; start = 'NightStart'; end = 'NightEnd'; prompt = 'RunNextPrompt'; assignTo = 'AssignGolem'; next = 'AssignRunNext' }
+    $map = @{ model = 'WakeModel'; cap = 'LongRunCap'; until = 'LongRunUntil'; start = 'NightStart'; end = 'NightEnd'; prompt = 'RunNextPrompt'; assignTo = 'AssignGolem'; next = 'AssignRunNext'; marathon = 'MarathonMode' }
     foreach ($k in $map.Keys) { if ($Inputs.ContainsKey($k)) { $f | Add-Member -NotePropertyName $map[$k] -NotePropertyValue ([string]$Inputs[$k]) -Force } }
     $st = $null
     if ($f.StatusText) { try { $st = ConvertFrom-AutopilotStatus $f.StatusText } catch { } }
@@ -5238,6 +5275,7 @@ function Get-WebActionPlan {
             'notWinding' { $wind -ne $val }
             'nightShift' { [bool]$gs.NightShiftEnabled -eq ($val -eq 'on') }
             'autoWake'   { [bool]$gs.AutoWake -eq ($val -eq 'on') }
+            'marathonNot' { [string]$gs.Marathon -ne $val }   # cc-P200
             'runNext'    { [bool][string]$f.RunNext }
             default      { $false }
         }
@@ -5247,6 +5285,7 @@ function Get-WebActionPlan {
                 'notWinding' { $(if ($val -eq 'after-current') { 'wrap up is already set: the button is Cancel wrap up now' } else { 'a stopping point is already asked: the button is Cancel stopping point now' }) }
                 'nightShift' { 'the night shift is ' + $(if ($gs.NightShiftEnabled) { 'already on' } else { 'already off' }) }
                 'autoWake'   { 'self-wake is ' + $(if ($gs.AutoWake) { 'already on' } else { 'already off' }) }
+                'marathonNot' { 'marathon is already ' + $val }
                 'runNext'    { 'nothing is picked to go next' }
                 default      { 'the Golem is not in that state' }
             }
@@ -5407,7 +5446,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -5522,6 +5561,22 @@ function Get-AutopilotPlan {
                         $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.NightShiftScript + @('-On', '-Start', $nStart, '-End', $nEnd)) -Text 'In a window of its own, which stays open.'))
                     }
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.nightshift'))
+                }
+                'golem.marathon' {
+                    # cc-P200: the pick (auto, on, off) to settings.json marathon, through Set-Marathon.ps1 (golem.ps1 -Event
+                    # MarathonSet, which switches at once and emails a change). Refused when it is already that mode.
+                    if (-not (& $need $ap.MarathonScript 'Set-Marathon.ps1')) { break }
+                    $mm = ([string]$Facts.MarathonMode).Trim().ToLowerInvariant()
+                    if ($mm -notin @('auto', 'on', 'off')) { $steps.Add((New-PlanStep -Kind refuse -Text ("Marathon is auto, on or off, not '" + [string]$Facts.MarathonMode + "'. Nothing was run."))); break }
+                    if ($mm -eq [string]$gset.Marathon) { $steps.Add((New-PlanStep -Kind refuse -Text ('Marathon is already ' + $mm + '. Nothing was run.'))); break }
+                    $what = switch ($mm) {
+                        'on'   { 'Marathon on now, whatever the projection says: every awake Golem is woken on its lane when it has a prompt, no rest after a Large prompt, no run cap or daily wake cap, the week runs to usageLimitPct without the even pace, the night shift ignores its reserves, and the extra PCs may claim in the day too (their back-off still holds). The 5-hour window still holds. Chase is emailed that it is on.' }
+                        'off'  { 'Marathon off: the Golems pace themselves as before (paceMode, maxPerRun, their hours), whatever the projection says. Emailed if it was on.' }
+                        default { 'Marathon auto (the default): on when the week''s projection falls short of 95% with more than 6 hours left, off at 95% or at usageLimitPct; each switch is emailed once.' }
+                    }
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase ('marathon ' + $mm) -Text ('Now ' + [string]$gset.Marathon + '. ' + $what)))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.MarathonScript + @('-Mode', $mm)) -Text 'In a window of its own, which stays open and prints the week''s projection.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.marathon'))
                 }
                 # cc-P182: Poke, Run next and Retry stopped prompt (also the web console's buttons, through Get-WebActionPlan).
                 'golem.integrate' {
@@ -6756,7 +6811,7 @@ function Get-AutopilotFacts {
     $running = ''
     $runningFile = ''
     if ($stateText) { try { $sj = ($stateText | ConvertFrom-Json); $running = [string]$sj.current; $runningFile = [string]$sj.currentFile } catch { } }
-    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
+    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.MarathonScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
     # cc-P182: Run next's pick, a queue file name ('' when none).
     $runNext = ''
     if ($ap.RunNextFile -and (Test-Path -LiteralPath $ap.RunNextFile -PathType Leaf)) { try { $runNext = ([IO.File]::ReadAllText($ap.RunNextFile)).Trim() } catch { } }
@@ -9225,6 +9280,8 @@ function Update-GolemRunControls {
     foreach ($b in @($script:ui.GolemWakeButtons)) {
         if ($b.Tag -eq 'golem.autowake') { $b.Text = $(if ($gs -and -not $gs.AutoWake) { 'Self-wake: off (turn on)' } else { 'Self-wake: on (turn off)' }) }
         if ($b.Tag -eq 'golem.nightshift') { $b.Text = $(if ($gs -and -not $gs.NightShiftEnabled) { 'Night shift: off (turn on)' } else { 'Night shift: on (turn off)' }) }
+        # cc-P200: the mode and whether marathon is on now; Set writes the pick beside it.
+        if ($b.Tag -eq 'golem.marathon') { $mon = ($View.Status -and $View.Status.Marathon -and [bool]$View.Status.Marathon.on); $b.Text = 'Marathon: ' + $(if ($gs) { $gs.Marathon } else { 'auto' }) + $(if ($mon) { ', ON' } else { '' }) + ' (set)' }
         if ($b.Tag -eq 'golem.resume') { $b.Enabled = (Test-GolemWakeReady -View $View -Now ([datetime]::Now)) }
     }
     if ($script:ui.GolemModel -and $script:ui.GolemModelAuto) {
@@ -9234,6 +9291,7 @@ function Update-GolemRunControls {
         if ($want -and $script:ui.GolemModel.Items.Contains($want) -and [string]$script:ui.GolemModel.SelectedItem -ne $want) { $script:ui.GolemModel.SelectedItem = $want }
     }
     if ($gs -and $script:ui.NightStart -and -not $script:ui.NightStart.Focused -and $gs.NightShiftStart -and $script:ui.NightStart.Text -eq '22:30') { $script:ui.NightStart.Text = $gs.NightShiftStart }
+    if ($gs -and $script:ui.MarathonPick -and -not $script:ui.MarathonPick.Focused -and -not $script:ui.MarathonPicked -and [string]$script:ui.MarathonPick.SelectedItem -ne $gs.Marathon) { $script:ui.MarathonPick.SelectedItem = $gs.Marathon }
     if ($gs -and $script:ui.NightEnd -and -not $script:ui.NightEnd.Focused -and $gs.NightShiftEnd -and $script:ui.NightEnd.Text -eq '06:30') { $script:ui.NightEnd.Text = $gs.NightShiftEnd }
     $q = $script:ui.GolemQueueList
     if ($q) {
@@ -9334,6 +9392,11 @@ function ConvertTo-ConsoleStatusDocument {
             finished = @(@($v.Finished) | ForEach-Object { [ordered]@{ number = [int]$_.Number; result = [string]$_.Result; time = (& $iso $_.Time); title = [string]$_.Title; headline = [string]$_.Headline } })
             autoWake = [bool]$v.Settings.AutoWake
             nightShift = [ordered]@{ enabled = [bool]$v.Settings.NightShiftEnabled; start = [string]$v.Settings.NightShiftStart; end = [string]$v.Settings.NightShiftEnd }
+            # cc-P200: the week's projection and marathon mode, for the web console's Golem page.
+            projection = $(if ($s -and $s.Projection) { [ordered]@{ known = [bool]$s.Projection.known; text = [string]$s.Projection.text; resetAdvice = [string]$s.Projection.resetAdvice; target = $s.Projection.target
+                projected = $(if ($s.Projection.week) { $s.Projection.week.projected } else { $null }); resetsAt = $(if ($s.Projection.week) { [string]$s.Projection.week.resetsAt } else { $null }) } } else { $null })
+            marathon = [ordered]@{ mode = [string]$v.Settings.Marathon; on = $(if ($s -and $s.Marathon) { [bool]$s.Marathon.on } else { $false }); since = $(if ($s -and $s.Marathon) { [string]$s.Marathon.since } else { '' })
+                why = $(if ($s -and $s.Marathon) { [string]$s.Marathon.why } else { '' }) }
             usage = $usage
             usageNotes = $usageNotes
             codexUsage = $codexUsage
@@ -10472,6 +10535,7 @@ function Invoke-ConsoleButton {
             if ($script:ui.GolemModel) { $apFacts | Add-Member -NotePropertyName WakeModel -NotePropertyValue ([string]$script:ui.GolemModel.SelectedItem) -Force }
             if ($script:ui.NightStart) { $apFacts | Add-Member -NotePropertyName NightStart -NotePropertyValue $script:ui.NightStart.Text -Force }
             if ($script:ui.NightEnd) { $apFacts | Add-Member -NotePropertyName NightEnd -NotePropertyValue $script:ui.NightEnd.Text -Force }
+            if ($script:ui.MarathonPick) { $apFacts | Add-Member -NotePropertyName MarathonMode -NotePropertyValue ([string]$script:ui.MarathonPick.SelectedItem) -Force; $script:ui.MarathonPicked = $false }   # cc-P200
             # A dry run runs nothing, the sign-in check included: the plan then reads cli.json as the Golem last wrote it.
             if ($ActionKey -eq 'golem.resume' -and -not $script:dry) { $apFacts | Add-Member -NotePropertyName CliCheck -NotePropertyValue $pre.CliCheck -Force }
         } elseif ($isCommit -or $isPackage) {
@@ -11651,6 +11715,16 @@ function New-ConsoleForm {
             $nsEnd = New-Object Windows.Forms.TextBox
             $nsEnd.Name = 'golem.nightend'; $nsEnd.Width = 50; $nsEnd.Text = '06:30'; $nsEnd.Margin = New-Object Windows.Forms.Padding(2, 12, 6, 6)
             $apTop.Controls.AddRange(@($nsLabel, $nsStart, $nsTo, $nsEnd))
+        }
+        if ($a.Key -eq 'golem.marathon') {
+            # cc-P200: the mode Marathon: set writes.
+            $mpick = New-Object Windows.Forms.ComboBox
+            $mpick.Name = 'golem.marathonpick'; $mpick.DropDownStyle = 'DropDownList'; $mpick.Width = 70; $mpick.Margin = New-Object Windows.Forms.Padding(2, 12, 6, 6)
+            [void]$mpick.Items.AddRange(@('auto', 'on', 'off'))
+            $mpick.SelectedIndex = 0
+            $mpick.Add_SelectionChangeCommitted({ $script:ui.MarathonPicked = $true })
+            $apTop.Controls.Add($mpick)
+            $script:ui.MarathonPick = $mpick
         }
     }
     # cc-P182: Poke, Run next and Retry stopped prompt, a row of their own.

@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.2
+
+### Staff
+- Marathon mode: the Golems project where the week's usage will land by the weekly reset ("on track for 82% by Wed 4:00 PM", on the Golem tab, the web console and the morning email), and when it would fall short they go all out on their own: every Golem woken, no rests or run cap, the night shift at full, and the extra PCs also by day (they still back off when their owner is using them). It turns itself off once the week will be used, and can be forced on or off from either console.
+- While marathon mode is on, the overseer is emailed when a Golem is running short of prompts, and a free weekly reset on offer comes with advice on when to press it.
+
 ## 2026.10.20
 
 ### Staff

@@ -5915,7 +5915,7 @@ Fact 'P131_TheGolemTabHasTheWakeRowAndTheToggleLabelsFollowTheSettings' {
     $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tags = @($script:ui.GolemWakeButtons | ForEach-Object { $_.Tag })
-        Assert-Equal 'golem.resume,golem.autowake,golem.nightshift,golem.clicheck' ($tags -join ',') 'the wake row, in order'
+        Assert-Equal 'golem.resume,golem.autowake,golem.nightshift,golem.marathon,golem.clicheck' ($tags -join ',') 'the wake row, in order (cc-P200: Marathon after the night shift)'
         Assert-Equal 'golem.longrun,golem.endlongrun,golem.wrapup,golem.stoppoint' (@($script:ui.GolemRunButtons | ForEach-Object { $_.Tag }) -join ',') 'the cc-P125 run row is unchanged'
         Assert-True ($null -ne $script:ui.GolemModel -and (@($script:ui.GolemModel.Items) -join ',') -eq 'Fable,Opus') 'the model picker: Fable, Opus'
         Assert-True ($null -ne $script:ui.NightStart -and $null -ne $script:ui.NightEnd) 'the night shift''s two boxes'
@@ -7907,6 +7907,91 @@ Fact 'P187_TheRunnerRefusesAPcOnlyButtonAndShowsAPagePlanFirst' {
     $j = $pv[0].Substring(15) | ConvertFrom-Json
     Assert-True ($j.shard -eq 'mapart' -and -not $j.danger) ('the plan''s facts: ' + $pv[0])
     Assert-True ((($out2 | ForEach-Object { [string]$_ }) -join ' ') -match 'DRY RUN') 'the console''s own plan, printed'
+}
+
+# --- cc-P200: marathon mode and the week's projection on the Golem tab and the web console --------------------------------
+function New-P200Facts([string]$Setting = 'auto', [string]$Pick = '') {
+    $f = New-P131Facts -SettingsText ('{ "progressEmails": true, "maxPerRun": 12, "stallMinutes": 45, "autoWake": true, "nightShiftEnabled": true, "marathon": "' + $Setting + '" }')
+    if ($p125Cfg.Autopilot.MarathonScript) { $f.Present[$p125Cfg.Autopilot.MarathonScript] = $true }
+    $f | Add-Member -NotePropertyName MarathonMode -NotePropertyValue $Pick -Force
+    $f
+}
+
+Fact 'P200_TheMarathonButtonSetsThePickedModeAfterItsPhrase' {
+    $p = @(Get-ActionPlan -Action 'golem.marathon' -Config $p125Cfg -AutopilotFacts (New-P200Facts 'auto' 'on'))
+    $c = @($p | Where-Object { $_.Kind -eq 'confirm' })
+    Assert-True ($c.Count -eq 1 -and $c[0].Phrase -ceq 'marathon on') ('the typed confirm: ' + $(if ($c.Count) { $c[0].Phrase } else { '(none)' }) + ' ' + (@($p | ForEach-Object { $_.Kind + ':' + $_.Text }) -join ' | '))
+    Assert-Equal 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\UO\golem\Set-Marathon.ps1 -Mode on' (Get-P131Window $p)
+    Assert-Equal 0 @(Test-PlanSafety $p $p125Cfg).Count (@(Test-PlanSafety $p $p125Cfg) -join '; ')
+    $off = @(Get-ActionPlan -Action 'golem.marathon' -Config $p125Cfg -AutopilotFacts (New-P200Facts 'on' 'off'))
+    Assert-True ((Get-P131Window $off).EndsWith('Set-Marathon.ps1 -Mode off') -and @($off | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase -ceq 'marathon off') ('on -> off: ' + (Get-P131Window $off))
+    $same = @(Get-ActionPlan -Action 'golem.marathon' -Config $p125Cfg -AutopilotFacts (New-P200Facts 'auto' 'auto'))
+    Assert-True ($same.Count -and $same[0].Kind -eq 'refuse' -and $same[0].Text -match 'already auto') ('the same mode is refused: ' + $(if ($same.Count) { $same[0].Text }))
+    $bad = @(Get-ActionPlan -Action 'golem.marathon' -Config $p125Cfg -AutopilotFacts (New-P200Facts 'auto' 'always'))
+    Assert-True ($bad.Count -and $bad[0].Kind -eq 'refuse') 'a mode that is not auto, on or off is refused'
+    # Only -Mode auto|on|off passes the safety check.
+    $evil = New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $p125Cfg.Autopilot.MarathonScript, '-Mode', 'on;calc')
+    Assert-True (@(Test-PlanSafety @($evil) $p125Cfg).Count -gt 0) 'any other argument is refused'
+    # The web console's three buttons reach the same plan with their fixed mode, and a stale page is refused.
+    $e = @($p182Actions | Where-Object { $_.key -eq 'marathon-on' })
+    Assert-Equal 1 $e.Count 'a web button marathon-on'
+    if ($e.Count) {
+        $ok = Get-WebActionPlan -Entry $e[0] -Typed 'Marathon on' -Inputs @{} -Config $p125Cfg -Facts (New-P200Facts 'auto') -Now $p125Now
+        Assert-True ($ok.Ok -and $ok.Phrase -ceq 'marathon on' -and (Get-P131Window $ok.Plan).EndsWith('-Mode on')) ('marathon on from the web: ' + $ok.Refusal)
+        $stale = Get-WebActionPlan -Entry $e[0] -Typed 'marathon on' -Inputs @{} -Config $p125Cfg -Facts (New-P200Facts 'on') -Now $p125Now
+        Assert-True (-not $stale.Ok -and $stale.Refusal -match 'already on') ('already on: ' + $stale.Refusal)
+    }
+    foreach ($k in 'marathon-auto', 'marathon-off') { Assert-True (@($p182Actions | Where-Object { $_.key -eq $k -and $_.action -eq 'golem.marathon' }).Count -eq 1) ('a web button ' + $k) }
+}
+
+Fact 'P200_TheGolemTabShowsTheProjectionMarathonAndWidenedHours' {
+    $j = (New-P131Status -State 'RUNNING' -Current 'P200') | ConvertFrom-Json
+    $j | Add-Member -NotePropertyName projection -NotePropertyValue ([pscustomobject]@{ known = $true; target = 95; golems = 2
+        text = 'on track for 82% by Wed 4:00 PM (the week is at 60%, 0.5% an hour over the last 24 h; 2 enabled Claude Golems)'
+        week = [pscustomobject]@{ projected = 82; resetsAt = '2026-10-21T16:00:00' }; resetAdvice = 'at this rate the week ends at about 82%, short of 95%: the free reset is not needed this week (on offer until 2026-10-22). The Golem never presses it.' }) -Force
+    $j | Add-Member -NotePropertyName marathon -NotePropertyValue ([pscustomobject]@{ mode = 'auto'; on = $true; since = '2026-10-15T08:00:00'; why = 'projected 71% by Wed 4:00 PM, short of the 95% target with 54 h left'
+        target = 95; minHours = 6; queueMin = 6; holdMinutes = 60; queueLow = @('Bronze') }) -Force
+    $x = [pscustomobject]@{ PromptTexts = @{}; TreeClean = $null }
+    $v = Get-AutopilotView -Enabled $true -StateText '{"current":"P200","currentFile":"cc-P200-a.md","lastHandled":199}' -LogLines @() -QueueNames @() -Errors @() -StatusText ($j | ConvertTo-Json -Depth 6) -SettingsText $p131Settings -Kind golem -Extra $x
+    $lines = @(Format-AutopilotPanel -View $v -Config $p125Cfg -Now $p125Now)
+    $wk = @($lines | Where-Object { $_.Text -like 'week      :*' })
+    Assert-True ($wk.Count -eq 1 -and $wk[0].Text -eq 'week      : on track for 82% by Wed 4:00 PM (the week is at 60%, 0.5% an hour over the last 24 h; 2 enabled Claude Golems)' -and $wk[0].Color -eq 'amber') ('the projection line, amber under the target: ' + (@($wk | ForEach-Object { $_.Text + ' ' + $_.Color }) -join ' | '))
+    Assert-True (@($lines | Where-Object { $_.Text -like '            free reset: at this rate the week ends at about 82%*' }).Count -eq 1) 'the free reset advice'
+    $mar = @($lines | Where-Object { $_.Text -like 'marathon  :*' })
+    Assert-True ($mar.Count -eq 1 -and $mar[0].Text -eq 'marathon  : auto, ON since Thu 8:00 AM: projected 71% by Wed 4:00 PM, short of the 95% target with 54 h left (auto: on under 95% with more than 6 h left); queue low told for Bronze' -and $mar[0].Color -eq 'green') ('the marathon line: ' + (@($mar | ForEach-Object { $_.Text }) -join ' | '))
+    # No projection or marathon field (a Golem before cc-P200): no lines.
+    $v0 = Get-AutopilotView -Enabled $true -StateText '{"current":"P200","currentFile":"cc-P200-a.md","lastHandled":199}' -LogLines @() -QueueNames @() -Errors @() -StatusText (New-P131Status -State 'RUNNING' -Current 'P200') -SettingsText $p131Settings -Kind golem -Extra $x
+    Assert-Equal 0 @(Format-AutopilotPanel -View $v0 -Config $p125Cfg -Now $p125Now | Where-Object { $_.Text -like 'week      :*' -or $_.Text -like 'marathon  :*' }).Count 'nothing before cc-P200'
+    # The cards: an extra PC's hours widened to the whole day while marathon is on; noDaytimeMarathon kept.
+    $j | Add-Member -NotePropertyName multiGolem -NotePropertyValue $true -Force
+    $j | Add-Member -NotePropertyName golems -NotePropertyValue @(
+        [pscustomobject]@{ name = 'Iron'; lane = 'Opus'; engine = 'claude'; machine = 'TOWER'; state = 'RUNNING'; integrator = $true; hours = ''; marathonDay = $false; noDaytimeMarathon = $false },
+        [pscustomobject]@{ name = 'Copper'; lane = 'any'; engine = 'claude'; machine = 'LAPTOP'; state = 'IDLE'; hours = '22:00-06:30'; marathonDay = $true; noDaytimeMarathon = $false },
+        [pscustomobject]@{ name = 'Silver'; lane = 'any'; engine = 'claude'; machine = 'LAPTOP2'; state = 'IDLE'; hours = '22:00-06:30'; marathonDay = $false; noDaytimeMarathon = $true }) -Force
+    $st = ConvertFrom-AutopilotStatus ($j | ConvertTo-Json -Depth 6)
+    $rows = @(Get-GolemCardLines -Status $st -Now $p125Now | ForEach-Object { $_.Text })
+    Assert-True (@($rows | Where-Object { $_ -match 'Copper .*; hours 22:00-06:30 \(all day now: marathon\)' }).Count -eq 1) ('Copper widened: ' + ($rows -join ' | '))
+    Assert-True (@($rows | Where-Object { $_ -match 'Silver .*; hours 22:00-06:30 \(kept: noDaytimeMarathon\)' }).Count -eq 1) ('Silver kept to its hours: ' + ($rows -join ' | '))
+    $cd = ConvertTo-GolemCardDocument ($st.Golems | Where-Object { $_.name -eq 'Copper' })
+    Assert-True ($cd.marathonDay -eq $true) 'the web console''s card carries marathonDay'
+}
+
+Fact 'P200_TheMarathonPickIsOnTheGolemTabAndFollowsTheSetting' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-True ($null -ne $script:ui.MarathonPick -and (@($script:ui.MarathonPick.Items) -join ',') -eq 'auto,on,off') 'the pick: auto, on, off'
+        $tips = Get-ConsoleTooltips
+        foreach ($k in @('golem.marathon', 'golem.marathonpick')) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
+        $x = [pscustomobject]@{ PromptTexts = @{ 'cc-P126-a.md' = $p131Prompt }; TreeClean = $null }
+        $j = (New-P131Status -State 'IDLE' -Current '') | ConvertFrom-Json
+        $j | Add-Member -NotePropertyName marathon -NotePropertyValue ([pscustomobject]@{ mode = 'on'; on = $true; since = ''; why = 'marathon set on'; queueLow = @() }) -Force
+        $v = Get-AutopilotView -Enabled $true -StateText '{"current":"","currentFile":"","lastHandled":125}' -LogLines @() -QueueNames @('cc-P126-a.md') -Errors @() -StatusText ($j | ConvertTo-Json -Depth 5) -SettingsText '{ "autoWake": true, "marathon": "on" }' -Kind golem -Extra $x
+        Update-GolemRunControls $v
+        $b = @($script:ui.GolemWakeButtons | Where-Object { $_.Tag -eq 'golem.marathon' })
+        Assert-True ($b.Count -eq 1 -and $b[0].Text -eq 'Marathon: on, ON (set)') ('the button says the mode and that it is on: ' + $(if ($b.Count) { $b[0].Text }))
+        Assert-Equal 'on' ([string]$script:ui.MarathonPick.SelectedItem) 'the pick follows the setting'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
 }
 
 Remove-Item -LiteralPath $p144Dir -Recurse -Force -ErrorAction SilentlyContinue
