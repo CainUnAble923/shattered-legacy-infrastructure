@@ -544,6 +544,13 @@ apply_patch "$PATCHES/BaseWeapon-axe-bonus-osi.patch"
 apply_patch "$PATCHES/BasePotion-alchemy-bonus-osi.patch"
 apply_patch "$PATCHES/Fishing-deep-water-finds-osi.patch"
 
+# cc-P193 (High Seas, the fishing half): pinned Fishing hands out the High Seas fish (GetResourceType asks FishInfo first;
+# a rare fish is not mutated into a find, is weighed and signed in Give, and has its own catch message), and the taxidermy
+# kit makes a fish trophy deed from a rare fish, crab or lobster. Both are hooks into our own additive files under
+# Services/Expansions/High Seas; alternatives argued in shard-migration/notes/cc-P193-port-high-seas-fishing.md.
+apply_patch "$PATCHES/Fishing-high-seas-fish.patch"
+apply_patch "$PATCHES/TaxidermyKit-fish-trophies.patch"
+
 # cc-P71 (cc-P66 decision 4, Chase 2026-10-06: "update these to appropriate levels at 200"): five effects that kept growing
 # past OSI's top now scale instead. Each patched line reads the player's skill through ClusterFSkillClamps, which returns
 # pinned's own number at or below OSI's top and past it one diminishing-returns curve to a value at 200 that lives in
