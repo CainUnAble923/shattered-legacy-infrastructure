@@ -522,7 +522,9 @@ class PhonePages(Pages):
             self.assertIn("assign", keys.split(","))
             b.eval("document.querySelector('#ctl-buttons button[data-key=wake]').click()")
             self.assertTrue(b.wait_for("!document.getElementById('sheet').hidden"))
-            self.assertEqual("Fable", b.eval("document.getElementById('in-model').value"), "Wake's model from Bronze's lane")
+            # cc-P153: Auto is the default: Bronze's own Golem picks its next prompt (its lane) and reads the Model line.
+            self.assertEqual("Auto", b.eval("document.getElementById('in-model').value"), "Wake's model starts on Auto")
+            self.assertEqual("Fable,Opus,Sonnet", b.eval("Array.prototype.slice.call(document.getElementById('in-model').options, 1).map(function (o) { return o.value; }).join(',')"), "the overrides")
             self.assertEqual("wake bronze", b.eval("document.getElementById('sheet-want').textContent"))
             self.assertEqual("no", b.eval("document.documentElement.getAttribute('data-overflow')"))
 

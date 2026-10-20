@@ -90,7 +90,7 @@ ACTIONS_FILE = os.path.join(HERE, "golem-actions.json")
 PANE_LINE = re.compile(r"^\[\[shard-console:([a-z]+)\]\](.*)$")
 # cc-P182: what a page may pass for each input, checked before the runner is started (argv, never a shell).
 INPUT_RULES = {
-    "model": (re.compile(r"^(?i:fable|opus|sonnet)$"), "-Model", lambda v: v[:1].upper() + v[1:].lower()),
+    "model": (re.compile(r"^(?i:auto|fable|opus|sonnet)$"), "-Model", lambda v: v[:1].upper() + v[1:].lower()),
     "cap": (re.compile(r"^(?i:all|\d{1,3})$"), "-Cap", lambda v: v.lower()),
     "until": (re.compile(r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}$"), "-Until", lambda v: v.replace("T", " ")),
     "start": (re.compile(r"^([01]?\d|2[0-3]):[0-5]\d$"), "-NightStart", lambda v: v),
