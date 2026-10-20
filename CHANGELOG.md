@@ -29,6 +29,17 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.5
+
+### Added
+- High Seas fishing, the first half. Fishing now brings up the High Seas catch: from 50 skill the shoreline gives twelve new shore fish, from 80 deep water gives eighteen ocean fish, from 106 dungeon water gives twelve dungeon fish, and the rare fish of each place (sixteen rare, nineteen legendary, each with its own hue, caught by one fisher and weighed) turn up with the skill the wiki says. Every fish carves into fish steaks, the rare ones into their own.
+- Lobster traps: throw one into water (or lava, for the lava trap), it bobs once a minute, trains Fishing, and fills with crabs and lobsters, now and then a rare one; pull it back before the sea takes it. Guild and party may pull yours; in Felucca anyone may, as a crime.
+- Fish trophies: a taxidermy kit mounts a rare fish, crab or lobster as a wall trophy in your house, hued as the fish, showing who caught it, when and how heavy; chop it to get the deed back.
+- Two sea champions for staff to place: Charybdis (tentacles, lightning on your boat, a wave that pushes it) and Osiredon the Scalis Enforcer (water balls, fire bursts, parasitic eels), with their artifacts: the Fisherman's set (hat, vest, eelskin gloves, trousers), the Helm of Vengeance, Ring of the Soulbinder, Rune Engraved Peg Leg, Culling Blade, Enchanted Coral Bracelet, Wand of Thundering Glory, Leviathan Hide Bracers, Smiling Moon Blade, the enchanted blade and vortex deeds, and the yellow polka dot bikini.
+
+### Staff
+- Baits and hooks, the Oracle of the Sea and the charybdis spawner, lava fishing, fish pies, the profession fish quests and Corgul are the second half; the sea champions cannot damage a boat until ship combat is ported. Details in the cc-P193 notes.
+
 ## 2026.10.20.4
 
 ### Staff

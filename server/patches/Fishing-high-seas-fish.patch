@@ -1,0 +1,71 @@
+--- a/Projects/UOContent/Engines/Harvest/Fishing.cs
++++ b/Projects/UOContent/Engines/Harvest/Fishing.cs
+@@ -164,6 +164,12 @@
+             HarvestResource resource
+         )
+         {
++            // cc-P193 (High Seas fishing): a rare or legendary fish GetResourceType rolled is the catch; ServUO Fishing.cs:259.
++            if (FishInfo.IsRareFish(type))
++            {
++                return type;
++            }
++
+             var deepWater = SpecialFishingNet.FullValidation(map, loc.X, loc.Y);
+ 
+             var skillBase = from.Skills.Fishing.Base;
+@@ -194,6 +200,14 @@
+             return type;
+         }
+ 
++        // cc-P193 (High Seas fishing): the High Seas roll first (a rare or legendary fish of these waters, else a common High
++        // Seas fish of the water from 50 Fishing), then the stock fish; ServUO Fishing.cs:919-927. FishInfo is ours
++        // (Services/Expansions/High Seas/Items/Fish/FishInfo.cs).
++        public override Type GetResourceType(
++            Mobile from, Item tool, HarvestDefinition def, Map map, Point3D loc, HarvestResource resource
++        ) =>
++            FishInfo.GetSpecialItem(from, tool, loc, false) ?? base.GetResourceType(from, tool, def, map, loc, resource);
++
+         public override bool CheckResources(Mobile from, Item tool, HarvestDefinition def, Map map, Point3D loc, bool timed)
+         {
+             var pack = from.Backpack;
+@@ -370,6 +384,15 @@
+                 return true; // we don't want to give the item to the player, it's on the serpent
+             }
+ 
++            // cc-P193 (High Seas fishing): a rare or legendary fish is one catch, weighed and signed; ServUO Fishing.cs:559-573.
++            if (item is RareFish rare && FishInfo.IsRareFish(rare.GetType()))
++            {
++                rare.Fisher = m;
++                rare.DateCaught = Core.Now;
++                rare.Stackable = false;
++                rare.Weight = Math.Max(1, 200 - (int)Math.Sqrt(Utility.RandomMinMax(0, 40000)));
++            }
++
+             return base.Give(m, item, placeAtFeet || item is BigFish or WoodenChest or MetalGoldenChest);
+         }
+ 
+@@ -419,6 +442,24 @@
+                     number = 1008125;
+                     name = "a special fishing net"; // TODO: this is just a guess--what should it really be named?
+                 }
++                else if (item is BaseHighseasFish)
++                {
++                    // cc-P193 (High Seas fishing): "You pull out an item: ~1_val~"; ServUO Fishing.cs:644-657.
++                    if (FishInfo.IsRareFish(item.GetType()))
++                    {
++                        from.SendLocalizedMessage(1043297, "a rare fish");
++                    }
++                    else if (item.LabelNumber < 1)
++                    {
++                        from.SendLocalizedMessage(1043297, "a fish");
++                    }
++                    else
++                    {
++                        from.SendLocalizedMessage(1043297, $"#{item.LabelNumber}");
++                    }
++
++                    return;
++                }
+                 else
+                 {
+                     number = 1043297;
