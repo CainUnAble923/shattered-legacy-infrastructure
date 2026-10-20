@@ -5915,7 +5915,7 @@ Fact 'P131_TheGolemTabHasTheWakeRowAndTheToggleLabelsFollowTheSettings' {
     $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tags = @($script:ui.GolemWakeButtons | ForEach-Object { $_.Tag })
-        Assert-Equal 'golem.resume,golem.autowake,golem.nightshift,golem.clicheck' ($tags -join ',') 'the wake row, in order'
+        Assert-Equal 'golem.resume,golem.autowake,golem.nightshift,golem.marathon,golem.clicheck' ($tags -join ',') 'the wake row, in order (cc-P200: Marathon after the night shift)'
         Assert-Equal 'golem.longrun,golem.endlongrun,golem.wrapup,golem.stoppoint' (@($script:ui.GolemRunButtons | ForEach-Object { $_.Tag }) -join ',') 'the cc-P125 run row is unchanged'
         Assert-True ($null -ne $script:ui.GolemModel -and (@($script:ui.GolemModel.Items) -join ',') -eq 'Fable,Opus') 'the model picker: Fable, Opus'
         Assert-True ($null -ne $script:ui.NightStart -and $null -ne $script:ui.NightEnd) 'the night shift''s two boxes'
@@ -7656,6 +7656,342 @@ Fact 'P186_TheWebRunnerTakesAGolemAndRefusesTheIntegratorsOnlyButtons' {
     $ErrorActionPreference = $eap
     Assert-Equal 2 $code ('refused: ' + ($out -join ' | '))
     Assert-True ((($out | ForEach-Object { [string]$_ }) -join ' ') -match 'integrator') ('it says why: ' + ($out -join ' | '))
+}
+
+# --- cc-P187: the web console does everything the Shard Console does -------------------------------------------------
+$p187Doc = Get-Content -LiteralPath (Join-Path $repo 'web-console\console-actions.json') -Raw | ConvertFrom-Json
+$p187Pages = @(foreach ($pg in @($p187Doc.pages)) { foreach ($b in @($pg.buttons)) { $b } })
+function Get-P187Entry([string]$key) { @($p187Pages | Where-Object { $_.key -eq $key })[0] }
+function Get-P187ButtonIds($Control) {
+    # Every button, tick and pick on the window (Tag when it is an action key, else Name), as the parity rule names them.
+    foreach ($x in $Control.Controls) {
+        if ($x -is [Windows.Forms.ButtonBase]) {
+            $t = [string]$x.Tag
+            if ($t -cmatch '^[a-z]+(\.[A-Za-z-]+)+$') { $t } elseif ($x.Name) { [string]$x.Name } else { '(no name: ' + $x.Text + ')' }
+        }
+        if ($x -is [Windows.Forms.ComboBox] -and $x.Name -cmatch '^(golem|web)\.') { [string]$x.Name }
+        if ($x -is [Windows.Forms.TextBox] -and $x.Name -cmatch '^golem\.') { [string]$x.Name }
+        Get-P187ButtonIds $x
+    }
+}
+
+Fact 'P187_EveryConsoleButtonHasAWebTwin' {
+    # The parity rule (notes cc-P187): every button of the Shard Console window has a web console counterpart (a page
+    # or Golem button, an input, a part of the page) or a PC only entry with its reason, in console-actions.json's twins.
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Show-WorldSetupPage
+        $ids = @(Get-P187ButtonIds $form | Where-Object { $_ } | Select-Object -Unique)
+    } finally { $form.Dispose() }
+    Assert-True ($ids.Count -gt 100) ('the window''s buttons were read: ' + $ids.Count)
+    $twins = @($p187Doc.twins.PSObject.Properties.Name)
+    $missing = @($ids | Where-Object { $twins -cnotcontains $_ })
+    Assert-Equal '' ($missing -join ', ') 'console buttons with no web twin: add one to web-console\console-actions.json (a web button, or pc:<why>)'
+    $web = @($p187Pages | ForEach-Object { $_.key }) + @($p182Actions | ForEach-Object { $_.key })
+    foreach ($p in $p187Doc.twins.PSObject.Properties) {
+        $to = ([string]$p.Value -split ' ', 2)[0]
+        if ($to -match '^(page|input|logs):') { continue }
+        if ($to -like 'pc:*') { Assert-True (([string]$p.Value).Length -gt 20) ('a PC only twin says why: ' + $p.Name); continue }
+        Assert-True ($web -ccontains $to) ('the twin of ' + $p.Name + ' is a web button: ' + $p.Value)
+    }
+}
+
+Fact 'P187_ReadMeansTheConsolesReadOnlyActionsAndEveryPageButtonIsAConsoleAction' {
+    $acts = @{}
+    foreach ($a in @(Get-ConsoleActions)) { $acts[$a.Key] = $a }
+    foreach ($e in $p187Pages) {
+        if ($e.art) { Assert-True ($e.art -in @('prompt', 'generate', 'generate-api', 'import', 'approve', 'reject', 'regenerate', 'place', 'review')) ('an Art.ps1 button: ' + $e.key); continue }
+        Assert-True ($acts.ContainsKey([string]$e.action)) ('a console action: ' + $e.key + ' -> ' + $e.action)
+        $m = [bool]$acts[[string]$e.action].Mutates
+        if ($e.kind -eq 'read') { Assert-True (-not $m) ('read is the console''s read-only action: ' + $e.key) }
+        else { Assert-True $m ('a change or dangerous button changes something in the console too: ' + $e.key) }
+        if ($e.answers -or $e.answersBySite) { Assert-Equal 'dangerous' ([string]$e.kind) ('only a dangerous button answers its script''s question: ' + $e.key) }
+    }
+    foreach ($k in @('test.wipe', 'golem.email', 'package.scripts.key', 'web.ops-pages')) { Assert-True ((Get-P187Entry $k).pcOnly -match 'password|secret|passphrase|token') ('PC only, for its secret: ' + $k) }
+}
+
+Fact 'P187_AWebPageButtonCallsTheConsolesOwnPlanAndKeepsItsChecks' {
+    $script:p187Calls = New-Object 'System.Collections.Generic.List[string]'
+    $script:p187Plan = @()
+    function Get-ActionPlan { param($Action, $ShardKey, $Config, $State, $SnapshotName, $Snapshot, $Now, $CommitMessage, $CommitFacts, $PackageNotes, $PackageZip, $PackageFacts, $ImageTag, [switch]$CommitForce, $WipeFacts, $WipeAdmin, $AutopilotFacts, $VpnFacts, $FixFacts, $Commit, $Site, $VdFile, $Body, $HuesFile)
+        $script:p187Calls.Add($Action + '|' + $ShardKey + '|' + $Snapshot + '|' + $PackageZip + '|' + $ImageTag + '|' + $Commit + '|' + [bool]$CommitForce); $script:p187Plan }
+    try {
+        foreach ($e in @($p187Pages | Where-Object { -not $_.pcOnly -and -not $_.art })) {
+            $script:p187Plan = @(New-PlanStep -Kind say -Text 'fake')
+            $r = Get-WebPagePlan -Entry $e -Typed '' -Inputs @{ imageTag = 'sl-modernuo:cc-p187'; commit = 'abc1234' } -Config $p125Cfg -Pre $null -Dry
+            Assert-True ($r.Ok) ('planned: ' + $e.key + ' ' + $r.Refusal)
+        }
+        foreach ($e in @($p187Pages | Where-Object { -not $_.pcOnly -and -not $_.art })) { Assert-True (@($script:p187Calls | Where-Object { $_ -like ($e.action + '|*') }).Count -ge 1) ('the console''s plan for ' + $e.key) }
+        $script:p187Calls.Clear()
+        $null = Get-WebPagePlan -Entry (Get-P187Entry 'snapshot.restore') -Typed '' -Inputs @{ shard = 'live'; snapshot = '20261019-101500_x' } -Config $p125Cfg -Pre $null -Dry
+        Assert-Equal 'snapshot.restore|live|20261019-101500_x||||False' $script:p187Calls[0] 'the inputs go where the window''s boxes and lists put them'
+        $script:p187Calls.Clear()
+        $null = Get-WebPagePlan -Entry (Get-P187Entry 'commit.run') -Typed '' -Inputs @{ force = 'yes' } -Config $p125Cfg -Pre $null -Dry
+        Assert-True ($script:p187Calls[0].EndsWith('|True')) 'Force reaches the commit plan'
+        # The window's checks: a phrase (case ignored), a second confirm, the yes/no question, PC only steps.
+        $script:p187Plan = @((New-PlanStep -Kind confirm -Phrase 'restart test' -Text 'This restarts the TEST shard.'), (New-PlanStep -Kind say -Text 'x'))
+        $fx = Get-P187Entry 'fix.restart'
+        Assert-True (-not (Get-WebPagePlan -Entry $fx -Typed 'restart' -Inputs @{} -Config $p125Cfg -Pre $null).Ok) 'the wrong phrase'
+        $ok = Get-WebPagePlan -Entry $fx -Typed 'Restart Test' -Inputs @{} -Config $p125Cfg -Pre $null
+        Assert-True ($ok.Ok -and $ok.Phrase -ceq 'restart test' -and -not $ok.Danger) ('the console''s phrase goes on to Invoke-Plan: ' + $ok.Refusal)
+        $script:p187Plan = @((New-PlanStep -Kind confirm -Phrase 'publish player package' -Text 'x'))
+        $pub = Get-P187Entry 'package.publish'
+        $no = Get-WebPagePlan -Entry $pub -Typed 'publish player package' -Inputs @{} -Config $p125Cfg -Pre $null
+        Assert-True (-not $no.Ok -and $no.Refusal -match 'second confirm') ('dangerous without the second confirm: ' + $no.Refusal)
+        Assert-True (Get-WebPagePlan -Entry $pub -Typed 'publish player package' -Inputs @{} -Config $p125Cfg -Pre $null -Second).Ok 'with both'
+        $script:p187Plan = @((New-PlanStep -Kind ask -Text 'Delete it?'))
+        $del = Get-WebPagePlan -Entry (Get-P187Entry 'snapshot.create') -Typed '' -Inputs @{ shard = 'test' } -Config $p125Cfg -Pre $null
+        Assert-True (-not $del.Ok) 'a yes/no question needs the second confirm'
+        $y = Get-WebPagePlan -Entry (Get-P187Entry 'snapshot.create') -Typed '' -Inputs @{ shard = 'test' } -Config $p125Cfg -Pre $null -Second
+        Assert-True ($y.Ok -and $y.Yes) 'and the second confirm is its yes'
+        $script:p187Plan = @(New-PlanStep -Kind say -Text 'x')
+        Assert-True (-not (Get-WebPagePlan -Entry (Get-P187Entry 'snapshot.create') -Typed '' -Inputs @{ shard = 'live' } -Config $p125Cfg -Pre $null).Ok) 'anything on the LIVE shard needs the second confirm'
+        $script:p187Plan = @(New-PlanStep -Kind launch -Path 'explorer.exe' -Arguments @('D:\x') -Text 'x')
+        $l = Get-WebPagePlan -Entry (Get-P187Entry 'diag.docker') -Typed '' -Inputs @{} -Config $p125Cfg -Pre $null
+        Assert-True (-not $l.Ok -and $l.Refusal -like 'PC only*') ('a step that opens something here is PC only: ' + $l.Refusal)
+        $script:p187Plan = @(New-PlanStep -Kind secret -Text 'x')
+        Assert-True ((Get-WebPagePlan -Entry (Get-P187Entry 'fix.restart') -Typed '' -Inputs @{} -Config $p125Cfg -Pre $null).Refusal -match 'password') 'a password step is PC only'
+        Assert-True ((Get-WebPagePlan -Entry (Get-P187Entry 'test.wipe') -Typed '' -Inputs @{} -Config $p125Cfg -Pre $null).Refusal -like 'PC only:*') 'a PC only button'
+        Assert-True ((Get-WebPagePlan -Entry (Get-P187Entry 'test.deploy') -Typed '' -Inputs @{} -Config $p125Cfg -Pre $null).Refusal -match 'image') 'Deploy needs its image, as the window''s picker'
+    } finally { Remove-Item function:Get-ActionPlan -ErrorAction SilentlyContinue }
+    Assert-Equal 'live' (Resolve-ActionShardKey 'live.stop' 'test')
+    Assert-Equal 'live' (Resolve-ActionShardKey 'snapshot.list' 'live')
+    Assert-Equal 'repos' (Resolve-ActionShardKey 'commit.run')
+    Assert-Equal 'mapart' (Resolve-ActionShardKey 'map.shore')
+    Assert-True ((Get-Content -LiteralPath $script -Raw) -match '\$sk = Resolve-ActionShardKey -Action \$Action -Shard \$Shard') 'the headless run names its shard with the same function'
+}
+
+Fact 'P187_TheSplitListFunctionsGiveTheWindowsOwnRows' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        $st = Get-ConsoleState -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+        # Two snapshots, as the window listed them before cc-P187 (a named one with accounts, a pre-restore one without).
+        $st.Shards['test'].Snapshots = @(
+            [pscustomobject]@{ Name = '20261019-101500_before'; Taken = [datetime]::new(2026, 10, 19, 10, 15, 0); Bytes = 2048; Files = 3; HasAccounts = $true; IsPreRestore = $false },
+            [pscustomobject]@{ Name = '20261018-090000_PRE-RESTORE'; Taken = [datetime]::new(2026, 10, 18, 9, 0, 0); Bytes = 1024; Files = 2; HasAccounts = $false; IsPreRestore = $true })
+        $script:lastState = $st
+        Update-SnapshotList
+        $got = @($script:ui.SnapList.Items | ForEach-Object { (@($_.SubItems | ForEach-Object { $_.Text })) -join '|' }) -join ' / '
+        Assert-Equal ('20261019-101500_before|2026-10-19 10:15:00|' + (Format-Bytes 2048) + '|3|yes|named / 20261018-090000_PRE-RESTORE|2026-10-18 09:00:00|' + (Format-Bytes 1024) + '|2|NO|pre-restore') $got 'the window''s snapshot rows'
+        Update-QuestionPanel $st
+        $q = Get-QuestionPanelInfo $st (Get-SelectedQuestionShard) $config
+        Assert-Equal $script:ui.QuestionText.Text ($q.Lines -join "`r`n") 'the same question text'
+        Assert-Equal 'question.show,question.stop' (@($script:ui.QuestionButtons | Where-Object { $_.Enabled } | ForEach-Object { $_.Tag }) -join ',') 'no question: only Show and Stop'
+        Update-PackageList
+        $pk = @(Get-PackageListRows $config)
+        Assert-Equal $script:ui.PackageList.Items.Count $pk.Count 'the same zips'
+        if ($pk.Count) { Assert-Equal $script:ui.PackageList.Items[0].SubItems[1].Text $pk[0].Version }
+    } finally { $form.Dispose() }
+    $img = @(Get-ImagePickerRows $st $config)
+    $dc = @(Get-DeployCandidates $st $config)
+    Assert-Equal $dc.Count $img.Count 'the image picker lists the deploy candidates'
+    $fx = [pscustomobject]@{ Commits = @([pscustomobject]@{ Sha = 'abcdef1234567'; Short = 'abcdef1'; Date = '2026-10-19'; Subject = 'a' }); Head = 'abcdef1234567' }
+    $cr = @(Get-CommitPickerRows $st $fx)
+    Assert-True ($cr[0].Tag -eq 'abcdef1234567' -and $cr[0].Cells[2] -match 'HEAD') ('HEAD marked: ' + ($cr[0].Cells -join '|'))
+}
+
+Fact 'P187_TheArtButtonsAreArtPs1sCommandsAndGenerateAsksAsTheWindowDid' {
+    Assert-Equal 'prompt -Id x -Clip' ((Get-ArtButtonCommand 'prompt' 'x' -Clip) -join ' ') 'the window copies'
+    Assert-Equal 'prompt -Id x' ((Get-ArtButtonCommand 'prompt' 'x') -join ' ') 'the web shows the text'
+    Assert-Equal 'reject -Id x -Note too dark' ((Get-ArtButtonCommand 'reject' 'x' -Note 'too dark') -join ' ')
+    Assert-Equal 'generate -Id x -Backend api -Go' ((Get-ArtButtonCommand 'generate-api' 'x' -Backend 'api') -join ' ')
+    Assert-Equal 'regenerate -Id x -Backend codex -Go -Note n -Override yes' ((Get-ArtButtonCommand 'regenerate' 'x' -Note 'n' -Override 'yes') -join ' ')
+    Assert-Equal 0 @(Get-ArtButtonCommand 'review' 'x').Count 'review is Explorer, not Art.ps1'
+    $mk = { param($avail, $allowed, $over, $key, $apiOk) [pscustomobject]@{ estimate = [pscustomobject]@{
+        codex = [pscustomobject]@{ available = $avail; login = 'not signed in'; budget = [pscustomobject]@{ allowed = $allowed; overridable = $over; lines = @('5h: 20%'); why = 'within the budget' } }
+        api = [pscustomobject]@{ model = 'gpt-image-1'; quality = 'low'; size = '1024'; why = '0.02 USD'; keyStored = $key; allowed = $apiOk } } } }
+    $c = Get-ArtGenerateChoice (& $mk $false $true $false $true $true) 'codex' 'Art.ps1'
+    Assert-True ($c.Refusal -eq 'Codex is not available: not signed in') $c.Refusal
+    $c = Get-ArtGenerateChoice (& $mk $true $false $false $true $true) 'codex' 'Art.ps1'
+    Assert-True ($c.Refusal -and $c.Title -eq 'Generate: refused') 'refused, not overridable'
+    $c = Get-ArtGenerateChoice (& $mk $true $false $true $true $true) 'codex' 'Art.ps1'
+    Assert-True (-not $c.Refusal -and $c.Override -and $c.Title -eq 'Generate: past the budget') 'past the budget: type yes'
+    $c = Get-ArtGenerateChoice (& $mk $true $true $false $true $true) 'codex' 'Art.ps1'
+    Assert-True (-not $c.Refusal -and -not $c.Override -and $c.Message -match '5h: 20%' -and $c.Title -eq 'Generate with Codex') 'allowed: the estimate, then yes or no'
+    $c = Get-ArtGenerateChoice (& $mk $true $true $false $false $true) 'api' 'Art.ps1'
+    Assert-True ($c.Refusal -match 'No API key' -and $c.Title -eq 'Generate (API)') 'no key'
+    $c = Get-ArtGenerateChoice (& $mk $true $true $false $true $false) 'api' 'Art.ps1'
+    Assert-True ($c.Refusal -and $c.Title -eq 'Generate (API): refused') 'over the cap'
+    $self = Get-Content -LiteralPath $script -Raw
+    Assert-True ($self -match "Get-ArtGenerateChoice -Estimate \`$e -Backend \`$backend -ArtScript \`$art") 'the window''s Generate asks through it'
+}
+
+Fact 'P187_TheGolemPickerActsForThePickedGolemAndAssignWritesItsLine' {
+    $reg = '{"schema":1,"golems":[{"name":"Iron","machine":"PC1","lane":"Opus","enabled":true,"integrator":true},{"name":"Bronze","machine":"PC1","lane":"Fable","enabled":true},{"name":"Gold","machine":"PC2","lane":"any","enabled":true},{"name":"Silver","machine":"PC3","lane":"any","enabled":false}]}'
+    $rows = @(Get-GolemPickRows -RegistryText $reg -SettingsText '{"multiGolem":true}' -Machine 'PC1')
+    Assert-Equal 'Iron,Bronze,Gold,Silver' (($rows | ForEach-Object { $_.Name }) -join ',') 'the integrator first'
+    Assert-True ($rows[1].Usable -and -not $rows[2].Usable -and $rows[2].Why -match 'PC2' -and $rows[3].Why -match 'disabled') ('why not: ' + ($rows | ForEach-Object { $_.Why }) -join ' | ')
+    $off = @(Get-GolemPickRows -RegistryText $reg -SettingsText '{"multiGolem":false}' -Machine 'PC1')
+    Assert-True ($off[0].Usable -and -not $off[1].Usable -and $off[1].Why -match 'multiGolem is off') 'only the integrator while multiGolem is off'
+    $any = @(Get-AnyGolemActionKeys (Join-Path $repo 'web-console\golem-actions.json'))
+    Assert-True ($any -contains 'golem.poke' -and $any -notcontains 'golem.longrun') ('any Golem''s: ' + ($any -join ','))
+    $a = Get-GolemActionConfig -Config $p125Cfg -ActionKey 'golem.poke' -Golem 'Iron' -Rows $rows -AnyGolemActions $any
+    Assert-True (-not $a.Refusal -and -not $a.Name -and [object]::ReferenceEquals($a.Config, $p125Cfg)) 'the integrator: the console''s own, as before'
+    $b = Get-GolemActionConfig -Config $p125Cfg -ActionKey 'golem.poke' -Golem 'Bronze' -Rows $rows -AnyGolemActions $any
+    Assert-True ($b.Name -eq 'Bronze' -and $b.Config.Autopilot.StatusFile -like '*status-Bronze.json') 'Bronze''s own files'
+    Assert-True ((Get-GolemActionConfig -Config $p125Cfg -ActionKey 'golem.longrun' -Golem 'Bronze' -Rows $rows -AnyGolemActions $any).Refusal -match 'integrator') 'the integrator''s only'
+    Assert-True ((Get-GolemActionConfig -Config $p125Cfg -ActionKey 'golem.poke' -Golem 'Gold' -Rows $rows -AnyGolemActions $any).Refusal -match 'web console') 'a remote one: the web console queues it'
+    # Assign: the plan, its phrase naming both, its one script with exactly its arguments.
+    $f = New-P182Facts
+    $f.Present[$p125Cfg.Autopilot.AssignScript] = $true
+    $f | Add-Member -NotePropertyName RunNextPrompt -NotePropertyValue 'p130' -Force
+    $f | Add-Member -NotePropertyName AssignGolem -NotePropertyValue 'Bronze' -Force
+    $f | Add-Member -NotePropertyName AssignRunNext -NotePropertyValue 'yes' -Force
+    $p = @(Get-ActionPlan -Action 'golem.assign' -Config $p125Cfg -AutopilotFacts $f -Now $p125Now)
+    Assert-Equal 'P130 on bronze' (@($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase) 'the phrase names the prompt and the Golem'
+    Assert-True ((Get-P131Window $p) -match 'Assign-Prompt\.ps1 -Prompt P130 -Golem Bronze -RunNext$') ('its script: ' + (Get-P131Window $p))
+    Assert-Equal 0 @(Test-PlanSafety $p $p125Cfg).Count ('safe: ' + (@(Test-PlanSafety $p $p125Cfg) -join '; '))
+    $ps = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $p125Cfg.Autopilot.AssignScript)
+    foreach ($bad in @(@('-Prompt', 'P130', '-Golem', 'Bronze;calc'), @('-Prompt', 'P130', '-Golem', 'Bronze', '-Force'), @('-Prompt', 'x', '-Golem', 'Bronze'))) {
+        Assert-True (@(Test-PlanSafety @(New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments ($ps + $bad)) $p125Cfg).Count -gt 0) ('refused: ' + ($bad -join ' '))
+    }
+    $f.RunNextPrompt = 'P999'
+    Assert-True (@(Get-ActionPlan -Action 'golem.assign' -Config $p125Cfg -AutopilotFacts $f -Now $p125Now | Where-Object { $_.Kind -eq 'refuse' }).Count -eq 1) 'only a queued prompt'
+    # The web word for another Golem names it; the integrator's is unchanged.
+    $w = Get-WebActionPlan -Entry (Get-P182Entry 'poke') -Typed 'poke' -Inputs @{} -Config $p125Cfg -Facts (New-P182Facts) -Now $p125Now -GolemName 'Bronze'
+    Assert-True (-not $w.Ok -and $w.Refusal -match 'poke bronze') ('the name is wanted: ' + $w.Refusal)
+    Assert-True (Get-WebActionPlan -Entry (Get-P182Entry 'poke') -Typed 'Poke Bronze' -Inputs @{} -Config $p125Cfg -Facts (New-P182Facts) -Now $p125Now -GolemName 'Bronze').Ok 'with it'
+    Assert-True (Get-WebActionPlan -Entry (Get-P182Entry 'poke') -Typed 'poke' -Inputs @{} -Config $p125Cfg -Facts (New-P182Facts) -Now $p125Now).Ok 'the integrator''s word as before'
+    # The Golem tab has the picker and Assign, a row of their own; the rows above are unchanged.
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-True ($null -ne $script:ui.GolemPick) 'the picker'
+        Assert-Equal 'golem.poke,golem.runnext,golem.retry,golem.integrate' (@($script:ui.GolemQueueButtons | ForEach-Object { $_.Tag }) -join ',') 'the queue row is unchanged'
+        $script:ui.GolemPickRows = $rows
+        $script:ui.GolemPick.Items.Clear(); foreach ($r in $rows) { [void]$script:ui.GolemPick.Items.Add($r.Text) }
+        $script:ui.GolemModel.SelectedItem = 'Opus'
+        $script:ui.GolemPick.SelectedIndex = 1
+        Update-GolemPickModel
+        Assert-Equal 'Fable' ([string]$script:ui.GolemModel.SelectedItem) 'Wake''s model follows Bronze''s lane'
+        Assert-Equal 'Bronze' (Get-PickedGolem)
+    } finally { $form.Dispose() }
+}
+
+Fact 'P187_TheListScriptGivesEachPagesListsFromTheConsolesFunctions' {
+    $lister = Join-Path $here '..\Get-WebConsoleList.ps1'
+    $cap = Join-Path $fixture 'console-capture-2026-09-29.txt'
+    $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    $q = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $lister -Page question -StatusFrom $cap 2>&1) -join "`n"
+    $w = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $lister -Page world 2>&1) -join "`n"
+    $s = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $lister -Page snapshots -StatusFrom $cap 2>&1) -join "`n"
+    $ErrorActionPreference = $eap
+    $qj = $q | ConvertFrom-Json
+    $st = Get-ConsoleState -Config $config -DryRun -StatusFrom $cap
+    Assert-Equal ((Get-QuestionPanelInfo $st 'test' $config).Lines -join '|') (@($qj.shards.test.lines) -join '|') 'the shard question, as the tab shows it'
+    Assert-True (@($qj.shards.test.enabled) -contains 'question.show') 'and its buttons'
+    $wj = $w | ConvertFrom-Json
+    $groups = @(Get-WorldCommandGroups @(ConvertFrom-CommandSources (Get-CommandSourceFiles $config.Customizations)))
+    Assert-Equal $groups.Count @($wj.groups).Count 'the World setup groups'
+    Assert-Equal (@($groups | ForEach-Object { @($_.Items).Count }) -join ',') (@($wj.groups | ForEach-Object { @($_.items).Count }) -join ',') 'and their commands'
+    $sj = $s | ConvertFrom-Json
+    Assert-Equal @(Get-SnapshotRows $st 'test').Count @($sj.shards.test.rows).Count 'the snapshots'
+    Assert-Equal ([string]$config.Shards['live'].Saves) ([string]$sj.shards.live.save) 'and where they are'
+}
+
+Fact 'P187_TheRunnerRefusesAPcOnlyButtonAndShowsAPagePlanFirst' {
+    $runner = Join-Path $here '..\Invoke-WebConsoleAction.ps1'
+    $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $runner -Key test.wipe -DryRun 2>&1
+    $code = $LASTEXITCODE
+    $out2 = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $runner -Key map.footprint -DryRun 2>&1
+    $code2 = $LASTEXITCODE
+    $ErrorActionPreference = $eap
+    Assert-Equal 2 $code ('PC only, refused: ' + ($out -join ' | '))
+    Assert-True ((($out | ForEach-Object { [string]$_ }) -join ' ') -match 'password never goes through a web page') 'with its reason'
+    Assert-Equal 0 $code2 ($out2 -join ' | ')
+    $pv = @($out2 | ForEach-Object { [string]$_ } | Where-Object { $_.StartsWith('[[web-preview]]') })
+    Assert-Equal 1 $pv.Count ('one look-first line: ' + ($out2 -join ' | '))
+    $j = $pv[0].Substring(15) | ConvertFrom-Json
+    Assert-True ($j.shard -eq 'mapart' -and -not $j.danger) ('the plan''s facts: ' + $pv[0])
+    Assert-True ((($out2 | ForEach-Object { [string]$_ }) -join ' ') -match 'DRY RUN') 'the console''s own plan, printed'
+}
+
+# --- cc-P200: marathon mode and the week's projection on the Golem tab and the web console --------------------------------
+function New-P200Facts([string]$Setting = 'auto', [string]$Pick = '') {
+    $f = New-P131Facts -SettingsText ('{ "progressEmails": true, "maxPerRun": 12, "stallMinutes": 45, "autoWake": true, "nightShiftEnabled": true, "marathon": "' + $Setting + '" }')
+    if ($p125Cfg.Autopilot.MarathonScript) { $f.Present[$p125Cfg.Autopilot.MarathonScript] = $true }
+    $f | Add-Member -NotePropertyName MarathonMode -NotePropertyValue $Pick -Force
+    $f
+}
+
+Fact 'P200_TheMarathonButtonSetsThePickedModeAfterItsPhrase' {
+    $p = @(Get-ActionPlan -Action 'golem.marathon' -Config $p125Cfg -AutopilotFacts (New-P200Facts 'auto' 'on'))
+    $c = @($p | Where-Object { $_.Kind -eq 'confirm' })
+    Assert-True ($c.Count -eq 1 -and $c[0].Phrase -ceq 'marathon on') ('the typed confirm: ' + $(if ($c.Count) { $c[0].Phrase } else { '(none)' }) + ' ' + (@($p | ForEach-Object { $_.Kind + ':' + $_.Text }) -join ' | '))
+    Assert-Equal 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\UO\golem\Set-Marathon.ps1 -Mode on' (Get-P131Window $p)
+    Assert-Equal 0 @(Test-PlanSafety $p $p125Cfg).Count (@(Test-PlanSafety $p $p125Cfg) -join '; ')
+    $off = @(Get-ActionPlan -Action 'golem.marathon' -Config $p125Cfg -AutopilotFacts (New-P200Facts 'on' 'off'))
+    Assert-True ((Get-P131Window $off).EndsWith('Set-Marathon.ps1 -Mode off') -and @($off | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase -ceq 'marathon off') ('on -> off: ' + (Get-P131Window $off))
+    $same = @(Get-ActionPlan -Action 'golem.marathon' -Config $p125Cfg -AutopilotFacts (New-P200Facts 'auto' 'auto'))
+    Assert-True ($same.Count -and $same[0].Kind -eq 'refuse' -and $same[0].Text -match 'already auto') ('the same mode is refused: ' + $(if ($same.Count) { $same[0].Text }))
+    $bad = @(Get-ActionPlan -Action 'golem.marathon' -Config $p125Cfg -AutopilotFacts (New-P200Facts 'auto' 'always'))
+    Assert-True ($bad.Count -and $bad[0].Kind -eq 'refuse') 'a mode that is not auto, on or off is refused'
+    # Only -Mode auto|on|off passes the safety check.
+    $evil = New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $p125Cfg.Autopilot.MarathonScript, '-Mode', 'on;calc')
+    Assert-True (@(Test-PlanSafety @($evil) $p125Cfg).Count -gt 0) 'any other argument is refused'
+    # The web console's three buttons reach the same plan with their fixed mode, and a stale page is refused.
+    $e = @($p182Actions | Where-Object { $_.key -eq 'marathon-on' })
+    Assert-Equal 1 $e.Count 'a web button marathon-on'
+    if ($e.Count) {
+        $ok = Get-WebActionPlan -Entry $e[0] -Typed 'Marathon on' -Inputs @{} -Config $p125Cfg -Facts (New-P200Facts 'auto') -Now $p125Now
+        Assert-True ($ok.Ok -and $ok.Phrase -ceq 'marathon on' -and (Get-P131Window $ok.Plan).EndsWith('-Mode on')) ('marathon on from the web: ' + $ok.Refusal)
+        $stale = Get-WebActionPlan -Entry $e[0] -Typed 'marathon on' -Inputs @{} -Config $p125Cfg -Facts (New-P200Facts 'on') -Now $p125Now
+        Assert-True (-not $stale.Ok -and $stale.Refusal -match 'already on') ('already on: ' + $stale.Refusal)
+    }
+    foreach ($k in 'marathon-auto', 'marathon-off') { Assert-True (@($p182Actions | Where-Object { $_.key -eq $k -and $_.action -eq 'golem.marathon' }).Count -eq 1) ('a web button ' + $k) }
+}
+
+Fact 'P200_TheGolemTabShowsTheProjectionMarathonAndWidenedHours' {
+    $j = (New-P131Status -State 'RUNNING' -Current 'P200') | ConvertFrom-Json
+    $j | Add-Member -NotePropertyName projection -NotePropertyValue ([pscustomobject]@{ known = $true; target = 95; golems = 2
+        text = 'on track for 82% by Wed 4:00 PM (the week is at 60%, 0.5% an hour over the last 24 h; 2 enabled Claude Golems)'
+        week = [pscustomobject]@{ projected = 82; resetsAt = '2026-10-21T16:00:00' }; resetAdvice = 'at this rate the week ends at about 82%, short of 95%: the free reset is not needed this week (on offer until 2026-10-22). The Golem never presses it.' }) -Force
+    $j | Add-Member -NotePropertyName marathon -NotePropertyValue ([pscustomobject]@{ mode = 'auto'; on = $true; since = '2026-10-15T08:00:00'; why = 'projected 71% by Wed 4:00 PM, short of the 95% target with 54 h left'
+        target = 95; minHours = 6; queueMin = 6; holdMinutes = 60; queueLow = @('Bronze') }) -Force
+    $x = [pscustomobject]@{ PromptTexts = @{}; TreeClean = $null }
+    $v = Get-AutopilotView -Enabled $true -StateText '{"current":"P200","currentFile":"cc-P200-a.md","lastHandled":199}' -LogLines @() -QueueNames @() -Errors @() -StatusText ($j | ConvertTo-Json -Depth 6) -SettingsText $p131Settings -Kind golem -Extra $x
+    $lines = @(Format-AutopilotPanel -View $v -Config $p125Cfg -Now $p125Now)
+    $wk = @($lines | Where-Object { $_.Text -like 'week      :*' })
+    Assert-True ($wk.Count -eq 1 -and $wk[0].Text -eq 'week      : on track for 82% by Wed 4:00 PM (the week is at 60%, 0.5% an hour over the last 24 h; 2 enabled Claude Golems)' -and $wk[0].Color -eq 'amber') ('the projection line, amber under the target: ' + (@($wk | ForEach-Object { $_.Text + ' ' + $_.Color }) -join ' | '))
+    Assert-True (@($lines | Where-Object { $_.Text -like '            free reset: at this rate the week ends at about 82%*' }).Count -eq 1) 'the free reset advice'
+    $mar = @($lines | Where-Object { $_.Text -like 'marathon  :*' })
+    Assert-True ($mar.Count -eq 1 -and $mar[0].Text -eq 'marathon  : auto, ON since Thu 8:00 AM: projected 71% by Wed 4:00 PM, short of the 95% target with 54 h left (auto: on under 95% with more than 6 h left); queue low told for Bronze' -and $mar[0].Color -eq 'green') ('the marathon line: ' + (@($mar | ForEach-Object { $_.Text }) -join ' | '))
+    # No projection or marathon field (a Golem before cc-P200): no lines.
+    $v0 = Get-AutopilotView -Enabled $true -StateText '{"current":"P200","currentFile":"cc-P200-a.md","lastHandled":199}' -LogLines @() -QueueNames @() -Errors @() -StatusText (New-P131Status -State 'RUNNING' -Current 'P200') -SettingsText $p131Settings -Kind golem -Extra $x
+    Assert-Equal 0 @(Format-AutopilotPanel -View $v0 -Config $p125Cfg -Now $p125Now | Where-Object { $_.Text -like 'week      :*' -or $_.Text -like 'marathon  :*' }).Count 'nothing before cc-P200'
+    # The cards: an extra PC's hours widened to the whole day while marathon is on; noDaytimeMarathon kept.
+    $j | Add-Member -NotePropertyName multiGolem -NotePropertyValue $true -Force
+    $j | Add-Member -NotePropertyName golems -NotePropertyValue @(
+        [pscustomobject]@{ name = 'Iron'; lane = 'Opus'; engine = 'claude'; machine = 'TOWER'; state = 'RUNNING'; integrator = $true; hours = ''; marathonDay = $false; noDaytimeMarathon = $false },
+        [pscustomobject]@{ name = 'Copper'; lane = 'any'; engine = 'claude'; machine = 'LAPTOP'; state = 'IDLE'; hours = '22:00-06:30'; marathonDay = $true; noDaytimeMarathon = $false },
+        [pscustomobject]@{ name = 'Silver'; lane = 'any'; engine = 'claude'; machine = 'LAPTOP2'; state = 'IDLE'; hours = '22:00-06:30'; marathonDay = $false; noDaytimeMarathon = $true }) -Force
+    $st = ConvertFrom-AutopilotStatus ($j | ConvertTo-Json -Depth 6)
+    $rows = @(Get-GolemCardLines -Status $st -Now $p125Now | ForEach-Object { $_.Text })
+    Assert-True (@($rows | Where-Object { $_ -match 'Copper .*; hours 22:00-06:30 \(all day now: marathon\)' }).Count -eq 1) ('Copper widened: ' + ($rows -join ' | '))
+    Assert-True (@($rows | Where-Object { $_ -match 'Silver .*; hours 22:00-06:30 \(kept: noDaytimeMarathon\)' }).Count -eq 1) ('Silver kept to its hours: ' + ($rows -join ' | '))
+    $cd = ConvertTo-GolemCardDocument ($st.Golems | Where-Object { $_.name -eq 'Copper' })
+    Assert-True ($cd.marathonDay -eq $true) 'the web console''s card carries marathonDay'
+}
+
+Fact 'P200_TheMarathonPickIsOnTheGolemTabAndFollowsTheSetting' {
+    $script:NetProbeDisabled = $true
+    $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
+    try {
+        Assert-True ($null -ne $script:ui.MarathonPick -and (@($script:ui.MarathonPick.Items) -join ',') -eq 'auto,on,off') 'the pick: auto, on, off'
+        $tips = Get-ConsoleTooltips
+        foreach ($k in @('golem.marathon', 'golem.marathonpick')) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
+        $x = [pscustomobject]@{ PromptTexts = @{ 'cc-P126-a.md' = $p131Prompt }; TreeClean = $null }
+        $j = (New-P131Status -State 'IDLE' -Current '') | ConvertFrom-Json
+        $j | Add-Member -NotePropertyName marathon -NotePropertyValue ([pscustomobject]@{ mode = 'on'; on = $true; since = ''; why = 'marathon set on'; queueLow = @() }) -Force
+        $v = Get-AutopilotView -Enabled $true -StateText '{"current":"","currentFile":"","lastHandled":125}' -LogLines @() -QueueNames @('cc-P126-a.md') -Errors @() -StatusText ($j | ConvertTo-Json -Depth 5) -SettingsText '{ "autoWake": true, "marathon": "on" }' -Kind golem -Extra $x
+        Update-GolemRunControls $v
+        $b = @($script:ui.GolemWakeButtons | Where-Object { $_.Tag -eq 'golem.marathon' })
+        Assert-True ($b.Count -eq 1 -and $b[0].Text -eq 'Marathon: on, ON (set)') ('the button says the mode and that it is on: ' + $(if ($b.Count) { $b[0].Text }))
+        Assert-Equal 'on' ([string]$script:ui.MarathonPick.SelectedItem) 'the pick follows the setting'
+    } finally { $form.Dispose(); $script:NetProbeDisabled = $false }
 }
 
 Remove-Item -LiteralPath $p144Dir -Recurse -Force -ErrorAction SilentlyContinue

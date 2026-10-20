@@ -29,7 +29,7 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
-## 2026.10.19.6
+## 2026.10.20.3
 
 ### Added
 - The League runs a requisitions board. Every guild posts three requests a day for a magic item it wants: a sword with Hit Chance for the Warriors, a spellbook with Lower Mana Cost for the Arcane Society, an undead slayer for the Keepers, a slayer instrument for the Bards, and so on. Found or crafted both count. Turn one in at the board in the New Haven field office, at the guild's New Haven chapter (the guildmaster's Requisitions button), at the League Registrar or at the Appraiser, and the item is taken for Renown, that guild's standing and gold. Unfilled requests simply roll over at 05:00 UTC; nothing is lost and nothing is owed.
@@ -40,6 +40,20 @@ Example:
 
 ### Staff
 - Configuration/requisitions.json holds every number of the board, the Appraiser and Leads (tiers, the League gate, each guild's themes, areas, prices); [RequisitionsStaff reload|reroll|show. [ClusterFSeedRequisitions places the Appraisers and the office board; it also runs at every world load.
+
+## 2026.10.20.2
+
+### Staff
+- Marathon mode: the Golems project where the week's usage will land by the weekly reset ("on track for 82% by Wed 4:00 PM", on the Golem tab, the web console and the morning email), and when it would fall short they go all out on their own: every Golem woken, no rests or run cap, the night shift at full, and the extra PCs also by day (they still back off when their owner is using them). It turns itself off once the week will be used, and can be forced on or off from either console.
+- While marathon mode is on, the overseer is emailed when a Golem is running short of prompts, and a free weekly reset on offer comes with advice on when to press it.
+
+## 2026.10.20
+
+### Staff
+- The web console does everything the Shard Console does, from a phone: a page for every tab (test shard, fixes, the shard's question, snapshots, world setup, map and art checks, diagnostics, commit, player package, websites, art requests and the live shard), with lists to tap and the console's own plan shown before anything runs.
+- Dangerous buttons on the web console (the live shard, publishing, deploying, deleting, committing) ask a second time, in plain words, what will happen and to what; anything that must stay on the game PC says why.
+- A Golem picker: the Golem page's buttons act for the picked Golem (the confirm word names it), Wake starts on that Golem's own model, and a queued prompt can be assigned to it. The Shard Console's Golem tab has the same picker and Assign.
+- Queued, running and finished prompts (and their notes) can be read on the web console.
 
 ## 2026.10.19.5
 

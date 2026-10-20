@@ -32,6 +32,19 @@ Two listeners, both on 127.0.0.1 only (nothing on the LAN, nothing public):
                          agent (D:/UO/golem/remote/<name>/commands/<id>.json) until it pulls it, or until it expires
                          (settings.json agentCommandMinutes, default 30). Only the buttons marked anyGolem.
   GET /portrait/<name>   cc-P186: a Golem's portrait (golems.json portrait), only from scripts/console-art
+  cc-P187, the web console's pages (web-console/console-actions.json: every other Shard Console tab):
+  GET /api/page?id=<page>    that page's lists (scripts/Get-WebConsoleList.ps1: snapshots, zips, images, commits, the
+                             shard question, world commands, sites, art requests), at most every 20 s per page
+  POST /api/preview          {key, inputs}: the console's plan for a change or dangerous page button, a dry run of the
+                             same runner (-DryRun), and a token for the run: the phrase the plan asks, its confirm text,
+                             and for a dangerous one the second confirm's plain words. A token is good once, for 10
+                             minutes, for that button with those inputs
+  POST /api/action           a page button too: {key, typed, inputs, token, second}. read: runs at once. change: the
+                             token and the plan's phrase. dangerous (and anything on the LIVE shard or with a yes/no
+                             question): also second (the second confirm screen); its script's own 'Type yes' or word is
+                             written to its stdin only then. Refused while another action runs.
+  GET /api/prompt?name=<file>   a queued or running prompt's text (only one the status names); ?notes=<n> its notes
+  GET /art-thumb/<id>        an art request's newest picture (only under D:/UO/art)
   GET /api/agent/ping        cc-P186, a remote agent: {golem, ack}: the game PC knows this Golem and its secret
   GET /api/agent/commands    cc-P186: this Golem's queued commands, each handed out once (the agent's poll)
   POST /api/agent/result     cc-P186: {id, code, result, lines}: a command's result, onto the Timeline with the name
@@ -84,6 +97,36 @@ INPUT_RULES = {
     "end": (re.compile(r"^([01]?\d|2[0-3]):[0-5]\d$"), "-NightEnd", lambda v: v),
     "prompt": (re.compile(r"^[Pp]?\d{1,4}$"), "-Prompt", lambda v: "P" + v.lstrip("Pp")),
 }
+INPUT_RULES["assignTo"] = (re.compile(r"^[A-Za-z][A-Za-z0-9]{1,23}$"), "-AssignTo", lambda v: v)   # cc-P187
+INPUT_RULES["next"] = (re.compile(r"^(yes|no)$"), "-Next", lambda v: v)
+# cc-P187: the page buttons' inputs (console-actions.json fields). Argv only, never a shell; free text never starts with
+# '-' (PowerShell would read it as a parameter name) and never holds a double quote.
+TEXT = r"^(?!-)[\x20\x21\x23-\x7e]{1,%d}$"
+PAGE_INPUT_RULES = {
+    "shard": (re.compile(r"^(test|live)$"), "-Shard"),
+    "snapshotName": (re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$"), "-SnapshotName"),
+    "snapshot": (re.compile(r"^\d{8}-\d{6}_[A-Za-z0-9._-]{1,80}$"), "-Snapshot"),
+    "commitMessage": (re.compile(TEXT % 200), "-CommitMessage"),
+    "force": (re.compile(r"^(yes|no)$"), "-CommitForce"),
+    "packageNotes": (re.compile(TEXT % 200), "-PackageNotes"),
+    "packageZip": (re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}\.zip$"), "-PackageZip"),
+    "imageTag": (re.compile(r"^sl-modernuo:[A-Za-z0-9][A-Za-z0-9._-]{0,59}$"), "-ImageTag"),
+    "commit": (re.compile(r"^([0-9a-f]{7,40}|HEAD)$"), "-Commit"),
+    "site": (re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$"), "-Site"),
+    "vdFile": (re.compile(r"^[A-Za-z]:\\[^\"<>|?*\x00-\x1f]{1,240}\.vd$", re.I), "-VdFile"),
+    "body": (re.compile(r"^\d{1,5}$"), "-Body"),
+    "huesFile": (re.compile(r"^[A-Za-z]:\\[^\"<>|?*\x00-\x1f]{1,240}\.mul$", re.I), "-HuesFile"),
+    "artId": (re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$"), "-ArtId"),
+    "note": (re.compile(TEXT % 300), "-Note"),
+}
+PAGES_FILE = os.path.join(HERE, "console-actions.json")
+PAGE_IDS = ("test", "fix", "question", "snapshots", "world", "package", "commit", "websites", "art", "live")
+LIST_SECONDS = 20       # a page's lists are read again at most this often
+PREVIEW_TIMEOUT = 120   # seconds for the look first (a dry run of the plan)
+TOKEN_SECONDS = 600     # a preview's token is good this long, once
+ART_STORE = r"D:\UO\art"
+PROMPTS_DIR = r"D:\UO\cc-prompts"
+ONLINE_UNKNOWN = "Who is online: the console cannot tell (it reads no player list), so look in game first."
 TYPED = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ]{0,39}$")
 ACTION_TIMEOUT = 600   # seconds; the Golem's scripts take a few
 # cc-P186: every Golem in D:/UO/golem/golems.json, and the remote ones' agents.
@@ -119,6 +162,12 @@ class Console:
         self.action_log = os.path.join(data, "actions.log")
         self._proof = (None, "")
         self._buttons = (None, [])
+        self._pages = (None, {})        # cc-P187: console-actions.json
+        self.tokens = {}                # cc-P187: preview token -> {key, inputs, expect, danger, at}
+        self.preview_lock = threading.Lock()
+        self.lists = {}                 # cc-P187: page id -> (time, data)
+        self.list_lock = threading.Lock()
+        self.list_runner = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", os.path.join(repo, "scripts", "Get-WebConsoleList.ps1")]
         self.job = None
         self.job_lock = threading.Lock()
         self.status_file = status_file or os.path.join(repo, "scripts", "shard-console-cache", "console-status.json")
@@ -188,12 +237,14 @@ class Console:
         return self._buttons[1]
 
     def public_buttons(self):
-        keep = ("key", "label", "word", "inputs", "when", "disabled", "help", "art", "anyGolem")
+        keep = ("key", "label", "word", "inputs", "when", "disabled", "help", "art", "anyGolem", "golemWord")
         return [{k: b[k] for k in keep if k in b} for b in self.buttons()]
 
-    def check_request(self, entry, typed, inputs):
+    def check_request(self, entry, typed, inputs, golem=None):
         """(None, args) when the runner may start, else (http code, why). The word is checked again by the runner
-        against the console's own plan; here it is the button's word, the picked prompt, or the shape of a prompt."""
+        against the console's own plan; here it is the button's word, the picked prompt, or the shape of a prompt.
+        cc-P187: golem, another Golem than the integrator: a button with a golemWord wants that word and the Golem's
+        name ('wake bronze'; the prompt and the name for Run next and Retry). Assign wants 'P<nn> on <golem>'."""
         if entry.get("disabled"):
             return (409, entry["disabled"]), None
         typed = (typed if isinstance(typed, str) else "").strip()
@@ -211,16 +262,23 @@ class Console:
             clean[name] = norm(v)
             args += [flag, clean[name]]
         word = entry.get("word") or ""
+        gw = entry.get("golemWord") if golem else None
         if word == "#prompt":
             expected = clean.get("prompt")
             if not expected:
                 return (400, "pick a prompt first"), None
+        elif word == "#assign":
+            if not clean.get("prompt") or not clean.get("assignTo"):
+                return (400, "pick a prompt and the Golem to give it to first"), None
+            expected = "%s on %s" % (clean["prompt"], clean["assignTo"].lower())
         elif word == "#stopped":
             expected = None
-            if not re.match(r"^[Pp]\d{1,4}$", typed):
-                return (400, "type the stopped prompt's number (P<nn>) to confirm"), None
+            if not re.match(r"^[Pp]\d{1,4}" + (r" " + re.escape(golem.lower()) if gw else "") + r"$", typed, re.I):
+                return (400, "type the stopped prompt's number (P<nn>)%s to confirm" % (" and " + golem.lower() if gw else "")), None
         else:
             expected = word
+        if gw and expected is not None:
+            expected = (expected if gw.startswith("#") else gw) + " " + golem.lower()
         if expected is not None and typed.lower() != expected.lower():
             return (400, "type %s to confirm" % expected), None
         if not TYPED.match(typed):
@@ -230,31 +288,43 @@ class Console:
     def start_action(self, entry, typed, inputs, who, golem=None):
         """(http code, body). One at a time: a second request while one runs is refused with what is running.
         cc-P186: golem names another Golem on this PC; the runner gets -Golem <name> (the console's plan for that Golem)."""
-        err, ok = self.check_request(entry, typed, inputs)
+        err, ok = self.check_request(entry, typed, inputs, golem)
         if err:
             self.log_action(entry, who, "refused: " + err[1], None, {}, golem=golem)
             return err[0], {"error": err[1]}
         args, clean = ok
         if golem:
             args = args + ["-Golem", golem]
+        return self._start_job(entry, args, clean, who, golem)
+
+    def _start_job(self, entry, args, clean, who, golem=None, answers=None, timeout=ACTION_TIMEOUT, kind=""):
+        """cc-P187: the one-at-a-time job, for a Golem button or a page button. answers: lines for the script's stdin."""
         with self.job_lock:
             if self.job and self.job["running"]:
                 j = self.job
                 return 409, {"error": "busy: %s is running (since %s)" % (j["label"], j["started"]),
                              "running": {"key": j["key"], "label": j["label"], "started": j["started"]}}
             job = {"id": int(time.time() * 1000), "key": entry["key"], "label": (entry.get("label") or entry["key"]) + (" (%s)" % golem if golem else ""),
-                   "action": entry.get("action") or "", "who": who, "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "ended": None,
-                   "running": True, "code": None, "result": "", "lines": [], "inputs": clean, "golem": golem}
+                   "action": entry.get("action") or entry.get("art") or "", "who": who, "started": time.strftime("%Y-%m-%dT%H:%M:%S"), "ended": None,
+                   "running": True, "code": None, "result": "", "lines": [], "inputs": clean, "golem": golem, "kind": kind, "timeout": timeout}
             self.job = job
-        threading.Thread(target=self._run_job, args=(job, args), daemon=True).start()
+        threading.Thread(target=self._run_job, args=(job, args, answers), daemon=True).start()
         return 202, {"id": job["id"], "label": job["label"]}
 
-    def _run_job(self, job, args):
+    def _run_job(self, job, args, answers=None):
         code = None
+        limit = job.get("timeout") or ACTION_TIMEOUT
         try:
-            proc = subprocess.Popen(self.runner + args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                                    creationflags=NO_WINDOW, cwd=self.repo)
-            killer = threading.Timer(ACTION_TIMEOUT, proc.kill)
+            proc = subprocess.Popen(self.runner + args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    stdin=subprocess.PIPE if answers else subprocess.DEVNULL, creationflags=NO_WINDOW, cwd=self.repo)
+            if answers:
+                # cc-P187: the script's own 'Type yes' (or word), answered only after the page's second confirm.
+                try:
+                    proc.stdin.write(("\r\n".join(answers) + "\r\n").encode("ascii"))
+                    proc.stdin.close()
+                except OSError:
+                    pass
+            killer = threading.Timer(limit, proc.kill)
             killer.start()
             try:
                 for raw in proc.stdout:
@@ -272,7 +342,7 @@ class Console:
         texts = [l["text"] for l in job["lines"] if l["text"].strip()]
         job["result"] = texts[-1].strip() if texts else ("exited with %s" % code)
         if code is not None and code < 0 and job["result"] and "did not start" not in job["result"]:
-            job["result"] = "stopped after %d s: %s" % (ACTION_TIMEOUT, job["result"])
+            job["result"] = "stopped after %d s: %s" % (limit, job["result"])
         job["code"], job["ended"] = code, time.strftime("%Y-%m-%dT%H:%M:%S")
         self.log_action({"key": job["key"], "label": job["label"], "action": job["action"]}, job["who"], job["result"], code, job["inputs"],
                         golem=job.get("golem"))
@@ -283,7 +353,7 @@ class Console:
         j = self.job
         if not j:
             return None
-        out = {k: j[k] for k in ("id", "key", "label", "action", "started", "ended", "running", "code", "result")}
+        out = {k: j.get(k) for k in ("id", "key", "label", "action", "started", "ended", "running", "code", "result", "kind")}
         out["lines"] = j["lines"][max(0, int(since or 0)):]
         out["total"] = len(j["lines"])
         return out
@@ -312,6 +382,266 @@ class Console:
                 out.append(json.loads(line))
             except ValueError:
                 pass
+        return out
+
+    # --- the pages (cc-P187) ---------------------------------------------------------------------------------------
+    def pages_doc(self):
+        try:
+            stamp = os.path.getmtime(PAGES_FILE)
+        except OSError:
+            return {}
+        if self._pages[0] != stamp:
+            self._pages = (stamp, self._load_json(PAGES_FILE, {}) or {})
+        return self._pages[1]
+
+    def page_button(self, key):
+        """(entry, page) for a page button's key, else (None, None)."""
+        for p in self.pages_doc().get("pages") or []:
+            for b in p.get("buttons") or []:
+                if b.get("key") == key:
+                    return b, p
+        return None, None
+
+    def public_pages(self):
+        keep = ("key", "label", "kind", "inputs", "pcOnly", "disabled", "help", "minutes", "danger")
+        d = self.pages_doc()
+        return {"fields": d.get("fields") or {},
+                "pages": [{"id": p.get("id"), "tab": p.get("tab"), "title": p.get("title"), "caption": p.get("caption"), "pcNotes": p.get("pcNotes") or [],
+                           "buttons": [{k: b[k] for k in keep if k in b} for b in p.get("buttons") or []]} for p in d.get("pages") or []]}
+
+    @staticmethod
+    def needs_second(entry, clean):
+        return entry.get("kind") == "dangerous" or clean.get("shard") == "live" or str(entry.get("action") or "").startswith("live.")
+
+    def page_args(self, entry, inputs):
+        """(None, (args, clean)) or ((http code, why), None): the button's inputs, each checked."""
+        if entry.get("pcOnly"):
+            return (409, "PC only: " + entry["pcOnly"]), None
+        if entry.get("disabled"):
+            return (409, entry["disabled"]), None
+        inputs = inputs if isinstance(inputs, dict) else {}
+        args, clean = [], {}
+        for name in entry.get("inputs") or []:
+            v = inputs.get(name)
+            if v is None or str(v).strip() == "":
+                continue
+            v = str(v).strip()
+            rule = PAGE_INPUT_RULES.get(name)
+            if not rule or not rule[0].match(v):
+                return (400, "%s is not allowed: %r" % (name, v[:40])), None
+            clean[name] = v
+            args += [rule[1], v]
+        return None, (args, clean)
+
+    def danger_text(self, entry, clean):
+        t = entry.get("danger") or ""
+        return re.sub(r"\{([A-Za-z]+)\}", lambda m: clean.get(m.group(1)) or ("the " + m.group(1)), t)
+
+    def preview(self, entry, inputs):
+        """(http code, body): the console's plan for this page button with these inputs (the runner's -DryRun), and a
+        token for running it once within TOKEN_SECONDS."""
+        if entry.get("kind") == "read":
+            return 400, {"error": "a read button runs at once; there is nothing to look at first"}
+        err, ok = self.page_args(entry, inputs)
+        if err:
+            return err[0], {"error": err[1]}
+        args, clean = ok
+        if not self.preview_lock.acquire(blocking=False):
+            return 409, {"error": "busy: another look first is being read"}
+        try:
+            try:
+                r = subprocess.run(self.runner + ["-Key", entry["key"], "-DryRun"] + args, capture_output=True, timeout=PREVIEW_TIMEOUT,
+                                   stdin=subprocess.DEVNULL, creationflags=NO_WINDOW, cwd=self.repo)
+                text = r.stdout.decode("utf-8", "replace")
+            except Exception as e:
+                return 500, {"error": panels.redact("the look first did not run: %s" % e)}
+        finally:
+            self.preview_lock.release()
+        lines, meta = [], {}
+        for line in text.splitlines():
+            if line.startswith("[[web-preview]]"):
+                try:
+                    meta = json.loads(line[len("[[web-preview]]"):])
+                except ValueError:
+                    meta = {"refused": "the look first could not be read"}
+                continue
+            m = PANE_LINE.match(line)
+            color, t = (m.group(1), m.group(2)) if m else ("normal", line)
+            lines.append({"color": color, "text": panels.redact(t)})
+        out = {"lines": lines[-400:], "expect": str(meta.get("expect") or ""), "confirmText": panels.redact(str(meta.get("confirmText") or "")),
+               "preface": panels.redact(str(meta.get("preface") or "")), "asks": panels.redact(str(meta.get("asks") or ""))}
+        if meta.get("refused") or not meta:
+            out["refused"] = panels.redact(str(meta.get("refused") or "the plan was not made (see its lines)"))
+            return 200, out
+        danger = bool(meta.get("danger")) or self.needs_second(entry, clean)
+        out["danger"] = danger
+        if danger:
+            out["dangerText"] = self.danger_text(entry, clean) or out["confirmText"] or "This changes something that cannot simply be undone."
+            if clean.get("shard") == "live" or str(entry.get("action") or "").startswith("live."):
+                out["online"] = ONLINE_UNKNOWN
+        tok = secrets.token_urlsafe(18)
+        now = time.time()
+        with self.job_lock:
+            for k in [k for k, v in self.tokens.items() if now - v["at"] > TOKEN_SECONDS]:
+                self.tokens.pop(k, None)
+            self.tokens[tok] = {"key": entry["key"], "inputs": clean, "expect": out["expect"], "danger": danger, "at": now}
+        out["token"] = tok
+        return 200, out
+
+    def start_page_action(self, entry, page, body, who):
+        """(http code, body): a page button. read: at once. change and dangerous: the preview's token (this button,
+        these inputs, unexpired, once) and the plan's phrase; dangerous also the second confirm."""
+        err, ok = self.page_args(entry, body.get("inputs"))
+        if err:
+            self.log_action(entry, who, "refused: " + err[1], None, {})
+            return err[0], {"error": err[1]}
+        args, clean = ok
+        typed = (body.get("typed") if isinstance(body.get("typed"), str) else "").strip()
+        second = body.get("second") is True
+        if entry.get("kind") != "read":
+            tok = body.get("token") if isinstance(body.get("token"), str) else ""
+            with self.job_lock:
+                t = self.tokens.get(tok)
+            why = ""
+            if not t:
+                why = "look first: the plan was not seen (or that look is used or older than 10 minutes)"
+            elif t["key"] != entry["key"] or t["inputs"] != clean:
+                why = "the inputs changed since the plan was shown: look again"
+            elif time.time() - t["at"] > TOKEN_SECONDS:
+                why = "the plan is older than 10 minutes: look again"
+            elif t["expect"] and typed.lower() != t["expect"].lower():
+                why = "type %s to confirm" % t["expect"]
+            elif t["expect"] and not TYPED.match(typed):
+                why = "the typed word may hold letters, digits and spaces only"
+            elif (t["danger"] or self.needs_second(entry, clean)) and not second:
+                why = "this needs the second confirm (what it does and to what, then Yes)"
+            if why:
+                self.log_action(entry, who, "refused: " + why, None, clean)
+                return 400, {"error": why}
+            args = ["-Typed", typed] + args
+            if t["danger"] or self.needs_second(entry, clean):
+                args.append("-Second")
+            with self.job_lock:
+                busy = self.job and self.job["running"]
+                if not busy:
+                    self.tokens.pop(tok, None)
+            if busy:
+                j = self.job
+                return 409, {"error": "busy: %s is running (since %s); a dangerous button waits for it" % (j["label"], j["started"])}
+        answers = None
+        if second:
+            answers = entry.get("answers") or (entry.get("answersBySite") or {}).get(clean.get("site") or "")
+        minutes = entry.get("minutes") if isinstance(entry.get("minutes"), int) else 10
+        code, out = self._start_job(dict(entry, label="%s > %s" % (page.get("title"), entry.get("label"))), ["-Key", entry["key"]] + args, clean, who,
+                                    answers=answers, timeout=max(60, minutes * 60), kind=entry.get("kind") or "")
+        if code != 202:
+            self.log_action(entry, who, "refused: " + out.get("error", ""), None, clean)
+        return code, out
+
+    def page_data(self, pid, fresh=False):
+        """A page's lists from Get-WebConsoleList.ps1, read again after LIST_SECONDS (fresh: after 5 s)."""
+        if pid not in PAGE_IDS:
+            return None
+        now = time.time()
+        at, data = self.lists.get(pid, (0.0, None))
+        if data is not None and now - at < (5 if fresh else LIST_SECONDS):
+            return data
+        with self.list_lock:
+            at, data = self.lists.get(pid, (0.0, None))
+            if data is not None and time.time() - at < (5 if fresh else LIST_SECONDS):
+                return data
+            try:
+                r = subprocess.run(self.list_runner + ["-Page", pid], capture_output=True, timeout=90, stdin=subprocess.DEVNULL,
+                                   creationflags=NO_WINDOW, cwd=self.repo)
+                text = r.stdout.decode("utf-8", "replace").strip()
+                data = json.loads(text[text.find("{"):]) if "{" in text else {"error": "no answer"}
+            except Exception as e:
+                data = {"error": "the lists could not be read: %s" % e}
+            if pid == "art" and isinstance(data, dict):
+                # A picture's path stays here: the page gets /art-thumb/<id>.
+                thumbs = {}
+                for r0 in data.get("requests") or []:
+                    path = self.art_picture(r0.pop("thumb", ""))
+                    if path:
+                        thumbs[str(r0.get("value"))] = path
+                    r0["picture"] = ("/art-thumb/" + str(r0.get("value"))) if path else ""
+                self._thumbs = thumbs
+            data = panels.redact_tree(data)
+            self.lists[pid] = (time.time(), data)
+            return data
+
+    def art_picture(self, path):
+        """A request's picture path when it is an image under the art store, else ''."""
+        if not isinstance(path, str) or not PORTRAIT_NAME.search(path):
+            return ""
+        base = os.path.realpath(ART_STORE)
+        full = os.path.realpath(path)
+        return full if full.startswith(base + os.sep) and os.path.isfile(full) else ""
+
+    def art_thumb_path(self, rid):
+        if not re.match(r"^[a-z0-9][a-z0-9-]{0,63}$", str(rid or "")):
+            return ""
+        return self.art_picture(getattr(self, "_thumbs", {}).get(str(rid), ""))
+
+    def prompt_text(self, name=None, notes=None):
+        """(text, what) for a prompt the status names (queued, running or finished), or its notes; (None, why)."""
+        doc, _ = self.status()
+        g = (doc or {}).get("golem") or {}
+        if name:
+            names = {str(q.get("name")) for q in (g.get("queue") or []) if isinstance(q, dict)}
+            cur = g.get("current") if isinstance(g.get("current"), dict) else {}
+            if cur.get("name"):
+                names.add(str(cur["name"]))
+            if name not in names or not re.match(r"^cc-P\d+-[A-Za-z0-9._-]+\.md$", name):
+                return None, "not a prompt the status names"
+            for d in [os.path.join(PROMPTS_DIR, "queue"), PROMPTS_DIR] + [os.path.join(PROMPTS_DIR, "claimed", x) for x in self._dirs(os.path.join(PROMPTS_DIR, "claimed"))]:
+                p = os.path.join(d, name)
+                if os.path.isfile(p):
+                    return self._read_text(p)[:200_000], name
+            return None, "the file is gone (handed on?)"
+        if notes:
+            nums = {str(f.get("number")) for f in (g.get("finished") or []) if isinstance(f, dict)}
+            if str(notes) not in nums:
+                return None, "not a finished prompt the status names"
+            d = os.path.join(self.notes, "notes")
+            try:
+                hit = sorted(n for n in os.listdir(d) if re.match(r"^cc-P%s-.*\.md$" % re.escape(str(notes)), n))
+            except OSError:
+                hit = []
+            if not hit:
+                return None, "no notes file for P%s" % notes
+            return self._read_text(os.path.join(d, hit[0]))[:200_000], hit[0]
+        return None, "name or notes"
+
+    def golem_picker(self, doc):
+        """cc-P187: every Golem in golems.json for the Golem page's picker: name, lane, machine, its state, and whether
+        a button can act for it now and why not (disabled; multiGolem off; a remote Golem's agent offline is shown
+        greyed but may be picked: its commands wait for it, cc-P186)."""
+        reg = self.registry()
+        if not reg:
+            return []
+        g = ((doc or {}).get("golem") or {}) if isinstance(doc, dict) else {}
+        cards = {str(c.get("name")).lower(): c for c in (g.get("golems") or []) if isinstance(c, dict)}
+        s = self._load_json(os.path.join(self.golem_root, "settings.json"), {}) or {}
+        multi = bool(s.get("multiGolem")) if isinstance(s, dict) else False
+        out = []
+        for e in reg:
+            c = cards.get(str(e["name"]).lower(), {})
+            integ = bool(e.get("integrator"))
+            remote = self.is_remote(e)
+            why, grey = "", ""
+            if not integ and not e.get("enabled"):
+                why = "disabled in golems.json"
+            elif not integ and not multi:
+                why = "multiGolem is off (settings.json): only the integrator works the queue"
+            elif remote and not self.agent_online(e):
+                grey = "offline (its agent has not called in lately): a button waits for it up to %d minutes" % self.command_minutes()
+            out.append({"name": e["name"], "lane": e.get("lane") or "", "machine": e.get("machine") or "", "engine": e.get("engine") or "",
+                        "integrator": integ, "remote": remote, "usable": not why, "why": why, "grey": grey,
+                        "state": (g.get("state") if integ else c.get("state")) or ("OFF" if not e.get("enabled") else "UNKNOWN"),
+                        "current": (((g.get("current") or {}).get("number") and "P%s" % g["current"]["number"]) if integ else c.get("current")) or "",
+                        "portraitUrl": ("/portrait/" + e["name"]) if self.portrait_path(e) else ""})
+        out.sort(key=lambda x: (not x["integrator"], x["name"].lower()))
         return out
 
     # --- every Golem, and the remote Golems' agents (cc-P186) -----------------------------------------------------
@@ -459,17 +789,18 @@ class Console:
         """(http code, body): a button for a Golem on another PC, checked as on this PC (the word, the inputs, the
         state its last status shows), then queued for its agent. Nothing runs on the game PC."""
         name = g["name"]
-        err, ok = self.check_request(entry, typed, inputs)
+        err, ok = self.check_request(entry, typed, inputs, name)
         if not err:
             st = self._load_json(os.path.join(self.remote_dir(name), "status.json"), None)
             st = st.get("status") if isinstance(st, dict) and isinstance(st.get("status"), dict) else st
             clean = ok[1]
             if entry.get("word") == "#stopped":
                 sp = str((st or {}).get("stoppedPrompt") or "") if isinstance(st, dict) else ""
+                want = (sp + " " + name).lower() if entry.get("golemWord") else sp.lower()
                 if not sp:
                     err = (409, "nothing is STOPPED on %s (its last status)" % name)
-                elif str(typed or "").strip().lower() != sp.lower():
-                    err = (400, "type %s to confirm" % sp)
+                elif str(typed or "").strip().lower() != want:
+                    err = (400, "type %s to confirm" % want)
                 else:
                     clean = dict(clean, prompt=sp.upper())
             w = str(entry.get("when") or "")
@@ -753,6 +1084,8 @@ class Console:
             "golem": ("The Golem's log", ("file", r"D:\UO\golem\golem.log")),
             "console": ("The Shard Console's action log", ("file", os.path.join(self.repo, "scripts", "shard-console.log"))),
             "shard": ("The test shard (docker logs sl-modernuo-test)", ("docker", "sl-modernuo-test")),
+            "live": ("The LIVE shard (docker logs sl-modernuo)", ("docker", "sl-modernuo")),
+            "diag": ("The newest diagnostic (Check-Docker, Check-Shard)", ("newestmatch", self.repo)),
             "actions": ("The newest console action transcript", ("newest", out_dir)),
             "web": ("The web console's action log", ("file", os.path.join(self.data, "actions.log"))),
             "deploys": ("The newest Haven deploy transcript", ("newest", os.path.join(out_dir, "deploys"))),
@@ -780,6 +1113,13 @@ class Console:
             else:
                 pick = names[-1] if names else ""
             return (self._tail_file(os.path.join(where, pick)) if pick else []), pick
+        if how == "newestmatch":
+            try:
+                hit = sorted((os.path.getmtime(os.path.join(where, n)), n) for n in os.listdir(where)
+                             if re.match(r"^(check-[A-Za-z0-9_-]+\.txt|test-shard-diagnostic\.log)$", n))
+            except OSError:
+                hit = []
+            return (self._tail_file(os.path.join(where, hit[-1][1])) if hit else []), (hit[-1][1] if hit else "")
         if how == "bot":
             runs = self._dirs(where)
             run = name if name in runs else (runs[-1] if runs else "")
@@ -971,7 +1311,22 @@ def make_handler(console, listener, access_log=None):
                                         "art": console.art(), "artFrames": console.art_frames(),
                                         "actions": {"buttons": console.public_buttons(), "canAct": listener == panels.TAILNET,
                                                     "why": "" if listener == panels.TAILNET else LOCAL_READ_ONLY, "job": job},
+                                        "pages": console.public_pages(), "golemPicker": console.golem_picker(doc),
                                         "server": {"now": time.strftime("%Y-%m-%dT%H:%M:%S"), "listener": listener}})
+            if p == "/api/page":
+                d = console.page_data((q.get("id") or [""])[0], fresh=q.get("fresh") == ["1"])
+                return self._json(200, d) if d is not None else self._json(404, {"error": "no such page"})
+            if p == "/api/prompt":
+                text, what = console.prompt_text(name=(q.get("name") or [""])[0] or None, notes=(q.get("notes") or [""])[0] or None)
+                if text is None:
+                    return self._json(404, {"error": what})
+                return self._json(200, {"what": what, "text": text})
+            if p.startswith("/art-thumb/"):
+                path = console.art_thumb_path(p[11:])
+                if not path:
+                    return self._send(404, "no picture\n", "text/plain; charset=utf-8")
+                with open(path, "rb") as f:
+                    return self._send(200, f.read(), mimetypes.guess_type(path)[0] or "application/octet-stream")
             if p == "/api/action":
                 j = console.job_view((q.get("since") or ["0"])[0] if (q.get("since") or ["0"])[0].isdigit() else 0)
                 return self._json(200, j or {"running": False, "lines": [], "total": 0})
@@ -1003,8 +1358,8 @@ def make_handler(console, listener, access_log=None):
                 code, out = console.finish_command(g, body) if path == "/api/agent/result" else console.save_report(g, path.rsplit("/", 1)[1], body)
                 self._note(code, "agent %s %s" % (g["name"], path.rsplit("/", 1)[1]))
                 return self._json(code, out)
-            # cc-P182: the Golem's buttons, and nothing else.
-            if path != "/api/action":
+            # cc-P182: the Golem's buttons; cc-P187: the page buttons and their look first.
+            if path not in ("/api/action", "/api/preview"):
                 return self._refuse()
             if not self._allowed():
                 return
@@ -1027,6 +1382,18 @@ def make_handler(console, listener, access_log=None):
             body = self._read_json(4096)
             if body is None:
                 return
+            who = (self.headers.get(panels.IDENTITY_HEADER) or "").strip()
+            pentry, page = console.page_button(body.get("key"))
+            if path == "/api/preview":
+                if not pentry:
+                    return self._json(404, {"error": "no such page button"})
+                code, out = console.preview(pentry, body.get("inputs"))
+                self._note(code, "preview " + pentry["key"])
+                return self._json(code, out)
+            if pentry:
+                code, out = console.start_page_action(pentry, page, body, who)
+                self._note(code, "action " + pentry["key"])
+                return self._json(code, out)
             entry = next((b for b in console.buttons() if b.get("key") == body.get("key")), None)
             if not entry:
                 self._note(404, "no such button")

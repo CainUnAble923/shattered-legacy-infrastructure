@@ -83,6 +83,12 @@ which daemon you are talking to. See the root `README.md` and each folder's READ
    loopback-only container with a scratch save directory.
 7. Claude is overseeing this project in parallel. Commit before handing off; Chase pushes.
 8. When work needs art Chase must make, file an art request with the helper instead of only writing a brief in notes: `D:\ShatteredLegacy\scripts\art\New-ArtRequest.ps1` (cc-P152; its header has an example). The request lands in `D:\UO\art\requests\`, outside both repos, and Chase generates, approves and places it from the console's Art tab. Never generate art yourself: Generate is Chase's click.
+9. **A new Shard Console button needs its web console twin** (cc-P187). Chase runs everything from his phone too: any
+   button, tick or pick added to `scripts/Shard-Console.ps1`'s window gets a web counterpart in
+   `web-console/console-actions.json` (a page button calling the same console action, or a `twins` entry: an input, a part
+   of the page, or `pc:<why it stays on the PC>`), and a Golem button its entry in `web-console/golem-actions.json`. The
+   console fact `P187_EveryConsoleButtonHasAWebTwin` fails until it has one. Never re-implement an action for the web:
+   the web console calls the console's own functions (`Get-ActionFacts`, `Get-ActionPlan`, `Invoke-Plan`).
 
 ## The layering pattern is not negotiable
 

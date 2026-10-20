@@ -194,7 +194,7 @@ class RemoteGolems(unittest.TestCase):
 
     # --- the queue ----------------------------------------------------------------------------------------------------
     def test_a_command_waits_until_the_golem_is_online_then_its_agent_pulls_it_once(self):
-        code, j = self.act("Gold", "wake", "Wake the golem", {"model": "opus"})
+        code, j = self.act("Gold", "wake", "Wake gold", {"model": "opus"})
         self.assertEqual(202, code, j)
         self.assertTrue(j["queued"])
         self.assertIn("queued until Gold is online", j["message"])
@@ -217,7 +217,7 @@ class RemoteGolems(unittest.TestCase):
         self.assertTrue(c["lastSeen"])
         self.assertEqual("taken", c["commands"][0]["state"])
         # Online now: the next one is sent, not queued.
-        code, j = self.act("Gold", "rest", "rest")
+        code, j = self.act("Gold", "rest", "rest gold")
         self.assertEqual(202, code, j)
         self.assertIn("sent to Gold", j["message"])
         self.assertEqual([], self.calls(), "nothing runs on the game PC for a remote Golem")
@@ -234,7 +234,7 @@ class RemoteGolems(unittest.TestCase):
         self.assertEqual(404, code, j)
         code, j = self.act("Silver", "rest", "rest")
         self.assertEqual(409, code, "a disabled Golem takes no commands")
-        code, j = self.act("Gold", "retry", "P140")
+        code, j = self.act("Gold", "retry", "P140 gold")
         self.assertEqual(409, code, "nothing is STOPPED on Gold (as far as its last status says)")
         self.assertEqual([], self.files("Gold"))
         h = dict(CHASE)   # no X-UOConsole-Action: not from this page
@@ -247,7 +247,7 @@ class RemoteGolems(unittest.TestCase):
     def test_a_command_expires_after_the_set_time_and_says_so(self):
         t0 = time.time()
         self.console.clock = lambda: t0
-        code, j = self.act("Gold", "poke", "poke")
+        code, j = self.act("Gold", "poke", "poke gold")
         self.assertEqual(202, code, j)
         self.assertIn("expires", j["message"])
         self.console.clock = lambda: t0 + 31 * 60
@@ -265,12 +265,12 @@ class RemoteGolems(unittest.TestCase):
             json.dump({"allowedLogins": ["chase@example.com"], "agentCommandMinutes": 5}, f)
         self.console.clock = lambda: t0
         self.assertEqual(5, self.console.command_minutes())
-        self.act("Gold", "rest", "rest")
+        self.act("Gold", "rest", "rest gold")
         self.console.clock = lambda: t0 + 6 * 60
         self.assertEqual([], self.agent("/api/agent/commands")[1]["commands"])
 
     def test_the_result_comes_back_to_the_timeline_with_the_golems_name(self):
-        self.act("Gold", "rest", "rest")
+        self.act("Gold", "rest", "rest gold")
         cmd = self.agent("/api/agent/commands")[1]["commands"][0]
         code, j = self.agent("/api/agent/result", {"id": cmd["id"], "code": 0, "result": "The Gold Golem is resting.",
                                                    "lines": ["The Gold Golem is resting.", "token=abc123secretvalue"]})
@@ -338,7 +338,7 @@ class RemoteGolems(unittest.TestCase):
         gold, _ = self.card("Gold")
         self.assertEqual("", gold["portraitUrl"])
         # Now retry is allowed with the stopped prompt's number.
-        code, j = self.act("Gold", "retry", "p140")
+        code, j = self.act("Gold", "retry", "p140 Gold")
         self.assertEqual(202, code, j)
         self.assertEqual({"prompt": "P140"}, self.agent("/api/agent/commands")[1]["commands"][0]["inputs"])
         code, j = self.agent("/api/agent/ready", dict(READY, golem="Silver"))
@@ -347,12 +347,12 @@ class RemoteGolems(unittest.TestCase):
         self.assertEqual(400, code, j)
 
     def test_a_second_golem_on_this_pc_runs_through_the_consoles_runner_with_its_name(self):
-        code, j = self.act("Bronze", "rest", "rest")
+        code, j = self.act("Bronze", "rest", "rest bronze")
         self.assertEqual(202, code, j)
         self.wait_idle()
         c = self.calls()
         self.assertEqual(1, len(c))
-        self.assertEqual(["-Key", "rest", "-Typed", "rest", "-Golem", "Bronze"], c[0])
+        self.assertEqual(["-Key", "rest", "-Typed", "rest bronze", "-Golem", "Bronze"], c[0])
         self.assertIn("Bronze", self.console.job_view(0)["label"])
         code, j = self.act("Iron", "poke", "poke")
         self.assertEqual(202, code, j)
@@ -440,7 +440,7 @@ class PhoneTeam(RemoteGolems):
             b.eval("document.querySelector('#golem-team button[data-golem=Gold][data-key=rest]').click()")
             self.assertTrue(b.wait_for("!document.getElementById('sheet').hidden"), "the sheet opens")
             self.assertIn("Gold Golem", b.eval("document.getElementById('sheet-title').textContent"))
-            b.eval("var i = document.getElementById('sheet-word'); i.value = 'Rest'; i.dispatchEvent(new Event('input'));")
+            b.eval("var i = document.getElementById('sheet-word'); i.value = 'Rest gold'; i.dispatchEvent(new Event('input'));")
             b.eval("document.getElementById('sheet-run').click()")
             self.assertTrue(b.wait_for("document.getElementById('job-result').textContent.indexOf('queued until Gold is online') >= 0"),
                             "the wait is said: " + str(b.eval("document.getElementById('sheet-msg').textContent + ' | ' + document.getElementById('job-result').textContent")))

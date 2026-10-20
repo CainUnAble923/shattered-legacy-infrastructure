@@ -32,8 +32,8 @@ import server  # noqa: E402
 
 PROOF = "p182-test-proof-0123456789abcdef0123456789abcdef"
 CHASE = {"Tailscale-User-Login": "chase@example.com", "X-UOConsole-Proof": PROOF}
-INPUTS = {"model": "Opus", "cap": "3", "until": "2026-10-20 06:00", "start": "22:30", "end": "06:30", "prompt": "P151"}
-FLAGS = {"model": "-Model", "cap": "-Cap", "until": "-Until", "start": "-NightStart", "end": "-NightEnd", "prompt": "-Prompt"}
+INPUTS = {"model": "Opus", "cap": "3", "until": "2026-10-20 06:00", "start": "22:30", "end": "06:30", "prompt": "P151", "assignTo": "Bronze", "next": "yes"}
+FLAGS = {"model": "-Model", "cap": "-Cap", "until": "-Until", "start": "-NightStart", "end": "-NightEnd", "prompt": "-Prompt", "assignTo": "-AssignTo", "next": "-Next"}
 
 
 def free_port():
@@ -50,7 +50,7 @@ def actions():
 
 
 def word_for(e):
-    return {"#prompt": "P151", "#stopped": "P140"}.get(e["word"], e["word"])
+    return {"#prompt": "P151", "#stopped": "P140", "#assign": "P151 on bronze"}.get(e["word"], e["word"])
 
 
 class Proof(unittest.TestCase):
