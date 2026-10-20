@@ -538,11 +538,13 @@
     (b.inputs || []).forEach(function (name) {
       if (name === 'model') {
         var s = el('select'); s.id = 'in-model';
-        ['Fable', 'Opus', 'Sonnet'].forEach(function (m) { var o = el('option', null, m); o.value = m; s.appendChild(o); });
-        // cc-P187: Wake's model follows the Golem's lane (Bronze: Fable); the integrator's, the next prompt's Model line.
-        var want = (card && (card.lane === 'Opus' || card.lane === 'Fable') && card.lane) || (g.queue && g.queue[0] && g.queue[0].model) || 'Opus';
-        if (['Fable', 'Opus', 'Sonnet'].indexOf(want) >= 0) s.value = want;
-        box.appendChild(field('Model (from its lane; change it here)', s));
+        // cc-P153: Auto first and the default: the Golem picks the model from the prompt's Model line (no line: Opus), as
+        // its self-wake does; Fable, Opus or Sonnet overrides it for this session.
+        var rows = g.queueRows || [];
+        var auto = rows.length ? 'Auto: ' + rows[0].model + ', for ' + rows[0].label : 'Auto (best for the next prompt)';
+        [['Auto', auto], ['Fable', 'Fable'], ['Opus', 'Opus'], ['Sonnet', 'Sonnet']].forEach(function (m) { var o = el('option', null, m[1]); o.value = m[0]; s.appendChild(o); });
+        s.value = 'Auto';
+        box.appendChild(field('Model (Auto reads the prompt; change it here to override)', s));
       } else if (name === 'cap') {
         box.appendChild(field('Prompts (a number, or all)', textInput('in-cap', 'all')));
       } else if (name === 'until') {

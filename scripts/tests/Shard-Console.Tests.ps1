@@ -3015,7 +3015,7 @@ Fact 'P94_RunningWithStepsSaysPositionStepAndAgeOverTheStepAndLastActivity' {
     $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2)
     Assert-Equal 'RUNNING' $t.Word
     Assert-Equal 'green' $t.Color
-    Assert-Equal ("P92  2 of 5  step 3/6  14m`nWriting the tile; last activity 2m ago") $t.Detail 'stepNow is trimmed'
+    Assert-Equal ("P92  2 of 5  [#####.....] step 3 of 6  14m`nWriting the tile; last activity 2m ago") $t.Detail 'stepNow is trimmed (cc-P153: the bar)'
 }
 
 Fact 'P94_RunningWithoutStepsOmitsTheStepPart' {
@@ -3029,14 +3029,14 @@ Fact 'P94_RunningWithoutStepsOmitsTheStepPart' {
 Fact 'P94_ARunningToolIsNamedWithHowLongItHasRun' {
     $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 30 -Activity 9 -Tool 9)
     Assert-Equal 'green' $t.Color '9 minutes is under stallMinutes 45'
-    Assert-Equal ("P92  2 of 5  step 3/6  30m`nWriting the tile; running Bash for 9m") $t.Detail
+    Assert-Equal ("P92  2 of 5  [#####.....] step 3 of 6  30m`nWriting the tile; running Bash for 9m") $t.Detail
 }
 
 Fact 'P94_QuietPastStallMinutesTurnsTheTileAmber' {
     $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 60 -Activity 52)
     Assert-Equal 'RUNNING' $t.Word 'still running: the watch task emails, the tile only shows it'
     Assert-Equal 'amber' $t.Color
-    Assert-Equal ("P92  2 of 5  step 3/6  1h 0m`nWriting the tile; quiet for 52m") $t.Detail
+    Assert-Equal ("P92  2 of 5  [#####.....] step 3 of 6  1h 0m`nWriting the tile; quiet for 52m") $t.Detail
     $tool = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 60 -Activity 52 -Tool 52)
     Assert-True ($tool.Detail.EndsWith('quiet for 52m (Bash still running)')) $tool.Detail
     $patient = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 60 -Activity 52) -Settings '{ "stallMinutes": 60 }'
@@ -3114,17 +3114,17 @@ Fact 'P94_ThePanelSaysTheRunTheStepsTheActivityAndTheSettings' {
     $v = Get-ApsView (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2)
     $p = @(Format-AutopilotPanel -View $v -Config $config -Now $apsNow) | ForEach-Object { $_.Text }
     $want = @(
-        'GOLEM     : RUNNING. P92  2 of 5  step 3/6  14m',
+        'GOLEM     : RUNNING. P92  2 of 5  [#####.....] step 3 of 6  14m',
         '            Writing the tile; last activity 2m ago',
         'run       : 2 of 5, cap 6, 1 done, started 2026-10-14 05:49:20',
-        'steps     : 3 of 6 done, now: Writing the tile',
+        'steps     : [##########..........] step 3 of 6: Writing the tile',
         'activity  : last activity 2m ago (Bash)',
         'settings  : progressEmails true, maxPerRun 6, stallMinutes 45 (settings.json)')
     foreach ($w in $want) { Assert-True ($p -contains $w) ('missing [' + $w + '] in: ' + ($p -join ' | ')) }
     Assert-True (@($p | Where-Object { $_ -like 'status    : D:\UO\cc-autopilot\status.json, written 2026-10-14 06:40:00 (0s ago)' }).Count -eq 1) ($p -join ' | ')
     $none = Get-ApsView (Set-ApStatus -Set @{ maxPerRun = 0 } -Started 1) -Settings $null
     $q = @(Format-AutopilotPanel -View $none -Config $config -Now $apsNow) | ForEach-Object { $_.Text }
-    Assert-True ($q -contains 'steps     : none reported (CC''s task list is empty for this prompt)') ($q -join ' | ')
+    Assert-True ($q -contains 'steps     : none reported (no task list and no Set-Step yet for this prompt)') ($q -join ' | ')
     Assert-True (@($q | Where-Object { $_ -like 'run       : 1 of 10, no cap,*' }).Count -eq 1) 'maxPerRun 0 is no cap'
     Assert-True ($q -contains 'settings  : progressEmails true, maxPerRun 6, stallMinutes 45 (no settings.json: the hook''s defaults)') ($q -join ' | ')
 }
@@ -3132,7 +3132,7 @@ Fact 'P94_ThePanelSaysTheRunTheStepsTheActivityAndTheSettings' {
 Fact 'P94_TheStatusReportIndentsTheTilesSecondLine' {
     $t = Get-ApsTile (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2)
     $lines = @(Format-StatusReport $state $config @($t))
-    Assert-True ($lines[4].Text -match '^GOLEM\s+: RUNNING\s+P92  2 of 5  step 3/6  14m$') $lines[4].Text
+    Assert-True ($lines[4].Text -match '^GOLEM\s+: RUNNING\s+P92  2 of 5  \[#####\.\.\.\.\.\] step 3 of 6  14m$') $lines[4].Text
     Assert-Equal ((' ' * 35) + 'Writing the tile; last activity 2m ago') $lines[5].Text
     Assert-Equal 'green' $lines[5].Color
 }
@@ -5720,7 +5720,7 @@ Fact 'P125_TheGolemTabHasTheNewButtonsTheListsAndAGreyResume' {
         foreach ($k in @($tags) + @('golem.resume', 'golem.cap', 'golem.until', 'golemQueue', 'golemPreview', 'golemFinished', 'golem.openprompt', 'golem.opennotes')) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
         # cc-P131: the wake button is real now; it is dark while the fixture's P125 runs in a live session.
         $res = $script:ui.GolemResume
-        Assert-True ($null -ne $res -and -not $res.Enabled -and $res.Text -eq 'Wake the Golem (CC session)') 'Wake the Golem (CC session) is shown and dark while P125 runs'
+        Assert-True ($null -ne $res -and -not $res.Enabled -and $res.Text -eq 'Poke the Golem') 'Poke the Golem (cc-P131''s Wake the Golem (CC session)) is shown and dark while P125 runs'
         Assert-True ($null -ne $script:ui.LongRunCap -and $null -ne $script:ui.LongRunUntil) 'the cap and end-time boxes'
         Assert-True ($null -ne $script:ui.GolemQueueList -and $null -ne $script:ui.GolemPreview -and $null -ne $script:ui.GolemFinishedList) 'the queue, its preview and the finished list'
         Assert-True ($script:ui.GolemPreview.ReadOnly) 'the preview is read-only'
@@ -5765,16 +5765,16 @@ function Get-P131Window($plan) { $w = @($plan | Where-Object { $_.Kind -eq 'wind
 
 Fact 'P131_WakeTheGolemAsksThePhraseAndRunsWakeGolemWithTheModel' {
     $p = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts (New-P131Facts -WakeModel 'Fable'))
-    Assert-Equal 'wake the golem' (@($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase)
+    Assert-Equal 'poke the golem' (@($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase)   # cc-P153: Poke the Golem
     $c = @($p | Where-Object { $_.Kind -eq 'confirm' })[0].Text
     Assert-True ($c.Contains('claude --model fable --permission-mode auto --name "Golem P126" "Golem, please work on the shard tasks."')) ('the confirm shows the command line it will run: ' + $c)
     Assert-True ($c -match 'never skipped') 'and says what happens to a prompt mid-run when the window is closed'
     Assert-Equal 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\UO\golem\Wake-Golem.ps1 -Model Fable' (Get-P131Window $p)
     Assert-Equal 0 @(Test-PlanSafety $p $p125Cfg).Count (@(Test-PlanSafety $p $p125Cfg) -join '; ')
     Assert-True (@($p | Where-Object { $_.Kind -eq 'log' -and $_.Text -eq 'golem.resume' }).Count -eq 1) 'logged'
-    # No model picked: the next prompt's Model line (P126 asks for Opus).
+    # No model picked: cc-P153's Auto, which the Golem resolves from the next prompt's Model line (P126 asks for Opus).
     $p2 = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts (New-P131Facts))
-    Assert-True ((Get-P131Window $p2).EndsWith('Wake-Golem.ps1 -Model Opus')) ('the prompt''s model: ' + (Get-P131Window $p2))
+    Assert-True ((Get-P131Window $p2).EndsWith('Wake-Golem.ps1 -Model Auto') -and (@($p2 | Where-Object { $_.Kind -eq 'confirm' })[0].Text) -match '^Auto: Opus, for P126') ('the prompt''s model: ' + (Get-P131Window $p2))
     Assert-Equal 'refuse' (@(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts (New-P131Facts -WakeModel 'Haiku')))[0].Kind 'an unknown model is refused'
 }
 
@@ -5798,13 +5798,13 @@ Fact 'P131_WakeTheGolemRefusesForEachReasonWithItsReasonOnScreen' {
     $p = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts (New-P131Facts -Running 'P125' -StatusText ($quiet | ConvertTo-Json -Depth 5)) -Now $p125Now)
     $cf = @($p | Where-Object { $_.Kind -eq 'confirm' })
     Assert-True ($cf.Count -eq 1 -and $cf[0].Text -match 'P125 is the running prompt but its session has been quiet' -and $cf[0].Text -match 'nothing is skipped') ('quiet: handed again: ' + ($p | ForEach-Object { $_.Kind + ':' + $_.Text }) -join ' | ')
-    Assert-True ((Get-P131Window $p).EndsWith('-Model Opus')) 'and the window line is built'
+    Assert-True ((Get-P131Window $p).EndsWith('-Model Auto')) 'and the window line is built (cc-P153: Auto)'
 }
 
 Fact 'P131_TheSafetyCheckAllowsOnlyTheExactWakeAndToggleArguments' {
     $ps = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File')
     $ok = @(
-        @('D:\UO\golem\Wake-Golem.ps1', '-Model', 'Fable'), @('D:\UO\golem\Wake-Golem.ps1', '-Model', 'Opus'),
+        @('D:\UO\golem\Wake-Golem.ps1', '-Model', 'Fable'), @('D:\UO\golem\Wake-Golem.ps1', '-Model', 'Opus'), @('D:\UO\golem\Wake-Golem.ps1', '-Model', 'Auto'),
         @('D:\UO\golem\Set-AutoWake.ps1', '-On'), @('D:\UO\golem\Set-AutoWake.ps1', '-Off'),
         @('D:\UO\golem\Set-NightShift.ps1', '-Off'), @('D:\UO\golem\Set-NightShift.ps1', '-On', '-Start', '22:30', '-End', '06:30'),
         @('D:\UO\golem\Check-Cli.ps1'))
@@ -5918,7 +5918,7 @@ Fact 'P131_TheGolemTabHasTheWakeRowAndTheToggleLabelsFollowTheSettings' {
         $tags = @($script:ui.GolemWakeButtons | ForEach-Object { $_.Tag })
         Assert-Equal 'golem.resume,golem.autowake,golem.nightshift,golem.marathon,golem.clicheck' ($tags -join ',') 'the wake row, in order (cc-P200: Marathon after the night shift)'
         Assert-Equal 'golem.longrun,golem.endlongrun,golem.wrapup,golem.stoppoint' (@($script:ui.GolemRunButtons | ForEach-Object { $_.Tag }) -join ',') 'the cc-P125 run row is unchanged'
-        Assert-True ($null -ne $script:ui.GolemModel -and (@($script:ui.GolemModel.Items) -join ',') -eq 'Fable,Opus') 'the model picker: Fable, Opus'
+        Assert-True ($null -ne $script:ui.GolemModel -and ((@($script:ui.GolemModel.Items) | Select-Object -Skip 1) -join ',') -eq 'Fable,Opus' -and [string]$script:ui.GolemModel.Items[0] -like 'Auto*') 'the model picker: Auto (cc-P153), Fable, Opus'
         Assert-True ($null -ne $script:ui.NightStart -and $null -ne $script:ui.NightEnd) 'the night shift''s two boxes'
         $tips = Get-ConsoleTooltips
         foreach ($k in @('golem.resume', 'golem.model', 'golem.autowake', 'golem.nightshift', 'golem.nightstart', 'golem.nightend', 'golem.clicheck')) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
@@ -5930,7 +5930,7 @@ Fact 'P131_TheGolemTabHasTheWakeRowAndTheToggleLabelsFollowTheSettings' {
         Assert-Equal 'Self-wake: off (turn on)' $labels['golem.autowake']
         Assert-Equal 'Night shift: off (turn on)' $labels['golem.nightshift']
         Assert-True ($script:ui.GolemResume.Enabled) 'idle with a queue: the wake button lights'
-        Assert-Equal 'Opus' ([string]$script:ui.GolemModel.SelectedItem) 'the picker follows the next prompt''s Model line'
+        Assert-Equal 'Auto: Opus, for P126' ([string]$script:ui.GolemModel.SelectedItem) 'cc-P153: the picker stays on Auto and names the next prompt''s Model line'
         Assert-True ($script:ui.NightStart.Text -eq '23:00' -and $script:ui.NightEnd.Text -eq '05:30') 'the boxes show the settings'
         # The form judges "live" from the real clock, so this status is active now.
         $live = (New-P131Status) | ConvertFrom-Json; $live.lastActivityUtc = (Get-Date).ToUniversalTime().ToString('s'); $live.generatedAt = (Get-Date).ToString('s')
@@ -7868,7 +7868,7 @@ Fact 'P187_TheGolemPickerActsForThePickedGolemAndAssignWritesItsLine' {
         $script:ui.GolemModel.SelectedItem = 'Opus'
         $script:ui.GolemPick.SelectedIndex = 1
         Update-GolemPickModel
-        Assert-Equal 'Fable' ([string]$script:ui.GolemModel.SelectedItem) 'Wake''s model follows Bronze''s lane'
+        Assert-Equal 0 $script:ui.GolemModel.SelectedIndex 'cc-P153: Poke is on Auto for Bronze too (its own Golem picks its next prompt, in its lane, and reads the Model line)'
         Assert-Equal 'Bronze' (Get-PickedGolem)
     } finally { $form.Dispose() }
 }
@@ -8061,6 +8061,200 @@ Fact 'P208_ShadowIronHasItsOwnCardLineAndButtonsAndIronStaysTheConsolesOwn' {
     }
     $bad = @((New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $p125Cfg.Autopilot.MergeScript, '-Register')))
     Assert-True (@(Test-PlanSafety $bad $p125Cfg).Count -gt 0) 'ShadowIron.ps1 with anything else (-Register) is refused'
+}
+
+# --- cc-P153: the queue with a note, the suggested What is new, the header icon, Poke the Golem, tooltips, progress ---
+$p153Sum = "# CC task P160: Plan usage pacing`n`n**Model:** Fable`n`n**Summary:** The Golem paces the week from the real plan usage page.`n`nChase asked for this on 10-17. It reads the page.`n`n**Kind:** golem.ps1. Medium.`n"
+$p153NoSum = "# CC task P161: Close finished sessions`n`n**Kind:** golem.ps1, tests. Small to medium.`n`nChase, 10-17: the windows pile up. Close them after a while! Then more.`n"
+$p153Run = "# CC task P153: Queue notes`n`n**Model:** Opus`n**Summary:** The Golem tab lists the queue with a note per prompt.`n`n**Kind:** scripts. Small.`n"
+
+Fact 'P153_TheQueueRowsAreInRunOrderWithANoteEach' {
+    $a = Get-PromptInfo 'cc-P160-plan-usage-pacing.md' $p153Sum
+    $b = Get-PromptInfo 'cc-P161-close-finished-sessions.md' $p153NoSum
+    $cur = Get-PromptInfo 'cc-P153-queue-notes.md' $p153Run
+    $rows = @(Get-QueueRows -QueueInfo @($a, $b) -Current $cur)
+    Assert-Equal 'P153,P160,P161' (($rows | ForEach-Object { $_.Label }) -join ',') 'the running prompt on top, then the queue'
+    Assert-Equal 'running,next,' (($rows | ForEach-Object { $_.Mark }) -join ',') 'running, then next on the first queued'
+    Assert-Equal 'The Golem paces the week from the real plan usage page.' $rows[1].Note 'the Summary line, whole, not cut to a few words'
+    Assert-True (-not $rows[1].Grey) 'a Summary line is not grey'
+    Assert-Equal 'Chase, 10-17: the windows pile up.' $rows[2].Note 'no Summary line: the first sentence of the opening paragraph'
+    Assert-True $rows[2].Grey 'shown in grey'
+    Assert-Equal 'Opus' $rows[2].Model 'no Model line means Opus'
+    Assert-Equal 'small to medium' $rows[2].Size 'the Kind line''s size'
+    Assert-Equal 'The Golem tab lists the queue with a note per prompt.' $rows[0].Note 'the running prompt has its summary too'
+    # Run next's pick goes first among the queued and is the one marked next.
+    $r2 = @(Get-QueueRows -QueueInfo @($a, $b) -Current $null -RunNext 'cc-P161-close-finished-sessions.md')
+    Assert-Equal 'P161:next,P160:' (($r2 | ForEach-Object { $_.Label + ':' + $_.Mark }) -join ',') 'Run next keeps working with the list'
+    Assert-Equal 0 @(Get-QueueRows -QueueInfo @() -Current $null).Count 'an empty queue is no rows'
+    Assert-Equal 'Auto: Opus, for P153' (Format-AutoModelItem -QueueInfo @($a, $b) -Current $cur) 'Auto names the running prompt''s model'
+    Assert-Equal 'Auto: Fable, for P160' (Format-AutoModelItem -QueueInfo @($a, $b) -Current $null) 'else the next queued prompt''s'
+    Assert-Equal 'Auto: Opus, for P161' (Format-AutoModelItem -QueueInfo @($b) -Current $null) 'no Model line: Opus'
+}
+
+Fact 'P153_TheStatusFileCarriesTheQueueRows' {
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('p153-status-' + [guid]::NewGuid().ToString('N') + '.json')
+    try {
+        $d = Get-ConsoleRefreshData -Config $config -FromCapture $true -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -Parts @('tiles') -Dry $true
+        $p = Write-ConsoleStatusFile -Data $d -Config $config -NetResult $null -WebResults @{} -By 'console' -Path $tmp
+        $j = [IO.File]::ReadAllText($p) | ConvertFrom-Json
+        Assert-True ($j.golem.PSObject.Properties.Name -contains 'queueRows') 'queueRows beside queue'
+        $want = @($j.golem.queue).Count + $(if ($j.golem.current) { 1 } else { 0 })
+        Assert-Equal $want @($j.golem.queueRows).Count 'one row a queued prompt, and the running one'
+        if (@($j.golem.queueRows).Count) { Assert-True ((@($j.golem.queueRows)[0].PSObject.Properties.Name -join ',') -match 'label,mark,note,grey') 'each row: label, mark, note, grey, ...' }
+    } finally { Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue }
+}
+
+$p153Then = @"
+# Shattered Legacy changelog
+
+<!--
+### Added
+- An example in the comment, never read.
+-->
+
+## 2026.10.18
+
+### Added
+- Something already shipped.
+"@
+$p153Now = @"
+# Shattered Legacy changelog
+
+<!--
+How this file works.
+-->
+
+## 2026.10.20.2
+
+### Added
+- The Achievements button opens your achievement book (cc-P165): every deed you have done.
+- The player wiki catches up with the shard: new pages for achievements, loot boxes and more.
+
+### Fixed
+- Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
+
+### Staff
+- The Golem tab shows each queued prompt's note (cc-P153).
+
+## 2026.10.20
+
+### Changed
+- Pets learn their skills faster for a seasoned owner (2026.10.20): Animal Taming above 100 adds to it.
+
+$p153Then
+"@
+
+Fact 'P153_TheSuggestedWhatsNewLine' {
+    $ship = @([pscustomobject]@{ Sha = 'a1'; Short = 'a1b2c3d'; Subject = 'CC task P124: our TazUO'; Prompt = 'P124'; Files = @('client/patches/0003.patch') })
+    $s = Get-PackageWhatsNew -ChangelogThen $p153Then -ChangelogNow $p153Now -ShipCommits $ship
+    Assert-True ($s.Line.Length -le 120) ('under 120 characters: ' + $s.Line.Length + ' ' + $s.Line)
+    Assert-True ($s.Line.StartsWith('An updated game client')) ('what the package ships comes first: ' + $s.Line)
+    Assert-True ($s.Line -match 'The Achievements button opens your achievement book') ('the Added line: ' + $s.Line)
+    Assert-True ($s.Line -notmatch 'P\d{2,}|2026\.|Golem tab|already shipped|example') ('no prompt or version numbers, staff lines, shipped versions or the comment: ' + $s.Line)
+    Assert-True ($s.Line -notmatch ':') ('each item cut to its lead phrase: ' + $s.Line)
+    Assert-True (@($s.Sources | Where-Object { $_ -match '^Staff|Golem tab' }).Count -eq 0) 'the list leaves the staff line out'
+    Assert-True (@($s.Sources | Where-Object { $_ -match '^Package: a1b2c3d' }).Count -eq 1 -and @($s.Sources | Where-Object { $_ -match '^Fixed \(2026\.10\.20\.2\): Restoring' }).Count -eq 1) ('the list it was made from: ' + ($s.Sources -join ' | '))
+    Assert-True (-not $s.Empty) 'not empty'
+    $e = Get-PackageWhatsNew -ChangelogThen $p153Now -ChangelogNow $p153Now -ShipCommits @()
+    Assert-Equal 'No player changes since the last package' $e.Line 'the empty case says so'
+    Assert-True ($e.Empty -and -not @($e.Sources).Count) 'and lists nothing'
+    $long = Get-PackageWhatsNew -ChangelogThen '' -ChangelogNow ((1..12 | ForEach-Object { "## 2026.10.$($_ + 10)`n`n### Added`n- A new thing number $_ for every player in Britannia`n" }) -join "`n") -ShipCommits @()
+    Assert-True ($long.Line.Length -le 120 -and $long.Line.EndsWith('and more')) ('many changes stay under the length: ' + $long.Line)
+    Assert-Equal $null (Get-PackageSuggestion ([pscustomobject]@{ ChangelogThen = $null; ChangelogNow = $null; Commits = @() })) 'no published commit: no suggestion'
+}
+
+Fact 'P153_ThePackageTabHasTheSuggestionAndItsList' {
+    $form = New-ConsoleForm -Config $config
+    try {
+        Assert-True ($null -ne $script:ui.PackageNotesFrom -and $script:ui.PackageNotesFrom.ReadOnly) 'a read-only list under the notes box'
+        $f = [pscustomobject]@{ ChangelogThen = $p153Then; ChangelogNow = $p153Now; Commits = @() }
+        $script:ui.PackageNotes.Text = ''
+        Update-PackageSuggestion $f
+        Assert-True ($script:ui.PackageNotes.Text.StartsWith('The Achievements button')) ('an empty box takes the suggestion: ' + $script:ui.PackageNotes.Text)
+        Assert-True ($script:ui.PackageNotesFrom.Text -match 'Added \(2026\.10\.20\.2\)') ('the list shows: ' + $script:ui.PackageNotesFrom.Text)
+        $script:ui.PackageNotes.Text = 'My own line'
+        Update-PackageSuggestion $f
+        Assert-Equal 'My own line' $script:ui.PackageNotes.Text 'an edit of Chase''s is never written over'
+    } finally { $form.Dispose() }
+}
+
+Fact 'P153_TheHeaderUsesTheConsolesOwnIconNotTheCrest' {
+    $ico = $config.WindowIconFile
+    Assert-Equal '64,48,32,16' ((Get-IcoFrameSizes ([IO.File]::ReadAllBytes($ico))) -join ',') 'the frames favicon.ico holds'
+    Assert-Equal 48 (Select-IcoFrameSize @(64, 48, 32, 16) 48) '1:1 at 100%'
+    Assert-Equal 64 (Select-IcoFrameSize @(64, 48, 32, 16) 60) 'the next frame up at 125%, never blown up'
+    Assert-Equal 64 (Select-IcoFrameSize @(64, 48, 32, 16) 96) 'the largest when none is big enough'
+    $img = Get-HeaderIconImage -Path $ico -Size 48
+    Assert-True ($img -and $img.Width -eq 48 -and $img.Height -eq 48) 'the 48 px frame, read (a PNG frame inside the .ico)'
+    $form = New-ConsoleForm -Config $config -Theme 'UO'
+    try {
+        $h = @($script:ui.Header.Controls | Where-Object { $_.Name -eq 'headerIcon' })
+        Assert-True ($h.Count -eq 1 -and $h[0].Image -and $h[0].Image.Width -eq 48 -and $h[0].Width -ge 48) 'the header shows the icon''s 48 px frame, not stretched'
+    } finally { $form.Dispose() }
+}
+
+Fact 'P153_PokeTheGolemWithAutoOrAnOverride' {
+    $act = @(Get-ConsoleActions | Where-Object { $_.Key -eq 'golem.resume' })[0]
+    Assert-Equal 'Poke the Golem' $act.Label 'the button is Poke the Golem'
+    Assert-Equal 'poke the golem' (Get-ConfirmPhrase 'golem.resume') 'its phrase'
+    Assert-Equal 'Wake the Golem' (@(Get-ConsoleActions | Where-Object { $_.Key -eq 'golem.on' })[0].Label) 'Wake the Golem stays the button that turns it on'
+    Assert-Equal 'Check now (run the watch)' (@(Get-ConsoleActions | Where-Object { $_.Key -eq 'golem.poke' })[0].Label) 'the watch button is not a second Poke'
+    $t = Get-ConsoleTooltips
+    Assert-True ($t['golem.resume'] -match 'Wake the Golem only turns the Golem on' -and $t['golem.on'] -match 'Poke the Golem does that') 'each tooltip says the difference'
+    $p = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts (New-P131Facts -WakeModel 'Auto'))
+    Assert-True ((Get-P131Window $p).EndsWith('Wake-Golem.ps1 -Model Auto')) ('Auto: the Golem picks: ' + (Get-P131Window $p))
+    Assert-True ((@($p | Where-Object { $_.Kind -eq 'confirm' })[0].Text) -match '^Auto: Opus, for P126') ('and says what it will use: ' + (@($p | Where-Object { $_.Kind -eq 'confirm' })[0].Text))
+    Assert-Equal 0 @(Test-PlanSafety $p $p125Cfg).Count 'Auto passes the safety check'
+    $o = @(Get-ActionPlan -Action 'golem.resume' -Config $p125Cfg -AutopilotFacts (New-P131Facts -WakeModel 'Fable'))
+    Assert-True ((Get-P131Window $o).EndsWith('Wake-Golem.ps1 -Model Fable') -and (@($o | Where-Object { $_.Kind -eq 'confirm' })[0].Text) -match '^Override: Fable') 'an override is passed as it is, and said'
+    $w = Get-Content -LiteralPath (Join-Path $p125Cfg.Autopilot.Root 'Wake-Golem.ps1') -Raw
+    Assert-True ($w -match "ValidateSet\('Auto'" -and $w -match '-ModelOverride') 'Wake-Golem.ps1 takes Auto and marks an override'
+    $form = New-ConsoleForm -Config $config
+    try {
+        Assert-True ($script:ui.GolemModel.SelectedIndex -eq 0 -and [string]$script:ui.GolemModel.Items[0] -like 'Auto*') 'the picker starts on Auto'
+        Assert-Equal 'Fable,Opus' ((@($script:ui.GolemModel.Items) | Select-Object -Skip 1) -join ',') 'Fable and Opus stay as overrides'
+    } finally { $form.Dispose() }
+}
+
+Fact 'P153_AGreyedPokeSaysWhy' {
+    $v = New-P125View (New-P125Status)
+    $why = Get-GolemWakeBlock -View $v -Now $p125Now
+    Assert-True ($why -match '^greyed out: the Golem is running P125') ('running: ' + $why)
+    Assert-Equal (-not $why) (Test-GolemWakeReady -View $v -Now $p125Now) 'Test-GolemWakeReady agrees'
+    $off = $v.PSObject.Copy(); $off.Enabled = $false
+    Assert-True ((Get-GolemWakeBlock -View $off -Now $p125Now) -match 'the Golem is off') 'off'
+}
+
+Fact 'P153_EveryControlOnEveryTabHasATooltip' {
+    # Fails on a control with no hover text, so a new button cannot ship without one. Captions are not counted.
+    foreach ($look in 'Plain', 'UO', 'Enhanced') {
+        $form = New-ConsoleForm -Config $config -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt') -Theme $look
+        try {
+            $miss = @(Get-ControlsWithoutTooltip $form $script:ui.ToolTip)
+            Assert-Equal 0 $miss.Count ($look + ': no tooltip on ' + (($miss | ForEach-Object { $_.Type + ' ' + $(if ($_.Name) { $_.Name } elseif ($_.Tag) { $_.Tag } else { $_.Text.Substring(0, [Math]::Min(40, $_.Text.Length)) }) }) -join '; '))
+            $pages = @($script:ui.Tabs.TabPages)
+            Assert-True ($pages.Count -gt 5 -and @($pages | Where-Object { -not $_.ToolTipText }).Count -eq 0) ($look + ': every tab has one')
+        } finally { $form.Dispose() }
+    }
+    $f = New-Object Windows.Forms.Form; $b = New-Object Windows.Forms.Button; $b.Text = 'New'; $f.Controls.Add($b)
+    $tt = New-Object Windows.Forms.ToolTip
+    Assert-Equal 1 @(Get-ControlsWithoutTooltip $f $tt).Count 'a button with none is found'
+    $tt.SetToolTip($b, 'Does a thing. Changes nothing.')
+    Assert-Equal 0 @(Get-ControlsWithoutTooltip $f $tt).Count 'and not once it has one'
+    $f.Dispose()
+}
+
+Fact 'P153_TheStepLineAndTheEstimate' {
+    $s = [pscustomobject]@{ StepsDone = 4; StepsTotal = 9; StepNow = 'Wiring the Homepage widgets'; Estimate = [pscustomobject]@{ known = $true; text = 'about 40 min left (estimate: small prompts usually take about 55 min, from 6)'; over = $false } }
+    $p = Format-StepProgress $s
+    Assert-Equal 'step 4 of 9: Wiring the Homepage widgets' $p.Text
+    Assert-Equal '[####......]' $p.Bar 'a bar'
+    Assert-Equal 44 $p.Pct
+    Assert-True ($p.Estimate -match '^about 40 min left \(estimate') 'labelled an estimate'
+    Assert-Equal '' (Format-StepProgress ([pscustomobject]@{ StepsDone = 0; StepsTotal = 0; StepNow = '' })).Text 'nothing reported: no line'
+    $st = ConvertFrom-AutopilotStatus (New-P125Status)
+    $a = Get-AutopilotActivity -Status $st -Settings ([pscustomobject]@{ StallMinutes = 45 }) -Now $p125Now
+    Assert-Equal '[##........] step 2 of 9' $a.Steps 'the tile''s line: the bar and the step (its words on the second line)'
 }
 
 $failed =@($results | Where-Object { -not $_.Passed }).Count

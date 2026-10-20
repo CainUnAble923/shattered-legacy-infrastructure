@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.10
+
+### Staff
+- The Shard Console's Golem tab lists the queue in run order with each prompt's one-line note; Build package suggests the "What's new" line from what changed for players since the published package; the header shows the console's own icon; "Poke the Golem" opens a session with the model picked for you (Auto); every control has a hover tooltip, saying why when greyed out; and the running prompt shows its step, a bar and a time estimate.
+
 ## 2026.10.20.9
 
 ### Added

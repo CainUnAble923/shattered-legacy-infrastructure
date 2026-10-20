@@ -101,7 +101,7 @@
                                    modernuo-test\account-wipe-request.json and starts it. The shard
                                    wipes before it listens (server/customizations/Misc/TestAccountWipe.cs)
                                    and refuses any request on live. Not Start fresh: the world stays.
-    D:\UO\golem\*.ps1              the Golem tab (cc-P74 as Autopilot, cc-P99): Wake the Golem
+    D:\UO\golem\*.ps1              the Golem tab (cc-P74 as Autopilot, cc-P99): Wake the Golem, Poke the Golem (cc-P153)
     (or D:\UO\cc-autopilot\*.ps1    (Start-Golem.ps1, refused with no email.json), Rest the Golem
      before the cutover)            (Stop-Golem.ps1), Golem email setup (Setup-Email.ps1, which asks
                                    the password in its own window), Send test email (Send-TestEmail.ps1)
@@ -929,7 +929,7 @@ function Get-ConfirmPhrase {
         'golem.longrun'    { 'start long run' }
         'golem.wrapup'     { 'wrap up golem' }
         'golem.stoppoint'  { 'find a stopping point' }
-        'golem.resume'     { 'wake the golem' }
+        'golem.resume'     { 'poke the golem' }   # cc-P153: Poke the Golem (it was Wake the Golem (CC session))
         'golem.nightshift' { 'night shift on' }
         'golem.integrate'  { 'merge branches' }
         'golem.mergepause'  { 'pause merging' }    # cc-P208
@@ -1231,14 +1231,14 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.wrapup';     Group = 'Golem run';   Label = 'Wrap up after this task';            Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.stoppoint';  Group = 'Golem run';   Label = 'Find a stopping point';              Mutates = $true;  RunIn = 'here' }
         # cc-P131: waking a CC session from here (the Claude Code CLI), self-wake and the night shift toggles, the sign-in check.
-        [pscustomobject]@{ Key = 'golem.resume';     Group = 'Golem wake';  Label = 'Wake the Golem (CC session)';        Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.resume';     Group = 'Golem wake';  Label = 'Poke the Golem';                     Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.autowake';   Group = 'Golem wake';  Label = 'Self-wake: on';                      Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.nightshift'; Group = 'Golem wake';  Label = 'Night shift: on';                    Mutates = $true;  RunIn = 'here' }
         # cc-P200: marathon mode (auto, on or off: the pick beside it).
         [pscustomobject]@{ Key = 'golem.marathon';   Group = 'Golem wake';  Label = 'Marathon: set';                      Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.clicheck';   Group = 'Golem wake';  Label = 'Check CLI sign-in';                  Mutates = $false; RunIn = 'here' }
         # cc-P182: a row of their own: the watch now, the picked queue row first, and the STOPPED prompt back.
-        [pscustomobject]@{ Key = 'golem.poke';       Group = 'Golem queue'; Label = 'Poke the Golem';                     Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.poke';       Group = 'Golem queue'; Label = 'Check now (run the watch)';          Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.runnext';    Group = 'Golem queue'; Label = 'Run next (picked row)';              Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.retry';      Group = 'Golem queue'; Label = 'Retry stopped prompt';               Mutates = $true;  RunIn = 'here' }
         # cc-P184: the integrator merges the other Golems' finished branches into main now (otherwise between its own prompts).
@@ -1739,6 +1739,110 @@ function Get-PackageLight {
     $o
 }
 
+# --- cc-P153: the suggested "What is new" line for Build package ----------------------------------------------------
+# From what changed for players since the published package: the Added, Changed and Fixed lines of the CHANGELOG.md
+# versions that are new since then (CHANGELOG.md at the published commit against HEAD's), and the package-shipping
+# commits (the package light's, Select-CommitsTouching $script:ShipPaths). Staff lines never; no version or prompt
+# numbers. Pure: text in, a line and its sources out.
+
+$script:WhatsNewMax = 120
+# A line's first word is lowered inside the sentence only when it is an ordinary word, never a name (Rootdeep, TazUO).
+$script:WhatsNewLowerFirst = '^(The|A|An|Your|You|Our|New|Each|Every|All|Players?|Pets?|Monsters?|Vendors?|Crafters?)\b'
+
+function ConvertFrom-ChangelogItems {
+    # Every "- " line of CHANGELOG.md with its version and list ('Added', 'Changed', 'Fixed', 'Staff'). The comment at
+    # the top is skipped, as the server's parse skips it.
+    param([string]$Text)
+    $out = New-Object 'System.Collections.Generic.List[object]'
+    $ver = ''; $list = ''; $inComment = $false
+    foreach ($raw in @(([string]$Text) -split "`r?`n")) {
+        $l = $raw.TrimEnd()
+        if ($inComment) { if ($l -match '-->') { $inComment = $false }; continue }
+        if ($l -match '^\s*<!--') { if ($l -notmatch '-->') { $inComment = $true }; continue }
+        if ($l -match '^##\s+(\S+)\s*$' -and $l -notmatch '^###') { $ver = $Matches[1]; $list = ''; continue }
+        if ($l -match '^###\s+(\w+)') { $list = $Matches[1]; continue }
+        if ($ver -and $list -and $l -match '^-\s+(.+)$') { $out.Add([pscustomobject]@{ Version = $ver; List = $list; Text = $Matches[1].Trim() }) }
+    }
+    $out.ToArray()
+}
+
+function Get-WhatsNewPhrase {
+    # A player line cut to its lead phrase (its first sentence, before a colon, semicolon or bracket; a long one at its
+    # first comma), with version and prompt numbers taken out. '' when fewer than three words are left.
+    param([string]$Text)
+    $t = [string]$Text
+    $t = $t -replace '\(?\b(?:cc-)?P\d{2,4}\b\)?', '' -replace '\b\d{4}\.\d{2}\.\d{2}(?:\.\d+)?\b', '' -replace '`', ''
+    $t = ($t -split '(?<=[a-z0-9)])\.\s+')[0]
+    $t = ($t -split '\s*[:;(]\s*|\s+-{1,2}\s+')[0]
+    if ($t.Length -gt 60 -and $t.Contains(', ')) { $t = $t.Substring(0, $t.IndexOf(', ')) }
+    $t = ($t -replace '\s{2,}', ' ').Trim().TrimEnd('.', ',')
+    # A lead of one or two words ("Leads", "Imbuing table") says nothing on its own.
+    if (@($t -split '\s+' | Where-Object { $_ }).Count -lt 3) { return '' }
+    $t
+}
+
+function Get-PackageShipPhrase {
+    # What a package-shipping commit gives players, from the paths it touched.
+    param([string[]]$Files)
+    $f = @($Files)
+    if (@($f | Where-Object { $_ -match '^client/|TAZUO_COMMIT' }).Count) { return 'an updated game client' }
+    if (@($f | Where-Object { $_ -match '(?i)launcher' }).Count) { return 'launcher updates' }
+    if (@($f | Where-Object { $_ -match '(?i)\.(png|gif|bmp|mul|uop)$|art|gump' }).Count) { return 'new art in the package' }
+    'package updates'
+}
+
+function Join-WhatsNew {
+    # "a, b and c", as many as fit in $Max; " and more" when some are left out and it still fits.
+    param([string[]]$Phrases, [int]$Max = $script:WhatsNewMax)
+    $take = New-Object 'System.Collections.Generic.List[string]'
+    $join = { param($xs) if ($xs.Count -le 1) { ($xs -join '') } else { ((@($xs)[0..($xs.Count - 2)]) -join ', ') + ' and ' + @($xs)[$xs.Count - 1] } }
+    foreach ($p in @($Phrases)) {
+        $try = @($take) + @($p)
+        if ((& $join $try).Length -le $Max) { $take.Add($p) }
+    }
+    $line = & $join @($take)
+    if ($take.Count -lt @($Phrases).Count -and $take.Count) {
+        $more = ((@($take) -join ', ') + ' and more')
+        if ($more.Length -le $Max) { $line = $more }
+    }
+    if ($line) { $line = $line.Substring(0, 1).ToUpper() + $line.Substring(1) }
+    $line
+}
+
+function Get-PackageWhatsNew {
+    # The suggestion and the list it was made from. Most important first: what the package itself ships (the client,
+    # the launcher, art), then Added, Changed and Fixed, newest version first within each.
+    param([string]$ChangelogThen, [string]$ChangelogNow, [object[]]$ShipCommits, [int]$Max = $script:WhatsNewMax)
+    $then = @{}
+    foreach ($i in @(ConvertFrom-ChangelogItems $ChangelogThen)) { $then[$i.Version] = $true }
+    $new = @(ConvertFrom-ChangelogItems $ChangelogNow | Where-Object { -not $then.ContainsKey($_.Version) -and $_.List -in @('Added', 'Changed', 'Fixed') })
+    $phrases = New-Object 'System.Collections.Generic.List[string]'
+    $sources = New-Object 'System.Collections.Generic.List[string]'
+    $seen = @{}
+    foreach ($c in @($ShipCommits)) {
+        $p = Get-PackageShipPhrase $c.Files
+        $sources.Add('Package: ' + $c.Short + ' ' + $c.Subject)
+        if (-not $seen.ContainsKey($p)) { $seen[$p] = $true; $phrases.Add($p) }
+    }
+    foreach ($list in @('Added', 'Changed', 'Fixed')) {
+        foreach ($i in @($new | Where-Object { $_.List -eq $list })) {
+            $sources.Add($list + ' (' + $i.Version + '): ' + $i.Text)
+            $p = Get-WhatsNewPhrase $i.Text
+            if ($p -and -not $seen.ContainsKey($p.ToLower())) { $seen[$p.ToLower()] = $true; $phrases.Add($(if ($p -cmatch $script:WhatsNewLowerFirst) { $p.Substring(0, 1).ToLower() + $p.Substring(1) } else { $p })) }
+        }
+    }
+    $line = $(if ($phrases.Count) { Join-WhatsNew @($phrases) $Max } else { 'No player changes since the last package' })
+    [pscustomobject]@{ Line = $line; Sources = $sources.ToArray(); Empty = (-not $phrases.Count) }
+}
+
+function Get-PackageSuggestion {
+    # cc-P153: the suggested What is new line from the package light's facts, or $null when they cannot say (no
+    # published package to compare with, or CHANGELOG.md could not be read at both commits).
+    param($Facts)
+    if (-not $Facts -or $null -eq $Facts.ChangelogNow -or $null -eq $Facts.ChangelogThen) { return $null }
+    Get-PackageWhatsNew -ChangelogThen $Facts.ChangelogThen -ChangelogNow $Facts.ChangelogNow -ShipCommits @(Select-CommitsTouching @($Facts.Commits) $script:ShipPaths)
+}
+
 function Get-LightsFromFacts {
     # cc-P155: the rebuild and package lights judged from their facts, in one place for this console's lights and the
     # status file (ConvertTo-ConsoleStatusDocument). A light with no facts is $null.
@@ -1808,7 +1912,7 @@ function Get-ConsoleTooltips {
         'package.scripts.pull'    = 'git pull --ff-only in your scripts repo: what your other PC pushed. Every client here sees it at once (they link to the repo).'
         'package.scripts.setup'   = 'Clones the scripts repo (asks where, once) and links every TazUO client on this PC to it. Safe to run again: it repairs a broken link and changes nothing else.'
         'package.scripts.key'     = 'Once per PC: puts this PC''s SSH key on Haven so it can publish scripts. Asks Haven''s password one time.'
-        'golem.on'         = 'Wakes the Golem, which hands CC the next queued prompt and commits and pushes after each DONE; in CC you can also say Golem, please work on the shard tasks. Refused without email.json, and opens in its own window.'
+        'golem.on'         = 'Wake the Golem: turns the Golem on (ENABLED), so at CC''s next stop it hands the next queued prompt and commits and pushes after each DONE. It opens no session: Poke the Golem does that. Refused without email.json; runs in its own window.'
         'golem.off'        = 'Rests the Golem now: no more hand-offs, and a prompt CC is running still finishes but is not committed (saying Golem, stop in CC rests after it is committed).'
         'golem.email'      = 'Opens Setup-Email.ps1 in its own window, which asks for the mail password there. Writes the Golem''s email settings.'
         'golem.test'       = 'Sends one test email through the Golem''s settings. Changes nothing else.'
@@ -1837,8 +1941,8 @@ function Get-ConsoleTooltips {
         'golem.endlongrun' = 'Ends a long run now: maxPerRun counts again. Runs End-LongRun.ps1 in its own window.'
         'golem.wrapup'     = 'Wrap up after this task: the running prompt goes to DONE, is committed and pushed, then the Golem rests with ENABLED kept. Asks wrap up golem, and says Cancel wrap up while set.'
         'golem.stoppoint'  = 'Find a stopping point: CC finishes its step, leaves both repos green, writes a continuation prompt and ends PAUSED, then the Golem commits and rests. Asks find a stopping point, and says Cancel stopping point while set.'
-        'golem.resume'     = 'Wake the Golem (CC session): opens a terminal window running a new Claude Code CLI session in the shard-migration folder, on the picked model, with the start phrase as its first message. Asks wake the golem. Refused while a prompt runs, when the queue is empty, when the CLI is missing or not signed in, or when the Golem is off.'
-        'golem.model'      = 'The model for the session Wake the Golem opens: Fable or Opus. Starts on what the next queued prompt''s Model line asks for.'
+        'golem.resume'     = 'Poke the Golem: opens a new Claude Code session in a terminal window on this PC, which says the start phrase, so the Golem hands it the next prompt. Wake the Golem only turns the Golem on. Asks poke the golem; when greyed out, the reason comes first.'
+        'golem.model'      = 'The model Poke the Golem uses: Auto (the default) reads the next prompt''s Model line (no line: Opus), as the self-wake does. Fable or Opus overrides it for one Poke, then it is Auto again. Changes nothing by itself.'
         'golem.autowake'   = 'Self-wake on or off (settings.json autoWake). On, the Golem opens the next CC session itself after a context rest, a model wait or the run cap, within its limits; never after a STOPPED or NEEDS YOU. Runs Set-AutoWake.ps1 in its own window.'
         'golem.nightshift' = 'Night shift on or off: a scheduled task at the start time wakes the Golem for a long run until the end time, only when the queue has prompts, nothing runs or is STOPPED, and the usage leaves room. Asks night shift on when turning it on. Runs Set-NightShift.ps1 in its own window.'
         'golem.marathon'   = 'Marathon mode: sets settings.json marathon to the pick beside it (auto, on or off), asking marathon <mode> first; auto turns it on when the week''s projection falls short of 95% with over 6 hours left, and off at 95% or at usageLimitPct. While on, every awake Golem is woken on its lane with no rest after a Large prompt, no run cap, the night shift at full and the extra PCs also in the day, but the 5-hour window still holds.'
@@ -1848,9 +1952,9 @@ function Get-ConsoleTooltips {
         'golem.pick'       = 'Which Golem the Golem buttons act for: every Golem in golems.json, the integrator first. Another Golem on this PC gets its own files and name; one on another PC, a disabled one, or any but the integrator while multiGolem is off says why. Wake''s model follows the picked Golem''s lane.'
         'golem.assignnext' = 'With Assign: the prompt also goes next for that Golem (Run next).'
         'golem.assign'     = 'Assign: the picked queued prompt gets the line **Golem:** <the picked Golem>, so only that Golem claims it (Assign-Prompt.ps1 checks its lane, areas and the prompt''s Touches first, and refuses with the reason). Tick "and run it next" to put it first for that Golem too.'
-        'golem.poke'       = 'Poke the Golem: runs its 10-minute watch now (Poke-Golem.ps1), so it looks again at once at a stall, a rest whose time has come or a pending wake. Changes nothing the watch would not.'
+        'golem.poke'       = 'Check now: runs the Golem''s 10-minute watch at once (Poke-Golem.ps1), so it looks again at a stall, a rest whose time has come or a pending wake. Changes nothing the watch would not. It opens no session (Poke the Golem does).'
         'golem.runnext'    = 'Run next: the queue row you picked is handed at the next hand-off, ahead of continuations (Set-RunNext.ps1; nothing is renamed). Asks the prompt number. With no row picked, it clears the pick.'
-        'golem.retry'      = 'Retry stopped prompt: the STOPPED prompt goes back into the queue, first, stoppedPrompt is cleared and a session is woken on its own model (Retry-Stopped.ps1). Asks the prompt number. Lit only while a prompt is STOPPED.'
+        'golem.retry'      = 'Retry stopped prompt: puts the STOPPED prompt back first in the queue, clears the stop and wakes a session on its own model (Retry-Stopped.ps1). Asks the prompt number. Greyed out while no prompt is STOPPED.'
         'golem.clicheck'   = 'Checks the Claude Code CLI: installed, and signed in (claude auth status). Run it after signing in so the Golem tab sees it. Read-only; runs Check-Cli.ps1 in its own window.'
         'golem.integrate'  = 'Merge branches now (several Golems): the integrator merges every finished Golem branch into main, one at a time, builds when the server changed, commits and pushes; a conflict or a red build becomes a fix-up prompt for that Golem. Only while nothing runs on the integrator and its trees are clean (with Shadow Iron, settings.json mergeGolem, one of its rounds now). Asks merge branches; runs Integrate.ps1 in its own window.'
         'golem.away'        = 'Away mode on, until the time in the Until box: the Golems work around the clock within the night shift''s usage rule, park a prompt that stops for a decision and go on, and email a digest each morning. Asks away on; runs Set-Away.ps1 in its own window.'
@@ -1864,8 +1968,8 @@ function Get-ConsoleTooltips {
         'headerRune'       = 'The header sigil (a drawn stand-in until art lands in scripts\console-art\header-band.png).'
         'golem.cap'        = 'The long run''s cap: a number of prompts, or all (until the queue is empty).'
         'golem.until'      = 'When the long run ends, a local date and time like 2026-10-19 06:00. Then the Golem rests; the phrase starts a new run.'
-        'golemQueue'       = 'The queue in hand-off order (continuations first): number, title, model and Kind. Click one to read its first paragraph. Read only.'
-        'golemPreview'     = 'The picked prompt''s first paragraph: who asked for it and why. Read only.'
+        'golemQueue'       = 'The queue in run order: the running prompt on top, the next one marked next, each with its Summary line (grey: no Summary line, so its first sentence), model and size. Click one for its preview. Read only.'
+        'golemPreview'     = 'The picked prompt''s title, its note and its first paragraph (who asked for it and why). Read only.'
         'golemFinished'    = 'The last 10 finished prompts: DONE, STOPPED or PAUSED, when, and the first headline of each one''s notes. Read only.'
         'golem.openprompt' = 'Opens the picked queued prompt in Notepad. The console never edits, reorders or deletes a prompt.'
         'golem.opennotes'  = 'Opens the picked finished prompt''s notes in Notepad.'
@@ -1886,7 +1990,14 @@ function Get-ConsoleTooltips {
         'snapList'         = 'The snapshots of the selected shard. Select one for Restore or Delete.'
         'commitMessage'    = 'The commit message. Blank uses the script''s default, Shard work, <date> <time>.'
         'commitForce'      = 'For one commit, skips only the wait for files changed in the last minute. Not the DONE check, SYSTEM or the phrase.'
-        'packageNotes'     = 'One line of What is new for the package. Required to build.'
+        'packageNotes'     = 'One line of What is new for the package, required to build. Filled with a suggestion made from what changed for players since the published package (the list is under it); edit or replace it. Changes nothing until Build.'
+        # cc-P153: the header's icon, the suggestion's sources and the four read-only panels.
+        'headerIcon'       = 'The Shard Console''s own icon (the window''s, from the site''s favicon). Changes nothing.'
+        'packageNotesFrom' = 'What the suggested What is new line was made from: the Added, Changed and Fixed lines new in CHANGELOG.md since the published package, and its package-shipping commits. Staff lines are left out. Read only.'
+        'statusPanel'      = 'The status of both shards, the publisher and the Golem, as last read (Refresh reads it again). Read only.'
+        'websitesPanel'    = 'Each website''s last check and what the deploy buttons above would run. Read only.'
+        'actionOutput'     = 'What each button did: its plan, its output and the result. Read only; a new action adds to the bottom.'
+        'paneOutput'       = 'The Action output pane: a running action''s output as it is written. Read only; Stop ends the action.'
         'packageList'      = 'The zips in player-package\dist, newest first. Select one to check or publish.'
         'packageRefresh'   = 'Reads player-package\dist again. Read-only.'
         'packageClient'    = 'The client folder Build package ships (our TazUO build), its sl-build.txt, and whether it matches client\patches. Refresh list reads it again. Read-only.'
@@ -3360,9 +3471,9 @@ function Test-PlanSafety {
                 $tmpT = [datetime]::MinValue
                 if ($head -and $sa[4] -ieq $ap.LongRunStart -and $sa.Count -eq 9 -and $sa[5] -ceq '-Cap' -and $sa[6] -match '^\d+$' -and $sa[7] -ceq '-Until' -and [datetime]::TryParse($sa[8], [ref]$tmpT)) { $ok = $true }
                 if ($head -and $sa.Count -eq 6 -and $sa[5] -ceq '-Cancel' -and @($ap.WrapUp, $ap.StopPoint) -icontains $sa[4]) { $ok = $true }
-                # cc-P131: Wake-Golem.ps1 only with -Model Fable|Opus|Sonnet; Set-AutoWake.ps1 with -On or -Off; Set-NightShift.ps1
+                # cc-P131: Wake-Golem.ps1 only with -Model Auto|Fable|Opus|Sonnet (cc-P153 Auto); Set-AutoWake.ps1 with -On or -Off; Set-NightShift.ps1
                 # with -Off, or -On -Start HH:mm -End HH:mm. The CLI itself (claude.exe) is never run from here: the script opens it.
-                if ($head -and $sa[4] -ieq $ap.WakeScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Model' -and $sa[6] -cin @('Fable', 'Opus', 'Sonnet')) { $ok = $true }
+                if ($head -and $sa[4] -ieq $ap.WakeScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Model' -and $sa[6] -cin @('Auto', 'Fable', 'Opus', 'Sonnet')) { $ok = $true }   # cc-P153: Auto
                 if ($head -and $sa[4] -ieq $ap.AutoWakeScript -and $sa.Count -eq 6 -and $sa[5] -cin @('-On', '-Off')) { $ok = $true }
                 # cc-P200: Set-Marathon.ps1 only with -Mode auto|on|off.
                 if ($head -and $ap.MarathonScript -and $sa[4] -ieq $ap.MarathonScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Mode' -and $sa[6] -cin @('auto', 'on', 'off')) { $ok = $true }
@@ -4243,6 +4354,9 @@ function ConvertFrom-AutopilotStatus {
         StepsDone      = (& $int $j.stepsDone)
         StepsTotal     = (& $int $j.stepsTotal)
         StepNow        = ([string]$j.stepNow).Trim()
+        # cc-P153: 'tasks' (CC's task list), 'set-step' (Set-Step.ps1) or ''; and the time estimate from the Golem's history.
+        StepsSource    = ([string]$j.stepsSource).Trim()
+        Estimate       = $j.estimate
         LastActivity   = (ConvertFrom-AutopilotTime $j.lastActivityUtc 'Utc')
         LastTool       = [string]$j.lastTool
         ToolStarted    = (ConvertFrom-AutopilotTime $j.toolStartedUtc 'Utc')
@@ -4657,6 +4771,36 @@ function Get-PromptInfo {
     }
     $o.Para = ($buf -join ' ')
     [pscustomobject]$o
+}
+
+function Get-FirstSentence {
+    # cc-P153: the first sentence of a paragraph (to its first ". ", "? " or "! "), for a prompt with no Summary line.
+    param([string]$Text)
+    $t = ([string]$Text -replace '\*\*|`', '').Trim()
+    $m = [regex]::Match($t, '^(.+?[.!?])(?:\s|$)')
+    if ($m.Success) { $m.Groups[1].Value } else { $t }
+}
+
+function Get-QueueRows {
+    # cc-P153: the Golem tab's queue, in run order: the running prompt on top (marked running), then the queue with the
+    # one that goes next marked next (Run next's pick when it is queued, else the first). Each row's note is the
+    # prompt's Summary line, or (Grey) the first sentence of its opening paragraph. Pure; status.json carries it too.
+    param([object[]]$QueueInfo, $Current, [string]$RunNext)
+    $row = { param($p, [string]$mark)
+        $sum = [string]$p.Summary
+        $grey = -not $sum
+        $note = $(if ($sum) { $sum } elseif ($p.Para) { Get-FirstSentence $p.Para } else { [string]$p.Title })
+        [pscustomobject]@{ Number = [int]$p.Number; Label = ('P' + $p.Number); Mark = $mark; Note = $note; Grey = $grey; Title = [string]$p.Title
+            Model = $(if ($p.Model) { [string]$p.Model } else { 'Opus' }); Size = (Get-PromptSize $p.Kind); Name = [string]$p.Name; Para = [string]$p.Para; Cont = [bool]$p.Cont }
+    }
+    $out = New-Object 'System.Collections.Generic.List[object]'
+    if ($Current) { $out.Add((& $row $Current 'running')) }
+    $q = @(@($QueueInfo) | Where-Object { $_ })
+    $pick = @($q | Where-Object { $RunNext -and [string]$_.Name -eq $RunNext })
+    if ($pick.Count) { $q = @($pick[0]) + @($q | Where-Object { [string]$_.Name -ne $RunNext }) }
+    $first = $true
+    foreach ($p in $q) { $out.Add((& $row $p $(if ($first) { 'next' } else { '' }))); $first = $false }
+    $out.ToArray()
 }
 
 function Get-NotesHeadline {
@@ -5080,13 +5224,28 @@ function Get-AutopilotGlance {
     [pscustomobject]$t
 }
 
+function Format-StepProgress {
+    # cc-P153: "step 4 of 9: Wiring the Homepage widgets" and a bar ("[####......]"), or '' when no steps are reported.
+    # The estimate ("about 40 min left", labelled an estimate by the Golem) rides along when known.
+    param($Status, [int]$Width = 10)
+    $o = [ordered]@{ Text = ''; Bar = ''; Pct = $null; Estimate = '' }
+    if ($Status -and $Status.StepsTotal -gt 0) {
+        $o.Text = 'step ' + $Status.StepsDone + ' of ' + $Status.StepsTotal + $(if ($Status.StepNow) { ': ' + $Status.StepNow } else { '' })
+        $o.Pct = [int][Math]::Round(100.0 * $Status.StepsDone / $Status.StepsTotal)
+        $o.Bar = Format-UsageBar -Pct $o.Pct -Width $Width   # '[####......]'
+    }
+    if ($Status -and $Status.PSObject.Properties.Name -contains 'Estimate' -and $Status.Estimate -and [bool]$Status.Estimate.known) { $o.Estimate = [string]$Status.Estimate.text }
+    [pscustomobject]$o
+}
+
 function Get-AutopilotActivity {
     # cc-P94: what CC is doing, from status.json: the step, the tool or the last activity, and whether it has
     # been quiet past stallMinutes. Shared by the tile and the tab.
     param($Status, $Settings, [datetime]$Now)
     $nowUtc = $Now.ToUniversalTime()
     $a = [ordered]@{ Steps = ''; Activity = ''; Quiet = $false; QuietFor = $null; Stale = $false; StaleFor = $null }
-    if ($Status.StepsTotal -gt 0) { $a.Steps = 'step ' + $Status.StepsDone + '/' + $Status.StepsTotal }
+    # cc-P153: the bar and "step 4 of 9"; the step's words stay on the tile's second line, as before.
+    if ($Status.StepsTotal -gt 0) { $sp = Format-StepProgress $Status; $a.Steps = $sp.Bar + ' step ' + $Status.StepsDone + ' of ' + $Status.StepsTotal }
     if ($Status.LastActivity) {
         $since = $nowUtc - $Status.LastActivity
         if ($Status.State -eq 'RUNNING' -and $Settings.StallMinutes -gt 0 -and $since.TotalMinutes -gt $Settings.StallMinutes) {
@@ -5253,13 +5412,13 @@ function Format-AutopilotPanel {
             $cc = ConvertFrom-AutopilotTime $st.Cli.checkedUtc 'Utc'
             & $add ('cli       : ' + [string]$st.Cli.path + $(if ([bool]$st.Cli.signedIn) { ', signed in' } else { ', NOT signed in: run claude auth login in a terminal' }) + $(if ($cc) { ' (checked ' + (Format-ShortAge ($Now.ToUniversalTime() - $cc)) + ' ago)' } else { '' })) $(if ([bool]$st.Cli.signedIn) { 'green' } else { 'amber' })
         } else { & $add 'cli       : not checked yet: Check CLI sign-in (or the first wake) records it' 'gray' }
+        $sp = Format-StepProgress $st 20   # cc-P153: the bar, the step and the estimate
         if ($st.StepsTotal -gt 0) {
-            $steps = [string]$st.StepsDone + ' of ' + $st.StepsTotal + ' done'
-            if ($st.StepNow) { $steps += ', now: ' + $st.StepNow }
-            & $add ('steps     : ' + $steps) 'normal'
+            & $add ('steps     : ' + $sp.Bar + ' ' + $sp.Text + $(if ($st.StepsSource -eq 'set-step') { ' (Set-Step)' } else { '' })) 'normal'
         } else {
-            & $add 'steps     : none reported (CC''s task list is empty for this prompt)' 'gray'
+            & $add 'steps     : none reported (no task list and no Set-Step yet for this prompt)' 'gray'
         }
+        if ($sp.Estimate) { & $add ('estimate  : ' + $sp.Estimate) $(if ($st.Estimate.over) { 'amber' } else { 'normal' }) }
         if ($st.LastActivity) {
             $line = 'activity  : ' + $act.Activity
             if ($st.LastTool -and -not $st.ToolStarted) { $line += ' (' + $st.LastTool + ')' }
@@ -5592,10 +5751,12 @@ function Get-AutopilotPlan {
                 'golem.resume' {
                     # cc-P131. A new Claude Code CLI session in the shard-migration folder, on the picked model, opened with the
                     # start phrase as its first message (Wake-Golem.ps1 -Model X, which runs golem.ps1 -Event SelfWake -Manual).
+                    # cc-P153: Poke the Golem. The picker's Auto (the default) passes -Model Auto: the Golem picks the model from
+                    # the prompt's Model line with the function its self-wake uses (Get-WakeTarget); Fable or Opus overrides it.
                     # Refused, each with its reason: the Golem off, the queue empty, a prompt running in a live session, the
                     # CLI missing or not signed in.
                     if (-not (& $need $ap.WakeScript 'Wake-Golem.ps1')) { break }
-                    if (-not $Facts.Enabled) { $steps.Add((New-PlanStep -Kind refuse -Text 'The Golem is off (no ENABLED file): press Wake the Golem in the Golem group first (it turns the Golem on), then this.')); break }
+                    if (-not $Facts.Enabled) { $steps.Add((New-PlanStep -Kind refuse -Text 'The Golem is off (no ENABLED file): press Wake the Golem in the Golem group first (it turns the Golem on), then Poke the Golem.')); break }
                     $q = $(if ($null -ne $Facts.QueueNames) { Get-AutopilotQueue @($Facts.QueueNames) } else { $null })
                     if (-not $q -or -not @($q.Runs).Count) { $steps.Add((New-PlanStep -Kind refuse -Text ('The queue is empty (' + $ap.Queue + '): nothing to open a session for.'))); break }
                     $carry = ''
@@ -5616,6 +5777,8 @@ function Get-AutopilotPlan {
                     if (-not $cli.Path) { $steps.Add((New-PlanStep -Kind refuse -Text 'The Claude Code CLI is not installed on this PC. In PowerShell run the official installer: irm https://claude.ai/install.ps1 | iex, then sign in (claude auth login) and press Check CLI sign-in.')); break }
                     if ($cli.SignedIn -ne $true) { $steps.Add((New-PlanStep -Kind refuse -Text ('The Claude Code CLI (' + $cli.Path + ') is not signed in' + $(if ($cli.Note -and $cli.Note -ne 'not signed in') { ' (' + $cli.Note + ')' } else { '' }) + ': open a terminal, run claude auth login and follow the browser prompts, then press Check CLI sign-in.'))); break }
                     $model = ([string]$Facts.WakeModel).Trim()
+                    $auto = (-not $model -or $model -eq 'Auto')
+                    if ($auto) { $model = '' }
                     $nextP = ''
                     $first = @(@($Facts.Extra.PromptTexts.Keys) | Where-Object { $_ -eq $q.Runs[0] })
                     $pi = Get-PromptInfo $q.Runs[0] $(if ($Facts.Extra -and $Facts.Extra.PromptTexts -and $Facts.Extra.PromptTexts.Contains($q.Runs[0])) { $Facts.Extra.PromptTexts[$q.Runs[0]] } else { $null })
@@ -5625,8 +5788,9 @@ function Get-AutopilotPlan {
                     $model = $model.Substring(0, 1).ToUpperInvariant() + $model.Substring(1).ToLowerInvariant()
                     if ($model -notin @('Fable', 'Opus', 'Sonnet')) { $steps.Add((New-PlanStep -Kind refuse -Text ("The model is Fable or Opus: '" + $Facts.WakeModel + "'."))); break }
                     $for = $(if ($running) { $running } else { $nextP })
-                    $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ($carry + 'Opens a terminal window on this PC running the Claude Code CLI in D:\UO\shard-migration: claude --model ' + $model.ToLowerInvariant() + ' --permission-mode auto --name "Golem ' + $for + '" "Golem, please work on the shard tasks." The session says the phrase itself and the Golem hands it ' + $for + '. Closing that window ends the session; a prompt mid-run is handed again at the next wake, never skipped.')))
-                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.WakeScript + @('-Model', $model)) -Text 'In a window of its own, which stays open and prints the command line it ran.'))
+                    $how = $(if ($auto) { 'Auto: ' + $model + ', for ' + $for + ' (its Model line' + $(if (-not $pi.Model) { ' is missing, so Opus' } else { '' }) + '; the Golem reads it again as it wakes). ' } else { 'Override: ' + $model + ' (the prompt''s Model line is ' + $(if ($pi.Model) { $pi.Model } else { 'missing, Opus' }) + '). ' })
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text ($how + $carry + 'Opens a terminal window on this PC running the Claude Code CLI in D:\UO\shard-migration: claude --model ' + $model.ToLowerInvariant() + ' --permission-mode auto --name "Golem ' + $for + '" "Golem, please work on the shard tasks." The session says the phrase itself and the Golem hands it ' + $for + '. Closing that window ends the session; a prompt mid-run is handed again at the next wake, never skipped.')))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.WakeScript + @('-Model', $(if ($auto) { 'Auto' } else { $model }))) -Text 'In a window of its own, which stays open and prints the command line it ran.'))
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.resume'))
                 }
                 'golem.autowake' {
@@ -5708,7 +5872,7 @@ function Get-AutopilotPlan {
                 }
                 'golem.poke' {
                     if (-not (& $need $ap.PokeScript 'Poke-Golem.ps1')) { break }
-                    $steps.Add((New-PlanStep -Kind say -Text 'Poke the Golem: its 10-minute watch runs now, so it looks again at once (a stall, a rest whose time has come, a pending wake, its finished sessions). It changes nothing the watch would not change by itself.'))
+                    $steps.Add((New-PlanStep -Kind say -Text 'Check now: the Golem''s 10-minute watch runs now, so it looks again at once (a stall, a rest whose time has come, a pending wake, its finished sessions). It changes nothing the watch would not change by itself.'))
                     $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.PokeScript) -Text 'In a window of its own, which stays open.'))
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.poke'))
                 }
@@ -8455,7 +8619,7 @@ function Get-PackageLightFacts {
     # VERSION.txt names the commit), the newest zip's commit, the shipping commits since each, the client gate, and the
     # same running-prompt, uncommitted and build-running facts as the rebuild light.
     param($Config)
-    $f = [pscustomobject]@{ SiteReachable = $false; SiteError = ''; PublishedVersion = ''; PublishedCommit = ''; NewestZipVersion = ''; NewestZipCommit = ''; Head = ''; Commits = @(); CommitsSinceZip = @(); GolemRunning = ''; Uncommitted = 0; ClientStale = ''; BuildRunning = $false; Note = '' }
+    $f = [pscustomobject]@{ SiteReachable = $false; SiteError = ''; PublishedVersion = ''; PublishedCommit = ''; NewestZipVersion = ''; NewestZipCommit = ''; Head = ''; Commits = @(); CommitsSinceZip = @(); GolemRunning = ''; Uncommitted = 0; ClientStale = ''; BuildRunning = $false; Note = ''; ChangelogThen = $null; ChangelogNow = $null }
     try {
         $pub = Get-PublishedPackageVersion $Config
         $f.SiteReachable = $pub.Reachable; $f.SiteError = $pub.Error; $f.PublishedVersion = $pub.Version
@@ -8474,6 +8638,12 @@ function Get-PackageLightFacts {
                 $log = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'log', '--format=%H|%h|%s', '--name-only', ($sha + '..HEAD'))
                 if ($log.Code -eq 0) { $f.($pair[0]) = @(ConvertFrom-GitLogWithFiles $log.Out) } else { $f.Note = 'git log failed: ' + ([string]$log.Err).Trim() }
             }
+        }
+        # cc-P153: CHANGELOG.md as the published package's commit had it and as HEAD has it (the suggested What is new).
+        if ($f.PublishedCommit -and $f.PublishedCommit -notmatch 'uncommitted') {
+            $then = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'show', ((($f.PublishedCommit -split '\s+')[0]) + ':CHANGELOG.md'))
+            $now = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'show', 'HEAD:CHANGELOG.md')
+            if ($then.Code -eq 0 -and $now.Code -eq 0) { $f.ChangelogThen = [string]$then.Out; $f.ChangelogNow = [string]$now.Out }
         }
         $st = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'status', '--porcelain', '--untracked-files=all')
         if ($st.Code -eq 0) { $f.Uncommitted = @(@($st.Out -split "`n") | Where-Object { $_.Trim() }).Count }
@@ -8606,6 +8776,18 @@ function Set-ControlTheme {
                 $x.ForeColor = ConvertTo-DrawingColor $c.FieldText
                 break
             }
+            { $_ -is [Windows.Forms.DataGridView] } {
+                # cc-P153: the Golem tab's queue grid, in the same field colors as the lists.
+                $x.BackgroundColor = ConvertTo-DrawingColor $c.FieldBack
+                $x.GridColor = ConvertTo-DrawingColor $c.FieldBack
+                $x.DefaultCellStyle.BackColor = ConvertTo-DrawingColor $c.FieldBack
+                $x.DefaultCellStyle.ForeColor = ConvertTo-DrawingColor $c.FieldText
+                $x.EnableHeadersVisualStyles = $false
+                $x.ColumnHeadersDefaultCellStyle.BackColor = ConvertTo-DrawingColor $c.FieldBack
+                $x.ColumnHeadersDefaultCellStyle.ForeColor = ConvertTo-DrawingColor $c.FieldText
+                $x.Font = $ui
+                break
+            }
             { $_ -is [Windows.Forms.GroupBox] } {
                 # cc-P87: on the stone, the group (its title and its bar of buttons and boxes) sits on the backing.
                 $x.BackColor = [Drawing.Color]::Transparent
@@ -8730,6 +8912,50 @@ function Set-ConsoleTooltips {
     }
 }
 
+function Get-ControlsWithoutTooltip {
+    # cc-P153: every control a person points at (buttons, boxes, pickers, lists, check boxes, tabs, tiles, lights and
+    # pictures) that has no hover text, as {Type, Name, Tag, Text}. The facts fail on any, so a new button cannot ship
+    # without one. Captions (plain labels) are text already and are not counted; a tile counts once, as its panel.
+    param($Root, $ToolTip)
+    $out = New-Object 'System.Collections.Generic.List[object]'
+    $stack = New-Object System.Collections.Stack
+    $stack.Push($Root)
+    while ($stack.Count) {
+        $x = $stack.Pop()
+        $need = ($x -is [Windows.Forms.ButtonBase] -or $x -is [Windows.Forms.TextBoxBase] -or $x -is [Windows.Forms.ComboBox] -or $x -is [Windows.Forms.ListView] -or
+            $x -is [Windows.Forms.DataGridView] -or $x -is [Windows.Forms.NumericUpDown] -or $x -is [Windows.Forms.TrackBar] -or ($x -is [Windows.Forms.PictureBox] -and $x.Name) -or ($x -is [Windows.Forms.Panel] -and $x.Tag -eq 'tile'))
+        if ($x -is [Windows.Forms.TabPage]) { if (-not $x.ToolTipText) { $out.Add([pscustomobject]@{ Type = 'TabPage'; Name = $x.Name; Tag = ''; Text = $x.Text }) } }
+        elseif ($need -and -not $ToolTip.GetToolTip($x)) { $out.Add([pscustomobject]@{ Type = $x.GetType().Name; Name = $x.Name; Tag = $(if ($x.Tag -is [string]) { $x.Tag } else { '' }); Text = ([string]$x.Text -replace '\s+', ' ') }) }
+        # A DataGridView's editing box, a ComboBox's or a NumericUpDown's inner parts are one control to a person.
+        if ($x -is [Windows.Forms.DataGridView] -or $x -is [Windows.Forms.NumericUpDown] -or $x -is [Windows.Forms.ComboBox]) { continue }
+        foreach ($k in $x.Controls) { $stack.Push($k) }
+    }
+    $out.ToArray()
+}
+
+function Enable-DisabledTooltips {
+    # cc-P153: WinForms shows no tooltip over a greyed-out control, so the reason it is greyed ("greyed out: the Golem is
+    # running P133") would never be seen. Each container shows its disabled children's tooltips itself, on hover.
+    param($Root, $ToolTip)
+    $stack = New-Object System.Collections.Stack
+    $stack.Push($Root)
+    while ($stack.Count) {
+        $x = $stack.Pop()
+        if ($x -is [Windows.Forms.Panel] -or $x -is [Windows.Forms.TabPage] -or $x -is [Windows.Forms.GroupBox] -or $x -is [Windows.Forms.Form] -or $x -is [Windows.Forms.SplitterPanel]) {
+            $tt = $ToolTip
+            $x.Add_MouseMove({
+                param($s, $e)
+                $c = $s.GetChildAtPoint($e.Location)
+                if ($c -and -not $c.Enabled -and $tt.GetToolTip($c)) {
+                    if ($script:DisabledTipFor -ne $c) { $script:DisabledTipFor = $c; $tt.Show($tt.GetToolTip($c), $s, $c.Left, $c.Bottom + 2, 8000) }
+                } elseif ($script:DisabledTipFor -and $script:DisabledTipFor.Parent -eq $s) { $tt.Hide($s); $script:DisabledTipFor = $null }
+            }.GetNewClosure())
+            $x.Add_MouseLeave({ param($s, $e) if ($script:DisabledTipFor -and $script:DisabledTipFor.Parent -eq $s) { $tt.Hide($s); $script:DisabledTipFor = $null } }.GetNewClosure())
+        }
+        foreach ($k in $x.Controls) { $stack.Push($k) }
+    }
+}
+
 function Format-ArgumentList {
     # A plan step's arguments as one Windows command line (a space or quote is quoted).
     param([string[]]$Arguments)
@@ -8806,6 +9032,7 @@ function New-OutputPane {
     $split.Orientation = 'Vertical'
     $split.Panel1.Controls.Add($OutBox)
     $box = New-Object Windows.Forms.RichTextBox
+    $box.Name = 'paneOutput'   # cc-P153: for its tooltip
     $box.Dock = 'Fill'
     $box.ReadOnly = $true
     $box.BackColor = ConvertTo-DrawingColor $script:theme.LineBack
@@ -9072,6 +9299,65 @@ function New-LightLabel {
     [pscustomobject]@{ Row = $row; Picture = $pic; Label = $lbl }
 }
 
+function Get-IcoFrameSizes {
+    # cc-P153. Pure: the frame sizes an .ico holds (its directory: a count at byte 4, then 16 bytes a frame, width first,
+    # 0 meaning 256), largest first.
+    param([byte[]]$Bytes)
+    if (-not $Bytes -or $Bytes.Length -lt 6 -or $Bytes[2] -ne 1 -or $Bytes[3] -ne 0) { return @() }
+    $n = [int]$Bytes[4] + 256 * [int]$Bytes[5]
+    @(for ($i = 0; $i -lt $n -and (6 + 16 * $i) -lt $Bytes.Length; $i++) { $w = [int]$Bytes[6 + 16 * $i]; if ($w -eq 0) { 256 } else { $w } }) | Sort-Object -Unique -Descending
+}
+
+function Select-IcoFrameSize {
+    # cc-P153. Pure: the smallest frame at or above $Want (drawn 1:1 or scaled down, never blown up), else the largest.
+    param([int[]]$Sizes, [int]$Want)
+    $up = @(@($Sizes) | Where-Object { $_ -ge $Want } | Sort-Object)
+    if ($up.Count) { return $up[0] }
+    (@($Sizes) | Sort-Object -Descending | Select-Object -First 1)
+}
+
+function Get-HeaderIconImage {
+    # cc-P153: the header's icon: the window's .ico at the frame Select-IcoFrameSize picks, as a bitmap; $null if unreadable.
+    param([string]$Path, [int]$Size = 48)
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $sz = Select-IcoFrameSize @(Get-IcoFrameSizes $bytes) $Size
+    if (-not $sz) { return $null }
+    # This favicon's frames are PNG inside the .ico, which Icon.ToBitmap cannot read on .NET Framework ("Requested range
+    # extends past the end of the array"): a PNG frame is read as the PNG it is; an old-style (BMP) frame through Icon.
+    $n = [int]$bytes[4] + 256 * [int]$bytes[5]
+    for ($i = 0; $i -lt $n; $i++) {
+        $e = 6 + 16 * $i
+        $w = [int]$bytes[$e]; if ($w -eq 0) { $w = 256 }
+        if ($w -ne $sz) { continue }
+        $len = [BitConverter]::ToInt32($bytes, $e + 8); $off = [BitConverter]::ToInt32($bytes, $e + 12)
+        if ($off + $len -gt $bytes.Length) { return $null }
+        if ($bytes[$off] -eq 0x89 -and $bytes[$off + 1] -eq 0x50) { return [Drawing.Image]::FromStream((New-Object IO.MemoryStream($bytes, $off, $len))) }
+        $ico = New-Object Drawing.Icon($Path, $sz, $sz)
+        try { return $ico.ToBitmap() } finally { $ico.Dispose() }
+    }
+    $null
+}
+
+function Update-PackageSuggestion {
+    # cc-P153: puts the suggested What is new line in the notes box when it is empty or still holds the last suggestion
+    # (an edit of Chase's is never written over), and the list it was made from under the box.
+    param($Facts)
+    $box = $script:ui.PackageNotes
+    if (-not $box) { return }
+    $sg = Get-PackageSuggestion $Facts
+    $script:ui.PackageSuggestion = $sg
+    if ($sg) {
+        if (-not $box.Focused -and (-not $box.Text.Trim() -or $box.Text -eq [string]$script:ui.PackageSuggested)) { $box.Text = $sg.Line; $script:ui.PackageSuggested = $sg.Line }
+    }
+    $from = $script:ui.PackageNotesFrom
+    if ($from) {
+        $from.Text = $(if (-not $sg) { 'No suggestion: the published package''s commit is not known, so there is nothing to compare with (see the package light).' }
+            elseif (-not @($sg.Sources).Count) { 'Suggested from: nothing player-facing since the published package (no new Added, Changed or Fixed lines in CHANGELOG.md, no package-shipping commit).' }
+            else { 'Suggested from (since the published package; staff lines left out):' + "`r`n" + ((@($sg.Sources) | ForEach-Object { '- ' + $_ }) -join "`r`n") })
+    }
+}
+
 function Set-LightLabel {
     # The words and the crystal of a light, in the theme's state text color (the words carry the meaning; the color
     # and the crystal only repeat it).
@@ -9085,7 +9371,9 @@ function Set-LightLabel {
     $k = $Judged.Color; if ($k -notin @('green', 'amber', 'red')) { $k = 'grey' }
     $img = Get-ArtOrFallback ('crystal-' + $k) 22
     if ($Light.Picture.Image -ne $img) { $Light.Picture.Image = $img }
-    if ($script:ui.ToolTip) { $script:ui.ToolTip.SetToolTip($Light.Label, $Judged.Hover); $script:ui.ToolTip.SetToolTip($Light.Picture, $Judged.Hover) }
+    # cc-P153: a light not judged yet (no hover) keeps its own tooltip, so it never goes blank.
+    $hv = $(if ($Judged.Hover) { $Judged.Hover } else { (Get-ConsoleTooltips)[[string]$Light.Picture.Name] })
+    if ($script:ui.ToolTip) { $script:ui.ToolTip.SetToolTip($Light.Label, $hv); $script:ui.ToolTip.SetToolTip($Light.Picture, $hv) }
 }
 
 function Update-Lights {
@@ -9117,6 +9405,7 @@ function Update-Lights {
             $pk = [pscustomobject]@{ Color = 'grey'; Word = 'UNKNOWN'; Detail = 'not judged under DRY RUN (the status is a capture file)'; Commits = @(); Hover = '' }
         }
         Set-LightLabel $script:ui.PackageLight $pk 'Package: '
+        if ($pf) { Update-PackageSuggestion $pf }
         $script:lights = [pscustomobject]@{ Rebuild = $rb; Package = $pk; RebuildFacts = $rf; PackageFacts = $pf }
         if ($script:cfg.LightsFile) {
             $dir = Split-Path -Parent $script:cfg.LightsFile
@@ -9363,22 +9652,47 @@ function Show-AutopilotView {
     $A
 }
 
-function Test-GolemWakeReady {
-    # cc-P131. Pure: does Wake the Golem (CC session) light? The Golem is on, the queue has a prompt, nothing runs in a live
-    # session (a prompt whose session has gone quiet past stallMinutes counts as ready), nothing is STOPPED, and any
-    # rest's readyAt has passed. The plan re-checks all of it, and the CLI, at the click.
+function Get-GolemWakeBlock {
+    # cc-P153. Pure: why Poke the Golem is greyed out, in plain words for its tooltip, or '' when it lights. The rules
+    # are cc-P131's: the Golem on, a prompt queued, nothing running in a live session (a session quiet past stallMinutes
+    # counts as gone), nothing STOPPED, and any rest's readyAt passed. The plan re-checks all of it, and the CLI, at the click.
     param($View, [datetime]$Now)
-    if (-not $View -or $View.Kind -ne 'golem' -or -not $View.Enabled) { return $false }
-    if (-not $View.Queue -or -not @($View.Queue.Runs).Count) { return $false }
+    if (-not $View -or $View.Kind -ne 'golem') { return 'greyed out: the Golem is not set up on this PC' }
+    if (-not $View.Enabled) { return 'greyed out: the Golem is off (press Wake the Golem first)' }
+    if (-not $View.Queue -or -not @($View.Queue.Runs).Count) { return 'greyed out: the queue is empty' }
     $s = $View.Status
-    if (-not $s) { return $true }
-    if ($s.State -eq 'STOPPED') { return $false }
+    if (-not $s) { return '' }
+    if ($s.State -eq 'STOPPED') { return ('greyed out: ' + $(if ($s.StoppedPrompt) { $s.StoppedPrompt } else { 'a prompt' }) + ' is STOPPED and needs you (Retry stopped prompt, or answer it)') }
     if ($s.State -in @('RUNNING', 'NEEDS YOU') -and $s.Current) {
         $act = Get-AutopilotActivity -Status $s -Settings $View.Settings -Now $Now
-        if (-not ($act.Quiet -or $act.Stale)) { return $false }
+        if (-not ($act.Quiet -or $act.Stale)) { return ('greyed out: the Golem is running ' + $s.Current + ' in a live session') }
     }
-    if ($s.ReadyAt -and $s.ReadyAt -gt $Now) { return $false }
-    $true
+    if ($s.ReadyAt -and $s.ReadyAt -gt $Now) { return ('greyed out: the Golem is resting until ' + $s.ReadyAt.ToString('HH:mm', $script:Invariant) + $(if ($s.RestReason) { ' (' + $s.RestReason + ')' } else { '' })) }
+    ''
+}
+
+function Test-GolemWakeReady {
+    # cc-P131. Pure: does Poke the Golem (cc-P153; it was Wake the Golem (CC session)) light? Get-GolemWakeBlock says why not.
+    param($View, [datetime]$Now)
+    -not (Get-GolemWakeBlock -View $View -Now $Now)
+}
+
+function Find-HandedPromptPath {
+    # cc-P153: where a running prompt's file waits for its commit: the prompts folder, or claimed\<Golem>\ (several Golems).
+    param([string]$PromptDir, [string]$Name)
+    if (-not $PromptDir -or -not $Name) { return '' }
+    $p = Join-Path $PromptDir $Name
+    if (Test-Path -LiteralPath $p) { return $p }
+    $c = @(Get-ChildItem -LiteralPath (Join-Path $PromptDir 'claimed') -Recurse -Filter $Name -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($c.Count) { return $c[0].FullName }
+    $p
+}
+
+function Get-GolemQueuePick {
+    # cc-P153: the queue grid's picked row ({Label 'P153', Path, Mark, Preview}), or $null.
+    $q = $script:ui.GolemQueueList
+    if (-not $q -or -not $q.SelectedRows -or $q.SelectedRows.Count -lt 1) { return $null }
+    $q.SelectedRows[0].Tag
 }
 
 function Update-GolemRunControls {
@@ -9391,7 +9705,8 @@ function Update-GolemRunControls {
     }
     # cc-P182: Retry lights only while a prompt is STOPPED, and names it.
     foreach ($b in @($script:ui.GolemQueueButtons)) {
-        if ($b.Tag -eq 'golem.retry') { $sp = $(if ($st) { [string]$st.StoppedPrompt } else { '' }); $b.Enabled = [bool]$sp; $b.Text = $(if ($sp) { 'Retry stopped prompt (' + $sp + ')' } else { 'Retry stopped prompt' }) }
+        if ($b.Tag -eq 'golem.retry') { $sp = $(if ($st) { [string]$st.StoppedPrompt } else { '' }); $b.Enabled = [bool]$sp
+            if ($script:ui.ToolTip) { $script:ui.ToolTip.SetToolTip($b, $(if ($sp) { '' } else { 'Greyed out: no prompt is STOPPED. ' }) + (Get-ConsoleTooltips)['golem.retry']) }; $b.Text = $(if ($sp) { 'Retry stopped prompt (' + $sp + ')' } else { 'Retry stopped prompt' }) }
         if ($b.Tag -eq 'golem.runnext') { $b.Text = $(if ($View.PSObject.Properties.Name -contains 'RunNext' -and $View.RunNext) { 'Run next (picked: ' + ([regex]::Match([string]$View.RunNext, '^cc-(P\d+)-').Groups[1].Value) + ')' } else { 'Run next (picked row)' }) }
     }
     # cc-P131: the toggles say what they would do next; Wake the Golem lights when the Golem is ready for a new session.
@@ -9401,32 +9716,43 @@ function Update-GolemRunControls {
         if ($b.Tag -eq 'golem.nightshift') { $b.Text = $(if ($gs -and -not $gs.NightShiftEnabled) { 'Night shift: off (turn on)' } else { 'Night shift: on (turn off)' }) }
         # cc-P200: the mode and whether marathon is on now; Set writes the pick beside it.
         if ($b.Tag -eq 'golem.marathon') { $mon = ($View.Status -and $View.Status.Marathon -and [bool]$View.Status.Marathon.on); $b.Text = 'Marathon: ' + $(if ($gs) { $gs.Marathon } else { 'auto' }) + $(if ($mon) { ', ON' } else { '' }) + ' (set)' }
-        if ($b.Tag -eq 'golem.resume') { $b.Enabled = (Test-GolemWakeReady -View $View -Now ([datetime]::Now)) }
+        if ($b.Tag -eq 'golem.resume') {
+            # cc-P153: the tooltip says why it is greyed (Enable-DisabledTooltips shows it on hover).
+            $why = Get-GolemWakeBlock -View $View -Now ([datetime]::Now)
+            $b.Enabled = (-not $why)
+            if ($script:ui.ToolTip) { $script:ui.ToolTip.SetToolTip($b, $(if ($why) { $why.Substring(0, 1).ToUpper() + $why.Substring(1) + '. ' } else { '' }) + (Get-ConsoleTooltips)['golem.resume']) }
+        }
     }
-    if ($script:ui.GolemModel -and $script:ui.GolemModelAuto) {
-        $want = ''
-        $qi = @($View.QueueInfo)
-        if ($qi.Count -and $qi[0].Model) { $want = [string]$qi[0].Model }
-        if ($want -and $script:ui.GolemModel.Items.Contains($want) -and [string]$script:ui.GolemModel.SelectedItem -ne $want) { $script:ui.GolemModel.SelectedItem = $want }
+    if ($script:ui.GolemModel -and $script:ui.GolemModel.Items.Count) {
+        # cc-P153: the Auto item says what it will use.
+        $at = Format-AutoModelItem -QueueInfo @($View.QueueInfo) -Current $View.CurrentPrompt -RunNext $(if ($View.PSObject.Properties.Name -contains 'RunNext') { [string]$View.RunNext } else { '' })
+        if ([string]$script:ui.GolemModel.Items[0] -ne $at) { $si = $script:ui.GolemModel.SelectedIndex; $script:ui.GolemModel.Items[0] = $at; $script:ui.GolemModel.SelectedIndex = $si }
     }
     if ($gs -and $script:ui.NightStart -and -not $script:ui.NightStart.Focused -and $gs.NightShiftStart -and $script:ui.NightStart.Text -eq '22:30') { $script:ui.NightStart.Text = $gs.NightShiftStart }
     if ($gs -and $script:ui.MarathonPick -and -not $script:ui.MarathonPick.Focused -and -not $script:ui.MarathonPicked -and [string]$script:ui.MarathonPick.SelectedItem -ne $gs.Marathon) { $script:ui.MarathonPick.SelectedItem = $gs.Marathon }
     if ($gs -and $script:ui.NightEnd -and -not $script:ui.NightEnd.Focused -and $gs.NightShiftEnd -and $script:ui.NightEnd.Text -eq '06:30') { $script:ui.NightEnd.Text = $gs.NightShiftEnd }
     $q = $script:ui.GolemQueueList
     if ($q) {
-        $sel = $(if ($q.SelectedItems.Count) { $q.SelectedItems[0].Text } else { '' })
-        $q.BeginUpdate(); $q.Items.Clear()
-        foreach ($pi in @($View.QueueInfo)) {
-            $it = New-Object Windows.Forms.ListViewItem(('P' + $pi.Number))
-            [void]$it.SubItems.Add($(if ($pi.Cont) { '(continuation) ' } else { '' }) + $pi.Title)
-            [void]$it.SubItems.Add($pi.Model)
-            [void]$it.SubItems.Add($pi.Kind)
-            $it.Tag = (Join-Path $script:cfg.Autopilot.Queue $pi.Name)
-            $it.ToolTipText = $(if ($pi.Para) { $pi.Para } else { '(no first paragraph: ' + $pi.Name + ')' })
-            [void]$q.Items.Add($it)
-            if ($it.Text -eq $sel) { $it.Selected = $true }
+        # cc-P153: Get-QueueRows' rows; the picked row stays picked across refreshes.
+        $sel = $(if (Get-GolemQueuePick) { (Get-GolemQueuePick).Label } else { '' })
+        $rows = @(Get-QueueRows -QueueInfo @($View.QueueInfo) -Current $View.CurrentPrompt -RunNext $(if ($View.PSObject.Properties.Name -contains 'RunNext') { [string]$View.RunNext } else { '' }))
+        $fore = $q.DefaultCellStyle.ForeColor; $back = $q.DefaultCellStyle.BackColor
+        $grey = [Drawing.Color]::FromArgb([int](($fore.R * 3 + $back.R * 2) / 5), [int](($fore.G * 3 + $back.G * 2) / 5), [int](($fore.B * 3 + $back.B * 2) / 5))
+        $q.SuspendLayout(); $q.Rows.Clear()
+        foreach ($r in $rows) {
+            $note = $(if ($r.Cont) { '(continuation) ' } else { '' }) + $r.Note
+            $i = $q.Rows.Add($r.Label, $r.Mark, $note, $r.Model, $r.Size)
+            $row = $q.Rows[$i]
+            $row.Tag = [pscustomobject]@{ Label = $r.Label; Path = $(if ($r.Mark -eq 'running') { Find-HandedPromptPath $script:cfg.Autopilot.PromptDir $r.Name } else { (Join-Path $script:cfg.Autopilot.Queue $r.Name) }); Mark = $r.Mark
+                Preview = ($r.Label + ': ' + $r.Title + "`r`n" + $(if ($r.Grey) { '(no Summary line; its first sentence)' } else { $r.Note }) + "`r`n`r`n" + $(if ($r.Para) { $r.Para } else { '(no first paragraph: ' + $r.Name + ')' })) }
+            $tip = $r.Label + ' (' + $r.Model + $(if ($r.Size) { ', ' + $r.Size } else { '' }) + ')' + $(if ($r.Mark) { ', ' + $r.Mark } else { '' }) + ': ' + $r.Note
+            foreach ($cell in $row.Cells) { $cell.ToolTipText = $tip }
+            if ($r.Grey) { $row.Cells['note'].Style.ForeColor = $grey }
+            if ($r.Mark -eq 'running') { $row.DefaultCellStyle.Font = New-Object Drawing.Font($q.Font, [Drawing.FontStyle]::Bold) }
         }
-        $q.EndUpdate()
+        $q.ClearSelection()
+        foreach ($row in $q.Rows) { if ($row.Tag -and $row.Tag.Label -eq $sel) { $row.Selected = $true } }
+        $q.ResumeLayout()
     }
     $f = $script:ui.GolemFinishedList
     if ($f) {
@@ -9491,7 +9817,9 @@ function ConvertTo-ConsoleStatusDocument {
         $cur = $null
         if ($v.CurrentPrompt) {
             $cur = & $prompt $v.CurrentPrompt
-            if ($s) { $cur.startedAt = (& $iso $s.StartedAt); $cur.stepsDone = $s.StepsDone; $cur.stepsTotal = $s.StepsTotal; $cur.stepNow = $s.StepNow; $cur.lastActivity = (& $iso $s.LastActivity) }
+            if ($s) { $cur.startedAt = (& $iso $s.StartedAt); $cur.stepsDone = $s.StepsDone; $cur.stepsTotal = $s.StepsTotal; $cur.stepNow = $s.StepNow; $cur.lastActivity = (& $iso $s.LastActivity)
+                # cc-P153: the step line, its percent and the estimate, for the web console (P155).
+                $spx = Format-StepProgress $s; $cur.stepText = $spx.Text; $cur.stepPct = $spx.Pct; $cur.stepsSource = $(if ($s.PSObject.Properties.Name -contains 'StepsSource') { [string]$s.StepsSource } else { '' }); $cur.estimate = $spx.Estimate }
         }
         # cc-P160: the bars (with the pace marker, a percent) in usage; the plan lines (pace warning, last read, resets and
         # credits) in usageNotes.
@@ -9508,6 +9836,8 @@ function ConvertTo-ConsoleStatusDocument {
             stoppedPrompt = $(if ($s) { [string]$s.StoppedPrompt } else { '' }); winding = $(if ($s) { [string]$s.Winding } else { '' })
             current = $cur
             queue = @(@($v.QueueInfo) | ForEach-Object { & $prompt $_ }); runNext = $(if ($v.PSObject.Properties.Name -contains 'RunNext') { [string]$v.RunNext } else { '' })
+            # cc-P153: the Golem tab's list, in run order with its notes (running on top, next marked), for P143 and P148.
+            queueRows = @(Get-QueueRows -QueueInfo @($v.QueueInfo) -Current $v.CurrentPrompt -RunNext $(if ($v.PSObject.Properties.Name -contains 'RunNext') { [string]$v.RunNext } else { '' }) | ForEach-Object { [ordered]@{ number = $_.Number; label = $_.Label; mark = $_.Mark; note = $_.Note; grey = $_.Grey; title = $_.Title; model = $_.Model; size = $_.Size; name = $_.Name; cont = $_.Cont } })
             finished = @(@($v.Finished) | ForEach-Object { [ordered]@{ number = [int]$_.Number; result = [string]$_.Result; time = (& $iso $_.Time); title = [string]$_.Title; headline = [string]$_.Headline } })
             autoWake = [bool]$v.Settings.AutoWake
             nightShift = [ordered]@{ enabled = [bool]$v.Settings.NightShiftEnabled; start = [string]$v.Settings.NightShiftStart; end = [string]$v.Settings.NightShiftEnd }
@@ -10635,25 +10965,29 @@ function Invoke-ConsoleButton {
             if ($script:ui.LongRunCap) { $apFacts | Add-Member -NotePropertyName LongRunCap -NotePropertyValue $script:ui.LongRunCap.Text -Force }
             if ($script:ui.LongRunUntil) { $apFacts | Add-Member -NotePropertyName LongRunUntil -NotePropertyValue $script:ui.LongRunUntil.Text -Force }
             $openFile = ''
-            if ($ActionKey -eq 'golem.openprompt' -and $script:ui.GolemQueueList -and $script:ui.GolemQueueList.SelectedItems.Count) { $openFile = [string]$script:ui.GolemQueueList.SelectedItems[0].Tag }
+            if ($ActionKey -eq 'golem.openprompt' -and (Get-GolemQueuePick)) { $openFile = [string](Get-GolemQueuePick).Path }
             if ($ActionKey -eq 'golem.opennotes' -and $script:ui.GolemFinishedList -and $script:ui.GolemFinishedList.SelectedItems.Count) { $openFile = [string]$script:ui.GolemFinishedList.SelectedItems[0].Tag }
             $apFacts | Add-Member -NotePropertyName OpenFile -NotePropertyValue $openFile -Force
             # cc-P182: Run next takes the picked queue row; with none picked it clears the pick.
             if ($ActionKey -eq 'golem.runnext') {
                 $rp = 'cancel'
-                if ($script:ui.GolemQueueList -and $script:ui.GolemQueueList.SelectedItems.Count) { $rp = [string]$script:ui.GolemQueueList.SelectedItems[0].Text }
+                if (Get-GolemQueuePick) { $rp = [string](Get-GolemQueuePick).Label }
                 $apFacts | Add-Member -NotePropertyName RunNextPrompt -NotePropertyValue $rp -Force
             }
             # cc-P187: Assign takes the picked queue row, the picked Golem and the "and run it next" tick.
             if ($ActionKey -eq 'golem.assign') {
                 $rp = ''
-                if ($script:ui.GolemQueueList -and $script:ui.GolemQueueList.SelectedItems.Count) { $rp = [string]$script:ui.GolemQueueList.SelectedItems[0].Text }
+                if (Get-GolemQueuePick) { $rp = [string](Get-GolemQueuePick).Label }
                 $apFacts | Add-Member -NotePropertyName RunNextPrompt -NotePropertyValue $rp -Force
                 $apFacts | Add-Member -NotePropertyName AssignGolem -NotePropertyValue (Get-PickedGolem) -Force
                 $apFacts | Add-Member -NotePropertyName AssignRunNext -NotePropertyValue $(if ($script:ui.AssignNext -and $script:ui.AssignNext.Checked) { 'yes' } else { 'no' }) -Force
             }
             # cc-P131: the picked model, the night shift's two times, and (for the wake only) a fresh sign-in check.
-            if ($script:ui.GolemModel) { $apFacts | Add-Member -NotePropertyName WakeModel -NotePropertyValue ([string]$script:ui.GolemModel.SelectedItem) -Force }
+            if ($script:ui.GolemModel) {
+                # cc-P153: Auto (index 0) or the override; after a Poke the picker is back on Auto.
+                $apFacts | Add-Member -NotePropertyName WakeModel -NotePropertyValue $(if ($script:ui.GolemModel.SelectedIndex -le 0) { 'Auto' } else { [string]$script:ui.GolemModel.SelectedItem }) -Force
+                if ($ActionKey -eq 'golem.resume') { $script:ui.GolemModel.SelectedIndex = 0 }
+            }
             if ($script:ui.NightStart) { $apFacts | Add-Member -NotePropertyName NightStart -NotePropertyValue $script:ui.NightStart.Text -Force }
             if ($script:ui.NightEnd) { $apFacts | Add-Member -NotePropertyName NightEnd -NotePropertyValue $script:ui.NightEnd.Text -Force }
             if ($script:ui.MarathonPick) { $apFacts | Add-Member -NotePropertyName MarathonMode -NotePropertyValue ([string]$script:ui.MarathonPick.SelectedItem) -Force; $script:ui.MarathonPicked = $false }   # cc-P200
@@ -10793,13 +11127,19 @@ function Get-PickedGolem {
 }
 
 function Update-GolemPickModel {
-    # cc-P187: Wake's model follows the picked Golem's lane (Bronze: Fable) until a model is picked by hand; the
-    # integrator's follows the next prompt's Model line, as before.
+    # cc-P187: Wake's model followed the picked Golem's lane (Bronze: Fable). cc-P153: Poke's picker goes back to Auto for
+    # any Golem: the Golem's own Get-WakeTarget picks that Golem's next prompt (its lane) and reads its Model line.
     if (-not $script:ui.GolemPick -or -not $script:ui.GolemModel -or $script:ui.GolemPick.SelectedIndex -lt 0) { return }
-    $r = @($script:ui.GolemPickRows)[$script:ui.GolemPick.SelectedIndex]
-    if (-not $r) { return }
-    if ($r.Integrator) { $script:ui.GolemModelAuto = $true; return }
-    if ($r.Lane -in @('Fable', 'Opus')) { $script:ui.GolemModel.SelectedItem = $r.Lane; $script:ui.GolemModelAuto = $false }
+    $script:ui.GolemModel.SelectedIndex = 0
+}
+
+function Format-AutoModelItem {
+    # cc-P153. Pure: "Auto: Opus, for P134": the model Poke the Golem will use, from the prompt that goes next (the
+    # running one when a prompt runs, else Run next's pick, else the first queued). No Model line means Opus.
+    param([object[]]$QueueInfo, $Current, [string]$RunNext)
+    $rows = @(Get-QueueRows -QueueInfo $QueueInfo -Current $Current -RunNext $RunNext)
+    if (-not $rows.Count) { return 'Auto (best for the next prompt)' }
+    'Auto: ' + $rows[0].Model + ', for ' + $rows[0].Label
 }
 
 function New-ConsoleButton {
@@ -11327,6 +11667,7 @@ function New-ConsoleForm {
     # cc-P87, UO only: the bar wraps onto a second line, and grows to show it, when the window is too narrow for it.
     if ($script:theme.Chrome) { $bar.AutoSize = $true; $bar.AutoSizeMode = 'GrowAndShrink'; $bar.MinimumSize = New-Object Drawing.Size(0, 34) }
     $status = New-Object Windows.Forms.RichTextBox
+    $status.Name = 'statusPanel'   # cc-P153: for its tooltip
     $status.Dock = 'Fill'
     $status.ReadOnly = $true
     $status.BackColor = [Drawing.Color]::White
@@ -11687,12 +12028,28 @@ function New-ConsoleForm {
     $buildBtn.Tag = 'package.build'
     $buildBtn.Width = 160
     $buildBtn.Height = 30
-    $buildBtn.Add_Click({ Invoke-ConsoleButton -ActionKey 'package.build' -PackageNotes $script:ui.PackageNotes.Text.Trim() })
+    $buildBtn.Add_Click({
+        # cc-P153: an empty box takes the suggestion first, for Chase to check before he presses again.
+        if (-not $script:ui.PackageNotes.Text.Trim() -and $script:ui.PackageSuggestion) {
+            $script:ui.PackageNotes.Text = $script:ui.PackageSuggestion.Line; $script:ui.PackageSuggested = $script:ui.PackageSuggestion.Line
+            Write-ConsoleLine 'Build package: the notes box was empty, so it now holds the suggested line (the list it came from is under it). Edit it if you like, then press Build package again.' 'amber'
+            return
+        }
+        Invoke-ConsoleButton -ActionKey 'package.build' -PackageNotes $script:ui.PackageNotes.Text.Trim()
+    })
     $pkgTop.Controls.AddRange(@($notesLabel, $notesBox, $buildBtn))
     # cc-P132: the package light beside Build package.
     $script:ui.PackageLight = New-LightLabel 'package.light'
     $pkgTop.Controls.Add($script:ui.PackageLight.Row)
     $pkgTop.SetFlowBreak($script:ui.PackageLight.Row, $true)
+    # cc-P153: what the suggested line was made from, so Chase can check it.
+    $notesFrom = New-Object Windows.Forms.TextBox
+    $notesFrom.Name = 'packageNotesFrom'; $notesFrom.Multiline = $true; $notesFrom.ReadOnly = $true; $notesFrom.ScrollBars = 'Vertical'
+    $notesFrom.Width = 1060; $notesFrom.Height = 84; $notesFrom.Margin = New-Object Windows.Forms.Padding(6, 0, 6, 6)
+    $notesFrom.Text = 'Suggested from: read with the package light (this tab''s Refresh list, and every two minutes).'
+    $pkgTop.Controls.Add($notesFrom)
+    $pkgTop.SetFlowBreak($notesFrom, $true)
+    $script:ui.PackageNotesFrom = $notesFrom
     # cc-P124: the client Build package will ship, and its sl-build.txt, before Build runs. Refresh list reads it again.
     $clientBox = New-Object Windows.Forms.TextBox
     $clientBox.Name = 'packageClient'
@@ -11817,9 +12174,11 @@ function New-ConsoleForm {
     $modelLabel = New-Caption 'Model' 50
     $modelPick = New-Object Windows.Forms.ComboBox
     $modelPick.Name = 'golem.model'; $modelPick.DropDownStyle = 'DropDownList'; $modelPick.Width = 80; $modelPick.Margin = New-Object Windows.Forms.Padding(6, 12, 6, 6)
-    [void]$modelPick.Items.AddRange(@('Fable', 'Opus'))
-    $modelPick.SelectedIndex = 1
-    $modelPick.Add_SelectionChangeCommitted({ $script:ui.GolemModelAuto = $false })
+    # cc-P153: Auto first and the default ("Auto: Opus, for P134", Format-AutoModelItem); Fable and Opus override it for
+    # one Poke, then the picker goes back to Auto.
+    $modelPick.Width = 190
+    [void]$modelPick.Items.AddRange(@('Auto (best for the next prompt)', 'Fable', 'Opus'))
+    $modelPick.SelectedIndex = 0
     $apTop.Controls.AddRange(@($modelLabel, $modelPick))
     $wakeBtns = @()
     $resume = $null
@@ -11889,7 +12248,6 @@ function New-ConsoleForm {
         $script:ui.GolemFigure = $gf
     }
     $script:ui.GolemModel = $modelPick
-    $script:ui.GolemModelAuto = $true
     $script:ui.GolemWakeButtons = $wakeBtns
     $script:ui.NightStart = $nsStart
     $script:ui.NightEnd = $nsEnd
@@ -11902,16 +12260,27 @@ function New-ConsoleForm {
     [void]$apLists.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent, 24)))
     [void]$apLists.ColumnStyles.Add((New-Object Windows.Forms.ColumnStyle([Windows.Forms.SizeType]::Percent, 38)))
     [void]$apLists.RowStyles.Add((New-Object Windows.Forms.RowStyle([Windows.Forms.SizeType]::Percent, 100)))
-    $qList = New-Object Windows.Forms.ListView
-    $qList.Name = 'golemQueue'; $qList.Dock = 'Fill'; $qList.View = 'Details'; $qList.FullRowSelect = $true; $qList.MultiSelect = $false; $qList.HideSelection = $false
-    foreach ($col in @(@('#', 50), @('Queue (hand-off order)', 260), @('Model', 60), @('Kind', 200))) { [void]$qList.Columns.Add($col[0], $col[1]) }
+    # cc-P153: the queue with a note per prompt, in run order (Get-QueueRows): a grid, so the note wraps instead of being
+    # cut to a few words. The running prompt on top, the next one marked; a prompt with no Summary line in grey.
+    $qList = New-Object Windows.Forms.DataGridView
+    $qList.Name = 'golemQueue'; $qList.Dock = 'Fill'; $qList.ReadOnly = $true; $qList.MultiSelect = $false; $qList.SelectionMode = 'FullRowSelect'
+    $qList.AllowUserToAddRows = $false; $qList.AllowUserToDeleteRows = $false; $qList.AllowUserToResizeRows = $false; $qList.AllowUserToOrderColumns = $false
+    $qList.RowHeadersVisible = $false; $qList.AutoSizeRowsMode = 'AllCells'; $qList.ColumnHeadersHeightSizeMode = 'AutoSize'; $qList.BorderStyle = 'None'
+    $qList.ShowCellToolTips = $true; $qList.StandardTab = $true
+    foreach ($col in @(@('num', '#', 52), @('mark', '', 62), @('note', 'Queue, in run order: what each prompt is', 0), @('model', 'Model', 56), @('size', 'Size', 96))) {
+        $gc = New-Object Windows.Forms.DataGridViewTextBoxColumn
+        $gc.Name = $col[0]; $gc.HeaderText = $col[1]; $gc.SortMode = 'NotSortable'
+        if ($col[2]) { $gc.Width = $col[2] } else { $gc.AutoSizeMode = 'Fill'; $gc.MinimumWidth = 160; $gc.DefaultCellStyle.WrapMode = 'True' }
+        [void]$qList.Columns.Add($gc)
+    }
     $preview = New-Object Windows.Forms.TextBox
     $preview.Name = 'golemPreview'; $preview.Dock = 'Fill'; $preview.Multiline = $true; $preview.ReadOnly = $true; $preview.ScrollBars = 'Vertical'
     $fList = New-Object Windows.Forms.ListView
     $fList.Name = 'golemFinished'; $fList.Dock = 'Fill'; $fList.View = 'Details'; $fList.FullRowSelect = $true; $fList.MultiSelect = $false; $fList.HideSelection = $false
     foreach ($col in @(@('#', 50), @('Result', 70), @('When', 90), @('Title', 230), @('Headline', 400))) { [void]$fList.Columns.Add($col[0], $col[1]) }
-    $qList.Add_SelectedIndexChanged({
-        if ($script:ui.GolemQueueList.SelectedItems.Count) { $script:ui.GolemPreview.Text = [string]$script:ui.GolemQueueList.SelectedItems[0].ToolTipText }
+    $qList.Add_SelectionChanged({
+        $pk = Get-GolemQueuePick
+        if ($pk) { $script:ui.GolemPreview.Text = $pk.Preview }
     })
     # The two Open buttons sit in the run row, which the page scrolls (cc-P116); the lists below it may be short.
     $openPrompt = New-ConsoleButton 'Open prompt in Notepad' 'golem.openprompt' 200
@@ -11982,6 +12351,7 @@ function New-ConsoleForm {
     $webCheck.Add_Click({ if (-not $script:webProbe) { $script:webResultAt = $null; Update-WebsitesTile; Write-ConsoleLine 'Websites: checking every site now.' 'gray' } })
     $webTop.Controls.Add($webCheck)
     $webPanel = New-Object Windows.Forms.RichTextBox
+    $webPanel.Name = 'websitesPanel'   # cc-P153: for its tooltip
     $webPanel.Dock = 'Fill'
     $webPanel.ReadOnly = $true
     $webPanel.BackColor = [Drawing.Color]::White
@@ -12013,6 +12383,7 @@ function New-ConsoleForm {
     $outGroup.Text = 'Output'
     $outGroup.Dock = 'Fill'
     $out = New-Object Windows.Forms.RichTextBox
+    $out.Name = 'actionOutput'   # cc-P153: for its tooltip
     $out.Dock = 'Fill'
     $out.ReadOnly = $true
     $out.BackColor = [Drawing.Color]::White
@@ -12087,11 +12458,17 @@ function New-ConsoleForm {
                 $header.Controls.Add($rune)
             }
         }
+        # cc-P153 (Chase, 10-17 13:06: "simple console icon we use, not the fancy website logo"): the window's own icon
+        # (WindowIconFile, the site's favicon.ico), its 48 px frame drawn 1:1 at 100% (the nearest frame at or above the
+        # box at other scales). The painted crest stays for the website and the big showcase spots.
         $crest = New-Object Windows.Forms.PictureBox
-        $crest.SetBounds(10, 4, 54, 54)
+        $crest.Name = 'headerIcon'
+        $crest.SetBounds(12, 6, 48, 48)
         $crest.SizeMode = 'Zoom'
         $crest.BackColor = [Drawing.Color]::Transparent
-        try { if (Test-Path -LiteralPath $Config.CrestFile -PathType Leaf) { $crest.Image = [Drawing.Image]::FromStream((New-Object IO.MemoryStream(, [IO.File]::ReadAllBytes($Config.CrestFile)))) } } catch { }
+        $dpi = 96; try { $dpi = [int]$form.DeviceDpi } catch { }
+        try { $crest.Image = Get-HeaderIconImage -Path $Config.WindowIconFile -Size ([int][Math]::Round(48 * $dpi / 96)) } catch { }
+        if (-not $crest.Image) { try { if (Test-Path -LiteralPath $Config.CrestFile -PathType Leaf) { $crest.Image = [Drawing.Image]::FromStream((New-Object IO.MemoryStream(, [IO.File]::ReadAllBytes($Config.CrestFile)))) } } catch { } }
         $name = New-Object Windows.Forms.Label
         $name.Text = 'Shattered Legacy  -  Shard Console'
         $name.AutoSize = $true
@@ -12134,6 +12511,7 @@ function New-ConsoleForm {
     # cc-P108: after the tooltips, so a greyed live control's tooltip says Live is retired.
     [void](Set-LiveRetiredLook $form $Config $tips)
     $script:ui.ToolTip = $tips
+    Enable-DisabledTooltips $form $tips   # cc-P153: a greyed control still says why on hover
 
     $timer = New-Object Windows.Forms.Timer
     $timer.Interval = 30000
