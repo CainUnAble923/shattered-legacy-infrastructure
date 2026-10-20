@@ -4,7 +4,10 @@
 // 1. Rate (since ClusterF): a use that rolls a gain rolls it up to chanceAttempts times, and a gain is repeated up to
 //    amountMultiplier times. cc-P66 B: the first attempt is pinned's own handler; the others call pinned's public
 //    SkillCheck.CheckSkill (SkillCheck.cs:108) with the same window, so SkillEvents.SkillUsed (raised only by the four
-//    handlers, SkillCheck.cs:52, :87, :174, :207) fires once per use, not once per attempt.
+//    handlers, SkillCheck.cs:52, :87, :174, :207) fires once per use, not once per attempt. cc-P191 (Chase 2026-10-19,
+//    "earned, without the crystal"): the shard's base rate is 2 chance attempts and a 1x amount (was 3 and 5x), so every
+//    gain is pinned's own 0.1 and comes about twice as often as stock; the defaults below match. The measurement is
+//    tests/Skills/SkillGainRateVerification.cs, notes cc-P191.
 //
 // 2. Worn bonuses (cc-P66 B, Chase's decision 7 after cc-P53 C / D-113). Pinned's no-challenge test reads Value, which
 //    includes item and temporary bonuses, so a use whose window ends at the skill's cap stopped gaining at Base = cap - bonus.
@@ -33,8 +36,8 @@ namespace Server;
 
 public static class ClusterFSkillGain
 {
-    private const int DefaultChanceAttempts = 3;
-    private const int DefaultAmountMultiplier = 5;
+    private const int DefaultChanceAttempts = 2;
+    private const int DefaultAmountMultiplier = 1;
     private const int MinimumMultiplier = 1;
     private const int MaximumMultiplier = 20;
 

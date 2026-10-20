@@ -57,12 +57,16 @@ Example:
 
 ## 2026.10.19.5
 
+### Changed
+- Skills now rise at a rate meant to feel earned: every gain is the normal 0.1 and comes about twice as often as on a stock server, instead of the old five-point-per-gain, three-tries-per-use sprint. A skill reaches 100 in roughly an hour of steady fighting or an hour and a half of crafting; the Test Crystal, New Haven and Old Haven training, loop memory and pet training still speed things up on top. Existing characters keep every point they have.
+
 ### Staff
 - Golems on more PCs: one join kit sets up any home PC (its own Windows account, a work drive, the programs, the sign-ins, GitHub access, laptop power and wake rules) and a readiness check proves it can claim, build and push.
 - The web console lists every Golem with its machine, lanes and last readiness check, and its buttons work for each one, including Golems on other PCs, which pick up their commands over Tailscale.
 - Each Golem has its own portrait (placeholders until the art is approved).
 - A Golem pauses while its PC is in use, on battery or outside its hours, and finds a stopping point when it must stop.
 - The Shard Console no longer crashes now and then when it closes while a background read is still starting.
+- The skill gain rate is measured, not guessed: a seeded simulation drives the real gain code for six skills under stock, today and four candidate rates, and reports uses and hours to 50, 80, 100, 120, 150 and 200 (the table is in the cc-P191 notes). The code defaults match the new rate; the live config line is written for Chase in the notes.
 
 ## 2026.10.19.4
 
