@@ -247,6 +247,7 @@ function New-AutopilotConfig {
         RunNextFile   = (Join-Path $Root 'RUN-NEXT')
         IntegrateScript = (Join-Path $Root 'Integrate.ps1')   # cc-P184: the integrator merges the other Golems' branches now
         MergeScript   = (Join-Path $Root 'ShadowIron.ps1')   # cc-P208: the merge Golem's runner (-Pause, -Resume)
+        AwayScript    = (Join-Path $Root 'Set-Away.ps1')     # cc-P149: away mode (-Until <when>, -Off)
         AssignScript  = (Join-Path $Root 'Assign-Prompt.ps1') # cc-P187: a queued prompt's **Golem:** line (and Run next for it)
         PromptDir    = $(if ($Queue) { Split-Path -Parent $Queue } else { '' })
         CompletedDir = $(if ($Queue) { Join-Path (Split-Path -Parent $Queue) 'completed' } else { '' })
@@ -932,6 +933,8 @@ function Get-ConfirmPhrase {
         'golem.nightshift' { 'night shift on' }
         'golem.integrate'  { 'merge branches' }
         'golem.mergepause'  { 'pause merging' }    # cc-P208
+        'golem.away'        { 'away on' }          # cc-P149
+        'golem.awayoff'     { 'away off' }
         'golem.mergeresume' { 'resume merging' }
         'web.deploy'       { 'deploy to haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'deploy to haven' }
@@ -956,6 +959,8 @@ function Get-ConfirmSubject {
         'golem.move'      { 'Move to the Golem' }
         'golem.integrate' { 'Merge branches now' }
         'golem.mergepause'  { 'Pause merging' }    # cc-P208
+        'golem.away'        { 'Away mode on' }     # cc-P149
+        'golem.awayoff'     { 'Away mode off' }
         'golem.mergeresume' { 'Resume merging' }
         'web.deploy'      { 'Deploy to Haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'Ops pages on Haven' }
@@ -1240,6 +1245,9 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.integrate';  Group = 'Golem queue'; Label = 'Merge branches now';                 Mutates = $true;  RunIn = 'here' }
         # cc-P208: Shadow Iron, the merge Golem: no round runs while paused (its tickets wait); Resume runs one at once.
         [pscustomobject]@{ Key = 'golem.mergepause';  Group = 'Golem merge'; Label = 'Pause merging';                     Mutates = $true;  RunIn = 'here' }
+        # cc-P149: away mode, until the time in the long run's Until box.
+        [pscustomobject]@{ Key = 'golem.away';        Group = 'Golem merge'; Label = 'Away mode on (until)';              Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.awayoff';     Group = 'Golem merge'; Label = 'Away mode off';                     Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.mergeresume'; Group = 'Golem merge'; Label = 'Resume merging';                    Mutates = $true;  RunIn = 'here' }
         # cc-P187: the Golem picker's row: the picked queued prompt goes to the picked Golem (its **Golem:** line).
         [pscustomobject]@{ Key = 'golem.assign';     Group = 'Golem pick';  Label = 'Assign picked row to this Golem';    Mutates = $true;  RunIn = 'here' }
@@ -1845,6 +1853,8 @@ function Get-ConsoleTooltips {
         'golem.retry'      = 'Retry stopped prompt: the STOPPED prompt goes back into the queue, first, stoppedPrompt is cleared and a session is woken on its own model (Retry-Stopped.ps1). Asks the prompt number. Lit only while a prompt is STOPPED.'
         'golem.clicheck'   = 'Checks the Claude Code CLI: installed, and signed in (claude auth status). Run it after signing in so the Golem tab sees it. Read-only; runs Check-Cli.ps1 in its own window.'
         'golem.integrate'  = 'Merge branches now (several Golems): the integrator merges every finished Golem branch into main, one at a time, builds when the server changed, commits and pushes; a conflict or a red build becomes a fix-up prompt for that Golem. Only while nothing runs on the integrator and its trees are clean (with Shadow Iron, settings.json mergeGolem, one of its rounds now). Asks merge branches; runs Integrate.ps1 in its own window.'
+        'golem.away'        = 'Away mode on, until the time in the Until box: the Golems work around the clock within the night shift''s usage rule, park a prompt that stops for a decision and go on, and email a digest each morning. Asks away on; runs Set-Away.ps1 in its own window.'
+        'golem.awayoff'     = 'Away mode off now: the Golems go back to their usual pace and rests; parked prompts stay parked until you unpark them. Asks away off; runs Set-Away.ps1 -Off in its own window.'
         'golem.mergepause'  = 'Pause merging: Shadow Iron, the merge Golem, runs no round until Resume merging; finished branches wait in merge-queue. Asks pause merging; runs ShadowIron.ps1 -Pause in its own window.'
         'golem.mergeresume' = 'Resume merging: Shadow Iron merges again, one round at once and then every 10 minutes. Asks resume merging; runs ShadowIron.ps1 -Resume in its own window.'
         # cc-P132: the lights, the Golem figure and the header rune.
@@ -3338,13 +3348,13 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 # cc-P186: a Golem script may also name one Golem of several (-Golem <name>, last); the rules below hold for the rest.
                 if ($sa.Count -ge 7 -and $sa[-2] -ceq '-Golem' -and $sa[-1] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' -and @(Get-GolemNamedScripts $ap) -icontains $sa[4]) { $sa = @($sa[0..($sa.Count - 3)]) }
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
-                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript) | Where-Object { $_ }
+                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript) | Where-Object { $_ }
                 $ok = ($head -and $sa.Count -eq 5 -and $withArgs -inotcontains $sa[4])
                 # cc-P125: Start-LongRun.ps1 only with -Cap <n> -Until <time>; Wrap-Up.ps1 and Find-StoppingPoint.ps1 also with -Cancel.
                 $tmpT = [datetime]::MinValue
@@ -3358,6 +3368,8 @@ function Test-PlanSafety {
                 if ($head -and $ap.MarathonScript -and $sa[4] -ieq $ap.MarathonScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Mode' -and $sa[6] -cin @('auto', 'on', 'off')) { $ok = $true }
                 # cc-P208: ShadowIron.ps1 only with -Pause or -Resume.
                 if ($head -and $ap.MergeScript -and $sa[4] -ieq $ap.MergeScript -and $sa.Count -eq 6 -and $sa[5] -cin @('-Pause', '-Resume')) { $ok = $true }
+                # cc-P149: Set-Away.ps1 only with -Off, or -Until <yyyy-MM-dd HH:mm>.
+                if ($head -and $ap.AwayScript -and $sa[4] -ieq $ap.AwayScript -and (($sa.Count -eq 6 -and $sa[5] -ceq '-Off') -or ($sa.Count -eq 7 -and $sa[5] -ceq '-Until' -and $sa[6] -match '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$'))) { $ok = $true }
                 if ($head -and $sa[4] -ieq $ap.NightShiftScript -and (($sa.Count -eq 6 -and $sa[5] -ceq '-Off') -or ($sa.Count -eq 10 -and $sa[5] -ceq '-On' -and $sa[6] -ceq '-Start' -and $sa[7] -match '^\d{1,2}:\d{2}$' -and $sa[8] -ceq '-End' -and $sa[9] -match '^\d{1,2}:\d{2}$'))) { $ok = $true }
                 # cc-P182: Set-RunNext.ps1 only with -Prompt P<nn> or -Cancel; Retry-Stopped.ps1 only with -Prompt P<nn>.
                 if ($head -and $ap.RunNextScript -and $sa[4] -ieq $ap.RunNextScript -and (($sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') -or ($sa.Count -eq 6 -and $sa[5] -ceq '-Cancel'))) { $ok = $true }
@@ -4266,6 +4278,8 @@ function ConvertFrom-AutopilotStatus {
         Marathon        = $j.marathon
         # cc-P184: several Golems: the switch, which Golem wrote this file, one card per Golem, and a registry problem.
         MultiGolem      = [bool]$j.multiGolem
+        Away            = $j.away           # cc-P149: on, until, the parked prompts
+        MailCommands    = $j.mailCommands   # cc-P149: on, set up, the last commands (accepted and rejected)
         GolemName       = [string]$j.golemName
         Golems          = @(@($j.golems) | Where-Object { $_ })
         RegistryError   = [string]$j.registryError
@@ -4405,6 +4419,26 @@ function Add-GolemToPlan {
             $n
         } else { $s }
     }
+}
+
+function Get-AwayLines {
+    # cc-P149: away mode (until when), each parked prompt (why, where its work is) and the last email commands, accepted
+    # or rejected. Pure: status in, rows out; nothing when away mode was never used and no command ever came.
+    param($Status)
+    $rows = New-Object 'System.Collections.Generic.List[object]'
+    if (-not $Status) { return $rows.ToArray() }
+    $a = $Status.Away
+    if ($a -and $a.on) { $u = ''; try { $u = ([datetime]::Parse([string]$a.until)).ToString('ddd yyyy-MM-dd HH:mm') } catch { $u = [string]$a.until }; $rows.Add([pscustomobject]@{ Text = ('away      : ON until ' + $u + ' (around the clock within the night usage rule; a digest each morning)'); Color = 'amber' }) }
+    foreach ($p in @($(if ($a) { @($a.parked) } else { @() }) | Where-Object { $_ })) {
+        $rows.Add([pscustomobject]@{ Text = ('parked    : ' + [string]$p.prompt + ': ' + [string]$p.why + $(if ($p.branch) { ' (its work: ' + [string]$p.branch + ')' } else { '' }) + '; unpark it to queue it again'); Color = 'amber' })
+    }
+    $m = $Status.MailCommands
+    if ($m -and $m.on -and -not $m.setUp) { $rows.Add([pscustomobject]@{ Text = 'email     : commands on, but the IMAP app password is not saved (Mail-Commands.ps1 -SaveCredential)'; Color = 'amber' }) }
+    foreach ($e in @($(if ($m) { @($m.last) } else { @() }) | Where-Object { $_ } | Select-Object -Last 5)) {
+        $at = ''; try { $at = ([datetime]::Parse([string]$e.at)).ToString('ddd HH:mm') } catch { }
+        $rows.Add([pscustomobject]@{ Text = ('email     : ' + $at + ' ' + [string]$e.result + ': ' + $(if ($e.line) { "'" + [string]$e.line + "'" } else { '(no line)' }) + $(if ($e.why) { ' (' + [string]$e.why + ')' } else { '' })); Color = $(if ([string]$e.result -eq 'rejected') { 'amber' } else { 'gray' }) })
+    }
+    $rows.ToArray()
 }
 
 function Get-GolemCardLines {
@@ -5258,6 +5292,7 @@ function Format-AutopilotPanel {
     if ($View.EmailFailing) { & $add ('email     : FAILING since the last hand-off. ' + $View.LastFailure) 'red' }
     # cc-P184: one card per Golem while several work the queue (status.json golems).
     foreach ($gl in @(Get-GolemCardLines -Status $View.Status -Now $Now)) { & $add $gl.Text $gl.Color }
+    foreach ($gl in @(Get-AwayLines -Status $View.Status)) { & $add $gl.Text $gl.Color }   # cc-P149
     $q = $View.Queue
     if ($null -eq $q) {
         & $add ('queue     : could not be listed (' + $ap.Queue + ')') 'gray'
@@ -5504,7 +5539,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -5644,6 +5679,23 @@ function Get-AutopilotPlan {
                     $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'This writes main in both public repos (merge commits, pushed).'))
                     $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.IntegrateScript) -Text 'In a window of its own, which stays open.'))
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.integrate'))
+                }
+                { $_ -in @('golem.away', 'golem.awayoff') } {
+                    # cc-P149: away mode until the Until box's time (the long run's), or off.
+                    if (-not (& $need $ap.AwayScript 'Set-Away.ps1')) { break }
+                    if ($Action -eq 'golem.awayoff') {
+                        $steps.Add((New-PlanStep -Kind say -Text 'Away mode off: the Golems go back to their usual pace and rests. Parked prompts stay parked; the Golem tab lists them.'))
+                        $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'Away mode ends now.'))
+                        $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.AwayScript + @('-Off')) -Text 'In a window of its own, which stays open.'))
+                    } else {
+                        $until = [datetime]::MinValue
+                        if (-not [datetime]::TryParse(([string]$Facts.LongRunUntil).Trim(), $script:Invariant, [Globalization.DateTimeStyles]::None, [ref]$until)) { $steps.Add((New-PlanStep -Kind refuse -Text ("Away until when? Put a date and time in the Until box, like 2026-10-25 18:00: '" + $Facts.LongRunUntil + "'."))); break }
+                        if ($until -le [datetime]::Now -or $until -gt [datetime]::Now.AddDays(14)) { $steps.Add((New-PlanStep -Kind refuse -Text ('Away until ' + $until.ToString('yyyy-MM-dd HH:mm', $script:Invariant) + ' is not in the next 14 days.'))); break }
+                        $steps.Add((New-PlanStep -Kind say -Text ('Away mode until ' + $until.ToString('ddd yyyy-MM-dd HH:mm', $script:Invariant) + ': the Golems work around the clock within the night shift''s usage rule (never ahead of the week''s pace), park a prompt that stops for a decision and go on with the next one that does not depend on it, and email a digest each morning.')))
+                        $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'Away mode stays on until then, or until Away mode off.'))
+                        $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.AwayScript + @('-Until', $until.ToString('yyyy-MM-dd HH:mm', $script:Invariant))) -Text 'In a window of its own, which stays open.'))
+                    }
+                    $steps.Add((New-PlanStep -Kind log -Text $Action))
                 }
                 { $_ -in @('golem.mergepause', 'golem.mergeresume') } {
                     # cc-P208: Shadow Iron's pause (PAUSED-ShadowIron) and resume; the script says when mergeGolem is off.
@@ -6878,7 +6930,7 @@ function Get-AutopilotFacts {
     $running = ''
     $runningFile = ''
     if ($stateText) { try { $sj = ($stateText | ConvertFrom-Json); $running = [string]$sj.current; $runningFile = [string]$sj.currentFile } catch { } }
-    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.MarathonScript, $ap.MergeScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
+    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
     # cc-P182: Run next's pick, a queue file name ('' when none).
     $runNext = ''
     if ($ap.RunNextFile -and (Test-Path -LiteralPath $ap.RunNextFile -PathType Leaf)) { try { $runNext = ([IO.File]::ReadAllText($ap.RunNextFile)).Trim() } catch { } }
@@ -9471,6 +9523,8 @@ function ConvertTo-ConsoleStatusDocument {
             # cc-P184: the Golem cards (status.json golems), for the web console's Golems card.
             multiGolem = $(if ($s) { [bool]$s.MultiGolem } else { $false })
             golems = @($(if ($s) { @($s.Golems) } else { @() }) | ForEach-Object { ConvertTo-GolemCardDocument $_ })
+            # cc-P149: away mode, the parked prompts and the last email commands, for the web console's Golem page.
+            away = $(if ($s -and $s.Away) { $s.Away } else { $null }); mailCommands = $(if ($s -and $s.MailCommands) { $s.MailCommands } else { $null })
         }
     }
     $web = [ordered]@{}

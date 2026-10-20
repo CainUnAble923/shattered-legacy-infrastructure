@@ -53,9 +53,9 @@
       "help": "Runs claude auth status and records the answer in cli.json for the Golem and both consoles. Changes nothing else." },
     { "key": "testmail", "label": "Send test email", "action": "golem.test", "word": "send test email", "art": "btn-testmail",
       "help": "Send-TestEmail.ps1 sends one email to the address in email.json the way the hook does, and prints sent or the error." },
-    { "key": "away-on", "label": "Away mode on", "action": "", "word": "away on", "disabled": "Away mode arrives with P149 (queued, not built yet): there is nothing to switch on.", "art": "btn-away",
-      "help": "Email controls while Chase is away (P149)." },
-    { "key": "away-off", "label": "Away mode off", "action": "", "word": "away off", "disabled": "Away mode arrives with P149 (queued, not built yet): there is nothing to switch off.", "art": "btn-away-off",
-      "help": "Email controls while Chase is away (P149)." }
+    { "key": "away-on", "label": "Away mode on", "action": "golem.away", "word": "away on", "inputs": ["until"], "art": "btn-away",
+      "help": "cc-P149: until the time given, the Golems work around the clock within the night shift's usage rule, park a prompt that stops for a decision and go on, and email a digest each morning. Reply to any Golem email with a command (status, resume, away off, ...)." },
+    { "key": "away-off", "label": "Away mode off", "action": "golem.awayoff", "word": "away off", "art": "btn-away-off",
+      "help": "cc-P149: the Golems go back to their usual pace and rests; parked prompts stay parked (the Golem page lists them)." }
   ]
 }

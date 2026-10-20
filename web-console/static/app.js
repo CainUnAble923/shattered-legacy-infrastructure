@@ -303,6 +303,18 @@
     }
     return li;
   }
+  // cc-P149: away mode (until when), the parked prompts and the last email commands, under the team's cards.
+  function drawAway(g) {
+    var card = $('golem-team-card'); if (!card) return;
+    var old = $('golem-away'); if (old) old.parentNode.removeChild(old);
+    var aw = (g && g.away) || null, mc = (g && g.mailCommands) || null;
+    var box = el('div', 'meta'); box.id = 'golem-away';
+    if (aw && aw.on) box.appendChild(el('div', 'warn', 'Away mode on until ' + when(aw.until) + ': around the clock within the night usage rule; a digest each morning.'));
+    ((aw && aw.parked) || []).forEach(function (p) { box.appendChild(el('div', 'warn', 'Parked ' + p.prompt + ': ' + p.why + (p.branch ? ' (its work: ' + p.branch + ')' : ''))); });
+    if (mc && mc.on && !mc.setUp) box.appendChild(el('div', 'warn', 'Email commands are on, but the IMAP app password is not saved yet.'));
+    ((mc && mc.last) || []).slice(-5).forEach(function (e) { box.appendChild(el('div', e.result === 'rejected' ? 'warn' : 'quiet', 'Email ' + when(e.at) + ', ' + e.result + ': ' + (e.line ? "'" + e.line + "'" : '(no line)') + (e.why ? ' (' + e.why + ')' : ''))); });
+    if (box.firstChild) card.appendChild(box);
+  }
   function drawGolemTeam(g, a) {
     var card = $('golem-team-card'); if (!card) return;
     var list = clear($('golem-team'));
@@ -361,6 +373,7 @@
   function drawGolem(g, a) {
     clear($('golem-state')).appendChild(figureRow(g, golemState(g)));
     drawGolemTeam(g, a);
+    drawAway(g);
     drawPicker();
     var cur = clear($('golem-current'));
     if (g && g.current) {
