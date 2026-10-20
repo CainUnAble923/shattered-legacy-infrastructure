@@ -800,7 +800,7 @@ public class CCP129CreatureVerification
         Assert.Single(drelgor.Backpack!.Items, i => i is BoneArms or BoneChest or BoneGloves or BoneLegs or BoneHelm);
 
         // His broadcast fires on his first think and then once a minute; outside the "Old Haven Training" region it
-        // reaches nobody (the deviation in his header), but the timer runs.
+        // reaches nobody (here he stands on Malas; cc-P189 registers the region over Old Haven), but the timer runs.
         ShardTestClock.Arm();
         drelgor.MoveToWorld(Origin, Map.Malas);
         drelgor.OnThink();

@@ -890,7 +890,8 @@ Fact 'ATestOnlyCommandSaysSoInItsLine' {
 
 Fact 'RedMeansTestOnlyUnclassifiedOrAPlainRunThatDeletesAndNothingElse' {
     $red = @($groups | ForEach-Object { $_.Items } | Where-Object { $_.Warn } | ForEach-Object { $_.Command }) | Sort-Object -Unique
-    Assert-Equal '[ClearRoyalCityVendors,[ClusterFDespiseStockCleanup,[ClusterFOldHavenCleanup,[ClusterFSeedResetStone,[ClusterFSeedResetStone dryrun,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red, and a dry run deletes nothing'
+    # cc-P189: [ClusterFOldHavenRetire deletes the Old Haven mage and Vorlak spawners, so it is red too.
+    Assert-Equal '[ClearRoyalCityVendors,[ClusterFDespiseStockCleanup,[ClusterFOldHavenCleanup,[ClusterFOldHavenRetire,[ClusterFSeedResetStone,[ClusterFSeedResetStone dryrun,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red, and a dry run deletes nothing'
 }
 
 Fact 'TheScriptAndItsFactsAreAsciiWithNoBom' {
