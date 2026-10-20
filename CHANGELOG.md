@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.4
+
+### Staff
+- Shadow Iron, a Golem that only merges: every 10 minutes it merges the other Golems' finished work into the shard, oldest first, one build at a time, whatever the other Golems are doing. A branch that will not merge goes back to its Golem once; if the fix fails too, it comes to you. Its card on the Golem tab (both consoles) shows the last round, what is waiting, the last merge and failure and whether the folders are clean, with Merge now, Pause merging and Resume merging.
+- The Iron Golem now works on its own branch like the others.
+
 ## 2026.10.20.3
 
 ### Added
