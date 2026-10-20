@@ -244,6 +244,7 @@ function New-AutopilotConfig {
         RetryScript   = (Join-Path $Root 'Retry-Stopped.ps1')
         RunNextFile   = (Join-Path $Root 'RUN-NEXT')
         IntegrateScript = (Join-Path $Root 'Integrate.ps1')   # cc-P184: the integrator merges the other Golems' branches now
+        AssignScript  = (Join-Path $Root 'Assign-Prompt.ps1') # cc-P187: a queued prompt's **Golem:** line (and Run next for it)
         PromptDir    = $(if ($Queue) { Split-Path -Parent $Queue } else { '' })
         CompletedDir = $(if ($Queue) { Join-Path (Split-Path -Parent $Queue) 'completed' } else { '' })
         ClaudeProjects = $(if ($env:USERPROFILE) { Join-Path $env:USERPROFILE '.claude\projects' } else { '' })
@@ -1228,6 +1229,8 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.retry';      Group = 'Golem queue'; Label = 'Retry stopped prompt';               Mutates = $true;  RunIn = 'here' }
         # cc-P184: the integrator merges the other Golems' finished branches into main now (otherwise between its own prompts).
         [pscustomobject]@{ Key = 'golem.integrate';  Group = 'Golem queue'; Label = 'Merge branches now';                 Mutates = $true;  RunIn = 'here' }
+        # cc-P187: the Golem picker's row: the picked queued prompt goes to the picked Golem (its **Golem:** line).
+        [pscustomobject]@{ Key = 'golem.assign';     Group = 'Golem pick';  Label = 'Assign picked row to this Golem';    Mutates = $true;  RunIn = 'here' }
         # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
         [pscustomobject]@{ Key = 'links.playtests';  Group = 'Links';       Label = 'Play tests';                         Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
@@ -1820,11 +1823,14 @@ function Get-ConsoleTooltips {
         'golem.nightshift' = 'Night shift on or off: a scheduled task at the start time wakes the Golem for a long run until the end time, only when the queue has prompts, nothing runs or is STOPPED, and the usage leaves room. Asks night shift on when turning it on. Runs Set-NightShift.ps1 in its own window.'
         'golem.nightstart' = 'When the night shift starts (HH:mm, default 22:30).'
         'golem.nightend'   = 'When the night shift ends (HH:mm, default 06:30): no new prompt is handed after it.'
+        'golem.pick'       = 'Which Golem the Golem buttons act for: every Golem in golems.json, the integrator first. Another Golem on this PC gets its own files and name; one on another PC, a disabled one, or any but the integrator while multiGolem is off says why. Wake''s model follows the picked Golem''s lane.'
+        'golem.assignnext' = 'With Assign: the prompt also goes next for that Golem (Run next).'
+        'golem.assign'     = 'Assign: the picked queued prompt gets the line **Golem:** <the picked Golem>, so only that Golem claims it (Assign-Prompt.ps1 checks its lane, areas and the prompt''s Touches first, and refuses with the reason). Tick "and run it next" to put it first for that Golem too.'
         'golem.poke'       = 'Poke the Golem: runs its 10-minute watch now (Poke-Golem.ps1), so it looks again at once at a stall, a rest whose time has come or a pending wake. Changes nothing the watch would not.'
         'golem.runnext'    = 'Run next: the queue row you picked is handed at the next hand-off, ahead of continuations (Set-RunNext.ps1; nothing is renamed). Asks the prompt number. With no row picked, it clears the pick.'
         'golem.retry'      = 'Retry stopped prompt: the STOPPED prompt goes back into the queue, first, stoppedPrompt is cleared and a session is woken on its own model (Retry-Stopped.ps1). Asks the prompt number. Lit only while a prompt is STOPPED.'
         'golem.clicheck'   = 'Checks the Claude Code CLI: installed, and signed in (claude auth status). Run it after signing in so the Golem tab sees it. Read-only; runs Check-Cli.ps1 in its own window.'
-        'golem.integrate'  = 'Merge branches now (cc-P184, several Golems): the integrator merges every finished Golem branch into main, one at a time, builds when the server changed, commits and pushes; a conflict or a red build becomes a fix-up prompt for that Golem. Only while nothing runs on the integrator and its trees are clean. Asks merge branches; runs Integrate.ps1 in its own window.'
+        'golem.integrate'  = 'Merge branches now (several Golems): the integrator merges every finished Golem branch into main, one at a time, builds when the server changed, commits and pushes; a conflict or a red build becomes a fix-up prompt for that Golem. Only while nothing runs on the integrator and its trees are clean. Asks merge branches; runs Integrate.ps1 in its own window.'
         # cc-P132: the lights, the Golem figure and the header rune.
         'rebuild.light'    = 'Whether the test shard needs a rebuild: green built from the latest server change, amber server commits since the running build (Rebuild can go), red needed but blocked with the reason. Hover for the commits and files; it only reads and never builds.'
         'package.light'    = 'Whether the player package needs a build or a publish: green the published package holds every player-facing change, amber Build package (or Publish package when a built zip holds them), red blocked with the reason. Hover for the commits; it only reads.'
@@ -3316,13 +3322,13 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 # cc-P186: a Golem script may also name one Golem of several (-Golem <name>, last); the rules below hold for the rest.
                 if ($sa.Count -ge 7 -and $sa[-2] -ceq '-Golem' -and $sa[-1] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' -and @(Get-GolemNamedScripts $ap) -icontains $sa[4]) { $sa = @($sa[0..($sa.Count - 3)]) }
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
-                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript) | Where-Object { $_ }
+                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript) | Where-Object { $_ }
                 $ok = ($head -and $sa.Count -eq 5 -and $withArgs -inotcontains $sa[4])
                 # cc-P125: Start-LongRun.ps1 only with -Cap <n> -Until <time>; Wrap-Up.ps1 and Find-StoppingPoint.ps1 also with -Cancel.
                 $tmpT = [datetime]::MinValue
@@ -3336,6 +3342,8 @@ function Test-PlanSafety {
                 # cc-P182: Set-RunNext.ps1 only with -Prompt P<nn> or -Cancel; Retry-Stopped.ps1 only with -Prompt P<nn>.
                 if ($head -and $ap.RunNextScript -and $sa[4] -ieq $ap.RunNextScript -and (($sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') -or ($sa.Count -eq 6 -and $sa[5] -ceq '-Cancel'))) { $ok = $true }
                 if ($head -and $ap.RetryScript -and $sa[4] -ieq $ap.RetryScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') { $ok = $true }
+                # cc-P187: Assign-Prompt.ps1 only with -Prompt P<nn> -Golem <name>, and -RunNext last or not at all.
+                if ($head -and $ap.AssignScript -and $sa[4] -ieq $ap.AssignScript -and ($sa.Count -eq 9 -or ($sa.Count -eq 10 -and $sa[9] -ceq '-RunNext')) -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$' -and $sa[7] -ceq '-Golem' -and $sa[8] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$') { $ok = $true }
                 # cc-P94: and settings.json, the same way.
             $readable = @($ap.LogFile, $ap.SettingsFile) | Where-Object { $_ }
             $okLog = ($s.Kind -eq 'launch' -and $s.Path -ieq $ap.Notepad -and $sa.Count -eq 1 -and $readable -icontains $sa[0])
@@ -4275,6 +4283,58 @@ function Get-GolemScopedConfig {
     $c
 }
 
+function Get-GolemPickRows {
+    # cc-P187: the Golem picker's rows (the Shard Console's Golem tab; server.py builds the web console's from the same
+    # golems.json): every Golem in the registry with its lane and machine, and whether the console can act for it here
+    # and why not: disabled in golems.json; multiGolem off (only the integrator works the queue); on another PC (the
+    # web console queues its buttons for that PC's agent). The integrator first. Pure: the two files' texts in.
+    param([string]$RegistryText, [string]$SettingsText, [string]$Machine = $env:COMPUTERNAME)
+    $reg = $null
+    try { $reg = $RegistryText | ConvertFrom-Json } catch { }
+    $multi = $false
+    try { $multi = [bool](($SettingsText | ConvertFrom-Json).multiGolem) } catch { }
+    $rows = foreach ($g in @($(if ($reg) { $reg.golems } else { @() }))) {
+        if (-not $g -or [string]$g.name -notmatch '^[A-Za-z][A-Za-z0-9]{0,23}$') { continue }
+        $int = [bool]$g.integrator
+        $why = ''
+        if (-not $int) {
+            if (-not [bool]$g.enabled) { $why = 'disabled in golems.json' }
+            elseif (-not $multi) { $why = 'multiGolem is off (settings.json): only the integrator works the queue' }
+            elseif (-not [string]$g.machine) { $why = 'golems.json names no machine for it yet' }
+            elseif ([string]$g.machine -ine $Machine) { $why = 'on ' + [string]$g.machine + ': the web console queues its buttons for that PC''s agent' }
+        }
+        $where = ((@([string]$g.lane, [string]$g.machine) | Where-Object { $_ }) -join ', ')
+        [pscustomobject]@{ Name = [string]$g.name; Lane = [string]$g.lane; Machine = [string]$g.machine; Integrator = $int; Usable = (-not $why); Why = $why
+            Text = ([string]$g.name + ' (' + $where + ')' + $(if ($int) { ', integrator' } else { '' }) + $(if ($why) { ': ' + $why } else { '' })) }
+    }
+    @($rows | Sort-Object @{ Expression = { -not $_.Integrator } }, Name)
+}
+
+function Get-AnyGolemActionKeys {
+    # cc-P187: the console actions the web console runs for any Golem (golem-actions.json's anyGolem buttons); the other
+    # Golem buttons are the integrator's only.
+    param([string]$ActionsFile)
+    try { @(@((Get-Content -LiteralPath $ActionsFile -Raw | ConvertFrom-Json).actions) | Where-Object { $_.anyGolem -and $_.action } | ForEach-Object { [string]$_.action } | Select-Object -Unique) } catch { @() }
+}
+
+function Get-GolemActionConfig {
+    # cc-P187: a Golem button acting for the Golem picked on the Golem tab. The integrator, or nothing picked: the
+    # console's own config, as before. Another Golem on this PC: its own files (Get-GolemScopedConfig) and, for each
+    # Golem script in the plan, its name (Add-GolemToPlan), for the buttons the web console runs for any Golem; the
+    # rest are the integrator's only. Refusal (with the reason) when the picked Golem cannot be acted for from here.
+    param($Config, [string]$ActionKey, [string]$Golem, $Rows, [string[]]$AnyGolemActions)
+    $o = [pscustomobject]@{ Config = $Config; Name = ''; Refusal = '' }
+    if (-not $Golem) { return $o }
+    $r = @(@($Rows) | Where-Object { $_ -and $_.Name -ieq $Golem }) | Select-Object -First 1
+    if (-not $r) { $o.Refusal = 'there is no ' + $Golem + ' Golem in golems.json. Nothing was run.'; return $o }
+    if ($r.Integrator) { return $o }
+    if (-not $r.Usable) { $o.Refusal = 'the ' + $r.Name + ' Golem: ' + $r.Why + '. Nothing was run.'; return $o }
+    if (@($AnyGolemActions) -notcontains $ActionKey) { $o.Refusal = 'that button is the integrator''s only, not the ' + $r.Name + ' Golem''s: pick the integrator for it. Nothing was run.'; return $o }
+    $o.Config = Get-GolemScopedConfig -Config $Config -Name $r.Name
+    $o.Name = $r.Name
+    $o
+}
+
 function Get-GolemNamedScripts {
     # cc-P186: the Golem scripts that take -Golem <name> (one Golem of several); the others are the integrator's only.
     param($Ap)
@@ -5154,14 +5214,17 @@ function Get-WebActionPlan {
     # the button is disabled, when the Golem is not in the state the button is for (a stale page), when the plan
     # refuses, or when the typed word is not the expected one (case ignored: phones capitalize). Phrase is the console's
     # own confirm phrase (or the word), which goes on to Invoke-Plan unchanged so its own check holds too.
-    param($Entry, [string]$Typed, [hashtable]$Inputs, $Config, $Facts, [datetime]$Now = [datetime]::Now)
+    # cc-P187: -GolemName (another Golem than the integrator, picked on the page): a button with a golemWord then wants
+    # that word and the Golem's name ("wake bronze"; '#prompt' or '#stopped' is the plan's phrase and the name), so the
+    # typed confirm says which Golem it acts on.
+    param($Entry, [string]$Typed, [hashtable]$Inputs, $Config, $Facts, [datetime]$Now = [datetime]::Now, [string]$GolemName)
     $o = [pscustomobject]@{ Ok = $false; Refusal = ''; Plan = @(); Phrase = ''; ActionKey = [string]$Entry.action; Label = [string]$Entry.label }
     if ($Entry.disabled) { $o.Refusal = [string]$Entry.disabled; return $o }
     if (-not $o.ActionKey) { $o.Refusal = 'This button runs nothing.'; return $o }
     if (-not $Inputs) { $Inputs = @{} }
     if ($Entry.fixed) { foreach ($p in $Entry.fixed.PSObject.Properties) { $Inputs[$p.Name] = [string]$p.Value } }
     $f = $Facts.PSObject.Copy()
-    $map = @{ model = 'WakeModel'; cap = 'LongRunCap'; until = 'LongRunUntil'; start = 'NightStart'; end = 'NightEnd'; prompt = 'RunNextPrompt' }
+    $map = @{ model = 'WakeModel'; cap = 'LongRunCap'; until = 'LongRunUntil'; start = 'NightStart'; end = 'NightEnd'; prompt = 'RunNextPrompt'; assignTo = 'AssignGolem'; next = 'AssignRunNext' }
     foreach ($k in $map.Keys) { if ($Inputs.ContainsKey($k)) { $f | Add-Member -NotePropertyName $map[$k] -NotePropertyValue ([string]$Inputs[$k]) -Force } }
     $st = $null
     if ($f.StatusText) { try { $st = ConvertFrom-AutopilotStatus $f.StatusText } catch { } }
@@ -5174,6 +5237,7 @@ function Get-WebActionPlan {
             'winding'    { $wind -eq $val }
             'notWinding' { $wind -ne $val }
             'nightShift' { [bool]$gs.NightShiftEnabled -eq ($val -eq 'on') }
+            'autoWake'   { [bool]$gs.AutoWake -eq ($val -eq 'on') }
             'runNext'    { [bool][string]$f.RunNext }
             default      { $false }
         }
@@ -5182,6 +5246,7 @@ function Get-WebActionPlan {
                 'winding'    { 'it is not set now' }
                 'notWinding' { $(if ($val -eq 'after-current') { 'wrap up is already set: the button is Cancel wrap up now' } else { 'a stopping point is already asked: the button is Cancel stopping point now' }) }
                 'nightShift' { 'the night shift is ' + $(if ($gs.NightShiftEnabled) { 'already on' } else { 'already off' }) }
+                'autoWake'   { 'self-wake is ' + $(if ($gs.AutoWake) { 'already on' } else { 'already off' }) }
                 'runNext'    { 'nothing is picked to go next' }
                 default      { 'the Golem is not in that state' }
             }
@@ -5198,11 +5263,86 @@ function Get-WebActionPlan {
     $expected = $(if ($word -like '#*') { $(if ($confirm.Count) { [string]$confirm[0].Phrase } else { '' }) } else { $word })
     if ($word -eq '#prompt' -and $Inputs.ContainsKey('prompt') -and ([string]$Inputs['prompt']).Trim() -and $expected -and ($expected -ine (([string]$Inputs['prompt']).Trim() -replace '^(?i)(\d)', 'P$1'))) { $o.Refusal = 'The picked prompt and the plan disagree; refresh the page.'; return $o }
     if (-not $expected) { $o.Refusal = 'This button has no word to confirm with; nothing was run.'; return $o }
+    if ($GolemName -and $Entry.golemWord) {
+        $expected = $(if ([string]$Entry.golemWord -like '#*') { $expected } else { [string]$Entry.golemWord }) + ' ' + $GolemName.ToLowerInvariant()
+    }
     if ($null -eq $Typed -or -not [string]::Equals($expected, $Typed.Trim(), [StringComparison]::OrdinalIgnoreCase)) {
         $o.Refusal = 'Refused: type ' + $expected + ' to confirm. Nothing was run.'
         return $o
     }
     $o.Phrase = $(if ($confirm.Count) { [string]$confirm[0].Phrase } else { $expected })
+    $o.Ok = $true
+    $o
+}
+
+function Resolve-ActionShardKey {
+    # cc-P187: which shard (or area) an action is for, as the headless -Action run names it (and its banner and the
+    # action log say); -Shard is the test or live pick of the actions that take either (snapshots, the shard question).
+    param([string]$Action, [string]$Shard = 'test')
+    $Action = Resolve-ActionAlias $Action
+    $sk = $Shard
+    if ($Action -like 'live.*') { $sk = 'live' }
+    if ($Action -like 'test.*') { $sk = 'test' }
+    if ($Action -like 'commit.*') { $sk = 'repos' }
+    if ($Action -like 'package.*') { $sk = 'package' }
+    if ($Action -like 'golem.*') { $sk = 'golem' }
+    if ($Action -like 'links.*') { $sk = 'links' }
+    if ($Action -like 'vpn.*') { $sk = 'network' }
+    if ($Action -like 'web.*') { $sk = 'websites' }
+    if ($Action -like 'art.*' -or $Action -like 'map.*') { $sk = 'mapart' }
+    $sk
+}
+
+function Get-WebPagePlan {
+    # cc-P187. One web console page button (an entry of web-console\console-actions.json) to the Shard Console's own
+    # plan: the page's inputs where the window's boxes and lists put them, the facts Get-ActionFacts read ($Pre), the
+    # console's Get-ActionPlan, and the checks the window makes before it runs: a refusal; a step that opens something
+    # on this PC or asks a password in a window (PC only); the typed phrase (case ignored: phones capitalize); the yes
+    # or no question. Expect is the phrase the plan asks for, the console's own ('' when it asks none). A dangerous
+    # button, and any button on the LIVE shard or with a yes/no question, also needs -Second (the page's second confirm
+    # screen), which is also the yes to that question. -Dry builds the plan for the page's look first and checks no word.
+    param($Entry, [string]$Typed, [hashtable]$Inputs, $Config, $Pre, [switch]$Second, [switch]$Dry, [datetime]$Now = [datetime]::Now)
+    $o = [pscustomobject]@{ Ok = $false; Refusal = ''; Plan = @(); Phrase = ''; Expect = ''; ConfirmText = ''; Asks = ''; Yes = $false; Danger = $false
+        ActionKey = [string]$Entry.action; ShardKey = ''; Label = [string]$Entry.label }
+    if ($Entry.pcOnly) { $o.Refusal = 'PC only: ' + [string]$Entry.pcOnly; return $o }
+    if ($Entry.disabled) { $o.Refusal = [string]$Entry.disabled; return $o }
+    if (-not $o.ActionKey) { $o.Refusal = 'This button runs nothing.'; return $o }
+    if (-not $Inputs) { $Inputs = @{} }
+    $in = @{}
+    foreach ($k in @('shard', 'snapshotName', 'snapshot', 'commitMessage', 'force', 'packageNotes', 'packageZip', 'imageTag', 'commit', 'site', 'vdFile', 'body', 'huesFile')) {
+        $in[$k] = $(if ($Inputs.ContainsKey($k) -and $null -ne $Inputs[$k]) { ([string]$Inputs[$k]).Trim() } else { '' })
+    }
+    $shard = $(if ($in.shard -in @('test', 'live')) { $in.shard } else { 'test' })
+    $o.ShardKey = Resolve-ActionShardKey -Action $o.ActionKey -Shard $shard
+    $o.Danger = ([string]$Entry.kind -eq 'dangerous' -or $o.ShardKey -eq 'live')
+    $state = $(if ($Pre) { $Pre.State } else { $null })
+    $image = $in.imageTag
+    if ($o.ActionKey -eq 'test.deploy' -and -not $image) { $o.Refusal = 'Pick the image to deploy first. Nothing was run.'; return $o }
+    # As the window does: Roll back runs the newest good image, which it pins before the confirm.
+    if ($o.ActionKey -eq 'fix.rollback' -and -not $image -and $state) { $lg = Get-LastGoodImage $state.Images; if ($lg) { $image = $lg.Tag } }
+    if ($o.ActionKey -eq 'fix.rebuild' -and -not $in.commit) { $o.Refusal = 'Pick the commit to rebuild first. Nothing was run.'; return $o }
+    $plan = @(Get-ActionPlan -Action $o.ActionKey -ShardKey $shard -Config $Config -State $state -SnapshotName $in.snapshotName -Snapshot $in.snapshot -Now $Now `
+        -CommitMessage $in.commitMessage -CommitFacts $(if ($Pre) { $Pre.Facts }) -PackageNotes $in.packageNotes -PackageZip $in.packageZip -PackageFacts $(if ($Pre) { $Pre.PackageFacts }) `
+        -ImageTag $image -CommitForce:($in.force -eq 'yes' -and $o.ActionKey -eq 'commit.run') -WipeFacts $(if ($Pre) { $Pre.WipeFacts }) -AutopilotFacts $(if ($Pre) { $Pre.AutopilotFacts }) `
+        -VpnFacts $(if ($Pre) { $Pre.VpnFacts }) -FixFacts $(if ($Pre) { $Pre.FixFacts }) -Commit $in.commit -Site $in.site -VdFile $in.vdFile -Body $in.body -HuesFile $in.huesFile)
+    $o.Plan = $plan
+    $refuse = @($plan | Where-Object { $_.Kind -eq 'refuse' })
+    if ($refuse.Count) { $o.Refusal = [string]$refuse[0].Text; return $o }
+    $launch = @($plan | Where-Object { $_.Kind -eq 'launch' })
+    if ($launch.Count) { $o.Refusal = 'PC only: this opens ' + (Split-Path -Leaf ([string]$launch[0].Path)) + ' on the game PC. Nothing was run.'; return $o }
+    if (@($plan | Where-Object { $_.Kind -eq 'secret' }).Count) { $o.Refusal = 'PC only: this asks a password in a window on the game PC, and a password never goes through a web page. Nothing was run.'; return $o }
+    $confirm = @($plan | Where-Object { $_.Kind -eq 'confirm' } | Select-Object -First 1)
+    if ($confirm.Count) { $o.Expect = [string]$confirm[0].Phrase; $o.ConfirmText = [string]$confirm[0].Text }
+    $ask = @($plan | Where-Object { $_.Kind -eq 'ask' } | Select-Object -First 1)
+    if ($ask.Count) { $o.Asks = [string]$ask[0].Text; $o.Danger = $true }
+    if ($Dry) { $o.Ok = $true; return $o }
+    if ($o.Expect -and ($null -eq $Typed -or -not [string]::Equals($o.Expect, $Typed.Trim(), [StringComparison]::OrdinalIgnoreCase))) {
+        $o.Refusal = 'Refused: type ' + $o.Expect + ' to confirm. Nothing was run.'
+        return $o
+    }
+    if ($o.Danger -and -not $Second) { $o.Refusal = 'Refused: this needs the second confirm (what it does and to what, then Yes). Nothing was run.'; return $o }
+    $o.Phrase = $o.Expect
+    $o.Yes = [bool]($ask.Count -and $Second)
     $o.Ok = $true
     $o
 }
@@ -5267,7 +5407,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -5417,6 +5557,23 @@ function Get-AutopilotPlan {
                     $steps.Add((New-PlanStep -Kind confirm -Phrase ('P' + $num) -Text ('Run next: P' + $num + ' is handed at the next hand-off' + $(if ($running) { ' (after ' + $running + ')' } else { '' }) + ', ahead of continuations. The new order: ' + ($order -join ', then ') + $(if (@($q.Runs).Count -gt 6) { ', ...' } else { '' }) + '. Nothing is renamed or renumbered: the Golem keeps the pick in RUN-NEXT and uses it once.')))
                     $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.RunNextScript + @('-Prompt', ('P' + $num))) -Text 'In a window of its own, which stays open.'))
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.runnext'))
+                }
+                'golem.assign' {
+                    # cc-P187: Assign-Prompt.ps1 writes P184's **Golem:** line into the queued prompt (and, with -RunNext, picks
+                    # it to go next for that Golem). It checks the Golem's lane, areas and the prompt's Touches itself.
+                    if (-not (& $need $ap.AssignScript 'Assign-Prompt.ps1')) { break }
+                    $want = ([string]$Facts.RunNextPrompt).Trim()
+                    if ($want -notmatch '^(?i)P?(\d+)$') { $steps.Add((New-PlanStep -Kind refuse -Text ("Pick a queued prompt (P<nn>) to assign first: '" + $want + "'."))); break }
+                    $num = [int]$Matches[1]
+                    $to = ([string]$Facts.AssignGolem).Trim()
+                    if ($to -notmatch '^[A-Za-z][A-Za-z0-9]{0,23}$') { $steps.Add((New-PlanStep -Kind refuse -Text 'Pick the Golem to give it to first.')); break }
+                    $q = $(if ($null -ne $Facts.QueueNames) { Get-AutopilotQueue @($Facts.QueueNames) -RunNext ([string]$Facts.RunNext) } else { $null })
+                    $file = @(@($(if ($q) { $q.Runs } else { @() })) | Where-Object { $_ -match ('^cc-P' + $num + '-') }) | Select-Object -First 1
+                    if (-not $file) { $steps.Add((New-PlanStep -Kind refuse -Text ('P' + $num + ' is not in the queue (' + $ap.Queue + '): only a queued prompt can be assigned.'))); break }
+                    $next = ([string]$Facts.AssignRunNext -eq 'yes')
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase ('P' + $num + ' on ' + $to.ToLowerInvariant()) -Text ('Assign: P' + $num + ' (' + $file + ') gets the line **Golem:** ' + $to + ', so only the ' + $to + ' Golem claims it. Assign-Prompt.ps1 first checks that ' + $to + ' is in golems.json and enabled, that its lane takes the prompt''s Model line and that its areas take the prompt''s Touches, and refuses with the reason otherwise.' + $(if ($next) { ' Then P' + $num + ' goes next for ' + $to + ' (Run next).' } else { '' }))))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.AssignScript + @('-Prompt', ('P' + $num), '-Golem', $to) + $(if ($next) { @('-RunNext') } else { @() })) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.assign'))
                 }
                 'golem.retry' {
                     if (-not (& $need $ap.RetryScript 'Retry-Stopped.ps1')) { break }
@@ -9511,8 +9668,10 @@ function Get-ActionFacts {
 function Start-ActionPrecheck {
     # cc-P154: a click's reads in the background; the click carries on (Invoke-ConsoleButton -Prefetched) on the window's
     # thread when they are back, dialogs and all. One at a time: a second click meanwhile is told to wait, never queued.
-    param([hashtable]$Bound)
+    param([hashtable]$Bound, $UseConfig)
     $key = [string]$Bound['ActionKey']
+    # cc-P187: a Golem button for the Golem picked on the Golem tab reads that Golem's files.
+    $readCfg = $(if ($UseConfig) { $UseConfig } else { $script:cfg })
     $busy = $script:rsJobs['precheck']
     if ($busy) { Write-ConsoleLine ('Still reading for ' + $busy.Action + '; click ' + $key + ' again when that is done.') 'amber'; return $false }
     $code = 'param($cfg, $key, $zip, $fromCapture, $statusFrom, $dry) Get-ActionFacts -Config $cfg -ActionKey $key -PackageZip $zip -FromCapture $fromCapture -StatusFrom $statusFrom -Dry $dry'
@@ -9522,7 +9681,7 @@ function Start-ActionPrecheck {
         $a = $Job.Bound
         Invoke-ConsoleButton @a -Prefetched $Data
     }
-    $j = Start-ConsoleJob -Slot 'precheck' -Script $code -Arguments @($script:cfg, $key, [string]$Bound['PackageZip'], [bool]$script:fromCapture, [string]$script:statusFrom, [bool]$script:dry) -Then $then
+    $j = Start-ConsoleJob -Slot 'precheck' -Script $code -Arguments @($readCfg, $key, [string]$Bound['PackageZip'], [bool]$script:fromCapture, [string]$script:statusFrom, [bool]$script:dry) -Then $then
     if (-not $j) { return $false }
     $j.Bound = $Bound
     $j.Action = $key
@@ -9872,14 +10031,21 @@ function Update-QuestionPanel {
     # cc-P106: the picked shard's question and answers, and only its answers' buttons enabled (Show and Stop always).
     param($State)
     if (-not $script:ui -or -not $script:ui.QuestionText -or -not $State) { return }
-    $k = Get-SelectedQuestionShard
-    $sh = $script:cfg.Shards[$k]
-    $q = $State.Shards[$k].Question
+    $p = Get-QuestionPanelInfo $State (Get-SelectedQuestionShard) $script:cfg
+    $script:ui.QuestionText.Text = $p.Lines -join "`r`n"
+    foreach ($b in @($script:ui.QuestionButtons)) { $b.Enabled = ($p.Enabled -contains $b.Tag) }
+}
+
+function Get-QuestionPanelInfo {
+    # cc-P187: the Shard question tab's text for one shard and which of its buttons apply (Show and Stop always, and the
+    # answers the shard's question takes). Update-QuestionPanel's and the web console's. Pure: the state in.
+    param($State, [string]$Key, $Config)
+    $sh = $Config.Shards[$Key]
+    $q = $State.Shards[$Key].Question
     $lines = @('The ' + $sh.Label + ' shard (' + $sh.Container + ') is not waiting on a console question.')
-    if ($q) { $lines = @(Get-QuestionText $q $sh $script:cfg) }
-    $script:ui.QuestionText.Text = $lines -join "`r`n"
+    if ($q) { $lines = @(Get-QuestionText $q $sh $Config) }
     $keys = @(@($(if ($q) { $q.Answers } else { @() })) | ForEach-Object { 'question.' + $_.Key })
-    foreach ($b in @($script:ui.QuestionButtons)) { $b.Enabled = ($b.Tag -in @('question.show', 'question.stop') -or $keys -contains $b.Tag) }
+    [pscustomobject]@{ Lines = @($lines); Enabled = @(@('question.show', 'question.stop') + $keys); Asking = [bool]$q }
 }
 
 function Get-SelectedSnapshotShard {
@@ -9892,21 +10058,23 @@ function Update-SnapshotList {
     $k = Get-SelectedSnapshotShard
     $lv.BeginUpdate()
     $lv.Items.Clear()
-    foreach ($s in @($script:lastState.Shards[$k].Snapshots)) {
-        $kind = 'named'
-        if ($s.IsPreRestore) { $kind = 'pre-restore' }
-        $acc = 'yes'
-        if (-not $s.HasAccounts) { $acc = 'NO' }
-        $item = New-Object Windows.Forms.ListViewItem($s.Name)
-        [void]$item.SubItems.Add($s.Taken.ToString('yyyy-MM-dd HH:mm:ss', $script:Invariant))
-        [void]$item.SubItems.Add((Format-Bytes $s.Bytes))
-        [void]$item.SubItems.Add([string]$s.Files)
-        [void]$item.SubItems.Add($acc)
-        [void]$item.SubItems.Add($kind)
+    foreach ($r in @(Get-SnapshotRows $script:lastState $k)) {
+        $item = New-Object Windows.Forms.ListViewItem($r.Name)
+        foreach ($c in @($r.Taken, $r.Size, $r.Files, $r.Accounts, $r.Kind)) { [void]$item.SubItems.Add([string]$c) }
         [void]$lv.Items.Add($item)
     }
     $lv.EndUpdate()
     $script:ui.SnapPath.Text = 'save: ' + $script:cfg.Shards[$k].Saves + '    snapshots: ' + (Join-Path $script:cfg.SnapshotRoot $k)
+}
+
+function Get-SnapshotRows {
+    # cc-P187: the Snapshots tab's list for one shard (Update-SnapshotList's rows, and the web console's Snapshots page):
+    # { Name, Taken, Size, Files, Accounts (yes or NO), Kind (named or pre-restore) }. Pure: the state in.
+    param($State, [string]$Key)
+    @(foreach ($s in @($State.Shards[$Key].Snapshots)) {
+        [pscustomobject]@{ Name = $s.Name; Taken = $s.Taken.ToString('yyyy-MM-dd HH:mm:ss', $script:Invariant); Size = (Format-Bytes $s.Bytes); Files = [string]$s.Files
+            Accounts = $(if ($s.HasAccounts) { 'yes' } else { 'NO' }); Kind = $(if ($s.IsPreRestore) { 'pre-restore' } else { 'named' }) }
+    })
 }
 
 function New-TypedConfirmForm {
@@ -10046,6 +10214,15 @@ function Show-ListPicker {
 function Show-CommitPicker {
     # cc-P96, Fix test shard > Rebuild: HEAD, the recent commits, and the last good image's commit.
     param($State, $Facts)
+    $rows = @(Get-CommitPickerRows $State $Facts)
+    if (-not $rows.Count) { Write-ConsoleLine 'fix.rebuild: git gave no commits to choose from.' 'amber'; return $null }
+    Show-ListPicker -Title 'Rebuild the TEST shard from a commit' -Caption 'Pick the commit to build through every test gate. The test shard restarts on it after you type the phrase; latest is not moved.' -Columns @(@('Commit', 90), @('Date', 100), @('', 110), @('Subject', 560)) -Rows $rows
+}
+
+function Get-CommitPickerRows {
+    # cc-P187: Rebuild's list (Show-CommitPicker's, and the web console's Fix page): { Tag (the commit), Cells (short,
+    # date, HEAD and last good, subject) }. Pure: the state and Get-FixFacts in, rows out.
+    param($State, $Facts)
     $rows = New-Object 'System.Collections.Generic.List[object]'
     $lg = Get-LastGoodImage $State.Images
     $lgc = $null
@@ -10059,22 +10236,39 @@ function Show-CommitPicker {
     if ($lgc -and -not @($Facts.Commits | Where-Object { $_.Sha.StartsWith($lgc) }).Count) {
         $rows.Add([pscustomobject]@{ Tag = $lgc; Cells = @($lgc, '', 'last good', ('the commit of ' + $lg.Tag)) })
     }
-    if (-not $rows.Count) { Write-ConsoleLine 'fix.rebuild: git gave no commits to choose from.' 'amber'; return $null }
-    Show-ListPicker -Title 'Rebuild the TEST shard from a commit' -Caption 'Pick the commit to build through every test gate. The test shard restarts on it after you type the phrase; latest is not moved.' -Columns @(@('Commit', 90), @('Date', 100), @('', 110), @('Subject', 560)) -Rows $rows.ToArray()
+    $rows.ToArray()
 }
 
 function Show-ImagePicker {
     # Test shard > Deploy built image: which sl-modernuo:cc-p* to put on the test shard (cc-P63).
     param($State)
-    $rows = @(Get-DeployCandidates $State $script:cfg | ForEach-Object {
-        $now = ''
-        if ($_.IsLatest) { $now = '<- latest now' }
-        [pscustomobject]@{ Tag = $_.Tag; Cells = @($_.Tag, $_.Id, (Format-LocalTime $_.Created), $now) }
-    })
+    $rows = @(Get-ImagePickerRows $State $script:cfg)
     if (-not $rows.Count) { Write-ConsoleLine 'test.deploy: there is no sl-modernuo:cc-p* image to deploy (docker images sl-modernuo).' 'amber'; return $null }
     $was = '(none)'
     if ($State.Latest.Exists) { $was = Format-ShortId $State.Latest.Id }
     Show-ListPicker -Title 'Deploy built image to the TEST shard' -Caption ($script:cfg.LatestTag + ' is ' + $was + ' now. Pick the image to point it at; the test shard is restarted on it after you type the phrase.') -Columns @(@('Image', 260), @('Id', 120), @('Created', 160), @('', 120)) -Rows $rows
+}
+
+function Get-ImagePickerRows {
+    # cc-P187: Deploy built image's list (Show-ImagePicker's, and the web console's Test shard page): { Tag, Cells (tag,
+    # id, built, whether latest points at it now) }. Pure: the state in, rows out.
+    param($State, $Config)
+    @(Get-DeployCandidates $State $Config | ForEach-Object {
+        $now = ''
+        if ($_.IsLatest) { $now = '<- latest now' }
+        [pscustomobject]@{ Tag = $_.Tag; Cells = @($_.Tag, $_.Id, (Format-LocalTime $_.Created), $now) }
+    })
+}
+
+function Get-PackageListRows {
+    # cc-P187: the Player package tab's zips in dist\, newest first (Update-PackageList's rows, and the web console's
+    # Player package page): { Name, Version, Size, Built, Notes }.
+    param($Config)
+    @(foreach ($z in @(Get-PackageZips $Config.PackageDist)) {
+        $ver = '(no version.json)'; $nt = ''
+        if ($z.Json.Exists) { $ver = [string]$z.Json.Version; $nt = [string]$z.Json.Notes; if ($z.Json.Error) { $ver = '(version.json unreadable)' } }
+        [pscustomobject]@{ Name = $z.Name; Version = $ver; Size = (Format-Bytes $z.Bytes); Built = (Format-LocalTime $z.LastWriteUtc); Notes = $nt }
+    })
 }
 
 function Update-PackageList {
@@ -10086,14 +10280,9 @@ function Update-PackageList {
     if (-not $lv) { return }
     $lv.BeginUpdate()
     $lv.Items.Clear()
-    foreach ($z in @(Get-PackageZips $script:cfg.PackageDist)) {
-        $ver = '(no version.json)'; $nt = ''
-        if ($z.Json.Exists) { $ver = [string]$z.Json.Version; $nt = [string]$z.Json.Notes; if ($z.Json.Error) { $ver = '(version.json unreadable)' } }
-        $item = New-Object Windows.Forms.ListViewItem($z.Name)
-        [void]$item.SubItems.Add($ver)
-        [void]$item.SubItems.Add((Format-Bytes $z.Bytes))
-        [void]$item.SubItems.Add((Format-LocalTime $z.LastWriteUtc))
-        [void]$item.SubItems.Add($nt)
+    foreach ($r in @(Get-PackageListRows $script:cfg)) {
+        $item = New-Object Windows.Forms.ListViewItem($r.Name)
+        foreach ($c in @($r.Version, $r.Size, $r.Built, $r.Notes)) { [void]$item.SubItems.Add([string]$c) }
         [void]$lv.Items.Add($item)
     }
     $lv.EndUpdate()
@@ -10208,7 +10397,7 @@ function Show-YesNo {
 function Invoke-ConsoleButton {
     param([string]$ActionKey, [string]$ShardKey, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage,
         [string]$PackageNotes, [string]$PackageZip, [string]$ImageTag, [switch]$CommitForce, [string]$WipeAdmin, [string]$Commit, [string]$Site,
-        $Prefetched, [string]$VdFile, [string]$Body, [string]$HuesFile)
+        $Prefetched, [string]$VdFile, [string]$Body, [string]$HuesFile, [string]$Golem)
     try {
         $ActionKey = Resolve-ActionAlias $ActionKey
         $def = @(Get-ConsoleActions | Where-Object { $_.Key -eq $ActionKey })[0]
@@ -10218,6 +10407,18 @@ function Invoke-ConsoleButton {
         $isVpn = ($ActionKey -like 'vpn.*')
         if (-not $ShardKey -and $isVpn) { $ShardKey = 'network' }
         if (-not $ShardKey) { $ShardKey = 'test'; if ($ActionKey -like 'live.*') { $ShardKey = 'live' }; if ($isCommit) { $ShardKey = 'repos' }; if ($isPackage) { $ShardKey = 'package' }; if ($isAutopilot) { $ShardKey = 'golem' }; if ($ActionKey -like 'links.*') { $ShardKey = 'links' }; if ($ActionKey -like 'web.*') { $ShardKey = 'websites' }; if ($ActionKey -like 'art.*' -or $ActionKey -like 'map.*') { $ShardKey = 'mapart' } }
+        # cc-P187: the Golem tab's picker. A Golem button acts for the picked Golem (Get-GolemActionConfig): the console's
+        # own config for the integrator; that Golem's own files and name for another on this PC; refused otherwise.
+        # Assign is the integrator's, for the picked Golem (it writes the prompt's Golem line).
+        $cfgUse = $script:cfg
+        $golemName = ''
+        if ($isAutopilot -and $ActionKey -ne 'golem.assign') {
+            if (-not $PSBoundParameters.ContainsKey('Golem')) { $Golem = Get-PickedGolem }
+            $ga = Get-GolemActionConfig -Config $script:cfg -ActionKey $ActionKey -Golem $Golem -Rows $script:ui.GolemPickRows -AnyGolemActions (Get-AnyGolemActionKeys (Join-Path $script:cfg.RepoRoot 'web-console\golem-actions.json'))
+            if ($ga.Refusal) { Write-ConsoleLine ($ActionKey + ': ' + $ga.Refusal) 'amber'; return }
+            $cfgUse = $ga.Config
+            $golemName = $ga.Name
+        }
         # Two flags since the toggle: $script:dry is "buttons print", $script:fromCapture is "the
         # status is a capture file". Only the second decides where the state comes from.
         if ($script:fromCapture -and -not $script:dry) { throw 'the status is from a capture file, so nothing may run for real. Relaunch without -DryRun.' }
@@ -10227,12 +10428,13 @@ function Invoke-ConsoleButton {
             $bound = @{}
             foreach ($k in $PSBoundParameters.Keys) { $bound[$k] = $PSBoundParameters[$k] }
             $bound['ActionKey'] = $ActionKey
-            [void](Start-ActionPrecheck -Bound $bound)
+            if ($isAutopilot -and $ActionKey -ne 'golem.assign') { $bound['Golem'] = $Golem }
+            [void](Start-ActionPrecheck -Bound $bound -UseConfig $cfgUse)
             return
         }
         $now = Get-Date
         $pre = $Prefetched
-        if (-not $pre) { $pre = Get-ActionFacts -Config $script:cfg -ActionKey $ActionKey -PackageZip $PackageZip -FromCapture ([bool]$script:fromCapture) -StatusFrom $script:statusFrom -Dry ([bool]$script:dry) }
+        if (-not $pre) { $pre = Get-ActionFacts -Config $cfgUse -ActionKey $ActionKey -PackageZip $PackageZip -FromCapture ([bool]$script:fromCapture) -StatusFrom $script:statusFrom -Dry ([bool]$script:dry) }
         $facts = $pre.Facts
         $pkgFacts = $pre.PackageFacts
         $apFacts = $pre.AutopilotFacts
@@ -10257,6 +10459,14 @@ function Invoke-ConsoleButton {
                 $rp = 'cancel'
                 if ($script:ui.GolemQueueList -and $script:ui.GolemQueueList.SelectedItems.Count) { $rp = [string]$script:ui.GolemQueueList.SelectedItems[0].Text }
                 $apFacts | Add-Member -NotePropertyName RunNextPrompt -NotePropertyValue $rp -Force
+            }
+            # cc-P187: Assign takes the picked queue row, the picked Golem and the "and run it next" tick.
+            if ($ActionKey -eq 'golem.assign') {
+                $rp = ''
+                if ($script:ui.GolemQueueList -and $script:ui.GolemQueueList.SelectedItems.Count) { $rp = [string]$script:ui.GolemQueueList.SelectedItems[0].Text }
+                $apFacts | Add-Member -NotePropertyName RunNextPrompt -NotePropertyValue $rp -Force
+                $apFacts | Add-Member -NotePropertyName AssignGolem -NotePropertyValue (Get-PickedGolem) -Force
+                $apFacts | Add-Member -NotePropertyName AssignRunNext -NotePropertyValue $(if ($script:ui.AssignNext -and $script:ui.AssignNext.Checked) { 'yes' } else { 'no' }) -Force
             }
             # cc-P131: the picked model, the night shift's two times, and (for the wake only) a fresh sign-in check.
             if ($script:ui.GolemModel) { $apFacts | Add-Member -NotePropertyName WakeModel -NotePropertyValue ([string]$script:ui.GolemModel.SelectedItem) -Force }
@@ -10301,8 +10511,9 @@ function Invoke-ConsoleButton {
                 if (-not $WipeAdmin) { Write-ConsoleLine ($ActionKey + ': cancelled. Nothing was changed.') 'gray'; return }
             }
         }
-        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $script:cfg -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fxFacts -Commit $Commit -Site $Site -VdFile $VdFile -Body $Body -HuesFile $HuesFile)
-        $viol = @(Test-PlanSafety $plan $script:cfg)
+        $plan = @(Get-ActionPlan -Action $ActionKey -ShardKey $ShardKey -Config $cfgUse -State $state -SnapshotName $SnapshotName -Snapshot $Snapshot -Now $now -CommitMessage $CommitMessage -CommitFacts $facts -PackageNotes $PackageNotes -PackageZip $PackageZip -PackageFacts $pkgFacts -ImageTag $ImageTag -CommitForce:$CommitForce -WipeFacts $wFacts -WipeAdmin $WipeAdmin -AutopilotFacts $apFacts -VpnFacts $vpnFacts -FixFacts $fxFacts -Commit $Commit -Site $Site -VdFile $VdFile -Body $Body -HuesFile $HuesFile)
+        if ($golemName) { $plan = @(Add-GolemToPlan -Plan $plan -Config $cfgUse -Name $golemName) }
+        $viol = @(Test-PlanSafety $plan $cfgUse)
         Write-ConsoleLine '' 'normal'
         $dryTag = ''
         if ($script:dry) {
@@ -10357,7 +10568,7 @@ function Invoke-ConsoleButton {
                 Start-PaneJob -Exe $tail[0].Exe -Arguments (Format-ArgumentList $tail[0].Arguments) -Title ($ActionKey + ': ' + (Format-CommandLine $tail[0].Exe $tail[0].Arguments))
             } else {
                 if ($wanted -and $tail.Count) { Write-ConsoleLine 'The Action output pane is busy, so this one opens a window of its own.' 'gray' }
-                [void](Invoke-Plan -Plan $plan -Config $script:cfg -ActionKey $ActionKey -ShardKey $ShardKey -ConfirmLive $phrase -Yes:$answeredYes)
+                [void](Invoke-Plan -Plan $plan -Config $cfgUse -ActionKey $ActionKey -ShardKey $ShardKey -ConfirmLive $phrase -Yes:$answeredYes)
             }
             # cc-P154: the Golem's files in the background under -BackgroundRefresh, drawn when they are back.
             if ($isAutopilot) { if ($script:BackgroundRefresh) { [void](Start-ConsoleRefresh -Parts @('golem') -Queue) } else { [void](Update-AutopilotView) } }
@@ -10374,6 +10585,36 @@ function Invoke-ConsoleButton {
     } catch {
         Write-ConsoleLine ($ActionKey + ' failed: ' + $_.Exception.Message) 'red'
     }
+}
+
+function Get-ConsoleGolemPickRows {
+    # cc-P187: the Golem tab's picker rows from this PC's golems.json and settings.json (Get-GolemPickRows); none
+    # without a registry (one Golem: the picker is empty and every button is the console's own Golem's, as before).
+    param($Config)
+    $root = $Config.Autopilot.GolemRoot
+    if (-not $root) { return @() }
+    $rt = ''; $st = ''
+    try { $rt = [IO.File]::ReadAllText((Join-Path $root 'golems.json')) } catch { }
+    try { $st = [IO.File]::ReadAllText((Join-Path $root 'settings.json')) } catch { }
+    if (-not $rt) { return @() }
+    @(Get-GolemPickRows -RegistryText $rt -SettingsText $st)
+}
+
+function Get-PickedGolem {
+    # cc-P187: the Golem picked on the Golem tab, or '' (no registry).
+    if (-not $script:ui -or -not $script:ui.GolemPick -or $script:ui.GolemPick.SelectedIndex -lt 0) { return '' }
+    $r = @($script:ui.GolemPickRows)[$script:ui.GolemPick.SelectedIndex]
+    $(if ($r) { [string]$r.Name } else { '' })
+}
+
+function Update-GolemPickModel {
+    # cc-P187: Wake's model follows the picked Golem's lane (Bronze: Fable) until a model is picked by hand; the
+    # integrator's follows the next prompt's Model line, as before.
+    if (-not $script:ui.GolemPick -or -not $script:ui.GolemModel -or $script:ui.GolemPick.SelectedIndex -lt 0) { return }
+    $r = @($script:ui.GolemPickRows)[$script:ui.GolemPick.SelectedIndex]
+    if (-not $r) { return }
+    if ($r.Integrator) { $script:ui.GolemModelAuto = $true; return }
+    if ($r.Lane -in @('Fable', 'Opus')) { $script:ui.GolemModel.SelectedItem = $r.Lane; $script:ui.GolemModelAuto = $false }
 }
 
 function New-ConsoleButton {
@@ -10457,6 +10698,53 @@ function Update-ArtList {
     Write-ConsoleLine ('Art: ' + $rows.Count + ' request(s), ' + @($rows | Where-Object { $_.Status -eq 'generated' }).Count + ' waiting for your review.') 'gray'
 }
 
+function Get-ArtButtonCommand {
+    # cc-P187: one Art tab button as Art.ps1's arguments (Invoke-ArtButton's, and the web console's Art page): prompt
+    # (-Clip only in the window: the web shows the text), approve, place, reject with its note, import with its file,
+    # generate and regenerate with -Go, the note and an override. '' for a button Art.ps1 does not run (review).
+    param([string]$What, [string]$Id, [string]$Note, [string]$File, [string]$Backend = 'codex', [string]$Override, [switch]$Clip)
+    switch ($What) {
+        'prompt' { return @(@('prompt', '-Id', $Id) + $(if ($Clip) { @('-Clip') } else { @() })) }
+        'approve' { return @('approve', '-Id', $Id) }
+        'place' { return @('place', '-Id', $Id) }
+        'reject' { return @('reject', '-Id', $Id, '-Note', $Note) }
+        'import' { return @('import', '-Id', $Id, '-File', $File) }
+        { $_ -in 'generate', 'generate-api', 'regenerate' } {
+            $a = @($(if ($What -eq 'regenerate') { 'regenerate' } else { 'generate' }), '-Id', $Id, '-Backend', $Backend, '-Go')
+            if ($Note) { $a += @('-Note', $Note) }
+            if ($Override) { $a += @('-Override', $Override) }
+            return $a
+        }
+    }
+    @()
+}
+
+function Get-ArtGenerateChoice {
+    # cc-P187: what Generate does with Art.ps1's estimate (Invoke-ArtButton's dialogs, and the web console's sheet):
+    # Refusal (nothing to ask: not available, no key, refused and not overridable); Message (the estimate, said first);
+    # Override (past the budget but overridable: only after the person types yes, once). Pure: the estimate in.
+    param($Estimate, [string]$Backend, [string]$ArtScript)
+    $o = [pscustomobject]@{ Refusal = ''; Message = ''; Override = $false; Title = '' }
+    if (-not $Estimate -or -not $Estimate.estimate) { $o.Refusal = 'no estimate from Art.ps1'; return $o }
+    if ($Backend -eq 'codex') {
+        $b = $Estimate.estimate.codex.budget
+        $o.Message = 'Codex, on your ChatGPT plan (no money; an image uses the limits 3 to 5 times faster than a text turn).' + "`n`n" + ((@($b.lines) | ForEach-Object { [string]$_ }) -join "`n") + "`n`n" + [string]$b.why
+        $o.Title = 'Generate with Codex'
+        if (-not $Estimate.estimate.codex.available) { $o.Refusal = 'Codex is not available: ' + $Estimate.estimate.codex.login; return $o }
+        if (-not $b.allowed) {
+            if (-not $b.overridable) { $o.Refusal = $o.Message; $o.Title = 'Generate: refused'; return $o }
+            $o.Override = $true; $o.Title = 'Generate: past the budget'
+        }
+        return $o
+    }
+    $api = $Estimate.estimate.api
+    $o.Message = 'OpenAI API, ' + $api.model + ' ' + $api.quality + ' ' + $api.size + ': ' + [string]$api.why
+    $o.Title = 'Generate with the API'
+    if (-not $api.keyStored) { $o.Refusal = 'No API key stored. Run: powershell -File ' + $ArtScript + ' set-key'; $o.Title = 'Generate (API)'; return $o }
+    if (-not $api.allowed) { $o.Refusal = $o.Message; $o.Title = 'Generate (API): refused' }
+    $o
+}
+
 function Invoke-ArtButton {
     # cc-P152: each button is one Art.ps1 command, run in the Action output pane. Generate asks Art.ps1 for the estimate
     # first (no -Go: nothing is generated), shows it, and only then runs with -Go; a refusal it may override asks for yes.
@@ -10467,16 +10755,16 @@ function Invoke-ArtButton {
     $run = { param([string[]]$CmdArgs, [string]$Title) Start-PaneJob -Exe $script:cfg.PowerShell -Arguments (Format-ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $art) + $CmdArgs)) -Title $Title }
     $ask = { param([string]$Text, [string]$Title) Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.Interaction]::InputBox($Text, $Title, '') }
     switch ($What) {
-        'prompt' { & $run @('prompt', '-Id', $sel, '-Clip') ('Art: copy prompt ' + $sel) }
-        'approve' { & $run @('approve', '-Id', $sel) ('Art: approve ' + $sel) }
-        'place' { & $run @('place', '-Id', $sel) ('Art: place ' + $sel) }
+        'prompt' { & $run (Get-ArtButtonCommand 'prompt' $sel -Clip) ('Art: copy prompt ' + $sel) }
+        'approve' { & $run (Get-ArtButtonCommand 'approve' $sel) ('Art: approve ' + $sel) }
+        'place' { & $run (Get-ArtButtonCommand 'place' $sel) ('Art: place ' + $sel) }
         'review' { $d = Join-Path (Join-Path $script:cfg.ArtStore 'review') $sel; if (Test-Path -LiteralPath $d) { Start-Process explorer.exe $d } else { Write-ConsoleLine ('Art: no review folder for ' + $sel + ' (placed requests are in D:\UO\art\archive).') 'amber' } }
-        'reject' { $n = & $ask 'Why? (kept in the request''s notes)' ('Reject ' + $sel); & $run @('reject', '-Id', $sel, '-Note', $n) ('Art: reject ' + $sel) }
+        'reject' { $n = & $ask 'Why? (kept in the request''s notes)' ('Reject ' + $sel); & $run (Get-ArtButtonCommand 'reject' $sel -Note $n) ('Art: reject ' + $sel) }
         'import' {
             $dlg = New-Object Windows.Forms.OpenFileDialog
             $dlg.Filter = 'Pictures (*.png;*.webp;*.jpg)|*.png;*.webp;*.jpg;*.jpeg'
             $dlg.InitialDirectory = $script:cfg.ArtInbox
-            if ($dlg.ShowDialog() -eq 'OK') { & $run @('import', '-Id', $sel, '-File', $dlg.FileName) ('Art: import into ' + $sel) }
+            if ($dlg.ShowDialog() -eq 'OK') { & $run (Get-ArtButtonCommand 'import' $sel -File $dlg.FileName) ('Art: import into ' + $sel) }
         }
         { $_ -in 'generate', 'generate-api', 'regenerate' } {
             $backend = $(if ($What -eq 'generate-api') { 'api' } else { 'codex' })
@@ -10487,26 +10775,16 @@ function Invoke-ArtButton {
             $e = $null; try { $e = ($t.Substring([Math]::Max(0, $t.IndexOf('{')))) | ConvertFrom-Json } catch { }
             if (-not $e -or -not $e.estimate) { Write-ConsoleLine ('Art: no estimate from Art.ps1: ' + $t) 'red'; return }
             $override = ''
-            if ($backend -eq 'codex') {
-                $b = $e.estimate.codex.budget
-                $msg = 'Codex, on your ChatGPT plan (no money; an image uses the limits 3 to 5 times faster than a text turn).' + "`n`n" + ((@($b.lines) | ForEach-Object { [string]$_ }) -join "`n") + "`n`n" + [string]$b.why
-                if (-not $e.estimate.codex.available) { Write-ConsoleLine ('Art: Codex is not available: ' + $e.estimate.codex.login) 'red'; return }
-                if (-not $b.allowed) {
-                    if (-not $b.overridable) { [void][Windows.Forms.MessageBox]::Show($msg, 'Generate: refused', 'OK', 'Warning'); return }
-                    if ((& $ask ($msg + "`n`nType yes to run it anyway, once.") 'Generate: past the budget') -ne 'yes') { return }
-                    $override = 'yes'
-                } elseif ([string][Windows.Forms.MessageBox]::Show($msg + "`n`nGenerate one image for " + $sel + '?', 'Generate with Codex', 'YesNo', 'Question') -ne 'Yes') { return }
-            } else {
-                $api = $e.estimate.api
-                $msg = 'OpenAI API, ' + $api.model + ' ' + $api.quality + ' ' + $api.size + ': ' + [string]$api.why
-                if (-not $api.keyStored) { [void][Windows.Forms.MessageBox]::Show('No API key stored. Run: powershell -File ' + $art + ' set-key', 'Generate (API)', 'OK', 'Warning'); return }
-                if (-not $api.allowed) { [void][Windows.Forms.MessageBox]::Show($msg, 'Generate (API): refused', 'OK', 'Warning'); return }
-                if ([string][Windows.Forms.MessageBox]::Show($msg + "`n`nGenerate one image for " + $sel + '?', 'Generate with the API', 'YesNo', 'Question') -ne 'Yes') { return }
+            $c = Get-ArtGenerateChoice -Estimate $e -Backend $backend -ArtScript $art
+            if ($c.Refusal) {
+                if ($backend -eq 'codex' -and -not $e.estimate.codex.available) { Write-ConsoleLine ('Art: ' + $c.Refusal) 'red'; return }
+                [void][Windows.Forms.MessageBox]::Show($c.Refusal, $c.Title, 'OK', 'Warning'); return
             }
-            $cmdArgs = @($(if ($What -eq 'regenerate') { 'regenerate' } else { 'generate' }), '-Id', $sel, '-Backend', $backend, '-Go')
-            if ($note) { $cmdArgs += @('-Note', $note) }
-            if ($override) { $cmdArgs += @('-Override', $override) }
-            & $run $cmdArgs ('Art: ' + $What + ' ' + $sel)
+            if ($c.Override) {
+                if ((& $ask ($c.Message + "`n`nType yes to run it anyway, once.") $c.Title) -ne 'yes') { return }
+                $override = 'yes'
+            } elseif ([string][Windows.Forms.MessageBox]::Show($c.Message + "`n`nGenerate one image for " + $sel + '?', $c.Title, 'YesNo', 'Question') -ne 'Yes') { return }
+            & $run (Get-ArtButtonCommand $What $sel -Note $note -Backend $backend -Override $override) ('Art: ' + $What + ' ' + $sel)
         }
     }
 }
@@ -11384,6 +11662,24 @@ function New-ConsoleForm {
         $apTop.Controls.Add($b)
     }
     $script:ui.GolemQueueButtons = $queueBtns
+    # cc-P187: the Golem picker, a row of its own: which Golem the Golem buttons act for (golems.json; the integrator
+    # first), Wake's model following its lane, and Assign (the picked queue row to the picked Golem, and run it next).
+    $apTop.SetFlowBreak($apTop.Controls[$apTop.Controls.Count - 1], $true)
+    $pickRows = @(Get-ConsoleGolemPickRows $Config)
+    $pickLabel = New-Caption 'Golem' 50
+    $golemPick = New-Object Windows.Forms.ComboBox
+    $golemPick.Name = 'golem.pick'; $golemPick.DropDownStyle = 'DropDownList'; $golemPick.Width = 420; $golemPick.Margin = New-Object Windows.Forms.Padding(6, 12, 6, 6)
+    foreach ($r in $pickRows) { [void]$golemPick.Items.Add($r.Text) }
+    if ($golemPick.Items.Count) { $golemPick.SelectedIndex = 0 }
+    $golemPick.Add_SelectionChangeCommitted({ Update-GolemPickModel })
+    $apTop.Controls.AddRange(@($pickLabel, $golemPick))
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Golem pick' })) { $apTop.Controls.Add((New-ConsoleButton $a.Label $a.Key 230)) }
+    $assignNext = New-Object Windows.Forms.CheckBox
+    $assignNext.Name = 'golem.assignnext'; $assignNext.Text = 'and run it next'; $assignNext.AutoSize = $true; $assignNext.Margin = New-Object Windows.Forms.Padding(6, 14, 6, 6)
+    $apTop.Controls.Add($assignNext)
+    $script:ui.GolemPick = $golemPick
+    $script:ui.GolemPickRows = $pickRows
+    $script:ui.AssignNext = $assignNext
     # cc-P132: the Golem figure on its tab too (a look with crystals).
     $script:ui.GolemFigure = $null
     if ($script:theme.Crystals) {
@@ -11771,16 +12067,7 @@ if ($Status) {
 if ($Action) {
     # cc-P99: autopilot.* are the Golem's buttons under their old names.
     $Action = Resolve-ActionAlias $Action
-    $sk = $Shard
-    if ($Action -like 'live.*') { $sk = 'live' }
-    if ($Action -like 'test.*') { $sk = 'test' }
-    if ($Action -like 'commit.*') { $sk = 'repos' }
-    if ($Action -like 'package.*') { $sk = 'package' }
-    if ($Action -like 'golem.*') { $sk = 'golem' }
-    if ($Action -like 'links.*') { $sk = 'links' }
-    if ($Action -like 'vpn.*') { $sk = 'network' }
-    if ($Action -like 'web.*') { $sk = 'websites' }
-    if ($Action -like 'art.*' -or $Action -like 'map.*') { $sk = 'mapart' }
+    $sk = Resolve-ActionShardKey -Action $Action -Shard $Shard
     # The mode is decided and shown before anything is read or run (D37).
     $run = Resolve-RunMode -Action $Action -Mode $Mode -DryRun:$DryRun
     $banner = Get-ModeBanner -RunMode $run -Action $Action -ShardKey $sk

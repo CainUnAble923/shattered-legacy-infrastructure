@@ -126,3 +126,41 @@ pre.joblog { max-height: 45vh; margin: 8px 0; }
 .spin.stand-in { border: 3px solid rgba(220, 178, 98, 0.3); border-top-color: var(--gold); border-radius: 50%; animation: turn 0.9s linear infinite; }
 @keyframes turn { to { transform: rotate(360deg); } }
 @media (min-width: 700px) { .ctl-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* cc-P187: the Console tab (a page per Shard Console tab), its lists (tap a row to pick it), its buttons (PC only ones
+   greyed with the reason under them), the Golem picker, the prompt reader, the look first and the second confirm. */
+.pagegrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.pagegrid a { display: block; min-height: 64px; padding: 10px 12px; border-radius: 8px; background: var(--button); color: var(--button-text);
+  text-decoration: none; border: 1px solid rgba(220, 178, 98, 0.35); overflow-wrap: anywhere; }
+.pagegrid a b { display: block; color: var(--gold); }
+.pagegrid a.live b { color: var(--red); }
+.picklist { list-style: none; margin: 8px 0; padding: 0; }
+.picklist li { margin: 6px 0; overflow-wrap: anywhere; }
+.picklist button.row, .picklist button.pick { width: 100%; min-height: 48px; text-align: left; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; overflow-wrap: anywhere; }
+.picklist button.row b, .picklist button.pick b { color: var(--page-text); }
+.picklist button.on { border-color: var(--gold); box-shadow: inset 5px 0 0 var(--gold); }
+.picklist button.grey { opacity: 0.6; border-style: dashed; }
+.picklist img.thumb { width: 48px; height: 48px; object-fit: contain; flex: 0 0 48px; }
+.picklist .meta { flex: 1 1 100%; }
+.picktext { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.golempick .glyph { flex: 0 0 40px; width: 40px; height: 40px; line-height: 38px; text-align: center; border-radius: 50%; border: 2px solid var(--gold); color: var(--gold); font-weight: 700; }
+.golempick img.portrait { width: 40px; height: 40px; flex: 0 0 40px; }
+.radios { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.radios button { min-height: 44px; flex: 1 1 auto; }
+.radios button.on { border-color: var(--gold); color: var(--gold); box-shadow: inset 0 -3px 0 var(--gold); }
+.radios button[data-shard=live] { color: var(--red); }
+.pagebtns { margin-top: 12px; }
+.btncell { min-width: 0; }
+.btncell button.ctl { width: 100%; }
+button.ctl.danger-btn { border-color: var(--red); }
+.pconly { font-size: 12px; color: var(--amber); margin: 4px 0 0; overflow-wrap: anywhere; }
+label.check { display: flex; gap: 8px; align-items: center; margin: 10px 0; font-size: 14px; color: var(--page-text); }
+label.check input { min-height: 24px; width: 24px; height: 24px; flex: 0 0 24px; }
+.worldrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.worldrow code { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; font: 13px Consolas, monospace; color: var(--page-text); }
+.worldrow input { min-height: 24px; width: 24px; height: 24px; }
+h3 { margin: 12px 0 4px; font-size: 15px; color: var(--gold); }
+button.read { margin-top: 4px; }
+.ok { color: var(--green); font-size: 13px; }
+.danger { border: 2px solid var(--red); background: var(--tile-red); border-radius: 8px; padding: 12px; color: var(--page-text); font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+button.yes { background: var(--tile-red); border-color: var(--red); color: var(--page-text); }

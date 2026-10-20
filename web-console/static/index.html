@@ -9,7 +9,8 @@
 </head>
 <body>
 <!-- cc-P155: the web console. Everything below is filled by app.js from /api/status. cc-P182: the Golem's buttons, their
-     confirm sheet and the running action's output. -->
+     confirm sheet and the running action's output. cc-P187: the Console tab (a page per Shard Console tab), the Golem
+     picker, the prompt reader, and the sheet's plan (look first) and second confirm. -->
 <header id="top">
   <div class="brand"><span id="rune" class="runebox" aria-hidden="true"></span><span>Shattered Legacy <small>Shard Console</small></span></div>
   <div id="fresh" class="fresh" role="status">loading...</div>
@@ -17,12 +18,18 @@
 <nav id="tabs" aria-label="Sections">
   <a href="#today" data-tab="today">Today</a>
   <a href="#golem" data-tab="golem">Golem</a>
+  <a href="#console" data-tab="console">Console</a>
   <a href="#needs" data-tab="needs">Needs you <span id="needs-count" class="badge"></span></a>
   <a href="#timeline" data-tab="timeline">Timeline</a>
   <a href="#logs" data-tab="logs">Logs</a>
   <a href="#links" data-tab="links">Links</a>
 </nav>
 <main>
+  <div class="card job" id="job" hidden>
+    <div class="jobhead"><h2 id="job-title"></h2><span id="job-spin"></span><button type="button" id="job-close" class="small">Hide</button></div>
+    <pre id="job-lines" class="log joblog"></pre>
+    <p id="job-result" class="result"></p>
+  </div>
   <section id="today" class="tab">
     <div id="tiles" class="tiles"></div>
     <div id="lights" class="lights"></div>
@@ -34,6 +41,8 @@
   </section>
   <section id="golem" class="tab">
     <div class="card"><h2>State</h2><div id="golem-state"></div></div>
+    <!-- cc-P187: which Golem the Controls act for. -->
+    <div class="card" id="picker-card" hidden><h2>Pick the Golem</h2><ul id="picker" class="picklist golempick"></ul><p id="picker-note" class="quiet"></p></div>
     <!-- cc-P186: every Golem: machine, lanes, state, its readiness check, its portrait, its own buttons. -->
     <div class="card" id="golem-team-card" hidden><h2>Golems</h2><ul id="golem-team" class="list"></ul></div>
     <div class="card" id="controls">
@@ -41,15 +50,21 @@
       <p id="ctl-note" class="quiet"></p>
       <div id="ctl-buttons" class="ctl-grid"></div>
     </div>
-    <div class="card job" id="job" hidden>
-      <div class="jobhead"><h2 id="job-title"></h2><span id="job-spin"></span><button type="button" id="job-close" class="small">Hide</button></div>
-      <pre id="job-lines" class="log joblog"></pre>
-      <p id="job-result" class="result"></p>
-    </div>
     <div class="card"><h2>Running</h2><div id="golem-current"></div></div>
     <div class="card"><h2>Queue</h2><ol id="golem-queue" class="list"></ol></div>
     <div class="card"><h2>Finished lately</h2><ul id="golem-finished" class="list"></ul></div>
+    <div class="card" id="reader" hidden>
+      <div class="jobhead"><h2 id="reader-title"></h2><button type="button" id="reader-close" class="small">Close</button></div>
+      <pre id="reader-text" class="log"></pre>
+    </div>
     <div class="card"><h2>Usage</h2><div id="golem-usage"></div></div>
+  </section>
+  <section id="console" class="tab">
+    <div class="card"><h2>Console</h2><p class="quiet">Every tab of the Shard Console. Read buttons run at a tap; the rest show the console's plan first and ask its word; dangerous ones (the LIVE shard, publishing, deploying, deleting, committing) ask a second time.</p>
+      <div id="page-grid" class="pagegrid"></div></div>
+  </section>
+  <section id="page" class="tab" data-page="">
+    <div class="card"><div class="jobhead"><h2 id="page-title"></h2><a href="#console" class="small">All pages</a></div><div id="page-body"></div></div>
   </section>
   <section id="needs" class="tab">
     <div class="card"><h2>Needs you</h2><ul id="needs-list" class="list"></ul><p id="needs-note" class="quiet"></p></div>
@@ -78,15 +93,28 @@
   <form id="sheet-form" class="sheetbox" role="dialog" aria-modal="true" aria-labelledby="sheet-title" autocomplete="off">
     <h3 id="sheet-title"></h3>
     <p id="sheet-help" class="quiet"></p>
-    <div id="sheet-inputs"></div>
-    <label id="sheet-confirm" class="field confirm">
-      <span>Type <b id="sheet-want"></b> to confirm</span>
-      <input id="sheet-word" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
-    </label>
-    <p id="sheet-msg" class="warn" role="status"></p>
-    <div class="sheetbtns">
-      <button type="submit" id="sheet-run" class="go">Run</button>
-      <button type="button" id="sheet-cancel">Cancel</button>
+    <div id="sheet-first">
+      <div id="sheet-inputs"></div>
+      <pre id="sheet-plan" class="log joblog" hidden></pre>
+      <label id="sheet-confirm" class="field confirm">
+        <span>Type <b id="sheet-want"></b> to confirm</span>
+        <input id="sheet-word" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+      </label>
+      <p id="sheet-msg" class="warn" role="status"></p>
+      <div class="sheetbtns">
+        <button type="submit" id="sheet-run" class="go">Run</button>
+        <button type="button" id="sheet-cancel">Cancel</button>
+      </div>
+    </div>
+    <!-- cc-P187: the second confirm of a dangerous button: what happens, and to what. -->
+    <div id="sheet-second" hidden>
+      <p id="second-text" class="danger"></p>
+      <p id="second-online" class="warn"></p>
+      <p id="second-asks" class="warn"></p>
+      <div class="sheetbtns">
+        <button type="button" id="second-yes" class="yes">Yes</button>
+        <button type="button" id="second-back">Back</button>
+      </div>
     </div>
   </form>
 </div>

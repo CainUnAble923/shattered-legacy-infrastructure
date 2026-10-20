@@ -9,11 +9,18 @@
    cc-P186: every Golem's card has the same buttons (those marked anyGolem): the sheet then names the Golem and Run
    posts it too. A Golem on this PC runs at once (the job card, as above); one on another PC is queued for its agent,
    and its card shows "queued until <name> is online", what it is running, what came back and what expired. Each card
-   shows its machine, lanes, state, last readiness check and its portrait when it has one. ASCII only. */
+   shows its machine, lanes, state, last readiness check and its portrait when it has one.
+   cc-P187: the Golem picker (status.golemPicker: which Golem the Controls act for; the word then names it, "wake
+   bronze", and Wake's model follows its lane), Assign (a queued prompt to the picked Golem), a tap on a queued or
+   finished prompt reads it, and the Console tab: one page per Shard Console tab (status.pages, from
+   console-actions.json) with its lists (/api/page, tap a row to pick it), its buttons (PC only ones greyed with the
+   reason), the console's plan before Run (/api/preview, a dry run), its typed phrase, and for a dangerous button a
+   second confirm that says what happens and to what. ASCII only. */
 (function () {
   'use strict';
   var POLL_MS = 5000, JOB_MS = 1000;
   var last = null, busy = false, art = [], frames = {}, sheetFor = null, sheetGolem = null, jobSeen = 0, jobTimer = null, strips = [];
+  var picked = '', sheetMode = 'golem', sheetPage = null, sheetInputsFixed = null, preview = null, pageData = {}, pageSel = {}, pageLoading = {};
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -95,14 +102,17 @@
   function spinner() { return artNode('spinner', 24, 'spin') || el('span', 'spin stand-in'); }
 
   // --- tabs -------------------------------------------------------------------------------------------------------
+  // cc-P187: #page-<id> is one of the console's pages (the Console tab's grid lists them).
   function showTab() {
-    var key = (location.hash || '#today').slice(1);
+    var key = (location.hash || '#today').slice(1), pid = '';
+    if (/^page-[a-z]+$/.test(key)) { pid = key.slice(5); key = 'page'; }
     if (!$(key) || !$(key).classList.contains('tab')) key = 'today';
     var tabs = document.querySelectorAll('.tab');
     for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].id === key);
     var links = document.querySelectorAll('#tabs a');
-    for (var j = 0; j < links.length; j++) links[j].classList.toggle('on', links[j].getAttribute('data-tab') === key);
+    for (var j = 0; j < links.length; j++) links[j].classList.toggle('on', links[j].getAttribute('data-tab') === (key === 'page' ? 'console' : key));
     if (key === 'logs' && !$('log-lines').textContent) loadLog();
+    if (key === 'page') { $('page').setAttribute('data-page', pid); drawPage(); loadPage(pid, false); }
   }
 
   // --- panels -----------------------------------------------------------------------------------------------------
@@ -246,9 +256,56 @@
     cards.forEach(function (c) { list.appendChild(golemCard(c, a)); });
   }
 
+  // --- the Golem picker (cc-P187) -----------------------------------------------------------------------------------
+  // status.golemPicker: every Golem in golems.json. The picked one is who the Controls card acts for. A disabled one
+  // (or any but the integrator while multiGolem is off) cannot be picked and says why; an offline remote one is greyed
+  // but may be picked (its buttons wait for its agent, cc-P186).
+  function pickerList() { return (last && last.golemPicker) || []; }
+  function pickedEntry() {
+    var list = pickerList(), i;
+    for (i = 0; i < list.length; i++) if (list[i].name === picked) return list[i];
+    for (i = 0; i < list.length; i++) if (list[i].integrator) return list[i];
+    return null;
+  }
+  // The card a picked Golem's buttons act for (null: the integrator, the Controls card as before).
+  function pickedCard() {
+    var p = pickedEntry();
+    if (!p || p.integrator) return null;
+    var cards = ((((last || {}).status || {}).golem || {}).golems) || [];
+    for (var i = 0; i < cards.length; i++) if (cards[i].name === p.name) { var c = {}; for (var k in cards[i]) c[k] = cards[i][k]; c.lane = c.lane || p.lane; c.remote = p.remote; c.machine = p.machine; return c; }
+    return { name: p.name, lane: p.lane, machine: p.machine, remote: p.remote, state: p.state, integrator: false };
+  }
+  function drawPicker() {
+    var box = $('picker'); if (!box) return;
+    var list = pickerList();
+    $('picker-card').hidden = !list.length;
+    clear(box);
+    var cur = pickedEntry();
+    if (cur && !picked) picked = cur.name;
+    list.forEach(function (p) {
+      var li = el('li');
+      var b = el('button', 'pick' + (cur && p.name === cur.name ? ' on' : '') + (p.grey || !p.usable ? ' grey' : ''));
+      b.type = 'button';
+      b.setAttribute('data-golem', p.name);
+      if (p.portraitUrl) { var img = el('img', 'portrait'); img.src = p.portraitUrl; img.alt = ''; img.width = 40; img.height = 40; b.appendChild(img); }
+      else b.appendChild(el('span', 'glyph', p.name.charAt(0)));
+      var t = el('span', 'picktext');
+      t.appendChild(el('b', null, p.name + (p.integrator ? ' (integrator)' : '')));
+      t.appendChild(el('span', 'meta', [p.lane, p.machine, p.state + (p.current ? ' ' + p.current : '')].filter(function (x) { return x; }).join(' | ')));
+      if (p.why || p.grey) t.appendChild(el('span', 'warn', p.why || p.grey));
+      b.appendChild(t);
+      b.disabled = !p.usable;
+      b.addEventListener('click', function () { picked = p.name; draw(last); });
+      li.appendChild(b);
+      box.appendChild(li);
+    });
+    $('picker-note').textContent = cur ? ('The Controls act for the ' + cur.name + ' Golem' + (cur.integrator ? ' (the integrator).' : ': only the buttons any Golem has, and each word names it.')) : '';
+  }
+
   function drawGolem(g, a) {
     clear($('golem-state')).appendChild(figureRow(g, golemState(g)));
     drawGolemTeam(g, a);
+    drawPicker();
     var cur = clear($('golem-current'));
     if (g && g.current) {
       var c = g.current;
@@ -258,10 +315,15 @@
       if (c.startedAt) bits.push('started ' + when(c.startedAt));
       if (c.lastActivity) bits.push('last activity ' + when(c.lastActivity));
       cur.appendChild(el('p', 'meta', bits.filter(function (x) { return x; }).join(' | ')));
+      if (c.name) cur.appendChild(readButton('Read it', { name: c.name }));
     } else cur.appendChild(el('p', 'quiet', 'Nothing running.'));
     var q = clear($('golem-queue'));
     var pick = (g && g.runNext) || '';
-    ((g && g.queue) || []).forEach(function (p, i) { q.appendChild(promptLine(p, i === 0 ? (pick && p.name === pick ? 'next (Run next)' : 'next') : '')); });
+    ((g && g.queue) || []).forEach(function (p, i) {
+      var li = promptLine(p, i === 0 ? (pick && p.name === pick ? 'next (Run next)' : 'next') : '');
+      if (p.name) li.appendChild(readButton('Read', { name: p.name }));
+      q.appendChild(li);
+    });
     if (!q.firstChild) q.appendChild(el('li', 'quiet', 'The queue is empty.'));
     var f = clear($('golem-finished'));
     ((g && g.finished) || []).forEach(function (x) {
@@ -269,6 +331,7 @@
       li.appendChild(el('div', null, 'P' + x.number + ' ' + x.result + ': ' + x.title));
       if (x.headline) li.appendChild(el('div', 'quiet', x.headline));
       li.appendChild(el('div', 'meta', when(x.time)));
+      li.appendChild(readButton('Notes', { notes: x.number }));
       f.appendChild(li);
     });
     var u = clear($('golem-usage'));
@@ -295,6 +358,25 @@
     if (g && g.queue && g.queue.length) t.appendChild(el('p', 'meta', g.queue.length + ' queued, next P' + g.queue[0].number + ': ' + (g.queue[0].summary || g.queue[0].title)));
   }
 
+  // cc-P187: read a queued, running or finished prompt (or its notes) on the page, as the console opens it in Notepad.
+  function readButton(label, what) {
+    var b = el('button', 'small read', label);
+    b.type = 'button';
+    b.addEventListener('click', function () {
+      var url = what.name ? '/api/prompt?name=' + encodeURIComponent(what.name) : '/api/prompt?notes=' + encodeURIComponent(what.notes);
+      $('reader').hidden = false;
+      $('reader-title').textContent = 'Reading...';
+      $('reader-text').textContent = '';
+      get(url, function (err, j) {
+        if (err) { $('reader-title').textContent = 'Could not read it: ' + err.message; return; }
+        $('reader-title').textContent = j.what;
+        $('reader-text').textContent = j.text;
+        $('reader').scrollIntoView({ block: 'start' });
+      });
+    });
+    return b;
+  }
+
   // --- the Golem's buttons (cc-P182) ------------------------------------------------------------------------------
   // Which of a pair applies now (wrap up or its cancel, night shift on or off); the server and the console check again.
   function applies(b, g) {
@@ -304,33 +386,42 @@
     if (kind === 'winding') return !!g && g.winding === val;
     if (kind === 'notWinding') return !g || g.winding !== val;
     if (kind === 'nightShift') return !!(g && g.nightShift && g.nightShift.enabled) === (val === 'on');
+    if (kind === 'autoWake') return !!(g && g.autoWake) === (val === 'on');
     if (kind === 'runNext') return !!(g && g.runNext);
     return true;
   }
-  function wordFor(b, g, inputs) {
-    if (b.word === '#prompt') return inputs.prompt || '';
-    if (b.word === '#stopped') return (g && g.stoppedPrompt) || '';
-    return b.word || '';
+  // cc-P187: for another Golem than the integrator a button with a golemWord wants that word and its name.
+  function wordFor(b, g, inputs, golemName) {
+    var base;
+    if (b.word === '#prompt') base = inputs.prompt || '';
+    else if (b.word === '#stopped') base = (g && g.stoppedPrompt) || '';
+    else if (b.word === '#assign') return inputs.prompt && inputs.assignTo ? inputs.prompt + ' on ' + inputs.assignTo.toLowerCase() : '';
+    else base = b.word || '';
+    if (golemName && b.golemWord && base) return (b.golemWord.charAt(0) === '#' ? base : b.golemWord) + ' ' + golemName.toLowerCase();
+    return base;
   }
 
   function drawControls(j) {
     var a = j.actions || {}, g = (j.status || {}).golem || null, job = a.job;
     var box = clear($('ctl-buttons')), note = $('ctl-note');
     var running = !!(job && job.running);
-    note.textContent = !a.canAct ? (a.why || 'Read only here.') : running ? ('Running: ' + job.label + '. One at a time.') : '';
+    var card = pickedCard();   // cc-P187: null for the integrator
+    var gs = card || g;
+    note.textContent = !a.canAct ? (a.why || 'Read only here.') : running ? ('Running: ' + job.label + '. One at a time.') : card ? ('For the ' + card.name + ' Golem (picked above).') : '';
     (a.buttons || []).forEach(function (b) {
-      if (!applies(b, g)) return;
+      if (card && !b.anyGolem && b.key !== 'assign') return;
+      if (!applies(b, gs)) return;
       var btn = el('button', 'ctl');
       btn.type = 'button';
       btn.setAttribute('data-key', b.key);
       btn.appendChild(artNode(b.art || '', 28, 'btnart') || el('span', 'glyph', (b.label || '?').charAt(0)));
-      btn.appendChild(el('span', 'label', b.key === 'retry' && g && g.stoppedPrompt ? b.label + ' (' + g.stoppedPrompt + ')' : b.label));
+      btn.appendChild(el('span', 'label', b.key === 'retry' && gs && gs.stoppedPrompt ? b.label + ' (' + gs.stoppedPrompt + ')' : b.label));
       if (b.disabled) { btn.classList.add('off'); btn.title = b.disabled; }
-      btn.disabled = !a.canAct || running;
-      btn.addEventListener('click', function () { openSheet(b); });
+      btn.disabled = !a.canAct || (running && !(card && card.remote));
+      btn.addEventListener('click', function () { openSheet(b, b.key === 'assign' ? null : card); });
       box.appendChild(btn);
     });
-    $('foot-note').textContent = a.canAct ? 'The Golem\'s buttons ask for a typed word; one runs at a time.' : 'Read only here.';
+    $('foot-note').textContent = a.canAct ? 'Every button shows what it does first and asks the console\'s word; one runs at a time.' : 'Read only here.';
     if (job && running && !jobTimer) { $('job').hidden = false; pollJob(); }
   }
 
@@ -351,11 +442,21 @@
     var d = new Date(Date.now() + 86400000);
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(h) + ':00';
   }
+  function resetSheet() {
+    preview = null;
+    clear($('sheet-plan')); $('sheet-plan').hidden = true;
+    $('sheet-second').hidden = true;
+    $('sheet-first').hidden = false;
+    $('sheet-run').textContent = 'Run';
+  }
 
   function openSheet(b, card) {
     var g = ((last || {}).status || {}).golem || {};
+    sheetMode = 'golem';
+    sheetPage = null;
     sheetFor = b;
     sheetGolem = card || null;   // cc-P186: another Golem's card; null is the integrator (the Controls card)
+    resetSheet();
     $('sheet-title').textContent = b.label + (card ? ' (the ' + card.name + ' Golem' + (card.remote ? ', on ' + card.machine : '') + ')' : '');
     $('sheet-help').textContent = b.help || '';
     $('sheet-msg').textContent = b.disabled || '';
@@ -364,9 +465,10 @@
       if (name === 'model') {
         var s = el('select'); s.id = 'in-model';
         ['Fable', 'Opus', 'Sonnet'].forEach(function (m) { var o = el('option', null, m); o.value = m; s.appendChild(o); });
+        // cc-P187: Wake's model follows the Golem's lane (Bronze: Fable); the integrator's, the next prompt's Model line.
         var want = (card && (card.lane === 'Opus' || card.lane === 'Fable') && card.lane) || (g.queue && g.queue[0] && g.queue[0].model) || 'Opus';
         if (['Fable', 'Opus', 'Sonnet'].indexOf(want) >= 0) s.value = want;
-        box.appendChild(field('Model', s));
+        box.appendChild(field('Model (from its lane; change it here)', s));
       } else if (name === 'cap') {
         box.appendChild(field('Prompts (a number, or all)', textInput('in-cap', 'all')));
       } else if (name === 'until') {
@@ -379,7 +481,18 @@
         (g.queue || []).forEach(function (q) { var o = el('option', null, 'P' + q.number + ': ' + (q.summary || q.title)); o.value = 'P' + q.number; p.appendChild(o); });
         if (!p.options.length) { var o0 = el('option', null, 'The queue is empty'); o0.value = ''; p.appendChild(o0); }
         p.addEventListener('change', checkWord);
-        box.appendChild(field('Prompt to run next', p));
+        box.appendChild(field(b.key === 'assign' ? 'Prompt to assign' : 'Prompt to run next', p));
+      } else if (name === 'assignTo') {
+        // cc-P187: Assign: the Golem picked above, or another usable one.
+        var gsel = el('select'); gsel.id = 'in-assignTo';
+        pickerList().forEach(function (x) { if (!x.usable) return; var o = el('option', null, x.name + ' (' + x.lane + ')'); o.value = x.name; gsel.appendChild(o); });
+        var pe = pickedEntry(); if (pe && pe.usable) gsel.value = pe.name;
+        gsel.addEventListener('change', checkWord);
+        box.appendChild(field('Give it to', gsel));
+      } else if (name === 'next') {
+        var ns2 = el('select'); ns2.id = 'in-next';
+        [['yes', 'Yes, it goes next for that Golem'], ['no', 'No, keep its place']].forEach(function (x) { var o = el('option', null, x[1]); o.value = x[0]; ns2.appendChild(o); });
+        box.appendChild(field('Run it next', ns2));
       }
     });
     $('sheet-word').value = '';
@@ -395,25 +508,34 @@
     document.body.classList.remove('sheet-open');
     sheetFor = null;
     sheetGolem = null;
+    sheetPage = null;
+    preview = null;
   }
   function sheetInputs() {
+    if (sheetMode === 'page') return sheetInputsFixed || {};
     var out = {};
     ((sheetFor && sheetFor.inputs) || []).forEach(function (name) { var i = $('in-' + name); if (i) out[name] = String(i.value || '').trim(); });
     return out;
   }
   function checkWord() {
     if (!sheetFor) return;
-    var g = sheetGolem || ((last || {}).status || {}).golem || {};
-    var want = wordFor(sheetFor, g, sheetInputs());
-    $('sheet-want').textContent = want || '(nothing to confirm)';
     var typed = String($('sheet-word').value || '').trim().toLowerCase();
+    if (sheetMode === 'page') {
+      var want0 = preview ? preview.expect : '';
+      $('sheet-want').textContent = want0 || '';
+      $('sheet-run').disabled = !preview || !!preview.refused || (!!want0 && typed !== want0.toLowerCase());
+      return;
+    }
+    var g = sheetGolem || ((last || {}).status || {}).golem || {};
+    var want = wordFor(sheetFor, g, sheetInputs(), sheetGolem && !sheetGolem.integrator ? sheetGolem.name : '');
+    $('sheet-want').textContent = want || '(nothing to confirm)';
     $('sheet-run').disabled = !want || typed !== want.toLowerCase();
   }
 
-  function post(url, body, cb) {
+  function post(url, body, cb, timeoutMs) {
     var x = new XMLHttpRequest();
     x.open('POST', url, true);
-    x.timeout = 15000;
+    x.timeout = timeoutMs || 15000;
     x.setRequestHeader('Content-Type', 'application/json');
     x.setRequestHeader('X-UOConsole-Action', '1');
     x.onload = function () { var j = null; try { j = JSON.parse(x.responseText); } catch (e) { j = { error: x.responseText }; } cb(x.status, j); };
@@ -421,8 +543,19 @@
     x.send(JSON.stringify(body));
   }
 
+  function startedJob(label) {
+    closeSheet();
+    jobSeen = 0;
+    clear($('job-lines'));
+    $('job').hidden = false;
+    $('job-title').textContent = label;
+    $('job-result').textContent = 'Running...';
+    pollJob();
+  }
+
   function run() {
     if (!sheetFor) return;
+    if (sheetMode === 'page') return runPage(false);
     var b = sheetFor, card = sheetGolem;
     $('sheet-run').disabled = true;
     $('sheet-msg').textContent = 'Starting...';
@@ -439,16 +572,7 @@
         poll(true);
         return;
       }
-      if (code === 202) {
-        closeSheet();
-        jobSeen = 0;
-        clear($('job-lines'));
-        $('job').hidden = false;
-        $('job-title').textContent = b.label;
-        $('job-result').textContent = 'Running...';
-        pollJob();
-        return;
-      }
+      if (code === 202) { startedJob(b.label); return; }
       $('sheet-msg').textContent = (j && j.error) || ('refused (' + code + ')');
       checkWord();
     });
@@ -474,7 +598,280 @@
       if (err) { $('job-result').textContent = 'The web console did not answer: ' + err.message; jobTimer = setTimeout(pollJob, JOB_MS * 3); return; }
       drawJob(j);
       if (j.running) jobTimer = setTimeout(pollJob, JOB_MS);
-      else { jobTimer = null; poll(true); }
+      else { jobTimer = null; poll(true); var pid = $('page').getAttribute('data-page'); if (pid && $('page').classList.contains('on')) loadPage(pid, true); }
+    });
+  }
+
+  // --- the console's pages (cc-P187) ------------------------------------------------------------------------------
+  function pagesDoc() { return (last && last.pages) || { fields: {}, pages: [] }; }
+  function pageById(id) { var ps = pagesDoc().pages || []; for (var i = 0; i < ps.length; i++) if (ps[i].id === id) return ps[i]; return null; }
+  function sel(pid) { if (!pageSel[pid]) pageSel[pid] = { shard: 'test' }; return pageSel[pid]; }
+
+  function drawConsoleGrid() {
+    var box = $('page-grid'); if (!box) return;
+    var ps = pagesDoc().pages || [];
+    if (box.getAttribute('data-n') === String(ps.length)) return;
+    clear(box);
+    box.setAttribute('data-n', String(ps.length));
+    ps.forEach(function (p) {
+      var a = el('a', p.id === 'live' ? 'live' : '');
+      a.href = '#page-' + p.id;
+      a.setAttribute('data-page', p.id);
+      a.appendChild(el('b', null, p.title));
+      var n = (p.buttons || []).length, pc = (p.buttons || []).filter(function (b) { return b.pcOnly; }).length;
+      a.appendChild(el('span', 'meta', n ? n + ' button' + (n === 1 ? '' : 's') + (pc ? ', ' + pc + ' PC only' : '') : 'commands to copy'));
+      box.appendChild(a);
+    });
+  }
+
+  function loadPage(pid, fresh) {
+    if (!pid || pageLoading[pid]) return;
+    if (['golem', 'diag', 'mapart'].indexOf(pid) >= 0) return;   // no lists
+    pageLoading[pid] = true;
+    drawPage();
+    get('/api/page?id=' + encodeURIComponent(pid) + (fresh ? '&fresh=1' : ''), function (err, j) {
+      pageLoading[pid] = false;
+      pageData[pid] = err ? { error: err.message } : j;
+      drawPage();
+    }, 95000);
+  }
+
+  // A list of rows to pick one from: { value, cells } (Get-WebConsoleList.ps1's rows).
+  function pickList(pid, name, rows, opts) {
+    var s = sel(pid), ul = el('ul', 'picklist');
+    if (!rows || !rows.length) { ul.appendChild(el('li', 'quiet', (opts && opts.empty) || 'Nothing here.')); return ul; }
+    rows.forEach(function (r) {
+      var li = el('li'), b = el('button', 'row' + (s[name] === r.value ? ' on' : ''));
+      b.type = 'button';
+      b.setAttribute('data-value', r.value);
+      if (opts && opts.picture && r.picture) { var img = el('img', 'thumb'); img.src = r.picture; img.alt = ''; img.width = 48; img.height = 48; b.appendChild(img); }
+      b.appendChild(el('b', null, (opts && opts.title) ? opts.title(r) : r.value));
+      var meta = (r.cells || []).filter(function (x) { return x; }).join(' | ');
+      if (meta) b.appendChild(el('span', 'meta', meta));
+      b.addEventListener('click', function () { s[name] = (s[name] === r.value ? '' : r.value); drawPage(); });
+      li.appendChild(b);
+      if (opts && opts.link && r.url) { var a = el('a', 'meta', 'Open ' + r.url); a.href = r.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; li.appendChild(a); }
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+  function shardRadios(pid) {
+    var s = sel(pid), d = el('div', 'radios');
+    ['test', 'live'].forEach(function (k) {
+      var b = el('button', s.shard === k ? 'on' : '', k === 'live' ? 'LIVE shard' : 'Test shard');
+      b.type = 'button';
+      b.setAttribute('data-shard', k);
+      b.addEventListener('click', function () { s.shard = k; s.snapshot = ''; drawPage(); });
+      d.appendChild(b);
+    });
+    return d;
+  }
+  function textField(pid, name, label, check) {
+    var s = sel(pid), i;
+    if (check) {
+      var l = el('label', 'check');
+      i = el('input'); i.type = 'checkbox'; i.checked = s[name] === 'yes';
+      i.addEventListener('change', function () { s[name] = i.checked ? 'yes' : ''; });
+      l.appendChild(i); l.appendChild(el('span', null, label));
+      return l;
+    }
+    i = textInput('pg-' + name, s[name] || '');
+    i.addEventListener('input', function () { s[name] = String(i.value || '').trim(); });
+    return field(label, i);
+  }
+  function copyText(t, done) {
+    var ok = function () { if (done) done('copied'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(ok, function () { if (done) done('copy it by hand: ' + t); }); }
+    else if (done) done('copy it by hand: ' + t);
+  }
+
+  // Why a page button cannot run now (shown greyed with it), or ''.
+  function blockedWhy(p, b, data, a) {
+    if (b.pcOnly) return 'PC only: ' + b.pcOnly;
+    if (b.disabled) return b.disabled;
+    var s = sel(p.id);
+    if (p.id === 'live' && data && data.liveRetired) return 'Live is ' + (data.line || 'retired') + '.';
+    if ((p.id === 'question' || p.id === 'snapshots') && data && data.shards && data.shards[s.shard] && data.shards[s.shard].retired) return 'Live is retired: nothing acts on it.';
+    if (p.id === 'question' && data && data.shards && data.shards[s.shard] && (data.shards[s.shard].enabled || []).indexOf(b.key) < 0) return 'Not an answer to this question.';
+    if (!a.canAct) return a.why || 'Read only here.';
+    return '';
+  }
+
+  function drawPage() {
+    var host = $('page'); if (!host) return;
+    var pid = host.getAttribute('data-page') || '', p = pageById(pid);
+    var body = clear($('page-body'));
+    if (!p) { $('page-title').textContent = last ? 'No such page' : 'Loading...'; return; }
+    var data = pageData[pid], s = sel(pid), a = (last && last.actions) || {}, fields = pagesDoc().fields || {};
+    var job = a.job, running = !!(job && job.running);
+    $('page-title').textContent = p.title;
+    body.appendChild(el('p', 'quiet', p.caption || ''));
+    if (pageLoading[pid]) body.appendChild(el('p', 'quiet', 'Reading the lists...'));
+    if (data && data.error) body.appendChild(el('p', 'warn', 'The lists could not be read: ' + data.error));
+    var used = {};
+    (p.buttons || []).forEach(function (b) { (b.inputs || []).forEach(function (n) { used[n] = true; }); });
+    if (used.shard) body.appendChild(shardRadios(pid));
+    // The page's own panels and lists, as the window's tab shows them.
+    if (pid === 'question' && data && data.shards) {
+      body.appendChild(el('pre', 'log', ((data.shards[s.shard] || {}).lines || []).join('\n')));
+    }
+    if (pid === 'snapshots' && data && data.shards) {
+      var sh = data.shards[s.shard] || {};
+      body.appendChild(el('p', 'meta', 'save: ' + (sh.save || '') + ' | snapshots: ' + (sh.folder || '')));
+      body.appendChild(pickList(pid, 'snapshot', sh.rows, { empty: 'No snapshots of this shard.' }));
+    }
+    if (pid === 'test' && data) { body.appendChild(el('h3', null, 'Images to deploy')); body.appendChild(pickList(pid, 'imageTag', data.images, { empty: 'No sl-modernuo:cc-p* image to deploy.' })); }
+    if (pid === 'fix' && data) {
+      if (data.lastGood) body.appendChild(el('p', 'meta', 'Last good: ' + data.lastGood + ' (Roll back runs it).'));
+      body.appendChild(el('h3', null, 'Commits to rebuild'));
+      body.appendChild(pickList(pid, 'commit', data.commits, { title: function (r) { return (r.cells && r.cells[0]) || r.value; } }));
+    }
+    if (pid === 'commit' && data && data.countdown) body.appendChild(el('p', data.countdown === 'Ready to commit' ? 'ok' : 'warn', data.countdown));
+    if (pid === 'package' && data) {
+      if (data.client) body.appendChild(el('pre', 'log', data.client));
+      body.appendChild(el('h3', null, 'Zips in dist (newest first)'));
+      body.appendChild(pickList(pid, 'packageZip', data.zips, { empty: 'No zips in dist.' }));
+    }
+    if (pid === 'websites' && data) body.appendChild(pickList(pid, 'site', data.sites, { title: function (r) { return (r.cells && r.cells[0]) || r.value; }, link: true }));
+    if (pid === 'art' && data) body.appendChild(pickList(pid, 'artId', data.requests, { picture: true, empty: 'No art requests.' }));
+    if (pid === 'live' && data) body.appendChild(el('p', data.liveRetired ? 'warn' : 'quiet', 'LIVE: ' + (data.line || '')));
+    if (pid === 'world' && data && data.groups) {
+      body.appendChild(el('p', 'meta', (data.count || 0) + ' registrations read from the code.'));
+      data.groups.forEach(function (gr) {
+        var c = el('div', 'card');
+        c.appendChild(el('h3', null, gr.title));
+        c.appendChild(el('p', 'meta', gr.source || ''));
+        var msg = el('p', 'quiet', '');
+        if (gr.copyAll && gr.items && gr.items.length) {
+          var all = el('button', 'small', 'Copy group');
+          all.type = 'button';
+          all.addEventListener('click', function () { copyText(gr.items.map(function (x) { return x.command; }).join('\n'), function (m) { msg.textContent = m; }); });
+          c.appendChild(all);
+        }
+        if (!gr.items || !gr.items.length) c.appendChild(el('p', 'quiet', '(none)'));
+        (gr.items || []).forEach(function (it) {
+          var row = el('div', 'worldrow');
+          var tick = el('input'); tick.type = 'checkbox'; tick.checked = !!s['tick:' + it.command];
+          tick.addEventListener('change', function () { s['tick:' + it.command] = tick.checked; });
+          row.appendChild(tick);
+          row.appendChild(el('code', null, it.command));
+          var cp = el('button', 'small', 'Copy'); cp.type = 'button';
+          cp.addEventListener('click', function () { copyText(it.command, function (m) { msg.textContent = m; }); });
+          row.appendChild(cp);
+          c.appendChild(row);
+          c.appendChild(el('p', it.warn ? 'warn' : 'meta', it.text || ''));
+        });
+        c.appendChild(msg);
+        body.appendChild(c);
+      });
+    }
+    // The text inputs the page's buttons take.
+    ['snapshotName', 'commitMessage', 'force', 'packageNotes', 'vdFile', 'body', 'huesFile', 'note'].forEach(function (n) {
+      if (used[n]) body.appendChild(textField(pid, n, (fields[n] || {}).label || n, (fields[n] || {}).type === 'check'));
+    });
+    (p.pcNotes || []).forEach(function (t) { body.appendChild(el('p', 'pconly', t)); });
+    if (pid !== 'world' && pid !== 'golem' && pid !== 'diag' && pid !== 'mapart') {
+      var rf = el('button', 'small', 'Refresh the lists'); rf.type = 'button';
+      rf.addEventListener('click', function () { loadPage(pid, true); });
+      body.appendChild(rf);
+    }
+    var grid = el('div', 'ctl-grid pagebtns');
+    (p.buttons || []).forEach(function (b) {
+      var cell = el('div', 'btncell');
+      var btn = el('button', 'ctl' + (b.kind === 'dangerous' ? ' danger-btn' : '') + (b.pcOnly ? ' off' : ''));
+      btn.type = 'button';
+      btn.setAttribute('data-key', b.key);
+      btn.appendChild(el('span', 'glyph', b.kind === 'read' ? 'R' : b.kind === 'dangerous' ? '!' : 'C'));
+      btn.appendChild(el('span', 'label', b.label));
+      var why = blockedWhy(p, b, data, a);
+      btn.disabled = !!why || running;
+      btn.addEventListener('click', function () { pressPage(p, b); });
+      cell.appendChild(btn);
+      if (why && (b.pcOnly || b.disabled || why.indexOf('Live') === 0)) cell.appendChild(el('p', 'pconly', why));
+      grid.appendChild(cell);
+    });
+    if ((p.buttons || []).length) body.appendChild(grid);
+    if (running) body.appendChild(el('p', 'quiet', 'Running: ' + job.label + '. One at a time.'));
+  }
+
+  function pageInputs(p, b) {
+    var s = sel(p.id), out = {};
+    (b.inputs || []).forEach(function (n) { if (s[n]) out[n] = s[n]; });
+    return out;
+  }
+
+  // A page button: read ones run at a tap; the rest show the console's plan first (a dry run of it), then its phrase,
+  // then (dangerous) a second confirm.
+  function pressPage(p, b) {
+    var inputs = pageInputs(p, b);
+    if (b.kind === 'read') {
+      post('/api/action', { key: b.key, inputs: inputs }, function (code, j) {
+        if (code === 202) startedJob(p.title + ' > ' + b.label);
+        else { $('job').hidden = false; $('job-title').textContent = b.label; clear($('job-lines')); $('job-result').textContent = (j && j.error) || ('refused (' + code + ')'); $('job-result').className = 'result amber'; }
+      });
+      return;
+    }
+    sheetMode = 'page';
+    sheetPage = p;
+    sheetFor = b;
+    sheetGolem = null;
+    sheetInputsFixed = inputs;
+    resetSheet();
+    $('sheet-title').textContent = p.title + ': ' + b.label;
+    var fl = pagesDoc().fields || {};
+    $('sheet-help').textContent = Object.keys(inputs).map(function (k) { return String((fl[k] || {}).label || k).replace(/ \(.*$/, '') + ': ' + inputs[k]; }).join(' | ');
+    clear($('sheet-inputs'));
+    $('sheet-msg').textContent = 'Reading the plan (a dry run of it: nothing is run)...';
+    $('sheet-word').value = '';
+    $('sheet-confirm').hidden = true;
+    $('sheet-run').hidden = false;
+    $('sheet-run').disabled = true;
+    $('sheet').hidden = false;
+    document.body.classList.add('sheet-open');
+    post('/api/preview', { key: b.key, inputs: inputs }, function (code, j) {
+      if (sheetFor !== b) return;
+      var plan = clear($('sheet-plan'));
+      plan.hidden = false;
+      ((j && j.lines) || []).forEach(function (l) { plan.appendChild(el('span', 'ln ' + color(l.color), l.text + '\n')); });
+      if (code !== 200 || !j || j.refused) {
+        preview = { refused: true };
+        $('sheet-msg').textContent = (j && (j.refused || j.error)) || ('refused (' + code + ')');
+        $('sheet-run').hidden = true;
+        return;
+      }
+      preview = j;
+      $('sheet-msg').textContent = [j.preface, j.confirmText, j.asks].filter(function (x) { return x; }).join(' ');
+      $('sheet-confirm').hidden = !j.expect;
+      $('sheet-run').textContent = j.danger ? 'Next' : 'Run';
+      checkWord();
+      if (j.expect) $('sheet-word').focus();
+    }, 125000);
+  }
+
+  // Run on a page sheet: a dangerous one goes to the second confirm first (what happens, to what, who is online).
+  function runPage(second) {
+    if (!preview || preview.refused) return;
+    if (preview.danger && !second) {
+      $('sheet-first').hidden = true;
+      $('sheet-second').hidden = false;
+      $('second-text').textContent = preview.dangerText || '';
+      $('second-online').textContent = preview.online || '';
+      $('second-online').hidden = !preview.online;
+      $('second-asks').textContent = preview.asks || '';
+      $('second-asks').hidden = !preview.asks;
+      $('second-yes').textContent = 'Yes, ' + sheetFor.label.toLowerCase();
+      $('second-yes').disabled = false;
+      return;
+    }
+    var b = sheetFor, p = sheetPage;
+    $('sheet-run').disabled = true; $('second-yes').disabled = true;
+    $('sheet-msg').textContent = 'Starting...';
+    post('/api/action', { key: b.key, typed: $('sheet-word').value, inputs: sheetInputsFixed || {}, token: preview.token, second: !!second }, function (code, j) {
+      if (code === 202) { startedJob(p.title + ' > ' + b.label); return; }
+      $('sheet-first').hidden = false; $('sheet-second').hidden = true;
+      $('sheet-msg').textContent = (j && j.error) || ('refused (' + code + ')');
+      $('second-yes').disabled = false;
+      checkWord();
     });
   }
 
@@ -534,6 +931,8 @@
     drawLights(s.lights);
     drawGolem(s.golem, j.actions || null);
     drawControls(j);
+    drawConsoleGrid();
+    if ($('page').classList.contains('on') && $('sheet').hidden) drawPage();
     var p = j.panels || {};
     drawNeeds(p.needsYou, p.decisionsBuilt);
     drawTimeline(p.timeline);
@@ -542,16 +941,16 @@
     document.documentElement.setAttribute('data-drawn', String((document.documentElement.getAttribute('data-drawn') | 0) + 1));
     document.documentElement.setAttribute('data-overflow', document.documentElement.scrollWidth > window.innerWidth + 1 ? 'yes' : 'no');
     document.documentElement.setAttribute('data-viewport', String(window.innerWidth));
-    var sel = $('log-source');
-    if (!sel.options.length && j.logSources) {
-      Object.keys(j.logSources).forEach(function (k) { var o = el('option', null, j.logSources[k]); o.value = k; sel.appendChild(o); });
+    var sel0 = $('log-source');
+    if (!sel0.options.length && j.logSources) {
+      Object.keys(j.logSources).forEach(function (k) { var o = el('option', null, j.logSources[k]); o.value = k; sel0.appendChild(o); });
     }
   }
 
-  function get(url, cb) {
+  function get(url, cb, timeoutMs) {
     var x = new XMLHttpRequest();
     x.open('GET', url, true);
-    x.timeout = 10000;
+    x.timeout = timeoutMs || 10000;
     x.onload = function () { if (x.status === 200) { try { cb(null, JSON.parse(x.responseText)); } catch (e) { cb(e); } } else cb(new Error(x.status + ' ' + x.responseText)); };
     x.onerror = x.ontimeout = function () { cb(new Error('no answer')); };
     x.send();
@@ -586,13 +985,17 @@
     $('log-form').addEventListener('submit', loadLog);
     $('refresh').addEventListener('click', function (e) { e.preventDefault(); poll(true); });
     $('sheet-word').addEventListener('input', checkWord);
-    $('sheet-form').addEventListener('submit', function (e) { e.preventDefault(); if (!$('sheet-run').disabled) run(); });
+    $('sheet-form').addEventListener('submit', function (e) { e.preventDefault(); if (!$('sheet-run').disabled && !$('sheet-first').hidden) run(); });
     $('sheet-cancel').addEventListener('click', closeSheet);
+    $('second-yes').addEventListener('click', function () { runPage(true); });
+    $('second-back').addEventListener('click', function () { $('sheet-second').hidden = true; $('sheet-first').hidden = false; });
     $('sheet').addEventListener('click', function (e) { if (e.target === $('sheet')) closeSheet(); });
     $('job-close').addEventListener('click', function () { if (!jobTimer) $('job').hidden = true; });
+    $('reader-close').addEventListener('click', function () { $('reader').hidden = true; });
     poll(false);
     setInterval(function () { poll(false); }, POLL_MS);
     setInterval(stepStrips, 50);
   });
-  window.UOConsole = { draw: draw, golemState: golemState, golemCard: golemCard, last: function () { return last; }, applies: applies };
+  window.UOConsole = { draw: draw, golemState: golemState, golemCard: golemCard, last: function () { return last; }, applies: applies, wordFor: wordFor,
+    pick: function (n) { picked = n; if (last) draw(last); } };
 })();

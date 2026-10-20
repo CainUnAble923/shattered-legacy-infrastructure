@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20
+
+### Staff
+- The web console does everything the Shard Console does, from a phone: a page for every tab (test shard, fixes, the shard's question, snapshots, world setup, map and art checks, diagnostics, commit, player package, websites, art requests and the live shard), with lists to tap and the console's own plan shown before anything runs.
+- Dangerous buttons on the web console (the live shard, publishing, deploying, deleting, committing) ask a second time, in plain words, what will happen and to what; anything that must stay on the game PC says why.
+- A Golem picker: the Golem page's buttons act for the picked Golem (the confirm word names it), Wake starts on that Golem's own model, and a queued prompt can be assigned to it. The Shard Console's Golem tab has the same picker and Assign.
+- Queued, running and finished prompts (and their notes) can be read on the web console.
+
 ## 2026.10.19.5
 
 ### Staff
