@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.3
+
+### Changed
+- Pets learn their skills faster for a seasoned owner: Animal Taming and Animal Lore above 100, each loop and each Rangers' League rank add to it, up to three times as fast. Animal Lore on your pet shows its learning speed on the skill pages.
+
+### Staff
+- Pet learning speed settings: clusterf.petGain.perLoop, perSkillPoint, perRank and maxMultiplier (defaults 0.1, 0.004, 0.1, 3.0).
+
 ## 2026.10.20.2
 
 ### Staff

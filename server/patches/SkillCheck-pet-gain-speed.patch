@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Skills/SkillCheck.cs
++++ b/Projects/UOContent/Skills/SkillCheck.cs
+@@ -140,6 +140,9 @@
+                 if (from is BaseCreature { Controlled: true })
+                 {
+                     gc *= 2;
++
++                    // Shattered Legacy (cc-P172): a player's pet learns faster with the owner's loops, taming skill and Outriders rank.
++                    gc *= ClusterFPetGainSpeed.Multiplier(from);
+                 }
+ 
+                 if (gc >= Utility.RandomDouble())
