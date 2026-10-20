@@ -1045,6 +1045,7 @@ public class GuildTaskDetailGump : Gump
     public const int BtnDirectory  = 6;
     public const int BtnSchematics = 7; // cc-P70: mule module schematics
     public const int BtnRecipes    = 8; // cc-P78: the guild's pattern books and recipe scrolls
+    public const int BtnRequisitions = 9; // cc-P150 (F-47): this guild's requisitions, the chapter's view of the board
 
     public GuildTaskDetailGump(PlayerMobile pm, GuildDef def, IAccount acct) : this(pm, def, acct, null) { }
 
@@ -1180,6 +1181,13 @@ public class GuildTaskDetailGump : Gump
         AddButton(180, H - 38, 4011, 4012, BtnDirectory);
         AddLabel(205, H - 36, 999, "Guild Directory");
 
+        // cc-P150 (F-47): the guild's requisitions, for anyone, when the guild posts any (the Custodians post none).
+        if (RequisitionTable.Current.ThemesFor(def.Key).Count > 0)
+        {
+            AddButton(300, H - 38, 4011, 4012, BtnRequisitions);
+            AddLabel(325, H - 36, 999, "Requisitions");
+        }
+
         AddButton(W - 100, H - 38, 4017, 4019, BtnClose);
         AddLabel(W - 65, H - 36, 999, "Close");
     }
@@ -1230,6 +1238,10 @@ public class GuildTaskDetailGump : Gump
             case BtnRecipes:
                 if (atMaster && ClusterFGuildSystem.IsJoined(_pm, _def.Key))
                     _pm.SendGump(new GuildRecipeShopGump(_pm, _def.Key, _guildmaster));
+                return;
+
+            case BtnRequisitions: // cc-P150 (F-47)
+                RequisitionsBoard.OpenFor(_pm, _def.Key);
                 return;
 
             default:

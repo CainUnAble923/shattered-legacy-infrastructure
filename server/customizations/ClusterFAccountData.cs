@@ -192,6 +192,26 @@ public class ClusterFAccountData
 
     public IEnumerable<CharacterLootRecord> LootRecords => _lootData.Values;
 
+    // -- Requisitions per character (v20, cc-P150, F-47 / F-48) --------------------------------------
+    // Per character like the guild data, because standing (and so the tier) is per character.
+    private readonly Dictionary<uint, CharacterRequisitionData> _requisitionData = new();
+
+    public CharacterRequisitionData GetOrCreateRequisitionData(Serial serial)
+    {
+        var key = (uint)serial;
+        if (!_requisitionData.TryGetValue(key, out var record))
+            _requisitionData[key] = record = new CharacterRequisitionData();
+        return record;
+    }
+
+    public CharacterRequisitionData? GetRequisitionData(Serial serial) =>
+        _requisitionData.TryGetValue((uint)serial, out var record) ? record : null;
+
+    public int RequisitionDataCount => _requisitionData.Count;
+
+    /// <summary>Drops every character's requisitions (the test wipe, with the guild data they are keyed to).</summary>
+    public void ClearRequisitionData() => _requisitionData.Clear();
+
     // -- The New Haven tutorial, once per account (v19, cc-P80) --------------
     public TutorialRecord Tutorial { get; private set; } = new();
 
@@ -417,6 +437,18 @@ public class ClusterFAccountData
         if (version >= 19)
             Tutorial = new TutorialRecord(r);
 
+        // v20 (cc-P150, F-47 / F-48): each character's requisitions. Before v20 no character had a board; each rolls
+        // its first set when it next reads one.
+        if (version >= 20)
+        {
+            var reqCount = r.ReadInt();
+            for (var i = 0; i < reqCount; i++)
+            {
+                var serial = r.ReadUInt();
+                _requisitionData[serial] = new CharacterRequisitionData(r);
+            }
+        }
+
         // v8-only saves (no EncounteredCreatures yet): just read chunks.
         if (version == 8)
             ReadExploration(r);
@@ -449,7 +481,8 @@ public class ClusterFAccountData
 
     // 15: cc-P18, guild data per character. 16: cc-P48, LifetimeRenown and CharacterLeagueData.
     // 17: cc-P78, LearnedRecipes. 18: cc-P79, CharacterLootRecord per character. 19: cc-P80, TutorialRecord.
-    public const int CurrentVersion = 19;
+    // 20: cc-P150, CharacterRequisitionData per character.
+    public const int CurrentVersion = 20;
 
     public void Serialize(IGenericWriter w)
     {
@@ -551,6 +584,14 @@ public class ClusterFAccountData
 
         // v19: the tutorial record
         Tutorial.Serialize(w);
+
+        // v20: requisitions per character
+        w.Write(_requisitionData.Count);
+        foreach (var (serial, record) in _requisitionData)
+        {
+            w.Write(serial);
+            record.Serialize(w);
+        }
     }
 
     // -- Flag helpers ------------------------------------------------------

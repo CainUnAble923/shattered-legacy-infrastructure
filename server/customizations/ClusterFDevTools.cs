@@ -152,6 +152,7 @@ public static class ClusterFDevTools
             // cc-P15), for every character of the account, so the whole starter path runs again.
             data.ClearGuildData();
             data.ClearGuildStarterRecords();
+            data.ClearRequisitionData(); // cc-P150: the board rolls from standing, which just went
 
             // cc-P33 (F-3): a Custodian's rank is its lifetime Clean Up points, so they go with the guilds.
             for (var i = 0; i < account.Length; i++)
