@@ -15,9 +15,15 @@
 // PlayerMobile.cs, with no hook to reach them from here: server/patches/Account-young-duration.patch and
 // PlayerMobile-young-time-only.patch point pinned at this file. The phrase needs no patch: speech is an
 // EventSink event.
+//
+// cc-P192: the Young clock. Pinned measures Young against the account's whole TotalGameTime (Account.cs:855-861), so an
+// account could never be Young again. The clock counts from a start saved in an account tag (ClockStartTag, written by
+// the Fountain of Youth; absent means 0, the account's beginning, which is exactly pinned's rule). The patch points
+// pinned's CheckYoung and its login line at YoungPlayed. TotalGameTime itself is never changed.
 
 using System;
 using System.Text;
+using Server.Accounting;
 using Server.Gumps;
 using Server.Mobiles;
 
@@ -27,6 +33,22 @@ public static class ClusterFYoungPlayer
 {
     /// <summary>Young lasts this much account game time: 2 weeks of play (pinned: 40 hours).</summary>
     public static readonly TimeSpan Duration = TimeSpan.FromHours(336.0);
+
+    /// <summary>cc-P192: the account tag holding the Young clock's start (TotalGameTime ticks when it was last reset).</summary>
+    public const string ClockStartTag = "clusterf.youngClockStart";
+
+    /// <summary>cc-P192: play time counted toward Young: TotalGameTime since the clock's start, never negative.</summary>
+    public static TimeSpan YoungPlayed(Account acct)
+    {
+        var played = acct.TotalGameTime;
+
+        if (long.TryParse(acct.GetTag(ClockStartTag), out var startTicks))
+        {
+            played -= TimeSpan.FromTicks(startTicks);
+        }
+
+        return played < TimeSpan.Zero ? TimeSpan.Zero : played;
+    }
 
     /// <summary>The phrase that opens the renounce confirm, besides OSI's.</summary>
     public const string GrowUpPhrase = "I want to grow up!";

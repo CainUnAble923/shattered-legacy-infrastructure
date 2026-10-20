@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.11
+
+### Staff
+- The Fountain of Youth makes a drinker's whole account Young again (two more weeks of play, the tutorial and the New Haven trainer quests start over); skills, items and everything else are kept. On the test shard it stands in New Haven; elsewhere it moves after every drink and weekly, and nothing can be marked near it. [ClusterFSeedFountainOfYouth [dryrun] places it; [WhereIsFountain, [GoFountain and [MoveFountain find and move it. Its spots and rules are in the admin notes only: never put it on the wiki or in player notes.
+
 ## 2026.10.20.10
 
 ### Staff

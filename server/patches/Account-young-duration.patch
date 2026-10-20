@@ -10,11 +10,14 @@
      public static readonly TimeSpan InactiveDuration = TimeSpan.FromDays(180.0);
      public static readonly TimeSpan EmptyInactiveDuration = TimeSpan.FromDays(30.0);
  
-@@ -793,16 +794,9 @@
+@@ -814,17 +815,11 @@
+             return;
          }
  
-         var ts = YoungDuration - acc.TotalGameTime;
+-        var ts = YoungDuration - acc.TotalGameTime;
 -        var hours = Math.Max((int)ts.TotalHours, 0);
++        // cc-P192: counted from the Young clock's start (ClusterFYoungPlayer.YoungPlayed).
++        var ts = YoungDuration - ClusterFYoungPlayer.YoungPlayed(acc);
  
 -        if (hours == 1)
 -        {
@@ -29,3 +32,13 @@
      }
  
      public void RemoveYoungStatus(int message)
+@@ -854,7 +849,8 @@
+ 
+     public void CheckYoung()
+     {
+-        if (TotalGameTime >= YoungDuration)
++        // cc-P192: the Young clock, not the account's whole play time (ClusterFYoungPlayer.YoungPlayed).
++        if (ClusterFYoungPlayer.YoungPlayed(this) >= YoungDuration)
+         {
+             // You are old enough to be considered an adult, and have outgrown your status as a young player!
+             RemoveYoungStatus(1019038);
