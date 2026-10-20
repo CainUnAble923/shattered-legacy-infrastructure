@@ -272,6 +272,9 @@ public static class ClusterFSkillGain
         var before = skill.BaseFixedPoint;
         var result = attempt();
 
+        // cc-P189: ServUO's apprentice training multiplies each gain (Regions/ApprenticeTraining.cs), whatever the rate.
+        Server.Regions.ApprenticeTraining.OnGain(from, skill, before);
+
         if (ShouldBoost(from, skill) && skill.BaseFixedPoint > before)
         {
             ApplyAmountBonus(from, skill);
@@ -291,6 +294,8 @@ public static class ClusterFSkillGain
             {
                 break;
             }
+
+            Server.Regions.ApprenticeTraining.OnGain(from, skill, before); // cc-P189: each gain, as ServUO's Gain
         }
     }
 

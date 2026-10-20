@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Server.Engines.Spawners;
+using Server.Mobiles;
 
 namespace Server;
 
@@ -8,16 +10,19 @@ namespace Server;
 /// Seeds respawning creature spawners in Old Haven ruins (Trammel).
 ///
 /// Old Haven centre is near (3677, 2625) on Trammel.  The seeder places:
-///   • Several OldHavenMage spawners scattered through the ruins — 2–3 mages
-///     each, 2–5 minute respawn.  Ideal for Magic Resist training.
-///   • One VorlakTheImpaler spawner (the warlord who led the assault; DrelgorTheImpaler
-///     until cc-P129) with a longer 8–15 minute respawn so he feels like a mini-boss.
-///   • One Drelgor spawner: ServUO's Drelgor the Impaler, the "Cleansing Old Haven" quest
+///   - One Drelgor spawner: ServUO's Drelgor the Impaler, the "Cleansing Old Haven" quest
 ///     target, where ServUO's own spawn data puts him (Spawns/trammel.xml "Old Haven
 ///     [Drelgor]": 3651,2509, range 50, one at a time). Added by cc-P129.
 ///
-/// Bounds check used to identify "Old Haven" world area:
-///   X 3620–3760, Y 2420–2600 on Trammel
+/// cc-P189 (Chase, 2026-10-19: "too hard for new players"; new players walk through Old Haven to the
+/// Rootdeep hole): the five OldHavenMage spawners (2-3 mages each, 2-5 minute respawn) and the
+/// VorlakTheImpaler mini-boss spawner (8-15 minute respawn) are no longer seeded here. The classes stay;
+/// [ClusterFOldHavenRetire removes the spawners a world already has. Their new home is Chase's choice
+/// (shard-migration notes/cc-P189-cont-old-haven-new-player-safe.md). The stock undead are pinned's own
+/// spawners (post-uoml/trammel/Outdoors.json) and are not this seeder's.
+///
+/// Bounds check used to identify "Old Haven" world area (IsOldHavenArea):
+///   X 3520-3680, Y 2420-2600 on Trammel
 /// </summary>
 public static class ClusterFOldHavenSeeder
 {
@@ -27,19 +32,6 @@ public static class ClusterFOldHavenSeeder
     // -----------------------------------------------------------------------
     private static readonly SpawnConfig[] Entries =
     {
-        // --- Vorlak the Impaler (mini-boss, 1 at a time, slow respawn). Was DrelgorTheImpaler until cc-P129: a
-        //     spawner placed under the old name is the same spawner (its entry still resolves through the alias). ---
-        new(
-            label:    "Vorlak the Impaler",
-            typeName: "VorlakTheImpaler",
-            x: 3622, y: 2488,
-            count: 1,
-            homeRange: 6,
-            minDelay: TimeSpan.FromMinutes(8),
-            maxDelay: TimeSpan.FromMinutes(15),
-            aliases:  new[] { "DrelgorTheImpaler" }
-        ),
-
         // --- Drelgor the Impaler, ServUO's (cc-P129): the Old Haven quest target at ServUO's own spawn point.
         //     ServUO's XmlSpawner entry: one Drelgor in a 50-tile home range with a 30-minute refractory. ---
         new(
@@ -50,53 +42,6 @@ public static class ClusterFOldHavenSeeder
             homeRange: 50,
             minDelay: TimeSpan.FromMinutes(30),
             maxDelay: TimeSpan.FromMinutes(30)
-        ),
-
-        // --- OldHavenMage clusters (scattered through the ruins) ---
-        new(
-            label:    "Old Haven Mage – north gate",
-            typeName: "OldHavenMage",
-            x: 3588, y: 2457,
-            count: 3,
-            homeRange: 10,
-            minDelay: TimeSpan.FromMinutes(2),
-            maxDelay: TimeSpan.FromMinutes(5)
-        ),
-        new(
-            label:    "Old Haven Mage – west ruins",
-            typeName: "OldHavenMage",
-            x: 3556, y: 2487,
-            count: 2,
-            homeRange: 10,
-            minDelay: TimeSpan.FromMinutes(2),
-            maxDelay: TimeSpan.FromMinutes(5)
-        ),
-        new(
-            label:    "Old Haven Mage – town square",
-            typeName: "OldHavenMage",
-            x: 3600, y: 2510,
-            count: 3,
-            homeRange: 12,
-            minDelay: TimeSpan.FromMinutes(2),
-            maxDelay: TimeSpan.FromMinutes(5)
-        ),
-        new(
-            label:    "Old Haven Mage – south courtyard",
-            typeName: "OldHavenMage",
-            x: 3618, y: 2540,
-            count: 2,
-            homeRange: 10,
-            minDelay: TimeSpan.FromMinutes(2),
-            maxDelay: TimeSpan.FromMinutes(5)
-        ),
-        new(
-            label:    "Old Haven Mage – east rubble",
-            typeName: "OldHavenMage",
-            x: 3645, y: 2495,
-            count: 2,
-            homeRange: 10,
-            minDelay: TimeSpan.FromMinutes(2),
-            maxDelay: TimeSpan.FromMinutes(5)
         ),
     };
 
@@ -113,6 +58,7 @@ public static class ClusterFOldHavenSeeder
 
         EventSink.WorldLoad += OnWorldLoad;
         CommandSystem.Register("ClusterFSeedOldHaven", AccessLevel.Administrator, ClusterFSeedOldHaven_OnCommand);
+        CommandSystem.Register("ClusterFOldHavenRetire", AccessLevel.Administrator, ClusterFOldHavenRetire_OnCommand);
     }
 
     // -----------------------------------------------------------------------
@@ -144,6 +90,106 @@ public static class ClusterFOldHavenSeeder
     }
 
     // -----------------------------------------------------------------------
+    // cc-P189: removing the mages and Vorlak from a world that already has them
+    // -----------------------------------------------------------------------
+
+    /// <summary>The types cc-P189 takes out of Old Haven. DrelgorTheImpaler is Vorlak's name before cc-P129.</summary>
+    internal static readonly HashSet<string> RetiredTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "OldHavenMage", "VorlakTheImpaler", "DrelgorTheImpaler"
+    };
+
+    [Usage("ClusterFOldHavenRetire [dryrun]")]
+    [Description("Removes the Old Haven Mage and Vorlak spawners, and their creatures, from Old Haven.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "DELETES the Old Haven Mage and Vorlak spawners in Old Haven and their creatures (cc-P189). Any argument but dryrun deletes.")]
+    private static void ClusterFOldHavenRetire_OnCommand(CommandEventArgs e)
+    {
+        var dryRun = e.Length > 0 && e.GetString(0).Equals("dryrun", StringComparison.OrdinalIgnoreCase);
+
+        foreach (var line in Retire(dryRun))
+        {
+            e.Mobile.SendMessage(line);
+        }
+    }
+
+    /// <summary>
+    /// Deletes every spawner in Old Haven whose entries are all retired types (deleting a spawner deletes what it spawned,
+    /// pinned BaseSpawner.OnDelete -> RemoveSpawns, BaseSpawner.cs:1245-1290), and any retired creature in Old Haven that
+    /// no spawner owns and no player controls. A spawner that also spawns something else is reported and kept: staff
+    /// mixed it, so staff decide. Returns the lines the command shows.
+    /// </summary>
+    internal static List<string> Retire(bool dryRun)
+    {
+        var lines = new List<string>();
+        var spawners = new List<Spawner>();
+        var creatures = 0;
+
+        foreach (var item in World.Items.Values)
+        {
+            if (item.Deleted || item.Map != Map.Trammel || !IsOldHavenArea(item.Location) || item is not Spawner spawner)
+                continue;
+
+            var retired = 0;
+            foreach (var entry in spawner.Entries)
+            {
+                if (RetiredTypes.Contains(entry.SpawnedName))
+                    retired++;
+            }
+
+            if (retired == 0)
+                continue;
+
+            var names = string.Join(", ", spawner.Entries.Select(se => se.SpawnedName));
+
+            if (retired < spawner.Entries.Count)
+            {
+                lines.Add($"[MIXED, KEPT] Spawner at ({spawner.X},{spawner.Y},{spawner.Z}) entries: {names}");
+                continue;
+            }
+
+            spawners.Add(spawner);
+            creatures += spawner.Spawned.Count;
+            lines.Add($"{(dryRun ? "[DRY RUN] " : "")}Spawner at ({spawner.X},{spawner.Y},{spawner.Z}) entries: {names}, {spawner.Spawned.Count} spawned");
+        }
+
+        var strays = new List<Mobile>();
+
+        foreach (var m in World.Mobiles.Values)
+        {
+            if (m.Deleted || m.Map != Map.Trammel || !IsOldHavenArea(m.Location) || !RetiredTypes.Contains(m.GetType().Name))
+                continue;
+
+            if (m is BaseCreature { Controlled: true } || m is ISpawnable { Spawner: not null })
+                continue;
+
+            strays.Add(m);
+            lines.Add($"{(dryRun ? "[DRY RUN] " : "")}{m.GetType().Name} \"{m.Name}\" at ({m.X},{m.Y}), no spawner");
+        }
+
+        if (!dryRun)
+        {
+            foreach (var spawner in spawners)
+            {
+                Console.WriteLine($"[ClusterFOldHavenRetire] Deleting spawner at ({spawner.X},{spawner.Y},{spawner.Z})");
+                spawner.Delete();
+            }
+
+            foreach (var m in strays)
+            {
+                Console.WriteLine($"[ClusterFOldHavenRetire] Deleting {m.GetType().Name} at ({m.X},{m.Y})");
+                m.Delete();
+            }
+        }
+
+        lines.Add(
+            $"ClusterF Old Haven retire {(dryRun ? "dry run" : "complete")}: " +
+            $"{(dryRun ? "would delete" : "deleted")} {spawners.Count} spawners with {creatures} creatures, " +
+            $"and {strays.Count} creatures with no spawner."
+        );
+        return lines;
+    }
+
+    // -----------------------------------------------------------------------
     // World-load hook
     // -----------------------------------------------------------------------
     private static void OnWorldLoad()
@@ -158,7 +204,7 @@ public static class ClusterFOldHavenSeeder
     // -----------------------------------------------------------------------
     // Core logic
     // -----------------------------------------------------------------------
-    private static string Seed(bool dryRun, bool replace)
+    internal static string Seed(bool dryRun, bool replace)
     {
         var deleted = 0;
         var created = 0;
@@ -298,7 +344,7 @@ public static class ClusterFOldHavenSeeder
         loc.Y >= 2420 && loc.Y <= 2600;
 
     // -----------------------------------------------------------------------
-    // Spawn config descriptor (internal — not the engine's SpawnerEntry type)
+    // Spawn config descriptor (internal, not the engine's SpawnerEntry type)
     // -----------------------------------------------------------------------
     private sealed class SpawnConfig
     {

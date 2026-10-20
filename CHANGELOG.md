@@ -29,6 +29,21 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.5
+
+### Changed
+- Old Haven is safer for new adventurers on their way to Rootdeep: the Old Haven mages and Vorlak the Impaler have left the ruins. The undead and Drelgor the Impaler remain.
+
+### Added
+- Old Haven is an apprentice training ground again, as on the official shards. While you are on a New Haven trainer's quest that sends you there (Magic Resist, the fighting skills, Magery, Healing and the others), you learn that skill two to four times as fast in the ruins, until the quest is done at 50. Your trainer's words and an "Accelerated Skillgain" icon tell you when you are in the right place.
+
+### Fixed
+- Drelgor the Impaler now issues his challenge to those in the ruins, as he should.
+- Old Haven's Least Welcome Regular (slay 50 creatures in Old Haven's ruins) can now be earned.
+
+### Staff
+- [ClusterFOldHavenRetire [dryrun] removes the Old Haven Mage and Vorlak spawners (and their creatures) from a world that already has them; [ClusterFSeedOldHaven no longer places them. The classes, and their achievements, are kept for a new home.
+
 ## 2026.10.20.4
 
 ### Staff

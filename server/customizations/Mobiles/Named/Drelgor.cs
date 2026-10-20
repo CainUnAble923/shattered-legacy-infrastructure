@@ -4,10 +4,9 @@
 // two persisted fields, [SerializableField]s here. ServUO's msgevery is a constant 1.0 (minutes); kept as one.
 //
 // The broadcast (cliloc 1077840, "Who dares to defile Haven? ...") goes to every player who shares his "Old Haven
-// Training" region. DEVIATION, recorded: pinned's regions.json has no region of that name (ServUO's Data/Regions.xml
-// does, an ApprenticeRegion over Old Haven), so on this shard the test never holds and the line is never spoken,
-// though he is placed where ServUO places him (ClusterFOldHavenSeeder). Reverses when an "Old Haven Training"
-// region exists here. The check is kept as written so that it does.
+// Training" region. cc-P129 recorded a deviation here: pinned's regions.json has no region of that name, so the line
+// was never spoken. cc-P189 registers it (Regions/ApprenticeTraining.cs, ServUO's rectangle plus the walk to the
+// Rootdeep hole), so he speaks as on ServUO; the check is unchanged.
 
 using System;
 using ModernUO.Serialization;
