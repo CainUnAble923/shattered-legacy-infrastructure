@@ -1,0 +1,16 @@
+--- "a/Projects/UOContent/Items/Skill Items/Carpenter Items/TaxidermyKit.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Carpenter Items/TaxidermyKit.cs"
+@@ -91,6 +91,13 @@
+                 return;
+             }
+ 
++            // cc-P193 (High Seas fishing): a rare fish, crab or lobster becomes a FishTrophyDeed for ten boards and the kit;
++            // ServUO TaxidermyKit.cs:236-268. FishTrophies is ours (Services/Expansions/High Seas/Items/Fish/Trophies.cs).
++            if (FishTrophies.TryMake(from, _kit, targeted))
++            {
++                return;
++            }
++
+             var corpse = targeted as Corpse;
+             var fish = targeted as BigFish;
+ 
