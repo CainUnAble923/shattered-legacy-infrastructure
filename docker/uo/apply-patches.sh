@@ -380,6 +380,9 @@ apply_patch "$PATCHES/AccountHandler-test-center-deletion.patch"
 # countdown are in pinned Account.cs and the skill rule in pinned PlayerMobile.OnSkillChange, with no hook to
 # reach them from customizations; both patches point pinned at ClusterFYoungPlayer.cs. Argued in
 # shard-migration/notes/cc-P18-reset-stone-young-craftx.md; pinned by YoungPlayerVerification.
+# cc-P192 added two lines: CheckYoung and the login countdown count play time from the Young clock's start
+# (ClusterFYoungPlayer.YoungPlayed, an account tag the Fountain of Youth resets) instead of the whole TotalGameTime.
+# With no tag the count is TotalGameTime, so every account behaves as before.
 apply_patch "$PATCHES/Account-young-duration.patch"
 apply_patch "$PATCHES/PlayerMobile-young-time-only.patch"
 
@@ -689,6 +692,10 @@ apply_patch "$PATCHES/SkillCheck-pet-focus-gain.patch"
 # event or virtual reaches it. It makes the roll likelier, never a free gain. After the Focus patch (same file, other hunk).
 # Alternatives argued in shard-migration/notes/cc-P172-pet-gain-speed.md; pinned by PetGainSpeedVerification.
 apply_patch "$PATCHES/SkillCheck-pet-gain-speed.patch"
+# cc-P192: the boat deed refuses a sanctum around the roaming Fountain of Youth (FountainSanctumRegion), with pinned's
+# own "A boat may not be placed in this area." BaseBoatDeed's target tests region types only (BaseBoatDeed.cs:152-161);
+# there is no region virtual to override. Notes: shard-migration notes/cc-P192-cont-fountain-of-youth.md.
+apply_patch "$PATCHES/BaseBoatDeed-fountain-sanctum.patch"
 apply_patch "$PATCHES/BaseWeapon-trained-weapon-ability.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to

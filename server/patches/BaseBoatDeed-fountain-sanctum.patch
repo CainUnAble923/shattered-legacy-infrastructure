@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Multis/Boats/BaseBoatDeed.cs
++++ b/Projects/UOContent/Multis/Boats/BaseBoatDeed.cs
+@@ -155,7 +155,9 @@
+                 {
+                     from.SendLocalizedMessage(502488); // You can not place a ship inside a dungeon.
+                 }
+-                else if (region.IsPartOf<HouseRegion>() || region.IsPartOf<ChampionSpawnRegion>())
++                // Shattered Legacy (cc-P192): nor in a sanctum (FountainSanctumRegion), with pinned's own message.
++                else if (region.IsPartOf<HouseRegion>() || region.IsPartOf<ChampionSpawnRegion>() ||
++                         FountainSanctumRegion.RefusesBoats(region))
+                 {
+                     from.SendLocalizedMessage(1042549); // A boat may not be placed in this area.
+                 }

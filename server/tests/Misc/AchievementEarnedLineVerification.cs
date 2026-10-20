@@ -97,7 +97,7 @@ public class AchievementEarnedLineVerification
     public void EveryRegisteredAchievementHasAnEarnedLine()
     {
         var defs = ClusterFAchievementSystem.Definitions.Values.ToList();
-        Assert.Equal(78, defs.Count); // cc-P80: the two tutorial achievements; cc-P82: the two Fortune's Favor ones
+        Assert.Equal(79, defs.Count); // cc-P80: the two tutorial achievements; cc-P82: the two Fortune's Favor ones; cc-P192: Second Childhood
 
         foreach (var def in defs.OrderBy(d => d.Key))
         {
@@ -320,7 +320,7 @@ public class AchievementEarnedLineVerification
             var (count, total) = ClusterFAchievementSystem.ProgressCount(p.Account.Username);
             _out.WriteLine($"holder: earned {count} of {total} (retired held, not counted)");
             Assert.Equal(2, count);
-            Assert.Equal(78 - RetiredKeys.Length, total); // cc-P82: 78 registered
+            Assert.Equal(79 - RetiredKeys.Length, total); // cc-P82: 78 registered; cc-P192: 79
 
             // Every page of the Skills tab (five rows a page; the Retired section is last).
             var pages = Enumerable.Range(0, 20).Select(i => new AchievementsGump(p.Pm, AchievementCategory.Skills, false, i)).ToList();

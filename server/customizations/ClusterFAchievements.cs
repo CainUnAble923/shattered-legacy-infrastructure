@@ -63,6 +63,7 @@ public enum TriggerKind
     TutorialSkipped,   // cc-P80: skipped the New Haven tutorial
     TutorialRemedial,  // cc-P80: finished it after skipping it
     LuckyGearBoxes,    // cc-P82: loot boxes earned with Fortune's Favor gear put on less than a minute before
+    FountainOfYouth,   // cc-P192: drank from the roaming Fountain of Youth (secret; no place is ever named)
 }
 
 public sealed class AchievementTrigger
@@ -139,6 +140,7 @@ public sealed class AchievementTrigger
             TriggerKind.Logins             => $"logged in {n:N0} times",
             TriggerKind.TutorialSkipped    => "skipped the New Haven tutorial",
             TriggerKind.TutorialRemedial   => "completed the tutorial after skipping it",
+            TriggerKind.FountainOfYouth    => "drank from the Fountain of Youth",
             TriggerKind.LuckyGearBoxes     => n == 1
                 ? "a loot box with luck gear equipped less than a minute earlier"
                 : $"{n:N0} loot boxes with luck gear equipped less than a minute earlier",
@@ -147,7 +149,7 @@ public sealed class AchievementTrigger
     }
 }
 
-// ── Achievement category ──────────────────────────────────────────────────────
+// -- Achievement category ------------------------------------------------------
 
 public enum AchievementCategory
 {
@@ -162,7 +164,7 @@ public enum AchievementCategory
     League      = 8,
 }
 
-// ── Achievement definition ────────────────────────────────────────────────────
+// -- Achievement definition ----------------------------------------------------
 
 public class AchievementDef
 {
@@ -185,7 +187,7 @@ public class AchievementDef
     public int                 ItemGumpId        { get; }
 
     /// <summary>
-    /// When true the achievement is invisible in the locked list — players
+    /// When true the achievement is invisible in the locked list - players
     /// won't know it exists until they earn it. Earned hidden achievements
     /// display normally with a [Secret] tag.
     /// </summary>
@@ -248,7 +250,7 @@ public class AchievementDef
     }
 }
 
-// ── Achievement system ────────────────────────────────────────────────────────
+// -- Achievement system --------------------------------------------------------
 
 /// <summary>
 /// Phase 1 achievement framework for Shattered Legacy.
@@ -282,7 +284,7 @@ public static class ClusterFAchievementSystem
 
     public static IReadOnlyDictionary<string, AchievementDef> Definitions => _defs;
 
-    // ── Configure ─────────────────────────────────────────────────────────
+    // -- Configure ---------------------------------------------------------
 
     public static void Configure()
     {
@@ -301,26 +303,26 @@ public static class ClusterFAchievementSystem
                 pm.SendGump(new AchievementsGump(pm));
         });
 
-    // ── Achievement definitions ────────────────────────────────────────────
+    // -- Achievement definitions --------------------------------------------
 
     private static void RegisterAll()
     {
-        // ── Item graphic IDs used below ───────────────────────────────────
+        // -- Item graphic IDs used below -----------------------------------
         // 0x14EC = Treasure Map      0x0F5E = Broadsword    0x0F49 = Axe
         // 0x0E3B = Spellbook         0x0E34 = Scroll        0x0F26 = Diamond
         // 0x0FF4 = Brown Book        0x1B76 = Metal Shield  0x0E86 = Pickaxe
         // (Add more as new achievements are defined.)
 
-        // ── Exploration ──────────────────────────────────────────────────
+        // -- Exploration --------------------------------------------------
         Reg("exploration.citizen",
             "Still Breathing",
             "Log in to Shattered Legacy for the first time. The System has formally acknowledged your continued existence.",
             AchievementCategory.Exploration, ap: 10, renown: 20,
             trigger:          T.Event(TriggerKind.FirstLogin),
             flavor:      "The bar was on the floor. You cleared it.",
-            itemGumpId:  0x14EC);   // Treasure Map — a world to explore
+            itemGumpId:  0x14EC);   // Treasure Map - a world to explore
 
-        // ── Combat ───────────────────────────────────────────────────────
+        // -- Combat -------------------------------------------------------
         Reg("combat.first_blood",
             "Oh Look, It's Dead",
             "Slay your first creature. Something has died because of you. The System has logged this.",
@@ -358,7 +360,7 @@ public static class ClusterFAchievementSystem
             flavor:           "The System is choosing to look the other way.",
             itemGumpId:       0x0F5E,   // Broadsword
             prerequisiteKey:  "combat.thousand",
-            hidden:           true,     // secret — players don't see this until earned
+            hidden:           true,     // secret - players don't see this until earned
             progressCounter:  "kills");
 
         Reg("combat.oldhaven_mage",
@@ -378,10 +380,10 @@ public static class ClusterFAchievementSystem
             AchievementCategory.Combat, ap: 25, renown: 100,
             trigger:          T.Event(TriggerKind.KillVorlak),
             flavor:     "Bold strategy. Unambiguously effective.",
-            itemGumpId: 0x0F49,         // Axe — heavy weapon energy
-            hidden:     true);          // secret — finding Vorlak is the discovery
+            itemGumpId: 0x0F49,         // Axe - heavy weapon energy
+            hidden:     true);          // secret - finding Vorlak is the discovery
 
-        // ── Skills ───────────────────────────────────────────────────────
+        // -- Skills -------------------------------------------------------
         Reg("skills.apprentice",
             "You've Read the Introduction",
             "Reach 50 in any skill. You now understand approximately one-sixth of something. The journey has, technically, begun.",
@@ -415,10 +417,10 @@ public static class ClusterFAchievementSystem
             trigger:          T.AnySkill(300),
             retired:          true,   // cc-P55 Part G (D75): keyed above the 200 cap
             flavor:          "The ceiling has a handprint on it now. That's yours.",
-            itemGumpId:      0x0F26,    // Diamond — only fitting
+            itemGumpId:      0x0F26,    // Diamond - only fitting
             prerequisiteKey: "skills.master");
 
-        // ── Discovery ────────────────────────────────────────────────────
+        // -- Discovery ----------------------------------------------------
         Reg("discovery.old_haven",
             "A Bad Neighborhood",
             "Discover the ruins of Old Haven. Nobody lives there anymore. That is, objectively, information you now possess.",
@@ -427,14 +429,14 @@ public static class ClusterFAchievementSystem
             flavor:     "The real treasure was the foreboding atmosphere.",
             itemGumpId: 0x14EC);        // Treasure Map
 
-        // ── League ───────────────────────────────────────────────────────
+        // -- League -------------------------------------------------------
         Reg("league.registered_citizen",
             "Officially a Problem",
             "Register with the League of Extraordinary Citizens. You are now in the database. This cannot be undone.",
             AchievementCategory.League, ap: 10, renown: 25,
             trigger:          T.Event(TriggerKind.JoinLeague),
             flavor:     "They can't un-know this. Neither can you.",
-            itemGumpId: 0x0FF4);        // Brown Book — your file
+            itemGumpId: 0x0FF4);        // Brown Book - your file
 
         Reg("league.first_dispatch",
             "Minimally Informed",
@@ -442,7 +444,7 @@ public static class ClusterFAchievementSystem
             AchievementCategory.League, ap: 5, renown: 10,
             trigger:          T.Event(TriggerKind.ReadDispatch),
             flavor:          "Information received. Presumably retained.",
-            itemGumpId:      0x0E34,    // Scroll — the dispatch
+            itemGumpId:      0x0E34,    // Scroll - the dispatch
             prerequisiteKey: "league.registered_citizen");
 
         Reg("league.first_referral",
@@ -460,10 +462,10 @@ public static class ClusterFAchievementSystem
             AchievementCategory.League, ap: 15, renown: 50,
             trigger:          T.Event(TriggerKind.JoinGuild),
             flavor:          "Welcome to the family. There's a dues structure.",
-            itemGumpId:      0x1B76,    // Metal Shield — belonging to something
+            itemGumpId:      0x1B76,    // Metal Shield - belonging to something
             prerequisiteKey: "league.first_referral");
 
-        // ── Combat additions ──────────────────────────────────────────────
+        // -- Combat additions ----------------------------------------------
         // 0x0F5E = Broadsword   0x0F49 = Battle Axe   0x0E34 = Scroll
 
         Reg("combat.five_hundred",
@@ -520,7 +522,7 @@ public static class ClusterFAchievementSystem
             AchievementCategory.Combat, ap: 5, renown: 0,
             trigger:          T.Event(TriggerKind.FirstDeath),
             flavor:          "The System notes you got better. Barely.",
-            itemGumpId:      0x0E34);   // Scroll — resurrection scroll vibe
+            itemGumpId:      0x0E34);   // Scroll - resurrection scroll vibe
 
         Reg("combat.pvp_first",
             "Morally Complicated",
@@ -531,7 +533,7 @@ public static class ClusterFAchievementSystem
             itemGumpId:      0x0F5E,
             hidden:          true);     // Surprise when you do it
 
-        // ── Exploration additions ─────────────────────────────────────────
+        // -- Exploration additions -----------------------------------------
         // 0x14EC = Treasure Map   0x0F26 = Diamond
 
         Reg("exploration.trammel",
@@ -582,9 +584,9 @@ public static class ClusterFAchievementSystem
             trigger:          T.Event(TriggerKind.VisitAllFacets),
             flavor:          "The passport is full. The System is out of stamps.",
             itemGumpId:      0x0F26,
-            hidden:          true);     // Checked manually — no single prereq
+            hidden:          true);     // Checked manually - no single prereq
 
-        // ── Skill additions ───────────────────────────────────────────────
+        // -- Skill additions -----------------------------------------------
         // 0x0E86 = Pickaxe   0x13E3 = Smith's Hammer   0x0E3B = Spellbook
 
         // -- Expanded skill cap milestones (written for a 300 cap) ---------
@@ -612,7 +614,7 @@ public static class ClusterFAchievementSystem
             itemGumpId:      0x0E34,
             prerequisiteKey: "skills.master");
 
-        // ── Multi-skill breadth (expanded tiers) ──────────────────────────
+        // -- Multi-skill breadth (expanded tiers) --------------------------
 
         Reg("skills.triple_journeyman",
             "Competent in Three Directions",
@@ -653,7 +655,7 @@ public static class ClusterFAchievementSystem
             hidden:          true,
             prerequisiteKey: "skills.grandmaster");
 
-        // ── Mining — extended tiers ───────────────────────────────────────
+        // -- Mining - extended tiers ---------------------------------------
 
         Reg("skills.mining_elite",
             "The Mountain Yields to You",
@@ -675,7 +677,7 @@ public static class ClusterFAchievementSystem
             hidden:          true,
             prerequisiteKey: "skills.mining_elite");
 
-        // ── Blacksmithy — extended tiers ──────────────────────────────────
+        // -- Blacksmithy - extended tiers ----------------------------------
 
         Reg("skills.smith_elite",
             "The Forge Has No More Objections",
@@ -697,7 +699,7 @@ public static class ClusterFAchievementSystem
             hidden:          true,
             prerequisiteKey: "skills.smith_elite");
 
-        // ── Magery — extended tiers ───────────────────────────────────────
+        // -- Magery - extended tiers ---------------------------------------
 
         Reg("skills.magery_elite",
             "Arcane Comprehension: Unsettling",
@@ -762,7 +764,7 @@ public static class ClusterFAchievementSystem
             flavor:          "The System recommends care around residential areas during practice.",
             itemGumpId:      0x0E3B);
 
-        // ── Mining ────────────────────────────────────────────────────────
+        // -- Mining --------------------------------------------------------
         // 0x0E86 = Pickaxe   0x0F26 = Diamond
 
         Reg("mining.first_vein",
@@ -841,7 +843,7 @@ public static class ClusterFAchievementSystem
             itemGumpId:      0x0E86,
             prerequisiteKey: "exploration.felucca");
 
-        // ── Crafting ──────────────────────────────────────────────────────
+        // -- Crafting ------------------------------------------------------
         // 0x13E3 = Smith's Hammer   0x0F9D = Sewing Kit   0x1BF2 = Iron Ingot
 
         Reg("crafting.first_item",
@@ -888,7 +890,7 @@ public static class ClusterFAchievementSystem
             itemGumpId:      0x0F9D,
             prerequisiteKey: "crafting.first_item");
 
-        // ── Collection ────────────────────────────────────────────────────
+        // -- Collection ----------------------------------------------------
         // 0x0E86 = Pickaxe   0xEED = Gold coins   0x0F26 = Diamond
 
         Reg("collection.ore_standard",
@@ -928,7 +930,7 @@ public static class ClusterFAchievementSystem
             itemGumpId:      0xEED,
             prerequisiteKey: "collection.gold_10k");
 
-        // ── Discovery additions ───────────────────────────────────────────
+        // -- Discovery additions -------------------------------------------
 
         Reg("discovery.survey_report",
             "Contributing to Science. Technically.",
@@ -946,7 +948,7 @@ public static class ClusterFAchievementSystem
             flavor:          "The treasure hunters of old would approve. Briefly, before wanting a cut.",
             itemGumpId:      0x14EC);
 
-        // ── Legacy additions ──────────────────────────────────────────────
+        // -- Legacy additions ----------------------------------------------
 
         Reg("legacy.new_haven_1",
             "The Tutorial Has a Checkbox",
@@ -986,7 +988,7 @@ public static class ClusterFAchievementSystem
             itemGumpId:      0x0F49,
             progressCounter: "oldhaven_kills");
 
-        // ── League additions ──────────────────────────────────────────────
+        // -- League additions ----------------------------------------------
 
         Reg("league.ap_100",
             "The System Is Taking Notes",
@@ -1055,6 +1057,18 @@ public static class ClusterFAchievementSystem
             itemGumpId:      0x0FF4,
             prerequisiteKey: "tutorial.skipped");
 
+        // cc-P192 (Chase 2026-10-19 15:03: "a silly easter egg"): SECRET. Hidden until earned; granted by
+        // FountainOfYouthSystem.Drink the first time an account drinks from the roaming (live) fountain. No text names a
+        // place. Never document it on the wiki (admin notes: shard-migration notes/admin/secrets.md).
+        Reg(FountainOfYouthAchievementKey,
+            "Second Childhood",
+            "Drank from the Fountain of Youth.",
+            AchievementCategory.Legacy, ap: 10, renown: 0,
+            trigger:    T.Event(TriggerKind.FountainOfYouth),
+            flavor:     "You found the Fountain of Youth. Try not to waste it this time.",
+            itemGumpId: 0,
+            hidden:     true);
+
         // cc-P82 (the Imbuing rework, design "Achievements"): hidden; counted by ClusterFImbueEffects.OnLootBoxEarned when
         // a box is earned with Fortune's Favor gear put on less than a minute before. The earn's own loot box is the reward.
         Reg(DressedKey,
@@ -1082,6 +1096,9 @@ public static class ClusterFAchievementSystem
     }
 
     public const string DressedKey = "imbue.dressed_for_the_occasion";
+
+    /// <summary>cc-P192: the secret Fountain of Youth achievement ("Second Childhood").</summary>
+    public const string FountainOfYouthAchievementKey = "secret.second_childhood";
     public const string HabitKey = "imbue.creature_of_habit";
     public const string LuckyGearCounter = "lucky_gear_boxes";
 
@@ -1156,7 +1173,7 @@ public static class ClusterFAchievementSystem
         return count;
     }
 
-    // ── Public API ─────────────────────────────────────────────────────────
+    // -- Public API ---------------------------------------------------------
 
     public static bool HasEarned(IAccount acct, string key) =>
         _earned.TryGetValue(acct.Username, out var set) && set.Contains(key);
@@ -1241,21 +1258,21 @@ public static class ClusterFAchievementSystem
     {
         if (pm.Account is not IAccount acct) return;
 
-        // ── Kill milestones ────────────────────────────────────────────────
+        // -- Kill milestones ------------------------------------------------
         GrantCounted(acct, TriggerKind.Kills, Increment(acct.Username, "kills"));
 
-        // ── Named bosses ───────────────────────────────────────────────────
+        // -- Named bosses ---------------------------------------------------
         if (victim is OldHavenMage)
             GrantCounted(acct, TriggerKind.OldHavenMageKills, Increment(acct.Username, "oldhaven_mage_kills"));
 
         if (victim is VorlakTheImpaler)
             GrantEvent(acct, TriggerKind.KillVorlak);
 
-        // ── PvP ────────────────────────────────────────────────────────────
+        // -- PvP ------------------------------------------------------------
         if (victim is PlayerMobile)
             GrantEvent(acct, TriggerKind.PlayerKill);
 
-        // ── Undead ────────────────────────────────────────────────────────
+        // -- Undead --------------------------------------------------------
         if (victim is Zombie    || victim is Skeleton      || victim is Ghoul
                     || victim is Shade     || victim is Spectre      || victim is Wraith
                     || victim is Lich      || victim is LichLord      || victim is BoneKnight
@@ -1264,18 +1281,18 @@ public static class ClusterFAchievementSystem
             GrantCounted(acct, TriggerKind.UndeadKills, Increment(acct.Username, "undead_kills"));
         }
 
-        // ── Ratmen ────────────────────────────────────────────────────────
+        // -- Ratmen --------------------------------------------------------
         if (victim is Ratman || victim is RatmanArcher || victim is RatmanMage)
             GrantCounted(acct, TriggerKind.RatmanKills, Increment(acct.Username, "ratman_kills"));
 
-        // ── Orcs ──────────────────────────────────────────────────────────
+        // -- Orcs ----------------------------------------------------------
         if (victim is Orc     || victim is OrcBrute  || victim is OrcBomber
                    || victim is OrcCaptain || victim is OrcishMage || victim is OrcishLord)
         {
             GrantCounted(acct, TriggerKind.OrcKills, Increment(acct.Username, "orc_kills"));
         }
 
-        // ── Old Haven region (any mob) ─────────────────────────────────────
+        // -- Old Haven region (any mob) -------------------------------------
         if (IsInOldHaven(pm))
             GrantCounted(acct, TriggerKind.OldHavenKills, Increment(acct.Username, "oldhaven_kills"));
     }
@@ -1305,7 +1322,7 @@ public static class ClusterFAchievementSystem
         GrantEvent(acct, TriggerKind.VisitOldHaven);
     }
 
-    // ── Event hooks ───────────────────────────────────────────────────────
+    // -- Event hooks -------------------------------------------------------
 
     [OnEvent(nameof(PlayerMobile.PlayerLoginEvent))]
     public static void OnLogin(PlayerMobile pm)
@@ -1317,10 +1334,10 @@ public static class ClusterFAchievementSystem
         // -- Skill achievements (any skill, several skills, one skill), from Base --
         GrantSkills(pm, acct);
 
-        // ── Facet visits ──────────────────────────────────────────────────
+        // -- Facet visits --------------------------------------------------
         NotifyMapVisit(pm);
 
-        // ── New Haven quest progress ───────────────────────────────────────
+        // -- New Haven quest progress ---------------------------------------
         var ctx = MLQuestSystem.GetContext(pm);
         if (ctx != null)
         {
@@ -1331,18 +1348,18 @@ public static class ClusterFAchievementSystem
             GrantCounted(acct, TriggerKind.NewHavenQuests, doneCount);
         }
 
-        // ── Login count ───────────────────────────────────────────────────
+        // -- Login count ---------------------------------------------------
         GrantCounted(acct, TriggerKind.Logins, Increment(acct.Username, "login_count"));
 
-        // ── AP / Renown league thresholds ─────────────────────────────────
+        // -- AP / Renown league thresholds ---------------------------------
         var data = ClusterFAccountPersistence.GetOrCreate(acct);
         GrantCounted(acct, TriggerKind.AchievementPoints, data.AchievementPoints);
         GrantCounted(acct, TriggerKind.Renown, data.Renown);
 
-        // ── Bank gold ─────────────────────────────────────────────────────
+        // -- Bank gold -----------------------------------------------------
         GrantCounted(acct, TriggerKind.BankGold, pm.BankBox?.GetAmount(typeof(Gold)) ?? 0);
 
-        // ── Jacob's Pickaxe ───────────────────────────────────────────────
+        // -- Jacob's Pickaxe -----------------------------------------------
         CheckJacobsPickaxe(pm);
     }
 
@@ -1360,7 +1377,7 @@ public static class ClusterFAchievementSystem
             NotifyKill(pm, bc);
     }
 
-    // ── Counters ──────────────────────────────────────────────────────────
+    // -- Counters ----------------------------------------------------------
 
     private static int Increment(string username, string counter)
     {
@@ -1394,7 +1411,7 @@ public static class ClusterFAchievementSystem
         return v;
     }
 
-    // ── Additional notification APIs ──────────────────────────────────────
+    // -- Additional notification APIs --------------------------------------
 
     /// <summary>Called when a player enters a new map. Grants facet achievements.</summary>
     public static void NotifyMapVisit(PlayerMobile pm)
@@ -1502,7 +1519,7 @@ public static class ClusterFAchievementSystem
             if (HasJacobs(item)) { GrantEvent(acct, TriggerKind.JacobsPickaxe); return; }
     }
 
-    // ── Notification (earn popup gump) ────────────────────────────────────
+    // -- Notification (earn popup gump) ------------------------------------
 
     private static void NotifyOnlinePlayer(IAccount acct, AchievementDef def)
     {
@@ -1516,7 +1533,7 @@ public static class ClusterFAchievementSystem
         }
     }
 
-    // ── Earned set helpers ────────────────────────────────────────────────
+    // -- Earned set helpers ------------------------------------------------
 
     private static HashSet<string> GetEarnedMutable(string username)
     {
@@ -1525,7 +1542,7 @@ public static class ClusterFAchievementSystem
         return set;
     }
 
-    // ── Internal persistence API ──────────────────────────────────────────
+    // -- Internal persistence API ------------------------------------------
 
     internal static void ResetForAccount(string username)
     {
@@ -1547,7 +1564,7 @@ public static class ClusterFAchievementSystem
                      Dictionary<string, Dictionary<string, int>> counters) GetForSave() =>
         (_earned, _counters);
 
-    // ── Command handlers ──────────────────────────────────────────────────
+    // -- Command handlers --------------------------------------------------
 
     [Usage("achievements")]
     [Description("Opens your achievement records from the League of Extraordinary Citizens.")]
@@ -1612,7 +1629,7 @@ public static class ClusterFAchievementSystem
         if (e.Length < 2) { e.Mobile.SendMessage("Usage: ClusterFAchievement info <key>"); return; }
         var key = e.GetString(1);
         if (!_defs.TryGetValue(key, out var def)) { e.Mobile.SendMessage($"No achievement with key '{key}'."); return; }
-        e.Mobile.SendMessage($"[{def.Category}] {def.Title} — {def.Description}");
+        e.Mobile.SendMessage($"[{def.Category}] {def.Title} - {def.Description}");
         e.Mobile.SendMessage($"  {def.EarnedLine}{(def.Retired ? " [Retired]" : "")}");
         e.Mobile.SendMessage($"  Rewards: {def.AP} AP, {def.Renown} Renown");
     }
@@ -1639,7 +1656,7 @@ public static class ClusterFAchievementSystem
     }
 }
 
-// ── Achievement persistence ───────────────────────────────────────────────────
+// -- Achievement persistence ---------------------------------------------------
 
 public class ClusterFAchievementPersistence : Item
 {
@@ -1659,7 +1676,7 @@ public class ClusterFAchievementPersistence : Item
 
     public ClusterFAchievementPersistence(Serial serial) : base(serial) => _instance = this;
 
-    public override string DefaultName => "ClusterF Achievement Persistence — Internal";
+    public override string DefaultName => "ClusterF Achievement Persistence - Internal";
 
     public override void Serialize(IGenericWriter w)
     {
@@ -1723,7 +1740,7 @@ public class ClusterFAchievementPersistence : Item
     }
 }
 
-// ── Achievement earned popup ──────────────────────────────────────────────────
+// -- Achievement earned popup --------------------------------------------------
 
 /// <summary>
 /// Floating popup shown when the player earns a new achievement.
@@ -1744,12 +1761,12 @@ public class AchievementEarnedGump : Gump
         // cc-P57 Part F (D80): opaque, like the achievements list and the Staff Hub (D67).
         AddImageTiled(4, 4, W - 8, H - 8, AchievementsGump.PanelTile);
 
-        // ── Header ────────────────────────────────────────────────────────
+        // -- Header --------------------------------------------------------
         AddImageTiled(4, 4, W - 8, 2, 9304);
-        AddLabel(W / 2 - 95, 9, 1154, "— ACHIEVEMENT UNLOCKED —");
+        AddLabel(W / 2 - 95, 9, 1154, "- ACHIEVEMENT UNLOCKED -");
         AddImageTiled(4, 26, W - 8, 1, 9304);
 
-        // ── Item icon + content ───────────────────────────────────────────
+        // -- Item icon + content -------------------------------------------
         // If the achievement has an item graphic, show it on the left.
         // Content (title + flavor) shifts right to make room.
         var hasIcon   = def.ItemGumpId > 0;
@@ -1767,14 +1784,14 @@ public class AchievementEarnedGump : Gump
 
         AddHtml(contentX, 30, contentW, 90, html, false, false);
 
-        // ── Footer ────────────────────────────────────────────────────────
+        // -- Footer --------------------------------------------------------
         AddImageTiled(4, H - 36, W - 8, 1, 9304);
 
         // Category + secret tag
         var catLabel = def.Hidden ? $"[{def.Category}] [Secret]" : $"[{def.Category}]";
         AddLabel(12, H - 27, 999, catLabel);
 
-        // Rewards — AP in gold-ish, Renown in gray
+        // Rewards - AP in gold-ish, Renown in gray
         AddLabel(W - 220, H - 27, 1154, $"+{def.AP} AP");
         AddLabel(W - 168, H - 27, 999,  $"+{def.Renown} Renown");
 
@@ -1787,7 +1804,7 @@ public class AchievementEarnedGump : Gump
     public override void OnResponse(NetState sender, in RelayInfo info) { }
 }
 
-// ── Achievements gump ─────────────────────────────────────────────────────────
+// -- Achievements gump ---------------------------------------------------------
 
 /// <summary>
 /// Player-facing achievement records gump. Opened via [achievements.
@@ -1812,7 +1829,7 @@ public class AchievementsGump : Gump
     public const int GumpHeight = 510;
     private const int BgGumpId   = 9270;
 
-    // Tab button base ID — 100..107 for categories, 108 for quests
+    // Tab button base ID - 100..107 for categories, 108 for quests
     private const int TabBase     = 100;
     private const int TabQuests   = 108;
 
@@ -1853,7 +1870,7 @@ public class AchievementsGump : Gump
     /// <summary>Where tab <paramref name="i"/> (0..7 the categories, 8 Quests) sits: five on the first row, four on the second.</summary>
     internal static (int X, int Y) TabAt(int i) => (14 + i % 5 * TabColW, TabY + i / 5 * TabRowH);
 
-    // ── New Haven quest list ──────────────────────────────────────────────
+    // -- New Haven quest list ----------------------------------------------
 
     internal static readonly (Type QuestType, string Title)[] NewHavenQuests =
     [
@@ -1899,7 +1916,7 @@ public class AchievementsGump : Gump
         (typeof(ItsHammerTime),            "It's Hammer Time!"),
     ];
 
-    // ── Constructor ───────────────────────────────────────────────────────
+    // -- Constructor -------------------------------------------------------
 
     public AchievementsGump(PlayerMobile pm, AchievementCategory? filter = null, bool questsTab = false, int page = 0)
         : base(50, 40)
@@ -1921,7 +1938,7 @@ public class AchievementsGump : Gump
         // cc-P57 Part F: opaque; the alpha region let the world show through the rows.
         AddImageTiled(10, 10, GumpWidth - 20, GumpHeight - 20, PanelTile);
 
-        // ── Header ────────────────────────────────────────────────────────
+        // -- Header --------------------------------------------------------
         AddLabel(GumpWidth / 2 - 125, 13, 1154, "League of Extraordinary Citizens");
         AddLabel(GumpWidth / 2 - 80,  31, 999,  "Achievement Records");
         AddLabel(18, 13, 999, pm.Name);
@@ -1934,7 +1951,7 @@ public class AchievementsGump : Gump
 
         AddImageTiled(10, 54, GumpWidth - 20, 2, 9304);
 
-        // ── Tabs: two even rows in fixed columns, full words (cc-P57 Part F) ──
+        // -- Tabs: two even rows in fixed columns, full words (cc-P57 Part F) --
         // The labels sat at button + 18 over a 30-wide button and were cut to fit one row.
         for (var i = 0; i <= CategoryTabs.Length; i++)
         {
@@ -1948,7 +1965,7 @@ public class AchievementsGump : Gump
 
         AddImageTiled(10, ListY - 6, GumpWidth - 20, 2, 9304);
 
-        // ── Content area ─────────────────────────────────────────────────
+        // -- Content area -------------------------------------------------
         const int listY = ListY;
         const int listH = GumpHeight - listY - 46;
 
@@ -1957,7 +1974,7 @@ public class AchievementsGump : Gump
         else
             AddAchievementContent(listY, listH, filter, username, earnedKeys);
 
-        // ── Footer ────────────────────────────────────────────────────────
+        // -- Footer --------------------------------------------------------
         AddImageTiled(10, GumpHeight - 40, GumpWidth - 20, 2, 9304);
         AddButton(GumpWidth / 2 - 150, GumpHeight - 30, 4011, 4012, 200);
         AddLabel(GumpWidth / 2 - 132,  GumpHeight - 28, 999, "Guilds");
@@ -1965,7 +1982,7 @@ public class AchievementsGump : Gump
         AddLabel(GumpWidth / 2 - 16,  GumpHeight - 28, 1154, "Close");
     }
 
-    // ── Achievement list (paginated, icon-capable) ────────────────────────
+    // -- Achievement list (paginated, icon-capable) ------------------------
 
     // Each display entry is either a section-header divider or an achievement row.
     private readonly record struct PageRow(string? Header, AchievementDef? Def, bool Earned);
@@ -2029,13 +2046,13 @@ public class AchievementsGump : Gump
 
             if (row.Header != null)
             {
-                // ── Section divider row ──────────────────────────────────
+                // -- Section divider row ----------------------------------
                 AddLabel(16, rowY + 4, 0x777, row.Header);
                 AddImageTiled(16, rowY + 22, GumpWidth - 32, 2, 9304);
             }
             else if (row.Def != null)
             {
-                // ── Achievement row ──────────────────────────────────────
+                // -- Achievement row --------------------------------------
                 var def   = row.Def;
                 var lines = RowLines(def, row.Earned, username);
                 var textX = TextX(def);
@@ -2049,7 +2066,7 @@ public class AchievementsGump : Gump
             rowY += heights[i];
         }
 
-        // ── Pagination controls ──────────────────────────────────────────
+        // -- Pagination controls ------------------------------------------
         if (pages.Count > 1)
         {
             var btnY = ContentBottom + 4;
@@ -2179,7 +2196,7 @@ public class AchievementsGump : Gump
         return pages;
     }
 
-    // ── Quest list ────────────────────────────────────────────────────────
+    // -- Quest list --------------------------------------------------------
 
     private void AddQuestContent(int listY, int listH)
     {
@@ -2206,13 +2223,13 @@ public class AchievementsGump : Gump
             }
         }
 
-        // Inline summary header — can't easily insert at top after building, so add at bottom
+        // Inline summary header - can't easily insert at top after building, so add at bottom
         sb.Append($"<BR><BASEFONT COLOR=#888888>Completed: {doneCount} / {totalCount}</BASEFONT>");
 
         AddHtml(16, listY, GumpWidth - 32, listH, sb.ToString(), false, true);
     }
 
-    // ── Response ──────────────────────────────────────────────────────────
+    // -- Response ----------------------------------------------------------
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -2231,7 +2248,7 @@ public class AchievementsGump : Gump
             return;
         }
 
-        // ── Pagination ────────────────────────────────────────────────────
+        // -- Pagination ----------------------------------------------------
         if (info.ButtonID == PagePrev)
         {
             _pm.SendGump(new AchievementsGump(_pm, _filter, false, _page - 1));
