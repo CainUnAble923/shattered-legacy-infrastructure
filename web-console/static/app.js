@@ -5,11 +5,15 @@
    /api/action, where the server checks the word again (and the console's runner a third time), and the output is
    polled from /api/action once a second until the result line. Only on the tailnet page (canAct); this PC's own page
    shows them greyed. Every console-art slot is drawn when its file exists (art, artFrames: a strip steps through its
-   frames), else its drawn stand-in. ASCII only. */
+   frames), else its drawn stand-in.
+   cc-P186: every Golem's card has the same buttons (those marked anyGolem): the sheet then names the Golem and Run
+   posts it too. A Golem on this PC runs at once (the job card, as above); one on another PC is queued for its agent,
+   and its card shows "queued until <name> is online", what it is running, what came back and what expired. Each card
+   shows its machine, lanes, state, last readiness check and its portrait when it has one. ASCII only. */
 (function () {
   'use strict';
   var POLL_MS = 5000, JOB_MS = 1000;
-  var last = null, busy = false, art = [], frames = {}, sheetFor = null, jobSeen = 0, jobTimer = null, strips = [];
+  var last = null, busy = false, art = [], frames = {}, sheetFor = null, sheetGolem = null, jobSeen = 0, jobTimer = null, strips = [];
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -171,10 +175,31 @@
 
   // cc-P184: one card per Golem while several work the queue (status.golem.golems): name, lane, machine, state,
   // the prompt and branch, the locks it holds. Hidden while multiGolem is off.
-  function golemCard(c) {
-    var li = el('li');
+  // cc-P186: its portrait (only when the card has one), its last readiness check, whether a remote one's agent is
+  // online, the commands waiting for it, and its buttons (a = the status's actions: the buttons and canAct).
+  function ago(iso) {
+    var t = Date.parse(iso || '');
+    if (isNaN(t)) return '';
+    var s = Math.max(0, Math.round((Date.now() - t) / 1000));
+    return s < 90 ? s + 's ago' : s < 5400 ? Math.round(s / 60) + ' min ago' : when(iso);
+  }
+  function readyLine(r) {
+    if (!r) return null;
+    var t = 'Ready check: ' + r.verdict + (r.at ? ', ' + when(r.at) : '') + (r.summary ? ': ' + r.summary : '');
+    if (r.failed && r.failed.length && r.verdict !== 'READY') t += ' (failed: ' + r.failed.join(', ') + ')';
+    return el('div', r.verdict === 'READY' ? 'ok' : 'warn', t);
+  }
+  function golemCard(c, a) {
+    var li = el('li', 'golemcard');
     var head = c.name + ' (' + [c.lane, c.engine, c.machine].filter(function (x) { return x; }).join(', ') + ')' + (c.integrator ? ', integrator' : '');
-    li.appendChild(el('div', null, head));
+    var top = el('div', 'cardhead');
+    if (c.portraitUrl) {
+      var img = el('img', 'portrait');
+      img.src = c.portraitUrl; img.alt = c.name + ' Golem'; img.width = 48; img.height = 48;
+      top.appendChild(img);
+    }
+    top.appendChild(el('div', null, head));
+    li.appendChild(top);
     var s = c.state + (c.current ? ': ' + c.current + (c.branch && c.branch !== 'main' ? ' on ' + c.branch : '') : '') + (c.restReason ? ' (' + c.restReason + ')' : '');
     li.appendChild(el('div', c.state === 'RUNNING' ? 'ok' : (c.state === 'NEEDS YOU' || c.state === 'STOPPED' || c.state === 'UNKNOWN') ? 'warn' : 'quiet', s));
     var bits = [];
@@ -183,20 +208,47 @@
     if (c.hours) bits.push('hours ' + c.hours);
     if (c.needsYou) bits.push('needs you: ' + c.needsYou);
     if (bits.length) li.appendChild(el('div', 'meta', bits.join(' | ')));
+    if (c.remote) {
+      li.appendChild(el('div', c.online ? 'ok' : 'warn', 'On another PC: ' + (c.online ? 'its agent is online (' + ago(c.lastSeen) + ')' :
+        c.lastSeen ? 'offline, last seen ' + ago(c.lastSeen) : 'its agent has not called in yet')));
+    }
+    var rl = readyLine(c.ready);
+    if (rl) li.appendChild(rl);
+    (c.commands || []).slice(0, 4).forEach(function (x) {
+      li.appendChild(el('div', x.state === 'done' ? (x.code === 0 ? 'meta' : 'warn') : x.state === 'queued' || x.state === 'taken' ? 'quiet' : 'warn',
+        (x.label || x.key) + ': ' + (x.note || x.state) + (x.endedAt ? ' (' + when(x.endedAt) + ')' : '')));
+    });
+    // The same buttons as the integrator's (those marked anyGolem), for every other Golem that is enabled.
+    if (a && !c.integrator && c.enabled !== false) {
+      var box = el('div', 'ctl-grid mini');
+      var job = a.job, running = !!(job && job.running);
+      (a.buttons || []).forEach(function (b) {
+        if (!b.anyGolem || b.disabled || !applies(b, c)) return;
+        var btn = el('button', 'ctl small');
+        btn.type = 'button';
+        btn.setAttribute('data-key', b.key);
+        btn.setAttribute('data-golem', c.name);
+        btn.appendChild(el('span', 'label', b.key === 'retry' && c.stoppedPrompt ? b.label + ' (' + c.stoppedPrompt + ')' : b.label));
+        btn.disabled = !a.canAct || (running && !c.remote);
+        btn.addEventListener('click', function () { openSheet(b, c); });
+        box.appendChild(btn);
+      });
+      if (box.firstChild) li.appendChild(box);
+    }
     return li;
   }
-  function drawGolemTeam(g) {
+  function drawGolemTeam(g, a) {
     var card = $('golem-team-card'); if (!card) return;
     var list = clear($('golem-team'));
     var cards = (g && g.golems) || [];
     if (!g || !g.multiGolem || !cards.length) { card.hidden = true; return; }
     card.hidden = false;
-    cards.forEach(function (c) { list.appendChild(golemCard(c)); });
+    cards.forEach(function (c) { list.appendChild(golemCard(c, a)); });
   }
 
-  function drawGolem(g) {
+  function drawGolem(g, a) {
     clear($('golem-state')).appendChild(figureRow(g, golemState(g)));
-    drawGolemTeam(g);
+    drawGolemTeam(g, a);
     var cur = clear($('golem-current'));
     if (g && g.current) {
       var c = g.current;
@@ -300,10 +352,11 @@
     return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(h) + ':00';
   }
 
-  function openSheet(b) {
+  function openSheet(b, card) {
     var g = ((last || {}).status || {}).golem || {};
     sheetFor = b;
-    $('sheet-title').textContent = b.label;
+    sheetGolem = card || null;   // cc-P186: another Golem's card; null is the integrator (the Controls card)
+    $('sheet-title').textContent = b.label + (card ? ' (the ' + card.name + ' Golem' + (card.remote ? ', on ' + card.machine : '') + ')' : '');
     $('sheet-help').textContent = b.help || '';
     $('sheet-msg').textContent = b.disabled || '';
     var box = clear($('sheet-inputs'));
@@ -311,7 +364,7 @@
       if (name === 'model') {
         var s = el('select'); s.id = 'in-model';
         ['Fable', 'Opus', 'Sonnet'].forEach(function (m) { var o = el('option', null, m); o.value = m; s.appendChild(o); });
-        var want = (g.queue && g.queue[0] && g.queue[0].model) || 'Opus';
+        var want = (card && (card.lane === 'Opus' || card.lane === 'Fable') && card.lane) || (g.queue && g.queue[0] && g.queue[0].model) || 'Opus';
         if (['Fable', 'Opus', 'Sonnet'].indexOf(want) >= 0) s.value = want;
         box.appendChild(field('Model', s));
       } else if (name === 'cap') {
@@ -341,6 +394,7 @@
     $('sheet').hidden = true;
     document.body.classList.remove('sheet-open');
     sheetFor = null;
+    sheetGolem = null;
   }
   function sheetInputs() {
     var out = {};
@@ -349,7 +403,7 @@
   }
   function checkWord() {
     if (!sheetFor) return;
-    var g = ((last || {}).status || {}).golem || {};
+    var g = sheetGolem || ((last || {}).status || {}).golem || {};
     var want = wordFor(sheetFor, g, sheetInputs());
     $('sheet-want').textContent = want || '(nothing to confirm)';
     var typed = String($('sheet-word').value || '').trim().toLowerCase();
@@ -369,10 +423,22 @@
 
   function run() {
     if (!sheetFor) return;
-    var b = sheetFor;
+    var b = sheetFor, card = sheetGolem;
     $('sheet-run').disabled = true;
     $('sheet-msg').textContent = 'Starting...';
-    post('/api/action', { key: b.key, typed: $('sheet-word').value, inputs: sheetInputs() }, function (code, j) {
+    var body = { key: b.key, typed: $('sheet-word').value, inputs: sheetInputs() };
+    if (card) body.golem = card.name;
+    post('/api/action', body, function (code, j) {
+      if (code === 202 && j && j.queued) {
+        // cc-P186: a Golem on another PC: queued for its agent; its card shows the wait and then the result.
+        closeSheet();
+        clear($('job-lines')); clear($('job-spin'));
+        $('job').hidden = false;
+        $('job-title').textContent = b.label + ' (the ' + card.name + ' Golem)';
+        var r = $('job-result'); r.textContent = j.message || 'queued'; r.className = 'result' + (j.online ? '' : ' amber');
+        poll(true);
+        return;
+      }
       if (code === 202) {
         closeSheet();
         jobSeen = 0;
@@ -466,7 +532,7 @@
     }
     drawTiles(s.tiles);
     drawLights(s.lights);
-    drawGolem(s.golem);
+    drawGolem(s.golem, j.actions || null);
     drawControls(j);
     var p = j.panels || {};
     drawNeeds(p.needsYou, p.decisionsBuilt);

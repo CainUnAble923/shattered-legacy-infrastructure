@@ -3318,6 +3318,8 @@ function Test-PlanSafety {
             elseif ($inRoot.Count) {
                 $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
+                # cc-P186: a Golem script may also name one Golem of several (-Golem <name>, last); the rules below hold for the rest.
+                if ($sa.Count -ge 7 -and $sa[-2] -ceq '-Golem' -and $sa[-1] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' -and @(Get-GolemNamedScripts $ap) -icontains $sa[4]) { $sa = @($sa[0..($sa.Count - 3)]) }
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
                 $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript) | Where-Object { $_ }
@@ -4238,6 +4240,61 @@ function ConvertFrom-AutopilotStatus {
     }
 }
 
+function ConvertTo-GolemCardDocument {
+    # cc-P184: one card of status.json's golems as the status document carries it for the web console. cc-P186: with
+    # its last readiness check (verdict, at, summary, machine, the checks that failed, the laptop facts), remote,
+    # online and lastSeen (a remote Golem's agent), its portrait path ('' for none: the web console serves it only from
+    # scripts\console-art), and winding and stoppedPrompt, for its buttons on its own card.
+    param($Card)
+    $c = $Card
+    $r = $c.ready
+    [ordered]@{ name = [string]$c.name; machine = [string]$c.machine; engine = [string]$c.engine; lane = [string]$c.lane; state = [string]$c.state; current = [string]$c.current
+        branch = [string]$c.branch; locks = @(@($c.locks) | Where-Object { $_ } | ForEach-Object { [string]$_ }); usageSource = [string]$c.usageSource; integrator = [bool]$c.integrator
+        enabled = [bool]$c.enabled; restReason = [string]$c.restReason; needsYou = [string]$c.needsYou; hours = [string]$c.hours
+        winding = [string]$c.winding; stoppedPrompt = [string]$c.stoppedPrompt; remote = [bool]$c.remote; online = [bool]$c.online
+        lastSeen = $(if ($c.lastSeen) { [string]$c.lastSeen } else { $null }); portrait = [string]$c.portrait
+        ready = $(if ($r -and $r.verdict) { [ordered]@{ verdict = [string]$r.verdict; at = [string]$r.at; summary = [string]$r.summary; machine = [string]$r.machine
+                    failed = [object[]]@(@($r.failed) | Where-Object { $_ } | ForEach-Object { [string]$_ }); laptop = $(if ($r.laptop) { $r.laptop } else { $null }) } } else { $null }) }
+}
+
+function Get-GolemScopedConfig {
+    # cc-P186: the console's config for another Golem of several on this PC (golems.json): its own ENABLED-<name> and
+    # state-, status- and golem-<name> files, as golem.ps1 names them (Get-GolemFileName); the same scripts. A copy:
+    # $Config is unchanged. The web console's runner (Invoke-WebConsoleAction.ps1 -Golem) reads that Golem's facts
+    # with it, so its plan refuses and asks as the console would for that Golem.
+    param($Config, [string]$Name)
+    $c = $Config.PSObject.Copy()
+    $ap = $Config.Autopilot.PSObject.Copy()
+    $ap.Enabled = Join-Path $ap.Root ('ENABLED-' + $Name)
+    $ap.StateFile = Join-Path $ap.Root ('state-' + $Name + '.json')
+    $ap.StatusFile = Join-Path $ap.Root ('status-' + $Name + '.json')
+    $ap.LogName = 'golem-' + $Name + '.log'
+    $ap.LogFile = Join-Path $ap.Root $ap.LogName
+    $ap | Add-Member -NotePropertyName GolemName -NotePropertyValue $Name -Force
+    $c.Autopilot = $ap
+    $c
+}
+
+function Get-GolemNamedScripts {
+    # cc-P186: the Golem scripts that take -Golem <name> (one Golem of several); the others are the integrator's only.
+    param($Ap)
+    @($Ap.Start, $Ap.Stop, $Ap.WakeScript, $Ap.PokeScript, $Ap.WrapUp, $Ap.StopPoint, $Ap.RunNextScript, $Ap.RetryScript) | Where-Object { $_ }
+}
+
+function Add-GolemToPlan {
+    # cc-P186: the same plan with each Golem script it runs told which Golem (-Golem <name>, last), so Test-PlanSafety
+    # still knows every argument. Steps are copied; the plan given is unchanged.
+    param($Plan, $Config, [string]$Name)
+    $scripts = @(Get-GolemNamedScripts $Config.Autopilot)
+    foreach ($s in @($Plan)) {
+        if ($s.Kind -eq 'window' -and @($s.Arguments).Count -ge 5 -and $scripts -icontains [string]@($s.Arguments)[4]) {
+            $n = $s.PSObject.Copy()
+            $n.Arguments = @(@($s.Arguments) + @('-Golem', $Name))
+            $n
+        } else { $s }
+    }
+}
+
 function Get-GolemCardLines {
     # cc-P184: one line per Golem in the registry (status.json's golems, written by whichever Golem's hook ran last):
     # name, lane, machine, state, the running prompt and its branch, the locks it holds, where its usage figure comes
@@ -4253,7 +4310,7 @@ function Get-GolemCardLines {
     $rows.Add([pscustomobject]@{ Text = ('golems    : ' + $cards.Count + ' in the registry (multiGolem on); the integrator is ' + $(if ($int.Count) { $int[0] } else { 'nobody' }) + ', this file is ' + $(if ($Status.GolemName) { $Status.GolemName + '''s' } else { 'unsigned' })); Color = 'head' })
     foreach ($c in $cards) {
         $state = [string]$c.state
-        $t = '            ' + ('{0,-8}' -f [string]$c.name) + ('{0,-6}' -f [string]$c.lane) + ('{0,-7}' -f [string]$c.engine) + ('{0,-14}' -f [string]$c.machine) + $state
+        $t = '            ' + ('{0,-8}' -f [string]$c.name) + ('{0,-6}' -f [string]$c.lane) + ('{0,-7}' -f [string]$c.engine) + ('{0,-14} ' -f [string]$c.machine) + $state
         if ($c.current) { $t += ' ' + [string]$c.current + $(if ($c.branch -and [string]$c.branch -ne 'main') { ' on ' + [string]$c.branch } else { '' }) }
         if ($c.restReason) { $t += ' (' + [string]$c.restReason + ')' }
         if ($c.needsYou) { $t += '; needs you: ' + [string]$c.needsYou }
@@ -4263,8 +4320,26 @@ function Get-GolemCardLines {
         if ($c.hours) { $t += '; hours ' + [string]$c.hours }
         if ($c.integrator) { $t += '; integrator' }
         if ($null -ne $c.ageMin -and [int]$c.ageMin -gt 15 -and $state -eq 'RUNNING') { $t += '; status ' + [int]$c.ageMin + ' min old' }
+        # cc-P186: a Golem on another PC says whether its agent is online (it polls the web console); every Golem says
+        # its last readiness check (Test-GolemReady.ps1). The tab is text: a portrait shows only on the web console.
+        $offline = $false
+        if ($c.remote) {
+            $seen = $null; if ($c.lastSeen) { try { $seen = [datetime]::Parse([string]$c.lastSeen) } catch { } }
+            $ago = $(if ($seen) { $m = [Math]::Max(0, [Math]::Round(($Now - $seen).TotalMinutes)); $(if ($m -lt 120) { [string]$m + ' min ago' } elseif ($m -lt 2880) { [string][Math]::Round($m / 60) + ' h ago' } else { $seen.ToString('yyyy-MM-dd HH:mm') }) } else { '' })
+            if ($c.online) { $t += '; on another PC, online' + $(if ($ago) { ' (seen ' + $ago + ')' } else { '' }) }
+            elseif ($seen) { $t += '; on another PC, offline (last seen ' + $ago + ')'; $offline = $true }
+            else { $t += '; on another PC, its agent has not called in yet'; $offline = $true }
+        }
+        $notReady = $false
+        if ($c.ready -and $c.ready.verdict) {
+            $at = ''; try { $at = ' ' + ([datetime]::Parse([string]$c.ready.at)).ToString('HH:mm') } catch { }
+            $notReady = ([string]$c.ready.verdict -ne 'READY')
+            $failed = @(@($c.ready.failed) | Where-Object { $_ })
+            $t += '; ready check ' + [string]$c.ready.verdict + $at + $(if ($notReady -and $c.ready.summary) { ': ' + [string]$c.ready.summary } else { '' }) + $(if ($notReady -and $failed.Count) { ' (' + ($failed -join ', ') + ')' } else { '' })
+        }
         $color = switch ($state) { 'RUNNING' { 'green' } 'NEEDS YOU' { 'amber' } 'STOPPED' { 'amber' } 'UNKNOWN' { 'amber' } 'DISABLED' { 'gray' } default { 'gray' } }
         if ($state -eq 'RUNNING' -and $null -ne $c.ageMin -and [int]$c.ageMin -gt 15) { $color = 'amber' }
+        if ($state -ne 'DISABLED' -and ($offline -or $notReady)) { $color = 'amber' }
         $rows.Add([pscustomobject]@{ Text = $t; Color = $color })
     }
     $rows.ToArray()
@@ -9108,7 +9183,7 @@ function ConvertTo-ConsoleStatusDocument {
             alert = [string]$v.Alert; emailFailing = [bool]$v.EmailFailing
             # cc-P184: the Golem cards (status.json golems), for the web console's Golems card.
             multiGolem = $(if ($s) { [bool]$s.MultiGolem } else { $false })
-            golems = @($(if ($s) { @($s.Golems) } else { @() }) | ForEach-Object { [ordered]@{ name = [string]$_.name; machine = [string]$_.machine; engine = [string]$_.engine; lane = [string]$_.lane; state = [string]$_.state; current = [string]$_.current; branch = [string]$_.branch; locks = @(@($_.locks) | Where-Object { $_ } | ForEach-Object { [string]$_ }); usageSource = [string]$_.usageSource; integrator = [bool]$_.integrator; enabled = [bool]$_.enabled; restReason = [string]$_.restReason; needsYou = [string]$_.needsYou; hours = [string]$_.hours } })
+            golems = @($(if ($s) { @($s.Golems) } else { @() }) | ForEach-Object { ConvertTo-GolemCardDocument $_ })
         }
     }
     $web = [ordered]@{}
@@ -9344,7 +9419,7 @@ function Receive-ConsoleJobs {
             try { & $j.Then $data $j } catch { Write-ConsoleLine ('Drawing the ' + $slot + ' read failed: ' + $_.Exception.Message) 'red' }
         } elseif (([datetime]::UtcNow - $j.Started).TotalSeconds -gt 120) {
             $script:rsJobs.Remove($slot)
-            try { $j.PS.Stop(); $j.PS.Dispose() } catch { }
+            Stop-ConsoleJob $j
             try { $script:rsPool[$slot].Dispose() } catch { }
             $script:rsPool[$slot] = $null
             Write-ConsoleLine ('The ' + $slot + ' read took longer than 2 minutes and was abandoned; the next one starts afresh.') 'amber'
@@ -9352,9 +9427,19 @@ function Receive-ConsoleJobs {
     }
 }
 
+function Stop-ConsoleJob {
+    # cc-P186: one job stopped, then its async result waited for before Dispose. Disposing a pipeline whose worker was
+    # still writing (often while the boot dot-sources the console) crashed the whole process (Windows Error Reporting:
+    # PSDataCollection InternalInsertItem, and InvalidRunspaceState ConcurrentSessionStateProxyCallInProgress).
+    param($Job)
+    try { $Job.PS.Stop() } catch { }
+    try { [void]$Job.PS.EndInvoke($Job.Handle) } catch { }
+    try { $Job.PS.Dispose() } catch { }
+}
+
 function Stop-ConsoleJobs {
     # cc-P154: with the window: every job stopped and every runspace closed, so nothing reads on unseen.
-    foreach ($slot in @($script:rsJobs.Keys)) { $j = $script:rsJobs[$slot]; if ($j) { try { $j.PS.Stop(); $j.PS.Dispose() } catch { } } }
+    foreach ($slot in @($script:rsJobs.Keys)) { $j = $script:rsJobs[$slot]; if ($j) { Stop-ConsoleJob $j } }
     $script:rsJobs = @{}
     foreach ($slot in @($script:rsPool.Keys)) { try { $script:rsPool[$slot].Dispose() } catch { } }
     $script:rsPool = @{}

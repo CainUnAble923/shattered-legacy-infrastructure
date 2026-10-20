@@ -10,6 +10,10 @@
 # namespace, which adds X-UOConsole-Proof (the secret in D:\UO\web-console\proof.key, made by the installer, never
 # logged) before passing each request on to 127.0.0.1:8096. The console refuses the tailnet listener without it, so a
 # container on this PC's Docker that reaches 8096 directly cannot act as Chase (P155's Deviation 2).
+# cc-P186: the remote Golems' agents (D:\UO\golem\Remote-Agent.ps1 on each extra PC, tagged tag:golem) come the same
+# way: they call https://uoconsole.tail81098d.ts.net/api/agent/... over the tailnet, so Serve and the forwarder add the
+# proof as for any request; the console then checks that Golem's own secret (no login: a tagged PC has none). Nothing
+# is published and the extra PCs open no port. The tailnet ACL must let tag:golem reach tag:uoconsole on 443.
 name: uoconsole
 services:
   tailscale:

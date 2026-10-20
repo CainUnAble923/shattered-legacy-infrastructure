@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.19.5
+
+### Staff
+- Golems on more PCs: one join kit sets up any home PC (its own Windows account, a work drive, the programs, the sign-ins, GitHub access, laptop power and wake rules) and a readiness check proves it can claim, build and push.
+- The web console lists every Golem with its machine, lanes and last readiness check, and its buttons work for each one, including Golems on other PCs, which pick up their commands over Tailscale.
+- Each Golem has its own portrait (placeholders until the art is approved).
+- A Golem pauses while its PC is in use, on battery or outside its hours, and finds a stopping point when it must stop.
+- The Shard Console no longer crashes now and then when it closes while a background read is still starting.
+
 ## 2026.10.19.4
 
 ### Staff

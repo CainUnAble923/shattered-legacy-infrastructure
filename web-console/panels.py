@@ -4,6 +4,9 @@
                                              who may look: the local listener (this PC) always; the tailnet listener only
                                              with the sidecar's proof (cc-P182) and Tailscale Serve's identity header
                                              naming an allowed login
+    decide_agent(listener, headers, proof)   cc-P186: a remote Golem's agent: the tailnet listener and the sidecar's
+                                             proof only (its own secret is checked by server.py's Console.agent_auth)
+    ready_summary(doc)                       cc-P186: a Golem's readiness file (Test-GolemReady.ps1) for its card
     redact(text) / redact_tree(value)        tokens, keys and passwords blanked in anything sent to a page
     needs_you(status, playtests, decisions, chores, services)
                                              one list of what waits on Chase
@@ -23,6 +26,8 @@ LOCAL = "local"
 TAILNET = "tailnet"
 IDENTITY_HEADER = "Tailscale-User-Login"
 PROOF_HEADER = "X-UOConsole-Proof"   # cc-P182: set by the sidecar's proof forwarder (tailscale/proof_proxy.py) only
+AGENT_NAME_HEADER = "X-Golem-Name"   # cc-P186: a remote Golem's agent names its Golem ...
+AGENT_KEY_HEADER = "X-Golem-Key"     # ... and sends that Golem's secret (never logged, never on a page)
 
 
 # --- who may look ---------------------------------------------------------------------------------------------------
@@ -53,6 +58,34 @@ def decide(listener, headers, allowed, proof=None):
     if login.lower() in ok:
         return True, "tailnet " + login
     return False, "login not allowed"
+
+
+def decide_agent(listener, headers, proof):
+    """(allowed, why) for a remote Golem's agent (cc-P186), before its secret is checked. Only the tailnet listener,
+    only with the sidecar's proof: so only a caller that came through Tailscale Serve on the uoconsole node, which
+    only tailnet devices reach (Funnel is off). No login is asked: a PC tagged tag:golem has none. The local listener
+    never answers an agent (anything on this PC could reach it)."""
+    if listener != TAILNET:
+        return False, "agents come through the tailnet listener only"
+    if not proof:
+        return False, "no sidecar proof configured"
+    got = (headers.get(PROOF_HEADER) or "").strip()
+    if not got or not hmac.compare_digest(got.encode("utf-8"), proof.encode("utf-8")):
+        return False, "no sidecar proof"
+    return True, "tailnet agent"
+
+
+def ready_summary(doc):
+    """A readiness file ({golem, machine, at, verdict, summary, checks: [{name, ok, detail, fix}], laptop}, written by
+    Test-GolemReady.ps1) as its card shows it: the verdict and time, the one line, the checks that failed by name, the
+    laptop facts. None when there is no file or it is not one."""
+    if not isinstance(doc, dict) or doc.get("verdict") not in ("READY", "NOT READY"):
+        return None
+    checks = doc.get("checks") if isinstance(doc.get("checks"), list) else []
+    return {"verdict": doc["verdict"], "at": str(doc.get("at") or "")[:19], "summary": str(doc.get("summary") or "")[:200],
+            "machine": str(doc.get("machine") or ""),
+            "failed": [str(c.get("name") or "?")[:40] for c in checks if isinstance(c, dict) and not c.get("ok")],
+            "laptop": doc.get("laptop") if isinstance(doc.get("laptop"), dict) else None}
 
 
 # --- never a secret on a page ---------------------------------------------------------------------------------------
@@ -195,8 +228,10 @@ def timeline(commits=None, transcripts=None, deploys=None, finished=None, bot_ru
     ev = list(commits or [])
     for a in web_actions or []:
         if a.get("time"):
-            ev.append({"time": a["time"][:19], "kind": "web", "text": "%s (web console): %s" % (a.get("label") or a.get("key"), a.get("result") or ""),
-                       "who": a.get("who") or ""})
+            # cc-P186: a press for another Golem names it (a remote one's queued, expired and returned results too).
+            g = a.get("golem") or ""
+            ev.append({"time": a["time"][:19], "kind": "web", "text": "%s%s (web console): %s" % (g + " Golem: " if g else "", a.get("label") or a.get("key"), a.get("result") or ""),
+                       "who": a.get("who") or "", "golem": g})
     for name in transcripts or []:
         p = parse_transcript_name(name)
         if p:

@@ -7566,6 +7566,98 @@ Fact 'P184_MergeBranchesNowIsAGolemButtonWithItsOwnPhraseAndScript' {
     Assert-True ($w.Count -eq 1 -and (@($w[0].Arguments) -join ' ') -match 'Integrate\.ps1') ('it runs Integrate.ps1: ' + (@($w[0].Arguments) -join ' '))
 }
 
+# cc-P186: every Golem on the Golem tab (its last readiness check, whether a remote one's agent is online, a portrait
+# only when the card has one), the status document's cards for the web console, and another Golem's buttons through
+# the web console's runner: its own files, its name passed on, and Test-PlanSafety allowing exactly that.
+$p186Cards = @(
+    @{ name = 'Iron'; machine = 'CHASES-TOWER'; engine = 'claude'; lane = 'Opus'; state = 'RUNNING'; current = 'P190'; branch = 'main'; locks = @(); usageSource = ''; integrator = $true; enabled = $true; restReason = ''; needsYou = ''; hours = ''; ageMin = 1
+       remote = $false; online = $true; lastSeen = $null; portrait = ''; ready = @{ verdict = 'READY'; at = '2026-10-19T14:00:00'; summary = '9 of 9 checks passed'; machine = 'CHASES-TOWER'; failed = @(); laptop = $null } },
+    @{ name = 'Gold'; machine = 'STEPHS-DESKTOP'; engine = 'claude'; lane = 'any'; state = 'IDLE'; current = ''; branch = ''; locks = @(); usageSource = ''; integrator = $false; enabled = $true; restReason = ''; needsYou = ''; hours = ''; ageMin = 5
+       remote = $true; online = $true; lastSeen = '2026-10-19T15:09:00'; portrait = 'D:\ShatteredLegacy\scripts\console-art\golems\gold.png'; winding = ''; stoppedPrompt = 'P140'
+       ready = @{ verdict = 'NOT READY'; at = '2026-10-19T15:00:00'; summary = '2 of 9 checks failed'; machine = 'STEPHS-DESKTOP'; failed = @('docker', 'push'); laptop = $null } },
+    @{ name = 'Silver'; machine = 'SILVER-LAPTOP'; engine = 'claude'; lane = 'any'; state = 'UNKNOWN'; current = ''; branch = ''; locks = @(); usageSource = ''; integrator = $false; enabled = $true; restReason = ''; needsYou = ''; hours = ''; ageMin = $null
+       remote = $true; online = $false; lastSeen = '2026-10-19T14:20:00'; portrait = ''; ready = $null },
+    @{ name = 'Copper'; machine = 'COPPER-LAPTOP'; engine = 'claude'; lane = 'any'; state = 'UNKNOWN'; current = ''; branch = ''; locks = @(); usageSource = ''; integrator = $false; enabled = $true; restReason = ''; needsYou = ''; hours = ''; ageMin = $null
+       remote = $true; online = $false; lastSeen = $null; ready = $null })
+function New-P186Status {
+    $j = (New-P125Status -State 'RUNNING' -Current 'P190') | ConvertFrom-Json
+    $j | Add-Member -NotePropertyName multiGolem -NotePropertyValue $true -Force
+    $j | Add-Member -NotePropertyName golemName -NotePropertyValue 'Iron' -Force
+    $j | Add-Member -NotePropertyName golems -NotePropertyValue $p186Cards -Force
+    $j | ConvertTo-Json -Depth 6
+}
+$p186Now = [datetime]'2026-10-19T15:10:00'
+
+Fact 'P186_TheGolemTabShowsReadinessAndWhetherARemoteGolemIsOnline' {
+    $rows = @(Get-GolemCardLines -Status (ConvertFrom-AutopilotStatus (New-P186Status)) -Now $p186Now)
+    Assert-Equal 5 $rows.Count 'a head line and one per Golem'
+    Assert-True ($rows[1].Text -match 'Iron\s+Opus.*; ready check READY 14:00') ('Iron passed its check: ' + $rows[1].Text)
+    Assert-True ($rows[1].Text -notmatch 'another PC') 'a Golem on this PC says nothing about an agent'
+    Assert-True ($rows[2].Text -match 'Gold\s+any\s+claude\s+STEPHS-DESKTOP\s+IDLE; on another PC, online \(seen 1 min ago\); ready check NOT READY 15:00: 2 of 9 checks failed \(docker, push\)') ('Gold: ' + $rows[2].Text)
+    Assert-Equal 'amber' $rows[2].Color 'not ready is amber'
+    Assert-True ($rows[3].Text -match 'Silver.*UNKNOWN; on another PC, offline \(last seen 50 min ago\)$') ('Silver: ' + $rows[3].Text)
+    Assert-Equal 'amber' $rows[3].Color 'an enabled Golem whose agent is offline is amber'
+    Assert-True ($rows[4].Text -match 'Copper.*; on another PC, its agent has not called in yet$') ('Copper: ' + $rows[4].Text)
+    Assert-True (-not @($rows | Where-Object { $_.Text -match 'portrait|\.png' }).Count) 'the tab is text: no portrait, and no path, with or without one'
+    # A P184 card (no readiness, no remote field) reads as before.
+    $old = @(Get-GolemCardLines -Status (ConvertFrom-AutopilotStatus (New-P184Status)) -Now $p125Now)
+    Assert-True ($old[3].Text -match 'Cobalt\s+any\s+claude\s+WIFE-PC\s+UNKNOWN; hours 22:00-07:00$') ('an older card: ' + $old[3].Text)
+}
+
+Fact 'P186_TheStatusDocumentCarriesEachCardsReadinessRemoteAndPortrait' {
+    $s = ConvertFrom-AutopilotStatus (New-P186Status)
+    $d = @(@($s.Golems) | ForEach-Object { ConvertTo-GolemCardDocument $_ })
+    Assert-Equal 4 $d.Count 'four cards'
+    Assert-True ($d[1].remote -and $d[1].online -and $d[1].lastSeen -eq '2026-10-19T15:09:00') 'remote, online, last seen'
+    Assert-Equal 'NOT READY' ([string]$d[1].ready.verdict)
+    Assert-Equal 'docker,push' ((@($d[1].ready.failed)) -join ',')
+    Assert-Equal 'D:\ShatteredLegacy\scripts\console-art\golems\gold.png' ([string]$d[1].portrait)
+    Assert-Equal 'P140' ([string]$d[1].stoppedPrompt)
+    Assert-True ($null -eq $d[2].ready -and -not $d[2].online -and $d[2].portrait -eq '') 'Silver: no check, offline, no portrait'
+    Assert-True ($null -eq $d[3].lastSeen) 'Copper: never seen'
+    Assert-Equal 'golem/Bronze/P191' ([string](ConvertTo-GolemCardDocument @($(ConvertFrom-AutopilotStatus (New-P184Status)).Golems)[1]).branch) 'the P184 fields as before'
+}
+
+Fact 'P186_AnotherGolemsButtonsReadItsOwnFilesAndPassItsName' {
+    $c = Get-GolemScopedConfig -Config $p125Cfg -Name 'Bronze'
+    $ap = $c.Autopilot
+    Assert-True ($ap.StatusFile -like '*\status-Bronze.json' -and $ap.Enabled -like '*\ENABLED-Bronze' -and $ap.StateFile -like '*\state-Bronze.json' -and $ap.LogFile -like '*\golem-Bronze.log') ('its own files: ' + $ap.StatusFile + ' ' + $ap.Enabled)
+    Assert-Equal 'Bronze' ([string]$ap.GolemName)
+    Assert-True ($p125Cfg.Autopilot.StatusFile -notlike '*Bronze*') 'the console''s own config is untouched'
+    Assert-Equal $p125Cfg.Autopilot.Stop $ap.Stop 'the same scripts'
+    $plan = @(Get-ActionPlan -Action 'golem.off' -Config $c -AutopilotFacts (New-P182Facts) -Now $p125Now)
+    $named = @(Add-GolemToPlan -Plan $plan -Config $c -Name 'Bronze')
+    $w = @($named | Where-Object { $_.Kind -eq 'window' })
+    Assert-True ($w.Count -eq 1 -and (@($w[0].Arguments) -join ' ') -match 'Stop-Golem\.ps1 -Golem Bronze$') ('Rest for Bronze: ' + (@($w[0].Arguments) -join ' '))
+    Assert-Equal 0 @(Test-PlanSafety $named $c).Count ('the plan is safe: ' + (@(Test-PlanSafety $named $c) -join '; '))
+    $o = @($plan | Where-Object { $_.Kind -eq 'window' })
+    Assert-True (@($o[0].Arguments) -notcontains '-Golem') 'the plan it was given is untouched'
+}
+
+Fact 'P186_PlanSafetyLetsAGolemScriptNameOneGolemAndNothingMore' {
+    $ap = $p125Cfg.Autopilot
+    $ps = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File')
+    $step = { param($a) @((New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments ($ps + $a) -Text 'In a window of its own.')) }
+    foreach ($ok in @(@($ap.Stop, '-Golem', 'Bronze'), @($ap.PokeScript, '-Golem', 'Gold'), @($ap.WakeScript, '-Model', 'Opus', '-Golem', 'Bronze'),
+                      @($ap.WrapUp, '-Cancel', '-Golem', 'Bronze'), @($ap.RunNextScript, '-Prompt', 'P130', '-Golem', 'Bronze'), @($ap.RetryScript, '-Prompt', 'P140', '-Golem', 'Bronze'))) {
+        Assert-Equal 0 @(Test-PlanSafety (& $step $ok) $p125Cfg).Count ('allowed: ' + ($ok -join ' '))
+    }
+    foreach ($no in @(@($ap.Stop, '-Golem', 'Bronze;calc'), @($ap.Stop, '-Golem'), @($ap.IntegrateScript, '-Golem', 'Bronze'), @($ap.NightShiftScript, '-Off', '-Golem', 'Bronze'),
+                      @($ap.WakeScript, '-Model', 'Haiku', '-Golem', 'Bronze'), @($ap.Stop, '-Golem', 'Bronze', '-Golem', 'Gold'))) {
+        Assert-True (@(Test-PlanSafety (& $step $no) $p125Cfg).Count -gt 0) ('refused: ' + ($no -join ' '))
+    }
+}
+
+Fact 'P186_TheWebRunnerTakesAGolemAndRefusesTheIntegratorsOnlyButtons' {
+    $runner = Join-Path $here '..\Invoke-WebConsoleAction.ps1'
+    $eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    $out = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $runner -Key longrun -Typed 'start long run' -Cap 3 -Until '2026-10-20 06:00' -Golem Bronze -DryRun 2>&1
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $eap
+    Assert-Equal 2 $code ('refused: ' + ($out -join ' | '))
+    Assert-True ((($out | ForEach-Object { [string]$_ }) -join ' ') -match 'integrator') ('it says why: ' + ($out -join ' | '))
+}
+
 Remove-Item -LiteralPath $p144Dir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $shimDir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $p135Dir -Recurse -Force -ErrorAction SilentlyContinue

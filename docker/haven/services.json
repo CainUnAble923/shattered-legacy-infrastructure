@@ -767,7 +767,7 @@
       "host": "haven",
       "owner": "home lab",
       "kind": "container",
-      "state": "installed by Portainer (Haven): deploy (cc-P163)",
+      "state": "running (Portainer (Haven): deploy, 2026-10-19)",
       "container": "portainer",
       "image": "portainer/portainer-ce:2.45.2",
       "compose": "/home/chase/sl-portainer/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\portainer-haven, project sl-portainer)",

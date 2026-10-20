@@ -98,6 +98,11 @@ button.ctl .label { min-width: 0; }
 button.ctl img.btnart, button.ctl .strip { width: 28px; height: 28px; flex: 0 0 28px; }
 button.ctl .glyph { flex: 0 0 28px; width: 28px; height: 28px; line-height: 26px; text-align: center; border-radius: 50%; border: 2px solid var(--gold); color: var(--gold); font-weight: 700; }
 button.ctl.off { opacity: 0.55; border-style: dashed; }
+/* cc-P186: every Golem's card: its portrait, and its own buttons (smaller, still a thumb's height). */
+.cardhead { display: flex; gap: 10px; align-items: center; }
+img.portrait { width: 48px; height: 48px; flex: 0 0 48px; border-radius: 8px; object-fit: cover; }
+.ctl-grid.mini { margin-top: 8px; gap: 8px; }
+button.ctl.small { min-height: 48px; font-size: 14px; padding: 8px 10px; }
 button:disabled { opacity: 0.5; cursor: default; }
 button.small { min-height: 36px; font-size: 13px; }
 .sheet { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 10; display: flex; align-items: flex-end; background: rgba(0, 0, 0, 0.6); }
