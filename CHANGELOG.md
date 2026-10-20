@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.7
+
+### Staff
+- Away mode: tell the Golems you are away until a day and time (on the Golem tab, the web console or by email) and they keep working around the clock without spending next week's usage. A prompt that stops for a decision is parked so the others carry on, and a short digest arrives each morning.
+- Email commands: reply to any Golem email with one line (status, resume, wrap up, stopping point, away until..., away off, night shift on or off, run next, skip, unpark). Only your own Gmail, with the code from that email, is obeyed.
+
 ## 2026.10.20.6
 
 ### Added

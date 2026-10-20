@@ -7452,7 +7452,9 @@ Fact 'P182_AWebButtonCallsTheConsolesOwnPlanAndChecksTheWordOnTheServer' {
     $rn2 = Get-WebActionPlan -Entry (Get-P182Entry 'runnext') -Typed 'P126' -Inputs @{ prompt = 'P130' } -Config $p125Cfg -Facts (New-P182Facts) -Now $p125Now
     Assert-True (-not $rn2.Ok) 'another number is refused'
     $aw = Get-WebActionPlan -Entry (Get-P182Entry 'away-on') -Typed 'away on' -Inputs @{} -Config $p125Cfg -Facts (New-P182Facts) -Now $p125Now
-    Assert-True (-not $aw.Ok -and $aw.Refusal -match 'P149') ('away mode is refused until P149: ' + $aw.Refusal)
+    # cc-P149: away mode is built; with no time in the Until box it says so and runs nothing.
+    $awText = ([string]$aw.Refusal + ' ' + (@($aw.Plan | ForEach-Object { [string]$_.Text }) -join ' '))
+    Assert-True ($awText -match 'Away until when\?|Set-Away\.ps1 was not found' -and -not @($aw.Plan | Where-Object { $_.Kind -eq 'window' }).Count) ('away mode wants its end time: ' + $awText)
 }
 
 Fact 'P182_WindowStepsRunInThisProcessForTheWebConsole' {
@@ -8000,6 +8002,31 @@ Remove-Item -LiteralPath $p135Dir -Recurse -Force -ErrorAction SilentlyContinue
 
 # cc-P208: Shadow Iron, the merge Golem: out of the picker (Iron stays the console's own), a card line of its own, and
 # Pause merging / Resume merging run ShadowIron.ps1 with exactly -Pause or -Resume after their phrase.
+# cc-P149: Away mode on and off run Set-Away.ps1 with exactly -Until <yyyy-MM-dd HH:mm> or -Off after their phrase; the
+# Golem tab says away, each parked prompt and the last email commands.
+Fact 'P149_AwayModeButtonsAndTheGolemTabLines' {
+    foreach ($k in 'golem.away', 'golem.awayoff') { Assert-True (@(Get-ConsoleActions | Where-Object { $_.Key -eq $k -and $_.Mutates }).Count -eq 1) "$k is a console action" }
+    Assert-Equal 'away on' (Get-ConfirmPhrase 'golem.away')
+    $f = $p125Facts.PSObject.Copy(); $f.Present = @{}; $f.Present[$p125Cfg.Autopilot.AwayScript] = $true
+    $until = [datetime]::Now.AddDays(3).ToString('yyyy-MM-dd HH:mm')
+    $f | Add-Member -NotePropertyName LongRunUntil -NotePropertyValue $until -Force
+    $plan = @(Get-ActionPlan -Action 'golem.away' -Config $p125Cfg -AutopilotFacts $f -Now $p125Now)
+    $w = @($plan | Where-Object { $_.Kind -eq 'window' })
+    Assert-True ($w.Count -eq 1 -and (@($w[0].Arguments) -join ' ') -match ('Set-Away\.ps1 -Until ' + [regex]::Escape($until) + '$') -and @($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -eq 'away on' }).Count -eq 1) ('away on runs Set-Away.ps1 -Until: ' + (@($w | ForEach-Object { @($_.Arguments) -join ' ' }) -join ' | '))
+    Assert-Equal 0 @(Test-PlanSafety $plan $p125Cfg).Count ('away on passes the safety check: ' + (@(Test-PlanSafety $plan $p125Cfg) -join ' | '))
+    $f.LongRunUntil = [datetime]::Now.AddDays(30).ToString('yyyy-MM-dd HH:mm')
+    Assert-True (@(Get-ActionPlan -Action 'golem.away' -Config $p125Cfg -AutopilotFacts $f -Now $p125Now | Where-Object { $_.Kind -eq 'refuse' }).Count -eq 1) 'over 14 days is refused'
+    $off = @(Get-ActionPlan -Action 'golem.awayoff' -Config $p125Cfg -AutopilotFacts $f -Now $p125Now)
+    Assert-True ((@(@($off | Where-Object { $_.Kind -eq 'window' })[0].Arguments) -join ' ') -match 'Set-Away\.ps1 -Off$' -and @(Test-PlanSafety $off $p125Cfg).Count -eq 0) 'away off runs Set-Away.ps1 -Off'
+    $bad = @((New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $p125Cfg.Autopilot.AwayScript, '-Until', 'sunday; rm')))
+    Assert-True (@(Test-PlanSafety $bad $p125Cfg).Count -gt 0) 'Set-Away.ps1 with anything else is refused'
+    $st = [pscustomobject]@{ Away = [pscustomobject]@{ on = $true; until = '2026-10-25T18:00:00'; parked = @([pscustomobject]@{ prompt = 'P150'; why = 'needs a price'; branch = 'golem/Iron/P150-parked' }) }
+        MailCommands = [pscustomobject]@{ on = $true; setUp = $false; last = @([pscustomobject]@{ at = '2026-10-20T09:00:00'; result = 'rejected'; line = 'away off'; why = 'DKIM did not pass for gmail.com' }) } }
+    $t = (@(Get-AwayLines -Status $st) | ForEach-Object { $_.Text }) -join ' | '
+    Assert-True ($t -match 'away      : ON until Sun 2026-10-25 18:00' -and $t -match 'parked    : P150: needs a price \(its work: golem/Iron/P150-parked\)' -and $t -match 'IMAP app password is not saved' -and $t -match "rejected: 'away off' \(DKIM did not pass") ('the lines: ' + $t)
+    Assert-Equal 0 @(Get-AwayLines -Status ([pscustomobject]@{ Away = $null; MailCommands = $null })).Count 'nothing when never used'
+}
+
 Fact 'P208_ShadowIronHasItsOwnCardLineAndButtonsAndIronStaysTheConsolesOwn' {
     $reg = '{"schema":1,"golems":[{"name":"Iron","machine":"PC1","engine":"claude","lane":"Opus","enabled":true,"integrator":false},{"name":"Bronze","machine":"PC1","engine":"claude","lane":"Fable","enabled":true},{"name":"ShadowIron","machine":"PC1","engine":"script","lane":"","enabled":true,"integrator":true}]}'
     $rows = @(Get-GolemPickRows -RegistryText $reg -SettingsText '{"multiGolem":true,"mergeGolem":"ShadowIron"}' -Machine 'PC1')
