@@ -11,8 +11,9 @@
 //
 // Why it exists: every one of those quests is GainSkillObjective(skill, 500, useReal: true),
 // and GainSkillObjective.CanOffer refuses for good once the skill reaches 50.0. With
-// ClusterFSkillGain at 3 attempts and 5x gain, that point arrives in minutes, before a new
-// player has found the trainers.
+// ClusterFSkillGain at 3 attempts and 5x gain, that point arrived in minutes, before a new
+// player had found the trainers (cc-P191 slowed the rate to 2 attempts and 1x: about half an
+// hour of training now, so the board matters less but still removes the hunt for trainers).
 //
 // The menu holds no state. Nothing here is serialized beyond what the class saved before the
 // menu existed: a player's held board quest is saved against the board's serial, so the save

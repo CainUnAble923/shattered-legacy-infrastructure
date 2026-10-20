@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.19.5
+
+### Changed
+- Skills now rise at a rate meant to feel earned: every gain is the normal 0.1 and comes about twice as often as on a stock server, instead of the old five-point-per-gain, three-tries-per-use sprint. A skill reaches 100 in roughly an hour of steady fighting or an hour and a half of crafting; the Test Crystal, New Haven and Old Haven training, loop memory and pet training still speed things up on top. Existing characters keep every point they have.
+
+### Staff
+- The skill gain rate is measured, not guessed: a seeded simulation drives the real gain code for six skills under stock, today and four candidate rates, and reports uses and hours to 50, 80, 100, 120, 150 and 200 (the table is in the cc-P191 notes). The code defaults match the new rate; the live config line is written for Chase in the notes.
+
 ## 2026.10.19.4
 
 ### Staff
