@@ -36,6 +36,9 @@ public class LeagueRegistrarGump : Gump
     public const int BtnMuleCollect = 24;
     public const int BtnMuleReplace = 25;
 
+    // cc-P150 (F-47): the requisitions board, on the League Rank row's right (the menu's rows are full).
+    public const int BtnRequisitions = 26;
+
     private readonly PlayerMobile _pm;
     private readonly View         _view;
 
@@ -128,7 +131,8 @@ public class LeagueRegistrarGump : Gump
         AddButton(18, y, 4011, 4012, 15); AddLabel(44, y + 2, 999, "Guild Referrals");   y += 28;
         AddButton(18, y, 4011, 4012, 16); AddLabel(44, y + 2, 999, "League Dispatch");   y += 28;
         AddButton(18, y, 4011, 4012, 17); AddLabel(44, y + 2, 999, "Where to go first?"); y += 28;
-        AddButton(18, y, 4011, 4012, BtnRank); AddLabel(44, y + 2, 999, "League Rank"); y += 28;
+        AddButton(18, y, 4011, 4012, BtnRank); AddLabel(44, y + 2, 999, "League Rank");
+        AddButton(230, y, 4011, 4012, BtnRequisitions); AddLabel(256, y + 2, 999, "Requisitions board"); y += 28;
         AddButton(18, y, 4011, 4012, BtnMuleErrand); AddLabel(44, y + 2, 999, "The Compact's Mule (errand)");
     }
 
@@ -412,6 +416,10 @@ public class LeagueRegistrarGump : Gump
                     _pm.SendGump(new LeagueRegistrarGump(_pm, View.MuleErrand));
                 }
                 break;
+
+            case BtnRequisitions: // cc-P150 (F-47): the League board, every guild
+                Server.Items.RequisitionsBoard.OpenFor(_pm, null);
+                return;
 
             case BtnRank: // League Rank (cc-P48)
                 _pm.SendGump(new LeagueRegistrarGump(_pm, View.Rank));

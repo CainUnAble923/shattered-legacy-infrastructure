@@ -29,6 +29,18 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.3
+
+### Added
+- The League runs a requisitions board. Every guild posts three requests a day for a magic item it wants: a sword with Hit Chance for the Warriors, a spellbook with Lower Mana Cost for the Arcane Society, an undead slayer for the Keepers, a slayer instrument for the Bards, and so on. Found or crafted both count. Turn one in at the board in the New Haven field office, at the guild's New Haven chapter (the guildmaster's Requisitions button), at the League Registrar or at the Appraiser, and the item is taken for Renown, that guild's standing and gold. Unfilled requests simply roll over at 05:00 UTC; nothing is lost and nothing is owed.
+- Requests grow with your rank in that guild, and your League rank sets how high they can go.
+- The Appraiser, a League clerk in the New Haven field office and by the banks of Britain, Trinsic, Minoc, Vesper, Moonglow, Skara Brae, Luna and the Royal City, buys any magic item no request wants. The price follows how many properties the item has and how strong they are, near what a shopkeeper pays. Drop an item on the Appraiser for a quote, or ask which of your requests wants it.
+- Leads: some requests come with a rumor naming a place and a kind of creature. For three days, kills there give you an extra chance at that item, and it is certain by about the fortieth. A Lead that runs out just fades.
+- [requisitions lists your open requests, for the combat script's loot helper.
+
+### Staff
+- Configuration/requisitions.json holds every number of the board, the Appraiser and Leads (tiers, the League gate, each guild's themes, areas, prices); [RequisitionsStaff reload|reroll|show. [ClusterFSeedRequisitions places the Appraisers and the office board; it also runs at every world load.
+
 ## 2026.10.20.2
 
 ### Staff
