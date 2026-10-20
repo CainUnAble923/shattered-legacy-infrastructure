@@ -6,6 +6,14 @@ Professions are player paths through skills, trainers, equipment, and goals.
 
   * [[mining|Mining]]
   * [[blacksmithy|Blacksmithy]]
+  * [[materials|Metals and woods]]: the shard's own materials, Platinum to Celestial and Ironwood to Starwood
+  * [[recipes|Recipes and pattern books]]: how crafting is learned here
+  * [[bulk_orders|Bulk orders]]: the 2016 rules for eight crafts
+  * [[imbuing|Imbuing and the Artificers' Order]]
+
+===== Rogues =====
+
+  * [[stealing|Stealing from monsters]]
 
 ===== Support And Combat Readiness =====
 

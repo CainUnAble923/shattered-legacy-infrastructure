@@ -1,20 +1,51 @@
 ====== Skill Gain ======
 
-Skill gain is intentionally faster than stock ModernUO so players can explore builds without a long grind.
+Skills on Shattered Legacy rise a little faster than on a stock server, and they go further: every skill caps at **200**, not 100 or 120. This page is unique to Shattered Legacy; the numbers below are ours.
 
-===== Current ClusterF Settings =====
+===== The rate =====
 
-^ Setting ^ Value ^
-| Applies to | Players |
-| Chance attempts | ''3'' |
-| Amount multiplier | ''5'' |
+Every gain is the normal 0.1 of a point, and a gain comes about **twice as often** as on a stock server. There is no multiplier on the size of a gain. The rate was measured by driving the real gain code, so these are the hours a steady player should expect.
 
-===== What This Means =====
+^ Skill ^ Hours to 50 ^ Hours to 100 ^ Hours to 150 ^ Hours to 200 ^
+| Swordsmanship | 0.4 | 0.8 | 1.3 | 2.0 |
+| Tactics | 0.4 | 0.8 | 1.4 | 2.1 |
+| Blacksmithy | 0.6 | 1.4 | 2.3 | 3.3 |
+| Mining | 0.6 | 1.4 | 2.3 | 3.4 |
+| Magery | 0.6 | 1.4 | stops at 120 | stops at 120 |
 
-Players should see skills move noticeably faster during normal play. This supports experimentation across crafting, combat, gathering, and support skills.
+Roughly: an hour of steady fighting takes a combat skill to 100, an hour and a half of crafting does the same for a craft. These are averages for one skill used without a break; real play is slower.
 
-===== Related Pages =====
+On top of the base rate, a few things still speed gains up: New Haven's and Old Haven's training areas, loop memory, and pet training for your pet's skills.
+
+===== Caps =====
+
+  * Every skill caps at **200**.
+  * There is no total skill cap beyond the sum of every skill's 200.
+  * Power scrolls are not needed to pass 100 or 120.
+  * Bonuses from worn items count **above** the cap: a +15 skill ring on a skill at 200 reads 215. On OSI the bonus would be wasted. Gains still stop when your own skill reaches the cap.
+
+===== Skills that keep going past 100 or 120 =====
+
+On a stock server these skills stop gaining once their hardest use is "no challenge". Here they keep rising with use up to your cap, under the same uses as before:
+
+  * **Hiding, Snooping, Begging, Forensic Evaluation, Taste Identification, Camping, Tracking** past 100.
+  * **Healing, Veterinary, Musicianship, Resisting Spells, Bushido** past 120.
+  * **Poisoning** past 100, from greater and deadly poisons.
+  * **Stealth** past 142, in any armor.
+  * **Stealing** past 127.5, only from the heaviest (10 stone) thefts.
+  * **Animal Lore** past 120, only on creatures that are hard to tame; easy animals teach nothing more.
+  * **Detect Hidden** past 100, only when a search finds something: a hidden player or creature, a trapped chest, or a hidden trap.
+
+The magic schools (Magery, Necromancy, Mysticism and so on) still stop at their normal top for now.
+
+===== Crafting past 100 =====
+
+Crafting in one of the shard's own metals or woods raises your craft skill past an item's normal top, up to the skill the next material needs. Platinum teaches Blacksmithy to 125, Toxic to 137.5, and so on up to Celestial at 200; the eight shard woods do the same for Carpentry and Bowcraft/Fletching, and Tinkering climbs with the metals. See [[:uo:professions:materials|Metals and woods]] for the ladders. Smelting, cutting boards and anything that does not use up the material teaches nothing.
+
+===== Related pages =====
 
   * [[stats|Stats]]
+  * [[young_players|Young players]]
+  * [[:uo:professions:materials|Metals and woods]]
   * [[:uo:professions:start|Professions]]
   * [[:uo:world:trainers|Trainer index]]

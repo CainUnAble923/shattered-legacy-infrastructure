@@ -27,6 +27,15 @@ This is the main hub for Shattered Legacy.
   * [[:uo:systems:accounts|Accounts]]
   * [[:uo:systems:skill_gain|Skill gain]]
   * [[:uo:systems:stats|Stats]]
+  * [[:uo:systems:young_players|Young players]]
+  * [[:uo:systems:achievements|Achievements]]
+  * [[:uo:systems:loot_boxes|Loot boxes]]
+  * [[:uo:systems:guilds|Guilds]]
+  * [[:uo:systems:league|The League]]
+  * [[:uo:systems:requisitions|Requisitions and the Appraiser]]
+  * [[:uo:systems:clean_up_britannia|Clean Up Britannia]]
+  * [[:uo:systems:pet_training|Pet training]]
+  * [[:uo:systems:pack_mules|Pack mules]]
   * [[:uo:systems:ultimalive|UltimaLive]]
 
 ===== Professions =====
@@ -34,6 +43,11 @@ This is the main hub for Shattered Legacy.
   * [[:uo:professions:start|Professions hub]]
   * [[:uo:professions:mining|Mining]]
   * [[:uo:professions:blacksmithy|Blacksmithy]]
+  * [[:uo:professions:materials|Metals and woods]]
+  * [[:uo:professions:recipes|Recipes and pattern books]]
+  * [[:uo:professions:bulk_orders|Bulk orders]]
+  * [[:uo:professions:imbuing|Imbuing]]
+  * [[:uo:professions:stealing|Stealing from monsters]]
   * [[:uo:professions:focus|Focus]]
 
 ===== Lore =====

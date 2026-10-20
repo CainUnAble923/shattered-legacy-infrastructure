@@ -2,22 +2,41 @@
 
 {{:uo:media:new_haven_route.svg?nolink&700|New Haven route diagram}}
 
-New Haven is the current starting point and tutorial hub.
+New Haven is the starting town: the tutorial, the guild halls, the League's field office and the trainers are all here.
 
-===== What To Document Here =====
+===== Who to find =====
 
-  * Arrival point screenshot
-  * Bank and healer locations
-  * Trainer locations
-  * Quest giver route
-  * Useful shops
-  * Safe gathering nearby
+^ Who ^ What for ^ Where ^
+| Rook Hallowell, League recruiter | Runs the new player tutorial | The plaza, two tiles from where you arrive (''3500, 2572'') |
+| Elara Voss, League Registrar | Registering with the [[:uo:systems:league|League]], your rank, the Compact's Mule errand | The League field office (''3459, 2601'') |
+| The requisitions board and an Appraiser | Turning in [[:uo:systems:requisitions|requisitions]], selling magic items | The League field office |
+| The eighteen guildmasters | Joining and working for the [[:uo:systems:guilds|guilds]] | Each guild's hall; ''[guild'' and "Show me the way" points you to the nearest |
+| Wren, the Thieves' Den lookout | Points the way to the Thieves' guildmaster | By the fighting pit |
+| The Reset Stone | A floating, shattered runestone | The town |
+| The ankh by the Registrar | Resurrection for ghosts | Beside the League field office |
 
 ===== Current Known Trainer Anchors =====
 
 ^ Skill ^ NPC ^ Location ^
 | Focus | Sarsmea Smythe | Trammel, ''3500, 2576, 14'' |
 | Mining | Jacob Waltz | Trammel, around ''3522, 2531'' |
+
+The New Haven training board offers the 26 skill-training quests from the tile you arrive on.
+
+===== Seasons =====
+
+From December 1 to January 6 New Haven dresses for winter: a Christmas tree with presents and Father Christmas in the square, candy cane arches at the gates, wreaths and bells on the lamp posts, a feast and a fireplace at the Bountiful Harvest Inn, and a sleigh on the pier.
+
+===== Nearby =====
+
+  * **Old Haven**, the ruins to the south-east, with Vorlak the Impaler and the Cleansing Old Haven quest.
+  * **The Rootdeep Burrows** under Old Haven, still being dug: see [[:uo:drafts:rootdeep_burrows|the draft page]].
+
+===== Needed images =====
+
+  * TODO image: the arrival point on the plaza with the recruiter.
+  * TODO image: the League field office from the street.
+  * TODO image: the bank and healer.
 
 ===== Related Pages =====
 

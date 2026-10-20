@@ -1,0 +1,41 @@
+====== The Rootdeep Burrows ======
+
+**Draft: test shard only.** The Burrows' rules and creatures exist, but the dungeon's map is still being built and nothing places its creatures yet. This page describes what is coming; do not go looking for the entrance on the live shard.
+
+The Rootdeep Burrows is Shattered Legacy's own starter dungeon, dug under the ruins of **Old Haven**, with its entrance at the hole where Old Haven's second bank stood. It is unique to this shard.
+
+===== The rules =====
+
+  * **No magical entry.** No spell or scroll takes you into the Burrows, and no rune can be marked or gate opened inside them. Walk in, and recall or walk out.
+  * **Young players** are not left alone here as they are in the open world, but no more than **three** monsters at once can set on one.
+  * A working **ankh** stands at the landing for resurrection.
+
+===== The zones =====
+
+Shallow to deep:
+
+  * **The Vault**, a tutorial-only room beside the landing: only a character in the tutorial (and their pet) can walk in. Its boss is **The Overdraft**, a living bank strongbox. When it dies a crawlway opens into the Warren for two minutes, and the Vault seals behind the graduates. Decoy chest mimics teach that some chests have teeth.
+  * **The Warren**: burrow grubs, burrow scamps and redcap scamps, under **The Burrow Mother**. Burrowhide leather.
+  * **The Tangle**: rootlings, sporecaps and bramblehulks. Rootwood.
+  * **The Dawnseam**: dawnshards and seamguards. Dawnstone ore.
+  * **The Gloom**: gloomlings, gloomspinners and gloomweavers, under **The Gloom Queen**. Gloomsilk cloth.
+
+Around the tutorial farm above: gourdlings, crop crows, burrow scamp slingers, the cackler pack and the burrow hog.
+
+===== What it gives =====
+
+  * Four **starter materials** for crafters around 45 skill, found only here: Dawnstone ore and Rootwood, and Burrowhide leather and Gloomsilk cloth from its creatures. See [[:uo:professions:materials|Metals and woods]].
+  * Each creature family drops its **part** (burrower claws, rootheart sap, dawnstone shards, gloom glands); the hog and the grub carve Burrowhide; the bosses drop jewelry and a boss part.
+  * The Thieves' Den lets an Initiate steal from the Burrows' creatures, and a Master from its bosses. See [[:uo:professions:stealing|Stealing from monsters]].
+  * A requisition Lead can point here from the start. See [[:uo:systems:requisitions|Requisitions]].
+
+===== Needed images =====
+
+  * TODO image: the entrance in Old Haven's ruined bank, once the map batch has built it.
+  * TODO image: the landing with its ankh.
+
+===== Related pages =====
+
+  * [[:uo:systems:young_players|Young players]]
+  * [[tutorial|The New Haven tutorial]]
+  * [[:uo:world:new_haven|New Haven]]

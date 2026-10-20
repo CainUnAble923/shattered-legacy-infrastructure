@@ -1,0 +1,41 @@
+====== Stealing from Monsters ======
+
+Stealing from a monster's pack is OSI's **monster stealing**, ported: the same balms, lotions and prizes, the same one-steal-per-creature rule. Shattered Legacy opens it up further through the **Thieves' Den**, and that part is ours.
+
+===== The basics (OSI) =====
+
+  * From **Stealing 100**, stealing from a monster in a Felucca dungeon or at a champion spawn can turn up a thief's prize: balms and lotions, a seed of life, a mana draught, a Gem of Salvation. Once per creature.
+  * Every attempt trains Stealing past 120 against the creature's fame, up to your cap.
+  * A Gem of Salvation's six-hour wait, and a creature already stolen from, survive a server restart.
+
+===== What the Thieves' Den adds (ours) =====
+
+Join the Thieves' Den in New Haven (Stealing 20 to make Apprentice). Your rank in the Den sets where you can work:
+
+^ Den rank ^ Where you can steal from monsters ^
+| Initiate | Felucca's dungeons and champion spawns, and the Rootdeep Burrows outside the tutorial Vault |
+| Journeyman | every facet's dungeons |
+| Master | bosses anywhere, the Burrows' own bosses among them |
+
+Too low a rank, or no Den, and the Den tells you so.
+
+  * Monster stealing starts at **Stealing 60** with a minor haul: coin, Den scrip, lockpicks, small potions, bandages. The special items start at 100 as before, and the odds keep rising all the way to **200**.
+  * From 100 there is more to find: five **stolen-only components** (shadowsilk thread, ember ash, whisperleaf, thief's wire, a lucky fang), recipe scrolls, the odd loop scroll fragment, and a Burrows creature sometimes gives up its family part.
+  * Three **Den recipes** are learned from stolen scrolls only: the Shadowsilk Cloak (Tailoring), the Thief's Smoke Bomb (Alchemy; it hides you on Hiding instead of Ninjitsu) and the Pickpocket's Charm (Tinkering).
+  * A **missed steal** no longer uses the creature up: it turns on you, and you can try again a few seconds later. One successful steal per creature, as before.
+
+===== Stealing from players and chests =====
+
+  * A steal takes at most 10 stones' worth, as it always did up to 100 Stealing, however high your skill.
+  * A thief is caught as often as at 120 Stealing, whatever their skill or gear.
+  * Stealing past 127.5 gains only on the heaviest (10 stone) thefts.
+
+===== Needed images =====
+
+  * TODO image: a thief's prize in a backpack beside the Den's refusal line.
+
+===== Related pages =====
+
+  * [[:uo:systems:guilds|Guilds]]
+  * [[:uo:systems:skill_gain|Skill gain]]
+  * [[recipes|Recipes and pattern books]]

@@ -1,0 +1,60 @@
+====== The League of Extraordinary Citizens ======
+
+The League is the shard's citizen ladder: seventeen ranks, one for each metal from **Iron Citizen** to **Celestial Citizen**, climbed with **Renown** and with rank in the [[guilds|guilds]]. It is unique to Shattered Legacy, and it is what survives a loop: your League rank, your recipes, your achievements and your guild ranks stay when your skills go back to the start.
+
+===== The Registrar =====
+
+Elara Voss, the **League Registrar**, keeps the League's field office in New Haven (Trammel 3459, 2601). Talk to her to register (free, once per account), and come back to her **Rank** page to see what your next rank needs and to be promoted when you have it. The Guild Directory (''[guild'') shows the League at the top with a "Show me the way" button to her office.
+
+===== Renown =====
+
+Renown is a lifetime total for your account. It only rises. You earn it from:
+
+  * [[achievements|Achievements]], 5 to 500 each.
+  * [[loot_boxes|Loot boxes]] of tier 2 and up.
+  * [[requisitions|Requisitions]] turned in at the board, the Appraiser or a guild.
+  * League jobs and hunts, as they are built.
+
+===== The ranks =====
+
+^ # ^ Rank ^ Renown ^ Guild ranks needed ^
+| 1 | Iron Citizen | registered | none |
+| 2 | Dull Copper Citizen | 100 | Apprentice in 1 guild |
+| 3 | Shadow Iron Citizen | 400 | Apprentice in 1 guild |
+| 4 | Copper Citizen | 1,000 | Apprentice in 1 guild |
+| 5 | Bronze Citizen | 2,500 | Apprentice in 2 guilds |
+| 6 | Gold Citizen | 7,000 | Apprentice in 2 guilds |
+| 7 | Agapite Citizen | 10,000 | Apprentice in 2 guilds |
+| 8 | Verite Citizen | 14,000 | Journeyman in 3 guilds |
+| 9 | Valorite Citizen | 19,000 | Journeyman in 3 guilds |
+| 10 | Platinum Citizen | 25,000 | Journeyman in 3 guilds |
+| 11 | Toxic Citizen | 32,000 | Journeyman in 4 guilds |
+| 12 | Blaze Citizen | 40,000 | Journeyman in 4 guilds |
+| 13 | Frost Citizen | 50,000 | Journeyman in 4 guilds |
+| 14 | Obsidian Citizen | 62,000 | Master in 4 guilds |
+| 15 | Mythril Citizen | 76,000 | Master in 4 guilds |
+| 16 | Adamantium Citizen | 92,000 | Master in 4 guilds |
+| 17 | Celestial Citizen | 110,000 | Master in 5 guilds |
+
+Each rank will also ask for a promotion job, and the six **milestone** ranks (Dull Copper, Bronze, Verite, Blaze, Mythril, Celestial) for a chapter of the League's story trials. Neither is built yet, and the Rank page shows them as "not yet required".
+
+===== What a rank gives =====
+
+  * A **loot box** at every rank, tier 1 at Iron rising to tier 6 at Adamantium and Celestial.
+  * **100 more bank slots** at each milestone rank, on top of the 1,000 everyone has: 1,600 items at Celestial.
+  * Higher **requisition** tiers: Bronze unlocks tier 2 requests, Verite tier 3, Toxic tier 4, Obsidian tier 5.
+  * The Compact's Mule errand at Dull Copper (see [[pack_mules|Pack mules]]).
+  * Your rank's title and metal color in the Guild Directory.
+
+===== Needed images =====
+
+  * TODO image: the Registrar's Rank page with the four checks.
+  * TODO image: the League field office in New Haven from the street.
+
+===== Related pages =====
+
+  * [[guilds|Guilds]]
+  * [[requisitions|Requisitions and the Appraiser]]
+  * [[achievements|Achievements]]
+  * [[loot_boxes|Loot boxes]]
+  * [[accounts|Accounts]] (the bank limit)

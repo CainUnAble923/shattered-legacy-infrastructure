@@ -18,6 +18,15 @@
   * [[:uo:systems:start|Systems hub]]
   * [[:uo:systems:skill_gain|Skill gain]]
   * [[:uo:systems:stats|Stats]]
+  * [[:uo:systems:young_players|Young players]]
+  * [[:uo:systems:achievements|Achievements]]
+  * [[:uo:systems:loot_boxes|Loot boxes]]
+  * [[:uo:systems:guilds|Guilds]]
+  * [[:uo:systems:league|The League]]
+  * [[:uo:systems:requisitions|Requisitions]]
+  * [[:uo:systems:clean_up_britannia|Clean Up Britannia]]
+  * [[:uo:systems:pet_training|Pet training]]
+  * [[:uo:systems:pack_mules|Pack mules]]
   * [[:uo:systems:accounts|Accounts]]
   * [[:uo:systems:ultimalive|UltimaLive]]
 
@@ -26,6 +35,11 @@
   * [[:uo:professions:start|Professions hub]]
   * [[:uo:professions:mining|Mining]]
   * [[:uo:professions:blacksmithy|Blacksmithy]]
+  * [[:uo:professions:materials|Metals and woods]]
+  * [[:uo:professions:recipes|Recipes]]
+  * [[:uo:professions:bulk_orders|Bulk orders]]
+  * [[:uo:professions:imbuing|Imbuing]]
+  * [[:uo:professions:stealing|Stealing]]
   * [[:uo:professions:focus|Focus]]
 
 ===== Guides =====

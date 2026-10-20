@@ -1,0 +1,66 @@
+====== Metals and Woods ======
+
+Shattered Legacy has eight metals past Valorite and eight woods past Frostwood. They are unique to this shard, and they are why crafting skills go to 200: each one needs more skill than the last, and working it teaches your craft up to the next one's requirement.
+
+===== The metals =====
+
+OSI's metals, Iron through Valorite, are unchanged. Above them:
+
+^ Metal ^ Mining and Blacksmithy needed ^ Crafting in it teaches Blacksmithy up to ^
+| Platinum | 112.5 | 125 |
+| Toxic | 125 | 137.5 |
+| Blaze | 137.5 | 150 |
+| Frost | 150 | 162.5 |
+| Obsidian | 162.5 | 175 |
+| Mythril | 175 | 187.5 |
+| Adamantium | 187.5 | 200 |
+| Celestial | 200 | 200 |
+
+  * **Mining**: below a metal's step its vein gives iron. Ore smelts at the same step, in the forge's usual 25-point window.
+  * **Tinkering** works these ingots at the same skill smiths need, and climbs the same way.
+  * **Stone**: a Grandmaster stone miner digging Platinum through Celestial turns up that metal's granite for masons.
+  * The chance to make an item is unchanged; only how far it teaches you is new.
+
+===== The woods =====
+
+OSI's woods, Oak through Frostwood, are unchanged. Above them, for Carpentry and Bowcraft/Fletching:
+
+^ Wood ^ Carpentry or Fletching needed ^ Teaches up to ^
+| Ironwood | 100 | 115 |
+| Ghostwood | 115 | 130 |
+| Emberbark | 130 | 140 |
+| Frostbark | 140 | 155 |
+| Shadowbark | 155 | 170 |
+| Runewood | 170 | 185 |
+| Voidwood | 185 | 200 |
+| Starwood | 200 | 200 |
+
+  * **Lumberjacking**: every shard wood needs 100 Lumberjacking to chop, and the rarer the wood the rarer its grove. Each tree keeps the same wood for good, so a grove in your logging book always leads back to that wood.
+  * Logs and boards of each wood show their own color and name.
+  * Cutting logs into boards teaches nothing; only crafting with the wood does.
+
+===== Past the item's own top =====
+
+Normally a craft stops teaching once your skill passes an item's top. In a shard metal or wood it keeps teaching up to the next material's requirement, and harder items teach faster: a plate tunic in Platinum trains a smith better than a dagger in Platinum. Worn skill bonuses do not cut this short; the material teaches until your own skill reaches its limit.
+
+===== Starter materials =====
+
+Two more materials exist for crafters around 45 skill: **Dawnstone** ore and **Rootwood**, found only in the Rootdeep Burrows, with **Burrowhide** leather and **Gloomsilk** cloth from the Burrows' creatures. They teach like the OSI materials do. The Burrows are still being dug; see [[:uo:drafts:rootdeep_burrows|Rootdeep Burrows]].
+
+===== Tools that know the ladder =====
+
+  * The Miners' Compact's **ore satchels** and **Jacob's pickaxes** are colored by tier, following the ore ladder, and the satchels from the Reinforced one up smelt ore at a forge exactly as the forge does.
+  * The Society of Smiths' **Hammer of Hephaestus** gives its Blacksmithy bonus while you hold it and grows **Metal Familiarity** per metal as you craft, up to 1,000 per metal (2,500 on the Reinforced hammer), with an exceptional piece counting 3.
+  * The Society's **salvage bag** returns more ingots with higher Mining, but never more than the item cost.
+
+===== Needed images =====
+
+  * TODO image: the Blacksmithy craft menu's material list from Platinum to Celestial.
+  * TODO image: a Starwood grove.
+
+===== Related pages =====
+
+  * [[mining|Mining]]
+  * [[blacksmithy|Blacksmithy]]
+  * [[:uo:systems:skill_gain|Skill gain]]
+  * [[bulk_orders|Bulk orders]]

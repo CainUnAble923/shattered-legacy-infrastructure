@@ -1,0 +1,49 @@
+====== Achievements ======
+
+Achievements are Shattered Legacy's record of what you have done: first kills, skills reached, places visited, metals mined, guilds joined. Each one pays **Achievement Points** (AP) and **Renown**, and the first time your account earns one you get a [[loot_boxes|loot box]]. The system is unique to this shard.
+
+===== Opening the page =====
+
+  * Type ''[achievements'' in game, or
+  * press the **Achievements** button on your paperdoll (where Help used to be) or on the top bar. The button comes with the Shattered Legacy client in the player package.
+
+The page lists every achievement by category, with what it needs, your progress toward it, and what earned it once you have it.
+
+===== Categories =====
+
+^ Category ^ What it covers ^
+| Combat | First kill, kill counts, named foes |
+| Skills | Skill milestones, including the shard's 200 cap |
+| Exploration | Logging in, visiting places such as Old Haven |
+| Mining | Ore and the shard's own metals |
+| Crafting | Crafted items and exceptional work |
+| Legacy | Longer-term goals |
+| Discovery | Finding things for the first time |
+| Collection | Collecting sets of things |
+| League | Joining and rising in the [[league|League]] |
+
+There are 76 achievements in the book today. 20 are **secret**: they do not show in the locked list, and appear with a [Secret] tag once earned. Six old skill achievements that asked for skill above 200 are **retired**: nobody can earn them now, but anyone who has one keeps it and its points, under a Retired heading.
+
+===== What an achievement pays =====
+
+  * **AP**, from 5 for a first kill to 150 for the biggest skill goals. 100 AP puts you "officially on the board".
+  * **Renown**, which counts toward your [[league|League rank]].
+  * A **loot box** the first time your account earns it. The box's tier follows the achievement's AP: up to 10 AP is tier 1, up to 25 tier 2, up to 50 tier 3, up to 100 tier 4, up to 250 tier 5, and above that tier 6.
+  * Some achievements also hand you an item.
+
+Achievements are shared by your whole account. A second character on the account does not earn the same one again, and does not get a second box for it. The page shows "Earned on loops" with a count when a character earns one again on a later loop.
+
+===== Fanfare =====
+
+Earning an achievement plays a fanfare: fireworks and a line from the System, which has opinions. Bigger deeds make a bigger show, and a few are announced to the whole shard. ''[FanfareMute'' turns your own fanfare off; shard-wide announcements still show.
+
+===== Needed images =====
+
+  * TODO image: the achievements page open, Combat tab, with one earned and one in progress.
+  * TODO image: the Achievements button on the paperdoll in the Shattered Legacy client.
+
+===== Related pages =====
+
+  * [[loot_boxes|Loot boxes]]
+  * [[league|The League]]
+  * [[skill_gain|Skill gain]]

@@ -1,0 +1,26 @@
+====== The Test Crystal ======
+
+**Draft: test shard only.** The Test Crystal exists so play testers can try guild and crafting systems without grinding for the materials. It is never handed out on the live shard.
+
+===== What it does =====
+
+A **Dev Testing Crystal** sits in a tester's backpack. Double-click it to open a small menu and turn it on (green) or off (red).
+
+While it is **on**:
+
+  * Guild work orders (the Miners' Compact, the Society of Smiths and every other guild) skip their material, voucher, gold and ingot costs and their skill and standing checks.
+  * Ordinary crafting skips its skill and material requirements.
+  * Restoring and upgrading a Jacob's pickaxe costs nothing.
+
+It does **not** skip registry unlocks or guild membership: you still have to join a guild and unlock a thing the normal way, so the steps themselves get tested.
+
+While it is **off** the crystal does nothing. It is blessed, so it cannot be dropped or looted.
+
+===== Getting one =====
+
+Ask staff on the test shard. New test characters also get a **Shattered Legacy Test Kit** in their bank: a bag with a stack of every shard resource, for the same reason.
+
+===== Related pages =====
+
+  * [[:uo:systems:guilds|Guilds]]
+  * [[:uo:professions:materials|Metals and woods]]
