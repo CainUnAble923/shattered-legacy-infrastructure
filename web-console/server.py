@@ -53,7 +53,10 @@ Two listeners, both on 127.0.0.1 only (nothing on the LAN, nothing public):
   GET /api/agent/kit         cc-P222: the Golem kit's manifest (kit/current/kit-manifest.json under the Golem root):
                              each PC's agent compares it and fetches what differs
   GET /api/agent/kit/file    cc-P222: ?path=<a manifest path>: that file from the snapshot, only a path the manifest lists
-Every other method is refused. Every string sent is passed through panels.redact_tree.
+  POST /api/golem-password   cc-P215: {golem, role}: one Golem test account's password (Get-GolemTestAccount.ps1, this
+                             service's DPAPI), as text/plain for the card's copy button. The tailnet listener, an allowed
+                             login and the page's own header and origin only, as POST /api/action; logged without it
+Every other method is refused. Every string sent is passed through panels.redact_tree, except that one password.
 
 The collector runs as a child: Write-ConsoleStatus.ps1 -Loop -ParentPid <this>, restarted if it ends.
 Standard library only (like docker/test-queue/server.py): nothing to install on the game PC. ASCII only.
@@ -154,6 +157,7 @@ class Console:
         self.repo, self.notes, self.data = repo, notes, data
         # cc-P186: the Golem registry and the remote Golems' folders (D:/UO/golem), this PC's name, the agents' hashes.
         self.golem_root = golem_root or DEFAULT_GOLEM_ROOT
+        self.password_reader = None   # cc-P215: tests replace Get-GolemTestAccount.ps1 with a stand-in
         self.machine = (machine or os.environ.get("COMPUTERNAME") or "").upper()
         self.agents_file = os.path.join(data, "golem-agents.json")
         self._registry = (None, [])
@@ -689,6 +693,33 @@ class Console:
     def is_remote(self, g):
         return str(g.get("machine") or "").upper() != self.machine
 
+    # cc-P215: every Golem that claims prompts has its own test-shard accounts, '<golem>-admin' and '<golem>-player'
+    # (D:/UO/golem/GolemTestAccounts.ps1). The cards show the names; the password is read only on a button press.
+    @staticmethod
+    def claims(g):
+        return str(g.get("engine") or "") in ("claude", "codex")
+
+    def test_accounts(self, g):
+        n = str(g["name"]).lower()
+        return {"admin": n + "-admin", "player": n + "-player",
+                "copy": os.path.isfile(os.path.join(self.golem_root, "test-accounts-%s.key" % n))}
+
+    def test_password(self, g, role):
+        """One account's password, through the Golem kit's own helper (DPAPI for the Windows account this service runs
+        as, which on the game PC is Chase's). (code, text): 200 and the password, or an error; never logged."""
+        if role not in ("admin", "player"):
+            return 400, "role is admin or player"
+        if not self.claims(g):
+            return 404, "%s claims no prompts and has no test accounts" % g["name"]
+        if not self.test_accounts(g)["copy"]:
+            return 404, "no test account file for %s on this PC" % g["name"]
+        script = os.path.join(self.golem_root, "Get-GolemTestAccount.ps1")
+        try:
+            r = (self.password_reader or _read_test_password)(script, g["name"], role, self.golem_root)
+        except Exception as e:  # noqa: BLE001 - the reason, never the value
+            return 500, "the helper failed: %s" % type(e).__name__
+        return (200, r) if r else (500, "the helper gave no password")
+
     def remote_dir(self, name):
         return os.path.join(self.golem_root, "remote", name)
 
@@ -1002,6 +1033,7 @@ class Console:
             r = panels.ready_summary(ready)
             c["ready"] = r if r else (c.get("ready") if isinstance(c.get("ready"), dict) else None)
             c["portraitUrl"] = ("/portrait/" + g["name"]) if self.portrait_path(g) else ""
+            c["testAccounts"] = self.test_accounts(g) if self.claims(g) else None
             c.pop("portrait", None)   # a path on this PC: the page gets the address above
 
     def _write_json(self, path, value):
@@ -1238,6 +1270,15 @@ class Console:
             return default
 
 
+def _read_test_password(script, golem, role, root):
+    """cc-P215: Get-GolemTestAccount.ps1 -Json, as this service's Windows account (its DPAPI)."""
+    r = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-Golem", golem,
+                        "-Role", role, "-Json", "-Root", root], capture_output=True, text=True, timeout=60)
+    if r.returncode != 0:
+        return ""
+    return json.loads(r.stdout.strip().splitlines()[-1]).get("Password") or ""
+
+
 def make_handler(console, listener, access_log=None):
     class Handler(BaseHTTPRequestHandler):
         server_version = "uoconsole"
@@ -1424,7 +1465,7 @@ def make_handler(console, listener, access_log=None):
                 self._note(code, "agent %s %s" % (g["name"], path.rsplit("/", 1)[1]))
                 return self._json(code, out)
             # cc-P182: the Golem's buttons; cc-P187: the page buttons and their look first.
-            if path not in ("/api/action", "/api/preview"):
+            if path not in ("/api/action", "/api/preview", "/api/golem-password"):
                 return self._refuse()
             if not self._allowed():
                 return
@@ -1448,6 +1489,19 @@ def make_handler(console, listener, access_log=None):
             if body is None:
                 return
             who = (self.headers.get(panels.IDENTITY_HEADER) or "").strip()
+            if path == "/api/golem-password":
+                # cc-P215: Chase's "copy password" on a Golem card. The tailnet listener, his login, and the same checks
+                # as a button above; plain text (not JSON, which the redaction would blank), no-store, logged without it.
+                gname = body.get("golem")
+                g = console.golem(gname) if isinstance(gname, str) and GOLEM_NAME.match(gname) else None
+                if not g:
+                    self._note(404, "test password: no such Golem")
+                    return self._json(404, {"error": "no such Golem in golems.json"})
+                code, text = console.test_password(g, str(body.get("role") or ""))
+                self._note(code, "test password %s %s by %s" % (g["name"], body.get("role"), who or "?"))
+                if code != 200:
+                    return self._json(code, {"error": text})
+                return self._send(200, text, "text/plain; charset=utf-8")
             pentry, page = console.page_button(body.get("key"))
             if path == "/api/preview":
                 if not pentry:

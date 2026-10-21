@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.8
+
+### Staff
+- Every Golem has its own test-shard accounts, "<golem>-admin" and "<golem>-player", each with a starter character logged out in Green Acres. A test shard makes them at start; on a running test world [SeedGolemAccounts (with dryrun) makes any that are missing and touches no other account. It refuses on the live shard.
+
 ## 2026.10.21.7
 
 ### Staff

@@ -331,6 +331,22 @@
     }
     var rl = readyLine(c.ready);
     if (rl) li.appendChild(rl);
+    // cc-P215: its own test-shard accounts; the passwords are copied on a press, never shown on the card.
+    if (c.testAccounts) {
+      var ta = el('div', 'meta testaccounts');
+      ta.appendChild(el('span', null, 'Test accounts: ' + c.testAccounts.admin + ', ' + c.testAccounts.player));
+      if (c.testAccounts.copy && a && a.canAct) {
+        ['admin', 'player'].forEach(function (role) {
+          var b = el('button', 'ctl small');
+          b.type = 'button';
+          b.setAttribute('data-copy-password', c.name + ':' + role);
+          b.appendChild(el('span', 'label', 'copy ' + role + ' password'));
+          b.addEventListener('click', function () { copyTestPassword(c.name, role, b); });
+          ta.appendChild(b);
+        });
+      }
+      li.appendChild(ta);
+    }
     (c.commands || []).slice(0, 4).forEach(function (x) {
       li.appendChild(el('div', x.state === 'done' ? (x.code === 0 ? 'meta' : 'warn') : x.state === 'queued' || x.state === 'taken' ? 'quiet' : 'warn',
         (x.label || x.key) + ': ' + (x.note || x.state) + (x.endedAt ? ' (' + when(x.endedAt) + ')' : '')));
@@ -807,6 +823,22 @@
     i = textInput('pg-' + name, s[name] || '');
     i.addEventListener('input', function () { s[name] = String(i.value || '').trim(); });
     return field(label, i);
+  }
+  // cc-P215: one Golem test account's password, straight to the clipboard (POST: the same checks as a button).
+  function copyTestPassword(golem, role, btn) {
+    var x = new XMLHttpRequest();
+    x.open('POST', '/api/golem-password', true);
+    x.timeout = 30000;
+    x.setRequestHeader('Content-Type', 'application/json');
+    x.setRequestHeader('X-UOConsole-Action', '1');
+    var label = btn.querySelector('.label'), was = label.textContent;
+    var say = function (t) { label.textContent = t; setTimeout(function () { label.textContent = was; }, 4000); };
+    x.onload = function () {
+      if (x.status !== 200) { var j = {}; try { j = JSON.parse(x.responseText); } catch (e) { } say('not copied: ' + (j.error || x.status)); return; }
+      copyText(x.responseText, function (r) { say(r === 'copied' ? 'copied' : 'the browser refused the clipboard'); });
+    };
+    x.onerror = x.ontimeout = function () { say('no answer'); };
+    x.send(JSON.stringify({ golem: golem, role: role }));
   }
   function copyText(t, done) {
     var ok = function () { if (done) done('copied'); };

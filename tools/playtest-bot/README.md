@@ -174,3 +174,23 @@ Everything else is counted (`seen_ids`) and otherwise ignored.
     (`Server/Regions/Region.cs:200`), and blocks its account until then;
   - so fresh characters rotate over three accounts (`slbot-player2` to `4`), each resting 5.5 minutes;
   - a fifth account per address is refused (`accountHandler.maxAccountsPerIP` 5).
+
+## Golem login checks (cc-P215)
+
+Every Golem that claims prompts has its own test accounts, `<golem>-admin` and `<golem>-player` (D:\UO\golem\README.md,
+"Every Golem's own test accounts"). `golemcheck.py` logs in as them, through the same client:
+
+    python -P golemcheck.py login --host 127.0.0.1 --port 2594 [--golem Bronze]          admin and player, in and out
+    python -P golemcheck.py pair --host chases-tower --port 2594 --golem Bronze --with Gold   see each other, open a trade
+
+- The Golem is GOLEM_NAME unless `--golem` names one; passwords come from `D:\UO\golem\Get-GolemTestAccount.ps1` and
+  never reach a transcript, the output or a file.
+- Its own safety rule (`safety.check_test_target`, `check_test_relay`): test ports only (2594, 2595-2599) on any host,
+  **never 2593 from any host or relay**; the relay must name the port it dialled, and the game connection goes back to
+  the host it dialled (the real Test Shard advertises its LAN address). The overnight run keeps its scratch-only rule.
+- pair waits out the action delay after opening the backpack before it lifts a coin (cliloc 500119, "You must wait to
+  perform another action"), drops it on the other player, and passes when both get the trade window (0x6F display);
+  disconnecting cancels the trade and returns the coin.
+- `uobot.run` with GOLEM_NAME set: after the account wipe, slbot-admin types `[SeedGolemAccounts` and the checks log in
+  as the Golem's own admin and player (`--no-golem` keeps slbot-admin and slbot-player). The fresh-character pool stays
+  `slbot-player2` to `4`.

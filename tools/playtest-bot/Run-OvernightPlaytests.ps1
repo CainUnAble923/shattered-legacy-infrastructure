@@ -231,6 +231,10 @@ try {
     New-Item -ItemType Directory -Force -Path (Join-Path $world 'Saves') | Out-Null
     Copy-Item -Path (Join-Path $backup.FullName '*') -Destination (Join-Path $world 'Saves') -Recurse -ErrorAction Stop
     Say ('  copied the test world backup ' + $backup.Name + ' (Backups\Automatic) into ' + $world + '\Saves')
+    # cc-P215: every Golem's own test accounts (hashes only), so a Golem running the bot (GOLEM_NAME) logs in as its own
+    # '<golem>-admin' and '<golem>-player': uobot/run.py seeds them as slbot-admin after the wipe ([SeedGolemAccounts).
+    $golemAccounts = 'D:\UO\golem\golem-accounts.json'
+    if (Test-Path -LiteralPath $golemAccounts) { Copy-Item -LiteralPath $golemAccounts -Destination (Join-Path $world 'golem-accounts.json') -Force }
     if (Test-Path -LiteralPath $conf) { Remove-Item -LiteralPath $conf -Recurse -Force -ErrorAction Stop }
     Copy-Item -LiteralPath (Join-Path $repo 'server\uo\modernuo\Configuration-test') -Destination $conf -Recurse -ErrorAction Stop
     $mj = Join-Path $conf 'modernuo.json'

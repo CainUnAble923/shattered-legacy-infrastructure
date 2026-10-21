@@ -90,7 +90,7 @@ class Ctx(object):
             self.tr.write("harness", "all pool accounts busy or resting; waiting %.0f s" % min(wait, 30))
             time.sleep(max(1.0, min(wait, 30)))
         self.fresh_count += 1
-        c = Client(acct, self.secrets["playerPassword"], self.tr, self.cliloc, label)
+        c = Client(acct, self.secrets.get("poolPassword", self.secrets["playerPassword"]), self.tr, self.cliloc, label)
         c.account = acct
         first = acct not in self.first_logins
         try:
@@ -172,6 +172,29 @@ def run_checks(ctx, selected, runs):
     return results
 
 
+def use_golem_accounts(ctx, golem):
+    """cc-P215: a Golem running the bot uses its own accounts ('<golem>-admin', '<golem>-player', their passwords from
+    Get-GolemTestAccount.ps1). The scratch world's account wipe leaves only slbot-admin, so that admin first seeds every
+    Golem's accounts from golem-accounts.json in the world folder ([SeedGolemAccounts, test shard only), then the checks
+    log in as the Golem. The fresh-character pool keeps slbot-player2 to 4 and their own password."""
+    from .golemcheck import account
+    admin_user, admin_pw = account(golem, "admin")
+    player_user, player_pw = account(golem, "player")
+    seeder = Client(ctx.secrets["admin"], ctx.secrets["adminPassword"], ctx.tr, ctx.cliloc, "seed")
+    chars = seeder.login()
+    if chars and chars[0]:
+        seeder.play(0)
+    else:
+        seeder.create("Bot Admin", race="human", female=False)
+    lines = seeder.command("[SeedGolemAccounts", settle=3.0)
+    seeder.close()
+    said = " | ".join(m["text"] for m in lines if "[GolemAccounts]" in (m["text"] or ""))
+    ctx.tr.write("harness", "golem accounts seeded for %s: %s" % (golem, said or "(no reply)"))
+    ctx.secrets = dict(ctx.secrets, poolPassword=ctx.secrets["playerPassword"], admin=admin_user, adminPassword=admin_pw,
+                       player=player_user, playerPassword=player_pw)
+    print("accounts: %s's own (%s, %s)" % (golem, admin_user, player_user), flush=True)
+
+
 def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("--secrets", required=True)
@@ -180,11 +203,15 @@ def main(argv):
     ap.add_argument("--only", default="")
     ap.add_argument("--container", default="sl-modernuo-bot")
     ap.add_argument("--soak-minutes", type=int, default=0)
+    ap.add_argument("--no-golem", action="store_true", help="keep slbot-admin and slbot-player even when GOLEM_NAME is set")
     a = ap.parse_args(argv)
     os.makedirs(os.path.join(a.out, "transcripts"), exist_ok=True)
     with open(a.secrets, "r", encoding="utf-8") as f:
         secrets = json.load(f)
     ctx = Ctx(secrets, a.out, a.container)
+    golem = os.environ.get("GOLEM_NAME", "") if not a.no_golem else ""
+    if golem:
+        use_golem_accounts(ctx, golem)
     only = [x.strip() for x in a.only.split(",") if x.strip()]
     selected = [c for c in C.REGISTRY if not only or c.id in only]
     print("checks: %d (%s)" % (len(selected), ", ".join(c.id for c in selected)), flush=True)
