@@ -12,7 +12,8 @@
 //                                      spawner-taking constructor are gone; she takes a parameterless constructor so
 //                                      pinned's spawner can build her (ServUO's Navrey has none, and would fail on
 //                                      the same entry). UsedPillars, a GM property the lair set, is kept as ServUO
-//                                      has it: unserialized. D-83.
+//                                      has it: unserialized. D-83 (closed by cc-P197: the lair is ported, and
+//                                      the link is the unsaved Controller property below).
 //   the Green With Envy eye hand-out   PlayerMobile.Quests / GreenWithEnvyQuest are S5's engine (Q-025); the loop is
 //                                      dropped. EyeOfNavrey is ported beside her and nothing produces it. D-84.
 //   SetSpecialAbility(Webbing)         pinned has no MonsterAbility that throws a web (D-82, with the batch's others).
@@ -40,6 +41,11 @@ public partial class NavreyNightEyes : BaseCreature
 {
     [CommandProperty(AccessLevel.GameMaster)]
     public bool UsedPillars { get; set; }
+
+    // cc-P197: the lair that spawned her (Services/Underworld/Navreys Lair). ServUO saves this reference on the
+    // creature (its version 1); here it is not saved: the controller saves her and re-links after a load, so her
+    // save shape is unchanged. Null for a Navrey the stock spawner built.
+    public NavreysController Controller { get; set; }
 
     private static readonly Type[] _artifact =
     {
@@ -151,7 +157,8 @@ public partial class NavreyNightEyes : BaseCreature
     {
         base.OnDeath(c);
 
-        // ServUO: if (m_Spawner != null) m_Spawner.OnNavreyKilled(); D-83.
+        // ServUO: if (m_Spawner != null) m_Spawner.OnNavreyKilled(); the lair is cc-P197's (the header).
+        Controller?.OnNavreyKilled();
 
         if (Utility.RandomBool())
         {
