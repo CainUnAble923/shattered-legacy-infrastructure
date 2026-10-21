@@ -77,6 +77,7 @@ namespace Server.SkillHandlers
             if (Core.AOS && armorOffset > 0 && !armoredExpert)
             {
                 m.SendLocalizedMessage(500135); // Regenerative forces cannot penetrate your armor!
+                ClusterFJokeAchievements.MeditationBlockedByArmor(m); // cc-P231: "Meditating in Plate"
 
                 return TimeSpan.FromSeconds(10.0);
             }

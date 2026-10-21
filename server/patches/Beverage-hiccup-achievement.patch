@@ -1,0 +1,10 @@
+--- a/Projects/UOContent/Items/Food/Beverage.cs
++++ b/Projects/UOContent/Items/Food/Beverage.cs
+@@ -868,6 +868,7 @@
+ 
+                     // *hic*
+                     m_Drunk.PublicOverheadMessage(MessageType.Regular, 0x3B2, 500849);
++                    ClusterFJokeAchievements.Hiccuped(m_Drunk); // Shattered Legacy (cc-P231): a joke achievement
+                 }
+ 
+                 if (m_Drunk.BAC <= 0)

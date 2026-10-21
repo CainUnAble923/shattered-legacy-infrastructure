@@ -792,6 +792,22 @@ apply_patch "$PATCHES/BaseArmor-exceptional-material.patch"
 apply_patch "$PATCHES/BaseWeapon-exceptional-material.patch"
 apply_patch "$PATCHES/BaseRanged-exceptional-wood.patch"
 
+# cc-P231 (ours): hidden joke achievements for OSI's easter-egg moments. Each patch adds one call to customizations
+# ClusterFJokeAchievements at the branch where pinned refuses or reports the moment (the running-with-scissors refusal,
+# the untrustworthy beggar, eating while full, bandaging the unhurt, a worn-out tool, the *hic*, fishing up footwear, an
+# explosion potion catching its thrower), because pinned raises no event there. Made against the tree every patch above
+# leaves, so they go last. Alternatives argued in shard-migration notes/cc-P231-osi-joke-achievements.md; pinned by
+# JokeAchievementsVerification.
+apply_patch "$PATCHES/Scissors-running-achievement.patch"
+apply_patch "$PATCHES/Begging-untrustworthy-achievement.patch"
+apply_patch "$PATCHES/Food-too-full-achievement.patch"
+apply_patch "$PATCHES/Bandage-unhurt-patient-achievement.patch"
+apply_patch "$PATCHES/CraftItem-tool-worn-achievement.patch"
+apply_patch "$PATCHES/HarvestSystem-tool-worn-achievement.patch"
+apply_patch "$PATCHES/Beverage-hiccup-achievement.patch"
+apply_patch "$PATCHES/Fishing-shoes-achievement.patch"
+apply_patch "$PATCHES/BaseExplosionPotion-self-blast-achievement.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

@@ -1,0 +1,34 @@
+--- a/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
++++ b/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
+@@ -1502,6 +1502,7 @@
+ 
+                     if (toolBroken)
+                     {
++                        ClusterFJokeAchievements.ToolWornOut(from); // Shattered Legacy (cc-P231): a joke achievement
+                         tool.Delete();
+                     }
+                 }
+@@ -1722,6 +1723,7 @@
+ 
+                 if (toolBroken)
+                 {
++                    ClusterFJokeAchievements.ToolWornOut(from); // Shattered Legacy (cc-P231)
+                     tool.Delete();
+                 }
+             }
+@@ -1838,6 +1840,7 @@
+ 
+                     if (toolBroken)
+                     {
++                        ClusterFJokeAchievements.ToolWornOut(from); // Shattered Legacy (cc-P231)
+                         tool.Delete();
+                     }
+                 }
+@@ -1929,6 +1932,7 @@
+ 
+                 if (toolBroken)
+                 {
++                    ClusterFJokeAchievements.ToolWornOut(from); // Shattered Legacy (cc-P231)
+                     tool.Delete();
+                 }
+             }

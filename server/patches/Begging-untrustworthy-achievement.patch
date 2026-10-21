@@ -1,0 +1,10 @@
+--- a/Projects/UOContent/Skills/Begging.cs
++++ b/Projects/UOContent/Skills/Begging.cs
+@@ -107,6 +107,7 @@
+                     {
+                         // Thou dost not look trustworthy... no gold for thee today!
+                         _target.PublicOverheadMessage(MessageType.Regular, _target.SpeechHue, 500406);
++                        ClusterFJokeAchievements.BeggedUntrustworthy(_from); // Shattered Legacy (cc-P231)
+                     }
+                     else if (_from.CheckTargetSkill(SkillName.Begging, _target, 0.0, 100.0))
+                     {

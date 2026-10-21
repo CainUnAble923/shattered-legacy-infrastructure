@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.4
+
+### Added
+- Sixteen secret achievements for some of Britannia's sillier moments. They stay hidden until you stumble into one, and each comes with a few words from the System. We won't say what they are, but your parents probably warned you about at least one of them.
+
+### Staff
+- The secret achievements are listed by [ClusterFAchievement list; they sit in their own Mischief category, shown under All once earned. Each fires from the game event itself (never from message text) and is earned once per account, so repeating the event earns nothing past its tiers.
+
 ## 2026.10.21.3
 
 ### Added

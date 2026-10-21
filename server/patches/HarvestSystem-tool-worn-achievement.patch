@@ -1,0 +1,10 @@
+--- a/Projects/UOContent/Engines/Harvest/Core/HarvestSystem.cs
++++ b/Projects/UOContent/Engines/Harvest/Core/HarvestSystem.cs
+@@ -234,6 +234,7 @@
+ 
+                             if (toolWithUses.UsesRemaining < 1)
+                             {
++                                ClusterFJokeAchievements.ToolWornOut(from); // Shattered Legacy (cc-P231): a joke achievement
+                                 tool.Delete();
+                                 def.SendMessageTo(from, def.ToolBrokeMessage);
+                             }

@@ -1,0 +1,10 @@
+--- "a/Projects/UOContent/Items/Skill Items/Tailor Items/Misc/Scissors.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Tailor Items/Misc/Scissors.cs"
+@@ -61,6 +61,7 @@
+                      Core.TickCount - from.LastMoveTime < from.ComputeMovementSpeed(from.Direction))
+             {
+                 // Didn't your parents ever tell you not to run with scissors in your hand?!
++                ClusterFJokeAchievements.ScissorsWhileRunning(from); // Shattered Legacy (cc-P231): a joke achievement
+                 from.SendLocalizedMessage(1063305);
+             }
+             else if (targeted is Item item and IScissorable scissorable && (targeted is PlagueBeastInnard or PlagueBeastMutationCore || item.Movable))
