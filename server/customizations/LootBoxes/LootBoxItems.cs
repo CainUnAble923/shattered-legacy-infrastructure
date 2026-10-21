@@ -210,12 +210,16 @@ public partial class LootBox : Item
         Open(pm);
     }
 
-    /// <summary>Hands everything over (pack, else bank), shows what it was, plays the fanfare, and deletes the box when empty.</summary>
+    /// <summary>
+    /// Hands everything over (pack, else bank), shows what it was, sends the flying loot (cc-P242), plays the fanfare,
+    /// and deletes the box when empty.
+    /// </summary>
     public List<string> Open(PlayerMobile pm)
     {
         var shown = new List<string>();
         var rare = false;
         var boxInBox = false;
+        var handedOver = new List<Item>(); // cc-P242: what flies out of the box
         OpenedAt = Core.Now;
 
         if (_gold > 0)
@@ -243,6 +247,7 @@ public partial class LootBox : Item
             shown.Add(LootBoxRoller.Describe(item));
             rare |= IsRareSlot(i);
             boxInBox |= item is LootBox;
+            handedOver.Add(item);
             ClusterFGuildPromotion.Deliver(pm, item);
         }
 
@@ -255,6 +260,9 @@ public partial class LootBox : Item
         pm.SendMessage(0x44, $"System: You open the {DefaultName}.");
 
         var level = _tier >= 4 ? FanfareLevel.Major : FanfareLevel.Minor;
+
+        // cc-P242: the best item flies out of the box now, as it opens; the fanfare below follows when its window closes.
+        ClusterFFlyingLoot.Play(pm, handedOver, level == FanfareLevel.Major);
         if (boxInBox)
         {
             ClusterFFanfare.Play(pm, level, FanfareLines.BoxInBox, tier: _tier, voiceKey: $"box:{_boxName}");
