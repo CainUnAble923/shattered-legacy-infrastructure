@@ -10,6 +10,7 @@
 //             [Props, and the Grant commands aimed at the selected character.
 //   Travel    the shard places, each read from its seeder's own member; saved spots (ClusterFStaffHubSpots); go to
 //             x, y, z, facet.
+//   Events    cc-P230: GM-run monster surges (ClusterFSurge, templates in ClusterFSurgeTemplates).
 //
 // Access: GameMaster and up; a WorldRemoval command needs Administrator. Test or live is TestCenter.Enabled (as pinned
 // TestCenterFillCommand reads it); on live a command declared Shard = TestOnly is shown greyed and refused.
@@ -689,6 +690,9 @@ public sealed class StaffHubState
 
     public bool ShowGuildHalls { get; set; }
     public int SpotPage { get; set; }
+
+    // cc-P230: the Events tab's surge setup.
+    public SurgeSettings Surge { get; set; } = new();
 }
 
 public enum StaffHubTab

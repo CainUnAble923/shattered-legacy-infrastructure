@@ -14,9 +14,13 @@
 // Button IDs are one scheme across every tab (the constants below), so a response is routed by its ID alone and no two
 // tabs share one. Every row button indexes this gump's own snapshot of what it drew, and each action re-checks the live
 // state (the command still registered, the character still there and online), so a stale gump fails safely.
+//
+// cc-P230: the Events tab is on. Its setup (templates as 2117/2118 radios, 210/211 checkboxes, 4005 go arrows, 4017
+// delete) starts a surge; while one runs, or just after, it shows the surge instead. What a surge does is ClusterFSurge's.
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Server.Gumps;
 using Server.Mobiles;
 using Server.Network;
@@ -49,7 +53,7 @@ public class StaffHubGump : Gump
 
     // ---- button IDs (one scheme for every tab) ----
     public const int BtnClose = 0;
-    public const int BtnTabBase = 1;          // 1 Commands, 2 Player, 3 Travel (Events has no button yet)
+    public const int BtnTabBase = 1;          // 1 Commands, 2 Player, 3 Travel, 4 Events (cc-P230)
     public const int BtnCategoryBase = 10;    // 10..15
     public const int BtnPagePrev = 20;
     public const int BtnPageNext = 21;
@@ -74,12 +78,42 @@ public class StaffHubGump : Gump
     public const int BtnRecentBase = 4400;
     public const int BtnFacetBase = 4500;     // cc-P52: 4500..4505, ClusterFStaffHub.ChangeFacets
 
+    // cc-P230: the Events tab.
+    public const int BtnSurgeHere = 5000;
+    public const int BtnSurgeTarget = 5001;
+    public const int BtnStagingHere = 5002;
+    public const int BtnSurgeStart = 5003;
+    public const int BtnSurgeDryRun = 5004;
+    public const int BtnSurgeEnd = 5005;
+    public const int BtnSurgeGo = 5006;
+    public const int BtnSurgeExtra = 5007;
+    public const int BtnSurgeNew = 5008;
+    public const int BtnTemplateNew = 5009;
+    public const int BtnTemplateDeleteBase = 5100;
+
     // ---- text entry IDs ----
     public const int TextSearch = 1;
     public const int TextGoX = 10;
     public const int TextGoY = 11;
     public const int TextGoZ = 12;
     public const int TextGoFacet = 13;
+    public const int TextRadius = 20;
+    public const int TextWaves = 21;
+    public const int TextPerWave = 22;
+    public const int TextInterval = 23;
+    public const int TextTopCount = 24;
+    public const int TextTopPrize = 25;
+    public const int TextSharePrize = 26;
+    public const int TextExtraPrize = 27;
+
+    // ---- switch IDs (Events tab checkboxes 210/211, template radios 2117/2118) ----
+    public const int SwitchGates = 100;
+    public const int SwitchNoLoot = 101;
+    public const int SwitchDamage = 102;
+    public const int SwitchPresent = 103;
+    public const int SwitchExtra = 104;
+    public const int SwitchTemplateBase = 200;
+    public const int MaxTemplateRows = 8;
 
     public const int RowsPerPage = 4;
     private const int RowHeight = 72;
@@ -106,6 +140,8 @@ public class StaffHubGump : Gump
     private readonly List<StaffSpot> _spots = [];
     private readonly List<int> _spotIndex = [];
     private readonly List<StaffSpot> _recent = [];
+    private readonly List<string> _templates = [];
+    private bool _drewSurgeSetup;
 
     public StaffHubGump(Mobile from, StaffHubState state) : base(40, 40)
     {
@@ -135,16 +171,9 @@ public class StaffHubGump : Gump
         {
             var x = 20 + i * 112;
             var tab = (StaffHubTab)i;
-            if (tab == StaffHubTab.Events)
-            {
-                AddImage(x, 42, 2445);
-                CenterLabel(x, 44, 108, HueGrey, "Events (soon)");
-            }
-            else
-            {
-                AddButton(x, 42, 2445, 2445, BtnTabBase + i);
-                CenterLabel(x, 44, 108, _state.Tab == tab ? HueGold : HueWhite, TabNames[i]);
-            }
+            AddButton(x, 42, 2445, 2445, BtnTabBase + i);
+            CenterLabel(x, 44, 108, _state.Tab == tab ? HueGold : HueWhite,
+                tab == StaffHubTab.Events && ClusterFSurge.Active != null ? "Events (live)" : TabNames[i]);
         }
 
         AddImageTiled(PanelX, PanelY, PanelW, PanelH, PanelTile);
@@ -153,7 +182,7 @@ public class StaffHubGump : Gump
         {
             case StaffHubTab.Player: DrawPlayer(from); break;
             case StaffHubTab.Travel: DrawTravel(from); break;
-            case StaffHubTab.Events:
+            case StaffHubTab.Events: DrawEvents(from); break;
             case StaffHubTab.Commands:
             default: DrawCommands(from); break;
         }
@@ -171,6 +200,7 @@ public class StaffHubGump : Gump
     public IReadOnlyList<ClusterFStaffHub.ShardPlace> Halls => _halls;
     public IReadOnlyList<StaffSpot> Spots => _spots;
     public IReadOnlyList<StaffSpot> Recent => _recent;
+    public IReadOnlyList<string> Templates => _templates;
 
     private void CenterLabel(int x, int y, int width, int hue, string text) =>
         AddLabel(x + Math.Max(0, (width - text.Length * 7) / 2), y, hue, text);
@@ -523,6 +553,280 @@ public class StaffHubGump : Gump
         AddButton(412, 362, 4005, 4007, BtnGoTo);
     }
 
+    // ---------------------------------------------------------------- Events (cc-P230)
+
+    private void DrawEvents(Mobile from)
+    {
+        var run = ClusterFSurge.Active ?? ClusterFSurge.Last;
+        if (run != null)
+        {
+            DrawSurge(run);
+            return;
+        }
+
+        _drewSurgeSetup = true;
+        var s = _state.Surge;
+        if (ClusterFSurgeTemplates.Find(s.Template) == null)
+        {
+            s.Template = ClusterFSurgeTemplates.All.Count > 0 ? ClusterFSurgeTemplates.All[0].Name : null;
+        }
+
+        // Left: the templates, one radio each, delete on the right.
+        AddLabel(26, 82, HueGold, "Templates");
+        AddButton(150, 80, 4005, 4007, BtnTemplateNew);
+        AddLabel(184, 82, HueWhite, "New");
+
+        var templates = ClusterFSurgeTemplates.All;
+        if (templates.Count == 0)
+        {
+            AddLabel(26, 106, HueGrey, "None: New makes one.");
+        }
+
+        AddGroup(1);
+        for (var i = 0; i < templates.Count && i < MaxTemplateRows; i++)
+        {
+            var t = templates[i];
+            var y = 106 + i * 22;
+            var selected = t.Name.Equals(s.Template, StringComparison.OrdinalIgnoreCase);
+            _templates.Add(t.Name);
+
+            AddRadio(26, y, 2117, 2118, selected, SwitchTemplateBase + i);
+            AddLabelCropped(48, y, 176, 18, selected ? HueGold : HueWhite, t.Name);
+            AddButton(232, y, 4017, 4019, BtnTemplateDeleteBase + i);
+        }
+
+        var current = ClusterFSurgeTemplates.Find(s.Template);
+        if (current != null)
+        {
+            AddHtml(26, 288, 236, 72, $"<BASEFONT COLOR={HexGrey}>{ClusterFStaffHub.Html(current.Describe())}</BASEFONT>");
+        }
+
+        // Right: where, the waves, the options, the prizes.
+        const int rx = 280;
+        AddLabel(rx, 82, HueGold, "Spot");
+        AddLabelCropped(rx + 40, 82, 220, 18, s.HasCenter ? HueWhite : HueGrey,
+            s.HasCenter ? $"{s.Center.X}, {s.Center.Y}, {s.Center.Z} {s.Map.Name}" : "not set");
+        AddButton(rx, 104, 4005, 4007, BtnSurgeHere);
+        AddLabel(rx + 34, 106, HueWhite, "Here");
+        AddButton(rx + 90, 104, 4005, 4007, BtnSurgeTarget);
+        AddLabel(rx + 124, 106, HueWhite, "Target");
+
+        AddLabel(rx, 134, HueGrey, "Radius");
+        EntryBox(rx + 56, 132, 50, TextRadius, s.Radius.ToString());
+        AddLabel(rx + 120, 134, HueGrey, "Waves");
+        EntryBox(rx + 176, 132, 50, TextWaves, s.Waves.ToString());
+        AddLabel(rx, 162, HueGrey, "Per wave");
+        EntryBox(rx + 56, 160, 50, TextPerWave, s.PerWave.ToString());
+        AddLabel(rx + 120, 162, HueGrey, "Every (s)");
+        EntryBox(rx + 176, 160, 50, TextInterval, s.IntervalSeconds.ToString());
+
+        AddCheck(rx, 192, 210, 211, s.Gates, SwitchGates);
+        AddLabel(rx + 24, 192, HueWhite, "Moongates: Britain, New Haven");
+        AddButton(rx + 24, 214, 4005, 4007, BtnStagingHere);
+        AddLabelCropped(rx + 58, 216, 200, 18, HueGrey,
+            s.HasStaging ? $"to {s.Staging.X}, {s.Staging.Y} {s.StagingMap.Name}" : "Staging here (else the spot)");
+        AddCheck(rx, 240, 210, 211, s.NoLoot, SwitchNoLoot);
+        AddLabel(rx + 24, 240, HueWhite, "No-loot zone");
+
+        AddLabel(rx, 264, HueGold, "Prizes");
+        AddCheck(rx, 286, 210, 211, s.PrizeDamage, SwitchDamage);
+        AddLabel(rx + 24, 286, HueWhite, "Top");
+        EntryBox(rx + 54, 284, 30, TextTopCount, s.TopCount.ToString());
+        AddLabel(rx + 88, 286, HueWhite, "by damage");
+        EntryBox(rx + 156, 284, 100, TextTopPrize, s.TopPrize);
+        AddCheck(rx, 312, 210, 211, s.PrizePresent, SwitchPresent);
+        AddLabel(rx + 24, 312, HueWhite, "Present, others");
+        EntryBox(rx + 156, 310, 100, TextSharePrize, s.SharePrize);
+        AddCheck(rx, 338, 210, 211, s.PrizeExtra, SwitchExtra);
+        AddLabel(rx + 24, 338, HueWhite, "GM extras");
+        EntryBox(rx + 156, 336, 100, TextExtraPrize, s.ExtraPrize);
+
+        TextButton(26, 366, BtnSurgeStart, "Start");
+        TextButton(142, 366, BtnSurgeDryRun, "Dry run");
+    }
+
+    // A running surge, or the summary of the one that just ended.
+    private void DrawSurge(SurgeRun run)
+    {
+        var s = run.Settings;
+        var live = run.EndedAt == null;
+        var elapsed = (run.EndedAt ?? Core.Now) - run.StartedAt;
+
+        AddLabelCropped(26, 82, 500, 18, live ? HueGreen : HueGold,
+            live ? $"Surge running: {run.Template.Name}" : $"Surge over: {run.Template.Name}. {run.EndReason}");
+
+        var lines = new List<string>
+        {
+            $"At {ClusterFSurge.Where(s.Map, s.Center)}, radius {s.Radius}",
+            live && !run.AllWavesOut
+                ? $"Wave {run.WavesSpawned} of {s.Waves}; the next in {Math.Max(0, (int)(run.NextWaveAt - Core.Now).TotalSeconds)} s"
+                : $"All {s.Waves} wave(s) out",
+            $"Alive {run.Alive}, killed {run.Killed}, made {run.Spawned}",
+            $"Run time {(int)elapsed.TotalMinutes}:{elapsed.Seconds:00}",
+            $"Gates {(s.Gates ? live ? "open" : "closed" : "none")}; no-loot zone {(s.NoLoot ? "on" : "off")}",
+            $"Players present: {run.PresentTicks.Count}; damage dealers: {run.Damage.Count}",
+        };
+
+        for (var i = 0; i < lines.Count; i++)
+        {
+            AddLabelCropped(26, 106 + i * 20, 300, 18, HueWhite, lines[i]);
+        }
+
+        if (live)
+        {
+            AddLabel(340, 106, HueGold, "Top damage");
+            var top = run.Damage.OrderByDescending(kv => kv.Value).Take(8).ToList();
+            for (var i = 0; i < top.Count; i++)
+            {
+                AddLabelCropped(340, 128 + i * 20, 196, 18, HueWhite, $"{top[i].Key.Name}: {top[i].Value:N0}");
+            }
+        }
+        else
+        {
+            AddLabel(340, 106, HueGold, $"Prizes given ({run.Awards.Count})");
+            for (var i = 0; i < run.Awards.Count && i < 9; i++)
+            {
+                var a = run.Awards[i];
+                AddLabelCropped(340, 128 + i * 20, 196, 18, HueWhite, $"{a.Player.Name}: {a.Prize}");
+            }
+        }
+
+        if (live)
+        {
+            TextButton(26, 366, BtnSurgeEnd, "End");
+            TextButton(142, 366, BtnSurgeGo, "Go there");
+        }
+        else
+        {
+            TextButton(26, 366, BtnSurgeNew, "New surge");
+        }
+
+        if (s.PrizeExtra)
+        {
+            TextButton(258, 366, BtnSurgeExtra, "Give extra");
+        }
+    }
+
+    /// <summary>What the Events setup sends back: its text entries and its switches.</summary>
+    public sealed record SurgeInput(
+        string Radius, string Waves, string PerWave, string Interval, string TopCount, string TopPrize, string SharePrize,
+        string ExtraPrize, int[] Switches);
+
+    // A number box: its value, or -1 (which the checks refuse by name) when it is not a whole number.
+    private static int Number(string text, int fallback) =>
+        text == null ? fallback : int.TryParse(text.Trim(), out var v) ? v : -1;
+
+    /// <summary>Reads the Events setup into the hub's settings, before any of its buttons acts.</summary>
+    private void ApplySurgeInput(SurgeInput input)
+    {
+        if (!_drewSurgeSetup || input == null)
+        {
+            return;
+        }
+
+        var s = _state.Surge;
+        s.Radius = Number(input.Radius, s.Radius);
+        s.Waves = Number(input.Waves, s.Waves);
+        s.PerWave = Number(input.PerWave, s.PerWave);
+        s.IntervalSeconds = Number(input.Interval, s.IntervalSeconds);
+        s.TopCount = Number(input.TopCount, s.TopCount);
+        s.TopPrize = input.TopPrize?.Trim() ?? s.TopPrize;
+        s.SharePrize = input.SharePrize?.Trim() ?? s.SharePrize;
+        s.ExtraPrize = input.ExtraPrize?.Trim() ?? s.ExtraPrize;
+
+        if (input.Switches != null)
+        {
+            var on = new HashSet<int>(input.Switches);
+            s.Gates = on.Contains(SwitchGates);
+            s.NoLoot = on.Contains(SwitchNoLoot);
+            s.PrizeDamage = on.Contains(SwitchDamage);
+            s.PrizePresent = on.Contains(SwitchPresent);
+            s.PrizeExtra = on.Contains(SwitchExtra);
+
+            for (var i = 0; i < _templates.Count; i++)
+            {
+                if (on.Contains(SwitchTemplateBase + i))
+                {
+                    s.Template = _templates[i];
+                }
+            }
+        }
+    }
+
+    private static void RespondEvents(Mobile from, StaffHubState state, int id, List<string> templates, ref bool reopen)
+    {
+        var s = state.Surge;
+
+        if (id == BtnSurgeHere)
+        {
+            s.Map = from.Map;
+            s.Center = from.Location;
+        }
+        else if (id == BtnSurgeTarget)
+        {
+            from.SendMessage("Target the centre of the surge.");
+            from.BeginTarget(-1, true, TargetFlags.None, (f, targeted) =>
+            {
+                if (targeted is IPoint3D p && f.Map != null && f.Map != Map.Internal)
+                {
+                    state.Surge.Map = f.Map;
+                    state.Surge.Center = new Point3D(p);
+                }
+
+                ClusterFStaffHub.Open(f, state);
+            });
+            reopen = false;
+        }
+        else if (id == BtnStagingHere)
+        {
+            s.StagingMap = from.Map;
+            s.Staging = from.Location;
+        }
+        else if (id == BtnSurgeDryRun)
+        {
+            ClusterFSurge.DryRun(from, s);
+        }
+        else if (id == BtnSurgeStart)
+        {
+            from.SendMessage(ClusterFSurge.Start(from, s, out var message) ? HueGreen : HueRed, message);
+        }
+        else if (id == BtnSurgeEnd)
+        {
+            from.SendMessage(ClusterFSurge.End(from, out var message) ? HueGreen : HueRed, message);
+        }
+        else if (id == BtnSurgeGo)
+        {
+            if (ClusterFSurge.Active is { } run)
+            {
+                ClusterFStaffHub.GoTo(from, $"Surge: {run.Template.Name}", run.Settings.Map, run.Settings.Center);
+            }
+        }
+        else if (id == BtnSurgeExtra)
+        {
+            from.SendMessage("Target the player to give the extra prize.");
+            from.BeginTarget(-1, false, TargetFlags.None, (f, targeted) =>
+            {
+                f.SendMessage(ClusterFSurge.GiveExtra(f, targeted as Mobile, out var message) ? HueGreen : HueRed, message);
+                ClusterFStaffHub.Open(f, state);
+            });
+            reopen = false;
+        }
+        else if (id == BtnSurgeNew)
+        {
+            ClusterFSurge.ClearLast();
+        }
+        else if (id == BtnTemplateNew)
+        {
+            from.SendGump(new StaffHubTemplateGump(state, "", "", "", ""));
+            reopen = false;
+        }
+        else if (id >= BtnTemplateDeleteBase && id < BtnTemplateDeleteBase + templates.Count)
+        {
+            var name = templates[id - BtnTemplateDeleteBase];
+            from.SendMessage(ClusterFSurgeTemplates.Delete(name) ? $"Deleted template '{name}'." : "That template was already gone.");
+        }
+    }
+
     // ---------------------------------------------------------------- responses
 
     public override void OnResponse(NetState sender, in RelayInfo info)
@@ -540,7 +844,13 @@ public class StaffHubGump : Gump
             info.GetTextEntry(TextGoX),
             info.GetTextEntry(TextGoY),
             info.GetTextEntry(TextGoZ),
-            info.GetTextEntry(TextGoFacet)
+            info.GetTextEntry(TextGoFacet),
+            _drewSurgeSetup
+                ? new SurgeInput(
+                    info.GetTextEntry(TextRadius), info.GetTextEntry(TextWaves), info.GetTextEntry(TextPerWave),
+                    info.GetTextEntry(TextInterval), info.GetTextEntry(TextTopCount), info.GetTextEntry(TextTopPrize),
+                    info.GetTextEntry(TextSharePrize), info.GetTextEntry(TextExtraPrize), info.Switches.ToArray())
+                : null
         );
     }
 
@@ -550,7 +860,7 @@ public class StaffHubGump : Gump
     /// </summary>
     public void Respond(
         Mobile from, int id, string search = null, string goX = null, string goY = null, string goZ = null,
-        string goFacet = null)
+        string goFacet = null, SurgeInput surge = null)
     {
         if (from.Deleted || from.AccessLevel < ClusterFStaffHub.Access || id == BtnClose)
         {
@@ -559,9 +869,16 @@ public class StaffHubGump : Gump
 
         var reopen = true;
 
-        if (id is >= BtnTabBase and < BtnTabBase + 3)
+        // cc-P230: the Events setup's boxes and checkboxes are read whichever button was pressed, so nothing typed is lost.
+        ApplySurgeInput(surge);
+
+        if (id is >= BtnTabBase and < BtnTabBase + 4)
         {
             _state.Tab = (StaffHubTab)(id - BtnTabBase);
+        }
+        else if (id is >= BtnSurgeHere and < BtnTemplateDeleteBase + MaxTemplateRows)
+        {
+            RespondEvents(from, _state, id, _templates, ref reopen);
         }
         else if (id >= BtnCategoryBase && id < BtnCategoryBase + ClusterFStaffHub.Categories.Length)
         {
@@ -878,6 +1195,79 @@ public class StaffHubPromptGump : Gump
         }
 
         StaffHubGump.Execute(from, _state, Purpose, Command, text);
+        ClusterFStaffHub.Open(from, _state);
+    }
+}
+
+/// <summary>cc-P230: a new surge template (or a replacement for one of the same name).</summary>
+public class StaffHubTemplateGump : Gump
+{
+    public const int BtnSave = 1;
+    public const int TextName = 1;
+    public const int TextCreatures = 2;
+    public const int TextBossType = 3;
+    public const int TextBossName = 4;
+
+    private readonly StaffHubState _state;
+
+    public StaffHubTemplateGump(StaffHubState state, string name, string creatures, string bossType, string bossName)
+        : base(100, 120)
+    {
+        _state = state;
+
+        AddPage(0);
+        AddBackground(0, 0, 460, 250, 9270);
+        AddLabel(20, 14, StaffHubGump.HueGold, "New surge template");
+        AddButton(414, 10, 4017, 4019, 0);
+
+        Row(44, "Name", TextName, name);
+        Row(92, "Creatures", TextCreatures, creatures);
+        AddLabelCropped(20, 140, 420, 18, StaffHubGump.HueGrey, "Type names with weights: Orc*4, OrcishMage*2, OrcBomber");
+        Row(160, "Boss type", TextBossType, bossType, 200);
+        AddLabel(236, 160, StaffHubGump.HueGrey, "Boss name");
+        AddBackground(236, 180, 204, 26, 9350);
+        AddTextEntry(242, 183, 192, 20, 0, TextBossName, bossName ?? "");
+
+        AddButton(330, 214, 2445, 2445, BtnSave);
+        AddLabel(366, 216, StaffHubGump.HueWhite, "Save");
+    }
+
+    private void Row(int y, string label, int id, string text, int width = 420)
+    {
+        AddLabel(20, y, StaffHubGump.HueGrey, label);
+        AddBackground(20, y + 20, width, 26, 9350);
+        AddTextEntry(26, y + 23, width - 12, 20, 0, id, text ?? "");
+    }
+
+    public override void OnResponse(NetState sender, in RelayInfo info)
+    {
+        if (sender.Mobile is { } from)
+        {
+            Respond(from, info.ButtonID == BtnSave, info.GetTextEntry(TextName), info.GetTextEntry(TextCreatures),
+                info.GetTextEntry(TextBossType), info.GetTextEntry(TextBossName));
+        }
+    }
+
+    public void Respond(Mobile from, bool save, string name, string creatures, string bossType, string bossName)
+    {
+        if (from.Deleted || from.AccessLevel < ClusterFStaffHub.Access)
+        {
+            return;
+        }
+
+        if (save)
+        {
+            if (!ClusterFSurgeTemplates.Save(name, creatures, bossType, bossName, out var message))
+            {
+                from.SendMessage(StaffHubGump.HueRed, message);
+                from.SendGump(new StaffHubTemplateGump(_state, name, creatures, bossType, bossName));
+                return;
+            }
+
+            from.SendMessage(StaffHubGump.HueGreen, message);
+            _state.Surge.Template = name.Trim();
+        }
+
         ClusterFStaffHub.Open(from, _state);
     }
 }

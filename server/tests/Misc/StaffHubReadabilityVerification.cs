@@ -102,6 +102,7 @@ public class StaffHubReadabilityVerification : IDisposable
         yield return ("Player/selected", Hub(staff, new StaffHubState { Tab = StaffHubTab.Player, Selected = player }));
         yield return ("Travel/places", Hub(staff, new StaffHubState { Tab = StaffHubTab.Travel }));
         yield return ("Travel/halls", Hub(staff, new StaffHubState { Tab = StaffHubTab.Travel, ShowGuildHalls = true }));
+        yield return ("Events/setup", Hub(staff, new StaffHubState { Tab = StaffHubTab.Events })); // cc-P230
     }
 
     // ---------------------------------------------------------------- F1
