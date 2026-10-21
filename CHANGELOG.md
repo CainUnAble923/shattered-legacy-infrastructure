@@ -29,6 +29,18 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.9
+
+### Added
+- Every creature and NPC now shows how tough it is next to you. Click it (or show all names) and a colored word appears under its name: grey (trivial), green (easy), blue (fair), yellow (even match), orange (tough), red (dangerous) or a dark red (deadly). Until character levels arrive, your level is your best combat skill.
+- Item Identification is now Appraisal, and it works on creatures too. Anyone can appraise a creature and get a feel for it; from 30 you also learn its level, from 60 its hits, stats and resistances, and from 90 a stat card with its damage, special abilities and whether it is a paragon or a boss. On items it works as it always did, and it now trains past 100 on creatures near your skill.
+
+### Changed
+- The skill window calls Item Identification "Appraisal". Update your game through the launcher to see the new name.
+
+### Staff
+- [CreatureLevels writes every creature type's Bard difficulty and level to creature-levels.txt in the server's temp folder. Levels are computed from OSI's Bard difficulty (1 to 200); champions are 200, peerless bosses 190, invulnerable NPCs 1, and ClusterFCreatureLevels.TypeOverrides holds hand levels. Settings: clusterf.creatureLevels.conLine, clusterf.creatureLevels.provisionalPlayerLevel and clusterf.creatureLevels.fixedPlayerLevel.
+
 ## 2026.10.21.8
 
 ### Staff

@@ -575,6 +575,66 @@ function Invoke-Play([string]$root) {
     return [pscustomobject]@{ Out = $o; Args = [IO.File]::ReadAllText($argsFile) }
 }
 
+# cc-P239 (F-14): a made-up skills.mul and Skills.idx in TazUO's layout (SkillsLoader.Load). Slot 5 and the last slot are
+# empty (offset -1), the extras are distinct so a moved one shows, and skill 3 is $three.
+function Write-Skills([string]$dir, [string]$three = 'Item Identification') {
+    $names = @('Alchemy', 'Anatomy', 'Animal Lore', $three, 'Arms Lore', $null, 'Parrying', $null)
+    $mul = New-Object IO.MemoryStream
+    $idx = New-Object byte[] (12 * $names.Count)
+    for ($i = 0; $i -lt $names.Count; $i++) {
+        if ($null -eq $names[$i]) {
+            [Array]::Copy([BitConverter]::GetBytes([int]-1), 0, $idx, $i * 12, 4)
+            continue
+        }
+        $b = [byte[]](@([byte]($i % 2)) + [Text.Encoding]::ASCII.GetBytes($names[$i]) + @([byte]0))
+        [Array]::Copy([BitConverter]::GetBytes([int]$mul.Position), 0, $idx, $i * 12, 4)
+        [Array]::Copy([BitConverter]::GetBytes([int]$b.Length), 0, $idx, $i * 12 + 4, 4)
+        [Array]::Copy([BitConverter]::GetBytes([int](100 + $i)), 0, $idx, $i * 12 + 8, 4)
+        $mul.Write($b, 0, $b.Length)
+    }
+    [IO.File]::WriteAllBytes((Join-Path $dir 'skills.mul'), $mul.ToArray())
+    [IO.File]::WriteAllBytes((Join-Path $dir 'Skills.idx'), $idx)
+}
+
+# Each slot of a skills pair as "action:name:extra", or "-" for an empty slot.
+function Read-Skills([string]$mulPath, [string]$idxPath) {
+    $mul = [IO.File]::ReadAllBytes($mulPath)
+    $idx = [IO.File]::ReadAllBytes($idxPath)
+    for ($i = 0; $i -lt $idx.Length / 12; $i++) {
+        $off = [BitConverter]::ToInt32($idx, $i * 12); $len = [BitConverter]::ToInt32($idx, $i * 12 + 4)
+        if ($off -lt 0 -or $len -le 0) { '-'; continue }
+        "$($mul[$off]):$([Text.Encoding]::ASCII.GetString($mul, $off + 1, $len - 1).TrimEnd([char]0)):$([BitConverter]::ToInt32($idx, $i * 12 + 8))"
+    }
+}
+
+Fact 'TheSkillsCopiesCallItemIdentificationAppraisalAndKeepEveryOtherSkill' {
+    $uo = New-UoDir 'skills-rename' (New-Tiledata) (New-Animdata)
+    Write-Skills $uo
+    $before = (Get-FileHash -LiteralPath (Join-Path $uo 'skills.mul')).Hash + (Get-FileHash -LiteralPath (Join-Path $uo 'Skills.idx')).Hash
+    $out = Join-Path $work 'skills-rename-out'
+    $r = Invoke-BuilderSaying $uo $out
+    Assert-True ($r.Result) "an override list was written ($($r.Said))"
+    $list = [IO.File]::ReadAllText($r.Result)
+    Assert-True ($list -match "(?m)^skills\.mul=.*skills\.mul\r?$") "skills.mul is in the list: $list"
+    Assert-True ($list -match "(?m)^skills\.idx=.*Skills\.idx\r?$") "skills.idx is in the list: $list"
+    $got = @(Read-Skills (Join-Path $out 'skills.mul') (Join-Path $out 'Skills.idx')) -join ' | '
+    Assert-Equal '0:Alchemy:100 | 1:Anatomy:101 | 0:Animal Lore:102 | 1:Appraisal:103 | 0:Arms Lore:104 | - | 0:Parrying:106 | -' $got 'skill 3 is Appraisal (its action byte and extra kept); every other skill as it was'
+    $after = (Get-FileHash -LiteralPath (Join-Path $uo 'skills.mul')).Hash + (Get-FileHash -LiteralPath (Join-Path $uo 'Skills.idx')).Hash
+    Assert-Equal $before $after "the player's own files are only read"
+    Assert-True ($r.Said -notmatch 'skill') "nothing said about skills: $($r.Said)"
+}
+
+Fact 'ASkillThreeTheFilesNoLongerCallItemIdentificationIsLeftAloneWithOneLine' {
+    $uo = New-UoDir 'skills-changed' (New-Tiledata) (New-Animdata)
+    Write-Skills $uo 'Merchant Lore'
+    $out = Join-Path $work 'skills-changed-out'
+    $r = Invoke-BuilderSaying $uo $out
+    $list = if ($r.Result) { [IO.File]::ReadAllText($r.Result) } else { '' }
+    Assert-True ($list -notmatch 'skills\.') "no skills copies in the list: $list"
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $out 'skills.mul'))) 'no skills.mul copy'
+    Assert-True ($r.Said -match "skill 3 stays 'Merchant Lore'") "one line says so: $($r.Said)"
+}
+
 Fact 'PlayStartsTheGameWithTheOverrideWhenTheCopiesAreBuilt' {
     $root = New-Sandbox 'play-ok' (New-Tiledata) (New-Animdata)
     $r = Invoke-Play $root

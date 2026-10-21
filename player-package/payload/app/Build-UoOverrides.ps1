@@ -61,6 +61,17 @@
     keeps its own stamp (map-stamp.txt) and says in one yellow line when EA changed one of our blocks since the patch
     was made. About 116 MB more under app\uo-overrides\ (cc-P40 B.2).
 
+  Skill names (cc-P239, F-14): skills.mul and Skills.idx, so Item Identification reads "Appraisal" for everyone.
+    1. The renames are $SkillRenames below (ours: an index and a name, nothing of EA's).
+    2. If app\uo-overrides\skills-stamp.txt matches the player's two files (size and time) and the renames, and both
+       copies are there, it is done.
+    3. Otherwise reads the player's two files, rewrites each renamed entry (its action byte kept, our name, a NUL) only
+       where the player's file still holds the name we expect, packs every entry again in index order, and writes the
+       two copies to app\uo-overrides\, then the stamp. An entry whose name EA has changed is left alone, with a
+       yellow line. A folder with neither file (only the tests' made-up folders) is skipped quietly.
+    Layout (TazUO SkillsLoader.Load): Skills.idx is 12-byte entries (int32 offset, int32 length, int32 extra; offset
+    -1 for none); a skills.mul entry is one action byte, the ASCII name and a NUL, and its length counts all three.
+
   Then files-override.txt lists whichever copies were made. The player's EA files are only ever
   read. app\uo-overrides\ is made here and never shipped; the updater leaves it alone and the
   package build refuses a payload that holds it.
@@ -103,6 +114,9 @@ $AnimEntry   = 68
 $StampFormat = 'uo-overrides 1'
 $ClilocStampFormat = 'uo-cliloc 1'
 $EquipStampFormat = 'uo-equip 1'
+$SkillsStampFormat = 'uo-skills 1'
+# cc-P239 (F-14): the skills we rename for everyone. Index (SkillName), the name the player's file must hold, ours.
+$SkillRenames = @(@{ Index = 3; From = 'Item Identification'; To = 'Appraisal' })
 
 function Get-TileOffset([int]$id) { $LandBytes + [Math]::Floor($id / 32) * $StaticGroup + 4 + ($id % 32) * 41 }
 function Get-AnimOffset([int]$id) { $id * $AnimEntry + 4 * ([Math]::Floor($id / 8) + 1) }
@@ -600,6 +614,69 @@ function Build-Cliloc {
     "cliloc.enu=$((Resolve-Path -LiteralPath $out).Path)"
 }
 
+# Returns the skill names' two override lines ("skills.mul=path", "skills.idx=path"), or none (cc-P239).
+function Build-Skills {
+    $srcMul = Join-Path $UoDir 'skills.mul'
+    $srcIdx = Join-Path $UoDir 'Skills.idx'
+    if (-not (Test-Path -LiteralPath $srcMul) -and -not (Test-Path -LiteralPath $srcIdx)) { return }
+    if (-not (Test-Path -LiteralPath $srcMul)) { throw "skills.mul is not in $UoDir" }
+    if (-not (Test-Path -LiteralPath $srcIdx)) { throw "Skills.idx is not in $UoDir" }
+    $outMul   = Join-Path $OutDir 'skills.mul'
+    $outIdx   = Join-Path $OutDir 'Skills.idx'
+    $stampOut = Join-Path $OutDir 'skills-stamp.txt'
+    $m = Get-Item -LiteralPath $srcMul
+    $x = Get-Item -LiteralPath $srcIdx
+    $renames = ($SkillRenames | ForEach-Object { "$($_.Index) $($_.From) > $($_.To)" }) -join '; '
+    $stamp = "$SkillsStampFormat`nskills.mul $($m.Length) $($m.LastWriteTimeUtc.Ticks)`nSkills.idx $($x.Length) $($x.LastWriteTimeUtc.Ticks)`nrenames $renames"
+    $lines = { "skills.mul=$((Resolve-Path -LiteralPath $outMul).Path)"; "skills.idx=$((Resolve-Path -LiteralPath $outIdx).Path)" }
+
+    if ((Test-Path -LiteralPath $stampOut) -and (Test-Path -LiteralPath $outMul) -and (Test-Path -LiteralPath $outIdx) -and
+        [IO.File]::ReadAllText($stampOut) -ceq $stamp) {
+        & $lines
+        return
+    }
+
+    $mul = [IO.File]::ReadAllBytes($srcMul)
+    $idx = [IO.File]::ReadAllBytes($srcIdx)
+    if ($idx.Length % 12 -ne 0) { throw "Skills.idx is $($idx.Length) bytes, not whole 12-byte entries" }
+    $ascii  = New-Object Text.ASCIIEncoding
+    $newIdx = [byte[]]$idx.Clone()
+    $packed = New-Object IO.MemoryStream
+    $changed = 0
+    for ($i = 0; $i -lt $idx.Length / 12; $i++) {
+        $off = [BitConverter]::ToInt32($idx, $i * 12)
+        $len = [BitConverter]::ToInt32($idx, $i * 12 + 4)
+        if ($off -lt 0 -or $len -le 0) { continue }    # no skill in this slot: its index entry is kept as it is
+        if ($off + $len -gt $mul.Length) { throw "skill $i points past the end of skills.mul" }
+        $entry = New-Object byte[] $len
+        [Array]::Copy($mul, $off, $entry, 0, $len)
+        $r = @($SkillRenames | Where-Object { $_.Index -eq $i })
+        if ($r.Count) {
+            $name = $ascii.GetString($entry, 1, $len - 1).TrimEnd([char]0)
+            if ($name -ceq $r[0].From) {
+                $to = $ascii.GetBytes($r[0].To)
+                $entry = New-Object byte[] ($to.Length + 2)
+                $entry[0] = $mul[$off]
+                [Array]::Copy($to, 0, $entry, 1, $to.Length)
+                $changed++
+            } elseif ($name -cne $r[0].To) {
+                Say-Skip "Shattered Legacy skill names: skill $i stays '$name': your Ultima Online files no longer call it '$($r[0].From)'."
+            }
+        }
+        [Array]::Copy([BitConverter]::GetBytes([int]$packed.Position), 0, $newIdx, $i * 12, 4)
+        [Array]::Copy([BitConverter]::GetBytes([int]$entry.Length), 0, $newIdx, $i * 12 + 4, 4)
+        $packed.Write($entry, 0, $entry.Length)
+    }
+    if ($changed -eq 0) { return }
+
+    if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
+    if (Test-Path -LiteralPath $stampOut) { Remove-Item -LiteralPath $stampOut -Force }
+    [IO.File]::WriteAllBytes($outMul, $packed.ToArray())
+    [IO.File]::WriteAllBytes($outIdx, $newIdx)
+    [IO.File]::WriteAllText($stampOut, $stamp, $ascii)
+    & $lines
+}
+
 # Returns the map's three override lines, or none (no patch shipped). Apply-MapOps.ps1 does the work (cc-P188).
 function Build-Map {
     if (-not (Test-Path -LiteralPath $MapOps)) { return }
@@ -627,6 +704,9 @@ try {
 
     try { $lines += @(Build-Cliloc) }
     catch { Say-Skip "Shattered Legacy text could not be prepared ($($_.Exception.Message)). Starting without it." }
+
+    try { $lines += @(Build-Skills) }
+    catch { Say-Skip "Shattered Legacy skill names could not be prepared ($($_.Exception.Message)). Starting without them." }
 
     try { $lines += @(Build-Map) }
     catch { Say-Skip "Shattered Legacy map (the Rootdeep Burrows) could not be prepared ($($_.Exception.Message)). Starting without it." }

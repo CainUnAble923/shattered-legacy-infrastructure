@@ -815,6 +815,14 @@ apply_patch "$PATCHES/BaseExplosionPotion-self-blast-achievement.patch"
 # they go last. Alternatives argued in shard-migration notes/cc-P238-climbing-boots.md; pinned by ClimbingBootsVerification.
 apply_patch "$PATCHES/PlayerMobile-climbed-tile-rules.patch"
 apply_patch "$PATCHES/HousePlacement-climbed-tile.patch"
+# cc-P239 (F-14, ours): creature levels and Appraisal. BaseCreature.OnSingleClick sends the con color as its own
+# label after the name (the name line and its notoriety hue stay pinned's), and Item Identification's target hands a
+# creature or NPC to Appraisal (a player and every item stay stock). One call each into customizations
+# ClusterFCreatureLevels.cs. The property list cannot carry a per-viewer color (one list for every viewer), and a
+# callback set from our own Initialize would race pinned's (Initialize order is not declared). Argued in
+# shard-migration notes/cc-P239-creature-levels-appraisal.md; pinned by CreatureLevelsVerification.
+apply_patch "$PATCHES/BaseCreature-con-color-line.patch"
+apply_patch "$PATCHES/ItemIdentification-appraisal.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
