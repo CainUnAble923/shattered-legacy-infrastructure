@@ -157,6 +157,28 @@ class Packets(unittest.TestCase):
         self.assertEqual(6, cc[70], "genderRace at offset 70 (IncomingAccountPackets.cs:90-103)")
         self.assertEqual(b"Bot", cc[10:13])
 
+    def test_cc_p223_packets_use_skill_and_context_menus(self):
+        # 0x12 type 0x24 "<skill> 0" null-terminated (IncomingPlayerPackets.cs:135-153); 0xBF 0x13 request 9 bytes and
+        # 0xBF 0x15 selection 11 bytes (ContextMenuSystem.cs:15-16, :48, :101).
+        us = P.use_skill(21)
+        self.assertEqual(bytes([0x12, 0, 9, 0x24]) + b"21 0" + bytes([0]), us)
+        self.assertEqual(9, len(P.context_menu_request(0x40001234)))
+        self.assertEqual(bytes([0xBF, 0, 9, 0, 0x13, 0x40, 0, 0x12, 0x34]), P.context_menu_request(0x40001234))
+        sel = P.context_menu_select(0x40001234, 3)
+        self.assertEqual(11, len(sel))
+        self.assertEqual(bytes([0, 0x15]), sel[3:5])
+        self.assertEqual(bytes([0, 3]), sel[9:11])
+        # The 0xBF 0x14 answer, both shapes (ContextMenuSystem.cs:140-215): new (command 2) i32 number, u16 index, u16
+        # flags; old (command 1) u16 index, u16 number - 3000000, u16 flags, u16 color when flags & 0x20.
+        new = bytes([0xBF, 0, 12 + 16, 0, 0x14, 0, 2, 0x40, 0, 0, 1, 2]) + struct.pack(">ihh", 1900000, 0, 0) + struct.pack(">ihh", 3006152, 1, 1)
+        m = P.parse_context_menu(new)
+        self.assertEqual(0x40000001, m["serial"])
+        self.assertEqual([(0, 1900000, 0), (1, 3006152, 1)], [(e["index"], e["number"], e["flags"]) for e in m["entries"]])
+        old = bytes([0xBF, 0, 12 + 14, 0, 0x14, 0, 1, 0, 0, 0, 7, 2]) + struct.pack(">HHH", 0, 6152, 0) + struct.pack(">HHHH", 1, 132, 0x20, 0x21)
+        m = P.parse_context_menu(old)
+        self.assertEqual(7, m["serial"])
+        self.assertEqual([(0, 3006152, 0), (1, 3000132, 0x20)], [(e["index"], e["number"], e["flags"]) for e in m["entries"]])
+
     def test_a_chunk_whose_length_disagrees_with_the_table_is_reported(self):
         pk, probs = P.split_chunk(bytes([0x22, 1, 0]))
         self.assertEqual(([bytes([0x22, 1, 0])], []), (pk, probs))

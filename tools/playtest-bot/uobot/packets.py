@@ -274,7 +274,53 @@ def opl_request(serials):
     return struct.pack(">BH", 0xD6, 3 + len(body)) + body
 
 
+def text_command(kind, text):
+    """0x12, var: byte type; ASCII text, null-terminated. U/Network/Packets/IncomingPlayerPackets.cs:135 (the 0x24
+    branch :145 is 'use skill': the text is the skill index then a space and 0)."""
+    body = struct.pack(">B", kind) + text.encode("ascii") + b"\x00"
+    return struct.pack(">BH", 0x12, 3 + len(body)) + body
+
+
+def use_skill(skill_index):
+    """cc-P223: 0x12 type 0x24 '<skillIndex> 0' (IncomingPlayerPackets.cs:145-153, Skills.UseSkill)."""
+    return text_command(0x24, "%d 0" % skill_index)
+
+
+def context_menu_request(serial):
+    """cc-P223: 0xBF sub 0x13, 9: u16 len; u16 0x13; u32 serial. U/Context Menus/ContextMenuSystem.cs:101
+    (registered :15)."""
+    return struct.pack(">BHHI", 0xBF, 9, 0x13, serial)
+
+
+def context_menu_select(serial, index):
+    """cc-P223: 0xBF sub 0x15, 11: u16 len; u16 0x15; u32 serial; u16 index. ContextMenuSystem.cs:48-98 (the entry
+    must be enabled and in range, else nothing happens)."""
+    return struct.pack(">BHHIH", 0xBF, 11, 0x15, serial, index)
+
+
 # --- server to client -------------------------------------------------------------------------------------------
+
+def parse_context_menu(p):
+    """cc-P223: 0xBF sub 0x14 (ContextMenuSystem.cs:140-215): u16 sub; u16 command (1 old, 2 new); u32 serial; byte
+    count; per entry, new: i32 number, u16 index, u16 flags; old: u16 index, u16 number - 3000000, u16 flags, and
+    u16 color when flags has Colored (0x20). Returns {serial, entries: [{index, number, flags}]}."""
+    command = u16(p, 5)
+    serial = u32(p, 7)
+    count = p[11]
+    o = 12
+    entries = []
+    for _ in range(count):
+        if command == 2:
+            number, index, flags = i32(p, o), u16(p, o + 4), u16(p, o + 6)
+            o += 8
+        else:
+            index, number, flags = u16(p, o), u16(p, o + 2) + 3000000, u16(p, o + 4)
+            o += 6
+            if flags & 0x20:
+                o += 2
+        entries.append({"index": index, "number": number, "flags": flags})
+    return {"serial": serial, "entries": entries, "command": command}
+
 
 def parse_gump_dd(p):
     """0xDD: u16 len; u32 serial; int32 typeId; int32 x; int32 y; layout block (int32 cLen = 4 + zlib bytes,

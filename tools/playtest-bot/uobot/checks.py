@@ -760,3 +760,7 @@ def t_046(ctx):
     same = t1 == t2 and b1 == b2 and g1["typeId"] == g2["typeId"]
     return same, "same gump type %s; same text %s (%d lines); same buttons %s %s" % (
         g1["typeId"] == g2["typeId"], t1 == t2, len(t1), b1 == b2, b1)
+
+
+# cc-P223: the second half of the registry lives in checks_p223.py (imported last, so it can use the helpers above).
+from . import checks_p223  # noqa: E402,F401

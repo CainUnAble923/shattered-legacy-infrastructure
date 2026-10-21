@@ -102,6 +102,7 @@ class Client(object):
         self.move_result = None
         self.last_dir = None
         self.containers = []        # opened container serials (0x24)
+        self.menus = []             # cc-P223: parsed 0xBF 0x14 context menus, newest last
         self.popups = []
         self.delete_results = []
 
@@ -406,6 +407,90 @@ class Client(object):
                 for m in re.finditer(r"\{\s*button\s+(-?\d+)\s+(-?\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+(-?\d+)\s*\}", g["layout"])]
 
     # -- the server's packets ---------------------------------------------------------------------------------
+    # -- cc-P223: skills by text command, context menus, gump rows -----------------------------------------------
+    def use_skill(self, skill_index):
+        self.log("-> 0x12 use skill %d" % skill_index)
+        self.send(P.use_skill(skill_index))
+
+    def context_menu(self, serial, timeout=6):
+        """Ask for an entity's context menu (0xBF 0x13) and wait for the 0xBF 0x14 answer. Returns the menu dict
+        ({serial, entries: [{index, number, flags, text}]}) or None."""
+        n = len(self.menus)
+        self.log("-> 0xBF 0x13 context menu 0x%08X" % serial)
+        self.send(P.context_menu_request(serial))
+        return self.wait(lambda: next((m for m in self.menus[n:] if m["serial"] == serial), None), timeout)
+
+    def menu_click(self, serial, index):
+        self.log("-> 0xBF 0x15 context menu 0x%08X entry %d" % (serial, index))
+        self.send(P.context_menu_select(serial, index))
+
+    def menu_pick(self, serial, text_or_number, timeout=6):
+        """Open the entity's menu and click the entry whose cliloc number, or resolved text (a substring, case
+        folded), matches. Returns the entry, or None when the menu or the entry is missing."""
+        m = self.context_menu(serial, timeout)
+        if not m:
+            return None
+        for e in m["entries"]:
+            if (isinstance(text_or_number, int) and e["number"] == text_or_number) or                (isinstance(text_or_number, str) and text_or_number.lower() in (e.get("text") or "").lower()):
+                self.menu_click(serial, e["index"])
+                return e
+        return None
+
+    def gump_rows(self, g):
+        """The gump's layout as rows: {y: {"texts": [str], "buttons": [id], "x": [...]}} with every text-bearing
+        command resolved (text, croppedtext, htmlgump by line index; xmfhtmlgump, xmfhtmlgumpcolor, xmfhtmltok by
+        cliloc) and every reply button. Rows are keyed by the command's y; texts sit 3 px below their button in
+        pinned's craft gumps, so callers match with a tolerance (see row_at)."""
+        rows = {}
+        page = [0]
+        def add(y, kind, x, val):
+            r = rows.setdefault(y, {"texts": [], "buttons": [], "x": [], "pages": [], "all": []})
+            if kind == "text":
+                r["texts"].append(val)
+            else:
+                r["buttons"].append(val)
+                r["x"].append(x)          # x and page per button, in order (the craft walker pairs them)
+                r["pages"].append(page[0])
+            r["all"].append((kind, val, x, page[0]))
+        for m in re.finditer(r"\{\s*([a-z]+)\s+([^}]*)\}", g["layout"]):
+            kind, args = m.group(1), m.group(2).split()
+            try:
+                if kind == "page" and args:
+                    page[0] = int(args[0])
+                    continue
+                if kind in ("text", "croppedtext"):
+                    idx = int(args[3]) if kind == "text" else int(args[5])
+                    add(int(args[1]), "text", int(args[0]), g["lines"][idx])
+                elif kind == "htmlgump":
+                    add(int(args[1]), "text", int(args[0]), g["lines"][int(args[4])])
+                elif kind in ("xmfhtmlgump", "xmfhtmlgumpcolor", "xmfhtmltok"):
+                    nums = [int(v) for v in args if re.match(r"^-?\d+$", v)]
+                    cl = next((v for v in nums[4:] if v >= 500000), None)
+                    am = re.search(r"@([^@]*)@", m.group(2))
+                    if cl is not None:
+                        add(int(args[1]), "text", int(args[0]), self.cliloc.text(cl, am.group(1) if am else ""))
+                elif kind == "button" and len(args) >= 7 and int(args[4]) == 1:
+                    add(int(args[1]), "button", int(args[0]), int(args[6]))
+            except (ValueError, IndexError):
+                pass
+        return rows
+
+    def row_at(self, rows, y, tol=4, xmin=None, xmax=None, page=None):
+        """The texts and buttons within tol px of y, merged; with xmin/xmax only the commands in that x range (the
+        craft gump's group list at x 15-200 and its item list at x 220-500 share y values), and with page only the
+        commands on that gump page (page 0 is what every page shows)."""
+        out = {"texts": [], "buttons": []}
+        for ry, r in rows.items():
+            if abs(ry - y) > tol:
+                continue
+            for kind, val, x, pg in r.get("all", []):
+                if (xmin is not None and x < xmin) or (xmax is not None and x > xmax):
+                    continue
+                if page is not None and pg not in (0, page):
+                    continue
+                out[kind + "s"].append(val)
+        return out
+
     def _msg(self, kind, serial, name, text, cliloc=None):
         self.messages.append({"t": time.time(), "kind": kind, "serial": serial, "name": name, "text": text, "cliloc": cliloc})
         self.log("<- %s %s%s: %s" % (kind, name or "", (" #%d" % cliloc) if cliloc else "", text))
@@ -484,6 +569,12 @@ class Client(object):
             self.gumps.append(g)
             self.log("<- 0xDD gump 0x%08X type %d: %s" % (g["serial"], g["typeId"], " | ".join(self.gump_text(g))[:4000]))
             self.log("   layout: %s" % g["layout"][:4000])
+        elif pid == 0xBF and len(p) >= 12 and P.u16(p, 3) == 0x14:
+            m = P.parse_context_menu(p)
+            for e in m["entries"]:
+                e["text"] = self.cliloc.text(e["number"]) if e["number"] else ""
+            self.menus.append(m)
+            self.log("<- 0xBF 0x14 context menu 0x%08X: %s" % (m["serial"], ["%d:%s(%d)%s" % (e["index"], e["text"], e["number"], " disabled" if e["flags"] & 1 else "") for e in m["entries"]]))
         elif pid == 0x6C:
             self.target = (P.i32(p, 2), p[1])
             self.log("<- 0x6C target cursor %d (type %d)" % self.target)
