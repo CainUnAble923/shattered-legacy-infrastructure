@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.16
+
+### Staff
+- The web console has a Music Room (the Music Room link, or /music): every candidate music track on disk (the SOS Mix Vol.2 and SOS Mix + DLC packs, the Paranoia remixes and Turfin, and the stock client music to compare with), 353 in all, with its length, the stock track it replaces or remixes, and the album its file tag names ("not tagged Ultima" marks the ones from other games). Play any track with a seek bar, rate it Use, Maybe or Pass, tag where it fits (town, dungeon, boss and more), name a target area, monster or boss, and write a note. Next unrated works through the list like a playlist; autoplay is off unless you tick it.
+- Notes save as you type to docs/music/music-notes.json in the docs repo. Save to repo commits that one file (it never pushes; the next commit's push carries it), and the console also commits it once an hour when it changed. The Summary view lists the tracks marked Use by tag and target, for adding music for areas, monsters and bosses later.
+
 ## 2026.10.21.15
 
 ### Added
