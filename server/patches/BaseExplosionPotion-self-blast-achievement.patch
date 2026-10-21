@@ -1,0 +1,10 @@
+--- "a/Projects/UOContent/Items/Skill Items/Magical/Potions/Explosion Potions/BaseExplosionPotion.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Magical/Potions/Explosion Potions/BaseExplosionPotion.cs"
+@@ -199,6 +199,7 @@
+                     damage /= toDamage - 1;
+                 }
+ 
++                ClusterFJokeAchievements.BeforeBlast(from, m); // Shattered Legacy (cc-P231): Self-Detonation
+                 AOS.Damage(m, from, damage, 0, 100, 0, 0, 0);
+             }
+             else if (entity is BaseExplosionPotion pot)

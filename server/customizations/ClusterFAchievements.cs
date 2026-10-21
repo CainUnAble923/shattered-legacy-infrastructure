@@ -64,6 +64,21 @@ public enum TriggerKind
     TutorialRemedial,  // cc-P80: finished it after skipping it
     LuckyGearBoxes,    // cc-P82: loot boxes earned with Fortune's Favor gear put on less than a minute before
     FountainOfYouth,   // cc-P192: drank from the roaming Fountain of Youth (secret; no place is ever named)
+
+    // cc-P231: the hidden joke achievements for OSI's own easter-egg moments (ClusterFJokeAchievements.cs).
+    ScissorsRunning,
+    BeggingUntrustworthy,
+    MeditateInArmor,
+    EatWhileFull,
+    HealUnhurt,
+    ToolsWornOut,
+    ConsiderSins,
+    GhostSpeech,
+    Hiccup,
+    KilledByGuards,
+    SelfDetonation,
+    FishedFootwear,
+    KilledByFowl,
 }
 
 public sealed class AchievementTrigger
@@ -141,6 +156,21 @@ public sealed class AchievementTrigger
             TriggerKind.TutorialSkipped    => "skipped the New Haven tutorial",
             TriggerKind.TutorialRemedial   => "completed the tutorial after skipping it",
             TriggerKind.FountainOfYouth    => "drank from the Fountain of Youth",
+            TriggerKind.ScissorsRunning    => n == 1
+                ? "tried to use scissors while running"
+                : $"tried to use scissors while running {n:N0} times",
+            TriggerKind.BeggingUntrustworthy => "begged and were told you do not look trustworthy",
+            TriggerKind.MeditateInArmor    => "tried to meditate in armor",
+            TriggerKind.EatWhileFull       => "tried to eat while already full",
+            TriggerKind.HealUnhurt         => "tried to bandage someone who was not hurt",
+            TriggerKind.ToolsWornOut       => $"wore out {n:N0} tools",
+            TriggerKind.ConsiderSins       => "said \"I must consider my sins\"",
+            TriggerKind.GhostSpeech        => "spoke while a ghost",
+            TriggerKind.Hiccup             => "drank until you hiccuped",
+            TriggerKind.KilledByGuards     => "died to the town guards",
+            TriggerKind.SelfDetonation     => "died to your own explosion potion",
+            TriggerKind.FishedFootwear     => $"fished up {n:N0} boots or shoes",
+            TriggerKind.KilledByFowl       => "died to a chicken or a rabbit",
             TriggerKind.LuckyGearBoxes     => n == 1
                 ? "a loot box with luck gear equipped less than a minute earlier"
                 : $"{n:N0} loot boxes with luck gear equipped less than a minute earlier",
@@ -162,6 +192,7 @@ public enum AchievementCategory
     Discovery   = 6,
     Collection  = 7,
     League      = 8,
+    Mischief    = 9, // cc-P231: the hidden joke achievements; no tab of its own (as League has none), listed under All
 }
 
 // -- Achievement definition ----------------------------------------------------
@@ -269,7 +300,7 @@ public class AchievementDef
 /// Skill achievements are also scanned on every login so they cannot be
 /// missed even if the inline notification path was not yet wired.
 /// </summary>
-public static class ClusterFAchievementSystem
+public static partial class ClusterFAchievementSystem // partial: cc-P231's joke achievements are in ClusterFJokeAchievements.cs
 {
     private static readonly Dictionary<string, AchievementDef> _defs =
         new(StringComparer.OrdinalIgnoreCase);
@@ -1093,6 +1124,8 @@ public static class ClusterFAchievementSystem
             hidden:          true,
             prerequisiteKey: DressedKey,
             progressCounter: LuckyGearCounter);
+
+        RegisterJokes(); // cc-P231 (ClusterFJokeAchievements.cs)
     }
 
     public const string DressedKey = "imbue.dressed_for_the_occasion";

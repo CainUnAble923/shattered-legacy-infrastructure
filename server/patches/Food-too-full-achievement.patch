@@ -1,0 +1,10 @@
+--- a/Projects/UOContent/Items/Food/Food.cs
++++ b/Projects/UOContent/Items/Food/Food.cs
+@@ -86,6 +86,7 @@
+         if (from.Hunger >= 20)
+         {
+             from.SendLocalizedMessage(500867); // You are simply too full to eat any more!
++            ClusterFJokeAchievements.AteWhileFull(from); // Shattered Legacy (cc-P231): a joke achievement
+             return false;
+         }
+ 

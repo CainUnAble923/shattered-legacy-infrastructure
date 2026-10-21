@@ -1,0 +1,10 @@
+--- "a/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
+@@ -484,6 +484,7 @@
+                  creature?.IsDeadPet != true)
+         {
+             healer.SendLocalizedMessage(500955); // That being is not damaged!
++            ClusterFJokeAchievements.HealedUnhurt(healer); // Shattered Legacy (cc-P231): a joke achievement
+         }
+         else if (!patient.Alive && patient.Map?.CanFit(patient.Location, 16, false, false) != true)
+         {
