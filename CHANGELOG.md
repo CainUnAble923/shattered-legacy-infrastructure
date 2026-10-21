@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.12
+
+### Staff
+- The server build checks its packages for security advisories again: the one package that tripped it has been moved to a fixed version, so the setting that waved moderate and high advisories through is gone.
+
 ## 2026.10.20.11
 
 ### Staff

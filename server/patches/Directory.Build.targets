@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Shattered Legacy (cc-P232, closes D93). docker/uo/apply-patches.sh installs this file at the root of the pinned
+  ModernUO tree (/build/modernuo/Directory.Build.targets), so MSBuild imports it into every project in the solution
+  after the project file itself. Pinned d4531cd94 has no Directory.Build.targets of its own; the installer fails the
+  build if one ever appears, so a bump that adds one is reconciled by hand instead of overwritten.
+
+  What it does: UOContent.csproj references MailKit 4.18.0, which pulls System.Security.Cryptography.Pkcs 10.0.0 in
+  transitively (through MimeKit). Pkcs 10.0.0 to 10.0.12 carry two NuGet advisories, GHSA-2fmv-rv2c-59x7 (moderate)
+  and GHSA-846f-f764-76mx (high), both fixed in 10.0.13, and pinned Directory.Build.props turns the audit warning
+  into an error (TreatWarningsAsErrors). This direct reference lifts the resolved version to 10.0.13 or later, so
+  the audit is clean and the Dockerfile no longer needs /p:NuGetAuditLevel=critical.
+
+  The line is upstream's own fix: ModernUO commit 6ce2b4770 (2026-10-17, "fix: Updates dependencies (#2714)") adds
+  exactly this PackageReference to Projects/UOContent/UOContent.csproj. Delete this file (and its install line in
+  apply-patches.sh) when the pinned commit includes that change.
+-->
+<Project>
+    <ItemGroup Condition="'$(MSBuildProjectName)' == 'UOContent'">
+        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="[10.0.13, )" />
+    </ItemGroup>
+</Project>
