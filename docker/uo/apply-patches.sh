@@ -816,6 +816,16 @@ apply_patch "$PATCHES/BaseExplosionPotion-self-blast-achievement.patch"
 apply_patch "$PATCHES/PlayerMobile-climbed-tile-rules.patch"
 apply_patch "$PATCHES/HousePlacement-climbed-tile.patch"
 
+# cc-P262 (ours): accessory slots (extra rings, bracelets, toe rings). AosAttributes.GetValue adds the active jewellery in
+# the wearer's accessory container, which customizations ClusterFAccessories decides (resists need no patch: the
+# container reports them through its own resistance properties, which ComputeResistances already reads). PlayerMobile's
+# OnItemAdded and OnItemRemoved tell ClusterFAccessories when shoes go on or off, which turns toe rings off or on. GetValue
+# is static with no event, and a partial class cannot reach those two overrides. Made against the tree every patch above
+# leaves, so they go last. Alternatives argued in shard-migration notes/cc-P262-accessory-slots.md; pinned by
+# AccessorySlotsVerification.
+apply_patch "$PATCHES/AOS-accessory-container-aggregation.patch"
+apply_patch "$PATCHES/PlayerMobile-accessory-hooks.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

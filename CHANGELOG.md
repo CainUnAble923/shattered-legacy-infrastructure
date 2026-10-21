@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.8
+
+### Added
+- Accessory slots: type [accessories to wear more jewelry than your paperdoll holds. Extra rings and a second bracelet count exactly like the ones you wear, with every usual cap. The second bracelet slot opens at League rank Valorite Citizen; the extra ring slots will open with loops.
+- Toe rings, made by tinkers. They only work with bare feet (or in Plate Socks, which are technically shoes). Your toe rings will not forgive you for wearing boots over them.
+- A few new things for the System to notice about your feet.
+
+### Staff
+- Toe ring slots open from two hidden barefoot achievements. Plate Socks, the Singed Toe Ring and the Mood Toe Ring come only from [add for now. Every slot threshold is a clusterf.accessories.* setting; the extra ring slots stay locked (clusterf.accessories.loopSlotsEnabled) until loops exist.
+
 ## 2026.10.21.7
 
 ### Staff

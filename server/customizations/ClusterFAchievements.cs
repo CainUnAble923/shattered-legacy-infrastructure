@@ -79,6 +79,12 @@ public enum TriggerKind
     SelfDetonation,
     FishedFootwear,
     KilledByFowl,
+
+    // cc-P262: accessory slots and the barefoot achievements (Accessories/ClusterFAccessories.cs).
+    BarefootArmoredTiles, // tiles run with the shoes layer empty in 4+ armor pieces, legs and chest included, not mounted
+    RingBearer,           // all four ring slots filled at once
+    FullyAccessorized,    // every jewelry slot filled at once, toe rings included
+    ToeRingsSmothered,    // footwear put on over active toe rings
 }
 
 public sealed class AchievementTrigger
@@ -171,6 +177,10 @@ public sealed class AchievementTrigger
             TriggerKind.SelfDetonation     => "died to your own explosion potion",
             TriggerKind.FishedFootwear     => $"fished up {n:N0} boots or shoes",
             TriggerKind.KilledByFowl       => "died to a chicken or a rabbit",
+            TriggerKind.BarefootArmoredTiles => $"ran {n:N0} tiles in armor with no shoes",
+            TriggerKind.RingBearer         => "wore four rings at once",
+            TriggerKind.FullyAccessorized  => "filled every jewelry slot",
+            TriggerKind.ToeRingsSmothered  => $"put shoes on over your toe rings {n:N0} times",
             TriggerKind.LuckyGearBoxes     => n == 1
                 ? "a loot box with luck gear equipped less than a minute earlier"
                 : $"{n:N0} loot boxes with luck gear equipped less than a minute earlier",
@@ -1126,6 +1136,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             progressCounter: LuckyGearCounter);
 
         RegisterJokes(); // cc-P231 (ClusterFJokeAchievements.cs)
+        RegisterAccessories(); // cc-P262 (Accessories/AccessoryAchievements.cs)
     }
 
     public const string DressedKey = "imbue.dressed_for_the_occasion";

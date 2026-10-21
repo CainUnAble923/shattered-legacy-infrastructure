@@ -256,6 +256,12 @@ public class LeagueTitleGump : Gump
             var t = titles[i];
             var held = data.LeagueTitles.Owned.Contains(t.Key);
 
+            // cc-P262: a hidden achievement's title is not listed until it is held, so the picker never gives it away.
+            if (t.HiddenUntilHeld && !held)
+            {
+                continue;
+            }
+
             if (held)
             {
                 var isShown = shown == t.Key;
