@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.19
+
+### Staff
+- Codex (on the ChatGPT plan, beside the Claude plan) now reviews every prompt before the Golem commits it: the review lands in the notes, high findings go in the done email and on the overseer's list, and it never blocks the commit. A Codex lane can also take a prompt the overseer marks Codex OK, at night by default, in its own work copies, merged only when it merges cleanly; it waits for its own Codex sign-in before it starts.
+
 ## 2026.10.20.18
 
 ### Staff

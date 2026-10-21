@@ -67,6 +67,23 @@ which daemon you are talking to. See the root `README.md` and each folder's READ
 `services.json` and `haven-runbook.md` (its "Changed on" log too) in the same prompt, then runs
 `docker/haven/Build-HavenDashboard.ps1`; the console facts `P133_*` fail when they disagree.
 
+## Standing rules for every agent run by the Golem
+
+These hold for Claude Code and for Codex alike (the Golem's Codex lane and its reviews read this file; cc-P158). Everything else is in the rest of this file, in `D:\UO\shard-migration\AGENTS.md` (the full working agreements) and in the prompt itself. A `CLAUDE.md`, where a repo has one, only points to its `AGENTS.md`, so the two never drift; keep rules here, not there.
+
+1. **Never connect to Haven** (the live server: no SSH, deploy, docker context or API call against it), unless the
+   prompt itself says to, and then only as it says, under the Golem's `haven` lock.
+2. **Never edit `docs\`** in `D:\UO\shard-migration`: findings and notes go in `notes\`.
+3. **No file over 5 MB** in either repo. Large scratch goes in a git-ignored folder, proven with `git check-ignore`.
+4. **Do not commit**, merge, push or switch branches: the Golem commits your work after your DONE line. Older sections
+   that say to commit, or to commit to `main`, date from before the Golem; its commit is that commit now.
+5. **The DONE and STOPPED lines.** When the prompt is finished, the last line of its notes file is `P<nn> DONE`, and
+   your final message ends with the same words. If you stop early for any reason, write `P<nn> STOPPED: <reason>` in
+   both places instead. Never write either before the work is finished: the Golem acts on the line at once.
+6. **Every new test is seen failing first** (against the code before the change), then passing.
+7. **Windows PowerShell 5.1** runs every PowerShell script and test (`powershell.exe`, not `pwsh`): no PowerShell 7
+   syntax (`&&`, `??`, ternaries).
+
 ## Standing rules
 
 1. Verify against the source trees, not documentation. Neither ModernUO nor ServUO

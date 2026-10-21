@@ -2041,7 +2041,7 @@ function Get-ConsoleTooltips {
         'tab.Player package' = 'Build, check and publish the player package.'
         'tab.Websites'     = 'The websites, on this PC and on Haven: status, open, restart, redeploy, logs, deploy, and NPM.'
         'tab.Golem'        = 'The Golem, the CC queue runner: its state, queue and log, its own scripts, and the move from cc-autopilot.'
-        'golemPanel'       = 'The usage rows are the Claude plan (Claude Code''s status line and the plan usage page); the codex rows are the ChatGPT plan''s Codex limits, which art, reviews and the lane share, read from Codex''s own session logs. The Golem stops Codex at codexMaxPctPerWindow of a window and leaves codexWeekReservePct of the week to you (D:\UO\golem\settings.json).'
+        'golemPanel'       = 'The usage rows are the Claude plan (Claude Code''s status line and the plan usage page); the codex rows are the ChatGPT plan''s Codex limits, which art, the review before each commit and the Codex lane share, read from Codex''s own session logs. The Golem stops Codex at codexMaxPctPerWindow of a window, leaves codexWeekReservePct of the week to you, and runs the lane only in the night window while codexNightOnly is on (D:\UO\golem\settings.json).'
         'tab.Art'          = 'Art requests: what is waiting, generated, approved and placed, with a thumbnail. Every button runs scripts\art\Art.ps1 in the output pane; nothing is placed until you approve it.'
         'artList'          = 'Every art request, waiting for your review first, with a thumbnail of its review sheet or its placed file. Select one, then press a button below.'
         'art.refresh'      = 'Reads the requests in D:\UO\art\requests again. Changes nothing.'
@@ -5009,7 +5009,14 @@ function Get-CodexUsageRows {
         $rows.Add([pscustomobject]@{ Name = $w[1]; Pct = $pct; Text = ($label + (Format-UsageBar $pct) + (' {0,3}% used, the Golem {1}%  ' -f [int][Math]::Round($pct, [MidpointRounding]::AwayFromZero), [Math]::Round($share, 1)) + $resetText + '  (' + $w[2] + ')'); Color = $c; Bar = $true; Marker = $null })
     }
     $t = $j.today
-    $rows.Add([pscustomobject]@{ Name = 'codex today'; Pct = $null; Text = ('Codex today: ' + $(if ($t) { [string]$t.runs + ' run(s), ' + $t.images + ' image(s), ' + ('{0:N0}' -f [long]$t.tokens) + ' tokens' } else { 'nothing' }) + '. Budget: the Golem stops at ' + $maxPct + '% of a window, leaves ' + $reserve + '% of the week to you, never spends credits.'); Color = 'gray'; Bar = $false; Marker = $null })
+    # cc-P158: today's runs by use: the review before each commit, the Codex lane, art.
+    $by = ''
+    if ($t -and $t.date) {
+        $tr = @(@($j.runs) | Where-Object { $_ -and $_.at -and ([string]$_.at).StartsWith([string]$t.date) })
+        $n = { param($u) @($tr | Where-Object { [string]$_.purpose -eq $u }).Count }
+        if ($tr.Count -and @($tr | Where-Object { $_.purpose }).Count) { $by = ' (' + (& $n 'review') + ' review(s), ' + (& $n 'lane') + ' lane run(s), ' + (& $n 'art') + ' art run(s))' }
+    }
+    $rows.Add([pscustomobject]@{ Name = 'codex today'; Pct = $null; Text = ('Codex today: ' + $(if ($t) { [string]$t.runs + ' run(s), ' + $t.images + ' image(s), ' + ('{0:N0}' -f [long]$t.tokens) + ' tokens' + $by } else { 'nothing' }) + '. Budget: the Golem stops at ' + $maxPct + '% of a window, leaves ' + $reserve + '% of the week to you, never spends credits.'); Color = 'gray'; Bar = $false; Marker = $null })
     $rows.ToArray()
 }
 
