@@ -64,10 +64,10 @@ public class LeagueRegistrarGump : Gump
             : new ClusterFAccountData();
 
         AddBackground(0, 0, W, H, BgId);
-        AddAlphaRegion(6, 6, W - 12, H - 12);
+        RequirementStyle.AddSolidPanel(this, W, H); // cc-P169: opaque (was an alpha region)
 
         // -- Header --------------------------------------------------------
-        AddLabel(W / 2 - 120, 12, 1154, "League of Extraordinary Citizens");
+        AddLabel(W / 2 - 120, 12, RequirementStyle.HeadingHue, "League of Extraordinary Citizens");
         AddLabel(W / 2 - 75,  28, 999,  "New Haven Field Office");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
@@ -93,7 +93,7 @@ public class LeagueRegistrarGump : Gump
         }
 
         AddButton(W - 50, H - 28, 4023, 4025, 0);
-        AddLabel(W - 28, H - 26, 1154, "X");
+        AddLabel(W - 28, H - 26, RequirementStyle.HeadingHue, "X");
     }
 
     // -- Views -----------------------------------------------------------------
@@ -139,7 +139,7 @@ public class LeagueRegistrarGump : Gump
     // cc-P69: the Compact's Mule errand (MuleErrand). The page says where the character is; every button re-checks.
     private void DrawMuleErrand()
     {
-        AddLabel(18, 56, 1154, "The Compact's Mule");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "The Compact's Mule");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var stage = MuleErrand.Stage(_pm);
@@ -191,7 +191,7 @@ public class LeagueRegistrarGump : Gump
 
     private void DrawCitizenStatus(ClusterFAccountData data)
     {
-        AddLabel(18, 56, 1154, "Citizen Status");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Citizen Status");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var status = ClusterFLeagueSystem.GetStatus(data, ClusterFAccountPersistence.GetGuild(_pm));
@@ -223,7 +223,7 @@ public class LeagueRegistrarGump : Gump
     // cc-P48: current rank, next rank, the four checks, Promote.
     private void DrawRank(ClusterFAccountData data)
     {
-        AddLabel(18, 56, 1154, "League Rank");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "League Rank");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         AddLabel(18, 80, 999, "Your rank:");
@@ -242,37 +242,16 @@ public class LeagueRegistrarGump : Gump
         AddLabel(110, 102, ClusterFLeagueRanks.LabelHue(report.To), ClusterFLeagueRanks.RankName(report.To));
         AddImageTiled(10, 126, W - 20, 1, 9304);
 
-        var y = 134;
-        foreach (var check in report.Checks)
-        {
-            var (mark, hue) = check.State switch
-            {
-                LeagueCheckState.Passed      => ("[x]", 68),
-                LeagueCheckState.Failed      => ("[ ]", 37),
-                LeagueCheckState.Waived      => ("[-]", 999),
-                _                            => ("[-]", 999),
-            };
-
-            AddLabel(18, y, hue, mark);
-            AddLabel(50, y, 1153, check.Label);
-            AddLabel(50, y + 18, 999, check.Detail);
-            y += 44;
-        }
-
-        if (report.CanPromote)
-        {
-            AddButton(18, y + 4, 4023, 4025, BtnPromote);
-            AddLabel(52, y + 6, 1154, $"Promote to {ClusterFLeagueRanks.RankName(report.To)}");
-        }
-        else
-        {
-            AddLabel(18, y + 6, 999, "Meet every unticked check to be promoted.");
-        }
+        // cc-P169: the checks as requirement lines (met / not met / not required here), the summary, and Promote only
+        // when every check is met; the press evaluates again (OnResponse, from _rankAtDraw).
+        var reqs = report.Requirements();
+        var y = reqs.Draw(this, 18, 136);
+        reqs.DrawFooter(this, 18, y + 6, BtnPromote, $"Promote to {ClusterFLeagueRanks.RankName(report.To)}");
     }
 
     private void DrawAboutRenown(ClusterFAccountData data)
     {
-        AddLabel(18, 56, 1154, "About Renown");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "About Renown");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var html =
@@ -290,7 +269,7 @@ public class LeagueRegistrarGump : Gump
 
     private void DrawGuildReferrals(ClusterFAccountData data)
     {
-        AddLabel(18, 56, 1154, "Guild Referrals");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Guild Referrals");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         AddHtml(16, 78, W - 32, 80,
@@ -304,7 +283,7 @@ public class LeagueRegistrarGump : Gump
 
     private void DrawWhereToStart(ClusterFAccountData data)
     {
-        AddLabel(18, 56, 1154, "Where to go first?");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Where to go first?");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var joined = ClusterFLeagueSystem.IsJoined(data);

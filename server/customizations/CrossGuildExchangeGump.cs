@@ -37,17 +37,15 @@ public class CrossGuildExchangeGump : Gump
         Disposable = true;
 
         AddBackground(0, 0, W, H, BgId);
-        AddAlphaRegion(6, 6, W - 12, H - 12);
+        RequirementStyle.AddSolidPanel(this, W, H); // cc-P169: opaque (was an alpha region)
 
-        AddLabel(W / 2 - 95, 12, 1154, "The Civic Mule Exchange");
+        AddLabel(W / 2 - 95, 12, RequirementStyle.HeadingHue, "The Civic Mule Exchange");
         AddLabel(W / 2 - 80, 28, 999, "Mule tier upgrades");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
         var guild = pm.Account is IAccount acct
             ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial)
             : new CharacterGuildData();
-
-        DrawMules(guild);
 
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
         if (_back != null)
@@ -56,7 +54,9 @@ public class CrossGuildExchangeGump : Gump
             AddLabel(52, H - 26, 999, "Back");
         }
         AddButton(W - 50, H - 28, 4023, 4025, 0);
-        AddLabel(W - 28, H - 26, 1154, "X");
+        AddLabel(W - 28, H - 26, RequirementStyle.HeadingHue, "X");
+
+        DrawMules(guild); // last: its pages follow the frame (page 0, on every page)
     }
 
     private void DrawMules(CharacterGuildData guild)
@@ -72,40 +72,48 @@ public class CrossGuildExchangeGump : Gump
             return;
         }
 
-        var y = 58;
+        // cc-P169: one mule a page (each step's requirements are a line each now), met / not met each, with the upgrade
+        // button only when all are met. MuleUpgrades.TryUpgrade checks them all again on the press.
+        var shown = mules.Take(3).ToList();
 
-        foreach (var (mule, i) in mules.Take(3).Select((m, i) => (m, i)))
+        for (var i = 0; i < shown.Count; i++)
         {
+            var mule = shown[i];
+            AddPage(i + 1);
+
             var step = MuleUpgrades.StepFrom(mule.Tier);
-            AddLabel(16, y, 1154, $"{mule.Name}: tier {mule.Tier}{(mule.IsLegendaryLine ? ", Legendary line" : "")}");
+            AddLabel(16, 58, RequirementStyle.HeadingHue, $"{mule.Name}: tier {mule.Tier}{(mule.IsLegendaryLine ? ", Legendary line" : "")}");
 
             if (step == null)
             {
-                AddLabel(30, y + 20, 999, "At the top tier (Celestial).");
-                y += 50;
-                continue;
+                AddLabel(30, 82, 999, "At the top tier (Celestial).");
+            }
+            else
+            {
+                var next = MuleData.Tier(step.FromTier + 1);
+                AddLabel(16, 80, 999, $"To {next.Name} (tier {next.Tier}):");
+
+                var reqs = MuleUpgrades.Requirements(_pm, guild, step);
+                var y = reqs.Draw(this, 18, 104);
+                reqs.DrawFooter(this, 18, y + 4, BtnUpgradeBase + i, $"Upgrade to {next.Name}", bypass);
             }
 
-            var next = MuleData.Tier(step.FromTier + 1);
-            var shortfalls = bypass ? new System.Collections.Generic.List<string>() : MuleUpgrades.Shortfalls(_pm, guild, step);
+            if (i + 1 < shown.Count)
+            {
+                AddButton(W - 60, H - 64, 4005, 4007, 0, GumpButtonType.Page, i + 2);
+                AddLabel(W - 120, H - 62, 999, "Next mule");
+            }
 
-            var cost = string.Join(", ", step.Scrip.Select(s => $"{s.Amount} {MuleUpgrades.CurrencyName(s.Guild)}")) +
-                       $", {step.Gold:N0} gold" +
-                       (step.CompactRank > 0 ? $"; Miners' Compact rank {step.CompactRank}+" : "");
+            if (i > 0)
+            {
+                AddButton(18, H - 64, 4014, 4016, 0, GumpButtonType.Page, i);
+                AddLabel(52, H - 62, 999, "Previous mule");
+            }
 
-            AddHtml(30, y + 20, W - 50, 54,
-                $"<BASEFONT COLOR=#AAAAAA>To {next.Name} (tier {next.Tier}): {cost}</BASEFONT>" +
-                (shortfalls.Count > 0 ? $"<BR><BASEFONT COLOR=#FF6666>Short: {shortfalls[0]}</BASEFONT>" : ""),
-                false, false);
-
-            AddButton(30, y + 78, 4011, 4012, BtnUpgradeBase + i);
-            AddLabel(64, y + 80, shortfalls.Count == 0 ? 0x44 : 0x22, $"Upgrade to {next.Name}");
-            y += 118;
-        }
-
-        if (bypass)
-        {
-            AddLabel(16, H - 58, 0x480, "[Testing Token active: costs bypassed]");
+            if (shown.Count > 1)
+            {
+                AddLabel(W / 2 - 40, H - 62, 999, $"Mule {i + 1} of {shown.Count}");
+            }
         }
     }
 

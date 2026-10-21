@@ -1110,8 +1110,10 @@ public class HammerRestoreGump : Gump
     private static GuildCost[] UpgradeMaterials => new[] { GuildCost.Of<IronIngot>(UpgradeIronCost), GuildCost.Of<ValoriteIngot>(UpgradeValoriteCost) };
 
     private const int W    = 460;
-    private const int H    = 420;
     private const int BgId = 9270;
+
+    // cc-P169: tall enough for what it shows (both lists, every line), so nothing runs under the footer.
+    private readonly int _h;
 
     public HammerRestoreGump(PlayerMobile pm, Action<PlayerMobile>? back = null) : base(100, 60)
     {
@@ -1121,43 +1123,64 @@ public class HammerRestoreGump : Gump
         Closable   = true;
         Disposable = true;
 
-        AddBackground(0, 0, W, H, BgId);
-        AddAlphaRegion(6, 6, W - 12, H - 12);
-
-        AddLabel(W / 2 - 105, 12, 1153, "Hammer of Hephaestus");
-        AddLabel(W / 2 - 85,  28, 999,  "Society of Smiths");
-        AddImageTiled(10, 48, W - 20, 2, 9304);
-
         var acct = pm.Account as IAccount;
         var guild = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial) : null;
+
+        var hammer1 = FindHammer<HammerOfHephaestus>();
+        var hammer2 = FindHammer<ReinforcedHammerOfHephaestus>();
+        var restore = guild != null && (hammer1 != null || hammer2 != null) ? RestoreRequirements(guild) : null;
+        var upgrade = guild != null && hammer1 != null && hammer2 == null ? UpgradeRequirements(guild, hammer1) : null;
+
+        // Title and status to 120; each list its heading (20), lines, summary and action (56), the restore list its rule
+        // (10); the footer 46.
+        _h = 120 + (restore != null ? 20 + restore.Height + 56 + 10 : 0) + (upgrade != null ? 20 + upgrade.Height + 56 : 18) + 46;
+
+        AddBackground(0, 0, W, _h, BgId);
+        RequirementStyle.AddSolidPanel(this, W, _h); // cc-P169: opaque (was an alpha region)
+
+        AddLabel(W / 2 - 105, 12, RequirementStyle.HeadingHue, "Hammer of Hephaestus");
+        AddLabel(W / 2 - 85,  28, 999,  "Society of Smiths");
+        AddImageTiled(10, 48, W - 20, 2, 9304);
 
         if (guild == null)
             AddLabel(18, 60, 999, "Account data unavailable.");
         else
-            BuildContent(guild, acct!);
+            BuildContent(hammer1, hammer2, restore, upgrade);
 
-        AddImageTiled(10, H - 38, W - 20, 2, 9304);
-        AddButton(18, H - 28, 4014, 4015, 1);
-        AddLabel(40, H - 26, 999, "Back");
-        AddButton(W - 50, H - 28, 4023, 4025, 0);
-        AddLabel(W - 28, H - 26, 1154, "X");
+        AddImageTiled(10, _h - 38, W - 20, 2, 9304);
+        AddButton(18, _h - 28, 4014, 4015, 1);
+        AddLabel(40, _h - 26, 999, "Back");
+        AddButton(W - 50, _h - 28, 4023, 4025, 0);
+        AddLabel(W - 28, _h - 26, RequirementStyle.HeadingHue, "X");
     }
 
-    private void BuildContent(CharacterGuildData guild, IAccount acct)
+    /// <summary>cc-P169: instant restoration's requirements (seals and iron, pack and bank).</summary>
+    internal RequirementList RestoreRequirements(CharacterGuildData guild) =>
+        new RequirementList().Price(_pm, guild, "smithing", "Smithing Seals", RestoreSealCost, 0, RestoreMaterials);
+
+    /// <summary>cc-P169: the T2 upgrade's requirements. The rank line is met at 5,000 standing, as HandleUpgrade checks.</summary>
+    internal RequirementList UpgradeRequirements(CharacterGuildData guild, HammerOfHephaestus hammer1)
     {
         guild.GuildReputation.TryGetValue("smithing", out var standing);
-        guild.GuildCurrency.TryGetValue("smithing",   out var seals);
+        var fam = hammer1.GetFamiliaritySnapshot().Values.Sum();
 
-        var hammer1   = FindHammer<HammerOfHephaestus>();
-        var hammer2   = FindHammer<ReinforcedHammerOfHephaestus>();
-        var ironInPack = GuildResources.Count(_pm, GuildCost.Of<IronIngot>(0)).Total; // pack and bank (F-11)
-        var bypass    = DevTestingCrystal.IsActive(_pm);
+        return new RequirementList()
+            .Rank("Journeyman", standing, UpgradeStandingReq)
+            .Skill("Blacksmithy", _pm.Skills[SkillName.Blacksmith].Value, UpgradeSkillReq)
+            .Price(_pm, guild, "smithing", "Smithing Seals", UpgradeSealCost, UpgradeGoldCost, UpgradeMaterials)
+            .Has("Hammer of Hephaestus in pack, not exhausted", !hammer1.Exhausted, "exhausted")
+            .Info($"Familiarity carried over: {fam:N0} (T2 cap {ReinforcedHammerOfHephaestus.FamCap:N0} a metal)");
+    }
 
+    private void BuildContent(HammerOfHephaestus? hammer1, ReinforcedHammerOfHephaestus? hammer2,
+        RequirementList? restore, RequirementList? upgrade)
+    {
+        var bypass = DevTestingCrystal.IsActive(_pm);
         var y = 58;
 
         // -- Current state -----------------------------------------------------
 
-        AddLabel(18, y, 1154, "Current Status"); y += 16;
+        AddLabel(18, y, RequirementStyle.HeadingHue, "Current Status"); y += 16;
 
         if (hammer1 == null && hammer2 == null)
         {
@@ -1179,87 +1202,26 @@ public class HammerRestoreGump : Gump
             AddLabel(18, y, 999, $"Total Metal Familiarity: {total:N0} (cap {HammerOfHephaestus.FamCap:N0} a metal)");
         }
 
-        y += 10;
+        y = 112; // cc-P169: under the two status lines (74 and 90, 18 tall); at 100 the rule crossed the second
         AddImageTiled(10, y, W - 20, 1, 9304); y += 8;
 
         // -- Instant restore ---------------------------------------------------
 
-        if (hammer1 != null || hammer2 != null)
+        if (restore != null)
         {
-            AddLabel(18, y, 1154, "Instant Restoration"); y += 16;
-            AddLabel(18, y, 999, $"Cost: {RestoreSealCost} Smithing Seals + {RestoreIronCost} Iron Ingots"); y += 16;
-
-            var canSeals  = bypass || seals     >= RestoreSealCost;
-            var canIron   = bypass || ironInPack >= RestoreIronCost;
-            var canRestore = canSeals && canIron;
-
-            static string Clr(bool ok) => ok ? "#FFD700" : "#FF6666";
-            AddHtml(18, y, W - 36, 32,
-                $"<BASEFONT COLOR={Clr(canSeals)}>Seals: {seals}/{RestoreSealCost}</BASEFONT>  " +
-                $"<BASEFONT COLOR={Clr(canIron)}>Iron (pack+bank): {ironInPack}/{RestoreIronCost}</BASEFONT><BR>" +
-                $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, RestoreMaterials)}</BASEFONT>",
-                false, false);
-            y += 36;
-
-            if (canRestore)
-            {
-                AddButton(18, y, 4011, 4012, 10);
-                AddLabel(44, y + 2, 999, "Restore Hammer to Full Uses");
-            }
-            else
-            {
-                AddLabel(18, y, 0x22, "Requirements not met for instant restoration.");
-            }
-
-            y += 26;
-            AddImageTiled(10, y, W - 20, 1, 9304); y += 8;
+            AddLabel(18, y, RequirementStyle.HeadingHue, "Instant Restoration"); y += 20;
+            y = restore.Draw(this, 18, y);
+            y = restore.DrawFooter(this, 18, y + 4, 10, "Restore Hammer to Full Uses", bypass);
+            AddImageTiled(10, y + 2, W - 20, 1, 9304); y += 10;
         }
 
         // -- T2 upgrade --------------------------------------------------------
 
-        if (hammer1 != null && hammer2 == null)
+        if (upgrade != null)
         {
-            AddLabel(18, y, 1154, "Upgrade to T2 - Reinforced Hammer"); y += 16;
-
-            var skill       = _pm.Skills[SkillName.Blacksmith].Value;
-            var valoriteAmt = GuildResources.Count(_pm, GuildCost.Of<ValoriteIngot>(0)).Total;
-            var goldAmt     = CompactGoldHelper.GetTotalGold(_pm);
-
-            var reqRank     = bypass || standing    >= UpgradeStandingReq;
-            var reqSkill    = bypass || skill       >= UpgradeSkillReq;
-            var reqSeals    = bypass || seals       >= UpgradeSealCost;
-            var reqIron     = bypass || ironInPack  >= UpgradeIronCost;
-            var reqValorite = bypass || valoriteAmt >= UpgradeValoriteCost;
-            var reqGold     = bypass || goldAmt     >= UpgradeGoldCost;
-            var reqHammer   = hammer1 != null && !hammer1.Exhausted;
-            var allMet      = reqRank && reqSkill && reqSeals && reqIron
-                           && reqValorite && reqGold && reqHammer;
-
-            static string Clr2(bool ok) => ok ? "#FFD700" : "#FF6666";
-            var fam = hammer1!.GetFamiliaritySnapshot().Values.Sum();
-
-            AddHtml(18, y, W - 36, 130,
-                $"<BASEFONT COLOR={Clr2(reqRank)}>Rank: Journeyman (5,000 Standing) - {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
-                $"<BASEFONT COLOR={Clr2(reqSkill)}>Blacksmithy: {skill:F1}/{UpgradeSkillReq:F0} required</BASEFONT><BR>" +
-                $"<BASEFONT COLOR={Clr2(reqSeals)}>Smithing Seals: {seals}/{UpgradeSealCost} required</BASEFONT><BR>" +
-                $"<BASEFONT COLOR={Clr2(reqIron)}>Iron Ingots (pack+bank): {ironInPack}/{UpgradeIronCost} required</BASEFONT><BR>" +
-                $"<BASEFONT COLOR={Clr2(reqValorite)}>Valorite Ingots (pack+bank): {valoriteAmt}/{UpgradeValoriteCost} required</BASEFONT><BR>" +
-                $"<BASEFONT COLOR={Clr2(reqGold)}>Gold (pack+bank): {goldAmt:N0}/{UpgradeGoldCost:N0} required</BASEFONT><BR>" +
-                $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, UpgradeMaterials)}</BASEFONT><BR>" +
-                $"<BASEFONT COLOR={Clr2(reqHammer)}>Hammer (non-exhausted) in pack: {(reqHammer ? "Yes" : "No")}</BASEFONT><BR>" +
-                $"<BASEFONT COLOR=#AAAAAA>Familiarity carried over: {fam:N0} (capped at T2 max {ReinforcedHammerOfHephaestus.FamCap:N0}/metal)</BASEFONT>",
-                false, true);
-            y += 135;
-
-            if (allMet)
-            {
-                AddButton(18, y, 4011, 4012, 20);
-                AddLabel(44, y + 2, 999, "Upgrade to Reinforced Hammer of Hephaestus");
-            }
-            else
-            {
-                AddLabel(18, y, 0x22, "Requirements not met for upgrade.");
-            }
+            AddLabel(18, y, RequirementStyle.HeadingHue, "Upgrade to T2 - Reinforced Hammer"); y += 20;
+            y = upgrade.Draw(this, 18, y);
+            upgrade.DrawFooter(this, 18, y + 4, 20, "Upgrade to Reinforced Hammer of Hephaestus", bypass);
         }
         else if (hammer1 == null && hammer2 == null)
         {

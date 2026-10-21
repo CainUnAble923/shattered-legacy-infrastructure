@@ -111,10 +111,10 @@ public class MinersCompactLiaisonGump : Gump
         ClusterFLeagueSystem.OnGuildReferralSeen(pm, "mining");
 
         AddBackground(0, 0, W, H, BgId);
-        AddAlphaRegion(6, 6, W - 12, H - 12);
+        RequirementStyle.AddSolidPanel(this, W, H); // cc-P169: opaque (was an alpha region)
 
         // -- Header --------------------------------------------------------
-        AddLabel(W / 2 - 80, 12, 1154, "Miners' Compact");
+        AddLabel(W / 2 - 80, 12, RequirementStyle.HeadingHue, "Miners' Compact");
         AddLabel(W / 2 - 60, 28, 999,  "New Haven Liaison");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
@@ -147,7 +147,7 @@ public class MinersCompactLiaisonGump : Gump
         }
 
         AddButton(W - 50, H - 28, 4023, 4025, 0);
-        AddLabel(W - 28, H - 26, 1154, "X");
+        AddLabel(W - 28, H - 26, RequirementStyle.HeadingHue, "X");
     }
 
     // -- Views -----------------------------------------------------------------
@@ -183,7 +183,7 @@ public class MinersCompactLiaisonGump : Gump
 
     private void DrawAboutCompact()
     {
-        AddLabel(18, 56, 1154, "About the Compact");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "About the Compact");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var html =
@@ -202,7 +202,7 @@ public class MinersCompactLiaisonGump : Gump
 
     private void DrawWhatWeMine()
     {
-        AddLabel(18, 56, 1154, "What We Mine");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "What We Mine");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var html =
@@ -229,7 +229,7 @@ public class MinersCompactLiaisonGump : Gump
 
     private void DrawJoiningReqs()
     {
-        AddLabel(18, 56, 1154, "Joining Requirements");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Joining Requirements");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var def     = ClusterFGuildSystem.GetDef("mining");
@@ -249,7 +249,7 @@ public class MinersCompactLiaisonGump : Gump
 
     private void DrawRewards()
     {
-        AddLabel(18, 56, 1154, "Rewards and Scrip");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Rewards and Scrip");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var def = ClusterFGuildSystem.GetDef("mining");
@@ -276,7 +276,7 @@ public class MinersCompactLiaisonGump : Gump
 
     private void DrawMemberDashboard(CharacterGuildData guild)
     {
-        AddLabel(18, 56, 1154, "Member Dashboard");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Member Dashboard");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         guild.GuildReputation.TryGetValue("mining", out var standing);
@@ -328,7 +328,7 @@ public class MinersCompactLiaisonGump : Gump
         AddImageTiled(10, 348, W - 20, 1, 9304);
 
         AddButton(18, 356, 4011, 4012, 100);
-        AddLabel(44, 358, 1154, "Civic Mule Exchange (mule upgrades)");
+        AddLabel(44, 358, RequirementStyle.HeadingHue, "Civic Mule Exchange (mule upgrades)");
     }
 
     /// <summary>
@@ -350,7 +350,7 @@ public class MinersCompactLiaisonGump : Gump
 
     private void DrawReplaceKit()
     {
-        AddLabel(18, 56, 1154, "Replace Starting Kit");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Replace Starting Kit");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var hasSatchel  = _pm.Backpack?.FindItemByType<Items.CompactOreSatchel>()  != null;
@@ -404,14 +404,12 @@ public class MinersCompactLiaisonGump : Gump
 
     private void DrawUpgradeSatchel(CharacterGuildData guild, IAccount? acct)
     {
-        AddLabel(18, 56, 1154, "Upgrade Ore Satchel");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Upgrade Ore Satchel");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         var bypass   = Items.DevTestingCrystal.IsActive(_pm);
         var curTier  = GetCurrentSatchelTier(_pm);
         var regTier  = GetHighestUnlockedSatchelTier(acct); // highest tier registered (ever owned)
-        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
-        guild.GuildReputation.TryGetValue("mining", out var standing);
 
         // -- Detect "missing" satchel: registered but not in backpack ----------
         // A higher-tier satchel may be in storage or accidentally deleted.
@@ -421,69 +419,59 @@ public class MinersCompactLiaisonGump : Gump
         var curName   = curTier  > 0 ? tierNames[curTier]  + " Ore Satchel" : "none in backpack";
         var regName   = regTier  > 0 ? tierNames[regTier]  + " Ore Satchel" : "none";
 
-        string html;
+        // cc-P169: recovery and upgrade show their requirements, met / not met each, with the button only when all are met.
         if (satchelMissing)
         {
-            html =
-                $"<BASEFONT COLOR=#FFD700>Highest tier registered: {regName}</BASEFONT><BR>" +
-                $"<BASEFONT COLOR=#FF8888>Not found in your backpack.</BASEFONT><BR><BR>" +
-                "<BASEFONT COLOR=#AAAAAA>If your satchel is in a house or container, retrieve it. " +
-                $"Otherwise, a replacement costs {SatchelRestoreCost} Mining Vouchers.</BASEFONT><BR><BR>" +
-                $"<BASEFONT COLOR=#AAAAAA>Your Mining Vouchers: {vouchers}</BASEFONT>";
+            AddLabel(18, 80, 999, $"Highest tier registered: {regName}");
+            AddLabel(18, 98, 999, "Not found in your backpack.");
+            AddHtml(16, 120, W - 32, 40,
+                "<BASEFONT COLOR=#ACACAC>If your satchel is in a house or container, retrieve it. " +
+                "Otherwise the Compact can replace it.</BASEFONT>", false, false);
+
+            var reqs = new RequirementList().Price(_pm, guild, "mining", "Mining Vouchers", SatchelRestoreCost, 0);
+            var y = reqs.Draw(this, 18, 166);
+            reqs.DrawFooter(this, 18, y + 4, 90, $"Recover {regName}", bypass);
         }
         else if (curTier == 0)
         {
-            html =
-                "<BASEFONT COLOR=#888888>No Compact Ore Satchel found in your backpack.<BR>" +
+            AddHtml(16, 78, W - 32, H - 148,
+                "<BASEFONT COLOR=#ACACAC>No Compact Ore Satchel found in your backpack.<BR>" +
                 "A Compact Ore Satchel is issued when you join the Miners' Compact.<BR><BR>" +
-                "Use 'Replace Starting Kit' if yours is missing.</BASEFONT>";
+                "Use 'Replace Starting Kit' if yours is missing.</BASEFONT>", false, false);
         }
         else if (curTier >= 5)
         {
-            html =
-                $"<BASEFONT COLOR=#FFD700>Current tier: {curName}</BASEFONT><BR><BR>" +
-                "<BASEFONT COLOR=#44AA44>Tier 5 - Master Expedition Satchel. " +
-                "You have reached the pinnacle of Compact logistics.</BASEFONT>";
+            AddLabel(18, 80, 999, $"Current tier: {curName}");
+            AddHtml(16, 104, W - 32, 60,
+                "<BASEFONT COLOR=#ACACAC>Tier 5 - Master Expedition Satchel. " +
+                "You have reached the pinnacle of Compact logistics.</BASEFONT>", false, false);
         }
         else
         {
-            var (nextName, costLine, rankReq) = GetSatchelUpgradeInfo(curTier);
-            var meetsRank = standing >= rankReq;
-            var rankName  = GetRankName(rankReq);
+            var (nextName, _, _) = GetSatchelUpgradeInfo(curTier);
 
-            html =
-                $"<BASEFONT COLOR=#FFD700>Current tier: {curName}</BASEFONT><BR>" +
-                $"<BASEFONT COLOR=#AAAAAA>Next upgrade: {nextName}</BASEFONT><BR><BR>" +
-                $"<BASEFONT COLOR=#AAAAAA>Cost: {costLine}</BASEFONT><BR>" +
-                $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, GetSatchelUpgradeCost(curTier).Materials)}</BASEFONT><BR>" +
-                (meetsRank
-                    ? $"<BASEFONT COLOR=#44AA44>Rank requirement: {rankName} ({rankReq:N0} standing) - met.</BASEFONT><BR>"
-                    : $"<BASEFONT COLOR=#FF8888>Rank requirement: {rankName} ({rankReq:N0} standing) - you have {standing:N0}.</BASEFONT><BR>") +
-                $"<BASEFONT COLOR=#AAAAAA>Your Mining Vouchers: {vouchers}</BASEFONT>" +
-                (bypass ? "<BR><BASEFONT COLOR=#FF44FF>[Testing Token active - costs bypassed]</BASEFONT>" : "");
+            AddLabel(18, 80, 999, $"Current tier: {curName}");
+            AddLabel(18, 100, RequirementStyle.HeadingHue, $"Next upgrade: {nextName}");
+
+            var reqs = SatchelUpgradeRequirements(guild, curTier);
+            var y = reqs.Draw(this, 18, 124);
+            reqs.DrawFooter(this, 18, y + 4, 91, $"Upgrade to Tier {curTier + 1}", bypass);
         }
+    }
 
-        AddHtml(16, 78, W - 32, H - 148, html, false, true);
+    /// <summary>
+    /// cc-P169: the next satchel's requirements: the rank (met at its standing, as HandleSatchelUpgrade checks) and the
+    /// price (what its TryPay takes).
+    /// </summary>
+    internal RequirementList SatchelUpgradeRequirements(CharacterGuildData guild, int curTier)
+    {
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+        var (_, _, rankReq) = GetSatchelUpgradeInfo(curTier);
+        var cost = GetSatchelUpgradeCost(curTier);
 
-        var btnY = H - 68;
-
-        if (satchelMissing)
-        {
-            // Offer recovery of the highest registered tier
-            AddButton(18, btnY, 4011, 4012, 90);
-            AddLabel(44, btnY + 2, bypass || vouchers >= SatchelRestoreCost ? 999 : 0x22,
-                $"Recover {regName} ({SatchelRestoreCost}V)");
-        }
-        else if (curTier > 0 && curTier < 5)
-        {
-            var (_, _, rankReq) = GetSatchelUpgradeInfo(curTier);
-            var canUpgrade = bypass
-                || (standing >= rankReq && CanAfford(guild, GetSatchelUpgradeCost(curTier)));
-
-            AddButton(18, btnY, 4011, 4012, 91);
-            AddLabel(44, btnY + 2, canUpgrade ? 999 : 0x22,
-                $"Upgrade to Tier {curTier + 1}");
-        }
+        return new RequirementList()
+            .Rank(GetRankName(rankReq), standing, rankReq)
+            .Price(_pm, guild, "mining", "Mining Vouchers", cost.Vouchers, cost.Gold, cost.Materials);
     }
 
     // -- Satchel tier helpers --------------------------------------------------
@@ -561,7 +549,7 @@ public class MinersCompactLiaisonGump : Gump
 
     private void DrawRestoration(CharacterGuildData guild, IAccount? acct)
     {
-        AddLabel(18, 56, 1154, "Restoration");
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Restoration");
         AddImageTiled(10, 72, W - 20, 1, 9304);
 
         if (acct == null)
@@ -573,7 +561,6 @@ public class MinersCompactLiaisonGump : Gump
 
         var bypass      = Items.DevTestingCrystal.IsActive(_pm);
         var highestTier = GetHighestUnlockedTier(acct);
-        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
 
         if (highestTier == 0)
         {
@@ -586,7 +573,7 @@ public class MinersCompactLiaisonGump : Gump
 
         // Show status for the highest tier only.
         // Lower tiers were consumed in upgrades and cannot be independently restored.
-        var (regKey, pickaxeName, restoreCost, restoreBtn) = GetTierRestoreInfo(highestTier);
+        var (regKey, pickaxeName, _, restoreBtn) = GetTierRestoreInfo(highestTier);
 
         // Stale active-copy sanity check: verify the item is still in the player's possession.
         if (ClusterFRestorationRegistry.HasActiveCopy(acct, regKey))
@@ -595,27 +582,24 @@ public class MinersCompactLiaisonGump : Gump
                 ClusterFRestorationRegistry.ClearActiveCopy(acct, regKey);
         }
 
-        var isActive   = ClusterFRestorationRegistry.HasActiveCopy(acct, regKey);
-        var canRestore = !isActive && (bypass || CanAfford(guild, GetRestoreCost(highestTier)));
-
-        string statusHtml;
-        if (isActive)
-            statusHtml = $"<BASEFONT COLOR=#FFD700>{pickaxeName}: Active copy on hand.</BASEFONT>";
-        else
-            statusHtml = $"<BASEFONT COLOR=#FFD700>{pickaxeName}: Ready for restoration.</BASEFONT><BR>" +
-                         $"<BASEFONT COLOR=#AAAAAA>{restoreCost}</BASEFONT><BR>" +
-                         $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, GetRestoreCost(highestTier).Materials)}</BASEFONT>";
-
-        var bypassLine  = bypass ? "<BR><BASEFONT COLOR=#FF44FF>[Testing Token active - all material costs bypassed]</BASEFONT>" : "";
-        var balanceLine = $"<BR><BR><BASEFONT COLOR=#AAAAAA>Your Mining Vouchers: {vouchers}</BASEFONT>" + bypassLine;
-
-        AddHtml(16, 78, W - 32, H - 128, statusHtml + balanceLine, false, true);
-
-        if (!isActive)
+        // cc-P169: the restore's requirements, met / not met each, and the button only when all are met.
+        if (ClusterFRestorationRegistry.HasActiveCopy(acct, regKey))
         {
-            AddButton(18, H - 68, 4011, 4012, restoreBtn);
-            AddLabel(44, H - 66, canRestore ? 999 : 0x22, $"Restore {pickaxeName}");
+            AddLabel(18, 80, 999, $"{pickaxeName}: active copy on hand. Nothing to restore.");
+            return;
         }
+
+        AddLabel(18, 80, RequirementStyle.HeadingHue, $"{pickaxeName}: ready for restoration");
+        var reqs = RestoreRequirements(guild, highestTier);
+        var y = reqs.Draw(this, 18, 104);
+        reqs.DrawFooter(this, 18, y + 4, restoreBtn, $"Restore {pickaxeName}", bypass);
+    }
+
+    /// <summary>cc-P169: a tier's restoration price as requirement lines (what HandleRestoration's TryPay takes).</summary>
+    internal RequirementList RestoreRequirements(CharacterGuildData guild, int tier)
+    {
+        var cost = GetRestoreCost(tier);
+        return new RequirementList().Price(_pm, guild, "mining", "Mining Vouchers", cost.Vouchers, cost.Gold, cost.Materials);
     }
 
     // -- Restoration tier helpers ----------------------------------------------

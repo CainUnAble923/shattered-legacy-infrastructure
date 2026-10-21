@@ -195,7 +195,7 @@ public class JacobsT4UpgradeGump : Gump
     private const double UpgradeSkillReq  = 90.0;
 
     private const int W    = 440;
-    private const int H    = 400;
+    private readonly int H; // cc-P169: from what the page shows
     private const int BgId = 9270;
 
     public JacobsT4UpgradeGump(PlayerMobile pm) : base(100, 80)
@@ -205,77 +205,63 @@ public class JacobsT4UpgradeGump : Gump
         Closable   = true;
         Disposable = true;
 
-        AddBackground(0, 0, W, H, BgId);
-        AddAlphaRegion(6, 6, W - 12, H - 12);
+        var acct = pm.Account as IAccount;
+        var guild = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial) : null;
+        var reqs = guild != null ? Requirements(guild) : null;
 
-        AddLabel(W / 2 - 120, 12, 1154, "Jacob's Pickaxe - Tier 4 Upgrade");
+        // Title 56, the bonus text, the lines, summary and action (60), the footer 46.
+        H = 56 + IntroHeight + (reqs?.Height ?? 18) + 60 + 46;
+
+        AddBackground(0, 0, W, H, BgId);
+        RequirementStyle.AddSolidPanel(this, W, H); // cc-P169: opaque (was an alpha region)
+
+        AddLabel(W / 2 - 120, 12, RequirementStyle.HeadingHue, "Jacob's Pickaxe - Tier 4 Upgrade");
         AddLabel(W / 2 - 80,  28, 999,  "Miners' Compact Liaison");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
-        var acct = pm.Account as IAccount;
-        var guild = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial) : null;
-
-        if (guild == null)
+        if (reqs == null)
             AddLabel(18, 56, 999, "Account data unavailable.");
         else
-            DrawUpgradeInfo(guild, acct!);
+            DrawUpgradeInfo(reqs);
 
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
         AddButton(18, H - 28, 4014, 4015, 1);
         AddLabel(40, H - 26, 999, "Back");
         AddButton(W - 50, H - 28, 4023, 4025, 0);
-        AddLabel(W - 28, H - 26, 1154, "X");
+        AddLabel(W - 28, H - 26, RequirementStyle.HeadingHue, "X");
     }
 
-    private void DrawUpgradeInfo(CharacterGuildData guild, IAccount acct)
+    // cc-P169: the bonus text above the requirements, gray (#ACACAC, the info hue as the client draws it).
+    private const string Intro = "Deepdelver's Advantage: +1 ore per yield when mining in Felucca. Also retains Prospector's Insight " +
+            "(new discoveries = +3 vouchers).";
+
+    private static int IntroHeight =>
+        Intro.Length == 0 ? 0 : ClusterFGumpText.Lines(Intro, W - 40) * ClusterFGumpText.LineHeight + 8;
+
+    /// <summary>cc-P169: the upgrade's requirements, one line each; HandleUpgrade checks the same again.</summary>
+    internal RequirementList Requirements(CharacterGuildData guild)
     {
         guild.GuildReputation.TryGetValue("mining", out var standing);
-        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
-        var mining       = _pm.Skills[SkillName.Mining].Value;
-        var pack         = _pm.Backpack;
-        var bypass       = DevTestingCrystal.IsActive(_pm);
 
-        var ironCount    = GuildResources.Count(_pm, GuildCost.Of<IronIngot>(0)).Total;
-        var valoriteCount = GuildResources.Count(_pm, GuildCost.Of<ValoriteIngot>(0)).Total;
-        var goldCount    = CompactGoldHelper.GetTotalGold(_pm);
-        var hasT3        = FindT3InPack() != null;
+        return new RequirementList()
+            .Rank("Master Delver", standing, UpgradeStandingReq)
+            .Skill("Mining", _pm.Skills[SkillName.Mining].Value, UpgradeSkillReq)
+            .Price(_pm, guild, "mining", "Mining Vouchers", UpgradeVoucherCost, UpgradeGoldCost, Materials)
+            .Has("Jacob's Prospector Pickaxe in pack, not exhausted", FindT3InPack() != null);
+    }
 
-        var reqRank      = bypass || standing      >= UpgradeStandingReq;
-        var reqSkill     = bypass || mining         >= UpgradeSkillReq;
-        var reqVoucher   = bypass || vouchers       >= UpgradeVoucherCost;
-        var reqIron      = bypass || ironCount      >= UpgradeIronCost;
-        var reqValorite  = bypass || valoriteCount  >= UpgradeValoriteCost;
-        var reqGold      = bypass || goldCount      >= UpgradeGoldCost;
-        var reqT3        = hasT3;
+    private void DrawUpgradeInfo(RequirementList reqs)
+    {
+        var y = 56;
 
-        var allMet = reqRank && reqSkill && reqVoucher && reqIron && reqValorite && reqGold && reqT3;
-
-        static string Clr(bool met) => met ? "#FFD700" : "#FF6666";
-
-        var html =
-            "<BASEFONT COLOR=#AAAAAA>Deepdelver's Advantage: +1 ore per yield when mining " +
-            "in Felucca. Also retains Prospector's Insight (new discoveries = +3 vouchers)." +
-            "</BASEFONT><BR><BR>" +
-            $"<BASEFONT COLOR={Clr(reqRank)}>Rank: Master Delver required - Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqSkill)}>Mining skill: {mining:F1}/{UpgradeSkillReq:F0} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqVoucher)}>Mining Vouchers: {vouchers}/{UpgradeVoucherCost} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqIron)}>Iron Ingots (pack+bank): {ironCount:N0}/{UpgradeIronCost:N0} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqValorite)}>Valorite Ingots (pack+bank): {valoriteCount}/{UpgradeValoriteCost} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqGold)}>Gold (pack+bank): {goldCount:N0}/{UpgradeGoldCost:N0} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, Materials)}</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqT3)}>Jacob's Prospector Pickaxe (non-exhausted) in pack: {(hasT3 ? "Yes" : "No")}</BASEFONT>";
-
-        AddHtml(16, 56, W - 32, H - 130, html, false, true);
-
-        if (allMet)
+        if (Intro.Length > 0)
         {
-            AddButton(18, H - 68, 4011, 4012, 10);
-            AddLabel(44, H - 66, 999, "Upgrade to Jacob's Deepdelver Pickaxe");
+            AddHtml(16, y, W - 32, IntroHeight, $"<BASEFONT COLOR=#ACACAC>{Intro}</BASEFONT>", false, false);
+            y += IntroHeight;
         }
-        else
-        {
-            AddLabel(18, H - 68, 0x22, "Requirements not met. See above.");
-        }
+
+        y = reqs.Draw(this, 18, y);
+        reqs.DrawFooter(this, 18, y + 4, 10, "Upgrade to Jacob's Deepdelver Pickaxe", DevTestingCrystal.IsActive(_pm));
     }
 
     private JacobsProspectorPickaxe? FindT3InPack()
