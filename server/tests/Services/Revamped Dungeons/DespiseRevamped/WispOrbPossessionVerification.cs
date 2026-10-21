@@ -261,6 +261,10 @@ public class WispOrbPossessionVerification
     public void APossessedCreatureFightingNeverBecomesItsMastersCombatant(string petName, string foeName)
     {
         using var f = new Fight(Make(petName), Make(foeName));
+        // cc-P369: the foe opens on the possessed creature. Left to itself it wanders before it looks, and about one
+        // run in twenty it picked the party member instead, whom a Defensive creature does not guard, so the fight
+        // never started and the last assert went red at random (seen in the integrator's P264 build).
+        f.Foe.Combatant = f.Pet;
 
         var harmedOwn = new System.Collections.Generic.List<string>();
         void Watch(AggressiveActionEventArgs e)
