@@ -25,7 +25,7 @@ namespace Server.Items;
 ///   T2  Seasoned Lumber Satchel     — 55% reduction, 600 max  (SeasonedLumberSatchel.cs)
 ///   T3  Arborist's Lumber Satchel   — 60% reduction, 800 max  (ArboristLumberSatchel.cs)
 /// </summary>
-[SerializationGenerator(0, false)]
+[SerializationGenerator(1, false)]
 public partial class ForestersLumberSatchel : Container
 {
     // ── Item type sets accepted by this satchel ───────────────────────────────
@@ -42,7 +42,7 @@ public partial class ForestersLumberSatchel : Container
 
     // ── Container configuration ───────────────────────────────────────────────
 
-    private const int SatchelGraphic = 0xA272; // satchel art (same silhouette as ore satchel)
+    private const int SatchelGraphic = SatchelArt.LumberSatchel; // cc-P236: Chase's lumber satchel icon (was stock 0xA272)
     private const int SatchelHue     = 0x84C;  // dark forest green
 
     // Override in subclasses to change tier stats without duplicating logic.
@@ -131,9 +131,11 @@ public partial class ForestersLumberSatchel : Container
         list.Add(1060742, $"{TotalWeight}\t{TierMaxContentWeight}"); // ~1~ / ~2~ stones
     }
 
-    // ── Serialization (v0 — no custom fields) ─────────────────────────────────
+    // ── Serialization (v1 — no custom fields; v1 marks the cc-P236 icon move) ─
 
-    private void Deserialize(IGenericReader reader, int version) { }
+    // cc-P236: a version 0 satchel of any tier still on the stock graphic takes Chase's icon; a staff member's other graphic stays.
+    private void Deserialize(IGenericReader reader, int version) =>
+        SatchelArt.MoveFromStock(this, SatchelArt.StockSatchel, SatchelArt.LumberSatchel);
 
     // cc-P70 (F-33): from tier 3, "Unload" sends the satchel's contents to the owner's mule.
     public override void GetContextMenuEntries(Mobile from, ref Server.Collections.PooledRefList<Server.ContextMenus.ContextMenuEntry> list)

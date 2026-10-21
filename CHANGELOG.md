@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.6
+
+### Changed
+- Ore, lumber and hunter's satchels, the Artificers' Essence Satchel, the Gemologist's Satchel and the Smith Guild Salvage Bag have new icons of their own. Satchels you already own change over by themselves; update your game through the launcher to see the new look.
+- The Artificers' Essence Satchel is purple now, so it no longer looks black.
+
+### Staff
+- The icons are art IDs 0x3380-0x3385 (player package). A satchel or bag a staff member set to another graphic or hue keeps it; a player without the package update sees the slot's "UNUSED" placeholder until they update.
+
 ## 2026.10.21.5
 
 ### Added

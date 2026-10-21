@@ -54,6 +54,9 @@ namespace Server
 
             // cc-P50: the chest mimic's stills, idle loop and dead tiles (ChestMimicArt.Records).
             ChestMimicArt.Apply();
+
+            // cc-P236: the satchel and guild bag icons (SatchelArt.Records).
+            Items.SatchelArt.Apply();
         }
     }
 }
