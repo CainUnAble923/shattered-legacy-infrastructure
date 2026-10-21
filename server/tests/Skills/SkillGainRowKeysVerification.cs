@@ -92,6 +92,15 @@ public class SkillGainRowKeysVerification
         { "Skills/Stealing.cs", "pileWeight - 22.5,", 2, 2 },
         { "Skills/Stealing.cs", "pileWeight + 27.5", 2, 2 },
         { "Skills/Stealing.cs", "MaxWeightToSteal = ServerConfiguration.GetSetting(\"stealing.maxWeightToSteal\", 10);", 1, 1 },
+        // cc-P226: Arms Lore (0, 100) on a weapon or armor, a row on the item's tier; the barding (:107) is not one. The
+        // crafting checks (0, 100) are not rows; the crafted roll after each is.
+        { "Skills/ArmsLore.cs", "from.CheckTargetSkill(SkillName.ArmsLore, weap, 0, 100)", 1, 1 },
+        { "Skills/ArmsLore.cs", "from.CheckTargetSkill(SkillName.ArmsLore, arm, 0, 100)", 1, 1 },
+        { "Skills/ArmsLore.cs", "ClusterFArmsLore.FieldMaintenance(from, ", 2, 2 },
+        { "Items/Weapons/BaseWeapon.cs", "from.CheckSkill(SkillName.ArmsLore, 0, 100);", 1, 2 },
+        { "Items/Armor/BaseArmor.cs", "from.CheckSkill(SkillName.ArmsLore, 0, 100);", 1, 2 },
+        { "Items/Weapons/BaseWeapon.cs", "ClusterFSkillGain.ArmsLoreCrafted(from, this);", 1, 2 },
+        { "Items/Armor/BaseArmor.cs", "ClusterFSkillGain.ArmsLoreCrafted(from, this);", 1, 2 },
         // The cap-following uses the worn-bonus rule reaches (any player call whose maximum is the skill's cap).
         { "Items/Weapons/BaseWeapon.cs", "attacker.CheckSkill(SkillName.Tactics, 0.0, attacker.Skills.Tactics.Cap);", 2, 2 },
         { "Items/Weapons/BaseWeapon.cs", "attacker.CheckSkill(SkillName.Anatomy, 0.0, attacker.Skills.Anatomy.Cap);", 2, 2 },

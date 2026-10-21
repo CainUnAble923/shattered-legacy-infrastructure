@@ -1,0 +1,20 @@
+--- a/Projects/UOContent/Skills/ArmsLore.cs
++++ b/Projects/UOContent/Skills/ArmsLore.cs
+@@ -78,6 +78,8 @@
+                         {
+                             from.SendLocalizedMessage(1038284); // It appears to have poison smeared on it.
+                         }
++
++                        ClusterFArmsLore.FieldMaintenance(from, weap); // Shattered Legacy (cc-P226)
+                     }
+                     else
+                     {
+@@ -96,6 +98,8 @@
+                         }
+ 
+                         from.SendLocalizedMessage(1038295 + (int)Math.Ceiling(Math.Min(arm.ArmorRating, 35) / 5.0));
++
++                        ClusterFArmsLore.FieldMaintenance(from, arm); // Shattered Legacy (cc-P226)
+                     }
+                     else
+                     {
