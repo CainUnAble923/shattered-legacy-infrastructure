@@ -1,0 +1,18 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs	2026-10-21 07:06:34.285478800 -0500
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs	2026-10-21 07:06:34.415192500 -0500
+@@ -1697,6 +1697,7 @@
+         {
+             base.OnItemAdded(item);
+             ClusterFImbueEffects.OnEquipped(this, item); // ClusterF cc-P82: when luck gear went on
++            ClusterFAccessories.OnMobileItemAdded(this, item); // ClusterF cc-P262: shoes over toe rings
+ 
+             if (item is BaseArmor or BaseWeapon)
+             {
+@@ -1712,6 +1713,7 @@
+         public override void OnItemRemoved(Item item)
+         {
+             base.OnItemRemoved(item);
++            ClusterFAccessories.OnMobileItemRemoved(this, item); // ClusterF cc-P262: shoes off wake the toe rings
+ 
+             if (item is BaseArmor or BaseWeapon)
+             {

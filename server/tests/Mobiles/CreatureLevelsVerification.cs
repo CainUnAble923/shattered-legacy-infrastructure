@@ -163,10 +163,16 @@ public class CreatureLevelsVerification
             {
                 var pinned = new HashSet<double>();
                 var ours = new HashSet<double>();
+                // Both reads roll (a Giant Serpent moves between 74.38 and 76.38), so pinned is read far more often
+                // than ours: twelve reads of each sometimes missed a value pinned can give, and the test failed (cc-P355).
                 for (var i = 0; i < 12; i++)
                 {
-                    pinned.Add(BaseInstrument.GetBaseDifficulty(bc));
                     ours.Add(ClusterFCreatureLevels.UncappedDifficulty(bc));
+                }
+
+                for (var i = 0; i < 12 || i < 400 && !ours.IsSubsetOf(pinned); i++)
+                {
+                    pinned.Add(BaseInstrument.GetBaseDifficulty(bc));
                 }
 
                 if (pinned.Max() >= 160.0)
