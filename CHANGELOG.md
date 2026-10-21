@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.10
+
+### Staff
+- The Tinker, a watchdog on the game PC, keeps every PC's Golem kit in step with the game PC's and every 10 minutes fixes the stalls it knows (a Golem's own unfinished work, a lost hand-off, a low-memory stop, a failing watch, a stale flag); anything else becomes one plain question on its card, after a short read-only reasoning session when needed.
+
 ## 2026.10.20.9
 
 ### Added

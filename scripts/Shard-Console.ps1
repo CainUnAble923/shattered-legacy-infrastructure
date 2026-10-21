@@ -247,6 +247,7 @@ function New-AutopilotConfig {
         RunNextFile   = (Join-Path $Root 'RUN-NEXT')
         IntegrateScript = (Join-Path $Root 'Integrate.ps1')   # cc-P184: the integrator merges the other Golems' branches now
         MergeScript   = (Join-Path $Root 'ShadowIron.ps1')   # cc-P208: the merge Golem's runner (-Pause, -Resume)
+        TinkerScript  = (Join-Path $Root 'Tinker.ps1')       # cc-P222: the watchdog's runner (a round now, -Pause, -Resume)
         AwayScript    = (Join-Path $Root 'Set-Away.ps1')     # cc-P149: away mode (-Until <when>, -Off)
         AssignScript  = (Join-Path $Root 'Assign-Prompt.ps1') # cc-P187: a queued prompt's **Golem:** line (and Run next for it)
         PromptDir    = $(if ($Queue) { Split-Path -Parent $Queue } else { '' })
@@ -936,6 +937,9 @@ function Get-ConfirmPhrase {
         'golem.away'        { 'away on' }          # cc-P149
         'golem.awayoff'     { 'away off' }
         'golem.mergeresume' { 'resume merging' }
+        'golem.tinkerpause'  { 'pause tinker' }    # cc-P222
+        'golem.tinkerresume' { 'resume tinker' }
+        'golem.tinkerrun'    { 'run tinker' }
         'web.deploy'       { 'deploy to haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'deploy to haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'deploy to haven' }
@@ -962,6 +966,9 @@ function Get-ConfirmSubject {
         'golem.away'        { 'Away mode on' }     # cc-P149
         'golem.awayoff'     { 'Away mode off' }
         'golem.mergeresume' { 'Resume merging' }
+        'golem.tinkerpause'  { 'Pause the Tinker' }    # cc-P222
+        'golem.tinkerresume' { 'Resume the Tinker' }
+        'golem.tinkerrun'    { 'Tinker: run now' }
         'web.deploy'      { 'Deploy to Haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'Ops pages on Haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'Print queue on Haven' }
@@ -1249,6 +1256,10 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.away';        Group = 'Golem merge'; Label = 'Away mode on (until)';              Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.awayoff';     Group = 'Golem merge'; Label = 'Away mode off';                     Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.mergeresume'; Group = 'Golem merge'; Label = 'Resume merging';                    Mutates = $true;  RunIn = 'here' }
+        # cc-P222: the Tinker, the watchdog: a round now, pause and resume (its card on both consoles).
+        [pscustomobject]@{ Key = 'golem.tinkerrun';    Group = 'Golem merge'; Label = 'Tinker: run now';                  Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.tinkerpause';  Group = 'Golem merge'; Label = 'Pause the Tinker';                 Mutates = $true;  RunIn = 'here' }
+        [pscustomobject]@{ Key = 'golem.tinkerresume'; Group = 'Golem merge'; Label = 'Resume the Tinker';                Mutates = $true;  RunIn = 'here' }
         # cc-P187: the Golem picker's row: the picked queued prompt goes to the picked Golem (its **Golem:** line).
         [pscustomobject]@{ Key = 'golem.assign';     Group = 'Golem pick';  Label = 'Assign picked row to this Golem';    Mutates = $true;  RunIn = 'here' }
         # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
@@ -1857,6 +1868,9 @@ function Get-ConsoleTooltips {
         'golem.awayoff'     = 'Away mode off now: the Golems go back to their usual pace and rests; parked prompts stay parked until you unpark them. Asks away off; runs Set-Away.ps1 -Off in its own window.'
         'golem.mergepause'  = 'Pause merging: Shadow Iron, the merge Golem, runs no round until Resume merging; finished branches wait in merge-queue. Asks pause merging; runs ShadowIron.ps1 -Pause in its own window.'
         'golem.mergeresume' = 'Resume merging: Shadow Iron merges again, one round at once and then every 10 minutes. Asks resume merging; runs ShadowIron.ps1 -Resume in its own window.'
+        'golem.tinkerrun'    = 'Tinker: run now: one round of the watchdog at once (Tinker.ps1): every PC''s kit brought in step, every Golem looked at, a known stall fixed and anything else asked. Asks run tinker; may commit a Golem''s own WIP on its own branch, clear a flag or wake a Golem.'
+        'golem.tinkerpause'  = 'Pause the Tinker: no round runs until Resume the Tinker; nothing else changes. Asks pause tinker; runs Tinker.ps1 -Pause in its own window.'
+        'golem.tinkerresume' = 'Resume the Tinker: rounds run again, one at once and then every 10 minutes. Asks resume tinker; runs Tinker.ps1 -Resume in its own window.'
         # cc-P132: the lights, the Golem figure and the header rune.
         'rebuild.light'    = 'Whether the test shard needs a rebuild: green built from the latest server change, amber server commits since the running build (Rebuild can go), red needed but blocked with the reason. Hover for the commits and files; it only reads and never builds.'
         'package.light'    = 'Whether the player package needs a build or a publish: green the published package holds every player-facing change, amber Build package (or Publish package when a built zip holds them), red blocked with the reason. Hover for the commits; it only reads.'
@@ -3348,13 +3362,13 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 # cc-P186: a Golem script may also name one Golem of several (-Golem <name>, last); the rules below hold for the rest.
                 if ($sa.Count -ge 7 -and $sa[-2] -ceq '-Golem' -and $sa[-1] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' -and @(Get-GolemNamedScripts $ap) -icontains $sa[4]) { $sa = @($sa[0..($sa.Count - 3)]) }
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
-                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript) | Where-Object { $_ }
+                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript) | Where-Object { $_ }
                 $ok = ($head -and $sa.Count -eq 5 -and $withArgs -inotcontains $sa[4])
                 # cc-P125: Start-LongRun.ps1 only with -Cap <n> -Until <time>; Wrap-Up.ps1 and Find-StoppingPoint.ps1 also with -Cancel.
                 $tmpT = [datetime]::MinValue
@@ -3368,6 +3382,8 @@ function Test-PlanSafety {
                 if ($head -and $ap.MarathonScript -and $sa[4] -ieq $ap.MarathonScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Mode' -and $sa[6] -cin @('auto', 'on', 'off')) { $ok = $true }
                 # cc-P208: ShadowIron.ps1 only with -Pause or -Resume.
                 if ($head -and $ap.MergeScript -and $sa[4] -ieq $ap.MergeScript -and $sa.Count -eq 6 -and $sa[5] -cin @('-Pause', '-Resume')) { $ok = $true }
+                # cc-P222: Tinker.ps1 alone (a round), or with -Pause or -Resume.
+                if ($head -and $ap.TinkerScript -and $sa[4] -ieq $ap.TinkerScript -and ($sa.Count -eq 5 -or ($sa.Count -eq 6 -and $sa[5] -cin @('-Pause', '-Resume')))) { $ok = $true }
                 # cc-P149: Set-Away.ps1 only with -Off, or -Until <yyyy-MM-dd HH:mm>.
                 if ($head -and $ap.AwayScript -and $sa[4] -ieq $ap.AwayScript -and (($sa.Count -eq 6 -and $sa[5] -ceq '-Off') -or ($sa.Count -eq 7 -and $sa[5] -ceq '-Until' -and $sa[6] -match '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$'))) { $ok = $true }
                 if ($head -and $sa[4] -ieq $ap.NightShiftScript -and (($sa.Count -eq 6 -and $sa[5] -ceq '-Off') -or ($sa.Count -eq 10 -and $sa[5] -ceq '-On' -and $sa[6] -ceq '-Start' -and $sa[7] -match '^\d{1,2}:\d{2}$' -and $sa[8] -ceq '-End' -and $sa[9] -match '^\d{1,2}:\d{2}$'))) { $ok = $true }
@@ -5539,7 +5555,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff', 'golem.tinkerrun', 'golem.tinkerpause', 'golem.tinkerresume') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -5695,6 +5711,15 @@ function Get-AutopilotPlan {
                         $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'Away mode stays on until then, or until Away mode off.'))
                         $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.AwayScript + @('-Until', $until.ToString('yyyy-MM-dd HH:mm', $script:Invariant))) -Text 'In a window of its own, which stays open.'))
                     }
+                    $steps.Add((New-PlanStep -Kind log -Text $Action))
+                }
+                { $_ -in @('golem.tinkerrun', 'golem.tinkerpause', 'golem.tinkerresume') } {
+                    # cc-P222: the Tinker's round now, its pause (PAUSED-Tinker) and resume.
+                    if (-not (& $need $ap.TinkerScript 'Tinker.ps1')) { break }
+                    $arg = $(switch ($Action) { 'golem.tinkerpause' { @('-Pause') } 'golem.tinkerresume' { @('-Resume') } default { @() } })
+                    $steps.Add((New-PlanStep -Kind say -Text $(switch ($Action) { 'golem.tinkerpause' { 'Pause the Tinker: no round runs until Resume the Tinker. Nothing else changes.' } 'golem.tinkerresume' { 'Resume the Tinker: one round now, then every 10 minutes again.' } default { 'Tinker: one round now: every PC''s kit in step with this one, every Golem looked at; a known stall is fixed (a WIP commit on the Golem''s own branch, a flag cleared, a retry or a wake), anything else becomes a question on its card.' } })))
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text $(if ($Action -eq 'golem.tinkerpause') { 'The Tinker stops looking until you resume it.' } else { 'It never pushes main, deletes work or resets a branch.' })))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.TinkerScript + $arg) -Text 'In a window of its own, which stays open.'))
                     $steps.Add((New-PlanStep -Kind log -Text $Action))
                 }
                 { $_ -in @('golem.mergepause', 'golem.mergeresume') } {
@@ -6930,7 +6955,7 @@ function Get-AutopilotFacts {
     $running = ''
     $runningFile = ''
     if ($stateText) { try { $sj = ($stateText | ConvertFrom-Json); $running = [string]$sj.current; $runningFile = [string]$sj.currentFile } catch { } }
-    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
+    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
     # cc-P182: Run next's pick, a queue file name ('' when none).
     $runNext = ''
     if ($ap.RunNextFile -and (Test-Path -LiteralPath $ap.RunNextFile -PathType Leaf)) { try { $runNext = ([IO.File]::ReadAllText($ap.RunNextFile)).Trim() } catch { } }

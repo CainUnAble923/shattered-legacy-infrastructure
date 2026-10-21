@@ -8063,6 +8063,25 @@ Fact 'P208_ShadowIronHasItsOwnCardLineAndButtonsAndIronStaysTheConsolesOwn' {
     Assert-True (@(Test-PlanSafety $bad $p125Cfg).Count -gt 0) 'ShadowIron.ps1 with anything else (-Register) is refused'
 }
 
+Fact 'P222_TheTinkersButtonsRunTinkerPs1AfterTheirPhraseAndNothingElse' {
+    # cc-P222: Run now, Pause and Resume on the Tinker's card (the Shard Console's Golem merge row and the web console).
+    foreach ($c in @(@('golem.tinkerrun', 'run tinker', ''), @('golem.tinkerpause', 'pause tinker', '-Pause'), @('golem.tinkerresume', 'resume tinker', '-Resume'))) {
+        $act = @(Get-ConsoleActions | Where-Object { $_.Key -eq $c[0] })
+        Assert-True ($act.Count -eq 1 -and $act[0].Mutates -and $act[0].Group -eq 'Golem merge') ($c[0] + ' is a console action in the merge row')
+        $f = $p125Facts.PSObject.Copy(); $f.Present = @{}; $f.Present[$p125Cfg.Autopilot.TinkerScript] = $true
+        $plan = @(Get-ActionPlan -Action $c[0] -Config $p125Cfg -AutopilotFacts $f -Now $p125Now)
+        Assert-True (@($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -eq $c[1] }).Count -eq 1) ($c[0] + ' asks ' + $c[1])
+        $w = @($plan | Where-Object { $_.Kind -eq 'window' })
+        Assert-True ($w.Count -eq 1 -and (@($w[0].Arguments) -join ' ') -match ('Tinker\.ps1' + $(if ($c[2]) { ' ' + $c[2] } else { '' }) + '$')) ($c[0] + ' runs Tinker.ps1 ' + $c[2] + ': ' + (@($w[0].Arguments) -join ' '))
+        Assert-Equal 0 @(Test-PlanSafety $plan $p125Cfg).Count ($c[0] + ' passes the safety check: ' + (@(Test-PlanSafety $plan $p125Cfg) -join ' | '))
+        Assert-True ([bool](Get-ConsoleTooltips)[$c[0]]) ($c[0] + ' has a tooltip')
+    }
+    foreach ($bad in @('-Register', '-Unregister', '-ForceSnapshot')) {
+        $p = @((New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $p125Cfg.Autopilot.TinkerScript, $bad)))
+        Assert-True (@(Test-PlanSafety $p $p125Cfg).Count -gt 0) ('Tinker.ps1 ' + $bad + ' is refused from a button')
+    }
+}
+
 $failed =@($results | Where-Object { -not $_.Passed }).Count
 Write-Host ""
 Write-Host ("{0} facts, {1} passed, {2} failed" -f $results.Count, ($results.Count - $failed), $failed) -ForegroundColor $(if ($failed) { 'Red' } else { 'Green' })
