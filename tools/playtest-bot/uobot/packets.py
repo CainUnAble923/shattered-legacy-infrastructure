@@ -349,3 +349,17 @@ def parse_gump_dd(p):
         t += 2 + n * 2
     return {"serial": serial, "typeId": type_id, "x": x, "y": y,
             "layout": layout.rstrip(b"\x00").decode("latin-1", "replace"), "lines": lines}
+
+
+def weapon_ability(serial, index):
+    """cc-P223. 0xD7 (encoded command), 14: u16 len; u32 the player; u16 0x19 (set weapon ability); then the encoded
+    int (byte 0x00, int32). U/Network/Packets/IncomingPlayerPackets.cs:51, :470-500;
+    U/Items/Weapons/Abilities/WeaponAbilityPackets.cs:11-34 (index 0 or out of range clears it; 18 is Nerve Strike,
+    WeaponAbility.cs:36, :70)."""
+    return struct.pack(">BHIHBi", 0xD7, 14, serial, 0x19, 0, index)
+
+
+def cast_spell(spell_id):
+    """cc-P223. 0x12 type 0x56, 'cast spell from macro': the 1-based spell id as text (IncomingPlayerPackets.cs:184-190
+    subtracts 1; Evasion is registered 402, so 403)."""
+    return text_command(0x56, str(spell_id))

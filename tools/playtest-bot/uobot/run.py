@@ -100,7 +100,13 @@ class Ctx(object):
             raise
         slot = next((i for i, n in enumerate(chars) if not n), None)
         if slot is None:
-            raise LoginFailed("account %s has no free slot" % acct)
+            # cc-P223: a full night makes more fresh characters than the pool's 3 x 7 slots, so the first one goes
+            # (0x83; a Test Center shard does not restrict deletion, pinned AccountHandler.cs:23, :195-247; the
+            # account rested, so it is offline). Creation takes the first free slot.
+            c.delete_character(0)
+            c.sleep(2.0)
+            slot = 0
+            self.tr.write("harness", "account %s was full: deleted its first character (%s)" % (acct, chars[0]))
         # Letters only: a name with a digit ("Bot Human F 1", as first planned) is refused by the shard's name check and
         # the character is created as "Generic Player" (seen 2026-10-13), so the count is spelled in letters.
         n = self.fresh_count

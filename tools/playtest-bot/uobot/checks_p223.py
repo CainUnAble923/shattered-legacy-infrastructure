@@ -332,6 +332,7 @@ def _craft_walk_all(ctx, details):
     if key in SHARED:
         return SHARED[key]
     a = ctx.ensure_admin()
+    learn_all(a, a)       # the pattern gate (cc-P78) hides entries until their band is learned
     staff_target(a, "[SetSkill Blacksmith 120", a)
     for sk in ("Tailoring", "Tinkering", "Carpentry"):
         staff_target(a, "[SetSkill %s 120" % sk, a)
@@ -743,12 +744,17 @@ def t_044(ctx):
         garments = [n for n in names if re.search(r"gargish (robe|sash|half apron)", n)]
         g, idx = craft_find(c, g, "gargish cloth arms")
         made = None
-        if g is not None:
+        tries = 0
+        while g is not None and tries < 5 and not (made and made[0]):
+            # Gargish cloth arms need 87.1 (OURS_TAILOR): at 100 a try can fail ("You failed to create the item").
+            tries += 1
             before = set(c.items)
-            t, g = craft_make(c, g, idx, wait=8)
+            t, g2 = craft_make(c, g, idx, wait=8)
+            g = g2 or g
             new = [s for s, it in c.items.items() if s not in before and it.get("container") == c.backpack()]
             names = [name_of(c, s).lower() for s in new]
-            made = (any("gargish cloth arms" in n for n in names), [hex(c.items[s].get("graphic", 0)) for s in new][:2], [x[:60] for x in t if "create" in x or "fail" in x][:1])
+            made = (any("gargish cloth arms" in n for n in names), [hex(c.items[s].get("graphic", 0)) for s in new][:2], [x[:60] for x in t if "create" in x or "fail" in x][:1], tries)
+            c.sleep(1.0)
         if g:
             c.reply_gump(g, 0)
         ok = all(v == 2 for v in counts.values()) and not garments and bool(made and made[0])

@@ -103,6 +103,9 @@ class Client(object):
         self.last_dir = None
         self.containers = []        # opened container serials (0x24)
         self.menus = []             # cc-P223: parsed 0xBF 0x14 context menus, newest last
+        self.mobile_flags = {}      # cc-P223: serial -> the last status flags byte (0x77 / 0x78)
+        self.flag_log = []          # cc-P223: (time, serial, flags) at each change
+        self.effects = []           # cc-P223: graphical effects (0x70, 0xC0)
         self.popups = []
         self.delete_results = []
 
@@ -498,6 +501,8 @@ class Client(object):
     def _handle(self, p):
         pid = p[0]
         self.seen_ids["recv:0x%02X" % pid] = self.seen_ids.get("recv:0x%02X" % pid, 0) + 1
+        if pid in (0x77, 0x78, 0x70, 0xC0, 0xA1):
+            self._p223_flags_effects(pid, p)
         if pid == 0xA9:
             # S/OutgoingAccountPackets.cs:293: byte slots; per slot name[30]+30; byte cities; per city (new format)
             # idx, city[32], building[32], int32 x, y, z, map, cliloc, 0; int32 flags; int16 -1.
@@ -672,6 +677,35 @@ class Client(object):
             else:
                 self.items[s] = {"props": props, "container": None}
             self.log("<- 0xD6 properties 0x%08X: %s" % (s, " | ".join(props)))
+
+    def _p223_flags_effects(self, pid, p):
+        """cc-P223: a mobile's status flags (0x77 at 15, 0x78 at 17; bit 0x01 frozen/paralysed, pinned
+        Server/Mobiles/Mobile.cs:7067-7074) with each change logged, and graphical effects (0x70, 0xC0: byte type,
+        u32 source, u32 target, u16 item id; S/OutgoingEffectPackets.cs)."""
+        if pid == 0xA1:
+            # S/OutgoingMobilePackets.cs (MobileHits): u32 serial; u16 hitsMax; u16 hits. One's own are exact; a fight
+            # sends these, not 0x11, so without them the bot's own hits stood still (P67-6, P66-5, 10-21).
+            if len(p) >= 9:
+                s = P.u32(p, 1)
+                if s == self.serial and self.status:
+                    self.status["hitsMax"], self.status["hits"] = P.u16(p, 5), P.u16(p, 7)
+                else:
+                    self.mobiles.setdefault(s, {}).update(hitsMax=P.u16(p, 5), hits=P.u16(p, 7))
+            return
+        if pid in (0x77, 0x78):
+            o = 15 if pid == 0x77 else 17
+            if len(p) > o:
+                s = P.u32(p, 1 if pid == 0x77 else 3)
+                f = p[o]
+                if pid == 0x77 and s == self.serial:
+                    # A resurrection arrives as 0x77 for oneself; the ghost body would otherwise stay (T-024, 10-21).
+                    self.body = P.u16(p, 5)
+                old = self.mobile_flags.get(s)
+                self.mobile_flags[s] = f
+                if old != f:
+                    self.flag_log.append((time.time(), s, f))
+        elif len(p) >= 12:
+            self.effects.append({"t": time.time(), "type": p[1], "source": P.u32(p, 2), "target": P.u32(p, 6), "item": P.u16(p, 10)})
 
     def _status(self, p):
         # S/OutgoingMobilePackets.cs:497: u16 len; serial; name[30]; short hits; short hitsMax; bool rename; byte

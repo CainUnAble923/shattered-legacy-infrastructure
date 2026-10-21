@@ -68,7 +68,9 @@ def history_pages(c, staff=False):
         raise AssertionError("[version opened no patch notes gump")
     pages = [all_text(c, g)]
     last = g
-    for _ in range(40):
+    # cc-P223: 200, not 40: the history passed 40 pages in October (74 on 10-21), and the checks that read its oldest
+    # versions (P58-0, P61-5, P64-4, P64-5, P71-7) stopped at page 41 and failed.
+    for _ in range(200):
         if 2 not in buttons(last):
             break
         n = len(c.gumps)

@@ -3,9 +3,9 @@ checks_p223.py; shares its helpers."""
 import re
 
 from . import packets as P
-from .checks import check, SHARED, all_text, buttons, give, staff_target, try_equip, place_forge, _wait_kill
+from .checks import check, SHARED, all_text, buttons, give, staff_target, try_equip, place_forge, _wait_kill, GHOST_BODIES
 from .checks_p223 import (SK, base, set_skills, add_beside, add_mobile_beside, name_of, open_craft, craft_find,
-                          craft_make, craft_pick_resource, gain_loop)
+                          craft_make, craft_pick_resource, gain_loop, learn_all)
 
 # Guilds (ClusterFGuildmasterExtension.OnCustomSpeech: "wish to join" opens the guild gump; SmithGuildmasterGump
 # BtnJoin 10; GuildTaskDetailGump BtnJoin 1, BtnTools 2, BtnStarter 3; GuildStarterItemsGump TakeBase 100 + i).
@@ -443,7 +443,31 @@ def p71_5(ctx):
 
 # Crafting past the stock caps: per-metal and per-wood ceilings (cc-P61, cc-P67).
 
+def roomy(a, p):
+    """The long-lived player carries what earlier checks left in her pack (300 boards, 500 ingots, 125 items ...):
+    overloaded (1019035) she can no longer use a tool (P67-1, 10-21), and full ("Your backpack can't hold anything
+    else.") nothing new reaches it (P57-7, T-026). So her pack is emptied ([Global Delete where Item Parent == <pack>,
+    the top-level items and whatever they hold) and Str 400 carries 1,440 stones. A ghost is resurrected first."""
+    if p.body in GHOST_BODIES:
+        staff_target(a, "[res", p)
+        p.sleep(1.5)
+    pack = p.backpack()
+    if pack:
+        n = len(a.gumps)
+        a.command("[Global Delete where Item Parent == 0x%X" % pack, 0.5)
+        # More than a few objects asks first ("You are about to delete N objects", button 1 continues).
+        g = a.wait_gump(lambda g: "about to delete" in " ".join(g["lines"]), 4, since=n)
+        if g:
+            a.reply_gump(g, 1)
+            a.sleep(2.0)
+        for s in [s for s, it in p.items.items() if it.get("container") == pack]:
+            p.items.pop(s, None)
+    staff_target(a, "[set RawStr 400", p)
+
+
 def smithy_setup(a, p):
+    learn_all(a, p)       # cc-P78's pattern gate hides the plate entries until their band is learned
+    roomy(a, p)
     place_forge(a, p)
     add_beside(a, p, "Anvil", dx=0, dy=1)
     p.sleep(0.5)
@@ -505,6 +529,8 @@ def p67_4(ctx):
 def p67_1(ctx):
     a = ctx.ensure_admin()
     p = ctx.ensure_player()
+    learn_all(a, p)
+    roomy(a, p)
     saw = give(a, p, "Saw")
     out = []
     for skill_at, resource, board in ((150.0, "Frostbark", "FrostbarkBoard"), (155.0, "Frostbark", "FrostbarkBoard"), (155.0, "Shadowbark", "ShadowbarkBoard")):
@@ -536,6 +562,8 @@ def p67_1(ctx):
 def p67_2(ctx):
     a = ctx.ensure_admin()
     p = ctx.ensure_player()
+    learn_all(a, p)
+    roomy(a, p)
     tools = give(a, p, "FletcherTools")
     set_skills(a, p, Fletching=150)
     give(a, p, "FrostbarkLog 300")
@@ -594,32 +622,19 @@ def _spawner_kill(ctx, spawn_file, facet, x, y, z, creature, tries=6):
         seen = [name_of(a, s) for s in list(a.mobiles)[:6] if s != a.serial]
         _home(a)
         return False, "spawner lists %s: %s; %d respawns brought no %s (saw %s)" % (creature, names, tries, creature, seen)
-    a.command("[set CantWalk true Hits 1", 0.2)
+    # Killed by the admin's [kill (pinned Commands.cs, Mobile.Kill), its corpse seen: proof the boss can die and leaves
+    # a corpse. The player's own fight was tried on 10-21 and dropped: in the dungeon the other spawns (and the boss's
+    # answer, whatever its FightMode) killed a 250-hit fighter topped up every 3 s, five times out of five.
+    before_i = set(a.items)
+    a.command("[kill", 0.2)
     if a.wait_target(6):
         a.target_obj(mob)
-    # The kill is the player's (P119-1's fair kill: Wrestling and Tactics 100, Str 250, pinned creature), brought to
-    # the facet by the admin and sent home after.
-    p = ctx.ensure_player()
-    for sk in ("Wrestling", "Tactics"):
-        staff_target(a, "[SetSkill %s 100" % sk, p)
-    staff_target(a, "[set RawStr 250 RawDex 100 Hits 175", p)
-    staff_target(a, "[set Map %s X %d Y %d Z %d" % (facet, x + 1, y, z), p)
-    p.sleep(2.0)
-    if mob not in p.mobiles:
-        _home(a)
-        _home_player(a, p)
-        return False, "spawner lists %s; %s spawned but the player at %d,%d on %s does not see it" % (names[:2], creature, x + 1, y, facet)
-    before_i = set(p.items)
-    p.send(P.war_mode(True))
-    p.sleep(0.3)
-    p.send(P.attack(mob))
-    outcome = _wait_kill(a, p, mob, seconds=60)
-    p.send(P.war_mode(False))
-    corpse = p.wait(lambda: next((s for s, it in p.items.items() if s not in before_i and it.get("world") and it.get("graphic") == 0x2006), None), 8) if outcome == "killed" else None
+    gone = a.wait(lambda: mob not in a.mobiles, 8)
+    outcome = "killed" if gone else "not killed"
+    corpse = a.wait(lambda: next((s for s, it in a.items.items() if s not in before_i and it.get("world") and it.get("graphic") == 0x2006), None), 8) if gone else None
     _home(a)
-    _home_player(a, p)
     ok = bool(names) and outcome == "killed" and bool(corpse)
-    return ok, "spawner lists %s; %s %s (by the player); corpse %s" % (names[:2], creature, outcome, bool(corpse))
+    return ok, "spawner lists %s; %s %s ([kill); corpse %s" % (names[:2], creature, outcome, bool(corpse))
 
 
 def _home_player(a, p):
@@ -642,3 +657,7 @@ def t_024(ctx):
 @check("T-025", "Twisted Weald: a spawner holds Lady Lissith, she spawns and is killable")
 def t_025(ctx):
     return _spawner_kill(ctx, "Data/Spawns/shared/ilshenar/TwistedWeald.json", "Ilshenar", 2177, 1210, -60, "LadyLissith", tries=10)
+
+
+# cc-P223, second day: the third and fourth batches (imported last, so they can use the helpers above).
+from . import checks_p223c  # noqa: E402,F401
