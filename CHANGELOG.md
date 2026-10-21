@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.6
+
+### Added
+- New Haven has new decorations made by the community: fruit and vegetable carts at the market and in the west meadow, oil lanterns on the docks and along the main road, marble railings at the League field office and in the Healer's Hall, support beams under the boardwalk at the docks, and paintings in the inn, the field office, the Healer's Hall, the Magery School, the Bardic Guild and A Stitch In Time.
+- An orc camp has sprung up in the meadow on the road from New Haven to the Rootdeep way in.
+- Thanks to the artists: Moonrose (farm carts), Ems (oil lantern), OUTLANDSOwyn (marble railings), gollin (support beams), Vrark (orc camp) and Odin (paintings).
+
+### Staff
+- [ClusterFCommunityArt status, place, replace and clear (each with dryrun; Administrator) put up and take down New Haven's community art. It places nothing twice and removes only its own pieces. Nothing runs by itself: run 'place' on the test shard first. The art needs the player package update; without it players see "UNUSED" tiles.
+
 ## 2026.10.21.5
 
 ### Added
