@@ -124,6 +124,30 @@ public static class ClusterFSkillCaps
 
     public static void ApplyTo(PlayerMobile player) => Apply(player);
 
+    /// <summary>
+    /// cc-P264 (companions B1, P41 finding 5): a companion's caps as F-12 sets a player's: each skill's cap is the
+    /// companion's max level, and Skills.Cap is that times the skill count. Left at the creature default (700.0 total),
+    /// every gain past 700 would fall to SkillCheck's floor. Runs at creation, at load and on every loop change.
+    /// </summary>
+    public static void ApplyTo(Server.Companions.BaseCompanion companion)
+    {
+        var skills = companion?.Skills;
+
+        if (!_enabled || skills == null)
+        {
+            return;
+        }
+
+        var individualCap = Math.Clamp(companion.MaxLevel * FixedPointScale, 0, ushort.MaxValue);
+
+        for (var i = 0; i < skills.Length; i++)
+        {
+            skills[i].CapFixedPoint = individualCap;
+        }
+
+        skills.Cap = individualCap * skills.Length;
+    }
+
     public static double TotalSkillCap =>
         _totalSkillCap > 0 ? _totalSkillCap : SkillInfo.Table.Length * _individualSkillCap;
 

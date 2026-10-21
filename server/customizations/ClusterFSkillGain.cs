@@ -303,7 +303,7 @@ public static class ClusterFSkillGain
 
     private static bool ShouldBoost(Mobile from, Skill skill) =>
         _enabled &&
-        from?.Player == true &&
+        (from?.Player == true || from is Server.Companions.BaseCompanion { Controlled: true }) && // cc-P264: companions too
         from.Alive &&
         from.Skills.Cap > 0 &&
         skill?.Lock == SkillLock.Up &&
