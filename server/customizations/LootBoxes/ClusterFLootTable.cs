@@ -123,6 +123,7 @@ public sealed class LootTable
         ["BaseChampion"] = 5,
         ["BasePeerless"] = 5,
         ["Harrower"] = 6,
+        ["ClockworkExodus"] = 5, // cc-P195: the Exodus Encounter's boss, 50,000 hits, a peerless-sized fight
     };
 
     // League rank index 1 to 17 (Iron to Celestial) to tier.

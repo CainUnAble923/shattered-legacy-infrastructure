@@ -1,0 +1,17 @@
+--- a/Projects/UOContent/Skills/DetectHidden.cs
++++ b/Projects/UOContent/Skills/DetectHidden.cs
+@@ -252,6 +252,14 @@ public static class DetectHidden
+ 
+                             foundAnyone = true;
+                         }
++                        else if (item is IRevealableItem revealable && (!item.Visible || !revealable.CheckWhenHidden) &&
++                                 revealable.CheckReveal(src))
++                        {
++                            // cc-P195 (the Exodus Encounter): ServUO's IRevealableItem (Skills/DetectHidden.cs:116-126),
++                            // an item the skill reveals; the hidden supply chests are the first.
++                            revealable.OnRevealed(src);
++                            foundAnyone = true;
++                        }
+                     }
+                 }
+             }

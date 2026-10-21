@@ -553,6 +553,9 @@ apply_patch "$PATCHES/Stealing-stack-weight.patch"
 apply_patch "$PATCHES/Stealing-caught-osi-skill.patch"
 apply_patch "$PATCHES/Hiding-combat-range-osi.patch"
 apply_patch "$PATCHES/DetectHidden-osi-radius-found-gain.patch"
+# cc-P195 (the Exodus Encounter): Detect Hidden reveals an IRevealableItem (ServUO Skills/DetectHidden.cs:116-126), the
+# hidden supply chests of the Exodus Dungeon. One hunk after the trap branch; applies over the cc-P66 patch above.
+apply_patch "$PATCHES/DetectHidden-revealable-items.patch"
 apply_patch "$PATCHES/Bard-musicianship-reduction-osi.patch"
 apply_patch "$PATCHES/BaseWeapon-block-chance-osi.patch"
 apply_patch "$PATCHES/Tracking-radius-osi.patch"
