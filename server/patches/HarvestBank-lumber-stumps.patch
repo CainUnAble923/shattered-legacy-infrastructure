@@ -1,0 +1,20 @@
+--- a/Projects/UOContent/Engines/Harvest/Core/HarvestBank.cs
++++ b/Projects/UOContent/Engines/Harvest/Core/HarvestBank.cs
+@@ -22,6 +22,9 @@
+ 
+         public HarvestDefinition Definition { get; }
+ 
++        // Shattered Legacy (P359): the first chop's actual deadline, including the elf modifier.
++        public DateTime NextRespawn => m_NextRespawn;
++
+         public int Current
+         {
+             get
+@@ -63,6 +66,7 @@
+             }
+ 
+             m_Vein = m_DefaultVein;
++            ClusterFLumberStumps.OnBankRespawn(this); // P359: remove the temporary marker on refill.
+         }
+ 
+         public void Consume(int amount, Mobile from)

@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.21
+
+### Added
+- Chopping the last usable wood from a grove leaves a stump at the tree you chopped. It disappears when the wood returns; using an axe on it tells you there is not enough wood left.
+
+### Staff
+- Temporary lumber stumps are on by default (clusterf.lumber.stumps); clusterf.lumber.stumpItemId defaults to 0 for random stock stump art, or selects a fixed ID from 0x0E56 through 0x0E59.
+
 ## 2026.10.21.20
 
 ### Added

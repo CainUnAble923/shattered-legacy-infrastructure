@@ -860,6 +860,10 @@ apply_patch "$PATCHES/Resmelt-recycle-achievement.patch"
 apply_patch "$PATCHES/SalvageBag-recycle-achievement.patch"
 apply_patch "$PATCHES/SmallBOD-crafted-only.patch"
 
+# P359: expose HarvestBank's actual first-consumption refill deadline and remove temporary lumber stumps on refill.
+# Depletion uses Lumberjacking.OnHarvestFinished without a patch. Alternatives: notes/cc-P359-chopped-tree-stumps.md.
+apply_patch "$PATCHES/HarvestBank-lumber-stumps.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
