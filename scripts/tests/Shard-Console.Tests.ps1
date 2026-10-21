@@ -7495,7 +7495,7 @@ Fact 'P182_TheGolemTabHasPokeRunNextAndRetry' {
     $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         $tags = @($script:ui.GolemQueueButtons | ForEach-Object { $_.Tag })
-        Assert-Equal 'golem.poke,golem.runnext,golem.retry,golem.integrate' ($tags -join ',') 'their own row (cc-P184 added Merge branches now)'
+        Assert-Equal 'golem.poke,golem.runnext,golem.retry,golem.lanenow,golem.integrate' ($tags -join ',') 'their own row (cc-P184 added Merge branches now, cc-P159 Send to the second PC)'
         $tips = Get-ConsoleTooltips
         foreach ($k in $tags) { Assert-True ($tips.Contains($k) -and $tips[$k]) ('a tooltip for ' + $k) }
         Assert-True (@($script:ui.GolemRunButtons).Count -eq 4) 'the run row is unchanged'
@@ -7872,7 +7872,7 @@ Fact 'P187_TheGolemPickerActsForThePickedGolemAndAssignWritesItsLine' {
     $form = New-ConsoleForm -Config $p125Cfg -DryRun -StatusFrom (Join-Path $fixture 'console-capture-2026-09-29.txt')
     try {
         Assert-True ($null -ne $script:ui.GolemPick) 'the picker'
-        Assert-Equal 'golem.poke,golem.runnext,golem.retry,golem.integrate' (@($script:ui.GolemQueueButtons | ForEach-Object { $_.Tag }) -join ',') 'the queue row is unchanged'
+        Assert-Equal 'golem.poke,golem.runnext,golem.retry,golem.lanenow,golem.integrate' (@($script:ui.GolemQueueButtons | ForEach-Object { $_.Tag }) -join ',') 'the queue row is unchanged (cc-P159 added Send to the second PC)'
         $script:ui.GolemPickRows = $rows
         $script:ui.GolemPick.Items.Clear(); foreach ($r in $rows) { [void]$script:ui.GolemPick.Items.Add($r.Text) }
         $script:ui.GolemModel.SelectedItem = 'Opus'
@@ -8265,6 +8265,42 @@ Fact 'P153_TheStepLineAndTheEstimate' {
     $st = ConvertFrom-AutopilotStatus (New-P125Status)
     $a = Get-AutopilotActivity -Status $st -Settings ([pscustomobject]@{ StallMinutes = 45 }) -Now $p125Now
     Assert-Equal '[##........] step 2 of 9' $a.Steps 'the tile''s line: the bar and the step (its words on the second line)'
+}
+
+Fact 'P159_TheGolemTabSaysTheCodexLanesLine' {
+    # cc-P159: a Codex lane's card carries its line (Get-GolemCards' laneLine): the step, paused, in use, asleep.
+    $j = (New-P131Status -State 'IDLE' -Current '') | ConvertFrom-Json
+    $j | Add-Member -NotePropertyName multiGolem -NotePropertyValue $true -Force
+    $j | Add-Member -NotePropertyName golems -NotePropertyValue @(
+        [pscustomobject]@{ name = 'Iron'; lane = 'Opus'; engine = 'claude'; machine = 'TOWER'; state = 'RUNNING'; integrator = $true; hours = '' },
+        [pscustomobject]@{ name = 'Agapite'; lane = 'any'; engine = 'codex'; machine = 'STEPHS-DESKTOP'; state = 'RUNNING'; current = 'P151'; hours = '23:00-06:30'; remote = $true; online = $true; laneLine = 'Second PC: P151 step 3 of 7' },
+        [pscustomobject]@{ name = 'Verite'; lane = 'any'; engine = 'codex'; machine = 'STEPHS-DESKTOP'; state = 'IDLE'; hours = '23:00-06:30'; remote = $true; online = $false; laneLine = 'Second PC: asleep (last seen Wed 06:31)' }) -Force
+    $st = ConvertFrom-AutopilotStatus ($j | ConvertTo-Json -Depth 6)
+    $rows = @(Get-GolemCardLines -Status $st -Now $p125Now | ForEach-Object { $_.Text })
+    Assert-True (@($rows | Where-Object { $_ -match 'Agapite .*; Second PC: P151 step 3 of 7' }).Count -eq 1) ('the lane''s step: ' + ($rows -join ' | '))
+    Assert-True (@($rows | Where-Object { $_ -match 'Verite .*; Second PC: asleep' }).Count -eq 1) ('asleep: ' + ($rows -join ' | '))
+    Assert-True (@($rows | Where-Object { $_ -match 'Iron ' -and $_ -match 'Second PC' }).Count -eq 0) 'a Claude Golem has no lane line'
+    $cd = ConvertTo-GolemCardDocument ($st.Golems | Where-Object { $_.name -eq 'Agapite' })
+    Assert-Equal 'Second PC: P151 step 3 of 7' ([string]$cd.laneLine) 'the web console''s card carries it'
+}
+
+Fact 'P159_SendToTheSecondPcRunsLaneNowForThePickedLaneOnly' {
+    $act = @(Get-ConsoleActions | Where-Object { $_.Key -eq 'golem.lanenow' })
+    Assert-True ($act.Count -eq 1 -and $act[0].Mutates -and $act[0].Group -eq 'Golem queue') 'golem.lanenow is a console action in the queue row'
+    Assert-True ($p125Cfg.Autopilot.LaneNowScript -like '*\Lane-Now.ps1') ('its script: ' + $p125Cfg.Autopilot.LaneNowScript)
+    $f = New-P182Facts; $f.Present[$p125Cfg.Autopilot.LaneNowScript] = $true
+    $lc = Get-GolemScopedConfig -Config $p125Cfg -Name 'Agapite'
+    $plan = @(Get-ActionPlan -Action 'golem.lanenow' -Config $lc -AutopilotFacts $f -Now $p125Now)
+    Assert-True (@($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -eq 'send to the second pc' }).Count -eq 1) ('it asks send to the second pc: ' + (@($plan | ForEach-Object { $_.Kind + ':' + $_.Phrase + $_.Text }) -join ' | '))
+    $named = @(Add-GolemToPlan $plan $lc 'Agapite')
+    Assert-True ((Get-P131Window $named) -match 'Lane-Now\.ps1 -Golem Agapite$') ('Lane-Now.ps1 for that lane: ' + (Get-P131Window $named))
+    Assert-Equal 0 @(Test-PlanSafety $named $p125Cfg).Count ('it passes the safety check: ' + (@(Test-PlanSafety $named $p125Cfg) -join ' | '))
+    $own = @(Get-ActionPlan -Action 'golem.lanenow' -Config $p125Cfg -AutopilotFacts $f -Now $p125Now)
+    Assert-True (@($own | Where-Object { $_.Kind -eq 'refuse' -and $_.Text -match 'Codex lane' }).Count -eq 1 -and -not @($own | Where-Object { $_.Kind -eq 'window' }).Count) 'with no lane picked it refuses and runs nothing'
+    Assert-True ([bool](Get-ConsoleTooltips)['golem.lanenow']) 'it has a tooltip'
+    $e = Get-P182Entry 'lanenow'
+    Assert-True ($e -and $e.anyGolem -and $e.action -eq 'golem.lanenow' -and $e.engine -eq 'codex' -and $e.golemWord -eq 'send' -and $e.label -eq 'Send to the second PC') ('the web console''s button, on a Codex lane''s card: ' + ($e | ConvertTo-Json -Compress))
+    Assert-True (@(Get-AnyGolemActionKeys (Join-Path $repo 'web-console\golem-actions.json')) -contains 'golem.lanenow') 'a button for a Golem other than the integrator'
 }
 
 Fact 'P222_TheTinkersButtonsRunTinkerPs1AfterTheirPhraseAndNothingElse' {

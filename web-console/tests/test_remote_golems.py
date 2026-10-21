@@ -160,6 +160,69 @@ class RemoteGolems(unittest.TestCase):
             time.sleep(0.05)
         self.fail("the action did not end")
 
+    # --- cc-P159: the Codex lanes on another PC ------------------------------------------------------------------------
+    def add_lane(self):
+        """Verite: a Codex lane on the second PC, with its own agent secret and a card in the status file."""
+        reg = json.loads(json.dumps(REGISTRY))
+        reg["golems"][2]["portrait"] = self.portrait
+        reg["golems"].append({"name": "Verite", "machine": "STEPHS-DESKTOP", "engine": "codex", "lane": "any", "account": "lane-steph",
+                              "areas": ["docs-only"], "work": {"code": "D:\\UO\\golems\\Verite\\ShatteredLegacy", "docs": "D:\\UO\\golems\\Verite\\shard-migration"},
+                              "enabled": True, "integrator": False, "hours": "23:00-06:30"})
+        with open(os.path.join(self.groot, "golems.json"), "w", encoding="utf-8") as f:
+            json.dump(reg, f)
+        os.utime(os.path.join(self.groot, "golems.json"), (time.time() + 5, time.time() + 5))
+        with open(self.status, encoding="utf-8") as f:
+            doc = json.load(f)
+        doc["golem"]["golems"].append({"name": "Verite", "machine": "STEPHS-DESKTOP", "engine": "codex", "lane": "any", "state": "UNKNOWN",
+                                       "integrator": False, "enabled": True, "current": "", "branch": "", "locks": []})
+        with open(self.status, "w", encoding="utf-8") as f:
+            json.dump(doc, f)
+        os.utime(self.status, (time.time() + 5, time.time() + 5))
+        return self.console.mint_agent("Verite")
+
+    def test_a_codex_lanes_card_says_its_line_and_send_to_the_second_pc_reaches_its_agent(self):
+        sec = self.add_lane()
+        v, _ = self.card("Verite")
+        self.assertTrue(v["laneLine"].startswith("Second PC: asleep"), v.get("laneLine"))
+        code, j = self.agent("/api/agent/status", {"status": {"state": "RUNNING", "current": "P151", "stepsDone": 2, "stepsTotal": 7, "lanePaused": False,
+                                                              "note": "Codex works on P151", "engine": "codex", "generatedAt": "2026-10-21T23:30:00"}}, name="Verite", key=sec)
+        self.assertEqual(200, code, j)
+        v, _ = self.card("Verite")
+        self.assertEqual("Second PC: P151 step 3 of 7", v["laneLine"])
+        self.agent("/api/agent/status", {"status": {"state": "IDLE", "current": "P151", "stepsDone": 2, "stepsTotal": 7, "lanePaused": True,
+                                                    "note": "backs off: owner active: steph signed in and using the PC", "engine": "codex"}}, name="Verite", key=sec)
+        v, _ = self.card("Verite")
+        self.assertEqual("Second PC: P151 paused at step 3 of 7, in use", v["laneLine"])
+        g, _ = self.card("Gold")
+        self.assertEqual("", g.get("laneLine", ""), "a Claude Golem has no lane line")
+        # The button: on a Codex lane's card only, queued for its agent, and pulled once.
+        b = next(x for x in self.console.public_buttons() if x["key"] == "lanenow")
+        self.assertEqual("codex", b.get("engine"), "the page shows it on a Codex lane's card only")
+        code, j = self.act("Gold", "lanenow", "send gold")
+        self.assertEqual(409, code, j)
+        self.assertIn("Codex lane", j["error"])
+        self.assertEqual([], self.files("Gold"))
+        code, j = self.act("Verite", "lanenow", "send verite")
+        self.assertEqual(202, code, j)
+        self.assertEqual(["lanenow"], [x["key"] for x in self.files("Verite")])
+        code, j = self.agent("/api/agent/commands", name="Verite", key=sec)
+        self.assertEqual(200, code, j)
+        self.assertEqual(["lanenow"], [x["key"] for x in j["commands"]])
+
+    def test_the_lane_line_follows_the_golems_own_rules(self):
+        base = {"name": "Agapite", "engine": "codex", "enabled": True, "remote": True, "online": True, "lastSeen": "2026-10-21T23:10:00",
+                "state": "RUNNING", "current": "P151", "stepsDone": 2, "stepsTotal": 7, "lanePaused": False, "note": "", "stoppedPrompt": ""}
+        c = lambda **k: dict(base, **k)
+        self.assertEqual("Second PC: P151 step 3 of 7", panels.lane_line(c()))
+        self.assertEqual("Second PC: P151 running", panels.lane_line(c(stepsTotal=0, stepsDone=0)))
+        self.assertEqual("Second PC: idle, in use", panels.lane_line(c(current="", state="IDLE", note="backs off: a game is running: RocketLeague")))
+        self.assertEqual("Second PC: idle (the queue is empty)", panels.lane_line(c(current="", state="IDLE", note="the queue is empty")))
+        self.assertEqual("Second PC: asleep (last seen Wed 23:10)", panels.lane_line(c(online=False)))
+        self.assertEqual("Second PC: P151 needs you", panels.lane_line(c(stoppedPrompt="P151", state="STOPPED")))
+        self.assertEqual("This PC: P151 step 3 of 7", panels.lane_line(c(remote=False)))
+        self.assertEqual("", panels.lane_line(c(engine="claude")))
+        self.assertEqual("Second PC: off (enabled false in golems.json)", panels.lane_line(c(enabled=False)))
+
     # --- cc-P222: the kit ----------------------------------------------------------------------------------------------
     def test_the_kit_manifest_and_only_its_files_are_served_to_an_agent(self):
         code, j = self.agent("/api/agent/kit")

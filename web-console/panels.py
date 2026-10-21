@@ -144,6 +144,40 @@ _SECRET_PATTERNS = [
 ]
 
 
+def lane_line(card):
+    """cc-P159: a Codex lane's line on its card, as Get-LaneLine in D:/UO/golem/Golems.ps1 says it: the step, paused,
+    in use, asleep. '' for a Golem that is not a Codex lane."""
+    c = card if isinstance(card, dict) else {}
+    if str(c.get("engine") or "") != "codex":
+        return ""
+    remote = bool(c.get("remote"))
+    where = "Second PC" if remote else "This PC"
+    if c.get("enabled") is False:
+        return where + ": off (enabled false in golems.json)"
+    if remote and not c.get("online"):
+        try:
+            t = time.strptime(str(c.get("lastSeen") or "")[:19], "%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            t = None
+        return where + ": asleep" + (" (last seen %s)" % time.strftime("%a %H:%M", t) if t else " (its agent has not called in yet)")
+    cur, sp, note = str(c.get("current") or ""), str(c.get("stoppedPrompt") or ""), str(c.get("note") or "")
+    in_use = bool(re.search(r"(?i)owner active|a game is running", note))
+    if sp:
+        return "%s: %s needs you" % (where, sp)
+    if cur:
+        try:
+            tot, done = int(c.get("stepsTotal") or 0), int(c.get("stepsDone") or 0)
+        except (TypeError, ValueError):
+            tot, done = 0, 0
+        step = "step %d of %d" % (min(done + 1, tot), tot) if tot > 0 else ""
+        if c.get("lanePaused"):
+            return where + ": " + cur + " paused" + (" at " + step if step else "") + (", in use" if in_use else "")
+        return where + ": " + cur + " " + (step or "running")
+    if in_use:
+        return where + ": idle, in use"
+    return where + ": idle" + (" (" + note + ")" if note else "")
+
+
 def redact(text):
     s = "" if text is None else str(text)
     for rx, rep in _SECRET_PATTERNS:
