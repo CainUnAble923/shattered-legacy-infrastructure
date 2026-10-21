@@ -289,3 +289,23 @@ palisade 0x0221 without Damaging); orcish tents and hut 0x0000A050 height 20 (OS
 orcish campfire 0x00808000 light 29 height 1 (OSI's campfire 0x0DE3 without Animation and Damaging); orcish cage
 0x00008040 height 20 and meat rack 0x00008040 height 15 (ours). The rug and the paintings are walk-through and need no
 record.
+
+Satchel and guild bag icons, art 13184-13189 (0x3380-0x3385) (cc-P236)
+-----------------------------------------------------------------------
+Author:      Chase (Shattered Legacy), from his own source art; Codex drew the 44x40 icons, 2026-10-05. Approved by
+             Chase 2026-10-05 (shard-migration docs\feature-queue.md, "Satchel icons").
+License:     OURS. No credit owed to anyone else; credit line if one is wanted: "Satchel icons: Chase, Shattered Legacy".
+Files:       D:\ShatteredLegacy\design\satchel-icons\<name>.png, copied byte for byte (no pixel changed):
+               13184 ore_satchel.png              CompactOreSatchel and tiers T2 to T5
+               13185 lumber_satchel.png           ForestersLumberSatchel, SeasonedLumberSatchel, ArboristLumberSatchel
+               13186 hunters_satchel.png          HuntersSatchel, SeasonedHuntersSatchel, WardensFieldSatchel
+               13187 artificers_satchel.png       ArtificersSatchel (hue 0xDC, Chase 2026-10-05)
+               13188 gemologists_satchel.png      GemologistsSatchel
+               13189 smith_guild_salvage_bag.png  SmithGuildSalvageBag
+             The icons hold exact grays (R = G = B) where the hue goes, so with PartialHue a tier hue tints only those.
+Not shipped (approved, no item yet): arcane_society_reagent_pouch (hue 0x12B decided), tailors_cloth_satchel,
+             maritime_fishers_creel, healers_covenant_satchel.
+Records (records.json): each copies the stock graphic it replaces, read from the client's tiledata.mul, and adds
+             PartialHue (0x00040000): the satchels OSI's 0xA272 "Ore_Satchel_east" (Container 0x00200000, weight 3,
+             height 1) -> 0x00240000; the two bags OSI's bag 0xE76 (Container | ArticleA 0x00204000, weight 2,
+             height 2) -> 0x00244000. Names 19 ASCII characters at most. Server copy: SatchelArt.Records.

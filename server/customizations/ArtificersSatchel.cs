@@ -24,13 +24,13 @@ namespace Server.Items;
 ///
 /// Not replaceable (issued once on join). Blessed — not dropped on death.
 /// </summary>
-[SerializationGenerator(0, false)]
+[SerializationGenerator(1, false)]
 public partial class ArtificersSatchel : Container
 {
     public const string FullMessage = "Your Artificers' Essence Satchel is full; that went into your backpack.";
 
-    private const int SatchelGraphic = 0xA272;
-    private const int SatchelHue     = 0x497;  // arcane blue-purple
+    private const int SatchelGraphic = SatchelArt.ArtificersSatchel; // cc-P236: Chase's icon (was stock 0xA272)
+    private const int SatchelHue     = SatchelArt.ArtificersHue;     // cc-P236: purple 0xDC (0x497 rendered nearly black)
 
     public override int    DefaultGumpID    => 0x3C;
     public override double DefaultWeight    => 2.0;
@@ -146,7 +146,17 @@ public partial class ArtificersSatchel : Container
         list.Add(1049644, $"{count} essence(s) stored");
     }
 
-    private void Deserialize(IGenericReader reader, int version) { }
+    // cc-P236: a version 0 satchel still on the stock graphic takes Chase's icon, and one still in the old 0x497 takes
+    // 0xDC; a staff member's other graphic or hue stays.
+    private void Deserialize(IGenericReader reader, int version)
+    {
+        SatchelArt.MoveFromStock(this, SatchelArt.StockSatchel, SatchelArt.ArtificersSatchel);
+
+        if (Hue == SatchelArt.LegacyArtificersHue)
+        {
+            Hue = SatchelArt.ArtificersHue;
+        }
+    }
 }
 
 // ── Mastery Dashboard Gump ────────────────────────────────────────────────────

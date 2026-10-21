@@ -47,7 +47,7 @@ namespace Server.Items;
 ///     "Salvage Ingots".
 ///   Part E (D72): each tier wears the hue of its rung on the ore ladder, read from CraftResources (TierMetal).
 /// </summary>
-[SerializationGenerator(0, false)]
+[SerializationGenerator(1, false)]
 public partial class CompactOreSatchel : Container
 {
     // -- Item type sets accepted by this satchel -------------------------------
@@ -86,7 +86,7 @@ public partial class CompactOreSatchel : Container
 
     // -- Container configuration -----------------------------------------------
 
-    private const int SatchelGraphic = 0xA272; // ore satchel art
+    private const int SatchelGraphic = SatchelArt.OreSatchel; // cc-P236: Chase's ore satchel icon (was stock 0xA272)
 
     // Override in subclasses to change tier stats without duplicating logic.
     protected virtual int TierWeightReductionPct => 50;
@@ -333,9 +333,11 @@ public partial class CompactOreSatchel : Container
         }
     }
 
-    // -- Serialization (v0 - no custom fields) ---------------------------------
+    // -- Serialization (v1 - no custom fields; v1 marks the cc-P236 icon move) ----
 
-    private void Deserialize(IGenericReader reader, int version) { }
+    // cc-P236: a version 0 satchel of any tier still on the stock graphic takes Chase's icon; a staff member's other graphic stays.
+    private void Deserialize(IGenericReader reader, int version) =>
+        SatchelArt.MoveFromStock(this, SatchelArt.StockSatchel, SatchelArt.OreSatchel);
 
     // cc-P55 Part E: a satchel saved in its tier's old hue takes the new one; any other hue (one staff set) is kept.
     [AfterDeserialization]

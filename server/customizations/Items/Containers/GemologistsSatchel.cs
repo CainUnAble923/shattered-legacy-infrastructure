@@ -3,7 +3,7 @@ using ModernUO.Serialization;
 
 namespace Server.Items
 {
-    [SerializationGenerator(0, false)]
+    [SerializationGenerator(1, false)]
     public partial class GemologistsSatchel : Bag
     {
         // ServUO reads this list from Server.SkillHandlers.Imbuing.IngredTypes
@@ -37,6 +37,7 @@ namespace Server.Items
         [Constructible]
         public GemologistsSatchel()
         {
+            ItemID = SatchelArt.GemologistsSatchel; // cc-P236: Chase's icon (was the stock bag 0xE76)
             Hue = 1177;
 
             DropItem(new Amber(Utility.RandomMinMax(10, 25)));
@@ -69,5 +70,12 @@ namespace Server.Items
         }
 
         public override int LabelNumber => 1113378; // Gemologist's Satchel
+
+        // cc-P236: a version 0 satchel still on the stock bag takes Chase's icon; a staff member's other graphic stays.
+        private void Deserialize(IGenericReader reader, int version) =>
+            SatchelArt.MoveFromStock(this, SatchelArt.StockBag, SatchelArt.GemologistsSatchel);
+
+        // cc-P236: the satchel's gump, bounds and drop sound stay the stock bag's (containers.cfg has no line for our ID).
+        public override ContainerData UpdateContainerData() => ContainerData = ContainerData.GetData(SatchelArt.StockBag);
     }
 }
