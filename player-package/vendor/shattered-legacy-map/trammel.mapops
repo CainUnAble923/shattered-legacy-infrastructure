@@ -1,6 +1,8 @@
 # Shattered Legacy map patch, facet 1. Ours only: every line is a change we made (scripts/mapbuild/mapops.py).
 # L x y tile z  |  S+ x y z id hue (add)  |  S- x y z id hue (remove one EA static)  |  B block fingerprint
-F 1 211
+F 1 213
+B 216901 85bfbf3463a8d0a4
+B 217415 376efcbced6df6b5
 B 231751 9080b0ab59a18021
 B 328845 302eabffe3de2227
 B 328846 302eabffe3de2227
@@ -11532,6 +11534,10 @@ L 5245 1228 580 20
 L 5245 1229 580 20
 L 5245 1230 580 20
 L 5245 1231 580 20
+S- 3388 2607 19 3302 0
+S- 3388 2607 19 3303 0
+S- 3396 2616 38 3296 0
+S- 3396 2616 38 3297 0
 S- 3618 2622 0 641 0
 S- 3619 2622 0 641 0
 S- 3620 2622 0 641 0
