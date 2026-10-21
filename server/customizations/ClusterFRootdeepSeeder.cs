@@ -14,6 +14,12 @@
 //     Landing's arrival tile; and up, at the foot of the rope ladder on the Landing's north wall (5193,1132; the ladder
 //     0x08A6 is a map static on the wall tile 5193,1131), landing beside the hole (3619,2621). Stock Teleporter items
 //     (pinned Items/Misc/Teleporter.cs: invisible, Active, players only, no delay), so nothing new is saved.
+//   - cc-P275: the eight stock floor traps of "watch the floor" (shard-migration notes/cc-P201-deployable-traps-design.md
+//     section 6.1, every tile checked against the built floor, notes/cc-P167-tools/plan-cells.json, and clear of
+//     decor): mushroom puffs by the decoy chests, spikes on one tile of each Warren descent, a saw at the Thicket's
+//     gap, greater gas on the Gloom ring and the stone face at the Queen's door. Pinned's classes as they are
+//     (Items/Traps/). The mushroom, spike, saw and stone face hurt creatures too, so those five tiles sit outside every
+//     spawner's home range (a fact checks it); the gas trap hurts players only, so its two may sit inside one.
 // It refuses while the landing is still void land (the map batch has not run), unless "force". Idempotent: a row
 // already standing (a spawner of the same first type within 3 tiles, a working ankh within 2, a crawlway at its tile,
 // a teleporter at its tile) is skipped, and nothing is moved or deleted. Not run at world load.
@@ -70,6 +76,24 @@ public static class ClusterFRootdeepSeeder
     [
         new("the hole down to the Landing", Hole.X, Hole.Y, Arrival.X, Arrival.Y),
         new("the rope ladder up to Old Haven", LadderFoot.X, LadderFoot.Y, BesideHole.X, BesideHole.Y),
+    ];
+
+    /// <summary>cc-P275: one stock floor trap (Kind names the class) on one tile.</summary>
+    public readonly record struct FloorTrapRow(string Label, string Zone, int X, int Y, string Kind)
+    {
+        public Point2D Location => new(X, Y);
+    }
+
+    public static readonly FloorTrapRow[] FloorTraps =
+    [
+        new("T1 Deposit Hall: mushroom puff by decoy chest 1", "Vault", 5146, 1134, nameof(MushroomTrap)),
+        new("T2 Deposit Hall: mushroom puff by decoy chest 3", "Vault", 5151, 1139, nameof(MushroomTrap)),
+        new("T3 Warren west descent: spikes", "Warren", 5161, 1195, nameof(SpikeTrap)),
+        new("T4 Warren east descent: spikes", "Warren", 5201, 1195, nameof(SpikeTrap)),
+        new("T5 The Thicket's gap: floor saw", "Tangle", 5157, 1222, nameof(SawTrap)),
+        new("T6 Gloom ring, north run: greater gas", "Gloom", 5165, 1235, nameof(GasTrap)),
+        new("T7 Gloom ring, east run: greater gas", "Gloom", 5232, 1252, nameof(GasTrap)),
+        new("T8 The Queen's lair mouth: stone face", "Gloom lair", 5183, 1247, nameof(StoneFaceTrap)),
     ];
 
     public static readonly SpawnRow[] Spawners =
@@ -129,7 +153,7 @@ public static class ClusterFRootdeepSeeder
     }
 
     [Usage("ClusterFSeedRootdeep [dryrun | force]")]
-    [Description("Places the Rootdeep Burrows' spawners, the landing's working ankh, the Vault's crawlway and the two teleporters of the way in (the hole in Old Haven, the ladder up), where missing. Refuses until the map batch has built the landing, unless force. Moves and deletes nothing.")]
+    [Description("Places the Rootdeep Burrows' spawners, the landing's working ankh, the Vault's crawlway, the eight floor traps and the two teleporters of the way in (the hole in Old Haven, the ladder up), where missing. Refuses until the map batch has built the landing, unless force. Moves and deletes nothing.")]
     [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places the Rootdeep Burrows' spawners, landing ankh, crawlway and the way-in teleporters once the map batch has built them.")]
     private static void OnSeedCommand(CommandEventArgs e)
     {
@@ -143,7 +167,10 @@ public static class ClusterFRootdeepSeeder
         e.Mobile.SendMessage(Seed(mode == "dryrun", mode == "force").Message);
     }
 
-    public readonly record struct SeedResult(bool Refused, int Spawners, int Ankhs, int Crawlways, int Present, string Message, int Teleporters = 0);
+    public readonly record struct SeedResult(
+        bool Refused, int Spawners, int Ankhs, int Crawlways, int Present, string Message, int Teleporters = 0, int FloorTraps = 0,
+        int FloorTrapsPresent = 0
+    );
 
     public static SeedResult Seed(bool dryRun, bool force = false)
     {
@@ -219,10 +246,60 @@ public static class ClusterFRootdeepSeeder
             teleporters++;
         }
 
+        int floorTraps = 0, floorTrapsPresent = 0;
+
+        foreach (var row in FloorTraps)
+        {
+            if (FindFloorTrap(map, row) != null)
+            {
+                floorTrapsPresent++;
+                continue;
+            }
+
+            if (!dryRun)
+            {
+                PlaceFloorTrap(map, row);
+            }
+
+            floorTraps++;
+        }
+
         var verb = dryRun ? "would place" : "placed";
         return new SeedResult(false, spawners, ankhs, crawlways, present,
-            $"Rootdeep Burrows{(dryRun ? " (dry run)" : "")}: {verb} {spawners} spawners, {ankhs} ankh, {crawlways} crawlway, {teleporters} teleporters; already there {present}.",
-            teleporters);
+            $"Rootdeep Burrows{(dryRun ? " (dry run)" : "")}: {verb} {spawners} spawners, {ankhs} ankh, {crawlways} crawlway, {teleporters} teleporters, {floorTraps} floor traps; already there {present} (and {floorTrapsPresent} floor traps).",
+            teleporters, floorTraps, floorTrapsPresent);
+    }
+
+    /// <summary>cc-P275: a new stock trap of the row's kind (spikes facing west, the saw and gas on the floor, greater gas).</summary>
+    public static BaseTrap MakeFloorTrap(FloorTrapRow row) => row.Kind switch
+    {
+        nameof(MushroomTrap)  => new MushroomTrap(),
+        nameof(SpikeTrap)     => new SpikeTrap(SpikeTrapType.WestFloor),
+        nameof(SawTrap)       => new SawTrap(SawTrapType.NorthFloor),
+        nameof(GasTrap)       => new GasTrap(GasTrapType.Floor, Poison.Greater),
+        nameof(StoneFaceTrap) => new StoneFaceTrap(),
+        _                     => throw new ArgumentException($"no floor trap called {row.Kind}")
+    };
+
+    public static BaseTrap PlaceFloorTrap(Map map, FloorTrapRow row)
+    {
+        var trap = MakeFloorTrap(row);
+        trap.MoveToWorld(new Point3D(row.X, row.Y, map.GetAverageZ(row.X, row.Y)), map);
+        return trap;
+    }
+
+    /// <summary>The trap of the row's class standing on the row's tile, or null.</summary>
+    public static BaseTrap FindFloorTrap(Map map, FloorTrapRow row)
+    {
+        foreach (var item in map.GetItemsInRange<BaseTrap>(new Point3D(row.X, row.Y, 0), 0))
+        {
+            if (!item.Deleted && item.GetType().Name == row.Kind)
+            {
+                return item;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>A stock teleporter on the row's tile to the row's destination: players only, no delay, no effect.</summary>

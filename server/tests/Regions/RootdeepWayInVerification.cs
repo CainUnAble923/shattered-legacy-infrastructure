@@ -198,6 +198,10 @@ public class RootdeepWayInVerification
         finally
         {
             ClusterFRootdeepSeeder.MapBuilt = mapBuilt;
+            foreach (var row in ClusterFRootdeepSeeder.FloorTraps) // cc-P275: the seeder now lays these too
+            {
+                ClusterFRootdeepSeeder.FindFloorTrap(Map.Trammel, row)?.Delete();
+            }
             DeleteAll(placed);
             foreach (var m in mobiles)
             {

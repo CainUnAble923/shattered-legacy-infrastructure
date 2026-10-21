@@ -109,5 +109,57 @@ public static class TinkeringCraftRegistrations
             tinkering.AddRes(index, typeof(Amethyst), 1062605, 20, 1044240);
             tinkering.AddRes(index, typeof(Turquoise), 1032691, 10, 1044240);
         }
+
+        RegisterDeployableTraps(tinkering);
+    }
+
+    /// <summary>
+    /// cc-P275: the eight deployable trap kits (shard-migration notes/cc-P201-deployable-traps-design.md section 3), ours,
+    /// in pinned's Traps group beside OSI's container traps, which stay as they are. Each gate is a setting
+    /// (clusterf.traps.&lt;trap&gt;.tinkering, read at registration) and gains to 50 above it, but never past StockTop:
+    /// the shard's craft ceilings stop every iron recipe at 130, and the extended metals teach above it
+    /// (CraftCeilingsVerification K1). So the blast kit gains 90-130 and the shackle 110-130. The gas and blast potions
+    /// and the darts are loaded into the finished kit, not crafted into it (DeployableTrapKit.cs).
+    /// </summary>
+    public const double StockTop = 130.0;
+
+    public static void RegisterDeployableTraps(CraftSystem tinkering)
+    {
+        const int traps = 1044052; // Traps
+        const int lacking = 1044253; // You don't have the components needed to make that.
+
+        int Kit(Type type, DeployableTrapKind kind, Type firstRes, TextDefinition firstName, int amount)
+        {
+            var min = DeployableTraps.TinkeringMin(kind);
+            return tinkering.AddCraft(type, traps, $"{DeployableTraps.NameOf(kind)} kit", min, Math.Min(min + 50, StockTop), firstRes, firstName, amount, lacking);
+        }
+
+        var index = Kit(typeof(SnareNetKit), DeployableTrapKind.SnareNet, typeof(Cloth), 1044286, 10);
+        tinkering.AddRes(index, typeof(SpidersSilk), 1044360, 2, lacking);
+
+        index = Kit(typeof(CaltropsKit), DeployableTrapKind.Caltrops, typeof(IronIngot), 1044036, 10);
+        tinkering.AddRes(index, typeof(Springs), 1044171, 1, lacking);
+
+        index = Kit(typeof(GasTrapKit), DeployableTrapKind.Gas, typeof(IronIngot), 1044036, 5);
+        tinkering.AddRes(index, typeof(Gears), 1044254, 1, lacking);
+
+        index = Kit(typeof(BlastTrapKit), DeployableTrapKind.Blast, typeof(IronIngot), 1044036, 5);
+        tinkering.AddRes(index, typeof(Gears), 1044254, 1, lacking);
+
+        index = Kit(typeof(DartTrapKit), DeployableTrapKind.Dart, typeof(IronIngot), 1044036, 5);
+        tinkering.AddRes(index, typeof(Springs), 1044171, 1, lacking);
+        tinkering.AddRes(index, typeof(Bolt), 1044570, 1, lacking);
+
+        index = Kit(typeof(BearTrapKit), DeployableTrapKind.BearTrap, typeof(IronIngot), 1044036, 10);
+        tinkering.AddRes(index, typeof(Springs), 1044171, 2, lacking);
+        tinkering.AddRes(index, typeof(Gears), 1044254, 1, lacking);
+
+        index = Kit(typeof(AlarmTrapKit), DeployableTrapKind.Alarm, typeof(IronIngot), 1044036, 4);
+        tinkering.AddRes(index, typeof(Gears), 1044254, 1, lacking);
+        tinkering.AddRes(index, typeof(Springs), 1044171, 1, lacking);
+
+        index = Kit(typeof(ShackleTrapKit), DeployableTrapKind.Shackle, typeof(IronIngot), 1044036, 8);
+        tinkering.AddRes(index, typeof(Gears), 1044254, 2, lacking);
+        tinkering.AddRes(index, typeof(ParalyzeScroll), "Paralyze scroll", 1, lacking);
     }
 }
