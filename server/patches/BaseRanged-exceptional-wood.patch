@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Items/Weapons/Ranged/BaseRanged.cs
++++ b/Projects/UOContent/Items/Weapons/Ranged/BaseRanged.cs
+@@ -206,7 +206,10 @@
+             var result = base.OnCraft(quality, makersMark, from, craftSystem, typeRes, tool, craftItem, resHue);
+             if (Core.ML)
+             {
++                // Shattered Legacy (cc-P228, F-29): an exceptional bow gets its wood's bonuses x1.5.
++                var before = ClusterFExceptionalMaterial.BeginWoodBonus(this);
+                 ApplyWoodBonuses(typeRes);
++                ClusterFExceptionalMaterial.EndWoodBonus(this, before);
+             }
+ 
+             return result;

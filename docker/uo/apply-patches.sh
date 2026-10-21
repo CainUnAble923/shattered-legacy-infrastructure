@@ -782,6 +782,16 @@ apply_patch "$PATCHES/Repair-arms-lore-weaken.patch"
 apply_patch "$PATCHES/BaseWeapon-wood-bonuses.patch"
 apply_patch "$PATCHES/BaseArmor-wood-bonuses.patch"
 
+# cc-P228 (F-29, Chase 2026-10-03): exceptional items read their material's bonuses x1.5, every material. Pinned reads
+# CraftAttributeInfo live, with no quality check, at eight call sites in BaseArmor and BaseWeapon (resists, durability,
+# lower requirements, luck, element damage); each now asks customizations ClusterFExceptionalMaterial.Attrs, the one
+# place the rule lives. The OSI woods' bow bonuses are BaseRanged's private craft-time switch, so its one call is wrapped
+# (snapshot, switch, scale what it added). Applied after the arms-lore and wood-bonus patches (no hunk shares their
+# lines). Notes: shard-migration notes/cc-P228-exceptional-material-gap.md; pinned by ExceptionalMaterialVerification.
+apply_patch "$PATCHES/BaseArmor-exceptional-material.patch"
+apply_patch "$PATCHES/BaseWeapon-exceptional-material.patch"
+apply_patch "$PATCHES/BaseRanged-exceptional-wood.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

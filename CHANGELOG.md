@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21
+
+### Changed
+- Exceptional crafted items now get their material's bonuses one and a half times over, for every ore, leather, scale and wood: an exceptional Valorite plate chest has more physical, cold, poison and energy resist than a normal one, an exceptional Golden sword more luck and lower requirements, an exceptional Mythril weapon more energy damage, an exceptional Oak bow more luck and damage. Normal items keep the values they had. Your resists still stop at the usual caps.
+- Material penalties (the -3 resist on dragon scales, Frost ore's -2 fire resist) are not made worse on exceptional items. Runic properties, the exceptional damage and resist bonus, and the extended woods' own exceptional line are not multiplied.
+
+### Staff
+- Items already in the world change at once for resists, luck, lower requirements, element damage and durability bonus (it is read live). Their maximum hit points and an exceptional Oak to Frostwood bow's wood bonuses were set when crafted and stay as they were; new crafts get the full rule. Cloth has no material bonuses to multiply.
+
 ## 2026.10.20.23
 
 ### Added

@@ -8,8 +8,8 @@
 //   W1. For each of the 8 woods, a normal bow, staff and club (Tetsubo) gets exactly the weapon row's "Normal" line, and
 //       an exceptional one "Normal" plus "Exceptional adds" (and pinned's exceptional 35 damage increase).
 //   W2. The same for a wooden shield and the shield row.
-//   W3. Oak and Frostwood bows match pinned exactly, normal and exceptional; staves, clubs and shields in an OSI wood,
-//       and anything in Rootwood, get nothing.
+//   W3. Oak and Frostwood bows match pinned exactly when normal, and get x1.5 when exceptional (cc-P228, F-29);
+//       staves, clubs and shields in an OSI wood, and anything in Rootwood, get nothing.
 //   W4. Starwood's random extra is pinned's Heartwood pick: the same outcome for each of the six rolls.
 //   W5. No wood item ever has Self Repair, in any wood, quality or Heartwood roll.
 //   W6. Resource info returns a name, hue, index and type for every extended wood, and their logs and boards name it.
@@ -261,11 +261,12 @@ public class ExtendedWoodBonusesVerification
     // ---------------------------------------------------------------- W3
 
     [Theory]
-    // pinned BaseRanged.cs:221-257: Oak luck 40, damage 5; Frostwood 60 physical / 40 cold, damage 12; any quality
+    // pinned BaseRanged.cs:221-257: Oak luck 40, damage 5; Frostwood 60 physical / 40 cold, damage 12; any quality.
+    // cc-P228 (F-29): an exceptional bow gets them x1.5 (Oak luck 60, damage 8; Frostwood 40 / 60 cold, damage 18).
     [InlineData(CraftResource.OakWood, false, "Damage=5 Luck=40")]
-    [InlineData(CraftResource.OakWood, true, "Damage=40 Luck=40")]
+    [InlineData(CraftResource.OakWood, true, "Damage=43 Luck=60")]
     [InlineData(CraftResource.Frostwood, false, "Cold=40 Damage=12 Physical=60")]
-    [InlineData(CraftResource.Frostwood, true, "Cold=40 Damage=47 Physical=60")]
+    [InlineData(CraftResource.Frostwood, true, "Cold=60 Damage=53 Physical=40")]
     [InlineData(CraftResource.Rootwood, false, "")]
     [InlineData(CraftResource.Rootwood, true, "Damage=35")]
     public void W3_OsiWoodsAndRootwoodKeepTheirRows(CraftResource wood, bool exceptional, string bowExpected)
