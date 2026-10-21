@@ -18,9 +18,10 @@
    second confirm that says what happens and to what. ASCII only. */
 (function () {
   'use strict';
-  var POLL_MS = 5000, JOB_MS = 1000;
+  var POLL_MS = 5000, JOB_MS = 1000, ANSWER_MS = 150000;   // cc-P216: an answer may wake a session (up to 2 minutes)
   var last = null, busy = false, art = [], frames = {}, sheetFor = null, sheetGolem = null, jobSeen = 0, jobTimer = null, strips = [];
   var picked = '', sheetMode = 'golem', sheetPage = null, sheetInputsFixed = null, preview = null, pageData = {}, pageSel = {}, pageLoading = {};
+  var answerDraft = {}, answerMsg = {}, answering = {};   // cc-P216: per question: the words typed so far, the last reply, sending
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -352,6 +353,7 @@
       }
       li.appendChild(ta);
     }
+    if (c.questions && ((c.questions.open || []).length || (c.questions.history || []).length)) li.appendChild(questionBlock(c.name, c.questions, !!(a && a.canAct), a && a.why));   // cc-P216
     (c.commands || []).slice(0, 4).forEach(function (x) {
       li.appendChild(el('div', x.state === 'done' ? (x.code === 0 ? 'meta' : 'warn') : x.state === 'queued' || x.state === 'taken' ? 'quiet' : 'warn',
         (x.label || x.key) + ': ' + (x.note || x.state) + (x.endedAt ? ' (' + when(x.endedAt) + ')' : '')));
@@ -375,6 +377,107 @@
     }
     return li;
   }
+  // --- cc-P216: a Golem's questions for Chase: each open one in full, a button per choice, a text box when free text
+  // is allowed, a warning when an answer cannot be undone; then the short history (answered, expired). The answer goes to
+  // POST /api/answer (the same sign-in as the buttons); the server refuses one for a question already closed.
+  function typingAnswer() { var a = document.activeElement; return !!(a && a.classList && a.classList.contains('qtext')); }
+  function sendAnswer(q, golem, choice, canAct) {
+    if (!canAct || answering[q.id]) return;
+    var text = String(answerDraft[q.id] || '').trim();
+    if (choice < 0 && !text) { answerMsg[q.id] = { warn: true, text: 'Pick a choice or write an answer first.' }; draw(last); return; }
+    var body = { id: q.id, choice: choice, text: text };
+    if (q.irreversible) {
+      if (!window.confirm('This cannot be undone: ' + (q.irreversibleWhy || 'the Golem says so') + '.\n\nSend this answer to the ' + golem + ' Golem?')) return;
+      body.confirm = true;
+    }
+    answering[q.id] = true;
+    answerMsg[q.id] = { warn: false, text: 'Sending...' };
+    draw(last);
+    post('/api/answer', body, function (code, j) {
+      answering[q.id] = false;
+      var ok = code === 200 || code === 202;
+      answerMsg[q.id] = { warn: !ok, text: ok ? ((j && (j.message || j.result)) || 'Answered.') : ((j && j.error) || ('refused (' + code + ')')) };
+      if (ok) delete answerDraft[q.id];
+      poll(false);
+    }, ANSWER_MS);
+  }
+  function questionBlock(golem, qs, canAct, why) {
+    var box = el('div', 'questions');
+    ((qs && qs.open) || []).forEach(function (q) {
+      var d = el('div', 'question' + (q.irreversible ? ' irreversible' : ''));
+      d.setAttribute('data-question', q.id);
+      d.appendChild(el('div', 'qhead', (q.kind === 'needsyou' ? 'Waiting on you' : 'Question') + ' on ' + q.prompt + ', asked ' + when(q.askedAt)));
+      d.appendChild(el('p', 'qtextshow', q.question));
+      if (q.irreversible) d.appendChild(el('div', 'warn strong', 'Cannot be undone: ' + (q.irreversibleWhy || 'the Golem says so') + '. You are asked to confirm.'));
+      if (q.context) {
+        var det = el('details', 'qcontext');
+        det.appendChild(el('summary', null, 'What the Golem saw'));
+        det.appendChild(el('pre', 'log', q.context));
+        d.appendChild(det);
+      }
+      var pending = q.answerPending || (answering[q.id] ? 'Sending...' : '');
+      if (q.answerFailed) d.appendChild(el('div', 'warn', 'The last answer was refused there: ' + q.answerFailed));
+      if (pending) d.appendChild(el('div', 'quiet', pending));
+      var grid = el('div', 'ctl-grid mini');
+      (q.choices || []).forEach(function (c, i) {
+        var b = el('button', 'ctl small answer');
+        b.type = 'button';
+        b.setAttribute('data-choice', String(i));
+        b.appendChild(el('span', 'label', c.label));
+        if (c.does) b.appendChild(el('span', 'meta', c.does));
+        b.disabled = !canAct || !!pending;
+        b.addEventListener('click', function () { sendAnswer(q, golem, i, canAct); });
+        grid.appendChild(b);
+      });
+      if (q.freeText) {
+        var ta = el('textarea', 'qtext');
+        ta.rows = 3; ta.maxLength = 2000;
+        ta.setAttribute('aria-label', 'Your answer to ' + golem + ' in your own words');
+        ta.placeholder = (q.choices || []).length ? 'Or answer in your own words (sent with a choice, or alone)' : 'Your answer';
+        ta.value = answerDraft[q.id] || '';
+        ta.disabled = !canAct || !!pending;
+        ta.addEventListener('input', function () { answerDraft[q.id] = ta.value; });
+        d.appendChild(ta);
+        var send = el('button', 'ctl small answer');
+        send.type = 'button';
+        send.setAttribute('data-choice', '-1');
+        send.appendChild(el('span', 'label', 'Send my words'));
+        send.disabled = !canAct || !!pending;
+        send.addEventListener('click', function () { sendAnswer(q, golem, -1, canAct); });
+        grid.appendChild(send);
+      }
+      d.appendChild(grid);
+      if (!canAct && why) d.appendChild(el('div', 'quiet', why));
+      var m = answerMsg[q.id];
+      if (m) d.appendChild(el('div', m.warn ? 'warn' : 'ok', m.text));
+      box.appendChild(d);
+    });
+    var hist = (qs && qs.history) || [];
+    if (hist.length) {
+      var h = el('details', 'qhistory');
+      h.appendChild(el('summary', null, 'Earlier questions (' + hist.length + ')'));
+      hist.forEach(function (x) {
+        var a = x.answer, said = a ? (a.choiceLabel ? '"' + a.choiceLabel + '"' : '') + (a.text ? (a.choiceLabel ? ' + ' : '') + '"' + a.text + '"' : '') : '';
+        h.appendChild(el('div', x.state === 'answered' ? 'meta' : 'quiet', x.prompt + ' ' + (x.state === 'answered' ? 'answered ' + when(x.closedAt) + ': ' + said + (a && a.source ? ' (' + a.source + ')' : '') :
+          x.state + ' ' + when(x.closedAt) + (x.closedWhy ? ': ' + x.closedWhy : '')) + ' | ' + x.question));
+      });
+      box.appendChild(h);
+    }
+    return box;
+  }
+  function drawSoloQuestions(j, a) {
+    var card = $('golem-questions-card'); if (!card) return;
+    var solo = j && j.questions && j.questions.solo;
+    var n = solo ? (solo.open || []).length + (solo.history || []).length : 0;
+    card.hidden = !n;
+    if (!n) return;
+    clear($('golem-questions')).appendChild(questionBlock('Golem', solo, !!(a && a.canAct), a && a.why));
+  }
+  function drawQuestionCount(j) {
+    var n = (j && j.questions && j.questions.open) || 0;
+    var b = $('golem-qcount'); if (b) b.textContent = n ? String(n) : '';
+  }
+
   // cc-P149: away mode (until when), the parked prompts and the last email commands, under the team's cards.
   function drawAway(g) {
     var card = $('golem-team-card'); if (!card) return;
@@ -1095,7 +1198,9 @@
     }
     drawTiles(s.tiles);
     drawLights(s.lights);
-    drawGolem(s.golem, j.actions || null);
+    // cc-P216: a half-typed answer is not wiped by the 5-second refresh: the Golem page waits while its box has focus.
+    if (!typingAnswer()) { drawGolem(s.golem, j.actions || null); drawSoloQuestions(j, j.actions || null); }
+    drawQuestionCount(j);
     drawControls(j);
     drawConsoleGrid();
     if ($('page').classList.contains('on') && $('sheet').hidden) drawPage();
