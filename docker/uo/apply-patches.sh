@@ -732,6 +732,13 @@ apply_patch "$PATCHES/SkillCheck-pet-gain-speed.patch"
 apply_patch "$PATCHES/BaseBoatDeed-fountain-sanctum.patch"
 apply_patch "$PATCHES/BaseWeapon-trained-weapon-ability.patch"
 
+# cc-P194 Covetous Void Spawn: ServUO's PlayerMobile adds "The Void Pool" to a player's own context menu inside the
+# Void Pool region (PlayerMobile.cs:2418-2429). One hook line after base.GetContextMenuEntries, into customizations
+# VoidPoolContextMenu.AddEntries (Services/Revamped Dungeons/Covetous Void Spawn/VoidPoolController.cs); a region
+# has no context-menu hook and a partial class cannot reach the override. Alternatives argued in
+# shard-migration/notes/cc-P194-port-wrong-and-covetous-void.md; pinned by CovetousVoidSpawnVerification.
+apply_patch "$PATCHES/PlayerMobile-void-pool-context.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

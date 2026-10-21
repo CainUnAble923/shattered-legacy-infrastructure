@@ -1,0 +1,14 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -1858,6 +1858,11 @@
+         {
+             base.GetContextMenuEntries(from, ref list);
+ 
++            // Shattered Legacy (cc-P194): "The Void Pool" inside the Covetous Void Pool region, ServUO's
++            // PlayerMobile.cs:2418-2429 (VoidPoolInfo). The entry and the region test live in customizations
++            // (Services/Revamped Dungeons/Covetous Void Spawn/VoidPoolController.cs, VoidPoolContextMenu).
++            Engines.VoidPool.VoidPoolContextMenu.AddEntries(this, ref list);
++
+             if (from == this)
+             {
+                 if (Alive && Backpack != null && CanSee(Backpack))
