@@ -16,7 +16,7 @@ import time
 
 from . import huffman
 from . import packets as P
-from .safety import HOST, PORT, check_relay, check_target
+from .safety import HOST, PORT, check_relay, check_target, check_test_relay, check_test_target
 
 DIRS = {"n": 0, "ne": 1, "e": 2, "se": 3, "s": 4, "sw": 5, "w": 6, "nw": 7}
 DELTA = {0: (0, -1), 1: (1, -1), 2: (1, 0), 3: (1, 1), 4: (0, 1), 5: (-1, 1), 6: (-1, 0), 7: (-1, -1)}
@@ -68,8 +68,11 @@ class Transcript(object):
 
 
 class Client(object):
-    def __init__(self, user, password, transcript, cliloc, label=None):
+    def __init__(self, user, password, transcript, cliloc, label=None, test_target=None):
         self.user, self.password = user, password
+        # cc-P215: (host, port) of a test shard for the Golem login checks (safety.check_test_target); None keeps the
+        # overnight run's one scratch target.
+        self.test_target = test_target
         self.tr, self.cliloc = transcript, cliloc
         self.label = label or user
         self.sock = None
@@ -104,13 +107,17 @@ class Client(object):
         self.containers = []        # opened container serials (0x24)
         self.popups = []
         self.delete_results = []
+        self.trades = []            # cc-P215: secure trade events (0x6F): dicts action, serial, container
 
     # -- transport --------------------------------------------------------------------------------------------
     def log(self, text):
         self.tr.write(self.label, text)
 
     def _connect(self, host, port):
-        check_target(host, port)
+        if self.test_target:
+            check_test_target(host, port)
+        else:
+            check_target(host, port)
         s = socket.create_connection((host, port), timeout=10)
         s.settimeout(None)
         return s
@@ -203,7 +210,8 @@ class Client(object):
     # -- login ------------------------------------------------------------------------------------------------
     def login(self):
         """Seed, 0x80, server list, 0xA0, relay, then the game connection with 0x91. Returns the character list."""
-        self.sock = self._connect(HOST, PORT)
+        host0, port0 = self.test_target if self.test_target else (HOST, PORT)
+        self.sock = self._connect(host0, port0)
         seed_value = random.randint(1, 0x7FFFFFFF)
         self.send(P.seed(seed_value))
         self.send(P.account_login(self.user, self.password))
@@ -228,12 +236,12 @@ class Client(object):
             raise LoginFailed("expected the relay (0x8C), got 0x%02X" % p[0])
         ip, port, auth = p[1:5], P.u16(p, 5), P.i32(p, 7)
         try:
-            host = check_relay(ip, port)
+            host = check_test_relay(ip, port, host0, port0) if self.test_target else check_relay(ip, port)
         except Exception as e:
             self.log("REFUSED RELAY: %s" % e)
             self.sock.close()
             raise
-        self.log("<- 0x8C relay %s:%d (checked: the scratch shard)" % (host, port))
+        self.log("<- 0x8C relay %s:%d, advertised %s (checked: %s)" % (host, port, ".".join(str(b) for b in ip), "a test shard" if self.test_target else "the scratch shard"))
         self.sock.close()
         self.buf = b""
         self.sock = self._connect(host, port)
@@ -539,6 +547,14 @@ class Client(object):
             self.mobiles[s] = m
             if s == self.serial:
                 self.body = m["body"]
+        elif pid == 0x6F:
+            # cc-P215. pinned Server/Network/Packets/OutgoingSecureTradePackets.cs:32-50: u16 length; byte action (0
+            # display, 1 close, 2 update); display: u32 the other party, u32 our container, u32 theirs, bool, name[30].
+            act = p[3]
+            ev = {"action": act, "them": P.u32(p, 4) if len(p) >= 8 else 0, "container": P.u32(p, 8) if len(p) >= 12 else 0,
+                  "name": P.read_latin1(p, 17, 30) if act == 0 and len(p) >= 47 else ""}
+            self.trades.append(ev)
+            self.log("<- 0x6F secure trade action %d with %08X (%s)" % (act, ev["them"], ev["name"]))
         elif pid == 0x20:
             s = P.u32(p, 1)
             self.body = P.u16(p, 5)

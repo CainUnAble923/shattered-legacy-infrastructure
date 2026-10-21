@@ -119,6 +119,15 @@ if (-not (Test-Path $testConf)) {
     Write-Host "seeding Configuration-test from the live Configuration" -ForegroundColor Gray
     Copy-Item $liveConf $testConf -Recurse
 }
+# cc-P215: every Golem's own Admin and Player account. The game PC writes golem-accounts.json (PBKDF2 hashes only, never a
+# password) into the Golem kit, which every PC keeps at D:\UO\golem; it is copied into the test world folder on every
+# start, -Fresh included, and the shard seeds the accounts at world load (server/customizations/Misc/GolemTestAccounts.cs,
+# test shard only). So a fresh world on any PC has every Golem's accounts, and no PC copies another's Accounts.
+$golemAccounts = if ($env:GOLEM_ACCOUNTS_MANIFEST) { $env:GOLEM_ACCOUNTS_MANIFEST } else { 'D:\UO\golem\golem-accounts.json' }
+if (Test-Path -LiteralPath $golemAccounts) {
+    Copy-Item -LiteralPath $golemAccounts -Destination (Join-Path $testRoot 'golem-accounts.json') -Force
+    Write-Host "Golem test accounts: the manifest is in the test world folder; the shard seeds them at start" -ForegroundColor Gray
+}
 
 # Listen on 2594 INSIDE the container and advertise the LAN address. The relay packet
 # then says 192.168.1.58:2594, which is this shard and nothing else; the live shard is
