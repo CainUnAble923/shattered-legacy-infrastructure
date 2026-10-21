@@ -55,6 +55,16 @@ ul.body, ul.list { list-style: square; }
 .bar.amber span { background: var(--amber); } .bar.red span { background: var(--red); }
 .bar { position: relative; } .bar i.pace { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--page-text); }
 .warn { color: var(--amber); font-size: 13px; }
+/* cc-P216: a Golem's question for Chase on its card. */
+.questions .question { border-left: 3px solid var(--amber); padding: 6px 0 6px 10px; margin: 8px 0; }
+.questions .question.irreversible { border-left-color: var(--red, #d33); }
+.questions .qhead { font-size: 13px; opacity: 0.8; }
+.questions .qtextshow { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0 8px; }
+.questions .warn.strong { font-weight: 600; }
+.questions textarea.qtext { width: 100%; box-sizing: border-box; font: inherit; font-size: 16px; margin: 6px 0; }
+.questions button.answer .meta { display: block; font-size: 12px; white-space: normal; }
+.questions .qcontext pre { max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.questions .qhistory div { font-size: 13px; overflow-wrap: anywhere; }
 .logbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 8px; }
 .logbar label { display: flex; flex-direction: column; font-size: 12px; color: var(--gray); }
 input, select, button { font: inherit; min-height: 40px; background: var(--field); color: var(--page-text); border: 1px solid rgba(220, 178, 98, 0.5); border-radius: 6px; padding: 4px 8px; max-width: 100%; }

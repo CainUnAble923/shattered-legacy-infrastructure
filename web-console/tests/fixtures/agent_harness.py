@@ -55,7 +55,8 @@ def main(root):
         f.write(console.mint_agent("Gold") + "\n")
     gold = console.golem("Gold")
     buttons = {b["key"]: b for b in console.buttons()}
-    for key, typed, inputs in (("wake", "wake the golem", {"model": "Opus"}), ("rest", "rest", {}), ("runnext", "P12", {"prompt": "P12"})):
+    # cc-P187 made the typed word name the Golem ("wake gold"); cc-P216 brought this harness up to it.
+    for key, typed, inputs in (("wake", "wake gold", {"model": "Opus"}), ("rest", "rest gold", {}), ("runnext", "P12 gold", {"prompt": "P12"})):
         code, out = console.queue_remote(buttons[key], typed, inputs, "chase@example.com", gold)
         assert code == 202, (key, code, out)
         time.sleep(0.01)   # ids are by the millisecond: keep the order
