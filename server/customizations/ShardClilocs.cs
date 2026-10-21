@@ -59,6 +59,9 @@ public static class ShardClilocs
     /// <summary>"All items must be made with Celestial ingots."</summary>
     public const int CelestialIngots = 1_900_010;
 
+    /// <summary>"Craft This Order": the Masterwork Hammer of Hephaestus entry (cc-P168, HammerCraftOrderEntry).</summary>
+    public const int CraftThisOrder = 1_900_011;
+
     /// <summary>
     /// The deed line for a post-Valorite material, and (cc-P123) for the woods, EA's lines as ServUO's
     /// SmallBODGump.GetMaterialNumberFor gives them (:123-132); 0 (no line, pinned's value) for any other. Pinned's gumps

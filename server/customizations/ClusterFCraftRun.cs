@@ -13,10 +13,15 @@
 // This file is the loop, counts, caps, stops and summary. What happens to a non-exceptional result in "exceptional
 // only" is ClusterFCraftRejects.cs, so either can change without the other.
 //
+// cc-P168: a run can carry a bulk order (MakeXRun.Order): Craft This Order on the Masterwork Hammer of Hephaestus. Such a
+// run ends when the deed is full rather than at a count, and its extra stops, item choice, fill and summary are
+// ClusterFCraftOrder.cs; everything else (the attempt, the delay, the common stops) is this file's, unchanged.
+//
 // CraftItem.cs (patched, server/patches/CraftItem-shard-hooks.patch) calls AfterAttempt when an attempt ends and Refused when an attempt is refused before
 // or at its end; neither does anything when no run is going, so a single craft is unchanged.
 
 using System;
+using Server.Engines.BulkOrders;
 using Server.Gumps;
 using Server.Items;
 using Server.Misc;
@@ -35,16 +40,23 @@ public enum MakeXStop
     Died,
     Stopped,
     CannotCraft,
-    OtherCraft
+    OtherCraft,
+    Damaged,  // cc-P168: Craft This Order only
+    OrderGone // cc-P168: the order left the backpack
 }
 
 public sealed class MakeXRun
 {
     public Mobile From { get; init; }
     public CraftSystem System { get; init; }
-    public CraftItem Item { get; init; }
+    public CraftItem Item { get; set; } // cc-P168: a large order moves it to the next line
     public Type TypeRes { get; init; }
     public BaseTool Tool { get; init; }
+
+    // cc-P168: the bulk order this run crafts (Craft This Order), and what it has put in it; null for Craft X.
+    public BaseBOD Order { get; init; }
+    public int Filled { get; set; }
+    public bool Hurt { get; set; } // set by ClusterFCraftOrder.OnHurt
 
     public int Requested { get; init; }
     public int Target { get; init; }
@@ -92,7 +104,7 @@ public static class ClusterFCraftRun
 
     public static MakeXRun Begin(
         Mobile from, CraftSystem system, CraftItem item, BaseTool tool, Type typeRes, int requested,
-        bool countAttempts, bool exceptionalOnly, Container rejectsBag
+        bool countAttempts, bool exceptionalOnly, Container rejectsBag, BaseBOD order = null
     )
     {
         var context = system.GetContext(from);
@@ -104,7 +116,8 @@ public static class ClusterFCraftRun
 
         End(context, MakeXStop.OtherCraft);
 
-        var cap = CapFor(countAttempts);
+        // An order's count is what its deed still needs (a large deed's may pass ItemsCap); it ends when the deed is full.
+        var cap = order != null ? int.MaxValue : CapFor(countAttempts);
         requested = Math.Max(requested, 1);
 
         var run = new MakeXRun
@@ -121,11 +134,13 @@ public static class ClusterFCraftRun
             ExceptionalOnly = exceptionalOnly && CanBeExceptional(item),
             RejectsBag = rejectsBag,
             Start = from.Location,
-            StartMap = from.Map
+            StartMap = from.Map,
+            Order = order
         };
 
         context.Run = run;
         from.SendGump(new MakeXProgressGump(run));
+        ClusterFCraftOrder.Progress(run);
         system.CreateItem(from, item.ItemType, typeRes, tool, item);
         return run;
     }
@@ -174,6 +189,7 @@ public static class ClusterFCraftRun
         }
 
         from.SendGump(new MakeXProgressGump(run));
+        ClusterFCraftOrder.Progress(run);
         system.CreateItem(from, run.Item.ItemType, run.TypeRes, tool, run.Item);
         return true;
     }
@@ -209,7 +225,15 @@ public static class ClusterFCraftRun
     {
         var from = run.From;
 
-        if (run.Remaining <= 0)
+        if (run.Order != null)
+        {
+            // cc-P168: full, gone, hurt, the hammer out of hand; it also moves a large order to its next line.
+            if (ClusterFCraftOrder.CheckStop(run) is { } orderStop)
+            {
+                return orderStop;
+            }
+        }
+        else if (run.Remaining <= 0)
         {
             return MakeXStop.Done;
         }
@@ -264,6 +288,11 @@ public static class ClusterFCraftRun
         context.LastRun = run;
         run.StoppedBy = reason;
 
+        if (run.Order != null)
+        {
+            ClusterFCraftOrder.Ended(run); // cc-P168
+        }
+
         var from = run.From;
         from.CloseGump<MakeXProgressGump>();
 
@@ -283,7 +312,7 @@ public static class ClusterFCraftRun
             }
         }
 
-        var line = $"{StopText(reason)} {run.Summary}";
+        var line = $"{(run.Order != null ? ClusterFCraftOrder.StopText(reason) : StopText(reason))} {run.Summary}";
         from.SendMessage(reason == MakeXStop.Done ? 0x44 : 0x22, line);
 
         if (reason != MakeXStop.OtherCraft && run.Tool?.Deleted == false && run.Tool.UsesRemaining > 0 && !from.Deleted)
@@ -304,11 +333,18 @@ public static class ClusterFCraftRun
         MakeXStop.Stopped     => "Craft X stopped.",
         MakeXStop.CannotCraft => "Craft X stopped: you cannot make that here now.",
         MakeXStop.OtherCraft  => "Craft X stopped: you started another craft.",
+        MakeXStop.Damaged     => "Craft X stopped: you were hurt.",
+        MakeXStop.OrderGone   => "Craft X stopped: the order is no longer in your backpack.",
         _                     => "Craft X stopped."
     };
 
     public static string Summary(MakeXRun run)
     {
+        if (run.Order != null)
+        {
+            return ClusterFCraftOrder.Summary(run);
+        }
+
         var made = run.CountAttempts
             ? $"Made {run.Made} in {run.Attempts} attempts ({run.Failed} failed, {run.Exceptional} exceptional)."
             : $"Made {run.Made} ({run.Failed} failed, {run.Exceptional} exceptional).";
@@ -343,7 +379,7 @@ public class MakeXProgressGump : DynamicGump
         builder.AddBackground(0, 0, 300, 120, 9200);
         builder.AddAlphaRegion(10, 10, 280, 100);
 
-        builder.AddLabel(15, 12, LabelHue, "Craft X");
+        builder.AddLabel(15, 12, LabelHue, _run.Order != null ? "Order" : "Craft X");
 
         if (_run.Item.NameNumber > 0)
         {
@@ -355,7 +391,9 @@ public class MakeXProgressGump : DynamicGump
         }
 
         var what = _run.CountAttempts ? "attempts" : _run.ExceptionalOnly ? "exceptional" : "made";
-        builder.AddLabel(15, 38, LabelHue, $"{_run.Counted} of {_run.Target} {what}");
+        builder.AddLabel(15, 38, LabelHue, _run.Order != null
+            ? ClusterFCraftOrder.GumpLine(_run)
+            : $"{_run.Counted} of {_run.Target} {what}");
         builder.AddLabel(15, 58, LabelHue, $"Made {_run.Made}, {_run.Failed} failed, {_run.Exceptional} exceptional");
 
         builder.AddButton(15, 84, 4017, 4019, 1);
@@ -368,7 +406,9 @@ public class MakeXProgressGump : DynamicGump
         if (_run.StoppedBy == null && !_run.StopRequested)
         {
             _run.StopRequested = true;
-            sender.Mobile?.SendMessage(0x22, "Craft X will stop when this attempt finishes.");
+            sender.Mobile?.SendMessage(0x22, _run.Order != null
+                ? "Craft order will stop when this attempt finishes."
+                : "Craft X will stop when this attempt finishes.");
         }
     }
 }

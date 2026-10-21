@@ -340,7 +340,14 @@ public class SmithGuildmasterGump : Gump
     {
         if (pm.Backpack == null) return "Hammer of Hephaestus Upgrades";
 
-        // Check T2 first
+        // Check T3 first (cc-P168), then T2
+        foreach (var item in pm.Backpack.Items)
+        {
+            if (item is MasterworkHammerOfHephaestus t3)
+                return t3.Exhausted
+                    ? "Hammer of Hephaestus Upgrades (T3 - Exhausted)"
+                    : "Hammer of Hephaestus Upgrades (T3)";
+        }
         foreach (var item in pm.Backpack.Items)
         {
             if (item is ReinforcedHammerOfHephaestus t2)

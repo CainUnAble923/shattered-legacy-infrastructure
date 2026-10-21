@@ -1,0 +1,10 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -2404,6 +2404,7 @@
+             }
+ 
+             Confidence.StopRegenerating(this);
++            ClusterFCraftOrder.OnHurt(this); // Shattered Legacy (cc-P168): Craft This Order stops when its crafter is hurt
+ 
+             StaminaSystem.FatigueOnDamage(this, amount);
+ 

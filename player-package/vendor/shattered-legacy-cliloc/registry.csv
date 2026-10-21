@@ -14,3 +14,4 @@ number,text,used_by,added
 1900008,All items must be made with Mythril ingots.,"smith deed material line, Mythril (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
 1900009,All items must be made with Adamantium ingots.,"smith deed material line, Adamantium (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
 1900010,All items must be made with Celestial ingots.,"smith deed material line, Celestial (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
+1900011,Craft This Order,"Masterwork Hammer of Hephaestus context menu, craft a smith deed (HammerCraftOrderEntry)",cc-P168
