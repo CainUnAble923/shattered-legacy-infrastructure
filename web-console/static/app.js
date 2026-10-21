@@ -323,6 +323,8 @@
     if (c.hours) bits.push('hours ' + c.hours + (c.marathonDay ? ' (all day now: marathon)' : ''));
     if (c.needsYou) bits.push('needs you: ' + c.needsYou);
     if (bits.length) li.appendChild(el('div', 'meta', bits.join(' | ')));
+    // cc-P159: a Codex lane's line: the step, paused, in use, asleep.
+    if (c.laneLine) li.appendChild(el('div', /asleep|needs you/.test(c.laneLine) ? 'warn' : 'meta', c.laneLine));
     if (c.remote) {
       li.appendChild(el('div', c.online ? 'ok' : 'warn', 'On another PC: ' + (c.online ? 'its agent is online (' + ago(c.lastSeen) + ')' :
         c.lastSeen ? 'offline, last seen ' + ago(c.lastSeen) : 'its agent has not called in yet')));
@@ -499,6 +501,7 @@
   // Which of a pair applies now (wrap up or its cancel, night shift on or off); the server and the console check again.
   function applies(b, g) {
     var w = String(b.when || ''), i = w.indexOf(':'), kind = w.slice(0, i), val = w.slice(i + 1);
+    if (b.engine && !(g && g.engine === b.engine)) return false;   // cc-P159: Send to the second PC is a Codex lane's
     if (b.key === 'retry' && !(g && g.stoppedPrompt)) return false;
     if (!w) return true;
     if (kind === 'winding') return !!g && g.winding === val;

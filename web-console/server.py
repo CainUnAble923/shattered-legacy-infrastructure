@@ -241,7 +241,7 @@ class Console:
         return self._buttons[1]
 
     def public_buttons(self):
-        keep = ("key", "label", "word", "inputs", "when", "disabled", "help", "art", "anyGolem", "golemWord", "card")   # cc-P208 card
+        keep = ("key", "label", "word", "inputs", "when", "disabled", "help", "art", "anyGolem", "golemWord", "card", "engine")   # cc-P208 card, cc-P159 engine
         return [{k: b[k] for k in keep if k in b} for b in self.buttons()]
 
     def check_request(self, entry, typed, inputs, golem=None):
@@ -982,10 +982,13 @@ class Console:
                 c["online"] = self.agent_online(g)
                 st = self._load_json(os.path.join(d, "status.json"), None)
                 if isinstance(st, dict):
-                    for k in ("state", "current", "winding", "stoppedPrompt", "needsYou", "restReason", "branch"):
+                    for k in ("state", "current", "winding", "stoppedPrompt", "needsYou", "restReason", "branch",
+                              "stepsDone", "stepsTotal", "lanePaused", "note"):   # cc-P159: a Codex lane's step, pause and note
                         if k in st:
                             c[k] = st[k]
                     c["statusAt"] = st.get("generatedAt") or st.get("receivedAt")
+                if str(g.get("engine") or "") == "codex":
+                    c["laneLine"] = panels.lane_line(c)   # cc-P159: from what its agent posted, fresher than the status file
                 ready = self._load_json(os.path.join(d, "ready.json"), None)
                 c["commands"] = self.command_view(g)
             else:
@@ -1474,6 +1477,8 @@ def make_handler(console, listener, access_log=None):
                 if not console.is_home(g):
                     refuse = ("%s is the integrator's only" % (entry.get("label") or entry["key"])) if not entry.get("anyGolem") else (
                         "the %s Golem is disabled in golems.json" % g["name"] if not g.get("enabled") else "")
+                    if not refuse and entry.get("engine") and str(g.get("engine") or "") != str(entry.get("engine")):   # cc-P159
+                        refuse = "%s is a Codex lane's: the %s Golem is not one" % (entry.get("label") or entry["key"], g["name"])
                     if refuse:
                         self._note(409, "action %s for %s" % (entry["key"], g["name"]))
                         return self._json(409, {"error": refuse})

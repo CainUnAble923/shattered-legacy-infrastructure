@@ -244,6 +244,7 @@ function New-AutopilotConfig {
         PokeScript    = (Join-Path $Root 'Poke-Golem.ps1')
         RunNextScript = (Join-Path $Root 'Set-RunNext.ps1')
         RetryScript   = (Join-Path $Root 'Retry-Stopped.ps1')
+        LaneNowScript = (Join-Path $Root 'Lane-Now.ps1')   # cc-P159: Send to the second PC (a Codex lane may start now)
         RunNextFile   = (Join-Path $Root 'RUN-NEXT')
         IntegrateScript = (Join-Path $Root 'Integrate.ps1')   # cc-P184: the integrator merges the other Golems' branches now
         MergeScript   = (Join-Path $Root 'ShadowIron.ps1')   # cc-P208: the merge Golem's runner (-Pause, -Resume)
@@ -940,6 +941,7 @@ function Get-ConfirmPhrase {
         'golem.tinkerpause'  { 'pause tinker' }    # cc-P222
         'golem.tinkerresume' { 'resume tinker' }
         'golem.tinkerrun'    { 'run tinker' }
+        'golem.lanenow'      { 'send to the second pc' }   # cc-P159
         'web.deploy'       { 'deploy to haven' }
         { $_ -in @('web.ops-pages', 'web.ops-cutover', 'web.ops-rollback') } { 'deploy to haven' }
         { $_ -in @('web.print-queue', 'web.print-queue-rollback') } { 'deploy to haven' }
@@ -1248,6 +1250,8 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.poke';       Group = 'Golem queue'; Label = 'Check now (run the watch)';          Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.runnext';    Group = 'Golem queue'; Label = 'Run next (picked row)';              Mutates = $true;  RunIn = 'here' }
         [pscustomobject]@{ Key = 'golem.retry';      Group = 'Golem queue'; Label = 'Retry stopped prompt';               Mutates = $true;  RunIn = 'here' }
+        # cc-P159: a Codex lane (the picked Golem) may start now, outside its night window.
+        [pscustomobject]@{ Key = 'golem.lanenow';    Group = 'Golem queue'; Label = 'Send to the second PC';              Mutates = $true;  RunIn = 'here' }
         # cc-P184: the integrator merges the other Golems' finished branches into main now (otherwise between its own prompts).
         [pscustomobject]@{ Key = 'golem.integrate';  Group = 'Golem queue'; Label = 'Merge branches now';                 Mutates = $true;  RunIn = 'here' }
         # cc-P208: Shadow Iron, the merge Golem: no round runs while paused (its tickets wait); Resume runs one at once.
@@ -1963,6 +1967,7 @@ function Get-ConsoleTooltips {
         'golem.pick'       = 'Which Golem the Golem buttons act for: every Golem in golems.json, the integrator first. Another Golem on this PC gets its own files and name; one on another PC, a disabled one, or any but the integrator while multiGolem is off says why. Wake''s model follows the picked Golem''s lane.'
         'golem.assignnext' = 'With Assign: the prompt also goes next for that Golem (Run next).'
         'golem.assign'     = 'Assign: the picked queued prompt gets the line **Golem:** <the picked Golem>, so only that Golem claims it (Assign-Prompt.ps1 checks its lane, areas and the prompt''s Touches first, and refuses with the reason). Tick "and run it next" to put it first for that Golem too.'
+        'golem.lanenow'    = 'Send to the second PC: the picked Codex lane may start now, outside its night window, for the next 3 hours (Lane-Now.ps1 on its own PC; the game PC wakes that PC if it can). Her using the PC, a game running and the Codex budget still hold it back.'
         'golem.poke'       = 'Check now: runs the Golem''s 10-minute watch at once (Poke-Golem.ps1), so it looks again at a stall, a rest whose time has come or a pending wake. Changes nothing the watch would not. It opens no session (Poke the Golem does).'
         'golem.runnext'    = 'Run next: the queue row you picked is handed at the next hand-off, ahead of continuations (Set-RunNext.ps1; nothing is renamed). Asks the prompt number. With no row picked, it clears the pick.'
         'golem.retry'      = 'Retry stopped prompt: puts the STOPPED prompt back first in the queue, clears the stop and wakes a session on its own model (Retry-Stopped.ps1). Asks the prompt number. Greyed out while no prompt is STOPPED.'
@@ -3473,7 +3478,7 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.LaneNowScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 # cc-P186: a Golem script may also name one Golem of several (-Golem <name>, last); the rules below hold for the rest.
                 if ($sa.Count -ge 7 -and $sa[-2] -ceq '-Golem' -and $sa[-1] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' -and @(Get-GolemNamedScripts $ap) -icontains $sa[4]) { $sa = @($sa[0..($sa.Count - 3)]) }
@@ -4432,6 +4437,7 @@ function ConvertTo-GolemCardDocument {
         lastSeen = $(if ($c.lastSeen) { [string]$c.lastSeen } else { $null }); portrait = [string]$c.portrait
         # cc-P208: home (the console's own Golem), script (the merge Golem, Shadow Iron) and its merge block, its display name.
         home = [bool]$c.home; script = [bool]$c.script; display = $(if ($c.display) { [string]$c.display } else { [string]$c.name })
+        laneLine = [string]$c.laneLine   # cc-P159: a Codex lane's line (the step, paused, in use, asleep)
         merge = $(if ($c.merge) { $c.merge } else { $null })
         ready = $(if ($r -and $r.verdict) { [ordered]@{ verdict = [string]$r.verdict; at = [string]$r.at; summary = [string]$r.summary; machine = [string]$r.machine
                     failed = [object[]]@(@($r.failed) | Where-Object { $_ } | ForEach-Object { [string]$_ }); laptop = $(if ($r.laptop) { $r.laptop } else { $null }) } } else { $null }) }
@@ -4534,7 +4540,7 @@ function Get-GolemActionConfig {
 function Get-GolemNamedScripts {
     # cc-P186: the Golem scripts that take -Golem <name> (one Golem of several); the others are the integrator's only.
     param($Ap)
-    @($Ap.Start, $Ap.Stop, $Ap.WakeScript, $Ap.PokeScript, $Ap.WrapUp, $Ap.StopPoint, $Ap.RunNextScript, $Ap.RetryScript) | Where-Object { $_ }
+    @($Ap.Start, $Ap.Stop, $Ap.WakeScript, $Ap.PokeScript, $Ap.WrapUp, $Ap.StopPoint, $Ap.RunNextScript, $Ap.RetryScript, $Ap.LaneNowScript) | Where-Object { $_ }
 }
 
 function Add-GolemToPlan {
@@ -4606,6 +4612,7 @@ function Get-GolemCardLines {
         $t = '            ' + ('{0,-8}' -f [string]$c.name) + ('{0,-6}' -f [string]$c.lane) + ('{0,-7}' -f [string]$c.engine) + ('{0,-14} ' -f [string]$c.machine) + $state
         if ($c.current) { $t += ' ' + [string]$c.current + $(if ($c.branch -and [string]$c.branch -ne 'main') { ' on ' + [string]$c.branch } else { '' }) }
         if ($c.restReason) { $t += ' (' + [string]$c.restReason + ')' }
+        if ($c.laneLine) { $t += '; ' + [string]$c.laneLine }   # cc-P159
         if ($c.needsYou) { $t += '; needs you: ' + [string]$c.needsYou }
         $locks = @($c.locks | Where-Object { $_ })
         if ($locks.Count) { $t += '; holds ' + ($locks -join ', ') }
@@ -5719,7 +5726,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff', 'golem.tinkerrun', 'golem.tinkerpause', 'golem.tinkerresume') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff', 'golem.tinkerrun', 'golem.tinkerpause', 'golem.tinkerresume', 'golem.lanenow') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -5899,6 +5906,16 @@ function Get-AutopilotPlan {
                     $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text $(if ($pause) { 'Merging stops until you resume it.' } else { 'This may write main in both public repos (merge commits, pushed).' })))
                     $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.MergeScript + @($(if ($pause) { '-Pause' } else { '-Resume' }))) -Text 'In a window of its own, which stays open.'))
                     $steps.Add((New-PlanStep -Kind log -Text $Action))
+                }
+                'golem.lanenow' {
+                    # cc-P159: only for a Codex lane picked on the Golem tab (or the web console's lane card): Add-GolemToPlan
+                    # tells Lane-Now.ps1 which one.
+                    if (-not ($ap.PSObject.Properties.Name -contains 'GolemName' -and [string]$ap.GolemName)) { $steps.Add((New-PlanStep -Kind refuse -Text 'Send to the second PC is a Codex lane''s: pick a Codex lane (Agapite, Verite) on the Golem tab first. Nothing was run.')); break }
+                    if (-not (& $need $ap.LaneNowScript 'Lane-Now.ps1')) { break }
+                    $steps.Add((New-PlanStep -Kind say -Text ('Send to the second PC: the Codex lane ' + [string]$ap.GolemName + ' may start now, outside its night window, for the next few hours (laneRunNowHours). If its PC is in use or the Codex budget is spent, it waits for that first.')))
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'The lane may run a prompt by day.'))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.LaneNowScript) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.lanenow'))
                 }
                 'golem.poke' {
                     if (-not (& $need $ap.PokeScript 'Poke-Golem.ps1')) { break }
@@ -7124,7 +7141,7 @@ function Get-AutopilotFacts {
     $running = ''
     $runningFile = ''
     if ($stateText) { try { $sj = ($stateText | ConvertFrom-Json); $running = [string]$sj.current; $runningFile = [string]$sj.currentFile } catch { } }
-    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
+    foreach ($f in @($ap.LongRunStart, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.LaneNowScript)) { if ($f) { $present[$f] = [bool](Test-Path -LiteralPath $f -PathType Leaf) } }
     # cc-P182: Run next's pick, a queue file name ('' when none).
     $runNext = ''
     if ($ap.RunNextFile -and (Test-Path -LiteralPath $ap.RunNextFile -PathType Leaf)) { try { $runNext = ([IO.File]::ReadAllText($ap.RunNextFile)).Trim() } catch { } }

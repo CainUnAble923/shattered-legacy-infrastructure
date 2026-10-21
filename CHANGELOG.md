@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.4
+
+### Staff
+- The Codex lanes can run on the second PC, one per ChatGPT login with its own budget: at night or when sent with the new Send to the second PC button (or by email), never while someone is using that PC or a game is running (a run already going stops at a safe point within a couple of minutes). The game PC wakes that PC for its window, shows each lane's step on the Golem page, and runs a lane's tests again before it merges the work. A lane never takes a task that needs the test shard, the overnight bot or a Haven deploy.
+
 ## 2026.10.21.3
 
 ### Added

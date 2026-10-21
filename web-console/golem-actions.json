@@ -62,6 +62,8 @@
     { "key": "away-on", "label": "Away mode on", "action": "golem.away", "word": "away on", "inputs": ["until"], "art": "btn-away",
       "help": "cc-P149: until the time given, the Golems work around the clock within the night shift's usage rule, park a prompt that stops for a decision and go on, and email a digest each morning. Reply to any Golem email with a command (status, resume, away off, ...)." },
     { "key": "away-off", "label": "Away mode off", "action": "golem.awayoff", "word": "away off", "art": "btn-away-off",
-      "help": "cc-P149: the Golems go back to their usual pace and rests; parked prompts stay parked (the Golem page lists them)." }
+      "help": "cc-P149: the Golems go back to their usual pace and rests; parked prompts stay parked (the Golem page lists them)." },
+    { "key": "lanenow", "anyGolem": true, "engine": "codex", "golemWord": "send", "label": "Send to the second PC", "action": "golem.lanenow", "word": "send to the second pc", "art": "btn-poke",
+      "help": "cc-P159: this Codex lane may start now, outside its night window, for 3 hours (laneRunNowHours). It goes to that PC's agent; the game PC wakes the PC by Wake-on-LAN if its MAC is in golems.json. Her using the PC, a game running and the Codex budget still hold it back." }
   ]
 }
