@@ -1,0 +1,13 @@
+--- "a/Projects/UOContent/Engines/Bulk Orders/SmallBOD.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/SmallBOD.cs"
+@@ -142,6 +142,10 @@
+         {
+             from.SendLocalizedMessage(1045169); // The item is not in the request.
+         }
++        else if (ClusterFStoreBought.Refuses(item))
++        {
++            from.SendMessage(0x22, ClusterFStoreBought.Refusal); // Shattered Legacy (cc-P263): crafted items only
++        }
+         else
+         {
+             var material = GetMaterial(armor?.Resource ?? clothing?.Resource ?? CraftResource.None);

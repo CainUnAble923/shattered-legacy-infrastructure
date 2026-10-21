@@ -338,6 +338,10 @@ public static class LeagueTitles
         new("ap-1000", "the Renowned", 1000),
         new("ap-1750", "the Illustrious", 1750),
         new(Unshod, "the Unshod", -1, HiddenUntilHeld: true),
+        // cc-P263: the "Noted by the System" titles (NotedRewards), given by their achievements.
+        new(NotedRewards.LarryTitle, "Larry", -1, HiddenUntilHeld: true),
+        new(NotedRewards.SupervisorTitle, "the Supervisor", -1, HiddenUntilHeld: true),
+        new(NotedRewards.BraveTitle, "the Brave (citation needed)", -1, HiddenUntilHeld: true),
     ];
 
     public static TitleDef? Find(string key) => All.FirstOrDefault(t => t.Key == key);

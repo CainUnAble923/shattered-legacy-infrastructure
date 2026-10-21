@@ -125,7 +125,7 @@ public class LargeBODItemFillVerification
     private static LargeBulkEntry EntryFor<T>(LargeBOD deed) => deed.Entries.Single(e => e.Details.Type == typeof(T));
 
     private static T Made<T>(CraftResource resource, bool exceptional) where T : BaseArmor, new() =>
-        new() { Resource = resource, Quality = exceptional ? ArmorQuality.Exceptional : ArmorQuality.Regular };
+        new() { Resource = resource, Quality = exceptional ? ArmorQuality.Exceptional : ArmorQuality.Regular, PlayerConstructed = true }; // cc-P263: crafted, as an order now requires (ClusterFStoreBought)
 
     private static void Press(BaseGump gump, NetState ns, int buttonId) =>
         gump.OnResponse(ns, new RelayInfo(buttonId, ReadOnlySpan<int>.Empty, ReadOnlySpan<ushort>.Empty,

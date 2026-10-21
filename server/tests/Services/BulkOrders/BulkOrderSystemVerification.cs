@@ -230,7 +230,7 @@ public class BulkOrderSystemVerification
 
         for (var i = 0; i < 10; i++)
         {
-            var sword = new Longsword();
+            var sword = new Longsword { PlayerConstructed = true }; // cc-P263: crafted, as an order now requires (ClusterFStoreBought)
             c.Pm.Backpack.DropItem(sword);
             small.EndCombine(c.Pm, sword);
         }

@@ -125,7 +125,7 @@ public class PostValoriteBODMaterialVerification
         return item;
     }
 
-    private static PlateGorget Gorget(CraftResource ore) => new() { Resource = ore };
+    private static PlateGorget Gorget(CraftResource ore) => new() { Resource = ore, PlayerConstructed = true }; // cc-P263: crafted, as an order now requires (ClusterFStoreBought)
 
     // A property, not a static field: xUnit calls Ores() while it discovers the facts, before UOContentFixture has run,
     // and a static field would read the BOD data (SmallBulkEntry.GetEntries) then, configuring the server too early;
