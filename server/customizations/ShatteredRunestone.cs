@@ -54,6 +54,9 @@ namespace Server
 
             // cc-P50: the chest mimic's stills, idle loop and dead tiles (ChestMimicArt.Records).
             ChestMimicArt.Apply();
+
+            // cc-P237: New Haven's community art that blocks, animates or gives light (ClusterFCommunityArtRecords.Records).
+            ClusterFCommunityArtRecords.Apply();
         }
     }
 }

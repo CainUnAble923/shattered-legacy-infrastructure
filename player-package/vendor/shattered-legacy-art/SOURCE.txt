@@ -252,3 +252,40 @@ Style:       Castiel, "Classic Desktop Missing Paperdoll buttons" (servuo.dev 15
 Made by:     notes\art\achievements-button\make_button.py in shard-migration (reproducible from the package's own art).
 Shown by:    our TazUO (client\patches\0003-shard-buttons-achievements.patch), in the paperdoll's Help slot, only on our
              shard. Other clients never ask for these IDs.
+
+New Haven community art (cc-P237, F-21): IDs 15496-15529 (0x3C88-0x3CA9)
+---------------------------------------------------------------------------
+Seven community packs Chase approved for New Haven (F-21, 2026-09-30: "decorate New Haven appropriately with these
+packs"), each kept in its own folder under D:\UO\third-party\ (originals in _zips\). None carries a license file.
+Community work: credit the author wherever the shard credits art, ship it only inside the player package, never
+repost the files.
+  Moonrose,     "Farm carts", servuo.dev (folder farm-carts; it has no SOURCE.txt, README.md there says
+                "Moonrose, none stated"): a fruit cart and a vegetable cart, two facings each. Made for OSI's
+                placeholder slots 6784, 6785, 6807 and 6808; shipped here at new IDs (find-free-art.py reports a
+                false code hit on 6808, a line number in a comment, and one block keeps the set together).
+  Ems,          "Oil lantern", https://www.servuo.dev/archive/oil-lantern.2592/ : three lit frames (lantern 1-3);
+                lantern 4 (unlit) is not used.
+  OUTLANDSOwyn, "Marble Railings, Bannisters, Ladder", https://www.servuo.dev/archive/marble-railings-bannisters-ladder.2663/ :
+                two pieces, his 70321 (straight railing) and 70324 (railing with its end post).
+  gollin,       "Bridge support beam 1.0", https://www.servuo.dev/archive/bridge-support-beam.2396/ : the four
+                supports (east-west and north-south, left and right); the two bottom beams are not used.
+  Vrark,        "Orc encampment 1", https://www.servuo.dev/archive/orc-encampment.2395/ ("you are welcome to do with
+                as you wish"; he asks to see it on the shard): his finished BMPs 0xB2B3 (cage), 0xB2B8 (campfire),
+                0xB2BB (meat rack), 0xB2BF and 0xB2C0 (palisade), 0xB2C3 (rug), 0xB2C7, 0xB2CB and 0xB2CF (tents).
+  Odin,         "Paintings", https://www.servuo.dev/archive/paintings.2351/ and "Nightmare & The Magic Circle",
+                https://www.servuo.dev/archive/nightmare-the-magic-circle.2375/ : all twelve, public-domain paintings.
+Every ID's file is in registry.csv. The lantern's frames, in order: 15500-15502 lantern 1.bmp, 2.bmp, 3.bmp.
+What was done to the pixels (shard-migration notes\cc-P237-tools\convert_art.py, scripts\anchor-art-frames.py
+--keep-geometry): the format only. The 24-bit BMPs (beams, the orc camp, the paintings) also had pure black (0,0,0)
+made transparent (--black-transparent), as UO art means it; the carts (TIFF), lantern (32-bit BMP) and railings (PNG)
+carry their own alpha and keep every pixel. No cut, no pad, no scaling: each author laid the art out on the canvas the
+way the art file holds it. The tool re-reads every PNG and checks it against its source.
+Records (records.json; the server's copy is ClusterFCommunityArtRecords.Records), the flags from OSI's own art as
+read from the client's tiledata.mul on 2026-10-21: carts 0x00004040 height 3 (OSI's ore cart 0x1A82, ArticleA);
+oil lantern 0x01808000 light 2 height 2 (OSI's lantern 0x0A15 without Wearable), animdata frames 0,1,2,1,0,0,1,0
+interval 6 (0x0A15's own; the pack gives no timing); marble railings 0x00004044 height 5 (OSI's wooden banister
+0x08AE); support beams 0x04000050 height 16 (OSI's wood supports 0x019C); orcish palisade 0x0400A050 height 20 (OSI's
+palisade 0x0221 without Damaging); orcish tents and hut 0x0000A050 height 20 (OSI's tent wall 0x01F0, ArticleAn);
+orcish campfire 0x00808000 light 29 height 1 (OSI's campfire 0x0DE3 without Animation and Damaging); orcish cage
+0x00008040 height 20 and meat rack 0x00008040 height 15 (ours). The rug and the paintings are walk-through and need no
+record.
