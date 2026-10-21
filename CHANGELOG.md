@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.15
+
+### Staff
+- Design notes written for rolled Mining and Lumberjacking contracts (tier values, five contract types, roll ranges, turn-in windows); no player change yet.
+
 ## 2026.10.20.14
 
 ### Staff
