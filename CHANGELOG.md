@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.14
+
+### Added
+- Opening a loot box now sends the best thing inside flying out of it: a sword, a bow, a staff, a piece of armor, a shield, a ring, a gem, a potion or a bit of clothing arcs up out of your pack and lands at your feet, just before the fanfare. Boxes of tier 4 and up show it to everyone around you; smaller ones to you alone. Muting your fanfare ([FanfareMute) hides it too. Update your game through the launcher to see it.
+
+### Staff
+- The animations are Clint Bellanger's "Flying Loot Animations" (CC-BY 3.0, opengameart.org; base icon styles by Blarumyrran), reworked for UO: art 15536-15589 in the player package. Their credit belongs in the shard credits list. The setting clusterf.lootBoxes.flyingLoot (on by default) turns the effect off for everyone; nothing about what a box holds changes either way.
+
 ## 2026.10.21.13
 
 ### Added

@@ -53,7 +53,16 @@
     { "id": 13186, "name": "hunter's satchel", "flags": "0x00240000", "weight": 3, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 1 },
     { "id": 13187, "name": "artificer's satchel", "flags": "0x00240000", "weight": 3, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 1 },
     { "id": 13188, "name": "gemologists satchel", "flags": "0x00244000", "weight": 2, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 2 },
-    { "id": 13189, "name": "smith salvage bag", "flags": "0x00244000", "weight": 2, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 2 }
+    { "id": 13189, "name": "smith salvage bag", "flags": "0x00244000", "weight": 2, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 2 },
+    { "id": 15536, "name": "flying longsword", "flags": "0x01000000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 },
+    { "id": 15542, "name": "flying longbow", "flags": "0x01000000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 },
+    { "id": 15548, "name": "flying staff", "flags": "0x01000000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 },
+    { "id": 15554, "name": "flying armor", "flags": "0x01000000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 },
+    { "id": 15560, "name": "flying shield", "flags": "0x01000000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 },
+    { "id": 15566, "name": "flying ring", "flags": "0x01000000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 },
+    { "id": 15572, "name": "flying gem", "flags": "0x01000000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 },
+    { "id": 15578, "name": "flying potion", "flags": "0x01000000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 },
+    { "id": 15584, "name": "flying clothes", "flags": "0x01000000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 }
   ],
   "animdata": [
     { "id": 15376, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "interval": 1, "start": 0 },
@@ -66,7 +75,16 @@
     { "id": 15438, "frames": [0, 1, 2, 3], "interval": 2, "start": 0 },
     { "id": 15477, "frames": [0, 1], "interval": 4, "start": 0 },
     { "id": 15486, "frames": [0, 1], "interval": 4, "start": 0 },
-    { "id": 15500, "frames": [0, 1, 2, 1, 0, 0, 1, 0], "interval": 6, "start": 0 }
+    { "id": 15500, "frames": [0, 1, 2, 1, 0, 0, 1, 0], "interval": 6, "start": 0 },
+    { "id": 15536, "frames": [0, 1, 2, 3, 4, 5, 5, 5], "interval": 1, "start": 0 },
+    { "id": 15542, "frames": [0, 1, 2, 3, 4, 5, 5, 5], "interval": 1, "start": 0 },
+    { "id": 15548, "frames": [0, 1, 2, 3, 4, 5, 5, 5], "interval": 1, "start": 0 },
+    { "id": 15554, "frames": [0, 1, 2, 3, 4, 5, 5, 5], "interval": 1, "start": 0 },
+    { "id": 15560, "frames": [0, 1, 2, 3, 4, 5, 5, 5], "interval": 1, "start": 0 },
+    { "id": 15566, "frames": [0, 1, 2, 3, 4, 5, 5, 5], "interval": 1, "start": 0 },
+    { "id": 15572, "frames": [0, 1, 2, 3, 4, 5, 5, 5], "interval": 1, "start": 0 },
+    { "id": 15578, "frames": [0, 1, 2, 3, 4, 5, 5, 5], "interval": 1, "start": 0 },
+    { "id": 15584, "frames": [0, 1, 2, 3, 4, 5, 5, 5], "interval": 1, "start": 0 }
   ],
   "equipAnims": [
     { "anim": 4783, "slot": 400, "name": "fox ears and tail" }

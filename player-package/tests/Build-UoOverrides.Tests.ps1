@@ -250,8 +250,8 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     $kc = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\KitsuneEarsTail.cs'))
     # cc-P50: the chest mimic (15472-15489) has records of its own, checked by its own fact.
     # cc-P237: New Haven's community art (15496-15529) too, checked by its own fact; cc-P236: so do the satchel
-    # icons (13184-13189).
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) })
+    # icons (13184-13189); cc-P242: so does the flying loot (15536-15589).
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -291,10 +291,10 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # paperdoll gump 54783 (one more gump row).
     # cc-P147 added the three Achievements button gumps (22456-22458) without moving these counts; cc-P237 counts them
     # and adds its 34 art IDs (15496-15529); cc-P236 the six satchel icons (13184-13189); cc-P241 the ten achievement
-    # category icon gumps (22459-22468).
-    Assert-Equal 190 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps
+    # category icon gumps (22459-22468); cc-P242 the 54 flying loot frames (15536-15589).
+    Assert-Equal 244 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P242: + 54 art
     Assert-Equal 15 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458 and 22459-22468'
-    Assert-Equal 150 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+    Assert-Equal 204 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
 
 Fact 'TheChestMimicRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
@@ -475,6 +475,54 @@ Fact 'EveryAchievementCategoryIconIsARegisteredGumpWithItsPngAndItsAuthorsCredit
     Assert-Equal $cats.Count (@($table.Values | Sort-Object -Unique)).Count 'one gump per category, none shared'
     $set = @($reg | Where-Object { $_.kind -eq 'gump' -and $_.what -like 'Achievement category icon*' })
     Assert-Equal (@($table.Values | Sort-Object) -join ',') (@($set | ForEach-Object { [int]$_.id } | Sort-Object) -join ',') 'the registered icons are exactly the ones the gump uses'
+}
+
+Fact 'TheFlyingLootRecordsAreTheServersTableAndEveryFrameIsRegisteredWithItsPngAndCredit' {
+    # cc-P242. ClusterFFlyingLoot.cs carries the server's copy of the nine flying-loot records (Records, and the
+    # tiledata and animdata constants); records.json carries the players'. Same values; each base ID's six frames are
+    # registered art with a PNG, and each row's license names Clint Bellanger, CC-BY 3.0, what was changed, and
+    # Blarumyrran. The set registers exactly its 54 frames.
+    $root = Split-Path $pkg -Parent
+    $cs  = [IO.File]::ReadAllText((Join-Path $root 'server\customizations\LootBoxes\ClusterFFlyingLoot.cs'))
+    $rec = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $rows = @([regex]::Matches($cs, 'new\(FlyingLootKind\.(\w+), (0x[0-9A-F]+), "([^"]+)"\)') | ForEach-Object {
+        [pscustomobject]@{ Kind = $_.Groups[1].Value; Id = [Convert]::ToInt32($_.Groups[2].Value, 16); Name = $_.Groups[3].Value }
+    })
+    Assert-Equal 9 $rows.Count 'nine records in C#'
+    $frames   = [int][regex]::Match($cs, 'FrameCount = (\d+);').Groups[1].Value
+    $animLen  = [int][regex]::Match($cs, 'AnimFrames = (\d+);').Groups[1].Value
+    $interval = [int][regex]::Match($cs, 'AnimInterval = (\d+);').Groups[1].Value
+    $weight   = [int][regex]::Match($cs, 'TileWeight = (\d+);').Groups[1].Value
+    $height   = [int][regex]::Match($cs, 'TileHeight = (\d+);').Groups[1].Value
+    Assert-True ($cs -match 'TileFlags = TileFlag\.Animation;') 'flags in C#: Animation only'
+    $tiles = @($rec.tiledata | Where-Object { [int]$_.id -ge 15536 -and [int]$_.id -le 15589 })
+    $anims = @($rec.animdata | Where-Object { [int]$_.id -ge 15536 -and [int]$_.id -le 15589 })
+    Assert-Equal (@($rows.Id) -join ',') (@($tiles | ForEach-Object { [int]$_.id }) -join ',') 'tiledata IDs, in order'
+    Assert-Equal (@($rows.Id) -join ',') (@($anims | ForEach-Object { [int]$_.id }) -join ',') 'animdata IDs, in order'
+    $art = Join-Path $pkg 'vendor\shattered-legacy-art\art'
+    for ($i = 0; $i -lt $rows.Count; $i++) {
+        $c = $rows[$i]; $t = $tiles[$i]; $a = $anims[$i]
+        Assert-Equal $c.Name $t.name "name of $($c.Id)"
+        Assert-True ($t.name.Length -le 19 -and $t.name -match '^[\x20-\x7E]+$') "name of $($c.Id) is 19 ASCII characters at most"
+        Assert-Equal '0x01000000' $t.flags "flags of $($c.Id): Animation, as OSI's sparkle 0x373A"
+        Assert-Equal $weight ([int]$t.weight) "weight of $($c.Id)"
+        Assert-Equal $height ([int]$t.height) "height of $($c.Id)"
+        Assert-Equal $interval ([int]$a.interval) "interval of $($c.Id)"
+        Assert-Equal $animLen @($a.frames).Count "animdata frames of $($c.Id)"
+        Assert-Equal ((@(0..($frames - 1)) + @(($frames - 1)) * ($animLen - $frames)) -join ',') (@($a.frames) -join ',') "frame order of $($c.Id): the six, then the landed one held"
+        for ($n = 0; $n -lt $frames; $n++) {
+            $id = $c.Id + $n
+            $row = @($reg | Where-Object { [int]$_.id -eq $id })
+            Assert-Equal 1 $row.Count "frame $id registered once"
+            Assert-Equal 'art' $row[0].kind "frame $id kind"
+            Assert-True ($row[0].license -match '^CC-BY 3\.0, Clint Bellanger; changed: ') "frame $id license: CC-BY 3.0, Clint Bellanger; changed: ..."
+            Assert-True ($row[0].license -match 'Blarumyrran') "frame $id license credits Blarumyrran"
+            Assert-True (Test-Path -LiteralPath (Join-Path $art "$id.png")) "PNG for $id"
+        }
+    }
+    $set = @($reg | Where-Object { $_.kind -eq 'art' -and [int]$_.id -ge 15536 -and [int]$_.id -le 15589 })
+    Assert-Equal 54 $set.Count 'the set registers 54 art IDs'
 }
 
 # --- cc-P62: worn-item animations; cc-P139: creature bodies -------------------------------------
