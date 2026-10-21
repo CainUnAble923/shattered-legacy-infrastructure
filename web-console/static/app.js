@@ -256,13 +256,58 @@
   }
   function hasMergeCard() {
     var cards = ((((last || {}).status || {}).golem || {}).golems) || [];
-    for (var i = 0; i < cards.length; i++) if (cards[i].script) return true;
+    for (var i = 0; i < cards.length; i++) if (cards[i].script && !isTinker(cards[i])) return true;
     return false;
+  }
+  // cc-P222: the Tinker, the watchdog (engine script): its last round, fixes today, open questions, the kit on each PC,
+  // a pause; its buttons are those with card 'tinker' (Run now, Pause, Resume).
+  function isTinker(c) { return !!(c && (c.tinker || c.name === 'Tinker')); }
+  function tinkerCard(c, a) {
+    var li = el('li', 'golemcard mergecard');
+    var top = el('div', 'cardhead');
+    if (c.portraitUrl) {
+      var img = el('img', 'portrait');
+      img.src = c.portraitUrl; img.alt = (c.display || c.name); img.width = 48; img.height = 48;
+      top.appendChild(img);
+    }
+    top.appendChild(el('div', null, (c.display || c.name) + ' (looks every 10 minutes' + (c.machine ? ', ' + c.machine : '') + ')'));
+    li.appendChild(top);
+    var t = c.tinker || null;
+    li.appendChild(el('div', c.state === 'NEEDS YOU' || (t && t.paused) ? 'warn' : c.state === 'DISABLED' ? 'quiet' : 'ok', c.state + (t && t.paused ? ': paused' : '')));
+    if (!t) li.appendChild(el('div', 'quiet', 'No round yet: the scheduled task Tinker runs every 10 minutes.'));
+    else {
+      li.appendChild(el('div', 'meta', 'Last round: ' + (ago(t.lastRound) || 'never') + '. Fixes today: ' + (t.fixesToday || 0) + (t.escalationsToday ? ', reasoning sessions: ' + t.escalationsToday : '')));
+      (t.fixes || []).slice(-3).forEach(function (f) { li.appendChild(el('div', f.ok ? 'meta' : 'warn', (f.ok ? 'Fixed ' : 'Tried ') + f.golem + (f.prompt ? ' ' + f.prompt : '') + ': ' + f.kind + ', ' + f.what)); });
+      (t.questions || []).forEach(function (q) { li.appendChild(el('div', 'warn', 'Question: ' + q.text)); });
+      (t.waiting || []).forEach(function (w) { li.appendChild(el('div', 'meta', 'Waiting: ' + w)); });
+      var k = t.kit || {};
+      var inStep = (k.golems || []).filter(function (x) { return x.inStep; }).map(function (x) { return x.name; });
+      var out = (k.golems || []).filter(function (x) { return !x.inStep; });
+      li.appendChild(el('div', out.length ? 'warn' : 'meta', 'Kit ' + (k.id || '?') + ': ' + (inStep.length ? inStep.join(', ') + ' in step' : 'no PC checked yet') + (out.length ? '; not in step: ' + out.map(function (x) { return x.name + ' (' + x.why + ')'; }).join(', ') : '')));
+    }
+    if (a) {
+      var box = el('div', 'ctl-grid mini');
+      var job = a.job, running = !!(job && job.running);
+      (a.buttons || []).forEach(function (b) {
+        if (b.card !== 'tinker' || b.disabled) return;
+        if (b.key === 'tinker-pause' && t && t.paused) return;
+        if (b.key === 'tinker-resume' && !(t && t.paused)) return;
+        var btn = el('button', 'ctl small');
+        btn.type = 'button';
+        btn.setAttribute('data-key', b.key);
+        btn.appendChild(el('span', 'label', b.label));
+        btn.disabled = !a.canAct || running;
+        btn.addEventListener('click', function () { openSheet(b, null); });
+        box.appendChild(btn);
+      });
+      if (box.firstChild) li.appendChild(box);
+    }
+    return li;
   }
   // cc-P208: the console's own Golem: home on the card (the integrator, or Iron while Shadow Iron merges).
   function isOwn(c) { return c.home !== undefined ? !!c.home : !!c.integrator; }
   function golemCard(c, a) {
-    if (c.script) return mergeCard(c, a);
+    if (c.script) return isTinker(c) ? tinkerCard(c, a) : mergeCard(c, a);
     var li = el('li', 'golemcard');
     var head = c.name + ' (' + [c.lane, c.engine, c.machine].filter(function (x) { return x; }).join(', ') + ')' + (c.integrator ? ', integrator' : '');
     var top = el('div', 'cardhead');
@@ -488,6 +533,7 @@
       if (card && !b.anyGolem && b.key !== 'assign') return;
       // cc-P208: Shadow Iron's buttons are on its card; Merge now stays here while there is no such card.
       if (b.card === 'merge' && (merging || b.key !== 'integrate')) return;
+      if (b.card === 'tinker') return;   // cc-P222: on the Tinker's card only
       if (!applies(b, gs)) return;
       var btn = el('button', 'ctl');
       btn.type = 'button';

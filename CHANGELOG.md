@@ -63,6 +63,7 @@ Example:
 
 ### Staff
 - The web console's Golem cards glow behind each portrait so you can tell from across the room what a Golem is doing: a steady pulse in its metal while it works, slower and dimmer when it has been quiet for 10 minutes, a faint ring while it waits, a fast amber pulse when it needs you or has stalled, and no glow (faded) when it is off or offline. The "?" by Golems explains them.
+- The Tinker, a watchdog on the game PC, keeps every PC's Golem kit in step with the game PC's and every 10 minutes fixes the stalls it knows (a Golem's own unfinished work, a lost hand-off, a low-memory stop, a failing watch, a stale flag); anything else becomes one plain question on its card, after a short read-only reasoning session when needed.
 
 ## 2026.10.20.16
 
