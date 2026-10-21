@@ -103,6 +103,8 @@ Example:
 - Void artifacts: Prismatic Lenses, Brightblade, the Bracelet of Protection, the Blight of the Tundra and Hephaestus, from the void spawn and from Cora.
 
 ### Staff
+- The Test Center no longer boosts everyone's skill gain: the test shard now trains at the real shard's rates. Each tester gets a Test Crystal in their bank instead ([TCFill puts one there); double-click it to set your own skill gain chance to Off, 2x, 5x, 10x or 25x. It affects only its owner, is saved with the character, and only works on a Test Center shard.
+- [GiveTestCrystal puts one in a targeted player's bank. testCenter.skillGainMultiplier is retired and does nothing; remove it from the test shard's modernuo.json.
 - Design notes written for rolled Mining and Lumberjacking contracts (tier values, five contract types, roll ranges, turn-in windows); no player change yet.
 - [GenWrongRevamp and [DeleteWrongRevamp build and remove the Wrong revamp; [SetupNewCovetous and [DeleteCovetous the Void Pool. Both are test-shard commands until Chase runs them live.
 
