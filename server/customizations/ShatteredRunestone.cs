@@ -57,6 +57,9 @@ namespace Server
 
             // cc-P237: New Haven's community art that blocks, animates or gives light (ClusterFCommunityArtRecords.Records).
             ClusterFCommunityArtRecords.Apply();
+
+            // cc-P236: the satchel and guild bag icons (SatchelArt.Records).
+            Items.SatchelArt.Apply();
         }
     }
 }

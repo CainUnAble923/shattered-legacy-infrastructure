@@ -249,8 +249,9 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P62: the fox ears and tail. KitsuneEarsTail.cs carries the server's copy of its record.
     $kc = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\KitsuneEarsTail.cs'))
     # cc-P50: the chest mimic (15472-15489) has records of its own, checked by its own fact.
-    # cc-P237: New Haven's community art (15496-15529) too, checked by its own fact.
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) })
+    # cc-P237: New Haven's community art (15496-15529) too, checked by its own fact; cc-P236: so do the satchel
+    # icons (13184-13189).
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -289,10 +290,10 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P34 added the 47 winter decor IDs (15424-15470); cc-P50 the 18 chest mimic IDs (15472-15489); cc-P138 the male
     # paperdoll gump 54783 (one more gump row).
     # cc-P147 added the three Achievements button gumps (22456-22458) without moving these counts; cc-P237 counts them
-    # and adds its 34 art IDs (15496-15529).
-    Assert-Equal 174 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art
+    # and adds its 34 art IDs (15496-15529); cc-P236 the six satchel icons (13184-13189).
+    Assert-Equal 180 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art
     Assert-Equal 5 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783 and 22456-22458'
-    Assert-Equal 144 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+    Assert-Equal 150 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
 
 Fact 'TheChestMimicRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
@@ -453,6 +454,51 @@ $ourBodyText = ($ourBodyLines | ForEach-Object { "$_`r`n" }) -join ''
 $ourMobText  = ($ourMobLines | ForEach-Object { "$_`r`n" }) -join ''
 $bodyconvComment  = "# Shattered Legacy's animations (app\Build-UoOverrides.ps1): body N is slot S of anim7.mul.`r`n"
 $mobtypesComment  = "# Shattered Legacy's creature bodies (app\Build-UoOverrides.ps1): body TYPE flags (hex).`r`n"
+
+Fact 'TheSatchelIconRecordsAreTheServersTableAndEachIsOursWithItsPng' {
+    # cc-P236. SatchelArt.cs carries the server's copy of the six icons' records (SatchelArt.Records); records.json
+    # carries the players'. Same values, each ID registered as ours, each a 44x40 PNG.
+    $cs  = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\SatchelArt.cs'))
+    $rec = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $flagValue = @{ ArticleA = 0x4000; PartialHue = 0x40000; Container = 0x200000 }
+    $csRows = @([regex]::Matches($cs, 'new\((0x[0-9A-F]+), "([^"]+)", ([^,]+), (\d+), (\d+)\)') | ForEach-Object {
+        $v = 0
+        foreach ($nm in ($_.Groups[3].Value -split '\|' | ForEach-Object { $_.Trim() -replace '^TileFlag\.', '' })) {
+            if (-not $flagValue.ContainsKey($nm)) { throw "unknown flag $nm in C#" }
+            $v = $v -bor $flagValue[$nm]
+        }
+        [pscustomobject]@{ Id = [Convert]::ToInt32($_.Groups[1].Value, 16); Name = $_.Groups[2].Value; Flags = $v; Weight = [int]$_.Groups[4].Value; Height = [int]$_.Groups[5].Value }
+    })
+    $sat = @($rec.tiledata | Where-Object { [int]$_.id -ge 13184 -and [int]$_.id -le 13189 })
+    Assert-Equal 6 $csRows.Count 'six records in C#'
+    Assert-Equal '13184,13185,13186,13187,13188,13189' (@($csRows.Id) -join ',') 'the IDs in C#'
+    Assert-Equal (@($csRows.Id) -join ',') (@($sat | ForEach-Object { [int]$_.id }) -join ',') 'the same IDs, in the same order'
+    for ($i = 0; $i -lt $sat.Count; $i++) {
+        $j = $sat[$i]; $c = $csRows[$i]
+        Assert-Equal $c.Name $j.name "name of $($c.Id)"
+        Assert-True ($j.name.Length -le 19 -and $j.name -match '^[\x20-\x7E]+$') "name of $($c.Id) is 19 ASCII characters at most"
+        Assert-Equal $c.Flags ([Convert]::ToInt32(($j.flags -replace '^0x', ''), 16)) "flags of $($c.Id)"
+        Assert-True (($c.Flags -band 0x40000) -and ($c.Flags -band 0x200000)) "$($c.Id) is PartialHue and Container"
+        Assert-Equal $c.Weight ([int]$j.weight) "weight of $($c.Id)"
+        Assert-Equal $c.Height ([int]$j.height) "height of $($c.Id)"
+    }
+    Assert-Equal 0 @($rec.animdata | Where-Object { [int]$_.id -ge 13184 -and [int]$_.id -le 13189 }).Count 'no animdata: the icons are stills'
+    $art = Join-Path $pkg 'vendor\shattered-legacy-art\art'
+    $rows = @($reg | Where-Object { $_.kind -eq 'art' -and [int]$_.id -ge 13184 -and [int]$_.id -le 13189 })
+    Assert-Equal 6 $rows.Count 'six satchel IDs registered'
+    foreach ($r in $rows) {
+        $png = Join-Path $art ($r.id + '.png')
+        Assert-True (Test-Path -LiteralPath $png) "PNG for $($r.id)"
+        # The size from the PNG's own IHDR (big-endian width at byte 16, height at 20).
+        $b = [IO.File]::ReadAllBytes($png)
+        $wd = ($b[16] -shl 24) -bor ($b[17] -shl 16) -bor ($b[18] -shl 8) -bor $b[19]
+        $ht = ($b[20] -shl 24) -bor ($b[21] -shl 16) -bor ($b[22] -shl 8) -bor $b[23]
+        Assert-Equal '44x40' "$($wd)x$($ht)" "size of $($r.id).png"
+        Assert-Equal 'ours, Chase via Codex, 2026-10-05' $r.license "license of $($r.id)"
+        Assert-True ($r.source -like "Ours: Chase's own source art*") "source of $($r.id)"
+    }
+}
 
 Fact 'TheWornAnimationAndTheCreatureBodyGetTheirBodyconvLinesAndTheAnim7Overrides' {
     $uo = New-UoDir 'equip' (New-Tiledata) (New-Animdata)

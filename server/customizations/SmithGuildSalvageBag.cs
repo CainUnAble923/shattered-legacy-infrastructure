@@ -26,13 +26,13 @@ namespace Server.Items;
 //      See HammerBODAutoFill.TryAutoFill for the matching pattern.
 // -----------------------------------------------------------------------------
 
-[SerializationGenerator(0, false)]
+[SerializationGenerator(1, false)]
 public partial class SmithGuildSalvageBag : Bag
 {
     // -- Constants -------------------------------------------------------------
 
     private const int BagHue  = 1154; // Society of Smiths blue
-    private const int BagItemID = 0xE76; // standard bag
+    private const int BagItemID = SatchelArt.SmithGuildSalvageBag; // cc-P236: Chase's icon (was the stock bag 0xE76)
 
     [Constructible]
     public SmithGuildSalvageBag()
@@ -45,6 +45,13 @@ public partial class SmithGuildSalvageBag : Bag
     }
 
     public SmithGuildSalvageBag(Serial serial) : base(serial) { }
+
+    // cc-P236: a version 0 bag still on the stock graphic takes Chase's icon; a staff member's other graphic stays.
+    private void Deserialize(IGenericReader reader, int version) =>
+        SatchelArt.MoveFromStock(this, SatchelArt.StockBag, SatchelArt.SmithGuildSalvageBag);
+
+    // cc-P236: the bag's gump, bounds and drop sound stay the stock bag's (containers.cfg has no line for our ID).
+    public override ContainerData UpdateContainerData() => ContainerData = ContainerData.GetData(SatchelArt.StockBag);
 
     public override int LabelNumber => 1079931; // "Salvage Bag" cliloc (reused)
 

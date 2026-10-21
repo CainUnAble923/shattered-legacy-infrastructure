@@ -26,7 +26,7 @@ namespace Server.Items;
 
 // -- T1 ------------------------------------------------------------------------
 
-[SerializationGenerator(0, false)]
+[SerializationGenerator(1, false)]
 public partial class HuntersSatchel : Container
 {
     // -- Accepted types --------------------------------------------------------
@@ -106,7 +106,7 @@ public partial class HuntersSatchel : Container
     // -- Construction ---------------------------------------------------------
 
     [Constructible]
-    public HuntersSatchel() : base(0xA272)   // satchel/pouch graphic
+    public HuntersSatchel() : base(SatchelArt.HuntersSatchel)   // cc-P236: Chase's hunter's satchel icon (was stock 0xA272)
     {
         Weight   = 2.0;
         Hue      = 0x5B5;   // dark leather brown
@@ -114,7 +114,9 @@ public partial class HuntersSatchel : Container
         LootType = LootType.Blessed;
     }
 
-    private void Deserialize(IGenericReader reader, int version) { }
+    // cc-P236: a version 0 satchel of any tier still on the stock graphic takes Chase's icon; a staff member's other graphic stays.
+    private void Deserialize(IGenericReader reader, int version) =>
+        SatchelArt.MoveFromStock(this, SatchelArt.StockSatchel, SatchelArt.HuntersSatchel);
 
     // -- Properties ------------------------------------------------------------
 
