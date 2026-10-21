@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.12
+
+### Staff
+- [props on a creature now opens its pet-training Ability Profile and Training Profile with the row's arrow, instead of showing "..." with no way in.
+
 ## 2026.10.20.11
 
 ### Staff
