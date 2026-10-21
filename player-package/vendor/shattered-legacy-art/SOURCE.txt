@@ -353,3 +353,23 @@ Pixels:      BMP to PNG and pure black made transparent (scripts\anchor-art-fram
 Records:     shelves as OSI's bookcase 0xA97 (Impassable | ArticleA, height 12); inserts ArticleA, height 0 (Book 5/6
              PartialHue); statues as OSI's statue 0x1224 plus Impassable, height 20 (cc-P34's); trophies as OSI's trophy
              0x1E60 (ArticleA, height 0); mounted heads ArticleA, height 2. Server copy: LeagueHallArt.Records.
+
+Flying loot, art 15536-15589 (0x3CB0-0x3CE5) (cc-P242)
+--------------------------------------------------------
+Author:      Clint Bellanger, "Flying Loot Animations", https://opengameart.org/content/flying-loot-animations (2010); base
+             icon styles by Blarumyrran. Original at D:\UO\third-party\oga-flying-loot\ (23 strips, 384 x 128, six
+             64 x 128 frames each, pink background; Blender sources beside them).
+License:     CC-BY 3.0. Attribution required: credit Clint Bellanger (and Blarumyrran for the base icon styles) in the
+             shard credits. CC-BY 3.0 asks that changes be stated: they are listed below and in every registry row.
+Files:       six frames each, the base ID first (it carries our tiledata and animdata record):
+               15536 longsword   15542 longbow   15548 staff    15554 steel_armor   15560 shield
+               15566 ring        15572 gem       15578 health_potion             15584 clothes
+             The other 14 strips (dagger, shortsword, greatsword, shortbow, greatbow, slingshot, wand, rod, greatstaff,
+             buckler, leather_armor, mana_potion, boots, belt) are not shipped: the loot boxes use these nine kinds.
+Changed:     (1) the pink background and (2) the pure-black drop shadow made transparent; (3) pixels with every
+             channel under 8 lifted to (8,8,8), the darkest colour 16-bit art keeps; (4) not resized (the items are
+             already UO's size); (5) cut to each animation's shared box by scripts\anchor-art-frames.py (centred, bottom
+             row on the tile's tip). No recolouring, no redrawing. Made by shard-migration notes\cc-P242-tools\flying_loot.py.
+Records:     tiledata as OSI's effect art (the sparkle 0x373A): Animation 0x01000000, weight 255, height 0; animdata
+             frames 0-5 then 5 twice (the landed item rests), interval 1. Server copy: ClusterFFlyingLoot.Records.
+Shown by:    the server's ClusterFFlyingLoot, as a location effect over a loot box's opener.
