@@ -16,7 +16,7 @@ import time
 
 from . import huffman
 from . import packets as P
-from .safety import HOST, PORT, check_relay, check_target, check_test_relay, check_test_target
+from . import safety
 
 DIRS = {"n": 0, "ne": 1, "e": 2, "se": 3, "s": 4, "sw": 5, "w": 6, "nw": 7}
 DELTA = {0: (0, -1), 1: (1, -1), 2: (1, 0), 3: (1, 1), 4: (0, 1), 5: (-1, 1), 6: (-1, 0), 7: (-1, -1)}
@@ -108,6 +108,8 @@ class Client(object):
         self.popups = []
         self.delete_results = []
         self.trades = []            # cc-P215: secure trade events (0x6F): dicts action, serial, container
+        self.context_menus = []     # parsed 0xBF 0x14, newest last (cc-P224)
+        self.arrows = []            # quest arrows 0xBA, newest last (cc-P224)
 
     # -- transport --------------------------------------------------------------------------------------------
     def log(self, text):
@@ -115,9 +117,9 @@ class Client(object):
 
     def _connect(self, host, port):
         if self.test_target:
-            check_test_target(host, port)
+            safety.check_test_target(host, port)
         else:
-            check_target(host, port)
+            safety.check_target(host, port)
         s = socket.create_connection((host, port), timeout=10)
         s.settimeout(None)
         return s
@@ -210,7 +212,7 @@ class Client(object):
     # -- login ------------------------------------------------------------------------------------------------
     def login(self):
         """Seed, 0x80, server list, 0xA0, relay, then the game connection with 0x91. Returns the character list."""
-        host0, port0 = self.test_target if self.test_target else (HOST, PORT)
+        host0, port0 = self.test_target if self.test_target else (safety.HOST, safety.PORT)
         self.sock = self._connect(host0, port0)
         seed_value = random.randint(1, 0x7FFFFFFF)
         self.send(P.seed(seed_value))
@@ -236,15 +238,23 @@ class Client(object):
             raise LoginFailed("expected the relay (0x8C), got 0x%02X" % p[0])
         ip, port, auth = p[1:5], P.u16(p, 5), P.i32(p, 7)
         try:
-            host = check_test_relay(ip, port, host0, port0) if self.test_target else check_relay(ip, port)
+            host = safety.check_test_relay(ip, port, host0, port0) if self.test_target else safety.check_relay(ip, port)
         except Exception as e:
             self.log("REFUSED RELAY: %s" % e)
             self.sock.close()
             raise
-        self.log("<- 0x8C relay %s:%d, advertised %s (checked: %s)" % (host, port, ".".join(str(b) for b in ip), "a test shard" if self.test_target else "the scratch shard"))
+        if self.test_target:
+            self.log("<- 0x8C relay %s:%d, advertised %s (checked: a test shard)" % (host, port, ".".join(str(b) for b in ip)))
+        else:
+            # cc-P224: the relay's address is never dialled. On the scratch shard it is 127.0.0.1 anyway; on a Golem PC's
+            # test shard it is the game PC's address (safety.py header), so the bot goes back to 127.0.0.1 and its port.
+            self.log("<- 0x8C relay %s:%d (checked: %s; reconnecting to %s:%d)" % (host, port, safety.describe(), safety.HOST, safety.PORT))
+            if host != safety.HOST:
+                self.log("NOTE the relay advertises %s, not this machine's loopback: a real client on this PC would be sent there" % host)
         self.sock.close()
         self.buf = b""
-        self.sock = self._connect(host, port)
+        # cc-P215 checks dial the host they were given (check_test_relay returns it); the run's target is always 127.0.0.1.
+        self.sock = self._connect(host, port) if self.test_target else self._connect(safety.HOST, safety.PORT)
         self.send(struct.pack(">i", auth))
         self.send(P.game_login(auth, self.user, self.password))
         self.compressed = True
@@ -284,9 +294,19 @@ class Client(object):
         self.send(P.delete_character(slot))
 
     # -- actions ----------------------------------------------------------------------------------------------
-    def say(self, text):
-        self.log("-> say %r" % text)
-        self.send(P.unicode_speech(text))
+    def say(self, text, keywords=()):
+        """Speech. With keywords (speech.mul ids, e.g. P.KEYWORDS["all come"]) the 0xAD is the encoded form the real
+        client sends for a phrase in the table, which is what keyword-driven handlers (pet commands, vendors) read."""
+        self.log("-> say %r%s" % (text, (" keywords %s" % [hex(k) for k in keywords]) if keywords else ""))
+        self.send(P.unicode_speech(text, keywords=keywords))
+
+    def pet_command(self, phrase, settle=0.5):
+        """'all come', 'all kill', 'all follow me', 'all stay', ... (BaseAI/OnSpeech.cs:153-161). Returns the target
+        cursor for the ones that ask for one (all kill, all follow), after `settle`."""
+        self.target = None
+        self.say(phrase, keywords=(P.KEYWORDS[phrase],))
+        self.sleep(settle)
+        return self.target
 
     def command(self, text, settle=0.8):
         """A staff command, typed as Chase would: speech starting with the command prefix '['."""
@@ -371,6 +391,61 @@ class Client(object):
         self.send(P.lift(serial, amount))
         self.sleep(0.4)
         self.send(P.drop(serial, x, y, 0, container))
+
+    def context_menu(self, serial, timeout=6):
+        """Asks for the entity's context menu (0xBF 0x13) and returns the parsed 0xBF 0x14: {"serial", "entries":
+        [{"index", "cliloc", "flags", "text"}]} or None. ContextMenuSystem.cs:101-140, :142-210 (cc-P224)."""
+        n = len(self.context_menus)
+        self.log("-> 0xBF 0x13 context menu request 0x%08X" % serial)
+        self.send(P.context_menu_request(serial))
+        return self.wait(lambda: next((m for m in self.context_menus[n:] if m["serial"] == serial), None), timeout)
+
+    def pick_context(self, menu, which):
+        """Answers a context menu (0xBF 0x15) with an entry: its index (an int below 1000), its cliloc number (an int
+        from 1000 up), or a text the resolved cliloc contains. ContextMenuSystem.cs:48-99. Returns the entry picked,
+        or raises if none matches."""
+        entry = None
+        for e in menu["entries"]:
+            if isinstance(which, int) and which < 1000 and e["index"] == which:
+                entry = e
+            elif isinstance(which, int) and which >= 1000 and e["cliloc"] in (which, which + 3000000):
+                entry = e
+            elif isinstance(which, str) and which.lower() in (e.get("text") or "").lower():
+                entry = e
+            if entry is not None:
+                break
+        if entry is None:
+            raise RuntimeError("no context entry %r in %s" % (which, [(e["index"], e["cliloc"], e.get("text")) for e in menu["entries"]]))
+        self.log("-> 0xBF 0x15 context pick %d (%s) on 0x%08X" % (entry["index"], entry.get("text"), menu["serial"]))
+        self.send(P.context_menu_response(menu["serial"], entry["index"]))
+        return entry
+
+    def opl(self, serial, timeout=5):
+        """The entity's property list (tooltip), asked for with 0xD6 and read from the 0xD6 reply (resolved clilocs)."""
+        tgt = self.items.get(serial) or self.mobiles.get(serial)
+        if tgt is not None:
+            tgt.pop("props", None)
+        self.send(P.opl_request([serial]))
+
+        def got():
+            t = self.items.get(serial) or self.mobiles.get(serial)
+            return t.get("props") if t else None
+        return self.wait(got, timeout)
+
+    def mobile_name(self, serial, timeout=5):
+        """Another mobile's name, from the short status (0x11) a status request for it brings."""
+        self.mobiles.setdefault(serial, {}).pop("name", None)
+        self.send(P.status_request(serial, 4))
+        return self.wait(lambda: self.mobiles.get(serial, {}).get("name"), timeout)
+
+    def world_items_near(self, x, y, r, graphic=None):
+        """World items (0xF3) within r tiles of x,y, optionally of one graphic."""
+        out = {}
+        for s, it in self.items.items():
+            if it.get("world") and abs(it.get("x", -9999) - x) <= r and abs(it.get("y", -9999) - y) <= r \
+                    and (graphic is None or it.get("graphic") == graphic):
+                out[s] = it
+        return out
 
     # -- queries ----------------------------------------------------------------------------------------------
     def texts_since(self, n):
@@ -492,6 +567,17 @@ class Client(object):
             self.gumps.append(g)
             self.log("<- 0xDD gump 0x%08X type %d: %s" % (g["serial"], g["typeId"], " | ".join(self.gump_text(g))[:4000]))
             self.log("   layout: %s" % g["layout"][:4000])
+        elif pid == 0xBF and len(p) >= 5 and P.u16(p, 3) == 0x14:
+            m = P.parse_context_menu(p)
+            for e in m["entries"]:
+                e["text"] = self.cliloc.text(e["cliloc"]) if e["cliloc"] else ""
+            self.context_menus.append(m)
+            self.log("<- 0xBF 0x14 context menu 0x%08X: %s" % (m["serial"], [(e["index"], e["cliloc"], e["text"], e["flags"]) for e in m["entries"]]))
+        elif pid == 0xBA:
+            # S/OutgoingPlayerPackets.cs (QuestArrow): byte active; i16 x; i16 y; [u32 serial with HighSeas].
+            a = {"active": bool(p[1]), "x": P.i16(p, 2), "y": P.i16(p, 4), "serial": P.u32(p, 6) if len(p) >= 10 else None}
+            self.arrows.append(a)
+            self.log("<- 0xBA quest arrow %s" % a)
         elif pid == 0x6C:
             self.target = (P.i32(p, 2), p[1])
             self.log("<- 0x6C target cursor %d (type %d)" % self.target)
@@ -523,6 +609,7 @@ class Client(object):
             d = {"graphic": P.u16(p, 8), "amount": P.u16(p, 11), "x": P.u16(p, 15) & 0x7FFF, "y": P.u16(p, 17) & 0x3FFF,
                  "z": struct.unpack_from(">b", p, 19)[0], "hue": P.u16(p, 21), "container": 0, "world": True, "kind": typ}
             self.items[s] = d
+            self.log("<- 0xF3 world item 0x%08X graphic 0x%X x%d at %d,%d,%d hue %d" % (s, d["graphic"], d["amount"], d["x"], d["y"], d["z"], d["hue"]))
         elif pid == 0x2E:
             s = P.u32(p, 1)
             self.items[s] = {"graphic": P.u16(p, 5), "layer": p[8], "parent": P.u32(p, 9), "hue": P.u16(p, 13),

@@ -61,6 +61,29 @@ transcripts; the shard's logs stay out of git).
   - Their random passwords are only in `secrets.local.json` (git-ignored), and are never printed.
 - **Email:** the starting, summary and crashed mails (cc-P102), through the Golem's own mail settings (cc-autopilot's before the cutover), read only (`Send-BotReport.ps1`).
 
+## Two targets (cc-P224)
+
+`uobot.run --target scratch|test` picks the shard, and `uobot/safety.py` refuses everything else:
+
+| Target | Host and port | Container | Who starts it |
+|---|---|---|---|
+| `scratch` (default) | 127.0.0.1:2595 | sl-modernuo-bot | `Run-OvernightPlaytests.ps1` (the nightly) |
+| `test` | 127.0.0.1:2594 | sl-modernuo-test | `docker\uo\Start-TestShard.ps1` on a Golem's own PC (cc-P224) |
+
+In both the live port 2593 is refused outright. The 0x8C relay must name the target's port; its address is logged but
+never dialled (the bot reconnects to 127.0.0.1), because `Start-TestShard.ps1` writes `serverListing.address` as the
+game PC's 192.168.1.58 on every PC, so on a Golem PC the relay points at another machine's test shard. The `test`
+target's accounts come from the same TestAccountWipe request as the scratch shard's; cc-P224 wrote the request by hand
+into `server\lib\uo\modernuo-test\` before `Start-TestShard.ps1 -Fresh`, and the secrets live outside both repos
+(`D:\UO\bot-shard\secrets.p224.local.json`). A run against the test shard:
+
+```
+python -B -m uobot.run --target test --container sl-modernuo-test --secrets D:\UO\bot-shard\secrets.p224.local.json --out <run folder> --runs 3
+python -B -m uobot.report --out <run folder>
+```
+
+The P100-6 check restarts the container it is given (`docker restart -t 60`), so it only runs with `--target test`.
+
 ## Layout
 
 | File | What |
@@ -77,7 +100,9 @@ transcripts; the shard's logs stay out of git).
 | `uobot/packets.py` | Every packet built or read, with its pinned citation |
 | `uobot/huffman.py` | The game connection's decompression (pinned's table) |
 | `uobot/cliloc.py` | Cliloc.enu, BWT decompression ported from pinned, cached in `D:\UO\bot-shard\cache` |
-| `uobot/checks.py` | The checks: one per play-test id |
+| `uobot/checks.py` | The checks: one per play-test id (cc-P91 to cc-P140), and the import of the cc-P224 modules below |
+| `uobot/checks_p224.py` | cc-P224: shared helpers (skills by name, spawn, [set on a serial, pets, fair kills) and the import of the group modules |
+| `uobot/checks_p224_<group>.py` | cc-P224: vbuild (P100-1 to -5), restart (P100-6), kitsune (P138), mule (P69-6, P70), imbuing (P82-0, P173, P176), pets (P121-2, P171, P172), thieves (P142), guilds (P170, P175), rootdeep (P141) |
 | `uobot/run.py` | Runs the checks N times each; PASS 3/3, FAIL 0/3, else FLAKY; ERROR when it cannot be set up |
 | `uobot/soak.py` | The soak: walker, miner, fighter; memory and loud log lines every minute |
 | `uobot/report.py` | report.md and email.txt |
@@ -133,6 +158,11 @@ unless said (`Server/Buffers/SpanWriter.cs:182-260`).
 | 08 | 15 | u32 serial; i16 x, y; sbyte z; byte grid; u32 container | U/Network/Packets/IncomingItemPackets.cs:69; U/Network/ContainerGridPacketHandler.cs |
 | 13 | 10 | u32 item (skipped); byte layer (skipped); u32 mobile | U/Network/Packets/IncomingItemPackets.cs:44 |
 | 05 | 5 | u32 serial | U/Network/Packets/IncomingPlayerPackets.cs:69 |
+| AD (encoded) | var | cc-P224: type with the 0xC0 bit; keyword count and ids packed 12 bits each; UTF-8 text null-terminated | U/Network/Packets/IncomingMessagePackets.cs:73-116 |
+| 12 | var | cc-P224: text command: 0x24 use skill "<id> 0", 0x56 cast spell "<id>" | U/Network/Packets/IncomingPlayerPackets.cs:125-190 |
+| BF 13 | 9 | cc-P224: context menu request, u32 serial | U/Context Menus/ContextMenuSystem.cs:101 (registered :15) |
+| BF 15 | 11 | cc-P224: context menu pick, u32 serial, u16 index | U/Context Menus/ContextMenuSystem.cs:48 (registered :16) |
+| D6 | var | cc-P224: property list request, u32 serials | U/Network/Packets/IncomingEntityPackets.cs:154 |
 
 ### Read by the bot
 
@@ -159,14 +189,17 @@ unless said (`Server/Buffers/SpanWriter.cs:182-260`).
 | 2E, 1D | 15, 5 | equip update, remove entity | S/OutgoingEquipmentPackets.cs:86; S/OutgoingEntityPackets.cs:63 |
 | D6 | var | properties: int32 cliloc, u16 length, LittleUnicode | Server/PropertyList/ObjectPropertyList.cs:77, 121, 144 |
 | BD | var | the server's version request; the bot answers | S/OutgoingAccountPackets.cs:112 |
+| BF 14 | var | cc-P224: context menu: command (1 old, 2 new), serial, entries (index, cliloc, flags) | U/Context Menus/ContextMenuSystem.cs:142-210 |
+| BA | 10 | cc-P224: quest arrow: active, x, y, serial | S/OutgoingPlayerPackets.cs (QuestArrow) |
 | F4 | var | **ours, not pinned's**: ClusterF exploration (fog of war) state for the ClusterF client (`server/customizations/ClusterFExplorationManager.cs:121-134`). The bot ignores it |
 
 Everything else is counted (`seen_ids`) and otherwise ignored.
 
 ## What the bot cannot do
 
-- **No keyword speech.** NPCs that act on keywords (vendors' "buy", bankers' "balance", guildmasters, guards) ignore it.
-  Commands and plain speech work.
+- **Keyword speech only for the pet commands** (cc-P224: `Client.pet_command`, the `KEYWORDS` table in `packets.py`,
+  all come / follow / guard / stop / kill / attack / guard me / follow me / stay). Every other keyword NPC (vendors'
+  "buy", bankers' "balance", guards) still ignores it; context menus and gumps are the way to those.
 - **Nothing visual:** art, hues as seen, paperdolls, animation, gump layout and colour. Those halves are left for
   Chase in each BOT-PARTIAL row.
 - **Fresh characters are rationed:**
