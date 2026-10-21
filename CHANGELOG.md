@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.2
+
+### Staff
+- A proposed shared look for every guild menu (a crest and colour per guild, a section list, one requirement style, paging) is drawn as mockups for approval. No menu uses it yet; players see no change.
+
 ## 2026.10.21
 
 ### Changed
