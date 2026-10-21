@@ -8286,6 +8286,18 @@ Fact 'P222_TheTinkersButtonsRunTinkerPs1AfterTheirPhraseAndNothingElse' {
     }
 }
 
+Fact 'P158_TheCodexTodayRowSaysTheReviewsAndTheLaneRuns' {
+    # cc-P158: reviews before each commit and the Codex lane share the ChatGPT plan with art; the today row says which.
+    $now = [datetime]'2026-10-20T23:30:00'
+    $j = (New-P152CodexText $now) | ConvertFrom-Json
+    $mk = { param($at, $purpose) [pscustomobject]@{ at = $at; purpose = $purpose; tokens = 1000 } }
+    $j.runs = @((& $mk '2026-10-20T21:49:00-05:00' 'review'), (& $mk '2026-10-20T22:01:00-05:00' 'review'), (& $mk '2026-10-20T23:01:00-05:00' 'lane'), (& $mk '2026-10-20T08:00:00-05:00' 'art'), (& $mk '2026-10-19T09:00:00-05:00' 'review'))
+    $rows = @(Get-CodexUsageRows -CodexText ($j | ConvertTo-Json -Depth 6) -Now $now -Settings ([pscustomobject]@{ codexMaxPctPerWindow = 40; codexWeekReservePct = 30 }))
+    Assert-True ($rows[-1].Text -match '2 review\(s\), 1 lane run\(s\), 1 art run\(s\)') ('today by use, yesterday''s left out: ' + $rows[-1].Text)
+    $tip = (Get-ConsoleTooltips)['golemPanel']
+    Assert-True ($tip -match 'review' -and $tip -match 'lane' -and $tip -match 'night') ('the tooltip says reviews and the lane: ' + $tip)
+}
+
 $failed =@($results | Where-Object { -not $_.Passed }).Count
 Write-Host ""
 Write-Host ("{0} facts, {1} passed, {2} failed" -f $results.Count, ($results.Count - $failed), $failed) -ForegroundColor $(if ($failed) { 'Red' } else { 'Green' })
