@@ -1,0 +1,63 @@
+====== Mage trainer (SL_Mage.py) ======
+
+**Draft: this script ships when Chase publishes it.** It is written and runs on his PC, but it is not in the player package's Legion scripts yet. Nothing on this page can be downloaded until then; see [[:uo:macros:start|Macros]] for the scripts that are.
+
+SL_Mage trains **Magery** and **Resisting Spells** on your own, with no partner and no monsters: it casts harmful spells on yourself for Resist, buffs and summons for Magery, meditates when your mana is low, and restocks reagents from a chest or your bank. It also uses Evaluating Intelligence on you, because a Curse only lands when you have some.
+
+===== What you need =====
+
+^ Item ^ Why ^
+| A spellbook with the spells it uses | It reads your book and skips spells you do not have. Night Sight, Clumsy, Cunning, Agility, Bless, Mana Drain, Curse, Greater Heal, Magic Reflection, Invisibility, Mana Vampire and the three elemental summons. |
+| Reagents | In your pack, in bags if you like: it opens every bag (four levels deep) at Start and before deciding you are out. |
+| Somewhere safe to stand | A town is fine: the harmful spells only ever target you, and a summon is released the moment it appears. |
+| A reagent chest or a banker | Optional. **Set Storage** and target the chest, or target a banker to use your bank box. A restock tops each reagent up to 150 for the circle you are on and the next. |
+
+===== Setting it up =====
+
+  - Put the script in your client's ''LegionScripts'' folder and start it from the Legion Scripting window.
+  - Press **Set Storage** once, and target your reagent chest or a banker.
+  - Press **Start**. It will say what it is about to cast and why.
+
+===== The control window =====
+
+  * **Start / Pause / Stop**.
+  * **Set Storage**: the chest or banker it restocks from.
+  * **Show plan**: lists the spells it can cast right now, with each one's chance of a Magery or Resist gain and what it costs, and re-reads your bags.
+
+It remembers your storage, your spot and your options per character, and it shares the teleporters SL_Mining has learned.
+
+===== How it picks a spell =====
+
+Every spell is scored by its chance to raise Magery plus its chance to raise Resist, divided by its cost in mana and reagents. Mana Drain is cheap because it costs only mana, and the mana comes back after five seconds. When only Curse can still teach Resist and you are already cursed, it meditates and waits for the curse to wear off.
+
+^ Circle ^ Magery to cast ^ Teaches Magery until ^ Mana ^
+| 1 | 0 | 22 | 4 |
+| 2 | 0 | 36 | 6 |
+| 3 | 10 | 50 | 9 |
+| 4 | 24 | 64 | 11 |
+| 5 | 38 | 78 | 14 |
+| 6 | 52 | 92 | 20 |
+| 7 | 66 | 106 | 40 |
+| 8 | 80 | 120 | 50 |
+
+Resist is taught by the harmful spells it casts on you: Mana Drain until Resist 56, Paralyze until 66, Mana Vampire until 111, and Curse up to your cap (Curse needs Evaluating Intelligence above 0, and does not land while you are already cursed). Clumsy, Weaken and Feeblemind teach no Resist on this shard, so it does not use them for that.
+
+===== What it never does =====
+
+  * It never targets anyone but you, and never attacks.
+  * It never buys reagents; it only moves them from your storage to your pack.
+  * It never leaves a summon standing: elementals are released as soon as they appear.
+  * It never keeps trying a spell you do not have, or one that fails three times running; that spell is skipped for the session or for 30 minutes, and it tells you.
+
+===== Known limits =====
+
+  * **Magery stops at 120.** The 8th circle's window ends there, and the shard's gain past the stock top does not cover the casting schools yet. The script probes above 120 and, after 200 casts with no gain, says the skill is stuck. See [[:uo:systems:skill_gain|Skill gain]].
+  * **Resist past 120 comes only from Curse** on this shard. Mana Vampire stops teaching at 111 whatever the script tries, so keep Evaluating Intelligence up.
+  * A no-target or summon cast that uses no mana and gives no message counts as a failure.
+  * It writes ''SL_Mage.log'' next to the script. Send that along if you report a problem.
+
+===== Related pages =====
+
+  * [[:uo:macros:start|Macros]]
+  * [[:uo:systems:skill_gain|Skill gain]]
+  * [[sl_crafter|Crafter trainer (SL_Crafter.py)]]

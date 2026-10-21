@@ -1,26 +1,31 @@
 ====== The Test Crystal ======
 
-**Draft: test shard only.** The Test Crystal exists so play testers can try guild and crafting systems without grinding for the materials. It is never handed out on the live shard.
+**Draft: test shard only.** Both crystals on this page exist so play testers can try things without the grind. Neither works on the live shard: the Test Crystal deletes itself if it ever reaches one.
 
-===== What it does =====
+===== The Test Crystal (skill gain) =====
 
-A **Dev Testing Crystal** sits in a tester's backpack. Double-click it to open a small menu and turn it on (green) or off (red).
+The test shard trains at the real shard's rates. Every tester gets a **Test Crystal** in their bank instead; double-click it to set your own skill gain chance to **Off, 2x, 5x, 10x or 25x**. It affects only you, is saved with your character, and glows gold while it is on.
 
-While it is **on**:
+  * Below 10 skill you gain on every use anyway, so the crystal changes nothing there.
+  * With the crystal Off, your gains are exactly what the live shard would give. Turn it Off before you test how a skill feels.
+  * If your bank has none, ask staff for one.
+
+===== The Dev Testing Crystal (costs) =====
+
+Staff can also hand a tester a **Dev Testing Crystal**. Double-click it to open a small menu and turn it on (green) or off (red). While it is on:
 
   * Guild work orders (the Miners' Compact, the Society of Smiths and every other guild) skip their material, voucher, gold and ingot costs and their skill and standing checks.
   * Ordinary crafting skips its skill and material requirements.
   * Restoring and upgrading a Jacob's pickaxe costs nothing.
 
-It does **not** skip registry unlocks or guild membership: you still have to join a guild and unlock a thing the normal way, so the steps themselves get tested.
+It does **not** skip registry unlocks or guild membership: you still have to join a guild and unlock a thing the normal way, so the steps themselves get tested. It is blessed, so it cannot be dropped or looted.
 
-While it is **off** the crystal does nothing. It is blessed, so it cannot be dropped or looted.
+===== The Test Kit =====
 
-===== Getting one =====
-
-Ask staff on the test shard. New test characters also get a **Shattered Legacy Test Kit** in their bank: a bag with a stack of every shard resource, for the same reason.
+New test characters also get a **Shattered Legacy Test Kit** in their bank: a bag with a stack of every shard resource.
 
 ===== Related pages =====
 
+  * [[:uo:systems:skill_gain|Skill gain]]
   * [[:uo:systems:guilds|Guilds]]
   * [[:uo:professions:materials|Metals and woods]]
