@@ -590,7 +590,8 @@ public class DeployableTrapsVerification
         Assert.Equal(0, TrapLesson.OnEnterStacks(t.Pm));
         trap.OnRemoveTrap(t.Pm);
         Assert.Null(t.Pm.Backpack.FindItemByType<SnareNetKit>(true, k => !k.Practice));
-        t.Pm.MoveToWorld(Field, Map.Trammel);
+        // P371: leave the Burrows for the island surface; this trainee has not graduated yet.
+        t.Pm.MoveToWorld(new Point3D(3503, 2574, 14), Map.Trammel);
         nets[1].OnDoubleClick(t.Pm);
         Assert.True(nets[1].Deleted);
     }

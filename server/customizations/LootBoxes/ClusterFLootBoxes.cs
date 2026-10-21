@@ -9,14 +9,14 @@
 //                           without paragons), for every player with looting rights
 //   league:<rank>           each League rank reached (ClusterFLeagueRanks.TryPromote)
 //   clear:<dungeon>         each dungeon or floor's first clear (OnDungeonCleared: a hook, no clear tracking exists)
-//   loop:<n>                each loop completed (OnLoopCompleted: a hook, loops do not exist)
+//   loop:<n>                each loop completed (tutorial graduation records loop 1, P371)
 //
 // Achievements are stored per ACCOUNT by the achievement system (ClusterFAchievements.cs:267-269), so TryGrant fires once
 // per account. The box goes to the account's online character, the one the earn popup goes to. A second character on the
 // account gets no box for an achievement its account already holds (decision for Chase in the notes).
 //
-// Hooks left for sources that do not exist (each a public method; nothing calls them yet): OnLevelUp, OnLoopCompleted,
-// OnDungeonCleared, OnTrialChapter, OnReached200, CombineLoopScroll. CurrentLoop and LevelOf are placeholders until F-12.
+// Hooks left for sources that do not exist: OnLevelUp, OnDungeonCleared, OnTrialChapter, OnReached200, CombineLoopScroll.
+// LevelOf is a placeholder until F-12. CurrentLoop reads the per-character count (P371).
 
 #nullable enable
 
@@ -44,10 +44,10 @@ public static class ClusterFLootBoxes
         EventSink.WorldLoad += () => Timer.StartTimer(TimeSpan.FromMinutes(5), TimeSpan.FromHours(1), () => CleanUpAbandoned());
     }
 
-    // -- Placeholders until F-12 (levels and loops) --
+    // -- Loop record and the level placeholder until F-12 --
 
-    /// <summary>F-12 hook: where a character's loop number comes from. Loop 1 for everyone until loops exist.</summary>
-    public static Func<PlayerMobile, int> LoopProvider { get; set; } = _ => 1;
+    /// <summary>Character's recorded loop; creation is loop 0, tutorial graduation is loop 1 (P371).</summary>
+    public static Func<PlayerMobile, int> LoopProvider { get; set; } = Server.Tutorial.ClusterFLoops.LoopOf;
 
     public static int CurrentLoop(PlayerMobile pm) => LoopProvider(pm);
 

@@ -1,0 +1,35 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -1832,7 +1832,7 @@
+ 
+         // Shattered Legacy (cc-P238): no Mark from a climbed mountain tile (customizations ClusterFClimbing).
+         public override bool CheckSpellCast(ISpell spell) =>
+-            !ClusterFClimbing.RefusesSpell(this, spell) && base.CheckSpellCast(spell);
++            !ClusterFClimbing.RefusesSpell(this, spell) && Server.Tutorial.TutorialIslandGate.CanCast(this, spell) && base.CheckSpellCast(spell);
+ 
+         public virtual void RecheckTownProtection()
+         {
+@@ -1858,6 +1858,11 @@
+ 
+         public override void MoveToWorld(Point3D loc, Map map)
+         {
++            if (!Server.Tutorial.TutorialIslandGate.CanMove(this, loc, map))
++            {
++                return;
++            }
++
+             base.MoveToWorld(loc, map);
+ 
+             RecheckTownProtection();
+@@ -1865,6 +1870,11 @@
+ 
+         public override void SetLocation(Point3D loc, bool isTeleport)
+         {
++            if (!Server.Tutorial.TutorialIslandGate.CanMove(this, loc, Map))
++            {
++                return;
++            }
++
+             if (!isTeleport && AccessLevel == AccessLevel.Player)
+             {
+                 // moving, not teleporting

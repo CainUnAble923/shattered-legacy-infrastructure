@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.21
+
+### Changed
+- Graduating from the New Haven tutorial now completes your first loop, with its fanfare and Loop box, and opens the island to travel. Your Young hours keep running.
+- Before graduation, island exits point you back to the League recruiter. Skipping provisionally opens the island too; remedial training remains available.
+
+### Staff
+- New settings: clusterf.tutorial.islandGate (default on) and clusterf.tutorial.skipCountsAsGraduation (default on; off requires remedial graduation). Staff are exempt from the island gate.
+
 ## 2026.10.21.20
 
 ### Added

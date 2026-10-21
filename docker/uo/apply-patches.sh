@@ -860,6 +860,13 @@ apply_patch "$PATCHES/Resmelt-recycle-achievement.patch"
 apply_patch "$PATCHES/SalvageBag-recycle-achievement.patch"
 apply_patch "$PATCHES/SmallBOD-crafted-only.patch"
 
+# P371: tutorial graduation is loop 1 and opens New Haven island. Shared movement guards, spell preflight,
+# and whole-boat passenger preflight. PlayerMobile patch follows climbed-tile CheckSpellCast above.
+# Alternatives and bump re-checks: shard-migration notes/cc-P371-graduation-is-the-first-loop.md.
+apply_patch "$PATCHES/PlayerMobile-tutorial-island-gate.patch"
+apply_patch "$PATCHES/SpellHelper-tutorial-island-gate.patch"
+apply_patch "$PATCHES/BaseBoat-tutorial-island-gate.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

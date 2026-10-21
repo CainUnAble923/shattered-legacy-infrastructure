@@ -17,18 +17,22 @@
 using System;
 using System.Collections.Generic;
 using Server;
+using Server.Accounting;
+using Server.Accounting.Security;
 using Server.Mobiles;
 using Server.Regions;
 using Server.Spells;
+using Server.Tutorial;
 using Xunit;
 using Xunit.Abstractions;
 
 namespace ShatteredLegacy.Tests;
 
 [Collection("Sequential UOContent Tests")]
-public class OldHavenBurrowsRegionVerification
+public class OldHavenBurrowsRegionVerification : IDisposable
 {
     private readonly ITestOutputHelper _out;
+    private readonly List<Account> _accounts = new();
 
     public OldHavenBurrowsRegionVerification(ITestOutputHelper output)
     {
@@ -41,11 +45,33 @@ public class OldHavenBurrowsRegionVerification
     private static readonly Point3D Outside = new(1220, 1220, 0);   // as YoungPlayerVerification
     private static readonly Point3D JustOutside = new(5130, 1190, 0); // 6 tiles west of the edge, inside teleport range
 
-    private static PlayerMobile Player(Point3D at, AccessLevel level = AccessLevel.Player)
+    private PlayerMobile Player(Point3D at, AccessLevel level = AccessLevel.Player, bool graduated = false)
     {
         var pm = new PlayerMobile { Player = true, AccessLevel = level };
+        if (graduated)
+        {
+            // P371: these region-policy probes need an ordinary graduate who is eligible to leave the island.
+            if (AccountSecurity.CurrentAlgorithm == PasswordProtectionAlgorithm.None)
+            {
+                AccountSecurity.CurrentAlgorithm = PasswordProtectionAlgorithm.PBKDF2;
+            }
+            var account = new Account($"p371r{Guid.NewGuid():N}"[..16], "test-only");
+            _accounts.Add(account);
+            account[0] = pm;
+            pm.AddItem(new Server.Items.Backpack());
+            ClusterFLoops.Graduate(pm);
+        }
         pm.MoveToWorld(at, Map.Trammel);
         return pm;
+    }
+
+    public void Dispose()
+    {
+        foreach (var account in _accounts)
+        {
+            Accounts.Remove(account);
+        }
+        Server.LootBoxes.ClusterFFanfare.FlushAll();
     }
 
     private static (bool Ok, string Message) Travel(Mobile m, Point3D to, TravelCheckType type)
@@ -92,7 +118,7 @@ public class OldHavenBurrowsRegionVerification
     {
         var outside = Player(Outside);
         var near = Player(JustOutside);
-        var inside = Player(Inside);
+        var inside = Player(Inside, graduated: true);
         try
         {
             var cases = new List<(string Name, Mobile Who, Point3D To, TravelCheckType Type, string Expected)>
@@ -127,7 +153,7 @@ public class OldHavenBurrowsRegionVerification
     public void LeavingAndTravelElsewhereAreAllowed()
     {
         var outside = Player(Outside);
-        var inside = Player(Inside);
+        var inside = Player(Inside, graduated: true);
         try
         {
             var cases = new List<(string Name, Mobile Who, Point3D To, TravelCheckType Type)>

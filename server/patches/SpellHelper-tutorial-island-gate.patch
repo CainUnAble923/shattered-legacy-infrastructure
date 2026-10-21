@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Spells/Base/SpellHelper.cs
++++ b/Projects/UOContent/Spells/Base/SpellHelper.cs
+@@ -613,6 +613,12 @@
+         {
+             message = null;
+ 
++            if (!Server.Tutorial.TutorialIslandGate.CanTravel(caster, map, loc, type))
++            {
++                message = Server.Tutorial.TutorialIslandGate.Refusal;
++                return false;
++            }
++
+             if (IsInvalid(map, loc)) // null, internal, out of bounds
+             {
+                 message = InvalidTravelMessage(type);

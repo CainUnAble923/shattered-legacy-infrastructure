@@ -7,7 +7,7 @@
 //   2. Skip: both confirmations are needed; "Didn't Read the Manual" is granted once; remedial training completes and
 //      grants "Read the Manual Eventually".
 //   3. The tutorial runs once per account: a second character on the account is never entered.
-//   4. The loop demo leaves level, skills, loop count and Young as they were; a real loop ends Young.
+//   4. The loop demo leaves level, skills, loop count and Young as they were; real loops keep Young (P371).
 //   5. A player not in the tutorial is not engaged by tutorial creatures; the tutorial player is.
 // And: every station Chase listed is registered; walking the core opens the wings; graduation gives the first loot box.
 
@@ -30,9 +30,10 @@ using Xunit.Abstractions;
 namespace ShatteredLegacy.Tests;
 
 [Collection("Sequential UOContent Tests")]
-public class TutorialVerification
+public class TutorialVerification : IDisposable
 {
     private readonly ITestOutputHelper _out;
+    private readonly Func<PlayerMobile, int> _loopProvider = ClusterFLootBoxes.LoopProvider;
 
     public TutorialVerification(ITestOutputHelper output)
     {
@@ -55,8 +56,10 @@ public class TutorialVerification
         }
 
         ClusterFTutorial.Enabled = true;
-        ClusterFLootBoxes.LoopProvider = _ => 1;
+        ClusterFLootBoxes.LoopProvider = ClusterFLoops.LoopOf;
     }
+
+    public void Dispose() => ClusterFLootBoxes.LoopProvider = _loopProvider;
 
     private static bool _startupHooksRun;
 
@@ -187,7 +190,7 @@ public class TutorialVerification
     // ---------------------------------------------------------------- 4
 
     [Fact]
-    public void TheLoopVisionChangesNothingAndARealLoopEndsYoung()
+    public void TheLoopVisionChangesNothingAndARealLoopKeepsYoung()
     {
         using var p = new Player();
         p.Account.Young = true;
@@ -209,10 +212,11 @@ public class TutorialVerification
         Assert.True(p.Account.Young);
         Assert.True(p.Pm.Young);
 
-        // A real loop ends Young for the account and its characters.
+        // P371 supersedes the old first-loop removal: later loops also leave the time-only Young rule alone.
         ClusterFLoops.CompleteLoop(p.Pm, 2);
-        Assert.False(p.Account.Young);
-        Assert.False(p.Pm.Young);
+        Assert.True(p.Account.Young);
+        Assert.True(p.Pm.Young);
+        Assert.Equal(2, ClusterFLoops.LoopOf(p.Pm));
     }
 
     // ---------------------------------------------------------------- 5
@@ -284,7 +288,7 @@ public class TutorialVerification
             boxes++;
         }
 
-        Assert.Equal(1, boxes);
+        Assert.Equal(2, boxes); // the graduation Explorer box and the first real loop's box
         Assert.False(ClusterFAchievementSystem.HasEarned(p.Account, ClusterFTutorial.RemedialAchievement));
     }
 }
