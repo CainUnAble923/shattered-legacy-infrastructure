@@ -197,6 +197,13 @@ public static class ThievesDenStealRules
         refusal = null;
         place = PlaceOf(thief);
 
+        if (place == StealPlace.None && from is ExodusZealot)
+        {
+            // cc-P195: an Exodus zealot may be stolen from wherever it stands (ServUO StealingHandler.CheckLocation);
+            // outside the Exodus Dungeon it counts as the other-facet dungeon it came from.
+            place = StealPlace.FacetDungeon;
+        }
+
         if (place == StealPlace.None)
         {
             return false;

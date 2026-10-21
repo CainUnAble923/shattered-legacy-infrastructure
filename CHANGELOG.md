@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.17
+
+### Added
+- The Exodus Encounter (Ilshenar): Lord Dupre's champion, knight and squires battle Exodus's zealots, drones, sentinels, a juggernaut and a minion lord through the Exodus Dungeon, hidden supply caches wait for a keen Detect Hidden, and broken Nexus machines yield punch cards to anyone with an Exotic Toolkit and a steady hand. Win the four keys of the ritual (the Summoning Rite, the Sacrificial Dagger, the Robe of Rite and the Summoning Altar) by fighting, stealing from zealots, picking the caches or crafting them, build the Summoning Tome at a shrine with your party, and be carried to Ver Lor Reg to face Clockwork Exodus for his gold and ten artifact replicas.
+- Hunter the Arch Zealot stands near Ver Lor Reg to explain the ritual and trade a gargoyle's dagger.
+- Blackrock: a small piece of blackrock turns up one dig in a thousand at 100 Mining.
+
+### Staff
+- [GenExodusEncounter places the encounter on Ilshenar (the controller and Clockwork Exodus, the exit moongate and ankh, the 39 Nexus machines and the Keypunch Reader, the spawners and the Arch Zealot) and [DeleteExodusEncounter removes it; both are test-shard commands until Chase runs them live.
+
 ## 2026.10.20.16
 
 ### Added
