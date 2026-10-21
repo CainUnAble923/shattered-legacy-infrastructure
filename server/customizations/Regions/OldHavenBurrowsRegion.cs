@@ -38,10 +38,12 @@ public class OldHavenBurrowsRegion : DungeonRegion
     public static readonly Rectangle3D Area = new(new Point3D(5136, 1128, MinZ), new Point3D(5248, 1264, MaxZ));
 
     /// <summary>
-    /// Old Haven's ruined Second Bank, the hole at 3619,2620 (decisions file item 6). PROVISIONAL: the map batch confirms the
-    /// spot is reachable on foot, and its z.
+    /// Old Haven's ruined Second Bank, the hole at 3619,2620 (decisions file item 6). Confirmed by cc-P188: the bank's
+    /// wooden floor is Z 0, the map patch opens its south wall (3618-3620,2622) so the hole is reached on foot from
+    /// New Haven, and the seeder's teleporter down stands on it (ClusterFRootdeepSeeder.Teleporters). Was named
+    /// ProvisionalEntrance until P188.
     /// </summary>
-    public static readonly Point3D ProvisionalEntrance = new(3619, 2620, 0);
+    public static readonly Point3D HoleEntrance = new(3619, 2620, 0);
 
     /// <summary>Hostile creatures that may attack one Young player at once (decisions file item 2: 2 to 3, pick 3).</summary>
     public const int MaxHostilesOnYoung = 3;
@@ -57,7 +59,7 @@ public class OldHavenBurrowsRegion : DungeonRegion
 
     public OldHavenBurrowsRegion() : base(RegionName, Map.Trammel, DefaultPriority, Area)
     {
-        Entrance = ProvisionalEntrance;
+        Entrance = HoleEntrance;
         GoLocation = new Point3D(5191, 1195, 0); // the middle; the map batch sets the real arrival spot
     }
 

@@ -48,6 +48,11 @@ services:
       # cc-P36 (Q-063): the test shard can run a different client-data folder from live, so the move to
       # 7.0.117.0 is tested before live follows. Unset, it falls back to live's folder as before.
       - ${CLIENT_DATA_PATH_TEST:-${CLIENT_DATA_PATH}}:/var/lib/uo/client-data/classic-client:ro
+      # cc-P188: our map changes (the Rootdeep Burrows, the way in from Old Haven) as patched copies of the three
+      # Trammel files, made by docker/uo/Build-MapOverlay.ps1 from the same patch the player package ships.
+      # Start-TestShard.ps1 puts this folder first in Configuration-test's dataDirectories, so the shard reads our
+      # Trammel and EA's everything else. Unset, an empty folder is mounted and the shard reads EA's Trammel.
+      - ${CLIENT_DATA_OVERLAY:-${SERVER_PATH}/../client-data/sl-map-overlay}:/var/lib/uo/client-data/sl-map-overlay:ro
     environment:
       TZ: ${TZ:-America/Chicago}
       # cc-P73: one of the three locks on the test account wipe (server/customizations/Misc/TestAccountWipe.cs).

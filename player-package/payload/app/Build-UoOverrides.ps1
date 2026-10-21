@@ -55,6 +55,12 @@
        app\uo-overrides\Bodyconv.def, the player's mobtypes.txt the same way with our creature lines (only when a
        creature body is shipped), then the stamp.
 
+  The map (cc-P188): the Rootdeep Burrows and the way in from Old Haven, as a patch of our changes only.
+    app\trammel.mapops (shipped; one line per land cell or static we changed, nothing of EA's) is applied to copies
+    of the player's map1LegacyMUL.uop, statics1.mul and staidx1.mul by Apply-MapOps.ps1 beside this script, which
+    keeps its own stamp (map-stamp.txt) and says in one yellow line when EA changed one of our blocks since the patch
+    was made. About 116 MB more under app\uo-overrides\ (cc-P40 B.2).
+
   Then files-override.txt lists whichever copies were made. The player's EA files are only ever
   read. app\uo-overrides\ is made here and never shipped; the updater leaves it alone and the
   package build refuses a payload that holds it.
@@ -79,7 +85,8 @@ param(
     [string]$Clilocs,
     [string]$OutDir,
     [string]$AnimMul,
-    [string]$AnimIdx
+    [string]$AnimIdx,
+    [string]$MapOps
 )
 
 $ErrorActionPreference = 'Stop'
@@ -88,6 +95,7 @@ if (-not $AnimMul) { $AnimMul = Join-Path $PSScriptRoot 'sl-anim7.bin' }
 if (-not $AnimIdx) { $AnimIdx = Join-Path $PSScriptRoot 'sl-anim7-idx.bin' }
 if (-not $Clilocs) { $Clilocs = Join-Path $PSScriptRoot 'cliloc-entries.json' }
 if (-not $OutDir)  { $OutDir  = Join-Path $PSScriptRoot 'uo-overrides' }
+if (-not $MapOps)  { $MapOps  = Join-Path $PSScriptRoot 'trammel.mapops' }
 
 $LandBytes   = 512 * (4 + 32 * 30)
 $StaticGroup = 4 + 32 * 41
@@ -592,6 +600,13 @@ function Build-Cliloc {
     "cliloc.enu=$((Resolve-Path -LiteralPath $out).Path)"
 }
 
+# Returns the map's three override lines, or none (no patch shipped). Apply-MapOps.ps1 does the work (cc-P188).
+function Build-Map {
+    if (-not (Test-Path -LiteralPath $MapOps)) { return }
+    . (Join-Path $PSScriptRoot 'Apply-MapOps.ps1')
+    Build-MapOverride -UoDir $UoDir -Ops $MapOps -OutDir $OutDir
+}
+
 try {
     # TazUO splits each override line on '=' and needs exactly two parts (UOFilesOverrideMap.Load).
     if ($OutDir.Contains('=')) { throw "the game folder's path has an '=' in it, which TazUO cannot read in an override list" }
@@ -612,6 +627,9 @@ try {
 
     try { $lines += @(Build-Cliloc) }
     catch { Say-Skip "Shattered Legacy text could not be prepared ($($_.Exception.Message)). Starting without it." }
+
+    try { $lines += @(Build-Map) }
+    catch { Say-Skip "Shattered Legacy map (the Rootdeep Burrows) could not be prepared ($($_.Exception.Message)). Starting without it." }
 
     $lines = @($lines | Where-Object { $_ })
     if ($lines.Count -eq 0) {

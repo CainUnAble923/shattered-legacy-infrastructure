@@ -11,6 +11,10 @@
       .\docker\uo\Start-TestShard.ps1 -Commit 1234abc
                                                  build that commit through the gates (a detached worktree
                                                  outside the repo), then start it
+      .\docker\uo\Start-TestShard.ps1 -NoMapOverlay
+                                                 cc-P188: start on EA's Trammel, without our map changes (an empty
+                                                 overlay is mounted), to see what the map patch adds or to prove
+                                                 status.json's rootdeepMap reads false without it
 
   After a start it waits for the container's health check (docker-compose.test.yml, cc-P96). Healthy: the
   image is tagged sl-modernuo:good-<commit> from its sl.commit label (build.sh), and the commit is written
@@ -30,6 +34,7 @@ param(
     [switch]$Fresh, [switch]$Down, [switch]$SkipBuild,
     # cc-P96. -Image runs one sl-modernuo tag through SL_TEST_IMAGE; -Commit builds one commit and runs it.
     [string]$Image, [string]$Commit,
+    [switch]$NoMapOverlay,
     # How long to wait for healthy. The health check's start period is 120 s (docker-compose.test.yml).
     [int]$HealthTimeout = 300
 )
@@ -136,8 +141,37 @@ if ($j -notmatch '"clusterf\.testShard\.allowAccountWipe":\s*"True"') {
 if ($j -notmatch '"0\.0\.0\.0:2594"' -or $j -match ':2593"') {
     throw "$mj does not listen on 0.0.0.0:2594 only. Fix its listeners by hand; not starting."
 }
+# cc-P188: our map changes ride in an overlay folder of patched Trammel files (docker/uo/Build-MapOverlay.ps1, from the
+# same patch the player package ships), mounted by docker-compose.test.yml at /var/lib/uo/client-data/sl-map-overlay.
+# It goes FIRST in dataDirectories: pinned Core.FindDataFile takes the first folder that holds a file (Main.cs:346-372),
+# so the shard reads our map1LegacyMUL.uop, statics1.mul and staidx1.mul and EA's everything else. The overlay is
+# (re)built here when the patch or the EA files changed (the applier's stamp decides); an empty overlay folder is
+# harmless, the shard then reads EA's Trammel.
+$overlayDir = "$repo\client-data\sl-map-overlay"
+$overlayIn  = '/var/lib/uo/client-data/sl-map-overlay'
+if (-not (Test-Path -LiteralPath $overlayDir)) { New-Item -ItemType Directory -Path $overlayDir -Force | Out-Null }
+$eaData = if ($env:CLIENT_DATA_PATH_TEST) { $env:CLIENT_DATA_PATH_TEST } else { "$repo\client-data\classic-client-7.0.117.0" }
+$env:CLIENT_DATA_OVERLAY = $overlayDir   # the compose file's mount; its default has a '..' in it, this is the plain path
+if ($NoMapOverlay) {
+    $empty = "$repo\client-data\sl-map-overlay-off"
+    if (-not (Test-Path -LiteralPath $empty)) { New-Item -ItemType Directory -Path $empty -Force | Out-Null }
+    $env:CLIENT_DATA_OVERLAY = $empty
+    Write-Host "-NoMapOverlay: an empty overlay is mounted; the shard reads EA's Trammel" -ForegroundColor Yellow
+} elseif (Test-Path -LiteralPath (Join-Path $eaData 'map1LegacyMUL.uop')) {
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Build-MapOverlay.ps1') -UoData $eaData -Out $overlayDir
+    if ($LASTEXITCODE -ne 0) { throw "Build-MapOverlay.ps1 failed ($LASTEXITCODE). Not starting." }
+} else {
+    Write-Host "no EA client data at ${eaData}: the map overlay is left as it is" -ForegroundColor Yellow
+}
+if ($j -notmatch [regex]::Escape('"' + $overlayIn + '"')) {
+    $j = $j -replace '("dataDirectories":\s*\[)', ('$1' + "`n" + '    "' + $overlayIn + '",')
+}
+if ($j -notmatch ('"dataDirectories":\s*\[\s*"' + [regex]::Escape($overlayIn) + '"')) {
+    throw "$mj does not list $overlayIn first in dataDirectories. Fix it by hand; not starting."
+}
+
 if ($j -ne $j0) {
-    Write-Host "Configuration-test: listening on 2594, advertising 192.168.1.58" -ForegroundColor Gray
+    Write-Host "Configuration-test: listening on 2594, advertising 192.168.1.58, map overlay first in dataDirectories" -ForegroundColor Gray
     # No BOM: the old Set-Content -Encoding UTF8 here wrote one.
     [IO.File]::WriteAllText($mj, $j, (New-Object Text.UTF8Encoding $false))
 }

@@ -83,8 +83,14 @@ public class ShardStatusPublisherVerification
         );
 
         var world = root.GetProperty("world");
-        Assert.Equal(new[] { "lastSaveAt" }, Keys(world));
+        Assert.Equal(new[] { "lastSaveAt", "rootdeepMap" }, Keys(world));
         Assert.Equal(saved, ParseUtc(world.GetProperty("lastSaveAt")));
+        // cc-P188: whether the map the shard reads holds the Rootdeep Burrows (the seeder's own test of the landing),
+        // so a shard with the map overlay missing is seen without a client. In the test host the map is whatever
+        // MapBuilt says; Render takes the value as given.
+        Assert.Equal(JsonValueKind.True, world.GetProperty("rootdeepMap").ValueKind);
+        using var unbuilt = JsonDocument.Parse(ShardStatusPublisher.Render(generated, started, 0, 0, [], saved, rootdeepMap: false));
+        Assert.Equal(JsonValueKind.False, unbuilt.RootElement.GetProperty("world").GetProperty("rootdeepMap").ValueKind);
 
         // Before the first save of a process the time is unknown: the key stays, the value is null.
         using var unsaved = JsonDocument.Parse(ShardStatusPublisher.Render(generated, started, 0, 0, [], null));

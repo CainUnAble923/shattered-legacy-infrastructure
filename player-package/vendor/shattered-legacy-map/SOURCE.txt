@@ -1,0 +1,16 @@
+Shattered Legacy's own map changes, as a patch (cc-P188, 2026-10-20). Ours: nothing of EA's is in this folder.
+
+trammel.mapops   facet 1 (Trammel): the Rootdeep Burrows (x 5136-5247, y 1128-1263; cc-P167, P180, P181, P185,
+                 approved by Chase 2026-10-19) and the way in from Old Haven (the Second Bank of Haven: three
+                 ruined-wall pieces removed from its south wall at 3618-3620,2622, the hole 0x1B71 at 3619,2620, and
+                 the rope ladder 0x08A6 on the Landing's north wall at 5193,1131).
+
+Format: shard-migration scripts/mapbuild/mapops.py (one line per changed land cell, L x y tile z; per static added,
+S+ x y z id hue; per EA static removed, S- x y z id hue; B lines fingerprint EA's blocks so the applier can say
+when EA changed one under us). Made by:
+
+    python -P scripts/mapbuild/mapops.py diff <the shard's client-data copy> <the scratch build> 1 trammel.mapops
+
+and checked by the same tool (check) and shard-migration tools/tests/test_mapops.py, which also proves the player
+side applier (payload/app/Apply-MapOps.ps1) writes the same bytes. The package ships it as app/trammel.mapops; Play.ps1
+applies it to copies of the player's own files through Build-UoOverrides.ps1.

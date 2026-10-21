@@ -41,9 +41,14 @@ answer in memory. `ShardStatusPublisher` in `server/customizations` writes it ou
   "generatedAt": "2026-09-29T17:30:00Z",
   "shard":   { "name": "Shattered Legacy", "startedAt": "2026-09-28T14:07:18Z", "uptimeSeconds": 98765, "version": "2026.10.02" },
   "players": { "count": 3, "names": ["Cain", "Elowen", "Bram"] },
-  "world":   { "lastSaveAt": "2026-09-29T17:20:01Z" }
+  "world":   { "lastSaveAt": "2026-09-29T17:20:01Z", "rootdeepMap": true }
 }
 ```
+
+`world.rootdeepMap` (cc-P188) says whether the map files the shard reads hold the Rootdeep Burrows: it is the
+seeder's own test of the Landing's land (`ClusterFRootdeepSeeder.MapBuilt`), so a shard started without the map
+overlay (`docker/uo/Build-MapOverlay.ps1`) shows `false` here without anyone logging in. Nothing about the world's
+state or any player is in it.
 
 **There is no `"online": true` field, on purpose.** A file the shard writes itself cannot report its
 own death: if the shard stops, the file simply stops changing and keeps claiming everything is fine.

@@ -136,7 +136,7 @@ public class RootdeepVaultVerification
         Assert.Same(RootdeepVaultRegion.Instance, vault);
         Assert.Same(OldHavenBurrowsRegion.Instance, vault.Parent);
         Assert.Equal("the Rootdeep Burrows", OldHavenBurrowsRegion.RegionName);
-        Assert.Equal(OldHavenBurrowsRegion.ProvisionalEntrance, vault.GetRegion<DungeonRegion>()!.Entrance);
+        Assert.Equal(OldHavenBurrowsRegion.HoleEntrance, vault.GetRegion<DungeonRegion>()!.Entrance);
 
         foreach (var corner in new[] { new Point3D(5142, 1132, 0), new Point3D(5178, 1132, 0), new Point3D(5142, 1159, 0), new Point3D(5178, 1159, 0) })
         {
@@ -346,12 +346,20 @@ public class RootdeepVaultVerification
 
             ClusterFRootdeepSeeder.MapBuilt = () => true;
             var dry = ClusterFRootdeepSeeder.Seed(true);
-            Assert.Equal((ClusterFRootdeepSeeder.Spawners.Length, 1, 1), (dry.Spawners, dry.Ankhs, dry.Crawlways));
+            Assert.Equal((ClusterFRootdeepSeeder.Spawners.Length, 1, 1, 2), (dry.Spawners, dry.Ankhs, dry.Crawlways, dry.Teleporters));
             Assert.Null(ClusterFRootdeepSeeder.FindCrawlway(Map.Trammel));
 
             var first = ClusterFRootdeepSeeder.Seed(false);
             _out.WriteLine(first.Message);
-            Assert.Equal((ClusterFRootdeepSeeder.Spawners.Length, 1, 1, 0), (first.Spawners, first.Ankhs, first.Crawlways, first.Present));
+            Assert.Equal((ClusterFRootdeepSeeder.Spawners.Length, 1, 1, 2, 0), (first.Spawners, first.Ankhs, first.Crawlways, first.Teleporters, first.Present));
+
+            // cc-P188: the way in, both ends (RootdeepWayInVerification has the walk through them).
+            foreach (var row in ClusterFRootdeepSeeder.Teleporters)
+            {
+                var t = ClusterFRootdeepSeeder.FindTeleporter(Map.Trammel, row);
+                Assert.NotNull(t);
+                placed.Add(t);
+            }
 
             foreach (var row in ClusterFRootdeepSeeder.Spawners)
             {
@@ -382,7 +390,7 @@ public class RootdeepVaultVerification
             Assert.False(crawlway.IsOpen);
 
             var again = ClusterFRootdeepSeeder.Seed(false);
-            Assert.Equal((0, 0, 0, ClusterFRootdeepSeeder.Spawners.Length + 2), (again.Spawners, again.Ankhs, again.Crawlways, again.Present));
+            Assert.Equal((0, 0, 0, 0, ClusterFRootdeepSeeder.Spawners.Length + 4), (again.Spawners, again.Ankhs, again.Crawlways, again.Teleporters, again.Present));
         }
         finally
         {
