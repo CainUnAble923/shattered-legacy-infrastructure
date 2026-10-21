@@ -33,9 +33,14 @@ Example:
 
 ### Added
 - Sixteen secret achievements for some of Britannia's sillier moments. They stay hidden until you stumble into one, and each comes with a few words from the System. We won't say what they are, but your parents probably warned you about at least one of them.
+- Climbing boots from the Miners' Compact Liaison: Surveyor's (hop 4 tiles), Delver's (hop 8, half the stamina) and Deepwarden's (hop 12, and they remember your last ledge so one hop takes you back up from within 30 tiles). Wear them, use them, and target a mountain tile to hop onto it, then mine the ore no one could reach before. Each hop costs stamina, more the higher you climb, with a short pause between hops.
+- While you stand on a climbed mountain tile you can only mine, prospect and hop: no fighting, harmful spells, taming, Mark or house placement, though monsters' spells can still reach you. Your pets wait at the foot of the climb and fall in behind you again when you hop down.
+- The boots need Compact rank, Mining skill and blocks mined (Surveyor, 120, 100 blocks; Master Delver, 150, 300; Deepwarden, 180, 600), plus vouchers, gold and ingots; each upgrade trades in the boots before it. They are blessed, bound to your account, and the Liaison replaces lost ones.
+- Your Prospector's Logbook now counts the ore blocks you have mined, and remembers when you first mined each one and what ore it gave.
 
 ### Staff
 - The secret achievements are listed by [ClusterFAchievement list; they sit in their own Mischief category, shown under All once earned. Each fires from the game event itself (never from message text) and is earned once per account, so repeating the event earns nothing past its tiers.
+- Every climbing number (hop ranges, gates, prices, stamina, cooldown, ledge range) is a clusterf.climbing.* setting. Climbing boots also open the Fountain of Youth's climbing-only spots.
 
 ## 2026.10.21.4
 

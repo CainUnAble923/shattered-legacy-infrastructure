@@ -28,7 +28,7 @@ public class MinersCompactLiaisonGump : Gump
     public enum View
     {
         MainMenu, AboutCompact, WhatWeMine, JoiningReqs, Rewards,
-        MemberDashboard, Restoration, ReplaceKit, UpgradeSatchel
+        MemberDashboard, Restoration, ReplaceKit, UpgradeSatchel, ClimbingBoots
     }
 
     private readonly PlayerMobile _pm;
@@ -135,6 +135,7 @@ public class MinersCompactLiaisonGump : Gump
             case View.Restoration:     DrawRestoration(guild, acct);    break;
             case View.ReplaceKit:      DrawReplaceKit();               break;
             case View.UpgradeSatchel:  DrawUpgradeSatchel(guild, acct); break;
+            case View.ClimbingBoots:   DrawClimbingBoots(guild, acct);  break;
         }
 
         // -- Footer --------------------------------------------------------
@@ -322,6 +323,10 @@ public class MinersCompactLiaisonGump : Gump
         AddButton(18, 298, 4011, 4012, 39);
         AddLabel(44, 300, 999, "Upgrade Ore Satchel");
 
+        // cc-P238 (F-36): the climbing boots, in the right-hand column.
+        AddButton(230, 298, 4011, 4012, 40);
+        AddLabel(256, 300, 999, "Climbing Boots");
+
         AddButton(18, 322, 4011, 4012, 38);
         AddLabel(44, 324, 999, "Replace Starting Kit");
 
@@ -456,6 +461,47 @@ public class MinersCompactLiaisonGump : Gump
             var reqs = SatchelUpgradeRequirements(guild, curTier);
             var y = reqs.Draw(this, 18, 124);
             reqs.DrawFooter(this, 18, y + 4, 91, $"Upgrade to Tier {curTier + 1}", bypass);
+        }
+    }
+
+    /// <summary>
+    /// cc-P238 (F-36): the climbing boots. The account's blocks mined (the Prospector's Logbook), the boots on hand, and the
+    /// next tier's gates and price, met or not each (ClusterFClimbing.Requirements), with the button only when all are met;
+    /// or the recovery of registered boots that are not on hand.
+    /// </summary>
+    private void DrawClimbingBoots(CharacterGuildData guild, IAccount? acct)
+    {
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Climbing Boots");
+        AddImageTiled(10, 72, W - 20, 1, 9304);
+
+        var bypass     = Items.DevTestingCrystal.IsActive(_pm);
+        var boots      = ClusterFClimbing.BootsOn(_pm);
+        var curTier    = boots?.Tier ?? 0;
+        var regTier    = ClusterFClimbing.RegisteredTier(acct);
+        var blocks     = ClusterFMinedBlocks.BlocksMined(acct);
+
+        AddLabel(18, 80, 999, $"Blocks mined (Prospector's Logbook): {blocks:N0}");
+        AddLabel(18, 98, 999, curTier > 0 ? $"On hand: {boots!.Name ?? ClusterFClimbing.Tier(curTier).Name}" : "On hand: none");
+
+        if (regTier > curTier)
+        {
+            AddLabel(18, 122, RequirementStyle.HeadingHue, $"{ClusterFClimbing.Tier(regTier).Name}: not on hand");
+            var reqs = new RequirementList().Price(_pm, guild, "mining", "Mining Vouchers", ClusterFClimbing.RestoreVouchers, 0);
+            var y = reqs.Draw(this, 18, 146);
+            reqs.DrawFooter(this, 18, y + 4, 93, $"Recover {ClusterFClimbing.Tier(regTier).Name}", bypass);
+        }
+        else if (curTier >= ClusterFClimbing.Tiers.Length)
+        {
+            AddHtml(16, 122, W - 32, 60,
+                "<BASEFONT COLOR=#ACACAC>Deepwarden's boots: the highest ledges are yours.</BASEFONT>", false, false);
+        }
+        else
+        {
+            var next = ClusterFClimbing.Tier(curTier + 1);
+            AddLabel(18, 122, RequirementStyle.HeadingHue, $"{(curTier == 0 ? "Buy" : "Upgrade to")}: {next.Name} (hop {next.HopRange})");
+            var reqs = ClusterFClimbing.Requirements(_pm, guild, curTier + 1);
+            var y = reqs.Draw(this, 18, 146);
+            reqs.DrawFooter(this, 18, y + 4, 92, curTier == 0 ? $"Buy {next.Name}" : $"Upgrade to {next.Name}", bypass);
         }
     }
 
@@ -682,7 +728,7 @@ public class MinersCompactLiaisonGump : Gump
 
         if (info.ButtonID == 1) // Back
         {
-            var backView = _view is View.Restoration or View.ReplaceKit or View.UpgradeSatchel
+            var backView = _view is View.Restoration or View.ReplaceKit or View.UpgradeSatchel or View.ClimbingBoots
                 ? View.MemberDashboard
                 : View.MainMenu;
             _pm.SendGump(new MinersCompactLiaisonGump(_pm, backView));
@@ -719,6 +765,7 @@ public class MinersCompactLiaisonGump : Gump
             case 36: _pm.SendGump(new JacobsT5UpgradeGump(_pm));                                   break;
             case 38: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.ReplaceKit));              break;
             case 39: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.UpgradeSatchel));         break;
+            case 40: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.ClimbingBoots));          break;
             case 100: _pm.SendGump(new CrossGuildExchangeGump(_pm, p => p.SendGump(new MinersCompactLiaisonGump(p, View.MemberDashboard)))); break;
 
             // -- Satchel upgrade / recovery --------------------------------
@@ -730,6 +777,20 @@ public class MinersCompactLiaisonGump : Gump
                 HandleSatchelUpgrade(guild, acct);
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.UpgradeSatchel));
                 break;
+
+            // -- Climbing boots (cc-P238) ----------------------------------
+            case 92:
+            case 93:
+            {
+                string message = null;
+                var ok = guild != null && (info.ButtonID == 92
+                    ? ClusterFClimbing.BuyNext(_pm, guild, out message)
+                    : ClusterFClimbing.Recover(_pm, guild, out message));
+                if (message != null)
+                    _pm.SendMessage(ok ? 0x44 : 0x22, message);
+                _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.ClimbingBoots));
+                break;
+            }
 
             // -- Replace kit items -----------------------------------------
             case 75:

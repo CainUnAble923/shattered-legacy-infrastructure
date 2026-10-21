@@ -121,6 +121,12 @@ public static class TileRows
         new(0x40A, "gargoyle_clothing_le", 0x404002, 4, 4, 597, 0, 0, 1); // 4 Pants
     public static readonly TileRow GargishClothLegsType2 =
         new(0x409, "gargoyle_clothing_le", 0x404002, 4, 4, 596, 0, 0, 1); // 4 Pants
+
+    // cc-P238: an impassable static, for the climbing boots' "never lands inside a static" fact (Map.CanFit). Read
+    // 2026-10-21 from client-data/classic-client/tiledata.mul, row 0x0080, field for field as TileData.Load reads it:
+    // flags 0x4006050 (Impassable among them), weight 255, height 22.
+    public static readonly TileRow StoneWall =
+        new(0x0080, "stone wall", 0x4006050, 255, 0, 0, 0, 0, 22);
 }
 
 /// <summary>
