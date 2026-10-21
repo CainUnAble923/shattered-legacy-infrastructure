@@ -195,11 +195,11 @@ public class MazeOfDeathRegion : DungeonRegion
 
     public static void Initialize()
     {
-        Register();
+        EnsureRegistered();
     }
 
     /// <summary>Registers the region (once) and lays the path (once); returns the registration.</summary>
-    public static MazeOfDeathRegion Register()
+    public static MazeOfDeathRegion EnsureRegistered()
     {
         if (_path == null)
         {
@@ -217,7 +217,7 @@ public class MazeOfDeathRegion : DungeonRegion
     }
 
     /// <summary>Test support.</summary>
-    public static void Unregister()
+    public static void RemoveRegistration()
     {
         if (Instance != null)
         {

@@ -65,7 +65,7 @@ public partial class MiniChamp : Item
     private TimeSpan _restartDelay;
 
     [SerializableField(6)]
-    private List<MiniChampSpawnInfo> _spawn;
+    private List<MiniChampSpawnInfo> _spawnList;
 
     [Tidy]
     [SerializableField(7)]
@@ -140,7 +140,7 @@ public partial class MiniChamp : Item
         Name = "Mini Champion Controller";
 
         _despawns = new List<Mobile>();
-        _spawn = new List<MiniChampSpawnInfo>();
+        _spawnList = new List<MiniChampSpawnInfo>();
         _restartDelay = TimeSpan.FromMinutes(5.0);
         _spawnRange = 30;
         _bossSpawnPoint = Point3D.Zero;
@@ -205,7 +205,7 @@ public partial class MiniChamp : Item
         }
     }
 
-    public IReadOnlyList<MiniChampSpawnInfo> SpawnInfos => _spawn;
+    public IReadOnlyList<MiniChampSpawnInfo> SpawnInfos => _spawnList;
 
     public IReadOnlyList<Mobile> DespawnList => _despawns;
 
@@ -273,7 +273,7 @@ public partial class MiniChamp : Item
         var changed = false;
         var done = true;
 
-        foreach (var spawn in _spawn)
+        foreach (var spawn in _spawnList)
         {
             if (spawn.Slice() && !changed)
             {
@@ -293,7 +293,7 @@ public partial class MiniChamp : Item
 
         if (_active)
         {
-            foreach (var spawn in _spawn)
+            foreach (var spawn in _spawnList)
             {
                 if (spawn.Respawn() && !changed)
                 {
@@ -310,7 +310,7 @@ public partial class MiniChamp : Item
 
     public void ClearSpawn()
     {
-        foreach (var spawn in _spawn)
+        foreach (var spawn in _spawnList)
         {
             foreach (var creature in spawn.Creatures)
             {
@@ -318,7 +318,7 @@ public partial class MiniChamp : Item
             }
         }
 
-        _spawn.Clear();
+        _spawnList.Clear();
         this.MarkDirty();
     }
 
@@ -340,7 +340,7 @@ public partial class MiniChamp : Item
 
             foreach (var type in levelInfo.Types)
             {
-                _spawn.Add(new MiniChampSpawnInfo(this, type));
+                _spawnList.Add(new MiniChampSpawnInfo(this, type));
             }
         }
         else // begin restart
@@ -404,9 +404,9 @@ public partial class MiniChamp : Item
             list.Add(1060742); // active
             list.Add($"Level {Level} / {(info != null ? info.MaxLevel.ToString() : "???")}");
 
-            for (var i = 0; i < _spawn.Count; i++)
+            for (var i = 0; i < _spawnList.Count; i++)
             {
-                _spawn[i].AddProperties(list, i + 1150301);
+                _spawnList[i].AddProperties(list, i + 1150301);
             }
         }
         else
@@ -431,7 +431,7 @@ public partial class MiniChamp : Item
     [AfterDeserialization]
     private void AfterDeserialization()
     {
-        _spawn ??= new List<MiniChampSpawnInfo>();
+        _spawnList ??= new List<MiniChampSpawnInfo>();
         _despawns ??= new List<Mobile>();
 
         if (_active)
