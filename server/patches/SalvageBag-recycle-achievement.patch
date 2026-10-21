@@ -1,0 +1,10 @@
+--- a/Projects/UOContent/Items/Containers/SalvageBag.cs
++++ b/Projects/UOContent/Items/Containers/SalvageBag.cs
+@@ -119,6 +119,7 @@
+             }
+             else
+             {
++                ClusterFNotedBySystem.Recycled(from, item); // Shattered Legacy (cc-P263): Built to Be Recycled
+                 item.Delete();
+             }
+ 

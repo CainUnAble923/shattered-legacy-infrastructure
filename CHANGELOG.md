@@ -52,9 +52,18 @@ Example:
 ### Added
 - The League Shop has a Hall page: decor for your house, opened by your Achievement Points and bought with Renown. Display cases of books, gems or plain glass (the shelf and its glass dye separately), dragon and gargoyle statues, and mounted trophies and heads: minotaur, sabertooth, troglodyte, skull, titan, oni, ophidian and terathan matriarchs, and Paroxysmus. Press Hall in the League Shop to see them; locked pieces show the AP they need, and every purchase asks you to confirm.
 - Each piece comes as a deed for a house you own: use it, choose the facing (or the wall, for a trophy), and target the spot. Chop a placed piece to get its deed back. The deeds are bound to your account. Update your game through the launcher to see the new art.
+- The System has been taking notes. A new set of secret achievements notices the shard's favorite shortcuts and odd habits, in fights, on the road, at the forge, at home and around loot boxes. You will find out what they are when you do them.
+- Some of them come with a Dented Box: a small loot box with one guaranteed, entirely useless keepsake inside, bound to you. Three of them come with a title.
+
+### Changed
+- Bulk orders and smith commissions take only items a player crafted. Items bought from a shopkeeper (or found as loot) no longer fill them.
+- After you abandon a smith commission, the Guildmaster waits 5 minutes before offering you another.
 
 ### Staff
 - Every Hall price and AP gate is a setting (clusterf.leagueHall.<piece>.ap and .renown), to be tuned in play testing. Renown spent here never lowers League rank. The art is RedRooster's display cases, Hestia's statues and trophies and Archaaz's trophies and heads (art 15592-15629); all three belong in the shard credits list.
+- The "Noted by the System" achievements are 45 more in the Mischief category, listed by [ClusterFAchievement list. 40 can be earned now; Middle Management, Deja Vu, Procrastinator, Cold Feet and Infamous wait for companions, loops and commission expiry and cannot be earned yet. Each fires from the game event (a kill, a gate or recall, a craft, a recycle, a mining swing, a step, a death at home, a loot box) and is earned once per account.
+- Their rewards (which give a Dented Box and its keepsake, and which give the titles Larry, the Supervisor and the Brave (citation needed)) are one table, NotedRewards in ClusterFNotedBySystem.cs. The titles appear in the title picker only once held.
+- clusterf.bods.craftedOnly (default true) turns the crafted-only rule for orders off; clusterf.commissions.abandonCooldownMinutes (default 5, 0 for none) sets the abandon wait.
 
 ## 2026.10.21.13
 

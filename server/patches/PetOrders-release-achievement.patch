@@ -1,0 +1,10 @@
+--- a/Projects/UOContent/Mobiles/AI/BaseAI/PetOrders.cs
++++ b/Projects/UOContent/Mobiles/AI/BaseAI/PetOrders.cs
+@@ -500,6 +500,7 @@
+         Mobile.ClearPetFriends();
+         PersistentOrder = OrderType.None;
+         _persistentTarget = null;
++        ClusterFNotedBySystem.Released(Mobile, Mobile.ControlMaster); // Shattered Legacy (cc-P263): Commitment Issues
+         Mobile.SetControlMaster(null);
+ 
+         var spawner = Mobile.Spawner;

@@ -1,0 +1,10 @@
+--- a/Projects/UOContent/Spells/Fourth/Recall.cs
++++ b/Projects/UOContent/Spells/Fourth/Recall.cs
+@@ -100,6 +100,7 @@
+                 Caster.PlaySound(0x1FC);
+                 Caster.MoveToWorld(loc, map);
+                 Caster.PlaySound(0x1FC);
++                ClusterFNotedBySystem.Arrived(Caster, false); // Shattered Legacy (cc-P263): Tactical Retreat, Any% Speedrun
+             }
+         }
+ 

@@ -204,6 +204,7 @@ public partial class LootBox : Item
         if (!IsSafeToOpen(pm))
         {
             pm.SendMessage(0x22, UnsafeLine);
+            ClusterFNotedBySystem.BoxRefused(pm); // cc-P263: Can't Wait
             return;
         }
 
@@ -221,6 +222,7 @@ public partial class LootBox : Item
         var boxInBox = false;
         var handedOver = new List<Item>(); // cc-P242: what flies out of the box
         OpenedAt = Core.Now;
+        ClusterFNotedBySystem.BoxOpened(pm); // cc-P263: Superstitious, Edge Lord, Unboxing Video
 
         if (_gold > 0)
         {

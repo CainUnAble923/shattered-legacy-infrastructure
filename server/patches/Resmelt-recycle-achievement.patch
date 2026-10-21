@@ -1,0 +1,10 @@
+--- a/Projects/UOContent/Engines/Craft/Core/Resmelt.cs
++++ b/Projects/UOContent/Engines/Craft/Core/Resmelt.cs
+@@ -107,6 +107,7 @@
+                         ingot.Amount = 1;
+                     }
+ 
++                    ClusterFNotedBySystem.Recycled(from, item); // Shattered Legacy (cc-P263): Built to Be Recycled
+                     item.Delete();
+                     from.AddToBackpack(ingot);
+ 

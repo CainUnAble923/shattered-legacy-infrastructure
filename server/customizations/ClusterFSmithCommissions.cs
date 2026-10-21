@@ -69,7 +69,7 @@ public class SmithCommissionEntry
         RequesterNote      = requesterNote;
         SealReward         = sealReward;
         StandingReward     = standingReward;
-        IssuedAt           = DateTime.UtcNow;
+        IssuedAt           = Core.Now; // cc-P263: the server clock, which Pre-Crafted reads (was DateTime.UtcNow, the same in play)
     }
 
     // Deserialization
@@ -410,7 +410,7 @@ public class SmithLargeCommissionEntry
         RequesterNote      = requesterNote;
         SealReward         = sealReward;
         StandingReward     = standingReward;
-        IssuedAt           = DateTime.UtcNow;
+        IssuedAt           = Core.Now; // cc-P263: the server clock, which Pre-Crafted reads (was DateTime.UtcNow, the same in play)
     }
 
     public SmithLargeCommissionEntry(IGenericReader r)
@@ -454,6 +454,31 @@ public static class SmithCommissionSystem
     public const int MaxActiveSmallCommissions = 3;
     public const int MaxActiveCommissions      = MaxActiveSmallCommissions; // alias
     public const int MaxActiveLargeCommissions = 1;
+
+    // -- Reroll cooldown (cc-P263, "fix instead of reward": Reroll Goblin) -------------------------------------------
+    // Abandoning a commission is free, so abandon-and-request rerolled a slot until the best requester came up. An
+    // abandon now holds back the next small request for AbandonCooldown (clusterf.commissions.abandonCooldownMinutes,
+    // default 5; 0 turns it off). Kept per character in memory: a restart clears it, which costs nothing worth saving.
+    public static TimeSpan AbandonCooldown { get; set; } = TimeSpan.FromMinutes(5);
+
+    private static readonly Dictionary<Serial, DateTime> _abandonedAt = new();
+
+    public static void Configure() =>
+        AbandonCooldown = TimeSpan.FromMinutes(
+            ServerConfiguration.GetOrUpdateSetting("clusterf.commissions.abandonCooldownMinutes", 5));
+
+    /// <summary>Marks an abandon by <paramref name="pm"/> now.</summary>
+    public static void Abandoned(PlayerMobile pm) => _abandonedAt[pm.Serial] = Core.Now;
+
+    /// <summary>Time left before <paramref name="pm"/> may request a small commission again (zero: now).</summary>
+    public static TimeSpan RequestCooldownLeft(PlayerMobile pm)
+    {
+        if (AbandonCooldown <= TimeSpan.Zero || !_abandonedAt.TryGetValue(pm.Serial, out var at))
+            return TimeSpan.Zero;
+
+        var left = at + AbandonCooldown - Core.Now;
+        return left > TimeSpan.Zero ? left : TimeSpan.Zero;
+    }
 
     // -- Material selection helper ---------------------------------------------
     // Shared by Generate and GenerateLarge.  Each bracket blends the unlocked
@@ -500,6 +525,7 @@ public static class SmithCommissionSystem
 
         var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
         if (guild.SmithCommissions.Count >= MaxActiveSmallCommissions) return null;
+        if (RequestCooldownLeft(pm) > TimeSpan.Zero) return null; // cc-P263: no reroll straight after an abandon
 
         var skill  = pm.Skills.Blacksmith.Base;
         var bypass = Items.DevTestingCrystal.IsActive(pm);
@@ -597,6 +623,7 @@ public static class SmithCommissionSystem
 
         var itemType = SmithCommissionPool.GetItemType(pieceKey);
         if (itemType == null || item.GetType() != itemType) return false;
+        if (ClusterFStoreBought.Refuses(item)) return false; // cc-P263: crafted items only
 
         // Skip material check for sets with IgnoreMaterial (e.g. dragon scale - resource is RedScales).
         var setDef = SmithCommissionSetPool.GetSet(c.SetKey);
@@ -688,6 +715,7 @@ public static class SmithCommissionSystem
 
         var itemType = c.ItemType;
         if (itemType == null || item.GetType() != itemType) return false;
+        if (ClusterFStoreBought.Refuses(item)) return false; // cc-P263: crafted items only
 
         // Material check
         var resource = item switch
@@ -724,6 +752,7 @@ public static class SmithCommissionSystem
 
         var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
         guild.SmithCommissions.Remove(c);
+        ClusterFNotedBySystem.CommissionCompleted(pm, c.IssuedAt); // cc-P263: Pre-Crafted
 
         guild.AddReputation("smithing", c.StandingReward);
         guild.AddCurrency("smithing",   c.SealReward);

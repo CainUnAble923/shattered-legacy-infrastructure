@@ -172,6 +172,7 @@ public partial class SmithGuildSalvageBag : Bag
                 return false; // skill check failed - item stays in bag, no seals
             }
 
+            ClusterFNotedBySystem.Recycled(from, item); // cc-P263: Built to Be Recycled, Quality Control
             item.Delete();
             from.AddToBackpack(ingot);
             from.PlaySound(0x2A);
