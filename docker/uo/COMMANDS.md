@@ -133,6 +133,7 @@ Requires **Admin** access. These are safe to run multiple times — all seeders 
 | `[ClusterFSeedInstitutions` | — | Seed League institution NPCs (Garrett Ashveil — Miners' Compact Liaison, etc.) if not already present. Run this after a fresh world or after renaming NPCs. |
 | `[ClusterFSouthMineDecor` | `[dryrun\|replace]` | Place south mountain mine decor (forge, anvil, deco props). `dryrun` reports without placing; `replace` removes and re-places. |
 | `[ClusterFSeedOldHaven` | — | Place Old Haven mage and boss spawn without removing existing. |
+| `[ClusterFHalloweenDecor` | `[status\|preview\|place\|clear] [bank\|facet] [dryrun]` | cc-P267: the Halloween decor at the main banks (stock art, 21 bank sets on Trammel, Felucca, Malas, Tokuno and Ter Mur). It goes up by itself on `clusterf.seasonal.halloween.start` (default 10-24) and comes down after `.end` (default 11-02), server-local dates. `status` = date, season, what is placed; `preview` = what `place` would do; `place` = put up the rows not already up (allowed outside the dates, for the test shard; it says so); `clear` = remove everything it placed, by serial, and nothing else. A bank key (`britain`, `luna`, `new-haven`, `britain-fel` ...) or a facet name limits `preview`, `place` and `clear`. |
 
 ---
 
