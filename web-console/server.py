@@ -50,6 +50,9 @@ Two listeners, both on 127.0.0.1 only (nothing on the LAN, nothing public):
   POST /api/agent/result     cc-P186: {id, code, result, lines}: a command's result, onto the Timeline with the name
   POST /api/agent/status     cc-P186: {status}: the Golem's status-<name>.json as its PC wrote it
   POST /api/agent/ready      cc-P186: the readiness file Test-GolemReady.ps1 wrote on that PC
+  GET /api/agent/kit         cc-P222: the Golem kit's manifest (kit/current/kit-manifest.json under the Golem root):
+                             each PC's agent compares it and fetches what differs
+  GET /api/agent/kit/file    cc-P222: ?path=<a manifest path>: that file from the snapshot, only a path the manifest lists
 Every other method is refused. Every string sent is passed through panels.redact_tree.
 
 The collector runs as a child: Write-ConsoleStatus.ps1 -Loop -ParentPid <this>, restarted if it ends.
@@ -87,6 +90,7 @@ NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 ART_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}\.(png|gif|jpg|jpeg|webp)$")
 LOOPBACK = ("127.0.0.1", "::1", "localhost")
 ACTIONS_FILE = os.path.join(HERE, "golem-actions.json")
+KIT_PATH = re.compile(r"^(golem/[A-Za-z0-9][A-Za-z0-9._-]*|unattended-permission\.ps1)$")   # cc-P222, as Kit.ps1
 PANE_LINE = re.compile(r"^\[\[shard-console:([a-z]+)\]\](.*)$")
 # cc-P182: what a page may pass for each input, checked before the runner is started (argv, never a shell).
 INPUT_RULES = {
@@ -756,6 +760,26 @@ class Console:
         d = self.remote_dir(g["name"])
         self._write_json(os.path.join(d, "agent.json"), {"golem": g["name"], "lastSeen": self._iso(self.clock()), "last": what})
 
+    def kit_manifest(self):
+        """cc-P222: the Golem kit's manifest as the game PC last snapshotted it (Kit.ps1 New-KitSnapshot), or None."""
+        m = self._load_json(os.path.join(self.golem_root, "kit", "current", "kit-manifest.json"), None)
+        return m if isinstance(m, dict) and isinstance(m.get("files"), list) else None
+
+    def kit_file(self, path):
+        """cc-P222: one file of the kit snapshot, as bytes, or None. Only a path the manifest lists (golem/<name> or
+        unattended-permission.ps1, no folders, no ..): the snapshot holds no secret, state or settings file."""
+        m = self.kit_manifest()
+        if not m or not isinstance(path, str) or not KIT_PATH.match(path):
+            return None
+        if path not in {f.get("path") for f in m["files"] if isinstance(f, dict)}:
+            return None
+        full = os.path.join(self.golem_root, "kit", "current", *path.split("/"))
+        try:
+            with open(full, "rb") as fh:
+                return fh.read()
+        except OSError:
+            return None
+
     def agent_online(self, g):
         a = self._load_json(os.path.join(self.remote_dir(g["name"]), "agent.json"), None)
         t = self._when((a or {}).get("lastSeen")) if isinstance(a, dict) else 0.0
@@ -1307,6 +1331,14 @@ def make_handler(console, listener, access_log=None):
                                             "pollAwake": POLL_AWAKE, "pollAsleep": POLL_ASLEEP})
                 if u.path == "/api/agent/commands":
                     return self._json(200, {"golem": g["name"], "commands": console.take_commands(g), "pollAwake": POLL_AWAKE, "pollAsleep": POLL_ASLEEP})
+                if u.path == "/api/agent/kit":
+                    m = console.kit_manifest()
+                    return self._json(200, m) if m else self._json(404, {"error": "no kit snapshot"})
+                if u.path == "/api/agent/kit/file":
+                    data = console.kit_file((parse_qs(u.query).get("path") or [""])[0])
+                    if data is None:
+                        return self._json(404, {"error": "not a kit file"})
+                    return self._send(200, data, "application/octet-stream")
                 return self._json(404, {"error": "not found"})
             if not self._allowed():
                 return

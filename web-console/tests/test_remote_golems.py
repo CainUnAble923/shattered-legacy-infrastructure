@@ -160,6 +160,36 @@ class RemoteGolems(unittest.TestCase):
             time.sleep(0.05)
         self.fail("the action did not end")
 
+    # --- cc-P222: the kit ----------------------------------------------------------------------------------------------
+    def test_the_kit_manifest_and_only_its_files_are_served_to_an_agent(self):
+        code, j = self.agent("/api/agent/kit")
+        self.assertEqual(404, code, "no snapshot yet")
+        snap = os.path.join(self.groot, "kit", "current")
+        os.makedirs(os.path.join(snap, "golem"))
+        with open(os.path.join(snap, "golem", "golem.ps1"), "wb") as f:
+            f.write(b"# the hook")
+        with open(os.path.join(snap, "golem", "settings.json"), "wb") as f:
+            f.write(b"{}")
+        man = {"schema": 1, "id": "abc123", "files": [{"path": "golem/golem.ps1", "sha256": "x", "size": 12}]}
+        with open(os.path.join(snap, "kit-manifest.json"), "w", encoding="utf-8") as f:
+            json.dump(man, f)
+        code, j = self.agent("/api/agent/kit")
+        self.assertEqual(200, code, j)
+        self.assertEqual("abc123", j["id"])
+        def raw(path, **kw):
+            h = {"X-Golem-Name": "Gold", "X-Golem-Key": self.secret, "X-UOConsole-Proof": PROOF}
+            h.update(kw)
+            r = urllib.request.Request("http://127.0.0.1:%d%s" % (self.tail_port, path), headers=h)
+            try:
+                with urllib.request.urlopen(r, timeout=10) as x:
+                    return x.status, x.read()
+            except urllib.error.HTTPError as e:
+                return e.code, e.read()
+        self.assertEqual((200, b"# the hook"), raw("/api/agent/kit/file?path=golem/golem.ps1"))
+        for bad in ("golem/settings.json", "golem/../golems.json", "golem%2F..%2Fsettings.json", "C:/Windows/win.ini", "golem/sub/x.ps1", ""):
+            self.assertEqual(404, raw("/api/agent/kit/file?path=" + bad)[0], "not served: " + bad)
+        self.assertEqual(403, raw("/api/agent/kit/file?path=golem/golem.ps1", **{"X-Golem-Key": "wrong"})[0], "an agent's secret is needed")
+
     # --- the secret ---------------------------------------------------------------------------------------------------
     def test_the_agents_secret_is_stored_hashed_and_a_wrong_or_missing_one_is_refused(self):
         code, j = self.agent("/api/agent/ping")
