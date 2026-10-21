@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Skills/ItemIdentification.cs
++++ b/Projects/UOContent/Skills/ItemIdentification.cs
+@@ -33,6 +33,12 @@
+         {
+             if (o is Mobile mobile)
+             {
++                // Shattered Legacy (cc-P239, F-14): Appraisal on a creature or NPC (ClusterFAppraisal); a player is stock.
++                if (ClusterFAppraisal.TryAppraise(from, mobile))
++                {
++                    return;
++                }
++
+                 mobile.OnSingleClick(from);
+                 return;
+             }

@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Mobiles/BaseCreature.cs
++++ b/Projects/UOContent/Mobiles/BaseCreature.cs
+@@ -3215,6 +3215,9 @@
+             }
+ 
+             base.OnSingleClick(from);
++
++            // Shattered Legacy (cc-P239, F-14): the con color, its own label under the name, to this viewer only.
++            ClusterFCreatureLevels.OnSingleClick(this, from);
+         }
+ 
+         public override bool OnBeforeDeath()

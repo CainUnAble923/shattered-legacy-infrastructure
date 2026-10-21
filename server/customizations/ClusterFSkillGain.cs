@@ -414,6 +414,22 @@ public static class ClusterFSkillGain
                     return true;
                 }
 
+            // cc-P239 (F-14): Appraisal (Skills/ItemIdentification.cs, (0, 100) through ClusterFAppraisal) on a creature or
+            // NPC. Past 100 the window is the creature's level +/- 25 on the skill's 0 to 200 scale, so appraising stronger
+            // creatures is what trains it. On an item it stays stock.
+            case SkillName.ItemID:
+                {
+                    if (location || minSkill != 0.0 || maxSkill != 100.0 || target is not BaseCreature bc)
+                    {
+                        return false;
+                    }
+
+                    var level = ClusterFCreatureLevels.Level(bc);
+                    min = level - 25.0;
+                    max = level + 25.0;
+                    return true;
+                }
+
             // Skills/Stealing.cs:285-304, :316 (weight x 10 - 22.5, + 27.5): only a full 10-stone steal, (77.5, 127.5),
             // the top cc-P57's stack fix left. The caught test is clamped first (ClusterFSkillClamps, cc-P66 A).
             case SkillName.Stealing:
