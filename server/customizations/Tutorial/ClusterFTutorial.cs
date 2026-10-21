@@ -9,7 +9,8 @@
 // Skip: two System-voice confirmations (TutorialSkipGump, step 1 then 2), then "Didn't Read the Manual". Remedial: the
 // recruiter offers it to a skipper; finishing it grants "Read the Manual Eventually" and the normal rewards.
 // Graduation (core done): the first loot box (open it here, in the guard zone, to learn the rule) and the evo starter
-// pet pick (dog, cat, fox, bird). The squire comes later, from an early League quest (not built).
+// pet pick (dog, cat, fox, bird), unless the account already took its dog or cat from the farm's Farmhand (cc-P276,
+// TutorialFarm). The squire comes later, from an early League quest (not built).
 //
 // The two voices: the League recruiter teaches (overhead and gumps); the System voice (the fanfare's) is the snark,
 // confirmations and achievements, sent as "System: ..." lines and through ClusterFFanfare.
@@ -226,7 +227,12 @@ public static class ClusterFTutorial
     {
         ClusterFLootBoxes.Award(pm, "tutorial:graduation", BoxTheme.Explorer, 1, null, "graduating the New Haven tutorial", out _);
         SystemLine(pm, "Open that box here in town. Boxes only open in guarded towns and your own house.");
-        pm.SendGump(new TutorialPetPickGump());
+
+        // cc-P276: the farm's Farmhand gives the dog or cat; an account that took its pet there is not offered another.
+        if (RecordOf(pm)?.StationsDone.Contains(TutorialFarm.PetKey) != true)
+        {
+            pm.SendGump(new TutorialPetPickGump());
+        }
     };
 
     /// <summary>The evo starter pet, by line (dog, cat, fox, bird). Null when refused (no slot, or not a starter line).</summary>

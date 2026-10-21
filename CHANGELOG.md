@@ -29,6 +29,17 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.17
+
+### Added
+- The New Haven tutorial has its farm, west of town past the Bardic Guild: a fenced field of cabbages, wheat, corn, carrots and pumpkins, a pen of goats, sheep, cows and chickens, and a little thatched farmhouse whose porch opens onto the field.
+- Wren Tallow, the League farmhand, waits at the farm gate. Trainees pick a dog or a cat from her to keep: it grows as it fights. Then they clear the pests out of the crop rows with it and patch themselves or their pet up with her bandages.
+- If you took your dog or cat at the farm, graduation no longer offers you a second pet.
+- The client's map update clears the two trees that stood inside the farm's fence.
+
+### Staff
+- [ClusterFSeedTutorialFarm [dryrun | force] places the farm (farmhouse and field, the door, the Farmhand, the pest and pen spawners) where missing. It is test shard only (clusterf.tutorialFarm.allowLive turns it on elsewhere), and refuses while the server's map still has the two trees.
+
 ## 2026.10.21.16
 
 ### Staff
