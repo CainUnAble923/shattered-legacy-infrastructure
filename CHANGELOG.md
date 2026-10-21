@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.14
+
+### Staff
+- Design notes written for more ways to be knocked off a mount (big monsters, low-ceiling dungeon spots, traps, charging wildlife); nothing changes in play until Chase answers them.
+
 ## 2026.10.20.13
 
 ### Staff
