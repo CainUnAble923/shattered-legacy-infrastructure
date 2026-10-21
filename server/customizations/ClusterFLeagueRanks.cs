@@ -33,6 +33,7 @@ using System.Text;
 using System.Text.Json;
 using Server.Accounting;
 using Server.Commands;
+using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
 
@@ -58,9 +59,15 @@ namespace Server
         NotRequired,  // no trial at this rank
     }
 
-    public sealed record LeagueCheck(string Label, LeagueCheckState State, string Detail)
+    // cc-P169: Have and Need, when the check is a count (Renown, guilds at a rank), for the Rank page's requirement line,
+    // and that line's own label when it is not Label.
+    public sealed record LeagueCheck(
+        string Label, LeagueCheckState State, string Detail, long Have = -1, long Need = -1, string CountLabel = null
+    )
     {
         public bool Blocks => State == LeagueCheckState.Failed;
+
+        public bool IsCount => Need >= 0;
     }
 
     /// <summary>The four checks for one character's next rank, as the Registrar's Rank page shows them.</summary>
@@ -79,6 +86,33 @@ namespace Server
         }
 
         public bool CanPromote => Blocker == null && !Renown.Blocks && !Guilds.Blocks && !Job.Blocks && !Trial.Blocks;
+
+        /// <summary>
+        /// cc-P169: the checks as requirement lines for the Registrar's Rank page: a count with its numbers and how many
+        /// more, a step done or to do, and a check not required here as an info line. AllMet is CanPromote's checks.
+        /// </summary>
+        public RequirementList Requirements()
+        {
+            var list = new RequirementList();
+
+            foreach (var check in Checks)
+            {
+                if (check.State is LeagueCheckState.Waived or LeagueCheckState.NotRequired)
+                {
+                    list.Info($"{check.Label}: {check.Detail}");
+                }
+                else if (check.IsCount)
+                {
+                    list.Amount(check.CountLabel ?? check.Label, check.Have, check.Need);
+                }
+                else
+                {
+                    list.Check(!check.Blocks, $"{check.Label}: {check.Detail}", $"{check.Label}: {check.Detail}");
+                }
+            }
+
+            return list;
+        }
     }
 
     public static class ClusterFLeagueRanks
@@ -262,7 +296,9 @@ namespace Server
             var renown = new LeagueCheck(
                 "Lifetime Renown",
                 lifetime >= req.Renown ? LeagueCheckState.Passed : LeagueCheckState.Failed,
-                $"{lifetime:N0} of {req.Renown:N0}"
+                $"{lifetime:N0} of {req.Renown:N0}",
+                lifetime,
+                req.Renown
             );
 
             var have = CountGuildsAtOrAbove(guild, req.GuildRank);
@@ -272,7 +308,10 @@ namespace Server
                 : new LeagueCheck(
                     "Guild ranks",
                     have >= req.Guilds ? LeagueCheckState.Passed : LeagueCheckState.Failed,
-                    $"{rankName} or higher in {req.Guilds} guild{(req.Guilds == 1 ? "" : "s")} (you: {have})"
+                    $"{rankName} or higher in {req.Guilds} guild{(req.Guilds == 1 ? "" : "s")} (you: {have})",
+                    have,
+                    req.Guilds,
+                    $"Guilds at {rankName} or higher"
                 );
 
             LeagueCheck job;

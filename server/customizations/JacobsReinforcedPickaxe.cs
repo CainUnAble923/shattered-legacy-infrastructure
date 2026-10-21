@@ -217,7 +217,7 @@ public class JacobsUpgradeGump : Gump
     private const double UpgradeSkillReq    = 75.0;
 
     private const int W    = 440;
-    private const int H    = 380;
+    private readonly int H; // cc-P169: from what the page shows
     private const int BgId = 9270;
 
     public JacobsUpgradeGump(PlayerMobile pm) : base(100, 80)
@@ -227,24 +227,24 @@ public class JacobsUpgradeGump : Gump
         Closable   = true;
         Disposable = true;
 
-        AddBackground(0, 0, W, H, BgId);
-        AddAlphaRegion(6, 6, W - 12, H - 12);
+        var acct = pm.Account as IAccount;
+        var guild = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial) : null;
+        var reqs = guild != null ? Requirements(guild) : null;
 
-        AddLabel(W / 2 - 105, 12, 1154, "Jacob's Pickaxe - Tier 2 Upgrade");
+        // Title 56, the bonus text, the lines, summary and action (60), the footer 46.
+        H = 56 + IntroHeight + (reqs?.Height ?? 18) + 60 + 46;
+
+        AddBackground(0, 0, W, H, BgId);
+        RequirementStyle.AddSolidPanel(this, W, H); // cc-P169: opaque (was an alpha region)
+
+        AddLabel(W / 2 - 105, 12, RequirementStyle.HeadingHue, "Jacob's Pickaxe - Tier 2 Upgrade");
         AddLabel(W / 2 - 80,  28, 999,  "Miners' Compact Liaison");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
-        var acct = pm.Account as IAccount;
-        var guild = acct != null ? ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial) : null;
-
-        if (guild == null)
-        {
+        if (reqs == null)
             AddLabel(18, 56, 999, "Account data unavailable.");
-        }
         else
-        {
-            DrawUpgradeInfo(guild, acct!);
-        }
+            DrawUpgradeInfo(reqs);
 
         AddImageTiled(10, H - 38, W - 20, 2, 9304);
 
@@ -252,65 +252,41 @@ public class JacobsUpgradeGump : Gump
         AddLabel(40, H - 26, 999, "Back");
 
         AddButton(W - 50, H - 28, 4023, 4025, 0);
-        AddLabel(W - 28, H - 26, 1154, "X");
+        AddLabel(W - 28, H - 26, RequirementStyle.HeadingHue, "X");
     }
 
-    private void DrawUpgradeInfo(CharacterGuildData guild, IAccount acct)
+    // cc-P169: the bonus text above the requirements, gray (#ACACAC, the info hue as the client draws it).
+    private const string Intro = "";
+
+    private static int IntroHeight =>
+        Intro.Length == 0 ? 0 : ClusterFGumpText.Lines(Intro, W - 40) * ClusterFGumpText.LineHeight + 8;
+
+    /// <summary>cc-P169: the upgrade's requirements, one line each; HandleUpgrade checks the same again.</summary>
+    internal RequirementList Requirements(CharacterGuildData guild)
     {
         guild.GuildReputation.TryGetValue("mining", out var standing);
-        guild.GuildCurrency.TryGetValue("mining", out var vouchers);
-        var mining          = _pm.Skills[SkillName.Mining].Value;
-        var pack            = _pm.Backpack;
 
-        var ironCount       = GuildResources.Count(_pm, GuildCost.Of<IronIngot>(0)).Total;
-        var dullCopperCount = GuildResources.Count(_pm, GuildCost.Of<DullCopperIngot>(0)).Total;
-        var goldCount       = CompactGoldHelper.GetTotalGold(_pm);
-        var hasPickaxe      = FindPickaxeInPack() != null;
-
-        var bypass = DevTestingCrystal.IsActive(_pm);
-
-        var reqMet_rank    = bypass || standing        >= UpgradeStandingReq;
-        var reqMet_skill   = bypass || mining          >= UpgradeSkillReq;
-        var reqMet_voucher = bypass || vouchers        >= UpgradeVoucherCost;
-        var reqMet_iron    = bypass || ironCount       >= UpgradeIronCost;
-        var reqMet_copper  = bypass || dullCopperCount >= UpgradeDullCopperCost;
-        var reqMet_gold    = bypass || goldCount       >= UpgradeGoldCost;
-        var reqMet_pickaxe = hasPickaxe; // T1 pickaxe always required - consumed in upgrade
-
-        var allMet = reqMet_rank && reqMet_skill && reqMet_voucher
-                  && reqMet_iron && reqMet_copper && reqMet_gold && reqMet_pickaxe;
-
-        static string Clr(bool met) => met ? "#FFD700" : "#FF6666";
-
-        var html =
-            $"<BASEFONT COLOR={Clr(reqMet_rank)}>Rank: Apprentice required - Standing {standing:N0}/{UpgradeStandingReq:N0}</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqMet_skill)}>Mining skill: {mining:F1}/{UpgradeSkillReq:F0} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqMet_voucher)}>Mining Vouchers: {vouchers}/{UpgradeVoucherCost} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqMet_iron)}>Iron Ingots (pack+bank): {ironCount}/{UpgradeIronCost} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqMet_copper)}>Dull Copper Ingots (pack+bank): {dullCopperCount}/{UpgradeDullCopperCost} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqMet_gold)}>Gold (pack+bank): {goldCount:N0}/{UpgradeGoldCost:N0} required</BASEFONT><BR>" +
-            $"<BASEFONT COLOR=#888888>{GuildResources.DescribeAll(_pm, Materials)}</BASEFONT><BR>" +
-            $"<BASEFONT COLOR={Clr(reqMet_pickaxe)}>Jacob's Pickaxe (non-exhausted) in pack: {(hasPickaxe ? "Yes" : "No")}</BASEFONT>";
-
-        AddHtml(16, 56, W - 32, H - 130, html, false, true);
-
-        if (allMet)
-        {
-            AddButton(18, H - 68, 4011, 4012, 10);
-            AddLabel(44, H - 66, 999, "Upgrade to Jacob's Reinforced Pickaxe");
-        }
-        else
-        {
-            AddLabel(18, H - 68, 0x22, "Requirements not met. See above.");
-        }
+        return new RequirementList()
+            .Rank("Apprentice", standing, UpgradeStandingReq)
+            .Skill("Mining", _pm.Skills[SkillName.Mining].Value, UpgradeSkillReq)
+            .Price(_pm, guild, "mining", "Mining Vouchers", UpgradeVoucherCost, UpgradeGoldCost, Materials)
+            .Has("Jacob's Pickaxe in pack, not exhausted", FindPickaxeInPack() != null);
     }
 
-    /// <summary>
-    /// Locate a non-exhausted Jacob's Pickaxe (T1) to consume for the upgrade.
-    /// Checks the equipped two-hand layer first, then the backpack.
-    /// Exhausted pickaxes cannot be equipped (OnEquip blocks it), but we check
-    /// both locations for safety.
-    /// </summary>
+    private void DrawUpgradeInfo(RequirementList reqs)
+    {
+        var y = 56;
+
+        if (Intro.Length > 0)
+        {
+            AddHtml(16, y, W - 32, IntroHeight, $"<BASEFONT COLOR=#ACACAC>{Intro}</BASEFONT>", false, false);
+            y += IntroHeight;
+        }
+
+        y = reqs.Draw(this, 18, y);
+        reqs.DrawFooter(this, 18, y + 4, 10, "Upgrade to Jacob's Reinforced Pickaxe", DevTestingCrystal.IsActive(_pm));
+    }
+
     private JacobsPickaxe? FindPickaxeInPack()
     {
         // Check equipped two-hand layer

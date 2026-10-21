@@ -637,11 +637,12 @@ public class LeagueLadderVerification
 
             Assert.Contains("Iron Citizen", text);
             Assert.Contains("Dull Copper Citizen", text);
-            Assert.Contains("Lifetime Renown", text);
-            Assert.Contains("Guild ranks", text);
-            Assert.Contains("Promotion job", text);
-            Assert.Contains("Story trial, chapter 1", text);
-            Assert.Equal(2, text.Count(t => t == "not yet required"));
+            // cc-P169: one requirement line a check (RequirementList), the summary, and the action.
+            Assert.Contains("Lifetime Renown 100 / 100", text);
+            Assert.Contains("Guilds at Apprentice or higher 1 / 1", text);
+            Assert.Contains("Promotion job: not yet required", text);
+            Assert.Contains("Story trial, chapter 1: not yet required", text);
+            Assert.Contains("All requirements met", text);
             Assert.Contains("Promote to Dull Copper Citizen", text);
 
             // The rank label carries the metal's hue (Dull Copper 0x973).

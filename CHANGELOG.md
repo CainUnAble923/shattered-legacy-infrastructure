@@ -29,6 +29,17 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.16
+
+### Changed
+- Upgrade, restore and rank-up menus (the Hammer of Hephaestus, Jacob's Pickaxe upgrades, the Miners' Compact liaison's restoration and satchel upgrade, the Civic Mule Exchange, the League's rank page) show every requirement the same way: green with a check when met, red with an X and how much more you need when not, and where your materials are in gray. A line at the bottom says "All requirements met" or how many are not.
+- The Upgrade, Restore and Promote buttons in those menus are greyed out until every requirement is met.
+- The Civic Mule Exchange shows one mule a page, with Next and Previous to move between them.
+
+### Fixed
+- Those menus are no longer see-through: the world and other windows behind them no longer show through the text.
+- Section headings in those menus are no longer green, so green only ever means a requirement is met.
+
 ## 2026.10.20.15
 
 ### Staff

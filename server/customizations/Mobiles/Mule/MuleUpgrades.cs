@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
 
@@ -81,6 +82,41 @@ namespace Server
             }
 
             return short_;
+        }
+
+        /// <summary>
+        /// cc-P169: the step's requirements for the Exchange, a line each; the same tests as Shortfalls, so a line is
+        /// met exactly when Shortfalls has nothing for it.
+        /// </summary>
+        public static RequirementList Requirements(PlayerMobile pm, CharacterGuildData guild, MuleUpgradeStep step)
+        {
+            var list = new RequirementList();
+
+            if (step.CompactRank > 0)
+            {
+                var have = ClusterFGuildSystem.GuildRankIndex("mining", guild);
+                var rank = $"Compact rank: {ClusterFGuildSystem.RankIndexName(step.CompactRank)}";
+                var standing = guild.GetReputation("mining");
+                var ladder = ClusterFGuildSystem.RankThresholds("mining"); // index n starts at rung n; the top at the last
+                var needStanding = step.CompactRank >= ClusterFGuildSystem.RankTop ? ladder[^1] : ladder[step.CompactRank];
+                list.Check(
+                    have >= step.CompactRank,
+                    $"{rank} or higher",
+                    standing < needStanding
+                        ? $"{rank} (need {needStanding - standing:N0} more Standing)"
+                        : $"{rank} (you are {ClusterFGuildSystem.RankIndexName(have)})"
+                );
+            }
+
+            foreach (var (key, amount) in step.Scrip)
+            {
+                guild.GuildCurrency.TryGetValue(key, out var held);
+                list.Amount(CurrencyName(key), held, amount);
+            }
+
+            return list
+                .Amount("Gold", CompactGoldHelper.GetTotalGold(pm), step.Gold)
+                .Info("Gold counts from your pack and bank.");
         }
 
         /// <summary>Pays for the step if everything is there (the testing token waives it), and tiers the mule up.</summary>
