@@ -27,8 +27,11 @@ public partial class BaseCreature
     /// <summary>
     /// The profile, made if the creature has none, so [props] on a stock dragon shows its breath. A profile holding only
     /// natural abilities is never written to the save (AbilityProfile.IsEmpty), so looking costs nothing.
+    /// canModify (cc-P233): the property has no setter, and pinned's props gump draws a row's open arrow only for a
+    /// property with a setter or an attribute that says canModify (PropsGump.cs:141, :210), so without it staff saw
+    /// "..." and could not open the [PropertyObject]. Opening it edits the same profile [props already made.
     /// </summary>
-    [CommandProperty(AccessLevel.GameMaster)]
+    [CommandProperty(AccessLevel.GameMaster, canModify: true)]
     public AbilityProfile AbilityProfile => PetTrainingHelper.GetAbilityProfile(this, true);
 
     public void SetMagicalAbility(MagicalAbility ability) =>
@@ -55,8 +58,11 @@ public partial class BaseCreature
 
     public static double MaxTameRequirement = 108.0;
 
-    /// <summary>The training state, or null until a tamer has begun training (the lore gump creates it).</summary>
-    [CommandProperty(AccessLevel.GameMaster)]
+    /// <summary>
+    /// The training state, or null until a tamer has begun training (the lore gump creates it). canModify as above
+    /// (cc-P233): [props opens it once it exists; while it is null the press re-sends the creature's own page.
+    /// </summary>
+    [CommandProperty(AccessLevel.GameMaster, canModify: true)]
     public TrainingProfile TrainingProfile => PetTrainingStore.GetTrainingProfile(this, false);
 
     [CommandProperty(AccessLevel.GameMaster)]
