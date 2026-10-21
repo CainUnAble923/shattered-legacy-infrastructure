@@ -1215,6 +1215,7 @@ public static class ClusterFAchievementSystem
         var data = ClusterFAccountPersistence.GetOrCreate(acct);
         data.AchievementPoints += def.AP;
         data.GrantRenown(def.Renown, RenownSource.Achievement); // and LifetimeRenown (cc-P48)
+        Server.Engines.LeagueRewards.LeagueTitles.Sync(data); // cc-P229: AP titles unlock as AP is reached, and stay
 
         if (def.RewardItems.Length > 0)
             SpawnRewardItems(acct, def);
@@ -1837,6 +1838,10 @@ public class AchievementsGump : Gump
     private const int PagePrev = 300;
     private const int PageNext = 301;
 
+    // cc-P229 (F-13): the footer's League shop and title picker buttons.
+    public const int BtnLeagueShop = 201;
+    public const int BtnTitles = 202;
+
     // cc-P57 Part F (bug-list D80, Chase screenshot 2026-10-05): rows were a fixed 64 high, five to a page, and a row
     // with a wrapped flavor, an Earned line and a progress line ran under the next row's title. Each row now gets the
     // height its own lines need (ClusterFGumpText, the client's font widths) and a page holds as many rows as fit.
@@ -1980,6 +1985,11 @@ public class AchievementsGump : Gump
         AddLabel(GumpWidth / 2 - 132,  GumpHeight - 28, 999, "Guilds");
         AddButton(GumpWidth / 2 - 40, GumpHeight - 30, 4023, 4025, 0);
         AddLabel(GumpWidth / 2 - 16,  GumpHeight - 28, 1154, "Close");
+        // cc-P229 (F-13): the League shop and the title picker, the same windows the League Registrar opens.
+        AddButton(GumpWidth / 2 + 50, GumpHeight - 30, 4011, 4012, BtnLeagueShop);
+        AddLabel(GumpWidth / 2 + 84,  GumpHeight - 28, 999, "League Shop");
+        AddButton(GumpWidth / 2 + 170, GumpHeight - 30, 4011, 4012, BtnTitles);
+        AddLabel(GumpWidth / 2 + 204, GumpHeight - 28, 999, "Titles");
     }
 
     // -- Achievement list (paginated, icon-capable) ------------------------
@@ -2239,6 +2249,18 @@ public class AchievementsGump : Gump
         {
             if (_pm.Account is Accounting.IAccount acct)
                 _pm.SendGump(new GuildProgressGump(_pm, acct));
+            return;
+        }
+
+        if (info.ButtonID == BtnLeagueShop)
+        {
+            _pm.SendGump(new Server.Engines.LeagueRewards.LeagueShopGump(_pm));
+            return;
+        }
+
+        if (info.ButtonID == BtnTitles)
+        {
+            _pm.SendGump(new Server.Engines.LeagueRewards.LeagueTitleGump(_pm));
             return;
         }
 

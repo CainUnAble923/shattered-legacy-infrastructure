@@ -217,6 +217,10 @@ public class ClusterFAccountData
 
     public void ResetTutorial() => Tutorial = new TutorialRecord();
 
+    // -- League titles, once per account (v21, cc-P229 F-13) ---------------
+    // Titles bought in the League shop or unlocked by AP, and the one each character shows. LeagueTitles reads it.
+    public LeagueTitleRecord LeagueTitles { get; private set; } = new();
+
     /// <summary>
     /// True when this record was read from a save before v15 that held account-level guild data
     /// (membership, Apprentice marks, reputation, scrip, work orders, commissions or an Artificer
@@ -449,6 +453,11 @@ public class ClusterFAccountData
             }
         }
 
+        // v21 (cc-P229, F-13): the account's League titles. Before v21 no account held one; AP titles are unlocked the
+        // next time the account's titles are read (LeagueTitles.Sync).
+        if (version >= 21)
+            LeagueTitles = new LeagueTitleRecord(r);
+
         // v8-only saves (no EncounteredCreatures yet): just read chunks.
         if (version == 8)
             ReadExploration(r);
@@ -481,8 +490,8 @@ public class ClusterFAccountData
 
     // 15: cc-P18, guild data per character. 16: cc-P48, LifetimeRenown and CharacterLeagueData.
     // 17: cc-P78, LearnedRecipes. 18: cc-P79, CharacterLootRecord per character. 19: cc-P80, TutorialRecord.
-    // 20: cc-P150, CharacterRequisitionData per character.
-    public const int CurrentVersion = 20;
+    // 20: cc-P150, CharacterRequisitionData per character. 21: cc-P229, LeagueTitleRecord.
+    public const int CurrentVersion = 21;
 
     public void Serialize(IGenericWriter w)
     {
@@ -592,6 +601,9 @@ public class ClusterFAccountData
             w.Write(serial);
             record.Serialize(w);
         }
+
+        // v21: League titles
+        LeagueTitles.Serialize(w);
     }
 
     // -- Flag helpers ------------------------------------------------------
@@ -1256,4 +1268,55 @@ public sealed class TutorialRecord
 
     /// <summary>In the tutorial now: the core, the wings, or remedial training.</summary>
     public bool IsActive => State is TutorialState.InCore or TutorialState.InWings or TutorialState.Remedial;
+}
+
+/// <summary>
+/// The account's League titles (cc-P229, F-13; ClusterFAccountData v21): every title it holds, bought in the League shop
+/// or unlocked by an AP threshold (kept once unlocked, so a later AP change never takes one away), and the one title each
+/// character shows, by character serial. Carries its own version (the D40 rule).
+/// </summary>
+public sealed class LeagueTitleRecord
+{
+    public const int CurrentVersion = 0;
+
+    // Title keys (LeagueTitles), bought or unlocked.
+    public HashSet<string> Owned { get; } = new(StringComparer.Ordinal);
+
+    // The title key each character shows, by character serial. No entry: no League title.
+    public Dictionary<uint, string> Shown { get; } = new();
+
+    public LeagueTitleRecord() { }
+
+    public LeagueTitleRecord(IGenericReader r)
+    {
+        var version = r.ReadInt();
+        if (version is < 0 or > CurrentVersion)
+            throw new System.IO.InvalidDataException(
+                $"LeagueTitleRecord version {version} is not one this build reads (0 to {CurrentVersion}).");
+
+        var owned = r.ReadInt();
+        for (var i = 0; i < owned; i++)
+            Owned.Add(r.ReadString());
+
+        var shown = r.ReadInt();
+        for (var i = 0; i < shown; i++)
+        {
+            var serial = r.ReadUInt();
+            Shown[serial] = r.ReadString();
+        }
+    }
+
+    public void Serialize(IGenericWriter w)
+    {
+        w.Write(CurrentVersion);
+        w.Write(Owned.Count);
+        foreach (var key in Owned)
+            w.Write(key);
+        w.Write(Shown.Count);
+        foreach (var (serial, key) in Shown)
+        {
+            w.Write(serial);
+            w.Write(key);
+        }
+    }
 }

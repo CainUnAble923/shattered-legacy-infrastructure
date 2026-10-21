@@ -39,6 +39,10 @@ public class LeagueRegistrarGump : Gump
     // cc-P150 (F-47): the requisitions board, on the League Rank row's right (the menu's rows are full).
     public const int BtnRequisitions = 26;
 
+    // cc-P229 (F-13): the League shop and the title picker, on the Achievements and Guilds Overview rows' right.
+    public const int BtnShop = 27;
+    public const int BtnTitles = 28;
+
     private readonly PlayerMobile _pm;
     private readonly View         _view;
 
@@ -126,8 +130,10 @@ public class LeagueRegistrarGump : Gump
 
         AddButton(18, y, 4011, 4012, 11); AddLabel(44, y + 2, 999, "Citizen Status");    y += 28;
         AddButton(18, y, 4011, 4012, 12); AddLabel(44, y + 2, 999, "About Renown");      y += 28;
-        AddButton(18, y, 4011, 4012, 13); AddLabel(44, y + 2, 999, "Achievements");      y += 28;
-        AddButton(18, y, 4011, 4012, 14); AddLabel(44, y + 2, 999, "Guilds Overview");   y += 28;
+        AddButton(18, y, 4011, 4012, 13); AddLabel(44, y + 2, 999, "Achievements");
+        AddButton(230, y, 4011, 4012, BtnShop); AddLabel(256, y + 2, 999, "League Shop");  y += 28;
+        AddButton(18, y, 4011, 4012, 14); AddLabel(44, y + 2, 999, "Guilds Overview");
+        AddButton(230, y, 4011, 4012, BtnTitles); AddLabel(256, y + 2, 999, "Titles");     y += 28;
         AddButton(18, y, 4011, 4012, 15); AddLabel(44, y + 2, 999, "Guild Referrals");   y += 28;
         AddButton(18, y, 4011, 4012, 16); AddLabel(44, y + 2, 999, "League Dispatch");   y += 28;
         AddButton(18, y, 4011, 4012, 17); AddLabel(44, y + 2, 999, "Where to go first?"); y += 28;
@@ -395,6 +401,14 @@ public class LeagueRegistrarGump : Gump
                     _pm.SendGump(new LeagueRegistrarGump(_pm, View.MuleErrand));
                 }
                 break;
+
+            case BtnShop: // cc-P229 (F-13)
+                _pm.SendGump(new Server.Engines.LeagueRewards.LeagueShopGump(_pm));
+                return;
+
+            case BtnTitles: // cc-P229 (F-13)
+                _pm.SendGump(new Server.Engines.LeagueRewards.LeagueTitleGump(_pm));
+                return;
 
             case BtnRequisitions: // cc-P150 (F-47): the League board, every guild
                 Server.Items.RequisitionsBoard.OpenFor(_pm, null);

@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.3
+
+### Added
+- The League Shop: the League Registrar in New Haven ("League Shop") and the achievements window both open it. Achievement Points open each item for good and Renown pays for it, so spending never lowers your League rank. Items your AP has not reached yet show greyed with the AP they need, and every purchase asks you to confirm.
+- On sale: a League tabard, cloak and regalia (robe, cloak and sandals) in League colours sold nowhere else, a League banner, an achievement trophy engraved with your name and AP, a one-use League pigment, a hair restyling deed, a blessed recall rune marked to the Registrar, and the System's Loot Boxes (Bronze, Silver and Gold) holding League goods.
+- League titles: buy "the Registered Adventurer", "the Veteran of the League" or "the System's Favorite" in the shop, or earn one free at 100, 250, 500, 1,000 and 1,750 AP. Choose the one shown after your name under Titles, at the Registrar or in the achievements window. A title you have earned is yours for good.
+
+### Staff
+- League titles are kept on the account (each character picks its own to show) and saved with the account data; a title is put back on the character at login. Shop prices and AP gates are F-13's starter list, to be tuned in play testing.
+
 ## 2026.10.21.2
 
 ### Staff
