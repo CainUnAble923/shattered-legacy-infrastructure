@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.19
+
+### Staff
+- The art library's guild hall decor is in the player package (279 new art IDs, nothing replaced): for the Order of the Alembic, Hestia's bubbling vat, RedRooster's eight creature tanks and crystal ball, and Ems' flasks; for the Society of Smiths, a blacksmith at work and MrRiots' fire pit; for the Artificers, MrRiots' floating crystals and otimpyre's arc orbs; and for any hall, Hestia's five towers and Outlands' marble railings and ladder. Nothing is placed in the world.
+- Four test-shard-only commands dress a hall from a template: [DecorAlembicHall, [DecorSmithsHall, [DecorArtificersHall and [DecorHallStructure, each with place (target a point, or 'here'), a group name to place one part, clear, status and dryrun. On the live shard they refuse.
+
 ## 2026.10.21.18
 
 ### Added
