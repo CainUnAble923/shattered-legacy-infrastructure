@@ -1,0 +1,26 @@
+--- a/Projects/UOContent/Multis/Boats/BaseBoat.cs
++++ b/Projects/UOContent/Multis/Boats/BaseBoat.cs
+@@ -1757,6 +1757,11 @@
+                 }
+             }
+ 
++            if (!Server.Tutorial.TutorialIslandGate.CanMoveBoat(this, xOffset, yOffset, 0))
++            {
++                return false;
++            }
++
+             if (!NewBoatMovement || xOffset.Abs() > 1 || yOffset.Abs() > 1)
+             {
+                 Teleport(xOffset, yOffset, 0);
+@@ -1851,6 +1856,11 @@
+ 
+         public void Teleport(int xOffset, int yOffset, int zOffset)
+         {
++            if (!Server.Tutorial.TutorialIslandGate.CanMoveBoat(this, xOffset, yOffset, zOffset))
++            {
++                return;
++            }
++
+             using var queue = PooledRefQueue<IEntity>.Create(64);
+             foreach (var e in GetMovingEntities())
+             {

@@ -33,12 +33,16 @@ public static class ClusterFTutorial
     // tutorial.enabled (default true): off, no new character is entered (staff can still use the commands).
     public static bool Enabled { get; set; } = true;
 
+    // P371: provisional option (a), pending Chase's skipper decision. False requires remedial graduation.
+    public static bool SkipCountsAsGraduation { get; set; } = true;
+
     public const string SkippedAchievement = "tutorial.skipped";
     public const string RemedialAchievement = "tutorial.remedial";
 
     public static void Configure()
     {
         Enabled = ServerConfiguration.GetOrUpdateSetting("tutorial.enabled", true);
+        SkipCountsAsGraduation = ServerConfiguration.GetOrUpdateSetting("clusterf.tutorial.skipCountsAsGraduation", true);
         CommandSystem.Register("Tutorial", AccessLevel.GameMaster, OnTutorialCommand);
     }
 
@@ -62,6 +66,14 @@ public static class ClusterFTutorial
         if (Enabled)
         {
             TryEnter(pm);
+        }
+
+        // The tutorial is once per account; each later character needs its own first loop, too. Also handles
+        // accounts that graduated before P371, without replaying graduation rewards or changing Young.
+        if (RecordOf(pm) is { } record &&
+            (record.State == TutorialState.Graduated || record.WasSkipped && SkipCountsAsGraduation))
+        {
+            ClusterFLoops.Graduate(pm);
         }
     }
 
@@ -159,6 +171,16 @@ public static class ClusterFTutorial
         record.FinishedAt = Core.Now;
         SystemLine(pm, "Skipped. Bold. The recruiter will still be here when you need remedial training. And you will.");
 
+        if (SkipCountsAsGraduation)
+        {
+            ClusterFLoops.Graduate(pm);
+            SystemLine(pm, "Your first loop is recorded. The island is open; your Young hours keep running.");
+        }
+        else
+        {
+            SystemLine(pm, "Finish remedial training with the recruiter to leave the island.");
+        }
+
         if (pm.Account is IAccount acct)
         {
             ClusterFAchievementSystem.TryGrant(acct, SkippedAchievement);
@@ -207,6 +229,7 @@ public static class ClusterFTutorial
         record.State = TutorialState.Graduated;
         record.FinishedAt = Core.Now;
 
+        ClusterFLoops.Graduate(pm);
         GraduationRewards(pm);
 
         if (remedial && pm.Account is IAccount acct)

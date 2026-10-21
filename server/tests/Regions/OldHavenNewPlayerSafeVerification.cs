@@ -43,7 +43,8 @@ public class OldHavenNewPlayerSafeVerification
     private static readonly Point3D DrelgorHome = new(3651, 2509, 0);
     private static readonly Point3D Hole = new(3619, 2620, 0);
     private static readonly Point3D NewHavenBank = new(3485, 2572, 0);
-    private static readonly Point3D FarAway = new(1220, 1220, 0); // as YoungPlayerVerification
+    // P371: outside Old Haven Training, while remaining on the tutorial island before graduation.
+    private static readonly Point3D FarAway = new(3503, 2574, 14);
 
     private readonly ITestOutputHelper _out;
 
