@@ -60,6 +60,9 @@ namespace Server
 
             // cc-P236: the satchel and guild bag icons (SatchelArt.Records).
             Items.SatchelArt.Apply();
+
+            // cc-P243: the League Hall's decor (LeagueHallArt.Records).
+            Engines.LeagueRewards.LeagueHallArt.Apply();
         }
     }
 }
