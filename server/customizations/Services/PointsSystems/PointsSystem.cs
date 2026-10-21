@@ -24,7 +24,10 @@ public enum PointsType
     CleanUpBritannia,
 
     // cc-P194: the Covetous Void Pool (Services/PointsSystems/VoidPool.cs).
-    VoidPool
+    VoidPool,
+
+    // cc-P196: the Blackthorn Dungeon's Minax turn-in points (Services/PointsSystems/BlackthornData.cs).
+    Blackthorn
 }
 
 public class PointsEntry
