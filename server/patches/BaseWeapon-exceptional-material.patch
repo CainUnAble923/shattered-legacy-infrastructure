@@ -1,0 +1,40 @@
+--- a/Projects/UOContent/Items/Weapons/BaseWeapon.cs
++++ b/Projects/UOContent/Items/Weapons/BaseWeapon.cs
+@@ -942,8 +942,8 @@
+ 
+         if (Core.AOS)
+         {
+-            var resInfo = CraftResources.GetInfo(_resource);
+-            bonus += WeaponAttributes.DurabilityBonus + (resInfo?.AttributeInfo?.WeaponDurability ?? 0);
++            // Shattered Legacy (cc-P228, F-29): an exceptional weapon reads its material's bonuses x1.5.
++            bonus += WeaponAttributes.DurabilityBonus + (ClusterFExceptionalMaterial.Attrs(this)?.WeaponDurability ?? 0);
+         }
+ 
+         return _quality == WeaponQuality.Exceptional ? bonus + 20 : bonus;
+@@ -958,7 +958,7 @@
+ 
+         var v = WeaponAttributes.LowerStatReq;
+ 
+-        var attrInfo = CraftResources.GetInfo(_resource)?.AttributeInfo;
++        var attrInfo = ClusterFExceptionalMaterial.Attrs(this);
+ 
+         if (attrInfo != null)
+         {
+@@ -2384,7 +2384,7 @@
+ 
+             phys = 100 - fire - cold - pois - nrgy - chaos - direct;
+ 
+-            var attrInfo = CraftResources.GetInfo(_resource)?.AttributeInfo;
++            var attrInfo = ClusterFExceptionalMaterial.Attrs(this);
+ 
+             if (attrInfo != null)
+             {
+@@ -2927,7 +2927,7 @@
+     public override bool AllowEquippedCast(Mobile from) =>
+         base.AllowEquippedCast(from) || Attributes.SpellChanneling != 0;
+ 
+-    public virtual int GetLuckBonus() => CraftResources.GetInfo(_resource)?.AttributeInfo?.WeaponLuck ?? 0;
++    public virtual int GetLuckBonus() => ClusterFExceptionalMaterial.Attrs(this)?.WeaponLuck ?? 0;
+ 
+     public override void GetProperties(IPropertyList list)
+     {

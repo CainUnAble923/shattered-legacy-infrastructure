@@ -1,0 +1,43 @@
+--- a/Projects/UOContent/Items/Armor/BaseArmor.cs
++++ b/Projects/UOContent/Items/Armor/BaseArmor.cs
+@@ -868,8 +868,9 @@
+             InvalidateProperties();
+         }
+ 
++        // Shattered Legacy (cc-P228, F-29): an exceptional piece reads its material's bonuses x1.5.
+         public CraftAttributeInfo GetResourceAttrs() =>
+-            CraftResources.GetInfo(_resource)?.AttributeInfo ?? CraftAttributeInfo.Blank;
++            ClusterFExceptionalMaterial.Attrs(this) ?? CraftAttributeInfo.Blank;
+ 
+         public int GetProtOffset()
+         {
+@@ -902,8 +903,7 @@
+ 
+             if (Core.AOS)
+             {
+-                var resInfo = CraftResources.GetInfo(_resource);
+-                bonus += ArmorAttributes.DurabilityBonus + (resInfo?.AttributeInfo?.ArmorDurability ?? 0);
++                bonus += ArmorAttributes.DurabilityBonus + GetResourceAttrs().ArmorDurability;
+             }
+ 
+             return _quality == ArmorQuality.Exceptional ? bonus + 20 : bonus;
+@@ -965,9 +965,7 @@
+ 
+             var v = ArmorAttributes.LowerStatReq;
+ 
+-            var info = CraftResources.GetInfo(_resource);
+-
+-            var attrInfo = info?.AttributeInfo;
++            var attrInfo = ClusterFExceptionalMaterial.Attrs(this);
+ 
+             if (attrInfo != null)
+             {
+@@ -1272,7 +1270,7 @@
+             return Attributes.SpellChanneling != 0;
+         }
+ 
+-        public virtual int GetLuckBonus() => CraftResources.GetInfo(_resource)?.AttributeInfo?.ArmorLuck ?? 0;
++        public virtual int GetLuckBonus() => GetResourceAttrs().ArmorLuck;
+ 
+         public override void GetProperties(IPropertyList list)
+         {
