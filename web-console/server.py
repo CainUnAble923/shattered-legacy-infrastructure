@@ -45,6 +45,16 @@ Two listeners, both on 127.0.0.1 only (nothing on the LAN, nothing public):
                              written to its stdin only then. Refused while another action runs.
   GET /api/prompt?name=<file>   a queued or running prompt's text (only one the status names); ?notes=<n> its notes
   GET /art-thumb/<id>        an art request's newest picture (only under D:/UO/art)
+  cc-P367, the Music Room (music.py): every candidate music track on disk, played in the browser, and Chase's notes.
+  GET /music                 the page (static/music.html; music.js and music.css beside it)
+  GET /api/music             the packs, every track (its stock original or new, length, ID3 origin), the notes, the
+                             tags and the target suggestions (the shard's regions and ART-LIBRARY.md's boss shortlist)
+  GET /api/music/summary     the tracks marked Use, grouped by tag and then by target: what P368 reads
+  GET /music-file/<pack>/<file>  one listed track, read only, streamed with Range requests (206) so seeking works
+  POST /api/music/note       {key, rating, tags, note, target}: one track's record in <notes>/docs/music/music-notes.json
+  POST /api/music/commit     commit music-notes.json alone in the docs repo (never pushed); also hourly if it changed
+                             Both POSTs: either listener (each is Chase: this PC, or his tailnet login), only from the
+                             page (the same header, origin and JSON checks as POST /api/action). They write only that file.
   GET /api/agent/ping        cc-P186, a remote agent: {golem, ack}: the game PC knows this Golem and its secret
   GET /api/agent/commands    cc-P186: this Golem's queued commands, each handed out once (the agent's poll)
   POST /api/agent/result     cc-P186: {id, code, result, lines}: a command's result, onto the Timeline with the name
@@ -56,7 +66,7 @@ Two listeners, both on 127.0.0.1 only (nothing on the LAN, nothing public):
   POST /api/golem-password   cc-P215: {golem, role}: one Golem test account's password (Get-GolemTestAccount.ps1, this
                              service's DPAPI), as text/plain for the card's copy button. The tailnet listener, an allowed
                              login and the page's own header and origin only, as POST /api/action; logged without it
-Every other method is refused. Every string sent is passed through panels.redact_tree, except that one password.
+Every other method is refused (and every other POST: only the ones above change anything). Every string sent is passed through panels.redact_tree, except that one password.
 
 The collector runs as a child: Write-ConsoleStatus.ps1 -Loop -ParentPid <this>, restarted if it ends.
 Standard library only (like docker/test-queue/server.py): nothing to install on the game PC. ASCII only.
@@ -77,10 +87,11 @@ import time
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import music  # noqa: E402
 import panels  # noqa: E402
 
 DEFAULT_REPO = os.path.dirname(HERE)
@@ -146,6 +157,9 @@ AGENT_ONLINE = 180     # seconds: the agent polls every POLL_AWAKE s while its G
 POLL_AWAKE, POLL_ASLEEP = 5, 60
 AGENT_BODY = 65536     # a readiness file with its checks is bigger than a button press
 PORTRAIT_NAME = re.compile(r"(?i)\.(png|gif|jpg|jpeg|webp)$")
+MUSIC_COMMIT_SECONDS = 3600   # cc-P367: music-notes.json is committed this often when it changed
+MUSIC_BODY = 16384            # a note is 4000 characters at most
+MUSIC_FILE = re.compile(r"^/music-file/([a-z0-9-]{1,24})/([^/]{1,124})$")
 AGENTS_COMMENT = ("cc-P186: one salted SHA-256 per remote Golem's agent secret (server.py --mint-agent <name>). Outside git. "
                   "The secret itself is shown once when minted and kept only on that Golem's PC.")
 
@@ -192,6 +206,11 @@ class Console:
         if collector:
             threading.Thread(target=self._collector_loop, daemon=True).start()
             threading.Thread(target=self._link_loop, daemon=True).start()
+        # cc-P367: the Music Room. The notes live in the docs repo (notes), the scan's length cache beside settings.json.
+        self.music = music.MusicRoom(notes, code_repo=repo, lock_dir=os.path.join(self.golem_root, "locks"),
+                                     cache_file=os.path.join(data, "music-index.json"))
+        if collector:
+            threading.Thread(target=self._music_loop, daemon=True).start()
 
     # --- who may look ---------------------------------------------------------------------------------------------
     def allowed_logins(self):
@@ -1067,6 +1086,17 @@ class Console:
         except OSError:
             return False
 
+    def _music_loop(self):
+        """cc-P367: once an hour, commit music-notes.json when it changed (music.commit_notes: that file alone, on main,
+        never while a merge or a Golem's commit is under way, never pushed)."""
+        while True:
+            time.sleep(MUSIC_COMMIT_SECONDS)
+            try:
+                if self.music.changed():
+                    self.music.commit("hourly")
+            except Exception:
+                pass
+
     def _collector_loop(self):
         script = os.path.join(self.repo, "scripts", "Write-ConsoleStatus.ps1")
         os.makedirs(self.data, exist_ok=True)
@@ -1391,6 +1421,22 @@ def make_handler(console, listener, access_log=None):
                 return self._static("index.html")
             if p in ("/app.js", "/app.css"):
                 return self._static(p[1:])
+            if p in ("/music", "/music.html", "/music.js", "/music.css"):
+                return self._static("music.html" if p in ("/music", "/music.html") else p[1:])
+            if p == "/api/music":
+                m = console.music
+                return self._json(200, {"packs": m.packs_view(), "tracks": m.tracks(), "notes": m.notes(),
+                                        "tags": [{"id": i, "label": l} for i, l in music.TAGS], "ratings": list(music.RATINGS),
+                                        "suggestions": m.suggestions(), "lastCommit": m.last_commit,
+                                        "notesFile": "/".join(music.NOTES_REL), "noteMax": music.NOTE_MAX})
+            if p == "/api/music/summary":
+                return self._json(200, console.music.summary())
+            mf = MUSIC_FILE.match(p)
+            if mf:
+                path = console.music.path_of(mf.group(1), unquote(mf.group(2)))
+                if not path:
+                    return self._send(404, "no such track\n", "text/plain; charset=utf-8")
+                return self._stream(path, "audio/mpeg")
             if p.startswith("/art/"):
                 name = p[5:]
                 path = os.path.join(console.repo, "scripts", "console-art", name)
@@ -1465,6 +1511,8 @@ def make_handler(console, listener, access_log=None):
                 self._note(code, "agent %s %s" % (g["name"], path.rsplit("/", 1)[1]))
                 return self._json(code, out)
             # cc-P182: the Golem's buttons; cc-P187: the page buttons and their look first.
+            if path in ("/api/music/note", "/api/music/commit"):
+                return self._music_post(path)
             if path not in ("/api/action", "/api/preview", "/api/golem-password"):
                 return self._refuse()
             if not self._allowed():
@@ -1472,16 +1520,7 @@ def make_handler(console, listener, access_log=None):
             if listener != panels.TAILNET:
                 self._note(403, "action on the local listener")
                 return self._json(403, {"error": LOCAL_READ_ONLY})
-            # Only this page: a header no form or plain link can send (a cross-site script needs a CORS preflight,
-            # which is never answered), the same origin when the browser says, and JSON.
-            why = ""
-            if self.headers.get("X-UOConsole-Action") != "1":
-                why = "no X-UOConsole-Action header"
-            origin = self.headers.get("Origin")
-            if not why and origin and urlparse(origin).netloc.lower() != (self.headers.get("Host") or "").lower():
-                why = "another origin"
-            if not why and (self.headers.get("Sec-Fetch-Site") or "same-origin") not in ("same-origin", "none"):
-                why = "a cross-site fetch"
+            why = self._not_this_page()
             if why:
                 self._note(403, why)
                 return self._json(403, {"error": "not allowed: " + why})
@@ -1545,6 +1584,84 @@ def make_handler(console, listener, access_log=None):
             code, out = console.start_action(entry, body.get("typed"), body.get("inputs"), who)
             self._note(code, "action " + entry["key"])
             return self._json(code, out)
+
+        def _not_this_page(self):
+            """Why a POST is not from this console's own page, or '': a header no form or plain link can send (a
+            cross-site script needs a CORS preflight, which is never answered), the same origin when the browser
+            says, and JSON."""
+            if self.headers.get("X-UOConsole-Action") != "1":
+                return "no X-UOConsole-Action header"
+            origin = self.headers.get("Origin")
+            if origin and urlparse(origin).netloc.lower() != (self.headers.get("Host") or "").lower():
+                return "another origin"
+            if (self.headers.get("Sec-Fetch-Site") or "same-origin") not in ("same-origin", "none"):
+                return "a cross-site fetch"
+            return ""
+
+        def _music_post(self, path):
+            """cc-P367: a Music Room note or its Save to repo. Either listener (both are Chase), only from the page."""
+            if not self._allowed():
+                return
+            why = self._not_this_page()
+            if why:
+                self._note(403, why)
+                return self._json(403, {"error": "not allowed: " + why})
+            body = self._read_json(MUSIC_BODY)
+            if body is None:
+                return
+            if path == "/api/music/commit":
+                ok, msg = console.music.commit("button")
+                self._note(200, "music commit: " + ("done" if ok else "not done"))
+                return self._json(200, {"ok": ok, "result": msg, "lastCommit": console.music.last_commit})
+            rec, err = console.music.save_note(body.get("key"), body)
+            if err:
+                self._note(400, "music note: " + err)
+                return self._json(400, {"error": err})
+            self._note(200, "music note")
+            return self._json(200, {"record": rec})
+
+        def _stream(self, path, ctype):
+            """cc-P367: a file in 256 KB pieces, with a single Range (bytes=a-b, a- or -n) answered 206 so the
+            player can seek; a range past the end is 416. Anything else gets the whole file (200)."""
+            size = os.path.getsize(path)
+            start, end, code = 0, size - 1, 200
+            m = re.match(r"^bytes=(\d*)-(\d*)$", (self.headers.get("Range") or "").strip())
+            if m and (m.group(1) or m.group(2)):
+                if m.group(1):
+                    start = int(m.group(1))
+                    end = min(int(m.group(2)), size - 1) if m.group(2) else size - 1
+                else:
+                    start = max(0, size - int(m.group(2)))
+                if start >= size or start > end:
+                    self.send_response(416)
+                    self.send_header("Content-Range", "bytes */%d" % size)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                code = 206
+            self.send_response(code)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(end - start + 1))
+            self.send_header("Accept-Ranges", "bytes")
+            if code == 206:
+                self.send_header("Content-Range", "bytes %d-%d/%d" % (start, end, size))
+            self.send_header("Cache-Control", "private, max-age=3600")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            if self.command == "HEAD":
+                return
+            try:
+                with open(path, "rb") as f:
+                    f.seek(start)
+                    left = end - start + 1
+                    while left > 0:
+                        chunk = f.read(min(262144, left))
+                        if not chunk:
+                            break
+                        self.wfile.write(chunk)
+                        left -= len(chunk)
+            except (ConnectionError, OSError):
+                pass   # the player moved on (a seek or the next track) and closed this one
 
         def _static(self, name):
             path = os.path.join(HERE, "static", name)

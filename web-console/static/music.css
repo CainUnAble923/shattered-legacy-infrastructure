@@ -1,0 +1,70 @@
+/* cc-P367: the Music Room. The console's colours (app.css), on a page of its own. */
+:root {
+  --stone: rgb(40, 42, 47); --stone-text: rgb(228, 222, 210); --page: rgb(50, 52, 58); --page-text: rgb(234, 230, 220);
+  --gold: rgb(220, 178, 98); --button: rgb(70, 60, 48); --button-text: rgb(244, 232, 200); --field: rgb(28, 29, 33);
+  --line: rgb(24, 25, 29); --backing: rgb(14, 15, 18); --gray: rgb(180, 178, 172);
+  --green: rgb(140, 226, 150); --amber: rgb(255, 202, 112); --red: rgb(255, 156, 146);
+  --use: rgb(28, 74, 40); --maybe: rgb(92, 66, 18); --pass: rgb(98, 30, 28);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--stone); color: var(--stone-text); font: 15px/1.4 "Segoe UI", system-ui, -apple-system, sans-serif; }
+a { color: var(--gold); }
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; padding: 10px 16px;
+  background: var(--backing); border-bottom: 2px solid var(--gold); }
+.brand { color: var(--gold); font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+.brand a { text-decoration: none; }
+.brand .sep { color: var(--gray); font-weight: 400; }
+.state { font-size: 12px; color: var(--gray); }
+nav { display: flex; gap: 4px; padding: 6px 12px; background: rgba(14, 15, 18, 0.85); position: sticky; top: 0; z-index: 2; }
+button, select, input, textarea { font: inherit; }
+button { min-height: 40px; padding: 6px 12px; border-radius: 6px; border: 1px solid transparent; background: var(--button);
+  color: var(--button-text); cursor: pointer; }
+button:hover { border-color: rgba(220, 178, 98, 0.6); }
+button.on, button.primary { border-color: var(--gold); color: var(--gold); }
+button:disabled { opacity: 0.5; cursor: default; }
+main { padding: 12px 16px 140px; max-width: 1100px; margin: 0 auto; }
+.filters, .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; align-items: center; }
+.filters input[type=search] { flex: 1 1 220px; }
+input[type=search], input[type=text], select, textarea { min-height: 40px; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid rgba(220, 178, 98, 0.35); background: var(--field); color: var(--page-text); max-width: 100%; }
+.check { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
+.muted { color: var(--gray); font-size: 13px; margin: 4px 0 8px; overflow-wrap: anywhere; }
+.track { background: var(--page); color: var(--page-text); border: 1px solid rgba(220, 178, 98, 0.25); border-radius: 8px;
+  padding: 10px 12px; margin: 0 0 10px; }
+.track.playing { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.track.r-use { border-left: 6px solid var(--green); }
+.track.r-maybe { border-left: 6px solid var(--amber); }
+.track.r-pass { border-left: 6px solid var(--red); }
+.track .top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.track .name { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+.track .play { min-width: 64px; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; background: var(--backing); color: var(--gray); }
+.pill.flag { background: var(--maybe); color: var(--amber); }
+.meta { font-size: 13px; color: var(--gray); margin: 4px 0; overflow-wrap: anywhere; }
+.meta b { color: var(--page-text); font-weight: 600; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; align-items: center; }
+.rate button { min-width: 72px; }
+.rate button.sel.use { background: var(--use); border-color: var(--green); color: var(--green); }
+.rate button.sel.maybe { background: var(--maybe); border-color: var(--amber); color: var(--amber); }
+.rate button.sel.pass { background: var(--pass); border-color: var(--red); color: var(--red); }
+.tags label { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; background: var(--backing);
+  font-size: 13px; cursor: pointer; min-height: 32px; }
+.tags label.sel { background: var(--button); color: var(--gold); }
+.tags input { margin: 0; }
+.fields { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.fields textarea { width: 100%; min-height: 56px; resize: vertical; }
+.fields input { width: 100%; }
+.saved { font-size: 12px; color: var(--gray); min-height: 16px; }
+.saved.err { color: var(--red); }
+.group { margin: 0 0 18px; }
+.group h2 { color: var(--gold); font-size: 17px; margin: 12px 0 6px; }
+.group h3 { font-size: 14px; margin: 8px 0 4px; color: var(--page-text); }
+.item { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.item .note { flex: 1 1 100%; font-size: 13px; color: var(--gray); white-space: pre-wrap; overflow-wrap: anywhere; }
+footer#player { position: fixed; left: 0; right: 0; bottom: 0; background: var(--backing); border-top: 2px solid var(--gold);
+  padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; z-index: 3; }
+footer .now { flex: 1 1 200px; font-weight: 600; color: var(--gold); overflow-wrap: anywhere; }
+footer audio { flex: 2 1 300px; width: 100%; min-width: 0; }
+@media (min-width: 760px) {
+  .fields { grid-template-columns: 1fr 2fr; }
+}

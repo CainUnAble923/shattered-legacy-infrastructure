@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Music Room</title>
+<link rel="stylesheet" href="/music.css">
+<script src="/music.js" defer></script>
+</head>
+<body>
+<!-- cc-P367: the Music Room. Every candidate track on disk (music.py), played here, with Chase's rating, tags, target and
+     note per track, saved as he types to docs/music/music-notes.json. Everything below is filled by music.js. -->
+<header>
+  <div class="brand"><a href="/">Shard Console</a><span class="sep">/</span><span>Music Room</span></div>
+  <div id="state" class="state" role="status">loading...</div>
+</header>
+<nav id="views" aria-label="Views">
+  <button type="button" data-view="tracks" class="on">Tracks</button>
+  <button type="button" data-view="summary">Summary: marked Use</button>
+</nav>
+<main>
+  <section id="tracks-view">
+    <div class="filters">
+      <input id="q" type="search" placeholder="Search names, tags, notes, targets" aria-label="Search">
+      <select id="f-pack" aria-label="Source pack"><option value="">Every pack</option></select>
+      <select id="f-tag" aria-label="Tag"><option value="">Any tag</option><option value="-">No tag yet</option></select>
+      <select id="f-rating" aria-label="Rating">
+        <option value="">Any rating</option><option value="-">Unrated</option>
+        <option value="use">Use</option><option value="maybe">Maybe</option><option value="pass">Pass</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button type="button" id="next-unrated" class="primary">Next unrated</button>
+      <label class="check"><input type="checkbox" id="autoplay"> Autoplay the next track</label>
+      <button type="button" id="save-repo">Save to repo</button>
+    </div>
+    <p id="commit-line" class="muted"></p>
+    <p id="count" class="muted"></p>
+    <div id="list"></div>
+  </section>
+  <section id="summary-view" hidden>
+    <p class="muted">The tracks marked Use, by tag and then by target. P368 reads this to add music for areas, monsters
+      and bosses as new tracks. A track with several tags shows under each.</p>
+    <div id="summary"></div>
+  </section>
+</main>
+<datalist id="targets"></datalist>
+<footer id="player">
+  <div id="now" class="now">Nothing playing</div>
+  <audio id="audio" controls preload="none"></audio>
+</footer>
+</body>
+</html>
