@@ -31,11 +31,15 @@ Example:
 
 ## 2026.10.21.15
 
+### Added
+- Opening a loot box now sends the best thing inside flying out of it: a sword, a bow, a staff, a piece of armor, a shield, a ring, a gem, a potion or a bit of clothing arcs up out of your pack and lands at your feet, just before the fanfare. Boxes of tier 4 and up show it to everyone around you; smaller ones to you alone. Muting your fanfare ([FanfareMute) hides it too. Update your game through the launcher to see it.
+
 ### Staff
 - The Golems' emails are in plain English now: what happened comes first, then a "What to do" line ("Nothing to do, it keeps going" or the one thing to do), and the technical details at the bottom. Subjects start with "Needs you:" only when you have to act.
 - A finished prompt's email says in plain words what it changed, from a short "In plain words" section every prompt's notes now start with; the morning night-shift summary gets one such line per prompt.
 - Routine Golem emails (a prompt starting, a session opened by itself, a merge into main) no longer come on their own: they ride along in the next email. One finished prompt is one email.
 - The overnight test bot's emails and the Shard Console's question email have the same shape.
+- The animations are Clint Bellanger's "Flying Loot Animations" (CC-BY 3.0, opengameart.org; base icon styles by Blarumyrran), reworked for UO: art 15536-15589 in the player package. Their credit belongs in the shard credits list. The setting clusterf.lootBoxes.flyingLoot (on by default) turns the effect off for everyone; nothing about what a box holds changes either way.
 
 ## 2026.10.21.14
 
