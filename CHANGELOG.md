@@ -29,6 +29,20 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.21
+
+### Added
+- Blackthorn Dungeon (revamped), the dungeon beneath Lord Blackthorn's castle, on Trammel and Felucca: the ruined city rooms are populated (brigands, skeletons, liches, dragons and drakes, golems and their controllers, hell hounds, evil mages, giant spiders, frost oozes, golden and earth elementals, rotting corpses, giant rats, vampire bats, Exodus minions and a balron), with a hitching post at the entrance to stable your pet, the invasion rooms' doors, and the Felucca castle's teleporters in and out (Trammel's castle already has its own).
+- Hunting in Blackthorn Dungeon can earn an artifact bearing the crest of Minax: every kill builds a hidden tally, and the longer you hunt without one, the better the odds of the next kill handing you one (a magic weapon, armor piece, shield, jewel or hat, hued the Minax purple).
+- The Agent of the Crown, in the Trammel castle and in nine Felucca cities, takes your Minax artifacts (Turn In Minax Artifacts) for Blackthorn points, one each, and sells 132 rewards for them (Claim Blackthorn Artifacts): a Decorative Shard Shield deed and two paintings for 10, and 129 pieces of clothing and armor bearing the crest of Blackthorn for 25 to 100 (hats, helms, circlets, earrings and glasses; robes, dresses, kimonos and epaulettes; belts, obis and half aprons; tunics, a doublet and a surcoat; chest armor), each with the properties the matching artifact of old carried. He also resurrects, locks karma and takes tithes.
+- Castle Blackthorn in Trammel: no spells or abilities cast there; mounts are refused at the door (you are set down and cannot remount for half a minute) and pets are sent to the stables, or outside the castle when the stables are full.
+- In the dungeon, a hidden player is revealed, and one who stands still for two minutes south of the invasion rooms is thrown into a noxious gas cloud elsewhere in the dungeon (lethal poison, and the nearby creatures come for you). Recall, gate and mark do not work inside; teleport does.
+- Minax's invaders and invader captains, the human and elven soldiers of the city invasions (thirteen fighting styles, each with its gear; a captain's death hands the crest of Minax to the two who hurt him most), are on the shard for staff to place; the invasions themselves follow in a later update.
+
+### Staff
+- `[GenBlackthorn` places all of it on Trammel and Felucca (hitching posts, doors, blockers, the Felucca teleporters, 44 dungeon spawners and the 10 Agent spawners), deleting an earlier run first; `[DeleteBlackthorn` removes it. Nothing is placed at boot: rebuild the test shard and run it once there. The two regions register themselves at start.
+- `[MinaxArtifact [budget]` puts a Minax artifact in your pack to test the Agent's turn-in (the kill roll is well under one percent).
+
 ## 2026.10.20.20
 
 ### Changed

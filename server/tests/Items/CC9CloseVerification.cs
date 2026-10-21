@@ -480,7 +480,8 @@ public class CC9CloseVerification
             "MysticBook",                  // pinned's MysticSpellbook, value for value
             "NystulsWizardsHat", "GypsyHeaddress", "MalabellesDress", // Vesper museum
             "ShadowCloakOfRejuvenation", "GargishShadowCloakOfRejuvenation", // named by nothing in ServUO
-            "GargishClothWingArmor",       // extracted only for the cloak
+            // "GargishClothWingArmor" was here (extracted only for the cloak) until cc-P196 ported it as the base of the
+            // Blackthorn crest wing armor (Items/Equipment/Clothing/GargishClothWingArmor.cs); it has a path now.
             "CorgulsHandbookOnMysticism",  // Corgul (High Seas)
             "ImprisonedDog", "AnkhPendant", // Travesty / Clean Up Britannia / virtue artifacts
             "MaleGargishClothLegs", "AncientShipModelOfTheHMSCape", "ChefsToque",
