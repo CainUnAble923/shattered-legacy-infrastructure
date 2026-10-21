@@ -180,7 +180,8 @@ class Emails(unittest.TestCase):
         subject, body = notify.before_text("abc1234", [{"id": "A-1", "reason": "no bot run yet"},
                                                         {"id": "B-1", "reason": "code changed since 1111111"}],
                                            checks=20, minutes=150, task="SL overnight play tests")
-        self.assertEqual("Overnight play tests starting: 2 checks on abc1234", subject)
+        self.assertEqual("Overnight play tests starting: 2 items to check", subject)
+        self.assertIn("Code under test: abc1234", body)
         self.assertIn("A-1: no bot run yet", body)
         self.assertIn("B-1: code changed since 1111111", body)
         self.assertIn("about 2 h 30 min", body)
@@ -190,14 +191,14 @@ class Emails(unittest.TestCase):
 
     def test_before_when_forced(self):
         subject, body = notify.before_text("abc1234", [], checks=20, minutes=30, task="t", forced=True)
-        self.assertEqual("Overnight play tests starting: 0 checks on abc1234 (forced)", subject)
+        self.assertEqual("Overnight play tests starting: a forced run", subject)
         self.assertIn("-Force", body)
 
     def test_crash(self):
         lines = ["line %d" % i for i in range(100)]
         subject, body = notify.crash_text("abc1234", "the scratch shard did not start listening", lines,
                                           r"D:\runs\x", archive_note="Archive: nothing older than 14 days.")
-        self.assertEqual("Overnight play tests FAILED on abc1234: the scratch shard did not start listening", subject)
+        self.assertEqual("Overnight play tests stopped early: the scratch shard did not start listening", subject)
         self.assertIn("line 60", body)
         self.assertIn("line 99", body)
         self.assertNotIn("line 59\n", body + "\n")
@@ -219,6 +220,68 @@ class Emails(unittest.TestCase):
             self.assertIn("Archive: 2 runs moved to iCloud Drive, verified.", text)
         finally:
             rmtree(d)
+
+
+class PlainEmails(unittest.TestCase):
+    """cc-P157: the bot's three emails in the Golem emails' shape: what happened in words, What to do, then Details
+    (the commit, the commands, the log). The subjects keep "Overnight play tests" first, for Chase's mail filters."""
+
+    def check(self, subject, body, action):
+        from uobot import mailshape
+        self.assertEqual([], mailshape.plain_problems(subject, body), subject + "\n" + body)
+        do = [l for l in body.splitlines() if l.startswith("What to do: ")]
+        self.assertEqual(1, len(do), body)
+        if action:
+            self.assertNotIn("Nothing to do", do[0])
+        else:
+            self.assertTrue(do[0].startswith("What to do: Nothing to do"), do[0])
+        self.assertIn("\nDetails\n-------\n", body)
+        self.assertLess(body.index("What to do: "), body.index("\nDetails\n"))
+        self.assertTrue(subject.startswith("Overnight play tests"), subject)
+
+    def after(self, checks):
+        d = tempfile.mkdtemp(prefix="p157-r-")
+        try:
+            write_json(os.path.join(d, "results.json"), {"checks": checks})
+            report.main(["--out", d])
+            with open(os.path.join(d, "email.txt"), encoding="ascii") as f:
+                text = f.read()
+        finally:
+            rmtree(d)
+        subject, _, body = text.partition("\n\n")
+        return subject, body.rstrip("\n"), d
+
+    def test_before_says_what_it_checks_and_how_long_in_words(self):
+        s, b = notify.before_text("abc1234", [{"id": "A-1", "reason": "no bot run yet"}], checks=20, minutes=150,
+                                  task="SL overnight play tests")
+        self.check(s, b, action=False)
+        self.assertTrue(b.startswith("The overnight test bot is starting its play tests on the scratch shard. It checks 1 "
+                                     "play-test item with new work tonight and takes about 2 h 30 min."), b)
+
+    def test_crash_says_it_stopped_and_what_to_do(self):
+        s, b = notify.crash_text("abc1234", "the scratch shard did not start listening", ["x"], r"D:\runs\x")
+        self.check(s, b, action=True)
+        self.assertTrue(b.startswith("The overnight test bot stopped before it finished: the scratch shard did not start "
+                                     "listening. Nothing was marked on the play-test page."), b)
+
+    def test_after_with_everything_passing_has_nothing_to_do(self):
+        s, b, d = self.after([{"id": "A-1", "title": "a", "kind": "BOT", "result": "PASS", "passes": 3, "runs": [
+            {"run": 1, "verdict": "pass", "evidence": "ok", "transcript": "transcripts/A-1-run1.txt"}]}])
+        self.check(s, b, action=False)
+        self.assertTrue(b.startswith("The overnight test bot ran 1 check on the scratch shard, and it passed."), b)
+        self.assertIn("Report: " + os.path.join(d, "report.md"), b)
+
+    def test_after_with_a_failure_lists_it_in_words_and_says_to_mark_it(self):
+        s, b, d = self.after([
+            {"id": "A-1", "title": "Ankh resurrects", "kind": "BOT", "result": "FAIL", "passes": 0, "runs": [
+                {"run": 1, "verdict": "fail", "evidence": "no gump 0x1234 at 2026-10-21T01:40:00", "transcript": "t.txt"}]},
+            {"id": "B-1", "title": "Bank opens", "kind": "BOT", "result": "PASS", "passes": 3, "runs": [
+                {"run": 1, "verdict": "pass", "evidence": "ok", "transcript": "t2.txt"}]}])
+        self.check(s, b, action=True)
+        self.assertTrue(b.startswith("The overnight test bot ran 2 checks on the scratch shard: 1 passed and 1 failed."), b)
+        self.assertIn("Needs a look:\n- A-1 (Ankh resurrects) failed every run", b)
+        self.assertIn("What to do: look at the checks above on the play-test page and mark them.", b)
+        self.assertIn("FAIL A-1 (0/1): no gump 0x1234 at 2026-10-21T01:40:00", b.split("\nDetails\n")[1])
 
 
 class Archive(unittest.TestCase):
@@ -381,7 +444,7 @@ class Scripts(unittest.TestCase):
             self.assertTrue(f.readline().startswith("Overnight play tests starting:"))
         with open(os.path.join(outbox, mails[1]), encoding="ascii") as f:
             crash = f.read()
-        self.assertTrue(crash.startswith("Overnight play tests FAILED"), crash[:200])
+        self.assertTrue(crash.startswith("Overnight play tests stopped early"), crash[:200])
         self.assertIn("Rule 1 refused", crash)
         self.assertIn("last 40 lines of run.log", crash)
         self.assertIn("missing", crash, "the archive root is missing and the email says so")

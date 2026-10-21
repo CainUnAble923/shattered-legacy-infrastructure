@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.15
+
+### Staff
+- The Golems' emails are in plain English now: what happened comes first, then a "What to do" line ("Nothing to do, it keeps going" or the one thing to do), and the technical details at the bottom. Subjects start with "Needs you:" only when you have to act.
+- A finished prompt's email says in plain words what it changed, from a short "In plain words" section every prompt's notes now start with; the morning night-shift summary gets one such line per prompt.
+- Routine Golem emails (a prompt starting, a session opened by itself, a merge into main) no longer come on their own: they ride along in the next email. One finished prompt is one email.
+- The overnight test bot's emails and the Shard Console's question email have the same shape.
+
 ## 2026.10.21.14
 
 ### Added

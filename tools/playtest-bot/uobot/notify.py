@@ -10,6 +10,8 @@ import argparse
 import json
 import sys
 
+from uobot import mailshape
+
 TAIL = 40
 
 
@@ -19,34 +21,42 @@ def _duration(minutes):
 
 
 def before_text(short, items, checks, minutes, task, forced=False):
-    subject = "Overnight play tests starting: %d checks on %s%s" % (len(items), short, " (forced)" if forced else "")
-    body = ["The overnight play-test bot is starting on %s." % short, ""]
+    # cc-P157: the Golem emails' shape: what happens tonight in words, What to do, then the commit and the commands.
+    n = len(items)
+    subject = "Overnight play tests starting: " + ("a forced run" if forced else "%d item%s to check" % (n, "" if n == 1 else "s"))
     if items:
-        body.append("Play-test items with work tonight (open, with a bot check that has not run on this code):")
-        body += ["  %s: %s" % (i["id"], i["reason"]) for i in items]
+        lead = ("The overnight test bot is starting its play tests on the scratch shard. It checks %d play-test item%s "
+                "with new work tonight and takes about %s." % (n, "" if n == 1 else "s", _duration(minutes)))
     else:
-        body.append("No item has work: this run was started with -Force.")
-    body += ["",
-             "It runs all %d checks (some hand results to others), so the report covers more than the list above." % checks,
-             "Expected length: about %s (build, boot, checks, soak)." % _duration(minutes),
-             "",
-             "To stop it:",
-             '  schtasks /End /TN "%s"' % task,
-             "  docker compose -p sl-uo-bot down -t 60",
-             "The first stops the script; the second stops the scratch shard (sl-modernuo-bot only, never live or test).",
-             "A summary email follows when it finishes."]
-    return subject, "\n".join(body)
+        lead = ("The overnight test bot is starting its play tests on the scratch shard because it was told to run, though "
+                "no item has new work. It takes about %s." % _duration(minutes))
+    details = ["Code under test: %s." % short, ""]
+    if items:
+        details.append("Play-test items with work tonight (open, with a bot check that has not run on this code):")
+        details += ["  %s: %s" % (i["id"], i["reason"]) for i in items]
+    else:
+        details.append("No item has work: this run was started with -Force.")
+    details += ["",
+                "It runs all %d checks (some hand results to others), so the report covers more than the list above." % checks,
+                "Expected length: about %s (build, boot, checks, soak)." % _duration(minutes),
+                "",
+                "To stop it:",
+                '  schtasks /End /TN "%s"' % task,
+                "  docker compose -p sl-uo-bot down -t 60",
+                "The first stops the script; the second stops the scratch shard (sl-modernuo-bot only, never live or test)."]
+    return subject, mailshape.shape(lead, "Nothing to do. The results come by email when it finishes.", details="\n".join(details))
 
 
 def crash_text(short, reason, log_lines, run_dir, archive_note=""):
-    subject = "Overnight play tests FAILED on %s: %s" % (short, reason)
+    subject = "Overnight play tests stopped early: %s" % reason
     tail = list(log_lines)[-TAIL:]
-    body = ["The overnight play-test run stopped before it finished.", "",
-            "Reason: %s" % reason, "Run folder: %s" % run_dir, ""]
+    lead = "The overnight test bot stopped before it finished: %s. Nothing was marked on the play-test page." % reason
+    details = ["Code under test: %s." % short, "Run folder: %s" % run_dir, ""]
     if archive_note:
-        body += [archive_note, ""]
-    body += ["The last %d lines of run.log:" % TAIL, ""] + tail
-    return subject, "\n".join(body)
+        details += [archive_note, ""]
+    details += ["The last %d lines of run.log:" % TAIL, ""] + tail
+    return subject, mailshape.shape(lead, "if it happens again tomorrow night, ask CC on the game PC to look at the run log "
+                                          "(Details say where it is).", details="\n".join(details))
 
 
 def write(path, subject, body):

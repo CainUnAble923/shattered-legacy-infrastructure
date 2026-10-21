@@ -9,6 +9,8 @@ import json
 import os
 import sys
 
+from uobot import mailshape
+
 
 def load(path, default=None):
     try:
@@ -75,21 +77,46 @@ def main(argv):
     out += ["", "Real shards before: `%s`" % json.dumps(before), "", "Real shards after: `%s`" % json.dumps(after), ""]
     with open(os.path.join(a.out, "report.md"), "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(out))
-    mail = [head, "", head + ".", "Code under test: %s." % world.get("code", "?"), ""]
+    # cc-P157: the Golem emails' shape: the night in words, what needs a look, What to do, then Details.
+    details = [head + ".", "Code under test: %s." % world.get("code", "?"), ""]
     for c in bad:
         last = c["runs"][-1] if c["runs"] else {}
-        mail.append("%s %s (%d/%d): %s" % (c["result"], c["id"], c["passes"], len(c["runs"]), (last.get("evidence") or "")[:300]))
+        details.append("%s %s (%d/%d): %s" % (c["result"], c["id"], c["passes"], len(c["runs"]), (last.get("evidence") or "")[:300]))
     if soak:
-        mail.append("Soak: %d min, %d loud log lines, memory %s -> %s MB%s." % (
+        details.append("Soak: %d min, %d loud log lines, memory %s -> %s MB%s." % (
             soak["minutes"], soak.get("loudCount", 0), soak.get("memStartMB"), soak.get("memEndMB"),
             ("; " + "; ".join(soak["errors"])) if soak.get("errors") else ""))
     if a.rule1_changed:
-        mail.append("RULE 1: these real shards changed during the run: " + a.rule1_changed)
+        details.append("RULE 1: these real shards changed during the run: " + a.rule1_changed)
     if a.archive_note:
-        mail.append(a.archive_note)
-    mail += ["", "Report: " + os.path.join(a.out, "report.md")]
+        details.append(a.archive_note)
+    details += ["", "Report: " + os.path.join(a.out, "report.md")]
+    n = len(checks)
+    parts = [w for w in ("%d passed" % count["PASS"] if count["PASS"] else "", "%d failed" % count["FAIL"] if count["FAIL"] else "",
+                         "%d %s flaky" % (count["FLAKY"], "was" if count["FLAKY"] == 1 else "were") if count["FLAKY"] else "",
+                         "%d could not run" % count["ERROR"] if count["ERROR"] else "") if w]
+    said = parts[0] if len(parts) == 1 else ", ".join(parts[:-1]) + " and " + parts[-1] if parts else ""
+    if not n:
+        lead = "The overnight test bot ran no checks on the scratch shard."
+    elif not bad:
+        lead = "The overnight test bot ran %s on the scratch shard, and %s." % (
+            "1 check" if n == 1 else "%d checks" % n, "it passed" if n == 1 else "all of them passed")
+    else:
+        lead = "The overnight test bot ran %d check%s on the scratch shard: %s." % (n, "" if n == 1 else "s", said)
+    if a.rule1_changed:
+        lead += " The live or test shard changed while it ran, which the bot must never cause."
+    how = {"FAIL": "failed every run", "ERROR": "could not run"}
+    look = ["%s (%s) %s" % (c["id"], c["title"], how.get(c["result"]) or "passed %d of %d runs" % (c["passes"], len(c["runs"])))
+            for c in bad]
+    if a.rule1_changed:
+        do = "check the live and test shards first, then mark the checks above on the play-test page."
+    elif bad:
+        do = "look at the checks above on the play-test page and mark them."
+    else:
+        do = "Nothing to do."
+    body = mailshape.shape(lead, do, [("Needs a look", look)], "\n".join(details))
     with open(os.path.join(a.out, "email.txt"), "w", encoding="ascii", errors="replace", newline="\n") as f:
-        f.write("\n".join(mail) + "\n")
+        f.write(head + "\n\n" + body + "\n")
     print(head)
     return 0
 
