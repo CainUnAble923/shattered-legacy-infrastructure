@@ -29,6 +29,19 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.16
+
+### Added
+- Deployable traps: tinkers can craft eight trap kits (snare net, caltrops, gas, blast, dart, bear trap, alarm and shackle), and Remove Trap now sets them on the floor as well as disarming them, gaining skill both ways.
+- Traps only ever catch monsters, never players or pets. A trap works only while you stay within 12 tiles of it; the alarm reaches you anywhere on the same map.
+- A trap fires a few times and then sits spent until you re-set it by hand. Drop a poison potion on a gas trap, an explosion potion on a blast trap, or fukiya darts on a dart trap to load it. Your Poisoning skill decides how strong the gas is.
+- Damage from your traps counts as yours, so you get looting rights and loot box credit for what they help kill.
+- The Thieves' Den: a Journeyman can keep one more trap out, and a Master's traps work on bosses.
+- In the Rootdeep Burrows, the Echo hands trainees two practice nets in the Stacks: catch a rat with one to learn the trick. The Burrows floors also have a few traps of their own now. Watch your step.
+
+### Staff
+- New settings under clusterf.traps.*: pvp (off; when on, Felucca traps can hit players and flag the owner), presenceRange, decay times, area cap and every trap's numbers. [ClusterFSeedRootdeep places the eight Burrows floor traps on its next run.
+
 ## 2026.10.21.15
 
 ### Staff

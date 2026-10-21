@@ -395,6 +395,11 @@ public class RootdeepVaultVerification
         finally
         {
             ClusterFRootdeepSeeder.MapBuilt = mapBuilt;
+            foreach (var row in ClusterFRootdeepSeeder.FloorTraps) // cc-P275: the seeder now lays these too
+            {
+                ClusterFRootdeepSeeder.FindFloorTrap(Map.Trammel, row)?.Delete();
+            }
+
             foreach (var item in placed)
             {
                 if (item is Spawner s)
