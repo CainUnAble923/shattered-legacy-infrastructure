@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.17
+
+### Added
+- Halloween decorations at the banks: pumpkins, carved pumpkins, lanterns, candles, cobwebs, bones and the odd cauldron or scarecrow around the main banks of New Haven, Britain, Moonglow, Trinsic, Vesper, Minoc, Yew, Skara Brae and Jhelom (Trammel and Felucca), Luna and Umbra, Zento and the Royal City, up from October 24 to November 2.
+
+### Staff
+- [ClusterFHalloweenDecor status, preview, place and clear (a bank key or facet name limits the last three; clear dryrun lists) show, put up or take down the Halloween decor. It goes up and comes down by itself on clusterf.seasonal.halloween.start and .end (MM-DD, server-local dates, defaults 10-24 and 11-02); clusterf.seasonal.halloween.automatic false stops the automatic check. Clear removes only what it placed, tracked by serial across restarts.
+
 ## 2026.10.20.16
 
 ### Added
