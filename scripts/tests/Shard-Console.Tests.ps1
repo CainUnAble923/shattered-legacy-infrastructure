@@ -4675,8 +4675,12 @@ Fact 'P106_OneEmailPerQuestion' {
     $s = New-P106State -Tail $p106D94
     $m = @(Get-QuestionMails -State $s -Config $config -Sent @())
     Assert-Equal 1 $m.Count
-    Assert-Equal '[Shard] Live is waiting for an answer: Delete the object and continue? (y/n/a)' $m[0].Subject
+    Assert-Equal '[Shard] Needs you: the Live shard is waiting for an answer' $m[0].Subject
     Assert-True ($m[0].Body -match 'Server\.ClusterFAccountPersistence' -and $m[0].Body -match 'Shard question tab') $m[0].Body
+    # cc-P157: the Golem emails' shape: the question in words first, What to do, the technical part under Details.
+    $top = $m[0].Body.Substring(0, [Math]::Max(0, $m[0].Body.IndexOf("`r`nDetails`r`n-------`r`n")))
+    Assert-True ($top -match '^The Live shard stopped while it was starting and is asking a question on its console: Delete the object and continue\? \(y/n/a\)' -and $top -match "`r`nWhat to do: answer it in the Shard Console, on the Shard question tab\.") ('the plain part: ' + $top)
+    Assert-True ($top -notmatch 'ClusterF|docker|\d{4}-\d{2}-\d{2}|phrase:') ('nothing technical above Details: ' + $top)
     Assert-Equal 0 @(Get-QuestionMails -State $s -Config $config -Sent @($m[0].Signature)).Count 'the same question is not mailed twice'
     $s2 = New-P106State -Tail ($p106D94 -replace '13:06:17\.988048937Z', '13:07:17.988048937Z')
     Assert-Equal 1 @(Get-QuestionMails -State $s2 -Config $config -Sent @($m[0].Signature)).Count 'a new question is'

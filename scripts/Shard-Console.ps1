@@ -3967,8 +3967,11 @@ function Get-QuestionMails {
         $sig = $sh.Container + '|' + $ss.Question.Signature
         if (@($Sent) -contains $sig) { continue }
         $name = $sh.Label.Substring(0, 1) + $sh.Label.Substring(1).ToLowerInvariant()
-        $body = @(Get-QuestionText $ss.Question $sh $Config) + @('', 'Answer it in the Shard Console, on the Shard question tab. This email is sent once per question.')
-        [pscustomobject]@{ Shard = $k; Signature = $sig; Subject = ('[Shard] ' + $name + ' is waiting for an answer: ' + $ss.Question.Prompt); Body = ($body -join "`r`n") }
+        # cc-P157: the Golem emails' shape: what happened in words, What to do, then the technical part under Details.
+        $body = @(('The ' + $name + ' shard stopped while it was starting and is asking a question on its console: ' + $ss.Question.Prompt + ' It waits until someone answers.'), '',
+            "What to do: answer it in the Shard Console, on the Shard question tab. Stopping the shard there is safe too, since nothing has loaded yet.", '',
+            'Details', '-------') + @(Get-QuestionText $ss.Question $sh $Config) + @('', 'This email is sent once per question.')
+        [pscustomobject]@{ Shard = $k; Signature = $sig; Subject = ('[Shard] Needs you: the ' + $name + ' shard is waiting for an answer'); Body = ($body -join "`r`n") }
     }
 }
 
