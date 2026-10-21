@@ -251,6 +251,33 @@ replace_file "$PATCHES/TreasureMap.cs"      "Projects/UOContent/Items/Maps/Treas
 replace_file "$PATCHES/TreasureMapChest.cs" "Projects/UOContent/Items/Containers/TreasureMapChest.cs"
 echo "[patches] Full-file replacements done."
 
+# Install a file of ours at a path the pinned tree does NOT have. The mirror image of replace_file: if the
+# destination already exists, upstream has grown a file of that name and a plain cp would silently shadow it,
+# so that is a build failure to reconcile by hand.
+install_file() {
+    local src="$1" dest="$2"
+
+    if [ ! -f "$src" ]; then
+        fail "$(basename "$src") - source missing at $src"
+        return
+    fi
+    if [ -e "$dest" ]; then
+        fail "$(basename "$src") - destination $dest already exists in pinned upstream; reconcile by hand"
+        return
+    fi
+    cp "$src" "$dest"
+}
+
+echo "[patches] Installing build property files..."
+# cc-P232 (closes D93). MailKit 4.18.0 in UOContent.csproj pulls System.Security.Cryptography.Pkcs 10.0.0 in through
+# MimeKit, and 10.0.0 to 10.0.12 carry two NuGet advisories (GHSA-2fmv-rv2c-59x7 moderate, GHSA-846f-f764-76mx high,
+# both fixed in 10.0.13) that pinned Directory.Build.props turns into restore errors (TreatWarningsAsErrors). The
+# Dockerfile carried /p:NuGetAuditLevel=critical as a workaround, which let every moderate and high advisory through.
+# This file pins Pkcs to [10.0.13, ) for UOContent only: upstream's own fix, commit 6ce2b4770 (2026-10-17), as one
+# MSBuild import rather than a patch to UOContent.csproj. Delete both when the pinned commit includes that change.
+install_file "$PATCHES/Directory.Build.targets" "Directory.Build.targets"
+echo "[patches] Build property files installed."
+
 echo "[patches] Applying .patch files..."
 # cc-P38. CraftItem.cs and CraftContext.cs were full-file replacements until the bump to d4531cd9. A replacement hides
 # upstream drift completely: that bump changed both upstream files (+636/-65, T2A craft menus #2476 and the
