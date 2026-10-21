@@ -608,7 +608,7 @@ public sealed record ClusterFBuilderHue(Serial Serial, int Hue);
 /// (Server/Serialization/GenericPersistence.cs), so undo survives a restart and always matches the save it was loaded
 /// with: an item a wipe deleted after the last save is still in that save, and so is the record of deleting it, or
 /// neither is. World mode is not saved: it is off after every restart. Versioned; an unknown version fails loudly, as
-/// ClusterFWinterDecorState does.
+/// ClusterFSeasonalState does.
 /// </summary>
 public class ClusterFVisualBuilderStore : GenericPersistence
 {

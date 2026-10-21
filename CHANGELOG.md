@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.22
+
+### Added
+- New Haven dresses up for winter from December 1 to January 6: a lit Christmas tree, garlands, candles and presents in the bank, small lit trees at the bank's doors, on the square and along the main roads, snow here and there, and an advent calendar on the bank's wall with a small gift behind each day's door, one door a day in December.
+
+### Staff
+- [ClusterFWinterDecor status, preview, place and clear (an area may follow: bank, square, main road, inn ...) show, put up or take down the winter decor; it goes up and comes down by itself on clusterf.seasonal.winter.start and .end (12-01 and 01-06), and clear removes only what it placed, by serial. The old clusterf.winterDecor.enabled setting is no longer read; clusterf.seasonal.winter.automatic replaces it. The art ships in the player package.
+
 ## 2026.10.21.21
 
 ### Changed

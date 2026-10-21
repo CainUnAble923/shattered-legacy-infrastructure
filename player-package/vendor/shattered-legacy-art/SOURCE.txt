@@ -421,3 +421,41 @@ Records:     one tiledata record per piece on its base ID (179); animdata for th
              pit, two floating crystals, three arc orbs). Server copy: GuildHallDecorArt.Pieces (generated).
 Placed by:   nothing yet. Staff seeders [DecorAlembicHall, [DecorSmithsHall, [DecorArtificersHall and
              [DecorHallStructure place a template (design\guild-hall-decor\templates.json) on the test shard only.
+
+Winter decor, second block (cc-P266, F-22): art 13192-13238 (0x3388-0x33B6), gump 22469
+----------------------------------------------------------------------------------------
+Two more of MrRiots' packs, downloaded 2026-10-18 by the daily art task and kept at D:\UO\third-party\
+(originals in _zips\, SOURCE.txt in each folder). Both state their terms on the page; credit MrRiots wherever the
+shard credits art. Both are built partly from OSI/EA assets: they ship only as our PNG overrides over placeholder
+IDs, never as a part of an EA file.
+  MrRiots, "Christmas Art for UO" (2023), https://www.servuo.dev/archive/mrriots-christmas-art-for-uo.2013/
+           "Per usual, use these freely and edit them/label as you wish." The animated trees are his with thanks
+           to Vorspire (his words). Folder mrriots-christmas: the two animated Christmas trees, the ribbon
+           garlands, the tall candle stand, the short candle, the antler candelabra, the advent candles, the
+           poinsettia, the potted tree, the gnome, the toy soldier and the dragon plushie.
+  MrRiots, "Christmas Calendar [Gump/Item]" (2023), https://www.servuo.dev/archive/mrriots-christmas-calendar-gump-item.2069/
+           "Use as you wish, edit as you wish, enjoy!" Folder mrriots-christmas-calendar: the calendar item
+           (two facings) and the 400 x 400 calendar gump.
+Every ID's file is in registry.csv. The frames of the animated pieces, in order:
+  13192-13202  christmas tree (large)  Christmas Tree\xmastree 02.bmp .. 12.bmp
+  13203-13213  christmas tree (small)  ChristmasTreeSmall\xmastree 02.bmp .. 12.bmp
+  13216-13219  candle stand            TallCandle\1.bmp .. 4.bmp (Off.bmp not used)
+  13220-13223  candle                  ShortCandle\1.bmp .. 4.bmp (off.bmp not used)
+  13224-13227  antler candelabra       Antlier\Antlier.bmp, Antlier1.bmp, Antlier2.bmp, Antlier3.bmp
+  13228-13231  advent candles          AdventCandles\1.bmp .. 4.bmp (the n-n.bmp facing and Off.bmp not used)
+  gumps\22469.png                     AdventCalendar.bmp, the 25-door calendar (WinterAdventCalendarGump)
+What was done to the pixels (notes\cc-P266-tools\convert_art.py, scripts\anchor-art-frames.py --keep-geometry
+--black-transparent): the 24-bit BMP became a PNG, and pure black (0,0,0) became transparent, as UO art means it.
+Nothing else: no recolouring, no scaling, no redrawing, no cut and no pad. The gump has no pure black pixel and
+ships opaque. The tool re-reads every PNG and checks it against its source.
+Records (records.json; the server's copy is ClusterFWinterDecorArt.Records), the flags from OSI's own art as read
+from the client's tiledata.mul on 2026-10-21 (notes\cc-P266-tools\records.py): the large tree 0x01004041 height 20
+(OSI's tree 0xCCA, Animation added); the small tree the same at height 10 (OSI's small banana tree 0xCAB); the
+candle stand 0x05804040 height 15 light 29 (OSI's tall candelabra 0xB26); the candle 0x01804000 height 1 light 2
+(OSI's lit candle 0xB1A); the antler candelabra 0x01808040 height 5 light 1 (OSI's candelabra 0xB1D); the advent
+candles 0x01804000 height 3 light 2 (OSI's holiday candle 0x236E without PartialHue); the potted tree 0x00004040
+height 5 (OSI's potted tree 0x11C8). Animdata: every animated piece runs its frames at interval 3, as OSI's lit
+candle, candelabra and holiday candle do; the pack gives no timing of its own.
+Not used from these packs: the second facings, the unlit frames, the table cloths, eggnog, hot cocoa, horseshoes,
+the elk trophy, the figurines, the other plushies, the angel box, the second tall candle and the mistletoe. The
+Hestia Christmas fireplace (hestia-christmas-fireplace) was left out: its page states no terms.

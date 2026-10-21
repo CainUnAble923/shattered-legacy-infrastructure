@@ -150,7 +150,7 @@ Fact 'TheRecordsLandAsTheExpectedBytesAtTheExpectedOffsetsAndNothingElseChanges'
     Assert-Equal 0 $outsideT "tiledata: nothing changed outside the $($tSpans.Count) records ($changedT bytes changed in all)"
     Assert-Equal 0 $outsideA "animdata: nothing changed outside the $($aSpans.Count) records ($changedA bytes changed in all)"
     Assert-True ($changedT -ge 120) 'the stone and kitsune records at least'
-    foreach ($t in @($rj.tiledata | Where-Object { [int]$_.id -ge 15424 })) {
+    foreach ($t in @($rj.tiledata | Where-Object { [int]$_.id -ge 15424 -or ([int]$_.id -ge 13192 -and [int]$_.id -le 13238) })) {
         $o = 493568 + [Math]::Floor([int]$t.id / 32) * 1316 + 4 + ([int]$t.id % 32) * 41
         Assert-Equal $t.name ([Text.Encoding]::ASCII.GetString($t2, $o + 21, 20).TrimEnd([char]0)) "winter record $($t.id) written with its name"
     }
@@ -246,15 +246,18 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     $stones = @($rec.tiledata | Where-Object { $_.name -eq 'shattered runestone' })
     Assert-Equal (@($stones.id) -join ',') ($ids -join ',') 'design base IDs'
     # cc-P34: the winter decor (15424-15470) has records of its own, checked by the next fact.
-    Assert-Equal (@($rec.animdata | Where-Object { [int]$_.id -lt 15424 } | ForEach-Object { $_.id }) -join ',') ($ids -join ',') 'animdata IDs'
+    # cc-P266: the second winter block (13192-13238) lies below 15424 and has animdata of its own, checked by the winter fact.
+    $notWinter2 = { [int]$_.id -lt 13192 -or [int]$_.id -gt 13238 }
+    Assert-Equal (@($rec.animdata | Where-Object { [int]$_.id -lt 15424 } | Where-Object $notWinter2 | ForEach-Object { $_.id }) -join ',') ($ids -join ',') 'animdata IDs'
 
     # cc-P62: the fox ears and tail. KitsuneEarsTail.cs carries the server's copy of its record.
     $kc = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\KitsuneEarsTail.cs'))
     # cc-P50: the chest mimic (15472-15489) has records of its own, checked by its own fact.
     # cc-P237: New Haven's community art (15496-15529) too, checked by its own fact; cc-P236: so do the satchel
     # icons (13184-13189); cc-P242: so does the flying loot (15536-15589);
-    # cc-P243: so does the League Hall's decor (15592-15629); cc-P265: so does the guild hall decor (28016-28294).
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28294) })
+    # cc-P243: so does the League Hall's decor (15592-15629); cc-P265: so does the guild hall decor (28016-28294);
+    # cc-P266: the second winter block (13192-13238), checked with the first by the winter fact.
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28294) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -285,7 +288,7 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
         Assert-Equal $h $t.height 'height'
         Assert-Equal $n $t.name 'name'
     }
-    foreach ($a in @($rec.animdata | Where-Object { [int]$_.id -lt 15424 })) {
+    foreach ($a in @($rec.animdata | Where-Object { [int]$_.id -lt 15424 } | Where-Object $notWinter2)) {
         foreach ($f in $a.frames) {
             Assert-True (@($reg | Where-Object { [int]$_.id -eq ([int]$a.id + [int]$f) }).Count -eq 1) "frame $([int]$a.id + [int]$f) is registered"
         }
@@ -295,10 +298,11 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P147 added the three Achievements button gumps (22456-22458) without moving these counts; cc-P237 counts them
     # and adds its 34 art IDs (15496-15529); cc-P236 the six satchel icons (13184-13189); cc-P241 the ten achievement
     # category icon gumps (22459-22468); cc-P243 the 38 League Hall decor IDs (15592-15629);
-    # cc-P242 the 54 flying loot frames (15536-15589); cc-P265 the 279 guild hall decor IDs (28016-28294).
-    Assert-Equal 561 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art
-    Assert-Equal 15 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458 and 22459-22468'
-    Assert-Equal 521 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+    # cc-P242 the 54 flying loot frames (15536-15589); cc-P265 the 279 guild hall decor IDs (28016-28294);
+    # cc-P266 the 47 second-block winter decor IDs (13192-13238) and the advent calendar gump 22469.
+    Assert-Equal 609 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump
+    Assert-Equal 16 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468 and 22469'
+    Assert-Equal 568 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
 
 Fact 'TheChestMimicRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
@@ -349,23 +353,25 @@ Fact 'TheChestMimicRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
 }
 
 Fact 'TheWinterDecorRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
-    # cc-P34 (F-22). ClusterFWinterDecorSeeder.cs carries the server's copy of the winter records
-    # (ClusterFWinterDecorArt.Records); records.json carries the players'. Same values, every frame registered,
-    # every registered art ID has its PNG and no PNG is unregistered (P26's rule: the build counts PNGs from the registry).
+    # cc-P34 (F-22), widened by cc-P266 to the second block (13192-13238). ClusterFWinterDecorSeeder.cs carries the server's
+    # copy of the winter records (ClusterFWinterDecorArt.Records, P34's seven then P266's seven, as records.json holds them);
+    # records.json carries the players'. Same values (the light shape too), every frame registered, every registered art ID
+    # has its PNG and no PNG is unregistered (P26's rule: the build counts PNGs from the registry); the calendar gump has its PNG.
     $cs  = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\ClusterFWinterDecorSeeder.cs'))
     $rec = [IO.File]::ReadAllText($records) | ConvertFrom-Json
     $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
-    $flagValue = @{ Background = 0x1; Wall = 0x10; Impassable = 0x40; Surface = 0x200; NoShoot = 0x2000; ArticleA = 0x4000; ArticleAn = 0x8000; LightSource = 0x800000; Animation = 0x1000000 }
-    $csRows = @([regex]::Matches($cs, 'new\((0x[0-9A-F]+), "([^"]+)", ([^,]+), (\d+), (\d+)\)') | ForEach-Object {
+    $flagValue = @{ Background = 0x1; Wall = 0x10; Impassable = 0x40; Surface = 0x200; NoShoot = 0x2000; ArticleA = 0x4000; ArticleAn = 0x8000; LightSource = 0x800000; Animation = 0x1000000; Unknown3 = 0x4000000 }
+    $csRows = @([regex]::Matches($cs, 'new\((0x[0-9A-F]+), "([^"]+)", ([^,]+), (\d+), (\d+)(?:, (\d+))?\)') | ForEach-Object {
         $v = 0
         foreach ($nm in ($_.Groups[3].Value -split '\|' | ForEach-Object { $_.Trim() -replace '^TileFlag\.', '' })) {
             if (-not $flagValue.ContainsKey($nm)) { throw "unknown flag $nm in C#" }
             $v = $v -bor $flagValue[$nm]
         }
-        [pscustomobject]@{ Id = [Convert]::ToInt32($_.Groups[1].Value, 16); Name = $_.Groups[2].Value; Flags = $v; Weight = [int]$_.Groups[4].Value; Height = [int]$_.Groups[5].Value }
+        [pscustomobject]@{ Id = [Convert]::ToInt32($_.Groups[1].Value, 16); Name = $_.Groups[2].Value; Flags = $v; Weight = [int]$_.Groups[4].Value; Height = [int]$_.Groups[5].Value; Light = $(if ($_.Groups[6].Success) { [int]$_.Groups[6].Value } else { 0 }) }
     })
-    $winter = @($rec.tiledata | Where-Object { [int]$_.id -ge 15424 -and [int]$_.id -le 15470 })
-    Assert-Equal 7 $csRows.Count 'seven records in C#'
+    $isWinter = { ([int]$_.id -ge 15424 -and [int]$_.id -le 15470) -or ([int]$_.id -ge 13192 -and [int]$_.id -le 13238) }
+    $winter = @($rec.tiledata | Where-Object $isWinter)
+    Assert-Equal 14 $csRows.Count 'fourteen records in C#: P34 seven, P266 seven'
     Assert-Equal (@($csRows.Id) -join ',') (@($winter | ForEach-Object { [int]$_.id }) -join ',') 'the same IDs, in the same order'
     for ($i = 0; $i -lt $winter.Count; $i++) {
         $j = $winter[$i]; $c = $csRows[$i]
@@ -373,10 +379,11 @@ Fact 'TheWinterDecorRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
         Assert-Equal $c.Flags ([Convert]::ToInt32(($j.flags -replace '^0x', ''), 16)) "flags of $($c.Id)"
         Assert-Equal $c.Weight ([int]$j.weight) "weight of $($c.Id)"
         Assert-Equal $c.Height ([int]$j.height) "height of $($c.Id)"
+        Assert-Equal $c.Light ([int]$j.layer) "light shape of $($c.Id) (records.json keeps it in layer, the tiledata quality byte)"
         Assert-True ($j.name.Length -le 19) "name of $($c.Id) fits 19 characters"
     }
-    $anims = @($rec.animdata | Where-Object { [int]$_.id -ge 15424 -and [int]$_.id -le 15470 })
-    Assert-Equal '15424,15429,15434,15438' (@($anims | ForEach-Object { [int]$_.id }) -join ',') 'statue, firepit, two stoves'
+    $anims = @($rec.animdata | Where-Object $isWinter)
+    Assert-Equal '15424,15429,15434,15438,13192,13203,13216,13220,13224,13228' (@($anims | ForEach-Object { [int]$_.id }) -join ',') 'statue, firepit, two stoves; two trees, two candles, the candelabra, the advent candles'
     foreach ($a in $anims) {
         Assert-True (@($winter | Where-Object { [int]$_.id -eq [int]$a.id }).Count -eq 1) "$($a.id) has a tiledata record too"
         foreach ($f in $a.frames) {
@@ -388,6 +395,24 @@ Fact 'TheWinterDecorRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
         Assert-True (Test-Path -LiteralPath (Join-Path $art ($r.id + '.png'))) "PNG for $($r.id)"
         Assert-True ($r.license -like 'none stated*') "license of $($r.id)"
     }
+    # cc-P266: the second block carries MrRiots' own words and the credit rule; its rows are 47, its gump one.
+    $second = @($reg | Where-Object { $_.kind -eq 'art' -and [int]$_.id -ge 13192 -and [int]$_.id -le 13238 })
+    Assert-Equal 47 $second.Count 'P266 winter art rows'
+    foreach ($r in $second) {
+        Assert-True (Test-Path -LiteralPath (Join-Path $art ($r.id + '.png'))) "PNG for $($r.id)"
+        Assert-True ($r.license -like 'MrRiots: "*use*as you wish*') "license of $($r.id) quotes the author: $($r.license)"
+        Assert-True ($r.license -like '*credit MrRiots*') "license of $($r.id) credits MrRiots"
+    }
+    $cal = @($reg | Where-Object { $_.kind -eq 'gump' -and [int]$_.id -eq 22469 })
+    Assert-Equal 1 $cal.Count 'the advent calendar gump is registered once'
+    $calPng = Join-Path $pkg 'vendor\shattered-legacy-art\gumps\22469.png'
+    Assert-True (Test-Path -LiteralPath $calPng) 'PNG for gump 22469'
+    $cb = [IO.File]::ReadAllBytes($calPng)
+    # [int] casts: a [byte] shifted left stays a byte in PowerShell 5.1 (1 -shl 8 on a byte is 0), which the 44 x 44 icons never showed.
+    $cw = ([int]$cb[16] -shl 24) -bor ([int]$cb[17] -shl 16) -bor ([int]$cb[18] -shl 8) -bor [int]$cb[19]
+    $ch = ([int]$cb[20] -shl 24) -bor ([int]$cb[21] -shl 16) -bor ([int]$cb[22] -shl 8) -bor [int]$cb[23]
+    Assert-Equal '400x400' "${cw}x${ch}" 'size of 22469.png'
+    Assert-True ($cs -match 'GumpId = 22469;' -or ([IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\WinterAdventCalendar.cs')) -match 'GumpId = 22469;')) 'the server shows gump 22469'
     $pngs = @(Get-ChildItem -LiteralPath $art -Filter '*.png' | ForEach-Object { [int]$_.BaseName })
     Assert-Equal @($reg | Where-Object { $_.kind -eq 'art' }).Count $pngs.Count 'PNG count equals the registry art rows'
     foreach ($p in $pngs) { Assert-True (@($reg | Where-Object { [int]$_.id -eq $p -and $_.kind -eq 'art' }).Count -eq 1) "$p.png is registered" }
