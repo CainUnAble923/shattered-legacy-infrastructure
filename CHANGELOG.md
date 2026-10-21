@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.11
+
+### Added
+- The world map now has a fog of war: it starts dark and clears where you have walked, and what you have explored is kept across logins. Choose "Fog of war" in the world map's right-click menu to turn the fog off. Update your game through the launcher to see it.
+
+### Staff
+- The fog of war is drawn by our TazUO build (client patch 0004), so players see it only once a player package built with that client is published; until then the server's exploration data is sent but not shown.
+
 ## 2026.10.21.10
 
 ### Staff
