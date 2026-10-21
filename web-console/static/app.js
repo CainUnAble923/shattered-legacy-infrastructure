@@ -331,6 +331,11 @@
     }
     var rl = readyLine(c.ready);
     if (rl) li.appendChild(rl);
+    // cc-P219: whether its PC can run a Legion script test in TazUO (the readiness check says; not part of the verdict).
+    if (c.ready && c.ready.legionTests) {
+      var lt = c.ready.legionTests;
+      li.appendChild(el('div', lt.ok ? 'meta' : 'warn', lt.ok ? 'Legion script tests: can run here' : 'Legion script tests: cannot run here (' + lt.why + ')'));
+    }
     // cc-P215: its own test-shard accounts; the passwords are copied on a press, never shown on the card.
     if (c.testAccounts) {
       var ta = el('div', 'meta testaccounts');

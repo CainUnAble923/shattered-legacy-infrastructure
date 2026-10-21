@@ -84,10 +84,15 @@ def ready_summary(doc):
     if not isinstance(doc, dict) or doc.get("verdict") not in ("READY", "NOT READY"):
         return None
     checks = doc.get("checks") if isinstance(doc.get("checks"), list) else []
-    return {"verdict": doc["verdict"], "at": str(doc.get("at") or "")[:19], "summary": str(doc.get("summary") or "")[:200],
-            "machine": str(doc.get("machine") or ""),
-            "failed": [str(c.get("name") or "?")[:40] for c in checks if isinstance(c, dict) and not c.get("ok")],
-            "laptop": doc.get("laptop") if isinstance(doc.get("laptop"), dict) else None}
+    out = {"verdict": doc["verdict"], "at": str(doc.get("at") or "")[:19], "summary": str(doc.get("summary") or "")[:200],
+           "machine": str(doc.get("machine") or ""),
+           "failed": [str(c.get("name") or "?")[:40] for c in checks if isinstance(c, dict) and not c.get("ok")],
+           "laptop": doc.get("laptop") if isinstance(doc.get("laptop"), dict) else None}
+    # cc-P219: whether that PC can run a Legion script test (Test-LegionScript.ps1), and why not; never part of the verdict.
+    lt = doc.get("legionTests")
+    if isinstance(lt, dict):
+        out["legionTests"] = {"ok": bool(lt.get("ok")), "why": str(lt.get("why") or "")[:300]}
+    return out
 
 
 # --- the glow behind a Golem's portrait (cc-P207) ---------------------------------------------------------------------
