@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.17
+
+### Staff
+- The web console's Golem cards glow behind each portrait so you can tell from across the room what a Golem is doing: a steady pulse in its metal while it works, slower and dimmer when it has been quiet for 10 minutes, a faint ring while it waits, a fast amber pulse when it needs you or has stalled, and no glow (faded) when it is off or offline. The "?" by Golems explains them.
+
 ## 2026.10.20.16
 
 ### Added

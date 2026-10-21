@@ -44,7 +44,12 @@
     <!-- cc-P187: which Golem the Controls act for. -->
     <div class="card" id="picker-card" hidden><h2>Pick the Golem</h2><ul id="picker" class="picklist golempick"></ul><p id="picker-note" class="quiet"></p></div>
     <!-- cc-P186: every Golem: machine, lanes, state, its readiness check, its portrait, its own buttons. -->
-    <div class="card" id="golem-team-card" hidden><h2>Golems</h2><ul id="golem-team" class="list"></ul></div>
+    <!-- cc-P207: the glow behind each portrait; "?" shows what its five looks mean. -->
+    <div class="card" id="golem-team-card" hidden><h2>Golems<button type="button" id="glow-help" class="glow-help" aria-expanded="false" aria-controls="glow-legend"
+      title="Portrait glow: working = steady pulse in its metal; quiet 10+ min = slower, dimmer; waiting = faint ring; needs you = fast amber pulse; off or offline = no glow, faded">?</button></h2>
+      <p id="glow-legend" class="glow-legend" hidden><span class="portrait-glow glow-working metal-gold"></span>Working<span class="portrait-glow glow-quiet metal-gold"></span>Quiet 10+ min<span
+        class="portrait-glow glow-waiting metal-gold"></span>Waiting<span class="portrait-glow glow-needs"></span>Needs you<span class="portrait-glow glow-off"></span>Off or offline</p>
+      <ul id="golem-team" class="list"></ul></div>
     <div class="card" id="controls">
       <h2>Controls</h2>
       <p id="ctl-note" class="quiet"></p>

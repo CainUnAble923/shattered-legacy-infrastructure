@@ -1,0 +1,16 @@
+{
+ "schema": 1,
+ "generatedAt": "2026-10-20T09:35:11",
+ "state": "OFF",
+ "enabled": false,
+ "current": "",
+ "startedAt": "",
+ "lastActivityUtc": "",
+ "lastTool": "",
+ "needsYou": "",
+ "restReason": "",
+ "waitingForModel": "",
+ "stoppedPrompt": "",
+ "golemName": "Iron",
+ "branch": ""
+}

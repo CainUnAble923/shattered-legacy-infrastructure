@@ -204,17 +204,25 @@
     if (r.failed && r.failed.length && r.verdict !== 'READY') t += ' (failed: ' + r.failed.join(', ') + ')';
     return el('div', r.verdict === 'READY' ? 'ok' : 'warn', t);
   }
+  // cc-P207: the glow behind a card's portrait, from the card's glow (panels.glow_state): working, quiet, waiting, needs
+  // or off, in the Golem's own metal (metal-<name>). The words are the legend's, as the tooltip.
+  var GLOW_WORDS = { working: 'Working', quiet: 'Running but quiet (10+ min)', waiting: 'Waiting', needs: 'Needs you', off: 'Off or offline' };
+  function portraitNode(c, alt) {
+    var glow = GLOW_WORDS[c.glow] ? c.glow : 'off';
+    var wrap = el('span', 'portrait-glow glow-' + glow + ' metal-' + String(c.display || c.name || '').toLowerCase().replace(/[^a-z]+/g, '-'));
+    wrap.title = (c.display || c.name) + ': ' + GLOW_WORDS[glow];
+    var img = el('img', 'portrait');
+    img.src = c.portraitUrl; img.alt = alt; img.width = 48; img.height = 48;
+    wrap.appendChild(img);
+    return wrap;
+  }
   // cc-P208: Shadow Iron, the merge Golem (engine script): no lane, usage or Wake. Its last round, the tickets waiting,
   // the last merge and failure, a dirty-tree warning, a pause; its buttons are those with card 'merge' (Merge now,
   // Pause merging or Resume merging), run as the console's own (no Golem named: the scripts find the merge Golem).
   function mergeCard(c, a) {
     var li = el('li', 'golemcard mergecard');
     var top = el('div', 'cardhead');
-    if (c.portraitUrl) {
-      var img = el('img', 'portrait');
-      img.src = c.portraitUrl; img.alt = (c.display || c.name) + ' Golem'; img.width = 48; img.height = 48;
-      top.appendChild(img);
-    }
+    if (c.portraitUrl) top.appendChild(portraitNode(c, (c.display || c.name) + ' Golem'));
     top.appendChild(el('div', null, (c.display || c.name) + ' (merges every 10 minutes' + (c.machine ? ', ' + c.machine : '') + ')'));
     li.appendChild(top);
     var m = c.merge || null;
@@ -258,11 +266,7 @@
     var li = el('li', 'golemcard');
     var head = c.name + ' (' + [c.lane, c.engine, c.machine].filter(function (x) { return x; }).join(', ') + ')' + (c.integrator ? ', integrator' : '');
     var top = el('div', 'cardhead');
-    if (c.portraitUrl) {
-      var img = el('img', 'portrait');
-      img.src = c.portraitUrl; img.alt = c.name + ' Golem'; img.width = 48; img.height = 48;
-      top.appendChild(img);
-    }
+    if (c.portraitUrl) top.appendChild(portraitNode(c, c.name + ' Golem'));
     top.appendChild(el('div', null, head));
     li.appendChild(top);
     var s = c.state + (c.current ? ': ' + c.current + (c.branch && c.branch !== 'main' ? ' on ' + c.branch : '') : '') + (c.restReason ? ' (' + c.restReason + ')' : '');
@@ -1068,6 +1072,11 @@
     $('sheet').addEventListener('click', function (e) { if (e.target === $('sheet')) closeSheet(); });
     $('job-close').addEventListener('click', function () { if (!jobTimer) $('job').hidden = true; });
     $('reader-close').addEventListener('click', function () { $('reader').hidden = true; });
+    $('glow-help').addEventListener('click', function () {   // cc-P207
+      var open = $('glow-legend').hidden;
+      $('glow-legend').hidden = !open;
+      $('glow-help').setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
     poll(false);
     setInterval(function () { poll(false); }, POLL_MS);
     setInterval(stepStrips, 50);
