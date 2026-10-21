@@ -768,6 +768,15 @@ apply_patch "$PATCHES/BaseShield-arms-lore-wear.patch"
 apply_patch "$PATCHES/ArmsLore-field-maintenance.patch"
 apply_patch "$PATCHES/Repair-arms-lore-weaken.patch"
 
+# cc-P227 (F-28): the eight extended woods' bonuses, from customizations ClusterFWoodBonuses, one call each at the end of
+# BaseWeapon.OnCraft (bows, staves, clubs) and BaseArmor.OnCraft (wooden shields), after quality, Resource, the runic
+# and the exceptional bonuses are set. Pinned's own wood bonuses are BaseRanged's private switch, which knows only the
+# OSI woods; OnCraft is the one place every wood weapon and shield passes at craft time. Applied after the arms-lore
+# patches above (no hunk shares their lines). Notes: shard-migration notes/cc-P227-extended-wood-bonuses.md; pinned by
+# ExtendedWoodBonusesVerification.
+apply_patch "$PATCHES/BaseWeapon-wood-bonuses.patch"
+apply_patch "$PATCHES/BaseArmor-wood-bonuses.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

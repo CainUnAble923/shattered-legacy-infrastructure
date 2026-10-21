@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Items/Weapons/BaseWeapon.cs
++++ b/Projects/UOContent/Items/Weapons/BaseWeapon.cs
+@@ -762,6 +762,9 @@
+             }
+         }
+ 
++        // Shattered Legacy (cc-P227, F-28): the extended woods' bonuses on bows, staves and clubs.
++        ClusterFWoodBonuses.OnCraft(this);
++
+         return quality;
+     }
+ 

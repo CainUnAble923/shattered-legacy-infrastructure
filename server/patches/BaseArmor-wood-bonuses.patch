@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Items/Armor/BaseArmor.cs
++++ b/Projects/UOContent/Items/Armor/BaseArmor.cs
+@@ -613,6 +613,9 @@
+                 (tool as BaseRunicTool)?.ApplyAttributesTo(this);
+             }
+ 
++            // Shattered Legacy (cc-P227, F-28): the extended woods' bonuses on wooden shields.
++            ClusterFWoodBonuses.OnCraft(this);
++
+             return quality;
+         }
+ 
