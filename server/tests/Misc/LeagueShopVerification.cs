@@ -326,7 +326,7 @@ public class LeagueShopVerification
         original.LeagueTitles.Shown[0x5678u] = "ap-500";
 
         var (buffer, length) = Write(original.Serialize);
-        Assert.Equal(21, BitConverter.ToInt32(buffer, 0));
+        Assert.Equal(22, BitConverter.ToInt32(buffer, 0)); // cc-P238: 22
 
         var reader = new BufferReader(buffer);
         var copy = new ClusterFAccountData(reader);
@@ -338,8 +338,9 @@ public class LeagueShopVerification
         Assert.Equal(original.LeagueTitles.Owned.OrderBy(k => k), copy.LeagueTitles.Owned.OrderBy(k => k));
         Assert.Equal(original.LeagueTitles.Shown.OrderBy(kv => kv.Key), copy.LeagueTitles.Shown.OrderBy(kv => kv.Key));
 
-        // A v20 save is the same bytes with no title record and version 20: it reads with no titles.
-        var v20 = buffer.Take((int)length - TitleRecordLength(original.LeagueTitles)).ToArray();
+        // A v20 save is the same bytes with no title record and version 20: it reads with no titles. cc-P238: nor the
+        // v22 block record after it (empty: its version and a zero count, 8 bytes).
+        var v20 = buffer.Take((int)length - TitleRecordLength(original.LeagueTitles) - 8).ToArray();
         BitConverter.GetBytes(20).CopyTo(v20, 0);
         var old = new ClusterFAccountData(new BufferReader(v20));
         Assert.Empty(old.LeagueTitles.Owned);
@@ -349,7 +350,7 @@ public class LeagueShopVerification
         // A record version this build does not know is refused, not misread.
         var future = buffer.Take((int)length).ToArray();
         BitConverter.GetBytes(LeagueTitleRecord.CurrentVersion + 1)
-            .CopyTo(future, (int)length - TitleRecordLength(original.LeagueTitles));
+            .CopyTo(future, (int)length - TitleRecordLength(original.LeagueTitles) - 8); // cc-P238: the v22 tail follows
         Assert.Throws<System.IO.InvalidDataException>(() => new ClusterFAccountData(new BufferReader(future)));
     }
 

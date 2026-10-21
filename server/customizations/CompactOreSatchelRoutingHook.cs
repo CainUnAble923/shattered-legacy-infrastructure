@@ -90,6 +90,10 @@ public partial class Mining
         // Log ore discovery before routing so data is captured even if routing fails.
         TryLogDiscovery(m, item);
 
+        // cc-P238 (F-36): the logbook's record of the targeted 8 x 8 block, with the vein's own ore (before the gate below
+        // may swap it for iron).
+        ClusterFMinedBlocks.OnGive(m, item);
+
         // -- Progressive ore availability: apply gate after logging discovery ---
         // TryLogDiscovery has now created/updated the OreDiscoveryEntry (Discovered).
         // If the player hasn't reported this ore to the Archivist yet, substitute

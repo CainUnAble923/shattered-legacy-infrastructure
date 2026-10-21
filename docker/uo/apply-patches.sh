@@ -808,6 +808,14 @@ apply_patch "$PATCHES/Beverage-hiccup-achievement.patch"
 apply_patch "$PATCHES/Fishing-shoes-achievement.patch"
 apply_patch "$PATCHES/BaseExplosionPotion-self-blast-achievement.patch"
 
+# cc-P238 (F-36, ours): climbing boots. While a player stands on a climbed mountain tile they may mine, prospect and hop
+# only: PlayerMobile.CanBeHarmful refuses their attacks and harmful spells (harm done to them is the attacker's own
+# check, untouched), AllowSkillUse refuses taming, a new CheckSpellCast override refuses Mark, and HousePlacement.Check
+# refuses placement. Each line asks customizations ClusterFClimbing. Made against the tree every patch above leaves, so
+# they go last. Alternatives argued in shard-migration notes/cc-P238-climbing-boots.md; pinned by ClimbingBootsVerification.
+apply_patch "$PATCHES/PlayerMobile-climbed-tile-rules.patch"
+apply_patch "$PATCHES/HousePlacement-climbed-tile.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

@@ -83,6 +83,8 @@ public class ProspectorsLogbookGump : Gump
         // -- Header ------------------------------------------------------------
         AddLabel(W / 2 - 80, 12, 1154, "Prospector's Logbook");
         AddLabel(W / 2 - 60, 28, 999,  pm.Name);
+        // cc-P238 (F-36): the account's distinct 8 x 8 ore blocks mined (ClusterFMinedBlocks), the climbing boots' gate.
+        AddLabel(W - 160, 28, 1154, $"Blocks mined: {data.MinedBlocks.Count:N0}");
         AddImageTiled(10, 48, W - 20, 2, 9304);
 
         switch (view)

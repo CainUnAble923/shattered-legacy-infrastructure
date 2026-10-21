@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Multis/Houses/HousePlacement.cs
++++ b/Projects/UOContent/Multis/Houses/HousePlacement.cs
+@@ -46,6 +46,12 @@
+             // If this spot is considered valid, every item and mobile in this list will be moved under the house sign
+             toMove = new List<IEntity>();
+ 
++            // Shattered Legacy (cc-P238): no house placement from a climbed mountain tile (customizations ClusterFClimbing).
++            if (ClusterFClimbing.IsOnClimbedTile(from))
++            {
++                return HousePlacementResult.BadRegion;
++            }
++
+             var map = from.Map;
+ 
+             if (map == null || map == Map.Internal)

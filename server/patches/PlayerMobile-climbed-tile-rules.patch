@@ -1,0 +1,40 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -1649,6 +1649,13 @@
+ 
+         public override bool CanBeHarmful(Mobile target, bool message, bool ignoreOurBlessedness)
+         {
++            // Shattered Legacy (cc-P238): no attacks or harmful spells from a climbed mountain tile; harm done TO a
++            // climber is untouched (that is the attacker's CanBeHarmful). Customizations ClusterFClimbing.
++            if (target != this && ClusterFClimbing.RefusesHarm(this, message))
++            {
++                return false;
++            }
++
+             if (DesignContext != null || target is PlayerMobile mobile && mobile.DesignContext != null)
+             {
+                 return false;
+@@ -1793,6 +1800,12 @@
+ 
+         public override bool AllowSkillUse(SkillName skill)
+         {
++            // Shattered Legacy (cc-P238): no taming from a climbed mountain tile (customizations ClusterFClimbing).
++            if (ClusterFClimbing.RefusesSkill(this, skill))
++            {
++                return false;
++            }
++
+             if (AccessLevel < FeatureFlagSettings.RequiredAccessLevel
+                 && FeatureFlagManager.IsSkillBlocked(skill, out var reason))
+             {
+@@ -1815,6 +1828,10 @@
+             return DuelContext?.AllowSkillUse(this, skill) != false && DesignContext.Check(this);
+         }
+ 
++        // Shattered Legacy (cc-P238): no Mark from a climbed mountain tile (customizations ClusterFClimbing).
++        public override bool CheckSpellCast(ISpell spell) =>
++            !ClusterFClimbing.RefusesSpell(this, spell) && base.CheckSpellCast(spell);
++
+         public virtual void RecheckTownProtection()
+         {
+             m_NextProtectionCheck = 10;

@@ -298,39 +298,50 @@ public class FountainOfYouthVerification
         ClearFountains();
         using var pool = new TestPool();
 
-        _out.WriteLine(FountainOfYouthSystem.Seed(false, FountainMode.Roaming));
-        var f = Assert.Single(FountainOfYouthSystem.Fountains);
-        Assert.Equal(FountainMode.Roaming, f.Mode);
-
-        var used = new Dictionary<string, int>();
-        var previous = f.PoolKey;
-
-        for (var i = 0; i < 200; i++)
+        // cc-P238: climbing boots exist now, so "climbing" is available on the shard (FountainPool.AccessChecks). This fact
+        // is about an UNAVAILABLE access kind never being used, so it pins climbing off for its own run.
+        var climbing = FountainPool.AccessChecks["climbing"];
+        FountainPool.AccessChecks["climbing"] = () => false;
+        try
         {
-            Assert.True(FountainOfYouthSystem.Move(f, "test"), $"move {i} found no spot");
-            var entry = FountainPool.Override!.Single(e => e.Key == f.PoolKey);
+            _out.WriteLine(FountainOfYouthSystem.Seed(false, FountainMode.Roaming));
+            var f = Assert.Single(FountainOfYouthSystem.Fountains);
+            Assert.Equal(FountainMode.Roaming, f.Mode);
 
-            Assert.NotEqual(previous, f.PoolKey);
-            Assert.Equal("none", entry.Access); // the climbing-only peak is never used
-            Assert.NotEqual("nowhere", entry.Key);
-            Assert.True(FountainPool.Valid(entry, f.Map!, f.X, f.Y, out var z) && z == f.Z, $"move {i}: {f.Location} is not valid");
+            var used = new Dictionary<string, int>();
+            var previous = f.PoolKey;
 
-            for (var dx = FountainPool.FootMin; dx <= FountainPool.FootMax; dx++)
+            for (var i = 0; i < 200; i++)
             {
-                for (var dy = FountainPool.FootMin; dy <= FountainPool.FootMax; dy++)
+                Assert.True(FountainOfYouthSystem.Move(f, "test"), $"move {i} found no spot");
+                var entry = FountainPool.Override!.Single(e => e.Key == f.PoolKey);
+
+                Assert.NotEqual(previous, f.PoolKey);
+                Assert.Equal("none", entry.Access); // the climbing-only peak is never used
+                Assert.NotEqual("nowhere", entry.Key);
+                Assert.True(FountainPool.Valid(entry, f.Map!, f.X, f.Y, out var z) && z == f.Z, $"move {i}: {f.Location} is not valid");
+
+                for (var dx = FountainPool.FootMin; dx <= FountainPool.FootMax; dx++)
                 {
-                    var p = new Point3D(f.X + dx, f.Y + dy, f.Z);
-                    Assert.False(pool.GuardedArea.Contains(p), $"move {i}: {p} is in the guarded strip");
-                    Assert.True(Region.Find(p, f.Map).IsPartOf(entry.Region!), $"move {i}: {p} is outside {entry.Region}");
+                    for (var dy = FountainPool.FootMin; dy <= FountainPool.FootMax; dy++)
+                    {
+                        var p = new Point3D(f.X + dx, f.Y + dy, f.Z);
+                        Assert.False(pool.GuardedArea.Contains(p), $"move {i}: {p} is in the guarded strip");
+                        Assert.True(Region.Find(p, f.Map).IsPartOf(entry.Region!), $"move {i}: {p} is outside {entry.Region}");
+                    }
                 }
+
+                used[f.PoolKey!] = used.GetValueOrDefault(f.PoolKey!) + 1;
+                previous = f.PoolKey;
             }
 
-            used[f.PoolKey!] = used.GetValueOrDefault(f.PoolKey!) + 1;
-            previous = f.PoolKey;
+            _out.WriteLine(string.Join(", ", used.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} {kv.Value}")));
+            Assert.Equal(5, used.Count);
         }
-
-        _out.WriteLine(string.Join(", ", used.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key} {kv.Value}")));
-        Assert.Equal(5, used.Count);
+        finally
+        {
+            FountainPool.AccessChecks["climbing"] = climbing;
+        }
     }
 
     // ---------------------------------------------------------------- N1
