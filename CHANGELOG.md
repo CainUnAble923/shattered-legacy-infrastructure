@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.15
+
+### Staff
+- Companions, first part: the companion itself and its record (lineage id that is never reused, path, branch, personality, loop, rank, level, epithet, parents and generation for breeding later). Its skill caps are a player's at its own loop, its hits, stamina and mana use the player formulas, and it logs out and back in with its owner instead of being stabled. Slot cost by rank, party size and the follower curve are clusterf.companions.* settings. No hiring yet: [CompanionMake <path> [personality] [male|female] [loop] [rank] makes a test companion for you, and [CompanionSet <loop|rank|level|branch> <value> changes one.
+
 ## 2026.10.21.14
 
 ### Added
