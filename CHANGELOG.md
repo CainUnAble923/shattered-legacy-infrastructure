@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.12
+
+### Staff
+- The Golems' night shift now works in batches: from 22:30 it checks the usage every half hour and just after each 5-hour reset, and runs a batch of prompts whenever the week has room under its pace, each batch ending at a stopping point once its share is spent, instead of skipping the whole night when the first check found the week a little ahead. One email when the first batch starts, and the morning summary lists each batch; the console's Golem tab shows the running batch and its budget, or the next check and why.
+
 ## 2026.10.20.11
 
 ### Staff

@@ -1944,7 +1944,7 @@ function Get-ConsoleTooltips {
         'golem.resume'     = 'Poke the Golem: opens a new Claude Code session in a terminal window on this PC, which says the start phrase, so the Golem hands it the next prompt. Wake the Golem only turns the Golem on. Asks poke the golem; when greyed out, the reason comes first.'
         'golem.model'      = 'The model Poke the Golem uses: Auto (the default) reads the next prompt''s Model line (no line: Opus), as the self-wake does. Fable or Opus overrides it for one Poke, then it is Auto again. Changes nothing by itself.'
         'golem.autowake'   = 'Self-wake on or off (settings.json autoWake). On, the Golem opens the next CC session itself after a context rest, a model wait or the run cap, within its limits; never after a STOPPED or NEEDS YOU. Runs Set-AutoWake.ps1 in its own window.'
-        'golem.nightshift' = 'Night shift on or off: a scheduled task at the start time wakes the Golem for a long run until the end time, only when the queue has prompts, nothing runs or is STOPPED, and the usage leaves room. Asks night shift on when turning it on. Runs Set-NightShift.ps1 in its own window.'
+        'golem.nightshift' = 'Night shift on or off: from the start to the end time the Golem checks the usage at the start, every nightCheckMinutes and just after each 5-hour reset, and runs a batch of prompts whenever the week has room under its pace, each ending at a stopping point once its budget is spent (never in the bot window or the last nightMinStartMinutes). Asks night shift on when turning it on; runs Set-NightShift.ps1 in its own window.'
         'golem.marathon'   = 'Marathon mode: sets settings.json marathon to the pick beside it (auto, on or off), asking marathon <mode> first; auto turns it on when the week''s projection falls short of 95% with over 6 hours left, and off at 95% or at usageLimitPct. While on, every awake Golem is woken on its lane with no rest after a Large prompt, no run cap, the night shift at full and the extra PCs also in the day, but the 5-hour window still holds.'
         'golem.marathonpick' = 'The marathon mode Marathon: set writes: auto, on or off. Starts on the current setting.'
         'golem.nightstart' = 'When the night shift starts (HH:mm, default 22:30).'
@@ -5151,6 +5151,11 @@ function Get-NightShiftLine {
     $start = $(if ($ns -and $ns.start) { [string]$ns.start } elseif ($Settings -and $Settings.NightShiftStart) { [string]$Settings.NightShiftStart } else { '22:30' })
     $end = $(if ($ns -and $ns.end) { [string]$ns.end } elseif ($Settings -and $Settings.NightShiftEnd) { [string]$Settings.NightShiftEnd } else { '06:30' })
     if (-not $on) { return ('Night shift: off (' + $start + ' to ' + $end + ' when on)') }
+    # cc-P156: inside the night's window, the Golem's own line: the batch and its budget, or the next check point and why.
+    if ($ns -and $ns.PSObject.Properties.Name -contains 'window' -and [bool]$ns.window -and [string]$ns.line) {
+        $until = ConvertFrom-AutopilotTime $ns.until 'Local'
+        return ('Night shift: ' + [string]$ns.line + $(if ($until) { ', until ' + $until.ToString('ddd HH:mm', $script:Invariant) } else { '' }))
+    }
     if ($ns -and [bool]$ns.running) {
         $until = ConvertFrom-AutopilotTime $ns.until 'Local'
         return ('Night shift: running now' + $(if ($until) { ', until ' + $until.ToString('ddd HH:mm', $script:Invariant) } else { '' }))

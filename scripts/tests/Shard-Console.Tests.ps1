@@ -5877,6 +5877,16 @@ Fact 'P131_TheNightShiftLineSaysOnOffRunningOrWhyNot' {
     Assert-Equal 'Night shift: on, 22:30 to 06:30' (Get-NightShiftLine (ConvertFrom-AutopilotStatus (New-P125Status)) $set $p125Now)
 }
 
+Fact 'P156_TheNightShiftLineShowsTheBatchItsBudgetAndTheNextCheck' {
+    # cc-P156: inside the night's window the Golem's own line (status.json nightShift.line) says the batch and its budget,
+    # or the next check point and why, with the window's end.
+    $set = ConvertFrom-AutopilotSettings $p131Settings
+    $run = [ordered]@{} + $p131Night; $run.running = $true; $run.window = $true; $run.batch = 2; $run.line = 'batch 2 running, budget the week to 49.3% (2.1 points from 47.2%), the 5-hour window to 50% (from 0%)'
+    Assert-True ((Get-NightShiftLine (ConvertFrom-AutopilotStatus (New-P131Status -NightShift $run)) $set $p125Now) -match '^Night shift: batch 2 running, budget the week to 49\.3% \(2\.1 points from 47\.2%\), the 5-hour window to 50% \(from 0%\), until \w{3} 06:30$') 'a batch running'
+    $rest = [ordered]@{} + $p131Night; $rest.window = $true; $rest.whyNot = 'the session window is at 50% (nightSessionMaxPct 50)'; $rest.line = 'between batches (1 so far); next check 02:12, after the 5-hour reset; the session window is at 50% (nightSessionMaxPct 50)'
+    Assert-True ((Get-NightShiftLine (ConvertFrom-AutopilotStatus (New-P131Status -State 'RESTING' -Current '' -NightShift $rest)) $set $p125Now) -match '^Night shift: between batches \(1 so far\); next check 02:12, after the 5-hour reset; the session window is at 50% \(nightSessionMaxPct 50\), until \w{3} 06:30$') 'between batches'
+}
+
 Fact 'P131_WakeTheGolemLightsOnlyWhenTheGolemIsReady' {
     $x = [pscustomobject]@{ PromptTexts = @{}; TreeClean = $null }
     $view = { param($st, $en = $true, $q = @('cc-P126-a.md')) Get-AutopilotView -Enabled $en -StateText '{"current":"","currentFile":"","lastHandled":125}' -LogLines @() -QueueNames $q -Errors @() -StatusText $st -SettingsText $p131Settings -Kind golem -Extra $x }
