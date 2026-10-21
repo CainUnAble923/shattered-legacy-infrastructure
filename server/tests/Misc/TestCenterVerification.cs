@@ -140,47 +140,22 @@ public class TestCenterVerification
         return Array.ConvertAll(table, info => info.GainFactor);
     }
 
+    // cc-P190: the key is retired; the Test Crystal (TestCrystalVerification) is the per-character replacement.
     [Fact]
-    public void Test1_MultiplierLeavesEveryGainFactorAloneWhenTheTestCenterIsOff()
+    public void Test1_TheRetiredMultiplierChangesNoGainFactorOnOrOff()
     {
         var before = GainFactors();
 
-        try
+        foreach (var on in new[] { true, false })
         {
-            Assert.False(TestCenterSkillGain.Apply(false, 5.0));
-            Assert.Equal(before, GainFactors());
-        }
-        finally
-        {
-            TestCenterSkillGain.Restore();
-        }
-    }
-
-    [Fact]
-    public void Test2_MultiplierIsExactlyFiveTimesAndASecondApplyDoesNotCompound()
-    {
-        var before = GainFactors();
-
-        try
-        {
-            Assert.True(TestCenterSkillGain.Apply(true, 5.0));
-            Assert.True(TestCenterSkillGain.Apply(true, 5.0));
-
-            var after = GainFactors();
-            for (var i = 0; i < before.Length; i++)
+            using (new TestCenterSwitch(on))
             {
-                Assert.True(
-                    after[i] == before[i] * 5.0,
-                    $"{SkillInfo.Table[i].Name}: {after[i]} is not 5 x {before[i]}"
-                );
+                Assert.True(TestCenterSkillGain.Notice(5.0));
+                Assert.False(TestCenterSkillGain.Notice(TestCenterSkillGain.DefaultMultiplier));
+                TestCenterSkillGain.Initialize();
+                Assert.Equal(before, GainFactors());
             }
         }
-        finally
-        {
-            TestCenterSkillGain.Restore();
-        }
-
-        Assert.Equal(before, GainFactors());
     }
 
     // ---- Part B: the live-port guard ---------------------------------------------------------------------------
