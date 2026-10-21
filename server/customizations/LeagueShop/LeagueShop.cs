@@ -318,7 +318,11 @@ public static class LeagueTitles
     public const string VeteranOfTheLeague = "veteran-of-the-league";
     public const string SystemsFavorite = "systems-favorite";
 
-    public sealed record TitleDef(string Key, string Display, int FreeAtAp);
+    // HiddenUntilHeld (cc-P262): a title a hidden achievement grants; the picker lists it only once the account holds it.
+    public sealed record TitleDef(string Key, string Display, int FreeAtAp, bool HiddenUntilHeld = false);
+
+    // cc-P262: Iron Soles' title (Accessories/AccessoryAchievements.cs grants it).
+    public const string Unshod = "unshod";
 
     // FreeAtAp -1: bought only. The AP titles' names and thresholds are ours (F-13 asks for them, names none); listed
     // in the notes for Chase. They follow the shop's own AP tiers: every achievement not retired gives 1,955 AP
@@ -333,6 +337,7 @@ public static class LeagueTitles
         new("ap-500", "the Distinguished", 500),
         new("ap-1000", "the Renowned", 1000),
         new("ap-1750", "the Illustrious", 1750),
+        new(Unshod, "the Unshod", -1, HiddenUntilHeld: true),
     ];
 
     public static TitleDef? Find(string key) => All.FirstOrDefault(t => t.Key == key);

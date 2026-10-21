@@ -31,7 +31,13 @@ Example:
 
 ## 2026.10.21.10
 
+### Added
+- Accessory slots: type [accessories to wear more jewelry than your paperdoll holds. Extra rings and a second bracelet count exactly like the ones you wear, with every usual cap. The second bracelet slot opens at League rank Valorite Citizen; the extra ring slots will open with loops.
+- Toe rings, made by tinkers. They only work with bare feet (or in Plate Socks, which are technically shoes). Your toe rings will not forgive you for wearing boots over them.
+- A few new things for the System to notice about your feet.
+
 ### Staff
+- Toe ring slots open from two hidden barefoot achievements. Plate Socks, the Singed Toe Ring and the Mood Toe Ring come only from [add for now. Every slot threshold is a clusterf.accessories.* setting; the extra ring slots stay locked (clusterf.accessories.loopSlotsEnabled) until loops exist.
 - Two draft wiki pages for the Mage trainer (SL_Mage) and the Crafter trainer (SL_Crafter) Legion scripts wait in the wiki seed's drafts section until the scripts are published; the Test Crystal draft page now describes the skill gain crystal as well as the staff testing crystal.
 
 ## 2026.10.21.9

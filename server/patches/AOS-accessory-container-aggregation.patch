@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Misc/AOS.cs	2026-10-21 07:06:34.202205600 -0500
++++ b/Projects/UOContent/Misc/AOS.cs	2026-10-21 07:06:34.403515000 -0500
+@@ -756,6 +756,10 @@
+             // ServUO's GetValue applies them (Misc/AOS.cs:699-817).
+             value += PetTrainingHooks.AttributeModifier(m, attribute);
+ 
++            // Shattered Legacy (cc-P262): the jewellery in the wearer's accessory slots (extra rings, bracelets, toe
++            // rings) counts like a paperdoll layer's; customizations Accessories/ClusterFAccessories.cs decides which count.
++            value += ClusterFAccessories.AttributeTotal(m, attribute);
++
+             // Shattered Legacy (cc-P128): the grapes of wrath, where ServUO's GetValue applies them (Misc/AOS.cs:629-631,
+             // :668-669): +35 weapon damage and +15 spell damage while the influence lasts.
+             if (attribute == AosAttribute.WeaponDamage)
