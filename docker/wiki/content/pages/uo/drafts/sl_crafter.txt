@@ -1,0 +1,62 @@
+====== Crafter trainer (SL_Crafter.py) ======
+
+**Draft: this script ships when Chase publishes it.** It is written and runs on his PC, but it is not in the player package's Legion scripts yet. Nothing on this page can be downloaded until then; see [[:uo:macros:start|Macros]] for the scripts that are.
+
+SL_Crafter trains the eight crafts that take [[:uo:professions:bulk_orders|bulk orders]]: Blacksmithy, Tailoring, Carpentry, Bowcraft/Fletching, Tinkering, Cooking, Alchemy and Inscription. It reads your craft menu, picks the item that teaches you most for what it costs, crafts it in batches of 25 with the shard's **Craft X**, recycles what it made, fills your bulk order deeds with it, and fetches more materials from a chest or your bank when it runs low.
+
+===== What you need =====
+
+^ Item ^ Why ^
+| The craft's tools | Tongs, sewing kit, saw, fletcher's tools, tinker's tools, a skillet, a mortar and pestle, a scribe's pen; and the craft's workplace where one is needed (a forge and anvil for smithing). |
+| Materials | In your pack, in bags if you like; it opens them. |
+| A storage chest or a banker | **Set Storage** and target it. A restock trip fetches four batches' worth and comes back. |
+| A trash barrel | Optional. **Set Trash** lets it throw away what it cannot recycle or put in a deed. |
+| A salvage bag or scissors | Optional. Smiths get ingots back, tailors cut cloth back; everything else goes to the deeds or the trash. |
+
+===== Setting it up =====
+
+  - Pick **Setup for:** "All crafts (shared)" to use one spot, storage and trash for every craft, or a craft to give it its own.
+  - **Set Work Spot** where you craft (by your forge, your loom, your bank).
+  - **Set Storage**: your material chest, or a banker for your bank box.
+  - Optionally **Add BOD Giver**: the vendor or guild master you take bulk orders from.
+  - Press **Start**. The first run of a craft reads its whole menu once; **Rescan menu** reads it again after you learn new patterns.
+
+===== The control window =====
+
+  * **Start / Pause / Stop**.
+  * **Setup for:** the dropdown above, with **Set Work Spot**, **Clear Spot**, **Set Storage**, **Add BOD Giver** and **Clear Givers**.
+  * **Pick for:** Fastest, Balanced or Cheapest. Fastest takes the item with the best gain chance whatever it costs; Cheapest the one that costs least per gain; Balanced sits between.
+  * **Rescan menu**.
+  * **Bank BOD points (lossy)**: off by default. On, finished deeds bank their reward points instead of asking.
+
+When nothing left in the menu can teach you, it stops and lists the best items that would, and which material each is short.
+
+===== What it does between batches =====
+
+  * Reads the **Craft X** summary ("Made N in M attempts") and re-picks the item.
+  * **Bulk orders**: fills small deeds first, combines a bag of items into a deed, then puts finished small deeds into large ones. With a BOD giver set, when a giver's timer is up it walks there, hands finished deeds in and asks for new ones until it is refused.
+  * **Recycling**: a smith's salvage bag or a smelt; a tailor's scissors; the rest to the trash barrel.
+  * **Restocking**: walks to the storage spot, fetches four batches of the materials it needs, walks back. It walks across town and through teleporters, up to about 400 tiles.
+
+===== What it never does =====
+
+  * It never sells to a vendor: Legion scripts cannot use a shop's sell list.
+  * It never takes League commissions.
+  * It never crafts something your menu does not show. Patterns you have not learned are not there to pick (see [[:uo:professions:recipes|Recipes]]).
+  * It never leaves your work spot except for a restock or a bulk order trip, and it walks back.
+
+===== Known limits =====
+
+  * **Past 100, only Blacksmithy, Tinkering, Carpentry and Fletching keep climbing**, by crafting in the shard's own metals and woods (Platinum from 112.5 Blacksmithy, Ironwood from 100 Carpentry; see [[:uo:professions:materials|Metals and woods]]). **Tailoring, Alchemy, Inscription and Cooking have no path past their highest stock item yet.**
+  * **At 100 Blacksmithy the menu can go quiet**: the items between 100 and 120 are Band V patterns, learned one scroll at a time, and the Platinum ceiling only starts at 112.5. Learn Band V scrolls at the Society of Smiths (rank 4 and up) or the menu's hint line will tell you where.
+  * Inscription batches are capped by your mana.
+  * Bulk order gathering and turn-in are built but not yet proven on the test shard.
+  * It writes ''SL_Crafter.log'' next to the script. Send that along if you report a problem.
+
+===== Related pages =====
+
+  * [[:uo:macros:start|Macros]]
+  * [[:uo:professions:bulk_orders|Bulk orders]]
+  * [[:uo:professions:recipes|Recipes and pattern books]]
+  * [[:uo:professions:materials|Metals and woods]]
+  * [[sl_mage|Mage trainer (SL_Mage.py)]]

@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.10
+
+### Staff
+- Two draft wiki pages for the Mage trainer (SL_Mage) and the Crafter trainer (SL_Crafter) Legion scripts wait in the wiki seed's drafts section until the scripts are published; the Test Crystal draft page now describes the skill gain crystal as well as the staff testing crystal.
+
 ## 2026.10.21.9
 
 ### Added
