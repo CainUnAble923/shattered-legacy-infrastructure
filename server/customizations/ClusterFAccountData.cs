@@ -688,7 +688,8 @@ public enum RenownSource
 public sealed class CharacterLeagueData
 {
     // v1 (cc-P69): the Compact Mule errand's stage and whether this character was granted its mule.
-    public const int CurrentVersion = 1;
+    // v2 (cc-P280): the League Register: its bound guild keys and the serial of the copy in force; the backpack tier.
+    public const int CurrentVersion = 2;
 
     // 0 = not promoted past what registration gives (Iron on a registered account); 1 = Iron ... 17 = Celestial.
     public int Rank { get; set; }
@@ -704,6 +705,15 @@ public sealed class CharacterLeagueData
 
     // The errand's mule was handed over (one per character; a lost one is replaced, for a fee, not re-earned).
     public bool MuleGranted { get; set; }
+
+    // cc-P280: the guilds bound into this character's League Register (their guild books were consumed).
+    public HashSet<string> RegisterGuilds { get; } = new(StringComparer.Ordinal);
+
+    // cc-P280: the serial of the League Register in force; an older copy (re-issued) stops working. 0 = none issued.
+    public uint RegisterSerial { get; set; }
+
+    // cc-P280: backpack upgrades bought, 0 (none, 125 items) to LeagueBackpack.Tiers.
+    public int PackTier { get; set; }
 
     public CharacterLeagueData() { }
 
@@ -729,6 +739,16 @@ public sealed class CharacterLeagueData
             MuleErrandStage = r.ReadInt();
             MuleGranted = r.ReadBool();
         }
+
+        if (version >= 2)
+        {
+            var guilds = r.ReadInt();
+            for (var i = 0; i < guilds; i++)
+                RegisterGuilds.Add(r.ReadString());
+
+            RegisterSerial = r.ReadUInt();
+            PackTier = r.ReadInt();
+        }
     }
 
     public void Serialize(IGenericWriter w)
@@ -744,6 +764,12 @@ public sealed class CharacterLeagueData
 
         w.Write(MuleErrandStage);
         w.Write(MuleGranted);
+
+        w.Write(RegisterGuilds.Count);
+        foreach (var key in RegisterGuilds) w.Write(key);
+
+        w.Write(RegisterSerial);
+        w.Write(PackTier);
     }
 }
 

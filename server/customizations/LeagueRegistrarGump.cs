@@ -43,6 +43,9 @@ public class LeagueRegistrarGump : Gump
     public const int BtnShop = 27;
     public const int BtnTitles = 28;
 
+    // cc-P280: the League Register, issued (or re-issued) free from Dull Copper, on the Citizen Status row's right.
+    public const int BtnRegister = 29;
+
     private readonly PlayerMobile _pm;
     private readonly View         _view;
 
@@ -128,7 +131,8 @@ public class LeagueRegistrarGump : Gump
             y += 28;
         }
 
-        AddButton(18, y, 4011, 4012, 11); AddLabel(44, y + 2, 999, "Citizen Status");    y += 28;
+        AddButton(18, y, 4011, 4012, 11); AddLabel(44, y + 2, 999, "Citizen Status");
+        AddButton(230, y, 4011, 4012, BtnRegister); AddLabel(256, y + 2, 999, "League Register"); y += 28;
         AddButton(18, y, 4011, 4012, 12); AddLabel(44, y + 2, 999, "About Renown");      y += 28;
         AddButton(18, y, 4011, 4012, 13); AddLabel(44, y + 2, 999, "Achievements");
         AddButton(230, y, 4011, 4012, BtnShop); AddLabel(256, y + 2, 999, "League Shop");  y += 28;
@@ -408,6 +412,13 @@ public class LeagueRegistrarGump : Gump
 
             case BtnTitles: // cc-P229 (F-13)
                 _pm.SendGump(new Server.Engines.LeagueRewards.LeagueTitleGump(_pm));
+                return;
+
+            case BtnRegister: // cc-P280: issued, or re-issued (the older copy stops working)
+                {
+                    var issued = Server.Engines.LeagueRegister.LeagueRegisterSystem.Issue(_pm, out var issueMsg);
+                    _pm.SendMessage(issued != null ? 0x44 : 0x22, issueMsg);
+                }
                 return;
 
             case BtnRequisitions: // cc-P150 (F-47): the League board, every guild
