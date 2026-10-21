@@ -1,0 +1,16 @@
+{
+ "schema": 1,
+ "generatedAt": "2026-10-20T20:50:00",
+ "state": "RESTING",
+ "enabled": true,
+ "current": "",
+ "startedAt": "",
+ "lastActivityUtc": "",
+ "lastTool": "",
+ "needsYou": "",
+ "restReason": "back-off: the owner is using this PC",
+ "waitingForModel": "",
+ "stoppedPrompt": "",
+ "golemName": "Bronze",
+ "branch": ""
+}

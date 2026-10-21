@@ -18,8 +18,10 @@
 
 Nothing here reads a file, runs a process or touches the network; server.py does, and hands the results in.
 """
+import calendar
 import hmac
 import re
+import time
 
 PLAYTESTS_SHOWN = 10   # the first ten play-test items marked yours, then a count (85 were on 2026-10-17)
 LOCAL = "local"
@@ -86,6 +88,46 @@ def ready_summary(doc):
             "machine": str(doc.get("machine") or ""),
             "failed": [str(c.get("name") or "?")[:40] for c in checks if isinstance(c, dict) and not c.get("ok")],
             "laptop": doc.get("laptop") if isinstance(doc.get("laptop"), dict) else None}
+
+
+# --- the glow behind a Golem's portrait (cc-P207) ---------------------------------------------------------------------
+
+QUIET_MINUTES = 10   # RUNNING with nothing done for this long is "running but quiet"
+STALL_MINUTES = 45   # golem.ps1's stall email (settings.json stallMinutes): past it the card needs you
+
+
+def _epoch(text, utc):
+    """A status time ('2026-10-20T20:52:00', no zone) as seconds since 1970: UTC when utc, else this PC's local time."""
+    try:
+        t = time.strptime(str(text)[:19], "%Y-%m-%dT%H:%M:%S")
+    except (TypeError, ValueError):
+        return None
+    return calendar.timegm(t) if utc else time.mktime(t)
+
+
+def glow_state(card, status=None, now=None, stall_minutes=STALL_MINUTES):
+    """Which of the five glows a Golem's card shows: 'working', 'quiet', 'waiting', 'needs' or 'off'. card is its
+    Get-GolemCards card (state, enabled, remote, online, needsYou); status its status file, for lastActivityUtc (the
+    Activity hooks' last tool, as golem.ps1's stall check reads it) or else startedAt; now is time.time()."""
+    if not isinstance(card, dict):
+        return "off"
+    state = str(card.get("state") or "").upper()
+    if card.get("enabled") is False or state in ("OFF", "DISABLED", "UNKNOWN", "") or (card.get("remote") and not card.get("online")):
+        return "off"
+    if state in ("NEEDS YOU", "STOPPED") or card.get("needsYou"):
+        return "needs"
+    if state != "RUNNING":
+        return "waiting"   # IDLE, RESTING, WAITING, PAUSED: resting, back-off, outside hours, a model, pace
+    st = status if isinstance(status, dict) else {}
+    last = _epoch(st.get("lastActivityUtc"), True) if st.get("lastActivityUtc") else None
+    if last is None and st.get("startedAt"):
+        last = _epoch(st.get("startedAt"), False)
+    if last is None:
+        return "working"   # nothing to judge by yet (golem.ps1 does not call that stalled either)
+    quiet = ((time.time() if now is None else now) - last) / 60.0
+    if quiet >= stall_minutes:
+        return "needs"
+    return "quiet" if quiet >= QUIET_MINUTES else "working"
 
 
 # --- never a secret on a page ---------------------------------------------------------------------------------------

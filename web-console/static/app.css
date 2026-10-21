@@ -101,6 +101,41 @@ button.ctl.off { opacity: 0.55; border-style: dashed; }
 /* cc-P186: every Golem's card: its portrait, and its own buttons (smaller, still a thumb's height). */
 .cardhead { display: flex; gap: 10px; align-items: center; }
 img.portrait { width: 48px; height: 48px; flex: 0 0 48px; border-radius: 8px; object-fit: cover; }
+
+/* cc-P207: a glow behind each card's portrait, so a Golem's state reads across the room (the eyes are too small).
+   --glow is an "r, g, b" triplet: the Golem's metal, or amber when it needs you. A box-shadow is outside the layout,
+   so it never widens the page on a phone. Classes come from panels.glow_state via app.js portraitNode. */
+.portrait-glow { --glow: 220, 178, 98; display: inline-block; flex: 0 0 48px; width: 48px; height: 48px; line-height: 0; border-radius: 8px; }
+.portrait-glow.metal-iron { --glow: 140, 180, 230; }
+.portrait-glow.metal-shadow-iron { --glow: 160, 150, 215; }
+.portrait-glow.metal-bronze { --glow: 214, 145, 80; }
+.portrait-glow.metal-gold { --glow: 245, 200, 80; }
+.portrait-glow.metal-copper { --glow: 232, 120, 82; }
+.portrait-glow.metal-silver { --glow: 215, 222, 232; }
+.portrait-glow.metal-stone { --glow: 182, 170, 150; }
+.portrait-glow.metal-agapite { --glow: 232, 140, 165; }
+.portrait-glow.metal-verite { --glow: 120, 205, 135; }
+.portrait-glow.metal-valorite { --glow: 95, 150, 255; }
+.portrait-glow.glow-needs { --glow: 255, 176, 64; }
+@keyframes glow-pulse { 0%, 100% { box-shadow: 0 0 4px 2px rgba(var(--glow), 0.45); } 50% { box-shadow: 0 0 20px 9px rgba(var(--glow), 0.95); } }
+@keyframes glow-soft { 0%, 100% { box-shadow: 0 0 2px 1px rgba(var(--glow), 0.2); } 50% { box-shadow: 0 0 10px 4px rgba(var(--glow), 0.5); } }
+@keyframes glow-alarm { 0%, 100% { box-shadow: 0 0 0 2px rgba(var(--glow), 0.9), 0 0 4px 2px rgba(var(--glow), 0.4); }
+  50% { box-shadow: 0 0 0 3px rgba(var(--glow), 1), 0 0 22px 10px rgba(var(--glow), 0.9); } }
+.glow-working { animation: glow-pulse 2s ease-in-out infinite; }
+.glow-quiet { animation: glow-soft 4.5s ease-in-out infinite; }
+.glow-waiting { box-shadow: 0 0 0 2px rgba(var(--glow), 0.35); }
+.glow-needs { animation: glow-alarm 0.9s ease-in-out infinite; }
+.glow-off img.portrait { opacity: 0.5; filter: grayscale(0.6); }
+@media (prefers-reduced-motion: reduce) {
+  .portrait-glow { animation: none; }
+  .glow-working { box-shadow: 0 0 14px 6px rgba(var(--glow), 0.8); }
+  .glow-quiet { box-shadow: 0 0 7px 3px rgba(var(--glow), 0.4); }
+  .glow-needs { box-shadow: 0 0 0 3px rgba(var(--glow), 1), 0 0 14px 6px rgba(var(--glow), 0.8); }
+}
+.glow-help { min-height: 28px; min-width: 28px; padding: 0 8px; margin-left: 8px; font-size: 13px; vertical-align: middle; }
+.glow-legend { font-size: 13px; margin: 0 0 8px; }
+.glow-legend .portrait-glow { width: 12px; height: 12px; flex: none; vertical-align: middle; margin: 0 6px 0 10px; border-radius: 3px; background: rgb(88, 78, 62); }
+.glow-legend .portrait-glow:first-child { margin-left: 0; }
 .ctl-grid.mini { margin-top: 8px; gap: 8px; }
 button.ctl.small { min-height: 48px; font-size: 14px; padding: 8px 10px; }
 button:disabled { opacity: 0.5; cursor: default; }

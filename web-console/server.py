@@ -934,10 +934,17 @@ class Console:
     def golem_cards(self, doc):
         """cc-P186: the status file's Golem cards (Get-GolemCards, as of the collector's last read) with what this
         service knows fresher: a remote Golem's agent (last seen, online), the status and readiness it posted, a local
-        Golem's readiness file, the commands waiting, and the portrait's address. Changes doc in place."""
+        Golem's readiness file, the commands waiting, the portrait's address and (cc-P207) its glow. Changes doc in
+        place."""
         cards = (((doc or {}).get("golem") or {}).get("golems")) if isinstance(doc, dict) else None
         if not isinstance(cards, list):
             return
+        gs = self._load_json(os.path.join(self.golem_root, "settings.json"), {}) or {}
+        try:
+            stall = int(gs.get("stallMinutes") or panels.STALL_MINUTES) if isinstance(gs, dict) else panels.STALL_MINUTES
+        except (TypeError, ValueError):
+            stall = panels.STALL_MINUTES
+        now = self.clock()
         for c in cards:
             g = self.golem(c.get("name")) if isinstance(c, dict) else None
             if not g:
@@ -962,6 +969,9 @@ class Console:
                 c.setdefault("lastSeen", None)
                 ready = self._load_json(os.path.join(self.golem_root, "ready-%s.json" % g["name"]), None)
                 c["commands"] = []
+                st = self._load_json(os.path.join(self.golem_root, "status-%s.json" % g["name"]), None)
+            # cc-P207: the glow behind its portrait, from the state above and its status file's last activity.
+            c["glow"] = panels.glow_state(c, st, now, stall)
             r = panels.ready_summary(ready)
             c["ready"] = r if r else (c.get("ready") if isinstance(c.get("ready"), dict) else None)
             c["portraitUrl"] = ("/portrait/" + g["name"]) if self.portrait_path(g) else ""
