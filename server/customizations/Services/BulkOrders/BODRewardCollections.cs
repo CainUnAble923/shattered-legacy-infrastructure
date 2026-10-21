@@ -12,8 +12,9 @@
 //   HarvestMap          (to a rich vein)      no harvest maps in pinned or ours
 // cc-P123's six crafts add, on the same rule (listed in notes/cc-P123):
 //   Recipe              (a craft recipe)      recipe rewards are F-43, not this port
-//   WoodsmansTalisman, RunicMalletAndChisel, CauldronOfTransmutationDeed, AutomatonActuator, BlackrockMoonstone,
-//   BlackrockAutomatonHead: not in pinned or ours, and not among ServUO's bulk-order items (Items/), so not ported here
+//   WoodsmansTalisman, CauldronOfTransmutationDeed: not in pinned or ours, and not among ServUO's bulk-order items
+//   (Items/), so not ported here. cc-P199 ported RunicMalletAndChisel, AutomatonActuator, BlackrockMoonstone and
+//   BlackrockAutomatonHead with the base items, and their entries here are real rewards now.
 //   FermentationBarrel  (wine making)         a bulk-order item not ported yet (see the notes)
 // The Rock Hammer, the Master Craftsman Talisman and (cc-P123) the Master Chef's Apron, the Powder of Fortification keg,
 // the Plum Tree, the special natural dyes and the Guaranteed Spellbook Improvement Talisman are ported beside this file
@@ -182,15 +183,15 @@ public static class BODRewardCollections
         Placeholder(0x2F5B, 1152675, Hue(CraftResource.Agapite), 600, "SmeltersTalisman (Agapite)"),
         Placeholder(0x14EC, 1152666, Hue(CraftResource.Agapite), 650, "HarvestMap (Agapite)"),
         new(0x1940, 1157221, 0, 700, _ => new PowderOfFortKeg()),
-        Placeholder(0x9CE9, 1157290, 0, 750, "AutomatonActuator"),
+        new(0x9CE9, 1157290, 0, 750, _ => new AutomatonActuator()),
         Placeholder(0x2F5B, 1152676, Hue(CraftResource.Verite), 800, "SmeltersTalisman (Verite)"),
         Placeholder(0x14EC, 1152667, Hue(CraftResource.Verite), 850, "HarvestMap (Verite)"),
         new(0x9E2B, 1157265, 0, 900, t => new MasterCraftsmanTalisman(t, 0x9E2B, SkillName.Tinkering), 50),
         new(0x9E7E, 1157216, 0, 950, _ => new RockHammer()),
-        Placeholder(0x9CAA, 1157286, 1175, 1000, "BlackrockMoonstone"),
+        new(0x9CAA, 1157286, 1175, 1000, _ => new BlackrockMoonstone()),
         Placeholder(0x2F5B, 1152677, Hue(CraftResource.Valorite), 1050, "SmeltersTalisman (Valorite)"),
         Placeholder(0x14EC, 1152668, Hue(CraftResource.Valorite), 1100, "HarvestMap (Valorite)"),
-        Placeholder(0x9DB1, 1157220, 1175, 1200, "BlackrockAutomatonHead")
+        new(0x9DB1, 1157220, 1175, 1200, _ => new BlackrockAutomatonHead())
     ];
 
     // Rewards.cs:1200-1231.
@@ -203,26 +204,26 @@ public static class BODRewardCollections
         new(0x9E2C, 1157264, 0, 300, t => new MasterCraftsmanTalisman(t, 0x9E2C, SkillName.Carpentry), 10),
         Placeholder(0x2F5A, 1152678, Hue(CraftResource.YewWood), 350, "WoodsmansTalisman (Yew)"),
         new(0x9E2C, 1157218, 0, 450, t => new MasterCraftsmanTalisman(t, 0x9E2C, SkillName.Carpentry), 25),
-        Placeholder(0x12B3, 1157293, Hue(CraftResource.DullCopper), 450, "RunicMalletAndChisel (Dull Copper)"),
-        Placeholder(0x12B3, 1157294, Hue(CraftResource.ShadowIron), 450, "RunicMalletAndChisel (Shadow Iron)"),
+        new(0x12B3, 1157293, Hue(CraftResource.DullCopper), 450, RunicMalletAndChisel, 1),
+        new(0x12B3, 1157294, Hue(CraftResource.ShadowIron), 450, RunicMalletAndChisel, 2),
         Placeholder(0x14EC, 1152669, Hue(CraftResource.YewWood), 500, "HarvestMap (Yew)"),
         new(0x1029, 1157223, Hue(CraftResource.OakWood), 550, RunicDovetailSaw, 0),
-        Placeholder(0x12B3, 1157295, Hue(CraftResource.Copper), 600, "RunicMalletAndChisel (Copper)"),
-        Placeholder(0x12B3, 1157296, Hue(CraftResource.Bronze), 650, "RunicMalletAndChisel (Bronze)"),
+        new(0x12B3, 1157295, Hue(CraftResource.Copper), 600, RunicMalletAndChisel, 3),
+        new(0x12B3, 1157296, Hue(CraftResource.Bronze), 650, RunicMalletAndChisel, 4),
         Placeholder(0x2F5A, 1152679, Hue(CraftResource.Heartwood), 650, "WoodsmansTalisman (Heartwood)"),
         Placeholder(0x14EC, 1152670, Hue(CraftResource.Heartwood), 700, "HarvestMap (Heartwood)"),
         new(0x1029, 1157224, Hue(CraftResource.AshWood), 750, RunicDovetailSaw, 1),
         new(0x9E2C, 1157265, 0, 800, t => new MasterCraftsmanTalisman(t, 0x9E2C, SkillName.Carpentry), 50),
         Placeholder(0x2F5A, 1152680, Hue(CraftResource.Bloodwood), 850, "WoodsmansTalisman (Bloodwood)"),
         Placeholder(0x14EC, 1152671, Hue(CraftResource.Bloodwood), 900, "HarvestMap (Bloodwood)"),
-        Placeholder(0x12B3, 1157297, Hue(CraftResource.Gold), 900, "RunicMalletAndChisel (Gold)"),
+        new(0x12B3, 1157297, Hue(CraftResource.Gold), 900, RunicMalletAndChisel, 5),
         new(0x1029, 1157225, Hue(CraftResource.YewWood), 950, RunicDovetailSaw, 2),
         Placeholder(0x2F5A, 1152681, Hue(CraftResource.Frostwood), 1000, "WoodsmansTalisman (Frostwood)"),
-        Placeholder(0x12B3, 1157298, Hue(CraftResource.Agapite), 1000, "RunicMalletAndChisel (Agapite)"),
+        new(0x12B3, 1157298, Hue(CraftResource.Agapite), 1000, RunicMalletAndChisel, 6),
         Placeholder(0x14EC, 1152672, Hue(CraftResource.Frostwood), 1050, "HarvestMap (Frostwood)"),
-        Placeholder(0x12B3, 1157299, Hue(CraftResource.Verite), 1100, "RunicMalletAndChisel (Verite)"),
+        new(0x12B3, 1157299, Hue(CraftResource.Verite), 1100, RunicMalletAndChisel, 7),
         new(0x1029, 1157226, Hue(CraftResource.Heartwood), 1150, RunicDovetailSaw, 3),
-        Placeholder(0x12B3, 1157300, Hue(CraftResource.Valorite), 1150, "RunicMalletAndChisel (Valorite)")
+        new(0x12B3, 1157300, Hue(CraftResource.Valorite), 1150, RunicMalletAndChisel, 8)
     ];
 
     // Rewards.cs:1393-1411.
@@ -310,6 +311,10 @@ public static class BODRewardCollections
     // -- The six crafts' constructors (cc-P123) ----------------------------------------------------------------------
 
     // Rewards.cs:1252-1262.
+    // cc-P199: Rewards.cs:1243-1249 (the mallet is ported in Items/Tools/RunicMalletAndChisel.cs).
+    private static Item RunicMalletAndChisel(int type) =>
+        type is >= 1 and <= 8 ? new RunicMalletAndChisel(CraftResource.Iron + type, Core.AOS ? 55 - type * 5 : 50) : null;
+
     private static Item RunicDovetailSaw(int type) =>
         type switch
         {

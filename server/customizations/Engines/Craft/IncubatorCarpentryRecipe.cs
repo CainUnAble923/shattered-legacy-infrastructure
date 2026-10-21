@@ -3,11 +3,18 @@
 //     index = AddCraft(typeof(Incubator), 1044294, 1112479, 90.0, 115.0, typeof(Board), 1044041, 100, 1044351);
 //
 // inside ServUO's `#region SA / if (Core.SA)` block of the "Other" group (1044294), after GargishBanner and before
-// ChickenCoop and ExodusSummoningAlter, none of which this shard has. Without it the incubator exists and no player
-// can make one - "ported but unreachable", the shape P12 exists to fix - so it ships with the type.
+// ChickenCoop and ExodusSummoningAlter. Without it the incubator exists and no player can make one - "ported but
+// unreachable", the shape P12 exists to fix - so it ships with the type.
+//
+// cc-P199 ported the chicken coop (Items/Functional/ChickenCoop.cs), so its entry, the next line of ServUO's block, is
+// registered here too, in the same shape:
+//
+//     index = AddCraft(typeof(ChickenCoop), 1044294, 1112570, 90.0, 115.0, typeof(Board), 1044041, 150, 1044351);
+//
+// (DefCarpentry.cs:231). ExodusSummoningAlter stays out: it is in neither tree.
 //
 // Registered ADDITIVELY rather than by a patch to pinned DefCarpentry.cs, argued in
-// shard-migration/notes/cc6-followup-breath-incubator.md §4: CraftSystem.AddCraft and SetNeededExpansion are public,
+// shard-migration/notes/cc6-followup-breath-incubator.md section 4: CraftSystem.AddCraft and SetNeededExpansion are public,
 // DefCarpentry.CraftSystem is created by DefCarpentry.Initialize(), and this repo already appends to it after that
 // point from EventSink.ServerStarted (ClusterFLumberjackingExtension, the carpentry sub-resources). The entry lands at
 // the end of the "Other" group, which is where ServUO's SA block sits relative to everything pinned has.
@@ -32,7 +39,7 @@ public static class IncubatorCarpentryRecipe
     }
 
     /// <summary>
-    /// Appends ServUO's incubator entry to DefCarpentry.CraftSystem. Idempotent; the test host calls it directly
+    /// Appends ServUO's incubator and chicken coop entries to DefCarpentry.CraftSystem. Idempotent; the test host calls it directly
     /// because ServerStarted never fires there.
     /// </summary>
     public static void Register()
@@ -58,6 +65,9 @@ public static class IncubatorCarpentryRecipe
         _registered = true;
 
         var index = carpentry.AddCraft(typeof(Incubator), 1044294, 1112479, 90.0, 115.0, typeof(Log), 1044041, 100, 1044351);
+        carpentry.SetNeededExpansion(index, Expansion.SA);
+
+        index = carpentry.AddCraft(typeof(ChickenCoop), 1044294, 1112570, 90.0, 115.0, typeof(Log), 1044041, 150, 1044351);
         carpentry.SetNeededExpansion(index, Expansion.SA);
     }
 }
