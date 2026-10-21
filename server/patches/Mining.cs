@@ -290,6 +290,20 @@ namespace Server.Engines.Harvest
             return resource.Types[0];
         }
 
+        // Shattered Legacy (cc-P263): a swing refused because the vein is empty counts toward Rock Bottom. Only the swing's
+        // own check (timed false); the follow-up checks inside a swing already under way are not new swings.
+        public override bool CheckResources(Mobile from, Item tool, HarvestDefinition def, Map map, Point3D loc, bool timed)
+        {
+            var available = base.CheckResources(from, tool, def, map, loc, timed);
+
+            if (!available && !timed)
+            {
+                ClusterFNotedBySystem.SwungAtEmptyVein(from, map, loc);
+            }
+
+            return available;
+        }
+
         public override bool CheckHarvest(Mobile from, Item tool)
         {
             if (!base.CheckHarvest(from, tool))

@@ -171,6 +171,7 @@ public static class PetTrainingHooks
     {
         bc.OnAfterTame(tamer);
         PetTrainingHelper.GetAbilityProfile(bc, true).OnTame();
+        ClusterFNotedBySystem.Tamed(bc, tamer); // cc-P263: Commitment Issues
     }
 
     /// <summary>The debuffs' penalties, where ServUO's AosAttributes.GetValue applies them (Misc/AOS.cs:699-817).</summary>

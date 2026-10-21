@@ -236,7 +236,16 @@ public class LeagueTitleGump : Gump
         var shown = LeagueTitles.ShownKey(data, pm);
 
         var titles = LeagueTitles.All;
-        var h = 120 + (titles.Length + 1) * RowH;
+        var listed = 0;
+        foreach (var t in titles)
+        {
+            if (!t.Secret || data.LeagueTitles.Owned.Contains(t.Key))
+            {
+                listed++;
+            }
+        }
+
+        var h = 120 + (listed + 1) * RowH;
 
         AddBackground(0, 0, W, h, 9270);
         RequirementStyle.AddSolidPanel(this, W, h);
@@ -255,6 +264,10 @@ public class LeagueTitleGump : Gump
         {
             var t = titles[i];
             var held = data.LeagueTitles.Owned.Contains(t.Key);
+            if (t.Secret && !held)
+            {
+                continue; // cc-P263: a hidden achievement's title is not listed until held
+            }
 
             if (held)
             {

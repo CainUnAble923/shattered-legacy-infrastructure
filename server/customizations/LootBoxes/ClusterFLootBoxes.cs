@@ -146,11 +146,18 @@ public static class ClusterFLootBoxes
         }
 
         var table = LootTable.Current;
-        var tier = table.TierForAchievement(def.Key, def.AP);
+
+        // cc-P263: an achievement whose Noted reward names a joke item earns a Dented Box (its tier, the joke item inside).
+        var noted = NotedRewards.For(def.Key) is { JokeItem: not null } r ? r : null;
+        var tier = noted?.BoxTier ?? table.TierForAchievement(def.Key, def.AP);
         var level = tier >= 4 ? FanfareLevel.Major : FanfareLevel.Minor;
         ClusterFFanfare.Play(pm, level, level == FanfareLevel.Major ? FanfareLines.MajorAchievement : FanfareLines.MinorAchievement,
             tier: tier, voiceKey: "achievement");
-        Award(pm, $"ach:{def.Key}", table.ThemeForCategory(def.Category.ToString()), tier, def.Trigger.OnSkill, def.Title, out _);
+        Award(pm, $"ach:{def.Key}", table.ThemeForCategory(def.Category.ToString()), tier, def.Trigger.OnSkill, def.Title, out var box);
+        if (noted != null && box != null)
+        {
+            ClusterFNotedBySystem.Dent(box, pm, noted);
+        }
     }
 
     /// <summary>A boss for loot boxes: the shard's high-end list (ClusterFRareSelfRepair.IsHighEndSource), paragons left out.</summary>

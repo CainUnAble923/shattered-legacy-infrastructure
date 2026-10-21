@@ -228,6 +228,12 @@ public class SmithCommissionGump : Gump
             pm.SendMessage(0x22,
                 "You already have the maximum number of active commissions.");
         }
+        else if (SmithCommissionSystem.RequestCooldownLeft(pm) is var wait && wait > TimeSpan.Zero)
+        {
+            // cc-P263 (Reroll Goblin): an abandon holds back the next request.
+            pm.SendMessage(0x22,
+                $"You abandoned a commission just now. The Guildmaster will offer another in {Math.Ceiling(wait.TotalMinutes):N0} minute(s).");
+        }
         else
         {
             var entry = SmithCommissionSystem.Generate(pm);
@@ -293,6 +299,7 @@ public class SmithCommissionGump : Gump
         else
         {
             guild.SmithCommissions.Remove(commission);
+            SmithCommissionSystem.Abandoned(pm); // cc-P263: Reroll Goblin
             pm.SendMessage(0x59,
                 $"Commission from {commission.RequesterName} abandoned. The slot is now open.");
         }

@@ -79,6 +79,41 @@ public enum TriggerKind
     SelfDetonation,
     FishedFootwear,
     KilledByFowl,
+
+    // cc-P263: "Noted by the System", the hidden exploit and odd-habit achievements (ClusterFNotedBySystem.cs).
+    NeverReachedKills,
+    LowHpRetreats,
+    ProvokedKills,
+    LastHitLarry,
+    PetDiedAtFullHp,
+    RetameAfterRelease,
+    RemotePetKills,
+    BarefootBossKills,
+    FreshRecycles,
+    CraftFailStreak,
+    ExceptionalDestroyed,
+    DepletedSwingStreak,
+    RecallSpree,
+    DiedAfterArrival,
+    RunebooksFilled,
+    OverweightSteps,
+    MuleTrain,
+    HotFootTiles,
+    SnowTiles,
+    PantslessTiles,
+    DiedAtHome,
+    HouseStorageFull,
+    SameTileBoxStreak,
+    BoxTooSoon,
+    EdgeBox,
+    AudienceBox,
+    QuickCommission,
+    // cc-P263, data only: nothing raises these until companions, loops and commission expiry exist.
+    CompanionBossKill,
+    PeakRegained,
+    ProcrastinatedDays,
+    LoopBackedOut,
+    CommissionsExpired,
 }
 
 public sealed class AchievementTrigger
@@ -171,6 +206,50 @@ public sealed class AchievementTrigger
             TriggerKind.SelfDetonation     => "died to your own explosion potion",
             TriggerKind.FishedFootwear     => $"fished up {n:N0} boots or shoes",
             TriggerKind.KilledByFowl       => "died to a chicken or a rabbit",
+            TriggerKind.NeverReachedKills  => n == 1
+                ? "killed a melee creature that never reached you"
+                : $"killed {n:N0} melee creatures that never reached you",
+            TriggerKind.LowHpRetreats      => n == 1
+                ? "recalled or gated out of a fight under 10% health"
+                : $"recalled or gated out of a fight under 10% health {n:N0} times",
+            TriggerKind.ProvokedKills      => n == 1
+                ? "a creature you provoked killed another, with no damage from you"
+                : $"creatures you provoked killed {n:N0} others, with no damage from you",
+            TriggerKind.LastHitLarry       => "landed a boss's killing blow with under 1% of its damage",
+            TriggerKind.PetDiedAtFullHp    => n == 1 ? "a pet died while you were at full health" : $"{n:N0} pets died while you were at full health",
+            TriggerKind.RetameAfterRelease => n == 1
+                ? "released a pet and tamed it again within 5 minutes"
+                : $"released a pet and tamed it again within 5 minutes, {n:N0} times",
+            TriggerKind.RemotePetKills     => "your pet made a kill while you were hidden or 15+ tiles away",
+            TriggerKind.BarefootBossKills  => "landed a boss's killing blow barefoot, in armor",
+            TriggerKind.FreshRecycles      => n == 1
+                ? "recycled your own crafted item within 60 seconds"
+                : $"recycled {n:N0} of your own crafted items within 60 seconds",
+            TriggerKind.CraftFailStreak    => $"failed the same craft {n:N0} times in a row",
+            TriggerKind.ExceptionalDestroyed => "recycled an exceptional item within 10 seconds of crafting it",
+            TriggerKind.DepletedSwingStreak => $"swung {n:N0} times in a row at an empty vein",
+            TriggerKind.RecallSpree        => "recalled 10 times in 60 seconds",
+            TriggerKind.DiedAfterArrival   => n == 1
+                ? "died within 10 seconds of arriving by recall or gate"
+                : $"died within 10 seconds of arriving by recall or gate {n:N0} times",
+            TriggerKind.RunebooksFilled    => n == 1 ? "filled a runebook" : $"filled {n:N0} runebooks",
+            TriggerKind.OverweightSteps    => $"walked {n:N0} steps overweight",
+            TriggerKind.MuleTrain          => "led 3 or more nearly full pack animals",
+            TriggerKind.HotFootTiles       => $"walked {n:N0} lava or fire tiles barefoot, in armor",
+            TriggerKind.SnowTiles          => $"walked {n:N0} snow tiles barefoot, in armor",
+            TriggerKind.PantslessTiles     => $"walked {n:N0} tiles in armor and boots with no leg armor",
+            TriggerKind.DiedAtHome         => n == 1 ? "died in your own house" : $"died in your own house {n:N0} times",
+            TriggerKind.HouseStorageFull   => "filled your house's storage to 100%",
+            TriggerKind.SameTileBoxStreak  => $"opened {n:N0} loot boxes in a row from the same tile in your house",
+            TriggerKind.BoxTooSoon         => $"tried to open a loot box outside a safe place {n:N0} times",
+            TriggerKind.EdgeBox            => "opened a loot box within 1 tile of a guard zone's edge",
+            TriggerKind.AudienceBox        => "opened a loot box with another player within 3 tiles",
+            TriggerKind.QuickCommission    => "accepted and turned in a commission within 60 seconds",
+            TriggerKind.CompanionBossKill  => "your companion landed the killing blow on a boss you fought",
+            TriggerKind.PeakRegained       => "regained a previous loop's skill peak within 24 hours of looping",
+            TriggerKind.ProcrastinatedDays => $"spent {n:N0} days at the cap with a full experience bar without looping",
+            TriggerKind.LoopBackedOut      => $"started the League loop and backed out {n:N0} times",
+            TriggerKind.CommissionsExpired => $"let {n:N0} commissions expire",
             TriggerKind.LuckyGearBoxes     => n == 1
                 ? "a loot box with luck gear equipped less than a minute earlier"
                 : $"{n:N0} loot boxes with luck gear equipped less than a minute earlier",
@@ -1126,6 +1205,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             progressCounter: LuckyGearCounter);
 
         RegisterJokes(); // cc-P231 (ClusterFJokeAchievements.cs)
+        RegisterNoted(); // cc-P263 (ClusterFNotedBySystem.cs)
     }
 
     public const string DressedKey = "imbue.dressed_for_the_occasion";
@@ -1252,6 +1332,8 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
 
         if (def.RewardItems.Length > 0)
             SpawnRewardItems(acct, def);
+
+        ClusterFNotedBySystem.OnEarned(acct, def); // cc-P263: a title the Noted reward table names
 
         NotifyOnlinePlayer(acct, def);
 

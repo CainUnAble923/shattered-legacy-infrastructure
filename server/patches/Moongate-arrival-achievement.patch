@@ -1,0 +1,10 @@
+--- "a/Projects/UOContent/Items/Skill Items/Magical/Misc/Moongate.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Magical/Misc/Moongate.cs"
+@@ -120,6 +120,7 @@
+             }
+ 
+             OnGateUsed(m);
++            ClusterFNotedBySystem.Arrived(m, true); // Shattered Legacy (cc-P263): Tactical Retreat, Wrong Turn
+         }
+         else
+         {

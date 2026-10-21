@@ -824,6 +824,22 @@ apply_patch "$PATCHES/HousePlacement-climbed-tile.patch"
 apply_patch "$PATCHES/BaseCreature-con-color-line.patch"
 apply_patch "$PATCHES/ItemIdentification-appraisal.patch"
 
+# cc-P263 (ours): "Noted by the System", hidden achievements for the shard's exploits and odd habits. Each patch adds one
+# call to customizations ClusterFNotedBySystem where pinned raises no event: a recall's and a gate's arrival, a rune that
+# fills a runebook, a pet's release, each craft attempt's result, and a recycle (Resmelt, the salvage bag) just before it
+# deletes the item. SmallBOD-crafted-only is the list's "fix instead of reward" (Store-Bought): a small deed refuses an
+# armor, weapon or clothing item nobody crafted (ClusterFStoreBought, clusterf.bods.craftedOnly). Made against the tree
+# every patch above leaves, so they go last. Notes: shard-migration notes/cc-P263-noted-by-the-system-achievements.md;
+# pinned by NotedBySystemVerification.
+apply_patch "$PATCHES/Recall-arrival-achievement.patch"
+apply_patch "$PATCHES/Moongate-arrival-achievement.patch"
+apply_patch "$PATCHES/Runebook-full-achievement.patch"
+apply_patch "$PATCHES/PetOrders-release-achievement.patch"
+apply_patch "$PATCHES/CraftItem-fail-streak-achievement.patch"
+apply_patch "$PATCHES/Resmelt-recycle-achievement.patch"
+apply_patch "$PATCHES/SalvageBag-recycle-achievement.patch"
+apply_patch "$PATCHES/SmallBOD-crafted-only.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

@@ -1,0 +1,35 @@
+--- a/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
++++ b/Projects/UOContent/Engines/Craft/Core/CraftItem.cs
+@@ -1584,6 +1584,8 @@
+                     // from.PlaySound( 0x57 );
+                 }
+ 
++                ClusterFNotedBySystem.CraftAttempt(from, ItemType, false); // Shattered Legacy (cc-P263): Skill Issue
++
+                 if (num == 0)
+                 {
+                     num = craftSystem.PlayEndingEffect(from, false, true, toolBroken, endquality, makersMark, this);
+@@ -1730,6 +1732,7 @@
+ 
+             // SkillCheck failed.
+             num = craftSystem.PlayEndingEffect(from, true, true, toolBroken, endquality, false, this);
++            ClusterFNotedBySystem.CraftAttempt(from, ItemType, true); // Shattered Legacy (cc-P263): Skill Issue
+ 
+             if (ClusterFCraftRun.AfterAttempt(from, craftSystem, tool, null, false))
+             {
+@@ -1872,6 +1875,7 @@
+                     from.AddToBackpack(item);
+ 
+                     num = craftSystem.PlayEndingEffect(from, false, true, toolBroken, endquality, false, this);
++                    ClusterFNotedBySystem.CraftAttempt(from, ItemType, false); // Shattered Legacy (cc-P263): Skill Issue
+ 
+                     if (T2ACraftSystem.Enabled)
+                     {
+@@ -1938,6 +1942,7 @@
+             }
+ 
+             num = craftSystem.PlayEndingEffect(from, true, true, toolBroken, endquality, false, this);
++            ClusterFNotedBySystem.CraftAttempt(from, ItemType, true); // Shattered Legacy (cc-P263): Skill Issue
+ 
+             if (tool?.Deleted == false && tool.UsesRemaining > 0)
+             {

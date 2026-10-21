@@ -29,6 +29,21 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.12
+
+### Added
+- The System has been taking notes. A new set of secret achievements notices the shard's favorite shortcuts and odd habits, in fights, on the road, at the forge, at home and around loot boxes. You will find out what they are when you do them.
+- Some of them come with a Dented Box: a small loot box with one guaranteed, entirely useless keepsake inside, bound to you. Three of them come with a title.
+
+### Changed
+- Bulk orders and smith commissions take only items a player crafted. Items bought from a shopkeeper (or found as loot) no longer fill them.
+- After you abandon a smith commission, the Guildmaster waits 5 minutes before offering you another.
+
+### Staff
+- The "Noted by the System" achievements are 45 more in the Mischief category, listed by [ClusterFAchievement list. 40 can be earned now; Middle Management, Deja Vu, Procrastinator, Cold Feet and Infamous wait for companions, loops and commission expiry and cannot be earned yet. Each fires from the game event (a kill, a gate or recall, a craft, a recycle, a mining swing, a step, a death at home, a loot box) and is earned once per account.
+- Their rewards (which give a Dented Box and its keepsake, and which give the titles Larry, the Supervisor and the Brave (citation needed)) are one table, NotedRewards in ClusterFNotedBySystem.cs. The titles appear in the title picker only once held.
+- clusterf.bods.craftedOnly (default true) turns the crafted-only rule for orders off; clusterf.commissions.abandonCooldownMinutes (default 5, 0 for none) sets the abandon wait.
+
 ## 2026.10.21.11
 
 ### Added

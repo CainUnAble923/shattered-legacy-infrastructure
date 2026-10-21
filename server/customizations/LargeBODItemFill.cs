@@ -65,6 +65,12 @@ public static class LargeBODItemFill
             return;
         }
 
+        if (ClusterFStoreBought.Refuses(item))
+        {
+            from.SendMessage(0x22, ClusterFStoreBought.Refusal); // cc-P263: Store-Bought
+            return;
+        }
+
         var material = SmallBOD.GetMaterial(armor?.Resource ?? clothing?.Resource ?? CraftResource.None);
 
         // cc-P46 Part A: the post-Valorite ores too, as pinned's small deed checks them since SmallBOD-post-valorite-

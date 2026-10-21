@@ -1,0 +1,14 @@
+--- "a/Projects/UOContent/Items/Skill Items/Magical/Runebook.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Magical/Runebook.cs"
+@@ -323,6 +323,11 @@
+ 
+                 rune.Delete();
+ 
++                if (Entries.Count >= 16)
++                {
++                    ClusterFNotedBySystem.RunebookFilled(from, this); // Shattered Legacy (cc-P263): Rune Hoarder
++                }
++
+                 from.SendSound(0x42, GetWorldLocation());
+                 from.SendMessage((rune.Description?.Trim()).DefaultIfNullOrEmpty("(indescript)"));
+ 

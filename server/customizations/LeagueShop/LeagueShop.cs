@@ -318,7 +318,8 @@ public static class LeagueTitles
     public const string VeteranOfTheLeague = "veteran-of-the-league";
     public const string SystemsFavorite = "systems-favorite";
 
-    public sealed record TitleDef(string Key, string Display, int FreeAtAp);
+    // Secret (cc-P263): earned by a hidden achievement, so the title picker lists it only once held.
+    public sealed record TitleDef(string Key, string Display, int FreeAtAp, bool Secret = false);
 
     // FreeAtAp -1: bought only. The AP titles' names and thresholds are ours (F-13 asks for them, names none); listed
     // in the notes for Chase. They follow the shop's own AP tiers: every achievement not retired gives 1,955 AP
@@ -333,6 +334,10 @@ public static class LeagueTitles
         new("ap-500", "the Distinguished", 500),
         new("ap-1000", "the Renowned", 1000),
         new("ap-1750", "the Illustrious", 1750),
+        // cc-P263: the "Noted by the System" titles (NotedRewards), given by their achievements.
+        new(NotedRewards.LarryTitle, "Larry", -1, true),
+        new(NotedRewards.SupervisorTitle, "the Supervisor", -1, true),
+        new(NotedRewards.BraveTitle, "the Brave (citation needed)", -1, true),
     ];
 
     public static TitleDef? Find(string key) => All.FirstOrDefault(t => t.Key == key);

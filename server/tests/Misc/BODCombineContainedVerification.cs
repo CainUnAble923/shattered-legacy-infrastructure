@@ -67,7 +67,7 @@ public class BODCombineContainedVerification
         return item;
     }
 
-    private static PlateGorget Gorget(CraftResource resource) => new() { Resource = resource };
+    private static PlateGorget Gorget(CraftResource resource) => new() { Resource = resource, PlayerConstructed = true }; // cc-P263: crafted, as an order now requires (ClusterFStoreBought)
 
     private static SmallSmithBOD GorgetDeed(int cur, int max, BulkMaterialType mat) =>
         new(cur, max, typeof(PlateGorget), 1025139, 0x1413, false, mat);
