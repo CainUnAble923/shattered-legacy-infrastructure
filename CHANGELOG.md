@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.14
+
+### Added
+- The League Shop has a Hall page: decor for your house, opened by your Achievement Points and bought with Renown. Display cases of books, gems or plain glass (the shelf and its glass dye separately), dragon and gargoyle statues, and mounted trophies and heads: minotaur, sabertooth, troglodyte, skull, titan, oni, ophidian and terathan matriarchs, and Paroxysmus. Press Hall in the League Shop to see them; locked pieces show the AP they need, and every purchase asks you to confirm.
+- Each piece comes as a deed for a house you own: use it, choose the facing (or the wall, for a trophy), and target the spot. Chop a placed piece to get its deed back. The deeds are bound to your account. Update your game through the launcher to see the new art.
+
+### Staff
+- Every Hall price and AP gate is a setting (clusterf.leagueHall.<piece>.ap and .renown), to be tuned in play testing. Renown spent here never lowers League rank. The art is RedRooster's display cases, Hestia's statues and trophies and Archaaz's trophies and heads (art 15592-15629); all three belong in the shard credits list.
+
 ## 2026.10.21.13
 
 ### Added

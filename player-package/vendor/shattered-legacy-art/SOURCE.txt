@@ -327,3 +327,29 @@ Files:       22459 crossed-swords (Combat)   22460 open-book (Skills)          2
 What was done to the pixels: scripts\anchor-art-frames.py --black-transparent --keep-geometry. Pure black became
              transparent and the format became PNG; nothing else changed. The tool re-reads every PNG against its source.
 Shown by:    the server's AchievementsGump (ClusterFAchievements.cs), beside each category's heading. No record needed.
+
+League Hall decor, art 15592-15629 (0x3CE8-0x3D0D) (cc-P243)
+-------------------------------------------------------------
+Sold on the League shop's Hall page as account-bound deeds (server\customizations\LeagueShop\LeagueHall.cs). Three
+community sets, none with a stated license; Chase 2026-10-21: use them, credit their authors in the credits list.
+  15592-15601  RedRooster (Steven Armstrong), "Rooster's Display Cases" V.1.0, https://www.servuo.dev/archive/roosters-display-cases.1555/
+               (D:\UO\third-party\display-cases\). His own drawing. Two shelves (Shelf1 facing south, Shelf2 east) and
+               four inserts for each (Book 1/2, Book 5/6 partial hue, GEM1/2, GlassInsert1/2); a case is a shelf and an
+               insert on one tile, each dyed on its own. Credit: RedRooster asks to be on the shard credits list.
+  15602-15607  Hestia, "Trophys and Statues", https://www.servuo.dev/archive/trophys-and-statues.1804/
+               (D:\UO\third-party\hestia-trophies\). Statues 1a/1b, 2a/2b (dragons, two facings), 5a (jeweled dragon),
+               6a (gargoyle): rendered statues, not EA art. Credit Hestia.
+  15608-15615  Hestia, the same pack: trophies Minotaur, Sabertooth, Troglodyte, Skull (1a/1b, north and west wall).
+               EA-DERIVED (stock creatures on plaques, as her SOURCE.txt warns). Credit Hestia.
+  15616-15629  Archaaz, "New Trophies and Heads", https://www.servuo.dev/archive/new-trophies-and-heads.1428/
+               (D:\UO\third-party\trophies-heads\). Trophies Titan, Oni, Ophidian Matriarch, Terathan Matriarch,
+               Paroxysmus (north and west wall) and heads Titan, Oni (two facings). EA-DERIVED ("using existing art",
+               his words). Credit Archaaz.
+Terms:       none stated for any of the three: community work, credit the author, ship only inside the player package
+             or the private repo, do not repost. The EA-derived pieces ship as the earlier EA-derived art does (registry
+             2071, the crow): only as our PNG override inside the player package, never as an EA file or part of one.
+Pixels:      BMP to PNG and pure black made transparent (scripts\anchor-art-frames.py --black-transparent
+             --keep-geometry); nothing else changed. Made by shard-migration notes\cc-P243-tools\hall_art.py.
+Records:     shelves as OSI's bookcase 0xA97 (Impassable | ArticleA, height 12); inserts ArticleA, height 0 (Book 5/6
+             PartialHue); statues as OSI's statue 0x1224 plus Impassable, height 20 (cc-P34's); trophies as OSI's trophy
+             0x1E60 (ArticleA, height 0); mounted heads ArticleA, height 2. Server copy: LeagueHallArt.Records.

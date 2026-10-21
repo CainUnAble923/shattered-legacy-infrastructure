@@ -250,8 +250,8 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     $kc = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\KitsuneEarsTail.cs'))
     # cc-P50: the chest mimic (15472-15489) has records of its own, checked by its own fact.
     # cc-P237: New Haven's community art (15496-15529) too, checked by its own fact; cc-P236: so do the satchel
-    # icons (13184-13189).
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) })
+    # icons (13184-13189); cc-P243: so does the League Hall's decor (15592-15629).
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -291,10 +291,10 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # paperdoll gump 54783 (one more gump row).
     # cc-P147 added the three Achievements button gumps (22456-22458) without moving these counts; cc-P237 counts them
     # and adds its 34 art IDs (15496-15529); cc-P236 the six satchel icons (13184-13189); cc-P241 the ten achievement
-    # category icon gumps (22459-22468).
-    Assert-Equal 190 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps
+    # category icon gumps (22459-22468); cc-P243 the 38 League Hall decor IDs (15592-15629).
+    Assert-Equal 228 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art
     Assert-Equal 15 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458 and 22459-22468'
-    Assert-Equal 150 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+    Assert-Equal 188 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
 
 Fact 'TheChestMimicRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
@@ -475,6 +475,60 @@ Fact 'EveryAchievementCategoryIconIsARegisteredGumpWithItsPngAndItsAuthorsCredit
     Assert-Equal $cats.Count (@($table.Values | Sort-Object -Unique)).Count 'one gump per category, none shared'
     $set = @($reg | Where-Object { $_.kind -eq 'gump' -and $_.what -like 'Achievement category icon*' })
     Assert-Equal (@($table.Values | Sort-Object) -join ',') (@($set | ForEach-Object { [int]$_.id } | Sort-Object) -join ',') 'the registered icons are exactly the ones the gump uses'
+}
+
+Fact 'TheLeagueHallRecordsAreTheServersTableAndEveryIdIsRegisteredWithItsPngAndItsAuthorsCredit' {
+    # cc-P243. LeagueHall.cs carries the server's copy of the Hall decor's tiledata (LeagueHallArt.Records); records.json
+    # carries the players'. Same IDs, names, flags and heights. Every ID is registered once as art with its PNG, and
+    # its license names its author's credit rule: RedRooster's display cases, Hestia's statues, and Hestia's trophies
+    # and Archaaz's pieces marked EA-derived (our PNG override only). The set registers exactly its 38 IDs.
+    $root = Split-Path $pkg -Parent
+    $cs  = [IO.File]::ReadAllText((Join-Path $root 'server\customizations\LeagueShop\LeagueHall.cs'))
+    $rec = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    # The C# flag names by value (pinned Server/TileData.cs TileFlag), so a misnamed bit cannot pass.
+    $flagValue = @{ Impassable = 0x40; ArticleA = 0x4000; PartialHue = 0x40000 }
+    $named = @{}
+    foreach ($m in [regex]::Matches($cs, 'private const TileFlag (\w+) = ([^;]+);')) {
+        $v = 0
+        foreach ($nm in ($m.Groups[2].Value -split '\|' | ForEach-Object { $_.Trim() -replace '^TileFlag\.', '' })) {
+            if (-not $flagValue.ContainsKey($nm)) { throw "unknown flag $nm in C#" }
+            $v = $v -bor $flagValue[$nm]
+        }
+        $named[$m.Groups[1].Value] = $v
+    }
+    $csRows = @([regex]::Matches($cs, 'new\((0x[0-9A-F]+), "([^"]+)", (\w+), (\d+)\)') | ForEach-Object {
+        [pscustomobject]@{ Id = [Convert]::ToInt32($_.Groups[1].Value, 16); Name = $_.Groups[2].Value; Flags = $named[$_.Groups[3].Value]; Height = [int]$_.Groups[4].Value }
+    })
+    Assert-Equal 38 $csRows.Count 'thirty-eight records in C#'
+    $mine = @($rec.tiledata | Where-Object { [int]$_.id -ge 15592 -and [int]$_.id -le 15629 })
+    Assert-Equal (@($csRows.Id) -join ',') (@($mine | ForEach-Object { [int]$_.id }) -join ',') 'the same IDs, in the same order'
+    $art = Join-Path $pkg 'vendor\shattered-legacy-art\art'
+    for ($i = 0; $i -lt $mine.Count; $i++) {
+        $j = $mine[$i]; $c = $csRows[$i]
+        Assert-Equal $c.Name $j.name "name of $($c.Id)"
+        Assert-True ($j.name.Length -le 19 -and $j.name -match '^[\x20-\x7E]+$') "name of $($c.Id) is 19 ASCII characters at most"
+        Assert-Equal $c.Flags ([Convert]::ToInt32(($j.flags -replace '^0x', ''), 16)) "flags of $($c.Id)"
+        Assert-Equal 255 ([int]$j.weight) "weight of $($c.Id)"
+        Assert-Equal $c.Height ([int]$j.height) "height of $($c.Id)"
+        $row = @($reg | Where-Object { [int]$_.id -eq $c.Id })
+        Assert-Equal 1 $row.Count "$($c.Id) registered once"
+        Assert-Equal 'art' $row[0].kind "$($c.Id) kind"
+        Assert-True (Test-Path -LiteralPath (Join-Path $art "$($c.Id).png")) "PNG for $($c.Id)"
+        $lic = $row[0].license
+        if ($c.Id -le 15601) {
+            Assert-True ($lic -match 'credit RedRooster in the shard credits') "$($c.Id): RedRooster's credit"
+        } elseif ($c.Id -le 15607) {
+            Assert-True ($lic -match 'credit Hestia in the shard credits' -and $lic -notmatch 'EA-derived') "$($c.Id): Hestia's credit, her own art"
+        } elseif ($c.Id -le 15615) {
+            Assert-True ($lic -match 'credit Hestia in the shard credits' -and $lic -match 'EA-derived') "$($c.Id): Hestia's credit, EA-derived"
+        } else {
+            Assert-True ($lic -match 'credit Archaaz in the shard credits' -and $lic -match 'EA-derived') "$($c.Id): Archaaz's credit, EA-derived"
+        }
+        Assert-True ($lic -match 'ship only inside the player package') "$($c.Id): ships only inside the player package"
+    }
+    $set = @($reg | Where-Object { [int]$_.id -ge 15592 -and [int]$_.id -le 15629 })
+    Assert-Equal 38 $set.Count 'the set registers 38 IDs'
 }
 
 # --- cc-P62: worn-item animations; cc-P139: creature bodies -------------------------------------
