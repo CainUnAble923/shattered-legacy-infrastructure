@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.23
+
+### Added
+- Fourteen new creatures for the League's hunts: hedge snatchers, their mounted outrider, hornback raiders and ditch crawlers in the hills and gullies around New Haven; mire croakers in the swamps; brine lurkers in Covetous's flooded halls; moonmaws and thornwisps in the Yew woods; pale drifters in Deceit; slaghearts in the Fire dungeon; glasswardens in the Ice dungeon; tunnelmaws in Shame; and two mini-bosses, the Siegebreaker in Covetous's lower hall and the Hollow Oak in a Yew clearing. Each drops a monster part. The first time you kill one, the System adds it to your bestiary with a line of its own. Their art ships in the player package (update it from the launcher).
+
+### Staff
+- [ClusterFSeedBestiary [dryrun] places the new creatures' spawners on Trammel where missing (test shard first, then live).
+
 ## 2026.10.21.22
 
 ### Added

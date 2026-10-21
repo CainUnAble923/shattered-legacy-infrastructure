@@ -68,7 +68,24 @@ namespace Server
             (2068, BodyType.Monster, "gloomspinner"),
             (2069, BodyType.Monster, "gloomweaver"),
             (2070, BodyType.Monster, "the Gloom Queen"),
-            (2071, BodyType.Animal, "crop crow (the stock bird at 1.5x)")
+            (2071, BodyType.Animal, "crop crow (the stock bird at 1.5x)"),
+            // cc-P364, the League hunt bestiary, batch 2 (F-24's targets): registry.csv kind body, records.json bodyAnims.
+            // Animal for the bodies in anim7's animal slots (the .vd files with the low layout: the goblins, the
+            // werewolf and the lava golem); the rest Monster.
+            (2072, BodyType.Animal, "hedge snatcher (goblin troop)"),
+            (2073, BodyType.Animal, "snatcher outrider (goblin rider)"),
+            (2074, BodyType.Monster, "hornback raider (goatman)"),
+            (2075, BodyType.Monster, "ditch crawler"),
+            (2076, BodyType.Monster, "mire croaker (bullywog)"),
+            (2077, BodyType.Monster, "brine lurker (kuo-toa)"),
+            (2078, BodyType.Animal, "moonmaw (werewolf)"),
+            (2079, BodyType.Monster, "thornwisp (forest spirit)"),
+            (2080, BodyType.Monster, "pale drifter (shadow)"),
+            (2081, BodyType.Animal, "slagheart (lava golem)"),
+            (2082, BodyType.Monster, "glasswarden (crystal golem)"),
+            (2083, BodyType.Monster, "tunnelmaw (umber hulk)"),
+            (2084, BodyType.Monster, "the Siegebreaker (war troll)"),
+            (2085, BodyType.Monster, "the Hollow Oak (treant)")
         };
 
         public static void Configure() => Apply();

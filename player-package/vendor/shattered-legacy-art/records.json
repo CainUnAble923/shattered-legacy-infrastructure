@@ -376,6 +376,20 @@
     { "body": 2068, "slot": 18, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2068.vd", "name": "gloomspinner" },
     { "body": 2069, "slot": 19, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2069.vd", "name": "gloomweaver" },
     { "body": 2070, "slot": 20, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2070.vd", "name": "the gloom queen" },
-    { "body": 2071, "slot": 21, "type": "ANIMAL", "flags": 40, "vd": "anim-src/bodies/2071.vd", "name": "crop crow" }
+    { "body": 2071, "slot": 21, "type": "ANIMAL", "flags": 40, "vd": "anim-src/bodies/2071.vd", "name": "crop crow" },
+    { "body": 2072, "slot": 203, "type": "ANIMAL", "flags": 0, "vd": "anim-src/bodies/2072.vd", "name": "hedge snatcher (goblin troop L_01)" },
+    { "body": 2073, "slot": 204, "type": "ANIMAL", "flags": 0, "vd": "anim-src/bodies/2073.vd", "name": "snatcher outrider (goblin rider)" },
+    { "body": 2074, "slot": 22, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2074.vd", "name": "hornback raider (goatman, mace)" },
+    { "body": 2075, "slot": 23, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2075.vd", "name": "ditch crawler (crawler)" },
+    { "body": 2076, "slot": 24, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2076.vd", "name": "mire croaker (bullywog with spear)" },
+    { "body": 2077, "slot": 25, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2077.vd", "name": "brine lurker (kuo-toa)" },
+    { "body": 2078, "slot": 205, "type": "ANIMAL", "flags": 0, "vd": "anim-src/bodies/2078.vd", "name": "moonmaw (werewolf)" },
+    { "body": 2079, "slot": 26, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2079.vd", "name": "thornwisp (forest spirit, waldgeist)" },
+    { "body": 2080, "slot": 27, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2080.vd", "name": "pale drifter (shadow, schatten)" },
+    { "body": 2081, "slot": 206, "type": "ANIMAL", "flags": 0, "vd": "anim-src/bodies/2081.vd", "name": "slagheart (lava golem)" },
+    { "body": 2082, "slot": 28, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2082.vd", "name": "glasswarden (crystal golem)" },
+    { "body": 2083, "slot": 29, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2083.vd", "name": "tunnelmaw (umber hulk)" },
+    { "body": 2084, "slot": 30, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2084.vd", "name": "the Siegebreaker (war troll, kriegstroll)" },
+    { "body": 2085, "slot": 31, "type": "MONSTER", "flags": 0, "vd": "anim-src/bodies/2085.vd", "name": "the Hollow Oak (treant)" }
   ]
 }

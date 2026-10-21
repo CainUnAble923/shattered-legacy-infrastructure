@@ -299,8 +299,10 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # and adds its 34 art IDs (15496-15529); cc-P236 the six satchel icons (13184-13189); cc-P241 the ten achievement
     # category icon gumps (22459-22468); cc-P243 the 38 League Hall decor IDs (15592-15629);
     # cc-P242 the 54 flying loot frames (15536-15589); cc-P265 the 279 guild hall decor IDs (28016-28294);
-    # cc-P266 the 47 second-block winter decor IDs (13192-13238) and the advent calendar gump 22469.
-    Assert-Equal 609 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump
+    # cc-P266 the 47 second-block winter decor IDs (13192-13238) and the advent calendar gump 22469; cc-P364 the 14 League
+    # bestiary bodies (2072-2085).
+    Assert-Equal 623 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies
+    Assert-Equal 38 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364)'
     Assert-Equal 16 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468 and 22469'
     Assert-Equal 568 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
@@ -684,7 +686,7 @@ Fact 'TheFlyingLootRecordsAreTheServersTableAndEveryFrameIsRegisteredWithItsPngA
 
 # --- cc-P62: worn-item animations; cc-P139: creature bodies -------------------------------------
 $ourLine = "4783`t-1`t-1`t-1`t-1`t-1`t400`t# fox ears and tail"
-# cc-P140: every creature body in records.json, in its order (24 since cc-P140; cc-P139 had the one kobold line).
+# cc-P140: every creature body in records.json, in its order (24 since cc-P140, 38 since cc-P364; cc-P139 had the one kobold line).
 $recBodies = @(([IO.File]::ReadAllText($records) | ConvertFrom-Json).bodyAnims)
 $ourBodyLines = @($recBodies | ForEach-Object { "$($_.body)`t-1`t-1`t-1`t-1`t-1`t$($_.slot)`t# $($_.name)" })
 $ourMobLines  = @($recBodies | ForEach-Object { "$($_.body)`t$(([string]$_.type).ToUpperInvariant())`t$('{0:X}' -f [int]$_.flags)`t# $($_.name)" })
@@ -891,6 +893,28 @@ function Read-Skills([string]$mulPath, [string]$idxPath) {
         if ($off -lt 0 -or $len -le 0) { '-'; continue }
         "$($mul[$off]):$([Text.Encoding]::ASCII.GetString($mul, $off + 1, $len - 1).TrimEnd([char]0)):$([BitConverter]::ToInt32($idx, $i * 12 + 8))"
     }
+}
+
+# cc-P364: no registered creature body is a stock one. fixtures\stock-bodies-7.0.117.0.txt lists every body the stock
+# 7.0.117.0 client names or draws (validate-art.py bodies --all, numbers only); a registered body or a bodyAnims body on
+# that list would overwrite an EA creature in every player's client. Also: every body is above pinned's bodyTable.cfg
+# (its highest is 1973, Body.cs) and below the server's table (0x1000), each is registered exactly once, and no two share
+# an anim7 slot.
+Fact 'NoRegisteredCreatureBodyIsAStockBodyAndNoTwoShareASlot' {
+    $stockFile = Join-Path $here 'fixtures\stock-bodies-7.0.117.0.txt'
+    $stock = @([IO.File]::ReadAllLines($stockFile) | Where-Object { $_ -match '^\d+$' } | ForEach-Object { [int]$_ })
+    Assert-True ($stock.Count -gt 1000 -and $stock -contains 1973 -and $stock -contains 400) "the fixture lists the stock bodies ($($stock.Count))"
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $bodyRows = @($reg | Where-Object { $_.kind -eq 'body' } | ForEach-Object { [int]$_.id })
+    Assert-True ($bodyRows.Count -ge 38) "body rows: $($bodyRows.Count)"
+    foreach ($b in $bodyRows + @($recBodies | ForEach-Object { [int]$_.body })) {
+        Assert-True ($stock -notcontains $b) "body $b is a stock client body: registering it would overwrite EA's creature"
+        Assert-True ($b -gt 1973 -and $b -lt 0x1000) "body $b is inside pinned's bodyTable.cfg range or past the server's table"
+    }
+    Assert-Equal $bodyRows.Count @($bodyRows | Sort-Object -Unique).Count 'no body registered twice'
+    $slots = @($recBodies | ForEach-Object { [int]$_.slot })
+    Assert-Equal $slots.Count @($slots | Sort-Object -Unique).Count 'no two bodies share an anim7 slot'
+    Assert-Equal $bodyRows.Count $recBodies.Count 'every registered body has one bodyAnims entry'
 }
 
 Fact 'TheSkillsCopiesCallItemIdentificationAppraisalAndKeepEveryOtherSkill' {
