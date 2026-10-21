@@ -373,3 +373,51 @@ Changed:     (1) the pink background and (2) the pure-black drop shadow made tra
 Records:     tiledata as OSI's effect art (the sparkle 0x373A): Animation 0x01000000, weight 255, height 0; animdata
              frames 0-5 then 5 twice (the landed item rests), interval 1. Server copy: ClusterFFlyingLoot.Records.
 Shown by:    the server's ClusterFFlyingLoot, as a location effect over a loot box's opener.
+
+Guild hall decor, art 28016-28294 (0x6D70-0x6E86) (cc-P265)
+-----------------------------------------------------------
+  28016-28048  Hestia, "Hueable Anim Bubble Vat", https://www.servuo.dev/archive/hueable-anim-bubble-vat.2145/
+               (D:\UO\third-party\bubble-vat\). 9 pieces, 33 IDs. Terms: none stated; community work: credit Hestia in the shard credits, ship only inside the player package or the private repo, do not repost.
+  28049-28090  RedRooster, "Rooster's Creature Tank's", https://www.servuo.dev/archive/roosters-creature-tanks.1999/
+               (D:\UO\third-party\creature-tanks\). 20 pieces, 42 IDs. Terms: CREDIT: RedRooster asks to be added to the shard credits list (his page); otherwise none stated, ship only inside the player package or the private repo, do not repost.
+  28091-28098  Ems, "Partialhue flasks", https://www.servuo.dev/archive/partialhue-flasks.1995/
+               (D:\UO\third-party\partialhue-flasks\). 8 pieces, 8 IDs. Terms: none stated; community work: credit Ems in the shard credits, ship only inside the player package or the private repo, do not repost.
+               EA-DERIVED (partial-hue edits of EA flask art, the files named by stock item IDs): ships only as our PNG override, never as an EA file.
+  28099-28107  RedRooster, "Rooster's Crystal Ball" 1.0, https://www.servuo.dev/archive/roosters-crystal-ball.2000/
+               (D:\UO\third-party\rooster-crystal-ball\). 3 pieces, 9 IDs. Terms: CREDIT: RedRooster asks to be added to the shard credits list (his page); otherwise none stated, ship only inside the player package or the private repo, do not repost.
+  28108-28110  Apocalypse, "Shop Additions: Blacksmith", https://www.servuo.dev/archive/shop-additions-blacksmith.986/
+               (D:\UO\third-party\blacksmith-shop\). 1 pieces, 3 IDs. Terms: none stated; community work: credit Apocalypse in the shard credits, ship only inside the player package or the private repo, do not repost.
+               EA-DERIVED (frames cut from the EA human body 400 animation, its file names say so): ships only as our PNG override, never as an EA file.
+  28111-28118  MrRiots, "[MrRiots] New Firepit", https://www.servuo.dev/archive/mrriots-new-firepit.2098/
+               (D:\UO\third-party\mrriots-firepit\). 2 pieces, 8 IDs. Terms: "Use and edit as you wish" (his page): credit MrRiots, ship inside the player package, do not repost the raw files.
+  28119-28137  MrRiots, "[MrRiots] Floating Crystals (Lightsource)", https://www.servuo.dev/archive/mrriots-floating-crystals-lightsource.2317/
+               (D:\UO\third-party\floating-crystals\). 3 pieces, 19 IDs. Terms: "Use them as you please" (his page): credit MrRiots.
+  28138-28164  otimpyre, "Arc-Orb FX", https://www.servuo.dev/archive/arc-orb-fx.94/
+               (D:\UO\third-party\arc-orb-fx\). 3 pieces, 27 IDs. Terms: none stated; community work: credit otimpyre in the shard credits, ship only inside the player package or the private repo, do not repost (he shares his source files for remixing).
+  28165-28234  OUTLANDSOwyn (Outlands), "Marble Railings, Bannisters, Ladder", https://www.servuo.dev/archive/marble-railings-bannisters-ladder.2663/
+               (D:\UO\third-party\marble-railings\). 70 pieces, 70 IDs. Terms: "Feel free to use them in your own projects ... Please credit Outlands if you use these assets." (his page, read 2026-10-21): credit Outlands in the shard credits, ship inside the player package.
+               EA-DERIVED ("based on the existing wooden assets", his words: marble recolours of OSI's wooden rails): ships only as our PNG override, never as an EA file.
+  28235-28252  Hestia, "Large Brick Tower", https://www.servuo.dev/archive/large-brick-tower.2498/
+               (D:\UO\third-party\hestia-large-brick-tower\). 18 pieces, 18 IDs. Terms: none stated; community work: credit Hestia in the shard credits, ship only inside the player package or the private repo, do not repost.
+  28253-28261  Hestia, "Medium Brick Tower", https://www.servuo.dev/archive/medium-brick-tower.2497/
+               (D:\UO\third-party\hestia-medium-brick-tower\). 9 pieces, 9 IDs. Terms: none stated; community work: credit Hestia in the shard credits, ship only inside the player package or the private repo, do not repost.
+  28262-28268  Hestia, "Small Brick Tower", https://www.servuo.dev/archive/small-brick-tower.2496/
+               (D:\UO\third-party\hestia-small-brick-tower\). 7 pieces, 7 IDs. Terms: none stated; community work: credit Hestia in the shard credits, ship only inside the player package or the private repo, do not repost.
+  28269-28281  Hestia, "White Brick Tower Large", https://www.servuo.dev/archive/white-brick-tower-large.2504/
+               (D:\UO\third-party\hestia-white-brick-tower\). 13 pieces, 13 IDs. Terms: none stated; community work: credit Hestia in the shard credits, ship only inside the player package or the private repo, do not repost.
+  28282-28294  Hestia, "White Column Tower Large", https://www.servuo.dev/archive/white-column-tower-large.2505/
+               (D:\UO\third-party\hestia-white-column-tower\). 13 pieces, 13 IDs. Terms: none stated; community work: credit Hestia in the shard credits, ship only inside the player package or the private repo, do not repost.
+Not shipped: mad-scientist (its readme credits an unknown original author); arc-orb-fx's "My Source Files" and
+             the GIF previews; the preview JPGs; the large tower's Corel auto-save copy of DW a2ma. Marble railings
+             70321 and 70324 were shipped by cc-P237 (15503, 15504) and are not registered twice.
+Pixels:      background made transparent, nothing else: pure black (0,0,0) for the BMPs drawn on black
+             (scripts\anchor-art-frames.py --black-transparent --keep-geometry); for the six drawn on white (the
+             large tower's top and turret, both white towers' domes, the arc orb gate, the blacksmith) the white
+             touching the image border, then the same tool without the black switch. The railings are UOFiddler
+             PNG exports with their own alpha: re-encoded only. Canvases kept as drawn. Made by shard-migration
+             notes\cc-P265-tools\decor.py, which also names the OSI tile (or the author's own note) each record copies.
+Records:     one tiledata record per piece on its base ID (179); animdata for the 33 animated pieces (the vat's
+             eight parts, sixteen creature tanks, the crystal ball lit and unlit, the blacksmith, the burning fire
+             pit, two floating crystals, three arc orbs). Server copy: GuildHallDecorArt.Pieces (generated).
+Placed by:   nothing yet. Staff seeders [DecorAlembicHall, [DecorSmithsHall, [DecorArtificersHall and
+             [DecorHallStructure place a template (design\guild-hall-decor\templates.json) on the test shard only.

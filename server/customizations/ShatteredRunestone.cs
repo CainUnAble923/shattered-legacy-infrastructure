@@ -63,6 +63,9 @@ namespace Server
 
             // cc-P243: the League Hall's decor (LeagueHallArt.Records).
             Engines.LeagueRewards.LeagueHallArt.Apply();
+
+            // cc-P265: the guild hall decor packs (GuildHallDecorArt.Pieces, generated from the catalogue).
+            GuildHallDecorArt.Apply();
         }
     }
 }
