@@ -15,7 +15,8 @@
 // Left out:
 //   - ArcanicRuneStone (:614). Its first resource is CrystalShards, which is ours and which no player can get: ServUO's
 //     only source is a Ter Mur lumberjacking bonus (Services/Harvest/Lumberjacking.cs:111) that pinned lacks.
-//   - BraceletOfPrimalConsumption (:773). Recipe-gated (TinkerRecipes) and needs BloodOfTheDarkFather, in neither tree.
+//   - BraceletOfPrimalConsumption (:773). Recipe-gated (TinkerRecipes) and needs BloodOfTheDarkFather (ported by
+//     cc-P199).
 
 using System;
 using Server.Items;

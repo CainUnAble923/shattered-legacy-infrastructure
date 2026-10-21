@@ -16,8 +16,8 @@
 //     ElegantCollar and their six Crimson/Fortune/Mace-and-Shield/Scholarly upgrades) have no recipe source we have:
 //     ServUO hands the six upgrades out from the Forsaken Foes event (Services/Seasonal Events/ForsakenFoes/Gumps.cs:
 //     53-58) and the six base recipes only from TreasureMapChest.GetRandomRecipe, and pinned's chests make no scrolls.
-//     Seven of the twelve also need Lodestone or FeyWings, in neither tree.
-//   - CuffsOfTheArchmage (:820) is recipe-gated and needs BloodOfTheDarkFather, in neither tree.
+//     Seven of the twelve also need Lodestone (in neither tree) or FeyWings (ported by cc-P199).
+//   - CuffsOfTheArchmage (:820) is recipe-gated and needs BloodOfTheDarkFather (ported by cc-P199).
 //
 // When one of those gates is built, register the entry with AddQuestRecipe, not AddRecipe: pinned's tailor satchel draws
 // from every AddRecipe-registered tailoring recipe (Q-064), which ServUO's never does.

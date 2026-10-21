@@ -546,7 +546,10 @@ public class PetTrainingVerification
         var pm = Online(NewPlayer(At(0, 40)), out var ns);
         var low = Place(new LowRoll.Nightmare(), At(1, 40));
         var high = Place(new HighRoll.Nightmare(), At(2, 40));
-        var trainer = Place(new AnimalTrainer(), At(0, 46));
+        // CantWalk: the loop below advances the clock up to sixteen minutes, long enough for a vendor to wander, and a
+        // trainer that strays more than 8 tiles from the player never greets. cc-P225 saw this fact red in one
+        // full-suite run in three (never when run alone); a still trainer leaves only the coin flip it tests.
+        var trainer = Place(new AnimalTrainer { CantWalk = true }, At(0, 46));
 
         try
         {
@@ -568,7 +571,11 @@ public class PetTrainingVerification
                 ShardTestClock.AdvanceSeconds(16);
             }
 
-            Assert.True(greeted, "the trainer says 1157526 to a player who walks up");
+            Assert.True(
+                greeted,
+                $"the trainer says 1157526 to a player who walks up (trainer at {trainer.Location}, player at " +
+                $"{pm.Location}, LOS {trainer.InLOS(pm)}, {Messages(ns, mark).Count} message(s) since the mark)"
+            );
 
             // Training the lowered pet steps it up: 2 -> 3 for 1501 starting points, the tame requirement +22 capped
             // at MaxTameRequirement (108).

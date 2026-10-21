@@ -1,0 +1,36 @@
+--- a/Projects/UOContent/Engines/Khaldun/PuzzleChest.cs
++++ b/Projects/UOContent/Engines/Khaldun/PuzzleChest.cs
+@@ -346,10 +346,32 @@
+ 
+                 m.SendGump(new StatusGump(correctCylinders, correctColors));
+ 
+-                DoDamage(m);
++                // cc-P199: a virtual seam where ServUO's DoDamage is virtual (ServUO Services/Khaldun/PuzzleChest.cs:372),
++                // so the cylinder trap training kit can take a wrong guess without hurting its user.
++                OnWrongGuess(m);
+             }
+         }
+ 
++        public virtual void OnWrongGuess(Mobile m) => DoDamage(m);
++
++        // cc-P199: the puzzle gump, opened from outside the chest (ServUO's CylinderTrapTrainingKit sends PuzzleGump itself;
++        // pinned's gump class is private).
++        public void SendPuzzleGump(Mobile from)
++        {
++            PuzzleChestSolution solution = GetLastGuess(from);
++            solution = solution != null
++                ? new PuzzleChestSolution(solution)
++                : new PuzzleChestSolution(
++                    PuzzleChestCylinder.None,
++                    PuzzleChestCylinder.None,
++                    PuzzleChestCylinder.None,
++                    PuzzleChestCylinder.None,
++                    PuzzleChestCylinder.None
++                );
++
++            from.SendGump(new PuzzleGump(from, this, solution));
++        }
++
+         public static void DoDamage(Mobile to)
+         {
+             switch (Utility.Random(4))

@@ -33,13 +33,22 @@ Example:
 
 ### Added
 - The Rootdeep Burrows are in the world: a hole in the floor of Old Haven's ruined Second Bank (east of New Haven, through the collapsed stretch of its south wall) drops you onto the Landing, and a rope ladder on the Landing's north wall brings you back up beside the hole.
+- Trap training kits, a new way to learn Remove Trap: the circuit kit (walk the circuit; the grid grows with your skill), the cylinder kit (find the five cylinders; a wrong guess does not hurt) and the slider kit (slide the picture back together). Use Remove Trap on a kit to try it. The Collector of Oddities in Moonglow sells all three.
+- Carpenters can make the chicken coop, a house stable for up to three chickens.
+- Kotl automatons: a grandmaster tinker can bring a Blackrock automaton head (a tinkering bulk order reward) to life as a pet.
 
 ### Changed
 - The town crier who called the news in the Old Haven ruins is gone. The skeletons by the bank stay.
+- Remove Trap no longer needs 50 Lockpicking and 50 Detect Hidden before you can use it, as on the official shards since Endless Journey.
+- The tinkering bulk order rewards now include the automaton actuator, the Blackrock moonstone and the Blackrock automaton head, and the carpentry rewards include the runic mallets and chisels.
+- Treasure map supply chests can hold the mana phasing orb, and the Assassin's chests the skeleton keys. Clean Up Britannia now takes the mana phasing orb and fey wings.
 
 ### Staff
 - The map changes ship in the player package as a patch of our own changes (app\trammel.mapops, applied to copies of each player's own files at launch; nothing of EA's ships). The server reads the same map from client-data\sl-map-overlay, built by docker\uo\Build-MapOverlay.ps1 and mounted first in the test shard's data folders; live gets the same two lines at a restart you plan.
 - [ClusterFSeedRootdeep also places the two way-in teleporters (the hole, the ladder's foot). [ClusterFOldHavenRetire also removes pinned's town crier spawner in the ruins; a fresh world never places it.
+- [ClusterFPlaceCollectorOfOddities [dryrun] places the Collector of Oddities (the trap kit vendor) at ServUO's spot in Moonglow, Trammel 4305,1003. Dry run first, test shard first.
+- About eighty more ServUO base items now exist for staff and for later reward tables: resources (Blackrock, blood of the dark father, fey wings, void essence, abyssal cloth and others), tools (skeleton keys, the metallic dye tub, the pen of wisdom, the chest of sending, the greater bracelet of binding, forged metal of artifacts, the snake charmer flute, the scale collar), house items (the jewelry box, the seed box, Coral the Owl, the coffee grinder, the serpent's jawbone, sliding doors, the house craftables) and the quest reward containers. Most have no player source until their quests, vendors or rewards are ported.
+- Not ported, each needs a decision or its own system: the five peerless altars, the wall safe, Book of Masteries, the Primeval Lich puzzle, the ethereal retouching tool, the dragon turtle egg and the focusing gem. Details in the cc-P199 notes.
 
 ## 2026.10.20.15
 

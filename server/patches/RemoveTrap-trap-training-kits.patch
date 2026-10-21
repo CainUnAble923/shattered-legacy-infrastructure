@@ -1,0 +1,44 @@
+--- a/Projects/UOContent/Skills/RemoveTrap.cs
++++ b/Projects/UOContent/Skills/RemoveTrap.cs
+@@ -7,6 +7,13 @@
+ 
+ namespace Server.SkillHandlers
+ {
++    // cc-P199: ServUO RemoveTrap.cs:15-18. The three trap training kits (customizations Items/Functional) take the
++    // Remove Trap target themselves.
++    public interface IRemoveTrapTrainingKit
++    {
++        void OnRemoveTrap(Mobile m);
++    }
++
+     public static class RemoveTrap
+     {
+         public static void Initialize()
+@@ -16,11 +23,13 @@
+ 
+         public static TimeSpan OnUse(Mobile m)
+         {
+-            if (m.Skills.Lockpicking.Value < 50)
++            // cc-P199: ServUO RemoveTrap.cs:30-37. From Endless Journey on, Remove Trap no longer needs 50 Lockpicking and
++            // 50 Detect Hidden first, so a new thief can start on a training kit.
++            if (!Core.EJ && m.Skills.Lockpicking.Value < 50)
+             {
+                 m.SendLocalizedMessage(502366); // You do not know enough about locks.  Become better at picking locks.
+             }
+-            else if (m.Skills.DetectHidden.Value < 50)
++            else if (!Core.EJ && m.Skills.DetectHidden.Value < 50)
+             {
+                 m.SendLocalizedMessage(502367); // You are not perceptive enough.  Become better at detect hidden.
+             }
+@@ -45,6 +54,11 @@
+                 {
+                     from.SendLocalizedMessage(502816); // You feel that such an action would be inappropriate
+                 }
++                else if (targeted is IRemoveTrapTrainingKit trainingKit)
++                {
++                    // cc-P199: ServUO RemoveTrap.cs:60-63.
++                    trainingKit.OnRemoveTrap(from);
++                }
+                 else if (targeted is TrappableContainer targ)
+                 {
+                     if (targ.TrapType == TrapType.None)

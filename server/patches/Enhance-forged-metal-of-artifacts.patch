@@ -1,0 +1,20 @@
+--- a/Projects/UOContent/Engines/Craft/Core/Enhance.cs
++++ b/Projects/UOContent/Engines/Craft/Core/Enhance.cs
+@@ -236,6 +236,17 @@
+                 CheckResult(ref res, baseChance + dinc / 4);
+             }
+ 
++            // cc-P199: ServUO Enhance.cs:253-258. A Forged Metal of Artifacts aura (customizations Items/Tools) makes this
++            // enhance succeed, once.
++            if (from is global::Server.Mobiles.PlayerMobile auraUser && ForgedMetalOfArtifacts.GetNextEnhanceSuccess(auraUser))
++            {
++                ForgedMetalOfArtifacts.SetNextEnhanceSuccess(auraUser, false);
++                // The magical aura that surrounded you disipates and you feel that your item enhancement chances have
++                // returned to normal.
++                auraUser.SendLocalizedMessage(1149969);
++                res = EnhanceResult.Success;
++            }
++
+             switch (res)
+             {
+                 case EnhanceResult.Broken:

@@ -209,7 +209,20 @@ public class LootBoxFanfareVerification
             Assert.True(box.Deleted);
             foreach (var item in held)
             {
-                Assert.False(item.Deleted);
+                // Delivery is the pack's TryDropItem, which merges a stackable into a stack of its own kind already there
+                // and deletes it (cc-P225: red in one full-suite run in fifteen when the roll gave two alike). A merged
+                // item was handed over if a stack of its type is in the pack or bank.
+                if (item.Deleted && item.Stackable)
+                {
+                    var type = item.GetType();
+                    Assert.True(
+                        p.Pm.Backpack.FindItemByType(type) != null || p.Pm.BankBox.FindItemByType(type) != null,
+                        $"{type.Name} was merged away but no stack of it was handed over"
+                    );
+                    continue;
+                }
+
+                Assert.False(item.Deleted, $"{item.GetType().Name} was deleted");
                 Assert.True(item.IsChildOf(p.Pm.Backpack) || item.IsChildOf(p.Pm.BankBox), $"{item.GetType().Name} was not handed over");
             }
 
