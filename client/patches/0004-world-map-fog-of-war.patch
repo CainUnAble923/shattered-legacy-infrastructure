@@ -1,0 +1,537 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chase Fleming <ckfleming@gmail.com>
+Date: Wed, 21 Oct 2026 12:00:00 -0500
+Subject: [PATCH] World map fog of war from the shard's packet 0xF4 (Shattered Legacy
+ cc-P240, cc-P352)
+
+---
+ src/ClassicUO.Client/Configuration/Profile.cs     |   1 +
+ .../Game/Managers/ShardFogOfWar.cs                | 197 ++++++++++++++++++++
+ .../Game/UI/Gumps/WorldMapGump.cs                 |  45 +++++
+ .../Network/PacketHandlers/EnterWorld.cs          |   1 +
+ .../Network/PacketHandlers/HandlerRegistry.cs     |   2 +
+ .../Game/ShardFogOfWarTests.cs                    | 167 +++++++++++++++++
+ 6 files changed, 413 insertions(+)
+ create mode 100644 src/ClassicUO.Client/Game/Managers/ShardFogOfWar.cs
+ create mode 100644 tests/ClassicUO.UnitTests/Game/ShardFogOfWarTests.cs
+
+diff --git a/src/ClassicUO.Client/Configuration/Profile.cs b/src/ClassicUO.Client/Configuration/Profile.cs
+index a96667794..e7e2107ec 100644
+--- a/src/ClassicUO.Client/Configuration/Profile.cs
++++ b/src/ClassicUO.Client/Configuration/Profile.cs
+@@ -440,6 +440,7 @@ namespace ClassicUO.Configuration
+         public string WorldMapTtfFont { get; set => SetProperty(ref field, value); } = string.Empty;
+         public int WorldMapTtfFontSize { get; set => SetProperty(ref field, value); } = 20;
+         public bool WorldMapFlipMap { get; set => SetProperty(ref field, value); } = true;
++        public bool WorldMapShowFog { get; set => SetProperty(ref field, value); } = true; // Shattered Legacy patch (cc-P240)
+         public bool WorldMapTopMost { get; set => SetProperty(ref field, value); }
+         public bool WorldMapFreeView { get; set => SetProperty(ref field, value); }
+         public WorldMapDoubleClickAction WorldMapDoubleClickAction { get; set => SetProperty(ref field, value); } = WorldMapDoubleClickAction.ToggleLock;
+diff --git a/src/ClassicUO.Client/Game/Managers/ShardFogOfWar.cs b/src/ClassicUO.Client/Game/Managers/ShardFogOfWar.cs
+new file mode 100644
+index 000000000..6eab6434a
+--- /dev/null
++++ b/src/ClassicUO.Client/Game/Managers/ShardFogOfWar.cs
+@@ -0,0 +1,197 @@
++// Shattered Legacy patch (cc-P240, F-6): fog of war on the world map.
++//
++// The shard tracks which 8x8-tile chunks each character has walked through and sends them in its own variable-length
++// packet 0xF4 (server\customizations\ClusterFExplorationManager.cs, ClusterFExplorationPackets):
++//   [0xF4][u16 length][u8 sub][u8 facet][u32 BE payload length][payload]
++//   sub 0x01 full explored: gzip of the facet's bit set (bit i = chunk cy * width + cx, least significant bit first,
++//            .NET BitArray.CopyTo); 0x02 delta: u16 BE cx, u16 BE cy per newly walked chunk;
++//   0x03 and 0x04 (mining depletion) are not drawn here.
++// The world map draws a dark layer over every chunk not walked, on a facet the server has sent. A server that sends
++// no 0xF4 (any other shard) gets no fog. Each new login starts empty (EnterWorld), and the shard resends on login.
++// Profile.WorldMapShowFog (the world map's right-click menu, "Fog of war") turns the layer off.
++
++using System;
++using System.IO;
++using System.IO.Compression;
++using ClassicUO.IO;
++using Microsoft.Xna.Framework.Graphics;
++
++namespace ClassicUO.Game.Managers
++{
++    public static class ShardFogOfWar
++    {
++        public const byte PacketId = 0xF4;
++        public const int ChunkSize = 8;
++        public const byte FullExplored = 0x01;
++        public const byte DeltaExplored = 0x02;
++
++        // A fogged chunk: black at 216 of 255 (premultiplied), so the land still shows faintly through it.
++        public const byte FogAlpha = 216;
++        public const uint FogPixel = (uint)FogAlpha << 24;
++
++        // The server's own table (ClusterFExplorationManager.MapSizes). Its chunk index is cy * width + cx with these
++        // widths, so the client must use the same ones, whatever size the client's map files are.
++        public static readonly (int W, int H)[] MapSizes =
++        {
++            (6144, 4096), // 0 Felucca
++            (6144, 4096), // 1 Trammel
++            (2304, 1600), // 2 Ilshenar
++            (2560, 2048), // 3 Malas
++            (1448, 1448), // 4 Tokuno
++            (1280, 4096)  // 5 TerMur
++        };
++
++        private static readonly byte[][] _explored = new byte[MapSizes.Length][];
++
++        /// <summary>Goes up on every change, so a drawn layer knows to rebuild.</summary>
++        public static int Version { get; private set; }
++
++        public static int ChunkWidth(int facet) => (MapSizes[facet].W + ChunkSize - 1) / ChunkSize;
++        public static int ChunkHeight(int facet) => (MapSizes[facet].H + ChunkSize - 1) / ChunkSize;
++        private static int ByteCount(int facet) => (ChunkWidth(facet) * ChunkHeight(facet) + 7) / 8;
++
++        public static bool HasData(int facet) => facet >= 0 && facet < MapSizes.Length && _explored[facet] != null;
++
++        public static bool IsExplored(int facet, int cx, int cy)
++        {
++            if (!HasData(facet) || cx < 0 || cy < 0 || cx >= ChunkWidth(facet) || cy >= ChunkHeight(facet))
++                return false;
++
++            int i = cy * ChunkWidth(facet) + cx;
++            return (_explored[facet][i >> 3] & (1 << (i & 7))) != 0;
++        }
++
++        public static void Reset()
++        {
++            Array.Clear(_explored);
++            Version++;
++        }
++
++        /// <summary>The 0xF4 handler: the reader stands after the id and the length.</summary>
++        public static void Receive(World world, ref StackDataReader p)
++        {
++            if (p.Remaining < 6)
++                return;
++
++            byte sub = p.ReadUInt8();
++            byte facet = p.ReadUInt8();
++            int length = (int)p.ReadUInt32BE();
++            if (length < 0 || length > p.Remaining)
++                return;
++
++            Apply(sub, facet, p.Buffer.Slice(p.Position, length));
++        }
++
++        /// <summary>One 0xF4 message. False when it is not one this layer draws, or is malformed.</summary>
++        public static bool Apply(byte sub, byte facet, ReadOnlySpan<byte> payload)
++        {
++            if (facet >= MapSizes.Length)
++                return false;
++
++            switch (sub)
++            {
++                case FullExplored:
++                    {
++                        byte[] bits = new byte[ByteCount(facet)];
++                        try
++                        {
++                            using var gz = new GZipStream(new MemoryStream(payload.ToArray()), CompressionMode.Decompress);
++                            int read = 0, n;
++                            while (read < bits.Length && (n = gz.Read(bits, read, bits.Length - read)) > 0)
++                                read += n;
++                        }
++                        catch (InvalidDataException)
++                        {
++                            return false;
++                        }
++
++                        _explored[facet] = bits;
++                        Version++;
++                        return true;
++                    }
++
++                case DeltaExplored:
++                    {
++                        if (payload.Length % 4 != 0)
++                            return false;
++
++                        _explored[facet] ??= new byte[ByteCount(facet)];
++                        int w = ChunkWidth(facet), h = ChunkHeight(facet);
++                        for (int o = 0; o < payload.Length; o += 4)
++                        {
++                            int cx = (payload[o] << 8) | payload[o + 1];
++                            int cy = (payload[o + 2] << 8) | payload[o + 3];
++                            if (cx >= w || cy >= h)
++                                continue;
++
++                            int i = cy * w + cx;
++                            _explored[facet][i >> 3] |= (byte)(1 << (i & 7));
++                        }
++
++                        Version++;
++                        return true;
++                    }
++
++                default:
++                    return false; // 0x03 and 0x04, mining depletion: not this layer's
++            }
++        }
++
++        /// <summary>
++        /// The fog layer's pixels, one per chunk, packed as the Color texture wants them (0 is clear, FogPixel is fog),
++        /// with one more column and row of fog so the map beyond the server's edge stays dark. Null with no data.
++        /// </summary>
++        public static uint[] FogPixels(int facet, out int width, out int height)
++        {
++            width = height = 0;
++            if (!HasData(facet))
++                return null;
++
++            int w = ChunkWidth(facet), h = ChunkHeight(facet);
++            width = w + 1;
++            height = h + 1;
++            var pixels = new uint[width * height];
++            Array.Fill(pixels, FogPixel);
++            byte[] bits = _explored[facet];
++            for (int cy = 0; cy < h; cy++)
++            {
++                for (int cx = 0; cx < w; cx++)
++                {
++                    int i = cy * w + cx;
++                    if ((bits[i >> 3] & (1 << (i & 7))) != 0)
++                        pixels[cy * width + cx] = 0;
++                }
++            }
++
++            return pixels;
++        }
++
++        // ---- the drawn layer --------------------------------------------------------------------------------------
++
++        private static Texture2D _texture;
++        private static int _textureFacet = -1, _textureVersion = -1;
++
++        /// <summary>The layer for a facet, rebuilt when the data changed; null with no data.</summary>
++        public static Texture2D Texture(GraphicsDevice device, int facet)
++        {
++            if (!HasData(facet))
++                return null;
++
++            if (_texture == null || _texture.IsDisposed || _textureFacet != facet || _textureVersion != Version)
++            {
++                uint[] pixels = FogPixels(facet, out int w, out int h);
++                if (_texture == null || _texture.IsDisposed || _texture.Width != w || _texture.Height != h)
++                {
++                    _texture?.Dispose();
++                    _texture = new Texture2D(device, w, h, false, SurfaceFormat.Color);
++                }
++
++                _texture.SetData(pixels);
++                _textureFacet = facet;
++                _textureVersion = Version;
++            }
++
++            return _texture;
++        }
++    }
++}
+diff --git a/src/ClassicUO.Client/Game/UI/Gumps/WorldMapGump.cs b/src/ClassicUO.Client/Game/UI/Gumps/WorldMapGump.cs
+index 25f82b1af..9a875cddd 100644
+--- a/src/ClassicUO.Client/Game/UI/Gumps/WorldMapGump.cs
++++ b/src/ClassicUO.Client/Game/UI/Gumps/WorldMapGump.cs
+@@ -72,6 +72,7 @@ public class WorldMapGump : ResizableGump
+     private Point _center, _lastScroll, _scroll;
+     private Point? _lastMousePosition = null;
+     private bool _flipMap = true;
++    private bool _showFog = true; // Shattered Legacy patch (cc-P240): fog of war
+     private bool _freeView;
+     private List<string> _hiddenMarkerFiles;
+     private bool _isScrolling;
+@@ -243,6 +244,7 @@ public class WorldMapGump : ResizableGump
+         ResizeWindow(new Point(Width, Height));
+ 
+         _flipMap = ProfileManager.CurrentProfile.WorldMapFlipMap;
++        _showFog = ProfileManager.CurrentProfile.WorldMapShowFog;
+         _showPartyMembers = ProfileManager.CurrentProfile.WorldMapShowParty;
+ 
+         World.WMapManager.SetEnable(_showPartyMembers);
+@@ -289,6 +291,7 @@ public class WorldMapGump : ResizableGump
+         ProfileManager.CurrentProfile.WorldMapHeight = _isFullscreen ? _preFullscreenBounds.Height : Height;
+ 
+         ProfileManager.CurrentProfile.WorldMapFlipMap = _flipMap;
++        ProfileManager.CurrentProfile.WorldMapShowFog = _showFog;
+         ProfileManager.CurrentProfile.WorldMapFreeView = FreeView;
+         ProfileManager.CurrentProfile.WorldMapShowParty = _showPartyMembers;
+ 
+@@ -364,6 +367,7 @@ public class WorldMapGump : ResizableGump
+                 _northIcon.Y = !_flipMap ? Height - _northIcon.Height - BorderControl.BorderSize : BorderControl.BorderSize;
+             }
+         }, true, _flipMap);
++        _options["show_fog"] = new ContextMenuItemEntry(TazLang.Get("map_show_fog", "Fog of war"), () => { _showFog = !_showFog; SaveSettings(); }, true, _showFog); // Shattered Legacy patch (cc-P240)
+ 
+         _options["goto_location"] = new ContextMenuItemEntry
+         (
+@@ -700,6 +704,7 @@ public class WorldMapGump : ResizableGump
+         ContextMenu.Add(_options["goto_location"]);
+         ContextMenu.Add(_options["pathfind_location"]);
+         ContextMenu.Add(_options["flip_map"]);
++        ContextMenu.Add(_options["show_fog"]); // Shattered Legacy patch (cc-P240)
+ 
+         var doubleClickEntry = new ContextMenuItemEntry(TazLang.Get("map_doubleclick_action", "Double click action"));
+         doubleClickEntry.Add(new ContextMenuItemEntry(TazLang.Get("map_doubleclick_toggle_lock", "Toggle lock state"),
+@@ -2358,6 +2363,44 @@ public class WorldMapGump : ResizableGump
+ 
+     #region Draw
+ 
++    // Shattered Legacy patch (cc-P240, F-6): the fog of war layer, one texel per 8x8 chunk (ShardFogOfWar), drawn over
++    // the map texture around the same world point, with the same rotation and pixels per tile, so it lines up at every
++    // zoom, flipped or not. Only when the shard sent fog for this facet and the menu's "Fog of war" is on.
++    private void DrawFog(UltimaBatcher2D batcher, int screenX, int screenY, int centerX, int centerY, int size, int size_zoom, int size_zoom_half, Vector3 hueVector)
++    {
++        if (!_showFog || _map == null || !ShardFogOfWar.HasData(_map.Index))
++        {
++            return;
++        }
++
++        Texture2D fog = ShardFogOfWar.Texture(Client.Game.GraphicsDevice, _map.Index);
++        if (fog == null)
++        {
++            return;
++        }
++
++        const int chunk = ShardFogOfWar.ChunkSize;
++        float worldCenterX = centerX - size_zoom_half + size_zoom / 2f;
++        float worldCenterY = centerY - size_zoom_half + size_zoom / 2f;
++        int chunkX = (int)Math.Floor((centerX - size_zoom_half) / (float)chunk) - 1;
++        int chunkY = (int)Math.Floor((centerY - size_zoom_half) / (float)chunk) - 1;
++        int chunks = size_zoom / chunk + 3;
++        float scale = chunk * size / (float)size_zoom;
++
++        batcher.Draw
++        (
++            fog,
++            new Vector2(screenX, screenY),
++            new Rectangle(chunkX, chunkY, chunks, chunks),
++            hueVector,
++            _flipMap ? Microsoft.Xna.Framework.MathHelper.ToRadians(45) : 0,
++            new Vector2((worldCenterX - chunkX * chunk) / chunk, (worldCenterY - chunkY * chunk) / chunk),
++            new Vector2(scale, scale),
++            SpriteEffects.None,
++            0
++        );
++    }
++
+     public override bool Draw(UltimaBatcher2D batcher, int x, int y)
+     {
+         if (IsDisposed || !IsVisible || !World.InGame)
+@@ -2469,6 +2512,8 @@ public class WorldMapGump : ResizableGump
+                     0
+                 );
+ 
++                DrawFog(batcher, gX + halfWidth, gY + halfHeight, centerX, centerY, size, size_zoom, size_zoom_half, hueVector); // Shattered Legacy patch (cc-P240)
++
+                 DrawAll
+                 (
+                     batcher,
+diff --git a/src/ClassicUO.Client/Network/PacketHandlers/EnterWorld.cs b/src/ClassicUO.Client/Network/PacketHandlers/EnterWorld.cs
+index d79e4dcd5..c835f13eb 100644
+--- a/src/ClassicUO.Client/Network/PacketHandlers/EnterWorld.cs
++++ b/src/ClassicUO.Client/Network/PacketHandlers/EnterWorld.cs
+@@ -15,6 +15,7 @@ internal static class EnterWorld
+         uint serial = p.ReadUInt32BE();
+ 
+         world.CreatePlayer(serial);
++        ShardFogOfWar.Reset(); // Shattered Legacy patch (cc-P240): a new login starts with no fog; the shard resends
+ 
+         p.Skip(4);
+         world.Player.Graphic = p.ReadUInt16BE();
+diff --git a/src/ClassicUO.Client/Network/PacketHandlers/HandlerRegistry.cs b/src/ClassicUO.Client/Network/PacketHandlers/HandlerRegistry.cs
+index d84df2dfd..bba6e723e 100644
+--- a/src/ClassicUO.Client/Network/PacketHandlers/HandlerRegistry.cs
++++ b/src/ClassicUO.Client/Network/PacketHandlers/HandlerRegistry.cs
+@@ -1,5 +1,6 @@
+ using System.Collections.Generic;
+ using ClassicUO.Game;
++using ClassicUO.Game.Managers; // Shattered Legacy patch (cc-P240)
+ using ClassicUO.IO;
+ 
+ namespace ClassicUO.Network.PacketHandlers;
+@@ -121,6 +122,7 @@ public static class PacketHandlerRegistry
+         (0xF5, DisplayMap.Receive),
+         (0xF6, BoatMoving.Receive),
+         (0xF7, PacketList.Receive),
++        (ShardFogOfWar.PacketId, ShardFogOfWar.Receive), // Shattered Legacy patch (cc-P240): fog of war
+         (EnhancedPacketHandler.EPID, EnhancedPacketHandler.Handle), //For handling custom packets
+ 
+         // login
+diff --git a/tests/ClassicUO.UnitTests/Game/ShardFogOfWarTests.cs b/tests/ClassicUO.UnitTests/Game/ShardFogOfWarTests.cs
+new file mode 100644
+index 000000000..cd8eebe83
+--- /dev/null
++++ b/tests/ClassicUO.UnitTests/Game/ShardFogOfWarTests.cs
+@@ -0,0 +1,167 @@
++// Shattered Legacy patch (cc-P240, F-6): the world map's fog of war, fed by the shard's packet 0xF4.
++using System;
++using System.Collections;
++using System.IO;
++using System.IO.Compression;
++using System.Linq;
++using ClassicUO.Game.Managers;
++using ClassicUO.IO;
++using FluentAssertions;
++using Xunit;
++
++namespace ClassicUO.UnitTests.Game
++{
++    public class ShardFogOfWarTests
++    {
++        // The server's way (ClusterFExplorationPackets.SendFullExplored): a BitArray of the facet's chunks, CopyTo bytes,
++        // gzip.
++        private static byte[] FullPayload(int facet, params (int cx, int cy)[] walked)
++        {
++            int w = ShardFogOfWar.ChunkWidth(facet), h = ShardFogOfWar.ChunkHeight(facet);
++            var bits = new BitArray(w * h, false);
++            foreach (var (cx, cy) in walked)
++                bits[cy * w + cx] = true;
++
++            byte[] raw = new byte[(bits.Length + 7) / 8];
++            bits.CopyTo(raw, 0);
++            using var output = new MemoryStream();
++            using (var gz = new GZipStream(output, CompressionLevel.Optimal, leaveOpen: true))
++                gz.Write(raw, 0, raw.Length);
++            return output.ToArray();
++        }
++
++        // ClusterFExplorationPackets.Send: [0xF4][u16 BE length][sub][facet][u32 BE payload length][payload].
++        private static byte[] Packet(byte sub, byte facet, byte[] payload)
++        {
++            int total = 9 + payload.Length;
++            var b = new byte[total];
++            b[0] = 0xF4;
++            b[1] = (byte)(total >> 8);
++            b[2] = (byte)total;
++            b[3] = sub;
++            b[4] = facet;
++            b[5] = (byte)(payload.Length >> 24);
++            b[6] = (byte)(payload.Length >> 16);
++            b[7] = (byte)(payload.Length >> 8);
++            b[8] = (byte)payload.Length;
++            payload.CopyTo(b, 9);
++            return b;
++        }
++
++        private static int[] Clear(uint[] pixels) =>
++            pixels.Select((p, i) => (p, i)).Where(t => t.p != ShardFogOfWar.FogPixel).Select(t => t.i).ToArray();
++
++        [Fact]
++        public void The_chunk_table_is_the_servers()
++        {
++            ShardFogOfWar.ChunkWidth(0).Should().Be(768);
++            ShardFogOfWar.ChunkHeight(0).Should().Be(512);
++            ShardFogOfWar.ChunkWidth(2).Should().Be(288);
++            ShardFogOfWar.ChunkHeight(2).Should().Be(200);
++            ShardFogOfWar.ChunkWidth(4).Should().Be(181);
++            ShardFogOfWar.ChunkHeight(5).Should().Be(512);
++        }
++
++        [Fact]
++        public void A_known_chunk_bit_reveals_exactly_that_chunk()
++        {
++            ShardFogOfWar.Reset();
++            ShardFogOfWar.Apply(ShardFogOfWar.FullExplored, 1, FullPayload(1, (400, 300))).Should().BeTrue();
++
++            uint[] pixels = ShardFogOfWar.FogPixels(1, out int w, out int h);
++            pixels.Should().NotBeNull();
++            w.Should().Be(769, "one chunk per pixel, plus a column of fog past the server's edge");
++            h.Should().Be(513);
++            Clear(pixels).Should().Equal(new[] { 300 * w + 400 }, "only the walked chunk is clear");
++            ShardFogOfWar.IsExplored(1, 400, 300).Should().BeTrue();
++            ShardFogOfWar.IsExplored(1, 401, 300).Should().BeFalse();
++            ShardFogOfWar.IsExplored(1, 400, 301).Should().BeFalse();
++        }
++
++        [Fact]
++        public void A_dungeon_chunk_east_of_5120_is_kept_like_any_other()
++        {
++            ShardFogOfWar.Reset();
++            int cx = 5300 / 8, cy = 300 / 8; // Felucca's dungeons sit east of x 5120 on the same map
++            ShardFogOfWar.Apply(ShardFogOfWar.FullExplored, 0, FullPayload(0, (cx, cy))).Should().BeTrue();
++            uint[] pixels = ShardFogOfWar.FogPixels(0, out int w, out _);
++            Clear(pixels).Should().Equal(cy * w + cx);
++        }
++
++        [Fact]
++        public void A_delta_reveals_the_listed_chunks_and_only_on_its_facet()
++        {
++            ShardFogOfWar.Reset();
++            byte[] delta = { 0x00, 0x05, 0x00, 0x07, 0x01, 0x00, 0x00, 0x02 }; // (5, 7) and (256, 2)
++            ShardFogOfWar.Apply(ShardFogOfWar.DeltaExplored, 3, delta).Should().BeTrue();
++
++            uint[] pixels = ShardFogOfWar.FogPixels(3, out int w, out _);
++            Clear(pixels).Should().BeEquivalentTo(new[] { 7 * w + 5, 2 * w + 256 });
++            ShardFogOfWar.HasData(2).Should().BeFalse("Malas's delta is not Ilshenar's");
++        }
++
++        [Fact]
++        public void The_servers_packet_parses_through_the_handler()
++        {
++            ShardFogOfWar.Reset();
++            byte[] packet = Packet(ShardFogOfWar.FullExplored, 2, FullPayload(2, (10, 20), (11, 20)));
++            var reader = new StackDataReader(packet);
++            reader.Seek(3); // the parser hands the handler the bytes after the id and the length
++            ShardFogOfWar.Receive(null, ref reader);
++
++            ShardFogOfWar.IsExplored(2, 10, 20).Should().BeTrue();
++            ShardFogOfWar.IsExplored(2, 11, 20).Should().BeTrue();
++            ShardFogOfWar.IsExplored(2, 12, 20).Should().BeFalse();
++        }
++
++        [Fact]
++        public void No_data_means_no_fog()
++        {
++            ShardFogOfWar.Reset();
++            for (int facet = 0; facet < ShardFogOfWar.MapSizes.Length; facet++)
++            {
++                ShardFogOfWar.HasData(facet).Should().BeFalse();
++                ShardFogOfWar.FogPixels(facet, out _, out _).Should().BeNull("a server that sends no 0xF4 gets no fog");
++            }
++
++            ShardFogOfWar.HasData(7).Should().BeFalse("a facet the server has no table for");
++        }
++
++        [Fact]
++        public void Mining_depletion_and_bad_data_draw_nothing()
++        {
++            ShardFogOfWar.Reset();
++            ShardFogOfWar.Apply(0x03, 1, FullPayload(1, (1, 1))).Should().BeFalse();
++            ShardFogOfWar.Apply(0x04, 1, new byte[] { 0, 1, 0, 1, 1 }).Should().BeFalse();
++            ShardFogOfWar.Apply(ShardFogOfWar.FullExplored, 1, new byte[] { 1, 2, 3 }).Should().BeFalse();
++            ShardFogOfWar.Apply(ShardFogOfWar.DeltaExplored, 9, new byte[4]).Should().BeFalse();
++            ShardFogOfWar.HasData(1).Should().BeFalse();
++        }
++
++        [Fact]
++        public void A_new_login_starts_empty()
++        {
++            ShardFogOfWar.Apply(ShardFogOfWar.DeltaExplored, 4, new byte[] { 0, 1, 0, 1 }).Should().BeTrue();
++            int before = ShardFogOfWar.Version;
++            ShardFogOfWar.Reset();
++            ShardFogOfWar.HasData(4).Should().BeFalse();
++            ShardFogOfWar.Version.Should().NotBe(before, "a drawn layer rebuilds");
++        }
++
++        // cc-P352: the world map's "Fog of war" toggle is on for a new profile, and 0xF4 reaches the manager.
++        [Fact]
++        public void The_fog_toggle_defaults_on()
++        {
++            new ClassicUO.Configuration.Profile().WorldMapShowFog.Should().BeTrue();
++        }
++
++        [Fact]
++        public void The_packet_is_registered_to_the_manager()
++        {
++            ClassicUO.Network.PacketHandlers.PacketHandlerRegistry.GetHandlers()
++                .Where(h => h.Id == ShardFogOfWar.PacketId)
++                .Select(h => h.Handler.Method.Name + "@" + h.Handler.Method.DeclaringType.Name)
++                .Should().Equal("Receive@ShardFogOfWar");
++        }
++    }
++}
+-- 
+2.51.2.windows.1
+
