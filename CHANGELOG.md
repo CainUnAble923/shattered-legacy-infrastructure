@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.4
+
+### Added
+- Monster surges: from time to time staff may call a surge, waves of creatures descending on one place. A shard-wide message says where, and moongates in Britain and New Haven may open to take you there. Prizes go to those who did the most damage, and can also go to everyone who fought or stood in the area for at least half the surge. Some surges are no-loot zones: fall inside one and you keep everything you carry. When the surge ends, its creatures and moongates are gone.
+
+### Staff
+- The Staff Hub's Events tab is open ([SL, GameMaster and up, live and test). Pick a creature template (Orc raid, Undead rising and Ogre warband to start; New makes your own, with an optional named boss for the last wave), set the spot, radius, waves, count per wave and interval, then Start or Dry run. Options per surge: moongates from Britain and New Haven to a staging spot, a no-loot zone, and prizes in any mix (top damage dealers, everyone present or who did damage, and extras you hand out by target). You name each prize item; gold is the default. End removes everything the surge made; a restart mid-surge removes it at start-up with no prizes.
+
 ## 2026.10.21.3
 
 ### Added

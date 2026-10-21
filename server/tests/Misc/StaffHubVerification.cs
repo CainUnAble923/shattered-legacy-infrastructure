@@ -752,7 +752,12 @@ public class StaffHubVerification : IDisposable
         ClusterFStaffHubSpots.SaveHere(admin, "E1 spot", out _);
         ClusterFStaffHub.GoTo(admin, "E1 recent", Map.Trammel, admin.Location);
 
-        int[] chrome = [StaffHubGump.BtnClose, StaffHubGump.BtnTabBase, StaffHubGump.BtnTabBase + 1, StaffHubGump.BtnTabBase + 2];
+        // cc-P230: the Events tab is a button now, and its setup is in the comparison.
+        int[] chrome =
+        [
+            StaffHubGump.BtnClose, StaffHubGump.BtnTabBase, StaffHubGump.BtnTabBase + 1, StaffHubGump.BtnTabBase + 2,
+            StaffHubGump.BtnTabBase + 3
+        ];
 
         var gumps = new Dictionary<string, StaffHubGump>();
         foreach (var cat in ClusterFStaffHub.Categories)
@@ -764,6 +769,8 @@ public class StaffHubVerification : IDisposable
         gumps["Player/matches"] = Hub(admin, new StaffHubState { Tab = StaffHubTab.Player, Matches = [player, admin] });
         gumps["Travel/places"] = Hub(admin, new StaffHubState { Tab = StaffHubTab.Travel });
         gumps["Travel/halls"] = Hub(admin, new StaffHubState { Tab = StaffHubTab.Travel, ShowGuildHalls = true });
+        ClusterFSurgeTemplates.SeedIfNeverSeeded();
+        gumps["Events/setup"] = Hub(admin, new StaffHubState { Tab = StaffHubTab.Events });
 
         var byTab = new Dictionary<string, HashSet<int>>();
         foreach (var (name, g) in gumps)
