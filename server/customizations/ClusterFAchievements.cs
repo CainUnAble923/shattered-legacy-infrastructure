@@ -1848,6 +1848,7 @@ public class AchievementEarnedGump : Gump
 /// Achievements tab:
 ///   - Earned achievements listed first (gold, with AP/Renown), then locked (gray).
 ///   - Achievements with progress counters show a "Progress: n/m" line until earned (a block bar until cc-P57).
+///   - Each run of one category starts with its heading: the category's icon and name (cc-P241).
 ///
 /// Quests tab:
 ///   - All 38 New Haven ML trainer quests with done/pending indicators.
@@ -1886,6 +1887,34 @@ public class AchievementsGump : Gump
     public const int ListY         = TabY + 2 * TabRowH + 6;
     public const int ContentBottom = GumpHeight - 74; // rows end here; the pager sits below, the footer line at H - 40
     public const int HeaderRowH    = 26;
+
+    // cc-P241: a category's heading row, its icon (44 x 44, Praxiiz's game-icons.net set) and its name beside it.
+    // The icons are our package's gumps 22459-22468; a client without the package draws no icon there, and the name
+    // still reads, so the heading never depends on the art.
+    public const int CategoryRowH     = 50;
+    public const int CategoryIconX    = 16;
+    public const int CategoryIconSize = 44;
+    public const int CategoryLabelDx  = 54; // the name starts 10 px clear of the icon
+    public const int CategoryLabelDy  = 14; // and sits on the icon's middle
+
+    /// <summary>cc-P241: each category's icon, a gump in our player package (registry.csv rows 22459-22468).</summary>
+    public static readonly IReadOnlyDictionary<AchievementCategory, int> CategoryIconGumpIds =
+        new Dictionary<AchievementCategory, int>
+        {
+            [AchievementCategory.Combat]      = 22459, // crossed-swords (Lorc)
+            [AchievementCategory.Skills]      = 22460, // open-book (Lorc)
+            [AchievementCategory.Exploration] = 22461, // compass (Lorc)
+            [AchievementCategory.Mining]      = 22462, // mining (Lorc)
+            [AchievementCategory.Crafting]    = 22463, // anvil (Lorc)
+            [AchievementCategory.Legacy]      = 22464, // scroll-unfurled (Lorc)
+            [AchievementCategory.Discovery]   = 22465, // magnifying-glass (Lorc)
+            [AchievementCategory.Collection]  = 22466, // swap-bag (Lorc)
+            [AchievementCategory.League]      = 22467, // laurel-crown (Lorc)
+            [AchievementCategory.Mischief]    = 22468, // imp-laugh (Lorc): the hidden joke achievements
+        };
+
+    /// <summary>cc-P241: the name a category's heading shows.</summary>
+    public static string CategoryName(AchievementCategory cat) => cat.ToString();
     public const int RowGap        = 6;
     public const int IconH         = 48;
 
@@ -2028,7 +2057,25 @@ public class AchievementsGump : Gump
     // -- Achievement list (paginated, icon-capable) ------------------------
 
     // Each display entry is either a section-header divider or an achievement row.
-    private readonly record struct PageRow(string? Header, AchievementDef? Def, bool Earned);
+    private readonly record struct PageRow(string? Header, AchievementDef? Def, bool Earned,
+        AchievementCategory? Category = null);
+
+    // cc-P241: a section's rows, each run of one category under its own heading (icon and name).
+    private static void AddSection(List<PageRow> rows, string header, List<AchievementDef> defs, bool earned)
+    {
+        rows.Add(new PageRow(header, null, false));
+        AchievementCategory? current = null;
+        foreach (var d in defs)
+        {
+            if (d.Category != current)
+            {
+                current = d.Category;
+                rows.Add(new PageRow(null, null, false, current));
+            }
+
+            rows.Add(new PageRow(null, d, earned));
+        }
+    }
 
     private void AddAchievementContent(int listY, int listH,
         AchievementCategory? filter, string username, IReadOnlyCollection<string> earnedKeys)
@@ -2054,20 +2101,11 @@ public class AchievementsGump : Gump
         if (filtered.Count > 0)
         {
             if (earnedList.Count > 0)
-            {
-                rows.Add(new PageRow(EarnedHeader, null, false));
-                foreach (var d in earnedList) rows.Add(new PageRow(null, d, true));
-            }
+                AddSection(rows, EarnedHeader, earnedList, true);
             if (lockedList.Count > 0)
-            {
-                rows.Add(new PageRow(LockedHeader, null, false));
-                foreach (var d in lockedList) rows.Add(new PageRow(null, d, false));
-            }
+                AddSection(rows, LockedHeader, lockedList, false);
             if (retiredList.Count > 0)
-            {
-                rows.Add(new PageRow(RetiredHeader, null, false));
-                foreach (var d in retiredList) rows.Add(new PageRow(null, d, true));
-            }
+                AddSection(rows, RetiredHeader, retiredList, true);
         }
 
         if (rows.Count == 0)
@@ -2092,6 +2130,12 @@ public class AchievementsGump : Gump
                 // -- Section divider row ----------------------------------
                 AddLabel(16, rowY + 4, 0x777, row.Header);
                 AddImageTiled(16, rowY + 22, GumpWidth - 32, 2, 9304);
+            }
+            else if (row.Category is { } cat)
+            {
+                // -- Category heading row (cc-P241) -----------------------
+                AddImage(CategoryIconX, rowY + 2, CategoryIconGumpIds[cat]);
+                AddLabel(CategoryIconX + CategoryLabelDx, rowY + CategoryLabelDy, 1154, CategoryName(cat));
             }
             else if (row.Def != null)
             {
@@ -2210,6 +2254,9 @@ public class AchievementsGump : Gump
 
     private static int RowHeight(PageRow row, string username)
     {
+        if (row.Category != null)
+            return CategoryRowH;
+
         if (row.Def == null)
             return HeaderRowH;
 

@@ -290,9 +290,10 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P34 added the 47 winter decor IDs (15424-15470); cc-P50 the 18 chest mimic IDs (15472-15489); cc-P138 the male
     # paperdoll gump 54783 (one more gump row).
     # cc-P147 added the three Achievements button gumps (22456-22458) without moving these counts; cc-P237 counts them
-    # and adds its 34 art IDs (15496-15529); cc-P236 the six satchel icons (13184-13189).
-    Assert-Equal 180 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art
-    Assert-Equal 5 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783 and 22456-22458'
+    # and adds its 34 art IDs (15496-15529); cc-P236 the six satchel icons (13184-13189); cc-P241 the ten achievement
+    # category icon gumps (22459-22468).
+    Assert-Equal 190 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps
+    Assert-Equal 15 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458 and 22459-22468'
     Assert-Equal 150 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
 
@@ -440,6 +441,40 @@ Fact 'TheCommunityArtRecordsAreTheServersTableAndEveryRowIdIsRegisteredWithItsPn
     $rowIds = @([regex]::Matches($lay, 'new\("[^"]+", "[^"]+", \d+, \d+, -?\d+, (0x[0-9A-F]+), "') | ForEach-Object { [Convert]::ToInt32($_.Groups[1].Value, 16) })
     Assert-True ($rowIds.Count -ge 40) "the layout has $($rowIds.Count) rows"
     foreach ($id in $rowIds) { Assert-True ($listed -contains $id) "row ID $id is registered" }
+}
+
+Fact 'EveryAchievementCategoryIconIsARegisteredGumpWithItsPngAndItsAuthorsCredit' {
+    # cc-P241. AchievementsGump.CategoryIconGumpIds (ClusterFAchievements.cs) maps every AchievementCategory to a gump;
+    # each is a registry row of kind gump with a 44x44 PNG in gumps\, and its license names the icon's game-icons.net
+    # author ("Icons made by <author>", CC BY 3.0) and credits Praxiiz's conversion. The set registers no row the gump
+    # does not use.
+    $root = Split-Path $pkg -Parent
+    $cs  = [IO.File]::ReadAllText((Join-Path $root 'server\customizations\ClusterFAchievements.cs'))
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $enum = [regex]::Match($cs, 'enum AchievementCategory\s*\{([^}]+)\}').Groups[1].Value
+    $cats = @([regex]::Matches($enum, '(?m)^\s*(\w+)\s*=') | ForEach-Object { $_.Groups[1].Value })
+    Assert-True ($cats.Count -ge 10) "the enum has $($cats.Count) categories"
+    $table = @{}
+    foreach ($m in [regex]::Matches($cs, '\[AchievementCategory\.(\w+)\]\s*=\s*(\d+)')) { $table[$m.Groups[1].Value] = [int]$m.Groups[2].Value }
+    $gumps = Join-Path $pkg 'vendor\shattered-legacy-art\gumps'
+    foreach ($c in $cats) {
+        Assert-True ($table.ContainsKey($c)) "$c has an icon in CategoryIconGumpIds"
+        $id = $table[$c]
+        $row = @($reg | Where-Object { [int]$_.id -eq $id })
+        Assert-Equal 1 $row.Count "$c's gump $id is registered once"
+        Assert-Equal 'gump' $row[0].kind "$c's row kind"
+        Assert-True ($row[0].license -match '^CC BY 3\.0, Icons made by (Lorc|Delapouite|John Colburn|Felbrigg|John Redman|Carl Olsen|Sbed) \(game-icons\.net\)') "$c's license names its author: $($row[0].license)"
+        Assert-True ($row[0].license -match 'Praxiiz') "$c's license credits Praxiiz's conversion"
+        $png = Join-Path $gumps "$id.png"
+        Assert-True (Test-Path -LiteralPath $png) "PNG for $id"
+        $b = [IO.File]::ReadAllBytes($png)
+        $w = ($b[16] -shl 24) -bor ($b[17] -shl 16) -bor ($b[18] -shl 8) -bor $b[19]
+        $h = ($b[20] -shl 24) -bor ($b[21] -shl 16) -bor ($b[22] -shl 8) -bor $b[23]
+        Assert-Equal '44x44' "${w}x${h}" "size of $id.png"
+    }
+    Assert-Equal $cats.Count (@($table.Values | Sort-Object -Unique)).Count 'one gump per category, none shared'
+    $set = @($reg | Where-Object { $_.kind -eq 'gump' -and $_.what -like 'Achievement category icon*' })
+    Assert-Equal (@($table.Values | Sort-Object) -join ',') (@($set | ForEach-Object { [int]$_.id } | Sort-Object) -join ',') 'the registered icons are exactly the ones the gump uses'
 }
 
 # --- cc-P62: worn-item animations; cc-P139: creature bodies -------------------------------------
