@@ -510,35 +510,45 @@ public class GuildContractLedgerGump : Gump
             return;
         }
 
-        var entry = entries[idx];
-        var def   = ClusterFWorkOrderSystem.Get(entry.DefKey);
+        TurnIn(_pm, guild, _guildKey, entries[idx], true);
+    }
+
+    /// <summary>
+    /// cc-P280: one active work order turned in: checked, its materials taken (pack then bank, all or nothing), paid and
+    /// moved to history. The ledger's Turn In and the League Register's combined turn-in both call it. `say` sends the
+    /// refusal; the confirmation is always sent. True when it was turned in.
+    /// </summary>
+    public static bool TurnIn(PlayerMobile pm, CharacterGuildData guild, string guildKey, WorkOrderEntry entry, bool say)
+    {
+        var def = ClusterFWorkOrderSystem.Get(entry.DefKey);
 
         if (def == null)
         {
-            _pm.SendMessage(0x22, "Order definition not found - please report this to an admin.");
-            return;
+            if (say) pm.SendMessage(0x22, "Order definition not found - please report this to an admin.");
+            return false;
         }
 
-        if (!def.RequirementsMet(_pm, entry))
+        if (!def.RequirementsMet(pm, entry))
         {
-            _pm.SendMessage(0x22,
-                def.Type == WorkOrderType.TamingContract
-                    ? "You have not yet delivered all required animals."
-                    : "You don't have all required materials in your backpack and bank.");
-            return;
+            if (say)
+                pm.SendMessage(0x22,
+                    def.Type == WorkOrderType.TamingContract
+                        ? "You have not yet delivered all required animals."
+                        : "You don't have all required materials in your backpack and bank.");
+            return false;
         }
 
         // Consume materials (pack then bank, all or nothing) and apply rewards
-        if (!def.ConsumeRequirements(_pm))
+        if (!def.ConsumeRequirements(pm))
         {
-            _pm.SendMessage(0x22, "You don't have all required materials in your backpack and bank.");
-            return;
+            if (say) pm.SendMessage(0x22, "You don't have all required materials in your backpack and bank.");
+            return false;
         }
-        guild.AddReputation(_guildKey, def.StandingReward);
-        guild.AddCurrency(_guildKey,   def.VoucherReward);
+        guild.AddReputation(guildKey, def.StandingReward);
+        guild.AddCurrency(guildKey,   def.VoucherReward);
 
         if (def.GoldReward > 0)
-            _pm.Backpack?.DropItem(new Gold(def.GoldReward));
+            pm.Backpack?.DropItem(new Gold(def.GoldReward));
 
         // Move to history
         entry.CompletedAt = DateTime.UtcNow;
@@ -549,7 +559,7 @@ public class GuildContractLedgerGump : Gump
 
         // Confirmation message
         var reward       = new List<string>();
-        var currencyName = _guildKey switch
+        var currencyName = guildKey switch
         {
             "smithing"  => "Smithing Seals",
             "rangers"   => "Trail Marks",
@@ -560,7 +570,8 @@ public class GuildContractLedgerGump : Gump
         if (def.VoucherReward  > 0) reward.Add($"+{def.VoucherReward} {currencyName}");
         if (def.GoldReward     > 0) reward.Add($"+{def.GoldReward:N0}gp");
 
-        _pm.SendMessage(0x44, $"Work order complete: {def.Title}. {string.Join(", ", reward)}.");
-        _pm.PlaySound(0x57);
+        pm.SendMessage(0x44, $"Work order complete: {def.Title}. {string.Join(", ", reward)}.");
+        pm.PlaySound(0x57);
+        return true;
     }
 }

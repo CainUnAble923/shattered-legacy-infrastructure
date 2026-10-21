@@ -29,6 +29,20 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.20
+
+### Added
+- The League Register: from Dull Copper the League Registrar gives you a free League Register, a book that holds your guilds. Bind a guild into it (a guild that has a book, like the Smith Guild Book or the Dispatch Ledger, gives its book up; you can take it back out free at any time). It holds 2 guilds at Dull Copper, 4 at Bronze, 6 at Verite, 9 at Blaze, 12 at Mythril and all 18 at Celestial.
+- The Register's pages: your bound guilds; a Guild Ledger with every guild's rank, standing and currency; League actions that open as your League rank rises (Bronze opens any bound guild's contracts from anywhere, Verite turns in every ready order of your bound guilds at once, Blaze repairs everything you wear, carry and bank in one pass); a Bank page that counts your bank's gold and materials; and League goods.
+- League goods, paid in Renown with a little gold: a bigger backpack (150 items at Bronze, 175 at Verite, 200 at Blaze, 250 at Mythril; weight is unchanged), the League Field Satchel (Bronze: holds your ore, lumber, hunter's and essence satchels and counts as one item), and the Combined Logbook (Dull Copper: your Prospector's and Forester's logbooks in one).
+- Repair items for smiths with Arms Lore: a field repair deed (repairs one item), a field repair kit (repairs one item per charge) and a remote repair deed (repairs everything you wear, carry and bank, once). Find them under Repair Items in the smithing menu.
+
+### Changed
+- If you leave a guild, your Register shows it greyed out once and then drops it, freeing its slot.
+
+### Staff
+- Every Register, League goods and repair item number is a clusterf.leagueRegister.* setting; the repair items' craft thresholds are read at server start.
+
 ## 2026.10.21.19
 
 ### Staff
