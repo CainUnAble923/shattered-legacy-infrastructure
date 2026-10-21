@@ -1,0 +1,22 @@
+{
+  "_comment": "cc-P219: SL_Mining.py, a short run: make a miner, stand at a mine spot, mine five times, see ore. Run it with D:\\UO\\golem\\Test-LegionScript.ps1 -Script SL_Mining.py -Plan <this file>. The spot is Trammel 2553, 479 (z 8), beside the Minoc mine's rock at 2553, 478, where SL_Mining.log shows a dig at every swing on 2026-10-18. The overrides turn off the control window, wandering and forge trips, so the script starts mining at once and stays put.",
+  "script": "SL_Mining.py",
+  "timeLimitMinutes": 6,
+  "overrides": {
+    "GUI": "False",
+    "WANDER": "False",
+    "AUTO_SMELT": "False",
+    "LOOP_FOREVER": "False"
+  },
+  "setup": [
+    "[global set Skills.Mining.Base 100 Str 100 where playermobile Name == \"{player}\"",
+    "[global addtopack Pickaxe where playermobile Name == \"{player}\"",
+    "[global set LogoutMap Trammel LogoutLocation \"(2553, 479, 8)\" where playermobile Name == \"{player}\""
+  ],
+  "failOn": "(?i)Traceback|No pickaxe or shovel|Out of mining tools",
+  "steps": [
+    { "name": "stands at the Minoc mine spot", "type": "at", "x": 2553, "y": 479, "range": 2 },
+    { "name": "mines five times", "type": "journal", "pattern": "(?i)you dig some|and put (it|them) in your backpack", "count": 5 },
+    { "name": "ore in the backpack", "type": "items", "graphics": [6583, 6584, 6585, 6586], "count": 1 }
+  ]
+}

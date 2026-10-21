@@ -43,7 +43,7 @@ READY = {"golem": "Gold", "machine": "STEPHS-DESKTOP", "at": "2026-10-19T15:00:0
              {"name": "claude", "ok": True, "detail": "signed in, Max plan", "fix": ""},
              {"name": "docker", "ok": False, "detail": "Docker Desktop is not running", "fix": "start Docker Desktop"},
              {"name": "push", "ok": False, "detail": "push to golem/Gold/test refused", "fix": "add the deploy key"}],
-         "laptop": None}
+         "laptop": None, "legionTests": {"ok": False, "why": "client data: no UO client files in D:\\UO\\UltimaOnlineVanilla"}}
 
 
 def free_port():
@@ -477,7 +477,12 @@ class RemoteGolems(unittest.TestCase):
     def test_the_readiness_summary_is_compact(self):
         s = panels.ready_summary(READY)
         self.assertEqual({"verdict": "NOT READY", "at": "2026-10-19T15:00:00", "summary": "2 of 9 checks failed: docker, push",
-                          "machine": "STEPHS-DESKTOP", "failed": ["docker", "push"], "laptop": None}, s)
+                          "machine": "STEPHS-DESKTOP", "failed": ["docker", "push"], "laptop": None,
+                          "legionTests": {"ok": False, "why": "client data: no UO client files in D:\\UO\\UltimaOnlineVanilla"}}, s)
+        # cc-P219: a file from before the Legion row has no legionTests key at all.
+        old = dict(READY)
+        del old["legionTests"]
+        self.assertNotIn("legionTests", panels.ready_summary(old))
         self.assertIsNone(panels.ready_summary(None))
         self.assertIsNone(panels.ready_summary({"verdict": "?"}))
 
@@ -521,6 +526,7 @@ class PhoneTeam(RemoteGolems):
             self.assertTrue(b.wait_for("document.querySelectorAll('#golem-team li.golemcard').length === 4"), "a card per Golem")
             text = b.eval("document.getElementById('golem-team').innerText")
             for want in ("Gold (any, claude, STEPHS-DESKTOP)", "Ready check: NOT READY", "failed: docker, push", "its agent has not called in yet",
+                         "Legion script tests: cannot run here (client data: no UO client files",
                          "Bronze (Fable, claude, GAMEPC)", "Ready check: READY"):
                 self.assertIn(want, text)
             self.assertEqual(1, b.eval("document.querySelectorAll('#golem-team img.portrait').length"), "only Gold has a portrait")
