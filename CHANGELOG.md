@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.22
+
+### Added
+- Bows, staves, clubs and wooden shields crafted from Ironwood, Ghostwood, Emberbark, Frostbark, Shadowbark, Runewood, Voidwood or Starwood now carry that wood's bonuses, climbing with each wood: for weapons, Ironwood is sturdy, Ghostwood hits more often, Emberbark burns, Frostbark chills, Shadowbark swings faster, Runewood deals energy and restores mana, Voidwood drains life and Starwood brings luck. Wooden shields get a defensive line of their own (resists, defense chance, reflect, spell channeling on Runewood).
+- An exceptional piece gets a second line on top: extra damage and a hit effect on weapons (Starwood also rolls one random Heartwood-style extra), extra resists or defense on shields. A normal piece gets the first line only.
+
+### Staff
+- The extended woods' "lower level requirement" (Ironwood 2, Starwood 5) is recorded but does nothing until levels exist. No wood ever gives Self Repair. Oak to Frostwood bows and Rootwood items are unchanged.
+
 ## 2026.10.20.21
 
 ### Added
