@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.6
+
+### Staff
+- Levelable crafted gear (first part). A Smith's Seal makes a crafted weapon, armor piece, shield or jewel levelable; found gear and artifacts are refused. Seals come only from staff for now ([add SmithsSealDeed) until their source is chosen. A levelable item gains XP from every kill its wearer helped with, shared by damage, with pets, summons and spells counting as the owner's; it levels to 200 and earns points (4 a level, 8 every 10th) to spend through [ItemLevel on properties and resists, never past the property's imbuing ceiling. Creatures can wear it too. Every number is a clusterf.levelGear.* setting; [LevelGearSet sets an item's level for testing.
+
 ## 2026.10.21.5
 
 ### Added

@@ -10,12 +10,15 @@ namespace Server.Mobiles
     ///         <c>server/patches/Mobile-set-item-resistance-hook.patch</c> routes each item through a
     ///         virtual <c>GetItemResistance</c> and this override supplies the set-aware value.
     ///     </para>
+    ///     <para>
+    ///         cc-P261: a levelable item's bought resist (ClusterFLevelGear) is added on top, set piece or not.
+    ///     </para>
     /// </summary>
     public partial class PlayerMobile
     {
         public override int GetItemResistance(Item item, ResistanceType type) =>
-            item is ISetItem { SetEquipped: true } setItem
+            (item is ISetItem { SetEquipped: true } setItem
                 ? setItem.SetResistBonus(type)
-                : base.GetItemResistance(item, type);
+                : base.GetItemResistance(item, type)) + ClusterFLevelGear.ResistBonus(item, type);
     }
 }
