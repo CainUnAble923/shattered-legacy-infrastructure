@@ -43,8 +43,15 @@ Example:
 
 ## 2026.10.20.15
 
+### Added
+- Wrong dungeon, revamped (Trammel and Felucca): the level-3 maze with its invisible walls and lockpickable doors, the prisoners' bedrolls that hide traps, soap and mysterious tunnels out of the cell blocks, the Demonic Jailor who drags you back to your cell, Fezzik the Ogre Cook and his gooey maggots, archmages, brigand cannibals, lizardman squatters and defenders, hungry ogres, savage pack wolves, prison rats and Wrong cave trolls, and the seven hot-item chests whose stolen loot burns until you leave the dungeon.
+- Wrong prisoners offer the escort quest "We Who Are About To Die": walk one to the Wrong entrance for 500 gold and compassion.
+- Covetous Void Spawn: the battle for the Void Pool at the bottom of Covetous, waves of void creatures (abyss, repond, undead, reptile or elemental) marching on the pool, a scoreboard and record wave, and Void Pool reward points spent at Vela in Cove for cauldrons of transmutation, a temporary forge, the Bracelet of Protection, Hephaestus and the Blight of the Tundra. Covetous level 3 is held by leveled void creatures, levels 1 and 2 by strange gazers, headless miners, dazzled harpies and vampire mongbats, and Cora the sorceress rules the dungeon.
+- Void artifacts: Prismatic Lenses, Brightblade, the Bracelet of Protection, the Blight of the Tundra and Hephaestus, from the void spawn and from Cora.
+
 ### Staff
 - Design notes written for rolled Mining and Lumberjacking contracts (tier values, five contract types, roll ranges, turn-in windows); no player change yet.
+- [GenWrongRevamp and [DeleteWrongRevamp build and remove the Wrong revamp; [SetupNewCovetous and [DeleteCovetous the Void Pool. Both are test-shard commands until Chase runs them live.
 
 ## 2026.10.20.14
 

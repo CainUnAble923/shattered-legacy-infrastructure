@@ -21,7 +21,10 @@ namespace Server.Engines.Points;
 // name, not the number, so adding one later never renumbers a save.
 public enum PointsType
 {
-    CleanUpBritannia
+    CleanUpBritannia,
+
+    // cc-P194: the Covetous Void Pool (Services/PointsSystems/VoidPool.cs).
+    VoidPool
 }
 
 public class PointsEntry
