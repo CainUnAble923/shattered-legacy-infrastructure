@@ -651,7 +651,7 @@ public class CleanUpBritanniaData : PointsSystem
         Add(typeof(global::Server.Items.ColdBlood), 100.0); // :454
         Add(typeof(global::Server.Items.CreepingVine), 100.0); // :455
         // MISSING :456 ForgedPardon = 100.0
-        // MISSING :457 ManaPhasingOrb = 500.0
+        Add(typeof(global::Server.Items.ManaPhasingOrb), 500.0); // :457 (cc-P199)
         // MISSING :458 RunedSashOfWarding = 100.0
         // MISSING :459 SurgeShield = 100.0
         Add(typeof(global::Server.Items.HeartOfTheLion), 100.0); // :460
@@ -923,7 +923,7 @@ public class CleanUpBritanniaData : PointsSystem
         Add(typeof(global::Server.Items.SoulstoneFragment), 500.0); // :733
         Add(typeof(global::Server.Items.WhiteClothDyeTub), 300.0); // :734
         // MISSING :735 Lodestone = 75.0
-        // MISSING :736 FeyWings = 75.0
+        Add(typeof(global::Server.Items.FeyWings), 75.0); // :736 (cc-P199)
         Add(typeof(global::Server.Items.StoutWhip), 3.0); // :737
         // MISSING :738 PlantClippings = 1.0
         // MISSING :739 BasketOfRolls = 5.0

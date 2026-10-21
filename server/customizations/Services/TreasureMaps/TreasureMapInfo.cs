@@ -526,16 +526,20 @@ public static class TreasureMapInfo
         null // eodon
     };
 
-    // ServUO's lists name LegendaryMapmakersGlasses, ManaPhasingOrb, RunedSashOfWarding, ShieldEngravingTool (Artisan,
-    // plus a null meaning "a random recipe"), ForgedPardon, SkeletonKey, MasterSkeletonKey, SurgeShield (Assassin) and
-    // TastyTreat (Ranger). Only the glasses exist here.
+    // ServUO's lists (TreasureMapInfo.cs:586-593) name LegendaryMapmakersGlasses, ManaPhasingOrb, RunedSashOfWarding,
+    // ShieldEngravingTool (Artisan, plus a null meaning "a random recipe"), ForgedPardon, SkeletonKey, MasterSkeletonKey,
+    // SurgeShield (Assassin) and TastyTreat (Ranger). Here: the glasses, and since cc-P199 the orb and the two keys. ServUO's
+    // typeof(SkeletonKey) names Enrico's collection mobile (Mobiles/NPCs/Enrico.cs:6), a slip for the key, whose class is
+    // Skeletonkey (Items/Tools/SkeletonKey.cs:6); the key is meant and is what is listed. RunedSashOfWarding,
+    // ShieldEngravingTool, ForgedPardon and SurgeShield are in neither tree; TastyTreat (cc-P128) is not added, as it
+    // was not before.
     private static readonly Type[][] _specialSupplyLoot =
     {
-        new Type[] { typeof(LegendaryMapmakersGlasses), null },
-        new[] { typeof(LegendaryMapmakersGlasses) },
-        new[] { typeof(LegendaryMapmakersGlasses) },
-        new[] { typeof(LegendaryMapmakersGlasses) },
-        new[] { typeof(LegendaryMapmakersGlasses) }
+        new Type[] { typeof(LegendaryMapmakersGlasses), typeof(ManaPhasingOrb), null },
+        new[] { typeof(LegendaryMapmakersGlasses), typeof(ManaPhasingOrb), typeof(Skeletonkey), typeof(MasterSkeletonKey) },
+        new[] { typeof(LegendaryMapmakersGlasses), typeof(ManaPhasingOrb) },
+        new[] { typeof(LegendaryMapmakersGlasses), typeof(ManaPhasingOrb) },
+        new[] { typeof(LegendaryMapmakersGlasses), typeof(ManaPhasingOrb) }
     };
 
     // ServUO adds OctopusNecklace.

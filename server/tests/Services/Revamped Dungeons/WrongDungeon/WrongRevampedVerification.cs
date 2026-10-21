@@ -263,11 +263,14 @@ public class WrongRevampedVerification
                 Assert.Equal(BedrollSpawner.OutsideTunnels, b.MysteriousTunnels.Select(t => t.Location).ToArray());
 
                 // The first three tunnels lead to a bedroll, which leads back; the other two lead to a room.
+                // Each picks its bedroll with Utility.Random over all 80 (ServUO's), so two can pick the same one; the
+                // later link then overwrites the way back (cc-P245: red in about one full-suite run in eight).
                 for (var i = 0; i < 3; i++)
                 {
                     var tunnel = b.MysteriousTunnels[i];
                     var bedroll = Assert.Single(b.Bedrolls, r => r.Location == tunnel.PointDest);
-                    Assert.Equal(BedrollSpawner.OutsideTunnels[i], bedroll.PointDest);
+                    var lastLink = Enumerable.Range(0, 3).Last(j => b.MysteriousTunnels[j].PointDest == tunnel.PointDest);
+                    Assert.Equal(BedrollSpawner.OutsideTunnels[lastLink], bedroll.PointDest);
                     Assert.Same(b, bedroll.BedrollSpawner);
                 }
 

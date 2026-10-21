@@ -25,7 +25,8 @@
 // 1011078. Group 1011173, which pinned also lacks, is kept verbatim: pinned has no group those two belong in, so it
 // appears as a new group at the end of the menu.
 //
-// Left out, both recipe-gated (SmithRecipes 355 and 356) and both needing BloodOfTheDarkFather, which neither tree has:
+// Left out, both recipe-gated (SmithRecipes 355 and 356) and both needing BloodOfTheDarkFather (ported by cc-P199; the
+// recipe gate is what keeps them out):
 // BritchesOfWarding (:359) and GlovesOfFeudalGrip (:929). Also not here: ServUO's SA entries for pinned types that
 // pinned's table leaves out (DreadSword, GargishTalwar, BloodBlade, DualShortAxes, DualPointedSpear, DiscMace ...),
 // which are a decision about the stock table, as OrcMaskTailoringRecipe.cs says of the four masks.

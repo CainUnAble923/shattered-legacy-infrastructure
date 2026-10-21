@@ -189,7 +189,7 @@ public class CC6FollowupBreathIncubatorVerification
         Assert.False(Hurt(farAway), "a player 15 tiles from the combatant was breathed on");
 
         // Not asserted: that CanTrigger is false for the next 5-7 s. It held in every full-suite run and read true in
-        // the isolated --filter run on the same builder (the CC6 follow-up note §6), an order dependence in stock
+        // the isolated --filter run on the same builder (the CC6 follow-up note section 6), an order dependence in stock
         // MonsterAbility's tick bookkeeping under the test clock that this fact is not about; the cooldown values
         // themselves are pinned above.
 
@@ -541,6 +541,34 @@ public class CC6FollowupBreathIncubatorVerification
         var res = Assert.Single(entry.Resources);
         Assert.Equal(typeof(Log), res.ItemType);
         Assert.Equal(100, res.Amount);
+        Assert.Equal(1044041, (int)res.Name); // Boards or Logs
+    }
+
+    [Fact]
+    public void TheChickenCoopIsCraftableUnderCarpentryOtherForAHundredAndFiftyBoards()
+    {
+        // cc-P199: ServUO DefCarpentry.cs:231, the entry after the incubator's, registered by the same class.
+        if (DefCarpentry.CraftSystem == null)
+        {
+            DefCarpentry.Initialize();
+        }
+
+        IncubatorCarpentryRecipe.Register();
+
+        var entry = Assert.Single(DefCarpentry.CraftSystem.CraftItems, c => c.ItemType == typeof(ChickenCoop));
+
+        Assert.Equal(1044294, (int)entry.GroupNameNumber); // Other
+        Assert.Equal(1112570, (int)entry.NameNumber);      // ServUO's label
+        Assert.Equal(Expansion.SA, entry.RequiredExpansion);
+
+        var skill = Assert.Single(entry.Skills);
+        Assert.Equal(SkillName.Carpentry, skill.SkillToMake);
+        Assert.Equal(90.0, skill.MinSkill);
+        Assert.Equal(115.0, skill.MaxSkill);
+
+        var res = Assert.Single(entry.Resources);
+        Assert.Equal(typeof(Log), res.ItemType);
+        Assert.Equal(150, res.Amount);
         Assert.Equal(1044041, (int)res.Name); // Boards or Logs
     }
 }

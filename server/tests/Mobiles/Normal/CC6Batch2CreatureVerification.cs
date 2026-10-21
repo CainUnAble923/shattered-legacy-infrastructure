@@ -332,7 +332,11 @@ public class CC6Batch2CreatureVerification
         Assert.Equal(FoodType.FruitsAndVeggies, ruddy.FavoriteFood);
 
         var plains = new HighPlainsBoura();
-        Assert.Equal(2, plains.ControlSlots); // cc-P130 (2026-10-16): the constructor's 3 clamps to HighPlainsBoura's definition minimum 2 (ServUO BaseCreature.cs:3843-3861)
+        // cc-P130 (2026-10-16): the constructor's 3 clamps to HighPlainsBoura's definition minimum 2 (ServUO BaseCreature.cs:3843-3861),
+        // or to 1 when its construction rolls averaged low enough to lower the range (it is on SlotLowerableNames; cc-P225: red in one
+        // full-suite run in six before this read the flag).
+        var plainsLowered = PetTrainingStore.Get(plains, false)?.SlotsLowered == true;
+        Assert.Equal(plainsLowered ? 1 : 2, plains.ControlSlots);
         Assert.Equal(47.1, plains.MinTameSkill);
         Assert.Equal(22, plains.Hides);
         Assert.Equal(HideType.Horned, plains.HideType);

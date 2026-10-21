@@ -738,6 +738,18 @@ apply_patch "$PATCHES/BaseWeapon-trained-weapon-ability.patch"
 # has no context-menu hook and a partial class cannot reach the override. Alternatives argued in
 # shard-migration/notes/cc-P194-port-wrong-and-covetous-void.md; pinned by CovetousVoidSpawnVerification.
 apply_patch "$PATCHES/PlayerMobile-void-pool-context.patch"
+# cc-P199 (ported). The three trap training kits (customizations Items/Functional), Remove Trap's gain path. RemoveTrap.cs
+# gains ServUO's IRemoveTrapTrainingKit and its target branch (a kit takes the target itself, :15-18, :60-63) and the
+# Endless Journey rule that Remove Trap no longer needs 50 Lockpicking and 50 Detect Hidden (:30-37); PuzzleChest.cs gains
+# a virtual wrong-guess seam (ServUO's DoDamage is virtual, Services/Khaldun/PuzzleChest.cs:372) and a public way to open
+# its private puzzle gump, which the cylinder kit sends. After RemoveTrap-treasure-chest-disarm (its context). Alternatives
+# argued in shard-migration/notes/cc-P199-port-base-items-remainder.md; pinned by TrapTrainingKitVerification.
+apply_patch "$PATCHES/RemoveTrap-trap-training-kits.patch"
+apply_patch "$PATCHES/PuzzleChest-trap-training-kit.patch"
+# cc-P199: Enhance.cs gains ServUO's Forged Metal of Artifacts check (Enhance.cs:253-258): an aura from the forged metal
+# (customizations Items/Tools/ForgedMetalOfArtifacts.cs) makes the next enhance succeed and is spent. A patch because the
+# result is a local of Enhance.Invoke between its chance rolls and its outcome switch; no event or virtual reaches it.
+apply_patch "$PATCHES/Enhance-forged-metal-of-artifacts.patch"
 
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
