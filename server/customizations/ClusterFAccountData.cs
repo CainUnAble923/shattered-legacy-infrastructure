@@ -221,6 +221,11 @@ public class ClusterFAccountData
     // Titles bought in the League shop or unlocked by AP, and the one each character shows. LeagueTitles reads it.
     public LeagueTitleRecord LeagueTitles { get; private set; } = new();
 
+    // -- Mined blocks, once per account (v22, cc-P238 F-36) ------------------
+    // Every 8 x 8 ore bank the account has mined, with when and which ores: the Prospector's Logbook's "blocks mined",
+    // and the climbing boots' gate. Written by ClusterFMinedBlocks (from Mining.Give).
+    public MinedBlockRecord MinedBlocks { get; private set; } = new();
+
     /// <summary>
     /// True when this record was read from a save before v15 that held account-level guild data
     /// (membership, Apprentice marks, reputation, scrip, work orders, commissions or an Artificer
@@ -458,6 +463,10 @@ public class ClusterFAccountData
         if (version >= 21)
             LeagueTitles = new LeagueTitleRecord(r);
 
+        // v22 (cc-P238, F-36): the blocks the account has mined. Before v22 none were recorded; the count starts at 0.
+        if (version >= 22)
+            MinedBlocks = new MinedBlockRecord(r);
+
         // v8-only saves (no EncounteredCreatures yet): just read chunks.
         if (version == 8)
             ReadExploration(r);
@@ -490,8 +499,8 @@ public class ClusterFAccountData
 
     // 15: cc-P18, guild data per character. 16: cc-P48, LifetimeRenown and CharacterLeagueData.
     // 17: cc-P78, LearnedRecipes. 18: cc-P79, CharacterLootRecord per character. 19: cc-P80, TutorialRecord.
-    // 20: cc-P150, CharacterRequisitionData per character. 21: cc-P229, LeagueTitleRecord.
-    public const int CurrentVersion = 21;
+    // 20: cc-P150, CharacterRequisitionData per character. 21: cc-P229, LeagueTitleRecord. 22: cc-P238, MinedBlockRecord.
+    public const int CurrentVersion = 22;
 
     public void Serialize(IGenericWriter w)
     {
@@ -604,6 +613,9 @@ public class ClusterFAccountData
 
         // v21: League titles
         LeagueTitles.Serialize(w);
+
+        // v22: mined blocks
+        MinedBlocks.Serialize(w);
     }
 
     // -- Flag helpers ------------------------------------------------------
@@ -1317,6 +1329,83 @@ public sealed class LeagueTitleRecord
         {
             w.Write(serial);
             w.Write(key);
+        }
+    }
+}
+
+/// <summary>
+/// cc-P238 (F-36): every 8 x 8 ore bank an account has mined: facet, bank (tile / 8, as pinned's HarvestDefinition banks
+/// are keyed), the first time it was mined, and the ores found there. Its own version; an unknown one is refused (D40).
+/// </summary>
+public sealed class MinedBlockRecord
+{
+    public const int CurrentVersion = 0;
+
+    public sealed class Block
+    {
+        public DateTime FirstMined { get; set; }
+        public SortedSet<string> Ores { get; } = new(StringComparer.Ordinal);
+    }
+
+    private readonly Dictionary<(string Facet, int X, int Y), Block> _blocks = new();
+
+    public IReadOnlyDictionary<(string Facet, int X, int Y), Block> Blocks => _blocks;
+
+    /// <summary>How many distinct blocks the account has mined.</summary>
+    public int Count => _blocks.Count;
+
+    public MinedBlockRecord() { }
+
+    public MinedBlockRecord(IGenericReader r)
+    {
+        var version = r.ReadInt();
+        if (version is < 0 or > CurrentVersion)
+            throw new System.IO.InvalidDataException(
+                $"MinedBlockRecord version {version} is not one this build reads (0 to {CurrentVersion}).");
+
+        var count = r.ReadInt();
+        for (var i = 0; i < count; i++)
+        {
+            var facet = r.ReadString();
+            var x = r.ReadInt();
+            var y = r.ReadInt();
+            var block = new Block { FirstMined = r.ReadDateTime() };
+            var ores = r.ReadInt();
+            for (var j = 0; j < ores; j++)
+                block.Ores.Add(r.ReadString());
+            _blocks[(facet, x, y)] = block;
+        }
+    }
+
+    /// <summary>Records ore found in a block. Returns true when the block is new to the account.</summary>
+    public bool Record(string facet, int bankX, int bankY, string ore, DateTime now)
+    {
+        var isNew = false;
+        if (!_blocks.TryGetValue((facet, bankX, bankY), out var block))
+        {
+            _blocks[(facet, bankX, bankY)] = block = new Block { FirstMined = now };
+            isNew = true;
+        }
+
+        if (!string.IsNullOrEmpty(ore))
+            block.Ores.Add(ore);
+
+        return isNew;
+    }
+
+    public void Serialize(IGenericWriter w)
+    {
+        w.Write(CurrentVersion);
+        w.Write(_blocks.Count);
+        foreach (var ((facet, x, y), block) in _blocks)
+        {
+            w.Write(facet);
+            w.Write(x);
+            w.Write(y);
+            w.Write(block.FirstMined);
+            w.Write(block.Ores.Count);
+            foreach (var ore in block.Ores)
+                w.Write(ore);
         }
     }
 }
