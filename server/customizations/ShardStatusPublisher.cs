@@ -88,7 +88,10 @@ public static class ShardStatusPublisher
         try
         {
             var (count, names) = Players(InWorld(NetState.Instances));
-            var bytes = Render(DateTime.UtcNow, _startedAt, Core.Uptime / 1000, count, names, _lastSaveAt, ShardVersion.Current);
+            // cc-P188: rootdeepMap is the Rootdeep seeder's own test of the Landing's land (not void), so a shard started
+            // without the map overlay is seen in the file without anyone logging in (docker/uo/Build-MapOverlay.ps1).
+            var bytes = Render(DateTime.UtcNow, _startedAt, Core.Uptime / 1000, count, names, _lastSaveAt, ShardVersion.Current,
+                ClusterFRootdeepSeeder.MapBuilt());
             WriteAtomically(_path, bytes);
 
             if (_failing)
@@ -185,7 +188,7 @@ public static class ShardStatusPublisher
     // non-ASCII character, so the file is ASCII whatever a character is called.
     internal static byte[] Render(
         DateTime generatedAt, DateTime startedAt, long uptimeSeconds, int count, IReadOnlyList<string> names,
-        DateTime? lastSaveAt, string version = null
+        DateTime? lastSaveAt, string version = null, bool rootdeepMap = true
     )
     {
         using var stream = new MemoryStream();
@@ -232,6 +235,7 @@ public static class ShardStatusPublisher
             {
                 w.WriteNull("lastSaveAt");
             }
+            w.WriteBoolean("rootdeepMap", rootdeepMap);
             w.WriteEndObject();
 
             w.WriteEndObject();

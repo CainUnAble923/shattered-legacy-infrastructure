@@ -8,10 +8,15 @@
 //   - the landing's working ankh (P137's AnkhWest through pinned's DecorationList, ClusterFAnkhs' method), because a
 //     ghost that is not Young walks to the landing, and a Young one is sent to the healer nearest the region's Entrance
 //     (PlayerMobile.cs:2563 and 4065-4128 at d4531cd9: New Haven's 3665,2587, not the landing),
-//   - the Vault's crawlway (RootdeepCrawlway).
+//   - the Vault's crawlway (RootdeepCrawlway),
+//   - cc-P188: the two teleporters of the way in: down, on the hole in Old Haven's ruined Second Bank (3619,2620, the
+//     region's Entrance; the map patch draws the hole 0x1B71 there and opens the bank's south wall), landing on the
+//     Landing's arrival tile; and up, at the foot of the rope ladder on the Landing's north wall (5193,1132; the ladder
+//     0x08A6 is a map static on the wall tile 5193,1131), landing beside the hole (3619,2621). Stock Teleporter items
+//     (pinned Items/Misc/Teleporter.cs: invisible, Active, players only, no delay), so nothing new is saved.
 // It refuses while the landing is still void land (the map batch has not run), unless "force". Idempotent: a row
-// already standing (a spawner of the same first type within 3 tiles, a working ankh within 2, a crawlway at its tile)
-// is skipped, and nothing is moved or deleted. Not run at world load.
+// already standing (a spawner of the same first type within 3 tiles, a working ankh within 2, a crawlway at its tile,
+// a teleporter at its tile) is skipped, and nothing is moved or deleted. Not run at world load.
 //
 // Pack sizes respect the Burrows' limit of 3 hostiles on one Young player (OldHavenBurrowsRegion.MaxHostilesOnYoung):
 // no spawner where a Young player can walk holds more than 3, and no two packs share a room's line of sight by
@@ -46,6 +51,26 @@ public static class ClusterFRootdeepSeeder
     public static readonly Point2D AnkhAt = new(5206, 1136);
 
     public const int VoidLand = 0x244;
+
+    /// <summary>cc-P188: a teleporter of the way in: where it stands and where it puts the player (both Trammel, Z 0).</summary>
+    public readonly record struct TeleporterRow(string Label, int X, int Y, int ToX, int ToY)
+    {
+        public Point3D At => new(X, Y, 0);
+        public Point3D To => new(ToX, ToY, 0);
+    }
+
+    /// <summary>The hole in the Second Bank of Haven (OldHavenBurrowsRegion.HoleEntrance), the way down.</summary>
+    public static readonly Point2D Hole = new(3619, 2620);
+
+    /// <summary>The foot of the rope ladder on the Landing's north wall, the way up; it lands the player beside the hole.</summary>
+    public static readonly Point2D LadderFoot = new(5193, 1132);
+    public static readonly Point2D BesideHole = new(3619, 2621);
+
+    public static readonly TeleporterRow[] Teleporters =
+    [
+        new("the hole down to the Landing", Hole.X, Hole.Y, Arrival.X, Arrival.Y),
+        new("the rope ladder up to Old Haven", LadderFoot.X, LadderFoot.Y, BesideHole.X, BesideHole.Y),
+    ];
 
     public static readonly SpawnRow[] Spawners =
     [
@@ -104,8 +129,8 @@ public static class ClusterFRootdeepSeeder
     }
 
     [Usage("ClusterFSeedRootdeep [dryrun | force]")]
-    [Description("Places the Rootdeep Burrows' spawners, the landing's working ankh and the Vault's crawlway, where missing. Refuses until the map batch has built the landing, unless force. Moves and deletes nothing.")]
-    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places the Rootdeep Burrows' spawners, landing ankh and crawlway once the map batch has built them.")]
+    [Description("Places the Rootdeep Burrows' spawners, the landing's working ankh, the Vault's crawlway and the two teleporters of the way in (the hole in Old Haven, the ladder up), where missing. Refuses until the map batch has built the landing, unless force. Moves and deletes nothing.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places the Rootdeep Burrows' spawners, landing ankh, crawlway and the way-in teleporters once the map batch has built them.")]
     private static void OnSeedCommand(CommandEventArgs e)
     {
         var mode = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "";
@@ -118,7 +143,7 @@ public static class ClusterFRootdeepSeeder
         e.Mobile.SendMessage(Seed(mode == "dryrun", mode == "force").Message);
     }
 
-    public readonly record struct SeedResult(bool Refused, int Spawners, int Ankhs, int Crawlways, int Present, string Message);
+    public readonly record struct SeedResult(bool Refused, int Spawners, int Ankhs, int Crawlways, int Present, string Message, int Teleporters = 0);
 
     public static SeedResult Seed(bool dryRun, bool force = false)
     {
@@ -130,7 +155,7 @@ public static class ClusterFRootdeepSeeder
                 "Rootdeep Burrows: not seeded. The landing is still void land; the map batch builds it first (or use force).");
         }
 
-        int spawners = 0, ankhs = 0, crawlways = 0, present = 0;
+        int spawners = 0, ankhs = 0, crawlways = 0, teleporters = 0, present = 0;
 
         foreach (var row in Spawners)
         {
@@ -178,9 +203,48 @@ public static class ClusterFRootdeepSeeder
             crawlways++;
         }
 
+        foreach (var row in Teleporters)
+        {
+            if (FindTeleporter(map, row) != null)
+            {
+                present++;
+                continue;
+            }
+
+            if (!dryRun)
+            {
+                PlaceTeleporter(map, row);
+            }
+
+            teleporters++;
+        }
+
         var verb = dryRun ? "would place" : "placed";
         return new SeedResult(false, spawners, ankhs, crawlways, present,
-            $"Rootdeep Burrows{(dryRun ? " (dry run)" : "")}: {verb} {spawners} spawners, {ankhs} ankh, {crawlways} crawlway; already there {present}.");
+            $"Rootdeep Burrows{(dryRun ? " (dry run)" : "")}: {verb} {spawners} spawners, {ankhs} ankh, {crawlways} crawlway, {teleporters} teleporters; already there {present}.",
+            teleporters);
+    }
+
+    /// <summary>A stock teleporter on the row's tile to the row's destination: players only, no delay, no effect.</summary>
+    public static Teleporter PlaceTeleporter(Map map, TeleporterRow row)
+    {
+        var t = new Teleporter(row.To, map) { Name = $"Rootdeep: {row.Label}" };
+        t.MoveToWorld(row.At, map);
+        return t;
+    }
+
+    /// <summary>The teleporter standing on the row's tile that points where the row does, or null.</summary>
+    public static Teleporter FindTeleporter(Map map, TeleporterRow row)
+    {
+        foreach (var item in map.GetItemsInRange<Teleporter>(row.At, 0))
+        {
+            if (!item.Deleted && item.PointDest == row.To && (item.MapDest == null || item.MapDest == map))
+            {
+                return item;
+            }
+        }
+
+        return null;
     }
 
     public static Spawner Place(Map map, SpawnRow row)

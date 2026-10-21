@@ -29,6 +29,18 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.12
+
+### Added
+- The Rootdeep Burrows are in the world: a hole in the floor of Old Haven's ruined Second Bank (east of New Haven, through the collapsed stretch of its south wall) drops you onto the Landing, and a rope ladder on the Landing's north wall brings you back up beside the hole.
+
+### Changed
+- The town crier who called the news in the Old Haven ruins is gone. The skeletons by the bank stay.
+
+### Staff
+- The map changes ship in the player package as a patch of our own changes (app\trammel.mapops, applied to copies of each player's own files at launch; nothing of EA's ships). The server reads the same map from client-data\sl-map-overlay, built by docker\uo\Build-MapOverlay.ps1 and mounted first in the test shard's data folders; live gets the same two lines at a restart you plan.
+- [ClusterFSeedRootdeep also places the two way-in teleporters (the hole, the ladder's foot). [ClusterFOldHavenRetire also removes pinned's town crier spawner in the ruins; a fresh world never places it.
+
 ## 2026.10.20.11
 
 ### Staff

@@ -100,8 +100,8 @@ public static class ClusterFOldHavenSeeder
     };
 
     [Usage("ClusterFOldHavenRetire [dryrun]")]
-    [Description("Removes the Old Haven Mage and Vorlak spawners, and their creatures, from Old Haven.")]
-    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "DELETES the Old Haven Mage and Vorlak spawners in Old Haven and their creatures (cc-P189). Any argument but dryrun deletes.")]
+    [Description("Removes the Old Haven Mage and Vorlak spawners, and their creatures, from Old Haven, and pinned's town crier spawner in the ruins with its crier.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "DELETES the Old Haven Mage and Vorlak spawners in Old Haven and their creatures (cc-P189), and the ruins' town crier spawner with its crier (cc-P188). Any argument but dryrun deletes.")]
     private static void ClusterFOldHavenRetire_OnCommand(CommandEventArgs e)
     {
         var dryRun = e.Length > 0 && e.GetString(0).Equals("dryrun", StringComparison.OrdinalIgnoreCase);
@@ -116,7 +116,9 @@ public static class ClusterFOldHavenSeeder
     /// Deletes every spawner in Old Haven whose entries are all retired types (deleting a spawner deletes what it spawned,
     /// pinned BaseSpawner.OnDelete -> RemoveSpawns, BaseSpawner.cs:1245-1290), and any retired creature in Old Haven that
     /// no spawner owns and no player controls. A spawner that also spawns something else is reported and kept: staff
-    /// mixed it, so staff decide. Returns the lines the command shows.
+    /// mixed it, so staff decide. cc-P188: also pinned's town crier spawner in the ruins (ClusterFOldHavenStockSpawns,
+    /// found by its guid anywhere on Trammel: it stands at 3652,2619, south of this seeder's box). Returns the lines the
+    /// command shows.
     /// </summary>
     internal static List<string> Retire(bool dryRun)
     {
@@ -150,6 +152,13 @@ public static class ClusterFOldHavenSeeder
             spawners.Add(spawner);
             creatures += spawner.Spawned.Count;
             lines.Add($"{(dryRun ? "[DRY RUN] " : "")}Spawner at ({spawner.X},{spawner.Y},{spawner.Z}) entries: {names}, {spawner.Spawned.Count} spawned");
+        }
+
+        if (ClusterFOldHavenStockSpawns.FindCrierSpawner() is { } crier)
+        {
+            spawners.Add(crier);
+            creatures += crier.Spawned.Count;
+            lines.Add($"{(dryRun ? "[DRY RUN] " : "")}Spawner at ({crier.X},{crier.Y},{crier.Z}) entries: {string.Join(", ", crier.Entries.Select(se => se.SpawnedName))}, {crier.Spawned.Count} spawned (pinned's Old Haven town crier, cc-P188)");
         }
 
         var strays = new List<Mobile>();

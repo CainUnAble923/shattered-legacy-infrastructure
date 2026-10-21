@@ -33,7 +33,7 @@
 //      has no accept hook to reach), and the buff goes at the gain that completes the quest; ServUO does both at once.
 //   4. The buff names the skill by its display name ("Resisting Spells"), not ServUO's enum name ("MagicResist").
 //   5. Old Haven Training is ServUO's rectangle plus one more, south and west, so the whole walk from New Haven to the
-//      Rootdeep hole (3619,2620) and pinned's southern undead spawners (Outdoors.json, 3625-3651, 2591-2627) are inside.
+//      Rootdeep hole (3619,2620, OldHavenBurrowsRegion.HoleEntrance) and pinned's southern undead spawners (Outdoors.json, 3625-3651, 2591-2627) are inside.
 // Only Old Haven Training is registered. ServUO's other Haven apprentice regions (Haven Mountains, Springs And Things
 // Workshop, Haven Dojo, Gorge's Shop, Haven Library, Enhanced Tracking Skill) are in the table but not registered: Chase
 // decides (notes). A quest whose region is not registered gets no boost, as ServUO logs an invalid region and gives none.

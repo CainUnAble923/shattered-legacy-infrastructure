@@ -195,6 +195,36 @@ function Test-EquipAnims($records, [byte[]]$mul, [byte[]]$idx, [string]$what) {
     foreach ($s in $slots.Keys) { if ($idx.Length -lt 12 * (Get-Anim7SlotEnd $s)) { $fail += "sl-anim7-idx.bin is too short for slot $s" } }
     return $fail
 }
+# Our own map (cc-P188). The map gate: trammel.mapops is plain ASCII with no BOM, LF line ends, one F line naming
+# facet 1 (Trammel) and the count of B (block fingerprint) lines, which follow it; every other line is L x y tile z,
+# S+ x y z id hue or S- x y z id hue with every number in range; nothing else (no EA bytes can hide in it: every
+# line is a change of ours). Returns the failures, none when it passes.
+function Test-MapOps([byte[]]$bytes, [string]$label) {
+    $fail = @()
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { $fail += "$label starts with a BOM" }
+    foreach ($b in $bytes) { if ($b -gt 0x7E -or ($b -lt 0x20 -and $b -ne 0x0A)) { $fail += "$label is not plain ASCII with LF line ends"; break } }
+    if ($fail.Count) { return $fail }
+    $text = [Text.Encoding]::ASCII.GetString($bytes)
+    $facet = -1; $blocks = -1; $bl = 0; $n = 0
+    foreach ($line in $text.Split("`n")) {
+        if ($line.Length -eq 0 -or $line.StartsWith('#')) { continue }
+        $n++
+        $p = $line.Split(' ')
+        switch ($p[0]) {
+            'F'  { if ($p.Count -ne 3 -or $facet -ge 0) { $fail += "${label}: bad F line '$line'" } else { $facet = [int]$p[1]; $blocks = [int]$p[2] } }
+            'B'  { if ($p.Count -ne 3 -or $p[2] -notmatch '^[0-9a-f]{16}$') { $fail += "${label}: bad B line '$line'" } else { $bl++ } }
+            'L'  { if ($p.Count -ne 5 -or [int]$p[1] -lt 0 -or [int]$p[1] -ge 7168 -or [int]$p[2] -lt 0 -or [int]$p[2] -ge 4096 -or [int]$p[3] -lt 0 -or [int]$p[3] -ge 16384 -or [int]$p[4] -lt -128 -or [int]$p[4] -gt 127) { $fail += "${label}: bad L line '$line'" } }
+            { $_ -eq 'S+' -or $_ -eq 'S-' } { if ($p.Count -ne 6 -or [int]$p[1] -lt 0 -or [int]$p[1] -ge 7168 -or [int]$p[2] -lt 0 -or [int]$p[2] -ge 4096 -or [int]$p[3] -lt -128 -or [int]$p[3] -gt 127 -or [int]$p[4] -lt 0 -or [int]$p[4] -ge 65536 -or [int]$p[5] -lt 0 -or [int]$p[5] -ge 65536) { $fail += "${label}: bad $($p[0]) line '$line'" } }
+            default { $fail += "${label}: a line that is not F, B, L, S+ or S-: '$line'" }
+        }
+        if ($fail.Count -ge 5) { break }
+    }
+    if ($facet -ne 1) { $fail += "${label}: the F line must name facet 1 (Trammel), got $facet" }
+    elseif ($bl -ne $blocks) { $fail += "${label}: the F line says $blocks blocks, $bl B lines follow" }
+    if ($n -eq 0) { $fail += "$label is empty" }
+    return $fail
+}
+
 # Our own client text (cc-P57 Part D). The cliloc gate: entries.json is plain ASCII (no BOM, every
 # byte printable or a line break), parses, and every entry has a number in our block, a non-empty
 # printable ASCII text, no number twice, and a row of registry.csv with the same text; and every
@@ -330,6 +360,11 @@ function Test-PackageZip([string]$path) {
         # Our own client text (cc-P57 Part D): the cliloc gate on what shipped.
         $ce = $rel['app/cliloc-entries.json']
         if (-not $ce) { $fail += 'no app/cliloc-entries.json' } else { $fail += @(Test-ClilocEntries (Read-ZipBytes $ce) 'app/cliloc-entries.json') }
+
+        # Our own map (cc-P188): the map gate on what shipped, and its applier beside Play.ps1.
+        $mo = $rel['app/trammel.mapops']
+        if (-not $mo) { $fail += 'no app/trammel.mapops' } else { $fail += @(Test-MapOps (Read-ZipBytes $mo) 'app/trammel.mapops') }
+        if (-not $rel['app/Apply-MapOps.ps1']) { $fail += 'no app/Apply-MapOps.ps1 (the map patch applier)' }
 
         # Nothing of EA's: no EA data file by type or by name, nothing made from one (cc-P26).
         foreach ($n in $names) {
@@ -747,6 +782,16 @@ if (@($slRecords.equipAnims | Where-Object { $_ }).Count + @($slRecords.bodyAnim
 $clilocFail = @(Test-ClilocEntries ([IO.File]::ReadAllBytes((Join-Path $slCliloc 'entries.json'))) 'vendor\shattered-legacy-cliloc\entries.json')
 if ($clilocFail.Count) { throw "CLILOC GATE: $($clilocFail -join '; '). Not building." }
 $vendored += ,@((Join-Path $slCliloc 'entries.json'), (Join-Path $stage 'app\cliloc-entries.json'))
+
+# --- our own map (cc-P188) -------------------------------------------------------------------
+# vendor\shattered-legacy-map\trammel.mapops as app\trammel.mapops: the Rootdeep Burrows and the way in from Old
+# Haven as a patch of our changes only (scripts\mapbuild\mapops.py in the docs repo; its SOURCE.txt). Play.ps1 applies
+# it to copies of the player's own map files (Apply-MapOps.ps1). The map gate below runs on the vendored file and
+# gate 4 runs it again on what shipped. Checked byte for byte in gate 3.
+$slMap = Join-Path $PSScriptRoot 'vendor\shattered-legacy-map'
+$mapFail = @(Test-MapOps ([IO.File]::ReadAllBytes((Join-Path $slMap 'trammel.mapops'))) 'vendor\shattered-legacy-map\trammel.mapops')
+if ($mapFail.Count) { throw "MAP GATE: $($mapFail -join '; '). Not building." }
+$vendored += ,@((Join-Path $slMap 'trammel.mapops'), (Join-Path $stage 'app\trammel.mapops'))
 
 # --- Visual C++ runtime (cc-P35) -----------------------------------------------------------
 # TazUO's zlib.dll imports VCRUNTIME140.dll, which Windows does not have, and TazUO loads
