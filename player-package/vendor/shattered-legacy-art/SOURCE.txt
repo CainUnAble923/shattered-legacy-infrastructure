@@ -309,3 +309,21 @@ Records (records.json): each copies the stock graphic it replaces, read from the
              PartialHue (0x00040000): the satchels OSI's 0xA272 "Ore_Satchel_east" (Container 0x00200000, weight 3,
              height 1) -> 0x00240000; the two bags OSI's bag 0xE76 (Container | ArticleA 0x00204000, weight 2,
              height 2) -> 0x00244000. Names 19 ASCII characters at most. Server copy: SatchelArt.Records.
+
+Achievement category icons, gumps 22459-22468 (0x57BB-0x57C4) (cc-P241)
+-----------------------------------------------------------------------
+Author:      the game-icons.net artists, converted to UO spell-icon style by Praxiiz: "1000+ Custom Spell Icons" 1.1.0,
+             https://www.servuo.dev/archive/1000-custom-spell-icons.258/ (2014). Original at
+             D:\UO\third-party\spell-icons-1000\ (bmp\<name>.bmp, 44 x 44, 24-bit). All ten shipped icons are by Lorc
+             (http://lorcblog.blogspot.com): the set has no per-author folders, so each icon's author is the
+             game-icons.net folder that serves it (https://game-icons.net/1x1/lorc/<name>.html, looked up 2026-10-21).
+License:     Creative Commons Attribution 3.0 (CC BY 3.0), bmp\license.txt. Modification and commercial use allowed.
+             REQUIRED: "Icons made by Lorc" (game-icons.net), and credit Praxiiz for the conversion, in the shard
+             credits list.
+Files:       22459 crossed-swords (Combat)   22460 open-book (Skills)          22461 compass (Exploration)
+             22462 mining (Mining)           22463 anvil (Crafting)            22464 scroll-unfurled (Legacy)
+             22465 magnifying-glass (Discovery)  22466 swap-bag (Collection)   22467 laurel-crown (League)
+             22468 imp-laugh (Mischief, the hidden joke achievements)
+What was done to the pixels: scripts\anchor-art-frames.py --black-transparent --keep-geometry. Pure black became
+             transparent and the format became PNG; nothing else changed. The tool re-reads every PNG against its source.
+Shown by:    the server's AchievementsGump (ClusterFAchievements.cs), beside each category's heading. No record needed.

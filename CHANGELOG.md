@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.13
+
+### Added
+- The achievements window now groups each list by category under a heading with the category's own icon: crossed swords for Combat, an open book for Skills, a compass for Exploration, a pick for Mining, an anvil for Crafting, a scroll for Legacy, a magnifying glass for Discovery, a sack for Collection, a laurel crown for the League, and a grinning imp for the secret joke achievements once you have earned one. Update your game through the launcher to see the icons; without the update the headings show the category names alone.
+
+### Staff
+- The icons are gumps 22459-22468 in the player package, from Praxiiz's conversion of the game-icons.net set (CC BY 3.0). The license requires the credit "Icons made by Lorc" (game-icons.net) and a credit to Praxiiz for the conversion in the shard's credits list.
+
 ## 2026.10.21.12
 
 ### Staff
