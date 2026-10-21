@@ -17,7 +17,7 @@
 </header>
 <nav id="tabs" aria-label="Sections">
   <a href="#today" data-tab="today">Today</a>
-  <a href="#golem" data-tab="golem">Golem</a>
+  <a href="#golem" data-tab="golem">Golem <span id="golem-qcount" class="badge" title="Open questions from the Golems"></span></a>
   <a href="#console" data-tab="console">Console</a>
   <a href="#needs" data-tab="needs">Needs you <span id="needs-count" class="badge"></span></a>
   <a href="#timeline" data-tab="timeline">Timeline</a>
@@ -41,6 +41,8 @@
   </section>
   <section id="golem" class="tab">
     <div class="card"><h2>State</h2><div id="golem-state"></div></div>
+    <!-- cc-P216: one Golem working alone: its questions for you (with several, each Golem's card shows its own). -->
+    <div class="card" id="golem-questions-card" hidden><h2>Questions for you</h2><div id="golem-questions"></div></div>
     <!-- cc-P187: which Golem the Controls act for. -->
     <div class="card" id="picker-card" hidden><h2>Pick the Golem</h2><ul id="picker" class="picklist golempick"></ul><p id="picker-note" class="quiet"></p></div>
     <!-- cc-P186: every Golem: machine, lanes, state, its readiness check, its portrait, its own buttons. -->

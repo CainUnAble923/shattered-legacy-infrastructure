@@ -8334,6 +8334,67 @@ Fact 'P158_TheCodexTodayRowSaysTheReviewsAndTheLaneRuns' {
     Assert-True ($tip -match 'review' -and $tip -match 'lane' -and $tip -match 'night') ('the tooltip says reviews and the lane: ' + $tip)
 }
 
+Fact 'P216_TheGolemTabShowsTheOpenQuestionsAndAnswerRunsAnswerQuestion' {
+    # cc-P216: a Golem's question for Chase (questions\<id>.json; a remote Golem's in remote\<name>\questions.json) is on
+    # the Golem tab in full, and Answer a Golem's question runs the Golem's own Answer-Question.ps1 after its phrase.
+    $root = Join-Path ([IO.Path]::GetTempPath()) ('p216-console-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+    New-Item -ItemType Directory -Path (Join-Path $root 'questions'), (Join-Path $root 'remote\Gold') -Force | Out-Null
+    try {
+        $cfg = Get-ConsoleConfig -RepoRoot $repo
+        $cfg.Autopilot = New-AutopilotConfig $root (Join-Path $root 'queue') -Kind golem
+        $mk = { param($id, $kind, $q, $ch, $free, $irr) [ordered]@{ id = $id; golem = ($id -split '-')[0]; prompt = ($id -split '-')[1]; kind = $kind; question = $q; choices = @($ch); freeText = $free
+            context = 'CC''s last message'; askedAt = '2026-10-21T09:15:00'; irreversible = [bool]$irr; irreversibleWhy = $irr; source = 'stopped'; state = 'open'; closedAt = ''; closedWhy = ''; answeredBy = '' } }
+        $long = 'P100 stopped: two worlds in the saves folder. ' + ('Which one should the test shard keep? ' * 8) + 'END'
+        $q1 = & $mk 'Bronze-P100-20261021-091500-a1b2' 'stopped' $long @([ordered]@{ label = 'Retry with my answer'; does = 'P100 goes back first in the queue' }, [ordered]@{ label = 'Keep both'; does = 'I rebuild beside them' }) $true ''
+        $q2 = & $mk 'Iron-P101-20261021-092000-0001' 'ask' 'Delete the old test saves?' @([ordered]@{ label = 'Delete'; does = 'I delete them' }) $false 'it deletes or overwrites saves or data, which cannot be undone'
+        $q3 = & $mk 'Bronze-P99-20261020-100000-0002' 'stopped' 'old one' @() $true ''; $q3.state = 'answered'
+        foreach ($q in @($q1, $q2, $q3)) { ($q | ConvertTo-Json -Depth 5) | Set-Content -LiteralPath (Join-Path $root ('questions\' + $q.id + '.json')) -Encoding ASCII }
+        $g = & $mk 'Gold-P140-20261021-100000-beef' 'needsyou' 'Claude Code is waiting on you: permission to use Bash' @() $true ''
+        ([ordered]@{ golem = 'Gold'; open = @($g); history = @() } | ConvertTo-Json -Depth 6) | Set-Content -LiteralPath (Join-Path $root 'remote\Gold\questions.json') -Encoding ASCII
+        $open = @(Get-OpenGolemQuestions -Root $root)
+        Assert-Equal 'Gold-P140-20261021-100000-beef,Iron-P101-20261021-092000-0001,Bronze-P100-20261021-091500-a1b2' (@($open | ForEach-Object { $_.Id }) -join ',') 'the open ones, newest first, the remote Golem''s too'
+        Assert-True ($open[0].Remote -and -not $open[2].Remote -and $open[2].Golem -eq 'Bronze') 'remote or this PC, and whose'
+        $lines = @(Get-GolemQuestionLines -Questions $open)
+        $text = (@($lines | ForEach-Object { $_.Text }) -join "`n")
+        Assert-True ($text -match 'questions : 3 open for you') ('the head line: ' + $lines[0].Text)
+        Assert-True ($text -match 'END' -and $text -match '1\. Retry with my answer: P100 goes back first in the queue' -and $text -match '2\. Keep both') ('the whole question and its choices: ' + $text)
+        Assert-True ($text -match 'CANNOT BE UNDONE: it deletes or overwrites saves' -and @($lines | Where-Object { $_.Color -eq 'red' }).Count -eq 1) 'cannot be undone, in red'
+        Assert-True ($text -match 'Gold on P140 \(waiting on you, [A-Za-z]{3} \d\d:\d\d, another PC: answer on the web console\)') ('a remote one says where to answer it: ' + $text)
+        Assert-True ($text -notmatch 'old one') 'not the answered one'
+        # The plan: the phrase names the Golem and the prompt; the words go as base64; the safety rule holds.
+        $f = New-P131Facts
+        $f.Present[$cfg.Autopilot.AnswerScript] = $true
+        $f | Add-Member -NotePropertyName AnswerId -NotePropertyValue $q1.id -Force
+        $f | Add-Member -NotePropertyName AnswerChoice -NotePropertyValue 1 -Force
+        $f | Add-Member -NotePropertyName AnswerText -NotePropertyValue 'Keep "both"; $(not run)' -Force
+        $p = @(Get-ActionPlan -Action 'golem.answer' -Config $cfg -AutopilotFacts $f)
+        $c = @($p | Where-Object { $_.Kind -eq 'confirm' })
+        Assert-True ($c.Count -eq 1 -and $c[0].Phrase -ceq 'answer bronze p100') ('the phrase: ' + (@($p | ForEach-Object { $_.Kind + ':' + $_.Text }) -join ' | '))
+        Assert-True ($c[0].Text -match 'END' -and $c[0].Text -match '"Keep both"' -and $c[0].Text -match 'never run as a command') ('the confirm shows the question and the answer: ' + $c[0].Text)
+        $w = @($p | Where-Object { $_.Kind -eq 'window' })[0]
+        $args1 = @($w.Arguments)
+        $i = [Array]::IndexOf([object[]]$args1, '-TextB64')
+        Assert-True ($i -gt 0 -and [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([string]$args1[$i + 1])) -ceq 'Keep "both"; $(not run)') 'the words, as base64 only'
+        Assert-True ((Get-P131Window $p) -match 'Answer-Question\.ps1 -Id Bronze-P100-20261021-091500-a1b2 -Choice 1 -Who \S+ -Source shard-console -TextB64 \S+ -Golem Bronze$') ('the command: ' + (Get-P131Window $p))
+        Assert-Equal 0 @(Test-PlanSafety $p $cfg).Count (@(Test-PlanSafety $p $cfg) -join '; ')
+        $noConfirm = @($p | Where-Object { $_.Kind -ne 'confirm' })
+        Assert-True (@(Test-PlanSafety $noConfirm $cfg).Count -gt 0) 'never without its phrase'
+        $bad = @($c + @(New-PlanStep -Kind window -Exe $cfg.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $cfg.Autopilot.AnswerScript, '-Id', $q1.id, '-Choice', '0', '-Text', 'rm -rf x', '-Source', 'shard-console')))
+        Assert-True (@(Test-PlanSafety $bad $cfg).Count -gt 0) 'never with plain words or other parameters'
+        # Refused: no pick, a closed question, a remote Golem's, a choice it does not have, words where it takes none.
+        $ref = { param($id, $ch, $t) $x = New-P131Facts; $x.Present[$cfg.Autopilot.AnswerScript] = $true; $x | Add-Member -NotePropertyName AnswerId -NotePropertyValue $id -Force
+            $x | Add-Member -NotePropertyName AnswerChoice -NotePropertyValue $ch -Force; $x | Add-Member -NotePropertyName AnswerText -NotePropertyValue $t -Force
+            $pl = @(Get-ActionPlan -Action 'golem.answer' -Config $cfg -AutopilotFacts $x); $pl[0] }
+        foreach ($case in @(@('', 0, '', 'Pick a question'), @($q3.id, 0, '', 'closed now'), @($g.id, -1, 'yes', 'another PC'), @($q1.id, 5, '', 'not one of its choices'), @($q2.id, 0, 'words', 'not your own words'), @($q1.id, -1, '', 'Pick a choice'))) {
+            $r = & $ref $case[0] $case[1] $case[2]
+            Assert-True ($r.Kind -eq 'refuse' -and $r.Text -match $case[3]) ('refused (' + $case[3] + '): ' + $r.Kind + ' ' + $r.Text)
+        }
+        $act = @(Get-ConsoleActions | Where-Object { $_.Key -eq 'golem.answer' })
+        Assert-True ($act.Count -eq 1 -and $act[0].Mutates -and $act[0].Group -eq 'Golem answer') 'a console action of its own row'
+        Assert-True ([bool](Get-ConsoleTooltips)['golem.answer']) 'with a tooltip'
+    } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
 $failed =@($results | Where-Object { -not $_.Passed }).Count
 Write-Host ""
 Write-Host ("{0} facts, {1} passed, {2} failed" -f $results.Count, ($results.Count - $failed), $failed) -ForegroundColor $(if ($failed) { 'Red' } else { 'Green' })

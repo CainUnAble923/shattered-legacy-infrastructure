@@ -244,6 +244,7 @@ function New-AutopilotConfig {
         PokeScript    = (Join-Path $Root 'Poke-Golem.ps1')
         RunNextScript = (Join-Path $Root 'Set-RunNext.ps1')
         RetryScript   = (Join-Path $Root 'Retry-Stopped.ps1')
+        AnswerScript  = (Join-Path $Root 'Answer-Question.ps1')   # cc-P216: Chase's answer to a Golem's question
         LaneNowScript = (Join-Path $Root 'Lane-Now.ps1')   # cc-P159: Send to the second PC (a Codex lane may start now)
         RunNextFile   = (Join-Path $Root 'RUN-NEXT')
         IntegrateScript = (Join-Path $Root 'Integrate.ps1')   # cc-P184: the integrator merges the other Golems' branches now
@@ -967,6 +968,7 @@ function Get-ConfirmSubject {
         'golem.mergepause'  { 'Pause merging' }    # cc-P208
         'golem.away'        { 'Away mode on' }     # cc-P149
         'golem.awayoff'     { 'Away mode off' }
+        'golem.answer'      { 'Answer a Golem''s question' }   # cc-P216
         'golem.mergeresume' { 'Resume merging' }
         'golem.tinkerpause'  { 'Pause the Tinker' }    # cc-P222
         'golem.tinkerresume' { 'Resume the Tinker' }
@@ -1254,6 +1256,8 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.lanenow';    Group = 'Golem queue'; Label = 'Send to the second PC';              Mutates = $true;  RunIn = 'here' }
         # cc-P184: the integrator merges the other Golems' finished branches into main now (otherwise between its own prompts).
         [pscustomobject]@{ Key = 'golem.integrate';  Group = 'Golem queue'; Label = 'Merge branches now';                 Mutates = $true;  RunIn = 'here' }
+        # cc-P216: Chase's answer to a Golem's open question (which question, a choice, his words: a picker), beside the queue row.
+        [pscustomobject]@{ Key = 'golem.answer';     Group = 'Golem answer'; Label = 'Answer a Golem''s question';        Mutates = $true;  RunIn = 'here' }
         # cc-P208: Shadow Iron, the merge Golem: no round runs while paused (its tickets wait); Resume runs one at once.
         [pscustomobject]@{ Key = 'golem.mergepause';  Group = 'Golem merge'; Label = 'Pause merging';                     Mutates = $true;  RunIn = 'here' }
         # cc-P149: away mode, until the time in the long run's Until box.
@@ -1971,6 +1975,7 @@ function Get-ConsoleTooltips {
         'golem.poke'       = 'Check now: runs the Golem''s 10-minute watch at once (Poke-Golem.ps1), so it looks again at a stall, a rest whose time has come or a pending wake. Changes nothing the watch would not. It opens no session (Poke the Golem does).'
         'golem.runnext'    = 'Run next: the queue row you picked is handed at the next hand-off, ahead of continuations (Set-RunNext.ps1; nothing is renamed). Asks the prompt number. With no row picked, it clears the pick.'
         'golem.retry'      = 'Retry stopped prompt: puts the STOPPED prompt back first in the queue, clears the stop and wakes a session on its own model (Retry-Stopped.ps1). Asks the prompt number. Greyed out while no prompt is STOPPED.'
+        'golem.answer'     = 'Answer a Golem''s question: pick the question, a choice and (where it takes them) your own words, then type answer <golem> <prompt>, and the Golem resumes with your answer as data (Answer-Question.ps1). Greyed out while no Golem on this PC has an open question; a Golem on another PC is answered on the web console.'
         'golem.clicheck'   = 'Checks the Claude Code CLI: installed, and signed in (claude auth status). Run it after signing in so the Golem tab sees it. Read-only; runs Check-Cli.ps1 in its own window.'
         'golem.integrate'  = 'Merge branches now (several Golems): the integrator merges every finished Golem branch into main, one at a time, builds when the server changed, commits and pushes; a conflict or a red build becomes a fix-up prompt for that Golem. Only while nothing runs on the integrator and its trees are clean (with Shadow Iron, settings.json mergeGolem, one of its rounds now). Asks merge branches; runs Integrate.ps1 in its own window.'
         'golem.away'        = 'Away mode on, until the time in the Until box: the Golems work around the clock within the night shift''s usage rule, park a prompt that stops for a decision and go on, and email a digest each morning. Asks away on; runs Set-Away.ps1 in its own window.'
@@ -3356,6 +3361,27 @@ function Test-PlanSafety {
                 if (-not @($plan | Where-Object { $_.Kind -eq 'confirm' -and $_.Phrase -ceq (Get-ConfirmPhrase 'web.deploy') }).Count) { $v.Add('a Haven deploy runs only after the typed phrase ' + (Get-ConfirmPhrase 'web.deploy')) }
             }
         }
+        # cc-P216: Answer-Question.ps1 runs only as the Answer button writes it (a question id, a choice, the words as base64,
+        # who, the source, a Golem name) and only after its typed phrase answer <golem> <prompt>.
+        if ($s.Kind -in @('exec', 'window') -and $line -match '(?i)Answer-Question\.ps1') {
+            $aq = @($s.Arguments); $i = [Array]::FindIndex([object[]]$aq, [Predicate[object]]{ param($x) [string]$x -match '(?i)Answer-Question\.ps1$' })
+            $rest = @($(if ($i -ge 0) { $aq | Select-Object -Skip ($i + 1) } else { @() }))
+            $okA = ($rest.Count % 2 -eq 0)
+            for ($k = 0; $okA -and $k -lt $rest.Count; $k += 2) {
+                $n = [string]$rest[$k]; $val = [string]$rest[$k + 1]
+                $okA = switch -CaseSensitive ($n) {
+                    '-Id'     { $val -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}-P\d{1,4}-\d{8}-\d{6}-[0-9a-f]{4}$' }
+                    '-Choice' { $val -cmatch '^(-1|[0-3])$' }
+                    '-TextB64' { $val -cmatch '^[A-Za-z0-9+/]+={0,2}$' }
+                    '-Who'    { $val -cmatch '^[A-Za-z0-9@._+][A-Za-z0-9@._+ -]{0,79}$' }
+                    '-Source' { $val -ceq 'shard-console' }
+                    '-Golem'  { $val -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' }
+                    default   { $false }
+                }
+            }
+            if (-not $okA) { $v.Add('Answer-Question.ps1 runs only as -Id <question> -Choice <n> [-TextB64 <words>] -Who <name> -Source shard-console [-Golem <name>]: ' + $line) }
+            if (-not @($plan | Where-Object { $_.Kind -eq 'confirm' -and [string]$_.Phrase -cmatch '^answer [a-z][a-z0-9]{0,23} p\d{1,4}$' }).Count) { $v.Add('an answer goes to a Golem only after the typed phrase answer <golem> <prompt>') }
+        }
         # cc-P144: Publish-LegionScripts.ps1 changes what Haven serves only after its typed phrase, and git runs here only
         # as the Pull scripts button writes it: git -C <this PC's scripts clone> pull --ff-only.
         if ($s.Kind -eq 'script' -and $Config.LegionPublish -and $s.Path -and [IO.Path]::GetFullPath([string]$s.Path) -ieq [IO.Path]::GetFullPath($Config.LegionPublish)) {
@@ -3478,13 +3504,13 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.LaneNowScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.LaneNowScript, $ap.AnswerScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 # cc-P186: a Golem script may also name one Golem of several (-Golem <name>, last); the rules below hold for the rest.
                 if ($sa.Count -ge 7 -and $sa[-2] -ceq '-Golem' -and $sa[-1] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' -and @(Get-GolemNamedScripts $ap) -icontains $sa[4]) { $sa = @($sa[0..($sa.Count - 3)]) }
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
-                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript) | Where-Object { $_ }
+                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.AnswerScript) | Where-Object { $_ }
                 $ok = ($head -and $sa.Count -eq 5 -and $withArgs -inotcontains $sa[4])
                 # cc-P125: Start-LongRun.ps1 only with -Cap <n> -Until <time>; Wrap-Up.ps1 and Find-StoppingPoint.ps1 also with -Cancel.
                 $tmpT = [datetime]::MinValue
@@ -3506,6 +3532,8 @@ function Test-PlanSafety {
                 # cc-P182: Set-RunNext.ps1 only with -Prompt P<nn> or -Cancel; Retry-Stopped.ps1 only with -Prompt P<nn>.
                 if ($head -and $ap.RunNextScript -and $sa[4] -ieq $ap.RunNextScript -and (($sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') -or ($sa.Count -eq 6 -and $sa[5] -ceq '-Cancel'))) { $ok = $true }
                 if ($head -and $ap.RetryScript -and $sa[4] -ieq $ap.RetryScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') { $ok = $true }
+                # cc-P216: Answer-Question.ps1, its arguments held to the button's shape by the rule for it above.
+                if ($head -and $ap.AnswerScript -and $sa[4] -ieq $ap.AnswerScript -and $sa.Count -ge 13) { $ok = $true }
                 # cc-P187: Assign-Prompt.ps1 only with -Prompt P<nn> -Golem <name>, and -RunNext last or not at all.
                 if ($head -and $ap.AssignScript -and $sa[4] -ieq $ap.AssignScript -and ($sa.Count -eq 9 -or ($sa.Count -eq 10 -and $sa[9] -ceq '-RunNext')) -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$' -and $sa[7] -ceq '-Golem' -and $sa[8] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$') { $ok = $true }
                 # cc-P94: and settings.json, the same way.
@@ -4557,6 +4585,77 @@ function Add-GolemToPlan {
     }
 }
 
+function Get-OpenGolemQuestions {
+    # cc-P216: every Golem's open questions for Chase: this PC's (questions\<id>.json, written by Questions.ps1) and the
+    # remote Golems' as their agents last posted them to the web console (remote\<name>\questions.json). Newest first:
+    # { Id, Golem, Prompt, Kind, Question, Choices, FreeText, Context, AskedAt, Irreversible, IrreversibleWhy, Remote }.
+    param([string]$Root)
+    $out = New-Object 'System.Collections.Generic.List[object]'
+    if (-not $Root) { return @() }
+    $rx = '^([A-Za-z][A-Za-z0-9]{0,23})-P\d{1,4}-\d{8}-\d{6}-[0-9a-f]{4}$'
+    $add = {
+        param($q, [bool]$remote)
+        $m = $(if ($q) { [regex]::Match([string]$q.id, $rx) } else { $null })
+        if (-not $q -or [string]$q.state -ne 'open' -or -not $m.Success) { return }
+        $out.Add([pscustomobject]@{ Id = [string]$q.id; Golem = $m.Groups[1].Value; Prompt = [string]$q.prompt; Kind = [string]$q.kind; Question = [string]$q.question
+            Choices = @($q.choices | Where-Object { $_ }); FreeText = [bool]$q.freeText; Context = [string]$q.context; AskedAt = [string]$q.askedAt
+            Irreversible = [bool]$q.irreversible; IrreversibleWhy = [string]$q.irreversibleWhy; Remote = $remote })
+    }
+    $qd = Join-Path $Root 'questions'
+    foreach ($f in @(Get-ChildItem -LiteralPath $qd -Filter '*.json' -File -ErrorAction SilentlyContinue)) {
+        $q = $null; try { $q = [IO.File]::ReadAllText($f.FullName, [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { }
+        if ($q -and [string]$q.id -ceq $f.BaseName) { & $add $q $false }
+    }
+    foreach ($d in @(Get-ChildItem -LiteralPath (Join-Path $Root 'remote') -Directory -ErrorAction SilentlyContinue)) {
+        $r = $null; try { $r = [IO.File]::ReadAllText((Join-Path $d.FullName 'questions.json'), [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { }
+        foreach ($q in @($(if ($r) { @($r.open) } else { @() }) | Where-Object { $_ })) { if ([string]$q.id -like ($d.Name + '-P*')) { & $add $q $true } }
+    }
+    @($out | Sort-Object AskedAt -Descending)
+}
+
+function Get-GolemQuestionLines {
+    # cc-P216: the Golem tab's lines for the open questions, in full: who asks on which prompt, the question, each choice
+    # and what the Golem then does, free text, and CANNOT BE UNDONE when it says so. Rows { Text, Color }.
+    param([object[]]$Questions)
+    $rows = New-Object 'System.Collections.Generic.List[object]'
+    $qs = @($Questions | Where-Object { $_ })
+    if (-not $qs.Count) { return $rows.ToArray() }
+    $rows.Add([pscustomobject]@{ Text = ('questions : ' + $qs.Count + ' open for you (answer: Answer a Golem''s question here, or the web console''s Golem card)'); Color = 'amber' })
+    foreach ($q in $qs) {
+        $at = ''; try { $at = ([datetime]::Parse($q.AskedAt)).ToString('ddd HH:mm') } catch { }
+        $rows.Add([pscustomobject]@{ Text = ('            ' + $q.Golem + ' on ' + $q.Prompt + ' (' + $(if ($q.Kind -eq 'needsyou') { 'waiting on you' } else { $q.Kind }) + ', ' + $at + $(if ($q.Remote) { ', another PC: answer on the web console' } else { '' }) + '): ' + (($q.Question -replace '\s+', ' ').Trim())); Color = 'amber' })
+        $i = 0
+        foreach ($c in @($q.Choices)) { $i++; $rows.Add([pscustomobject]@{ Text = ('              ' + $i + '. ' + [string]$c.label + $(if ([string]$c.does) { ': ' + [string]$c.does } else { '' })); Color = 'normal' }) }
+        if ($q.FreeText) { $rows.Add([pscustomobject]@{ Text = '              or your own words'; Color = 'gray' }) }
+        if ($q.Irreversible) { $rows.Add([pscustomobject]@{ Text = ('              CANNOT BE UNDONE: ' + $q.IrreversibleWhy); Color = 'red' }) }
+    }
+    $rows.ToArray()
+}
+
+function Show-AnswerPicker {
+    # cc-P216: Answer a Golem's question: a row per choice of each open question on this PC (and "my own words only"
+    # where it takes text), then the words in a box. Returns { Id, Choice, Text } or $null (cancelled).
+    param([string]$Root)
+    $qs = @(Get-OpenGolemQuestions -Root $Root | Where-Object { -not $_.Remote })
+    if (-not $qs.Count) { Write-ConsoleLine 'golem.answer: no Golem on this PC has an open question (a remote Golem''s are answered on the web console).' 'amber'; return $null }
+    $rows = @(foreach ($q in $qs) {
+        $i = 0
+        foreach ($c in @($q.Choices)) { [pscustomobject]@{ Tag = [pscustomobject]@{ Id = $q.Id; Choice = $i; FreeText = $q.FreeText; Q = $q }; Cells = @(($q.Golem + ' ' + $q.Prompt), [string]$c.label, [string]$c.does, (($q.Question -replace '\s+', ' ').Trim())) }; $i++ }
+        if ($q.FreeText) { [pscustomobject]@{ Tag = [pscustomobject]@{ Id = $q.Id; Choice = -1; FreeText = $true; Q = $q }; Cells = @(($q.Golem + ' ' + $q.Prompt), '(my own words only)', '', (($q.Question -replace '\s+', ' ').Trim())) } }
+    })
+    $pick = Show-ListPicker -Title 'Answer a Golem''s question' -Caption 'Pick the answer. Where the question takes your own words, a box for them comes next (with a choice they are optional).' -Columns @(@('Golem', 130), @('Answer', 200), @('The Golem then', 260), @('Question', 900)) -Rows $rows
+    if (-not $pick) { return $null }
+    $text = ''
+    if ($pick.FreeText) {
+        Add-Type -AssemblyName Microsoft.VisualBasic
+        $text = [Microsoft.VisualBasic.Interaction]::InputBox(('The ' + $pick.Q.Golem + ' Golem asks, on ' + $pick.Q.Prompt + ":`r`n" + (Clip-ConsoleText $pick.Q.Question 600) + "`r`n`r`nYour own words" + $(if ($pick.Choice -ge 0) { ' (optional)' } else { '' }) + ':'), 'Answer a Golem''s question', '')
+        if ($pick.Choice -lt 0 -and -not $text.Trim()) { return $null }
+    }
+    [pscustomobject]@{ Id = $pick.Id; Choice = $pick.Choice; Text = $text }
+}
+
+function Clip-ConsoleText([string]$s, [int]$n) { if ($s.Length -le $n) { $s } else { $s.Substring(0, $n) + ' ...' } }
+
 function Get-AwayLines {
     # cc-P149: away mode (until when), each parked prompt (why, where its work is) and the last email commands, accepted
     # or rejected. Pure: status in, rows out; nothing when away mode was never used and no command ever came.
@@ -5487,6 +5586,7 @@ function Format-AutopilotPanel {
     # cc-P184: one card per Golem while several work the queue (status.json golems).
     foreach ($gl in @(Get-GolemCardLines -Status $View.Status -Now $Now)) { & $add $gl.Text $gl.Color }
     foreach ($gl in @(Get-AwayLines -Status $View.Status)) { & $add $gl.Text $gl.Color }   # cc-P149
+    foreach ($gl in @(Get-GolemQuestionLines -Questions @(Get-OpenGolemQuestions -Root ([string]$ap.GolemRoot)))) { & $add $gl.Text $gl.Color }   # cc-P216
     $q = $View.Queue
     if ($null -eq $q) {
         & $add ('queue     : could not be listed (' + $ap.Queue + ')') 'gray'
@@ -5733,7 +5833,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff', 'golem.tinkerrun', 'golem.tinkerpause', 'golem.tinkerresume', 'golem.lanenow') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff', 'golem.tinkerrun', 'golem.tinkerpause', 'golem.tinkerresume', 'golem.lanenow', 'golem.answer') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -5975,6 +6075,31 @@ function Get-AutopilotPlan {
                     $steps.Add((New-PlanStep -Kind confirm -Phrase $sp -Text ($sp + ' goes back into the queue and goes next, stoppedPrompt is cleared, and a new CC session opens on ' + $sp + '''s own model (a terminal window on this PC). Read why it stopped first: its notes and the Golem''s STOPPED email. Its DONE is committed as usual.')))
                     $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.RetryScript + @('-Prompt', $sp)) -Text 'In a window of its own, which stays open.'))
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.retry'))
+                }
+                'golem.answer' {
+                    # cc-P216: the question, choice and words picked (Show-AnswerPicker), checked again against the open
+                    # question; the answer is written by the Golem's own Answer-Question.ps1 (Submit-GolemAnswer).
+                    if (-not (& $need $ap.AnswerScript 'Answer-Question.ps1')) { break }
+                    $qid = [string]$Facts.AnswerId
+                    if (-not $qid) { $steps.Add((New-PlanStep -Kind refuse -Text 'Pick a question to answer first: no Golem on this PC has an open question, or the pick was cancelled.')); break }
+                    $q = @(Get-OpenGolemQuestions -Root $ap.GolemRoot | Where-Object { $_.Id -ceq $qid }) | Select-Object -First 1
+                    if (-not $q) { $steps.Add((New-PlanStep -Kind refuse -Text ($qid + ' is closed now (answered, or the stop it asked about was cleared): there is nothing to answer.'))); break }
+                    if ($q.Remote) { $steps.Add((New-PlanStep -Kind refuse -Text ('The ' + $q.Golem + ' Golem is on another PC: answer it on the web console, which sends the answer to its agent.'))); break }
+                    $ch = -1; try { $ch = [int]$Facts.AnswerChoice } catch { }
+                    $words = ([string]$Facts.AnswerText).Trim()
+                    if ($ch -lt -1 -or $ch -ge @($q.Choices).Count) { $steps.Add((New-PlanStep -Kind refuse -Text 'That is not one of its choices.')); break }
+                    if ($words -and -not $q.FreeText) { $steps.Add((New-PlanStep -Kind refuse -Text 'This question takes one of its choices, not your own words.')); break }
+                    if ($words.Length -gt 2000) { $steps.Add((New-PlanStep -Kind refuse -Text 'The answer is longer than 2000 characters.')); break }
+                    if ($ch -lt 0 -and -not $words) { $steps.Add((New-PlanStep -Kind refuse -Text 'Pick a choice or write an answer.')); break }
+                    $said = (@($(if ($ch -ge 0) { '"' + [string]@($q.Choices)[$ch].label + '"' + $(if ([string]@($q.Choices)[$ch].does) { ' (the Golem then: ' + [string]@($q.Choices)[$ch].does + ')' } else { '' }) }), $(if ($words) { 'your words: "' + $words + '"' })) | Where-Object { $_ }) -join ' and '
+                    $then = $(if ($q.Kind -eq 'needsyou') { 'NEEDS YOU is cleared and a new session carries on with ' + $q.Prompt + ', reading the answer first.' } else { $q.Prompt + ' goes back first in the queue and a new session starts it again, reading the answer first.' })
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase ('answer ' + $q.Golem.ToLowerInvariant() + ' ' + $q.Prompt.ToLowerInvariant()) -Text ('The ' + $q.Golem + ' Golem asks, on ' + $q.Prompt + ': ' + $q.Question + "`r`n`r`nYour answer: " + $said + '. It goes to the Golem as data (answers\' + $qid + '.json), never run as a command. ' + $then + $(if ($q.Irreversible) { "`r`n`r`nCANNOT BE UNDONE: " + $q.IrreversibleWhy + '.' } else { '' }))))
+                    $who = ([Environment]::UserName -replace '[^A-Za-z0-9@._+ -]', '').TrimStart('-', '.', ' ')
+                    $aa = @('-Id', $qid, '-Choice', [string]$ch, '-Who', $(if ($who) { $who } else { 'shard-console' }), '-Source', 'shard-console')
+                    if ($words) { $aa += @('-TextB64', [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($words))) }
+                    if ($q.Golem -cne 'Golem') { $aa += @('-Golem', $q.Golem) }
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.AnswerScript + $aa) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.answer'))
                 }
                 'golem.clicheck' {
                     if (-not (& $need $ap.CliCheckScript 'Check-Cli.ps1')) { break }
@@ -9763,6 +9888,11 @@ function Update-GolemRunControls {
             if ($script:ui.ToolTip) { $script:ui.ToolTip.SetToolTip($b, $(if ($sp) { '' } else { 'Greyed out: no prompt is STOPPED. ' }) + (Get-ConsoleTooltips)['golem.retry']) }; $b.Text = $(if ($sp) { 'Retry stopped prompt (' + $sp + ')' } else { 'Retry stopped prompt' }) }
         if ($b.Tag -eq 'golem.runnext') { $b.Text = $(if ($View.PSObject.Properties.Name -contains 'RunNext' -and $View.RunNext) { 'Run next (picked: ' + ([regex]::Match([string]$View.RunNext, '^cc-(P\d+)-').Groups[1].Value) + ')' } else { 'Run next (picked row)' }) }
     }
+    # cc-P216: Answer lights while a Golem on this PC has an open question, and says how many.
+    if (@($script:ui.GolemAnswerButtons).Count) {
+        $nq = @(Get-OpenGolemQuestions -Root ([string]$script:cfg.Autopilot.GolemRoot) | Where-Object { -not $_.Remote }).Count
+        foreach ($b in @($script:ui.GolemAnswerButtons)) { $b.Enabled = ($nq -gt 0); $b.Text = $(if ($nq) { 'Answer a Golem''s question (' + $nq + ')' } else { 'Answer a Golem''s question' }) }
+    }
     # cc-P131: the toggles say what they would do next; Wake the Golem lights when the Golem is ready for a new session.
     $gs = $View.Settings
     foreach ($b in @($script:ui.GolemWakeButtons)) {
@@ -11036,6 +11166,14 @@ function Invoke-ConsoleButton {
                 $apFacts | Add-Member -NotePropertyName AssignGolem -NotePropertyValue (Get-PickedGolem) -Force
                 $apFacts | Add-Member -NotePropertyName AssignRunNext -NotePropertyValue $(if ($script:ui.AssignNext -and $script:ui.AssignNext.Checked) { 'yes' } else { 'no' }) -Force
             }
+            # cc-P216: Answer a Golem's question: which question, which choice and the words, picked before the plan.
+            if ($ActionKey -eq 'golem.answer') {
+                $ans = Show-AnswerPicker -Root ([string]$script:cfg.Autopilot.GolemRoot)
+                if (-not $ans) { Write-ConsoleLine 'golem.answer: cancelled.' 'gray'; return }
+                $apFacts | Add-Member -NotePropertyName AnswerId -NotePropertyValue $ans.Id -Force
+                $apFacts | Add-Member -NotePropertyName AnswerChoice -NotePropertyValue $ans.Choice -Force
+                $apFacts | Add-Member -NotePropertyName AnswerText -NotePropertyValue $ans.Text -Force
+            }
             # cc-P131: the picked model, the night shift's two times, and (for the wake only) a fresh sign-in check.
             if ($script:ui.GolemModel) {
                 # cc-P153: Auto (index 0) or the override; after a Poke the picker is back on Auto.
@@ -12270,6 +12408,10 @@ function New-ConsoleForm {
         $apTop.Controls.Add($b)
     }
     $script:ui.GolemQueueButtons = $queueBtns
+    # cc-P216: Answer a Golem's question, beside them (lit while a Golem on this PC has an open question).
+    $ansBtns = @()
+    foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Golem answer' })) { $b = New-ConsoleButton $a.Label $a.Key 230; $ansBtns += $b; $apTop.Controls.Add($b) }
+    $script:ui.GolemAnswerButtons = $ansBtns
     # cc-P208: Shadow Iron's Pause merging and Resume merging, beside Merge branches now.
     foreach ($a in @(Get-ConsoleActions | Where-Object { $_.Group -eq 'Golem merge' })) { $apTop.Controls.Add((New-ConsoleButton $a.Label $a.Key 200)) }
     # cc-P187: the Golem picker, a row of its own: which Golem the Golem buttons act for (golems.json; the integrator

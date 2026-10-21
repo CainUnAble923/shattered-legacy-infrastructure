@@ -52,6 +52,11 @@ Two listeners, both on 127.0.0.1 only (nothing on the LAN, nothing public):
   POST /api/agent/ready      cc-P186: the readiness file Test-GolemReady.ps1 wrote on that PC
   GET /api/agent/kit         cc-P222: the Golem kit's manifest (kit/current/kit-manifest.json under the Golem root):
                              each PC's agent compares it and fetches what differs
+  POST /api/agent/questions  cc-P216: {golem, questions: {open, history}}: that remote Golem's questions for Chase
+  POST /api/answer           cc-P216: {id, choice, text, confirm}: Chase's answer to a Golem's question, from the page
+                             (the same sign-in, proof, header and origin checks as /api/action). A Golem on this PC:
+                             the Golem folder's Answer-Question.ps1 (argv only; the words as base64), which writes the answer
+                             file through Submit-GolemAnswer and resumes the Golem. A remote one: queued for its agent.
   GET /api/agent/kit/file    cc-P222: ?path=<a manifest path>: that file from the snapshot, only a path the manifest lists
 Every other method is refused. Every string sent is passed through panels.redact_tree.
 
@@ -59,6 +64,7 @@ The collector runs as a child: Write-ConsoleStatus.ps1 -Loop -ParentPid <this>, 
 Standard library only (like docker/test-queue/server.py): nothing to install on the game PC. ASCII only.
 """
 import argparse
+import base64
 import hashlib
 import hmac
 import json
@@ -137,6 +143,11 @@ ACTION_TIMEOUT = 600   # seconds; the Golem's scripts take a few
 DEFAULT_GOLEM_ROOT = r"D:\UO\golem"
 GOLEM_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,23}$")     # golems.json: letters and digits
 COMMAND_ID = re.compile(r"^\d{13}-[0-9a-f]{6}$")
+# cc-P216: a question file's name (Questions.ps1): <Golem>-P<nn>-<yyyyMMdd-HHmmss>-<4 hex>; 'Golem' when one works alone.
+QUESTION_ID = re.compile(r"^([A-Za-z][A-Za-z0-9]{0,23})-P\d{1,4}-\d{8}-\d{6}-[0-9a-f]{4}$")
+ANSWER_TEXT_MAX = 2000   # as Questions.ps1's QTextMax
+ANSWER_TIMEOUT = 120     # seconds for Answer-Question.ps1 (the answer, the Golem's state, a wake)
+WHO_UNSAFE = re.compile(r"[^A-Za-z0-9@._+ -]")
 COMMAND_MINUTES = 30   # how long a command waits for its Golem's agent (settings.json agentCommandMinutes)
 TAKEN_MINUTES = 20     # a command handed out with no result by then is closed as unanswered
 AGENT_ONLINE = 180     # seconds: the agent polls every POLL_AWAKE s while its Golem is awake, POLL_ASLEEP s asleep
@@ -150,7 +161,7 @@ AGENTS_COMMENT = ("cc-P186: one salted SHA-256 per remote Golem's agent secret (
 class Console:
     """What the handlers read, refreshed in the background so a request never waits on git, docker or the network."""
 
-    def __init__(self, repo, notes, data, status_file=None, collector=True, runner=None, golem_root=None, machine=None):
+    def __init__(self, repo, notes, data, status_file=None, collector=True, runner=None, golem_root=None, machine=None, answer_runner=None):
         self.repo, self.notes, self.data = repo, notes, data
         # cc-P186: the Golem registry and the remote Golems' folders (D:/UO/golem), this PC's name, the agents' hashes.
         self.golem_root = golem_root or DEFAULT_GOLEM_ROOT
@@ -162,6 +173,10 @@ class Console:
         # cc-P182: the Golem buttons. The runner is the Shard Console's (tests pass a fake that records each call).
         self.runner = runner or ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
                                  os.path.join(repo, "scripts", "Invoke-WebConsoleAction.ps1")]
+        # cc-P216: Chase's answers to the Golems' questions (tests pass a fake that records each call).
+        self.answer_runner = answer_runner or ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                                               os.path.join(self.golem_root, "Answer-Question.ps1")]
+        self.answer_lock = threading.Lock()
         self.proof_file = os.path.join(data, "proof.key")
         self.action_log = os.path.join(data, "actions.log")
         self._proof = (None, "")
@@ -820,7 +835,7 @@ class Console:
                     closed.append(r)
                 continue
             self._save_command(name, r)
-            self.log_action(r, "", r["result"], None, r.get("inputs"), golem=name)
+            self.log_action(r, "", r["result"], None, self.loggable(r.get("inputs")), golem=name)
             closed.append(r)
         closed.sort(key=lambda r: r.get("endedAt") or "")
         for r in closed[:-50]:
@@ -874,6 +889,13 @@ class Console:
         self.panels_cache = (0.0, None)
         return 202, {"queued": True, "id": rec["id"], "golem": name, "online": online, "message": msg, "expiresAt": rec["expiresAt"]}
 
+    @staticmethod
+    def loggable(inputs):
+        """cc-P216: a command's inputs for the action log: an answer's words (textb64) are never logged, only their size."""
+        if not isinstance(inputs, dict) or "textb64" not in inputs:
+            return inputs
+        return dict(inputs, textb64="(%d characters of base64, not logged)" % len(str(inputs.get("textb64") or "")))
+
     def take_commands(self, g):
         """The agent's poll: its queued commands (not expired), each handed out once. The typed word stays here."""
         out = []
@@ -905,7 +927,7 @@ class Console:
             rec.update(state="done", code=code, result=result, endedAt=self._iso(self.clock()),
                        lines=[panels.redact(str(l))[:400] for l in lines[-60:]])
             self._save_command(g["name"], rec)
-        self.log_action(rec, "", result, code, rec.get("inputs"), golem=g["name"])
+        self.log_action(rec, "", result, code, self.loggable(rec.get("inputs")), golem=g["name"])
         self.panels_cache = (0.0, None)
         return 200, {"ok": True}
 
@@ -945,6 +967,165 @@ class Console:
             out.append({k: r.get(k) for k in ("id", "key", "label", "state", "queuedAt", "expiresAt", "takenAt", "endedAt", "code", "result", "who")})
             out[-1]["note"] = note
         return out
+
+    # --- cc-P216: the Golems' questions for Chase, and his answers ----------------------------------------------------
+    def _question_files(self, name):
+        d = os.path.join(self.golem_root, "questions")
+        try:
+            names = os.listdir(d)
+        except OSError:
+            return []
+        out = []
+        for n in names:
+            m = QUESTION_ID.match(n[:-5]) if n.endswith(".json") else None
+            if not m or m.group(1).lower() != name.lower():
+                continue
+            q = self._load_json(os.path.join(d, n), None)
+            if isinstance(q, dict) and q.get("id") == n[:-5]:
+                out.append(q)
+        return out
+
+    @staticmethod
+    def _history_row(q, a):
+        row = {k: q.get(k) for k in ("id", "prompt", "kind", "question", "state", "askedAt", "closedAt", "closedWhy")}
+        row["answer"] = {k: a.get(k) for k in ("choiceLabel", "text", "who", "source", "at", "delivered")} if isinstance(a, dict) else None
+        return row
+
+    def local_questions(self, name):
+        """A Golem on this PC: its open questions (newest first) and the last five closed, with their answers."""
+        qs = self._question_files(name)
+        opened = sorted((q for q in qs if q.get("state") == "open"), key=lambda q: str(q.get("askedAt")), reverse=True)
+        closed = sorted((q for q in qs if q.get("state") != "open"), key=lambda q: str(q.get("closedAt")), reverse=True)[:5]
+        return {"open": opened, "history": [self._history_row(q, self._load_json(os.path.join(self.golem_root, "answers", q["id"] + ".json"), None)) for q in closed]}
+
+    def remote_questions(self, g):
+        """A remote Golem: what its agent last posted, and which open ones have an answer on its way (queued for the agent)."""
+        d = self._load_json(os.path.join(self.remote_dir(g["name"]), "questions.json"), None)
+        d = d if isinstance(d, dict) else {}
+        out = {"open": [q for q in d.get("open") or [] if isinstance(q, dict)], "history": [h for h in d.get("history") or [] if isinstance(h, dict)],
+               "receivedAt": d.get("receivedAt")}
+        with self.queue_lock:
+            self._sweep(g)
+            sent = {str((r.get("inputs") or {}).get("question")): r for r in self._commands(g["name"]) if r.get("key") == "answer"}
+        for q in out["open"]:
+            r = sent.get(str(q.get("id")))
+            if r and r.get("state") in ("queued", "taken"):
+                q["answerPending"] = "answer sent: waiting for %s's agent to take it" % g["name"] if r.get("state") == "queued" else "answer sent: %s is resuming" % g["name"]
+            elif r and r.get("state") == "done" and r.get("code") not in (0, None):
+                q["answerFailed"] = r.get("result") or "the answer was refused there"
+        return out
+
+    def questions_for(self, name):
+        g = self.golem(name)
+        return self.remote_questions(g) if g and self.is_remote(g) else self.local_questions(g["name"] if g else name)
+
+    def questions_summary(self):
+        """For the tab header and a Golem working alone: the open count across every Golem, and (no registry) the one
+        Golem's questions."""
+        reg = [g for g in self.registry() if str(g.get("engine") or "") != "script"]
+        if not reg:
+            solo = self.local_questions("Golem")
+            return {"open": len(solo["open"]), "golems": [{"name": "Golem", "open": len(solo["open"])}], "solo": solo}
+        rows = [{"name": g["name"], "open": len(self.questions_for(g["name"])["open"])} for g in reg]
+        return {"open": sum(r["open"] for r in rows), "golems": rows, "solo": None}
+
+    def save_questions(self, g, body):
+        """cc-P216: a remote Golem's questions as its agent posts them: only that Golem's, kept in remote/<name>/questions.json."""
+        qs = body.get("questions")
+        if not isinstance(qs, dict) or not isinstance(qs.get("open"), list) or not isinstance(qs.get("history"), list):
+            return 400, {"error": "questions is {open: [...], history: [...]}"}
+        name = g["name"]
+
+        def mine(q):
+            m = QUESTION_ID.match(str(q.get("id") or "")) if isinstance(q, dict) else None
+            return bool(m) and m.group(1).lower() == name.lower()
+        if not all(mine(q) for q in qs["open"] + qs["history"]):
+            return 400, {"error": "a question that is not %s's" % name}
+        doc = {"golem": name, "open": panels.redact_tree(qs["open"][:20]), "history": panels.redact_tree(qs["history"][:5]), "receivedAt": self._iso(self.clock())}
+        with self.queue_lock:
+            self.seen(g, "questions")
+            self._write_json(os.path.join(self.remote_dir(name), "questions.json"), doc)
+        self.panels_cache = (0.0, None)
+        return 200, {"ok": True, "golem": name, "open": len(doc["open"])}
+
+    def answer(self, body, who):
+        """(http code, body): Chase's answer from the page. Checked against the open question as this service sees it
+        (a stale page's answer to a closed one is refused), then written by the Golem's own Answer-Question.ps1 (this
+        PC) or queued for the remote Golem's agent. The words are data: base64 on the command line, never a shell's."""
+        qid = body.get("id")
+        m = QUESTION_ID.match(qid) if isinstance(qid, str) else None
+        if not m:
+            return 400, {"error": "no such question"}
+        name = m.group(1)
+        g = self.golem(name)
+        if not g and not (name == "Golem" and not self.registry()):
+            return 404, {"error": "no such Golem in golems.json"}
+        remote = bool(g) and self.is_remote(g)
+        card = self.remote_questions(g) if remote else self.local_questions(g["name"] if g else name)
+        q = next((x for x in card["open"] if x.get("id") == qid), None)
+        if not q:
+            h = next((x for x in card["history"] if x.get("id") == qid), None)
+            why = ("closed: the question was %s%s" % (h.get("state"), (" (%s)" % h["closedWhy"]) if h.get("closedWhy") else "")) if h else "closed: it is no longer open"
+            return 409, {"error": why, "closed": True}
+        if q.get("answerPending"):
+            return 409, {"error": "an answer is already on its way to %s" % name, "closed": True}
+        choice = body.get("choice", -1)
+        choices = q.get("choices") if isinstance(q.get("choices"), list) else []
+        if isinstance(choice, bool) or not isinstance(choice, int) or not -1 <= choice < len(choices):
+            return 400, {"error": "not one of its choices"}
+        text = body.get("text") or ""
+        if not isinstance(text, str):
+            return 400, {"error": "the answer is text"}
+        text = text.strip()
+        if len(text) > ANSWER_TEXT_MAX:
+            return 400, {"error": "the answer is longer than %d characters" % ANSWER_TEXT_MAX}
+        if text and not q.get("freeText"):
+            return 400, {"error": "this question takes one of its choices, not text"}
+        if choice < 0 and not text:
+            return 400, {"error": "pick a choice or write an answer"}
+        if q.get("irreversible") and body.get("confirm") is not True:
+            return 409, {"error": "This cannot be undone: %s. Confirm to send the answer." % (q.get("irreversibleWhy") or "the Golem says so"), "needsConfirm": True}
+        who_c = WHO_UNSAFE.sub("", who or "")[:80].lstrip("-. ") or "console"
+        b64 = base64.b64encode(text.encode("utf-8")).decode("ascii") if text else ""
+        entry = {"key": "answer", "label": "Answer %s's question" % name, "action": "golem.answer"}
+        logged = {"question": qid, "choice": choice, "words": len(text)}   # never the words themselves
+        if remote:
+            with self.queue_lock:
+                self._sweep(g)
+                now, minutes = self.clock(), self.command_minutes()
+                rec = {"id": "%013d-%s" % (int(now * 1000), secrets.token_hex(3)), "golem": name, "key": "answer",
+                       "label": "Answer %s" % q.get("prompt", ""), "action": "golem.answer",
+                       "inputs": {"question": qid, "choice": str(choice), "textb64": b64, "who": who_c}, "who": who,
+                       "queuedAt": self._iso(now), "expiresAt": self._iso(now + minutes * 60), "minutes": minutes, "state": "queued",
+                       "takenAt": None, "endedAt": None, "code": None, "result": "", "lines": []}
+                self._save_command(name, rec)
+            online = self.agent_online(g)
+            msg = ("answer sent to %s: its agent takes it at its next poll" % name) if online else ("answer queued until %s is online (expires %s)" % (name, rec["expiresAt"][11:16]))
+            self.log_action(entry, who, msg, None, logged, golem=name)
+            self.panels_cache = (0.0, None)
+            return 202, {"queued": True, "golem": name, "online": online, "message": msg}
+        args = list(self.answer_runner) + ["-Id", qid, "-Choice", str(choice), "-Who", who_c, "-Source", "console", "-Root", self.golem_root]
+        if b64:
+            args += ["-TextB64", b64]
+        if name != "Golem":
+            args += ["-Golem", name]
+        if not self.answer_lock.acquire(timeout=5):
+            return 409, {"error": "busy: another answer is being written; try again in a moment"}
+        try:
+            try:
+                p = subprocess.run(args, capture_output=True, timeout=ANSWER_TIMEOUT, creationflags=NO_WINDOW)
+                code, raw = p.returncode, (p.stdout or b"") + (p.stderr or b"")
+            except subprocess.TimeoutExpired:
+                code, raw = None, b"no answer from Answer-Question.ps1 within %d s" % ANSWER_TIMEOUT
+            except OSError as e:
+                code, raw = None, ("Answer-Question.ps1 did not start: %s" % e).encode("utf-8")
+        finally:
+            self.answer_lock.release()
+        lines = [panels.redact(l)[:400] for l in raw.decode("utf-8", "replace").splitlines() if l.strip()]
+        result = lines[-1] if lines else "exited with %s" % code
+        self.log_action(entry, who, result, code, logged, golem=name)
+        self.panels_cache = (0.0, None)
+        return (200 if code == 0 else 409), {"ok": code == 0, "code": code, "result": result, "lines": lines[-20:]}
 
     def portrait_path(self, g):
         """The registry's portrait for that Golem when it is an image under scripts/console-art; else ''."""
@@ -1003,6 +1184,7 @@ class Console:
             c["ready"] = r if r else (c.get("ready") if isinstance(c.get("ready"), dict) else None)
             c["portraitUrl"] = ("/portrait/" + g["name"]) if self.portrait_path(g) else ""
             c.pop("portrait", None)   # a path on this PC: the page gets the address above
+            c["questions"] = self.remote_questions(g) if remote else self.local_questions(g["name"])   # cc-P216
 
     def _write_json(self, path, value):
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -1377,6 +1559,7 @@ def make_handler(console, listener, access_log=None):
                                         "actions": {"buttons": console.public_buttons(), "canAct": listener == panels.TAILNET,
                                                     "why": "" if listener == panels.TAILNET else LOCAL_READ_ONLY, "job": job},
                                         "pages": console.public_pages(), "golemPicker": console.golem_picker(doc),
+                                        "questions": console.questions_summary(),   # cc-P216
                                         "server": {"now": time.strftime("%Y-%m-%dT%H:%M:%S"), "listener": listener}})
             if p == "/api/page":
                 d = console.page_data((q.get("id") or [""])[0], fresh=q.get("fresh") == ["1"])
@@ -1413,18 +1596,21 @@ def make_handler(console, listener, access_log=None):
         def do_POST(self):
             # cc-P186: a remote Golem's agent posting back: a result, its status, its readiness.
             path = urlparse(self.path).path
-            if path in ("/api/agent/result", "/api/agent/status", "/api/agent/ready"):
+            if path in ("/api/agent/result", "/api/agent/status", "/api/agent/ready", "/api/agent/questions"):
                 g = self._agent()
                 if not g:
                     return
                 body = self._read_json(AGENT_BODY)
                 if body is None:
                     return
-                code, out = console.finish_command(g, body) if path == "/api/agent/result" else console.save_report(g, path.rsplit("/", 1)[1], body)
+                if path == "/api/agent/questions":
+                    code, out = console.save_questions(g, body)   # cc-P216
+                else:
+                    code, out = console.finish_command(g, body) if path == "/api/agent/result" else console.save_report(g, path.rsplit("/", 1)[1], body)
                 self._note(code, "agent %s %s" % (g["name"], path.rsplit("/", 1)[1]))
                 return self._json(code, out)
             # cc-P182: the Golem's buttons; cc-P187: the page buttons and their look first.
-            if path not in ("/api/action", "/api/preview"):
+            if path not in ("/api/action", "/api/preview", "/api/answer"):
                 return self._refuse()
             if not self._allowed():
                 return
@@ -1444,10 +1630,15 @@ def make_handler(console, listener, access_log=None):
             if why:
                 self._note(403, why)
                 return self._json(403, {"error": "not allowed: " + why})
-            body = self._read_json(4096)
+            body = self._read_json(16384 if path == "/api/answer" else 4096)
             if body is None:
                 return
             who = (self.headers.get(panels.IDENTITY_HEADER) or "").strip()
+            if path == "/api/answer":
+                # cc-P216: Chase's answer to a Golem's question (the words: up to 2000 characters, as data).
+                code, out = console.answer(body, who)
+                self._note(code, "answer %s" % str(body.get("id"))[:60])
+                return self._json(code, out)
             pentry, page = console.page_button(body.get("key"))
             if path == "/api/preview":
                 if not pentry:
