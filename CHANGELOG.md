@@ -33,9 +33,13 @@ Example:
 
 ### Added
 - The world map now has a fog of war: it starts dark and clears where you have walked, and what you have explored is kept across logins. Choose "Fog of war" in the world map's right-click menu to turn the fog off. Update your game through the launcher to see it.
+- The Exodus Encounter (Ilshenar): Lord Dupre's champion, knight and squires battle Exodus's zealots, drones, sentinels, a juggernaut and a minion lord through the Exodus Dungeon, hidden supply caches wait for a keen Detect Hidden, and broken Nexus machines yield punch cards to anyone with an Exotic Toolkit and a steady hand. Win the four keys of the ritual (the Summoning Rite, the Sacrificial Dagger, the Robe of Rite and the Summoning Altar) by fighting, stealing from zealots, picking the caches or crafting them, build the Summoning Tome at a shrine with your party, and be carried to Ver Lor Reg to face Clockwork Exodus for his gold and ten artifact replicas.
+- Hunter the Arch Zealot stands near Ver Lor Reg to explain the ritual and trade a gargoyle's dagger.
+- Blackrock: a small piece of blackrock turns up one dig in a thousand at 100 Mining.
 
 ### Staff
 - The fog of war is drawn by our TazUO build (client patch 0004), so players see it only once a player package built with that client is published; until then the server's exploration data is sent but not shown.
+- [GenExodusEncounter places the encounter on Ilshenar (the controller and Clockwork Exodus, the exit moongate and ankh, the 39 Nexus machines and the Keypunch Reader, the spawners and the Arch Zealot) and [DeleteExodusEncounter removes it; both are test-shard commands until Chase runs them live.
 
 ## 2026.10.21.10
 

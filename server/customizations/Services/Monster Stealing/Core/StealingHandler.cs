@@ -17,8 +17,9 @@
 //   - The shard's gain rule (cc-P127, clusterf.stealing.monsterGain, default on): after every legal attempt the thief
 //     rolls a gain-only Stealing check on (60, 100 + 2.5 x the creature's fame level), so a 30,000-fame creature
 //     trains to 200 and a weak one to 100. ServUO's HandleSteal rolls no skill check at all.
-//   - HandleSmugglersEdgeSteal, TryStealItem and the ExodusZealot branch are not here (cc-P127: the store and the Exodus
-//     Encounter are not ported).
+//   - HandleSmugglersEdgeSteal and TryStealItem are not here (cc-P127: the store is not ported). The ExodusZealot branch
+//     is (cc-P195, the Exodus Encounter): a special steal from a zealot is one of the ritual's four keys
+//     (ExodusChest.RituelItem), as ServUO StealingHandler.cs:59-62; the shard's minor tier below 100 Stealing stays.
 
 using System;
 using System.Runtime.CompilerServices;
@@ -118,6 +119,12 @@ public static class StealingHandler
 
     public static Outcome LastOutcome { get; private set; }
 
+    /// <summary>The special tier's item: a ritual key from an Exodus zealot (cc-P195), else the shard's special table.</summary>
+    public static Item MakeSpecialFor(BaseCreature from) =>
+        from is ExodusZealot
+            ? ExodusChest.RandomRitualItem()
+            : StealLootTables.MakeSpecial(from, StealLootTables.SpecialPick(Utility.RandomDouble()));
+
     public static void HandleSteal(BaseCreature from, PlayerMobile thief)
     {
         LastOutcome = Outcome.Nothing;
@@ -186,7 +193,7 @@ public static class StealingHandler
             {
                 thief.SendLocalizedMessage(1094947); // You successfully steal a special item from the creature!
 
-                var item = StealLootTables.MakeSpecial(from, StealLootTables.SpecialPick(Utility.RandomDouble()));
+                var item = MakeSpecialFor(from);
 
                 if (item != null)
                 {
