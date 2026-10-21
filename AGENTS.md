@@ -80,6 +80,8 @@ These hold for Claude Code and for Codex alike (the Golem's Codex lane and its r
 5. **The DONE and STOPPED lines.** When the prompt is finished, the last line of its notes file is `P<nn> DONE`, and
    your final message ends with the same words. If you stop early for any reason, write `P<nn> STOPPED: <reason>` in
    both places instead. Never write either before the work is finished: the Golem acts on the line at once.
+   When you must stop for Chase, ask through Ask-Chase.ps1 with choices where you can (`D:\UO\golem\Ask-Chase.ps1 -Question ...
+   -Choice "<label>|<what you will then do>"`), then write the STOPPED line.
 6. **Every new test is seen failing first** (against the code before the change), then passing.
 7. **Windows PowerShell 5.1** runs every PowerShell script and test (`powershell.exe`, not `pwsh`): no PowerShell 7
    syntax (`&&`, `??`, ternaries).
