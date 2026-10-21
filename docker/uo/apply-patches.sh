@@ -816,6 +816,13 @@ apply_patch "$PATCHES/BaseExplosionPotion-self-blast-achievement.patch"
 apply_patch "$PATCHES/PlayerMobile-climbed-tile-rules.patch"
 apply_patch "$PATCHES/HousePlacement-climbed-tile.patch"
 
+# cc-P261 (ours): levelable crafted gear. AosAttributes.GetValue adds each worn item's level-bought bonuses, which
+# customizations ClusterFLevelGear keeps by item serial (no field on any stock item type, P72 B.1). One line beside the
+# set-bonus hunk; GetValue is a static method with no event, so customizations alone cannot reach it. Resists need no
+# patch (the GetItemResistance virtual already exists). Made against the tree every patch above leaves, so it goes last.
+# Alternatives argued in shard-migration notes/cc-P261-levelable-gear-build.md; pinned by LevelGearVerification.
+apply_patch "$PATCHES/AOS-level-gear-attribute-aggregation.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
