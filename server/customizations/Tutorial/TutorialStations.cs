@@ -6,8 +6,7 @@
 //
 // The framework never needs to change to fill a trial in: a trial is registered by its key in TutorialStations.Handlers
 // (a method that runs the trial and calls ClusterFTutorial.CompleteStation when done). A key with no handler runs the
-// stub, which shows the station's plan in a gump and marks it done, so the whole path can be walked today. Every stub is
-// a TODO for the trial prompts that follow.
+// coming-soon page. Unbuilt wings remain optional and never claim a completed trial.
 
 #nullable enable
 
@@ -171,11 +170,18 @@ public static class TutorialStations
 
     /// <summary>
     /// The trials, by station key. A trial runs its lesson and calls ClusterFTutorial.CompleteStation when the player
-    /// finishes. None is written yet: every station runs the stub (TODO: one trial prompt per wing).
+    /// finishes. Core handlers observe actions; future wing prompts fill the optional keys.
     /// </summary>
     public static readonly Dictionary<string, Action<PlayerMobile, TutorialStation>> Handlers = new(StringComparer.OrdinalIgnoreCase)
     {
-        // The loop vision is the one core step built in this pass: it must never touch the real character.
-        ["core.loop"] = (pm, station) => TutorialVision.RunLoopDemo(pm),
+        ["core.movement"] = TutorialCoreTrials.Start,
+        ["core.paperdoll"] = TutorialCoreTrials.Start,
+        ["core.backpack"] = TutorialCoreTrials.Start,
+        ["core.chat"] = TutorialCoreTrials.Start,
+        ["core.death"] = TutorialCoreTrials.Start,
+        ["core.banking"] = TutorialCoreTrials.Start,
+        ["core.travel"] = TutorialCoreTrials.Start,
+        ["core.league"] = TutorialCoreTrials.Start,
+        ["core.loop"] = TutorialCoreTrials.Start,
     };
 }
