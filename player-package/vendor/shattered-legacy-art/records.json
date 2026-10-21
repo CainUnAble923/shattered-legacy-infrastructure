@@ -279,7 +279,14 @@
     { "id": 28291, "name": "white tower", "flags": "0x00006050", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 20 },
     { "id": 28292, "name": "white tower", "flags": "0x00006050", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 20 },
     { "id": 28293, "name": "tower top", "flags": "0x10004000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 },
-    { "id": 28294, "name": "tower dome", "flags": "0x10044000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 }
+    { "id": 28294, "name": "tower dome", "flags": "0x10044000", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 0 },
+    { "id": 13192, "name": "christmas tree", "flags": "0x01004041", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 20 },
+    { "id": 13203, "name": "christmas tree", "flags": "0x01004041", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 10 },
+    { "id": 13216, "name": "candle stand", "flags": "0x05804040", "weight": 255, "layer": 29, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 15 },
+    { "id": 13220, "name": "candle", "flags": "0x01804000", "weight": 255, "layer": 2, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 1 },
+    { "id": 13224, "name": "antler candelabra", "flags": "0x01808040", "weight": 255, "layer": 1, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 5 },
+    { "id": 13228, "name": "advent candles", "flags": "0x01804000", "weight": 255, "layer": 2, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 3 },
+    { "id": 13233, "name": "potted tree", "flags": "0x00004040", "weight": 255, "layer": 0, "count": 0, "animId": 0, "hue": 0, "light": 0, "height": 5 }
   ],
   "animdata": [
     { "id": 15376, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "interval": 1, "start": 0 },
@@ -334,7 +341,13 @@
     { "id": 28129, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8], "interval": 3, "start": 0 },
     { "id": 28138, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8], "interval": 2, "start": 0 },
     { "id": 28147, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8], "interval": 2, "start": 0 },
-    { "id": 28156, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8], "interval": 2, "start": 0 }
+    { "id": 28156, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8], "interval": 2, "start": 0 },
+    { "id": 13192, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "interval": 3, "start": 0 },
+    { "id": 13203, "frames": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "interval": 3, "start": 0 },
+    { "id": 13216, "frames": [0, 1, 2, 3], "interval": 3, "start": 0 },
+    { "id": 13220, "frames": [0, 1, 2, 3], "interval": 3, "start": 0 },
+    { "id": 13224, "frames": [0, 1, 2, 3], "interval": 3, "start": 0 },
+    { "id": 13228, "frames": [0, 1, 2, 3], "interval": 3, "start": 0 }
   ],
   "equipAnims": [
     { "anim": 4783, "slot": 400, "name": "fox ears and tail" }
