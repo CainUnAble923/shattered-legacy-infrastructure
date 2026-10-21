@@ -1,0 +1,14 @@
+--- a/Projects/UOContent/Misc/AOS.cs	2026-10-21 06:23:25.626553500 -0500
++++ b/Projects/UOContent/Misc/AOS.cs	2026-10-21 06:23:25.733347600 -0500
+@@ -655,6 +655,11 @@
+             {
+                 var obj = items[i];
+ 
++                // Shattered Legacy (cc-P261): levelable gear's bought bonuses. They live in customizations
++                // ClusterFLevelGear by the item's serial, never in the item's own Attributes, and count for
++                // any mobile that wears the item (a pet or companion too).
++                value += ClusterFLevelGear.AttributeBonus(m, obj, attribute);
++
+                 // Shattered Legacy: Mondain's Legacy set bonuses. The set attributes of a completed
+                 // set are carried by whichever piece was equipped last, and stack on top of whatever
+                 // the piece contributes through its own Attributes below.
