@@ -49,6 +49,7 @@ FIXED = {
     0xC0: 36,   # hued effect           S/OutgoingEffectPackets.cs:25
     0xC7: 49,   # particle effect       S/OutgoingEffectPackets.cs:24
     0x6E: 14,   # animation             S/OutgoingMobilePackets.cs:35
+    0xBA: 10,   # quest arrow (HS form) S/OutgoingPlayerPackets.cs (cc-P224; 6 bytes before HighSeas)
 }
 VARIABLE = {0xA8, 0xA9, 0x86, 0xBD, 0x1C, 0xAE, 0xC1, 0xCC, 0xDD, 0x11, 0x3A, 0x3C, 0x78, 0xD6, 0xBF, 0x17}
 
@@ -187,11 +188,35 @@ def move(direction, seq, run=False):
     return struct.pack(">BBBI", 0x02, (direction & 7) | (0x80 if run else 0), seq & 0xFF, 0)
 
 
-def unicode_speech(text, typ=0, hue=0x34, font=3, lang="ENU"):
+# Pet commands and the other phrases the bot may need as keywords. The numbers are speech.mul's, as pinned reads them
+# back: BaseAI/OnSpeech.cs:153-161 (all ...) and :224-233 (*follow, *kill, ...). A real client sends a phrase in the
+# table as the encoded 0xAD with these ids; the server matches on the ids, not the words.
+KEYWORDS = {
+    "all come": 0x164, "all follow": 0x165, "all guard": 0x166, "all stop": 0x167, "all kill": 0x168,
+    "all attack": 0x169, "all guard me": 0x16B, "all follow me": 0x16C, "all stay": 0x170,
+}
+
+
+def pack_keywords(ids):
+    """The 12-bit packing pinned unpacks at IncomingMessagePackets.cs:76-116: a u16 whose top 12 bits are the count and
+    low 4 bits the first id's top nibble; then each id takes 12 bits, so odd-numbered ids (0-based even) finish in a
+    byte and even-numbered ones (0-based odd) sit in a u16 whose low nibble starts the next."""
+    bits = format(len(ids), "012b") + "".join(format(k & 0xFFF, "012b") for k in ids)
+    bits += "0" * ((-len(bits)) % 8)
+    return int(bits, 2).to_bytes(len(bits) // 8, "big")
+
+
+def unicode_speech(text, typ=0, hue=0x34, font=3, lang="ENU", keywords=()):
     """0xAD, var: byte type; i16 hue; i16 font; ASCII lang[4]; then, with the 0xC0 bit unset, BigUnicode text
     null-terminated. U/Network/Packets/IncomingMessagePackets.cs:58. Without keywords, keyword-driven NPCs
-    (vendors' buy, bankers' balance) do not react; commands and plain speech do."""
-    body = struct.pack(">Bhh", typ, hue, font) + latin1(lang, 4) + text.encode("utf-16-be") + b"\x00\x00"
+    (vendors' buy, bankers' balance) do not react; commands and plain speech do.
+
+    cc-P224: with keywords, the encoded form (type | 0xC0): pack_keywords, then UTF-8 text null-terminated
+    (IncomingMessagePackets.cs:73-116, the text read with ReadUTF8Safe)."""
+    if keywords:
+        body = struct.pack(">Bhh", typ | 0xC0, hue, font) + latin1(lang, 4) + pack_keywords(list(keywords)) + text.encode("utf-8") + b"\x00"
+    else:
+        body = struct.pack(">Bhh", typ, hue, font) + latin1(lang, 4) + text.encode("utf-16-be") + b"\x00\x00"
     return struct.pack(">BH", 0xAD, 3 + len(body)) + body
 
 
@@ -274,6 +299,30 @@ def opl_request(serials):
     return struct.pack(">BH", 0xD6, 3 + len(body)) + body
 
 
+def use_skill(skill_id):
+    """0x12 text command, type 0x24 (use skill): ASCII "<id> 0" null-terminated. U/Network/Packets/IncomingPlayerPackets.cs
+    (TextCommand: 0x24 -> Skills.UseSkill). cc-P224."""
+    body = struct.pack(">B", 0x24) + ("%d 0" % skill_id).encode("ascii") + b"\x00"
+    return struct.pack(">BH", 0x12, 3 + len(body)) + body
+
+
+def cast_spell(spell_id):
+    """0x12 text command, type 0x56 (cast spell by id): ASCII "<id>" null-terminated. IncomingPlayerPackets.cs
+    (TextCommand: 0x56 -> Spellbook.CastSpellRequest). cc-P224."""
+    body = struct.pack(">B", 0x56) + ("%d" % spell_id).encode("ascii") + b"\x00"
+    return struct.pack(">BH", 0x12, 3 + len(body)) + body
+
+
+def context_menu_request(serial):
+    """0xBF sub 0x13: u32 serial. UOContent/Context Menus/ContextMenuSystem.cs:101-104 (registered :15). cc-P224."""
+    return struct.pack(">BHHI", 0xBF, 9, 0x13, serial)
+
+
+def context_menu_response(serial, index):
+    """0xBF sub 0x15: u32 serial; u16 index. ContextMenuSystem.cs:48-99 (registered :16). cc-P224."""
+    return struct.pack(">BHHIH", 0xBF, 11, 0x15, serial, index)
+
+
 # --- server to client -------------------------------------------------------------------------------------------
 
 def parse_gump_dd(p):
@@ -303,3 +352,26 @@ def parse_gump_dd(p):
         t += 2 + n * 2
     return {"serial": serial, "typeId": type_id, "x": x, "y": y,
             "layout": layout.rstrip(b"\x00").decode("latin-1", "replace"), "lines": lines}
+
+
+def parse_context_menu(p):
+    """0xBF 0x14 (cc-P224): u16 command (1 old, 2 new); u32 serial; byte count; then per entry
+    old: i16 index, u16 number-3000000, i16 flags, [i16 color when flags & 0x20];
+    new: i32 number, i16 index, i16 flags. ContextMenuSystem.cs:142-210. Flags: 1 Disabled, 2 Arrow, 4 Highlighted,
+    0x20 Colored."""
+    cmd = u16(p, 5)
+    serial = u32(p, 7)
+    n = p[11]
+    o = 12
+    entries = []
+    for _ in range(n):
+        if cmd == 2:
+            num, idx, flags = i32(p, o), i16(p, o + 4), u16(p, o + 6)
+            o += 8
+        else:
+            idx, num, flags = i16(p, o), u16(p, o + 2) + 3000000, u16(p, o + 4)
+            o += 6
+            if flags & 0x20:
+                o += 2
+        entries.append({"index": idx, "cliloc": num, "flags": flags})
+    return {"serial": serial, "command": cmd, "entries": entries}
