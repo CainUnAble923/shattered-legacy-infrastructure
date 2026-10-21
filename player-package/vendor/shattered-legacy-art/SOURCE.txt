@@ -103,6 +103,58 @@ bits (cc-P140 notes, Part B). The crow is EA-derived and ships only as encoded b
 Not registered: the three Tree Fellows (Rootling) are 213 to 390 px tall and 6 to 17 MB each (over the 5 MB
 rule); the Rootling wears a hued stock body instead (cc-P140 notes).
 
+League hunt bestiary, batch 2: creature bodies 2072-2085 (0x818-0x825) (cc-P364, F-24; the route is cc-P139's)
+--------------------------------------------------------------------------------------------------------------
+Fourteen more creature bodies for the League's hunts, culls and two mini-bosses, each a UOFiddler .vd copied byte for
+byte to anim-src\bodies\<body>.vd and block for block into build\sl-anim7.bin at the anim7 slot records.json's bodyAnims
+gives it (scripts\build-equip-anims.py). The packs are in D:\UO\third-party\<folder>\ with their own SOURCE.txt; the
+terms there apply. None of the pages states a licence: treat each as community work, credit the author, ship only
+inside the player package or the private repo, do not repost. Every creature has an in-game name of ours (no
+Wizards of the Coast or other brand names in game; the source names stay in the notes and here). The three uo-pixel.de
+bodies with the low layout (the goblins, the werewolf, the lava golem) sit in anim7's animal slots, so the server types
+them Animal (ShardBodyTypes.cs); the rest are Monster. Authors credited: Kalamarr, EmuResource, Vertigo (Vert-I-Go) and
+uodev (uo-pixel.de, https://www.uo-pixel.de/doku.php?id=anim:monster:monster), Vert-I-Go (Humanoids, servuo.dev 974)
+and Thagoras (Plant Pack, servuo.dev 1981).
+
+  body  slot  mobtypes      in game             file (folder)
+  2072  203   ANIMAL 0      Hedge Snatcher      L_01.vd (uo-pixel-monsters\kalamarr_goatmangoblin_truppe)
+        Kalamarr, uo-pixel.de goatman and goblin troop (anim:monster); none stated on the page; community work; renamed in game. SHA-256 7c65c3f550b0451595b59efa99036ec7bb2b6487df729d8578e1c9e2481de107, 302032 bytes
+  2073  204   ANIMAL 0      Snatcher Outrider   L_goblineiter.vd (uo-pixel-monsters\kalamarr_goblinreiter)
+        Kalamarr, uo-pixel.de goblin rider (anim:monster); none stated on the page; community work; renamed in game. SHA-256 6fd358a78c23dd271cf748559d470082fdeaa9d3bfaaa54429d2eda960a35e46, 514670 bytes
+  2074  22    MONSTER 0     Hornback Raider     H_goatmanmace.vd (uo-pixel-monsters\dvir_kalamarr_goatman)
+        Kalamarr, uo-pixel.de goatman (anim:monster); none stated on the page; community work; renamed in game. SHA-256 7363236325b3479e4a94d9f018489b67f31dda9d115df360a8a0da97852e9102, 518465 bytes
+  2075  23    MONSTER 0     Ditch Crawler       H_crawler.vd (uo-pixel-monsters\vertigo_crawler)
+        Vertigo (Vert-I-Go), uo-pixel.de crawler (anim:monster); none stated on the page; community work; renamed in game. SHA-256 9d2462933cd600d931b303660f9f352b4fefb35241dc85238e5529a62fc140e3, 479012 bytes
+  2076  24    MONSTER 0     Mire Croaker        Bullywog Spear.vd (humanoids)
+        Vert-I-Go, Humanoids (servuo.dev 974); none stated; source game not stated; renamed in game. SHA-256 9551dbfd2ff6284a83e29c9477d499f6daac4c58a9650caff4186435ccf255d6, 1032993 bytes
+  2077  25    MONSTER 0     Brine Lurker        Kuo-Toa.vd (humanoids)
+        Vert-I-Go, Humanoids (servuo.dev 974); none stated; source game not stated; renamed in game (kuo-toa is a Wizards of the Coast name). SHA-256 21742e21628ad762c671720f398eadd10a307fa0542d1a52c0980281fa641706, 802646 bytes
+  2078  205   ANIMAL 0      Moonmaw             L_werwolf.vd (uo-pixel-monsters\es_werwolf)
+        EmuResource, uo-pixel.de werewolf (anim:monster); none stated on the page; community work; renamed in game. SHA-256 73cbf6d385b34c3be13153c0a3c85220364532a5105d5fab4ebc0c6155f36d79, 635400 bytes
+  2079  26    MONSTER 0     Thornwisp           H_waldgeist.vd (uo-pixel-monsters\es_waldgeist)
+        EmuResource, uo-pixel.de forest spirit (waldgeist, anim:monster); none stated on the page; community work; renamed in game. SHA-256 cdad72c7e3b73cabc92e9954c49564ddd552a66ff2907a74afcb4e1d821f7950, 2792832 bytes
+  2080  27    MONSTER 0     Pale Drifter        H_shadow.vd (uo-pixel-monsters\dvir_kalamarr_shadow)
+        Kalamarr, uo-pixel.de shadow (schatten, anim:monster); none stated on the page; community work; renamed in game. SHA-256 471c854f6a266e2f739b0c80041e979000ac75fcd9018b899cda3bc40d06acfc, 1550107 bytes
+  2081  206   ANIMAL 0      Slagheart           L_lavagolem.vd (uo-pixel-monsters\dvir_kalamarr_lavagolem)
+        Kalamarr, uo-pixel.de lava golem (anim:monster); none stated on the page; community work; renamed in game. SHA-256 1222352104148a697b4316912c6a37b74dfdaf60e8b27e017c690b09c2ea54f8, 2235824 bytes
+  2082  28    MONSTER 0     Glasswarden         H_crystal_golem.vd (uo-pixel-monsters\es_crystal_golem)
+        EmuResource, uo-pixel.de crystal golem (anim:monster); none stated on the page; community work; renamed in game. SHA-256 8d7d6590c9d269cedbf2aec3c37b9395726848023d8739d10f2352f65e20285d, 1476503 bytes
+  2083  29    MONSTER 0     Tunnelmaw           H_umber_hulk.vd (uo-pixel-monsters\dvir_kalamarr_umber_hulk)
+        Kalamarr, uo-pixel.de umber hulk (anim:monster); none stated on the page; community work; renamed in game (umber hulk is a Wizards of the Coast name). SHA-256 8d740cf57cac97cce04543882e6e0d040faeefcbe080fc31ab1b17049410507b, 1102082 bytes
+  2084  30    MONSTER 0     The Siegebreaker    H_kriegstroll.vd (uo-pixel-monsters\uodev_kriegstroll)
+        uodev, uo-pixel.de war troll (kriegstroll, anim:monster); none stated on the page; community work; renamed in game. SHA-256 896f78607bb98f8741335f0f7e2fc8447f0a2d36118e7efc3b8b9518da9fecad, 1947189 bytes
+  2085  31    MONSTER 0     The Hollow Oak      Treant.vd (plant-pack)
+        Thagoras, Plant Pack (servuo.dev 1981); none stated; from a sprite site, source game not stated; renamed in game. SHA-256 91ddce9e91f6153c519ab5891e9847c83cabd96516ad217fc515a4543cc6db55, 2500003 bytes
+
+Not taken this batch (still in the packs, for a later batch): the goatman archer and the other three goblins of the
+troop, the yeti, snowman, minotaur, ignus, earth and water golems, beast and beast warrior, seeker, mantuck, ice,
+rhino beetle, remorhaz, the six-armed woman, Hephasto, super cow, and the boss-shortlist bodies (skeleton king,
+daemonmaster, fire and frost giants, Andariel, The Butcher, beast lord); the humanoids pack's bugbear, ettin, trolls,
+gnoll captain, kuo-toa mage and fry, salamanders and satyrs; the underdark pack's beholder, mind flayer, hive mind,
+hook horror, remorhaz, carrion crawler, drider male and umber hulk; the plant pack's two ents and Trigit (the Tree
+Fellows are over the 5 MB rule); the elemental pack's iron, junk, blood, dirt, fire and metal golems, fire elemental,
+Modron and Robot (the four Diablo 2 golems stay out unless Chase clears them).
+
 Shattered runestone (IDs 15376-15419, 0x3C10-0x3C3B)
 ----------------------------------------------------
 Author:      Vrark
