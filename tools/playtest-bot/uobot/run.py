@@ -15,7 +15,9 @@ import time
 import traceback
 
 from .client import Client, Cliloc, LoginFailed, Transcript
+from . import packets as P
 from . import checks as C
+from . import safety
 
 CLIENT_DATA = r"D:\ShatteredLegacy\client-data\classic-client"
 CACHE = r"D:\UO\bot-shard\cache"
@@ -71,7 +73,26 @@ class Ctx(object):
             else:
                 c.create("Bot Human F Aa", race="human", female=True)
             self.player = c
+        self.revive(self.player)
         return self.player
+
+    GHOST_BODIES = (0x192, 0x193, 0x25F, 0x260, 0x2B6, 0x2B7)
+
+    def revive(self, c):
+        """cc-P224: a check that gets the long-lived player killed (a dragon did, 2026-10-20) must not fail every check
+        after it with "I am dead and cannot do that.": the admin [Resurrect]s a ghost before the character is handed out."""
+        if c is None or c.closed is not None or c.body not in self.GHOST_BODIES:
+            return False
+        a = self.ensure_admin()
+        a.command("[go 0x%X" % c.serial, 1.0)
+        a.command("[Resurrect", 0.2)
+        if a.wait_target(6):
+            a.target_obj(c.serial)
+        back = bool(c.wait(lambda: c.body not in self.GHOST_BODIES, 8))
+        self.tr.write("harness", "%s was a ghost (body 0x%X): [Resurrect by the admin, back %s" % (c.label, c.body, back))
+        c.send(P.status_request(c.serial, 4))
+        c.sleep(0.5)
+        return back
 
     def fresh(self, race="human", female=False, label="fresh"):
         """A brand-new character on a rested pool account, through the real creation packet. Disconnect it with
@@ -100,7 +121,18 @@ class Ctx(object):
             raise
         slot = next((i for i, n in enumerate(chars) if not n), None)
         if slot is None:
-            raise LoginFailed("account %s has no free slot" % acct)
+            # cc-P224: the pool's 3 accounts give 21 character slots, and done() never deleted the throwaway it made,
+            # so a run with more than 21 fresh() calls (the nightly set plus the cc-P224 checks, over 3 runs) ran the
+            # accounts dry and every later fresh() ERRORed with "no free slot". The character in slot 0 has rested at
+            # least REST_SECONDS, which is past the 5-minute logout delay, so it is fully out of the world and
+            # deletable. Delete it and reuse its slot. Probed on this PC's test shard 2026-10-21: 0x83 on a full
+            # account returns a 0x86 list with that slot now empty.
+            self.tr.write("harness", "account %s full (7 characters); deleting slot 0 (%r) to reuse it" % (acct, chars[0]))
+            c.delete_character(0)
+            if not c.wait(lambda: len(c.chars) > 0 and not c.chars[0], 10):
+                raise LoginFailed("account %s is full and slot 0 would not delete (chars %s)" % (acct, c.chars))
+            chars = c.chars
+            slot = 0
         # Letters only: a name with a digit ("Bot Human F 1", as first planned) is refused by the shard's name check and
         # the character is created as "Generic Player" (seen 2026-10-13), so the count is spelled in letters.
         n = self.fresh_count
@@ -180,7 +212,12 @@ def main(argv):
     ap.add_argument("--only", default="")
     ap.add_argument("--container", default="sl-modernuo-bot")
     ap.add_argument("--soak-minutes", type=int, default=0)
+    # cc-P224: "scratch" (127.0.0.1:2595, the overnight runner's shard) or "test" (127.0.0.1:2594, this PC's own test
+    # shard, started by Start-TestShard.ps1). Nothing else; safety.py refuses the live port in both.
+    ap.add_argument("--target", default="scratch", choices=sorted(safety.TARGETS))
     a = ap.parse_args(argv)
+    safety.configure(a.target)
+    print("target: %s" % safety.describe(), flush=True)
     os.makedirs(os.path.join(a.out, "transcripts"), exist_ok=True)
     with open(a.secrets, "r", encoding="utf-8") as f:
         secrets = json.load(f)
