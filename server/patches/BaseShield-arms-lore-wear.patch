@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Items/Shields/BaseShield.cs
++++ b/Projects/UOContent/Items/Shields/BaseShield.cs
+@@ -77,6 +77,9 @@
+ 
+     private void TryLowerDurability(int wear)
+     {
++        // Shattered Legacy (cc-P226): the wearer's Arms Lore saves some of it.
++        wear = ClusterFArmsLore.ReduceWear(Parent as Mobile, wear);
++
+         if (wear <= 0 || MaxHitPoints <= 0)
+         {
+             return;

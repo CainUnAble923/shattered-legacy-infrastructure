@@ -1,0 +1,31 @@
+--- a/Projects/UOContent/Items/Weapons/BaseWeapon.cs
++++ b/Projects/UOContent/Items/Weapons/BaseWeapon.cs
+@@ -674,7 +674,8 @@
+ 
+                 if (Core.ML)
+                 {
+-                    Attributes.WeaponDamage += (int)(from.Skills.ArmsLore.Value / 20);
++                    // Shattered Legacy (cc-P226): 35 + 15 x (Arms Lore / 200), gaining past 100 on the item's tier.
++                    Attributes.WeaponDamage += ClusterFArmsLore.ExceptionalDamageBonus(from.Skills.ArmsLore.Value);
+ 
+                     if (Attributes.WeaponDamage > 50)
+                     {
+@@ -682,6 +683,7 @@
+                     }
+ 
+                     from.CheckSkill(SkillName.ArmsLore, 0, 100);
++                    ClusterFSkillGain.ArmsLoreCrafted(from, this);
+                 }
+             }
+         }
+@@ -2087,6 +2089,10 @@
+                 {
+                     HitPoints += 2;
+                 }
++                else if (ClusterFArmsLore.SavesWeaponWear(attacker))
++                {
++                    // Shattered Legacy (cc-P226): the wielder's Arms Lore saves this point of wear.
++                }
+                 else if (_hitPoints > 0)
+                 {
+                     --HitPoints;

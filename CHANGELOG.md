@@ -29,6 +29,20 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.20.19
+
+### Added
+- Field maintenance: use Arms Lore on a damaged weapon or armor of your own (in your pack or worn) and, when you size it up, you also restore some of its durability without a forge (more with more skill; once every 10 seconds). Below 200 skill it can cost a point of maximum durability. A smith's repair still restores it in full.
+- Arms Lore can now gain past 100: inspecting, maintaining and crafting better gear (finer materials, exceptional, magic) is what trains it toward 200.
+
+### Changed
+- Arms Lore matters more and trains to 200. An exceptional weapon's damage increase now grows to 50% at 200 Arms Lore (42% at 100), and an exceptional armor piece's extra resists from Arms Lore stop at 10 points.
+- Your Arms Lore makes your own weapons, armor and shields wear more slowly in a fight: a quarter less at 100, half less at 200.
+- Smiths with Arms Lore lose maximum durability less often when they repair weapons and armor with a tool.
+
+### Staff
+- All the numbers live in ClusterFArmsLore; small call-site patches to BaseWeapon, BaseArmor, BaseShield, ArmsLore and Repair. Arms Lore on gear is a hook G row past 100, keyed on the item's tier (material requirement + 25 exceptional + 25 magic, window +/- 50).
+
 ## 2026.10.20.18
 
 ### Staff

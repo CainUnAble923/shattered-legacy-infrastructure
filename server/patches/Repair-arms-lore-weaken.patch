@@ -1,0 +1,39 @@
+--- a/Projects/UOContent/Engines/Craft/Core/Repair.cs
++++ b/Projects/UOContent/Engines/Craft/Core/Repair.cs
+@@ -38,11 +38,14 @@
+                 m_Deed = deed;
+             }
+ 
+-            private int GetWeakenChance(Mobile mob, SkillName skill, int curHits, int maxHits) => 40 + (maxHits - curHits) -
+-                (int)((m_Deed?.SkillLevel ?? mob.Skills[skill].Value) / 10);
++            // Shattered Legacy (cc-P226): a player repairing a weapon or armor with a tool (gear, no deed) loses
++            // Arms Lore / 10 more points off the chance (ClusterFArmsLore.RepairWeakenChance).
++            private int GetWeakenChance(Mobile mob, SkillName skill, int curHits, int maxHits, bool gear = false) =>
++                ClusterFArmsLore.RepairWeakenChance(mob, gear && m_Deed == null, 40 + (maxHits - curHits) -
++                (int)((m_Deed?.SkillLevel ?? mob.Skills[skill].Value) / 10));
+ 
+-            private bool CheckWeaken(Mobile mob, SkillName skill, int curHits, int maxHits) =>
+-                GetWeakenChance(mob, skill, curHits, maxHits) > Utility.Random(100);
++            private bool CheckWeaken(Mobile mob, SkillName skill, int curHits, int maxHits, bool gear = false) =>
++                GetWeakenChance(mob, skill, curHits, maxHits, gear) > Utility.Random(100);
+ 
+             private int GetRepairDifficulty(int curHits, int maxHits) =>
+                 (maxHits - curHits) * 1250 / Math.Max(maxHits, 1) - 250;
+@@ -284,7 +287,7 @@
+                     }
+                     else
+                     {
+-                        if (CheckWeaken(from, skill, weapon.HitPoints, weapon.MaxHitPoints))
++                        if (CheckWeaken(from, skill, weapon.HitPoints, weapon.MaxHitPoints, true))
+                         {
+                             weapon.MaxHitPoints -= toWeaken;
+                             weapon.HitPoints = Math.Max(0, weapon.HitPoints - toWeaken);
+@@ -354,7 +357,7 @@
+                     }
+                     else
+                     {
+-                        if (CheckWeaken(from, skill, armor.HitPoints, armor.MaxHitPoints))
++                        if (CheckWeaken(from, skill, armor.HitPoints, armor.MaxHitPoints, true))
+                         {
+                             armor.MaxHitPoints -= toWeaken;
+                             armor.HitPoints = Math.Max(0, armor.HitPoints - toWeaken);

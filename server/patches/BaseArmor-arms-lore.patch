@@ -1,0 +1,30 @@
+--- a/Projects/UOContent/Items/Armor/BaseArmor.cs
++++ b/Projects/UOContent/Items/Armor/BaseArmor.cs
+@@ -568,7 +568,8 @@
+ 
+                 if (Core.ML && this is not BaseShield)
+                 {
+-                    var bonus = (int)(from.Skills.ArmsLore.Value / 20);
++                    // Shattered Legacy (cc-P226): Arms Lore / 20, at most 10 a piece; gains past 100 on the item's tier.
++                    var bonus = ClusterFArmsLore.ExceptionalResistBonus(from.Skills.ArmsLore.Value);
+ 
+                     for (var i = 0; i < bonus; i++)
+                     {
+@@ -603,6 +604,7 @@
+                     }
+ 
+                     from.CheckSkill(SkillName.ArmsLore, 0, 100);
++                    ClusterFSkillGain.ArmsLoreCrafted(from, this);
+                 }
+             }
+ 
+@@ -746,6 +748,9 @@
+                 {
+                     var wear = weapon.Type == WeaponType.Bashing ? Math.Max(1, absorbed / 2) : Utility.Random(2);
+ 
++                    // Shattered Legacy (cc-P226): the wearer's Arms Lore saves some of it.
++                    wear = ClusterFArmsLore.ReduceWear(Parent as Mobile, wear);
++
+                     if (wear > 0 && _maxHitPoints > 0)
+                     {
+                         if (_hitPoints >= wear)

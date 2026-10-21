@@ -23,6 +23,8 @@
 //    (row minimum, Cap + (Value - Base)); the use's own outcome is the stock one, untouched. Below each use's stock maximum
 //    nothing differs from pinned. Not the casting schools (Chase: a Training Ward or a quest line, later). Detect Hidden
 //    rolls only when its scan found a hider or a trap (DetectHiddenFound, called from the patched DetectHidden.cs).
+//    cc-P226: Arms Lore on a weapon or armor is a row keyed on the item's tier; its crafting check rolls through
+//    ArmsLoreCrafted, called from the patched BaseWeapon and BaseArmor OnCraft.
 //
 // Notes: shard-migration notes/cc-P66-clamps-and-hook-g.md, Part B. The rows' keys are pinned literals; the fact
 // SkillGainRowKeysVerification reads each pinned line in the build tree, so an upstream change to one stops the build.
@@ -398,6 +400,20 @@ public static class ClusterFSkillGain
             case SkillName.Bushido:
                 return location && minSkill == 70.0 && maxSkill == 120.0;
 
+            // Skills/ArmsLore.cs:33, :89 (0, 100) on a weapon or armor: the inspect, and cc-P226's field maintenance, which
+            // rides on the same use. Past 100 the window is the item's tier (ClusterFArmsLore.Window: material, exceptional,
+            // magic, +/- 50), so practice on better gear is what trains it. The swamp dragon's barding (:107) stays stock.
+            case SkillName.ArmsLore:
+                {
+                    if (location || minSkill != 0.0 || maxSkill != 100.0 || !ClusterFArmsLore.IsGear(target))
+                    {
+                        return false;
+                    }
+
+                    (min, max) = ClusterFArmsLore.Window((Item)target);
+                    return true;
+                }
+
             // Skills/Stealing.cs:285-304, :316 (weight x 10 - 22.5, + 27.5): only a full 10-stone steal, (77.5, 127.5),
             // the top cc-P57's stack fix left. The caught test is clamped first (ClusterFSkillClamps, cc-P66 A).
             case SkillName.Stealing:
@@ -465,6 +481,33 @@ public static class ClusterFSkillGain
         }
 
         return WindowChance(skill.Value, 0.0, skill.Cap + (skill.Value - skill.Base));
+    }
+
+    /// <summary>
+    /// cc-P226: Arms Lore past its crafting check's stock top (BaseWeapon.cs:684, BaseArmor.cs:605, both (0, 100), rolled
+    /// on an exceptional craft): called by the patched OnCraft after that roll, on the new item's tier
+    /// (ClusterFArmsLore.Window). Below 100 the craft's own roll is stock's and this rolls nothing.
+    /// </summary>
+    public static void ArmsLoreCrafted(Mobile from, Item item)
+    {
+        var skill = from?.Skills.ArmsLore;
+
+        if (!double.IsNaN(ArmsLoreCraftedChance(from, skill, item)))
+        {
+            Roll(from, skill, LocationKey(from), () => ArmsLoreCraftedChance(from, skill, item));
+        }
+    }
+
+    public static double ArmsLoreCraftedChance(Mobile from, Skill skill, Item item)
+    {
+        if (!_pastStockCeiling || from?.Player != true || !from.Alive || skill == null || skill.Value < 100.0 ||
+            !ClusterFArmsLore.IsGear(item))
+        {
+            return double.NaN;
+        }
+
+        var (min, max) = ClusterFArmsLore.Window(item);
+        return WindowChance(skill.Value, min, max + (skill.Value - skill.Base));
     }
 
     // One gain-only roll through pinned's CheckSkill, then ClusterF's further attempts when its rate is on.

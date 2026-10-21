@@ -751,6 +751,23 @@ apply_patch "$PATCHES/PuzzleChest-trap-training-kit.patch"
 # result is a local of Enhance.Invoke between its chance rolls and its outcome switch; no event or virtual reaches it.
 apply_patch "$PATCHES/Enhance-forged-metal-of-artifacts.patch"
 
+# cc-P226 (F-26 parts 1 to 4 and 6, Chase 2026-10-02): Arms Lore matters more and trains to 200. Every number is in
+# customizations ClusterFArmsLore; these are its call sites, one line or two each, applied last so they sit on top of the
+# BaseWeapon, BaseArmor and Repair patches above (no hunk shares their lines):
+#   BaseWeapon: the exceptional damage increase (35 + 15 x Arms Lore / 200) and the crafted gain roll in OnCraft; the
+#     wielder's Arms Lore saving the wear point in OnHit, after Self Repair's roll.
+#   BaseArmor: the exceptional resist bonus capped at 10 and the crafted gain roll in OnCraft; the wearer's Arms Lore
+#     thinning OnHit's wear. BaseShield: the same at the top of TryLowerDurability.
+#   ArmsLore: field maintenance after a successful inspect of a weapon or armor.
+#   Repair: Arms Lore / 10 off the weaken chance for a player's tool repair of a weapon or armor (no deed, no clothing).
+# No hook reaches any of them: each is a local or a private method. Argued in shard-migration
+# notes/cc-P226-arms-lore-matters.md; pinned by ArmsLoreMattersVerification and SkillGainRowKeysVerification.
+apply_patch "$PATCHES/BaseWeapon-arms-lore.patch"
+apply_patch "$PATCHES/BaseArmor-arms-lore.patch"
+apply_patch "$PATCHES/BaseShield-arms-lore-wear.patch"
+apply_patch "$PATCHES/ArmsLore-field-maintenance.patch"
+apply_patch "$PATCHES/Repair-arms-lore-weaken.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
