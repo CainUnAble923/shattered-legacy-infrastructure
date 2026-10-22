@@ -5076,7 +5076,18 @@ function Get-UsageBars {
         }
     }
     $fl = ('{0,-16}' -f 'Fable this week')
+    # cc-P274: usage.json's own Fable window when the plan page has none: a model-specific window from the status line
+    # (while usage.json is fresh), or the mark a Fable session's limit hit left (until its reset, however old the file).
+    $uf = $(if ($u -and $u.PSObject.Properties.Name -contains 'fable') { $u.fable } else { $null })
+    $ufAt = $(if ($uf -and [long]$uf.resetsAt -gt 0) { [DateTimeOffset]::FromUnixTimeSeconds([long]$uf.resetsAt).LocalDateTime } else { $null })
+    $ufHit = ($uf -and [string]$uf.source -eq 'limit hit')
+    $ufOk = ($ufAt -and $ufAt -gt $Now -and ($ufHit -or -not $stale))
     if ($planOk -and $plan.Fable) { $rows.Add((& $bar 'Fable this week' $plan.Fable.Pct $plan.Fable.At 'separate weekly limit for Fable, plan usage page' 168 $true)) }
+    elseif ($ufOk) {
+        $fwhy = $(if ($ufHit) { 'separate weekly limit for Fable: a Fable session hit it' + $(if ($uf.hitAt) { ' ' + ([datetime]::Parse([string]$uf.hitAt)).ToString('ddd HH:mm', $script:Invariant) } else { '' }) } else { 'separate weekly limit for Fable, Claude Code''s status line' })
+        $rows.Add((& $bar 'Fable this week' ([double]$uf.pct) $ufAt $fwhy 168 $true))
+    }
+    elseif ($planOk) { $rows.Add([pscustomobject]@{ Name = 'Fable this week'; Pct = $null; Text = ($fl + '[' + ('-' * 20) + '] unknown: claude.ai/settings/usage shows no separate Fable line, and no Fable session has hit its limit this week; the Golem does not hold Fable prompts for it'); Color = 'gray'; Bar = $true; Marker = $null }) }
     elseif ($plan -and $plan.Error) { $rows.Add([pscustomobject]@{ Name = 'Fable this week'; Pct = $null; Text = ($fl + '[' + ('-' * 20) + '] unknown: plan-usage.json unreadable (' + $plan.Error + ')'); Color = 'gray'; Bar = $true; Marker = $null }) }
     elseif ($plan -and $plan.Stale) { $rows.Add([pscustomobject]@{ Name = 'Fable this week'; Pct = $null; Text = ($fl + '[' + ('-' * 20) + '] unknown: the plan usage page was read ' + $(if ($plan.Age) { (Format-ShortAge $plan.Age) + ' ago' } else { 'at an unknown time' }) + ' (over planUsageMaxAgeHours ' + $plan.MaxAgeHours + '); the Golem does not hold Fable prompts for it'); Color = 'gray'; Bar = $true; Marker = $null }) }
     else { $rows.Add([pscustomobject]@{ Name = 'Fable this week'; Pct = $null; Text = ($fl + '[' + ('-' * 20) + '] not reported: Claude Code''s status line has no per-model weekly limit'); Color = 'gray'; Bar = $true; Marker = $null }) }
@@ -5231,7 +5242,9 @@ function Get-ReadyLine {
 # cc-P200: the week's projection ("on track for 82% by Wed 4:00 PM ...") and, with a free reset on offer, when to press it.
 function Get-ProjectionLines($p) {
     if (-not $p) { return @() }
-    $rows = @([pscustomobject]@{ Text = ('week      : ' + [string]$p.text); Color = $(if ($p.known -and $p.week -and [double]$p.week.projected -lt [double]$p.target) { 'amber' } elseif ($p.known) { 'green' } else { 'gray' }) })
+    # cc-P274: the text names both weeks first ("week 71%, Fable 98%: on track for ..."), so the label is projection.
+    $rows = @([pscustomobject]@{ Text = ('projection: ' + [string]$p.text); Color = $(if ($p.known -and $p.week -and [double]$p.week.projected -lt [double]$p.target) { 'amber' } elseif ($p.known) { 'green' } else { 'gray' }) })
+    if ($p.PSObject.Properties.Name -contains 'fableWarning' -and $p.fableWarning) { $rows += [pscustomobject]@{ Text = ('            Fable: ' + [string]$p.fableWarning); Color = 'amber' } }
     if ($p.resetAdvice) { $rows += [pscustomobject]@{ Text = ('            free reset: ' + [string]$p.resetAdvice); Color = 'normal' } }
     $rows
 }
@@ -10033,6 +10046,7 @@ function ConvertTo-ConsoleStatusDocument {
             nightShift = [ordered]@{ enabled = [bool]$v.Settings.NightShiftEnabled; start = [string]$v.Settings.NightShiftStart; end = [string]$v.Settings.NightShiftEnd }
             # cc-P200: the week's projection and marathon mode, for the web console's Golem page.
             projection = $(if ($s -and $s.Projection) { [ordered]@{ known = [bool]$s.Projection.known; text = [string]$s.Projection.text; resetAdvice = [string]$s.Projection.resetAdvice; target = $s.Projection.target
+                fableWarning = $(if ($s.Projection.PSObject.Properties.Name -contains 'fableWarning') { [string]$s.Projection.fableWarning } else { '' })   # cc-P274
                 projected = $(if ($s.Projection.week) { $s.Projection.week.projected } else { $null }); resetsAt = $(if ($s.Projection.week) { [string]$s.Projection.week.resetsAt } else { $null }) } } else { $null })
             marathon = [ordered]@{ mode = [string]$v.Settings.Marathon; on = $(if ($s -and $s.Marathon) { [bool]$s.Marathon.on } else { $false }); since = $(if ($s -and $s.Marathon) { [string]$s.Marathon.since } else { '' })
                 why = $(if ($s -and $s.Marathon) { [string]$s.Marathon.why } else { '' }) }
