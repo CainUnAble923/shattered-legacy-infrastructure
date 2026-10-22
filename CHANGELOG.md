@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.21
+
+### Staff
+- The nine core tutorial trials are ready for test-world validation, with action checks, hints, arrows and resets. Live tutorial entry stays disabled.
+
 ## 2026.10.21.20
 
 ### Added
