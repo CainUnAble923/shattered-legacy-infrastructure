@@ -27,7 +27,11 @@ public enum PointsType
     VoidPool,
 
     // cc-P196: the Blackthorn Dungeon's Minax turn-in points (Services/PointsSystems/BlackthornData.cs).
-    Blackthorn
+    Blackthorn,
+
+    // cc-P408: Treasures of Sorcerer's Dungeon, the Enchanted Origin turn-in points
+    // (Services/Seasonal Events/TreasuresOfSorceresDungeon/SorcerersDungeonData.cs).
+    SorcerersDungeon
 }
 
 public class PointsEntry

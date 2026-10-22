@@ -205,7 +205,9 @@ public static class MinaxArtifacts
         return (mods, percLow, percHigh, budget);
     }
 
-    private static void ApplyProperties(Item item, Mobile killer, int baseBudget, int luckChance)
+    // Public since cc-P408: the Treasures of Sorcerer's Dungeon artifacts of Enchanted Origin roll the same way
+    // (ServUO calls the same RunicReforging.GenerateRandomItem with another suffix).
+    public static void ApplyProperties(Item item, Mobile killer, int baseBudget, int luckChance)
     {
         var (mods, percLow, percHigh, _) = Roll(killer, baseBudget, luckChance);
 

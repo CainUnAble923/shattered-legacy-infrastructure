@@ -19,6 +19,10 @@
 //
 // What a decor placed is tracked BY SERIAL in the same persistence (ClusterFSeasonalState.Placed(name)): take-down
 // deletes those items and nothing else, however many restarts lie between.
+//
+// cc-P408: a switch may borrow another season's dates (datesFrom): Treasures of Sorcerer's Dungeon runs on the
+// Halloween settings (clusterf.seasonal.halloween.*) but keeps its own saved state under its own name, so a staff
+// place or clear of the decor and a staff on or off of the event never undo each other.
 
 using System;
 using System.Collections.Generic;
@@ -93,9 +97,13 @@ namespace Server
         public string Label { get; }
         public string DefaultStart { get; }
         public string DefaultEnd { get; }
-        public string StartKey => $"clusterf.seasonal.{Name}.start";
-        public string EndKey => $"clusterf.seasonal.{Name}.end";
-        public string AutomaticKey => $"clusterf.seasonal.{Name}.automatic";
+
+        /// <summary>The season whose settings give the dates: this switch's own name unless it borrows another's.</summary>
+        public string DatesFrom { get; }
+
+        public string StartKey => $"clusterf.seasonal.{DatesFrom}.start";
+        public string EndKey => $"clusterf.seasonal.{DatesFrom}.end";
+        public string AutomaticKey => $"clusterf.seasonal.{DatesFrom}.automatic";
 
         public SeasonWindow Window { get; set; }
         public bool Automatic { get; set; } = true;
@@ -108,9 +116,10 @@ namespace Server
         private Timer _timer;
 
         public ClusterFSeasonalSwitch(string name, string label, string defaultStart, string defaultEnd,
-            Func<bool, List<string>> up, Func<bool, List<string>> down)
+            Func<bool, List<string>> up, Func<bool, List<string>> down, string datesFrom = null)
         {
             Name = name;
+            DatesFrom = datesFrom ?? name;
             Label = label;
             DefaultStart = defaultStart;
             DefaultEnd = defaultEnd;
