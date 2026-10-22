@@ -5637,6 +5637,43 @@ Fact 'P160_AStalePlanPageGreysTheFableWeekAndDropsTheWarning' {
     Assert-True ($n[3].Text -match 'not reported') $n[3].Text
 }
 
+# cc-P274: claude.ai has shown no separate Fable line since 10-20, so the Fable row also reads usage.json's own Fable
+# window (a Fable limit hit the Golem recorded, or a model-specific status line window), with its reset time.
+Fact 'P274_UsageBarsShowTheFableWeekFromUsageJsonWhenThePlanPageHasNone' {
+    $set = ConvertFrom-AutopilotSettings '{}'
+    $wk = [DateTimeOffset]::new([datetime]::new(2026, 10, 21, 16, 0, 0)).ToUnixTimeSeconds()
+    $plan = (New-P160Plan -Warning '') | ConvertFrom-Json
+    $plan.fableWeek = $null
+    $planText = $plan | ConvertTo-Json -Depth 4
+    $hit = ((New-P160Usage) | ConvertFrom-Json)
+    $hit | Add-Member -NotePropertyName fable -NotePropertyValue ([pscustomobject]@{ pct = 100; resetsAt = $wk; source = 'limit hit'; hitAt = '2026-10-17T05:02:00' }) -Force
+    $r = @(Get-UsageBars -UsageText ($hit | ConvertTo-Json -Depth 4) -Now $p160Now -PlanText $planText -Settings $set)
+    $f = @($r | Where-Object { $_.Name -eq 'Fable this week' })[0]
+    Assert-True ($f.Pct -eq 100 -and $f.Color -eq 'red' -and $f.Text -match '100% used .*resets in 3 d 21 h, at Wed 16:00' -and $f.Text -match 'a Fable session hit it Sat 05:02') ('the limit hit, with its reset: ' + $f.Text)
+    # A limit hit is kept however old usage.json is (until its reset); a status line window only while it is fresh.
+    $old = $hit | ConvertTo-Json -Depth 4 | ConvertFrom-Json
+    $old.updatedUtc = $p160Now.ToUniversalTime().AddHours(-3).ToString('s')
+    $f2 = @(@(Get-UsageBars -UsageText ($old | ConvertTo-Json -Depth 4) -Now $p160Now -PlanText $planText -Settings $set) | Where-Object { $_.Name -eq 'Fable this week' })[0]
+    Assert-True ($f2.Pct -eq 100) ('kept when usage.json is old: ' + $f2.Text)
+    $sl = ((New-P160Usage) | ConvertFrom-Json)
+    $sl | Add-Member -NotePropertyName fable -NotePropertyValue ([pscustomobject]@{ pct = 72; resetsAt = $wk; source = 'status line' }) -Force
+    $f3 = @(@(Get-UsageBars -UsageText ($sl | ConvertTo-Json -Depth 4) -Now $p160Now -PlanText $planText -Settings $set) | Where-Object { $_.Name -eq 'Fable this week' })[0]
+    Assert-True ($f3.Pct -eq 72 -and $f3.Text -match '72% used' -and $f3.Text -match 'status line') ('the status line window: ' + $f3.Text)
+    # Neither: the row says the page shows no Fable line (not that Claude Code never reports one).
+    $f4 = @(@(Get-UsageBars -UsageText (New-P160Usage) -Now $p160Now -PlanText $planText -Settings $set) | Where-Object { $_.Name -eq 'Fable this week' })[0]
+    Assert-True ($null -eq $f4.Pct -and $f4.Text -match 'claude\.ai/settings/usage shows no separate Fable line') ('unknown, said why: ' + $f4.Text)
+    # The plan page's own Fable week still wins (P160).
+    $f5 = @(@(Get-UsageBars -UsageText ($hit | ConvertTo-Json -Depth 4) -Now $p160Now -PlanText (New-P160Plan -Warning '') -Settings $set) | Where-Object { $_.Name -eq 'Fable this week' })[0]
+    Assert-True ($f5.Pct -eq 44) ('the plan page first: ' + $f5.Text)
+}
+
+Fact 'P274_TheProjectionLinesNameBothWeeksAndTheFableWarning' {
+    $p = [pscustomobject]@{ known = $true; target = 95; text = 'week 34%, Fable 70%: on track for 86% by Wed 4:00 PM (1% an hour over the last 4 h; 1 enabled Claude Golem); the Fable week on track for 100%'
+        week = [pscustomobject]@{ projected = 86 }; resetAdvice = ''; fableWarning = 'the Fable week runs out about 6:00 PM at this rate, before its reset (Wed 4:00 PM)' }
+    $l = @(Get-ProjectionLines $p)
+    Assert-True ($l.Count -eq 2 -and $l[0].Text -eq ('projection: ' + $p.text) -and $l[1].Text -eq '            Fable: the Fable week runs out about 6:00 PM at this rate, before its reset (Wed 4:00 PM)' -and $l[1].Color -eq 'amber') ('the lines: ' + (@($l | ForEach-Object { $_.Text + ' ' + $_.Color }) -join ' | '))
+}
+
 Fact 'P125_TheTileSaysEachStateAndKeepsTheRunInfo' {
     $lr = [ordered]@{ cap = 5; until = $p125Now.AddDays(3).ToString('s'); done = 2; active = $true }
     $cases = @(
@@ -7971,14 +8008,14 @@ Fact 'P200_TheGolemTabShowsTheProjectionMarathonAndWidenedHours' {
     $x = [pscustomobject]@{ PromptTexts = @{}; TreeClean = $null }
     $v = Get-AutopilotView -Enabled $true -StateText '{"current":"P200","currentFile":"cc-P200-a.md","lastHandled":199}' -LogLines @() -QueueNames @() -Errors @() -StatusText ($j | ConvertTo-Json -Depth 6) -SettingsText $p131Settings -Kind golem -Extra $x
     $lines = @(Format-AutopilotPanel -View $v -Config $p125Cfg -Now $p125Now)
-    $wk = @($lines | Where-Object { $_.Text -like 'week      :*' })
-    Assert-True ($wk.Count -eq 1 -and $wk[0].Text -eq 'week      : on track for 82% by Wed 4:00 PM (the week is at 60%, 0.5% an hour over the last 24 h; 2 enabled Claude Golems)' -and $wk[0].Color -eq 'amber') ('the projection line, amber under the target: ' + (@($wk | ForEach-Object { $_.Text + ' ' + $_.Color }) -join ' | '))
+    $wk = @($lines | Where-Object { $_.Text -like 'projection:*' })
+    Assert-True ($wk.Count -eq 1 -and $wk[0].Text -eq 'projection: on track for 82% by Wed 4:00 PM (the week is at 60%, 0.5% an hour over the last 24 h; 2 enabled Claude Golems)' -and $wk[0].Color -eq 'amber') ('the projection line, amber under the target: ' + (@($wk | ForEach-Object { $_.Text + ' ' + $_.Color }) -join ' | '))
     Assert-True (@($lines | Where-Object { $_.Text -like '            free reset: at this rate the week ends at about 82%*' }).Count -eq 1) 'the free reset advice'
     $mar = @($lines | Where-Object { $_.Text -like 'marathon  :*' })
     Assert-True ($mar.Count -eq 1 -and $mar[0].Text -eq 'marathon  : auto, ON since Thu 8:00 AM: projected 71% by Wed 4:00 PM, short of the 95% target with 54 h left (auto: on under 95% with more than 6 h left); queue low told for Bronze' -and $mar[0].Color -eq 'green') ('the marathon line: ' + (@($mar | ForEach-Object { $_.Text }) -join ' | '))
     # No projection or marathon field (a Golem before cc-P200): no lines.
     $v0 = Get-AutopilotView -Enabled $true -StateText '{"current":"P200","currentFile":"cc-P200-a.md","lastHandled":199}' -LogLines @() -QueueNames @() -Errors @() -StatusText (New-P131Status -State 'RUNNING' -Current 'P200') -SettingsText $p131Settings -Kind golem -Extra $x
-    Assert-Equal 0 @(Format-AutopilotPanel -View $v0 -Config $p125Cfg -Now $p125Now | Where-Object { $_.Text -like 'week      :*' -or $_.Text -like 'marathon  :*' }).Count 'nothing before cc-P200'
+    Assert-Equal 0 @(Format-AutopilotPanel -View $v0 -Config $p125Cfg -Now $p125Now | Where-Object { $_.Text -like 'projection:*' -or $_.Text -like 'marathon  :*' }).Count 'nothing before cc-P200'
     # The cards: an extra PC's hours widened to the whole day while marathon is on; noDaytimeMarathon kept.
     $j | Add-Member -NotePropertyName multiGolem -NotePropertyValue $true -Force
     $j | Add-Member -NotePropertyName golems -NotePropertyValue @(

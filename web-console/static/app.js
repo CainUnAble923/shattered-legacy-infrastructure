@@ -171,7 +171,9 @@
     var ns = g.nightShift || {};
     lines.push('Night shift: ' + (ns.enabled ? 'on, ' + ns.start + ' to ' + ns.end : 'off') + '. Self-wake: ' + (g.autoWake ? 'on' : 'off') + '.');
     // cc-P200: where the week lands at its reset at this rate, the free reset advice, and marathon mode.
-    if (g.projection && g.projection.text) lines.push('The week: ' + g.projection.text + '.');
+    // cc-P274: the text names both weeks itself ("week 71%, Fable 98%: on track for ..."), and the Fable warning.
+    if (g.projection && g.projection.text) lines.push('Projection: ' + g.projection.text + '.');
+    if (g.projection && g.projection.fableWarning) lines.push('Fable: ' + g.projection.fableWarning + '.');
     if (g.projection && g.projection.resetAdvice) lines.push('Free reset: ' + g.projection.resetAdvice);
     var mar = g.marathon || {};
     if (mar.mode) lines.push('Marathon: ' + mar.mode + ', ' + (mar.on ? 'ON' + (mar.why ? ' (' + mar.why + ')' : '') : 'off') + '.');
