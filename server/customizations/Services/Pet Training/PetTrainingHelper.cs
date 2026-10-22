@@ -8,7 +8,8 @@
 // localizations (:1357-1667) and the [PetTrainTest command (:1669-1743). The tables are the same entries in the same
 // order; three shapes change, each recorded in notes/cc-P130-pet-training.md:
 //  - the definitions are keyed by type NAME and resolved on first use (MissingDefinitionTypes lists the ServUO types this
-//    shard does not have, such as DragonTurtleHatchling), where ServUO's typeof() needs every type at compile time;
+//    shard does not have; DragonTurtleHatchling was one until cc-P198), where ServUO's typeof() needs every type at
+//    compile time;
 //  - ColdWind is not a pinned weapon ability, so it is absent from WeaponAbilities and the Wep packages that list it
 //    (2, 5, 6, 7, 8, 10, 11, 12), and from the localization table (it was the last row);
 //  - the tables build lazily on first use, since the test host does not run Configure/Initialize.

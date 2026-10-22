@@ -314,7 +314,9 @@ public class PetTrainingVerification
         _out.WriteLine($"definitions resolved: {PetTrainingHelper.Definitions.Count}, missing on this shard: {missing.Count}");
         _out.WriteLine(string.Join(", ", missing));
         Assert.Equal(137, PetTrainingHelper.Definitions.Count + missing.Count);
-        Assert.Contains("DragonTurtleHatchling", missing);
+        // cc-P198 ported DragonTurtleHatchling, the example this line used to name as missing: its definition resolves now.
+        Assert.DoesNotContain("DragonTurtleHatchling", missing);
+        Assert.True(PetTrainingHelper.Definitions.ContainsKey(typeof(DragonTurtleHatchling)));
         Assert.DoesNotContain("Dragon", missing);
 
         var dragon = PetTrainingHelper.Definitions[typeof(Dragon)];

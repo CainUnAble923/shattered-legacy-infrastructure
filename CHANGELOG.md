@@ -33,9 +33,16 @@ Example:
 
 ### Added
 - The shard can play music of its own in chosen places and fights, with the stock Ultima Online music kept everywhere else: a region, or a spot inside one, can have a track of its own, and a chosen monster or boss brings its track when it fights you, the area's music coming back a few seconds after the fight. Our tracks come with the player package (none ship yet: the first are being picked in the Music Room). Type [ShardMusic off in game to keep only the stock music, and [ShardMusic on to hear ours again.
+- The Valley of Eodon in Ter Mur comes alive: a public moongate at the ring of dirt in the valley (the moongate menu has always listed Valley of Eodon; now there is a gate to arrive at), and the valley's wildlife, dinosaurs and six tribes spread across it.
+- In the valley: the anchisaur and the gallusaurus (tamable) join the other dinosaurs, and desert scorpions hunt the western desert.
+- The tribes of Eodon (Jukari, Kurak, Barrab, Barako, Urali and Sakkhra): warriors, shamans and chieftains who leave you alone until you attack one, then the whole tribe nearby comes for you.
+- Wandering shamans walk the valley and heal like wandering healers.
+- Vines on a cliff near the Barako village can be climbed to the clifftop.
 
 ### Staff
 - [ShardMusicPlay <id|stop|list> plays any music ID to you (stock 0-104, ours 105 up), stops the music, or lists the shard music table and what applied at start. Settings: clusterf.music.enabled, regionLayer, monsterLayer, bossLayer, returnSeconds (8), fightRange (24).
+- [GenEodon [dryrun] (Administrator) places the Eodon moongate at Ter Mur 719,1863,40, the two climbing vines and the 46 Eodon spawners; it replaces its own earlier run, never doubles a gate that is already there, and [DeleteEodon takes it all down. The server console has the same as "eodon status|dryrun|generate|delete", and every start logs whether the Eodon gate stands. Nothing runs by itself: run the dry run, then [GenEodon, on the test shard first.
+- On no spawner yet, for [add: the greater phoenix, the infernus (a trail of fire under its target), the dragon turtle hatchling (tamable; a wild one carves dragon turtle scutes), Britannian infantry and the Semidar legend cards.
 
 ## 2026.10.21.23
 
