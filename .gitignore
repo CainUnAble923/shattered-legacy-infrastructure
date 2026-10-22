@@ -98,3 +98,8 @@ tools/playtest-bot/cache/
 # .vd and PNG sources by scripts/build-equip-anims.py and are about 26 MB, over the 5 MB rule; Build-PlayerPackage.ps1
 # regenerates and checks them before staging. The sources (anim-src/) stay committed.
 player-package/vendor/shattered-legacy-art/build/
+
+# cc-P368: the music tracks the package ships (vendor/shattered-legacy-music/tracks/<file>.mp3) are 4 to 25 MB each,
+# over the 5 MB rule; Add-Track.ps1 copies each in from D:/UO/third-party/ and registry.csv (committed) carries its SHA-256,
+# which Build-PlayerPackage.ps1 checks before staging.
+player-package/vendor/shattered-legacy-music/tracks/

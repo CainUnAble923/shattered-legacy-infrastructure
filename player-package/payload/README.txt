@@ -94,6 +94,11 @@ What is in here
                (https://aka.ms/vs/18/redistribution).
                The custom health and mana gumps are off until you turn them on
                from the TazUO top bar (XmlGumps menu).
+  app\music\   Shattered Legacy's own music for chosen places and fights, when any
+               ships: remixes of the Ultima Online music by Zigholtul (UO Classic
+               Music, SOS Mix) and ParanoiaPhD (IceYouMusic remixes), credited by
+               track in app\music\shard-music.txt. The stock music stays as it is;
+               type [ShardMusic off in game to keep only the stock music.
   app\         the scripts that set it up and start it
   Nothing from EA is included. Ultima Online itself comes from EA's own free
   installer at https://uo.com/client-download/

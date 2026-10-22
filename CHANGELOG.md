@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.21.24
+
+### Added
+- The shard can play music of its own in chosen places and fights, with the stock Ultima Online music kept everywhere else: a region, or a spot inside one, can have a track of its own, and a chosen monster or boss brings its track when it fights you, the area's music coming back a few seconds after the fight. Our tracks come with the player package (none ship yet: the first are being picked in the Music Room). Type [ShardMusic off in game to keep only the stock music, and [ShardMusic on to hear ours again.
+
+### Staff
+- [ShardMusicPlay <id|stop|list> plays any music ID to you (stock 0-104, ours 105 up), stops the music, or lists the shard music table and what applied at start. Settings: clusterf.music.enabled, regionLayer, monsterLayer, bossLayer, returnSeconds (8), fightRange (24).
+
 ## 2026.10.21.23
 
 ### Added
