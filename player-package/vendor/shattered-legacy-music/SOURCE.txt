@@ -1,0 +1,64 @@
+Shattered Legacy's own music for TazUO, shipped in the player package (cc-P368)
+==============================================================================
+
+What is here
+------------
+  registry.csv   every client music ID we use, one row each (105 to 149; rules at the top of the file).
+  tracks\        the mp3 files, tracks\<file>.mp3, one per registry row. GIT-IGNORED: a track is 4 to 25 MB, over the
+                 repo's 5 MB rule, so the files live only on the build PC (copied in from D:\UO\third-party\ by
+                 Add-Track.ps1) and the registry row carries the SHA-256 the build checks them against.
+  Add-Track.ps1  copies a chosen track in, renamed sl-<pack>-<name>.mp3, and writes its registry row with the hash.
+                 Run it only for a track Chase marked Use in the Music Room (web console /music, docs\music\
+                 music-notes.json in the docs repo), and only after checking its terms below.
+
+How it reaches the player (nothing of EA's is shipped or changed):
+  Build-PlayerPackage.ps1 stages app\music\<file>.mp3 for every row (gate 3 checks each byte for byte, gate 4 checks the
+  zip holds exactly the registry's files and their hashes) and writes app\music\shard-music.txt, one Config.txt line
+  per track: "<id> <file>.mp3,loop". At every start, Play.ps1's Build-UoOverrides.ps1 appends those lines to a copy of
+  the player's own Music\Digital\Config.txt (app\uo-overrides\Music\Digital\Config.txt; a stock line is never changed,
+  and an ID the player's file already uses is skipped with a yellow line) and hands TazUO an override for the copy
+  ("music/digital/config.txt=...") and one per track ("music/digital/<file>.mp3=<app\music\file.mp3>"). TazUO asks its
+  file override map for both paths (Sound.GetMusic -> FileManager.GetUOFilePath("Music/Digital/<name>.mp3"), and
+  SoundsLoader.Load for "Music/Digital/Config.txt", at client pin 3212623f), so the mp3 plays from app\music\ and the
+  player's Music folder is never written. The server plays an ID with the ordinary play-music packet (0x6D).
+
+Credits and terms
+-----------------
+Every track we may ship comes from one of these four community packs (D:\UO\third-party\<folder>\SOURCE.txt has the
+download record for each). None states a license. They are treated as community work: credit the author, ship only
+inside the player package or the private repo, never repost. The stock Ultima Online music they remix or replace is
+EA's, so the package is the only place they go.
+
+  Zigholtul      UO Classic Music (SOS Mix) Vol.2 (servuo.dev resource 2682, posted 2026-09-30): 93 tracks,
+                 D:\UO\third-party\sos-music-vol2\. "Another plug-in-play audio swap of the default UO stock music."
+                 UO Classic Music (SOS Mix) + DLC 1.2 (servuo.dev resource 2665, updated 2026-09-11): 117 tracks,
+                 D:\UO\third-party\sos-music-dlc\. The author's own picks under the stock file names.
+                 Zigholtul is also the author of the paperdoll art we ship (vendor\paperdoll-sos\SOURCE.txt).
+  ParanoiaPhD    Some uo music remixes 1 (servuo.dev resource 2063, posted 2023-11-27; "IceYouMusic"): 49 remixes of
+  (IceYouMusic)  the stock UO MIDI tracks, D:\UO\third-party\paranoia-remixes\. EA-derived audio.
+                 Custom Turfin replacement 1 (servuo.dev resource 2142, posted 2024-03-10): 1 track,
+                 D:\UO\third-party\paranoia-turfin\.
+
+Both authors are credited in the package's README.txt ("What is in here") whenever a track of theirs ships, and each
+registry row names its author and pack.
+
+FLAGGED: possibly from another game. Check before shipping.
+----------------------------------------------------------
+The SOS DLC's SOURCE.txt flags the pack as likely holding music from other games ("personalized selections"), and the
+Music Room (cc-P367) read every file's ID3 album tag: 197 of the 353 tracks on disk carry an album that does not name
+Ultima ("not tagged Ultima" on the page). The most common: Oblivion (16), Youtube (12), Diablo 2 (10), Fallout 1 (8),
+Ni No Kuni (7), Dark Souls 1 (7), South Park: The Stick of Truth (7). Two examples: SOS DLC's Turfin.mp3 is tagged
+"Optimistic" from Digimon, and AnvilStrikeInMinoc.mp3 is "The Strongholds" from Kingdoms of Amalur. The badge is not a
+verdict (some albums are "Youtube", "Wanderer" or "Origin Audio CD Vol. 2"), so the rule is:
+
+  A track whose album tag, or whose SOURCE.txt, points at another game or composer is NOT shipped until Chase has
+  checked it and said so in the Music Room note for that track. Add-Track.ps1 refuses a source whose album tag lacks
+  "Ultima" unless -Checked is given, and records the album in the registry row's source column either way.
+
+The Paranoia remixes and Turfin are remixes of EA's own compositions (SOURCE.txt), not other games' music; the
+"not tagged Ultima" badge on those reflects their tags, not their source.
+
+Shipped tracks
+--------------
+None yet (2026-10-21): no track is marked Use in the Music Room. When one is, this section gets a block per track:
+the registry row, the original file and its tag, who cleared it and when, and where the server plays it.

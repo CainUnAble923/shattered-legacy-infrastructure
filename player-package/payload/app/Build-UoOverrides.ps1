@@ -72,6 +72,16 @@
     Layout (TazUO SkillsLoader.Load): Skills.idx is 12-byte entries (int32 offset, int32 length, int32 extra; offset
     -1 for none); a skills.mul entry is one action byte, the ASCII name and a NUL, and its length counts all three.
 
+  Music (cc-P368): Music\Digital\Config.txt, so our own tracks (app\music\, client music IDs 105 up) play.
+    1. Reads our lines, app\music\shard-music.txt ("<id> <file>.mp3[,loop]", ours; nothing of EA's in it).
+    2. If app\uo-overrides\music-stamp.txt matches the player's Config.txt (size and time) and our lines (SHA-256), and
+       the copy is there, it is done.
+    3. Otherwise writes the player's Config.txt, unchanged, with our lines added at the end, to
+       app\uo-overrides\Music\Digital\Config.txt, then the stamp. An ID the player's file already uses is skipped, and
+       so is a track whose mp3 is missing, each with a yellow line. The override list then names the copy
+       ("music/digital/config.txt=...") and each track ("music/digital/<file>.mp3=<app\music\file.mp3>"): TazUO asks its
+       override map for both (Sound.GetMusic, SoundsLoader.Load), so no mp3 is ever written into the player's folder.
+
   Then files-override.txt lists whichever copies were made. The player's EA files are only ever
   read. app\uo-overrides\ is made here and never shipped; the updater leaves it alone and the
   package build refuses a payload that holds it.
@@ -97,7 +107,8 @@ param(
     [string]$OutDir,
     [string]$AnimMul,
     [string]$AnimIdx,
-    [string]$MapOps
+    [string]$MapOps,
+    [string]$Music     # cc-P368: the folder holding shard-music.txt and our mp3 files (app\music)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -107,6 +118,7 @@ if (-not $AnimIdx) { $AnimIdx = Join-Path $PSScriptRoot 'sl-anim7-idx.bin' }
 if (-not $Clilocs) { $Clilocs = Join-Path $PSScriptRoot 'cliloc-entries.json' }
 if (-not $OutDir)  { $OutDir  = Join-Path $PSScriptRoot 'uo-overrides' }
 if (-not $MapOps)  { $MapOps  = Join-Path $PSScriptRoot 'trammel.mapops' }
+if (-not $Music)   { $Music   = Join-Path $PSScriptRoot 'music' }
 
 $LandBytes   = 512 * (4 + 32 * 30)
 $StaticGroup = 4 + 32 * 41
@@ -115,6 +127,7 @@ $StampFormat = 'uo-overrides 1'
 $ClilocStampFormat = 'uo-cliloc 1'
 $EquipStampFormat = 'uo-equip 1'
 $SkillsStampFormat = 'uo-skills 1'
+$MusicStampFormat = 'uo-music 1'
 # cc-P239 (F-14): the skills we rename for everyone. Index (SkillName), the name the player's file must hold, ours.
 $SkillRenames = @(@{ Index = 3; From = 'Item Identification'; To = 'Appraisal' })
 
@@ -677,6 +690,63 @@ function Build-Skills {
     & $lines
 }
 
+# cc-P368: returns the music's override lines, or none (no track shipped): "music/digital/config.txt=<copy>" and one
+# "music/digital/<file>.mp3=<app\music\file.mp3>" per track. The copy is the player's own Music\Digital\Config.txt with
+# our lines (app\music\shard-music.txt, "<id> <file>.mp3[,loop]", IDs 105 up) added at the end; a stock line is never
+# changed. An ID the player's file already uses is skipped and said, and so is a track whose mp3 is not in app\music.
+# TazUO resolves both paths through its override map (Sound.GetMusic -> GetUOFilePath("Music/Digital/<name>.mp3"),
+# SoundsLoader.Load -> GetUOFilePath("Music/Digital/Config.txt"); the map's keys are lower case), so the mp3 plays from
+# app\music\ and the player's Music folder is only ever read.
+function Build-Music {
+    $list = Join-Path $Music 'shard-music.txt'
+    if (-not (Test-Path -LiteralPath $list)) { return }    # a package with no music of ours
+    $ours = @(Get-Content -LiteralPath $list | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })
+    if ($ours.Count -eq 0) { return }
+    $src = Join-Path $UoDir 'Music\Digital\Config.txt'
+    if (-not (Test-Path -LiteralPath $src)) { throw "Music\Digital\Config.txt is not in $UoDir" }
+    $outDir   = Join-Path $OutDir 'Music\Digital'
+    $out      = Join-Path $outDir 'Config.txt'
+    $stampOut = Join-Path $OutDir 'music-stamp.txt'
+    $s = Get-Item -LiteralPath $src
+    $stamp = "$MusicStampFormat`nConfig.txt $($s.Length) $($s.LastWriteTimeUtc.Ticks)`nours $((Get-FileHash -LiteralPath $list -Algorithm SHA256).Hash)"
+
+    # Ours: id, file name (with .mp3), the whole line. The player's file is read either way, for the IDs it uses.
+    $theirs = @(Get-Content -LiteralPath $src)
+    $used = @{}
+    foreach ($t in $theirs) {
+        $m = [regex]::Match($t.Trim(), '^(\d+)\s')
+        if ($m.Success) { $used[[int]$m.Groups[1].Value] = $t.Trim() }
+    }
+    $adds = @()
+    foreach ($o in $ours) {
+        $m = [regex]::Match($o, '^(\d+)\s+([^,\s]+\.mp3)(,loop)?$')
+        if (-not $m.Success) { Say-Skip "Shattered Legacy music: skipping a line it cannot read: $o"; continue }
+        $id = [int]$m.Groups[1].Value; $file = $m.Groups[2].Value
+        if ($used.ContainsKey($id)) { Say-Skip "Shattered Legacy music: skipping track ${id}: your Ultima Online files now use that number."; continue }
+        $mp3 = Join-Path $Music $file
+        if (-not (Test-Path -LiteralPath $mp3)) { Say-Skip "Shattered Legacy music: skipping track ${id}: $file is not in app\music."; continue }
+        if ($mp3.Contains('=')) { throw "the game folder's path has an '=' in it, which TazUO cannot read in an override list" }
+        $adds += [pscustomobject]@{ Line = $o; Key = "music/digital/$($file.ToLowerInvariant())"; Path = (Resolve-Path -LiteralPath $mp3).Path }
+    }
+    if ($adds.Count -eq 0) { return }
+    $lines = { "music/digital/config.txt=$((Resolve-Path -LiteralPath $out).Path)"; foreach ($a in $adds) { "$($a.Key)=$($a.Path)" } }
+
+    if ((Test-Path -LiteralPath $stampOut) -and (Test-Path -LiteralPath $out) -and
+        [IO.File]::ReadAllText($stampOut) -ceq $stamp) {
+        & $lines
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
+    if (Test-Path -LiteralPath $stampOut) { Remove-Item -LiteralPath $stampOut -Force }
+    $text = [IO.File]::ReadAllText($src)
+    if ($text.Length -and -not $text.EndsWith("`n")) { $text += "`r`n" }
+    $text += (($adds | ForEach-Object { "$($_.Line)`r`n" }) -join '')
+    [IO.File]::WriteAllText($out, $text, (New-Object Text.ASCIIEncoding))
+    [IO.File]::WriteAllText($stampOut, $stamp, (New-Object Text.ASCIIEncoding))
+    & $lines
+}
+
 # Returns the map's three override lines, or none (no patch shipped). Apply-MapOps.ps1 does the work (cc-P188).
 function Build-Map {
     if (-not (Test-Path -LiteralPath $MapOps)) { return }
@@ -710,6 +780,9 @@ try {
 
     try { $lines += @(Build-Map) }
     catch { Say-Skip "Shattered Legacy map (the Rootdeep Burrows) could not be prepared ($($_.Exception.Message)). Starting without it." }
+
+    try { $lines += @(Build-Music) }
+    catch { Say-Skip "Shattered Legacy music could not be prepared ($($_.Exception.Message)). Starting without it." }
 
     $lines = @($lines | Where-Object { $_ })
     if ($lines.Count -eq 0) {

@@ -1,0 +1,15 @@
+# Music registry (cc-P368): every client music ID our package uses, one row per ID. Audio is registered like art
+# (vendor\shattered-legacy-art\registry.csv): add rows, never reuse or renumber one. The server's copy of this list is
+# server\customizations\Music\ShardMusicTracks.cs (the same id, file and loop on every row; tests\Music-Overrides.Tests.ps1
+# holds the two the same), and the assignments (which region, creature or boss plays it) are ShardMusicTable.cs.
+# id      the client music ID: 105 to 149. Stock music is 0 to 104 and keeps its stock tracks; TazUO plays nothing at
+#         150 or above (AudioManager.PlayMusic, MAX_MUSIC_DATA_INDEX_COUNT 150), so 150+ needs a client patch first.
+# file    the shipped file stem: tracks\<file>.mp3 here (git-ignored, over the 5 MB rule; Add-Track.ps1 copies it in),
+#         app\music\<file>.mp3 in the package. Starts with "sl-", lower case, letters, digits and dashes, so it is never
+#         the name of an EA file (the SOS packs use the stock names; a copy is renamed on the way in).
+# loop    yes or no: the ",loop" of the Config.txt line (TazUO loops the track).
+# what    the track's title and where it plays, in words.
+# source  the pack and the original file (D:\UO\third-party\<pack>\...), and the album its ID3 tag names.
+# license the terms, or "none stated; see SOURCE.txt".
+# sha256  of tracks\<file>.mp3, upper case; Build-PlayerPackage.ps1 refuses a row whose file is missing or differs.
+id,file,loop,what,source,license,sha256

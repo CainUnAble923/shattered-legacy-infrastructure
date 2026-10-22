@@ -33,6 +33,12 @@
                                cliloc gate, before staging and again in the zip (gate 4).
       vendor\vc-runtime\       Microsoft's vcruntime140.dll, which TazUO's zlib.dll needs,
                                into app\tazuo\ (cc-P35). See its SOURCE.txt.
+      vendor\shattered-legacy-music\   our own music (cc-P368): registry.csv names each track (client music
+                               IDs 105 up, never a stock ID) and tracks\<file>.mp3 holds it (git-ignored, over the
+                               5 MB rule; the row carries its SHA-256). Each ships as app\music\<file>.mp3, with
+                               app\music\shard-music.txt, the Config.txt lines Play.ps1 adds to a copy of the
+                               player's own Music\Digital\Config.txt (Build-UoOverrides.ps1). The music gate
+                               (Test-MusicRegistry) runs before staging and gate 4 checks the zip. See its SOURCE.txt.
   clean-test\ (the Windows Sandbox kit) is never staged; gate 4 proves none of it ships.
   into player-package\dist\ShatteredLegacy-<stamp>.zip, which is gitignored, where <stamp>
   is the build time, yyyy.MM.dd.HHmm local. Beside it goes ShatteredLegacy-<stamp>.version.json,
@@ -122,6 +128,8 @@ $slGumpIds  = @($slRegistry | Where-Object { $_.kind -eq 'gump' } | ForEach-Obje
 $slAnimIds  = @($slRegistry | Where-Object { $_.kind -eq 'anim' } | ForEach-Object { [int]$_.id })
 $slBodyIds  = @($slRegistry | Where-Object { $_.kind -eq 'body' } | ForEach-Object { [int]$_.id })
 $slAnimFiles = @('sl-anim7.bin', 'sl-anim7-idx.bin')
+# cc-P368: the music registry, for gate 4 (the staging section reads it again and runs the music gate on it).
+$slMusicRegistry = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot 'vendor\shattered-legacy-music\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
 # cc-P81: the Siege of Sosaria paperdoll art, SFW only (vendor\paperdoll-sos\SOURCE.txt). Its gump PNGs go into
 # ExternalImages\gumps\ beside Fiddle-Me-This's and ours, never over either; its six SFW body gumps also go into
 # app\paperdoll-sfw\, which the launcher restores from after a local swap (app\Paperdoll-Bodies.ps1).
@@ -258,6 +266,52 @@ function Test-ClilocEntries([byte[]]$bytes, [string]$what) {
     }
     return $fail
 }
+# cc-P368: the music registry (vendor\shattered-legacy-music\registry.csv) and its tracks. Every row: an ID 105 to 149
+# (stock music is 0 to 104 and is never reassigned; TazUO plays nothing at 150+), once; a file stem sl-<lower case,
+# digits, dashes>, once, so it is never an EA file's name; loop yes or no; a 64-hex SHA-256; and tracks\<file>.mp3 present
+# with that hash. $Rows is the parsed registry, $Dir the vendor folder. Returns the failures, none when it passes.
+function Test-MusicRegistry($Rows, [string]$Dir) {
+    $fail = @()
+    $ids = @{}; $files = @{}
+    foreach ($r in @($Rows)) {
+        $id = 0
+        if (-not [int]::TryParse("$($r.id)", [ref]$id) -or $id -lt 105 -or $id -gt 149) { $fail += "registry.csv: id '$($r.id)' is not 105 to 149"; continue }
+        if ($ids.ContainsKey($id)) { $fail += "registry.csv: id $id is listed twice" }
+        $ids[$id] = 1
+        $f = "$($r.file)"
+        if ($f -cnotmatch '^sl-[a-z0-9-]+$') { $fail += "registry.csv: $id has file '$f', not sl-<lower case, digits, dashes>" }
+        if ($files.ContainsKey($f)) { $fail += "registry.csv: file '$f' is listed twice" }
+        $files[$f] = 1
+        if ("$($r.loop)" -notin @('yes', 'no')) { $fail += "registry.csv: $id has loop '$($r.loop)', not yes or no" }
+        if ("$($r.sha256)" -notmatch '^[0-9A-Fa-f]{64}$') { $fail += "registry.csv: $id has no SHA-256"; continue }
+        $mp3 = Join-Path $Dir "tracks\$f.mp3"
+        if (-not (Test-Path -LiteralPath $mp3)) { $fail += "registry.csv: $id names tracks\$f.mp3, which is not there (Add-Track.ps1 copies it in)"; continue }
+        if ((Get-FileHash -LiteralPath $mp3 -Algorithm SHA256).Hash -ne "$($r.sha256)".ToUpperInvariant()) { $fail += "tracks\$f.mp3 is not the file registry.csv records (SHA-256)" }
+    }
+    return $fail
+}
+# cc-P368: the shipped list (app\music\shard-music.txt: "<id> <file>.mp3[,loop]" per track, # comments) against the mp3s
+# that shipped beside it ($Mp3s: the file names under app\music\). Returns the failures.
+function Test-ShardMusicList([string]$text, [string[]]$Mp3s) {
+    $fail = @()
+    $named = @{}
+    foreach ($line in $text -split "`r?`n") {
+        $l = $line.Trim()
+        if (-not $l -or $l.StartsWith('#')) { continue }
+        $m = [regex]::Match($l, '^(\d+) ([^,\s]+\.mp3)(,loop)?$')
+        if (-not $m.Success) { $fail += "app/music/shard-music.txt: a line TazUO's Config.txt reader would not take: $l"; continue }
+        $id = [int]$m.Groups[1].Value
+        if ($id -lt 105 -or $id -gt 149) { $fail += "app/music/shard-music.txt: $id is not one of our IDs (105 to 149)" }
+        if ($named.ContainsKey($id)) { $fail += "app/music/shard-music.txt: $id twice" }
+        $named[$id] = 1
+        $f = $m.Groups[2].Value
+        if ($f -cnotmatch '^sl-[a-z0-9-]+\.mp3$') { $fail += "app/music/shard-music.txt: $id names '$f', not sl-<...>.mp3" }
+        if ($Mp3s -notcontains $f) { $fail += "app/music/shard-music.txt names $f, which did not ship" }
+        $named["f:$f"] = 1
+    }
+    foreach ($m in $Mp3s) { if (-not $named.ContainsKey("f:$m")) { $fail += "app/music/$m shipped but app/music/shard-music.txt does not name it" } }
+    return $fail
+}
 function Read-ZipBytes($entry) {
     $ms = New-Object IO.MemoryStream
     $s = $entry.Open()
@@ -365,6 +419,22 @@ function Test-PackageZip([string]$path) {
         $mo = $rel['app/trammel.mapops']
         if (-not $mo) { $fail += 'no app/trammel.mapops' } else { $fail += @(Test-MapOps (Read-ZipBytes $mo) 'app/trammel.mapops') }
         if (-not $rel['app/Apply-MapOps.ps1']) { $fail += 'no app/Apply-MapOps.ps1 (the map patch applier)' }
+
+        # Our own music (cc-P368): app/music/ holds shard-music.txt and exactly the mp3s it names, each the registry's
+        # file (SHA-256), and every registry row shipped.
+        $ml = $rel['app/music/shard-music.txt']
+        $mp3s = @($names | Where-Object { $_ -like 'app/music/*' -and $_ -ne 'app/music/shard-music.txt' } | ForEach-Object { $_.Substring('app/music/'.Length) })
+        if (-not $ml) { $fail += 'no app/music/shard-music.txt' } else {
+            $fail += @(Test-ShardMusicList (Read-ZipText $ml) $mp3s)
+            foreach ($m in $mp3s) {
+                if ($m -notmatch '^(sl-[a-z0-9-]+)\.mp3$') { $fail += "app/music/$m is not one of our tracks (sl-<...>.mp3)"; continue }
+                $row = @($slMusicRegistry | Where-Object { $_.file -eq $Matches[1] })
+                if ($row.Count -ne 1) { $fail += "app/music/$m is not in registry.csv"; continue }
+                $h = (Get-FileHash -InputStream ([IO.MemoryStream]::new((Read-ZipBytes $rel["app/music/$m"]))) -Algorithm SHA256).Hash
+                if ($h -ne "$($row[0].sha256)".ToUpperInvariant()) { $fail += "app/music/$m is not the file registry.csv records (SHA-256)" }
+            }
+            foreach ($r in $slMusicRegistry) { if ($mp3s -notcontains "$($r.file).mp3") { $fail += "registry.csv row $($r.id) ($($r.file).mp3) did not ship" } }
+        }
 
         # Nothing of EA's: no EA data file by type or by name, nothing made from one (cc-P26).
         foreach ($n in $names) {
@@ -792,6 +862,25 @@ $slMap = Join-Path $PSScriptRoot 'vendor\shattered-legacy-map'
 $mapFail = @(Test-MapOps ([IO.File]::ReadAllBytes((Join-Path $slMap 'trammel.mapops'))) 'vendor\shattered-legacy-map\trammel.mapops')
 if ($mapFail.Count) { throw "MAP GATE: $($mapFail -join '; '). Not building." }
 $vendored += ,@((Join-Path $slMap 'trammel.mapops'), (Join-Path $stage 'app\trammel.mapops'))
+
+# --- our own music (cc-P368) -------------------------------------------------------------------
+# vendor\shattered-legacy-music\registry.csv: each row's tracks\<file>.mp3 as app\music\<file>.mp3 (byte for byte, gate 3),
+# after the music gate (the registry's rules and each file's SHA-256), and app\music\shard-music.txt: the Config.txt
+# lines Play.ps1 adds to a copy of the player's Music\Digital\Config.txt. Written with no rows too, so gate 4 can hold
+# the folder to exactly the list. Stock IDs (0 to 104) are never in it: the gate refuses them.
+$slMusic = Join-Path $here 'vendor\shattered-legacy-music'
+$musicRows = @(Get-Content -LiteralPath (Join-Path $slMusic 'registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+$musicFail = @(Test-MusicRegistry $musicRows $slMusic)
+if ($musicFail.Count) { throw "MUSIC GATE: $($musicFail -join '; '). Not building." }
+$musicOut = Join-Path $stage 'app\music'
+New-Item -ItemType Directory -Path $musicOut -Force | Out-Null
+$musicList = "# Shattered Legacy music (cc-P368): the Config.txt lines Play.ps1 adds to a copy of your own Music\Digital\Config.txt.`r`n" +
+             "# One per track in app\music\, client music IDs 105 and up; the stock lines 0-104 stay as they are. vendor\shattered-legacy-music\SOURCE.txt.`r`n"
+foreach ($r in ($musicRows | Sort-Object { [int]$_.id })) {
+    $musicList += "$($r.id) $($r.file).mp3$(if ($r.loop -eq 'yes') { ',loop' })`r`n"
+    $vendored += ,@((Join-Path $slMusic "tracks\$($r.file).mp3"), (Join-Path $musicOut "$($r.file).mp3"))
+}
+[IO.File]::WriteAllText((Join-Path $musicOut 'shard-music.txt'), $musicList, (New-Object Text.ASCIIEncoding))
 
 # --- Visual C++ runtime (cc-P35) -----------------------------------------------------------
 # TazUO's zlib.dll imports VCRUNTIME140.dll, which Windows does not have, and TazUO loads
