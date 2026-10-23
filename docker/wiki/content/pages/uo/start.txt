@@ -10,8 +10,11 @@ This is the main hub for Shattered Legacy.
 
   * [[:uo:connection|Connection guide]]
   * [[:uo:new_player_guide|New player guide]]
+  * [[:uo:newplayer:start|New players hub]]: the [[:uo:newplayer:faq|FAQ]] and the [[:uo:newplayer:glossary|glossary]]
   * [[:uo:guides:first_hour|First hour route]]
   * [[:uo:guides:league|A player's guide to the League]]
+  * [[:uo:guides:crafting|Crafting on Shattered Legacy]]
+  * [[:uo:guides:high_seas_fishing|High Seas fishing]]
   * [[:uo:guides:troubleshooting|Troubleshooting]]
 
 ===== World =====
@@ -21,7 +24,9 @@ This is the main hub for Shattered Legacy.
   * [[:uo:world:trainers|Trainer index]]
   * [[:uo:world:quests|Quest givers]]
   * [[:uo:world:maps|Maps]]
+  * [[:uo:world:dungeons|Dungeons]]
   * [[:uo:world:seasonal|Seasonal decorations]]
+  * [[:uo:world:sorcerers_dungeon|Treasures of Sorcerer's Dungeon]] (Halloween)
 
 ===== Systems =====
 
@@ -43,6 +48,11 @@ This is the main hub for Shattered Legacy.
   * [[:uo:systems:pet_training|Pet training]]
   * [[:uo:systems:pack_mules|Pack mules]]
   * [[:uo:systems:ultimalive|UltimaLive]]
+
+===== Guilds =====
+
+  * [[:uo:guilds:start|Guilds hub]]: a page for each guild that has one
+  * [[:uo:systems:guilds|How guilds work]]
 
 ===== Professions =====
 

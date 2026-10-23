@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.23.3
+
+### Added
+- The player wiki catches up a third time: a page for each of nine guilds (the Society of Smiths, the Artificers' Order, the Order of the Alembic, the Miners' Compact, the Foresters' Union, the Rangers' League, the Healers' Covenant, the Custodians and the Thieves' Den), a new players' corner with an FAQ and a glossary, guides to crafting here and to High Seas fishing, a dungeons page, and the Halloween event in Sorcerer's Dungeon; the League, achievement, loot box, trap, bulk order, materials, mining, imbuing and New Haven pages are brought up to date. The pages reach the wiki with its next update.
+
 ## 2026.10.23.2
 
 ### Fixed

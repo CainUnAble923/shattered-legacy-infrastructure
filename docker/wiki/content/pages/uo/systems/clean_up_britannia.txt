@@ -5,10 +5,10 @@ Throw unwanted things in a trash barrel for **Clean Up Britannia points**, and s
 ===== Earning points =====
 
   * Drop items in any **Clean Up trash barrel** (the one in your house counts). Each item is worth what OSI's table says. A magic item you found pays extra for its magic properties, by how strong they are; crafted items pay what their materials are worth.
-  * Members of the Custodians can also use ''[cleanup'' (target one item on the ground) and ''[cleanupall'' (sweep 10 tiles around you, once a minute), and every character gets one free **trash bag** to carry.
+  * Members of the Custodians can also use ''[cleanup'' (target one item on the ground) and ''[cleanupall'' (sweep 10 tiles around you, once a minute), and each member gets one free **Trash Bag** to carry. See [[:uo:guilds:custodians|The Custodians]].
   * **Corpses**: clearing the corpse of a monster you killed pays by how fearsome it was (about 1.5 points for an orc, 15 for a dragon), plus what is inside. Corpses of pets, summons and other people's kills pay only what is inside.
 
-Blessed, quest and player-named items, exceptional gear, gold, bank checks and other players' corpses cannot be cleaned up.
+The Trash Bag and the ground commands never take blessed, quest or named items, exceptional weapons and armor, gold, bank checks, containers with something inside, or a player's corpse. They do destroy worthless litter, and cleaning up a monster corpse destroys whatever is still in it, so loot first.
 
 ===== Spending points =====
 
@@ -16,7 +16,7 @@ The **Clean Up Britannia store** opens through a **Cleanup Officer** or a **Sani
 
 ===== The Custodians =====
 
-The Custodians are Britannia's civic cleanup guild, open to everyone: speak to a **Sanitation Warden** and pledge your service. Rank follows your **lifetime** Clean Up points, which spending never lowers.
+The Custodians are Britannia's civic cleanup guild, open to everyone: speak to a **Sanitation Warden** (upstairs in New Haven's civic hall) and pledge your service. Their full page is [[:uo:guilds:custodians|The Custodians]]. Rank follows your **lifetime** Clean Up points, which spending never lowers.
 
 ^ Rank ^ Lifetime points ^
 | Volunteer | 0 |
@@ -25,7 +25,7 @@ The Custodians are Britannia's civic cleanup guild, open to everyone: speak to a
 | Senior Custodian | 500 |
 | Chief Custodian | 1,250 |
 
-The Custodians' Civic Contracts pay gold. The Custodians have no currency of their own and post no [[requisitions|requisitions]]; their module for a [[pack_mules|pack mule]] is the Salvage Bin.
+Every 5 items with a point value you clear in one Trash Bag dump or one sweep give a **civic waste bundle**; the Custodians' Civic Contracts take bundles and pay gold. The Custodians have no currency of their own and post no [[requisitions|requisitions]]; their module for a [[pack_mules|pack mule]] is the Salvage Bin.
 
 ===== Needed images =====
 
@@ -33,5 +33,6 @@ The Custodians' Civic Contracts pay gold. The Custodians have no currency of the
 
 ===== Related pages =====
 
+  * [[:uo:guilds:custodians|The Custodians]]
   * [[guilds|Guilds]]
   * [[pack_mules|Pack mules]]
