@@ -1,0 +1,44 @@
+====== Creature Levels and Appraisal ======
+
+Every creature and NPC on Shattered Legacy has a **level**, and you can see at a glance how tough it is next to you. The **Item Identification** skill is now called **Appraisal** and works on creatures as well as items. Both are unique to Shattered Legacy: OSI shows no creature levels.
+
+===== The colored word =====
+
+Click a creature (or show all names) and a colored word appears under its name:
+
+^ Color ^ Word ^ Its level against yours ^
+| gray | trivial | 20 or more below you |
+| green | easy | 10 to 19 below |
+| blue | fair | 3 to 9 below |
+| yellow | even match | within 2 either way |
+| orange | tough | 3 to 9 above |
+| red | dangerous | 10 to 19 above |
+| dark red | deadly | 20 or more above |
+
+The word is there so the color is never mistaken for a name's notoriety color (blue, gray, red), which is unchanged.
+
+A creature's level runs from 1 to 200 and follows how hard it is for a bard to work on (OSI's Bard difficulty). Champions are 200, peerless bosses 190. Shopkeepers and other NPCs that cannot be harmed are level 1 and always gray.
+
+Until character levels arrive, **your level is your best combat skill**.
+
+===== Appraisal =====
+
+Appraisal is the old Item Identification. On items it works as it always did. On creatures:
+
+^ Appraisal ^ What you learn ^
+| any | a feel for the creature (anyone can try) |
+| 30 | its level |
+| 60 | its hits, stats and resistances |
+| 90 | a stat card: its damage, its special abilities, and whether it is a paragon or a boss |
+
+Appraisal trains past 100 on creatures near your skill. The skill window calls it "Appraisal" once you update your game through the launcher.
+
+===== Needed images =====
+
+  * TODO image: three creatures with their colored words (green, yellow, red).
+  * TODO image: the Appraisal stat card on a creature.
+
+===== Related pages =====
+
+  * [[skill_gain|Skill gain]]
+  * [[pet_training|Pet training]]

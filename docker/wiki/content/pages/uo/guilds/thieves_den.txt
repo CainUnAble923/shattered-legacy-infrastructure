@@ -1,0 +1,109 @@
+====== Thieves' Den ======
+
+The Thieves' Den is the guild for thieves, scouts, lockpickers and trappers. Membership opens **stealing from monsters**, and higher ranks add more places to work, trap perks and pack mule schematics. The Den is unique to Shattered Legacy; it builds on OSI's monster stealing (see [[:uo:professions:stealing|Stealing from monsters]]).
+
+===== Joining =====
+
+  * Type ''[guild'', pick **Thieves' Den**, and use **Show me the way**. The guildmaster keeps the back room of the **Bountiful Harvest Inn** in New Haven.
+  * Lost? **Wren, the Den lookout**, waits on the upper floor of the fighting pit. Double-click him for directions. (He is not Wren Tallow, the farmhand.)
+  * At the guildmaster, open **Talk** and choose **Join the guild**. Joining is free, needs no skill, and starts you as an **Initiate**.
+  * Membership, standing and Den scrip belong to your character. You can belong to other guilds too. This is separate from the stock NPC thieves' guild, which charges to join.
+
+==== The Apprentice task ====
+
+Come back with **20.0 base Stealing** and finish the Apprentice task. It pays **25 standing and 10 Den scrip**, once, and makes you at least Apprentice without needing 1,000 standing.
+
+===== Ranks =====
+
+Standing sets your rank. Spending scrip never spends standing, and each rank keeps the perks below it.
+
+^ Rank ^ Standing ^ What it opens ^
+| Initiate | join | Monster stealing in **Felucca's dungeons** and at **champion spawns** on any facet |
+| Apprentice | Apprentice task, or 1,000 | Buy the Shadow Cloak I mule schematic |
+| Journeyman | 5,000 | Monster stealing in **dungeons on every facet**; one extra deployed trap; buy the Shadow Cloak II schematic |
+| Master | 15,000 | Steal from **bosses** in the places above; your damaging and holding traps work on bosses at half strength |
+| Grandmaster | 50,000 | Disarming another player's deployed trap always works; buy the Shadow Cloak III schematic |
+| Legendary | 100,000 | The top rank |
+
+Master does not make the open wilderness a place to steal from monsters: bosses still have to be in a dungeon or at a champion spawn.
+
+**Requisitions** earn more standing: the Den asks for "no questions asked" magic goods, Dexterity jewelry, fencing weapons with Hit Lower Attack, leather armor with Night Sight, and more. A turn-in pays Den standing, League Renown and gold, but no scrip. See [[:uo:systems:requisitions|Requisitions]].
+
+===== Skills of the trade =====
+
+^ Skill ^ What it does for a thief ^
+| Stealing | Take items, and steal from monsters |
+| Snooping | Look inside a pack |
+| Hiding | Hide yourself (nearby fighting can stop it) |
+| Stealth | Walk while hidden |
+| Lockpicking | Open locked containers |
+| Detect Hidden | Find hidden people and deployed traps |
+| Remove Trap | Disarm traps, set trap kits, pack your own traps away |
+| Poisoning | Poison weapons, and load gas trap kits |
+
+Joining gives you the basic tools for these skills. It does not raise the skills.
+
+===== Stealing from monsters =====
+
+Use **Stealing** and target the creature. You need to be a Den member, have the rank for the place and the creature, and have at least **60.0 Stealing**.
+
+^ Stealing ^ A successful steal can give ^
+| below 60 | nothing from the Den's tables |
+| 60 to 99.9 | gold, 1 to 3 Den scrip, lockpicks, a small potion, or bandages |
+| 100 and up | thief's consumables (Seed of Life, Mana Draught, balms, lotions, Gem of Salvation), stolen crafting components, recipe scrolls, or a rare loop scroll fragment |
+
+  * Each creature gives **one** successful steal, shared by every thief.
+  * A **miss** reveals you, turns the creature on you, and makes you wait **5 seconds** before trying that creature again.
+  * Higher Stealing keeps improving your odds up to **200**, and more famous creatures help. Legal attempts can train Stealing whether they hit or miss.
+  * Pets, summons, pack mules and tutorial creatures can never be stolen from.
+
+===== Den crafts =====
+
+The Den's three recipes are learned from **recipe scrolls stolen from monsters**. They are not in loot boxes. Recipes belong to your account.
+
+^ Item ^ Craft ^ Ingredients ^ What it does ^
+| Shadowsilk Cloak | Tailoring 100 | 14 cloth, 10 shadowsilk thread | Stealth +5 and Hiding +3 while worn |
+| Thief's Smoke Bomb | Alchemy 100 | 1 egg, 3 ember ash, 1 whisperleaf | A smoke bomb that uses **Hiding 50** and 10 mana instead of Ninjitsu |
+| Pickpocket's Charm | Tinkering 100 | 2 gold ingots, 1 lucky fang, 2 shadowsilk thread | A ring with Stealing +5 and Snooping +5 |
+
+Shadowsilk thread and ember ash come from weaker monsters; whisperleaf, thief's wire and lucky fangs from more famous ones. Thief's wire has no recipe that uses it yet.
+
+The Thief's Smoke Bomb lets you try to hide in combat. It still waits on the Hiding delay and does not promise you hide.
+
+===== Shadow Cloak for your pack mule =====
+
+The mule's **Shadow Cloak** is a module, not the wearable Shadowsilk Cloak. Buy its schematic from the Den guildmaster (or find one by stealing), then craft the module.
+
+^ Tier ^ Rank to buy ^ Schematic price ^ Skills to craft ^ What the mule does ^
+| I | Apprentice | 20 Den scrip, 5 Mining Vouchers | Tailoring 50, Hiding 30 | Hides when you hide nearby |
+| II | Journeyman | 50 Den scrip, 10 Mining Vouchers | Tailoring 70, Hiding 50 | Stays hidden walking beside you while you are hidden and on foot |
+| III | Grandmaster | 120 Den scrip, 25 Mining Vouchers | Tailoring 90, Hiding 70 | Can hide when attacked (30 second cooldown) |
+
+Each tier needs the tier before it to craft. The schematic teaches the design only. See [[:uo:systems:pack_mules|Pack mules]].
+
+===== Traps =====
+
+Tinkers craft trap kits and anyone with the Remove Trap skill can set them; Den rank adds the perks in the rank table. The full rules are on [[:uo:professions:traps|Deployable traps]].
+
+===== Starter items and scrip =====
+
+On the guildmaster's **Starter items** page, members can take a **Bag of Smoke Bombs** and a **Twilight Jacket**, free, once each per character. Taking one also counts as that item's New Haven training quest reward, so you do not get two. The smoke bombs in the bag are ordinary ones and need **Ninjitsu 50**. The Twilight Jacket is blessed.
+
+Lost one? A replacement costs **10 Den scrip** if you no longer have a copy. Scrip comes from the Apprentice task (10) and from lower-tier monster steals (1 to 3); it buys replacements and mule schematics.
+
+===== Where the hall is =====
+
+The Den's chapter is the back room of the **Bountiful Harvest Inn in New Haven**. A main hall elsewhere is planned; see [[:uo:drafts:guild_halls|Guild halls]] (draft).
+
+===== Needed images =====
+
+  * TODO image: the Den guildmaster in the inn's back room.
+  * TODO image: a successful monster steal message with a thief's prize.
+  * TODO image: the Shadow Cloak schematics page.
+
+===== Related pages =====
+
+  * [[:uo:guilds:start|Guilds hub]]
+  * [[:uo:professions:stealing|Stealing from monsters]]
+  * [[:uo:professions:traps|Deployable traps]]
+  * [[:uo:systems:pack_mules|Pack mules]]

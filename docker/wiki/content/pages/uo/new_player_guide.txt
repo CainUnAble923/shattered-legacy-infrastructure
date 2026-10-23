@@ -12,7 +12,7 @@ Welcome to Shattered Legacy. This page should answer the first questions a new p
 ===== Quick Route =====
 
   - Connect using [[:uo:connection|Connection guide]].
-  - Create your character. A League recruiter meets you on the New Haven plaza.
+  - Create your character. You arrive on the New Haven plaza.
   - Find the nearest trainer using [[:uo:world:trainers|Trainer index]].
   - Pick up early quests from [[:uo:world:quests|Quest givers]].
   - Follow [[:uo:guides:first_hour|First hour route]].
@@ -25,6 +25,6 @@ Welcome to Shattered Legacy. This page should answer the first questions a new p
   * New accounts are Young for two weeks of play.
   * Your bank holds 1,000 items.
   * Crafting is learned from pattern books and recipe scrolls.
-  * Achievements, first boss kills and League ranks pay loot boxes.
+  * Achievements and League promotions pay loot boxes.
 
-See [[:uo:systems:start|Server systems]] for the details.
+See [[:uo:systems:start|Server systems]] for the details, the [[:uo:newplayer:faq|New player FAQ]] for quick answers, and the [[:uo:newplayer:glossary|Glossary]] for words you do not know.

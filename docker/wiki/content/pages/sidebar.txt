@@ -4,6 +4,9 @@
   * [[:uo:start|UO hub]]
   * [[:uo:connection|Connection]]
   * [[:uo:new_player_guide|New player guide]]
+  * [[:uo:newplayer:start|New players]]
+  * [[:uo:newplayer:faq|New player FAQ]]
+  * [[:uo:newplayer:glossary|Glossary]]
 
 ===== World =====
 
@@ -12,6 +15,9 @@
   * [[:uo:world:trainers|Trainers]]
   * [[:uo:world:quests|Quest givers]]
   * [[:uo:world:maps|Maps]]
+  * [[:uo:world:dungeons|Dungeons]]
+  * [[:uo:world:seasonal|Seasonal decorations]]
+  * [[:uo:world:sorcerers_dungeon|Sorcerer's Dungeon (Halloween)]]
 
 ===== Systems =====
 
@@ -21,14 +27,31 @@
   * [[:uo:systems:young_players|Young players]]
   * [[:uo:systems:achievements|Achievements]]
   * [[:uo:systems:loot_boxes|Loot boxes]]
+  * [[:uo:systems:accessories|Accessory slots]]
+  * [[:uo:systems:creature_levels|Creature levels]]
   * [[:uo:systems:guilds|Guilds]]
   * [[:uo:systems:league|The League]]
+  * [[:uo:systems:league_shop|League Shop]]
+  * [[:uo:systems:league_register|League Register]]
   * [[:uo:systems:requisitions|Requisitions]]
   * [[:uo:systems:clean_up_britannia|Clean Up Britannia]]
   * [[:uo:systems:pet_training|Pet training]]
   * [[:uo:systems:pack_mules|Pack mules]]
   * [[:uo:systems:accounts|Accounts]]
   * [[:uo:systems:ultimalive|UltimaLive]]
+
+===== Guilds =====
+
+  * [[:uo:guilds:start|Guilds hub]]
+  * [[:uo:guilds:society_of_smiths|Society of Smiths]]
+  * [[:uo:guilds:artificers_order|Artificers' Order]]
+  * [[:uo:guilds:order_of_the_alembic|Order of the Alembic]]
+  * [[:uo:guilds:miners_compact|Miners' Compact]]
+  * [[:uo:guilds:foresters_union|Foresters' Union]]
+  * [[:uo:guilds:rangers_league|Rangers' League]]
+  * [[:uo:guilds:healers_covenant|Healers' Covenant]]
+  * [[:uo:guilds:custodians|Custodians]]
+  * [[:uo:guilds:thieves_den|Thieves' Den]]
 
 ===== Professions =====
 
@@ -40,11 +63,16 @@
   * [[:uo:professions:bulk_orders|Bulk orders]]
   * [[:uo:professions:imbuing|Imbuing]]
   * [[:uo:professions:stealing|Stealing]]
+  * [[:uo:professions:traps|Traps]]
+  * [[:uo:professions:climbing_boots|Climbing boots]]
   * [[:uo:professions:focus|Focus]]
 
 ===== Guides =====
 
   * [[:uo:guides:first_hour|First hour route]]
+  * [[:uo:guides:league|League guide]]
+  * [[:uo:guides:crafting|Crafting on Shattered Legacy]]
+  * [[:uo:guides:high_seas_fishing|High Seas fishing]]
   * [[:uo:guides:troubleshooting|Troubleshooting]]
   * [[:uo:macros:start|Macros]]
 

@@ -1,0 +1,54 @@
+====== Healers' Covenant ======
+
+The Healers' Covenant is the guild for **Healing** and **Anatomy**. (Alchemy and Taste ID belong to the [[:uo:guilds:order_of_the_alembic|Order of the Alembic]].) The guild is unique to Shattered Legacy; healing itself works as on OSI, with the shard changes noted below. Some contract screens call it the **Healers' Circle**: it is the same guild.
+
+===== Joining =====
+
+  * The **Healer Guildmaster** is in **Healer's Hall** in New Haven (Trammel). Type ''[guild'' and use **Show me the way** for an arrow.
+  * Joining is free, with no skill or tribute. Membership, standing and guild scrip belong to your character.
+  * Your kit: **50 bandages, scissors and a robe**.
+  * On the **Starter items** page, take **Healer's Touch** (Healing) and **Tunic of Guarding** (Anatomy), the first one free. Each counts as the matching New Haven training quest's reward, so you do not get two.
+
+==== The Apprentice task ====
+
+Bring **50.0 base Healing** or **25 bandages**. It pays **25 standing and 10 guild scrip**, once, and makes you at least Apprentice. Bandages are taken only if you use the bandage option.
+
+===== Ranks =====
+
+The Covenant uses the common guild ladder: Initiate, Apprentice (1,000 standing or the Apprentice task), Journeyman (5,000), Master (15,000), Grandmaster (50,000) and Legendary (100,000). **Requisitions** for magic armor and jewelry pay Covenant standing, League Renown and gold; see [[:uo:systems:requisitions|Requisitions]].
+
+===== Healing with bandages =====
+
+Double-click bandages and target yourself or someone else, then stay close until it finishes. Healing and Anatomy work together on people; Veterinary and Animal Lore are for animals. Taking damage while you work can make your fingers slip.
+
+^ Treatment ^ You need at least ^
+| Heal hit points | any skill (Healing and Anatomy set how much) |
+| Cure poison | 60.0 Healing and 60.0 Anatomy |
+| Try to resurrect | 80.0 Healing and 80.0 Anatomy |
+
+These let you **try**; they do not promise success. A poisoned patient gets a cure attempt instead of a heal.
+
+**Shard change:** Healing keeps gaining above its usual ceiling, up to your skill cap, and high-skill bandages heal on the shard's own scaled curve. See [[:uo:systems:skill_gain|Skill gain]].
+
+===== Getting resurrected =====
+
+You do not need to be a member to be healed or resurrected.
+
+  * Walk your ghost **into** a healer's range (about **4 tiles**) from outside it. The Healer Guildmaster does this too. Accept the window that opens. Already standing beside the healer and nothing happened? Walk out of range and back in.
+  * **Shard change:** healers will resurrect **criminals and murderers**. It does not clear your criminal or murderer status.
+  * Working **ankhs** resurrect too. New Haven has one beside the League Registrar's office. Some ankhs are only decoration.
+
+===== Where the hall is =====
+
+The chapter is **Healer's Hall in New Haven**. A main hall elsewhere is planned; see [[:uo:drafts:guild_halls|Guild halls]] (draft).
+
+===== Needed images =====
+
+  * TODO image: the Healer Guildmaster in Healer's Hall.
+  * TODO image: the resurrection window from a New Haven healer.
+
+===== Related pages =====
+
+  * [[:uo:guilds:start|Guilds hub]]
+  * [[:uo:systems:guilds|How guilds work]]
+  * [[:uo:systems:skill_gain|Skill gain]]

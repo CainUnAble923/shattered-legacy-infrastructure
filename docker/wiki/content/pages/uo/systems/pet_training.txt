@@ -31,6 +31,21 @@ A pet that has been trained needs the Animal Taming its training raised it to, n
   * **Veterinary and Animal Lore** at 200 heal a pet about 72 with a bandage (about 57 at 120).
   * **A tamed creature that poisons** does it the way trained pets do: its Poisoning skill decides how often and how strongly, up to Lethal at 100.
   * The **iron beetle** mines ore for its owner, as on OSI.
+  * **Seasoned owners teach faster** (below).
+
+===== Seasoned owners teach faster =====
+
+**Shard change.** On OSI a pet's skills learn at the same speed whoever owns it. Here an experienced owner makes a pet's skills gain more often. The Animal Lore skill pages show it as **Learns x...**.
+
+The bonus comes from your Animal Taming and Animal Lore above 100 (each counted up to 200, worn bonuses included) and your rank in the [[:uo:guilds:rangers_league|Rangers' League]] (the Outriders) while you are a member.
+
+^ Owner ^ Learns ^
+| Taming and Lore at 100, no Rangers' rank | x1.00 |
+| Taming and Lore at 120, no rank | x1.16 |
+| Taming and Lore at 200, no rank | x1.80 |
+| Taming and Lore at 200, Legendary Outrider | x2.40 |
+
+It makes each skill gain more likely. It does not make gains bigger, set a learning time, or speed up stat gains. It covers every pet skill, including Focus while the pet is in training. A loop bonus on top, up to x3, is planned but not working yet.
 
 ===== More creatures to tame =====
 
@@ -40,4 +55,5 @@ The port brought the blood fox, cold drake, crimson and platinum drakes, dragon 
 
   * [[skill_gain|Skill gain]]
   * [[pack_mules|Pack mules]]
+  * [[:uo:guilds:rangers_league|Rangers' League]]
   * [[:uo:world:trainers|Trainer index]]

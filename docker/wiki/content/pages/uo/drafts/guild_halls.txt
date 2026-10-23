@@ -1,0 +1,48 @@
+====== The Guilds' Main Halls ======
+
+**Draft: test shard only.** The halls below stand on the test shard so they can be walked and checked. They are not in the Guild Directory or "Show me the way" yet, and every guild still meets at its New Haven chapter. This page shows where each guild's main hall is planned, so the list may change before the halls open.
+
+Each guild keeps its New Haven chapter when its main hall opens. A hall has the guild's sign, its guildmaster inside, and decor in the guild's style. Where a hall has a tower, it will be walkable once the hall is built.
+
+===== Where the halls are =====
+
+^ Guild ^ Hall ^ Town ^ Facet ^
+| The League (headquarters) | Castle British, the keep | Britain | Trammel |
+| Warriors' Brotherhood | Brothers in Arms | Jhelom | Trammel |
+| Arcane Society | The Lycaeum | Moonglow | Trammel |
+| Healers' Covenant | Empath Abbey, the church | near Yew | Trammel |
+| Rangers' League | the Rangers' Guild, shared with its stock guildmaster | Skara Brae | Trammel |
+| Miners' Compact | Minoc Town Hall | Minoc | Trammel |
+| Society of Smiths | a new guild house beside the forge | Serpent's Hold | Trammel |
+| Tinkers' Union | The Musician's Hall | Vesper | Trammel |
+| Thieves' Den | Buccaneer's Bath | Buccaneer's Den | Felucca |
+| Twin Paths Dojo | the Musha-Shugyo Dojo, shared with its armorers | Zento | Tokuno |
+| Keepers of the Last Door | the empty hall on Umbra's west side | Umbra | Malas |
+| Foresters' Union | Yew Mill | Yew | Trammel |
+| Tailors' Circle | the Counselor's Guild | Nujel'm | Trammel |
+| Merchants' Exchange | a new guild house | Magincia | Trammel |
+| Bards' Consortium | The King's Men Theater | Britain | Trammel |
+| Artificers' Order | the hall north of the Royal City bank | Royal City | Ter Mur |
+| Order of the Alembic | Tricks of the Trade and The Reagent Shoppe, shared with their shopkeepers | Papua | Trammel |
+| The Custodians | the brick hall beside the First Bank of Britain | Britain | Trammel |
+| Maritime Brotherhood | not chosen yet | | |
+
+Where a hall is "shared", the town's own shopkeepers or stock guildmaster stay, and our guildmaster stands with them.
+
+The Artificers' Order already has a guildmaster post on the Royal City plaza, open to everyone today; see [[:uo:guilds:artificers_order|Artificers' Order]].
+
+===== What is not settled =====
+
+  * When the halls open, and in what order.
+  * The guilds' top-rank trials and what each hall offers beyond its New Haven chapter.
+  * The Maritime Brotherhood's hall.
+
+===== Needed images =====
+
+  * TODO image: one finished hall with its guild sign, once a hall is open.
+
+===== Related pages =====
+
+  * [[:uo:systems:guilds|Guilds overview]]
+  * [[:uo:guilds:start|The guild pages]]
+  * [[start|Drafts]]

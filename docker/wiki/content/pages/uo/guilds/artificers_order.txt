@@ -1,0 +1,146 @@
+====== The Artificers' Order ======
+
+The Artificers' Order is the guild of enchanters. Its skill is **Imbuing**: adding magic properties to weapons, armor, shields, jewelry and clothing. You can also take the magic back out of gear you do not want, and craft property essences for other enchanters. The Order is unique to Shattered Legacy; the Imbuing it teaches works as OSI's does at the table, with the shard changes listed on [[:uo:professions:imbuing|Imbuing]].
+
+===== Finding the Order =====
+
+The guildmaster is **Thornwick Vesper**. Type ''[guild'', find the Artificers' Order and press **Show me the way**.
+
+  * **New Haven** (Trammel): the chapter in the Magery School, where most players join.
+  * **Royal City** (Ter Mur): a guildmaster post on the plaza west of the jeweler's shop.
+
+===== Joining and the Apprentice task =====
+
+Joining is free: talk to the guildmaster, open the guild page and press **Join**. You can belong to other guilds too.
+
+You get two blessed tools:
+
+  * the **Artificers' Toolkit**: keep it in your backpack and double-click it to open the Imbuing Table anywhere;
+  * the purple **Artificers' Essence Satchel**: double-click it for your Mastery Dashboard.
+
+The **Apprentice task** comes after joining. Show either **20 base Imbuing** or **3 diamonds** (taken from your backpack or bank only if your skill is short). It pays **25 standing and 10 Essence Shards** and counts as the Order's second rank, so it opens the Apprentice Formulary before you reach 1,000 standing.
+
+Some of the guildmaster's older text still calls the task a joining requirement. It is not.
+
+Membership, standing, Essence Shards and your active work order belong to the character. The formulae you learn and your property mastery belong to the whole account.
+
+===== Ranks and formula books =====
+
+Standing comes from successful imbuing, the Order's work orders and its requisitions.
+
+^ Rank ^ Standing ^ Opens the book ^
+| Apprentice | 0 | none (the free Basic properties are already known) |
+| Journeyman | 1,000, or the Apprentice task | Apprentice Formulary |
+| Artificer | 5,000 | Journeyman Formulary |
+| Master Artificer | 15,000 | Artificer's Formulary |
+| Arcane Artisan | 40,000 | Arcane Formulary and the Master Formulary |
+
+The guildmaster's own rank display reads standing alone, so it can still say Apprentice after you finish the task; the formula shop and the Guild Directory count the task.
+
+Buy books at **Member Dashboard, Formula Books**. They cost Essence Shards only, never gold. **Reading a book teaches your whole account** and uses up the book; an unread book can be traded.
+
+^ Book ^ Essence Shards ^ What it teaches ^
+| Apprentice Formulary | 250 | Basic: hit leeches, Hit Lower Attack and Defense, elemental damage, Balanced, Velocity, Spell Channeling, Mage Armor, skill bonuses. Refined: the free properties. |
+| Journeyman Formulary | 500 | Basic: the hit spells, Damage Increase, Mage Weapon, Reflect Physical Damage. Refined: the Apprentice book's properties. Full: the free properties. |
+| Artificer's Formulary | 1,000 | Basic: area hits, single slayers, Hit Chance and Defense Chance Increase, Spell Damage Increase, Lower Mana Cost, and the four crafter properties. Refined and Full: the two books before it. |
+| Arcane Formulary | 2,000 | Basic: Faster Casting, Faster Cast Recovery, Swing Speed Increase, super slayers. Refined and Full: the two books before it. |
+| Master Formulary | 4,000 | Refined and Full for the last two books, and a **sixth** property slot on your items. |
+
+On and off properties (slayers, Night Sight and the like) have no stronger tiers.
+
+The Order's top-rank trial is not built yet. Until it is, the Master Formulary does not wait for it.
+
+===== Imbuing: what you know and how strong =====
+
+Every account starts knowing, at **Basic**: the five resists, the three stat bonuses, Hit Point, Stamina and Mana Increase, the three regenerations, Night Sight, Luck, Lower Requirements, Durability, Self Repair, Lower Reagent Cost and Enhance Potions. Knowing a property does not make it free: you still pay materials, Shards and gold.
+
+What you can imbue depends on **the properties your account knows and the tier you learned**, not on your standing.
+
+^ Tier ^ Strength ^
+| Basic | about one third of the property's Full value |
+| Refined | about two thirds of Full |
+| Full | the property's normal maximum |
+
+A stronger **Overcharged** tier exists in the table, but the ways to learn it are not in the game yet.
+
+  * An item holds **5 properties**, or **6** once your account has read the Master Formulary. Only **one** of them can be a shard-only property.
+  * Pick the item, property and tier, then check the cost and success chance before you confirm. A higher tier still needs the Imbuing skill to succeed.
+  * A failed imbue uses no materials, but can wear down a weapon's or armor's durability.
+  * **Self Repair** is known from the start, but it always costs more than any other property.
+
+Some older guildmaster and welcome text describes limits set by standing and a Master Artificer rank for Self Repair. Those are old rules; the ones above are what the game does.
+
+==== Essences and mastery ====
+
+Each ordinary property needs one matching **property essence** per imbue until you **master** it. Every successful imbue with an essence counts toward mastery; the satchel's dashboard shows your progress. Once mastered, you still pay Shards and gold but no essence, and you can craft that essence to sell or trade.
+
+Knowing a formula and mastering an essence are separate: an essence never teaches a property or tier you have not learned. The shard-only properties use their own ingredients instead of essences.
+
+Imbuing takes essences and ingredients from your backpack first, then your bank. The confirm page shows every cost.
+
+==== Skill bonuses and the crafter properties ====
+
+  * **Jewelry** takes combat and other skill bonuses, one skill per group.
+  * **Half and full aprons** take crafting and gathering bonuses, one crafting and one gathering.
+  * Basic, Refined and Full skill bonuses are **+5, +10 and +15**. A worn bonus does not count as trained base skill.
+
+The Artificer's Formulary teaches four crafter properties, unique to Shattered Legacy:
+
+^ Property ^ What it does ^
+| Bountiful | more ore and logs when mining and lumberjacking |
+| Mastercraft | a better chance of an exceptional craft |
+| Prospector | a chance at rare finds while mining or lumberjacking |
+| Butcher's Eye | more monster parts from kills and carving, with a chance at a rare part |
+
+==== Where you can imbue ====
+
+^ Place ^ Highest tier ^ Bonus ^
+| The toolkit, anywhere, or the guildmaster's table | Full | none |
+| Near your own mule with an Imbued Barding Socket II | Refined | none |
+| Near your own mule with an Imbued Barding Socket III | Full | a small success bonus |
+| Within 2 tiles of a soul forge | Full (Overcharged later) | a small success bonus, larger at the Queen's Soulforge |
+
+The toolkit already reaches Full, so the tier II socket adds nothing for imbuing today.
+
+===== Unraveling and the satchel =====
+
+These work at the guildmaster's table for anyone, member or not, and through the toolkit for members.
+
+^ Action ^ Result ^
+| Full Disenchant | Destroys the magic item. Pays Essence Shards, and each property has a 25% chance to give its essence. |
+| Extract a Property | Removes one property and gives its essence plus Shards. The item survives; weapons and armor lose about 20% of their maximum durability. |
+| Unravel Container | Fully disenchants the eligible items directly inside a bag in your backpack, after a confirm page that shows how many go and how many stay. Bags inside the bag are left alone. |
+
+Plain, blessed, newbied, equipped, quest and faction reward items are refused. Unravel Container also skips insured items. The bag must be unlocked and in your backpack.
+
+Keep the satchel in your backpack (inside another bag is fine). Essences you extract or disenchant go into it, and so do the property essences, magical residue, enchanted essence and relic fragments you loot or pick up. A full satchel sends them to your backpack with a message; if your backpack is full too, look at your feet. Bank moves, trades and crafted essences do not go into it.
+
+**Essence Shards are a balance, not an item.** They are never in the satchel. The Order's unraveling pays Shards and essences, not the residue and relic fragments of OSI's unraveling.
+
+===== Work and rewards =====
+
+Open **Member Dashboard, Guild Work Orders** for enchanting work.
+
+  * An order shows up once you have **mastered every property it asks for**. Check that you also know the tiers it needs before you accept.
+  * You hold **one** Artificer order at a time.
+  * A regular order hands you a blank item: enchant it and bring that same item back.
+  * A **combined Smith and Artificer** order needs Society of Smiths membership: craft a weapon in the named metal, then enchant it. It also pays Smithing Seals and Smiths' standing.
+  * A finished order pays the gold, Essence Shards and standing it shows. The item can be in your backpack or bank.
+  * Abandoning an order pays nothing and takes back its item if you have it.
+
+The guild page's **Requisitions** are a second use for magic gear you do not want: a matching item pays Renown, Artificers' standing and gold, but no Shards (see [[:uo:systems:requisitions|Requisitions]]).
+
+The Member Dashboard also opens the **Civic Mule Exchange** for upgrades to a mule you already have (see [[:uo:systems:pack_mules|Pack mules]]).
+
+===== Needed images =====
+
+  * TODO image: the Artificers' Member Dashboard with the Formula Books page open.
+  * TODO image: the Mastery Dashboard from the Essence Satchel.
+  * TODO image: the Unravel Container confirm page.
+
+===== Related pages =====
+
+  * [[:uo:professions:imbuing|Imbuing]]
+  * [[:uo:systems:guilds|Guilds overview]]
+  * [[society_of_smiths|Society of Smiths]]
+  * [[:uo:systems:requisitions|Requisitions]]

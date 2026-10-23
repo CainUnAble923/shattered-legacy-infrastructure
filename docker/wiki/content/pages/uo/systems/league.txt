@@ -1,19 +1,22 @@
 ====== The League of Extraordinary Citizens ======
 
-The League is the shard's citizen ladder: seventeen ranks, one for each metal from **Iron Citizen** to **Celestial Citizen**, climbed with **Renown** and with rank in the [[guilds|guilds]]. It is unique to Shattered Legacy, and it is what survives a loop: your League rank, your recipes, your achievements and your guild ranks stay when your skills go back to the start.
+The League is the shard's citizen ladder: seventeen ranks, one for each metal from **Iron Citizen** to **Celestial Citizen**, climbed with **Renown** and with rank in the [[guilds|guilds]]. It is unique to Shattered Legacy.
+
+**Planned, not in the game yet:** in the loop design, your League rank, recipes, achievements and guild ranks are what carry over from one loop to the next. Loops do not reset anything today.
 
 ===== The Registrar =====
 
-Elara Voss, the **League Registrar**, keeps the League's field office in New Haven (Trammel 3459, 2601). Talk to her to register (free, once per account), and come back to her **Rank** page to see what your next rank needs and to be promoted when you have it. The Guild Directory (''[guild'') shows the League at the top with a "Show me the way" button to her office.
+Elara Voss, the **League Registrar**, keeps the League's field office in New Haven (Trammel 3459, 2601). Talk to her to register (free, once per account), and come back to her **Rank** page to see what your next rank needs and to be promoted when you have it. She also runs the [[league_shop|League Shop]] and hands out the [[league_register|League Register]]. The Guild Directory (''[guild'') shows the League at the top with a "Show me the way" button to her office.
 
 ===== Renown =====
 
-Renown is a lifetime total for your account. It only rises. You earn it from:
+Renown belongs to your account and comes as two numbers. **Renown** is the balance you can spend, in the [[league_shop|League Shop]] and on League goods in the [[league_register|League Register]]. **Lifetime Renown** is the Renown you have earned through play; it only rises, and it is what your League rank is measured by. Spending Renown never lowers your Lifetime Renown or your rank. You earn Renown from:
 
-  * [[achievements|Achievements]], 5 to 500 each.
-  * [[loot_boxes|Loot boxes]] of tier 2 and up.
+  * [[achievements|Achievements]] (most pay some; a few pay AP only).
+  * Earned [[loot_boxes|loot boxes]]: tier 2 and up hold Renown, and a League box from a promotion holds Renown at every tier.
   * [[requisitions|Requisitions]] turned in at the board, the Appraiser or a guild.
-  * League jobs and hunts, as they are built.
+
+**Planned, not in the game yet:** League jobs and hunts, and commissions posted by other players. Renown another player pays you will be spendable but will not count toward your rank.
 
 ===== The ranks =====
 
@@ -36,14 +39,18 @@ Renown is a lifetime total for your account. It only rises. You earn it from:
 | 16 | Adamantium Citizen | 92,000 | Master in 4 guilds |
 | 17 | Celestial Citizen | 110,000 | Master in 5 guilds |
 
-Each rank will also ask for a promotion job, and the six **milestone** ranks (Dull Copper, Bronze, Verite, Blaze, Mythril, Celestial) for a chapter of the League's story trials. Neither is built yet, and the Rank page shows them as "not yet required".
+The Renown numbers are starting values and will be tuned; the Registrar always shows the current ones.
+
+The six **milestone** ranks are Dull Copper (2), Bronze (5), Verite (8), Blaze (12), Mythril (15) and Celestial (17). Each will ask for one of the six chapters of the League's story trials, and every rank will ask for a promotion job. Neither is built yet: the Rank page shows them as "not yet required", and a chapter added later never takes away a rank you already hold.
 
 ===== What a rank gives =====
 
-  * A **loot box** at every rank, tier 1 at Iron rising to tier 6 at Adamantium and Celestial.
-  * **100 more bank slots** at each milestone rank, on top of the 1,000 everyone has: 1,600 items at Celestial.
+  * A **loot box** each time you are promoted to a rank for the first time: tier 1 at Dull Copper and Shadow Iron, rising every three ranks to tier 6 at Adamantium and Celestial. Iron, the rank you register at, pays the registration achievement's box instead.
+  * **100 more bank slots** at each milestone rank, on top of the 1,000 everyone has: 1,600 items at Celestial. The bank grows only at milestones.
   * Higher **requisition** tiers: Bronze unlocks tier 2 requests, Verite tier 3, Toxic tier 4, Obsidian tier 5.
   * The Compact's Mule errand at Dull Copper (see [[pack_mules|Pack mules]]).
+  * The [[league_register|League Register]] at Dull Copper, and its League actions as you climb: open any bound guild's contracts from anywhere at Bronze, turn in every ready order at once at Verite, and repair the gear you are wearing, free, at Blaze. It also sells bigger backpacks from Bronze.
+  * A second bracelet [[accessories|accessory slot]] at Valorite.
   * Your rank's title and metal color in the Guild Directory.
 
 ===== Needed images =====
@@ -53,6 +60,9 @@ Each rank will also ask for a promotion job, and the six **milestone** ranks (Du
 
 ===== Related pages =====
 
+  * [[:uo:guides:league|A player's guide to the League]]
+  * [[league_shop|The League Shop]]
+  * [[league_register|The League Register]]
   * [[guilds|Guilds]]
   * [[requisitions|Requisitions and the Appraiser]]
   * [[achievements|Achievements]]

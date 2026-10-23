@@ -1,0 +1,38 @@
+====== Seasonal Decorations ======
+
+Some decorations go up for a season and come down again by themselves. The dates are the shard's own (US Central time). These decorations are Shattered Legacy's own.
+
+===== Halloween: October 24 to November 2 =====
+
+Pumpkins, carved pumpkins, lanterns, candles, cobwebs, bones and the odd cauldron or scarecrow appear around the main banks:
+
+  * **Trammel**: New Haven, Britain (west bank), Moonglow, Trinsic, Vesper, Minoc, Yew, Skara Brae and Jhelom.
+  * **Felucca**: the same banks but New Haven's.
+  * **Malas**: Luna and Umbra.
+  * **Tokuno**: Zento.
+  * **Ter Mur**: the Royal City.
+
+They are part of the town: you cannot pick them up, and they are gone on November 3.
+
+While the decorations are up, **[[sorcerers_dungeon|Treasures of Sorcerer's Dungeon]]** runs in Ilshenar: undead, nine holiday bosses and Jack the Pumpkin King.
+
+===== Winter in New Haven: December 1 to January 6 =====
+
+New Haven dresses up for winter:
+
+  * A lit Christmas tree, garlands, candles and presents in the bank.
+  * Small lit trees at the bank's doors, on the square and along the main roads, and snow here and there.
+  * An **advent calendar** on the bank's wall, with a small gift behind each day's door, one door a day in December.
+
+The decorations stay up through January 6 and are gone the next day. The winter art comes with the player package, so update your game through the launcher. See [[new_haven|New Haven]].
+
+===== Needed images =====
+
+  * TODO image: the New Haven bank in its Halloween decor.
+  * TODO image: the advent calendar on New Haven's bank wall.
+
+===== Related pages =====
+
+  * [[new_haven|New Haven]]
+  * [[sorcerers_dungeon|Treasures of Sorcerer's Dungeon]]
+  * [[start|World hub]]

@@ -1,20 +1,21 @@
 ====== The Rootdeep Burrows ======
 
-**Draft: test shard only.** The Burrows' rules and creatures exist, but the dungeon's map is still being built and nothing places its creatures yet. This page describes what is coming; do not go looking for the entrance on the live shard.
+**Draft: not open to players.** The Burrows' route, rules, creatures and Vault are built, but the dungeon is placed in the world by staff, and that placement is not confirmed yet. This page describes what is coming; do not go looking for the entrance yet.
 
-The Rootdeep Burrows is Shattered Legacy's own starter dungeon, dug under the ruins of **Old Haven**, with its entrance at the hole where Old Haven's second bank stood. It is unique to this shard.
+The Rootdeep Burrows is Shattered Legacy's own starter dungeon, dug under the ruins of **Old Haven**, with its entrance at the hole in the ruined Second Bank of Haven, reached through the bank's collapsed south wall. A rope ladder inside takes you back up. It is unique to this shard.
 
 ===== The rules =====
 
   * **No magical entry.** No spell or scroll takes you into the Burrows, and no rune can be marked or gate opened inside them. Walk in, and recall or walk out.
-  * **Young players** are not left alone here as they are in the open world, but no more than **three** monsters at once can set on one.
+  * **Young players** are not safe here: monsters can attack them. No more than **three** monsters at once can set on one Young player, but that only stops a crowd, not a hard fight.
+  * **New characters** can come here before they leave New Haven: under the tutorial's island rule, the Burrows count as part of the island.
   * A working **ankh** stands at the landing for resurrection.
 
 ===== The zones =====
 
 Shallow to deep:
 
-  * **The Vault**, a tutorial-only room beside the landing: only a character in the tutorial (and their pet) can walk in. Its boss is **The Overdraft**, a living bank strongbox. When it dies a crawlway opens into the Warren for two minutes, and the Vault seals behind the graduates. Decoy chest mimics teach that some chests have teeth.
+  * **The Vault**, a tutorial-only room beside the landing: only a character in the tutorial (and their pet) can walk in. Its boss is **The Overdraft**, a living bank strongbox. When it dies, everyone who fought it (pets count) gets credit and a one-way crawlway opens into the Warren for two minutes. Once you have that credit, or have graduated from the tutorial, you cannot go back into the Vault. Decoy chest mimics teach that some chests have teeth.
   * **The Warren**: burrow grubs, burrow scamps and redcap scamps, under **The Burrow Mother**. Burrowhide leather.
   * **The Tangle**: rootlings, sporecaps and bramblehulks. Rootwood.
   * **The Dawnseam**: dawnshards and seamguards. Dawnstone ore.
@@ -31,7 +32,7 @@ Around the tutorial farm above: gourdlings, crop crows, burrow scamp slingers, t
 
 ===== Needed images =====
 
-  * TODO image: the entrance in Old Haven's ruined bank, once the map batch has built it.
+  * TODO image: the entrance through the collapsed south wall of Old Haven's ruined bank.
   * TODO image: the landing with its ankh.
 
 ===== Related pages =====

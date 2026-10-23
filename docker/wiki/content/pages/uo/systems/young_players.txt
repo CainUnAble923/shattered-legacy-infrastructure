@@ -7,10 +7,14 @@ A new account starts **Young**: monsters in the open world leave you alone, you 
 ^ Ends when ^ On OSI ^ On Shattered Legacy ^
 | Play time | 40 hours | **2 weeks of play** (336 hours of time logged in, counted for the whole account) |
 | Skill total | 450 skill points | never; skill does not end it |
-| Your first loop | n/a | yes: completing a real loop ends Young for the account |
+| Loops | n/a | never: a loop does not end it |
 | Attacking players | a murder count ends it | the same |
 
-Each login tells you how many days and hours of play time are left. The tutorial's vision of the loop does not count as a loop.
+Each login tells you how many days and hours of play time are left. It is play time, not calendar time: two weeks after you made the account does not end it. Young belongs to the account, so when it ends, it ends for every character on that account.
+
+Neither raising skills nor recording a loop ends Young. Graduating from the [[:uo:drafts:tutorial|tutorial]] (on the test shard for now) records your first loop and your Young hours keep running.
+
+Young protection has exceptions. Tutorial creatures, for one, can still hurt trainees.
 
 ===== Giving it up early =====
 

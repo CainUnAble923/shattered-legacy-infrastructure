@@ -6,19 +6,21 @@ The world section collects places, maps, NPCs, quests, and travel notes.
 
   * [[new_haven|New Haven]]
   * [[maps|Maps]]
-  * [[:uo:drafts:rootdeep_burrows|The Rootdeep Burrows]] (a draft: the dungeon is still being dug)
+  * [[dungeons|Dungeons]]: which are open, and what is different here
+  * [[seasonal|Seasonal decorations]]: Halloween at the banks, winter in New Haven
+  * [[sorcerers_dungeon|Treasures of Sorcerer's Dungeon]]: the Halloween event in Ilshenar, October 24 to November 2
+  * [[:uo:drafts:rootdeep_burrows|The Rootdeep Burrows]] (a draft: built, but not open to players yet)
 
 ===== People =====
 
   * [[trainers|Trainer index]]
   * [[quests|Quest givers]]
-  * The [[:uo:systems:guilds|guildmasters]] and the [[:uo:systems:league|League Registrar]] in New Haven
+  * The [[:uo:guilds:start|guildmasters]] and the [[:uo:systems:league|League Registrar]] in New Haven
   * The [[:uo:systems:requisitions|Appraisers]] by the banks of Britain, Trinsic, Minoc, Vesper, Moonglow, Skara Brae, Luna and the Royal City
 
 ===== Good Future Pages =====
 
   * Towns
-  * Dungeons (Despise and Shame run their revamped versions)
   * Shrines
   * Resource routes, including the shard's own metal and wood groves
   * Safe banks and vendors

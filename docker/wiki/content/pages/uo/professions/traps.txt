@@ -1,0 +1,64 @@
+====== Deployable Traps ======
+
+Tinkers can build trap kits, and anyone with **Remove Trap** can set them on the floor to catch monsters. This is unique to Shattered Legacy: on the official shards Remove Trap only disarms.
+
+===== The eight traps =====
+
+Tinkers find the kits in the **Traps** section of the tinkering menu.
+
+^ Trap ^ Tinkering to craft ^ Remove Trap to set ^ What it does ^ Fires ^
+| Snare net | 30 | 0 | Holds one creature in place for a few seconds | 1 time |
+| Caltrops | 40 | 20 | Hurts and slows creatures that walk into them | 5 times |
+| Dart trap | 50 | 30 | Shoots a creature; load it with fukiya darts | 1 dart a shot, up to 5 |
+| Gas trap | 60 | 40 | A poison cloud; load it with a poison potion | 1 time |
+| Alarm trap | 70 | 30 | Tells you when something walks past | 10 times |
+| Bear trap | 80 | 50 | Snaps shut on one creature, hurting and holding it | 3 times |
+| Blast trap | 90 | 60 | An explosion; load it with an explosion potion | 1 time |
+| Shackle trap | 110 | 80 | Holds every creature around it briefly | 1 time |
+
+An exceptional snare net, gas trap, bear trap or shackle fires once more.
+
+===== Setting a trap =====
+
+  - Carry the kit and **double-click** it, then target the floor near you.
+  - Your Remove Trap skill decides how fast it arms, how well it is hidden, how hard it hits and how long it holds. Setting it while hidden arms it faster and hides it better.
+  - **Loading**: drop a **poison potion** on a gas trap (your **Poisoning** skill decides how strong the gas is), an **explosion potion** on a blast trap (lesser, regular or greater changes the blast), or **fukiya darts** on a dart trap.
+  - A trap fires its charges and then sits **spent** until you re-set it by hand: double-click it, or drop a fresh potion or darts on it.
+
+How many traps you can keep out at once: 1, plus 1 for every 50 Remove Trap (so 3 at 100 and 5 at 200).
+
+Remove Trap gains when you set a trap, when one of your traps hits, and when you disarm one.
+
+===== The rules every trap follows =====
+
+  * **Monsters only.** Traps never catch players, pets, summons or vendors.
+  * **You must stay close.** A trap works only while you are on the same map, alive, logged in and within **12 tiles** of it. Walk away and it lies dormant. The alarm is the exception: it reaches you anywhere on the same map.
+  * **Its damage is yours.** It counts toward your looting rights and Clean Up credit for what your traps help kill.
+  * Snare nets, caltrops and bear traps do not catch flying creatures, and nets, caltrops, jaws and darts pass straight through ghostly ones (shades, wraiths, wisps and the like).
+  * Bosses shrug traps off, unless you are a Master of the Thieves' Den. The alarm is the exception: it reports a boss at any rank.
+  * Traps left alone fade away after half an hour; a spent one after two minutes.
+
+===== The Thieves' Den =====
+
+The [[:uo:professions:stealing|Thieves' Den]] owns the trade:
+
+  * **Journeyman**: keep one more trap out.
+  * **Master**: your traps work on bosses, at half strength.
+
+===== Where to practice =====
+
+In the [[:uo:drafts:rootdeep_burrows|Rootdeep Burrows]] (not open yet: see its draft page), the Echo hands trainees two practice nets in the Stacks: catch a rat with one to learn the trick. The Burrows floors also have a few traps of their own now. Watch your step.
+
+New to Remove Trap? The **trap training kits** (the circuit, cylinder and slider kits) train it with no danger; the Collector of Oddities is to sell them in Moonglow, but he is not in the world yet. Since Endless Journey you no longer need Lockpicking or Detect Hidden to use it.
+
+Four of the traps (the gas trap, the dart trap, the shackle trap and the snare net once sprung) still use stand-in pictures until their own art is drawn.
+
+===== Needed images =====
+
+  * TODO image: the tinkering menu's Traps section with the eight kits.
+  * TODO image: a set bear trap and caltrops in a dungeon corridor.
+
+===== Related pages =====
+
+  * [[stealing|Stealing and the Thieves' Den]]
+  * [[:uo:systems:loot_boxes|Loot boxes]]

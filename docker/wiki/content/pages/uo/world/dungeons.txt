@@ -1,0 +1,68 @@
+====== Dungeons ======
+
+Britannia's dungeons are here as on OSI, with two revamped ones and a few rules of our own. This page covers what is open now. UOGuide's dungeon pages apply to the classic dungeons.
+
+===== Before you go =====
+
+  * **Check the creature.** Single-click a monster to see how it compares to you: from **easy** through **even match** to **deadly**. For now the comparison uses your best combat skill. See [[:uo:systems:creature_levels|Creature levels and Appraisal]].
+  * **Young players are not safe in dungeons.** Monsters there can attack you.
+  * **Felucca** has different combat rules from Trammel: other players can attack you there.
+  * **Check the League first.** A requisition may want something a dungeon drops, and a Lead can point you to the right hunting area. See [[:uo:systems:requisitions|Requisitions]].
+
+===== The classic dungeons =====
+
+Deceit, Destard, Hythloth, Fire, Ice, the Orc Cave and Terathan Keep have their usual spawns on both Trammel and Felucca, along with Covetous, Wrong and the others. They are places to explore after New Haven, not a fixed order.
+
+===== Despise (revamped, Trammel) =====
+
+Trammel's Despise runs OSI's revamp. Felucca's Despise keeps the classic dungeon.
+
+  * Use an ankh that matches your karma, good or evil, to receive a **wisp orb**.
+  * The orb lets you take control of a Despise creature and build its strength.
+  * The overlords **Adrian** and **Andros** take damage from Despise creatures, so fight them with a controlled creature, not with your own weapons.
+  * The dungeon's treasure chests stay as they were.
+
+===== Shame (revamped) =====
+
+Shame runs OSI's revamp on Trammel and Felucca: new creatures, its own treasure chests and cave troll barriers.
+
+  * Shame's chests use their own locks, traps and loot, and vanish a few minutes after they are first opened. The chest table below does not apply to them.
+  * **Not working yet:** summoning the Quartz, Flame and Wind Elemental guardians at the altars. Crystals of Shame do not turn into altar points yet, so keep yours.
+
+===== Chests, traps and keys =====
+
+A dungeon chest can be locked **and** trapped. Picking the lock does not remove the trap. Double-click a lockpick and target the chest, bring spare picks, and use Remove Trap before you open it.
+
+Lockpicking needed for the **classic** dungeon chests:
+
+^ Chest level ^ Lockpicking ^ Trap ^
+| 1 | 57 | Dart |
+| 2 | 72 | Explosion |
+| 3 | 84 | Poison |
+| 4 | 92 | Explosion |
+
+The number lets you try; it does not promise success. **Shard change:** Remove Trap does not need 50 Lockpicking and 50 Detect Hidden first. Its success depends on your Remove Trap and the trap's strength, and even 100 Remove Trap can fail on a level 4 trap.
+
+Classic chests hold gold and loot by level, decay whether looted or not, and are replaced by their spawner.
+
+**Skeleton keys** and **master skeleton keys** come from treasure map chests. Each has 10 successful uses. A skeleton key lowers the Lockpicking needed by 10 and still rolls. A master skeleton key opens any lock that can be picked. Neither opens a lock that cannot be picked or a magic lock.
+
+===== Not open yet =====
+
+Several more dungeons and encounters are built but not yet open to players: the revamped Wrong and Blackthorn, the Covetous Void Pool, the Exodus encounter, the Underworld puzzle rooms and mini champions, and the Valley of Eodon. The shard's own starter dungeon, the [[:uo:drafts:rootdeep_burrows|Rootdeep Burrows]], is not open yet either. Each gets its section here when it opens.
+
+===== Seasonal =====
+
+  * [[sorcerers_dungeon|Treasures of Sorcerer's Dungeon]], in Ilshenar, from October 24 to November 2.
+
+===== Needed images =====
+
+  * TODO image: a wisp orb and a controlled Despise creature.
+  * TODO image: a creature's single-click line showing "deadly".
+
+===== Related pages =====
+
+  * [[:uo:systems:creature_levels|Creature levels and Appraisal]]
+  * [[:uo:systems:requisitions|Requisitions]]
+  * [[:uo:systems:young_players|Young players]]
+  * [[start|World hub]]

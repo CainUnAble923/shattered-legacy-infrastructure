@@ -1,0 +1,87 @@
+====== Crafting on Shattered Legacy ======
+
+Crafting here works like OSI's at heart: the same tools, menus and skills. On top of that, Shattered Legacy adds **learned designs**, **guild work**, and **new metals and woods** that take crafting skills up to 200. This page is the overview. Each part has its own page with the full tables.
+
+===== Start with your guild =====
+
+Each craft has a guild that sells its pattern books and gives its members bulk orders. Joining is free. Type ''[guild'' to open the Guild Directory and choose **Show me the way** for your guild.
+
+^ Craft ^ Guild ^ Town vendors with bulk orders ^
+| Blacksmithy | Society of Smiths | Blacksmith, Weaponsmith |
+| Tailoring | Tailors' Circle | Tailor, Weaver |
+| Carpentry | Foresters' Union | Carpenter |
+| Bowcraft and Fletching | Foresters' Union | Bowyer |
+| Tinkering | Tinkers' Union | Tinker |
+| Alchemy | Order of the Alembic | Alchemist |
+| Inscription | Arcane Society | Scribe |
+| Cooking | Maritime Brotherhood | Cook, Baker |
+
+Guild membership, standing and currency belong to your character. Designs you learn belong to your whole account. See [[:uo:systems:guilds|Guilds]].
+
+===== Learn a design before you make it =====
+
+**Shard change.** Anything that needs 30 skill or less is always in your craft menu. Harder designs stay hidden until your account learns them:
+
+  * **Pattern books** teach a whole band of one craft (designs from above 30 up to 100 skill, in four bands).
+  * **Recipe scrolls** teach one design each, for designs above 100 skill.
+
+Read a book or scroll from your backpack to learn it. It is used up once, and every character on the account knows the design from then on. When a menu category hides designs, the menu says how many and which guild teaches them. Full details: [[:uo:professions:recipes|Recipes and pattern books]].
+
+===== Exceptional gear and material bonuses =====
+
+**Shard change.** An exceptional item gets **one and a half times its material's positive bonuses**, rounded half up. A metal that gives +5 gives +8 on an exceptional piece. Penalties stay the same, runic properties are not multiplied, and the usual caps on what you can wear still apply.
+
+The new woods are the exception: they have their own exceptional bonuses instead of the multiplier. See [[:uo:professions:materials|Metals and woods]].
+
+**Arms Lore** matters more here. It raises an exceptional weapon's quality damage bonus from 35 (at 0 Arms Lore) to 50 (at 200), can add up to 10 extra armor resistance points, and slows wear on your gear.
+
+===== New metals and woods =====
+
+**Shard change.** Eight metals sit above Valorite (Platinum to Celestial) and eight woods above Frostwood (Ironwood to Starwood). Each needs more skill than the last, and crafting with one keeps teaching you past the item's normal limit, up to the next material's requirement. Harder items teach faster. Cutting logs into boards teaches nothing. Full tables: [[:uo:professions:materials|Metals and woods]].
+
+Two starter materials, **Dawnstone** and **Rootwood**, are worked at 45 skill.
+
+===== Bulk orders =====
+
+Bulk orders follow OSI's 2016 rules for eight crafts, with two shard changes: **only items a player crafted** fill a deed, and **large Smith deeds** can be filled with the crafted items directly. The Society of Smiths pays its members its own way. See [[:uo:professions:bulk_orders|Bulk orders]].
+
+===== Commissions, contracts and requisitions =====
+
+These are different kinds of work with different rewards:
+
+^ Work ^ What it asks for ^ What it pays ^
+| Bulk order | A number of named crafted items | Reward points, or Smithing Seals for Society members |
+| Guild contract | A listed supply or delivery job | That guild's standing and currency, plus gold |
+| Smith commission | A named client's piece or set, in a material and quality | Smithing Seals, Society standing and a Blacksmithy check |
+| Requisition | A matching magic item, found or crafted | Renown, guild standing and the Appraiser's price |
+
+**Smith commissions** are on the Society of Smiths guildmaster's Commissions page and in the Smithing Guild Book. You can hold 3 small and 1 large at a time. A set takes its pieces one at a time and pays when it is complete. There is no deadline. If you abandon a commission, you wait a few minutes (5 by default) before you can take another small one.
+
+**Requisitions** are posted on the League's Requisitions board and on guild pages. See [[:uo:systems:requisitions|Requisitions]].
+
+===== Salvage and smelting =====
+
+Recycling uses the item up, so keep anything you want out of the bag you salvage.
+
+  * **Smelt** in the Blacksmithy menu turns metal gear back into ingots: half the recipe's ingots for a crafted piece (rounded down), 1 ingot for anything else.
+  * The **Smith Guild Salvage Bag**, given to Society members when they join, salvages the shard's metals too. Put the gear in it and choose **Salvage Ingots** near a forge with a smithing tool in your pack. Higher Mining returns more, but never the full recipe cost: a crafted Plate Chest that cost 25 ingots returns 17 at 100 Mining. Other gear returns 2 ingots. Society members also earn Smithing Seals for salvaging.
+  * With scissors in your pack, **Salvage Cloth** cuts cloth and leather items.
+
+===== Make X =====
+
+**Make X** crafts many items in a row, counting either finished items or attempts. In items mode, **Exceptional only** keeps going until you have the number of exceptional pieces you asked for. A run stops at 100 items or 500 attempts, or when you move, run out of materials, wear out your tool or press **Stop**.
+
+Rejects can go into an ordinary **Salvage Bag** if you carry one (the bag is salvaged at the end), be smelted or cut, or go to a bag you choose. The Smith Guild Salvage Bag is a different bag and is not used for this.
+
+===== Needed images =====
+
+  * TODO image: a craft menu with a hidden-designs hint line.
+  * TODO image: the Make X window with Exceptional only ticked.
+
+===== Related pages =====
+
+  * [[:uo:professions:recipes|Recipes and pattern books]]
+  * [[:uo:professions:materials|Metals and woods]]
+  * [[:uo:professions:bulk_orders|Bulk orders]]
+  * [[:uo:professions:blacksmithy|Blacksmithy]]
+  * [[:uo:systems:guilds|Guilds]]

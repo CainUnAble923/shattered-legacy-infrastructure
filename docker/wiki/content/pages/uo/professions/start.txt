@@ -9,11 +9,14 @@ Professions are player paths through skills, trainers, equipment, and goals.
   * [[materials|Metals and woods]]: the shard's own materials, Platinum to Celestial and Ironwood to Starwood
   * [[recipes|Recipes and pattern books]]: how crafting is learned here
   * [[bulk_orders|Bulk orders]]: the 2016 rules for eight crafts
-  * [[imbuing|Imbuing and the Artificers' Order]]
+  * [[:uo:guides:crafting|Crafting on Shattered Legacy]]: what is different here, in one guide
+  * [[imbuing|Imbuing]] (and the [[:uo:guilds:artificers_order|Artificers' Order]])
+  * [[climbing_boots|Climbing boots]]: mine the ore on the mountainsides
 
 ===== Rogues =====
 
   * [[stealing|Stealing from monsters]]
+  * [[traps|Deployable traps]]: tinkers build them, you set them by double-clicking the kit
 
 ===== Support And Combat Readiness =====
 

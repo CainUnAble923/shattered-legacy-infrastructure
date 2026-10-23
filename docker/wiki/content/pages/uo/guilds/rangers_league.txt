@@ -1,0 +1,86 @@
+====== Rangers' League (the Outriders) ======
+
+The Rangers' League is the guild for hunters, scouts, animal tamers and expedition guides. Its people in the field are the **Outriders**, so you will see both names: the guild directory says Rangers' League, the guildmaster and the contract menus say Outriders. The guild is unique to Shattered Legacy.
+
+**Skills:** Archery, Tracking, Animal Taming, Animal Lore, Herding, Veterinary and Camping.\\
+**Currency:** Trail Marks.
+
+===== Joining =====
+
+  * Type ''[guild'', pick **Rangers' League**, and use **Show me the way**. **Mira Ashfen**, the Outriders' Guildmaster, is at the **New Haven stables** (Trammel).
+  * Joining is free, with no skill or tribute. Membership, standing and Trail Marks belong to your character, and you can join other guilds too.
+  * Joining gives you the guild's skill tools, a blessed **Outrider's Crook** and a blessed **Hunter's Satchel**.
+  * On the **Starter items** page, take **Heartseeker** (Archery) and **Walker's Leggings** (Tracking), the first one free. Taking one counts as the matching New Haven training quest's reward, so you do not get two; the guild route does not give the quest's faster skill gain.
+
+==== The Apprentice task ====
+
+Bring **30.0 base Archery** or **25 arrows**. It pays **25 standing and 10 Trail Marks**, once, and makes you at least a **Scout**. Arrows are taken only if you use the arrow option.
+
+===== Ranks =====
+
+^ Rank ^ Standing ^
+| Wanderer | 0 |
+| Scout | 1,000, or the Apprentice task |
+| Outrider | 5,000 |
+| Trailblazer | 15,000 |
+| Beastmaster | 40,000 |
+| Warden of the Wild | 80,000 |
+| Legendary Outrider | 150,000 |
+
+Standing is your progress; Trail Marks are a balance you spend. Spending Marks never lowers standing.
+
+The Outriders' own dashboard and the Field Contract requirements read **standing only**, so right after the Apprentice task they may still treat you as a Wanderer until you reach 1,000 standing.
+
+===== The Outrider's Crook =====
+
+Keep it in your backpack: it gives **+5 Animal Taming and +5 Peacemaking** while carried. Double-click it for its menu:
+
+^ Action ^ What happens ^
+| Deliver Pet for Contract | Target your own following pet within 2 tiles for an active taming contract. **The guild keeps the animal.** |
+| Shrink Pet into Figurine | Store your own bonded, following pet in a figurine. Double-click the figurine to bring it back when you have the follower slots. |
+| Instant Bond | Bond a tameable pet you control. The starter crook can do this once every **48 hours**. |
+
+==== Herding ====
+
+The Outrider's Crook is not a herding tool. **Herding uses an ordinary shepherd's crook**: double-click it, target a wild animal that can be herded, then pick where it should go. It moves the animal without making it your pet, as on OSI.
+
+===== The Hunter's Satchel =====
+
+Keep it in your backpack. It holds leather, hides, bone, wool, feathers and raw meat, turns hides into the matching leather, gathers what you carve nearby, and cuts the weight of what is inside by **30 percent**.
+
+===== Archery and Tracking =====
+
+  * **Archery**: a bow or crossbow and the right ammunition. Stand still a moment after moving before you shoot. Bows are made by the [[:uo:guilds:foresters_union|Foresters' Union]].
+  * **Tracking**: use it from your skills, pick Animals, Monsters, Human NPCs or Players, then pick a target. An arrow points the way. Its search reaches **110 tiles** at 100 Tracking and does not grow past that, though the skill keeps gaining above 100 up to your cap.
+
+===== Field Contracts =====
+
+Open **Field Contracts** from Mira's page (or **Contracts** in the directory).
+
+  * **Resource deliveries** ask for things like leather, feathers, meat, wool or camp supplies. The goods come from your backpack and bank.
+  * **Taming contracts** ask for particular animals. Tame them, then hand them over with the crook's **Deliver Pet**. Pick animals you are happy to give away.
+  * You can hold **3 active contracts per guild**. A finished contract pays the standing, Trail Marks and gold it shows.
+  * Contracts are fixed requests today, with no skill check when you turn them in.
+
+**Requisitions** are a second way to earn standing: magic bows, leather armor and the like, paying standing, League Renown and gold (no Trail Marks). See [[:uo:systems:requisitions|Requisitions]].
+
+===== Better pet training =====
+
+**Shard change:** your Rangers' rank raises the chance that your pets gain skill, and so does Animal Taming and Animal Lore above 100. The Animal Lore window shows it as **Learns x...**. It raises the chance of a gain, not the size of one. See [[:uo:systems:pet_training|Pet training]].
+
+===== Where the hall is =====
+
+The chapter is the **New Haven stables**. A main hall elsewhere is planned; see [[:uo:drafts:guild_halls|Guild halls]] (draft).
+
+===== Needed images =====
+
+  * TODO image: Mira Ashfen at the New Haven stables.
+  * TODO image: the Outrider's Crook menu.
+  * TODO image: a Field Contracts page with a taming contract.
+
+===== Related pages =====
+
+  * [[:uo:guilds:start|Guilds hub]]
+  * [[:uo:guilds:foresters_union|Foresters' Union]]
+  * [[:uo:guilds:miners_compact|Miners' Compact]]
+  * [[:uo:systems:pet_training|Pet training]]

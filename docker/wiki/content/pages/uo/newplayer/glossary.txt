@@ -1,0 +1,262 @@
+====== Glossary ======
+
+The shard's own names and words, A to Z, each with a short meaning and a link to the page that explains it. Terms that are not in the game yet are marked **(planned)**; you cannot use them today. Stock Ultima Online words that work the usual way are left out.
+
+New here? Start with the [[:uo:newplayer:faq|new player FAQ]] and the [[:uo:new_player_guide|new player guide]].
+
+===== A =====
+
+^ Term ^ Meaning ^
+| Accessory slots | Extra jewelry spots beyond the usual paperdoll: a second bracelet and toe rings. Type ''[accessories'' to see them. See [[:uo:systems:accessories|Accessory slots]]. |
+| Achievement Points (AP) | Your account's lasting achievement score. AP opens rows in the League Shop and some titles. AP is never spent. See [[:uo:systems:achievements|Achievements]]. |
+| Achievement Records | The window that lists your account's achievements, what each needs, your progress, AP and Renown. |
+| Adamantium | An extended metal between Mythril and Celestial. See [[:uo:professions:materials|Metals and woods]]. |
+| Alembic Drams | The Order of the Alembic's guild currency, separate from your standing. See [[:uo:guilds:order_of_the_alembic|Order of the Alembic]]. |
+| Appraisal | The shard's name for the Item Identification skill. It still identifies items, and as it rises it also reads a creature's level, stats and abilities. See [[:uo:systems:creature_levels|Creature levels and Appraisal]]. |
+| Appraiser | An NPC who buys magic equipment for a little gold and can tell you which requisition an item matches. Different from the Appraisal skill. See [[:uo:systems:requisitions|Requisitions]]. |
+| Apprentice task | A guild's first task after you join: a skill check or a small tribute that pays standing and guild currency. Joining itself is free. See [[:uo:systems:guilds|Guilds]]. |
+| Arcane Society | The guild for Magery, Evaluating Intelligence, Meditation, Resisting Spells, Inscription, Mysticism and Spellweaving. |
+| Arms Lore | Expanded here: it helps exceptional work, slows wear, supports repairs, and lets you do field maintenance on your own gear. See [[:uo:guides:crafting|Crafting on Shattered Legacy]]. |
+| Artificers' Essence Satchel | The Artificers' bag for property essences and magic materials. Essence Shards are a balance on your account, not something kept in the bag. See [[:uo:guilds:artificers_order|Artificers' Order]]. |
+| Artificers' Order | The guild for Imbuing: learning properties, essence mastery and enchanting work orders. See [[:uo:guilds:artificers_order|Artificers' Order]] and [[:uo:professions:imbuing|Imbuing]]. |
+| Artificers' Toolkit | A blessed member tool that opens the Imbuing menu while you travel. |
+| Artisan's box | A crafting loot box with crafting supplies and a recipe or pattern book. Its tier is named after the material ladder of its craft (wood, leather or metal). See [[:uo:systems:loot_boxes|Loot boxes]]. |
+| Account-bound | Kept to the account that earned or bought it, like loot boxes. |
+
+===== B =====
+
+^ Term ^ Meaning ^
+| Bands | How designs are grouped for learning, by the design's minimum skill. Bands I to IV (above 30 up to 100) come as pattern books; Bands V to IX (above 100 up to 200, in steps of 20) come as single recipe scrolls. Designs at 30 or below are free. See [[:uo:professions:recipes|Recipes]]. |
+| Bank rewards | In the Society of Smiths' deed menu, the choice to take a deed's payout as Smithing Seals. See [[:uo:guilds:society_of_smiths|Society of Smiths]]. |
+| Bards' Consortium | The guild for Musicianship, Peacemaking, Provocation and Discordance. |
+| Basic | The first Imbuing strength tier, about a third of the property's full value. See [[:uo:professions:imbuing|Imbuing]]. |
+| Binding a guild | Adding a guild you have joined to your League Register. See [[:uo:systems:league_register|League Register]]. |
+| Blaze | The fire metal between Toxic and Frost. |
+| Blocks mined | The Prospector's Logbook count of the different ore spots you have worked. Climbing boots ask for it. See [[:uo:professions:climbing_boots|Climbing boots]]. |
+| Bountiful | A shard imbuing property that adds to mining and lumber yield. |
+| Bulk order deed (BOD) | A request for a set amount of crafted goods. Every craft has them; the Society of Smiths adds its own rules. See [[:uo:professions:bulk_orders|Bulk orders]]. |
+| Butcher's Eye | A shard imbuing property that adds to monster-part yields, with a chance at a rare part. |
+
+===== C =====
+
+^ Term ^ Meaning ^
+| Capstone | The biggest kind of fanfare, announced to the whole shard. |
+| Cash out | The Society of Smiths' other deed payout: less gold, some Fame and an item chance, instead of Seals. |
+| Celestial | The last extended metal. The name is also used for the top League rank and the top loot box tier; each has its own rules. |
+| Civic Contracts | Custodian delivery jobs that pay gold. Not the same as League requisitions. See [[:uo:guilds:custodians|Custodians]]. |
+| Clean Up points | The points you earn in Clean Up Britannia and spend at its store. Your lifetime total sets your Custodian rank. See [[:uo:systems:clean_up_britannia|Clean Up Britannia]]. |
+| Climbing boots | Miners' Compact boots that let you hop onto mountain tiles to reach ore: Surveyor's, Delver's and Deepwarden's. See [[:uo:professions:climbing_boots|Climbing boots]]. |
+| Clockwork Scavenger **(planned)** | The League's auto-loot helper, to work with a pack mule. |
+| Combined Logbook | A League item that opens your Prospector's and Forester's records from one book. See [[:uo:systems:league_register|League Register]]. |
+| Commission | A named NPC's request for a crafted piece or set. Today these are the Society of Smiths' commissions, paid in Smithing Seals and standing. Different from contracts and requisitions. |
+| Compact Dispatch Ledger | The Miners' book for opening Compact work orders from anywhere. |
+| Compact Mule | A bonded pack animal you can ride, earned through a League errand, with upgrades, breeding and modules. See [[:uo:systems:pack_mules|Pack mules]]. |
+| Compact Ore Satchel | The Miners' first ore bag. It collects your ore and holds ingots and plain granite. Its upgrades are the Reinforced, Surveyor's and Deepdelver's Ore Satchels and the Master Expedition Satchel. See [[:uo:guilds:miners_compact|Miners' Compact]]. |
+| Con word | The colored word under a creature's name that says how tough it is next to you. Not the same as notoriety colors. See [[:uo:systems:creature_levels|Creature levels]]. |
+| Contract | A guild's supply or delivery job from its ledger, paying standing, guild currency and gold. Different from a deed, a commission or a requisition. |
+| Crafting band | See Bands. |
+| Creature level | The shard's estimate of how tough a creature is. See [[:uo:systems:creature_levels|Creature levels]]. |
+| Custodians | The cleanup guild built on Clean Up Britannia, with a Trash Bag and cleanup services. See [[:uo:guilds:custodians|Custodians]]. |
+
+===== D =====
+
+^ Term ^ Meaning ^
+| Den scrip | The Thieves' Den's guild currency, separate from Den standing. See [[:uo:guilds:thieves_den|Thieves' Den]]. |
+| Dented Box | A small reward box with an account-bound keepsake. What is inside is for you to find. |
+| Deployable trap | A Tinkering-made kit you set on the ground to catch monsters. Alarm, bear trap, blast trap, caltrops, dart trap, gas trap and snare net are kinds of it. See [[:uo:professions:traps|Traps]]. |
+| Discovery Report | The Forester's Logbook action that reports a new extended wood. Until you report it, that wood comes out as regular logs. |
+| Dull Copper | The second League rank and the first milestone. |
+
+===== E =====
+
+^ Term ^ Meaning ^
+| Elara Voss | The League Registrar in New Haven: registration, rank, the League Shop and League services. See [[:uo:systems:league|The League]]. |
+| Emberbark | The fire wood between Ghostwood and Frostbark. |
+| Essence mastery | Account progress on one Imbuing property. Enough of it and that property no longer needs its essence. It does not teach the property. |
+| Essence Shards | The Artificers' currency, a balance on your account, earned from disenchanting, extracting and guild work. |
+| Exceptional bonus | Exceptional crafted gear gets more out of its material's good bonuses than normal work. Extended woods use their own exceptional bonuses instead. See [[:uo:guides:crafting|Crafting]]. |
+| Extended materials | The shard's metals past Valorite and woods past the stock woods. Harvesting and crafting them have separate skill requirements. See [[:uo:professions:materials|Metals and woods]]. |
+| Extract a Property | Take one magical property off an item to recover its essence and Shards while keeping the item. Weapons and armor lose some maximum durability. |
+
+===== F =====
+
+^ Term ^ Meaning ^
+| Fanfare | The System's effects, sounds and lines when you earn something. Minor is just for you, Major is seen nearby, Capstone goes to the whole shard. |
+| Field maintenance | Using Arms Lore on your own damaged weapon or armor to get durability back, with some risk to its maximum. |
+| Field repair deed, field repair kit | Crafted repair items for damaged gear. See [[:uo:systems:league_register|League Register]]. |
+| Field Report | The Prospector's Logbook action for turning in the ore veins you have recorded. |
+| Flying loot | The animation of items rising over you when a loot box opens. Your rewards arrive either way. |
+| Forester's Logbook | Your account's record of the woods you have found, your totals and grove spots. |
+| Foresters' Lumber Satchel | The Foresters' bag for logs and boards. It lightens them and picks up new logs while you carry it. |
+| Foresters' Union | The guild for Lumberjacking, Carpentry and Fletching. See [[:uo:guilds:foresters_union|Foresters' Union]]. |
+| Formula book | An Artificers' book that teaches Imbuing properties and strength tiers to your account: Apprentice, Journeyman, Artificer's, Arcane and Master Formularies. |
+| Frost | The cold metal between Blaze and Obsidian. |
+| Frostbark | The cold wood between Emberbark and Shadowbark. |
+| Full | The Imbuing tier at the property's normal maximum. |
+| Full Disenchant | Destroy a magic item for Essence Shards and a chance at its property essences. |
+
+===== G =====
+
+^ Term ^ Meaning ^
+| Ghostwood | The extended wood between Ironwood and Emberbark. |
+| Guild Directory | The list of guilds and the League, with directions to each contact. You join at a guildmaster. |
+| Guild rank | Your rank inside one guild. Each guild has its own; it is not your League rank. See [[:uo:systems:guilds|Guilds]]. |
+
+===== H =====
+
+^ Term ^ Meaning ^
+| Hall page | The League Shop's house decor page: AP opens pieces, Renown pays. See [[:uo:systems:league_shop|League Shop]]. |
+| Hammer of Hephaestus | The Society of Smiths' blessed hammer, with charges, recharging, metal familiarity and an upgrade. See [[:uo:guilds:society_of_smiths|Society of Smiths]]. |
+| Healers' Covenant | The guild for Healing and Anatomy. See [[:uo:guilds:healers_covenant|Healers' Covenant]]. |
+| Herbalism **(planned)** | A new Order of the Alembic skill for growing reagents. |
+| Hunter's box | A loot box themed on hunting, with tiers named after the leather ladder. |
+| Hunter's Satchel | The Rangers' bag for carved animal goods, which lightens them. |
+
+===== I =====
+
+^ Term ^ Meaning ^
+| Imbuing Table | The Artificers' menu to imbue a known property, extract one, or disenchant an item. |
+| Intensity tier | How strong an Imbuing property you have learned: Basic, Refined, Full, and Overcharged for some. |
+| Iron | The first League rank, given when you register. |
+| Ironwood | The first extended wood. |
+
+===== J =====
+
+^ Term ^ Meaning ^
+| Jacob's Pickaxe | The Miners' Compact's lasting pickaxe, with restoration and upgrades. See [[:uo:guilds:miners_compact|Miners' Compact]]. |
+
+===== K =====
+
+^ Term ^ Meaning ^
+| Keepers of the Last Door | The guild for Necromancy, Spirit Speak and Forensics. |
+
+===== L =====
+
+^ Term ^ Meaning ^
+| Lead | A personal tip on a requisition that names an area and a kind of creature. Kills that match give an extra chance at the item, sure by the 40th; a matching kill means the right area, the right creature group and a creature of 1,000 Fame or more. A request with a live Lead stays through the daily refresh. See [[:uo:systems:requisitions|Requisitions]]. |
+| League | The League of Extraordinary Citizens (LXC), which ties the guilds together and gives citizen rank, services and work. See [[:uo:systems:league|The League]] and [[:uo:guides:league|the League guide]]. |
+| League Field Satchel | A League bag that holds your guild satchels, each keeping its own rules. |
+| League milestone | One of the six ranks where League bonuses step up: Dull Copper, Bronze, Verite, Blaze, Mythril and Celestial. |
+| League rank | Your metal-named citizen rank, from Iron to Celestial. It rises with Lifetime Renown and guild standing. |
+| League Register | Your book that binds your guilds and opens League services as your rank rises. See [[:uo:systems:league_register|League Register]]. |
+| League Shop | The League's store: AP opens rows, Renown pays for cosmetics, titles, decor and handy goods. See [[:uo:systems:league_shop|League Shop]]. |
+| Lifetime Renown | All the Renown you have earned that counts toward League rank. Spending Renown does not lower it. |
+| Loot box | An account-bound reward box. Its contents are set when you earn it. Open it in a guarded town or a house you are friended to. See [[:uo:systems:loot_boxes|Loot boxes]]. |
+| Loot box theme and tier | The theme is what kind of rewards (Miner, Explorer, Scholar and so on); the tier is how good, from Common to Celestial. |
+| Loop **(planned)** | The shard's lasting progression through repeated lives. Most of it is not in the game yet. |
+| LXC | Short for the League of Extraordinary Citizens. |
+
+===== M =====
+
+^ Term ^ Meaning ^
+| Make X | Batch crafting that keeps going through failures and can count items made or tries. |
+| Maritime Brotherhood | The guild for Fishing, Cartography and Cooking. See [[:uo:guides:high_seas_fishing|High Seas fishing]]. |
+| Mastercraft | A shard imbuing property that raises your exceptional crafting chance. |
+| Material tier | A metal's or wood's place on its ladder. Not the same as a crafting band. |
+| Merchants' Exchange | The guild for Appraisal and Begging. |
+| Miner's box | A loot box themed on mining, with tiers named after the metal ladder. |
+| Miners' Compact | The mining guild: ore discoveries, contracts, satchels, Jacob's Pickaxe and climbing boots. See [[:uo:guilds:miners_compact|Miners' Compact]]. |
+| Mining Vouchers | The Miners' Compact's guild currency. Spending it does not lower your standing. |
+| Mischief | The achievement category that stays hidden until you earn something in it. |
+| Monster stealing | The Thieves' Den's way to steal rewards from creatures, opened by Den rank. See [[:uo:professions:stealing|Stealing]]. |
+| Mule module | Removable crafted gear for a Compact Mule's module slots. You learn each module's schematic once. See [[:uo:systems:pack_mules|Pack mules]]. |
+| Mythril | The energy metal between Obsidian and Adamantium. |
+
+===== O =====
+
+^ Term ^ Meaning ^
+| Obsidian | The metal between Frost and Mythril. |
+| Order of the Alembic | The guild for Alchemy, Taste Identification and Glassblowing. See [[:uo:guilds:order_of_the_alembic|Order of the Alembic]]. |
+| Orders that still teach me | The Society of Smiths' deed setting that leans toward work you can still gain Blacksmithy from. It does not promise a gain. |
+| Outrider's Crook | The Rangers' tool for delivering, shrinking and bonding pets. Not the stock shepherd's crook. |
+| Outriders | The Rangers' League's field company. The same guild as the Rangers' League. |
+| Overcharged | An Imbuing tier above Full for some properties. |
+
+===== P =====
+
+^ Term ^ Meaning ^
+| Pattern book | An account-wide unlock for a craft's designs in one band (I to IV). It teaches the designs, not skill. See [[:uo:professions:recipes|Recipes]]. |
+| Pet training | Stock Animal Training for tamed creatures. See [[:uo:systems:pet_training|Pet training]]. |
+| Platinum | The first metal past Valorite. |
+| Power Scroll | The stock scroll that raises one skill's cap. |
+| Property essence | A material that matches an Imbuing property, used until you master that property. |
+| Prospector | A shard imbuing property that adds chances at rare mining and lumber finds. Also the name of a Jacob's Pickaxe upgrade. |
+| Prospector's Logbook | Your account's record of ore finds, veins, totals and blocks mined. |
+
+===== R =====
+
+^ Term ^ Meaning ^
+| Rangers' League | The wilderness guild, also called the Outriders: Archery, Tracking, Taming, Animal Lore, Herding, Veterinary and Camping. Not the League (LXC). See [[:uo:guilds:rangers_league|Rangers' League]]. |
+| Recipe scroll | A scroll that teaches one design to your account, for Bands V to IX. Not a spell scroll. |
+| Refined | The Imbuing tier between Basic and Full, about two thirds of full. |
+| Remote repair deed | A one-use crafted repair for the damaged gear you wear, carry and bank. |
+| Renown | Your account's League balance, earned from achievements and other rewards and spent in the League Shop. Spending it does not lower Lifetime Renown. |
+| Requisition | A guild's request for a matching magic item, found or crafted. Turning one in pays Renown, guild standing and the Appraiser's gold. Non-members get the standing at once. See [[:uo:systems:requisitions|Requisitions]]. |
+| Rook Hallowell | The League recruiter on the New Haven plaza who greets new characters. See [[:uo:world:new_haven|New Haven]]. |
+| Rootdeep Burrows **(planned)** | A dungeon under Old Haven, not open yet. The Tangle is one of its areas. |
+| Runewood | The wood between Shadowbark and Voidwood. |
+
+===== S =====
+
+^ Term ^ Meaning ^
+| Sanitation Warden | The Custodians' contact: joining, rank, Trash Bag replacement and the Clean Up store. |
+| Seal Catalog | The Society of Smiths' store, paid in Smithing Seals. |
+| Self Repair | The property that restores durability. Here it does not roll on ordinary random loot or runic crafting. |
+| Shadowbark | The wood between Frostbark and Runewood. |
+| Shadowsilk Cloak | A crafted cloak with Hiding and Stealth bonuses, made with stolen shadowsilk thread. |
+| Smith Guild Salvage Bag | The Society of Smiths' recycling bag, which handles extended metals too. Not the stock salvage bag. |
+| Smith's Seal **(planned)** | An item that will make crafted gear levelable. Not the same as Smithing Seals. |
+| Smithing Guild Book | The Society of Smiths' book for deeds, commissions, the Seal Catalog and payout settings. |
+| Smithing Seals | The Society of Smiths' guild currency. |
+| Society of Smiths | The guild for Blacksmithy and Arms Lore. See [[:uo:guilds:society_of_smiths|Society of Smiths]]. |
+| Standing | Your reputation in one guild, used for rank and services. Spending guild currency does not spend standing. |
+| Starwood | The last extended wood. |
+| Survey Archivist | Velara Thorne, at the south mine, who takes your ore vein reports. |
+| System | The voice that comments on your achievements and celebrations. Its lines are marked System, not NPC speech. |
+| System's Bronze, Silver and Gold Loot Boxes | League Shop boxes with one, two or three draws from the starter goods you have opened. See [[:uo:systems:league_shop|League Shop]]. |
+
+===== T =====
+
+^ Term ^ Meaning ^
+| Tailors' Circle | The guild for Tailoring. |
+| Thief's Smoke Bomb | A crafted smoke bomb that uses Hiding instead of Ninjitsu, for a try at hiding mid-fight. |
+| Thieves' Den | The guild for stealing, stealth, locks, poison and traps. See [[:uo:guilds:thieves_den|Thieves' Den]]. |
+| Timber Tokens | The Foresters' Union's guild currency. |
+| Tinkers' Union | The guild for Tinkering. Tinkers make the trap kits. |
+| Toe ring | Jewelry for the toe ring slots. See [[:uo:systems:accessories|Accessory slots]]. |
+| Toxic | The poison metal between Platinum and Blaze. |
+| Trail Marks | The Rangers' League's guild currency. |
+| Trash Bag | The Custodians' cleanup bag, with a check before you dump it. |
+| Twin Paths Dojo | The guild for Bushido and Ninjitsu. |
+
+===== U =====
+
+^ Term ^ Meaning ^
+| Unravel | The Artificers' way to break magic gear down into Shards and property essences. |
+| Unravel Container | Unravel every eligible item in a bag you carry, after a confirmation. Bags inside it are skipped. |
+
+===== V =====
+
+^ Term ^ Meaning ^
+| Valorite | The League rank that opens your second bracelet slot. |
+| Voidwood | The wood between Runewood and Starwood. |
+
+===== W =====
+
+^ Term ^ Meaning ^
+| Warriors' Brotherhood | The guild for the melee weapon skills, Tactics, Parrying, Chivalry, Focus and Throwing. |
+| Work Orders | The Miners' Compact's name for its contracts. |
+| Wren | The Thieves' Den lookout by New Haven's fighting pit. |
+
+===== Y =====
+
+^ Term ^ Meaning ^
+| Young | New player protection for your account, for 336 hours (two weeks) of play. Skill gains do not end it. See [[:uo:systems:young_players|Young players]]. |
+
+===== League ranks in order =====
+
+Iron, Dull Copper, Shadow Iron, Copper, Bronze, Gold, Agapite, Verite, Valorite, Platinum, Toxic, Blaze, Frost, Obsidian, Mythril, Adamantium, Celestial. The milestones are Dull Copper, Bronze, Verite, Blaze, Mythril and Celestial. See [[:uo:systems:league|The League]].
+
+===== Extended woods in order =====
+
+Ironwood, Ghostwood, Emberbark, Frostbark, Shadowbark, Runewood, Voidwood, Starwood. Extended metals: Platinum, Toxic, Blaze, Frost, Obsidian, Mythril, Adamantium, Celestial.

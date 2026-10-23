@@ -14,15 +14,17 @@ Every craft item sits in a band by the skill it needs:
 | IV | 90 to 100 | the Band IV pattern book |
 | V and up | above 100 | one recipe scroll per item |
 
-A pattern book teaches a whole band of one craft at once. Designs above 100 come one at a time on scrolls. Everything you learn is learned by your **whole account**, for every character and every loop. Unread books and scrolls can be traded.
+A band is set by the skill the design needs, not by your skill or the material you pick. Not every craft has designs in every band: a book band with fewer than five designs is folded into the next book, so go by the guild shop's actual list and the hint in your craft menu.
+
+A pattern book teaches a whole band of one craft at once. Designs above 100 come one at a time on scrolls. Everything you learn is learned by your **whole account**, for every character on it. Unread books and scrolls can be traded.
 
 The crafts with bands are Blacksmithy, Tailoring, Carpentry, Bowcraft/Fletching, Tinkering, Alchemy, Inscription and Cooking. Cartography has no bands. Masonry and Glassblowing are gated by their books as on OSI, and spell scrolls by owning the spell. OSI's own Mondain's Legacy recipes stay single scrolls, as they are on OSI.
 
 ===== Where to learn =====
 
-  * **Rising in a crafting guild** hands you that rank's pattern book: Band I at Apprentice, through Band IV at Grandmaster, and a starter set of two Band V scrolls at Legendary. A crafting guild's ranks need the craft skill as well as standing: 30, 50, 70, 90 and 100. See [[:uo:systems:guilds|Guilds]].
-  * **Each crafting guild's shop** sells its pattern books for guild currency, one band ahead of your rank: Band I for 100, II for 200, III for 400, IV for 800. From rank 4 the shop also has a daily selection of **Band V scrolls** (three at Grandmaster, five at Legendary) for 1,500 currency and ten of the next material (Platinum ingots for smiths and tinkers, Ironwood boards for carpenters and fletchers, Barbed leather for tailors).
-  * **Large bulk orders** have a small chance (2 in 100) at a Band V scroll for their craft.
+  * **Rising in a crafting guild** hands you that rank's pattern book: Band I at the first rank step, through Band IV at the fourth (each guild has its own rank names; a folded book comes with the rank of the band it started as), and a starter set of up to two Band V scrolls per craft at the fifth. A crafting guild's ranks need the craft skill as well as standing: 30, 50, 70, 90 and 100. See [[:uo:systems:guilds|Guilds]].
+  * **Each crafting guild's shop** sells its pattern books for guild currency, one band ahead of your rank: Band I for 100, II for 200, III for 400, IV for 800. From rank 4 the shop also has a daily selection of **Band V scrolls** (up to three at the fourth rank step, five at the fifth) for 1,500 currency and ten of the next material (Platinum ingots for smiths and tinkers, Ironwood boards for carpenters and fletchers, Barbed leather for tailors).
+  * **Large Smith bulk orders**, paid the Society of Smiths' way, have a small chance (2 in 100) at a Band V Blacksmithy scroll. The other crafts' bulk orders do not give recipe scrolls this way.
   * **Loot boxes** carry recipe scrolls in their recipes pool.
   * **Thieves' Den recipes** come only from stolen scrolls (see [[stealing|Stealing]]).
   * **Mule module schematics** are sold at each guild's hall and learned once by the account; tier III schematics need guild rank 4.

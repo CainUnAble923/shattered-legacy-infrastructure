@@ -1,0 +1,85 @@
+====== The League Shop ======
+
+The League Shop is where your achievements turn into things you can wear, hang up and show off. **Achievement Points open a row, Renown pays for it.** It is unique to Shattered Legacy.
+
+===== Opening the shop =====
+
+  * Talk to the [[league|League Registrar]] in New Haven and choose **League Shop**, or
+  * press **League Shop** in the [[achievements|achievements]] window.
+
+You do not need to be registered with the League to shop.
+
+===== How paying works =====
+
+  * **Achievement Points (AP)** open each row for good. AP is a lifetime score and is never spent, so a row you have opened stays open.
+  * **Renown** is the price. Spending Renown takes it from your balance only: your **Lifetime Renown**, the Renown you have earned through play and what your League rank is measured by, never goes down. Shopping can never cost you a rank.
+  * Rows your AP has not reached yet are grayed out with the AP they need. Every purchase asks you to confirm.
+
+===== What is on sale =====
+
+These are the starting prices. They will be tuned in play testing, so the shop itself always shows the current price.
+
+^ AP needed ^ Reward ^ Renown ^
+| 0 | Title: the Registered Adventurer | 25 |
+| 0 | League tabard | 50 |
+| 0 | System's Loot Box, Bronze | 40 |
+| 100 | Hair restyling deed | 75 |
+| 100 | League rune (blessed, marked to the Registrar) | 60 |
+| 250 | League banner | 150 |
+| 250 | League cloak | 200 |
+| 250 | System's Loot Box, Silver | 150 |
+| 500 | Achievement trophy statuette, engraved with your name and AP | 250 |
+| 500 | League-hue pigment (one use) | 300 |
+| 500 | Title: Veteran of the League | 200 |
+| 1,000 | System's Loot Box, Gold | 400 |
+| 1,750 | League regalia: robe, cloak and sandals | 1,000 |
+| 1,750 | Title: the System's Favorite | 500 |
+
+The tabard, cloak and regalia come in League colors sold nowhere else. The shop sells looks, decor and conveniences only: no weapon or armor properties, no skill or stat gains.
+
+==== The System's Loot Boxes ====
+
+The Bronze, Silver and Gold boxes hold **1, 2 and 3** draws from the shop's starter goods the box's own AP level opens (cosmetics, decor and conveniences), plus a bound League sash. Bronze draws from the 0 AP rows, Silver from rows up to 250 AP, Gold from rows up to 1,000 AP. They hold no gold, no Renown, no titles and no Hall decor, and the same thing can come up twice. They are [[loot_boxes|loot boxes]] like any other: bound to your account, opened in a guarded town or a house where you are owner, co-owner or friend.
+
+===== League titles =====
+
+A title shows after your character's name.
+
+  * **Bought** in the shop: the Registered Adventurer, Veteran of the League, the System's Favorite.
+  * **Earned free** by AP: //the Noted// at 100, //the Accomplished// at 250, //the Distinguished// at 500, //the Renowned// at 1,000 and //the Illustrious// at 1,750.
+
+A title you own is your account's for good. Each character picks which one to show under **Titles**, at the Registrar or in the achievements window. Rare titles also come from secret achievements and only appear in your list once you hold them.
+
+===== The Hall page: decor for your house =====
+
+Press **Hall** in the shop for house decor: display cases, statues, wall trophies and mounted heads. It works like the rest of the shop (AP opens, Renown pays).
+
+^ AP needed ^ Pieces ^ Renown ^
+| 250 | Display cases: glass, books, gems, dyeable books; wall trophy: skull | 150 to 250 |
+| 500 | Mounted oni head; wall trophies: minotaur, sabertooth, troglodyte; grinning gargoyle statue | 250 to 350 |
+| 1,000 | Mounted titan head; wall trophies: oni, ophidian matriarch, terathan matriarch, Paroxysmus; winged dragon and dark dragon statues | 300 to 600 |
+| 1,750 | Wall trophy: titan; jeweled dragon statue | 600 to 1,000 |
+
+How the pieces work:
+
+  * Each piece comes as a **deed**, bound to your account. It cannot be traded or handed over.
+  * Use the deed in a **house you own**, choose the facing (or, for a wall trophy, a north or west wall), and target the spot.
+  * **Chop** a placed piece with an axe to get its deed back.
+  * A display case's shelf and its glass take a dye tub separately.
+  * The pieces are decoration only: no skill or stat effects.
+
+The Hall art is new: **update your game through the launcher** to see it.
+
+===== Needed images =====
+
+  * TODO image: the League Shop open, with one row grayed out showing its AP.
+  * TODO image: the Hall page.
+  * TODO image: a display case and a wall trophy placed in a house.
+
+===== Related pages =====
+
+  * [[league|The League]]
+  * [[league_register|The League Register]] (League goods paid in Renown)
+  * [[achievements|Achievements]]
+  * [[loot_boxes|Loot boxes]]
+  * [[:uo:guides:league|A player's guide to the League]]

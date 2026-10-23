@@ -1,27 +1,104 @@
 ====== The New Haven Tutorial ======
 
-**Draft: not finished.** The tutorial's framework is on the test shard and new characters are met by its recruiter, but its stations are placeholders that only say what they will teach. The shard owner has said every account is wiped when the finished tutorial ships, so this page describes the shape of it, not the lessons.
+**Draft: test shard only.** The tutorial runs only on the test shard, and its people and props are placed there by hand. The nine core lessons are now hands-on and playable end to end there, but the optional wings are still previews and new characters on the real world are not entered into it yet. The shard owner has said accounts may be reset when the finished tutorial ships. This page describes how it works on the test shard today.
 
-New characters are met on the New Haven plaza by **Rook Hallowell**, a League recruiter, who runs the tutorial. It is unique to Shattered Legacy.
+The tutorial is unique to Shattered Legacy. New characters are met on the New Haven plaza by **Rook Hallowell, the League recruiter**, who runs it. Double-click him to open **New Haven orientation**.
 
-===== The shape =====
+===== How it starts =====
 
-  - A short **core**: moving and the camera, your paperdoll, your backpack, speaking and the journal, death and resurrection, the bank, getting around, the League, and a **vision of the loop**.
-  - Optional **wings** for every kind of skill: gathering, crafting, fighting, healing, taming and magic.
-  - **Graduating** hands you your first [[:uo:systems:loot_boxes|loot box]] (open it here, in the guard zone, to learn the rule) and your choice of a starter pet: a dog, a cat, a fox or a bird. The pet stays with you.
+  * It starts on the first login of an account that has never begun it. A System line points you to Rook.
+  * It runs **once per account**. Your progress is saved: logging out keeps the lessons you finished.
+  * Two voices talk to you. Rook and the other teachers speak in their own voices. Lines that begin **System:** come from the Echo, the tutorial's dry commentator.
+  * Rook is not the League Registrar. **Elara Voss** at the League field office handles League registration.
 
-The tutorial runs **once per account**. A later character on the same account skips straight to the world.
+===== The nine core lessons =====
 
-===== Skipping =====
+Finish all nine, in order, to unlock **Graduate**. Each lesson opens a small window with a **Hint and arrow** button (an arrow on your screen points to where to go) and a **Reset this lesson** button.
 
-You can skip it. The System asks twice, remembers, and awards "Didn't Read the Manual". A skipper can come back to the recruiter for remedial training any time, and finishing it then awards "Read the Manual Eventually" and the normal rewards.
+^ Lesson ^ What you do ^
+| Walking, running and the camera | Walk onto the blue mark, then the gold mark. Hold the right mouse button to walk; move the pointer farther out to run. |
+| Your paperdoll | Open your paperdoll (double-click yourself) and drag the practice cloak from your backpack onto it. Take your old cloak off first if you wear one. |
+| Your backpack | Open your backpack and double-click the blue practice bag inside it. |
+| Speaking and the journal | Press Enter, say **I am ready to learn**, and press Enter again. Your Journal keeps what was said. |
+| Death and resurrection | At the farm gate, double-click the pale echo and accept the death lesson. As a ghost, double-click the tutorial healer and accept resurrection. While you are Young, your things come back to your backpack. |
+| The bank | Follow the arrow to the banker, say **bank**, and drag the practice token into your bank box. |
+| Getting around | At the farm gate, double-click the blue tutorial moongate. It brings you back to the New Haven plaza. |
+| The League of Extraordinary Citizens | Follow the arrow to Elara Voss and double-click her to read about the League. Joining is your choice. |
+| The loop (a vision) | Double-click the vision marker at the farm gate and stay beside it until the vision ends. |
 
-===== The loop =====
+The practice items are taken back when the lesson ends. Your own things are never touched.
 
-The tutorial's vision shows a loop happening: the sword strikes the Gem, the world folds shut, and you wake where you started with your level and skills back at the beginning and your League rank, recipes, achievements and guild ranks kept. It is only a vision; nothing about your character changes, and it does not end [[:uo:systems:young_players|Young status]].
+The loop vision is only a vision. It shows the world folding back on itself, but it changes nothing about your character: not your skills, level, loop count or Young time.
+
+TODO image: the lesson window with its Hint and Reset buttons.
+
+===== The wings =====
+
+After the core you can graduate, or look into the optional **wings**: combat, magic, gathering, crafting, animals, bard, thieving and stealth, housing, travel, reputation, and the shard's own systems. Today almost every wing station only shows a preview of what it will teach. The working exception is the farm.
+
+==== Wren Tallow and the farm ====
+
+West of town, past the Bardic Guild, the tutorial has a farm: a fenced field of cabbages, wheat, corn, carrots and pumpkins, a pen of farm animals, and a small thatched farmhouse. **Wren Tallow, the League farmhand**, waits at the field gate. (She is not Wren the Thieves' Den lookout.) Choose **Animals** at Rook for directions.
+
+^ Step ^ What to do ^
+| Pick a pet | Double-click Wren and choose a **dog or a cat**. Keep a follower slot free. The pet arrives bonded, follows you, and offers a color choice. |
+| Clear the field | Fight the pests in the crop rows with your pet. Three kills where you or your pet did damage finish the Animals lesson. |
+| Patch up | Go back to Wren for bandages, then heal yourself with Healing or your pet with Veterinary. That finishes the Bandages lesson. |
+
+A pest count you have not finished starts over if the server restarts. Finished steps are saved.
+
+The farm is outside the guarded town. Tutorial creatures can hurt trainees even while they are Young. The farm also needs the player package's map update, which clears two trees from inside the fence.
+
+===== Skipping and coming back =====
+
+Choose **Skip the tutorial** at Rook. The System asks twice; saying no either time keeps you in. Skipping earns the achievement **Didn't Read the Manual**.
+
+For now a skip also counts as your first loop and lets you leave the island. This is a provisional rule and may change so that a skipper has to finish remedial training before leaving.
+
+A skipper does not get the graduation box or the pet choice. Rook offers **Remedial training** any time: the full tutorial again, with the normal graduation rewards. Finishing it earns **Read the Manual Eventually**. If your skip already counted as your first loop, remedial graduation does not give that loop or its box a second time.
+
+===== Graduating =====
+
+When the nine core lessons are done, go back to Rook and choose **Graduate**. You do not have to finish any wing.
+
+^ You get ^ What it means ^
+| Your first loop | Your character goes from loop 0 to loop 1. See [[levels_and_loops|Levels and loops]]. |
+| A Loop box | The first loop's [[:uo:systems:loot_boxes|loot box]] and fanfare, once. |
+| An Explorer's box | A tier 1 Explorer's box for graduating. Achievements you earned along the way may have given you boxes already. |
+| A starter pet | Your pick of a dog, cat, fox or bird, unless you already took a dog or cat at the farm. You never get a second one. |
+| The way off the island | You may now leave New Haven island by any normal route. Graduating does not move you anywhere by itself. |
+| Your Young time | Unchanged. Your [[:uo:systems:young_players|Young]] hours keep running. |
+
+Open your box in town: boxes only open in a guarded town or in a house where you are an owner, co-owner or friend.
+
+Recording your first loop does not change your skills, stats or experience today. The level ladder and loop resets are still being built.
+
+**Later characters** on an account that graduated get their own first loop when they log in. They do not repeat the tutorial and do not get its Explorer's box or pet choice.
+
+==== The starter pet ====
+
+The starter pet is an **evo pet**: it grows through stages as it fights. It costs 1 follower slot at every stage and arrives bonded. Pick its color when asked; if you close the window, double-click the pet to reopen it. See [[companions|Companions and evo pets]] for how it grows.
+
+===== Staying on the island =====
+
+Until you graduate (or skip), you cannot leave New Haven island. Mainland moongates, recall, boats and the island's exits refuse with a System line pointing you back to Rook. You can go anywhere on the island, including the Rootdeep Burrows under Old Haven.
+
+===== The Vault in the Rootdeep Burrows =====
+
+The Burrows have a trainee-only Vault beside the landing, reached through Old Haven's ruined Second Bank. Trainees and their pets practice with nets there, and beating the Overdraft opens a one-way crawlway into the Warren. Graduates cannot enter the Vault. It is not needed to graduate. See [[rootdeep_burrows|The Rootdeep Burrows]].
+
+===== Needed images =====
+
+  * TODO image: Rook Hallowell on the plaza with the orientation window open.
+  * TODO image: the blue and gold marks of the walking lesson.
+  * TODO image: the farm from the gate, with Wren Tallow.
+  * TODO image: the graduation fanfare and the pet choice.
 
 ===== Related pages =====
 
+  * [[:uo:newplayer:start|New players]]
   * [[:uo:new_player_guide|New player guide]]
-  * [[rootdeep_burrows|The Rootdeep Burrows]] (the tutorial's Vault)
+  * [[levels_and_loops|Levels and loops]] (draft)
+  * [[companions|Companions and evo pets]] (draft)
+  * [[rootdeep_burrows|The Rootdeep Burrows]] (draft)
   * [[:uo:systems:league|The League]]

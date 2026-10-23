@@ -7,10 +7,13 @@ Guides are step-by-step pages for players.
   * [[:uo:connection|Getting connected]]
   * [[first_hour|First hour route]]
   * [[troubleshooting|Troubleshooting]]
+  * [[league|A player's guide to the League]]
+  * [[crafting|Crafting on Shattered Legacy]]
+  * [[high_seas_fishing|High Seas fishing]]
+  * [[:uo:newplayer:faq|New player FAQ]]
 
 ===== Guides we would like to add =====
 
-  * First crafting character
   * First combat character
   * How to report missing trainers
   * How to contribute screenshots

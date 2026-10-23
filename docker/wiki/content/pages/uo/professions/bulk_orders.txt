@@ -1,6 +1,6 @@
 ====== Bulk Orders ======
 
-Bulk orders follow OSI's **2016 rules**, ported as they are: UOGuide's bulk order pages apply, and the same eight crafts take them. The **Society of Smiths** has its own way of paying its members for smith deeds, which is ours; it is listed at the end.
+Bulk orders follow OSI's **2016 rules**, ported as they are: UOGuide's bulk order pages apply, and the same eight crafts take them. The **Society of Smiths** has its own way of paying its members for smith deeds, which is ours; it is listed at the end. The other crafts' guilds use the ported reward points for now.
 
 ===== Who gives them =====
 
@@ -19,13 +19,15 @@ Bulk orders follow OSI's **2016 rules**, ported as they are: UOGuide's bulk orde
   * You can hold up to **three offers per craft**, with one more every **six hours**.
   * A turn-in pays gold into your bank, fame, and **reward points** that you spend on a reward of your choice or bank for later. The deed shows what it is worth in points, and a button sets whether you are asked to bank, always claim, or always bank.
   * Vendors can be **bribed** to improve a deed that has not been started: more items, exceptional, or one material up.
-  * **Large deeds** can be filled with crafted items directly, as well as with small deeds. "Combine this deed with contained items" targets a bag in your pack and combines everything in it.
+  * **Only items a player crafted** fill a deed. Items bought from a shopkeeper, or found as loot, are refused. (This rule is Shattered Legacy's own.) The same rule holds for the Society of Smiths' commissions.
+  * **Large deeds** are filled with the matching small deeds, as on OSI. **Large Smith deeds** also take the crafted items directly (a shard change); the other crafts' large deeds still need their small deeds. "Combine this deed with contained items" targets a bag in your pack and combines everything in it.
+  * Banking keeps a share of a deed's points for later rewards: 2 percent of a small deed's, 20 percent of a large deed's. Points are kept separately for each craft. Settle any pending reward before your next turn-in.
   * A deed made of a wood (oak, ash, yew, heartwood, bloodwood, frostwood) asks for items made of that wood. A deed for cooked food, potions, scrolls or most furniture never asks for exceptional or a wood, because those cannot be made that way here.
   * Bulk order books hold every craft's deeds, and the filter lists all eight crafts with their metals and woods.
 
 ===== Rewards =====
 
-New rewards on this shard include the Master Chef's Apron, the keg for powder of fortification, a plum tree for your house, natural dyes, a talisman that adds a property to each spellbook you scribe, the rock hammer and the master craftsman talisman. Rewards not on the shard yet are listed in the rewards menu as "not on the shard yet" and cannot be bought: reward title deeds, recipes, smelter's and woodsman's talismans, harvest maps, runic mallets and chisels, cauldrons of transmutation, the fermentation barrel, and the automaton and blackrock rewards.
+New rewards on this shard include the Master Chef's Apron, the keg for powder of fortification, a plum tree for your house, natural dyes, a talisman that adds a property to each spellbook you scribe, the rock hammer and the master craftsman talisman. The tinkering rewards now include the automaton actuator, the Blackrock moonstone and the Blackrock automaton head (a grandmaster tinker can bring the head to life as a Kotl automaton pet), and the carpentry rewards include the runic mallets and chisels. Rewards not on the shard yet are listed in the rewards menu as "not on the shard yet" and cannot be bought: reward title deeds, recipes, smelter's and woodsman's talismans, harvest maps, cauldrons of transmutation and the fermentation barrel.
 
 ===== Shard metals =====
 
@@ -36,8 +38,9 @@ Smith deeds can ask for the shard's own metals, Platinum through Celestial, and 
 For members of the Society of Smiths, smith deeds work differently:
 
   * **Choose small or large.** The Society's Bulk Orders button, the Smithing Guild Book and any town smith let you pick; large needs 70.1 Blacksmithy. On OSI the size is random.
-  * **"Orders that still teach me"** (on by default): the Society's orders ask only for items that can still raise your Blacksmithy, in a metal that still teaches you. Turn it off on the Bulk Orders page.
+  * **"Orders that still teach me"** (on by default): the Society's orders ask for items that can still raise your Blacksmithy, in a metal that still teaches you. If nothing you can make still teaches you, the order asks for the hardest items you can make instead. Turn it off on the Bulk Orders page.
   * **Paid the guild's way at every smith**, town smiths included: a finished smith deed is banked as **Smithing Seals** and standing, or cashed out, by a per-character setting (always bank, always cash out, or ask) at the guildmaster or in the Smithing Guild Book. Banking always pays at least what a non-member gets from a town smith.
+  * **Skill checks at turn-in**: a finished small deed gives one Blacksmithy check, a large deed two, or three for a large deed in Gold or a better metal.
   * **No cooldown** on deeds from the guildmaster or the guild book: at most three small and one large in your pack at a time.
 
 ===== Needed images =====
@@ -51,3 +54,4 @@ For members of the Society of Smiths, smith deeds work differently:
   * [[blacksmithy|Blacksmithy]]
   * [[recipes|Recipes and pattern books]]
   * [[materials|Metals and woods]]
+  * [[:uo:guides:crafting|Crafting on Shattered Legacy]]

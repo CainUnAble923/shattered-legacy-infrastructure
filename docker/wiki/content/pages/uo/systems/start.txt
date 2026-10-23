@@ -11,11 +11,17 @@ This namespace explains how Shattered Legacy differs from a stock server, and th
   * [[young_players|Young players]]
   * [[achievements|Achievements]]
   * [[loot_boxes|Loot boxes]]
+  * [[accessories|Accessory slots]]: more rings and bracelets, and toe rings
+  * [[creature_levels|Creature levels and Appraisal]]: how tough is that, next to you
 
 ===== Guilds and the League =====
 
   * [[guilds|Guilds]]: the eighteen trade and combat guilds
+  * [[:uo:guilds:start|The guild pages]]: one page per guild
   * [[league|The League of Extraordinary Citizens]]
+  * [[league_shop|The League Shop]]: titles, cosmetics and house decor for AP and Renown
+  * [[league_register|The League Register]]: your guilds in one book, League actions and League goods
+  * [[:uo:guides:league|A player's guide to the League]]
   * [[requisitions|Requisitions, the Appraiser and Leads]]
   * [[clean_up_britannia|Clean Up Britannia and the Custodians]]
 

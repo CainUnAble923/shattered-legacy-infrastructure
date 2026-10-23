@@ -1,0 +1,122 @@
+====== New Player FAQ ======
+
+Quick answers to the questions new players ask most. Each answer links to the page with the details. Words you do not know are in the [[glossary|Glossary]].
+
+===== Getting started =====
+
+==== How do I start? ====
+
+Follow the [[:uo:connection|Connection guide]], make a character, and you arrive on the New Haven plaza. Then read the [[:uo:new_player_guide|New player guide]] and the [[:uo:guides:first_hour|First hour route]].
+
+==== Is there a tutorial? ====
+
+One is being built: a League recruiter will walk new characters through nine short hands-on lessons on New Haven island. It is on the test shard only for now. See the [[:uo:drafts:tutorial|tutorial draft]].
+
+==== What does Young mean? ====
+
+A new account is Young for **two weeks of play** (336 hours logged in, for the whole account). Monsters in the open world leave you alone, healers resurrect you for free, and death sends you back to town. Skill does not end it. You can give it up early by saying "I want to grow up!". See [[:uo:systems:young_players|Young players]].
+
+==== What is a loop? Are there player levels? ====
+
+Loops and player levels are the shard's planned way of growing past the usual limits: you climb a level ladder, then loop back to level 1 with a higher ceiling and keep your achievements, League rank and recipes. They are **not built yet**. Today your skills are what count. See [[:uo:drafts:levels_and_loops|Levels and loops]] (draft).
+
+==== How high can my skills go? ====
+
+Every skill can reach 200, and individual stats can reach 500. See [[:uo:systems:skill_gain|Skill gain]] and [[:uo:systems:stats|Stats]].
+
+==== Do power scrolls work? ====
+
+They work as on OSI: a scroll raises one skill's cap. Because every skill already caps at 200, the usual 105 to 120 scrolls are refused. Recipe scrolls are different: they teach a crafting design. See [[:uo:professions:recipes|Recipes]].
+
+===== Guilds and the League =====
+
+==== Which guild should I join? ====
+
+Pick the one whose work you want to do. You can belong to several. The [[:uo:guilds:start|Guilds]] hub has a page for each, and [[:uo:systems:guilds|How guilds work]] explains joining, standing and ranks.
+
+==== How do I find a guildmaster? ====
+
+Type **[guild**, choose a guild, and press **Show me the way**. An arrow points you to its guildmaster.
+
+==== What is the League, and where do I register? ====
+
+The League of Extraordinary Citizens ties the guilds together and gives you a citizen rank, services and work. Register with **Elara Voss, the League Registrar**, at the League field office in New Haven. It is free. See [[:uo:systems:league|The League]] and [[:uo:guides:league|A player's guide to the League]].
+
+==== Are AP, Renown and guild standing the same thing? ====
+
+No.
+  * **AP** (Achievement Points) is a score from achievements that never goes down. It opens rewards in the League Shop.
+  * **Renown** is the League's money: you earn it and spend it in the [[:uo:systems:league_shop|League Shop]]. Your **Lifetime Renown**, which spending never lowers, sets your League rank.
+  * **Standing** is your reputation inside one guild, and sets your rank there. Each guild also has its own currency, separate again.
+
+===== Pets =====
+
+==== How do I get a pet? ====
+
+Tame one with Animal Taming, as on OSI, or buy one from an animal trainer. See [[:uo:systems:pet_training|Pet training]]. A starter evo pet that grows as it fights comes from the tutorial, which is still on the test shard: see [[:uo:drafts:companions|Companions and evo pets]] (draft).
+
+==== Can I hire a squire or companion? ====
+
+Not yet. Humanoid companions are planned.
+
+==== How does my pet get stronger? ====
+
+Use Animal Lore on it and press **Begin Animal Training**. Fights fill its training bar, and you spend the points on stats, skills and abilities. Skilled owners also make a pet's skills gain faster. See [[:uo:systems:pet_training|Pet training]].
+
+===== Staying alive =====
+
+==== What do I do when I die? ====
+
+As a ghost, go to a healer or an ankh and accept the resurrection window. There is an ankh beside the League field office in New Haven. While you are Young, healers resurrect you for free.
+
+==== How do I heal? ====
+
+Bandages on a living person use Healing and Anatomy; on an animal, Veterinary and Animal Lore.
+
+===== Crafting =====
+
+==== What is different about crafting here? ====
+
+You learn designs before you can make them, there are metals and woods past Valorite and Frostwood, exceptional items get bigger material bonuses, and the crafting guilds give work and rewards of their own. See [[:uo:guides:crafting|Crafting on Shattered Legacy]].
+
+==== Why are recipes missing from my craft menu? ====
+
+Higher designs stay hidden until you learn them from a pattern book or recipe scroll. Learning gives you the knowledge; you still need the skill, tools and materials. See [[:uo:professions:recipes|Recipes]].
+
+==== What are bulk orders? ====
+
+Bulk order deeds (BODs) ask for a number of crafted items, sometimes of a set material or quality, in exchange for rewards. Here they take items you crafted only, not bought ones. See [[:uo:professions:bulk_orders|Bulk orders]].
+
+==== How are contracts, commissions and requisitions different? ====
+
+  * **Guild contracts** ask a guild member for supplies or deliveries.
+  * **Smith commissions** ask the Society of Smiths for a client's piece or set.
+  * **Requisitions** at the League field office ask for matching magic equipment. See [[:uo:systems:requisitions|Requisitions]].
+
+==== Why did a rare ore or log turn into a plain one? ====
+
+The first time you find a new metal or wood, you may have to file a report before you can keep harvesting it. Open **Field Report** in the Prospector's Logbook or **Discovery Report** in the Forester's Logbook. See [[:uo:professions:materials|Metals and woods]].
+
+==== How do I start Imbuing? ====
+
+Imbuing is learned through the Artificers' Order. See [[:uo:professions:imbuing|Imbuing]] and [[:uo:guilds:artificers_order|Artificers' Order]].
+
+===== Rewards =====
+
+==== Where do I see my achievements? ====
+
+Type **[achievements** to open your Achievement Records. See [[:uo:systems:achievements|Achievements]].
+
+==== How do I open a loot box? ====
+
+Keep it in your backpack and double-click it in a guarded town, or in a house where you are an owner, co-owner or friend. Boxes are bound to your account. See [[:uo:systems:loot_boxes|Loot boxes]].
+
+==== Can I fish and sail? ====
+
+Yes. Double-click a fishing pole and target water, or take a boat to open sea for deep-water catches. See [[:uo:guides:high_seas_fishing|High Seas fishing]].
+
+===== Related pages =====
+
+  * [[start|New players]]
+  * [[glossary|Glossary]]
+  * [[:uo:new_player_guide|New player guide]]

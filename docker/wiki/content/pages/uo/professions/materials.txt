@@ -35,9 +35,31 @@ OSI's woods, Oak through Frostwood, are unchanged. Above them, for Carpentry and
 | Voidwood | 185 | 200 |
 | Starwood | 200 | 200 |
 
+The table above is for **crafting**. Chopping is a separate ladder:
+
   * **Lumberjacking**: every shard wood needs 100 Lumberjacking to chop, and the rarer the wood the rarer its grove. Each tree keeps the same wood for good, so a grove in your logging book always leads back to that wood.
   * Logs and boards of each wood show their own color and name.
   * Cutting logs into boards teaches nothing; only crafting with the wood does.
+
+===== What the woods give =====
+
+The shard woods add bonuses to **bows, staves, clubs and wooden shields** made from them. A normal item gets the first column; an exceptional one gets both. These woods never add Self Repair. OSI's woods keep OSI's bonuses (bows only).
+
+^ Wood ^ Weapon ^ Exceptional weapon adds ^ Shield ^ Exceptional shield adds ^
+| Ironwood | Durability +50 | Damage +14, lower stat requirements 20 | Durability +50 | Physical resist +3, lower stat requirements 20 |
+| Ghostwood | Hit chance +6 | Damage +15, defense chance +5 | Defense chance +4 | Energy resist +3, defense chance +3 |
+| Emberbark | Half its damage as fire | Damage +16, Hit Fire Area 10 | Fire resist +4 | Fire resist +3, reflect physical 5 |
+| Frostbark | 60 percent of its damage as cold | Damage +17, Hit Lower Attack 10 | Cold resist +4 | Cold resist +3, reflect physical 5 |
+| Shadowbark | Swing speed +10 | Damage +18, hit chance +6 | Defense chance +5 | Poison resist +3, defense chance +3 |
+| Runewood | Half its damage as energy, mana regeneration +2 | Damage +20, mana leech 15 | Energy resist +4, mana regeneration +1 | Spell channeling |
+| Voidwood | Life leech 15 | Damage +22, stamina leech 15 | All resists +1 | All resists +1, hit point regeneration +2 |
+| Starwood | Luck +100 | Damage +25, hit chance +8, one random Heartwood-style extra | Luck +100 | All resists +2, defense chance +5 |
+
+Rootwood, the starter wood, adds no bonus.
+
+===== Exceptional items and material bonuses =====
+
+**Shard change.** An exceptional item gets **one and a half times its material's positive bonuses**, rounded half up, for every metal, leather and scale, OSI's included: a +5 becomes +8. Penalties stay the same, runic properties are not multiplied, and the normal caps still apply. OSI's woods get the multiplier on their bow bonuses. The shard woods do **not**: their exceptional column above is used instead. Cloth has no material bonus.
 
 ===== Past the item's own top =====
 
@@ -45,7 +67,7 @@ Normally a craft stops teaching once your skill passes an item's top. In a shard
 
 ===== Starter materials =====
 
-Two more materials exist for crafters around 45 skill: **Dawnstone** ore and **Rootwood**, found only in the Rootdeep Burrows, with **Burrowhide** leather and **Gloomsilk** cloth from the Burrows' creatures. They teach like the OSI materials do. The Burrows are still being dug; see [[:uo:drafts:rootdeep_burrows|Rootdeep Burrows]].
+Two more materials exist for crafters around 45 skill: **Dawnstone** ore and **Rootwood**, found only in the Rootdeep Burrows, with **Burrowhide** leather and **Gloomsilk** cloth from the Burrows' creatures. They teach like the OSI materials do. The Burrows are not open yet; see [[:uo:drafts:rootdeep_burrows|Rootdeep Burrows]].
 
 ===== Tools that know the ladder =====
 
@@ -64,3 +86,4 @@ Two more materials exist for crafters around 45 skill: **Dawnstone** ore and **R
   * [[blacksmithy|Blacksmithy]]
   * [[:uo:systems:skill_gain|Skill gain]]
   * [[bulk_orders|Bulk orders]]
+  * [[:uo:guides:crafting|Crafting on Shattered Legacy]]

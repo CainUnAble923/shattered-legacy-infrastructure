@@ -1,31 +1,82 @@
 ====== Mining ======
 
-Mining is the first gathering profession to document because it connects directly into crafting, equipment, and early economy.
+Mining feeds Blacksmithy, Tinkering and much of the economy. It works as on OSI, with a longer ladder of metals and the [[:uo:guilds:miners_compact|Miners' Compact]] on top, both unique to Shattered Legacy.
 
-===== Start Here =====
+===== Start here =====
 
 ^ Item ^ Value ^
 | Trainer | Jacob Waltz |
-| Area | New Haven |
+| Area | New Haven, by the mine camp |
 | Coordinates | around ''3522, 2531'' |
+| Guild | [[:uo:guilds:miners_compact|Miners' Compact]], at the mine camp in New Haven's south mountains |
 
-===== First Goals =====
+===== First goals =====
 
-  - Find the trainer.
-  - Get a pickaxe or shovel.
-  - Mine a safe nearby route.
-  - Smelt ore.
-  - Continue into [[blacksmithy|Blacksmithy]].
+  - Find the trainer, and join the Miners' Compact for a free ore satchel, logbook and Jacob's Pickaxe.
+  - Use a pickaxe or shovel on a mountain or cave tile.
+  - Smelt the ore at a forge.
+  - Carry on into [[blacksmithy|Blacksmithy]].
 
-===== Needed Images =====
+===== The ores =====
 
-  * Trainer screenshot
-  * Safe mining route
-  * Smelting location
-  * First-tool screenshot
+The stock ores (OSI), by base Mining needed to dig them:
 
-===== Related Pages =====
+^ Ore ^ Mining ^
+| Iron | any |
+| Dull Copper | 65.0 |
+| Shadow Iron | 70.0 |
+| Copper | 75.0 |
+| Bronze | 80.0 |
+| Gold | 85.0 |
+| Agapite | 90.0 |
+| Verite | 95.0 |
+| Valorite | 99.0 |
 
+**Shard change:** eight **extended metals** go past Valorite. The same skill is needed to dig them and to smelt them, and smelting is still a skill roll that can fail.
+
+^ Metal ^ Mining ^
+| Platinum | 112.5 |
+| Toxic | 125.0 |
+| Blaze | 137.5 |
+| Frost | 150.0 |
+| Obsidian | 162.5 |
+| Mythril | 175.0 |
+| Adamantium | 187.5 |
+| Celestial | 200.0 |
+
+An extended metal must be **reported** to the Miners' Compact before you can keep it; until then its ore comes out as iron. See [[:uo:guilds:miners_compact|Miners' Compact]]. What each metal does in crafting is on [[:uo:professions:materials|Metals and woods]].
+
+A vein keeps its metal after it regrows and after a restart, though a dig can still turn up plain iron now and then.
+
+===== Blackrock =====
+
+At **100 Mining**, about **one dig in a thousand** turns up a small piece of **blackrock**.
+
+===== Stone =====
+
+Mining granite is OSI's: read **Mining For Quality Stone** (sold by Stone Crafters; you need **100.0 base Mining** to read it), then mine stone instead of ore.
+
+**Planned, not in the game yet:** the Compact's Stone Contracts will show only once you have learned stone mining, and the Compact will sell its own copy of the book.
+
+===== Getting higher =====
+
+  * **Climbing boots** from the Compact let you hop onto mountain tiles you cannot walk to. See [[climbing_boots|Climbing boots]].
+  * The Compact's **ore satchels** cut ore weight and, from the second tier, smelt at a forge for you.
+
+**Planned, not in the game yet:** the Compact's ore work orders become **mining quotas**: accept, mine the amount, claim. One quota per metal.
+
+===== Needed images =====
+
+  * TODO image: Jacob Waltz at the New Haven mine camp.
+  * TODO image: a safe first mining route out of New Haven.
+  * TODO image: smelting at the New Haven forge.
+  * TODO image: a piece of blackrock in a backpack.
+
+===== Related pages =====
+
+  * [[:uo:guilds:miners_compact|Miners' Compact]]
   * [[:uo:world:new_haven|New Haven]]
   * [[:uo:world:trainers|Trainer index]]
   * [[blacksmithy|Blacksmithy]]
+  * [[materials|Metals and woods]]
+  * [[climbing_boots|Climbing boots]]

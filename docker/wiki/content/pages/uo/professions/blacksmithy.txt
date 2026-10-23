@@ -1,22 +1,33 @@
 ====== Blacksmithy ======
 
-Blacksmithy turns mining into useful gear and an early economy loop.
+Blacksmithy turns mining into useful gear and an early economy loop. It works as on OSI, with the shard changes below.
 
-===== Good First Loop =====
+===== Good first loop =====
 
   - Mine ore using [[mining|Mining]].
-  - Smelt ore into ingots.
+  - Smelt ore into ingots at a forge.
   - Craft basic tools or armor.
   - Sell extras or equip upgrades.
 
-===== Needed Images =====
+Join the [[:uo:guilds:society_of_smiths|Society of Smiths]] early: it is free, it gives you a guild book, a salvage bag and a Hammer of Hephaestus, and its bulk orders and commissions pay as you train.
 
-  * Forge/anvil location
-  * Basic crafting menu
-  * Early item recommendations
+===== What is different here =====
 
-===== Related Pages =====
+  * **Recipes are learned.** Designs that need more than 30 skill are hidden until your account reads the pattern book for their band. See [[recipes|Recipes and pattern books]].
+  * **Metals past Valorite.** Platinum through Celestial, up to 200 skill. See [[materials|Metals and woods]].
+  * **Exceptional gear gets 1.5 times its positive material bonuses.**
+  * **Large Smith bulk orders** take crafted items directly, as well as filled small deeds. See [[bulk_orders|Bulk orders]].
+  * **The Hammer of Hephaestus**, a Society tool that adds Blacksmithy while held and learns each metal you work.
 
+===== Needed images =====
+
+  * TODO image: a New Haven forge and anvil.
+  * TODO image: the Blacksmithy craft menu.
+
+===== Related pages =====
+
+  * [[:uo:guilds:society_of_smiths|Society of Smiths]]
   * [[mining|Mining]]
+  * [[materials|Metals and woods]]
   * [[:uo:systems:skill_gain|Skill gain]]
   * [[:uo:world:new_haven|New Haven]]

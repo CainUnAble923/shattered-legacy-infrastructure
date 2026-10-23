@@ -1,0 +1,158 @@
+====== The Society of Smiths ======
+
+The Society of Smiths is the guild for **Blacksmithy** and **Arms Lore**: weapons, armor, shields and supplies made from ingots. You earn standing through orders and spend **Smithing Seals** on tools, pattern books and rewards. The Society is unique to Shattered Legacy; the bulk orders it hands out are OSI's, with the shard changes listed below and on [[:uo:professions:bulk_orders|Bulk orders]].
+
+===== Joining =====
+
+Start at **Forge and Anvil** in New Haven (Trammel). Type ''[guild'', find the Society and press **Show me the way**. Joining is free and makes you an Initiate.
+
+Joining gives you your trade tools, a blessed **Smithing Guild Book** and a blessed **Smith Guild Salvage Bag**. On the guild page's **Starter items**, ask for the **Hammer of Hephaestus**: the first one is free. It is the same reward as the //It's Hammer Time// training quest, so you get it once, by either route.
+
+The **Apprentice task** asks for **50 base Blacksmithy** or **10 iron ingots** (taken only if your skill is short). It pays **25 standing and 10 Smithing Seals**.
+
+Membership, standing and Seals belong to the character. Recipes you learn belong to the whole account.
+
+===== Ranks and recipes =====
+
+A promotion needs both standing and **base** Blacksmithy (item bonuses do not count). A rank you have earned stays if your skill later drops.
+
+^ Rank ^ Standing ^ Base Blacksmithy ^ Recipes ^
+| Initiate | 0 | none | may buy the Band I book |
+| Apprentice | 1,000, or the Apprentice task | 30 | Band I book given; may buy Band II |
+| Journeyman | 5,000 | 50 | Band II book given; may buy Band III |
+| Master | 15,000 | 70 | Band III book given; may buy Band IV |
+| Grandmaster | 50,000 | 90 | Band IV book given; a daily Band V scroll shop, up to 3 picks |
+| Legendary | 100,000 | 100 | up to 2 Band V starter scrolls; the daily shop grows to up to 5 picks |
+
+Some Society menus show rank from standing alone, so they can run ahead of the rank you hold while your skill catches up. The guild's Legendary trial is not built yet; until it is, it is waived.
+
+Designs that need 30 skill or less need no book. Higher designs are hidden in the craft menu until your account learns them.
+
+^ Pattern book ^ Designs needing ^ Seals ^
+| Band I | above 30, up to 50 | 100 |
+| Band II | above 50, up to 70 | 200 |
+| Band III | above 70, up to 90 | 400 |
+| Band IV | above 90, up to 100 | 800 |
+
+  * A **Band V** scroll from the daily shop costs **1,500 Seals and 10 Platinum ingots**.
+  * Reading a book or scroll from your backpack teaches your account and uses it up. One you already know is kept, and unread copies can be traded. A rank's free book is skipped if your account already knows it.
+  * Designs with their own recipe scrolls still need those scrolls.
+  * Repairing, smelting and enhancing need no pattern book.
+  * A finished **large** Smith bulk order has a small chance (2%) to award a Band V Smith scroll.
+
+See [[:uo:professions:recipes|Recipes and pattern books]] for how recipes work across all crafts.
+
+The Society also sells the schematics for its mule module, the **Field Smelter Rig** (tiers I, II and III at Apprentice, Journeyman and Grandmaster); see [[:uo:systems:pack_mules|Pack mules]].
+
+===== Your Smithing Guild Book =====
+
+Keep the book in your backpack and double-click it to work without walking back to the guildmaster.
+
+^ Page ^ What it does ^
+| Bulk Orders | stores your Smith deeds, shows progress, requests small or large orders, turns in finished ones |
+| Commissions | requests client work and hands in matching pieces from your backpack |
+| Seal Catalog | the reward shop |
+| Completed orders | Always bank, Always cash out, or Ask each time |
+| Orders that still teach me | picks orders that can still raise your skill (on by default) |
+
+Drag Smith deeds onto the book to file them; nothing else goes in. Loose deeds you carry also show in its order list.
+
+===== Three kinds of work =====
+
+==== Bulk orders ====
+
+Ask for a deed through the Society's **Bulk Orders** page or your book.
+
+  * You can carry **3 small and 1 large** Smith deed at a time. There is no wait between offers.
+  * Large deeds need **70.1 base Blacksmithy**, and no rank.
+  * Small deeds take matching items. **Large Smith deeds** take the matching crafted items directly, and still take filled small deeds. **Shard change:** on OSI a large deed takes only small deeds.
+  * Only crafted items count: store-bought pieces are refused.
+  * Crafting with a Hephaestus hammer can drop a matching result straight into a deed you carry, small deeds first.
+  * With **Orders that still teach me** on, the Society favors work that can still raise your Blacksmithy. If nothing you can make still teaches, it gives you the hardest work you can make instead.
+
+What a finished deed pays depends on your **Completed orders** setting:
+
+^ Setting ^ You get ^
+| Always bank (the default) | Smithing Seals, saved toward the Seal Catalog |
+| Always cash out | half the deed's usual gold, its Fame, and a 1 in 40 chance at its old item reward; **no Seals** |
+| Ask each time | you choose for each deed |
+
+Either way you get the same Society standing and Blacksmithy skill checks: **1** for a small deed, **2** for a large one, **3** for a large one in Gold or a better metal. A skill check is a chance to gain, not a sure gain. The deed's item, amount, metal and quality set its Seal pay.
+
+You can turn in at the guildmaster, through your book, or at any town smith; members get the Society's payout there too.
+
+==== Guild Contracts ====
+
+**Guild Contracts** are supply jobs: iron deliveries, tools for miners, weapons for guards, armor sets. You can hold **3** at a time for the Society, on top of your deeds and commissions. Each lists its requirements and pays standing, Seals and gold; materials can come from your backpack and bank.
+
+For example, **Iron Ingot Delivery** asks for 250 iron ingots and pays 100 standing, 5 Seals and 50 gold, with nothing needed but membership.
+
+==== Commissions ====
+
+Commissions are named clients' requests. A small commission wants one piece; a large one wants a whole armor set, handed in a piece at a time.
+
+  * You can hold **3 small and 1 large** commission at a time.
+  * Check the item, metal and whether it must be exceptional before you craft. Store-bought pieces are refused.
+  * A finished piece pays the Seals and standing shown and gives a Blacksmithy skill check. A large commission pays when the set is complete.
+  * Commissions have no deadline. After you abandon one, the next new request waits **5 minutes**.
+
+===== The Hammer of Hephaestus =====
+
+The Society's blessed hammer remembers your work in each metal. Its skill bonus works only while you hold it with uses left; in a bag it does nothing.
+
+^ Hammer ^ Uses ^ Recharge ^ Familiarity per metal ^ Bonus ^
+| Hammer of Hephaestus | 150 | 1 use every 30 minutes | up to 1,000 | +5 Blacksmithy; familiarity gives up to a 20% chance to refund a use in that metal |
+| Reinforced Hammer of Hephaestus | 400 | 1 use every 15 minutes | up to 2,500 | +10 Blacksmithy, plus up to +2.5 more from familiarity across your metals |
+
+  * Successful crafts raise familiarity: 1 for a normal gain, 3 for an exceptional one, slower near the limit. Use the hammer's **Metal Familiarity** menu entry to see it.
+  * A spent hammer loses its bonus until it recharges. For a full refill now, use **Hammer of Hephaestus Upgrades** at the guildmaster: **10 Seals and 200 iron ingots**, either hammer.
+  * **Upgrade** to the Reinforced hammer with a usable first hammer, **5,000 standing** and **80 Blacksmithy** (bonuses count). It costs **25 Seals, 500 iron ingots, 100 valorite ingots and 10,000 gold**, from your backpack and bank. Your familiarity carries over.
+
+===== Metals beyond Valorite =====
+
+Blacksmithy goes on past Valorite with eight more metals, from Platinum at 112.5 skill to Celestial at 200. Each has its own resist or damage flavor. See [[:uo:professions:materials|Metals and woods]] for the full table.
+
+Exceptional gear gets **1.5 times its positive material bonuses**, rounded half up: a +5 resist becomes +8. Penalties stay as they are, and normal resist caps still apply.
+
+===== Seals, salvage and the catalog =====
+
+Standing measures your progress; Seals are what you spend. Spending Seals never costs standing.
+
+**Salvage:** near a forge, with a smithing tool in your backpack, choose **Salvage Ingots** on the guild salvage bag's menu. It recycles metal gear inside it into some of its ingots, and members also earn Seals for each piece, from **1 for iron to 30 for Celestial**. It is a separate bag from the ordinary salvage bag that crafting's "Make X" uses.
+
+The **Seal Catalog** (at the guildmaster or in your book) has, among others:
+
+^ Reward ^ Seals ^
+| Sturdy Shovel or Sturdy Pickaxe | 150 each |
+| Gargoyle's Pickaxe | 300 |
+| Prospector's Tool | 600 |
+| Mining Gloves +3 / +5 | 900 / 1,800 |
+| Powder of Temperament | 450 |
+| Smith Guild Salvage Bag | 750 |
+| Ancient Smithy Hammers | 300 / 600 / 1,500 / 3,000 |
+| Dull Copper / Shadow Iron / Copper / Bronze Runic Hammer | 600 / 1,050 / 1,650 / 2,400 |
+| Gold / Agapite / Verite / Valorite Runic Hammer | 10,800 / 16,200 / 27,000 / 45,000 |
+
+The catalog items have no rank gate; only the pattern books do. Runic hammers past Valorite are not for sale yet.
+
+The League's [[:uo:systems:requisitions|Requisitions]] also post Smith requests for magic armor, sturdy weapons and shields. They pay Society standing, Renown and gold, not Seals.
+
+===== Where the Society meets =====
+
+Today the Society meets at Forge and Anvil in New Haven, and the Guild Directory points there. A main hall at Serpent's Hold is being built and is not open to players yet.
+
+===== Needed images =====
+
+  * TODO image: the Smithing Guild Book's Bulk Orders page.
+  * TODO image: the Seal Catalog.
+  * TODO image: the Hammer of Hephaestus Metal Familiarity window.
+
+===== Related pages =====
+
+  * [[:uo:professions:blacksmithy|Blacksmithy]]
+  * [[:uo:professions:bulk_orders|Bulk orders]]
+  * [[:uo:professions:materials|Metals and woods]]
+  * [[:uo:professions:recipes|Recipes and pattern books]]
+  * [[miners_compact|Miners' Compact]]
+  * [[artificers_order|Artificers' Order]]
+  * [[:uo:systems:guilds|Guilds overview]]

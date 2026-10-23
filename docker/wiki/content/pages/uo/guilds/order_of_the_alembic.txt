@@ -1,0 +1,85 @@
+====== Order of the Alembic ======
+
+The Order of the Alembic is the guild for **Alchemy** and **Taste Identification** (Taste ID). Glassblowing belongs here too, and it uses your Alchemy skill. Its work is cures, poisons, explosive potions, and the bottles and ingredients an alchemist needs. The guild is unique to Shattered Legacy; Alchemy, Taste ID and Glassblowing themselves work as on OSI.
+
+===== Joining =====
+
+  * Find **Distiller Orla Vance** in the **Little Shop of Alchemy** in New Haven (Trammel). Type ''[guild'', pick the Order, and choose **Show me the way** for an arrow.
+  * Joining is **free**, with no skill or gold needed. You start as an **Initiate**.
+  * Your starter kit: 4 empty bottles, a mortar and pestle, and a robe, once per character.
+  * Membership, standing, rank and Alembic Drams belong to your **character**. Recipes you learn belong to your **account**.
+
+==== The Apprentice task ====
+
+Bring **Alchemy 50.0** (base skill) or **10 empty bottles** to Orla. It pays **25 standing and 10 Alembic Drams**, once. With the skill, you keep your bottles; otherwise the bottles are taken from your backpack, then your bank.
+
+To actually hold the Apprentice rank you also need **30.0 base Alchemy** (see the rank table). Handing over bottles at lower skill does not skip that.
+
+===== Ranks =====
+
+Promotion needs **both** standing and **base** Alchemy. Gear bonuses do not count, and Taste ID does not count. A promotion you have earned stays if your skill later drops.
+
+^ Rank ^ Standing ^ Base Alchemy ^ What it opens ^
+| Initiate | join | none | Starter kit; the pattern shop, including the Band II Alchemy book |
+| Apprentice | Apprentice task, or 1,000 | 30.0 | Band II Alchemy book as a promotion gift, if your account has not learned it |
+| Journeyman | 5,000 | 50.0 | Band III Alchemy book for sale |
+| Master | 15,000 | 70.0 | Band III Alchemy book as a promotion gift, if your account has not learned it |
+| Grandmaster | 50,000 | 90.0 | The Band V scroll service (Alchemy has no Band V designs yet, so nothing to buy there today) |
+| Legendary | 100,000 | 100.0 | The top rank |
+
+Some guild windows show your rank from standing alone. If one disagrees with the table, your Alchemy skill is what is holding you back.
+
+===== Skills and crafts =====
+
+^ Skill or craft ^ How it works ^
+| Alchemy | Use a mortar and pestle on reagents. Most potions also need an empty bottle. |
+| Taste ID | Use it on food to check for poison. Potions and filled kegs tell you what they hold. |
+| Glassblowing | Read the book **Crafting Glass With Glassblowing** (needs **100.0 base Alchemy**), then use a blowpipe near a forge with sand. It has its own blowpipe menu. |
+
+==== Learning Alchemy patterns ====
+
+**Shard change:** Alchemy designs with a minimum skill of 30.0 or less are open to everyone. Harder designs stay hidden in the craft menu until your account learns their pattern book. See [[:uo:professions:recipes|Recipes and pattern books]].
+
+^ Book ^ Price ^
+| Band II Alchemy | 200 Alembic Drams |
+| Band III Alchemy | 400 Alembic Drams |
+
+Buy them on Orla's page under **Pattern books and recipe scrolls**, or get them as promotion gifts. Read a book from your backpack to teach your whole account; the book is used up. A book you already know is kept, and unread books can be traded. Band I is folded into the Band II book, so there is no separate Band I book to look for.
+
+Glassblowing is not a pattern book: glassblower vendors sell its book and blowpipes. Learning it unlocks it for your account, but each character still needs 100.0 base Alchemy to use it.
+
+===== Work and rewards =====
+
+Keep these apart:
+
+^ Balance ^ What it is for ^
+| Order standing | Your rank in the Order |
+| Alembic Drams | The Order's currency: pattern books and guild services |
+| Alchemy bulk order points | Rewards from the Alchemy bulk order list |
+| League Renown | The [[:uo:systems:league|League's]] currency, paid by requisitions |
+
+==== Alchemy bulk orders ====
+
+With some Alchemy skill, right-click Orla (or a town Alchemist) for **Bulk Order Info**. Fill the deed with the potions it asks for and hand it back for gold, Fame and Alchemy reward points. Rewards include a 250-use mortar and pestle, special natural dyes and Alchemy Master Craftsman talismans; rows marked **not on the shard yet** cannot be bought. Bulk orders do not pay Drams or standing. See [[:uo:professions:bulk_orders|Bulk orders]].
+
+==== Requisitions ====
+
+Open **Requisitions** on the Order's page. The Order asks for magic items: Enhance Potions jewelry, poison-resistant armor, Intelligence jewelry and lucky hats among them. A matching item pays **Order standing, League Renown and gold**. See [[:uo:systems:requisitions|Requisitions]].
+
+**Planned, not in the game yet:** Herbalism, with wild herbs and growing your own reagents. Reagents come from vendors and the usual world sources for now.
+
+===== Where the hall is =====
+
+The Order's chapter is the **Little Shop of Alchemy in New Haven**. A main hall elsewhere in Britannia is planned; see [[:uo:drafts:guild_halls|Guild halls]] (draft).
+
+===== Needed images =====
+
+  * TODO image: Distiller Orla Vance in the Little Shop of Alchemy.
+  * TODO image: Orla's pattern book page with the two Alchemy books.
+
+===== Related pages =====
+
+  * [[:uo:guilds:start|Guilds hub]]
+  * [[:uo:systems:guilds|How guilds work]]
+  * [[:uo:professions:recipes|Recipes and pattern books]]
+  * [[:uo:professions:bulk_orders|Bulk orders]]
