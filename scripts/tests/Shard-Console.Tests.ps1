@@ -8196,33 +8196,25 @@ $p153Then
 "@
 
 Fact 'P153_TheSuggestedWhatsNewLine' {
-    $ship = @([pscustomobject]@{ Sha = 'a1'; Short = 'a1b2c3d'; Subject = 'CC task P124: our TazUO'; Prompt = 'P124'; Files = @('client/patches/0003.patch') })
-    $s = Get-PackageWhatsNew -ChangelogThen $p153Then -ChangelogNow $p153Now -ShipCommits $ship
-    Assert-True ($s.Line.Length -le 120) ('under 120 characters: ' + $s.Line.Length + ' ' + $s.Line)
-    Assert-True ($s.Line.StartsWith('An updated game client')) ('what the package ships comes first: ' + $s.Line)
-    Assert-True ($s.Line -match 'The Achievements button opens your achievement book') ('the Added line: ' + $s.Line)
-    Assert-True ($s.Line -notmatch 'P\d{2,}|2026\.|Golem tab|already shipped|example') ('no prompt or version numbers, staff lines, shipped versions or the comment: ' + $s.Line)
-    Assert-True ($s.Line -notmatch ':') ('each item cut to its lead phrase: ' + $s.Line)
-    Assert-True (@($s.Sources | Where-Object { $_ -match '^Staff|Golem tab' }).Count -eq 0) 'the list leaves the staff line out'
-    Assert-True (@($s.Sources | Where-Object { $_ -match '^Package: a1b2c3d' }).Count -eq 1 -and @($s.Sources | Where-Object { $_ -match '^Fixed \(2026\.10\.20\.2\): Restoring' }).Count -eq 1) ('the list it was made from: ' + ($s.Sources -join ' | '))
-    Assert-True (-not $s.Empty) 'not empty'
-    $e = Get-PackageWhatsNew -ChangelogThen $p153Now -ChangelogNow $p153Now -ShipCommits @()
-    Assert-Equal 'No player changes since the last package' $e.Line 'the empty case says so'
-    Assert-True ($e.Empty -and -not @($e.Sources).Count) 'and lists nothing'
-    $long = Get-PackageWhatsNew -ChangelogThen '' -ChangelogNow ((1..12 | ForEach-Object { "## 2026.10.$($_ + 10)`n`n### Added`n- A new thing number $_ for every player in Britannia`n" }) -join "`n") -ShipCommits @()
-    Assert-True ($long.Line.Length -le 120 -and $long.Line.EndsWith('and more')) ('many changes stay under the length: ' + $long.Line)
-    Assert-Equal $null (Get-PackageSuggestion ([pscustomobject]@{ ChangelogThen = $null; ChangelogNow = $null; Commits = @() })) 'no published commit: no suggestion'
+    # cc-P288 replaced the line itself (per shipping commit, P288_ facts); the CHANGELOG.md parse and the lead phrase stay.
+    $items = @(ConvertFrom-ChangelogItems $p153Now)
+    Assert-True (@($items | Where-Object { $_.Text -match 'example' }).Count -eq 0) 'the comment is never read'
+    Assert-Equal 'Added,Added,Fixed,Staff' (($items | Select-Object -First 4 | ForEach-Object { $_.List }) -join ',') ('each line with its list: ' + (($items | ForEach-Object { $_.List + ':' + $_.Text }) -join ' | '))
+    Assert-Equal 'The Achievements button opens your achievement book' (Get-WhatsNewPhrase $items[0].Text) 'cut to its lead phrase, with no prompt number'
+    Assert-True (@(Get-ChangelogItemsAdded $p153Then $p153Now)[0].Text -match '^The Achievements button') 'what one commit added'
+    Assert-Equal $null (Get-PackageSuggestion ([pscustomobject]@{ WhatsNew = $null })) 'no published commit: no suggestion'
 }
 
 Fact 'P153_ThePackageTabHasTheSuggestionAndItsList' {
     $form = New-ConsoleForm -Config $config
     try {
         Assert-True ($null -ne $script:ui.PackageNotesFrom -and $script:ui.PackageNotesFrom.ReadOnly) 'a read-only list under the notes box'
-        $f = [pscustomobject]@{ ChangelogThen = $p153Then; ChangelogNow = $p153Now; Commits = @() }
+        $c = [pscustomobject]@{ Sha = 'e1'; Short = 'e1'; Subject = 'CC task P165: the Achievements button'; Prompt = 'P165'; Files = @('player-package/payload/app/Build-UoOverrides.ps1') }
+        $f = [pscustomobject]@{ WhatsNew = [pscustomobject]@{ Version = '2026.10.18.1709'; Base = ('a' * 40); BaseHow = 'zip'; Commits = @($c); AddedBy = @{ e1 = @(ConvertFrom-ChangelogItems $p153Now | Select-Object -First 1) }; ChangelogThen = $p153Then; ChangelogNow = $p153Now; Scripts = @(); Note = '' } }
         $script:ui.PackageNotes.Text = ''
         Update-PackageSuggestion $f
-        Assert-True ($script:ui.PackageNotes.Text.StartsWith('The Achievements button')) ('an empty box takes the suggestion: ' + $script:ui.PackageNotes.Text)
-        Assert-True ($script:ui.PackageNotesFrom.Text -match 'Added \(2026\.10\.20\.2\)') ('the list shows: ' + $script:ui.PackageNotesFrom.Text)
+        Assert-True ($script:ui.PackageNotes.Text.StartsWith('Achievements button')) ('an empty box takes the suggestion: ' + $script:ui.PackageNotes.Text)
+        Assert-True ($script:ui.PackageNotesFrom.Text -match 'P165, launcher\): The Achievements button opens') ('the list shows: ' + $script:ui.PackageNotesFrom.Text)
         $script:ui.PackageNotes.Text = 'My own line'
         Update-PackageSuggestion $f
         Assert-Equal 'My own line' $script:ui.PackageNotes.Text 'an edit of Chase''s is never written over'
@@ -8477,6 +8469,150 @@ Fact 'P287_OwnerWorksRunsSkipDayForTheGolemAndDateAndNothingElse' {
     $act = @(Get-ConsoleActions | Where-Object { $_.Key -eq 'golem.skipday' })
     Assert-True ($act.Count -eq 1 -and $act[0].Mutates -and $act[0].Group -eq 'Golem pick') 'on the Golem tab''s picker row'
     Assert-True ([bool](Get-ConsoleTooltips)['golem.skipday']) 'with a tooltip'
+}
+
+# --- cc-P288: the player package's What is new line fills itself -----------------------------------------------------
+# Commits as ConvertFrom-GitLogWithFiles gives them (newest first) and the CHANGELOG.md lines each added.
+function New-P288Commit { param([string]$Sha, [string]$Subject, [string[]]$Files) [pscustomobject]@{ Sha = $Sha; Short = $Sha.Substring(0, [math]::Min(7, $Sha.Length)); Subject = $Subject; Files = $Files; Prompt = $(if ($Subject -match '\bP(\d+)\b') { 'P' + $Matches[1] } else { '' }) } }
+function New-P288Line { param([string]$List, [string]$Text) [pscustomobject]@{ Version = '2026.10.23'; List = $List; Text = $Text } }
+$p288Commits = @(
+    (New-P288Commit 'c1' 'CC task P501: Rootdeep goes in (the way in from Old Haven, spawners)' @('player-package/vendor/shattered-legacy-map/trammel.mapops', 'server/customizations/Rootdeep.cs')),
+    (New-P288Commit 'c2' 'CC task P502: Ship Chase''s approved satchel and guild bag icons' @('player-package/vendor/shattered-legacy-art/art/13184.png', 'player-package/tests/Build-UoOverrides.Tests.ps1')),
+    (New-P288Commit 'c3' 'CC task P503: port the Eodon tribes' @('server/customizations/Eodon.cs', 'CHANGELOG.md')),
+    (New-P288Commit 'c4' 'CC task P504: the rideable red dragon (P139-D6), built from TheArt''s file' @('player-package/vendor/shattered-legacy-art/anim-src/bodies/2087.vd')),
+    (New-P288Commit 'c5' 'CC task P505: Creature levels, con colors and the Appraisal skill (F-14)' @('player-package/payload/app/Build-UoOverrides.ps1')),
+    (New-P288Commit 'c6' 'CC task P506: a package test' @('player-package/tests/Music-Overrides.Tests.ps1', 'player-package/vendor/shattered-legacy-music/SOURCE.txt')),
+    (New-P288Commit 'c7' 'CC task P507: shard music' @('server/customizations/Music.cs', 'CHANGELOG.md'))
+)
+$p288Added = @{
+    c1 = @((New-P288Line 'Added' 'The Rootdeep Burrows are in the world: a hole in the floor of Old Haven''s bank.'), (New-P288Line 'Staff' '[ClusterFSeedRootdeep places the teleporters.'))
+    c2 = @((New-P288Line 'Changed' 'Ore and lumber satchels have new icons of their own.'))
+    c3 = @((New-P288Line 'Added' 'The tribes of Eodon leave you alone until you attack one.'))
+    c4 = @((New-P288Line 'Staff' 'A rideable red dragon for staff to try.'))
+    c5 = @((New-P288Line 'Added' 'Every creature now shows how tough it is next to you.'))
+}
+$p288Now = @"
+# Shattered Legacy changelog
+
+## 2026.10.23
+
+### Added
+- The Rootdeep Burrows are in the world: a hole in the floor of Old Haven's bank.
+- The tribes of Eodon leave you alone until you attack one.
+- Every creature now shows how tough it is next to you.
+- Our own tracks play in chosen places, and come with the player package.
+
+### Changed
+- Ore and lumber satchels have new icons of their own.
+
+### Staff
+- [ClusterFSeedRootdeep places the teleporters.
+- A rideable red dragon for staff to try.
+"@
+$p288Then = "# Shattered Legacy changelog`n`n## 2026.10.18`n`n### Added`n- Something already shipped.`n"
+
+Fact 'P288_ClientCommitsMakeTheLineAndServerOnlyCommitsDoNot' {
+    $s = Get-PackageWhatsNew -Version '2026.10.18.1122' -Commits $p288Commits -AddedBy $p288Added -ChangelogThen $p288Then -ChangelogNow $p288Now
+    Assert-Equal 'Rootdeep map, satchel and guild bag icons, creature levels, our own tracks play in chosen places' $s.Line 'biggest first (the map, art, then the launcher and a marked server line), joined with commas'
+    Assert-True ($s.Line -notmatch 'P\d|Eodon|dragon|test|2026') ('no prompt numbers, no server-only line, no staff-only commit, no test-only commit: ' + $s.Line)
+    Assert-True ($s.Line.Length -le 120) 'under 120 characters'
+    Assert-Equal 4 @($s.List).Count ('one line per item in the fuller list: ' + (@($s.List) -join ' | '))
+    Assert-True (@($s.List)[0] -like 'Rootdeep map (P501, map): The Rootdeep Burrows are in the world') ('each with its prompt, kind and CHANGELOG lead: ' + @($s.List)[0])
+    Assert-True (@($s.LeftOut).Count -eq 1 -and @($s.LeftOut)[0] -match 'staff only.*P504 rideable red dragon') ('the staff-only commit is listed as left out: ' + (@($s.LeftOut) -join ' | '))
+    Assert-True (-not $s.Empty) 'not empty'
+    # A server-only commit's player line counts only when it says it reaches the install.
+    $plain = Get-PackageWhatsNew -Version 'v' -Commits @($p288Commits[2]) -AddedBy $p288Added -ChangelogThen $p288Then -ChangelogNow ($p288Now -replace ', and come with the player package', '')
+    Assert-Equal 'No client changes since v' $plain.Line ('server only, unmarked: ' + $plain.Line)
+    # The server half of a client item is that item.
+    $fog = Get-PackageWhatsNew -Version 'v' -Commits @(New-P288Commit 'f1' 'CC task P352: Fog of war, the TazUO half (F-6), continued' @('client/patches/0004-world-map-fog-of-war.patch')) -AddedBy @{} -ChangelogThen '' -ChangelogNow "## 2026.10.21`n`n### Added`n- The world map now has a fog of war. Update your game through the launcher to see it.`n"
+    Assert-True ($fog.Line -eq 'Fog of war' -and @($fog.List).Count -eq 1 -and @($fog.List)[0] -match '^fog of war \(P352, CHANGELOG 2026\.10\.21, client\): The world map now has a fog of war$') ('one item: ' + $fog.Line + ' | ' + (@($fog.List) -join ' | '))
+}
+
+Fact 'P288_NothingNewSaysNoClientChangesSinceTheVersion' {
+    $e = Get-PackageWhatsNew -Version '2026.10.18.1122' -Commits @() -AddedBy @{} -ChangelogThen $p288Now -ChangelogNow $p288Now
+    Assert-Equal 'No client changes since 2026.10.18.1122' $e.Line 'nothing new'
+    Assert-True ($e.Empty -and -not @($e.List).Count) 'and an empty list'
+    $t = Get-PackageWhatsNew -Version '2026.10.18.1122' -Commits @($p288Commits[5]) -AddedBy @{} -ChangelogThen $p288Now -ChangelogNow $p288Now
+    Assert-Equal 'No client changes since 2026.10.18.1122' $t.Line 'tests and SOURCE.txt do not ship'
+}
+
+Fact 'P288_ALongListIsCutToFit' {
+    $many = @(1..15 | ForEach-Object { New-P288Commit ('d' + $_) ("CC task P6$($_.ToString('00')): Item set number $_ for the bank") @("player-package/vendor/shattered-legacy-art/art/$_.png") })
+    $l = Get-PackageWhatsNew -Version 'v' -Commits $many -AddedBy @{}
+    Assert-True ($l.Line.Length -le 120) ('cut to fit: ' + $l.Line.Length + ' ' + $l.Line)
+    Assert-True ($l.Line.StartsWith('Item set number 1 for the bank, Item set number 2') -and $l.Line.EndsWith(' and more')) ('the first ones kept, then and more: ' + $l.Line)
+    Assert-Equal 15 @($l.List).Count 'the fuller list keeps every item'
+    $big = @($many) + @(New-P288Commit 'm1' 'CC task P700: Rootdeep goes in' @('player-package/vendor/shattered-legacy-map/trammel.mapops'))
+    Assert-True ((Get-PackageWhatsNew -Version 'v' -Commits $big -AddedBy @{}).Line.StartsWith('Rootdeep map, ')) 'the oldest commit still goes first when it is the biggest'
+}
+
+Fact 'P288_ShortNamesComeFromPromptTitles' {
+    foreach ($c in @(
+            @('CC task P236: Ship Chase''s approved satchel and guild bag icons', 'satchel and guild bag icons'),
+            @('CC task P188: Rootdeep goes in (the way in from Old Haven, spawners, the real map write)', 'Rootdeep'),
+            @('CC task P166: Kitsune ears and tail: west-facing tail and ears on a bald head', 'Kitsune ears and tail'),
+            @('CC task P352: Fog of war, the TazUO half (F-6), continued', 'Fog of war'),
+            @('CC task P277: the rideable red dragon (P139-D6), built from TheArt''s file', 'rideable red dragon'),
+            @('CC task P209: fix-up for P193 (CC task P193: port High Seas, the fishing half): its branch did not m', 'High Seas'),
+            @('Shard work, 2026-10-18 11:20', ''))) {
+        Assert-Equal $c[1] (Get-PromptTitleName $c[0]) $c[0]
+    }
+    Assert-Equal 'Rootdeep map' (Format-WhatsNewName 'Rootdeep' '' 'map') 'a one-word place that ships a map'
+    Assert-Equal 'New Haven community art' (Format-WhatsNewName 'New Haven community art' 'new things for new players' 'art') 'a name keeps its capitals'
+    Assert-Equal 'creature levels' (Format-WhatsNewName 'Creature levels' 'every creature shows' 'launcher') 'an ordinary word is lowered'
+    Assert-Equal 'Kitsune ears and tail' (Format-WhatsNewName 'Kitsune ears and tail' 'fox ears' 'art') 'a word CHANGELOG.md never writes in lower case stays'
+    Assert-Equal "Hestia's vat" (Format-WhatsNewName ("Hestia" + [char]0x2019 + "s vat") '' 'art') 'plain ASCII'
+    Assert-Equal 'The tribes of Eodon leave you alone' (Get-WhatsNewShortPhrase 'The tribes of Eodon leave you alone until you attack one, then the whole tribe comes.') 'no title: the line''s lead, at most 50 characters at a word'
+}
+
+Fact 'P288_ThePublishedCommitFromItsZipOrItsBuildTime' {
+    $ep = { param([datetime]$d) [long](($d.ToUniversalTime() - (New-Object DateTime 1970, 1, 1, 0, 0, 0, ([DateTimeKind]::Utc))).TotalSeconds) }
+    $a = 'a' * 40; $b = 'b' * 40; $c = 'c' * 40
+    $log = "$c|" + (& $ep (New-Object DateTime 2026, 10, 18, 11, 25, 0, ([DateTimeKind]::Local))) + "`n$b|" + (& $ep (New-Object DateTime 2026, 10, 18, 11, 21, 11, ([DateTimeKind]::Local))) + "`n$a|" + (& $ep (New-Object DateTime 2026, 10, 18, 9, 56, 23, ([DateTimeKind]::Local))) + "`n"
+    $z = Resolve-PackageBaseCommit -Version '2026.10.18.1122' -ZipCommit 'ac9eee3' -FirstParentLog $log
+    Assert-True ($z.Sha -eq 'ac9eee3' -and $z.How -eq 'zip') 'the zip''s VERSION.txt first'
+    $t = Resolve-PackageBaseCommit -Version '2026.10.18.1122' -ZipCommit '' -FirstParentLog $log
+    Assert-True ($t.Sha -eq $b -and $t.How -eq 'time') ('no zip: the newest commit at or before its build minute: ' + $t.Sha)
+    Assert-Equal $b (Resolve-PackageBaseCommit -Version '2026.10.18.1122' -ZipCommit 'ac9eee3 + uncommitted player-package changes' -FirstParentLog $log).Sha 'an uncommitted build: its build time'
+    Assert-Equal $a (Resolve-PackageBaseCommit -Version '2026.10.18.1120' -ZipCommit '' -FirstParentLog $log).Sha 'an earlier minute'
+    Assert-Equal $null (Resolve-PackageBaseCommit -Version '2026.10.18.0900' -ZipCommit '' -FirstParentLog $log) 'older than every commit: none'
+    Assert-Equal $null (Resolve-PackageBaseCommit -Version 'not-a-stamp' -ZipCommit '' -FirstParentLog $log) 'not a stamp: none'
+    $r = Select-OfficialScriptTags "official-2026.10.18.0956|100`nofficial-2026.10.25.1000|300`n" 200
+    Assert-True ($r.From -eq 'official-2026.10.18.0956' -and $r.To -eq 'official-2026.10.25.1000') 'the official scripts promoted since then'
+    Assert-Equal '' (Select-OfficialScriptTags "official-2026.10.18.0956|100`n" 200).To 'none since'
+    $s = Get-PackageWhatsNew -Version 'v' -Commits @() -Scripts @('Lumberjack.py', 'Miner.py')
+    Assert-True ($s.Line -eq 'Updated Legion scripts' -and @($s.List)[0] -match 'Lumberjack\.py, Miner\.py') ('official scripts are an item: ' + $s.Line)
+    Assert-Equal $null (Get-PackageSuggestion ([pscustomobject]@{ WhatsNew = [pscustomobject]@{ Base = ''; Note = 'no commit found' } })) 'no commit: no suggestion'
+}
+
+Fact 'P288_TheNotesBoxFillsAndRefills' {
+    $w = [pscustomobject]@{ Version = '2026.10.18.1122'; Base = ('b' * 40); BaseHow = 'time'; Commits = $p288Commits; AddedBy = $p288Added; ChangelogThen = $p288Then; ChangelogNow = $p288Now; Scripts = @(); Note = '' }
+    $f = [pscustomobject]@{ WhatsNew = $w }
+    $form = New-ConsoleForm -Config $config
+    try {
+        $script:ui.PackageNotes.Text = ''
+        Update-PackageSuggestion $f
+        Assert-True ($script:ui.PackageNotes.Text.StartsWith('Rootdeep map, satchel')) ('the box fills itself: ' + $script:ui.PackageNotes.Text)
+        $from = $script:ui.PackageNotesFrom.Text
+        Assert-True ($from -match 'What changed for players since 2026\.10\.18\.1122 \(commit bbbbbbb, found by its build time' -and $from -match '- Rootdeep map \(P501, map\)' -and $from -match 'Left out, staff only') ('the fuller list under it: ' + $from)
+        $script:ui.PackageNotes.Text = 'My own line'
+        Update-PackageSuggestion $f
+        Assert-Equal 'My own line' $script:ui.PackageNotes.Text 'an edit is never written over by itself'
+        $btn = $script:ui.PackageNotesRefill
+        Assert-True ($btn -and $btn.Text -eq 'Refill' -and $btn.Parent -eq $script:ui.PackageNotes.Parent) 'a Refill button beside the box'
+        # The form is never shown here, so PerformClick would do nothing: raise its Click as a press does.
+        [void]$btn.GetType().GetMethod('OnClick', [Reflection.BindingFlags]'Instance,NonPublic').Invoke($btn, @([EventArgs]::Empty))
+        Assert-True ($script:ui.PackageNotes.Text.StartsWith('Rootdeep map, satchel')) ('Refill puts the suggestion back: ' + $script:ui.PackageNotes.Text)
+        Assert-True ([bool](Get-ConsoleTooltips)['packageNotesRefill']) 'with a tooltip'
+        Update-PackageSuggestion ([pscustomobject]@{ WhatsNew = [pscustomobject]@{ Base = ''; Note = 'no commit found for 2026.10.18.1122' } })
+        Assert-True ($script:ui.PackageNotesFrom.Text -match 'No suggestion: no commit found for 2026\.10\.18\.1122') ('says why there is none: ' + $script:ui.PackageNotesFrom.Text)
+    } finally { $form.Dispose() }
+    # The web console's copy: the same line and list (Get-WebConsoleList.ps1 -Page package).
+    $d = ConvertTo-WhatsNewDocument (Get-PackageSuggestion $f)
+    Assert-True ($d.line.StartsWith('Rootdeep map') -and @($d.list).Count -eq 4 -and $d.base -eq 'bbbbbbb' -and $d.baseHow -eq 'time' -and @($d.leftOut).Count -eq 1) 'the web document'
+    Assert-Equal 'no commit found' (ConvertTo-WhatsNewDocument $null 'no commit found').note 'and why there is none'
+    $wl = Get-Content -LiteralPath (Join-Path $here '..\Get-WebConsoleList.ps1') -Raw
+    Assert-True ($wl -match 'whatsNew\s*=\s*ConvertTo-WhatsNewDocument') 'the web list carries it'
 }
 
 $failed =@($results | Where-Object { -not $_.Passed }).Count

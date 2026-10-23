@@ -1805,27 +1805,123 @@ function Get-WhatsNewPhrase {
 }
 
 function Get-PackageShipPhrase {
-    # What a package-shipping commit gives players, from the paths it touched.
+    # What a package-shipping commit gives players, from the paths it touched (cc-P288: only for a commit with neither a
+    # prompt title nor a player line of CHANGELOG.md, such as a hand commit).
     param([string[]]$Files)
     $f = @($Files)
     if (@($f | Where-Object { $_ -match '^client/|TAZUO_COMMIT' }).Count) { return 'an updated game client' }
+    if (@($f | Where-Object { $_ -match '(?i)shattered-legacy-map/' }).Count) { return 'map changes' }
+    if (@($f | Where-Object { $_ -match '(?i)shattered-legacy-music/' }).Count) { return 'new music' }
     if (@($f | Where-Object { $_ -match '(?i)launcher' }).Count) { return 'launcher updates' }
-    if (@($f | Where-Object { $_ -match '(?i)\.(png|gif|bmp|mul|uop)$|art|gump' }).Count) { return 'new art in the package' }
+    if (@($f | Where-Object { $_ -match '(?i)\.(png|gif|bmp|mul|uop|vd)$|art|gump' }).Count) { return 'new art in the package' }
     'package updates'
 }
 
+# --- cc-P288: the What is new line, made per commit that changes what players get -------------------------------------
+# A commit counts when it touches a path the package ships ($script:WhatsNewKinds; tests, SOURCE.txt and .md files never
+# ship). The CHANGELOG.md lines it added say whether players see it: Staff lines only, and it is left out. Its prompt
+# title gives the short name ("CC task P236: Ship Chase's approved satchel and guild bag icons" is "satchel and guild bag
+# icons"); a commit with no prompt title takes its first player line's lead phrase. A server-only commit counts only when
+# a player line it added says it reaches the player's install ($script:WhatsNewMarked). Biggest first: the kind of thing
+# shipped, then the player lines added (Added 3, Changed 2, Fixed 1), then files, then newest. Pure from here to
+# Get-PackageSuggestion; Get-WhatsNewFacts reads git.
+$script:WhatsNewNotShipped = '(^|/)tests/|(^|/)SOURCE\.txt$|\.md$'
+$script:WhatsNewMarked = '(?i)\b(player package|launcher|update your game)\b'
+$script:WhatsNewKinds = @(
+    @{ Kind = 'map'; Weight = 6; Pattern = '^player-package/vendor/shattered-legacy-map/' },
+    @{ Kind = 'client'; Weight = 5; Pattern = '^client/(patches/|Build-Client\.ps1$|TAZUO_COMMIT$)|^TAZUO_COMMIT$' },
+    @{ Kind = 'bodies'; Weight = 4; Pattern = '^player-package/vendor/shattered-legacy-art/anim-src/' },
+    @{ Kind = 'art'; Weight = 3; Pattern = '^player-package/vendor/(shattered-legacy-art|paperdoll-sos|fiddle-me-this)/' },
+    @{ Kind = 'music'; Weight = 3; Pattern = '^player-package/vendor/shattered-legacy-music/' },
+    @{ Kind = 'text'; Weight = 2; Pattern = '^player-package/vendor/shattered-legacy-cliloc/' },
+    @{ Kind = 'launcher'; Weight = 1; Pattern = '^player-package/' }
+)
+$script:WhatsNewPoints = @{ Added = 3; Changed = 2; Fixed = 1 }
+
+function Get-WhatsNewShipKind {
+    # The biggest kind of thing $Files ship, as @{ Kind; Weight; Files }, or $null when none of them ships.
+    param([string[]]$Files)
+    $best = $null; $n = 0
+    foreach ($f in @($Files)) {
+        if (-not $f -or $f -match $script:WhatsNewNotShipped) { continue }
+        foreach ($k in $script:WhatsNewKinds) {
+            if ($f -match $k.Pattern) { $n++; if (-not $best -or $k.Weight -gt $best.Weight) { $best = $k }; break }
+        }
+    }
+    if (-not $best) { return $null }
+    [pscustomobject]@{ Kind = $best.Kind; Weight = $best.Weight; Files = $n }
+}
+
+function Get-ChangelogItemsAdded {
+    # The CHANGELOG.md lines $After has and $Before does not (by list and text): what one commit added.
+    param([string]$Before, [string]$After)
+    $had = @{}
+    foreach ($i in @(ConvertFrom-ChangelogItems $Before)) { $had[$i.List + '|' + $i.Text] = $true }
+    @(ConvertFrom-ChangelogItems $After | Where-Object { -not $had.ContainsKey($_.List + '|' + $_.Text) })
+}
+
+function Get-PromptTitleName {
+    # A commit's prompt title cut to a short name, '' for a commit that is not a CC task. A fix-up names the prompt it
+    # fixes; brackets, prompt and F- numbers, and what follows a colon or the first comma go; so do a leading verb
+    # (port, add, ship ...) and article, and a closing "goes in".
+    param([string]$Subject)
+    if ([string]$Subject -notmatch '^(?:Merge \S+: )?CC task P\d+:\s*(.+)$') { return '' }
+    $t = $Matches[1]
+    if ($t -match '^fix-up for P\d+ \(CC task P\d+:\s*([^)]*)') { $t = $Matches[1] }
+    $t = $t -replace '\([^)]*\)?', '' -replace '\b(?:cc-)?P\d{2,4}(?:-D\d+)?\b', '' -replace '\bF-\d+\b', ''
+    $t = ($t -split '\s*[:;]\s*|\s+-{1,2}\s+')[0]
+    $t = ($t -split ',\s*')[0]
+    $t = ($t -replace '\s{2,}', ' ').Trim().TrimEnd('.', ',')
+    $t = $t -replace '(?i)^(?:port|ports|add|adds|added|ship|ships|build|builds|bring|brings|make|makes|fix|fixes|give|gives)\s+', ''
+    do { $was = $t; $t = $t -replace "(?i)^(?:the|a|an|our|OSI's|Chase's|approved)\s+", '' } while ($t -ne $was)
+    $t = $t -replace '(?i)\s+(?:goes|go|comes|come)\s+(?:in|out|back)$', ''
+    $t.Trim()
+}
+
+function Get-WhatsNewShortPhrase {
+    # A CHANGELOG line's short name, when there is no prompt title: its lead phrase (Get-WhatsNewPhrase), at most 50
+    # characters, cut at a word that is not a small one.
+    param([string]$Text)
+    $t = Get-WhatsNewPhrase $Text
+    if (-not $t) { $t = ((@(([string]$Text -replace '\b(?:cc-)?P\d{2,4}\b', '') -split '\s+' | Where-Object { $_ }) | Select-Object -First 6) -join ' ').TrimEnd('.', ',', ':', ';') }
+    if ($t.Length -gt 50) {
+        $t = $t.Substring(0, 50); if ($t.Contains(' ')) { $t = $t.Substring(0, $t.LastIndexOf(' ')) }
+        # A cut never ends on a small word ("... alone until you").
+        do { $was = $t; $t = $t -replace '(?i)[\s,]+(?:a|an|and|at|by|for|from|in|it|of|on|or|the|to|until|when|with|you|your)$', '' } while ($t -ne $was)
+    }
+    $t.TrimEnd(',', ' ')
+}
+
+function Format-WhatsNewName {
+    # A name as it sits inside the line: plain ASCII (launchers print it in a PowerShell 5.1 console), its first word
+    # lowered when it is an ordinary word (one $Corpus, CHANGELOG.md, also writes in lower case), never a name: "New
+    # Haven" (two capitals) and "Rootdeep" stay. A one-word name that ships a map gets " map".
+    param([string]$Name, [string]$Corpus, [string]$Kind)
+    $t = [string]$Name
+    $t = $t -replace '[\u2018\u2019]', "'" -replace '[\u201C\u201D]', '"' -replace '[\u2013\u2014]', '-' -replace '[^\x20-\x7E]', ''
+    $t = ($t -replace '\s{2,}', ' ').Trim()
+    $w = @($t -split ' ' | Where-Object { $_ })
+    if ($Kind -eq 'map' -and $w.Count -eq 1) { $t += ' map'; $w += 'map' }
+    if (-not $w.Count -or $w[0] -cnotmatch '^[A-Z][a-z]+$') { return $t }
+    if ($w.Count -gt 1 -and $w[1] -cmatch '^[A-Z]') { return $t }
+    $low = $w[0].ToLower()
+    if ($t -cmatch $script:WhatsNewLowerFirst -or ($Corpus -and $Corpus -cmatch ('\b' + [regex]::Escape($low) + '\b'))) { return $low + $t.Substring($w[0].Length) }
+    $t
+}
+
 function Join-WhatsNew {
-    # "a, b and c", as many as fit in $Max; " and more" when some are left out and it still fits.
+    # "a, b, c": as many as fit in $Max, biggest first; " and more" when some are left out and it still fits. The first
+    # letter is raised.
     param([string[]]$Phrases, [int]$Max = $script:WhatsNewMax)
     $take = New-Object 'System.Collections.Generic.List[string]'
-    $join = { param($xs) if ($xs.Count -le 1) { ($xs -join '') } else { ((@($xs)[0..($xs.Count - 2)]) -join ', ') + ' and ' + @($xs)[$xs.Count - 1] } }
     foreach ($p in @($Phrases)) {
-        $try = @($take) + @($p)
-        if ((& $join $try).Length -le $Max) { $take.Add($p) }
+        if (-not $p) { continue }
+        if (((@($take) + @($p)) -join ', ').Length -le $Max) { $take.Add($p) }
     }
-    $line = & $join @($take)
-    if ($take.Count -lt @($Phrases).Count -and $take.Count) {
-        $more = ((@($take) -join ', ') + ' and more')
+    $line = (@($take) -join ', ')
+    if ($take.Count -lt @($Phrases | Where-Object { $_ }).Count -and $take.Count) {
+        $more = $line + ' and more'
+        while ($more.Length -gt $Max -and $take.Count -gt 1) { $take.RemoveAt($take.Count - 1); $more = (@($take) -join ', ') + ' and more' }
         if ($more.Length -le $Max) { $line = $more }
     }
     if ($line) { $line = $line.Substring(0, 1).ToUpper() + $line.Substring(1) }
@@ -1833,37 +1929,132 @@ function Join-WhatsNew {
 }
 
 function Get-PackageWhatsNew {
-    # The suggestion and the list it was made from. Most important first: what the package itself ships (the client,
-    # the launcher, art), then Added, Changed and Fixed, newest version first within each.
-    param([string]$ChangelogThen, [string]$ChangelogNow, [object[]]$ShipCommits, [int]$Max = $script:WhatsNewMax)
-    $then = @{}
-    foreach ($i in @(ConvertFrom-ChangelogItems $ChangelogThen)) { $then[$i.Version] = $true }
-    $new = @(ConvertFrom-ChangelogItems $ChangelogNow | Where-Object { -not $then.ContainsKey($_.Version) -and $_.List -in @('Added', 'Changed', 'Fixed') })
-    $phrases = New-Object 'System.Collections.Generic.List[string]'
-    $sources = New-Object 'System.Collections.Generic.List[string]'
-    $seen = @{}
-    foreach ($c in @($ShipCommits)) {
-        $p = Get-PackageShipPhrase $c.Files
-        $sources.Add('Package: ' + $c.Short + ' ' + $c.Subject)
-        if (-not $seen.ContainsKey($p)) { $seen[$p] = $true; $phrases.Add($p) }
-    }
-    foreach ($list in @('Added', 'Changed', 'Fixed')) {
-        foreach ($i in @($new | Where-Object { $_.List -eq $list })) {
-            $sources.Add($list + ' (' + $i.Version + '): ' + $i.Text)
-            $p = Get-WhatsNewPhrase $i.Text
-            if ($p -and -not $seen.ContainsKey($p.ToLower())) { $seen[$p.ToLower()] = $true; $phrases.Add($(if ($p -cmatch $script:WhatsNewLowerFirst) { $p.Substring(0, 1).ToLower() + $p.Substring(1) } else { $p })) }
+    # The suggested What is new line, the fuller list (one line per item, biggest first) and what was left out.
+    #   $Version         the published package's version ("No client changes since <version>")
+    #   $Commits         ConvertFrom-GitLogWithFiles of <published commit>..HEAD, newest first
+    #   $AddedBy         sha -> the CHANGELOG.md lines that commit added (Get-ChangelogItemsAdded)
+    #   $ChangelogThen   CHANGELOG.md at the published commit, and $ChangelogNow at HEAD (marked server-only lines)
+    #   $Scripts         the official Legion scripts changed since then (file names)
+    param([string]$Version, [object[]]$Commits, [hashtable]$AddedBy = @{}, [string]$ChangelogThen = '', [string]$ChangelogNow = '',
+        [string[]]$Scripts = @(), [int]$Max = $script:WhatsNewMax)
+    if ($null -eq $AddedBy) { $AddedBy = @{} }
+    $items = New-Object 'System.Collections.Generic.List[object]'
+    $left = New-Object 'System.Collections.Generic.List[string]'
+    $claimed = @{}
+    $byName = @{}
+    $order = 0
+    $addItem = {
+        param($Name, $Kind, $Weight, $Score, $Files, $From, $Lead)
+        $key = $Name.ToLower()
+        if ($byName.ContainsKey($key)) {
+            $it = $byName[$key]
+            if ($Weight -gt $it.Weight) { $it.Weight = $Weight; $it.Kind = $Kind }
+            $it.Score += $Score; $it.Files += $Files; $it.From = @($it.From) + @($From)
+            if (-not $it.Lead -and $Lead) { $it.Lead = $Lead }
+            return
         }
+        $it = [pscustomobject]@{ Name = $Name; Kind = $Kind; Weight = $Weight; Score = $Score; Files = $Files; Order = $items.Count; From = @($From); Lead = $Lead }
+        $byName[$key] = $it; $items.Add($it)
     }
-    $line = $(if ($phrases.Count) { Join-WhatsNew @($phrases) $Max } else { 'No player changes since the last package' })
-    [pscustomobject]@{ Line = $line; Sources = $sources.ToArray(); Empty = (-not $phrases.Count) }
+    foreach ($c in @($Commits)) {
+        $kind = Get-WhatsNewShipKind $c.Files
+        if (-not $kind) { continue }
+        $added = @(if ($AddedBy.ContainsKey([string]$c.Sha)) { @($AddedBy[[string]$c.Sha]) | Where-Object { $_ } })
+        foreach ($a in $added) { $claimed[$a.Text] = $true }
+        $player = @($added | Where-Object { $_.List -in @('Added', 'Changed', 'Fixed') })
+        $label = $(if ($c.Prompt) { [string]$c.Prompt } else { [string]$c.Short })
+        $title = Get-PromptTitleName $c.Subject
+        if ($added.Count -and -not $player.Count) { $left.Add('Left out, staff only in CHANGELOG.md: ' + $label + ' ' + $(if ($title) { $title } else { $c.Subject })); continue }
+        $name = $title
+        if (-not $name -and $player.Count) { $name = Get-WhatsNewShortPhrase $player[0].Text }
+        if (-not $name) { $name = Get-PackageShipPhrase $c.Files }
+        $name = Format-WhatsNewName $name $ChangelogNow $kind.Kind
+        if (-not $name) { continue }
+        $score = 0; foreach ($p in $player) { $score += $script:WhatsNewPoints[$p.List] }
+        $lead = $(if ($player.Count) { Get-WhatsNewPhrase $player[0].Text } else { '' })
+        & $addItem $name $kind.Kind $kind.Weight $score $kind.Files $label $lead
+    }
+    # Server-only lines that say they reach the install (a line some shipping commit added is already counted).
+    $had = @{}
+    foreach ($i in @(ConvertFrom-ChangelogItems $ChangelogThen)) { $had[$i.List + '|' + $i.Text] = $true }
+    foreach ($i in @(ConvertFrom-ChangelogItems $ChangelogNow)) {
+        if ($i.List -notin @('Added', 'Changed', 'Fixed') -or $had.ContainsKey($i.List + '|' + $i.Text) -or $claimed.ContainsKey($i.Text) -or $i.Text -notmatch $script:WhatsNewMarked) { continue }
+        $name = Format-WhatsNewName (Get-WhatsNewShortPhrase $i.Text) $ChangelogNow 'server'
+        if (-not $name) { continue }
+        # The server half of something a shipping commit already names ("the world map now has a fog of war" and the
+        # client's "fog of war") is that item, not a second one.
+        $low = $name.ToLower()
+        $same = @($items | Where-Object { $n = $_.Name.ToLower(); $low.Contains($n) -or $n.Contains($low) })
+        if ($same.Count) { $same[0].Score += $script:WhatsNewPoints[$i.List]; $same[0].From = @($same[0].From) + @('CHANGELOG ' + $i.Version); if (-not $same[0].Lead) { $same[0].Lead = Get-WhatsNewPhrase $i.Text }; continue }
+        & $addItem $name 'server' 1 $script:WhatsNewPoints[$i.List] 0 ('CHANGELOG ' + $i.Version) (Get-WhatsNewPhrase $i.Text)
+    }
+    $sc = @($Scripts | Where-Object { $_ })
+    if ($sc.Count) { & $addItem 'updated Legion scripts' 'scripts' 1 0 $sc.Count 'official scripts' ($sc -join ', ') }
+    $sorted = @($items | Sort-Object @{ Expression = 'Weight'; Descending = $true }, @{ Expression = 'Score'; Descending = $true }, @{ Expression = 'Files'; Descending = $true }, @{ Expression = 'Order'; Descending = $false })
+    $list = @($sorted | ForEach-Object { $_.Name + ' (' + (@($_.From | Select-Object -Unique) -join ', ') + ', ' + $_.Kind + ')' + $(if ($_.Lead) { ': ' + $_.Lead } else { '' }) })
+    $line = $(if ($sorted.Count) { Join-WhatsNew @($sorted | ForEach-Object { $_.Name }) $Max } elseif ($Version) { 'No client changes since ' + $Version } else { 'No client changes since the published package' })
+    [pscustomobject]@{ Line = $line; Items = $sorted; List = $list; LeftOut = $left.ToArray(); Sources = @($list) + @($left.ToArray()); Empty = (-not $sorted.Count); Version = $Version }
+}
+
+function Resolve-PackageBaseCommit {
+    # The commit a published package was built from: its zip's VERSION.txt when dist\ still holds the zip ('zip'), else
+    # the newest commit on HEAD's first-parent line at or before the version's own build time ('time': the version is
+    # yyyy.MM.dd.HHmm in the building PC's local time, this PC's). $FirstParentLog: git log --first-parent
+    # --format=%H|%ct, newest first. $null when neither can say.
+    param([string]$Version, [string]$ZipCommit, [string]$FirstParentLog)
+    if ($ZipCommit -and $ZipCommit -notmatch 'uncommitted') { return [pscustomobject]@{ Sha = (($ZipCommit.Trim()) -split '\s+')[0]; How = 'zip' } }
+    if ($Version -notmatch '^(\d{4})\.(\d{2})\.(\d{2})\.(\d{2})(\d{2})$') { return $null }
+    try { $at = New-Object DateTime ([int]$Matches[1]), ([int]$Matches[2]), ([int]$Matches[3]), ([int]$Matches[4]), ([int]$Matches[5]), 59, ([DateTimeKind]::Local) } catch { return $null }
+    $epoch = [long](($at.ToUniversalTime() - (New-Object DateTime 1970, 1, 1, 0, 0, 0, ([DateTimeKind]::Utc))).TotalSeconds)
+    foreach ($raw in @(([string]$FirstParentLog) -split "`n")) {
+        if ($raw.Trim() -match '^([0-9a-f]{40})\|(\d+)$' -and [long]$Matches[2] -le $epoch) { return [pscustomobject]@{ Sha = $Matches[1]; How = 'time' } }
+    }
+    $null
+}
+
+function Select-OfficialScriptTags {
+    # The official Legion scripts tags (for-each-ref --format=%(refname:short)|%(creatordate:unix)) around a time: the
+    # newest at or before it (From, '' when none) and the newest after it (To, '' when none is newer).
+    param([string]$TagText, [long]$Since)
+    $tags = @(foreach ($raw in @(([string]$TagText) -split "`n")) { if ($raw.Trim() -match '^(official-\S+)\|(\d+)$') { [pscustomobject]@{ Tag = $Matches[1]; At = [long]$Matches[2] } } })
+    $from = @($tags | Where-Object { $_.At -le $Since } | Sort-Object At | Select-Object -Last 1)
+    $to = @($tags | Where-Object { $_.At -gt $Since } | Sort-Object At | Select-Object -Last 1)
+    [pscustomobject]@{ From = $(if ($from.Count) { $from[0].Tag } else { '' }); To = $(if ($to.Count) { $to[0].Tag } else { '' }) }
 }
 
 function Get-PackageSuggestion {
-    # cc-P153: the suggested What is new line from the package light's facts, or $null when they cannot say (no
-    # published package to compare with, or CHANGELOG.md could not be read at both commits).
+    # The suggested What is new line from the package light's facts ($Facts.WhatsNew, Get-WhatsNewFacts), or $null when
+    # they cannot say (no published version, or no commit for it).
     param($Facts)
-    if (-not $Facts -or $null -eq $Facts.ChangelogNow -or $null -eq $Facts.ChangelogThen) { return $null }
-    Get-PackageWhatsNew -ChangelogThen $Facts.ChangelogThen -ChangelogNow $Facts.ChangelogNow -ShipCommits @(Select-CommitsTouching @($Facts.Commits) $script:ShipPaths)
+    $w = $(if ($Facts) { $Facts.WhatsNew })
+    if (-not $w -or -not $w.Base) { return $null }
+    $s = Get-PackageWhatsNew -Version $w.Version -Commits @($w.Commits) -AddedBy $w.AddedBy -ChangelogThen ([string]$w.ChangelogThen) -ChangelogNow ([string]$w.ChangelogNow) -Scripts @($w.Scripts)
+    $s | Add-Member -NotePropertyName Base -NotePropertyValue $w.Base
+    $s | Add-Member -NotePropertyName BaseHow -NotePropertyValue $w.BaseHow
+    $s
+}
+
+function ConvertTo-WhatsNewDocument {
+    # cc-P288: the suggestion as the web console's Player package page takes it (Get-WebConsoleList.ps1 -Page package):
+    # the line, the fuller list, what was left out, and what it was compared with. $Note says why there is none.
+    param($Suggestion, [string]$Note = '')
+    if (-not $Suggestion) { return [ordered]@{ line = ''; list = @(); leftOut = @(); version = ''; base = ''; baseHow = ''; note = $(if ($Note) { $Note } else { 'the published package could not be read' }) } }
+    [ordered]@{ line = [string]$Suggestion.Line; list = @($Suggestion.List | ForEach-Object { [string]$_ }); leftOut = @($Suggestion.LeftOut | ForEach-Object { [string]$_ })
+        version = [string]$Suggestion.Version; base = ([string]$Suggestion.Base).Substring(0, [math]::Min(7, ([string]$Suggestion.Base).Length)); baseHow = [string]$Suggestion.BaseHow; note = '' }
+}
+
+function Format-WhatsNewList {
+    # cc-P288: the box under the notes: what the suggested line was made from, one line per item, biggest first, then
+    # what was left out. $Note says why there is no suggestion.
+    param($Suggestion, [string]$Note = '')
+    if (-not $Suggestion) { return ('No suggestion: ' + $(if ($Note) { $Note } else { 'the published package could not be read' }) + ' (see the package light).') }
+    $b = ([string]$Suggestion.Base).Substring(0, [math]::Min(7, ([string]$Suggestion.Base).Length))
+    $head = 'What changed for players since ' + $Suggestion.Version + ' (commit ' + $b + $(if ($Suggestion.BaseHow -eq 'time') { ', found by its build time: no zip in dist\ names its commit' } else { '' }) + '), biggest first:'
+    $lines = @(@($Suggestion.List) | ForEach-Object { '- ' + $_ })
+    if (-not $lines.Count) { $lines = @('- nothing: no commit since then changes what the package ships') }
+    $out = @($head) + $lines
+    if (@($Suggestion.LeftOut).Count) { $out += @($Suggestion.LeftOut | ForEach-Object { '  ' + $_ }) }
+    $out -join "`r`n"
 }
 
 function Get-LightsFromFacts {
@@ -2019,10 +2210,11 @@ function Get-ConsoleTooltips {
         'snapList'         = 'The snapshots of the selected shard. Select one for Restore or Delete.'
         'commitMessage'    = 'The commit message. Blank uses the script''s default, Shard work, <date> <time>.'
         'commitForce'      = 'For one commit, skips only the wait for files changed in the last minute. Not the DONE check, SYSTEM or the phrase.'
-        'packageNotes'     = 'One line of What is new for the package, required to build. Filled with a suggestion made from what changed for players since the published package (the list is under it); edit or replace it. Changes nothing until Build.'
+        'packageNotes'     = 'One line of What is new for the package, required to build. Filled with a suggestion: what changed for players since the published package, biggest first (the list is under it); edit or replace it. Changes nothing until Build.'
+        'packageNotesRefill' = 'Puts the suggested What is new line back in the notes box, over what is there. Changes nothing else.'
         # cc-P153: the header's icon, the suggestion's sources and the four read-only panels.
         'headerIcon'       = 'The Shard Console''s own icon (the window''s, from the site''s favicon). Changes nothing.'
-        'packageNotesFrom' = 'What the suggested What is new line was made from: the Added, Changed and Fixed lines new in CHANGELOG.md since the published package, and its package-shipping commits. Staff lines are left out. Read only.'
+        'packageNotesFrom' = 'What the suggested What is new line was made from, one line per item, biggest first: each commit since the published package that changes what the package ships (map, client, art, music, launcher, official Legion scripts), named from its prompt title, and what was left out (staff only in CHANGELOG.md). Read only.'
         'statusPanel'      = 'The status of both shards, the publisher and the Golem, as last read (Refresh reads it again). Read only.'
         'websitesPanel'    = 'Each website''s last check and what the deploy buttons above would run. Read only.'
         'actionOutput'     = 'What each button did: its plan, its output and the result. Read only; a new action adds to the bottom.'
@@ -8842,12 +9034,52 @@ function Get-PublishedPackageVersion {
     $o
 }
 
+function Get-WhatsNewFacts {
+    # cc-P288, SHELL: what Get-PackageWhatsNew is made from, all read only. The published package's commit
+    # (Resolve-PackageBaseCommit), every commit since it with its files, the CHANGELOG.md lines each shipping commit
+    # added (CHANGELOG.md at it against its first parent), CHANGELOG.md then and now, and the official Legion scripts
+    # changed since then (this PC's scripts clone, when it has one).
+    param([string]$Repo, [string]$Version, [string]$ZipCommit, [string]$LegionRepo)
+    $w = [pscustomobject]@{ Version = $Version; Base = ''; BaseHow = ''; Commits = @(); AddedBy = @{}; ChangelogThen = $null; ChangelogNow = $null; Scripts = @(); Note = '' }
+    if (-not $Version) { $w.Note = 'no published version'; return $w }
+    $git = { param([string[]]$a) Invoke-ToolRead -Exe 'git' -Arguments (@('-C', $Repo, '--no-optional-locks') + $a) }
+    $fp = & $git @('log', '--first-parent', '--format=%H|%ct', '-n', '3000', 'HEAD')
+    $b = Resolve-PackageBaseCommit -Version $Version -ZipCommit $ZipCommit -FirstParentLog $(if ($fp.Code -eq 0) { [string]$fp.Out } else { '' })
+    if (-not $b) { $w.Note = 'no commit found for ' + $Version; return $w }
+    $log = & $git @('log', '--format=%H|%h|%s', '--name-only', ($b.Sha + '..HEAD'))
+    if ($log.Code -ne 0) { $w.Note = 'git log failed: ' + ([string]$log.Err).Trim(); return $w }
+    $w.Base = $b.Sha; $w.BaseHow = $b.How
+    $w.Commits = @(ConvertFrom-GitLogWithFiles $log.Out)
+    foreach ($c in @($w.Commits)) {
+        if (-not (Get-WhatsNewShipKind $c.Files)) { continue }
+        $now = & $git @('show', ($c.Sha + ':CHANGELOG.md'))
+        if ($now.Code -ne 0) { continue }
+        $was = & $git @('show', ($c.Sha + '^:CHANGELOG.md'))
+        $w.AddedBy[$c.Sha] = @(Get-ChangelogItemsAdded $(if ($was.Code -eq 0) { [string]$was.Out } else { '' }) ([string]$now.Out))
+    }
+    $then = & $git @('show', ($b.Sha + ':CHANGELOG.md'))
+    $head = & $git @('show', 'HEAD:CHANGELOG.md')
+    if ($then.Code -eq 0 -and $head.Code -eq 0) { $w.ChangelogThen = [string]$then.Out; $w.ChangelogNow = [string]$head.Out }
+    if ($LegionRepo -and (Test-Path -LiteralPath (Join-Path $LegionRepo '.git'))) {
+        $at = & $git @('show', '-s', '--format=%ct', $b.Sha)
+        $tags = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $LegionRepo, '--no-optional-locks', 'for-each-ref', 'refs/tags/official-*', '--format=%(refname:short)|%(creatordate:unix)')
+        if ($at.Code -eq 0 -and $tags.Code -eq 0 -and ([string]$at.Out).Trim() -match '^\d+$') {
+            $r = Select-OfficialScriptTags ([string]$tags.Out) ([long]([string]$at.Out).Trim())
+            if ($r.To) {
+                $files = $(if ($r.From) { Invoke-ToolRead -Exe 'git' -Arguments @('-C', $LegionRepo, '--no-optional-locks', 'diff', '--name-only', $r.From, $r.To) } else { Invoke-ToolRead -Exe 'git' -Arguments @('-C', $LegionRepo, '--no-optional-locks', 'ls-tree', '--name-only', $r.To) })
+                if ($files.Code -eq 0) { $w.Scripts = @(@(([string]$files.Out) -split "`n") | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[^/]+\.py$' }) }
+            }
+        }
+    }
+    $w
+}
+
 function Get-PackageLightFacts {
     # Section 7, SHELL: what Get-PackageLight judges. The published version and the zip in dist\ it came from (its
     # VERSION.txt names the commit), the newest zip's commit, the shipping commits since each, the client gate, and the
     # same running-prompt, uncommitted and build-running facts as the rebuild light.
     param($Config)
-    $f = [pscustomobject]@{ SiteReachable = $false; SiteError = ''; PublishedVersion = ''; PublishedCommit = ''; NewestZipVersion = ''; NewestZipCommit = ''; Head = ''; Commits = @(); CommitsSinceZip = @(); GolemRunning = ''; Uncommitted = 0; ClientStale = ''; BuildRunning = $false; Note = ''; ChangelogThen = $null; ChangelogNow = $null }
+    $f = [pscustomobject]@{ SiteReachable = $false; SiteError = ''; PublishedVersion = ''; PublishedCommit = ''; NewestZipVersion = ''; NewestZipCommit = ''; Head = ''; Commits = @(); CommitsSinceZip = @(); GolemRunning = ''; Uncommitted = 0; ClientStale = ''; BuildRunning = $false; Note = ''; WhatsNew = $null }
     try {
         $pub = Get-PublishedPackageVersion $Config
         $f.SiteReachable = $pub.Reachable; $f.SiteError = $pub.Error; $f.PublishedVersion = $pub.Version
@@ -8867,12 +9099,8 @@ function Get-PackageLightFacts {
                 if ($log.Code -eq 0) { $f.($pair[0]) = @(ConvertFrom-GitLogWithFiles $log.Out) } else { $f.Note = 'git log failed: ' + ([string]$log.Err).Trim() }
             }
         }
-        # cc-P153: CHANGELOG.md as the published package's commit had it and as HEAD has it (the suggested What is new).
-        if ($f.PublishedCommit -and $f.PublishedCommit -notmatch 'uncommitted') {
-            $then = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'show', ((($f.PublishedCommit -split '\s+')[0]) + ':CHANGELOG.md'))
-            $now = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'show', 'HEAD:CHANGELOG.md')
-            if ($then.Code -eq 0 -and $now.Code -eq 0) { $f.ChangelogThen = [string]$then.Out; $f.ChangelogNow = [string]$now.Out }
-        }
+        # cc-P288 (was cc-P153's two CHANGELOG.md reads): what the suggested What is new line is made from.
+        $f.WhatsNew = Get-WhatsNewFacts -Repo $repo -Version $f.PublishedVersion -ZipCommit $f.PublishedCommit -LegionRepo $Config.LegionRepo
         $st = Invoke-ToolRead -Exe 'git' -Arguments @('-C', $repo, '--no-optional-locks', 'status', '--porcelain', '--untracked-files=all')
         if ($st.Code -eq 0) { $f.Uncommitted = @(@($st.Out -split "`n") | Where-Object { $_.Trim() }).Count }
         $cf = Get-PackageClientFacts -ClientDir $Config.PackageClient -RepoRoot $repo
@@ -9569,7 +9797,7 @@ function Get-HeaderIconImage {
 
 function Update-PackageSuggestion {
     # cc-P153: puts the suggested What is new line in the notes box when it is empty or still holds the last suggestion
-    # (an edit of Chase's is never written over), and the list it was made from under the box.
+    # (an edit of Chase's is never written over), and the list it was made from under the box (cc-P288: Format-WhatsNewList).
     param($Facts)
     $box = $script:ui.PackageNotes
     if (-not $box) { return }
@@ -9579,11 +9807,7 @@ function Update-PackageSuggestion {
         if (-not $box.Focused -and (-not $box.Text.Trim() -or $box.Text -eq [string]$script:ui.PackageSuggested)) { $box.Text = $sg.Line; $script:ui.PackageSuggested = $sg.Line }
     }
     $from = $script:ui.PackageNotesFrom
-    if ($from) {
-        $from.Text = $(if (-not $sg) { 'No suggestion: the published package''s commit is not known, so there is nothing to compare with (see the package light).' }
-            elseif (-not @($sg.Sources).Count) { 'Suggested from: nothing player-facing since the published package (no new Added, Changed or Fixed lines in CHANGELOG.md, no package-shipping commit).' }
-            else { 'Suggested from (since the published package; staff lines left out):' + "`r`n" + ((@($sg.Sources) | ForEach-Object { '- ' + $_ }) -join "`r`n") })
-    }
+    if ($from) { $from.Text = Format-WhatsNewList $sg $(if ($Facts -and $Facts.WhatsNew) { [string]$Facts.WhatsNew.Note } else { '' }) }
 }
 
 function Set-LightLabel {
@@ -12284,7 +12508,18 @@ function New-ConsoleForm {
         }
         Invoke-ConsoleButton -ActionKey 'package.build' -PackageNotes $script:ui.PackageNotes.Text.Trim()
     })
-    $pkgTop.Controls.AddRange(@($notesLabel, $notesBox, $buildBtn))
+    # cc-P288: Refill puts the suggestion back in the box, over an edit (Chase's own choice).
+    $refillBtn = New-Object Windows.Forms.Button
+    $refillBtn.Text = 'Refill'
+    $refillBtn.Name = 'packageNotesRefill'
+    $refillBtn.Width = 90
+    $refillBtn.Height = 30
+    $refillBtn.Add_Click({
+        if ($script:ui.PackageSuggestion) { $script:ui.PackageNotes.Text = $script:ui.PackageSuggestion.Line; $script:ui.PackageSuggested = $script:ui.PackageSuggestion.Line }
+        else { Write-ConsoleLine 'Refill: no suggestion yet (it is read with the package light; the box under the notes says why).' 'amber' }
+    })
+    $script:ui.PackageNotesRefill = $refillBtn
+    $pkgTop.Controls.AddRange(@($notesLabel, $notesBox, $refillBtn, $buildBtn))
     # cc-P132: the package light beside Build package.
     $script:ui.PackageLight = New-LightLabel 'package.light'
     $pkgTop.Controls.Add($script:ui.PackageLight.Row)

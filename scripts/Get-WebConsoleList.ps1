@@ -11,7 +11,8 @@
     question   shards: each shard's question text and the answers it takes (Get-QuestionPanelInfo)
     snapshots  shards: each shard's snapshots (Get-SnapshotRows), its save and snapshot folders
     world      groups: the World setup tab's commands (ConvertFrom-CommandSources, Get-WorldCommandGroups)
-    package    zips (Get-PackageListRows) and the client Build package ships (Format-PackageClientText)
+    package    zips (Get-PackageListRows), the client Build package ships (Format-PackageClientText), and whatsNew:
+               the suggested What is new line and its list (cc-P288, Get-PackageSuggestion from the package light's facts)
     commit     countdown: the Commit tab's line (Get-CommitCountdown)
     websites   sites (websites.json, with each one's deploy)
     art        requests: the Art tab's list (Get-ArtRequestRows), each with whether it has a picture
@@ -71,6 +72,8 @@ switch ($list.Page) {
     'package' {
         $out.zips = @(Get-PackageListRows $config | ForEach-Object { [ordered]@{ value = $_.Name; cells = @($_.Version, $_.Size, $_.Built, $_.Notes) } })
         $out.client = [string](Format-PackageClientText (Get-PackageClientFacts -ClientDir $config.PackageClient -RepoRoot $config.RepoRoot))
+        $pf = Get-PackageLightFacts $config
+        $out.whatsNew = ConvertTo-WhatsNewDocument (Get-PackageSuggestion $pf) $(if ($pf.WhatsNew) { [string]$pf.WhatsNew.Note } elseif (-not $pf.SiteReachable) { 'the download site could not be read' } else { [string]$pf.Note })
     }
     'commit' {
         $f = Get-CommitFacts $config

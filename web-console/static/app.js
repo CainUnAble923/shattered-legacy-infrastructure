@@ -953,8 +953,24 @@
       return l;
     }
     i = textInput('pg-' + name, s[name] || '');
-    i.addEventListener('input', function () { s[name] = String(i.value || '').trim(); });
+    i.addEventListener('input', function () { s[name] = String(i.value || '').trim(); s[name + ':edited'] = true; });
     return field(label, i);
+  }
+  // cc-P288: under the Notes box: Refill, and what the suggested line was made from (one line per item, biggest first).
+  function whatsNewBlock(pid, wn) {
+    var s = sel(pid), box = el('div', 'whatsnew');
+    var rf = el('button', 'small', 'Refill'); rf.type = 'button'; rf.id = 'pg-packageNotes-refill';
+    rf.disabled = !wn.line;
+    rf.addEventListener('click', function () {
+      s.packageNotes = wn.line; s['packageNotes:edited'] = false;
+      var i = document.getElementById('pg-packageNotes'); if (i) i.value = wn.line;
+    });
+    box.appendChild(rf);
+    if (!wn.line) { box.appendChild(el('p', 'quiet', 'No suggestion: ' + (wn.note || 'the published package could not be read') + '.')); return box; }
+    box.appendChild(el('p', 'meta', 'What changed for players since ' + wn.version + ' (commit ' + wn.base + (wn.baseHow === 'time' ? ', found by its build time' : '') + '), biggest first:'));
+    var lines = (wn.list || []).map(function (x) { return '- ' + x; }).concat((wn.leftOut || []).map(function (x) { return '  ' + x; }));
+    box.appendChild(el('pre', 'log', lines.length ? lines.join('\n') : '- nothing: no commit since then changes what the package ships'));
+    return box;
   }
   // cc-P215: one Golem test account's password, straight to the clipboard (POST: the same checks as a button).
   function copyTestPassword(golem, role, btn) {
@@ -1024,6 +1040,9 @@
       if (data.client) body.appendChild(el('pre', 'log', data.client));
       body.appendChild(el('h3', null, 'Zips in dist (newest first)'));
       body.appendChild(pickList(pid, 'packageZip', data.zips, { empty: 'No zips in dist.' }));
+      // cc-P288: the suggested What is new line fills an empty or untouched Notes box; Refill puts it back over an edit.
+      var wn = data.whatsNew || {};
+      if (wn.line && !s['packageNotes:edited']) s.packageNotes = wn.line;
     }
     if (pid === 'websites' && data) body.appendChild(pickList(pid, 'site', data.sites, { title: function (r) { return (r.cells && r.cells[0]) || r.value; }, link: true }));
     if (pid === 'art' && data) body.appendChild(pickList(pid, 'artId', data.requests, { picture: true, empty: 'No art requests.' }));
@@ -1061,6 +1080,7 @@
     // The text inputs the page's buttons take.
     ['snapshotName', 'commitMessage', 'force', 'packageNotes', 'vdFile', 'body', 'huesFile', 'note'].forEach(function (n) {
       if (used[n]) body.appendChild(textField(pid, n, (fields[n] || {}).label || n, (fields[n] || {}).type === 'check'));
+      if (n === 'packageNotes' && used[n] && pid === 'package' && data) body.appendChild(whatsNewBlock(pid, data.whatsNew || {}));
     });
     (p.pcNotes || []).forEach(function (t) { body.appendChild(el('p', 'pconly', t)); });
     if (pid !== 'world' && pid !== 'golem' && pid !== 'diag' && pid !== 'mapart') {

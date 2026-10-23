@@ -182,7 +182,7 @@
     "map.footprint": "map.footprint", "map.spots": "map.spots", "map.statics": "map.statics", "map.walkable": "map.walkable", "map.shore": "map.shore", "map.export": "map.export",
     "diag.docker": "diag.docker", "diag.shard": "diag.shard", "diag.folder": "logs:diag (the newest diagnostic file; Explorer is the window's)", "vpn.disconnect": "vpn.disconnect",
     "commit.preview": "commit.preview", "commit.run": "commit.run", "commitForce": "input:force",
-    "package.build": "package.build", "package.check": "package.check", "package.publish": "package.publish", "packageRefresh": "page:refresh",
+    "package.build": "package.build", "packageNotesRefill": "page:refill (the Refill button under the Notes box, cc-P288)", "package.check": "package.check", "package.publish": "package.publish", "packageRefresh": "page:refresh",
     "package.scripts.check": "package.scripts.check", "package.scripts.dev": "package.scripts.dev", "package.scripts.promote": "package.scripts.promote",
     "package.scripts.pull": "package.scripts.pull", "package.scripts.setup": "package.scripts.setup", "package.scripts.key": "package.scripts.key",
     "golem.on": "on", "golem.off": "rest", "golem.email": "golem.email", "golem.test": "testmail", "golem.queue": "page:queue (the Golem page's queue; tap a prompt to read it)",
