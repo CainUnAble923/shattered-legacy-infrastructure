@@ -192,7 +192,7 @@
     "golem.marathon": "marathon-on (and marathon-auto, marathon-off: one button per mode)", "golem.marathonpick": "input:marathon (each web button names its mode)",
     "golem.poke": "poke", "golem.runnext": "runnext", "golem.retry": "retry", "golem.answer": "page:question (each Golem card's open question: a button per choice, a box for your words; cc-P216)", "golem.lanenow": "lanenow", "golem.integrate": "integrate", "golem.mergepause": "merge-pause", "golem.mergeresume": "merge-resume", "golem.tinkerrun": "tinker-run", "golem.tinkerpause": "tinker-pause", "golem.tinkerresume": "tinker-resume", "golem.away": "away-on", "golem.awayoff": "away-off",
     "golem.openprompt": "page:prompt (tap a queued prompt to read it)", "golem.opennotes": "page:notes (tap a finished prompt to read its notes)",
-    "golem.pick": "page:picker (the Golem picker)", "golem.assign": "assign", "golem.assignnext": "input:next",
+    "golem.pick": "page:picker (the Golem picker)", "golem.assign": "assign", "golem.skipday": "skipday", "golem.assignnext": "input:next",
     "golem.cap": "input:cap", "golem.until": "input:until", "golem.model": "input:model", "golem.nightstart": "input:start", "golem.nightend": "input:end",
     "web.pick": "input:site", "web.open": "page:link (each site opens from its row)", "web.restart": "web.restart", "web.redeploy": "web.redeploy", "web.logs": "web.logs",
     "web.deploy": "web.deploy", "web.npm": "web.npm", "web.check": "page:refresh (the collector checks every site again)",

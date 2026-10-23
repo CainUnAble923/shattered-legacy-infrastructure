@@ -324,6 +324,8 @@
     if (c.usageSource) bits.push('usage from the ' + c.usageSource);
     // cc-P200: while marathon is on an extra PC's hours are widened to the whole day (its back-off still holds).
     if (c.hours) bits.push('hours ' + c.hours + (c.marathonDay ? ' (all day now: marathon)' : ''));
+    // cc-P287: its all-day weekdays (Stone: Sat, Sun, Mon) and the coming dates the owner works.
+    if (c.allDay && c.allDay.length) bits.push('all day ' + c.allDay.join(', ') + (c.allDayToday ? ' (today)' : '') + (c.skipDays && c.skipDays.length ? ', not on ' + c.skipDays.join(', ') : ''));
     if (c.needsYou) bits.push('needs you: ' + c.needsYou);
     if (bits.length) li.appendChild(el('div', 'meta', bits.join(' | ')));
     // cc-P159: a Codex lane's line: the step, paused, in use, asleep.
@@ -629,6 +631,7 @@
     var w = String(b.when || ''), i = w.indexOf(':'), kind = w.slice(0, i), val = w.slice(i + 1);
     if (b.engine && !(g && g.engine === b.engine)) return false;   // cc-P159: Send to the second PC is a Codex lane's
     if (b.key === 'retry' && !(g && g.stoppedPrompt)) return false;
+    if (b.registry && !(g && g.allDay && g.allDay.length)) return false;   // cc-P287: Owner works, for a Golem with all-day weekdays
     if (!w) return true;
     if (kind === 'winding') return !!g && g.winding === val;
     if (kind === 'notWinding') return !g || g.winding !== val;
@@ -645,6 +648,7 @@
     if (b.word === '#prompt') base = inputs.prompt || '';
     else if (b.word === '#stopped') base = (g && g.stoppedPrompt) || '';
     else if (b.word === '#assign') return inputs.prompt && inputs.assignTo ? inputs.prompt + ' on ' + inputs.assignTo.toLowerCase() : '';
+    else if (b.word === '#skipday') return golemName && inputs.skipDate ? 'skip ' + golemName.toLowerCase() : '';   // cc-P287
     else base = b.word || '';
     if (golemName && b.golemWord && base) return (b.golemWord.charAt(0) === '#' ? base : b.golemWord) + ' ' + golemName.toLowerCase();
     return base;
@@ -683,6 +687,19 @@
     l.appendChild(el('span', null, label));
     l.appendChild(input);
     return l;
+  }
+  // cc-P287: the next date (today included) that is one of a Golem's all-day weekdays and not already skipped, YYYY-MM-DD.
+  function nextAllDay(c) {
+    var names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], want = {}, skip = {};
+    ((c && c.allDay) || []).forEach(function (d) { want[String(d).slice(0, 3).toLowerCase()] = true; });
+    ((c && c.skipDays) || []).forEach(function (d) { skip[d] = true; });
+    var t = new Date();
+    for (var i = 0; i < 14; i++) {
+      var d = new Date(t.getFullYear(), t.getMonth(), t.getDate() + i);
+      var iso = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+      if (want[names[d.getDay()].toLowerCase()] && !skip[iso]) return iso;
+    }
+    return '';
   }
   function textInput(id, value) {
     var i = el('input');
@@ -744,6 +761,11 @@
         var pe = pickedEntry(); if (pe && pe.usable) gsel.value = pe.name;
         gsel.addEventListener('change', checkWord);
         box.appendChild(field('Give it to', gsel));
+      } else if (name === 'skipDate') {
+        // cc-P287: the next of the card's all-day weekdays, as a starting value.
+        var sd = textInput('in-skipDate', nextAllDay(card));
+        sd.addEventListener('input', checkWord);
+        box.appendChild(field('The date the owner works (YYYY-MM-DD)', sd));
       } else if (name === 'next') {
         var ns2 = el('select'); ns2.id = 'in-next';
         [['yes', 'Yes, it goes next for that Golem'], ['no', 'No, keep its place']].forEach(function (x) { var o = el('option', null, x[1]); o.value = x[0]; ns2.appendChild(o); });

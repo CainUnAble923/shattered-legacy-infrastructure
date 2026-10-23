@@ -251,6 +251,7 @@ function New-AutopilotConfig {
         MergeScript   = (Join-Path $Root 'ShadowIron.ps1')   # cc-P208: the merge Golem's runner (-Pause, -Resume)
         TinkerScript  = (Join-Path $Root 'Tinker.ps1')       # cc-P222: the watchdog's runner (a round now, -Pause, -Resume)
         AwayScript    = (Join-Path $Root 'Set-Away.ps1')     # cc-P149: away mode (-Until <when>, -Off)
+        SkipDayScript = (Join-Path $Root 'Skip-Day.ps1')     # cc-P287: Owner works <date> (-Golem <name> -Date <yyyy-MM-dd> -By console)
         AssignScript  = (Join-Path $Root 'Assign-Prompt.ps1') # cc-P187: a queued prompt's **Golem:** line (and Run next for it)
         PromptDir    = $(if ($Queue) { Split-Path -Parent $Queue } else { '' })
         CompletedDir = $(if ($Queue) { Join-Path (Split-Path -Parent $Queue) 'completed' } else { '' })
@@ -967,6 +968,7 @@ function Get-ConfirmSubject {
         'golem.integrate' { 'Merge branches now' }
         'golem.mergepause'  { 'Pause merging' }    # cc-P208
         'golem.away'        { 'Away mode on' }     # cc-P149
+        'golem.skipday'     { 'Owner works on a date' }   # cc-P287
         'golem.awayoff'     { 'Away mode off' }
         'golem.answer'      { 'Answer a Golem''s question' }   # cc-P216
         'golem.mergeresume' { 'Resume merging' }
@@ -1270,6 +1272,8 @@ function Get-ConsoleActions {
         [pscustomobject]@{ Key = 'golem.tinkerresume'; Group = 'Golem merge'; Label = 'Resume the Tinker';                Mutates = $true;  RunIn = 'here' }
         # cc-P187: the Golem picker's row: the picked queued prompt goes to the picked Golem (its **Golem:** line).
         [pscustomobject]@{ Key = 'golem.assign';     Group = 'Golem pick';  Label = 'Assign picked row to this Golem';    Mutates = $true;  RunIn = 'here' }
+        # cc-P287: the picked Golem keeps to its hours on the Until box's date (the owner works): its days.skip.
+        [pscustomobject]@{ Key = 'golem.skipday';    Group = 'Golem pick';  Label = 'Owner works (Until box date)';       Mutates = $true;  RunIn = 'here' }
         # cc-P83: the two pages, opened in the default browser. Beside the PLAY TESTS tile and on the Autopilot tab.
         [pscustomobject]@{ Key = 'links.playtests';  Group = 'Links';       Label = 'Play tests';                         Mutates = $false; RunIn = 'here' }
         [pscustomobject]@{ Key = 'links.dashboard';  Group = 'Links';       Label = 'Dashboard';                          Mutates = $false; RunIn = 'here' }
@@ -1978,6 +1982,7 @@ function Get-ConsoleTooltips {
         'golem.answer'     = 'Answer a Golem''s question: pick the question, a choice and (where it takes them) your own words, then type answer <golem> <prompt>, and the Golem resumes with your answer as data (Answer-Question.ps1). Greyed out while no Golem on this PC has an open question; a Golem on another PC is answered on the web console.'
         'golem.clicheck'   = 'Checks the Claude Code CLI: installed, and signed in (claude auth status). Run it after signing in so the Golem tab sees it. Read-only; runs Check-Cli.ps1 in its own window.'
         'golem.integrate'  = 'Merge branches now (several Golems): the integrator merges every finished Golem branch into main, one at a time, builds when the server changed, commits and pushes; a conflict or a red build becomes a fix-up prompt for that Golem. Only while nothing runs on the integrator and its trees are clean (with Shadow Iron, settings.json mergeGolem, one of its rounds now). Asks merge branches; runs Integrate.ps1 in its own window.'
+        'golem.skipday'     = 'Owner works: the Golem picked on the Golem tab keeps to its hours on the date in the Until box (YYYY-MM-DD) instead of working all day, for a Golem with all-day weekdays (Stone''s Sat, Sun, Mon). Asks skip <golem> and runs Skip-Day.ps1 in its own window (email: skip day <Golem> <date>).'
         'golem.away'        = 'Away mode on, until the time in the Until box: the Golems work around the clock within the night shift''s usage rule, park a prompt that stops for a decision and go on, and email a digest each morning. Asks away on; runs Set-Away.ps1 in its own window.'
         'golem.awayoff'     = 'Away mode off now: the Golems go back to their usual pace and rests; parked prompts stay parked until you unpark them. Asks away off; runs Set-Away.ps1 -Off in its own window.'
         'golem.mergepause'  = 'Pause merging: Shadow Iron, the merge Golem, runs no round until Resume merging; finished branches wait in merge-queue. Asks pause merging; runs ShadowIron.ps1 -Pause in its own window.'
@@ -3504,13 +3509,13 @@ function Test-PlanSafety {
             $inRoot = @($named | Where-Object { $n0 = $_; @($roots | Where-Object { $n0.StartsWith($_.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase) -or $n0 -ieq $_ }).Count })
             if (@($named | Where-Object { $_ -match '(?i)(cc-autopilot|(^|[\\/])golem)\.ps1' }).Count) { $v.Add('the Golem''s hook is never run from the console: it commits and pushes on its own') }
             elseif ($inRoot.Count) {
-                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.LaneNowScript, $ap.AnswerScript) | Where-Object { $_ }
+                $allowed = @($ap.Start, $ap.Stop, $ap.Setup, $ap.TestEmail, $ap.MoveScript, $ap.LongRunEnd, $ap.WrapUp, $ap.StopPoint, $ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.CliCheckScript, $ap.PokeScript, $ap.RunNextScript, $ap.RetryScript, $ap.IntegrateScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.LaneNowScript, $ap.AnswerScript, $ap.SkipDayScript) | Where-Object { $_ }
                 $sa = @($s.Arguments)
                 # cc-P186: a Golem script may also name one Golem of several (-Golem <name>, last); the rules below hold for the rest.
                 if ($sa.Count -ge 7 -and $sa[-2] -ceq '-Golem' -and $sa[-1] -cmatch '^[A-Za-z][A-Za-z0-9]{0,23}$' -and @(Get-GolemNamedScripts $ap) -icontains $sa[4]) { $sa = @($sa[0..($sa.Count - 3)]) }
                 $head = ($s.Kind -eq 'window' -and $s.Exe -eq $Config.PowerShell -and $sa.Count -ge 5 -and (($sa[0..3]) -join ' ') -ceq '-NoProfile -ExecutionPolicy Bypass -File' -and $allowed -icontains $sa[4])
                 # The scripts that take arguments run only with them (below); the others run bare.
-                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.AnswerScript) | Where-Object { $_ }
+                $withArgs = @($ap.LongRunStart, $ap.WakeScript, $ap.AutoWakeScript, $ap.NightShiftScript, $ap.RunNextScript, $ap.RetryScript, $ap.AssignScript, $ap.MarathonScript, $ap.MergeScript, $ap.AwayScript, $ap.TinkerScript, $ap.AnswerScript, $ap.SkipDayScript) | Where-Object { $_ }
                 $ok = ($head -and $sa.Count -eq 5 -and $withArgs -inotcontains $sa[4])
                 # cc-P125: Start-LongRun.ps1 only with -Cap <n> -Until <time>; Wrap-Up.ps1 and Find-StoppingPoint.ps1 also with -Cancel.
                 $tmpT = [datetime]::MinValue
@@ -3529,6 +3534,8 @@ function Test-PlanSafety {
                 # cc-P149: Set-Away.ps1 only with -Off, or -Until <yyyy-MM-dd HH:mm>.
                 if ($head -and $ap.AwayScript -and $sa[4] -ieq $ap.AwayScript -and (($sa.Count -eq 6 -and $sa[5] -ceq '-Off') -or ($sa.Count -eq 7 -and $sa[5] -ceq '-Until' -and $sa[6] -match '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$'))) { $ok = $true }
                 if ($head -and $sa[4] -ieq $ap.NightShiftScript -and (($sa.Count -eq 6 -and $sa[5] -ceq '-Off') -or ($sa.Count -eq 10 -and $sa[5] -ceq '-On' -and $sa[6] -ceq '-Start' -and $sa[7] -match '^\d{1,2}:\d{2}$' -and $sa[8] -ceq '-End' -and $sa[9] -match '^\d{1,2}:\d{2}$'))) { $ok = $true }
+                # cc-P287: Skip-Day.ps1 only with -Golem <name> -Date <yyyy-MM-dd> -By console.
+                if ($head -and $ap.SkipDayScript -and $sa[4] -ieq $ap.SkipDayScript -and $sa.Count -eq 11 -and $sa[5] -ceq '-Golem' -and $sa[6] -cmatch '^[A-Za-z][A-Za-z0-9]{1,23}$' -and $sa[7] -ceq '-Date' -and $sa[8] -cmatch '^\d{4}-\d{2}-\d{2}$' -and $sa[9] -ceq '-By' -and $sa[10] -ceq 'console') { $ok = $true }
                 # cc-P182: Set-RunNext.ps1 only with -Prompt P<nn> or -Cancel; Retry-Stopped.ps1 only with -Prompt P<nn>.
                 if ($head -and $ap.RunNextScript -and $sa[4] -ieq $ap.RunNextScript -and (($sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') -or ($sa.Count -eq 6 -and $sa[5] -ceq '-Cancel'))) { $ok = $true }
                 if ($head -and $ap.RetryScript -and $sa[4] -ieq $ap.RetryScript -and $sa.Count -eq 7 -and $sa[5] -ceq '-Prompt' -and $sa[6] -cmatch '^P\d+$') { $ok = $true }
@@ -5662,7 +5669,7 @@ function Get-WebActionPlan {
     if (-not $Inputs) { $Inputs = @{} }
     if ($Entry.fixed) { foreach ($p in $Entry.fixed.PSObject.Properties) { $Inputs[$p.Name] = [string]$p.Value } }
     $f = $Facts.PSObject.Copy()
-    $map = @{ model = 'WakeModel'; cap = 'LongRunCap'; until = 'LongRunUntil'; start = 'NightStart'; end = 'NightEnd'; prompt = 'RunNextPrompt'; assignTo = 'AssignGolem'; next = 'AssignRunNext'; marathon = 'MarathonMode' }
+    $map = @{ model = 'WakeModel'; cap = 'LongRunCap'; until = 'LongRunUntil'; start = 'NightStart'; end = 'NightEnd'; prompt = 'RunNextPrompt'; assignTo = 'AssignGolem'; next = 'AssignRunNext'; marathon = 'MarathonMode'; skipDate = 'SkipDate'; skipGolem = 'SkipGolem' }   # cc-P287 skipDate, skipGolem
     foreach ($k in $map.Keys) { if ($Inputs.ContainsKey($k)) { $f | Add-Member -NotePropertyName $map[$k] -NotePropertyValue ([string]$Inputs[$k]) -Force } }
     $st = $null
     if ($f.StatusText) { try { $st = ConvertFrom-AutopilotStatus $f.StatusText } catch { } }
@@ -5849,7 +5856,7 @@ function Get-AutopilotPlan {
         }
         # cc-P125: the run buttons, the Golem's only. Each runs its own small script (which runs one event of the hook)
         # in a window of its own; the hook itself never runs from here.
-        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff', 'golem.tinkerrun', 'golem.tinkerpause', 'golem.tinkerresume', 'golem.lanenow', 'golem.answer') } {
+        { $_ -in @('golem.longrun', 'golem.endlongrun', 'golem.wrapup', 'golem.stoppoint', 'golem.resume', 'golem.openprompt', 'golem.opennotes', 'golem.autowake', 'golem.nightshift', 'golem.marathon', 'golem.clicheck', 'golem.poke', 'golem.runnext', 'golem.retry', 'golem.integrate', 'golem.assign', 'golem.mergepause', 'golem.mergeresume', 'golem.away', 'golem.awayoff', 'golem.tinkerrun', 'golem.tinkerpause', 'golem.tinkerresume', 'golem.lanenow', 'golem.answer', 'golem.skipday') } {
             if ($ap.Kind -ne 'golem') { $steps.Add((New-PlanStep -Kind refuse -Text 'Only the Golem has this (Move to the Golem first).')); break }
             $st = $null
             if ($Facts.StatusText) { try { $st = ConvertFrom-AutopilotStatus $Facts.StatusText } catch { } }
@@ -6065,6 +6072,25 @@ function Get-AutopilotPlan {
                     $steps.Add((New-PlanStep -Kind confirm -Phrase ('P' + $num) -Text ('Run next: P' + $num + ' is handed at the next hand-off' + $(if ($running) { ' (after ' + $running + ')' } else { '' }) + ', ahead of continuations. The new order: ' + ($order -join ', then ') + $(if (@($q.Runs).Count -gt 6) { ', ...' } else { '' }) + '. Nothing is renamed or renumbered: the Golem keeps the pick in RUN-NEXT and uses it once.')))
                     $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.RunNextScript + @('-Prompt', ('P' + $num))) -Text 'In a window of its own, which stays open.'))
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.runnext'))
+                }
+                'golem.skipday' {
+                    # cc-P287: Owner works <date>: the date goes into the Golem's days.skip in golems.json (Skip-Day.ps1, kept on
+                    # this PC; the Tinker copies it out), so on that date it keeps to its hours instead of working all day.
+                    # The Golem: the web console's card (SkipGolem) or the one picked on the Golem tab; the date: the web
+                    # console's box (SkipDate) or the Until box's date.
+                    if (-not (& $need $ap.SkipDayScript 'Skip-Day.ps1')) { break }
+                    $sg = $(if ([string]$Facts.SkipGolem) { [string]$Facts.SkipGolem } elseif ($ap.PSObject.Properties.Name -contains 'GolemName' -and [string]$ap.GolemName) { [string]$ap.GolemName } else { '' })
+                    if ($sg -notmatch '^[A-Za-z][A-Za-z0-9]{1,23}$') { $steps.Add((New-PlanStep -Kind refuse -Text 'Owner works is for one Golem with all-day weekdays (Stone): pick it on the Golem tab, or use its card on the web console. Nothing was run.')); break }
+                    $sd = ([string]$Facts.SkipDate).Trim()
+                    if (-not $sd) { $sd = @((([string]$Facts.LongRunUntil).Trim() -split '\s+'))[0] }
+                    $sdt = [datetime]::MinValue
+                    if (-not [datetime]::TryParseExact($sd, 'yyyy-MM-dd', $script:Invariant, [Globalization.DateTimeStyles]::None, [ref]$sdt)) { $steps.Add((New-PlanStep -Kind refuse -Text ("Which date does the owner work? Put it in the Until box as YYYY-MM-DD (the time is not used): '" + $sd + "'."))); break }
+                    if ($sdt.Date -lt [datetime]::Today) { $steps.Add((New-PlanStep -Kind refuse -Text ($sdt.ToString('yyyy-MM-dd', $script:Invariant) + ' is in the past.'))); break }
+                    $sdi = $sdt.ToString('yyyy-MM-dd', $script:Invariant)
+                    $steps.Add((New-PlanStep -Kind say -Text ($sg + ' keeps to its hours on ' + $sdt.ToString('dddd yyyy-MM-dd', $script:Invariant) + ' instead of working all day: the owner works that day. The date goes into its days.skip in golems.json on this PC, and the Tinker copies it to the Golem''s PC within 10 minutes. Skip-Day.ps1 says so and changes nothing when that date is not one of its all-day weekdays.')))
+                    $steps.Add((New-PlanStep -Kind confirm -Phrase ('skip ' + $sg.ToLowerInvariant()) -Text 'golems.json changes (the old one is kept as golems.json.bak-<time>-skipday).'))
+                    $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.SkipDayScript + @('-Golem', $sg, '-Date', $sdi, '-By', 'console')) -Text 'In a window of its own, which stays open.'))
+                    $steps.Add((New-PlanStep -Kind log -Text 'golem.skipday'))
                 }
                 'golem.assign' {
                     # cc-P187: Assign-Prompt.ps1 writes P184's **Golem:** line into the queued prompt (and, with -RunNext, picks
@@ -11137,7 +11163,7 @@ function Invoke-ConsoleButton {
         # Assign is the integrator's, for the picked Golem (it writes the prompt's Golem line).
         $cfgUse = $script:cfg
         $golemName = ''
-        if ($isAutopilot -and $ActionKey -ne 'golem.assign') {
+        if ($isAutopilot -and $ActionKey -notin @('golem.assign', 'golem.skipday')) {
             if (-not $PSBoundParameters.ContainsKey('Golem')) { $Golem = Get-PickedGolem }
             $ga = Get-GolemActionConfig -Config $script:cfg -ActionKey $ActionKey -Golem $Golem -Rows $script:ui.GolemPickRows -AnyGolemActions (Get-AnyGolemActionKeys (Join-Path $script:cfg.RepoRoot 'web-console\golem-actions.json'))
             if ($ga.Refusal) { Write-ConsoleLine ($ActionKey + ': ' + $ga.Refusal) 'amber'; return }
@@ -11153,7 +11179,7 @@ function Invoke-ConsoleButton {
             $bound = @{}
             foreach ($k in $PSBoundParameters.Keys) { $bound[$k] = $PSBoundParameters[$k] }
             $bound['ActionKey'] = $ActionKey
-            if ($isAutopilot -and $ActionKey -ne 'golem.assign') { $bound['Golem'] = $Golem }
+            if ($isAutopilot -and $ActionKey -notin @('golem.assign', 'golem.skipday')) { $bound['Golem'] = $Golem }
             [void](Start-ActionPrecheck -Bound $bound -UseConfig $cfgUse)
             return
         }
@@ -11185,6 +11211,8 @@ function Invoke-ConsoleButton {
                 if (Get-GolemQueuePick) { $rp = [string](Get-GolemQueuePick).Label }
                 $apFacts | Add-Member -NotePropertyName RunNextPrompt -NotePropertyValue $rp -Force
             }
+            # cc-P287: Owner works takes the picked Golem (the date is the Until box's, LongRunUntil above).
+            if ($ActionKey -eq 'golem.skipday') { $apFacts | Add-Member -NotePropertyName SkipGolem -NotePropertyValue (Get-PickedGolem) -Force }
             # cc-P187: Assign takes the picked queue row, the picked Golem and the "and run it next" tick.
             if ($ActionKey -eq 'golem.assign') {
                 $rp = ''

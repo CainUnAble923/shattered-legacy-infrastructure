@@ -41,7 +41,7 @@ param([Parameter(Mandatory = $true)][string]$Key, [string]$Typed = '', [string]$
     [string]$AssignTo, [string]$Next, [string]$PagesFile, [switch]$Second,
     [string]$Shard, [string]$SnapshotName, [string]$Snapshot, [string]$CommitMessage, [string]$CommitForce, [string]$PackageNotes,
     [string]$PackageZip, [string]$ImageTag, [string]$Commit, [string]$Site, [string]$VdFile, [string]$Body, [string]$HuesFile,
-    [string]$ArtId, [string]$Note, [string]$LockRoot)
+    [string]$ArtId, [string]$Note, [string]$LockRoot, [string]$SkipDate, [string]$SkipGolem)   # cc-P287 SkipDate, SkipGolem
 $ErrorActionPreference = 'Stop'
 # Kept under names of their own: dot-sourcing the console runs its param block here, which resets its own names.
 $web = [pscustomobject]@{ Key = $Key; Typed = $Typed; Dry = [bool]$DryRun; Second = [bool]$Second
@@ -51,7 +51,7 @@ foreach ($p in @(@('model', $Model), @('cap', $Cap), @('until', $Until), @('star
                  @('assignTo', $AssignTo), @('next', $Next), @('shard', $Shard), @('snapshotName', $SnapshotName), @('snapshot', $Snapshot),
                  @('commitMessage', $CommitMessage), @('force', $CommitForce), @('packageNotes', $PackageNotes), @('packageZip', $PackageZip),
                  @('imageTag', $ImageTag), @('commit', $Commit), @('site', $Site), @('vdFile', $VdFile), @('body', $Body), @('huesFile', $HuesFile),
-                 @('artId', $ArtId), @('note', $Note))) {
+                 @('artId', $ArtId), @('note', $Note), @('skipDate', $SkipDate), @('skipGolem', $SkipGolem))) {
     if ($null -ne $p[1] -and [string]$p[1] -ne '') { $web.Inputs[$p[0]] = [string]$p[1] }
 }
 if (-not $web.Actions) { $web.Actions = Join-Path $web.Root 'web-console\golem-actions.json' }

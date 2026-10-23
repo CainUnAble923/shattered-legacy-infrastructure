@@ -461,6 +461,25 @@ class RemoteGolems(unittest.TestCase):
         for k in ("longrun", "nightshift-on", "integrate", "away-on"):
             self.assertNotIn(k, every)
 
+    def test_owner_works_runs_here_for_a_remote_golem_with_the_cards_name(self):
+        # cc-P287: golems.json is kept on the game PC, so Owner works never goes to the remote Golem's agent; the Golem
+        # is the card's, whatever the page sends, and the word is skip and its name.
+        code, j = self.act("Gold", "skipday", "skip gold", {"skipDate": "2026-10-26", "skipGolem": "Iron"})
+        self.assertEqual(202, code, j)
+        self.wait_idle()
+        c = self.calls()
+        self.assertEqual(1, len(c), c)
+        self.assertEqual("skipday", c[0][c[0].index("-Key") + 1])
+        self.assertEqual("Gold", c[0][c[0].index("-SkipGolem") + 1], "the card's Golem, not the page's")
+        self.assertEqual("2026-10-26", c[0][c[0].index("-SkipDate") + 1])
+        self.assertNotIn("-Golem", c[0], "the console's own plan, for the Golem named in -SkipGolem")
+        self.assertEqual([], self.files("Gold"), "never queued for the agent")
+        self.assertEqual(400, self.act("Gold", "skipday", "skip iron", {"skipDate": "2026-10-26"})[0], "the word names the card's Golem")
+        self.assertEqual(400, self.act("Gold", "skipday", "skip gold", {"skipDate": "monday"})[0], "the date is YYYY-MM-DD")
+        self.assertEqual(400, self.act("Gold", "skipday", "skip gold", {})[0], "a date is needed")
+        self.assertEqual(409, self.act(None, "skipday", "skip iron", {"skipDate": "2026-10-26", "skipGolem": "Iron"})[0], "no card: refused")
+        self.assertEqual(1, len(self.calls()), "nothing else ran")
+
     def test_the_agent_posts_status_and_no_secret_reaches_a_page(self):
         self.agent("/api/agent/commands")
         code, body = self.raw("/api/status", CHASE)
