@@ -10,47 +10,51 @@ The imbue menu shows only what your account knows, with one line per category on
 
 ===== Formula books =====
 
-The Artificers' Order sells **formula books** at its guildmaster, one per rank, for **Essence Shards** (its guild currency, never gold). Reading a book teaches your whole account; an unread book can be traded.
+The [[:uo:guilds:artificers_order|Artificers' Order]] sells **formula books** at its guildmaster for **Essence Shards** (its guild currency, never gold). Reading a book teaches your whole account; an unread book can be traded.
 
-^ Book ^ Order rank ^ Price ^ Teaches ^
-| Apprentice Formulary | Apprentice | 250 Essence Shards | the hit leeches, Hit Lower Attack and Defense, elemental damage, Balanced, Velocity, Spell Channeling, Mage Armor, skill bonuses |
-| Journeyman Formulary | Journeyman | 500 | the hit spells (Magic Arrow, Harm, Fireball, Lightning, Dispel), Damage Increase, Mage Weapon, Reflect Physical |
-| Artificer's Formulary | Master | 1,000 | the hit area effects, slayers, Hit Chance and Defense Chance Increase, Spell Damage Increase, Lower Mana Cost, and the crafter properties |
-| Arcane Formulary | Grandmaster | 2,000 | Faster Casting, Faster Cast Recovery, Swing Speed Increase, super slayers, Casting Focus |
-| Master Formulary | Legendary, after the Order's trial | 4,000 | a **sixth** imbued property on your items |
+^ Book ^ Order rank ^ Price ^ Teaches at Basic ^
+| Apprentice Formulary | Journeyman (1,000 standing), or the Apprentice task | 250 Essence Shards | the hit leeches, Hit Lower Attack and Defense, elemental damage, Balanced, Velocity, Spell Channeling, Mage Armor, skill bonuses |
+| Journeyman Formulary | Artificer (5,000) | 500 | the hit spells (Magic Arrow, Harm, Fireball, Lightning, Dispel), Damage Increase, Mage Weapon, Reflect Physical |
+| Artificer's Formulary | Master Artificer (15,000) | 1,000 | the hit area effects, slayers, Hit Chance and Defense Chance Increase, Spell Damage Increase, Lower Mana Cost, and the crafter properties |
+| Arcane Formulary | Arcane Artisan (40,000) | 2,000 | Faster Casting, Faster Cast Recovery, Swing Speed Increase, super slayers |
+| Master Formulary | Arcane Artisan (40,000) | 4,000 | no new property: Refined and Full for the last two books, and a **sixth** imbued property on your items |
 
-Each book teaches a property at Basic, and the next books raise what you already know to **Refined** and then **Full** strength. A property you learn at Apprentice is Full by the Master's book.
+Each book teaches its properties at Basic, and the next books raise what you already know to **Refined** and then **Full** strength. A property you learn from the Apprentice book is Full by the Artificer's book.
 
-Beyond the books, the strongest **Overcharged** tier and the rarest properties (Echo of the Loop, Time Slip, Shatter, Bond, Spell Leech, Renowned, Fortune's Favor and others) come from quests, commissions, loot boxes and bosses. Overcharged imbuing needs a **soul forge**: the Queen's Soulforge in the Royal City or an Artificers' hall forge. Everything up to Full can be done anywhere with the toolkit.
+A stronger **Overcharged** tier and a set of rarer shard-only properties are in the table, but the ways to learn them are not in the game yet. Everything up to Full can be done anywhere with the Order's toolkit.
 
 ''[artificerrank'' tells you your Order rank and the properties your account knows.
 
 ===== Slots and skill bonuses =====
 
   * An item takes **five** imbued properties; the Master Formulary allows a sixth.
-  * **Skill bonuses** can be imbued: combat and magic skills on jewelry (one per skill group, up to +15, more when Overcharged), crafting and gathering skills on aprons.
-  * A mule with the **Imbued Barding Socket** lets its owner imbue near it: up to Refined at tier II, up to Full at tier III.
+  * **Skill bonuses** can be imbued: combat and magic skills on jewelry (one per skill group, up to +15), crafting and gathering skills on half and full aprons.
+  * A mule with the **Imbued Barding Socket** lets its owner imbue near it: up to Refined at tier II, up to Full with a small success bonus at tier III. The toolkit already reaches Full anywhere, so tier II adds nothing for imbuing today.
 
 ===== Unique properties =====
 
-Eleven properties exist only on this shard, one per item, each with its own monster part: **Bountiful, Prospector, Butcher's Eye** and **Mastercraft** for gatherers and crafters; **Time Slip, Shatter, Spell Leech** and **Bond** for fighters and tamers; **Fortune's Favor** (better loot box contents) from boxes and bosses. **Echo of the Loop** and **Renowned** can be learned now and take effect when their systems arrive.
+Four properties exist only on this shard and come with the Artificer's Formulary: **Bountiful, Prospector, Butcher's Eye** and **Mastercraft**, for gatherers and crafters. Each uses its own ingredients instead of an essence, and an item takes only one shard-only property. More are planned, learned from quests, bosses and other rewards that are not in the game yet.
 
 ===== Unravelling =====
 
-  * The Imbuing Table's **Unravel Container** takes a bag in your backpack and unravels every magic item in it at once, each with its own skill check and ingredients. Plain, blessed, insured and quest items stay in the bag, as do bags inside it, and a summary tells you what you got.
-  * A blessed item, an item you are wearing, a quest item or a faction reward cannot be fully disenchanted, as on OSI.
+The Order's table (at the guildmaster for anyone, or the toolkit for members) has its own unraveling. It pays **Essence Shards** and property essences, not OSI's magical residue and relic fragments.
+
+  * **Full Disenchant** destroys the item; each property has a 25% chance to give its essence.
+  * **Extract a Property** takes one property off and gives its essence; the item survives, but weapons and armor lose about 20% of their maximum durability.
+  * **Unravel Container** takes a bag in your backpack and fully disenchants every eligible item directly in it. Plain, blessed, newbied, equipped, insured, quest and faction reward items stay, as do bags inside it. A confirm page tells you how many go and how many stay.
   * An item with no magic is refused: "There is no magic in this to unravel."
   * Every slayer can be extracted, disenchanted and imbued, the elemental and the obscure ones included.
 
 ===== The Essence Satchel =====
 
-With an **Artificers' Essence Satchel** in your backpack, the essences you unravel or disenchant, and the essences, magical residue and relic fragments you loot or pick up, go straight into it. Imbuing takes essences from your pack first, then the satchel, then your bank, and says where they came from.
+With an **Artificers' Essence Satchel** in your backpack, the essences you unravel or disenchant, and the essences, magical residue, enchanted essence and relic fragments you loot or pick up, go straight into it. Imbuing takes essences from your pack first, then the satchel, then your bank, and says where they came from. Essence Shards are a balance, never an item in the satchel.
 
 ===== Where this differs from OSI =====
 
   * OSI's imbuing knows every property from the start; here they are learned by the account.
   * OSI's imbuing never adds Self Repair; here every account can, at a high price.
-  * The sixth slot, the skill bonuses, the unique properties and the Overcharged tier do not exist on OSI.
+  * The sixth slot, the crafting skill bonuses on aprons and the unique properties do not exist on OSI.
+  * The Order's unraveling pays Essence Shards and essences instead of residue and relic fragments.
 
 ===== Needed images =====
 
@@ -59,6 +63,7 @@ With an **Artificers' Essence Satchel** in your backpack, the essences you unrav
 
 ===== Related pages =====
 
+  * [[:uo:guilds:artificers_order|The Artificers' Order]]
   * [[:uo:systems:guilds|Guilds]]
   * [[:uo:systems:requisitions|Requisitions]] (where unwanted magic items go)
   * [[recipes|Recipes and pattern books]]

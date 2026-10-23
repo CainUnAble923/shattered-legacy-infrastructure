@@ -22,7 +22,7 @@ Join the [[:uo:guilds:society_of_smiths|Society of Smiths]] early: it is free, i
 ===== Needed images =====
 
   * TODO image: a New Haven forge and anvil.
-  * TODO image: the Blacksmithy craft menu with a hidden band's "learn more" line.
+  * TODO image: the Blacksmithy craft menu.
 
 ===== Related pages =====
 

@@ -16,7 +16,7 @@ Each guild keeps its New Haven chapter when its main hall opens. A hall has the 
 | Society of Smiths | a new guild house beside the forge | Serpent's Hold | Trammel |
 | Tinkers' Union | The Musician's Hall | Vesper | Trammel |
 | Thieves' Den | Buccaneer's Bath | Buccaneer's Den | Felucca |
-| Twin Paths Dojo | the Musha-Shugyo Dojo, shared with its armourers | Zento | Tokuno |
+| Twin Paths Dojo | the Musha-Shugyo Dojo, shared with its armorers | Zento | Tokuno |
 | Keepers of the Last Door | the empty hall on Umbra's west side | Umbra | Malas |
 | Foresters' Union | Yew Mill | Yew | Trammel |
 | Tailors' Circle | the Counselor's Guild | Nujel'm | Trammel |
