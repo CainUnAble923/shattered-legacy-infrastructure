@@ -85,7 +85,9 @@ namespace Server
             (2082, BodyType.Monster, "glasswarden (crystal golem)"),
             (2083, BodyType.Monster, "tunnelmaw (umber hulk)"),
             (2084, BodyType.Monster, "the Siegebreaker (war troll)"),
-            (2085, BodyType.Monster, "the Hollow Oak (treant)")
+            (2085, BodyType.Monster, "the Hollow Oak (treant)"),
+            (2086, BodyType.Animal, "red riding dragon (cc-P277: TheArt L-Ridable Red Dragon, a mount)"),
+            (2087, BodyType.Animal, "riding dragon (cc-P277: TheArt L-Colorable Rideable Dragon, a mount)")
         };
 
         public static void Configure() => Apply();

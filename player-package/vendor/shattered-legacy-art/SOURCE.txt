@@ -511,3 +511,26 @@ candle, candelabra and holiday candle do; the pack gives no timing of its own.
 Not used from these packs: the second facings, the unlit frames, the table cloths, eggnog, hot cocoa, horseshoes,
 the elk trophy, the figurines, the other plushies, the angel box, the second tall candle and the mistletoe. The
 Hestia Christmas fireplace (hestia-christmas-fireplace) was left out: its page states no terms.
+
+The rideable dragons: creature bodies 2086-2087 (0x826-0x827) and their mount items 28295-28296 (cc-P277, P139-D6)
+------------------------------------------------------------------------------------------------------------------
+TheArt, "Custom Animation Set" (https://www.servuo.dev/archive/custom-animation-set.1697/), the zip "OSI Classic Rips
+converted"; the pack is D:\UO\third-party\theart-critters\ with its own SOURCE.txt. No terms stated; the files are
+EA-derived (TheArt's conversions of OSI art), so they ship only as blocks inside our own anim7 file (build\sl-anim7.bin)
+and as our tiledata records, never as an EA file; credit TheArt, ship only inside the player package or the private
+repo, do not repost.
+
+  body  slot  type      in game                 file
+  2086  207   ANIMAL 0  a red dragon (mount)    L-Ridable Red Dragon.vd
+        SHA-256 a4f50372ecd9f25190bb6cd50ae3ae0b982c07487b0c800d9abad531841d9482, 5751247 bytes. Over the 5 MB repo rule, so
+        anim-src\bodies\2086.vd is git-ignored (Chase 2026-10-18, P139-D6): scripts\build-equip-anims.py copies it
+        from D:\UO\third-party\theart-critters\OSI Classic Rips converted\ when it is missing and checks the SHA-256
+        either way (records.json bodyAnims "outsideGit"); the package build runs the encoder first, so it needs that file
+        on the building PC.
+  2087  208   ANIMAL 0  a dragon (mount, hued)  L-Colorable Rideable Dragon.vd
+        SHA-256 59afd3abfa6192b625c16c1d4717d3f64d93802c1864372344c388f3e5e1a54e, 3240155 bytes, committed as anim-src\bodies\2087.vd.
+
+The mount items 28295 (0x6E87, red) and 28296 (0x6E88, colorable) are ours: tiledata records on the Mount layer (25),
+flags Wearable (OSI's old mount items' flag), weight 255, their Animation the body (TazUO draws a ridden mount from the
+mount item's tiledata Animation: Item.GetGraphicForAnimation). Their icons are each dragon's own stand frame (action 2,
+direction 1), scaled to 44 px.

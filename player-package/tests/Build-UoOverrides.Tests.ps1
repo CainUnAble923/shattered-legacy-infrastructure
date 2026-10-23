@@ -257,7 +257,8 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # icons (13184-13189); cc-P242: so does the flying loot (15536-15589);
     # cc-P243: so does the League Hall's decor (15592-15629); cc-P265: so does the guild hall decor (28016-28294);
     # cc-P266: the second winter block (13192-13238), checked with the first by the winter fact.
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28294) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) })
+    # cc-P277: the dragons' mount items (28295-28296), checked by their own fact.
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28296) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -301,10 +302,10 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P242 the 54 flying loot frames (15536-15589); cc-P265 the 279 guild hall decor IDs (28016-28294);
     # cc-P266 the 47 second-block winter decor IDs (13192-13238) and the advent calendar gump 22469; cc-P364 the 14 League
     # bestiary bodies (2072-2085).
-    Assert-Equal 623 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies
-    Assert-Equal 38 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364)'
+    Assert-Equal 627 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art
+    Assert-Equal 40 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364), 2086-2087 (cc-P277)'
     Assert-Equal 16 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468 and 22469'
-    Assert-Equal 568 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+    Assert-Equal 570 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
 
 Fact 'TheChestMimicRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
@@ -696,6 +697,34 @@ $ourBodyText = ($ourBodyLines | ForEach-Object { "$_`r`n" }) -join ''
 $ourMobText  = ($ourMobLines | ForEach-Object { "$_`r`n" }) -join ''
 $bodyconvComment  = "# Shattered Legacy's animations (app\Build-UoOverrides.ps1): body N is slot S of anim7.mul.`r`n"
 $mobtypesComment  = "# Shattered Legacy's creature bodies (app\Build-UoOverrides.ps1): body TYPE flags (hex).`r`n"
+
+Fact 'TheRideableDragonMountItemsAreTheServersAndNameTheirBodiesOnTheMountLayer' {
+    # cc-P277 (P139-D6). RideableDragons.cs carries the server's copy (RideableDragonArt); records.json the players'.
+    # A ridden mount is drawn from its mount item's tiledata Animation (TazUO Item.GetGraphicForAnimation), so each
+    # mount item's record is on the Mount layer (25) and names its dragon's body; each body has its bodyAnims entry,
+    # ANIMAL in an animal slot; the red one's .vd is kept outside git (outsideGit: its source and SHA-256).
+    $cs  = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\Mobiles\Mounts\RideableDragons.cs'))
+    $rec = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $c = { param($n) $m = [regex]::Match($cs, "public const int $n = (0x[0-9A-Fa-f]+|\d+);"); if (-not $m.Success) { throw "no $n in RideableDragons.cs" }; [int]$(if ($m.Groups[1].Value -like '0x*') { [Convert]::ToInt32($m.Groups[1].Value.Substring(2), 16) } else { $m.Groups[1].Value }) }
+    foreach ($p in @(@{ Body = (& $c 'RedBody'); Item = (& $c 'RedMountItem'); Outside = $true }, @{ Body = (& $c 'ColorableBody'); Item = (& $c 'ColorableMountItem'); Outside = $false })) {
+        $t = @($rec.tiledata | Where-Object { [int]$_.id -eq $p.Item })
+        Assert-Equal 1 $t.Count "one tiledata record for mount item $($p.Item)"
+        if (-not $t.Count) { continue }
+        Assert-Equal 25 ([int]$t[0].layer) "mount item $($p.Item) is on the Mount layer"
+        Assert-Equal $p.Body ([int]$t[0].animId) "mount item $($p.Item) names body $($p.Body) as its Animation"
+        Assert-True ($t[0].name.Length -le 19) "name of $($p.Item) is 19 characters at most"
+        Assert-Equal 1 @($reg | Where-Object { $_.kind -eq 'art' -and [int]$_.id -eq $p.Item }).Count "mount item $($p.Item) is a registered art ID"
+        Assert-True (Test-Path -LiteralPath (Join-Path $pkg "vendor\shattered-legacy-art\art\$($p.Item).png")) "mount item $($p.Item) has its PNG"
+        Assert-Equal 1 @($reg | Where-Object { $_.kind -eq 'body' -and [int]$_.id -eq $p.Body }).Count "body $($p.Body) is registered"
+        $b = @($rec.bodyAnims | Where-Object { [int]$_.body -eq $p.Body })
+        Assert-Equal 1 $b.Count "one bodyAnims entry for $($p.Body)"
+        if (-not $b.Count) { continue }
+        Assert-True ($b[0].type -eq 'ANIMAL' -and [int]$b[0].slot -ge 200 -and [int]$b[0].slot -lt 400) "body $($p.Body) is ANIMAL in an animal slot"
+        Assert-Equal $p.Outside ([bool]$b[0].PSObject.Properties['outsideGit']) "body $($p.Body) outside git: $($p.Outside)"
+        if ($p.Outside) { Assert-True ([string]$b[0].outsideGit.sha256 -match '^[0-9a-f]{64}$' -and [string]$b[0].outsideGit.from) "body $($p.Body) names its source and SHA-256" }
+    }
+}
 
 Fact 'TheSatchelIconRecordsAreTheServersTableAndEachIsOursWithItsPng' {
     # cc-P236. SatchelArt.cs carries the server's copy of the six icons' records (SatchelArt.Records); records.json
