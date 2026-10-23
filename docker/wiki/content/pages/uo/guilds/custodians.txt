@@ -1,0 +1,65 @@
+====== The Custodians ======
+
+The Custodians are Britannia's civic cleanup guild. They add a carried trash bag and ground cleanup to OSI's **Clean Up Britannia**, and they rank you by the Clean Up points you have earned. The Custodians are unique to Shattered Legacy; Clean Up Britannia itself is OSI's. The full points and store rules are on [[:uo:systems:clean_up_britannia|Clean Up Britannia]].
+
+===== Joining =====
+
+  * Find the **Sanitation Warden**, upstairs in New Haven's **civic hall**. Type ''[guild'' and use **Show me the way** for an arrow.
+  * Open to everyone: speak to the Warden and pledge your service. No skill, no fee.
+  * You get a free, blessed **Trash Bag** that belongs to you, and the cleanup commands below.
+  * Points you earned before joining count toward your rank when you join.
+
+===== How members clean up =====
+
+^ Method ^ How ^
+| Trash barrel | Anyone can drop items in. Points are paid when the items are destroyed. **Appraise for Cleanup** shows an item's value first. |
+| Your Trash Bag | Put items in, right-click it, choose **Clean Up Britannia**, check the estimate, then **Dump Now**. **Return All Items to Pack** empties it without trashing anything. |
+| ''[cleanup'' | Target one item on the ground or a monster corpse. |
+| ''[cleanupall'' | Target a spot to sweep **10 tiles** around it. Once every **60 seconds**. |
+
+Cleanup **destroys** things. The bag and the ground commands also destroy worthless litter. They never take blessed items, quest items, named items, exceptional weapons and armor, gold, bank checks or containers with something inside, and never a player's corpse.
+
+A monster corpse can be cleaned up, and **everything still inside it goes too**. Loot first.
+
+===== Ranks =====
+
+Your rank follows your **lifetime** Clean Up points. Spending points never lowers it.
+
+^ Rank ^ Lifetime points ^
+| Volunteer | 0 |
+| Junior Custodian | 25 |
+| Custodian | 125 |
+| Senior Custodian | 500 |
+| Chief Custodian | 1,250 |
+
+===== Civic waste bundles and contracts =====
+
+Every **5 items with a point value** you clear in one bag dump or one sweep give you **1 civic waste bundle**. The **Civic Contracts** on the directory's **Contracts** page take these bundles and pay gold. The Custodians have no currency of their own and post no requisitions.
+
+===== The Warden and the store =====
+
+The Sanitation Warden shows your points and rank, replaces your Trash Bag, and opens the Clean Up store (so does any **Cleanup Officer**). Stand within **5 tiles** to shop; you do not have to be a member. Custodian supplies in the store:
+
+^ Supplies ^ Clean Up points ^
+| 100 bandages | 15 |
+| 5 refresh potions | 3 |
+| 3 greater heal potions | 5 |
+
+You own one Trash Bag at a time. Asking for a new one **deletes the old one wherever it is**, so empty it first.
+
+For your pack mule, the Custodians' module is the **Salvage Bin**; see [[:uo:systems:pack_mules|Pack mules]].
+
+===== Where the hall is =====
+
+The chapter is upstairs in **New Haven's civic hall**. A main hall elsewhere is planned; see [[:uo:drafts:guild_halls|Guild halls]] (draft).
+
+===== Needed images =====
+
+  * TODO image: the Sanitation Warden in the civic hall.
+  * TODO image: the Trash Bag's Clean Up estimate before Dump Now.
+
+===== Related pages =====
+
+  * [[:uo:guilds:start|Guilds hub]]
+  * [[:uo:systems:clean_up_britannia|Clean Up Britannia]]
+  * [[:uo:systems:pack_mules|Pack mules]]

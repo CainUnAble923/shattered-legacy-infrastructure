@@ -1,0 +1,18 @@
+====== New Players ======
+
+New to Shattered Legacy, or new to Ultima Online? Start here.
+
+===== Read these first =====
+
+  * [[:uo:connection|Connection guide]]: install the client and log in.
+  * [[:uo:new_player_guide|New player guide]]: your first choices and how this shard differs from a stock one.
+  * [[:uo:guides:first_hour|First hour route]]: a path for a fresh character.
+  * [[faq|New player FAQ]]: quick answers to the common questions.
+  * [[glossary|Glossary]]: the words and names you will hear in game.
+
+===== Next =====
+
+  * [[:uo:world:new_haven|New Haven]]: the starting town, who is there and what they do.
+  * [[:uo:guilds:start|Guilds]]: pick one and join.
+  * [[:uo:systems:league|The League]]: register with the League Registrar.
+  * [[:uo:systems:young_players|Young players]]: how long your protection lasts.

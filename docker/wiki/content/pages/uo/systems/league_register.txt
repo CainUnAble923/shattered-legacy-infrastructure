@@ -20,7 +20,7 @@ How many guilds it holds depends on your League rank:
 | Mythril | 12 |
 | Celestial | all 18 |
 
-If you leave a guild, the Register shows it greyed out once and then drops it, which frees its slot.
+If you leave a guild, the Register shows it grayed out once and then drops it, which frees its slot.
 
 ===== The pages =====
 
@@ -29,7 +29,7 @@ If you leave a guild, the Register shows it greyed out once and then drops it, w
   * **League actions**, opening with your rank:
     * **Bronze**: open any bound guild's contracts from anywhere.
     * **Verite**: turn in every ready order of your bound guilds at once.
-    * **Blaze**: repair everything you wear, carry and keep in your bank, in one pass.
+    * **Blaze**: repair the gear you are wearing, free. It is for your own worn gear only.
   * **Bank**: counts the gold and materials in your bank.
   * **League goods** (below).
 
@@ -56,7 +56,7 @@ Blacksmiths with **Arms Lore** can make three repair items. Find them under **Re
 | Field repair kit | 80 | 110 | 30 iron ingots | Repairs one item per charge, 10 charges; works on tools that wear, too |
 | Remote repair deed | 90 | 120 | 20 iron ingots, 1 star sapphire | Repairs everything you wear, carry and bank, once |
 
-A repair from one of these brings the item back to full durability without lowering its maximum. The remote repair deed does what the Register's Blaze action does, for a player below Blaze.
+A repair from one of these brings the item back to full durability without lowering its maximum.
 
 ===== Needed images =====
 

@@ -20,7 +20,7 @@ An exceptional snare net, gas trap, bear trap or shackle fires once more.
 
 ===== Setting a trap =====
 
-  - Use **Remove Trap** and target the kit, then the floor near you.
+  - Carry the kit and **double-click** it, then target the floor near you.
   - Your Remove Trap skill decides how fast it arms, how well it is hidden, how hard it hits and how long it holds. Setting it while hidden arms it faster and hides it better.
   - **Loading**: drop a **poison potion** on a gas trap (your **Poisoning** skill decides how strong the gas is), an **explosion potion** on a blast trap (lesser, regular or greater changes the blast), or **fukiya darts** on a dart trap.
   - A trap fires its charges and then sits **spent** until you re-set it by hand: double-click it, or drop a fresh potion or darts on it.
@@ -33,9 +33,9 @@ Remove Trap gains when you set a trap, when one of your traps hits, and when you
 
   * **Monsters only.** Traps never catch players, pets, summons or vendors.
   * **You must stay close.** A trap works only while you are on the same map, alive, logged in and within **12 tiles** of it. Walk away and it lies dormant. The alarm is the exception: it reaches you anywhere on the same map.
-  * **Its damage is yours.** You get looting rights, [[:uo:systems:loot_boxes|loot box]] credit and Clean Up credit for what your traps help kill.
+  * **Its damage is yours.** It counts toward your looting rights and Clean Up credit for what your traps help kill.
   * Snare nets, caltrops and bear traps do not catch flying creatures, and nets, caltrops, jaws and darts pass straight through ghostly ones (shades, wraiths, wisps and the like).
-  * Bosses shrug traps off, unless you are a Master of the Thieves' Den.
+  * Bosses shrug traps off, unless you are a Master of the Thieves' Den. The alarm is the exception: it reports a boss at any rank.
   * Traps left alone fade away after half an hour; a spent one after two minutes.
 
 ===== The Thieves' Den =====
@@ -45,11 +45,11 @@ The [[:uo:professions:stealing|Thieves' Den]] owns the trade:
   * **Journeyman**: keep one more trap out.
   * **Master**: your traps work on bosses, at half strength.
 
-===== Where to practise =====
+===== Where to practice =====
 
-In the [[:uo:drafts:rootdeep_burrows|Rootdeep Burrows]] (still being dug: see its draft page), the Echo hands trainees two practice nets in the Stacks: catch a rat with one to learn the trick. The Burrows floors also have a few traps of their own now. Watch your step.
+In the [[:uo:drafts:rootdeep_burrows|Rootdeep Burrows]] (not open yet: see its draft page), the Echo hands trainees two practice nets in the Stacks: catch a rat with one to learn the trick. The Burrows floors also have a few traps of their own now. Watch your step.
 
-New to Remove Trap? The **trap training kits** (the circuit, cylinder and slider kits) train it with no danger; the Collector of Oddities sells them in Moonglow once staff have placed him there. Since Endless Journey you no longer need Lockpicking or Detect Hidden to use it.
+New to Remove Trap? The **trap training kits** (the circuit, cylinder and slider kits) train it with no danger; the Collector of Oddities is to sell them in Moonglow, but he is not in the world yet. Since Endless Journey you no longer need Lockpicking or Detect Hidden to use it.
 
 Four of the traps (the gas trap, the dart trap, the shackle trap and the snare net once sprung) still use stand-in pictures until their own art is drawn.
 

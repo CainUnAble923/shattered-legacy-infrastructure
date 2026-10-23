@@ -7,7 +7,7 @@ Every creature and NPC on Shattered Legacy has a **level**, and you can see at a
 Click a creature (or show all names) and a colored word appears under its name:
 
 ^ Color ^ Word ^ Its level against yours ^
-| grey | trivial | 20 or more below you |
+| gray | trivial | 20 or more below you |
 | green | easy | 10 to 19 below |
 | blue | fair | 3 to 9 below |
 | yellow | even match | within 2 either way |
@@ -15,9 +15,9 @@ Click a creature (or show all names) and a colored word appears under its name:
 | red | dangerous | 10 to 19 above |
 | dark red | deadly | 20 or more above |
 
-The word is there so the color is never mistaken for a name's notoriety color (blue, grey, red), which is unchanged.
+The word is there so the color is never mistaken for a name's notoriety color (blue, gray, red), which is unchanged.
 
-A creature's level runs from 1 to 200 and follows how hard it is for a bard to work on (OSI's Bard difficulty). Champions are 200, peerless bosses 190. Shopkeepers and other NPCs that cannot be harmed are level 1 and always grey.
+A creature's level runs from 1 to 200 and follows how hard it is for a bard to work on (OSI's Bard difficulty). Champions are 200, peerless bosses 190. Shopkeepers and other NPCs that cannot be harmed are level 1 and always gray.
 
 Until character levels arrive, **your level is your best combat skill**.
 

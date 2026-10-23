@@ -1,0 +1,41 @@
+====== Treasures of Sorcerer's Dungeon ======
+
+Every Halloween, **October 24 to November 2**, Sorcerer's Dungeon in **Ilshenar** fills with the undead and nine holiday bosses. It is OSI's Treasures of Sorcerer's Dungeon, ported as OSI has it, on our Halloween dates. It starts and ends by itself.
+
+===== How it works =====
+
+  * The event works through **nine rooms of the dungeon, one at a time**. Zombies, skeletons, gargoyles, liches and lich lords keep coming in the current room.
+  * When **80** of them have died in that room, the room's **boss** appears.
+  * When the boss is dead, the event moves on to the next room after a minute or three.
+
+The bosses, in order: the nightmare fairy, the jack in the box, the headless elf, the abominable snowman, the twisted holiday tree, the rabid reindeer, the garish gingerman, the stocking serpent, and finally **Jack the Pumpkin King**. Then it starts again from the first room.
+
+===== Artifacts of Enchanted Origin =====
+
+While the event runs, slaying monsters in Sorcerer's Dungeon now and then puts a piece of equipment **"of Enchanted Origin"** in your backpack: a weapon, armor, shield, jewel or hat with random properties, in its own hue. You can wear it, or trade it in.
+
+The **Researcher** stands by the dungeon entrance, beside the event's pumpkins and flaming scarecrows. He takes each artifact of Enchanted Origin for **one point**, and sells rewards for points:
+
+^ Reward ^ Points ^
+| Jack's Bag of Tricks | 75 |
+| Serpent's Jawbone | 50 |
+| Sterling Silver Ring | 50 |
+| Talons of Escaping | 50 |
+| Boots of Escaping | 50 |
+| Jack in the Box | 20 |
+| Shackled Heart of the Pumpkin King | 20 |
+
+**Shard change:** OSI's three title deeds (Hero of the Unloved, Savior of the Demented, Slayer of the Pumpkin King) are not offered, because the shard has no reward title menu yet.
+
+After the event ends, the Researcher stays, so you can still spend your points.
+
+===== Needed images =====
+
+  * TODO image: the Researcher and the pumpkins at the dungeon entrance.
+  * TODO image: Jack the Pumpkin King.
+
+===== Related pages =====
+
+  * [[seasonal|Seasonal decorations]]
+  * [[dungeons|Dungeons]]
+  * [[start|World hub]]

@@ -12,8 +12,8 @@ You do not need to be registered with the League to shop.
 ===== How paying works =====
 
   * **Achievement Points (AP)** open each row for good. AP is a lifetime score and is never spent, so a row you have opened stays open.
-  * **Renown** is the price. Spending Renown takes it from your balance only: your **Lifetime Renown**, which is what your League rank is measured by, never goes down. Shopping can never cost you a rank.
-  * Rows your AP has not reached yet are greyed out with the AP they need. Every purchase asks you to confirm.
+  * **Renown** is the price. Spending Renown takes it from your balance only: your **Lifetime Renown**, the Renown you have earned through play and what your League rank is measured by, never goes down. Shopping can never cost you a rank.
+  * Rows your AP has not reached yet are grayed out with the AP they need. Every purchase asks you to confirm.
 
 ===== What is on sale =====
 
@@ -35,11 +35,11 @@ These are the starting prices. They will be tuned in play testing, so the shop i
 | 1,750 | League regalia: robe, cloak and sandals | 1,000 |
 | 1,750 | Title: the System's Favorite | 500 |
 
-The tabard, cloak and regalia come in League colours sold nowhere else. The shop sells looks, decor and conveniences only: no weapon or armor properties, no skill or stat gains.
+The tabard, cloak and regalia come in League colors sold nowhere else. The shop sells looks, decor and conveniences only: no weapon or armor properties, no skill or stat gains.
 
 ==== The System's Loot Boxes ====
 
-The Bronze, Silver and Gold boxes hold **1, 2 and 3** things drawn from the League goods the box's own AP level opens (plus a League sash). They hold no gold and no Renown. They are [[loot_boxes|loot boxes]] like any other: bound to your account, opened in a guarded town or a house where you are owner, co-owner or friend.
+The Bronze, Silver and Gold boxes hold **1, 2 and 3** draws from the shop's starter goods the box's own AP level opens (cosmetics, decor and conveniences), plus a bound League sash. Bronze draws from the 0 AP rows, Silver from rows up to 250 AP, Gold from rows up to 1,000 AP. They hold no gold, no Renown, no titles and no Hall decor, and the same thing can come up twice. They are [[loot_boxes|loot boxes]] like any other: bound to your account, opened in a guarded town or a house where you are owner, co-owner or friend.
 
 ===== League titles =====
 
@@ -48,7 +48,7 @@ A title shows after your character's name.
   * **Bought** in the shop: the Registered Adventurer, Veteran of the League, the System's Favorite.
   * **Earned free** by AP: //the Noted// at 100, //the Accomplished// at 250, //the Distinguished// at 500, //the Renowned// at 1,000 and //the Illustrious// at 1,750.
 
-A title you own is your account's for good. Each character picks which one to show under **Titles**, at the Registrar or in the achievements window. A few rare titles come from secret achievements and only appear in your list once you hold them.
+A title you own is your account's for good. Each character picks which one to show under **Titles**, at the Registrar or in the achievements window. Rare titles also come from secret achievements and only appear in your list once you hold them.
 
 ===== The Hall page: decor for your house =====
 
@@ -72,7 +72,7 @@ The Hall art is new: **update your game through the launcher** to see it.
 
 ===== Needed images =====
 
-  * TODO image: the League Shop open, with one row greyed out showing its AP.
+  * TODO image: the League Shop open, with one row grayed out showing its AP.
   * TODO image: the Hall page.
   * TODO image: a display case and a wall trophy placed in a house.
 

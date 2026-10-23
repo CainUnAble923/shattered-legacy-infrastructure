@@ -1,16 +1,16 @@
 ====== Levelable Crafted Gear ======
 
-**Draft: not available to players yet.** The levelling itself works on the test shard, but the Smith's Seal that makes an item levelable has no player source yet (no drop, vendor or reward gives it), so nobody can start. This page waits here until the Seal's source is chosen.
+**Draft: not available to players.** The rules for levelable gear are built, but the Smith's Seal that makes an item levelable has no player source yet (no drop, vendor or reward gives it), so nobody can start. Whether it has been tried in game is not confirmed. This page waits here until the Seal's source is chosen.
 
 Levelable gear is unique to Shattered Legacy. Crafted gear grows with the person who wears it.
 
 ===== Making an item levelable =====
 
-A **Smith's Seal** (a working name) makes one **crafted** weapon, armor piece, shield or jewel levelable. Found gear and artifacts are refused. The Seal is used up only when it works.
+A **Smith's Seal** (a working name; it is an item, not the Smithing Seals the Society pays) makes one **crafted** weapon, armor piece, shield or jewel levelable. Found gear, artifacts and clothing are refused. The Seal is used up only when it works.
 
 ===== Earning XP =====
 
-  * Every levelable item you are **wearing** gains XP from every kill you helped with.
+  * Every levelable item you are **wearing** gains XP from every kill you helped with. Gear in your backpack gains nothing.
   * A kill's XP follows how tough the creature is, and is shared out by **damage dealt**. Damage from your pets, summons, provoked creatures and spells counts as yours.
   * A pet that fights passes your share on to gear it wears: creatures can wear levelable gear too.
   * One kill can only give an item so much: a twentieth of what its next level needs.
@@ -20,6 +20,7 @@ A **Smith's Seal** (a working name) makes one **crafted** weapon, armor piece, s
   * Items level up to **200**. Each level needs more XP than the last.
   * Each level gives **4 points**, and every 10th level gives **8**.
   * Type ''[ItemLevel'' and target the item to see its level and spend its points on properties and resists.
+  * Points cannot buy skill bonuses, Self Repair or weapon hit effects.
   * A property can never be raised past its imbuing ceiling. An exceptional item's ceiling is one and a half times higher, but never above the property's Overcharged maximum.
 
 All of these numbers may change before the Seal reaches players.

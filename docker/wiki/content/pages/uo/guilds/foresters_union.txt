@@ -1,0 +1,93 @@
+====== Foresters' Union ======
+
+The Foresters' Union is the guild for **Lumberjacking, Carpentry and Bowcraft/Fletching**. It hands you a lumber satchel and a logbook, records the woods you find, and pays you for timber work. The guild is unique to Shattered Legacy; chopping and the stock woods work as on OSI.
+
+**Currency:** Timber Tokens.
+
+===== Joining =====
+
+  * **Cedric Rowanwood** is at **Carpenters of New Haven** (Trammel). Type ''[guild'' and use **Show me the way** for an arrow.
+  * Joining is free, with no skill or tribute. Membership, standing, tokens and contracts belong to your character. The woods your logbook records belong to your **account**.
+  * You get your trade tools, a blessed **Forester's Logbook** and a blessed **Foresters' Lumber Satchel**.
+  * Open **Services** on Cedric's page for the guild's own dashboard.
+
+==== The Apprentice task ====
+
+Bring **50.0 base Lumberjacking** or **20 regular boards**. It pays **25 standing and 10 Timber Tokens**, once. Boards are taken only if you use the board option.
+
+===== Ranks =====
+
+^ Rank ^ Standing ^
+| Woodcutter | 0 |
+| Sawyer | 1,000, or the Apprentice task |
+| Forester | 5,000 |
+| Arborist | 15,000 |
+| Grove Warden | 40,000 |
+| Master of the Wood | 80,000 |
+| Legendary Forester | 150,000 |
+
+**Promotion also needs craft skill:** the better of your **base** Carpentry or Bowcraft/Fletching must reach **30, 50, 70, 90 and 100** for each step up (Grove Warden and Master of the Wood both need 90). A promotion you have earned stays if your skill drops. Some guild windows show your rank from standing alone and can disagree with this.
+
+===== The Lumber Satchel =====
+
+Keep it in your backpack and new logs go straight into it. It holds logs and boards and cuts their weight by **75 percent**. When it cannot take a harvest, the logs go to your backpack or the ground as usual.
+
+===== Chopping and woods =====
+
+Use an axe or hatchet on a tree for logs. To make boards, double-click the axe and target logs in your backpack.
+
+^ Wood ^ Lumberjacking to harvest ^
+| Regular | any |
+| Oak | 65.0 |
+| Ash | 80.0 |
+| Yew | 95.0 |
+| Heartwood, Bloodwood, Frostwood | 100.0 |
+
+**Shard change:** eight **extended woods** go past Frostwood. All of them need **100.0 base Lumberjacking to harvest**. Working them is a separate, higher requirement:
+
+^ Extended wood ^ Carpentry or Bowcraft/Fletching to work it ^
+| Ironwood | 100.0 |
+| Ghostwood | 115.0 |
+| Emberbark | 130.0 |
+| Frostbark | 140.0 |
+| Shadowbark | 155.0 |
+| Runewood | 170.0 |
+| Voidwood | 185.0 |
+| Starwood | 200.0 |
+
+Rare woods give crafted bows, staves, clubs and wooden shields bonuses of their own, and exceptional pieces get more. See [[:uo:professions:materials|Metals and woods]].
+
+  * A grove keeps its wood type after it regrows and after a restart. A rare grove can still give plain logs now and then.
+  * **Shard change:** chopping the last usable wood from a grove leaves a **stump** where the tree was. It goes away when the wood grows back; an axe on it tells you there is not enough wood left.
+
+===== The Forester's Logbook and discoveries =====
+
+Double-click the logbook in your backpack to see the woods you have found, when, how many, and where. It records the spot you stood on, so a grove entry points near a find, not to a promise that every tree there has that wood. Your finds are recorded even without the book in your pack, and losing the book loses nothing.
+
+**Shard change:** an extended wood starts as **Pending Report**. Until you report it, chopping it gives **regular logs**. Open **Discovery Report** from the book (or Cedric's **Forest Discoveries** page), check the reward and submit. You get Foresters' standing and Timber Tokens, and from then on that wood drops as itself. The reward is once per wood type for your account, not once per grove.
+
+===== Work =====
+
+  * **Timber Contracts** on Cedric's page ask for boards and pay standing, Timber Tokens and gold. You can hold **3 active contracts per guild**. They are fixed requests with no skill check at turn-in.
+  * **Bulk Order Info** on Cedric gives Carpentry and Fletching bulk order deeds to members with skill in the craft. These are separate from timber contracts; see [[:uo:professions:bulk_orders|Bulk orders]].
+  * **Requisitions** pay Foresters' standing, League Renown and gold for matching magic items; see [[:uo:systems:requisitions|Requisitions]].
+  * Lost your logbook or starting satchel? Cedric replaces each for **5 Timber Tokens**.
+
+The [[:uo:systems:league_register|League Register]] also sells a Combined Logbook (ore and timber in one book) and a League Field Satchel that carries your guild satchels.
+
+===== Where the hall is =====
+
+The chapter is **Carpenters of New Haven**. A main hall elsewhere is planned; see [[:uo:drafts:guild_halls|Guild halls]] (draft).
+
+===== Needed images =====
+
+  * TODO image: Cedric Rowanwood at Carpenters of New Haven.
+  * TODO image: the Forester's Logbook with a Pending Report entry.
+  * TODO image: a stump left after chopping out a grove.
+
+===== Related pages =====
+
+  * [[:uo:guilds:start|Guilds hub]]
+  * [[:uo:guilds:miners_compact|Miners' Compact]]
+  * [[:uo:guilds:rangers_league|Rangers' League]]
+  * [[:uo:professions:materials|Metals and woods]]
