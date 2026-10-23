@@ -255,10 +255,16 @@ public class OutridersGuildmasterGump : Gump
 
         AddButton(18, 316, 4011, 4012, 50);
         AddLabel(44, 318, 1154, "Civic Mule Exchange (mule upgrades)");
+
+        // cc-P480: brings a dead bonded pet back (ElixirOfRebirth).
+        AddButton(18, 344, 4011, 4012, 34);
+        AddLabel(44, 346, 1154, $"Buy an elixir of rebirth ({ElixirMemberPrice} gold, member price)");
     }
 
     // -- Helpers ---------------------------------------------------------------
 
+    // cc-P480: the elixir of rebirth at a member price, a quarter off the animal trainers' (SBPetRebirth.Price).
+    public const int ElixirMemberPrice = SBPetRebirth.Price * 3 / 4;
     private const int CrookReplacementCost   = 50;
     private const int SatchelReplacementCost = 25;
 
@@ -353,6 +359,29 @@ public class OutridersGuildmasterGump : Gump
                 _pm.SendMessage(0x44, curMarks >= CrookReplacementCost
                     ? "The Guildmaster hands you a replacement Outrider's Crook."
                     : "The Guildmaster issues you an Outrider's Crook to get you started.");
+                _pm.SendGump(new OutridersGuildmasterGump(_pm, View.MemberDashboard));
+                break;
+            }
+
+            case 34:
+            {
+                if (acct == null) break;
+                var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial);
+
+                if (!guild.JoinedGuilds.Contains("rangers"))
+                {
+                    _pm.SendMessage(0x22, "You are not a member of the Rangers' League.");
+                    break;
+                }
+
+                if (_pm.Backpack?.ConsumeTotal(typeof(Gold), ElixirMemberPrice) != true && !Banker.Withdraw(_pm, ElixirMemberPrice))
+                {
+                    _pm.SendMessage(0x22, $"An elixir of rebirth costs {ElixirMemberPrice} gold, from your backpack or your bank.");
+                    break;
+                }
+
+                _pm.AddToBackpack(new ElixirOfRebirth());
+                _pm.SendMessage(0x44, "The Guildmaster hands you an elixir of rebirth. Use it beside your pet's ghost once its body has faded.");
                 _pm.SendGump(new OutridersGuildmasterGump(_pm, View.MemberDashboard));
                 break;
             }

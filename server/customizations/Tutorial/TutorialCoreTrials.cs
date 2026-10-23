@@ -27,6 +27,7 @@ public static class TutorialCoreTrials
         public TimerExecutionToken Timer;
         public DateTime VisionAt;
         public int VisionLine;
+        public int Ticks;
     }
 
     public static void Initialize() => EnsureHooks();
@@ -42,19 +43,54 @@ public static class TutorialCoreTrials
     public static bool IsDoing(PlayerMobile pm, string key) =>
         ClusterFTutorial.IsParticipant(pm) && Current(pm)?.Station.Key == key;
 
+    // cc-P480: each page says what to find, what it looks like and where (Chase 10-23: "a mark" meant nothing to someone
+    // who has never played), in two short sentences where it can.
     public static string Hint(string key) => key switch
     {
-        "core.movement" => "Walk onto the blue mark, then the gold mark. Hold the right mouse button to walk; move the pointer farther to run.",
-        "core.paperdoll" => "Open your paperdoll by double-clicking yourself. Drag the practice cloak from your backpack onto it. Remove your old cloak first if needed.",
-        "core.backpack" => "Open your backpack from your paperdoll. Double-click the blue practice bag inside it.",
-        "core.chat" => $"Press Enter, say '{Phrase}', then Enter again. Your Journal keeps the words.",
-        "core.death" => "At the farm gate, double-click the pale echo and accept the death lesson. As a ghost, double-click the tutorial healer and accept resurrection. While you are Young, your things come back to your backpack.",
-        "core.banking" => "Follow the arrow to the banker. Say 'bank', then drag the practice token from your backpack into your bank. The practice token disappears when done; real valuables stay safe there.",
-        "core.travel" => "At the farm gate, double-click the blue tutorial moongate. It brings you back to the New Haven plaza.",
-        "core.league" => "Follow the arrow to Elara Voss. Double-click her to read about the League. Joining is your choice.",
-        "core.loop" => "Follow the arrow to the vision marker at the farm gate. Double-click it and stay nearby until the vision ends. It changes nothing about you.",
+        "core.movement" => "Walk onto the glowing blue floor tile beside Rook, then the gold one. Hold the right mouse button where you want to go; point farther away to run.",
+        "core.backpack" => "Double-click yourself to open your paperdoll, then double-click the backpack on it. Inside, double-click the blue practice bag.",
+        "core.paperdoll" => "A blue practice cloak is in your backpack. Drag it onto your paperdoll (double-click yourself to open it); take off your own cloak first if you wear one.",
+        "core.chat" => $"Press Enter, type '{Phrase}' and press Enter again. Your Journal keeps what was said.",
+        "core.death" => "Follow the arrow to the farm gate, double-click the pale gray echo (a ghostly rat) and press Ready. As a ghost, double-click Sera the healer beside it and press Resurrect; while you are Young, your things come back to your backpack.",
+        "core.banking" => "A blue practice token (a small pile of coins) is in your backpack. Walk to the banker, say 'bank', and drag the token into your bank box.",
+        "core.travel" => "Follow the arrow to the farm gate and double-click the moongate there, a tall blue shimmering arch. It brings you back to the New Haven plaza.",
+        "core.league" => "Follow the arrow to Elara Voss, inside the Registrar's house; double-click its door, on the north side, to open it. Double-click her to read about the League; joining is your choice.",
+        "core.loop" => "Follow the arrow to the bright blue rune stone at the farm gate. Double-click it and stay beside it until the vision ends; it changes nothing about you.",
         _ => "Coming soon. This wing is optional."
     };
+
+    /// <summary>A lesson's practice item, made fresh (bright and named for what it is: cc-P480).</summary>
+    public static Item? MakeSupply(string key) => key switch
+    {
+        "core.paperdoll" => new TutorialPracticeCloak(),
+        "core.backpack" => new TutorialPracticeBag { Name = "blue practice bag", Hue = TutorialStyle.SupplyHue, LootType = LootType.Blessed },
+        "core.banking" => new TutorialBankToken(),
+        _ => null
+    };
+
+    /// <summary>
+    /// cc-P480: gives the lesson's practice item again when it went missing (deleted, dropped, traded): not on the player,
+    /// not in the bank. True when it gave one. A full backpack keeps the trial and says so.
+    /// </summary>
+    public static bool Resupply(PlayerMobile pm, Trial trial)
+    {
+        var supply = trial.Supply;
+        if (supply == null || !supply.Deleted && (supply.RootParent == pm || supply.IsChildOf(pm.FindBankNoCreate())))
+        {
+            return false;
+        }
+
+        supply.Delete();
+        trial.Supply = MakeSupply(trial.Station.Key);
+        if (trial.Supply != null && !pm.AddToBackpack(trial.Supply))
+        {
+            ClusterFTutorial.SystemLine(pm, "Make room in your backpack, then press Hint and arrow again.");
+            return false;
+        }
+
+        ClusterFTutorial.SystemLine(pm, "A new one is in your backpack.");
+        return true;
+    }
 
     public static void Start(PlayerMobile pm, TutorialStation station)
     {
@@ -85,12 +121,7 @@ public static class TutorialCoreTrials
         }
         var trial = new Trial(pm, station);
         Active[pm.Serial] = trial;
-        switch (station.Key)
-        {
-            case "core.paperdoll": trial.Supply = new TutorialPracticeCloak(); break;
-            case "core.backpack": trial.Supply = new TutorialPracticeBag { Name = "blue practice bag", Hue = 0x482, LootType = LootType.Blessed }; break;
-            case "core.banking": trial.Supply = new TutorialBankToken(); break;
-        }
+        trial.Supply = MakeSupply(station.Key);
         if (trial.Supply != null && !pm.AddToBackpack(trial.Supply))
         {
             Cancel(pm);
@@ -103,6 +134,7 @@ public static class TutorialCoreTrials
 
     private static void Show(PlayerMobile pm, Trial trial)
     {
+        Resupply(pm, trial);
         ClusterFTutorial.SystemLine(pm, Hint(trial.Station.Key));
         Point(pm, Destination(trial), trial.Station.Title);
         pm.CloseGump<TutorialTrialGump>();
@@ -161,12 +193,18 @@ public static class TutorialCoreTrials
         var pm = trial.Player;
         if (Current(pm) != trial) { trial.Timer.Cancel(); return; }
         if (pm.Deleted || pm.NetState == null || !ClusterFTutorial.IsParticipant(pm)) { Cancel(pm); return; }
+        trial.Ticks++;
         switch (trial.Station.Key)
         {
             case "core.movement" when pm.Alive && Nearby(pm, Destination(trial), 0):
                 var first = trial.Progress.Step == 0;
                 Observe(pm, first ? TutorialAction.FirstMark : TutorialAction.SecondMark);
-                if (first) { ClusterFTutorial.SystemLine(pm, "Now the gold mark."); Point(pm, Destination(trial), "the gold mark"); }
+                if (first) { ClusterFTutorial.SystemLine(pm, "Now the glowing gold tile."); Point(pm, Destination(trial), "the gold tile"); }
+                break;
+            case "core.movement" when trial.Ticks % 8 == 1:
+                // cc-P480: the tile to walk onto sparkles every two seconds.
+                Effects.SendLocationEffect(Destination(trial), Map.Trammel, 0x376A, 16, 10,
+                    trial.Progress.Step == 0 ? TutorialStyle.BlueTileHue : TutorialStyle.GoldTileHue, 0);
                 break;
             case "core.paperdoll" when pm.Alive && trial.Supply?.Parent == pm:
                 Observe(pm, TutorialAction.Equipped);
@@ -216,8 +254,8 @@ public static class TutorialCoreTrials
         // PlayerDeathEvent is after YoungDeathTeleport (pinned PlayerMobile.OnDeath).
         // Return this lesson's ghost from Old Haven to the farm, without changing Young.
         pm.MoveToWorld(TutorialCorePlacement.GhostSpot, Map.Trammel);
-        ClusterFTutorial.SystemLine(pm, "You are a ghost. Double-click the tutorial healer and accept resurrection.");
-        Point(pm, TutorialCorePlacement.HealerSpot, "the tutorial healer");
+        ClusterFTutorial.SystemLine(pm, "You are a ghost. Double-click Sera the healer, beside you, and press Resurrect.");
+        Point(pm, TutorialCorePlacement.HealerSpot, "Sera the healer");
     }
 
     public static void WatchVision(PlayerMobile pm)
@@ -239,11 +277,11 @@ public sealed class TutorialTrialGump : Gump
     public TutorialTrialGump(TutorialStation station, bool done) : base(80, 80)
     {
         _station = station; _done = done;
-        AddBackground(0, 0, 480, 240, 9270);
-        AddLabel(24, 18, 1154, station.Title);
-        AddHtml(24, 50, 432, 100, $"<BASEFONT COLOR=#DDDDDD>System: {(done ? "Done. Your next lesson is ready." : TutorialCoreTrials.Hint(station.Key))}</BASEFONT>", false, false);
-        AddButton(24, 166, 4005, 4007, 1); AddLabel(60, 168, 68, done ? "Next lesson / graduate" : "Hint and arrow");
-        AddButton(24, 204, 4017, 4019, 2); AddLabel(60, 206, 999, "Reset this lesson");
+        TutorialStyle.Panel(this, 480, 240);
+        AddLabel(24, 18, TutorialStyle.HeadingHue, station.Title);
+        AddHtml(24, 50, 432, 100, TutorialStyle.Html(done ? "Done. Your next lesson is ready." : TutorialCoreTrials.Hint(station.Key)), false, false);
+        AddButton(24, 166, 4005, 4007, 1); AddLabel(60, 168, done ? TutorialStyle.DoneHue : TutorialStyle.ActionHue, done ? "Next lesson / graduate" : "Hint and arrow");
+        AddButton(24, 204, 4017, 4019, 2); AddLabel(60, 206, TutorialStyle.TextHue, "Reset this lesson");
     }
     public override void OnResponse(NetState sender, in RelayInfo info)
     {

@@ -83,7 +83,7 @@ namespace Server.Tutorial
         public const string PestsLine = "Rats in the cabbages again. Take your friend into the rows and clear out {0}. They don't hit back hard.";
         public const string PestsLeftLine = "{0} more. Mind the snake; it sulks.";
         public const string HealLine = "You're bleeding on my carrots. Here, bandages. Patch yourself up, or your friend. Then we're square.";
-        public const string DoneLine = "That's the farm. Come back if your friend ever needs a hand; the Bond Trial's mine to give, when it's time.";
+        public const string DoneLine = "That's the farm. If your friend ever falls, Tobin the vet beside me can bring them back; the Bond Trial's mine to give, when it's time.";
         public const string EchoPetLine = "A pet. It will follow you through every loop. Try to be worth following.";
         public const string EchoPestsLine = "Three vermin dead. A career is born.";
         public const string EchoHealLine = "Bandaged. You will do that a great deal.";
@@ -114,6 +114,43 @@ namespace Server.Tutorial
         }
 
         public static TutorialRecord? RecordOf(PlayerMobile pm) => ClusterFTutorial.RecordOf(pm);
+
+        // cc-P480 Part 8: the Farmhand notices a dead bonded pet near her and tells its owner where the vet is, once per
+        // owner per cooldown.
+        public static readonly TimeSpan GhostPetCooldown = TimeSpan.FromMinutes(2);
+        public const string GhostPetLine = "Oh no, your friend's taken a bad turn. Tobin the vet, just beside me, can bring them back.";
+        public const string GhostPetNoVetLine = "Oh no, your friend's taken a bad turn. The vet in New Haven, by the stables, can bring them back.";
+        private static readonly Dictionary<Serial, DateTime> _ghostPetSaid = new();
+
+        /// <summary>Says the dead pet line to its owner, unless said to them within the cooldown. True when it spoke.</summary>
+        public static bool NoticeGhostPet(Mobile hand, BaseCreature pet)
+        {
+            if (!pet.IsDeadBondedPet || pet.ControlMaster is not PlayerMobile owner || !hand.InRange(pet, 4) ||
+                _ghostPetSaid.TryGetValue(owner.Serial, out var at) && Core.Now - at < GhostPetCooldown)
+            {
+                return false;
+            }
+
+            _ghostPetSaid[owner.Serial] = Core.Now;
+            hand.SayTo(owner, FindVet() != null ? GhostPetLine : GhostPetNoVetLine);
+            return true;
+        }
+
+        /// <summary>The farm's vet, beside the Farmhand (placed by the tutorial seeder).</summary>
+        public static readonly Point3D FarmVetSpot = new(3400, 2612, 0);
+
+        public static TutorialVeterinarian? FindVet()
+        {
+            foreach (var m in Map.Trammel.GetMobilesInRange(FarmVetSpot, 4))
+            {
+                if (m is TutorialVeterinarian v && !v.Deleted)
+                {
+                    return v;
+                }
+            }
+
+            return null;
+        }
 
         public static bool Has(PlayerMobile pm, string key) => RecordOf(pm)?.StationsDone.Contains(key) == true;
 
@@ -411,13 +448,12 @@ namespace Server.Tutorial
         public TutorialFarmPetGump() : base(140, 140)
         {
             AddPage(0);
-            AddBackground(0, 0, 360, 130, 9270);
-            AddAlphaRegion(10, 10, 340, 110);
-            AddLabel(24, 18, 1154, "The Farmhand's dog or cat");
+            TutorialStyle.Panel(this, 360, 130);
+            AddLabel(24, 18, TutorialStyle.HeadingHue, "The Farmhand's dog or cat");
             for (var i = 0; i < TutorialFarm.FarmPetLines.Length; i++)
             {
                 AddButton(24, 50 + i * 30, 4005, 4007, 1 + i);
-                AddLabel(60, 52 + i * 30, 999, TutorialFarm.FarmPetLines[i]);
+                AddLabel(60, 52 + i * 30, TutorialStyle.ActionHue, $"Choose the {TutorialFarm.FarmPetLines[i]}");
             }
         }
 
@@ -488,6 +524,16 @@ namespace Server.Mobiles
 
         public override bool IsInvulnerable => true;
         public override bool ClickTitle => true;
+
+        // cc-P480: a dead bonded pet stepping near her (its owner usually close behind) gets the vet line.
+        public override void OnMovement(Mobile m, Point3D oldLocation)
+        {
+            base.OnMovement(m, oldLocation);
+            if (m is BaseCreature { IsDeadBondedPet: true } pet && InRange(pet, 4))
+            {
+                TutorialFarm.NoticeGhostPet(this, pet);
+            }
+        }
 
         public override void OnDoubleClick(Mobile from)
         {

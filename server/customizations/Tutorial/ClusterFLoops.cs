@@ -68,10 +68,10 @@ namespace Server.Tutorial
     {
         public static readonly string[] Lines =
         [
-            "System: A vision. The sword strikes the Gem. The shards fly. You fall, and the world folds shut behind you.",
-            "System: You wake where you started, remembering. That is a loop. Your level goes back to 1; your skills go with it.",
-            "System: What you keep: the League, your recipes, your achievements, your guild ranks. And me. Lucky you.",
-            "System: This was only a vision. Nothing about you has changed. Yet."
+            "A vision. The sword strikes the Gem. The shards fly. You fall, and the world folds shut behind you.",
+            "You wake where you started, remembering. That is a loop. Your level goes back to 1; your skills go with it.",
+            "What you keep: the League, your recipes, your achievements, your guild ranks. And me. Lucky you.",
+            "This was only a vision. Nothing about you has changed. Yet."
         ];
 
         /// <summary>Compatibility entry to the timed vision. Real character progression remains untouched.</summary>

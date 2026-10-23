@@ -23,6 +23,10 @@ public static class TutorialCorePlacement
     public static Point3D GhostSpot => Ground(3403, 2614);
     public static Point3D GateSpot => Ground(3402, 2615);
     public static readonly Point3D GateExit = new(3501, 2572, 14);
+    // cc-P480 Part 8: a vet beside the Farmhand, and one in New Haven by the stables when the town has none.
+    public static Point3D FarmVetSpot => Ground(TutorialFarm.FarmVetSpot.X, TutorialFarm.FarmVetSpot.Y);
+    public static readonly Point3D NewHavenVetSpot = new(3526, 2578, 7);
+    public static readonly Point3D NewHavenCentre = new(3500, 2590, 0);
     private static Point3D Ground(int x, int y) => new(x, y, Map.Trammel.GetAverageZ(x, y));
     public static Point3D Spot(string key) => key switch
     {
@@ -71,10 +75,14 @@ public static class TutorialCorePlacement
             (typeof(TutorialDeathEcho), DeathSpot, () => new TutorialDeathEcho()),
             (typeof(TutorialHealer), HealerSpot, () => new TutorialHealer()),
             (typeof(Banker), Spot("core.banking"), () => new Banker { Name = "Merrin", CantWalk = true }),
-            (typeof(LeagueRegistrar), Spot("core.league"), () => new LeagueRegistrar { CantWalk = true })
-        }.Where(row => FindMobile(row.Type, row.Spot) == null).ToArray();
+            (typeof(LeagueRegistrar), Spot("core.league"), () => new LeagueRegistrar { CantWalk = true }),
+            (typeof(TutorialVeterinarian), FarmVetSpot, () => new TutorialVeterinarian { Name = "Tobin", Direction = Direction.East })
+        }.Where(row => FindMobile(row.Type, row.Spot) == null).ToList();
+        // New Haven's own vet, when the town has none (pinned's spawn data has none there). The farm's is out of range.
+        if (FindTownVet() == null) { mobiles.Add((typeof(TutorialVeterinarian), NewHavenVetSpot, () => new TutorialVeterinarian())); }
         var gateMissing = !HasItem<TutorialTravelGate>(GateSpot);
-        var markMissing = !HasItem<TutorialWalkMark>(SecondMark);
+        var goldMissing = !HasItem<TutorialWalkMark>(SecondMark);
+        var blueMissing = !HasItem<TutorialBlueWalkTile>(FirstMark);
 
         // Preflight the whole requested surface before mutation. Markers are passable, so NPCs can share their tile.
         // CanFit reads the server's actual land/statics/items. Never guess a clear tile from an offline picture.
@@ -101,9 +109,21 @@ public static class TutorialCorePlacement
                 m.MoveToWorld(row.Spot, map);
             }
             if (gateMissing) { new TutorialTravelGate().MoveToWorld(GateSpot, map); }
-            if (markMissing) { new TutorialWalkMark().MoveToWorld(SecondMark, map); }
+            if (blueMissing) { new TutorialBlueWalkTile().MoveToWorld(FirstMark, map); }
+            if (goldMissing) { new TutorialWalkMark().MoveToWorld(SecondMark, map); }
         }
-        return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {mobiles.Length} NPCs/echo, {(gateMissing ? 1 : 0)} gate, {(markMissing ? 1 : 0)} gold mark. {farm.Message}";
+        var tiles = (blueMissing ? 1 : 0) + (goldMissing ? 1 : 0);
+        return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {mobiles.Count} NPCs/echo/vets, {(gateMissing ? 1 : 0)} gate, {tiles} walking tiles. {farm.Message}";
+    }
+
+    /// <summary>Any vet in New Haven (60 tiles of its centre; the farm's, 100 tiles west, is outside).</summary>
+    public static Mobile? FindTownVet()
+    {
+        foreach (var m in Map.Trammel.GetMobilesInRange(NewHavenCentre, 60))
+        {
+            if (m is Veterinarian { Deleted: false }) { return m; }
+        }
+        return null;
     }
 }
 
@@ -113,9 +133,11 @@ public partial class TutorialStationMarker : Item
     [SerializableField(0)] private string _stationKey;
     public TutorialStationMarker(string key) : base(0x1F14)
     {
-        _stationKey = key; Movable = false; Hue = 0x482;
+        _stationKey = key; Movable = false; Hue = TutorialStyle.SupplyHue;
         Name = TutorialStations.Find(key)?.Title ?? key;
     }
+    // cc-P480: markers placed before were pale gray (0x482).
+    [AfterDeserialization(false)] private void Brighten() => Hue = TutorialStyle.SupplyHue;
     public override void OnDoubleClick(Mobile from)
     {
         if (from is not PlayerMobile pm || !pm.Alive || !TutorialCoreTrials.Nearby(pm, Location) ||
@@ -125,18 +147,30 @@ public partial class TutorialStationMarker : Item
     }
 }
 
+// cc-P480 Part 3: the walking lesson's two marks are full, bright floor tiles (they were a pale rune and a dark-slate
+// rune, Chase 10-23). The gold one keeps its old type, so a mark placed before becomes the tile when the world loads.
 [SerializationGenerator(0, false)]
 public partial class TutorialWalkMark : Item
 {
     [Constructible]
-    public TutorialWalkMark() : base(0x1F14) { Name = "gold walking mark"; Movable = false; Hue = 0x8AF; }
+    public TutorialWalkMark() : base(TutorialStyle.FloorTileId) { Name = "glowing gold floor tile"; Movable = false; Hue = TutorialStyle.GoldTileHue; }
+    [AfterDeserialization(false)] private void AsTile() { ItemID = TutorialStyle.FloorTileId; Hue = TutorialStyle.GoldTileHue; Name = "glowing gold floor tile"; }
+}
+
+[SerializationGenerator(0, false)]
+public partial class TutorialBlueWalkTile : Item
+{
+    [Constructible]
+    public TutorialBlueWalkTile() : base(TutorialStyle.FloorTileId) { Name = "glowing blue floor tile"; Movable = false; Hue = TutorialStyle.BlueTileHue; }
 }
 
 [SerializationGenerator(0, false)]
 public partial class TutorialTravelGate : Item
 {
     [Constructible]
-    public TutorialTravelGate() : base(0xF6C) { Name = "tutorial moongate to New Haven"; Movable = false; Hue = 0x482; }
+    public TutorialTravelGate() : base(0xF6C) { Name = "tutorial moongate to New Haven"; Movable = false; }
+    // cc-P480: the gate keeps the moongate's own blue (it was tinted pale gray, 0x482).
+    [AfterDeserialization(false)] private void Unhue() => Hue = 0;
     public override void OnDoubleClick(Mobile from)
     {
         if (from is not PlayerMobile { Alive: true } pm || !TutorialCoreTrials.Nearby(pm, Location) ||
@@ -166,14 +200,15 @@ public partial class TutorialPracticeBag : Bag
 [SerializationGenerator(0, false)]
 public partial class TutorialPracticeCloak : Cloak
 {
-    public TutorialPracticeCloak() { Name = "practice cloak"; Hue = 0x482; LootType = LootType.Blessed; }
+    public TutorialPracticeCloak() { Name = "blue practice cloak"; Hue = TutorialStyle.SupplyHue; LootType = LootType.Blessed; }
     [AfterDeserialization(false)] private void ClearAbandonedLesson() => Delete();
 }
 
 [SerializationGenerator(0, false)]
 public partial class TutorialBankToken : Item
 {
-    public TutorialBankToken() : base(0x1F14) { Name = "practice bank token"; Hue = 0x8AF; LootType = LootType.Blessed; }
+    // cc-P480 Part 6: a small pile of coins in the bright supply blue (it was a dark rune, not recognisable as the thing to move).
+    public TutorialBankToken() : base(0x0EF2) { Name = "blue practice token"; Hue = TutorialStyle.SupplyHue; LootType = LootType.Blessed; }
     [AfterDeserialization(false)] private void ClearAbandonedLesson() => Delete();
 }
 
@@ -183,7 +218,7 @@ public partial class TutorialDeathEcho : TutorialCreature
     [Constructible]
     public TutorialDeathEcho() : base(AIType.AI_Animal)
     {
-        Name = "the death lesson echo"; Body = 0xEE; Hue = 0x482; FightMode = FightMode.None;
+        Name = "the pale death echo"; Body = 0xEE; Hue = 0x482; FightMode = FightMode.None;
         CantWalk = true; SetStr(20); SetDex(20); SetInt(5); SetHits(100);
     }
     public override bool IsInvulnerable => true;
@@ -201,10 +236,11 @@ public sealed class TutorialDeathGump : Gump
     public TutorialDeathGump(TutorialDeathEcho echo) : base(120, 120)
     {
         _echo = echo;
-        AddBackground(0, 0, 450, 180, 9270);
-        AddHtml(24, 24, 402, 80, "System: The echo will kill you for this lesson. Your corpse stays here; while you are Young your things come back to your backpack. The healer nearby will bring you back. Ready?", false, false);
-        AddButton(24, 130, 4023, 4025, 1); AddLabel(60, 132, 68, "Ready");
-        AddButton(240, 130, 4017, 4019, 0); AddLabel(276, 132, 999, "Not yet");
+        TutorialStyle.Panel(this, 450, 180);
+        AddLabel(24, 18, TutorialStyle.HeadingHue, "Death and resurrection");
+        AddHtml(24, 44, 402, 76, TutorialStyle.Html("The echo will kill you for this lesson; while you are Young, your things come back to your backpack. Sera the healer, beside it, will bring you back. Ready?"), false, false);
+        AddButton(24, 130, 4023, 4025, 1); AddLabel(60, 132, TutorialStyle.ActionHue, "Ready");
+        AddButton(240, 130, 4017, 4019, 0); AddLabel(276, 132, TutorialStyle.TextHue, "Not yet");
     }
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -240,9 +276,9 @@ public sealed class TutorialResurrectionGump : Gump
     public TutorialResurrectionGump(TutorialHealer healer) : base(120, 120)
     {
         _healer = healer;
-        AddBackground(0, 0, 360, 140, 9270);
-        AddLabel(24, 24, 1154, "System: Ready to return to life?");
-        AddButton(24, 90, 4023, 4025, 1); AddLabel(60, 92, 68, "Resurrect");
+        TutorialStyle.Panel(this, 360, 140);
+        AddLabel(24, 24, TutorialStyle.HeadingHue, "Ready to return to life?");
+        AddButton(24, 90, 4023, 4025, 1); AddLabel(60, 92, TutorialStyle.ActionHue, "Resurrect");
     }
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
