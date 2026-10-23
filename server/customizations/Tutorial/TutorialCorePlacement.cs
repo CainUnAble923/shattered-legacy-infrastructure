@@ -202,7 +202,7 @@ public sealed class TutorialDeathGump : Gump
     {
         _echo = echo;
         AddBackground(0, 0, 450, 180, 9270);
-        AddHtml(24, 24, 402, 80, "System: The echo will kill you for this lesson. Your corpse stays here. The healer nearby will bring you back. Ready?", false, false);
+        AddHtml(24, 24, 402, 80, "System: The echo will kill you for this lesson. Your corpse stays here; while you are Young your things come back to your backpack. The healer nearby will bring you back. Ready?", false, false);
         AddButton(24, 130, 4023, 4025, 1); AddLabel(60, 132, 68, "Ready");
         AddButton(240, 130, 4017, 4019, 0); AddLabel(276, 132, 999, "Not yet");
     }
@@ -219,9 +219,12 @@ public partial class TutorialHealer : Healer
 {
     [Constructible]
     public TutorialHealer() { Name = "Sera"; Title = "the tutorial healer"; CantWalk = true; }
-    public override void OnDoubleClick(Mobile from)
+    // A ghost's double-click reaches OnDoubleClickDead (pinned Mobile.Use), never OnDoubleClick. The stock offer needs a
+    // step into range (BaseHealer.OnMovement), and the death lesson teleports the ghost here, so this is the way to ask.
+    public override void OnDoubleClickDead(Mobile from)
     {
-        if (from is PlayerMobile { Alive: false } pm && TutorialCoreTrials.Nearby(pm, Location, 4)) { OfferResurrection(pm); }
+        if (from is PlayerMobile pm && TutorialCoreTrials.Nearby(pm, Location, 4)) { OfferResurrection(pm); }
+        else { base.OnDoubleClickDead(from); }
     }
     public override void OfferResurrection(Mobile m)
     {

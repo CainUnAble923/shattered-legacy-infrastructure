@@ -76,7 +76,9 @@ public static class ClusterFTutorial
     /// <summary>Enters this character into the core if its account has never started the tutorial. True when it did.</summary>
     public static bool TryEnter(PlayerMobile pm)
     {
-        if (RecordOf(pm) is not { State: TutorialState.NotStarted } record)
+        // cc-P289 play-through: the Golem's Admin was greeted and pointed at Rook. Staff are never entered.
+        if (pm.AccessLevel > AccessLevel.Player || pm.Account?.AccessLevel > AccessLevel.Player ||
+            RecordOf(pm) is not { State: TutorialState.NotStarted } record)
         {
             return false;
         }

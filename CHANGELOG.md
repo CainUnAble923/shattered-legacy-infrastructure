@@ -29,10 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
-## 2026.10.21.21
+## 2026.10.23.2
+
+### Fixed
+- In the tutorial's death lesson, double-clicking the healer as a ghost now offers the resurrection.
+- A tutorial or guild arrow left over from an earlier login no longer clears the arrow to your next lesson.
 
 ### Staff
 - The nine core tutorial trials are ready for test-world validation, with action checks, hints, arrows and resets. Live tutorial entry stays disabled.
+- Staff characters are no longer entered into the new player tutorial at login.
 
 ## 2026.10.21.20
 

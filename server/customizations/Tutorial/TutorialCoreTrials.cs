@@ -48,7 +48,7 @@ public static class TutorialCoreTrials
         "core.paperdoll" => "Open your paperdoll by double-clicking yourself. Drag the practice cloak from your backpack onto it. Remove your old cloak first if needed.",
         "core.backpack" => "Open your backpack from your paperdoll. Double-click the blue practice bag inside it.",
         "core.chat" => $"Press Enter, say '{Phrase}', then Enter again. Your Journal keeps the words.",
-        "core.death" => "At the farm gate, double-click the pale echo and accept the death lesson. As a ghost, double-click the tutorial healer and accept resurrection. Your corpse stays by the echo.",
+        "core.death" => "At the farm gate, double-click the pale echo and accept the death lesson. As a ghost, double-click the tutorial healer and accept resurrection. While you are Young, your things come back to your backpack.",
         "core.banking" => "Follow the arrow to the banker. Say 'bank', then drag the practice token from your backpack into your bank. The practice token disappears when done; real valuables stay safe there.",
         "core.travel" => "At the farm gate, double-click the blue tutorial moongate. It brings you back to the New Haven plaza.",
         "core.league" => "Follow the arrow to Elara Voss. Double-click her to read about the League. Joining is your choice.",
