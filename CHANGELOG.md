@@ -37,6 +37,7 @@ Example:
 
 ### Staff
 - Treasures of Sorcerer's Dungeon starts and stops with the Halloween dates by itself. [SorcerersDungeon status reports it; on, off and remove run it by hand (off keeps the researcher so points can still be spent; remove also takes him and the entrance pumpkins away); boss 1-9 raises a room's boss at once (9 is Jack). The same verbs work on the server console as tosd. [TOSDSpawner shows the nine rooms and moves you into one; [EnchantedOriginArtifact makes a test artifact.
+- A rideable red dragon, and a dragon that takes any hue, for staff to try: [add RideableRedDragon or [add RideableColorableDragon, then double-click it to ride (set Hue on the second). Players cannot tame or get one yet; their numbers are a horse's until it is decided what they are and how players earn one.
 
 ## 2026.10.21.24
 

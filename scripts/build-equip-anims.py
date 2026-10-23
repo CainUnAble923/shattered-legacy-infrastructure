@@ -37,6 +37,10 @@ Inputs, all ours (records.json):
       entries (int32 offset in the file, length, extra), each a ready anim.mul block. The block is copied unchanged
       (the .vd's blocks are already in the client's format), after this script has decoded it, so the frames in
       the package are the author's bytes. The .vd's layout must be the slot's.
+      cc-P277 (P139-D6): a .vd over the 5 MB repo rule stays outside git. Its entry adds
+      "outsideGit": {"from": "<where it is on disk, D:\UO\third-party\...>", "sha256": "<its bytes>"}, its file in
+      anim-src\bodies\ is git-ignored, and this script copies it in from "from" when it is missing (reading it, never
+      running anything there). A copy or a source whose SHA-256 is not the recorded one is refused.
 
 The format (anim.mul's; AnimationsLoader.ReadMULAnimationFrames and ReadSpriteData), one block per action and
 direction: 256 palette colours (uint16, 1555), int32 frame count, int32 frame offsets from the count, then per
@@ -49,7 +53,7 @@ Colour: the format holds 5 bits a channel. Each PNG colour becomes the 15-bit co
 TazUO's table (HuesHelper.Color16To32, _table) is nearest, channel by channel. --check prints the largest
 difference that leaves. A .vd is already 15-bit, so its colours are exact. ASCII only. Python 3 with Pillow.
 """
-import argparse, json, os, re, struct, sys
+import argparse, hashlib, json, os, re, shutil, struct, sys
 
 from PIL import Image
 
@@ -239,6 +243,42 @@ def read_records():
     return j.get('equipAnims', []), j.get('bodyAnims', [])
 
 
+def sha256_of(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1 << 20), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def fetch_outside_git(bodies):
+    """cc-P277: each body .vd kept outside git, copied in from its source when missing, checked against its SHA-256
+    either way. Returns what it did, one line each."""
+    said = []
+    for b in bodies:
+        og = b.get('outsideGit')
+        if not og:
+            continue
+        dest = os.path.join(ART, b['vd'].replace('/', os.sep))
+        want = str(og['sha256']).lower()
+        if os.path.exists(dest):
+            if sha256_of(dest) != want:
+                raise SystemExit('bodyAnims body %d: %s is not the recorded file (sha256 %s); delete it and run again to copy %s'
+                                 % (int(b['body']), b['vd'], want, og['from']))
+            continue
+        src = og['from']
+        if not os.path.exists(src):
+            raise SystemExit('bodyAnims body %d: %s is kept outside git (over the 5 MB rule) and is missing, and its source %s '
+                             'is not on this PC: copy that file to vendor\\shattered-legacy-art\\%s'
+                             % (int(b['body']), b['vd'], src, b['vd'].replace('/', '\\')))
+        if sha256_of(src) != want:
+            raise SystemExit('bodyAnims body %d: %s is not the recorded file (sha256 %s); nothing copied' % (int(b['body']), src, want))
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.copyfile(src, dest)
+        said.append('body %d: copied %s from %s (kept outside git, sha256 checked)' % (int(b['body']), b['vd'], src))
+    return said
+
+
 def check_slots(equip, bodies):
     slots = [int(e['slot']) for e in equip] + [int(b['slot']) for b in bodies]
     if len(set(slots)) != len(slots):
@@ -258,6 +298,8 @@ def build():
     if not equip and not bodies:
         raise SystemExit('records.json has no equipAnims and no bodyAnims')
     check_slots(equip, bodies)
+    for line in fetch_outside_git(bodies):
+        print(line)
     count = max(slot_end(int(x['slot'])) for x in equip + bodies)
     idx = [(-1, 0, 0)] * count
     mul = bytearray()
