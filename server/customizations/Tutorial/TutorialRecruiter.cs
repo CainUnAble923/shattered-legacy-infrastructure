@@ -3,8 +3,8 @@
 // Stands on the New Haven plaza at 3500,2572,14: open floor two tiles from the arrival point (3503,2574,14; Sir Helper
 // and the quest board are there), checked standable offline with cc-P15's port of pinned Map.CanFit
 // (notes/cc-P80-tools). Placing an NPC changes a world, so it is never done at load by default:
-//   [ClusterFSeedTutorial [dryrun]   places the recruiter if none stands within 15 tiles of the spot; moves nothing.
-// tutorial.seedOnWorldLoad (default false) places it at world load.
+//   [ClusterFSeedTutorial [dryrun]   places missing core props/NPCs and the P276 farm, on the test world only.
+// tutorial.seedOnWorldLoad (default false) uses the same test-only seeder at world load.
 
 #nullable enable
 
@@ -111,8 +111,8 @@ namespace Server.Tutorial
         }
 
         [Usage("ClusterFSeedTutorial [dryrun]")]
-        [Description("Places the League recruiter for the New Haven tutorial on the plaza (3500,2572,14) if none stands there. dryrun says what it would do. Moves and deletes nothing.")]
-        [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places the tutorial's League recruiter in New Haven if missing. Moves and deletes nothing.")]
+        [Description("Places the tutorial core and P276 farm on the test world. dryrun places nothing.")]
+        [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestOnly, DryRun = "dryrun", Summary = "Places the tutorial core and farm once on the test world.")]
         private static void OnSeed(CommandEventArgs e)
         {
             var mode = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "";
@@ -125,20 +125,6 @@ namespace Server.Tutorial
             e.Mobile.SendMessage(Seed(mode == "dryrun"));
         }
 
-        public static string Seed(bool dryRun)
-        {
-            if (TutorialRecruiter.Find() is { } there)
-            {
-                return $"The League recruiter already stands at {there.Location}; nothing placed.";
-            }
-
-            if (!dryRun)
-            {
-                var r = new TutorialRecruiter { Direction = Direction.East, Home = TutorialRecruiter.Spot, RangeHome = 0 };
-                r.MoveToWorld(TutorialRecruiter.Spot, Map.Trammel);
-            }
-
-            return $"{(dryRun ? "Would place" : "Placed")} the League recruiter at {TutorialRecruiter.Spot} (Trammel).";
-        }
+        public static string Seed(bool dryRun) => TutorialCorePlacement.Seed(dryRun);
     }
 }

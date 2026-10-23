@@ -79,6 +79,10 @@ public partial class LeagueRegistrar : BaseCreature
         }
 
         pm.SendGump(new LeagueRegistrarGump(pm));
+        if (Map == pm.Map && Tutorial.TutorialCoreTrials.IsDoing(pm, "core.league"))
+        {
+            Tutorial.TutorialCoreTrials.Observe(pm, Tutorial.TutorialAction.TalkedToLeague);
+        }
     }
 
     public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
