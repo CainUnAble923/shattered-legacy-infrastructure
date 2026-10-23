@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.23.5
+
+### Added
+- The tutorial's combat and magic lessons are playable in the training yard east of the farm gate: pick a weapon and spar, bandage yourself and a wounded villager, or try Magery, Necromancy, Chivalry, Bushido, Ninjitsu or Mysticism with a loaned book and reagents. The yard takes its loans back when the lesson ends or you leave.
+
 ## 2026.10.23.4
 
 ### Added
