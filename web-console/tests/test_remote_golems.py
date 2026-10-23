@@ -473,6 +473,26 @@ class RemoteGolems(unittest.TestCase):
                                                                  "Content-Type": "text/plain"})
         self.assertEqual(415, code)
 
+    def test_the_agent_posts_its_mail_events_for_the_tinker(self):
+        # cc-P410: only the Tinker mails Chase; a remote Golem's events land in remote/<name>/outbox/, one file each.
+        code, j = self.agent("/api/agent/outbox", {"golem": "Gold", "events": []})
+        self.assertEqual((200, 0), (code, j.get("saved")))   # the agent's probe: the game PC takes events
+        ev = {"schema": 1, "id": "20261022-180000-Gold-ab12cd", "at": "2026-10-22T18:00:00", "golem": "Iron", "pc": "GOLD-PC", "kind": "problem",
+              "mailKind": "stopped", "subject": "Needs you: P172 (pets) stopped with a question", "body": "which layout?", "key": "stopped|Iron|P1",
+              "prompt": "P172", "log": ["2026-10-22 17:59:00  Stop  P172 STOPPED"]}
+        code, j = self.agent("/api/agent/outbox", {"golem": "Gold", "events": [ev]})
+        self.assertEqual((200, 1), (code, j.get("saved")))
+        f = os.path.join(self.groot, "remote", "Gold", "outbox", "20261022-180000-Gold-ab12cd.json")
+        with open(f, encoding="utf-8") as x:
+            doc = json.load(x)
+        # The agent's own name, never the event's word for it, and the key made from it.
+        self.assertEqual(("Gold", "stopped|Gold|P172", "which layout?", "problem"), (doc["golem"], doc["key"], doc["body"], doc["kind"]))
+        for bad in ({"events": "no"}, {"events": [dict(ev, kind="spam")]}, {"events": [dict(ev, id="../../x")]}, {"events": [ev] * 21}):
+            code, j = self.agent("/api/agent/outbox", bad)
+            self.assertEqual(400, code, str(bad)[:80])
+        code, j = self.agent("/api/agent/outbox", {"events": [ev]}, key="wrong")
+        self.assertIn(code, (401, 403))
+
     # --- pure parts ---------------------------------------------------------------------------------------------------
     def test_the_readiness_summary_is_compact(self):
         s = panels.ready_summary(READY)

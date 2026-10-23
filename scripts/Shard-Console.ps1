@@ -7169,6 +7169,13 @@ function Send-ConsoleMail {
     param($Config, [string]$Subject, [string]$Body)
     $ap = $Config.Autopilot
     if (-not $ap -or -not (Test-Path -LiteralPath $ap.EmailFile) -or -not (Test-Path -LiteralPath $ap.CredFile)) { return $false }
+    # cc-P410: only the Tinker mails Chase: with the Golem's outbox beside its mail settings, the question is a problem
+    # event for it (mailed at once); its settings.json tinkerOnlyMail false, or no Tinker running, sends it here as before.
+    $gr = Split-Path -Parent $ap.EmailFile
+    $ob = Join-Path $gr 'GolemOutbox.ps1'
+    if (Test-Path -LiteralPath $ob) {
+        try { . $ob; if (Add-OutboxMail -Root $gr -Golem 'Shard' -MailKind 'shard-question' -Subject $Subject -Body $Body -NeedsYou $true -Key ('shard-question|Shard|' + $Subject)) { return $true } } catch { }
+    }
     try {
         $mc = Get-Content -LiteralPath $ap.EmailFile -Raw | ConvertFrom-Json
         $cred = Import-Clixml -LiteralPath $ap.CredFile

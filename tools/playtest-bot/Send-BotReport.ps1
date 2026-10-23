@@ -22,6 +22,15 @@ $lines = @(Get-Content -LiteralPath $textFile)
 $subject = $lines[0]
 $body = ($lines | Select-Object -Skip 2) -join "`r`n"
 if ($WhatIf) { Write-Host ('Would send: ' + $subject); Write-Host $body; exit 0 }
+# cc-P410: only the Tinker mails Chase. With the Golem's outbox in reach the mail is an event for it: a crash at once,
+# the start and the morning report in its next brief. Its settings.json tinkerOnlyMail false (or no Tinker) sends here.
+$ob = Join-Path $Root 'GolemOutbox.ps1'
+if (Test-Path -LiteralPath $ob) {
+    . $ob
+    $crash = [bool]($subject -match '(?i)stopped early|failed')
+    $kind = $(if ($crash) { 'bot-crashed' } elseif ($subject -match '(?i)starting') { 'bot-start' } else { 'bot-report' })
+    if (Add-OutboxMail -Root $Root -Golem 'Bot' -MailKind $kind -Subject $subject -Body $body -NeedsYou $crash -Key ($kind + '|Bot|' + (Get-Date -Format 'yyyy-MM-dd'))) { Write-Host ('Handed to the Tinker: ' + $subject); exit 0 }
+}
 if (-not (Test-Path -LiteralPath $CfgFile) -or -not (Test-Path -LiteralPath $CredFile)) {
     Write-Host 'Not sent: the Golem email is not set up (email.json and smtp-cred.xml).'
     exit 1
