@@ -1,0 +1,93 @@
+====== Miners' Compact ======
+
+The Miners' Compact is the mining guild. It gives you an ore satchel that carries and later smelts your ore, a logbook of every vein you find, Jacob's pickaxes, climbing boots, and paid work orders. The guild is unique to Shattered Legacy; mining and the stock ores work as on OSI. For the skill itself see [[:uo:professions:mining|Mining]].
+
+**Currency:** Mining Vouchers.
+
+===== Joining =====
+
+  * **Garrett Ashveil**, the Miners' Compact Liaison, runs the **mine camp in New Haven's south mountains** (Trammel). Type ''[guild'' and use **Show me the way** for an arrow.
+  * Joining is free, with no skill or tribute. Membership, standing, Vouchers and work orders belong to your character. The veins your logbook records belong to your **account**.
+  * You get mining tools, a blessed **Compact Ore Satchel**, a blessed **Prospector's Logbook** and a blessed **Compact Dispatch Ledger** (your work orders from anywhere).
+  * On the **Starter items** page, take your first **Jacob's Pickaxe** free. It counts as the reward for the New Haven quest **The Delucian's Lost Mine**, so you do not get two; the guild route does not give the quest's faster skill gain.
+
+==== The Apprentice task ====
+
+Bring **50.0 base Mining** or **20 iron ore**. It pays **25 standing and 10 Mining Vouchers**, once. Ore is taken only if you use the ore option.
+
+===== Ranks =====
+
+^ Rank ^ Standing ^
+| Initiate | 0 |
+| Apprentice | 1,000, or the Apprentice task |
+| Journeyman | 5,000 |
+| Surveyor | 15,000 |
+| Master Delver | 40,000 |
+| Deepwarden | 80,000 |
+| Legendary Prospector | 150,000 |
+
+Standing is your progress; Vouchers are a balance you spend. Spending never lowers standing. Garrett's dashboard reads standing only.
+
+===== The ore satchel =====
+
+Keep it in your backpack and new ore goes straight into it. It holds **ore, ingots and plain granite**. It does not take colored granite or saltpeter, whatever its help text says.
+
+^ Satchel ^ Weight cut ^ Standing to upgrade to it ^ Smelts ore ^
+| Compact Ore Satchel | 50% | given on joining | no |
+| Reinforced Ore Satchel | 55% | 1,000 | yes |
+| Surveyor's Ore Satchel | 60% | 15,000 | yes |
+| Deepdelver's Ore Satchel | 65% | 40,000 | yes |
+| Master Expedition Satchel | 70% | 80,000 | yes |
+
+  * Upgrade at Garrett's **Upgrade Ore Satchel**. Each step takes your old satchel plus Vouchers, ingots and gold (the menu shows the full price; backpack and bank both count). Everything inside moves over.
+  * From Reinforced up, choose **Smelt Ore** from the satchel's menu within 2 tiles of a forge. Each pile uses the normal smelting skill check and can fail as usual. Ingots go back into the satchel.
+  * Garrett can give back a higher satchel you have already unlocked.
+
+===== The Prospector's Logbook and discoveries =====
+
+Double-click the logbook for your ore types, veins, locations and mined totals. **Blocks mined** counts the different ore blocks you have worked (climbing boots need it). Colored ore is recorded on its own, even without the book in your pack.
+
+**Shard change:** the **extended metals** (Platinum through Celestial) must be reported before you can keep them. Until then the vein is recorded but its ore comes out as **iron ore**. Report from the book's **Field Report**, or visit **Velara Thorne, the Survey Archivist**, at the mine camp. Each new vein pays Compact standing, Mining Vouchers and gold to your bank. The metals and their skills are on [[:uo:professions:mining|Mining]].
+
+===== Garrett's dashboard =====
+
+^ Page ^ What it does ^
+| Work Orders | Mining work for standing, Vouchers and gold |
+| Restoration (Jacob's Pickaxe) | Restores a worn-out Jacob's Pickaxe of a tier your account has unlocked |
+| Pickaxe upgrades | Jacob's Pickaxe to Reinforced, Prospector, Deepdelver and Worldbreaker |
+| Upgrade Ore Satchel | The satchel table above |
+| Replace Starting Kit | Replacements for lost starting items |
+| Climbing Boots | Boots for reaching mountain deposits; see [[:uo:professions:climbing_boots|Climbing boots]] |
+| Civic Mule Exchange | Pack mule services; see [[:uo:systems:pack_mules|Pack mules]] |
+
+Each pickaxe upgrade needs the tool before it, plus standing, Mining and payment, shown on the page. A worn-out Jacob's Pickaxe stays in your pack until you restore it.
+
+===== Work orders =====
+
+  * Open **Work Orders** at Garrett's or from your **Dispatch Ledger**. Accept one, then turn it in from **Active**.
+  * Orders ask for ore, ingots, stone or gems in fixed amounts, taken from your backpack and bank. They pay the standing, Vouchers and gold they show, with no skill check at turn-in.
+  * You can hold **3 active orders per guild**, one copy of each order.
+  * **Requisitions** pay Compact standing, League Renown and gold for matching magic items; see [[:uo:systems:requisitions|Requisitions]].
+
+**Planned, not in the game yet:**
+  * Ore orders become **mining quotas**: mine the amount after accepting, with nothing to carry back, and one quota per metal.
+  * **Stone Contracts** show only once you have learned stone mining, and the Compact sells its own copy of the stone mining book.
+  * Paying gold for missing Vouchers when you restore a Jacob's Pickaxe.
+
+===== Where the hall is =====
+
+The chapter is the **mine camp in New Haven's south mountains**. A main hall elsewhere is planned; see [[:uo:drafts:guild_halls|Guild halls]] (draft).
+
+===== Needed images =====
+
+  * TODO image: Garrett Ashveil at the mine camp.
+  * TODO image: the Prospector's Logbook with an unreported Platinum vein.
+  * TODO image: Smell Ore on a Reinforced Ore Satchel beside a forge.
+
+===== Related pages =====
+
+  * [[:uo:guilds:start|Guilds hub]]
+  * [[:uo:professions:mining|Mining]]
+  * [[:uo:professions:climbing_boots|Climbing boots]]
+  * [[:uo:professions:materials|Metals and woods]]
+  * [[:uo:guilds:foresters_union|Foresters' Union]]
