@@ -3,7 +3,8 @@
 Pages here describe things that are **on the test shard only**, not yet finished, or not yet published. They are kept out of the sidebar so a player does not go looking for something they cannot use yet. Each page says at the top why it is a draft.
 
   * [[rootdeep_burrows|The Rootdeep Burrows]]: the dungeon under Old Haven, still being dug
-  * [[tutorial|The New Haven tutorial]]: the new player tutorial, stations still placeholders
+  * [[tutorial|The New Haven tutorial]]: the new player tutorial, stations still placeholders but for the farm
+  * [[levelable_gear|Levelable crafted gear]]: works on the test shard, but the Smith's Seal has no player source yet
   * [[test_crystal|The Test Crystal]]: the test shard's skill gain booster, and the staff testing crystal
   * [[sl_mage|Mage trainer (SL_Mage.py)]]: a Legion script, written but not yet published
   * [[sl_crafter|Crafter trainer (SL_Crafter.py)]]: a Legion script, written but not yet published

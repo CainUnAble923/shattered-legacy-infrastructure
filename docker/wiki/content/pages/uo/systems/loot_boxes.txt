@@ -9,7 +9,7 @@ A loot box is a reward you get the first time you do something notable: earn an 
 | A boss | Your first kill of each boss, for everyone with looting rights | 4 as a rule; 5 for a champion or a peerless boss; 6 for the Harrower |
 | A League rank | Each rank the first time you reach it | 1 at Iron, rising to 6 at Adamantium and Celestial |
 
-Graduating from the New Haven tutorial also hands you your first box. Doing the same deed again on a later loop gives no second box, only a line from the System and a count on your achievements page.
+Graduating from the New Haven tutorial also hands you your first box. The [[league_shop|League Shop]] sells the **System's Loot Boxes** (Bronze, Silver and Gold) for Renown; they hold League goods only, no gold or Renown. Some secret [[achievements|achievements]] pay a **Dented Box**: a small box with one guaranteed, entirely useless keepsake inside, bound to you. Doing the same deed again on a later loop gives no second box, only a line from the System and a count on your achievements page.
 
 ===== Tiers and themes =====
 
@@ -35,16 +35,22 @@ Box gear is always weaker than exceptional crafted gear of the same tier.
   * The box is **bound to your account**. So are the cosmetics inside it. Everything else inside can be traded.
   * The box vanishes when it is empty. A box opened and left with things in it (a full bank, say) is cleared away after 7 days.
 
+===== Flying loot =====
+
+Opening a box sends the best thing inside **flying out of it**: a sword, a bow, a staff, a piece of armor, a shield, a ring, a gem, a potion or a bit of clothing arcs up out of your pack and lands at your feet, just before the fanfare. A box of tier 4 and up shows it to everyone around you; a smaller one to you alone. It is only a show: what the box gives you is the same either way, and boxes holding only gold, resources or the like skip it. Update your game through the launcher to see it.
+
 ===== Fanfare =====
 
-Earning a box plays a fanfare: fireworks and a line from the System. Tier 4 and above make a bigger show; a first boss kill is announced to the shard. ''[FanfareMute'' silences your own fanfare; shard-wide announcements always show.
+Earning a box plays a fanfare: fireworks and a line from the System. Tier 4 and above make a bigger show; a first boss kill is announced to the shard. ''[FanfareMute'' silences your own fanfare and your flying loot; shard-wide announcements always show.
 
 ===== Needed images =====
 
   * TODO image: a tier 4 Hunter's box (a Barbed Box) in a backpack with its tooltip.
   * TODO image: the reveal when a box is opened in New Haven.
+  * TODO image: a sword in mid-flight out of an opened box.
 
 ===== Related pages =====
 
   * [[achievements|Achievements]]
   * [[league|The League]]
+  * [[league_shop|The League Shop]]

@@ -1,0 +1,34 @@
+====== Accessory Slots ======
+
+Your paperdoll holds one ring and one bracelet. **Accessory slots** let you wear more jewelry than that, and add a slot the paperdoll never had: toe rings. This is unique to Shattered Legacy.
+
+===== Using them =====
+
+Type ''[accessories'' in game. The window shows your slots, which are open, and what opens the rest. Put jewelry in an open slot to wear it.
+
+Jewelry in an accessory slot counts **exactly like** jewelry on your paperdoll: its properties, resists and skill and stat bonuses all apply, and every usual cap still applies to the totals. It cannot be stolen or looted from the slot.
+
+===== The slots =====
+
+^ Slot ^ How many ^ What opens them ^
+| Extra rings | up to 3 more | Will open with loops. Not open yet. |
+| Second bracelet | 1 more | League rank **Valorite Citizen** (see [[league|The League]]) |
+| Toe rings | up to 2 | Secret achievements. We won't say which, but think about your feet. |
+
+===== Toe rings =====
+
+  * **Tinkers** make them: **Tinkering 40** and 2 iron ingots, in the jewelry section of the tinkering menu. Like most tinkering above 30, you need its [[:uo:professions:recipes|recipe]] first.
+  * A toe ring takes the same properties as a ring: crafted, imbued or enhanced.
+  * A toe ring goes in an accessory slot only, never on the paperdoll's ring layer.
+  * It works only with **bare feet**, or in **Plate Socks**, which are technically shoes (they are not available to players yet). Your toe rings will not forgive you for wearing boots over them.
+  * There is no toe ring picture yet: it looks like a ring.
+
+===== Needed images =====
+
+  * TODO image: the ''[accessories'' window with a second bracelet and a toe ring in place.
+
+===== Related pages =====
+
+  * [[achievements|Achievements]]
+  * [[league|The League]]
+  * [[:uo:professions:imbuing|Imbuing]]

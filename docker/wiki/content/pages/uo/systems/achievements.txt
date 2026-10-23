@@ -7,7 +7,9 @@ Achievements are Shattered Legacy's record of what you have done: first kills, s
   * Type ''[achievements'' in game, or
   * press the **Achievements** button on your paperdoll (where Help used to be) or on the top bar. The button comes with the Shattered Legacy client in the player package.
 
-The page lists every achievement by category, with what it needs, your progress toward it, and what earned it once you have it.
+The page lists every achievement by category, with what it needs, your progress toward it, and what earned it once you have it. Each category has a heading with its own icon (crossed swords for Combat, an open book for Skills, and so on); update your game through the launcher to see the icons, or the headings show the names alone.
+
+The window also opens the [[league_shop|League Shop]] and the **Titles** list.
 
 ===== Categories =====
 
@@ -21,13 +23,25 @@ The page lists every achievement by category, with what it needs, your progress 
 | Discovery | Finding things for the first time |
 | Collection | Collecting sets of things |
 | League | Joining and rising in the [[league|League]] |
+| Mischief | Secret joke achievements. You will not see this category until you earn one (below) |
 
-There are 76 achievements in the book today. 20 are **secret**: they do not show in the locked list, and appear with a [Secret] tag once earned. Six old skill achievements that asked for skill above 200 are **retired**: nobody can earn them now, but anyone who has one keeps it and its points, under a Retired heading.
+Many achievements are **secret**: they do not show in the locked list, and appear with a [Secret] tag once earned. Six old skill achievements that asked for skill above 200 are **retired**: nobody can earn them now, but anyone who has one keeps it and its points, under a Retired heading.
+
+===== Mischief: the System is watching =====
+
+The **Mischief** category is all secret, and it is where the System keeps its notes on you. It has no tab of its own: earned ones show under **All**, with a grinning imp for an icon. There are three kinds:
+
+  * **Britannia's sillier moments**: the old jokes the world has always had. Your parents probably warned you about at least one of them.
+  * **Noted by the System**: the shard's favorite shortcuts and odd habits, in fights, on the road, at the forge, at home and around loot boxes.
+  * **A few things about your feet.** Two of these open [[accessories|toe ring slots]].
+
+We won't say what any of them are: you find out when you do them. Each is earned once per account and comes with a few words from the System. Some come with a **Dented Box**: a small [[loot_boxes|loot box]] holding one guaranteed, entirely useless keepsake, bound to you. Three come with a title, which shows in your Titles list only once you hold it. A few cannot be earned yet, because what they notice is not on the shard yet.
 
 ===== What an achievement pays =====
 
   * **AP**, from 5 for a first kill to 150 for the biggest skill goals. 100 AP puts you "officially on the board".
-  * **Renown**, which counts toward your [[league|League rank]].
+  * **Renown**, which counts toward your [[league|League rank]] and which you can spend in the [[league_shop|League Shop]] without losing rank.
+  * AP opens rows in the [[league_shop|League Shop]] and free **League titles** at 100, 250, 500, 1,000 and 1,750 AP.
   * A **loot box** the first time your account earns it. The box's tier follows the achievement's AP: up to 10 AP is tier 1, up to 25 tier 2, up to 50 tier 3, up to 100 tier 4, up to 250 tier 5, and above that tier 6.
   * Some achievements also hand you an item.
 
@@ -47,3 +61,5 @@ Earning an achievement plays a fanfare: fireworks and a line from the System, wh
   * [[loot_boxes|Loot boxes]]
   * [[league|The League]]
   * [[skill_gain|Skill gain]]
+  * [[league_shop|The League Shop]]
+  * [[accessories|Accessory slots]]

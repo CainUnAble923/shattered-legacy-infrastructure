@@ -7,6 +7,7 @@ Guides are step-by-step pages for players.
   * [[:uo:connection|Getting connected]]
   * [[first_hour|First hour route]]
   * [[troubleshooting|Troubleshooting]]
+  * [[league|A player's guide to the League]]
 
 ===== Guides we would like to add =====
 

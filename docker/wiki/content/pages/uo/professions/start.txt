@@ -10,10 +10,12 @@ Professions are player paths through skills, trainers, equipment, and goals.
   * [[recipes|Recipes and pattern books]]: how crafting is learned here
   * [[bulk_orders|Bulk orders]]: the 2016 rules for eight crafts
   * [[imbuing|Imbuing and the Artificers' Order]]
+  * [[climbing_boots|Climbing boots]]: mine the ore on the mountainsides
 
 ===== Rogues =====
 
   * [[stealing|Stealing from monsters]]
+  * [[traps|Deployable traps]]: tinkers build them, Remove Trap sets them
 
 ===== Support And Combat Readiness =====
 

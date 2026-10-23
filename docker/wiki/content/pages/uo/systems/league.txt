@@ -4,11 +4,11 @@ The League is the shard's citizen ladder: seventeen ranks, one for each metal fr
 
 ===== The Registrar =====
 
-Elara Voss, the **League Registrar**, keeps the League's field office in New Haven (Trammel 3459, 2601). Talk to her to register (free, once per account), and come back to her **Rank** page to see what your next rank needs and to be promoted when you have it. The Guild Directory (''[guild'') shows the League at the top with a "Show me the way" button to her office.
+Elara Voss, the **League Registrar**, keeps the League's field office in New Haven (Trammel 3459, 2601). Talk to her to register (free, once per account), and come back to her **Rank** page to see what your next rank needs and to be promoted when you have it. She also runs the [[league_shop|League Shop]] and hands out the [[league_register|League Register]]. The Guild Directory (''[guild'') shows the League at the top with a "Show me the way" button to her office.
 
 ===== Renown =====
 
-Renown is a lifetime total for your account. It only rises. You earn it from:
+Renown belongs to your account and comes as two numbers. **Renown** is the balance you can spend, in the [[league_shop|League Shop]] and on League goods in the [[league_register|League Register]]. **Lifetime Renown** is everything you have ever earned; it only rises, and it is what your League rank is measured by. Spending Renown never lowers your Lifetime Renown or your rank. You earn Renown from:
 
   * [[achievements|Achievements]], 5 to 500 each.
   * [[loot_boxes|Loot boxes]] of tier 2 and up.
@@ -44,6 +44,8 @@ Each rank will also ask for a promotion job, and the six **milestone** ranks (Du
   * **100 more bank slots** at each milestone rank, on top of the 1,000 everyone has: 1,600 items at Celestial.
   * Higher **requisition** tiers: Bronze unlocks tier 2 requests, Verite tier 3, Toxic tier 4, Obsidian tier 5.
   * The Compact's Mule errand at Dull Copper (see [[pack_mules|Pack mules]]).
+  * The [[league_register|League Register]] at Dull Copper, and its League actions as you climb: open any bound guild's contracts from anywhere at Bronze, turn in every ready order at once at Verite, repair everything in one pass at Blaze. It also sells bigger backpacks from Bronze.
+  * A second bracelet [[accessories|accessory slot]] at Valorite.
   * Your rank's title and metal color in the Guild Directory.
 
 ===== Needed images =====
@@ -53,6 +55,9 @@ Each rank will also ask for a promotion job, and the six **milestone** ranks (Du
 
 ===== Related pages =====
 
+  * [[:uo:guides:league|A player's guide to the League]]
+  * [[league_shop|The League Shop]]
+  * [[league_register|The League Register]]
   * [[guilds|Guilds]]
   * [[requisitions|Requisitions and the Appraiser]]
   * [[achievements|Achievements]]

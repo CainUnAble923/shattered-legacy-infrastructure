@@ -1,0 +1,126 @@
+====== A Player's Guide to the League ======
+
+This guide walks through the League of Extraordinary Citizens from a player's side: what it is, how to climb it, what it pays and where it is going. Things still to come are marked **(planned)**. For the full rank table see [[:uo:systems:league|The League]]. The League is unique to Shattered Legacy.
+
+===== What the League is =====
+
+The League of Extraordinary Citizens, or LXC, is "the guild for the guilds." It connects Britannia's [[:uo:systems:guilds|guilds]] and gives citizens a place to find work, build a reputation and claim rewards. It is open from day one.
+
+Start with **Elara Voss, the League Registrar**, at the field office in New Haven. Open the Guild Directory with ''[guild'' and use the League row at the top: **Show me the way** points you toward her.
+
+Registering starts you as an **Iron Citizen**. League registration belongs to your account, while each character has its own League rank. Your standing in each guild is separate from that rank.
+
+===== Ranks and Renown =====
+
+The metal ladder runs from Iron Citizen to Celestial Citizen, in this order:
+
+Iron, Dull Copper, Shadow Iron, Copper, Bronze, Gold, Agapite, Verite, Valorite, Platinum, Toxic, Blaze, Frost, Obsidian, Mythril, Adamantium, Celestial.
+
+Three account-wide numbers do different jobs:
+
+^ Number ^ What it does ^
+| Achievement Points (AP) | A permanent achievement score that opens [[:uo:systems:league_shop|League Shop]] rows and titles. You never spend it. |
+| Renown | The balance you spend in the League Shop and on League goods. Achievements and requisition turn-ins earn it. |
+| Lifetime Renown | The total you have ever earned, used for promotion. Spending leaves it unchanged. |
+
+At the Registrar, open **League Rank** to see what your next promotion needs: enough Lifetime Renown, and the required ranks in guilds you have joined. Higher League ranks ask for standing in more guilds. The Renown numbers will be tuned, so trust what the Registrar shows.
+
+A promotion job at each rank, and story trials at the milestone ranks, are part of the design **(planned)**. Jobs and chapters not built yet are waived. A chapter added later does not take away a rank you already earned, and does not become a requirement for a promotion you already passed.
+
+The **milestone** metals are Dull Copper, Bronze, Verite, Blaze, Mythril and Celestial. Each milestone adds 100 bank item slots, taking the base 1,000 to 1,600 at Celestial. Extra League job slots and bulk order deed allowances at milestones are still to come **(planned)**.
+
+===== What the League hands out =====
+
+==== Guild quests and adventuring work (planned) ====
+
+A wider League job board is designed to offer work you can do alone or with your party, on boards in towns, taverns and at dungeon entrances.
+
+^ Work (planned) ^ What you will do ^
+| Guild quests | Gather, craft or deliver goods for a guild. Some jobs serve several guilds. |
+| Monster hunts | Hunt a named or elite target for monster parts. |
+| Monster culling | Kill a requested number of one kind of creature in one region. |
+| Dungeon dives | Gather, cull or investigate something that brings out a temporary mini boss. |
+
+The rewards decided so far are Renown, XP, gold, and the paying guild's currency and reputation. A job for several guilds pays the full reward for each of them. Rewards owed by a guild you have not joined wait until you join it and finish its Apprentice task.
+
+The League job limit is planned to start at 3 and gain one slot per milestone, up to 9. Guildmasters' own ledgers keep their separate limits. These limits are for the planned League jobs, not for the requisitions below.
+
+==== Commissions (planned) ====
+
+^ Kind (planned) ^ Who asks, and what it means ^
+| Client Commissions (a working name) | An NPC client wants a specific crafted piece by a deadline. The Society of Smiths' commissions are to move to the League, with Tailoring next. Renown earned this way will count toward promotion. |
+| Citizen Commissions | A player posts a request and sets the reward aside in advance. Renown paid by another player can be spent, but does not add to Lifetime Renown or buy League rank. |
+
+Client Commissions are planned to start with a 3-day deadline. Letting one expire or abandoning it is planned to cost 10 percent of the reward's Renown and add Infamy, which is also still planned. None of this applies to requisitions or Leads.
+
+==== Requisitions and Leads ====
+
+Requisitions give the magic items you find or craft somewhere to go. Open **Requisitions board** at the Registrar, use the field office's board, or open a guild's **Requisitions** page. The Appraiser can also tell you which request wants an item. The details are on [[:uo:systems:requisitions|Requisitions, the Appraiser and Leads]].
+
+  * Each character gets **3 requests per guild**, refreshed daily. The Custodians post none.
+  * Your **guild rank** sets the quality and pay; your **League rank** limits the tier you can receive.
+  * Requests follow each guild's interests: bows for the Rangers, spellbooks and jewelry for the Arcane Society. Slayer weapons can be requested too.
+  * Turn in a matching item from your backpack at a board or clerk. The item is taken, and you get Renown (which counts toward promotion), that guild's standing, and gold equal to the Appraiser's price. Non-members can fill the lowest-tier requests.
+  * An unfilled request rolls over with no penalty. A filled slot waits for the next daily refresh. Magic items nobody asked for can be sold to the Appraiser for a modest sum.
+
+A request may come with a **Lead**: a personal rumor naming an area and a kind of creature. Kills there give you an extra chance at an item that fills the request, rising until a drop is certain by the 40th qualifying kill. The item goes into the corpse, so loot it. Leads last 3 days and expire quietly; a request with a live Lead stays through the daily refresh. The kill must match the Lead's area and creature kind, and pets, summons and creatures below 1,000 fame do not count. Better Leads open as your League rank rises.
+
+===== The reward shop =====
+
+**AP unlocks, Renown buys.** Open **League Shop** at the Registrar or from the ''[achievements'' window. Locked rows show the AP they need, every purchase asks you to confirm, and nothing you buy lowers your Lifetime Renown or League rank. You do not need to be registered to shop.
+
+The starting prices:
+
+^ AP needed ^ Reward ^ Renown ^
+| 0 | Title: the Registered Adventurer | 25 |
+| 0 | League tabard | 50 |
+| 0 | System's Bronze Loot Box | 40 |
+| 100 | Hair restyling deed | 75 |
+| 100 | Blessed rune marked to the New Haven Registrar | 60 |
+| 250 | League banner | 150 |
+| 250 | League cloak | 200 |
+| 250 | System's Silver Loot Box | 150 |
+| 500 | Trophy statuette showing the buyer's name and AP | 250 |
+| 500 | League-hue pigment, one use | 300 |
+| 500 | Title: Veteran of the League | 200 |
+| 1,000 | System's Gold Loot Box | 400 |
+| 1,750 | League regalia: robe, cloak and sandals | 1,000 |
+| 1,750 | Title: the System's Favorite | 500 |
+
+The shop sells cosmetics, decor and conveniences. It does not sell combat properties, power scrolls, artifacts, or skill and stat increases. The tabard cannot be dyed.
+
+The Bronze, Silver and Gold boxes hold 1, 2 and 3 draws from the League goods the box's AP tier allows. They pay no gold or Renown. They are bound to your account and open in a guarded town or a house where you are owner, co-owner or friend.
+
+AP also opens free titles: //the Noted// at 100, //the Accomplished// at 250, //the Distinguished// at 500, //the Renowned// at 1,000 and //the Illustrious// at 1,750. Open **Titles** to choose one. Titles you own belong to the account, and each character chooses which one to show after its name.
+
+The shop's **Hall** page adds display cases, dragon and gargoyle statues, wall trophies and mounted heads: AP opens the rows and Renown pays for them. They are decoration, with no skill or stat effects. Hall pieces come as account-bound deeds and can be placed only in a house you own; wall trophies need a wall; chopping a piece gives its bound deed back. A display case's shelf and insert can be dyed separately with a plain dye tub; statues and trophies cannot. The shop's tradeable cosmetics and decor follow different binding rules from the Hall deeds. More on [[:uo:systems:league_shop|The League Shop]].
+
+From Dull Copper the Registrar also gives you a **League Register**, a book for your guilds that opens League actions and sells League goods (a bigger backpack, the League Field Satchel, the Combined Logbook). See [[:uo:systems:league_register|The League Register]].
+
+===== Where its halls are =====
+
+^ League location ^ What to expect ^
+| New Haven field office, Trammel | Elara Voss: registration, rank services, the shop and requisitions. Use the Guild Directory's **Show me the way**. |
+| Britain, Castle British grounds (planned) | The chosen headquarters site. The hall has not been built yet. |
+
+New Haven stays as the local chapter when the headquarters is built. The guilds' own main halls across Britannia are also planned, with their New Haven chapters staying where they are. Full shops, requisitions, top-rank guild trials and travel stops are intended for those halls **(planned)**. A guild's top-rank trial is separate from a League story trial.
+
+===== Its place in the story: the broken sword and the loops (planned) =====
+
+The broken sword is what broke time. The League's planned story follows the recovery of its shards, one through each trial chapter. Each shard reveals more about why Britannia loops, and the last chapter reaches the cause.
+
+The story is designed to span six milestone chapters, from Dull Copper through Celestial. The wider loop design ties it to the Setting, a dungeon whose deeper floors open with later loops, and to an epilogue called **The Unbroken**. These are planned story elements, not directions to a trial you can enter today.
+
+===== Needed images =====
+
+  * TODO image: Elara Voss at the New Haven field office.
+  * TODO image: the League Rank page with its requirements.
+
+===== Related pages =====
+
+  * [[:uo:systems:league|The League]] (the rank table)
+  * [[:uo:systems:league_shop|The League Shop]]
+  * [[:uo:systems:league_register|The League Register]]
+  * [[:uo:systems:requisitions|Requisitions, the Appraiser and Leads]]
+  * [[:uo:systems:guilds|Guilds]]
+  * [[:uo:systems:achievements|Achievements]]

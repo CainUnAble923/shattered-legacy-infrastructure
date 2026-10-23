@@ -1,0 +1,71 @@
+====== The League Register ======
+
+The League Register is a book that holds your [[guilds|guilds]] in one place: their ranks, standing and currency, and, as your [[league|League]] rank rises, things you can do from anywhere. It also sells **League goods** for Renown. It is unique to Shattered Legacy.
+
+===== Getting one =====
+
+From **Dull Copper Citizen**, the League Registrar in New Haven gives you a League Register, free. It is blessed and belongs to that character. If you lose it, she issues a new one, and the old copy stops working.
+
+===== Binding guilds =====
+
+Bind a guild you belong to into the Register. A guild that has its own book (the Smith Guild Book, the Dispatch Ledger and the like) gives its book up to the Register; you can take it back out, free, at any time.
+
+How many guilds it holds depends on your League rank:
+
+^ League rank ^ Guilds the Register holds ^
+| Dull Copper | 2 |
+| Bronze | 4 |
+| Verite | 6 |
+| Blaze | 9 |
+| Mythril | 12 |
+| Celestial | all 18 |
+
+If you leave a guild, the Register shows it greyed out once and then drops it, which frees its slot.
+
+===== The pages =====
+
+  * **Your bound guilds.**
+  * **Guild Ledger**: every guild's rank, standing and currency at a glance.
+  * **League actions**, opening with your rank:
+    * **Bronze**: open any bound guild's contracts from anywhere.
+    * **Verite**: turn in every ready order of your bound guilds at once.
+    * **Blaze**: repair everything you wear, carry and keep in your bank, in one pass.
+  * **Bank**: counts the gold and materials in your bank.
+  * **League goods** (below).
+
+===== League goods =====
+
+Paid in Renown, with a little gold. Like the [[league_shop|League Shop]], this spends your Renown balance only, never your Lifetime Renown, so it never lowers your League rank. These are the starting prices; the Register shows the current ones.
+
+^ Item ^ League rank ^ Renown ^ Gold ^ What it does ^
+| Combined Logbook | Dull Copper | 500 | 50 | Your Prospector's and Forester's logbooks in one |
+| League Field Satchel | Bronze | 5,000 | 500 | Holds your ore, lumber, hunter's and essence satchels and counts as one item. Each satchel you put in costs a small fee (50) in that satchel's guild currency |
+| Bigger backpack | Bronze | 2,000 | 200 | Holds 150 items |
+| Bigger backpack | Verite | 6,000 | 600 | Holds 175 items |
+| Bigger backpack | Blaze | 15,000 | 1,500 | Holds 200 items |
+| Bigger backpack | Mythril | 30,000 | 3,000 | Holds 250 items |
+
+A bigger backpack raises the **item count** only. The weight you can carry does not change.
+
+===== Repair items (for smiths) =====
+
+Blacksmiths with **Arms Lore** can make three repair items. Find them under **Repair Items** in the smithing menu.
+
+^ Item ^ Blacksmithy ^ Arms Lore ^ Materials ^ What it does ^
+| Field repair deed | 60 | 90 | 5 iron ingots | Repairs one item, once |
+| Field repair kit | 80 | 110 | 30 iron ingots | Repairs one item per charge, 10 charges; works on tools that wear, too |
+| Remote repair deed | 90 | 120 | 20 iron ingots, 1 star sapphire | Repairs everything you wear, carry and bank, once |
+
+A repair from one of these brings the item back to full durability without lowering its maximum. The remote repair deed does what the Register's Blaze action does, for a player below Blaze.
+
+===== Needed images =====
+
+  * TODO image: the Register's Guild Ledger page.
+  * TODO image: the League goods page with the backpack steps.
+
+===== Related pages =====
+
+  * [[league|The League]]
+  * [[guilds|Guilds]]
+  * [[league_shop|The League Shop]]
+  * [[:uo:professions:materials|Metals and woods]] (the satchels and logbooks)

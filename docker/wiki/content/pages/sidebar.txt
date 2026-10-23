@@ -12,6 +12,7 @@
   * [[:uo:world:trainers|Trainers]]
   * [[:uo:world:quests|Quest givers]]
   * [[:uo:world:maps|Maps]]
+  * [[:uo:world:seasonal|Seasonal decorations]]
 
 ===== Systems =====
 
@@ -21,8 +22,12 @@
   * [[:uo:systems:young_players|Young players]]
   * [[:uo:systems:achievements|Achievements]]
   * [[:uo:systems:loot_boxes|Loot boxes]]
+  * [[:uo:systems:accessories|Accessory slots]]
+  * [[:uo:systems:creature_levels|Creature levels]]
   * [[:uo:systems:guilds|Guilds]]
   * [[:uo:systems:league|The League]]
+  * [[:uo:systems:league_shop|League Shop]]
+  * [[:uo:systems:league_register|League Register]]
   * [[:uo:systems:requisitions|Requisitions]]
   * [[:uo:systems:clean_up_britannia|Clean Up Britannia]]
   * [[:uo:systems:pet_training|Pet training]]
@@ -40,11 +45,14 @@
   * [[:uo:professions:bulk_orders|Bulk orders]]
   * [[:uo:professions:imbuing|Imbuing]]
   * [[:uo:professions:stealing|Stealing]]
+  * [[:uo:professions:traps|Traps]]
+  * [[:uo:professions:climbing_boots|Climbing boots]]
   * [[:uo:professions:focus|Focus]]
 
 ===== Guides =====
 
   * [[:uo:guides:first_hour|First hour route]]
+  * [[:uo:guides:league|League guide]]
   * [[:uo:guides:troubleshooting|Troubleshooting]]
   * [[:uo:macros:start|Macros]]
 

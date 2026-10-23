@@ -6,6 +6,7 @@ The world section collects places, maps, NPCs, quests, and travel notes.
 
   * [[new_haven|New Haven]]
   * [[maps|Maps]]
+  * [[seasonal|Seasonal decorations]]: Halloween at the banks, winter in New Haven
   * [[:uo:drafts:rootdeep_burrows|The Rootdeep Burrows]] (a draft: the dungeon is still being dug)
 
 ===== People =====

@@ -1,0 +1,49 @@
+====== Climbing Boots ======
+
+A great deal of Britannia's ore sits in mountainsides that no one can stand close enough to mine. **Climbing boots** from the Miners' Compact let a miner hop up onto a mountain tile and mine it. They are unique to Shattered Legacy: OSI has no climbing.
+
+===== The three boots =====
+
+The **Miners' Compact Liaison** sells them to Compact members. Each upgrade trades in the boots before it.
+
+^ Boots ^ Hop range ^ Compact rank ^ Mining ^ Ore blocks mined ^ Vouchers ^ Gold ^ Ingots ^
+| Surveyor's Climbing Boots | 4 tiles | Surveyor | 120 | 100 | 75 | 20,000 | 100 Platinum |
+| Delver's Climbing Boots | 8 tiles | Master Delver | 150 | 300 | 150 | 50,000 | 150 Frost |
+| Deepwarden's Climbing Boots | 12 tiles | Deepwarden | 180 | 600 | 250 | 100,000 | 200 Mythril |
+
+These are the starting prices; the Liaison shows the current ones.
+
+  * Delver's and Deepwarden's boots cost **half the stamina** per hop.
+  * Deepwarden's boots **remember your last ledge**: from the ground within 30 tiles of it, target yourself to hop straight back up.
+  * The boots are **blessed** and **bound to your account**. If you lose them, the Liaison replaces them.
+
+**Ore blocks mined** is counted by your **Prospector's Logbook**, which now also remembers when you first mined each block and what ore it gave.
+
+===== Hopping =====
+
+  - Wear the boots and use them.
+  - Target a mountain tile (or walkable ground) within your boots' range.
+  - Each hop costs stamina (5, plus more the higher you climb) and there is a short pause between hops.
+
+You cannot hop into a town, a dungeon or a house, or anywhere you could not teleport to.
+
+===== On the mountain =====
+
+While you stand on a climbed mountain tile you can only **mine, prospect and hop**:
+
+  * no fighting and no harmful spells,
+  * no taming,
+  * no Mark,
+  * no house placement.
+
+Monsters' spells **can still reach you**. Your pets wait at the foot of the climb and fall in behind you again when you hop down.
+
+===== Needed images =====
+
+  * TODO image: a miner standing on a mountain tile above the road, pickaxe out.
+  * TODO image: the Liaison's boots page with its requirements.
+
+===== Related pages =====
+
+  * [[mining|Mining]]
+  * [[materials|Metals and woods]]

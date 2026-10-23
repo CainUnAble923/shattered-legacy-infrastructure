@@ -1,6 +1,6 @@
 ====== The New Haven Tutorial ======
 
-**Draft: not finished.** The tutorial's framework is on the test shard and new characters are met by its recruiter, but its stations are placeholders that only say what they will teach. The shard owner has said every account is wiped when the finished tutorial ships, so this page describes the shape of it, not the lessons.
+**Draft: not finished.** The tutorial's framework is on the test shard and new characters are met by its recruiter, but most of its stations are placeholders that only say what they will teach. The farm (below) is the first real lesson, and it is placed on the test shard only so far. The shard owner has said every account is wiped when the finished tutorial ships, so this page describes the shape of it, not the lessons.
 
 New characters are met on the New Haven plaza by **Rook Hallowell**, a League recruiter, who runs the tutorial. It is unique to Shattered Legacy.
 
@@ -8,9 +8,23 @@ New characters are met on the New Haven plaza by **Rook Hallowell**, a League re
 
   - A short **core**: moving and the camera, your paperdoll, your backpack, speaking and the journal, death and resurrection, the bank, getting around, the League, and a **vision of the loop**.
   - Optional **wings** for every kind of skill: gathering, crafting, fighting, healing, taming and magic.
-  - **Graduating** hands you your first [[:uo:systems:loot_boxes|loot box]] (open it here, in the guard zone, to learn the rule) and your choice of a starter pet: a dog, a cat, a fox or a bird. The pet stays with you.
+  - **Graduating** hands you your first [[:uo:systems:loot_boxes|loot box]] (open it here, in the guard zone, to learn the rule) and, if you did not already take a dog or cat at the farm, your choice of a starter pet: a dog, a cat, a fox or a bird. The pet stays with you.
 
 The tutorial runs **once per account**. A later character on the same account skips straight to the world.
+
+===== The farm =====
+
+West of town, past the Bardic Guild, the tutorial has its farm: a fenced field of cabbages, wheat, corn, carrots and pumpkins, a pen of goats, sheep, cows and chickens, and a little thatched farmhouse whose porch opens onto the field.
+
+**Wren Tallow**, the League farmhand, waits at the farm gate. Her lesson has three steps:
+
+  - **Pick a pet.** Trainees choose a **dog or a cat** from her to keep. It is bonded to you at once and grows as it fights.
+  - **Clear the field.** Kill three of the pests in the crop rows, you and your pet together. The pests only bother tutorial trainees.
+  - **Patch up.** She hands you bandages: heal yourself or your pet once with Healing or Veterinary.
+
+If you took your dog or cat at the farm, graduation does not offer you a second pet.
+
+The farm needs the client's map update, which clears two trees that stood inside the fence.
 
 ===== Skipping =====
 
