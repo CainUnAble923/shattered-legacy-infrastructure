@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.23
+
+### Staff
+- The guilds' real halls stand on the test shard only: [ClusterFGuildHalls place puts each guild's sign, guildmaster and decor in the hall Chase picked (Castle British's keep for the League, the Lycaeum, Empath Abbey, the Musha-Shugyo Dojo shared with its armourers, and the rest), and OSI's Guild House for the Society of Smiths at Serpent's Hold and the Merchants' Exchange at Magincia. status, clear, go <hall> and runes (recall runes to every hall) do the rest; on the live shard it refuses. The Maritime Brotherhood's hall waits.
+
 ## 2026.10.22
 
 ### Added
