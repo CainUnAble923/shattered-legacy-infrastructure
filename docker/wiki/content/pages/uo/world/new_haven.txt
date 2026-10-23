@@ -2,12 +2,11 @@
 
 {{:uo:media:new_haven_route.svg?nolink&700|New Haven route diagram}}
 
-New Haven is the starting town: the tutorial, the guild halls, the League's field office and the trainers are all here.
+New Haven is the starting town: the guildmasters, the League's field office and the trainers are all here.
 
 ===== Who to find =====
 
 ^ Who ^ What for ^ Where ^
-| Rook Hallowell, League recruiter | Runs the new player tutorial | The plaza, two tiles from where you arrive (''3500, 2572'') |
 | Elara Voss, League Registrar | Registering with the [[:uo:systems:league|League]], your rank, the Compact's Mule errand | The League field office (''3459, 2601'') |
 | The requisitions board and an Appraiser | Turning in [[:uo:systems:requisitions|requisitions]], selling magic items | The League field office |
 | The eighteen guildmasters | Joining and working for the [[:uo:systems:guilds|guilds]] | Each guild's hall; ''[guild'' and "Show me the way" points you to the nearest |
@@ -25,16 +24,27 @@ The New Haven training board offers the 26 skill-training quests from the tile y
 
 ===== Seasons =====
 
-From December 1 to January 6 New Haven dresses for winter: a Christmas tree with presents and Father Christmas in the square, candy cane arches at the gates, wreaths and bells on the lamp posts, a feast and a fireplace at the Bountiful Harvest Inn, and a sleigh on the pier.
+From December 1 to January 6 New Haven dresses for winter: a lit Christmas tree, garlands, candles and presents in the bank, small lit trees at the bank's doors, on the square and along the main roads, snow here and there, and an advent calendar on the bank's wall with a small gift behind each day's door, one door a day in December. See [[seasonal|Seasonal decorations]].
+
+===== Old Haven, the training ground =====
+
+Old Haven is an apprentice training ground again, as on the official shards. While you are on a New Haven trainer's quest that sends you there (Magic Resist, the fighting skills, Magery, Healing and the others), you learn that skill **two to four times as fast** in the ruins, until the quest ends at 50. Your trainer's words and an **Accelerated Skillgain** icon tell you when you are in the right place.
+
+Slaying 50 creatures in the ruins earns the achievement **Old Haven's Least Welcome Regular**.
+
+===== Coming later =====
+
+**Rook Hallowell**, a League recruiter on the plaza, will run the new player tutorial. It is on the test shard only for now: see [[:uo:drafts:tutorial|the tutorial draft]].
 
 ===== Nearby =====
 
-  * **Old Haven**, the ruins to the south-east, with Vorlak the Impaler and the Cleansing Old Haven quest.
+  * **Old Haven**, the ruins to the south-east, with its undead, Drelgor the Impaler and the Cleansing Old Haven quest. The Old Haven mages and Vorlak the Impaler have left, to make the way safer for new adventurers.
   * **The Rootdeep Burrows** under Old Haven, still being dug: see [[:uo:drafts:rootdeep_burrows|the draft page]].
 
 ===== Needed images =====
 
-  * TODO image: the arrival point on the plaza with the recruiter.
+  * TODO image: the arrival point on the plaza.
+  * TODO image: the Accelerated Skillgain icon in Old Haven.
   * TODO image: the League field office from the street.
   * TODO image: the bank and healer.
 

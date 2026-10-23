@@ -1,0 +1,71 @@
+====== High Seas Fishing ======
+
+Fishing on Shattered Legacy includes OSI's **High Seas** fish: named shore, deep water and dungeon fish, rare and legendary catches, and trophies. It is ported as OSI has it, so UOGuide's High Seas fishing pages apply. Where ours differs, this page says so.
+
+===== Your first trip =====
+
+Buy a fishing pole from a fisherman, double-click it and target water within reach. Leave room in your backpack for the catch, and move if the fish stop biting.
+
+The **Maritime Brotherhood** is the guild for Fishing, Cartography and Cooking. Type ''[guild'', choose the Brotherhood and use **Show me the way** to reach its chapter on the New Haven docks. Joining is free and gives you trade tools, a fishing pole among them. See [[:uo:systems:guilds|Guilds]].
+
+===== What you can catch =====
+
+^ Water ^ Fishing needed ^ Examples ^
+| Any water | none | Ordinary fish, small magic fish, the odd old boot |
+| Shore | 50 | Yellow perch, brook trout, walleye |
+| Deep water | 80 | Mahi mahi, amberjack, yellowfin tuna |
+| Dungeon water | 106 | Demon trout, orc bass, dungeon chub |
+
+**Deep water** means open sea with deep water all around the spot. A boat close to shore is not enough.
+
+In deep water you can also pull up big fish and special fishing nets (from 80 Fishing), treasure maps (from 90) and messages in a bottle (from 100). Meeting the number gives you a chance, not a promise.
+
+===== Rare and legendary fish =====
+
+Rare and legendary fish live in particular seas or dungeons, and each needs its own Fishing. Some examples:
+
+^ Catch ^ Where ^ Fishing ^
+| Yellowtail barracuda | Trammel, deep water | 81.9 |
+| Giant koi | Tokuno, deep water | 95.8 |
+| Blue marlin | Trammel, deep water | 105 |
+| Autumn dragonfish | Ilshenar | 105.4 |
+| Black marlin | Felucca, deep water | 110.1 |
+| Abyssal dragonfish | Destard | 120 |
+
+A rare catch is signed with your name, the date and its weight. Common High Seas fish can be cut into raw fish steaks.
+
+**Trophies**: with 90 Carpentry, a taxidermy kit and 10 boards you can turn a rare fish into a trophy deed. Place it on a wall in a house you own or co-own. A trophy keeps the catch's details and can be chopped back into its deed.
+
+===== Bottles, SOS messages and sea monsters =====
+
+Go to sea ready to fight: a treasure map, bottle or net you fish up may be carried by a **sea serpent** instead. Kill it and loot it.
+
+^ Find ^ What to do ^
+| Message in a bottle | Double-click it to take out an SOS, and read the SOS for the wreck's coordinates. |
+| SOS | Keep it in **your own** backpack (not on a pack mule), sail near the coordinates and fish. You may bring up wreckage before the chest. The chest uses up the SOS. |
+| Ancient SOS | The same, and its chest holds a fabled fishing net. |
+| Special fishing net | Double-click it and target open deep water. Sea creatures come up to fight: serpents, water elementals, even krakens. |
+| Fabled fishing net | The same, with a Leviathan among them. |
+
+===== Boats =====
+
+The classic small, medium and large boats, and their dragon versions, are sold by shipwrights. Place the deed on clear water, keep the key safe, board by the plank, and give the tiller man orders: **forward**, **stop**, **turn left**, **turn right**, **raise anchor**, **lower anchor**. To dry dock, lower the anchor, empty the hold and the deck, step ashore with the key and double-click the tiller man.
+
+===== Training =====
+
+Pole fishing trains Fishing up to 100, as on OSI. Catches above 100 need the skill, but casting a pole does not train you past 100.
+
+===== Not on the shard yet =====
+
+Crab and lobster traps, bait, the Charybdis and Osiredon fights, galleons, ship cannons and Fishing bulk orders are not in players' hands yet. This page will grow when they are.
+
+===== Needed images =====
+
+  * TODO image: a signed rare fish's tooltip.
+  * TODO image: a fish trophy on a house wall.
+
+===== Related pages =====
+
+  * [[:uo:systems:guilds|Guilds]]
+  * [[:uo:guides:crafting|Crafting on Shattered Legacy]]
+  * [[:uo:systems:achievements|Achievements]]

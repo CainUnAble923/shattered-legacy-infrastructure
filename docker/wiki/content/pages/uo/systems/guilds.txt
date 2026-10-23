@@ -1,68 +1,100 @@
 ====== Guilds ======
 
-Shattered Legacy's guilds are not player guilds: they are **eighteen trade and combat guilds** with halls in New Haven, each teaching a set of skills, selling its own goods for its own currency, and ranking you by the work you do for it. They are the starter path for a new character and the backbone of the [[league|League]]. The guild system is unique to this shard.
+Shattered Legacy's guilds are not player guilds: they are **eighteen trade and combat guilds**, each teaching a set of skills, selling its own goods for its own currency, and ranking you by the work you do for it. They are the starter path for a new character, and the [[league|League]] ties them together. The guild system is unique to this shard. It is separate from the stock NPC guilds that charge gold to join.
+
+Every guild has a chapter in **New Haven** (Trammel), where you join. Pages for single guilds are in the [[:uo:guilds:start|guild section]].
 
 ===== The guilds =====
 
-^ Guild ^ Teaches ^ To join, show ^
-| Society of Smiths | Blacksmithy | Blacksmithy 50, or 10 iron ingots |
-| Arcane Society | Magery, Inscription | Magery 50, or 5 blank scrolls |
+^ Guild ^ Suits ^ Apprentice task (show one) ^
+| Society of Smiths | Blacksmithy, Arms Lore | Blacksmithy 50, or 10 iron ingots |
+| Arcane Society | Magery, Inscription and the casting skills | Magery 50, or 5 blank scrolls |
 | Tailors' Circle | Tailoring | Tailoring 50, or 10 cloth |
-| Tinkers' Union | Tinkering | Tinkering 50, or 5 gears |
+| Tinkers' Union | Tinkering, trap kits | Tinkering 50, or 5 gears |
 | Healers' Covenant | Healing, Anatomy | Healing 50, or 25 bandages |
-| Order of the Alembic | Alchemy, Taste Identification | Alchemy 50, or 10 empty bottles |
+| Order of the Alembic | Alchemy, Taste Identification, Glassblowing | Alchemy 50, or 10 empty bottles |
 | Bards' Consortium | Musicianship and the bard skills | Musicianship 30 |
 | Thieves' Den | Stealing and the rogue skills | Stealing 20 |
 | Warriors' Brotherhood | Tactics and the weapon skills | Tactics 30 |
 | Twin Paths Dojo | Bushido, Ninjitsu | Bushido 30 |
 | Keepers of the Last Door | Necromancy, Spirit Speak, Forensics | Necromancy 30, or 10 grave dust |
 | Miners' Compact | Mining | Mining 50, or 20 iron ore |
-| Foresters' Union | Lumberjacking, Carpentry, Bowcraft/Fletching | Lumberjacking 50, or 20 boards |
-| Rangers' League | Archery, Animal Taming and the outdoor skills | Archery 30, or 25 arrows |
-| Maritime Brotherhood | Fishing, Cooking | Fishing 30, or 5 fish |
-| Merchants' Exchange | Trade | 500 gold |
+| Foresters' Union | Lumberjacking, Carpentry, Fletching | Lumberjacking 50, or 20 boards |
+| Rangers' League (the Outriders) | Archery, Tracking, Animal Taming, animal work | Archery 30, or 25 arrows |
+| Maritime Brotherhood | Fishing, Cooking, Cartography | Fishing 30, or 5 fish |
+| Merchants' Exchange | Appraisal, Begging | 500 gold |
 | Artificers' Order | Imbuing | Imbuing 20, or 3 diamonds |
-| The Custodians | Clean Up Britannia | Nothing: pledge to a Sanitation Warden |
+| The Custodians | Clean Up Britannia, no trade skill needed | Nothing: pledge to a Sanitation Warden |
 
-The "show" column is the **Apprentice task**, not a gate: joining is free and takes one click at the guildmaster. Meeting the task later pays your first standing and currency and raises you to Apprentice.
+The last column is the **Apprentice task**, not a gate: joining is free and takes one click at the guildmaster. Doing the task later pays your first standing and currency (25 standing and 10 of the guild's currency) and raises you to the guild's second rank. If you meet the skill half, no tribute is taken. Tribute comes from your backpack first, then your bank. Some guild help text still calls the task a "joining requirement"; it is not.
 
 ===== Joining and the directory =====
 
-  - Talk to a guildmaster in New Haven. The guild's hall page opens.
-  - Press **Join**. You are an Initiate, and you get the guild's starter tools (the Order of the Alembic hands you bottles, a mortar and pestle and a robe, for example).
-  - Type ''[guild'' any time to open the **Guild Directory**: every guild, your standing and rank in each, and a **Show me the way** button that points you to the nearest guildmaster and names the town.
+  - Type ''[guild'' to open the **Guild Directory**: every guild, your standing and rank in each, and a **Show me the way** button that points you to the nearest guildmaster and names the town. The directory is also on the New Haven training board.
+  - Talk to the guildmaster. The guild's hall page opens.
+  - Press **Join**. You are an Initiate, and you get the guild's starter tools (the Society of Smiths hands you a guild book and a salvage bag, the Artificers' Order a satchel and a toolkit, for example).
 
-You can join as many guilds as you like. Membership, standing and currency are per character.
+You can join as many guilds as you like. Membership, standing and currency belong to each character. League registration belongs to your account; see [[league|The League]].
+
+===== Which guild should I join? =====
+
+^ If you enjoy ^ Start with ^
+| Gathering and making your own gear | Miners' Compact for ore, Society of Smiths for metal gear, Foresters' Union for timber and wooden goods |
+| Tools, clothing or food | Tinkers' Union, Tailors' Circle, or Maritime Brotherhood |
+| Magic and enchanted gear | Arcane Society for casting, Artificers' Order for Imbuing, Order of the Alembic for potions |
+| Animals and the wilds | Rangers' League |
+| Stealth, locks and traps | Thieves' Den, with the Tinkers' Union for trap kits |
+| Healing or civic work | Healers' Covenant, or the Custodians |
+| Fighting, music or another magic | Warriors' Brotherhood, Bards' Consortium, Twin Paths Dojo, or Keepers of the Last Door |
+| A bit of everything | Register with the League, then join the guilds that fit what you do |
 
 ===== Standing, currency and rank =====
 
 Every guild keeps two numbers for you:
 
-  * **Standing**, earned by the guild's work: its bulk orders, work orders and commissions, [[requisitions|requisitions]], and for the Custodians your lifetime Clean Up points. Standing only rises.
-  * **Currency**, the guild's own scrip, spent in its shop: Smithing Seals, Mining Vouchers, Timber Tokens, Trail Marks, Essence Shards, and so on.
+  * **Standing**, earned by the guild's work: its bulk orders, work orders, contracts and commissions, [[requisitions|requisitions]], and for the Custodians your lifetime Clean Up points. Spending currency never costs standing.
+  * **Currency**, the guild's own scrip, spent in its shop: Smithing Seals, Mining Vouchers, Timber Tokens, Trail Marks, Essence Shards, Alembic Drams, and so on.
 
-Rank follows standing:
+These are separate from your bulk order points and from League Renown.
+
+Most guilds rank by this ladder:
 
 ^ Rank ^ Standing ^
 | Initiate | 0 |
-| Apprentice | 1,000 |
+| Apprentice | 1,000, or the Apprentice task done |
 | Journeyman | 5,000 |
 | Master | 15,000 |
 | Grandmaster | 50,000 |
 | Legendary | 100,000 |
 
-The Rangers' League uses its own rank names (Wanderer, Scout, Outrider, Trailblazer, Beastmaster, Warden of the Wild, Legendary Outrider) on the same idea.
+Some guilds use their own rank names and ladders:
 
-A **crafting guild** also asks for its craft skill: 30 for Apprentice, then 50, 70, 90 and 100 for Legendary. A rank you have reached is never lost, even when a loop resets your skills. Rising in a crafting guild hands you that rank's pattern book (see [[:uo:professions:recipes|Recipes and pattern books]]).
+  * **Miners' Compact, Foresters' Union and Rangers' League**: seven ranks, at 0, 1,000, 5,000, 15,000, 40,000, 80,000 and 150,000 standing.
+  * **Artificers' Order**: five ranks, at 0, 1,000, 5,000, 15,000 and 40,000.
+  * **The Custodians**: five ranks by lifetime Clean Up points (25, 125, 500 and 1,250 for the ranks after Volunteer).
+
+Each guild's own page has its rank names.
+
+==== Crafting guilds also need skill ====
+
+In a **crafting guild**, a promotion needs both standing and base skill in the guild's craft (item bonuses do not count): 30 for Apprentice, then 50, 70, 90 and 100 for the top rank. A rank you have earned is kept if your skill later drops. Rising in a crafting guild hands you that rank's pattern book (see [[:uo:professions:recipes|Recipes and pattern books]]).
+
+Some guildmaster menus show rank from standing alone, so they can show a higher rank than the one you hold while your skill catches up. The Guild Directory shows the rank you actually hold.
+
+Top-rank guild trials are not built yet. Until they are, the trial requirement is waived.
 
 ===== What the guilds sell =====
 
-  * **Pattern books and recipe scrolls** for the guild's craft, one band ahead of your rank.
-  * **Bulk orders** for members, with better pay than the town vendors give (see [[:uo:professions:bulk_orders|Bulk orders]]).
-  * **Pack mule modules**: each guild's hall sells the schematics for its module (see [[pack_mules|Pack mules]]).
+  * **Pattern books and recipe scrolls** for the guild's craft (see [[:uo:professions:recipes|Recipes and pattern books]]).
+  * **Bulk orders** for members (see [[:uo:professions:bulk_orders|Bulk orders]]).
+  * **Pack mule modules**: guilds sell the schematics for their module (see [[pack_mules|Pack mules]]).
   * Guild tools and upgrades, such as the Miners' Compact's ore satchels and Jacob's pickaxes, or the Smiths' Hammer of Hephaestus.
 
 Guild costs and turn-ins take materials from your **bank** as well as your backpack, pack first.
+
+===== Where the guilds are =====
+
+Today every guild meets at its New Haven chapter, and the Guild Directory points there. The Artificers' Order also has a guildmaster post in the Royal City in Ter Mur. Each guild's main hall elsewhere in Britannia is still being built and is not open to players yet.
 
 ===== Needed images =====
 
@@ -71,6 +103,7 @@ Guild costs and turn-ins take materials from your **bank** as well as your backp
 
 ===== Related pages =====
 
+  * [[:uo:guilds:start|The guild pages]]
   * [[league|The League]]
   * [[requisitions|Requisitions and the Appraiser]]
   * [[:uo:professions:recipes|Recipes and pattern books]]

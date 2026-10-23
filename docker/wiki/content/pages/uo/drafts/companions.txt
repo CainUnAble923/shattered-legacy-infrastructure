@@ -1,0 +1,71 @@
+====== Companions and Evo Pets ======
+
+**Draft: not available to players yet.** The evo starter pet is handed out only by the [[tutorial|tutorial]], which runs on the test shard only. Humanoid companions (squires) are planned: some groundwork exists, but there is no way to hire one. This page describes both as they stand.
+
+Both are unique to Shattered Legacy. Ordinary tamed pets and their training are on [[:uo:systems:pet_training|Pet training]].
+
+===== Evo pets =====
+
+An evo pet is an animal that earns its own experience and changes form as it grows. The tutorial gives one:
+
+  * At the tutorial farm, Wren Tallow offers a **dog or a cat**.
+  * At graduation you may pick a **dog, cat, fox or bird**, unless you already took the farm pet. You only ever get one.
+
+It arrives bonded, follows you, and costs **1 follower slot at every stage**. Keep a slot free before you choose.
+
+**Color.** Pick natural, shadow, snow, rust, sand, storm or ember. The choice is permanent and carries into every later form. If you close the window, double-click the pet to reopen it. The same goes for a body choice at a later stage. A saved choice cannot be changed.
+
+==== How it grows ====
+
+The pet earns experience from creatures it helped damage and kill. Its share of the damage and the creature's Fame decide how much. A pet that only follows you earns nothing.
+
+Experience adds up across stages. A new stage changes its body and stats, heals it fully, and keeps the skills it already learned.
+
+^ Stage ^ Total experience ^ Also needs ^
+| 2 | 500 | nothing more |
+| 3 | 3,000 | a body choice for the dog and cat; the fox also needs its owner at loop 1 |
+| 4 | 13,000 | the dog and cat need their owner at loop 1 |
+| 5 | 53,000 | owner at loop 5 and the Bond Trial |
+
+**Where pets stop today.** Pets do not read their owner's loops yet, even after graduation records your first loop, and the Bond Trial is not built. So for now a dog or cat stops at stage 3, a fox at stage 1, and a bird at stage 2. More experience does not get around a loop or Bond Trial requirement.
+
+==== Forms ====
+
+^ Stage ^ Dog ^ Cat ^ Fox ^ Bird ^
+| 1 | Pup | Kitten | Kit | Chick |
+| 2 | Young hound | Cub | (not built yet) | Firebird |
+| 3 | Hound: your choice of breed | Great cat: tiger or lion | Bake kitsune | (not built yet) |
+| 4 | Guardian hound | Sabertooth | (not built yet) | (not built yet) |
+| 5 | Windrunner | Manticore | none | Hiryu |
+
+The hound's breeds are Alaskan malamute, Great Dane, Saint Bernard, Newfoundland, Rottweiler and Black Russian terrier. They change only its look.
+
+Forms that are not built are skipped for now; the pet still has to meet the next built stage's needs. The four kinds are meant to play differently (dog protector, cat striker, fox trickster, bird scout), but those role abilities are not built: today all four fight in melee with the same stats for a given stage.
+
+==== Care ====
+
+  * Give orders by speaking: **all follow me**, **all come**, **all stay**, **all attack**.
+  * Bandage it with Veterinary and Animal Lore. A bonded pet that dies becomes a ghost a healer can resurrect.
+  * Evo pets do not use Animal Training; they grow by evolving instead.
+  * **Do not release your evo pet.** A released evo pet cannot be tamed again.
+  * An evo pet that looks like a hiryu or cu sidhe cannot be ridden.
+
+===== Companions (planned) =====
+
+Companions are meant to be humanoid adventuring partners: a squire who travels with you, gears up, and climbs ranks of its own. None of this can be used yet: there is no hiring, no candidate board, and no promotion.
+
+What is decided so far:
+
+  * Five starting paths: **Blade, Bow, Arcane, Support and Rogue**. You pick the path; the companion's personality is fixed for life.
+  * Ranks run from **Squire** to **Legend**. Higher ranks cost more follower slots, so companions share space with your pets and mounts. The planned party is you plus up to five companions.
+  * Companions will have their own levels and loops, and will never loop past the loops you have finished. They keep their rank when you loop.
+  * The tutorial's graduation window calls the starter animals "companions". They are evo pets, not this system.
+
+How companion ranks fit the player loop ladder is still being decided.
+
+===== Related pages =====
+
+  * [[tutorial|The New Haven tutorial]] (draft)
+  * [[levels_and_loops|Levels and loops]] (draft)
+  * [[:uo:systems:pet_training|Pet training]]
+  * [[:uo:systems:pack_mules|Pack mules]]

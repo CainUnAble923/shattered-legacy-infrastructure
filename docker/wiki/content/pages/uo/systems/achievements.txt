@@ -1,65 +1,91 @@
 ====== Achievements ======
 
-Achievements are Shattered Legacy's record of what you have done: first kills, skills reached, places visited, metals mined, guilds joined. Each one pays **Achievement Points** (AP) and **Renown**, and the first time your account earns one you get a [[loot_boxes|loot box]]. The system is unique to this shard.
+Achievements are Shattered Legacy's record of what you have done: first kills, skills reached, places visited, metals mined, guilds joined. Each one pays **Achievement Points** (AP), most also pay **Renown**, and the first time your account earns one you get a [[loot_boxes|loot box]]. The system is unique to this shard.
 
-===== Opening the page =====
+===== Opening your records =====
 
-  * Type ''[achievements'' in game, or
-  * press the **Achievements** button on your paperdoll (where Help used to be) or on the top bar. The button comes with the Shattered Legacy client in the player package.
+  * Type ''[achievements'' in game,
+  * press the **Achievements** button on your paperdoll (where Help used to be) or on the top bar (it comes with the Shattered Legacy client in the player package), or
+  * ask Elara Voss, the [[league|League Registrar]] in New Haven.
 
-The page lists every achievement by category, with what it needs, your progress toward it, and what earned it once you have it. Each category has a heading with its own icon (crossed swords for Combat, an open book for Skills, and so on); update your game through the launcher to see the icons, or the headings show the names alone.
+The window shows your AP and Renown at the top. Earned entries say what you did and what they paid. Unfinished ones show what they need, with prerequisites and a progress count where one applies. Each category has a heading with its own icon (crossed swords for Combat, an open book for Skills, and so on); update your game through the launcher to see the icons, or the headings show the names alone.
 
-The window also opens the [[league_shop|League Shop]] and the **Titles** list.
+The window also opens the [[league_shop|League Shop]] and the **Titles** list. The **Quests** tab is a separate checklist for the New Haven trainer quests.
 
 ===== Categories =====
 
-^ Category ^ What it covers ^
-| Combat | First kill, kill counts, named foes |
-| Skills | Skill milestones, including the shard's 200 cap |
-| Exploration | Logging in, visiting places such as Old Haven |
-| Mining | Ore and the shard's own metals |
-| Crafting | Crafted items and exceptional work |
-| Legacy | Longer-term goals |
-| Discovery | Finding things for the first time |
-| Collection | Collecting sets of things |
-| League | Joining and rising in the [[league|League]] |
-| Mischief | Secret joke achievements. You will not see this category until you earn one (below) |
+Use **All** to see every category. Collection, League and Mischief show there without tabs of their own.
 
-Many achievements are **secret**: they do not show in the locked list, and appear with a [Secret] tag once earned. Six old skill achievements that asked for skill above 200 are **retired**: nobody can earn them now, but anyone who has one keeps it and its points, under a Retired heading.
+^ Category ^ What it covers ^
+| Combat | Creature kills and combat milestones |
+| Skills | Skill milestones, and developing several skills |
+| Exploration | Arriving in Britannia and visiting its facets |
+| Mining | Colored ore, ore discoveries and mining work |
+| Crafting | Making items, exceptional work and smelting |
+| Legacy | The New Haven trainer quests and work in Old Haven |
+| Discovery | Survey reports and treasure map finds |
+| Collection | Collecting ore types and reaching bank gold milestones |
+| League | Registering, League activities and achievement milestones |
+| Mischief | Secret achievements found through play (below) |
+
+Many achievements are **secret**: they stay out of the unfinished list until you earn one, then show with a [Secret] tag. Secret ones hide in other categories too, not only in Mischief.
+
+Older characters may see a **Retired** heading: a few old skill achievements that nobody can earn now. Anyone who has one keeps it and its points.
 
 ===== Mischief: the System is watching =====
 
-The **Mischief** category is all secret, and it is where the System keeps its notes on you. It has no tab of its own: earned ones show under **All**, with a grinning imp for an icon. There are three kinds:
+The **Mischief** category is all secret, and it is where the System keeps its notes on you. Earned ones show under **All**, with a grinning imp for an icon. It holds three kinds:
 
-  * **Britannia's sillier moments**: the old jokes the world has always had. Your parents probably warned you about at least one of them.
+  * **Britannia's sillier moments**: the old jokes the world has always had.
   * **Noted by the System**: the shard's favorite shortcuts and odd habits, in fights, on the road, at the forge, at home and around loot boxes.
-  * **A few things about your feet.** Two of these open [[accessories|toe ring slots]].
+  * **A few things about your feet.** Some of these open [[accessories|toe ring slots]].
 
-We won't say what any of them are: you find out when you do them. Each is earned once per account and comes with a few words from the System. Some come with a **Dented Box**: a small [[loot_boxes|loot box]] holding one guaranteed, entirely useless keepsake, bound to you. Three come with a title, which shows in your Titles list only once you hold it. A few cannot be earned yet, because what they notice is not on the shard yet.
+We won't say what any of them are: you find out when you do them. Each is earned once per account and comes with a few words from the System. Some pay a **Dented Box**: a small [[loot_boxes|loot box]] holding one guaranteed, entirely useless keepsake, bound to you. Some come with a title, which shows in your Titles list only once you hold it. A few cannot be earned yet, because what they notice is not on the shard yet.
 
 ===== What an achievement pays =====
 
-  * **AP**, from 5 for a first kill to 150 for the biggest skill goals. 100 AP puts you "officially on the board".
-  * **Renown**, which counts toward your [[league|League rank]] and which you can spend in the [[league_shop|League Shop]] without losing rank.
-  * AP opens rows in the [[league_shop|League Shop]] and free **League titles** at 100, 250, 500, 1,000 and 1,750 AP.
-  * A **loot box** the first time your account earns it. The box's tier follows the achievement's AP: up to 10 AP is tier 1, up to 25 tier 2, up to 50 tier 3, up to 100 tier 4, up to 250 tier 5, and above that tier 6.
+**AP opens, Renown buys.**
+
+^ Number ^ What it is ^
+| Achievement Points (AP) | Your permanent score. It opens rows in the [[league_shop|League Shop]] and free titles. It is never spent. |
+| Renown | Your spendable League balance. Achievements, earned loot boxes and [[requisitions|requisitions]] add to it. Some achievements pay no Renown. |
+| Lifetime Renown | The Renown you have earned through play, which your [[league|League rank]] is measured by. Spending Renown never lowers it. |
+
+  * 100 AP puts you "officially on the board".
+  * A **loot box** the first time your account earns an achievement. Its tier follows that achievement's AP: up to 10 AP is tier 1, up to 25 tier 2, up to 50 tier 3, up to 100 tier 4, up to 250 tier 5, and above that tier 6.
   * Some achievements also hand you an item.
 
-Achievements are shared by your whole account. A second character on the account does not earn the same one again, and does not get a second box for it. The page shows "Earned on loops" with a count when a character earns one again on a later loop.
+Achievements belong to your **account**: your characters share the earned list, the AP and the Renown. A second character does not earn the same one again, and does not get a second box for it.
+
+===== Titles =====
+
+Open **Titles** from your achievement records, the [[league_shop|League Shop]] or the Registrar, and pick one to show after your character's name, or **No League title** to clear it. Titles you own belong to the account; each character picks its own.
+
+These open free as your AP grows, and stay yours:
+
+^ AP ^ Title ^
+| 100 | the Noted |
+| 250 | the Accomplished |
+| 500 | the Distinguished |
+| 1,000 | the Renowned |
+| 1,750 | the Illustrious |
+
+The League Shop also sells titles for Renown: //the Registered Adventurer//, //Veteran of the League// and //the System's Favorite//. Secret titles appear in your list only once you hold them.
 
 ===== Fanfare =====
 
-Earning an achievement plays a fanfare: fireworks and a line from the System, which has opinions. Bigger deeds make a bigger show, and a few are announced to the whole shard. ''[FanfareMute'' turns your own fanfare off; shard-wide announcements still show.
+Earning an achievement plays a fanfare: fireworks, a sound and a line from the System, which has opinions. Bigger deeds make a bigger show, and a few are announced to the whole shard. ''[FanfareMute'' turns your own fanfare off; shard-wide announcements still show. See [[loot_boxes|Loot boxes]] for who sees what.
 
 ===== Needed images =====
 
-  * TODO image: the achievements page open, Combat tab, with one earned and one in progress.
+  * TODO image: the achievements window open on All, with one earned and one in progress.
   * TODO image: the Achievements button on the paperdoll in the Shattered Legacy client.
+  * TODO image: the Titles list.
 
 ===== Related pages =====
 
   * [[loot_boxes|Loot boxes]]
   * [[league|The League]]
-  * [[skill_gain|Skill gain]]
   * [[league_shop|The League Shop]]
+  * [[skill_gain|Skill gain]]
   * [[accessories|Accessory slots]]

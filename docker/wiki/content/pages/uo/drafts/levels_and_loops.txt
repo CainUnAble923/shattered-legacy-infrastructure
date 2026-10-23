@@ -1,0 +1,62 @@
+====== Levels and Loops ======
+
+**Draft: mostly planned.** Player levels, experience, loop resets and loop scrolls are decided but not built yet. The only part that works today is the loop count, and the first loop is recorded when you graduate from the [[tutorial|tutorial]], which is itself on the test shard only. This page says what works now and what is coming, so nobody plans a character around a rule that is not in the game.
+
+Levels and loops are unique to Shattered Legacy.
+
+===== What works now =====
+
+  * **Your loop count.** Every character starts at loop 0. Graduating from the tutorial records loop 1, with a Loop [[:uo:systems:loot_boxes|loot box]] and a fanfare, once. Later characters on a graduated account get their own loop 1 at login.
+  * **Recording a loop changes nothing else.** Your skills, stats and experience stay as they are, and your [[:uo:systems:young_players|Young]] hours keep running.
+  * **Skills cap at 200 each**, the same at every loop. See [[:uo:systems:skill_gain|Skill gain]]. The planned level caps below do not limit your skills today.
+  * **Power scrolls** are OSI's: a scroll raises one named skill's cap. Because skills already cap at 200, a 105 to 120 scroll is refused. Scrolls do not open a loop.
+  * The "level" shown when you look at creatures, and the strength that loot boxes read, are rough guesses from your skills. They are not the planned player level and say nothing about your loop.
+
+===== Planned: three numbers =====
+
+^ Number ^ What it will mean ^
+| Current level | Your progress inside this loop. Each real loop puts it back to 1. |
+| Maximum level | Your permanent ceiling. Each loop raises it. Each skill's training cap will follow this number. |
+| Loop count | How many loops you have finished. You keep it forever. |
+
+Skills will still be earned by use. Levels and loops do not hand out free skill or stat points.
+
+===== Planned: the loop ladder =====
+
+A new character is loop 0 with a maximum level of 50. Graduating makes it loop 1 with a maximum of 100. Each later loop adds 5, so loop 21 reaches 200.
+
+^ Loop ^ Maximum level ^
+| 0 | 50 |
+| 1 | 100 |
+| 2 | 105 |
+| 3 | 110 |
+| 4 to 20 | 5 more each loop |
+| 21 | 200 |
+
+From loop 2 on, entering the next loop is planned to need a power scroll for the new maximum (a 105 scroll for loop 2, and so on to 200). Those loop scrolls do not exist yet.
+
+===== Planned: what a loop resets and keeps =====
+
+^ What ^ Through a loop ^
+| Current level | Back to 1 |
+| Maximum level and loop count | Kept, and the maximum goes up |
+| Skills | Reset or partly kept, depending on your path (below) |
+| Stats | Kept |
+| Achievements, Renown, titles, recipes, League rank, guild ranks | Kept |
+| Your evo pet's stage | Kept |
+| Gear | Kept |
+
+You will choose to loop when you are at your cap; reaching the cap will not loop you by itself.
+
+Two paths are planned for skills: **Keeper**, which rebuilds skills faster with a stronger memory of your old peaks, and **Breaker**, which keeps more chosen skills from loop to loop. A loop memory, the **echo**, will speed up progress back to where you were before. How these paths work in detail is still being decided.
+
+===== Planned: experience =====
+
+Experience will come from activity: kills, crafting, gathering, new skill peaks and discoveries. Turning in currencies and earning achievements will not pay level experience on their own. Experience earned at your cap will fill a reserve that carries into your next loop. The size of that reserve is still being decided.
+
+===== Related pages =====
+
+  * [[tutorial|The New Haven tutorial]] (draft)
+  * [[companions|Companions and evo pets]] (draft)
+  * [[:uo:systems:skill_gain|Skill gain]]
+  * [[:uo:systems:young_players|Young players]]

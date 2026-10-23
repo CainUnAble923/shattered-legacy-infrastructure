@@ -1,0 +1,29 @@
+====== The Guilds ======
+
+Shattered Legacy has eighteen trade and combat guilds of its own. Start with the [[:uo:systems:guilds|guilds overview]]: how to join, standing, currency, ranks, and which guild suits you. The pages below cover single guilds in more depth.
+
+===== Crafting and enchanting =====
+
+  * [[society_of_smiths|Society of Smiths]]: Blacksmithy, bulk orders, commissions, the Hammer of Hephaestus
+  * [[artificers_order|Artificers' Order]]: Imbuing, formula books, unraveling, enchanting work orders
+  * [[order_of_the_alembic|Order of the Alembic]]: Alchemy, Taste Identification, Glassblowing
+
+===== Gathering and the wilds =====
+
+  * [[miners_compact|Miners' Compact]]: Mining, ore satchels, the Prospector's Logbook, climbing boots
+  * [[foresters_union|Foresters' Union]]: Lumberjacking, the Forester's Logbook, lumber satchels
+  * [[rangers_league|Rangers' League]]: the Outriders, animal work, Herding and the crook
+
+===== Service and the shadows =====
+
+  * [[healers_covenant|Healers' Covenant]]: Healing and Anatomy
+  * [[custodians|The Custodians]]: Clean Up Britannia and its store
+  * [[thieves_den|Thieves' Den]]: monster stealing, Den scrip, trap perks
+
+The other guilds (Arcane Society, Tailors' Circle, Tinkers' Union, Bards' Consortium, Warriors' Brotherhood, Twin Paths Dojo, Keepers of the Last Door, Maritime Brotherhood and Merchants' Exchange) are covered on the [[:uo:systems:guilds|overview]] for now.
+
+===== Related pages =====
+
+  * [[:uo:systems:guilds|Guilds overview]]
+  * [[:uo:systems:league|The League]]
+  * [[:uo:professions:start|Professions]]

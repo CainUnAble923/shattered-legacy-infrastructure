@@ -1,52 +1,82 @@
 ====== Loot Boxes ======
 
-A loot box is a reward you get the first time you do something notable: earn an [[achievements|achievement]], slay a boss, or reach a [[league|League]] rank. What is inside is decided the moment you earn it, so holding on to a box changes nothing. Loot boxes are unique to Shattered Legacy.
+A loot box is a reward for doing something notable for the first time: earning an [[achievements|achievement]] or being promoted in the [[league|League]]. What is inside is decided the moment you earn it, so saving a box to open later changes nothing. Loot boxes are unique to Shattered Legacy.
 
 ===== How you get one =====
 
 ^ Source ^ When ^ Tier ^
-| An achievement | The first time your account earns it | By the achievement's AP: 1 to 6 |
-| A boss | Your first kill of each boss, for everyone with looting rights | 4 as a rule; 5 for a champion or a peerless boss; 6 for the Harrower |
-| A League rank | Each rank the first time you reach it | 1 at Iron, rising to 6 at Adamantium and Celestial |
+| An achievement | The first time your account earns it | By that achievement's AP: 1 to 6 |
+| A League promotion | Each rank the first time you are promoted to it | 1 at Dull Copper and Shadow Iron, rising one tier every three ranks to 6 at Adamantium and Celestial |
 
-Graduating from the New Haven tutorial also hands you your first box. The [[league_shop|League Shop]] sells the **System's Loot Boxes** (Bronze, Silver and Gold) for Renown; they hold League goods only, no gold or Renown. Some secret [[achievements|achievements]] pay a **Dented Box**: a small box with one guaranteed, entirely useless keepsake inside, bound to you. Doing the same deed again on a later loop gives no second box, only a line from the System and a count on your achievements page.
+  * Registering with the League makes you an Iron Citizen and earns the registration [[achievements|achievement]], which pays that achievement's box. There is no separate rank box for Iron.
+  * A new achievement earned while you are online gives its box to an online character on your account. A promotion gives its box to the character promoted.
+  * Repeating something you already have on record does not give another box.
+  * **First boss kills** are meant to pay a box too, but that reward is not working yet. Do not count on one.
+  * The [[league_shop|League Shop]] sells the **System's Loot Boxes** (Bronze, Silver and Gold) for Renown. They follow their own rules: see that page.
+  * Some secret [[achievements|achievements]] pay a **Dented Box**: a small box with one guaranteed, entirely useless keepsake inside, bound to you.
 
 ===== Tiers and themes =====
 
-Boxes run from **tier 1 to tier 6**. A higher tier holds more and better things.
+Boxes run from **tier 1 to tier 6**. Each has a **theme** and a tier, and its tooltip tells you both and what earned it. A box earned from an achievement takes its tier from the AP that achievement pays, not from your account's total.
 
-^ Tier ^ Items inside ^ Gold ^ Renown ^
-| 1 | 2 | 250 | none |
-| 2 | 3 | 750 | 25 |
-| 3 | 3 | 2,000 | 50 |
-| 4 | 4 | 5,000 | 100 |
-| 5 | 5 | 12,000 | 200 |
-| 6 | 6 | 30,000 | 400 |
+^ Tier ^ Achievement's AP ^ Name and color (most themes) ^ Slots ^ Gold ^ Renown ^
+| 1 | up to 10 | Common, gray | 2 | 250 | none |
+| 2 | 11 to 25 | Uncommon, green | 3 | 750 | 25 |
+| 3 | 26 to 50 | Rare, blue | 3 | 2,000 | 50 |
+| 4 | 51 to 100 | Epic, purple | 4 | 5,000 | 100 |
+| 5 | 101 to 250 | Legendary, orange | 5 | 12,000 | 200 |
+| 6 | over 250 | Celestial | 6 | 30,000 | 400 |
 
-Every box has a slot for its theme and a slot for gold (and Renown from tier 2). The rest is drawn from pools of consumables, resources, magic gear, recipe scrolls, cosmetics and rare things; low tiers lean toward consumables and resources, high tiers toward gear, cosmetics and rarities.
+  * **Slots** are not a count of items. One slot holds the theme's reward, which can be several items (an Explorer's box gives both a treasure map and a blank map, for example), and the gold and Renown come on top. The rest of the slots draw from pools of consumables, resources, magic gear, recipes, cosmetics and rare things. Low tiers lean toward consumables and resources, high tiers toward gear, cosmetics and rarities.
+  * The gold and Renown above are a box's base amounts. A **League** box (the kind a promotion pays) adds 50 more Renown per tier, so even a tier 1 League box holds Renown.
 
-A box is named for its theme and tier. The gathering and crafting themes take their names from the material ladders: a **Miner's** box is a Dull Copper, Bronze, Verite, Valorite, Mythril or Celestial Box; a **Woodsman's** box an Oak, Yew, Heartwood, Frostwood, Runewood or Celestial Box; a **Hunter's** box a Leather, Spined, Horned, Barbed or Celestial Box. Artisan's, Explorer's, Tamer's, Scholar's, Boss, Loop and League boxes run **Common, Uncommon, Rare, Epic, Legendary, Celestial**.
+The theme decides the kind of reward: Miner's boxes give ore and gems, Explorer's boxes give maps, Scholar's boxes give reagents and a spell scroll, Artisan's boxes give crafting supplies and a recipe or pattern book, and so on.
 
-Box gear is always weaker than exceptional crafted gear of the same tier.
+Resource themes are named after material ladders instead of Common to Celestial:
+
+^ Theme ^ Tier 1 ^ Tier 2 ^ Tier 3 ^ Tier 4 ^ Tier 5 ^ Tier 6 ^
+| Miner's | Dull Copper | Bronze | Verite | Valorite | Mythril | Celestial |
+| Woodsman's | Oak | Yew | Heartwood | Frostwood | Runewood | Celestial |
+| Hunter's | Leather | Spined | Horned | Barbed | Barbed | Celestial |
+
+There is no leather past Barbed, so tiers 4 and 5 of a Hunter's box share the name. An **Artisan's** box uses the ladder of its craft: wood for Carpentry and Fletching, leather for Tailoring, metal for the other crafts. A material name tells you the tier; it does not promise every item inside is made of that material. Explorer's, Tamer's, Scholar's, Loop and League boxes use Common to Celestial.
+
+Gear from a box is plain random magic gear. Crafting your own is still the way to get exactly what you want.
 
 ===== Opening a box =====
 
-  * Open it in a **guarded town**, or in a **house** where you are the owner, a co-owner or a friend. Anywhere else the System refuses.
-  * The box is **bound to your account**. So are the cosmetics inside it. Everything else inside can be traded.
-  * The box vanishes when it is empty. A box opened and left with things in it (a full bank, say) is cleared away after 7 days.
+Keep the box in your backpack and double-click it. You must be:
+
+  * inside a **guarded town** with its guards on, or
+  * in a **house** where you are the owner, a co-owner or a friend.
+
+Anywhere else the System refuses.
+
+  * The box is **bound to your account**. It cannot be traded, dropped on the ground or stored in a house chest. Bags you carry are fine.
+  * Opening shows a reveal window and hands you everything at once: items and gold go into your backpack, or your bank if the pack is full, and Renown goes onto your account. The box then disappears.
+  * Cosmetic sashes and anything else marked account-bound stay with your account. Everything else from a box can be traded.
+
+A few rewards still say **[Placeholder]**, such as the League Shop Discount Token. They do nothing yet. **Loop scroll fragments** also turn up; combining them into a loop scroll is **planned, not in the game yet**, so keep them for now.
 
 ===== Flying loot =====
 
-Opening a box sends the best thing inside **flying out of it**: a sword, a bow, a staff, a piece of armor, a shield, a ring, a gem, a potion or a bit of clothing arcs up out of your pack and lands at your feet, just before the fanfare. A box of tier 4 and up shows it to everyone around you; a smaller one to you alone. It is only a show: what the box gives you is the same either way, and boxes holding only gold, resources or the like skip it. Update your game through the launcher to see it.
+Opening a box can send one item **flying out of it**: a sword, a bow, a staff, a piece of armor, a shield, a ring, a gem, a potion or a bit of clothing arcs up out of your pack and lands at your feet, just before the fanfare. A box of tier 4 and up shows it to everyone around you; a smaller one to you alone. It is only a show: what the box gives you is the same either way, and some kinds of item have no flight. Update your game through the launcher to see it.
 
 ===== Fanfare =====
 
-Earning a box plays a fanfare: fireworks and a line from the System. Tier 4 and above make a bigger show; a first boss kill is announced to the shard. ''[FanfareMute'' silences your own fanfare and your flying loot; shard-wide announcements always show.
+Achievements and boxes come with fireworks, UO sounds and a line from the System. Several close together merge into one show.
+
+^ Fanfare ^ Who sees it ^
+| Minor | Only you: effects, a sound and a private line over your head |
+| Major | Players nearby. Boxes of tier 4 and up use this |
+| Capstone | A bigger local show and a shard-wide announcement naming you |
+
+''[FanfareMute'' turns your own fanfare and flying loot off or on for that character. System chat lines still arrive, and shard-wide announcements always show.
 
 ===== Needed images =====
 
   * TODO image: a tier 4 Hunter's box (a Barbed Box) in a backpack with its tooltip.
-  * TODO image: the reveal when a box is opened in New Haven.
+  * TODO image: the reveal window when a box is opened in New Haven.
   * TODO image: a sword in mid-flight out of an opened box.
 
 ===== Related pages =====
