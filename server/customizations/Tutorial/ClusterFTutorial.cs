@@ -30,8 +30,8 @@ namespace Server.Tutorial;
 
 public static class ClusterFTutorial
 {
-    // tutorial.enabled (default true): off, no new character is entered (staff can still use the commands).
-    public static bool Enabled { get; set; } = true;
+    // Configure refuses to enable the tutorial on live.
+    public static bool Enabled { get; set; }
 
     // P371: provisional option (a), pending Chase's skipper decision. False requires remedial graduation.
     public static bool SkipCountsAsGraduation { get; set; } = true;
@@ -41,7 +41,10 @@ public static class ClusterFTutorial
 
     public static void Configure()
     {
-        Enabled = ServerConfiguration.GetOrUpdateSetting("tutorial.enabled", true);
+        // Read the setting directly: equal-priority Configure methods run in unstable order,
+        // so TestCenter.Configure may not have populated TestCenter.Enabled yet.
+        Enabled = ServerConfiguration.GetSetting("testCenter.enable", false) &&
+                  ServerConfiguration.GetOrUpdateSetting("tutorial.enabled", true);
         SkipCountsAsGraduation = ServerConfiguration.GetOrUpdateSetting("clusterf.tutorial.skipCountsAsGraduation", true);
         CommandSystem.Register("Tutorial", AccessLevel.GameMaster, OnTutorialCommand);
     }
@@ -63,9 +66,14 @@ public static class ClusterFTutorial
     [OnEvent(nameof(PlayerMobile.PlayerLoginEvent))]
     public static void OnLogin(PlayerMobile pm)
     {
+        TutorialCoreTrials.Cancel(pm);
         if (Enabled)
         {
-            TryEnter(pm);
+            if (!TryEnter(pm) && IsParticipant(pm))
+            {
+                SystemLine(pm, "Welcome back. Your completed lessons are saved. Ask Rook for the next one.");
+                TutorialRecruiter.PointTo(pm);
+            }
         }
 
         // The tutorial is once per account; each later character needs its own first loop, too. Also handles
@@ -80,7 +88,9 @@ public static class ClusterFTutorial
     /// <summary>Enters this character into the core if its account has never started the tutorial. True when it did.</summary>
     public static bool TryEnter(PlayerMobile pm)
     {
-        if (RecordOf(pm) is not { State: TutorialState.NotStarted } record)
+        // cc-P289 play-through: the Golem's Admin was greeted and pointed at Rook. Staff are never entered.
+        if (pm.AccessLevel > AccessLevel.Player || pm.Account?.AccessLevel > AccessLevel.Player ||
+            RecordOf(pm) is not { State: TutorialState.NotStarted } record)
         {
             return false;
         }
@@ -118,10 +128,10 @@ public static class ClusterFTutorial
         return true;
     }
 
-    /// <summary>Runs a station: its trial if one is registered, else the stub.</summary>
+    /// <summary>Runs a station's trial, or shows an optional wing's coming-soon page.</summary>
     public static void RunStation(PlayerMobile pm, TutorialStation station)
     {
-        if (RecordOf(pm) is not { IsActive: true })
+        if (!IsParticipant(pm))
         {
             SystemLine(pm, "You are not in the tutorial.");
             return;
@@ -133,15 +143,15 @@ public static class ClusterFTutorial
             return;
         }
 
-        // TODO (trial prompts): the station's trial. Until then the stub shows the plan and counts it done.
+        SystemLine(pm, "Coming soon. This wing is optional; graduation needs only the core.");
         pm.SendGump(new TutorialStationGump(station, Server.TazUO.TazUOClientCommand.CanRunCommands(pm.NetState)));
-        CompleteStation(pm, station.Key);
     }
 
     /// <summary>Marks a station done. The last core station opens the wings.</summary>
     public static void CompleteStation(PlayerMobile pm, string key)
     {
-        if (RecordOf(pm) is not { IsActive: true } record || !record.StationsDone.Add(key))
+        if (!IsParticipant(pm) || TutorialStations.Find(key) == null ||
+            RecordOf(pm) is not { IsActive: true } record || !record.StationsDone.Add(key))
         {
             return;
         }
@@ -161,11 +171,12 @@ public static class ClusterFTutorial
     /// <summary>The skip, after both confirmations. Grants "Didn't Read the Manual" once.</summary>
     public static bool Skip(PlayerMobile pm)
     {
-        if (RecordOf(pm) is not { } record || record.State is not (TutorialState.InCore or TutorialState.InWings))
+        if (!IsParticipant(pm) || RecordOf(pm) is not { } record || record.State is not (TutorialState.InCore or TutorialState.InWings))
         {
             return false;
         }
 
+        TutorialCoreTrials.Cancel(pm);
         record.State = TutorialState.Skipped;
         record.WasSkipped = true;
         record.FinishedAt = Core.Now;
@@ -198,6 +209,7 @@ public static class ClusterFTutorial
         }
 
         record.State = TutorialState.Remedial;
+        TutorialCoreTrials.Cancel(pm);
         record.CharacterSerial = (uint)pm.Serial;
         record.StationsDone.Clear();
         record.StartedAt = Core.Now;
@@ -215,7 +227,7 @@ public static class ClusterFTutorial
     /// </summary>
     public static string? Graduate(PlayerMobile pm)
     {
-        if (RecordOf(pm) is not { IsActive: true } record)
+        if (!IsParticipant(pm) || RecordOf(pm) is not { IsActive: true } record)
         {
             return "You are not in the tutorial.";
         }
@@ -225,6 +237,7 @@ public static class ClusterFTutorial
             return "Finish the core first.";
         }
 
+        TutorialCoreTrials.Cancel(pm);
         var remedial = record.State == TutorialState.Remedial;
         record.State = TutorialState.Graduated;
         record.FinishedAt = Core.Now;
@@ -299,6 +312,7 @@ public static class ClusterFTutorial
                     from.SendMessage(Graduate(pm) ?? "Graduated.");
                     break;
                 case "reset":
+                    TutorialCoreTrials.Cancel(pm);
                     ClusterFAccountPersistence.GetOrCreate((IAccount)pm.Account).ResetTutorial();
                     from.SendMessage("Tutorial record cleared.");
                     break;

@@ -74,17 +74,11 @@ namespace Server.Tutorial
             "System: This was only a vision. Nothing about you has changed. Yet."
         ];
 
-        /// <summary>The loop demo: lines only. Level, skills, loop count and Young are left exactly as they were.</summary>
+        /// <summary>Compatibility entry to the timed vision. Real character progression remains untouched.</summary>
         public static void RunLoopDemo(PlayerMobile pm)
         {
-            foreach (var line in Lines)
-            {
-                pm.SendMessage(0x3B2, line);
-            }
-
-            pm.FixedParticles(0x376A, 9, 32, 5030, 0x8AF, 0, EffectLayer.Waist);
-            pm.PlaySound(0x1F7);
-            ClusterFTutorial.CompleteStation(pm, "core.loop");
+            ClusterFTutorial.RunStation(pm, TutorialStations.Find("core.loop")!);
+            TutorialCoreTrials.WatchVision(pm);
         }
     }
 }

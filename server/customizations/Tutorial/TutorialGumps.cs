@@ -88,6 +88,12 @@ public class TutorialRecruiterGump : Gump
                 _pm.SendGump(new TutorialRecruiterGump(_pm));
                 return;
             case BtnGraduate:
+                if (!TutorialCoreTrials.Nearby(_pm, TutorialRecruiter.Spot, 4))
+                {
+                    ClusterFTutorial.SystemLine(_pm, "Return to Rook on the New Haven plaza to graduate.");
+                    TutorialRecruiter.PointTo(_pm);
+                    return;
+                }
                 if (ClusterFTutorial.Graduate(_pm) is { } why)
                 {
                     _pm.SendMessage(0x22, why);
@@ -190,7 +196,7 @@ public class TutorialStationGump : Gump
             s.Explained.Length > 0 ? $"Explained: {string.Join(", ", s.Explained)}." : "",
             s.TazUO.Length > 0 ? $"TazUO: {string.Join(", ", s.TazUO)}. Guides: <a href=\"{WikiBase}\">tazuo.org</a>" : "",
             s.Tool != null ? $"You will be given: {s.Tool}." : "",
-            "(This station's trial is still being built. It counts as done for now.)"
+            "Coming soon. This wing is optional. Graduation needs only the core."
         };
         lines.RemoveAll(string.IsNullOrEmpty);
 

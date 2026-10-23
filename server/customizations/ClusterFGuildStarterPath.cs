@@ -715,6 +715,14 @@ public class GuildDirectionArrow : QuestArrow
             return;
         }
 
+        // cc-P289: pinned's logout drops the reference without stopping the arrow (PlayerMobile.ClearQuestArrow). An
+        // orphan must not announce its spot later or cancel the client's current arrow (Stop sends 0xBA off).
+        if (Mobile.QuestArrow != this)
+        {
+            _timer.Cancel();
+            return;
+        }
+
         if (Mobile.Deleted || Core.Now >= _expires)
         {
             Stop(_point.X, _point.Y);
