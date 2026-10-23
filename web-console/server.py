@@ -125,6 +125,9 @@ INPUT_RULES = {
 }
 INPUT_RULES["assignTo"] = (re.compile(r"^[A-Za-z][A-Za-z0-9]{1,23}$"), "-AssignTo", lambda v: v)   # cc-P187
 INPUT_RULES["next"] = (re.compile(r"^(yes|no)$"), "-Next", lambda v: v)
+# cc-P287: Owner works <date> (the skip date, and the Golem it is for: the card's, set by the server, never the page's).
+INPUT_RULES["skipDate"] = (re.compile(r"^\d{4}-\d{2}-\d{2}$"), "-SkipDate", lambda v: v)
+INPUT_RULES["skipGolem"] = (re.compile(r"^[A-Za-z][A-Za-z0-9]{1,23}$"), "-SkipGolem", lambda v: v)
 # cc-P187: the page buttons' inputs (console-actions.json fields). Argv only, never a shell; free text never starts with
 # '-' (PowerShell would read it as a parameter name) and never holds a double quote.
 TEXT = r"^(?!-)[\x20\x21\x23-\x7e]{1,%d}$"
@@ -283,7 +286,7 @@ class Console:
         return self._buttons[1]
 
     def public_buttons(self):
-        keep = ("key", "label", "word", "inputs", "when", "disabled", "help", "art", "anyGolem", "golemWord", "card", "engine")   # cc-P208 card, cc-P159 engine
+        keep = ("key", "label", "word", "inputs", "when", "disabled", "help", "art", "anyGolem", "golemWord", "card", "engine", "registry")   # cc-P208 card, cc-P159 engine, cc-P287 registry
         return [{k: b[k] for k in keep if k in b} for b in self.buttons()]
 
     def check_request(self, entry, typed, inputs, golem=None):
@@ -317,6 +320,12 @@ class Console:
             if not clean.get("prompt") or not clean.get("assignTo"):
                 return (400, "pick a prompt and the Golem to give it to first"), None
             expected = "%s on %s" % (clean["prompt"], clean["assignTo"].lower())
+        elif word == "#skipday":
+            # cc-P287: 'skip <golem>' ('skip stone'): the confirm names whose day it is (the date is the box's; a typed
+            # word holds no dashes).
+            if not clean.get("skipGolem") or not clean.get("skipDate"):
+                return (400, "pick the Golem's card and the date first"), None
+            expected = "skip %s" % clean["skipGolem"].lower()
         elif word == "#stopped":
             expected = None
             if not re.match(r"^[Pp]\d{1,4}" + (r" " + re.escape(golem.lower()) if gw else "") + r"$", typed, re.I):
@@ -1790,6 +1799,15 @@ def make_handler(console, listener, access_log=None):
                 if str(g.get("engine") or "") == "script":   # cc-P208: its card's buttons go without a Golem
                     self._note(409, "action %s for %s" % (entry["key"], g["name"]))
                     return self._json(409, {"error": "the %s Golem only merges: its buttons are on its card" % g["name"]})
+                if entry.get("registry"):
+                    # cc-P287: a registry button (Owner works <date>) changes golems.json, which is kept on this PC (the
+                    # Tinker copies it to the others): it runs here for any Golem, a remote one too, never through an
+                    # agent; the Golem goes in as an input the page cannot choose.
+                    ins = dict(body.get("inputs") or {}) if isinstance(body.get("inputs"), dict) else {}
+                    ins["skipGolem"] = g["name"]
+                    code, out = console.start_action(entry, body.get("typed"), ins, who)
+                    self._note(code, "action %s for %s" % (entry["key"], g["name"]))
+                    return self._json(code, out)
                 if not console.is_home(g):
                     refuse = ("%s is the integrator's only" % (entry.get("label") or entry["key"])) if not entry.get("anyGolem") else (
                         "the %s Golem is disabled in golems.json" % g["name"] if not g.get("enabled") else "")
@@ -1804,6 +1822,10 @@ def make_handler(console, listener, access_log=None):
                         code, out = console.start_action(entry, body.get("typed"), body.get("inputs"), who, golem=g["name"])
                     self._note(code, "action %s for %s" % (entry["key"], g["name"]))
                     return self._json(code, out)
+            if entry.get("registry"):
+                # cc-P287: Owner works is a Golem card's button: the Golem comes from the card, never from the page.
+                self._note(409, "action %s without a Golem" % entry["key"])
+                return self._json(409, {"error": "%s is on a Golem's card: use the card of the Golem whose owner works" % (entry.get("label") or entry["key"])})
             code, out = console.start_action(entry, body.get("typed"), body.get("inputs"), who)
             self._note(code, "action " + entry["key"])
             return self._json(code, out)

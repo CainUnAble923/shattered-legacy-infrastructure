@@ -32,8 +32,10 @@ import server  # noqa: E402
 
 PROOF = "p182-test-proof-0123456789abcdef0123456789abcdef"
 CHASE = {"Tailscale-User-Login": "chase@example.com", "X-UOConsole-Proof": PROOF}
-INPUTS = {"model": "Opus", "cap": "3", "until": "2026-10-20 06:00", "start": "22:30", "end": "06:30", "prompt": "P151", "assignTo": "Bronze", "next": "yes"}
-FLAGS = {"model": "-Model", "cap": "-Cap", "until": "-Until", "start": "-NightStart", "end": "-NightEnd", "prompt": "-Prompt", "assignTo": "-AssignTo", "next": "-Next"}
+INPUTS = {"model": "Opus", "cap": "3", "until": "2026-10-20 06:00", "start": "22:30", "end": "06:30", "prompt": "P151", "assignTo": "Bronze", "next": "yes",
+          "skipDate": "2026-10-26", "skipGolem": "Stone"}   # cc-P287
+FLAGS = {"model": "-Model", "cap": "-Cap", "until": "-Until", "start": "-NightStart", "end": "-NightEnd", "prompt": "-Prompt", "assignTo": "-AssignTo", "next": "-Next",
+         "skipDate": "-SkipDate", "skipGolem": "-SkipGolem"}
 
 
 def free_port():
@@ -50,7 +52,7 @@ def actions():
 
 
 def word_for(e):
-    return {"#prompt": "P151", "#stopped": "P140", "#assign": "P151 on bronze"}.get(e["word"], e["word"])
+    return {"#prompt": "P151", "#stopped": "P140", "#assign": "P151 on bronze", "#skipday": "skip stone"}.get(e["word"], e["word"])
 
 
 class Proof(unittest.TestCase):
@@ -213,13 +215,17 @@ class LiveActions(unittest.TestCase):
                 self.assertEqual(409, code, e["key"])
                 self.assertIn("P149", body)
                 continue
+            if e.get("registry"):
+                # cc-P287: a registry button is a Golem card's (test_remote_golems); with no card it is refused.
+                self.assertEqual(409, self.act(e["key"], word_for(e), INPUTS)[0], e["key"])
+                continue
             code, body = self.act(e["key"], word_for(e), INPUTS)
             self.assertEqual(202, code, e["key"] + ": " + body)
             self.wait_idle()
         got = {c[c.index("-Key") + 1]: c for c in self.calls()}
         for e in actions():
-            if e.get("disabled"):
-                self.assertNotIn(e["key"], got, "a disabled button runs nothing")
+            if e.get("disabled") or e.get("registry"):
+                self.assertNotIn(e["key"], got, "a disabled button, or a registry one with no card, runs nothing")
                 continue
             c = got[e["key"]]
             self.assertTrue(c[0].endswith("-NoProfile") or "-Key" in c, c)

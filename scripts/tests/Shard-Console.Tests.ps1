@@ -8436,6 +8436,49 @@ Fact 'P216_TheGolemTabShowsTheOpenQuestionsAndAnswerRunsAnswerQuestion' {
     } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
+# ---- cc-P287: Owner works <date> (a Golem's skip date) -------------------------------------------------------------------
+Fact 'P287_OwnerWorksRunsSkipDayForTheGolemAndDateAndNothingElse' {
+    $ap = $p125Cfg.Autopilot
+    Assert-True ([bool]$ap.SkipDayScript -and $ap.SkipDayScript -like '*\Skip-Day.ps1') 'Skip-Day.ps1 is in the Golem config'
+    $day = (Get-Date).Date.AddDays(3).ToString('yyyy-MM-dd')
+    $f = New-P182Facts
+    $f.Present[$ap.SkipDayScript] = $true
+    $f | Add-Member -NotePropertyName SkipGolem -NotePropertyValue 'Stone' -Force
+    $f | Add-Member -NotePropertyName SkipDate -NotePropertyValue $day -Force
+    $p = @(Get-ActionPlan -Action 'golem.skipday' -Config $p125Cfg -AutopilotFacts $f -Now $p125Now)
+    Assert-Equal 'skip stone' (@($p | Where-Object { $_.Kind -eq 'confirm' })[0].Phrase) 'the phrase names the Golem'
+    Assert-True ((Get-P131Window $p) -match ('Skip-Day\.ps1 -Golem Stone -Date ' + $day + ' -By console$')) ('its script: ' + (Get-P131Window $p))
+    Assert-Equal 0 @(Test-PlanSafety $p $p125Cfg).Count ('safe: ' + (@(Test-PlanSafety $p $p125Cfg) -join '; '))
+    $ps = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ap.SkipDayScript)
+    foreach ($bad in @(@('-Golem', 'Stone;calc', '-Date', $day, '-By', 'console'), @('-Golem', 'Stone', '-Date', 'monday', '-By', 'console'), @('-Golem', 'Stone', '-Date', $day, '-By', 'console', '-DryRun'), @('-Golem', 'Stone', '-Date', $day, '-By', 'email'))) {
+        Assert-True (@(Test-PlanSafety @(New-PlanStep -Kind window -Exe $p125Cfg.PowerShell -Arguments ($ps + $bad)) $p125Cfg).Count -gt 0) ('refused: ' + ($bad -join ' '))
+    }
+    # The window's way: the picked Golem and the Until box's date (its time ignored).
+    $w = New-P182Facts
+    $w.Present[$ap.SkipDayScript] = $true
+    $w | Add-Member -NotePropertyName SkipGolem -NotePropertyValue 'Stone' -Force
+    $w | Add-Member -NotePropertyName LongRunUntil -NotePropertyValue ($day + ' 06:00') -Force
+    Assert-True ((Get-P131Window @(Get-ActionPlan -Action 'golem.skipday' -Config $p125Cfg -AutopilotFacts $w -Now $p125Now)) -match ('-Date ' + $day + ' ')) 'the Until box''s date'
+    foreach ($case in @(@{ G = ''; D = $day; Why = 'one Golem' }, @{ G = 'Stone'; D = 'someday'; Why = 'Which date' }, @{ G = 'Stone'; D = '2020-01-06'; Why = 'in the past' })) {
+        $x = New-P182Facts
+        $x.Present[$ap.SkipDayScript] = $true
+        $x | Add-Member -NotePropertyName SkipGolem -NotePropertyValue $case.G -Force
+        $x | Add-Member -NotePropertyName SkipDate -NotePropertyValue $case.D -Force
+        $r = @(Get-ActionPlan -Action 'golem.skipday' -Config $p125Cfg -AutopilotFacts $x -Now $p125Now | Where-Object { $_.Kind -eq 'refuse' })
+        Assert-True ($r.Count -eq 1 -and $r[0].Text -match $case.Why) ('refused (' + $case.Why + '): ' + (@($r | ForEach-Object { $_.Text }) -join ' | '))
+    }
+    # The web console's button: the server sets skipGolem from the card; the word is skip and the Golem's name.
+    $e = Get-P182Entry 'skipday'
+    Assert-True ($e -and $e.registry -and $e.anyGolem -and $e.action -eq 'golem.skipday' -and $e.word -eq '#skipday') 'the button: a registry button on every card'
+    $ok = Get-WebActionPlan -Entry $e -Typed 'Skip Stone' -Inputs @{ skipDate = $day; skipGolem = 'Stone' } -Config $p125Cfg -Facts (& { $g = New-P182Facts; $g.Present[$ap.SkipDayScript] = $true; $g }) -Now $p125Now
+    Assert-True ($ok.Ok -and (Get-P131Window $ok.Plan) -match ('-Golem Stone -Date ' + $day)) ('the web plan: ' + $ok.Refusal)
+    $no = Get-WebActionPlan -Entry $e -Typed 'skip gold' -Inputs @{ skipDate = $day; skipGolem = 'Stone' } -Config $p125Cfg -Facts (& { $g = New-P182Facts; $g.Present[$ap.SkipDayScript] = $true; $g }) -Now $p125Now
+    Assert-True (-not $no.Ok -and $no.Refusal -match 'skip stone') ('another name is refused: ' + $no.Refusal)
+    $act = @(Get-ConsoleActions | Where-Object { $_.Key -eq 'golem.skipday' })
+    Assert-True ($act.Count -eq 1 -and $act[0].Mutates -and $act[0].Group -eq 'Golem pick') 'on the Golem tab''s picker row'
+    Assert-True ([bool](Get-ConsoleTooltips)['golem.skipday']) 'with a tooltip'
+}
+
 $failed =@($results | Where-Object { -not $_.Passed }).Count
 Write-Host ""
 Write-Host ("{0} facts, {1} passed, {2} failed" -f $results.Count, ($results.Count - $failed), $failed) -ForegroundColor $(if ($failed) { 'Red' } else { 'Green' })
