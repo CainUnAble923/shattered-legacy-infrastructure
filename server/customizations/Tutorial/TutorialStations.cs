@@ -54,13 +54,14 @@ public static class TutorialStations
 
     public static readonly TutorialStation[] All =
     [
-        // -- The required core (in order) --
+        // -- The required core (in order). cc-P480: the backpack before the paperdoll, since dressing takes the cloak
+        //    out of the backpack (Chase 10-23). Records hold done keys, not positions, so saved progress carries on.
         new("core.movement", TutorialWing.Core, "Walking, running and the camera", None, None, None,
             ["Options", "Global Scaling", "Hotkeys"], null, "New Haven plaza"),
-        new("core.paperdoll", TutorialWing.Core, "Your paperdoll", None, None, None,
-            ["Alternate Paperdoll", "Durability gump"], null, "New Haven plaza"),
         new("core.backpack", TutorialWing.Core, "Your backpack", None, None, None,
             ["Grid Containers", "Item comparison"], null, "New Haven plaza"),
+        new("core.paperdoll", TutorialWing.Core, "Your paperdoll", None, None, None,
+            ["Alternate Paperdoll", "Durability gump"], null, "New Haven plaza"),
         new("core.chat", TutorialWing.Core, "Speaking and the journal", None, None, None,
             ["Journal and filters", "TTF fonts", "Nameplates"], null, "New Haven plaza"),
         new("core.death", TutorialWing.Core, "Death and resurrection", None, None, None,

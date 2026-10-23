@@ -13,7 +13,8 @@
 // TutorialFarm). The squire comes later, from an early League quest (not built).
 //
 // The two voices: the League recruiter teaches (overhead and gumps); the System voice (the fanfare's) is the snark,
-// confirmations and achievements, sent as "System: ..." lines and through ClusterFFanfare.
+// confirmations and achievements, sent as System lines and through ClusterFFanfare. cc-P480: the client already shows
+// such a line as "System: ...", so the text carries no prefix of its own (it read "System: System:").
 
 #nullable enable
 
@@ -23,6 +24,7 @@ using ModernUO.CodeGeneratedEvents;
 using Server.Accounting;
 using Server.Commands;
 using Server.Gumps;
+using Server.Items;
 using Server.LootBoxes;
 using Server.Mobiles;
 
@@ -59,7 +61,7 @@ public static class ClusterFTutorial
         return player is PlayerMobile pm && RecordOf(pm) is { IsActive: true } r && r.CharacterSerial == (uint)pm.Serial;
     }
 
-    public static void SystemLine(Mobile m, string text) => m.SendMessage(0x3B2, $"System: {text}");
+    public static void SystemLine(Mobile m, string text) => m.SendMessage(0x3B2, text);
 
     // -- Entry --
 
@@ -72,6 +74,11 @@ public static class ClusterFTutorial
             if (!TryEnter(pm) && IsParticipant(pm))
             {
                 SystemLine(pm, "Welcome back. Your completed lessons are saved. Ask Rook for the next one.");
+                TutorialRecruiter.PointTo(pm);
+            }
+            else if (RecordOf(pm) is { } waiting && CompanionPending(waiting))
+            {
+                SystemLine(pm, "Your companion is still waiting. Double-click Rook on the New Haven plaza and choose one.");
                 TutorialRecruiter.PointTo(pm);
             }
         }
@@ -99,8 +106,8 @@ public static class ClusterFTutorial
         record.CharacterSerial = (uint)pm.Serial;
         record.StartedAt = Core.Now;
 
-        SystemLine(pm, "Welcome to New Haven. A League recruiter is waiting by the plaza. Please do not keep them waiting; they bill by the hour.");
-        SystemLine(pm, "You can skip all this. The recruiter will ask twice. I will remember once.");
+        SystemLine(pm, "Welcome to New Haven. Rook, the League recruiter, is waiting by the plaza; they bill by the hour.");
+        SystemLine(pm, "Follow the arrow and double-click Rook (two quick left clicks) to begin. You can skip it all there; Rook will ask twice.");
         TutorialRecruiter.PointTo(pm);
         return true;
     }
@@ -221,6 +228,50 @@ public static class ClusterFTutorial
 
     public static readonly string[] StarterPetLines = ["dog", "cat", "fox", "bird"];
 
+    // cc-P480 Part 7: the graduation companion is offered until it is chosen. Done keys on the record (P276's pattern, no
+    // schema change): set when the pick is offered, cleared when a pet is given. P453 may move it to a record field.
+    public const string CompanionPendingKey = "graduation.petPending";
+    public const string CompanionTakenKey = "graduation.pet";
+
+    public static bool CompanionPending(TutorialRecord record) => record.StationsDone.Contains(CompanionPendingKey);
+
+    /// <summary>Opens the companion pick, with Rook's words and an arrow to him. False when none is waiting.</summary>
+    public static bool OfferCompanion(PlayerMobile pm)
+    {
+        if (RecordOf(pm) is not { } record || !CompanionPending(record))
+        {
+            return false;
+        }
+
+        if (TutorialRecruiter.Find() is { } rook && rook.InRange(pm, 12))
+        {
+            rook.SayTo(pm, "You have earned a companion. Choose one:");
+        }
+        else
+        {
+            TutorialRecruiter.PointTo(pm);
+        }
+
+        SystemLine(pm, "You have earned a companion. Choose one in the window that opened.");
+        pm.CloseGump<TutorialPetPickGump>();
+        pm.SendGump(new TutorialPetPickGump());
+        return true;
+    }
+
+    /// <summary>The pick: gives the waiting companion. Null when none is waiting, or no follower slot is free.</summary>
+    public static EvoPet? ChooseCompanion(PlayerMobile pm, string line)
+    {
+        if (RecordOf(pm) is not { } record || !CompanionPending(record) || GivePet(pm, line) is not { } pet)
+        {
+            return null;
+        }
+
+        record.StationsDone.Remove(CompanionPendingKey);
+        record.StationsDone.Add(CompanionTakenKey);
+        SystemLine(pm, TutorialPetCare.IfYourPetDiesLine + " Your graduation box holds one elixir.");
+        return pet;
+    }
+
     /// <summary>
     /// Graduation, once the core is done: the first loot box and the evo pet pick. Remedial graduates also earn "Read the
     /// Manual Eventually". Returns why not, or null.
@@ -261,13 +312,24 @@ public static class ClusterFTutorial
     /// </summary>
     public static Action<PlayerMobile> GraduationRewards { get; set; } = pm =>
     {
-        ClusterFLootBoxes.Award(pm, "tutorial:graduation", BoxTheme.Explorer, 1, null, "graduating the New Haven tutorial", out _);
+        ClusterFLootBoxes.Award(pm, "tutorial:graduation", BoxTheme.Explorer, 1, null, "graduating the New Haven tutorial", out var box);
+        if (box != null)
+        {
+            // cc-P480 Part 8: one blessed elixir of rebirth, so a new player can bring a dead pet back.
+            var elixir = new StarterElixirOfRebirth();
+            elixir.Internalize();
+            box.Contents.Add(elixir);
+            box.MarkDirty();
+        }
+
         SystemLine(pm, "Open that box here in town. Boxes only open in guarded towns and your own house.");
 
         // cc-P276: the farm's Farmhand gives the dog or cat; an account that took its pet there is not offered another.
-        if (RecordOf(pm)?.StationsDone.Contains(TutorialFarm.PetKey) != true)
+        if (RecordOf(pm) is { } record && !record.StationsDone.Contains(TutorialFarm.PetKey) &&
+            !record.StationsDone.Contains(CompanionTakenKey))
         {
-            pm.SendGump(new TutorialPetPickGump());
+            record.StationsDone.Add(CompanionPendingKey);
+            OfferCompanion(pm);
         }
     };
 

@@ -29,6 +29,20 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.23.4
+
+### Added
+- Animal trainers sell the elixir of rebirth, which brings a dead bonded pet back. Rangers' League members can buy it from their guildmaster for less.
+
+### Changed
+- The tutorial is clearer: glowing tiles, the backpack lesson first, and the recruiter shows the core lessons first.
+- The tutorial's pages use bright, easy-to-read text, say plainly what each thing looks like, and the practice cloak, bag and token are bright blue. If one goes missing, "Hint and arrow" gives you another.
+- At graduation the companion pick shows each pet with a picture. If you close it, Rook keeps it for you until you choose, and reminds you when you log in.
+- A vet stands beside the tutorial farm's Farmhand and brings a dead pet back (free while you are Young), and the graduation box holds one elixir of rebirth. The Farmhand tells you where the vet is if your pet falls.
+
+### Staff
+- [ClusterFSeedTutorial also places the farm vet, and a vet in New Haven when the town has none.
+
 ## 2026.10.23.3
 
 ### Added

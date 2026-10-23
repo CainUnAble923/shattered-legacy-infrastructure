@@ -302,18 +302,19 @@ public class TutorialVerification : IDisposable
         Assert.Equal(0, TutorialCoreTrials.Current(p.Pm)!.Progress.Step);
         Assert.False(TutorialCoreTrials.Observe(p.Pm, TutorialAction.SecondMark));
         FeedTrial(p.Pm, movement.Key);
-        var paperdoll = TutorialStations.Find("core.paperdoll")!;
-        ClusterFTutorial.RunStation(p.Pm, paperdoll);
+        // cc-P480: the backpack lesson is second now; its practice bag is the supply.
+        var backpack = TutorialStations.Find("core.backpack")!;
+        ClusterFTutorial.RunStation(p.Pm, backpack);
         var supply = TutorialCoreTrials.Current(p.Pm)!.Supply!;
-        TutorialCoreTrials.Reset(p.Pm, paperdoll);
+        TutorialCoreTrials.Reset(p.Pm, backpack);
         Assert.True(supply.Deleted);
         Assert.NotSame(supply, TutorialCoreTrials.Current(p.Pm)!.Supply);
         using var other = new Player(p.Account, 1);
-        ClusterFTutorial.RunStation(other.Pm, paperdoll);
-        ClusterFTutorial.CompleteStation(other.Pm, paperdoll.Key);
-        Assert.DoesNotContain(paperdoll.Key, p.Record.StationsDone);
+        ClusterFTutorial.RunStation(other.Pm, backpack);
+        ClusterFTutorial.CompleteStation(other.Pm, backpack.Key);
+        Assert.DoesNotContain(backpack.Key, p.Record.StationsDone);
         Assert.Null(TutorialCoreTrials.Current(other.Pm));
-        FeedTrial(p.Pm, paperdoll.Key);
+        FeedTrial(p.Pm, backpack.Key);
     }
 
     [Fact]
@@ -329,13 +330,6 @@ public class TutorialVerification : IDisposable
         p.Pm.MoveToWorld(TutorialCorePlacement.SecondMark, Map.Trammel);
         ShardTestClock.Advance(TimeSpan.FromSeconds(0.5));
         Assert.Contains("core.movement", p.Record.StationsDone);
-        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.paperdoll")!);
-        // The fake host has no tiledata; give this practice item's fake its real equipment layer.
-        var cloak = TutorialCoreTrials.Current(p.Pm)!.Supply!;
-        cloak.Layer = Layer.Cloak;
-        Assert.True(p.Pm.EquipItem(cloak));
-        ShardTestClock.Advance(TimeSpan.FromSeconds(0.5));
-        Assert.Contains("core.paperdoll", p.Record.StationsDone);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.backpack")!);
         var bag = (TutorialPracticeBag)TutorialCoreTrials.Current(p.Pm)!.Supply!;
         var gold = new Gold();
@@ -345,6 +339,13 @@ public class TutorialVerification : IDisposable
         Assert.DoesNotContain("core.backpack", p.Record.StationsDone);
         bag.OnDoubleClick(p.Pm);
         Assert.Contains("core.backpack", p.Record.StationsDone);
+        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.paperdoll")!);
+        // The fake host has no tiledata; give this practice item's fake its real equipment layer.
+        var cloak = TutorialCoreTrials.Current(p.Pm)!.Supply!;
+        cloak.Layer = Layer.Cloak;
+        Assert.True(p.Pm.EquipItem(cloak));
+        ShardTestClock.Advance(TimeSpan.FromSeconds(0.5));
+        Assert.Contains("core.paperdoll", p.Record.StationsDone);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.chat")!);
         EventSink.InvokeSpeech(new SpeechEventArgs(p.Pm, "wrong phrase", MessageType.Regular, 0, []));
         Assert.DoesNotContain("core.chat", p.Record.StationsDone);
@@ -446,7 +447,7 @@ public class TutorialVerification : IDisposable
             Assert.Contains("placed 9 station markers", TutorialSeeder.Seed(false));
             var itemCount = World.Items.Count;
             var mobileCount = World.Mobiles.Count;
-            Assert.Contains("placed 0 station markers, 0 NPCs/echo, 0 gate, 0 gold mark", TutorialSeeder.Seed(false));
+            Assert.Contains("placed 0 station markers, 0 NPCs/echo/vets, 0 gate, 0 walking tiles", TutorialSeeder.Seed(false));
             Assert.Equal(itemCount, World.Items.Count);
             Assert.Equal(mobileCount, World.Mobiles.Count);
         }

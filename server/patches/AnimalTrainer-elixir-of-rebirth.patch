@@ -1,0 +1,11 @@
+--- a/Projects/UOContent/Mobiles/Vendors/NPC/AnimalTrainer.cs
++++ b/Projects/UOContent/Mobiles/Vendors/NPC/AnimalTrainer.cs
+@@ -29,6 +29,8 @@
+         public override void InitSBInfo()
+         {
+             m_SBInfos.Add(new SBAnimalTrainer());
++            // cc-P480: the elixir of rebirth, so a new player can bring a dead bonded pet back (SBPetRebirth).
++            m_SBInfos.Add(new SBPetRebirth());
+         }
+ 
+         public override int GetShoeHue() => 0;

@@ -871,6 +871,10 @@ apply_patch "$PATCHES/BaseBoat-tutorial-island-gate.patch"
 # Depletion uses Lumberjacking.OnHarvestFinished without a patch. Alternatives: notes/cc-P359-chopped-tree-stumps.md.
 apply_patch "$PATCHES/HarvestBank-lumber-stumps.patch"
 
+# P480: animal trainers also stock the elixir of rebirth (SBPetRebirth), so a new player can bring a dead bonded pet
+# back. Alternatives: notes/cc-P480-tutorial-first-play-fixes.md.
+apply_patch "$PATCHES/AnimalTrainer-elixir-of-rebirth.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."
