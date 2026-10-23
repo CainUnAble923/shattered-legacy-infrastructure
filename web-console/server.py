@@ -62,6 +62,8 @@ Two listeners, both on 127.0.0.1 only (nothing on the LAN, nothing public):
   POST /api/agent/ready      cc-P186: the readiness file Test-GolemReady.ps1 wrote on that PC
   GET /api/agent/kit         cc-P222: the Golem kit's manifest (kit/current/kit-manifest.json under the Golem root):
                              each PC's agent compares it and fetches what differs
+  POST /api/agent/outbox     cc-P410: {golem, events: [...]}: that remote Golem's mail for Chase, one event each (the Golem kit's
+                             GolemOutbox.ps1's shape) in remote/<name>/outbox/, where the Tinker sends it; [] is a probe
   POST /api/agent/questions  cc-P216: {golem, questions: {open, history}}: that remote Golem's questions for Chase
   POST /api/answer           cc-P216: {id, choice, text, confirm}: Chase's answer to a Golem's question, from the page
                              (the same sign-in, proof, header and origin checks as /api/action). A Golem on this PC:
@@ -159,6 +161,8 @@ GOLEM_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,23}$")     # golems.json: lette
 COMMAND_ID = re.compile(r"^\d{13}-[0-9a-f]{6}$")
 # cc-P216: a question file's name (Questions.ps1): <Golem>-P<nn>-<yyyyMMdd-HHmmss>-<4 hex>; 'Golem' when one works alone.
 QUESTION_ID = re.compile(r"^([A-Za-z][A-Za-z0-9]{0,23})-P\d{1,4}-\d{8}-\d{6}-[0-9a-f]{4}$")
+OUTBOX_ID = re.compile(r"^[0-9]{8}-[0-9]{6}-[A-Za-z0-9]{0,24}-[0-9a-f]{6}$")   # cc-P410: New-OutboxEvent's id
+OUTBOX_MAX = 20
 ANSWER_TEXT_MAX = 2000   # as Questions.ps1's QTextMax
 ANSWER_TIMEOUT = 120     # seconds for Answer-Question.ps1 (the answer, the Golem's state, a wake)
 WHO_UNSAFE = re.compile(r"[^A-Za-z0-9@._+ -]")
@@ -1098,6 +1102,32 @@ class Console:
         self.panels_cache = (0.0, None)
         return 200, {"ok": True, "golem": name, "open": len(doc["open"])}
 
+    def save_outbox(self, g, body):
+        """cc-P410: a remote Golem's mail for Chase, as events its agent posts: one file each in remote/<name>/outbox/,
+        where the Tinker reads and sends them. Named for the agent's own Golem, whatever the event says. [] is a probe."""
+        evs = body.get("events")
+        if not isinstance(evs, list) or len(evs) > OUTBOX_MAX:
+            return 400, {"error": "events is a list of at most %d" % OUTBOX_MAX}
+        name = g["name"]
+        docs = []
+        for e in evs:
+            if not isinstance(e, dict) or e.get("kind") not in ("problem", "info", "reply") or not isinstance(e.get("subject"), str) or not isinstance(e.get("body"), str):
+                return 400, {"error": "an event has kind problem, info or reply, a subject and a body"}
+            if not OUTBOX_ID.match(str(e.get("id") or "")):
+                return 400, {"error": "an event id is New-OutboxEvent's: %r" % str(e.get("id"))[:40]}
+            log = e.get("log") if isinstance(e.get("log"), list) else []
+            prompt = str(e.get("prompt") or "")[:8]
+            mk = str(e.get("mailKind") or "")[:40]
+            doc = {"schema": 1, "id": e["id"], "at": str(e.get("at") or "")[:32], "golem": name, "pc": str(e.get("pc") or "")[:40], "kind": e["kind"],
+                   "mailKind": mk, "subject": e["subject"][:300], "body": e["body"][:20000], "key": "%s|%s|%s" % (mk, name, prompt),
+                   "prompt": prompt, "log": [str(x)[:400] for x in log[:10]], "receivedAt": self._iso(self.clock())}
+            docs.append(panels.redact_tree(doc))
+        with self.queue_lock:
+            self.seen(g, "outbox")
+            for doc in docs:
+                self._write_json(os.path.join(self.remote_dir(name), "outbox", doc["id"] + ".json"), doc)
+        return 200, {"ok": True, "golem": name, "saved": len(docs)}
+
     def answer(self, body, who):
         """(http code, body): Chase's answer from the page. Checked against the open question as this service sees it
         (a stale page's answer to a closed one is refused), then written by the Golem's own Answer-Question.ps1 (this
@@ -1683,7 +1713,7 @@ def make_handler(console, listener, access_log=None):
         def do_POST(self):
             # cc-P186: a remote Golem's agent posting back: a result, its status, its readiness.
             path = urlparse(self.path).path
-            if path in ("/api/agent/result", "/api/agent/status", "/api/agent/ready", "/api/agent/questions"):
+            if path in ("/api/agent/result", "/api/agent/status", "/api/agent/ready", "/api/agent/questions", "/api/agent/outbox"):
                 g = self._agent()
                 if not g:
                     return
@@ -1692,6 +1722,8 @@ def make_handler(console, listener, access_log=None):
                     return
                 if path == "/api/agent/questions":
                     code, out = console.save_questions(g, body)   # cc-P216
+                elif path == "/api/agent/outbox":
+                    code, out = console.save_outbox(g, body)   # cc-P410
                 else:
                     code, out = console.finish_command(g, body) if path == "/api/agent/result" else console.save_report(g, path.rsplit("/", 1)[1], body)
                 self._note(code, "agent %s %s" % (g["name"], path.rsplit("/", 1)[1]))
