@@ -12,7 +12,10 @@ out = {"page": page, "at": "2026-10-20T12:00:00"}
 if page == "package":
     out.update(zips=[{"value": "ShatteredLegacy-2026.10.18.1709.zip", "cells": ["2026.10.18.1709", "98.4 MB", "2026-10-18 17:09:51", ""]},
                      {"value": "ShatteredLegacy-2026.10.18.1122.zip", "cells": ["2026.10.18.1122", "98.4 MB", "2026-10-18 11:23:09", "token=abc123secretvalue"]}],
-               client="TazUO 4.1 (sl-build.txt: ok)")
+               client="TazUO 4.1 (sl-build.txt: ok)",
+               whatsNew={"line": "Rootdeep map, satchel and guild bag icons", "version": "2026.10.18.1122", "base": "ac9eee3", "baseHow": "time",
+                         "list": ["Rootdeep map (P188, map): The Rootdeep Burrows are in the world", "satchel and guild bag icons (P236, art)"],
+                         "leftOut": ["Left out, staff only in CHANGELOG.md: P277 rideable red dragon"], "note": ""})
 elif page == "snapshots":
     out["shards"] = {"test": {"rows": [{"value": "20261019-101500_before-p185", "cells": ["2026-10-19 10:15:00", "1.2 GB", "812", "yes", "named"]}],
                               "save": "D:\\x\\modernuo-test\\Saves", "folder": "D:\\x\\Snapshots\\test", "retired": False},

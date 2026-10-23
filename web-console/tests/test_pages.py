@@ -485,6 +485,33 @@ class PhonePages(Pages):
     second confirm, the result; the Golem picker with Wake's model from the lane and the word naming the Golem."""
 
     @unittest.skipUnless(EDGE, "Microsoft Edge is not installed here")
+    def test_the_notes_box_fills_itself_and_refill_puts_it_back(self):
+        """cc-P288: the Player package page's Notes box starts with the suggested What is new line, an edit stays, Refill
+        puts the line back, and the list it was made from is under the box."""
+        import cdp
+        line = "Rootdeep map, satchel and guild bag icons"
+        with cdp.Browser(EDGE) as b:
+            b.phone(390, 844)
+            b.call("Network.enable")
+            b.call("Network.setExtraHTTPHeaders", headers=CHASE)
+            b.open("http://127.0.0.1:%d/#console" % self.tail_port)
+            self.assertTrue(b.wait_for("document.querySelectorAll('#page-grid a').length === 13"), "a tile per page")
+            b.eval("document.querySelector('#page-grid a[data-page=package]').click()")
+            self.assertTrue(b.wait_for("!!document.getElementById('pg-packageNotes-refill')", 30), "Refill under the Notes box")
+            self.assertEqual(line, b.eval("document.getElementById('pg-packageNotes').value"), "the box fills itself")
+            text = b.eval("document.getElementById('page-body').innerText")
+            self.assertIn("What changed for players since 2026.10.18.1122 (commit ac9eee3, found by its build time)", text)
+            self.assertIn("- Rootdeep map (P188, map)", text, "one line per item")
+            self.assertIn("staff only in CHANGELOG.md: P277", text, "and what was left out")
+            b.eval("var i = document.getElementById('pg-packageNotes'); i.value = 'My own line'; i.dispatchEvent(new Event('input'));")
+            b.eval("document.querySelector('#page-body button.row[data-value=\"ShatteredLegacy-2026.10.18.1709.zip\"]').click()")
+            self.assertTrue(b.wait_for("!!document.querySelector('#page-body button.row.on')"), "the page draws again")
+            self.assertEqual("My own line", b.eval("document.getElementById('pg-packageNotes').value"), "an edit is kept")
+            b.eval("document.getElementById('pg-packageNotes-refill').click()")
+            self.assertEqual(line, b.eval("document.getElementById('pg-packageNotes').value"), "Refill puts the line back")
+            self.assertLessEqual(b.eval("document.documentElement.scrollWidth"), 391, "nothing wider than the phone")
+
+    @unittest.skipUnless(EDGE, "Microsoft Edge is not installed here")
     def test_publish_from_the_phone_through_both_confirms_and_pick_a_golem(self):
         import cdp
         with cdp.Browser(EDGE) as b:
