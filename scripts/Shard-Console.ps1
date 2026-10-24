@@ -4716,7 +4716,10 @@ function Get-GolemPickRows {
             elseif ([string]$g.machine -ine $Machine) { $why = 'on ' + [string]$g.machine + ': the web console queues its buttons for that PC''s agent' }
         }
         $where = ((@([string]$g.lane, [string]$g.machine) | Where-Object { $_ }) -join ', ')
+        # cc-P373: Remote (enabled, on another PC) and Engine let Send to the second PC reach a Codex lane there.
+        $remote = ([bool]$g.enabled -and $multi -and [string]$g.machine -and [string]$g.machine -ine $Machine)
         [pscustomobject]@{ Name = [string]$g.name; Lane = [string]$g.lane; Machine = [string]$g.machine; Integrator = $int; Usable = (-not $why); Why = $why
+            Remote = $remote; Engine = [string]$g.engine
             Text = ([string]$g.name + ' (' + $where + ')' + $(if ($int) { ', integrator' } else { '' }) + $(if ($why) { ': ' + $why } else { '' })) }
     }
     @($rows | Sort-Object @{ Expression = { -not $_.Integrator } }, Name)
@@ -4760,6 +4763,15 @@ function Get-GolemActionConfig {
     $r = @(@($Rows) | Where-Object { $_ -and $_.Name -ieq $Golem }) | Select-Object -First 1
     if (-not $r) { $o.Refusal = 'there is no ' + $Golem + ' Golem in golems.json. Nothing was run.'; return $o }
     if ($r.Integrator) { return $o }
+    # cc-P373: Send to the second PC for a Codex lane on another PC: Lane-Now.ps1 here queues it for that PC's agent
+    # (Remote-Agent.ps1 runs Lane-Now.ps1 there), as the web console does. P159's review: the button refused it. The
+    # other buttons for another PC stay the web console's.
+    $isRemoteLane = ($r.PSObject.Properties.Name -contains 'Remote' -and [bool]$r.Remote -and [string]$r.Engine -eq 'codex')
+    if ($ActionKey -eq 'golem.lanenow' -and -not $r.Usable -and $isRemoteLane) {
+        $o.Config = Get-GolemScopedConfig -Config $Config -Name $r.Name
+        $o.Name = $r.Name
+        return $o
+    }
     if (-not $r.Usable) { $o.Refusal = 'the ' + $r.Name + ' Golem: ' + $r.Why + '. Nothing was run.'; return $o }
     if (@($AnyGolemActions) -notcontains $ActionKey) { $o.Refusal = 'that button is the integrator''s only, not the ' + $r.Name + ' Golem''s: pick the integrator for it. Nothing was run.'; return $o }
     $o.Config = Get-GolemScopedConfig -Config $Config -Name $r.Name
@@ -6232,9 +6244,9 @@ function Get-AutopilotPlan {
                 'golem.lanenow' {
                     # cc-P159: only for a Codex lane picked on the Golem tab (or the web console's lane card): Add-GolemToPlan
                     # tells Lane-Now.ps1 which one.
-                    if (-not ($ap.PSObject.Properties.Name -contains 'GolemName' -and [string]$ap.GolemName)) { $steps.Add((New-PlanStep -Kind refuse -Text 'Send to the second PC is a Codex lane''s: pick a Codex lane (Agapite, Verite) on the Golem tab first. Nothing was run.')); break }
+                    if (-not ($ap.PSObject.Properties.Name -contains 'GolemName' -and [string]$ap.GolemName)) { $steps.Add((New-PlanStep -Kind refuse -Text 'Send to the second PC is a Codex lane''s: pick a Codex lane (Valorite, Verite) on the Golem tab first. Nothing was run.')); break }
                     if (-not (& $need $ap.LaneNowScript 'Lane-Now.ps1')) { break }
-                    $steps.Add((New-PlanStep -Kind say -Text ('Send to the second PC: the Codex lane ' + [string]$ap.GolemName + ' may start now, outside its night window, for the next few hours (laneRunNowHours). If its PC is in use or the Codex budget is spent, it waits for that first.')))
+                    $steps.Add((New-PlanStep -Kind say -Text ('Send to the second PC: the Codex lane ' + [string]$ap.GolemName + ' may start now, outside its night window, for the next few hours (laneRunNowHours). If its PC is in use or the Codex budget is spent, it waits for that first. A lane on another PC gets it through that PC''s agent (cc-P373).')))
                     $steps.Add((New-PlanStep -Kind confirm -Phrase (Get-ConfirmPhrase $Action) -Text 'The lane may run a prompt by day.'))
                     $steps.Add((New-PlanStep -Kind window -Exe $Config.PowerShell -Arguments ($ps + $ap.LaneNowScript) -Text 'In a window of its own, which stays open.'))
                     $steps.Add((New-PlanStep -Kind log -Text 'golem.lanenow'))

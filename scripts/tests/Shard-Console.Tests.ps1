@@ -8336,6 +8336,25 @@ Fact 'P159_SendToTheSecondPcRunsLaneNowForThePickedLaneOnly' {
     Assert-True (@(Get-AnyGolemActionKeys (Join-Path $repo 'web-console\golem-actions.json')) -contains 'golem.lanenow') 'a button for a Golem other than the integrator'
 }
 
+Fact 'P373_SendToTheSecondPcReachesACodexLaneOnAnotherPc' {
+    # cc-P373 (P159's Codex review): the desktop button refused a lane on another PC. Now Lane-Now.ps1 runs here for it
+    # and queues the command for that PC's agent; every other button for another PC stays the web console's.
+    $reg = '{"schema":1,"golems":[{"name":"Iron","machine":"PC1","lane":"Opus","engine":"claude","enabled":true,"integrator":true},{"name":"Verite","machine":"PC2","lane":"any","engine":"codex","enabled":true},{"name":"Gold","machine":"PC2","lane":"any","engine":"claude","enabled":true},{"name":"Agapite","machine":"PC2","lane":"any","engine":"codex","enabled":false}]}'
+    $rows = @(Get-GolemPickRows -RegistryText $reg -SettingsText '{"multiGolem":true}' -Machine 'PC1')
+    $v = @($rows | Where-Object { $_.Name -eq 'Verite' })[0]
+    Assert-True ($v.Remote -and $v.Engine -eq 'codex' -and -not $v.Usable) ('Verite: on another PC, a Codex lane: ' + ($v | ConvertTo-Json -Compress))
+    $any = @(Get-AnyGolemActionKeys (Join-Path $repo 'web-console\golem-actions.json'))
+    $a = Get-GolemActionConfig -Config $p125Cfg -ActionKey 'golem.lanenow' -Golem 'Verite' -Rows $rows -AnyGolemActions $any
+    Assert-True (-not $a.Refusal -and $a.Name -eq 'Verite') ('Send to the second PC for it is not refused: ' + $a.Refusal)
+    Assert-True ((Get-GolemActionConfig -Config $p125Cfg -ActionKey 'golem.poke' -Golem 'Verite' -Rows $rows -AnyGolemActions $any).Refusal -match 'web console') 'its other buttons stay the web console''s'
+    Assert-True ((Get-GolemActionConfig -Config $p125Cfg -ActionKey 'golem.lanenow' -Golem 'Gold' -Rows $rows -AnyGolemActions $any).Refusal) 'a Claude Golem on another PC: still refused'
+    Assert-True ((Get-GolemActionConfig -Config $p125Cfg -ActionKey 'golem.lanenow' -Golem 'Agapite' -Rows $rows -AnyGolemActions $any).Refusal -match 'disabled') 'a disabled lane: still refused'
+    $f = New-P182Facts; $f.Present[$p125Cfg.Autopilot.LaneNowScript] = $true
+    $plan = @(Add-GolemToPlan @(Get-ActionPlan -Action 'golem.lanenow' -Config $a.Config -AutopilotFacts $f -Now $p125Now) $a.Config 'Verite')
+    Assert-True ((Get-P131Window $plan) -match 'Lane-Now\.ps1 -Golem Verite$') ('Lane-Now.ps1 here, for that lane (it queues the command for its agent): ' + (Get-P131Window $plan))
+    Assert-Equal 0 @(Test-PlanSafety $plan $p125Cfg).Count ('it passes the safety check: ' + (@(Test-PlanSafety $plan $p125Cfg) -join ' | '))
+}
+
 Fact 'P222_TheTinkersButtonsRunTinkerPs1AfterTheirPhraseAndNothingElse' {
     # cc-P222: Run now, Pause and Resume on the Tinker's card (the Shard Console's Golem merge row and the web console).
     foreach ($c in @(@('golem.tinkerrun', 'run tinker', ''), @('golem.tinkerpause', 'pause tinker', '-Pause'), @('golem.tinkerresume', 'resume tinker', '-Resume'))) {
