@@ -55,7 +55,7 @@ These are different kinds of work with different rewards:
 | Smith commission | A named client's piece or set, in a material and quality | Smithing Seals, Society standing and a Blacksmithy check |
 | Requisition | A matching magic item, found or crafted | Renown, guild standing and the Appraiser's price |
 
-**Smith commissions** are on the Society of Smiths guildmaster's Commissions page and in the Smithing Guild Book. You can hold 3 small and 1 large at a time. A set takes its pieces one at a time and pays when it is complete. There is no deadline. If you abandon a commission, you wait a few minutes (5 by default) before you can take another small one.
+**Smith commissions** are on the Society of Smiths guildmaster's Commissions page and in the Smithing Guild Book. You can hold 3 small and 1 large at a time. A set takes its pieces one at a time and pays when it is complete. There is no deadline. If you abandon a commission, small or large, you wait a few minutes (5 by default) before you can take another of either size, from the guildmaster or the book.
 
 **Requisitions** are posted on the League's Requisitions board and on guild pages. See [[:uo:systems:requisitions|Requisitions]].
 

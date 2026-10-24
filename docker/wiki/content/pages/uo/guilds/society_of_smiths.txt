@@ -94,7 +94,7 @@ Commissions are named clients' requests. A small commission wants one piece; a l
   * You can hold **3 small and 1 large** commission at a time.
   * Check the item, metal and whether it must be exceptional before you craft. Store-bought pieces are refused.
   * A finished piece pays the Seals and standing shown and gives a Blacksmithy skill check. A large commission pays when the set is complete.
-  * Commissions have no deadline. After you abandon one, the next new request waits **5 minutes**.
+  * Commissions have no deadline. After you abandon one (small or large, at the guildmaster or in the Smithing Guild Book), the next new request of either size waits **5 minutes**.
 
 ===== The Hammer of Hephaestus =====
 

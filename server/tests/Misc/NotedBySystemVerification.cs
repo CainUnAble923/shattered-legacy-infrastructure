@@ -22,6 +22,8 @@
 //   7 boxes: Can't Wait (its earn box a Dented Box holding a bound Box-Shaped Box), Edge Lord, Unboxing Video.
 //   8 commissions and orders: Pre-Crafted; store-bought items refused by a small deed and a commission; the abandon
 //     cooldown.
+//     cc-P454: the Smith Guild Book's abandon buttons start that cooldown too, large commissions share it, and a large
+//     commission turned in within the window counts for Pre-Crafted (three facts, driven through the book's buttons).
 //   9 data only and secrets: the five unreachable achievements are hidden; a Noted title is not in the picker until held.
 
 using System;
@@ -792,6 +794,100 @@ public class NotedBySystemVerification : IDisposable
             SmithCommissionSystem.Complete(p.Pm, again, item);
             Assert.Equal(2, p.Count(TriggerKind.QuickCommission));
         });
+    }
+
+    // cc-P454 (cc-P429, cc-P402 F05 and F14): the Smith Guild Book's abandon buttons wait like the guild's, large
+    // commissions share the reroll cooldown, and a large commission turned in quickly counts for Pre-Crafted. The book's
+    // buttons: 3 request small, 30 abandon the first small, 6 request large, 50 abandon large, 40+ turn in a piece.
+    private const int BookReqSmall = 3, BookAbandonSmall = 30, BookReqLarge = 6, BookAbandonLarge = 50, BookPiece = 40;
+
+    private (Player P, CharacterGuildData Guild, Action<int> Press) BookPlayer(int dy)
+    {
+        var p = NewPlayer(new Point3D(Spot.X, Spot.Y + dy, Spot.Z));
+        p.Pm.Skills.Blacksmith.Base = 50;
+        var book = Thing(new SmithGuildBook());
+        void Press(int button) => new SmithGuildBookGump(p.Pm, book, 1).OnResponse(p.Ns, new RelayInfo(button,
+            ReadOnlySpan<int>.Empty, ReadOnlySpan<ushort>.Empty, ReadOnlySpan<Range>.Empty, ReadOnlySpan<byte>.Empty));
+        return (p, p.Data.GetOrCreateGuildData(p.Pm.Serial), Press);
+    }
+
+    private static void WaitOutCooldown() =>
+        ShardTestClock.AdvanceSeconds((int)SmithCommissionSystem.AbandonCooldown.TotalSeconds + 1);
+
+    [Fact]
+    public void AbandoningThroughTheGuildBookWaitsBeforeTheNextRequest()
+    {
+        var (p, guild, press) = BookPlayer(160);
+
+        Assert.NotNull(SmithCommissionSystem.Generate(p.Pm));
+        press(BookAbandonSmall);
+        Assert.Empty(guild.SmithCommissions);
+        Assert.True(SmithCommissionSystem.RequestCooldownLeft(p.Pm) > TimeSpan.Zero, "the book's abandon left no cooldown");
+        press(BookReqSmall);
+        Assert.Empty(guild.SmithCommissions);
+        WaitOutCooldown();
+        press(BookReqSmall);
+        Assert.Single(guild.SmithCommissions);
+    }
+
+    [Fact]
+    public void LargeCommissionsShareTheAbandonCooldown()
+    {
+        var (p, guild, press) = BookPlayer(170);
+
+        // A large abandon starts the cooldown, and both kinds of request wait on it.
+        press(BookReqLarge);
+        Assert.Single(guild.SmithLargeCommissions);
+        press(BookAbandonLarge);
+        Assert.Empty(guild.SmithLargeCommissions);
+        Assert.True(SmithCommissionSystem.RequestCooldownLeft(p.Pm) > TimeSpan.Zero, "a large abandon left no cooldown");
+        press(BookReqLarge);
+        Assert.Empty(guild.SmithLargeCommissions);
+        Assert.Null(SmithCommissionSystem.Generate(p.Pm));
+        WaitOutCooldown();
+
+        // A small abandon holds back a large request as well.
+        Assert.NotNull(SmithCommissionSystem.Generate(p.Pm));
+        press(BookAbandonSmall);
+        press(BookReqLarge);
+        Assert.Empty(guild.SmithLargeCommissions);
+        WaitOutCooldown();
+        press(BookReqLarge);
+        Assert.Single(guild.SmithLargeCommissions);
+    }
+
+    [Fact]
+    public void ALargeCommissionTurnedInQuicklyCountsForPreCrafted()
+    {
+        var (p, guild, press) = BookPlayer(180);
+
+        // Every piece inside the window: counted once, at the last piece. Outside it: not at all.
+        TurnInWholeLarge(p, guild, press, secondsPerPiece: 5);
+        Assert.Equal(1, p.Count(TriggerKind.QuickCommission));
+        Assert.True(p.Has(A.PreCraftedKey));
+        TurnInWholeLarge(p, guild, press, secondsPerPiece: 40); // two pieces or more: past the minute
+        Assert.Equal(1, p.Count(TriggerKind.QuickCommission));
+    }
+
+    private static void TurnInWholeLarge(Player p, CharacterGuildData guild, Action<int> pressBook, int secondsPerPiece)
+    {
+        guild.SmithLargeCommissions.Clear();
+        pressBook(BookReqLarge);
+        var lc = Assert.Single(guild.SmithLargeCommissions);
+        var keys = lc.SetDef!.ItemKeys;
+        Assert.True(keys.Length > 1);
+
+        for (var i = 0; i < keys.Length; i++)
+        {
+            var piece = (Item)Activator.CreateInstance(SmithCommissionPool.GetItemType(keys[i])!)!;
+            SetResource(piece, lc.Material, lc.RequireExceptional, crafted: true);
+            p.Pm.Backpack.DropItem(piece);
+            ShardTestClock.AdvanceSeconds(secondsPerPiece);
+            pressBook(BookPiece + i);
+            Assert.True(piece.Deleted, $"piece {keys[i]} was not taken");
+        }
+
+        Assert.Empty(guild.SmithLargeCommissions);
     }
 
     private static void SetResource(Item item, CraftResource material, bool exceptional, bool crafted)

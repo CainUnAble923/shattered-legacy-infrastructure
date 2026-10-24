@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.12
+
+### Changed
+- Abandoning a commission from the Smith Guild Book now waits like abandoning one at the guild.
+- Large commissions share that wait: after abandoning a commission of either size, you wait before requesting the next one of either size.
+
 ## 2026.10.24.11
 
 ### Fixed
