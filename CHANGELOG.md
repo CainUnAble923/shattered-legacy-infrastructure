@@ -29,6 +29,22 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.23.9
+
+### Added
+- Eighteen new mounts to earn. Each comes as a statuette that calls the mount to you, bonded and ready to ride.
+- In the League shop (1,750 AP): four draft horses (chestnut, bay, grey and palomino), a barded warhorse and a gilded charger.
+- As achievement rewards: a bonewalker steed for slaying 50 undead, an emberhoof for 10,000 kills, a moonlit unicorn for visiting every facet, and a war wolf for 500 Achievement Points.
+- In loot boxes: top-tier Tamer boxes can hold a riding drake, a riding bear, a riding wolf or a saddled horse; top-tier Boss boxes can hold a marsh, dusk or sky raptor, or a bog strider.
+- The new mounts stable, shrink and take a follower slot like any other mount.
+- Two new evo pet lines: a horse that grows from a foal into a draft horse, then a warhorse, then a unicorn, emberhoof or bonewalker; and a lizard that hatches, runs as an ostard, becomes a raptor and ends as a bog strider.
+- The evo dog's last stage can now be a great grey wolf; the windrunner is still there as the other choice.
+
+### Staff
+- [add RewardMarshRaptor (and the other Reward* mounts, GameMaster), or [add RewardMountStatuette "<key>". Every mount has a horse's numbers for now and is never tamable. Box chances: clusterf.rewardMounts.tamerBoxChance (0.10 a tier above 4) and clusterf.rewardMounts.bossBoxChance (0.15 at tier 6).
+- Credits: the mounts are Thagoras' "Mount Pack" (made by Rafael Costa, UoBrazilian; renamed), Krazy Zacks' riding drake and bear (shipped exactly as he made them), Prapilk's riding wolf, foals, young lizards, calves and KR Wolf, and Socrarr's saddled horse (uo-pixel.de). All belong in the shard credits list.
+- Players need the package update (about 29 MB more animation data) to see them; without it the new creatures do not draw.
+
 ## 2026.10.23.8
 
 ### Added

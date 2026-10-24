@@ -61,19 +61,23 @@ public class EvoPetVerification
     private static int[] Live(EvoLine line) => line.Stages.Where(s => !s.ArtPending).Select(s => s.Number).ToArray();
 
     [Fact]
-    public void TheDataHasFourLinesLiveDog5Cat5Fox2Bird3()
+    public void TheDataHasSixLinesLiveDog5Cat5Fox2Bird3Horse5Lizard4()
     {
-        Assert.Equal(new[] { "dog", "cat", "fox", "bird" }, EvoPetData.Lines.Select(l => l.Key));
+        Assert.Equal(new[] { "dog", "cat", "fox", "bird", "horse", "lizard" }, EvoPetData.Lines.Select(l => l.Key));
         Assert.Equal(new[] { 1, 2, 3, 4, 5 }, Live(EvoPetData.Dog));
         Assert.Equal(new[] { 1, 2, 3, 4, 5 }, Live(EvoPetData.Cat));
         Assert.Equal(new[] { 1, 3 }, Live(EvoPetData.Fox));
         Assert.Equal(new[] { 1, 2, 5 }, Live(EvoPetData.Bird));
+        Assert.Equal(new[] { 1, 2, 3, 4, 5 }, Live(EvoPetData.Horse)); // cc-P365
+        Assert.Equal(new[] { 1, 2, 3, 4 }, Live(EvoPetData.Lizard));
 
         // The decided picks (F-35 "Stage picks, decided"; cc-P65 brief).
         Assert.Equal(new[] { 217 }, EvoPetData.Dog.Stage(1).Bodies);
         Assert.Equal(new[] { 1547, 1548, 1549, 1546, 1552, 1551 }, EvoPetData.Dog.Stage(3).Bodies);
         Assert.Equal(new[] { 277 }, EvoPetData.Dog.Stage(4).Bodies);
-        Assert.Equal(new[] { 1410 }, EvoPetData.Dog.Stage(5).Bodies);
+        Assert.Equal(new[] { 2133, 1410 }, EvoPetData.Dog.Stage(5).Bodies); // cc-P365: the KR Wolf, the windrunner a pick
+        Assert.Equal(new[] { 2113, 2114, 2115, 2118 }, EvoPetData.Horse.Stage(1).Bodies); // cc-P365: the foals
+        Assert.Equal(new[] { 2119, 2125, 2126 }, EvoPetData.Lizard.Stage(1).Bodies);     // cc-P365: the young lizards
         Assert.Equal(new[] { 1254, 1426 }, EvoPetData.Cat.Stage(3).Bodies);
         Assert.Equal(new[] { 1573 }, EvoPetData.Cat.Stage(5).Bodies);
         Assert.Equal(new[] { 1423 }, EvoPetData.Fox.Stage(1).Bodies);
@@ -225,9 +229,12 @@ public class EvoPetVerification
         Assert.Equal(0, pet.TryEvolve());
         Assert.Contains("the Bond Trial", pet.EvoStatus);
         pet.BondTrialDone = true;
-        Assert.Equal(1, pet.TryEvolve());
+        // cc-P365: stage 5 is a pick now (the KR Wolf or the windrunner), so it waits for the owner's choice.
+        Assert.Equal(0, pet.TryEvolve());
+        Assert.Contains("the owner's pick", pet.EvoStatus);
+        Assert.True(pet.ChoosePick(pm, 5, 2133));
         Assert.Equal(5, pet.Stage);
-        Assert.Equal(1410, (int)pet.Body);
+        Assert.Equal(2133, (int)pet.Body);
         Assert.Equal(EvoPetData.StatsFor(5).Str, pet.RawStr);
         Assert.Contains(EvoPetData.TopForNowLine, pet.EvoStatus);
 
@@ -392,11 +399,13 @@ public class EvoPetVerification
 
         Assert.Equal(0, EvoAnimations.Remap(0));
 
-        // Every live stage body is either a classic animal body (left alone) or a UOP-era body (remapped).
-        var classic = new[] { 217, 201, 277, 254, 246, 243 };
+        // Every live stage body is either a classic animal body (left alone) or a UOP-era body (remapped). cc-P365: the
+        // stock horses and lava lizard are classic; our own anim7 bodies (2048 up, low-layout .vd files) number their
+        // actions as the classic animals do, so they are left alone too.
+        var classic = new[] { 217, 201, 277, 254, 246, 243, 200, 226, 228, 204, 210, 218, 219 };
         foreach (var body in EvoPetData.Lines.SelectMany(l => l.Stages).Where(s => !s.ArtPending).SelectMany(s => s.Bodies))
         {
-            Assert.True(classic.Contains(body) ^ EvoAnimations.IsUopBody(body), $"body {body}");
+            Assert.True((classic.Contains(body) || body >= 2048) ^ EvoAnimations.IsUopBody(body), $"body {body}");
         }
     }
 

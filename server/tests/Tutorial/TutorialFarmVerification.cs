@@ -298,8 +298,8 @@ public class TutorialFarmVerification
         int[][] Bodies(EvoLine line) => line.Stages.Select(s => s.Bodies).ToArray();
 
         Assert.Equal(
-            new[] { new[] { 217 }, new[] { 739 }, new[] { 1547, 1548, 1549, 1546, 1552, 1551 }, new[] { 277 }, new[] { 1410 } },
-            Bodies(EvoPetData.Dog));
+            new[] { new[] { 217 }, new[] { 739 }, new[] { 1547, 1548, 1549, 1546, 1552, 1551 }, new[] { 277 }, new[] { 2133, 1410 } },
+            Bodies(EvoPetData.Dog)); // cc-P365: the KR Wolf joins stage 5, the windrunner kept as the pick
         Assert.Equal(
             new[] { new[] { 201 }, new[] { 1309 }, new[] { 1254, 1426 }, new[] { 1416 }, new[] { 1573 } },
             Bodies(EvoPetData.Cat));

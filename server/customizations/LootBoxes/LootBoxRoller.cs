@@ -270,6 +270,7 @@ public static class LootBoxRoller
                 break;
             case BoxTheme.Tamer:
                 Add(new LootBoxPlaceholder("Companion Treat"));
+                Add(RewardMounts.LootBoxMount(theme, tier, Utility.RandomDouble(), Utility.Random(1000))); // cc-P365
                 break;
             case BoxTheme.Scholar:
                 Add(Reagents(tier));
@@ -277,6 +278,7 @@ public static class LootBoxRoller
                 break;
             case BoxTheme.Boss:
                 Add(new LootBoxPlaceholder($"Trophy of {sourceName ?? "a boss"}"));
+                Add(RewardMounts.LootBoxMount(theme, tier, Utility.RandomDouble(), Utility.Random(1000))); // cc-P365
                 break;
             case BoxTheme.Loop:
                 Add(new LoopScrollFragment());

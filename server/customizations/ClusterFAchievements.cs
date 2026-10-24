@@ -476,6 +476,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             "Slay 10,000 creatures. At this point you are less an adventurer and more a geological event with opinions.",
             AchievementCategory.Combat, ap: 100, renown: 250,
             trigger:          T.Count(TriggerKind.Kills, 10_000),
+            rewardItems:     new[] { typeof(Server.Items.EmberhoofStatuette) }, // cc-P365: a reward mount
             flavor:           "The System is choosing to look the other way.",
             itemGumpId:       0x0F5E,   // Broadsword
             prerequisiteKey:  "combat.thousand",
@@ -613,6 +614,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             "Slay 50 undead. You've dispatched the dispatched. Twice. The System has moved on from this word.",
             AchievementCategory.Combat, ap: 15, renown: 35,
             trigger:          T.Count(TriggerKind.UndeadKills, 50),
+            rewardItems:     new[] { typeof(Server.Items.BonewalkerSteedStatuette) }, // cc-P365: a reward mount
             flavor:          "It barely counts. The System counted it anyway.",
             itemGumpId:      0x0F5E,
             progressCounter: "undead_kills");
@@ -701,6 +703,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             "Visit all five facets of Britannia. You have been everywhere. Possibly too many places.",
             AchievementCategory.Exploration, ap: 50, renown: 100,
             trigger:          T.Event(TriggerKind.VisitAllFacets),
+            rewardItems:     new[] { typeof(Server.Items.MoonlitUnicornStatuette) }, // cc-P365: a reward mount
             flavor:          "The passport is full. The System is out of stamps.",
             itemGumpId:      0x0F26,
             hidden:          true);     // Checked manually - no single prereq
@@ -1123,6 +1126,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
             "Accumulate 500 Achievement Points. Half a thousand. The System has taken formal notice.",
             AchievementCategory.League, ap: 25, renown: 75,
             trigger:          T.Count(TriggerKind.AchievementPoints, 500),
+            rewardItems:     new[] { typeof(Server.Items.WarWolfStatuette) }, // cc-P365: a reward mount
             flavor:          "At this point this is a hobby. An aggressive one.",
             itemGumpId:      0x0FF4,
             hidden:          true,

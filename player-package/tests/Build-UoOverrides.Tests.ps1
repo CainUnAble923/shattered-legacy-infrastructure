@@ -55,8 +55,9 @@ function Assert-True {
 # 512 land groups (493,568 bytes), then $groups static groups of 4 + 32 x 41 bytes. Every byte is a
 # filler pattern except where a test says otherwise, so "nothing else changed" means something.
 # cc-P265: 900 groups (28,800 statics) and 28,800 animdata entries, so the guild hall decor's records (28016-28294)
-# land inside the fixtures as they do in the real files (65,536 statics in client 7.0.117).
-function New-Tiledata([int]$groups = 900) {
+# land inside the fixtures as they do in the real files (65,536 statics in client 7.0.117). cc-P363: 1,460 groups
+# (46,720 statics) and 46,720 animdata entries, for the markers, gates, tokens and keys (46592-46663).
+function New-Tiledata([int]$groups = 1460) {
     $n = 493568 + $groups * 1316
     $d = New-Object byte[] $n
     for ($i = 0; $i -lt 493568; $i += 7) { $d[$i] = 0x5A }
@@ -66,7 +67,7 @@ function New-Tiledata([int]$groups = 900) {
 }
 
 # Entries of 68 bytes in blocks of 8 with a 4-byte header, enough for item $count - 1.
-function New-Animdata([int]$count = 28800) {
+function New-Animdata([int]$count = 46720) {
     $n = [int]($count / 8) * (4 + 8 * 68)
     $d = New-Object byte[] $n
     for ($b = 0; $b -lt $count / 8; $b++) { $d[$b * 548] = 0xC3 }
@@ -258,7 +259,8 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P243: so does the League Hall's decor (15592-15629); cc-P265: so does the guild hall decor (28016-28294);
     # cc-P266: the second winter block (13192-13238), checked with the first by the winter fact.
     # cc-P277: the dragons' mount items (28295-28296), checked by their own fact.
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28296) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) })
+    # cc-P365: the reward mounts' mount items (46672-46689), checked by their own fact.
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28296) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) -and ([int]$_.id -lt 46672 -or [int]$_.id -gt 46689) })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -301,11 +303,12 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # category icon gumps (22459-22468); cc-P243 the 38 League Hall decor IDs (15592-15629);
     # cc-P242 the 54 flying loot frames (15536-15589); cc-P265 the 279 guild hall decor IDs (28016-28294);
     # cc-P266 the 47 second-block winter decor IDs (13192-13238) and the advent calendar gump 22469; cc-P364 the 14 League
-    # bestiary bodies (2072-2085); cc-P362 the 29 UI skin gumps (23052-23080) and 64 scroll skin art IDs (13049-13112).
-    Assert-Equal 720 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art
-    Assert-Equal 40 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364), 2086-2087 (cc-P277)'
+    # bestiary bodies (2072-2085); cc-P362 the 29 UI skin gumps (23052-23080) and 64 scroll skin art IDs (13049-13112); cc-P365 the 34 mount and evo bodies (2088-2133)
+    # and 18 mount items (46672-46689).
+    Assert-Equal 772 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art
+    Assert-Equal 74 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364), 2086-2087 (cc-P277), 34 of 2088-2133 (cc-P365)'
     Assert-Equal 45 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468, 22469 and 23052-23080 (cc-P362)'
-    Assert-Equal 634 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+    Assert-Equal 652 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
 
 Fact 'TheChestMimicRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {
@@ -723,6 +726,82 @@ Fact 'TheRideableDragonMountItemsAreTheServersAndNameTheirBodiesOnTheMountLayer'
         Assert-True ($b[0].type -eq 'ANIMAL' -and [int]$b[0].slot -ge 200 -and [int]$b[0].slot -lt 400) "body $($p.Body) is ANIMAL in an animal slot"
         Assert-Equal $p.Outside ([bool]$b[0].PSObject.Properties['outsideGit']) "body $($p.Body) outside git: $($p.Outside)"
         if ($p.Outside) { Assert-True ([string]$b[0].outsideGit.sha256 -match '^[0-9a-f]{64}$' -and [string]$b[0].outsideGit.from) "body $($p.Body) names its source and SHA-256" }
+    }
+}
+
+Fact 'TheRewardMountsAndEvoStagesAreTheServersAndNoStockBodyOrIdIsOverwritten' {
+    # cc-P365. RewardMounts.cs carries the server's copy of the eighteen reward mounts (body walked on, mount item, the
+    # body drawn under the rider); records.json the players'. Each mount item's record is on the Mount layer and names
+    # its ridden body (TazUO Item.GetGraphicForAnimation); each ridden body is ours and registered, ANIMAL in an animal
+    # slot or (the people-layout looks) HUMAN in a people slot; a creature walks on its own body or, for a people-layout
+    # look, on a stock body that stays the client's. The evo lines' bodies of ours are registered too. Nothing lands on a
+    # stock body or a stock mount item.
+    $root = Split-Path $pkg -Parent
+    $cs   = [IO.File]::ReadAllText((Join-Path $root 'server\customizations\Mobiles\Mounts\RewardMounts.cs'))
+    $evo  = [IO.File]::ReadAllText((Join-Path $root 'server\customizations\Mobiles\Evo\EvoPetData.cs'))
+    $rec  = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $reg  = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $stock = @([IO.File]::ReadAllLines((Join-Path $here 'fixtures\stock-bodies-7.0.117.0.txt')) | Where-Object { $_ -match '^\d+$' } | ForEach-Object { [int]$_ })
+    $num = { param($s) if ($s -like '0x*') { [Convert]::ToInt32($s.Substring(2), 16) } else { [int]$s } }
+    $defs = @([regex]::Matches($cs, 'new\("([a-z-]+)", "([^"]+)", (0x[0-9A-F]+|\d+), (0x[0-9A-F]+), (0x[0-9A-F]+|\d+), (0x[0-9A-F]+|\d+), RewardMountRoute\.(\w+)') | ForEach-Object {
+        [pscustomobject]@{ Key = $_.Groups[1].Value; Body = (& $num $_.Groups[3].Value); MountItem = (& $num $_.Groups[4].Value); Ridden = (& $num $_.Groups[5].Value); Route = $_.Groups[7].Value }
+    })
+    Assert-Equal 18 $defs.Count 'eighteen reward mounts in C#'
+    Assert-Equal ((0xB650..0xB661) -join ',') (@($defs.MountItem) -join ',') 'the mount items are 0xB650-0xB661, in order'
+    Assert-Equal 'LeagueShop=6,Achievement=4,LootBox=8' ((@('LeagueShop', 'Achievement', 'LootBox') | ForEach-Object { $r = $_; "$r=$(@($defs | Where-Object { $_.Route -eq $r }).Count)" }) -join ',') 'every mount has a route'
+    foreach ($d in $defs) {
+        $t = @($rec.tiledata | Where-Object { [int]$_.id -eq $d.MountItem })
+        Assert-Equal 1 $t.Count "one tiledata record for mount item $($d.MountItem)"
+        if (-not $t.Count) { continue }
+        Assert-Equal 25 ([int]$t[0].layer) "mount item $($d.MountItem) is on the Mount layer"
+        Assert-Equal '0x00400000' $t[0].flags "mount item $($d.MountItem) is Wearable, as OSI's old mount items"
+        Assert-Equal $d.Ridden ([int]$t[0].animId) "mount item $($d.MountItem) names body $($d.Ridden) as its Animation"
+        Assert-True ($t[0].name.Length -le 19 -and $t[0].name -match '^[\x20-\x7E]+$') "name of $($d.MountItem) is 19 ASCII characters at most"
+        Assert-Equal 1 @($reg | Where-Object { $_.kind -eq 'art' -and [int]$_.id -eq $d.MountItem }).Count "mount item $($d.MountItem) is a registered art ID"
+        Assert-True (Test-Path -LiteralPath (Join-Path $pkg "vendor\shattered-legacy-art\art\$($d.MountItem).png")) "mount item $($d.MountItem) has its PNG"
+        Assert-Equal 1 @($reg | Where-Object { $_.kind -eq 'body' -and [int]$_.id -eq $d.Ridden }).Count "ridden body $($d.Ridden) is registered"
+        $b = @($rec.bodyAnims | Where-Object { [int]$_.body -eq $d.Ridden })
+        Assert-Equal 1 $b.Count "one bodyAnims entry for $($d.Ridden)"
+        if (-not $b.Count) { continue }
+        $people = $b[0].type -eq 'HUMAN'
+        if ($people) {
+            Assert-True ([int]$b[0].slot -ge 400) "the people-layout look $($d.Ridden) is in a people slot"
+            Assert-True ($stock -contains $d.Body) "$($d.Key) walks on stock body $($d.Body), which stays the client's"
+            Assert-Equal 0 @($reg | Where-Object { [int]$_.id -eq $d.Body -and $_.kind -eq 'body' }).Count "stock body $($d.Body) is not registered"
+        } else {
+            Assert-True ($b[0].type -eq 'ANIMAL' -and [int]$b[0].slot -ge 200 -and [int]$b[0].slot -lt 400) "body $($d.Ridden) is ANIMAL in an animal slot"
+            Assert-Equal 1 @($rec.bodyAnims | Where-Object { [int]$_.body -eq $d.Body -and $_.type -eq 'ANIMAL' }).Count "$($d.Key) walks on our animal body $($d.Body)"
+        }
+    }
+    # The evo lines: every body of ours a live stage names is registered with its bodyAnims entry.
+    $evoBodies = @([regex]::Matches($evo, 'new\[\] \{ ([0-9, ]+) \}') | ForEach-Object { $_.Groups[1].Value -split ',\s*' } | ForEach-Object { [int]$_ } | Where-Object { $_ -ge 2048 } | Sort-Object -Unique)
+    Assert-Equal '2088,2089,2090,2091,2092,2093,2094,2095,2096,2097,2098,2099,2100,2113,2114,2115,2118,2119,2125,2126,2133' ($evoBodies -join ',') 'the evo stages of ours: the horse and lizard lines and the dog top stage'
+    foreach ($e in $evoBodies) {
+        Assert-Equal 1 @($rec.bodyAnims | Where-Object { [int]$_.body -eq $e -and $_.type -eq 'ANIMAL' }).Count "evo body $e has an ANIMAL bodyAnims entry"
+    }
+    # No stock ID overwritten: no record, animdata entry, PNG or art row of ours on OSI's mount items (0x3E90-0x3EFF,
+    # the range TazUO's own mount table answers) or on the stock bodies the people-layout mounts walk on; every mount
+    # item lies in the block find-free-art.py gave it.
+    foreach ($id in 0x3E90..0x3EFF) {
+        Assert-Equal 0 @($rec.tiledata | Where-Object { [int]$_.id -eq $id }).Count "no record of ours on stock mount item $('0x{0:X}' -f $id)"
+        Assert-True (-not (Test-Path -LiteralPath (Join-Path $pkg "vendor\shattered-legacy-art\art\$id.png"))) "no PNG on stock mount item $('0x{0:X}' -f $id)"
+    }
+    foreach ($s in 0x3C, 0xD5, 0xE1, 0xC8) {
+        Assert-Equal 0 @($rec.bodyAnims | Where-Object { [int]$_.body -eq $s }).Count "stock body $s keeps the client's animation"
+    }
+    $p365 = @($reg | Where-Object { $_.source -match 'cc-P365|p365_art' -or $_.what -match 'cc-P365' })
+    Assert-Equal 52 $p365.Count 'cc-P365 registered 34 bodies and 18 mount items'
+    foreach ($r in $p365) {
+        if ($r.kind -eq 'body') { Assert-True ($stock -notcontains [int]$r.id) "body $($r.id) is not a stock body" }
+        else { Assert-True ([int]$r.id -ge 0xB650 -and [int]$r.id -le 0xB661) "art $($r.id) lies in 0xB650-0xB661" }
+    }
+    # Krazy Zacks' files ship unmodified: his two bodies are his bytes (sha256 as registered), and say so.
+    foreach ($kz in 2109, 2110) {
+        $row = @($reg | Where-Object { [int]$_.id -eq $kz -and $_.kind -eq 'body' })[0]
+        $vd = Join-Path $pkg "vendor\shattered-legacy-art\anim-src\bodies\$kz.vd"
+        $sha = (Get-FileHash -Algorithm SHA256 -LiteralPath $vd).Hash.ToLowerInvariant()
+        Assert-True ($row.source -match "sha256 $sha") "body $kz is byte for byte as registered"
+        Assert-True ($row.license -match 'Do not modify' -and $row.license -match 'no recolour, no resize') "body $kz carries the author's rule"
     }
 }
 

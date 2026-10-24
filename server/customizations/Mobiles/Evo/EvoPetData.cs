@@ -84,6 +84,8 @@ namespace Server.Mobiles
         private static readonly EvoSounds CraneSounds = EvoSounds.FromBase(0x4D7);       // pinned Crane.cs:12
         private static readonly EvoSounds PhoenixSounds = EvoSounds.FromBase(0x8F);      // pinned Phoenix.cs:13
         private static readonly EvoSounds HiryuSounds = new(0x4FD, 0x4FE, 0x4FC, 0x4FF, 0x4FB); // pinned LesserHiryu.cs:84-92
+        private static readonly EvoSounds HorseSounds = EvoSounds.FromBase(0xA8);        // pinned Horse.cs
+        private static readonly EvoSounds LizardSounds = EvoSounds.FromBase(0x5A);       // pinned LavaLizard.cs
 
         private static string[] One(string name) => new[] { name };
 
@@ -99,7 +101,10 @@ namespace Server.Mobiles
                 new[] { "Alaskan malamute", "Great Dane", "Saint Bernard", "Newfoundland", "Rottweiler", "Black Russian terrier" },
                 DogSounds),
             new EvoStage(4, "guardian hound", new[] { 277 }, One("cu sidhe"), CuSidheSounds, MinOwnerLoops: 1),
-            new EvoStage(5, "windrunner", new[] { 1410 }, One("windrunner"), WindrunnerSounds, MinOwnerLoops: 5, BondTrial: true)
+            // cc-P365: Prapilk's KR Wolf (body 2133, our anim7) is the top stage, as its SOURCE.txt names it; the windrunner
+            // stays as the owner's second pick, so a dog that reached it before keeps a way back to it.
+            new EvoStage(5, "great wolf", new[] { 2133, 1410 }, new[] { "great grey wolf", "windrunner" }, WolfSounds,
+                MinOwnerLoops: 5, BondTrial: true)
         });
 
         public static readonly EvoLine Cat = new("cat", "Cat", "striker", 0x211B, new[]
@@ -141,7 +146,36 @@ namespace Server.Mobiles
             new EvoStage(5, "hiryu", new[] { 243 }, One("lesser hiryu"), HiryuSounds, MinOwnerLoops: 5, BondTrial: true)
         });
 
-        public static readonly EvoLine[] Lines = { Dog, Cat, Fox, Bird };
+        // cc-P365: the young animal art (uo-pixel.de, Prapilk's colts and lizards, our anim7) opens two lines whose young
+        // stages had no art: a horse that grows into the reward mounts' looks, and a lizard that grows into a raptor. The
+        // owner picks the coat at each stage with more than one body. Not offered in the tutorial (StarterPetLines).
+        public static readonly EvoLine Horse = new("horse", "Horse", "steed", 0x2121, new[]
+        {
+            new EvoStage(1, "foal", new[] { 2113, 2114, 2115, 2118 }, new[] { "dun foal", "grey foal", "brown foal", "white foal" },
+                HorseSounds),
+            new EvoStage(2, "yearling", new[] { 200, 226, 228, 204 }, new[] { "dun horse", "grey horse", "brown horse", "dark horse" },
+                HorseSounds),
+            new EvoStage(3, "draft horse", new[] { 2091, 2092, 2093, 2094 },
+                new[] { "chestnut draft horse", "bay draft horse", "grey draft horse", "palomino draft horse" }, HorseSounds),
+            new EvoStage(4, "warhorse", new[] { 2095, 2096 }, new[] { "barded warhorse", "gilded charger" }, HorseSounds,
+                MinOwnerLoops: 1),
+            new EvoStage(5, "legend", new[] { 2097, 2099, 2098 }, new[] { "moonlit unicorn", "emberhoof", "bonewalker steed" },
+                HorseSounds, MinOwnerLoops: 5, BondTrial: true)
+        });
+
+        public static readonly EvoLine Lizard = new("lizard", "Lizard", "skirmisher", 0x2131, new[]
+        {
+            new EvoStage(1, "hatchling", new[] { 2119, 2125, 2126 }, new[] { "brown hatchling", "grey hatchling", "striped hatchling" },
+                LizardSounds),
+            // The ostards: the classic bipedal lizards, Animal bodies (the lava lizard, 206, is a Monster body).
+            new EvoStage(2, "runner", new[] { 210, 219, 218 }, new[] { "desert ostard", "forest ostard", "frenzied ostard" },
+                LizardSounds),
+            new EvoStage(3, "raptor", new[] { 2088, 2089, 2090 }, new[] { "marsh raptor", "dusk raptor", "sky raptor" }, LizardSounds,
+                MinOwnerLoops: 1),
+            new EvoStage(4, "bog strider", new[] { 2100 }, One("bog strider"), LizardSounds, MinOwnerLoops: 5, BondTrial: true)
+        });
+
+        public static readonly EvoLine[] Lines = { Dog, Cat, Fox, Bird, Horse, Lizard };
 
         public static EvoLine Line(string key)
         {
