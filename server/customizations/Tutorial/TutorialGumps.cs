@@ -309,7 +309,7 @@ public class TutorialStationGump : Gump
             s.Explained.Length > 0 ? $"Explained: {string.Join(", ", s.Explained)}." : "",
             s.TazUO.Length > 0 ? $"TazUO: {string.Join(", ", s.TazUO)}. Guides: <a href=\"{WikiBase}\">tazuo.org</a>" : "",
             s.Tool != null ? $"You will be given: {s.Tool}." : "",
-            "Coming soon. This wing is optional. Graduation needs only the core."
+            "This station has no lesson of its own. It is optional; graduation needs only the core."
         };
         lines.RemoveAll(string.IsNullOrEmpty);
 

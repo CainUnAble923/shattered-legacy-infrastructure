@@ -176,10 +176,11 @@ public class TutorialFirstPlayVerification : IDisposable
         before.OnResponse(p.Ns, Press(StationButton("crafting.alchemy")));
         Assert.False(p.Pm.HasGump<TutorialStationGump>());
 
-        // Staff still run any lesson.
+        // Staff still run any lesson (cc-P291: every wing station has its own lesson page now).
+        TutorialWingTrials.EnsureHooks();
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("crafting.alchemy")!);
-        Assert.True(p.Pm.HasGump<TutorialStationGump>());
-        p.Pm.CloseGump<TutorialStationGump>();
+        Assert.True(p.Pm.HasGump<TutorialWingTrialGump>());
+        TutorialWingTrials.Cancel(p.Pm);
 
         PlayCoreUntil(p.Pm, null);
         Assert.Equal(TutorialState.InWings, p.Record.State);

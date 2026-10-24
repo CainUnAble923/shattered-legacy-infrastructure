@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.23.6
+
+### Added
+- Every tutorial lesson is playable now. In the trades yard south-east of the training yard you can mine, chop, fish, light a campfire, try all nine crafts (and keep what you make), play the bard and practise the thief's ten skills on a dummy chest and mark; at the farm pen you herd, tame and care for a goat; and four short walking tours explain houses, travel, reputation and the shard's own systems.
+
 ## 2026.10.23.5
 
 ### Added

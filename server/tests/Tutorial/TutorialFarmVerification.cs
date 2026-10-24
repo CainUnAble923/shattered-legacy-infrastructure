@@ -257,7 +257,8 @@ public class TutorialFarmVerification
             Assert.Contains(TutorialFarm.HealingStation, p.Record.StationsDone);
             Assert.Equal(4, TutorialFarm.Talk(p.Pm, hand));
 
-            // The station's handler points at the Farmhand.
+            // The station has a handler (cc-P291: the animals trial; the Farmhand's lesson still completes it too).
+            TutorialWingTrials.EnsureHooks(); // cc-P291: the station is the animals trial at the pen now
             Assert.True(TutorialStations.Handlers.ContainsKey(TutorialFarm.TamingStation));
         }
         finally
