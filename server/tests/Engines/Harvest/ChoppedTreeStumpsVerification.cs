@@ -1,11 +1,16 @@
 // P359: run through real harvest completion, banks, timers and serialization.
+// P412: map trees (base Z, the client message, login), lumber tools, two players, re-marking and restart.
 using System;
+using System.Buffers.Binary;
 using System.Linq;
 using System.Reflection;
 using Server;
 using Server.Engines.Harvest;
 using Server.Items;
 using Server.Mobiles;
+using Server.Network;
+using Server.Targeting;
+using Server.Tests.Network;
 using Xunit;
 
 namespace ShatteredLegacy.Tests;
@@ -15,6 +20,8 @@ public class ChoppedTreeStumpsVerification : IDisposable
 {
     private readonly bool _enabled = ClusterFLumberStumps.Enabled;
     private readonly int _itemId = ClusterFLumberStumps.StumpItemId;
+    private readonly Func<Map, int, int, System.Collections.Generic.IEnumerable<(int ItemID, int Z)>> _staticsAt =
+        ClusterFLumberStumps.StaticsAt;
     private readonly Lumberjacking _system = (Lumberjacking)Activator.CreateInstance(typeof(Lumberjacking), true)!;
     private readonly PlayerMobile _player;
     private readonly Static _tree;
@@ -204,6 +211,313 @@ public class ChoppedTreeStumpsVerification : IDisposable
         Assert.Empty(Stumps);
     }
 
+    // ---- P412 ---------------------------------------------------------------------------------------------------
+
+    // A map tree away from _tree's bank: trunk 0x0CCD and its leaves 0x0CCE, both at Z 7, as the client map has them.
+    private static readonly Point3D MapTree = new(1252, 1240, 7);
+
+    private void SeedMapTree(params (int ItemID, int Z)[] statics) =>
+        ClusterFLumberStumps.StaticsAt = (map, x, y) =>
+            map == Map.Trammel && x == MapTree.X && y == MapTree.Y ? statics : [];
+
+    private HarvestBank MapTreeBank => Definition.GetBank(Map.Trammel, MapTree.X, MapTree.Y);
+
+    private void FinishOnMapTree(int itemId)
+    {
+        var bank = MapTreeBank;
+        bank.Consume(20, _player);
+        // Built inside the fact's tile scope: StaticTarget reads the row's height in its constructor.
+        var target = new StaticTarget(MapTree, itemId);
+        _system.OnHarvestFinished(_player, null, Definition, bank.Vein, bank, null, target);
+    }
+
+    private static NetState Online(PlayerMobile pm)
+    {
+        var ns = PacketTestUtilities.CreateTestNetState();
+        pm.NetState = ns;
+        ns.Mobile = pm;
+        return ns;
+    }
+
+    private static void Offline(PlayerMobile pm)
+    {
+        if (pm.NetState != null)
+        {
+            pm.NetState.Mobile = null;
+            pm.NetState = null;
+        }
+    }
+
+    private static bool SentLocalized(NetState ns, int from, int cliloc)
+    {
+        var span = ns.SendBuffer.GetReadSpan()[from..];
+        for (var i = 0; i + 18 <= span.Length; i++)
+        {
+            if (span[i] == 0xC1 && BinaryPrimitives.ReadInt32BigEndian(span[(i + 14)..]) == cliloc)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private record SentTree(int Facet, int X, int Y, int Seconds, int[] Ids);
+
+    // Reads one 0xF4 sub 0x05 packet the way client patch 0006 does.
+    private static SentTree[] ReadTrees(ReadOnlySpan<byte> packet)
+    {
+        Assert.Equal(0xF4, packet[0]);
+        Assert.Equal(packet.Length, BinaryPrimitives.ReadUInt16BigEndian(packet[1..]));
+        Assert.Equal(0x05, packet[3]);
+        int facet = packet[4];
+        var payload = packet[9..];
+        Assert.Equal(payload.Length, (int)BinaryPrimitives.ReadUInt32BigEndian(packet[5..]));
+        var trees = new System.Collections.Generic.List<SentTree>();
+        var o = 0;
+        while (o < payload.Length)
+        {
+            int n = payload[o + 8];
+            var ids = new int[n];
+            for (var i = 0; i < n; i++)
+            {
+                ids[i] = BinaryPrimitives.ReadUInt16BigEndian(payload[(o + 9 + 2 * i)..]);
+            }
+
+            trees.Add(new SentTree(
+                facet, BinaryPrimitives.ReadUInt16BigEndian(payload[o..]), BinaryPrimitives.ReadUInt16BigEndian(payload[(o + 2)..]),
+                (int)BinaryPrimitives.ReadUInt32BigEndian(payload[(o + 4)..]), ids
+            ));
+            o += 9 + 2 * n;
+        }
+
+        return trees.ToArray();
+    }
+
+    [Fact]
+    public void MapTreeStumpSitsOnTheTreesBaseZNotItsTop()
+    {
+        using var tiles = TestTileRows.Seed(TileRows.Tree, TileRows.TreeLeaves);
+        SeedMapTree((0xCCD, 7), (0xCCE, 7));
+        Assert.Equal(27, new StaticTarget(MapTree, 0xCCD).Location.Z); // what pinned hands the harvest: 7 + 20
+        FinishOnMapTree(0xCCD);
+        var stump = Assert.Single(Stumps);
+        Assert.Equal(MapTree, stump.Location);
+    }
+
+    [Fact]
+    public void TargetingTheLeavesPutsTheStumpAtTheTrunk()
+    {
+        using var tiles = TestTileRows.Seed(TileRows.Tree, TileRows.TreeLeaves);
+        SeedMapTree((0xCCD, 7), (0xCCE, 7));
+        FinishOnMapTree(0xCCE);
+        Assert.Equal(MapTree, Assert.Single(Stumps).Location);
+    }
+
+    [Fact]
+    public void WithoutMapDataTheTreesHeightStillComesOff()
+    {
+        using var tiles = TestTileRows.Seed(TileRows.Tree, TileRows.TreeLeaves);
+        SeedMapTree();
+        FinishOnMapTree(0xCCD);
+        var stump = Assert.Single(Stumps);
+        Assert.Equal(MapTree, stump.Location);
+        Assert.Empty(stump.TreeIds); // nothing on the map to hide
+    }
+
+    [Fact]
+    public void ClientsAreToldTheTreeItsIdsAndDeadlineWhenItEmptiesAndWhenItRegrows()
+    {
+        using var tiles = TestTileRows.Seed(TileRows.Tree, TileRows.TreeLeaves);
+        // A roof tile far above and an unrelated static on the same tile are not part of the tree.
+        SeedMapTree((0xCCD, 7), (0xCCE, 7), (0x0080, 60));
+        var sent = new System.Collections.Generic.List<byte[]>();
+        Action<byte[]> listen = sent.Add;
+        ClusterFExhaustedTrees.Broadcasting += listen;
+        try
+        {
+            FinishOnMapTree(0xCCD);
+            var stump = Assert.Single(Stumps);
+            var hidden = Assert.Single(ReadTrees(Assert.Single(sent)));
+            Assert.Equal(new[] { 0xCCD, 0xCCE }, hidden.Ids);
+            Assert.Equal((Map.Trammel.MapID, MapTree.X, MapTree.Y), (hidden.Facet, hidden.X, hidden.Y));
+            Assert.Equal(10, hidden.Seconds); // the bank's refill deadline: MinRespawn = MaxRespawn = 10 s
+            Assert.Equal(MapTreeBank.NextRespawn, stump.Deadline);
+
+            ShardTestClock.Advance(TimeSpan.FromSeconds(11));
+            Assert.True(stump.Deleted);
+            Assert.Equal(2, sent.Count);
+            var regrown = Assert.Single(ReadTrees(sent[1]));
+            Assert.Equal((MapTree.X, MapTree.Y, 0), (regrown.X, regrown.Y, regrown.Seconds));
+            Assert.Equal(new[] { 0xCCD, 0xCCE }, regrown.Ids);
+        }
+        finally
+        {
+            ClusterFExhaustedTrees.Broadcasting -= listen;
+        }
+    }
+
+    [Fact]
+    public void ALoginGetsEveryExhaustedTreeWithTheTimeLeftAndNothingOnceItRegrew()
+    {
+        using var tiles = TestTileRows.Seed(TileRows.Tree, TileRows.TreeLeaves);
+        SeedMapTree((0xCCD, 7), (0xCCE, 7));
+        // First: a test NetState sets Core.Now to the wall clock (D16, ShardTestClock.cs), which would move the deadline.
+        var ns = Online(_player);
+        try
+        {
+            FinishOnMapTree(0xCCD);
+            ShardTestClock.Advance(TimeSpan.FromSeconds(4));
+            var from = ns.SendBuffer.GetReadSpan().Length;
+            ClusterFExhaustedTrees.OnLogin(_player);
+            var span = ns.SendBuffer.GetReadSpan()[from..];
+            Assert.True(span.Length > 9 && span[0] == 0xF4 && span[3] == 0x05, "no 0xF4 sub 0x05 at login");
+            var tree = Assert.Single(ReadTrees(span[..BinaryPrimitives.ReadUInt16BigEndian(span[1..])]));
+            Assert.Equal((MapTree.X, MapTree.Y, 6), (tree.X, tree.Y, tree.Seconds));
+
+            ShardTestClock.Advance(TimeSpan.FromSeconds(7));
+            Assert.Empty(ClusterFExhaustedTrees.BuildLoginPackets());
+        }
+        finally
+        {
+            Offline(_player);
+        }
+    }
+
+    [Fact]
+    public void AnEquippedPolearmGetsTheNoWoodMessageNotEquipAnAxe()
+    {
+        var ns = Online(_player); // before the stump: it sets Core.Now (D16)
+        var stump = Empty();
+        var bardiche = new Bardiche { Layer = Layer.TwoHanded };
+        try
+        {
+            Assert.Equal(500487, stump.RefusalFor(_player)); // nothing equipped
+            _player.AddItem(bardiche);
+            Assert.Same(bardiche, _player.Weapon);
+            Assert.Equal(500493, stump.RefusalFor(_player));
+            var from = ns.SendBuffer.GetReadSpan().Length;
+            stump.OnDoubleClick(_player);
+            Assert.True(SentLocalized(ns, from, 500493), "double-click: no 500493");
+            from = ns.SendBuffer.GetReadSpan().Length;
+            ((IChoppable)stump).OnChop(_player); // the route HarvestTarget takes for a tool aimed at the stump
+            Assert.True(SentLocalized(ns, from, 500493), "targeted: no 500493");
+            Assert.False(SentLocalized(ns, 0, 500487), "told to equip an axe");
+        }
+        finally
+        {
+            Offline(_player);
+            bardiche.Delete();
+        }
+    }
+
+    [Fact]
+    public void TwoPlayersFinishingOnTheLastBatchMakeOneStumpAndKeepTheDeadline()
+    {
+        var second = new PlayerMobile { Player = true, Race = Race.Human };
+        var axes = new[] { new Hatchet { Layer = Layer.TwoHanded }, new Hatchet { Layer = Layer.TwoHanded } };
+        var packs = new[] { new Backpack(), new Backpack() };
+        var skillCheck = Mobile.SkillCheckLocationHandler;
+        try
+        {
+            second.MoveToWorld(new Point3D(1241, 1230, 0), Map.Trammel);
+            var players = new[] { _player, second };
+            for (var i = 0; i < 2; i++)
+            {
+                players[i].AddItem(packs[i]);
+                players[i].AddItem(axes[i]);
+                players[i].Skills.Lumberjacking.Base = 200;
+            }
+
+            Definition.RaceBonus = false;
+            Mobile.SkillCheckLocationHandler = (_, _, _, _) => true;
+            Bank.Consume(10, _player); // one batch left; the first chop set the deadline
+            var due = Bank.NextRespawn;
+            ShardTestClock.Advance(TimeSpan.FromSeconds(2));
+
+            _system.FinishHarvesting(_player, axes[0], Definition, _tree, _system);
+            _system.FinishHarvesting(second, axes[1], Definition, _tree, _system);
+
+            Assert.Equal(0, Bank.Current);
+            var stump = Assert.Single(Stumps);
+            Assert.Equal(due, Bank.NextRespawn);
+            Assert.Equal(due, stump.Deadline);
+        }
+        finally
+        {
+            Mobile.SkillCheckLocationHandler = skillCheck;
+            foreach (var axe in axes) { axe.Delete(); }
+            foreach (var pack in packs) { pack.Delete(); }
+            second.Delete();
+        }
+    }
+
+    [Theory]
+    [InlineData("expiry")]
+    [InlineData("refill")]
+    [InlineData("delete")]
+    public void TheSameBankIsMarkedAgainAfterItsStumpGoes(string how)
+    {
+        var first = Empty();
+        switch (how)
+        {
+            case "expiry":
+                ShardTestClock.Advance(TimeSpan.FromSeconds(11)); // the idle timer removes the visual only
+                break;
+            case "refill":
+                typeof(HarvestBank).GetField("m_NextRespawn", BindingFlags.NonPublic | BindingFlags.Instance)!
+                    .SetValue(Bank, Core.Now - TimeSpan.FromSeconds(1));
+                Assert.Equal(20, Bank.Current);
+                break;
+            default:
+                first.Delete();
+                break;
+        }
+
+        Assert.True(first.Deleted);
+        Assert.DoesNotContain(first, ClusterFLumberStumps.Stumps);
+
+        if (Bank.Current > 0)
+        {
+            Bank.Consume(Bank.Current, _player);
+        }
+
+        Finish(Bank);
+        var again = Assert.Single(Stumps);
+        Assert.NotSame(first, again);
+        Assert.Same(again, Assert.Single(ClusterFLumberStumps.Stumps));
+    }
+
+    [Fact]
+    public void AfterASaveAndRestartNoStumpIsInTheWorldAndTheBankIsFull()
+    {
+        var stump = Empty();
+        // The world save skips it (pinned GenericEntityPersistence.cs:256 and :289) ...
+        Assert.True(stump.SkipSerialization);
+        // ... a forced load of its bytes deletes it ...
+        var buffer = new byte[65536];
+        var writer = new BufferWriter(buffer, true);
+        stump.Serialize(writer);
+        writer.Flush();
+        var serial = stump.Serial;
+        stump.Delete();
+        var copy = new ChoppedTreeStump(serial);
+        try
+        {
+            copy.Deserialize(new BufferReader(buffer));
+            Assert.True(copy.Deleted);
+        }
+        finally { copy.Delete(); }
+
+        // ... and a fresh server's banks start full, with no marker and nothing for a login to hide.
+        var restarted = (Lumberjacking)Activator.CreateInstance(typeof(Lumberjacking), true)!;
+        var bank = restarted.Definitions[0].GetBank(_tree.Map, _tree.X, _tree.Y);
+        Assert.True(bank.Current >= restarted.Definitions[0].ConsumedPerHarvest);
+        Assert.Empty(Stumps);
+        Assert.Empty(ClusterFLumberStumps.Stumps);
+        Assert.Empty(ClusterFExhaustedTrees.BuildLoginPackets());
+    }
+
     public void Dispose()
     {
         foreach (var stump in Stumps) { stump.Delete(); }
@@ -211,5 +525,6 @@ public class ChoppedTreeStumpsVerification : IDisposable
         _player.Delete();
         ClusterFLumberStumps.Enabled = _enabled;
         ClusterFLumberStumps.StumpItemId = _itemId;
+        ClusterFLumberStumps.StaticsAt = _staticsAt;
     }
 }

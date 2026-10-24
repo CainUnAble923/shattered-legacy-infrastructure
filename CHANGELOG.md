@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.2
+
+### Changed
+- With our game client, a tree you chopped clean disappears, leaving only its stump, and grows back when its wood does.
+
+### Fixed
+- The stump left by a tree you chopped clean now sits on the ground at the trunk instead of floating up in the leaves.
+- Holding a polearm to a chopped-clean tree now says there is not enough wood there, instead of telling you to equip an axe.
+
 ## 2026.10.24.1
 
 ### Staff

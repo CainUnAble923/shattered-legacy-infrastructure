@@ -127,6 +127,15 @@ public static class TileRows
     // flags 0x4006050 (Impassable among them), weight 255, height 22.
     public static readonly TileRow StoneWall =
         new(0x0080, "stone wall", 0x4006050, 255, 0, 0, 0, 0, 22);
+
+    // cc-P412: a map tree and its leaves, for the stump's base Z (pinned StaticTarget adds CalcHeight to Z). Read
+    // 2026-10-24 field for field as TileData.Load reads it, from D:/UO/UltimaOnlineVanilla/tiledata.mul (3,188,736
+    // bytes, md5 dd3acaacb5d953827c80af71ed2f736d; this work copy has no client-data/): 0x0CCD flags 0x4041, height 20;
+    // 0x0CCE flags 0x20040 (Foliage), height 2. Both are on pinned Lumberjacking's tree list.
+    public static readonly TileRow Tree =
+        new(0x0CCD, "tree", 0x4041, 255, 0, 0, 0, 0, 20);
+    public static readonly TileRow TreeLeaves =
+        new(0x0CCE, "leaves", 0x20040, 255, 0, 0, 0, 0, 2);
 }
 
 /// <summary>
