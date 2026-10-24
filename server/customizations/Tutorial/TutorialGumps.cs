@@ -8,6 +8,7 @@
 // that answered that handshake; every other client keeps the words only.
 // cc-P480: light text on the dark background from TutorialStyle; Rook's menu shows the core only until it is done (Chase
 // 10-23); the companion pick shows each pet's picture and what it grows into.
+// cc-P453: the account's other characters get Rook's page read-only (no buttons, and a reply from them runs nothing).
 
 #nullable enable
 
@@ -35,6 +36,9 @@ public class TutorialRecruiterGump : Gump
 
     private readonly PlayerMobile _pm;
 
+    /// <summary>cc-P453: another character on the account sees the page with no buttons.</summary>
+    public readonly bool ReadOnly;
+
     /// <summary>cc-P480: the optional lessons show once the core is done, or in remedial training (a skipper chose to).</summary>
     public static bool WingsOpen(TutorialRecord record) =>
         record.State == TutorialState.Remedial || ClusterFTutorial.CoreDone(record);
@@ -60,7 +64,8 @@ public class TutorialRecruiterGump : Gump
     {
         _pm = pm;
         var record = ClusterFTutorial.RecordOf(pm);
-        var active = record is { IsActive: true };
+        ReadOnly = record is { State: not TutorialState.NotStarted } && !ClusterFTutorial.IsRecordedCharacter(pm, record);
+        var active = !ReadOnly && record is { IsActive: true };
         var wings = active && WingsOpen(record!);
 
         // The optional lessons, grouped under their wing, split into two columns at a group boundary.
@@ -84,7 +89,7 @@ public class TutorialRecruiterGump : Gump
         {
             h += 24 + core.Count * Row + (wings ? 30 + Math.Max(left.Count, right.Count) * Row : 30) + 50;
         }
-        else if (record != null && ClusterFTutorial.CompanionPending(record))
+        else if (ReadOnly || record != null && ClusterFTutorial.CompanionPending(record))
         {
             h += 60;
         }
@@ -95,7 +100,13 @@ public class TutorialRecruiterGump : Gump
         AddLabel(24, 42, TutorialStyle.TextHue, record == null ? "You have no account record." : StateText(record.State));
 
         var y = 72;
-        if (active)
+        if (ReadOnly)
+        {
+            var name = World.FindMobile((Serial)record!.CharacterSerial)?.Name ?? "another character";
+            AddLabel(24, y, TutorialStyle.TextHue, $"Your account's tutorial belongs to {name}.");
+            AddLabel(24, y + 24, TutorialStyle.TextHue, "Only that character can take its lessons, skip, graduate or choose its companion.");
+        }
+        else if (active)
         {
             AddLabel(24, y, TutorialStyle.HeadingHue, "The core lessons (in order)");
             y += 24;
@@ -175,7 +186,7 @@ public class TutorialRecruiterGump : Gump
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
-        if (sender.Mobile != _pm)
+        if (sender.Mobile != _pm || ReadOnly)
         {
             return;
         }
