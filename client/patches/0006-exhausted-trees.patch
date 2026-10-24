@@ -1,0 +1,336 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chase Fleming <ckfleming@gmail.com>
+Date: Sat, 24 Oct 2026 12:00:00 -0500
+Subject: [PATCH] Hide trees the shard says are chopped empty until they regrow
+ (Shattered Legacy cc-P412)
+
+---
+ .../Game/GameObjects/Views/StaticView.cs           |  13 ++
+ .../Game/Managers/ShardExhaustedTrees.cs           | 100 ++++++++++++++
+ .../Game/Managers/ShardFogOfWar.cs                 |   3 +
+ .../Network/PacketHandlers/EnterWorld.cs           |   1 +
+ .../Game/ShardExhaustedTreesTests.cs               | 143 +++++++++++++++++++++
+ 5 files changed, 260 insertions(+)
+
+diff --git a/src/ClassicUO.Client/Game/GameObjects/Views/StaticView.cs b/src/ClassicUO.Client/Game/GameObjects/Views/StaticView.cs
+index 7bf282ef2..0c7b745d2 100644
+--- a/src/ClassicUO.Client/Game/GameObjects/Views/StaticView.cs
++++ b/src/ClassicUO.Client/Game/GameObjects/Views/StaticView.cs
+@@ -3,6 +3,7 @@
+ using System;
+ using System.Runtime.CompilerServices;
+ using ClassicUO.Game.Data;
++using ClassicUO.Game.Managers; // Shattered Legacy patch (cc-P412)
+ using ClassicUO.Game.Managers.SpellVisualRange;
+ using ClassicUO.Game.Scenes;
+ using ClassicUO.Renderer;
+@@ -76,6 +77,12 @@ namespace ClassicUO.Game.GameObjects
+                 return false;
+             }
+ 
++            // Shattered Legacy patch (cc-P412): a tree the shard says is chopped empty is not drawn until it regrows.
++            if (ShardExhaustedTrees.IsHidden(World.MapIndex, X, Y, OriginalGraphic))
++            {
++                return false;
++            }
++
+             ushort graphic = Graphic;
+             ushort hue = Hue;
+             bool partial = ItemData.IsPartialHue;
+@@ -164,6 +171,12 @@ namespace ClassicUO.Game.GameObjects
+                 return false;
+             }
+ 
++            // Shattered Legacy patch (cc-P412): a hidden tree cannot be clicked either.
++            if (ShardExhaustedTrees.IsHidden(World.MapIndex, X, Y, OriginalGraphic))
++            {
++                return false;
++            }
++
+             // Get the display graphic (with tree-to-stump replacement if needed)
+             ushort graphic = GetDisplayGraphic(Graphic);
+ 
+diff --git a/src/ClassicUO.Client/Game/Managers/ShardExhaustedTrees.cs b/src/ClassicUO.Client/Game/Managers/ShardExhaustedTrees.cs
+new file mode 100644
+index 000000000..2e05a4414
+--- /dev/null
++++ b/src/ClassicUO.Client/Game/Managers/ShardExhaustedTrees.cs
+@@ -0,0 +1,100 @@
++// Shattered Legacy patch (cc-P412): trees the shard says are chopped empty are hidden until they regrow.
++//
++// The shard puts a stump item at a chopped-out tree (server\customizations\ClusterFLumberStumps.cs) and tells clients
++// which tree statics to hide, on its own packet 0xF4 (ShardFogOfWar's) as sub 0x05:
++//   [0xF4][u16 length][u8 0x05][u8 facet][u32 BE payload length] then per tree:
++//   [u16 x][u16 y][u32 seconds until it regrows, 0 = it regrew now][u8 n][n x u16 item ID]
++// Only those item IDs at that X,Y on that facet are hidden (the trunk and the foliage over it); the stump, which is an
++// item and not a static, and everything else on the map are untouched. A tree shows again at its deadline even if
++// the regrowth message never comes. The list is per facet and not tied to the view, so walking away and back changes
++// nothing. Each new login starts empty (EnterWorld), and the shard resends every exhausted tree at login.
++
++using System;
++using System.Collections.Generic;
++
++namespace ClassicUO.Game.Managers
++{
++    public static class ShardExhaustedTrees
++    {
++        public const byte Sub = 0x05;
++
++        private const int EntryHeader = 9; // x, y, seconds, n
++
++        private readonly struct Tree
++        {
++            public Tree(ushort[] ids, long deadline)
++            {
++                Ids = ids;
++                Deadline = deadline;
++            }
++
++            public ushort[] Ids { get; }
++            public long Deadline { get; }
++        }
++
++        private static readonly Dictionary<(int Facet, int X, int Y), Tree> _trees = new();
++
++        /// <summary>Milliseconds; a test replaces it.</summary>
++        public static readonly Func<long> DefaultClock = () => Environment.TickCount64;
++        public static Func<long> Clock { get; set; } = DefaultClock;
++
++        public static int Count => _trees.Count;
++
++        public static void Reset() => _trees.Clear();
++
++        /// <summary>One sub 0x05 payload. False, and nothing changed, when it is malformed.</summary>
++        public static bool Apply(byte facet, ReadOnlySpan<byte> payload)
++        {
++            if (payload.Length == 0)
++                return false;
++
++            // Check the whole message first, so a cut-short one changes nothing.
++            int o = 0;
++            while (o < payload.Length)
++            {
++                if (payload.Length - o < EntryHeader)
++                    return false;
++
++                o += EntryHeader + 2 * payload[o + 8];
++                if (o > payload.Length)
++                    return false;
++            }
++
++            long now = Clock();
++            for (o = 0; o < payload.Length; )
++            {
++                int x = (payload[o] << 8) | payload[o + 1];
++                int y = (payload[o + 2] << 8) | payload[o + 3];
++                uint seconds = (uint)((payload[o + 4] << 24) | (payload[o + 5] << 16) | (payload[o + 6] << 8) | payload[o + 7]);
++                int n = payload[o + 8];
++                var ids = new ushort[n];
++                for (int i = 0; i < n; i++)
++                    ids[i] = (ushort)((payload[o + EntryHeader + 2 * i] << 8) | payload[o + EntryHeader + 2 * i + 1]);
++
++                o += EntryHeader + 2 * n;
++
++                if (seconds == 0 || n == 0)
++                    _trees.Remove((facet, x, y));
++                else
++                    _trees[(facet, x, y)] = new Tree(ids, now + seconds * 1000L);
++            }
++
++            return true;
++        }
++
++        /// <summary>Whether the map static with this original graphic at this tile is an exhausted tree's.</summary>
++        public static bool IsHidden(int facet, int x, int y, ushort graphic)
++        {
++            if (_trees.Count == 0 || !_trees.TryGetValue((facet, x, y), out var tree))
++                return false;
++
++            if (Clock() >= tree.Deadline)
++            {
++                _trees.Remove((facet, x, y));
++                return false;
++            }
++
++            return Array.IndexOf(tree.Ids, graphic) >= 0;
++        }
++    }
++}
+diff --git a/src/ClassicUO.Client/Game/Managers/ShardFogOfWar.cs b/src/ClassicUO.Client/Game/Managers/ShardFogOfWar.cs
+index 6eab6434a..b2765ff96 100644
+--- a/src/ClassicUO.Client/Game/Managers/ShardFogOfWar.cs
++++ b/src/ClassicUO.Client/Game/Managers/ShardFogOfWar.cs
+@@ -132,6 +132,9 @@ namespace ClassicUO.Game.Managers
+                         return true;
+                     }
+ 
++                case ShardExhaustedTrees.Sub:
++                    return ShardExhaustedTrees.Apply(facet, payload); // Shattered Legacy patch (cc-P412)
++
+                 default:
+                     return false; // 0x03 and 0x04, mining depletion: not this layer's
+             }
+diff --git a/src/ClassicUO.Client/Network/PacketHandlers/EnterWorld.cs b/src/ClassicUO.Client/Network/PacketHandlers/EnterWorld.cs
+index c835f13eb..99345e033 100644
+--- a/src/ClassicUO.Client/Network/PacketHandlers/EnterWorld.cs
++++ b/src/ClassicUO.Client/Network/PacketHandlers/EnterWorld.cs
+@@ -16,6 +16,7 @@ internal static class EnterWorld
+ 
+         world.CreatePlayer(serial);
+         ShardFogOfWar.Reset(); // Shattered Legacy patch (cc-P240): a new login starts with no fog; the shard resends
++        ShardExhaustedTrees.Reset(); // Shattered Legacy patch (cc-P412): and with no hidden trees; the shard resends
+ 
+         p.Skip(4);
+         world.Player.Graphic = p.ReadUInt16BE();
+diff --git a/tests/ClassicUO.UnitTests/Game/ShardExhaustedTreesTests.cs b/tests/ClassicUO.UnitTests/Game/ShardExhaustedTreesTests.cs
+new file mode 100644
+index 000000000..875c39a90
+--- /dev/null
++++ b/tests/ClassicUO.UnitTests/Game/ShardExhaustedTreesTests.cs
+@@ -0,0 +1,143 @@
++// Shattered Legacy patch (cc-P412): exhausted trees, fed by the shard's packet 0xF4 sub 0x05, hidden until they regrow.
++using System;
++using System.Collections.Generic;
++using ClassicUO.Game.Managers;
++using ClassicUO.IO;
++using FluentAssertions;
++using Xunit;
++
++namespace ClassicUO.UnitTests.Game
++{
++    public class ShardExhaustedTreesTests : IDisposable
++    {
++        private long _now = 1_000_000;
++
++        public ShardExhaustedTreesTests()
++        {
++            ShardExhaustedTrees.Reset();
++            ShardExhaustedTrees.Clock = () => _now;
++        }
++
++        public void Dispose()
++        {
++            ShardExhaustedTrees.Reset();
++            ShardExhaustedTrees.Clock = ShardExhaustedTrees.DefaultClock;
++        }
++
++        // The server's ClusterFExhaustedTrees.BuildPacket payload: per tree [u16 x][u16 y][u32 seconds][u8 n][n x u16 id].
++        private static byte[] Payload(params (int x, int y, uint seconds, ushort[] ids)[] trees)
++        {
++            var b = new List<byte>();
++            foreach (var (x, y, seconds, ids) in trees)
++            {
++                b.Add((byte)(x >> 8));
++                b.Add((byte)x);
++                b.Add((byte)(y >> 8));
++                b.Add((byte)y);
++                b.Add((byte)(seconds >> 24));
++                b.Add((byte)(seconds >> 16));
++                b.Add((byte)(seconds >> 8));
++                b.Add((byte)seconds);
++                b.Add((byte)ids.Length);
++                foreach (ushort id in ids)
++                {
++                    b.Add((byte)(id >> 8));
++                    b.Add((byte)id);
++                }
++            }
++
++            return b.ToArray();
++        }
++
++        private static byte[] Packet(byte facet, byte[] payload)
++        {
++            int total = 9 + payload.Length;
++            var b = new byte[total];
++            b[0] = 0xF4;
++            b[1] = (byte)(total >> 8);
++            b[2] = (byte)total;
++            b[3] = ShardExhaustedTrees.Sub;
++            b[4] = facet;
++            b[5] = (byte)(payload.Length >> 24);
++            b[6] = (byte)(payload.Length >> 16);
++            b[7] = (byte)(payload.Length >> 8);
++            b[8] = (byte)payload.Length;
++            payload.CopyTo(b, 9);
++            return b;
++        }
++
++        private static readonly ushort[] Tree = { 0x0CCD, 0x0CCE };
++
++        [Fact]
++        public void The_servers_packet_reaches_the_list_through_the_0xF4_handler()
++        {
++            byte[] packet = Packet(1, Payload((1252, 1240, 600, Tree)));
++            var reader = new StackDataReader(packet);
++            reader.Seek(3);
++            ShardFogOfWar.Receive(null, ref reader);
++
++            ShardExhaustedTrees.IsHidden(1, 1252, 1240, 0x0CCD).Should().BeTrue("the trunk");
++            ShardExhaustedTrees.IsHidden(1, 1252, 1240, 0x0CCE).Should().BeTrue("its leaves");
++            ShardFogOfWar.HasData(1).Should().BeFalse("a tree is not a walked chunk");
++        }
++
++        [Fact]
++        public void Only_those_item_ids_at_that_tile_on_that_facet_are_hidden()
++        {
++            ShardExhaustedTrees.Apply(1, Payload((1252, 1240, 600, Tree))).Should().BeTrue();
++
++            ShardExhaustedTrees.IsHidden(1, 1252, 1240, 0x0E56).Should().BeFalse("the stump stays");
++            ShardExhaustedTrees.IsHidden(1, 1252, 1240, 0x0080).Should().BeFalse("anything else on the tile stays");
++            ShardExhaustedTrees.IsHidden(1, 1253, 1240, 0x0CCD).Should().BeFalse("the same tree art next door stays");
++            ShardExhaustedTrees.IsHidden(0, 1252, 1240, 0x0CCD).Should().BeFalse("the same spot on Felucca stays");
++        }
++
++        [Fact]
++        public void A_tree_shows_again_at_its_deadline_even_with_no_word_from_the_server()
++        {
++            ShardExhaustedTrees.Apply(1, Payload((1252, 1240, 600, Tree)));
++            _now += 599_000;
++            ShardExhaustedTrees.IsHidden(1, 1252, 1240, 0x0CCD).Should().BeTrue();
++            _now += 1_000;
++            ShardExhaustedTrees.IsHidden(1, 1252, 1240, 0x0CCD).Should().BeFalse("its bank refilled while we were away");
++            ShardExhaustedTrees.Count.Should().Be(0);
++        }
++
++        [Fact]
++        public void Regrowth_from_the_server_shows_it_at_once()
++        {
++            ShardExhaustedTrees.Apply(1, Payload((1252, 1240, 600, Tree)));
++            ShardExhaustedTrees.Apply(1, Payload((1252, 1240, 0, Tree))).Should().BeTrue();
++            ShardExhaustedTrees.IsHidden(1, 1252, 1240, 0x0CCD).Should().BeFalse();
++            ShardExhaustedTrees.Count.Should().Be(0);
++        }
++
++        [Fact]
++        public void A_login_list_holds_several_trees_and_a_new_login_starts_empty()
++        {
++            ShardExhaustedTrees.Apply(3, Payload((10, 20, 60, Tree), (11, 20, 30, new ushort[] { 0x0D41 }))).Should().BeTrue();
++            ShardExhaustedTrees.Count.Should().Be(2);
++            ShardExhaustedTrees.IsHidden(3, 11, 20, 0x0D41).Should().BeTrue();
++            ShardExhaustedTrees.Reset();
++            ShardExhaustedTrees.IsHidden(3, 10, 20, 0x0CCD).Should().BeFalse();
++        }
++
++        [Fact]
++        public void A_tree_out_of_view_is_still_hidden_when_we_come_back()
++        {
++            // The list is not tied to the view: nothing about range or the map's loaded blocks touches it.
++            ShardExhaustedTrees.Apply(1, Payload((1252, 1240, 600, Tree)));
++            _now += 120_000;
++            ShardExhaustedTrees.IsHidden(1, 1252, 1240, 0x0CCD).Should().BeTrue();
++        }
++
++        [Fact]
++        public void A_cut_short_or_empty_message_changes_nothing()
++        {
++            byte[] good = Payload((1252, 1240, 600, Tree));
++            ShardExhaustedTrees.Apply(1, good.AsSpan(0, good.Length - 1)).Should().BeFalse();
++            ShardExhaustedTrees.Apply(1, ReadOnlySpan<byte>.Empty).Should().BeFalse();
++            ShardExhaustedTrees.Count.Should().Be(0);
++        }
++    }
++}
+-- 
+2.51.2.windows.1
+
