@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.8
+
+### Added
+- The Miners' Compact sells its own copy of Mining For Quality Stone: Learn Stone Mining on Garrett's member dashboard, 50 Mining Vouchers from Journeyman rank. Reading it still needs 100 Mining.
+- Short of Mining Vouchers to restore your Jacob's Pickaxe? The Liaison can cover only the missing vouchers in gold, at 100 gold each, and shows both prices before you confirm.
+
+### Changed
+- Stone Contracts are listed only once you have learned stone mining. Until then, the ledger tells you where to get the book. A Stone Contract you already hold can still be turned in.
+- The Compact's two raw ore contracts are now mining quotas: Mine Iron Ore (100 iron ore) and Mine Dull Copper Ore (50 dull copper ore, Journeyman, 65 Mining). Only ore you mine after accepting counts, and nothing is taken at turn-in. A contract you already hold can still be finished by turning in its iron ore.
+
 ## 2026.10.24.7
 
 ### Added

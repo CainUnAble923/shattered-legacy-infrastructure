@@ -19,6 +19,8 @@ namespace Server;
 ///   MemberDashboard -- standing, rank, voucher balance; links to work orders + restoration
 ///   WorkOrders      -- current work order (deliver 50 Iron Ingots for 100 standing + 5 vouchers)
 ///   Restoration     -- restore Jacob's Pickaxe using vouchers, ingots, and gold
+///   RestoreWithGold -- cc-P416: the same, with gold in place of the vouchers the member is short of
+///   StoneMiningBook -- cc-P416: the Compact's copy of "Mining For Quality Stone", for Mining Vouchers
 ///
 /// Opening this gump always calls ClusterFLeagueSystem.OnGuildReferralSeen(pm, "mining")
 /// so the referral achievement is granted on first visit regardless of which topic is read.
@@ -28,7 +30,7 @@ public class MinersCompactLiaisonGump : Gump
     public enum View
     {
         MainMenu, AboutCompact, WhatWeMine, JoiningReqs, Rewards,
-        MemberDashboard, Restoration, ReplaceKit, UpgradeSatchel, ClimbingBoots
+        MemberDashboard, Restoration, ReplaceKit, UpgradeSatchel, ClimbingBoots, RestoreWithGold, StoneMiningBook
     }
 
     private readonly PlayerMobile _pm;
@@ -99,6 +101,22 @@ public class MinersCompactLiaisonGump : Gump
     // Satchel Restore cost: 5 vouchers (same as kit item replacement)
     private const int SatchelRestoreCost = 5;
 
+    // cc-P416 (Chase 2026-10-22): a member short of vouchers for a restoration may cover only the missing ones in gold, at
+    // this rate. The Compact's contracts pay 47 gold beside each voucher on average (125,385 gold and 2,656 vouchers over
+    // its 39 contracts; median 33), so a voucher bought with gold costs about twice what a contract pays beside one:
+    // still cheaper than being stuck, never a better deal than working a contract. Notes: cc-P416-stone-mining-gate.md.
+    internal static int GoldPerMissingVoucher =>
+        ServerConfiguration.GetOrUpdateSetting("clusterf.compact.goldPerMissingVoucher", 100);
+
+    // cc-P416 (Chase 2026-10-22): the Compact sells its own copy of the Stone Crafter's "Mining For Quality Stone" (pinned
+    // StoneMiningBook, 10,625 gold at SBStoneCrafter.cs:31), from Journeyman rank, for Mining Vouchers only. 50 sits between
+    // the Apprentice satchel upgrade (25V + 5,000gp) and the Surveyor one (75V + 20,000gp), about three Journeyman contracts.
+    internal static int StoneBookStanding =>
+        ServerConfiguration.GetOrUpdateSetting("clusterf.compact.stoneBookStanding", 5000);
+
+    internal static int StoneBookVouchers =>
+        ServerConfiguration.GetOrUpdateSetting("clusterf.compact.stoneBookVouchers", 50);
+
     public MinersCompactLiaisonGump(PlayerMobile pm, View view = View.MainMenu) : base(100, 80)
     {
         _pm   = pm;
@@ -136,6 +154,8 @@ public class MinersCompactLiaisonGump : Gump
             case View.ReplaceKit:      DrawReplaceKit();               break;
             case View.UpgradeSatchel:  DrawUpgradeSatchel(guild, acct); break;
             case View.ClimbingBoots:   DrawClimbingBoots(guild, acct);  break;
+            case View.RestoreWithGold: DrawRestoreWithGold(guild, acct); break;
+            case View.StoneMiningBook: DrawStoneMiningBook(guild);       break;
         }
 
         // -- Footer --------------------------------------------------------
@@ -304,6 +324,17 @@ public class MinersCompactLiaisonGump : Gump
 
         AddButton(18, 226, 4011, 4012, 31);
         AddLabel(44, 228, 999, "Work Orders");
+
+        // cc-P416: the Compact's copy of the stone mining book, never offered once stone mining is learned.
+        if (_pm.StoneMining)
+        {
+            AddLabel(230, 228, 0x44, "Stone mining: learned");
+        }
+        else
+        {
+            AddButton(230, 226, 4011, 4012, 41);
+            AddLabel(256, 228, 999, "Learn Stone Mining");
+        }
 
         AddButton(18, 250, 4011, 4012, 32);
         AddLabel(44, 252, 999, "Restoration (Jacob's Pickaxe)");
@@ -638,7 +669,158 @@ public class MinersCompactLiaisonGump : Gump
         AddLabel(18, 80, RequirementStyle.HeadingHue, $"{pickaxeName}: ready for restoration");
         var reqs = RestoreRequirements(guild, highestTier);
         var y = reqs.Draw(this, 18, 104);
-        reqs.DrawFooter(this, 18, y + 4, restoreBtn, $"Restore {pickaxeName}", bypass);
+        y = reqs.DrawFooter(this, 18, y + 4, restoreBtn, $"Restore {pickaxeName}", bypass);
+
+        // cc-P416: short of vouchers, the member may cover only the missing ones in gold (the next page shows both prices).
+        guild.GuildCurrency.TryGetValue("mining", out var held);
+        var missing = GetRestoreCostCoveringVouchers(highestTier, held).Missing;
+        if (missing > 0)
+        {
+            RequirementStyle.AddAction(this, 18, y, 65,
+                $"Short {missing} voucher{(missing == 1 ? "" : "s")}? Pay {missing * GoldPerMissingVoucher:N0} gold instead", true);
+        }
+    }
+
+    /// <summary>
+    /// cc-P416: the Compact's copy of "Mining For Quality Stone": what it does, its rank and voucher price (met or not
+    /// each), and that reading it needs 100.0 Mining, before the purchase. Not offered once stone mining is learned.
+    /// </summary>
+    private void DrawStoneMiningBook(CharacterGuildData guild)
+    {
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Mining For Quality Stone");
+        AddImageTiled(10, 72, W - 20, 1, 9304);
+
+        if (_pm.StoneMining)
+        {
+            AddLabel(18, 80, 0x44, "You have already learned stone mining.");
+            return;
+        }
+
+        AddHtml(16, 78, W - 32, 72,
+            "<BASEFONT COLOR=#ACACAC>The Compact's copy of the Stone Crafter's book (10,625 gold there). Reading it " +
+            "teaches you to mine stone from mountainsides, and opens the Compact's Stone Contracts.</BASEFONT>",
+            false, false);
+
+        var reqs = StoneBookRequirements(_pm, guild);
+        var y = reqs.Draw(this, 18, 156);
+        reqs.DrawFooter(this, 18, y + 4, 94, $"Buy the book ({StoneBookVouchers}V)", Items.DevTestingCrystal.IsActive(_pm));
+    }
+
+    /// <summary>cc-P416: the book's rank and price, and the reading rule as a note (it does not stop the purchase).</summary>
+    internal static RequirementList StoneBookRequirements(PlayerMobile pm, CharacterGuildData guild)
+    {
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+        var mining = pm.Skills.Mining.Base;
+
+        return new RequirementList()
+            .Rank(GetRankName(StoneBookStanding), standing, StoneBookStanding)
+            .Price(pm, guild, "mining", "Mining Vouchers", StoneBookVouchers, 0)
+            .Info(mining >= 100.0
+                ? $"Reading it needs 100.0 Mining: you have {mining:F1}."
+                : $"Reading it needs 100.0 Mining (you have {mining:F1}): buy now, read it at 100.");
+    }
+
+    /// <summary>
+    /// cc-P416: sells the book to a member at the rank who has not learned stone mining, for StoneBookVouchers. True when
+    /// sold; <paramref name="message"/> is what the member is told.
+    /// </summary>
+    internal static bool TryBuyStoneMiningBook(PlayerMobile pm, CharacterGuildData guild, out string? message)
+    {
+        message = null;
+
+        if (!guild.JoinedGuilds.Contains("mining"))
+        {
+            message = "You must be a member of the Miners' Compact to buy the Compact's books.";
+            return false;
+        }
+
+        if (pm.StoneMining)
+        {
+            message = "You have already learned stone mining.";
+            return false;
+        }
+
+        if (pm.Backpack == null)
+        {
+            message = "You don't have a backpack.";
+            return false;
+        }
+
+        var bypass = Items.DevTestingCrystal.IsActive(pm);
+        guild.GuildReputation.TryGetValue("mining", out var standing);
+
+        if (!bypass && standing < StoneBookStanding)
+        {
+            message = $"The Compact sells Mining For Quality Stone from {GetRankName(StoneBookStanding)} rank " +
+                      $"({StoneBookStanding:N0} Compact Standing; you have {standing:N0}).";
+            return false;
+        }
+
+        // TryPay says what is short.
+        if (!bypass && !GuildResources.TryPay(pm, guild, "mining", StoneBookVouchers, "Mining Vouchers", 0))
+            return false;
+
+        pm.Backpack.DropItem(new StoneMiningBook());
+        message = pm.Skills.Mining.Base >= 100.0
+            ? "The Compact hands you its copy of Mining For Quality Stone. Read it to learn stone mining."
+            : "The Compact hands you its copy of Mining For Quality Stone. You can read it once your Mining reaches 100.";
+        return true;
+    }
+
+    /// <summary>
+    /// cc-P416: a member short of vouchers for the restoration covers only the missing ones in gold
+    /// (GoldPerMissingVoucher each): the vouchers they have, the same materials, and the base gold plus the cover. Shows the
+    /// price with vouchers first, then this price, met or not each, before the member confirms.
+    /// </summary>
+    private void DrawRestoreWithGold(CharacterGuildData guild, IAccount? acct)
+    {
+        AddLabel(18, 56, RequirementStyle.HeadingHue, "Restoration: gold for missing vouchers");
+        AddImageTiled(10, 72, W - 20, 1, 9304);
+
+        var tier = GetHighestUnlockedTier(acct);
+        if (acct == null || tier == 0)
+        {
+            AddLabel(18, 80, 999, "You have no Jacob's Pickaxe on record.");
+            return;
+        }
+
+        var (regKey, pickaxeName, withVouchers, _) = GetTierRestoreInfo(tier);
+        if (ClusterFRestorationRegistry.HasActiveCopy(acct, regKey) && PlayerHasActiveTierItem(tier))
+        {
+            AddLabel(18, 80, 999, $"{pickaxeName}: active copy on hand. Nothing to restore.");
+            return;
+        }
+
+        guild.GuildCurrency.TryGetValue("mining", out var held);
+        var cost = GetRestoreCostCoveringVouchers(tier, held);
+
+        AddLabel(18, 80, RequirementStyle.HeadingHue, pickaxeName);
+        AddLabel(18, 100, 999, $"With vouchers: {withVouchers}");
+
+        if (cost.Missing == 0)
+        {
+            AddLabel(18, 122, 0x44, "You have the vouchers: use the Restoration page.");
+            return;
+        }
+
+        var rate = GoldPerMissingVoucher;
+        AddLabel(18, 120, 999,
+            $"With gold: {cost.Missing} missing voucher{(cost.Missing == 1 ? "" : "s")} x {rate:N0} = {cost.Missing * rate:N0} gold more");
+
+        var reqs = new RequirementList().Price(_pm, guild, "mining", "Mining Vouchers", cost.Vouchers, cost.Gold, cost.Materials);
+        var y = reqs.Draw(this, 18, 144);
+        reqs.DrawFooter(this, 18, y + 4, 80 + tier, $"Restore with {cost.Gold:N0} gold", Items.DevTestingCrystal.IsActive(_pm));
+    }
+
+    /// <summary>
+    /// cc-P416: a tier's restoration price for a member holding <paramref name="heldVouchers"/>: the vouchers they have (up to
+    /// the price), the same materials, and the base gold plus GoldPerMissingVoucher for each voucher short.
+    /// </summary>
+    internal static (int Vouchers, GuildCost[] Materials, int Gold, int Missing) GetRestoreCostCoveringVouchers(int tier, int heldVouchers)
+    {
+        var cost = GetRestoreCost(tier);
+        var missing = Math.Max(0, cost.Vouchers - Math.Max(0, heldVouchers));
+        return (cost.Vouchers - missing, cost.Materials, cost.Gold + missing * GoldPerMissingVoucher, missing);
     }
 
     /// <summary>cc-P169: a tier's restoration price as requirement lines (what HandleRestoration's TryPay takes).</summary>
@@ -728,9 +910,13 @@ public class MinersCompactLiaisonGump : Gump
 
         if (info.ButtonID == 1) // Back
         {
-            var backView = _view is View.Restoration or View.ReplaceKit or View.UpgradeSatchel or View.ClimbingBoots
-                ? View.MemberDashboard
-                : View.MainMenu;
+            var backView = _view switch
+            {
+                View.RestoreWithGold => View.Restoration,
+                View.Restoration or View.ReplaceKit or View.UpgradeSatchel or View.ClimbingBoots or View.StoneMiningBook
+                    => View.MemberDashboard,
+                _ => View.MainMenu
+            };
             _pm.SendGump(new MinersCompactLiaisonGump(_pm, backView));
             return;
         }
@@ -766,6 +952,19 @@ public class MinersCompactLiaisonGump : Gump
             case 38: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.ReplaceKit));              break;
             case 39: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.UpgradeSatchel));         break;
             case 40: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.ClimbingBoots));          break;
+            case 41: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.StoneMiningBook));        break;
+            case 65: _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.RestoreWithGold));        break;
+
+            // -- The Compact's stone mining book (cc-P416) -----------------
+            case 94:
+            {
+                string? message = null;
+                var ok = guild != null && TryBuyStoneMiningBook(_pm, guild, out message);
+                if (message != null)
+                    _pm.SendMessage(ok ? 0x44 : 0x22, message);
+                _pm.SendGump(new MinersCompactLiaisonGump(_pm, ok ? View.MemberDashboard : View.StoneMiningBook));
+                break;
+            }
             case 100: _pm.SendGump(new CrossGuildExchangeGump(_pm, p => p.SendGump(new MinersCompactLiaisonGump(p, View.MemberDashboard)))); break;
 
             // -- Satchel upgrade / recovery --------------------------------
@@ -814,6 +1013,12 @@ public class MinersCompactLiaisonGump : Gump
                 HandleRestoration(guild, acct, info.ButtonID - 59);
                 _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
                 break;
+
+            // cc-P416: the same, with gold for the missing vouchers
+            case >= 81 and <= 85:
+                HandleRestoration(guild, acct, info.ButtonID - 80, coverMissingVouchers: true);
+                _pm.SendGump(new MinersCompactLiaisonGump(_pm, View.Restoration));
+                break;
         }
     }
 
@@ -822,7 +1027,7 @@ public class MinersCompactLiaisonGump : Gump
     /// GuildResources.TryPay (pack then bank, all or nothing); then the exhausted copy is removed and a fresh one
     /// delivered. One handler for every tier since F-11; T1 and T2 had their own copies before.
     /// </summary>
-    private void HandleRestoration(CharacterGuildData? guild, IAccount? acct, int tier)
+    private void HandleRestoration(CharacterGuildData? guild, IAccount? acct, int tier, bool coverMissingVouchers = false)
     {
         if (guild == null || acct == null) return;
 
@@ -850,8 +1055,34 @@ public class MinersCompactLiaisonGump : Gump
         if (pack == null) { _pm.SendMessage(0x22, "You don't have a backpack."); return; }
 
         // Costs are skipped when the testing token is active.
-        if (!Items.DevTestingCrystal.IsActive(_pm) && !TryPay(guild, GetRestoreCost(tier)))
-            return;
+        if (!Items.DevTestingCrystal.IsActive(_pm))
+        {
+            if (!coverMissingVouchers)
+            {
+                if (!TryPay(guild, GetRestoreCost(tier)))
+                    return;
+            }
+            else
+            {
+                // cc-P416: the vouchers on hand, the same materials, and the gold for the rest.
+                guild.GuildCurrency.TryGetValue("mining", out var held);
+                var cost = GetRestoreCostCoveringVouchers(tier, held);
+                var gold = CompactGoldHelper.GetTotalGold(_pm);
+
+                if (gold < cost.Gold)
+                {
+                    var baseGold = GetRestoreCost(tier).Gold;
+                    _pm.SendMessage(0x22,
+                        $"Restoring {name} with gold for the missing vouchers costs {cost.Gold:N0} gold: the {baseGold:N0} base " +
+                        $"plus {cost.Missing} missing voucher{(cost.Missing == 1 ? "" : "s")} x {GoldPerMissingVoucher:N0} = " +
+                        $"{cost.Missing * GoldPerMissingVoucher:N0}. You have {gold:N0} in your pack and bank: {cost.Gold - gold:N0} short.");
+                    return;
+                }
+
+                if (!GuildResources.TryPay(_pm, guild, "mining", cost.Vouchers, "Mining Vouchers", cost.Gold, cost.Materials))
+                    return;
+            }
+        }
 
         // Remove the exhausted copy if present
         RemoveExhaustedTierItem(pack, tier);

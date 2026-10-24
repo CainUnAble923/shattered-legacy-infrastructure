@@ -143,6 +143,12 @@ public partial class Mining
         // immediately - without waiting for the next login sync.
         BroadcastDepletionIfEmptied(m);
 
+        // cc-P416: the Miners' Compact's mining quotas count the ore as it is handed over, before routing can merge it
+        // into a stack (ClusterFWorkOrderSystem.OnOreMined). The Logbook's per-ore tally above leaves iron out by design,
+        // so the quotas keep their own count from this same moment.
+        if (m is PlayerMobile pmQuota)
+            ClusterFWorkOrderSystem.OnOreMined(pmQuota, item);
+
         // Attempt to route into the Compact Ore Satchel first.
         if (TryRouteToSatchel(m, item))
             return true;

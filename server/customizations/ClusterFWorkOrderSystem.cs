@@ -21,6 +21,7 @@ public enum WorkOrderType
     TamingContract,
     TimberContract,
     CivicContract,
+    MiningQuota, // cc-P416: ore mined after taking it, nothing turned in
 }
 
 // -- Requirement: one line of a work order -------------------------------------
@@ -63,6 +64,19 @@ public class WorkOrderCleanUpRequirement : WorkOrderRequirement
 {
     public WorkOrderCleanUpRequirement(int points, string label)
         : base(typeof(ClusterFCustodianSystem), points, label) { }
+}
+
+/// <summary>
+/// cc-P416 (Chase 2026-10-22: "maybe instead of turning in it's just: mine this much ore"): a mining quota.
+/// <see cref="WorkOrderRequirement.Amount"/> ore of exactly <see cref="WorkOrderRequirement.ItemType"/> mined after the
+/// contract was taken, counted as the harvest hands it over (Mining.Give, where the Prospector's Logbook keeps its tally;
+/// <see cref="ClusterFWorkOrderSystem.OnOreMined"/>) into <see cref="WorkOrderEntry.MinedProgress"/>. Nothing is carried
+/// back or taken at turn-in, so ore bought, traded or picked up never counts.
+/// </summary>
+public class WorkOrderMiningRequirement : WorkOrderRequirement
+{
+    public WorkOrderMiningRequirement(Type oreType, int amount, string label)
+        : base(oreType, amount, label) { }
 }
 
 // -- Work order definition (static, registered at startup) --------------------
@@ -114,13 +128,23 @@ public class WorkOrderDef
 
     public bool Repeatable { get; }
 
+    /// <summary>
+    /// cc-P416: what a mining quota asked to be turned in before it became a quota. A contract taken before then
+    /// (<see cref="WorkOrderEntry.FromBeforeQuotas"/>) may still be finished that way, or by mining. Null for every other.
+    /// </summary>
+    public List<WorkOrderRequirement>? LegacyTurnIn { get; }
+
+    /// <summary>cc-P416: a Stone Contract is only for a miner who has learned stone mining (PlayerMobile.StoneMining).</summary>
+    public bool NeedsStoneMining => Type == WorkOrderType.StoneContract;
+
     public WorkOrderDef(
         string key, string guildKey, string title, string description,
         WorkOrderType type, List<WorkOrderRequirement> requirements,
         int minStanding, SkillName? skillRequired, double minSkill,
         int standingReward, int voucherReward, int goldReward,
         bool repeatable = true, string? requiredDiscovery = null,
-        string? requiredCreature = null, string? requiredWoodDiscovery = null)
+        string? requiredCreature = null, string? requiredWoodDiscovery = null,
+        List<WorkOrderRequirement>? legacyTurnIn = null)
     {
         Key                   = key;
         GuildKey              = guildKey;
@@ -138,6 +162,7 @@ public class WorkOrderDef
         RequiredDiscovery     = requiredDiscovery;
         RequiredCreature      = requiredCreature;
         RequiredWoodDiscovery = requiredWoodDiscovery;
+        LegacyTurnIn          = legacyTurnIn;
     }
 
     public string TypeLabel => Type switch
@@ -153,6 +178,7 @@ public class WorkOrderDef
         WorkOrderType.TamingContract     => "Taming Contract",
         WorkOrderType.TimberContract     => "Timber Contract",
         WorkOrderType.CivicContract      => "Civic Contract",
+        WorkOrderType.MiningQuota        => "Mining Quota",
         _                                => "Contract"
     };
 
@@ -162,6 +188,7 @@ public class WorkOrderDef
         var guild = data.GetOrCreateGuildData(pm.Serial);
         if (guild.GetReputation(GuildKey) < MinStanding) return false;
         if (SkillRequired.HasValue && pm.Skills[SkillRequired.Value].Value < MinSkill) return false;
+        if (NeedsStoneMining && !pm.StoneMining) return false; // cc-P416
 
         if (RequiredDiscovery != null)
         {
@@ -195,6 +222,9 @@ public class WorkOrderDef
 
         if (SkillRequired.HasValue && pm.Skills[SkillRequired.Value].Value < MinSkill)
             return $"Requires {MinSkill:N0} {SkillRequired.Value}";
+
+        if (NeedsStoneMining && !pm.StoneMining)
+            return ClusterFWorkOrderSystem.StoneMiningHint;
 
         if (RequiredDiscovery != null)
         {
@@ -240,9 +270,31 @@ public class WorkOrderDef
             }
         }
 
+        // cc-P416: a mining quota is met by ore mined since it was taken; one taken before quotas, also by the old turn-in.
+        if (!QuotaMet(entry) && !UsesLegacyTurnIn(pm, entry)) return false;
+
         // F-11: materials and crafted items count from the pack and the bank, together (GuildResources).
         return GuildResources.Has(pm, ItemCosts());
     }
+
+    /// <summary>cc-P416: every mining quota line is mined (true when the order has none).</summary>
+    public bool QuotaMet(WorkOrderEntry? entry)
+    {
+        foreach (var req in Requirements)
+        {
+            if (req is WorkOrderMiningRequirement && (entry == null || ClusterFWorkOrderSystem.MinedSince(entry, req) < req.Amount))
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// cc-P416: a contract taken before it became a mining quota, not yet mined, whose old turn-in is in the pack and bank:
+    /// it is finished that way (the ore is taken at turn-in, as it was).
+    /// </summary>
+    public bool UsesLegacyTurnIn(PlayerMobile pm, WorkOrderEntry? entry) =>
+        entry is { FromBeforeQuotas: true } && LegacyTurnIn != null && !QuotaMet(entry) &&
+        GuildResources.Has(pm, LegacyTurnIn.Select(r => GuildCost.Of(r.ItemType, r.Amount, r.Label)).ToArray());
 
     /// <summary>The item requirements (not the taming ones) as GuildResources costs.</summary>
     public GuildCost[] ItemCosts()
@@ -250,7 +302,7 @@ public class WorkOrderDef
         var costs = new List<GuildCost>();
         foreach (var req in Requirements)
         {
-            if (req is not WorkOrderTamingRequirement and not WorkOrderCleanUpRequirement)
+            if (req is not WorkOrderTamingRequirement and not WorkOrderCleanUpRequirement and not WorkOrderMiningRequirement)
                 costs.Add(GuildCost.Of(req.ItemType, req.Amount, req.Label));
         }
         return costs.ToArray();
@@ -261,11 +313,21 @@ public class WorkOrderDef
     /// Taming requirements are skipped (animals were already consumed via crook delivery).
     /// Takes nothing and returns true if the player carries an active DevTestingCrystal (bypass mode).
     /// </summary>
-    public bool ConsumeRequirements(PlayerMobile pm)
+    public bool ConsumeRequirements(PlayerMobile pm, WorkOrderEntry? entry = null)
     {
         if (Items.DevTestingCrystal.IsActive(pm)) return true; // testing bypass - nothing consumed
-        return GuildResources.TryConsume(pm, ItemCosts());
+
+        // cc-P416: a mining quota takes nothing, unless an old contract is finished the old way (UsesLegacyTurnIn).
+        var costs = ItemCosts();
+        if (UsesLegacyTurnIn(pm, entry))
+            costs = costs.Concat(LegacyTurnIn!.Select(r => GuildCost.Of(r.ItemType, r.Amount, r.Label))).ToArray();
+
+        return GuildResources.TryConsume(pm, costs);
     }
+
+    /// <summary>cc-P416: a requirement line as the ledger lists it ("100 Iron Ore", or "Mine 100 Iron Ore").</summary>
+    public static string Describe(WorkOrderRequirement req) =>
+        req is WorkOrderMiningRequirement ? $"Mine {req.Amount} {req.Label}" : $"{req.Amount} {req.Label}";
 }
 
 // -- Player's active work order instance (serialized in account data) ----------
@@ -294,6 +356,17 @@ public class WorkOrderEntry
     /// </summary>
     public double? CleanUpBaseline { get; set; }
 
+    /// <summary>
+    /// cc-P416: ore mined since a mining quota was taken, by ore type name (e.g. "IronOre"), from ClusterFWorkOrderSystem.OnOreMined.
+    /// </summary>
+    public Dictionary<string, int> MinedProgress { get; } = new();
+
+    /// <summary>
+    /// cc-P416: the entry was saved before mining quotas (version 2 or older). Such a contract may be finished the old way,
+    /// by turning in what it asked for (WorkOrderDef.LegacyTurnIn), or by mining. Kept through later saves.
+    /// </summary>
+    public bool FromBeforeQuotas { get; set; }
+
     public WorkOrderEntry(string defKey, string guildKey)
     {
         DefKey     = defKey;
@@ -301,10 +374,11 @@ public class WorkOrderEntry
         AcceptedAt = DateTime.UtcNow;
     }
 
-    // Deserialization - version 1 adds TamingProgress, version 2 (cc-P414) CleanUpBaseline
+    // Deserialization - version 1 adds TamingProgress, version 2 (cc-P414) CleanUpBaseline, version 3 (cc-P416)
+    // MinedProgress and FromBeforeQuotas
     public WorkOrderEntry(IGenericReader r)
     {
-        var version = r.ReadInt(); // 0, 1 or 2
+        var version = r.ReadInt(); // 0 to 3
         DefKey      = r.ReadString();
         GuildKey    = r.ReadString();
         AcceptedAt  = r.ReadDateTime();
@@ -321,11 +395,24 @@ public class WorkOrderEntry
         {
             CleanUpBaseline = r.ReadDouble();
         }
+
+        if (version >= 3)
+        {
+            var mined = r.ReadInt();
+            for (var i = 0; i < mined; i++)
+                MinedProgress[r.ReadString()] = r.ReadInt();
+
+            FromBeforeQuotas = r.ReadBool();
+        }
+        else
+        {
+            FromBeforeQuotas = true;
+        }
     }
 
     public void Serialize(IGenericWriter w)
     {
-        w.Write(2); // version 2
+        w.Write(3); // version 3
         w.Write(DefKey);
         w.Write(GuildKey);
         w.Write(AcceptedAt);
@@ -341,6 +428,15 @@ public class WorkOrderEntry
 
         w.Write(CleanUpBaseline.HasValue);
         if (CleanUpBaseline.HasValue) w.Write(CleanUpBaseline.Value);
+
+        w.Write(MinedProgress.Count);
+        foreach (var (key, val) in MinedProgress)
+        {
+            w.Write(key);
+            w.Write(val);
+        }
+
+        w.Write(FromBeforeQuotas);
     }
 }
 
@@ -472,6 +568,53 @@ public static class ClusterFWorkOrderSystem
         }
     }
 
+    public static bool HasMiningQuota(WorkOrderDef def) => def.Requirements.Exists(r => r is WorkOrderMiningRequirement);
+
+    /// <summary>cc-P416: ore of the requirement's type mined since the entry was taken.</summary>
+    public static int MinedSince(WorkOrderEntry entry, WorkOrderRequirement req) =>
+        entry.MinedProgress.TryGetValue(req.ItemType.Name, out var mined) ? mined : 0;
+
+    /// <summary>
+    /// cc-P416: ore the harvest is handing over (Mining.Give, CompactOreSatchelRoutingHook.cs), counted toward each of the
+    /// character's open mining quotas for exactly that ore type. Called only from mining, so ore bought, traded, picked up
+    /// or smelted never counts, and ore mined before a contract was taken was counted before it existed.
+    /// </summary>
+    public static void OnOreMined(PlayerMobile pm, Item ore)
+    {
+        if (pm?.Account is not Server.Accounting.IAccount acct || ore is not BaseOre || ore.Amount <= 0)
+            return;
+
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
+        var type = ore.GetType();
+
+        foreach (var entry in guild.ActiveWorkOrders)
+        {
+            if (Get(entry.DefKey) is not { } def)
+                continue;
+
+            foreach (var req in def.Requirements)
+            {
+                if (req is WorkOrderMiningRequirement && req.ItemType == type)
+                {
+                    entry.MinedProgress[type.Name] = MinedSince(entry, req) + ore.Amount;
+                    break;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// cc-P416: the line a miner who has not learned stone mining sees where Stone Contracts would be: the Stone Crafter's
+    /// book, or the Compact's copy at its rank (MinersCompactLiaisonGump.StoneBookStanding).
+    /// </summary>
+    public static string StoneMiningHint =>
+        "Stone Contracts open once you learn stone mining: read Mining For Quality Stone (needs 100 Mining). " +
+        $"The Stone Crafter sells it, and so does the Compact from {MinersCompactLiaisonGump.GetRankName(MinersCompactLiaisonGump.StoneBookStanding)} rank.";
+
+    /// <summary>cc-P416: the hint for this character in this guild's ledger, or null (another guild, or already learned).</summary>
+    public static string? StoneMiningHintFor(PlayerMobile pm, string guildKey) =>
+        guildKey.Equals("mining", StringComparison.OrdinalIgnoreCase) && !pm.StoneMining ? StoneMiningHint : null;
+
     /// <summary>Returns true if the player can accept another work order of this key.</summary>
     public static bool CanAccept(CharacterGuildData guild, string defKey, string guildKey) =>
         guild.ActiveWorkOrders.Count(e => e.GuildKey.Equals(guildKey, StringComparison.OrdinalIgnoreCase)) < MaxActiveOrdersPerGuild
@@ -499,19 +642,22 @@ public static class ClusterFWorkOrderSystem
             goldReward:        75
         ));
 
+        // cc-P416 (Chase 2026-10-22): a mining quota, mined after taking it with nothing carried back. The key and the pay
+        // are the old "Raw Ore Sample" turn-in's (100 iron ore), so a contract already held finishes either way.
         Register(new WorkOrderDef(
             key:               "mining.iron_ore_s",
             guildKey:          "mining",
-            title:             "Raw Ore Sample",
-            description:       "The Survey Archivist needs fresh raw iron ore for quality assessment.",
-            type:              WorkOrderType.ResourceContract,
-            requirements:      new() { new(typeof(IronOre), 100, "Iron Ore") },
+            title:             "Mine Iron Ore",
+            description:       "The Survey Archivist wants fresh iron assessed at the vein. Mine 100 iron ore after taking this contract; nothing to carry back.",
+            type:              WorkOrderType.MiningQuota,
+            requirements:      new() { new WorkOrderMiningRequirement(typeof(IronOre), 100, "Iron Ore") },
             minStanding:       0,
             skillRequired:     null,
             minSkill:          0.0,
             standingReward:    75,
             voucherReward:     4,
-            goldReward:        60
+            goldReward:        60,
+            legacyTurnIn:      new() { new(typeof(IronOre), 100, "Iron Ore") }
         ));
 
         // -- Intermediate: Mining 30+ required --------------------------------
@@ -604,20 +750,26 @@ public static class ClusterFWorkOrderSystem
             requiredDiscovery: "Copper"
         ));
 
+        // cc-P416 (Chase 2026-10-22: one amount per metal): was "Ore Refinement Run", 150 iron ore turned in, a second iron
+        // amount beside the 100 above. Now a Dull Copper quota: the first colored ore, which a Journeyman's next step in
+        // Mining reaches (it needs 65.0 to mine, patches/Mining.cs:116-123, hence the gate up from 50) and the ore whose
+        // ingots the Apprentice tier already asks for. Same key and pay; a contract already held may be finished the old
+        // way (150 iron ore) or by mining.
         Register(new WorkOrderDef(
             key:               "mining.ore_refinement_s",
             guildKey:          "mining",
-            title:             "Ore Refinement Run",
-            description:       "Process a batch of raw iron ore for the Compact's refinement record.",
-            type:              WorkOrderType.RefinementContract,
-            requirements:      new() { new(typeof(IronOre), 150, "Iron Ore") },
+            title:             "Mine Dull Copper Ore",
+            description:       "The Compact's refinement record wants dull copper straight from the vein. Mine 50 dull copper ore after taking this contract; nothing to carry back.",
+            type:              WorkOrderType.MiningQuota,
+            requirements:      new() { new WorkOrderMiningRequirement(typeof(DullCopperOre), 50, "Dull Copper Ore") },
             minStanding:       5000,
             skillRequired:     SkillName.Mining,
-            minSkill:          50.0,
+            minSkill:          65.0,
             standingReward:    350,
             voucherReward:     16,
-            goldReward:        400
-            // No discovery gate - iron ore, iron is excluded from tracking.
+            goldReward:        400,
+            requiredDiscovery: "DullCopper",
+            legacyTurnIn:      new() { new(typeof(IronOre), 150, "Iron Ore") }
         ));
 
         Register(new WorkOrderDef(
