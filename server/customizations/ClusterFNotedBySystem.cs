@@ -584,7 +584,41 @@ public static class ClusterFNotedBySystem
     {
         if (bc.Hits <= 0 && !bc.IsDeadPet)
             OnCreatureDied(bc);
+
+        // cc-P427: a creature that is gone is forgotten (findings 3 and 4 of cc-P379).
+        _damagedPlayers.Remove(bc);
+        _released.Remove(bc);
     }
+
+    // -- Who a creature has reached (cc-P427, cc-P379 finding 3) ---------------------------------------------------
+    //
+    // "Never reached you" was the player's own damage list, which pinned empties whenever the player's hits are full
+    // (Mobile.cs:2043) and expires 2 minutes after a hit (Mobile.cs:55-59): a creature that hit you before you healed to
+    // full counted as never reaching you. This keeps its own record, from PlayerMobile.OnDamage
+    // (PlayerMobile-noted-damage-memory.patch), where pinned's Mobile.Damage fills that list (Mobile.cs:5983, :6009),
+    // and forgets a creature when it is deleted (dead or not).
+
+    private static readonly Dictionary<BaseCreature, HashSet<Mobile>> _damagedPlayers = new();
+
+    /// <summary>A hit on <paramref name="pm"/> (PlayerMobile.OnDamage). Remembers the creature that dealt it.</summary>
+    public static void PlayerDamaged(PlayerMobile pm, Mobile from)
+    {
+        if (from is not BaseCreature { Deleted: false } bc || pm == null)
+            return;
+
+        if (!_damagedPlayers.TryGetValue(bc, out var players))
+            _damagedPlayers[bc] = players = new HashSet<Mobile>();
+        players.Add(pm);
+    }
+
+    /// <summary>Whether <paramref name="bc"/> has ever damaged <paramref name="pm"/> while it lived.</summary>
+    public static bool HasReached(BaseCreature bc, Mobile pm) =>
+        _damagedPlayers.TryGetValue(bc, out var players) && players.Contains(pm);
+
+    /// <summary>For the tests: creatures with a record of players they damaged, and released pets remembered.</summary>
+    internal static int ReachedCount => _damagedPlayers.Count;
+
+    internal static bool RemembersRelease(BaseCreature bc) => _released.ContainsKey(bc);
 
     [OnEvent(nameof(CreatureEvents.CreatureDeathEvent))]
     public static void OnCreatureDeath(BaseCreature bc)
@@ -606,7 +640,7 @@ public static class ClusterFNotedBySystem
 
         if (killer is PlayerMobile pm)
         {
-            if (IsMelee(bc) && pm.FindDamageEntryFor(bc) == null)
+            if (IsMelee(bc) && !HasReached(bc, pm) && pm.FindDamageEntryFor(bc) == null)
                 Notify(pm, TriggerKind.NeverReachedKills);
 
             if (ClusterFLootBoxes.IsBoss(bc))
@@ -649,8 +683,22 @@ public static class ClusterFNotedBySystem
     /// <summary>A pet released to the wild by <paramref name="master"/> (PetOrders.IssueRelease, before the master is cleared).</summary>
     public static void Released(BaseCreature bc, Mobile? master)
     {
-        if (master is PlayerMobile)
-            _released[bc] = (master, Core.TickCount);
+        if (master is not PlayerMobile)
+            return;
+
+        // cc-P427 (cc-P379 finding 4): a release past the retame window can never count, so it is dropped here; a deleted
+        // pet is dropped in OnCreatureDeleted. Before, every released pet stayed until it was tamed again.
+        var now = Core.TickCount;
+        var window = (long)RetameWindow.TotalMilliseconds;
+        List<BaseCreature>? stale = null;
+        foreach (var (pet, rel) in _released)
+        {
+            if (pet.Deleted || now - rel.At > window)
+                (stale ??= new List<BaseCreature>()).Add(pet);
+        }
+
+        stale?.ForEach(pet => _released.Remove(pet));
+        _released[bc] = (master, now);
     }
 
     /// <summary>A creature tamed (PetTrainingHooks.OnTamed). Counts when its releaser tames it back inside the window.</summary>

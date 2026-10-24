@@ -213,6 +213,14 @@ public static class CraftBOD
             return;
         }
 
+        // cc-P427 (cc-P379 finding 2): crafted items only, as pinned's small deed (SmallBOD-crafted-only.patch) and the
+        // large smith deed's item fill (LargeBODItemFill.cs) since cc-P263. A bow, staff or cleaver from a shop is refused.
+        if (ClusterFStoreBought.Refuses(item))
+        {
+            from.SendMessage(0x22, ClusterFStoreBought.Refusal);
+            return;
+        }
+
         if (deed.Material != BulkMaterialType.None && GetMaterial(item) != deed.Material)
         {
             from.SendLocalizedMessage(1157310); // The item is not made from the requested resource.

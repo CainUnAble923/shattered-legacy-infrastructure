@@ -10,6 +10,9 @@
 // box double-click, a death in a house, a commission turn-in); a craft's success roll and a recycle's forge are not
 // drivable here, so those call the hook the patch calls. Facts:
 //   1 combat: Geography Major from a real kill; a creature that hit you, or a mage, never; a second kill earns nothing new.
+//     cc-P427 (cc-P379 finding 3): a creature that hit you still counts as having reached you after you heal to full
+//     (pinned empties the player's damage list at full hits), and a creature is forgotten once it is gone.
+//     cc-P427 (cc-P379 finding 4): a released pet that is deleted, or whose window has passed, is forgotten.
 //   2 bosses: Last Hit Larry (and its title) and Bare Minimum from one killing blow; a full-damage, shod kill neither.
 //   3 pets and provocation: Not My Problem, Acceptable Losses, Remote Work, Commitment Issues (and its window).
 //   4 travel: Tactical Retreat through a moongate, Wrong Turn from the death that follows, Any% Speedrun, Rune Hoarder
@@ -201,6 +204,61 @@ public class NotedBySystemVerification : IDisposable
             Assert.Equal(2, p.Count(TriggerKind.NeverReachedKills));
         });
         Assert.False(p.Has(A.RockEnthusiastKey));
+    }
+
+    [Fact]
+    public void ACreatureThatHitYouStillReachedYouAfterAHealToFull()
+    {
+        var p = NewPlayer();
+
+        var orc = Placed(new Orc(), new Point3D(Spot.X + 2, Spot.Y + 2, Spot.Z));
+        p.Pm.Damage(5, orc);
+
+        // Healed to full: pinned clears the player's damage list (Mobile.cs:2043); the creature still reached you.
+        p.Pm.Hits = p.Pm.HitsMax;
+        Assert.Null(p.Pm.FindDamageEntryFor(orc));
+
+        orc.Damage(orc.Hits + 50, p.Pm);
+        Assert.False(orc.Alive);
+        Assert.Equal(0, p.Count(TriggerKind.NeverReachedKills));
+        Assert.False(N.HasReached(orc, p.Pm)); // gone: forgotten
+
+        // A creature that never hit you still counts.
+        var other = Placed(new Orc(), new Point3D(Spot.X + 3, Spot.Y + 2, Spot.Z));
+        other.Damage(other.Hits + 50, p.Pm);
+        Assert.Equal(1, p.Count(TriggerKind.NeverReachedKills));
+
+        // A creature deleted without dying is forgotten too.
+        var gone = Placed(new Orc(), new Point3D(Spot.X + 4, Spot.Y + 2, Spot.Z));
+        p.Pm.Damage(1, gone);
+        var reached = N.ReachedCount;
+        gone.Delete();
+        Assert.Equal(reached - 1, N.ReachedCount);
+    }
+
+    [Fact]
+    public void AReleasedPetThatIsGoneOrPastTheWindowIsForgotten()
+    {
+        var p = NewPlayer();
+
+        // Deleted after release: forgotten at once.
+        var cat = Placed(new Cat(), new Point3D(Spot.X + 2, Spot.Y + 40, Spot.Z));
+        Assert.True(cat.SetControlMaster(p.Pm));
+        N.Released(cat, p.Pm);
+        Assert.True(N.RemembersRelease(cat));
+        cat.Delete();
+        Assert.False(N.RemembersRelease(cat));
+
+        // Past the retame window: dropped when the next release comes in.
+        var dog = Placed(new Dog(), new Point3D(Spot.X + 3, Spot.Y + 40, Spot.Z));
+        Assert.True(dog.SetControlMaster(p.Pm));
+        N.Released(dog, p.Pm);
+        ShardTestClock.AdvanceSeconds((int)N.RetameWindow.TotalSeconds + 60);
+        var rabbit = Placed(new Rabbit(), new Point3D(Spot.X + 4, Spot.Y + 40, Spot.Z));
+        Assert.True(rabbit.SetControlMaster(p.Pm));
+        N.Released(rabbit, p.Pm);
+        Assert.False(N.RemembersRelease(dog));
+        Assert.True(N.RemembersRelease(rabbit));
     }
 
     // ---------------------------------------------------------------- 2

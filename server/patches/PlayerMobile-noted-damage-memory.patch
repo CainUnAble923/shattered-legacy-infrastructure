@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -2375,6 +2375,10 @@
+             ReceivedHonorContext?.OnTargetDamaged(from, amount);
+             SentHonorContext?.OnSourceDamaged(from, amount);
+ 
++            // Shattered Legacy (cc-P427): Noted by the System remembers which creatures damaged this player, beside the
++            // damage list that pinned empties at full hits (customizations ClusterFNotedBySystem.PlayerDamaged).
++            ClusterFNotedBySystem.PlayerDamaged(this, from);
++
+             base.OnDamage(amount, from, willKill);
+         }
+ 

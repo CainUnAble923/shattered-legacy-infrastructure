@@ -875,6 +875,12 @@ apply_patch "$PATCHES/HarvestBank-lumber-stumps.patch"
 # back. Alternatives: notes/cc-P480-tutorial-first-play-fixes.md.
 apply_patch "$PATCHES/AnimalTrainer-elixir-of-rebirth.patch"
 
+# P427 (cc-P379 finding 3): one hook line in PlayerMobile.OnDamage, where pinned's Mobile.Damage reports every hit
+# (Mobile.cs:6009, after RegisterDamage), into customizations ClusterFNotedBySystem.PlayerDamaged. Noted by the System
+# needs "this creature damaged this player" past a heal to full, and pinned empties the damage list at full hits
+# (Mobile.cs:2043). PlayerMobile has no damage event. Notes: notes/cc-P427-fixes-from-crystal-p379.md.
+apply_patch "$PATCHES/PlayerMobile-noted-damage-memory.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

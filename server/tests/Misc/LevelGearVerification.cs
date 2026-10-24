@@ -231,11 +231,25 @@ public class LevelGearVerification : IDisposable
         orc2.Kill();
         Assert.Equal(before + (long)Math.Round(pool), LevelGearStore.Of(aSword)!.Xp);
 
-        // A pet's death pays nothing, even to whoever damaged it.
+        // A pet's death pays nothing, even to whoever damaged it. cc-P427 (cc-P379 finding 1): through a real death, as the
+        // orc above. Pinned deletes a dead non-bonded pet, clearing its master, before CreatureDeathEvent; calling
+        // AwardDeath on the live pet (as this fact did) never saw that.
         var tame = Track(new Horse { Controlled = true, ControlMaster = b });
         tame.MoveToWorld(Spot, Map.Trammel);
         tame.Damage(10, a);
         Assert.Empty(ClusterFLevelGear.AwardDeath(tame, 1000));
+        Assert.True(ClusterFLevelGear.PoolFor(tame) > 0);
+        before = LevelGearStore.Of(aSword)!.Xp;
+        tame.Kill();
+        Assert.True(tame.Deleted);
+        Assert.Equal(before, LevelGearStore.Of(aSword)!.Xp);
+
+        // A summoned creature's death pays nothing either.
+        var summon = Track(new Orc { Summoned = true, SummonMaster = b });
+        summon.MoveToWorld(Spot, Map.Trammel);
+        summon.Damage(10, a);
+        summon.Kill();
+        Assert.Equal(before, LevelGearStore.Of(aSword)!.Xp);
     }
 
     // ---------------------------------------------------------------- 5

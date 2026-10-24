@@ -29,6 +29,13 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.8
+
+### Fixed
+- Levelable gear no longer gains experience from killing pets.
+- Fletching, carpentry and tinkering bulk orders now take only items a player crafted, like every other bulk order. A bow, staff or cleaver bought from a shopkeeper no longer fills them.
+- A hidden achievement was sometimes granted when it should not have been.
+
 ## 2026.10.24.7
 
 ### Added

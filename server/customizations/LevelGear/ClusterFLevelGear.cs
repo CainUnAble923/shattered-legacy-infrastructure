@@ -452,10 +452,16 @@ public static class ClusterFLevelGear
     /// <summary>The creature's XP pool: its Bard difficulty (XmlLevelItems' per-kill formula), times the setting.</summary>
     public static double PoolFor(BaseCreature bc) => BaseInstrument.GetBaseDifficulty(bc) * LevelGearSettings.XpMultiplier;
 
-    [OnEvent(nameof(CreatureEvents.CreatureDeathEvent))]
-    public static void OnCreatureDeath(BaseCreature bc)
+    // cc-P427 (cc-P379 finding 1): which event. Pinned deletes a dead non-bonded creature inside Mobile.OnDeath, before
+    // BaseCreature raises CreatureDeathEvent (BaseCreature.cs:3662-3669, Mobile.cs:4899-4902), and BaseCreature.OnDelete
+    // clears its master (BaseCreature.cs:3687-3688). Read at CreatureDeathEvent, a killed pet had no master and paid like a
+    // wild creature. CreatureDeletedEvent comes first (BaseCreature.cs:3674) with the master and the damage list still
+    // there; a creature deleted with no hits left is one dying (Mobile.Kill sets Hits to 0), as Noted by the System reads
+    // it (ClusterFNotedBySystem.OnCreatureDeleted). A bonded pet's death deletes nothing and is controlled: it pays nothing.
+    [OnEvent(nameof(CreatureEvents.CreatureDeletedEvent))]
+    public static void OnCreatureDeleted(BaseCreature bc)
     {
-        if (LevelGearSettings.Enabled)
+        if (LevelGearSettings.Enabled && bc.Hits <= 0 && !bc.IsDeadPet)
         {
             AwardDeath(bc, PoolFor(bc));
         }
