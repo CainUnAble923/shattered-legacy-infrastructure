@@ -4,13 +4,13 @@ using Server.Items;
 namespace Server.Items;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CleanedDebris — Custodians guild work-order currency
+// CleanedDebris — the civic waste bundle, RETIRED by cc-P414 (Chase, 2026-10-22)
 //
-// Awarded when a player processes 5+ items at once via [cleanupall or the
-// TrashBag "Dump Now" action.  Rate: 1 bundle per 5 items cleaned in a batch.
-//
-// Used to fulfil Custodian guild work orders (Civic Contracts).
-// Cannot be purchased or crafted — earned only through cleanup activity.
+// Cleaning used to drop 1 per 5 items with Clean Up value in one batch ([cleanupall, the
+// TrashBag's "Dump Now"), the turn-in for the Custodians' Civic Contracts. Nothing makes them
+// now: the contracts ask for Clean Up points. The type stays so saves that hold bundles load
+// (serialization unchanged, version 0). Handing bundles to the Sanitation Warden redeems
+// them once for Clean Up points (ClusterFCustodianSystem.RedeemBundles) and deletes them.
 // ─────────────────────────────────────────────────────────────────────────────
 
 [SerializationGenerator(0, false)]

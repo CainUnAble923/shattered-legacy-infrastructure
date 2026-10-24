@@ -52,6 +52,19 @@ public class WorkOrderTamingRequirement : WorkOrderRequirement
         : base(creatureType, amount, label) { }
 }
 
+/// <summary>
+/// cc-P414: a Civic Contract's requirement: <see cref="WorkOrderRequirement.Amount"/> Clean Up points earned after the
+/// contract was taken (lifetime Clean Up points above the entry's <see cref="WorkOrderEntry.CleanUpBaseline"/>). Nothing
+/// is taken at turn-in: the points stay spendable in the Clean Up store, as they were when bundles came on top of them.
+/// The points a turn-in counted are claimed, so they never fill a second open contract
+/// (<see cref="ClusterFWorkOrderSystem.ClaimCleanUpPoints"/>).
+/// </summary>
+public class WorkOrderCleanUpRequirement : WorkOrderRequirement
+{
+    public WorkOrderCleanUpRequirement(int points, string label)
+        : base(typeof(ClusterFCustodianSystem), points, label) { }
+}
+
 // -- Work order definition (static, registered at startup) --------------------
 
 /// <summary>
@@ -221,6 +234,10 @@ public class WorkOrderDef
                 entry.TamingProgress.TryGetValue(tamingReq.ItemType.Name, out var progress);
                 if (progress < tamingReq.Amount) return false;
             }
+            else if (req is WorkOrderCleanUpRequirement)
+            {
+                if (entry == null || ClusterFWorkOrderSystem.CleanUpProgress(pm, entry) < req.Amount) return false;
+            }
         }
 
         // F-11: materials and crafted items count from the pack and the bank, together (GuildResources).
@@ -233,7 +250,7 @@ public class WorkOrderDef
         var costs = new List<GuildCost>();
         foreach (var req in Requirements)
         {
-            if (req is not WorkOrderTamingRequirement)
+            if (req is not WorkOrderTamingRequirement and not WorkOrderCleanUpRequirement)
                 costs.Add(GuildCost.Of(req.ItemType, req.Amount, req.Label));
         }
         return costs.ToArray();
@@ -270,6 +287,13 @@ public class WorkOrderEntry
     /// </summary>
     public Dictionary<string, int> TamingProgress { get; } = new();
 
+    /// <summary>
+    /// cc-P414: the character's lifetime Clean Up points when a Civic Contract was taken, raised by the points other
+    /// turn-ins claimed. Null for an entry from before cc-P414 (a contract that asked for bundles): the first look sets
+    /// it to the lifetime then, so such a contract is finished with points earned from that moment.
+    /// </summary>
+    public double? CleanUpBaseline { get; set; }
+
     public WorkOrderEntry(string defKey, string guildKey)
     {
         DefKey     = defKey;
@@ -277,10 +301,10 @@ public class WorkOrderEntry
         AcceptedAt = DateTime.UtcNow;
     }
 
-    // Deserialization - version 1 adds TamingProgress
+    // Deserialization - version 1 adds TamingProgress, version 2 (cc-P414) CleanUpBaseline
     public WorkOrderEntry(IGenericReader r)
     {
-        var version = r.ReadInt(); // 0 or 1
+        var version = r.ReadInt(); // 0, 1 or 2
         DefKey      = r.ReadString();
         GuildKey    = r.ReadString();
         AcceptedAt  = r.ReadDateTime();
@@ -292,11 +316,16 @@ public class WorkOrderEntry
             for (var i = 0; i < count; i++)
                 TamingProgress[r.ReadString()] = r.ReadInt();
         }
+
+        if (version >= 2 && r.ReadBool())
+        {
+            CleanUpBaseline = r.ReadDouble();
+        }
     }
 
     public void Serialize(IGenericWriter w)
     {
-        w.Write(1); // version 1
+        w.Write(2); // version 2
         w.Write(DefKey);
         w.Write(GuildKey);
         w.Write(AcceptedAt);
@@ -309,6 +338,9 @@ public class WorkOrderEntry
             w.Write(key);
             w.Write(val);
         }
+
+        w.Write(CleanUpBaseline.HasValue);
+        if (CleanUpBaseline.HasValue) w.Write(CleanUpBaseline.Value);
     }
 }
 
@@ -371,6 +403,74 @@ public static class ClusterFWorkOrderSystem
     /// <summary>Returns true if the player already has an active copy of this order.</summary>
     public static bool HasActive(CharacterGuildData guild, string defKey) =>
         guild.ActiveWorkOrders.Exists(e => e.DefKey.Equals(defKey, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Adds an accepted order to the character's active list (the ledger's Accept). cc-P414: a Civic Contract starts
+    /// counting Clean Up points from the character's lifetime total now.
+    /// </summary>
+    public static WorkOrderEntry Accept(PlayerMobile pm, CharacterGuildData guild, WorkOrderDef def)
+    {
+        var entry = new WorkOrderEntry(def.Key, def.GuildKey);
+
+        if (HasCleanUpRequirement(def))
+        {
+            entry.CleanUpBaseline = ClusterFCustodianSystem.GetLifetimePoints(pm);
+        }
+
+        guild.ActiveWorkOrders.Add(entry);
+        return entry;
+    }
+
+    public static bool HasCleanUpRequirement(WorkOrderDef def) => def.Requirements.Exists(r => r is WorkOrderCleanUpRequirement);
+
+    /// <summary>cc-P414: the Clean Up points earned since the entry's baseline (set now for an entry from before cc-P414).</summary>
+    public static double CleanUpProgress(PlayerMobile pm, WorkOrderEntry entry)
+    {
+        var lifetime = ClusterFCustodianSystem.GetLifetimePoints(pm);
+        entry.CleanUpBaseline ??= lifetime;
+        return Math.Max(0, lifetime - entry.CleanUpBaseline.Value);
+    }
+
+    /// <summary>
+    /// cc-P414: a Civic Contract was turned in. It counted the first points after its baseline; any other open Civic
+    /// Contract of the character that also counted those points has its baseline raised by the overlap, so the same
+    /// Clean Up points never fill two contracts (before, each contract took its own bundles).
+    /// </summary>
+    public static void ClaimCleanUpPoints(PlayerMobile pm, CharacterGuildData guild, WorkOrderEntry done, WorkOrderDef def)
+    {
+        var claimed = 0;
+        foreach (var req in def.Requirements)
+        {
+            if (req is WorkOrderCleanUpRequirement)
+            {
+                claimed += req.Amount;
+            }
+        }
+
+        if (claimed <= 0)
+        {
+            return;
+        }
+
+        var lifetime = ClusterFCustodianSystem.GetLifetimePoints(pm);
+        var start = done.CleanUpBaseline ?? lifetime;
+        var end = start + claimed;
+
+        foreach (var other in guild.ActiveWorkOrders)
+        {
+            if (ReferenceEquals(other, done) || Get(other.DefKey) is not { } otherDef || !HasCleanUpRequirement(otherDef))
+            {
+                continue;
+            }
+
+            other.CleanUpBaseline ??= lifetime;
+            var overlap = end - Math.Max(start, other.CleanUpBaseline.Value);
+            if (overlap > 0)
+            {
+                other.CleanUpBaseline += overlap;
+            }
+        }
+    }
 
     /// <summary>Returns true if the player can accept another work order of this key.</summary>
     public static bool CanAccept(CharacterGuildData guild, string defKey, string guildKey) =>
@@ -2393,9 +2493,15 @@ public static class ClusterFWorkOrderSystem
 
     // -- Custodians order definitions ------------------------------------------
     //
-    // Civic Contracts use CleanedDebris (civic waste bundles) as the turn-in
-    // currency.  Bundles are earned at a rate of 1 per 5 items cleaned in any
-    // batch operation ([cleanupall or TrashBag dump).
+    // cc-P414: Civic Contracts ask for Clean Up points earned after the contract was taken (WorkOrderCleanUpRequirement).
+    // They took civic waste bundles (CleanedDebris), 1 per 5 items with Clean Up value cleaned in one batch; bundles are
+    // retired. Sizing, measured (CivicContractPointsVerification.SizingProbeLootPointsPerValuedItem, pinned's loot packs
+    // rolled 300 times each): a valued loot item is 2.3 (Meager) to 3.3 (FilthyRich) Clean Up points, and a corpse, which
+    // counted as one valued item, 2.4 to 7 before its creature's fame base. We take 2 a valued item, under every average,
+    // so 10 a bundle: 5 / 15 / 40 / 80 / 200 bundles become 50 / 150 / 400 / 800 / 2,000 points. Rewards unchanged, so a
+    // contract pays at most 2 gp a point; the cheapest vendor item costs 2.5 gp a point (sandals), so no contract is
+    // filled at a profit from vendor goods (P33's open item 2; fact 7). ClusterFCustodianSystem.PointsPerBundle (10) is
+    // the same rate for the bundles players still hold.
     //
     // Five tiers aligned to the Custodian rank ladder (ClusterFCustodianSystem.Ranks, lifetime Clean Up points):
     //   Volunteer (0) -> Junior Custodian (25) -> Custodian (125)
@@ -2413,9 +2519,9 @@ public static class ClusterFWorkOrderSystem
             key:            "custodians.refuse_collection",
             guildKey:       "custodians",
             title:          "Refuse Collection",
-            description:    "The Sanitation Warden needs proof of cleanup effort. Deliver a bundle of civic waste.",
+            description:    "The Sanitation Warden needs proof of cleanup effort. Earn Clean Up points after taking this contract.",
             type:           WorkOrderType.CivicContract,
-            requirements:   new() { new(typeof(CleanedDebris), 5, "Civic Waste Bundles") },
+            requirements:   new() { new WorkOrderCleanUpRequirement(50, "Clean Up points earned") },
             minStanding:    0,
             skillRequired:  null,
             minSkill:       0.0,
@@ -2430,9 +2536,9 @@ public static class ClusterFWorkOrderSystem
             key:            "custodians.sanitation_detail",
             guildKey:       "custodians",
             title:          "Sanitation Detail",
-            description:    "A district supervisor has posted a cleanup order. Deliver a larger batch of civic waste bundles.",
+            description:    "A district supervisor has posted a cleanup order. Earn a larger batch of Clean Up points after taking it.",
             type:           WorkOrderType.CivicContract,
-            requirements:   new() { new(typeof(CleanedDebris), 15, "Civic Waste Bundles") },
+            requirements:   new() { new WorkOrderCleanUpRequirement(150, "Clean Up points earned") },
             minStanding:    25,
             skillRequired:  null,
             minSkill:       0.0,
@@ -2449,7 +2555,7 @@ public static class ClusterFWorkOrderSystem
             title:          "District Cleanup",
             description:    "A full district sweep is required. This is steady work for a committed Custodian.",
             type:           WorkOrderType.CivicContract,
-            requirements:   new() { new(typeof(CleanedDebris), 40, "Civic Waste Bundles") },
+            requirements:   new() { new WorkOrderCleanUpRequirement(400, "Clean Up points earned") },
             minStanding:    125,
             skillRequired:  null,
             minSkill:       0.0,
@@ -2466,7 +2572,7 @@ public static class ClusterFWorkOrderSystem
             title:          "Ward Sanitation Contract",
             description:    "A major city ward contract. Only experienced Custodians can handle the volume required.",
             type:           WorkOrderType.CivicContract,
-            requirements:   new() { new(typeof(CleanedDebris), 80, "Civic Waste Bundles") },
+            requirements:   new() { new WorkOrderCleanUpRequirement(800, "Clean Up points earned") },
             minStanding:    500,
             skillRequired:  null,
             minSkill:       0.0,
@@ -2483,7 +2589,7 @@ public static class ClusterFWorkOrderSystem
             title:          "Grand Sanitation Commission",
             description:    "Britannia's highest civic honour. Reserved for Chief Custodians whose dedication is beyond question.",
             type:           WorkOrderType.CivicContract,
-            requirements:   new() { new(typeof(CleanedDebris), 200, "Civic Waste Bundles") },
+            requirements:   new() { new WorkOrderCleanUpRequirement(2000, "Clean Up points earned") },
             minStanding:    1250,
             skillRequired:  null,
             minSkill:       0.0,

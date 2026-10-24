@@ -297,6 +297,14 @@ public class GuildContractLedgerGump : Gump
                     total  = req.Amount;
                     label  = $"* Deliver {req.Label}: {(bypass ? total : have)}/{total}";
                 }
+                else if (req is WorkOrderCleanUpRequirement)
+                {
+                    // cc-P414: Clean Up points earned since the contract was taken
+                    var earned = ClusterFWorkOrderSystem.CleanUpProgress(_pm, entry);
+                    have  = (int)Math.Floor(earned);
+                    total = req.Amount;
+                    label = $"* {req.Label} since taken: {(bypass ? total.ToString("N0") : ClusterFCustodianSystem.FormatPoints(Math.Min(earned, total)))}/{total:N0}";
+                }
                 else
                 {
                     // F-11: pack and bank together
@@ -322,6 +330,10 @@ public class GuildContractLedgerGump : Gump
             else if (def.Type == WorkOrderType.TamingContract)
             {
                 AddLabel(18, reqY + 4, 0x22, "Deliver remaining animals using your Outrider's Crook.");
+            }
+            else if (ClusterFWorkOrderSystem.HasCleanUpRequirement(def))
+            {
+                AddLabel(18, reqY + 4, 0x22, "Clean up litter to earn the remaining Clean Up points.");
             }
             else
             {
@@ -493,8 +505,10 @@ public class GuildContractLedgerGump : Gump
             return;
         }
 
-        guild.ActiveWorkOrders.Add(new WorkOrderEntry(def.Key, def.GuildKey));
-        _pm.SendMessage(0x44, $"Accepted: {def.Title}. Gather the required materials and return to turn it in.");
+        ClusterFWorkOrderSystem.Accept(_pm, guild, def);
+        _pm.SendMessage(0x44, ClusterFWorkOrderSystem.HasCleanUpRequirement(def)
+            ? $"Accepted: {def.Title}. Clean Up points you earn from now count toward it; return to turn it in."
+            : $"Accepted: {def.Title}. Gather the required materials and return to turn it in.");
     }
 
     private void HandleTurnIn(ClusterFAccountData data, int idx)
@@ -534,7 +548,9 @@ public class GuildContractLedgerGump : Gump
                 pm.SendMessage(0x22,
                     def.Type == WorkOrderType.TamingContract
                         ? "You have not yet delivered all required animals."
-                        : "You don't have all required materials in your backpack and bank.");
+                        : ClusterFWorkOrderSystem.HasCleanUpRequirement(def)
+                            ? "You have not yet earned the Clean Up points this contract asks for."
+                            : "You don't have all required materials in your backpack and bank.");
             return false;
         }
 
@@ -544,6 +560,7 @@ public class GuildContractLedgerGump : Gump
             if (say) pm.SendMessage(0x22, "You don't have all required materials in your backpack and bank.");
             return false;
         }
+        ClusterFWorkOrderSystem.ClaimCleanUpPoints(pm, guild, entry, def); // cc-P414: these points fill no other contract
         guild.AddReputation(guildKey, def.StandingReward);
         guild.AddCurrency(guildKey,   def.VoucherReward);
 
