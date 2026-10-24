@@ -951,6 +951,7 @@ function New-Sandbox([string]$name, [byte[]]$tile, [byte[]]$anim) {
     Copy-Item (Join-Path $pkg 'payload\app\LegionScripts.ps1') $app
     Copy-Item (Join-Path $pkg 'payload\app\Update-Scripts.ps1') $app
     Copy-Item $builder $app
+    Copy-Item (Join-Path $pkg 'payload\app\Overrides-Launch.ps1') $app   # cc-P411: Play.ps1 prepares the art through it
     Copy-Item $records (Join-Path $app 'art-records.json')
     Copy-Item $animMul, $animIdx $app
     Copy-Item $stubExe (Join-Path $app 'tazuo\TazUO.exe')

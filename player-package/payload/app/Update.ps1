@@ -33,6 +33,10 @@
        claims the new version.
     5. On success deletes the backup; on any error copies it back. Then starts the game,
        with the -Test, -Lan or -Account it was given, so a profile comes back as itself.
+    6. cc-P411: before starting the game, after a good update, it prepares Shattered Legacy's art, text and map for
+       the new package (Overrides-Launch.ps1's Invoke-UoOverrides: the same staging folder, trace in app\logs\,
+       progress bar and time limit as Play.ps1), so the first start after an update is fast. Play.ps1 still checks
+       the stamps and rebuilds only what is out of date.
 
   If the machine dies partway, update-backup\ is still there; Play.ps1 sees it on the
   next start and runs this script with -Restore.
@@ -42,6 +46,7 @@
   Test hooks (probes only, never set on a player's machine):
     SL_UPDATE_FAIL_AFTER=<n>   throw after copying n files
     SL_UPDATE_PAUSE_SEC=<n>    shorten the 60-second pause after a failure
+    SL_UPDATE_NO_PLAY=1        cc-P411: do not start the game at the end
 
   ASCII only, on purpose: PowerShell 5.1 reads a UTF-8 file without a BOM as
   Windows-1252, and a non-ASCII character can become syntax.
@@ -321,7 +326,23 @@ try {
 if ($Stage -and (Test-Path -LiteralPath $Stage)) {
     try { Remove-Item -LiteralPath $Stage -Recurse -Force } catch { Say "Could not remove $Stage; it is safe to delete." }
 }
+
+# --- 6. the art for the new package (cc-P411) -----------------------------------------------
+# Only after a good update, only when this computer's Ultima Online folder is known (Setup.ps1 has run), and never
+# able to stop the game starting: anything wrong here is one line, and Play.ps1 tries again.
+$prep = Join-Path $root 'app\Overrides-Launch.ps1'
+$uoTxt = Join-Path $root 'app\uo-path.txt'
+if ($ok -and (Test-Path -LiteralPath $prep) -and (Test-Path -LiteralPath $uoTxt)) {
+    try {
+        $uoDir = (Get-Content -LiteralPath $uoTxt -TotalCount 1).Trim()
+        if ($uoDir -and (Test-Path -LiteralPath $uoDir)) {
+            . $prep
+            $null = Invoke-UoOverrides -App (Join-Path $root 'app') -UoDir $uoDir -Reason update
+        }
+    } catch { Say "Shattered Legacy art is prepared when the game starts instead ($($_.Exception.Message))." Yellow }
+}
 try { Stop-Transcript | Out-Null } catch {}
+if ($env:SL_UPDATE_NO_PLAY -eq '1') { if ($ok) { exit 0 } else { exit 1 } }
 
 # --- start the game -----------------------------------------------------------------
 # Play.ps1 directly, with what "Play Shattered Legacy.bat -NoUpdate" would pass it, and

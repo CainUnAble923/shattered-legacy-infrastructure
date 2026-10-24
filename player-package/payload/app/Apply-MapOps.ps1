@@ -32,6 +32,9 @@
   Returns the override lines for files-override.txt (lowercase names, as TazUO's UOFilesOverrideMap keys them):
       map1legacymul.uop=<path>  statics1.mul=<path>  staidx1.mul=<path>
   Throws on anything that is not right (the caller turns that into one yellow line and starts without the map).
+  cc-P411: -ListDir names the folder the lines point to (default -OutDir; the launcher builds into a staging folder),
+  -CheckOnly returns { Stale = 'map' } instead of building when the stamp does not match, and when the caller defines
+  Start-Step and Write-StepProgress (Build-UoOverrides.ps1 does) each step is timed and reported.
   No Add-Type, no inline C#, no Windows API calls; ASCII only, on purpose (PowerShell 5.1 reads a UTF-8 file without
   a BOM as Windows-1252).
 #>
@@ -113,9 +116,13 @@ function Get-MapStamp([string]$uoDir, [string[]]$files, [string]$ops) {
 }
 
 function Build-MapOverride {
-    param([Parameter(Mandatory = $true)][string]$UoDir, [Parameter(Mandatory = $true)][string]$Ops, [Parameter(Mandatory = $true)][string]$OutDir)
+    param([Parameter(Mandatory = $true)][string]$UoDir, [Parameter(Mandatory = $true)][string]$Ops, [Parameter(Mandatory = $true)][string]$OutDir,
+          [string]$ListDir, [switch]$CheckOnly)
     if (-not (Test-Path -LiteralPath $Ops)) { return }      # a package with no map patch
     $sw = [Diagnostics.Stopwatch]::StartNew()
+    $traced = [bool](Get-Command Start-Step -ErrorAction SilentlyContinue)
+    $step = { param($n) if ($traced) { Start-Step $n } }
+    $tick = { param($d, $t) if ($traced) { Write-StepProgress $d $t } }
 
     # --- the patch -------------------------------------------------------------------------
     $facet = -1; $fps = @{}; $land = New-Object 'System.Collections.Generic.List[int[]]'
@@ -153,17 +160,20 @@ function Build-MapOverride {
     # --- the stamp -------------------------------------------------------------------------
     $stampOut = Join-Path $OutDir 'map-stamp.txt'
     $stamp = Get-MapStamp $UoDir $files $Ops
-    $lines = { $o = (Resolve-Path -LiteralPath $OutDir).Path; foreach ($f in $files) { "$($f.ToLowerInvariant())=$(Join-Path $o $f)" } }
+    $lines = { $o = $(if ($ListDir) { [IO.Path]::GetFullPath($ListDir) } else { (Resolve-Path -LiteralPath $OutDir).Path }); foreach ($f in $files) { "$($f.ToLowerInvariant())=$(Join-Path $o $f)" } }
     if ((Test-Path -LiteralPath $stampOut) -and [IO.File]::ReadAllText($stampOut) -ceq $stamp -and
         @($files | Where-Object { -not (Test-Path -LiteralPath (Join-Path $OutDir $_)) }).Count -eq 0) {
         return (& $lines)
     }
+    if ($CheckOnly) { return [pscustomobject]@{ Stale = 'map' } }
     if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
     if (Test-Path -LiteralPath $stampOut) { Remove-Item -LiteralPath $stampOut -Force }
 
     # --- the land: a copy of EA's file with our cells written in place -----------------------
     $mapOut = Join-Path $OutDir $files[0]
+    & $step 'map.copy'
     Copy-Item -LiteralPath (Join-Path $UoDir $files[0]) -Destination $mapOut -Force
+    & $step 'map.read'
     $entries = Get-UopEntries $mapOut
     $chunkOffset = @{}   # chunk -> absolute offset of its first block
     function Get-BlockPosition([int]$b) {
@@ -178,6 +188,7 @@ function Build-MapOverride {
     $idx = [IO.File]::ReadAllBytes((Join-Path $UoDir $files[2]))
     $sta = [IO.File]::ReadAllBytes((Join-Path $UoDir $files[1]))
     $drifted = 0
+    & $step 'map.ops'
     $sha = [Security.Cryptography.SHA256]::Create()
     $fs = [IO.File]::Open($mapOut, 'Open', 'ReadWrite', 'None')
     try {
@@ -194,7 +205,9 @@ function Build-MapOverride {
             if ($h -ne $fps[$b]) { $drifted++ }
         }
         $cell = New-Object byte[] 3
+        $k = 0
         foreach ($l in $land) {
+            if (((++$k) -band 1023) -eq 0) { & $tick $k $land.Count }
             $b = ($l[0] -shr 3) * $blocksHigh + ($l[1] -shr 3)
             $fs.Position = (Get-BlockPosition $b) + 4 + ((($l[1] -band 7) * 8) + ($l[0] -band 7)) * 3
             [BitConverter]::GetBytes([uint16]$l[2]).CopyTo($cell, 0)
@@ -205,6 +218,7 @@ function Build-MapOverride {
     if ($drifted) { Write-Host "  Shattered Legacy map: your Ultima Online files changed $drifted of our blocks since this patch was made; patched anyway." -ForegroundColor Yellow }
 
     # --- the statics: EA's file first, our blocks appended, their index rows repointed -------
+    & $step 'map.statics'
     $staOut = New-Object IO.MemoryStream
     $staOut.Write($sta, 0, $sta.Length)
     $missing = 0
@@ -234,6 +248,7 @@ function Build-MapOverride {
         foreach ($r in $recs) { $staOut.Write($r, 0, 7) }
     }
     if ($missing) { Write-Host "  Shattered Legacy map: $missing piece(s) the patch removes are no longer where your files had them; left as they are." -ForegroundColor Yellow }
+    & $step 'map.write'
     [IO.File]::WriteAllBytes((Join-Path $OutDir $files[1]), $staOut.ToArray())
     [IO.File]::WriteAllBytes((Join-Path $OutDir $files[2]), $idx)
     [IO.File]::WriteAllText($stampOut, $stamp, (New-Object Text.ASCIIEncoding))

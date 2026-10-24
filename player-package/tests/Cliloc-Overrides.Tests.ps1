@@ -302,6 +302,7 @@ Fact 'PlayStartsTheGameWithTheTextOverride' {
     Copy-Item (Join-Path $pkg 'payload\app\LegionScripts.ps1') $app
     Copy-Item (Join-Path $pkg 'payload\app\Update-Scripts.ps1') $app
     Copy-Item $builder $app
+    Copy-Item (Join-Path $pkg 'payload\app\Overrides-Launch.ps1') $app   # cc-P411: Play.ps1 prepares the art through it
     Copy-Item $entries (Join-Path $app 'cliloc-entries.json')
     Copy-Item $stubExe (Join-Path $app 'tazuo\TazUO.exe')
     $uo = New-UoDir 'play-uo' (New-Cliloc $sample)
@@ -314,7 +315,7 @@ Fact 'PlayStartsTheGameWithTheTextOverride' {
     while (-not (Test-Path $argsFile) -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 100 }
     if (-not (Test-Path $argsFile)) { throw "the game was not started. Play.ps1 said: $o" }
     $list = Join-Path $app 'uo-overrides\files-override.txt'
-    Assert-True ([IO.File]::ReadAllText($argsFile) -match ('-uofilesoverride "' + [regex]::Escape($list) + '"')) ([IO.File]::ReadAllText($argsFile))
+    Assert-True ([IO.File]::ReadAllText($argsFile) -match ('-uofilesoverride "' + [regex]::Escape($list) + '"')) ([IO.File]::ReadAllText($argsFile) + ' Play said: ' + $o)
     Assert-True ([IO.File]::ReadAllLines($list) -contains "cliloc.enu=$app\uo-overrides\Cliloc.enu") ([IO.File]::ReadAllText($list))
 }
 

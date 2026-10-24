@@ -19,6 +19,14 @@ SHATTERED LEGACY - how to play
 
 That is all. From now on, step 2 is all you need.
 
+  For now this is the TEST shard: the real one opens later as a fresh world.
+  Anything you do on the test shard can be wiped.
+
+  The first start after an update can show "Preparing Shattered Legacy art and
+  map" with a progress bar for a few seconds. If it takes longer than a minute,
+  the game starts anyway with the art you had, and the new art is used from the
+  next start.
+
 
 Updates
 -------
@@ -37,10 +45,9 @@ Updates
 
 The TEST shard
 --------------
-  "Play TEST Shard.bat" connects to a separate, throwaway test world where Chase
-  tries out new things before they reach the real one. It only works while Chase
-  has it running. Nothing you do there is kept: characters, items and accounts can
-  be wiped at any time, so use a different account name from your real one.
+  "Play Shattered Legacy.bat" and "Play TEST Shard.bat" both connect to the test
+  world, where Chase tries out new things. Nothing you do there is kept for good:
+  characters, items and accounts can be wiped at any time.
 
 
 If Windows or your antivirus complains
@@ -66,13 +73,21 @@ If something goes wrong
   * "EA's launcher closed before Ultima Online was ready": check the internet
     connection and that the drive has about 3 GB free, then double-click
     "Play Shattered Legacy.bat" again. It starts EA's launcher and waits again.
+  * The game does not start, or something looks wrong: send Chase the newest files
+    in app\logs\ (launch-... is what the window said; overrides-... is how long
+    each part of preparing the art took).
+  * In a hurry: app\Play-Skip-Art.bat starts the game with the art as it is,
+    without checking or preparing anything.
   * Anything else: take a photo or screenshot of the window and send it to Chase.
 
 
 For the house
 -------------
-  app\Play-Lan.bat    connects straight to the server's address in the house
+  app\Play-Lan.bat    the test shard, straight to its address in the house
+                      (192.168.1.58:2594)
   app\Play-Test.bat   same as "Play TEST Shard.bat" (see "The TEST shard" above)
+  app\Play-Skip-Art.bat
+                      starts without preparing the art (see "If something goes wrong")
   app\Setup.bat "D:\somewhere\Ultima Online Classic"
                       use an Ultima Online folder the package did not find itself
   app\Play-Test.bat -Account gargoyle

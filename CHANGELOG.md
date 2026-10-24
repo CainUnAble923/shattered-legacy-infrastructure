@@ -29,6 +29,17 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.2
+
+### Changed
+- After an update, the game launcher shows a progress bar while it prepares the shard's own art, text and map, and the game always starts: if preparing takes more than a minute, you play with the art you had and the new art is used from the next start.
+- Updates now prepare the new art as part of the update, so the first start afterwards is quick.
+- "Play Shattered Legacy" connects to the test shard, as the real shard is closed until it opens as a fresh world.
+
+### Staff
+- Every launch and every art rebuild is written to app\logs in the game folder (the last ten of each), so a launch that misbehaves on a player's computer can be read afterwards, step by step with its seconds.
+- app\Play-Skip-Art.bat starts the game without checking or preparing the art.
+
 ## 2026.10.24.1
 
 ### Staff
