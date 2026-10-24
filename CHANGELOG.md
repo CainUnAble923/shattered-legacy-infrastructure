@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.1
+
+### Staff
+- When someone sits down at a PC a Codex helper is working on, the helper now stops within two minutes for certain, saves what it had done on its own branch, and puts the prompt back in the queue for any Golem to finish from there.
+- Send to the second PC on the Shard Console now reaches a Codex helper on another PC, as the web console's button already did.
+- A Codex helper on the game PC shows as on while it works, takes its own Run next pick, and holds at a stopping point you ask for until you cancel it.
+- A Codex helper with a newly signed-in login no longer refuses to start for want of usage readings, and no longer stays held after its 5-hour window resets.
+
 ## 2026.10.24
 
 ### Staff
