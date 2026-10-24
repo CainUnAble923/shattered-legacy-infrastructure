@@ -29,6 +29,18 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.10
+
+### Changed
+- The League Register's Blaze repair stays free, for the gear you are wearing. It no longer repairs gear you carry or bank; a remote repair deed still does.
+- The League Field Satchel counts as one item only while it is in your backpack. In your bank box or a house's secure storage, everything in it counts.
+
+### Fixed
+- The League Field Satchel takes your guild satchels again however full they are, and ore, logs, hides and essences go into the satchels inside it.
+- A satchel the League Field Satchel refuses no longer costs its merge fee, and moving a satchel around inside it is free.
+- Buying from the League Registrar, or taking a guild out of your Register, with a full pack no longer drops the item at your feet. You are asked to make room, and nothing is taken.
+- Turning in every ready order from the League Register now finds complete smith deeds in bags and books in your pack.
+
 ## 2026.10.24.9
 
 ### Fixed

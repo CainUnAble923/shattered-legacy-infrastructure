@@ -11,7 +11,8 @@
 //   - Membership is live (answer 9): a bound guild the character has left shows greyed out at the next open and is
 //     dropped then, its slot freed, nothing refunded, no book issued.
 //   - League actions by League rank (answer 4): Dull Copper the bound guilds' status (the Ledger); Bronze open a bound
-//     guild's contracts; Verite turn in every ready order of the bound guilds at once; Blaze one repair pass (LeagueRepair).
+//     guild's contracts; Verite turn in every ready order of the bound guilds at once; Blaze a free repair of the gear
+//     the member is wearing (LeagueRepair; Chase, 10-22).
 //     Mythril and up: reserved. A guild's own actions are still gated by guild rank where they already are.
 //
 // Every number is a setting (LeagueRegisterSettings).
@@ -87,15 +88,22 @@ public static class LeagueRegisterSystem
             return null;
         }
 
+        // cc-P451: the new copy goes into the pack first; with no room, nothing changes.
+        var register = new LeagueRegister(pm);
+        if (!pm.PlaceInBackpack(register))
+        {
+            register.Delete();
+            message = LeagueConsolidation.MakeRoom;
+            return null;
+        }
+
         var data = Data(pm);
         if (data.RegisterSerial != 0 && World.FindItem((Serial)data.RegisterSerial) is LeagueRegister old)
         {
             old.Delete();
         }
 
-        var register = new LeagueRegister(pm);
         data.RegisterSerial = (uint)register.Serial;
-        pm.AddToBackpack(register);
         message = "The Registrar hands you your League Register.";
         return register;
     }
@@ -189,11 +197,14 @@ public static class LeagueRegisterSystem
         return true;
     }
 
-    /// <summary>Unbinds the guild, free: its slot is freed and, when the guild has a book, a fresh one comes back.</summary>
+    /// <summary>
+    /// Unbinds the guild, free: its slot is freed and, when the guild has a book, a fresh one comes back. The book goes
+    /// into the pack before the guild is unbound (cc-P451); with no room, it stays bound.
+    /// </summary>
     public static bool Unbind(PlayerMobile pm, string key, out string message)
     {
         var data = Data(pm);
-        if (data == null || !data.RegisterGuilds.Remove(key))
+        if (data == null || !data.RegisterGuilds.Contains(key))
         {
             message = "That guild is not bound.";
             return false;
@@ -203,7 +214,14 @@ public static class LeagueRegisterSystem
         var make = Books.FirstOrDefault(b => b.Key == key).Make;
         if (make != null && ClusterFGuildSystem.IsJoined(pm, key))
         {
-            pm.AddToBackpack(make());
+            var book = make();
+            if (!pm.PlaceInBackpack(book))
+            {
+                book.Delete();
+                message = LeagueConsolidation.MakeRoom;
+                return false;
+            }
+
             message = $"{name} is taken out of your Register, and its book is back in your pack.";
         }
         else
@@ -211,6 +229,7 @@ public static class LeagueRegisterSystem
             message = $"{name} is taken out of your Register.";
         }
 
+        data.RegisterGuilds.Remove(key);
         return true;
     }
 
@@ -264,7 +283,7 @@ public static class LeagueRegisterSystem
     /// <summary>
     /// Verite: every ready order of every bound guild at once: each active work order whose materials are in the pack and
     /// bank (GuildContractLedgerGump.TurnIn, the ledger's own turn-in), and, with the Society of Smiths bound, every
-    /// complete smith deed in the backpack, paid the Society's way (ClusterFSmithBODPayout.Pay, by the member's setting;
+    /// complete smith deed in the backpack (in its bags and books too, as ClusterFSmithBODPayout.CanPay takes them), paid the Society's way (ClusterFSmithBODPayout.Pay, by the member's setting;
     /// "ask" banks). Returns how many were turned in.
     /// </summary>
     public static int TurnInAll(PlayerMobile pm, out string message)
@@ -295,9 +314,11 @@ public static class LeagueRegisterSystem
             if (key == "smithing" && pm.Backpack != null)
             {
                 var cashOut = ClusterFSmithBODPayout.GetMode(pm) == SmithTurnInMode.CashOut;
-                var deeds = pm.Backpack.Items
-                    .Where(i => i is SmallSmithBOD { Complete: true } or LargeSmithBOD { Complete: true })
-                    .ToList();
+                var deeds = new List<Item>();
+                foreach (var deed in pm.Backpack.FindItemsByType<Item>(true, i => i is SmallSmithBOD { Complete: true } or LargeSmithBOD { Complete: true }))
+                {
+                    deeds.Add(deed);
+                }
 
                 foreach (var deed in deeds)
                 {
@@ -313,7 +334,7 @@ public static class LeagueRegisterSystem
         return done;
     }
 
-    /// <summary>Blaze: one repair pass (LeagueRepair.RepairAll), worn, carried and banked.</summary>
+    /// <summary>Blaze: a free repair of the gear the member is wearing (LeagueRepair.RepairWorn; Chase, 10-22).</summary>
     public static int RepairAll(PlayerMobile pm, out string message)
     {
         message = RefuseAction(pm, LeagueAction.Repair);
@@ -322,8 +343,8 @@ public static class LeagueRegisterSystem
             return 0;
         }
 
-        var count = LeagueRepair.RepairAll(pm);
-        message = LeagueRepair.Describe(count);
+        var count = LeagueRepair.RepairWorn(pm);
+        message = LeagueRepair.DescribeWorn(count);
         return count;
     }
 }
