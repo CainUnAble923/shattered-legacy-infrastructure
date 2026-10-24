@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Server.Commands;
 using Server.Engines.Points;
+using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
 using Server.Targeting;
@@ -30,6 +31,11 @@ namespace Server;
 //   * [cleanupall  - area sweep (10-tile radius); 60-second cooldown.
 // Both commands require Custodians guild membership.
 //
+// cc-P415: the trash bag's "Clear a corpse" and "Clear corpses nearby" (TrashBag.cs) are corpse claim for any player
+// who holds a bag, member or not: ClearCorpse and ClearCorpsesNearby below, on the same rule (CanClear, ComputePoints,
+// the [cleanupall reach and cooldown). A monster corpse someone else still has looting rights to is not yours to clear
+// (CanClear, which [cleanup and [cleanupall follow too), and a corpse's contents are deleted with it.
+//
 // Item eligibility (applies to both commands and the trash bag):
 //   Eligible:   ground items, monster corpses (any state).
 //   Ineligible: blessed, quest, player-named, exceptional weapons/armor, gold, bank checks, non-empty non-corpse
@@ -38,7 +44,7 @@ namespace Server;
 
 public static class ClusterFCustodianSystem
 {
-    private const int CleanupAllRadius          = 10; // tiles
+    public const int CleanupAllRadius           = 10; // tiles; also the trash bag's "Clear corpses nearby" (cc-P415)
     private const int CleanupAllCooldownSeconds = 60; // seconds between uses per player
 
     // Ours (F-3): the rank ladder in lifetime Clean Up points. Civic Tokens paid at least 1 a piece and corpses 2 or
@@ -146,6 +152,55 @@ public static class ClusterFCustodianSystem
         if (item is Container c && c.Items.Count > 0) return false;
 
         return true;
+    }
+
+    /// <summary>
+    /// cc-P415: true if <paramref name="by"/> may clear this ground item now: it is eligible (IsEligible) and, for a
+    /// monster corpse, no one else's looting rights stand in the way (LootRightsLapsedFor).
+    /// </summary>
+    public static bool CanClear(Item item, Mobile by) =>
+        IsEligible(item) && (item is not Corpse corpse || LootRightsLapsedFor(corpse, by));
+
+    /// <summary>
+    /// cc-P415, pinned's own looting rules. Corpse.IsCriminalAction (Corpse.cs:750) is false when looting this corpse is
+    /// no crime for <paramref name="by"/>: for a monster corpse NotorietyHandlers.CorpseNotoriety (Notoriety.cs:332-347)
+    /// allows it once Corpse.MonsterLootRightSacrifice (2 minutes, Corpse.cs:92) has passed since the death, or sooner
+    /// for one who earned the rights or is in their party. And while SE's instanced loot lasts (InstancedCorpse, 3
+    /// minutes, Corpse.cs:321), each item is dealt to one attacker (AssignInstancedLoot, Corpse.cs:470) and seen only by
+    /// them (IsChildVisibleTo, Corpse.cs:465): a corpse holding an item dealt to someone else waits until that ends.
+    /// </summary>
+    public static bool LootRightsLapsedFor(Corpse corpse, Mobile by)
+    {
+        if (by == null || corpse.IsCriminalAction(by))
+        {
+            return false;
+        }
+
+        if (corpse.InstancedCorpse)
+        {
+            foreach (var item in corpse.Items)
+            {
+                if (!corpse.IsChildVisibleTo(by, item))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>cc-P415: the items inside a corpse at any depth, all deleted with it when it is cleared.</summary>
+    public static int CountContents(Corpse corpse)
+    {
+        var count = 0;
+
+        foreach (var _ in corpse.FindItemsByType<Item>())
+        {
+            count++;
+        }
+
+        return count;
     }
 
     /// <summary>
@@ -285,11 +340,155 @@ public static class ClusterFCustodianSystem
 
     public static string FormatPoints(double points) => points.ToString("#,0.##");
 
+    // -- Corpse claim (cc-P415): the trash bag's two entries ------------------------------------------------------
+
+    /// <summary>
+    /// The 60-second sweep cooldown, shared by [cleanupall and "Clear corpses nearby": true (and says so) while it runs.
+    /// </summary>
+    private static bool OnSweepCooldown(PlayerMobile pm, string what)
+    {
+        if (!_cleanupAllCooldowns.TryGetValue(pm.Serial, out var lastUse)
+            || (DateTime.UtcNow - lastUse).TotalSeconds >= CleanupAllCooldownSeconds)
+        {
+            return false;
+        }
+
+        var remaining = CleanupAllCooldownSeconds - (int)(DateTime.UtcNow - lastUse).TotalSeconds;
+        pm.SendMessage(0x22, $"{what} is on cooldown for {remaining} more second{(remaining == 1 ? "" : "s")}.");
+        return true;
+    }
+
+    /// <summary>
+    /// "Clear a corpse": one corpse, by CleanupOne. A corpse that still holds items asks first (unless
+    /// <paramref name="confirmed"/>), because they go with it. Returns true if cleared.
+    /// </summary>
+    public static bool ClearCorpse(PlayerMobile pm, Item targeted, bool confirmed = false)
+    {
+        if (targeted is not Corpse corpse || corpse.Deleted)
+        {
+            pm.SendMessage(0x22, "That is not a corpse.");
+            return false;
+        }
+
+        if (corpse.Parent != null || corpse.Map != pm.Map || !pm.InRange(corpse.GetWorldLocation(), CleanupRange))
+        {
+            pm.SendMessage(0x22, "That corpse is too far away.");
+            return false;
+        }
+
+        var count = CountContents(corpse);
+
+        if (!confirmed && count > 0 && CanClear(corpse, pm))
+        {
+            var serial = corpse.Serial;
+            pm.SendGump(new WarningGump(
+                $"This corpse still holds {count} item{(count == 1 ? "" : "s")}. Clearing it deletes the corpse " +
+                "and everything inside it, for good. Loot anything you want to keep first.<br><br>Clear it?",
+                320, 200,
+                ok =>
+                {
+                    if (ok && World.FindItem(serial) is Corpse again)
+                    {
+                        ClearCorpse(pm, again, confirmed: true);
+                    }
+                }
+            ));
+            return false;
+        }
+
+        return CleanupOne(pm, corpse);
+    }
+
+    /// <summary>
+    /// "Clear corpses nearby": the monster corpses this character may clear (CanClear) within the [cleanupall reach of
+    /// where they stand, nothing else on the ground.
+    /// </summary>
+    public static List<Corpse> ClearableCorpsesNear(PlayerMobile pm)
+    {
+        var corpses = new List<Corpse>();
+        var map = pm.Map;
+
+        if (map == null || map == Map.Internal)
+        {
+            return corpses;
+        }
+
+        foreach (var it in map.GetItemsInRange(pm.Location, CleanupAllRadius))
+        {
+            if (it is Corpse corpse && CanClear(corpse, pm))
+            {
+                corpses.Add(corpse);
+            }
+        }
+
+        return corpses;
+    }
+
+    /// <summary>
+    /// "Clear corpses nearby": clears every corpse ClearableCorpsesNear finds, each deleted with its contents and paid
+    /// by ComputePoints, on the [cleanupall cooldown. If any still holds items it asks first (unless
+    /// <paramref name="confirmed"/>). Returns the number of corpses cleared.
+    /// </summary>
+    public static int ClearCorpsesNearby(PlayerMobile pm, bool confirmed = false)
+    {
+        if (OnSweepCooldown(pm, "Clearing corpses")) return 0;
+
+        var corpses = ClearableCorpsesNear(pm);
+
+        if (corpses.Count == 0)
+        {
+            pm.SendMessage(0x59, "There are no corpses nearby that you may clear.");
+            return 0;
+        }
+
+        var items = 0;
+        foreach (var corpse in corpses)
+        {
+            items += CountContents(corpse);
+        }
+
+        if (!confirmed && items > 0)
+        {
+            pm.SendGump(new WarningGump(
+                $"{corpses.Count} corpse{(corpses.Count == 1 ? "" : "s")} nearby still hold {items} " +
+                $"item{(items == 1 ? "" : "s")}. Clearing deletes the corpses and everything inside them, for good. " +
+                "Loot anything you want to keep first.<br><br>Clear them?",
+                320, 200,
+                ok =>
+                {
+                    if (ok)
+                    {
+                        ClearCorpsesNearby(pm, confirmed: true);
+                    }
+                }
+            ));
+            return 0;
+        }
+
+        var total = 0.0;
+        foreach (var corpse in corpses)
+        {
+            total += ComputePoints(corpse, pm);
+            corpse.Delete();
+        }
+
+        _cleanupAllCooldowns[pm.Serial] = DateTime.UtcNow;
+        AwardPoints(pm, total);
+
+        pm.SendMessage(0x44,
+            $"Cleared {corpses.Count} corpse{(corpses.Count == 1 ? "" : "s")}" +
+            (items > 0 ? $" ({items} item{(items == 1 ? "" : "s")} inside went with them)" : "") +
+            $". +{FormatPoints(total)} Clean Up points.");
+        return corpses.Count;
+    }
+
+    private const int CleanupRange = 12; // CleanupTarget's range
+
     // -- Inner targets ---------------------------------------------------------
 
     private sealed class CleanupTarget : Target
     {
-        public CleanupTarget() : base(12, false, TargetFlags.None)
+        public CleanupTarget() : base(CleanupRange, false, TargetFlags.None)
         {
         }
 
@@ -303,36 +502,61 @@ public static class ClusterFCustodianSystem
                 return;
             }
 
-            if (!IsEligible(item))
-            {
-                pm.SendMessage(0x22,
-                    "That item cannot be cleaned up. " +
-                    "Blessed, quest, named, or exceptional items are excluded.");
-                return;
-            }
-
-            var points = ComputePoints(item, pm);
-
-            string msg;
-            if (item is Corpse corpse)
-            {
-                var count = corpse.Items.Count;
-                msg = count > 0
-                    ? $"Corpse cleared ({count} item{(count == 1 ? "" : "s")} inside). +{FormatPoints(points)} Clean Up points."
-                    : $"Empty corpse cleared. +{FormatPoints(points)} Clean Up points.";
-            }
-            else
-            {
-                msg = points > 0
-                    ? $"Cleaned up! +{FormatPoints(points)} Clean Up points."
-                    : "Cleaned up. That had no turn-in value for Clean Up Britannia.";
-            }
-
-            item.Delete();
-            AwardPoints(pm, points);
-            pm.SendMessage(0x44, msg);
+            CleanupOne(pm, item);
         }
     }
+
+    /// <summary>
+    /// [cleanup's one item, and the trash bag's "Clear a corpse" (cc-P415): refuses what CanClear refuses, with the
+    /// reason, else deletes the item (a corpse with everything inside) and pays ComputePoints. Returns true if cleared.
+    /// </summary>
+    public static bool CleanupOne(PlayerMobile pm, Item item)
+    {
+        if (item is Corpse { Owner: PlayerMobile })
+        {
+            pm.SendMessage(0x22, "That is a player's corpse. It holds their belongings and is never litter.");
+            return false;
+        }
+
+        if (!IsEligible(item))
+        {
+            pm.SendMessage(0x22,
+                "That item cannot be cleaned up. " +
+                "Blessed, quest, named, or exceptional items are excluded.");
+            return false;
+        }
+
+        if (!CanClear(item, pm))
+        {
+            pm.SendMessage(0x22, LootRightsRefusal);
+            return false;
+        }
+
+        var points = ComputePoints(item, pm);
+
+        string msg;
+        if (item is Corpse corpse)
+        {
+            var count = CountContents(corpse);
+            msg = count > 0
+                ? $"Corpse cleared ({count} item{(count == 1 ? "" : "s")} inside went with it). +{FormatPoints(points)} Clean Up points."
+                : $"Empty corpse cleared. +{FormatPoints(points)} Clean Up points.";
+        }
+        else
+        {
+            msg = points > 0
+                ? $"Cleaned up! +{FormatPoints(points)} Clean Up points."
+                : "Cleaned up. That had no turn-in value for Clean Up Britannia.";
+        }
+
+        item.Delete();
+        AwardPoints(pm, points);
+        pm.SendMessage(0x44, msg);
+        return true;
+    }
+
+    public const string LootRightsRefusal =
+        "Someone else still has the right to loot that corpse. You may clear it once their rights lapse.";
 
     private sealed class CleanupAllTarget : Target
     {
@@ -344,15 +568,7 @@ public static class ClusterFCustodianSystem
         {
             if (from is not PlayerMobile pm) return;
 
-            // Cooldown check
-            if (_cleanupAllCooldowns.TryGetValue(pm.Serial, out var lastUse)
-                && (DateTime.UtcNow - lastUse).TotalSeconds < CleanupAllCooldownSeconds)
-            {
-                var remaining = CleanupAllCooldownSeconds - (int)(DateTime.UtcNow - lastUse).TotalSeconds;
-                pm.SendMessage(0x22,
-                    $"[cleanupall is on cooldown for {remaining} more second{(remaining == 1 ? "" : "s")}.");
-                return;
-            }
+            if (OnSweepCooldown(pm, "[cleanupall")) return;
 
             var map = pm.Map;
             if (map == null || map == Map.Internal) return;
@@ -366,7 +582,7 @@ public static class ClusterFCustodianSystem
             var eligible = new List<Item>();
             foreach (var it in map.GetItemsInRange(center, CleanupAllRadius))
             {
-                if (IsEligible(it))
+                if (CanClear(it, pm))
                     eligible.Add(it);
             }
 

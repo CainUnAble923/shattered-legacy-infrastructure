@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.7
+
+### Added
+- Your trash bag has two new right-click options: Clear a corpse, and Clear corpses nearby. Any player with a trash bag can use them (join the Custodians at a Sanitation Warden for a free one), and you earn Clean Up points as usual.
+- Clearing a corpse deletes it and everything still inside it, so it asks first when a corpse still holds loot. A player's corpse can never be cleared, and a monster someone else killed is theirs to loot until their looting rights run out.
+
 ## 2026.10.24.6
 
 ### Changed
