@@ -17,6 +17,9 @@
 //     back (loaners, the skill and tithing loans, the creatures). Loaners are named "tutorial loaner: ..." and any left
 //     by a restart are deleted when the world loads.
 //   - Resettable: "Reset this trial" starts it again from nothing; a finished station can be replayed.
+//
+// cc-P291: the other 20 stations (gathering, the crafting yard, animals, bard, thieving and the four tours) are the other
+// part of this class, TutorialTradeTrials.cs, on the same shape: one trial at a time, the same loans and returns.
 
 #nullable enable
 
@@ -34,7 +37,7 @@ using Server.Spells;
 
 namespace Server.Tutorial
 {
-    public static class TutorialWingTrials
+    public static partial class TutorialWingTrials
     {
         public const string LoanName = "tutorial loan";
         public const string LoanerPrefix = "tutorial loaner: ";
@@ -94,6 +97,13 @@ namespace Server.Tutorial
             public DateTime LastCast = DateTime.MinValue;
             public int BandageHits = -1;                 // the player's hits when a bandage on themself began
             public TimerExecutionToken Timer;
+
+            // cc-P291 (TutorialTradeTrials.cs): the trade trials' evidence and their own things.
+            public readonly HashSet<string> Steps = new();             // steps done (TradeTrial.Steps)
+            public readonly List<Item> Props = new();                  // things it put in the world: a vein, an anvil, a chest
+            public readonly List<BaseCreature> Creatures = new();      // its goat, its marks
+            public readonly Dictionary<Type, int> ProductsBefore = new();
+            public double HidingBefore = -1;                           // the Hiding base before the Stealth loan (-1: none)
         }
 
         private static readonly Dictionary<Serial, Trial> Active = new();
@@ -110,6 +120,7 @@ namespace Server.Tutorial
         public static void EnsureHooks()
         {
             foreach (var key in Keys) { TutorialStations.Handlers[key] = Start; }
+            foreach (var t in Trades) { TutorialStations.Handlers[t.Key] = Start; }
             if (_hooked) { return; }
             _hooked = true;
             SkillEvents.SkillUsed += OnSkillUsed;
@@ -121,7 +132,11 @@ namespace Server.Tutorial
             var gone = new List<Item>();
             foreach (var item in World.Items.Values)
             {
-                if (item.Name?.StartsWith(LoanerPrefix, StringComparison.Ordinal) == true) { gone.Add(item); }
+                if (item.Name?.StartsWith(LoanerPrefix, StringComparison.Ordinal) == true ||
+                    item.Name?.StartsWith(PropPrefix, StringComparison.Ordinal) == true) // cc-P291: the trades' props
+                {
+                    gone.Add(item);
+                }
             }
             foreach (var item in gone) { item.Delete(); }
             return gone.Count;
@@ -152,14 +167,14 @@ namespace Server.Tutorial
                 "Equip the loaned katana, click Focus Attack in the Book of Ninjitsu, then press Tab and double-click the training echo to strike.",
             "magic.mysticism" =>
                 "Open the loaned mystic book, double-click Eagle Strike and click the training echo. Its reagents (bloodmoss, bone, spider's silk, mandrake root) are loaned too.",
-            _ => "Coming soon. This wing is optional."
+            _ => TradeHint(key)
         };
 
         // -- Start, arm, finish, cancel --
 
         public static void Start(PlayerMobile pm, TutorialStation station)
         {
-            if (!ClusterFTutorial.IsParticipant(pm) || Array.IndexOf(Keys, station.Key) < 0) { return; }
+            if (!ClusterFTutorial.IsParticipant(pm) || !IsWingTrial(station.Key)) { return; }
             if (!pm.Alive)
             {
                 ClusterFTutorial.SystemLine(pm, "Visit a healer first. A ghost can double-click the tutorial healer.");
@@ -179,7 +194,8 @@ namespace Server.Tutorial
             Server.Timer.StartTimer(TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(250), () => Tick(trial), out trial.Timer);
             if (station.Key == "combat.weapons") { ClusterFTutorial.SystemLine(pm, ResistingSpellsLine); }
             if (station.Key == "magic.mysticism") { ClusterFTutorial.SystemLine(pm, SpellweavingLine); }
-            if (NearYard(pm)) { Arm(trial); }
+            if (Trade(station.Key)?.Line is { } line) { ClusterFTutorial.SystemLine(pm, line); }
+            if (NearPlace(pm, station.Key)) { Arm(trial); }
             Show(pm, trial);
         }
 
@@ -190,21 +206,21 @@ namespace Server.Tutorial
         {
             if (!trial.Armed)
             {
-                ClusterFTutorial.SystemLine(pm, "Follow the arrow to the training yard, east of the farm gate. The lesson starts there.");
+                ClusterFTutorial.SystemLine(pm, FollowLine(trial.Key));
             }
-            else
+            else if (!trial.Finished) // cc-P291: the done line is enough; the hint again read as a new task
             {
                 ClusterFTutorial.SystemLine(pm, Hint(trial.Key, trial.Choice));
             }
 
             if (pm.Map == Map.Trammel && !trial.Finished)
             {
-                var spot = trial.Armed && trial.Target != null ? trial.Target.Location : YardSpot;
-                TutorialCoreTrials.Point(pm, spot, trial.Armed ? "the training echo" : "the training yard");
+                var (spot, name) = trial.Armed && trial.Target != null ? (trial.Target.Location, "the training echo") : PointAt(trial);
+                TutorialCoreTrials.Point(pm, spot, name);
             }
 
             pm.CloseGump<TutorialWingTrialGump>();
-            pm.SendGump(new TutorialWingTrialGump(trial.Station, trial.Choice, trial.Finished, trial.Armed));
+            pm.SendGump(new TutorialWingTrialGump(trial.Station, trial.Choice, trial.Finished, trial.Armed, Progress(trial)));
         }
 
         /// <summary>At the yard: the loans and the creatures. False when the yard is blocked (nothing is lent then).</summary>
@@ -212,6 +228,7 @@ namespace Server.Tutorial
         {
             var pm = trial.Player;
             if (trial.Armed || trial.Finished) { return trial.Armed; }
+            if (Trade(trial.Key) != null) { return ArmTrade(trial); }
             var needsTarget = trial.Key is not ("combat.healing" or "magic.chivalry");
             var needsPatient = trial.Key is "combat.healing" or "magic.chivalry";
             if (needsTarget && !Fits(TargetSpot) || needsPatient && !Fits(PatientSpot))
@@ -372,7 +389,7 @@ namespace Server.Tutorial
             "Bone" => "bone", "SpidersSilk" => "spider's silk", "MandrakeRoot" => "mandrake root", "Bandage" => "bandage",
             "Arrow" => "arrow", "Buckler" => "buckler", "Longsword" => "longsword", "Mace" => "mace", "Kryss" => "kryss",
             "Bow" => "bow", "Boomerang" => "boomerang", "Katana" => "katana",
-            _ => item.GetType().Name.ToLowerInvariant()
+            _ => TradeCliName(item)
         };
 
         /// <summary>Raises a skill to at least the value for the lesson, as a mod (never saved; the base is untouched).</summary>
@@ -423,6 +440,7 @@ namespace Server.Tutorial
             trial.Target?.Delete();
             trial.Patient?.Delete();
             trial.Target = trial.Patient = null;
+            ReturnTrade(trial);
         }
 
         /// <summary>Ends the player's wing trial, taking every loan back. The reason, if any, is said to the player.</summary>
@@ -454,13 +472,13 @@ namespace Server.Tutorial
 
             if (!trial.Armed)
             {
-                if (pm.Alive && NearYard(pm) && Arm(trial)) { Show(pm, trial); }
+                if (pm.Alive && NearPlace(pm, trial.Key) && Arm(trial)) { Show(pm, trial); }
                 return;
             }
 
-            if (pm.Map != Map.Trammel || !pm.InRange(new Point3D(Yard.X, Yard.Y, pm.Z), LeaveRange))
+            if (pm.Map != Map.Trammel || !InReach(pm, trial.Key))
             {
-                Cancel(pm, "You left the training yard, so the lesson stopped and the yard took its loans back. Start it again at Rook.");
+                Cancel(pm, LeftLine(trial.Key));
                 return;
             }
 
@@ -478,6 +496,7 @@ namespace Server.Tutorial
             }
 
             if (trial.Key == "combat.healing") { WatchSelfBandage(trial); }
+            else if (Trade(trial.Key) != null) { TickTrade(trial); }
         }
 
         // combat.healing, the self step: a bandage on yourself (BandageContext with you as the patient) that ends with
@@ -513,6 +532,7 @@ namespace Server.Tutorial
         /// <summary>A successful roll of a skill (SkillEvents.SkillUsed): a spell's cast went off.</summary>
         public static void OnSkillUsed(Mobile from, Skill skill, bool success)
         {
+            TradeSkillUsed(from, skill, success);
             if (success && from is PlayerMobile pm && Current(pm) is { Armed: true, Finished: false } trial &&
                 CastSkill(trial.Key) == skill.SkillName)
             {
@@ -593,18 +613,28 @@ namespace Server.Tutorial
 
         private readonly TutorialStation _station;
 
-        public TutorialWingTrialGump(TutorialStation station, int choice, bool done, bool armed) : base(80, 80)
+        public TutorialWingTrialGump(TutorialStation station, int choice, bool done, bool armed, string? progress = null) : base(80, 80)
         {
             _station = station;
             var pick = station.Key == "combat.weapons" && armed && choice < 0 && !done;
-            var h = 250 + (pick ? TutorialWingTrials.Weapons.Length * 24 : 0);
+            var steps = done || !armed || progress == null ? 0 : progress.Split('\n').Length;
+            var h = 250 + (pick ? TutorialWingTrials.Weapons.Length * 24 : 0) + steps * 20;
             TutorialStyle.Panel(this, 500, h);
             AddLabel(24, 18, TutorialStyle.HeadingHue, station.Title);
             var text = done ? "Done. The yard has its loans back. Rook has the next lesson." :
-                !armed ? "Follow the arrow to the training yard, east of the farm gate. The lesson starts there." :
+                !armed ? TutorialWingTrials.FollowLine(station.Key) :
                 TutorialWingTrials.Hint(station.Key, choice);
             AddHtml(24, 46, 452, 90, TutorialStyle.Html(text), false, false);
             var y = 140;
+            if (steps > 0)
+            {
+                // cc-P291: a trade trial's steps, each marked done or still to do.
+                foreach (var line in progress!.Split('\n'))
+                {
+                    AddLabel(24, y, line.StartsWith("Done", StringComparison.Ordinal) ? TutorialStyle.DoneHue : TutorialStyle.TextHue, line);
+                    y += 20;
+                }
+            }
             if (pick)
             {
                 for (var i = 0; i < TutorialWingTrials.Weapons.Length; i++, y += 24)

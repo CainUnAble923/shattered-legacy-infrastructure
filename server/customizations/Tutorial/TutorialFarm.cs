@@ -109,7 +109,8 @@ namespace Server.Tutorial
             }
 
             _hooked = true;
-            TutorialStations.Handlers[TamingStation] = (pm, station) => PointTo(pm);
+            // cc-P291: Rook's animals.taming station is now its own trial at the pen (TutorialTradeTrials.cs); the
+            // Farmhand's pet-and-pests lesson still completes it too.
             SkillEvents.SkillUsed += OnSkillUsed;
         }
 

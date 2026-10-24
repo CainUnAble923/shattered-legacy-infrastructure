@@ -56,7 +56,7 @@ public static class TutorialCoreTrials
         "core.travel" => "Follow the arrow to the farm gate and double-click the moongate there, a tall blue shimmering arch. It brings you back to the New Haven plaza.",
         "core.league" => "Follow the arrow to Elara Voss, inside the Registrar's house; double-click its door, on the north side, to open it. Double-click her to read about the League; joining is your choice.",
         "core.loop" => "Follow the arrow to the bright blue rune stone at the farm gate. Double-click it and stay beside it until the vision ends; it changes nothing about you.",
-        _ => "Coming soon. This wing is optional."
+        _ => "Ask Rook for this lesson."
     };
 
     /// <summary>A lesson's practice item, made fresh (bright and named for what it is: cc-P480).</summary>

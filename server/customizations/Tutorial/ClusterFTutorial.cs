@@ -150,7 +150,7 @@ public static class ClusterFTutorial
             return;
         }
 
-        SystemLine(pm, "Coming soon. This wing is optional; graduation needs only the core.");
+        SystemLine(pm, "This station has no lesson of its own. It is optional; graduation needs only the core.");
         pm.SendGump(new TutorialStationGump(station, Server.TazUO.TazUOClientCommand.CanRunCommands(pm.NetState)));
     }
 
