@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.4
+
+### Changed
+- The way down into the Rootdeep Burrows, in Old Haven's ruined bank, is now a wide burrow in a crater of dirt and rocks instead of one small hole. Step anywhere into its dark mouth to go down; the rope ladder back up leaves you just outside the bank's broken wall.
+
+### Staff
+- [ClusterFSeedRootdeep places a teleporter on every tile of the burrow's mouth, and on a world that already had the old hole it points the ladder's teleporter at the new landing instead of adding a second one.
+
 ## 2026.10.24.3
 
 ### Changed

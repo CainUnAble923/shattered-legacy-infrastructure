@@ -41,7 +41,8 @@ public class OldHavenBurrowsRegion : DungeonRegion
     /// Old Haven's ruined Second Bank, the hole at 3619,2620 (decisions file item 6). Confirmed by cc-P188: the bank's
     /// wooden floor is Z 0, the map patch opens its south wall (3618-3620,2622) so the hole is reached on foot from
     /// New Haven, and the seeder's teleporter down stands on it (ClusterFRootdeepSeeder.Teleporters). Was named
-    /// ProvisionalEntrance until P188.
+    /// ProvisionalEntrance until P188. cc-P413: the hole is now an ant-hill burrow whose dark mouth is x 3617-3619,
+    /// y 2617-2620 (ClusterFRootdeepSeeder.Mouth*); this tile is one of the twelve, so the Entrance stays here.
     /// </summary>
     public static readonly Point3D HoleEntrance = new(3619, 2620, 0);
 

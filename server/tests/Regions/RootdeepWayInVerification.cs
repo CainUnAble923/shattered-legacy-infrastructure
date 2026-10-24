@@ -6,10 +6,13 @@
 // facts are the shard's side of the walk.
 //
 // Facts:
-//   W1. The teleporter's both ends: the seeder places a teleporter on the hole (3619,2620, the region's Entrance) that
-//       lands on the Landing's arrival (5193,1138), and one at the foot of the ladder (5193,1132) that lands beside the
-//       hole (3619,2621); a player stepping on each is moved to the other end; a creature is not; both are inside
-//       Old Haven Training (cc-P189) and the Burrows respectively; a re-run places neither again.
+//   W1. cc-P413 (was P188's two ends): the seeder places a teleporter on every tile of the burrow's mouth (x 3617-3619,
+//       y 2617-2620, the dark core of the map patch's sinkhole; P188's hole 3619,2620, the region's Entrance, is one of
+//       them), each landing on the Landing's arrival (5193,1138), and one at the foot of the ladder (5193,1132) that
+//       lands beside the mound (3619,2623, outside the bank's collapsed wall, not a mouth tile and two tiles from the
+//       nearest); a player stepping on each mouth tile goes down, and the ladder brings them up beside the mound; a
+//       creature is not moved; the mouth is inside Old Haven Training (cc-P189), the ladder's foot in the Burrows; a
+//       re-run places nothing again.
 //   W2. The region rectangles match the built floors: the Vault's region is exactly the Vault's floor extent of the
 //       approved layout (x 5142-5178, y 1132-1159), and the Burrows' region holds every zone's floor with the wall
 //       ring and the ladder's wall tile inside it (the layout's extents, notes/art/rootdeep-mockup/layout.json, as
@@ -22,6 +25,9 @@
 //       post-uoml/trammel/Outdoors.json places it at 3651,2627 with its 10 Skeleton entry, and it spawns skeletons.
 //   W5. [ClusterFOldHavenRetire removes the crier spawner and its crier from a world that has them (dry run first,
 //       changing nothing), and leaves the skeleton spawner alone.
+//   W6. cc-P413: a world P188's seeder already seeded (the hole's teleporter and the ladder's, landing at 3619,2621)
+//       gets the other eleven mouth teleporters, and its ladder teleporter is pointed at the new landing, not doubled:
+//       the dry run says so and changes nothing; a re-run then finds everything in place.
 //
 // server/tests/<path> is mirrored into Projects/UOContent.Tests/Tests/<path> by docker/uo/apply-patches.sh.
 
@@ -105,8 +111,60 @@ public class RootdeepWayInVerification
 
     // ---------------------------------------------------------------- W1
 
+    /// <summary>Everything a Seed may have placed, collected before anything is asserted (so a red fact leaves no litter).</summary>
+    private static List<Item> Seeded()
+    {
+        var placed = new List<Item>();
+        foreach (var r in ClusterFRootdeepSeeder.Teleporters)
+        {
+            placed.AddRange(ItemsAt<Teleporter>(r.At));
+        }
+
+        foreach (var row in ClusterFRootdeepSeeder.Spawners)
+        {
+            if (ClusterFRootdeepSeeder.FindSpawner(Map.Trammel, row) is { } s)
+            {
+                placed.Add(s);
+            }
+        }
+
+        if (ClusterFRootdeepSeeder.FindCrawlway(Map.Trammel) is { } c)
+        {
+            placed.Add(c);
+        }
+
+        foreach (var item in Map.Trammel.GetItemsInRange(new Point3D(ClusterFRootdeepSeeder.AnkhAt.X, ClusterFRootdeepSeeder.AnkhAt.Y, 0), 2))
+        {
+            if (ClusterFAnkhs.IsWorkingAnkh(item))
+            {
+                placed.Add(item);
+            }
+        }
+
+        foreach (var row in ClusterFRootdeepSeeder.FloorTraps) // cc-P275: the seeder lays these too
+        {
+            if (ClusterFRootdeepSeeder.FindFloorTrap(Map.Trammel, row) is { } t)
+            {
+                placed.Add(t);
+            }
+        }
+
+        return placed;
+    }
+
+    // The mouth by hand, row by row (the map patch's dark core: notes/cc-P413-tools/statics-placed.csv).
+    private static readonly (int X, int Y)[] Mouth =
+    [
+        (3617, 2617), (3618, 2617), (3619, 2617),
+        (3617, 2618), (3618, 2618), (3619, 2618),
+        (3617, 2619), (3618, 2619), (3619, 2619),
+        (3617, 2620), (3618, 2620), (3619, 2620),
+    ];
+
+    private static readonly Point3D BesideMound = new(3619, 2623, 0);
+
     [Fact]
-    public void W1_TheTeleporterHasBothEndsAndMovesAPlayerNotACreature()
+    public void W1_EveryMouthTileTakesAPlayerDownAndTheLadderLandsBesideTheMound()
     {
         var mapBuilt = ClusterFRootdeepSeeder.MapBuilt;
         var placed = new List<Item>();
@@ -114,48 +172,27 @@ public class RootdeepWayInVerification
         try
         {
             ClusterFRootdeepSeeder.MapBuilt = () => true;
+            var arrival = new Point3D(ClusterFRootdeepSeeder.Arrival.X, ClusterFRootdeepSeeder.Arrival.Y, 0);
             var rows = ClusterFRootdeepSeeder.Teleporters;
-            Assert.Equal(2, rows.Length);
-            Assert.Equal(OldHavenBurrowsRegion.HoleEntrance, rows[0].At);
-            Assert.Equal(new Point3D(ClusterFRootdeepSeeder.Arrival.X, ClusterFRootdeepSeeder.Arrival.Y, 0), rows[0].To);
-            Assert.Equal(new Point3D(5193, 1132, 0), rows[1].At);
-            Assert.Equal(new Point3D(3619, 2621, 0), rows[1].To);
+            var down = rows.Where(r => r.To == arrival).ToArray();
+            var ladder = ClusterFRootdeepSeeder.LadderUp;
 
-            Assert.All(rows, r => Assert.Null(ClusterFRootdeepSeeder.FindTeleporter(Map.Trammel, r)));
+            Assert.Equal(Mouth.Length + 1, rows.Length);
+            Assert.Equal(Mouth, down.Select(r => (r.X, r.Y)).ToArray());
+            Assert.All(Mouth, t => Assert.True(ClusterFRootdeepSeeder.IsMouth(t.X, t.Y)));
+            Assert.Contains((OldHavenBurrowsRegion.HoleEntrance.X, OldHavenBurrowsRegion.HoleEntrance.Y), Mouth);
+            Assert.Equal(rows[^1], ladder);
+            Assert.Equal(new Point3D(5193, 1132, 0), ladder.At);
+            Assert.Equal(BesideMound, ladder.To);
+            Assert.False(ClusterFRootdeepSeeder.IsMouth(ladder.To.X, ladder.To.Y));
+            Assert.True(Mouth.Min(t => Math.Max(Math.Abs(t.X - ladder.To.X), Math.Abs(t.Y - ladder.To.Y))) >= 2);
+
+            Assert.All(rows, r => Assert.Empty(ItemsAt<Teleporter>(r.At)));
             var first = ClusterFRootdeepSeeder.Seed(false);
+            placed.AddRange(Seeded());
 
-            // Everything the Seed placed is collected before anything is asserted, so a red fact leaves no litter
-            // for the next one (the red run of 2026-10-20 did, into V5).
-            foreach (var r in rows)
-            {
-                if (ClusterFRootdeepSeeder.FindTeleporter(Map.Trammel, r) is { } t0)
-                {
-                    placed.Add(t0);
-                }
-            }
-
-            foreach (var row in ClusterFRootdeepSeeder.Spawners)
-            {
-                if (ClusterFRootdeepSeeder.FindSpawner(Map.Trammel, row) is { } s)
-                {
-                    placed.Add(s);
-                }
-            }
-
-            if (ClusterFRootdeepSeeder.FindCrawlway(Map.Trammel) is { } c)
-            {
-                placed.Add(c);
-            }
-
-            foreach (var item in Map.Trammel.GetItemsInRange(new Point3D(ClusterFRootdeepSeeder.AnkhAt.X, ClusterFRootdeepSeeder.AnkhAt.Y, 0), 2))
-            {
-                if (ClusterFAnkhs.IsWorkingAnkh(item))
-                {
-                    placed.Add(item);
-                }
-            }
-
-            Assert.Equal(2, first.Teleporters);
+            Assert.Equal(rows.Length, first.Teleporters);
+            Assert.Equal(0, first.TeleportersRetargeted);
             foreach (var r in rows)
             {
                 var t = ClusterFRootdeepSeeder.FindTeleporter(Map.Trammel, r);
@@ -165,44 +202,45 @@ public class RootdeepWayInVerification
                 Assert.False(t.Visible);
             }
 
-            // Both ends are where the regions say: the hole in Old Haven Training, the ladder's foot in the Burrows.
-            Assert.Equal(ApprenticeTraining.OldHavenTraining, Region.Find(rows[0].At, Map.Trammel).Name);
-            Assert.IsType<OldHavenBurrowsRegion>(Region.Find(rows[1].At, Map.Trammel));
-            Assert.Equal(ApprenticeTraining.OldHavenTraining, Region.Find(rows[1].To, Map.Trammel).Name);
+            // The mouth is in Old Haven Training, the ladder's foot in the Burrows, its landing back in Old Haven Training.
+            Assert.All(down, r => Assert.Equal(ApprenticeTraining.OldHavenTraining, Region.Find(r.At, Map.Trammel).Name));
+            Assert.IsType<OldHavenBurrowsRegion>(Region.Find(ladder.At, Map.Trammel));
+            Assert.Equal(ApprenticeTraining.OldHavenTraining, Region.Find(ladder.To, Map.Trammel).Name);
 
-            // Down: a player who steps onto the hole lands on the arrival.
-            var walker = NewPlayer(new Point3D(3619, 2621, 0));
+            var walker = NewPlayer(BesideMound);
             mobiles.Add(walker);
-            var down = ClusterFRootdeepSeeder.FindTeleporter(Map.Trammel, rows[0])!;
-            Assert.False(down.OnMoveOver(walker)); // the move onto the hole is cancelled: the teleport took it
-            Assert.Equal(rows[0].To, walker.Location);
-            Assert.IsType<OldHavenBurrowsRegion>(Region.Find(walker.Location, Map.Trammel));
+            var up = ClusterFRootdeepSeeder.FindTeleporter(Map.Trammel, ladder)!;
+            foreach (var r in down)
+            {
+                // Down from this mouth tile: the step is cancelled, the teleport took it, and the player is on the Landing.
+                var t = ClusterFRootdeepSeeder.FindTeleporter(Map.Trammel, r)!;
+                Assert.False(t.OnMoveOver(walker), $"{r.X},{r.Y}");
+                Assert.Equal(arrival, walker.Location);
+                Assert.IsType<OldHavenBurrowsRegion>(Region.Find(walker.Location, Map.Trammel));
 
-            // Up: from the ladder's foot, beside the hole again.
-            walker.MoveToWorld(new Point3D(5193, 1133, 0), Map.Trammel);
-            var up = ClusterFRootdeepSeeder.FindTeleporter(Map.Trammel, rows[1])!;
-            Assert.False(up.OnMoveOver(walker));
-            Assert.Equal(rows[1].To, walker.Location);
+                // Up the ladder: beside the mound, on no mouth tile.
+                walker.MoveToWorld(new Point3D(5193, 1133, 0), Map.Trammel);
+                Assert.False(up.OnMoveOver(walker));
+                Assert.Equal(BesideMound, walker.Location);
+                Assert.Empty(ItemsAt<Teleporter>(walker.Location));
+            }
 
-            // A creature does not use either.
+            // A creature does not use them.
             var skeleton = new Skeleton();
             mobiles.Add(skeleton);
-            skeleton.MoveToWorld(new Point3D(3619, 2621, 0), Map.Trammel);
-            Assert.True(down.OnMoveOver(skeleton));
-            Assert.Equal(new Point3D(3619, 2621, 0), skeleton.Location);
+            skeleton.MoveToWorld(BesideMound, Map.Trammel);
+            var hole = ClusterFRootdeepSeeder.FindTeleporter(Map.Trammel, down[^1])!;
+            Assert.True(hole.OnMoveOver(skeleton));
+            Assert.Equal(BesideMound, skeleton.Location);
 
             var again = ClusterFRootdeepSeeder.Seed(false);
-            Assert.Equal(0, again.Teleporters);
-            Assert.Equal(2, ItemsAt<Teleporter>(rows[0].At).Count + ItemsAt<Teleporter>(rows[1].At).Count);
+            Assert.Equal((0, 0), (again.Teleporters, again.TeleportersRetargeted));
+            Assert.Equal(rows.Length, rows.Sum(r => ItemsAt<Teleporter>(r.At).Count));
         }
         finally
         {
             ClusterFRootdeepSeeder.MapBuilt = mapBuilt;
-            foreach (var row in ClusterFRootdeepSeeder.FloorTraps) // cc-P275: the seeder now lays these too
-            {
-                ClusterFRootdeepSeeder.FindFloorTrap(Map.Trammel, row)?.Delete();
-            }
-            DeleteAll(placed);
+            DeleteAll(placed.Concat(Seeded()).Distinct());
             foreach (var m in mobiles)
             {
                 m.Delete();
@@ -364,6 +402,50 @@ public class RootdeepWayInVerification
         finally
         {
             DeleteAll([crier, skeletons]);
+        }
+    }
+
+    // ---------------------------------------------------------------- W6
+
+    [Fact]
+    public void W6_AWorldSeededByP188GetsTheWholeMouthAndItsLadderPointedAtTheNewLandingNotDoubled()
+    {
+        var mapBuilt = ClusterFRootdeepSeeder.MapBuilt;
+        var placed = new List<Item>();
+        try
+        {
+            ClusterFRootdeepSeeder.MapBuilt = () => true;
+            var arrival = new Point3D(ClusterFRootdeepSeeder.Arrival.X, ClusterFRootdeepSeeder.Arrival.Y, 0);
+
+            // What P188's seeder placed (its labels and destinations, ClusterFRootdeepSeeder before cc-P413).
+            var hole = ClusterFRootdeepSeeder.PlaceTeleporter(Map.Trammel,
+                new ClusterFRootdeepSeeder.TeleporterRow("the hole down to the Landing", 3619, 2620, arrival.X, arrival.Y));
+            var oldLadder = ClusterFRootdeepSeeder.PlaceTeleporter(Map.Trammel,
+                new ClusterFRootdeepSeeder.TeleporterRow("the rope ladder up to Old Haven", 5193, 1132, 3619, 2621));
+            placed.Add(hole);
+            placed.Add(oldLadder);
+
+            var dry = ClusterFRootdeepSeeder.Seed(true);
+            Assert.Equal((Mouth.Length - 1, 1), (dry.Teleporters, dry.TeleportersRetargeted));
+            Assert.Equal(new Point3D(3619, 2621, 0), oldLadder.PointDest); // the dry run changes nothing
+
+            var real = ClusterFRootdeepSeeder.Seed(false);
+            placed.AddRange(Seeded());
+            Assert.Equal((Mouth.Length - 1, 1), (real.Teleporters, real.TeleportersRetargeted));
+
+            var ladderTile = ItemsAt<Teleporter>(ClusterFRootdeepSeeder.LadderUp.At);
+            Assert.Same(oldLadder, Assert.Single(ladderTile));
+            Assert.Equal(BesideMound, oldLadder.PointDest);
+            Assert.Same(hole, Assert.Single(ItemsAt<Teleporter>(new Point3D(3619, 2620, 0))));
+            Assert.All(Mouth, t => Assert.Single(ItemsAt<Teleporter>(new Point3D(t.X, t.Y, 0))));
+
+            var again = ClusterFRootdeepSeeder.Seed(false);
+            Assert.Equal((0, 0), (again.Teleporters, again.TeleportersRetargeted));
+        }
+        finally
+        {
+            ClusterFRootdeepSeeder.MapBuilt = mapBuilt;
+            DeleteAll(placed.Concat(Seeded()).Distinct());
         }
     }
 }

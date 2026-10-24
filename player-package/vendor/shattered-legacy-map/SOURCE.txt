@@ -7,6 +7,11 @@ trammel.mapops   facet 1 (Trammel): the Rootdeep Burrows (x 5136-5247, y 1128-12
                  cc-P276, 2026-10-21 (Chase approved): the tutorial farm west of New Haven (fence x 3381-3399,
                  y 2603-2619): the two trees inside its fence removed, a willow at 3388,2607 (0x0CE6 trunk, 0x0CE7
                  leaves) and a walnut at 3396,2616 (0x0CE0, 0x0CE1). Four S- lines, nothing added.
+                 cc-P413, 2026-10-24: the hole 0x1B71 at 3619,2620 is replaced by an ant-hill burrow in the same bank:
+                 OSI's 6 x 6 sinkhole set 0x30E7-0x310A (a dirt crater round a dark hole, laid as OSI lays it at
+                 5575,3015) at x 3615-3620, y 2616-2621, its dark mouth x 3617-3619, y 2617-2620, with thirteen loose
+                 rocks and debris on the rim (0x1771-0x177C, 0x0C2E-0x0C30, all passable): 49 S+ lines added, the
+                 hole's one S+ line gone, one more B line.
 
 Format: shard-migration scripts/mapbuild/mapops.py (one line per changed land cell, L x y tile z; per static added,
 S+ x y z id hue; per EA static removed, S- x y z id hue; B lines fingerprint EA's blocks so the applier can say

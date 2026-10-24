@@ -14,6 +14,12 @@
 //     Landing's arrival tile; and up, at the foot of the rope ladder on the Landing's north wall (5193,1132; the ladder
 //     0x08A6 is a map static on the wall tile 5193,1131), landing beside the hole (3619,2621). Stock Teleporter items
 //     (pinned Items/Misc/Teleporter.cs: invisible, Active, players only, no delay), so nothing new is saved.
+//     cc-P413: the hole is now an ant-hill burrow (OSI's 6 x 6 sinkhole set in the map patch, x 3615-3620,
+//     y 2616-2621; shard-migration notes/cc-P413-rootdeep-anthill-entrance.md): a teleporter down on every tile of its
+//     dark mouth (x 3617-3619, y 2617-2620, which holds P188's hole tile), and the ladder up lands outside the bank's
+//     collapsed south wall (3619,2623), facing the mound and two tiles from the mouth. A re-run on a world seeded by
+//     P188 keeps the hole's teleporter, adds the other eleven and points the ladder's at the new landing (retargeted,
+//     not duplicated).
 //   - cc-P275: the eight stock floor traps of "watch the floor" (shard-migration notes/cc-P201-deployable-traps-design.md
 //     section 6.1, every tile checked against the built floor, notes/cc-P167-tools/plan-cells.json, and clear of
 //     decor): mushroom puffs by the decoy chests, spikes on one tile of each Warren descent, a saw at the Thicket's
@@ -65,18 +71,47 @@ public static class ClusterFRootdeepSeeder
         public Point3D To => new(ToX, ToY, 0);
     }
 
-    /// <summary>The hole in the Second Bank of Haven (OldHavenBurrowsRegion.HoleEntrance), the way down.</summary>
+    /// <summary>P188's hole in the Second Bank of Haven (OldHavenBurrowsRegion.HoleEntrance), now one tile of the mouth.</summary>
     public static readonly Point2D Hole = new(3619, 2620);
 
-    /// <summary>The foot of the rope ladder on the Landing's north wall, the way up; it lands the player beside the hole.</summary>
-    public static readonly Point2D LadderFoot = new(5193, 1132);
-    public static readonly Point2D BesideHole = new(3619, 2621);
+    /// <summary>
+    /// cc-P413: the burrow's dark mouth, inclusive: the dark core (columns 2-4, rows 1-4) of OSI's sinkhole set, which
+    /// the map patch lays with its first piece at 3615,2616. Every tile takes a player down.
+    /// </summary>
+    public const int MouthX1 = 3617, MouthY1 = 2617, MouthX2 = 3619, MouthY2 = 2620;
 
-    public static readonly TeleporterRow[] Teleporters =
-    [
-        new("the hole down to the Landing", Hole.X, Hole.Y, Arrival.X, Arrival.Y),
-        new("the rope ladder up to Old Haven", LadderFoot.X, LadderFoot.Y, BesideHole.X, BesideHole.Y),
-    ];
+    public static bool IsMouth(int x, int y) => x >= MouthX1 && x <= MouthX2 && y >= MouthY1 && y <= MouthY2;
+
+    /// <summary>The foot of the rope ladder on the Landing's north wall, the way up.</summary>
+    public static readonly Point2D LadderFoot = new(5193, 1132);
+
+    /// <summary>
+    /// cc-P413: where the ladder up lands: outside the bank's collapsed south wall (the gap is 3618-3620,2622), facing
+    /// the mound, two tiles south of the mouth, so nobody is sent straight back down. Outside every spawner's walking box.
+    /// </summary>
+    public static readonly Point2D BesideMound = new(3619, 2623);
+
+    public static readonly TeleporterRow LadderUp =
+        new("the rope ladder up to Old Haven", LadderFoot.X, LadderFoot.Y, BesideMound.X, BesideMound.Y);
+
+    /// <summary>One teleporter down on every mouth tile, row by row, then the ladder up.</summary>
+    public static readonly TeleporterRow[] Teleporters = MouthTeleporters();
+
+    private static TeleporterRow[] MouthTeleporters()
+    {
+        var rows = new List<TeleporterRow>();
+
+        for (var y = MouthY1; y <= MouthY2; y++)
+        {
+            for (var x = MouthX1; x <= MouthX2; x++)
+            {
+                rows.Add(new TeleporterRow($"the burrow mouth ({x},{y}) down to the Landing", x, y, Arrival.X, Arrival.Y));
+            }
+        }
+
+        rows.Add(LadderUp);
+        return rows.ToArray();
+    }
 
     /// <summary>cc-P275: one stock floor trap (Kind names the class) on one tile.</summary>
     public readonly record struct FloorTrapRow(string Label, string Zone, int X, int Y, string Kind)
@@ -169,7 +204,7 @@ public static class ClusterFRootdeepSeeder
 
     public readonly record struct SeedResult(
         bool Refused, int Spawners, int Ankhs, int Crawlways, int Present, string Message, int Teleporters = 0, int FloorTraps = 0,
-        int FloorTrapsPresent = 0
+        int FloorTrapsPresent = 0, int TeleportersRetargeted = 0
     );
 
     public static SeedResult Seed(bool dryRun, bool force = false)
@@ -182,7 +217,7 @@ public static class ClusterFRootdeepSeeder
                 "Rootdeep Burrows: not seeded. The landing is still void land; the map batch builds it first (or use force).");
         }
 
-        int spawners = 0, ankhs = 0, crawlways = 0, teleporters = 0, present = 0;
+        int spawners = 0, ankhs = 0, crawlways = 0, teleporters = 0, retargeted = 0, present = 0;
 
         foreach (var row in Spawners)
         {
@@ -238,6 +273,21 @@ public static class ClusterFRootdeepSeeder
                 continue;
             }
 
+            // cc-P413: one of ours already on the tile pointing elsewhere (P188's ladder, which landed at 3619,2621):
+            // point it where the row says rather than stand a second teleporter on the same tile.
+            if (FindOurTeleporterAt(map, row) is { } old)
+            {
+                if (!dryRun)
+                {
+                    old.PointDest = row.To;
+                    old.MapDest = map;
+                    old.Name = $"Rootdeep: {row.Label}";
+                }
+
+                retargeted++;
+                continue;
+            }
+
             if (!dryRun)
             {
                 PlaceTeleporter(map, row);
@@ -266,8 +316,8 @@ public static class ClusterFRootdeepSeeder
 
         var verb = dryRun ? "would place" : "placed";
         return new SeedResult(false, spawners, ankhs, crawlways, present,
-            $"Rootdeep Burrows{(dryRun ? " (dry run)" : "")}: {verb} {spawners} spawners, {ankhs} ankh, {crawlways} crawlway, {teleporters} teleporters, {floorTraps} floor traps; already there {present} (and {floorTrapsPresent} floor traps).",
-            teleporters, floorTraps, floorTrapsPresent);
+            $"Rootdeep Burrows{(dryRun ? " (dry run)" : "")}: {verb} {spawners} spawners, {ankhs} ankh, {crawlways} crawlway, {teleporters} teleporters, {floorTraps} floor traps; {(dryRun ? "would point" : "pointed")} {retargeted} teleporters at their new landing; already there {present} (and {floorTrapsPresent} floor traps).",
+            teleporters, floorTraps, floorTrapsPresent, retargeted);
     }
 
     /// <summary>cc-P275: a new stock trap of the row's kind (spikes facing west, the saw and gas on the floor, greater gas).</summary>
@@ -308,6 +358,20 @@ public static class ClusterFRootdeepSeeder
         var t = new Teleporter(row.To, map) { Name = $"Rootdeep: {row.Label}" };
         t.MoveToWorld(row.At, map);
         return t;
+    }
+
+    /// <summary>cc-P413: a teleporter the seeder placed (its name starts "Rootdeep: ") on the row's tile, wherever it points.</summary>
+    public static Teleporter FindOurTeleporterAt(Map map, TeleporterRow row)
+    {
+        foreach (var item in map.GetItemsInRange<Teleporter>(row.At, 0))
+        {
+            if (!item.Deleted && item.Name?.StartsWith("Rootdeep: ", StringComparison.Ordinal) == true)
+            {
+                return item;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>The teleporter standing on the row's tile that points where the row does, or null.</summary>
