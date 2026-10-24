@@ -66,6 +66,9 @@ namespace Server
 
             // cc-P265: the guild hall decor packs (GuildHallDecorArt.Pieces, generated from the catalogue).
             GuildHallDecorArt.Apply();
+
+            // cc-P363: quest markers, gem tokens and quest keys, and the coloured moongates (ShardItemArt.Records).
+            Items.ShardItemArt.Apply();
         }
     }
 }
