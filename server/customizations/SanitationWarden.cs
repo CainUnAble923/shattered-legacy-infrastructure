@@ -33,6 +33,7 @@ public partial class SanitationWarden : BaseGuildmaster
         "You there, seen any litter about? Every scrap counts toward Clean Up Britannia.",
         "Cleanliness is next to civic virtue.",
         "Join The Custodians and earn your keep keeping the peace — of the streets.",
+        "Still carrying civic waste bundles? Hand them to me and I'll count them as Clean Up points.",
     };
 
     private DateTime _nextSpeech;
@@ -64,6 +65,23 @@ public partial class SanitationWarden : BaseGuildmaster
             Say(AmbientLines[Utility.Random(AmbientLines.Length)]);
             _nextSpeech = DateTime.UtcNow + TimeSpan.FromSeconds(Utility.RandomMinMax(60, 120));
         }
+    }
+
+    // ── Retired civic waste bundles (cc-P414) ─────────────────────────────────
+
+    /// <summary>Bundles handed over are redeemed once for Clean Up points and deleted; anything else as before.</summary>
+    public override bool OnDragDrop(Mobile from, Item dropped)
+    {
+        if (dropped is CleanedDebris bundles && from is PlayerMobile pm)
+        {
+            var amount = bundles.Amount;
+            var points = ClusterFCustodianSystem.RedeemBundles(pm, bundles);
+            SayTo(pm, $"{amount} civic waste bundle{(amount == 1 ? "" : "s")}? We count Clean Up points now. " +
+                      $"That is {ClusterFCustodianSystem.FormatPoints(points)} to your name.");
+            return true;
+        }
+
+        return base.OnDragDrop(from, dropped);
     }
 
     // ── Guild join bonus ──────────────────────────────────────────────────────

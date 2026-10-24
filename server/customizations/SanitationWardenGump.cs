@@ -129,8 +129,8 @@ public class SanitationWardenGump : Gump
             "Place items in your Trash Bag and use <B>Dump Now</B> to cash in, or throw them in any trash barrel.<BR><BR>" +
             "Items earn what Clean Up Britannia pays for them, magic properties included. A monster you killed earns " +
             "by how fearsome it was (its fame), plus what is inside.<BR>" +
-            "Every 5 items of value cleaned in a batch earns 1 civic waste bundle - " +
-            "turn these in for Custodian work order rewards." +
+            "Civic Contracts count the Clean Up points you earn after taking one. " +
+            "Old civic waste bundles: hand them to me for Clean Up points." +
             "</BASEFONT>",
             false, false);
 

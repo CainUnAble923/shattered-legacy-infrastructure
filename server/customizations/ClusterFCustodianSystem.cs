@@ -377,13 +377,10 @@ public static class ClusterFCustodianSystem
             }
 
             var total = 0.0;
-            var valued = 0;
             foreach (var it in eligible)
             {
                 if (it.Deleted) continue;
-                var points = ComputePoints(it, pm);
-                total += points;
-                if (points > 0) valued++;
+                total += ComputePoints(it, pm);
                 it.Delete();
             }
 
@@ -394,24 +391,31 @@ public static class ClusterFCustodianSystem
 
             pm.SendMessage(0x44,
                 $"Sweep complete: {eligible.Count} item{(eligible.Count == 1 ? "" : "s")} cleaned. " +
-                $"+{FormatPoints(total)} Clean Up points" + GiveBundles(pm, valued) + ".");
+                $"+{FormatPoints(total)} Clean Up points.");
         }
     }
 
     /// <summary>
-    /// Civic waste bundles for the Civic Contracts: 1 per 5 items cleaned in one batch. cc-P33: only items with Clean Up
-    /// value count, so sweeping worthless litter no longer fills a contract.
+    /// cc-P414: civic waste bundles are retired (Chase, 2026-10-22). Cleaning made 1 per 5 items with Clean Up value in
+    /// one batch; the Civic Contracts now ask for Clean Up points instead. A bundle was about 10 points of cleaning (the
+    /// sizing is in ClusterFWorkOrderSystem's Custodians section), and that is what one is worth when handed in.
     /// </summary>
-    public static string GiveBundles(PlayerMobile pm, int valuedItems)
-    {
-        var bundles = valuedItems / 5;
+    public const double PointsPerBundle = 10.0;
 
-        if (bundles <= 0 || pm.Backpack == null)
+    /// <summary>
+    /// cc-P414: hands in a stack of retired civic waste bundles: Clean Up points at PointsPerBundle each, and the stack
+    /// is deleted, so each bundle is redeemed once. Returns the points paid.
+    /// </summary>
+    public static double RedeemBundles(PlayerMobile pm, CleanedDebris bundles)
+    {
+        if (pm == null || bundles == null || bundles.Deleted || bundles.Amount <= 0)
         {
-            return "";
+            return 0;
         }
 
-        pm.Backpack.DropItem(new CleanedDebris { Amount = bundles });
-        return $", {bundles} civic waste bundle{(bundles == 1 ? "" : "s")}";
+        var points = bundles.Amount * PointsPerBundle;
+        bundles.Delete();
+        AwardPoints(pm, points);
+        return points;
     }
 }

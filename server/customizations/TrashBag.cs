@@ -258,7 +258,6 @@ public class TrashBagGump : Gump
 
         var snapshot = new List<Item>(bag.Items);
         var count    = 0;
-        var valued   = 0;
         var total    = 0.0;
 
         foreach (var item in snapshot)
@@ -266,10 +265,8 @@ public class TrashBagGump : Gump
             if (item.Deleted) continue;
             if (!ClusterFCustodianSystem.IsEligible(item, requireGround: false)) continue;
 
-            var points = ClusterFCustodianSystem.ComputePoints(item);
-            total += points;
+            total += ClusterFCustodianSystem.ComputePoints(item);
             count++;
-            if (points > 0) valued++;
             item.Delete();
         }
 
@@ -279,8 +276,7 @@ public class TrashBagGump : Gump
 
             pm.SendMessage(0x44,
                 $"Dumped {count} item{(count == 1 ? "" : "s")}: " +
-                $"+{ClusterFCustodianSystem.FormatPoints(total)} Clean Up points" +
-                ClusterFCustodianSystem.GiveBundles(pm, valued) + ".");
+                $"+{ClusterFCustodianSystem.FormatPoints(total)} Clean Up points.");
             pm.SendSound(0x3D);
         }
         else

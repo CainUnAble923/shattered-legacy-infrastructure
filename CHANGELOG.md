@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.6
+
+### Changed
+- Cleaning up no longer hands out civic waste bundles. The Custodians' Civic Contracts now ask for Clean Up points earned after you take one, and pay the same gold as before. The points you earn stay yours to spend in the Clean Up store.
+- Still holding civic waste bundles? Hand them to the Sanitation Warden: each one counts as 10 Clean Up points.
+
 ## 2026.10.24.4
 
 ### Changed
