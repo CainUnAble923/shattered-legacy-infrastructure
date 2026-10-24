@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.23.7
+
+### Added
+- New looks you can pick for your backpack, bags, metal chests (and your bank box), crates and spell scrolls: Options, Interface, Appearance. Only you see them, Classic stays the default, and the artists are credited in the game folder.
+
 ## 2026.10.23.5
 
 ### Added

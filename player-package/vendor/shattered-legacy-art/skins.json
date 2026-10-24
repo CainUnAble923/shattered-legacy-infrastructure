@@ -1,0 +1,281 @@
+{
+  "comment": "cc-P362: optional UI skins. map: stock ID -> our ID (gump IDs, or art IDs for the scroll kind). Written by shard-migration notes/cc-P362-tools/skins.py; the client's copy is SlSkins.cs.",
+  "kinds": [
+    {
+      "key": "backpack",
+      "label": "Backpack",
+      "space": "gump"
+    },
+    {
+      "key": "bag",
+      "label": "Bags",
+      "space": "gump"
+    },
+    {
+      "key": "chest",
+      "label": "Metal chests and the bank box",
+      "space": "gump"
+    },
+    {
+      "key": "crate",
+      "label": "Crates",
+      "space": "gump"
+    },
+    {
+      "key": "scroll",
+      "label": "Spell scrolls",
+      "space": "art"
+    }
+  ],
+  "skins": [
+    {
+      "kind": "backpack",
+      "key": "fancy",
+      "label": "Fancy",
+      "author": "Carl Hamilton",
+      "map": {
+        "60": 23052,
+        "80": 23053,
+        "50422": 23054
+      }
+    },
+    {
+      "kind": "backpack",
+      "key": "fancy-compact",
+      "label": "Fancy, compact",
+      "author": "Carl Hamilton",
+      "map": {
+        "60": 23055,
+        "80": 23053,
+        "50422": 23054
+      }
+    },
+    {
+      "kind": "backpack",
+      "key": "gothic",
+      "label": "Gothic",
+      "author": "Carl Hamilton",
+      "map": {
+        "60": 23056,
+        "80": 23057,
+        "50422": 23058
+      }
+    },
+    {
+      "kind": "backpack",
+      "key": "gothic-compact",
+      "label": "Gothic, compact",
+      "author": "Carl Hamilton",
+      "map": {
+        "60": 23059,
+        "80": 23057,
+        "50422": 23058
+      }
+    },
+    {
+      "kind": "backpack",
+      "key": "bloody",
+      "label": "Bloody",
+      "author": "Safera",
+      "map": {
+        "60": 23060,
+        "50422": 23061
+      }
+    },
+    {
+      "kind": "backpack",
+      "key": "celtic",
+      "label": "Celtic",
+      "author": "Safera",
+      "map": {
+        "60": 23062,
+        "80": 23063,
+        "50422": 23064
+      }
+    },
+    {
+      "kind": "backpack",
+      "key": "dragon",
+      "label": "Dragon",
+      "author": "Safera",
+      "map": {
+        "60": 23065,
+        "80": 23066,
+        "50422": 23067
+      }
+    },
+    {
+      "kind": "backpack",
+      "key": "leather",
+      "label": "Leather",
+      "author": "Safera",
+      "map": {
+        "60": 23068,
+        "80": 23069,
+        "50422": 23070
+      }
+    },
+    {
+      "kind": "bag",
+      "key": "celtic",
+      "label": "Celtic",
+      "author": "Castiel",
+      "map": {
+        "61": 23071
+      }
+    },
+    {
+      "kind": "bag",
+      "key": "primitive",
+      "label": "Primitive",
+      "author": "Castiel",
+      "map": {
+        "61": 23072
+      }
+    },
+    {
+      "kind": "bag",
+      "key": "snowy",
+      "label": "Snowy",
+      "author": "Castiel",
+      "map": {
+        "61": 23073
+      }
+    },
+    {
+      "kind": "chest",
+      "key": "blue",
+      "label": "Blue lining",
+      "author": "Erachiro",
+      "map": {
+        "74": 23074
+      }
+    },
+    {
+      "kind": "chest",
+      "key": "pink",
+      "label": "Pink lining",
+      "author": "Erachiro",
+      "map": {
+        "74": 23075
+      }
+    },
+    {
+      "kind": "chest",
+      "key": "red",
+      "label": "Red lining",
+      "author": "Erachiro",
+      "map": {
+        "74": 23076
+      }
+    },
+    {
+      "kind": "chest",
+      "key": "teal",
+      "label": "Teal lining",
+      "author": "Erachiro",
+      "map": {
+        "74": 23077
+      }
+    },
+    {
+      "kind": "chest",
+      "key": "yellow",
+      "label": "Yellow lining",
+      "author": "Erachiro",
+      "map": {
+        "74": 23078
+      }
+    },
+    {
+      "kind": "crate",
+      "key": "refurbished",
+      "label": "Refurbished",
+      "author": "Erachiro",
+      "map": {
+        "68": 23079
+      }
+    },
+    {
+      "kind": "crate",
+      "key": "weathered",
+      "label": "Weathered",
+      "author": "Erachiro",
+      "map": {
+        "68": 23080
+      }
+    },
+    {
+      "kind": "scroll",
+      "key": "magic-scrolls",
+      "label": "Magic Scrolls",
+      "author": "CorvaeOboro",
+      "map": {
+        "7981": 13049,
+        "7982": 13050,
+        "7983": 13051,
+        "7984": 13052,
+        "7985": 13053,
+        "7986": 13054,
+        "7987": 13055,
+        "7988": 13056,
+        "7989": 13057,
+        "7990": 13058,
+        "7991": 13059,
+        "7992": 13060,
+        "7993": 13061,
+        "7994": 13062,
+        "7995": 13063,
+        "7996": 13064,
+        "7997": 13065,
+        "7998": 13066,
+        "7999": 13067,
+        "8000": 13068,
+        "8001": 13069,
+        "8002": 13070,
+        "8003": 13071,
+        "8004": 13072,
+        "8005": 13073,
+        "8006": 13074,
+        "8007": 13075,
+        "8008": 13076,
+        "8009": 13077,
+        "8010": 13078,
+        "8011": 13079,
+        "8012": 13080,
+        "8013": 13081,
+        "8014": 13082,
+        "8015": 13083,
+        "8016": 13084,
+        "8017": 13085,
+        "8018": 13086,
+        "8019": 13087,
+        "8020": 13088,
+        "8021": 13089,
+        "8022": 13090,
+        "8023": 13091,
+        "8024": 13092,
+        "8025": 13093,
+        "8026": 13094,
+        "8027": 13095,
+        "8028": 13096,
+        "8029": 13097,
+        "8030": 13098,
+        "8031": 13099,
+        "8032": 13100,
+        "8033": 13101,
+        "8034": 13102,
+        "8035": 13103,
+        "8036": 13104,
+        "8037": 13105,
+        "8038": 13106,
+        "8039": 13107,
+        "8040": 13108,
+        "8041": 13109,
+        "8042": 13110,
+        "8043": 13111,
+        "8044": 13112
+      }
+    }
+  ]
+}
