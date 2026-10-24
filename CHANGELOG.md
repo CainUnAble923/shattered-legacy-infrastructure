@@ -29,6 +29,18 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24
+
+### Staff
+- When the merge Golem's build of a finished branch goes red, it now builds once more before giving up: a test that fails only now and then no longer sends a finished prompt back for a fix-up. Every build's full output is kept for two weeks, and the builds that went red then green are listed by the test that failed, so a flaky test can be found and fixed.
+- A branch that really does not build now reports the first errors (the failed test and its message, or the compiler error) in its fix-up prompt, its email and its card, instead of the last few thousand characters of the test server's chatter.
+- A prompt finished through a fix-up is filed as done along with its fix-up, and a Golem whose claim timed out no longer gets back a prompt that is already in main. No more "do P263 again" hand-offs.
+- Answering a Golem's question now gets it going again from every console and through another PC's agent (before, the answer was saved but the Golem stayed stopped until someone pressed Retry). The overseer can answer as "overseer (for Chase)".
+- Run next picks a prompt for that one Golem: another Golem's next hand-off leaves it alone.
+- The merge Golem's "needs you" clears itself once that branch merges, or once you remove its handled markers to ask for another try.
+- A Golem whose copy of the prompt queue got stuck halfway through an update puts it right by itself and carries on, instead of resting with "nothing for" it.
+- A Golem on another PC can be cleared from afar (a new clear command for its agent, with a reason), and a "needs you" about uncommitted changes clears itself once that Golem's work copies are clean.
+
 ## 2026.10.23.9
 
 ### Added
