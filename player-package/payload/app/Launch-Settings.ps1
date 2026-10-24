@@ -11,8 +11,13 @@
 # cc-P144: the Legion scripts' functions (published sets, the install record, the dev PCs' repo links).
 . (Join-Path $PSScriptRoot 'LegionScripts.ps1')
 
-# The target for -Lan, -Test or neither, and for -Test -Account <profile>. Throws one line,
-# meant to be shown in red, when the switches do not make sense together.
+# The target for -Lan or neither, and for -Account <profile>. Throws one line, meant to be shown in red, when
+# the switches do not make sense together.
+#
+# cc-P411: live is retired (scripts\live.json, 2026-10-14; it returns as a fresh world at 1.0), so every target is
+# the test shard, port 2594 and settings.test.json: Play.ps1 with no switch, and -Lan for inside the house
+# (192.168.1.58:2594, no DNS). -Test is still taken, and means the same, because the shortcuts and every installed
+# Play.ps1's updater pass it. The live target (port 2593, settings.json) is gone until live comes back.
 #
 # A profile is a name for one saved login, not the UO account name: admin, human, gargoyle,
 # elf, or any 1 to 24 of a-z, 0-9 and "-". Lower case only, because Windows file names are
@@ -24,18 +29,14 @@
 # the same launch: the same settings file, autologin and overrides (Get-TazUOLaunch).
 function Get-LaunchTarget {
     param([switch]$Lan, [switch]$Test, [string]$Account, [string]$ClientDir)
-    if ($Lan -and $Test) { throw 'Pick one of -Lan or -Test.' }
     $hasClient = $PSBoundParameters.ContainsKey('ClientDir')
-    if ($hasClient -and -not $Test) { throw '-ClientDir works only with -Test, so the live shard never runs a development build.' }
     if ($hasClient -and -not ($ClientDir -and (Test-Path -LiteralPath (Join-Path $ClientDir 'TazUO.exe') -PathType Leaf))) {
         throw "-ClientDir '$ClientDir' holds no TazUO.exe."
     }
     $hasAccount = $PSBoundParameters.ContainsKey('Account')
-    if ($hasAccount -and -not $Test) { throw '-Account works only with -Test, so the live shard is never logged in automatically.' }
     if ($hasAccount -and $Account -cnotmatch '^[a-z0-9-]{1,24}$') { throw "-Account '$Account' is not a profile name: use 1 to 24 of a-z, 0-9 and -." }
-    if     ($Test) { $t = @{ Server = 'shatteredlegacyuo.com'; Port = 2594; SettingsName = 'settings.test.json'; Label = 'TEST SHARD (throwaway)';            ServerName = 'Shattered Legacy TEST' } }
-    elseif ($Lan)  { $t = @{ Server = '192.168.1.58';          Port = 2593; SettingsName = 'settings.json';      Label = 'Shattered Legacy (house network)'; ServerName = 'Shattered Legacy' } }
-    else           { $t = @{ Server = 'shatteredlegacyuo.com'; Port = 2593; SettingsName = 'settings.json';      Label = 'Shattered Legacy';                 ServerName = 'Shattered Legacy' } }
+    if ($Lan) { $t = @{ Server = '192.168.1.58';          Port = 2594; SettingsName = 'settings.test.json'; Label = 'TEST SHARD (throwaway), house network'; ServerName = 'Shattered Legacy TEST' } }
+    else      { $t = @{ Server = 'shatteredlegacyuo.com'; Port = 2594; SettingsName = 'settings.test.json'; Label = 'TEST SHARD (throwaway)';                 ServerName = 'Shattered Legacy TEST' } }
     $t.Profile = ''
     if ($hasAccount) {
         $t.Profile      = $Account

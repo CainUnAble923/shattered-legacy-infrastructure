@@ -1,10 +1,11 @@
 #Requires -Version 5.1
 <#
-  Shattered Legacy player launcher. One launcher, three targets:
+  Shattered Legacy player launcher. cc-P411: live is retired (since 2026-10-14; it returns as a fresh world at 1.0),
+  so it starts the TEST shard:
 
-      Play.ps1          shatteredlegacyuo.com:2593   the shard, from anywhere
-      Play.ps1 -Lan     192.168.1.58:2593            the shard, from inside the house, no DNS
-      Play.ps1 -Test    shatteredlegacyuo.com:2594   the throwaway TEST shard, from anywhere
+      Play.ps1          shatteredlegacyuo.com:2594   the TEST shard (settings.test.json)
+      Play.ps1 -Lan     192.168.1.58:2594            the same, from inside the house, no DNS
+      Play.ps1 -Test    the same as no switch; kept because the shortcuts and the updater pass it
 
   Test profiles: one saved TEST login per name, for a desktop shortcut each.
       Play.ps1 -Test -Account gargoyle               app\tazuo\settings.test.gargoyle.json
@@ -12,14 +13,12 @@
   launch of a profile shows the login screen; log in once with Save Account ticked and
   every launch after that logs straight in, as the last character played. No password
   ever goes on a command line: it stays in that profile's settings file, as TazUO keeps
-  it. -Account without -Test is refused, so live is never logged in automatically.
-  Play-Test.bat passes it through: Play-Test.bat -Account gargoyle.
+  it. Play-Test.bat passes it through: Play-Test.bat -Account gargoyle.
 
   Another client, TEST only (cc-P114): Chase's test shortcuts start our own TazUO build.
       Play.ps1 -Test -Account human -ClientDir D:\UO\tazuo-sl-build\client
   Starts that folder's TazUO.exe with this install's settings file, autologin and overrides,
-  and this install's character profiles (Data\Profiles). Refused without -Test, as -Account
-  is, so live never runs a development build. Players never need it.
+  and this install's character profiles (Data\Profiles). Players never need it.
 
   Runs Setup.ps1 first whenever the Ultima Online files are not known yet.
 
@@ -33,6 +32,14 @@
   Then (cc-P144) it brings the Legion scripts up to date: Update-Scripts.ps1, quietly, applied without a prompt.
       -NoScripts           skip it
 
+  Then (cc-P411) Shattered Legacy's art, text and map: Overrides-Launch.ps1's Invoke-UoOverrides checks the stamps,
+  and after an update rebuilds them in the background with a progress bar, for up to a minute
+  (app\launch-options.json "overridesTimeLimitSeconds"). Past that the game starts with the last good art and the
+  new art is used from the next start. Its trace is app\logs\overrides-<time>.log.
+      -SkipArtRebuild      start with the art as it is now, checking and rebuilding nothing (Play-Skip-Art.bat)
+
+  Every launch is written to app\logs\launch-<time>.log (the last 10 are kept), to send Chase when something is wrong.
+
   Safe to re-run. The saved username and password in each settings file are kept; only
   the server, the port and the client folder are rewritten. The live shard and the test
   shard keep separate settings files so a test login is never offered to live. Which
@@ -45,13 +52,21 @@
 param([switch]$Lan, [switch]$Test, [string]$Account, [string]$UoPath, [string]$ClientDir,
       [switch]$NoUpdate, [switch]$Update, [string]$UpdateBase = 'https://get.shatteredlegacyuo.com',
       [ValidateSet('sfw', 'topless', 'nude')][string]$PaperdollBodies, [string]$PaperdollFolder,
-      [switch]$NoScripts)
+      [switch]$NoScripts, [switch]$SkipArtRebuild)
 
 $ErrorActionPreference = 'Stop'
 $app   = $PSScriptRoot
 $root  = Split-Path $app -Parent
 $taz   = Join-Path $app 'tazuo'
 $tazExe = Join-Path $taz 'TazUO.exe'
+
+# cc-P411: every launch is kept in app\logs\launch-<time>.log, the last 10 (Chase's work-PC Launch-Log.ps1, folded in).
+try {
+    $logDir = Join-Path $app 'logs'
+    if (-not (Test-Path -LiteralPath $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
+    @(Get-ChildItem -LiteralPath $logDir -Filter 'launch-*.log' -File | Sort-Object LastWriteTimeUtc, Name -Descending | Select-Object -Skip 9) | ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }
+    $null = Start-Transcript -LiteralPath (Join-Path $logDir ('launch-' + (Get-Date).ToString('yyyyMMdd-HHmmss') + '.log')) -Force
+} catch {}
 
 . (Join-Path $app 'Launch-Settings.ps1')
 . (Join-Path $app 'Paperdoll-Bodies.ps1')
@@ -63,6 +78,8 @@ if ($PSBoundParameters.ContainsKey('ClientDir')) { $targetArgs.ClientDir = $Clie
 try { $target = Get-LaunchTarget @targetArgs }
 catch { Write-Host "  $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
 $server = $target.Server; $port = $target.Port; $settingsName = $target.SettingsName; $label = $target.Label
+# cc-P411: every target is the test shard now, with or without -Test (the updater is told -Test either way).
+$Test = [switch]$true
 $settingsPath = Join-Path $taz $settingsName
 
 # --- an update that stopped halfway ------------------------------------------------
@@ -304,8 +321,7 @@ try {
 if (-not $reachable) {
     Write-Host ''
     Write-Host "  Cannot reach $label at $server`:$port." -ForegroundColor Red
-    if ($Test) { Write-Host '  The test shard only runs when Chase starts it. Ask him if it is up.' -ForegroundColor Red }
-    else       { Write-Host '  The server may be down or restarting, or this computer is offline. Try again in a few minutes, then ask Chase.' -ForegroundColor Red }
+    Write-Host '  The server may be down or restarting, or this computer is offline. Try again in a few minutes, then ask Chase.' -ForegroundColor Red
     exit 1
 }
 
@@ -328,9 +344,18 @@ Write-Host ''
 # Patched copies of this computer's own tiledata.mul and animdata.mul, so our art animates
 # (Build-UoOverrides.ps1, cc-P26). Fast when nothing changed. Any failure there is one yellow
 # line and the game starts without them: our art then shows still, never the game not at all.
+# cc-P411: through Invoke-UoOverrides (Overrides-Launch.ps1): a rebuild runs in the background with a bar and a time
+# limit, into a staging folder, so the game always starts, with the last good set when the new one is not ready.
 $uoOverride = $null
 try {
-    $uoOverride = & (Join-Path $app 'Build-UoOverrides.ps1') -UoDir $uoDir
+    . (Join-Path $app 'Overrides-Launch.ps1')
+    if ($SkipArtRebuild) {
+        $cur = Join-Path $app 'uo-overrides\files-override.txt'
+        if (Test-Path -LiteralPath $cur) { $uoOverride = $cur }
+        Write-Host "  -SkipArtRebuild: starting with the art as it is now$(if (-not $uoOverride) { ' (none built yet)' }), nothing checked." -ForegroundColor Yellow
+    } else {
+        $uoOverride = Invoke-UoOverrides -App $app -UoDir $uoDir
+    }
 } catch {
     Write-Host "  Shattered Legacy art could not be prepared ($($_.Exception.Message)). Starting without it." -ForegroundColor Yellow
 }

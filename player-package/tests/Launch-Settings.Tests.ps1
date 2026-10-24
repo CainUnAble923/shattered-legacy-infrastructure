@@ -125,17 +125,21 @@ Fact 'WithoutAProfileTestStillForcesSaveAccountAndAutologinOff' {
     Assert-Equal '' (Get-LaunchTarget -Test).Profile
 }
 
-Fact 'LiveAndLanAreUnchanged' {
-    foreach ($a in @{}, @{ Lan = $true }) {
-        $d = New-Dir ('live-' + $a.Count)
-        Write-Json (Join-Path $d 'settings.json') $savedLogin
-        $p = Write-For $d $a
-        Assert-Equal 'settings.json' (Split-Path $p -Leaf)
-        $s = Read-Json $p
-        Assert-Equal 'gargtester' $s.username
-        Assert-Equal $true $s.saveaccount 'live never forced it off'
-        Assert-Equal $true $s.autologin 'live keeps what the player chose'
-    }
+# cc-P411: live is retired, so no switch and -Lan are the test shard too (they were live on 2593 before).
+Fact 'P411_NoSwitchAndLanTargetTheTestShardOn2594' {
+    $none = Get-LaunchTarget
+    Assert-Equal 'shatteredlegacyuo.com' $none.Server 'no switch: the test shard by name'
+    Assert-Equal 2594 $none.Port 'no switch: port 2594'
+    Assert-Equal 'settings.test.json' $none.SettingsName 'no switch: settings.test.json'
+    $lan = Get-LaunchTarget -Lan
+    Assert-Equal '192.168.1.58' $lan.Server '-Lan: the house address'
+    Assert-Equal 2594 $lan.Port '-Lan: port 2594'
+    Assert-Equal 'settings.test.json' $lan.SettingsName '-Lan: settings.test.json'
+    $t = Get-LaunchTarget -Test
+    Assert-Equal "$($none.Server) $($none.Port) $($none.SettingsName)" "$($t.Server) $($t.Port) $($t.SettingsName)" '-Test is the same as no switch'
+    $both = Get-LaunchTarget -Lan -Test
+    Assert-Equal '192.168.1.58 2594' "$($both.Server) $($both.Port)" '-Lan -Test (an update relaunching a -Lan start) is the house route to the test shard'
+    foreach ($x in $none, $lan, $t) { Assert-True ($x.Port -ne 2593) 'never the retired live port' }
 }
 
 Fact 'TwoProfilesDoNotShareAUsername' {
@@ -151,11 +155,12 @@ Fact 'TwoProfilesDoNotShareAUsername' {
     Assert-Equal '' (Read-Json $p).username 'human starts empty, not with the settings.test.json login'
 }
 
-Fact 'AccountWithoutTestIsRefused' {
+# cc-P411: with live retired there is nothing to keep a profile from, so -Account no longer needs -Test.
+Fact 'AccountWithoutTestIsTheTestShardsProfile' {
     foreach ($a in @{ Account = 'gargoyle' }, @{ Lan = $true; Account = 'gargoyle' }) {
-        $msg = $null
-        try { [void](Get-LaunchTarget @a) } catch { $msg = $_.Exception.Message }
-        Assert-True ($msg -match '^-Account works only with -Test') "refused: [$msg]"
+        $t = Get-LaunchTarget @a
+        Assert-Equal 'settings.test.gargoyle.json' $t.SettingsName 'the profile file'
+        Assert-Equal 2594 $t.Port 'on the test shard'
     }
 }
 
@@ -167,12 +172,13 @@ function New-ClientDir([string]$name) {
     return $d
 }
 
-Fact 'ClientDirWithoutTestIsRefused' {
-    $c = New-ClientDir 'cd-refused'
+# cc-P411: likewise -ClientDir (every target is the test shard).
+Fact 'ClientDirWithoutTestIsTheTestShard' {
+    $c = New-ClientDir 'cd-notest'
     foreach ($a in @{ ClientDir = $c }, @{ Lan = $true; ClientDir = $c }, @{ ClientDir = $c; Account = 'human' }) {
-        $msg = $null
-        try { [void](Get-LaunchTarget @a) } catch { $msg = $_.Exception.Message }
-        Assert-True ($msg -match '^-ClientDir works only with -Test') "refused: [$msg]"
+        $t = Get-LaunchTarget @a
+        Assert-Equal 2594 $t.Port 'the test shard'
+        Assert-True ($t.ClientDir) 'that client'
     }
 }
 
@@ -513,18 +519,22 @@ Fact 'EndToEnd_WithoutAProfileTestIsTodaysLaunch' {
     Assert-True ($r.Out -match '(?m)^\s*TEST SHARD \(throwaway\)\s*$') $r.Out
 }
 
-Fact 'EndToEnd_AccountWithoutTestIsRefusedWithOneLineAndWritesNothing' {
-    $root = New-Sandbox 'e2e-live'
-    foreach ($a in '-Account gargoyle', '-Lan -Account gargoyle') {
-        $r = Invoke-Play $root $a
-        Assert-Equal 1 $r.Exit "[$a] exit code. It said: $($r.Out)"
-        $lines = @(Get-Lines $r.Out)
-        Assert-Equal 1 $lines.Count "[$a] one line: $($r.Out)"
-        Assert-True ($lines[0] -match '^\s*-Account works only with -Test') "[$a] $($lines[0])"
-        Assert-Equal $null $r.Args "[$a] the game must not start"
-        Assert-Equal 0 (Get-SettingsFiles $root).Count "[$a] no settings file written"
-        Assert-True (-not (Test-Path (Join-Path $root 'app\uo-path.txt'))) "[$a] refused before Setup ran"
-    }
+# cc-P411: Play with no switch is the test shard: settings.test.json, port 2594, and a launch log in app\logs.
+Fact 'P411_EndToEnd_PlayWithNoSwitchStartsTheTestShardAndLogsTheLaunch' {
+    $root = New-Sandbox 'e2e-noswitch'
+    $r = Invoke-Play $root '' -ExpectGame
+    Assert-True ($r.Args -match '-settings "[^"]+\\settings\.test\.json"') "game command line: $($r.Args). It said: $($r.Out)"
+    Assert-True ($r.Out -match 'server\s+shatteredlegacyuo\.com:2594') "says the test shard's port: $($r.Out)"
+    Assert-Equal 'settings.test.json' ((Get-SettingsFiles $root) -join '|') 'no live settings.json written'
+    $logs = @(Get-ChildItem -LiteralPath (Join-Path $root 'app\logs') -Filter 'launch-*.log' -ErrorAction SilentlyContinue)
+    Assert-Equal 1 $logs.Count 'one launch log'
+    Assert-True (($logs.Count -eq 1) -and ([IO.File]::ReadAllText($logs[0].FullName) -match 'shatteredlegacyuo\.com:2594')) 'the log holds what the window said'
+}
+
+Fact 'P411_EndToEnd_AnAccountWithoutTestStartsThatProfileOnTheTestShard' {
+    $root = New-Sandbox 'e2e-account-notest'
+    $r = Invoke-Play $root '-Account gargoyle' -ExpectGame
+    Assert-True ($r.Args -match 'settings\.test\.gargoyle\.json" -skiploginscreen') "game command line: $($r.Args). It said: $($r.Out)"
 }
 
 Fact 'EndToEnd_ABadProfileNameIsRefusedWithOneLineAndWritesNothing' {
@@ -572,21 +582,6 @@ Fact 'EndToEnd_AShortcutWithClientDirStartsThatClientAsTheSameProfile' {
     Assert-Equal 0 @(Get-ChildItem -LiteralPath $client -Filter 'settings*.json').Count 'none written in the client folder'
 }
 
-Fact 'EndToEnd_ClientDirWithoutTestIsRefusedWithOneLineAndWritesNothing' {
-    $root = New-Sandbox 'e2e-clientdir-live'
-    $client = New-StubClient 'e2e-clientdir-live-ourbuild'
-    foreach ($a in "-ClientDir `"$client`"", "-Lan -ClientDir `"$client`"") {
-        $r = Invoke-Play $root $a
-        Assert-Equal 1 $r.Exit "[$a] exit code. It said: $($r.Out)"
-        $lines = @(Get-Lines $r.Out)
-        Assert-Equal 1 $lines.Count "[$a] one line: $($r.Out)"
-        Assert-True ($lines[0] -match '^\s*-ClientDir works only with -Test') "[$a] $($lines[0])"
-        Assert-True (-not (Test-Path (Join-Path $client 'args.txt'))) "[$a] our build not started"
-        Assert-Equal $null $r.Args "[$a] the package client not started"
-        Assert-Equal 0 (Get-SettingsFiles $root).Count "[$a] no settings file written"
-        Assert-True (-not (Test-Path (Join-Path $root 'app\uo-path.txt'))) "[$a] refused before Setup ran"
-    }
-}
 
 Fact 'EndToEnd_AnUpdateRelaunchesTheSameProfile' {
     # Update.ps1 with nothing to change ("Already up to date") starts the game the way it was started.
