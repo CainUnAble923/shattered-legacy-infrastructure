@@ -53,8 +53,9 @@ namespace Server.Mobiles;
 
 public partial class BlacksmithGuildmaster
 {
-    private const int SmallBODCap = 3; // max concurrent small BODs in pack
-    private const int LargeBODCap = 1; // max concurrent large BODs in pack
+    // cc-P363: public, for the quest markers' "!" (QuestMarkers.Guildmaster).
+    public const int SmallBODCap = 3; // max concurrent small BODs in pack
+    public const int LargeBODCap = 1; // max concurrent large BODs in pack
 
     /// <summary>Blacksmithy needed for a large order, to request and to turn in (cc-P42 Part F: skill only).</summary>
     public const double LargeOrderSkill = 70.1;

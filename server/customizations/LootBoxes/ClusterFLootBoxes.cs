@@ -121,7 +121,10 @@ public static class ClusterFLootBoxes
     public static LootBox MakeBox(PlayerMobile pm, BoxTheme theme, int tier, SkillName? skill, string label, string? sourceName)
     {
         var rolled = LootBoxRoller.Roll(pm, theme, tier, skill, sourceName ?? label);
-        var box = new LootBox(theme, tier, pm.Account?.Username ?? "", label);
+        // cc-P363: the keyed tier comes locked, and opens with a Vault key (ShardKeys.cs).
+        var box = ShardKeys.NeedsKey(tier)
+            ? new ShardLockedLootBox(theme, tier, pm.Account?.Username ?? "", label)
+            : new LootBox(theme, tier, pm.Account?.Username ?? "", label);
         box.Fill(rolled.BoxName, rolled.Hue, rolled.Gold, rolled.Renown, rolled.Items);
         return box;
     }
@@ -195,6 +198,7 @@ public static class ClusterFLootBoxes
     {
         var result = Award(pm, $"boss:{bossType.Name}", BoxTheme.Boss, LootTable.Current.TierForBoss(bossType), null,
             $"slaying {bossName}", out _);
+        ShardKeys.OnBossKilled(pm, Utility.RandomDouble()); // cc-P363: sometimes a Vault key, on every kill
         if (result == AwardResult.Box)
         {
             ClusterFFanfare.Play(pm, FanfareLevel.Major, "", tier: LootTable.Current.TierForBoss(bossType),

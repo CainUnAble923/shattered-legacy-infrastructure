@@ -170,8 +170,10 @@ Fact 'NothingChangedSkipsTheRebuildFastAndAChangedFileOrNewEntriesRebuild' {
 Fact 'AMissingClilocIsOneYellowLineAndTheArtStillShips' {
     # The two halves are independent: no Cliloc.enu here, art present (synthetic files, as Build-UoOverrides.Tests.ps1).
     $uo = New-UoDir 'no-cliloc' $null
-    $tile = New-Object byte[] (493568 + 500 * 1316)
-    $anim = New-Object byte[] ([int](15616 / 8) * (4 + 8 * 68))
+    # cc-P363: as large as Build-UoOverrides.Tests.ps1's fixtures (1,460 groups, 46,720 animdata entries), so every shipped
+    # record lands inside them; at 500 groups the guild hall decor (28016-) and later IDs were skipped as past the end.
+    $tile = New-Object byte[] (493568 + 1460 * 1316)
+    $anim = New-Object byte[] ([int](46720 / 8) * (4 + 8 * 68))
     [IO.File]::WriteAllBytes((Join-Path $uo 'tiledata.mul'), $tile)
     [IO.File]::WriteAllBytes((Join-Path $uo 'animdata.mul'), $anim)
     [IO.File]::WriteAllText((Join-Path $uo 'Bodyconv.def'), "1000`t-1`t300`r`n")    # cc-P62: every EA install has one

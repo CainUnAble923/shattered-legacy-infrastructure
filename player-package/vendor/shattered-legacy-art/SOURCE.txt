@@ -534,3 +534,33 @@ The mount items 28295 (0x6E87, red) and 28296 (0x6E88, colorable) are ours: tile
 flags Wearable (OSI's old mount items' flag), weight 255, their Animation the body (TazUO draws a ridden mount from the
 mount item's tiledata Animation: Item.GetGraphicForAnimation). Their icons are each dragon's own stand frame (action 2,
 direction 1), scaled to 44 px.
+
+Quest markers, gem tokens and quest keys, coloured moongates: art 46592-46663 (0xB600-0xB647) (cc-P363)
+---------------------------------------------------------------------------------------------------------
+Three community packs from Chase's look book ("Like", queued 2026-10-21), copied out of D:\UO\third-party\ first and
+converted from the copy (shard-migration notes\cc-P363-tools\p363_art.py, through scripts\anchor-art-frames.py).
+  RedRooster (Steven Armstrong), "Quest Markers", https://www.servuo.dev/archive/quest-markers.1823/ (folder
+                quest-markers): "!" E1-E3 at 46592-46594 and "?" Q1-Q3 at 46595-46597, three frames each. No terms
+                stated; he asks to be listed in shard credits.
+  Hestia,       "Quest, Item, Token Keys", https://www.servuo.dev/archive/quest-item-token-keys.1809/ (folder
+                token-keys): "use however you want, drops, gate keys, items keys". The 12 gem tokens at 46618-46629
+                (Amber, Amethyst, Citrine, Diamond, Emerald, Opal, Pearl, Rose Quartz, Ruby, Sapphire, Star Sapphire,
+                Tourmaline, in that order) and the 34 keys at 46630-46663 (Item Key 1 to 34 in number order; key 1 is her
+                blank partial-hue key). Her preview .jpg and readme are not shipped.
+  Carl Hamilton, "NEW Blue / Red / Black / White Spinning Moongate", servuo.dev 2309, 2310, 2312, 2313 (folders
+                moongate-blue, -red, -black, -white): five frames each, blue 46598-46602, red 46603-46607, black
+                46608-46612, white 46613-46617. He made them to replace OSI's moongate images; here they are NEW IDs and
+                OSI's moongates (0xF6C, 0xDDA, 0x1FD4 and their frames) are untouched. No terms stated.
+None is EA-derived or ripped. Community work: credit each author in the shard credits, ship only inside the player
+package or the private repo, never repost the files.
+Pixels: BMP to PNG, pure black (0,0,0) made transparent. Tokens, keys and gates keep their canvas (--keep-geometry).
+The markers are cut to the union of their three frames and stood 92 pixels above the tile's front tip (--bottom-pad
+92): the pack's canvas puts the mark 60 pixels up, on a person's chest, and the shard draws it as an effect on an NPC
+(server QuestMarkers.cs), where it must clear the head. The white gate's black centre becomes see-through, as it would
+in an art file.
+Records (records.json; the server's copy is ShardItemArt.Records in server\customizations\ShardItemArt.cs): only
+each animation's base ID has a tiledata record. Markers 46592 and 46595: Animation 0x01000000, weight 255; animdata
+frames 0,1,2,1 at interval 3 (RedRooster's "1,2,3,2" at "frame rate 3"). Gates 46598, 46603, 46608, 46613:
+0x05804000 weight 255 height 0 (OSI's blue moongate 0xF6C, read from the client's tiledata.mul 2026-10-23); animdata
+frames 0-4 at interval 2. Tokens and keys: ArticleA 0x00004000, weight 1, height 1 (OSI's copper key 0x100E); key 1
+adds PartialHue 0x00040000.
