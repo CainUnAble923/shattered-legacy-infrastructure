@@ -258,6 +258,9 @@ Fact 'TheServerAndThePackageAgreeOnEveryNumber' {
     foreach ($m in 'Platinum', 'Toxic', 'Blaze', 'Frost', 'Obsidian', 'Mythril', 'Adamantium', 'Celestial') {
         $want["All items must be made with $m ingots."] = (& $num "$($m)Ingots")
     }
+    # cc-P415: the trash bag's corpse claim.
+    $want['Clear a corpse'] = (& $num 'ClearACorpse')
+    $want['Clear corpses nearby'] = (& $num 'ClearCorpsesNearby')
     Assert-Equal $want.Count $ours.Count 'one entry per server constant'
     foreach ($e in $ours) { Assert-Equal $want["$($e.text)"] ([int]$e.number) "$($e.text)" }
     Assert-Equal $ours.Count $slClilocRegistry.Count 'registry rows'

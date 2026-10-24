@@ -8,6 +8,7 @@ using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
 using Server.Network;
+using Server.Targeting;
 
 namespace Server.Items;
 
@@ -27,6 +28,11 @@ namespace Server.Items;
 // records its owner (version 1); IssueTo deletes every bag the character already owns, wherever it is, then gives
 // one. Only the owner can dump it. A bag from before version 1 has no owner and dumps for no one; its owner asks a
 // Sanitation Warden for a new one. Craft X routes rejects into the crafter's own bag (ClusterFCraftRejects.cs).
+//
+// cc-P415 (Chase, 2026-10-22: corpse claim on the trash bag, "so players can clear corpses to help server resources"):
+// "Clear a corpse" (target one) and "Clear corpses nearby" (every one within the [cleanupall reach), for the owner with
+// the bag in their backpack, member or not. Both are ClusterFCustodianSystem's corpse claim (ClearCorpse,
+// ClearCorpsesNearby): a player's corpse never, another's looting rights first, and the contents go with the corpse.
 // -----------------------------------------------------------------------------
 
 [SerializationGenerator(1, false)]
@@ -97,7 +103,15 @@ public partial class TrashBag : Container
         base.GetContextMenuEntries(from, ref list);
 
         if (from is PlayerMobile pm && IsChildOf(pm.Backpack))
+        {
             list.Add(new DumpEntry(pm, this));
+
+            if (_owner == pm)
+            {
+                list.Add(new ClearCorpseEntry(pm, this));
+                list.Add(new ClearCorpsesNearbyEntry(pm, this));
+            }
+        }
     }
 
     public override void GetProperties(IPropertyList list)
@@ -132,6 +146,66 @@ public partial class TrashBag : Container
         {
             if (_bag.Deleted || _bag.RootParent != _pm) return;
             _pm.SendGump(new TrashBagGump(_pm, _bag));
+        }
+    }
+
+    // cc-P415: the owner's bag, in their backpack, at the moment of the click or the target.
+    private bool InOwnersPack(PlayerMobile pm) => !Deleted && _owner == pm && IsChildOf(pm.Backpack);
+
+    internal sealed class ClearCorpseEntry : ContextMenuEntry
+    {
+        private readonly PlayerMobile _pm;
+        private readonly TrashBag     _bag;
+
+        public ClearCorpseEntry(PlayerMobile pm, TrashBag bag) : base(ShardClilocs.ClearACorpse, 3)
+        {
+            _pm  = pm;
+            _bag = bag;
+        }
+
+        public override string ToString() => "Clear a corpse";
+
+        public override void OnClick(Mobile from, IEntity target)
+        {
+            if (!_bag.InOwnersPack(_pm)) return;
+
+            _pm.SendMessage(0x59, "Target a monster's corpse to clear. Anything still inside goes with it.");
+            _pm.Target = new ClearCorpseTarget(_bag);
+        }
+    }
+
+    internal sealed class ClearCorpsesNearbyEntry : ContextMenuEntry
+    {
+        private readonly PlayerMobile _pm;
+        private readonly TrashBag     _bag;
+
+        public ClearCorpsesNearbyEntry(PlayerMobile pm, TrashBag bag) : base(ShardClilocs.ClearCorpsesNearby, 3)
+        {
+            _pm  = pm;
+            _bag = bag;
+        }
+
+        public override string ToString() => "Clear corpses nearby";
+
+        public override void OnClick(Mobile from, IEntity target)
+        {
+            if (!_bag.InOwnersPack(_pm)) return;
+
+            ClusterFCustodianSystem.ClearCorpsesNearby(_pm);
+        }
+    }
+
+    private sealed class ClearCorpseTarget : Target
+    {
+        private readonly TrashBag _bag;
+
+        public ClearCorpseTarget(TrashBag bag) : base(12, false, TargetFlags.None) => _bag = bag;
+
+        protected override void OnTarget(Mobile from, object targeted)
+        {
+            if (from is not PlayerMobile pm || !_bag.InOwnersPack(pm)) return;
+
+            ClusterFCustodianSystem.ClearCorpse(pm, targeted as Item);
         }
     }
 }

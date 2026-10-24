@@ -59,6 +59,14 @@ public static class ShardClilocs
     /// <summary>"All items must be made with Celestial ingots."</summary>
     public const int CelestialIngots = 1_900_010;
 
+    // cc-P415: the trash bag's corpse claim. 1,900,011 is left to cc-P168 ("Craft This Order"), still on its branch.
+
+    /// <summary>"Clear a corpse": the trash bag's entry to target one monster corpse and clear it.</summary>
+    public const int ClearACorpse = 1_900_012;
+
+    /// <summary>"Clear corpses nearby": the trash bag's entry to clear every monster corpse in reach.</summary>
+    public const int ClearCorpsesNearby = 1_900_013;
+
     /// <summary>
     /// The deed line for a post-Valorite material, and (cc-P123) for the woods, EA's lines as ServUO's
     /// SmallBODGump.GetMaterialNumberFor gives them (:123-132); 0 (no line, pinned's value) for any other. Pinned's gumps
