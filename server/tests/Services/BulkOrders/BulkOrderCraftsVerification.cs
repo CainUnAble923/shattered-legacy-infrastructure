@@ -17,6 +17,9 @@
 //   7. The reward lists are ServUO's, every real reward builds, and the placeholders are named.
 //   8. The reward items: the apron's exceptional bonus, the spellbook talisman's extra property, the keg, the dye.
 //   9. The save: the new deeds (a jewel's gem, a large deed's counts, a wood) and the reward items round-trip.
+//  10. cc-P427 (cc-P379 finding 2): crafted items only, as every other bulk order since cc-P263: a shop's bow, quarter
+//      staff and cleaver are refused by the fletching, carpentry and tinkering deeds, the crafted ones are taken, and
+//      clusterf.bods.craftedOnly off lets the shop's in. The other facts' items are crafted (Make, Crafted).
 //
 // Host notes as BulkOrderSystemVerification's (cc-P122): accounts, skill checks, craft systems, guilds, the book's entries.
 
@@ -246,6 +249,25 @@ public class BulkOrderCraftsVerification
             item.Amount = amount;
         }
 
+        return Crafted(item);
+    }
+
+    // cc-P427: what a player's craft makes (CraftItem sets PlayerConstructed); a shop's or loot's item is not.
+    private static T Crafted<T>(T item) where T : Item
+    {
+        switch (item)
+        {
+            case BaseWeapon w:
+                w.PlayerConstructed = true;
+                break;
+            case BaseArmor a:
+                a.PlayerConstructed = true;
+                break;
+            case BaseClothing c:
+                c.PlayerConstructed = true;
+                break;
+        }
+
         return item;
     }
 
@@ -367,21 +389,70 @@ public class BulkOrderCraftsVerification
             new SmallCarpentryBOD(0, 10, typeof(QuarterStaff), 1025005, 0xE89, false, BulkMaterialType.OakWood)
         );
 
-        var plain = c.Pack(new QuarterStaff());
+        var plain = c.Pack(Crafted(new QuarterStaff()));
         oak.EndCombine(c.Pm, plain);
         Assert.Equal(0, oak.AmountCur);
 
-        var oakStaff = c.Pack(new QuarterStaff { Resource = CraftResource.OakWood });
+        var oakStaff = c.Pack(Crafted(new QuarterStaff { Resource = CraftResource.OakWood }));
         oak.EndCombine(c.Pm, oakStaff);
         Assert.Equal(1, oak.AmountCur);
 
         var exc = c.Pack(new SmallFletchingBOD(0, 10, typeof(Bow), 1025041, 0x13B2, true, BulkMaterialType.None));
-        var normalBow = c.Pack(new Bow());
+        var normalBow = c.Pack(Crafted(new Bow()));
         exc.EndCombine(c.Pm, normalBow);
         Assert.Equal(0, exc.AmountCur);
 
-        exc.EndCombine(c.Pm, c.Pack(new Bow { Quality = WeaponQuality.Exceptional }));
+        exc.EndCombine(c.Pm, c.Pack(Crafted(new Bow { Quality = WeaponQuality.Exceptional })));
         Assert.Equal(1, exc.AmountCur);
+    }
+
+    // ---------------------------------------------------------------- 10. Crafted only (cc-P427)
+
+    [Fact]
+    public void TheFletchingCarpentryAndTinkeringDeedsTakeOnlyCraftedItems()
+    {
+        using var c = new Crafter(100, SkillName.Fletching, SkillName.Carpentry, SkillName.Tinkering);
+        Assert.True(ClusterFStoreBought.CraftedOnly);
+
+        var deeds = new (SmallBOD Deed, Func<Item> Make)[]
+        {
+            (new SmallFletchingBOD(0, 10, typeof(Bow), 1025041, 0x13B2, false, BulkMaterialType.None), () => new Bow()),
+            (new SmallCarpentryBOD(0, 10, typeof(QuarterStaff), 1025005, 0xE89, false, BulkMaterialType.None), () => new QuarterStaff()),
+            (new SmallTinkerBOD(0, 10, typeof(Cleaver), 1023778, 0xEC3, false, BulkMaterialType.None), () => new Cleaver())
+        };
+
+        try
+        {
+            foreach (var (deed, make) in deeds)
+            {
+                c.Pack(deed);
+
+                // From a shop (not PlayerConstructed): refused, left in the pack.
+                var bought = c.Pack(make());
+                deed.EndCombine(c.Pm, bought);
+                Assert.Equal(0, deed.AmountCur);
+                Assert.False(bought.Deleted);
+
+                // Crafted: taken.
+                var made = c.Pack(Crafted(make()));
+                deed.EndCombine(c.Pm, made);
+                Assert.Equal(1, deed.AmountCur);
+                Assert.True(made.Deleted);
+
+                // The setting off: the shop's is taken too.
+                ClusterFStoreBought.CraftedOnly = false;
+                deed.EndCombine(c.Pm, bought);
+                Assert.Equal(2, deed.AmountCur);
+                Assert.True(bought.Deleted);
+                ClusterFStoreBought.CraftedOnly = true;
+
+                _out.WriteLine($"{deed.GetType().Name}: shop refused, crafted taken, setting off takes the shop's");
+            }
+        }
+        finally
+        {
+            ClusterFStoreBought.CraftedOnly = true;
+        }
     }
 
     [Fact]

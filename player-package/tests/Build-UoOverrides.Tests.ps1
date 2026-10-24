@@ -1078,6 +1078,15 @@ Fact 'PlayStartsTheGameWithoutTheOverrideWhenAFileIsMissing' {
     Assert-True ($r.Out -match 'Shattered Legacy art could not be prepared \(tiledata\.mul is not in') $r.Out
 }
 
+Fact 'EveryRegistryRowsHexIsItsId' {
+    # cc-P427 (cc-P379 finding 5): the id_hex column is read by people, not tools (find-free-art.py and these facts key on
+    # id), so nothing caught 54783 written as 0xD5EF (54767). Every row's hex is its decimal id.
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $wrong = @($reg | Where-Object { [Convert]::ToInt32(($_.id_hex -replace '^0x', ''), 16) -ne [int]$_.id } | ForEach-Object { "$($_.id)=$($_.id_hex)" })
+    Assert-Equal '' ($wrong -join ', ') 'rows whose id_hex is not their id'
+    Assert-True ($reg.Count -gt 500) "read $($reg.Count) rows"
+}
+
 Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 
 $failed = @($results | Where-Object { -not $_.Passed }).Count
