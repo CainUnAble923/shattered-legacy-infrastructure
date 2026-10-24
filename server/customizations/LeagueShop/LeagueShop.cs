@@ -30,7 +30,8 @@ public enum LeagueShopKind
     Cosmetic,
     LootBox,
     Convenience,
-    Decor
+    Decor,
+    Mount // cc-P365: a reward mount's statuette (RewardMounts.ShopRows)
 }
 
 /// <summary>One shop row: what it is, the AP that opens it, the Renown it costs, and what it hands over.</summary>
@@ -117,6 +118,8 @@ public static class LeagueShop
             _ => [new LeagueRegaliaRobe(), new LeagueRegaliaCloak(), new LeagueRegaliaSandals()]),
         new("title.favorite", "Title: the System's Favorite", 1750, 500, LeagueShopKind.Title, TitleArt, LeagueHue,
             titleKey: LeagueTitles.SystemsFavorite),
+        // cc-P365: the reward mounts routed to the shop, at 1750 AP (past the Gold box's 1000, so no box draws one).
+        .. RewardMounts.ShopRows()
     ];
 
     private static Func<PlayerMobile, List<Item>> One(Func<PlayerMobile, Item> make) => pm => [make(pm)];

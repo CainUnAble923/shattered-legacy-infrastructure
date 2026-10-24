@@ -69,7 +69,7 @@ namespace Server.Mobiles
         public EvoPet(string line) : base(AIType.AI_Melee, FightMode.Aggressor)
         {
             var evoLine = EvoPetData.Line(line) ??
-                          throw new ArgumentException($"No evo line '{line}'. Lines: dog, cat, fox, bird.", nameof(line));
+                          throw new ArgumentException($"No evo line '{line}'. Lines: dog, cat, fox, bird, horse, lizard.", nameof(line));
 
             _lineKey = evoLine.Key;
             _stage = 1;

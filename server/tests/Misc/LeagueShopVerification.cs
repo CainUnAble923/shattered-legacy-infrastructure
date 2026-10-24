@@ -367,6 +367,9 @@ public class LeagueShopVerification
         ("trophy", 500, 250), ("pigment", 500, 300), ("title.veteran", 500, 200),
         ("box.gold", 1000, 400),
         ("regalia", 1750, 1000), ("title.favorite", 1750, 500),
+        // cc-P365: the reward mounts routed to the shop (RewardMounts.ShopRows), statuettes at 1750 AP.
+        ("mount.chestnut-draft", 1750, 750), ("mount.bay-draft", 1750, 750), ("mount.grey-draft", 1750, 750),
+        ("mount.palomino-draft", 1750, 750), ("mount.barded-warhorse", 1750, 1000), ("mount.gilded-charger", 1750, 1500),
     ];
 
     [Fact]

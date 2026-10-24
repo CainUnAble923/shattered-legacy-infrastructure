@@ -565,3 +565,37 @@ nothing else changed. Credit each author wherever the shard credits art.
 Not registered from these packs: Carl Hamilton's minimized backpacks 2 and 3 (stock 9810 and 9811, which TazUO never
 draws for a backpack), Safera's backpack item icons (they would change every backpack on the ground, too), Castiel's
 preview picture, and the rest of Erachiro's pack (see shard-migration notes\cc-P362-ui-skins-player-options.md).
+
+Reward mounts and the evo pets' young stages: bodies 2088-2133 and mount items 46672-46689 (0xB650-0xB661) (cc-P365)
+-------------------------------------------------------------------------------------------------------------------
+Three folders, copied out of D:\UO\third-party\ first and registered from the copy (shard-migration
+notes\cc-P365-tools\p365_art.py). Every .vd ships byte for byte as anim-src\bodies\<body>.vd (each file's SHA-256 is in
+its registry row) and is encoded into build\sl-anim7.bin by scripts\build-equip-anims.py, which checks every block.
+  Thagoras, "Mount Pack", https://www.servuo.dev/archive/mount-pack.1979/ (folder thagoras-mount-pack): made by Rafael
+                Costa (UoBrazilian), likely ripped from World of Warcraft (Thagoras' words). No terms stated; credit
+                Thagoras and Rafael Costa; every creature has a new name in game, no Blizzard names. Used: the three
+                raptors (2088-2090), horses 01-04 (2091-2094, on the ground) and their saddled files (2104, 2105, 2106,
+                2108: walk, run, stand and eat only, the ridden look), horses 05 and 06 saddled (2095, 2096), the
+                unicorn (2097), the death mount (2098), the nightmare (2099), the swamp lizard (2100), the warg (2102).
+  uo-pixel.de animals, https://www.uo-pixel.de/doku.php?id=anim:animals:animals (folder uo-pixel-animals):
+                Krazy Zacks, "Mountable drake and Bear" (krazy_zacks_drake_bear): "Distribute freely. Do not modify
+                contents of this package!" P_01 (the drake, 2109) and P_02 (the bear, 2110) ship exactly as he made
+                them: no recolour, no resize, no frame touched. His verdata patchers (STEP1\Patch.exe, STEP2\AVATAR.EXE)
+                were never extracted or run; his Sphere scripts are not used.
+                Prapilk: the riding wolf (prapilk_reitwolf P_01, 2111), the four foals (prapilk_colts L_01-L_04, 2113,
+                2114, 2115, 2118), the three young lizards (prapilk_echsen L_01-L_03, 2119, 2125, 2126) and the four
+                calves (prapilk_rindviehcher L_01-L_04, 2129-2132). No terms stated; credit Prapilk.
+                Socrarr, "Pferdesattel" (socrarr_pferdesattel P_pferdesattel, 2112): the saddled horse. No terms
+                stated; credit Socrarr. His Sphere saddle scripts are not used.
+  Prapilk, "KR Wolf", https://www.servuo.dev/archive/kr-wolf.1717/ (folder kr-wolf): Wolf.vd as 2133, the evo dog's
+                top stage. No terms stated; credit Prapilk.
+Not used: Arx's goliath beetle (about 35 px tall: a rider would dwarf it), the griffon_minitiere small animals and the
+leopard (not in this task). The calves are registered and wait for a line (no evo line or companion fits a calf yet).
+Layouts (validate-art.py propose): the low-layout files are ANIMAL bodies in anim7 slots 209-238. The four people-layout
+files (2109-2112) hold the whole animal in the rider's mounted actions 23-29 (and walk and stand), HUMAN in slots
+401-404: they are only ever a ridden look, named by a mount item, while the creature walks on a stock body (drake 0x3C,
+polar bear 0xD5, timber wolf 0xE1, horse 0xC8), as Krazy Zacks' own mod did. TazUO draws a people-typed mount with the
+rider's mounted groups (MobileAnimation.GetGroupForAnimation).
+Mount items 46672-46689: tiledata on the Mount layer (25), Wearable 0x00400000, weight 255, the Animation the ridden
+body (as P277's dragons). Each icon is the ridden look's stand frame (action 2, or 4 for the people layout, direction
+2), scaled to 44 px.
