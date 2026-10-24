@@ -1,0 +1,11 @@
+--- "a/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
+@@ -416,6 +416,8 @@
+                 }
+ 
+                 Patient.Heal((int)toHeal, Healer, false);
++                // Shattered Legacy (cc-P453): a bandage that really healed; the tutorial farm's heal step listens.
++                Server.Tutorial.TutorialFarm.BandageHealed?.Invoke(Healer, Patient);
+             }
+             else
+             {

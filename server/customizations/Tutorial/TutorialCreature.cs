@@ -2,10 +2,13 @@
 //
 // They engage only players in the tutorial (ClusterFTutorial.IsParticipant: the account is in the core, the wings or
 // remedial training, and this is the character doing it; a pet counts as its master), so veterans cannot farm them. No
-// instancing and no pinned patch (Part A item 6):
+// instancing (Part A item 6):
 //   - IsEnemy is false for anyone else, so pinned's AI never acquires them (BaseAI.AcquireFocusMob rejects a non-enemy,
 //     BaseAI.cs:1073-1075; approach aggro needs IsEnemy, BaseCreature.cs:1353-1358).
 //   - CanBeHarmful is false for anyone else, so the creature never strikes them.
+//   - cc-P453: anyone else's harmful act on one is refused before it starts (Notoriety-tutorial-creature-outsiders.patch,
+//     in Mobile.AllowHarmfulHandler): no combatant, no swing, so no weapon, Tactics or Anatomy roll on a target that
+//     never fights back.
 //   - Damage from anyone else is ignored, wherever the attacker stands (pinned only asks the attacker's region,
 //     Mobile.cs:8366-8374, so a region alone would leave a gap).
 //   - No kill awards and no loot, so a kill is worth nothing outside the tutorial.

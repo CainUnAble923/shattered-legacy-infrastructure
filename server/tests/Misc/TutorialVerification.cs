@@ -10,6 +10,8 @@
 //   4. The loop demo leaves level, skills, loop count and Young as they were; real loops keep Young (P371).
 //   5. A player not in the tutorial is not engaged by tutorial creatures; the tutorial player is.
 // And: every station Chase listed is registered; walking the core opens the wings; graduation gives the first loot box.
+// cc-P453: another character on the account changes nothing (Rook's page is read-only to it); the tutorial record
+// round-trips skipped, remedial and graduated with a trailing sentinel, and a v0 record loads its pet from the old keys.
 
 using System;
 using System.Collections.Generic;
@@ -535,5 +537,129 @@ public class TutorialVerification : IDisposable
         Assert.True(current.Running);
         Assert.Same(current, p.Pm.QuestArrow);
         current.Stop();
+    }
+
+    // ---------------------------------------------------------------- cc-P453 (P420 #1, #5)
+
+    private static RelayInfo Press(int button) => new(button, default, default, default, default);
+
+    [Fact]
+    public void AnotherCharacterOnTheAccountChangesNothing()
+    {
+        using var p = new Player();
+        ClusterFTutorial.OnLogin(p.Pm);
+        using var alt = new Player(p.Account, 1);
+
+        var page = new TutorialRecruiterGump(alt.Pm);
+        Assert.True(page.ReadOnly);
+        Assert.Empty(page.Entries.OfType<GumpButton>()); // read-only: nothing to press
+        Assert.False(new TutorialRecruiterGump(p.Pm).ReadOnly);
+
+        // A reply naming every button anyway: the core stations, skip and graduate.
+        foreach (var station in TutorialStations.Core)
+        {
+            page.OnResponse(alt.Ns, Press(TutorialRecruiterGump.BtnStationBase + Array.IndexOf(TutorialStations.All, station)));
+        }
+
+        page.OnResponse(alt.Ns, Press(TutorialRecruiterGump.BtnSkip));
+        page.OnResponse(alt.Ns, Press(TutorialRecruiterGump.BtnGraduate));
+        new TutorialSkipGump(2).OnResponse(alt.Ns, Press(TutorialSkipGump.BtnYes));
+        ClusterFTutorial.CompleteStation(alt.Pm, "core.movement");
+        Assert.Equal(TutorialState.InCore, p.Record.State);
+        Assert.Empty(p.Record.StationsDone);
+        Assert.Null(TutorialCoreTrials.Current(alt.Pm));
+        Assert.False(alt.Pm.HasGump<TutorialSkipGump>());
+
+        // The trainee's core is done: the alt still cannot graduate it.
+        foreach (var station in TutorialStations.Core)
+        {
+            ClusterFTutorial.CompleteStation(p.Pm, station.Key);
+        }
+
+        Assert.NotNull(ClusterFTutorial.Graduate(alt.Pm));
+        Assert.Equal(TutorialState.InWings, p.Record.State);
+
+        // Skipped: the alt cannot start remedial training, nor take the record over.
+        Assert.True(ClusterFTutorial.Skip(p.Pm));
+        new TutorialRecruiterGump(alt.Pm).OnResponse(alt.Ns, Press(TutorialRecruiterGump.BtnRemedial));
+        Assert.False(ClusterFTutorial.StartRemedial(alt.Pm));
+        Assert.Equal(TutorialState.Skipped, p.Record.State);
+        Assert.Equal((uint)p.Pm.Serial, p.Record.CharacterSerial);
+
+        // A waiting companion is the trainee's to pick.
+        p.Record.PetClaimPending = true;
+        Assert.False(ClusterFTutorial.OfferCompanion(alt.Pm));
+        Assert.Null(ClusterFTutorial.ChooseCompanion(alt.Pm, "dog"));
+        Assert.True(p.Record.PetClaimPending);
+        p.Record.PetClaimPending = false;
+
+        // The trainee deleted: another character may carry on.
+        p.Pm.Delete();
+        Assert.False(new TutorialRecruiterGump(alt.Pm).ReadOnly);
+        Assert.True(ClusterFTutorial.StartRemedial(alt.Pm));
+        Assert.Equal((uint)alt.Pm.Serial, p.Record.CharacterSerial);
+    }
+
+    private const int Sentinel = 0x5E471E1;
+
+    [Theory]
+    [InlineData(TutorialState.Skipped)]
+    [InlineData(TutorialState.Remedial)]
+    [InlineData(TutorialState.Graduated)]
+    public void TheTutorialRecordRoundTripsWithATrailingSentinel(TutorialState state)
+    {
+        var record = new TutorialRecord
+        {
+            State = state,
+            CharacterSerial = 0x1234,
+            WasSkipped = state != TutorialState.Graduated,
+            StartedAt = new DateTime(2026, 10, 20, 8, 0, 0, DateTimeKind.Utc),
+            FinishedAt = new DateTime(2026, 10, 21, 9, 30, 0, DateTimeKind.Utc),
+            PetClaimed = state == TutorialState.Graduated,
+            PetClaimPending = state == TutorialState.Skipped,
+            BandagesIssued = 2
+        };
+        record.StationsDone.Add("core.movement");
+        record.StationsDone.Add(TutorialFarm.PestsKey);
+
+        var w = new BufferWriter(true);
+        record.Serialize(w);
+        w.Write(Sentinel);
+        var r = new BufferReader(w.Buffer);
+        var copy = new TutorialRecord(r);
+
+        Assert.Equal(Sentinel, r.ReadInt()); // the reader stopped exactly where the writer did
+        Assert.Equal(
+            (record.State, record.CharacterSerial, record.WasSkipped, record.StartedAt, record.FinishedAt),
+            (copy.State, copy.CharacterSerial, copy.WasSkipped, copy.StartedAt, copy.FinishedAt));
+        Assert.Equal(record.StationsDone.OrderBy(k => k), copy.StationsDone.OrderBy(k => k));
+        Assert.Equal(
+            (record.PetClaimed, record.PetClaimPending, record.BandagesIssued),
+            (copy.PetClaimed, copy.PetClaimPending, copy.BandagesIssued));
+    }
+
+    [Theory]
+    [InlineData("farm.pet", true, false)]
+    [InlineData("graduation.pet", true, false)]
+    [InlineData("graduation.petPending", false, true)]
+    [InlineData("core.movement", false, false)]
+    public void AVersionZeroRecordLoadsItsPetFromTheOldKeys(string key, bool claimed, bool pending)
+    {
+        var w = new BufferWriter(true);
+        w.Write(0); // version 0, as written before cc-P453
+        w.Write((byte)TutorialState.Graduated);
+        w.Write(0x1234u);
+        w.Write(1);
+        w.Write(key);
+        w.Write(false);
+        w.Write(DateTime.UnixEpoch);
+        w.Write(DateTime.UnixEpoch);
+        w.Write(Sentinel);
+
+        var r = new BufferReader(w.Buffer);
+        var copy = new TutorialRecord(r);
+        Assert.Equal(Sentinel, r.ReadInt());
+        Assert.Equal((claimed, pending), (copy.PetClaimed, copy.PetClaimPending));
+        Assert.Equal(key is "core.movement" or "farm.pet", copy.StationsDone.Contains(key));
     }
 }

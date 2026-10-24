@@ -14,6 +14,15 @@
 //      the Farmhand hands bandages and a successful Healing use finishes it (farm.heal, the combat.healing station).
 //   4. Graduation offers no second pet to an account that took its pet at the farm, and still offers one otherwise.
 //   5. The evo dog and cat stages are exactly Chase's picks (F-35, 2026-10-05).
+// cc-P453 (the P420/P421 fix-up, notes/cc-P453-tutorial-fixups.md):
+//   6. A farm pet, then skip and remedial: no second pet from the Farmhand or at graduation, and the claim survives a
+//      save and load.
+//   7. A closed companion pick waits on the record through a save and load; Rook offers it again; one claim only.
+//   8. Bandages moved out of the pack and asked for again: a new stack only up to the cap.
+//   9. A failed treatment whose skill roll passed leaves step 3; a bandage that really heals completes it.
+//  10. An outsider cannot make a pest their combatant, so never swings or rolls a skill at it.
+//  11. Reseeding with the farmhouse door open places no second door.
+//  12. The pen and the pests are replaced after a death and a taming.
 
 #nullable enable
 
@@ -25,6 +34,7 @@ using Server.Accounting;
 using Server.Engines.Spawners;
 using Server.Gumps;
 using Server.Items;
+using Server.LootBoxes;
 using Server.Misc;
 using Server.Mobiles;
 using Server.Network;
@@ -43,6 +53,10 @@ public class TutorialFarmVerification
         ShardTestHost.EnsureSkillChecks();
         ClusterFTutorial.Enabled = true;
         TutorialFarm.EnsureHooks(); // Initialize never runs in the test host
+        if (ClusterFAchievementSystem.Definitions.Count == 0)
+        {
+            ClusterFAchievementSystem.Configure();
+        }
     }
 
     private sealed class Player : IDisposable
@@ -85,12 +99,47 @@ public class TutorialFarmVerification
                 m.Delete();
             }
 
+            ClusterFFanfare.FlushAll();
             Pm.NetState = null;
             Ns.Mobile = null;
             Pm.Delete();
             Ns.Dispose();
             Accounts.Remove(Account);
         }
+    }
+
+    // A bandage's end (pinned BandageContext.OnTick), run now. Many slips make the treatment fail while the skill rolls
+    // still run; none, with the skill at 120, always heals.
+    private sealed class Bandaging : BandageContext
+    {
+        public Bandaging(Mobile healer, Mobile patient, int slips) : base(healer, patient, TimeSpan.Zero) => Slips = slips;
+
+        public void Finish() => OnTick();
+    }
+
+    private static TutorialRecord RoundTrip(Account account)
+    {
+        var w = new BufferWriter(true);
+        ClusterFAccountPersistence.GetOrCreate(account).Serialize(w);
+        return new ClusterFAccountData(new BufferReader(w.Buffer)).Tutorial;
+    }
+
+    private static List<BaseDoor> DoorsNearTheFarmhouse()
+    {
+        var doors = new List<BaseDoor>();
+        foreach (var d in Map.Trammel.GetItemsInRange<BaseDoor>(TutorialFarmLayout.DoorSpot, 3))
+        {
+            doors.Add(d);
+        }
+
+        return doors;
+    }
+
+    private static void SeedFarm()
+    {
+        TutorialFarm.IsTestShard = () => true;
+        TutorialFarm.MapPatched = () => true;
+        Assert.False(TutorialFarm.Seed(false).Refused);
     }
 
     private static void CleanFarm()
@@ -223,7 +272,7 @@ public class TutorialFarmVerification
             Assert.NotNull(pet);
             Assert.Equal("dog", pet!.Line.Key);
             Assert.True(pet.IsBonded && pet.Controlled && pet.ControlMaster == p.Pm);
-            Assert.Contains(TutorialFarm.PetKey, p.Record.StationsDone);
+            Assert.True(p.Record.PetClaimed);
             Assert.Null(TutorialFarm.ChoosePet(p.Pm, "cat")); // one pet
             Assert.Equal(2, TutorialFarm.StepOf(p.Pm));
 
@@ -247,12 +296,14 @@ public class TutorialFarmVerification
             Assert.Contains(TutorialFarm.TamingStation, p.Record.StationsDone);
             Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
 
-            // 3. Bandages, then a heal that worked.
+            // 3. Bandages, then a heal that worked (on the pet: Veterinary).
             Assert.Equal(3, TutorialFarm.Talk(p.Pm, hand));
             Assert.NotNull(p.Pm.Backpack.FindItemByType<Bandage>());
-            SkillEvents.InvokeSkillUsed(p.Pm, p.Pm.Skills.Healing, false);
-            Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
-            SkillEvents.InvokeSkillUsed(p.Pm, p.Pm.Skills.Veterinary, true);
+            pet.MoveToWorld(p.Pm.Location, p.Pm.Map);
+            pet.Hits = pet.HitsMax / 2;
+            p.Pm.Skills.Veterinary.Cap = 120.0;
+            p.Pm.Skills.Veterinary.Base = 120.0;
+            new Bandaging(p.Pm, pet, 0).Finish();
             Assert.Contains(TutorialFarm.HealKey, p.Record.StationsDone);
             Assert.Contains(TutorialFarm.HealingStation, p.Record.StationsDone);
             Assert.Equal(4, TutorialFarm.Talk(p.Pm, hand));
@@ -273,7 +324,7 @@ public class TutorialFarmVerification
     public void GraduationOffersNoSecondPetAfterTheFarm()
     {
         using var farmed = new Player(true);
-        farmed.Record.StationsDone.Add(TutorialFarm.PetKey);
+        farmed.Record.PetClaimed = true;
         ClusterFTutorial.GraduationRewards(farmed.Pm);
         Assert.False(farmed.Pm.HasGump<TutorialPetPickGump>());
 
@@ -306,5 +357,284 @@ public class TutorialFarmVerification
         Assert.All(EvoPetData.Dog.Stages.Concat(EvoPetData.Cat.Stages), s => Assert.False(s.ArtPending));
         Assert.Equal(new[] { 0, 0, 0, 1, 5 }, EvoPetData.Dog.Stages.Select(s => s.MinOwnerLoops));
         Assert.Equal(new[] { 0, 0, 0, 1, 5 }, EvoPetData.Cat.Stages.Select(s => s.MinOwnerLoops));
+    }
+
+    // ---------------------------------------------------------------- 6 (cc-P453, P420 #3 = P421 #2)
+
+    [Fact]
+    public void AFarmPetThenSkipAndRemedialGivesNoSecondPetAcrossASaveAndLoad()
+    {
+        var counts = ClusterFTutorial.SkipCountsAsGraduation;
+        using var p = new Player(true);
+        try
+        {
+            ClusterFTutorial.SkipCountsAsGraduation = true;
+            Assert.NotNull(TutorialFarm.ChoosePet(p.Pm, "dog"));
+            Assert.True(RoundTrip(p.Account).PetClaimed); // the claim is saved
+
+            Assert.True(ClusterFTutorial.Skip(p.Pm));
+            Assert.True(ClusterFTutorial.StartRemedial(p.Pm));
+            Assert.True(RoundTrip(p.Account).PetClaimed); // remedial training clears the stations, not the claim
+
+            Assert.Equal(2, TutorialFarm.StepOf(p.Pm)); // straight to the pests, with the dog they have
+            Assert.Null(TutorialFarm.ChoosePet(p.Pm, "cat"));
+
+            foreach (var station in TutorialStations.Core)
+            {
+                ClusterFTutorial.CompleteStation(p.Pm, station.Key);
+            }
+
+            Assert.Null(ClusterFTutorial.Graduate(p.Pm));
+            Assert.False(p.Pm.HasGump<TutorialPetPickGump>());
+            Assert.False(ClusterFTutorial.CompanionPending(p.Record));
+            Assert.Null(ClusterFTutorial.ChooseCompanion(p.Pm, "fox"));
+            Assert.Single(p.Pm.AllFollowers);
+        }
+        finally
+        {
+            ClusterFTutorial.SkipCountsAsGraduation = counts;
+            foreach (var item in p.Pm.Backpack.Items.ToList())
+            {
+                item.Delete();
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- 7 (P420 #2)
+
+    [Fact]
+    public void AClosedCompanionPickWaitsOnTheRecordAndIsClaimedOnce()
+    {
+        using var p = new Player(true);
+        try
+        {
+            ClusterFTutorial.GraduationRewards(p.Pm);
+            var pick = p.Pm.FindGump<TutorialPetPickGump>();
+            Assert.NotNull(pick);
+            pick!.OnResponse(p.Ns, new RelayInfo(0, default, default, default, default)); // closed without choosing
+            p.Pm.CloseGump<TutorialPetPickGump>();
+
+            var saved = RoundTrip(p.Account); // a restart keeps it
+            Assert.True(saved.PetClaimPending);
+            Assert.False(saved.PetClaimed);
+
+            Assert.True(ClusterFTutorial.OfferCompanion(p.Pm)); // Rook offers it again
+            Assert.True(p.Pm.HasGump<TutorialPetPickGump>());
+            Assert.NotNull(ClusterFTutorial.ChooseCompanion(p.Pm, "fox"));
+            Assert.Null(ClusterFTutorial.ChooseCompanion(p.Pm, "bird")); // one claim
+            Assert.False(ClusterFTutorial.OfferCompanion(p.Pm));
+            Assert.True(p.Record.PetClaimed);
+            Assert.False(p.Record.PetClaimPending);
+            Assert.Single(p.Pm.AllFollowers);
+
+            ClusterFTutorial.GraduationRewards(p.Pm); // another graduation box never reopens it
+            Assert.False(p.Record.PetClaimPending);
+            Assert.False(RoundTrip(p.Account).PetClaimPending);
+        }
+        finally
+        {
+            foreach (var item in p.Pm.Backpack.Items.ToList())
+            {
+                item.Delete();
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- 8 (P420 #4 = P421 #1)
+
+    [Fact]
+    public void BandagesMovedOutOfThePackAreReissuedOnlyUpToTheCap()
+    {
+        var hand = new TutorialFarmhand();
+        hand.MoveToWorld(new Point3D(3396, 2614, 0), Map.Trammel);
+        using var p = new Player(true);
+        p.Litter.Add(hand);
+        p.Record.PetClaimed = true;
+        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
+        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+
+        var banked = 0;
+        for (var i = 0; i < TutorialFarm.BandageIssues + 2; i++)
+        {
+            Assert.Equal(3, TutorialFarm.Talk(p.Pm, hand));
+            Assert.Equal(3, TutorialFarm.Talk(p.Pm, hand)); // the pack has some: no second stack
+            if (p.Pm.Backpack.FindItemByType<Bandage>() is { } stack)
+            {
+                p.Pm.BankBox.DropItem(stack); // banked (or traded, or sold) and asked again
+                banked++;
+            }
+        }
+
+        Assert.Equal(TutorialFarm.BandageIssues, banked);
+        Assert.Null(p.Pm.Backpack.FindItemByType<Bandage>());
+        Assert.Equal(TutorialFarm.BandageIssues, p.Record.BandagesIssued);
+        Assert.Equal(TutorialFarm.BandageIssues, RoundTrip(p.Account).BandagesIssued);
+        p.Pm.BankBox.Delete();
+    }
+
+    // ---------------------------------------------------------------- 9 (P421 #4)
+
+    [Fact]
+    public void AFailedTreatmentLeavesTheHealStepAndARealHealCompletesIt()
+    {
+        using var p = new Player(true);
+        p.Record.PetClaimed = true;
+        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
+        p.Pm.Skills.Healing.Cap = 120.0;
+        p.Pm.Skills.Healing.Base = 120.0; // the skill roll always passes
+
+        var rolled = new List<bool>();
+        void Record(Mobile from, Skill skill, bool success)
+        {
+            if (from == p.Pm && skill.SkillName == SkillName.Healing)
+            {
+                rolled.Add(success);
+            }
+        }
+
+        SkillEvents.SkillUsed += Record;
+        try
+        {
+            p.Pm.Hits = p.Pm.HitsMax - 20;
+            var hits = p.Pm.Hits;
+            new Bandaging(p.Pm, p.Pm, 100).Finish(); // so many slips the treatment fails
+            Assert.Equal(hits, p.Pm.Hits);
+            Assert.Equal(new[] { true }, rolled);    // and still the Healing roll passed
+            Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+            Assert.DoesNotContain(TutorialFarm.HealKey, p.Record.StationsDone);
+
+            p.Pm.Hits = p.Pm.HitsMax - 20;
+            new Bandaging(p.Pm, p.Pm, 0).Finish();
+            Assert.True(p.Pm.Hits > p.Pm.HitsMax - 20);
+            Assert.Contains(TutorialFarm.HealKey, p.Record.StationsDone);
+            Assert.Equal(4, TutorialFarm.StepOf(p.Pm));
+        }
+        finally
+        {
+            SkillEvents.SkillUsed -= Record;
+        }
+    }
+
+    // ---------------------------------------------------------------- 10 (P421 #6)
+
+    [Fact]
+    public void AnOutsidersSwingAtAPestRunsNoSkillCheck()
+    {
+        using var outsider = new Player(false);
+        using var trainee = new Player(true);
+        var pest = new FarmRat();
+        pest.MoveToWorld(new Point3D(outsider.Pm.X + 1, outsider.Pm.Y, outsider.Pm.Z), Map.Trammel);
+        outsider.Litter.Add(pest);
+
+        var rolls = new List<SkillName>();
+        void Record(Mobile from, Skill skill, bool success)
+        {
+            if (from == outsider.Pm)
+            {
+                rolls.Add(skill.SkillName);
+            }
+        }
+
+        // The test host leaves the harmful handler unset (every region then allows); the outsider patch sits in the real
+        // one, so this fact installs it and puts the host's back after.
+        var handler = Mobile.AllowHarmfulHandler;
+        Mobile.AllowHarmfulHandler = NotorietyHandlers.Mobile_AllowHarmful;
+        SkillEvents.SkillUsed += Record;
+        try
+        {
+            Assert.False(outsider.Pm.CanBeHarmful(pest, false));
+            Assert.True(trainee.Pm.CanBeHarmful(pest, false));
+
+            outsider.Pm.Warmode = true;
+            outsider.Pm.Combatant = pest;
+            ShardTestClock.Advance(TimeSpan.FromSeconds(6));
+
+            Assert.Null(outsider.Pm.Combatant);
+            Assert.Empty(rolls);
+            Assert.Equal(pest.HitsMax, pest.Hits);
+        }
+        finally
+        {
+            SkillEvents.SkillUsed -= Record;
+            outsider.Pm.Combatant = null;
+            Mobile.AllowHarmfulHandler = handler;
+        }
+    }
+
+    // ---------------------------------------------------------------- 11 (P421 #3)
+
+    [Fact]
+    public void ReseedingWithTheDoorOpenPlacesNoSecondDoor()
+    {
+        var testShard = TutorialFarm.IsTestShard;
+        var patched = TutorialFarm.MapPatched;
+        CleanFarm();
+
+        try
+        {
+            SeedFarm();
+            var door = TutorialFarm.FindDoor(Map.Trammel)!;
+            door.Open = true;
+            Assert.NotEqual(TutorialFarmLayout.DoorSpot, door.Location); // an open door stands aside
+
+            var again = TutorialFarm.Seed(false);
+            Assert.Equal((0, 5), (again.Doors, again.Present));
+            Assert.Single(DoorsNearTheFarmhouse());
+            Assert.Same(door, TutorialFarm.FindDoor(Map.Trammel));
+        }
+        finally
+        {
+            foreach (var d in DoorsNearTheFarmhouse())
+            {
+                d.Delete();
+            }
+
+            CleanFarm();
+            TutorialFarm.IsTestShard = testShard;
+            TutorialFarm.MapPatched = patched;
+        }
+    }
+
+    // ---------------------------------------------------------------- 12 (P421 #8)
+
+    [Fact]
+    public void ThePenAndThePestsAreReplacedAfterADeathAndATaming()
+    {
+        var testShard = TutorialFarm.IsTestShard;
+        var patched = TutorialFarm.MapPatched;
+        CleanFarm();
+        using var p = new Player(false);
+
+        try
+        {
+            SeedFarm();
+            var pests = TutorialFarm.FindSpawner(Map.Trammel, TutorialFarm.PestSpot, TutorialFarm.PestTypes[0])!;
+            var pen = TutorialFarm.FindSpawner(Map.Trammel, TutorialFarm.PenSpot, TutorialFarm.PenTypes[0])!;
+            Assert.True(pests.Running && pen.Running);
+            Assert.Equal(TutorialFarm.PestCount, pests.Spawned.Count);
+            Assert.Equal(TutorialFarm.PenCount, pen.Spawned.Count);
+
+            var dead = (BaseCreature)pests.Spawned.Keys.First();
+            dead.Kill();
+            dead.Corpse?.Delete();
+            var tamed = (BaseCreature)pen.Spawned.Keys.First();
+            Assert.True(tamed.SetControlMaster(p.Pm));
+            p.Litter.Add(tamed);
+
+            ShardTestClock.Advance(TimeSpan.FromMinutes(4)); // past the spawners' longest delay (3 minutes)
+            pests.Defrag();
+            pen.Defrag();
+
+            Assert.Equal(TutorialFarm.PestCount, pests.Spawned.Count);
+            Assert.Equal(TutorialFarm.PenCount, pen.Spawned.Count);
+            Assert.DoesNotContain(dead, pests.Spawned.Keys);
+            Assert.DoesNotContain(tamed, pen.Spawned.Keys);
+        }
+        finally
+        {
+            CleanFarm();
+            TutorialFarm.IsTestShard = testShard;
+            TutorialFarm.MapPatched = patched;
+        }
     }
 }

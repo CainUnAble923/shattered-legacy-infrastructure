@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.11
+
+### Fixed
+- The New Haven tutorial gives each account one starter pet: the Farmhand's or the graduation pick, never both.
+- A graduation pet you have not chosen yet waits for you: closing the window, logging out or a server restart no longer loses it, and Rook offers it again.
+- Only the character who started the tutorial can take its lessons, skip, graduate or choose its pet. Your other characters see Rook's page but cannot change it.
+- The Farmhand hands out a limited number of bandages per account.
+- The farm's patch-up lesson now finishes only when your bandage actually heals someone.
+- Players not in the tutorial can no longer attack tutorial creatures.
+
 ## 2026.10.24.10
 
 ### Changed

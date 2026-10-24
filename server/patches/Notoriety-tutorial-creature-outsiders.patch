@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Misc/Notoriety.cs
++++ b/Projects/UOContent/Misc/Notoriety.cs
+@@ -159,6 +159,12 @@
+                 return true;
+             }
+ 
++            // Shattered Legacy (cc-P453): a tutorial creature refuses anyone not in the tutorial before the swing.
++            if (target is Server.Mobiles.TutorialCreature && !Server.Mobiles.TutorialCreature.Engages(from))
++            {
++                return false;
++            }
++
+             if (from.Region.IsPartOf<SafeZone>() || target.Region.IsPartOf<SafeZone>())
+             {
+                 return false;

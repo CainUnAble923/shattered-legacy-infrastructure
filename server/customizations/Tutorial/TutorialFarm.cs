@@ -14,13 +14,16 @@
 //
 // The lesson (F-35's order: tame the tutorial pet, fight the pests with it, heal), the station "animals.taming":
 //   1. The Farmhand offers a dog or a cat, the evo pet (EvoPet.GivePet: bonded at once, the player's hue pick).
-//      Key farm.pet. An account that took its pet here is not offered the pick again at graduation.
+//      TutorialRecord.PetClaimed (the key farm.pet before cc-P453). An account that took its pet here is not offered
+//      the pick again at graduation.
 //   2. Clear the field: PestsToClear pests that the player or the pet damaged, killed. Key farm.pests; completes the
 //      station animals.taming. The count is kept in memory (a restart mid-step starts the count again; noted).
-//   3. Patch up: the Farmhand hands bandages; a successful Healing or Veterinary use (SkillEvents.SkillUsed) finishes it.
-//      Key farm.heal; completes the station combat.healing.
-// Keys are TutorialRecord.StationsDone strings (no schema change, RootdeepVault's pattern); only the two station keys
-// count toward the core, and neither is a core station.
+//   3. Patch up: the Farmhand hands bandages (a stack only when the pack has none, at most BandageIssues stacks per
+//      account); a bandage that really healed someone (Bandage-tutorial-real-heal.patch, after Patient.Heal in pinned
+//      BandageContext.OnTick) finishes it. Key farm.heal; completes the station combat.healing.
+// Keys are TutorialRecord.StationsDone strings (RootdeepVault's pattern); only the two station keys count toward the
+// core, and neither is a core station. cc-P453: the pet itself is TutorialRecord.PetClaimed (one per account, kept through
+// remedial training), and the bandage stacks handed out are TutorialRecord.BandagesIssued.
 //
 // The seeder is a staff command, test shard only for now:
 //   [ClusterFSeedTutorialFarm [dryrun | force]   places what is missing; moves and deletes nothing; idempotent.
@@ -44,7 +47,8 @@ namespace Server.Tutorial
 {
     public static class TutorialFarm
     {
-        public const string PetKey = "farm.pet";
+        // The v0 marker for the pet; cc-P453 reads it only when loading an old record (TutorialRecord.PetClaimed now).
+        public const string PetKey = TutorialRecord.LegacyFarmPetKey;
         public const string PestsKey = "farm.pests";
         public const string HealKey = "farm.heal";
         public const string TamingStation = "animals.taming";
@@ -68,6 +72,7 @@ namespace Server.Tutorial
 
         public static int PestsToClear => ServerConfiguration.GetOrUpdateSetting("clusterf.tutorialFarm.pestsToClear", 3);
         public static int BandagesGiven => ServerConfiguration.GetOrUpdateSetting("clusterf.tutorialFarm.bandages", 10);
+        public static int BandageIssues => ServerConfiguration.GetOrUpdateSetting("clusterf.tutorialFarm.bandageIssues", 3);
         public static bool AllowLive => ServerConfiguration.GetOrUpdateSetting("clusterf.tutorialFarm.allowLive", false);
 
         /// <summary>Whether this is the test shard. Tests replace it.</summary>
@@ -83,6 +88,7 @@ namespace Server.Tutorial
         public const string PestsLine = "Rats in the cabbages again. Take your friend into the rows and clear out {0}. They don't hit back hard.";
         public const string PestsLeftLine = "{0} more. Mind the snake; it sulks.";
         public const string HealLine = "You're bleeding on my carrots. Here, bandages. Patch yourself up, or your friend. Then we're square.";
+        public const string NoMoreBandagesLine = "That's all the bandages I can spare. The healer in town sells them.";
         public const string DoneLine = "That's the farm. If your friend ever falls, Tobin the vet beside me can bring them back; the Bond Trial's mine to give, when it's time.";
         public const string EchoPetLine = "A pet. It will follow you through every loop. Try to be worth following.";
         public const string EchoPestsLine = "Three vermin dead. A career is born.";
@@ -111,8 +117,16 @@ namespace Server.Tutorial
             _hooked = true;
             // cc-P291: Rook's animals.taming station is now its own trial at the pen (TutorialTradeTrials.cs); the
             // Farmhand's pet-and-pests lesson still completes it too.
-            SkillEvents.SkillUsed += OnSkillUsed;
+            // cc-P453: the heal step listens to the bandage patch, not SkillEvents.SkillUsed (pinned rolls the skills on
+            // a failed treatment too).
+            BandageHealed = OnBandageHealed;
         }
+
+        /// <summary>
+        /// Raised by Bandage-tutorial-real-heal.patch after a bandage restored hit points (healer, patient). A static
+        /// delegate rather than a direct call, so the patch only needs this class to exist.
+        /// </summary>
+        public static Action<Mobile, Mobile>? BandageHealed { get; set; }
 
         public static TutorialRecord? RecordOf(PlayerMobile pm) => ClusterFTutorial.RecordOf(pm);
 
@@ -160,7 +174,7 @@ namespace Server.Tutorial
         /// <summary>The step a participant is on: 1 pet, 2 pests, 3 heal, 4 done; 0 when not a participant.</summary>
         public static int StepOf(PlayerMobile pm) =>
             !ClusterFTutorial.IsParticipant(pm) ? 0 :
-            !Has(pm, PetKey) ? 1 :
+            RecordOf(pm)?.PetClaimed != true ? 1 :
             !Has(pm, PestsKey) ? 2 :
             !Has(pm, HealKey) ? 3 : 4;
 
@@ -194,8 +208,7 @@ namespace Server.Tutorial
                     hand.SayTo(pm, PestsKilled(pm) == 0 ? string.Format(PestsLine, PestsToClear) : string.Format(PestsLeftLine, left));
                     break;
                 case 3:
-                    hand.SayTo(pm, HealLine);
-                    GiveBandages(pm);
+                    hand.SayTo(pm, GiveBandages(pm) == BandageGift.NoneLeft ? NoMoreBandagesLine : HealLine);
                     break;
                 default:
                     hand.SayTo(pm, DoneLine);
@@ -221,7 +234,7 @@ namespace Server.Tutorial
                 return null;
             }
 
-            RecordOf(pm)!.StationsDone.Add(PetKey);
+            RecordOf(pm)!.PetClaimed = true;
             ClusterFTutorial.SystemLine(pm, EchoPetLine);
             return pet;
         }
@@ -260,19 +273,34 @@ namespace Server.Tutorial
             ClusterFTutorial.SystemLine(pm, "Go back to the Farmhand.");
         }
 
-        public static void GiveBandages(PlayerMobile pm)
+        public enum BandageGift { Given, HasSome, NoneLeft }
+
+        /// <summary>
+        /// Step 3's bandages: a stack when the pack has none, counted on the account's record and capped at BandageIssues
+        /// (cc-P453: the pack check alone let a banked or traded stack be asked for again, and sold).
+        /// </summary>
+        public static BandageGift GiveBandages(PlayerMobile pm)
         {
-            if (pm.Backpack?.FindItemByType<Bandage>() == null)
+            if (pm.Backpack?.FindItemByType<Bandage>() != null)
             {
-                pm.AddToBackpack(new Bandage(BandagesGiven));
+                return BandageGift.HasSome;
             }
+
+            if (RecordOf(pm) is not { } record || record.BandagesIssued >= BandageIssues)
+            {
+                return BandageGift.NoneLeft;
+            }
+
+            record.BandagesIssued++;
+            pm.AddToBackpack(new Bandage(BandagesGiven));
+            return BandageGift.Given;
         }
 
-        // Step 3: a bandage that worked. Healing (self or another) and Veterinary (the pet) both roll their skill on a
-        // successful heal (pinned Bandage.cs), and SkillCheck tells SkillEvents.SkillUsed.
-        private static void OnSkillUsed(Mobile from, Skill skill, bool success)
+        // Step 3: a bandage that worked, on anyone (self, the pet, another). The healer's skill rolls do not count: pinned
+        // rolls them on a failed treatment too (Bandage.cs, BandageContext.OnTick).
+        private static void OnBandageHealed(Mobile healer, Mobile patient)
         {
-            if (success && skill.SkillName is SkillName.Healing or SkillName.Veterinary && from is PlayerMobile pm)
+            if (healer is PlayerMobile pm)
             {
                 OnHealed(pm);
             }
@@ -416,11 +444,16 @@ namespace Server.Tutorial
             return null;
         }
 
+        /// <summary>
+        /// The farmhouse door, open or closed. cc-P453: an open door stands at its offset (pinned BaseDoor: +1,+1 for
+        /// SouthCW), so it is matched by where it stands closed.
+        /// </summary>
         public static BaseDoor? FindDoor(Map map)
         {
-            foreach (var item in map.GetItemsInRange<BaseDoor>(TutorialFarmLayout.DoorSpot, 0))
+            foreach (var item in map.GetItemsInRange<BaseDoor>(TutorialFarmLayout.DoorSpot, 2))
             {
-                if (!item.Deleted)
+                var closed = item.Open ? new Point3D(item.X - item.Offset.X, item.Y - item.Offset.Y, item.Z - item.Offset.Z) : item.Location;
+                if (!item.Deleted && closed == TutorialFarmLayout.DoorSpot)
                 {
                     return item;
                 }

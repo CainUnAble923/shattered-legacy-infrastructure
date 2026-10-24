@@ -881,6 +881,14 @@ apply_patch "$PATCHES/AnimalTrainer-elixir-of-rebirth.patch"
 # (Mobile.cs:2043). PlayerMobile has no damage event. Notes: notes/cc-P427-fixes-from-crystal-p379.md.
 apply_patch "$PATCHES/PlayerMobile-noted-damage-memory.patch"
 
+# P453: the tutorial fix-up. Bandage: one hook line after Patient.Heal in BandageContext.OnTick, so the tutorial farm's
+# heal step counts a bandage that really healed (pinned rolls Healing and Anatomy on a failed treatment too); applies
+# after Bandage-heal-scaled-200 and Bandage-searing-wounds above. Notoriety: Mobile_AllowHarmful refuses a tutorial
+# creature to anyone not in the tutorial, so an outsider (or their pet) cannot set it as combatant or swing (and roll
+# weapon skills) at it; every region that defers to the handler gets it. Notes: notes/cc-P453-tutorial-fixups.md.
+apply_patch "$PATCHES/Bandage-tutorial-real-heal.patch"
+apply_patch "$PATCHES/Notoriety-tutorial-creature-outsiders.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

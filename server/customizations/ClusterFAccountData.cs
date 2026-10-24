@@ -1250,10 +1250,17 @@ public enum TutorialState : byte
 /// <summary>
 /// The account's New Haven tutorial record (cc-P80; ClusterFAccountData v19). One per account: the tutorial runs once
 /// per account, for the character that started it. Carries its own version (the D40 rule).
+/// v1 (cc-P453): PetClaimed, PetClaimPending and BandagesIssued, kept apart from StationsDone, which remedial training
+/// and the Fountain of Youth clear. A v0 record takes the first two from P276's and P480's done keys.
 /// </summary>
 public sealed class TutorialRecord
 {
-    public const int CurrentVersion = 0;
+    public const int CurrentVersion = 1;
+
+    // The v0 done keys the v1 fields replace (TutorialFarm.PetKey, ClusterFTutorial's companion keys).
+    public const string LegacyFarmPetKey = "farm.pet";
+    public const string LegacyCompanionTakenKey = "graduation.pet";
+    public const string LegacyCompanionPendingKey = "graduation.petPending";
 
     public TutorialState State { get; set; } = TutorialState.NotStarted;
 
@@ -1268,6 +1275,15 @@ public sealed class TutorialRecord
 
     public DateTime StartedAt { get; set; }
     public DateTime FinishedAt { get; set; }
+
+    // The account's one tutorial pet (the Farmhand's or the graduation pick) was given. Never cleared.
+    public bool PetClaimed { get; set; }
+
+    // Graduation earned a pet that is not chosen yet; cleared only when one is given.
+    public bool PetClaimPending { get; set; }
+
+    // Stacks of the Farmhand's bandages handed out on this account (capped, TutorialFarm.BandageIssues).
+    public int BandagesIssued { get; set; }
 
     public TutorialRecord() { }
 
@@ -1289,6 +1305,19 @@ public sealed class TutorialRecord
         WasSkipped = r.ReadBool();
         StartedAt = r.ReadDateTime();
         FinishedAt = r.ReadDateTime();
+
+        if (version >= 1)
+        {
+            PetClaimed = r.ReadBool();
+            PetClaimPending = r.ReadBool();
+            BandagesIssued = r.ReadInt();
+        }
+        else
+        {
+            PetClaimed = StationsDone.Contains(LegacyFarmPetKey) || StationsDone.Contains(LegacyCompanionTakenKey);
+            PetClaimPending = StationsDone.Remove(LegacyCompanionPendingKey) && !PetClaimed;
+            StationsDone.Remove(LegacyCompanionTakenKey);
+        }
     }
 
     public void Serialize(IGenericWriter w)
@@ -1302,6 +1331,9 @@ public sealed class TutorialRecord
         w.Write(WasSkipped);
         w.Write(StartedAt);
         w.Write(FinishedAt);
+        w.Write(PetClaimed);
+        w.Write(PetClaimPending);
+        w.Write(BandagesIssued);
     }
 
     /// <summary>In the tutorial now: the core, the wings, or remedial training.</summary>

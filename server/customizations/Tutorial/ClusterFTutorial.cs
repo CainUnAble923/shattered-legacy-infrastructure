@@ -11,6 +11,9 @@
 // Graduation (core done): the first loot box (open it here, in the guard zone, to learn the rule) and the evo starter
 // pet pick (dog, cat, fox, bird), unless the account already took its dog or cat from the farm's Farmhand (cc-P276,
 // TutorialFarm). The squire comes later, from an early League quest (not built).
+// cc-P453: one tutorial pet per account (TutorialRecord.PetClaimed, which remedial training never clears); a pick not
+// yet made waits on the record (PetClaimPending) for Rook to offer again. Only the recorded character runs the tutorial;
+// the account's other characters see Rook's page read-only.
 //
 // The two voices: the League recruiter teaches (overhead and gumps); the System voice (the fanfare's) is the snark,
 // confirmations and achievements, sent as System lines and through ClusterFFanfare. cc-P480: the client already shows
@@ -61,6 +64,15 @@ public static class ClusterFTutorial
         return player is PlayerMobile pm && RecordOf(pm) is { IsActive: true } r && r.CharacterSerial == (uint)pm.Serial;
     }
 
+    /// <summary>
+    /// The character the record belongs to: its own, or any of the account's when none is recorded or the recorded one is
+    /// deleted (cc-P453).
+    /// </summary>
+    public static bool IsRecordedCharacter(PlayerMobile pm, TutorialRecord record) =>
+        record.CharacterSerial == (uint)pm.Serial || record.CharacterSerial == 0 ||
+        World.FindMobile((Serial)record.CharacterSerial) is not PlayerMobile { Deleted: false } recorded ||
+        recorded.Account != pm.Account;
+
     public static void SystemLine(Mobile m, string text) => m.SendMessage(0x3B2, text);
 
     // -- Entry --
@@ -76,7 +88,7 @@ public static class ClusterFTutorial
                 SystemLine(pm, "Welcome back. Your completed lessons are saved. Ask Rook for the next one.");
                 TutorialRecruiter.PointTo(pm);
             }
-            else if (RecordOf(pm) is { } waiting && CompanionPending(waiting))
+            else if (RecordOf(pm) is { } waiting && CompanionPending(waiting) && IsRecordedCharacter(pm, waiting))
             {
                 SystemLine(pm, "Your companion is still waiting. Double-click Rook on the New Haven plaza and choose one.");
                 TutorialRecruiter.PointTo(pm);
@@ -210,7 +222,7 @@ public static class ClusterFTutorial
     /// <summary>A skipper starts again at the recruiter: remedial training, the full tutorial with normal rewards.</summary>
     public static bool StartRemedial(PlayerMobile pm)
     {
-        if (RecordOf(pm) is not { State: TutorialState.Skipped } record)
+        if (RecordOf(pm) is not { State: TutorialState.Skipped } record || !IsRecordedCharacter(pm, record))
         {
             return false;
         }
@@ -228,17 +240,14 @@ public static class ClusterFTutorial
 
     public static readonly string[] StarterPetLines = ["dog", "cat", "fox", "bird"];
 
-    // cc-P480 Part 7: the graduation companion is offered until it is chosen. Done keys on the record (P276's pattern, no
-    // schema change): set when the pick is offered, cleared when a pet is given. P453 may move it to a record field.
-    public const string CompanionPendingKey = "graduation.petPending";
-    public const string CompanionTakenKey = "graduation.pet";
-
-    public static bool CompanionPending(TutorialRecord record) => record.StationsDone.Contains(CompanionPendingKey);
+    // cc-P480 Part 7: the graduation companion is offered until it is chosen. cc-P453: on the record (PetClaimPending),
+    // set when the pick is earned, cleared only when a pet is given; PetClaimed then refuses any other.
+    public static bool CompanionPending(TutorialRecord record) => record.PetClaimPending && !record.PetClaimed;
 
     /// <summary>Opens the companion pick, with Rook's words and an arrow to him. False when none is waiting.</summary>
     public static bool OfferCompanion(PlayerMobile pm)
     {
-        if (RecordOf(pm) is not { } record || !CompanionPending(record))
+        if (RecordOf(pm) is not { } record || !CompanionPending(record) || !IsRecordedCharacter(pm, record))
         {
             return false;
         }
@@ -261,13 +270,14 @@ public static class ClusterFTutorial
     /// <summary>The pick: gives the waiting companion. Null when none is waiting, or no follower slot is free.</summary>
     public static EvoPet? ChooseCompanion(PlayerMobile pm, string line)
     {
-        if (RecordOf(pm) is not { } record || !CompanionPending(record) || GivePet(pm, line) is not { } pet)
+        if (RecordOf(pm) is not { } record || !CompanionPending(record) || !IsRecordedCharacter(pm, record) ||
+            GivePet(pm, line) is not { } pet)
         {
             return null;
         }
 
-        record.StationsDone.Remove(CompanionPendingKey);
-        record.StationsDone.Add(CompanionTakenKey);
+        record.PetClaimPending = false;
+        record.PetClaimed = true;
         SystemLine(pm, TutorialPetCare.IfYourPetDiesLine + " Your graduation box holds one elixir.");
         return pet;
     }
@@ -325,10 +335,9 @@ public static class ClusterFTutorial
         SystemLine(pm, "Open that box here in town. Boxes only open in guarded towns and your own house.");
 
         // cc-P276: the farm's Farmhand gives the dog or cat; an account that took its pet there is not offered another.
-        if (RecordOf(pm) is { } record && !record.StationsDone.Contains(TutorialFarm.PetKey) &&
-            !record.StationsDone.Contains(CompanionTakenKey))
+        if (RecordOf(pm) is { PetClaimed: false } record)
         {
-            record.StationsDone.Add(CompanionPendingKey);
+            record.PetClaimPending = true;
             OfferCompanion(pm);
         }
     };
