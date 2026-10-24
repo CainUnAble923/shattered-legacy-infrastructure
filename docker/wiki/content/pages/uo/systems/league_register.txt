@@ -39,7 +39,7 @@ Paid in Renown, with a little gold. Like the [[league_shop|League Shop]], this s
 
 ^ Item ^ League rank ^ Renown ^ Gold ^ What it does ^
 | Combined Logbook | Dull Copper | 500 | 50 | Your Prospector's and Forester's logbooks in one |
-| League Field Satchel | Bronze | 5,000 | 500 | Holds your ore, lumber, hunter's and essence satchels and counts as one item. Each satchel you put in costs a small fee (50) in that satchel's guild currency |
+| League Field Satchel | Bronze | 5,000 | 500 | Holds your ore, lumber, hunter's and essence satchels, one of each, and counts as one item while it is in your backpack (in the bank, everything in it counts). Each satchel you put in costs a small fee (50) in that satchel's guild currency |
 | Bigger backpack | Bronze | 2,000 | 200 | Holds 150 items |
 | Bigger backpack | Verite | 6,000 | 600 | Holds 175 items |
 | Bigger backpack | Blaze | 15,000 | 1,500 | Holds 200 items |

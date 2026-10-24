@@ -18,6 +18,10 @@
 //   8. The League data's v2 fields survive a save and load; a v1 record loads with none.
 //   9. The League Field Satchel counts as one item however much it holds and charges the merge fee; the Combined
 //      Logbook replaces both logbooks; the Bank page counts the bank by kind.
+//  10. cc-P451 (Codex's P418 review, Crystal's P429): a repair target needs its deed or kit still in the pack; the Blaze
+//      repair is for worn gear only (Chase, 10-22); resources reach a guild satchel inside the Field Satchel; a full
+//      satchel is accepted, a fifth refused, and a refused drop costs nothing; a full pack takes nothing and drops
+//      nothing; the bank counts a Field Satchel's contents; a nested deed is turned in; the items save and load.
 
 using System;
 using System.Collections.Generic;
@@ -262,27 +266,36 @@ public class LeagueRegisterVerification
         return sword;
     }
 
+    // cc-P451 (Chase, 10-22): the Blaze repair stays free, for the gear the member is wearing only.
     [Fact]
-    public void BlazeRepairsWornCarriedAndBankedGear()
+    public void BlazeRepairsOnlyTheGearTheMemberWears()
     {
         using var c = new Citizen("Toxic"); // the rank below Blaze
         var worn = Damaged();
         c.Pm.AddItem(worn); // on its layer, worn (the equip checks are not what this fact is about)
         Assert.Same(c.Pm, worn.Parent);
         var carried = c.Put(Damaged());
+        var bag = c.Put(new Bag());
+        var bagged = Damaged();
+        bag.DropItem(bagged);
         var banked = Damaged();
         c.Pm.BankBox.DropItem(banked);
+        using var other = new Citizen("Blaze");
+        var theirs = Damaged();
+        other.Pm.AddItem(theirs);
 
         Assert.Equal(0, LeagueRegisterSystem.RepairAll(c.Pm, out var refused));
-        Assert.Equal(10, carried.HitPoints);
+        Assert.Equal(10, worn.HitPoints);
 
         ClusterFLeagueRanks.SetRank(c.Pm, R("Blaze"));
         var repaired = LeagueRegisterSystem.RepairAll(c.Pm, out var done);
-        _out.WriteLine($"below Blaze: {refused}; Blaze: {done}; worn {worn.HitPoints}, carried {carried.HitPoints}, banked {banked.HitPoints} (in bank {banked.IsChildOf(c.Pm.BankBox)})");
-        Assert.Equal(3, repaired);
-        Assert.All(new[] { worn, carried, banked }, s => Assert.Equal(50, s.HitPoints));
+        _out.WriteLine($"below Blaze: {refused}; Blaze: {done}; worn {worn.HitPoints}, carried {carried.HitPoints}, bagged {bagged.HitPoints}, banked {banked.HitPoints}, another's {theirs.HitPoints}");
+        Assert.Equal(1, repaired);
+        Assert.Equal(50, worn.HitPoints);
+        Assert.All(new[] { carried, bagged, banked, theirs }, s => Assert.Equal(10, s.HitPoints));
         worn.Delete();
         banked.Delete();
+        theirs.Delete();
     }
 
     // ---------------------------------------------------------------- 5
@@ -372,6 +385,52 @@ public class LeagueRegisterVerification
         b.Delete();
     }
 
+    // cc-P451 (P418 #1): the target remembers the deed or kit; it must still be in that player's pack when it lands.
+    [Fact]
+    public void ARepairTargetNeedsItsDeedOrKitStillInThePack()
+    {
+        using var a = new Citizen();
+        using var b = new Citizen();
+
+        // The deed handed over while A's target is pending: B repairs with it, A's target then repairs nothing.
+        var deed = a.Put(new FieldRepairDeed());
+        deed.OnDoubleClick(a.Pm);
+        var aTarget = a.Pm.Target;
+        b.Put(deed);
+        deed.OnDoubleClick(b.Pm);
+        var bSword = b.Put(Damaged());
+        b.Pm.Target.Invoke(b.Pm, bSword);
+        Assert.Equal(50, bSword.HitPoints);
+        Assert.True(deed.Deleted);
+        var aSword = a.Put(Damaged());
+        aTarget.Invoke(a.Pm, aSword);
+        _out.WriteLine($"deed handed over: B's {bSword.HitPoints}, A's {aSword.HitPoints}");
+        Assert.Equal(10, aSword.HitPoints);
+
+        // A deed banked after the target opened: no repair, and the deed is kept.
+        var banked = a.Put(new FieldRepairDeed());
+        banked.OnDoubleClick(a.Pm);
+        a.Pm.BankBox.DropItem(banked);
+        a.Pm.Target.Invoke(a.Pm, aSword);
+        Assert.Equal(10, aSword.HitPoints);
+        Assert.False(banked.Deleted);
+        banked.Delete();
+
+        // A kit's last charge spent by B while A's target is pending.
+        var kit = a.Put(new FieldRepairKit());
+        kit.UsesRemaining = 1;
+        kit.OnDoubleClick(a.Pm);
+        aTarget = a.Pm.Target;
+        b.Put(kit);
+        kit.OnDoubleClick(b.Pm);
+        var bSword2 = b.Put(Damaged());
+        b.Pm.Target.Invoke(b.Pm, bSword2);
+        Assert.True(kit.Deleted);
+        aTarget.Invoke(a.Pm, aSword);
+        _out.WriteLine($"kit handed over: B's {bSword2.HitPoints}, A's {aSword.HitPoints}");
+        Assert.Equal(10, aSword.HitPoints);
+    }
+
     [Theory]
     [InlineData(typeof(FieldRepairDeed), 90)]
     [InlineData(typeof(FieldRepairKit), 110)]
@@ -451,6 +510,21 @@ public class LeagueRegisterVerification
 
     // ---------------------------------------------------------------- 9
 
+    // A guild satchel holding `stacks` separate stacks (DropItem: the setup, not the path under test).
+    private static CompactOreSatchel OreSatchel(int stacks)
+    {
+        var satchel = new CompactOreSatchel();
+        for (var i = 0; i < stacks; i++)
+        {
+            satchel.DropItem(new IronIngot(1) { Hue = i + 1 });
+        }
+
+        return satchel;
+    }
+
+    private static int OnGround<T>() where T : Item =>
+        World.Items.Values.Count(i => i is T && !i.Deleted && i.Parent == null && i.Map != Map.Internal);
+
     [Fact]
     public void TheFieldSatchelCountsAsOneAndChargesTheMergeFee()
     {
@@ -462,28 +536,251 @@ public class LeagueRegisterVerification
         Assert.NotNull(field);
         Assert.Equal(5_000, c.Data.Renown);
 
-        var ore = c.Put(new CompactOreSatchel());
-        for (var i = 0; i < 20; i++)
-        {
-            ore.DropItem(new IronOre(1) { Hue = i }); // separate stacks, 20 items
-        }
-
+        // cc-P451 (P418 #3): a satchel of 20 stacks goes in, through the drop itself, and the pack sees no more items.
+        var ore = OreSatchel(20);
         var before = c.Pm.Backpack.TotalItems;
-        Assert.False(field.Merge(c.Pm, ore)); // no Compact currency yet
+        Assert.False(field.OnDragDrop(c.Pm, ore)); // no Compact currency yet
+        Assert.Null(ore.Parent);
         c.Guild.AddCurrency("mining", 60);
-        Assert.True(field.Merge(c.Pm, ore));
-        field.DropItem(ore);
+        Assert.True(field.OnDragDrop(c.Pm, ore));
         var after = c.Pm.Backpack.TotalItems;
         _out.WriteLine($"pack items {before} -> {after}; mining currency left {c.Guild.GetCurrency("mining")}");
+        Assert.Same(field, ore.Parent);
         Assert.Equal(10, c.Guild.GetCurrency("mining"));
-        Assert.True(after < before);
-        Assert.Equal(c.Pm.Backpack.Items.Count, after); // the field satchel is one item, whatever it holds
+        Assert.Equal(before, after); // the field satchel is one item, whatever it holds
+        Assert.Equal(c.Pm.Backpack.Items.Count, after);
         Assert.Same(ore, c.Pm.Backpack.FindItemByType<CompactOreSatchel>()); // still found where it is
+    }
 
-        var second = new CompactOreSatchel();
-        Assert.False(field.CheckHold(c.Pm, second, false, true, 0, 0)); // one per kind
-        Assert.False(field.CheckHold(c.Pm, new Gold(1), false, true, 0, 0)); // satchels only
-        second.Delete();
+    // cc-P451 (P418 #2): resources go into a guild satchel inside the Field Satchel, by drop and by the routing hooks.
+    [Fact]
+    public void OreDroppedOnASatchelInsideTheFieldSatchelLandsThere()
+    {
+        using var c = new Citizen("Bronze", "mining", "foresters");
+        var field = c.Put(new LeagueFieldSatchel());
+        c.Guild.AddCurrency("mining", 50);
+        c.Guild.AddCurrency("foresters", 50);
+        var oreSatchel = new CompactOreSatchel();
+        var lumber = new ForestersLumberSatchel();
+        Assert.True(field.OnDragDrop(c.Pm, oreSatchel));
+        Assert.True(field.OnDragDropInto(c.Pm, lumber, new Point3D(40, 40, 0)));
+
+        var ore = new IronOre(5);
+        var dropped = oreSatchel.OnDragDrop(c.Pm, ore);
+        var ingots = new IronIngot(7);
+        var into = oreSatchel.OnDragDropInto(c.Pm, ingots, new Point3D(30, 30, 0));
+        var routed = new IronOre(3) { Hue = 0x21 };
+        var hooked = oreSatchel.TryDropItem(c.Pm, routed, false); // what CompactOreSatchelRoutingHook does
+        var log = new Log(4);
+        var logged = lumber.TryDropItem(c.Pm, log, false); // ClusterFLumberjackingExtension's routing
+        _out.WriteLine($"drop {dropped}, drop into {into}, ore routing {hooked}, lumber routing {logged}");
+        Assert.True(dropped);
+        Assert.True(into);
+        Assert.True(hooked);
+        Assert.True(logged);
+        Assert.Same(oreSatchel, ore.Parent);
+        Assert.Same(oreSatchel, ingots.Parent);
+        Assert.Same(lumber, log.Parent);
+
+        // Still only satchels directly in the Field Satchel.
+        var gold = new Gold(5);
+        Assert.False(field.OnDragDrop(c.Pm, gold));
+        Assert.False(field.OnDragDropInto(c.Pm, gold, new Point3D(10, 10, 0)));
+        gold.Delete();
+    }
+
+    // cc-P451 (P418 #3, #4): four families fit; a refused satchel costs nothing; moving one inside it costs nothing.
+    [Fact]
+    public void AFifthSatchelIsRefusedWithNoCharge()
+    {
+        using var c = new Citizen("Bronze");
+        var field = c.Put(new LeagueFieldSatchel());
+        foreach (var key in new[] { "mining", "foresters", "rangers", "artificers" })
+        {
+            c.Guild.AddCurrency(key, 100);
+        }
+
+        var satchels = new Item[] { OreSatchel(20), new ForestersLumberSatchel(), new HuntersSatchel(), new ArtificersSatchel() };
+        foreach (var satchel in satchels)
+        {
+            Assert.True(field.OnDragDrop(c.Pm, satchel), satchel.GetType().Name);
+        }
+
+        Assert.Equal(4, field.Items.Count);
+        Assert.Equal(50, c.Guild.GetCurrency("mining"));
+
+        var fifth = OreSatchel(2);
+        Assert.False(field.OnDragDrop(c.Pm, fifth));
+        Assert.False(field.OnDragDropInto(c.Pm, fifth, new Point3D(20, 20, 0)));
+        _out.WriteLine($"fifth refused; mining currency {c.Guild.GetCurrency("mining")}");
+        Assert.Equal(50, c.Guild.GetCurrency("mining")); // no charge for a refused drop
+        fifth.Delete();
+
+        // A satchel lifted and dropped back inside the Field Satchel (what Mobile.Lift records): free.
+        var moved = satchels[0];
+        moved.RecordBounce();
+        moved.Internalize();
+        Assert.True(field.OnDragDropInto(c.Pm, moved, new Point3D(60, 60, 0)));
+        Assert.Same(field, moved.Parent);
+        Assert.Equal(50, c.Guild.GetCurrency("mining"));
+
+        // A satchel the pack has no room for (by weight) is refused, with no charge.
+        var lumber = satchels[1];
+        c.Pm.Backpack.DropItem(lumber); // out of the Field Satchel, into the pack
+        lumber.RecordBounce();
+        lumber.Internalize(); // lifted from the pack
+        var pack = c.Pm.Backpack;
+        var ballast = c.Put(new Item(0x1BF2) { Weight = pack.MaxWeight - pack.TotalWeight });
+        var foresters = c.Guild.GetCurrency("foresters");
+        Assert.False(field.OnDragDrop(c.Pm, lumber));
+        Assert.Equal(foresters, c.Guild.GetCurrency("foresters"));
+        ballast.Delete();
+        Assert.True(field.OnDragDrop(c.Pm, lumber));
+        Assert.Equal(foresters - 50, c.Guild.GetCurrency("foresters"));
+    }
+
+    // cc-P451 (P418 #6): the one-item discount is for the owner's backpack only; banks and other containers count it all.
+    [Fact]
+    public void ABankCountsAPopulatedFieldSatchelsContents()
+    {
+        using var c = new Citizen("Bronze");
+        var field = c.Put(new LeagueFieldSatchel());
+        c.Guild.AddCurrency("mining", 50);
+        var packBefore = c.Pm.Backpack.TotalItems;
+        var ore = OreSatchel(20);
+        Assert.True(field.OnDragDrop(c.Pm, ore));
+        Assert.Equal(packBefore, c.Pm.Backpack.TotalItems);
+
+        var bank = c.Pm.BankBox;
+        var bankBefore = bank.TotalItems;
+        bank.DropItem(field);
+        _out.WriteLine($"bank items {bankBefore} -> {bank.TotalItems}; field reports {field.TotalItems}");
+        Assert.Equal(bankBefore + 22, bank.TotalItems); // the field satchel, the ore satchel and its 20 stacks
+        Assert.Equal(packBefore - 1, c.Pm.Backpack.TotalItems);
+
+        // Ore added while it is banked is counted there too, and nothing drifts on the way back to the pack.
+        ore.DropItem(new IronIngot(1) { Hue = 0x40 });
+        Assert.Equal(bankBefore + 23, bank.TotalItems);
+        c.Pm.Backpack.DropItem(field);
+        Assert.Equal(bankBefore, bank.TotalItems);
+        Assert.Equal(packBefore, c.Pm.Backpack.TotalItems);
+
+        // In a bag in the pack it is not directly in the backpack, so its contents count.
+        var bag = c.Put(new Bag());
+        bag.DropItem(field);
+        Assert.Equal(packBefore + 23, c.Pm.Backpack.TotalItems); // the bag, and the field satchel counted whole
+
+        // The cached totals agree with a recount.
+        var cached = c.Pm.Backpack.TotalItems;
+        c.Pm.UpdateTotals();
+        Assert.Equal(cached, c.Pm.Backpack.TotalItems);
+    }
+
+    // cc-P451 (P418 #5): a full pack (by items, then by weight) refuses the purchase or the book, and takes nothing.
+    [Fact]
+    public void AFullPackTakesNothingAndDropsNothing()
+    {
+        using var c = new Citizen("Bronze", "smithing", "mining", "foresters");
+        c.Data.Renown = 20_000;
+        c.Put(new Gold(5_000));
+        var register = LeagueRegisterSystem.Issue(c.Pm, out _);
+        c.Put(new SmithGuildBook());
+        Assert.True(LeagueRegisterSystem.Bind(c.Pm, "smithing", out _));
+        var oldA = c.Put(new ProspectorsLogbook());
+        var oldB = c.Put(new ForestersLogbook());
+        var pack = c.Pm.Backpack;
+        var ground = (OnGround<LeagueFieldSatchel>(), OnGround<CombinedLogbook>(), OnGround<SmithGuildBook>(), OnGround<LeagueRegister>());
+
+        void Check(string how)
+        {
+            var renown = c.Data.Renown;
+            var gold = pack.GetAmount(typeof(Gold));
+
+            Assert.False(LeagueConsolidation.BuySatchel(c.Pm, out var satchel), how);
+            Assert.False(LeagueConsolidation.BuyLogbook(c.Pm, out var logbook), how);
+            Assert.False(LeagueRegisterSystem.Unbind(c.Pm, "smithing", out var unbind), how);
+            Assert.Null(LeagueRegisterSystem.Issue(c.Pm, out var issue));
+            _out.WriteLine($"{how}: {satchel} / {logbook} / {unbind} / {issue}");
+
+            Assert.Equal(renown, c.Data.Renown);
+            Assert.Equal(gold, pack.GetAmount(typeof(Gold)));
+            Assert.False(oldA.Deleted);
+            Assert.False(oldB.Deleted);
+            Assert.Contains("smithing", c.League.RegisterGuilds);
+            Assert.False(register.Deleted);
+            Assert.True(LeagueRegisterSystem.IsCurrent(register, c.Pm));
+            Assert.Equal(ground, (OnGround<LeagueFieldSatchel>(), OnGround<CombinedLogbook>(), OnGround<SmithGuildBook>(), OnGround<LeagueRegister>()));
+            Assert.Contains("room", satchel);
+        }
+
+        pack.MaxItems = pack.TotalItems; // full by items
+        Check("items");
+
+        pack.MaxItems = Container.GlobalMaxItems;
+        var ballast = c.Put(new Item(0x1BF2) { Weight = pack.MaxWeight - pack.TotalWeight }); // full by weight
+        Assert.Equal(pack.MaxWeight, pack.TotalWeight);
+        Check("weight");
+        ballast.Delete();
+
+        // With room, all of them work.
+        Assert.True(LeagueRegisterSystem.Unbind(c.Pm, "smithing", out var m), m);
+        Assert.True(LeagueConsolidation.BuySatchel(c.Pm, out m), m);
+        Assert.True(pack.FindItemByType<LeagueFieldSatchel>().IsChildOf(pack));
+    }
+
+    // cc-P451 (P418 #7): a complete deed in a bag in the pack is turned in with the rest.
+    [Fact]
+    public void ANestedCompleteDeedIsTurnedIn()
+    {
+        using var c = new Citizen("Verite", "smithing");
+        c.Put(new SmithGuildBook());
+        LeagueRegisterSystem.Bind(c.Pm, "smithing", out _);
+        var bag = c.Put(new Bag());
+        var deed = new SmallSmithBOD(10, 10, typeof(Longsword), 1025049, 0x0F61, false, BulkMaterialType.None);
+        bag.DropItem(deed);
+
+        Assert.Equal(1, LeagueRegisterSystem.TurnInAll(c.Pm, out var done));
+        _out.WriteLine(done);
+        Assert.True(deed.Deleted);
+    }
+
+    // cc-P451 (P418 #10): the League items save and load whole, and the reader ends where the writer did.
+    [Fact]
+    public void TheLeagueItemsSaveAndLoad()
+    {
+        using var c = new Citizen("Bronze");
+        var register = LeagueRegisterSystem.Issue(c.Pm, out _);
+        var kit = c.Put(new FieldRepairKit());
+        kit.UsesRemaining = 4;
+        var field = c.Put(new LeagueFieldSatchel());
+        var ore = OreSatchel(3);
+        field.DropItem(ore);
+        c.League.PackTier = 4;
+        LeagueBackpack.Apply(c.Pm);
+        Assert.Equal(250, c.Pm.Backpack.MaxItems);
+
+        // The copies are never registered with the world, and are left for the collector, not deleted: deleting one
+        // would delete the live original's children with it.
+        T RoundTrip<T>(T original, Func<Serial, T> make) where T : Item
+        {
+            var buffer = new byte[65536];
+            var writer = new BufferWriter(buffer, true);
+            original.Serialize(writer);
+            var length = writer.Position;
+            writer.Flush();
+            var copy = make(original.Serial);
+            var reader = new BufferReader(buffer);
+            copy.Deserialize(reader);
+            _out.WriteLine($"{typeof(T).Name}: wrote {length}, read {reader.Position}");
+            Assert.Equal(length, reader.Position);
+            return copy;
+        }
+
+        Assert.Same(c.Pm, RoundTrip(register, s => new LeagueRegister(s)).Owner);
+        Assert.Equal(4, RoundTrip(kit, s => new FieldRepairKit(s)).UsesRemaining);
+        var fieldCopy = RoundTrip(field, s => new LeagueFieldSatchel(s));
+        Assert.Equal(new Item[] { ore }, fieldCopy.Items);
+        Assert.Equal(250, RoundTrip(c.Pm.Backpack, s => new Backpack(s)).MaxItems);
     }
 
     [Fact]

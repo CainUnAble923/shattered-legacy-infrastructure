@@ -5,8 +5,8 @@
 //   - Field Repair Kit: a number of charges (setting), each one item, for gear and for tools with durability (pickaxes,
 //     hatchets and every other harvest tool are weapons in pinned, so they wear and repair like gear).
 //   - Remote Repair Deed: one use; the League repair pass below, for a player below Blaze (the League action's rank).
-//   - League repair (the Register's Blaze action): every damaged item worn, carried, and in the bank box ("at a
-//     distance"), in one pass.
+//   - League repair (the Register's Blaze action): free, for every damaged item the member is wearing (Chase, 10-22,
+//     cc-P451: not banked gear, not gear in containers, not another player's).
 // "Repaired" means durability back to the maximum, as a smith's repair restores it, with no loss of maximum: the item was
 // paid for with the crafter's ingots and Arms Lore. LeagueRegisterSettings.RepairPoints can make it a fixed amount instead.
 // Durability is pinned's IDurability (weapons, armor, shields, clothing and jewellery that wear). Guild tools without
@@ -45,7 +45,25 @@ public static class LeagueRepair
     public static bool IsCarried(Mobile from, Item item) =>
         item.Parent == from || from.Backpack != null && item.IsChildOf(from.Backpack);
 
-    /// <summary>The pass: every damaged item worn, in the backpack and in the bank box. Returns how many were repaired.</summary>
+    /// <summary>The Blaze action's pass: every damaged item the mobile is wearing. Returns how many were repaired.</summary>
+    public static int RepairWorn(Mobile from)
+    {
+        var count = 0;
+        foreach (var item in from.Items)
+        {
+            if (item is not Container && Repair(item))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    public static string DescribeWorn(int count) =>
+        count == 0 ? "Nothing you are wearing needs repair." : Describe(count);
+
+    /// <summary>The remote repair deed's pass: every damaged item worn, in the backpack and in the bank box. Returns how many were repaired.</summary>
     public static int RepairAll(Mobile from)
     {
         var items = new List<Item>();
@@ -85,13 +103,22 @@ public static class LeagueRepair
     public static string Describe(int count) =>
         count == 0 ? "Nothing you wear, carry or bank needs repair." : $"Repaired {count} item{(count == 1 ? "" : "s")}.";
 
-    /// <summary>A one-item repair from a deed or a kit: a target on the item; `used` runs when one was repaired.</summary>
-    public static void BeginTarget(Mobile from, System.Action used)
+    /// <summary>
+    /// A one-item repair from a deed or a kit (`source`): a target on the item; `used` runs when one was repaired. The
+    /// target checks the source again when it lands (cc-P451): still there, still in this player's backpack, and a kit
+    /// with a charge left.
+    /// </summary>
+    public static void BeginTarget(Mobile from, Item source, System.Action used)
     {
         from.SendMessage(0x59, "Target the item to repair.");
         from.BeginTarget(-1, false, TargetFlags.None, (m, targeted) =>
         {
-            if (targeted is not Item item || !IsCarried(m, item))
+            if (source.Deleted || m.Backpack == null || !source.IsChildOf(m.Backpack) ||
+                source is IUsesRemaining { UsesRemaining: <= 0 })
+            {
+                m.SendMessage(0x22, "The repair item must still be in your backpack.");
+            }
+            else if (targeted is not Item item || !IsCarried(m, item))
             {
                 m.SendMessage(0x22, "The item must be worn or in your backpack.");
             }
@@ -172,7 +199,7 @@ public partial class FieldRepairDeed : Item
             return;
         }
 
-        LeagueRepair.BeginTarget(from, Delete);
+        LeagueRepair.BeginTarget(from, this, Delete);
     }
 }
 
@@ -208,7 +235,7 @@ public partial class FieldRepairKit : Item, IUsesRemaining
             return;
         }
 
-        LeagueRepair.BeginTarget(from, UseCharge);
+        LeagueRepair.BeginTarget(from, this, UseCharge);
     }
 
     public void UseCharge()
