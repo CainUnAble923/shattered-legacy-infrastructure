@@ -534,3 +534,34 @@ The mount items 28295 (0x6E87, red) and 28296 (0x6E88, colorable) are ours: tile
 flags Wearable (OSI's old mount items' flag), weight 255, their Animation the body (TazUO draws a ridden mount from the
 mount item's tiledata Animation: Item.GetGraphicForAnimation). Their icons are each dragon's own stand frame (action 2,
 direction 1), scaled to 44 px.
+
+The UI skins: gumps 23052-23080 and art 13049-13112 (cc-P362, Chase's look book "Like" picks)
+-----------------------------------------------------------------------------------------------
+Optional looks each player picks in our TazUO (Options, Interface, Appearance; client patch 0005). Every piece is ours
+under a NEW ID; the stock IDs keep stock art, and the client draws a stock gump or scroll from one of these only for a
+player who picked that skin. The table is skins.json beside this file (the client's copy is SlSkins.cs in the patch).
+Written by shard-migration notes\cc-P362-tools\skins.py: BMP to PNG, pure black made transparent, the canvas kept,
+nothing else changed. Credit each author wherever the shard credits art.
+
+  23052-23059  Carl Hamilton, "Fancy Player Backpack" 1.2 (https://www.servuo.dev/archive/fancy-player-backpack.2263/)
+               and "Gothic Player Backpack" 1.2 (https://www.servuo.dev/archive/gothic-player-backpack.2262/): the open
+               backpack (full and compact), the minimized backpack and the backpack on the paperdoll. No terms stated:
+               credit Carl Hamilton, ship only inside the player package or the private repo, do not repost.
+  23060-23070  Safera, "7 Custom Backpack Sets" (https://www.servuo.dev/archive/7-custom-backpack-sets.310/). Bloody
+               (23060-23061) is his own. Celtic and Dragon (23062-23067, UO Desktop themes) and the leather set
+               (23068-23070, his "Fancy" folder, likely the KR client's strappy backpack) are EA-derived: they ship only
+               as our PNG under new IDs, never as an EA file. His Primitive, Snowy and Strappy sets are EA's own
+               alternate backpacks (gumps 30558-30563), which the client already has and TazUO already offers
+               (Containers, backpack style): nothing of them ships. No terms stated: credit Safera.
+  23071-23073  Castiel, "Bag Gumps" (https://www.servuo.dev/archive/bag-gumps.1518/): Celtic, Primitive and Snowy open
+               bags. No terms stated: credit Castiel.
+  23074-23080  Erachiro, "Erad's Custom UO Content" (https://www.servuo.dev/archive/erads-custom-uo-content.912/): the
+               metal chest (also the bank box) with a blue, pink, red, teal or yellow lining, and two crates
+               (refurbished, weathered). His words: "Everything you see in this pack is free to use." Credit Erachiro.
+  13049-13112  CorvaeOboro, "Magic Scrolls" (https://www.servuo.dev/archive/magic-scrolls.1768/), the 64 Magery spell
+               scrolls in stock order (0x1F2D Reactive Armor to 0x1F6C Summon Water Elemental). CC0 1.0: his GitHub
+               repository ultima_online_mods carries the license for its whole art folder (checked 2026-10-23).
+               Credited anyway.
+Not registered from these packs: Carl Hamilton's minimized backpacks 2 and 3 (stock 9810 and 9811, which TazUO never
+draws for a backpack), Safera's backpack item icons (they would change every backpack on the ground, too), Castiel's
+preview picture, and the rest of Erachiro's pack (see shard-migration notes\cc-P362-ui-skins-player-options.md).

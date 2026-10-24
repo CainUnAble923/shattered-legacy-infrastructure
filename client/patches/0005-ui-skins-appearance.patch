@@ -1,0 +1,635 @@
+From 988fdeaae187afe16b02f9f2987c7cef28c19cdf Mon Sep 17 00:00:00 2001
+From: Chase Fleming <ckfleming@gmail.com>
+Date: Fri, 23 Oct 2026 21:59:24 -0500
+Subject: [PATCH] UI skins: Options > Interface > Appearance, a backpack, bag,
+ metal chest, crate and spell scroll look per profile, drawn client side from
+ the shard's own PNGs (Shattered Legacy cc-P362)
+
+---
+ src/ClassicUO.Assets/ExternalImageLoader.cs   |  73 +++++++-
+ src/ClassicUO.Client/Configuration/Profile.cs |   1 +
+ src/ClassicUO.Client/Game/Managers/SlSkins.cs | 167 ++++++++++++++++++
+ .../MyraWindows/Options/Tabs/AppearanceTab.cs | 104 +++++++++++
+ .../MyraWindows/Options/Tabs/InterfaceTab.cs  |   5 +
+ src/ClassicUO.Client/Game/World.cs            |   2 +
+ src/ClassicUO.Renderer/Arts/Art.cs            |   8 +
+ .../ClassicUO.UnitTests/Game/SlSkinsTests.cs  | 149 ++++++++++++++++
+ 8 files changed, 504 insertions(+), 5 deletions(-)
+ create mode 100644 src/ClassicUO.Client/Game/Managers/SlSkins.cs
+ create mode 100644 src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/AppearanceTab.cs
+ create mode 100644 tests/ClassicUO.UnitTests/Game/SlSkinsTests.cs
+
+diff --git a/src/ClassicUO.Assets/ExternalImageLoader.cs b/src/ClassicUO.Assets/ExternalImageLoader.cs
+index 66714ca8d..cc43da57b 100644
+--- a/src/ClassicUO.Assets/ExternalImageLoader.cs
++++ b/src/ClassicUO.Assets/ExternalImageLoader.cs
+@@ -82,8 +82,9 @@ namespace ClassicUO.Assets
+         public GumpInfo LoadGumpTexture(uint graphic)
+         {
+             // Shattered Legacy (cc-P111): a run-time override, read from where it is (never copied into ExternalImages).
+-            if (!gump_overridePaths.TryGetValue(graphic, out string fullImagePath) &&
+-                !gump_availableFilePaths.TryGetValue(graphic, out fullImagePath))
++            // cc-P362: then a skin's remap, then the ID's own PNG (ResolveGumpPath).
++            string fullImagePath = ResolveGumpPath(graphic);
++            if (fullImagePath == null)
+                 return new GumpInfo();
+ 
+             if (gump_textureCache.TryGetValue(graphic, out (uint[] pixels, int width, int height) cached))
+@@ -140,7 +141,9 @@ namespace ClassicUO.Assets
+ 
+         public ArtInfo LoadArtTexture(uint graphic)
+         {
+-            if (!art_availableFilePaths.TryGetValue(graphic, out string fullImagePath))
++            // Shattered Legacy (cc-P362): a skin's remap first, then the ID's own PNG (ResolveArtPath).
++            string fullImagePath = ResolveArtPath(graphic);
++            if (fullImagePath == null)
+                 return new ArtInfo();
+ 
+             if (art_textureCache.TryGetValue(graphic, out (uint[] pixels, int width, int height) cached))
+@@ -278,8 +281,13 @@ namespace ClassicUO.Assets
+         {
+             exePath = AppContext.BaseDirectory;
+             _uoDirectory = uoDirectory;
++            ScanImages(Path.Combine(exePath, IMAGES_FOLDER));
++        }
+ 
+-            string gumpPath = Path.Combine(exePath, IMAGES_FOLDER, GUMP_EXTERNAL_FOLDER);
++        // Shattered Legacy (cc-P362): Load's folder scan on its own, so a test can scan a folder of its own.
++        public void ScanImages(string imagesRoot)
++        {
++            string gumpPath = Path.Combine(imagesRoot, GUMP_EXTERNAL_FOLDER);
+ 
+             if (Directory.Exists(gumpPath))
+             {
+@@ -298,7 +306,7 @@ namespace ClassicUO.Assets
+                 Directory.CreateDirectory(gumpPath);
+             }
+ 
+-            string artPath = Path.Combine(exePath, IMAGES_FOLDER, ART_EXTERNAL_FOLDER);
++            string artPath = Path.Combine(imagesRoot, ART_EXTERNAL_FOLDER);
+ 
+             if (Directory.Exists(artPath))
+             {
+@@ -613,6 +621,61 @@ namespace ClassicUO.Assets
+ 
+         public string GetGumpOverride(uint graphic) => gump_overridePaths.TryGetValue(graphic, out string p) ? p : null;
+ 
++        // Shattered Legacy (cc-P362): UI skins. A stock gump (or art index) is drawn from the PNG of another ID, the
++        // skin's own, which the package ships under a new ID. Only while a player has picked that skin; the stock ID's
++        // own file is never touched. Each set replaces the whole remap and returns every ID whose source changed, its
++        // cached pixels dropped, so the caller redraws exactly those.
++        private readonly Dictionary<uint, uint> gump_skinRemap = new Dictionary<uint, uint>();
++        private readonly Dictionary<uint, uint> art_skinRemap = new Dictionary<uint, uint>();
++
++        public List<uint> SetGumpRemap(IReadOnlyDictionary<uint, uint> remap) => SetRemap(gump_skinRemap, remap, gump_textureCache);
++
++        public List<uint> SetArtRemap(IReadOnlyDictionary<uint, uint> remap) => SetRemap(art_skinRemap, remap, art_textureCache);
++
++        private static List<uint> SetRemap(Dictionary<uint, uint> current, IReadOnlyDictionary<uint, uint> next,
++            Dictionary<uint, (uint[] pixels, int width, int height)> cache)
++        {
++            var changed = new List<uint>();
++            foreach (KeyValuePair<uint, uint> old in current)
++                if (next == null || !next.TryGetValue(old.Key, out uint now) || now != old.Value)
++                    changed.Add(old.Key);
++            if (next != null)
++                foreach (KeyValuePair<uint, uint> now in next)
++                    if (!current.ContainsKey(now.Key))
++                        changed.Add(now.Key);
++            current.Clear();
++            if (next != null)
++                foreach (KeyValuePair<uint, uint> now in next)
++                    current[now.Key] = now.Value;
++            foreach (uint id in changed)
++                cache.Remove(id);
++            return changed;
++        }
++
++        /// <summary>The file a gump is drawn from: the cc-P111 override, a skin's remap (when the skin's file is
++        /// there), the ID's own PNG; null for the client's own gump.</summary>
++        public string ResolveGumpPath(uint graphic)
++        {
++            if (gump_overridePaths.TryGetValue(graphic, out string p))
++                return p;
++            if (gump_skinRemap.TryGetValue(graphic, out uint to) && gump_availableFilePaths.TryGetValue(to, out p))
++                return p;
++            return gump_availableFilePaths.TryGetValue(graphic, out p) ? p : null;
++        }
++
++        /// <summary>The file an art index (item ID + 0x4000) is drawn from: a skin's remap, the ID's own PNG; null for
++        /// the client's own art.</summary>
++        public string ResolveArtPath(uint graphic)
++        {
++            if (art_skinRemap.TryGetValue(graphic, out uint to) && art_availableFilePaths.TryGetValue(to, out string p))
++                return p;
++            return art_availableFilePaths.TryGetValue(graphic, out p) ? p : null;
++        }
++
++        public string GetGumpFilePath(uint graphic) => gump_availableFilePaths.TryGetValue(graphic, out string p) ? p : null;
++
++        public string GetArtFilePath(uint graphic) => art_availableFilePaths.TryGetValue(graphic, out string p) ? p : null;
++
+         public void ClearAllPixelCaches()
+         {
+             art_textureCache.Clear();
+diff --git a/src/ClassicUO.Client/Configuration/Profile.cs b/src/ClassicUO.Client/Configuration/Profile.cs
+index e7e2107ec..322737b48 100644
+--- a/src/ClassicUO.Client/Configuration/Profile.cs
++++ b/src/ClassicUO.Client/Configuration/Profile.cs
+@@ -441,6 +441,7 @@ namespace ClassicUO.Configuration
+         public int WorldMapTtfFontSize { get; set => SetProperty(ref field, value); } = 20;
+         public bool WorldMapFlipMap { get; set => SetProperty(ref field, value); } = true;
+         public bool WorldMapShowFog { get; set => SetProperty(ref field, value); } = true; // Shattered Legacy patch (cc-P240)
++        public string SlSkins { get; set => SetProperty(ref field, value); } = string.Empty; // Shattered Legacy patch (cc-P362): UI skins, "kind=key;..."
+         public bool WorldMapTopMost { get; set => SetProperty(ref field, value); }
+         public bool WorldMapFreeView { get; set => SetProperty(ref field, value); }
+         public WorldMapDoubleClickAction WorldMapDoubleClickAction { get; set => SetProperty(ref field, value); } = WorldMapDoubleClickAction.ToggleLock;
+diff --git a/src/ClassicUO.Client/Game/Managers/SlSkins.cs b/src/ClassicUO.Client/Game/Managers/SlSkins.cs
+new file mode 100644
+index 000000000..6cd50916d
+--- /dev/null
++++ b/src/ClassicUO.Client/Game/Managers/SlSkins.cs
+@@ -0,0 +1,167 @@
++// SPDX-License-Identifier: BSD-2-Clause
++// Shattered Legacy patch (cc-P362): optional UI skins, picked per profile in Options > Interface > Appearance.
++//
++// Each skin draws a stock gump (or a stock item's art) from one of the shard's own PNGs instead, under a NEW ID that
++// the player package ships in ExternalImages (registry.csv, cc-P362). The stock ID keeps its stock art for everyone
++// who has not picked the skin; nothing is overwritten. The remap is client side only: no packet, no server flag, and
++// other players see nothing different. "Classic" (stock) is every kind's default.
++//
++// The table is written by shard-migration notes/cc-P362-tools/skins.py from the same data as the package's
++// vendor/shattered-legacy-art/skins.json (a package test keeps the two the same). A skin is offered only when every
++// file it needs is present, so a client without our art offers Classic alone.
++//
++// Later (cc-P362 notes, not built): a skin can carry a lock that a server flag lifts (a loot box or League shop
++// cosmetic). Available() is the one place such a check would go.
++
++using System;
++using System.Collections.Generic;
++using System.Linq;
++using ClassicUO.Assets;
++using ClassicUO.Configuration;
++
++namespace ClassicUO.Game.Managers
++{
++    internal static class SlSkins
++    {
++        public const string Classic = "classic";
++
++        /// <summary>One skin: its kind, a key saved in the profile, the label, its author, and stock ID to our ID.
++        /// For the scroll kind the IDs are item art IDs (without the 0x4000 art offset); for the others, gump IDs.</summary>
++        public sealed record Skin(string Kind, string Key, string Label, string Author, Dictionary<uint, uint> Map);
++
++        /// <summary>The kinds, in page order: key, label, and whether its IDs are item art (true) or gumps.</summary>
++        public static readonly (string Key, string Label, bool Art)[] Kinds =
++        {
++            ("backpack", "Backpack", false),
++            ("bag", "Bags", false),
++            ("chest", "Metal chests and the bank box", false),
++            ("crate", "Crates", false),
++            ("scroll", "Spell scrolls", true)
++        };
++
++        public static readonly Skin[] All =
++        {
++            new("backpack", "fancy", "Fancy", "Carl Hamilton", new Dictionary<uint, uint> { [60] = 23052, [80] = 23053, [50422] = 23054 }),
++            new("backpack", "fancy-compact", "Fancy, compact", "Carl Hamilton", new Dictionary<uint, uint> { [60] = 23055, [80] = 23053, [50422] = 23054 }),
++            new("backpack", "gothic", "Gothic", "Carl Hamilton", new Dictionary<uint, uint> { [60] = 23056, [80] = 23057, [50422] = 23058 }),
++            new("backpack", "gothic-compact", "Gothic, compact", "Carl Hamilton", new Dictionary<uint, uint> { [60] = 23059, [80] = 23057, [50422] = 23058 }),
++            new("backpack", "bloody", "Bloody", "Safera", new Dictionary<uint, uint> { [60] = 23060, [50422] = 23061 }),
++            new("backpack", "celtic", "Celtic", "Safera", new Dictionary<uint, uint> { [60] = 23062, [80] = 23063, [50422] = 23064 }),
++            new("backpack", "dragon", "Dragon", "Safera", new Dictionary<uint, uint> { [60] = 23065, [80] = 23066, [50422] = 23067 }),
++            new("backpack", "leather", "Leather", "Safera", new Dictionary<uint, uint> { [60] = 23068, [80] = 23069, [50422] = 23070 }),
++            new("bag", "celtic", "Celtic", "Castiel", new Dictionary<uint, uint> { [61] = 23071 }),
++            new("bag", "primitive", "Primitive", "Castiel", new Dictionary<uint, uint> { [61] = 23072 }),
++            new("bag", "snowy", "Snowy", "Castiel", new Dictionary<uint, uint> { [61] = 23073 }),
++            new("chest", "blue", "Blue lining", "Erachiro", new Dictionary<uint, uint> { [74] = 23074 }),
++            new("chest", "pink", "Pink lining", "Erachiro", new Dictionary<uint, uint> { [74] = 23075 }),
++            new("chest", "red", "Red lining", "Erachiro", new Dictionary<uint, uint> { [74] = 23076 }),
++            new("chest", "teal", "Teal lining", "Erachiro", new Dictionary<uint, uint> { [74] = 23077 }),
++            new("chest", "yellow", "Yellow lining", "Erachiro", new Dictionary<uint, uint> { [74] = 23078 }),
++            new("crate", "refurbished", "Refurbished", "Erachiro", new Dictionary<uint, uint> { [68] = 23079 }),
++            new("crate", "weathered", "Weathered", "Erachiro", new Dictionary<uint, uint> { [68] = 23080 }),
++            new("scroll", "magic-scrolls", "Magic Scrolls", "CorvaeOboro", new Dictionary<uint, uint> { [7981] = 13049, [7982] = 13050, [7983] = 13051, [7984] = 13052, [7985] = 13053, [7986] = 13054, [7987] = 13055, [7988] = 13056, [7989] = 13057, [7990] = 13058, [7991] = 13059, [7992] = 13060, [7993] = 13061, [7994] = 13062, [7995] = 13063, [7996] = 13064, [7997] = 13065, [7998] = 13066, [7999] = 13067, [8000] = 13068, [8001] = 13069, [8002] = 13070, [8003] = 13071, [8004] = 13072, [8005] = 13073, [8006] = 13074, [8007] = 13075, [8008] = 13076, [8009] = 13077, [8010] = 13078, [8011] = 13079, [8012] = 13080, [8013] = 13081, [8014] = 13082, [8015] = 13083, [8016] = 13084, [8017] = 13085, [8018] = 13086, [8019] = 13087, [8020] = 13088, [8021] = 13089, [8022] = 13090, [8023] = 13091, [8024] = 13092, [8025] = 13093, [8026] = 13094, [8027] = 13095, [8028] = 13096, [8029] = 13097, [8030] = 13098, [8031] = 13099, [8032] = 13100, [8033] = 13101, [8034] = 13102, [8035] = 13103, [8036] = 13104, [8037] = 13105, [8038] = 13106, [8039] = 13107, [8040] = 13108, [8041] = 13109, [8042] = 13110, [8043] = 13111, [8044] = 13112 }),
++        };
++
++        public static bool IsArtKind(string kind) => Array.Exists(Kinds, k => k.Key == kind && k.Art);
++
++        public static IEnumerable<Skin> OfKind(string kind) => All.Where(s => s.Kind == kind);
++
++        /// <summary>The skins of a kind whose files are all present (Classic is always offered besides these).</summary>
++        public static List<Skin> Available(string kind, Func<uint, bool> hasGump, Func<uint, bool> hasArt)
++        {
++            bool art = IsArtKind(kind);
++            return OfKind(kind).Where(s => s.Map.Values.All(id => art ? hasArt(id) : hasGump(id))).ToList();
++        }
++
++        /// <summary>The profile's choices, "kind=key;kind=key". A kind not named is Classic.</summary>
++        public static Dictionary<string, string> Parse(string saved)
++        {
++            var choices = new Dictionary<string, string>();
++            if (string.IsNullOrWhiteSpace(saved))
++                return choices;
++            foreach (string part in saved.Split(';', StringSplitOptions.RemoveEmptyEntries))
++            {
++                string[] kv = part.Split('=', 2);
++                if (kv.Length == 2 && kv[0].Trim().Length > 0 && kv[1].Trim().Length > 0)
++                    choices[kv[0].Trim()] = kv[1].Trim();
++            }
++            return choices;
++        }
++
++        public static string Format(Dictionary<string, string> choices) =>
++            string.Join(";", choices.Where(c => c.Value != Classic).OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => c.Key + "=" + c.Value));
++
++        /// <summary>The skin drawn for a kind: the chosen one if it is offered, else none (Classic).</summary>
++        public static Skin Effective(string kind, Dictionary<string, string> choices, Func<uint, bool> hasGump, Func<uint, bool> hasArt)
++        {
++            if (!choices.TryGetValue(kind, out string key) || key == Classic)
++                return null;
++            return Available(kind, hasGump, hasArt).FirstOrDefault(s => s.Key == key);
++        }
++
++        /// <summary>Every remap the choices make: gumps by gump ID, art by art index (item ID + 0x4000).</summary>
++        public static (Dictionary<uint, uint> Gumps, Dictionary<uint, uint> Art) Remaps(
++            Dictionary<string, string> choices, Func<uint, bool> hasGump, Func<uint, bool> hasArt)
++        {
++            var gumps = new Dictionary<uint, uint>();
++            var art = new Dictionary<uint, uint>();
++            foreach ((string kind, _, bool isArt) in Kinds)
++            {
++                Skin skin = Effective(kind, choices, hasGump, hasArt);
++                if (skin == null)
++                    continue;
++                foreach (KeyValuePair<uint, uint> m in skin.Map)
++                {
++                    if (isArt)
++                        art[m.Key + 0x4000] = m.Value + 0x4000;
++                    else
++                        gumps[m.Key] = m.Value;
++                }
++            }
++            return (gumps, art);
++        }
++
++        private static bool HasGump(uint id) => ExternalImageLoader.Instance.GetGumpFilePath(id) != null;
++
++        private static bool HasArt(uint itemId) => ExternalImageLoader.Instance.GetArtFilePath(itemId + 0x4000) != null;
++
++        public static List<Skin> Available(string kind) => Available(kind, HasGump, HasArt);
++
++        public static string Chosen(string kind)
++        {
++            Skin skin = Effective(kind, Parse(ProfileManager.CurrentProfile?.SlSkins), HasGump, HasArt);
++            return skin?.Key ?? Classic;
++        }
++
++        /// <summary>Applies the current profile's skins: at login (World.CreatePlayer, after the profile loads) and
++        /// after the option changes. Every gump and art whose source changed is dropped from its atlas, so open
++        /// containers and the paperdoll redraw with the new look on the next frame.</summary>
++        public static void Apply()
++        {
++            Dictionary<string, string> choices = Parse(ProfileManager.CurrentProfile?.SlSkins);
++            (Dictionary<uint, uint> gumps, Dictionary<uint, uint> art) = Remaps(choices, HasGump, HasArt);
++
++            List<uint> changedGumps = ExternalImageLoader.Instance.SetGumpRemap(gumps);
++            List<uint> changedArt = ExternalImageLoader.Instance.SetArtRemap(art);
++            var uo = Client.Game?.UO;
++            if (uo?.Gumps != null)
++                foreach (uint id in changedGumps)
++                    uo.Gumps.Invalidate(id);
++            if (uo?.Arts != null)
++                foreach (uint id in changedArt)
++                    uo.Arts.Invalidate(id);
++        }
++
++        /// <summary>The option's choice: saved in the profile at once and applied live.</summary>
++        public static void Choose(string kind, string key)
++        {
++            Profile profile = ProfileManager.CurrentProfile;
++            if (profile == null)
++                return;
++            Dictionary<string, string> choices = Parse(profile.SlSkins);
++            choices[kind] = key;
++            profile.SlSkins = Format(choices);
++            Apply();
++        }
++    }
++}
+diff --git a/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/AppearanceTab.cs b/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/AppearanceTab.cs
+new file mode 100644
+index 000000000..bc60d49e3
+--- /dev/null
++++ b/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/AppearanceTab.cs
+@@ -0,0 +1,104 @@
++// SPDX-License-Identifier: BSD-2-Clause
++// Shattered Legacy patch (cc-P362): Options > Interface > Appearance, the UI skins (Game\Managers\SlSkins.cs). One row
++// per kind: a list, "Classic (stock)" first and the default, then each skin whose files this client has, by its author;
++// and a small preview of the picked skin from its own PNG. Changes apply at once and are saved in the profile.
++
++using System;
++using System.Collections.Generic;
++using System.Linq;
++using ClassicUO.Assets;
++using ClassicUO.Game.Managers;
++using ClassicUO.Game.UI.MyraWindows.Widgets;
++using Microsoft.Xna.Framework.Graphics;
++using Myra.Graphics2D.TextureAtlases;
++using Myra.Graphics2D.UI;
++
++namespace ClassicUO.Game.UI.MyraWindows.Options.Tabs;
++
++public static class AppearanceTab
++{
++    public const string ClassicLabel = "Classic (stock)";
++    private const int PreviewSize = 96;
++
++    // Preview textures, by file, loaded once per session (a few small PNGs).
++    private static readonly Dictionary<string, Texture2D> _previews = new();
++
++    internal static IOptionSource GetContent()
++    {
++        OptionContent[] rows = SlSkins.Kinds.Select(k => (OptionContent)KindRow(k.Key, k.Label, k.Art)).ToArray();
++        return OptionsUi.Vertical(
++            OptionsUi.VisualContainer(
++                new VisualContainerProps { LabelText = "Shattered Legacy skins" },
++                rows
++            )
++        ).WithSearch(new SearchMetadata("Appearance", ["skin", "appearance", "backpack", "bag", "chest", "crate", "scroll", "shattered legacy"]));
++    }
++
++    /// <summary>The list's labels: Classic, then each available skin as "Label (Author)".</summary>
++    internal static string[] Labels(IReadOnlyList<SlSkins.Skin> skins) =>
++        new[] { ClassicLabel }.Concat(skins.Select(s => s.Label + " (" + s.Author + ")")).ToArray();
++
++    /// <summary>The ID a skin's preview shows: the backpack's open gump, the scroll skin's Flamestrike, else its
++    /// first (for the single-gump kinds, its only) piece.</summary>
++    internal static uint PreviewId(SlSkins.Skin skin)
++    {
++        if (skin.Map.TryGetValue(0x3C, out uint open))
++            return open;
++        if (skin.Map.TryGetValue(0x1F5F, out uint flamestrike))
++            return flamestrike;
++        return skin.Map.Values.First();
++    }
++
++    private static OptionFragment KindRow(string kind, string label, bool art)
++    {
++        List<SlSkins.Skin> skins = SlSkins.Available(kind);
++        string chosen = SlSkins.Chosen(kind);
++        int current = skins.FindIndex(s => s.Key == chosen) + 1;
++        var preview = new Image { MaxWidth = PreviewSize, MaxHeight = PreviewSize };
++        SetPreview(preview, current == 0 ? null : skins[current - 1], art);
++
++        return OptionsUi.Horizontal(
++            Option.ComboBox(
++                label,
++                current,
++                Labels(skins),
++                i =>
++                {
++                    SlSkins.Skin skin = i <= 0 || skins.Count == 0 ? null : skins[Math.Min(i - 1, skins.Count - 1)];
++                    SlSkins.Choose(kind, skin?.Key ?? SlSkins.Classic);
++                    SetPreview(preview, skin, art);
++                },
++                tooltip: skins.Count == 0
++                    ? "No skins for this are installed here; the client draws its own (Classic)."
++                    : "Only you see it. Changes at once, also on open containers. A backpack skin shows with the Containers tab's backpack style on Default.",
++                search: new SearchMetadata(label, Keywords: ["skin", "appearance", kind])
++            ),
++            preview
++        );
++    }
++
++    private static void SetPreview(Image image, SlSkins.Skin skin, bool art)
++    {
++        image.Renderable = null;
++        image.Visible = false;
++        if (skin == null)
++            return;
++
++        uint id = PreviewId(skin);
++        string path = art ? ExternalImageLoader.Instance.GetArtFilePath(id + 0x4000) : ExternalImageLoader.Instance.GetGumpFilePath(id);
++        if (path == null)
++            return;
++
++        if (!_previews.TryGetValue(path, out Texture2D texture) || texture == null || texture.IsDisposed)
++        {
++            texture = ExternalImageLoader.Instance.GetImageTexture(path);
++            _previews[path] = texture;
++        }
++
++        if (texture == null)
++            return;
++
++        image.Renderable = new TextureRegion(texture);
++        image.Visible = true;
++    }
++}
+diff --git a/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/InterfaceTab.cs b/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/InterfaceTab.cs
+index 502283ae9..95788e694 100644
+--- a/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/InterfaceTab.cs
++++ b/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/InterfaceTab.cs
+@@ -19,6 +19,11 @@ public static class InterfaceTab
+                 ContainersTab.GetContent,
+                 new SearchMetadata(TazLang.Get("mog_buttoncontainers"))
+             )
++            .AddTab(
++                "Appearance", // Shattered Legacy patch (cc-P362): UI skins
++                AppearanceTab.GetContent,
++                new SearchMetadata("Appearance", ["skin", "appearance", "backpack", "bag", "chest", "crate", "scroll", "shattered legacy"])
++            )
+             .AddTab(
+                 TazLang.Get("mog_buttonnameplates"),
+                 NameplatesTab.GetContent,
+diff --git a/src/ClassicUO.Client/Game/World.cs b/src/ClassicUO.Client/Game/World.cs
+index eedab8a57..4932bc692 100644
+--- a/src/ClassicUO.Client/Game/World.cs
++++ b/src/ClassicUO.Client/Game/World.cs
+@@ -355,6 +355,8 @@ namespace ClassicUO.Game
+                 SeasonFilter.MigrateLegacySqlSettings();
+             }
+ 
++            SlSkins.Apply(); // Shattered Legacy patch (cc-P362): this profile's UI skins
++
+             if (Player != null)
+             {
+                 Clear();
+diff --git a/src/ClassicUO.Renderer/Arts/Art.cs b/src/ClassicUO.Renderer/Arts/Art.cs
+index c3c09877f..eadf3469c 100644
+--- a/src/ClassicUO.Renderer/Arts/Art.cs
++++ b/src/ClassicUO.Renderer/Arts/Art.cs
+@@ -29,6 +29,14 @@ namespace ClassicUO.Renderer.Arts
+             _realArtBounds = new Rectangle[_spriteInfos.Length];
+         }
+ 
++        // Shattered Legacy (cc-P362): forget one art index's sprite (item ID + 0x4000), so the next draw loads it again
++        // (a UI skin was picked or dropped). Its old atlas space is not reclaimed: a few small scrolls per switch.
++        public void Invalidate(uint idx)
++        {
++            if (idx < _spriteInfos.Length)
++                _spriteInfos[idx] = default;
++        }
++
+         public ref readonly SpriteInfo GetLand(uint idx)
+             => ref Get((uint)(idx & ~0x4000));
+ 
+diff --git a/tests/ClassicUO.UnitTests/Game/SlSkinsTests.cs b/tests/ClassicUO.UnitTests/Game/SlSkinsTests.cs
+new file mode 100644
+index 000000000..e14534935
+--- /dev/null
++++ b/tests/ClassicUO.UnitTests/Game/SlSkinsTests.cs
+@@ -0,0 +1,149 @@
++// Shattered Legacy patch (cc-P362): the UI skins (Game\Managers\SlSkins.cs, the remap in ExternalImageLoader, the
++// Appearance tab). The image folders here hold empty stand-in files named like the IDs: the remap only needs to know a
++// file is there, and no art is ever needed (or allowed) in a test.
++using System;
++using System.Collections.Generic;
++using System.IO;
++using System.Linq;
++using ClassicUO.Assets;
++using ClassicUO.Game.Managers;
++using ClassicUO.Game.UI.MyraWindows.Options.Tabs;
++using FluentAssertions;
++using Xunit;
++
++namespace ClassicUO.UnitTests.Game
++{
++    public class SlSkinsTests : IDisposable
++    {
++        private readonly string _root = Path.Combine(Path.GetTempPath(), "sl-skins-" + Guid.NewGuid().ToString("N"));
++
++        public void Dispose()
++        {
++            if (Directory.Exists(_root))
++                Directory.Delete(_root, true);
++        }
++
++        private static bool Everything(uint id) => true;
++        private static bool Nothing(uint id) => false;
++
++        private string Images(uint[] gumps, uint[] art)
++        {
++            Directory.CreateDirectory(Path.Combine(_root, "gumps"));
++            Directory.CreateDirectory(Path.Combine(_root, "art"));
++            foreach (uint g in gumps)
++                File.WriteAllBytes(Path.Combine(_root, "gumps", g + ".png"), Array.Empty<byte>());
++            foreach (uint a in art)
++                File.WriteAllBytes(Path.Combine(_root, "art", a + ".png"), Array.Empty<byte>());
++            return _root;
++        }
++
++        [Fact]
++        public void No_skin_draws_over_a_stock_ID_and_every_skin_uses_the_registered_ranges()
++        {
++            var stock = SlSkins.All.SelectMany(s => s.Map.Keys).ToHashSet();
++            foreach (SlSkins.Skin s in SlSkins.All)
++            {
++                s.Map.Values.Should().NotIntersectWith(stock, $"{s.Kind}/{s.Key} would draw one stock ID as another");
++                bool art = SlSkins.IsArtKind(s.Kind);
++                foreach (uint id in s.Map.Values)
++                    (art ? id >= 13049 && id <= 13112 : id >= 23052 && id <= 23080).Should().BeTrue($"{s.Kind}/{s.Key} {id} is registered");
++            }
++
++            SlSkins.All.Select(s => s.Kind + "/" + s.Key).Should().OnlyHaveUniqueItems();
++            SlSkins.Kinds.Select(k => k.Key).Should().Equal("backpack", "bag", "chest", "crate", "scroll");
++            foreach ((string kind, _, _) in SlSkins.Kinds)
++                SlSkins.OfKind(kind).Should().NotBeEmpty();
++            SlSkins.All.Should().HaveCount(19);
++            SlSkins.All.Single(s => s.Kind == "scroll").Map.Keys.Should().BeEquivalentTo(Enumerable.Range(0x1F2D, 64).Select(i => (uint)i));
++        }
++
++        [Fact]
++        public void The_choices_round_trip_and_Classic_is_the_default()
++        {
++            SlSkins.Parse(null).Should().BeEmpty();
++            SlSkins.Parse("").Should().BeEmpty();
++            var c = SlSkins.Parse("scroll=magic-scrolls; backpack=fancy;junk;=x;bag=");
++            c.Should().HaveCount(2);
++            c["backpack"].Should().Be("fancy");
++            SlSkins.Format(c).Should().Be("backpack=fancy;scroll=magic-scrolls");
++            c["backpack"] = SlSkins.Classic;
++            SlSkins.Format(c).Should().Be("scroll=magic-scrolls", "Classic is not saved: it is the default");
++            new ClassicUO.Configuration.Profile().SlSkins.Should().BeEmpty("a profile from before the option is all Classic");
++        }
++
++        [Fact]
++        public void A_skin_is_offered_only_when_all_its_files_are_here_and_falls_back_to_Classic_otherwise()
++        {
++            SlSkins.Available("backpack", Nothing, Nothing).Should().BeEmpty();
++            SlSkins.Available("backpack", Everything, Nothing).Should().HaveCount(8);
++            SlSkins.Available("scroll", Everything, Nothing).Should().BeEmpty("the scroll skin is art, not gumps");
++
++            var only = new HashSet<uint> { 23060, 23061 }; // Bloody's two gumps
++            SlSkins.Available("backpack", only.Contains, Nothing).Select(s => s.Key).Should().Equal("bloody");
++
++            var choices = SlSkins.Parse("backpack=fancy");
++            SlSkins.Effective("backpack", choices, only.Contains, Nothing).Should().BeNull("Fancy's files are missing: Classic");
++            SlSkins.Remaps(choices, only.Contains, Nothing).Gumps.Should().BeEmpty();
++        }
++
++        [Fact]
++        public void The_remaps_are_the_picked_skins_gumps_by_ID_and_art_by_art_index()
++        {
++            var choices = SlSkins.Parse("backpack=fancy;chest=teal;scroll=magic-scrolls");
++            (Dictionary<uint, uint> gumps, Dictionary<uint, uint> art) = SlSkins.Remaps(choices, Everything, Everything);
++            gumps.Should().BeEquivalentTo(new Dictionary<uint, uint> { [0x3C] = 23052, [0x50] = 23053, [0xC4F6] = 23054, [0x4A] = 23077 });
++            art.Should().HaveCount(64);
++            art[0x1F2D + 0x4000u].Should().Be(13049 + 0x4000u, "Reactive Armor, the first scroll");
++            art[0x1F6C + 0x4000u].Should().Be(13112 + 0x4000u, "Summon Water Elemental, the last");
++
++            var bloody = SlSkins.Remaps(SlSkins.Parse("backpack=bloody"), Everything, Everything).Gumps;
++            bloody.Keys.Should().BeEquivalentTo(new uint[] { 0x3C, 0xC4F6 }, "Bloody has no minimized icon: stock's stays");
++        }
++
++        [Fact]
++        public void The_loader_draws_a_stock_ID_from_the_skins_file_only_while_remapped()
++        {
++            var loader = new ExternalImageLoader();
++            string root = Images(new uint[] { 60, 23052, 12 }, new uint[] { 0x1F2D, 13049 });
++            loader.ScanImages(root);
++            string own60 = Path.Combine(root, "gumps", "60.png");
++            string skin = Path.Combine(root, "gumps", "23052.png");
++
++            loader.ResolveGumpPath(60).Should().Be(own60);
++            loader.ResolveGumpPath(61).Should().BeNull("no PNG: the client's own gump");
++
++            loader.SetGumpRemap(new Dictionary<uint, uint> { [60] = 23052, [61] = 99999 }).Should().BeEquivalentTo(new uint[] { 60, 61 });
++            loader.ResolveGumpPath(60).Should().Be(skin);
++            loader.ResolveGumpPath(61).Should().BeNull("a remap to a file that is not here draws stock");
++            loader.ResolveGumpPath(23052).Should().Be(skin, "the skin's own ID is untouched");
++
++            loader.SetGumpOverrides(new Dictionary<uint, string> { [60] = "body" });
++            loader.ResolveGumpPath(60).Should().Be("body", "cc-P111's override still comes first");
++            loader.SetGumpOverrides(null);
++
++            loader.SetGumpRemap(new Dictionary<uint, uint> { [60] = 23052, [61] = 99999 }).Should().BeEmpty("nothing changed");
++            loader.SetGumpRemap(null).Should().BeEquivalentTo(new uint[] { 60, 61 });
++            loader.ResolveGumpPath(60).Should().Be(own60, "back to Classic");
++
++            uint stockArt = 0x1F2D + 0x4000u, skinArt = 13049 + 0x4000u;
++            loader.ResolveArtPath(stockArt).Should().Be(Path.Combine(root, "art", 0x1F2D + ".png"));
++            loader.SetArtRemap(new Dictionary<uint, uint> { [stockArt] = skinArt }).Should().Equal(stockArt);
++            loader.ResolveArtPath(stockArt).Should().Be(Path.Combine(root, "art", "13049.png"));
++            loader.GetArtFilePath(skinArt).Should().NotBeNull();
++            loader.GetGumpFilePath(23052).Should().Be(skin);
++        }
++
++        [Fact]
++        public void The_Appearance_page_lists_Classic_first_and_previews_the_main_piece()
++        {
++            var fancy = SlSkins.All.First(s => s.Kind == "backpack" && s.Key == "fancy");
++            var scrolls = SlSkins.All.Single(s => s.Kind == "scroll");
++            var teal = SlSkins.All.First(s => s.Kind == "chest" && s.Key == "teal");
++            AppearanceTab.Labels(new[] { fancy }).Should().Equal("Classic (stock)", "Fancy (Carl Hamilton)");
++            AppearanceTab.Labels(Array.Empty<SlSkins.Skin>()).Should().Equal("Classic (stock)");
++            AppearanceTab.PreviewId(fancy).Should().Be(23052u, "the open backpack");
++            AppearanceTab.PreviewId(scrolls).Should().Be(13099u, "Flamestrike (0x1F5F)");
++            AppearanceTab.PreviewId(teal).Should().Be(23077u);
++        }
++    }
++}
+-- 
+2.51.2.windows.1
+

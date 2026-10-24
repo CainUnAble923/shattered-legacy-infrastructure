@@ -301,11 +301,11 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # category icon gumps (22459-22468); cc-P243 the 38 League Hall decor IDs (15592-15629);
     # cc-P242 the 54 flying loot frames (15536-15589); cc-P265 the 279 guild hall decor IDs (28016-28294);
     # cc-P266 the 47 second-block winter decor IDs (13192-13238) and the advent calendar gump 22469; cc-P364 the 14 League
-    # bestiary bodies (2072-2085).
-    Assert-Equal 627 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art
+    # bestiary bodies (2072-2085); cc-P362 the 29 UI skin gumps (23052-23080) and 64 scroll skin art IDs (13049-13112).
+    Assert-Equal 720 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art
     Assert-Equal 40 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364), 2086-2087 (cc-P277)'
-    Assert-Equal 16 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468 and 22469'
-    Assert-Equal 570 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+    Assert-Equal 45 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468, 22469 and 23052-23080 (cc-P362)'
+    Assert-Equal 634 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
 
 Fact 'TheChestMimicRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {

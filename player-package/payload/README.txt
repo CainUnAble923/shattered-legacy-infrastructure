@@ -94,6 +94,9 @@ What is in here
                (https://aka.ms/vs/18/redistribution).
                The custom health and mana gumps are off until you turn them on
                from the TazUO top bar (XmlGumps menu).
+               Optional looks for your backpack, bags, metal chests, crates and
+               spell scrolls (Options, Interface, Appearance; only you see them)
+               by Carl Hamilton, Safera, Castiel, Erachiro and CorvaeOboro.
   app\music\   Shattered Legacy's own music for chosen places and fights, when any
                ships: remixes of the Ultima Online music by Zigholtul (UO Classic
                Music, SOS Mix) and ParanoiaPhD (IceYouMusic remixes), credited by
