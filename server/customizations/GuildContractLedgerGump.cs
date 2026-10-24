@@ -137,6 +137,11 @@ public class GuildContractLedgerGump : Gump
             .Where(d => !d.IsEligible(_pm, data) && IsDiscoveryPending(d, data))
             .ToList();
 
+        // cc-P416: a miner who has not learned stone mining sees no Stone Contracts, and this line instead, in the footer.
+        var stoneHint = ClusterFWorkOrderSystem.StoneMiningHintFor(_pm, _guildKey);
+        if (stoneHint != null)
+            AddHtml(70, FooterY + 4, W - 136, 36, $"<BASEFONT COLOR=#FFD700>{stoneHint}</BASEFONT>", false, false);
+
         if (orders.Count == 0 && pendingDiscovery.Count == 0)
         {
             AddLabel(18, ContentY + 12, 999, "No work orders available at your current rank.");
@@ -171,7 +176,7 @@ public class GuildContractLedgerGump : Gump
                 AddLabel(18,      cy,     999, def.Title + "  [Locked]");
                 AddLabel(W - 175, cy,     999, def.TypeLabel);
 
-                var reqLine = string.Join("  +  ", def.Requirements.Select(r => $"{r.Amount} {r.Label}"));
+                var reqLine = string.Join("  +  ", def.Requirements.Select(WorkOrderDef.Describe));
                 AddLabel(18, cy + 16, 999, reqLine);
 
                 var parts = new List<string>();
@@ -191,7 +196,7 @@ public class GuildContractLedgerGump : Gump
                 AddLabel(18,      cy,     1154, def.Title);
                 AddLabel(W - 175, cy,     999,  def.TypeLabel);
 
-                var reqLine = string.Join("  +  ", def.Requirements.Select(r => $"{r.Amount} {r.Label}"));
+                var reqLine = string.Join("  +  ", def.Requirements.Select(WorkOrderDef.Describe));
                 AddLabel(18, cy + 16, 999, reqLine);
 
                 var parts = new List<string>();
@@ -232,6 +237,7 @@ public class GuildContractLedgerGump : Gump
         if (def.RequiredDiscovery == null) return false;
         if (guild.GetReputation(def.GuildKey) < def.MinStanding) return false;
         if (def.SkillRequired.HasValue && _pm.Skills[def.SkillRequired.Value].Value < def.MinSkill) return false;
+        if (def.NeedsStoneMining && !_pm.StoneMining) return false; // cc-P416: not even as a locked card
 
         // Ore must be discovered (entry exists) but not yet reported
         return data.OreDiscoveries.TryGetValue(def.RequiredDiscovery, out var entry)
@@ -297,6 +303,13 @@ public class GuildContractLedgerGump : Gump
                     total  = req.Amount;
                     label  = $"* Deliver {req.Label}: {(bypass ? total : have)}/{total}";
                 }
+                else if (req is WorkOrderMiningRequirement)
+                {
+                    // cc-P416: ore mined since the contract was taken
+                    have  = ClusterFWorkOrderSystem.MinedSince(entry, req);
+                    total = req.Amount;
+                    label = $"* Mine {req.Label} since taken: {(bypass ? total : Math.Min(have, total)):N0}/{total:N0}";
+                }
                 else if (req is WorkOrderCleanUpRequirement)
                 {
                     // cc-P414: Clean Up points earned since the contract was taken
@@ -321,6 +334,14 @@ public class GuildContractLedgerGump : Gump
                 reqY += 16;
             }
 
+            // cc-P416: a contract taken before it became a mining quota may still be finished with its old turn-in.
+            if (entry.FromBeforeQuotas && def.LegacyTurnIn != null && !def.QuotaMet(entry))
+            {
+                var old = string.Join(" + ", def.LegacyTurnIn.Select(WorkOrderDef.Describe));
+                AddLabel(18, reqY, 999, $"Taken before quotas: turning in {old} also finishes it.");
+                reqY += 16;
+            }
+
             // Turn in / deliver more - button ID encodes absolute active-list index
             if (allMet)
             {
@@ -334,6 +355,10 @@ public class GuildContractLedgerGump : Gump
             else if (ClusterFWorkOrderSystem.HasCleanUpRequirement(def))
             {
                 AddLabel(18, reqY + 4, 0x22, "Clean up litter to earn the remaining Clean Up points.");
+            }
+            else if (ClusterFWorkOrderSystem.HasMiningQuota(def))
+            {
+                AddLabel(18, reqY + 4, 0x22, "Mine the rest. Ore you carry or buy does not count.");
             }
             else
             {
@@ -508,7 +533,9 @@ public class GuildContractLedgerGump : Gump
         ClusterFWorkOrderSystem.Accept(_pm, guild, def);
         _pm.SendMessage(0x44, ClusterFWorkOrderSystem.HasCleanUpRequirement(def)
             ? $"Accepted: {def.Title}. Clean Up points you earn from now count toward it; return to turn it in."
-            : $"Accepted: {def.Title}. Gather the required materials and return to turn it in.");
+            : ClusterFWorkOrderSystem.HasMiningQuota(def)
+                ? $"Accepted: {def.Title}. Ore you mine from now counts toward it; there is nothing to carry back."
+                : $"Accepted: {def.Title}. Gather the required materials and return to turn it in.");
     }
 
     private void HandleTurnIn(ClusterFAccountData data, int idx)
@@ -550,12 +577,14 @@ public class GuildContractLedgerGump : Gump
                         ? "You have not yet delivered all required animals."
                         : ClusterFWorkOrderSystem.HasCleanUpRequirement(def)
                             ? "You have not yet earned the Clean Up points this contract asks for."
-                            : "You don't have all required materials in your backpack and bank.");
+                            : ClusterFWorkOrderSystem.HasMiningQuota(def) && !def.QuotaMet(entry)
+                                ? "You have not yet mined the ore this contract asks for."
+                                : "You don't have all required materials in your backpack and bank.");
             return false;
         }
 
         // Consume materials (pack then bank, all or nothing) and apply rewards
-        if (!def.ConsumeRequirements(pm))
+        if (!def.ConsumeRequirements(pm, entry))
         {
             if (say) pm.SendMessage(0x22, "You don't have all required materials in your backpack and bank.");
             return false;
