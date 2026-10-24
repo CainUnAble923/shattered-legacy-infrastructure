@@ -346,12 +346,12 @@ public class RootdeepVaultVerification
 
             ClusterFRootdeepSeeder.MapBuilt = () => true;
             var dry = ClusterFRootdeepSeeder.Seed(true);
-            Assert.Equal((ClusterFRootdeepSeeder.Spawners.Length, 1, 1, 2), (dry.Spawners, dry.Ankhs, dry.Crawlways, dry.Teleporters));
+            Assert.Equal((ClusterFRootdeepSeeder.Spawners.Length, 1, 1, ClusterFRootdeepSeeder.Teleporters.Length), (dry.Spawners, dry.Ankhs, dry.Crawlways, dry.Teleporters));
             Assert.Null(ClusterFRootdeepSeeder.FindCrawlway(Map.Trammel));
 
             var first = ClusterFRootdeepSeeder.Seed(false);
             _out.WriteLine(first.Message);
-            Assert.Equal((ClusterFRootdeepSeeder.Spawners.Length, 1, 1, 2, 0), (first.Spawners, first.Ankhs, first.Crawlways, first.Teleporters, first.Present));
+            Assert.Equal((ClusterFRootdeepSeeder.Spawners.Length, 1, 1, ClusterFRootdeepSeeder.Teleporters.Length, 0), (first.Spawners, first.Ankhs, first.Crawlways, first.Teleporters, first.Present));
 
             // cc-P188: the way in, both ends (RootdeepWayInVerification has the walk through them).
             foreach (var row in ClusterFRootdeepSeeder.Teleporters)
@@ -390,7 +390,7 @@ public class RootdeepVaultVerification
             Assert.False(crawlway.IsOpen);
 
             var again = ClusterFRootdeepSeeder.Seed(false);
-            Assert.Equal((0, 0, 0, 0, ClusterFRootdeepSeeder.Spawners.Length + 4), (again.Spawners, again.Ankhs, again.Crawlways, again.Teleporters, again.Present));
+            Assert.Equal((0, 0, 0, 0, ClusterFRootdeepSeeder.Spawners.Length + 2 + ClusterFRootdeepSeeder.Teleporters.Length), (again.Spawners, again.Ankhs, again.Crawlways, again.Teleporters, again.Present)); // cc-P413: the ankh, the crawlway and every teleporter
         }
         finally
         {
