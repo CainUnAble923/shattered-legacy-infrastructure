@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.17
+
+### Staff
+- The guild hall towers from [DecorHallStructure can be walked into: each has a door that opens on a double-click (it closes itself after 20 seconds) and a floor inside.
+- The guild hall decor commands refuse, and place nothing, when the template changed since that spot was dressed (clear it first), when the new placement would overlap the same set placed one tile off, or when a piece would stand in a wall, an object or a doorway. A dry run lists what is in the way.
+
 ## 2026.10.24.16
 
 ### Fixed

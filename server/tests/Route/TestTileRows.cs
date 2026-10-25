@@ -136,6 +136,18 @@ public static class TileRows
         new(0x0CCD, "tree", 0x4041, 255, 0, 0, 0, 0, 20);
     public static readonly TileRow TreeLeaves =
         new(0x0CCE, "leaves", 0x20040, 255, 0, 0, 0, 0, 2);
+
+    // cc-P459: the stock tiles the guild hall towers use (GuildHallDecorVerification). Read with a TileData.Load-order
+    // parser that ends exactly at the end of D:/UO/ClassicUO/ClassicUO/Ultima Online Classic/tiledata.mul, the same
+    // 3,188,736-byte 7.0.117 file as client-data/classic-client (four tower tiles compared through vseUOAware).
+    public static readonly TileRow NoDraw =
+        new(0x0001, "nodraw", 0x20000, 0, 0, 0, 0, 0, 0); // a tower door, open: not impassable
+    public static readonly TileRow InvisibleWall =
+        new(0x21A3, "nodraw", 0x2050, 255, 0, 0, 0, 0, 100); // Wall | Impassable | NoShoot: a tower's side wall
+    public static readonly TileRow StonePavers =
+        new(0x051A, "stone pavers", 0x2201, 255, 0, 0, 0, 0, 0); // Background | Surface | NoShoot: a brick tower's floor
+    public static readonly TileRow WhiteMarble =
+        new(0x050E, "white marble", 0x2201, 255, 0, 0, 0, 0, 0); // the white towers' floor
 }
 
 /// <summary>

@@ -1,11 +1,12 @@
 // GuildHallDecorVerification.cs
 //
 // cc-P265: the guild hall decor packs and their staff seeders. Notes in shard-migration
-// notes/cc-P265-guild-hall-decor-packs.md.
+// notes/cc-P265-guild-hall-decor-packs.md; cc-P459's changes in notes/cc-P459-hall-decor-seeder.md.
 //
 // What the facts pin:
-//   1. The server's templates are the design file (design/guild-hall-decor/templates.json, through its generated
-//      copy): every set, group and row, each row's art ID resolved from its piece the way the generator does.
+//   1. The server's templates are the design file: design/guild-hall-decor/templates.json itself (the build copies it
+//      to /design in the test image, cc-P459), every set, group and row, each row's art ID resolved from its piece the
+//      way the generator does, and its door and hidden switches. An edit to the JSON alone goes red.
 //   2. Every row is one of this set's registered pieces (a base ID of GuildHallDecorArt), one of cc-P237's two marble
 //      railings, or a stock item below 0x4000; no two rows of a set on one tile at one z; one command per set.
 //   3. On the live shard (isTestShard false) place and clear refuse and change nothing.
@@ -13,19 +14,26 @@
 //      named and hued as its row; place again at the same point adds nothing; a group key places that group alone;
 //      clear removes only this set's items near the caller (a same-art lookalike, a gold pile and another set's
 //      placement stay), and clear all removes the rest.
-//   5. GuildHallDecor round-trips its set, group, row and anchor.
+//   5. GuildHallDecor round-trips its set, group, row, anchor and template hash; a tower door its closed art.
 //   6. The server's in-memory records are in place after ShatteredLegacyArt.Apply: every piece's name, flags, weight,
 //      light and height; every animated piece (more than one frame) carries Animation; frames carry no record.
+//   7. cc-P459 (P419 #1): a placement one tile off the same set's is refused, and places nothing.
+//   8. cc-P459 (P419 #4): after a template edit, placing at the old point is refused until it is cleared.
+//   9. cc-P459 (P419 #2): a row in an impassable item, on a door or in a door's swing is refused; the dry run says why.
+//  10. cc-P459 (Chase 10-23): every tower is closed until its door opens; opened, the door tile and every floor tile
+//      inside are walkable (pinned's own movement check); the door closes itself once nobody stands in it.
 // The art itself (registry, PNGs, records.json against GuildHallDecorArt) is checked by player-package\tests.
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Server;
 using Server.Items;
+using Server.Mobiles;
 using Xunit;
 
 namespace ShatteredLegacy.Tests;
@@ -33,6 +41,10 @@ namespace ShatteredLegacy.Tests;
 [Collection("Sequential UOContent Tests")]
 public class GuildHallDecorVerification
 {
+    // Where the build puts the design file (docker/uo/Dockerfile); SL_DESIGN_ROOT overrides it for a local run.
+    private static string DesignPath =>
+        Path.Combine(Environment.GetEnvironmentVariable("SL_DESIGN_ROOT") ?? "/", GuildHallDecorTemplates.DesignFile);
+
     private static readonly Dictionary<string, int> CommunityRails = new() { ["marble-70321"] = 0x3C8F, ["marble-70324"] = 0x3C90 };
 
     private static void Clean()
@@ -54,15 +66,20 @@ public class GuildHallDecorVerification
         return CommunityRails.TryGetValue(piece!, out var id) ? id : GuildHallDecorArt.Find(piece)!.Id;
     }
 
+    private static bool Switch(JsonElement r, string name) => r.TryGetProperty(name, out var v) && v.GetBoolean();
+
     // ---------------------------------------------------------------- 1
 
     [Fact]
     public void TheTemplatesAreTheDesignFile()
     {
-        var json = GuildHallDecorDesignCopy.Json.Replace("\r\n", "\n");
+        Assert.True(File.Exists(DesignPath), $"{DesignPath} is not in the test image (docker/uo/Dockerfile copies it)");
+        var json = File.ReadAllText(DesignPath).Replace("\r\n", "\n").TrimEnd('\n');
         var sha = Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(json))).ToLowerInvariant();
-        Assert.Equal(GuildHallDecorDesignCopy.Sha256, sha);
-        Assert.Equal(GuildHallDecorTemplates.DesignSha256, sha);
+        Assert.True(
+            GuildHallDecorTemplates.DesignSha256 == sha,
+            "templates.json changed without regenerating GuildHallDecorTemplates.cs (notes/cc-P265-tools/decor.py layout)"
+        );
 
         using var doc = JsonDocument.Parse(json);
         var sets = doc.RootElement.GetProperty("sets").EnumerateArray().ToArray();
@@ -89,6 +106,8 @@ public class GuildHallDecorVerification
                     Assert.True(rows[r].GetProperty("dz").GetInt32() == row.Dz, $"{where}: dz");
                     var hue = rows[r].TryGetProperty("hue", out var h) ? h.GetInt32() : 0;
                     Assert.True(hue == row.Hue, $"{where}: hue");
+                    Assert.True(Switch(rows[r], "door") == row.Door, $"{where}: door");
+                    Assert.True(Switch(rows[r], "hidden") == row.Hidden, $"{where}: hidden");
                 }
             }
         }
@@ -201,6 +220,7 @@ public class GuildHallDecorVerification
                     Assert.False(item.Movable);
                     Assert.False(item.Decays);
                     Assert.Equal(anchor, item.Anchor);
+                    Assert.Equal(GuildHallDecorSeeder.TemplateHash(g), item.TemplateHash);
                 }
             }
 
@@ -218,6 +238,7 @@ public class GuildHallDecorVerification
             var smiths = GuildHallDecorTemplates.Find("smiths");
             GuildHallDecorSeeder.Place(smiths, null, Map.Trammel, new Point3D(1205, 1205, 10), false, true);
             var smithCount = smiths.Groups.Sum(g => g.Rows.Length);
+            Assert.Equal(smithCount, GuildHallDecorSeeder.Placed("smiths").Count);
 
             // not ours: a same-art lookalike on the vat's centre tile and a gold pile beside it
             lookalike.MoveToWorld(anchor, Map.Trammel);
@@ -257,14 +278,11 @@ public class GuildHallDecorVerification
     {
         var row = GuildHallDecorTemplates.Find("artificers").Groups[0].Rows[0];
         var item = new GuildHallDecor("artificers", "gate", 0, new Point3D(10, 20, 30), row);
+        var doorRow = GuildHallDecorTemplates.Find("structure").Groups.Single(g => g.Key == "tower-small").Rows.Single(r => r.Door);
+        var door = new GuildHallDecorDoor("structure", "tower-small", 3, new Point3D(40, 50, 0), doorRow);
         try
         {
-            var buffer = new byte[65536];
-            var writer = new BufferWriter(buffer, true);
-            item.Serialize(writer);
-            writer.Flush();
-            var copy = (GuildHallDecor)Activator.CreateInstance(typeof(GuildHallDecor), item.Serial)!;
-            copy.Deserialize(new BufferReader(buffer));
+            var copy = RoundTrip(item);
             Assert.Equal("artificers", copy.SetKey);
             Assert.Equal("gate", copy.GroupKey);
             Assert.Equal(0, copy.Row);
@@ -272,11 +290,32 @@ public class GuildHallDecorVerification
             Assert.Equal(row.ItemId, copy.ItemID);
             Assert.Equal(row.Name, copy.Name);
             Assert.False(copy.Movable);
+            Assert.Equal(GuildHallDecorSeeder.TemplateHash("artificers", "gate"), copy.TemplateHash);
+            Assert.Equal(16, copy.TemplateHash.Length);
+
+            var doorCopy = Assert.IsType<GuildHallDecorDoor>(RoundTrip(door));
+            Assert.Equal(doorRow.ItemId, doorCopy.ClosedId);
+            Assert.Equal("tower-small", doorCopy.GroupKey);
+            Assert.False(doorCopy.Open);
+            doorCopy.Delete();
+            copy.Delete();
         }
         finally
         {
             item.Delete();
+            door.Delete();
         }
+    }
+
+    private static T RoundTrip<T>(T original) where T : Item
+    {
+        var buffer = new byte[65536];
+        var writer = new BufferWriter(buffer, true);
+        original.Serialize(writer);
+        writer.Flush();
+        var copy = (T)Activator.CreateInstance(original.GetType(), original.Serial)!;
+        copy.Deserialize(new BufferReader(buffer));
+        return copy;
     }
 
     // ---------------------------------------------------------------- 6
@@ -308,5 +347,270 @@ public class GuildHallDecorVerification
         Assert.True(TileData.ItemTable[GuildHallDecorArt.Find("large-2a")!.Id].Wall, "a tower wall is a wall");
         Assert.True(TileData.ItemTable[GuildHallDecorArt.Find("crystal-green")!.Id].LightSource, "a floating crystal gives light");
         Assert.False(TileData.ItemTable[GuildHallDecorArt.Find("orb-floor")!.Id].Impassable, "the orb field is walk-through");
+    }
+
+    // ---------------------------------------------------------------- 7
+
+    [Fact]
+    public void APlacementOneTileOffTheSameSetIsRefusedAndPlacesNothing()
+    {
+        try
+        {
+            Clean();
+            var set = GuildHallDecorTemplates.Find("alembic");
+            var vat = set.Groups.Single(g => g.Key == "vat");
+            var anchor = new Point3D(1300, 1300, 0);
+            GuildHallDecorSeeder.Place(set, "vat", Map.Trammel, anchor, false, true);
+            var count = World.Items.Count;
+
+            // P419's case: one tile east, three rows of the new vat would land on the old one's tiles
+            var shifted = GuildHallDecorSeeder.Place(set, "vat", Map.Trammel, new Point3D(1301, 1300, 0), false, true);
+            Assert.Contains("Refused: this would overlap the same set placed from another point", shifted[^1]);
+            Assert.Contains(shifted, l => l.Contains("it meets vat placed from 1300,1300,0"));
+            Assert.Equal(count, World.Items.Count);
+
+            // another group of the set that would reach the vat's tiles is refused too; the dry run as well
+            var dry = GuildHallDecorSeeder.Place(set, "scrying", Map.Trammel, new Point3D(1300 - 2, 1300 - 5, 0), true, true);
+            Assert.Contains("Refused", dry[^1]);
+            Assert.Equal(count, World.Items.Count);
+
+            // clear of its tiles, the same group places
+            var apart = GuildHallDecorSeeder.Place(set, "vat", Map.Trammel, new Point3D(1310, 1300, 0), false, true);
+            Assert.Contains($"placed {vat.Rows.Length} item(s)", apart[^1]);
+        }
+        finally
+        {
+            Clean();
+        }
+    }
+
+    // ---------------------------------------------------------------- 8
+
+    [Fact]
+    public void AfterATemplateEditPlacingAtTheOldPointIsRefusedUntilCleared()
+    {
+        var set = GuildHallDecorTemplates.Find("alembic");
+        var scrying = set.Groups.Single(g => g.Key == "scrying");
+        var original = scrying.Rows[1];
+        var anchor = new Point3D(1340, 1300, 0);
+        try
+        {
+            Clean();
+            GuildHallDecorSeeder.Place(set, "scrying", Map.Trammel, anchor, false, true);
+            var count = World.Items.Count;
+            var oldHash = GuildHallDecorSeeder.TemplateHash(scrying);
+
+            // the crystal ball's row moved one tile east in the template (as F-49 will tune them)
+            scrying.Rows[1] = original with { Dx = original.Dx + 1 };
+            Assert.NotEqual(oldHash, GuildHallDecorSeeder.TemplateHash(scrying));
+
+            var again = GuildHallDecorSeeder.Place(set, "scrying", Map.Trammel, anchor, false, true);
+            Assert.Contains("Refused: the template changed since it was placed at 1340,1300,0", again[^1]);
+            Assert.Contains("clear", again[^1]);
+            Assert.Contains(again, l => l.Contains("scrying: 2 item(s) here were placed from another version"));
+            Assert.Equal(count, World.Items.Count);
+
+            // an item saved before template hashes (version 0, no hash) asks for the same
+            scrying.Rows[1] = original;
+            GuildHallDecorSeeder.Placed("alembic").First().TemplateHash = null;
+            Assert.Contains("Refused", GuildHallDecorSeeder.Place(set, "scrying", Map.Trammel, anchor, false, true)[^1]);
+
+            // cleared, the edited template places at the same point
+            scrying.Rows[1] = original with { Dx = original.Dx + 1 };
+            GuildHallDecorSeeder.Clear(set, Map.Trammel, anchor, false, false, true);
+            var fresh = GuildHallDecorSeeder.Place(set, "scrying", Map.Trammel, anchor, false, true);
+            Assert.Contains("placed 2 item(s)", fresh[^1]);
+            var ball = GuildHallDecorSeeder.Placed("alembic").Single(i => i.Row == 1);
+            Assert.Equal(new Point3D(anchor.X + original.Dx + 1, anchor.Y + original.Dy, anchor.Z + original.Dz), ball.Location);
+        }
+        finally
+        {
+            scrying.Rows[1] = original;
+            Clean();
+        }
+    }
+
+    // ---------------------------------------------------------------- 9
+
+    [Fact]
+    public void ARowInSomethingImpassableOrADoorwayIsRefusedAndTheDryRunSaysWhy()
+    {
+        ShatteredLegacyArt.Apply(); // the vat's record: impassable
+        using var tiles = StockTiles();
+        var set = GuildHallDecorTemplates.Find("alembic");
+        var scrying = set.Groups.Single(g => g.Key == "scrying");
+        var anchor = new Point3D(1380, 1300, 0);
+        var cloth = new Point3D(anchor.X + scrying.Rows[0].Dx, anchor.Y + scrying.Rows[0].Dy, anchor.Z);
+        var crate = new Item(GuildHallDecorArt.Find("vat-5")!.Id) { Movable = false };
+        var door = new MetalDoor(DoorFacing.WestCW);
+        var swinging = new MetalDoor(DoorFacing.WestCW);
+        try
+        {
+            Clean();
+            var count = World.Items.Count;
+
+            crate.MoveToWorld(cloth, Map.Trammel);
+            var dry = GuildHallDecorSeeder.Place(set, "scrying", Map.Trammel, anchor, true, true);
+            Assert.Contains(dry, l => l.Contains($"scrying ball-cloth at {cloth.X},{cloth.Y},{cloth.Z}: an impassable Item"));
+            Assert.Contains("dry run: would be refused", dry[^1]);
+            var real = GuildHallDecorSeeder.Place(set, "scrying", Map.Trammel, anchor, false, true);
+            Assert.Contains("Refused: 2 row(s)", real[^1]); // the cloth and the ball above it both stand in the vat
+            Assert.Equal(count, World.Items.Count);
+            crate.Internalize();
+
+            door.MoveToWorld(cloth, Map.Trammel);
+            Assert.Contains(GuildHallDecorSeeder.Place(set, "scrying", Map.Trammel, anchor, false, true), l => l.Contains("a door (MetalDoor) on this tile"));
+            door.Internalize();
+
+            // a door one tile north-east whose swing (west, clockwise: one west, one south) lands on the cloth's tile
+            swinging.MoveToWorld(new Point3D(cloth.X + 1, cloth.Y - 1, cloth.Z), Map.Trammel);
+            Assert.Contains(GuildHallDecorSeeder.Place(set, "scrying", Map.Trammel, anchor, false, true), l => l.Contains("the swing of a door"));
+            swinging.Internalize();
+            Assert.Equal(count, World.Items.Count); // nothing of ours was made
+
+            Assert.Empty(GuildHallDecorSeeder.Placed("alembic"));
+            var clear = GuildHallDecorSeeder.Place(set, "scrying", Map.Trammel, anchor, false, true);
+            Assert.Contains("placed 2 item(s)", clear[^1]);
+        }
+        finally
+        {
+            crate.Delete();
+            door.Delete();
+            swinging.Delete();
+            Clean();
+        }
+    }
+
+    // ---------------------------------------------------------------- 10
+
+    // The test host has no tiledata and masks every item ID to row 0 (Route/TestHostTileData.cs): a fact that needs walls
+    // to block and floors to hold seeds the stock rows the towers use, which also raises the mask for the decor pieces'
+    // own rows (ShatteredLegacyArt.Apply writes those).
+    private static TestTileRows.Scope StockTiles() =>
+        TestTileRows.Seed(TileRows.NoDraw, TileRows.InvisibleWall, TileRows.StonePavers, TileRows.WhiteMarble);
+
+    private static readonly Direction[] Directions =
+    {
+        Direction.North, Direction.Right, Direction.East, Direction.Down,
+        Direction.South, Direction.Left, Direction.West, Direction.Up
+    };
+
+    // Every tile a player can walk to from start inside the box, by pinned's movement check.
+    private static HashSet<Point2D> Walkable(Mobile m, Map map, Point3D start, int x0, int y0, int x1, int y1)
+    {
+        var seen = new HashSet<Point2D> { new(start.X, start.Y) };
+        var queue = new Queue<Point3D>();
+        queue.Enqueue(start);
+        while (queue.Count > 0)
+        {
+            var p = queue.Dequeue();
+            foreach (var d in Directions)
+            {
+                if (!Server.Movement.Movement.CheckMovement(m, map, p, d, out var z))
+                {
+                    continue;
+                }
+
+                int x = p.X, y = p.Y;
+                Server.Movement.Movement.Offset(d, ref x, ref y);
+                if (x < x0 || x > x1 || y < y0 || y > y1 || !seen.Add(new Point2D(x, y)))
+                {
+                    continue;
+                }
+
+                queue.Enqueue(new Point3D(x, y, z));
+            }
+        }
+
+        return seen;
+    }
+
+    [Fact]
+    public void EveryTowerIsClosedUntilItsDoorOpensOntoAWalkableInside()
+    {
+        ShardTestClock.Arm();
+        ShatteredLegacyArt.Apply();
+        if (Server.Movement.Movement.Impl == null)
+        {
+            Server.Movement.MovementImpl.Configure();
+        }
+
+        using var tiles = StockTiles();
+        var set = GuildHallDecorTemplates.Find("structure");
+        var anchor = new Point3D(1500, 1600, 0);
+        var walker = new PlayerMobile { Player = true, Young = false };
+        walker.MoveToWorld(new Point3D(1450, 1550, 0), Map.Trammel); // away from the towers: it is only the check's mobile
+        try
+        {
+            Clean();
+            var placed = GuildHallDecorSeeder.Place(set, null, Map.Trammel, anchor, false, true);
+            Assert.Contains("placed", placed[^1]);
+
+            var towers = set.Groups.Where(g => g.Key.StartsWith("tower-", StringComparison.Ordinal)).ToList();
+            Assert.Equal(5, towers.Count);
+            var doors = GuildHallDecorSeeder.Placed("structure").OfType<GuildHallDecorDoor>().ToList();
+            Assert.Equal(towers.Select(g => g.Key).OrderBy(k => k), doors.Select(d => d.GroupKey).OrderBy(k => k));
+            Assert.All(towers, g => Assert.Single(g.Rows, r => r.Door));
+            Assert.All(GuildHallDecorSeeder.Placed("structure").Where(i => i.ItemID == 0x21A3), i => Assert.False(i.Visible));
+
+            Point2D At(GuildHallDecorTemplates.Row r) => new(anchor.X + r.Dx, anchor.Y + r.Dy);
+            var floors = towers.ToDictionary(
+                g => g.Key,
+                g => g.Rows.Where(r => r.ItemId is 0x051A or 0x050E).Select(At).ToList()
+            );
+            Assert.Equal(new[] { 14, 5, 0, 11, 11 }, towers.Select(g => floors[g.Key].Count));
+
+            int x0 = anchor.X - 4, y0 = anchor.Y - 26, x1 = anchor.X + 28, y1 = anchor.Y + 8;
+            var start = new Point3D(anchor.X - 3, anchor.Y - 3, anchor.Z);
+
+            // closed: no door tile and no floor tile can be reached from outside
+            var closed = Walkable(walker, Map.Trammel, start, x0, y0, x1, y1);
+            Assert.True(closed.Count > 500, $"only {closed.Count} tiles walkable outside");
+            foreach (var g in towers)
+            {
+                Assert.DoesNotContain(At(g.Rows.Single(r => r.Door)), closed);
+                Assert.All(floors[g.Key], f => Assert.False(closed.Contains(f), $"{g.Key}: {f} is reachable with the door shut"));
+            }
+
+            // opened by a player beside each door: the doorway turns walkable and unseen
+            foreach (var door in doors)
+            {
+                walker.Location = new Point3D(door.X + 1, door.Y + 1, door.Z);
+                door.OnDoubleClick(walker);
+                Assert.True(door.Open, $"{door.GroupKey}: the door did not open");
+                Assert.False(door.Visible);
+                Assert.Equal(GuildHallDecorDoor.OpenedId, door.ItemID);
+            }
+
+            walker.Location = new Point3D(1450, 1550, 0);
+            var open = Walkable(walker, Map.Trammel, start, x0, y0, x1, y1);
+            foreach (var g in towers)
+            {
+                Assert.True(open.Contains(At(g.Rows.Single(r => r.Door))), $"{g.Key}: its open doorway is not walkable");
+                Assert.All(floors[g.Key], f => Assert.True(open.Contains(f), $"{g.Key}: floor {f} is not walkable with the door open"));
+            }
+
+            // a player standing in the doorway keeps it open; it closes once the doorway is free
+            var stander = new PlayerMobile { Player = true, Young = false };
+            stander.MoveToWorld(doors[0].Location, Map.Trammel);
+            ShardTestClock.AdvanceSeconds(21);
+            Assert.True(doors[0].Open, "the door shut on a player standing in it");
+            Assert.All(doors.Skip(1), d => Assert.False(d.Open, $"{d.GroupKey}: still open after 21 seconds"));
+            Assert.All(doors.Skip(1), d => Assert.True(d.Visible));
+            stander.Delete();
+            ShardTestClock.AdvanceSeconds(11);
+            Assert.False(doors[0].Open);
+            Assert.Equal(doors[0].ClosedId, doors[0].ItemID);
+
+            // from too far a player cannot open it
+            walker.Location = new Point3D(doors[0].X + 3, doors[0].Y + 3, doors[0].Z);
+            doors[0].OnDoubleClick(walker);
+            Assert.False(doors[0].Open);
+        }
+        finally
+        {
+            walker.Delete();
+            Clean();
+        }
     }
 }
