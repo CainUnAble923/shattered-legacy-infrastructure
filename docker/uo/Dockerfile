@@ -50,6 +50,11 @@ COPY server/customizations/ /customizations/
 # docker/uo/build.sh is the gate that executes them. See notes/s4-test-route.md.
 COPY server/tests/ /tests/
 
+# The guild hall decor design file, for GuildHallDecorVerification: it compares the server's generated table with
+# this file itself, so an edit to the JSON without regenerating the table fails the build (cc-P459). Only .cs files
+# reach the test project, so the test reads it from here.
+COPY design/guild-hall-decor/templates.json /design/guild-hall-decor/templates.json
+
 # Copy serialization migration JSONs (needed for PetMimic VNContent generation)
 COPY server/migrations/ /build/modernuo/Projects/UOContent/Migrations/
 

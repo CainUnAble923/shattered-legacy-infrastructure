@@ -1,0 +1,10 @@
+{
+  "version": 0,
+  "type": "Server.Items.GuildHallDecor",
+  "properties": [
+    { "name": "SetKey",   "type": "string",        "rule": "PrimitiveTypeMigrationRule",   "ruleArguments": [""] },
+    { "name": "GroupKey", "type": "string",        "rule": "PrimitiveTypeMigrationRule",   "ruleArguments": [""] },
+    { "name": "Row",      "type": "int",           "rule": "PrimitiveTypeMigrationRule",   "ruleArguments": [""] },
+    { "name": "Anchor",   "type": "Server.Point3D", "rule": "PrimitiveUOTypeMigrationRule", "ruleArguments": ["Point3D"] }
+  ]
+}

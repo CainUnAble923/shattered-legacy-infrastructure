@@ -238,7 +238,12 @@ namespace Server
                     did.Add($"decor {d.Set}/{d.Group} ({group.Rows.Length - stands} piece(s)) from {d.At}");
                     if (!dryRun)
                     {
-                        GuildHallDecorSeeder.Place(set, d.Group, map, d.At, false, isTestShard);
+                        // cc-P459: the seeder refuses a changed template, an overlap or a row in the way; say so.
+                        var result = GuildHallDecorSeeder.Place(set, d.Group, map, d.At, false, isTestShard);
+                        if (result.Any(l => l.Contains("Refused")))
+                        {
+                            lines.AddRange(result.Select(l => $"{h.Key}: {l.Trim()}"));
+                        }
                     }
                 }
 
