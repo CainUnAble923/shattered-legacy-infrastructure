@@ -7,9 +7,9 @@
 // Engraved Peg Leg and Culling Blade (shared), enchanted blade and vortex deeds (decorative), fish steaks, a message in a
 // bottle, four special fishing nets and a fishing pole.
 //
-// Who spawns it: ServUO's CharydbisSpawner, through the Oracle of the Sea and a charybdis-baited pole. Both are left for
-// the next prompt (they need the pole's bait), so here it is placed by staff or a spawner. The spawner's OnCharybdisKilled
-// call in OnBeforeDeath goes with them.
+// Who spawns it: ServUO's CharydbisSpawner, through the Oracle of the Sea and a charybdis-baited pole (cc-P269:
+// Spawners/CharybdisSpawner.cs, HighSeasFishing.TrySummonCharybdis); staff may also place one. OnBeforeDeath tells the
+// spawner when its own Charybdis dies.
 //
 // Changes from ServUO (shard-migration notes/cc-P193-port-high-seas-fishing.md):
 // - The wave damages no boat (pinned boats have no hull points, BaseSeaChampion); it still pushes it.
@@ -17,8 +17,8 @@
 //   so they never appeared; here the world point is read. Fixed, not copied: a bug that made OSI's visible attack silent.
 // - SpawnTentacle rolled x from (loc.X - 10, loc.Y + 10) and y the same way in ServUO; here each axis uses its own
 //   bounds, as the surrounding code plainly intends.
-// - No fish pies in the corpse until the pies are ported; the steaks are there. The corpse's fishing pole is a plain one:
-//   pinned's pole carries no magic attributes (ServUO gives it two to five).
+// - The corpse's fishing pole is a plain one: pinned's pole carries no magic attributes (ServUO gives it two to five).
+//   (cc-P269: the two to five fish pies are in the corpse now.)
 // - The tentacle list is not saved on the champion; each tentacle saves its master and re-registers itself on load, which
 //   gives the same list without a serialized collection.
 // - EffectSpawn is a top-level type here (CharydbisEffectSpawn), not a nested class, for the serialization generator.
@@ -539,6 +539,11 @@ public partial class Charydbis : BaseSeaChampion
             MoveToWorld(_lastLocation, _lastMap);
         }
 
+        if (CharydbisSpawner.SpawnInstance.Charydbis == this)
+        {
+            CharydbisSpawner.SpawnInstance.OnCharybdisKilled();
+        }
+
         return base.OnBeforeDeath();
     }
 
@@ -547,6 +552,18 @@ public partial class Charydbis : BaseSeaChampion
         base.OnDeath(c);
 
         var drop = Utility.RandomMinMax(2, 5);
+
+        for (var i = 0; i < drop; i++)
+        {
+            var pie = Loot.Construct(Pies.RandomElement());
+
+            if (pie != null)
+            {
+                c.DropItem(pie);
+            }
+        }
+
+        drop = Utility.RandomMinMax(2, 5);
 
         for (var i = 0; i < drop; i++)
         {
@@ -578,6 +595,15 @@ public partial class Charydbis : BaseSeaChampion
 
         base.Delete();
     }
+
+    /// <summary>ServUO's pie table (cc-P269): the sixteen fish pies the corpse holds two to five of.</summary>
+    public static readonly Type[] Pies =
+    {
+        typeof(AutumnDragonfishPie), typeof(BlueLobsterPie), typeof(BullFishPie), typeof(CrystalFishPie),
+        typeof(FairySalmonPie), typeof(FireFishPie), typeof(GiantKoiPie), typeof(GreatBarracudaPie),
+        typeof(HolyMackerelPie), typeof(LavaFishPie), typeof(ReaperFishPie), typeof(SpiderCrabPie),
+        typeof(StoneCrabPie), typeof(SummerDragonfishPie), typeof(UnicornFishPie), typeof(YellowtailBarracudaPie)
+    };
 
     /// <summary>ServUO's steak table: the sixteen rare fish steaks and meats the corpse holds two to five of.</summary>
     public static readonly Type[] Steaks =

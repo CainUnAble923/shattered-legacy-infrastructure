@@ -71,10 +71,16 @@ public abstract partial class BaseSeaChampion : BaseChampion
     public override bool OnBeforeDeath()
     {
         RegisterDamageTo(this);
-        AwardArtifact(GetArtifact());
+        AwardArtifact(RollArtifact());
 
         return base.OnBeforeDeath();
     }
+
+    /// <summary>
+    /// cc-P269: the artifact roll at death. Pinned's BaseChampion.GetArtifact is not virtual, so a champion with its own
+    /// odds (ServUO's GetArtifact override: Corgul) overrides this; the others keep pinned's 5% / 10% / 15%.
+    /// </summary>
+    public virtual Item RollArtifact() => GetArtifact();
 
     public virtual void RegisterDamageTo(Mobile m)
     {

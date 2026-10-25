@@ -898,6 +898,21 @@ apply_patch "$PATCHES/PlayerMobile-noted-step.patch"
 apply_patch "$PATCHES/Bandage-tutorial-real-heal.patch"
 apply_patch "$PATCHES/Notoriety-tutorial-creature-outsiders.patch"
 
+# cc-P269 (High Seas fishing, second half). FishingPole.cs gains ServUO's bait and hook (version 0 -> 1, migrated from
+# pinned's v0 by the generator): BaitType, EnhancedBait, BaitUses, HookType, HookUses, OriginalHue, OnFishedHarvest and
+# the tooltip lines; a partial class could add the members but not the saved version or the generated serializer, and
+# a side table would keep a pole's bait off the pole. Fishing.cs: a cast tells the pole whether it caught anything
+# (ServUO's OnToolUsed, which pinned's FinishHarvesting lacks), the junk-proof hook, dredged shipwreck items, ServUO's
+# High Seas SOS roll (the bikini, the strongbox), the charybdis in SpecialHarvest, and lava fishing started and
+# finished on its own definition (pinned picks a definition from the tile, without the tool). AOS.cs: the fish pies'
+# soaks in Damage and their bonuses at the end of AosAttributes.GetValue, as ServUO's. Each calls into customizations
+# (High Seas HighSeasFishing.cs, Items/Fish/FishPies.cs). Made against the tree every patch above leaves, so they go
+# last. Alternatives argued in shard-migration notes/cc-P269-high-seas-fishing-second-half.md; pinned by
+# HighSeasFishingSecondHalfVerification.
+apply_patch "$PATCHES/FishingPole-high-seas-bait-hooks.patch"
+apply_patch "$PATCHES/Fishing-high-seas-bait-hooks-lava.patch"
+apply_patch "$PATCHES/AOS-fish-pies.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

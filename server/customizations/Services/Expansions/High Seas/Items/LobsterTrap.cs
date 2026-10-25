@@ -5,8 +5,8 @@
 // else rolls FishInfo.GetSpecialItem for a crab or lobster (a rare one is stamped with the trapper, the date and a weight)
 // or half the time a plain crab or lobster. Double-clicking the buoy (or Telekinesis on it) pulls it back with its catch;
 // double-clicking the trap in the pack dumps the catch. Owner, guild and party may pull it; in Felucca anyone may, as a
-// criminal act; elsewhere strangers are refused. Bait is kept for the Bait item (next prompt): BaitType, EnhancedBait
-// and BaitUses are serialized and read by FishInfo, and a catch uses one bait.
+// criminal act; elsewhere strangers are refused. Bait comes from the Bait item (cc-P269): BaitType, EnhancedBait and
+// BaitUses are serialized and read by FishInfo, and a catch uses one bait.
 //
 // Changes from ServUO (shard-migration notes/cc-P193-port-high-seas-fishing.md):
 // - ServUO's party test (Party.Get(from) == Party.Get(owner)) is true for two unpartied strangers, so anyone with no
