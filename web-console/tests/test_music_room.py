@@ -147,7 +147,13 @@ class MusicRoom(unittest.TestCase):
         return code, raw, hd
 
     def note(self, key, **fields):
+        """POST one track's record. Without a rev, the one the page would hold: what GET /api/music reports now."""
+        if "rev" not in fields:
+            fields["rev"] = (self.req("/api/music")[1]["notes"].get(key) or {}).get("rev", 0)
         return self.req("/api/music/note", dict({"key": key}, **fields), ACT)
+
+    def notes_path(self):
+        return os.path.join(self.docs, "docs", "music", "music-notes.json")
 
     # --- the list ---------------------------------------------------------------------------------------------
     def test_the_page_lists_all_four_packs_and_the_stock_music(self):
@@ -249,6 +255,62 @@ class MusicRoom(unittest.TestCase):
             self.assertEqual(rec, json.load(f)["tracks"][key], "a refused note changes nothing")
         self.assertFalse(os.path.exists(path + ".tmp"))
 
+    # cc-P456: a save that cannot be made says so, and never loses what is on disk.
+    def test_a_malformed_notes_file_is_untouched_after_a_save(self):
+        path = self.notes_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        keep = None
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                keep = f.read()
+        try:
+            for bad, why in ((b'{"about": "x", "tracks": {"sos-vol2/Turfin.mp3": {"rating": "use"', "cut short"),
+                             (b'{"schema": 1, "tracks": []}', "tracks is not an object"),
+                             (b'["sos-vol2/Turfin.mp3"]', "not an object at all"),
+                             (b'\xff\xfe{"tracks": {}}', "not UTF-8"),
+                             (b'{"schema": 1, "tracks": {"sos-vol2/Turfin.mp3": "use"}}', "a record is not an object")):
+                with open(path, "wb") as f:
+                    f.write(bad)
+                code, out, _ = self.req("/api/music/note", {"key": "sos-vol2/Britain1.mp3", "rev": 0, "rating": "use",
+                                                            "note": "Britain at dawn"}, ACT)
+                self.assertNotEqual(200, code, why)
+                self.assertIn("music-notes.json", out.get("error", ""), why)
+                with open(path, "rb") as f:
+                    self.assertEqual(bad, f.read(), "the file is untouched: " + why)
+                self.assertFalse(os.path.exists(path + ".tmp"), why)
+                code, d, _ = self.req("/api/music")
+                self.assertEqual(200, code, why)
+                self.assertIn("music-notes.json", d.get("notesError") or "", "the page is told: " + why)
+            os.remove(path)
+            code, d, _ = self.req("/api/music")
+            self.assertEqual(("", {}), (d.get("notesError"), d["notes"]), "only a missing file is empty")
+            self.assertEqual(200, self.note("sos-vol2/Britain1.mp3", rating="use")[0], "a missing file is a first save")
+        finally:
+            if keep is None:
+                if os.path.exists(path):
+                    os.remove(path)
+            else:
+                with open(path, "wb") as f:
+                    f.write(keep)
+
+    def test_a_stale_revision_is_refused(self):
+        key = "sos-dlc/Turfin.mp3"
+        code, first, _ = self.note(key, rating="maybe", note="the older note")
+        self.assertEqual(200, code, first)
+        base = first["record"]["rev"]
+        code, newer, _ = self.note(key, rev=base, rating="maybe", note="the newer note")
+        self.assertEqual(200, code, newer)
+        self.assertGreater(newer["record"]["rev"], base)
+        # The older save, sent from the same revision, arrives last: it is refused and the newer note stays.
+        code, out, _ = self.note(key, rev=base, rating="pass", note="the older note")
+        self.assertEqual(409, code, out)
+        with open(self.notes_path(), encoding="utf-8") as f:
+            rec = json.load(f)["tracks"][key]
+        self.assertEqual(("maybe", "the newer note"), (rec["rating"], rec["note"]))
+        self.assertEqual(400, self.req("/api/music/note", {"key": key, "rating": "use"}, ACT)[0], "a save names its revision")
+        self.assertEqual(400, self.note(key, rev="2", rating="use")[0], "a revision is a number")
+        self.assertEqual(200, self.note(key, rating="", tags=[], note="", target="")[0])
+
     # --- only Chase -------------------------------------------------------------------------------------------
     def test_the_page_refuses_anyone_but_chase(self):
         nobody = {}
@@ -272,7 +334,7 @@ class MusicRoom(unittest.TestCase):
                 self.assertNotIn("sos-vol2/Turfin.mp3", json.load(f)["tracks"], "nothing refused was written")
         # This PC's own listener is Chase at the game PC (as for the rest of the console): it may look and take notes.
         self.assertEqual(200, self.req("/api/music", headers={}, port=self.local_port)[0])
-        self.assertEqual(200, self.req("/api/music/note", {"key": "turfin/Turfin.mp3", "rating": "maybe"},
+        self.assertEqual(200, self.req("/api/music/note", {"key": "turfin/Turfin.mp3", "rev": 0, "rating": "maybe"},
                                        {"X-UOConsole-Action": "1"}, port=self.local_port)[0])
         self.assertEqual(405, self.req("/api/music/note", method="PUT")[0])
 
@@ -372,6 +434,170 @@ class MusicRoomInEdge(unittest.TestCase):
                 s.server_close()
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+class EdgeRoom:
+    """cc-P456: the Music Room in headless Edge on its own docs repo (a git repo on main), with a hook on save_note so a
+    test can slow or count the saves. with EdgeRoom() as r: r.b is the browser, r.saves the notes saved, in order."""
+
+    def __init__(self, delay=None):
+        self.delay = delay or (lambda n: 0)   # seconds the n-th save (1, 2, ...) waits before it writes
+        self.saves, self.live, self.most = [], 0, 0
+        self.lock = threading.Lock()
+
+    def __enter__(self):
+        import cdp
+        self.tmp = tempfile.mkdtemp(prefix="p456-edge-")
+        with open(os.path.join(self.tmp, "settings.json"), "w", encoding="utf-8") as f:
+            json.dump({"allowedLogins": ["chase@example.com"]}, f)
+        with open(os.path.join(self.tmp, "proof.key"), "w", encoding="ascii") as f:
+            f.write(PROOF)
+        tp, stock, regions, lib = make_library(self.tmp)
+        self.docs = os.path.join(self.tmp, "docs")
+        os.makedirs(self.docs)
+        git(self.docs, "init", "-q", "-b", "main")
+        git(self.docs, "config", "user.email", "test@example.com")
+        git(self.docs, "config", "user.name", "P456 test")
+        with open(os.path.join(self.docs, "README.md"), "w", encoding="utf-8") as f:
+            f.write("docs\n")
+        git(self.docs, "add", "README.md")
+        git(self.docs, "commit", "-q", "-m", "start")
+        self.path = os.path.join(self.docs, "docs", "music", "music-notes.json")
+        console = server.Console(REPO, self.docs, self.tmp, os.path.join(self.tmp, "status.json"), collector=False,
+                                 golem_root=os.path.join(self.tmp, "golem"))
+        console.music = music.MusicRoom(self.docs, third_party=tp, stock_dirs=[stock], regions_json=regions, art_library=lib,
+                                        code_repo=REPO)
+        real = console.music.save_note
+
+        def save_note(key, fields):
+            with self.lock:
+                self.saves.append(fields.get("note"))
+                n = len(self.saves)
+                self.live += 1
+                self.most = max(self.most, self.live)
+            try:
+                threading.Event().wait(self.delay(n))
+                return real(key, fields)
+            finally:
+                with self.lock:
+                    self.live -= 1
+        console.music.save_note = save_note
+        self.port = free_port()
+        self.server = server.ThreadingHTTPServer(("127.0.0.1", self.port), server.make_handler(console, panels.TAILNET))
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.browser = cdp.Browser(EDGE)
+        self.b = self.browser.__enter__()
+        self.b.call("Network.enable")
+        self.b.call("Network.setExtraHTTPHeaders", headers=CHASE)
+        self.b.open("http://127.0.0.1:%d/music" % self.port)
+        if not self.b.wait_for("document.documentElement.getAttribute('data-drawn') === '1'"):
+            raise AssertionError("the page never drew")
+        return self
+
+    def __exit__(self, *a):
+        try:
+            self.browser.__exit__(*a)
+        finally:
+            self.server.shutdown()
+            self.server.server_close()
+            shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def row(self, key):
+        return "document.querySelector('.track[data-key=\"%s\"]')" % key
+
+    def type_note(self, key, text):
+        self.b.eval("var t = %s.querySelector('textarea'); t.value = %s; t.dispatchEvent(new Event('input'));"
+                    % (self.row(key), json.dumps(text)))
+
+    def saved_text(self, key):
+        return self.b.eval("%s.querySelector('.saved').textContent" % self.row(key))
+
+    def state(self):
+        return self.b.eval("document.getElementById('state').textContent")
+
+    def leaving_warns(self):
+        """What beforeunload does now: true when the page would ask before it is closed or reloaded."""
+        return self.b.eval("(function () { var e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e);"
+                           " return e.defaultPrevented; })()")
+
+    def file_note(self, key):
+        if not os.path.exists(self.path):
+            return None
+        with open(self.path, encoding="utf-8") as f:
+            return (json.load(f)["tracks"].get(key) or {}).get("note")
+
+    def wait(self, test, seconds=15):
+        for _ in range(int(seconds * 10)):
+            if test():
+                return True
+            threading.Event().wait(0.1)
+        return False
+
+
+@unittest.skipUnless(os.path.exists(EDGE), "Microsoft Edge is not installed")
+class MusicRoomSavesInEdge(unittest.TestCase):
+    """cc-P456: no path on the page reports saved when it is not."""
+    KEY = "sos-vol2/Britain1.mp3"
+
+    def commit_line(self, r):
+        self.assertTrue(r.b.wait_for("/^(Saved to the repo|Not committed)/.test(document.getElementById('commit-line').textContent)", 20),
+                        r.b.eval("document.getElementById('commit-line').textContent"))
+        return r.b.eval("document.getElementById('commit-line').textContent")
+
+    def test_a_failed_save_then_reload_warns(self):
+        with EdgeRoom() as r:
+            os.makedirs(os.path.dirname(r.path))
+            with open(r.path, "w", encoding="utf-8") as f:
+                f.write('{"tracks": {"cut short"')
+            r.type_note(self.KEY, "Britain at dusk")
+            self.assertTrue(r.wait(lambda: r.saved_text(self.KEY).startswith("not saved")), r.saved_text(self.KEY))
+            self.assertIn("not saved", r.state())
+            self.assertTrue(r.leaving_warns(), "a reload or close asks first while a track is not saved")
+            self.assertTrue(r.leaving_warns(), "and asks again: the failed record is still kept")
+            os.remove(r.path)
+            r.b.eval("%s.querySelector('button.retry').click()" % r.row(self.KEY))
+            self.assertTrue(r.wait(lambda: r.saved_text(self.KEY).startswith("saved ")), r.saved_text(self.KEY))
+            self.assertEqual("Britain at dusk", r.file_note(self.KEY))
+            self.assertFalse(r.leaving_warns(), "nothing to lose now")
+            self.assertIn("all saved", r.state())
+
+    def test_reversed_arrival_keeps_the_newer_note(self):
+        with EdgeRoom(delay=lambda n: 1.5 if n == 1 else 0) as r:
+            r.type_note(self.KEY, "the older note")
+            self.assertTrue(r.wait(lambda: len(r.saves) == 1), "the first save is under way")
+            r.type_note(self.KEY, "the newer note")
+            threading.Event().wait(1.0)   # the newer one's quiet time ends while the first is still in flight
+            self.assertTrue(r.wait(lambda: "all saved" in r.state() and r.live == 0, 20), r.state())
+            self.assertEqual("the newer note", r.file_note(self.KEY))
+            self.assertEqual(1, r.most, "one save per track in flight at a time")
+            self.assertEqual("the newer note", r.saves[-1])
+
+    def test_save_to_repo_during_a_slow_save_commits_the_latest(self):
+        with EdgeRoom(delay=lambda n: 1.5) as r:
+            r.type_note(self.KEY, "the latest note")
+            self.assertTrue(r.wait(lambda: len(r.saves) == 1), "the save is under way")
+            r.b.eval("document.getElementById('save-repo').click()")
+            line = self.commit_line(r)
+            self.assertTrue(line.startswith("Saved to the repo"), line)
+            committed = json.loads(git(r.docs, "show", "HEAD:docs/music/music-notes.json"))
+            self.assertEqual("the latest note", committed["tracks"][self.KEY]["note"])
+
+    def test_save_to_repo_stops_when_a_track_is_not_saved(self):
+        with EdgeRoom() as r:
+            os.makedirs(os.path.dirname(r.path))
+            with open(r.path, "w", encoding="utf-8") as f:
+                f.write('{"tracks": []}\n')
+            git(r.docs, "add", "docs/music/music-notes.json")
+            git(r.docs, "commit", "-q", "-m", "a bad notes file")
+            with open(r.path, "a", encoding="utf-8") as f:
+                f.write(" \n")   # changed on disk, so a commit would go ahead if nothing stopped it
+            head = git(r.docs, "rev-parse", "HEAD")
+            r.type_note(self.KEY, "Britain at dusk")
+            r.b.eval("document.getElementById('save-repo').click()")
+            line = self.commit_line(r)
+            self.assertTrue(line.startswith("Not committed"), line)
+            self.assertIn("not saved", line)
+            self.assertEqual(head, git(r.docs, "rev-parse", "HEAD"))
 
 
 if __name__ == "__main__":

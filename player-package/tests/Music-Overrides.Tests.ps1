@@ -100,7 +100,7 @@ function Invoke-Music([string]$uo, [string]$out, [string]$music) {
 
 Fact 'TheRegistryFollowsItsRulesAndEveryRowHasItsTrackWithItsHash' {
     $header = @(Get-Content -LiteralPath $registry | Where-Object { $_ -and -not $_.StartsWith('#') })[0]
-    Assert-Equal 'id,file,loop,what,source,license,sha256' $header 'the columns'
+    Assert-Equal 'id,file,loop,fallback,what,source,license,sha256' $header 'the columns'
     $rows = Read-Registry
     $ids = @{}; $files = @{}
     foreach ($r in $rows) {
@@ -110,6 +110,7 @@ Fact 'TheRegistryFollowsItsRulesAndEveryRowHasItsTrackWithItsHash' {
         Assert-True ($r.file -cmatch '^sl-[a-z0-9-]+$') "file '$($r.file)' is sl-<lower case, digits, dashes>, never an EA name"
         Assert-True (-not $files.ContainsKey($r.file)) "file $($r.file) once"; $files[$r.file] = 1
         Assert-True ($r.loop -in @('yes', 'no')) "loop '$($r.loop)' is yes or no"
+        Assert-True ($r.fallback -cmatch '^[A-Za-z0-9_]+$') "row $id names a stock fallback track (cc-P456)"
         Assert-True ($r.what -and $r.source -and $r.license) "row $id names what, source and license"
         Assert-True ($r.sha256 -match '^[0-9A-Fa-f]{64}$') "row $id has a SHA-256"
         $mp3 = Join-Path $vendor "tracks\$($r.file).mp3"
@@ -201,6 +202,55 @@ Fact 'AnIdThePlayersFileAlreadyUsesOrATrackWithNoFileIsSkippedAndSaid' {
     $r5 = Invoke-Music $noUo (Join-Path $work 'no-config-out') $music
     Assert-True ($r5.Said -match 'Shattered Legacy music could not be prepared \(Music\\Digital\\Config\.txt is not in .*\)\. Starting without it\.') $r5.Said
     Assert-Equal $null $r5.Result 'nothing to override'
+}
+
+# cc-P456: a track whose mp3 is missing keeps its ID, playing the stock track its fallback column names, and the copy
+# follows the mp3 when it comes back (the stamp holds the lines that were written, not only our list's hash).
+Fact 'AMissingTrackPlaysItsStockFallbackAndARestoredOneComesBack' {
+    $uo = New-UoDir 'fallback'
+    New-FakeMp3 (Join-Path $uo 'Music\Digital\britain1.mp3') 40
+    $list = @('105 sl-test-one.mp3,loop britain1', '106 sl-test-two.mp3 britain1', '107 sl-test-three.mp3 nosuchstock')
+    $music = New-MusicDir 'fallback-music' $list @('sl-test-two.mp3')
+    $out = Join-Path $work 'fallback-out'
+    $copy = Join-Path $out 'Music\Digital\Config.txt'
+
+    $r = Invoke-Music $uo $out $music
+    Assert-True ($r.Said -match 'track 105: sl-test-one\.mp3 is not in app\\music; playing the stock britain1 there instead') $r.Said
+    Assert-True ($r.Said -match 'skipping track 107: sl-test-three\.mp3 is not in app\\music') $r.Said
+    Assert-Equal 2 $r.Lines.Count ($r.Lines -join ' | ')
+    Assert-True ($r.Lines -ccontains "music/digital/sl-test-two.mp3=$music\sl-test-two.mp3") ($r.Lines -join ' | ')
+    $got = @([IO.File]::ReadAllLines($copy) | Select-Object -Skip $stockLines.Count)
+    Assert-Equal '105 britain1,loop;106 sl-test-two.mp3' ($got -join ';') 'the missing track plays its fallback; no fallback column reaches Config.txt'
+
+    # The mp3 comes back, nothing else changes: the copy plays it again.
+    New-FakeMp3 (Join-Path $music 'sl-test-one.mp3') 41
+    $r2 = Invoke-Music $uo $out $music
+    Assert-True ($r2.Said -notmatch 'track 105') $r2.Said
+    Assert-Equal 3 $r2.Lines.Count ($r2.Lines -join ' | ')
+    Assert-True ($r2.Lines -ccontains "music/digital/sl-test-one.mp3=$music\sl-test-one.mp3") ($r2.Lines -join ' | ')
+    $got2 = @([IO.File]::ReadAllLines($copy) | Select-Object -Skip $stockLines.Count)
+    Assert-Equal '105 sl-test-one.mp3,loop;106 sl-test-two.mp3' ($got2 -join ';') 'the restored track is back in the copy'
+
+    # And gone again: back to the fallback.
+    Remove-Item -LiteralPath (Join-Path $music 'sl-test-one.mp3')
+    [void](Invoke-Music $uo $out $music)
+    $got3 = @([IO.File]::ReadAllLines($copy) | Select-Object -Skip $stockLines.Count)
+    Assert-Equal '105 britain1,loop;106 sl-test-two.mp3' ($got3 -join ';') 'missing again'
+}
+
+# cc-P456: the same with a list of the older shape (no fallback column): the restored track is not stuck out of the copy
+# by a stamp that still matches.
+Fact 'ARestoredTrackIsBackInTheCopyWithNoFallbackColumn' {
+    $uo = New-UoDir 'restored'
+    $music = New-MusicDir 'restored-music' @('105 sl-test-one.mp3,loop', '106 sl-test-two.mp3') @('sl-test-two.mp3')
+    $out = Join-Path $work 'restored-out'
+    $r = Invoke-Music $uo $out $music
+    Assert-True ($r.Said -match 'skipping track 105: sl-test-one\.mp3 is not in app\\music') $r.Said
+    New-FakeMp3 (Join-Path $music 'sl-test-one.mp3') 42
+    $r2 = Invoke-Music $uo $out $music
+    Assert-Equal 3 $r2.Lines.Count ($r2.Lines -join ' | ')
+    $got = @([IO.File]::ReadAllLines((Join-Path $out 'Music\Digital\Config.txt')) | Select-Object -Skip $stockLines.Count)
+    Assert-Equal '105 sl-test-one.mp3,loop;106 sl-test-two.mp3' ($got -join ';') 'the copy names the restored track'
 }
 
 Fact 'NothingChangedSkipsTheRebuildAndAChangeOfTheirFileOrOurListRebuilds' {

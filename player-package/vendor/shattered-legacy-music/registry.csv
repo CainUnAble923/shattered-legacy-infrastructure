@@ -8,8 +8,11 @@
 #         app\music\<file>.mp3 in the package. Starts with "sl-", lower case, letters, digits and dashes, so it is never
 #         the name of an EA file (the SOS packs use the stock names; a copy is renamed on the way in).
 # loop    yes or no: the ",loop" of the Config.txt line (TazUO loops the track).
+# fallback the stock track (its Config.txt name, no .mp3: britain1, dungeon9) the launcher puts under this ID when the
+#         mp3 is missing from app\music (cc-P456), so the ID still plays music: TazUO stops the music for an ID its
+#         Config.txt does not list. Pick the stock track the area or fight would have had.
 # what    the track's title and where it plays, in words.
 # source  the pack and the original file (D:\UO\third-party\<pack>\...), and the album its ID3 tag names.
 # license the terms, or "none stated; see SOURCE.txt".
 # sha256  of tracks\<file>.mp3, upper case; Build-PlayerPackage.ps1 refuses a row whose file is missing or differs.
-id,file,loop,what,source,license,sha256
+id,file,loop,fallback,what,source,license,sha256

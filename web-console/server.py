@@ -51,7 +51,8 @@ Two listeners, both on 127.0.0.1 only (nothing on the LAN, nothing public):
                              tags and the target suggestions (the shard's regions and ART-LIBRARY.md's boss shortlist)
   GET /api/music/summary     the tracks marked Use, grouped by tag and then by target: what P368 reads
   GET /music-file/<pack>/<file>  one listed track, read only, streamed with Range requests (206) so seeking works
-  POST /api/music/note       {key, rating, tags, note, target}: one track's record in <notes>/docs/music/music-notes.json
+  POST /api/music/note       {key, rev, rating, tags, note, target}: one track's record in <notes>/docs/music/music-notes.json;
+                             409 when rev is stale or that file cannot be read (cc-P456: then nothing is written)
   POST /api/music/commit     commit music-notes.json alone in the docs repo (never pushed); also hourly if it changed
                              Both POSTs: either listener (each is Chase: this PC, or his tailnet login), only from the
                              page (the same header, origin and JSON checks as POST /api/action). They write only that file.
@@ -1646,7 +1647,8 @@ def make_handler(console, listener, access_log=None):
                 return self._static("music.html" if p in ("/music", "/music.html") else p[1:])
             if p == "/api/music":
                 m = console.music
-                return self._json(200, {"packs": m.packs_view(), "tracks": m.tracks(), "notes": m.notes(),
+                notes, notes_error = m.load_notes()
+                return self._json(200, {"packs": m.packs_view(), "tracks": m.tracks(), "notes": notes or {}, "notesError": notes_error,
                                         "tags": [{"id": i, "label": l} for i, l in music.TAGS], "ratings": list(music.RATINGS),
                                         "suggestions": m.suggestions(), "lastCommit": m.last_commit,
                                         "notesFile": "/".join(music.NOTES_REL), "noteMax": music.NOTE_MAX})
@@ -1858,10 +1860,10 @@ def make_handler(console, listener, access_log=None):
                 ok, msg = console.music.commit("button")
                 self._note(200, "music commit: " + ("done" if ok else "not done"))
                 return self._json(200, {"ok": ok, "result": msg, "lastCommit": console.music.last_commit})
-            rec, err = console.music.save_note(body.get("key"), body)
+            rec, err, code = console.music.save_note(body.get("key"), body)
             if err:
-                self._note(400, "music note: " + err)
-                return self._json(400, {"error": err})
+                self._note(code, "music note: " + err)
+                return self._json(code, {"error": err})
             self._note(200, "music note")
             return self._json(200, {"record": rec})
 

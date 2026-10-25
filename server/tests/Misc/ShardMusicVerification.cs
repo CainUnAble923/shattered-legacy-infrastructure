@@ -14,6 +14,9 @@
 //      row is inside our range, an unmapped region keeps its music, and Reset puts a mapped region's stock music back.
 //   5. A player who turns shard music off keeps stock music: no fight music, the stock track after a step into a mapped
 //      region, and [ShardMusic on brings the shard track back.
+//   6. cc-P456: a fight that ends where the area has no music (the default region, MusicName.Invalid) never sends
+//      0x6D FF FF, which TazUO ignores so the fight track loops on: it sends the music from before the fight, or, when
+//      there was none, the stop (0x6D 1F FF).
 
 using System;
 using System.Collections.Generic;
@@ -282,6 +285,78 @@ public class ShardMusicVerification : IDisposable
             ClusterFShardMusic.Check(pm, ended + ClusterFShardMusic.ReturnDelay);
             Assert.Equal((pm, 105, ShardMusicLayer.Area), _played.Last());
             Assert.Null(ClusterFShardMusic.CurrentFight(pm));
+        }
+        finally
+        {
+            orc.Delete();
+            dragon.Delete();
+        }
+    }
+
+    [Fact]
+    public void AFightThatEndsInTheDefaultRegionStopsTheFightMusic()
+    {
+        ClusterFShardMusic.Apply(new ShardMusicRow[] { new(ShardMusicKind.Creature, nameof(Orc), 107) });
+        var (pm, client) = Player(Outside);
+        Assert.Equal(MusicName.Invalid, pm.Region.Music); // the default region: no area music
+        var orc = Spawn<Orc>(new Point3D(Outside.X + 1, Outside.Y, 0));
+        try
+        {
+            orc.Combatant = pm;
+            Assert.Equal((pm, 107, ShardMusicLayer.Monster), _played.Last());
+            pm.Combatant = null;
+            orc.Kill();
+            var ended = ClusterFShardMusic.CurrentFight(pm)?.EndedAt;
+            Assert.NotNull(ended);
+
+            ClusterFShardMusic.Check(pm, ended.Value + ClusterFShardMusic.ReturnDelay);
+            Assert.Null(ClusterFShardMusic.CurrentFight(pm));
+            Assert.Equal((pm, (int)MusicName.NoMusic, ShardMusicLayer.Area), _played.Last());
+            var wire = MusicOnTheWire(Wire(client));
+            Assert.Contains(0x1FFF, wire); // 0x6D 1F FF: the stop, which TazUO acts on
+            Assert.DoesNotContain(0xFFFF, wire);
+        }
+        finally
+        {
+            orc.Delete();
+        }
+    }
+
+    [Fact]
+    public void AFightThatMovesIntoTheDefaultRegionReturnsToTheMusicFromBeforeIt()
+    {
+        TownLike("P368 Town");
+        ClusterFShardMusic.Apply(new ShardMusicRow[]
+        {
+            new(ShardMusicKind.Region, "P368 Town", 105, "Trammel"),
+            new(ShardMusicKind.Creature, nameof(Orc), 107),
+            new(ShardMusicKind.Boss, nameof(Dragon), 108)
+        });
+        var (pm, _) = Player(InRegion);
+        var orc = Spawn<Orc>(new Point3D(X0 + 6, Y0 + 5, 0));
+        var dragon = Spawn<Dragon>(new Point3D(X0 + 7, Y0 + 5, 0));
+        var now = DateTime.UtcNow;
+        try
+        {
+            orc.Combatant = pm;
+            Assert.True(ClusterFShardMusic.Engage(pm, dragon, now)); // the boss takes over: still the town from before
+            Assert.Equal((pm, 108, ShardMusicLayer.Boss), _played.Last());
+
+            // The fight drifts out of town into the default region and ends there.
+            pm.MoveToWorld(Outside, Map.Trammel);
+            Assert.Equal(MusicName.Invalid, pm.Region.Music);
+            orc.Combatant = null;
+            dragon.Combatant = null;
+            pm.Combatant = null;
+            orc.Delete();
+            dragon.Kill();
+            var ended = ClusterFShardMusic.CurrentFight(pm)?.EndedAt;
+            Assert.NotNull(ended);
+            var count = _played.Count;
+
+            ClusterFShardMusic.Check(pm, ended.Value + ClusterFShardMusic.ReturnDelay);
+            Assert.Equal(count + 1, _played.Count);
+            Assert.Equal((pm, 105, ShardMusicLayer.Area), _played.Last());
         }
         finally
         {
