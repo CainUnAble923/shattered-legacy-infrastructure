@@ -125,9 +125,13 @@ function Build-MapOverride {
     $tick = { param($d, $t) if ($traced) { Write-StepProgress $d $t } }
 
     # --- the patch -------------------------------------------------------------------------
+    # cc-P611 (P549 #4): read and counted in a step of its own, so a slow parse is on the bar by name.
+    & $step 'map.parse'
     $facet = -1; $fps = @{}; $land = New-Object 'System.Collections.Generic.List[int[]]'
     $adds = @{}; $removes = @{}
+    $read = 0
     foreach ($line in [IO.File]::ReadLines((Resolve-Path -LiteralPath $Ops).Path)) {
+        if (((++$read) -band 4095) -eq 0) { & $tick $read -1 }
         if ($line.Length -eq 0 -or $line.StartsWith('#')) { continue }
         $p = $line.Split(' ')
         switch ($p[0]) {
@@ -158,6 +162,7 @@ function Build-MapOverride {
     foreach ($f in $files) { if (-not (Test-Path -LiteralPath (Join-Path $UoDir $f))) { throw "$f is not in $UoDir" } }
 
     # --- the stamp -------------------------------------------------------------------------
+    & $step 'map.stamp'   # cc-P611: hashing the patch
     $stampOut = Join-Path $OutDir 'map-stamp.txt'
     $stamp = Get-MapStamp $UoDir $files $Ops
     $lines = { $o = $(if ($ListDir) { [IO.Path]::GetFullPath($ListDir) } else { (Resolve-Path -LiteralPath $OutDir).Path }); foreach ($f in $files) { "$($f.ToLowerInvariant())=$(Join-Path $o $f)" } }
