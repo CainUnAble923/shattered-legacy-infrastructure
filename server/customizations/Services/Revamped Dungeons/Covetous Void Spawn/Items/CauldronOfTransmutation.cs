@@ -9,6 +9,10 @@
 // Conversion notes: the decay timers are Timer.DelayCall and are rebuilt after a load; BaseAddon and
 // BaseAddonDeed carry Resource here as there; the deed cannot be re-deeded (ServUO's RetainDeedHue + the
 // cannot-re-deed line).
+//
+// cc-P610 (P489 #4): the remaining charges are saved (version 1). ServUO saved them too; the port had left them out,
+// so a placed cauldron came back from a save with none. A version 0 cauldron has no count to read and loads with
+// none, as before: the count it had is not in the save, and a refill to 5000 would hand out charges never paid for.
 
 using System;
 using ModernUO.Serialization;
@@ -17,7 +21,7 @@ using Server.Targeting;
 
 namespace Server.Items;
 
-[SerializationGenerator(0, false)]
+[SerializationGenerator(1, false)]
 public partial class CauldronOfTransmutation : BaseAddon
 {
     public const int DecayPeriod = 4;
@@ -26,7 +30,6 @@ public partial class CauldronOfTransmutation : BaseAddon
     [SerializedCommandProperty(AccessLevel.GameMaster)]
     private DateTime _expires;
 
-    private int _charges;
     private Timer _decayTimer;
 
     public CauldronOfTransmutation()
@@ -39,6 +42,7 @@ public partial class CauldronOfTransmutation : BaseAddon
         BeginTimer();
     }
 
+    [SerializableProperty(1)]
     [CommandProperty(AccessLevel.GameMaster)]
     public int Charges
     {
@@ -46,6 +50,7 @@ public partial class CauldronOfTransmutation : BaseAddon
         set
         {
             _charges = value;
+            this.MarkDirty();
 
             if (_charges <= 0 && RootParent is Mobile m)
             {
@@ -192,6 +197,11 @@ public partial class CauldronOfTransmutation : BaseAddon
         }
 
         return true;
+    }
+
+    private void MigrateFrom(V0Content content)
+    {
+        _expires = content.Expires;
     }
 
     [AfterDeserialization]

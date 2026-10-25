@@ -1,0 +1,13 @@
+--- "a/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
+@@ -372,7 +372,9 @@
+             checkSkills = true;
+             patientNumber = -1;
+
+-            var healing = Healer.Skills[primarySkill].Value;
++            // Shattered Legacy (cc-P610): Asclepius or Gargish Asclepius held: 15 more Healing, chance and amount
++            // (ServUO Bandage.cs:495; Services/Revamped Dungeons/TheExodusEncounter/Loot/ExodusHealingBonus.cs).
++            var healing = Healer.Skills[primarySkill].Value + Server.Items.ExodusHealingBonus.For(Healer);
+             var anatomy = Healer.Skills[secondarySkill].Value;
+             var chance = (healing + 10.0) / 100.0 - Slips * 0.02;
+

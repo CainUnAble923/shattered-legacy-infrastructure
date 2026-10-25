@@ -30,6 +30,14 @@
 // already standing (a spawner of the same first type within 3 tiles, a working ankh within 2, a crawlway at its tile,
 // a teleporter at its tile) is skipped, and nothing is moved or deleted. Not run at world load.
 //
+// cc-P610 (P425 #1, P533 U7): the way down is shut while the map overlay is missing. A world seeded with the map built
+// keeps its stock teleporters; started without the overlay (a test shard may start without it, docker/uo
+// Start-TestShard.ps1), they sent players into void land. Once the world is up (CheckMapAtStartup), each saved way-down
+// teleporter of ours is switched off and marked while the landing is void, and switched on again (only those marked)
+// at a start where it is built. The ladder up stays on, so anyone inside can still climb out. Characters saved inside
+// are not moved (no real account is touched): the server log names how many there are for staff. Chosen over refusing
+// the startup, which would stop the whole shard (and every other test) over one dungeon.
+//
 // Pack sizes respect the Burrows' limit of 3 hostiles on one Young player (OldHavenBurrowsRegion.MaxHostilesOnYoung):
 // no spawner where a Young player can walk holds more than 3, and no two packs share a room's line of sight by
 // design (the mockup shows each room). Home ranges stay inside their room: a spawner picks any walkable tile in its
@@ -185,6 +193,68 @@ public static class ClusterFRootdeepSeeder
     public static void Configure()
     {
         CommandSystem.Register("ClusterFSeedRootdeep", AccessLevel.Administrator, OnSeedCommand);
+    }
+
+    public static void Initialize() => CheckMapAtStartup();
+
+    /// <summary>What a way-down teleporter's name ends with while it is shut for a missing map.</summary>
+    public const string ShutForMissingMap = " (shut: the Rootdeep map is missing)";
+
+    /// <summary>
+    /// cc-P610: once the world is up, the saved way down follows the map: shut (and marked) while the landing is void,
+    /// open again (only what this shut) once it is built. Returns how many teleporters changed.
+    /// </summary>
+    public static int CheckMapAtStartup()
+    {
+        if (Map.Trammel is not { } map)
+        {
+            return 0;
+        }
+
+        var built = MapBuilt();
+        var arrival = new Point3D(Arrival.X, Arrival.Y, 0);
+        var changed = 0;
+        foreach (var row in Teleporters)
+        {
+            if (row.To != arrival || FindOurTeleporterAt(map, row) is not { } t)
+            {
+                continue;
+            }
+
+            var shut = t.Name?.EndsWith(ShutForMissingMap, StringComparison.Ordinal) == true;
+            if (!built && t.Active && !shut)
+            {
+                t.Active = false;
+                t.Name += ShutForMissingMap;
+                changed++;
+            }
+            else if (built && shut)
+            {
+                t.Name = t.Name![..^ShutForMissingMap.Length];
+                t.Active = true;
+                changed++;
+            }
+        }
+
+        if (!built && changed > 0)
+        {
+            var inside = 0;
+            foreach (var m in World.Mobiles.Values)
+            {
+                if (m is Mobiles.PlayerMobile pm && !pm.Deleted &&
+                    (pm.Map == map && OldHavenBurrowsRegion.IsInside(map, pm.Location) ||
+                     pm.LogoutMap == map && OldHavenBurrowsRegion.IsInside(map, pm.LogoutLocation)))
+                {
+                    inside++;
+                }
+            }
+
+            Console.WriteLine(
+                $"Rootdeep: the map overlay is missing; the way down is shut ({changed} teleporters). {inside} character(s) saved inside the Burrows; nobody was moved."
+            );
+        }
+
+        return changed;
     }
 
     [Usage("ClusterFSeedRootdeep [dryrun | force]")]

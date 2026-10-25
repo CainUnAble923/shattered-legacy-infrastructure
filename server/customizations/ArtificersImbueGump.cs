@@ -1431,11 +1431,16 @@ public sealed class ArtificersImbueGump : Gump
     // OSI asks once before a container is unravelled (ServUO pub57 ImbuingGump.cs:302-336, cliloc 1112404); this page
     // also says how many items go and how many stay.
 
+    // cc-P610 (P494 #1): exactly the items this page showed. The approval unravels these, each checked again, and nothing
+    // else: an item put in the bag after the page opened, or swapped in for one, stays; one moved out stays where it went.
+    private List<Item>? _unravelPlan;
+
     private void DrawUnravelContainerConfirm(ClusterFAccountData data, int standing)
     {
         if (_item is not Container cont || cont.Deleted) { DrawSelectItem(data, standing); return; }
 
-        var unravel = UnravelableIn(_pm, cont).Count;
+        _unravelPlan = UnravelableIn(_pm, cont);
+        var unravel = _unravelPlan.Count;
         var skip    = cont.Items.Count - unravel;
 
         AddLabel(18, 60, 0x21, "Unravel Container - FINAL CONFIRMATION");
@@ -1894,6 +1899,7 @@ public sealed class ArtificersImbueGump : Gump
         // Apply the property
         def.Set(_item, _targetValue);
         _item.InvalidateProperties();
+        ClusterFAccessories.OnPropertiesChanged(_item); // cc-P610 (P486 F07): a jewel in an extra slot, at once
 
         var repGain = Math.Max(1, shards / 2);
         guild.AddReputation("artificers", repGain);
@@ -1944,6 +1950,24 @@ public sealed class ArtificersImbueGump : Gump
     internal const string FactionRefusal = "You cannot magically unravel a faction reward item.";     // OSI 1112408
     internal const string QuestRefusal = "You cannot magically unravel a quest item.";
     internal const string InsuredSkip = "An insured item is never unravelled from a container.";
+    internal const string LockedRefusal = "That container is locked.";
+
+    /// <summary>
+    /// cc-P610 (P494 #4): a locked container (ILockable, as GuildResources.IsClosedToGuild reads it) anywhere between the
+    /// item and the backpack. Checked at the approval, so a chest locked after the page opened still protects its bags.
+    /// </summary>
+    internal static bool LockedOnTheWay(Item item, Container pack)
+    {
+        for (var p = item.Parent as Item; p != null && p != pack; p = p.Parent as Item)
+        {
+            if (p is ILockable { Locked: true })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     internal readonly record struct UnravelYield(int Shards, List<string> Essences);
 
@@ -1958,7 +1982,9 @@ public sealed class ArtificersImbueGump : Gump
     {
         if (item.Deleted || !ImbueCatalogue.IsImbuable(item)) return CannotUnravel;
         if (pm.Backpack == null || !item.IsChildOf(pm.Backpack)) return NotInPackRefusal;
+        if (LockedOnTheWay(item, pm.Backpack)) return LockedRefusal;  // cc-P610 (P494 #4)
         if (item.LootType is LootType.Blessed or LootType.Newbied) return BlessedRefusal;
+        if (item.BlessedFor != null) return BlessedRefusal;           // cc-P610 (P494 #2): a personal blessing too
         if (item is Server.Factions.IFactionItem { FactionItemState: not null }) return FactionRefusal;
         if (item.QuestItem) return QuestRefusal;
         if (fromContainer && item.Insured) return InsuredSkip;
@@ -2019,7 +2045,7 @@ public sealed class ArtificersImbueGump : Gump
             return;
         }
 
-        UnravelContainer(_pm, cont);
+        UnravelContainer(_pm, cont, _unravelPlan ?? []);
         _pm.SendGump(new ArtificersImbueGump(_pm));
     }
 
@@ -2028,7 +2054,7 @@ public sealed class ArtificersImbueGump : Gump
     {
         if (pm.Backpack == null || !cont.IsChildOf(pm.Backpack))
             return "This item must be in your backpack to be used."; // OSI 1062334
-        if (cont is LockableContainer { Locked: true })
+        if (cont is LockableContainer { Locked: true } || LockedOnTheWay(cont, pm.Backpack))  // cc-P610: and its ancestors
             return "That container is locked. Unraveled: 0/0 items";  // OSI sends 1111814 "0\t0"
         return null;
     }
@@ -2037,13 +2063,18 @@ public sealed class ArtificersImbueGump : Gump
     /// Unravels every top-level item CanUnravel passes, each through UnravelOne, and sends the summary. Everything
     /// else stays in the container with no skill check. Returns the yields.
     /// </summary>
-    internal static List<UnravelYield> UnravelContainer(PlayerMobile pm, Container cont)
+    internal static List<UnravelYield> UnravelContainer(PlayerMobile pm, Container cont) =>
+        UnravelContainer(pm, cont, UnravelableIn(pm, cont));
+
+    /// <summary>cc-P610 (P494 #1): unravels the approved items only, each still in this container and still passing
+    /// CanUnravel at the approval. The summary counts the container's top level as it is now.</summary>
+    internal static List<UnravelYield> UnravelContainer(PlayerMobile pm, Container cont, IReadOnlyList<Item> approved)
     {
         var all = cont.Items.ToList(); // a snapshot: unravelling deletes from cont.Items
         var yields = new List<UnravelYield>();
 
-        foreach (var item in all)
-            if (CanUnravel(pm, item, fromContainer: true) == null)
+        foreach (var item in approved)
+            if (!item.Deleted && item.Parent == cont && CanUnravel(pm, item, fromContainer: true) == null)
                 yields.Add(UnravelOne(pm, item));
 
         var shards = yields.Sum(y => y.Shards);
@@ -2097,6 +2128,7 @@ public sealed class ArtificersImbueGump : Gump
         // Remove property
         def.Set(_item, 0);
         _item.InvalidateProperties();
+        ClusterFAccessories.OnPropertiesChanged(_item); // cc-P610 (P486 F07)
 
         // Durability hit (20% of max HP). The current value comes down with the max (cc-P29, D48): the HitPoints
         // setters clamp only what is assigned to them, so a lowered max alone left e.g. 89 / 58.

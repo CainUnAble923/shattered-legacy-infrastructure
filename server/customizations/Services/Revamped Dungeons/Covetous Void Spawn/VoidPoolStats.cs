@@ -62,20 +62,22 @@ public class VoidPoolStats
     /// <summary>Test support: forgets every scoreboard.</summary>
     public static void Clear() => Stats.Clear();
 
+    // cc-P610 (P489 #6): every player's best is checked; ServUO returned after the first one that improved.
     public static bool CheckBestSingle(VoidPoolController controller)
     {
         var stats = GetStats(controller);
+        var changed = false;
 
         foreach (var (m, score) in controller.CurrentScore)
         {
             if (!stats.BestSingle.TryGetValue(m, out var best) || score > best)
             {
                 stats.BestSingle[m] = score;
-                return true;
+                changed = true;
             }
         }
 
-        return false;
+        return changed;
     }
 
     public static void AddToOverallTotal(VoidPoolController controller)
@@ -291,7 +293,8 @@ public class BestWave
 {
     public BestWave(Dictionary<Mobile, long> score, int waves)
     {
-        Score = score;
+        // cc-P610 (P489 #7): a copy. ServUO kept the battle's own table, which the next battle's start clears.
+        Score = new Dictionary<Mobile, long>(score);
 
         TotalScore = VoidPoolStats.GetCollectiveScore(score);
         Waves = waves;

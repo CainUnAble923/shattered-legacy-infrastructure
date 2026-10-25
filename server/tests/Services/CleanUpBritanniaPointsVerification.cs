@@ -97,7 +97,7 @@ public class CleanUpBritanniaPointsVerification
         var notItems = entries.Keys.Where(t => !typeof(Item).IsAssignableFrom(t)).ToList();
         _out.WriteLine($"{entries.Count} table rows; not items: {string.Join(", ", notItems.Select(t => t.FullName))}");
         Assert.Empty(notItems);
-        Assert.Equal(453 + 16 + 2, entries.Count); // cc-P199: ManaPhasingOrb (:457) and FeyWings (:736) resolve now
+        Assert.Equal(453 + 16 + 2 + 6, entries.Count); // cc-P199: ManaPhasingOrb (:457) and FeyWings (:736) resolve now; cc-P610: the six Exodus rewards (:656-:662)
     }
 
     // -- 2 ---------------------------------------------------------------------------------------------------------

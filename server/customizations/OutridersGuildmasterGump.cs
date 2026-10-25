@@ -265,6 +265,26 @@ public class OutridersGuildmasterGump : Gump
 
     // cc-P480: the elixir of rebirth at a member price, a quarter off the animal trainers' (SBPetRebirth.Price).
     public const int ElixirMemberPrice = SBPetRebirth.Price * 3 / 4;
+
+    /// <summary>cc-P610: a Rangers' guildmaster within its own reach of the player (4 tiles, OutridersGuildmaster), on the
+    /// player's map; null when there is none.</summary>
+    public static OutridersGuildmaster NearbyGuildmaster(PlayerMobile pm)
+    {
+        if (pm.Map == null || pm.Map == Map.Internal)
+        {
+            return null;
+        }
+
+        foreach (var m in pm.GetMobilesInRange(4))
+        {
+            if (m is OutridersGuildmaster { Deleted: false } gm && gm.Map == pm.Map && gm.InRange(pm.Location, 4))
+            {
+                return gm;
+            }
+        }
+
+        return null;
+    }
     private const int CrookReplacementCost   = 50;
     private const int SatchelReplacementCost = 25;
 
@@ -374,13 +394,40 @@ public class OutridersGuildmasterGump : Gump
                     break;
                 }
 
-                if (_pm.Backpack?.ConsumeTotal(typeof(Gold), ElixirMemberPrice) != true && !Banker.Withdraw(_pm, ElixirMemberPrice))
+                // cc-P610 (P502 #1): sold in person, checked at the press. This menu also opens from the guild hall page
+                // and the Guild Directory, and stays open while the buyer walks off, so the press itself needs a living
+                // buyer within a guildmaster's own reach (OutridersGuildmaster: 4 tiles), on its map.
+                if (!_pm.Alive || NearbyGuildmaster(_pm) == null)
                 {
+                    _pm.SendMessage(0x22, "Buy an elixir of rebirth from the Rangers' guildmaster in person.");
+                    break;
+                }
+
+                // cc-P610 (P502 #2): room first, then the gold, then the elixir into the pack (never onto the ground); a
+                // delivery that still fails puts the gold back, in the bank, once.
+                var elixir = new ElixirOfRebirth();
+                if (_pm.Backpack == null || !_pm.Backpack.CheckHold(_pm, elixir, false))
+                {
+                    elixir.Delete();
+                    _pm.SendMessage(0x22, "Your backpack has no room for an elixir of rebirth. Make room and ask again.");
+                    break;
+                }
+
+                if (_pm.Backpack.ConsumeTotal(typeof(Gold), ElixirMemberPrice) != true && !Banker.Withdraw(_pm, ElixirMemberPrice))
+                {
+                    elixir.Delete();
                     _pm.SendMessage(0x22, $"An elixir of rebirth costs {ElixirMemberPrice} gold, from your backpack or your bank.");
                     break;
                 }
 
-                _pm.AddToBackpack(new ElixirOfRebirth());
+                if (!_pm.Backpack.TryDropItem(_pm, elixir, false))
+                {
+                    elixir.Delete();
+                    Banker.Deposit(_pm, ElixirMemberPrice);
+                    _pm.SendMessage(0x22, $"Your backpack has no room for an elixir of rebirth; your {ElixirMemberPrice} gold is in your bank.");
+                    break;
+                }
+
                 _pm.SendMessage(0x44, "The Guildmaster hands you an elixir of rebirth. Use it beside your pet's ghost once its body has faded.");
                 _pm.SendGump(new OutridersGuildmasterGump(_pm, View.MemberDashboard));
                 break;

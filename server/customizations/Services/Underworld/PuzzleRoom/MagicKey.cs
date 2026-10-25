@@ -99,14 +99,22 @@ public partial class MagicKey : BaseDecayingItem
 
             if (pack != null)
             {
-                var list = new List<Item>(pack.Items);
+                // cc-P610 (P491 #3): every bag in the pack, not its top level only (a key or board put in a bag kept the
+                // session's progress); a board belongs to this key, or to none, to go; another key's board stays.
+                var list = new List<Item>();
+                foreach (var item in pack.FindItemsByType<Item>())
+                {
+                    if (item is CopperPuzzleKey or GoldPuzzleKey ||
+                        item is MazePuzzleItem maze && (maze.Key == this || maze.Key == null) ||
+                        item is MastermindPuzzleItem board && (board.Key == this || board.Key == null))
+                    {
+                        list.Add(item);
+                    }
+                }
 
                 foreach (var item in list)
                 {
-                    if (item is CopperPuzzleKey or GoldPuzzleKey or MazePuzzleItem or MastermindPuzzleItem)
-                    {
-                        item.Delete();
-                    }
+                    item.Delete();
                 }
             }
         }

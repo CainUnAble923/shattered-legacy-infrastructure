@@ -22,6 +22,7 @@ using Server.Engines.Spawners;
 using Server.Engines.VoidPool;
 using Server.Items;
 using Server.Mobiles;
+using Server.Random;
 using Server.Regions;
 using Server.Tests.Network;
 using Xunit;
@@ -740,6 +741,255 @@ public class CovetousVoidSpawnVerification
             VoidPoolPoints.Instance.SetPoints(pm, 0);
             pm.Delete();
             vela.Delete();
+        }
+        finally
+        {
+            ClearCovetous();
+        }
+    }
+
+    // ---------------------------------------------------------------- cc-P610 (P533 U6, P489 #4 and #6-#9)
+
+    private sealed class ConstantRandom : System.Random
+    {
+        public double Value;
+
+        protected override double Sample() => Value;
+        public override double NextDouble() => Value;
+        public override int Next() => (int)(Value * int.MaxValue);
+        public override int Next(int maxValue) => (int)(Value * maxValue);
+        public override int Next(int minValue, int maxValue) => minValue + (int)(Value * (maxValue - minValue));
+        public override long NextInt64(long maxValue) => (long)(Value * maxValue);
+    }
+
+    [Fact]
+    public void APartlyUsedCauldronKeepsItsChargesThroughASave()
+    {
+        ShardTestClock.Arm();
+        var cauldron = new CauldronOfTransmutation();
+        try
+        {
+            cauldron.Charges = 1234;
+            var copy = RoundTrip(cauldron);
+            Assert.Equal(1234, copy.Charges); // not zero, and not a refill to 5000
+            Assert.Equal(cauldron.Expires, copy.Expires);
+            copy.EndTimer();
+        }
+        finally
+        {
+            cauldron.Delete();
+        }
+    }
+
+    [Fact]
+    public void EveryPlayerWhoImprovesGetsTheirBestSingleBattle()
+    {
+        ShardTestClock.Arm();
+        ClearCovetous();
+        var a = NewPlayer(new Point3D(5500, 2000, 0));
+        var b = NewPlayer(new Point3D(5501, 2000, 0));
+        var c = NewPlayer(new Point3D(5502, 2000, 0));
+        var controller = new VoidPoolController(Map.Trammel);
+        try
+        {
+            var stats = VoidPoolStats.GetStats(controller);
+            stats.BestSingle[c] = 50;
+
+            controller.CurrentScore = new Dictionary<Mobile, long> { [a] = 5, [b] = 7, [c] = 9 };
+            Assert.True(VoidPoolStats.CheckBestSingle(controller));
+            Assert.Equal(5, stats.BestSingle[a]);
+            Assert.Equal(7, stats.BestSingle[b]); // the second first-timer is recorded too
+            Assert.Equal(50, stats.BestSingle[c]); // a worse battle keeps the old best
+
+            controller.CurrentScore = new Dictionary<Mobile, long> { [a] = 4, [b] = 8 };
+            Assert.True(VoidPoolStats.CheckBestSingle(controller));
+            Assert.Equal(5, stats.BestSingle[a]);
+            Assert.Equal(8, stats.BestSingle[b]); // improving after a player who did not
+
+            controller.CurrentScore = new Dictionary<Mobile, long> { [a] = 1, [b] = 1 };
+            Assert.False(VoidPoolStats.CheckBestSingle(controller));
+        }
+        finally
+        {
+            controller.Delete();
+            a.Delete();
+            b.Delete();
+            c.Delete();
+            ClearCovetous();
+        }
+    }
+
+    [Fact]
+    public void TheRecordBattleKeepsItsPlayerScoresAfterTheNextBattleStartsAndASave()
+    {
+        ShardTestClock.Arm();
+        ClearCovetous();
+        var a = NewPlayer(new Point3D(5500, 2000, 0));
+        var b = NewPlayer(new Point3D(5501, 2000, 0));
+        var controller = new VoidPoolController(Map.Trammel);
+        try
+        {
+            controller.CurrentScore = new Dictionary<Mobile, long> { [a] = 11, [b] = 4 };
+            controller.Wave = 6;
+            VoidPoolStats.CheckBestWave(controller);
+            var stats = VoidPoolStats.GetStats(controller);
+
+            controller.CurrentScore.Clear(); // what the next battle's start does (VoidPoolController.OnTick)
+            Assert.Equal(2, stats.BestWave.Score.Count);
+            Assert.Equal(11, stats.BestWave.Score[a]);
+            Assert.Equal(15, stats.BestWave.TotalScore);
+
+            var buffer = new byte[65536];
+            var writer = new BufferWriter(buffer, true);
+            VoidPoolStats.SerializeAll(writer);
+            writer.Flush();
+            VoidPoolStats.Clear();
+            VoidPoolStats.DeserializeAll(new BufferReader(buffer));
+            var loaded = VoidPoolStats.GetStats(controller);
+            Assert.Equal(6, loaded.BestWave.Waves);
+            Assert.Equal(4, loaded.BestWave.Score[b]);
+            Assert.Equal(2, loaded.BestWave.Score.Count);
+        }
+        finally
+        {
+            controller.Delete();
+            a.Delete();
+            b.Delete();
+            ClearCovetous();
+        }
+    }
+
+    [Fact]
+    public void AReloadedPoolCleansOldSpawnBeforeItsFirstBattleAndKeepsThatBattlesWave()
+    {
+        ShardTestClock.Arm();
+        EnsureCorpses();
+        var regions = RegisterCovetousRegions();
+        ClearCovetous();
+        var ns = PacketTestUtilities.CreateTestNetState();
+        PlayerMobile pm = null;
+        VoidPoolController copy = null;
+
+        try
+        {
+            var controller = new VoidPoolController(Map.Trammel);
+            controller.MoveToWorld(Generate.ControllerLocation, Map.Trammel);
+            Generate.AddWaypoints(controller, Map.Trammel);
+
+            // A wave creature left over from before the restart.
+            var stale = new DaemonMongbat(1, true);
+            stale.MoveToWorld(new Point3D(5480, 1990, 0), Map.Trammel);
+
+            // The save, then the restart: the old controller goes, the saved one loads.
+            var buffer = new byte[65536];
+            var writer = new BufferWriter(buffer, true);
+            controller.Serialize(writer);
+            writer.Flush();
+            var serial = controller.Serial;
+            controller.Active = false;
+            controller.Delete();
+
+            pm = NewPlayer(new Point3D(5500, 2000, 0));
+            pm.NetState = ns;
+            ns.Mobile = pm;
+
+            copy = new VoidPoolController(serial);
+            copy.Deserialize(new BufferReader(buffer));
+            pm.MoveToWorld(new Point3D(5500, 2001, 0), Map.Trammel);
+            Assert.Same(copy.Region, pm.Region);
+
+            // A player is inside through the first seconds after the load.
+            for (var i = 0; i < 14; i++)
+            {
+                ShardTestClock.Advance(TimeSpan.FromSeconds(1));
+            }
+
+            Assert.True(stale.Deleted, "the creature from before the restart is cleaned up");
+            Assert.True(copy.OnGoing, "the battle starts once the cleanup has run");
+            var spawned = copy.Waves.SelectMany(w => w.Creatures).ToList();
+            Assert.NotEmpty(spawned);
+            Assert.All(spawned, c => Assert.False(c.Deleted, "the new battle's waves are not cleaned up"));
+        }
+        finally
+        {
+            ns.Mobile = null;
+
+            if (pm != null)
+            {
+                pm.NetState = null;
+                pm.Delete();
+            }
+
+            copy?.Delete(); // OnDelete ends a live battle and drops the region
+
+            ClearCovetous();
+
+            foreach (var region in regions)
+            {
+                region.Unregister();
+            }
+        }
+    }
+
+    [Fact]
+    public void CorasDeathGivesAnArtifactToAPlayerWithLootingRightsInThePackOrTheBank()
+    {
+        ShardTestClock.Arm();
+        EnsureCorpses();
+        EnsureRewards();
+        ClearCovetous();
+        var rng = new ConstantRandom { Value = 0.0 }; // the 30% roll passes; the first artifact and player are chosen
+
+        try
+        {
+            foreach (var fullPack in new[] { false, true })
+            {
+                var cora = new CoraTheSorceress();
+                cora.MoveToWorld(new Point3D(5500, 1950, 0), Map.Trammel);
+                var hero = NewPlayer(new Point3D(5501, 1950, 0));
+                var bystander = NewPlayer(new Point3D(5502, 1950, 0));
+
+                if (fullPack)
+                {
+                    while (hero.Backpack.TotalItems < hero.Backpack.MaxItems)
+                    {
+                        hero.Backpack.DropItem(new Gold(1) { Stackable = false });
+                    }
+                }
+
+                var packBefore = hero.Backpack.Items.Count;
+                cora.Damage(1, bystander); // a scratch: no looting right
+                cora.Damage(cora.Hits - 1, hero);
+                BuiltInRng.Generator = rng;
+                try
+                {
+                    cora.Kill();
+                }
+                finally
+                {
+                    BuiltInRng.Reset();
+                }
+
+                var inPack = hero.Backpack.Items.Skip(packBefore).ToList();
+                var inBank = hero.BankBox.Items.ToList();
+                var artifacts = inPack.Concat(inBank).ToList();
+                _out.WriteLine($"full={fullPack}: pack +{inPack.Count}, bank {inBank.Count}");
+                Assert.Single(artifacts);
+                Assert.Equal(fullPack ? 0 : 1, inPack.Count);
+                Assert.Equal(fullPack ? 1 : 0, inBank.Count);
+                Assert.Empty(bystander.Backpack.Items);
+                Assert.Empty(bystander.BankBox.Items);
+
+                foreach (var item in artifacts.Concat(hero.Backpack.Items.ToList()))
+                {
+                    item.Delete();
+                }
+
+                hero.Delete();
+                bystander.Delete();
+                cora.Corpse?.Delete();
+                cora.Delete();
+            }
         }
         finally
         {

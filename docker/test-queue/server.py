@@ -26,7 +26,8 @@ Serves html/index.html and a small JSON API over D:\\UO\\shard-migration\\testin
   GET  /api/decisions/copy     the answers not yet taken, as plain text for the overseer ({"text", "ids"})
   POST /api/decisions/answer   {"id": "P77-D3", "choice": "<an option's label>|built", "text": "..."}  (one or both)
   POST /api/decisions/later    {"id"}  "ask me later"
-  POST /api/decisions/taken    {"ids": [...], "prompt": "P150"}  the overseer took them; "undo": true puts them back
+  POST /api/decisions/taken    {"ids": [...], "prompt": "P150", "expect": {id: {"rev"}}}  the overseer took them;
+                               "undo": true puts them back ({"rev", "takenInto"}); cc-P610: a stale one is refused
   cc-P90, the feature-ideas inbox (shard-migration/tools/ideas.py; data testing/feature-ideas.json):
   GET  /api/ideas        {ideas, nextId, summary, areas, statuses, features (docs/feature-queue.md, read only)}
   GET  /api/ideas/copy   every 'new' idea as plain text for the features chat ({"text", "ids"})
@@ -395,7 +396,7 @@ class Handler(BaseHTTPRequestHandler):
                 out["bugs_new"] = None
             # cc-P146: answers given on the page and not yet taken by the overseer.
             try:
-                out["answers_new"] = sum(1 for d in current_decisions() if d["state"] == "answered")
+                out["answers_new"] = len(decisions.pending(current_decisions()))
             except Exception:
                 out["answers_new"] = None
             return self.send_json(200, out)
@@ -404,7 +405,9 @@ class Handler(BaseHTTPRequestHandler):
                 ds = current_decisions()
             except Exception as e:
                 return self.send_json(500, {"error": str(e)})
-            return self.send_json(200, {"text": decisions.copy_text(ds), "ids": [d["id"] for d in ds if d["state"] == "answered"]})
+            # cc-P610: and the revision of each answer copied, which a take of them carries.
+            return self.send_json(200, {"text": decisions.copy_text(ds), "ids": [d["id"] for d in decisions.pending(ds)],
+                                        "expect": decisions.expectations(ds)})
         if p == "/api/bugs":
             try:
                 doc = bugs.ordered_doc(bugs.load(DATA))
@@ -542,7 +545,8 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(ids, list):
                     raise ValueError("ids must be a list")
                 done = decisions.mark_taken(DATA, [str(i) for i in ids], str(body.get("prompt", "")), by=by,
-                                            undo=bool(body.get("undo")))
+                                            undo=bool(body.get("undo")), expect=body.get("expect"),
+                                            current=current_decisions())
                 log("decisions %s %s %s" % ("untaken" if body.get("undo") else "taken into " + str(body.get("prompt", "")), len(done), ",".join(done)))
                 return self.send_json(200, {"taken": done})
             if p == "/api/import":

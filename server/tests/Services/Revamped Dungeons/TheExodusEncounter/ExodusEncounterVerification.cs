@@ -24,6 +24,7 @@ using Server.Engines.Spawners;
 using Server.Items;
 using Server.LootBoxes;
 using Server.Mobiles;
+using Server.Random;
 using Server.Regions;
 using Server.Targeting;
 using Xunit;
@@ -945,6 +946,258 @@ public class ExodusEncounterVerification
         {
             pm.Delete();
             ClearExodus();
+        }
+    }
+
+    // ---------------------------------------------------------------- cc-P610 (P533 U5, P488 #1-#5)
+
+    private sealed class ConstantRandom : System.Random
+    {
+        public double Value;
+
+        protected override double Sample() => Value;
+        public override double NextDouble() => Value;
+        public override int Next() => (int)(Value * int.MaxValue);
+        public override int Next(int maxValue) => (int)(Value * maxValue);
+        public override int Next(int minValue, int maxValue) => minValue + (int)(Value * (maxValue - minValue));
+        public override long NextInt64(long maxValue) => (long)(Value * maxValue);
+    }
+
+    /// <summary>A restart: the region is new (its timers were in memory), the controller comes back from its save.</summary>
+    private static (VerLorRegController Copy, VerLorRegCity Region) Restart(VerLorRegController controller)
+    {
+        var buffer = new byte[65536];
+        var writer = new BufferWriter(buffer, true);
+        controller.Serialize(writer);
+        writer.Flush();
+        var serial = controller.Serial;
+
+        ExodusRegions.Unregister(Map.Ilshenar);
+        controller.Delete();
+        var region = ExodusRegions.Register(Map.Ilshenar);
+
+        var copy = new VerLorRegController(serial);
+        copy.Deserialize(new BufferReader(buffer));
+        copy.MoveToWorld(ExodusEncounter.ControllerLocation, Map.Ilshenar);
+        return (copy, region);
+    }
+
+    private static int LiveBosses() => World.Mobiles.Values.Count(m => m is ClockworkExodus { Deleted: false, Alive: true });
+
+    [Theory]
+    [InlineData("before the warning", 3)]   // minutes after the death when the server goes down
+    [InlineData("after the warning", 9)]
+    [InlineData("long overdue", 30)]
+    public void AnExitSavedInEitherPhaseResumesAfterARestartWithOneNewExodus(string phase, int downAt)
+    {
+        ShardTestClock.Arm();
+        EnsureCorpses();
+        ClearExodus();
+        ExodusRegions.Register(Map.Ilshenar);
+        var pm = NewPlayer(new Point3D(840, 600, 0), Map.Ilshenar);
+        VerLorRegController copy = null;
+
+        try
+        {
+            var controller = PlaceController();
+            var boss = VerLorRegController.CurrentExodus;
+            boss.Kill();
+            Assert.False(VerLorRegController.Active);
+
+            if (phase == "long overdue")
+            {
+                // Saved in the first phase (minute 3), then the server stayed down until well past both deadlines: the
+                // old process and its timers are gone.
+                ShardTestClock.Advance(TimeSpan.FromMinutes(3));
+                ExodusRegions.Unregister(Map.Ilshenar);
+                ShardTestClock.Advance(TimeSpan.FromMinutes(downAt - 3));
+            }
+            else
+            {
+                ShardTestClock.Advance(TimeSpan.FromMinutes(downAt));
+            }
+
+            (copy, _) = Restart(controller);
+            Assert.False(VerLorRegController.Active, $"{phase}: not yet");
+
+            var left = phase switch
+            {
+                "before the warning" => TimeSpan.FromMinutes(10 - downAt),
+                "after the warning" => TimeSpan.FromMinutes(10 - downAt),
+                _ => TimeSpan.FromMinutes(2) // overdue: the warning at once, the move two minutes later
+            };
+
+            ShardTestClock.Advance(left - TimeSpan.FromSeconds(30));
+            Assert.False(VerLorRegController.Active, $"{phase}: the exit keeps its time");
+            ShardTestClock.Advance(TimeSpan.FromSeconds(32));
+            Assert.True(VerLorRegController.Active, $"{phase}: the exit ran after the restart");
+            Assert.Equal(1, LiveBosses());
+            Assert.Contains(pm.Location, VerLorRegCity.RandomLocations);
+
+            ShardTestClock.Advance(TimeSpan.FromMinutes(12));
+            Assert.Equal(1, LiveBosses()); // no second exit from a timer of the old process
+        }
+        finally
+        {
+            pm.Delete();
+            copy?.Delete();
+            ClearExodus();
+            ExodusRegions.Unregister(Map.Ilshenar);
+        }
+    }
+
+    [Fact]
+    public void ARevealedLockedChestIsGoneAfterARestartAndItsSpawnerFillsAgain()
+    {
+        ShardTestClock.Arm();
+        ClearExodus();
+        var spawner = new Spawner(1, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(10), 0, default, nameof(ExodusChest));
+        spawner.MoveToWorld(new Point3D(880, 600, 0), Map.Ilshenar);
+
+        try
+        {
+            spawner.Respawn();
+            var chest = World.Items.Values.OfType<ExodusChest>().Single(c => !c.Deleted && c.Spawner == spawner);
+            chest.Visible = true; // revealed (OnRevealed), not yet opened, and the world saves
+            Assert.True(chest.Locked);
+
+            var copy = RoundTrip(chest);
+            ShardTestClock.Advance(TimeSpan.FromSeconds(1));
+            Assert.True(copy.Deleted, "a revealed, still locked chest does not outlive a restart");
+
+            var hidden = new ExodusChest();
+            hidden.MoveToWorld(new Point3D(890, 600, 0), Map.Ilshenar);
+            var hiddenCopy = RoundTrip(hidden);
+            ShardTestClock.Advance(TimeSpan.FromSeconds(1));
+            Assert.False(hiddenCopy.Deleted, "a hidden chest stays");
+            hiddenCopy.ChestRegion?.Unregister();
+            hidden.Delete();
+            hiddenCopy.Delete();
+
+            // The spawner had the copy as its spawn; its deletion frees the slot, and the next respawn fills it.
+            chest.Delete();
+            spawner.Respawn();
+            Assert.Single(World.Items.Values.OfType<ExodusChest>(), c => !c.Deleted && c.Spawner == spawner);
+        }
+        finally
+        {
+            spawner.Delete();
+            ClearExodus();
+        }
+    }
+
+    /// <summary>One bandage from a player at Healing 50 and Anatomy 50 onto a hurt player, the roll held at the middle.</summary>
+    private static int BandageHeal(Item held, double healing = 50.0)
+    {
+        var at = new Point3D(1590, 1590, 0);
+        var healer = NewPlayer(at, Map.Trammel);
+        var patient = NewPlayer(new Point3D(at.X + 1, at.Y, at.Z), Map.Trammel);
+        healer.Skills[SkillName.Healing].Base = healing;
+        healer.Skills[SkillName.Anatomy].Base = 50.0;
+        healer.RawStr = 100; // a fresh player has none, and a staff wants some
+        if (held != null)
+        {
+            held.Layer = Layer.TwoHanded; // the host has no tile data, where a weapon reads its layer from
+            healer.AddItem(held);
+            Assert.Same(held, healer.FindItemOnLayer(Layer.TwoHanded));
+            Assert.Equal(held is Asclepius or GargishAsclepius ? 15.0 : 0.0, ExodusHealingBonus.For(healer));
+        }
+
+        patient.Hits = 1;
+        BuiltInRng.Generator = new ConstantRandom { Value = 0.5 };
+        try
+        {
+            var context = new BandageContext(healer, patient, TimeSpan.Zero);
+            typeof(BandageContext).GetMethod("OnTick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(context, null);
+            return patient.Hits - 1;
+        }
+        finally
+        {
+            BuiltInRng.Reset();
+            held?.Delete();
+            patient.Delete();
+            healer.Delete();
+        }
+    }
+
+    [Fact]
+    public void EitherAsclepiusHeldAddsFifteenHealingToABandageAndNothingElseDoes()
+    {
+        ShardTestClock.Arm();
+        EnsureCorpses();
+        var plain = BandageHeal(null);
+        var asclepius = BandageHeal(new Asclepius());
+        var gargish = BandageHeal(new GargishAsclepius());
+        var otherStaff = BandageHeal(new GnarledStaff());
+        var at65 = BandageHeal(null, 65.0); // ServUO Bandage.cs:495: the staff is 15 more Healing, in the chance and the amount
+
+        Assert.True(asclepius > plain, $"{asclepius} > {plain}");
+        Assert.Equal(at65, asclepius);
+        Assert.Equal(at65, gargish);
+        Assert.Equal(plain, otherStaff);
+    }
+
+    [Fact]
+    public void TheExodusRewardsAreWorthFiveThousandCleanUpPoints()
+    {
+        var items = new Item[]
+        {
+            new Asclepius(), new BracersofAlchemicalDevastation(), new GargishAsclepius(),
+            new GargishBracersofAlchemicalDevastation(), new HygieiasAmulet(), new ScrollofValiantCommendation()
+        };
+
+        try
+        {
+            foreach (var item in items)
+            {
+                Assert.True(5000.0 == Server.Engines.Points.CleanUpBritanniaData.GetPoints(item), $"{item.GetType().Name}: {Server.Engines.Points.CleanUpBritanniaData.GetPoints(item)}");
+            }
+        }
+        finally
+        {
+            foreach (var item in items)
+            {
+                item.Delete();
+            }
+        }
+    }
+
+    [Fact]
+    public void AValiantRewardSurvivesARestartAndAFreshScrollIsRefused()
+    {
+        ShardTestClock.Arm();
+        var pm = NewPlayer(new Point3D(1600, 1600, 0), Map.Trammel);
+        var first = new ScrollofValiantCommendation();
+        var second = new ScrollofValiantCommendation();
+
+        try
+        {
+            pm.Backpack.DropItem(first);
+            var cap = pm.StatCap;
+            first.OnDoubleClick(pm);
+            Assert.Equal(cap + 5, pm.StatCap);
+
+            // The store is saved, the server restarts (the set in memory is gone), the store loads.
+            var buffer = new byte[65536];
+            var writer = new BufferWriter(buffer, true);
+            ExodusEncounter.Serialize(writer);
+            writer.Flush();
+            ExodusEncounter.ClearValiantStatReward(pm);
+            Assert.False(ExodusEncounter.HasValiantStatReward(pm));
+            ExodusEncounter.Deserialize(new BufferReader(buffer));
+
+            pm.Backpack.DropItem(second);
+            second.OnDoubleClick(pm);
+            Assert.Equal(cap + 5, pm.StatCap);
+            Assert.False(second.Deleted, "the fresh scroll is refused, not used up");
+        }
+        finally
+        {
+            ExodusEncounter.ClearValiantStatReward(pm);
+            first.Delete();
+            second.Delete();
+            pm.Delete();
         }
     }
 }

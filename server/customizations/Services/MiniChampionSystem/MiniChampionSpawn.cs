@@ -226,6 +226,7 @@ public partial class MiniChamp : Item
 
         _restartTimer?.Stop();
         _restartTimer = null;
+        MiniChampRestarts.Clear(this);
 
         AdvanceLevel();
         InvalidateProperties();
@@ -235,6 +236,11 @@ public partial class MiniChamp : Item
     {
         if (!_active || Deleted)
         {
+            // cc-P610 (P491 #2): switched off while it waits out its completion: the restart is cancelled too (ServUO
+            // returned here and the restart ran anyway).
+            _restartTimer?.Stop();
+            _restartTimer = null;
+            MiniChampRestarts.Clear(this);
             return;
         }
 
@@ -348,6 +354,7 @@ public partial class MiniChamp : Item
             Stop();
 
             _restartTimer = Timer.DelayCall(_restartDelay, Start);
+            MiniChampRestarts.Note(this, Core.Now + _restartDelay); // cc-P610: saved, so a load restarts it on time
         }
     }
 
@@ -441,10 +448,32 @@ public partial class MiniChamp : Item
         }
         else
         {
-            _restartTimer = Timer.DelayCall(_restartDelay, Start);
+            // cc-P610 (P491 #2): ServUO scheduled a restart for every inactive controller here, so one switched off
+            // on purpose came back after a restart. Once the world is up, only a restart that was pending at the save
+            // is resumed, at its saved time (MiniChampRestarts); a save made before that store existed keeps ServUO's.
+            Timer.DelayCall(ResumeAfterLoad);
         }
 
         _controllers.Add(this);
+    }
+
+    private void ResumeAfterLoad()
+    {
+        if (Deleted || _active)
+        {
+            return;
+        }
+
+        if (!MiniChampRestarts.Loaded)
+        {
+            _restartTimer = Timer.DelayCall(_restartDelay, Start); // a save from before the store: ServUO's rule
+            return;
+        }
+
+        if (MiniChampRestarts.PendingAt(this) is { } at)
+        {
+            _restartTimer = Timer.DelayCall(at > Core.Now ? at - Core.Now : TimeSpan.Zero, Start);
+        }
     }
 }
 

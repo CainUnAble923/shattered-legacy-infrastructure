@@ -754,6 +754,9 @@ apply_patch "$PATCHES/PlayerMobile-void-pool-context.patch"
 # argued in shard-migration/notes/cc-P199-port-base-items-remainder.md; pinned by TrapTrainingKitVerification.
 apply_patch "$PATCHES/RemoveTrap-trap-training-kits.patch"
 apply_patch "$PATCHES/PuzzleChest-trap-training-kit.patch"
+# P610 (P491 #1): PuzzleChest.SubmitSolution replaces the player's last wrong guess (ServUO's assignment) instead of
+# Add, which threw at the same player's second wrong guess on one board. After the trap-training-kit patch above.
+apply_patch "$PATCHES/PuzzleChest-repeat-wrong-guess.patch"
 # cc-P199: Enhance.cs gains ServUO's Forged Metal of Artifacts check (Enhance.cs:253-258): an aura from the forged metal
 # (customizations Items/Tools/ForgedMetalOfArtifacts.cs) makes the next enhance succeed and is spent. A patch because the
 # result is a local of Enhance.Invoke between its chance rolls and its outcome switch; no event or virtual reaches it.
@@ -897,6 +900,17 @@ apply_patch "$PATCHES/PlayerMobile-noted-step.patch"
 # weapon skills) at it; every region that defers to the handler gets it. Notes: notes/cc-P453-tutorial-fixups.md.
 apply_patch "$PATCHES/Bandage-tutorial-real-heal.patch"
 apply_patch "$PATCHES/Notoriety-tutorial-creature-outsiders.patch"
+
+# P610 (P488 #2): Bandage: a healer holding Asclepius or Gargish Asclepius heals with 15 more Healing, as ServUO
+# Bandage.cs:495 (the chance and the amount; the amount's shard scaling then applies to the sum). One line where
+# BandageContext reads the Healing value; the bonus itself is ExodusHealingBonus (Exodus Loot). Applies after the
+# other Bandage patches above. Notes: notes/cc-P610-fix-drafts-from-p533.md.
+apply_patch "$PATCHES/Bandage-asclepius-bonus.patch"
+
+# P610 (P487 #4): BaseCreature: a KeepsLoyalty hook the hourly LoyaltyTimer reads, so a controlled companion's loyalty
+# never drains to a release (Companions/BaseCompanion overrides it). Ordinary pets keep stock loyalty. Two hunks: the
+# virtual beside Commandable, and the drain's condition. Notes: notes/cc-P610-fix-drafts-from-p533.md.
+apply_patch "$PATCHES/BaseCreature-companion-loyalty.patch"
 
 # cc-P168 (ours): a deed's tooltip says what handing it in pays the holder when they are a member of the deed's guild
 # (Seals or cash-out gold and standing for the Society of Smiths; bank gold for the 2016 guilds). One call at the end of
