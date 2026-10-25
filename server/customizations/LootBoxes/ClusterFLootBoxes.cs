@@ -163,10 +163,16 @@ public static class ClusterFLootBoxes
     /// <summary>A boss for loot boxes: the shard's high-end list (ClusterFRareSelfRepair.IsHighEndSource), paragons left out.</summary>
     public static bool IsBoss(BaseCreature bc) => !bc.IsParagon && ClusterFRareSelfRepair.IsHighEndSource(bc);
 
-    [OnEvent(nameof(CreatureEvents.CreatureDeathEvent))]
-    public static void OnCreatureDeath(BaseCreature bc)
+    // cc-P455 (cc-P263 notes, cc-P429 W1): which event. Pinned deletes a dead non-bonded creature inside Mobile.OnDeath, before
+    // BaseCreature raises CreatureDeathEvent (Mobile.cs:4899-4902, BaseCreature.cs:3662-3669), so there every boss read
+    // Deleted and IsBoss (IsHighEndSource wants it not deleted) was false: no first-kill box ever came. CreatureDeletedEvent
+    // comes first (BaseCreature.cs:3674), with the damage list, LastKiller and the master still there; a creature deleted
+    // with no hits left is one dying (Mobile.Kill sets Hits to 0), as Noted by the System and level gear read it. A
+    // bonded pet's death deletes nothing, and a pet is never a boss here.
+    [OnEvent(nameof(CreatureEvents.CreatureDeletedEvent))]
+    public static void OnCreatureDeleted(BaseCreature bc)
     {
-        if (bc.Controlled || bc.Summoned || !IsBoss(bc))
+        if (bc.Hits > 0 || bc.IsDeadPet || bc.Controlled || bc.Summoned || !IsBoss(bc))
         {
             return;
         }

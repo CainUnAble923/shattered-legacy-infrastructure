@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.14
+
+### Fixed
+- The first time you help defeat a boss, its loot box now arrives.
+- Kills by your pets and summons now count for the League bestiary.
+
 ## 2026.10.24.12
 
 ### Changed

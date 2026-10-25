@@ -228,8 +228,8 @@ public class RareSelfRepairVerification
             BuiltInRng.Generator = new AlwaysZero();
             try
             {
-                ClusterFRareSelfRepair.OnCreatureDeath(plain);
-                ClusterFRareSelfRepair.OnCreatureDeath(paragon);
+                ClusterFRareSelfRepair.RollCorpse(plain);
+                ClusterFRareSelfRepair.RollCorpse(paragon);
             }
             finally
             {
