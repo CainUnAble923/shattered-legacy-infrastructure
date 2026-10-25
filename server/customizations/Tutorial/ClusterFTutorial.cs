@@ -14,6 +14,9 @@
 // cc-P453: one tutorial pet per account (TutorialRecord.PetClaimed, which remedial training never clears); a pick not
 // yet made waits on the record (PetClaimPending) for Rook to offer again. Only the recorded character runs the tutorial;
 // the account's other characters see Rook's page read-only.
+// cc-P613 (P573 #2): an active record whose character is gone (none recorded, deleted, or moved to another account) is
+// taken up by the account's next character to log in or double-click Rook (AdoptOrphanedRecord), progress and claims
+// kept.
 //
 // The two voices: the League recruiter teaches (overhead and gumps); the System voice (the fanfare's) is the snark,
 // confirmations and achievements, sent as System lines and through ClusterFFanfare. cc-P480: the client already shows
@@ -83,6 +86,7 @@ public static class ClusterFTutorial
         TutorialCoreTrials.Cancel(pm);
         if (Enabled)
         {
+            AdoptOrphanedRecord(pm);
             if (!TryEnter(pm) && IsParticipant(pm))
             {
                 SystemLine(pm, "Your finished lessons are saved. Double-click Rook to choose your next lesson.");
@@ -121,6 +125,26 @@ public static class ClusterFTutorial
         SystemLine(pm, "Welcome to New Haven. Rook Hallowell, your tutorial guide, is waiting on the town plaza.");
         SystemLine(pm, "Follow the arrow and double-click Rook with two quick left clicks. Rook's window lets you start a lesson or skip the tutorial.");
         TutorialRecruiter.PointTo(pm);
+        return true;
+    }
+
+    /// <summary>
+    /// cc-P613: an active record (core, wings or remedial) whose character is gone becomes this character's, with its
+    /// lessons, times, skip, pet and bandage counts as they are. A living recorded character of the account keeps it, and
+    /// staff never take it. Called at login and at Rook, never from an eligibility check. True when it was taken up.
+    /// </summary>
+    public static bool AdoptOrphanedRecord(PlayerMobile pm)
+    {
+        if (pm.AccessLevel > AccessLevel.Player || pm.Account?.AccessLevel > AccessLevel.Player ||
+            RecordOf(pm) is not { IsActive: true } record || record.CharacterSerial == (uint)pm.Serial ||
+            !IsRecordedCharacter(pm, record))
+        {
+            return false;
+        }
+
+        TutorialCoreTrials.Cancel(pm);
+        record.CharacterSerial = (uint)pm.Serial;
+        SystemLine(pm, "Your account's tutorial continues with this character. Your finished lessons are saved.");
         return true;
     }
 

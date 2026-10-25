@@ -89,6 +89,7 @@ namespace Server.Tutorial
         public const string PestsLeftLine = "Defeat {0} more rats or grass snakes in the cabbage rows.";
         public const string HealLine = "Double-click a bandage in your backpack, then click yourself or an injured pet. A successful heal finishes this step.";
         public const string NoMoreBandagesLine = "I have no more free bandages for you. You can buy more from a healer in town.";
+        public const string NoRoomForBandagesLine = "Your backpack is too full for these bandages. Make room in it, then double-click me again.";
         public const string DoneLine = "You finished the farm lessons. If your bonded pet dies, bring its ghost to Tobin the vet beside me.";
         public const string EchoPetLine = "This pet is yours to keep. Say 'all follow me' to have it follow you.";
         public const string EchoPestsLine = "You cleared the farm pests. Return to Wren the Farmhand at the gate.";
@@ -208,7 +209,12 @@ namespace Server.Tutorial
                     hand.SayTo(pm, PestsKilled(pm) == 0 ? string.Format(PestsLine, PestsToClear) : string.Format(PestsLeftLine, left));
                     break;
                 case 3:
-                    hand.SayTo(pm, GiveBandages(pm) == BandageGift.NoneLeft ? NoMoreBandagesLine : HealLine);
+                    hand.SayTo(pm, GiveBandages(pm) switch
+                    {
+                        BandageGift.NoneLeft => NoMoreBandagesLine,
+                        BandageGift.NoRoom => NoRoomForBandagesLine,
+                        _ => HealLine
+                    });
                     break;
                 default:
                     hand.SayTo(pm, DoneLine);
@@ -273,11 +279,13 @@ namespace Server.Tutorial
             ClusterFTutorial.SystemLine(pm, "Return to Wren the Farmhand at the farm gate and double-click her.");
         }
 
-        public enum BandageGift { Given, HasSome, NoneLeft }
+        public enum BandageGift { Given, HasSome, NoneLeft, NoRoom }
 
         /// <summary>
         /// Step 3's bandages: a stack when the pack has none, counted on the account's record and capped at BandageIssues
         /// (cc-P453: the pack check alone let a banked or traded stack be asked for again, and sold).
+        /// cc-P613 (P573 #1): counted only once the stack is in the pack. A pack too full (or none) gets nothing, on the
+        /// ground or on the record: NoRoom, and the trainee is asked to make room.
         /// </summary>
         public static BandageGift GiveBandages(PlayerMobile pm)
         {
@@ -291,8 +299,14 @@ namespace Server.Tutorial
                 return BandageGift.NoneLeft;
             }
 
+            var stack = new Bandage(BandagesGiven);
+            if (!pm.PlaceInBackpack(stack))
+            {
+                stack.Delete();
+                return BandageGift.NoRoom;
+            }
+
             record.BandagesIssued++;
-            pm.AddToBackpack(new Bandage(BandagesGiven));
             return BandageGift.Given;
         }
 
