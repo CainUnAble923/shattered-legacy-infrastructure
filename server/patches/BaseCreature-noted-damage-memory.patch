@@ -1,0 +1,18 @@
+--- a/Projects/UOContent/Mobiles/BaseCreature.cs
++++ b/Projects/UOContent/Mobiles/BaseCreature.cs
+@@ -3333,6 +3333,15 @@
+         // Who answers for this creature: its owner or its summoner. Never an enraged creature's meer.
+         public Mobile GetMaster() => ControlMaster ?? SummonMaster;
+
++        // Shattered Legacy (cc-P457): Noted by the System remembers which players damaged this creature, beside the
++        // damage list that pinned empties at full hits and prunes after two minutes (customizations
++        // ClusterFNotedBySystem.CreatureDamaged). Mobile.Damage calls this for every hit with a damager (Mobile.cs:5983).
++        public override DamageEntry RegisterDamage(int amount, Mobile from)
++        {
++            ClusterFNotedBySystem.CreatureDamaged(this, from);
++            return base.RegisterDamage(amount, from);
++        }
++
+         public virtual bool IsMonster => !Controlled || (GetMaster() as BaseCreature)?.IsMonster == true;
+
+         public bool InActivePVPCombat() =>

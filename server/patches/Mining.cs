@@ -300,6 +300,10 @@ namespace Server.Engines.Harvest
             {
                 ClusterFNotedBySystem.SwungAtEmptyVein(from, map, loc);
             }
+            else if (available && !timed)
+            {
+                ClusterFNotedBySystem.SwungAtOre(from); // cc-P457: a swing at ore ends the streak
+            }
 
             return available;
         }

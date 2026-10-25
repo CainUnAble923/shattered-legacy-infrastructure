@@ -70,10 +70,11 @@ public class NotedBySystemVerification : IDisposable
             A.Configure();
         }
 
-        N.Register();
         LootTable.Current = LootTable.Defaults;
         ClusterFLootBoxes.LoopProvider = _ => 1;
         ClusterFStoreBought.CraftedOnly = true;
+        ShardTestHost.EnsureCraftSystems(); // cc-P457: the commissions' teaching pick reads the smithing menu, which
+                                            // another class built first in a full run, not in this one alone
         ShardTestClock.Arm();
     }
 
@@ -436,12 +437,12 @@ public class NotedBySystemVerification : IDisposable
         book.Entries.RemoveAt(0);
         Assert.True(book.OnDragDrop(p.Pm, Rune()));
         Assert.Equal(1, p.Count(TriggerKind.RunebooksFilled));
+        Assert.Equal(1, A.GetCounter(p.Account.Username, $"noted_runebook_{book.Serial.Value}")); // cc-P457: a marker
 
         // Steps: overweight, then barefoot on lava in armor, then pantsless in boots. A turn in place is not a step.
         var anvil = new Item(0xFAF) { Weight = 2000 };
         p.Pm.Backpack.DropItem(anvil);
-        p.Pm.Direction = Direction.North;
-        N.OnMovement(new MovementEventArgs(p.Pm, Direction.East));
+        N.PlayerMoved(p.Pm, p.Pm.Location); // a turn in place: the move ends where it began (cc-P457: after the move)
         Assert.Equal(0, p.Count(TriggerKind.OverweightSteps));
         for (var i = 0; i < 100; i++)
         {
@@ -511,12 +512,15 @@ public class NotedBySystemVerification : IDisposable
         N.Recycled(p.Pm, old);
         Assert.Equal(0, p.Count(TriggerKind.FreshRecycles));
 
+        // cc-P457: "made" is the crafter the craft hook records (CraftItem-fail-streak-achievement.patch passes the item).
         var fresh = new PlateGorget { PlayerConstructed = true, Created = Core.Now - TimeSpan.FromSeconds(30) };
+        N.CraftAttempt(p.Pm, typeof(PlateGorget), false, fresh);
         N.Recycled(p.Pm, fresh);
         Assert.True(p.Has(A.BuiltToBeRecycledKey));
         Assert.False(p.Has(A.QualityControlKey));
 
         var gem = new PlateGorget { PlayerConstructed = true, Quality = ArmorQuality.Exceptional, Created = Core.Now - TimeSpan.FromSeconds(5) };
+        N.CraftAttempt(p.Pm, typeof(PlateGorget), false, gem);
         N.Recycled(p.Pm, gem);
         Assert.True(p.Has(A.QualityControlKey));
         foreach (var i in new Item[] { bought, old, fresh, gem })

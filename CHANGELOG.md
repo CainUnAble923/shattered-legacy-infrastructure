@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.15
+
+### Fixed
+- Some hidden achievements now check their conditions more carefully.
+
 ## 2026.10.24.14
 
 ### Fixed

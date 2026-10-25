@@ -4,7 +4,7 @@
                      // from.PlaySound( 0x57 );
                  }
  
-+                ClusterFNotedBySystem.CraftAttempt(from, ItemType, false); // Shattered Legacy (cc-P263): Skill Issue
++                ClusterFNotedBySystem.CraftAttempt(from, ItemType, false, item); // Shattered Legacy (cc-P263, cc-P457)
 +
                  if (num == 0)
                  {
@@ -21,7 +21,7 @@
                      from.AddToBackpack(item);
  
                      num = craftSystem.PlayEndingEffect(from, false, true, toolBroken, endquality, false, this);
-+                    ClusterFNotedBySystem.CraftAttempt(from, ItemType, false); // Shattered Legacy (cc-P263): Skill Issue
++                    ClusterFNotedBySystem.CraftAttempt(from, ItemType, false, item); // Shattered Legacy (cc-P263, cc-P457)
  
                      if (T2ACraftSystem.Enabled)
                      {
