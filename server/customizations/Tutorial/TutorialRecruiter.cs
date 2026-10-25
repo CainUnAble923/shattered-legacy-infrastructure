@@ -60,6 +60,7 @@ namespace Server.Mobiles
                 return;
             }
 
+            Server.Tutorial.ClusterFTutorial.AdoptOrphanedRecord(pm); // cc-P613: a record whose character is gone
             Say("Welcome to New Haven. My window shows your tutorial progress.");
             pm.CloseGump<Server.Tutorial.TutorialRecruiterGump>();
             pm.SendGump(new Server.Tutorial.TutorialRecruiterGump(pm));

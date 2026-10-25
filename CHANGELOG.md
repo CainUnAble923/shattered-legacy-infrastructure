@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.6
+
+### Fixed
+- The tutorial farm's Farmhand no longer counts a bandage gift your full backpack could not take. Make room and ask her again.
+- If the character doing your account's tutorial is deleted or moved to another account, your next character carries on with it, lessons and rewards kept, when it logs in or double-clicks Rook.
+
 ## 2026.10.25.5
 
 ### Fixed
