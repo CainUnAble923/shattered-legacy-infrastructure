@@ -566,6 +566,15 @@ public static class ClusterFLevelGear
                 AddXp(item, share, m is PlayerMobile ? m : (m as BaseCreature)?.GetMaster());
             }
         }
+
+        // cc-P610 (P486 F05, P482 #2): the jewels in active accessory slots are worn too (not in a locked or covered one).
+        foreach (var item in ClusterFAccessories.ActiveJewels(m))
+        {
+            if (IsLevelable(item))
+            {
+                AddXp(item, share, m is PlayerMobile ? m : (m as BaseCreature)?.GetMaster());
+            }
+        }
     }
 
     // -- Spending points ------------------------------------------------------------------------------------------------

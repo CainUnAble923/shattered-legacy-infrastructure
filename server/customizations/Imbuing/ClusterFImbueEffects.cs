@@ -27,6 +27,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ModernUO.CodeGeneratedEvents;
 using Server.Items;
 using Server.Mobiles;
@@ -158,6 +159,12 @@ public static class ClusterFImbueEffects
             }
         }
 
+        // cc-P610 (P486 F06): and the jewels in active accessory slots, once (a locked or covered slot's do not count).
+        foreach (var item in ClusterFAccessories.ActiveJewels(m))
+        {
+            total += ImbueCustomStore.Get(item, name);
+        }
+
         return total;
     }
 
@@ -183,7 +190,7 @@ public static class ClusterFImbueEffects
     public static bool LuckGearJustEquipped(PlayerMobile pm)
     {
         var window = TimeSpan.FromSeconds(ImbuingTable.Current.Effects.FortuneEquipWindowSeconds);
-        foreach (var item in pm.Items)
+        foreach (var item in pm.Items.Concat(ClusterFAccessories.ActiveJewels(pm))) // cc-P610: active accessory slots too
         {
             if (ImbueCustomStore.Get(item, "Fortune's Favor") > 0 && _equippedAt.TryGetValue(item.Serial, out var at) &&
                 Core.Now - at <= window)

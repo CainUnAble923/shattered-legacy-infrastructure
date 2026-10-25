@@ -1,0 +1,8 @@
+{
+  "version": 0,
+  "type": "Server.Engines.Exodus.VerLorRegController",
+  "properties": [
+    { "name": "Running", "type": "bool",                          "rule": "PrimitiveTypeMigrationRule",          "ruleArguments": [""] },
+    { "name": "Exodus",  "type": "Server.Mobiles.ClockworkExodus", "rule": "SerializableInterfaceMigrationRule" }
+  ]
+}

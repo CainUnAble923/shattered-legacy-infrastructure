@@ -70,7 +70,7 @@ results.
 | `GET /api/decisions/copy` | cc-P146: the answers not yet taken, as plain text for the overseer, and their ids. `/api/items` carries the decisions themselves (`decisions`), each item's `where`, and the counts (`answers`) |
 | `POST /api/decisions/answer` | `{"id": "P77-D3", "choice": "<an option's label>" or "built", "text"}`: one or both; refused once taken |
 | `POST /api/decisions/later` | `{"id"}`: "Ask me later" |
-| `POST /api/decisions/taken` | `{"ids", "prompt": "P150"}`: the overseer took them into that prompt; `"undo": true` puts them back |
+| `POST /api/decisions/taken` | `{"ids", "prompt": "P150", "expect": {id: {"rev"}}}`: the overseer took them into that prompt; `"undo": true` puts them back (`expect` then also names `takenInto`). cc-P610: an answer changed since the page or the copy saw it, or a late undo, is refused (400) and nothing changes; `/api/decisions/copy` returns the `expect` to send |
 
 ## Run it by hand (testing)
 

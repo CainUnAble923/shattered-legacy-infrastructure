@@ -65,6 +65,7 @@ public partial class ExperimentalGem : BaseDecayingItem
     private int _currentHue;
     private int _span;
     private Timer _timer;
+    private Timer _beginTimer; // cc-P610 (P491 #4): the five-second start, cancelled with the gem
     private DateTime _expire;
 
     [SerializableField(0)]
@@ -165,7 +166,8 @@ public partial class ExperimentalGem : BaseDecayingItem
         _currentRoom = Room.RoomOne;
         _toComplete = Utility.RandomMinMax(5, 8);
 
-        Timer.DelayCall(TimeSpan.FromSeconds(5), BeginRoom_Callback);
+        _beginTimer?.Stop();
+        _beginTimer = Timer.DelayCall(TimeSpan.FromSeconds(5), BeginRoom_Callback);
 
         from.LocalOverheadMessage(MessageType.Regular, 0x3B2, 1113405); // Your gem is now active. You may enter the Experimental Room.
 
@@ -174,6 +176,13 @@ public partial class ExperimentalGem : BaseDecayingItem
 
     public void BeginRoom_Callback()
     {
+        _beginTimer = null;
+        if (Deleted || !_active)
+        {
+            return; // cc-P610: deleted or no longer active within the five seconds: no room timer
+        }
+
+        _timer?.Stop();
         _timer = new InternalTimer(this);
         _lastIndex = -1;
         SelectNewHue();
@@ -378,6 +387,8 @@ public partial class ExperimentalGem : BaseDecayingItem
     public override void OnDelete()
     {
         _timer?.Stop();
+        _beginTimer?.Stop();
+        _beginTimer = null;
 
         if (_owner != null)
         {
@@ -405,7 +416,7 @@ public partial class ExperimentalGem : BaseDecayingItem
 
         protected override void OnTick()
         {
-            if (_gem != null)
+            if (_gem is { Deleted: false, Active: true }) // cc-P610: a deleted or spent gem's timer stops
             {
                 _gem.OnTick();
             }

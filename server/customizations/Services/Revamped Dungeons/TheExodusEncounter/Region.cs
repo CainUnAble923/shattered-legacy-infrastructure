@@ -99,13 +99,14 @@ public class VerLorRegCity : DungeonRegion
     public static readonly TimeSpan ExitDelay = TimeSpan.FromMinutes(2);
 
     private ExitTimer _exitTimer;
+    private Timer _moveTimer;   // cc-P610: the move, two minutes after the warning (ServUO: an untracked DelayCall)
 
     public VerLorRegCity(Map map, Region parent)
         : base(ExodusRegions.Name, map, parent, ExodusRegions.Priority, ToArea(ExodusRegions.Bounds))
     {
     }
 
-    public bool ExitPending => _exitTimer?.Running == true;
+    public bool ExitPending => _exitTimer?.Running == true || _moveTimer?.Running == true;
 
     private static Rectangle3D[] ToArea(Rectangle2D[] bounds)
     {
@@ -146,9 +147,37 @@ public class VerLorRegCity : DungeonRegion
 
     public void StartExit()
     {
+        StartWarning(ExitWarning);
+    }
+
+    private void StartWarning(TimeSpan delay)
+    {
         _exitTimer?.Stop();
-        _exitTimer = new ExitTimer(this);
+        _moveTimer?.Stop();
+        _exitTimer = new ExitTimer(this, delay);
         _exitTimer.Start();
+        VerLorRegController.IlshenarInstance?.NoteExit(Core.Now + delay, DateTime.MinValue); // cc-P610: saved
+    }
+
+    private void StartMove(TimeSpan delay)
+    {
+        _moveTimer?.Stop();
+        _moveTimer = Timer.DelayCall(delay, MoveLocation);
+        VerLorRegController.IlshenarInstance?.NoteExit(DateTime.MinValue, Core.Now + delay); // cc-P610: saved
+    }
+
+    /// <summary>cc-P610: an exit saved before a restart goes on here: the warning or the move at its saved time, or at
+    /// once when that time has passed (an overdue warning still gives its two minutes before the move).</summary>
+    public void ResumeExit(DateTime warnAt, DateTime moveAt)
+    {
+        if (moveAt != DateTime.MinValue)
+        {
+            StartMove(moveAt > Core.Now ? moveAt - Core.Now : TimeSpan.Zero);
+        }
+        else if (warnAt != DateTime.MinValue)
+        {
+            StartWarning(warnAt > Core.Now ? warnAt - Core.Now : TimeSpan.Zero);
+        }
     }
 
     /// <summary>
@@ -178,12 +207,19 @@ public class VerLorRegCity : DungeonRegion
             m.SendLocalizedMessage(1010589); // You will be teleported out of this area in 2 minutes
         }
 
-        Timer.DelayCall(ExitDelay, MoveLocation);
+        StartMove(ExitDelay);
     }
 
     /// <summary>ServUO MoveLocation: every player to one of the eight spots with their pets, and Exodus rises again.</summary>
     public void MoveLocation()
     {
+        if (!Registered)
+        {
+            return; // cc-P610: a city region replaced (a restart, a regeneration) leaves the exit to the new one
+        }
+
+        VerLorRegController.IlshenarInstance?.NoteExit(DateTime.MinValue, DateTime.MinValue);
+
         foreach (var m in PlayersHere())
         {
             var p = RandomLocations.RandomElement();
@@ -199,7 +235,7 @@ public class VerLorRegCity : DungeonRegion
     {
         private readonly VerLorRegCity _region;
 
-        public ExitTimer(VerLorRegCity region) : base(ExitWarning) => _region = region;
+        public ExitTimer(VerLorRegCity region, TimeSpan delay) : base(delay) => _region = region;
 
         protected override void OnTick()
         {

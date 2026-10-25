@@ -78,7 +78,14 @@ public class AccessoriesGump : DynamicGump
                 var item = slot <= worn.Count ? worn[slot - 1] : null;
                 var label = kind == AccessoryKind.ToeRing ? $"{slot}" : slot == 1 ? "1 (paperdoll)" : $"{slot}";
 
-                if (slot > slots)
+                if (slot > slots && item != null)
+                {
+                    // cc-P610 (P486 F01): a slot that locked again still holds its jewel; it shows, inactive, and comes off.
+                    builder.AddButton(20, y, 4017, 4019, RemoveBase + _shown.Count);
+                    _shown.Add(item);
+                    builder.AddLabel(55, y, GreyHue, $"{label}: {NameOf(item)} (inactive: slot locked. {ClusterFAccessories.UnlockHint(kind, slot)})");
+                }
+                else if (slot > slots)
                 {
                     builder.AddLabel(40, y, LockedHue, $"{label}: locked. {ClusterFAccessories.UnlockHint(kind, slot)}");
                 }

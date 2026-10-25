@@ -1,0 +1,7 @@
+{
+  "version": 0,
+  "type": "Server.Items.CauldronOfTransmutation",
+  "properties": [
+    { "name": "Expires", "type": "System.DateTime", "rule": "PrimitiveTypeMigrationRule", "ruleArguments": [""] }
+  ]
+}

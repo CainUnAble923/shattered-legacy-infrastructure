@@ -97,6 +97,8 @@ namespace Server.Tutorial
             public DateTime LastCast = DateTime.MinValue;
             public int BandageHits = -1;                 // the player's hits when a bandage on themself began
             public TimerExecutionToken Timer;
+            public bool LendFailed;                      // cc-P610: a loan did not fit in the backpack
+            public DateTime ArmRetryAt;                  // cc-P610: not armed again before this (after a failed lend)
 
             // cc-P291 (TutorialTradeTrials.cs): the trade trials' evidence and their own things.
             public readonly HashSet<string> Steps = new();             // steps done (TradeTrial.Steps)
@@ -114,7 +116,11 @@ namespace Server.Tutorial
             EnsureHooks();
             TutorialYardRegion.EnsureRegistered();
             SweepLoaners();
+            TutorialLoanLedger.Reconcile(); // cc-P610: tithing and Hiding loans out at a restart go back, once
         }
+
+        /// <summary>cc-P610: how long after a failed lend (a full backpack) the trial waits before lending again.</summary>
+        public static readonly TimeSpan ArmRetryDelay = TimeSpan.FromSeconds(5);
 
         /// <summary>The handlers and the skill hook, once. The test host calls it: Initialize never runs there.</summary>
         public static void EnsureHooks()
@@ -265,6 +271,7 @@ namespace Server.Tutorial
                     trial.TithingBefore = pm.TithingPoints;
                     trial.TithingLoan = 100;
                     pm.TithingPoints += trial.TithingLoan;
+                    TutorialLoanLedger.NoteTithing(pm, trial.TithingBefore, trial.TithingLoan);
                     LendSkill(trial, SkillName.Chivalry, 40);
                     LendMind(trial);
                     break;
@@ -289,6 +296,12 @@ namespace Server.Tutorial
                     LendSkill(trial, SkillName.Mysticism, 50);
                     LendMind(trial);
                     break;
+            }
+
+            if (trial.LendFailed)
+            {
+                Unarm(trial);
+                return false;
             }
 
             if (needsTarget)
@@ -336,7 +349,7 @@ namespace Server.Tutorial
             }
 
             trial.Choice = choice;
-            var weapon = make();
+            var weapon = skill == SkillName.Archery ? new TutorialLoanBow() : make(); // cc-P610: fires loan arrows
             if (weapon != null)
             {
                 Lend(trial, weapon);
@@ -346,12 +359,18 @@ namespace Server.Tutorial
                 }
             }
 
-            if (skill == SkillName.Archery) { Lend(trial, new Arrow(50)); }
+            if (skill == SkillName.Archery) { Lend(trial, new TutorialLoanArrow(50)); }
             if (oneHanded)
             {
                 var shield = new Buckler();
                 Lend(trial, shield);
                 if (pm.FindItemOnLayer(Layer.TwoHanded) == null) { pm.EquipItem(shield); }
+            }
+
+            if (trial.LendFailed)
+            {
+                Unarm(trial);
+                return false;
             }
 
             LendSkill(trial, skill, 30);
@@ -367,7 +386,60 @@ namespace Server.Tutorial
             if (!trial.Player.AddToBackpack(item))
             {
                 item.Delete();
+                trial.LendFailed = true; // cc-P610: the caller unwinds every loan (Unarm); nothing is half lent
             }
+        }
+
+        /// <summary>cc-P610: a lend did not fit. Everything lent so far goes back (Return), the trial waits unarmed, and
+        /// the player is told to make room; the tick arms it again once ArmRetryDelay has passed.</summary>
+        private static void Unarm(Trial trial)
+        {
+            Return(trial);
+            trial.Armed = false;
+            trial.LendFailed = false;
+            trial.Choice = -1;
+            trial.ArmRetryAt = Core.Now + ArmRetryDelay;
+            ClusterFTutorial.SystemLine(
+                trial.Player,
+                "Your backpack has no room for this lesson's supplies. Make room, and the lesson starts again by itself."
+            );
+        }
+
+        public static bool IsLoaner(Item item) => item.Name?.StartsWith(LoanerPrefix, StringComparison.Ordinal) == true;
+
+        /// <summary>cc-P610: every loaner the player holds, worn, packed or banked, tracked or not (a split remainder).</summary>
+        private static List<Item> HeldLoaners(PlayerMobile pm)
+        {
+            var found = new List<Item>();
+            foreach (var item in pm.Items)
+            {
+                if (IsLoaner(item)) { found.Add(item); }
+            }
+
+            foreach (var box in new Container?[] { pm.Backpack, pm.FindBankNoCreate() })
+            {
+                if (box == null) { continue; }
+                foreach (var item in box.FindItemsByType<Item>())
+                {
+                    if (IsLoaner(item)) { found.Add(item); }
+                }
+            }
+
+            return found;
+        }
+
+        /// <summary>cc-P610: a loan arrow just placed (recovered after a miss, or split): the player's running lesson takes it
+        /// as its own; with no lesson running it goes.</summary>
+        public static void ClaimOrDrop(Item item)
+        {
+            if (item.Deleted) { return; }
+            if (item.RootParent is PlayerMobile pm && Current(pm) is { Finished: false, Armed: true } trial)
+            {
+                if (!trial.Loaners.Contains(item)) { trial.Loaners.Add(item); }
+                return;
+            }
+
+            item.Delete();
         }
 
         /// <summary>Lends a weapon and puts it in the player's hands when both are free.</summary>
@@ -389,6 +461,7 @@ namespace Server.Tutorial
             "Bone" => "bone", "SpidersSilk" => "spider's silk", "MandrakeRoot" => "mandrake root", "Bandage" => "bandage",
             "Arrow" => "arrow", "Buckler" => "buckler", "Longsword" => "longsword", "Mace" => "mace", "Kryss" => "kryss",
             "Bow" => "bow", "Boomerang" => "boomerang", "Katana" => "katana",
+            "TutorialLoanBow" => "bow", // cc-P610
             _ => TradeCliName(item)
         };
 
@@ -426,14 +499,14 @@ namespace Server.Tutorial
             var pm = trial.Player;
             foreach (var item in trial.Loaners) { item.Delete(); }
             trial.Loaners.Clear();
+            foreach (var item in HeldLoaners(pm)) { item.Delete(); } // cc-P610: a split remainder the tick had not adopted
             foreach (var mod in trial.SkillMods) { pm.RemoveSkillMod(mod); }
             trial.SkillMods.Clear();
             if (trial.MindLoan != null) { pm.RemoveStatMod(LoanName); trial.MindLoan = null; }
             if (trial.TithingLoan > 0)
             {
                 // What the lesson spent came out of the loan first; only the rest of the loan is taken back.
-                var spent = Math.Clamp(trial.TithingBefore + trial.TithingLoan - pm.TithingPoints, 0, trial.TithingLoan);
-                pm.TithingPoints = Math.Max(0, pm.TithingPoints - (trial.TithingLoan - spent));
+                TutorialLoanLedger.GiveBackTithing(pm, trial.TithingBefore, trial.TithingLoan);
                 trial.TithingLoan = 0;
             }
 
@@ -441,6 +514,7 @@ namespace Server.Tutorial
             trial.Patient?.Delete();
             trial.Target = trial.Patient = null;
             ReturnTrade(trial);
+            TutorialLoanLedger.Settle(pm); // cc-P610: nothing of this lesson is owed any more
         }
 
         /// <summary>Ends the player's wing trial, taking every loan back. The reason, if any, is said to the player.</summary>
@@ -472,7 +546,7 @@ namespace Server.Tutorial
 
             if (!trial.Armed)
             {
-                if (pm.Alive && NearPlace(pm, trial.Key) && Arm(trial)) { Show(pm, trial); }
+                if (pm.Alive && NearPlace(pm, trial.Key) && Core.Now >= trial.ArmRetryAt && Arm(trial)) { Show(pm, trial); }
                 return;
             }
 
@@ -480,6 +554,13 @@ namespace Server.Tutorial
             {
                 Cancel(pm, LeftLine(trial.Key));
                 return;
+            }
+
+            // cc-P610: a loaner the trial does not track yet (the remainder of a split stack, Mobile.LiftItemDupe) is
+            // adopted, so it goes back with the rest; one already moved off the player is caught by the rule below.
+            foreach (var item in HeldLoaners(pm))
+            {
+                if (!trial.Loaners.Contains(item)) { trial.Loaners.Add(item); }
             }
 
             // A loaner that is not worn or in the backpack (dropped, banked, traded, put on a vendor) goes back at once.

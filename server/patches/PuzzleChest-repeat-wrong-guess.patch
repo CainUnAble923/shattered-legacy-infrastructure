@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Engines/Khaldun/PuzzleChest.cs
++++ b/Projects/UOContent/Engines/Khaldun/PuzzleChest.cs
+@@ -341,7 +341,9 @@
+             }
+             else
+             {
+-                (_guesses ??= []).Add(m, new PuzzleChestSolutionAndTime(this, Core.Now, solution));
++                // Shattered Legacy (cc-P610): the player's last guess is replaced, as ServUO's is (assignment); Add threw
++                // an ArgumentException at the same player's second wrong guess.
++                (_guesses ??= [])[m] = new PuzzleChestSolutionAndTime(this, Core.Now, solution);
+                 StartCleanupTimer();
+ 
+                 m.SendGump(new StatusGump(correctCylinders, correctColors));

@@ -456,6 +456,9 @@ public class TutorialFirstPlayVerification : IDisposable
         var guild = ClusterFAccountPersistence.GetOrCreate(p.Account).GetOrCreateGuildData(p.Pm.Serial);
         guild.JoinedGuilds.Add("rangers");
         p.Pm.Backpack.DropItem(new Gold(1000));
+        var gm = new OutridersGuildmaster(); // cc-P610: sold in person (TutorialServicesVerification)
+        gm.MoveToWorld(new Point3D(p.Pm.X + 1, p.Pm.Y, p.Pm.Z), p.Pm.Map);
+        p.Litter.Add(gm);
         var dashboard = new OutridersGuildmasterGump(p.Pm, OutridersGuildmasterGump.View.MemberDashboard);
         Assert.Contains(Texts(dashboard), t => t.Contains("elixir of rebirth", StringComparison.OrdinalIgnoreCase));
         var before = Elixirs(p.Pm);

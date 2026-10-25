@@ -235,6 +235,16 @@ public partial class BaseCompanion : BaseCreature
 
     public override bool StandsDownOnCommand => false;
 
+    // cc-P610 (P487 #4): companions never go wild (design, "Companions"); the hourly loyalty sweep leaves a controlled
+    // one alone (BaseCreature-companion-loyalty.patch). Releasing one is the owner's choice, and still works.
+    public override bool KeepsLoyalty => true;
+
+    // cc-P610 (P487 #2, #3): a companion obeys its own master only. The pet transfer's order and its trade both ask this
+    // of the new owner (PetOrders.IssueTransfer, TransferItem.ValidateControlStatus), so neither can move a companion: the
+    // stock transfer clears the bond and skips the party limit (CompanionParty.CanTake). No companion transfer exists
+    // yet; when one does, it goes through CompanionParty.Join. Release and the owner's commands pass the master.
+    public override bool CanBeControlledBy(Mobile m) => m == ControlMaster && base.CanBeControlledBy(m);
+
     public override void OnSkillChange(SkillName skill, double oldBase)
     {
         base.OnSkillChange(skill, oldBase);
@@ -310,7 +320,15 @@ public partial class BaseCompanion : BaseCreature
             IsStabled = true;
         }
 
-        TakeDamageTypes(Weapon as BaseWeapon);
+        // cc-P610 (P487 #1): read the weapon once the world is up. Here, in the load, the equipped weapon is still an
+        // empty shell (no layer, no parent), so the split read now was all physical, and nothing reads it again.
+        Timer.DelayCall(() =>
+        {
+            if (!Deleted)
+            {
+                TakeDamageTypes(Weapon as BaseWeapon);
+            }
+        });
         ClusterFSkillCaps.ApplyTo(this);
     }
 }

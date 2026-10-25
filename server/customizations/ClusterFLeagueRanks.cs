@@ -250,6 +250,7 @@ namespace Server
             data.SetFlag(ClusterFLeagueSystem.FlagJoined);
             data.GetOrCreateLeagueData(m.Serial).Rank = Math.Clamp(rank, 1, TopRank);
             ClusterFBankLimit.Apply(m, false);
+            ClusterFAccessories.Refresh(m); // cc-P610 (P486 F02): a bracelet slot opens or locks with the rank, now
         }
 
         /// <summary>How many milestone ranks (a rank whose row names a trial chapter) this character has reached: 0 to 6.</summary>
@@ -416,6 +417,7 @@ namespace Server
 
             // Bonuses step only at milestones; Apply is a no-op when the limit has not changed.
             ClusterFBankLimit.Apply(pm, false);
+            ClusterFAccessories.Refresh(pm); // cc-P610 (P486 F02): a bracelet slot may open at this rank
 
             message = LeagueLadderTable.Current.For(report.To).IsMilestone
                 ? $"The League names you {RankName(report.To)}, a milestone rank. Your bank box now holds {ClusterFBankLimit.GetMaxItems(pm):N0} items."

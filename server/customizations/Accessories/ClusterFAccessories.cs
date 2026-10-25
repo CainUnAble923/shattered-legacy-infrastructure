@@ -112,11 +112,16 @@ public static class ClusterFAccessories
 
     // -- What an item is ------------------------------------------------------------------------------------------------
 
+    // cc-P610 (P486 F04): after the toe ring (itself a BaseJewel on the ring layer), any BaseJewel on the ring or bracelet
+    // layer is one: the set and absorption carriers (BaseSetJewel: Bracelet of Primal Consumption, Etoile Bleue) are
+    // BaseJewels, not BaseRing or BaseBracelet.
     public static AccessoryKind KindOf(Item? item) => item switch
     {
         ToeRing     => AccessoryKind.ToeRing,
         BaseRing    => AccessoryKind.Ring,
         BaseBracelet => AccessoryKind.Bracelet,
+        BaseJewel { Layer: Layer.Ring } => AccessoryKind.Ring,
+        BaseJewel { Layer: Layer.Bracelet } => AccessoryKind.Bracelet,
         _           => AccessoryKind.None
     };
 
@@ -301,6 +306,10 @@ public static class ClusterFAccessories
             {
                 total += jewel.Attributes[attribute];
             }
+
+            // cc-P610 (P486 F05, P482 #2): a levelable jewel's bought bonuses count here too, once (the paperdoll's
+            // aggregation reads only items worn directly, and the container is not a jewel).
+            total += ClusterFLevelGear.AttributeBonus(m, item, attribute);
         }
 
         return total;
@@ -326,6 +335,7 @@ public static class ClusterFAccessories
                 ResistanceType.Energy   => item.EnergyResistance,
                 _                       => 0
             };
+            total += ClusterFLevelGear.ResistBonus(item, type); // cc-P610 (P486 F05): bought resists, once
         }
 
         return total;
@@ -345,6 +355,7 @@ public static class ClusterFAccessories
                 if (active && _applied.Add(item))
                 {
                     item.OnAdded(m);
+                    ClusterFImbueEffects.OnEquipped(m, item); // cc-P610 (P486 F06): Fortune's Favor's time, as on a layer
                 }
                 else if (!active && _applied.Remove(item))
                 {
@@ -374,6 +385,46 @@ public static class ClusterFAccessories
 
     /// <summary>Whether the bonuses of this jewel are on its wearer now (tests).</summary>
     public static bool IsApplied(Item item) => _applied.Contains(item);
+
+    /// <summary>
+    /// cc-P610 (P486 F07): a property of a jewel changed (an imbue, an extraction). On a paperdoll layer pinned's
+    /// BaseAttributes.SetValue rebuilds its wearer's bonuses; in the container its parent is the container, so nothing
+    /// did. An applied jewel's bonuses are taken off and put on again here; any other item is left alone.
+    /// </summary>
+    public static void OnPropertiesChanged(Item item)
+    {
+        if (!_applied.Contains(item) || item.Parent is not AccessoryContainer { Parent: Mobile m })
+        {
+            return;
+        }
+
+        item.OnRemoved(m);
+        item.OnAdded(m);
+        m.UpdateResistances();
+        m.Delta(MobileDelta.Hits | MobileDelta.Stam | MobileDelta.Mana | MobileDelta.Stat);
+    }
+
+    /// <summary>
+    /// cc-P610 (P486 F02): whether what counts has changed since the last Refresh (a slot locked by a lost rank, a setting
+    /// changed, shoes). Cheap: the container's few jewels.
+    /// </summary>
+    public static bool NeedsRefresh(Mobile m)
+    {
+        if (ContainerOf(m) is not { } c)
+        {
+            return false;
+        }
+
+        foreach (var item in c.Items)
+        {
+            if (IsActive(m, item) != _applied.Contains(item))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static void OnWorldLoad()
     {
@@ -427,8 +478,58 @@ public static class ClusterFAccessories
             return SlotsFor(m, kind) == 0 ? "You have no toe ring slots." : "Those slots are full.";
         }
 
+        if (!CanWearInExtraSlot(m, item))
+        {
+            return item.Deleted ? null : "You cannot wear that.";
+        }
+
         GetOrCreateContainer(m).DropItem(item);
         return AfterChange(m, item);
+    }
+
+    /// <summary>
+    /// cc-P610 (P486 F03): an extra slot runs what EquipItem runs (the item's CanEquip, the mobile's CheckEquip with its
+    /// feature, duel and faction rules, the mobile's and the item's OnEquip), allowing only what an extra slot is for: its
+    /// paperdoll layer is taken. Both Item.CanEquip and Mobile.CheckEquip refuse a taken layer, so for those two calls the
+    /// jewel stands on a layer no player wears (a vendor's resale layer); every other rule in them still applies, then
+    /// the jewel's own layer is put back before the OnEquip calls.
+    /// </summary>
+    private static bool CanWearInExtraSlot(Mobile m, Item item)
+    {
+        if (item is ToeRing)
+        {
+            // A toe ring has no paperdoll layer of its own and refuses every equip (ToeRing.CanEquip): the accessory slot
+            // is its only place, so only the mobile's rules apply.
+            return CheckEquipOnSpareLayer(m, item) && m.OnEquip(item) && !item.Deleted;
+        }
+
+        var layer = item.Layer;
+        bool fits;
+        item.Layer = Layer.ShopResale;
+        try
+        {
+            fits = item.CanEquip(m) && m.CheckEquip(item);
+        }
+        finally
+        {
+            item.Layer = layer;
+        }
+
+        return fits && m.OnEquip(item) && item.OnEquip(m) && !item.Deleted;
+    }
+
+    private static bool CheckEquipOnSpareLayer(Mobile m, Item item)
+    {
+        var layer = item.Layer;
+        item.Layer = Layer.ShopResale;
+        try
+        {
+            return m.CheckEquip(item);
+        }
+        finally
+        {
+            item.Layer = layer;
+        }
     }
 
     /// <summary>Takes a worn jewel (paperdoll or container) back to the backpack.</summary>
@@ -518,6 +619,7 @@ public static class ClusterFAccessories
         }
 
         Refresh(m);
+        CheckJewelryAchievements(m); // cc-P610 (P486 F08): bare feet may be the last thing Fully Accessorized needed
     }
 
     // -- Achievements: the jewellery ones (spec section 7) ----------------------------------------------------------------
@@ -611,6 +713,13 @@ public static class ClusterFAccessories
         if (e.Mobile is PlayerMobile pm && CountsAsBarefootStep(pm, e.Direction))
         {
             ClusterFAchievementSystem.NotifyBarefootStep(pm);
+        }
+
+        // cc-P610 (P486 F02): a setting reload or any other change that locks or opens a slot takes effect at the next
+        // step (settings are read at use and raise no event); rank changes refresh at once (ClusterFLeagueRanks).
+        if (e.Mobile is { } m && NeedsRefresh(m))
+        {
+            Refresh(m);
         }
     }
 

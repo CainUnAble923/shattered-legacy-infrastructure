@@ -848,12 +848,13 @@ public class CleanUpBritanniaData : PointsSystem
         Add(typeof(global::Server.Items.Quell), 5000.0); // :653
         Add(typeof(global::Server.Items.RoyalGuardSurvivalKnife), 5000.0); // :654
         Add(typeof(global::Server.Items.Subdue), 5000.0); // :655
-        // MISSING :656 Asclepius = 5000.0
-        // MISSING :657 BracersofAlchemicalDevastation = 5000.0
-        // MISSING :659 GargishAsclepius = 5000.0
-        // MISSING :660 GargishBracersofAlchemicalDevastation = 5000.0
-        // MISSING :661 HygieiasAmulet = 5000.0
-        // MISSING :662 ScrollofValiantCommendation = 5000.0
+        // cc-P610 (P488 #4): the Exodus rewards, ported by P195 after this table was made.
+        Add(typeof(global::Server.Items.Asclepius), 5000.0); // :656
+        Add(typeof(global::Server.Items.BracersofAlchemicalDevastation), 5000.0); // :657
+        Add(typeof(global::Server.Items.GargishAsclepius), 5000.0); // :659
+        Add(typeof(global::Server.Items.GargishBracersofAlchemicalDevastation), 5000.0); // :660
+        Add(typeof(global::Server.Items.HygieiasAmulet), 5000.0); // :661
+        Add(typeof(global::Server.Items.ScrollofValiantCommendation), 5000.0); // :662
 
         // Easter
         Add(typeof(global::Server.Items.EasterEggs), 2.0); // :665

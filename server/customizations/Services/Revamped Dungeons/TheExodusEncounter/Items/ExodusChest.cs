@@ -241,10 +241,13 @@ public partial class ExodusChest : DecorativeBox, IRevealableItem
         m.SendLocalizedMessage(1072223); // An item has been placed in your backpack.
     }
 
+    // cc-P610 (P488 #3): a revealed chest's five-minute deletion is a timer, not saved; one revealed and still locked at a
+    // save stood visible for good after the restart, holding its spawner's slot. It goes on load as an opened one does
+    // (ServUO has the same gap); it rolls no second ritual key, and the spawner places a fresh hidden chest.
     [AfterDeserialization]
     private void AfterDeserialization()
     {
-        if (!Locked)
+        if (!Locked || Visible)
         {
             Timer.DelayCall(Delete);
             return;

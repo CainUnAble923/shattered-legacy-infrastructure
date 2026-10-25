@@ -270,6 +270,7 @@ namespace Server.Tutorial
             "BlankMap" => "blank maps", "ShepherdsCrook" => "shepherd's crook", "Lute" => "lute", "Lockpick" => "lockpicks",
             "Dagger" => "dagger", "LesserPoisonPotion" => "lesser poison potion", "RecallRune" => "recall rune",
             "TutorialCurio" => "odd curio",
+            "TutorialLoanCloth" => "cloth", "TutorialLoanLog" => "logs", // cc-P610
             _ => item.GetType().Name.ToLowerInvariant()
         };
 
@@ -343,7 +344,7 @@ namespace Server.Tutorial
                     break;
                 case "crafting.tailoring":
                     Lend(trial, new SewingKit());
-                    Lend(trial, new Cloth(8));
+                    Lend(trial, new TutorialLoanCloth(8)); // cc-P610: cannot be cut into bandages
                     LendSkill(trial, SkillName.Tailoring, 30);
                     break;
                 case "crafting.carpentry":
@@ -368,7 +369,7 @@ namespace Server.Tutorial
                     break;
                 case "crafting.fletching":
                     Lend(trial, new FletcherTools());
-                    Lend(trial, new Log(5));
+                    Lend(trial, new TutorialLoanLog(5)); // cc-P610: cannot be axed into boards
                     LendSkill(trial, SkillName.Fletching, 30);
                     break;
                 case "crafting.cooking":
@@ -421,6 +422,12 @@ namespace Server.Tutorial
                     break;
             }
 
+            if (trial.LendFailed)
+            {
+                Unarm(trial);
+                return false;
+            }
+
             if (t.Products != null)
             {
                 foreach (var type in t.Products) { trial.ProductsBefore[type] = CountProduct(pm, type); }
@@ -456,6 +463,7 @@ namespace Server.Tutorial
             {
                 trial.HidingBefore = hiding.Base;
                 hiding.Base = Stealth.HidingRequirement;
+                TutorialLoanLedger.NoteHiding(pm, trial.HidingBefore); // cc-P610: saved, for a restart mid-lesson
             }
 
             var mark = new TutorialTrainingEcho(false, false) { TrialOwner = pm.Serial, Name = "a tutorial mark" };
@@ -505,8 +513,7 @@ namespace Server.Tutorial
             if (trial.HidingBefore >= 0)
             {
                 // Back to the player's own base, keeping whatever the lesson's hiding gained above the lent 30.
-                var hiding = trial.Player.Skills[SkillName.Hiding];
-                hiding.Base = trial.HidingBefore + Math.Max(0, hiding.Base - Stealth.HidingRequirement);
+                TutorialLoanLedger.GiveBackHiding(trial.Player, trial.HidingBefore);
                 trial.HidingBefore = -1;
             }
         }

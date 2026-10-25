@@ -289,7 +289,7 @@ var MINE = { you: 1, botyou: 1, decide: 1 };
 function whoKey(it) { return (it.who && it.who.key) || ''; }
 // cc-P146: the filter buttons, for an item or a decision (tools/playwhere.py primary() is the same rule), then the
 // Where chip and the Player sub-chip on top.
-var DEC_OPEN = { open: 1, later: 1, answered: 1 }, DEC_ASK = { open: 1, later: 1 };
+var DEC_OPEN = { open: 1, later: 1, answered: 1, archived: 1 }, DEC_ASK = { open: 1, later: 1 };
 function shown(it) { return shownPrimary(it) && whereMatch(it, where, chr); }
 function whereMatch(it, w, c) {
   if (!w) return true;
@@ -304,7 +304,7 @@ function shownPrimary(it) {
   if (it.kind === 'decision') {
     if (filter === 'open') return !!DEC_OPEN[it.state];
     if (filter === 'mine') return !!DEC_ASK[it.state];
-    if (filter === 'answered') return it.state === 'answered';
+    if (filter === 'answered') return it.state === 'answered' || (it.state === 'archived' && it.answerStatus === 'answered');
     return filter === 'all';
   }
   if (filter === 'answered') return false;
@@ -358,7 +358,12 @@ function render() {
     groups[g].forEach(function (it) { out.push(it.kind === 'decision' ? decisionCard(it) : card(it)); });
   });
   if (filter === 'answered' && out.length) out.unshift('<div class="copybar"><button type="button" id="copy-answers">Copy new answers</button><span id="answers-msg"></span></div><textarea id="answers-out" readonly hidden aria-label="New answers as text"></textarea>');
+  // cc-P610: the box being typed in keeps its focus and caret across the re-render (its text is a draft, below).
+  var typing = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute('data-k');
+  var caret = typing ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
   document.getElementById('list').innerHTML = out.length ? out.join('') : '<p class="empty">Nothing here.' + (filter === 'open' ? ' Every item has a result.' : '') + '</p>';
+  var again = typing && document.querySelector('#list textarea[data-k="' + typing + '"]');
+  if (again) { again.focus(); try { again.setSelectionRange(caret[0], caret[1]); } catch (x) {} }
   var svc = data.service || {};
   document.getElementById('foot').textContent = 'Data: testing/play-tests.json in shard-migration. Last import ' + (svc.lastImport || 'not yet') +
     (svc.lastImportError ? ', FAILED: ' + svc.lastImportError : '') + '. A prompt that says DONE appears within a minute.' +
@@ -393,6 +398,21 @@ document.getElementById('where-chips').addEventListener('click', function (e) {
   render();
 });
 function decisionById(id) { return (data.decisions || []).filter(function (d) { return d.id === id; })[0]; }
+// cc-P610 (P509 #4): what is typed in a decision's box is a draft, kept by the question's own key (qkey, not its place)
+// through every re-render (a Where chip, another card's save, a refresh) and in this browser; it goes only when its own
+// answer saves or Discard is pressed.
+var drafts = {};
+try { drafts = JSON.parse(localStorage.getItem('pt-drafts') || '{}') || {}; } catch (x) { drafts = {}; }
+function keepDrafts() { try { localStorage.setItem('pt-drafts', JSON.stringify(drafts)); } catch (x) {} }
+function hasDraft(d) { return d.qkey && Object.prototype.hasOwnProperty.call(drafts, d.qkey); }
+document.getElementById('list').addEventListener('input', function (e) {
+  var k = e.target.getAttribute && e.target.getAttribute('data-k');
+  if (!k) return;
+  drafts[k] = e.target.value;
+  keepDrafts();
+  var b = document.querySelector('button[data-d="discard"][data-k="' + k + '"]');
+  if (b) b.hidden = false;
+});
 function answerText(d) {
   var a = d.answer || {};
   var pick = a.choice === 'built' ? 'Keep what\'s built' : (a.choice || '');
@@ -417,6 +437,12 @@ function decisionCard(d) {
   if (d.state === 'elsewhere') h += '<div class="answer other">Answered elsewhere: ' + md(d.elsewhere) + (d.source ? ' (' + md(d.source) + ')' : '') + '</div>';
   if (d.state === 'moot') h += '<div class="answer other">Moot: ' + md(d.reason) + '</div>';
   if (d.state === 'noted') h += '<div class="answer other">An older deviation, never put as a question' + (d.reason ? ': ' + md(d.reason) : '') + '. You can still answer it.</div>';
+  // cc-P610 (P509 #2): an answer whose question is gone from the notes or reworded stays here, never on another question.
+  if (d.state === 'archived') {
+    h += '<div class="answer other">This question is gone from the notes or was reworded since you answered. Your answer: ' + esc(answerText(d)) + (a && a.by ? ' (' + esc(a.by) + ')' : '') + '. Check it still applies before it is taken.</div>';
+    if (d.answerStatus === 'answered') h += '<div class="actions"><button data-d="taken" data-i="' + esc(d.id) + '" title="For the overseer: the answer is in a prompt now">Taken into P...</button></div>';
+    return h + '</div>';
+  }
   if (d.state === 'taken' || d.state === 'moot') {
     if (d.state === 'taken') h += '<div class="actions"><button data-d="untake" data-i="' + esc(d.id) + '" title="For the overseer: put it back to answered">Not taken</button></div>';
     return h + '</div>';
@@ -427,8 +453,10 @@ function decisionCard(d) {
   });
   if (d.built) opts.push('<button data-d="built" data-i="' + esc(d.id) + '"' + (chosen === 'built' ? ' class="chosen"' : '') + '>Keep what\'s built</button>');
   if (opts.length) h += '<div class="opts">' + opts.join('') + '</div>';
-  h += '<textarea data-t="' + esc(d.id) + '" maxlength="2000" placeholder="Your answer in your own words (optional with a choice above)">' + esc(a && d.state === 'answered' ? a.text : '') + '</textarea>';
+  var saved = a && d.state === 'answered' ? a.text : '';
+  h += '<textarea data-t="' + esc(d.id) + '" data-k="' + esc(d.qkey || '') + '" maxlength="2000" placeholder="Your answer in your own words (optional with a choice above)">' + esc(hasDraft(d) ? drafts[d.qkey] : saved) + '</textarea>';
   h += '<div class="actions"><button class="pass" data-d="text" data-i="' + esc(d.id) + '">Save answer</button>';
+  h += '<button data-d="discard" data-i="' + esc(d.id) + '" data-k="' + esc(d.qkey || '') + '"' + (hasDraft(d) ? '' : ' hidden') + ' title="Put back the saved answer">Discard changes</button>';
   if (d.state !== 'later') h += '<button class="later" data-d="later" data-i="' + esc(d.id) + '">Ask me later</button>';
   if (d.state === 'answered') h += '<button data-d="taken" data-i="' + esc(d.id) + '" title="For the overseer: the answer is in a prompt now">Taken into P...</button>';
   return h + '</div></div>';
@@ -445,15 +473,20 @@ function decisionClick(b) {
     call = api('/api/decisions/answer', { id: id, choice: d.answer && d.state === 'answered' ? d.answer.choice : '', text: text });
   }
   else if (act === 'later') call = api('/api/decisions/later', { id: id });
+  else if (act === 'discard') { delete drafts[d.qkey]; keepDrafts(); render(); return; }
+  // cc-P610 (P509 #3): a take or an undo carries the answer as this page saw it; a stale one is refused.
   else if (act === 'taken') {
     var pr = window.prompt(id + ': taken into which prompt? (for example P150)', 'P');
     if (pr === null) return;
-    call = api('/api/decisions/taken', { ids: [id], prompt: pr.trim() });
+    var ex = {}; ex[id] = { rev: d.answer && d.answer.rev };
+    call = api('/api/decisions/taken', { ids: [id], prompt: pr.trim(), expect: ex });
   }
-  else if (act === 'untake') call = api('/api/decisions/taken', { ids: [id], undo: true });
+  else if (act === 'untake') { var ux = {}; ux[id] = { rev: d.answer && d.answer.rev, takenInto: d.answer && d.answer.takenInto }; call = api('/api/decisions/taken', { ids: [id], undo: true, expect: ux }); }
   if (!call) return;
   b.disabled = true;
-  call.then(load).catch(function (x) { b.disabled = false; window.alert('Not saved: ' + x.message); });
+  var saves = act === 'opt' || act === 'built' || act === 'text';
+  call.then(function () { if (saves) { delete drafts[d.qkey]; keepDrafts(); } return load(); })
+    .catch(function (x) { b.disabled = false; window.alert('Not saved: ' + x.message); });
 }
 document.getElementById('list').addEventListener('click', function (e) {
   if (e.target.id !== 'copy-answers') return;

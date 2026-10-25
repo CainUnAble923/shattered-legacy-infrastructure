@@ -1,0 +1,20 @@
+--- a/Projects/UOContent/Mobiles/BaseCreature.cs
++++ b/Projects/UOContent/Mobiles/BaseCreature.cs
+@@ -967,4 +967,8 @@
+ 
+         public virtual bool Commandable => true;
++
++        // Shattered Legacy (cc-P610): a controlled creature whose loyalty the hourly sweep leaves alone, so it never goes
++        // wild (Companions/BaseCompanion: companions never do). Ordinary pets keep stock loyalty.
++        public virtual bool KeepsLoyalty => false;
+ 
+         public virtual Poison HitPoison => null;
+@@ -6009,7 +6013,7 @@
+                 {
+                     c.OwnerAbandonTime = DateTime.MinValue;
+ 
+-                    if (c.Map != Map.Internal)
++                    if (c.Map != Map.Internal && !c.KeepsLoyalty)
+                     {
+                         c.Loyalty -= BaseCreature.MaxLoyalty / 10;
+ 

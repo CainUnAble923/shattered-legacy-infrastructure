@@ -29,6 +29,22 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.4
+
+### Fixed
+- Companions stay yours: they can no longer be transferred or traded away, they never turn wild from neglect, a companion with a weapon fights with its full damage right after a restart, and companions left out when you log off (or when the server restarts) are safely put away and come back when you log in, even while companions are switched off.
+- Unraveling a container breaks down exactly the items you approved: anything added or swapped in after the preview is left alone, blessed items are never unraveled, and nothing behind a locked chest is touched.
+- The tutorial's loaned cloth, logs, bow and arrows can no longer be cut, chopped, split or kept: the trainer takes back every piece, and after a restart your tithing points and Hiding are given back exactly.
+- The Outriders guildmaster's menu sells only when you are standing with a guildmaster, checks your pack has room before taking your gold, and refunds you if the item cannot be delivered. The tutorial vet no longer charges for a pet you walked away from.
+- The Exodus encounter finishes moving players out of Ver Lor Reg after a restart, and a restart cannot raise a second Exodus. Either Asclepius staff now adds its bonus to bandage healing, the Exodus rewards are worth cleanup points, and a revealed Exodus chest no longer stays open after a restart.
+- The Void Pool's Cauldron of Transmutation keeps its charges through a restart, every player who sets a new best battle score is recorded, the record battle keeps its scores, and a restart clears the old wave before the next battle starts.
+- If the server starts without the Rootdeep map, the way down into the Old Haven Burrows is closed instead of dropping you into the void; the ladder out always works. Young players stepping into the Burrows are warned they are leaving Young protection.
+- Extra jewelry worn in the League's accessory slots can always be taken off, follows the usual equipment rules, and counts toward level gear, imbuing effects, Fortune's Favor and the jewelry achievements.
+- Guessing wrong twice in a row on an Underworld puzzle board or a trap-training kit no longer stops the board working; a mini champion switched off by staff stays off after a restart; the magic key takes back its puzzle keys and boards from bags inside your pack.
+
+### Staff
+- The play-test page keeps each answer with its own question when notes change, shows an answer whose question was removed or reworded instead of hiding it, refuses a stale "Taken into" or "Not taken", and keeps what you were typing when the page refreshes.
+
 ## 2026.10.25.2
 
 ### Staff

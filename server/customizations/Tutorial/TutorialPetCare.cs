@@ -135,6 +135,14 @@ namespace Server.Mobiles
         /// <summary>ServUO VetResurrectGump's checks and effect, with the Young fee.</summary>
         public bool Resurrect(Mobile from, BaseCreature pet)
         {
+            // cc-P610 (P514's P475/P480 findings): checked again at the answer, not only at the offer. The offer stays open
+            // while the owner walks off with the ghost, dies or changes facet; then nothing is done and nothing is paid.
+            if (Deleted || from.Deleted || !from.Alive || pet.Deleted || from.Map != Map || pet.Map != Map || !from.InRange(this, 4))
+            {
+                from.SendMessage("Bring your pet's ghost to the vet in person to have it brought back.");
+                return false;
+            }
+
             var fee = TutorialPetCare.Fee(from, pet);
             if (!pet.IsDeadBondedPet)
             {

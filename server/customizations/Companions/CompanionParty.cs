@@ -138,11 +138,8 @@ public static class CompanionParty
     [OnEvent(nameof(PlayerMobile.PlayerLoginEvent))]
     public static void OnOwnerLogin(PlayerMobile owner)
     {
-        if (!CompanionSettings.Enabled)
-        {
-            return;
-        }
-
+        // cc-P610 (P487 #5): a companion that left with its owner comes back even when companions were disabled since:
+        // the setting stops companions leaving, never strands one that already left.
         ApplyFollowersMax(owner);
 
         foreach (var c in CompanionsOf(owner))
@@ -158,6 +155,40 @@ public static class CompanionParty
             c.IssueOrder(OrderType.Follow, owner, owner);
         }
     }
+
+    /// <summary>
+    /// cc-P610 (P487 #6): after a world load. A save taken while an owner was online keeps the companion in the world, not
+    /// away; the restart takes the owner offline without a Logout. Each such companion, alive or a ghost, goes away with
+    /// its offline owner now, as a logout would have taken it (stabled, so the dead-pet sweep leaves a ghost alone), and
+    /// comes back at the owner's login. Released companions have no master and roomed ones are internal already, so
+    /// neither is touched; a second run finds nothing to do.
+    /// </summary>
+    public static int ReconcileAfterLoad()
+    {
+        if (!CompanionSettings.Enabled)
+        {
+            return 0;
+        }
+
+        var owners = new HashSet<PlayerMobile>();
+        foreach (var m in World.Mobiles.Values)
+        {
+            if (m is BaseCompanion { Deleted: false, AwayWithOwner: false } c && c.ControlMaster is PlayerMobile { NetState: null } owner &&
+                c.Map != null && c.Map != Map.Internal)
+            {
+                owners.Add(owner);
+            }
+        }
+
+        foreach (var owner in owners)
+        {
+            OnOwnerLogout(owner);
+        }
+
+        return owners.Count;
+    }
+
+    public static void Initialize() => ReconcileAfterLoad();
 
     // --- staff commands -------------------------------------------------------------------------------------------------
 

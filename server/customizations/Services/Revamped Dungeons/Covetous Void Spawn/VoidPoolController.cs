@@ -770,18 +770,31 @@ public partial class VoidPoolController : Item
 
         PoolHits = PoolStartHits;
 
-        // ServUO: Active = reader.ReadBool() runs the setter; NextStart = now.
+        // ServUO: Active = reader.ReadBool() runs the setter; NextStart = now; ten seconds later the old spawn is
+        // cleared. cc-P610 (P489 #8): a player already inside could start a battle in those ten seconds, and the
+        // clear then deleted its first wave. No battle starts until the clear has run, on the first tick after the
+        // world has loaded; then the battle may start at once, as in ServUO.
         ApplyActive(_battleActive);
-        NextStart = Core.Now;
+        NextStart = DateTime.MaxValue;
 
-        Timer.DelayCall(
-            TimeSpan.FromSeconds(10),
-            () =>
-            {
-                ClearSpawn();
-                ClearSpawners();
-            }
-        );
+        Timer.DelayCall(ClearAfterLoad);
+    }
+
+    private void ClearAfterLoad()
+    {
+        if (Deleted)
+        {
+            return;
+        }
+
+        ClearSpawn();
+        ClearSpawners();
+        Waves?.Clear();
+
+        if (!OnGoing)
+        {
+            NextStart = Core.Now;
+        }
     }
 }
 
