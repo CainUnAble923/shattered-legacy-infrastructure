@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.17
+
+### Fixed
+- The Artificers' guildmaster and the Order's welcome message now tell it as it works: the Apprentice task pays your first Standing and Essence Shards, and what you can imbue, and how strongly, comes from the formula tiers you learn.
+
 ## 2026.10.24.16
 
 ### Fixed
