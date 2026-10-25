@@ -37,8 +37,12 @@
   (app\launch-options.json "overridesTimeLimitSeconds"). Past that the game starts with the last good art and the
   new art is used from the next start. Its trace is app\logs\overrides-<time>.log.
       -SkipArtRebuild      start with the art as it is now, checking and rebuilding nothing (Play-Skip-Art.bat)
+      -ArtHandoff          (cc-P611) the updater already waited for the rebuild that is still running: not again
 
   Every launch is written to app\logs\launch-<time>.log (the last 10 are kept), to send Chase when something is wrong.
+
+  Test hook (never set on a player's machine): SL_PLAY_SERVER=127.0.0.1:<port> checks and connects to that loopback
+  port instead of the shard (cc-P611: Launch-Overrides.Tests.ps1's sandboxes, so a test never reaches a server).
 
   Safe to re-run. The saved username and password in each settings file are kept; only
   the server, the port and the client folder are rewritten. The live shard and the test
@@ -52,7 +56,7 @@
 param([switch]$Lan, [switch]$Test, [string]$Account, [string]$UoPath, [string]$ClientDir,
       [switch]$NoUpdate, [switch]$Update, [string]$UpdateBase = 'https://get.shatteredlegacyuo.com',
       [ValidateSet('sfw', 'topless', 'nude')][string]$PaperdollBodies, [string]$PaperdollFolder,
-      [switch]$NoScripts, [switch]$SkipArtRebuild)
+      [switch]$NoScripts, [switch]$SkipArtRebuild, [switch]$ArtHandoff)
 
 $ErrorActionPreference = 'Stop'
 $app   = $PSScriptRoot
@@ -78,6 +82,7 @@ if ($PSBoundParameters.ContainsKey('ClientDir')) { $targetArgs.ClientDir = $Clie
 try { $target = Get-LaunchTarget @targetArgs }
 catch { Write-Host "  $($_.Exception.Message)" -ForegroundColor Red; exit 1 }
 $server = $target.Server; $port = $target.Port; $settingsName = $target.SettingsName; $label = $target.Label
+if ([string]$env:SL_PLAY_SERVER -match '^(127\.0\.0\.1):(\d{1,5})$') { $server = $Matches[1]; $port = [int]$Matches[2]; $target.Server = $server; $target.Port = $port }
 # cc-P411: every target is the test shard now, with or without -Test (the updater is told -Test either way).
 $Test = [switch]$true
 $settingsPath = Join-Path $taz $settingsName
@@ -354,7 +359,7 @@ try {
         if (Test-Path -LiteralPath $cur) { $uoOverride = $cur }
         Write-Host "  -SkipArtRebuild: starting with the art as it is now$(if (-not $uoOverride) { ' (none built yet)' }), nothing checked." -ForegroundColor Yellow
     } else {
-        $uoOverride = Invoke-UoOverrides -App $app -UoDir $uoDir
+        $uoOverride = Invoke-UoOverrides -App $app -UoDir $uoDir -NoWaitForRunning:$ArtHandoff
     }
 } catch {
     Write-Host "  Shattered Legacy art could not be prepared ($($_.Exception.Message)). Starting without it." -ForegroundColor Yellow

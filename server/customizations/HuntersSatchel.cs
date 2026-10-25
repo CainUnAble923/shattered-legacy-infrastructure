@@ -173,6 +173,36 @@ public partial class HuntersSatchel : Container
         return base.OnDragDrop(from, dropped);
     }
 
+    // cc-P611 (P554 #1, P556 U3): every other way in asks here, so the rule holds there too: a drop onto the open
+    // satchel's contents (OnDragDropInto), a stack, and a bag already inside (pinned Container.CheckHold walks up the
+    // parents with the item going in). Inside the League Field Satchel, the base check then reaches its allowance.
+    public override bool CheckHold(Mobile m, Item item, bool message, bool checkItems, int plusItems, int plusWeight)
+    {
+        if (!Accepts(item))
+        {
+            if (message)
+                m?.SendMessage(0x22, "That does not belong in a Hunter's Satchel.");
+            return false;
+        }
+        return base.CheckHold(m, item, message, checkItems, plusItems, plusWeight);
+    }
+
+    // cc-P611: hides dropped onto the open satchel are cut too, as by the other drops.
+    public override bool OnDragDropInto(Mobile from, Item item, Point3D p)
+    {
+        if (item is BaseHides hides && ConvertHidesToLeather(hides) is { } leather)
+        {
+            var success = base.OnDragDropInto(from, leather, p);
+            if (success)
+                hides.Delete();
+            else
+                leather.Delete();
+            return success;
+        }
+
+        return base.OnDragDropInto(from, item, p);
+    }
+
     // cc-P70 (F-33): from tier 3, "Unload" sends the satchel's contents to the owner's mule.
     public override void GetContextMenuEntries(Mobile from, ref Server.Collections.PooledRefList<Server.ContextMenus.ContextMenuEntry> list)
     {

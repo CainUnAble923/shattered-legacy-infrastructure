@@ -6,7 +6,8 @@
       Build-UoOverrides.ps1 -UoDir <Ultima Online folder>
       Build-UoOverrides.ps1 -UoDir <dir> -Records <json> -Clilocs <json> -OutDir <dir>      (tests)
       Build-UoOverrides.ps1 -UoDir <dir> -CheckOnly       (cc-P411) only compares the stamps: returns
-                                                          { Fresh, Stale, List }, builds nothing
+                                                          { Fresh, Stale, Failed, List }, builds nothing
+                                                          and writes nothing (cc-P611)
       Build-UoOverrides.ps1 -UoDir <dir> -OutDir <staging> -ListDir <final> -TraceLog <log> -ProgressFile <json>
                             -ReadyFile <file>             (cc-P411) the rebuild Overrides-Launch.ps1 runs in a child:
                                                           into a staging folder whose list already names the final
@@ -18,7 +19,15 @@
   attributes (an Offline or RecallOnDataAccess attribute is a cloud placeholder that downloads on read).
   The last 10 logs are kept. -ProgressFile is rewritten at most four times a second with the step, a count
   for it and the seconds so far, for the progress bar. Test hook (never set on a player's machine):
-  SL_OVERRIDES_SLOW=<step>:<seconds> makes that step take that long, still reporting progress.
+  SL_OVERRIDES_SLOW=<step>:<seconds> makes that step take that long, still reporting progress (with -CheckOnly,
+  only the step "check").
+
+  cc-P611 (P549 #1, #4, P556 U2): -CheckOnly reads and never writes: not the list, not a stamp, not a ready file. A
+  part whose check fails is in Failed, and the answer is Fresh only when the list this run would write is the list
+  already there, byte for byte (a part that failed this time and was in the list is a rebuild, not a shorter list).
+  Every step's start is traced ("step <name>") before its work, and its seconds after. The map patch is read and
+  counted in its own step (map.parse) and stamped in another (map.stamp), the animation files are hashed in
+  equip.check and the art's inputs in art.check, so the bar names the work that is taking the time.
 
   Writes the path of files-override.txt to the pipeline, which Play.ps1 hands TazUO as
   -uofilesoverride, or $null when the game should start without one. It never throws: anything
@@ -144,6 +153,7 @@ if (-not $Music)   { $Music   = Join-Path $PSScriptRoot 'music' }
 if (-not $ListDir) { $ListDir = $OutDir }
 $ListRoot = [IO.Path]::GetFullPath($ListDir)
 $script:Stale = New-Object 'System.Collections.Generic.List[string]'
+$script:Failed = New-Object 'System.Collections.Generic.List[string]'   # cc-P611: the parts whose check failed
 
 $LandBytes   = 512 * (4 + 32 * 30)
 $StaticGroup = 4 + 32 * 41
@@ -160,6 +170,8 @@ function Get-TileOffset([int]$id) { $LandBytes + [Math]::Floor($id / 32) * $Stat
 function Get-AnimOffset([int]$id) { $id * $AnimEntry + 4 * ([Math]::Floor($id / 8) + 1) }
 
 function Say-Skip([string]$m) { Write-Host "  $m" -ForegroundColor Yellow; Write-Trace "said: $m" }
+# cc-P611: a part that could not be prepared (or, with -CheckOnly, checked).
+function Skip-Part([string]$part, [string]$m) { $script:Failed.Add($part); Say-Skip $m }
 
 # cc-P411: the trace (one line per step with its seconds) and the progress file the launcher's bar reads.
 $script:RunClock = [Diagnostics.Stopwatch]::StartNew()
@@ -187,10 +199,11 @@ function Start-Step([string]$name) {
     Stop-Step
     $script:StepName = $name
     $script:StepClock = [Diagnostics.Stopwatch]::StartNew()
+    Write-Trace "step $name"   # cc-P611: before its work, so a step that never ends is still in the trace
     Write-StepProgress -Force
     # The test hook: this step takes the given seconds, reporting progress meanwhile.
     $h = [string]$env:SL_OVERRIDES_SLOW
-    if ($h -and $h -match '^([a-z.-]+):(\d+)$' -and $Matches[1] -eq $name) {
+    if ($h -and $h -match '^([a-z.-]+):(\d+)$' -and $Matches[1] -eq $name -and ($name -eq 'check') -eq [bool]$CheckOnly) {
         $sec = [int]$Matches[2]
         $w = [Diagnostics.Stopwatch]::StartNew()
         while ($w.Elapsed.TotalSeconds -lt $sec) { Start-Sleep -Milliseconds 100; Write-StepProgress ([long]$w.Elapsed.TotalSeconds) $sec }
@@ -304,6 +317,7 @@ function Build-Art {
     $stampOut = Join-Path $OutDir 'stamp.txt'
     $lines = { "tiledata.mul=$(Join-Path $ListRoot 'tiledata.mul')"; "animdata.mul=$(Join-Path $ListRoot 'animdata.mul')" }
 
+    Start-Step 'art.check'   # cc-P611: hashing the records
     $stamp = Get-Stamp $tileSrc $animSrc $Records
 
     # --- nothing changed: done ---------------------------------------------------------------
@@ -425,6 +439,7 @@ function Build-EquipAnim {
         if (Test-Path -LiteralPath $mtOut) { "mobtypes.txt=$(Join-Path $ListRoot 'mobtypes.txt')" }
     }
     $hash = { param($p) (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash }
+    Start-Step 'equip.check'   # cc-P611: hashing both animation files, before the equip step itself
     $stamp = "$EquipStampFormat`nBodyconv.def $(Get-FileStamp $bcSrc)`nmobtypes.txt $(Get-FileStamp $mtSrc)`nrecords $(& $hash $Records)`nanim $(& $hash $AnimMul) $(& $hash $AnimIdx)"
 
     if ((Test-Path -LiteralPath $stampOut) -and (Test-Path -LiteralPath $bcOut) -and
@@ -885,6 +900,7 @@ function Build-Map {
 
 try {
     Write-TraceHeader
+    if ($CheckOnly) { Start-Step 'check' }
     # TazUO splits each override line on '=' and needs exactly two parts (UOFilesOverrideMap.Load).
     if ($OutDir.Contains('=') -or $ListRoot.Contains('=')) { throw "the game folder's path has an '=' in it, which TazUO cannot read in an override list" }
     $listOut = Join-Path $OutDir 'files-override.txt'
@@ -892,37 +908,47 @@ try {
 
     $art = @()
     try { $art = @(Build-Art | Where-Object { $_ }) }
-    catch { Say-Skip "Shattered Legacy art could not be prepared ($($_.Exception.Message)). Starting without it." }
+    catch { Skip-Part 'art' "Shattered Legacy art could not be prepared ($($_.Exception.Message)). Starting without it." }
     $lines += $art
 
     # The worn-item animations only mean something through the tiledata copy (it is what names each Animation
     # number), so without the art part they are left out too, with no second line.
     if ($art.Count) {
         try { $lines += @(Build-EquipAnim) }
-        catch { Say-Skip "Shattered Legacy worn-item art could not be prepared ($($_.Exception.Message)). Starting without it." }
+        catch { Skip-Part 'equip' "Shattered Legacy worn-item art could not be prepared ($($_.Exception.Message)). Starting without it." }
     }
 
     try { $lines += @(Build-Cliloc) }
-    catch { Say-Skip "Shattered Legacy text could not be prepared ($($_.Exception.Message)). Starting without it." }
+    catch { Skip-Part 'cliloc' "Shattered Legacy text could not be prepared ($($_.Exception.Message)). Starting without it." }
 
     try { $lines += @(Build-Skills) }
-    catch { Say-Skip "Shattered Legacy skill names could not be prepared ($($_.Exception.Message)). Starting without them." }
+    catch { Skip-Part 'skills' "Shattered Legacy skill names could not be prepared ($($_.Exception.Message)). Starting without them." }
 
     try { $lines += @(Build-Map) }
-    catch { Say-Skip "Shattered Legacy map (the Rootdeep Burrows) could not be prepared ($($_.Exception.Message)). Starting without it." }
+    catch { Skip-Part 'map' "Shattered Legacy map (the Rootdeep Burrows) could not be prepared ($($_.Exception.Message)). Starting without it." }
 
     try { $lines += @(Build-Music) }
-    catch { Say-Skip "Shattered Legacy music could not be prepared ($($_.Exception.Message)). Starting without it." }
+    catch { Skip-Part 'music' "Shattered Legacy music could not be prepared ($($_.Exception.Message)). Starting without it." }
 
     $lines = @($lines | Where-Object { $_ })
-    # cc-P411: -CheckOnly says what is out of date and builds nothing; the list is the current one.
-    if ($CheckOnly -and $script:Stale.Count) { return [pscustomobject]@{ Fresh = $false; Stale = @($script:Stale); List = $null } }
+    $list = "# Made by Build-UoOverrides.ps1 from this computer's own Ultima Online files. Never shipped.`r`n" +
+            (($lines | ForEach-Object { "$_`r`n" }) -join '')
+    # cc-P411: -CheckOnly says what is out of date and builds nothing. cc-P611: and writes nothing. Fresh only when the
+    # list a rebuild would write is the one already there (none, when no part has lines).
+    if ($CheckOnly) {
+        $have = $(if (Test-Path -LiteralPath $listOut) { [IO.File]::ReadAllText($listOut) } else { $null })
+        if (-not $script:Stale.Count) {
+            if ($lines.Count -eq 0 -and $null -eq $have) { return [pscustomobject]@{ Fresh = $true; Stale = @(); Failed = @($script:Failed); List = $null } }
+            if ($lines.Count -gt 0 -and $have -ceq $list) { return [pscustomobject]@{ Fresh = $true; Stale = @(); Failed = @($script:Failed); List = (Join-Path $ListRoot 'files-override.txt') } }
+            $script:Stale.Add('list')
+        }
+        return [pscustomobject]@{ Fresh = $false; Stale = @($script:Stale); Failed = @($script:Failed); List = $null }
+    }
     $done = {
         param($result)
         Stop-Step
         Write-Trace ('total {0} s' -f ($script:RunClock.Elapsed.TotalSeconds.ToString('0.000', $script:Inv)))
         if ($ReadyFile) { [IO.File]::WriteAllText($ReadyFile, "ready $result`r`n", (New-Object Text.ASCIIEncoding)) }
-        if ($CheckOnly) { return [pscustomobject]@{ Fresh = $true; Stale = @(); List = $result } }
         $result
     }
     if ($lines.Count -eq 0) {
@@ -930,8 +956,6 @@ try {
         return (& $done $null)
     }
 
-    $list = "# Made by Build-UoOverrides.ps1 from this computer's own Ultima Online files. Never shipped.`r`n" +
-            (($lines | ForEach-Object { "$_`r`n" }) -join '')
     # UTF-8 without a BOM: the path may not be ASCII, and TazUO reads the list with a default StreamReader.
     if (-not (Test-Path -LiteralPath $listOut) -or [IO.File]::ReadAllText($listOut) -cne $list) {
         if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
@@ -941,6 +965,7 @@ try {
     return (& $done (Join-Path $ListRoot 'files-override.txt'))
 } catch {
     Say-Skip "Shattered Legacy art and text could not be prepared ($($_.Exception.Message)). Starting without them."
-    if ($CheckOnly) { return [pscustomobject]@{ Fresh = $true; Stale = @(); List = $null } }
+    # cc-P611: a check that failed is not an answer that all is well.
+    if ($CheckOnly) { return [pscustomobject]@{ Fresh = $false; Stale = @(); Failed = @('check'); List = $null } }
     return $null
 }

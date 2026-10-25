@@ -330,6 +330,7 @@ if ($Stage -and (Test-Path -LiteralPath $Stage)) {
 # --- 6. the art for the new package (cc-P411) -----------------------------------------------
 # Only after a good update, only when this computer's Ultima Online folder is known (Setup.ps1 has run), and never
 # able to stop the game starting: anything wrong here is one line, and Play.ps1 tries again.
+$artHandoff = $false
 $prep = Join-Path $root 'app\Overrides-Launch.ps1'
 $uoTxt = Join-Path $root 'app\uo-path.txt'
 if ($ok -and (Test-Path -LiteralPath $prep) -and (Test-Path -LiteralPath $uoTxt)) {
@@ -338,6 +339,8 @@ if ($ok -and (Test-Path -LiteralPath $prep) -and (Test-Path -LiteralPath $uoTxt)
         if ($uoDir -and (Test-Path -LiteralPath $uoDir)) {
             . $prep
             $null = Invoke-UoOverrides -App (Join-Path $root 'app') -UoDir $uoDir -Reason update
+            # cc-P611 (P411 review): it ran out of time and carries on; the game is not made to wait for it again.
+            $artHandoff = [bool]$script:OverridesStillBuilding
         }
     } catch { Say "Shattered Legacy art is prepared when the game starts instead ($($_.Exception.Message))." Yellow }
 }
@@ -352,6 +355,7 @@ $playArgs = @('-NoUpdate')
 if ($Test) { $playArgs += '-Test' }
 if ($Lan)  { $playArgs += '-Lan' }
 if ($Account) { $playArgs += @('-Account', $Account) }
+if ($artHandoff) { $playArgs += '-ArtHandoff' }
 Write-Host ''
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'app\Play.ps1') @playArgs
 if ($LASTEXITCODE -ne 0) { Read-Host '  Press Enter to close' | Out-Null }

@@ -132,6 +132,11 @@ public static class ClusterFCustodianSystem
         // cc-P33: a player's corpse holds their belongings and is never litter.
         if (item is Corpse { Owner: PlayerMobile }) return false;
 
+        // cc-P611 (P547 #1): nor is a bonded pet's. Its ghost lives on (pinned BaseCreature.OnDeath) and the corpse keeps
+        // its owner and the pet its bond through a save (Corpse._owner, BaseCreature.IsBonded), so the rule holds after a
+        // restart. A pet released or deleted since is no longer bonded, and its corpse is an ordinary monster's.
+        if (item is Corpse { Owner: BaseCreature { IsBonded: true } }) return false;
+
         // Monster corpses are always eligible regardless of name or contents.
         if (item is Corpse) return true;
 
@@ -362,7 +367,10 @@ public static class ClusterFCustodianSystem
     /// "Clear a corpse": one corpse, by CleanupOne. A corpse that still holds items asks first (unless
     /// <paramref name="confirmed"/>), because they go with it. Returns true if cleared.
     /// </summary>
-    public static bool ClearCorpse(PlayerMobile pm, Item targeted, bool confirmed = false)
+    // cc-P611 (P547 #3): stillAllowed (the trash bag's own check) is asked again when the warning
+    // is accepted; if it fails, nothing is cleared.
+    public static bool ClearCorpse(PlayerMobile pm, Item targeted, bool confirmed = false,
+        Func<PlayerMobile, bool> stillAllowed = null)
     {
         if (targeted is not Corpse corpse || corpse.Deleted)
         {
@@ -387,9 +395,9 @@ public static class ClusterFCustodianSystem
                 320, 200,
                 ok =>
                 {
-                    if (ok && World.FindItem(serial) is Corpse again)
+                    if (ok && StillAllowed(pm, stillAllowed) && World.FindItem(serial) is Corpse again)
                     {
-                        ClearCorpse(pm, again, confirmed: true);
+                        ClearCorpse(pm, again, confirmed: true, stillAllowed);
                     }
                 }
             ));
@@ -429,7 +437,11 @@ public static class ClusterFCustodianSystem
     /// by ComputePoints, on the [cleanupall cooldown. If any still holds items it asks first (unless
     /// <paramref name="confirmed"/>). Returns the number of corpses cleared.
     /// </summary>
-    public static int ClearCorpsesNearby(PlayerMobile pm, bool confirmed = false)
+    // cc-P611 (P547 #2, #3): the warning approves only the corpses it counted, on the facet it was opened on. Accepted,
+    // those still in reach and still the player's to clear go (ClearApproved); a corpse that died or became clearable
+    // meanwhile waits for the next use. stillAllowed (the trash bag's own check) is asked again.
+    public static int ClearCorpsesNearby(PlayerMobile pm, bool confirmed = false,
+        Func<PlayerMobile, bool> stillAllowed = null)
     {
         if (OnSweepCooldown(pm, "Clearing corpses")) return 0;
 
@@ -449,6 +461,8 @@ public static class ClusterFCustodianSystem
 
         if (!confirmed && items > 0)
         {
+            var map = pm.Map;
+            var approved = corpses.ConvertAll(c => c.Serial);
             pm.SendGump(new WarningGump(
                 $"{corpses.Count} corpse{(corpses.Count == 1 ? "" : "s")} nearby still hold {items} " +
                 $"item{(items == 1 ? "" : "s")}. Clearing deletes the corpses and everything inside them, for good. " +
@@ -456,13 +470,65 @@ public static class ClusterFCustodianSystem
                 320, 200,
                 ok =>
                 {
-                    if (ok)
+                    if (ok && StillAllowed(pm, stillAllowed))
                     {
-                        ClearCorpsesNearby(pm, confirmed: true);
+                        ClearApproved(pm, map, approved);
                     }
                 }
             ));
             return 0;
+        }
+
+        return ClearAll(pm, corpses);
+    }
+
+    // cc-P611: the corpses a nearby warning counted, each still on its facet, in reach and the player's to clear.
+    private static int ClearApproved(PlayerMobile pm, Map map, List<Serial> approved)
+    {
+        if (OnSweepCooldown(pm, "Clearing corpses")) return 0;
+
+        if (pm.Map != map)
+        {
+            pm.SendMessage(0x22, "You are no longer where you looked those corpses over. Nothing was cleared.");
+            return 0;
+        }
+
+        var corpses = new List<Corpse>();
+        foreach (var serial in approved)
+        {
+            if (World.FindItem(serial) is Corpse corpse && corpse.Map == map &&
+                pm.InRange(corpse.GetWorldLocation(), CleanupAllRadius) && CanClear(corpse, pm))
+            {
+                corpses.Add(corpse);
+            }
+        }
+
+        if (corpses.Count == 0)
+        {
+            pm.SendMessage(0x22, "None of those corpses are in reach for you to clear now. Nothing was cleared.");
+            return 0;
+        }
+
+        return ClearAll(pm, corpses);
+    }
+
+    private static bool StillAllowed(PlayerMobile pm, Func<PlayerMobile, bool> stillAllowed)
+    {
+        if (stillAllowed == null || stillAllowed(pm))
+        {
+            return true;
+        }
+
+        pm.SendMessage(0x22, "Your trash bag is no longer in your backpack. Nothing was cleared.");
+        return false;
+    }
+
+    private static int ClearAll(PlayerMobile pm, List<Corpse> corpses)
+    {
+        var items = 0;
+        foreach (var corpse in corpses)
+        {
+            items += CountContents(corpse);
         }
 
         var total = 0.0;

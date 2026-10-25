@@ -191,7 +191,7 @@ public partial class TrashBag : Container
         {
             if (!_bag.InOwnersPack(_pm)) return;
 
-            ClusterFCustodianSystem.ClearCorpsesNearby(_pm);
+            ClusterFCustodianSystem.ClearCorpsesNearby(_pm, stillAllowed: _bag.InOwnersPack); // cc-P611: and on acceptance
         }
     }
 
@@ -205,7 +205,7 @@ public partial class TrashBag : Container
         {
             if (from is not PlayerMobile pm || !_bag.InOwnersPack(pm)) return;
 
-            ClusterFCustodianSystem.ClearCorpse(pm, targeted as Item);
+            ClusterFCustodianSystem.ClearCorpse(pm, targeted as Item, stillAllowed: _bag.InOwnersPack); // cc-P611: and on acceptance
         }
     }
 }

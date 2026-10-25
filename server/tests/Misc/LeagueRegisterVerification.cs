@@ -22,6 +22,8 @@
 //      repair is for worn gear only (Chase, 10-22); resources reach a guild satchel inside the Field Satchel; a full
 //      satchel is accepted, a fifth refused, and a refused drop costs nothing; a full pack takes nothing and drops
 //      nothing; the bank counts a Field Satchel's contents; a nested deed is turned in; the items save and load.
+//  11. cc-P611 (P554 #1, P556 U3): a Hunter's Satchel takes only its resources by every drop route (onto its open
+//      contents, into a bag inside it, nested in the Field Satchel or loose), and hides dropped there are still cut.
 
 using System;
 using System.Collections.Generic;
@@ -637,6 +639,77 @@ public class LeagueRegisterVerification
         ballast.Delete();
         Assert.True(field.OnDragDrop(c.Pm, lumber));
         Assert.Equal(foresters - 50, c.Guild.GetCurrency("foresters"));
+    }
+
+    // cc-P611 (P554 #1, P556 U3): a Hunter's Satchel takes only its resources by every drop route, nested in the Field
+    // Satchel or not: a drop onto an open satchel's contents and a drop into a bag inside it, not only a drop on the icon.
+    [Fact]
+    public void AHuntersSatchelAdmitsOnlyItsResourcesByEveryRoute()
+    {
+        using var c = new Citizen("Bronze", "rangers");
+        var field = c.Put(new LeagueFieldSatchel());
+        c.Guild.AddCurrency("rangers", 100);
+        var hunters = new HuntersSatchel();
+        Assert.True(field.OnDragDrop(c.Pm, hunters));
+        var child = new Bag();
+        hunters.DropItem(child); // an older bag already inside (setup, not the path under test)
+        var loose = c.Put(new HuntersSatchel()); // the same rule outside the Field Satchel
+        var pack = c.Pm.Backpack;
+
+        // Each item starts in the pack and is lifted, as Mobile.Lift leaves it, then dropped.
+        Item Lifted(Item item)
+        {
+            pack.DropItem(item);
+            item.RecordBounce();
+            item.Internalize();
+            return item;
+        }
+
+        var admitted = new List<string>();
+        foreach (var make in new Func<Item>[] { () => new Gold(500), () => new Longsword(), () => new Bag() })
+        {
+            foreach (var (name, drop) in new (string, Func<Item, bool>)[]
+                     {
+                         ("into the nested satchel", i => hunters.OnDragDropInto(c.Pm, i, new Point3D(30, 30, 0))),
+                         ("into its inner bag", i => child.OnDragDropInto(c.Pm, i, new Point3D(30, 30, 0))),
+                         ("on its inner bag", i => child.OnDragDrop(c.Pm, i)),
+                         ("into a loose satchel", i => loose.OnDragDropInto(c.Pm, i, new Point3D(30, 30, 0))),
+                     })
+            {
+                var item = Lifted(make());
+                var (serial, amount) = (item.Serial, item.Amount);
+                var (items, weight, gold) = (pack.TotalItems, pack.TotalWeight, pack.TotalGold);
+                var took = drop(item);
+                _out.WriteLine($"{item.GetType().Name} {name}: {(took ? "TAKEN" : "refused")}");
+                if (took || item.Parent != null || item.Serial != serial || item.Amount != amount || item.Deleted ||
+                    pack.TotalItems != items || pack.TotalWeight != weight || pack.TotalGold != gold)
+                {
+                    admitted.Add($"{item.GetType().Name} {name}");
+                }
+
+                item.Delete();
+            }
+        }
+
+        Assert.Empty(admitted); // each entry was let in, or changed by a refusal
+
+        // Its own resources still go in by those routes, and hides are cut into leather on the way.
+        var leather = Lifted(new Leather(10));
+        Assert.True(hunters.OnDragDropInto(c.Pm, leather, new Point3D(40, 40, 0)));
+        Assert.Same(hunters, leather.Parent);
+        var bones = Lifted(new Bone(4));
+        Assert.True(child.OnDragDropInto(c.Pm, bones, new Point3D(40, 40, 0)));
+        Assert.Same(child, bones.Parent);
+        var hides = Lifted(new SpinedHides(6));
+        Assert.True(hunters.OnDragDropInto(c.Pm, hides, new Point3D(50, 50, 0)));
+        Assert.True(hides.Deleted);
+        var cut = hunters.FindItemByType<SpinedLeather>(false);
+        Assert.NotNull(cut);
+        Assert.Equal(6, cut.Amount);
+        Assert.Same(hunters, cut.Parent);
+        var feathers = Lifted(new Feather(20));
+        Assert.True(loose.OnDragDropInto(c.Pm, feathers, new Point3D(40, 40, 0)));
+        Assert.Same(loose, feathers.Parent);
     }
 
     // cc-P451 (P418 #6): the one-item discount is for the owner's backpack only; banks and other containers count it all.

@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.6
+
+### Fixed
+- A Hunter's Satchel takes only hides, leather, bones, wool, feathers and raw meat however they go in: dropped into its open window or into a bag inside it, as well as onto the satchel. Hides dropped into its open window are cut into leather too.
+- A trash bag never clears a bonded pet's corpse.
+- "Clear corpses nearby" clears only the corpses its warning counted. If you move away, change facet or put your trash bag away before saying yes, nothing is cleared.
+
+### Staff
+- The launcher (with the next player package): a check that cannot read a file no longer throws away the art list the game starts with; two starts at once share one rebuild; the time limit now covers putting the new art in place, and an art set left half swapped is put back; the progress bar names the map patch while it is read; after an update that ran out of time, the game no longer waits for the art a second time.
+
 ## 2026.10.25.5
 
 ### Fixed
