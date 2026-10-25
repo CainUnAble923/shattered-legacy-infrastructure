@@ -23,12 +23,12 @@ namespace Server.Items;
 // Tier progression - Metal Familiarity bonuses (one per tier):
 //   T1 - D: Use cost reduction   - up to 20% chance to refund a hammer use per forge
 //   T2 - C: Skill bonus          - cross-metal familiarity drives a real SkillMod (+2.5 BS max)
-//   T3 - B: Resource efficiency  - familiar metals waste fewer ingots (STUB - implement with T3)
+//   T3 - B: Resource efficiency  - familiar metals waste fewer ingots, up to 25% (cc-P168), and Craft This Order
 //   T4 - A: Exceptional quality  - familiar metals get bonus exceptional chance  (STUB - implement with T4)
 //
-// Familiarity is serialized (persistent across restarts) and transferred on upgrade. Caps: 1,000 a metal (T1) and
-// 2,500 (T2); each successful craft rolls to gain (HammerFamiliarityPace, cc-P55 Part A). Stored values are kept.
-// T3+T3 -> T4 combination: call MergeFamiliarity on the T4 instance with both T3 snapshots.
+// Familiarity is serialized (persistent across restarts) and transferred on upgrade. Caps: 1,000 a metal (T1),
+// 2,500 (T2) and 5,000 (T3); each successful craft rolls to gain (HammerFamiliarityPace, cc-P55 Part A). Stored values
+// are kept. T3+T3 -> T4 combination: call MergeFamiliarity on the T4 instance with both T3 snapshots.
 //
 // Serialization (manual - no source generator, to support Dictionary<int,int>):
 //   v0 (legacy generator format): bool _exhausted + long _lastRegenAtTicks (no familiarity)
@@ -916,6 +916,406 @@ public partial class ReinforcedHammerOfHephaestus : SmithHammer
 }
 
 // -----------------------------------------------------------------------------
+// Tier 3 - Masterwork Hammer of Hephaestus (cc-P168, Chase 2026-10-18)
+//
+// A step above T2 in each number: 800 uses (T2 400), regenerating one every 10 minutes (T2 15), +15 Blacksmithy held
+// (T2 +10), familiarity cap 5,000 a metal (T2 2,500). Familiarity carries over from T2 at the guildmaster.
+//
+// T3 Bonus - B: resource efficiency. A successful craft in a familiar metal gives back part of that craft's metal:
+//   saved = ingots used x (familiarity / FamCap) x MaxSaving (25% at the cap)
+// The whole part of `saved` always comes back and its fraction is a chance at one more ingot (Utility.RandomDouble).
+// A metal at 0 familiarity saves nothing. Only the craft's metal counts (its first resource, the ingots), never a
+// second resource, and a failed craft (which uses half, CraftItem.ConsumeRes) is not refunded.
+//
+// T3 replaces T2's familiarity SkillMod as T2 replaced T1's refund: one bonus per tier. The Craft this order use
+// (ClusterFCraftOrder.cs) is T3's too.
+// -----------------------------------------------------------------------------
+
+public partial class MasterworkHammerOfHephaestus : SmithHammer
+{
+    private const int    FunctionalHue    = 0x0501;
+    private const int    ExhaustedHue     = 0x0415;
+    public  const int    MaxUses          = 800;
+    private const int    RegenMinutes     = 10;
+    public  const int    FamCap           = 5000; // per metal
+    public  const double BaseSkillBonus   = 15.0;
+    private const string RegKey           = "legacy.masterwork_hammer_of_hephaestus";
+
+    // T3 Bonus - B: resource efficiency, the share of a craft's ingots saved at the cap
+    public const double MaxSaving = 0.25;
+
+    // -- State -----------------------------------------------------------------
+
+    private bool                  _exhausted;
+    private long                  _lastRegenAtTicks;
+    private Dictionary<int, int>  _metalFamiliarity = new();
+    private SkillMod?             _baseSkillMod; // NOT serialized - transient, fixed +15 base
+
+    // -- Constructor -----------------------------------------------------------
+
+    [Constructible]
+    public MasterworkHammerOfHephaestus() : base(MaxUses)
+    {
+        Name              = "Masterwork Hammer of Hephaestus";
+        LootType          = LootType.Blessed;
+        Hue               = FunctionalHue;
+        _lastRegenAtTicks = DateTime.UtcNow.Ticks;
+    }
+
+    // Required by ModernUO world-load deserializer
+    public MasterworkHammerOfHephaestus(Serial serial) : base(serial) { }
+
+    // -- Properties ------------------------------------------------------------
+
+    public override bool BreakOnDepletion => false;
+    public          bool Exhausted        => _exhausted;
+
+    // -- Serialization (manual, T2's shape) ------------------------------------
+
+    public override void Serialize(IGenericWriter writer)
+    {
+        base.Serialize(writer);
+        writer.Write(0); // version
+
+        writer.Write(_exhausted);
+        writer.Write(_lastRegenAtTicks);
+
+        writer.Write(_metalFamiliarity.Count);
+        foreach (var (k, v) in _metalFamiliarity)
+        {
+            writer.Write(k);
+            writer.Write(v);
+        }
+    }
+
+    public override void Deserialize(IGenericReader reader)
+    {
+        base.Deserialize(reader);
+        var version = reader.ReadInt();
+
+        switch (version)
+        {
+            case 0:
+                _exhausted        = reader.ReadBool();
+                _lastRegenAtTicks = reader.ReadLong();
+                var count         = reader.ReadInt();
+                _metalFamiliarity = new Dictionary<int, int>(count);
+                for (var i = 0; i < count; i++)
+                    _metalFamiliarity[reader.ReadInt()] = reader.ReadInt();
+                break;
+        }
+
+        if (_lastRegenAtTicks == 0)
+            _lastRegenAtTicks = DateTime.UtcNow.Ticks;
+
+        // SkillMods are not saved: re-apply for a held hammer once the world has loaded.
+        Timer.DelayCall(ApplyHeldBonus);
+    }
+
+    // -- Passive regen ---------------------------------------------------------
+
+    private void ApplyPassiveRegen()
+    {
+        if (UsesRemaining >= MaxUses && !_exhausted) return;
+
+        var now     = DateTime.UtcNow;
+        var elapsed = now - new DateTime(_lastRegenAtTicks, DateTimeKind.Utc);
+        var earned  = (int)(elapsed.TotalMinutes / RegenMinutes);
+
+        if (earned <= 0) return;
+
+        var wasExhausted = _exhausted;
+        UsesRemaining    = Math.Min(MaxUses, UsesRemaining + earned);
+        _lastRegenAtTicks += TimeSpan.FromMinutes((long)earned * RegenMinutes).Ticks;
+
+        if (wasExhausted && UsesRemaining > 0)
+        {
+            _exhausted = false;
+            Hue        = FunctionalHue;
+            ((IUsesRemaining)this).ShowUsesRemaining = true;
+            InvalidateProperties();
+            ApplyHeldBonus();
+        }
+    }
+
+    // -- Exhaustion ------------------------------------------------------------
+
+    private void TriggerExhaustion(Mobile from)
+    {
+        if (_exhausted) return;
+        _exhausted = true;
+        Hue        = ExhaustedHue;
+        ((IUsesRemaining)this).ShowUsesRemaining = false;
+        InvalidateProperties();
+        RemoveBaseSkillMod();
+        from.SendMessage(0x22,
+            "The Masterwork Hammer of Hephaestus is spent. " +
+            "Speak with the Blacksmith Guildmaster to restore it immediately.");
+    }
+
+    // -- Base SkillMod ---------------------------------------------------------
+
+    /// <summary>The mobile holding this hammer in hand, or null (in a container, on the ground).</summary>
+    public Mobile? HeldBy => Parent as Mobile;
+
+    /// <summary>Applies the +15 for a held, usable hammer and removes it otherwise. Safe to repeat.</summary>
+    public void ApplyHeldBonus()
+    {
+        RemoveBaseSkillMod();
+        if (!_exhausted && !Deleted && HeldBy is { } m)
+        {
+            _baseSkillMod = new DefaultSkillMod(SkillName.Blacksmith, "MasterworkHammerOfHephaestusBase", true, BaseSkillBonus);
+            m.AddSkillMod(_baseSkillMod);
+        }
+    }
+
+    private void RemoveBaseSkillMod()
+    {
+        if (_baseSkillMod != null)
+        {
+            _baseSkillMod.Remove();
+            _baseSkillMod = null;
+        }
+    }
+
+    // -- Metal Familiarity + T3 B-bonus (resource efficiency) -----------------
+
+    /// <summary>
+    /// Called from CraftItem.cs after each successful Blacksmithy craft. Gives back the ingots the metal's familiarity saves
+    /// (from the familiarity before this craft's roll), then rolls for familiarity (HammerFamiliarityPace).
+    /// </summary>
+    public void RecordFamiliarity(Type resourceType, Mobile from, bool exceptional, CraftItem item, CraftSystem system)
+    {
+        var key = HammerMetal.InferResource(resourceType);
+        if (key < 0) return;
+
+        _metalFamiliarity.TryGetValue(key, out var cur);
+
+        RefundIngots(resourceType, key, cur, from, MetalUsed(item, system));
+
+        var next = HammerFamiliarityPace.Roll(cur, FamCap, exceptional);
+        if (next != cur)
+        {
+            _metalFamiliarity[key] = next;
+            InvalidateProperties();
+        }
+    }
+
+    /// <summary>The ingots one craft of this item takes: its resources of the craft's metal kind (CraftItem.ConsumeRes).</summary>
+    public static int MetalUsed(CraftItem item, CraftSystem system)
+    {
+        var resType = (item.UseSubRes2 ? system.CraftSubRes2 : system.CraftSubRes).ResType;
+        var amount  = 0;
+        for (var i = 0; i < item.Resources.Count; i++)
+            if (item.Resources[i].ItemType == resType) amount += item.Resources[i].Amount;
+        return amount;
+    }
+
+    /// <summary>The ingots saved, before the fraction's roll: used x familiarity / cap x MaxSaving.</summary>
+    public static double SavedIngots(int used, int familiarity) =>
+        used * Math.Min(1.0, familiarity / (double)FamCap) * MaxSaving;
+
+    /// <summary>The whole saved ingots, plus one more when the roll falls under the fraction.</summary>
+    public static int RollSaved(int used, int familiarity)
+    {
+        var saved = SavedIngots(used, familiarity);
+        var whole = (int)Math.Floor(saved);
+        return saved > whole && Utility.RandomDouble() < saved - whole ? whole + 1 : whole;
+    }
+
+    private void RefundIngots(Type resourceType, int key, int familiarity, Mobile from, int used)
+    {
+        if (from is PlayerMobile pm && DevTestingCrystal.IsActive(pm)) return; // nothing was consumed
+
+        var saved = RollSaved(used, familiarity);
+        if (saved <= 0 || from.Backpack == null) return;
+
+        if (Activator.CreateInstance(resourceType, saved) is not Item ingots) return;
+
+        from.AddToBackpack(ingots);
+        var metal = HammerMetal.All.FirstOrDefault(m => m.Resource == key).Name;
+        from.SendMessage(0x44,
+            $"Your familiarity with {metal} saved {saved} ingot{(saved == 1 ? "" : "s")}.");
+    }
+
+    // -- Familiarity snapshots (upgrade / T4 combine) --------------------------
+
+    public Dictionary<int, int> GetFamiliaritySnapshot() =>
+        new Dictionary<int, int>(_metalFamiliarity);
+
+    public void LoadFamiliaritySnapshot(Dictionary<int, int> snapshot, int targetCap)
+    {
+        _metalFamiliarity = new Dictionary<int, int>();
+        foreach (var (k, v) in snapshot)
+            _metalFamiliarity[k] = Math.Min(targetCap, v);
+        InvalidateProperties();
+    }
+
+    /// <summary>
+    /// Merge another hammer's familiarity into this one: the T3+T3 -> T4 combine, which is still a stub (T4 is not built).
+    /// Each metal is summed then capped at targetCap.
+    /// </summary>
+    public void MergeFamiliarity(Dictionary<int, int> other, int targetCap)
+    {
+        foreach (var (k, v) in other)
+        {
+            _metalFamiliarity.TryGetValue(k, out var existing);
+            _metalFamiliarity[k] = Math.Min(targetCap, existing + v);
+        }
+        InvalidateProperties();
+    }
+
+    // -- Overrides -------------------------------------------------------------
+
+    public override bool OnEquip(Mobile from)
+    {
+        ApplyPassiveRegen();
+        if (_exhausted || UsesRemaining <= 0)
+        {
+            from.SendMessage(0x22,
+                "The Masterwork Hammer of Hephaestus is exhausted. " +
+                "Wait for it to regenerate, or speak with the Blacksmith Guildmaster.");
+            return false;
+        }
+        return base.OnEquip(from);
+    }
+
+    public override void OnDoubleClick(Mobile from)
+    {
+        ApplyPassiveRegen();
+
+        if (UsesRemaining <= 0 && !_exhausted)
+            TriggerExhaustion(from);
+
+        if (_exhausted)
+        {
+            var last     = new DateTime(_lastRegenAtTicks, DateTimeKind.Utc);
+            var minsLeft = (int)Math.Ceiling(RegenMinutes - (DateTime.UtcNow - last).TotalMinutes);
+            from.SendMessage(0x22,
+                $"The Masterwork Hammer of Hephaestus is exhausted. " +
+                $"Next charge in ~{Math.Max(0, minsLeft)} minute{(minsLeft == 1 ? "" : "s")}.");
+            from.SendGump(new HammerFamiliarityGump(from, this));
+            return;
+        }
+
+        // Not near a forge - show familiarity panel instead of the craft gump.
+        DefBlacksmithy.CheckAnvilAndForge(from, 2, out _, out var nearForge);
+        if (!nearForge)
+        {
+            from.SendMessage(0x59, "You must be near a forge to smith. Showing Metal Familiarity.");
+            from.SendGump(new HammerFamiliarityGump(from, this));
+            return;
+        }
+
+        base.OnDoubleClick(from);
+    }
+
+    public override void OnSingleClick(Mobile from)
+    {
+        base.OnSingleClick(from);
+        ApplyPassiveRegen();
+
+        if (_exhausted)
+            LabelTo(from, "[Exhausted - regenerating]");
+        else
+            LabelTo(from, $"[{UsesRemaining}/{MaxUses} uses - T3  +{BaseSkillBonus:F0} BS]");
+    }
+
+    public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list)
+    {
+        base.GetContextMenuEntries(from, ref list);
+        HammerFamiliarityEntry.AddTo(this, from, ref list);
+        HammerCraftOrderEntry.AddTo(this, from, ref list);
+    }
+
+    public override void GetProperties(IPropertyList list)
+    {
+        ApplyPassiveRegen();
+        base.GetProperties(list);
+
+        list.Add("Society of Smiths Legacy Tool - T3");
+
+        if (_exhausted)
+        {
+            list.Add("(Exhausted - regenerating)");
+        }
+        else
+        {
+            list.Add($"+{BaseSkillBonus:F0} Blacksmithy while equipped");
+            list.Add("Bonus: familiar metals waste fewer ingots");
+        }
+
+        var totalFam = _metalFamiliarity.Values.Sum();
+        list.Add($"Metal Familiarity: {totalFam:N0} (cap {FamCap:N0} a metal) - single-click for details");
+    }
+
+    // -- Registry --------------------------------------------------------------
+
+    public override void OnAdded(IEntity parent)
+    {
+        base.OnAdded(parent);
+
+        PlayerMobile? pm = parent switch
+        {
+            PlayerMobile directPm                                     => directPm,
+            Container c when c.RootParent is PlayerMobile containerPm => containerPm,
+            _                                                         => null
+        };
+
+        if (pm?.Account is IAccount acct)
+        {
+            ClusterFRestorationRegistry.Unlock(acct, "legacy.hammer_of_hephaestus", "item_acquisition");
+            ClusterFRestorationRegistry.Unlock(acct, "legacy.reinforced_hammer_of_hephaestus", "item_acquisition");
+            ClusterFRestorationRegistry.Unlock(acct, RegKey, "item_acquisition");
+
+            if (!_exhausted)
+            {
+                var entry = ClusterFRestorationRegistry.GetEntry(acct, RegKey);
+                if (entry != null) entry.HasActiveCopy = true;
+            }
+        }
+
+        // The SkillMod applies only in hand, never from a container
+        ApplyHeldBonus();
+    }
+
+    public override void OnRemoved(IEntity parent)
+    {
+        RemoveBaseSkillMod();
+        base.OnRemoved(parent);
+    }
+
+    public override void OnDelete()
+    {
+        RemoveBaseSkillMod();
+
+        PlayerMobile? owner = Parent switch
+        {
+            PlayerMobile pm => pm,
+            Container    c  => c.RootParent as PlayerMobile,
+            _               => null
+        };
+
+        if (owner?.Account is IAccount acct)
+            ClusterFRestorationRegistry.ClearActiveCopy(acct, RegKey);
+
+        base.OnDelete();
+    }
+
+    public void GuildmasterRestore()
+    {
+        _exhausted        = false;
+        UsesRemaining     = MaxUses;
+        _lastRegenAtTicks = DateTime.UtcNow.Ticks;
+        Hue               = FunctionalHue;
+        ((IUsesRemaining)this).ShowUsesRemaining = true;
+        InvalidateProperties();
+
+        ApplyHeldBonus();
+    }
+}
+
+// -----------------------------------------------------------------------------
 // HammerFamiliarityEntry - cc-P52 Part B (bug-list D60): the single-click (context)
 // menu entry that opens the Metal Familiarity panel anywhere, on both hammers, for
 // the character carrying the hammer (in hand or in their pack). It sent 1112530
@@ -942,12 +1342,39 @@ public class HammerFamiliarityEntry : ContextMenuEntry
     public override void OnClick(Mobile from, IEntity target)
     {
         if (target is Item { Deleted: false } hammer
-            && hammer is HammerOfHephaestus or ReinforcedHammerOfHephaestus
+            && hammer is HammerOfHephaestus or ReinforcedHammerOfHephaestus or MasterworkHammerOfHephaestus
             && hammer.RootParent == from)
         {
             from.CloseGump<HammerFamiliarityGump>();
             from.SendGump(new HammerFamiliarityGump(from, hammer));
         }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// HammerCraftOrderEntry - cc-P168: "Craft This Order" on the T3 hammer's single-click menu, for the character holding it.
+// It gives a target cursor; the targeted smith deed is crafted by ClusterFCraftOrder. The label is ours (ShardClilocs),
+// so a client without the player package's entries draws an empty row, as for Metal Familiarity.
+// -----------------------------------------------------------------------------
+
+public class HammerCraftOrderEntry : ContextMenuEntry
+{
+    public const int Cliloc = ShardClilocs.CraftThisOrder;
+
+    public HammerCraftOrderEntry() : base(Cliloc)
+    {
+    }
+
+    public static void AddTo(MasterworkHammerOfHephaestus hammer, Mobile from, ref PooledRefList<ContextMenuEntry> list)
+    {
+        if (from.Alive && hammer.HeldBy == from)
+            list.Add(new HammerCraftOrderEntry());
+    }
+
+    public override void OnClick(Mobile from, IEntity target)
+    {
+        if (target is MasterworkHammerOfHephaestus { Deleted: false } hammer && hammer.HeldBy == from)
+            ClusterFCraftOrder.Choose(from, hammer);
     }
 }
 
@@ -968,18 +1395,27 @@ public class HammerFamiliarityGump : Gump
         Disposable = true;
 
         bool isT2              = hammer is ReinforcedHammerOfHephaestus;
-        var  tier              = isT2 ? "T2" : "T1";
-        var  title             = isT2 ? "Reinforced Hammer of Hephaestus" : "Hammer of Hephaestus";
-        var  famCap            = isT2 ? ReinforcedHammerOfHephaestus.FamCap : HammerOfHephaestus.FamCap;
-        var  maxUses           = isT2 ? 400 : 150;
+        bool isT3              = hammer is MasterworkHammerOfHephaestus; // cc-P168
+        var  tier              = isT3 ? "T3" : isT2 ? "T2" : "T1";
+        var  title             = isT3 ? "Masterwork Hammer of Hephaestus"
+                               : isT2 ? "Reinforced Hammer of Hephaestus" : "Hammer of Hephaestus";
+        var  famCap            = isT3 ? MasterworkHammerOfHephaestus.FamCap
+                               : isT2 ? ReinforcedHammerOfHephaestus.FamCap : HammerOfHephaestus.FamCap;
+        var  maxUses           = isT3 ? MasterworkHammerOfHephaestus.MaxUses : isT2 ? 400 : 150;
         var  usesRemaining     = ((IUsesRemaining)hammer).UsesRemaining;
-        var  exhausted         = isT2
-            ? ((ReinforcedHammerOfHephaestus)hammer).Exhausted
-            : ((HammerOfHephaestus)hammer).Exhausted;
+        var  exhausted         = hammer switch
+        {
+            MasterworkHammerOfHephaestus t3 => t3.Exhausted,
+            ReinforcedHammerOfHephaestus t2 => t2.Exhausted,
+            _                               => ((HammerOfHephaestus)hammer).Exhausted
+        };
 
-        Dictionary<int, int> fam = isT2
-            ? ((ReinforcedHammerOfHephaestus)hammer).GetFamiliaritySnapshot()
-            : ((HammerOfHephaestus)hammer).GetFamiliaritySnapshot();
+        Dictionary<int, int> fam = hammer switch
+        {
+            MasterworkHammerOfHephaestus t3 => t3.GetFamiliaritySnapshot(),
+            ReinforcedHammerOfHephaestus t2 => t2.GetFamiliaritySnapshot(),
+            _                               => ((HammerOfHephaestus)hammer).GetFamiliaritySnapshot()
+        };
 
         // Dynamic height: header + metal rows + footer
         int H = 130 + HammerMetal.Count * 22 + 80;
@@ -1004,7 +1440,14 @@ public class HammerFamiliarityGump : Gump
 
         AddImageTiled(10, 70, W - 20, 2, 9304);
 
-        if (!isT2)
+        if (isT3)
+        {
+            // T3 - B bonus (cc-P168)
+            AddLabel(16, 74, 1154, "Active Bonus - Resource Efficiency (Tier 3):");
+            AddLabel(16, 90, 999,
+                $"Each metal: familiarity/{famCap:N0} * 25% of a craft's ingots given back on success.");
+        }
+        else if (!isT2)
         {
             // T1 - D bonus
             AddLabel(16, 74, 1154, "Active Bonus - Use Refund (Tier 1):");
@@ -1052,7 +1495,13 @@ public class HammerFamiliarityGump : Gump
             AddHtml(310, y - 2, 90, 20, barHtml, false, false);
 
             // Bonus value for this metal
-            if (!isT2)
+            if (isT3)
+            {
+                // T3 B-bonus: per-metal share of ingots saved
+                var saving = Math.Round(Math.Min(1.0, count / (double)famCap) * MasterworkHammerOfHephaestus.MaxSaving * 100, 1);
+                AddLabel(W - 100, y, count > 0 ? 0x44 : 0x666, $"{saving:F1}%");
+            }
+            else if (!isT2)
             {
                 // T1 D-bonus: per-metal refund chance
                 var chance = Math.Round((count / (double)famCap) * 20.0, 1);
@@ -1071,7 +1520,9 @@ public class HammerFamiliarityGump : Gump
 
         AddImageTiled(10, y, W - 20, 2, 9304);
         y += 6;
-        AddLabel(16, y, 0x666, "T3: Resource efficiency bonus - unlocked with Tier 3 hammer");
+        AddLabel(16, y, isT3 ? 0x44 : 0x666, isT3
+            ? "T3: Resource efficiency bonus - active (Craft This Order on the hammer's menu)"
+            : "T3: Resource efficiency bonus - unlocked with Tier 3 hammer");
         y += 18;
         AddLabel(16, y, 0x666, "T4: Exceptional quality bonus - unlocked with Tier 4 hammer");
         y += 22;
@@ -1104,10 +1555,23 @@ public class HammerRestoreGump : Gump
     private const int UpgradeStandingReq = 5_000;
     private const double UpgradeSkillReq = 80.0;
 
+    // cc-P168: T2 -> T3, a step above T1 -> T2 in each: Master rank (15,000), 100 Blacksmithy, and more of each cost.
+    internal const int    MasterworkSealCost     = 60;
+    internal const int    MasterworkIronCost     = 1_000;
+    internal const int    MasterworkValoriteCost = 250;
+    internal const int    MasterworkGoldCost     = 25_000;
+    internal const int    MasterworkStandingReq  = 15_000;
+    internal const double MasterworkSkillReq     = 100.0;
+
     // F-11: materials come from the pack and the bank (GuildResources); gold from both through CompactGoldHelper
     // (the upgrade's gold was pack-only before).
     private static GuildCost[] RestoreMaterials => new[] { GuildCost.Of<IronIngot>(RestoreIronCost) };
     private static GuildCost[] UpgradeMaterials => new[] { GuildCost.Of<IronIngot>(UpgradeIronCost), GuildCost.Of<ValoriteIngot>(UpgradeValoriteCost) };
+    private static GuildCost[] MasterworkMaterials => new[] { GuildCost.Of<IronIngot>(MasterworkIronCost), GuildCost.Of<ValoriteIngot>(MasterworkValoriteCost) };
+
+    /// <summary>The upgrade buttons: 20 is T1 -> T2, 30 (cc-P168) T2 -> T3.</summary>
+    internal const int BtnUpgrade = 20;
+    internal const int BtnMasterwork = 30;
 
     private const int W    = 460;
     private const int BgId = 9270;
@@ -1128,8 +1592,10 @@ public class HammerRestoreGump : Gump
 
         var hammer1 = FindHammer<HammerOfHephaestus>();
         var hammer2 = FindHammer<ReinforcedHammerOfHephaestus>();
-        var restore = guild != null && (hammer1 != null || hammer2 != null) ? RestoreRequirements(guild) : null;
-        var upgrade = guild != null && hammer1 != null && hammer2 == null ? UpgradeRequirements(guild, hammer1) : null;
+        var hammer3 = FindHammer<MasterworkHammerOfHephaestus>();
+        var restore = guild != null && (hammer1 != null || hammer2 != null || hammer3 != null) ? RestoreRequirements(guild) : null;
+        var upgrade = guild != null && hammer1 != null && hammer2 == null && hammer3 == null ? UpgradeRequirements(guild, hammer1) : null;
+        upgrade ??= guild != null && hammer2 != null && hammer3 == null ? MasterworkRequirements(guild, hammer2) : null;
 
         // Title and status to 120; each list its heading (20), lines, summary and action (56), the restore list its rule
         // (10); the footer 46.
@@ -1145,7 +1611,7 @@ public class HammerRestoreGump : Gump
         if (guild == null)
             AddLabel(18, 60, 999, "Account data unavailable.");
         else
-            BuildContent(hammer1, hammer2, restore, upgrade);
+            BuildContent(hammer1, hammer2, hammer3, restore, upgrade);
 
         AddImageTiled(10, _h - 38, W - 20, 2, 9304);
         AddButton(18, _h - 28, 4014, 4015, 1);
@@ -1172,8 +1638,22 @@ public class HammerRestoreGump : Gump
             .Info($"Familiarity carried over: {fam:N0} (T2 cap {ReinforcedHammerOfHephaestus.FamCap:N0} a metal)");
     }
 
+    /// <summary>cc-P168: the T3 upgrade's requirements. The rank line is met at 15,000 standing (Master), as HandleMasterwork checks.</summary>
+    internal RequirementList MasterworkRequirements(CharacterGuildData guild, ReinforcedHammerOfHephaestus hammer2)
+    {
+        guild.GuildReputation.TryGetValue("smithing", out var standing);
+        var fam = hammer2.GetFamiliaritySnapshot().Values.Sum();
+
+        return new RequirementList()
+            .Rank("Master", standing, MasterworkStandingReq)
+            .Skill("Blacksmithy", _pm.Skills[SkillName.Blacksmith].Value, MasterworkSkillReq)
+            .Price(_pm, guild, "smithing", "Smithing Seals", MasterworkSealCost, MasterworkGoldCost, MasterworkMaterials)
+            .Has("Reinforced Hammer of Hephaestus in pack, not exhausted", !hammer2.Exhausted, "exhausted")
+            .Info($"Familiarity carried over: {fam:N0} (T3 cap {MasterworkHammerOfHephaestus.FamCap:N0} a metal)");
+    }
+
     private void BuildContent(HammerOfHephaestus? hammer1, ReinforcedHammerOfHephaestus? hammer2,
-        RequirementList? restore, RequirementList? upgrade)
+        MasterworkHammerOfHephaestus? hammer3, RequirementList? restore, RequirementList? upgrade)
     {
         var bypass = DevTestingCrystal.IsActive(_pm);
         var y = 58;
@@ -1182,10 +1662,17 @@ public class HammerRestoreGump : Gump
 
         AddLabel(18, y, RequirementStyle.HeadingHue, "Current Status"); y += 16;
 
-        if (hammer1 == null && hammer2 == null)
+        if (hammer1 == null && hammer2 == null && hammer3 == null)
         {
             AddLabel(18, y, 999, "No Hammer of Hephaestus found in your pack."); y += 16;
             AddLabel(18, y, 999, "Restore it from the Restoration Registry, or earn it via a quest.");
+        }
+        else if (hammer3 != null)
+        {
+            var status = hammer3.Exhausted ? "(Exhausted)" : $"{hammer3.UsesRemaining} uses remaining";
+            AddLabel(18, y, 999, $"Masterwork Hammer of Hephaestus - T3 - {status}"); y += 16;
+            var total = hammer3.GetFamiliaritySnapshot().Values.Sum();
+            AddLabel(18, y, 999, $"Total Metal Familiarity: {total:N0} (cap {MasterworkHammerOfHephaestus.FamCap:N0} a metal)");
         }
         else if (hammer2 != null)
         {
@@ -1217,11 +1704,22 @@ public class HammerRestoreGump : Gump
 
         // -- T2 upgrade --------------------------------------------------------
 
-        if (upgrade != null)
+        if (upgrade != null && hammer2 != null)
+        {
+            // cc-P168: T2 -> T3
+            AddLabel(18, y, RequirementStyle.HeadingHue, "Upgrade to T3 - Masterwork Hammer"); y += 20;
+            y = upgrade.Draw(this, 18, y);
+            upgrade.DrawFooter(this, 18, y + 4, BtnMasterwork, "Upgrade to Masterwork Hammer of Hephaestus", bypass);
+        }
+        else if (upgrade != null)
         {
             AddLabel(18, y, RequirementStyle.HeadingHue, "Upgrade to T2 - Reinforced Hammer"); y += 20;
             y = upgrade.Draw(this, 18, y);
-            upgrade.DrawFooter(this, 18, y + 4, 20, "Upgrade to Reinforced Hammer of Hephaestus", bypass);
+            upgrade.DrawFooter(this, 18, y + 4, BtnUpgrade, "Upgrade to Reinforced Hammer of Hephaestus", bypass);
+        }
+        else if (hammer3 != null)
+        {
+            AddLabel(18, y, 999, "T4 is not available yet."); // T4 (two T3s, MergeFamiliarity) is still a stub
         }
         else if (hammer1 == null && hammer2 == null)
         {
@@ -1259,7 +1757,8 @@ public class HammerRestoreGump : Gump
         }
 
         if (info.ButtonID == 10) HandleRestore();
-        else if (info.ButtonID == 20) HandleUpgrade();
+        else if (info.ButtonID == BtnUpgrade) HandleUpgrade();
+        else if (info.ButtonID == BtnMasterwork) HandleMasterwork();
     }
 
     private void HandleRestore()
@@ -1273,10 +1772,11 @@ public class HammerRestoreGump : Gump
 
         var bypass  = DevTestingCrystal.IsActive(_pm);
 
+        var hammer3 = FindHammer<MasterworkHammerOfHephaestus>();
         var hammer2 = FindHammer<ReinforcedHammerOfHephaestus>();
         var hammer1 = FindHammer<HammerOfHephaestus>();
 
-        if (hammer2 == null && hammer1 == null)
+        if (hammer3 == null && hammer2 == null && hammer1 == null)
         {
             _pm.SendMessage(0x22, "No Hammer of Hephaestus found in your pack.");
             _pm.SendGump(new HammerRestoreGump(_pm, _back));
@@ -1290,7 +1790,8 @@ public class HammerRestoreGump : Gump
             return;
         }
 
-        if (hammer2 != null) hammer2.GuildmasterRestore();
+        if (hammer3 != null) hammer3.GuildmasterRestore();
+        else if (hammer2 != null) hammer2.GuildmasterRestore();
         else hammer1!.GuildmasterRestore();
 
         _pm.SendMessage(0x44,
@@ -1345,14 +1846,60 @@ public class HammerRestoreGump : Gump
         _pm.PlaySound(0x35D);
         _pm.SendGump(new HammerRestoreGump(_pm, _back));
     }
+
+    /// <summary>cc-P168: T2 -> T3, as HandleUpgrade does T1 -> T2: re-check, pay, swap, carry familiarity forward.</summary>
+    private void HandleMasterwork()
+    {
+        var acct = _pm.Account as IAccount;
+        if (acct == null) return;
+
+        var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(_pm.Serial);
+        var pack = _pm.Backpack;
+        if (pack == null) return;
+
+        guild.GuildReputation.TryGetValue("smithing", out var standing);
+        var skill     = _pm.Skills[SkillName.Blacksmith].Value;
+        var srcHammer = FindHammer<ReinforcedHammerOfHephaestus>();
+        var bypass    = DevTestingCrystal.IsActive(_pm);
+
+        if (srcHammer == null || srcHammer.Exhausted || FindHammer<MasterworkHammerOfHephaestus>() != null
+            || (!bypass && (standing < MasterworkStandingReq || skill < MasterworkSkillReq)))
+        {
+            _pm.SendMessage(0x22, "Requirements no longer met. Upgrade cancelled.");
+            _pm.SendGump(new HammerRestoreGump(_pm, _back));
+            return;
+        }
+
+        // Snapshot familiarity BEFORE deleting T2
+        var famSnapshot = srcHammer.GetFamiliaritySnapshot();
+
+        if (!bypass && !GuildResources.TryPay(_pm, guild, "smithing", MasterworkSealCost, "Smithing Seals", MasterworkGoldCost, MasterworkMaterials))
+        {
+            _pm.SendGump(new HammerRestoreGump(_pm, _back));
+            return;
+        }
+
+        ClusterFRestorationRegistry.ClearActiveCopy(acct, "legacy.reinforced_hammer_of_hephaestus");
+        srcHammer.Delete();
+
+        var upgraded = new MasterworkHammerOfHephaestus();
+        upgraded.LoadFamiliaritySnapshot(famSnapshot, targetCap: MasterworkHammerOfHephaestus.FamCap);
+        pack.DropItem(upgraded);
+
+        _pm.SendMessage(0x44,
+            "The Guildmaster tempers the hammer in the forge's heart - " +
+            "the Masterwork Hammer of Hephaestus is yours. Your metal mastery carries forward.");
+        _pm.PlaySound(0x35D);
+        _pm.SendGump(new HammerRestoreGump(_pm, _back));
+    }
 }
 
 // -----------------------------------------------------------------------------
 // HammerBODAutoFill
 //
 // Called from CraftItem.cs after AddToBackpack when the tool is a
-// HammerOfHephaestus or ReinforcedHammerOfHephaestus and the craft system
-// is DefBlacksmithy.
+// HammerOfHephaestus, ReinforcedHammerOfHephaestus or MasterworkHammerOfHephaestus
+// and the craft system is DefBlacksmithy.
 //
 // Logic:
 //   1. Scan all SmallSmithBODs in the player's guild book + backpack.
@@ -1376,6 +1923,10 @@ public static class HammerBODAutoFill
     public static void TryAutoFill(PlayerMobile pm, Item crafted)
     {
         if (crafted == null || crafted.Deleted) return;
+
+        // cc-P168: during Craft This Order the order's own deed is offered the item first; one it refuses goes on below.
+        if (ClusterFCraftOrder.TryFill(pm, crafted)) return;
+
         if (pm.Account is not IAccount acct) return;
         if (!ClusterFGuildSystem.IsJoined(pm, "smithing")) return;
 

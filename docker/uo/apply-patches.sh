@@ -898,6 +898,18 @@ apply_patch "$PATCHES/PlayerMobile-noted-step.patch"
 apply_patch "$PATCHES/Bandage-tutorial-real-heal.patch"
 apply_patch "$PATCHES/Notoriety-tutorial-creature-outsiders.patch"
 
+# cc-P168 (ours): a deed's tooltip says what handing it in pays the holder when they are a member of the deed's guild
+# (Seals or cash-out gold and standing for the Society of Smiths; bank gold for the 2016 guilds). One call at the end of
+# SmallBOD.GetProperties and LargeBOD.GetProperties into customizations BulkOrderGuildPay; neither is overridden by any
+# deed type, so one line each covers all eight crafts. Made against the tree every patch above leaves, so it goes last.
+# Alternatives argued in shard-migration notes/cc-P168-hammer-t3-craft-order.md; pinned by BulkOrderGuildPayVerification.
+apply_patch "$PATCHES/BOD-properties-guild-pay.patch"
+# cc-P168: Craft This Order stops when its crafter is hurt. One call in PlayerMobile.OnDamage, which runs only when damage
+# has landed (Mobile.Damage, after the region and blessed checks), beside its bandage slip. Pinned raises no damage event,
+# and the no-patch signals (hit points, damage entries) are wiped by regeneration to full (Mobile.cs Hits setter clears
+# the damage entries at full). Argued in the same notes; pinned by HammerCraftOrderVerification.
+apply_patch "$PATCHES/PlayerMobile-craft-order-hurt.patch"
+
 # A .patch file that no apply_patch line above names would be dead weight applied to
 # nothing, with no way to tell from the build log. Account for every file explicitly.
 echo "[patches] Checking every patch file is accounted for..."

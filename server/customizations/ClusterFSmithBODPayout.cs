@@ -72,6 +72,7 @@ namespace Server.Mobiles
             }
 
             ClusterFAccountPersistence.GetOrCreateGuild(m).SmithTurnIn = mode;
+            BulkOrderGuildPay.Refresh(m); // cc-P168: the deeds' tooltips show the setting's numbers
         }
 
         public static string ModeLabel(SmithTurnInMode mode) => mode switch
@@ -165,7 +166,9 @@ namespace Server.Mobiles
             }
 
             var guild = ClusterFAccountPersistence.GetOrCreateGuild(pm);
-            var (seals, standing, skillChecks) = BlacksmithGuildmaster.ComputeGuildReward(deed);
+            // cc-P168: the deed's quote, the numbers its gump and tooltip show (BulkOrderGuildPay.Quote).
+            var quote = BulkOrderGuildPay.Quote((BaseBOD)deed);
+            var (seals, standing, skillChecks) = (quote.Seals, quote.Standing, quote.SkillChecks);
             guild.AddReputation("smithing", standing);
 
             if (cashOut)
@@ -210,11 +213,17 @@ namespace Server.Mobiles
         /// CashOutGoldShare and the item kept with CashOutItemChance. Gold above 1,000 comes as a bank check, as the stock
         /// turn-in pays it (BaseVendor.cs:1135-1142).
         /// </summary>
+        /// <summary>
+        /// The gold cash out pays for this deed: its OSI gold (BaseBOD.GetRewards' gold, which is ComputeGold, pinned
+        /// BaseBOD.cs:61-63) times CashOutGoldShare. CashOut pays this and the deed's guild line shows it (cc-P168).
+        /// </summary>
+        public static int CashOutGold(BaseBOD deed) => (int)(deed.ComputeGold() * CashOutGoldShare);
+
         private static (int gold, Item? reward) CashOut(PlayerMobile pm, Item deed)
         {
-            ((BaseBOD)deed).GetRewards(out var reward, out var osiGold, out var fame);
+            ((BaseBOD)deed).GetRewards(out var reward, out _, out var fame);
 
-            var gold = (int)(osiGold * CashOutGoldShare);
+            var gold = BulkOrderGuildPay.Quote((BaseBOD)deed).CashOutGold; // cc-P168: the quoted CashOutGold
             if (gold > 1000)
             {
                 pm.AddToBackpack(new BankCheck(gold));
@@ -266,7 +275,8 @@ namespace Server.Mobiles
             Disposable = true;
             Resizable  = false;
 
-            var (seals, standing, _) = BlacksmithGuildmaster.ComputeGuildReward(deed);
+            var quote = BulkOrderGuildPay.Quote((BaseBOD)deed); // cc-P168: the deed's quote, as Pay pays it
+            var (seals, standing) = (quote.Seals, quote.Standing);
 
             AddPage(0);
             AddBackground(0, 0, W, H, 9270);

@@ -1,0 +1,22 @@
+--- "a/Projects/UOContent/Engines/Bulk Orders/SmallBOD.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/SmallBOD.cs"
+@@ -66,6 +66,8 @@
+ 
+         list.Add(1060656, AmountMax);                      // amount to make: ~1_val~
+         list.Add(1060658, $"{_number:#}\t{_amountCur}"); // ~1_val~: ~2_val~
++
++        BulkOrderGuildPay.AddProperties(this, list); // Shattered Legacy (cc-P168): what a guild member is paid
+     }
+ 
+     public override void OnDoubleClick(Mobile from)
+--- "a/Projects/UOContent/Engines/Bulk Orders/LargeBOD.cs"
++++ "b/Projects/UOContent/Engines/Bulk Orders/LargeBOD.cs"
+@@ -62,6 +62,8 @@
+                 var entry = _entries[i];
+                 list.Add(1060658 + i, $"{entry.Details.Number:#}\t{entry.Amount}"); // ~1_val~: ~2_val~
+             }
++
++            BulkOrderGuildPay.AddProperties(this, list); // Shattered Legacy (cc-P168): what a guild member is paid
+         }
+ 
+         public override void OnDoubleClickNotAccessible(Mobile from)
