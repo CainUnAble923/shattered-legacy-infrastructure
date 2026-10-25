@@ -3,7 +3,7 @@
 // A lobster trap for lava: the same trap, deployed on lava tiles instead of water. ServUO reads the lava tile list from
 // its Fishing.LavaTiles; pinned Fishing has none, so the list lives here (ServUO Services/Harvest/Fishing.cs:791-805,
 // copied as it is, including 4560-4562, which are not lava tiles in the client but are in ServUO's list). Lava fishing
-// with a pole (the lava hook) is left for the next prompt; the trap works on its own.
+// with a pole (the lava hook, cc-P269) reads the same list through HighSeasFishing.LavaDefinition.
 
 using ModernUO.Serialization;
 

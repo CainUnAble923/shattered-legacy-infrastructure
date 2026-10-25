@@ -1,0 +1,211 @@
+--- "a/Projects/UOContent/Items/Skill Items/Fishing/FishingPole.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Fishing/FishingPole.cs"
+@@ -5,14 +5,180 @@
+ 
+ namespace Server.Items;
+ 
+-[SerializationGenerator(0, false)]
++// Shattered Legacy (cc-P269): the pole carries ServUO's High Seas bait and hook (ServUO Items/Tools/FishingPole.cs):
++// BaitType (a FishInfo row, saved as its index), EnhancedBait, BaitUses, HookType, HookUses and OriginalHue (the hue a
++// hook's colour replaced), with ServUO's setters (no uses left clears the bait or the hook), its OnFishedHarvest (a catch
++// wears the hook and uses one bait) and its tooltip lines. Bait and the hooks are customizations (High Seas
++// Items/Fish/Bait.cs, Hooks.cs); the Fishing patch calls OnFishedHarvest. Version 0 -> 1: the six new values, migrated
++// from pinned's v0 by the generator. ServUO's crafted attributes, uses and quality are not part of this.
++[SerializationGenerator(1, false)]
+ public partial class FishingPole : Item
+ {
++    [SerializedCommandProperty(AccessLevel.GameMaster)]
++    [SerializableField(0)]
++    private int _originalHue;
++
++    private int _baitIndex = -1;
++    private HookType _hookType;
++    private int _hookUses;
++    private int _baitUses;
++    private bool _enhancedBait;
++
+     [Constructible]
+     public FishingPole() : base(0x0DC0) => Layer = Layer.TwoHanded;
+ 
+     public override double DefaultWeight => 8.0;
+ 
++    [SerializableProperty(1, useField: nameof(_baitIndex))]
++    public int BaitIndex
++    {
++        get => _baitIndex;
++        set
++        {
++            _baitIndex = value;
++            this.MarkDirty();
++        }
++    }
++
++    [CommandProperty(AccessLevel.GameMaster)]
++    public System.Type BaitType
++    {
++        get => _baitIndex < 0 ? null : FishInfo.GetTypeFromIndex(_baitIndex);
++        set
++        {
++            BaitIndex = value == null ? -1 : FishInfo.GetIndexFromType(value);
++
++            if (_baitIndex < 0)
++            {
++                EnhancedBait = false;
++            }
++
++            InvalidateProperties();
++        }
++    }
++
++    [SerializableProperty(2, useField: nameof(_hookType))]
++    [CommandProperty(AccessLevel.GameMaster)]
++    public HookType HookType
++    {
++        get => _hookType;
++        set
++        {
++            _hookType = value;
++
++            if (_hookType == HookType.None)
++            {
++                Hue = _originalHue;
++            }
++
++            InvalidateProperties();
++            this.MarkDirty();
++        }
++    }
++
++    [SerializableProperty(3, useField: nameof(_hookUses))]
++    [CommandProperty(AccessLevel.GameMaster)]
++    public int HookUses
++    {
++        get => _hookUses;
++        set
++        {
++            _hookUses = value;
++
++            if (_hookUses <= 0)
++            {
++                _hookUses = 0;
++                HookType = HookType.None;
++            }
++
++            InvalidateProperties();
++            this.MarkDirty();
++        }
++    }
++
++    [SerializableProperty(4, useField: nameof(_baitUses))]
++    [CommandProperty(AccessLevel.GameMaster)]
++    public int BaitUses
++    {
++        get => _baitUses;
++        set
++        {
++            _baitUses = value;
++
++            if (_baitUses <= 0)
++            {
++                _baitUses = 0;
++                BaitType = null;
++            }
++
++            InvalidateProperties();
++            this.MarkDirty();
++        }
++    }
++
++    [SerializableProperty(5, useField: nameof(_enhancedBait))]
++    [CommandProperty(AccessLevel.GameMaster)]
++    public bool EnhancedBait
++    {
++        get => _enhancedBait;
++        set
++        {
++            _enhancedBait = value;
++            InvalidateProperties();
++            this.MarkDirty();
++        }
++    }
++
++    public void OnFishedHarvest(Mobile from, bool caughtAnything)
++    {
++        if (_hookType != HookType.None)
++        {
++            HookUses--;
++
++            if (_hookType == HookType.None)
++            {
++                // As the magic of the hook fades, it transforms to a normal fishhook.  The fishing pole returns to normal.
++                from.SendLocalizedMessage(1149854);
++            }
++        }
++
++        if (caughtAnything && _baitIndex >= 0)
++        {
++            BaitUses--;
++        }
++    }
++
++    public override void GetProperties(IPropertyList list)
++    {
++        base.GetProperties(list);
++
++        var hookCliloc = BaseFishingHook.GetHookType(_hookType);
++
++        if (_hookType > HookType.None && hookCliloc > 0)
++        {
++            list.Add(1150885, $"{hookCliloc:#}");                                  // special hook: ~1_token~
++            list.Add(1150889, $"{BaseFishingHook.GetCondition(_hookUses):#}"); // Hook condition: ~1_val~
++        }
++
++        var baitType = BaitType;
++
++        if (baitType != null)
++        {
++            var label = FishInfo.GetFishLabel(baitType);
++
++            if (label is int number)
++            {
++                list.Add(1116468, $"{number:#}"); // baited to attract: ~1_val~
++            }
++            else if (label is string text)
++            {
++                list.Add(1116468, text);
++            }
++
++            list.Add(1116466, _baitUses); // amount: ~1_val~
++        }
++    }
++
+     public override void OnDoubleClick(Mobile from)
+     {
+         if (!IsChildOf(from))
+@@ -51,4 +217,26 @@
+ 
+         return false;
+     }
++
++    // ServUO's Deserialize: a bait or hook saved with no uses left is cleared.
++    [AfterDeserialization]
++    private void AfterDeserialization()
++    {
++        if (_baitIndex >= 0 && _baitUses <= 0)
++        {
++            _baitIndex = -1;
++            _enhancedBait = false;
++        }
++
++        if (_hookType != HookType.None && _hookUses <= 0)
++        {
++            _hookType = HookType.None;
++            Hue = _originalHue;
++        }
++    }
++
++    private void MigrateFrom(V0Content content)
++    {
++        _baitIndex = -1;
++    }
+ }

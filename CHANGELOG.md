@@ -29,6 +29,24 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25
+
+### Added
+- Fish mongers stand on the docks of Britain, Moonglow, Trinsic, Vesper, Jhelom, Skara Brae, Papua and the Sea Market. Bring your boat close and talk to one: he gives you an order for a catch of fish to deliver to another port, puts a shipping crate for it in your hold, and pays you from the Order of the Dragonfish when you deliver it. Destroying the crate forfeits the order.
+- Fish mongers reward you with bait, magic fishhooks, lava lobster traps, rare fishing books, Fishing power scrolls and the Oracle of the Sea. [FishMongerStatus tells you your standing with them.
+- Bait: put it on a fishing pole (fish bait) or a lobster trap (crab and lobster bait). It makes the fish it is for twice as likely to bite, three times with enhanced bait. Each catch uses one.
+- Magic fishhooks: tie one to your fishing pole. A lava hook lets you fish in lava, a junk-proof hook mostly keeps old boots off your line, and a dredging hook brings up barnacle-covered shipwreck finds. Each catch wears the hook, and a worn-out hook leaves a plain pole.
+- Lava fishing: with a lava hook, cast into lava for lava fish, stone footwear, stone pavers and cracked lava rocks. Split a rock with an axe to find a geode or a lava rock. Stone footwear is wearable, but you cannot move while you wear it.
+- The Oracle of the Sea: a spyglass that tells you where Charybdis will rise. Cast a pole baited for charybdis into that spot with 100 Fishing and the Oracle in your pack, and Charybdis rises.
+- Fish pies: bake the sixteen rare fish steaks and meats into pies (Cooking, band II recipes, at an oven). Each gives a five-minute boost: Meditation, Focus, damage, hit or defense chance, spell damage, regeneration, or a soak against one type of damage.
+- Charybdis now leaves two to five fish pies.
+- Fishing up an SOS's wreck can now bring up oars, fish heads, unfinished furniture, a yellow polka dot bikini, or rarely a ship's strongbox.
+
+### Staff
+- [GenFishMongers places the sixteen fish mongers (eight docks, Trammel and Felucca). Run it once on each shard; it skips docks that already have theirs.
+- [add CorgulTheSoulBinder places Corgul the Soulbinder; set SpawnCrew in his properties to raise his crew. His altar and the island warp are not built yet, so players cannot reach him.
+- [CharydbisSpawner opens the charybdis spawner's properties.
+
 ## 2026.10.24.18
 
 ### Added

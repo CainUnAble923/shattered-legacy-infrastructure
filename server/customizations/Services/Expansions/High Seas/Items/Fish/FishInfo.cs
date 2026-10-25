@@ -11,8 +11,7 @@
 //   test host, which runs no Configure, gets the same table.
 // - MagicalFishFinder (the fish finder's "school" that multiplies a rare fish's chance by ten) is not ported, so Roll has
 //   no school term.
-// - Only a lobster trap carries bait yet. The fishing pole's bait and hooks come with the pole patch (left for the next
-//   prompt); until then a cast rolls as an unbaited pole.
+// - cc-P269: the fishing pole carries bait too now (FishingPole-high-seas-bait-hooks.patch), read here as ServUO does.
 // - The chance of a common High Seas fish grows with Fishing as skill / 121.5. The shard caps Fishing at 200, so a player
 //   counts at most at OSI's top of 120 here (ClusterFSkillClamps.FishingFindSkill, cc-P67 B, the same clamp the deep
 //   water finds use), or every cast past 121.5 would be a High Seas fish.
@@ -85,7 +84,7 @@ public class FishInfo
             new(2499, typeof(WinterDragonfish), 1116105, "Ice", false, LegendaryChance, 120.0),
             new(2551, typeof(ZombieFish), 1116101, "Gravewater Lake", false, LegendaryChance, 115.1),
 
-            // Cannot be fished up; it is a bait (the charybdis bait, when the pole's bait lands)
+            // Cannot be fished up; it is a bait (the charybdis bait, HighSeasFishing.TrySummonCharybdis)
             new(1170, typeof(Charydbis), 1150208, "cannotfishup", true, LegendaryChance, 120.0)
         };
 
@@ -253,7 +252,12 @@ public class FishInfo
         Type item = null;
         var enhanced = false;
 
-        if (harvestItem is LobsterTrap trap)
+        if (harvestItem is FishingPole pole)
+        {
+            bait = pole.BaitType;
+            enhanced = pole.EnhancedBait;
+        }
+        else if (harvestItem is LobsterTrap trap)
         {
             bait = trap.BaitType;
             enhanced = trap.EnhancedBait;

@@ -1,0 +1,24 @@
+--- a/Projects/UOContent/Misc/AOS.cs
++++ b/Projects/UOContent/Misc/AOS.cs
+@@ -144,6 +144,10 @@
+                     }
+                 }
+ 
++                // Shattered Legacy (cc-P269): a fish pie's soak takes up to 5 off a hit of its damage type, where ServUO's
++                // Damage does (Misc/AOS.cs:187-188). BaseFishPie is a customization (High Seas Items/Fish/FishPies.cs).
++                BaseFishPie.ScaleDamage(from, m, ref totalDamage, phys, fire, cold, pois, nrgy);
++
+                 if (totalDamage < 1)
+                 {
+                     totalDamage = 1;
+@@ -751,6 +755,10 @@
+                 }
+             }
+ 
++            // Shattered Legacy (cc-P269): a fish pie's bonus, where ServUO's GetValue adds it (Misc/AOS.cs:663, :695, :810,
++            // :837, :849, :865, :883): damage increase, spell damage, hit and defense chance, and the three regenerations.
++            value += BaseFishPie.GetAttributeBonus(m, attribute);
++
+             return value;
+         }
+ 

@@ -1,0 +1,166 @@
+// cc-P269: ServUO pub57 Scripts/Services/Expansions/High Seas/Quests/ProfessionFishQuest/Books/RareBook5.cs -> ours,
+// High Seas, second half. "Volume 5 - Enchanted Sea Creatures", one of Captain Piddlewash's six fishing guides, a
+// profession fish quest reward (FishMonger, the rare book category); read only, its text ServUO's verbatim.
+
+using ModernUO.Serialization;
+
+namespace Server.Items;
+
+[SerializationGenerator(0, false)]
+public partial class FishingGuideBook5 : BaseBook
+{
+    public static readonly BookContent Content = new(
+        null, "Cpt. Piddlewash",
+        new BookPageInfo(
+            "Autumn Dragonfish:",
+            "This beauty be",
+            "found in Ilshenar.",
+            "If prepared ",
+            "correctly and eaten,",
+            "it be improvin' yer",
+            "ability to meditate."
+        ),
+        new BookPageInfo(
+            "Bull Fish:",
+            "The bull fish be ",
+            "found in the ",
+            "labrynth o' Malas.",
+            "If prepared ",
+            "correctly and eaten,",
+            "it be increasin'",
+            "power to yer sword hand."
+        ),
+        new BookPageInfo(
+            "Crystal Fish:",
+            "This mystical fish",
+            "be found in the ",
+            "prism o' light. If",
+            "prepared correctly",
+            "and eaten, it be",
+            "protectin' a sailor",
+            "from lightning. "
+        ),
+        new BookPageInfo(
+            "Fairy Salmon:",
+            "This daring fish",
+            "swims the rivers o'",
+            $"{FishInfo.GetFishLocation(typeof(FairySalmon))}. If prepared",
+            "correctly, and eaten,",
+            "it be helpin' improve",
+            "a sailor's concentration",
+            "when casting spells."
+        ),
+        new BookPageInfo(
+            "Fire Fish:",
+            "This fish be found",
+            "in the dungeon o' ",
+            "Shame. If prepared",
+            "correctly and eaten,",
+            "it be protecting a",
+            "sailor from fire."
+        ),
+        new BookPageInfo(
+            "Giant Koi:",
+            "This fish be found in",
+            "deep waters o' Tokuno.",
+            "If prepared correctly",
+            "and eaten, it be givin",
+            "a sailor it's ability",
+            "to dodge."
+        ),
+        new BookPageInfo(
+            "Great Barracuda:",
+            "This fish be found in",
+            "the deep waters o'",
+            "Felucca. If prepared",
+            "correctly and eaten,",
+            "it be increasin' yer",
+            "accuracy with weapons."
+        ),
+        new BookPageInfo(
+            "Holy Mackerel:",
+            "This fish be found in",
+            "the spirit filled ",
+            "waters o' Malas. If",
+            "prepared correctly and",
+            "eaten, it be making ye",
+            "gain mana more quickly."
+        ),
+        new BookPageInfo(
+            "Lava Fish:",
+            "This fish be found in",
+            "the lava rivers o' the",
+            $"{FishInfo.GetFishLocation(typeof(LavaFish))}. When ",
+            "prepared correctly and",
+            "eaten, it be increasin'",
+            "yer mana when ye be ",
+            "injured."
+        ),
+        new BookPageInfo(
+            "Reaper Fish:",
+            "This fish be found in",
+            "the lakes o' dungeon",
+            "Doom. If prepared ",
+            "correctly and eaten ",
+            "it be protectin' ye ",
+            "from poison damage."
+        ),
+        new BookPageInfo(
+            "Summer Dragonfish:",
+            "This beautiful fish ",
+            "be found in the pools",
+            "o' dungeon Destard. ",
+            "If prepared correctly",
+            "and eaten, it will ",
+            "increase spell damage."
+        ),
+        new BookPageInfo(
+            "Unicorn Fish:",
+            "This great fish be ",
+            "found in the Twisted ",
+            "Weald. If prepared ",
+            "correctly and eaten, ",
+            "ye will recover from ",
+            "fatigue more quickly."
+        ),
+        new BookPageInfo(
+            "Yellowtail Barracuda:",
+            "This devil be found ",
+            "in the deep waters o'",
+            "Trammel. If prepared ",
+            "correctly and eaten,",
+            "ye will heal more",
+            "quickly."
+        ),
+        new BookPageInfo(
+            "Blue Lobster:",
+            "This lobster be exclusive",
+            "to the Ice Dungeon. If",
+            "prepared correctly and",
+            "eaten, it protects ye",
+            "from damage due to cold."
+        ),
+        new BookPageInfo(
+            "Spider Crab:",
+            "Found in the waters o'",
+            "Terathan Keep. If ",
+            "prepared correctly and",
+            "eaten, it be improvin",
+            "yer ability to focus."
+        ),
+        new BookPageInfo(
+            "Stone Crab:",
+            "This tough customer",
+            "be ound in the deep ",
+            "sea o' the Lost Lands.",
+            "If prepared correctly",
+            "and eaten, it makes yer",
+            "skin tougher."
+        )
+    );
+
+    [Constructible]
+    public FishingGuideBook5() : base(Utility.Random(0xFF1, 2), false) => Name = "Volume 5 - Enchanted Sea Creatures";
+
+    public override BookContent DefaultContent => Content;
+}
