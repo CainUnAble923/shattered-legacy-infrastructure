@@ -56,6 +56,7 @@ input[type=search], input[type=text], select, textarea { min-height: 40px; paddi
 .fields input { width: 100%; }
 .saved { font-size: 12px; color: var(--gray); min-height: 16px; }
 .saved.err { color: var(--red); }
+.track .retry { margin-top: 4px; }
 .group { margin: 0 0 18px; }
 .group h2 { color: var(--gold); font-size: 17px; margin: 12px 0 6px; }
 .group h3 { font-size: 14px; margin: 8px 0 4px; color: var(--page-text); }

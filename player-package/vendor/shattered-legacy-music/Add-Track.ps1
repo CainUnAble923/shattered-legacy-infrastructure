@@ -3,8 +3,11 @@
   cc-P368: copies a chosen music track into the package source tree and writes its registry row.
 
       .\Add-Track.ps1 -Source "D:\UO\third-party\sos-music-vol2\UO Classic Music (SOS Mix) Vol.2\Digital\Dungeon.mp3" `
-                      -Id 105 -File sl-vol2-dungeon -Loop -What "Dungeon (SOS Vol.2): the Rootdeep Burrows" `
+                      -Id 105 -File sl-vol2-dungeon -Loop -Fallback dungeon9 -What "Dungeon (SOS Vol.2): the Rootdeep Burrows" `
                       -Author Zigholtul [-License "..."] [-Checked] [-WhatIf]
+
+  -Fallback is the stock track (its Config.txt name, no .mp3) the launcher plays under the ID if the mp3 is missing
+  (cc-P456).
 
   Only for a track Chase marked Use in the Music Room, and only after its terms were checked (SOURCE.txt here).
   Refuses: an ID outside 105-149 or already in registry.csv; a file stem not sl-<lower case, digits, dashes> or already
@@ -20,6 +23,7 @@ param(
     [Parameter(Mandatory = $true)][string]$File,
     [Parameter(Mandatory = $true)][string]$What,
     [Parameter(Mandatory = $true)][string]$Author,
+    [Parameter(Mandatory = $true)][string]$Fallback,
     [switch]$Loop,
     [string]$License = 'none stated; see SOURCE.txt',
     [switch]$Checked
@@ -71,6 +75,7 @@ function Get-Mp3Album([string]$path) {
 
 if ($Id -lt 105 -or $Id -gt 149) { throw "ID $Id is outside our range (105 to 149; 150+ needs a client patch, registry.csv)" }
 if ($File -cnotmatch '^sl-[a-z0-9-]+$') { throw "the file stem must be sl-<lower case letters, digits, dashes>: $File" }
+if ($Fallback -cnotmatch '^[A-Za-z0-9_]+$') { throw "the fallback is a stock track's Config.txt name, letters, digits and underscores, no .mp3: $Fallback" }
 if (-not (Test-Path -LiteralPath $Source)) { throw "no such file: $Source" }
 if ([IO.Path]::GetExtension($Source) -ne '.mp3') { throw "not an .mp3: $Source" }
 $full = (Resolve-Path -LiteralPath $Source).Path
@@ -90,7 +95,7 @@ $sha = (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash
 $src = (Split-Path (Split-Path $full -Parent) -Leaf) + '\' + (Split-Path $full -Leaf)
 $sourceText = "$Author, $src" + $(if ($album) { "; album tag '$album'" } else { '; no album tag' }) + $(if ($Checked -and $album -notmatch '(?i)ultima') { '; cleared by Chase' } else { '' })
 function Q([string]$s) { '"' + $s.Replace('"', '""') + '"' }
-$row = "$Id,$File,$(if ($Loop) { 'yes' } else { 'no' }),$(Q $What),$(Q $sourceText),$(Q $License),$sha"
+$row = "$Id,$File,$(if ($Loop) { 'yes' } else { 'no' }),$Fallback,$(Q $What),$(Q $sourceText),$(Q $License),$sha"
 
 if ($PSCmdlet.ShouldProcess($dest, "copy $full and append the registry row")) {
     New-Item -ItemType Directory -Path $tracks -Force | Out-Null
@@ -100,4 +105,4 @@ if ($PSCmdlet.ShouldProcess($dest, "copy $full and append the registry row")) {
 }
 Write-Host "registry row: $row"
 Write-Host ("ShardMusicTracks.cs: new({0}, ""{1}"", {2}, ""{3}"", ""{4}""), " -f $Id, $File, $(if ($Loop) { 'true' } else { 'false' }), $What.Replace('"', '\"'), $Author)
-Write-Host "Config.txt line the launcher adds: $Id $File.mp3$(if ($Loop) { ',loop' })"
+Write-Host "Config.txt line the launcher adds: $Id $File.mp3$(if ($Loop) { ',loop' }) (or $Id $Fallback$(if ($Loop) { ',loop' }) when the mp3 is missing)"

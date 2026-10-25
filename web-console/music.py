@@ -6,7 +6,10 @@
         path_of(pack, file)       the file on disk, only for a track the scan listed (the page never names a path)
         notes() / save_note(key, fields)
                                   Chase's rating, tags, note and target per track, in music-notes.json (one record per
-                                  track, keyed "<pack>/<file>"), written whole and atomically on every save
+                                  track, keyed "<pack>/<file>"), written whole and atomically on every save. Each record
+                                  has a revision; a save names the one it was made from and a stale one is refused (cc-P456)
+        load_notes()              (tracks, error): only a missing file is empty; a file that cannot be read or is not the
+                                  notes' shape is an error, and then nothing is written over it (cc-P456)
         summary()                 the tracks marked Use, grouped by tag and then by target
         suggestions()             target names: the shard's regions and the boss shortlist in ART-LIBRARY.md
         commit()                  commits music-notes.json alone in the docs repo (see commit_notes)
@@ -392,43 +395,71 @@ class MusicRoom:
         return None
 
     # --- the notes --------------------------------------------------------------------------------------------
-    def notes(self):
+    def load_notes(self):
+        """(tracks, error). Only a missing file is no notes yet. A file that cannot be read, is not JSON, or is not
+        {"tracks": {key: record}} is an error (tracks None): save_note then refuses rather than write over it."""
+        name = "/".join(NOTES_REL)
         try:
-            with open(self.notes_file, encoding="utf-8") as f:
-                d = json.load(f)
-            t = d.get("tracks") if isinstance(d, dict) else None
-            return t if isinstance(t, dict) else {}
-        except (OSError, ValueError):
-            return {}
+            with open(self.notes_file, "rb") as f:
+                raw = f.read()
+        except FileNotFoundError:
+            return {}, ""
+        except OSError as e:
+            return None, "%s cannot be read (%s)" % (name, e.strerror or e)
+        try:
+            d = json.loads(raw.decode("utf-8-sig"))
+        except (UnicodeDecodeError, ValueError) as e:
+            return None, "%s is not valid JSON (%s): fix or move it, then save again" % (name, str(e)[:120])
+        t = d.get("tracks") if isinstance(d, dict) else None
+        if not isinstance(t, dict) or not all(isinstance(r, dict) for r in t.values()):
+            return None, "%s is not a notes file ({\"tracks\": {track: record}}): fix or move it, then save again" % name
+        return t, ""
+
+    def notes(self):
+        """The records, or {} when there are none or the file is in error (load_notes says which)."""
+        return self.load_notes()[0] or {}
 
     def save_note(self, key, fields):
-        """(record or None, error). Sets one track's record from fields (rating, tags, note, target); a record with
-        nothing in it is removed. The whole file is written to a temporary file and moved into place."""
+        """(record or None, error, HTTP status). Sets one track's record from fields (rating, tags, note, target); a
+        record with nothing in it is removed. fields["rev"] is the record's revision the page last saw (0 for none):
+        when the file holds another, a newer save got there first and this one is refused (409), as it is when the
+        file is in error (load_notes). The whole file is written to a temporary file and moved into place."""
         if not isinstance(key, str) or "/" not in key:
-            return None, "no such track"
+            return None, "no such track", 400
         pack, fn = key.split("/", 1)
         if not self.path_of(pack, fn):
-            return None, "no such track"
+            return None, "no such track", 400
         rating = fields.get("rating") or ""
         if rating not in RATINGS + ("",):
-            return None, "rating is use, maybe or pass"
+            return None, "rating is use, maybe or pass", 400
         tags = fields.get("tags") or []
         if not isinstance(tags, list) or any(t not in TAG_IDS for t in tags):
-            return None, "tags are " + ", ".join(TAG_IDS)
+            return None, "tags are " + ", ".join(TAG_IDS), 400
         note, target = fields.get("note") or "", fields.get("target") or ""
         if not isinstance(note, str) or len(note) > NOTE_MAX:
-            return None, "the note is text, %d characters at most" % NOTE_MAX
+            return None, "the note is text, %d characters at most" % NOTE_MAX, 400
         if not isinstance(target, str) or len(target) > TARGET_MAX or "\n" in target:
-            return None, "the target is one line, %d characters at most" % TARGET_MAX
+            return None, "the target is one line, %d characters at most" % TARGET_MAX, 400
+        base = fields.get("rev")
+        if isinstance(base, bool) or not isinstance(base, int) or base < 0:
+            return None, "the save does not say which revision it was made from: reload the page", 400
         rec = {"pack": pack, "file": fn, "rating": rating, "tags": [t for t in TAG_IDS if t in tags],
                "note": note.replace("\r\n", "\n"), "target": target.strip(), "updated": time.strftime("%Y-%m-%dT%H:%M:%S")}
         with self.lock:
-            notes = self.notes()
+            notes, err = self.load_notes()
+            if err:
+                return None, err + "; nothing was written", 409
+            have = notes.get(key, {}).get("rev", 0)
+            have = have if isinstance(have, int) and not isinstance(have, bool) else 0
+            if base != have:
+                return None, ("a newer save of this track is already in %s (revision %d; this one was made from %d): "
+                              "reload the page to see it" % ("/".join(NOTES_REL), have, base)), 409
             if rating or rec["tags"] or rec["note"].strip() or rec["target"]:
+                rec["rev"] = have + 1
                 notes[key] = rec
             else:
                 notes.pop(key, None)
-                rec = dict(rec, removed=True)
+                rec = dict(rec, removed=True, rev=0)
             os.makedirs(os.path.dirname(self.notes_file), exist_ok=True)
             tmp = self.notes_file + ".tmp"
             with open(tmp, "w", encoding="utf-8", newline="\n") as f:
@@ -436,11 +467,12 @@ class MusicRoom:
                           f, indent=1, ensure_ascii=False)
                 f.write("\n")
             os.replace(tmp, self.notes_file)
-        return rec, ""
+        return rec, "", 200
 
     def summary(self):
         """The tracks marked Use: {tag: {target: [track]}} with 'untagged' and '(no target)' for the rest, plus a count."""
-        notes, by = self.notes(), {}
+        notes, err = self.load_notes()
+        notes, by = notes or {}, {}
         tracks = {t["key"]: t for t in self.tracks()}
         n = 0
         for key, r in sorted(notes.items(), key=lambda kv: kv[0].lower()):
@@ -455,7 +487,7 @@ class MusicRoom:
             for tag in (r.get("tags") or ["untagged"]):
                 by.setdefault(tag, {}).setdefault(r.get("target") or "(no target)", []).append(item)
         order = list(TAG_IDS) + ["untagged"]
-        return {"count": n, "groups": [{"tag": tag, "label": dict(TAGS).get(tag, tag),
+        return {"count": n, "notesError": err, "groups": [{"tag": tag, "label": dict(TAGS).get(tag, tag),
                                         "targets": [{"target": k, "tracks": v} for k, v in sorted(by[tag].items(), key=lambda kv: kv[0].lower())]}
                                        for tag in order if tag in by]}
 

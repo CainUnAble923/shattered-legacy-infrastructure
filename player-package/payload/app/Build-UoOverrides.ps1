@@ -87,12 +87,15 @@
     -1 for none); a skills.mul entry is one action byte, the ASCII name and a NUL, and its length counts all three.
 
   Music (cc-P368): Music\Digital\Config.txt, so our own tracks (app\music\, client music IDs 105 up) play.
-    1. Reads our lines, app\music\shard-music.txt ("<id> <file>.mp3[,loop]", ours; nothing of EA's in it).
-    2. If app\uo-overrides\music-stamp.txt matches the player's Config.txt (size and time) and our lines (SHA-256), and
-       the copy is there, it is done.
+    1. Reads our lines, app\music\shard-music.txt ("<id> <file>.mp3[,loop] [fallback]", ours; nothing of EA's in it).
+    2. If app\uo-overrides\music-stamp.txt matches the player's Config.txt (size and time), our lines (SHA-256) and the
+       lines this run would add (cc-P456: so a track whose mp3 comes back or goes missing rebuilds), and the copy is
+       there, it is done.
     3. Otherwise writes the player's Config.txt, unchanged, with our lines added at the end, to
-       app\uo-overrides\Music\Digital\Config.txt, then the stamp. An ID the player's file already uses is skipped, and
-       so is a track whose mp3 is missing, each with a yellow line. The override list then names the copy
+       app\uo-overrides\Music\Digital\Config.txt, then the stamp. An ID the player's file already uses is skipped, with
+       a yellow line. A track whose mp3 is missing keeps its ID on the stock track its fallback column names (the
+       player's own Music\Digital\<fallback>.mp3; cc-P456), or with no fallback is skipped, each with a yellow line:
+       TazUO stops the music for an ID its Config.txt does not list. The override list then names the copy
        ("music/digital/config.txt=...") and each track ("music/digital/<file>.mp3=<app\music\file.mp3>"): TazUO asks its
        override map for both (Sound.GetMusic, SoundsLoader.Load), so no mp3 is ever written into the player's folder.
 
@@ -149,7 +152,7 @@ $StampFormat = 'uo-overrides 1'
 $ClilocStampFormat = 'uo-cliloc 1'
 $EquipStampFormat = 'uo-equip 1'
 $SkillsStampFormat = 'uo-skills 1'
-$MusicStampFormat = 'uo-music 1'
+$MusicStampFormat = 'uo-music 2'   # cc-P456: 2 adds the lines written ("lines ..."), so a restored mp3 rebuilds
 # cc-P239 (F-14): the skills we rename for everyone. Index (SkillName), the name the player's file must hold, ours.
 $SkillRenames = @(@{ Index = 3; From = 'Item Identification'; To = 'Appraisal' })
 
@@ -799,8 +802,11 @@ function Build-Skills {
 
 # cc-P368: returns the music's override lines, or none (no track shipped): "music/digital/config.txt=<copy>" and one
 # "music/digital/<file>.mp3=<app\music\file.mp3>" per track. The copy is the player's own Music\Digital\Config.txt with
-# our lines (app\music\shard-music.txt, "<id> <file>.mp3[,loop]", IDs 105 up) added at the end; a stock line is never
-# changed. An ID the player's file already uses is skipped and said, and so is a track whose mp3 is not in app\music.
+# our lines (app\music\shard-music.txt, "<id> <file>.mp3[,loop] [fallback]", IDs 105 up) added at the end; a stock line
+# is never changed. An ID the player's file already uses is skipped and said. A track whose mp3 is not in app\music
+# plays the stock track its fallback column names instead ("<id> <fallback>[,loop]", the player's own file, so no
+# override line), and is said; with no fallback, or one the player does not have, it is skipped and said (cc-P456).
+# The fallback column never reaches Config.txt: TazUO reads two or three fields a line (SoundsLoader.TryParseConfigLine).
 # TazUO resolves both paths through its override map (Sound.GetMusic -> GetUOFilePath("Music/Digital/<name>.mp3"),
 # SoundsLoader.Load -> GetUOFilePath("Music/Digital/Config.txt"); the map's keys are lower case), so the mp3 plays from
 # app\music\ and the player's Music folder is only ever read.
@@ -815,9 +821,8 @@ function Build-Music {
     $out      = Join-Path $outDir 'Config.txt'
     $stampOut = Join-Path $OutDir 'music-stamp.txt'
     $s = Get-Item -LiteralPath $src
-    $stamp = "$MusicStampFormat`nConfig.txt $($s.Length) $($s.LastWriteTimeUtc.Ticks)`nours $((Get-FileHash -LiteralPath $list -Algorithm SHA256).Hash)"
 
-    # Ours: id, file name (with .mp3), the whole line. The player's file is read either way, for the IDs it uses.
+    # Ours: id, file name (with .mp3), loop, fallback. The player's file is read either way, for the IDs it uses.
     $theirs = @(Get-Content -LiteralPath $src)
     $used = @{}
     foreach ($t in $theirs) {
@@ -826,17 +831,27 @@ function Build-Music {
     }
     $adds = @()
     foreach ($o in $ours) {
-        $m = [regex]::Match($o, '^(\d+)\s+([^,\s]+\.mp3)(,loop)?$')
+        $m = [regex]::Match($o, '^(\d+)\s+([^,\s]+\.mp3)(,loop)?(?:\s+([A-Za-z0-9_]+))?$')
         if (-not $m.Success) { Say-Skip "Shattered Legacy music: skipping a line it cannot read: $o"; continue }
-        $id = [int]$m.Groups[1].Value; $file = $m.Groups[2].Value
+        $id = [int]$m.Groups[1].Value; $file = $m.Groups[2].Value; $loop = $m.Groups[3].Value; $fallback = $m.Groups[4].Value
         if ($used.ContainsKey($id)) { Say-Skip "Shattered Legacy music: skipping track ${id}: your Ultima Online files now use that number."; continue }
         $mp3 = Join-Path $Music $file
-        if (-not (Test-Path -LiteralPath $mp3)) { Say-Skip "Shattered Legacy music: skipping track ${id}: $file is not in app\music."; continue }
+        if (-not (Test-Path -LiteralPath $mp3)) {
+            if ($fallback -and (Test-Path -LiteralPath (Join-Path $UoDir "Music\Digital\$fallback.mp3"))) {
+                Say-Skip "Shattered Legacy music: track ${id}: $file is not in app\music; playing the stock $fallback there instead."
+                $adds += [pscustomobject]@{ Line = "$id $fallback$loop"; Key = $null; Path = $null }
+                continue
+            }
+            Say-Skip "Shattered Legacy music: skipping track ${id}: $file is not in app\music."
+            continue
+        }
         if ($mp3.Contains('=')) { throw "the game folder's path has an '=' in it, which TazUO cannot read in an override list" }
-        $adds += [pscustomobject]@{ Line = $o; Key = "music/digital/$($file.ToLowerInvariant())"; Path = (Resolve-Path -LiteralPath $mp3).Path }
+        $adds += [pscustomobject]@{ Line = "$id $file$loop"; Key = "music/digital/$($file.ToLowerInvariant())"; Path = (Resolve-Path -LiteralPath $mp3).Path }
     }
     if ($adds.Count -eq 0) { return }
-    $lines = { "music/digital/config.txt=$(Join-Path $ListRoot 'Music\Digital\Config.txt')"; foreach ($a in $adds) { "$($a.Key)=$($a.Path)" } }
+    $stamp = "$MusicStampFormat`nConfig.txt $($s.Length) $($s.LastWriteTimeUtc.Ticks)`nours $((Get-FileHash -LiteralPath $list -Algorithm SHA256).Hash)" +
+             "`nlines $(($adds | ForEach-Object { $_.Line }) -join '; ')"
+    $lines = { "music/digital/config.txt=$(Join-Path $ListRoot 'Music\Digital\Config.txt')"; foreach ($a in $adds) { if ($a.Key) { "$($a.Key)=$($a.Path)" } } }
 
     if ((Test-Path -LiteralPath $stampOut) -and (Test-Path -LiteralPath $out) -and
         [IO.File]::ReadAllText($stampOut) -ceq $stamp) {

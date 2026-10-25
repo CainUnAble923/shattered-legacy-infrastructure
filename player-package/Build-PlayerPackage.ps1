@@ -282,6 +282,7 @@ function Test-MusicRegistry($Rows, [string]$Dir) {
         if ($f -cnotmatch '^sl-[a-z0-9-]+$') { $fail += "registry.csv: $id has file '$f', not sl-<lower case, digits, dashes>" }
         if ($files.ContainsKey($f)) { $fail += "registry.csv: file '$f' is listed twice" }
         $files[$f] = 1
+        if ("$($r.fallback)" -cnotmatch '^[A-Za-z0-9_]+$') { $fail += "registry.csv: $id has no stock fallback track (cc-P456: what plays when the mp3 is missing)" }
         if ("$($r.loop)" -notin @('yes', 'no')) { $fail += "registry.csv: $id has loop '$($r.loop)', not yes or no" }
         if ("$($r.sha256)" -notmatch '^[0-9A-Fa-f]{64}$') { $fail += "registry.csv: $id has no SHA-256"; continue }
         $mp3 = Join-Path $Dir "tracks\$f.mp3"
@@ -290,7 +291,8 @@ function Test-MusicRegistry($Rows, [string]$Dir) {
     }
     return $fail
 }
-# cc-P368: the shipped list (app\music\shard-music.txt: "<id> <file>.mp3[,loop]" per track, # comments) against the mp3s
+# cc-P368: the shipped list (app\music\shard-music.txt: "<id> <file>.mp3[,loop] [fallback]" per track, # comments; the
+# fallback, cc-P456, is the stock track the launcher plays under that ID when the mp3 is missing) against the mp3s
 # that shipped beside it ($Mp3s: the file names under app\music\). Returns the failures.
 function Test-ShardMusicList([string]$text, [string[]]$Mp3s) {
     $fail = @()
@@ -298,7 +300,7 @@ function Test-ShardMusicList([string]$text, [string[]]$Mp3s) {
     foreach ($line in $text -split "`r?`n") {
         $l = $line.Trim()
         if (-not $l -or $l.StartsWith('#')) { continue }
-        $m = [regex]::Match($l, '^(\d+) ([^,\s]+\.mp3)(,loop)?$')
+        $m = [regex]::Match($l, '^(\d+) ([^,\s]+\.mp3)(,loop)?( [A-Za-z0-9_]+)?$')
         if (-not $m.Success) { $fail += "app/music/shard-music.txt: a line TazUO's Config.txt reader would not take: $l"; continue }
         $id = [int]$m.Groups[1].Value
         if ($id -lt 105 -or $id -gt 149) { $fail += "app/music/shard-music.txt: $id is not one of our IDs (105 to 149)" }
@@ -875,9 +877,10 @@ if ($musicFail.Count) { throw "MUSIC GATE: $($musicFail -join '; '). Not buildin
 $musicOut = Join-Path $stage 'app\music'
 New-Item -ItemType Directory -Path $musicOut -Force | Out-Null
 $musicList = "# Shattered Legacy music (cc-P368): the Config.txt lines Play.ps1 adds to a copy of your own Music\Digital\Config.txt.`r`n" +
-             "# One per track in app\music\, client music IDs 105 and up; the stock lines 0-104 stay as they are. vendor\shattered-legacy-music\SOURCE.txt.`r`n"
+             "# One per track in app\music\, client music IDs 105 and up; the stock lines 0-104 stay as they are. vendor\shattered-legacy-music\SOURCE.txt.`r`n" +
+             "# The last word is the stock track that plays under that ID if the mp3 is missing (cc-P456); it is not written to Config.txt.`r`n"
 foreach ($r in ($musicRows | Sort-Object { [int]$_.id })) {
-    $musicList += "$($r.id) $($r.file).mp3$(if ($r.loop -eq 'yes') { ',loop' })`r`n"
+    $musicList += "$($r.id) $($r.file).mp3$(if ($r.loop -eq 'yes') { ',loop' }) $($r.fallback)`r`n"
     $vendored += ,@((Join-Path $slMusic "tracks\$($r.file).mp3"), (Join-Path $musicOut "$($r.file).mp3"))
 }
 [IO.File]::WriteAllText((Join-Path $musicOut 'shard-music.txt'), $musicList, (New-Object Text.ASCIIEncoding))

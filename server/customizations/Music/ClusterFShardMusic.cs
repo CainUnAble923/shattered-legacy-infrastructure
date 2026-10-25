@@ -14,6 +14,9 @@
 //           the creature dead, deleted or gone from the map, out of FightRange, or neither of the two naming the other as
 //           Combatant. ReturnDelay later the area's music comes back (pm.Region.Music). A boss engage while a monster
 //           plays switches at once; a monster engage during a live boss fight does not. Pets and summons never count.
+//           Where the area has no music (MusicName.Invalid, the default region) the music from before the fight comes
+//           back instead, or the music stops (cc-P456: Invalid goes out as 0x6D FF FF, which TazUO ignores, so the
+//           fight track would loop on; it acts on the stop, 0x6D 1F FF).
 //   Off     [ShardMusic off (per account, ClusterFAccountData FlagValues "music.shardOff") keeps stock music: no fight
 //           music, and in a mapped region the stock track is sent right after pinned's send of ours (at login, and after
 //           the first step into the region: EventSink.Movement is raised before the step, so the check runs on the next
@@ -362,6 +365,19 @@ public static class ClusterFShardMusic
     /// turned shard music off.</summary>
     public static MusicName AreaMusic(PlayerMobile pm) => IsOff(pm) ? StockMusic(pm.Region) : pm.Region.Music;
 
+    /// <summary>The music after a fight: the area's; where the area has none (Invalid), the music from before the fight;
+    /// and when that was none too, the stop (NoMusic, 0x6D 1F FF). Never Invalid (cc-P456).</summary>
+    public static MusicName ReturnMusic(PlayerMobile pm, MusicName before)
+    {
+        var area = AreaMusic(pm);
+        if (area != MusicName.Invalid)
+        {
+            return area;
+        }
+
+        return before != MusicName.Invalid ? before : MusicName.NoMusic;
+    }
+
     // ---------------------------------------------------------------- off switch
 
     private static readonly HashSet<PlayerMobile> _off = new();          // the flag, cached for online players
@@ -462,6 +478,7 @@ public static class ClusterFShardMusic
     {
         public required BaseCreature Creature;
         public required ShardMusicRow Row;
+        public MusicName Before; // the area music when the first fight of a run began (ReturnMusic)
         public DateTime? EndedAt;
         public TimerExecutionToken Token;
     }
@@ -500,7 +517,9 @@ public static class ClusterFShardMusic
     }
 
     /// <summary>A mapped creature and a player start fighting. Returns true when the player's music switched.</summary>
-    public static bool Engage(PlayerMobile pm, BaseCreature bc, DateTime now)
+    public static bool Engage(PlayerMobile pm, BaseCreature bc, DateTime now) => Engage(pm, bc, now, null);
+
+    private static bool Engage(PlayerMobile pm, BaseCreature bc, DateTime now, MusicName? before)
     {
         if (!Enabled || pm.Deleted || bc.Deleted || !bc.Alive || pm.NetState == null || IsOff(pm))
         {
@@ -533,9 +552,10 @@ public static class ClusterFShardMusic
             }
 
             fight.Token.Cancel();
+            before ??= fight.Before;
         }
 
-        fight = new Fight { Creature = bc, Row = row };
+        fight = new Fight { Creature = bc, Row = row, Before = before ?? AreaMusic(pm) };
         _fights[pm] = fight;
         Timer.StartTimer(WatchInterval, WatchInterval, () => Check(pm, Core.Now), out fight.Token);
         Send(pm, (MusicName)row.Track, layer);
@@ -573,7 +593,7 @@ public static class ClusterFShardMusic
                 LayerOn(LayerOf(next.Kind)) && IsLive(pm, other))
             {
                 Drop(pm);
-                Engage(pm, other, now);
+                Engage(pm, other, now, fight.Before);
                 return;
             }
 
@@ -587,7 +607,7 @@ public static class ClusterFShardMusic
         }
 
         Drop(pm);
-        Send(pm, AreaMusic(pm), ShardMusicLayer.Area);
+        Send(pm, ReturnMusic(pm, fight.Before), ShardMusicLayer.Area);
     }
 
     private static void Drop(PlayerMobile pm)
