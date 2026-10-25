@@ -12,6 +12,7 @@
     { "number": 1900008, "text": "All items must be made with Mythril ingots." },
     { "number": 1900009, "text": "All items must be made with Adamantium ingots." },
     { "number": 1900010, "text": "All items must be made with Celestial ingots." },
+    { "number": 1900011, "text": "Craft This Order" },
     { "number": 1900012, "text": "Clear a corpse" },
     { "number": 1900013, "text": "Clear corpses nearby" }
   ]

@@ -205,7 +205,7 @@
                      {
                          ShowCraftMenu(from, craftSystem, tool, message);
                      }
-@@ -1423,6 +1472,12 @@
+@@ -1423,6 +1472,14 @@
                          }
                      }
  
@@ -214,17 +214,19 @@
 +                        clusterHoh.RecordFamiliarity(HammerMetal.CraftedResource(typeRes, craftSystem, this), from, quality == 2);
 +                    else if (tool is ReinforcedHammerOfHephaestus clusterRhoh)
 +                        clusterRhoh.RecordFamiliarity(HammerMetal.CraftedResource(typeRes, craftSystem, this), from, quality == 2);
++                    else if (tool is MasterworkHammerOfHephaestus clusterMhoh) // cc-P168: T3, and its ingot savings
++                        clusterMhoh.RecordFamiliarity(HammerMetal.CraftedResource(typeRes, craftSystem, this), from, quality == 2, this, craftSystem);
 +
                      if (tool.UsesRemaining < 1 && tool.BreakOnDepletion)
                      {
                          toolBroken = true;
-@@ -1477,6 +1532,29 @@
+@@ -1477,6 +1534,29 @@
  
                      from.AddToBackpack(item);
  
 +                    // ClusterF: Hammer of Hephaestus - BOD auto-fill
 +                    if (from is PlayerMobile clusterHohPm && craftSystem is DefBlacksmithy
-+                        && (tool is HammerOfHephaestus or ReinforcedHammerOfHephaestus))
++                        && (tool is HammerOfHephaestus or ReinforcedHammerOfHephaestus or MasterworkHammerOfHephaestus))
 +                        HammerBODAutoFill.TryAutoFill(clusterHohPm, item);
 +
 +                    // ClusterF: Crafting achievements
@@ -248,7 +250,7 @@
                      if (from.AccessLevel > AccessLevel.Player)
                      {
                          CommandLogging.WriteLine(
-@@ -1546,6 +1624,10 @@
+@@ -1546,6 +1626,10 @@
                          )
                      );
                  }
@@ -259,7 +261,7 @@
                  else if (tool?.Deleted == false && tool.UsesRemaining > 0)
                  {
                      if (T2ACraftSystem.Enabled)
-@@ -1571,7 +1653,10 @@
+@@ -1571,7 +1655,10 @@
  
              if (!allRequiredSkills)
              {
@@ -271,7 +273,7 @@
                  {
                      from.SendAsciiMessage("You lack the required skill to craft this item.");
                  }
-@@ -1587,7 +1672,10 @@
+@@ -1587,7 +1674,10 @@
              // Not enough resource to craft it
              if (!ConsumeRes(from, typeRes, craftSystem, ref resHue, ref maxAmount, consumeType, ref message, true))
              {
@@ -283,7 +285,7 @@
                  {
                      ShowCraftMenu(from, craftSystem, tool, message);
                  }
-@@ -1624,7 +1712,11 @@
+@@ -1624,7 +1714,11 @@
              // SkillCheck failed.
              num = craftSystem.PlayEndingEffect(from, true, true, toolBroken, endquality, false, this);
  
@@ -296,7 +298,7 @@
              {
                  ShowCraftMenu(from, craftSystem, tool, num);
              }
-@@ -1880,7 +1972,10 @@
+@@ -1880,7 +1974,10 @@
  
                  if (badCraft > 0)
                  {
@@ -308,7 +310,7 @@
                      {
                          ShowCraftMenu(m_From, m_CraftSystem, m_Tool, badCraft);
                      }
-@@ -1932,8 +2027,10 @@
+@@ -1932,8 +2029,10 @@
                  }
  
                  // T2A menus always prompt for maker's mark (no auto-mark/don't-mark options)

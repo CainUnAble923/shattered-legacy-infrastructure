@@ -253,7 +253,7 @@ Fact 'TheServerAndThePackageAgreeOnEveryNumber' {
     $num = { param($name) [int]([regex]::Match($cs, "public const int $name\s*=\s*([\d_]+);").Groups[1].Value -replace '_', '') }
     Assert-Equal 1900000 (& $num 'BlockFirst')
     Assert-Equal 1999999 (& $num 'BlockLast')
-    $want = @{ 'Breed' = (& $num 'Breed'); 'Smelt Ore' = (& $num 'SmeltOre'); 'Metal Familiarity' = (& $num 'MetalFamiliarity') }
+    $want = @{ 'Breed' = (& $num 'Breed'); 'Smelt Ore' = (& $num 'SmeltOre'); 'Metal Familiarity' = (& $num 'MetalFamiliarity'); 'Craft This Order' = (& $num 'CraftThisOrder') }
     # cc-P61 Part C: the post-Valorite deed lines, ShardClilocs.<Metal>Ingots.
     foreach ($m in 'Platinum', 'Toxic', 'Blaze', 'Frost', 'Obsidian', 'Mythril', 'Adamantium', 'Celestial') {
         $want["All items must be made with $m ingots."] = (& $num "$($m)Ingots")

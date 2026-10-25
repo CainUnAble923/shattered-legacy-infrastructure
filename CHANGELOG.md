@@ -31,8 +31,17 @@ Example:
 
 ## 2026.10.24.18
 
+### Added
+- The Masterwork Hammer of Hephaestus, the hammer's third tier: 800 uses, +15 Blacksmithy while held, and metal familiarity up to 5,000 a metal. A Society of Smiths Master (15,000 standing) with 100 Blacksmithy can have the Reinforced Hammer upgraded at the guildmaster; your familiarity comes with it.
+- Its bonus: metals you know well waste fewer ingots. A successful craft gives back up to a quarter of its ingots at full familiarity with that metal, less the less you know it.
+- Craft This Order: hold the Masterwork Hammer at an anvil and forge, pick Craft This Order on its menu and target a smith bulk order in your backpack. The hammer crafts what the order still needs, one normal craft at a time (your skill, your ingots, one hammer use each), and puts each piece that fits into the order. It stops when the order is full, or when you run out of ingots or hammer uses, move, get hurt, or press Stop. A large order first takes any finished small orders for it from your backpack. Update your game through the launcher to see the menu entry's name.
+- Bulk order deeds now show guild members what handing them in pays: a Society of Smiths member sees the Seals (or the gold, if completed orders are set to cash out) and the standing, in the deed and its tooltip; a member of the Tailors' Circle or another order-giving guild sees the gold their guildmaster pays. The numbers shown are exactly what you are paid.
+
 ### Fixed
 - The Artificers' guildmaster and the Order's welcome message now tell it as it works: the Apprentice task pays your first Standing and Essence Shards, and what you can imbue, and how strongly, comes from the formula tiers you learn.
+
+### Staff
+- [add MasterworkHammerOfHephaestus gives the T3. The T4 (two T3s combined) is still not built.
 
 ## 2026.10.24.17
 

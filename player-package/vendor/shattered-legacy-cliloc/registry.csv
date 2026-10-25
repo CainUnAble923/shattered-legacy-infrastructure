@@ -14,5 +14,6 @@ number,text,used_by,added
 1900008,All items must be made with Mythril ingots.,"smith deed material line, Mythril (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
 1900009,All items must be made with Adamantium ingots.,"smith deed material line, Adamantium (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
 1900010,All items must be made with Celestial ingots.,"smith deed material line, Celestial (small and large deed and accept gumps, deed tooltips; BOD-gumps-post-valorite-material.patch)",cc-P61
+1900011,Craft This Order,"Masterwork Hammer of Hephaestus context menu, craft a smith deed (HammerCraftOrderEntry)",cc-P168
 1900012,Clear a corpse,"trash bag context menu, target one monster corpse to clear (TrashBag.ClearCorpseEntry)",cc-P415
 1900013,Clear corpses nearby,"trash bag context menu, clear every monster corpse in reach (TrashBag.ClearCorpsesNearbyEntry)",cc-P415

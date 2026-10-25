@@ -327,7 +327,7 @@ public static class BulkOrderVendors
             return false;
         }
 
-        var gold = BulkOrderSystem.ComputeGold(bod);
+        var gold = BulkOrderGuildPay.Quote(bod).StockGold; // cc-P168: the deed's quote, what a member's deed shows
         var fame = bod.ComputeFame();
 
         from.SendSound(0x3D);
