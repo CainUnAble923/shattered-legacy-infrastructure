@@ -482,7 +482,7 @@ public class TutorialVerification : IDisposable
 
         using var p = new Player();
         ClusterFTutorial.OnLogin(p.Pm);
-        Assert.Equal("Finish the core first.", ClusterFTutorial.Graduate(p.Pm));
+        Assert.Equal("Finish the main lessons listed in Rook's window before you graduate.", ClusterFTutorial.Graduate(p.Pm));
 
         WalkTheCore(p.Pm);
         Assert.Equal(TutorialState.InWings, p.Record.State);

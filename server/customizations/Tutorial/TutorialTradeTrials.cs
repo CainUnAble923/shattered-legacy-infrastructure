@@ -62,152 +62,152 @@ namespace Server.Tutorial
         }
 
         private const string Made = "made";
-        private const string AtYard = "the trades yard, south-east of the training yard";
+        private const string AtYard = "the trades yard, southeast of the training yard";
 
         private static (string, string) S(SkillName skill, string label) => (skill.ToString(), label);
 
         public const string HerbalismLine =
-            "Herbalism is not built here yet: the Order of the Alembic will teach it. Camping is your fire, your rest and your safe logout outdoors.";
+            "Herbalism is not available yet. In this lesson, double-click kindling to light a campfire.";
         public const string ImbuingLine =
-            "Imbuing is not taught in this yard: it puts magic properties on crafted gear at a soul forge, and gargoyle cities teach it.";
+            "Imbuing adds magical properties to equipment at a soul forge. This tutorial does not teach it.";
         public const string ForensicLine =
-            "Forensic Evaluation is explained, not trained here: it tells you who looted a corpse and who picked a lock.";
+            "Forensic Evaluation can reveal who looted a body or picked a lock. This tutorial explains it without giving you a practice task.";
 
         public static readonly TradeTrial[] Trades =
         [
             // -- Gathering --
             new("gathering.mining", AtYard, TradesYard,
-                [S(SkillName.Mining, "Mining: dig ore from the practice vein")],
-                "Double-click the loaned pickaxe and click the practice vein (the gray cave floor beside you). Keep digging until ore comes up; the ore is yours to keep."),
+                [S(SkillName.Mining, "Mining: dig ore from the gray stone patch")],
+                "Double-click the loaned pickaxe in your backpack, then click the gray stone patch named practice vein. Repeat until you dig up ore, which you can keep."),
             new("gathering.lumberjacking", AtYard, TradesYard,
                 [S(SkillName.Lumberjacking, "Lumberjacking: chop logs from the practice tree")],
-                "The loaned hatchet is in your hands. Double-click it and click the walnut tree beside you until logs come down; the logs are yours to keep."),
+                "Double-click the loaned hatchet, then click the walnut tree beside you. Repeat until you get logs, which you can keep."),
             new("gathering.fishing", AtYard, TradesYard,
-                [S(SkillName.Fishing, "Fishing: catch something in the practice pond")],
-                "Double-click the loaned fishing pole and click the water of the practice pond beside you. Keep casting until you catch something; it is yours to keep."),
+                [S(SkillName.Fishing, "Fishing: catch something in the small practice pond")],
+                "Double-click the loaned fishing pole in your backpack, then click the water in the small practice pond. Repeat until you catch something, which you can keep."),
             new("gathering.camping", AtYard, TradesYard,
-                [S(SkillName.Camping, "Camping: light a campfire")],
-                "Double-click the loaned kindling in your backpack to light a campfire on the ground beside you.",
+                [S(SkillName.Camping, "Camping: light a campfire with kindling")],
+                "Double-click the loaned kindling in your backpack to light a campfire beside you.",
                 HerbalismLine),
 
             // -- The crafting yard --
             new("crafting.blacksmithy", AtYard, TradesYard,
-                [(Made, "Blacksmithy: make a dagger at the anvil"), S(SkillName.ArmsLore, "Arms Lore: study your dagger")],
-                "Stand by the anvil and forge. Double-click the loaned smith's hammer, open Bladed and make a dagger from the loaned iron ingots. Then use Arms Lore on it.",
+                [(Made, "Blacksmithy: make a dagger at the anvil"), S(SkillName.ArmsLore, "Arms Lore: use on the dagger you made")],
+                "Beside the anvil and forge, double-click the loaned smith's hammer, choose Bladed, then make a Dagger. Open Skills on your character window, use Arms Lore, and click your dagger.",
                 ImbuingLine, [typeof(Dagger)]),
             new("crafting.tailoring", AtYard, TradesYard,
                 [(Made, "Tailoring: sew a skullcap")],
-                "Double-click the loaned sewing kit, open Hats and make a skullcap from the loaned cloth.",
+                "Double-click the loaned sewing kit in your backpack. Choose Hats, then make a Skullcap with the loaned cloth.",
                 null, [typeof(SkullCap)]),
             new("crafting.carpentry", AtYard, TradesYard,
-                [(Made, "Carpentry: cut barrel staves")],
-                "Double-click the loaned saw, open Other and make barrel staves from the loaned boards.",
+                [(Made, "Carpentry: make barrel staves")],
+                "Double-click the loaned saw in your backpack. Choose Other, then make Barrel Staves with the loaned boards.",
                 null, [typeof(BarrelStaves)]),
             new("crafting.tinkering", AtYard, TradesYard,
-                [(Made, "Tinkering: make scissors"), S(SkillName.ItemID, "Item Identification: identify the odd curio")],
-                "Double-click the loaned tinker's tools, open Tools and make scissors from the loaned ingots. Then use Item Identification on the odd curio in your backpack.",
+                [(Made, "Tinkering: make scissors"), S(SkillName.ItemID, "Item Identification: use on the odd blue curio")],
+                "Double-click the loaned tinker's tools, choose Tools, then make Scissors. Open Skills on your character window, use Item Identification, and click the odd blue curio in your backpack.",
                 null, [typeof(Scissors)]),
             new("crafting.alchemy", AtYard, TradesYard,
-                [(Made, "Alchemy: brew a refresh potion"), S(SkillName.TasteID, "Taste Identification: taste the apple")],
-                "Double-click the loaned mortar and pestle, open Refresh and brew a refresh potion (black pearl and an empty bottle). Then use Taste Identification on the loaned apple.",
+                [(Made, "Alchemy: make a refresh potion"), S(SkillName.TasteID, "Taste Identification: use on the loaned apple")],
+                "Double-click the loaned mortar and pestle, choose Refresh, then make a Refresh Potion. Open Skills on your character window, use Taste Identification, and click the loaned apple.",
                 null, [typeof(RefreshPotion)]),
             new("crafting.fletching", AtYard, TradesYard,
                 [(Made, "Fletching: make kindling")],
-                "Double-click the loaned fletcher's tools, open Materials and make kindling from the loaned logs.",
+                "Double-click the loaned fletcher's tools in your backpack. Choose Materials, then make Kindling with the loaned logs.",
                 null, [typeof(Kindling)]),
             new("crafting.cooking", AtYard, TradesYard,
                 [(Made, "Cooking: make dough")],
-                "Double-click the loaned skillet, open Ingredients and make dough from the loaned flour and the pitcher of water.",
+                "Double-click the loaned skillet in your backpack. Choose Ingredients, then make Dough with the loaned flour and water.",
                 null, [typeof(Dough)]),
             new("crafting.inscription", AtYard, TradesYard,
                 [(Made, "Inscription: write a Magic Arrow scroll")],
-                "Double-click the loaned scribe's pen, open First Circle and write Magic Arrow (the loaned spellbook holds the spell; it needs a blank scroll and sulfurous ash).",
+                "Double-click the loaned scribe's pen in your backpack. Choose First Circle, then make a Magic Arrow scroll with the loaned supplies.",
                 null, [typeof(MagicArrowScroll)]),
             new("crafting.cartography", AtYard, TradesYard,
                 [(Made, "Cartography: draw a local map")],
-                "Double-click the loaned mapmaker's pen, open Maps and draw a local map on a loaned blank map.",
+                "Double-click the loaned mapmaker's pen in your backpack. Choose Maps, then make a Local Map on a loaned blank map.",
                 null, [typeof(LocalMap)]),
 
             // -- Animals (the farm, P276) --
-            new("animals.taming", "the tutorial farm's field, beside the animal pen (enter by the gate)", FarmField,
+            new("animals.taming", "the farm's animal pen, through the gate", FarmField,
                 [
-                    S(SkillName.Herding, "Herding: move the tutorial goat with the crook"),
-                    S(SkillName.AnimalTaming, "Animal Taming: tame the tutorial goat"),
-                    S(SkillName.AnimalLore, "Animal Lore: it rolls as you tame; or study your goat"),
-                    S(SkillName.Veterinary, "Veterinary: bandage it")
+                    S(SkillName.Herding, "Herding: use the crook on the goat, then click a spot"),
+                    S(SkillName.AnimalTaming, "Animal Taming: use on the practice goat"),
+                    S(SkillName.AnimalLore, "Animal Lore: use on your goat or gain it while taming"),
+                    S(SkillName.Veterinary, "Veterinary: double-click a bandage, then your goat")
                 ],
-                "The tutorial goat is in the pen. Double-click the loaned crook, click the goat, then a spot to send it. Then use Animal Taming on it (taming rolls Animal Lore too; or use Animal Lore on it once it is yours) and a loaned bandage on it. It goes back to the farm when the lesson ends."),
+                "Double-click the loaned crook, click the practice goat, then click a place to send it. Use Animal Taming and Animal Lore from Skills, then bandage the goat; it stays at the farm."),
 
             // -- Bard --
             new("bard.trial", AtYard, TradesYard,
                 [
-                    S(SkillName.Peacemaking, "Peacemaking: calm an echo"),
-                    S(SkillName.Provocation, "Provocation: turn one echo on the other"),
-                    S(SkillName.Discordance, "Discordance: weaken an echo")
+                    S(SkillName.Peacemaking, "Peacemaking: use on a blue training echo"),
+                    S(SkillName.Provocation, "Provocation: use on one echo, then the other"),
+                    S(SkillName.Discordance, "Discordance: use on a blue training echo")
                 ],
-                "Use Peacemaking, Provocation and Discordance on the two training echoes (Provocation: the first echo, then the second). Pick the loaned lute when asked for an instrument; Musicianship rolls every time."),
+                "Open Skills on your character window and use Peacemaking, Provocation, and Discordance on the two blue human figures. Choose the loaned lute when asked; for Provocation, click one figure, then the other."),
 
             // -- Thieving and stealth --
             new("thieving.trial", AtYard, TradesYard,
                 [
-                    S(SkillName.DetectHidden, "Detecting Hidden: target the practice chest"),
-                    S(SkillName.RemoveTrap, "Remove Trap: disarm the practice chest"),
-                    S(SkillName.Lockpicking, "Lockpicking: a loaned lockpick on the chest"),
-                    S(SkillName.Stealing, "Stealing: lift the purse from the chest (hands free)"),
-                    S(SkillName.Snooping, "Snooping: open the mark's backpack"),
-                    S(SkillName.Begging, "Begging: beg from the mark"),
-                    S(SkillName.Poisoning, "Poisoning: the loaned poison on the loaned dagger"),
-                    S(SkillName.Tracking, "Tracking: use it and pick a kind"),
-                    S(SkillName.Hiding, "Hiding: hide"),
-                    S(SkillName.Stealth, "Stealth: while hidden, use Stealth")
+                    S(SkillName.DetectHidden, "Detecting Hidden: use on the wooden practice chest"),
+                    S(SkillName.RemoveTrap, "Remove Trap: use on the wooden practice chest"),
+                    S(SkillName.Lockpicking, "Lockpicking: use a loaned lockpick on the chest"),
+                    S(SkillName.Stealing, "Stealing: empty your hands and steal the purse"),
+                    S(SkillName.Snooping, "Snooping: double-click the mark's backpack"),
+                    S(SkillName.Begging, "Begging: use on the blue practice person"),
+                    S(SkillName.Poisoning, "Poisoning: select the loaned poison, then the dagger"),
+                    S(SkillName.Tracking, "Tracking: use the skill and choose a category"),
+                    S(SkillName.Hiding, "Hiding: use the skill until you hide"),
+                    S(SkillName.Stealth, "Stealth: hide, then use Stealth")
                 ],
-                "Ten small steps on the practice chest and the mark (a tutorial-only dummy). Nothing here touches another player. Snooping and poisoning cost a little karma, as they always do. Stand beside the chest to pick it and to steal.",
+                "Use Skills in your character window for the checklist tasks on the wooden chest and blue practice person. For Snooping, double-click the person, then its backpack; snooping and poisoning can lower your karma.",
                 ForensicLine),
 
             // -- The tours --
             new("housing.basics", "the first stop", TourCentre,
                 [("stop0", "The farmhouse porch"), ("stop1", "The bank")],
-                "A short walk. Follow the arrow to each stop.",
+                "Follow the arrow to the first stop. Walk close to each stop to read its lesson.",
                 Stops:
                 [
                     (() => Ground(3383, 2612), "the farmhouse porch",
-                        "A house is placed from a deed on open land. Inside it you lock things down, secure containers and name co-owners and friends; boxes open in your own house, too. TazUO: Options can make roofs and walls transparent near you."),
+                        "Use a house deed on open land where housing is allowed, then lock items in place and secure containers inside. TazUO's Options can make nearby roofs and walls transparent."),
                     (() => ClusterFNewHavenSeeder.BankAnchor, "the bank",
-                        "House deeds come from architects and real estate brokers in the big cities. Keep a deed in your bank box until you place it; a house must be refreshed by visiting it, or it decays.")
+                        "Keep a house deed in your bank until you are ready to use it. Visit your house regularly to refresh it and prevent decay.")
                 ]),
             new("travel.wing", "the first stop", TourCentre,
                 [("stop0", "The moongate"), ("stop1", "The plaza")],
-                "A short walk. Follow the arrow to each stop. The loaned rune is a blank recall rune: look at it, then it goes back.",
+                "Follow the arrow to each stop and read the lesson when you arrive. The blank recall rune in your backpack is a loan and disappears when the tour ends.",
                 Stops:
                 [
                     (() => TutorialCorePlacement.GateSpot, "the moongate",
-                        "Moongates link the cities and the facets: step in and pick where to go. Boats sail from the docks; a ship's deed comes from a shipwright."),
+                        "This practice gate works only during the main travel lesson and returns you to the plaza. For travel elsewhere, public moongates offer destinations and shipwrights sell boat deeds."),
                     (() => TutorialRecruiter.Spot, "the plaza",
-                        "A recall rune remembers a place: Mark it (Magery, fourth circle), then Recall or Gate Travel to it; Sacred Journey does it for paladins. A runebook holds sixteen. TazUO: the World Map shows where you are.")
+                        "A recall rune stores a location when you cast Mark on it. Return with Recall, Gate Travel, or Sacred Journey; a runebook stores up to 16 runes.")
                 ]),
             new("reputation.wing", "the first stop", TourCentre,
                 [("stop0", "The training yard"), ("stop1", "The healer"), ("stop2", "The plaza")],
-                "A short walk. Follow the arrow to each stop.",
+                "Follow the arrow to the first stop. Walk close to each stop to read its lesson.",
                 Stops:
                 [
                     (() => YardSpot, "the training yard",
-                        "Names have colors. Blue is innocent; gray may be attacked (a criminal, or a monster); red is a murderer. Attack or steal from a blue and you turn gray for a while."),
+                        "Blue names usually mean innocent; gray names can be attacked, and red names mark murderers. Harming an innocent can make you gray for a while."),
                     (() => TutorialCorePlacement.HealerSpot, "the healer",
-                        "Karma is your good name, fame your renown; together they give your title. Killing innocents earns murder counts, and five make you red. Healers resurrect the dead, but not the red."),
+                        "Karma and fame affect your title; killing innocent players can give you murder counts. Five murder counts make your name red, and some healers will refuse to help you."),
                     (() => TutorialRecruiter.Spot, "the plaza",
-                        "Towns have guards. If a gray or red attacks you here, say \"guards\". Trammel, this facet, forbids attacking other players at all; Felucca allows it.")
+                        "In a guarded town, say 'guards' if someone attacks you unlawfully. Trammel generally prevents attacks on other players; Felucca allows them.")
                 ]),
             new("shard.systems", "the first stop", TourCentre,
                 [("stop0", "The League field office"), ("stop1", "The bank"), ("stop2", "Rook")],
-                "A short walk. Follow the arrow to each stop.",
+                "Follow the arrow to the first stop. Walk close to each stop to read its lesson.",
                 Stops:
                 [
                     (() => ClusterFNewHavenSeeder.RegistrarAnchor, "the League field office",
-                        "The League of Extraordinary Citizens: ranks, jobs and their rewards. Elara Voss signs you up when you choose."),
+                        "Double-click Elara Voss to read about the League's jobs, ranks, and rewards. You can choose whether to join."),
                     (() => ClusterFNewHavenSeeder.BankAnchor, "the bank",
-                        "Loot boxes open only in a guarded town or your own house. TazUO: Autoloot, the Scavenger and Nearby loot gather for you; vendors take advanced shop, trade and auto buy and sell."),
+                        "Double-click reward boxes in guarded towns or your own house to open them. TazUO also has Autoloot, Scavenger, Nearby loot, and vendor shopping tools."),
                     (() => TutorialRecruiter.Spot, "Rook",
-                        "Levels and loops: each loop raises your level cap, and the world remembers you. Achievements pay as you play. Extra ring, bracelet and toe ring slots open as you earn them: type [accessories. TazUO: the skill progress bar, and Legion scripting for the advanced.")
+                        "Achievements reward your progress; type [accessories to see your extra jewelry slots. Graduation records your first loop, but level resets and higher level caps are not active yet.")
                 ]),
         ];
 
@@ -226,14 +226,14 @@ namespace Server.Tutorial
             : pm.InRange(new Point3D(t.Place.X, t.Place.Y, pm.Z), t.IsTour ? TourReach : LeaveRange);
 
         public static string FollowLine(string key) => Trade(key) is not { } t
-            ? "Follow the arrow to the training yard, east of the farm gate. The lesson starts there."
-            : $"Follow the arrow to {t.Where}. The lesson starts there.";
+            ? "Follow the arrow to the training yard, east of the farm gate. Your lesson begins when you arrive."
+            : $"Follow the arrow to {t.Where}. Your lesson begins when you arrive.";
 
         public static string LeftLine(string key) => Trade(key) is not { } t
-            ? "You left the training yard, so the lesson stopped and the yard took its loans back. Start it again at Rook."
+            ? "You left the training yard, so this lesson stopped and its loaned supplies disappeared. Double-click Rook to start it again."
             : t.IsTour
-                ? "You went too far from New Haven, so the tour stopped. Start it again at Rook."
-                : $"You left {t.Where}, so the lesson stopped and its loans went back. Start it again at Rook.";
+                ? "You went too far from New Haven, so the tour stopped. Double-click Rook to start it again."
+                : $"You left {t.Where}, so this lesson stopped and its loaned supplies disappeared. Double-click Rook to start it again.";
 
         /// <summary>Where the arrow points: the trial's place, or a tour's next stop.</summary>
         public static (Point3D Spot, string Name) PointAt(Trial trial)
@@ -248,7 +248,7 @@ namespace Server.Tutorial
             return (Ground(t.Place.X, t.Place.Y), t.Key == "animals.taming" ? "the farm's animal pen" : "the trades yard");
         }
 
-        public static string TradeHint(string key) => Trade(key)?.Hint ?? "This station has no lesson. Ask a member of staff.";
+        public static string TradeHint(string key) => Trade(key)?.Hint ?? "This lesson has no activity yet. Ask a staff member for help.";
 
         /// <summary>A trade trial's steps, one per line, "Done: ..." or "To do: ..." (null for P290's trials).</summary>
         public static string? Progress(Trial trial)
@@ -295,7 +295,7 @@ namespace Server.Tutorial
             {
                 if (!Fits(spot))
                 {
-                    ClusterFTutorial.SystemLine(pm, "This lesson's place is blocked just now. Ask a member of staff.");
+                    ClusterFTutorial.SystemLine(pm, "There is no room to set up this lesson here. Ask a staff member for help.");
                     return false;
                 }
             }
@@ -429,7 +429,7 @@ namespace Server.Tutorial
             if (!t.IsTour)
             {
                 pm.Mana = pm.ManaMax;
-                ClusterFTutorial.SystemLine(pm, "The yard's loans are yours until the lesson ends. They stay here: leave and they go back.");
+                ClusterFTutorial.SystemLine(pm, "Keep the loaned supplies with you in this lesson area. They disappear when you leave or finish the lesson.");
             }
 
             return true;
@@ -592,7 +592,7 @@ namespace Server.Tutorial
             }
 
             var label = Array.Find(t.Steps, s => s.Id == id).Label;
-            ClusterFTutorial.SystemLine(trial.Player, $"Step done: {label} ({trial.Steps.Count} of {t.Steps.Length}).");
+            ClusterFTutorial.SystemLine(trial.Player, $"Finished: {label} ({trial.Steps.Count} of {t.Steps.Length}).");
             Show(trial.Player, trial);
         }
     }
@@ -613,7 +613,7 @@ namespace Server.Items
         public override void OnSingleClick(Mobile from)
         {
             base.OnSingleClick(from);
-            LabelTo(from, Identified ? "a brass curio, worth nothing at all" : "an odd curio (unidentified)");
+            LabelTo(from, Identified ? "a brass curio with no value" : "an odd blue curio (unidentified)");
         }
 
         [AfterDeserialization(false)] private void ClearAbandonedLesson() => Delete();

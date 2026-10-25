@@ -157,7 +157,7 @@ public class GraduationLoopVerification : IDisposable
     public void TravelChecksRefuseExitsButAllowTravelWithinIsland(TravelCheckType route)
     {
         Assert.False(SpellHelper.CheckTravel(_pm, Map.Trammel, Britain, route, out var message));
-        Assert.Contains("recruiter", message.String);
+        Assert.Contains("Rook", message.String); // cc-P609: the refusal names Rook and Graduate
         Assert.True(SpellHelper.CheckTravel(_pm, Map.Trammel, Haven, route, out _));
     }
 

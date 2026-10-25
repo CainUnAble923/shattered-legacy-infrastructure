@@ -85,12 +85,12 @@ public static class ClusterFTutorial
         {
             if (!TryEnter(pm) && IsParticipant(pm))
             {
-                SystemLine(pm, "Welcome back. Your completed lessons are saved. Ask Rook for the next one.");
+                SystemLine(pm, "Your finished lessons are saved. Double-click Rook to choose your next lesson.");
                 TutorialRecruiter.PointTo(pm);
             }
             else if (RecordOf(pm) is { } waiting && CompanionPending(waiting) && IsRecordedCharacter(pm, waiting))
             {
-                SystemLine(pm, "Your companion is still waiting. Double-click Rook on the New Haven plaza and choose one.");
+                SystemLine(pm, "You still have a pet to choose. Double-click Rook on the New Haven plaza to open the choices.");
                 TutorialRecruiter.PointTo(pm);
             }
         }
@@ -118,8 +118,8 @@ public static class ClusterFTutorial
         record.CharacterSerial = (uint)pm.Serial;
         record.StartedAt = Core.Now;
 
-        SystemLine(pm, "Welcome to New Haven. Rook, the League recruiter, is waiting by the plaza; they bill by the hour.");
-        SystemLine(pm, "Follow the arrow and double-click Rook (two quick left clicks) to begin. You can skip it all there; Rook will ask twice.");
+        SystemLine(pm, "Welcome to New Haven. Rook Hallowell, your tutorial guide, is waiting on the town plaza.");
+        SystemLine(pm, "Follow the arrow and double-click Rook with two quick left clicks. Rook's window lets you start a lesson or skip the tutorial.");
         TutorialRecruiter.PointTo(pm);
         return true;
     }
@@ -152,7 +152,7 @@ public static class ClusterFTutorial
     {
         if (!IsParticipant(pm))
         {
-            SystemLine(pm, "You are not in the tutorial.");
+            SystemLine(pm, "You do not have an active tutorial. Double-click Rook on the New Haven plaza to check your progress.");
             return;
         }
 
@@ -162,7 +162,7 @@ public static class ClusterFTutorial
             return;
         }
 
-        SystemLine(pm, "This station has no lesson of its own. It is optional; graduation needs only the core.");
+        SystemLine(pm, "This optional lesson has no activity yet. You can graduate after finishing the main lessons.");
         pm.SendGump(new TutorialStationGump(station, Server.TazUO.TazUOClientCommand.CanRunCommands(pm.NetState)));
     }
 
@@ -176,12 +176,12 @@ public static class ClusterFTutorial
         }
 
         var station = TutorialStations.Find(key);
-        SystemLine(pm, $"Station done: {station?.Title ?? key}. Adequately.");
+        SystemLine(pm, $"Lesson finished: {station?.Title ?? key}.");
 
         if (record.State == TutorialState.InCore && CoreDone(record))
         {
             record.State = TutorialState.InWings;
-            SystemLine(pm, "Core finished. The wings are open, and optional. You may graduate whenever you like.");
+            SystemLine(pm, "You finished the main lessons. Double-click Rook to graduate or try an optional lesson.");
         }
     }
 
@@ -199,16 +199,16 @@ public static class ClusterFTutorial
         record.State = TutorialState.Skipped;
         record.WasSkipped = true;
         record.FinishedAt = Core.Now;
-        SystemLine(pm, "Skipped. Bold. The recruiter will still be here when you need remedial training. And you will.");
+        SystemLine(pm, "You skipped the tutorial. Double-click Rook if you want to take the lessons and earn their rewards later.");
 
         if (SkipCountsAsGraduation)
         {
             ClusterFLoops.Graduate(pm);
-            SystemLine(pm, "Your first loop is recorded. The island is open; your Young hours keep running.");
+            SystemLine(pm, "You can now leave Haven Island. Your Young protection continues until its time runs out.");
         }
         else
         {
-            SystemLine(pm, "Finish remedial training with the recruiter to leave the island.");
+            SystemLine(pm, "Double-click Rook to restart the tutorial. Finish the main lessons and graduate to leave Haven Island.");
         }
 
         if (pm.Account is IAccount acct)
@@ -232,7 +232,7 @@ public static class ClusterFTutorial
         record.CharacterSerial = (uint)pm.Serial;
         record.StationsDone.Clear();
         record.StartedAt = Core.Now;
-        SystemLine(pm, "Remedial training. Welcome back. I saved your seat.");
+        SystemLine(pm, "You have restarted the tutorial with its usual rewards. Choose the first lesson in Rook's window.");
         return true;
     }
 
@@ -254,14 +254,14 @@ public static class ClusterFTutorial
 
         if (TutorialRecruiter.Find() is { } rook && rook.InRange(pm, 12))
         {
-            rook.SayTo(pm, "You have earned a companion. Choose one:");
+            rook.SayTo(pm, "You earned a pet. Choose one in the window.");
         }
         else
         {
             TutorialRecruiter.PointTo(pm);
         }
 
-        SystemLine(pm, "You have earned a companion. Choose one in the window that opened.");
+        SystemLine(pm, "You earned a pet. Click Choose beside the pet you want in the window that opened.");
         pm.CloseGump<TutorialPetPickGump>();
         pm.SendGump(new TutorialPetPickGump());
         return true;
@@ -278,7 +278,7 @@ public static class ClusterFTutorial
 
         record.PetClaimPending = false;
         record.PetClaimed = true;
-        SystemLine(pm, TutorialPetCare.IfYourPetDiesLine + " Your graduation box holds one elixir.");
+        SystemLine(pm, TutorialPetCare.IfYourPetDiesLine + " Your graduation reward box contains one elixir of rebirth.");
         return pet;
     }
 
@@ -290,12 +290,12 @@ public static class ClusterFTutorial
     {
         if (!IsParticipant(pm) || RecordOf(pm) is not { IsActive: true } record)
         {
-            return "You are not in the tutorial.";
+            return "You do not have an active tutorial. Double-click Rook on the New Haven plaza to check your progress.";
         }
 
         if (!CoreDone(record))
         {
-            return "Finish the core first.";
+            return "Finish the main lessons listed in Rook's window before you graduate.";
         }
 
         TutorialCoreTrials.Cancel(pm);
@@ -312,7 +312,7 @@ public static class ClusterFTutorial
         }
 
         ClusterFFanfare.Play(pm, FanfareLevel.Major, "", tier: 2,
-            line: remedial ? "Graduated. Eventually. It counts." : "Graduated. New Haven survived you. Now the rest of Britannia gets a turn.");
+            line: remedial ? "You finished the tutorial after returning to it. You can now leave Haven Island." : "You finished the tutorial. You can now leave Haven Island.");
         return null;
     }
 
@@ -322,7 +322,7 @@ public static class ClusterFTutorial
     /// </summary>
     public static Action<PlayerMobile> GraduationRewards { get; set; } = pm =>
     {
-        ClusterFLootBoxes.Award(pm, "tutorial:graduation", BoxTheme.Explorer, 1, null, "graduating the New Haven tutorial", out var box);
+        ClusterFLootBoxes.Award(pm, "tutorial:graduation", BoxTheme.Explorer, 1, null, "finishing the New Haven tutorial", out var box);
         if (box != null)
         {
             // cc-P480 Part 8: one blessed elixir of rebirth, so a new player can bring a dead pet back.
@@ -332,7 +332,7 @@ public static class ClusterFTutorial
             box.MarkDirty();
         }
 
-        SystemLine(pm, "Open that box here in town. Boxes only open in guarded towns and your own house.");
+        SystemLine(pm, "Double-click your reward box here in town to open it. These boxes open only in guarded towns or your own house.");
 
         // cc-P276: the farm's Farmhand gives the dog or cat; an account that took its pet there is not offered another.
         if (RecordOf(pm) is { PetClaimed: false } record)

@@ -82,17 +82,17 @@ namespace Server.Tutorial
         public static Func<bool> MapPatched { get; set; } = () => TreesLeft(Map.Trammel) == 0;
 
         // The Farmhand's lines (ours, for Chase's eye) and the Echo's (the "System:" voice).
-        public const string NotTraineeLine = "Farm's for the League's trainees. Nothing personal. The pests would only embarrass you.";
-        public const string PetOfferLine = "Every farm needs a dog. Or a cat, if you like being ignored. Pick one; it's yours to keep.";
-        public const string NoSlotLine = "You've no room for another follower. Come back with a free slot.";
-        public const string PestsLine = "Rats in the cabbages again. Take your friend into the rows and clear out {0}. They don't hit back hard.";
-        public const string PestsLeftLine = "{0} more. Mind the snake; it sulks.";
-        public const string HealLine = "You're bleeding on my carrots. Here, bandages. Patch yourself up, or your friend. Then we're square.";
-        public const string NoMoreBandagesLine = "That's all the bandages I can spare. The healer in town sells them.";
-        public const string DoneLine = "That's the farm. If your friend ever falls, Tobin the vet beside me can bring them back; the Bond Trial's mine to give, when it's time.";
-        public const string EchoPetLine = "A pet. It will follow you through every loop. Try to be worth following.";
-        public const string EchoPestsLine = "Three vermin dead. A career is born.";
-        public const string EchoHealLine = "Bandaged. You will do that a great deal.";
+        public const string NotTraineeLine = "These farm lessons are for characters taking the tutorial. Double-click Rook on the plaza to check your progress.";
+        public const string PetOfferLine = "Choose a dog or cat in the window. This is your one tutorial pet, which you keep after graduation.";
+        public const string NoSlotLine = "You cannot control another pet right now. Stable one of your pets with an animal trainer, then come back.";
+        public const string PestsLine = "Walk into the cabbage rows, say 'all kill', then click a rat or grass snake for your pet to attack. Defeat {0} pests to finish this step.";
+        public const string PestsLeftLine = "Defeat {0} more rats or grass snakes in the cabbage rows.";
+        public const string HealLine = "Double-click a bandage in your backpack, then click yourself or an injured pet. A successful heal finishes this step.";
+        public const string NoMoreBandagesLine = "I have no more free bandages for you. You can buy more from a healer in town.";
+        public const string DoneLine = "You finished the farm lessons. If your bonded pet dies, bring its ghost to Tobin the vet beside me.";
+        public const string EchoPetLine = "This pet is yours to keep. Say 'all follow me' to have it follow you.";
+        public const string EchoPestsLine = "You cleared the farm pests. Return to Wren the Farmhand at the gate.";
+        public const string EchoHealLine = "Your bandage restored health and finished the farm's healing lesson.";
 
         // Pests counted per character this run (not saved: a restart starts the step's count again).
         private static readonly Dictionary<Serial, int> _pestsKilled = new();
@@ -133,8 +133,8 @@ namespace Server.Tutorial
         // cc-P480 Part 8: the Farmhand notices a dead bonded pet near her and tells its owner where the vet is, once per
         // owner per cooldown.
         public static readonly TimeSpan GhostPetCooldown = TimeSpan.FromMinutes(2);
-        public const string GhostPetLine = "Oh no, your friend's taken a bad turn. Tobin the vet, just beside me, can bring them back.";
-        public const string GhostPetNoVetLine = "Oh no, your friend's taken a bad turn. The vet in New Haven, by the stables, can bring them back.";
+        public const string GhostPetLine = "Your pet has died. Wait for its body to disappear, then bring its ghost to Tobin the vet beside me.";
+        public const string GhostPetNoVetLine = "Your pet has died. Wait for its body to disappear, then bring its ghost to the vet by the New Haven stables.";
         private static readonly Dictionary<Serial, DateTime> _ghostPetSaid = new();
 
         /// <summary>Says the dead pet line to its owner, unless said to them within the cooldown. True when it spoke.</summary>
@@ -181,10 +181,10 @@ namespace Server.Tutorial
         /// <summary>The station's handler: a line and a quest arrow to the Farmhand.</summary>
         public static void PointTo(PlayerMobile pm)
         {
-            ClusterFTutorial.SystemLine(pm, "The farm is west of town, past the Bardic Guild. The Farmhand is at the gate. Follow the arrow.");
+            ClusterFTutorial.SystemLine(pm, "Follow the arrow west of town, past the Bardic Guild, to the farm gate. Double-click Wren the Farmhand, who wears a straw hat and carries a pitchfork.");
             if (TutorialFarmhand.Find() is { } hand && hand.Map == pm.Map)
             {
-                pm.QuestArrow = new GuildDirectionArrow(pm, hand, hand.Location, hand.Map, "the Farmhand");
+                pm.QuestArrow = new GuildDirectionArrow(pm, hand, hand.Location, hand.Map, "Wren the Farmhand");
             }
         }
 
@@ -262,7 +262,7 @@ namespace Server.Tutorial
 
             if (n < PestsToClear)
             {
-                pm.SendMessage(0x3B2, $"Pests cleared: {n} of {PestsToClear}.");
+                pm.SendMessage(0x3B2, $"Farm pests defeated: {n} of {PestsToClear}.");
                 return;
             }
 
@@ -270,7 +270,7 @@ namespace Server.Tutorial
             RecordOf(pm)!.StationsDone.Add(PestsKey);
             ClusterFTutorial.SystemLine(pm, EchoPestsLine);
             ClusterFTutorial.CompleteStation(pm, TamingStation);
-            ClusterFTutorial.SystemLine(pm, "Go back to the Farmhand.");
+            ClusterFTutorial.SystemLine(pm, "Return to Wren the Farmhand at the farm gate and double-click her.");
         }
 
         public enum BandageGift { Given, HasSome, NoneLeft }
@@ -483,7 +483,7 @@ namespace Server.Tutorial
         {
             AddPage(0);
             TutorialStyle.Panel(this, 360, 130);
-            AddLabel(24, 18, TutorialStyle.HeadingHue, "The Farmhand's dog or cat");
+            AddLabel(24, 18, TutorialStyle.HeadingHue, "Choose your farm pet");
             for (var i = 0; i < TutorialFarm.FarmPetLines.Length; i++)
             {
                 AddButton(24, 50 + i * 30, 4005, 4007, 1 + i);
@@ -578,7 +578,7 @@ namespace Server.Mobiles
 
             if (!pm.InRange(Location, 4))
             {
-                pm.SendLocalizedMessage(500446); // That is too far away.
+                pm.SendMessage("Move closer, then double-click Wren the Farmhand again."); // cc-P609: was cliloc 500446
                 return;
             }
 

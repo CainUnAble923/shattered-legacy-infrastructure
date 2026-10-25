@@ -45,7 +45,7 @@ DOG_BODY = 0xD9                 # pinned Mobiles/Animals/Town Critters/Dog.cs:11
 
 # The nine core stations (TutorialStations.cs:59-76). [Tutorial station <key> runs each: core.loop through its demo,
 # which completes it (TutorialStations.cs:179, ClusterFLoops.cs:64); the others through the stub, which completes it
-# (ClusterFTutorial.cs:123-125). Graduate then passes "Finish the core first." (:200-203).
+# (ClusterFTutorial.cs:123-125). Graduate then passes "Finish the main lessons listed in Rook's window before you graduate." (:200-203).
 CORE_KEYS = ("core.movement", "core.paperdoll", "core.backpack", "core.chat", "core.death", "core.banking",
              "core.travel", "core.league", "core.loop")
 

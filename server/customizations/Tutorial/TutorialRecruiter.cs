@@ -56,11 +56,11 @@ namespace Server.Mobiles
 
             if (!pm.InRange(Location, 4))
             {
-                pm.SendLocalizedMessage(500446); // That is too far away.
+                pm.SendMessage("Move closer, then double-click Rook again."); // cc-P609: was cliloc 500446
                 return;
             }
 
-            Say("Ah, a new face. Or an old one. It is hard to tell anymore.");
+            Say("Welcome to New Haven. My window shows your tutorial progress.");
             pm.CloseGump<Server.Tutorial.TutorialRecruiterGump>();
             pm.SendGump(new Server.Tutorial.TutorialRecruiterGump(pm));
         }
@@ -74,7 +74,7 @@ namespace Server.Mobiles
             var recruiter = Find();
             if (recruiter != null && recruiter.Map == pm.Map)
             {
-                pm.QuestArrow = new GuildDirectionArrow(pm, recruiter, recruiter.Location, recruiter.Map, "the League recruiter");
+                pm.QuestArrow = new GuildDirectionArrow(pm, recruiter, recruiter.Location, recruiter.Map, "Rook Hallowell, the tutorial guide");
             }
         }
 

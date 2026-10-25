@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.3
+
+### Changed
+- The tutorial's words are clearer: every lesson, hint and window now says plainly what to click and where to go.
+
 ## 2026.10.25.2
 
 ### Staff
