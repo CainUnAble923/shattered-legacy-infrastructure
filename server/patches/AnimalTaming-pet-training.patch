@@ -18,13 +18,14 @@
  
                          if (minSkill > -24.9 && CheckMastery(m_Tamer, m_Creature))
                          {
-@@ -442,6 +442,9 @@
+@@ -442,6 +442,10 @@
  
                              m_Creature.SetControlMaster(m_Tamer);
                              m_Creature.IsBonded = false;
 +
 +                            // Shattered Legacy (cc-P130): OnAfterTame and the profile's OnTame (ServUO :450-457).
-+                            PetTrainingHooks.OnTamed(m_Creature, m_Tamer);
++                            // cc-P458: first tame = no owner before this one (the owner was just added above).
++                            PetTrainingHooks.OnTamed(m_Creature, m_Tamer, !alreadyOwned && m_Creature.Owners.Count == 1);
                              m_Creature.ControlTarget = m_Tamer;
                              m_Creature.ControlOrder = OrderType.Follow;
                          }

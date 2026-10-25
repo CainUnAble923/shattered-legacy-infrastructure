@@ -359,11 +359,11 @@ public class NotedBySystemVerification : IDisposable
         Assert.True(cat.SetControlMaster(p.Pm));
         N.Released(cat, cat.ControlMaster);
         ShardTestClock.AdvanceSeconds(60);
-        PetTrainingHooks.OnTamed(cat, p.Pm);
+        PetTrainingHooks.OnTamed(cat, p.Pm, false); // tamed back: not a first tame
         Assert.True(p.Has(A.CommitmentIssuesKey));
         N.Released(cat, p.Pm);
         ShardTestClock.AdvanceSeconds(6 * 60);
-        PetTrainingHooks.OnTamed(cat, p.Pm);
+        PetTrainingHooks.OnTamed(cat, p.Pm, false); // tamed back: not a first tame
         Assert.Equal(1, p.Count(TriggerKind.RetameAfterRelease));
 
         AssertHiddenThenEarned(p, A.NotMyProblemKey, before, () =>

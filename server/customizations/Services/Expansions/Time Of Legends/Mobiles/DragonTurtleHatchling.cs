@@ -6,11 +6,13 @@
 // at 16, as pinned does by default). ServUO writes version 1 and its version-0 branch re-sets BleedAttack; new
 // content starts at 0 here and never needs it.
 //
-// OnAfterTame has no hook in pinned (port recipe's absent-member table). ServUO's body caps each skill and takes
-// 55% off it on the first tame; StatLossAfterTame gives AnimalTaming's ScaleStats(0.50) instead, the recipe's
-// nearest thing (the Raptor precedent). A deviation, in the notes.
+// OnAfterTame is ServUO's body, through the shard's hook (cc-P130's AnimalTaming patch, cc-P458): on the first tame
+// every skill above zero caps at 100 and loses 55% of what taming left it; the stats are kept. ServUO tests
+// Owners.Count == 0 because it calls the hook before adding the owner; pinned adds the owner first, so the hook
+// passes firstTame instead (a release and re-tame by the same owner is not a first tame).
 // OnCarve drops four DragonTurtleScute on a wild hatchling's corpse before the normal carve, as ServUO does.
 
+using System;
 using ModernUO.Serialization;
 using Server.Items;
 
@@ -62,7 +64,24 @@ public partial class DragonTurtleHatchling : BaseCreature
 
     public override WeaponAbility GetWeaponAbility() => WeaponAbility.BleedAttack;
 
-    public override bool StatLossAfterTame => true;
+    public override void OnAfterTame(Mobile tamer, bool firstTame)
+    {
+        if (!firstTame)
+        {
+            return;
+        }
+
+        SkillsCap = Skills.Total;
+
+        foreach (var sk in Skills)
+        {
+            if (sk.Base > 0)
+            {
+                sk.Cap = Math.Max(100, sk.Base - sk.Base * 10);
+                sk.Base = sk.Base - sk.Base * .55;
+            }
+        }
+    }
 
     public override int Meat => 4;
     public override FoodType FavoriteFood => FoodType.Fish;

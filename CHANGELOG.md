@@ -29,6 +29,15 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.24.15
+
+### Fixed
+- The Eodon cliff vines cannot be climbed while paralyzed.
+
+### Staff
+- A tamed dragon turtle hatchling now keeps its stats and instead loses skill on its first tame, as the original does: its skills fall to about 40% of a wild one's and cap at 100. Taming it back after a release takes nothing more.
+- [GenEodon's spawners now pick their creatures in the original proportions, so the white and black tigers are rare again (1 in 25 on the tiger rows, not 1 in 8). Run [GenEodon again to update a world that already has them.
+
 ## 2026.10.24.14
 
 ### Fixed

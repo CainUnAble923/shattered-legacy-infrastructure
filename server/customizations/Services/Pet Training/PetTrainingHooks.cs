@@ -165,11 +165,11 @@ public static class PetTrainingHooks
 
     /// <summary>
     /// Pinned's AnimalTaming calls this after a successful tame (the patch), where ServUO calls OnAfterTame and the
-    /// profile's OnTame (AnimalTaming.cs:450-457).
+    /// profile's OnTame (AnimalTaming.cs:450-457). firstTame: the creature had no owner before this tame (cc-P458).
     /// </summary>
-    public static void OnTamed(BaseCreature bc, Mobile tamer)
+    public static void OnTamed(BaseCreature bc, Mobile tamer, bool firstTame)
     {
-        bc.OnAfterTame(tamer);
+        bc.OnAfterTame(tamer, firstTame);
         PetTrainingHelper.GetAbilityProfile(bc, true).OnTame();
         ClusterFNotedBySystem.Tamed(bc, tamer); // cc-P263: Commitment Issues
     }

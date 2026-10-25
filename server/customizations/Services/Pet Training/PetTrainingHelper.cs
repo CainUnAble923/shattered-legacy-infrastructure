@@ -1816,7 +1816,7 @@ public static class PetTrainingHelper
                     bc.SetControlMaster(m);
                     bc.IsBonded = true;
 
-                    PetTrainingHooks.OnTamed(bc, m);
+                    PetTrainingHooks.OnTamed(bc, m, true); // a new creature: its first tame
                 }
             );
         }
