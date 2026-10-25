@@ -390,6 +390,10 @@ public class AchievementDef
 /// </summary>
 public static partial class ClusterFAchievementSystem // partial: cc-P231's joke achievements are in ClusterFJokeAchievements.cs
 {
+    // cc-P457 (cc-P402 F10): every step and swing asked for its kind's definitions, filtered and sorted from all of them.
+    // Kept by kind once (OfKind); Reg empties it. Declared before _defs, which static initialisers fill in text order.
+    private static readonly Dictionary<TriggerKind, AchievementDef[]> _byKind = new();
+
     private static readonly Dictionary<string, AchievementDef> _defs =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -1245,17 +1249,25 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
                              string? prerequisiteKey  = null,
                              Type[]? rewardItems      = null,
                              string? progressCounter  = null,
-                             bool    retired          = false) =>
+                             bool    retired          = false)
+    {
+        _byKind.Clear(); // cc-P457: the by-kind lists are rebuilt on next use
         _defs[key] = new AchievementDef(key, title, desc, cat, ap, renown, trigger,
                                         flavor, itemGumpId, hidden,
                                         prerequisiteKey, rewardItems,
                                         progressCounter, retired);
+    }
 
     // -- Granting by trigger (cc-P55 Part F) -------------------------------
 
     /// <summary>The live achievements of one kind, lowest threshold first (so a prerequisite is granted before its next step).</summary>
-    private static IEnumerable<AchievementDef> OfKind(TriggerKind kind) =>
-        _defs.Values.Where(d => d.Trigger.Kind == kind).OrderBy(d => d.Trigger.Threshold).ThenBy(d => d.Trigger.Level);
+    private static IEnumerable<AchievementDef> OfKind(TriggerKind kind)
+    {
+        if (!_byKind.TryGetValue(kind, out var defs))
+            _byKind[kind] = defs = _defs.Values.Where(d => d.Trigger.Kind == kind)
+                .OrderBy(d => d.Trigger.Threshold).ThenBy(d => d.Trigger.Level).ToArray();
+        return defs;
+    }
 
     /// <summary>Grants every achievement of <paramref name="kind"/> whose threshold <paramref name="value"/> has reached.</summary>
     private static void GrantCounted(IAccount acct, TriggerKind kind, long value)

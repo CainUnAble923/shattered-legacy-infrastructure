@@ -1,0 +1,17 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -2370,6 +2370,14 @@
+             base.OnBeneficialAction(target, isCriminal);
+         }
+
++        // Shattered Legacy (cc-P457): Noted by the System counts a step where it lands (customizations
++        // ClusterFNotedBySystem.PlayerMoved). Pinned raises EventSink.Movement before SetLocation (Mobile.cs:4103, :4386).
++        public override void OnAfterMove(Point3D oldLocation)
++        {
++            base.OnAfterMove(oldLocation);
++            ClusterFNotedBySystem.PlayerMoved(this, oldLocation);
++        }
++
+         public override void OnDamage(int amount, Mobile from, bool willKill)
+         {
+             int disruptThreshold;

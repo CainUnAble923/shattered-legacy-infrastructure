@@ -881,6 +881,15 @@ apply_patch "$PATCHES/AnimalTrainer-elixir-of-rebirth.patch"
 # (Mobile.cs:2043). PlayerMobile has no damage event. Notes: notes/cc-P427-fixes-from-crystal-p379.md.
 apply_patch "$PATCHES/PlayerMobile-noted-damage-memory.patch"
 
+# P457: Noted by the System fix-up 2 (cc-P402 F01, F03). BaseCreature gets a RegisterDamage override that reports each
+# damager to ClusterFNotedBySystem.CreatureDamaged, so "the bard never hit it" survives the victim healing to full
+# (pinned empties the damage list at full hits, Mobile.cs:2043) and the list's 2-minute prune. Nothing below Mobile
+# overrides RegisterDamage. PlayerMobile gets an OnAfterMove override that calls ClusterFNotedBySystem.PlayerMoved: pinned
+# raises EventSink.Movement before SetLocation (Mobile.cs:4103, :4386), so the step counters read the tile left behind.
+# Notes: notes/cc-P457-noted-fixups-2.md.
+apply_patch "$PATCHES/BaseCreature-noted-damage-memory.patch"
+apply_patch "$PATCHES/PlayerMobile-noted-step.patch"
+
 # P453: the tutorial fix-up. Bandage: one hook line after Patient.Heal in BandageContext.OnTick, so the tutorial farm's
 # heal step counts a bandage that really healed (pinned rolls Healing and Anatomy on a failed treatment too); applies
 # after Bandage-heal-scaled-200 and Bandage-searing-wounds above. Notoriety: Mobile_AllowHarmful refuses a tutorial

@@ -12,7 +12,8 @@
 //   NeverReachedKills     a melee creature you killed that never damaged you
 //   LowHpRetreats         Recall-arrival-achievement.patch, Moongate-arrival-achievement.patch: arriving under 10% hits
 //                         while in combat
-//   ProvokedKills         killed by a creature you provoked, with no damage of yours on it
+//   ProvokedKills         killed by a creature you provoked, with no damage of yours on it (BaseCreature-noted-damage-
+//                         memory.patch remembers who hit it, past a heal to full)
 //   LastHitLarry          a boss's killing blow with under 1% of its damage
 //   PetDiedAtFullHp       your pet died while you were at full hits
 //   RetameAfterRelease    PetOrders-release-achievement.patch marks the release; PetTrainingHooks.OnTamed (ours) the
@@ -20,15 +21,18 @@
 //   RemotePetKills        your pet's kill while you were hidden or 15+ tiles away
 //   BarefootBossKills     a boss's killing blow, barefoot in armor
 //   FreshRecycles         Resmelt- and SalvageBag-recycle-achievement.patch, SmithGuildSalvageBag (ours): your own
-//                         crafted item recycled within 60 seconds of being made (Item.Created)
+//                         crafted item recycled within 60 seconds of being made (Item.Created); "your own" is the
+//                         crafter CraftItem-fail-streak-achievement.patch records (cc-P457, F07)
 //   ExceptionalDestroyed  the same hooks: your exceptional item recycled within 10 seconds
 //   CraftFailStreak       CraftItem-fail-streak-achievement.patch: the same item failed again and again
-//   DepletedSwingStreak   Mining.CheckResources (our Mining.cs): a swing refused because the vein is empty, same tile
+//   DepletedSwingStreak   Mining.CheckResources (our Mining.cs): a swing refused because the vein is empty, same tile;
+//                         a swing at a vein with ore ends the streak
 //   RecallSpree           the recall patch: 10 recalls in 60 seconds
 //   DiedAfterArrival      PlayerDeathEvent within 10 seconds of a recall or gate arrival
 //   RunebooksFilled       Runebook-full-achievement.patch: a rune that fills a book (each book counts once)
 //   OverweightSteps, HotFootTiles, SnowTiles, PantslessTiles, MuleTrain, HouseStorageFull
-//                         EventSink.Movement: a step taken (a turn in place is not one)
+//                         PlayerMobile-noted-step.patch (OnAfterMove): a step taken, read where it lands (a turn in
+//                         place is not one)
 //   DiedAtHome            PlayerDeathEvent inside a house you own or co-own
 //   SameTileBoxStreak, BoxTooSoon, EdgeBox, AudienceBox
 //                         LootBox.OnDoubleClick and LootBox.Open (ours)
@@ -469,9 +473,18 @@ public static partial class ClusterFAchievementSystem
         GrantCounted(acct, kind, streak);
     }
 
-    /// <summary>cc-P263: counts <paramref name="key"/> once per account; true the first time (a runebook is filled once).</summary>
-    public static bool FirstTimeFor(PlayerMobile pm, string key) =>
-        pm.Account is IAccount acct && Increment(acct.Username, key) == 1;
+    /// <summary>
+    /// cc-P263: marks <paramref name="key"/> once per account; true the first time (a runebook is filled once). cc-P457
+    /// (cc-P402 F09): a marker, set to 1, where it was a counter that every refill of the same book raised.
+    /// </summary>
+    public static bool FirstTimeFor(PlayerMobile pm, string key)
+    {
+        if (pm.Account is not IAccount acct || GetCounter(acct.Username, key) > 0)
+            return false;
+
+        SetCounter(acct.Username, key, 1);
+        return true;
+    }
 }
 
 /// <summary>One achievement's reward (cc-P263). A joke item makes its earn box a Dented Box; a title is added on earn.</summary>
@@ -533,18 +546,6 @@ public static class ClusterFNotedBySystem
     public const int    EdgeLordRange       = 1;
     public const int    UnboxingRange       = 3;
 
-    private static bool _registered;
-
-    public static void Configure() => Register();
-
-    /// <summary>Subscribes to pinned's movement event once (the facts call it too).</summary>
-    public static void Register()
-    {
-        if (_registered) return;
-        _registered = true;
-        EventSink.Movement += OnMovement;
-    }
-
     private static void Notify(Mobile? m, TriggerKind kind)
     {
         if (m is PlayerMobile { Deleted: false } pm)
@@ -587,6 +588,7 @@ public static class ClusterFNotedBySystem
 
         // cc-P427: a creature that is gone is forgotten (findings 3 and 4 of cc-P379).
         _damagedPlayers.Remove(bc);
+        _hitBy.Remove(bc);
         _released.Remove(bc);
     }
 
@@ -614,6 +616,29 @@ public static class ClusterFNotedBySystem
     /// <summary>Whether <paramref name="bc"/> has ever damaged <paramref name="pm"/> while it lived.</summary>
     public static bool HasReached(BaseCreature bc, Mobile pm) =>
         _damagedPlayers.TryGetValue(bc, out var players) && players.Contains(pm);
+
+    // cc-P457 (cc-P402 F01, the provoked half): the other direction. "You never touched it" was the victim's own damage
+    // list, which pinned empties when the victim heals to full (Mobile.cs:2043) and prunes after 2 minutes (:5880): a bard
+    // who hit the creature and let it heal counted as never touching it. BaseCreature.RegisterDamage
+    // (BaseCreature-noted-damage-memory.patch) reports every damage the list would have taken; this keeps the players,
+    // forgotten with the creature.
+
+    private static readonly Dictionary<BaseCreature, HashSet<Mobile>> _hitBy = new();
+
+    /// <summary>A hit on <paramref name="bc"/> (BaseCreature.RegisterDamage). Remembers a player who dealt it.</summary>
+    public static void CreatureDamaged(BaseCreature bc, Mobile from)
+    {
+        if (from is not PlayerMobile pm || bc == null || bc.Deleted)
+            return;
+
+        if (!_hitBy.TryGetValue(bc, out var players))
+            _hitBy[bc] = players = new HashSet<Mobile>();
+        players.Add(pm);
+    }
+
+    /// <summary>Whether <paramref name="pm"/> has ever damaged <paramref name="bc"/> while it lived.</summary>
+    public static bool HasHit(Mobile pm, BaseCreature bc) =>
+        _hitBy.TryGetValue(bc, out var players) && players.Contains(pm);
 
     /// <summary>For the tests: creatures with a record of players they damaged, and released pets remembered.</summary>
     internal static int ReachedCount => _damagedPlayers.Count;
@@ -652,12 +677,13 @@ public static class ClusterFNotedBySystem
                     Notify(pm, TriggerKind.BarefootBossKills);
             }
         }
-        else if (killer is BaseCreature { BardProvoked: true, BardMaster: PlayerMobile bard } && bc.FindDamageEntryFor(bard) == null)
+        else if (killer is BaseCreature { BardProvoked: true, BardMaster: PlayerMobile bard } && !HasHit(bard, bc) &&
+                 bc.FindDamageEntryFor(bard) == null)
         {
             Notify(bard, TriggerKind.ProvokedKills);
         }
         else if (killer is BaseCreature { Controlled: true, ControlMaster: PlayerMobile master } pet &&
-                 (master.Hidden || master.Map != pet.Map || !master.InRange(pet.Location, RemoteWorkRange)))
+                 (master.Hidden || master.Map != pet.Map || !master.InRange(pet.Location, RemoteWorkRange - 1)))
         {
             Notify(master, TriggerKind.RemotePetKills);
         }
@@ -741,7 +767,12 @@ public static class ClusterFNotedBySystem
     /// <summary>A rune dropped into <paramref name="book"/> filled it (Runebook.OnDragDrop). Each book counts once.</summary>
     public static void RunebookFilled(Mobile from, Item book)
     {
-        if (from is PlayerMobile pm && ClusterFAchievementSystem.FirstTimeFor(pm, $"noted_runebook_{book.Serial.Value}"))
+        // cc-P457 (cc-P402 F09): once Rune Archivist is earned no book can add anything, so no marker is written.
+        if (from is not PlayerMobile { Account: IAccount acct } pm ||
+            ClusterFAchievementSystem.HasEarned(acct, ClusterFAchievementSystem.RuneArchivistKey))
+            return;
+
+        if (ClusterFAchievementSystem.FirstTimeFor(pm, $"noted_runebook_{book.Serial.Value}"))
             Notify(pm, TriggerKind.RunebooksFilled);
     }
 
@@ -759,14 +790,19 @@ public static class ClusterFNotedBySystem
 
     private static readonly Dictionary<Mobile, (Type Item, int Fails)> _failStreak = new();
 
-    /// <summary>One craft attempt's result (CraftItem.CompleteCraft, beside pinned's ending effect).</summary>
-    public static void CraftAttempt(Mobile from, Type itemType, bool failed)
+    /// <summary>
+    /// One craft attempt's result (CraftItem.CompleteCraft, beside pinned's ending effect). A success passes the item
+    /// made, whose crafter is remembered (cc-P457).
+    /// </summary>
+    public static void CraftAttempt(Mobile from, Type itemType, bool failed, Item? made = null)
     {
         if (from is not PlayerMobile pm) return;
 
         if (!failed)
         {
             _failStreak.Remove(pm);
+            if (made != null)
+                Crafted(pm, made);
             return;
         }
 
@@ -783,20 +819,32 @@ public static class ClusterFNotedBySystem
         _              => false
     };
 
-    // Crafted by a player. Pinned records the maker only with a maker's mark (Crafter, a name), so "yours" is the
-    // recycler's own fresh craft in practice: nobody else's item is under a minute old in your pack.
-    private static bool IsCrafted(Item item) => item switch
-    {
-        BaseWeapon w   => w.PlayerConstructed,
-        BaseArmor a    => a.PlayerConstructed,
-        BaseClothing c => c.PlayerConstructed,
-        _              => false
-    };
+    // cc-P457 (cc-P402 F07; Chase, 10-22): "something you made" is the recycler's own craft. Pinned records the maker
+    // only with a maker's mark (Crafter, a name), and a fresh item can change hands inside the minute, so the crafter is
+    // remembered here when the craft succeeds. In memory only: the windows are a minute at most, and a restart forgets
+    // nothing that could still count. Weak keys: nothing is kept alive by it.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Item, Mobile> _crafter = new();
+
+    /// <summary>A craft by <paramref name="pm"/> made <paramref name="item"/>.</summary>
+    public static void Crafted(PlayerMobile pm, Item item) => _crafter.AddOrUpdate(item, pm);
+
+    /// <summary>Who crafted <paramref name="item"/> since the server started, or null.</summary>
+    public static Mobile? CrafterOf(Item item) => _crafter.TryGetValue(item, out var m) ? m : null;
+
+    // Crafted by a player, and by this one.
+    private static bool IsCraftedBy(Item item, PlayerMobile pm) =>
+        item switch
+        {
+            BaseWeapon w   => w.PlayerConstructed,
+            BaseArmor a    => a.PlayerConstructed,
+            BaseClothing c => c.PlayerConstructed,
+            _              => false
+        } && CrafterOf(item) == pm;
 
     /// <summary>Just before a recycle (smelt, salvage) deletes <paramref name="item"/>.</summary>
     public static void Recycled(Mobile from, Item item)
     {
-        if (from is not PlayerMobile pm || !IsCrafted(item)) return;
+        if (from is not PlayerMobile pm || !IsCraftedBy(item, pm)) return;
 
         var age = Core.Now - item.Created;
         if (age <= FreshRecycleWindow)
@@ -819,6 +867,16 @@ public static class ClusterFNotedBySystem
         ClusterFAchievementSystem.NotifyNotedStreak(pm, TriggerKind.DepletedSwingStreak, swings);
     }
 
+    /// <summary>
+    /// cc-P457 (cc-P402 F02): a mining swing at a vein with ore (Mining.CheckResources). Ends the empty-vein streak, so
+    /// empty at A, ore at B and empty at A again is a new streak of one.
+    /// </summary>
+    public static void SwungAtOre(Mobile from)
+    {
+        if (from is PlayerMobile pm)
+            _emptySwings.Remove(pm);
+    }
+
     // -- Steps -----------------------------------------------------------------------
 
     public enum Ground
@@ -829,21 +887,76 @@ public static class ClusterFNotedBySystem
         Snow
     }
 
-    /// <summary>What a tile is, for the barefoot set: a fire field, or lava or snow by its land or static tile's name.</summary>
-    public static Ground GroundAt(Map? map, int x, int y)
+    /// <summary>Pinned's step height (Movement.StepHeight): how far from the feet a field or an overlay still touches them.</summary>
+    public const int StepHeight = 2;
+
+    /// <summary>
+    /// What a player standing at <paramref name="z"/> on (<paramref name="x"/>, <paramref name="y"/>) has underfoot, for
+    /// the barefoot set. cc-P457 (cc-P402 F03): it was any land or static of the tile, at any height, so snow land under
+    /// a floor, or lava a storey below, counted. Now, in order:
+    ///   a fire field, or a passable lava or snow tile that is not a surface (pinned's lava flows, e.g. 0x136E), within
+    ///   step height of the feet;
+    ///   else the highest walkable static or multi surface at or below the feet, by its name (a wooden floor is Other);
+    ///   else the land, which counts only when no such surface is there.
+    /// Lava land (0x1F4-0x1F7) and lava pools are impassable, so nobody stands on them.
+    /// </summary>
+    public static Ground GroundAt(Map? map, int x, int y, int z)
     {
         if (map == null || map == Map.Internal) return Ground.Other;
 
         foreach (var item in map.GetItemsAt(x, y))
-            if (item is FireFieldItem) return Ground.Fire;
+            if (item is FireFieldItem && Math.Abs(item.Z - z) <= StepHeight) return Ground.Fire;
 
-        var found = Classify(TileData.LandTable[map.Tiles.GetLandTile(x, y).ID & TileData.MaxLandValue].Name);
-        foreach (var tile in map.Tiles.GetStaticAndMultiTiles(x, y))
-            if (found == Ground.Other)
-                found = Classify(TileData.ItemTable[tile.ID & TileData.MaxItemValue].Name);
+        var floorTop = int.MinValue;
+        string? floor = null;
+        var overlay = Ground.Other;
 
-        return found;
+        // True when the tile is an overlay at the feet, which decides the step.
+        bool AtFeet(StaticTile tile)
+        {
+            var data = TileData.ItemTable[tile.ID & TileData.MaxItemValue];
+            if (data.Impassable)
+                return false;
+
+            if (!data.Surface)
+            {
+                overlay = Math.Abs(tile.Z - z) <= StepHeight ? Classify(data.Name) : Ground.Other;
+                return overlay != Ground.Other;
+            }
+
+            var top = tile.Z + data.CalcHeight;
+            if (top <= z && top > floorTop)
+            {
+                floorTop = top;
+                floor = data.Name;
+            }
+
+            return false;
+        }
+
+        int landId;
+        if (TilesFor != null)
+        {
+            var (land, statics) = TilesFor(map, x, y);
+            landId = land.ID;
+            foreach (var tile in statics)
+                if (AtFeet(tile)) return overlay;
+        }
+        else
+        {
+            landId = map.Tiles.GetLandTile(x, y).ID;
+            foreach (var tile in map.Tiles.GetStaticAndMultiTiles(x, y))
+                if (AtFeet(tile)) return overlay;
+        }
+
+        return floor != null ? Classify(floor) : Classify(TileData.LandTable[landId & TileData.MaxLandValue].Name);
     }
+
+    /// <summary>
+    /// For the facts only: the land and statics of a tile in place of the map's. The test host has no map files, and
+    /// pinned's TileMatrix ignores a block set without them (GetLandBlock returns the invalid block). Null in play.
+    /// </summary>
+    public static Func<Map, int, int, (LandTile Land, StaticTile[] Statics)>? TilesFor { get; set; }
 
     private static Ground Classify(string? name) =>
         name == null ? Ground.Other
@@ -853,14 +966,19 @@ public static class ClusterFNotedBySystem
 
     private static readonly Dictionary<Mobile, int> _steps = new();
 
-    public static void OnMovement(MovementEventArgs e)
+    /// <summary>
+    /// cc-P457 (cc-P402 F03): a completed move (PlayerMobile.OnAfterMove, PlayerMobile-noted-step.patch). Pinned raises
+    /// EventSink.Movement before SetLocation (Mobile.cs:4103, :4386), so the ground used to be read at the tile left
+    /// behind; this runs after it. A turn in place leaves the location as it was and is no step.
+    /// </summary>
+    public static void PlayerMoved(PlayerMobile pm, Point3D oldLocation)
     {
-        // A turn in place raises the event too: only a step in the direction already faced moves.
-        if (e.Blocked || e.Mobile is not PlayerMobile { Alive: true, AccessLevel: AccessLevel.Player } pm ||
-            (e.Direction & Direction.Mask) != (pm.Direction & Direction.Mask))
+        if (!pm.Alive || pm.AccessLevel != AccessLevel.Player || pm.Location == oldLocation)
             return;
 
-        Stepped(pm, GroundAt(pm.Map, pm.X, pm.Y));
+        // cc-P402 F10: the ground only matters barefoot in armor on foot, so nobody else pays for the tile reads.
+        var ground = !pm.Mounted && IsBarefoot(pm) && IsArmored(pm) ? GroundAt(pm.Map, pm.X, pm.Y, pm.Z) : Ground.Other;
+        Stepped(pm, ground);
     }
 
     /// <summary>One step by <paramref name="pm"/>, standing on <paramref name="ground"/>.</summary>
@@ -906,8 +1024,10 @@ public static class ClusterFNotedBySystem
 
         foreach (var follower in pm.AllFollowers)
         {
-            if (follower is not BaseCreature { Controlled: true, ControlOrder: OrderType.Follow } bc || !IsPackAnimal(bc) ||
-                bc.ControlMaster != pm || bc.Backpack is not { } pack || !pm.InRange(bc.Location, 15))
+            // cc-P457 (cc-P402 F06): InRange reads X and Y only (Mobile.cs:3076), so the map is checked too.
+            if (follower is not BaseCreature { Controlled: true, ControlOrder: OrderType.Follow, IsDeadPet: false } bc ||
+                !IsPackAnimal(bc) || bc.ControlMaster != pm || bc.Map != pm.Map || bc.Backpack is not { } pack ||
+                !pm.InRange(bc.Location, 15))
                 continue;
 
             if (pack.TotalWeight >= pack.MaxWeight * MuleNearlyFull || pack.TotalItems >= pack.MaxItems * MuleNearlyFull)

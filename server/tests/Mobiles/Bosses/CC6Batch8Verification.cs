@@ -27,6 +27,7 @@ using Server;
 using Server.Engines.Spawners;
 using Server.Items;
 using Server.Mobiles;
+using Server.Random;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -195,21 +196,32 @@ public class CC6Batch8Verification
 
         // The GiveMLSpecial branch through real kills: every drop is one of the 35 types, and the 10% leggings show up
         // in 100 kills (P(miss) = 0.9^100). The base has no GenerateLoot, so a corpse carries nothing else.
+        // cc-P457: on its own seeded generator, restored after. On the shared one the result hung on how many draws the
+        // facts before it had made (a full run failed it with none in 100 kills once P457's facts were added).
         var tally = new Dictionary<string, int>();
-        for (var i = 0; i < 100; i++)
+        var shared = BuiltInRng.Generator;
+        BuiltInRng.Generator = new System.Random(8129);
+        try
         {
-            var bc = new BasePeerless(AIType.AI_Melee);
-            bc.MoveToWorld(Here, Map.TerMur);
-            bc.Kill();
-
-            var corpse = Assert.IsAssignableFrom<Corpse>(bc.Corpse);
-            foreach (var item in corpse.Items)
+            for (var i = 0; i < 100; i++)
             {
-                Assert.Contains(item.GetType(), MLSpecial);
-                tally[item.GetType().Name] = tally.GetValueOrDefault(item.GetType().Name) + 1;
-            }
+                var bc = new BasePeerless(AIType.AI_Melee);
+                bc.MoveToWorld(Here, Map.TerMur);
+                bc.Kill();
 
-            corpse.Delete();
+                var corpse = Assert.IsAssignableFrom<Corpse>(bc.Corpse);
+                foreach (var item in corpse.Items)
+                {
+                    Assert.Contains(item.GetType(), MLSpecial);
+                    tally[item.GetType().Name] = tally.GetValueOrDefault(item.GetType().Name) + 1;
+                }
+
+                corpse.Delete();
+            }
+        }
+        finally
+        {
+            BuiltInRng.Generator = shared;
         }
 
         _out.WriteLine("100 kills: " + string.Join(", ", tally.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key}={kv.Value}")));
