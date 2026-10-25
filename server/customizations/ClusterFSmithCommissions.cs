@@ -459,6 +459,8 @@ public static class SmithCommissionSystem
     // Abandoning a commission is free, so abandon-and-request rerolled a slot until the best requester came up. An
     // abandon now holds back the next small request for AbandonCooldown (clusterf.commissions.abandonCooldownMinutes,
     // default 5; 0 turns it off). Kept per character in memory: a restart clears it, which costs nothing worth saving.
+    // cc-P454: every abandon records it (the guild's gump and the Smith Guild Book), and large commissions share it:
+    // abandoning either kind holds back a request of either kind (Chase, 10-22).
     public static TimeSpan AbandonCooldown { get; set; } = TimeSpan.FromMinutes(5);
 
     private static readonly Dictionary<Serial, DateTime> _abandonedAt = new();
@@ -470,7 +472,7 @@ public static class SmithCommissionSystem
     /// <summary>Marks an abandon by <paramref name="pm"/> now.</summary>
     public static void Abandoned(PlayerMobile pm) => _abandonedAt[pm.Serial] = Core.Now;
 
-    /// <summary>Time left before <paramref name="pm"/> may request a small commission again (zero: now).</summary>
+    /// <summary>Time left before <paramref name="pm"/> may request a commission again (zero: now).</summary>
     public static TimeSpan RequestCooldownLeft(PlayerMobile pm)
     {
         if (AbandonCooldown <= TimeSpan.Zero || !_abandonedAt.TryGetValue(pm.Serial, out var at))
@@ -573,6 +575,7 @@ public static class SmithCommissionSystem
 
         var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
         if (guild.SmithLargeCommissions.Count >= MaxActiveLargeCommissions) return null;
+        if (RequestCooldownLeft(pm) > TimeSpan.Zero) return null; // cc-P454 (F14): the shared reroll cooldown
 
         var skill  = pm.Skills.Blacksmith.Base;
         var bypass = Items.DevTestingCrystal.IsActive(pm);
@@ -678,6 +681,7 @@ public static class SmithCommissionSystem
 
         var guild = ClusterFAccountPersistence.GetOrCreate(acct).GetOrCreateGuildData(pm.Serial);
         guild.SmithLargeCommissions.Remove(c);
+        ClusterFNotedBySystem.CommissionCompleted(pm, c.IssuedAt); // cc-P454 (F05): Pre-Crafted, as a small one
         guild.AddReputation("smithing", c.StandingReward);
         guild.AddCurrency("smithing",   c.SealReward);
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using ModernUO.Serialization;
@@ -600,7 +601,7 @@ public class SmithGuildBookGump : Gump
         {
             pm.SendMessage(0x22, "You already have the maximum active commissions.");
         }
-        else
+        else if (!CooldownRefuses(pm))
         {
             var entry = SmithCommissionSystem.Generate(pm);
             pm.SendMessage(entry != null ? 0x44 : 0x22,
@@ -653,6 +654,7 @@ public class SmithGuildBookGump : Gump
         if (c != null)
         {
             guild.SmithCommissions.Remove(c);
+            SmithCommissionSystem.Abandoned(pm); // cc-P454: the guild's reroll cooldown (cc-P263), here too
             pm.SendMessage(0x59, $"Commission from {c.RequesterName} abandoned. Slot is now open.");
         }
         pm.SendGump(new SmithGuildBookGump(pm, _book, 1));
@@ -673,6 +675,12 @@ public class SmithGuildBookGump : Gump
 
     private void HandleReqLargeComm(PlayerMobile pm, CharacterGuildData guild)
     {
+        if (CooldownRefuses(pm))
+        {
+            pm.SendGump(new SmithGuildBookGump(pm, _book, 1));
+            return;
+        }
+
         var entry = SmithCommissionSystem.GenerateLarge(pm);
         pm.SendMessage(entry != null ? 0x44 : 0x22,
             entry != null
@@ -681,12 +689,25 @@ public class SmithGuildBookGump : Gump
         pm.SendGump(new SmithGuildBookGump(pm, _book, 1));
     }
 
+    // cc-P454: the wait after an abandon, told as the guild's commission gump tells it.
+    private static bool CooldownRefuses(PlayerMobile pm)
+    {
+        var wait = SmithCommissionSystem.RequestCooldownLeft(pm);
+        if (wait <= TimeSpan.Zero)
+            return false;
+
+        pm.SendMessage(0x22,
+            $"You abandoned a commission just now. The Guildmaster will offer another in {Math.Ceiling(wait.TotalMinutes):N0} minute(s).");
+        return true;
+    }
+
     private void HandleAbandonLargeComm(PlayerMobile pm, CharacterGuildData guild)
     {
         var c = guild.SmithLargeCommissions.Count > 0 ? guild.SmithLargeCommissions[0] : null;
         if (c != null)
         {
             guild.SmithLargeCommissions.Remove(c);
+            SmithCommissionSystem.Abandoned(pm); // cc-P454 (F14): large ones share the small cooldown
             pm.SendMessage(0x59, $"Large commission from {c.RequesterName} abandoned.");
         }
         pm.SendGump(new SmithGuildBookGump(pm, _book, 1));
