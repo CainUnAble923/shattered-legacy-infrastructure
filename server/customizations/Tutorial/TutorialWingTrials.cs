@@ -67,16 +67,16 @@ namespace Server.Tutorial
         [
             (SkillName.Swords, "Swords: a longsword", () => new Longsword(), true),
             (SkillName.Macing, "Macing: a mace", () => new Mace(), true),
-            (SkillName.Fencing, "Fencing: a kryss", () => new Kryss(), true),
+            (SkillName.Fencing, "Fencing: a narrow kryss sword", () => new Kryss(), true),
             (SkillName.Archery, "Archery: a bow and arrows", () => new Bow(), false),
-            (SkillName.Throwing, "Throwing: a boomerang (gargoyles)", () => new Boomerang(), true),
-            (SkillName.Wrestling, "Wrestling: your fists", () => null, true)
+            (SkillName.Throwing, "Throwing: a boomerang for gargoyles", () => new Boomerang(), true),
+            (SkillName.Wrestling, "Wrestling: fight with empty hands", () => null, true)
         ];
 
         public const string ResistingSpellsLine =
-            "Resisting Spells is not trained here: it grows when spells are cast at you, and it softens what they do.";
+            "Resisting Spells helps you resist some spell effects. It can improve when certain spells are cast on you; this lesson does not train it.";
         public const string SpellweavingLine =
-            "Spellweaving is not taught by a book: it opens with the Arcanist's quest, \"Patience\", in the Heartwood, the elven city in Ilshenar.";
+            "Spellweaving starts with a quest, not just a spellbook. In Heartwood, look for the quest called Patience to begin learning it.";
 
         public sealed class Trial(PlayerMobile player, TutorialStation station)
         {
@@ -150,23 +150,23 @@ namespace Server.Tutorial
         public static string Hint(string key, int choice = -1) => key switch
         {
             "combat.weapons" when choice < 0 =>
-                "Pick a weapon on this page; the yard lends it (and a buckler for one hand). Then land three hits on the sparring echo with it.",
+                "Choose a weapon below; it is loaned for this lesson. Hit the blue human figure named 'a sparring echo' three times with that weapon, or with empty hands for Wrestling.",
             "combat.weapons" =>
-                $"Equip the loaned weapon if it is not in your hand, press Tab for war mode and double-click the sparring echo. Three hits with {Weapons[choice].Skill} finish it.",
+                $"Drag the loaned weapon onto your character's picture if needed, or empty your hands for Wrestling. Press Tab to enter war mode, then double-click the blue sparring echo and land three hits with {Weapons[choice].Skill}.",
             "combat.healing" =>
-                "Double-click a loaned bandage and target yourself, then the wounded villager beside you. The yard lends you some Healing for the lesson.",
+                "Double-click a loaned bandage in your backpack, then click yourself and wait for it to heal you. Use another bandage on the wounded villager beside you.",
             "magic.magery" =>
-                "Open the loaned spellbook, double-click Magic Arrow and click the training echo. Its reagent, sulfurous ash, is loaned too.",
+                "Double-click the loaned spellbook, double-click Magic Arrow, then click the blue human figure named 'a training echo'. The sulfurous ash needed for this spell is in your backpack.",
             "magic.necromancy" =>
-                "Open the loaned necromancer's book, double-click Pain Spike and click the training echo. Its reagents, grave dust and pig iron, are loaned too.",
+                "Double-click the loaned necromancer spellbook, double-click Pain Spike, then click the blue training echo. The grave dust and pig iron needed for this spell are in your backpack.",
             "magic.chivalry" =>
-                "Stand next to the wounded villager (Close Wounds reaches two steps), open the loaned Book of Chivalry, double-click Close Wounds and click the villager. The yard lends you tithing points to pay for it.",
+                "Stand within two steps of the wounded villager, double-click the loaned Book of Chivalry, then double-click Close Wounds and click the villager. The lesson supplies the tithing points this spell costs.",
             "magic.bushido" =>
-                "Equip the loaned katana, click Honorable Execution in the Book of Bushido, then press Tab and double-click the training echo to strike.",
+                "Drag the loaned katana onto your character's picture, then double-click the Book of Bushido and click Honorable Execution. Press Tab for war mode, then double-click the blue training echo.",
             "magic.ninjitsu" =>
-                "Equip the loaned katana, click Focus Attack in the Book of Ninjitsu, then press Tab and double-click the training echo to strike.",
+                "Drag the loaned katana onto your character's picture, then double-click the Book of Ninjitsu and click Focus Attack. Press Tab for war mode, then double-click the blue training echo.",
             "magic.mysticism" =>
-                "Open the loaned mystic book, double-click Eagle Strike and click the training echo. Its reagents (bloodmoss, bone, spider's silk, mandrake root) are loaned too.",
+                "Double-click the loaned mystic book, double-click Eagle Strike, then click the blue training echo. The bloodmoss, bone, spider's silk, and mandrake root needed for this spell are in your backpack.",
             _ => TradeHint(key)
         };
 
@@ -177,7 +177,7 @@ namespace Server.Tutorial
             if (!ClusterFTutorial.IsParticipant(pm) || !IsWingTrial(station.Key)) { return; }
             if (!pm.Alive)
             {
-                ClusterFTutorial.SystemLine(pm, "Visit a healer first. A ghost can double-click the tutorial healer.");
+                ClusterFTutorial.SystemLine(pm, "Visit Sera the healer at the farm gate and double-click Sera. Click Resurrect to return to life before starting a lesson.");
                 return;
             }
 
@@ -215,7 +215,7 @@ namespace Server.Tutorial
 
             if (pm.Map == Map.Trammel && !trial.Finished)
             {
-                var (spot, name) = trial.Armed && trial.Target != null ? (trial.Target.Location, "the training echo") : PointAt(trial);
+                var (spot, name) = trial.Armed && trial.Target != null ? (trial.Target.Location, "the blue training echo") : PointAt(trial);
                 TutorialCoreTrials.Point(pm, spot, name);
             }
 
@@ -233,7 +233,7 @@ namespace Server.Tutorial
             var needsPatient = trial.Key is "combat.healing" or "magic.chivalry";
             if (needsTarget && !Fits(TargetSpot) || needsPatient && !Fits(PatientSpot))
             {
-                ClusterFTutorial.SystemLine(pm, "The training yard is blocked just now. Ask a member of staff.");
+                ClusterFTutorial.SystemLine(pm, "There is no room to set up this lesson in the training yard. Ask a staff member for help.");
                 return false;
             }
 
@@ -305,7 +305,7 @@ namespace Server.Tutorial
             }
 
             pm.Mana = pm.ManaMax;
-            ClusterFTutorial.SystemLine(pm, "The yard's loans are yours until the lesson ends. They stay here: leave the yard and they go back.");
+            ClusterFTutorial.SystemLine(pm, "Keep the loaned supplies with you in this lesson area. They disappear when you leave or finish the lesson.");
             return true;
         }
 
@@ -324,14 +324,14 @@ namespace Server.Tutorial
 
             if (trial.Choice >= 0)
             {
-                ClusterFTutorial.SystemLine(pm, "You have a weapon for this lesson. Reset it to pick another.");
+                ClusterFTutorial.SystemLine(pm, "You already chose a weapon for this lesson. Click Restart this lesson to choose another.");
                 return false;
             }
 
             var (skill, _, make, oneHanded) = Weapons[choice];
             if (skill == SkillName.Throwing && pm.Race != Race.Gargoyle)
             {
-                ClusterFTutorial.SystemLine(pm, "Throwing weapons are for gargoyles. Pick another weapon.");
+                ClusterFTutorial.SystemLine(pm, "Only gargoyles can use throwing weapons. Choose a different weapon for this lesson.");
                 return false;
             }
 
@@ -416,7 +416,7 @@ namespace Server.Tutorial
             trial.Finished = true;
             Return(trial);
             ClusterFTutorial.CompleteStation(pm, trial.Key);
-            ClusterFTutorial.SystemLine(pm, $"{trial.Station.Title}: done. The yard has its loans back.");
+            ClusterFTutorial.SystemLine(pm, $"{trial.Station.Title}: finished. The loaned supplies have been returned.");
             Show(pm, trial);
         }
 
@@ -491,7 +491,7 @@ namespace Server.Tutorial
                 {
                     item.Delete();
                     trial.Loaners.RemoveAt(i);
-                    ClusterFTutorial.SystemLine(pm, "Loaned things stay with you in the yard; that one went back.");
+                    ClusterFTutorial.SystemLine(pm, "That loaned item disappeared because you dropped it or moved it out of your belongings. Keep lesson supplies equipped or in your backpack.");
                 }
             }
 
@@ -526,7 +526,7 @@ namespace Server.Tutorial
             if (Current(pm) is not { Key: "combat.healing", Armed: true, Finished: false } trial || trial.SelfHealed) { return; }
             trial.SelfHealed = true;
             if (trial.PatientHealed) { Finish(trial); }
-            else { ClusterFTutorial.SystemLine(pm, "Good. Now the wounded villager."); }
+            else { ClusterFTutorial.SystemLine(pm, "You healed yourself. Double-click another bandage, then click the wounded villager beside you."); }
         }
 
         /// <summary>A successful roll of a skill (SkillEvents.SkillUsed): a spell's cast went off.</summary>
@@ -564,7 +564,7 @@ namespace Server.Tutorial
                     trial.Hits++;
                     if (trial.Hits < HitsToFinish)
                     {
-                        ClusterFTutorial.SystemLine(pm, $"Hit {trial.Hits} of {HitsToFinish}.");
+                        ClusterFTutorial.SystemLine(pm, $"Hits landed: {trial.Hits} of {HitsToFinish}.");
                     }
                     else
                     {
@@ -598,7 +598,7 @@ namespace Server.Tutorial
             {
                 trial.PatientHealed = true;
                 if (trial.SelfHealed) { Finish(trial); }
-                else { ClusterFTutorial.SystemLine(pm, "Good. Now bandage yourself."); }
+                else { ClusterFTutorial.SystemLine(pm, "You healed the villager. Double-click another bandage, then click yourself."); }
             }
         }
     }
@@ -621,7 +621,7 @@ namespace Server.Tutorial
             var h = 250 + (pick ? TutorialWingTrials.Weapons.Length * 24 : 0) + steps * 20;
             TutorialStyle.Panel(this, 500, h);
             AddLabel(24, 18, TutorialStyle.HeadingHue, station.Title);
-            var text = done ? "Done. The yard has its loans back. Rook has the next lesson." :
+            var text = done ? "Lesson finished and loaned supplies returned. Double-click Rook to choose another lesson." :
                 !armed ? TutorialWingTrials.FollowLine(station.Key) :
                 TutorialWingTrials.Hint(station.Key, choice);
             AddHtml(24, 46, 452, 90, TutorialStyle.Html(text), false, false);
@@ -645,8 +645,8 @@ namespace Server.Tutorial
             }
 
             AddButton(24, y + 10, 4005, 4007, BtnHint); AddLabel(60, y + 12, done ? TutorialStyle.DoneHue : TutorialStyle.ActionHue, done ? "Back to Rook" : "Hint and arrow");
-            AddButton(24, y + 40, 4017, 4019, BtnReset); AddLabel(60, y + 42, TutorialStyle.TextHue, "Reset this trial");
-            if (!done) { AddButton(260, y + 40, 4017, 4019, BtnStop); AddLabel(296, y + 42, TutorialStyle.TextHue, "Stop and return the loans"); }
+            AddButton(24, y + 40, 4017, 4019, BtnReset); AddLabel(60, y + 42, TutorialStyle.TextHue, "Restart this lesson");
+            if (!done) { AddButton(260, y + 40, 4017, 4019, BtnStop); AddLabel(296, y + 42, TutorialStyle.TextHue, "Stop and return supplies"); }
         }
 
         public override void OnResponse(NetState sender, in RelayInfo info)
@@ -671,7 +671,7 @@ namespace Server.Tutorial
                     TutorialWingTrials.Reset(pm, _station);
                     break;
                 case BtnStop:
-                    TutorialWingTrials.Cancel(pm, "Stopped. The yard has its loans back.");
+                    TutorialWingTrials.Cancel(pm, "Lesson stopped and loaned supplies returned. Double-click Rook to start another lesson.");
                     break;
             }
         }

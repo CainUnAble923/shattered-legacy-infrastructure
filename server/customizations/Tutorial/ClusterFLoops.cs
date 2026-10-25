@@ -68,10 +68,10 @@ namespace Server.Tutorial
     {
         public static readonly string[] Lines =
         [
-            "A vision. The sword strikes the Gem. The shards fly. You fall, and the world folds shut behind you.",
-            "You wake where you started, remembering. That is a loop. Your level goes back to 1; your skills go with it.",
-            "What you keep: the League, your recipes, your achievements, your guild ranks. And me. Lucky you.",
-            "This was only a vision. Nothing about you has changed. Yet."
+            "You see a vision of a sword striking a gem. The gem breaks, and the world fades away.",
+            "In the vision, you wake at the beginning with your level and skills reset. This is a preview of a future loop system.",
+            "In this vision, your League progress, recipes, achievements, and guild ranks remain. Your companion stays with you too.",
+            "The vision is over. Your level, skills, and belongings have not changed."
         ];
 
         /// <summary>Compatibility entry to the timed vision. Real character progression remains untouched.</summary>

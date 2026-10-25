@@ -170,7 +170,7 @@ public class TutorialFirstPlayVerification : IDisposable
         }
 
         Assert.Contains(TutorialRecruiterGump.BtnSkip, buttons);
-        Assert.Contains(Texts(before), t => t.Contains("after the core", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(Texts(before), t => t.Contains("Finish the main lessons to open", StringComparison.OrdinalIgnoreCase));
 
         // A wing's button sent before the core is done (a crafted reply) runs nothing.
         before.OnResponse(p.Ns, Press(StationButton("crafting.alchemy")));
@@ -364,7 +364,7 @@ public class TutorialFirstPlayVerification : IDisposable
 
         var rook = new TutorialRecruiterGump(p.Pm);
         Assert.Contains(TutorialRecruiterGump.BtnCompanion, Buttons(rook));
-        Assert.Contains(Texts(rook), t => t.Contains("Choose your companion"));
+        Assert.Contains(Texts(rook), t => t.Contains("Choose your pet"));
         rook.OnResponse(p.Ns, Press(TutorialRecruiterGump.BtnCompanion));
         pick = p.Pm.FindGump<TutorialPetPickGump>();
         Assert.NotNull(pick);
@@ -374,7 +374,7 @@ public class TutorialFirstPlayVerification : IDisposable
         p.Litter.AddRange(p.Pm.AllFollowers);
         var later = new TutorialRecruiterGump(p.Pm);
         Assert.DoesNotContain(TutorialRecruiterGump.BtnCompanion, Buttons(later));
-        Assert.DoesNotContain(Texts(later), t => t.Contains("Choose your companion"));
+        Assert.DoesNotContain(Texts(later), t => t.Contains("Choose your pet"));
     }
 
     // ---------------------------------------------------------------- 7
@@ -438,7 +438,7 @@ public class TutorialFirstPlayVerification : IDisposable
         LootBox? box = null;
         foreach (var b in p.Pm.Backpack.FindItemsByType<LootBox>())
         {
-            if (b.EarnedFor == "graduating the New Haven tutorial")
+            if (b.EarnedFor == "finishing the New Haven tutorial")
             {
                 box = b;
             }

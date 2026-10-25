@@ -60,7 +60,7 @@ public abstract partial class TutorialCreature : BaseCreature
 public partial class TutorialEcho : TutorialCreature
 {
     [Constructible]
-    public TutorialEcho() : this(0xEE, "an echo of a rat")
+    public TutorialEcho() : this(0xEE, "a ghostly rat")
     {
     }
 

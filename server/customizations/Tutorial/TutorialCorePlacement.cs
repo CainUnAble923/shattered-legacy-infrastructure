@@ -176,7 +176,7 @@ public partial class TutorialTravelGate : Item
         if (from is not PlayerMobile { Alive: true } pm || !TutorialCoreTrials.Nearby(pm, Location) ||
             !TutorialCoreTrials.IsDoing(pm, "core.travel")) { return; }
         if (!TutorialCorePlacement.Fits(TutorialCorePlacement.GateExit))
-        { ClusterFTutorial.SystemLine(pm, "The gate's landing is blocked. Ask a member of staff."); return; }
+        { ClusterFTutorial.SystemLine(pm, "The place where this gate sends you is blocked. Ask a staff member for help."); return; }
         pm.MoveToWorld(TutorialCorePlacement.GateExit, Map.Trammel);
         TutorialCoreTrials.Observe(pm, TutorialAction.UsedGate);
     }
@@ -218,7 +218,7 @@ public partial class TutorialDeathEcho : TutorialCreature
     [Constructible]
     public TutorialDeathEcho() : base(AIType.AI_Animal)
     {
-        Name = "the pale death echo"; Body = 0xEE; Hue = 0x482; FightMode = FightMode.None;
+        Name = "the pale gray rat"; Body = 0xEE; Hue = 0x482; FightMode = FightMode.None;
         CantWalk = true; SetStr(20); SetDex(20); SetInt(5); SetHits(100);
     }
     public override bool IsInvulnerable => true;
@@ -238,7 +238,7 @@ public sealed class TutorialDeathGump : Gump
         _echo = echo;
         TutorialStyle.Panel(this, 450, 180);
         AddLabel(24, 18, TutorialStyle.HeadingHue, "Death and resurrection");
-        AddHtml(24, 44, 402, 76, TutorialStyle.Html("The echo will kill you for this lesson; while you are Young, your things come back to your backpack. Sera the healer, beside it, will bring you back. Ready?"), false, false);
+        AddHtml(24, 44, 402, 76, TutorialStyle.Html("Click Ready to die for this lesson, then double-click Sera beside the pale gray rat and click Resurrect. While you are Young, your belongings return to your backpack after death."), false, false);
         AddButton(24, 130, 4023, 4025, 1); AddLabel(60, 132, TutorialStyle.ActionHue, "Ready");
         AddButton(240, 130, 4017, 4019, 0); AddLabel(276, 132, TutorialStyle.TextHue, "Not yet");
     }

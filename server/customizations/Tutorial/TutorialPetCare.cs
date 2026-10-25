@@ -44,7 +44,7 @@ namespace Server.Tutorial
             owner is PlayerMobile { Young: true } ? 0 : Math.Clamp((int)(100 + Math.Pow(1.1041, pet.MinTameSkill)), 100, 30000);
 
         public const string IfYourPetDiesLine =
-            "If your pet dies, wait a few minutes for its body to fade, then visit a vet or use an elixir of rebirth.";
+            "If your pet dies, wait for its body to disappear, then take its ghost to a vet or use an elixir of rebirth.";
     }
 
     /// <summary>The vet's offer: one button per dead pet, with its fee.</summary>
@@ -59,8 +59,8 @@ namespace Server.Tutorial
             _pets = pets;
             var h = 130 + pets.Length * 30;
             TutorialStyle.Panel(this, 440, h);
-            AddLabel(24, 18, TutorialStyle.HeadingHue, "The vet can bring your pet back");
-            AddHtml(24, 42, 392, 40, TutorialStyle.Html("Choose a pet. It loses a little skill (0.2 in each) when it comes back."), false, false);
+            AddLabel(24, 18, TutorialStyle.HeadingHue, "Bring your pet back to life");
+            AddHtml(24, 42, 392, 40, TutorialStyle.Html("Choose the pet you want to bring back. It loses 0.2 points in every skill."), false, false);
             for (var i = 0; i < pets.Length; i++)
             {
                 var fee = TutorialPetCare.Fee(pets[i].ControlMaster ?? pets[i], pets[i]);
@@ -126,7 +126,7 @@ namespace Server.Mobiles
                 return false;
             }
 
-            SayTo(pm, "Ah, your friend's in a bad way. Let me see what I can do.");
+            SayTo(pm, "I can bring your pet back. Choose its name in the window.");
             pm.CloseGump<TutorialVetResurrectGump>();
             pm.SendGump(new TutorialVetResurrectGump(this, pets));
             return true;
@@ -138,23 +138,23 @@ namespace Server.Mobiles
             var fee = TutorialPetCare.Fee(from, pet);
             if (!pet.IsDeadBondedPet)
             {
-                from.SendLocalizedMessage(501041); // Target is not dead.
+                from.SendMessage("Your pet is still alive."); // cc-P609: was cliloc 501041
             }
             else if (!from.InRange(pet, 12))
             {
-                from.SendLocalizedMessage(500643); // Target is too far away.
+                from.SendMessage("Bring your pet closer to you, then try again."); // cc-P609: was cliloc 500643
             }
             else if (pet.ControlMaster != from)
             {
-                from.SendLocalizedMessage(1113200); // You must be the owner of that pet to have it resurrected.
+                from.SendMessage("Only this pet's owner can ask the vet to bring it back."); // cc-P609: was cliloc 1113200
             }
             else if (pet.Corpse is { Deleted: false })
             {
-                from.SendLocalizedMessage(1113279); // That creature's spirit lacks cohesion. Try again in a few minutes.
+                from.SendMessage("Wait until your pet's body disappears, then ask the vet again."); // cc-P609: was cliloc 1113279
             }
             else if (fee > 0 && !Banker.Withdraw(from, fee))
             {
-                from.SendLocalizedMessage(1060020); // Unfortunately, you do not have enough cash in your bank to cover the cost of the healing.
+                from.SendMessage("You need more gold in your bank to pay the vet."); // cc-P609: was cliloc 1060020
             }
             else
             {
@@ -172,10 +172,10 @@ namespace Server.Mobiles
 
                 if (fee > 0)
                 {
-                    from.SendLocalizedMessage(1060398, fee.ToString()); // ~1_AMOUNT~ gold has been withdrawn from your bank box.
+                    from.SendMessage($"You paid the vet {fee} gold from your bank."); // cc-P609: was cliloc 1060398
                 }
 
-                SayTo(from, "There. Good as new, or near enough.");
+                SayTo(from, "Your pet is alive again.");
                 return true;
             }
 
@@ -211,7 +211,7 @@ namespace Server.Items
         public override void GetProperties(IPropertyList list)
         {
             base.GetProperties(list);
-            list.Add("Brings your dead bonded pet back, once its body has faded");
+            list.Add("Brings a bonded pet back after its body disappears");
         }
     }
 }

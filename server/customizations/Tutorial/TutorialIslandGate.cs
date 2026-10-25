@@ -11,7 +11,7 @@ namespace Server.Tutorial;
 public static class TutorialIslandGate
 {
     public static bool Enabled { get; set; } = true;
-    public const string Refusal = "Graduate with the League recruiter in New Haven before leaving the island.";
+    public const string Refusal = "Finish the main tutorial lessons, then double-click Rook on the New Haven plaza and choose Graduate. You can leave Haven Island afterward.";
 
     public static void Configure() =>
         Enabled = ServerConfiguration.GetOrUpdateSetting("clusterf.tutorial.islandGate", true);

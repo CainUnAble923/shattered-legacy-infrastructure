@@ -47,16 +47,16 @@ public static class TutorialCoreTrials
     // who has never played), in two short sentences where it can.
     public static string Hint(string key) => key switch
     {
-        "core.movement" => "Walk onto the glowing blue floor tile beside Rook, then the gold one. Hold the right mouse button where you want to go; point farther away to run.",
-        "core.backpack" => "Double-click yourself to open your paperdoll, then double-click the backpack on it. Inside, double-click the blue practice bag.",
-        "core.paperdoll" => "A blue practice cloak is in your backpack. Drag it onto your paperdoll (double-click yourself to open it); take off your own cloak first if you wear one.",
-        "core.chat" => $"Press Enter, type '{Phrase}' and press Enter again. Your Journal keeps what was said.",
-        "core.death" => "Follow the arrow to the farm gate, double-click the pale gray echo (a ghostly rat) and press Ready. As a ghost, double-click Sera the healer beside it and press Resurrect; while you are Young, your things come back to your backpack.",
-        "core.banking" => "A blue practice token (a small pile of coins) is in your backpack. Walk to the banker, say 'bank', and drag the token into your bank box.",
-        "core.travel" => "Follow the arrow to the farm gate and double-click the moongate there, a tall blue shimmering arch. It brings you back to the New Haven plaza.",
-        "core.league" => "Follow the arrow to Elara Voss, inside the Registrar's house; double-click its door, on the north side, to open it. Double-click her to read about the League; joining is your choice.",
-        "core.loop" => "Follow the arrow to the bright blue rune stone at the farm gate. Double-click it and stay beside it until the vision ends; it changes nothing about you.",
-        _ => "Ask Rook for this lesson."
+        "core.movement" => "Hold the right mouse button toward the glowing blue floor tile beside Rook to walk onto it, then walk onto the gold tile. Point farther from your character while holding the button to run.",
+        "core.backpack" => "Double-click your character to open the character window, then double-click its backpack picture. Inside your backpack, double-click the blue practice bag.",
+        "core.paperdoll" => "Double-click your character to open the character window, then drag the blue practice cloak from your backpack onto your character's picture. If you already wear a cloak, drag it into your backpack first.",
+        "core.chat" => $"Press Enter, type '{Phrase}', then press Enter again to speak. The Journal records what you say.",
+        "core.death" => "Follow the arrow to the pale gray rat at the farm gate, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
+        "core.banking" => "Follow the arrow to the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
+        "core.travel" => "Follow the arrow to the tall, shimmering blue arch at the farm gate. Double-click it to return to the New Haven plaza.",
+        "core.league" => "Follow the arrow to Elara Voss and double-click the door on the north side of her house to enter. Double-click Elara to finish this lesson; you can read about the League without joining.",
+        "core.loop" => "Follow the arrow to the bright blue rune stone at the farm gate. Double-click it and stay nearby until the vision ends; it will not change your character.",
+        _ => "Double-click Rook on the New Haven plaza to choose this lesson."
     };
 
     /// <summary>A lesson's practice item, made fresh (bright and named for what it is: cc-P480).</summary>
@@ -84,11 +84,11 @@ public static class TutorialCoreTrials
         trial.Supply = MakeSupply(trial.Station.Key);
         if (trial.Supply != null && !pm.AddToBackpack(trial.Supply))
         {
-            ClusterFTutorial.SystemLine(pm, "Make room in your backpack, then press Hint and arrow again.");
+            ClusterFTutorial.SystemLine(pm, "Make room in your backpack. Click Hint and arrow to get another practice item.");
             return false;
         }
 
-        ClusterFTutorial.SystemLine(pm, "A new one is in your backpack.");
+        ClusterFTutorial.SystemLine(pm, "A replacement practice item is in your backpack.");
         return true;
     }
 
@@ -97,15 +97,15 @@ public static class TutorialCoreTrials
         if (!ClusterFTutorial.IsParticipant(pm) || !station.IsCore) { return; }
         if (!pm.Alive)
         {
-            ClusterFTutorial.SystemLine(pm, "Visit the tutorial healer first. A ghost can still double-click the healer.");
-            Point(pm, TutorialCorePlacement.HealerSpot, "the tutorial healer");
+            ClusterFTutorial.SystemLine(pm, "Follow the arrow to Sera the healer and double-click Sera. Click Resurrect to return to life before starting a lesson.");
+            Point(pm, TutorialCorePlacement.HealerSpot, "Sera the healer");
             return;
         }
         var record = ClusterFTutorial.RecordOf(pm)!;
         var next = ClusterFTutorial.CoreLeft(record).FirstOrDefault();
         if (!record.StationsDone.Contains(station.Key) && next?.Key != station.Key)
         {
-            ClusterFTutorial.SystemLine(pm, $"First finish: {next?.Title}.");
+            ClusterFTutorial.SystemLine(pm, $"Finish {next?.Title} before starting this lesson.");
             return;
         }
         if (Current(pm) is { } current && current.Station.Key == station.Key)
@@ -125,7 +125,7 @@ public static class TutorialCoreTrials
         if (trial.Supply != null && !pm.AddToBackpack(trial.Supply))
         {
             Cancel(pm);
-            ClusterFTutorial.SystemLine(pm, "Make room in your backpack, then try this lesson again.");
+            ClusterFTutorial.SystemLine(pm, "Make room in your backpack, then choose this lesson again in Rook's window.");
             return;
         }
         Timer.StartTimer(TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(250), () => Tick(trial), out trial.Timer);
@@ -199,7 +199,7 @@ public static class TutorialCoreTrials
             case "core.movement" when pm.Alive && Nearby(pm, Destination(trial), 0):
                 var first = trial.Progress.Step == 0;
                 Observe(pm, first ? TutorialAction.FirstMark : TutorialAction.SecondMark);
-                if (first) { ClusterFTutorial.SystemLine(pm, "Now the glowing gold tile."); Point(pm, Destination(trial), "the gold tile"); }
+                if (first) { ClusterFTutorial.SystemLine(pm, "Now walk onto the glowing gold floor tile."); Point(pm, Destination(trial), "the glowing gold floor tile"); }
                 break;
             case "core.movement" when trial.Ticks % 8 == 1:
                 // cc-P480: the tile to walk onto sparkles every two seconds.
@@ -219,7 +219,7 @@ public static class TutorialCoreTrials
                 if (!pm.Alive || !Nearby(pm, TutorialCorePlacement.Spot("core.loop"), 4))
                 {
                     trial.Progress.Reset(); trial.VisionLine = 0;
-                    ClusterFTutorial.SystemLine(pm, "Stay beside the vision marker. Double-click it to begin again.");
+                    ClusterFTutorial.SystemLine(pm, "Stay beside the bright blue rune stone until the vision ends. Double-click it to restart the vision.");
                     break;
                 }
                 if (Core.Now < trial.VisionAt) { break; }
@@ -254,7 +254,7 @@ public static class TutorialCoreTrials
         // PlayerDeathEvent is after YoungDeathTeleport (pinned PlayerMobile.OnDeath).
         // Return this lesson's ghost from Old Haven to the farm, without changing Young.
         pm.MoveToWorld(TutorialCorePlacement.GhostSpot, Map.Trammel);
-        ClusterFTutorial.SystemLine(pm, "You are a ghost. Double-click Sera the healer, beside you, and press Resurrect.");
+        ClusterFTutorial.SystemLine(pm, "You are a ghost. Double-click Sera beside you and click Resurrect to return to life.");
         Point(pm, TutorialCorePlacement.HealerSpot, "Sera the healer");
     }
 
@@ -279,9 +279,9 @@ public sealed class TutorialTrialGump : Gump
         _station = station; _done = done;
         TutorialStyle.Panel(this, 480, 240);
         AddLabel(24, 18, TutorialStyle.HeadingHue, station.Title);
-        AddHtml(24, 50, 432, 100, TutorialStyle.Html(done ? "Done. Your next lesson is ready." : TutorialCoreTrials.Hint(station.Key)), false, false);
+        AddHtml(24, 50, 432, 100, TutorialStyle.Html(done ? "Lesson finished. Click Next lesson / graduate to continue." : TutorialCoreTrials.Hint(station.Key)), false, false);
         AddButton(24, 166, 4005, 4007, 1); AddLabel(60, 168, done ? TutorialStyle.DoneHue : TutorialStyle.ActionHue, done ? "Next lesson / graduate" : "Hint and arrow");
-        AddButton(24, 204, 4017, 4019, 2); AddLabel(60, 206, TutorialStyle.TextHue, "Reset this lesson");
+        AddButton(24, 204, 4017, 4019, 2); AddLabel(60, 206, TutorialStyle.TextHue, "Restart this lesson");
     }
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
@@ -294,7 +294,7 @@ public sealed class TutorialTrialGump : Gump
                 if (ClusterFTutorial.CoreLeft(record).FirstOrDefault() is { } next) { ClusterFTutorial.RunStation(pm, next); }
                 else
                 {
-                    ClusterFTutorial.SystemLine(pm, "Core finished. Return to Rook on the New Haven plaza to graduate. The wings are optional.");
+                    ClusterFTutorial.SystemLine(pm, "You finished the main lessons. Follow the arrow to Rook on the New Haven plaza and choose Graduate, or try an optional lesson.");
                     TutorialRecruiter.PointTo(pm);
                 }
             }

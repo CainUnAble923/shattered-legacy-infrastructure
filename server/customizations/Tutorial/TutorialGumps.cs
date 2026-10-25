@@ -46,18 +46,18 @@ public class TutorialRecruiterGump : Gump
     public static string WingName(TutorialWing wing) => wing switch
     {
         TutorialWing.Thieving => "Thieving and stealth",
-        TutorialWing.ShardSystems => "Shard systems",
+        TutorialWing.ShardSystems => "Shard features",
         _ => wing.ToString()
     };
 
     private static string StateText(TutorialState state) => state switch
     {
-        TutorialState.InCore => "You are in the core lessons.",
-        TutorialState.InWings => "Core done. The optional lessons are open, and you may graduate.",
-        TutorialState.Remedial => "Remedial training: the core again, with its rewards.",
+        TutorialState.InCore => "Finish the main lessons in order.",
+        TutorialState.InWings => "You finished the main lessons and can graduate. Optional lessons are also open.",
+        TutorialState.Remedial => "You restarted the tutorial and can earn its usual rewards.",
         TutorialState.Skipped => "You skipped the tutorial.",
-        TutorialState.Graduated => "You have graduated.",
-        _ => "Not started."
+        TutorialState.Graduated => "You finished the tutorial.",
+        _ => "You have not started the tutorial."
     };
 
     public TutorialRecruiterGump(PlayerMobile pm) : base(60, 40)
@@ -96,19 +96,19 @@ public class TutorialRecruiterGump : Gump
 
         AddPage(0);
         TutorialStyle.Panel(this, Width, h);
-        AddLabel(24, 18, TutorialStyle.HeadingHue, "Rook Hallowell, League recruiter: New Haven orientation");
-        AddLabel(24, 42, TutorialStyle.TextHue, record == null ? "You have no account record." : StateText(record.State));
+        AddLabel(24, 18, TutorialStyle.HeadingHue, "Rook Hallowell: New Haven tutorial");
+        AddLabel(24, 42, TutorialStyle.TextHue, record == null ? "You have not started the tutorial on this account." : StateText(record.State));
 
         var y = 72;
         if (ReadOnly)
         {
             var name = World.FindMobile((Serial)record!.CharacterSerial)?.Name ?? "another character";
-            AddLabel(24, y, TutorialStyle.TextHue, $"Your account's tutorial belongs to {name}.");
-            AddLabel(24, y + 24, TutorialStyle.TextHue, "Only that character can take its lessons, skip, graduate or choose its companion.");
+            AddLabel(24, y, TutorialStyle.TextHue, $"This account's tutorial was started by {name}.");
+            AddLabel(24, y + 24, TutorialStyle.TextHue, "Use that character to take lessons, skip, graduate, or choose a pet.");
         }
         else if (active)
         {
-            AddLabel(24, y, TutorialStyle.HeadingHue, "The core lessons (in order)");
+            AddLabel(24, y, TutorialStyle.HeadingHue, "Main lessons: take these in order");
             y += 24;
             var next = ClusterFTutorial.CoreLeft(record!).FirstOrDefault();
             for (var i = 0; i < core.Count; i++, y += Row)
@@ -122,7 +122,7 @@ public class TutorialRecruiterGump : Gump
 
             if (wings)
             {
-                AddLabel(24, y + 6, TutorialStyle.HeadingHue, "Trade and skill lessons (optional)");
+                AddLabel(24, y + 6, TutorialStyle.HeadingHue, "Optional trade and skill lessons");
                 y += 30;
                 var top = y;
                 DrawColumn(left, 24, top, record!);
@@ -131,7 +131,7 @@ public class TutorialRecruiterGump : Gump
             }
             else
             {
-                AddLabel(24, y + 6, TutorialStyle.TextHue, "The trade and skill lessons open after the core.");
+                AddLabel(24, y + 6, TutorialStyle.TextHue, "Finish the main lessons to open trade and skill lessons.");
                 y += 30;
             }
 
@@ -151,17 +151,17 @@ public class TutorialRecruiterGump : Gump
         else if (record is { State: TutorialState.Skipped })
         {
             AddButton(24, y, 4005, 4007, BtnRemedial);
-            AddLabel(60, y + 2, TutorialStyle.ActionHue, "Remedial training (the full tutorial, with its rewards)");
+            AddLabel(60, y + 2, TutorialStyle.ActionHue, "Restart the tutorial and earn its rewards");
         }
         else if (record != null && ClusterFTutorial.CompanionPending(record))
         {
             AddButton(24, y, 4023, 4025, BtnCompanion);
-            AddLabel(60, y + 2, TutorialStyle.HeadingHue, "Choose your companion");
-            AddLabel(60, y + 24, TutorialStyle.TextHue, "You have earned a pet. It is waiting until you pick one.");
+            AddLabel(60, y + 2, TutorialStyle.HeadingHue, "Choose your pet");
+            AddLabel(60, y + 24, TutorialStyle.TextHue, "You earned a pet and still need to choose one.");
         }
         else
         {
-            AddLabel(24, y, TutorialStyle.TextHue, "Nothing more to teach you here. Go and be extraordinary.");
+            AddLabel(24, y, TutorialStyle.TextHue, "You can check your tutorial progress here whenever you return to New Haven.");
         }
     }
 
@@ -206,7 +206,7 @@ public class TutorialRecruiterGump : Gump
             case BtnGraduate:
                 if (!TutorialCoreTrials.Nearby(_pm, TutorialRecruiter.Spot, 4))
                 {
-                    ClusterFTutorial.SystemLine(_pm, "Return to Rook on the New Haven plaza to graduate.");
+                    ClusterFTutorial.SystemLine(_pm, "Follow the arrow back to Rook on the New Haven plaza. Double-click Rook and choose Graduate.");
                     TutorialRecruiter.PointTo(_pm);
                     return;
                 }
@@ -243,8 +243,8 @@ public class TutorialSkipGump : Gump
 
     public static readonly string[] Prompts =
     [
-        "You want to skip the tutorial. Everyone who skips it says they know what they are doing. Skip?",
-        "Really? There is an achievement for this, and it is not a compliment. Last chance. Skip?"
+        "Skip the remaining tutorial lessons? You can return to Rook later to take them and earn their rewards.",
+        "Skipping earns the Didn't Read the Manual achievement. Skip the tutorial now?"
     ];
 
     public TutorialSkipGump(int step) : base(160, 160)
@@ -254,9 +254,9 @@ public class TutorialSkipGump : Gump
         TutorialStyle.Panel(this, 420, 150);
         AddHtml(24, 20, 372, 70, TutorialStyle.Html(Prompts[Step - 1]), false, false);
         AddButton(24, 108, 4023, 4025, BtnYes);
-        AddLabel(60, 110, TutorialStyle.WarnHue, Step == 1 ? "Yes, skip" : "Yes. Really.");
+        AddLabel(60, 110, TutorialStyle.WarnHue, Step == 1 ? "Yes, skip" : "Skip now");
         AddButton(240, 108, 4017, 4019, 0);
-        AddLabel(276, 110, TutorialStyle.ActionHue, "No, teach me");
+        AddLabel(276, 110, TutorialStyle.ActionHue, "Keep learning");
     }
 
     public override void OnResponse(NetState sender, in RelayInfo info)
@@ -288,7 +288,7 @@ public class TutorialStationGump : Gump
     [
         ("World Map", "worldmap", "Open the World Map"),
         ("Journal and filters", "journal", "Open the Journal"),
-        ("Options", "options", "Open the options")
+        ("Options", "options", "Open Options")
     ];
 
     private readonly TutorialStation _station;
@@ -314,13 +314,13 @@ public class TutorialStationGump : Gump
         Offered = offered.ConvertAll(o => o.Command).ToArray();
         var lines = new List<string>
         {
-            $"Where: {s.Where}.",
-            s.HandsOn.Length > 0 ? $"Hands-on: {string.Join(", ", s.HandsOn)}." : "",
-            s.Covered.Length > 0 ? $"Also gains: {string.Join(", ", s.Covered)}." : "",
-            s.Explained.Length > 0 ? $"Explained: {string.Join(", ", s.Explained)}." : "",
-            s.TazUO.Length > 0 ? $"TazUO: {string.Join(", ", s.TazUO)}. Guides: <a href=\"{WikiBase}\">tazuo.org</a>" : "",
-            s.Tool != null ? $"You will be given: {s.Tool}." : "",
-            "This station has no lesson of its own. It is optional; graduation needs only the core."
+            $"Go to: {s.Where}.",
+            s.HandsOn.Length > 0 ? $"Practice: {string.Join(", ", s.HandsOn)}." : "",
+            s.Covered.Length > 0 ? $"Related skills: {string.Join(", ", s.Covered)}." : "",
+            s.Explained.Length > 0 ? $"Learn about: {string.Join(", ", s.Explained)}." : "",
+            s.TazUO.Length > 0 ? $"TazUO features: {string.Join(", ", s.TazUO)}. Help: <a href=\"{WikiBase}\">tazuo.org</a>" : "",
+            s.Tool != null ? $"Lesson supplies: {s.Tool}." : "",
+            "This optional lesson has no activity yet. You can graduate after finishing the main lessons."
         };
         lines.RemoveAll(string.IsNullOrEmpty);
 
@@ -365,10 +365,10 @@ public class TutorialPetPickGump : Gump
     // 201 cat, 1423 the fox kit, 254 the crane chick), the fox's tinted orange.
     public static readonly (int ItemId, int Hue, string Text)[] Pictures =
     [
-        (0x2588, 0, "The protector. Grows from a pup into a hound, and one day a windrunner."),
-        (0x211B, 0, "The striker. Grows from a kitten into a great cat, and one day a manticore."),
-        (0x211C, 0x4EC, "The trickster. Grows from a kit into a fox, and one day a bake kitsune."),
-        (0x2764, 0, "The scout. Grows from a chick into a firebird, and one day a hiryu.")
+        (0x2588, 0, "A dog companion, shown as a puppy. It grows into a larger hound as you play together."),
+        (0x211B, 0, "A cat companion, shown as a kitten. It grows into larger cats as you play together."),
+        (0x211C, 0x4EC, "A fox companion, shown as a fox kit. After graduation and enough growth, it can become a bake kitsune, a magical fox."),
+        (0x2764, 0, "A bird companion, shown as a chick. It can grow into a firebird; more stages are still being added.")
     ];
 
     public TutorialPetPickGump() : base(140, 100)
@@ -376,8 +376,8 @@ public class TutorialPetPickGump : Gump
         var lines = ClusterFTutorial.StarterPetLines;
         AddPage(0);
         TutorialStyle.Panel(this, 520, 90 + lines.Length * 70);
-        AddLabel(24, 18, TutorialStyle.HeadingHue, "You have earned a companion. Choose one:");
-        AddLabel(24, 40, TutorialStyle.TextHue, "It is bonded to you and grows as you play together.");
+        AddLabel(24, 18, TutorialStyle.HeadingHue, "You earned a pet: choose one");
+        AddLabel(24, 40, TutorialStyle.TextHue, "Your pet grows as you play and can be brought back after death.");
         for (var i = 0; i < lines.Length; i++)
         {
             var y = 70 + i * 70;
@@ -400,7 +400,7 @@ public class TutorialPetPickGump : Gump
         if (ClusterFTutorial.ChooseCompanion(pm, ClusterFTutorial.StarterPetLines[i]) == null &&
             ClusterFTutorial.RecordOf(pm) is { } record && ClusterFTutorial.CompanionPending(record))
         {
-            pm.SendMessage(0x22, "No room for a pet right now. Free a follower slot, then ask Rook again.");
+            pm.SendMessage(0x22, "You cannot control another pet right now. Stable one of your pets with an animal trainer, then ask Rook again.");
         }
     }
 }
