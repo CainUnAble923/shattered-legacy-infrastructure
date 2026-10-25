@@ -4561,7 +4561,8 @@ $script:AutopilotStaleMinutes = 15
 # cc-P131: autoWake and the night shift keys too (the hook's defaults, Get-Settings in golem.ps1).
 $script:AutopilotSettingDefaults = [ordered]@{ progressEmails = $true; maxPerRun = 6; stallMinutes = 45; autoWake = $true; nightShiftEnabled = $true; nightShiftStart = '22:30'; nightShiftEnd = '06:30'
     dayWeekAheadPct = 3; weekReservePct = 10; planUsageMaxAgeHours = 4   # cc-P160: the Golem's day pace rule
-    marathon = 'auto' }   # cc-P200: marathon mode (auto, on, off)
+    marathon = 'auto'   # cc-P200: marathon mode (auto, on, off)
+    mailMode = 'all' }   # cc-P479: which emails go out (all, briefs, off)
 
 function ConvertFrom-AutopilotTime {
     # A 's' time from the hook, as written ($Kind Local or Utc), or $null. ConvertFrom-Json in PowerShell 7
@@ -4975,7 +4976,8 @@ function ConvertFrom-AutopilotSettings {
         } catch { $source = 'settings.json unreadable: the hook''s defaults' }
     }
     $mar = ([string]$s.marathon).Trim().ToLowerInvariant(); if ($mar -notin @('auto', 'on', 'off')) { $mar = 'auto' }
-    [pscustomobject]@{ ProgressEmails = [bool]$s.progressEmails; MaxPerRun = [int]$s.maxPerRun; StallMinutes = [int]$s.stallMinutes; Source = $source; Marathon = $mar
+    $mm = ([string]$s.mailMode).Trim().ToLowerInvariant(); if ($mm -notin @('all', 'briefs', 'off')) { $mm = 'all' }
+    [pscustomobject]@{ ProgressEmails = [bool]$s.progressEmails; MaxPerRun = [int]$s.maxPerRun; StallMinutes = [int]$s.stallMinutes; Source = $source; Marathon = $mar; MailMode = $mm
         AutoWake = [bool]$s.autoWake; NightShiftEnabled = [bool]$s.nightShiftEnabled; NightShiftStart = [string]$s.nightShiftStart; NightShiftEnd = [string]$s.nightShiftEnd
         DayWeekAheadPct = [double]$s.dayWeekAheadPct; WeekReservePct = [double]$s.weekReservePct; PlanUsageMaxAgeHours = [double]$s.planUsageMaxAgeHours }
 }
@@ -5794,6 +5796,7 @@ function Format-AutopilotPanel {
     $set = $View.Settings
     & $add ('settings  : progressEmails ' + $set.ProgressEmails.ToString().ToLowerInvariant() + ', maxPerRun ' + $set.MaxPerRun + ', stallMinutes ' + $set.StallMinutes + ' (' + $set.Source + ')') 'normal'
     & $add ('            autoWake ' + $set.AutoWake.ToString().ToLowerInvariant() + ', nightShift ' + $set.NightShiftEnabled.ToString().ToLowerInvariant() + ' ' + $set.NightShiftStart + ' to ' + $set.NightShiftEnd) 'normal'
+    & $add ('            mailMode ' + $set.MailMode + $(if ($set.MailMode -eq 'briefs') { ' (only the Tinker''s briefs are emailed)' } elseif ($set.MailMode -eq 'off') { ' (no email at all)' } else { '' })) 'normal'   # cc-P479
     $s = $View.State
     if ($s) {
         if ($s.Current) {

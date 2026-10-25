@@ -3110,6 +3110,16 @@ Fact 'P94_FailingEmailStillTurnsTheStatusTileAmber' {
     Assert-True ($t.Detail.EndsWith('last activity 2m ago; email failing')) $t.Detail
 }
 
+Fact 'P479_TheSettingsShowMailModeAndAnUnknownValueIsAll' {
+    Assert-Equal 'all' (ConvertFrom-AutopilotSettings '{}').MailMode
+    Assert-Equal 'briefs' (ConvertFrom-AutopilotSettings '{ "mailMode": "briefs" }').MailMode
+    Assert-Equal 'off' (ConvertFrom-AutopilotSettings '{ "mailMode": "OFF" }').MailMode
+    Assert-Equal 'all' (ConvertFrom-AutopilotSettings '{ "mailMode": "loud" }').MailMode
+    $v = Get-ApsView (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2) -Settings '{ "mailMode": "briefs" }'
+    $p = @(Format-AutopilotPanel -View $v -Config $config -Now $apsNow) | ForEach-Object { $_.Text }
+    Assert-True (@($p | Where-Object { $_ -like '*mailMode briefs*' }).Count -eq 1) ('the panel says the mail mode: ' + ($p -join ' | '))
+}
+
 Fact 'P94_ThePanelSaysTheRunTheStepsTheActivityAndTheSettings' {
     $v = Get-ApsView (Set-ApStatus -Set $apsSteps -Started 14 -Activity 2)
     $p = @(Format-AutopilotPanel -View $v -Config $config -Now $apsNow) | ForEach-Object { $_.Text }
