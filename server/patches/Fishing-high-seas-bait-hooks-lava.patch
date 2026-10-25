@@ -1,0 +1,216 @@
+--- a/Projects/UOContent/Engines/Harvest/Fishing.cs
++++ b/Projects/UOContent/Engines/Harvest/Fishing.cs
+@@ -122,6 +122,13 @@
+ 
+         public static Fishing System => _system ??= new Fishing();
+ 
++        // Shattered Legacy (cc-P269, High Seas fishing): the cast being finished. Pinned's Construct has no tool and its
++        // FinishHarvesting no OnToolUsed (ServUO HarvestSystem.cs:237), so FinishHarvesting notes the tool here, the
++        // first Construct of the cast records whether it made a catch, and the pole is told afterwards.
++        private Item _castTool;
++        private bool _castConstructed;
++        private bool _castCaught;
++
+         public override void OnConcurrentHarvest(Mobile from, Item tool, HarvestDefinition def, object toHarvest)
+         {
+             from.SendLocalizedMessage(500972); // You are already fishing.
+@@ -154,6 +161,12 @@
+                         return true;
+                     }
+                 }
++
++                // Shattered Legacy (cc-P269): the charybdis the Oracle of the Sea named; ServUO Fishing.cs:218-250.
++                if (HighSeasFishing.TrySummonCharybdis(from, tool, loc))
++                {
++                    return true;
++                }
+             }
+ 
+             return false;
+@@ -172,6 +185,9 @@
+ 
+             var deepWater = SpecialFishingNet.FullValidation(map, loc.X, loc.Y);
+ 
++            // cc-P269: a junk-proof hook skips the footwear row 80% of the time; ServUO Fishing.cs:263, :273-274.
++            var junkproof = HighSeasFishing.HasTypeHook(tool, HookType.JunkProof);
++
+             var skillBase = from.Skills.Fishing.Base;
+             var skillValue = from.Skills.Fishing.Value;
+ 
+@@ -179,6 +195,11 @@
+             {
+                 var entry = _mutateTable[i];
+ 
++                if (junkproof && entry.m_Types[0] == typeof(Boots) && Utility.RandomDouble() <= 0.80)
++                {
++                    continue;
++                }
++
+                 if (!deepWater && entry.m_DeepWater)
+                 {
+                     continue;
+@@ -228,6 +249,19 @@
+ 
+         public override Item Construct(Type type, Mobile from)
+         {
++            if (_castTool == null || _castConstructed)
++            {
++                return ConstructCatch(type, from);
++            }
++
++            _castConstructed = true;
++            var item = ConstructCatch(type, from);
++            _castCaught = item != null;
++            return item;
++        }
++
++        private Item ConstructCatch(Type type, Mobile from)
++        {
+             if (type == typeof(TreasureMap))
+             {
+                 int level;
+@@ -259,32 +293,37 @@
+                     if ((from.Map == Map.Felucca || from.Map == Map.Trammel) && from.InRange(sos.TargetLocation, 60))
+                     {
+                         Item preLoot = null;
++                        var tool = _castTool; // cc-P269: a dredging hook makes the shipwreck items barnacle covered
++
++                        // cc-P269 (High Seas): ServUO's roll, Fishing.cs:360-457: each stock category on two of 17
++                        // numbers, the High Seas oddments on one, a chest on the last two (pinned: one of 8 each).
++                        var roll = Utility.Random(17);
+ 
+-                        switch (Utility.Random(8))
++                        switch (roll < 14 ? roll / 2 : roll == 14 ? 7 : 8)
+                         {
+                             case 0: // Body parts
+                                 {
+-                                    preLoot = new ShipwreckedItem(bodyParts.RandomElement());
++                                    preLoot = HighSeasFishing.Shipwrecked(bodyParts.RandomElement(), tool);
+                                     break;
+                                 }
+                             case 1: // Bone parts
+                                 {
+-                                    preLoot = new ShipwreckedItem(boneParts.RandomElement());
++                                    preLoot = HighSeasFishing.Shipwrecked(boneParts.RandomElement(), tool);
+                                     break;
+                                 }
+                             case 2: // Paintings and portraits
+                                 {
+-                                    preLoot = new ShipwreckedItem(Utility.Random(0xE9F, 10));
++                                    preLoot = HighSeasFishing.Shipwrecked(Utility.Random(0xE9F, 10), tool);
+                                     break;
+                                 }
+                             case 3: // Pillows
+                                 {
+-                                    preLoot = new ShipwreckedItem(Utility.Random(0x13A4, 11));
++                                    preLoot = HighSeasFishing.Shipwrecked(Utility.Random(0x13A4, 11), tool);
+                                     break;
+                                 }
+                             case 4: // Shells
+                                 {
+-                                    preLoot = new ShipwreckedItem(Utility.Random(0xFC4, 9));
++                                    preLoot = HighSeasFishing.Shipwrecked(Utility.Random(0xFC4, 9), tool);
+                                     break;
+                                 }
+                             case 5: // Hats
+@@ -298,19 +337,31 @@
+ 
+                                     preLoot = rand == miscItems.Length
+                                         ? new Candelabra()
+-                                        : new ShipwreckedItem(miscItems[rand]);
++                                        : HighSeasFishing.Shipwrecked(miscItems[rand], tool);
+ 
+                                     break;
+                                 }
++                            case 7: // cc-P269: number 14 of 17, the High Seas oddments
++                                {
++                                    preLoot = HighSeasFishing.SosOddment(tool);
++                                    break;
++                                }
+                         }
+ 
+                         if (preLoot != null)
+                         {
+-                            ((IShipwreckedItem)preLoot).IsShipwreckedItem = true;
++                            // cc-P269: the bikini is no shipwreck item; ServUO Fishing.cs:461-462 tests before it sets.
++                            if (preLoot is IShipwreckedItem wreck)
++                            {
++                                wreck.IsShipwreckedItem = true;
++                            }
++
+                             return preLoot;
+                         }
+ 
+-                        LockableContainer chest = Utility.RandomBool() ? new MetalGoldenChest() : new WoodenChest();
++                        // cc-P269: ServUO's ship's strongbox, one chest in a hundred; Fishing.cs:466-469.
++                        LockableContainer chest = Utility.RandomDouble() < 0.01 ? new ShipsStrongbox(sos.Level) :
++                            Utility.RandomBool() ? new MetalGoldenChest() : new WoodenChest();
+ 
+                         if (sos.IsAncient)
+                         {
+@@ -492,10 +543,54 @@
+             }
+         }
+ 
++        // cc-P269 (High Seas): a lava hook fishes lava with its own definition (HighSeasFishing, ServUO Fishing.cs:857-904).
++        public override void StartHarvesting(Mobile from, Item tool, object toHarvest)
++        {
++            if (HighSeasFishing.IsLavaHarvest(this, from, tool, toHarvest))
++            {
++                HighSeasFishing.StartLavaHarvest(this, from, tool, toHarvest);
++                return;
++            }
++
++            base.StartHarvesting(from, tool, toHarvest);
++        }
++
++        // cc-P269 (High Seas): lava has ServUO's own rules (Fishing.cs:929-1026); a water cast tells the pole whether it
++        // caught anything (ServUO HarvestSystem.cs:237, OnToolUsed -> FishingPole.OnFishedHarvest: hook and bait uses).
++        public override void FinishHarvesting(Mobile from, Item tool, HarvestDefinition def, object toHarvest, object locked)
++        {
++            if (def == HighSeasFishing.LavaDefinition)
++            {
++                HighSeasFishing.FinishLavaHarvest(this, from, tool, def, toHarvest, locked);
++                return;
++            }
++
++            _castTool = tool;
++            _castConstructed = false;
++            _castCaught = false;
++
++            try
++            {
++                base.FinishHarvesting(from, tool, def, toHarvest, locked);
++
++                if (_castConstructed)
++                {
++                    (tool as FishingPole)?.OnFishedHarvest(from, _castCaught);
++                }
++            }
++            finally
++            {
++                _castTool = null;
++            }
++        }
++
+         public override void OnHarvestStarted(Mobile from, Item tool, HarvestDefinition def, object toHarvest)
+         {
+             base.OnHarvestStarted(from, tool, def, toHarvest);
+ 
++            // cc-P269: lava splashes and hisses; ServUO Fishing.cs:716-722.
++            var lava = def == HighSeasFishing.LavaDefinition;
++
+             if (GetHarvestDetails(from, tool, toHarvest, out _, out var map, out var loc, out _))
+             {
+                 Timer.StartTimer(
+@@ -507,8 +602,8 @@
+                             from.RevealingAction();
+                         }
+ 
+-                        Effects.SendLocationEffect(loc, map, 0x352D, 16, 4);
+-                        Effects.PlaySound(loc, map, 0x364);
++                        Effects.SendLocationEffect(loc, map, lava ? 0x1A75 : 0x352D, 16, 4);
++                        Effects.PlaySound(loc, map, lava ? 0x60A : 0x364);
+                     }
+                 );
+             }
