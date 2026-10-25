@@ -154,8 +154,10 @@ public class ArtificersGuildmasterGump : Gump
             "<BASEFONT COLOR=#CCCCCC>Clothing</BASEFONT>" +
             "<BASEFONT COLOR=#888888> - Apply skill and attribute bonuses to robes, cloaks, " +
             "and other worn pieces.</BASEFONT><BR><BR>" +
-            "<BASEFONT COLOR=#FFD700>Order members can imbue already-enchanted items and reach " +
-            "property intensities beyond vanilla limits. Higher ranks unlock greater caps." +
+            "<BASEFONT COLOR=#FFD700>Order members can imbue already-enchanted items. How strong a property " +
+            "you can imbue depends on what your account has learned: each property is known up to a tier " +
+            "(Basic, Refined, Full) from the Order's formula books, and Overcharged tiers also need a soul " +
+            "forge close by. Standing alone raises no limit; it opens the rank that sells the next book." +
             "</BASEFONT>";
 
         AddHtml(16, 78, W - 32, H - 128, html, false, true);
@@ -194,7 +196,8 @@ public class ArtificersGuildmasterGump : Gump
             : "";
 
         var html =
-            "<BASEFONT COLOR=#AAAAAA>Upon joining the Artificers' Order you receive:</BASEFONT><BR><BR>" +
+            "<BASEFONT COLOR=#AAAAAA>Joining is free and issues an Essence Satchel and a Toolkit. " +
+            "Completing the Order's Apprentice task (see Joining Requirements) pays:</BASEFONT><BR><BR>" +
             repLine +
             "<BASEFONT COLOR=#AAAAAA>Essence Shards are the Order's trade currency. They are " +
             "spent at the Imbuing Table to add and enhance magical properties on items. " +

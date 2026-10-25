@@ -505,7 +505,8 @@ public static class ClusterFGuildSystem
             pm.SendMessage(0x44, "You have been issued an Artificers' Essence Satchel and an Artificers' Toolkit.");
             pm.SendMessage(0x44, "The Satchel stores your PropertyEssences and tracks mastery progress.");
             pm.SendMessage(0x44, "The Toolkit lets you imbue and disenchant anywhere - no NPC visit required.");
-            pm.SendMessage(0x44, "As your Artificers' Standing grows, you will unlock higher intensity caps and more property slots.");
+            pm.SendMessage(0x44, "Complete the Apprentice task for your first Standing and Essence Shards.");
+            pm.SendMessage(0x44, "What you can imbue, and how strongly, comes from the property tiers your account learns from the Order's formula books; Overcharged work also needs a soul forge.");
         }
     }
 
