@@ -153,6 +153,13 @@ public partial class BaseCreature
     {
     }
 
+    /// <summary>
+    /// OnAfterTame with whether this is the creature's first tame (cc-P458). ServUO calls OnAfterTame before adding
+    /// the owner, so its overrides test Owners.Count == 0; pinned adds the owner first, so an override that needs the
+    /// first tame overrides this one instead. The default calls ServUO's one-argument hook.
+    /// </summary>
+    public virtual void OnAfterTame(Mobile tamer, bool firstTame) => OnAfterTame(tamer);
+
     public virtual double AverageThreshold => 0.33;
 
     private static readonly ConditionalWeakTable<BaseCreature, List<double>> _initAverage = new();

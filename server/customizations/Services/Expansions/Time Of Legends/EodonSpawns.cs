@@ -14,7 +14,11 @@
 //   <Range>                    WalkingRange.   <IsHomeRangeRelative> SpawnLocationIsHome (true on every row).
 //   <MaxCount>                 Count, capped at the sum of the kept entries (the four desert rows: below).
 //   <MinDelay>/<MaxDelay>      minutes on every row (DelayInSec False), carried as seconds: 1-2 minutes, 60-120 s.
-//   <Objects2> type:MX=n       one entry per type, probability 100, maxCount n. Type names case-corrected. A
+//   <Objects2> type:MX=n       one entry per type, maxCount n and probability n: XmlSpawner draws among the entries
+//                              below their limit weighted by MaxCount (XmlSpawner2.cs:8377-8408), pinned weighted by
+//                              probability (BaseSpawner.cs:867-893), so the same weights give ServUO's mix (cc-P458;
+//                              a flat 100 made a white tiger 1 in 8 on Wildlife #4, not 1 in 25). Type names
+//                              case-corrected. A
 //                              "TribeWarrior,Kurak" entry's argument is the tribe, passed as the entry's Parameters
 //                              (BaseSpawner.cs:1024-1047 parses it into the [Constructible] TribeWarrior(EodonTribe)).
 //   Everything else            XmlSpawner defaults on every row (checked: no proximity, time of day, sequence, group,
@@ -144,7 +148,7 @@ public static class EodonSpawns
 
             foreach (var entry in d.Entries)
             {
-                spawner.AddEntry(entry.Type, 100, entry.MaxCount, false, null, entry.Parameter);
+                spawner.AddEntry(entry.Type, entry.MaxCount, entry.MaxCount, false, null, entry.Parameter);
             }
 
             WeakEntityCollection.Add(EodonGeneration.CollectionKey, spawner);

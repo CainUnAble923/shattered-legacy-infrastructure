@@ -7,7 +7,9 @@
 // with it; each tribesman for all six tribes (its body, outfit, one 100% resistance, the rally and the yell, the
 // aggressor-only enemy test); the Infernus's trail of fire; the hatchling's scutes; the cards, the vines, the scute and
 // the wandering shaman; and [GenEodon: the gate where pinned's gump sends players, the vines, the 46 spawners, the
-// dry run, the replace on a re-run, the skip beside another gate, and [DeleteEodon.
+// dry run, the replace on a re-run, the skip beside another gate, and [DeleteEodon. cc-P458 adds the spawn weights,
+// a real tame of the hatchling, the vines refusing a paralyzed climber, the Infernus through its combat callback and
+// its one-second tick, and a re-run deleting the first run's creatures.
 //
 // Test-host facts this file meets (notes/port-recipe.md): hit points regenerate every 8 ms, so damage is read on the
 // tick it lands (D15); everything with a timer is made after ShardTestClock.Arm() (D16); there is no tile data (D27),
@@ -23,6 +25,9 @@ using Server.Engines.Eodon;
 using Server.Engines.Spawners;
 using Server.Items;
 using Server.Mobiles;
+using Server.Network;
+using Server.SkillHandlers;
+using Server.Tests.Network;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -186,7 +191,6 @@ public class EodonRemainderVerification
         // when its rolls came out low (cc-P130's ControlSlots setter, ServUO BaseCreature.cs:3843-3861).
         Assert.InRange(hatchling.ControlSlots, 3, 4);
         Assert.Equal(104.7, hatchling.MinTameSkill);
-        Assert.True(hatchling.StatLossAfterTame);
         Assert.Equal(FoodType.Fish, hatchling.FavoriteFood);
 
         var infantry = new BritannianInfantry();
@@ -524,6 +528,82 @@ public class EodonRemainderVerification
         }
     }
 
+    // cc-P458 (P407 #3): the trail through the AI's own callback, its cooldown, and a target standing still on a fire.
+    [Fact]
+    public void TheInfernusDropsFireFromCombatOnACooldownAndItBurnsWhoeverStandsInIt()
+    {
+        ShardTestClock.Arm();
+
+        var infernus = new Infernus { CantWalk = true };
+        var pm = NewPlayer(Origin);
+        infernus.MoveToWorld(new Point3D(Origin.X + 3, Origin.Y, Origin.Z), Map.TerMur);
+
+        List<Infernus.FireItem> Fires() =>
+            World.Items.Values.OfType<Infernus.FireItem>().Where(f => !f.Deleted && f.Owner == infernus).ToList();
+
+        try
+        {
+            infernus.Combatant = pm;
+
+            // One drop in 512 places nothing (Infernus.cs's header): wait out the cooldown and ask again.
+            infernus.OnActionCombat();
+            for (var i = 0; i < 5 && Fires().Count == 0; i++)
+            {
+                ShardTestClock.AdvanceSeconds(16);
+                infernus.Combatant = pm;
+                infernus.OnActionCombat();
+            }
+
+            var first = Fires();
+            Assert.NotEmpty(first);
+            Assert.All(first, f => Assert.True(Math.Abs(f.X - pm.X) <= 1 && Math.Abs(f.Y - pm.Y) <= 1, $"fire at {f.Location}"));
+
+            // The cooldown: 10-15 seconds before the next drop.
+            infernus.OnActionCombat();
+            Assert.Equal(first.Count, Fires().Count);
+
+            // A target out of range (12 tiles) gets nothing, cooldown or not.
+            ShardTestClock.AdvanceSeconds(16);
+            var far = NewPlayer(new Point3D(Origin.X + 20, Origin.Y, Origin.Z));
+            infernus.Combatant = far;
+            infernus.OnActionCombat();
+            Assert.DoesNotContain(Fires(), f => Math.Abs(f.X - far.X) <= 1 && Math.Abs(f.Y - far.Y) <= 1);
+            far.Delete();
+
+            // After the cooldown, a second drop.
+            var before = Fires().Count;
+            for (var i = 0; i < 5 && Fires().Count == before; i++)
+            {
+                infernus.Combatant = pm;
+                infernus.OnActionCombat();
+                if (Fires().Count == before)
+                {
+                    ShardTestClock.AdvanceSeconds(16);
+                }
+            }
+
+            Assert.True(Fires().Count > before, "no second drop after the cooldown");
+
+            // Standing still on a fire: the one-second tick burns (hits regenerate in the host, so the proof is the
+            // harmful act and the damage entry the hit leaves).
+            var stander = NewPlayer(Fires()[0].Location);
+            Assert.Null(stander.FindDamageEntryFor(infernus));
+            ShardTestClock.AdvanceSeconds(1.1);
+            Assert.NotNull(stander.FindDamageEntryFor(infernus));
+            stander.Delete();
+        }
+        finally
+        {
+            foreach (var f in World.Items.Values.OfType<Infernus.FireItem>().ToList())
+            {
+                f.Delete();
+            }
+
+            infernus.Delete();
+            pm.Delete();
+        }
+    }
+
     [Fact]
     public void AWildHatchlingCarvesFourScutes()
     {
@@ -555,6 +635,75 @@ public class EodonRemainderVerification
         {
             corpse.Delete();
             wild.Delete();
+            pm.Delete();
+        }
+    }
+
+    private static Dictionary<SkillName, double> TrainedSkills(Mobile m) =>
+        Enumerable.Range(0, m.Skills.Length).Select(i => m.Skills[i]).Where(s => s.Base > 0)
+            .ToDictionary(s => s.SkillName, s => s.Base);
+
+    // cc-P458 (P407 #2, P428 #1): a real tame through pinned's AnimalTaming and the patch's hook. ServUO's first-tame
+    // body: every skill above zero keeps 45% of what taming left it (pinned's 90%) and caps at 100; the stats stay.
+    [Fact]
+    public void ATamedHatchlingLosesSkillNotStatsAndOnlyOnTheFirstTame()
+    {
+        ShardTestClock.Arm();
+
+        var pm = NewPlayer(Origin);
+        var ns = PacketTestUtilities.CreateTestNetState();
+        pm.NetState = ns;
+        ns.Mobile = pm;
+        pm.Skills.AnimalTaming.Cap = 160.0; // past the top of the 104.7 roll (CheckTargetSkill 104.6-154.6): a sure tame
+        pm.Skills.AnimalTaming.Base = 160.0;
+        pm.Skills.AnimalLore.Cap = 120.0;
+        pm.Skills.AnimalLore.Base = 120.0;
+
+        // Rooted, as the Pet Training tame fact's bear: the twenty seconds must not walk it out of range.
+        var hatchling = new DragonTurtleHatchling { CantWalk = true };
+        hatchling.MoveToWorld(new Point3D(Origin.X + 1, Origin.Y, Origin.Z), Map.TerMur);
+
+        try
+        {
+            var wild = TrainedSkills(hatchling);
+            var (str, dex, intel, hits) = (hatchling.RawStr, hatchling.RawDex, hatchling.RawInt, hatchling.HitsMaxSeed);
+            Assert.NotEmpty(wild);
+
+            AnimalTaming.OnUse(pm);
+            pm.Target.Invoke(pm, hatchling);
+            ShardTestClock.AdvanceSeconds(20);
+
+            Assert.True(hatchling.Controlled, "a 160 tamer tames a hatchling");
+            Assert.Same(pm, hatchling.ControlMaster);
+
+            foreach (var (name, was) in wild)
+            {
+                var sk = hatchling.Skills[name];
+                _out.WriteLine($"{name}: wild {was:F1}, tamed {sk.Base:F1} cap {sk.Cap:F1}");
+                Assert.InRange(sk.Base, was * 0.9 * 0.45 - 0.25, was * 0.9 * 0.45 + 0.05);
+                Assert.Equal(100.0, sk.Cap);
+            }
+
+            Assert.Equal((str, dex, intel, hits), (hatchling.RawStr, hatchling.RawDex, hatchling.RawInt, hatchling.HitsMaxSeed));
+
+            Assert.False(hatchling.StatLossAfterTame, "no substitute half-stat cut");
+
+            // Released and tamed back by the same owner: "That wasn't even challenging", and no second cut.
+            var tamed = TrainedSkills(hatchling);
+            hatchling.SetControlMaster(null);
+            Assert.False(hatchling.Controlled);
+
+            AnimalTaming.OnUse(pm);
+            pm.Target.Invoke(pm, hatchling);
+            ShardTestClock.AdvanceSeconds(20);
+
+            Assert.True(hatchling.Controlled, "the owner tames it back");
+            Assert.All(tamed, kv => Assert.Equal(kv.Value, hatchling.Skills[kv.Key].Base));
+            Assert.Equal((str, dex, intel, hits), (hatchling.RawStr, hatchling.RawDex, hatchling.RawInt, hatchling.HitsMaxSeed));
+        }
+        finally
+        {
+            hatchling.Delete();
             pm.Delete();
         }
     }
@@ -692,6 +841,60 @@ public class EodonRemainderVerification
         }
     }
 
+    private sealed class CastingSpell : ISpell
+    {
+        public bool BlocksMovement => true;
+        public bool IsCasting => true;
+        public void OnCasterHurt() { }
+        public void OnCasterKilled() { }
+        public void OnConnectionChanged() { }
+        public bool OnCasterMoving(Direction d) => false;
+        public bool OnCasterEquipping(Item item) => false;
+        public bool OnCasterUsingObject(IEntity entity) => false;
+        public bool OnCastInTown(Region r) => true;
+        public void FinishSequence() { }
+    }
+
+    // cc-P458 (P428 #2): a paralyzed, frozen or casting player in range stays at the foot of the cliff.
+    [Fact]
+    public void TheVineRefusesAParalyzedFrozenOrCastingClimber()
+    {
+        var top = new Point3D(679, 1757, 100);
+        var vine = new ClimbingVine(top) { Movable = false };
+        vine.MoveToWorld(new Point3D(678, 1759, 40), Map.TerMur);
+
+        var foot = new Point3D(678, 1760, 40);
+        var paralyzed = NewPlayer(foot);
+        var frozen = NewPlayer(foot);
+        var casting = NewPlayer(foot);
+        var free = NewPlayer(foot);
+
+        try
+        {
+            paralyzed.Paralyzed = true;
+            frozen.Frozen = true;
+            casting.Spell = new CastingSpell();
+
+            foreach (var pm in new[] { paralyzed, frozen, casting })
+            {
+                vine.OnDoubleClick(pm);
+                Assert.Equal(foot, pm.Location);
+            }
+
+            vine.OnDoubleClick(free);
+            Assert.Equal(top, free.Location);
+        }
+        finally
+        {
+            casting.Spell = null;
+            vine.Delete();
+            paralyzed.Delete();
+            frozen.Delete();
+            casting.Delete();
+            free.Delete();
+        }
+    }
+
     // ---- [GenEodon -------------------------------------------------------------------------------------------------
 
     [Fact]
@@ -790,6 +993,80 @@ public class EodonRemainderVerification
             var after = Assert.Single(EodonGeneration.Status());
             Assert.Contains("49 objects placed by GenEodon", after);
             Assert.Contains("present (GenEodon's)", after);
+        }
+        finally
+        {
+            ClearEodon();
+        }
+    }
+
+    // cc-P458 (P407 #1): ServUO's XmlSpawner draws among the entries not at their limit with weight MaxCount
+    // (XmlSpawner2.cs:8377-8408); pinned draws with weight SpawnedProbability (BaseSpawner.cs:867-893). So each entry's
+    // probability is its MaxCount.
+    [Fact]
+    public void EachGeneratedEntryIsWeightedByItsMaxCount()
+    {
+        ClearEodon();
+
+        try
+        {
+            EodonGeneration.Run(dryRun: false);
+
+            var spawners = World.Items.Values.OfType<Spawner>().Where(s => !s.Deleted && EodonSpawns.IsEodonSpawner(s)).ToList();
+            Assert.Equal(46, spawners.Count);
+
+            foreach (var d in EodonSpawns.Definitions)
+            {
+                var s = Assert.Single(spawners, x => x.Name == d.Name && x.X == d.CentreX && x.Y == d.CentreY);
+                Assert.Equal(d.Entries.Length, s.Entries.Count);
+
+                for (var i = 0; i < d.Entries.Length; i++)
+                {
+                    Assert.Equal(d.Entries[i].MaxCount, s.Entries[i].SpawnedMaxCount);
+                    Assert.Equal(d.Entries[i].MaxCount, s.Entries[i].SpawnedProbability);
+                }
+            }
+
+            // P407's example: a white tiger is 1 of Wildlife #4's 25, not 1 of 8 entries.
+            var w4 = Assert.Single(spawners, s => s.Name == "Eodon_Wildlife #4");
+            Assert.Equal(25, w4.Entries.Sum(e => e.SpawnedProbability));
+            Assert.Equal(1, Assert.Single(w4.Entries, e => e.SpawnedName == "WildWhiteTiger").SpawnedProbability);
+        }
+        finally
+        {
+            ClearEodon();
+        }
+    }
+
+    // cc-P458 (P407 #4): a re-run takes the first run's creatures with its spawners, and the new spawners fill again.
+    [Fact]
+    public void ARerunDeletesTheFirstRunsCreatures()
+    {
+        ClearEodon();
+
+        try
+        {
+            EodonGeneration.Run(dryRun: false);
+
+            var firstSpawners = World.Items.Values.OfType<Spawner>().Where(s => !s.Deleted && EodonSpawns.IsEodonSpawner(s)).ToList();
+            var firstCreatures = firstSpawners.SelectMany(s => s.Spawned.Keys).OfType<BaseCreature>().ToList();
+            _out.WriteLine($"first run: {firstCreatures.Count} creatures on {firstSpawners.Count} spawners");
+            Assert.NotEmpty(firstCreatures);
+            Assert.All(firstSpawners, s => Assert.True(s.Spawned.Count <= s.Count, $"{s.Name} over its cap"));
+
+            EodonGeneration.Run(dryRun: false);
+
+            Assert.All(firstSpawners, s => Assert.True(s.Deleted, $"{s.Name} survived the re-run"));
+            Assert.All(firstCreatures, c => Assert.True(c.Deleted, $"{c.GetType().Name} from the first run survived"));
+
+            var second = World.Items.Values.OfType<Spawner>().Where(s => !s.Deleted && EodonSpawns.IsEodonSpawner(s)).ToList();
+            Assert.Equal(46, second.Count);
+            Assert.NotEmpty(second.SelectMany(s => s.Spawned.Keys));
+
+            // [DeleteEodon takes the second run's creatures the same way.
+            var secondCreatures = second.SelectMany(s => s.Spawned.Keys).OfType<BaseCreature>().ToList();
+            EodonGeneration.Delete();
+            Assert.All(secondCreatures, c => Assert.True(c.Deleted, $"{c.GetType().Name} survived [DeleteEodon"));
         }
         finally
         {

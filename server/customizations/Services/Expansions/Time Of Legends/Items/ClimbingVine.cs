@@ -8,6 +8,10 @@
 // nine tiles from where it puts them, so it never finds them and adds another pair on every restart. Here the two
 // vines are part of [GenEodon (EodonGeneration), tagged, and a re-run replaces them; nothing is placed at startup,
 // so no world gets them without the command. The coordinates are ServUO's.
+//
+// Added (cc-P458, Crystal's P428 #2): a paralyzed, frozen or casting player cannot climb ("You cannot use that
+// while paralyzed.", 1075857, pinned's own refusal for the same three states in Firebomb.cs:33-37). ServUO has no
+// check, so one double-click lifted a held player 40-60 tiles up the cliff, out of a fight.
 
 using ModernUO.Serialization;
 
@@ -34,6 +38,12 @@ public partial class ClimbingVine : Item
     {
         // *The vines looks as though they may be strong enough to support climbing...*
         from.SayTo(from, 1156290, 1153);
+
+        if (from.Paralyzed || from.Frozen || from.Spell?.IsCasting == true)
+        {
+            from.SendLocalizedMessage(1075857); // You cannot use that while paralyzed.
+            return;
+        }
 
         if (_climbLocation != Point3D.Zero && from.InRange(GetWorldLocation(), 2) && Z >= from.Z)
         {
