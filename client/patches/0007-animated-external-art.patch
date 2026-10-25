@@ -1,0 +1,152 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chase Fleming <ckfleming@gmail.com>
+Date: Sun, 25 Oct 2026 12:00:00 -0500
+Subject: [PATCH] Animate statics whose art comes only from ExternalImages
+ (Shattered Legacy cc-P374)
+
+---
+  .../Game/GameObjects/Views/ItemView.cs             |  6 +--
+  .../Game/GameObjects/Views/View.cs                 |  6 +--
+  .../Game/Scenes/GameSceneDrawingSorting.cs         |  4 +-
+  src/ClassicUO.IO/UOFile.cs                         |  6 +++
+  tests/ClassicUO.UnitTests/IO/AnimOffsetTests.cs    | 58 ++++++++++++++++++++++
+  5 files changed, 68 insertions(+), 12 deletions(-)
+
+diff --git a/src/ClassicUO.Client/Game/GameObjects/Views/ItemView.cs b/src/ClassicUO.Client/Game/GameObjects/Views/ItemView.cs
+index f8afbf25f..b2f360694 100644
+--- a/src/ClassicUO.Client/Game/GameObjects/Views/ItemView.cs
++++ b/src/ClassicUO.Client/Game/GameObjects/Views/ItemView.cs
+@@ -477,11 +477,7 @@ namespace ClassicUO.Game.GameObjects
+                     }
+                     else
+                     {
+-                        ref UOFileIndex index = ref Client.Game.UO.FileManager.Arts.File.GetValidRefEntry(
+-                            graphic + 0x4000
+-                        );
+-
+-                        graphic += (ushort)index.AnimOffset;
++                        graphic += (ushort)Client.Game.UO.FileManager.Arts.File.GetAnimOffset(graphic + 0x4000); // Shattered Legacy patch (cc-P374)
+                     }
+                 }
+ 
+diff --git a/src/ClassicUO.Client/Game/GameObjects/Views/View.cs b/src/ClassicUO.Client/Game/GameObjects/Views/View.cs
+index 52f29c6cc..5bcea61ec 100644
+--- a/src/ClassicUO.Client/Game/GameObjects/Views/View.cs
++++ b/src/ClassicUO.Client/Game/GameObjects/Views/View.cs
+@@ -304,15 +304,13 @@ namespace ClassicUO.Game.GameObjects
+             Color? outlineColor = null
+         )
+         {
+-            ref UOFileIndex index = ref Client.Game.UO.FileManager.Arts.File.GetValidRefEntry(graphic + ART_STATIC_OFFSET);
+-
+-            graphic = (ushort)(graphic + index.AnimOffset);
++            graphic = (ushort)(graphic + Client.Game.UO.FileManager.Arts.File.GetAnimOffset(graphic + ART_STATIC_OFFSET)); // Shattered Legacy patch (cc-P374)
+ 
+             ref readonly SpriteInfo artInfo = ref Client.Game.UO.Arts.GetArt(graphic);
+ 
+             if (artInfo.Texture != null)
+             {
+-                index = ref Client.Game.UO.FileManager.Arts.File.GetValidRefEntry(graphic + ART_STATIC_OFFSET);
++                ref UOFileIndex index = ref Client.Game.UO.FileManager.Arts.File.GetValidRefEntry(graphic + ART_STATIC_OFFSET);
+                 index.Width = (short)((artInfo.UV.Width >> 1) - TILE_CENTER_OFFSET);
+                 index.Height = (short)(artInfo.UV.Height - TILE_HEIGHT_OFFSET);
+ 
+diff --git a/src/ClassicUO.Client/Game/Scenes/GameSceneDrawingSorting.cs b/src/ClassicUO.Client/Game/Scenes/GameSceneDrawingSorting.cs
+index 5b8c8618d..4bb33515e 100644
+--- a/src/ClassicUO.Client/Game/Scenes/GameSceneDrawingSorting.cs
++++ b/src/ClassicUO.Client/Game/Scenes/GameSceneDrawingSorting.cs
+@@ -760,9 +760,7 @@ namespace ClassicUO.Game.Scenes
+                 }
+                 else
+                 {
+-                    graphic += (ushort)Client.Game.UO.FileManager.Arts.File
+-                        .GetValidRefEntry(graphic + 0x4000)
+-                        .AnimOffset;
++                    graphic += (ushort)Client.Game.UO.FileManager.Arts.File.GetAnimOffset(graphic + 0x4000); // Shattered Legacy patch (cc-P374)
+                 }
+             }
+ 
+diff --git a/src/ClassicUO.IO/UOFile.cs b/src/ClassicUO.IO/UOFile.cs
+index a6741c57a..f4c79084f 100644
+--- a/src/ClassicUO.IO/UOFile.cs
++++ b/src/ClassicUO.IO/UOFile.cs
+@@ -19,6 +19,12 @@ namespace ClassicUO.IO
+         public UOFileIndex[] Entries;
+ 
+ 
++        // Shattered Legacy patch (cc-P374): an animated static's current frame offset, kept on its art index entry by
++        // AnimatedStaticsManager. Read from the entry itself: an art ID that exists only as an ExternalImages PNG has an
++        // empty entry, and GetValidRefEntry hands back the shared Invalid entry, whose offset is always 0.
++        public sbyte GetAnimOffset(int index) =>
++            Entries != null && index >= 0 && index < Entries.Length ? Entries[index].AnimOffset : (sbyte)0;
++
+         public ref UOFileIndex GetValidRefEntry(int index)
+         {
+             if (index < 0 || Entries == null || index >= Entries.Length)
+diff --git a/tests/ClassicUO.UnitTests/IO/AnimOffsetTests.cs b/tests/ClassicUO.UnitTests/IO/AnimOffsetTests.cs
+new file mode 100644
+index 000000000..ca5d39658
+--- /dev/null
++++ b/tests/ClassicUO.UnitTests/IO/AnimOffsetTests.cs
+@@ -0,0 +1,58 @@
++// Shattered Legacy patch (cc-P374): animated statics whose art comes only from ExternalImages still change frame.
++using System;
++using System.IO;
++using ClassicUO.IO;
++using FluentAssertions;
++using Xunit;
++
++namespace ClassicUO.UnitTests.IO
++{
++    public class AnimOffsetTests : IDisposable
++    {
++        private const int ArtStaticOffset = 0x4000;
++        private const int Vat = 0x6D70; // the guild hall decor's bubbling vat: a PNG in ExternalImagesrt, no art.mul entry
++        private const int Fire = 0x19AB; // a stock animated static with art in the client files
++
++        private readonly string _path = Path.GetTempFileName();
++        private readonly UOFile _file;
++
++        public AnimOffsetTests()
++        {
++            File.WriteAllBytes(_path, new byte[64]);
++            _file = new UOFile(_path);
++            _file.Entries = new UOFileIndex[ArtStaticOffset + 0x10000];
++            _file.Entries[ArtStaticOffset + Fire] = new UOFileIndex(_file, 16, 16, 16);
++        }
++
++        public void Dispose()
++        {
++            _file.Dispose();
++            File.Delete(_path);
++        }
++
++        [Fact]
++        public void AnArtIdWithNoFileEntryStillReportsItsAnimationFrame()
++        {
++            _file.Entries[ArtStaticOffset + Vat].AnimOffset = 2; // as AnimatedStaticsManager.Process sets it
++
++            _file.GetAnimOffset(ArtStaticOffset + Vat).Should().Be(2);
++            _file.GetValidRefEntry(ArtStaticOffset + Vat).AnimOffset.Should().Be(0, "the empty entry reads as Invalid, the bug this patch routes around");
++        }
++
++        [Fact]
++        public void AStockArtIdReportsItsAnimationFrameAsBefore()
++        {
++            _file.Entries[ArtStaticOffset + Fire].AnimOffset = 5;
++
++            _file.GetAnimOffset(ArtStaticOffset + Fire).Should().Be(5);
++            _file.GetValidRefEntry(ArtStaticOffset + Fire).AnimOffset.Should().Be(5);
++        }
++
++        [Fact]
++        public void AnIndexOutsideTheTableHasNoOffset()
++        {
++            _file.GetAnimOffset(-1).Should().Be(0);
++            _file.GetAnimOffset(_file.Entries.Length).Should().Be(0);
++        }
++    }
++}
+-- 
+2.51.2.windows.1
+

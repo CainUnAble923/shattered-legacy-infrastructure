@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.2
+
+### Staff
+- Our game client now animates the guild hall decor (the bubbling vat, the specimen tanks, the crystal ball, the fire pit and blacksmith, the floating crystals and arc orbs); before, each piece stood still on its first frame. It reaches players with the next client build and player package. Nothing of the decor is placed in the world yet.
+
 ## 2026.10.25
 
 ### Added
