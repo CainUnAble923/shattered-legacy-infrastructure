@@ -168,14 +168,19 @@ public static class ClusterFLeagueBestiary
         return true;
     }
 
+    // cc-P455 (cc-P404 #1): the killer as pinned credits fame (BaseCreature.cs:3570): a pet's or a summon's master,
+    // or the bard who provoked the killer onto this creature. Only the killer is read here, and it is not deleted.
     [OnEvent(nameof(CreatureEvents.CreatureDeathEvent))]
     public static void OnCreatureDeath(BaseCreature bc)
     {
-        if (bc.LastKiller is PlayerMobile pm)
+        if (KillerOf(bc) is PlayerMobile pm)
         {
             RecordKill(pm, bc);
         }
     }
+
+    public static Mobile KillerOf(BaseCreature bc) =>
+        bc.LastKiller is BaseCreature killer ? killer.GetDamageMaster(bc) : bc.LastKiller;
 
     // ---- spawn data ---------------------------------------------------------------------------------------------------
 

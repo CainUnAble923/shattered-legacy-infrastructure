@@ -311,10 +311,14 @@ public static class ClusterFImbueEffects
         }
     }
 
-    [OnEvent(nameof(CreatureEvents.CreatureDeathEvent))]
-    public static void OnCreatureDeath(BaseCreature bc)
+    // cc-P455 (cc-P429 W1): on CreatureDeletedEvent, which comes before CreatureDeathEvent and before OnDelete
+    // clears a pet's master (BaseCreature.cs:3674-3688): read at the death event, a killed non-bonded pet was no
+    // longer Controlled and paid kill effects such as Butcher's Eye. The corpse already holds the loot (Mobile.Kill).
+    // A bonded pet's death deletes nothing, and it is controlled: it pays nothing either way.
+    [OnEvent(nameof(CreatureEvents.CreatureDeletedEvent))]
+    public static void OnCreatureDeleted(BaseCreature bc)
     {
-        if (!bc.Controlled && !bc.Summoned && bc.LastKiller is PlayerMobile pm)
+        if (bc.Hits <= 0 && !bc.IsDeadPet && !bc.Controlled && !bc.Summoned && bc.LastKiller is PlayerMobile pm)
         {
             OnKill(pm, bc.Corpse);
         }

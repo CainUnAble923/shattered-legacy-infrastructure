@@ -14,6 +14,12 @@
 //      home, both bestiary lines, and a level (ClusterFCreatureLevels) inside its band: the spread the prompt asked for.
 //   5. The spawn data resolves (every type a creature of the table), every creature has a home row, and the seeder
 //      places every row on Trammel once: a dry run places nothing, the first run places all, the second finds them all.
+//   6. cc-P455 (cc-P404 #2, #3): every creature's numbers are P364's table (notes section 3): stats, hits, damage and
+//      its type, the resists the table names, fame, speed, weapon ability, carve yields and fixed drops; with the
+//      poisons registered (the fixture calls ShardTestHost.EnsurePoisons), the three poisonous hitters poison a player
+//      with their own poison, and the four lethal-immune creatures shrug off Lethal.
+//   7. cc-P455 (cc-P404 #1): a kill finished by the player's pet, summon, or a creature the player provoked onto it
+//      records the bestiary entry for the player, as pinned credits fame (GetDamageMaster).
 //
 // server/tests/<path> is mirrored into Projects/UOContent.Tests/Tests/<path> by docker/uo/apply-patches.sh and run as a
 // gate by docker/uo/build.sh.
@@ -59,6 +65,7 @@ public class LeagueBestiaryVerification
         }
 
         ShardBodyTypes.Apply();
+        ShardTestHost.EnsurePoisons(); // cc-P455 (cc-P404 #3): levels and hit poisons read the registered poisons
     }
 
     // (type, name, corpse name, body, server type, part, parts a kill)
@@ -373,5 +380,199 @@ public class LeagueBestiaryVerification
                 s.Delete();
             }
         }
+    }
+
+    // ---------------------------------------------------------------- 6
+
+    // P364's creature table (notes/cc-P364-league-bestiary-batch-2.md section 3), as ranges. Dmg% is the one damage
+    // type besides physical, if any; resists are only the ones the table names.
+    private sealed record Numbers(
+        Type Type, (int, int) Str, (int, int) Dex, (int, int) Int, (int, int) Hits, (int, int) Dmg,
+        (ResistanceType Kind, int Pct)? DmgType, (ResistanceType Kind, int Lo, int Hi)[] Resists, int Fame)
+    {
+        public double? Speed { get; init; }
+        public Type Ability { get; init; }
+        public int Meat { get; init; }
+        public int Hides { get; init; }
+        public (Type Item, int Amount)[] Packs { get; init; } = [];
+    }
+
+    private static readonly Numbers[] Table =
+    [
+        new(typeof(HedgeSnatcher), (35, 45), (40, 50), (15, 25), (24, 30), (3, 6), null,
+            [(ResistanceType.Physical, 10, 15)], 400),
+        new(typeof(SnatcherOutrider), (60, 75), (70, 85), (20, 30), (50, 65), (5, 9), null,
+            [(ResistanceType.Physical, 20, 25)], 1200) { Speed = 0.15 },
+        new(typeof(HornbackRaider), (70, 85), (50, 65), (20, 30), (40, 52), (4, 8), null,
+            [(ResistanceType.Physical, 15, 25)], 800) { Meat = 1 },
+        new(typeof(DitchCrawler), (25, 35), (25, 35), (5, 10), (16, 22), (2, 5), (ResistanceType.Poison, 30),
+            [(ResistanceType.Poison, 20, 30)], 250),
+        new(typeof(MireCroaker), (60, 75), (55, 70), (20, 30), (40, 50), (4, 8), null,
+            [(ResistanceType.Physical, 15, 20), (ResistanceType.Poison, 20, 30)], 900) { Meat = 1 },
+        new(typeof(BrineLurker), (85, 100), (70, 85), (40, 55), (55, 70), (6, 10), (ResistanceType.Cold, 30),
+            [(ResistanceType.Physical, 25, 30), (ResistanceType.Cold, 30, 40)], 1500)
+            { Meat = 1, Packs = [(typeof(RawFishSteak), 2)] }, // meat: the code's, which the table leaves out
+        new(typeof(Moonmaw), (100, 120), (90, 110), (30, 45), (70, 85), (8, 13), null,
+            [(ResistanceType.Physical, 25, 35)], 2500) { Ability = typeof(BleedAttack), Meat = 2, Hides = 10 },
+        new(typeof(Thornwisp), (60, 80), (60, 75), (80, 100), (50, 65), (6, 10), (ResistanceType.Poison, 50),
+            [(ResistanceType.Poison, 50, 60)], 2500) { Packs = [(typeof(Log), 5), (typeof(BaseReagent), 3)] },
+        new(typeof(PaleDrifter), (60, 80), (80, 100), (40, 60), (50, 65), (7, 11), (ResistanceType.Cold, 60),
+            [(ResistanceType.Cold, 50, 60)], 3000),
+        new(typeof(Slagheart), (150, 180), (40, 55), (30, 45), (95, 115), (10, 15), (ResistanceType.Fire, 60),
+            [(ResistanceType.Physical, 40, 50), (ResistanceType.Fire, 70, 80), (ResistanceType.Cold, 0, 5)], 4000)
+            { Packs = [(typeof(SulfurousAsh), 5)] },
+        new(typeof(Glasswarden), (140, 170), (50, 65), (50, 70), (95, 115), (10, 15), (ResistanceType.Energy, 30),
+            [(ResistanceType.Physical, 45, 55), (ResistanceType.Cold, 60, 70), (ResistanceType.Poison, 60, 70)], 4500),
+        new(typeof(Tunnelmaw), (220, 260), (55, 70), (25, 40), (140, 170), (12, 18), null,
+            [(ResistanceType.Physical, 45, 55)], 5000) { Ability = typeof(BleedAttack), Meat = 3 },
+        new(typeof(TheSiegebreaker), (350, 400), (70, 90), (40, 60), (320, 380), (16, 24), null,
+            [(ResistanceType.Physical, 50, 60)], 9000) { Ability = typeof(CrushingBlow), Meat = 4 },
+        new(typeof(TheHollowOak), (300, 350), (30, 45), (60, 80), (300, 350), (14, 22), (ResistanceType.Poison, 20),
+            [(ResistanceType.Physical, 50, 60), (ResistanceType.Fire, 5, 15), (ResistanceType.Poison, 60, 70)], 9000)
+            { Speed = 0.35, Ability = typeof(ParalyzingBlow), Packs = [(typeof(Log), 20)] }
+    ];
+
+    private static int DamageOf(BaseCreature bc, ResistanceType kind) => kind switch
+    {
+        ResistanceType.Fire => bc.FireDamage,
+        ResistanceType.Cold => bc.ColdDamage,
+        ResistanceType.Poison => bc.PoisonDamage,
+        ResistanceType.Energy => bc.EnergyDamage,
+        _ => bc.PhysicalDamage
+    };
+
+    [Fact]
+    public void EveryCreaturesNumbersAreP364sTableAndItsPoisonsWorkWithThePoisonsRegistered()
+    {
+        Assert.Equal(Lineup.Select(l => l.Type), Table.Select(n => n.Type));
+        Assert.NotEmpty(Poison.Poisons);
+
+        foreach (var n in Table)
+        {
+            var bc = Make(n.Type);
+            var name = n.Type.Name;
+            try
+            {
+                Assert.InRange(bc.RawStr, n.Str.Item1, n.Str.Item2);
+                Assert.InRange(bc.RawDex, n.Dex.Item1, n.Dex.Item2);
+                Assert.InRange(bc.RawInt, n.Int.Item1, n.Int.Item2);
+                Assert.InRange(bc.HitsMax, n.Hits.Item1, n.Hits.Item2);
+                Assert.Equal((n.Dmg.Item1, n.Dmg.Item2), (bc.DamageMin, bc.DamageMax));
+                var other = n.DmgType?.Pct ?? 0;
+                Assert.True(100 - other == bc.PhysicalDamage, $"{name}: physical damage {bc.PhysicalDamage}");
+                if (n.DmgType is { } dt)
+                {
+                    Assert.True(dt.Pct == DamageOf(bc, dt.Kind), $"{name}: {dt.Kind} damage {DamageOf(bc, dt.Kind)}");
+                }
+
+                foreach (var (kind, lo, hi) in n.Resists)
+                {
+                    var r = bc.GetResistance(kind);
+                    Assert.True(r >= lo && r <= hi, $"{name}: {kind} resist {r}, table {lo}-{hi}");
+                }
+
+                Assert.Equal(n.Fame, bc.Fame);
+                if (n.Speed is { } speed)
+                {
+                    Assert.Equal(speed, bc.ActiveSpeed, 3);
+                }
+
+                Assert.Equal(n.Ability, bc.GetWeaponAbility()?.GetType());
+                Assert.True(n.Meat == bc.Meat, $"{name}: meat {bc.Meat}");
+                Assert.True(n.Hides == bc.Hides, $"{name}: hides {bc.Hides}");
+
+                foreach (var (item, amount) in n.Packs)
+                {
+                    var packed = bc.Backpack?.Items.Where(i => item.IsInstanceOfType(i)).Sum(i => i.Amount) ?? 0;
+                    Assert.True(packed >= amount, $"{name}: {packed} {item.Name}, table {amount}");
+                }
+            }
+            finally
+            {
+                bc.Delete();
+            }
+        }
+
+        // The poisonous hitters, each with its own poison, registered: Lesser for the crawler, Regular for the others.
+        foreach (var (type, poison) in new[]
+                 {
+                     (typeof(DitchCrawler), Poison.Lesser), (typeof(Thornwisp), Poison.Regular), (typeof(TheHollowOak), Poison.Regular)
+                 })
+        {
+            using var target = new Player();
+            var bc = Make(type);
+            bc.MoveToWorld(Here, Map.TerMur);
+            Assert.NotNull(poison);
+            Assert.Same(poison, bc.HitPoison);
+            Assert.True(bc.HitPoisonChance > 0, type.Name);
+            Assert.Equal(ApplyPoisonResult.Poisoned, target.Pm.ApplyPoison(bc, bc.HitPoison));
+            Assert.Same(poison, target.Pm.Poison);
+            target.Pm.CurePoison(target.Pm);
+            bc.Delete();
+        }
+
+        // The four lethal-immune creatures shrug off the strongest poison; a creature that is not immune takes it.
+        foreach (var type in new[] { typeof(PaleDrifter), typeof(Slagheart), typeof(Glasswarden), typeof(TheHollowOak) })
+        {
+            var bc = Make(type);
+            bc.MoveToWorld(Here, Map.TerMur);
+            Assert.Same(Poison.Lethal, bc.PoisonImmune);
+            Assert.Equal(ApplyPoisonResult.Immune, bc.ApplyPoison(null, Poison.Lethal));
+            bc.Delete();
+        }
+
+        var moonmaw = Make(typeof(Moonmaw));
+        moonmaw.MoveToWorld(Here, Map.TerMur);
+        Assert.Equal(ApplyPoisonResult.Poisoned, moonmaw.ApplyPoison(null, Poison.Lethal));
+        moonmaw.Delete();
+    }
+
+    // ---------------------------------------------------------------- 7
+
+    [Fact]
+    public void AKillByThePlayersPetSummonOrProvokedCreatureEntersThePlayersBestiary()
+    {
+        void KilledBy(Func<Player, BaseCreature, BaseCreature> makeKiller, string how)
+        {
+            using var hunter = new Player();
+            var victim = Make(typeof(HedgeSnatcher));
+            victim.MoveToWorld(Here, Map.TerMur);
+            var killer = makeKiller(hunter, victim);
+            killer.MoveToWorld(Here, Map.TerMur);
+            try
+            {
+                victim.Damage(victim.Hits + 50, killer);
+                Assert.False(victim.Alive, how);
+                Assert.Same(killer, victim.LastKiller);
+                Assert.True(hunter.Data.HasEncountered(nameof(HedgeSnatcher)), $"a kill by the player's {how} was not recorded");
+            }
+            finally
+            {
+                victim.Corpse?.Delete();
+                killer.Delete();
+            }
+        }
+
+        KilledBy((p, _) =>
+        {
+            var dog = new Dog();
+            Assert.True(dog.SetControlMaster(p.Pm));
+            return dog;
+        }, "pet");
+
+        KilledBy((p, _) => new Dog { Summoned = true, SummonMaster = p.Pm }, "summon");
+
+        KilledBy((p, victim) => new Orc { BardProvoked = true, BardMaster = p.Pm, BardTarget = victim }, "provoked creature");
+
+        // A wild creature's kill is nobody's.
+        using var nobody = new Player();
+        var wild = Make(typeof(HedgeSnatcher));
+        wild.MoveToWorld(Here, Map.TerMur);
+        var orc = new Orc();
+        orc.MoveToWorld(Here, Map.TerMur);
+        wild.Damage(wild.Hits + 50, orc);
+        Assert.False(nobody.Data.HasEncountered(nameof(HedgeSnatcher)));
+        wild.Corpse?.Delete();
+        orc.Delete();
     }
 }

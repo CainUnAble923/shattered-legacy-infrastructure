@@ -19,9 +19,13 @@
 //   any creature that implements IRareSelfRepairSource (the New Haven dungeon mini champ, when it exists).
 // Champion spawn minions are not high-end: a spawn kills thousands, which would make it common there.
 //
-// It runs on pinned's own BaseCreature.CreatureDeathEvent (BaseCreature.cs:3411), raised after the corpse is
-// made and the loot is in it, so no pinned file changes for it. That event is also raised for a bonded pet's
-// death (:3281); a controlled or summoned creature never counts.
+// cc-P455 (cc-P263 notes, cc-P429 W1): it runs on pinned's BaseCreature.CreatureDeletedEvent (BaseCreature.cs:3674), raised
+// from the Delete inside Mobile.OnDeath (Mobile.cs:4899-4902). By then Mobile.Kill has made the corpse and moved
+// the loot into it (Mobile.cs:4847-4872, Corpse.Mobile_CreateCorpseHandler sets Corpse), and the creature is not
+// yet Deleted. Until P455 it ran on CreatureDeathEvent, which comes after the delete, where IsHighEndSource read
+// Deleted and was false for every creature: the roll never ran. What a boss's own OnDeath drops after
+// base.OnDeath (artifacts, crafting materials) is not in the corpse yet; none of it is eligible anyway. A bonded
+// pet's death deletes nothing; a controlled or summoned creature never counts.
 
 using ModernUO.CodeGeneratedEvents;
 using Server.Engines.Despise;
@@ -39,8 +43,18 @@ public static class ClusterFRareSelfRepair
 {
     public const int OneIn = 500;
 
-    [OnEvent(nameof(CreatureEvents.CreatureDeathEvent))]
-    public static void OnCreatureDeath(BaseCreature bc)
+    [OnEvent(nameof(CreatureEvents.CreatureDeletedEvent))]
+    public static void OnCreatureDeleted(BaseCreature bc)
+    {
+        // A creature deleted with no hits left is one dying (Mobile.Kill sets Hits to 0); a GM's [remove is not.
+        if (bc.Hits <= 0 && !bc.IsDeadPet)
+        {
+            RollCorpse(bc);
+        }
+    }
+
+    /// <summary>The roll over a high-end creature's corpse: each eligible item once.</summary>
+    public static void RollCorpse(BaseCreature bc)
     {
         if (!IsHighEndSource(bc) || bc.Corpse is not { Deleted: false } corpse)
         {
