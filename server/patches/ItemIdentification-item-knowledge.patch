@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Skills/ItemIdentification.cs
++++ b/Projects/UOContent/Skills/ItemIdentification.cs
+@@ -47,6 +47,12 @@
+ 
+             if (o is Item item)
+             {
++                // Shattered Legacy (cc-P627): an item still being identified is appraised by ClusterFItemKnowledge
++                if (ClusterFItemKnowledge.TryAppraise(from, item))
++                {
++                    return;
++                }
++
+                 if (item is IIdentifiable identifiable && from.CheckTargetSkill(SkillName.ItemID, item, 0, 100))
+                 {
+                     identifiable.Identified = true;

@@ -1,0 +1,18 @@
+--- a/Projects/UOContent/Skills/ArmsLore.cs
++++ b/Projects/UOContent/Skills/ArmsLore.cs
+@@ -80,6 +80,7 @@
+                         }
+ 
+                         ClusterFArmsLore.FieldMaintenance(from, weap); // Shattered Legacy (cc-P226)
++                        ClusterFItemKnowledge.OnArmsLore(from, weap); // Shattered Legacy (cc-P627)
+                     }
+                     else
+                     {
+@@ -100,6 +101,7 @@
+                         from.SendLocalizedMessage(1038295 + (int)Math.Ceiling(Math.Min(arm.ArmorRating, 35) / 5.0));
+ 
+                         ClusterFArmsLore.FieldMaintenance(from, arm); // Shattered Legacy (cc-P226)
++                        ClusterFItemKnowledge.OnArmsLore(from, arm); // Shattered Legacy (cc-P627)
+                     }
+                     else
+                     {

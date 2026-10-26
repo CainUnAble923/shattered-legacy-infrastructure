@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.14
+
+### Staff
+- Item identification (test shard only, off until switched on with [ItemKnowledge on): new magic weapons and armor from monster loot start unidentified. Appraisal names their magic from 30 and reads its values from 60. Arms Lore assesses resists, damage types and condition from 30 and measures them from 60. What anyone learns shows to everyone. Existing and crafted items are never hidden. [ItemKnowledge conceal marks a weapon or armor as an unknown find.
+
 ## 2026.10.25.13
 
 ### Added

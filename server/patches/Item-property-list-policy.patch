@@ -1,0 +1,28 @@
+--- a/Projects/Server/Items/Item.cs
++++ b/Projects/Server/Items/Item.cs
+@@ -2586,14 +2586,23 @@
+         }
+     }
+ 
++    // Shattered Legacy (cc-P627): given the item and its list, returns true when it has filled the list itself, before the
++    // item's full virtual property builder (an item still being identified shows only what is known).
++    public static Func<Item, IPropertyList, bool> PropertyListPolicy;
++
+     private ObjectPropertyList InitializePropertyList(ObjectPropertyList list)
+     {
+         list.IsBuilding = true;
+ 
+         try
+         {
+-            GetProperties(list);
+-            AppendChildProperties(list);
++            // Shattered Legacy (cc-P627): a content policy may supply the whole list (customizations ClusterFItemKnowledge)
++            if (PropertyListPolicy?.Invoke(this, list) != true)
++            {
++                GetProperties(list);
++                AppendChildProperties(list);
++            }
++
+             list.Terminate();
+         }
+         finally
