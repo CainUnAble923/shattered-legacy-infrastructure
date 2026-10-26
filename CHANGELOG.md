@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26.3
+
+### Staff
+- New Haven townsfolk talk, first piece (test shard only; off until [ClusterFTownsfolk on, and nobody is placed yet): [add ClusterFTownsfolk plaza makes Mara, the town steward, and [add ClusterFTownsfolk trades makes Ellis, the workshop runner. Standing within 3 tiles, say hello, name, job, help, inn, rumors or goodbye (or double-click them, or choose Talk) and the nearest one answers you alone, once every 3 seconds. A character still in the tutorial core is sent to Rook. [ClusterFTownsfolk reload re-reads the dialogue table and keeps the old one if the new one has a mistake.
+
 ## 2026.10.26
 
 ### Staff
