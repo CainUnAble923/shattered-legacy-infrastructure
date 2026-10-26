@@ -15,7 +15,8 @@
 //   4. A jurisdiction is named regions on one facet: a child region counts, the same name on another facet does not.
 //   cc-P647 (the P628, P635 and P640 reviews): observation runs only on the test shard; one action's callbacks are one
 //   incident and a distinct offense another; a witness must see the victim's place; a pet's crime names its owner with no
-//   second incident; acts stock guards reject are not reportable; the caller limit keeps only recent callers. The fixture
+//   second incident; acts stock guards reject are not reportable; the caller limit keeps only recent callers. cc-P659 (the
+//   P657 review): a finished act is never reopened by a later one in the same moment and place. The fixture
 //   installs pinned's notoriety rules so real harmful and beneficial acts are crimes.
 
 using System;
@@ -281,6 +282,48 @@ public class GuardWitnessVerification : IDisposable
         Assert.Equal(At(20), incidents[1].Location);
         Assert.True(incidents[1].SeenBy(late));
         Assert.Equal(At(20), incidents[1].Witnesses.Single(w => w.Mobile == late).LastSeen);
+    }
+
+    // cc-P659 (P657 review): a finished act is not reopened by the culprit's next one, even in the same server moment at the
+    // same spot. A separate victimless crime is its own incident, with its own place and the witnesses who saw that one
+    // (a newcomer is not added to the attack they missed); a second attack on the same victim is a third incident.
+    [Fact]
+    public void ALaterActInTheSameMomentAndPlaceIsItsOwnIncident()
+    {
+        var culprit = Player("Culprit", Spot);
+        var victim = Player("Victim", At(1));
+
+        culprit.DoHarmful(victim); // the criminal flag, then the aggression: one action
+        var attack = Assert.Single(ClusterFGuardWitness.IncidentsIn("p628-pilot"));
+        Assert.Equal(IncidentKind.Aggression, attack.Kind);
+        Assert.Same(victim, attack.Victim);
+
+        // Neither the clock nor the culprit moves; someone steps into view, then the culprit commits a victimless crime.
+        var newcomer = Player("Newcomer", At(-3));
+        culprit.CriminalAction(true);
+        var incidents = ClusterFGuardWitness.IncidentsIn("p628-pilot");
+        _out.WriteLine(string.Join("; ", incidents.Select(i => $"#{i.Id} {i.Kind} {i.Victim?.Name} at {i.ActionAt}: " +
+                                                            string.Join(", ", i.Witnesses.Select(w => w.Mobile.Name)))));
+        Assert.Equal(2, incidents.Count);
+        Assert.Same(attack, incidents[0]);
+        Assert.Equal(IncidentKind.Aggression, attack.Kind);
+        Assert.Same(victim, attack.Victim);
+        Assert.Equal(At(1), attack.ActionAt);
+        Assert.False(attack.SeenBy(newcomer));
+        Assert.Equal(IncidentKind.CriminalAction, incidents[1].Kind);
+        Assert.Null(incidents[1].Victim);
+        Assert.Equal(Spot, incidents[1].ActionAt);
+        Assert.True(incidents[1].SeenBy(newcomer));
+
+        // The same victim again, still in the same moment: another attack, another incident.
+        culprit.DoHarmful(victim);
+        incidents = ClusterFGuardWitness.IncidentsIn("p628-pilot");
+        Assert.Equal(3, incidents.Count);
+        Assert.Equal(IncidentKind.CriminalAction, incidents[1].Kind);
+        Assert.Null(incidents[1].Victim);
+        Assert.Equal(IncidentKind.Aggression, incidents[2].Kind);
+        Assert.Same(victim, incidents[2].Victim);
+        Assert.True(incidents[2].SeenBy(newcomer));
     }
 
     // cc-P647 (P628 and P635 reviews): a witness must see the place of the action too. Around a corner, someone who sees

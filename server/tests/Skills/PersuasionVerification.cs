@@ -20,6 +20,8 @@
 //  10. (P647, P626 review) A letter put in the bank still holds the one job: no second letter until it is delivered or stale.
 //  11. (P647, P638 review) A banker in an unnamed town subregion belongs to the named town around it, for issue and delivery.
 //  12. (P647, P638 review) A banker subclass (a gypsy banker) the board picks as a destination accepts the letter.
+//  13. (P659, P657 review) Older letters for one courier that lost to a newer one stay unpaid across restarts, in either
+//      load order, after the newer one is delivered or deleted; a lone letter still pays after a restart.
 
 using System;
 using System.Collections.Generic;
@@ -681,6 +683,101 @@ public class PersuasionVerification : IDisposable
 
         pm.MoveToWorld(Beside(gypsy), Map.Trammel);
         Assert.True(ClusterFPersuasion.Deliver(pm, letter, gypsy));
+        Assert.Equal(50.1, pm.Skills.Begging.Base, 1);
+    }
+
+    // ---------------------------------------------------------------- 13
+
+    // A restart as far as the letters know: the in-memory table is gone and each surviving letter's load hook runs.
+    private static void Restart(params ExchangeLetter[] saved)
+    {
+        var table = (System.Collections.IDictionary)typeof(ExchangeLetter)
+            .GetField("_outstanding", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+            .GetValue(null)!;
+        table.Clear();
+
+        var hook = typeof(ExchangeLetter).GetMethod("AfterDeserialization",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        foreach (var letter in saved.Where(l => !l.Deleted))
+        {
+            hook.Invoke(letter, null);
+        }
+    }
+
+    private ExchangeLetter Legacy(PlayerMobile pm, Mobile issuer, TimeSpan left)
+    {
+        var letter = new ExchangeLetter(pm, issuer, typeof(Banker), "P626 Near", Map.Trammel, 60, Core.Now + left);
+        pm.BankBox.DropItem(letter);
+        _made.Add(letter);
+        return letter;
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public void AnOlderLetterStaysReplacedAfterARestart(bool olderLoadsFirst, bool deliverTheNewer)
+    {
+        AlwaysRoll();
+        var homeBank = Civilian(new Banker(), new Point3D(Home.X + 2, Home.Y, 0));
+        var nearBank = Civilian(new Banker(), Near);
+        var pm = Player(50.0, Home);
+
+        // A save from before cc-P647: two letters for one courier, the newer one expiring later.
+        var older = Legacy(pm, homeBank, TimeSpan.FromHours(1));
+        var newer = Legacy(pm, homeBank, TimeSpan.FromHours(2));
+        if (olderLoadsFirst)
+        {
+            Restart(older, newer);
+        }
+        else
+        {
+            Restart(newer, older);
+        }
+
+        Assert.True(newer.IsOutstanding);
+        Assert.False(older.IsOutstanding);
+
+        pm.MoveToWorld(Beside(nearBank), Map.Trammel);
+        if (deliverTheNewer)
+        {
+            Assert.True(ClusterFPersuasion.Deliver(pm, newer, nearBank));
+            Assert.Equal(50.1, pm.Skills.Begging.Base, 1);
+        }
+        else
+        {
+            newer.Delete();
+        }
+
+        var before = pm.Skills.Begging.Base;
+
+        // Saved and restarted while the older letter is still fresh: it is still not the job.
+        Restart(older, newer);
+        Assert.False(older.IsOutstanding);
+        Assert.False(ClusterFPersuasion.Deliver(pm, older, nearBank));
+        Assert.Equal(before, pm.Skills.Begging.Base);
+
+        // And a second restart does not bring it back either.
+        Restart(older);
+        Assert.False(older.IsOutstanding);
+        Assert.Null(ClusterFPersuasion.OutstandingLetter(pm));
+    }
+
+    [Fact]
+    public void ALoneLetterStillPaysAfterARestart()
+    {
+        AlwaysRoll();
+        var homeBank = Civilian(new Banker(), new Point3D(Home.X + 2, Home.Y, 0));
+        var nearBank = Civilian(new Banker(), Near);
+        var pm = Player(50.0, Home);
+
+        var letter = Legacy(pm, homeBank, TimeSpan.FromHours(1));
+        Restart(letter);
+        Assert.True(letter.IsOutstanding);
+
+        pm.MoveToWorld(Beside(nearBank), Map.Trammel);
+        Assert.True(ClusterFPersuasion.Deliver(pm, letter, nearBank));
         Assert.Equal(50.1, pm.Skills.Begging.Base, 1);
     }
 }
