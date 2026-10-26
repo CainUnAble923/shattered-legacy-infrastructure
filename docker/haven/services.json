@@ -40,7 +40,13 @@
     { "tailnetPort": 8093, "target": "http://127.0.0.1:8093", "service": "play-tests", "_why": "The ops pages on the same port as on the LAN." },
     { "tailnetPort": 8787, "target": "http://127.0.0.1:8787", "service": "print-queue", "_why": "The print queue on the same port as on the LAN, once P109's deploy has moved it." },
     { "tailnetPort": 8097, "target": "http://127.0.0.1:8097", "service": "scripts-dev", "_why": "cc-P144: the Legion scripts' dev channel on the same port as on the LAN, once Publish-LegionScripts.ps1 -Mode SetupDev has started it. Chase's PCs flagged dev read http://haven.tail81098d.ts.net:8097/scripts.json." },
-    { "tailnetPort": 9000, "target": "http://127.0.0.1:9000", "service": "portainer-haven", "_why": "cc-P163: Portainer on the tailnet at http://haven.tail81098d.ts.net:9000/, its plain HTTP port on loopback (Serve forwards to loopback HTTP only). At home, https://192.168.1.61:9443/ too. Portainer (Haven): deploy sets it, and so does every Mega dashboard deploy once it answers." }
+    { "tailnetPort": 9000, "target": "http://127.0.0.1:9000", "service": "portainer-haven", "_why": "cc-P163: Portainer on the tailnet at http://haven.tail81098d.ts.net:9000/, its plain HTTP port on loopback (Serve forwards to loopback HTTP only). At home, https://192.168.1.61:9443/ too. Portainer (Haven): deploy sets it, and so does every Mega dashboard deploy once it answers." },
+    {
+      "tailnetPort": 8098,
+      "target": "http://127.0.0.1:8098",
+      "service": "homeip",
+      "_why": "cc-P668: Haven's public address at http://haven.tail81098d.ts.net:8098/ip, the game PC's DDNS gate's second way to Haven (its LAN address is the first). Plain HTTP on loopback, as Serve needs."
+    }
   ],
   "services": [
     {
@@ -615,16 +621,62 @@
       "image": "qmcgaw/ddns-updater:latest",
       "compose": "D:\\ShatteredLegacy\\docker\\uo\\docker-compose.yml",
       "ports": [],
-      "volumes": [ { "host": "Docker volume ddns_data (project uo)", "container": "/updater/data", "what": "its update history" } ],
-      "env": ["CONFIG", "PERIOD", "UPDATE_COOLDOWN_PERIOD", "PUBLICIP_FETCHERS", "RESOLVER_ADDRESS", "LOG_LEVEL", "CF_ZONE_ID", "CF_API_TOKEN", "DOMAIN"],
+      "volumes": [ { "host": "Docker volume ddns_data (project uo)", "container": "/updater/data", "what": "its update history" }, { "host": "Docker volume ddns_tls (project uo)", "container": "/tls (read only)", "what": "the gate's certificate bundle (SSL_CERT_FILE), cc-P668" } ],
+      "env": ["CONFIG", "PERIOD", "UPDATE_COOLDOWN_PERIOD", "PUBLICIP_FETCHERS", "PUBLICIP_HTTP_PROVIDERS", "PUBLICIPV4_HTTP_PROVIDERS", "PUBLICIPV6_HTTP_PROVIDERS", "SSL_CERT_FILE", "RESOLVER_ADDRESS", "LOG_LEVEL", "CF_ZONE_ID", "CF_API_TOKEN", "DOMAIN"],
       "secrets": [ { "name": "CF_API_TOKEN, CF_ZONE_ID", "where": "D:\\ShatteredLegacy\\docker\\uo\\.env on the game PC (git-ignored)", "createdIn": "Cloudflare dashboard > My Profile > API Tokens (DNS edit on the zone)" } ],
       "health": "",
-      "dependsOn": [],
+      "dependsOn": ["ddns-gate"],
       "neededBy": ["website", "wiki"],
       "backup": ["D:\\ShatteredLegacy\\docker\\uo\\.env"],
-      "verified": "docker ps on the game PC, 2026-10-17.",
+      "verified": "docker ps on the game PC, 2026-10-17. cc-P668 (2026-10-26): on 10-26 it published the VPN's exit 159.26.100.174 and was stopped (restart=no) by the overseer; docker/uo/docker-compose.yml now gives it the gate as its only address source (PUBLICIP_FETCHERS=http). Until it is recreated from that file, the container on the game PC is the old one, and docker/uo/Test-DdnsSafe.ps1 says UNSAFE.",
       "tiles": [
         { "section": "Ultima Online / Shattered Legacy", "name": "DDNS updater", "icon": "cloudflare", "description": "Keeps shatteredlegacyuo.com pointed at the house (Cloudflare)", "snapshot": "sl-ddns" }
+      ]
+    },
+    {
+      "key": "ddns-gate",
+      "name": "DDNS gate",
+      "host": "gamepc",
+      "owner": "Shattered Legacy",
+      "kind": "container",
+      "state": "built, not installed yet",
+      "container": "sl-ddns-gate",
+      "image": "python:3-alpine",
+      "compose": "D:\\ShatteredLegacy\\docker\\uo\\docker-compose.yml (service ddns-gate, project uo; code docker\\uo\\ddns-gate)",
+      "ports": [],
+      "volumes": [ { "host": "Docker volume ddns_tls (project uo)", "container": "/tls", "what": "its self-signed certificate and the bundle sl-ddns trusts" }, { "host": "Docker volume ddns_gate (project uo)", "container": "/data", "what": "gate-state.json: VPN exits it has learned" } ],
+      "env": ["HAVEN_URLS", "EGRESS_URLS", "BLOCK", "LEARN_AFTER"],
+      "secrets": [],
+      "health": "docker exec sl-ddns-gate python /app/gate.py --reach (docker\\uo\\Test-DdnsSafe.ps1 -Reach)",
+      "dependsOn": ["homeip"],
+      "neededBy": ["ddns"],
+      "backup": [],
+      "verified": "cc-P668 (2026-10-26): built and proven on the game PC as its own project with a dummy token (scripts/tests/ddns/Test-DdnsHomeIp.ps1). Not on the uo project until sl-ddns is recreated from docker/uo/docker-compose.yml.",
+      "tiles": []
+    },
+    {
+      "key": "homeip",
+      "name": "Home IP",
+      "host": "haven",
+      "owner": "Shattered Legacy",
+      "kind": "container",
+      "state": "built, not installed yet",
+      "container": "sl-homeip",
+      "image": "python:3-alpine",
+      "compose": "/home/chase/sl-homeip/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\homeip, project sl-homeip)",
+      "ports": [
+        { "lan": "192.168.1.61:8098", "loopback": "127.0.0.1:8098", "tailnet": "http://haven.tail81098d.ts.net:8098/", "container": 8000 }
+      ],
+      "volumes": [ { "host": "/home/chase/sl-homeip/homeip.py", "container": "/app/homeip.py", "what": "the service (read only)" } ],
+      "env": ["TZ", "LOOKUPS", "REFRESH", "MAX_AGE"],
+      "secrets": [],
+      "health": "http://192.168.1.61:8098/ip",
+      "dependsOn": ["tailscale"],
+      "neededBy": ["ddns-gate"],
+      "backup": [],
+      "verified": "cc-P668 (2026-10-26): built and proven on the game PC (scripts/tests/ddns). Not deployed: docker/homeip/Deploy-HavenHomeIp.ps1 -Mode Deploy puts it on Haven. 8098 refused connections on 192.168.1.61 from the game PC on 2026-10-26, so nothing listened there then.",
+      "tiles": [
+        { "section": "Ultima Online / Shattered Legacy", "name": "Home IP", "icon": "mdi-ip-network", "href": "http://haven.tail81098d.ts.net:8098/status", "description": "The house's public address, which sl-ddns publishes (Tailscale only)", "siteMonitor": "http://192.168.1.61:8098/ip" }
       ]
     },
     {
@@ -973,7 +1025,7 @@
       "secrets": [ { "name": "the node key", "where": "/var/lib/tailscale on Haven (root only)", "createdIn": "tailscale up (Chase's login)" } ],
       "health": "",
       "dependsOn": [],
-      "neededBy": ["homepage", "play-tests", "print-queue", "scripts-dev"],
+      "neededBy": ["homepage", "play-tests", "print-queue", "scripts-dev", "homeip"],
       "backup": [],
       "verified": "tailscale status on the game PC, 2026-10-17: haven active, direct 192.168.1.61.",
       "_note": "Its tile reads the game PC snapshot (tailscale status --json on the game PC: is Haven's node online). A check from inside Haven would only reach Haven itself, not the tailnet.",

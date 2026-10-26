@@ -3871,7 +3871,13 @@ Fact 'P86_TheDdnsRestartIsOfferedAsASafePlan' {
     $p = @(Get-DdnsRestartPlan $config)
     Assert-Equal 0 @(Test-PlanSafety $p $config).Count
     $e = @($p | Where-Object { $_.Kind -eq 'exec' })
-    Assert-Equal 'docker restart sl-ddns' ((@($e[0].Exe) + $e[0].Arguments) -join ' ')
+    # cc-P668: the guard runs first, and Invoke-Plan stops at its exit 3, so an sl-ddns that can publish this PC's VPN
+    # address is never restarted from here.
+    Assert-Equal 2 $e.Count
+    Assert-Equal 'powershell.exe' ([string]$e[0].Exe)
+    Assert-True ([string]$e[0].Arguments[-1] -match '\\docker\\uo\\Test-DdnsSafe\.ps1$') ('guard first: ' + ($e[0].Arguments -join ' '))
+    Assert-True (Test-Path -LiteralPath ([string]$e[0].Arguments[-1])) 'the guard script exists'
+    Assert-Equal 'docker restart sl-ddns' ((@($e[1].Exe) + $e[1].Arguments) -join ' ')
     $self = Get-Content -Raw (Resolve-Path $script).Path
     Assert-True ($self -match "Show-YesNo 'The VPN is off, but public DNS still has the VPN''s address") 'only after a yes'
 }
@@ -5119,7 +5125,8 @@ Fact 'P108_TheProbeListsTheTestShardOnlyUnlessLiveIsEnabled' {
 Fact 'P108_NothingCanComposeTheOldLiveContainer' {
     $uo = [IO.File]::ReadAllText((Join-Path $repo 'docker\uo\docker-compose.yml'))
     Assert-True ($uo -notmatch '(?m)^\s+container_name:\s*sl-modernuo\s*$' -and $uo -notmatch '(?m)^  modernuo:') 'docker/uo/docker-compose.yml has no live service'
-    Assert-True ($uo -match '(?m)^  ddns-updater:' -and $uo -match 'container_name: sl-ddns') 'it keeps sl-ddns'
+    # cc-P668: the name is a variable only for the proof (scripts/tests/ddns), defaulting to sl-ddns.
+    Assert-True ($uo -match '(?m)^  ddns-updater:' -and $uo -match 'container_name: (sl-ddns|\$\{DDNS_NAME:-sl-ddns\})\s') 'it keeps sl-ddns'
     $ret = [IO.File]::ReadAllText((Join-Path $repo 'docker\uo\retired\docker-compose.live.yml'))
     Assert-True ($ret -notmatch '(?m)^services:' -and $ret -match '(?m)^x-retired-live:') 'the retired file has no services: key'
     Assert-True ($ret -match 'RETIRED 2026-10-14') 'and says why and when'

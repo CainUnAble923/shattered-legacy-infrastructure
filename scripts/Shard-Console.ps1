@@ -4469,9 +4469,13 @@ function Get-VpnPlan {
 function Get-DdnsRestartPlan {
     # Offered, never automatic: after the VPN is off, a restart makes sl-ddns publish this house's address now instead
     # of within its interval. The same container, restarted; nothing else changes.
+    # cc-P668: docker\uo\Test-DdnsSafe.ps1 first. It exits 3 for an sl-ddns that takes its address from this PC (the VPN's
+    # exit when the VPN is on), and the plan stops there: only the gate-fed sl-ddns is ever restarted from here.
     param($Config)
+    $guard = Join-Path (Split-Path -Parent $Config.LiveCompose) 'Test-DdnsSafe.ps1'
     @(
         (New-PlanStep -Kind say -Text 'Restarting sl-ddns so it publishes this house''s address now (it checks on start).'),
+        (New-PlanStep -Kind exec -Exe $Config.PowerShell -Arguments @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $guard) -Text 'Test-DdnsSafe.ps1: sl-ddns takes Haven''s address only (cc-P668); stops here if not'),
         (New-PlanStep -Kind exec -Exe 'docker' -Arguments @('restart', 'sl-ddns') -Text 'docker restart sl-ddns')
     )
 }

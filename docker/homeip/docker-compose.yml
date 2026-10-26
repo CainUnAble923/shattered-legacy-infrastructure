@@ -1,0 +1,30 @@
+# cc-P668: sl-homeip on HAVEN, the house's public IPv4 as plain text (homeip.py), for the game PC's DDNS gate.
+# Haven goes out on the home connection, so what it sees is the house's address whatever the game PC's VPN is doing.
+# Published on Haven's LAN address and loopback only, port 8098; Tailscale Serve forwards the tailnet's 8098 to the
+# loopback one (docker/haven/services.json tailscaleServe). Never on all interfaces, never routed by NPM, never public.
+# Run by docker/homeip/Deploy-HavenHomeIp.ps1 as docker compose -p sl-homeip up -d in ~/sl-homeip. The same file runs on
+# the game PC for the proof, with the bind, ports, names and lookups set to scratch values. ASCII only.
+name: ${HI_PROJECT:-sl-homeip}
+services:
+  homeip:
+    image: python:3-alpine
+    container_name: ${HI_NAME:-sl-homeip}
+    restart: unless-stopped
+    init: true
+    command: ["python", "-u", "/app/homeip.py"]
+    ports:
+      - "${HI_BIND:-192.168.1.61}:${HI_PORT:-8098}:8000"
+      - "${HI_LOOP_BIND:-127.0.0.1}:${HI_LOOP_PORT:-8098}:8000"
+    volumes:
+      - ./homeip.py:/app/homeip.py:ro
+    environment:
+      TZ: ${TZ:-America/Chicago}
+      LOOKUPS: ${HI_LOOKUPS:-https://api.ipify.org,https://ipv4.icanhazip.com}
+      REFRESH: ${HI_REFRESH:-180}
+      MAX_AGE: ${HI_MAX_AGE:-900}
+      PYTHONDONTWRITEBYTECODE: "1"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

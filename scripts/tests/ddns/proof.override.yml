@@ -1,0 +1,23 @@
+# cc-P668 proof only: added to docker/uo/docker-compose.yml by Test-DdnsHomeIp.ps1, as its own project (sl-ddns-proof)
+# with a dummy Cloudflare token and the domain example.com, so nothing here can change a real DNS record.
+#   stub      plays Haven's sl-homeip (/haven) and the public "what is my IP" services (/egress, /a, /b)
+#   havenip   the real docker/homeip/homeip.py, asking the stub's /a and /b, for the "lookups disagree" scenario
+# Paths are relative to docker/uo (the run passes --project-directory). No host ports. ASCII only.
+services:
+  stub:
+    image: python:3-alpine
+    container_name: ${STUB_NAME:-sl-ddns-proof-stub}
+    command: ["python", "-u", "/app/stub.py"]
+    volumes:
+      - ../../scripts/tests/ddns/stub.py:/app/stub.py:ro
+    environment:
+      ROUTES: ${STUB_ROUTES:-}
+  havenip:
+    image: python:3-alpine
+    container_name: ${HAVENIP_NAME:-sl-ddns-proof-havenip}
+    command: ["python", "-u", "/app/homeip.py"]
+    volumes:
+      - ../homeip/homeip.py:/app/homeip.py:ro
+    environment:
+      LOOKUPS: http://stub:8000/a,http://stub:8000/b
+      REFRESH: "5"
