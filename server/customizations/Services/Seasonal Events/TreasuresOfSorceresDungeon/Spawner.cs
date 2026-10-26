@@ -23,6 +23,16 @@
 //   - Fixed: a spawned creature deleted without dying (a staff [delete, a cleanup) stays in ServUO's spawn list for
 //     ever, so the room never refills and the boss can never come. Here OnTick drops deleted entries first (they do
 //     not count as kills).
+//
+// cc-P624 (stage 1 of shard-migration notes/cc-P564-design-pumpkin-king.md): ownership, apart from progression.
+// Spawn is still the current room's undead and only a death out of it counts toward the boss. Owned is every
+// creature the event put in the world (each room's undead, each boss, and what Jack's pumpkins hatch) and Pumpkins
+// is every unholy pumpkin an event Jack threw; a room's Reset forgets its survivors for progression but keeps them
+// here, so Deactivate (off, remove, the season's end) deletes exactly these and nothing else of the same type. It
+// first marks this controller inactive, so no delayed spawn, pumpkin or hatch of it can act again, then deletes, then
+// restarts the paused stock spawners. Saved as version 1: version 0's fields in their order, then the two lists. A
+// version 0 save seeds Owned from its Spawn and Boss; the survivors of earlier rooms it had already forgotten cannot
+// be found again and are not hunted for.
 
 using System;
 using System.Collections.Generic;
@@ -54,7 +64,7 @@ public class TOSDSpawnEntry
 
 public class TOSDSpawner
 {
-    public const int CurrentVersion = 0;
+    public const int CurrentVersion = 1;
 
     public TOSDSpawner(bool activate = true)
     {
@@ -77,6 +87,18 @@ public class TOSDSpawner
     public int Index { get; set; }
     public int KillCount { get; set; }
     public List<BaseCreature> Spawn { get; }
+
+    /// <summary>Every creature this event put in the world and still has to clean up (see the header).</summary>
+    public List<BaseCreature> Owned { get; } = new();
+
+    /// <summary>The unholy pumpkins an event Jack threw, not yet hatched or carved.</summary>
+    public List<UnholyPumpkin> Pumpkins { get; } = new();
+
+    /// <summary>False once Deactivate has begun: nothing scheduled by this controller may act after that.</summary>
+    public bool Active { get; private set; } = true;
+
+    /// <summary>This controller is the running one.</summary>
+    public bool IsLive => Active && Instance == this;
 
     public bool Spawning { get; set; }
     public Timer Timer { get; set; }
@@ -135,6 +157,47 @@ public class TOSDSpawner
 
     public void Deactivate()
     {
+        // Callbacks first: from here this controller is neither active nor the instance, so a pending spawn, pumpkin
+        // throw or hatch finds it dead and does nothing.
+        Active = false;
+
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+
+        EndTimer();
+
+        foreach (var pumpkin in Pumpkins)
+        {
+            pumpkin?.Delete();
+        }
+
+        Pumpkins.Clear();
+
+        // ServUO leaves a standing boss in the world when the event ends (its Deactivate deletes only the spawn list);
+        // the boss is the event's, so it goes with the event here (deviation 7). So do the survivors of earlier rooms
+        // and the pumpkins' undead (cc-P624).
+        var owned = new List<BaseCreature>(Owned);
+        owned.AddRange(Spawn);
+
+        if (Boss != null)
+        {
+            owned.Add(Boss);
+        }
+
+        foreach (var bc in owned)
+        {
+            if (bc?.Deleted == false)
+            {
+                bc.Delete();
+            }
+        }
+
+        Owned.Clear();
+        Spawn.Clear();
+        Boss = null;
+
         foreach (var spawner in PausedSpawners)
         {
             if (!spawner.Deleted)
@@ -145,26 +208,76 @@ public class TOSDSpawner
         }
 
         PausedSpawners.Clear();
+    }
 
-        EndTimer();
+    /// <summary>Owned creatures and pumpkins still in the world (what an off would delete).</summary>
+    public (int Creatures, int Pumpkins) CountOwned()
+    {
+        var creatures = new HashSet<BaseCreature>();
+
+        foreach (var bc in Owned)
+        {
+            if (bc?.Deleted == false)
+            {
+                creatures.Add(bc);
+            }
+        }
 
         foreach (var bc in Spawn)
         {
-            bc.Delete();
+            if (bc?.Deleted == false)
+            {
+                creatures.Add(bc);
+            }
         }
 
-        Spawn.Clear();
-
-        // ServUO leaves a standing boss in the world when the event ends (its Deactivate deletes only the spawn list);
-        // the boss is the event's, so it goes with the event here (deviation 7).
         if (Boss?.Deleted == false)
         {
-            Boss.Delete();
+            creatures.Add(Boss);
         }
 
-        Boss = null;
-        Instance = null;
+        return (creatures.Count, Pumpkins.FindAll(p => p?.Deleted == false).Count);
     }
+
+    public bool Owns(BaseCreature bc) => bc != null && (bc == Boss || Owned.Contains(bc));
+
+    public void Own(BaseCreature bc)
+    {
+        if (bc != null && !Owned.Contains(bc))
+        {
+            Owned.Add(bc);
+        }
+    }
+
+    public void AddPumpkin(UnholyPumpkin pumpkin)
+    {
+        if (pumpkin != null && !Pumpkins.Contains(pumpkin))
+        {
+            Pumpkins.Add(pumpkin);
+        }
+    }
+
+    /// <summary>An event pumpkin hatched: the undead it became is the event's to clean up. It is not room progress.</summary>
+    public void OnPumpkinHatched(UnholyPumpkin pumpkin, BaseCreature hatched)
+    {
+        if (Pumpkins.Remove(pumpkin) && IsLive)
+        {
+            Own(hatched);
+        }
+    }
+
+    /// <summary>
+    ///     Jack's delayed pumpkin throw may act: this controller still runs, the event is enabled, Jack is alive and
+    ///     still its boss, and the attacker is alive and inside Sorcerer's Dungeon on this facet.
+    /// </summary>
+    public bool MayThrowPumpkins(Mobile jack, Mobile at) =>
+        IsLive && SorcerersDungeonData.Instance.Enabled && jack is { Deleted: false, Alive: true } && Boss == jack &&
+        at is { Deleted: false, Alive: true } && at.Map == Map && InDungeon(at.Location);
+
+    /// <summary>A pumpkin may land here: inside Sorcerer's Dungeon, on this facet.</summary>
+    public static bool MayPlacePumpkin(Point3D p, Map map) => map == Map && InDungeon(p);
+
+    public static bool InDungeon(Point3D p) => Region.Find(p, Map).IsPartOf(SorcerersDungeonData.RegionName);
 
     public void BeginTimer()
     {
@@ -190,6 +303,8 @@ public class TOSDSpawner
         }
 
         Spawn.RemoveAll(bc => bc == null || bc.Deleted);
+        Owned.RemoveAll(bc => bc == null || bc.Deleted);
+        Pumpkins.RemoveAll(p => p == null || p.Deleted);
 
         if (Boss != null && Boss.Deleted)
         {
@@ -214,7 +329,7 @@ public class TOSDSpawner
 
             Timer.StartTimer(TimeSpan.FromSeconds(Utility.RandomMinMax(3, 8)), () =>
             {
-                if (Instance == this)
+                if (IsLive)
                 {
                     DoSpawn(Entries[Index].Spawn[Utility.Random(Entries[Index].Spawn.Length)], false);
                 }
@@ -242,6 +357,7 @@ public class TOSDSpawner
                 if (boss)
                 {
                     Boss = spawn;
+                    Own(spawn);
                 }
                 else
                 {
@@ -268,10 +384,13 @@ public class TOSDSpawner
     public void AddSpawn(BaseCreature bc)
     {
         Spawn.Add(bc);
+        Own(bc);
     }
 
     public void OnCreatureDeath(BaseCreature bc)
     {
+        Owned.Remove(bc);
+
         if (Spawn.Contains(bc))
         {
             Spawn.Remove(bc);
@@ -282,6 +401,7 @@ public class TOSDSpawner
 
     public void Reset()
     {
+        // Progression forgets the room's survivors; Owned keeps them for the cleanup (cc-P624).
         Spawn.Clear();
         Boss = null;
         Spawning = false;
@@ -292,7 +412,7 @@ public class TOSDSpawner
 
         Timer.StartTimer(TimeSpan.FromMinutes(Utility.RandomMinMax(1, 3)), () =>
         {
-            if (Instance == this)
+            if (IsLive)
             {
                 BeginTimer();
             }
@@ -321,6 +441,23 @@ public class TOSDSpawner
         foreach (var spawner in paused)
         {
             writer.Write(spawner);
+        }
+
+        // Version 1 (cc-P624): the cleanup lists.
+        var owned = Owned.FindAll(bc => bc?.Deleted == false);
+        writer.WriteEncodedInt(owned.Count);
+
+        foreach (var bc in owned)
+        {
+            writer.Write(bc);
+        }
+
+        var pumpkins = Pumpkins.FindAll(p => p?.Deleted == false);
+        writer.WriteEncodedInt(pumpkins.Count);
+
+        foreach (var pumpkin in pumpkins)
+        {
+            writer.Write(pumpkin);
         }
     }
 
@@ -357,6 +494,27 @@ public class TOSDSpawner
             {
                 PausedSpawners.Add(spawner);
             }
+        }
+
+        if (version < 1)
+        {
+            // Version 0 knew only the current room and its boss; earlier rooms' survivors are not recoverable.
+            Own(Boss);
+            return;
+        }
+
+        var owned = reader.ReadEncodedInt();
+
+        for (var i = 0; i < owned; i++)
+        {
+            Own(reader.ReadEntity<BaseCreature>());
+        }
+
+        var pumpkins = reader.ReadEncodedInt();
+
+        for (var i = 0; i < pumpkins; i++)
+        {
+            AddPumpkin(reader.ReadEntity<UnholyPumpkin>());
         }
     }
 

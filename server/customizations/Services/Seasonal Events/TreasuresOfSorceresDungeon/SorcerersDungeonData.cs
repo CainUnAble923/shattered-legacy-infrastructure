@@ -26,6 +26,17 @@
 // spawn list once in ServUO too). RealLuck is pinned's Luck. The P33 framework has no loyalty gump, so ServUO's Name
 // and ShowOnLoyaltyGump (false) have nothing to read them. InSeason is ServUO's SeasonalEventSystem (October 1 for
 // 60 days); here it is the Halloween season switch (SorcerersDungeonGenerate.Season, deviation 1 in the notes).
+//
+// cc-P624 (stage 1 of shard-migration notes/cc-P564-design-pumpkin-king.md): that same Delete also clears the
+// creature's control master (BaseCreature.OnDelete :3688, after the event), so by the death event a tamed pet killed
+// in the dungeon read as wild and paid out. The deletion snapshot now keeps the facet, the death spot and the
+// controlled and summoned flags, keyed by creature, taken only for a creature at 0 hits (a dying one: Mobile.Kill sets
+// Hits = 0 before OnDeath; a staff [delete of a living creature takes none) and dropped when its death is read, so a
+// death inside another's deletion or handlers cannot take or lose the other's snapshot. A creature deleted at 0 hits
+// with no death event after it (one built without hit points, say) leaves one behind, so the table keeps at most
+// MaxPendingDeaths and drops the oldest first: the deaths in progress are always the newest entries. The
+// drop roll goes through DropRoll, which a test can pin for one scope (ForceDropRoll); the server uses
+// Utility.RandomDouble.
 
 using System;
 using System.Collections.Generic;
@@ -73,24 +84,103 @@ public class SorcerersDungeonData : PointsSystem
     /// <summary>The artifact chance at a tally (ServUO ProcessKill's formula).</summary>
     public static double ChanceAt(int dungeonPoints) => A * Math.Pow(10, B * dungeonPoints);
 
-    // The creature being deleted and the facet it stood on, kept from CreatureDeletedEvent for the death event that
-    // follows it in the same call (see the header).
-    private static (BaseCreature Creature, Map Map) _deleting;
+    /// <summary>A creature as it was when it died: read before its deletion cleared any of it (see the header).</summary>
+    public readonly record struct DeathContext(Map Map, Point3D Location, bool Controlled, bool Summoned)
+    {
+        public static DeathContext Of(BaseCreature bc) => new(bc.Map, bc.Location, bc.Controlled, bc.Summoned);
+    }
+
+    // The dying creatures being deleted, oldest first, kept from CreatureDeletedEvent for the death event that follows
+    // each in the same call (see the header): normally only the deaths nested inside one another at that moment.
+    private static readonly List<(BaseCreature Creature, DeathContext Context)> _deleting = new();
+    private const int MaxPendingDeaths = 64;
+
+    /// <summary>The drop roll, 0 to 1 (an artifact when the chance is above it). Test support: <see cref="ForceDropRoll" />.</summary>
+    public static Func<double> DropRoll { get; private set; } = Utility.RandomDouble;
+
+    /// <summary>Test support: every drop roll reads <paramref name="roll" /> until the returned scope is disposed.</summary>
+    public static IDisposable ForceDropRoll(double roll)
+    {
+        var previous = DropRoll;
+        DropRoll = () => roll;
+        return new RollScope(previous);
+    }
+
+    private sealed class RollScope : IDisposable
+    {
+        private Func<double> _previous;
+
+        public RollScope(Func<double> previous) => _previous = previous;
+
+        public void Dispose()
+        {
+            if (_previous != null)
+            {
+                DropRoll = _previous;
+                _previous = null;
+            }
+        }
+    }
 
     [OnEvent(nameof(CreatureEvents.CreatureDeletedEvent))]
-    public static void OnCreatureDeletedEvent(BaseCreature bc) => _deleting = (bc, bc.Map);
+    public static void OnCreatureDeletedEvent(BaseCreature bc)
+    {
+        if (bc.Hits > 0)
+        {
+            return;
+        }
+
+        _deleting.RemoveAll(e => e.Creature == bc);
+
+        if (_deleting.Count >= MaxPendingDeaths)
+        {
+            _deleting.RemoveAt(0);
+        }
+
+        _deleting.Add((bc, DeathContext.Of(bc)));
+    }
+
+    private static bool TakeSnapshot(BaseCreature bc, out DeathContext context)
+    {
+        for (var i = _deleting.Count - 1; i >= 0; i--)
+        {
+            if (_deleting[i].Creature == bc)
+            {
+                context = _deleting[i].Context;
+                _deleting.RemoveAt(i);
+                return true;
+            }
+        }
+
+        context = default;
+        return false;
+    }
+
+    /// <summary>Death snapshots taken and not yet read (test support).</summary>
+    public static int PendingDeaths => _deleting.Count;
+
+    /// <summary>Test support: forgets snapshots other facts' 0-hit creatures left behind.</summary>
+    public static void ForgetPendingDeaths() => _deleting.Clear();
 
     // ServUO's EventSink.OnKilledBy, which BaseCreature.OnDeath raises for every damager with looting rights.
     [OnEvent(nameof(CreatureEvents.CreatureDeathEvent))]
     public static void OnCreatureDeathEvent(BaseCreature bc)
     {
-        var map = !bc.Deleted ? bc.Map : _deleting.Creature == bc ? _deleting.Map : null;
-        _deleting = default;
+        DeathContext context;
 
-        Instance.OnCreatureDeath(bc, map);
+        if (!bc.Deleted)
+        {
+            context = DeathContext.Of(bc); // a bonded pet: not deleted, its state is still its own
+        }
+        else if (!TakeSnapshot(bc, out context))
+        {
+            context = default; // no snapshot: no facet, so no credit
+        }
+
+        Instance.OnCreatureDeath(bc, context);
     }
 
-    public void OnCreatureDeath(BaseCreature bc, Map map)
+    public void OnCreatureDeath(BaseCreature bc, DeathContext context)
     {
         if (bc == null)
         {
@@ -99,12 +189,12 @@ public class SorcerersDungeonData : PointsSystem
 
         TOSDSpawner.Instance?.OnCreatureDeath(bc);
 
-        if (!Enabled || map == null || map == Map.Internal)
+        if (!Enabled || context.Map == null || context.Map == Map.Internal || context.Controlled || context.Summoned)
         {
             return;
         }
 
-        var region = Region.Find(bc.Location, map);
+        var region = Region.Find(context.Location, context.Map);
         var rights = BaseCreature.GetLootingRights(bc.DamageEntries, bc.HitsMax);
 
         for (var i = 0; i < rights.Count; i++)
@@ -113,7 +203,7 @@ public class SorcerersDungeonData : PointsSystem
 
             if (ds.m_HasRight)
             {
-                ProcessKill(bc, ds.m_Mobile, false, region);
+                ProcessKill(bc, ds.m_Mobile, false, region, context);
             }
         }
     }
@@ -123,10 +213,20 @@ public class SorcerersDungeonData : PointsSystem
     ///     enabled, adds to the tally and rolls an artifact. Returns the artifact when one was given.
     ///     <paramref name="forceDrop" /> is test support: it makes the roll succeed. <paramref name="region" /> is where
     ///     the creature died, for a creature already deleted; null reads the creature's own region (ServUO's bc.Region).
+    ///     <paramref name="context" />, from the death hook, is the creature as it died; null reads it now.
     /// </summary>
-    public Item ProcessKill(Mobile victim, Mobile damager, bool forceDrop = false, Region region = null)
+    public Item ProcessKill(
+        Mobile victim, Mobile damager, bool forceDrop = false, Region region = null, DeathContext? context = null
+    )
     {
-        if (victim is not BaseCreature bc || !Enabled || bc.Controlled || bc.Summoned || damager?.Alive != true)
+        if (victim is not BaseCreature bc || !Enabled || damager?.Alive != true)
+        {
+            return null;
+        }
+
+        var died = context ?? DeathContext.Of(bc);
+
+        if (died.Controlled || died.Summoned)
         {
             return null;
         }
@@ -146,7 +246,7 @@ public class SorcerersDungeonData : PointsSystem
         tally += (int)(fame * (1 + Math.Sqrt(luck) / 100));
         DungeonPoints[pm] = tally;
 
-        if (!forceDrop && ChanceAt(tally) <= Utility.RandomDouble())
+        if (!forceDrop && ChanceAt(tally) <= DropRoll())
         {
             return null;
         }

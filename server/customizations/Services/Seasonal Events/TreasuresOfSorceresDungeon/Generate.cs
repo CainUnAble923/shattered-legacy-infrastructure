@@ -10,7 +10,9 @@
 //   3. The spawner (TOSDSpawner), unless one runs: it pauses the stock spawners in its nine rooms and starts.
 // Down (ServUO Remove, then Enabled = false): the spawner stops, its creatures and boss go, the paused stock spawners
 // start again full. The researcher and the dressing STAY, as in ServUO (players keep their points and can still
-// spend them after the season; the next season finds them and places nothing twice).
+// spend them after the season; the next season finds them and places nothing twice). cc-P624: Enabled goes false
+// first, so nothing deleted on the way down can earn, and "its creatures" is everything the spawner owns (earlier
+// rooms' survivors, Jack's pumpkins and what they hatched), never a sweep of the rooms.
 // Remove (ours, staff only): Down, then the researcher and the dressing this generator placed, by serial.
 //
 // When: ServUO turns it on with its SeasonalEventSystem (October 1 for 60 days) and checks on every world save. Here
@@ -226,15 +228,16 @@ public static class SorcerersDungeonGenerate
         }
         else
         {
-            var creatures = spawner.Spawn.Count(bc => !bc.Deleted) + (spawner.Boss?.Deleted == false ? 1 : 0);
+            var (creatures, pumpkins) = spawner.CountOwned();
             var paused = spawner.PausedSpawners.Count;
 
             if (!dryRun)
             {
+                SorcerersDungeonData.Instance.Enabled = false;
                 spawner.Deactivate();
             }
 
-            lines.Add($"[{Label}] {(dryRun ? "would stop" : "Stopped")} the spawner: {creatures} creature(s) {(dryRun ? "would go" : "removed")}, {paused} stock spawner(s) {(dryRun ? "would restart" : "restarted")}.");
+            lines.Add($"[{Label}] {(dryRun ? "would stop" : "Stopped")} the spawner: {creatures} creature(s) and {pumpkins} pumpkin(s) of the event's {(dryRun ? "would go" : "removed")}, {paused} stock spawner(s) {(dryRun ? "would restart" : "restarted")}.");
         }
 
         if (!dryRun)
@@ -332,10 +335,14 @@ public static class SorcerersDungeonGenerate
         else
         {
             var entry = spawner.Entries[spawner.Index];
+            var (creatures, pumpkins) = spawner.CountOwned();
             lines.Add(
                 $"[{Label}] Spawner: room {spawner.Index + 1} of 9 ({entry.Boss.Name}), {spawner.Spawn.Count}/{entry.MaxSpawn} spawned, " +
                 $"{spawner.KillCount}/{entry.ToKill} killed, boss {(spawner.Boss?.Deleted == false ? $"up at {spawner.Boss.Location}" : "not up")}, " +
                 $"{spawner.PausedSpawners.Count} stock spawner(s) paused."
+            );
+            lines.Add(
+                $"[{Label}] Owned by the event (what off deletes): {creatures} creature(s) in all rooms, {pumpkins} unholy pumpkin(s)."
             );
         }
 
