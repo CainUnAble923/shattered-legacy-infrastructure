@@ -29,6 +29,16 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.13
+
+### Added
+- Persuasion, Ask about work: use Persuasion on any banker and the Merchants' Exchange hands you a sealed letter to deliver in person (drag it onto them) to someone in another town; beginners get an errand across their own town. Each delivery trains Persuasion, all the way to 200, and harder letters go farther.
+- Persuasion, Ask for help: a townsperson may spare a few coins from their own purse (up to 14, and at most 50 gold a day per account) or a loaf of bread (two a day). Asking no longer costs you karma.
+
+### Changed
+- Begging is now called Persuasion. It is the same skill with the same points. Using it on a person opens a short menu of what you can ask. Your client's skill list may still say Begging until the next client update.
+- Asking for help only trains Persuasion up to 20, once for each different person who helps you. Courier letters are the way to train past that.
+
 ## 2026.10.25.11
 
 ### Added
