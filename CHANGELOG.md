@@ -33,6 +33,7 @@ Example:
 
 ### Staff
 - Item identification (test shard only, off until switched on with [ItemKnowledge on): new magic weapons and armor from monster loot start unidentified. Appraisal names their magic from 30 and reads its values from 60. Arms Lore assesses resists, damage types and condition from 30 and measures them from 60. What anyone learns shows to everyone. Existing and crafted items are never hidden. [ItemKnowledge conceal marks a weapon or armor as an unknown find.
+- Guard witness pilot (test shard only, off until [GuardWitness on): in Cove on Trammel the server notes who could actually see each crime (in range, in sight, not hidden) and which guards could hear each call for the guards. [GuardWitness log lists them. It only watches: guards still answer exactly as before. It is the groundwork for guards that walk to what they see.
 
 ## 2026.10.25.13
 
