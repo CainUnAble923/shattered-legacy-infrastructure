@@ -836,6 +836,19 @@ apply_patch "$PATCHES/HousePlacement-climbed-tile.patch"
 apply_patch "$PATCHES/BaseCreature-con-color-line.patch"
 apply_patch "$PATCHES/ItemIdentification-appraisal.patch"
 
+# cc-P627 (ours): item identification, stage 1 (customizations ClusterFItemKnowledge, off by default). Item.cs: a static
+# policy delegate consulted in InitializePropertyList before the full virtual property builder, so a weapon or armor still
+# being identified gets only what is known (a derived builder or the Imbue ExtraProperties line could add a secret after a
+# stock base returned, so no per-class return can do it; filtering in the client leaves the values in the packet). LootPack:
+# a new AOS magic weapon or armor is stamped unknown. ItemIdentification: such an item goes to the policy's Appraisal before
+# the stock flag route. ArmsLore: the successful inspect also measures its resists. Each applies on top of the patch above it
+# on the same file (Imbue-custom-property-hooks, ItemIdentification-appraisal, ArmsLore-field-maintenance). Argued in
+# shard-migration notes/cc-P627-build-item-identification.md; pinned by ItemKnowledgeVerification.
+apply_patch "$PATCHES/Item-property-list-policy.patch"
+apply_patch "$PATCHES/LootPack-unidentified-magic.patch"
+apply_patch "$PATCHES/ItemIdentification-item-knowledge.patch"
+apply_patch "$PATCHES/ArmsLore-item-knowledge.patch"
+
 # cc-P262 (ours): accessory slots (extra rings, bracelets, toe rings). AosAttributes.GetValue adds the active jewellery in
 # the wearer's accessory container, which customizations ClusterFAccessories decides (resists need no patch: the
 # container reports them through its own resistance properties, which ComputeResistances already reads). PlayerMobile's

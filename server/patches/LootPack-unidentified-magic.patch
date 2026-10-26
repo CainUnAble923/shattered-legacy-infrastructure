@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Misc/LootPack.cs
++++ b/Projects/UOContent/Misc/LootPack.cs
+@@ -743,6 +743,9 @@
+                             MaxIntensity
+                         );
+                     }
++
++                    // Shattered Legacy (cc-P627): a new magic weapon or armor starts unidentified (ClusterFItemKnowledge)
++                    ClusterFItemKnowledge.OnLootMagic(item);
+                 }
+                 else // not aos
+                 {
