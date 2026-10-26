@@ -8,11 +8,13 @@
 // starts nothing and leaves no creature.
 //
 // One Echo per account, in a runtime registry (never saved: a saved Echo deletes itself after load). It ends on expiry
-// (BaseCreature's UnsummonTimer), Dismiss, Release or lethal damage (it dissolves), the owner's logout or death (events),
-// and, on a one-second watchdog, the owner gone, another map, more than 12 tiles away, a forbidden place, a duel, a lost
-// rank or the switch turned off. Ending never refunds or shortens the cooldown.
+// (BaseCreature's UnsummonTimer), Dismiss, Release or lethal damage (it dissolves), the owner's disconnect, logout or death
+// (events), and, on a one-second watchdog, the owner gone or offline, another map, more than 12 tiles away, a forbidden
+// place, a duel, a lost rank or the switch turned off. Ending never refunds or shortens the cooldown. cc-P647: the caller
+// must be connected, and a dropped connection ends the Echo at once, not after the logout delay.
 //
-// Stage 1 has no Tome and no Registrar page (stage 2); on the test shard staff use [LeagueEcho.
+// Stage 1 has no Tome and no Registrar page (stage 2); on the test shard staff use [LeagueEcho. cc-P647: off the test
+// shard the command only shows its status (IsTestShard).
 
 #nullable enable
 
@@ -53,6 +55,9 @@ public static class LeagueEchoSystem
 
     public static IReadOnlyDictionary<IAccount, LeagueDragonEcho> Active => _active;
 
+    // cc-P647 (P630 review): [LeagueEcho works on the test shard only; the tests flip this.
+    public static Func<bool> IsTestShard { get; set; } = () => ClusterFStaffHub.IsTestShard;
+
     /// <summary>Hooks logout and registers [LeagueEcho; once (the test host calls it itself).</summary>
     public static void Configure()
     {
@@ -62,6 +67,7 @@ public static class LeagueEchoSystem
         }
 
         _configured = true;
+        EventSink.Disconnected += OnDisconnected; // cc-P647 (P642 R2): at once, not after the logout delay
         EventSink.Logout += OnLogout;
         CommandSystem.Register("LeagueEcho", AccessLevel.GameMaster, OnCommand);
     }
@@ -105,7 +111,8 @@ public static class LeagueEchoSystem
             return EchoCall.BelowRank;
         }
 
-        if (pm.Deleted || !pm.Alive || pm.Frozen || pm.Paralyzed || pm.Spell != null)
+        // cc-P647 (P642 R2): a connected caller only.
+        if (pm.Deleted || pm.NetState == null || !pm.Alive || pm.Frozen || pm.Paralyzed || pm.Spell != null)
         {
             return EchoCall.NotFree;
         }
@@ -247,6 +254,8 @@ public static class LeagueEchoSystem
         }
     }
 
+    private static void OnDisconnected(Mobile m) => DissolveOwnedBy(m);
+
     private static void OnLogout(Mobile m) => DissolveOwnedBy(m);
 
     [OnEvent(nameof(PlayerMobile.PlayerDeathEvent))]
@@ -267,6 +276,11 @@ public static class LeagueEchoSystem
         if (owner == null || owner.Deleted || !owner.Alive || owner.Map == Map.Internal || owner.Map == null)
         {
             return "owner gone";
+        }
+
+        if (owner.NetState == null)
+        {
+            return "offline";
         }
 
         if (!LeagueEchoSettings.Enabled)
@@ -333,6 +347,13 @@ public static class LeagueEchoSystem
     {
         var from = e.Mobile;
         var verb = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "status";
+
+        // ShardCommand(TestOnly) only labels the command; typing it reaches here on any shard.
+        if (verb != "status" && !IsTestShard())
+        {
+            from.SendMessage("League Echo: refused. Test world only.");
+            return;
+        }
 
         switch (verb)
         {

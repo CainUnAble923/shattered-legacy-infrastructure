@@ -17,16 +17,37 @@
 //      a player whose account has a house cannot be given one, nor can a leased site be given again.
 //   5. Save and load: the site keeps its rectangle, floors, town and doors; a reloaded leasehold re-registers its whole
 //      footprint (FindHouseAt at the far corner) and its town-parented region.
+//
+// cc-P647 (fixes of the P634 Codex review and P646), one fact each:
+//   6. Off the test shard the command opens no target, a target opened on the test shard does nothing once answered
+//      elsewhere, and Create, AddDoor and AssignTest refuse.
+//   7. Guarded town through the whole volume: a building outside any town is refused, and so is one whose upper floor
+//      is in a child region of the town (made before the site, or after it and caught at assignment).
+//   8. Storage is the AOS budget: twice the lockdowns as in every stock placement entry; a lockdown and a filled secure
+//      container both fit, and the container still takes more.
+//   9. A town's addon container (which a house owner could chop into a deed) refuses the site, even when only one of
+//      its components reaches inside, at making and again at assignment; one beside the building does not.
+//  10. The street spot is where strangers are put, so it must be walkable (a surface, room to stand, no other house):
+//      a spot in the air or in a wall is refused at making, and a wall built there later at assignment; on a good spot
+//      a stranger walking in, or logging in inside, lands on it.
+//  11. Another multi is found by what it occupies, not where it stands: one standing outside with a piece inside the
+//      building is refused (at making and at assignment); one wholly beside it, or reaching over above the top floor,
+//      is not.
+//  12. A linked town door goes with its partner or not at all: one leaf of a pair registered alone stops the lease (the
+//      other leaf would open the hidden one), and with both the lease goes ahead.
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Server;
+using Server.Commands;
 using Server.Accounting;
 using Server.Items;
 using Server.Leaseholds;
 using Server.Mobiles;
 using Server.Multis;
 using Server.Regions;
+using Server.Targeting;
 using Xunit;
 
 namespace ShatteredLegacy.Tests;
@@ -41,11 +62,14 @@ public class LeaseholdVerification : IDisposable
     private readonly List<IEntity> _things = [];
     private readonly List<Account> _accounts = [];
     private readonly GuardedRegion _town;
+    private readonly Func<bool> _wasTestShard = ClusterFLeaseSite.IsTestShard;
 
     public LeaseholdVerification()
     {
         ShardTestHost.EnsureAccounts();
-        _town = new GuardedRegion("P634 Town", Map.Trammel, 50, new Rectangle2D(5950, 60, 200, 200));
+        ClusterFLeaseSite.IsTestShard = () => true;
+        // A town as the shard's are: a TownRegion (a GuardedRegion), here from x 5950 to 6150 and y 60 to 260.
+        _town = new TownRegion("P634 Town", Map.Trammel, 50, Region.ConvertTo3D(new Rectangle2D(5950, 60, 200, 200)));
         _town.Register();
     }
 
@@ -64,12 +88,22 @@ public class LeaseholdVerification : IDisposable
             e.Delete();
         }
 
+        // Sites a staff command made in this town (the facts track only the ones they make themselves).
+        foreach (var site in ClusterFLeaseSite.All.ToArray())
+        {
+            if (site.Map == Map.Trammel && site.X >= 5950 && site.X < 6400 && site.Y >= 60 && site.Y < 260)
+            {
+                site.Delete();
+            }
+        }
+
         foreach (var a in _accounts)
         {
             a.Delete();
         }
 
         _town.Unregister();
+        ClusterFLeaseSite.IsTestShard = _wasTestShard;
     }
 
     private T Track<T>(T e) where T : IEntity
@@ -89,6 +123,38 @@ public class LeaseholdVerification : IDisposable
         pm.MoveToWorld(new Point3D(Street.X, Street.Y + 2, 0), Map.Trammel);
         return pm;
     }
+
+    private PlayerMobile Staff()
+    {
+        var gm = Track(new PlayerMobile { Player = true, Race = Race.Human, Name = "P647 staff", AccessLevel = AccessLevel.GameMaster });
+        gm.MoveToWorld(new Point3D(Street.X + 1, Street.Y + 2, 0), Map.Trammel);
+        return gm;
+    }
+
+    // A multi that is not a house, with the pieces it is given (the host has no multi data).
+    private sealed class PieceMulti : BaseMulti
+    {
+        private readonly MultiComponentList _pieces;
+
+        public PieceMulti(params (short X, short Y, short Z)[] pieces) : base(0x1)
+        {
+            var list = new List<MultiTileEntry>();
+            foreach (var (x, y, z) in pieces)
+            {
+                list.Add(new MultiTileEntry(0x80, x, y, z, (TileFlag)1));
+            }
+
+            _pieces = new MultiComponentList(list);
+        }
+
+        public override MultiComponentList Components => _pieces ?? MultiComponentList.Empty;
+    }
+
+    private static readonly MethodInfo Command =
+        typeof(ClusterFLeaseSite).GetMethod("OnCommand", BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    private static void Run(Mobile from, params string[] args) =>
+        Command.Invoke(null, [new CommandEventArgs(from, "Leaseholds", string.Join(" ", args), args)]);
 
     private ClusterFLeaseSite Site(Rectangle2D bounds, Point3D street, int zLow = 0, int zHigh = 20)
     {
@@ -283,5 +349,221 @@ public class LeaseholdVerification : IDisposable
         Assert.Same(copy, BaseHouse.FindHouseAt(new Point3D(6008, 120, 0), Map.Trammel, 16));
         Assert.IsType<ClusterFLeaseholdRegion>(copy.Region);
         Assert.Same(_town, copy.Region.Parent);
+    }
+
+    // ---------------------------------------------------------------- 6
+
+    [Fact]
+    public void OnlyTheTestShardMakesOrLeasesSites()
+    {
+        var gm = Staff();
+        var before = ClusterFLeaseSite.All.Count;
+
+        // Elsewhere: no target, and the methods refuse.
+        ClusterFLeaseSite.IsTestShard = () => false;
+        gm.Target = null;
+        Run(gm, "new", "0", "20");
+        Assert.Null(gm.Target);
+        Assert.Null(ClusterFLeaseSite.Create(Map.Trammel, Building, 0, 20, Street, out var why));
+        Assert.Contains("test shard", why);
+        Assert.Equal(before, ClusterFLeaseSite.All.Count);
+
+        // A "new" begun on the test shard and finished elsewhere makes nothing.
+        ClusterFLeaseSite.IsTestShard = () => true;
+        Run(gm, "new", "0", "20");
+        gm.Target!.Invoke(gm, new LandTarget(new Point3D(6008, 120, 0), Map.Trammel));
+        gm.Target!.Invoke(gm, new LandTarget(new Point3D(6023, 135, 0), Map.Trammel));
+        ClusterFLeaseSite.IsTestShard = () => false;
+        gm.Target!.Invoke(gm, new LandTarget(Street, Map.Trammel));
+        Assert.Equal(before, ClusterFLeaseSite.All.Count);
+
+        // An "assign" begun on the test shard and finished elsewhere leases nothing; nor do the methods.
+        ClusterFLeaseSite.IsTestShard = () => true;
+        var site = Site(Building, Street);
+        var door = Track(new DarkWoodDoor(DoorFacing.WestCW));
+        door.MoveToWorld(new Point3D(6014, 135, 0), Map.Trammel);
+        var pm = Player();
+        Run(gm, "assign");
+        gm.Target!.Invoke(gm, site);
+        ClusterFLeaseSite.IsTestShard = () => false;
+        gm.Target!.Invoke(gm, pm);
+        Assert.False(site.IsLeased);
+        Assert.Contains("test shard", site.AssignTest(pm));
+        Assert.Contains("test shard", site.AddDoor(door));
+        Assert.False(site.IsLeased);
+        Assert.Empty(site.Doors);
+    }
+
+    // ---------------------------------------------------------------- 7
+
+    [Fact]
+    public void TheWholeVolumeMustBeInTheGuardedTown()
+    {
+        var map = Map.Trammel;
+
+        // Wilderness: one region (the facet's) everywhere, but no town and no guards.
+        Assert.Contains("guarded town", ClusterFLeaseSite.WhyNotSite(map, new Rectangle2D(6300, 120, 5, 5), 0, 20, new Point3D(6301, 126, 0)));
+
+        // An upper floor in a child of the town (an inn room upstairs): the ground floor alone would pass.
+        var loft = new Region("P647 loft", map, _town, 60, new Rectangle3D(new Point3D(6010, 122, 10), new Point3D(6014, 126, 30)));
+        loft.Register();
+        try
+        {
+            Assert.Contains("another region", ClusterFLeaseSite.WhyNotSite(map, Building, 0, 20, Street));
+            Assert.Null(ClusterFLeaseSite.WhyNotSite(map, Building, 0, 9, Street));
+        }
+        finally
+        {
+            loft.Unregister();
+        }
+
+        var site = Site(Building, Street);
+        loft.Register();
+        try
+        {
+            Assert.Contains("another region", site.AssignTest(Player()));
+            Assert.False(site.IsLeased);
+        }
+        finally
+        {
+            loft.Unregister();
+        }
+    }
+
+    // ---------------------------------------------------------------- 8
+
+    [Fact]
+    public void LockdownsAndAFilledSecureFitTheStorage()
+    {
+        var pm = Player();
+        var house = Leased(Site(Building, Street), pm);
+        Assert.True(house.IsAosRules);
+
+        var chair = Track(new WoodenChair());
+        chair.MoveToWorld(new Point3D(6012, 125, 0), Map.Trammel);
+        Assert.True(house.LockDown(pm, chair));
+        Assert.True(house.HasLockedDownItem(chair));
+
+        var chest = Track(new WoodenChest());
+        for (var i = 0; i < 40; i++)
+        {
+            chest.AddItem(new Bandage());
+        }
+
+        chest.MoveToWorld(new Point3D(6013, 125, 0), Map.Trammel);
+        Assert.Equal(40, chest.TotalItems);
+        house.AddSecure(pm, chest);
+        Assert.True(house.HasSecureItem(chest));
+
+        var more = new Bandage();
+        Assert.True(BaseHouse.CheckHold(pm, chest, more, false, true, 0, 0));
+        more.Delete();
+        Assert.True(house.CheckAosStorage(100));
+        Assert.Equal(2 * house.GetAosMaxLockdowns(), house.GetAosMaxSecures());
+    }
+
+    // ---------------------------------------------------------------- 9
+
+    [Fact]
+    public void TownAddonContainersKeepASiteOut()
+    {
+        var map = Map.Trammel;
+
+        // The east bookshelf's second piece stands one tile west of it: here on the building's east edge (x 6023).
+        var shelf = Track(new ArcaneBookshelfEastAddon());
+        shelf.MoveToWorld(new Point3D(6024, 125, 0), map);
+        Assert.Contains("fixture", ClusterFLeaseSite.WhyNotSite(map, Building, 0, 20, Street));
+
+        shelf.MoveToWorld(new Point3D(6026, 125, 0), map);
+        Assert.Null(ClusterFLeaseSite.WhyNotSite(map, Building, 0, 20, Street));
+
+        var site = Site(Building, Street);
+        shelf.MoveToWorld(new Point3D(6015, 125, 0), map);
+        Assert.Contains("fixture", site.AssignTest(Player()));
+        Assert.False(site.IsLeased);
+    }
+
+    // ---------------------------------------------------------------- 10
+
+    [Fact]
+    public void TheStreetSpotIsWalkable()
+    {
+        var map = Map.Trammel;
+        using var tiles = TestTileRows.Seed(TileRows.StoneWall);
+
+        // In the air (the host's land is flat at z 0), then in a wall.
+        Assert.Contains("walkable", ClusterFLeaseSite.WhyNotSite(map, Building, 0, 20, new Point3D(Street.X, Street.Y, 40)));
+        var wall = Track(new Static(0x0080));
+        wall.MoveToWorld(Street, map);
+        Assert.Contains("walkable", ClusterFLeaseSite.WhyNotSite(map, Building, 0, 20, Street));
+
+        // A wall built on the spot after the site was made stops the lease.
+        wall.Internalize();
+        var site = Site(Building, Street);
+        wall.MoveToWorld(Street, map);
+        Assert.Contains("walkable", site.AssignTest(Player()));
+        wall.Delete();
+
+        // On the good spot: a stranger walking in, or logging in inside, is put there.
+        var house = Leased(site, Player());
+        Assert.Equal(Street, house.BanLocation);
+        var stranger = Player();
+        stranger.Location = new Point3D(6015, 128, 0);
+        Assert.Equal(Street, stranger.Location);
+        stranger.Internalize();
+        stranger.MoveToWorld(new Point3D(6015, 128, 0), map);
+        HouseRegion.OnLogin(stranger);
+        Assert.Equal(Street, stranger.Location);
+    }
+
+    // ---------------------------------------------------------------- 11
+
+    [Fact]
+    public void OtherMultisAreFoundByWhatTheyOccupy()
+    {
+        var map = Map.Trammel;
+
+        // Standing two tiles west of the building (x 6006), a piece three tiles east of that is inside (x 6009).
+        var reaching = Track(new PieceMulti((0, 0, 0), (3, 0, 0)));
+        reaching.MoveToWorld(new Point3D(6006, 125, 0), map);
+        Assert.Contains("PieceMulti", ClusterFLeaseSite.WhyNotSite(map, Building, 0, 20, Street));
+        reaching.Internalize();
+
+        var beside = Track(new PieceMulti((0, 0, 0), (1, 0, 0)));
+        beside.MoveToWorld(new Point3D(6006, 125, 0), map);
+        var over = Track(new PieceMulti((0, 0, 0), (3, 0, 30)));
+        over.MoveToWorld(new Point3D(6006, 127, 0), map);
+        Assert.Null(ClusterFLeaseSite.WhyNotSite(map, Building, 0, 20, Street));
+
+        var site = Site(Building, Street);
+        reaching.MoveToWorld(new Point3D(6006, 125, 0), map);
+        Assert.Contains("PieceMulti", site.AssignTest(Player()));
+        Assert.False(site.IsLeased);
+    }
+
+    // ---------------------------------------------------------------- 12
+
+    [Fact]
+    public void ALinkedDoorNeedsItsPartner()
+    {
+        var site = Site(Building, Street);
+        var west = Track(new DarkWoodDoor(DoorFacing.WestCW));
+        var east = Track(new DarkWoodDoor(DoorFacing.EastCCW));
+        west.MoveToWorld(new Point3D(6014, 135, 0), Map.Trammel);
+        east.MoveToWorld(new Point3D(6015, 135, 0), Map.Trammel);
+        west.Link = east;
+        east.Link = west;
+
+        Assert.Null(site.AddDoor(west));
+        Assert.Contains("linked", site.AssignTest(Player()));
+        Assert.False(site.IsLeased);
+        Assert.Equal(Map.Trammel, west.Map);
+        Assert.False(west.Open);
+
+        Assert.Null(site.AddDoor(east));
+        var house = Leased(site, Player());
+        Assert.Equal(2, house.Doors.Count);
+        Assert.Equal(Map.Internal, west.Map);
+        Assert.Equal(Map.Internal, east.Map);
     }
 }

@@ -8,6 +8,7 @@
 //   1. The display states keep their saved numbers, 0 (Empty) to 10 (BoltOuter).
 //   2. Every shot state has its own picture in each facing: 20 different IDs, exactly 46690-46709, east ones in the east
 //      blocks and south ones in the south blocks; Empty (and a value no state has) is the stock target of that facing.
+//   2b. cc-P647: every state's exact east and south picture, from a literal table.
 //   3. After ShatteredLegacyArt.Apply every picture has the stock butte's record: "archery butte", ArticleAn |
 //      Impassable, weight 255, height 10, so each blocks its tile as the stock target does.
 
@@ -61,6 +62,27 @@ public class ScoringArcheryButteArtVerification
         Assert.Equal(0x100A, ScoringArcheryButteArt.ItemId(ButteDisplay.Empty, true));
         Assert.Equal(0x100B, ScoringArcheryButteArt.ItemId(ButteDisplay.Empty, false));
         Assert.Equal(0x100A, ScoringArcheryButteArt.ItemId((ButteDisplay)99, true));
+        Assert.Equal(0x100B, ScoringArcheryButteArt.ItemId((ButteDisplay)99, false));
+    }
+
+    // cc-P647 (P644 review): each state's exact picture, written out from the registered PNG names
+    // (46690 "Arrow East Bullseye" ... 46709 "Bolt South Total Miss") rather than from the block constants, so
+    // two swapped rings or ammo blocks fail here.
+    [Theory]
+    [InlineData(ButteDisplay.ArrowBullseye, 46690, 46695)]
+    [InlineData(ButteDisplay.ArrowInner, 46691, 46696)]
+    [InlineData(ButteDisplay.ArrowMiddle, 46692, 46697)]
+    [InlineData(ButteDisplay.ArrowOuter, 46693, 46698)]
+    [InlineData(ButteDisplay.ArrowMiss, 46694, 46699)]
+    [InlineData(ButteDisplay.BoltBullseye, 46700, 46705)]
+    [InlineData(ButteDisplay.BoltInner, 46701, 46706)]
+    [InlineData(ButteDisplay.BoltMiddle, 46702, 46707)]
+    [InlineData(ButteDisplay.BoltOuter, 46703, 46708)]
+    [InlineData(ButteDisplay.BoltMiss, 46704, 46709)]
+    public void EachShotShowsItsOwnRingAndAmmoPicture(ButteDisplay display, int east, int south)
+    {
+        Assert.Equal(east, ScoringArcheryButteArt.ItemId(display, true));
+        Assert.Equal(south, ScoringArcheryButteArt.ItemId(display, false));
     }
 
     [Fact]
@@ -75,6 +97,11 @@ public class ScoringArcheryButteArtVerification
             Assert.True(data.Impassable, $"{id} blocks");
             Assert.Equal(255, data.Weight);
             Assert.Equal(10, data.Height);
+            // cc-P647: the rest of the stock record (layer, count, animation, value) is 0, as in 0x100A.
+            Assert.Equal(0, data.Quality);
+            Assert.Equal(0, data.Quantity);
+            Assert.Equal(0, data.Animation);
+            Assert.Equal(0, data.Value);
         }
 
         Assert.Equal(20, ScoringArcheryButteArt.Records.Length);

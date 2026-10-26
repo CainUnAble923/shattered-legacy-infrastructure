@@ -18,11 +18,17 @@
 //   7. Save and load: a version 0 row loads with no milestone (even at level 150); a purchase round-trips; unexpired
 //      cooldowns round-trip as absolute times and expired ones are dropped.
 //   8. Settings: an invalid chance turns the feature off.
+//   9. P647 (review fixes): off the test shard the milestone is off and [LevelGearProcs on refuses; the bound effect
+//      shows on the tooltip; the confirmation charges only the price and unlock it showed; a shut chest mimic draws no
+//      roll; a weapon cooldown survives a restart and a hand-over; the bound page shows unavailable and the saved
+//      level; expired and deleted cooldown entries are pruned.
 
 using System;
 using System.Collections.Generic;
 using Server;
+using Server.Commands;
 using Server.Companions;
+using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
 using Server.Network;
@@ -48,6 +54,7 @@ public class LevelGearProcVerification : IDisposable
         LevelGearProcCooldowns.Owners.Clear();
         LevelGearProcCooldowns.Weapons.Clear();
         LevelGearProcSettings.EnabledOverride = true;
+        LevelGearProcSettings.IsTestShard = () => true; // stage 1 is test-shard only (P647)
         ClusterFLevelGearProcs.NowOverride = () => _now;
         ClusterFLevelGearProcs.Roll = max =>
         {
@@ -67,6 +74,7 @@ public class LevelGearProcVerification : IDisposable
         LevelGearProcCooldowns.Owners.Clear();
         LevelGearProcCooldowns.Weapons.Clear();
         LevelGearProcSettings.EnabledOverride = null;
+        LevelGearProcSettings.IsTestShard = () => ClusterFStaffHub.IsTestShard;
         ClusterFLevelGearProcs.NowOverride = null;
         ClusterFLevelGearProcs.Roll = Utility.Random;
     }
@@ -425,5 +433,278 @@ public class LevelGearProcVerification : IDisposable
 
         Assert.True(LevelGearProcSettings.Enabled);
         Assert.Equal(12, ClusterFLevelGearProcs.OnWeaponHit(katana, pm, foe, 20));
+    }
+
+    // ---------------------------------------------------------------- 9 (P647: review fixes)
+
+    private static readonly System.Reflection.MethodInfo GumpRemove = typeof(GumpSystem).GetMethod("Remove",
+        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static, null,
+        [typeof(NetState), typeof(BaseGump)], null);
+
+    // A button press as the gump system delivers it: the gump leaves the client's list, then its OnResponse runs.
+    private static void Press(BaseGump gump, NetState ns, int buttonId)
+    {
+        GumpRemove?.Invoke(null, [ns, gump]);
+        gump.OnResponse(ns, new RelayInfo(buttonId, ReadOnlySpan<int>.Empty, ReadOnlySpan<ushort>.Empty,
+            ReadOnlySpan<Range>.Empty, ReadOnlySpan<byte>.Empty));
+    }
+
+    private static NetState Online(PlayerMobile pm)
+    {
+        var ns = PacketTestUtilities.CreateTestNetState();
+        pm.NetState = ns;
+        ns.Mobile = pm;
+        return ns;
+    }
+
+    // P633-a: off the test shard neither the switch nor the setting turns the milestone on, and the command refuses.
+    [Fact]
+    public void TheMilestoneStaysOffOffTheTestShard()
+    {
+        var (pm, katana) = Armed();
+        var foe = Foe(pm);
+        _rollValue = 0;
+        var gm = Track(new PlayerMobile { Player = true, AccessLevel = AccessLevel.Owner, Name = "P647 gm" });
+        if (!CommandSystem.Entries.ContainsKey("LevelGearProcs"))
+        {
+            ClusterFLevelGearProcs.Configure();
+        }
+
+        LevelGearProcSettings.IsTestShard = () => false;
+        Assert.False(LevelGearProcSettings.Enabled); // the override is on
+        Assert.Contains("not available", ClusterFLevelGearProcs.WhyNotBuy(pm, Levelable(new Katana(), 100, 100), LevelGearProc.Stormstrike));
+        Assert.Equal(0, ClusterFLevelGearProcs.OnWeaponHit(katana, pm, foe, 20));
+        Assert.Empty(_rolls);
+
+        LevelGearProcSettings.EnabledOverride = null;
+        CommandSystem.Handle(gm, $"{CommandSystem.Prefix}LevelGearProcs on");
+        Assert.Null(LevelGearProcSettings.EnabledOverride);
+
+        LevelGearProcSettings.IsTestShard = () => true;
+        CommandSystem.Handle(gm, $"{CommandSystem.Prefix}LevelGearProcs on");
+        Assert.True(LevelGearProcSettings.EnabledOverride);
+        Assert.Equal(12, ClusterFLevelGearProcs.OnWeaponHit(katana, pm, foe, 20));
+    }
+
+    // P633-b: the bought effect shows on the weapon's tooltip, through the item's own property list.
+    [Fact]
+    public void TheBoughtEffectShowsOnTheWeaponTooltip()
+    {
+        var (_, katana) = Armed();
+
+        // The test host does not run LevelGearStore.Configure, which subscribes the level gear tooltip; do as it does.
+        Action<Item, IPropertyList> hook = ClusterFLevelGear.AddTooltip;
+        var subscribed = Item.ExtraProperties != null && Array.IndexOf(Item.ExtraProperties.GetInvocationList(), hook) >= 0;
+        if (!subscribed)
+        {
+            Item.ExtraProperties += hook;
+        }
+
+        try
+        {
+            var lines = PropertyListReader.Read(katana);
+            Assert.Contains(lines, l => l.Number == 1060847 && l.Argument.StartsWith("Level 100\t")); // the hook runs here
+            Assert.True(lines.Has(1060847, "Milestone: Stormstrike\t(PvE)"));
+        }
+        finally
+        {
+            if (!subscribed)
+            {
+                Item.ExtraProperties -= hook;
+            }
+        }
+    }
+
+    // P645-1: the confirmation keeps the price and unlock it showed; if either changed, nothing is paid and the new terms
+    // are shown to confirm again.
+    [Fact]
+    public void TheConfirmationChargesOnlyThePriceItShowed()
+    {
+        const string costKey = "clusterf.levelGear.procs.pointCost";
+        const string unlockKey = "clusterf.levelGear.procs.unlockLevel";
+        var pm = Player();
+        var ns = Online(pm);
+        try
+        {
+            var katana = Levelable(new Katana(), 100, 440);
+            pm.Backpack.DropItem(katana);
+            var s = LevelGearStore.Of(katana)!;
+
+            var shown = new LevelGearMilestoneConfirmGump(pm, katana, "stormstrike");
+            pm.SendGump(shown);
+            ServerConfiguration.SetSetting(costKey, 200);
+            Press(shown, ns, 1);
+            Assert.Equal(440, s.Points);
+            Assert.Null(s.Proc);
+            var refreshed = pm.FindGump<LevelGearMilestoneConfirmGump>();
+            Assert.NotNull(refreshed);
+            Assert.NotSame(shown, refreshed);
+            Assert.Contains(PetTrainingVerification.OnTheWire(ns, refreshed).Strings, x => x.Contains("for 200 item points"));
+
+            Press(refreshed, ns, 1); // the new terms, confirmed
+            Assert.Equal(240, s.Points);
+            Assert.Equal(200, s.Proc!.PaidCost);
+
+            // The unlock level is part of the terms too.
+            var second = Levelable(new Katana(), 100, 100);
+            pm.Backpack.DropItem(second);
+            ServerConfiguration.SetSetting(costKey, 100);
+            var before = new LevelGearMilestoneConfirmGump(pm, second, "emberstrike");
+            pm.SendGump(before);
+            ServerConfiguration.SetSetting(unlockKey, 90);
+            Press(before, ns, 1);
+            Assert.Null(LevelGearStore.Of(second)!.Proc);
+            Assert.Equal(100, LevelGearStore.Of(second)!.Points);
+            var again = pm.FindGump<LevelGearMilestoneConfirmGump>();
+            Assert.NotNull(again);
+            Press(again, ns, 1);
+            Assert.Equal(90, LevelGearStore.Of(second)!.Proc!.RequiredLevel);
+        }
+        finally
+        {
+            ServerConfiguration.SetSetting(costKey, 100);
+            ServerConfiguration.SetSetting(unlockKey, 100);
+            pm.NetState = null;
+            ns.Dispose();
+        }
+    }
+
+    // P645-2: a creature that refuses damage now (a chest mimic with its lid shut) draws no roll and starts no cooldown.
+    [Fact]
+    public void AShutChestMimicDrawsNoRollAndNoCooldown()
+    {
+        var (pm, katana) = Armed();
+        var mimic = Track(new ChestMimic(2));
+        foreach (ResistanceType r in Enum.GetValues(typeof(ResistanceType)))
+        {
+            mimic.SetResistance(r, 0);
+        }
+
+        mimic.MoveToWorld(new Point3D(pm.X + 1, pm.Y, pm.Z), Map.Trammel);
+        pm.Combatant = mimic;
+        _rollValue = 0;
+
+        mimic.ShutLid();
+        Assert.False(mimic.CanBeDamaged());
+        var hits = mimic.Hits;
+        katana.OnHit(pm, mimic);
+        Assert.Equal(hits, mimic.Hits);
+        Assert.Empty(_rolls);
+        Assert.Empty(LevelGearProcCooldowns.Owners);
+        Assert.Empty(LevelGearProcCooldowns.Weapons);
+
+        mimic.OpenLid();
+        Assert.True(mimic.CanBeDamaged());
+        katana.OnHit(pm, mimic);
+        Assert.Single(_rolls);
+        Assert.Equal(T0.AddSeconds(10), LevelGearProcCooldowns.Weapons[katana.Serial]);
+    }
+
+    // P645-3: a weapon cooldown survives a restart and a change of owner: no roll before its saved deadline, one at it.
+    [Fact]
+    public void AWeaponCooldownSurvivesARestartAndAHandOver()
+    {
+        var (pm, katana) = Armed();
+        LevelGearProcCooldowns.Owners[pm.Serial] = T0.AddSeconds(7);
+        LevelGearProcCooldowns.Weapons[katana.Serial] = T0.AddSeconds(10);
+
+        var cd = new byte[1 << 12];
+        var wc = new BufferWriter(cd, true);
+        LevelGearProcCooldowns.Instance.Serialize(wc);
+        wc.Flush();
+        LevelGearProcCooldowns.Owners.Clear();
+        LevelGearProcCooldowns.Weapons.Clear();
+        _now = T0.AddSeconds(3); // the restart takes time
+        LevelGearProcCooldowns.Instance.Deserialize(new BufferReader(cd));
+        Assert.Equal(T0.AddSeconds(7), LevelGearProcCooldowns.Owners[pm.Serial]);
+
+        var other = Player(2);
+        other.AddItem(katana);
+        Assert.Same(other, katana.Parent);
+        var foe = Foe(other);
+        _rollValue = 0;
+
+        _now = T0.AddSeconds(9.999);
+        Assert.Equal(0, ClusterFLevelGearProcs.OnWeaponHit(katana, other, foe, 20));
+        Assert.Empty(_rolls);
+
+        _now = T0.AddSeconds(10);
+        Assert.Equal(12, ClusterFLevelGearProcs.OnWeaponHit(katana, other, foe, 20));
+        Assert.Single(_rolls);
+
+        // A save of a version this build does not know is refused, not misread.
+        var bad = new byte[16];
+        var wb = new BufferWriter(bad, true);
+        wb.WriteEncodedInt(LevelGearProcCooldowns.CurrentVersion + 1);
+        wb.Flush();
+        Assert.Throws<System.IO.InvalidDataException>(() => LevelGearProcCooldowns.Instance.Deserialize(new BufferReader(bad)));
+    }
+
+    // P645-4: the bound effect's page says when it cannot fire, and names the level it was bought at.
+    [Fact]
+    public void TheBoundEffectPageShowsWhenItIsUnavailable()
+    {
+        const string unlockKey = "clusterf.levelGear.procs.unlockLevel";
+        const string choiceKey = "clusterf.levelGear.procs.stormstrike.enabled";
+        var (pm, katana) = Armed();
+        var ns = Online(pm);
+        try
+        {
+            List<string> Page()
+            {
+                var g = new LevelGearMilestoneGump(pm, katana);
+                pm.SendGump(g);
+                return PetTrainingVerification.OnTheWire(ns, g).Strings;
+            }
+
+            Assert.Contains(Page(), x => x == "Your cooldown: ready");
+
+            ServerConfiguration.SetSetting(unlockKey, 90);
+            var tuned = Page();
+            Assert.Contains(tuned, x => x.Contains("level 100"));
+            Assert.DoesNotContain(tuned, x => x.Contains("level 90"));
+            ServerConfiguration.SetSetting(unlockKey, 100);
+
+            LevelGearProcSettings.EnabledOverride = false;
+            var off = Page();
+            Assert.DoesNotContain(off, x => x.Contains("ready"));
+            Assert.Contains(off, x => x.Contains("unavailable"));
+            LevelGearProcSettings.EnabledOverride = true;
+
+            ServerConfiguration.SetSetting(choiceKey, false);
+            var choiceOff = Page();
+            Assert.DoesNotContain(choiceOff, x => x.Contains("ready"));
+            Assert.Contains(choiceOff, x => x.Contains("unavailable"));
+        }
+        finally
+        {
+            ServerConfiguration.SetSetting(unlockKey, 100);
+            ServerConfiguration.SetSetting(choiceKey, true);
+            pm.NetState = null;
+            ns.Dispose();
+        }
+    }
+
+    // P645-5: expired and deleted entries leave the cooldown maps; a future deadline stays.
+    [Fact]
+    public void ExpiredAndDeletedCooldownsArePruned()
+    {
+        var (pm, katana) = Armed();
+        var gone = Player(3);
+        var goneWeapon = Track(new Katana());
+        LevelGearProcCooldowns.Owners[pm.Serial] = T0.AddSeconds(5);   // live
+        LevelGearProcCooldowns.Owners[gone.Serial] = T0.AddSeconds(-1); // expired
+        LevelGearProcCooldowns.Weapons[katana.Serial] = T0.AddSeconds(5);
+        LevelGearProcCooldowns.Weapons[goneWeapon.Serial] = T0.AddSeconds(5);
+        goneWeapon.Delete(); // deleted, though not yet expired
+
+        LevelGearProcCooldowns.Prune(T0);
+        Assert.Equal(new[] { pm.Serial }, LevelGearProcCooldowns.Owners.Keys);
+        Assert.Equal(new[] { katana.Serial }, LevelGearProcCooldowns.Weapons.Keys);
+
+        // Read after its deadline, an entry is dropped there and then.
+        _now = T0.AddSeconds(5);
+        Assert.Equal(TimeSpan.Zero, ClusterFLevelGearProcs.OwnerCooldown(pm));
+        Assert.Empty(LevelGearProcCooldowns.Owners);
     }
 }

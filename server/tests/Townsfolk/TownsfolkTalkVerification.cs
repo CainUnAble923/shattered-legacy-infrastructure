@@ -20,6 +20,9 @@
 //   7. The topic menu: opening says nothing; a button answers with the same cooldowns; another client, a moved NPC and a
 //      switched-off service get nothing.
 //   8. A resident's identity comes from its saved tag and survives a save; it is invulnerable and does not walk.
+//   9. P647 (review fixes): an unreadable file is a failed load; repeated responses, stock pet orders (multiword too),
+//      a wrong region and a non-identifier topic id are refused; off the test shard talk stays off; "Mara move" in a
+//      guarded town leaves the residents where they stand; speech a client tags as a pet order reaches the pet.
 
 using System;
 using System.Collections.Generic;
@@ -28,6 +31,7 @@ using System.Linq;
 using System.Text.Json.Nodes;
 using Server;
 using Server.Accounting;
+using Server.Commands;
 using Server.Engines.Townsfolk;
 using Server.Gumps;
 using Server.Mobiles;
@@ -40,13 +44,21 @@ using Xunit;
 namespace ShatteredLegacy.Tests;
 
 [Collection("Sequential UOContent Tests")]
-public class TownsfolkTalkVerification
+public class TownsfolkTalkVerification : IDisposable
 {
     private static readonly Point3D Spot = new(1800, 800, 0);
 
     public TownsfolkTalkVerification()
     {
         ShardTestHost.EnsureAccounts();
+        ClusterFTalkRules.Reload();
+        ClusterFTownsfolkService.IsTestShard = () => true; // stage 1 is test-shard only (P647)
+    }
+
+    public void Dispose()
+    {
+        ClusterFTownsfolkService.IsTestShard = () => ClusterFStaffHub.IsTestShard;
+        ClusterFTownsfolkService.EnabledOverride = null;
         ClusterFTalkRules.Reload();
     }
 
@@ -59,10 +71,11 @@ public class TownsfolkTalkVerification
         public readonly List<Account> Accounts = new();
         public readonly List<(Mobile Npc, Mobile To, NetState Ns, string Text)> Replies = new();
 
-        public Town()
+        public Town(bool guarded = false)
         {
-            Region = new BaseRegion("New Haven", Map.Trammel, 50,
-                new Rectangle3D(new Point3D(Spot.X - 20, Spot.Y - 20, -128), new Point3D(Spot.X + 20, Spot.Y + 20, 127)));
+            // guarded: a TownRegion, as New Haven is, so the stock "<name> move" and pet-order speech paths are live (P647).
+            var area = new Rectangle3D(new Point3D(Spot.X - 20, Spot.Y - 20, -128), new Point3D(Spot.X + 20, Spot.Y + 20, 127));
+            Region = guarded ? new TownRegion("New Haven", Map.Trammel, 50, area) : new BaseRegion("New Haven", Map.Trammel, 50, area);
             Region.Register();
             ClusterFTownsfolkService.EnabledOverride = true;
             ClusterFTownsfolkService.Replied += OnReplied;
@@ -461,5 +474,210 @@ public class TownsfolkTalkVerification
             ellis.Delete();
             stray.Delete();
         }
+    }
+
+    // ---------------------------------------------------------------- 9 (P647: review fixes)
+
+    private static string TempTable(Action<JsonObject> change)
+    {
+        var root = JsonNode.Parse(ShippedJson())!.AsObject();
+        change(root);
+        var path = Path.Combine(Path.GetTempPath(), $"p647-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, root.ToJsonString());
+        return path;
+    }
+
+    private static JsonObject Profile(JsonObject root, string tag) =>
+        root["profiles"]!.AsArray().First(p => (string)p!["tag"]! == tag)!.AsObject();
+
+    // P631-a: a table file that cannot be read (held open, unreadable, gone after the check) is a failed load, not a
+    // thrown startup or reload.
+    [Fact]
+    public void AnUnreadableTableFileIsAFailedLoadThatKeepsTheTable()
+    {
+        var path = TempTable(_ => { });
+        try
+        {
+            Assert.True(ClusterFTalkRules.Reload());
+            var inUse = ClusterFTalkRules.Current;
+            bool reloaded;
+            using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                reloaded = ClusterFTalkRules.Reload(path);
+            }
+
+            Assert.False(reloaded);
+            Assert.Same(inUse, ClusterFTalkRules.Current);
+            Assert.Contains(ClusterFTalkRules.LastErrors, e => e.Contains("unreadable"));
+            Assert.True(ClusterFTalkRules.Reload(path)); // the same file, readable again, loads
+        }
+        finally
+        {
+            File.Delete(path);
+            ClusterFTalkRules.Reload();
+        }
+    }
+
+    // P631-b: two identical responses in a topic would leave nothing to choose once that line was last said.
+    [Fact]
+    public void RepeatedIdenticalResponsesAreRefused()
+    {
+        Assert.Contains(ErrorsAfter(r =>
+        {
+            var responses = Topic(r, "plaza", "job")["responses"]!.AsArray();
+            responses.Add(responses[0]!.DeepClone());
+        }), e => e.Contains("listed twice"));
+        Assert.Contains(ErrorsAfter(r =>
+        {
+            var responses = Topic(r, "plaza", "help")["responses"]!.AsArray();
+            var copy = responses.First(x => (string)x!["phase"]! == "core")!.DeepClone();
+            responses.Add(copy);
+        }), e => e.Contains("listed twice"));
+    }
+
+    // P631-c: off the test shard neither the switch nor the setting turns talk on.
+    [Fact]
+    public void TalkCannotBeSwitchedOnOffTheTestShard()
+    {
+        if (!CommandSystem.Entries.ContainsKey("ClusterFTownsfolk"))
+        {
+            ClusterFTownsfolkService.Configure();
+        }
+
+        var admin = new PlayerMobile { Player = true, AccessLevel = AccessLevel.Owner, Name = "P647 admin" };
+        try
+        {
+            ClusterFTownsfolkService.IsTestShard = () => false;
+            CommandSystem.Handle(admin, $"{CommandSystem.Prefix}ClusterFTownsfolk on");
+            Assert.NotEqual(true, ClusterFTownsfolkService.EnabledOverride);
+            ClusterFTownsfolkService.EnabledOverride = true; // however it got set
+            Assert.False(ClusterFTownsfolkService.Enabled);
+
+            ClusterFTownsfolkService.EnabledOverride = null;
+            ClusterFTownsfolkService.IsTestShard = () => true;
+            CommandSystem.Handle(admin, $"{CommandSystem.Prefix}ClusterFTownsfolk on");
+            Assert.True(ClusterFTownsfolkService.Enabled);
+        }
+        finally
+        {
+            ClusterFTownsfolkService.EnabledOverride = null;
+            admin.Delete();
+        }
+    }
+
+    // P643-F1: "Mara move" in a guarded town reaches the stock AI, which would shift a CantWalk resident a tile.
+    [Fact]
+    public void MoveSpeechDoesNotShiftTheStationaryResidents()
+    {
+        using var t = new Town(guarded: true);
+        var mara = t.Resident(ClusterFTownsfolk.PlazaTag, 1, 0);
+        var ellis = t.Resident(ClusterFTownsfolk.TradesTag, -1, 0);
+        var pm = t.Player();
+        Assert.True(mara.IsHumanInTown());
+        var maraAt = mara.Location;
+        var ellisAt = ellis.Location;
+
+        foreach (var on in new[] { true, false })
+        {
+            ClusterFTownsfolkService.EnabledOverride = on;
+            for (var i = 0; i < 6; i++)
+            {
+                ShardTestClock.AdvanceSeconds(6); // past the stock five-second order throttle
+                pm.DoSpeech("Mara move", [0x9D], MessageType.Regular, 0x3B2);
+                pm.DoSpeech("Ellis move", [0x9D], MessageType.Regular, 0x3B2);
+                Assert.Equal(maraAt, mara.Location);
+                Assert.Equal(ellisAt, ellis.Location);
+            }
+        }
+    }
+
+    // P643-F2: the stock pet orders are reserved, multiword ones too.
+    [Fact]
+    public void StockPetOrdersAreReserved()
+    {
+        foreach (var order in new[] { "all follow me", "all guard me", "follow me", "guard me", "drop", "friend", "move" })
+        {
+            Assert.Contains(ErrorsAfter(r => Topic(r, "plaza", "job")["aliases"]!.AsArray().Add(order)), e => e.Contains("reserved"));
+        }
+    }
+
+    // P643-F2 (dispatch): a client tags an order by its keyword, whatever the exact words; a table alias that matches
+    // those words cannot outrank the pet, even with the resident standing closer.
+    [Fact]
+    public void SpeechTaggedAsAPetOrderReachesThePet()
+    {
+        var path = TempTable(r => Topic(r, "plaza", "job")["aliases"]!.AsArray().Add("lead on"));
+        try
+        {
+            Assert.True(ClusterFTalkRules.Reload(path));
+            using var t = new Town(guarded: true);
+            var mara = t.Resident(ClusterFTownsfolk.PlazaTag, 1, 0);
+            var pm = t.Player();
+            var horse = new Horse();
+            horse.MoveToWorld(new Point3D(Spot.X + 2, Spot.Y + 1, Spot.Z), Map.Trammel);
+            t.Made.Add(horse);
+            Assert.True(horse.SetControlMaster(pm));
+            horse.ControlOrder = OrderType.Stay;
+
+            pm.DoSpeech("lead on", [0x16C], MessageType.Regular, 0x3B2); // all follow me
+            Assert.Empty(t.Replies);
+            Assert.Equal(OrderType.Follow, horse.ControlOrder);
+            Assert.Same(pm, horse.ControlTarget);
+
+            ShardTestClock.AdvanceSeconds(20);
+            pm.DoSpeech("lead on", [], MessageType.Regular, 0x3B2); // the same words untagged are a topic
+            Assert.Single(t.Replies);
+            Assert.Same(mara, t.Replies[0].Npc);
+        }
+        finally
+        {
+            File.Delete(path);
+            ClusterFTalkRules.Reload();
+        }
+    }
+
+    // P643-F3: each launch profile has its region; a typo or a wider region is refused and the old table stays.
+    [Fact]
+    public void ARegionTypoOrWideningKeepsThePreviousTable()
+    {
+        Assert.Contains(ErrorsAfter(r => Profile(r, "plaza")["region"] = "New Havn"), e => e.Contains("region"));
+        Assert.Contains(ErrorsAfter(r => Profile(r, "trades")["region"] = "Britain"), e => e.Contains("region"));
+        Assert.Contains(ErrorsAfter(r => Profile(r, "innkeeper")["region"] = "New Haven"), e => e.Contains("region"));
+
+        var path = TempTable(r => Profile(r, "plaza")["region"] = "New Havn");
+        try
+        {
+            Assert.True(ClusterFTalkRules.Reload());
+            var inUse = ClusterFTalkRules.Current;
+            Assert.False(ClusterFTalkRules.Reload(path));
+            Assert.Same(inUse, ClusterFTalkRules.Current);
+            Assert.Equal("New Haven", ClusterFTalkRules.Current!.Profile("plaza")!.Region);
+        }
+        finally
+        {
+            File.Delete(path);
+            ClusterFTalkRules.Reload();
+        }
+    }
+
+    // P643-F4: an extra topic's id is a short plain identifier, never markup, space or control characters.
+    [Fact]
+    public void ExtraTopicIdsArePlainIdentifiers()
+    {
+        static Action<JsonObject> Extra(string id) => r => Profile(r, "plaza")["topics"]!.AsArray().Add(new JsonObject
+        {
+            ["id"] = id,
+            ["aliases"] = new JsonArray("extra topic"),
+            ["responses"] = new JsonArray(new JsonObject { ["phase"] = "any", ["text"] = "Fine weather." })
+        });
+
+        foreach (var id in new[] { "<BASEFONT COLOR=#000000>Extra topic", "   ", "extra\u0007", new string('a', 40) })
+        {
+            Assert.Contains(ErrorsAfter(Extra(id)), e => e.Contains("plain identifier"));
+        }
+
+        var root = JsonNode.Parse(ShippedJson())!.AsObject();
+        Extra("weather")(root);
+        Assert.NotNull(ClusterFTalkRules.Parse(root.ToJsonString()).Table);
     }
 }

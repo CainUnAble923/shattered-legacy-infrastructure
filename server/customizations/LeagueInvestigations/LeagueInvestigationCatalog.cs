@@ -10,6 +10,9 @@
 // server interrupts gives the same warrant back. Stage 1 holds those numbers and the site checks only: there is no shop
 // row, no runner and no spawn yet, and the switch (Settings.Enabled) is off.
 //
+// cc-P647 (P641 review): CheckSite refuses a facet whose map or statics files are not loaded (MapDataProblem), checks
+// every region touching the policy area at any height (RegionsTouching), and each spawn tile's region at its own Z.
+//
 // Sites, checked on the 7.0.117.0 Trammel map (map1LegacyMUL.uop, statics1.mul; notes section 2):
 //   covetous-hall   5472,1877,0. The design's candidate (the lake shore, 5440,2023) lies inside the Covetous Void
 //                   Pool region (VoidPoolRegion.Bounds, 5383,1960 236x80), a wave event's region, so it is refused by
@@ -182,8 +185,26 @@ public static class LeagueInvestigationCatalog
     }
 
     /// <summary>
+    /// cc-P647 (P641 finding 2): why this facet's terrain cannot be trusted, or null when its land, static index and static
+    /// data files are all open. The tests replace it.
+    /// </summary>
+    public static Func<Map, string?> MapDataProblem { get; set; } =
+        map => MissingMapData(map.Name, map.Tiles.MapStream != null, map.Tiles.IndexStream != null, map.Tiles.DataStream != null);
+
+    public static string? MissingMapData(string facet, bool land, bool staticIndex, bool staticData)
+    {
+        if (!land)
+        {
+            return $"{facet}'s land map file is not loaded";
+        }
+
+        return staticIndex && staticData ? null : $"{facet}'s statics files are not loaded";
+    }
+
+    /// <summary>
     /// What stops this site being used on the world as it is now: disabled, a facet that is not loaded, a refused region
-    /// anywhere in its policy area, or fewer than MinSpawnTiles safe spawn tiles. Empty when it is usable.
+    /// anywhere in its policy area, the facet's map files not loaded (cc-P647), or fewer than MinSpawnTiles safe spawn
+    /// tiles. Empty when it is usable.
     /// </summary>
     public static List<string> CheckSite(LeagueInvestigationSite site)
     {
@@ -201,23 +222,31 @@ public static class LeagueInvestigationCatalog
             return problems;
         }
 
+        // cc-P647 (P641 finding 3): every region that covers a tile of the policy area at any height, not only the one
+        // Region.Find picks there (the highest priority, at one Z): an allowed region laid over a town, or a town only below
+        // the centre's Z, must still refuse. The policy volume is the full column, -128 to 127; stage 2's policy region
+        // has to be registered full height to match.
         var c = site.Center;
         var refused = new HashSet<string>();
-        for (var x = c.X - Settings.PolicyRadius; x <= c.X + Settings.PolicyRadius; x++)
+        foreach (var region in RegionsTouching(map, c, Settings.PolicyRadius))
         {
-            for (var y = c.Y - Settings.PolicyRadius; y <= c.Y + Settings.PolicyRadius; y++)
+            if (!IsAllowedRegion(region))
             {
-                var region = Region.Find(new Point3D(x, y, c.Z), map);
-                if (!IsAllowedRegion(region))
-                {
-                    refused.Add($"{region.Name ?? "(unnamed)"} ({region.GetType().Name})");
-                }
+                refused.Add($"{region.Name ?? "(unnamed)"} ({region.GetType().Name})");
             }
         }
 
         foreach (var name in refused.Order())
         {
             problems.Add($"site {site.Key} policy area reaches region {name}");
+        }
+
+        // A Map object exists whether or not its files opened; without them the engine reads blank open ground at Z 0
+        // (TileMatrix's fallback blocks), which would pass any fit check. Refused, and not counted as a crowded site.
+        if (MapDataProblem(map) is { } missing)
+        {
+            problems.Add($"site {site.Key}: {missing}");
+            return problems;
         }
 
         var spawnable = SpawnTiles(site).Count;
@@ -229,17 +258,57 @@ public static class LeagueInvestigationCatalog
         return problems;
     }
 
-    /// <summary>The tiles within SpawnRadius of the centre a creature can stand on, at the Z it would stand at.</summary>
+    /// <summary>Every registered region on this facet whose area covers a tile within radius of the centre, at any Z.</summary>
+    public static HashSet<Region> RegionsTouching(Map map, Point3D center, int radius)
+    {
+        var found = new HashSet<Region>();
+        for (var x = center.X - radius; x <= center.X + radius; x++)
+        {
+            for (var y = center.Y - radius; y <= center.Y + radius; y++)
+            {
+                var p = new Point2D(x, y);
+                foreach (var region in map.GetSector(x, y).Regions)
+                {
+                    if (found.Contains(region))
+                    {
+                        continue;
+                    }
+
+                    foreach (var rect in region.Area)
+                    {
+                        if (rect.Contains(p))
+                        {
+                            found.Add(region);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        return found;
+    }
+
+    /// <summary>
+    /// The tiles within SpawnRadius of the centre a creature can stand on, at the Z it would stand at, each in an allowed
+    /// region at that Z (cc-P647). None when the facet's
+    /// map data is not loaded.
+    /// </summary>
     public static List<Point3D> SpawnTiles(LeagueInvestigationSite site)
     {
         var list = new List<Point3D>();
+        if (site.Map == null || site.Map == Map.Internal || MapDataProblem(site.Map) != null)
+        {
+            return list;
+        }
+
         var c = site.Center;
         for (var x = c.X - Settings.SpawnRadius; x <= c.X + Settings.SpawnRadius; x++)
         {
             for (var y = c.Y - Settings.SpawnRadius; y <= c.Y + Settings.SpawnRadius; y++)
             {
                 var z = site.Map.GetAverageZ(x, y);
-                if (site.Map.CanSpawnMobile(x, y, z))
+                if (site.Map.CanSpawnMobile(x, y, z) && IsAllowedRegion(Region.Find(new Point3D(x, y, z), site.Map)))
                 {
                     list.Add(new Point3D(x, y, z));
                 }

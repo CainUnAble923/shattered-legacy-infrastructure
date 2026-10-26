@@ -20,10 +20,15 @@
 //   8. Expiry: the Echo is gone 20 seconds after the call and the slots are back.
 //   9. The save: the account's next use (v23) and the character's Tome serial (League data v3) round-trip; a v22 account
 //      reads as ready and a v2 character as no Tome; a newer version is still refused.
+//   cc-P647 (the P630 and P642 reviews):
+//  10. Off the test shard [LeagueEcho turns nothing on and calls nothing; on it, it works.
+//  11. An offline character cannot call; a dropped connection ends the Echo at once (an ordinary player's logout delay
+//      is five minutes), gives the slots back once, and the later logout changes nothing.
 
 using System;
 using Server;
 using Server.Accounting;
+using Server.Commands;
 using Server.Engines.ConPVP;
 using Server.Engines.LeagueEchoes;
 using Server.Engines.LeagueRegister;
@@ -49,7 +54,8 @@ public class LeagueEchoesVerification
 
     internal static Account NewAccount() => new($"p630{Guid.NewGuid():N}"[..16], "p630-test-only");
 
-    internal static PlayerMobile NewCharacter(Account account, string rank = "Mythril", int slot = 0)
+    // cc-P647 (P642 R2): online by default, a test connection carrying the account; a call needs its caller connected.
+    internal static PlayerMobile NewCharacter(Account account, string rank = "Mythril", int slot = 0, bool online = true)
     {
         var pm = new PlayerMobile { Player = true, Race = Race.Human, Name = "Tester" };
         pm.AddItem(new Server.Items.Backpack());
@@ -58,6 +64,14 @@ public class LeagueEchoesVerification
         if (rank != null)
         {
             ClusterFLeagueRanks.SetRank(pm, LeagueRegisterSettings.Rank(rank));
+        }
+
+        if (online)
+        {
+            var ns = Server.Tests.Network.PacketTestUtilities.CreateTestNetState();
+            pm.NetState = ns;
+            ns.Mobile = pm;
+            ns.Account = account;
         }
 
         return pm;
@@ -464,5 +478,87 @@ public class LeagueEchoesVerification
 
         BitConverter.GetBytes(4).CopyTo(lBytes, 0);
         Assert.Throws<System.IO.InvalidDataException>(() => new CharacterLeagueData(new BufferReader(lBytes)));
+    }
+
+    // ---------------------------------------------------------------- 10 (cc-P647, P630 review)
+
+    [Fact]
+    public void TheStaffCommandDoesNothingOffTheTestShard()
+    {
+        var a = NewAccount();
+        var gm = NewCharacter(a);
+        gm.AccessLevel = AccessLevel.GameMaster;
+        var was = LeagueEchoSystem.IsTestShard;
+        try
+        {
+            LeagueEchoSystem.IsTestShard = () => false;
+            CommandSystem.Handle(gm, $"{CommandSystem.Prefix}LeagueEcho on");
+            Assert.Null(LeagueEchoSettings.EnabledOverride);
+            Assert.False(LeagueEchoSettings.Enabled);
+
+            // Even with the switch on (as the setting could be), the command calls nothing off the test shard.
+            LeagueEchoSettings.EnabledOverride = true;
+            CommandSystem.Handle(gm, $"{CommandSystem.Prefix}LeagueEcho call");
+            Assert.Null(LeagueEchoSystem.ActiveFor(a));
+            Assert.Equal(DateTime.MinValue, NextUse(a));
+
+            // On the test shard it works.
+            LeagueEchoSettings.EnabledOverride = null;
+            LeagueEchoSystem.IsTestShard = () => true;
+            CommandSystem.Handle(gm, $"{CommandSystem.Prefix}LeagueEcho on");
+            Assert.True(LeagueEchoSettings.Enabled);
+            CommandSystem.Handle(gm, $"{CommandSystem.Prefix}LeagueEcho call");
+            Assert.NotNull(LeagueEchoSystem.ActiveFor(a));
+        }
+        finally
+        {
+            LeagueEchoSystem.IsTestShard = was;
+            Cleanup(a);
+        }
+    }
+
+    // ---------------------------------------------------------------- 11 (cc-P647, P642 R2)
+
+    [Fact]
+    public void ADisconnectEndsTheEchoAtOnceAndAnOfflineCallerIsRefused()
+    {
+        var a = NewAccount();
+        var b = NewAccount();
+        var pm = NewCharacter(a);
+        var offline = NewCharacter(b, online: false);
+        LeagueEchoSettings.EnabledOverride = true;
+        try
+        {
+            // An ordinary player: the region's logout delay (five minutes), far longer than the Echo's 20 seconds.
+            pm.Young = false;
+            Assert.True(pm.GetLogoutDelay() > TimeSpan.FromSeconds(LeagueEchoSettings.DurationSeconds));
+
+            Assert.NotEqual(EchoCall.Called, LeagueEchoSystem.TryCall(offline, out var none));
+            Assert.Null(none);
+            Assert.Null(LeagueEchoSystem.ActiveFor(b));
+            Assert.Equal(DateTime.MinValue, NextUse(b));
+            Assert.Equal(0, offline.Followers);
+
+            ShardTestClock.Arm();
+            Assert.Equal(EchoCall.Called, LeagueEchoSystem.TryCall(pm, out var echo));
+            var deadline = NextUse(a);
+            Assert.Equal(2, pm.Followers);
+
+            pm.NetState = null; // the connection drops; the character stays in the world until the logout delay ends
+
+            Assert.True(echo!.Deleted);
+            Assert.Equal(0, pm.Followers);
+            Assert.Null(LeagueEchoSystem.ActiveFor(a));
+            Assert.NotEqual(Map.Internal, pm.Map);
+
+            // The delayed logout later changes nothing more.
+            ShardTestClock.AdvanceSeconds(pm.GetLogoutDelay().TotalSeconds + 1);
+            Assert.Equal(0, pm.Followers);
+            Assert.Equal(deadline, NextUse(a));
+        }
+        finally
+        {
+            Cleanup(a, b);
+        }
     }
 }

@@ -34,6 +34,8 @@
 // THE ROUTE'S ANSWER: Arm() once at the top of a timing-dependent test, then Advance().
 // Advance moves Core.TickCount and Core.Now together in 8 ms steps - the wheel's own tick
 // rate - slicing at each step, so a callback that falls due at t+3s sees Core.Now at t+3s.
+// Stall() (cc-P647) is the deliberate exception: one jump and one catch-up slice, for facts
+// about callbacks that run late after a stalled event loop.
 //
 // docker/uo/apply-patches.sh FAILS THE BUILD for any other test file under server/tests/
 // that drives the timer wheel directly. This file is the single exemption, because
@@ -162,6 +164,31 @@ public static class ShardTestClock
 
     /// <summary>Convenience overload for the common case.</summary>
     public static void AdvanceSeconds(double seconds) => Advance(TimeSpan.FromSeconds(seconds));
+
+    /// <summary>
+    /// An event-loop stall (cc-P647): moves Core.TickCount and Core.Now by <paramref name="by"/> at once, then
+    /// slices once, as the main loop does after a long frame. The wheel catches up every missed turn in that one
+    /// slice (Projects/Server/Timer/Timer.TimerWheel.cs Slice and Turn), so every callback that fell due in the gap
+    /// runs, repeating timers several times, and each reads the clock at the END of the gap, not its own due time.
+    /// Use Advance for ordinary time; this is only for facts about late callbacks.
+    /// </summary>
+    public static void Stall(TimeSpan by)
+    {
+        if (!_armed)
+        {
+            throw new InvalidOperationException("ShardTestClock.Arm() must be called before Stall().");
+        }
+
+        if (by < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(by), by, "The server clock only moves forward.");
+        }
+
+        var ms = (long)by.TotalMilliseconds;
+        Core._tickCount += ms;
+        Core._now = Core._now.AddMilliseconds(ms);
+        Timer.Slice(Core._tickCount);
+    }
 }
 
 /// <summary>

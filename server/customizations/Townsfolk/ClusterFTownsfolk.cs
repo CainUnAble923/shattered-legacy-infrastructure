@@ -5,9 +5,10 @@
 //                    Mara, the town steward; "trades": Ellis, the workshop runner). No loot, no teaching, no vendor
 //                    stock. Speech, double-click and the stock Talk entry go to ClusterFTownsfolkService; anything it does
 //                    not own goes on to the ordinary creature speech. Stage 1 places none: staff [add one on the test
-//                    shard; the seeder is stage 3.
+//                    shard; the seeder is stage 3. P647: "<name> move" (the stock move keyword) is not passed on, so
+//                    no one can shuffle a resident off its tile in a guarded town; stock vendors keep the stock rule.
 // TownsfolkTalkGump  the topic buttons, for players who do not know the words. Every button rechecks the player, the
-//                    NPC, range, sight and region, and shares the speech cooldowns.
+//                    NPC, range, sight and region, and shares the speech cooldowns. Labels are escaped (P647).
 
 #nullable enable
 
@@ -91,7 +92,8 @@ public partial class ClusterFTownsfolk : BaseCreature, ITalkResident
 
     public override void OnSpeech(SpeechEventArgs e)
     {
-        if (!ClusterFTownsfolkService.TryHandleSpeech(this, e))
+        // The stock AI's named move (keyword 0x9D) sets Location directly, past CantWalk: a resident stays put.
+        if (!ClusterFTownsfolkService.TryHandleSpeech(this, e) && !e.HasKeyword(0x9D))
         {
             base.OnSpeech(e);
         }
@@ -155,7 +157,7 @@ public class TownsfolkTalkGump : Gump
         {
             var y = 46 + i * 26;
             AddButton(20, y, 4005, 4007, i + 1);
-            AddHtml(55, y + 2, Width - 75, 20, TutorialStyle.Html(Label(_topics[i])));
+            AddHtml(55, y + 2, Width - 75, 20, TutorialStyle.Html(Escape(Label(_topics[i]))));
         }
     }
 

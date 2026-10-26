@@ -2,6 +2,10 @@
 // level and price, each effect with its chance, damage, cooldown and PvE limit, and why a choice cannot be bought now;
 // after a purchase it shows the bound effect and the owner's shared cooldown. A choice opens the confirmation; only the
 // confirmation buys, through ClusterFLevelGearProcs.Buy, which reads every rule again (never the gump's earlier state).
+//
+// P647 (P645 review fixes): the confirmation keeps the price and unlock level it showed; if either setting changed since,
+// nothing is paid and the new terms are shown to confirm again. A bound effect's page names its saved required level and
+// says when the effect is unavailable (the milestone or that choice switched off) instead of "ready".
 
 #nullable enable
 
@@ -36,7 +40,8 @@ public class LevelGearMilestoneGump : DynamicGump
         builder.AddPage();
         builder.AddBackground(0, 0, 440, height, 9200);
         builder.AddAlphaRegion(10, 10, 420, height - 20);
-        builder.AddLabel(20, 14, LabelHue, $"Weapon milestone: level {LevelGearProcSettings.UnlockLevel}");
+        var level = s?.Proc?.RequiredLevel ?? LevelGearProcSettings.UnlockLevel; // a bound effect keeps its own
+        builder.AddLabel(20, 14, LabelHue, $"Weapon milestone: level {level}");
 
         if (s == null)
         {
@@ -52,8 +57,16 @@ public class LevelGearMilestoneGump : DynamicGump
             var name = LevelGearProc.ByKey(p.Key)?.Name ?? p.Key;
             builder.AddLabel(20, 40, ValueHue, $"Bound: {name} (bought at item level {p.PurchaseLevel} for {p.PaidCost} points)");
             builder.AddLabel(20, 62, ValueHue, $"{chance} on a damaging weapon hit; {cooldown} cooldown shared with your companions; PvE");
-            var left = ClusterFLevelGearProcs.OwnerCooldown(_from);
-            builder.AddLabel(20, 84, ValueHue, left > System.TimeSpan.Zero ? $"Your cooldown: {left.TotalSeconds:0.#}s" : "Your cooldown: ready");
+            var known = LevelGearProc.ByKey(p.Key);
+            if (!LevelGearProcSettings.Enabled || known == null || !LevelGearProcSettings.ChoiceEnabled(known))
+            {
+                builder.AddLabel(20, 84, GreyHue, "Status: unavailable (weapon milestones are switched off)");
+            }
+            else
+            {
+                var left = ClusterFLevelGearProcs.OwnerCooldown(_from);
+                builder.AddLabel(20, 84, ValueHue, left > System.TimeSpan.Zero ? $"Your cooldown: {left.TotalSeconds:0.#}s" : "Your cooldown: ready");
+            }
         }
         else
         {
@@ -119,6 +132,10 @@ public class LevelGearMilestoneConfirmGump : DynamicGump
     private readonly Item _item;
     private readonly string _key;
 
+    // The terms shown, kept here (never from the client): a confirmation buys only at these.
+    private readonly int _quotedCost;
+    private readonly int _quotedUnlock;
+
     public override bool Singleton => true;
 
     public LevelGearMilestoneConfirmGump(Mobile from, Item item, string key) : base(80, 60)
@@ -126,6 +143,8 @@ public class LevelGearMilestoneConfirmGump : DynamicGump
         _from = from;
         _item = item;
         _key = key;
+        _quotedCost = LevelGearProcSettings.PointCost;
+        _quotedUnlock = LevelGearProcSettings.UnlockLevel;
     }
 
     protected override void BuildLayout(ref DynamicGumpBuilder builder)
@@ -135,8 +154,8 @@ public class LevelGearMilestoneConfirmGump : DynamicGump
         builder.AddPage();
         builder.AddBackground(0, 0, 440, 150, 9200);
         builder.AddAlphaRegion(10, 10, 420, 130);
-        builder.AddLabel(20, 16, LabelHue, $"Bind {name} to this weapon for {LevelGearProcSettings.PointCost} item points?");
-        builder.AddLabel(20, 38, ValueHue, "This choice is permanent until a paid respec is available.");
+        builder.AddLabel(20, 16, LabelHue, $"Bind {name} to this weapon for {_quotedCost} item points?");
+        builder.AddLabel(20, 38, ValueHue, $"The level {_quotedUnlock} milestone. This choice is permanent until a paid respec is available.");
         builder.AddLabel(20, 60, ValueHue,
             $"Points: {points}   Properties: {ClusterFLevelGear.SlotsUsed(_item)} of {ClusterFLevelGear.SlotLimit}");
         builder.AddButton(20, 100, 4005, 4007, ConfirmButton);
@@ -159,6 +178,17 @@ public class LevelGearMilestoneConfirmGump : DynamicGump
 
         if (info.ButtonID != ConfirmButton)
         {
+            return;
+        }
+
+        if (LevelGearProcSettings.PointCost != _quotedCost || LevelGearProcSettings.UnlockLevel != _quotedUnlock)
+        {
+            _from.SendMessage(0x22, "The milestone's terms have changed. Check them and confirm again.");
+            if (ClusterFLevelGear.Holds(_from, _item) && ClusterFLevelGear.IsLevelable(_item))
+            {
+                _from.SendGump(new LevelGearMilestoneConfirmGump(_from, _item, _key));
+            }
+
             return;
         }
 

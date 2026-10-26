@@ -16,7 +16,10 @@
 //   4. The real skill handlers reach the policy: pinned ItemIdentification's item target and ArmsLore's success.
 //   5. Monster loot stamps new magic weapons and armor only while the policy is on.
 //   6. What is visible today stays visible: an unstamped (crafted or existing) item, and every item with the policy off.
-//   7. The registry survives a save and load, with the on switch.
+//   7. The registry survives a save and load, with the on switch; a save drops a deleted item's row from memory too.
+//   cc-P647 (the P627 and P639 reviews): public protection labels stay while concealed; the policy runs only on the test
+//   shard; a fully known item still hides unclassified lines; the difficulty reader counts Use Best Weapon Skill and
+//   skill bonuses.
 
 using System;
 using System.Buffers.Binary;
@@ -24,6 +27,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Server;
+using Server.Commands;
 using Server.Items;
 using Server.Mobiles;
 using Server.Random;
@@ -43,6 +47,7 @@ public class ItemKnowledgeVerification : IDisposable
     private readonly List<(Mobile Who, string Text)> _heard = new();
     private readonly Func<Item, IPropertyList, bool> _policy = Item.PropertyListPolicy;
     private readonly bool _opl = ObjectPropertyList.Enabled;
+    private readonly Func<bool> _testShard = ClusterFItemKnowledge.IsTestShard;
 
     public ItemKnowledgeVerification(ITestOutputHelper output)
     {
@@ -50,6 +55,7 @@ public class ItemKnowledgeVerification : IDisposable
         ShardTestClock.Arm();
         ShardTestHost.EnsureSkillChecks();
         ClusterFItemKnowledge.ResetForTests();
+        ClusterFItemKnowledge.IsTestShard = () => true; // cc-P647: the policy runs only on the test shard
         Item.PropertyListPolicy = ClusterFItemKnowledge.Render; // as Configure installs it
         ObjectPropertyList.Enabled = true; // so InvalidateProperties rebuilds the cached list, as on the shard
         ClusterFItemKnowledge.Heard = (m, t) => _heard.Add((m, t));
@@ -59,6 +65,7 @@ public class ItemKnowledgeVerification : IDisposable
     {
         ClusterFItemKnowledge.Heard = null;
         ClusterFItemKnowledge.ResetForTests();
+        ClusterFItemKnowledge.IsTestShard = _testShard;
         Item.PropertyListPolicy = _policy;
         ObjectPropertyList.Enabled = _opl;
         BuiltInRng.Reset();
@@ -207,6 +214,90 @@ public class ItemKnowledgeVerification : IDisposable
         Assert.NotEqual(stock.Count, sent.Count);
     }
 
+    // cc-P647 (P627 review): who may use an item and how it is held are public facts, kept while it is concealed:
+    // blessed, cursed, insured, quest item, blessed for someone (locked down and secure are house flags the test host
+    // does not assign; the catalog keeps them public too).
+    [Fact]
+    public void ConcealmentKeepsPublicProtectionAndRestrictionLabels()
+    {
+        var insurance = ServerFeatureFlags.InsuranceEnabled;
+        ServerFeatureFlags.InsuranceEnabled = true;
+        try
+        {
+            var owner = Player();
+            var blessed = Sword();
+            blessed.LootType = LootType.Blessed;
+            blessed.BlessedFor = owner;
+            blessed.QuestItem = true;
+            var cursed = Sword();
+            cursed.LootType = LootType.Cursed;
+            var insured = Sword();
+            insured.Insured = true;
+
+            ClusterFItemKnowledge.Enabled = true;
+            foreach (var (sword, labels) in new[]
+                     {
+                         (blessed, new[] { 1038021, 1062203, 1072351 }),
+                         (cursed, new[] { 1049643 }),
+                         (insured, new[] { 1061682 })
+                     })
+            {
+                sword.InvalidateProperties();
+                var stock = Sent(sword);
+                ClusterFItemKnowledge.Conceal(sword);
+                var sent = Sent(sword);
+                _out.WriteLine($"stock: {Show(stock)}");
+                _out.WriteLine($"concealed: {Show(sent)}");
+                foreach (var label in labels)
+                {
+                    Assert.Contains(stock, e => e.Number == label);
+                    Assert.Contains(sent, e => e.Number == label);
+                }
+
+                Assert.True(HasText(sent, ClusterFItemKnowledge.UnidentifiedLine));
+            }
+        }
+        finally
+        {
+            ServerFeatureFlags.InsuranceEnabled = insurance;
+        }
+    }
+
+    // cc-P647 (P627 review): off the test shard, neither the command nor the saved or set switch turns the policy on.
+    [Fact]
+    public void ThePolicyRunsOnlyOnTheTestShard()
+    {
+        ClusterFItemKnowledge.Configure(); // registers [ItemKnowledge
+        Item.PropertyListPolicy = ClusterFItemKnowledge.Render;
+        var admin = Player();
+        admin.AccessLevel = AccessLevel.Administrator;
+        var sword = Sword();
+        var stock = Show(Sent(sword));
+        ClusterFItemKnowledge.IsTestShard = () => false;
+
+        Assert.True(CommandSystem.Handle(admin, $"{CommandSystem.Prefix}ItemKnowledge on"));
+        Assert.False(ClusterFItemKnowledge.Enabled);
+        Assert.True(CommandSystem.Handle(admin, $"{CommandSystem.Prefix}ItemKnowledge conceal"));
+        Assert.Null(admin.Target);
+
+        // The switch itself (as a save loads it, or a script sets it): still nothing is concealed or stamped.
+        ClusterFItemKnowledge.Enabled = true;
+        Assert.False(ClusterFItemKnowledge.Enabled);
+        ClusterFItemKnowledge.Conceal(sword);
+        Assert.False(ClusterFItemKnowledge.IsConcealed(sword));
+        Assert.Equal(stock, Show(Sent(sword)));
+        Assert.False(ClusterFItemKnowledge.TryAppraise(Player(appraisal: 100.0), sword));
+        var loot = Sword();
+        ClusterFItemKnowledge.OnLootMagic(loot);
+        Assert.Null(ClusterFItemKnowledge.Of(loot));
+
+        // On the test shard the same switch conceals it.
+        ClusterFItemKnowledge.IsTestShard = () => true;
+        sword.InvalidateProperties();
+        Assert.True(ClusterFItemKnowledge.IsConcealed(sword));
+        Assert.True(HasText(Sent(sword), ClusterFItemKnowledge.UnidentifiedLine));
+    }
+
     // ---------------------------------------------------------------- 2
 
     [Fact]
@@ -248,6 +339,49 @@ public class ItemKnowledgeVerification : IDisposable
         Assert.True(ClusterFItemKnowledge.Of(sword).Complete);
         Assert.True(sword.Identified);
         Assert.Equal(Show(stock), Show(Sent(sword)));
+    }
+
+    // cc-P647 (P639 review): completing both tracks releases the reviewed lines only. A line no catalog entry names stays
+    // hidden after both discoveries; the item still renders through the catalog, not the stock builder.
+    [Fact]
+    public void CompletingBothTracksKeepsUnclassifiedLinesHidden()
+    {
+        Roll(0.0);
+        var sword = Sword();
+
+        void Extra(Item item, IPropertyList list)
+        {
+            if (item == sword)
+            {
+                list.Add(1060658, "Hidden power	42"); // ~1_val~: ~2_val~
+            }
+        }
+
+        Item.ExtraProperties += Extra;
+        try
+        {
+            sword.InvalidateProperties();
+            Assert.Contains(Sent(sword), e => e.Number == 1060658);
+            ClusterFItemKnowledge.Enabled = true;
+            ClusterFItemKnowledge.Conceal(sword);
+            ClusterFItemKnowledge.OnArmsLore(Player(armsLore: 65.0), sword);
+            Assert.True(ClusterFItemKnowledge.TryAppraise(Player(appraisal: 170.0), sword));
+            Assert.True(ClusterFItemKnowledge.Of(sword).Complete);
+
+            var sent = Sent(sword);
+            _out.WriteLine($"complete: {Show(sent)}");
+            Assert.DoesNotContain(sent, e => e.Number == 1060658 || e.Argument.Contains("Hidden power"));
+            Assert.Contains(sent, e => e.Number == 1060422 && e.Argument == "20"); // magic, reviewed
+            Assert.Contains(sent, e => e.Number == SilverTitle);
+            Assert.Contains(sent, e => e.Number == 1060405 && e.Argument == "20"); // arms, reviewed
+            Assert.Contains(sent, e => e.Number == 1060639);
+            Assert.Contains(sent, e => e.Argument == "the Blade of Secrets"); // its name, now known
+            Assert.False(HasText(sent, ClusterFItemKnowledge.UnidentifiedLine));
+        }
+        finally
+        {
+            Item.ExtraProperties -= Extra;
+        }
     }
 
     [Fact]
@@ -320,6 +454,33 @@ public class ItemKnowledgeVerification : IDisposable
         plain.MoveToWorld(Spot, Map.Trammel);
         _made.Add(plain);
         Assert.Equal(10, ClusterFItemKnowledge.Difficulty(plain));
+    }
+
+    // cc-P647 (P639 review): the difficulty reader counts every enchantment Appraisal discloses, not only the imbuing
+    // catalogue's rows. Use Best Weapon Skill is one boolean enchantment at full intensity: D = 15 + 75 = 90, so at 60 the
+    // names come at once and the values never. A skill bonus counts as one, at its value over 15.
+    [Fact]
+    public void TheDifficultyReaderCountsUseBestSkillAndSkillBonuses()
+    {
+        var best = new Longsword();
+        best.WeaponAttributes.UseBestSkill = 1;
+        best.MoveToWorld(Spot, Map.Trammel);
+        _made.Add(best);
+        var d = ClusterFItemKnowledge.Difficulty(best);
+        _out.WriteLine($"use best skill: difficulty {d}, catalogue count {RequisitionProperties.PropertyCount(best)}");
+        Assert.Equal(90, d);
+        Assert.Equal(1.0, ClusterFItemKnowledge.Chance(60.0, ClusterFItemKnowledge.StageDifficulty(d, MagicKnowledge.Named)));
+        Assert.Equal(0.0, ClusterFItemKnowledge.Chance(60.0, ClusterFItemKnowledge.StageDifficulty(d, MagicKnowledge.Values)));
+
+        var skilled = new PlateChest();
+        skilled.SkillBonuses.SetValues(0, SkillName.Parry, 15.0);
+        skilled.MoveToWorld(Spot, Map.Trammel);
+        _made.Add(skilled);
+        Assert.Equal(90, ClusterFItemKnowledge.Difficulty(skilled));
+
+        // Both on one weapon: two enchantments, the strongest at full: 30 + 75.
+        best.SkillBonuses.SetValues(0, SkillName.Swords, 5.0);
+        Assert.Equal(105, ClusterFItemKnowledge.Difficulty(best));
     }
 
     // ---------------------------------------------------------------- 4
@@ -435,6 +596,8 @@ public class ItemKnowledgeVerification : IDisposable
         var writer = new BufferWriter(buffer, true);
         ItemKnowledgeStore.Instance.Serialize(writer);
         writer.Flush();
+        Assert.Null(ClusterFItemKnowledge.Of(other)); // cc-P647: the save prunes the dead row from the live registry too
+        Assert.NotNull(ClusterFItemKnowledge.Of(sword));
 
         ClusterFItemKnowledge.ResetForTests();
         Assert.Null(ClusterFItemKnowledge.Of(sword));

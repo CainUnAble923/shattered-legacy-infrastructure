@@ -13,11 +13,16 @@
 //      investigation with no suspect); it is heard by guards within 15 tiles spoken, 18 yelled, 1 whispered, around a
 //      wall too; the stock guard response still runs.
 //   4. A jurisdiction is named regions on one facet: a child region counts, the same name on another facet does not.
+//   cc-P647 (the P628, P635 and P640 reviews): observation runs only on the test shard; one action's callbacks are one
+//   incident and a distinct offense another; a witness must see the victim's place; a pet's crime names its owner with no
+//   second incident; acts stock guards reject are not reportable; the caller limit keeps only recent callers. The fixture
+//   installs pinned's notoriety rules so real harmful and beneficial acts are crimes.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Server;
+using Server.Commands;
 using Server.Items;
 using Server.Mobiles;
 using Server.Regions;
@@ -37,12 +42,21 @@ public class GuardWitnessVerification : IDisposable
     private readonly List<IEntity> _made = new();
     private readonly List<Region> _regions = new();
     private IDisposable _tiles;
+    private readonly Func<bool> _testShard = ClusterFGuardWitness.IsTestShard;
+
+    // Pinned's notoriety rules (the test host runs without them), so a real harmful or beneficial act is a crime; restored after.
+    private readonly NotorietyHandler _notoriety = Notoriety.Handler;
+    private readonly int[] _hues = (int[])Notoriety.Hues.Clone();
+    private readonly AllowHarmfulHandler _harmful = Mobile.AllowHarmfulHandler;
+    private readonly AllowBeneficialHandler _beneficial = Mobile.AllowBeneficialHandler;
 
     public GuardWitnessVerification(ITestOutputHelper output)
     {
         _out = output;
         ShardTestClock.Arm();
+        Server.Misc.NotorietyHandlers.Initialize();
         ClusterFGuardWitness.ResetForTests();
+        ClusterFGuardWitness.IsTestShard = () => true; // cc-P647: observation runs only on the test shard
         ClusterFGuardWitness.Jurisdictions.Clear();
         ClusterFGuardWitness.Jurisdictions.Add(new GuardJurisdiction("p628-pilot", Map.Trammel, ["P628 Pilot"]));
         ClusterFGuardWitness.Enabled = true;
@@ -75,6 +89,11 @@ public class GuardWitnessVerification : IDisposable
 
         _tiles?.Dispose();
         ClusterFGuardWitness.ResetForTests();
+        ClusterFGuardWitness.IsTestShard = _testShard;
+        Notoriety.Handler = _notoriety;
+        Array.Copy(_hues, Notoriety.Hues, _hues.Length);
+        Mobile.AllowHarmfulHandler = _harmful;
+        Mobile.AllowBeneficialHandler = _beneficial;
     }
 
     private static List<BaseGuard> GuardsNear(Point3D p, int range)
@@ -210,13 +229,16 @@ public class GuardWitnessVerification : IDisposable
         Assert.Equal(4, incident.Witnesses.Count);
         Assert.Equal(Spot, incident.Witnesses[0].LastSeen);
 
-        // The same culprit's attack a moment later is the same incident, now an aggression with a victim.
+        // The same culprit's attack later is another offense (cc-P647). Its two callbacks, the criminal flag and then the
+        // aggression (Mobile.DoHarmful -> GuardedRegion.OnCriminalAction, OnAggressed), are one incident with a victim.
         culprit.Hidden = false;
         culprit.MoveToWorld(Spot, Map.Trammel);
-        seer.AggressiveAction(culprit, true); // the real path: Mobile.AggressiveAction -> GuardedRegion.OnAggressed
-        incident = Assert.Single(ClusterFGuardWitness.IncidentsIn("p628-pilot"));
-        Assert.Equal(IncidentKind.Aggression, incident.Kind);
-        Assert.Same(seer, incident.Victim);
+        ShardTestClock.AdvanceSeconds(2.0);
+        culprit.DoHarmful(seer);
+        Assert.Equal(2, ClusterFGuardWitness.IncidentsIn("p628-pilot").Count);
+        var attack = ClusterFGuardWitness.IncidentsIn("p628-pilot")[^1];
+        Assert.Equal(IncidentKind.Aggression, attack.Kind);
+        Assert.Same(seer, attack.Victim);
 
         // In an ordinary guarded town, or switched off: nothing is recorded.
         var other = Player("Other", Elsewhere);
@@ -226,7 +248,149 @@ public class GuardWitnessVerification : IDisposable
         ClusterFGuardWitness.Enabled = false;
         ShardTestClock.AdvanceSeconds(2.0);
         culprit.CriminalAction(true);
-        Assert.Single(ClusterFGuardWitness.IncidentsIn("p628-pilot"));
+        Assert.Equal(2, ClusterFGuardWitness.IncidentsIn("p628-pilot").Count);
+    }
+
+    // cc-P647 (P628 and P635 reviews): the callbacks of one action are one incident; a second offense by the same culprit
+    // in the same moment, on another victim at another place, is its own incident with its own witnesses.
+    [Fact]
+    public void OneActionIsOneIncidentAndADistinctOffenseIsAnother()
+    {
+        var culprit = Player("Culprit", Spot);
+        var first = Player("First", At(1));
+        var second = Player("Second", At(21));
+        var late = Player("Late", At(32)); // 32 from the first place, 12 from the second
+
+        culprit.DoHarmful(first); // the criminal flag, then the aggression: one action
+        var one = Assert.Single(ClusterFGuardWitness.IncidentsIn("p628-pilot"));
+        Assert.Equal(IncidentKind.Aggression, one.Kind);
+        Assert.Same(first, one.Victim);
+        Assert.False(one.SeenBy(late));
+
+        // In the same moment the culprit is across the street, on someone else.
+        culprit.MoveToWorld(At(20), Map.Trammel);
+        culprit.DoHarmful(second);
+        var incidents = ClusterFGuardWitness.IncidentsIn("p628-pilot");
+        _out.WriteLine(string.Join("; ", incidents.Select(i => $"#{i.Id} {i.Kind} {i.Victim?.Name} at {i.Location}: " +
+                                                            string.Join(", ", i.Witnesses.Select(w => w.Mobile.Name)))));
+        Assert.Equal(2, incidents.Count);
+        Assert.Same(first, incidents[0].Victim);
+        Assert.Equal(Spot, incidents[0].Location);
+        Assert.False(incidents[0].SeenBy(late));
+        Assert.Same(second, incidents[1].Victim);
+        Assert.Equal(At(20), incidents[1].Location);
+        Assert.True(incidents[1].SeenBy(late));
+        Assert.Equal(At(20), incidents[1].Witnesses.Single(w => w.Mobile == late).LastSeen);
+    }
+
+    // cc-P647 (P628 and P635 reviews): a witness must see the place of the action too. Around a corner, someone who sees
+    // the attacker but not the victim, or the helper but not the criminal they heal, did not witness it.
+    [Fact]
+    public void AWitnessMustSeeTheVictimOfAnAttackOrAssist()
+    {
+        var culprit = Player("Culprit", Spot);
+        var victim = Player("Victim", At(0, 6));
+        var watcher = Player("Watcher", At(-6, 0));
+        var clear = Player("Clear", At(2, 3));
+        Wall(At(-3, 3));
+        Wall(At(-3, 2));
+        Wall(At(-2, 3));
+        Assert.True(watcher.InLOS(culprit));
+        Assert.False(watcher.InLOS(victim));
+
+        culprit.DoHarmful(victim);
+        var attack = Assert.Single(ClusterFGuardWitness.IncidentsIn("p628-pilot"));
+        _out.WriteLine($"attack: {string.Join(", ", attack.Witnesses.Select(w => w.Mobile.Name))}");
+        Assert.Same(victim, attack.Victim);
+        Assert.True(attack.SeenBy(clear));
+        Assert.False(attack.SeenBy(watcher));
+
+        // A heal for a criminal: the helper in sight, the one helped around the corner.
+        ShardTestClock.AdvanceSeconds(2.0);
+        var helper = Player("Helper", Spot);
+        culprit.Delete();
+        victim.Criminal = true;
+        helper.DoBeneficial(victim);
+        var assist = ClusterFGuardWitness.IncidentsIn("p628-pilot")[^1];
+        _out.WriteLine($"assist: {assist.Kind} {string.Join(", ", assist.Witnesses.Select(w => w.Mobile.Name))}");
+        Assert.Equal(IncidentKind.CriminalAssist, assist.Kind);
+        Assert.Same(helper, assist.Culprit);
+        Assert.True(assist.SeenBy(clear));
+        Assert.False(assist.SeenBy(watcher));
+    }
+
+    // cc-P647 (P640 review): a pet's crime forwards its owner's criminal flag (and, for an attack, an indirect harmful act).
+    // That is not a second witnessed crime at the owner's spot: one incident, the pet's, naming the owner, and only those
+    // who saw the owner learn where the owner was.
+    [Fact]
+    public void APetsCrimeNamesItsOwnerWithoutASecondIncident()
+    {
+        var owner = Player("Owner", At(30));
+        var bystander = Player("Bystander", At(31)); // beside the owner, 30 tiles from the pet's act
+        var victim = Player("Victim", At(1));
+        var onlooker = Player("Onlooker", At(3, 3));
+        var near = Player("Near", At(10)); // sees the pet and, 20 tiles off, not the owner
+        var pet = new Dog();
+        pet.MoveToWorld(Spot, Map.Trammel);
+        _made.Add(pet);
+        Assert.True(pet.SetControlMaster(owner));
+        Assert.Same(owner, pet.GetMaster());
+
+        pet.DoHarmful(victim);
+        var incidents = ClusterFGuardWitness.IncidentsIn("p628-pilot");
+        _out.WriteLine(string.Join("; ", incidents.Select(i => $"#{i.Id} {i.Kind} by {i.Culprit?.Name} on {i.Victim?.Name}: " +
+                                                            string.Join(", ", i.Witnesses.Select(w => w.Mobile.Name)))));
+        var incident = Assert.Single(incidents);
+        Assert.Same(pet, incident.Culprit);
+        Assert.Same(victim, incident.Victim);
+        Assert.Same(owner, incident.ResponsibleMaster);
+        Assert.True(incident.SeenBy(onlooker));
+        Assert.True(incident.SeenBy(near));
+        Assert.False(incident.SeenBy(bystander));
+        Assert.All(incident.Witnesses, w => Assert.Null(w.MasterLastSeen)); // nobody here saw the owner
+
+        // A witness who saw the owner as well learns the owner's place.
+        ShardTestClock.AdvanceSeconds(2.0);
+        owner.MoveToWorld(At(5, -5), Map.Trammel);
+        pet.DoHarmful(near);
+        var second = ClusterFGuardWitness.IncidentsIn("p628-pilot")[^1];
+        Assert.Equal(2, ClusterFGuardWitness.IncidentsIn("p628-pilot").Count);
+        Assert.Same(pet, second.Culprit);
+        Assert.Equal(At(5, -5), second.Witnesses.Single(w => w.Mobile == onlooker).MasterLastSeen);
+        Assert.Null(second.Witnesses.SingleOrDefault(w => w.Mobile == owner)); // the owner is not their own witness
+    }
+
+    // cc-P647 (P640 review): an act stock guards would not answer (GuardedRegion.IsGuardCandidate: a blessed or staff
+    // mobile, an invulnerable creature, a guard) leaves no incident a witness could report as a suspect.
+    [Fact]
+    public void ActsStockGuardsRejectAreNotReportable()
+    {
+        var seer = Player("Seer", At(5));
+        var blessed = Player("Blessed", Spot);
+        blessed.Blessed = true;
+        var vendor = new Healer(); // a wandering healer is always invulnerable
+        vendor.MoveToWorld(At(0, 2), Map.Trammel);
+        _made.Add(vendor);
+        Assert.True(vendor.IsInvulnerable);
+        var criminal = Player("Criminal", At(1, 1));
+        criminal.Criminal = true;
+
+        blessed.CriminalAction(true);
+        vendor.CriminalAction(true);
+        blessed.DoBeneficial(criminal); // the assist hook: a heal for a criminal
+        Assert.Empty(ClusterFGuardWitness.IncidentsIn("p628-pilot"));
+        SayGuards(seer);
+        Assert.Null(ClusterFGuardWitness.Reports.Last().Incident);
+
+        // The same acts by an ordinary player are recorded and reportable.
+        ShardTestClock.AdvanceSeconds(2.1);
+        var helper = Player("Helper", At(-1));
+        helper.DoBeneficial(criminal);
+        var assist = Assert.Single(ClusterFGuardWitness.IncidentsIn("p628-pilot"));
+        Assert.Equal(IncidentKind.CriminalAssist, assist.Kind);
+        Assert.Same(helper, assist.Culprit);
+        SayGuards(seer);
+        Assert.Same(assist, ClusterFGuardWitness.Reports.Last().Incident);
     }
 
     // ---------------------------------------------------------------- 3
@@ -288,6 +452,53 @@ public class GuardWitnessVerification : IDisposable
         var ghost = Player("Ghost", At(6));
         ghost.Kill();
         SayGuards(ghost);
+        Assert.Equal(count, ClusterFGuardWitness.Reports.Count);
+    }
+
+    // cc-P647 (P628 review): off the test shard neither the command nor the switch turns observation on.
+    [Fact]
+    public void ObservationRunsOnlyOnTheTestShard()
+    {
+        ClusterFGuardWitness.Configure(); // registers [GuardWitness
+        var admin = Player("Admin", At(30));
+        admin.AccessLevel = AccessLevel.Administrator;
+        var culprit = Player("Culprit", Spot);
+        Player("Seer", At(5));
+        ClusterFGuardWitness.Enabled = false;
+        ClusterFGuardWitness.IsTestShard = () => false;
+
+        Assert.True(CommandSystem.Handle(admin, $"{CommandSystem.Prefix}GuardWitness on"));
+        Assert.False(ClusterFGuardWitness.Enabled);
+        ClusterFGuardWitness.Enabled = true; // a script's switch: still inert
+        Assert.False(ClusterFGuardWitness.Enabled);
+        culprit.CriminalAction(true);
+        Assert.Empty(ClusterFGuardWitness.IncidentsIn("p628-pilot"));
+
+        ClusterFGuardWitness.IsTestShard = () => true;
+        ShardTestClock.AdvanceSeconds(2.0);
+        culprit.CriminalAction(true);
+        Assert.Single(ClusterFGuardWitness.IncidentsIn("p628-pilot"));
+    }
+
+    // cc-P647 (P640 review): the two-second caller limit keeps only the callers still inside it.
+    [Fact]
+    public void CallerHistoryKeepsOnlyCallersInsideTheLimit()
+    {
+        var callers = new[] { Player("A", At(1)), Player("B", At(2)), Player("C", At(3)) };
+        foreach (var c in callers)
+        {
+            SayGuards(c);
+        }
+
+        Assert.Equal(3, ClusterFGuardWitness.CallerHistoryCount);
+        callers[2].Delete();
+        ShardTestClock.AdvanceSeconds(2.1);
+
+        var fresh = Player("Fresh", At(4));
+        SayGuards(fresh);
+        Assert.Equal(1, ClusterFGuardWitness.CallerHistoryCount);
+        var count = ClusterFGuardWitness.Reports.Count;
+        SayGuards(fresh); // still limited
         Assert.Equal(count, ClusterFGuardWitness.Reports.Count);
     }
 

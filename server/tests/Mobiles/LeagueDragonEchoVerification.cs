@@ -11,10 +11,16 @@
 //   3. It may harm a wild creature and nothing else: not a player, a pet, a summon, a vendor, a guard or an escort, and
 //      not a creature that was tamed after it was picked.
 //   4. A saved Echo never resumes: after a load it deletes itself and is never registered.
+//   cc-P647 (the P642 and P630 reviews):
+//   5. A wild creature's lethal hit on the Echo gives its full-health owner no pet-loss count, AP or Renown; an ordinary
+//      pet killed the same way still counts.
+//   6. Between watchdog passes, the moment its caller stops qualifying (leash, rank, switch, a town, gone) it refuses harm
+//      and dissolves on the next tick.
 
 using System;
 using Server;
 using Server.Engines.LeagueEchoes;
+using Server.Engines.LeagueRegister;
 using Server.Items;
 using Server.Mobiles;
 using Xunit;
@@ -229,6 +235,106 @@ public class LeagueDragonEchoVerification
         }
         finally
         {
+            LeagueEchoesVerification.Cleanup(a);
+        }
+    }
+
+    // ---------------------------------------------------------------- 5 (cc-P647, P642 R1)
+
+    [Fact]
+    public void AWildCreaturesLethalHitOnTheEchoGivesItsOwnerNoPetLossAchievement()
+    {
+        var a = LeagueEchoesVerification.NewAccount();
+        var pm = LeagueEchoesVerification.NewCharacter(a); // online, full health
+        var wild = LeagueEchoesVerification.Wild;
+        var orc = new Orc();
+        orc.MoveToWorld(new Point3D(wild.X + 2, wild.Y, 0), Map.Trammel);
+        var horse = new Horse();
+        LeagueEchoSettings.EnabledOverride = true;
+        try
+        {
+            var counter = ClusterFAchievementSystem.NotedCounter(TriggerKind.PetDiedAtFullHp);
+            var data = ClusterFAccountPersistence.GetOrCreate(a);
+            var (ap, renown) = (data.AchievementPoints, data.Renown);
+            pm.Hits = pm.HitsMax;
+
+            Assert.Equal(EchoCall.Called, LeagueEchoSystem.TryCall(pm, out var echo));
+            echo!.Damage(echo.Hits + 50, orc); // real damage: Hits reaches 0 before OnBeforeDeath dissolves it
+
+            Assert.True(echo.Deleted);
+            Assert.Equal(pm.HitsMax, pm.Hits);
+            Assert.Equal(0, ClusterFAchievementSystem.GetCounter(a.Username, counter));
+            Assert.False(ClusterFAchievementSystem.HasEarned(a, ClusterFAchievementSystem.AcceptableLossesKey));
+            Assert.Equal(ap, data.AchievementPoints);
+            Assert.Equal(renown, data.Renown);
+
+            // The control: an ordinary pet killed the same way still counts.
+            horse.MoveToWorld(new Point3D(wild.X + 1, wild.Y + 1, 0), Map.Trammel);
+            Assert.True(horse.SetControlMaster(pm));
+            horse.Damage(horse.Hits + 50, orc);
+            Assert.Equal(1, ClusterFAchievementSystem.GetCounter(a.Username, counter));
+        }
+        finally
+        {
+            horse.Delete();
+            orc.Delete();
+            LeagueEchoesVerification.Cleanup(a);
+        }
+    }
+
+    // ---------------------------------------------------------------- 6 (cc-P647, P630 review)
+
+    [Fact]
+    public void BetweenWatchdogPassesItRefusesHarmTheMomentItsCallerStopsQualifying()
+    {
+        var a = LeagueEchoesVerification.NewAccount();
+        var pm = LeagueEchoesVerification.NewCharacter(a);
+        var wild = LeagueEchoesVerification.Wild;
+        var orc = new Orc();
+        orc.MoveToWorld(new Point3D(wild.X + 2, wild.Y, 0), Map.Trammel);
+        LeagueEchoSettings.EnabledOverride = true;
+        Server.Regions.GuardedRegion town = null;
+        try
+        {
+            void Refuses(string why, Action stop, Action undo)
+            {
+                ShardTestClock.Arm(); // the watchdog's one-second timer never runs inside this
+                ClusterFAccountPersistence.GetOrCreate(a).LeagueEchoNextUseUtc = DateTime.MinValue;
+                Assert.Equal(EchoCall.Called, LeagueEchoSystem.TryCall(pm, out var echo));
+                Assert.True(echo!.CanBeHarmful(orc, false), why);
+
+                stop();
+
+                Assert.False(echo.CanBeHarmful(orc, false), why);
+                ShardTestClock.AdvanceSeconds(0.1);
+                Assert.True(echo.Deleted, why);
+                Assert.Equal(0, pm.Followers);
+                undo();
+            }
+
+            Refuses("leash", () => pm.MoveToWorld(new Point3D(wild.X + 13, wild.Y, 0), Map.Trammel),
+                () => pm.MoveToWorld(wild, Map.Trammel));
+            Refuses("rank", () => ClusterFLeagueRanks.SetRank(pm, LeagueRegisterSettings.Rank("Blaze")),
+                () => ClusterFLeagueRanks.SetRank(pm, LeagueRegisterSettings.Rank("Mythril")));
+            Refuses("switch", () => LeagueEchoSettings.EnabledOverride = false, () => LeagueEchoSettings.EnabledOverride = true);
+
+            Refuses("caller in a town", () =>
+            {
+                town = new Server.Regions.GuardedRegion("P647 echo town", Map.Trammel, 50,
+                    new Rectangle3D(new Point3D(pm.X - 1, pm.Y - 1, -128), new Point3D(pm.X + 1, pm.Y + 1, 127)));
+                town.Register();
+            }, () =>
+            {
+                town.Unregister();
+                town = null;
+            });
+
+            Refuses("owner gone", () => pm.Delete(), () => { });
+        }
+        finally
+        {
+            town?.Unregister();
+            orc.Delete();
             LeagueEchoesVerification.Cleanup(a);
         }
     }

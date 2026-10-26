@@ -4,7 +4,8 @@
 //
 // Never a reward: Fame and Karma 0, NoKillAwards, no loot, no resources, an empty pack. Lethal damage or Release dissolves
 // it (OnBeforeDeath deletes it and returns false), so there is no corpse and no death event. A saved Echo is deleted after
-// the world loads; it never resumes. Its harm checks go through LeagueEchoPolicy: wild creatures only.
+// the world loads; it never resumes. Its harm checks go through LeagueEchoPolicy: wild creatures only. cc-P647: each harm
+// check also asks LeagueEchoSystem.WhyEnd, so a caller who stops qualifying gets no hit between watchdog passes.
 
 #nullable enable
 
@@ -133,13 +134,22 @@ public partial class LeagueDragonEcho : BaseCreature
 
     public override bool CanBeHarmful(Mobile target, bool message, bool ignoreOurBlessedness)
     {
+        // cc-P647 (P630 review): the watchdog's checks again before every harm, not only once a second. A caller who has
+        // stopped qualifying (gone, too far, either of them in a forbidden place, a duel, the rank, the switch) gets no more
+        // hits; the Echo dissolves on the next tick, outside whatever AI or combat code asked.
+        if (LeagueEchoSystem.WhyEnd(this) != null)
+        {
+            Timer.StartTimer(TimeSpan.Zero, Dissolve);
+            return false;
+        }
+
         if (!LeagueEchoPolicy.IsLegalTarget(target) || LeagueEchoPolicy.CheckPlace(Location, Map) != EchoPlace.Ok)
         {
             return false;
         }
 
         // The owner's ordinary harm rules apply to what the Echo hits for them (never back into this override).
-        if (Owner is { Deleted: false } owner && !owner.CanBeHarmful(target, false))
+        if (Owner is not { Deleted: false } owner || !owner.CanBeHarmful(target, false))
         {
             return false;
         }
