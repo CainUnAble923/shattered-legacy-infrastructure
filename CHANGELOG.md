@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.14
+
+### Staff
+- Guard witness pilot (test shard only, off until [GuardWitness on): in Cove on Trammel the server notes who could actually see each crime (in range, in sight, not hidden) and which guards could hear each call for the guards. [GuardWitness log lists them. It only watches: guards still answer exactly as before. It is the groundwork for guards that walk to what they see.
+
 ## 2026.10.25.13
 
 ### Added

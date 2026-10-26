@@ -836,6 +836,15 @@ apply_patch "$PATCHES/HousePlacement-climbed-tile.patch"
 apply_patch "$PATCHES/BaseCreature-con-color-line.patch"
 apply_patch "$PATCHES/ItemIdentification-appraisal.patch"
 
+# cc-P628 (ours): guards that patrol and see, stage 1, the witness contract (customizations ClusterFGuardWitness, off by
+# default, observe only). Four calls in GuardedRegion, one in each stock path that can bring guards: a criminal
+# aggression, a criminal action, a criminal's helper, and a living speaker's *guards* keyword. Each records the event
+# (who saw it, who heard the call) before the stock response, which still runs unchanged. Rejected: an EventSink
+# subscriber (there is an aggression event but none for a criminal action or for region speech), and replacing
+# GuardedRegion wholesale (hides upstream drift). Argued in shard-migration notes/cc-P628-build-guard-patrols-pilot.md;
+# pinned by GuardWitnessVerification.
+apply_patch "$PATCHES/GuardedRegion-witness-observe.patch"
+
 # cc-P262 (ours): accessory slots (extra rings, bracelets, toe rings). AosAttributes.GetValue adds the active jewellery in
 # the wearer's accessory container, which customizations ClusterFAccessories decides (resists need no patch: the
 # container reports them through its own resistance properties, which ComputeResistances already reads). PlayerMobile's

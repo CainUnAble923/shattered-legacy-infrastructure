@@ -1,0 +1,34 @@
+--- a/Projects/UOContent/Regions/GuardedRegion.cs
++++ b/Projects/UOContent/Regions/GuardedRegion.cs
+@@ -192,6 +192,7 @@
+ 
+         if (args.Mobile.Alive && args.HasKeyword(0x0007)) // *guards*
+         {
++            ClusterFGuardWitness.OnGuardsCalled(this, args); // Shattered Legacy (cc-P628): observe only
+             CallGuards(args.Mobile.Location);
+         }
+     }
+@@ -202,6 +203,7 @@
+ 
+         if (!IsDisabled() && aggressor != aggressed && criminal)
+         {
++            ClusterFGuardWitness.OnAggressed(this, aggressor, aggressed); // Shattered Legacy (cc-P628): observe only
+             CheckGuardCandidate(aggressor);
+         }
+     }
+@@ -219,6 +221,7 @@
+ 
+         if (helper != helped && noto is Notoriety.Criminal or Notoriety.Murderer)
+         {
++            ClusterFGuardWitness.OnCriminalAssist(this, helper, helped); // Shattered Legacy (cc-P628): observe only
+             CheckGuardCandidate(helper);
+         }
+     }
+@@ -229,6 +232,7 @@
+ 
+         if (!IsDisabled())
+         {
++            ClusterFGuardWitness.OnCriminalAction(this, m); // Shattered Legacy (cc-P628): observe only
+             CheckGuardCandidate(m);
+         }
+     }
