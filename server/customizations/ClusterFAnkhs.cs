@@ -208,7 +208,8 @@ public static class ClusterFAnkhs
     {
         foreach (var map in Map.AllMaps)
         {
-            if (map == null || map == Map.Internal)
+            // cc-P661: the Fold's maps draw Trammel's own files; Trammel's statics are listed once, under Trammel.
+            if (map == null || map == Map.Internal || FoldMaps.IsFold(map))
             {
                 continue;
             }
