@@ -260,7 +260,8 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P266: the second winter block (13192-13238), checked with the first by the winter fact.
     # cc-P277: the dragons' mount items (28295-28296), checked by their own fact.
     # cc-P365: the reward mounts' mount items (46672-46689), checked by their own fact.
-    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28296) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) -and ([int]$_.id -lt 46672 -or [int]$_.id -gt 46689) })
+    # cc-P632: the scoring archery butte's hit pictures (46690-46709), checked by their own fact.
+    $k = @($rec.tiledata | Where-Object { $_.name -ne 'shattered runestone' -and ([int]$_.id -lt 15424 -or [int]$_.id -gt 15470) -and ([int]$_.id -lt 15472 -or [int]$_.id -gt 15489) -and ([int]$_.id -lt 15496 -or [int]$_.id -gt 15529) -and ([int]$_.id -lt 13184 -or [int]$_.id -gt 13189) -and ([int]$_.id -lt 15592 -or [int]$_.id -gt 15629) -and ([int]$_.id -lt 15536 -or [int]$_.id -gt 15589) -and ([int]$_.id -lt 28016 -or [int]$_.id -gt 28296) -and ([int]$_.id -lt 13192 -or [int]$_.id -gt 13238) -and ([int]$_.id -lt 46672 -or [int]$_.id -gt 46689) -and ([int]$_.id -lt 46690 -or [int]$_.id -gt 46709) })
     Assert-Equal 1 $k.Count 'one record besides the stones'
     $k = $k[0]
     Assert-Equal ([Convert]::ToInt32([regex]::Match($kc, 'ItemIdValue = (0x[0-9A-F]+);').Groups[1].Value, 16)) ([int]$k.id) 'item ID'
@@ -305,10 +306,59 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P266 the 47 second-block winter decor IDs (13192-13238) and the advent calendar gump 22469; cc-P364 the 14 League
     # bestiary bodies (2072-2085); cc-P362 the 29 UI skin gumps (23052-23080) and 64 scroll skin art IDs (13049-13112); cc-P365 the 34 mount and evo bodies (2088-2133)
     # and 18 mount items (46672-46689); cc-P436 the nine guild and League frame gumps (23200-23208).
-    Assert-Equal 781 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art; cc-P436: + 9 gumps
+    Assert-Equal 801 $reg.Count 'registry rows'   # cc-P632: + 20 art; cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art; cc-P436: + 9 gumps
     Assert-Equal 74 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364), 2086-2087 (cc-P277), 34 of 2088-2133 (cc-P365)'
     Assert-Equal 54 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468, 22469, 23052-23080 (cc-P362) and 23200-23208 (cc-P436)'
-    Assert-Equal 652 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
+    Assert-Equal 672 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows (cc-P632: + 20 butte pictures)'
+}
+
+Fact 'TheScoringButteRecordsAreTheServersTableAndEveryPictureIsThere' {
+    # cc-P632 (P571 BUTTE-A). ScoringArcheryButteArt.cs carries the server's copy of the 20 hit pictures' records;
+    # records.json carries the players'. Same IDs and values (the stock butte 0x100A/0x100B's: "archery butte",
+    # ArticleAn | Impassable 0x00008040, weight 255, height 10), each ID registered once as Archaaz's art with a 66x81 PNG.
+    $cs  = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\Items\Addons\ScoringArcheryButteArt.cs'))
+    $rec = [IO.File]::ReadAllText($records) | ConvertFrom-Json
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $first = [int][regex]::Match($cs, 'FirstId = (\d+);').Groups[1].Value
+    $last  = [int][regex]::Match($cs, 'LastId = (\d+);').Groups[1].Value
+    Assert-Equal 46690 $first 'first ID in C#'
+    Assert-Equal 46709 $last 'last ID in C#'
+    $flagValue = @{ Impassable = 0x40; ArticleAn = 0x8000 }
+    $v = 0
+    foreach ($nm in ([regex]::Match($cs, 'TileFlags = ([^;]+);').Groups[1].Value -split '\|' | ForEach-Object { $_.Trim() -replace '^TileFlag\.', '' })) {
+        if (-not $flagValue.ContainsKey($nm)) { throw "unknown flag $nm in C#" }
+        $v = $v -bor $flagValue[$nm]
+    }
+    Assert-Equal 0x8040 $v 'C# flags are the stock butte 0x100A tiledata flags'
+    $name   = [regex]::Match($cs, 'TileName = "([^"]+)";').Groups[1].Value
+    $weight = [int][regex]::Match($cs, 'TileWeight = (\d+);').Groups[1].Value
+    $height = [int][regex]::Match($cs, 'TileHeight = (\d+);').Groups[1].Value
+
+    $butte = @($rec.tiledata | Where-Object { [int]$_.id -ge $first -and [int]$_.id -le $last })
+    Assert-Equal 20 $butte.Count 'twenty records in records.json'
+    Assert-Equal (($first..$last) -join ',') (@($butte | ForEach-Object { [int]$_.id }) -join ',') 'every ID once, in order'
+    foreach ($j in $butte) {
+        Assert-Equal $name $j.name "name of $($j.id)"
+        Assert-Equal $v ([Convert]::ToInt32(($j.flags -replace '^0x', ''), 16)) "flags of $($j.id)"
+        Assert-Equal $weight ([int]$j.weight) "weight of $($j.id)"
+        Assert-Equal $height ([int]$j.height) "height of $($j.id)"
+        Assert-Equal 0 ([int]$j.animId) "no animation on $($j.id)"
+    }
+    Assert-Equal 0 @($rec.animdata | Where-Object { [int]$_.id -ge $first -and [int]$_.id -le $last }).Count 'no animdata: the server picks each still'
+
+    Add-Type -AssemblyName System.Drawing
+    $art  = Join-Path $pkg 'vendor\shattered-legacy-art\art'
+    $rows = @($reg | Where-Object { [int]$_.id -ge $first -and [int]$_.id -le $last })
+    Assert-Equal 20 $rows.Count 'twenty registry rows'
+    foreach ($r in $rows) {
+        Assert-Equal 'art' $r.kind "kind of $($r.id)"
+        Assert-True ($r.license -like 'none stated*') "license of $($r.id)"
+        Assert-True ($r.source -like '*Archaaz*') "source of $($r.id)"
+        $png = Join-Path $art ($r.id + '.png')
+        Assert-True (Test-Path -LiteralPath $png) "PNG for $($r.id)"
+        $img = [System.Drawing.Image]::FromFile($png)
+        try { Assert-Equal '66x81' "$($img.Width)x$($img.Height)" "size of $($r.id) (the stock butte's canvas)" } finally { $img.Dispose() }
+    }
 }
 
 Fact 'TheChestMimicRecordsAreTheServersTableAndEveryFrameAndPngIsThere' {

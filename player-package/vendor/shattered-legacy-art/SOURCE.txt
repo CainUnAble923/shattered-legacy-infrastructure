@@ -613,3 +613,32 @@ License:     Erachiro: "Everything you see in this pack is free to use." Credit 
              inside the player package or the private repo; do not repost.
 Made by:     notes\cc-P436-tools\make_pieces.py in shard-migration (the same cut as the step 1 previews; --check
              compares the shipped PNGs with a fresh cut).
+
+Scoring archery butte hit pictures (cc-P632, P571): IDs 46690-46709 (0xB662-0xB675)
+-------------------------------------------------------------------------------------
+Author:      Archaaz
+Resource:    "Archery Butte that Shows Where Arrows and Bolts Hit",
+             https://www.servuo.dev/archive/archery-butte-that-shows-where-arrow-and-bolts-hit-script-and-graphics.1340/
+             (posted 2020-02-04, updated 2020-02-05)
+Downloaded:  2026-10-22, by the art task on Chase's request (Chase's servuo.dev login), file Archery Butte.7z. Kept at
+             D:\UO\third-party\code\archery-butte-hits\ (original in _zips\, notes in SOURCE.txt there).
+License:     NONE STATED, on the page or in the download. Community art: credit Archaaz, ship it only inside the player
+             package, never repost the files. The author redrew EA's own archery butte, so it ships as our PNGs over
+             free IDs, never as a part of an EA file (as his chest mimic above). Chase chose this set on 2026-10-25.
+Used:        the 20 complete pictures only (66x81, 24-bit, black background). The four loose projectile pieces (East and
+             South Arrow 44x33, East and South Bolt 44x32) are not used: the script never draws them.
+Each picture is, in 5-bit colour, the stock butte with one projectile added: the east ones 0x100A, the south ones
+0x100B (compared on 2026-10-26: no stock pixel removed, at most 14 added, every change inside one box of at most 14 x
+14 pixels). So they keep the stock canvas and stand where the stock target stands. In order, five per block:
+bullseye, inner, middle, outer, miss (Total Miss: the projectile in the frame):
+  46690-46694  Arrows\Arrow East <ring>.bmp       46695-46699  Arrows\Arrow South <ring>.bmp
+  46700-46704  Bolts\Bolt East <ring>.bmp         46705-46709  Bolts\Bolt South <ring>.bmp
+IDs: scripts\find-free-art.py --run 20 (2026-10-26, the approved 7.0.117 client: art, art.def, tiledata, animdata,
+maps, multis, tileart, pinned and our code, the registry); 0xB662-0xB675 is the start of a free run of 1310, right
+after the reward mounts' 46672-46689. The download's own IDs (0x7898-0x78AB) were not used.
+What was done to the pixels: scripts\anchor-art-frames.py --black-transparent --keep-geometry. BMP to PNG, pure black
+(0,0,0) to transparent (every pure-black pixel is background reached from the edge; none lies inside the target).
+No pixel of the art changed and the canvas is kept. The tool re-reads every PNG and checks it against its source.
+Records (records.json), written by hand: the stock butte's own tiledata, read from the client's tiledata.mul (SHA-256
+44f48a45...): "archery butte", 0x00008040 (ArticleAn | Impassable), weight 255, height 10, for every picture in both
+facings. No animdata: the server shows each still. Server copy: ScoringArcheryButteArt.Records.

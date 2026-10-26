@@ -66,6 +66,9 @@ namespace Server
 
             // cc-P265: the guild hall decor packs (GuildHallDecorArt.Pieces, generated from the catalogue).
             GuildHallDecorArt.Apply();
+
+            // cc-P632: the scoring archery butte's hit pictures (ScoringArcheryButteArt.Records).
+            Items.ScoringArcheryButteArt.Apply();
         }
     }
 }
