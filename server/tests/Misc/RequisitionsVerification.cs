@@ -733,12 +733,13 @@ public class RequisitionsVerification
 
         // A version 19 save: the same bytes without the v20 tail (an empty record set is one int) and, since cc-P229, the
         // v21 tail after it (an empty LeagueTitleRecord: its version and two empty counts), and since cc-P238 the v22 tail
-        // (an empty MinedBlockRecord: its version and an empty count), the version patched.
+        // (an empty MinedBlockRecord: its version and an empty count), and since cc-P630 the v23 tail (the Echo time, 8
+        // bytes), the version patched.
         var bare = new BufferWriter(true);
         new ClusterFAccountData().Serialize(bare);
         var v20 = bare.Buffer.AsSpan(0, (int)bare.Position).ToArray();
-        Assert.Equal(22, BitConverter.ToInt32(v20, 0));
-        var v19 = v20.AsSpan(0, v20.Length - 4 - 12 - 8).ToArray();
+        Assert.Equal(23, BitConverter.ToInt32(v20, 0));
+        var v19 = v20.AsSpan(0, v20.Length - 4 - 12 - 8 - 8).ToArray();
         BitConverter.GetBytes(19).CopyTo(v19, 0);
 
         var oldReader = new BufferReader(v19);
@@ -748,7 +749,7 @@ public class RequisitionsVerification
 
         var again = new BufferWriter(true);
         loaded.Serialize(again);
-        Assert.Equal(22, BitConverter.ToInt32(again.Buffer, 0));
+        Assert.Equal(23, BitConverter.ToInt32(again.Buffer, 0));
         Assert.Equal(v20.Length, again.Position);
         _out.WriteLine($"v20 {v20.Length} bytes, v19 {v19.Length} bytes, full record {writer.Position} bytes");
     }
