@@ -217,12 +217,15 @@ public sealed class LevelGearState
     public Dictionary<string, int> Bought { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public int BoughtOf(LevelGearAttribute a) => Bought.TryGetValue(a.Key, out var v) ? v : 0;
+
+    // cc-P633: the weapon milestone effect bought (LevelGearProcs.cs), or null. Kept as saved even for an unknown key.
+    public LevelGearProcPurchase? Proc { get; set; }
 }
 
 public class LevelGearStore : GenericPersistence
 {
-    // 0: cc-P261.
-    public const int CurrentVersion = 0;
+    // 0: cc-P261. 1: cc-P633, each row ends with its milestone purchase (a flag, then the purchase).
+    public const int CurrentVersion = 1;
 
     private static LevelGearStore? _instance;
 
@@ -274,6 +277,16 @@ public class LevelGearStore : GenericPersistence
                 writer.Write(key);
                 writer.WriteEncodedInt(value);
             }
+
+            writer.Write(s.Proc != null);
+            if (s.Proc is { } p)
+            {
+                writer.Write(p.Key);
+                writer.WriteEncodedInt(p.RequiredLevel);
+                writer.WriteEncodedInt(p.PurchaseLevel);
+                writer.Write(p.PurchasedAt);
+                writer.WriteEncodedInt(p.PaidCost);
+            }
         }
     }
 
@@ -305,6 +318,18 @@ public class LevelGearStore : GenericPersistence
             {
                 var key = reader.ReadString();
                 s.Bought[key] = reader.ReadEncodedInt();
+            }
+
+            // A version 0 row has no milestone: never infer one from its level.
+            if (version >= 1 && reader.ReadBool())
+            {
+                s.Proc = new LevelGearProcPurchase(
+                    reader.ReadString(),
+                    reader.ReadEncodedInt(),
+                    reader.ReadEncodedInt(),
+                    reader.ReadDateTime(),
+                    reader.ReadEncodedInt()
+                );
             }
 
             Rows[serial] = s;
@@ -579,12 +604,18 @@ public static class ClusterFLevelGear
 
     // -- Spending points ------------------------------------------------------------------------------------------------
 
-    /// <summary>How many properties the item has now, its own and those only a level bought.</summary>
+    /// <summary>How many properties the item has now, its own, those only a level bought, and a milestone effect.</summary>
     public static int SlotsUsed(Item item)
     {
         var used = ImbueCatalogue.CountActiveProperties(item);
         if (LevelGearStore.Of(item) is { } s)
         {
+            // cc-P633: the milestone is its own slot, beside any native hit spell, dormant or not.
+            if (s.Proc != null)
+            {
+                used++;
+            }
+
             foreach (var a in LevelGearAttribute.All)
             {
                 if (s.BoughtOf(a) > 0 && a.OwnValue(item) == 0)
