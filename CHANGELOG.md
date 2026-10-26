@@ -29,6 +29,27 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26.8
+
+### Fixed
+- Tracking Ping: if too many creatures crowd in while a ping is running, it ends free, with your stamina and wait given back.
+- Tracking Ping: the Ping button on an old Tracking menu no longer skips the wait from a skill you used since.
+- Tracking Ping: players hidden from you by a tournament duel, and their pets, are no longer found by a ping and do not feel watched.
+- Tracking Ping: a ping no longer reads the area or warns anyone after its time is up, even when the server is slow.
+- Persuasion: the menu checks again when you choose. If you have died, changed facet, moved away or out of sight, or the person can no longer be asked, nothing happens and nothing is spent.
+- Persuasion: a courier letter left in your bank still counts as your one job. Deliver it, or let it go stale, before asking for another.
+- Persuasion: bankers in part of a town, such as Luna's bank, count as that town for courier letters, and gypsy bankers and minters take banker letters.
+
+### Staff
+- Test-shard-only features now refuse to switch on anywhere else, and their config switches do nothing there: [ItemKnowledge, [GuardWitness, [LeagueInvestigationSeed, [LeagueEcho (status still works), [ClusterFTownsfolk, [LevelGearProcs and [Leaseholds.
+- Item identification: unidentified items keep their blessed, cursed, insured, blessed-for, quest-item and locked-down labels; a fully identified item still hides any line nobody has reviewed; Use Best Weapon Skill and skill bonuses now count toward how hard an item is to appraise.
+- Guard witness log: each separate crime by one person is its own entry, only people who could see the victim count as witnesses, a pet's crime names its owner without a second entry, and people the guards would ignore (blessed, staff, invulnerable) leave no entry.
+- League warrants: a warrant can no longer go inside a bag (one already in a bag moves back to the top of the pack or bank after a restart). The seeder refuses a site when the facet's map or statics files are not loaded, or when any region over it is not allowed, including one hidden under another region or at another height.
+- League Echo: it stops attacking the moment its caller stops qualifying, ends at once when its caller disconnects, cannot be called while offline, and its death no longer counts toward pet-loss achievements.
+- Townsfolk: Mara and Ellis can no longer be moved by "<name> move", pet orders said beside them reach the pets, and the dialogue table refuses repeated answers, pet-order words, a wrong region for a resident and topic names that are not plain words. A table file that cannot be read keeps the old table.
+- Weapon milestones: the bought effect shows on the weapon's tooltip, the confirmation charges only the price and level it showed, its page says when the effect is switched off and shows the level it was bought at, and a chest mimic with its lid shut no longer uses up a strike.
+- Town houses: [Leaseholds refuses a building not wholly inside a guarded town (upper floors included), a street spot that cannot be stood on, another structure reaching into the building, a town addon container inside, and one of a linked pair of doors without the other. A town house's storage now holds twice its lockdowns, as stock houses do.
+
 ## 2026.10.26.7
 
 ### Staff

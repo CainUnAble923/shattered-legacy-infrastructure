@@ -9,6 +9,10 @@
 //
 // Off by default (clusterf.townsfolk.enabled). The tutorial phase is read without creating anything:
 // ClusterFAccountPersistence.Get, never ClusterFTutorial.RecordOf (which creates account data).
+//
+// P647 (P631/P643 review fixes): talk is on only on the test shard, whatever the setting or the switch says, and
+// [ClusterFTownsfolk on refuses elsewhere. Speech a client tags with a stock pet, move, time or train keyword is left for
+// the stock handlers, so a resident never swallows a pet order. A topic with no line but the last one said repeats it.
 
 #nullable enable
 
@@ -40,6 +44,9 @@ public static class ClusterFTownsfolkService
     /// <summary>The test shard's switch ([ClusterFTownsfolk on|off): overrides the setting until restart. Never saved.</summary>
     public static bool? EnabledOverride { get; set; }
 
+    /// <summary>Stage 1 runs on the test shard only (P647): elsewhere the setting and the switch are ignored. A seam for tests.</summary>
+    public static Func<bool> IsTestShard { get; set; } = () => ClusterFStaffHub.IsTestShard;
+
     public static bool SettingEnabled => ServerConfiguration.GetOrUpdateSetting(Prefix + "enabled", false);
 
     public static int TalkRange => ServerConfiguration.GetOrUpdateSetting(Prefix + "talkRange", 3);
@@ -56,9 +63,26 @@ public static class ClusterFTownsfolkService
 
     public static string? SettingsProblem() => SettingsProblem(TalkRange, TalkCooldownSeconds, RepeatCooldownSeconds);
 
-    /// <summary>Talk is on: switched on, the settings sound, and a valid table loaded.</summary>
+    /// <summary>Talk is on: the test shard, switched on, the settings sound, and a valid table loaded.</summary>
     public static bool Enabled =>
-        (EnabledOverride ?? SettingEnabled) && SettingsProblem() == null && ClusterFTalkRules.Current != null;
+        IsTestShard() && (EnabledOverride ?? SettingEnabled) && SettingsProblem() == null && ClusterFTalkRules.Current != null;
+
+    /// <summary>
+    /// Speech keywords the stock handlers own (P647): every pet order BaseAI/OnSpeech.cs reads (0x155-0x170), and the
+    /// named move, time and train. Speech carrying one is never claimed as a topic.
+    /// </summary>
+    public static bool HasStockKeyword(SpeechEventArgs e)
+    {
+        foreach (var k in e.Keywords ?? [])
+        {
+            if (k is >= 0x155 and <= 0x170 or 0x9D or 0x9E or 0x6C)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     // -- Per-player state (never saved; gone with the mobile) ---------------------------------------------------------
 
@@ -155,7 +179,8 @@ public static class ClusterFTownsfolkService
     {
         var pm = e.Mobile;
         if (!Enabled || e.Handled || pm is not PlayerMobile || !pm.Alive ||
-            e.Type is not (MessageType.Regular or MessageType.Whisper) || npc is not ITalkResident resident)
+            e.Type is not (MessageType.Regular or MessageType.Whisper) || npc is not ITalkResident resident ||
+            HasStockKeyword(e))
         {
             return false;
         }
@@ -198,6 +223,15 @@ public static class ClusterFTownsfolkService
         foreach (var r in lines)
         {
             if (lines.Count == 1 || r.Text != last)
+            {
+                choices.Add(r.Text);
+            }
+        }
+
+        if (choices.Count == 0)
+        {
+            // Only the last line is left (the parser refuses repeats; this keeps any table from throwing here).
+            foreach (var r in lines)
             {
                 choices.Add(r.Text);
             }
@@ -249,6 +283,9 @@ public static class ClusterFTownsfolkService
                 e.Mobile.SendMessage(ClusterFTalkRules.Reload()
                     ? "Townsfolk table reloaded."
                     : $"Townsfolk table refused; the old one stays: {string.Join("; ", ClusterFTalkRules.LastErrors)}");
+                return;
+            case "on" when !IsTestShard():
+                e.Mobile.SendMessage("Townsfolk talk is stage 1: test shard only. It stays off here.");
                 return;
             case "on":
                 EnabledOverride = true;

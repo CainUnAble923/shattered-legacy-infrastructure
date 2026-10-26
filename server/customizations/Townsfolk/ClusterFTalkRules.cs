@@ -10,6 +10,10 @@
 // ("what is your job"), optionally after the NPC's own name. No substrings, no regular expressions, so "forest" is not
 // "rest" and an ordinary sentence with "job" in it is not the job topic. Inspired by David's conversational townsperson
 // (uploaded by Zavreyon; P405 notes); no code or dialogue copied.
+//
+// P647 (P631/P643 review fixes): an unreadable file is a failed load like a bad one; a topic may not repeat a response;
+// the reserved words cover every stock pet order (multiword ones too); each launch profile must name its own region;
+// a topic id is a short plain identifier.
 
 #nullable enable
 
@@ -90,18 +94,30 @@ public static class ClusterFTalkRules
     /// <summary>The launch profiles, exactly (a later prompt extends this list).</summary>
     public static readonly string[] LaunchProfiles = ["plaza", "trades", "innkeeper"];
 
+    /// <summary>The region each launch profile answers in, exactly (descendant regions still count at runtime).</summary>
+    public static readonly IReadOnlyDictionary<string, string> LaunchRegions = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["plaza"] = "New Haven",
+        ["trades"] = "New Haven",
+        ["innkeeper"] = "the New Haven Inn"
+    };
+
+    public const int MaxTopicIdLength = 32;
+
     /// <summary>Every launch profile answers these.</summary>
     public static readonly string[] LaunchTopics = ["hello", "name", "job", "help", "inn", "rumors", "goodbye"];
 
     /// <summary>
     /// Words and phrases the table may never claim: the inn's rest (its own service, stage 2), vendor, trainer, bank,
     /// guard and pet commands, and the tutorial's. An alias equal to one, or containing the word "rest", is refused.
+    /// The pet orders are every one stock BaseAI/OnSpeech.cs answers (P647), the multiword ones included.
     /// </summary>
     public static readonly HashSet<string> Reserved = new(StringComparer.Ordinal)
     {
         "rest", "buy", "sell", "vendor buy", "vendor sell", "train", "teach", "bank", "balance", "withdraw", "check",
         "guards", "guard", "all follow", "all come", "all stay", "all stop", "all kill", "all attack", "all guard",
-        "follow", "come", "stay", "stop", "kill", "attack", "release", "transfer", "join", "resign", "skip", "tutorial"
+        "all follow me", "all guard me", "all obey", "follow", "follow me", "come", "stay", "stop", "kill", "attack",
+        "guard me", "drop", "friend", "release", "transfer", "obey", "move", "time", "join", "resign", "skip", "tutorial"
     };
 
     // -- The loaded table -------------------------------------------------------------------------------------------
@@ -189,7 +205,18 @@ public static class ClusterFTalkRules
             return (null, [$"{path}: {info.Length} bytes, over {MaxFileBytes}"]);
         }
 
-        return Parse(File.ReadAllText(path, Encoding.UTF8));
+        string json;
+        try
+        {
+            json = File.ReadAllText(path, Encoding.UTF8);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Held open, unreadable, or gone since the check (P647): a failed load, never a thrown startup or reload.
+            return (null, [$"{path}: unreadable: {ex.Message}"]);
+        }
+
+        return Parse(json);
     }
 
     // -- Parsing and checking ---------------------------------------------------------------------------------------
@@ -276,6 +303,11 @@ public static class ClusterFTalkRules
         {
             errors.Add($"{where}: not a known profile tag");
         }
+        else if (tag != null && region != null && region != LaunchRegions[tag])
+        {
+            // A typo would silence the resident; a wider region would widen who it talks to (P647).
+            errors.Add($"{where}: region must be \"{LaunchRegions[tag]}\"");
+        }
 
         if (!p.TryGetProperty("topics", out var list) || list.ValueKind != JsonValueKind.Array)
         {
@@ -335,6 +367,13 @@ public static class ClusterFTalkRules
         }
 
         var id = Str(t, "id", $"{where} topic", errors);
+        if (id != null && !IsPlainId(id))
+        {
+            // Unknown ids show as their own menu label, so they stay plain (P647).
+            errors.Add($"{where} topic: id must be a plain identifier (a-z, 0-9, _, up to {MaxTopicIdLength})");
+            id = null;
+        }
+
         where = $"{where} topic {id ?? "?"}";
 
         var aliases = new List<string>();
@@ -414,6 +453,11 @@ public static class ClusterFTalkRules
                 {
                     errors.Add($"{where}: {problem}");
                 }
+                else if (text != null && responses.Any(x => x.Text == text))
+                {
+                    // Two identical lines leave nothing to choose once that line was last said (P647).
+                    errors.Add($"{where}: response \"{text}\" is listed twice");
+                }
                 else if (text != null && phase != null)
                 {
                     responses.Add(new TalkResponse(phase.Value, text));
@@ -428,6 +472,11 @@ public static class ClusterFTalkRules
 
         return id == null ? null : new TalkTopic(id, aliases, responses);
     }
+
+    /// <summary>A topic id: a lowercase letter, then lowercase letters, digits or underscores, at most MaxTopicIdLength.</summary>
+    public static bool IsPlainId(string id) =>
+        id.Length <= MaxTopicIdLength && id[0] is >= 'a' and <= 'z' &&
+        id.All(c => c is >= 'a' and <= 'z' or >= '0' and <= '9' or '_');
 
     private static TalkPhase? Bad(List<string> errors, string message)
     {

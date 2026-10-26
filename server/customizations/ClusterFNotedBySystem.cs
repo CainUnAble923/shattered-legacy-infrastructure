@@ -657,8 +657,10 @@ public static class ClusterFNotedBySystem
     {
         var killer = bc.LastKiller;
 
-        // Your pet died while you were untouched.
-        if (bc.Controlled && bc.ControlMaster is PlayerMobile { Alive: true } owner && owner.Hits >= owner.HitsMax)
+        // Your pet died while you were untouched. cc-P647 (P642 R1): not a creature that gives no kill awards, such as the
+        // League Echo, which a lethal hit dissolves (deleted with no hits, so it reaches here from OnCreatureDeleted).
+        if (bc.Controlled && !bc.NoKillAwards && bc.ControlMaster is PlayerMobile { Alive: true } owner &&
+            owner.Hits >= owner.HitsMax)
             Notify(owner, TriggerKind.PetDiedAtFullHp);
 
         if (bc.Controlled || bc.Summoned) return;

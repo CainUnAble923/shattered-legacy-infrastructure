@@ -13,6 +13,7 @@
 //   reader constructor; IsInside is the rectangle and the floor range.
 // - The region: the town region at the street spot is its parent (BaseHouse-leasehold-region.patch), so the town's
 //   guards answer inside, and its area is the rectangle and the floor range, not the full height.
+// - Storage (cc-P647): the AOS item budget is twice the lockdowns, the stock entries' ratio; both stay provisional.
 // - Decay: ageless; a lease ends only through its site. Price 0 and no deed, so a player's demolish is refused and
 //   nothing is ever refunded. No vendors.
 // - Deleting it for any reason (staff, demolish by staff, account deletion) tells the site, which puts the town's own
@@ -129,7 +130,11 @@ public partial class ClusterFLeasehold : BaseHouse
     public override DecayType DecayType => DecayType.Ageless;
 
     public override int GetAosMaxLockdowns() => MaxLockDowns;
-    public override int GetAosMaxSecures() => MaxSecures;
+
+    // cc-P647: under AOS rules GetAosMaxSecures is not a count of secure containers but the house's whole item storage
+    // (lockdowns, secures and everything inside them, BaseHouse.CheckAosStorage). Every stock HousePlacementEntry gives
+    // twice its lockdowns (425 and 212 for a small house, 4076 and 2038 for a castle), so the leasehold does the same.
+    public override int GetAosMaxSecures() => 2 * MaxLockDowns;
     public override int GetNewVendorSystemMaxVendors() => 0;
 
     public override void OnAfterDelete()

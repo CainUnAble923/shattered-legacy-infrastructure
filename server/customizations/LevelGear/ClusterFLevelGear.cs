@@ -762,6 +762,8 @@ public static class ClusterFLevelGear
                 list.Add(1060847, $"{a.Name} +{bonus}\t(level)");
             }
         }
+
+        ClusterFLevelGearProcs.AddTooltip(item, list); // the milestone effect, if bought (P647)
     }
 
     // -- Commands -------------------------------------------------------------------------------------------------------

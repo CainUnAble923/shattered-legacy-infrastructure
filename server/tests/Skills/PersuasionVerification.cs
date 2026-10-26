@@ -15,6 +15,11 @@
 //      stale, and it trains 199.9 to 200 but nothing at the cap or when locked.
 //   7. Anyone but the Exchange gives directions only, and the persuade check refuses players, pets and the distant.
 //   8. The tutorial's thief trial still completes its Begging step on the practice person, with nothing paid or taught.
+//   9. (P647, P626 review) The menu rechecks the conversation when answered: a changed facet, a dead asker or a target
+//      that is no longer a person gets nothing and spends nothing.
+//  10. (P647, P626 review) A letter put in the bank still holds the one job: no second letter until it is delivered or stale.
+//  11. (P647, P638 review) A banker in an unnamed town subregion belongs to the named town around it, for issue and delivery.
+//  12. (P647, P638 review) A banker subclass (a gypsy banker) the board picks as a destination accepts the letter.
 
 using System;
 using System.Collections.Generic;
@@ -22,10 +27,12 @@ using System.Linq;
 using Server;
 using Server.Accounting;
 using Server.Engines.Spawners;
+using Server.Gumps;
 using Server.Items;
 using Server.LootBoxes;
 using Server.Misc;
 using Server.Mobiles;
+using Server.Network;
 using Server.Random;
 using Server.Regions;
 using Server.SkillHandlers;
@@ -49,6 +56,8 @@ public class PersuasionVerification : IDisposable
     private readonly List<Region> _regions = new();
     private readonly List<Account> _accounts = new();
     private readonly List<(Mobile Who, string Text)> _heard = new();
+    private readonly TownRegion _homeTown;
+    private readonly TownRegion _nearTown;
 
     private readonly SkillCheckLocationHandler _location = Mobile.SkillCheckLocationHandler;
     private readonly SkillCheckDirectLocationHandler _directLocation = Mobile.SkillCheckDirectLocationHandler;
@@ -77,8 +86,8 @@ public class PersuasionVerification : IDisposable
         ClusterFPersuasion.ResetForTests();
         ClusterFPersuasion.Heard = (m, text) => _heard.Add((m, text));
 
-        Town("P626 Home", Home);
-        Town("P626 Near", Near);
+        _homeTown = Town("P626 Home", Home);
+        _nearTown = Town("P626 Near", Near);
         Town("P626 Far", Far);
     }
 
@@ -134,12 +143,13 @@ public class PersuasionVerification : IDisposable
     // A roll of 0 passes every chance: every gain event that may gain, gains.
     private static void AlwaysRoll() => BuiltInRng.Generator = new ConstantRandom { Value = 0.0 };
 
-    private void Town(string name, Point3D centre)
+    private TownRegion Town(string name, Point3D centre)
     {
         var r = new TownRegion(name, Map.Trammel, 50,
             new Rectangle3D(new Point3D(centre.X - 30, centre.Y - 30, -128), new Point3D(centre.X + 30, centre.Y + 30, 127)));
         r.Register();
         _regions.Add(r);
+        return r;
     }
 
     private Account NewAccount()
@@ -379,7 +389,7 @@ public class PersuasionVerification : IDisposable
         Assert.Same(pm, letter.Courier);
         Assert.Contains(letter.Town, new[] { "P626 Near", "P626 Far" });
         Assert.StartsWith("a banker in P626 ", letter.Instructions);
-        Assert.Same(letter, ClusterFPersuasion.CarriedLetter(pm));
+        Assert.Same(letter, ClusterFPersuasion.OutstandingLetter(pm));
 
         // One letter at a time.
         Assert.Null(ClusterFPersuasion.AskAboutWork(pm, homeBank));
@@ -462,7 +472,7 @@ public class PersuasionVerification : IDisposable
         var shop = Civilian(new Provisioner(), Beside(pm));
         Assert.Null(ClusterFPersuasion.AskAboutWork(pm, shop));
         Assert.Contains(HeardBy(pm), t => t.EndsWith("Ask any banker."));
-        Assert.Null(ClusterFPersuasion.CarriedLetter(pm));
+        Assert.Null(ClusterFPersuasion.OutstandingLetter(pm));
 
         var otherPlayer = Player(0.0, new Point3D(Home.X, Home.Y + 1, 0));
         Assert.False(ClusterFPersuasion.Open(pm, otherPlayer));
@@ -529,5 +539,148 @@ public class PersuasionVerification : IDisposable
             TutorialWingTrials.Fits = fits;
             ClusterFTutorial.Enabled = enabled;
         }
+    }
+
+    // ---------------------------------------------------------------- 9
+
+    private static void Answer(BaseGump gump, NetState ns, int buttonId) =>
+        gump.OnResponse(ns, new RelayInfo(buttonId, ReadOnlySpan<int>.Empty, ReadOnlySpan<ushort>.Empty,
+            ReadOnlySpan<Range>.Empty, ReadOnlySpan<byte>.Empty));
+
+    [Fact]
+    public void AStaleMenuRechecksTheConversation()
+    {
+        var acct = NewAccount();
+        var pm = Player(40.0, Home, acct);
+        var npc = Civilian(new Banker(), Beside(pm));
+        var ns = PacketTestUtilities.CreateTestNetState();
+        ns.Mobile = pm; // the answer's sender; pm keeps no NetState, so its facet change sends nothing
+
+        try
+        {
+            Assert.True(ClusterFPersuasion.Open(pm, npc));
+            var menu = new ClusterFPersuasion.PersuasionGump(npc);
+
+            // Another facet, the same coordinates: InRange alone does not see the difference.
+            pm.MoveToWorld(pm.Location, Map.Felucca);
+            Answer(menu, ns, ClusterFPersuasion.PersuasionGump.AskForHelpButton);
+            Answer(menu, ns, ClusterFPersuasion.PersuasionGump.AskAboutWorkButton);
+            Assert.Equal(0, GoldOf(pm));
+            Assert.Null(ClusterFPersuasion.OutstandingLetter(pm));
+            Assert.True(string.IsNullOrEmpty(acct.GetTag(ClusterFPersuasion.ContactsTag)));
+            pm.MoveToWorld(Beside(npc), Map.Trammel);
+
+            // The person is no longer someone to persuade (tamed away since the menu opened).
+            npc.Controlled = true;
+            Answer(menu, ns, ClusterFPersuasion.PersuasionGump.AskForHelpButton);
+            Assert.Equal(0, GoldOf(pm));
+            Assert.True(string.IsNullOrEmpty(acct.GetTag(ClusterFPersuasion.ContactsTag)));
+            npc.Controlled = false;
+
+            // A dead asker.
+            var ghostAcct = NewAccount();
+            var ghost = Player(40.0, new Point3D(npc.X, npc.Y + 1, npc.Z), ghostAcct);
+            ghost.Kill();
+            Assert.False(ghost.Alive);
+            ns.Mobile = ghost;
+            Answer(menu, ns, ClusterFPersuasion.PersuasionGump.AskForHelpButton);
+            Assert.True(string.IsNullOrEmpty(ghostAcct.GetTag(ClusterFPersuasion.ContactsTag)));
+            ns.Mobile = pm;
+
+            // Still all true when answered: the gift comes.
+            Answer(menu, ns, ClusterFPersuasion.PersuasionGump.AskForHelpButton);
+            Assert.Equal(14, GoldOf(pm));
+        }
+        finally
+        {
+            ns.Mobile = null;
+        }
+    }
+
+    // ---------------------------------------------------------------- 10
+
+    [Fact]
+    public void ABankedLetterStillHoldsTheOneJob()
+    {
+        var homeBank = Civilian(new Banker(), new Point3D(Home.X + 2, Home.Y, 0));
+        Civilian(new Banker(), Near);
+        Civilian(new Banker(), Far);
+
+        var pm = Player(50.0, Home);
+        var letter = ClusterFPersuasion.AskAboutWork(pm, homeBank);
+        Assert.NotNull(letter);
+
+        pm.BankBox.DropItem(letter);
+        Assert.False(letter.IsChildOf(pm.Backpack));
+        Assert.Null(ClusterFPersuasion.AskAboutWork(pm, homeBank));
+        Assert.Same(letter, ClusterFPersuasion.OutstandingLetter(pm));
+        Assert.Contains(HeardBy(pm), t => t.Contains("Deliver the letter"));
+
+        // Once it is stale, asking again tears it up wherever it is and gives the next job.
+        letter.Expires = Core.Now - TimeSpan.FromSeconds(1);
+        var next = ClusterFPersuasion.AskAboutWork(pm, homeBank);
+        Assert.NotNull(next);
+        Assert.True(letter.Deleted);
+        Assert.Same(next, ClusterFPersuasion.OutstandingLetter(pm));
+    }
+
+    // ---------------------------------------------------------------- 11
+
+    private void Unnamed(TownRegion parent, Point3D centre)
+    {
+        var child = new TownRegion(null, Map.Trammel, parent,
+            new Rectangle3D(new Point3D(centre.X - 5, centre.Y - 5, -128), new Point3D(centre.X + 5, centre.Y + 5, 127)));
+        child.Register();
+        _regions.Insert(0, child); // unregistered before its parent
+    }
+
+    [Fact]
+    public void AnUnnamedTownSubregionResolvesToItsTown()
+    {
+        AlwaysRoll();
+        Unnamed(_homeTown, Home);
+        Unnamed(_nearTown, Near);
+
+        var homeBank = Civilian(new Banker(), new Point3D(Home.X + 2, Home.Y, 0)); // inside Home's unnamed child
+        var homeShop = Civilian(new Provisioner(), new Point3D(Home.X - 20, Home.Y, 0)); // in named Home itself
+        var nearBank = Civilian(new Banker(), Near); // inside Near's unnamed child
+        Assert.Equal("P626 Home", ClusterFPersuasion.TownOf(homeBank));
+        Assert.Equal("P626 Near", ClusterFPersuasion.TownOf(nearBank));
+
+        var pm = Player(50.0, Home);
+        var letter = ClusterFPersuasion.AskAboutWork(pm, homeBank);
+        Assert.NotNull(letter);
+        Assert.Equal("P626 Near", letter.Town);
+        pm.MoveToWorld(Beside(nearBank), Map.Trammel);
+        Assert.True(ClusterFPersuasion.Deliver(pm, letter, nearBank));
+        Assert.Equal(50.1, pm.Skills.Begging.Base, 1);
+
+        var novice = Player(0.0, Home);
+        var local = ClusterFPersuasion.AskAboutWork(novice, homeBank);
+        Assert.NotNull(local);
+        Assert.Equal("a provisioner in P626 Home", local.Instructions);
+        novice.MoveToWorld(Beside(homeShop), Map.Trammel);
+        Assert.True(ClusterFPersuasion.Deliver(novice, local, homeShop));
+    }
+
+    // ---------------------------------------------------------------- 12
+
+    [Fact]
+    public void ABankerSubclassTakesTheLetterItWasPickedFor()
+    {
+        AlwaysRoll();
+        var homeBank = Civilian(new Banker(), new Point3D(Home.X + 2, Home.Y, 0));
+        var gypsy = Civilian(new GypsyBanker(), Near); // the only banker in Near, and none in Far
+        Assert.Equal("P626 Near", ClusterFPersuasion.TownOf(gypsy));
+
+        var pm = Player(50.0, Home);
+        var letter = ClusterFPersuasion.AskAboutWork(pm, homeBank);
+        Assert.NotNull(letter);
+        Assert.Equal("P626 Near", letter.Town);
+        Assert.True(letter.IsRecipient(gypsy));
+
+        pm.MoveToWorld(Beside(gypsy), Map.Trammel);
+        Assert.True(ClusterFPersuasion.Deliver(pm, letter, gypsy));
+        Assert.Equal(50.1, pm.Skills.Begging.Base, 1);
     }
 }

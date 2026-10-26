@@ -4,6 +4,8 @@
 // LeagueInvestigationWarrant  one use, blessed, bound to the buying account the way the loot boxes' goods are
 //                             (AccountBinding, LootBoxes/LootBoxItems.cs). Saves its encounter key and a receipt id,
 //                             which stage 2's runner reserves and escrows, so a restored warrant is the same item.
+//                             cc-P647: it rests only at the top of its account's backpacks and bank boxes, never in a bag
+//                             (a bag moves or trades without asking what is in it); one saved in a bag returns on load.
 // LeagueInvestigationMarker   the fixed rune at a site (the League rune's art, 0x1F14). Says where it is and what the
 //                             site calls; it never spawns anything itself.
 //
@@ -209,11 +211,44 @@ public partial class LeagueInvestigationWarrant : Item
     public override bool OnDroppedToMobile(Mobile from, Mobile target) =>
         target == from && Owns(from) ? base.OnDroppedToMobile(from, target) : AccountBinding.Refuse(from);
 
-    public override bool OnDroppedInto(Mobile from, Container target, Point3D p) =>
-        AccountBinding.MayRestIn(target, _boundAccount) ? base.OnDroppedInto(from, target, p) : AccountBinding.Refuse(from);
+    // cc-P647 (P641 finding 1): only the top of a backpack or bank box of a character of its account, never a bag inside
+    // one. A bag is dropped on the ground or traded without asking the items in it, so a warrant in a bag would leave with it.
+    public bool IsRestingPlace(Item? target) =>
+        target is Container c && c.Parent is Mobile holder && AccountBinding.SameAccount(holder, _boundAccount) &&
+        (c == holder.Backpack || c == holder.FindBankNoCreate());
 
+    public override bool OnDroppedInto(Mobile from, Container target, Point3D p) =>
+        IsRestingPlace(target) ? base.OnDroppedInto(from, target, p) : AccountBinding.Refuse(from);
+
+    // Dropped on a container's icon it goes into that container; on anything else it would stack, and a warrant does not.
     public override bool OnDroppedOnto(Mobile from, Item target) =>
-        AccountBinding.MayRestIn(target, _boundAccount) ? base.OnDroppedOnto(from, target) : AccountBinding.Refuse(from);
+        IsRestingPlace(target) ? base.OnDroppedOnto(from, target) : AccountBinding.Refuse(from);
+
+    /// <summary>
+    /// A warrant saved inside a bag (before P647) goes back to the top of the owner's pack or bank it was in. Run after the
+    /// world loads; a warrant anywhere else is left for staff.
+    /// </summary>
+    public void ReturnToRoot()
+    {
+        if (Deleted || Parent is not Container held || IsRestingPlace(held))
+        {
+            return;
+        }
+
+        Item root = held;
+        while (root.Parent is Item up)
+        {
+            root = up;
+        }
+
+        if (root is Container top && IsRestingPlace(top))
+        {
+            top.DropItem(this);
+        }
+    }
+
+    [AfterDeserialization]
+    private void AfterLoad() => Timer.StartTimer(TimeSpan.Zero, ReturnToRoot);
 
     public override bool CheckLift(Mobile from, Item item, ref LRReason reject)
     {

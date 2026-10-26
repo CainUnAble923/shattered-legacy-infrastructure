@@ -11,6 +11,7 @@
 // town doors back (P550: town doors stay in service while vacant; swap only while leased).
 //
 // [Leaseholds (GameMaster, test shard only): new, door, assign, end, list, go, remove.
+// cc-P647: "test shard only" is enforced (IsTestShard): the command, its open targets, Create, AddDoor and assignment.
 
 #nullable enable
 
@@ -31,6 +32,12 @@ namespace Server.Leaseholds;
 public partial class ClusterFLeaseSite : Item
 {
     public static readonly List<ClusterFLeaseSite> All = [];
+
+    // cc-P647: stage 1 is the test shard's only. The command, every target it leaves open, and making, door
+    // registration and assignment refuse anywhere else (ShardCommand's TestOnly is a label, not a gate). Tests flip it.
+    public static Func<bool> IsTestShard { get; set; } = () => ClusterFStaffHub.IsTestShard;
+
+    public const string TestShardOnly = "Town Houses are on the test shard only for now.";
 
     [SerializableField(0, setter: "private")]
     [SerializedCommandProperty(AccessLevel.GameMaster)]
@@ -82,9 +89,10 @@ public partial class ClusterFLeaseSite : Item
     // -- Making a site --------------------------------------------------------------------------------------------
 
     /// <summary>
-    /// Why a site cannot go here, or null. The street spot is outside the building and in the same region as every
-    /// floor tile (an inn's or bank's own region, or a rectangle half in and half out of town, is refused), and the
-    /// building holds no house, other site, creature or spawner.
+    /// Why a site cannot go here, or null. The street spot is outside the building, in a guarded town, and in the same
+    /// region as every tile at every height between the floors (an inn's or bank's own region, or a rectangle half in and
+    /// half out of town, is refused), the street spot is walkable, and the building holds no house, other site, other
+    /// multi (by its pieces), creature, spawner or town addon container.
     /// </summary>
     public static string? WhyNotSite(
         Map? map, Rectangle2D bounds, int zLow, int zHigh, Point3D street, ClusterFLeaseSite? self = null
@@ -110,15 +118,40 @@ public partial class ClusterFLeaseSite : Item
             return "The street spot must be outside the building.";
         }
 
+        // cc-P647 (P646 finding 2): strangers are put on the street spot (the house's ban location, on login and on
+        // walking in), with no fit check of the engine's own, so it must hold a person: a surface, room to stand, and
+        // not in another house.
+        if (!map.CanFit(street.X, street.Y, street.Z, 16, false, false, true))
+        {
+            return "The street spot must be walkable: a floor with room to stand, at the floor's height.";
+        }
+
+        if (BaseHouse.FindHouseAt(street, map, 16) != null)
+        {
+            return "The street spot must be walkable street, not inside a house.";
+        }
+
+        // cc-P647: the street region must be a town with its guards on (a TownRegion, itself or an ancestor).
         var town = Region.Find(street, map);
+        if (town.GetRegion<TownRegion>() == null || town.GetRegion<GuardedRegion>() is not { } guards || guards.IsDisabled())
+        {
+            return "The street spot must be in a guarded town.";
+        }
+
         for (var x = bounds.X; x < bounds.X + bounds.Width; x++)
         {
             for (var y = bounds.Y; y < bounds.Y + bounds.Height; y++)
             {
                 var p = new Point3D(x, y, zLow);
-                if (Region.Find(p, map) != town)
+
+                // cc-P647: every height the leasehold's region will cover, not the lowest floor only (a child region
+                // upstairs, such as an inn's rooms, is refused too).
+                for (var z = zLow; z <= zHigh; z++)
                 {
-                    return $"The tile at {x}, {y} is in another region than the street spot.";
+                    if (Region.Find(new Point3D(x, y, z), map) != town)
+                    {
+                        return $"The tile at {x}, {y}, {z} is in another region than the street spot.";
+                    }
                 }
 
                 if (BaseHouse.FindHouseAt(p, map, zHigh - zLow + 16) != null)
@@ -146,13 +179,65 @@ public partial class ClusterFLeaseSite : Item
 
         foreach (var item in map.GetItemsInBounds<Item>(bounds))
         {
-            if (item is BaseSpawner or Moongate or Teleporter or BaseMulti && item.Z >= zLow && item.Z <= zHigh)
+            if (item is BaseSpawner or Moongate or Teleporter && item.Z >= zLow && item.Z <= zHigh)
             {
-                return $"{item.GetType().Name} is inside: spawners, gates and multis stay out of town houses.";
+                return $"{item.GetType().Name} is inside: spawners and gates stay out of town houses.";
+            }
+
+            // cc-P647 (P646 finding 1): a house owner may chop any unsecured addon container in the house into a deed
+            // (BaseAddonContainer.OnChop asks only for ownership), so a town's own one, or any piece of it, keeps the
+            // site out until fixtures are recorded and protected.
+            if (item is BaseAddonContainer or AddonContainerComponent && item.Z >= zLow && item.Z <= zHigh)
+            {
+                return $"{item.GetType().Name} is a town fixture a tenant could chop into a deed: move it out first.";
+            }
+        }
+
+        // cc-P647 (P646 finding 3): other multis by what they occupy. A multi is registered in every sector its
+        // footprint covers, wherever it stands (an origin check would miss one standing outside and reaching in).
+        var seen = new HashSet<BaseMulti>();
+        for (var sx = bounds.X >> Map.SectorShift; sx <= (bounds.X + bounds.Width - 1) >> Map.SectorShift; sx++)
+        {
+            for (var sy = bounds.Y >> Map.SectorShift; sy <= (bounds.Y + bounds.Height - 1) >> Map.SectorShift; sy++)
+            {
+                foreach (var multi in map.GetMultisInSector(sx << Map.SectorShift, sy << Map.SectorShift))
+                {
+                    if (!multi.Deleted && seen.Add(multi) && Occupies(multi, bounds, zLow, zHigh))
+                    {
+                        return $"{multi.GetType().Name} reaches inside: multis stay out of town houses.";
+                    }
+                }
             }
         }
 
         return null;
+    }
+
+    // True when a piece of the multi stands on a tile of the rectangle within the floor range (a piece is at least a
+    // step tall). A footprint with no pieces (a leasehold) counts by its bounds at its own height.
+    private static bool Occupies(BaseMulti multi, Rectangle2D bounds, int zLow, int zHigh)
+    {
+        var mcl = multi.Components;
+        if (mcl.List.Length == 0)
+        {
+            return mcl.Width > 0 && Overlaps(
+                new Rectangle2D(multi.X + mcl.Min.X, multi.Y + mcl.Min.Y, mcl.Width, mcl.Height), multi.Z, multi.Z,
+                bounds, zLow, zHigh
+            );
+        }
+
+        foreach (var piece in mcl.List)
+        {
+            var z = multi.Z + piece.OffsetZ;
+            var height = Math.Max(1, TileData.ItemTable[piece.ItemId & TileData.MaxItemValue].CalcHeight);
+            if (bounds.Contains(new Point2D(multi.X + piece.OffsetX, multi.Y + piece.OffsetY)) && z <= zHigh &&
+                z + height > zLow)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool Overlaps(Rectangle2D a, int aLow, int aHigh, Rectangle2D b, int bLow, int bHigh) =>
@@ -162,7 +247,7 @@ public partial class ClusterFLeaseSite : Item
     /// <summary>Makes a vacant site at the street spot. Returns the site, or null with why not.</summary>
     public static ClusterFLeaseSite? Create(Map map, Rectangle2D bounds, int zLow, int zHigh, Point3D street, out string? why)
     {
-        why = WhyNotSite(map, bounds, zLow, zHigh, street);
+        why = IsTestShard() ? WhyNotSite(map, bounds, zLow, zHigh, street) : TestShardOnly;
         if (why != null)
         {
             return null;
@@ -177,6 +262,11 @@ public partial class ClusterFLeaseSite : Item
     /// <summary>Registers a town door of this building as one that becomes the tenant's. Vacant sites only.</summary>
     public string? AddDoor(BaseDoor door)
     {
+        if (!IsTestShard())
+        {
+            return TestShardOnly;
+        }
+
         if (IsLeased)
         {
             return "End the lease first.";
@@ -192,6 +282,14 @@ public partial class ClusterFLeaseSite : Item
             return "That door is already the site's.";
         }
 
+        foreach (var other in All)
+        {
+            if (other != this && other._doors.Contains(door))
+            {
+                return "That door is another site's.";
+            }
+        }
+
         _doors.Add(door);
         this.MarkDirty();
         return null;
@@ -202,6 +300,11 @@ public partial class ClusterFLeaseSite : Item
     /// <summary>Why this player cannot hold this site now, or null (stage 1: staff test leases only).</summary>
     public string? WhyNotAssign(Mobile tenant)
     {
+        if (!IsTestShard())
+        {
+            return TestShardOnly;
+        }
+
         if (Deleted || Map == null || Map == Map.Internal)
         {
             return "That site is gone.";
@@ -228,6 +331,13 @@ public partial class ClusterFLeaseSite : Item
             if (door.Deleted || door.Map != Map || door.Open)
             {
                 return "One of the site's doors is gone or open; close it or re-register the doors.";
+            }
+
+            // cc-P647 (P646 finding 4): a linked pair (or chain) goes together. A partner left in town would still
+            // open the hidden original (BaseDoor.Use opens Link wherever it is), which then could not close.
+            if (door.Link != null && !_doors.Contains(door.Link))
+            {
+                return $"The door at {door.X}, {door.Y} is linked to one the site does not have; [Leaseholds door its partner too.";
             }
         }
 
@@ -348,6 +458,11 @@ public partial class ClusterFLeaseSite : Item
         var from = e.Mobile;
         var verb = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "list";
 
+        if (Refused(from))
+        {
+            return;
+        }
+
         switch (verb)
         {
             case "new" when e.Length >= 3:
@@ -357,7 +472,7 @@ public partial class ClusterFLeaseSite : Item
                     from.SendMessage("Target one corner of the building's floor.");
                     from.BeginTarget(-1, true, TargetFlags.None, (_, a) =>
                     {
-                        if (a is not IPoint3D pa)
+                        if (a is not IPoint3D pa || Refused(from))
                         {
                             return;
                         }
@@ -365,7 +480,7 @@ public partial class ClusterFLeaseSite : Item
                         from.SendMessage("Target the opposite corner.");
                         from.BeginTarget(-1, true, TargetFlags.None, (_, b) =>
                         {
-                            if (b is not IPoint3D pb)
+                            if (b is not IPoint3D pb || Refused(from))
                             {
                                 return;
                             }
@@ -373,7 +488,7 @@ public partial class ClusterFLeaseSite : Item
                             from.SendMessage("Target the street spot outside the door (the sign and the ban spot).");
                             from.BeginTarget(-1, true, TargetFlags.None, (_, s) =>
                             {
-                                if (s is not IPoint3D ps)
+                                if (s is not IPoint3D ps || Refused(from))
                                 {
                                     return;
                                 }
@@ -443,11 +558,28 @@ public partial class ClusterFLeaseSite : Item
         }
     }
 
+    // Off the test shard: says so and stops (also for a target opened before the switch and answered after).
+    private static bool Refused(Mobile from)
+    {
+        if (IsTestShard())
+        {
+            return false;
+        }
+
+        from.SendMessage(TestShardOnly);
+        return true;
+    }
+
     private static void TargetSite(Mobile from, string prompt, Action<ClusterFLeaseSite> then)
     {
         from.SendMessage(prompt);
         from.BeginTarget(-1, false, TargetFlags.None, (_, t) =>
         {
+            if (Refused(from))
+            {
+                return;
+            }
+
             if (t is ClusterFLeaseSite site)
             {
                 then(site);

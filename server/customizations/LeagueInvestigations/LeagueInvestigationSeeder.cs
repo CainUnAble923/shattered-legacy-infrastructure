@@ -1,6 +1,7 @@
 // cc-P629 (P565 design, stage 1): places the League investigation markers at the catalog's sites. Explicit and
 // idempotent, with a dry run; nothing places them automatically. A site that fails LeagueInvestigationCatalog.CheckSite
 // on the world it runs against gets no marker, and the reasons are reported. Moves and deletes nothing.
+// cc-P647 (P629 review): the test shard only. Off it the command refuses and places nothing (IsTestShard).
 
 #nullable enable
 
@@ -14,6 +15,9 @@ namespace Server;
 
 public static class LeagueInvestigationSeeder
 {
+    // cc-P647 (P629 review): the test shard only; the tests flip this.
+    public static Func<bool> IsTestShard { get; set; } = () => ClusterFStaffHub.IsTestShard;
+
     public static void Configure()
     {
         CommandSystem.Register("LeagueInvestigationSeed", AccessLevel.Administrator, OnSeedCommand);
@@ -21,7 +25,7 @@ public static class LeagueInvestigationSeeder
 
     [Usage("LeagueInvestigationSeed [dryrun]")]
     [Description("Places a League investigation marker at each investigation site that passes its checks and has none. Reports the sites that fail and why. Moves and deletes nothing.")]
-    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places the League investigation markers at the checked sites where missing.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestOnly, DryRun = "dryrun", Summary = "Places the League investigation markers at the checked sites where missing.")]
     private static void OnSeedCommand(CommandEventArgs e)
     {
         var dryRun = e.Length > 0 && e.GetString(0).Equals("dryrun", StringComparison.OrdinalIgnoreCase);
@@ -37,6 +41,11 @@ public static class LeagueInvestigationSeeder
 
     public static SeedResult Seed(bool dryRun)
     {
+        if (!IsTestShard())
+        {
+            return new SeedResult(0, 0, [], "League investigations: refused. Test world only; live is never seeded.");
+        }
+
         int placed = 0, present = 0;
         var refused = new List<string>();
 

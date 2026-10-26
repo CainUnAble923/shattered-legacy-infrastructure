@@ -17,10 +17,16 @@
 // tiles of the caster's current spot and in line of sight, each warned once. A pet or summon of another player who is not
 // in the caster's party follows the same player rule and is never found while its owner is hidden. Ping grants no skill
 // gain and never reveals anyone.
+//
+// cc-P647 (review fixes): a refresh that crosses the overload ceiling refunds the stamina and the cooldown; the Tracking
+// menu's Ping button skips only the skill delay of the Tracking use that sent it; players (and their pets) must also pass
+// the engine's CanSee; a callback past the deadline ends the ping without reading; expired cooldown and warning records
+// are pruned, and a deleted character's are dropped (a disconnect keeps them, so relogging is no bypass).
 
 using System;
 using System.Collections.Generic;
 using System.Text;
+using ModernUO.CodeGeneratedEvents;
 using Server.Collections;
 using Server.Commands;
 using Server.Engines.PartySystem;
@@ -77,6 +83,9 @@ public static class ClusterFTrackingPing
     public static readonly TimeSpan FocusDelay = TimeSpan.FromSeconds(1.0);
     public static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(30.0);
     public static readonly TimeSpan SkillDelay = TimeSpan.FromSeconds(10.0);
+
+    // Pinned Skills/Tracking/Tracking.cs OnUse returns this delay; the Ping offer it sends is exempt from it alone.
+    public static readonly TimeSpan TrackingSkillDelay = TimeSpan.FromSeconds(10.0);
     public static readonly TimeSpan WarnInterval = TimeSpan.FromSeconds(10.0);
 
     public const string WatchedWarning = "You feel watched. Someone nearby is reading the trail.";
@@ -106,6 +115,54 @@ public static class ClusterFTrackingPing
     {
         EventSink.Logout += m => Stop(m);
         EventSink.Disconnected += m => Stop(m);
+    }
+
+    // cc-P647: a deleted character takes its records with it; expired ones are pruned at each paid ping (Prune).
+    [OnEvent(nameof(PlayerMobile.PlayerDeletedEvent))]
+    public static void OnPlayerDeleted(Mobile m)
+    {
+        Stop(m);
+        _cooldownUntil.Remove(m);
+        _lastWarned.Remove(m);
+    }
+
+    private static void Prune()
+    {
+        var now = Core.Now;
+        List<Mobile> gone = null;
+        foreach (var (m, until) in _cooldownUntil)
+        {
+            if (until <= now)
+            {
+                (gone ??= new List<Mobile>()).Add(m);
+            }
+        }
+
+        if (gone != null)
+        {
+            foreach (var m in gone)
+            {
+                _cooldownUntil.Remove(m);
+            }
+
+            gone.Clear();
+        }
+
+        foreach (var (m, last) in _lastWarned)
+        {
+            if (now - last >= WarnInterval)
+            {
+                (gone ??= new List<Mobile>()).Add(m);
+            }
+        }
+
+        if (gone != null)
+        {
+            foreach (var m in gone)
+            {
+                _lastWarned.Remove(m);
+            }
+        }
     }
 
     [Usage("TrackingPing [results]")]
@@ -196,6 +253,7 @@ public static class ClusterFTrackingPing
     /// <summary>
     /// Starts the one second focus. fromSkillUse is true only for the companion menu the Tracking skill itself sent: that
     /// use already passed the skill delay check and set its own 10 seconds, so checking it again would refuse every press.
+    /// The menu passes true only while the delay running is still that use's own (cc-P647).
     /// </summary>
     public static bool Begin(PlayerMobile pm, bool fromSkillUse)
     {
@@ -373,6 +431,7 @@ public static class ClusterFTrackingPing
             return;
         }
 
+        Prune();
         pm.RevealingAction();
         pm.Stam -= StaminaCost;
         _cooldownUntil[pm] = Core.Now + Cooldown;
@@ -496,9 +555,11 @@ public static class ClusterFTrackingPing
         return true;
     }
 
-    // Players (and the pets that would betray them) only from 120, within 12 tiles of where the caster stands now, in sight.
+    // Players (and the pets that would betray them) only from 120, within 12 tiles of where the caster stands now, in sight,
+    // and only if the engine would show them at all (cc-P647: CanSee carries vetoes LOS does not, such as a tournament
+    // duel hiding other duels' players and pets). Wild creatures never come here, so wall sensing stays as it was.
     private static bool PlayerVisible(PlayerMobile caster, Mobile m, double capturedBase) =>
-        capturedBase >= PlayerBase && caster.InRange(m, PlayerRange) && caster.InLOS(m);
+        capturedBase >= PlayerBase && caster.InRange(m, PlayerRange) && caster.InLOS(m) && caster.CanSee(m);
 
     public static PingGroup Classify(PlayerMobile caster, Mobile m, Party party)
     {
@@ -776,7 +837,9 @@ public static class ClusterFTrackingPing
 
             _elapsed++;
 
-            if (_elapsed >= _lifetime)
+            // cc-P647: the deadline is absolute. After a stalled loop the wheel runs every missed callback at once, each
+            // reading the clock at the end of the stall; none of them may read the trail or warn anyone.
+            if (_elapsed >= _lifetime || Core.Now >= End)
             {
                 Finish(Ended);
                 return;
@@ -792,6 +855,9 @@ public static class ClusterFTrackingPing
             var contacts = Scan(_pm, _origin, _radius, _capturedBase);
             if (contacts == null)
             {
+                // cc-P647: an overload cancels the ping and it costs nothing, mid-pulse as at the start.
+                _pm.Stam += StaminaCost;
+                _cooldownUntil.Remove(_pm);
                 Finish(Overloaded);
                 return;
             }
@@ -881,9 +947,11 @@ public static class ClusterFTrackingPing
         public const int PingButton = 1;
         public const int ResultsButton = 2;
 
-        public PingOfferGump() : base(20, 170)
-        {
-        }
+        // cc-P647: the tick the Tracking use that sent this menu ran at. That use set the skill delay to this plus
+        // Tracking's own 10 seconds; a later delay belongs to another skill use and the button must respect it.
+        private readonly long _issuedAt;
+
+        public PingOfferGump() : base(20, 170) => _issuedAt = Core.TickCount;
 
         protected override void BuildLayout(ref DynamicGumpBuilder builder)
         {
@@ -906,7 +974,7 @@ public static class ClusterFTrackingPing
 
             if (info.ButtonID == PingButton)
             {
-                Begin(pm, true);
+                Begin(pm, pm.NextSkillTime <= _issuedAt + (long)TrackingSkillDelay.TotalMilliseconds);
             }
             else if (info.ButtonID == ResultsButton)
             {

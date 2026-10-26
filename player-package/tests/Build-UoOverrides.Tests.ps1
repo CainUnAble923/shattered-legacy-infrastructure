@@ -343,6 +343,11 @@ Fact 'TheScoringButteRecordsAreTheServersTableAndEveryPictureIsThere' {
         Assert-Equal $weight ([int]$j.weight) "weight of $($j.id)"
         Assert-Equal $height ([int]$j.height) "height of $($j.id)"
         Assert-Equal 0 ([int]$j.animId) "no animation on $($j.id)"
+        # cc-P647 (P644 review): the rest of the stock record too, all 0 in 0x100A/0x100B and in the server's ItemData.
+        Assert-Equal 0 ([int]$j.layer) "layer of $($j.id)"
+        Assert-Equal 0 ([int]$j.count) "count of $($j.id)"
+        Assert-Equal 0 ([int]$j.hue) "hue of $($j.id)"
+        Assert-Equal 0 ([int]$j.light) "light of $($j.id)"
     }
     Assert-Equal 0 @($rec.animdata | Where-Object { [int]$_.id -ge $first -and [int]$_.id -le $last }).Count 'no animdata: the server picks each still'
 

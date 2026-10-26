@@ -3,14 +3,17 @@
 // Arms Lore reveals resists; crafted items known; what is visible today stays visible).
 //
 // Stage 1 is the design's first build step: the disclosure policy, its registry, and a red leak test, kept off by default
-// ([ItemKnowledge on, test shard only) until the whole supported surface is covered. It covers weapons and armor:
+// ([ItemKnowledge on) until the whole supported surface is covered. cc-P647: test shard only in fact, not just by label:
+// off the test shard the command refuses and a saved or set switch is inert. It covers weapons and armor:
 //
 //   - A tooltip seam (server/patches/Item-property-list-policy.patch): before an item's full property builder runs, the
 //     policy may supply the whole list. For a managed item it builds the real list privately, then passes on only the
 //     lines its catalog gives an owner and that owner's track has reached. Lines no catalog entry names are dropped:
-//     an unknown property stays concealed until someone reviews it. The name is the item's plain art name.
+//     an unknown property stays concealed until someone reviews it. The name is the item's plain art name. Who may use
+//     the item and how it is held stay public (cc-P647: blessed, cursed, insured, quest item, blessed for, locked down).
 //   - Two tracks per item, shared by everyone: magic (Unidentified, Named, Values), Appraisal's; arms (Uninspected,
-//     Assessed, Measured), Arms Lore's. When both are complete the item shows its ordinary full tooltip.
+//     Assessed, Measured), Arms Lore's. When both are complete the item shows its ordinary full tooltip, still through
+//     the catalog (cc-P647): a line no entry names stays hidden even then.
 //   - Only items stamped as unknown are managed: magic weapons and armor made by monster loot (LootPack, one call in
 //     server/patches/LootPack-unidentified-magic.patch) while the policy is on, and staff's [ItemKnowledge conceal.
 //     Everything else, everything that exists today and everything crafted, is never stamped and shows as it does now.
@@ -67,15 +70,27 @@ public class ItemKnowledgeStore : GenericPersistence
 
     public static ItemKnowledgeStore Instance => _instance ??= new ItemKnowledgeStore();
 
+    // A save serializes this on one worker while the game thread waits with the world frozen, so nothing else touches Rows:
+    // the dead rows it skips are pruned here as well (cc-P647).
     public override void Serialize(IGenericWriter writer)
     {
         var live = new List<KeyValuePair<Serial, ItemKnowledgeRow>>();
+        var dead = new List<Serial>();
         foreach (var pair in Rows)
         {
             if (World.FindItem(pair.Key) is { Deleted: false })
             {
                 live.Add(pair);
             }
+            else
+            {
+                dead.Add(pair.Key);
+            }
+        }
+
+        foreach (var serial in dead)
+        {
+            Rows.Remove(serial);
         }
 
         writer.WriteEncodedInt(CurrentVersion);
@@ -142,9 +157,12 @@ public static class ClusterFItemKnowledge
 
     // -- State --------------------------------------------------------------------------------------------------------
 
+    // cc-P647: the policy works only on the test shard. Off it, the saved or set switch stays inert and the command refuses.
+    public static Func<bool> IsTestShard { get; set; } = () => ClusterFStaffHub.IsTestShard;
+
     public static bool Enabled
     {
-        get => ItemKnowledgeStore.Enabled;
+        get => ItemKnowledgeStore.Enabled && IsTestShard();
         set
         {
             if (ItemKnowledgeStore.Enabled == value)
@@ -237,6 +255,14 @@ public static class ClusterFItemKnowledge
         P(1061824); // one-handed weapon
         P(1061172); P(1061173); P(1061174); P(1061175); P(1112075); // skill required
         P(1061170); // strength requirement (Appraisal's while a lower-requirements enchantment is unknown)
+        // cc-P647: Item.AddNameProperties' ownership, death and access labels are public facts, not hidden magic.
+        P(1038021); // blessed
+        P(1049643); // cursed
+        P(1061682); // insured
+        P(1062203); // blessed for ~1_NAME~
+        P(1072351); // quest item
+        P(501643); // locked down
+        P(501644); // locked down & secure
 
         // Appraisal: the magic.
         A(1060401, "damage increase");
@@ -393,17 +419,35 @@ public static class ClusterFItemKnowledge
     /// <summary>The item's plain art name, never its Name, label or type: an artifact's or a magic title stays unknown.</summary>
     public static int SafeLabel(Item item) => item.ItemID < 0x4000 ? 1020000 + item.ItemID : 1078872 + item.ItemID;
 
-    /// <summary>Item.PropertyListPolicy: the whole safe list for a concealed item, or false to let the stock builder run.</summary>
+    /// <summary>
+    /// Item.PropertyListPolicy: the whole safe list for a managed item, or false to let the stock builder run (the policy
+    /// is off, or the item was never stamped). cc-P647: a fully known item still renders through the catalog, in the stock
+    /// order with its own name, so a line no catalog entry names stays hidden after both discoveries.
+    /// </summary>
     public static bool Render(Item item, IPropertyList list)
     {
-        if (!IsConcealed(item))
+        if (!Enabled || Of(item) is not { } row)
         {
             return false;
         }
 
-        var row = Of(item);
         var entries = FullEntries(item);
         var lowerRequirements = entries.Exists(e => e.Number == 1060435);
+
+        if (row.Complete)
+        {
+            for (var i = 0; i < entries.Count; i++)
+            {
+                var (number, argument) = entries[i];
+                if (i == 0 || OwnerOf(number, lowerRequirements) != Owner.Unknown)
+                {
+                    list.Add(number, argument);
+                }
+            }
+
+            item.AppendChildProperties(list);
+            return true;
+        }
 
         list.Add(SafeLabel(item));
 
@@ -492,7 +536,8 @@ public static class ClusterFItemKnowledge
 
     /// <summary>
     /// The design's first model: D = clamp(15 x properties + 0.75 x the strongest property's intensity, 10, 175), with the
-    /// shard's own property count and intensity (the Appraiser's and the imbuing catalogue's readers).
+    /// shard's own property count and intensity (the Appraiser's and the imbuing catalogue's readers), plus the
+    /// enchantments Appraisal discloses that those readers do not see (cc-P647, <see cref="UncataloguedIntensities"/>).
     /// </summary>
     public static int Difficulty(Item item)
     {
@@ -503,8 +548,49 @@ public static class ClusterFItemKnowledge
             strongest = Math.Max(strongest, RequisitionProperties.IntensityOf(item, def.Name));
         }
 
+        foreach (var intensity in UncataloguedIntensities(item))
+        {
+            count++;
+            strongest = Math.Max(strongest, intensity);
+        }
+
         strongest = Math.Clamp(strongest, 0, 100);
         return (int)Math.Clamp(Math.Round(15.0 * count + 0.75 * strongest), 10, 175);
+    }
+
+    /// <summary>
+    /// cc-P647 (P639 review): each Appraisal-owned enchantment on a weapon or armor that the imbuing catalogue has no row
+    /// for, as its intensity in percent: Use Best Weapon Skill (a boolean, 100) and each skill bonus (its value over 15,
+    /// as the Appraiser's reader weighs a spellbook's).
+    /// </summary>
+    public static List<int> UncataloguedIntensities(Item item)
+    {
+        var found = new List<int>();
+        AosSkillBonuses skills = null;
+        if (item is BaseWeapon weapon)
+        {
+            if (weapon.WeaponAttributes.UseBestSkill != 0)
+            {
+                found.Add(100);
+            }
+
+            skills = weapon.SkillBonuses;
+        }
+        else if (item is BaseArmor armor)
+        {
+            skills = armor.SkillBonuses;
+        }
+
+        for (var i = 0; skills != null && i < 5; i++)
+        {
+            var bonus = skills.GetBonus(i);
+            if (bonus > 0)
+            {
+                found.Add(Math.Clamp((int)(bonus * 100 / 15.0), 0, 100));
+            }
+        }
+
+        return found;
     }
 
     public static int StageDifficulty(int d, MagicKnowledge stage) => stage == MagicKnowledge.Named ? Math.Max(0, d - 60) : d;
@@ -612,6 +698,12 @@ public static class ClusterFItemKnowledge
         var from = e.Mobile;
         var arg = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "status";
 
+        if (arg is "on" or "conceal" or "forget" && !IsTestShard())
+        {
+            from.SendMessage("Item identification: refused. Test shard only; the live shard never conceals items.");
+            return;
+        }
+
         switch (arg)
         {
             case "on":
@@ -641,6 +733,12 @@ public static class ClusterFItemKnowledge
 
         protected override void OnTarget(Mobile from, object targeted)
         {
+            if (!IsTestShard())
+            {
+                from.SendMessage("Item identification: refused. Test shard only.");
+                return;
+            }
+
             if (targeted is not Item item || !IsSupported(item))
             {
                 from.SendMessage("That is not a weapon or armor.");

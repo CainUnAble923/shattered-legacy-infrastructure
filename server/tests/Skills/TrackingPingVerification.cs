@@ -15,11 +15,18 @@
 //      caster leaves the area or the floor.
 //   8. The Tracking skill offers Ping from 90 Base, and its button shares every check with [TrackingPing.
 //   9. Over the overload ceiling the ping is refused and costs nothing; under it every contact is kept (no 12 cap).
+//  10. (P647, P625 review) A refresh that crosses the ceiling mid-pulse ends it and refunds the stamina and the cooldown.
+//  11. (P647, P625 review) An offer left open past its own Tracking use cannot skip a later skill's delay.
+//  12. (P647, P637 review) A player the engine's visibility hides (another tournament's duel) is not found, nor their pet.
+//  13. (P647, P637 review) A callback that runs after the deadline (a stalled loop catching up) ends without reading.
+//  14. (P647, P637 review) Expired cooldown and warning records are pruned, and a deleted character's are dropped;
+//      an unexpired cooldown and warning throttle survive a disconnect.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Server;
+using Server.Engines.ConPVP;
 using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
@@ -505,5 +512,195 @@ public class TrackingPingVerification : IDisposable
         {
             ClusterFTrackingPing.OverloadCeiling = ceiling;
         }
+    }
+
+    // ---------------------------------------------------------------- 10
+
+    [Fact]
+    public void ARefreshOverTheCeilingEndsThePingAndRefundsIt()
+    {
+        var pm = Caster(100.0);
+        for (var i = 0; i < 22; i++)
+        {
+            Put(new Orc(), -11 + i, 7);
+        }
+
+        var ceiling = ClusterFTrackingPing.OverloadCeiling;
+        try
+        {
+            ClusterFTrackingPing.OverloadCeiling = 22;
+            Assert.True(ClusterFTrackingPing.Begin(pm, false));
+            FireNow();
+            Assert.True(ClusterFTrackingPing.IsActive(pm)); // 22 is at the ceiling, not over it: paid for
+            Assert.Equal(100 - ClusterFTrackingPing.StaminaCost, pm.Stam);
+            Assert.True(ClusterFTrackingPing.CooldownLeft(pm) > TimeSpan.Zero);
+
+            Put(new Orc(), 0, -7); // one arrival pushes the next refresh over it
+            ShardTestClock.AdvanceSeconds(1.0);
+            Log(pm);
+
+            Assert.False(ClusterFTrackingPing.IsActive(pm));
+            Assert.Contains(HeardBy(pm), t => t == ClusterFTrackingPing.Overloaded);
+            Assert.Equal(100, pm.Stam);
+            Assert.Equal(TimeSpan.Zero, ClusterFTrackingPing.CooldownLeft(pm));
+        }
+        finally
+        {
+            ClusterFTrackingPing.OverloadCeiling = ceiling;
+        }
+    }
+
+    // ---------------------------------------------------------------- 11
+
+    [Fact]
+    public void AStaleOfferCannotSkipALaterSkillsDelay()
+    {
+        var pm = Caster(90.0);
+        var ns = PacketTestUtilities.CreateTestNetState();
+        pm.NetState = ns;
+        ns.Mobile = pm;
+
+        try
+        {
+            Tracking.OnUse(pm);
+            pm.NextSkillTime = Core.TickCount + 10_000; // what Skills.UseSkill sets after the Tracking callback
+            var offer = ns.GetGumps().Find<ClusterFTrackingPing.PingOfferGump>();
+            Assert.NotNull(offer);
+
+            // Tracking's own delay runs out with the offer still open, and another skill is used: its delay is not
+            // the one the offer was sent under.
+            ShardTestClock.AdvanceSeconds(11.0);
+            pm.NextSkillTime = Core.TickCount + 10_000;
+
+            Press(offer, ns, ClusterFTrackingPing.PingOfferGump.PingButton);
+            Log(pm);
+            Assert.False(ClusterFTrackingPing.IsFocusing(pm));
+            Assert.Contains(HeardBy(pm), t => t == "You must wait a few moments to use another skill.");
+        }
+        finally
+        {
+            pm.NetState = null;
+            ns.Mobile = null;
+        }
+    }
+
+    // ---------------------------------------------------------------- 12
+
+    [Fact]
+    public void APlayerTheEngineHidesIsNotFoundNorTheirPet()
+    {
+        var scout = Caster(120.0);
+        var teammate = Player("Teammate", 4, 0);
+        var outsider = Player("Outsider", 6, 0);
+        var outsidersPet = Put(PetOf(outsider), 0, 5);
+
+        // An active tournament duel: pinned PlayerMobile.CanSee hides every player of another duel context, and their
+        // pets, from an uneliminated participant. Only a non-null tournament is read, so an empty one serves.
+        var duel = new DuelContext(scout, RulesetLayout.Root, false);
+        duel.m_Tournament = (Tournament)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(Tournament));
+        _ = new DuelPlayer(scout, new Participant(duel, 1));
+        _ = new DuelPlayer(teammate, new Participant(duel, 1));
+
+        try
+        {
+            Assert.True(scout.InRange(outsider, ClusterFTrackingPing.PlayerRange) && scout.InLOS(outsider));
+            Assert.True(scout.InRange(outsidersPet, ClusterFTrackingPing.PlayerRange) && scout.InLOS(outsidersPet));
+            Assert.False(scout.CanSee(outsider));
+            Assert.False(scout.CanSee(outsidersPet));
+            Assert.True(scout.CanSee(teammate));
+
+            Assert.True(ClusterFTrackingPing.Begin(scout, false));
+            FireNow();
+            Log(scout);
+
+            var found = ClusterFTrackingPing.ContactsOf(scout).Select(c => c.Mobile).ToList();
+            Assert.Contains(teammate, found);
+            Assert.DoesNotContain(outsider, found);
+            Assert.DoesNotContain(outsidersPet, found);
+            Assert.Equal(new[] { ClusterFTrackingPing.WatchedWarning }, HeardBy(teammate));
+            Assert.Empty(HeardBy(outsider));
+        }
+        finally
+        {
+            scout.DuelPlayer = null;
+            teammate.DuelPlayer = null;
+        }
+    }
+
+    // ---------------------------------------------------------------- 13
+
+    [Fact]
+    public void ACallbackAfterTheDeadlineEndsThePingWithoutReading()
+    {
+        var scout = Caster(120.0);
+        Put(new Orc(), 5, 0);
+
+        Assert.True(ClusterFTrackingPing.Begin(scout, false));
+        FireNow();
+        ShardTestClock.AdvanceSeconds(2.0);
+        Assert.True(ClusterFTrackingPing.IsActive(scout));
+
+        // A player walks up, then the event loop stalls past the 6 second deadline before the next callback runs.
+        var late = Player("Late", 6, 0);
+        ShardTestClock.Stall(TimeSpan.FromSeconds(10.0));
+        Log(scout);
+
+        Assert.False(ClusterFTrackingPing.IsActive(scout));
+        Assert.Empty(HeardBy(late)); // no read, so no watched warning, after the deadline
+        Assert.Equal(1, HeardBy(scout).Count(t => t == ClusterFTrackingPing.Ended));
+    }
+
+    // ---------------------------------------------------------------- 14
+
+    private static bool Holds(string field, Mobile m)
+    {
+        var table = typeof(ClusterFTrackingPing).GetField(field,
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)?.GetValue(null);
+        Assert.NotNull(table);
+        return ((System.Collections.IDictionary)table).Contains(m);
+    }
+
+    [Fact]
+    public void ExpiredAndDeletedRecordsArePrunedButADisconnectKeepsThem()
+    {
+        var scout = Caster(120.0);
+        var second = Caster(120.0, new Point3D(Spot.X, Spot.Y + 1, Spot.Z));
+        var watched = Player("Watched", 6, 0);
+
+        Assert.True(ClusterFTrackingPing.Begin(scout, false));
+        FireNow();
+        Assert.True(Holds("_cooldownUntil", scout));
+        Assert.True(Holds("_lastWarned", watched));
+
+        // A disconnect stops the ping but keeps the cooldown and the warning throttle: no relog bypass.
+        ClusterFTrackingPing.Stop(scout);
+        Assert.False(ClusterFTrackingPing.IsActive(scout));
+        Assert.True(ClusterFTrackingPing.CooldownLeft(scout) > TimeSpan.Zero);
+        Assert.False(ClusterFTrackingPing.Begin(scout, false));
+        Assert.True(ClusterFTrackingPing.Begin(second, false));
+        FireNow();
+        Assert.Contains(watched, ClusterFTrackingPing.ContactsOf(second).Select(c => c.Mobile));
+        Assert.Single(HeardBy(watched));
+
+        // Once expired, the next ping anywhere prunes them.
+        ShardTestClock.AdvanceSeconds(35.0);
+        var elsewhere = Caster(100.0, new Point3D(Spot.X + 200, Spot.Y, Spot.Z));
+        Assert.True(ClusterFTrackingPing.Begin(elsewhere, false));
+        FireNow();
+        Assert.False(Holds("_cooldownUntil", scout));
+        Assert.False(Holds("_cooldownUntil", second));
+        Assert.False(Holds("_lastWarned", watched));
+        Assert.True(Holds("_cooldownUntil", elsewhere));
+
+        // A deleted character's unexpired records go with it, caster and warned player alike.
+        var doomed = Player("Doomed", 3, 0);
+        scout.NextSkillTime = Core.TickCount;
+        Assert.True(ClusterFTrackingPing.Begin(scout, false));
+        FireNow();
+        Assert.True(Holds("_lastWarned", doomed));
+        doomed.Delete();
+        scout.Delete();
+        Assert.False(Holds("_lastWarned", doomed));
+        Assert.False(Holds("_cooldownUntil", scout));
     }
 }

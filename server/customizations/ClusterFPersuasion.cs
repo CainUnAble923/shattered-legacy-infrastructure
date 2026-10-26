@@ -17,6 +17,11 @@
 // Initialize below replaces the callback after pinned's (CallPriority). Its endless (0, 100) target roll was the old
 // training route, which the design retires once work trains every band. Later stages add haggling, rumors, terms, calm and
 // the tutorial pass (drafted in shard-migration notes/cc-P626-build-social-skill.md).
+//
+// cc-P647 (review fixes): the menu rechecks the conversation when it is answered (both alive, same facet, in range and
+// sight, still a person to persuade); a courier holds one job wherever its letter is (a banked letter still counts);
+// a town is the nearest NAMED town region around an NPC, so unnamed town subregions (Luna's bank) belong to their town;
+// and a letter for a banker is taken by any kind of banker the board can pick (a gypsy banker, a minter).
 
 using System;
 using System.Collections.Generic;
@@ -116,30 +121,47 @@ public static class ClusterFPersuasion
         }
     }
 
-    /// <summary>Checks the person and opens the choices. False (and nothing spent) for anyone who cannot be persuaded.</summary>
-    public static bool Open(PlayerMobile pm, Mobile npc)
+    /// <summary>
+    /// Why pm cannot talk to npc right now, or null when they can. Checked when the menu opens and again when it is
+    /// answered (cc-P647): InRange alone ignores the facet, and a menu can sit open while either side changes.
+    /// </summary>
+    public static string CannotConverse(PlayerMobile pm, Mobile npc)
     {
         if (npc == null || npc.Deleted)
         {
-            Tell(pm, 0x3B2, "There is nobody there to persuade.");
-            return false;
+            return "There is nobody there to persuade.";
         }
 
         if (npc.Player)
         {
-            Tell(pm, 0x3B2, "Perhaps just asking would work better.");
-            return false;
+            return "Perhaps just asking would work better.";
         }
 
         if (!npc.Alive || !npc.Body.IsHuman || npc is BaseCreature { Controlled: true } or BaseCreature { Summoned: true })
         {
-            Tell(pm, 0x3B2, "There is little chance of persuading that.");
-            return false;
+            return "There is little chance of persuading that.";
         }
 
-        if (!pm.InRange(npc, ContactRange) || !pm.InLOS(npc))
+        if (!pm.Alive)
         {
-            Tell(pm, 0x3B2, "You are too far away to talk to them.");
+            return "You cannot persuade anyone while dead.";
+        }
+
+        if (pm.Map != npc.Map || !pm.InRange(npc, ContactRange) || !pm.InLOS(npc))
+        {
+            return "You are too far away to talk to them.";
+        }
+
+        return null;
+    }
+
+    /// <summary>Checks the person and opens the choices. False (and nothing spent) for anyone who cannot be persuaded.</summary>
+    public static bool Open(PlayerMobile pm, Mobile npc)
+    {
+        var why = CannotConverse(pm, npc);
+        if (why != null)
+        {
+            Tell(pm, 0x3B2, why);
             return false;
         }
 
@@ -172,14 +194,15 @@ public static class ClusterFPersuasion
 
         public override void OnResponse(NetState sender, in RelayInfo info)
         {
-            if (sender.Mobile is not PlayerMobile pm || _npc.Deleted || !_npc.Alive)
+            if (sender.Mobile is not PlayerMobile pm || info.ButtonID is not (AskForHelpButton or AskAboutWorkButton))
             {
                 return;
             }
 
-            if (!pm.InRange(_npc, ContactRange))
+            var why = CannotConverse(pm, _npc);
+            if (why != null)
             {
-                Tell(pm, 0x3B2, "You are too far away to talk to them.");
+                Tell(pm, 0x3B2, why);
                 return;
             }
 
@@ -389,26 +412,25 @@ public static class ClusterFPersuasion
         return best;
     }
 
-    public static string TownOf(Mobile m) => m.Region?.GetRegion<TownRegion>()?.Name;
-
-    public static ExchangeLetter CarriedLetter(Mobile m)
+    /// <summary>
+    /// The courier town an NPC stands in: the nearest NAMED town region in its ancestry. Unnamed town subregions (Luna's
+    /// bank) belong to the town around them. Issue, destination choice, rotation and delivery all use this (cc-P647).
+    /// </summary>
+    public static string TownOf(Mobile m)
     {
-        var pack = m.Backpack;
-        if (pack == null)
+        for (var r = m.Region; r != null; r = r.Parent)
         {
-            return null;
-        }
-
-        foreach (var letter in pack.FindItemsByType<ExchangeLetter>())
-        {
-            if (letter.Courier == m)
+            if (r is TownRegion && !string.IsNullOrEmpty(r.Name))
             {
-                return letter;
+                return r.Name;
             }
         }
 
         return null;
     }
+
+    /// <summary>The courier's one outstanding letter wherever it is (a pack, a bank box, the floor), or null (cc-P647).</summary>
+    public static ExchangeLetter OutstandingLetter(Mobile m) => ExchangeLetter.OutstandingFor(m);
 
     /// <summary>Ask about work. At an Exchange contact, a courier letter; anywhere else, free directions.</summary>
     public static ExchangeLetter AskAboutWork(PlayerMobile pm, Mobile npc)
@@ -419,14 +441,14 @@ public static class ClusterFPersuasion
             return null;
         }
 
-        var carried = CarriedLetter(pm);
-        if (carried != null && !carried.Expired)
+        var outstanding = OutstandingLetter(pm);
+        if (outstanding != null && !outstanding.Expired)
         {
-            Say(npc, pm, $"Deliver the letter you carry first: {carried.Instructions}.");
+            Say(npc, pm, $"Deliver the letter you were given first: {outstanding.Instructions}.");
             return null;
         }
 
-        carried?.Delete();
+        outstanding?.Delete(); // stale, wherever it was left
 
         var town = TownOf(npc);
         var difficulty = JobDifficultyFor(pm.Skills[SkillName.Begging].Base);
@@ -490,6 +512,7 @@ public static class ClusterFPersuasion
             }
             else
             {
+                // Any kind of banker (ExchangeLetter.IsRecipient takes the subclasses a Banker letter names).
                 if (v is not Banker || vTown == town)
                 {
                     continue;
@@ -527,6 +550,14 @@ public static class ClusterFPersuasion
         if (letter.Expired)
         {
             Tell(pm, 0x3B2, "The letter's business has gone stale. The Exchange will not pay for it now.");
+            letter.Delete();
+            return false;
+        }
+
+        // A save from before cc-P647 can hold several letters for one courier; only the newest is the job.
+        if (!letter.IsOutstanding)
+        {
+            Tell(pm, 0x3B2, "The Exchange has replaced this letter with a newer one. It will not pay for it now.");
             letter.Delete();
             return false;
         }

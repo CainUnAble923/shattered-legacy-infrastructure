@@ -15,6 +15,12 @@
 //   6. The warrant survives a save and load with its account, encounter, receipt and state.
 //   7. The seeder: a dry run places nothing; a run places a marker at each usable site and none twice; a site under a
 //      guarded region gets no marker and is reported.
+//   cc-P647 (the P629 and P641 reviews):
+//   8. Off the test shard the seeder refuses and places nothing.
+//   9. The warrant never goes into a bag, only the top of its account's backpacks and banks; one saved in a bag returns.
+//  10. A facet whose map or statics files are not loaded is refused, said so, and gets no marker.
+//  11. A town under a higher-priority allowed region, or only below the centre's Z, still refuses the site, and a spawn
+//      tile standing in it is not counted.
 
 using System;
 using System.Linq;
@@ -330,6 +336,8 @@ public class LeagueInvestigationVerification
     {
         var yew = LeagueInvestigationCatalog.FindSite(LeagueInvestigationCatalog.YewWoods)!;
         var covetous = LeagueInvestigationCatalog.FindSite(LeagueInvestigationCatalog.CovetousHall)!;
+        using var shard = new TestShard(true);
+        using var terrain = MapData.FlatFixture();
         try
         {
             var dry = LeagueInvestigationSeeder.Seed(true);
@@ -368,5 +376,193 @@ public class LeagueInvestigationVerification
             LeagueInvestigationSeeder.FindMarker(yew)?.Delete();
             LeagueInvestigationSeeder.FindMarker(covetous)?.Delete();
         }
+    }
+
+    // ---------------------------------------------------------------- 8 (cc-P647, P629 review)
+
+    [Fact]
+    public void TheSeederRefusesOffTheTestShard()
+    {
+        var yew = LeagueInvestigationCatalog.FindSite(LeagueInvestigationCatalog.YewWoods)!;
+        var covetous = LeagueInvestigationCatalog.FindSite(LeagueInvestigationCatalog.CovetousHall)!;
+        using var shard = new TestShard(false);
+        try
+        {
+            var live = LeagueInvestigationSeeder.Seed(false);
+            Assert.Equal(0, live.Placed);
+            Assert.Contains("test", live.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Null(LeagueInvestigationSeeder.FindMarker(yew));
+            Assert.Null(LeagueInvestigationSeeder.FindMarker(covetous));
+            Assert.Equal(0, LeagueInvestigationSeeder.Seed(true).Placed);
+        }
+        finally
+        {
+            LeagueInvestigationSeeder.FindMarker(yew)?.Delete();
+            LeagueInvestigationSeeder.FindMarker(covetous)?.Delete();
+        }
+    }
+
+    // ---------------------------------------------------------------- 9 (cc-P647, P641 finding 1)
+
+    [Fact]
+    public void TheWarrantRestsOnlyInItsOwnersBackpackOrBankNeverInABag()
+    {
+        var at = new Point3D(1700, 700, 0);
+        var owner = NewAccount();
+        var pm = NewCharacter(owner, at, Map.Trammel);
+        var alt = NewCharacter(owner, at, Map.Trammel, 1);
+        try
+        {
+            var w = WarrantIn(pm);
+            var receipt = w.ReceiptId;
+            var bag = new Bag();
+            pm.Backpack.DropItem(bag);
+            var bankBag = new Bag();
+            pm.BankBox.DropItem(bankBag);
+
+            // A bag can be dropped or traded without asking what is inside it, so the warrant never goes into one.
+            Assert.False(w.OnDroppedInto(pm, bag, new Point3D(40, 40, 0)));
+            Assert.False(w.OnDroppedOnto(pm, bag));
+            Assert.False(w.OnDroppedInto(pm, bankBag, new Point3D(40, 40, 0)));
+            Assert.Same(pm.Backpack, w.Parent);
+
+            // The owner's backpack and bank themselves, and the other character's, are fine (a drop into a bank also
+            // needs the bank open, the engine's rule).
+            Assert.True(w.OnDroppedInto(pm, pm.Backpack, new Point3D(40, 40, 0)));
+            Assert.Same(pm.Backpack, w.Parent);
+            Assert.True(w.IsRestingPlace(pm.BankBox));
+            Assert.True(w.IsRestingPlace(alt.Backpack));
+            Assert.True(w.IsRestingPlace(alt.BankBox));
+            Assert.False(w.IsRestingPlace(bag));
+
+            // A warrant saved inside a bag before this rule comes back to the top of the pack or bank it was in.
+            bag.DropItem(w);
+            w.ReturnToRoot();
+            Assert.Same(pm.Backpack, w.Parent);
+            bankBag.DropItem(w);
+            w.ReturnToRoot();
+            Assert.Same(pm.BankBox, w.Parent);
+            Assert.Equal(receipt, w.ReceiptId);
+            Assert.False(w.Deleted);
+
+            // Ordinary bags are untouched by any of this.
+            Assert.Same(pm.Backpack, bag.Parent);
+            Assert.Same(pm.BankBox, bankBag.Parent);
+        }
+        finally
+        {
+            Cleanup(owner);
+        }
+    }
+
+    // ---------------------------------------------------------------- 10 (cc-P647, P641 finding 2)
+
+    [Fact]
+    public void ASiteOnUnloadedMapDataIsRefusedAndGetsNoMarker()
+    {
+        Assert.Contains("land", LeagueInvestigationCatalog.MissingMapData("Trammel", false, true, true));
+        Assert.Contains("statics", LeagueInvestigationCatalog.MissingMapData("Trammel", true, false, true));
+        Assert.Contains("statics", LeagueInvestigationCatalog.MissingMapData("Trammel", true, true, false));
+        Assert.Null(LeagueInvestigationCatalog.MissingMapData("Trammel", true, true, true));
+
+        var yew = LeagueInvestigationCatalog.FindSite(LeagueInvestigationCatalog.YewWoods)!;
+        var covetous = LeagueInvestigationCatalog.FindSite(LeagueInvestigationCatalog.CovetousHall)!;
+        using var shard = new TestShard(true);
+        try
+        {
+            // The test host opens no map files: Trammel exists, its terrain is the engine's blank fallback. Refused, and
+            // said so, not reported as a crowded site.
+            var host = LeagueInvestigationSeeder.Seed(false);
+            Assert.Equal(0, host.Placed);
+            Assert.Contains(host.Refused, p => p.Contains("yew-woods") && p.Contains("not loaded"));
+            Assert.Contains(host.Refused, p => p.Contains("covetous-hall") && p.Contains("not loaded"));
+            Assert.DoesNotContain(host.Refused, p => p.Contains("safe spawn tiles"));
+            Assert.Empty(LeagueInvestigationCatalog.SpawnTiles(yew));
+            Assert.Null(LeagueInvestigationSeeder.FindMarker(yew));
+            Assert.Null(LeagueInvestigationSeeder.FindMarker(covetous));
+
+            // Land loaded but the statics missing (walls and rocks would vanish): refused too.
+            using (new MapData(_ => LeagueInvestigationCatalog.MissingMapData("Trammel", true, false, false)))
+            {
+                var noStatics = LeagueInvestigationSeeder.Seed(false);
+                Assert.Equal(0, noStatics.Placed);
+                Assert.Contains(noStatics.Refused, p => p.Contains("yew-woods") && p.Contains("statics"));
+                Assert.Empty(LeagueInvestigationCatalog.SpawnTiles(yew));
+                Assert.Null(LeagueInvestigationSeeder.FindMarker(yew));
+            }
+        }
+        finally
+        {
+            LeagueInvestigationSeeder.FindMarker(yew)?.Delete();
+            LeagueInvestigationSeeder.FindMarker(covetous)?.Delete();
+        }
+    }
+
+    // ---------------------------------------------------------------- 11 (cc-P647, P641 finding 3)
+
+    [Fact]
+    public void ARefusedRegionHiddenByPriorityOrHeightStillRefusesTheSite()
+    {
+        var site = new LeagueInvestigationSite("p647-open", "open ground", Map.Trammel, new Point3D(1760, 760, 20), true, "");
+        using var terrain = MapData.FlatFixture();
+        Assert.Empty(LeagueInvestigationCatalog.CheckSite(site));
+
+        // An allowed, parentless region at a higher priority laid over a town: every point finds the allowed one first.
+        var x = site.Center.X + 20;
+        var town = new GuardedRegion("P647 town", Map.Trammel, 50,
+            new Rectangle3D(new Point3D(x, site.Center.Y - 2, -128), new Point3D(x + 3, site.Center.Y + 2, 127)));
+        var overlay = new BaseRegion("P647 overlay", Map.Trammel, 100,
+            new Rectangle3D(new Point3D(x - 2, site.Center.Y - 4, -128), new Point3D(x + 6, site.Center.Y + 4, 127)));
+        town.Register();
+        overlay.Register();
+        try
+        {
+            Assert.True(LeagueInvestigationCatalog.IsAllowedRegion(Region.Find(new Point3D(x + 1, site.Center.Y, 0), Map.Trammel)));
+            Assert.Contains(LeagueInvestigationCatalog.CheckSite(site), p => p.Contains("P647 town") && p.Contains("GuardedRegion"));
+        }
+        finally
+        {
+            overlay.Unregister();
+            town.Unregister();
+        }
+
+        // A town only below the centre's Z, where the ground (Z 0 here) actually is: the spawn tiles stand in it.
+        var low = new GuardedRegion("P647 low town", Map.Trammel, 50,
+            new Rectangle3D(new Point3D(site.Center.X - 6, site.Center.Y - 6, -128), new Point3D(site.Center.X + 7, site.Center.Y + 7, 10)));
+        low.Register();
+        try
+        {
+            Assert.False(low.Contains(site.Center));
+            Assert.Contains(LeagueInvestigationCatalog.CheckSite(site), p => p.Contains("P647 low town"));
+            Assert.Empty(LeagueInvestigationCatalog.SpawnTiles(site));
+        }
+        finally
+        {
+            low.Unregister();
+        }
+
+        Assert.Empty(LeagueInvestigationCatalog.CheckSite(site));
+    }
+
+    // The explicit terrain fixture for the placement facts: the host has no map files, so these declare its blank
+    // fallback ground (land 0 at Z 0 everywhere, no statics) to be the facet's data.
+    private sealed class MapData : IDisposable
+    {
+        private readonly Func<Map, string> _was = LeagueInvestigationCatalog.MapDataProblem;
+
+        public MapData(Func<Map, string> problem) => LeagueInvestigationCatalog.MapDataProblem = problem;
+
+        public static MapData FlatFixture() => new(_ => null);
+
+        public void Dispose() => LeagueInvestigationCatalog.MapDataProblem = _was;
+    }
+
+    private sealed class TestShard : IDisposable
+    {
+        private readonly Func<bool> _was = LeagueInvestigationSeeder.IsTestShard;
+
+        public TestShard(bool on) => LeagueInvestigationSeeder.IsTestShard = () => on;
+
+        public void Dispose() => LeagueInvestigationSeeder.IsTestShard = _was;
     }
 }

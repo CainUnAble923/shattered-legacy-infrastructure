@@ -15,6 +15,11 @@
 // shard's [LevelGearProcs on turns it on until restart. There is no acting-level dormancy yet (the F-12 player level
 // service it needs is not built): the saved required level is kept for that stage. The imbuing gump does not yet count
 // the milestone's slot (the shared budget stage).
+//
+// P647 (P633/P645 review fixes): off the test shard the milestone is off whatever the setting or switch says, and
+// [LevelGearProcs on refuses. A target that refuses damage now (CanBeDamaged, a shut chest mimic) draws no roll. The
+// bought effect shows on the weapon's tooltip (ClusterFLevelGear.AddTooltip calls AddTooltip here). Expired and deleted
+// cooldown entries are dropped when read and before each save.
 
 #nullable enable
 
@@ -36,7 +41,11 @@ public static class LevelGearProcSettings
     /// <summary>The test shard's in-memory switch ([LevelGearProcs on|off), never written to the settings file.</summary>
     public static bool? EnabledOverride { get; set; }
 
-    public static bool Enabled => (EnabledOverride ?? ServerConfiguration.GetOrUpdateSetting(Prefix + "enabled", false)) &&
+    /// <summary>Stage 1 runs on the test shard only (P647): elsewhere the setting and the switch are ignored. A seam for tests.</summary>
+    public static Func<bool> IsTestShard { get; set; } = () => ClusterFStaffHub.IsTestShard;
+
+    public static bool Enabled => IsTestShard() &&
+                                  (EnabledOverride ?? ServerConfiguration.GetOrUpdateSetting(Prefix + "enabled", false)) &&
                                   LevelGearSettings.Enabled && Problem() == null;
 
     public static int UnlockLevel => ServerConfiguration.GetOrUpdateSetting(Prefix + "unlockLevel", 100);
@@ -161,6 +170,38 @@ public class LevelGearProcCooldowns : GenericPersistence
         writer.WriteEncodedInt(CurrentVersion);
         Write(writer, Owners, now, s => World.FindMobile(s) is { Deleted: false });
         Write(writer, Weapons, now, s => World.FindItem(s) is { Deleted: false });
+    }
+
+    /// <summary>Drops expired entries and those whose mobile or weapon is gone (P647). Game thread only.</summary>
+    internal static void Prune(DateTime now)
+    {
+        Prune(Owners, now, s => World.FindMobile(s) is { Deleted: false });
+        Prune(Weapons, now, s => World.FindItem(s) is { Deleted: false });
+    }
+
+    private static void Prune(Dictionary<Serial, DateTime> map, DateTime now, Func<Serial, bool> exists)
+    {
+        List<Serial>? drop = null;
+        foreach (var (serial, until) in map)
+        {
+            if (until <= now || !exists(serial))
+            {
+                (drop ??= []).Add(serial);
+            }
+        }
+
+        foreach (var serial in drop ?? [])
+        {
+            map.Remove(serial);
+        }
+    }
+
+    // The game thread's part of a save, before the workers call Serialize(writer): the maps are pruned here, never
+    // while a worker enumerates them.
+    public override void Serialize()
+    {
+        Prune(ClusterFLevelGearProcs.Now);
+        base.Serialize();
     }
 
     private static void Write(IGenericWriter writer, Dictionary<Serial, DateTime> map, DateTime now, Func<Serial, bool> exists)
@@ -329,8 +370,7 @@ public static class ClusterFLevelGearProcs
         }
 
         var now = Now;
-        if (LevelGearProcCooldowns.Owners.TryGetValue(owner.Serial, out var ownerUntil) && now < ownerUntil ||
-            LevelGearProcCooldowns.Weapons.TryGetValue(weapon.Serial, out var weaponUntil) && now < weaponUntil)
+        if (Cooling(LevelGearProcCooldowns.Owners, owner.Serial, now) | Cooling(LevelGearProcCooldowns.Weapons, weapon.Serial, now))
         {
             return 0;
         }
@@ -358,6 +398,23 @@ public static class ClusterFLevelGearProcs
         {
             _inProc = false;
         }
+    }
+
+    // Whether this cooldown is still running; an expired entry is dropped as it is read (P647).
+    private static bool Cooling(Dictionary<Serial, DateTime> map, Serial serial, DateTime now)
+    {
+        if (!map.TryGetValue(serial, out var until))
+        {
+            return false;
+        }
+
+        if (now < until)
+        {
+            return true;
+        }
+
+        map.Remove(serial);
+        return false;
     }
 
     private static void Visual(LevelGearProc proc, Mobile attacker, Mobile defender)
@@ -399,19 +456,25 @@ public static class ClusterFLevelGearProcs
         return null;
     }
 
-    /// <summary>PvE only: a living wild creature the attacker is fighting and may harm, in range and sight.</summary>
+    /// <summary>
+    /// PvE only: a living wild creature the attacker is fighting and may harm, in range and sight, that takes damage now
+    /// (P647: CanBeDamaged, so a shut chest mimic spends no roll or cooldown).
+    /// </summary>
     public static bool IsTarget(Mobile attacker, Mobile defender, BaseWeapon weapon) =>
         defender is BaseCreature { Deleted: false, Alive: true, Controlled: false, Summoned: false, Blessed: false,
             NoKillAwards: false } bc &&
         bc.GetMaster() == null && attacker.Combatant == defender && attacker.Map == defender.Map &&
         attacker.InRange(defender, Math.Max(1, weapon.MaxRange)) && attacker.InLOS(defender) &&
-        attacker.CanBeHarmful(defender, false);
+        attacker.CanBeHarmful(defender, false) && bc.CanBeDamaged();
 
     /// <summary>The owner's cooldown left, or zero.</summary>
-    public static TimeSpan OwnerCooldown(Mobile m) =>
-        LevelGearProcCooldowns.Owners.TryGetValue(m.Serial, out var until) && until > Now ? until - Now : TimeSpan.Zero;
+    public static TimeSpan OwnerCooldown(Mobile m)
+    {
+        var now = Now;
+        return Cooling(LevelGearProcCooldowns.Owners, m.Serial, now) ? LevelGearProcCooldowns.Owners[m.Serial] - now : TimeSpan.Zero;
+    }
 
-    // -- Tooltip (owner-neutral: no wearer or ticking value) --------------------------------------------------------------
+    // -- Tooltip (owner-neutral: no wearer or ticking value; ClusterFLevelGear.AddTooltip calls it) -------------------------
 
     internal static void AddTooltip(Item item, IPropertyList list)
     {
@@ -432,6 +495,12 @@ public static class ClusterFLevelGearProcs
     private static void OnCommand(CommandEventArgs e)
     {
         var verb = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "status";
+        if (verb == "on" && !LevelGearProcSettings.IsTestShard())
+        {
+            e.Mobile.SendMessage("Weapon milestones are stage 1: test shard only. They stay off here.");
+            return;
+        }
+
         if (verb == "on")
         {
             LevelGearProcSettings.EnabledOverride = true;
