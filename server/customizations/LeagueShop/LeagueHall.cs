@@ -191,7 +191,7 @@ namespace Server.Engines.LeagueRewards
     }
 
     /// <summary>The facing choice before placing, as pinned's RewardOptionGump offers MinotaurStatue's, with our own labels.</summary>
-    public class LeagueHallFacingGump : Gump
+    public class LeagueHallFacingGump : GuildStyledGump
     {
         public const int BtnFacingBase = 10;
 

@@ -158,7 +158,7 @@ public class LeagueShopGump : Gump
     }
 }
 
-public class LeagueShopConfirmGump : Gump
+public class LeagueShopConfirmGump : GuildStyledGump
 {
     public const int BtnBuy = 1;
     public const int BtnBack = 2;
@@ -245,7 +245,7 @@ public class LeagueShopConfirmGump : Gump
 /// cc-P243: the Hall page. The shop's frame and rows (LeagueShopGump.Row: price and AP in cc-P169's colours, the art greyed
 /// until AP opens the row), the rows in AP tier order (LeagueHall.Stock), Buy through the same confirm step.
 /// </summary>
-public class LeagueHallGump : Gump
+public class LeagueHallGump : GuildStyledGump
 {
     public const int BtnShop = 3;
     public const int BtnRowBase = 300;
@@ -354,7 +354,7 @@ public class LeagueHallGump : Gump
     }
 }
 
-public class LeagueTitleGump : Gump
+public class LeagueTitleGump : GuildStyledGump
 {
     public const int BtnNone = 99;
     public const int BtnTitleBase = 100;

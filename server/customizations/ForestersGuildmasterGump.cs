@@ -17,7 +17,7 @@ namespace Server;
 ///   Rewards         -- standing and Timber Tokens awarded on join
 ///   MemberDashboard -- standing, rank, Timber Token balance; links to work orders
 /// </summary>
-public class ForestersGuildmasterGump : Gump
+public class ForestersGuildmasterGump : GuildStyledGump
 {
     public enum View
     {

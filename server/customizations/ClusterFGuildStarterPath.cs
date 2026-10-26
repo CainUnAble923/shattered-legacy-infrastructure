@@ -788,7 +788,7 @@ public static class GuildWelcome
     }
 }
 
-public class GuildWelcomeGump : Gump
+public class GuildWelcomeGump : GuildStyledGump
 {
     private const int W = 420;
     private const int H = 260;
@@ -836,7 +836,7 @@ public class GuildWelcomeGump : Gump
 /// At the guildmaster: that guild's New Haven starter items, one click to take one, once per loop.
 /// Every button is judged against the world at the click.
 /// </summary>
-public class GuildStarterItemsGump : Gump
+public class GuildStarterItemsGump : GuildStyledGump
 {
     private const int W = 560;
     private const int RowH = 26;

@@ -71,7 +71,7 @@ public static class LeagueBank
     }
 }
 
-public class LeagueRegisterGump : Gump
+public class LeagueRegisterGump : GuildStyledGump
 {
     public enum Page { Guilds, Ledger, League, Bank, Goods }
 

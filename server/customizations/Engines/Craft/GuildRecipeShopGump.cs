@@ -118,7 +118,7 @@ namespace Server.Gumps
         }
     }
 
-    public class GuildRecipeShopGump : Gump
+    public class GuildRecipeShopGump : GuildStyledGump
     {
         private readonly PlayerMobile _pm;
         private readonly string _guildKey;

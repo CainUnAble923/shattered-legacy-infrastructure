@@ -17,7 +17,7 @@ namespace Server;
 ///   Rewards         -- standing and Trail Marks awarded on join
 ///   MemberDashboard -- standing, rank, Trail Mark balance; links to work orders
 /// </summary>
-public class OutridersGuildmasterGump : Gump
+public class OutridersGuildmasterGump : GuildStyledGump
 {
     public enum View
     {

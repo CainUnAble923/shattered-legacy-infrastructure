@@ -17,7 +17,7 @@ namespace Server;
 // "Request New Commission" generates a new commission (while slots < 3).
 // -----------------------------------------------------------------------------
 
-public class SmithCommissionGump : Gump
+public class SmithCommissionGump : GuildStyledGump
 {
     private const int BtnRequestNew = 1;
     public const int BtnBack = 99; // cc-P52 Part E (D65): back to the gump that opened this one

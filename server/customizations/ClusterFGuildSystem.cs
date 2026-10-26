@@ -806,7 +806,7 @@ public class GuildMembershipEntry : ContextMenuEntry
 /// from the League Registrar's Guild Referrals. The class keeps its old name so every caller of the
 /// old guild overview now opens the directory.
 /// </summary>
-public class GuildProgressGump : Gump
+public class GuildProgressGump : GuildStyledGump
 {
     private readonly PlayerMobile        _pm;
     private readonly IAccount?           _acct;
@@ -1028,7 +1028,7 @@ public class GuildProgressGump : Gump
 /// way on to the guild's own services. Anything that hands something over needs a guildmaster of the
 /// guild within reach, however the page was opened; every button is judged again at the click.
 /// </summary>
-public class GuildTaskDetailGump : Gump
+public class GuildTaskDetailGump : GuildStyledGump
 {
     private readonly PlayerMobile _pm;
     private readonly GuildDef     _def;

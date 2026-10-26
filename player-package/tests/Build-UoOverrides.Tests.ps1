@@ -304,10 +304,10 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P242 the 54 flying loot frames (15536-15589); cc-P265 the 279 guild hall decor IDs (28016-28294);
     # cc-P266 the 47 second-block winter decor IDs (13192-13238) and the advent calendar gump 22469; cc-P364 the 14 League
     # bestiary bodies (2072-2085); cc-P362 the 29 UI skin gumps (23052-23080) and 64 scroll skin art IDs (13049-13112); cc-P365 the 34 mount and evo bodies (2088-2133)
-    # and 18 mount items (46672-46689).
-    Assert-Equal 772 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art
+    # and 18 mount items (46672-46689); cc-P436 the nine guild and League frame gumps (23200-23208).
+    Assert-Equal 781 $reg.Count 'registry rows'   # cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art; cc-P436: + 9 gumps
     Assert-Equal 74 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364), 2086-2087 (cc-P277), 34 of 2088-2133 (cc-P365)'
-    Assert-Equal 45 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468, 22469 and 23052-23080 (cc-P362)'
+    Assert-Equal 54 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468, 22469, 23052-23080 (cc-P362) and 23200-23208 (cc-P436)'
     Assert-Equal 652 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows'
 }
 
@@ -1076,6 +1076,33 @@ Fact 'PlayStartsTheGameWithoutTheOverrideWhenAFileIsMissing' {
     Assert-True ($r.Args -match '-settings "[^"]+settings\.test\.json"\s*$') "started with: $($r.Args)"
     Assert-True ($r.Args -notmatch 'uofilesoverride') $r.Args
     Assert-True ($r.Out -match 'Shattered Legacy art could not be prepared \(tiledata\.mul is not in') $r.Out
+}
+
+Fact 'TheGuildFrameIsNineRegisteredCreditedPngsTheServerDraws' {
+    # cc-P436: the guild and League frame (look B, stone and bronze) is gumps 23200-23208, AddBackground's nine pieces
+    # in its order, cut from Erachiro's Basalt status gump; each registered once as a gump with its PNG at the cut's
+    # size, RGBA, crediting Erachiro, and the server's GuildStyle draws 23200.
+    $reg = @(Get-Content (Join-Path $pkg 'vendor\shattered-legacy-art\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
+    $sizes = @('12x12', '96x12', '12x12', '12x96', '190x44', '12x96', '12x12', '96x12', '12x12')
+    for ($i = 0; $i -lt 9; $i++) {
+        $id = 23200 + $i
+        $rows = @($reg | Where-Object { [int]$_.id -eq $id })
+        Assert-Equal 1 $rows.Count "gump $id registered once"
+        Assert-Equal 'gump' $rows[0].kind "gump $id kind"
+        Assert-True ($rows[0].source -like "Erachiro:*Character Status Basalt .bmp*") "gump $id names its source: $($rows[0].source)"
+        Assert-True ($rows[0].license -like '*Credit Erachiro*') "gump $id credits Erachiro"
+        $png = Join-Path $pkg "vendor\shattered-legacy-art\gumps\$id.png"
+        Assert-True (Test-Path -LiteralPath $png) "PNG for gump $id"
+        $b = [IO.File]::ReadAllBytes($png)
+        $w = ([int]$b[16] -shl 24) -bor ([int]$b[17] -shl 16) -bor ([int]$b[18] -shl 8) -bor [int]$b[19]
+        $h = ([int]$b[20] -shl 24) -bor ([int]$b[21] -shl 16) -bor ([int]$b[22] -shl 8) -bor [int]$b[23]
+        Assert-Equal $sizes[$i] "${w}x${h}" "size of $id.png"
+        Assert-Equal 6 ([int]$b[25]) "$id.png is RGBA (PNG colour type 6)"
+    }
+    $source = [IO.File]::ReadAllText((Join-Path $pkg 'vendor\shattered-legacy-art\SOURCE.txt'))
+    Assert-True ($source -match 'gumps 23200-23208' -and $source -match 'Credit Erachiro') 'SOURCE.txt credits the frame'
+    $style = [IO.File]::ReadAllText((Join-Path (Split-Path $pkg -Parent) 'server\customizations\GuildStyle.cs'))
+    Assert-True ($style -match 'public const int Frame = 23200;') 'the server draws gump 23200'
 }
 
 Fact 'EveryRegistryRowsHexIsItsId' {

@@ -16,7 +16,7 @@ namespace Server;
 /// Opened from: SmithGuildmasterGump (member view) and SmithGuildBook. The opener passes a Back
 /// action that reopens it (cc-P52 Part E, bug-list D65); category switches and buys carry it.
 /// </summary>
-public class SmithSealCatalogGump : Gump
+public class SmithSealCatalogGump : GuildStyledGump
 {
     // -- Layout ----------------------------------------------------------------
 

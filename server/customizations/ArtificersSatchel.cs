@@ -167,7 +167,7 @@ public partial class ArtificersSatchel : Container
 ///  - Discovery progress toward mastery (X / threshold)
 ///  - Color coding: mastered=green, have essences=yellow, locked=grey
 /// </summary>
-public sealed class ArtificersMasteryGump : Gump
+public sealed class ArtificersMasteryGump : GuildStyledGump
 {
     private static readonly string[] Groups = { "General", "Stats", "Weapon", "Defense", "Slayer" };
 

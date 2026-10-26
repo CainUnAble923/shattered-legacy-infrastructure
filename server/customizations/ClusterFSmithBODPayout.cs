@@ -253,7 +253,7 @@ namespace Server.Mobiles
     // SmithTurnInChoiceGump - "Ask each time": bank or cash out this one deed.
     // -----------------------------------------------------------------------------
 
-    public class SmithTurnInChoiceGump : Gump
+    public class SmithTurnInChoiceGump : GuildStyledGump
     {
         public const int BtnBank = 1;
         public const int BtnCashOut = 2;
@@ -523,7 +523,7 @@ namespace Server.Mobiles
         }
     }
 
-    public class RegularSmithBulkOrderGump : Gump
+    public class RegularSmithBulkOrderGump : GuildStyledGump
     {
         public const int BtnSmall = 1;
         public const int BtnLarge = 2;

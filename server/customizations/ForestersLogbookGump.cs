@@ -23,7 +23,7 @@ namespace Server;
 ///                     "Submit" grants rewards and marks them Reported,
 ///                     identical to visiting Cedric Rowanwood in person.
 /// </summary>
-public class ForestersLogbookGump : Gump
+public class ForestersLogbookGump : GuildStyledGump
 {
     public enum View { Logbook, DiscoveryReport }
 
