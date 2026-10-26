@@ -515,7 +515,7 @@ public static class ArtificerWorkOrderCatalogue
 ///   List   - shows current active order (if any) + available orders
 ///   Detail - shows one order's full spec; Accept / Turn In button
 /// </summary>
-public sealed class ArtificerWorkOrderGump : Gump
+public sealed class ArtificerWorkOrderGump : GuildStyledGump
 {
     public enum Stage { List, Detail }
 

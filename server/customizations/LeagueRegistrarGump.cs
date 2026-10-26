@@ -21,7 +21,7 @@ namespace Server;
 ///
 /// Opened by: LeagueRegistrar.OnDoubleClick
 /// </summary>
-public class LeagueRegistrarGump : Gump
+public class LeagueRegistrarGump : GuildStyledGump
 {
     public enum View { MainMenu, CitizenStatus, AboutRenown, GuildReferrals, WhereToStart, Rank, MuleErrand }
 

@@ -565,7 +565,7 @@ namespace Server.Mobiles
         }
     }
 
-    public class GuildSchematicsGump : Gump
+    public class GuildSchematicsGump : GuildStyledGump
     {
         private readonly PlayerMobile _pm;
         private readonly string _guildKey;

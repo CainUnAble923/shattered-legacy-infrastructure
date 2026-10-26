@@ -129,7 +129,7 @@ public sealed record GuildMenuRank(
 /// the end of its constructor; Build draws the frame and calls <see cref="DrawContent"/> for the open section.
 /// Button ids: 0 close, 1 back, 2 and 3 previous and next page, 10 + n section n, 100 and up the content's own.
 /// </summary>
-public abstract class GuildMenuGump : Gump
+public abstract class GuildMenuGump : GuildStyledGump
 {
     public const int Width = 560;
     public const int DefaultHeight = 440;

@@ -16,7 +16,7 @@ namespace Server;
 ///   Rewards         - Essence Shards and rank bonuses on join
 ///   MemberDashboard - standing, rank, shard balance; link to Imbuing Table
 /// </summary>
-public class ArtificersGuildmasterGump : Gump
+public class ArtificersGuildmasterGump : GuildStyledGump
 {
     public enum View
     {

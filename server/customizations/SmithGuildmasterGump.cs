@@ -17,7 +17,7 @@ namespace Server;
 /// Members see their Smith status - rank, standing, Smithing Seals - and
 /// can open Work Orders or read about Smithing Seals.
 /// </summary>
-public class SmithGuildmasterGump : Gump
+public class SmithGuildmasterGump : GuildStyledGump
 {
     // -- Layout constants ------------------------------------------------------
 
@@ -369,7 +369,7 @@ public class SmithGuildmasterGump : Gump
 
 // -- Smithing Seals info gump --------------------------------------------------
 
-public class SmithSealsInfoGump : Gump
+public class SmithSealsInfoGump : GuildStyledGump
 {
     public const int BtnBack = 1; // cc-P52 Part E (D65)
 

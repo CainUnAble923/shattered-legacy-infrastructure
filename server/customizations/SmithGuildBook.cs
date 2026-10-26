@@ -120,7 +120,7 @@ public partial class SmithGuildBook : Container
 
 // -- Gump ----------------------------------------------------------------------
 
-public class SmithGuildBookGump : Gump
+public class SmithGuildBookGump : GuildStyledGump
 {
     // Navigation
     private const int BtnNavBODs  = 1;

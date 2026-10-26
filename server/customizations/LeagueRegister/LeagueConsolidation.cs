@@ -280,7 +280,7 @@ public partial class CombinedLogbook : Item
     }
 }
 
-public class CombinedLogbookGump : Gump
+public class CombinedLogbookGump : GuildStyledGump
 {
     private const int BtnProspector = 1;
     private const int BtnForester = 2;

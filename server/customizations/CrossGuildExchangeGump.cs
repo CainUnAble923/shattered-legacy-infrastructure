@@ -16,7 +16,7 @@ namespace Server;
 // The player's mules here are the one they ride and any following within 12 tiles.
 // -----------------------------------------------------------------------------------------------------------------------
 
-public class CrossGuildExchangeGump : Gump
+public class CrossGuildExchangeGump : GuildStyledGump
 {
     private readonly PlayerMobile          _pm;
     private readonly Action<PlayerMobile>? _back; // cc-P52 Part E (D65): reopens the guild menu that opened this

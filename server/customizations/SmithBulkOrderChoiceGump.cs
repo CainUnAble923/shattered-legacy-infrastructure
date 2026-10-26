@@ -15,7 +15,7 @@ namespace Server;
 /// cc-P46 Part B (Chase, 2026-10-03): the character's "Orders that still teach me" setting, a check box that flips it
 /// and redraws the gump (ClusterFSmithTeaching.SetWantsTeaching). The guild book's order page shows the same setting.
 /// </summary>
-public class SmithBulkOrderChoiceGump : Gump
+public class SmithBulkOrderChoiceGump : GuildStyledGump
 {
     public const int BtnSmall = 1;
     public const int BtnLarge = 2;

@@ -364,7 +364,7 @@ public partial class OutridersCrook : Item
 
     // -- Action gump -----------------------------------------------------------
 
-    private class CrookActionsGump : Gump
+    private class CrookActionsGump : GuildStyledGump
     {
         private readonly OutridersCrook _crook;
         private readonly PlayerMobile   _pm;

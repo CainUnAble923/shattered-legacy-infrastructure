@@ -24,7 +24,7 @@ namespace Server;
 /// Instantiate with a guildKey (e.g. "mining") to scope the display to one guild.
 /// The same gump is reused by all future guilds - only the guildKey changes.
 /// </summary>
-public class GuildContractLedgerGump : Gump
+public class GuildContractLedgerGump : GuildStyledGump
 {
     public enum Tab { Available, Active, History }
 

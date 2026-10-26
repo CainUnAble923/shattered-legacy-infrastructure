@@ -25,7 +25,7 @@ namespace Server;
 /// Opening this gump always calls ClusterFLeagueSystem.OnGuildReferralSeen(pm, "mining")
 /// so the referral achievement is granted on first visit regardless of which topic is read.
 /// </summary>
-public class MinersCompactLiaisonGump : Gump
+public class MinersCompactLiaisonGump : GuildStyledGump
 {
     public enum View
     {

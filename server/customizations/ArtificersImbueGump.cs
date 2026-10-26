@@ -846,7 +846,7 @@ internal static class ImbueCatalogue
 ///     &lt;500g -> 3 uses, &lt;1500g -> 5 uses, &lt;3000g -> 8 uses, else 10 uses.
 ///   Once mastered: no essence needed; player can craft &amp; sell essences.
 /// </summary>
-public sealed class ArtificersImbueGump : Gump
+public sealed class ArtificersImbueGump : GuildStyledGump
 {
     private enum Stage
     {

@@ -19,7 +19,7 @@ namespace Server;
 /// OSI's is; it needs a Warden or Officer within 5 tiles, as OSI's confirm does. The trash bag is free and one per
 /// character: asking again deletes the old one wherever it is (TrashBag.IssueTo).
 /// </summary>
-public class SanitationWardenGump : Gump
+public class SanitationWardenGump : GuildStyledGump
 {
     // -- Layout ----------------------------------------------------------------
 

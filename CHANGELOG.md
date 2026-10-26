@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.10
+
+### Changed
+- The guild and League menus (guildmasters, dashboards, contract ledgers, the League board and register) have a new stone and bronze frame in the Shattered Legacy client. Other clients keep the classic look.
+
 ## 2026.10.25.8
 
 ### Fixed
