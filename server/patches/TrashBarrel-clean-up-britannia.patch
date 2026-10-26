@@ -22,23 +22,31 @@
      public void OnChop(Mobile from)
      {
          var house = BaseHouse.FindHouseAt(from);
-@@ -71,6 +80,7 @@
+@@ -69,8 +78,11 @@
+ 
+     public override bool OnDragDrop(Mobile from, Item dropped)
      {
++        var before = CleanUpTrash.Snapshot(this); // cc-P656: a stack that merges is still counted
++
          if (base.OnDragDrop(from, dropped))
          {
-+            CleanUpTrash.AddCleanupItem(this, from, dropped);
++            CleanUpTrash.AddCleanupItem(this, from, dropped, before);
              InvalidateContents(from);
              return true;
          }
-@@ -82,6 +92,7 @@
+@@ -80,8 +92,11 @@
+ 
+     public override bool OnDragDropInto(Mobile from, Item item, Point3D p)
      {
++        var before = CleanUpTrash.Snapshot(this);
++
          if (base.OnDragDropInto(from, item, p))
          {
-+            CleanUpTrash.AddCleanupItem(this, from, item);
++            CleanUpTrash.AddCleanupItem(this, from, item, before);
              InvalidateContents(from);
              return true;
          }
-@@ -104,8 +115,11 @@
+@@ -104,8 +119,11 @@
                      continue;
                  }
  

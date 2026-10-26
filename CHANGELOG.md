@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26.9
+
+### Fixed
+- Trash barrels pay for what is actually thrown away. Lifting part of a stack back out no longer leaves the whole stack's points behind, and two players' stacks that join in a barrel each pay their own share.
+- A new trash bag from a Sanitation Warden no longer destroys the old bag's contents. They move into the new bag, or your backpack or bank if they do not fit.
+- The Custodians' sweep, cleanup and "Clear corpses nearby" only take what you could reach yourself: nothing behind a wall, on another floor, or loose in someone else's house. A corpse holding a blessed or quest item, or a filled container, is left alone.
+- The Clean Up store no longer completes a purchase after you have changed facet, gone to another floor or the trader is gone.
+
 ## 2026.10.26.8
 
 ### Fixed
