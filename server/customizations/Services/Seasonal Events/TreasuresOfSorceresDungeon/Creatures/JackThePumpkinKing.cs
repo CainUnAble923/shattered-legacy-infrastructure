@@ -13,6 +13,15 @@
 // on a mobile whose race is the default is Race.Human's; SetWearable is the shard's extension (Misc/WearableExtensions);
 // the TimerStateCallback is a lambda over the attacker, as pinned DemonKnight's. The pumpkin's ServUO timer priority
 // (FiftyMS) has no pinned counterpart (pinned timers have no priority) and is dropped, as pinned UnholyBone drops it.
+//
+// cc-P624 (stage 1 of shard-migration notes/cc-P564-design-pumpkin-king.md), a deliberate repair: ServUO's delayed
+// throw puts pumpkins wherever the attacker stands a second later, and they hatch even after the event has ended. An
+// event Jack (the spawner's boss) now remembers its spawner when it schedules the throw; the throw happens only while
+// that spawner still runs, the event is enabled, Jack is still its living boss and the attacker is alive inside
+// Sorcerer's Dungeon on Ilshenar, and only onto spots inside the dungeon. Its pumpkins and what they hatch belong to
+// the spawner, which deletes them when the event goes down. A Jack staff added by hand belongs to no spawner and
+// throws as in ServUO. The numbers (5%, 1 second, 1 to 3, 5 to 10 seconds, the twelve undead, 30% carving) are as
+// before.
 
 using System;
 using ModernUO.Serialization;
@@ -95,15 +104,28 @@ public partial class JackThePumpkinKing : BaseCreature
 
             if (0.05 > Utility.RandomDouble())
             {
-                Timer.StartTimer(TimeSpan.FromSeconds(1.0), () => CreatePumpkin_Callback(from));
+                SchedulePumpkins(from);
             }
 
             _inHere = false;
         }
     }
 
-    public virtual void CreatePumpkin_Callback(Mobile from)
+    /// <summary>The 5% branch of OnDamage: pumpkins around <paramref name="from" /> a second later.</summary>
+    public void SchedulePumpkins(Mobile from)
     {
+        var owner = TOSDSpawner.Instance is { } spawner && spawner.Owns(this) ? spawner : null;
+
+        Timer.StartTimer(TimeSpan.FromSeconds(1.0), () => CreatePumpkin_Callback(from, owner));
+    }
+
+    public virtual void CreatePumpkin_Callback(Mobile from, TOSDSpawner owner)
+    {
+        if (owner != null && !owner.MayThrowPumpkins(this, from))
+        {
+            return;
+        }
+
         var map = from.Map;
 
         if (map == null)
@@ -129,6 +151,13 @@ public partial class JackThePumpkinKing : BaseCreature
                 }
             }
 
+            var at = new Point3D(x, y, z);
+
+            if (owner != null && !TOSDSpawner.MayPlacePumpkin(at, map))
+            {
+                continue;
+            }
+
             var pumpkin = new UnholyPumpkin
             {
                 Hue = 0,
@@ -136,7 +165,8 @@ public partial class JackThePumpkinKing : BaseCreature
                 ItemID = Utility.RandomMinMax(0xC6A, 0xC6C)
             };
 
-            pumpkin.MoveToWorld(new Point3D(x, y, z), map);
+            pumpkin.MoveToWorld(at, map);
+            owner?.AddPumpkin(pumpkin);
         }
     }
 }
@@ -215,6 +245,11 @@ public partial class UnholyPumpkin : Item, ICarvable
             };
 
             spawn.MoveToWorld(_item.Location, _item.Map);
+
+            if (_item is UnholyPumpkin pumpkin && spawn is BaseCreature hatched)
+            {
+                TOSDSpawner.Instance?.OnPumpkinHatched(pumpkin, hatched);
+            }
 
             _item.Delete();
         }

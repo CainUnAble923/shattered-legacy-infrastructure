@@ -29,6 +29,13 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.8
+
+### Fixed
+- Treasures of Sorcerer's Dungeon: when the event ends, every undead it raised now goes with it, including those left standing in earlier rooms and the ones hatched from Jack the Pumpkin King's unholy pumpkins.
+- Jack the Pumpkin King's unholy pumpkins now land only inside Sorcerer's Dungeon while he is the event's boss, and never after the event has ended.
+- Killing someone's tamed pet in Sorcerer's Dungeon no longer counts toward an artifact of Enchanted Origin.
+
 ## 2026.10.25.7
 
 ### Fixed
