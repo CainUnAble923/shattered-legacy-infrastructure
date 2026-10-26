@@ -875,6 +875,14 @@ apply_patch "$PATCHES/PlayerMobile-accessory-hooks.patch"
 # Alternatives argued in shard-migration notes/cc-P261-levelable-gear-build.md; pinned by LevelGearVerification.
 apply_patch "$PATCHES/AOS-level-gear-attribute-aggregation.patch"
 
+# cc-P633 (ours): levelable gear's weapon milestone proc. One call at the end of BaseWeapon.OnHit's damageGiven > 0
+# branch, after the weapon's own hit effects and before the creature and special-move callbacks, to customizations
+# ClusterFLevelGearProcs (Stormstrike or Emberstrike, PvE only, cooldown shared by a player and their companions). OnHit
+# has no event there, and the custom imbue callback runs later, without the weapon or the damage given, and for players
+# only. Made against the tree every BaseWeapon patch above leaves (--fuzz=0), so it goes after them. Alternatives argued
+# in shard-migration notes/cc-P569-design-procs-levelable-milestone.md; pinned by LevelGearProcVerification.
+apply_patch "$PATCHES/BaseWeapon-level-gear-proc-hit.patch"
+
 # cc-P263 (ours): "Noted by the System", hidden achievements for the shard's exploits and odd habits. Each patch adds one
 # call to customizations ClusterFNotedBySystem where pinned raises no event: a recall's and a gate's arrival, a rune that
 # fills a runebook, a pet's release, each craft attempt's result, and a recycle (Resmelt, the salvage bag) just before it

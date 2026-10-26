@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26.5
+
+### Staff
+- Weapon milestones, first piece (test shard only; off until [LevelGearProcs on): a levelable crafted weapon at item level 100 shows a Weapon milestone button in [ItemLevel. For 100 of its points and one property slot it can bind one permanent effect: Stormstrike (12 energy damage) or Emberstrike (12 fire damage). On a damaging hit against a wild creature you are fighting it has a 5% chance to strike, then waits 10 seconds; that wait is shared by you and your companions and stays on the weapon if it changes hands. Players, pets and summons are never struck by it. [LevelGearProcs shows the switch and your wait. Level dormancy (a weapon above your own level) is not built yet.
+
 ## 2026.10.26.4
 
 ### Staff

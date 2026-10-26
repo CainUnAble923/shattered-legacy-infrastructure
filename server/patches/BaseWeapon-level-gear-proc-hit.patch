@@ -1,0 +1,13 @@
+--- a/Projects/UOContent/Items/Weapons/BaseWeapon.cs	2026-10-26 03:11:57.953894200 -0500
++++ b/Projects/UOContent/Items/Weapons/BaseWeapon.cs	2026-10-26 03:11:58.425852800 -0500
+@@ -2220,6 +2220,10 @@
+                     DoLowerDefense(attacker, defender);
+                 }
+             }
++
++            // Shattered Legacy (cc-P633): the levelable weapon's milestone proc, after the weapon's own hit effects and
++            // before the creature and special-move callbacks, so a Double Strike's second swing sees its cooldown.
++            ClusterFLevelGearProcs.OnWeaponHit(this, attacker, defender, damageGiven);
+         }
+ 
+         bcAtt?.OnGaveMeleeAttack(defender, damage);

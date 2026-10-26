@@ -16,6 +16,7 @@ public class LevelGearGump : DynamicGump
     private const int ValueHue = 0x7FF;
     private const int GreyHue = 0x3B2;
     private const int BuyBase = 100;
+    private const int MilestoneButton = 50;
 
     private readonly Mobile _from;
     private readonly Item _item;
@@ -40,7 +41,11 @@ public class LevelGearGump : DynamicGump
             }
         }
 
-        var height = 130 + rows * 22;
+        // cc-P633: a weapon gets one more row, the button to its milestone page (none while the milestone is off, unless
+        // the weapon already has one).
+        var milestone = ClusterFLevelGearProcs.IsProcWeapon(_item) &&
+                        (LevelGearProcSettings.Enabled || s?.Proc != null);
+        var height = 130 + rows * 22 + (milestone ? 26 : 0);
         builder.AddPage();
         builder.AddBackground(0, 0, 420, height, 9200);
         builder.AddAlphaRegion(10, 10, 400, height - 20);
@@ -85,10 +90,28 @@ public class LevelGearGump : DynamicGump
             builder.AddLabel(345, y + 2, hue, $"{LevelGearSettings.CostOf(a)}");
             y += 22;
         }
+
+        if (milestone)
+        {
+            builder.AddButton(20, y + 4, 4005, 4007, MilestoneButton);
+            var bought = s.Proc is { } p ? LevelGearProc.ByKey(p.Key)?.Name ?? p.Key : null;
+            builder.AddLabel(50, y + 6, LabelHue,
+                bought != null ? $"Weapon milestone: {bought}" : $"Weapon milestone: level {LevelGearProcSettings.UnlockLevel}");
+        }
     }
 
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
+        if (info.ButtonID == MilestoneButton)
+        {
+            if (ClusterFLevelGear.Holds(_from, _item) && ClusterFLevelGear.IsLevelable(_item))
+            {
+                _from.SendGump(new LevelGearMilestoneGump(_from, _item));
+            }
+
+            return;
+        }
+
         var index = info.ButtonID - BuyBase;
         if (index < 0 || index >= LevelGearAttribute.All.Length)
         {
