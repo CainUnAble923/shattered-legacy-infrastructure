@@ -5,6 +5,7 @@ using Server.Engines.Points;
 using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
+using Server.Multis;
 using Server.Targeting;
 
 namespace Server;
@@ -39,7 +40,10 @@ namespace Server;
 // Item eligibility (applies to both commands and the trash bag):
 //   Eligible:   ground items, monster corpses (any state).
 //   Ineligible: blessed, quest, player-named, exceptional weapons/armor, gold, bank checks, non-empty non-corpse
-//               containers, and (cc-P33) a player's corpse.
+//               containers, (cc-P33) a player's corpse, and (cc-P656) a corpse holding any of the first two or a
+//               filled container.
+// Reach (cc-P656, ReachRefusal): only what the player could reach from where they stand, in sight, on their level, and
+// not loose in someone else's house.
 // -----------------------------------------------------------------------------
 
 public static class ClusterFCustodianSystem
@@ -137,8 +141,9 @@ public static class ClusterFCustodianSystem
         // restart. A pet released or deleted since is no longer bonded, and its corpse is an ordinary monster's.
         if (item is Corpse { Owner: BaseCreature { IsBonded: true } }) return false;
 
-        // Monster corpses are always eligible regardless of name or contents.
-        if (item is Corpse) return true;
+        // Monster corpses are eligible regardless of name, and their contents go with them (cc-P415), except (cc-P656,
+        // P476 U2) a corpse holding what is never litter itself: a blessed or quest item, or a filled container.
+        if (item is Corpse corpse) return !HoldsKeepsakes(corpse);
 
         // Non-movable items are decorations or world fixtures - never clean these up.
         if (!item.Movable) return false;
@@ -158,6 +163,49 @@ public static class ClusterFCustodianSystem
 
         return true;
     }
+
+    /// <summary>
+    /// cc-P656 (P476 U2): true if the corpse holds, at any depth, a blessed or quest item or a container with something in
+    /// it. Each is refused on the ground (IsEligible), so it is not swept away inside a corpse either.
+    /// </summary>
+    public static bool HoldsKeepsakes(Corpse corpse)
+    {
+        foreach (var item in corpse.FindItemsByType<Item>())
+        {
+            if (item.LootType == LootType.Blessed || item.QuestItem || item is Container { Items.Count: > 0 })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>The height difference a sweep reaches across: less than a house storey (cc-P656).</summary>
+    public const int ReachZ = 8;
+
+    /// <summary>
+    /// cc-P656 (P476 U2, P432 #5-#7): null if <paramref name="pm"/> could reach this ground item from where they stand,
+    /// else why not. The same facet, within ReachZ of their height, in their line of sight, and not in a house unless
+    /// they are its owner, a co-owner or a friend. [cleanup, [cleanupall and both trash bag entries ask it. Until P656 a
+    /// sweep took everything eligible around its centre: through walls, from the floor above, and the loose things on
+    /// another player's house floor.
+    /// </summary>
+    public static string ReachRefusal(PlayerMobile pm, Item item)
+    {
+        var loc = item.GetWorldLocation();
+
+        if (item.Map != pm.Map || Math.Abs(loc.Z - pm.Z) > ReachZ || !pm.InLOS(item))
+        {
+            return "You cannot reach that from here.";
+        }
+
+        var house = BaseHouse.FindHouseAt(loc, item.Map, 16);
+
+        return house == null || house.IsFriend(pm) ? null : "That is in someone else's house.";
+    }
+
+    public static bool InReach(PlayerMobile pm, Item item) => ReachRefusal(pm, item) == null;
 
     /// <summary>
     /// cc-P415: true if <paramref name="by"/> may clear this ground item now: it is eligible (IsEligible) and, for a
@@ -423,7 +471,7 @@ public static class ClusterFCustodianSystem
 
         foreach (var it in map.GetItemsInRange(pm.Location, CleanupAllRadius))
         {
-            if (it is Corpse corpse && CanClear(corpse, pm))
+            if (it is Corpse corpse && CanClear(corpse, pm) && InReach(pm, corpse))
             {
                 corpses.Add(corpse);
             }
@@ -497,7 +545,7 @@ public static class ClusterFCustodianSystem
         foreach (var serial in approved)
         {
             if (World.FindItem(serial) is Corpse corpse && corpse.Map == map &&
-                pm.InRange(corpse.GetWorldLocation(), CleanupAllRadius) && CanClear(corpse, pm))
+                pm.InRange(corpse.GetWorldLocation(), CleanupAllRadius) && CanClear(corpse, pm) && InReach(pm, corpse))
             {
                 corpses.Add(corpse);
             }
@@ -584,6 +632,13 @@ public static class ClusterFCustodianSystem
             return false;
         }
 
+        if (item is Corpse held && HoldsKeepsakes(held))
+        {
+            pm.SendMessage(0x22,
+                "That corpse holds a blessed or quest item, or a container with something in it. Take it out first.");
+            return false;
+        }
+
         if (!IsEligible(item))
         {
             pm.SendMessage(0x22,
@@ -595,6 +650,12 @@ public static class ClusterFCustodianSystem
         if (!CanClear(item, pm))
         {
             pm.SendMessage(0x22, LootRightsRefusal);
+            return false;
+        }
+
+        if (ReachRefusal(pm, item) is { } unreachable)
+        {
+            pm.SendMessage(0x22, unreachable);
             return false;
         }
 
@@ -648,7 +709,7 @@ public static class ClusterFCustodianSystem
             var eligible = new List<Item>();
             foreach (var it in map.GetItemsInRange(center, CleanupAllRadius))
             {
-                if (CanClear(it, pm))
+                if (CanClear(it, pm) && InReach(pm, it))
                     eligible.Add(it);
             }
 

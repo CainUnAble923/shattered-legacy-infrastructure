@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Server.Accounting;
 using Server.Engines.CleanUpBritannia;
 using Server.Gumps;
@@ -17,7 +18,7 @@ namespace Server;
 /// cc-P33 (F-3): the Civic Token shop is retired. The store is the one Clean Up Britannia store the Cleanup Officer
 /// also opens (Services/CleanUpBritannia/CleanUpBritanniaRewards.cs), open to members and non-members alike, as
 /// OSI's is; it needs a Warden or Officer within 5 tiles, as OSI's confirm does. The trash bag is free and one per
-/// character: asking again deletes the old one wherever it is (TrashBag.IssueTo).
+/// character: asking again retires the old one wherever it is, keeping what it held (TrashBag.IssueTo, cc-P656).
 /// </summary>
 public class SanitationWardenGump : GuildStyledGump
 {
@@ -250,7 +251,8 @@ public class SanitationWardenGump : GuildStyledGump
             return;
         }
 
-        var replaced = TrashBag.OwnedBy(pm).Count;
+        var old = TrashBag.OwnedBy(pm);
+        var held = old.Sum(b => b.Items.Count);
 
         if (TrashBag.IssueTo(pm) == null)
         {
@@ -258,9 +260,10 @@ public class SanitationWardenGump : GuildStyledGump
             return;
         }
 
-        pm.SendMessage(0x44, replaced > 0
-            ? "You receive a new trash bag. Your old one has been collected."
-            : "You receive a trash bag.");
+        pm.SendMessage(0x44, old.Count == 0 ? "You receive a trash bag."
+            : held == 0 ? "You receive a new trash bag. Your old one has been collected."
+            : "You receive a new trash bag. Your old one has been collected; what it held is in the new bag, " +
+              "or your pack or bank if it did not fit.");
         pm.SendGump(new SanitationWardenGump(pm, _def, _acct));
     }
 

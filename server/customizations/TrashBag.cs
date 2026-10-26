@@ -25,8 +25,8 @@ namespace Server.Items;
 // "Return All"     - moves all bag contents back to the player's backpack.
 //
 // cc-P33 (F-3): the bag is free and one per character at a time, enforced by owner (Chase, 2026-09-29). The bag
-// records its owner (version 1); IssueTo deletes every bag the character already owns, wherever it is, then gives
-// one. Only the owner can dump it. A bag from before version 1 has no owner and dumps for no one; its owner asks a
+// records its owner (version 1); IssueTo gives one and deletes every bag the character already owns, wherever it is,
+// after moving what it held into the new bag, the pack or the bank (cc-P656). Only the owner can dump it. A bag from before version 1 has no owner and dumps for no one; its owner asks a
 // Sanitation Warden for a new one. Craft X routes rejects into the crafter's own bag (ClusterFCraftRejects.cs).
 //
 // cc-P415 (Chase, 2026-10-22: corpse claim on the trash bag, "so players can clear corpses to help server resources"):
@@ -76,9 +76,12 @@ public partial class TrashBag : Container
         _all.Where(b => !b.Deleted && b.Owner == owner).ToList();
 
     /// <summary>
-    /// Gives the character a new trash bag, free, after deleting every bag it already owns (in a house, the bank, on the
+    /// Gives the character a new trash bag, free, and retires every bag it already owns (in a house, the bank, on the
     /// ground). Returns the new bag, or null if the character has no backpack.
     /// </summary>
+    // cc-P656 (P476 U2, P432 #4): what an old bag holds moves into the new one first, or into the backpack, or the bank,
+    // before the old bag is deleted. Until P656 the old bag was deleted with everything in it, and it is a blessed
+    // container players keep things in.
     public static TrashBag IssueTo(PlayerMobile pm)
     {
         if (pm.Backpack == null)
@@ -86,13 +89,27 @@ public partial class TrashBag : Container
             return null;
         }
 
+        var bag = new TrashBag { Owner = pm };
+        pm.Backpack.DropItem(bag);
+
         foreach (var old in OwnedBy(pm))
         {
+            if (old == bag)
+            {
+                continue;
+            }
+
+            foreach (var item in old.Items.ToList())
+            {
+                if (!bag.TryDropItem(pm, item, false) && !pm.Backpack.TryDropItem(pm, item, false))
+                {
+                    pm.BankBox.DropItem(item);
+                }
+            }
+
             old.Delete();
         }
 
-        var bag = new TrashBag { Owner = pm };
-        pm.Backpack.DropItem(bag);
         return bag;
     }
 

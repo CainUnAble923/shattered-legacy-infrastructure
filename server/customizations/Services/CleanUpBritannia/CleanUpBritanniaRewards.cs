@@ -433,9 +433,13 @@ public class ConfirmCleanUpRewardGump : BaseConfirmGump
     public override int TitleNumber => 1074974;
     public override int LabelNumber => 1074975;
 
+    // cc-P656 (P476 U2, P432 #8): the trader must still exist, on the buyer's facet, within 5 tiles and on the same
+    // floor. ServUO's check (and ours until P656) compared only X and Y, so a confirmation from another facet, the
+    // storey above or after the trader was gone still bought.
     public override void Confirm(Mobile from)
     {
-        if (from is PlayerMobile pm && from.InRange(_owner.Location, 5))
+        if (from is PlayerMobile pm && _owner is { Deleted: false } && from.Map == _owner.Map &&
+            from.InRange(_owner.Location, 5) && Math.Abs(from.Z - _owner.Z) <= 16)
         {
             CleanUpBritanniaRewards.Purchase(pm, _reward);
         }
