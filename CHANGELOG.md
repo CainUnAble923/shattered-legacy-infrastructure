@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26.10
+
+### Fixed
+- Persuasion: when you held more than one courier letter from before the one-job rule, the replaced ones are torn up when the server restarts, so a replaced letter can no longer become payable again later.
+
+### Staff
+- Guard witness log: a second crime by the same person in the same instant and spot (a victimless crime right after an attack, or a second attack on the same victim) is now its own entry with its own witnesses, instead of being added to the earlier one.
+
 ## 2026.10.26.9
 
 ### Fixed

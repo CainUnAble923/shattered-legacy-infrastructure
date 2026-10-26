@@ -6,6 +6,9 @@
 // cc-P647: a courier holds one outstanding letter wherever it is kept (a banked letter still holds the job). Letters keep
 // that table themselves, claiming their courier when made and again when loaded, so it adds no save data. A letter for a
 // kind of NPC is taken by that kind or a subclass of it (a Banker letter by a gypsy banker or a minter).
+//
+// cc-P659: when a save holds several letters for one courier, loading tears up every one but the job, so a replaced
+// letter cannot become the job again after the job is delivered or deleted and the world restarts.
 
 using System;
 using System.Collections.Generic;
@@ -85,8 +88,9 @@ public partial class ExchangeLetter : Item
 
     public bool IsOutstanding => !Deleted && OutstandingFor(_courier) == this;
 
-    // When an older save holds several letters for one courier, the one that expires last holds the job.
-    private void Claim()
+    // When an older save holds several letters for one courier, the one that expires last holds the job. On load the other
+    // is torn up (cc-P659): only the table knew it was replaced, and the table is rebuilt from what survives each restart.
+    private void Claim(bool loading = false)
     {
         if (_courier == null)
         {
@@ -97,11 +101,20 @@ public partial class ExchangeLetter : Item
         if (current == null || current == this || current._expires < _expires)
         {
             _outstanding[_courier] = this;
+            if (loading && current != null && current != this)
+            {
+                current.Delete();
+            }
+        }
+        else if (loading)
+        {
+            Delete();
         }
     }
 
+    // Deferred until the whole world is loaded (the generator's default), so deleting a replaced letter here is safe.
     [AfterDeserialization]
-    private void AfterDeserialization() => Claim();
+    private void AfterDeserialization() => Claim(true);
 
     public override void OnAfterDelete()
     {

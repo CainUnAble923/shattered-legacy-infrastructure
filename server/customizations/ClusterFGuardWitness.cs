@@ -8,7 +8,8 @@
 //     culprit, victim, the act's place (cc-P647: the victim's for an attack or assist), and every qualified witness with
 //     the culprit's place as they last saw it. Server events supply it; a Criminal flag read later, a player's words or a
 //     target someone names supply nothing.
-//   - cc-P647: only one action's callbacks share an incident; another victim, kind or place is another incident. A pet's
+//   - cc-P647: only one action's callbacks share an incident; another victim, kind or place is another incident (cc-P659:
+//     a finished act is never reopened, even by a later act in the same moment and place). A pet's
 //     or summon's act names its player master on the creature's incident, and the master's forwarded flag adds no second
 //     one; a witness learns the master's place only by seeing the master. An actor stock guards reject (IsGuardCandidate)
 //     leaves no incident at all.
@@ -242,8 +243,9 @@ public static class ClusterFGuardWitness
     /// <summary>
     /// Records a crime at its event, with every qualified witness. Null when the service is off or the region is not a
     /// pilot jurisdiction. cc-P647: only the callbacks of one action are one incident (an attack raises the criminal flag,
-    /// then the aggression): the same culprit, in the same server moment, at the same place, on the same victim or with no
-    /// victim named yet. Another victim, kind or place is another offense and another incident.
+    /// then the aggression): the same culprit, in the same server moment, at the same place. cc-P659: and only while that
+    /// flag still waits for its act; a finished incident is never joined, so a later victimless crime or a second attack
+    /// in the same moment and place is another incident with its own witnesses.
     /// </summary>
     public static Incident Record(IncidentKind kind, Mobile culprit, Mobile victim, Region region) =>
         Record(kind, culprit, victim, region, victim?.Location ?? culprit?.Location ?? Point3D.Zero);
@@ -315,19 +317,12 @@ public static class ClusterFGuardWitness
         }
         else
         {
-            if (kind != IncidentKind.CriminalAction)
-            {
-                incident.Kind = kind; // the victimless criminal flag names the action that raised it
-            }
-
-            if (incident.Victim == null && victim != null)
-            {
-                // The criminal flag came first and named no victim; the act's place is the victim's. Keep only those
-                // who saw it there too (the same moment, so nobody has moved).
-                incident.Victim = victim;
-                incident.ActionAt = actionAt;
-                incident.Witnesses.RemoveAll(w => !Sees(w.Mobile, culprit, actionAt));
-            }
+            // The criminal flag came first and named no victim; this is the act that raised it, and the act's place is the
+            // victim's. Keep only those who saw it there too (the same moment, so nobody has moved).
+            incident.Kind = kind;
+            incident.Victim = victim;
+            incident.ActionAt = actionAt;
+            incident.Witnesses.RemoveAll(w => !Sees(w.Mobile, culprit, actionAt));
         }
 
         // A controlled or summoned creature's act: its player master answers for it (stock forwards the criminal flag).
@@ -400,10 +395,13 @@ public static class ClusterFGuardWitness
             : null;
     }
 
+    // cc-P659 (P657 review): stock raises an act's victimless criminal flag first, then its aggression or assist naming
+    // the victim (Mobile.DoHarmful, DoBeneficial). Only that second callback joins, and only an incident still waiting for
+    // it; a victimless callback always starts its own incident.
     private static bool SameAction(Incident i, IncidentKind kind, Mobile culprit, Mobile victim, Point3D location) =>
         i.Culprit == culprit && i.Time == Core.Now && i.Location == location &&
-        (kind == IncidentKind.CriminalAction || i.Kind == IncidentKind.CriminalAction || i.Kind == kind) &&
-        (victim == null || i.Victim == null || i.Victim == victim);
+        i.Kind == IncidentKind.CriminalAction && i.Victim == null &&
+        kind != IncidentKind.CriminalAction && victim != null;
 
     // -- Reports ------------------------------------------------------------------------------------------------------
 
