@@ -1,0 +1,1022 @@
+# cc-P670: every file of Zigholtul's UO Art Static Replacements for TazUO 2.0, and what became of it.
+# Written by shard-migration notes/cc-P670-tools/vendor.py from fit.py's verdicts; never edited by hand.
+file,itemId,verdict,reason,sha256
+2.png,2,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3.png,3,ok,ships,157f45e06db7fb5aff9768f012677705a5d56e0b076d0a30058353a393cefd29
+4.png,4,ok,ships,0e9eec8945bdaba47a77cf2ab4f18e1e09f3b405f229dea25e23d1ab77970b97
+5.png,5,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+604.png,604,ok,ships,4e2e1176ddcb66dc8134677eb7eecd20954161ac991c54cbf580f9cd38437fce
+605.png,605,ok,ships,7f2ff3278ed4a2acf08112786c248553dff3619a314764db09eedba0f07b1fcc
+606.png,606,ok,ships,8ff71f05c115397c29d63b715c53b0aaff444faef3737d00888dd1377248f3db
+607.png,607,ok,ships,0122add1b6a1a1d5748608a97899942b51b89e9ec96d6de1f8a27f2aaa5133e0
+608.png,608,ok,ships,c48952cda9b4cc0be00c32aacdf8bb937d9ccc5d8ccb3527f6482717439709f6
+609.png,609,ok,ships,1fd9468943d9c02372f3a358f24a303cccaec9f3c4784dda0a2cd11f7f1ef614
+610.png,610,ok,ships,5bd0f605f1ef34940451d8704a97c544db680bb5e02b0bdad1f1b55b906f1c56
+611.png,611,ok,ships,e5341b39dacfd471178d53c5a4a51237136acec6f377ce24a461d9f00f0c8898
+612.png,612,ok,ships,c35af994a20a9c6b7c0a91745cb38b2a38a13a27593c191890e7af0b45f208bd
+613.png,613,ok,ships,0c96ee44a2578cb4a6796b3cf3b52e7118b123db0911506f47fbf26428c45bd2
+614.png,614,ok,ships,ccaf266dfdbe4b66c39b6b9206eaf91423e552b3041a7fbdd105fe3fa7b92622
+615.png,615,ok,ships,5f87ccbf7eca78a8525f26220d2d72e166c76759cebfe178a61881af84db2873
+616.png,616,ok,ships,adb195b87edd335b2c1c32a2348a2184a744f5f71ed5cac41b360b1adec976a6
+617.png,617,ok,ships,feeb270c8bc9d0d980727346da61ef3c61f9af2be053ae0008c850f2ad717712
+618.png,618,ok,ships,6181c15ae6fc018a3191ddc515c2c5a69284f25b6a30e41520e6c3a23bec235b
+619.png,619,ok,ships,2496138271b2f454dd1fbd4e7200225c6ed05525a59c5f49f5c3ed46e08d69c6
+620.png,620,ok,ships,8c8a305f096e9184ec9392d6836f77c6d3b5be14357ecdc21619adad94f2b2cc
+621.png,621,ok,ships,e2454e30a8590bc2863054935815697620916e8bfdd81429adbc537542c1c0d5
+622.png,622,ok,ships,4cba0afcd2bf0cd488f300dc3b2931fc2a540de5ee8c575294ba0d98e37a5ca8
+623.png,623,ok,ships,5edc8e677771294c9d9e5a45c0de36bd8c4b1978c478af1b416639f4546a2dfc
+624.png,624,ok,ships,545b596304a755eba19a4aed586ecfeeb08a05eabae23b2dc1b287baa5bf9eeb
+625.png,625,ok,ships,26a3e39bc27b205af6043f87006de6b08bde9a34df1ba4881a7289cf4dfd1d88
+626.png,626,ok,ships,d5e9eeb2201d1dab9a8e4ecc0921380123f3f49a5e471d3a99adeb80d632d3bc
+627.png,627,ok,ships,9e6126a74f160f3aabcc01447fc3379c751938cc8245aa489a7960cc7a1dbab6
+628.png,628,ok,ships,540f27030925490ca0912d13ec77e98b00ca29bd102a0ee46dce28df0b82571c
+629.png,629,ok,ships,4c101e2d8be7ef7422e85ee30559e86d84c6147fbcaa54b7496bfb140d7afabf
+630.png,630,ok,ships,04715dc887a4a43619bc59a51ac81252ee3f562feaeb86e11d24e7ccfc2642d9
+637.png,637,ok,ships,a1d588bf6ae8afaa57d72818ac2b7698f43e03a22feef53ff2cf3e31244c5a3d
+638.png,638,ok,ships,4fe650a4ab36f5636d8c10cc804af36a3c52fb7adbce9f1ac19617d226cdbeab
+639.png,639,ok,ships,2111bb30751333f10f879d316f3e9ed48b3a01ae946aac58563ee057ef1f7e6e
+640.png,640,ok,ships,dd7c328b842e3525dd7283683032129434318a374c813013613c4d42f27939bd
+730.png,730,ok,ships,d538553e55b7613053de881946ea41c9494fed61865b885e8489a7adf583b452
+1949.png,1949,ok,ships,0c8c1339189b1c88f711d7b9424b0c832174726ffcc5f2b28e6345489628cd04
+1950.png,1950,ok,ships,a7a5a7a92afd72fde33ffef60ca9e594458fdd02a01602a37d55263404974909
+1951.png,1951,ok,ships,a5b5a62731a051a8318d310183cfd28d565afdab2eeb757543342a406fc976b4
+1968.png,1968,ok,ships,7f3bab6aa037348cc9963e8b8987c8dace8add6f14841358931ca79de2b4ec56
+1969.png,1969,ok,ships,32e2b2c8fd0c5d3baff82a7e6fc03eb104a07349fd80911229be3317fbecbce7
+1970.png,1970,ok,ships,f591aee1fe8cb48b97ed070ee93e5d565a073239858ef5cb13b308d468f67a10
+1975.png,1975,ok,ships,f8ee07295bcd47ade9f8bd895e68343fcabbec5c37d12dcb3d93e0989d34e566
+1976.png,1976,ok,ships,1cf49baa0b0078f9191013a4da332fb7d98de2061d8b207e5ab7da9578c81c21
+1977.png,1977,ok,ships,7e750613b0fe71bd4565e172800c943cc42cd8488c33385513c94b63ae3f1965
+2272.png,2272,ok,ships,ac88946666ab71f4e86c435439f418dd441692acf8a4c6a61a4dd7055fdea938
+2273.png,2273,ok,ships,e92b27f823891d7e4ec29106c2f8681cd313faf136a7770e7423f82e17c67625
+2274.png,2274,ok,ships,dc6774da22be358d763469f80c63f5fe74c9c9494c0f47fd9b1568e85a74e963
+2275.png,2275,ok,ships,a7865f291dbf2bf12c00cee038760b45e20bfd02a9f7b473ccf67c5f65016be6
+2276.png,2276,ok,ships,9c8b493f422773dcf49c3706ab3f3102693749e8276ae72e38475183096b14e9
+2277.png,2277,ok,ships,44b6afb143d0382b951d18e4c4f2b0269fc1c01e883edc791801a816e00a2d62
+2278.png,2278,ok,ships,ba71f6334777816964c81eb7faebcac4d9aa4d1a135879c4faa89a80365df0d3
+2279.png,2279,ok,ships,4f69104509d822a582cb8e389364e37197e33d95f3b274dd40517fda971a1431
+2280.png,2280,ok,ships,953cc638288f810c3872ccbbd1f730d1339e2fc0c92fbd60af99495c40b9d221
+2281.png,2281,ok,ships,ba8853268754fc53e08870a2dbce10c581efe656670064dc0c99d220fe28019d
+2282.png,2282,ok,ships,24f2624697af37c71e2c9722e2207ae90858709b491b572fa50293609c9736d9
+2330.png,2330,ok,ships,2ee9329805e927fbe55870e6d89084a9166c3e53dae10299dc7fa1684c01cc49
+2416.png,2416,ok,ships,966ad77bc546f981c6c76b987faa0e15063fc7e0f59538d47ec24e3e70e5f754
+2417.png,2417,ok,ships,c2b4f83ec7dc259262faa428cd0635e9f10543bb3cbe1c5daf8ab19dbe56c26e
+2418.png,2418,ok,ships,0effc95503c38263eb1d82598669784498e32f3a1d0e59aec01a2834c0614590
+2419.png,2419,ok,ships,a1c50a90ade834280e6f42b23c20212c502182b7a4066f270403b2db2549b56e
+2420.png,2420,ok,ships,e70f8a83f5431a55959ff617573d0d551ead951b1e7798bc2c1d6172163fb2e4
+2421.png,2421,ok,ships,e2b96e4a69996bfd80bab34dac91c86115fede6498142eac3665f27381a44595
+2422.png,2422,ok,ships,745953c1a67e23f1ef0ed4ce42ae1098630e9e580712053540585149437ea334
+2423.png,2423,ok,ships,2dbbcc35ae70645b3f33b7346d433e080119ab4a8bb7f3261bd7ea50507544dc
+2424.png,2424,ok,ships,5fd08d215da0fd270c48ea795d690bc2c16cb430d37f483a2d7030f7bdbeb0cd
+2425.png,2425,ok,ships,afb586b9071892ca1eb02bd33228e37dc6d70964bebb17caea6be469bc3d45ee
+2426.png,2426,ok,ships,54b77c9ec8462b51bfb0b1eb64553dc9064b806b72b70b67fdf89c2f4bd03331
+2427.png,2427,ok,ships,9dc886fc85964648286a7033d14af46a73b57287a3d9dd28ad7c5c4582a4a240
+2428.png,2428,ok,ships,9dd650240d38083981d8680e6630b90ddbca9f14d4ad47dba6e67cca46f0fc14
+2429.png,2429,ok,ships,ef39d20876d6bca7d1ce60a872f3f37f8b1181b583f6ad3dc8098bf537b9554e
+2430.png,2430,ok,ships,14146a96dbaf8478aa9dd0c08d8fd6041a7b752352d17688781726de8050bc59
+2431.png,2431,ok,ships,b3cc0c9a519433302c81554804c7d50aac9bf6c2fb5588efc8155a5d71131dfa
+2444.png,2444,ok,ships,b0c5f6a5d5a1bddf73238c3404cce60e8ad1ccab01547940c2b6980f6a40859b
+2445.png,2445,ok,ships,a30b51ccd09d2f9a30525c71b963c78c1c31822d8cca15e70055d5a3012c2cdb
+2446.png,2446,ok,ships,630a968a8aa2f7b74ffaed3d2be60584d8ef57acf22193b7d33d30c3a969563e
+2448.png,2448,ok,ships,2704a3ffe0770d5f940601d9089e97675fb264f78aa71608aaa45e10e05a8a5e
+2449.png,2449,ok,ships,a377bdc14b9bb8f18a2f17476f72ee6a65f0308f3959ec034898990a25d58cf5
+2450.png,2450,ok,ships,0b75f091d3d7b153ca72ca00b356b344fd24e318b5f241daeae60d0e391239c5
+2451.png,2451,ok,ships,299da028a5547e274ac04905264e56b8c870c697da371228745a2d35787a5ca4
+2475.png,2475,ok,ships,e0c06beb6210da9ae233d3dd3f4fa00c24efc5fd43e8683d509891e8bf3dbd6c
+2491.png,2491,ok,ships,2d920ce20c8e2bb1f47542c47940f5d01ba7f9ea66021774af8fa0398243e0a3
+2492.png,2492,ok,ships,8bc98cee4a2e9a0d5e408adb58337cf10018c5caf03eb7d2a633bf41c1de19b6
+2508.png,2508,ok,ships,5589d8d537cf02dfc71803e347707bb4f8336644f1e12775f7e23e1a803dc23d
+2509.png,2509,ok,ships,7eeb1b20c66d6f07f0cc1dd29c9796eac190d1684181e2d73bfcbaeabaff9287
+2510.png,2510,ok,ships,56d4d6b33e1f88d462cf47d5d07f32c256d8dbea744753bfdaf3962ada918ab4
+2511.png,2511,ok,ships,a2ee6b9915c3a713ebebc546cb8ee9fffc6a1b825e541af44dc710fc1cff73a9
+2537.png,2537,ok,ships,f0f9342f9a3f5182ce9dfd778c99dbe922880a405bbc030b582d98090aa73838
+2541.png,2541,ok,ships,3a37126deaa1ec3bcada21f83534ccf622f96d6995c8680703f6aaa852a31f98
+2604.png,2604,ok,ships,1c84dccb347d4aa5ceaf200744cf0f49b1aad7ee7838939005c35dac3161230b
+2608.png,2608,ok,ships,dd2f99e1114d5f3b742d6fb4d626720c69ede8fc19053e1c1789ec8a1a84dac5
+2612.png,2612,ok,ships,ec418f299c57d575238b8aa5ef25c2de9a9f375c18be8d44f6618006785674e8
+2616.png,2616,ok,ships,825097a88f26298486583d5e5c34f17ad94d2c510e2a3abc43b47928425ba896
+2620.png,2620,ok,ships,0f5b358ce63eea7573cfd8e51f934d29ce4c44229e55894a5dc6e2d56fc4b5ca
+2621.png,2621,ok,ships,b1585593bb0bc21436c14bfea33a0d7ed8f120062aaa327b9df27de86d0dfa59
+2628.png,2628,ok,ships,a8317a901d9513f4d8715ef1445fe993c465f93b10d19e2d155e859d6fa6b296
+2629.png,2629,ok,ships,99e78b007ff601d9b8dc46be2530997d5ceb679a3e64f6881d125f6674356b2c
+2636.png,2636,ok,ships,3a42170b2b4647054b4bdb8ed5ee410057db28ecc54798dc38ca3a39c244c866
+2637.png,2637,ok,ships,39366fb85ecaa5e4365394931d3a37988d6b319f633544feba094c40bc2c77b8
+2638.png,2638,ok,ships,6c5ef03dcc429c981e43552f24af484b8436f1ed6995cd94a9562166598e334f
+2639.png,2639,ok,ships,58d4d188350e0af9c61408e76e7d269c7aa5556e23a593736d99ea411cf5b9c1
+2640.png,2640,ok,ships,f292fdcb1fa66032ac464a3732703d93fc601ac1a2674ed08f256f579813859d
+2641.png,2641,ok,ships,64084f533bb68c92f0b4ef0add6b25dfbafcfd18a42924f58b3775d5c5b74af2
+2642.png,2642,ok,ships,5664a3acade4076f0b7ba74bb819e23bc4025cfe48d3d0a6500e34a256d79f51
+2643.png,2643,ok,ships,ea05e380f4d89e52c83eb234dec4613b4920c4a171325837f50b82953f21e85d
+2645.png,2645,ok,ships,d000b127565cf722f40b8ebfd673a15cc04a175b92f97960b0c997851c12a39a
+2646.png,2646,ok,ships,1ea50ac4ef9e56ab91174cd612de07305b50b80196cdcad52132fdf0ba1c3e33
+2647.png,2647,ok,ships,c07ec7dabe22ed23253a084357aa74a07a9806318cbe12e5af230296b94bc1fb
+2648.png,2648,ok,ships,616e9067b573a54be811e5f83e2cf47cb41684ce7a05e768b5024b1be59de956
+2649.png,2649,ok,ships,d3661e0c809101fb469e4045774489e824edb66d265c858f5ca2e52b19a2d8d1
+2650.png,2650,ok,ships,59cb07381e030a9b86425ed8f05d242691923ded4debd0b6a1b1546360beaa01
+2651.png,2651,ok,ships,beba3192ac3657fa6b8820494fd97fbcd5af550cdf21d17598c50c0740f6b407
+2652.png,2652,ok,ships,198b9b925f6c683a111f05eb9ab63467a783aee0b90d3a4b161dfda1f56bcc76
+2653.png,2653,ok,ships,3068ff6efe10a513c7f86f72015fd27643bdf5463fa175fcd03cc4367530d36f
+2654.png,2654,ok,ships,789d846f43d671e83415e369574f2e877017ac8d0855d0e5215cfdd38bd62fb8
+2655.png,2655,ok,ships,75b953fa69266a9ca1d2aa3ba357e5044d63807fb531c850aea45fbe17d4402c
+2656.png,2656,ok,ships,168a1ac17630eeef38230c96bde4a5650e735f152d5e2b36fdf93d3d5df6bf45
+2657.png,2657,ok,ships,b9ca4a8da6e83cf13d62866c8b3646b68e3816b753026d865afddc02fe37090f
+2658.png,2658,ok,ships,878c861ce05b75a76b2abf9b7fb23e2ff1d97b092e9881da5be38af3e8f9d29b
+2659.png,2659,ok,ships,7c4a3614b085fb17621fc7cae99e014d26ad5324eb2e6678df5e949eff28e645
+2660.png,2660,ok,ships,522a936a31d897557d86b331150d57e7e5208fec756c5346ef89d77ee24a510f
+2661.png,2661,ok,ships,2a5484e959ecdde76078f92265f5083c00d0838e3298eb23f3c379c4d63da66b
+2662.png,2662,ok,ships,3a5af4681d95029d0ae369d1f75ed2e07484dc023f21503e7edfc3a0ae5b73e9
+2663.png,2663,ok,ships,3ef0cbcd0e9ea520c3e1b328bc6382a10b3abf1fa140bd56af3e2bbb44d1935e
+2664.png,2664,ok,ships,060f7ee12c6eee0bb47a8c74a89b3277db5b3b74c893c12a285d9453da49893a
+2665.png,2665,ok,ships,b370a4ad5f45b0df8e6c7b96bd40848260ca3f080a86aedb9125de648fa35514
+2666.png,2666,ok,ships,b5075b7da6d4ce03033c2143772c2da90159431dcdfe0c78110fd9a4a2b88e16
+2667.png,2667,ok,ships,a5c2a2b441c2bc19239d880d1dbe72e8e5eada5bdfaf2459c001eaf055f20c14
+2668.png,2668,ok,ships,c12517fa7416ad2789f700c42305262b7a1740638017643a33c521b7f485a0cf
+2669.png,2669,ok,ships,b702155ab7ff3a7352d2fade8eab9d82b4079fe435c1e702a9adc4c38819a171
+2670.png,2670,ok,ships,2487049a9d49898fb20063c3423f0c5ad3a38c4d85667f77b5ee6665de5a239d
+2671.png,2671,ok,ships,640f8e576555f7a31f30e9bb0ceae8f37bd665bfb2f0d117d12f3d1da5c48ca0
+2672.png,2672,ok,ships,bbbb80661bc2c948afff1ca5b0178ea24a5c49d3a51f9912a0e84d63c1c35e96
+2673.png,2673,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2674.png,2674,ok,ships,39254c57d8331040f46abe7708c057300ca6cdfc7ddae460feb5d5e6b9da625b
+2675.png,2675,ok,ships,cba9756fa36f9e9641d0dd075d12e9113c8cce5a403323f46cb64baaee916560
+2676.png,2676,ok,ships,4baddf30ce3f4cb3ffe7f9632fb9ab9b3afeb6ef02c86c792dbc12f954471823
+2677.png,2677,ok,ships,67efbe6f0f7d43296ca235d987640ac0d78418c3e0cb4c0ab5e059089e0f7eff
+2678.png,2678,ok,ships,dfffcd1ae43352f5db6e82e00e88cf1c2a23b11b494150b3e72350fc4e6bc8bc
+2679.png,2679,ok,ships,32a6afce91a3fcdba6e238046dbbe180f30753824a6659fbbd03c2438bfc0216
+2680.png,2680,ok,ships,263dab8dc134451b47af4d1e6e27ac0df4741bbb20055e14aa0123926d8b5052
+2681.png,2681,ok,ships,1080b5b9d7f4531d28882084c7c22ae17cc1acddfc9a69e0844b89d22a11b8bf
+2682.png,2682,ok,ships,4b799a11afd152394f4b440a49c64d49bdfbf0a323a2a2065f2fd2d6b522e9ba
+2683.png,2683,ok,ships,1eea5c45335c7621d4324a214f8e96117909bf71103a67843578ed9c510f16aa
+2684.png,2684,ok,ships,bb7f4f3b1effb2d4305fdc2fa702e603ab004624f4aaf6e2d602b1b32197937a
+2685.png,2685,ok,ships,259e42a5f6df4cafd03534189768c58488b39056fd8581f28f0c0963fe73b53a
+2686.png,2686,ok,ships,ce93233df5cc15b01a3e74e199eafa3f7f0c691d0be3db2914571a99692159aa
+2687.png,2687,ok,ships,93719967091673cfa203eca84800ee8411025e5213f6fef2a7800c15eb1cb9b1
+2688.png,2688,ok,ships,d642cbffd496e6ec4b9074205d47b3e35852ec2599c576f891eb2984e9d8a68d
+2689.png,2689,ok,ships,0f11b42fa67f9034291bb2c6ab206eddd92f6bb9249a2c30e3fd8c79a9e8dae3
+2690.png,2690,ok,ships,ae96873d68f0192ba2622e2df25bb61413d43181cddb767ba9ab7eb29fb6cded
+2691.png,2691,ok,ships,5c63f193863085ee2d8314c6e2d91c49059f6bd954f91a310a3475fccf510e06
+2692.png,2692,ok,ships,1e01c6dd75a745a38a0caf6bd07422bb1e8de45c203166440867296364453bc7
+2693.png,2693,ok,ships,507ea3be3052b4ec102c0bc88edfaad0e348a06608d7efb59dd40b85e7d5f7c8
+2694.png,2694,ok,ships,f4562b911192f1af47d184cf645cd0676cf02a883dc82e53c40d13c38010afb7
+2695.png,2695,ok,ships,765867042b1ea9d10cc10ff8b9675a1f59eabda6071feae62eae8b1fca2ba570
+2696.png,2696,ok,ships,0b7693b2ad5cd5d7042498f2ceec94e4685fc6bb6a3849a5a1083eefe0c22782
+2697.png,2697,ok,ships,e8275806177b35eba828b7fed5c0e42d7d239ff08959b273a4969ad6619e5810
+2698.png,2698,ok,ships,5199f7616fe3eebfde7a7afe41c583523701062cbf616b48d7d2e79dabd2b76b
+2699.png,2699,ok,ships,5e12716d20ca0a34dece987d03a21ff0f8298bc74de663c7dae4b67bc43ec3be
+2700.png,2700,ok,ships,4f34eb59285323ece078bf5565f2a2cd3ea7c0eb8cf20c2f32313b992a9a2dae
+2701.png,2701,ok,ships,6b0285cc591c237d0e68991cf9cbb02d62b6df55f01b6953aa288b8ed8ccd68a
+2702.png,2702,ok,ships,5c66634824a42d910e2a166fbd709dd403d233b9b5289b3b4a0a43dd7982f8ad
+2703.png,2703,ok,ships,3ab3d445d827725cfffc87c4ed34c5b52aacf59a63898f5d7d50d8cd2df1725c
+2704.png,2704,ok,ships,2a917117d75c7fea8696617bf343737ddcc46e3a750fd3ca3594dd236fc5591e
+2705.png,2705,ok,ships,a8f9539849da615d8bb75423901526f4673269d4446286d21e93666963345e87
+2706.png,2706,ok,ships,c336b57b2750d00f821615e716e1b6d7bbd53ab85be85aa1a651902596646762
+2707.png,2707,ok,ships,e2f388d6a08b0e6de43c3eb55b13e1f19fb1846d9b3f92b89584dca025f71d74
+2708.png,2708,ok,ships,c5215e72a692bd9d972f992c5f1bf206b19d9289a081f5a5365d17b9a9d5bc97
+2709.png,2709,ok,ships,eeeb8870dd4759c460a6de00706cecff6ab4aa3a0c71059835f12928b54812be
+2711.png,2711,ok,ships,93d132fa6ce0d0251dc83398acb3d817f9b3e0750648bd3b5139d0df9d60d0b2
+2712.png,2712,ok,ships,965d3caa32776b80d7582962200c96ce4596dbf623fa98fb3cb13354f6cede22
+2713.png,2713,ok,ships,d64fe304a5f93c0631c39c5385f7be53add7ede1aa68ec0346f071d5161af5e7
+2714.png,2714,ok,ships,53a5500304b0beb6f57758d3d1ae140555505c9edc7400905d565019f6c91bb1
+2715.png,2715,ok,ships,dfd78f74deb85a200ca0d7e6348f84197d1b6751788fd3732a1597772dd5918b
+2716.png,2716,ok,ships,fea15edd44973236190ecbc2fb38d40608335ddfa6afe0b2f06cfd3b9d043454
+2717.png,2717,ok,ships,93c3770665166c584465b0448198deeafcb42d4a4fe90dd2c7a7d036a506f8ef
+2718.png,2718,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2848.png,2848,ok,ships,af310da35206a2536b5ddd7b8ea25cb28a2a15b73d2f1aa2cb2aa3487458c4d1
+2849.png,2849,ok,ships,113c2a10815c2c15b784cfdb04b297a2696b7fe541f733c096ee71efdbd99211
+2850.png,2850,ok,ships,61cd8c1622709ee0b1ac5aefc8b050bd475694902d330da3585e51494217ae81
+2851.png,2851,ok,ships,7624afc89848fbc96082f683135fb81607e7e2e6dc990b0f347fede167a5917d
+2852.png,2852,ok,ships,e7508a9ae957173eee1e309572f353fe0d57c9dfcb41eee8f0fb3fc29985b827
+2853.png,2853,ok,ships,7b6bd12c1f4d7737adc5f134c6d1b3ca25e85f97865d620a350ff63bdd777124
+2885.png,2885,ok,ships,5bea1f4eda1d9b0eb84790a70d76b6110c9ae5dc1ac7ac72ed24b6e9ed1945d8
+2886.png,2886,ok,ships,de61f1c41d49b6f80a43c2cd7d10e64ccbeb34695ae26ae7716c6e5ff287a6ae
+2887.png,2887,ok,ships,350bb8740d4b5c3e297a0b6d850182881dd4140b65b83dfc77af0c429b4d371e
+2888.png,2888,ok,ships,d3fafa7ab13d73de0a7078c979529fd4d0544970df22ad9dc29df6d9a1e1233f
+2979.png,2979,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2980.png,2980,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2981.png,2981,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2982.png,2982,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2983.png,2983,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2984.png,2984,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2985.png,2985,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2986.png,2986,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2987.png,2987,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2988.png,2988,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2989.png,2989,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2990.png,2990,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2991.png,2991,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2992.png,2992,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2993.png,2993,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2994.png,2994,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2995.png,2995,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2996.png,2996,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2997.png,2997,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2998.png,2998,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+2999.png,2999,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3000.png,3000,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3003.png,3003,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3004.png,3004,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3005.png,3005,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3006.png,3006,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3007.png,3007,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3008.png,3008,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3009.png,3009,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3010.png,3010,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3011.png,3011,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3012.png,3012,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3013.png,3013,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3014.png,3014,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3015.png,3015,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3016.png,3016,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3017.png,3017,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3018.png,3018,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3019.png,3019,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3020.png,3020,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3021.png,3021,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3022.png,3022,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3043.png,3043,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3044.png,3044,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3065.png,3065,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3066.png,3066,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3083.png,3083,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3084.png,3084,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3085.png,3085,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3086.png,3086,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3088.png,3088,ok,ships,b4e50d79ab0f246dcd208a6ed1a33e0f65d67f05090fbba0d778cf082c4e60bc
+3089.png,3089,ok,ships,32527e618a09d9db6ddd604b2100ff1ebc0550bda3574eacb178303e9d9a6047
+3090.png,3090,ok,ships,2771e2b4b76ccddf90a17584ab851eec634d9a2b30e92b49b05809ef693d2ac7
+3091.png,3091,ok,ships,031c7fb7ad66cdf5467ebfa443bd6bf295e655261d289df197907f59d4347f2a
+3092.png,3092,ok,ships,9fa9aaa3d5dca3d95e4e4cfe218de4aebc59a690302c92af5a076a3dc36ce59d
+3093.png,3093,ok,ships,a022afd76dbd56e131fcfd9fd70799488e8917c86e6367c63ccdd1c55ab07508
+3094.png,3094,ok,ships,5f587509e129f6b53acd668a54a4153698af532f15743f1f622a00016c1b4f8e
+3095.png,3095,ok,ships,041623220e283feca53c514c837c0de1919ae3c61e1147b397566419f862a2d9
+3096.png,3096,ok,ships,e54184fcf5855556b5bd6f04799f50c37407fd8bf4c2f63a38e31c56c04874e5
+3097.png,3097,ok,ships,d2781231c9133b48c2b30ca562e66d21d31b4f1c221a60aaa854aa6e03e3339b
+3098.png,3098,ok,ships,b2087ca84aaf33f08b7b3e05861443aa01c4b2bf1acde177087dafc622817b5b
+3099.png,3099,ok,ships,08335462983e4d7ab330d17e2cd6a013e97e5bc153b8fb92e74d319f4187ed1a
+3100.png,3100,ok,ships,0970bfc21c50dedb9547900b341827ceb794ea7641dda2f8161c51cae35b1185
+3101.png,3101,ok,ships,e8853a0be121f1c05a3dc22582898015bfba0edf55e1cc557c1a41e8bcdcfd03
+3102.png,3102,ok,ships,e0c06d4bef7c7a9677eb7317e112acab0b706a2ee245b5c0a0b41cba08ed15fc
+3103.png,3103,ok,ships,39ede45bb738b8bddb735e77fcd579583d83d133a231cc6acb9c5af5a7884a95
+3104.png,3104,ok,ships,4a37c44e0df4ad121ad9960356d402a2e441c89eb2f67cc73a778682a3f02d76
+3105.png,3105,ok,ships,a1214c2de28fd73a493312924752b7871f242e39f72a95d44b86f3b93d039195
+3106.png,3106,ok,ships,3469c4d94635c05289b0396b09e10e6959245e48f480bac74233f1e1104b8165
+3107.png,3107,ok,ships,e75a9700baca149d26dfb293652c2094f805f6fc72304670b8a487912d4de2df
+3108.png,3108,ok,ships,ec4f39ddce09bf36aaacf8520ae05edf206284ba69bdc232d10f1be06066a5d7
+3109.png,3109,ok,ships,566f35e73772c242245a53e7de6db8b79400aa16e0399a6c4e07f122184d1b3d
+3110.png,3110,ok,ships,c797d5c91208587ac35222386fc4260821ef4680fe37d3518cdf59dcc2501d84
+3111.png,3111,ok,ships,91dbd31577fa02ca0ab49bd5ec30e6bd9cdda2ef5ba980868744c9ffb3be1e92
+3112.png,3112,ok,ships,d35fd2836b31b28e2d6ab449470cfcdbd97a91dec3a9da3e90ea3cae1cd4f601
+3113.png,3113,ok,ships,f2215aec18015b32e7878e8b78f12314f1b50321ed1a36f01542d836de8fdf8e
+3114.png,3114,ok,ships,bda5fa82de0ab48b6ce0983fef9d38b20a9461fe8efcd37a85bbe94a53214688
+3115.png,3115,ok,ships,ef587b7d12b06fafa938486206e34d1d18a38e28aaa8631975a4aacefed5e69b
+3117.png,3117,ok,ships,5897543adb449f23cf4d81f1cc34ad3b5fe63835fc7fb9804f95f0bceab76c58
+3118.png,3118,ok,ships,8c8b12e0dee959edfeed71e0363dc19c3ddd690776d6cbe90eba8da90d1eb3df
+3119.png,3119,ok,ships,55800e5488208911249b8066b6fcb4c8f611511784d10def8b7e6cb910587acb
+3120.png,3120,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3121.png,3121,ok,ships,8db5ecd3776c80dd81ef54a0c317da5236b54574c9c34e4064140aa05deabb82
+3122.png,3122,ok,ships,30472f2a26b508cf00b75dad85961ed37eba49edde1e1431479e9ed0fa5c6442
+3123.png,3123,ok,ships,685fb069911edfa45225f4d1dd84ecde955ffd673e5074c9454fc90884281426
+3124.png,3124,ok,ships,1c731b00bcd2d8e73d1ba6e9f708a6f7d282833b40e11947a4cce04171deeebd
+3125.png,3125,ok,ships,03411b2a227442033186ebaac04c6f66edc170624eaeb2f9b93021afb72b8066
+3126.png,3126,ok,ships,da916732989af9e5a8d67e3a847903051de37bc1e840f2398cb9b84b48077e66
+3127.png,3127,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3128.png,3128,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3131.png,3131,ok,ships,669b814df2a624a86e358470a0a59a7e8661d292367bd61248c8b54c2b2f9a8b
+3132.png,3132,ok,ships,ac5914a4da818f97a3730419214dc4fe3287cfc04a9352d7ca2338842c1f061e
+3133.png,3133,ok,ships,49b358acfbd5814ae63a3d0b24b262288f77f4a0125bf72f31ebf4452ab751d5
+3134.png,3134,ok,ships,75e76d407007666295d65299d0174afacec586ee90e3068505ba9d5f97ae4c67
+3135.png,3135,ok,ships,cecba9ead9715ace157c6204e51f9800a470dbe330e2f584564cde46601565b4
+3136.png,3136,ok,ships,c90db6e6946084173de4935047bb7884c283780516e097ed9b1052692e7d6771
+3137.png,3137,ok,ships,de271ba2aca4954c5850c84fad71ff17632bf5f90a969d1844c77ea1d8522cfe
+3138.png,3138,ok,ships,52f669f2e87087955bac0c4e99dfbb33cb3da2c98763fb58575b6932bf8e967a
+3141.png,3141,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3142.png,3142,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3143.png,3143,ok,ships,056942961a7faa0fc5c92029978f4780ced1e2a1dc1ebbc304d768743918fe7d
+3144.png,3144,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3145.png,3145,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3146.png,3146,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3147.png,3147,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3148.png,3148,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3149.png,3149,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3150.png,3150,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3151.png,3151,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3152.png,3152,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3153.png,3153,ok,ships,92f9d127cf0e54724eb6bdf0601e5847b88b42af9aa386ac208559957bd863cd
+3154.png,3154,ok,ships,996e7327ad6a9ccf3cad4218a8ee3a09d25d03e07f190092707c1c4c1ec366ee
+3155.png,3155,ok,ships,c60a804e4fd2811e63e381cac5921f379c0c6f7f772fa8a9da0812e15ede46d1
+3156.png,3156,ok,ships,008c965868cae59026e817c9920de7e96aa3d40cd4930a212ffd503c29c12d59
+3157.png,3157,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3158.png,3158,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3159.png,3159,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3160.png,3160,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3161.png,3161,ok,ships,e192be4ab3b631b824f9661b56e4394f63d57c0d449c1bf96c0dd3807b5d1e12
+3162.png,3162,ok,ships,54193d2d28631db9fb56ed57cbf71ed445392a1c6cf1560615ccca3fca1910d5
+3163.png,3163,ok,ships,07f2d4b261f3094ba3703dec48ea8541d17f18ada590cbb0ea45e3a03053829b
+3164.png,3164,ok,ships,9c4a59b06c78f1d54f76b9a45897d860fcbd4fb5a4c516695c82658b374d8d86
+3165.png,3165,ok,ships,4a74893547b46815fb524b5d25324e4c819bb1410c10b66aaa993fc6e1c198a7
+3166.png,3166,ok,ships,c3efca68a3d46b05b426904fffa0d970a3217dc042610ff28d0b548d734860d9
+3167.png,3167,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3168.png,3168,ok,ships,daffbb40b502c77ad8b00df0a4d0372ca67c7f994e804f9741224531766c4d96
+3169.png,3169,ok,ships,63a1b8d6dab571d61184bb4c681c1cfdf2e2a2383bafdbc1eb71a84ff62301eb
+3170.png,3170,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3171.png,3171,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3172.png,3172,ok,ships,bc08fe95a8d8d8d02951490cfafe6e43dc5907ade8c74a8126d1240c559f894a
+3173.png,3173,ok,ships,12f2fb1a78f7c6913b51fc7b1b53f547d0e53ac46738096ccfca7a67cb73b753
+3174.png,3174,ok,ships,c94aa907bd36af268be97ee77a7700eaaf4fcde60aa16433fdcd999cb5d36c30
+3175.png,3175,ok,ships,86e080e248565d2ee72d9454fb132828d472831e28062a8adfa9a8baf45e7741
+3176.png,3176,ok,ships,9cd06b36abbc668044b853fb03c1327a54b080b5d2c0420e3cf6475d9c2f65e8
+3177.png,3177,ok,ships,f763b298e69ceb26b8f481f037ca5391dbb6a8294484789730bf5079d0f155b3
+3178.png,3178,ok,ships,8bdeb6b83c8a158b25786f2b740637f4ac4a4a854ffdce08c8ad0ff9c17fde62
+3179.png,3179,ok,ships,2691db12ce16a4da6330f7a284d981b46daeb8a6c449dcd15bc10f2b12b5ee62
+3180.png,3180,ok,ships,cb6f16ce677a62a870968a9f3723ee6b2355f4ebee0d520cab6306f00834537b
+3181.png,3181,ok,ships,86ed6299a91f555820e91666f20849ec762b07344a05ee160973dad8a38d7ba6
+3182.png,3182,ok,ships,eab95f54d00eb72856f9247ff43ee830e41554d504a82926bdb10093a0d471cb
+3183.png,3183,ok,ships,8e5e490fed68a658e895c4a535665aa67cf030126a8eadddff885c07c5970ecd
+3184.png,3184,ok,ships,c3a242c8f06f9302a6fa571e50c0a9bd821f523e52f5d9fe24eae7846d97f83c
+3185.png,3185,ok,ships,cb270f8798445ee1936cefa77e2dfd02da305236ad43fcb02fd4150bd1760b71
+3186.png,3186,ok,ships,826bf4f9a6b1791f6787a1d06ef3c7f8328b71353c07532fe9cefa8ef17c5b57
+3187.png,3187,ok,ships,3f4b029783ae6e89209144bb4fb78d018b45631e621ad27b13ec73abc50240dc
+3188.png,3188,ok,ships,ba8adc40d7e78ed7007f1a4631732e334e33bb836d7a76184a8ab10d4a544e2e
+3189.png,3189,ok,ships,cf3ad37675057399a051163b440194b3642835aaff157ad8762ea6ec6e1e1355
+3190.png,3190,ok,ships,f4eb48551b0cbb4bfdbceeee40b26523e546b72419f4b6ddc8d9f62f08523957
+3191.png,3191,ok,ships,7059d5abb7db93df800a4a96dff87275524f431972d9c31bc50a0506668e3dcf
+3192.png,3192,ok,ships,49f8ad5adc63ab3e7e96a7cfca6db6e9ea653ed23982253b3523c9cce223b707
+3193.png,3193,ok,ships,c517117133c40c95c499279e7cae2a0b75244a6236e283f912c40786a518490a
+3194.png,3194,ok,ships,49480463e01e625b33b16ee2950f6a79e9e5aae4aadaad71ca54b6fb4ddecbe4
+3195.png,3195,ok,ships,4950736ff0a17b30f3700e363207076ad126a2da5b51921ed975455648ed657b
+3196.png,3196,ok,ships,0d3115d68e3a685a48620cc6fd3815c6ac8492303e60861e330e449787659196
+3197.png,3197,ok,ships,c8dcd7ef797cd1dae05eee9635eb74fb5820570e11ff3867a96793b6787aa746
+3198.png,3198,ok,ships,f3617279e0423ac43564ad6a56e2d30492b9408548f7fc7bd7a6a49d04e90a1a
+3199.png,3199,ok,ships,ea8e59f3464b05462335d59c0b631a9ab352e92f250780cf3a2bde30bc1b254a
+3200.png,3200,ok,ships,0d93a5dac785731609cfc6d6132f3c2f28e254b51f1135cf6506760be420fcb7
+3201.png,3201,ok,ships,327c619243f06f36e4e603181f820457b96d7b1438a7c10c2cd314ba179471e3
+3202.png,3202,ok,ships,2e7eb929de5d169cbd165a58f3d6ec52ac59dfa048fb1f222c8844645c3e87d1
+3203.png,3203,ok,ships,c68e2153878cc94d741f44dc6d93742a1b5bbfdb112ec87109f47146fcaff2df
+3204.png,3204,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3205.png,3205,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3206.png,3206,ok,ships,a1a5818d82f4b5f4f84be07f9920fad7a5c11d816ee6ae8e16fddfd606c6115e
+3207.png,3207,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3208.png,3208,ok,ships,86e488b356db3734935579f0db63ad23aba89730604eb4421009714456d67250
+3209.png,3209,ok,ships,c48bf8509056d908cc4dbc310ecc5762691e22fae8611ebf6f328f121f2a21d0
+3210.png,3210,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3211.png,3211,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3212.png,3212,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3213.png,3213,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3214.png,3214,ok,ships,78fb7f78a576017c059e1929f04d3dede9147258e10c06749617fc5db75265c1
+3215.png,3215,ok,ships,b6f32ac96c0a5a47339db3cf6201f6ea7aa22e169f517c8d75019f2519152e96
+3216.png,3216,ok,ships,46c5746fd526dfb38c41c9d69307bf0341bf6bb4e1042b3b95dacba0fe073cee
+3217.png,3217,ok,ships,3807e06e2f7d610a3b81211d2661e696881e85214bd6234f00e3e0c18520750a
+3218.png,3218,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3219.png,3219,ok,ships,1f8ab629cd478eda8f42b477639d81f94b9aa8439b3fcf9bd9b693293e4bb0a6
+3220.png,3220,ok,ships,32b75c8e74ff030b77f47b988419537616f351f52e48b7a7b24e72f60470c8c1
+3221.png,3221,ok,ships (tree set 3221-3222),625034da91eaef5502399d9504299595ac9657f025a78fb2cc2fea367cea8dbe
+3222.png,3222,ok,ships (tree set 3221-3222),b56a9b3d67876afc241ca1e70488c08e086da01a0d920b759af27ab49e384f66
+3223.png,3223,ok,ships,ac9848f2ca7c2d3c05fa3e107397765c9df2c867c65cd2bf50178e4a03c7dc0e
+3224.png,3224,ok,ships,55388f305f3f7a194c12690b883be179ecb8b4eedb27d37203218787ac6c40c8
+3225.png,3225,ok,ships (tree set 3225-3230),4a42e3fa8f54b6c20af9d0024fc47014baf829143e0e089e916f430b255ecd67
+3226.png,3226,ok,ships (tree set 3225-3230),43a8d5ec9344fd2a751ccba0fc2239d4787b9ba92c30114854a07c67bd98b46a
+3227.png,3227,ok,ships (tree set 3225-3230),3748c13fde6d0d049306d55aabc3a0a0ba2ba1e6d61368698b9f91a3ae7e5924
+3228.png,3228,ok,ships (tree set 3225-3230),190037b3ef7bececcd63faa02de281d76ab4b9f25053d1c4483afbf3a1622342
+3229.png,3229,ok,ships (tree set 3225-3230),faa0ae170bb849e979c7a43905b9104cab503c459e7fb58b33e6fe5cb8ef0b54
+3230.png,3230,ok,ships (tree set 3225-3230),b436cf55deaeafd612809a2cd84a9b108b063da90db008b0830b1a64422f32c0
+3231.png,3231,ok,ships,28357e5e734809201381afcaa929dc2dd0b6e5d4f19baeb6879e6d8390a8211e
+3232.png,3232,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3233.png,3233,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3234.png,3234,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3235.png,3235,ok,ships,2e1c960fb5ae0e15599d8538f30a134acdf9f714e904b18bc2b20fdf00f821c2
+3236.png,3236,ok,ships,ba0e832837e89a28980ee90aad82e667b868e309f3d31a6a6462b288b0ae6f32
+3237.png,3237,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3238.png,3238,ok,ships (tree set 3238-3238),cd9b1e25310849a5c68943d332c556ae0b0e80ccdd26cf3b688b4b6ce57007a5
+3239.png,3239,ok,ships,f9113337572a0894f3c150d1a81468a0d8d675015a53a5aaeaa0e0e665678db5
+3240.png,3240,ok,ships (tree set 3240-3240),8c3b8dfc98185fb826215ac8a701db8950fa0402625e84f0ca18998a8fc7b7ae
+3241.png,3241,ok,ships,efa18f994e249281494533c34b815fdef7e9af1cd188e7e4ae12e6d02f7c698a
+3242.png,3242,ok,ships (tree set 3242-3243),5ad9628b26ffb875a9ca7113f3d07e10d73cf1053c9947898b47ac0567349ee6
+3243.png,3243,ok,ships (tree set 3242-3243),2f2754100ff88d717972bd02e5830212581604df7472f7ba8af16c54e8848278
+3244.png,3244,ok,ships,245dd56876db9eee404401159b0327ad15cb770bacf991a83eee8c0d9b06699b
+3245.png,3245,ok,ships,aaf27697915a3eb6a174d73e30edf4e3fdf29b0c2798ad46664c92a1d64846c1
+3246.png,3246,ok,ships,93191a79d16b6411b58b23266777be2b077ea3156470a111bbe76a1316c28cda
+3247.png,3247,ok,ships,4b19d3e24d4b9eba3c303d47630bd4a9d0a9c7b7516cf7049d939c9a207ff930
+3248.png,3248,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3249.png,3249,ok,ships,856bf1d1ea480743e4f8a1fbc4e72134cd2e1e8987190d3f1968a094a396b024
+3250.png,3250,ok,ships,3185290b6df6c5025cb92f7534cf89e935e4c500500a660c54bc3aab41b1c77c
+3251.png,3251,ok,ships,41ccd66135b905f0f0b922164e7820d5fcaf28d1397a7be885ecf4133eaf108c
+3252.png,3252,ok,ships,068640f592da305d38aa409b3016d6b9c482257858b4aca7249b55e94f9a1ffb
+3253.png,3253,ok,ships,0af96597b96b69cde460b094524cb36b31dcf173e100e31c17c49fe1c91cfd36
+3254.png,3254,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3255.png,3255,ok,ships,f5f68b8e27ba6aee57af4dc116b7c931c00b19d7e7ffbcd85409c8ce0c3b8ec5
+3256.png,3256,ok,ships,845490eccf387373e990641c8bd2b8bdab83e615320f472ef3058bbde8a06720
+3257.png,3257,ok,ships,289ccf2f7183385e385c93a1de798df6e6d134b5e3b24c9e1592f5e9288b8d5a
+3258.png,3258,ok,ships,fb228679db613f9a496d742a4a18378e177b8048818f632f007280904f273293
+3259.png,3259,ok,ships,b7abb5a238fb2cc96e1242faca85d9410d6f823ff4ac500d6f392df7271dd029
+3260.png,3260,ok,ships,7ac2c5c09470431bd8425896bb925de52288b55731562695a51502fd56506691
+3261.png,3261,ok,ships,69cbdac76be92b79087eba89e0ee53387387af3c44277c5b6edb8dce0af43f54
+3262.png,3262,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3263.png,3263,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3264.png,3264,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3265.png,3265,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3267.png,3267,ok,ships,b60d501a50d5ccade2a8ce6f1c0b6c8fe072858ecb946b6b3d4963eb3768ba74
+3268.png,3268,ok,ships,57553a2832da14fa7f265876fc62c69364674081de412b4abd9a517353ea2bd4
+3269.png,3269,ok,ships,82222d42253e7c4ef8d4bbeeba80493a8ddaaaa6f54a745882e2581cbc0adfa5
+3270.png,3270,ok,ships,5f403d43b631957ade645d568ea03e0b3fef918034ff01c34d8d864c513e1f04
+3271.png,3271,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3272.png,3272,ok,ships,47493f101feaf45f1fbdb332bcf45296c9ac7e7636784d9abd18046693e2e90d
+3273.png,3273,ok,ships (tree set 3273-3279),6d32ddd6b92a9135ef0b1d81866903a6059916f08349430b9d91c5fae31fb83f
+3274.png,3274,ok,ships (tree set 3273-3279),7e16c04c9732025608948211d445ed34f806347d7e9e67b42a1b55e0242003d3
+3275.png,3275,ok,ships (tree set 3273-3279),a1811a2f34d864e327d07f698fbd232d9d84cd3cc2b051c8e0cb3df0d816adf5
+3276.png,3276,ok,ships (tree set 3273-3279),3b71162ec6677cb541c9b14384682127d02b8fbfacf1faf0226f688ff89def64
+3277.png,3277,ok,ships (tree set 3273-3279),b794fb1fc0faf0d4527ea9f37d0eb8b4f023709b87b78b48aaf2855f7d8d9746
+3278.png,3278,ok,ships (tree set 3273-3279),ce3d6eb1e6525cb00dbef731b87ce48aba3fec430e7aba2e825ebc6e0c157523
+3279.png,3279,ok,ships (tree set 3273-3279),e42f6f5bad7b4c30b3a739a91e229045c0b5fd6ae664d982f7c7e97474094fe9
+3280.png,3280,ok,ships (tree set 3280-3282),1f3fc1a1a723a34398649fa3b5f278e4e7b7f07c47c65ed1054c908572f59ae6
+3281.png,3281,ok,ships (tree set 3280-3282),30c703c1c8982d1f595c7151c1ac54518e9adc2bb249f9898abf983678b0e202
+3282.png,3282,ok,ships (tree set 3280-3282),7314d79bc6ea5448e70144de65d2ae08f1dca1abc7b566c3947c654a48a0ffce
+3283.png,3283,ok,ships (tree set 3283-3285),7b7c3ce7a1d022225d31e74b2d17e88976f66b4a68b36842e9d61c31969d874c
+3284.png,3284,ok,ships (tree set 3283-3285),643238a31d292f0ea0cdd472bc9b3106cf94513ee4db447446216f913b506ca5
+3285.png,3285,ok,ships (tree set 3283-3285),a9261604baae7ab37091322a4f4960e1fcddda6115a14d42a4074a3283c557a4
+3286.png,3286,ok,ships (tree set 3286-3287),134b09ccc7f5d88b1abf4cb61085e1d03265a05298e504daa8eb8c2d46d91feb
+3287.png,3287,ok,ships (tree set 3286-3287),294dc89bfc72e596f6d4be815c03defbbd1197c6793b7d90df3c7e9f49fbeb51
+3288.png,3288,ok,ships (tree set 3288-3289),6e0f6eb5732a180bd774bd34865a3bc46423b5e746df1cd54f325ee84f73b081
+3289.png,3289,ok,ships (tree set 3288-3289),6cf0f7d3427e279fe60dc630e46b92ecc125a3cd5c8b7cf44fa47468202311bc
+3290.png,3290,ok,ships (tree set 3290-3292),2269e598e065e9650ae3da11c5ead28eecdcfe5b50e664537c9a43c03ba0feb0
+3291.png,3291,ok,ships (tree set 3290-3292),e2f57edba1f93c5d847f18ea213ecfc2a2fadbfa003fd7143c88e38aab43f7b5
+3292.png,3292,ok,ships (tree set 3290-3292),aad17c93a2fb1bd39fbe54e843496e877e5910cf7aa53cbb74a36d1ad18e5868
+3293.png,3293,ok,ships (tree set 3293-3295),a01ead6bb10563bc6906045def919ab300d46eb2d9cc217d22b13f07fc19296d
+3294.png,3294,ok,ships (tree set 3293-3295),4f738ea4ba1d126791df8058f7d0b2a7a3eae61b4d096db680e1ed0b963405f9
+3295.png,3295,ok,ships (tree set 3293-3295),0eba3de495c79e021f4b21976c9c8d2dd22874d71c319865e870a57058dcd37e
+3296.png,3296,ok,ships (tree set 3296-3298),b638dd28c9ceaf051b559778f56104a4d6d1195e14021c26076106728481d663
+3297.png,3297,ok,ships (tree set 3296-3298),1716fa557387d4247a806eb826f2f149398f5441bb41f905940be0fa34acbae5
+3298.png,3298,ok,ships (tree set 3296-3298),6ff2d87c184d70f680c2bb0daed84bc6927d1fde662a1387e32f82d8a27e2d66
+3299.png,3299,ok,ships (tree set 3299-3301),5f9259554b623c430b2b3eab6ae999401b717b01a826c7331e2bd12ca1b2f889
+3300.png,3300,ok,ships (tree set 3299-3301),514dc1806983577612a6e492512979c3a069a0ca016ed0604749d0dc64421194
+3301.png,3301,ok,ships (tree set 3299-3301),9993604f4611e3bd334e68e51c8ceadd0c9ceb39a3e15c69b89d18c607154ac3
+3302.png,3302,ok,ships (tree set 3302-3304),abb6fac16f45bea256cf091f5916f32bc23104e7ce8f9f8c331097a05fd8d8f9
+3303.png,3303,ok,ships (tree set 3302-3304),2b554c957e6793628785e262af4844e55271001e33d1a43c00e77517bb0b280e
+3304.png,3304,ok,ships (tree set 3302-3304),d1e059c6d7519f7f9e0742fae34caad8c254aeee06be2b50149d74ad8bd6cf0e
+3305.png,3305,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3306.png,3306,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3307.png,3307,ok,ships,42a333675034043d3d76ca9bbe3fd1267a3e87629538f5a8e1c44921de353879
+3314.png,3314,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3315.png,3315,partial set,left out: a tree set the pack covers only in part (a redrawn trunk with a stock crown looks crooked) (tree set 3315-3322),
+3316.png,3316,partial set,left out: a tree set the pack covers only in part (a redrawn trunk with a stock crown looks crooked) (tree set 3315-3322),
+3317.png,3317,partial set,left out: a tree set the pack covers only in part (a redrawn trunk with a stock crown looks crooked) (tree set 3315-3322),
+3320.png,3320,partial set,left out: a tree set the pack covers only in part (a redrawn trunk with a stock crown looks crooked) (tree set 3315-3322),
+3321.png,3321,partial set,left out: a tree set the pack covers only in part (a redrawn trunk with a stock crown looks crooked) (tree set 3315-3322),
+3322.png,3322,partial set,left out: a tree set the pack covers only in part (a redrawn trunk with a stock crown looks crooked) (tree set 3315-3322),
+3323.png,3323,ok,ships (tree set 3323-3325),52699ff5f0c0b8e61271febaf4d338c7b261338eef3775782e8606b85ee3860e
+3324.png,3324,ok,ships (tree set 3323-3325),9be6dd5c305f3897fef4e20b10d17c2821bfc502669b2fddbf5dd40dcb88aef4
+3325.png,3325,ok,ships (tree set 3323-3325),01528a6ab6ae1bc1ffbbe55f83fc62276431700f0511072e1f8cb3b27e78447b
+3326.png,3326,ok,ships (tree set 3326-3328),eec341ed5b5e5063e05a21d92f73f135e105a2732df9510d45974e71b6d36a4f
+3327.png,3327,ok,ships (tree set 3326-3328),9c865357e90aae781c2b1c7035c0859674a62755011041adcf3560bf7ac66830
+3328.png,3328,ok,ships (tree set 3326-3328),9521e2dae49c921d53fa5a7673076648830ca256417e85397b796455340aa044
+3329.png,3329,ok,ships (tree set 3329-3331),a6cec88def5c3774fdecf7cc5aafa3c61536f4a321d3a48ede3ff0dc37bf2ab8
+3330.png,3330,ok,ships (tree set 3329-3331),529ebb26b125615c3690bcf43fc7031408df2fd97d1ee6c30d1fa6f9ee072a9e
+3331.png,3331,ok,ships (tree set 3329-3331),7b2ab6ea734445790acdb36f8734b7ca46f5572cf15b94a750fc4c9b06d2b7a6
+3334.png,3334,ok,ships,842620061b411caae358ad01f612088da31a97ee301bcce0ecef6886ae852dec
+3335.png,3335,ok,ships,eff99cdace73e2e6e7baa23d8b8d4595b0540dc43aae97e215458a4713d49269
+3336.png,3336,ok,ships,52da381cbb2c09ae53cd5f590209fd2ab58c94d94485515f6686747f33693dc5
+3337.png,3337,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3338.png,3338,ok,ships,d575ba69f84e3b8ca032effe68aed2f8c568852e40733ffa4097b68f2e702379
+3339.png,3339,ok,ships,bb717a448214c979e0feab03b94d9e19af4c9a1cece1c0b5a305a1670a6abee9
+3340.png,3340,ok,ships,6184ec59a30ec9faa3236ad86d3a0f4503fae0cba62dc4264e600c259d6bde3b
+3341.png,3341,ok,ships,3f01f0b86eed0234415de4448d793578d8bbfa5446879460d2cac2ed2f5eddc7
+3342.png,3342,ok,ships,25f44509c325f5a9fad84836a4b78238992df0b93fd8a6a1ad0ee8a3056fcab4
+3343.png,3343,ok,ships,dbbb069093c0fb9a78444f156af23de77a9f02502baeeb2f57cb8f7b1ceae033
+3344.png,3344,ok,ships,637712e932826efd4c9d948e1fee59560361558072e9c4fc517c95bce1f97b01
+3345.png,3345,ok,ships,0c3fcc7bb83268a26b0e10d7347ea87b475829b44fcde7cb156da55c0f7350f9
+3346.png,3346,ok,ships,22cf76de013d36c252634ae97077c92458beec54ee22ce2983b66f503d1bd996
+3347.png,3347,ok,ships,a0d84e2c416a674a844a8b89469bd2593808f9ce99a07d66144733c865a14cd9
+3348.png,3348,ok,ships,89dd38315685c2d1e0647bd62ef694fc86e99122482367e814b3e8299f95eb79
+3349.png,3349,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3350.png,3350,ok,ships,346321b927f18a047458a747053141747e9bf5d9a5dcafb2b082ed264a77e70b
+3351.png,3351,ok,ships,9aa39fb548474d5ed5601461538ee54a2fe2d852f6ff8fef43bcec8b6ef82b16
+3352.png,3352,ok,ships,182a5f9856708605cd30bca3c72bc3ba67fa8c39fd7587d989bd41a109e4735b
+3353.png,3353,ok,ships,ceff26f7ce2bf2f2946713903e306f9c8be16b5a8dbfef3e26ade82b368f7930
+3365.png,3365,ok,ships (tree set 3365-3368),2e8003e0da0167c44878ce97afbb729e798ae52cb48fcfb7c1f02b7300ad44a0
+3366.png,3366,ok,ships (tree set 3365-3368),850709f5538ef486140bf9abf5d6e8383f5fb953dec76073f6c3d51c3bad6ed7
+3367.png,3367,ok,ships (tree set 3365-3368),d447515418cccae015a4879dc9c46a67ba839fa960fffb12bb516e72e35c1016
+3368.png,3368,ok,ships (tree set 3365-3368),e8bc4afacf34a6ca76434318d9ba4493a458ef9472be093c508c1c094b040c09
+3369.png,3369,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3370.png,3370,ok,ships (tree set 3370-3370),aa34b0b32ee3a3e6e206d4eaa4078c4ed32bfbe74f72b66d763ff63bd97b9ed6
+3371.png,3371,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3372.png,3372,ok,ships (tree set 3372-3372),3ff018d8f607e391540d45af629dd84f5e4ce36e7debb520018e79e73f75baab
+3373.png,3373,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3374.png,3374,ok,ships (tree set 3374-3374),4ce0a97b34504e24e297c97d91a7c16d50de1dfcd371202b1064292df0112e71
+3375.png,3375,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3376.png,3376,ok,ships,6215f5e937999c2806fc82369170fe3b3dfc8f2bf944e399fa070bf3581a0d21
+3377.png,3377,ok,ships,60bbd842373650afbba09bf230455cbd8995cb0c941ea9bbdf10081a4c69ba85
+3378.png,3378,ok,ships,58e8ea5e770c54f44dc117567bb87b11d5a19f0b0c8048593d9146ac19a32847
+3379.png,3379,ok,ships,997d105ead79a8c1011e4643fd91a808309f1e3f924cf13bcbaa7e5547ec1420
+3380.png,3380,ok,ships,58839aeaeb1115dd58eb31efaadbc473c18c89f43a1152f66916043f81a35b48
+3381.png,3381,ok,ships (tree set 3381-3381),6c03bff66c3911425a93375d16b534428b490e372161d5c102061203f02151e0
+3382.png,3382,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3383.png,3383,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3384.png,3384,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3387.png,3387,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3388.png,3388,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3389.png,3389,ok,ships,e1a040608ff107596fc23266aeb3f150f9f9f0c7928f955dac8ebe7247e4f1aa
+3391.png,3391,ok,ships,be69a9eaf6e487b3fb4b81493b9837cf67a41882399f7373e403acf1dcd36f84
+3392.png,3392,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3393.png,3393,ok,ships (tree set 3393-3411),4d03ea5ada4f86250278846f5c0f20ebea69e193acd78eef7c54d5a528136e62
+3394.png,3394,ok,ships (tree set 3393-3411),1a1e62850e8bf3b84e4b02f8d9a164d6087c14d9bb1f3644287331508366c6ac
+3395.png,3395,ok,ships (tree set 3393-3411),aca749230f36076a2c0b9765b2d1e3b06ad863b038ae3ec09d760c756cc350a7
+3396.png,3396,ok,ships (tree set 3393-3411),75b2aedf19ff37b6d85952267bb725996930230d3328f27ab24fe1b36b979f24
+3397.png,3397,ok,ships (tree set 3393-3411),56bf2cee95e3b58d448705ab9c89df2ce34fbf5efd63e38885c900109475f00e
+3398.png,3398,ok,ships (tree set 3393-3411),d22e4ce1313883196adfa0725057146bbf9dbf982f533a7bc875da8798478d62
+3399.png,3399,ok,ships (tree set 3393-3411),1cd66f6f2a770c7b89b53c5a923315c032fa112648e914bc754b4b6e50561782
+3400.png,3400,ok,ships (tree set 3393-3411),d318b3c90330af6ab516a0d76e708d56afdaf2494238584845cd83028825f002
+3401.png,3401,ok,ships (tree set 3393-3411),bdf1d06603770124fe0dddd12a6eee1472e20890aa2cf565db002f7d7f757b91
+3402.png,3402,ok,ships (tree set 3393-3411),2d0e689ad49a44f838699be5f61292058bff4c90b86e32f16469415333b1bd83
+3403.png,3403,ok,ships (tree set 3393-3411),a5e18c9737ce28bda420c6ea3c3a131a619fecbf5b72e85d87b4cb28dabefe15
+3404.png,3404,ok,ships (tree set 3393-3411),f95f3e3b2257d2c8157c4f0f4559a9a6f4f9a89b42716e768df38cc9b9e716f7
+3405.png,3405,ok,ships (tree set 3393-3411),97f664b38f7c0bf40e82cd7832a6617f0e1af90f7b49ba666f3875baeb61a98c
+3406.png,3406,ok,ships (tree set 3393-3411),7e2e78d4fd89e7def32d6462b0c4a6adb24f6ba11e8eac61f3e7bc7cc9afc4fd
+3407.png,3407,ok,ships (tree set 3393-3411),04ec4e4f2ccef79b937b72726683a8364bf201c9f476232d4ed787c9c6c20e19
+3408.png,3408,ok,ships (tree set 3393-3411),e64041520d56cb4714f4952912f9c710a4d82e7945a2db76a123a3c9103efc5e
+3409.png,3409,ok,ships (tree set 3393-3411),4e23aa2bb932466395867c8ba1ab39e59cc69aebfbb743fcaeaf3c9b8f078b05
+3410.png,3410,ok,ships (tree set 3393-3411),a4dd53a570f74e6d4e05e961379c37b8fe5e0d807c9d9fc29499e82d4ff1ec24
+3411.png,3411,ok,ships (tree set 3393-3411),930c365d0c4a93bb3be0f47d979849094b3c0a7c09a2ec64dc8321a01105a9d7
+3412.png,3412,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3413.png,3413,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3414.png,3414,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3415.png,3415,ok,ships (tree set 3415-3433),192f54793a2a042b16e0432b8de7080915d764044aff15ac23e81bc81a319c91
+3416.png,3416,ok,ships (tree set 3415-3433),e748c820b7ed794b690d7497b25d01155f87c8dba9b824091d56bba5385e1c96
+3417.png,3417,ok,ships (tree set 3415-3433),b4e7df4874ab826ac36a7e3f57e34f1732a0fea9714adc358989f381a0335249
+3418.png,3418,ok,ships (tree set 3415-3433),e30e39d6188b47ab309a40ead90f6da1e7b959f28b04bb34b149f3e50ecd2d4f
+3419.png,3419,ok,ships (tree set 3415-3433),7d9f9ac863858325de5fe7bb7c1eefedf8a6aa2551e8e7386ff29a393f47e919
+3420.png,3420,ok,ships (tree set 3415-3433),1385ab41cd8c7281273f27f358651034ba82bd7787c50ae4827a06ffc1cee4cc
+3421.png,3421,ok,ships (tree set 3415-3433),4c04474c45c7d79a93832dc6f15bf0668b30bdad7aa74fb2976150c99f019d4c
+3422.png,3422,ok,ships (tree set 3415-3433),589a756d258dd59fbe1143fa2a76104f681c994c87f9aaef22af5a6372f718b6
+3423.png,3423,ok,ships (tree set 3415-3433),64f965941bf85fb41a4901063192dea273c71dd525074ae5db2ccd3200ccfae4
+3424.png,3424,ok,ships (tree set 3415-3433),81f0a482ac6be45465e37ded780fd80cfe07382f18309b99c1c521820fbbf5ea
+3425.png,3425,ok,ships (tree set 3415-3433),6dc7b3d4a8d52abef67ec7061d66a5973abf84d0dcefd2e246b5c9dee1224068
+3426.png,3426,ok,ships (tree set 3415-3433),451530d28a8aa17a1a7dfa92b99c8b2d3c375cfbb04a9cb8b8d705b2f9c8f9d7
+3427.png,3427,ok,ships (tree set 3415-3433),e2e473342e20c69be67e17065023b2c5c6054af2f343152b77b7bd00711d91fb
+3428.png,3428,ok,ships (tree set 3415-3433),8d00aba909dc968772a05c28d02289ec4f782b78859b806b55bb61393190f25c
+3429.png,3429,ok,ships (tree set 3415-3433),879a1bcaafdbbf9d7f74404c1fa66448b86e2451cf1308d38b864e722165ae69
+3430.png,3430,ok,ships (tree set 3415-3433),ea4a4084b991609f9f05705ac329653998550ff8e2b4053cd0626207dc851983
+3431.png,3431,ok,ships (tree set 3415-3433),7135f7c5d0c8942c6aef5d7b400eea90b101e782440a3f21bb48878c3b41c9ec
+3432.png,3432,ok,ships (tree set 3415-3433),01a92cfa1af0f7583c573ff4651e5401bacf936b80bd72f323e566ad03b54859
+3433.png,3433,ok,ships (tree set 3415-3433),b156e9582aa0dcd83850de2d6a32ebeb8a84f646fef4451a2e7b5078ab050885
+3434.png,3434,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3435.png,3435,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3436.png,3436,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3437.png,3437,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3438.png,3438,ok,ships (tree set 3438-3455),20815d5849481b626b7a7e9c6583cb1ed76467a3e8f5221d68a9056471a14069
+3439.png,3439,ok,ships (tree set 3438-3455),b0d926ca68aab72d3547fbea167eae6734a3a59b4850f34f65c530f8cf840eea
+3440.png,3440,ok,ships (tree set 3438-3455),d703431083e16ccaaf6f939c1227e1dd4402e186df893424718a11fef6388f70
+3441.png,3441,ok,ships (tree set 3438-3455),4a52de0df9924c9d21be07b053b51427978d6a1de1da0b7c36e1a1aff6b8c210
+3442.png,3442,ok,ships (tree set 3438-3455),c23b3fe51b49e89115c7629d456e08175af020b47d29b726d52c836da497193a
+3443.png,3443,ok,ships (tree set 3438-3455),c6bddf1aac46ea87ce402d00908cfbd874a87d470cbc12309978645791713f58
+3444.png,3444,ok,ships (tree set 3438-3455),70ed8ffd7cfe74ae0755ebdf4fd007b64ae1b8b24725b2b131d8a4aae6f4e846
+3445.png,3445,ok,ships (tree set 3438-3455),9418914f2d9d2d472de0eefd94bee22bd5437d1bcc897c59180135c102975628
+3446.png,3446,ok,ships (tree set 3438-3455),88ebf3ec5e9a29e17eed812a674d82c571d7fc8dcdd269114c85dcab06be544b
+3447.png,3447,ok,ships (tree set 3438-3455),072d73c6b9d11da857a166ff5ab7f83568915057c74184f049cf316edc9aebbb
+3448.png,3448,ok,ships (tree set 3438-3455),3e882d6aa31453bdc60cc6f09cf41eb774f6eb5da4c750d85711a47344b3ac68
+3449.png,3449,ok,ships (tree set 3438-3455),95e13ea8c362525e571650bf045fc374503f513df50586827ebf02ac61926933
+3450.png,3450,ok,ships (tree set 3438-3455),fae3d782fe4948b6ec91922a863911cc029797aafe167e944c01c82448fa82ec
+3451.png,3451,ok,ships (tree set 3438-3455),0e220301ecfa0b902bc1f127562ead1429147dbb123774801c67d6c61392c438
+3452.png,3452,ok,ships (tree set 3438-3455),c0c9961a66b9c9b99bc4fcfdbf36f469abe123f7573a6ce0f2982fa161091921
+3453.png,3453,ok,ships (tree set 3438-3455),43118079852459f0caba8dde9d229104f99e2d81aa18ccb5bcdaaaf01ef7172f
+3454.png,3454,ok,ships (tree set 3438-3455),53beee905e8ac4d1152d53077c3c4c1c8b2e73115ae2397a5bd95c50058e9a9d
+3455.png,3455,ok,ships (tree set 3438-3455),95e13ea8c362525e571650bf045fc374503f513df50586827ebf02ac61926933
+3456.png,3456,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3457.png,3457,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3458.png,3458,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3459.png,3459,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3460.png,3460,ok,ships (tree set 3460-3472),7801ae62135db98c26db55f422ccd29d2f193aad46620eec2f62cea0e44ac036
+3461.png,3461,ok,ships (tree set 3460-3472),b7be05ad5c3439edaa618036bcf9988a4bf59a5d3dfd7d2804048368e67a4918
+3462.png,3462,ok,ships (tree set 3460-3472),cf89740c22d1580e900f66dac5fd8bf9b815b9605424d54b7d54b7d76e0aee8c
+3463.png,3463,ok,ships (tree set 3460-3472),eb3084717732d36151503f82154cb78d9e200fa419f8c79d59d9bcd5c7923f99
+3464.png,3464,ok,ships (tree set 3460-3472),a3ceb3077916b4e756f6df3e38d820ec4838c784e6b8563f14d5fabccfd55a08
+3465.png,3465,ok,ships (tree set 3460-3472),daea8fce7466918009e6279089941617099c35ae8528855cd37abbddc05a199b
+3466.png,3466,ok,ships (tree set 3460-3472),882709c568f38f057c8e3134904ed08182dc7d4563d5825cbbb159f9c9735d1b
+3467.png,3467,ok,ships (tree set 3460-3472),ad9040f5b4f2318b9d7946d579ecc30d1511662ee67d36c13ed25855d2722493
+3468.png,3468,ok,ships (tree set 3460-3472),2b56aea07d5f2a3d1c26f19c11631ddcf5bf29c4759939a86455e670cc4f9723
+3469.png,3469,ok,ships (tree set 3460-3472),d2220efa3685c85c048db4d7c329dc01670e202f3b053b279da3f9b92934ba25
+3470.png,3470,ok,ships (tree set 3460-3472),5411df454c79e1514a504354beb42dc21a632a13160632f8fc25f795dc2fdcbc
+3471.png,3471,ok,ships (tree set 3460-3472),81eb4c641a1b8000c5fc41002be072d720a3c9247f501c123d5f7a899d349603
+3472.png,3472,ok,ships (tree set 3460-3472),80d92c16a006030eb2d85fb1be026ad87fcc258f956fdba99aec9b0eac5dc831
+3473.png,3473,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3474.png,3474,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3475.png,3475,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3476.png,3476,ok,ships (tree set 3476-3477),0fa4c96039ea31acffd1fab5b9a937fbcc1f773b3c1a117fe4a28237fc4a31af
+3477.png,3477,ok,ships (tree set 3476-3477),290f80bb453c671da9f4c340a672ad036c3f894e9f5efe49243ea7cf3c935e8b
+3478.png,3478,ok,ships (tree set 3478-3479),c48bc48522004e2e84e820de2f266e054266df0f410098318987b011371e5a96
+3479.png,3479,ok,ships (tree set 3478-3479),fb71e2d3af3dc23a5cf755f21e6429953e533b1280d648ba028ae090a6c21880
+3480.png,3480,ok,ships (tree set 3480-3481),ce700bc6a10f26eb296af1d5df1590bd6a55ca383dfdde757f8ed75038c5a82d
+3481.png,3481,ok,ships (tree set 3480-3481),81919ffc49f62042034ce12950ab7205ab2bef34605729548bf4935bbd633baf
+3482.png,3482,ok,ships (tree set 3482-3483),44f0409fa50d1a836bd6e33974bbc74027e7572b2cf5420b03bd47c6e8df8955
+3483.png,3483,ok,ships (tree set 3482-3483),99b169efb188597548dbd8c21266e1373d3935b97e4a8b27c107e5029b2af55b
+3484.png,3484,ok,ships (tree set 3484-3485),b917f42a47a10df8fe9b4baf4e3f696931cbe21b859925b6788c3e3c0f0e4d8c
+3485.png,3485,ok,ships (tree set 3484-3485),22a8a30920378f1986dfdb467fcc0d918b9ac3c740e04ce61c40ba1f9e09a5a8
+3486.png,3486,ok,ships (tree set 3486-3487),860afd2ead518e6993fe157a3cd16e507acab189beca019ba438d99457d2c583
+3487.png,3487,ok,ships (tree set 3486-3487),360e268f6b27012e9d79db2d9236e30480b745910f0a02684d45d983d8826bc1
+3488.png,3488,ok,ships (tree set 3488-3489),6f57003edf8ec50204671d6baf0ad9aeaad9a714209676065ff510795f319e40
+3489.png,3489,ok,ships (tree set 3488-3489),5d800edcd9f30c77fd02d5152c09127d9ab85fc0c512d9da0bbb92533230139d
+3490.png,3490,ok,ships (tree set 3490-3491),938a0a621e4cdf61e84cf883d7980b5593fea5ce6f5d2a4ba1c4884f0eaafcd7
+3491.png,3491,ok,ships (tree set 3490-3491),b67e8c9c429d7008011af0fbd167e69efe13b300fc82eef817f5fa01056de8bd
+3492.png,3492,ok,ships (tree set 3492-3493),b49470a1db4f01ff6b402c3e09115c5d2ceb7440c57cff4880cffdad74f51ecd
+3493.png,3493,ok,ships (tree set 3492-3493),6cc0bcba07434782073c498598fae370e9410497b2b1bc41b5df6daf7ce14234
+3494.png,3494,ok,ships (tree set 3494-3495),0149dcaabfb18c98211ceaa810c4c5c5dc0a5e5f5b5a416ebd7775b44a23ccd2
+3495.png,3495,ok,ships (tree set 3494-3495),521ecc9da4311871722b4470ac56bd1c6d8f4ab3f42d94b416d47cb1865d074a
+3496.png,3496,ok,ships (tree set 3496-3497),f2a548d79ca8eff8b6fe42c4df325f13639ebf7265b57be6f3e6a6f62a13f46b
+3497.png,3497,ok,ships (tree set 3496-3497),7301551d459820aecf479f1d411b743201d36969fecb49d8a5c50f827f524f9e
+3498.png,3498,ok,ships (tree set 3498-3499),928c93c80b14b56fa71d8377d526e276eed1fba62139385c250c27491ec1076d
+3499.png,3499,ok,ships (tree set 3498-3499),bac46f9b53be24639a814387231127d8cf6df579af1ed482fbdeca9ea2a8c20d
+3500.png,3500,ok,ships (tree set 3500-3501),a90c28d9b94de9654e85732da631f7f8082c5e11b2a438832459b27ce2b402c5
+3501.png,3501,ok,ships (tree set 3500-3501),9a1544e23701a006f2d905e864c10aef6b1d56057bd1c187859e5dfc3b969092
+3502.png,3502,ok,ships,31fe681b61bf31f017e13ea871af8a2470c55d05951540edb1fa59c8c2939e58
+3503.png,3503,ok,ships,27f77078c75dae11d5eeb2a46ccaf01cbe05e36ff9372d2158b6668910c93581
+3504.png,3504,ok,ships,d950c10564d421912466236355878cb06519fc2b131b88fa1efb5222dc680483
+3505.png,3505,ok,ships,d2e8d310b3d23dbf396a531ee974d38e6cd219f21a5a259d6c9305ee13eaf4e1
+3506.png,3506,ok,ships,5b1736c2b815289a0fd5f1adad3059cd0e020e8f8be5e85b806b0b2c27323e6a
+3507.png,3507,ok,ships,5d0ac28f96170a105e1b063e65a519a21cd092d61008058b0591bbd35ba3b4a4
+3508.png,3508,ok,ships,08d20e5e1fbdc16033614033c9798af2c1b6347bf26245f49835c40cc8d13f11
+3509.png,3509,ok,ships,ffde9183aade52a656f5a9c42ef6dc80d189365e3471308f8b6601c97b4c32ea
+3512.png,3512,ok,ships,e73022e09013984b638901a5786b69d861f9687146f537844e3d7cad709ed0a2
+3513.png,3513,ok,ships,67cd298f86ebeb9333373651a5e940ea64a478717a031244eac803e1e4f17d01
+3514.png,3514,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3515.png,3515,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3516.png,3516,ok,ships,03f8bc298ac195273975c2580a60b0a8fc919f275a81096336654f8261042d6b
+3517.png,3517,ok,ships,011cc6aac0f2b6ea1524eaeb92ead2d79770f2abd3f1a048e64bfb1035983edf
+3518.png,3518,ok,ships,c122b389df93c42f5f62fee8404647217c4bde53935a20bf0688823ba4df119d
+3521.png,3521,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+3522.png,3522,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+3523.png,3523,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+3546.png,3546,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3547.png,3547,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3548.png,3548,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3549.png,3549,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3550.png,3550,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3612.png,3612,ok,ships,32bddeb788d713586114d81d4e73cc494615dad0c396acf93e7d3e7f738db207
+3644.png,3644,ok,ships,d170b2b1b7f81bfd1903dba64045d1f03e557964c49dfb830d7808adc5c2b662
+3645.png,3645,ok,ships,aa8b0358d1e9aac9592941d7f346338bff7ac2d0cde205a1a5fd114b6a672118
+3646.png,3646,ok,ships,52fa89dce9a80e29fa0c6aaefda572696f9a5535d36a265d722c6d8cd2216a6f
+3647.png,3647,ok,ships,ca3af8de09549a6fa5b411ea8cd2a2f0e5e04c8dfad57e7a205ac47f398da8ae
+3648.png,3648,ok,ships,40beeab8a58ea7475e05ec87370764242ee0f3b8421c6163b8c2dcf74f79bf86
+3649.png,3649,ok,ships,a49b0c20165ed2cebfd1304121de08ba49b0ff2281bcc7010c4268de6497fec3
+3650.png,3650,ok,ships,329d45b1864d42764d0bfd35d8bfe374869bcd10d8320be545ed678c0c4b7bf7
+3651.png,3651,ok,ships,24b91752dacc421ce0a96c4f864c54ba03353beba2449ac858cd38c1ac5a02d2
+3670.png,3670,ok,ships (tree set 3670-3673),54b36f79b26a330d3659227687d5fe6a2a0f1a8f05547cc89eb2cf2012b88ad1
+3671.png,3671,ok,ships (tree set 3670-3673),cdab8dc088b95231041ebd35ab780509eacdf89b9ce8f0a89aa138c64f64937a
+3672.png,3672,ok,ships (tree set 3670-3673),b34472ea6032d7a9eb6d2723e6d882a12896384e057563ea7ac55a0203155cef
+3673.png,3673,ok,ships (tree set 3670-3673),16d87f5a745181a52b62f65475ecb3f4578c8ab14cf5b0e05f38165d24a4a724
+3701.png,3701,ok,ships,89b603961ee200763aeb83a10771adb1655cf85b854d5f78c9aba89ffebf99d2
+3702.png,3702,ok,ships,0b5f4876f1902c4310de0f11ad375753a41620a704f9abca518c6c2d1b44617e
+3705.png,3705,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3707.png,3707,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+3708.png,3708,ok,ships,7d242ee7b808dd18fd3fdf54af5496fd2f4da3d28592acb96f2b04006079b3e1
+3743.png,3743,ok,ships,36faf41652a387a5e39c6488cfa26996083bc1de8977774596beb9b7cbbe1739
+3744.png,3744,ok,ships,2b4de2bc76dca6f64230e36110af903937fc47b6d9cc9a65f23f43cf8c05f4ec
+3745.png,3745,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3746.png,3746,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3747.png,3747,ok,ships,7226cb4937b5bb3f1058168a80e5b4a4efafb4a894ec9d1eb0690fb75f0dd17b
+3748.png,3748,ok,ships,16f2a35406c3ff44378f60732cfb29dd19ee44827037502f63c0c0750f611028
+3749.png,3749,ok,ships,6112607ffcd51e59bb07d3c72723a088cc34ff07318653612546984c7a9aaa45
+3750.png,3750,ok,ships,54da348d946c413cc40be3c33e4037e2259a85c93b6c4b6a80d6986fb8da16d7
+3751.png,3751,ok,ships,46c1746e1a225e01cb6977fc9a738a328853850fe4113d441cc882c8660e3cdb
+3752.png,3752,ok,ships,24c92ad382bed55a18025c3de6fcf2efc177b38a202702760c32e5aa3654cbdd
+3784.png,3784,ok,ships,c65a11c1edfc3d74edae142bc1ede6b421f869b959d5f63f46fbced4154893d7
+3785.png,3785,ok,ships,4d871f21fe4804eac81eca846906e6e0784827655131dcc7d286d268374bf23c
+3815.png,3815,ok,ships,90b974e4c5517a0bd156815a299ca649bfca996fb9d3c3454fc0c4fc55ba6665
+3820.png,3820,ok,ships,57c87bc13cf701bdc903224fac001d2fd34b99222042dca8c38b7a5109962d8e
+3823.png,3823,ok,ships,520af7688c5de412732680bdd2215c5d912697f5b98f57a3deee246f2e46e3ba
+3826.png,3826,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3846.png,3846,ok,ships,e715a2a30becaf2905cba54a141a1d0ab6b549e4023c93d2a23911f0dac1a355
+3847.png,3847,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3848.png,3848,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3849.png,3849,ok,ships,23181c558f7307c2458200ac236acba9561dba8b3345e28c348af2184b826d4f
+3850.png,3850,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3851.png,3851,ok,ships,9f6aaad39ef8a8925a17d60deb7c8020ce3133e0d2a498e2cfa7b54b751cf5d8
+3852.png,3852,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3853.png,3853,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3854.png,3854,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3856.png,3856,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3859.png,3859,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3861.png,3861,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3862.png,3862,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3865.png,3865,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3873.png,3873,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3878.png,3878,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3885.png,3885,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3903.png,3903,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3906.png,3906,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3948.png,3948,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3949.png,3949,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3950.png,3950,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3951.png,3951,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3952.png,3952,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3972.png,3972,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3973.png,3973,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3974.png,3974,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3976.png,3976,ok,ships,6a9b63aa807c43d85f27399a9c1100fcb4d7c2d53e20bdc9d668df72dcf7e979
+3980.png,3980,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+3981.png,3981,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+4006.png,4006,ok,ships,a56a0ee53a2ab3af92ca1f177e52f6c03c712a092e0344473ae45070ccf379a8
+4009.png,4009,ok,ships,76cfd9de3789ec8fad6925c1a1d7a3fc629b1b436810e4a257df86390341baaf
+4010.png,4010,ok,ships,4f8174890ef4ca0eb652e2c15787c4d1893fcf55cb65c2d47174c39433b02e2d
+4011.png,4011,ok,ships,64bf1925233000ecc5655eb228b3fe44225652feed65bb99c9171103236bfc9b
+4013.png,4013,ok,ships,42f570f86f10da023f6168423c73676bf5060a4eee21ea2fc0fdc6cae4240ebf
+4014.png,4014,ok,ships,f8d3823e33066d9fd5417f9847de498fbfaab57773e2bc3e27891eb3d4595266
+4015.png,4015,ok,ships,ff7d739100f0fe7730663079e268b78dadc84b018477e01b5640f81bb7aeac0b
+4016.png,4016,ok,ships,4a33940154aef2295d137324dab1c3e697bc1b58ae42311e75a8c2659b6ed730
+4017.png,4017,ok,ships,b5ae0856ac311d13a03e721494f6641d80bfd46af4fbf5e3270787820beef2d9
+4169.png,4169,ok,ships,23f248224659da0dae3f101b6016a748b43bfaaae83b3e127d29e0f4c47241d2
+4170.png,4170,ok,ships,2a907ffa96b80cea650035a06c6b5f4d06654855898f40adedf25bf37d0b54c7
+4550.png,4550,ok,ships,e67d6444dc0d460a80d348651270768405acf1821a1a33260dc2bd0bee4ec221
+4551.png,4551,ok,ships,1149b233ccfb26bd756cf6ec03411e6f4002e1ae37b687aa6f42a1375fbc5b7d
+4552.png,4552,ok,ships (tree set 4552-4553),0f67f261d5c79b605ac670958a4d29dc63a6a039eaeebfc3684e4d330687b2d4
+4553.png,4553,ok,ships (tree set 4552-4553),dd60d6e497f882f0fb4f2d55be0c9b16dcda751d19b171d10d3ebef6f0437358
+4554.png,4554,ok,ships,4c5ee96b66886861048afefd9d57111a80ee55a5b154cd82a19999af0e5fd335
+4555.png,4555,ok,ships,16dc3c6368d9788224787b4ede2317cad3e0dad7590660ac4c70bf615121f613
+4556.png,4556,ok,ships,c17e8f2404344d0c27fbad85dec603374ce3375c98d7f3a059367b327118d003
+4789.png,4789,ok,ships (tree set 4789-4807),6b447022066f10a95e4630ddb3a3db0cf55355f803fbbb5b018b1f3073753747
+4790.png,4790,ok,ships (tree set 4789-4807),6b447022066f10a95e4630ddb3a3db0cf55355f803fbbb5b018b1f3073753747
+4791.png,4791,ok,ships (tree set 4789-4807),73550acbb9f293bd80d4cc1fc3d49b9465f2db81f0955a710bb360fc99b3f5ad
+4792.png,4792,ok,ships (tree set 4789-4807),d0f9b42763d99f48f718c96aa03b0449c019c58bad2664c71a663e22b0fc016b
+4793.png,4793,ok,ships (tree set 4789-4807),eba5127c531c3fba5b4895beae5d765138c95049776efc5ea74ad2fcb8006197
+4794.png,4794,ok,ships (tree set 4789-4807),22596e203acf7b1ef34e6125b61a2fa9f52ecb6a3db018c44b7d892ca98f7d88
+4795.png,4795,ok,ships (tree set 4789-4807),f94b2fa21549fd4319994686290924d43b3b4a744293511295dc5f2d81adee81
+4796.png,4796,ok,ships (tree set 4789-4807),1c601fe8976c5b7c66a97305d16c429ef7bda22838f61730b61cb785fe17cfa8
+4797.png,4797,ok,ships (tree set 4789-4807),f3b14f1bede923b33cdceda6ec90b1b9215832e3875c4bdbbd85599304b09c89
+4798.png,4798,ok,ships (tree set 4789-4807),c9e734607cc209bf591e94a18674ac07485f2853617ad8a2385926e1cb9f23a6
+4799.png,4799,ok,ships (tree set 4789-4807),a2c04cdebf57cc3b25231184881fba246dd9bfbb27421d61186176aff9207f24
+4800.png,4800,ok,ships (tree set 4789-4807),52d706a964c421c95395bfb345c3200a9dae5b45d0c0adbeb96f3ebafde41a3e
+4801.png,4801,ok,ships (tree set 4789-4807),7d868deeb33b9c14a032b9ab9f3a3a10dedda0fbbd16fb76bbe0b40813e0c790
+4802.png,4802,ok,ships (tree set 4789-4807),be3809489ddf7734196c629cf31b7c4870a6d8da1a49af57278de44555ac5745
+4803.png,4803,ok,ships (tree set 4789-4807),92423086b79ed26080065c059ccc074483c71eed597bdedfba02ba18ca5f2b75
+4804.png,4804,ok,ships (tree set 4789-4807),320bc3c74fafe0507399c900fb0de7c4802ce77097cdf2f091fbac7868942d06
+4805.png,4805,ok,ships (tree set 4789-4807),e8f22a26b3d760b52100773544fe9d8625a52ec3162692c3158eb2301add11ae
+4806.png,4806,ok,ships (tree set 4789-4807),8fcb17f1a94b093b8ae0f1fcfb20304f6b2923e69d2a1d32028cf0ed066b27f2
+4807.png,4807,ok,ships (tree set 4789-4807),9ad67cd8e3a7b88dd58fbe0ebc74936e1192942bcc9f6ba1822863c7d8fae57b
+5028.png,5028,ok,ships,516d171bcb29c083d0798317642f9efbf6cccf22ee3b743da2ed18f461aaea01
+5029.png,5029,ok,ships,fd88006e9513d104f98651a872a9978168c84f0674ddda4e6753f055d4a8d878
+5030.png,5030,ok,ships,6c1954238b7646f6a15aa365262d2939b636f76662b4b7d3016cea9c6e8d2ba5
+5031.png,5031,ok,ships,d53d7d2450ef8a5f7c4f5ecc7470b3e1d1413b194ca38d3cf9e09b3760637ea8
+5032.png,5032,ok,ships,e96799ca251ff14581955f6db3409809fd8ca38a0ca68796b626166f19b2d30f
+5033.png,5033,ok,ships,3a5ad1825d2b451db18ed95cc07561308ca06c90aa3a9c1d80f738280c7c6eb5
+5034.png,5034,ok,ships,89bbdcc99c520ad5e959977abd380f7e4c096af307263831a8235d2a14d8d7ce
+5035.png,5035,ok,ships,e95fce026af6a2698faded8549ea4ff5688d115a9f8fd2f0f31cb4ceb74314dd
+5036.png,5036,ok,ships,46e73c1aa3ed85ab75088b608c5f265c727cce0220b50272cf3e23982b5344e1
+5037.png,5037,ok,ships,f319b14636939754e7de88af84b7716771e40f2030b0d4a954e88f4555e0fb1f
+5038.png,5038,ok,ships,b463ae680433db5548342b708159b08b40d026950b94dcd4a13d1fe0feadb70d
+5453.png,5453,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+5690.png,5690,ok,ships,4b14f9431cf4c3b93853445bdde8fc707cdd9b38c8e87ecf1d6fd98b13c410d0
+5691.png,5691,ok,ships,69c1e7d4a8faa1177c6deb24a8889688cd8382dd20bc82571969250e15f865d0
+5692.png,5692,ok,ships,b486220743a637eef73fb88915bdd8b458e47b2d8edf90d4cd8bf5129f0e5445
+6039.png,6039,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6040.png,6040,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6041.png,6041,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6042.png,6042,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6043.png,6043,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6044.png,6044,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6045.png,6045,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6046.png,6046,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6047.png,6047,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6048.png,6048,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6049.png,6049,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6050.png,6050,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6051.png,6051,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6052.png,6052,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6053.png,6053,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6054.png,6054,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6055.png,6055,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6056.png,6056,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6057.png,6057,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6058.png,6058,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6059.png,6059,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6060.png,6060,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6061.png,6061,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6062.png,6062,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6063.png,6063,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6064.png,6064,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6065.png,6065,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6066.png,6066,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+6583.png,6583,ok,ships,9f5d641e9196fb97b51285bc2bf6a34abee8cb147bba0934773bc5f8797198e1
+6584.png,6584,ok,ships,04cf7d06964b071c3610ff85aeb94b268754a6c4c93844fa10f4759c92a12d36
+6585.png,6585,ok,ships,d6a46a83c64c7c22428ba8d260bfd4c1ae22ad0d9664bee7137301d6fc6015c2
+6586.png,6586,ok,ships,369db6094d792149a3d7212a4be83d2274d18a88d6635c70a40f36cc4cd885ae
+6802.png,6802,ok,ships,30cd0552e21fe2af60af900dee2b46c91f523632ff88f43db39107a48d370821
+6803.png,6803,ok,ships,774a3bc0377bdc131122d43ba6e86f19becfb463745b0da2daaa6d74fd326bd3
+6804.png,6804,ok,ships,8e8e95956894788288d1606e68156129883adcbda0a3b83b15c66328cadc1b20
+6805.png,6805,ok,ships,9cafc62531ef71083aa85d18b89214a5968404953cf9c4298566337cb23240a1
+6806.png,6806,ok,ships,15f6893a4fc0ab939e51417451ab72d0ab39b610c2508142960e2c15dad64bc7
+6809.png,6809,ok,ships,e6514410e245f0d0d37a581d9cff494e2666c30982f7d9b7710a994b1a2221ae
+6810.png,6810,ok,ships,2ec28c69821f649cc0acf341b8c952c3bcb48db648d89bc187f1a3d44f00077c
+6811.png,6811,ok,ships,73dfc5bb27e57de01511331df69b7184282ecce1a4d621b2ccfbcf5d76b59917
+6812.png,6812,ok,ships,e3ebd6b29a3908a8c2cc07e7762d297356b5dc86496c5dbfaa1a91bd7de4e150
+6813.png,6813,ok,ships,c781ea4af1f10a49c79331097e8378724628fb3e4f420aa52c68dd2c98b74d2d
+6814.png,6814,ok,ships,9697ec43159580914b7ab69540bc2aa9559add7c62d5a266a5d80225b28ad745
+6815.png,6815,ok,ships,a6e89861f7efc1820f9cef1f0c6d9984c05167563392dec35a4ccfd820c376da
+6816.png,6816,ok,ships,0a24183c7d85301641439142392343d2c17e0626414e50d5686e0d7bc54ee377
+6817.png,6817,ok,ships,9f376c1bd76c56f38c3444545b58049bc7425db7ab5364713b20f4fabf960a3b
+6818.png,6818,ok,ships,3f4dd1f443ca11dddbe39e20edcdb5f8cd9511d108dc3020353b6b14fcff3f4a
+6867.png,6867,ok,ships,46096adb3a03c27e6568786139dc7ed3a36b8c920b89e88873ee3b1063b83515
+7026.png,7026,ok,ships,d1f054c83d38a6d5a4309feb0d659712a6c7a7e804046981e8c5a44bb6de1c3c
+7027.png,7027,ok,ships,2a505b78b1f15d5ec371c60f4a1300da7927ad1893801f2f2e9c72bd2eeb46d8
+7028.png,7028,ok,ships,66e7d057774c27cc3cb25b9127c15f93416a496daa3199db5c519c8edf23b0fe
+7029.png,7029,ok,ships,26fc87b0c6bf4dc86415f9ad3d39f04afcdca49703edfeceeb2d11016bd2d506
+7030.png,7030,ok,ships,86d05e4d804170bcb77cada18db87bb86de534a1c2d32f654b3297e9d5871bda
+7031.png,7031,ok,ships,d45b16a24a24e5b5587d5b6b2cd55713dbda4140748339659beb6ca2436c6e69
+7032.png,7032,ok,ships,e5f0258a088d7346c499c8cf96a913a1821d5ae8c5ec4ecaa25adccea422cf7a
+7033.png,7033,ok,ships,d8ffdb87155d0398d4f82d608110d3c8d72f4b93b1d5bc04f99eb6dd7b954565
+7034.png,7034,ok,ships,50218d45843b8074f9c16221e9482fde79990f037cdbdeb32c0c3f7213d2aeea
+7035.png,7035,ok,ships,5ecea73f448ae642fb16a131eaa2e92803ddeb1766881977bd5127d6e2b0d1f4
+7038.png,7038,ok,ships,bdf85c1c078de0238036bb8d1d68e60199addc9fdc3480096800a089ba56bd3b
+7163.png,7163,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+7166.png,7166,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+7695.png,7695,ok,ships (tree set 7695-7700),fe544c261103d7e594ad046a224993db0ee92ce452ccbefad8a74f14bdb5931b
+7696.png,7696,ok,ships (tree set 7695-7700),a27c30c489ccd2e1a73872b32b84efcbb79af1b1fd7639333ff6d38f08eb63d7
+7697.png,7697,ok,ships (tree set 7695-7700),72b1b2376e826d22e632b72c3253a8c0a74c2577e47fa4e4e6fc0bab7e426f50
+7698.png,7698,ok,ships (tree set 7695-7700),6b54e11e54100fa4043e242fbcc59d7117f870b9b547d3e7bdb72f25b6b4d893
+7699.png,7699,ok,ships (tree set 7695-7700),104035a9320d86823ec5fd9c39fff31279eedf47fd7ac962739713c77b469b26
+7700.png,7700,ok,ships (tree set 7695-7700),ff89bd32ae5dbe89b1b816f01f8fd33bb045e6f6e2c5c1367387e2b1ce6f80c8
+7774.png,7774,ok,ships,4dbf99db3e88732b0c01ad9655d6924489752fc87239e45dab718a496bb3ee04
+7775.png,7775,ok,ships,765704dba8bdc58869e0d7086f17031c8c9a8ebda2f025c9633e31e12c0df12a
+7776.png,7776,ok,ships,1b7df596b096898da0fdbf2f8876480559b32e1e0414bc2f438bbaac84147089
+7777.png,7777,ok,ships,a22d269da5d3341e24bf5cbb23388466cee44ce9118dbabef463b26a68a8986d
+7778.png,7778,ok,ships,de47b3f01c267b3c1433973d61724cd67a64bda2cc947d0f4e6829bd1babb217
+7779.png,7779,ok,ships,887485a2e1396c3193732dd7fae7daf767fe495a53b6ed6170c5923708d9a255
+7780.png,7780,ok,ships,9fd4cfdf79b035dce8e2325143257f019f8105d38300eb3eecac45cfd6808291
+7781.png,7781,ok,ships,290094c368ae64a6fd82861504796ee4891023f320d821f3b2d3df242b53894a
+7782.png,7782,ok,ships,7f21478d4a2769fe3aafa2876608d006fb73d5d7c7e68c970bff3720896a0d41
+7783.png,7783,ok,ships,5ebc4abfce2eccf960a69055b4c64d71cf08b1db14845457ee213e9a69a5fb09
+7784.png,7784,ok,ships,b5870850e4ab18a09f1e4a83e99bd7bf8543272f1fcc45a0f1049e87f1b0bdd6
+7785.png,7785,ok,ships,34fa7554168c6739fdbe7d7ec514ee25be3966bb3da78c49a488fd1ef6df13cf
+7786.png,7786,ok,ships,2313bb032022e89480b5759a2d7875eabf895d745c616ce2639f35b8bc05453b
+7787.png,7787,ok,ships,7c2a8f206f4b166f7f7311304babf110c346acf43f9af6b8a6539fec88d44cb2
+7788.png,7788,ok,ships,bb9d9d36c1e146f309c012bd47bf08b8a017ef87862638833d0d4177fddb357c
+7789.png,7789,ok,ships,778a505c32fa5a81cf6626337aef3dba167fa21423da176ad0e46c899b3534ed
+8148.png,8148,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8149.png,8149,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8150.png,8150,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8151.png,8151,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8152.png,8152,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8406.png,8406,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8407.png,8407,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8408.png,8408,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8409.png,8409,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8410.png,8410,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8412.png,8412,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8414.png,8414,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8415.png,8415,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8429.png,8429,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8435.png,8435,ok,ships,37407a686c0e253b441848c1dfae3cefd810bd07d467deb4b3bf6b4fd2deb1a8
+8459.png,8459,water,"left out: water statics draw another blue than stock water land, a patchwork of squares",
+8710.png,8710,ok,ships,5528db7fbba47540f7863c3f9a1160cea0391b2983e48753be4cb45c26c6cc2d
+8711.png,8711,ok,ships,cacacec1e4410adcd867aa425c3c02adee1109aa0fd552b5d412874665d856e5
+8712.png,8712,ok,ships,c788f5d25dccd9692a9ca301cdab0bf911946ddfd2ba450d26f3166290a4173a
+8713.png,8713,ok,ships,7ed97c15bf64e5ac87f2f38f020a942e65a9c543220eb1fb1cfaf118b2565419
+8714.png,8714,ok,ships,61a3bfc27ef1490f915eb902dd1136904e8e71ac8d0c342845c8160fc348a0ab
+8715.png,8715,ok,ships,ae529a0adf2d3e90e8a190222e9554f0a1a29e8b50366859ec9abd11ec42228b
+8716.png,8716,ok,ships,9ff15eed7e9ce38b3b34719c3333c26f93da42e58c9862e93cce609b43d79830
+8717.png,8717,ok,ships,38736bce9c3f2a0398228f1574d03829217164851c260a7684d87a8a25bb4d14
+8718.png,8718,ok,ships,4986428def400ae600a7f61e096770f5690c8058e087f6389feac55222741bcb
+8720.png,8720,ok,ships,4ea8c1c0d4af6a709b29d85c7392ea3f1c2bb90b108a5f228e5c9fca7e2315e0
+8721.png,8721,ok,ships,5acdb1bf130e7d0f61262dd848e9186da88cce17818578f39934117ad30f0d23
+8722.png,8722,ok,ships,8dabc5496c228dc5a33c809ae3b0605d2cd55a1cbc3e096ca01427cb1bf1d01c
+8723.png,8723,ok,ships,eb46addd8f62fd6cf2ee049e799ef2e386964692ed47899ea3dfc5a50b187e9f
+8724.png,8724,ok,ships,223e3c824e7b8378a3418602e5abcd19936b23488735c186eb7f557d29510188
+8725.png,8725,ok,ships,81ae23b2fc3ca15ab404027169aaa8ee5d36e6658c0961cd7ccf140126a32213
+8726.png,8726,ok,ships,610153b7206ac752b33082e65a2bbe10f5ffe536f5bdf9b8d128847701c1e2d4
+8727.png,8727,ok,ships,12c1efb7bfb3e64455339696ef7b3c7d95a8706c5bbc13889fc497f58d70c73e
+8728.png,8728,ok,ships,f64ce2fe7b11f0fbff6602c56f08267d4d0dcc81254a34f6204fdce4802642ee
+8730.png,8730,ok,ships,389f2605add471563eeff34cf08de6eccc9746ec73f80967418e32e78db10559
+8731.png,8731,ok,ships,8e4ccd8968d27ea2275c7c7dd2f04b818a6a0e21c91cdea6943a7af2a52c95aa
+8732.png,8732,ok,ships,601a00ff70e4bb22aba91968f455a03fa71cc41551da2e930862c44069f85180
+8733.png,8733,ok,ships,5cac93aaad39d8806c746efe14fe42daa79e3038cb6cd2b48440aae250ef1872
+8734.png,8734,ok,ships,f89b5fcf8a19b7d2a7eaa7d84b8c96b78eeddb2b1d924f4ea4206e6110878710
+8735.png,8735,ok,ships,cc54dcf4c2df3e3dc5663733cfafbaa0d7cda258c1f92cf4a2d9e90d2e0a49c6
+8736.png,8736,ok,ships,8a5b35b5604a5b82da9da136e75eb4be82998f7a590e4217a3efa0c600f9d910
+8737.png,8737,ok,ships,8cedcf4706d99d26f9f5c2238131d8954b666553d0b68978fd04305c3a55d011
+8738.png,8738,ok,ships,69e5b0e603fcf8a37401c078695a36fada58449da893b2aa782b04bd2495dfdc
+8740.png,8740,ok,ships,df58304805f6e3c8803726224aeb575e2637857c4102fc335db3f52c98370a78
+8741.png,8741,ok,ships,dd5f6450df8d5abaf2b1d2520c5a8cbf6f04baea615a5b6e83158caa54474a13
+8742.png,8742,ok,ships,4f2941e03c3007e179720a13e17466a814750d41939904caed8b0b1d8665e03b
+8743.png,8743,ok,ships,7c5e4f0f29c7040dcfdd052b717ec6ec9f269080a0d3d07647255eee4c1b6031
+8744.png,8744,ok,ships,cf07940b5673df99cf5e7f463e4e6e4aa4e5909bf9ff0dfa417c9f872696e782
+8745.png,8745,ok,ships,370df4c2214be248efc967216db3366e696ad947a7453f870f931140db259626
+8746.png,8746,ok,ships,6fd4f0d38f9380683795680aeced3237ff98b9c29538cf1694c5f20a1cb2d9c8
+8747.png,8747,ok,ships,7a536c216a08705eddec98e309fd789fd9251e99f7f81b04d810875363c20d6b
+8748.png,8748,ok,ships,bf49eb87878c08f18b64f1077b6b6d605af24dd0c940e26c899e7376a48359f0
+8750.png,8750,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8751.png,8751,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8752.png,8752,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8753.png,8753,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8754.png,8754,shifted,left out: does not stand where the stock art does (fit.py: bottom or base off by more than its kind allows),
+8756.png,8756,ok,ships,4011bd734c96cc36ce7c099431738bfd880fc172acc7933eba42002712a1e6bd
+8757.png,8757,ok,ships,244fa558af9824bae2836bdc815b5a3d5edb2319c19fbe98d66af334ecb2ec15
+8778.png,8778,ok,ships (tree set 8778-8781),cee916bd38a5c6db8b70ceb7b958cd15df7b16c7c542206207ca32a9ea9ab981
+8779.png,8779,ok,ships (tree set 8778-8781),706f0eb6496139db429ea2990605a1c53f5ee67801c4a693d3f6f2df6796a012
+8780.png,8780,ok,ships (tree set 8778-8781),f417f2c7036000a1def41ee7788288b91681b9af5d120cbf86367261eda858cf
+8781.png,8781,ok,ships (tree set 8778-8781),7792867af69a77bff2399aa90fbf9dc3ee6b0aa242fde34851b8c6d657395718
+9008.png,9008,ok,ships,d37c1a29e573024200260051e8f7f0e2bae4caa531385ce4f578ffd15eeab6b3
+9009.png,9009,ok,ships,efd26b1a953fe91688cf4aae4d6f680a2ae062feaff570ea39bf2a927bc2e468
+9078.png,9078,ok,ships (tree set 9078-9079),b3c8a05e8c2b578e72d0eb7701f430e63e4e7f52613c32a0414196dc68790ef8
+9079.png,9079,ok,ships (tree set 9078-9079),c4d967d3b11268922acee179bfc2acbf0677db241b14039625b23a11bf0a66a7
+9080.png,9080,ok,ships,0b8afd74d54ad1aa97df2e6e8f674f075730221210a2fad2da25e6a32770dc1e
+9241.png,9241,ok,ships,fee24427efa5de2e97f723fd82db66eab6575bdddd277f15a7cc62fd2b3cc606
+9242.png,9242,ok,ships,9ad9aae72a629747a83eff36a7d2b1f585805c38f58f00dee5f326707c3aff2f
+9243.png,9243,ok,ships,428ca6c9e7eb6bb9d3e282c93b25610d972f048081cf5a8dfd9358110e48f489
+9244.png,9244,ok,ships,e5b173615e916fcebc6349c2403241158a10b86329e0716e4ec8ff07895c519b
+9245.png,9245,ok,ships,a11c009443c72fe42fedf9736718629fa0c062cf245bd72e8fc6e0950b0a2ff8
+9246.png,9246,ok,ships,7c60f6a37a6a3d23bc42dd4165af39f15cfb2b626aad0ad958a345b0ea614436
+9324.png,9324,ok,ships (tree set 9324-9333),f268d45016342c57172299067b792ad9edc610a89dbb7c56b41481218f3d412c
+9325.png,9325,ok,ships (tree set 9324-9333),38678db6cfa118b210feb2bd8c9ab66c35011b7f46a6b800e002521607742741
+9326.png,9326,ok,ships (tree set 9324-9333),3a3c8b14a0d0adffaafeef5f07f60aa837d282572c8dc133ba0aec4343719542
+9327.png,9327,ok,ships (tree set 9324-9333),efd498b43f875bda9039906cc76403c5fe155c35bf3dc3249393afd92862dd02
+9328.png,9328,ok,ships (tree set 9324-9333),9b6844e195f8e23c9a039e9d3bea9f01cb38495524b489f8adfcdfe9bc2a0434
+9329.png,9329,ok,ships (tree set 9324-9333),10112a7faade26c893442a146f95cad33badefaa00e0a4173296bbd2f91c1229
+9330.png,9330,ok,ships (tree set 9324-9333),67fcdfcabb165d9403bb56aa5974d4c2ee69681fea1c3e1a333cb32ca45d8b58
+9331.png,9331,ok,ships (tree set 9324-9333),b79df07cbbfa5cd18e23c247d7c6341dccbd8e18d8ef43f5327080493bfb684a
+9332.png,9332,ok,ships (tree set 9324-9333),d837763828c4364bb580244460b11715e762d24432479937a771685ec0f3cf82
+9333.png,9333,ok,ships (tree set 9324-9333),c76c7df9d2406a4a6eaa95e7373e2a2beb77d4dbd3d08b7e0ca90156d738a59a
+9334.png,9334,ok,ships (tree set 9334-9342),ff1923c0f55f73d7da71a208406baf8f0db95075092366230d7147e714bab7b6
+9335.png,9335,ok,ships (tree set 9334-9342),f155f42ce8888741fe8a57d75b2af9fb19c3e13f9229801135fb1715f820a606
+9336.png,9336,ok,ships (tree set 9334-9342),220ec3a5e6d1c06dd46593936c56cfc28fa1ea4ac30989f6c0b7462b74d27ff6
+9337.png,9337,ok,ships (tree set 9334-9342),3a1855576f8416d92faddd8133ad05013ec5a772bc887030384b2948237897e4
+9338.png,9338,ok,ships (tree set 9334-9342),8ebf4b0f817b48e3ba3d75982ab8babbc6aa953c6be7e1d8d808f1f9afd3e84a
+9339.png,9339,ok,ships (tree set 9334-9342),6efa4b0f918e7477a4985613ad524f0a6a3b4cd893b0b02dfd53f220b7219138
+9340.png,9340,ok,ships (tree set 9334-9342),351aeb3e7873177c80197f1afa9244374c032a32bdaabd6d3c0a272512a2a252
+9341.png,9341,ok,ships (tree set 9334-9342),f828de63608845cbfc3b4917f02353aab4321e792d186a7dcf5bdd64c5b4f370
+9342.png,9342,ok,ships (tree set 9334-9342),19347fe93f1a31396776500a2f18c7ef1ad7dc056611ddf3a72882ac19005859
+9965.png,9965,ok,ships (tree set 9965-9971),b2fa6fd955c79f6ceaf06f1f5105a18242b0d2e9ab796e2a0b5342d27d08c112
+9966.png,9966,ok,ships (tree set 9965-9971),8d1a2e3465ae2066163832eef08582d6835ce415ce0a6b19e7499088ec90eaba
+9967.png,9967,ok,ships (tree set 9965-9971),259715f279484f8a0343dcb075e9505f1f4d82fbca3ffe069d7acb109272e0fc
+9968.png,9968,ok,ships (tree set 9965-9971),48b0da57526adf084b37566b622cbb99ac66f61aadde84d4117ec4c9c7e70477
+9969.png,9969,ok,ships (tree set 9965-9971),4abe4f9d479ef409dc312b6c0010b2dd1106f907d859e91aec1257c75f41c17d
+9970.png,9970,ok,ships (tree set 9965-9971),7072d522b7e75e8eb18b5b717e557e75e34224f633c5f0c313b7a0e6ed34f1fa
+9971.png,9971,ok,ships (tree set 9965-9971),505e3517f0bcf8a133e7b22d7a9138da846a8b6cfeec68a479dee0b99fe8a29e
+12252.png,12252,ok,ships,89fdd75d74d87b0e1d9aa9b7967b9686d841babd7723514b3874fb90cab7daa4
+12253.png,12253,ok,ships,32d1926ad1d539209ec05484386e8026ca331a4e1436e6d44dff618c4f7abe86
+12262.png,12262,ok,ships,9ee7aced05e54ba3e77f37b41d64e7b3ad687d93be59f7757dcd6bd6a7837aec
+12263.png,12263,ok,ships,d78429a42cf557c9d860b66476749141d29816837418e3faa6360f0f263c8853
+13549.png,13549,ok,ships,0dbaf6530d6ca97dd13fc96ebda2d5b9fc65a49713a1afb43c6b76a9139cd098
+13550.png,13550,ok,ships,f8858f4d3554520f1dbb0835f2e92368e02d167849f771b90d2542d1a6c3d934
+13551.png,13551,ok,ships,9fa723e13984845c8df1335980ecb0763882a52a50ce7b0966367d08f5f0b255
+13552.png,13552,ok,ships,82c12b8a83e6aff60158bbd4002357bf071fcec99c774178cb3e91228e033c5b
+13553.png,13553,ok,ships,6851d934360a92b95e0824eec05006d4f34effadd6435ac3c903b07e1906f4eb
+13554.png,13554,ok,ships,d8e9332e9ca396e0014a4318889001f42d886f663ce5a354ff43295d684bc145
+13555.png,13555,ok,ships,cbca3da6f84956206277d28c6654ddae0673af996f9465ad0745ff2efc7593c9
+13556.png,13556,ok,ships,c351597a3600b3f8db170ed9c91637a720c7e8e8c822e979953872eb66eb73ec
+13557.png,13557,ok,ships,aeb34826b3b5f1b4895ba91cf985ffd53559bd3ae04bae02477a5d70708ee052
+13558.png,13558,ok,ships,db6d4a37b1960d6287e79dabf5213210ca33eea1a4f1efa66cd602b5ff0ab61e
+13559.png,13559,ok,ships,a947c4ec0cb8097fd3b3e40126c0c1edeafd06207e7e70806c071e42d6e4ac8f
+13560.png,13560,ok,ships,e5848ac4eb4da22bd46ace7fb33550506f7668c376c5f830b40734bc2eeb8752
+13561.png,13561,ok,ships,258ccb5d4e95d758c0aaf959a18cad91726bb4f1a0a4afdd9d4788fc0d853ce5
+13562.png,13562,ok,ships,1eb0688e57addc787395f1870624445ecba13494ca4b6b901abf696ac40982b7
+13563.png,13563,ok,ships,0574928a4a7177c54f9914d904f549dbbe46ece865c8840743680db9f7c1e3ab
+13564.png,13564,ok,ships,3109eee0d285024cf3e6453dc803c16c9a522e8b98e6bfe884791aa781bc9164
+13565.png,13565,ok,ships,c44c7e62d00ccadf07bbfa69e1cf6093686c5840cc2174c24365643dd5d4ae94
+13566.png,13566,ok,ships,797f18e82ff16f2c3cf479e5b5658cd26f421453736d76f36c934b45a8eb6b0b
+13567.png,13567,ok,ships,24133930e20e611437f024c47466220705b67c3096014ca570f9579db659c571
+13568.png,13568,ok,ships,27ab05a93e4066b3d8950559c19cb9e07b54961496e722541cf22e398ff2d4dd
+13569.png,13569,ok,ships,0b8f71b240e2151536de1e00c51838a4e1093c1a6a7155708ea65a9822460658
+13570.png,13570,ok,ships,8eb507fd6f50457403fbc8b0de5cc0a99d205f89fe27d644b71b63596b3172cf
+13571.png,13571,ok,ships,25ed2d46ed167142d9db032098fb25185622af3851cba0866a8a0429bfb86e0c
+13572.png,13572,ok,ships,7bc91057a3ccc36048c56b84b5648996889b6ba5c96df775aa24ed03e661f2d5
+13573.png,13573,ok,ships,57af5048a770ba5cfbe83cf4136ab1c0a18aed59c26a2a66d593a49ed9993a3d
+13574.png,13574,ok,ships,ac1690fb63a0ff4bc540b349ea6a93bdccc3316c89dc94f18fa15913bf540cbf
+13575.png,13575,ok,ships,530709eac4f87cac0e7b6001e52a13657e649dd401b728e8b3ce9809f7cd4c3f
+13576.png,13576,ok,ships,2ef2a18c12a518cda790db5d0e747194c813ae51da8a33bac215455f1b2fc434
+13577.png,13577,ok,ships,d962386a35441268c0c09f2db09b831b155a163e92bfe420b1a8c45374872925
+13578.png,13578,ok,ships,37ffbb3f9832269f490f9faf0882a2ced24aa27c8ced9c1fefd78865ae6daad7
+13579.png,13579,ok,ships,6ab6ce255c2b7307e4396d29bee099fa6dd1a49d7ba58387a6062f33936b7932
+13580.png,13580,ok,ships,7cd2b0b21dc2bf98ee1ee5ba5c834b95f1af834c59dea7cd7aea03c0ae254d35
+13581.png,13581,ok,ships,4de3cd5880a4fbb5d39bee8e109fd885806984ac83b33ca6d0eb8faad2a2592d
+13582.png,13582,ok,ships,0715a59a5039494056dd3a229f1d06411a611359c263cd560d6b894e0c4bdffa
+13583.png,13583,ok,ships,cd93cf3867a8afe23f088020f691cf5958482fcd674bc32b42a87e18207b12b8
+13584.png,13584,ok,ships,570c3fd902e339842bd82cace2ff9edcbb91e610068d7b9bccaf573df6574b6f
+13585.png,13585,ok,ships,ea0594a2f525d77929cb0b8c139ed28bc62907e82fb33adfb2399b1160ef1b4a
+13586.png,13586,ok,ships,05af22a8447eff20481c1eae300f44650a2c875a5522a102b716f3081f877dfc
+13587.png,13587,ok,ships,79e6d0642983fb119e6b6dc3deba3c211fe65ad488201fc11a0bbbf3c677d7ca
+13588.png,13588,ok,ships,dfecf1a75cb36bbba11716b22bb726a2f802c8c6b7419cc44c79a67cca3037d1
+13589.png,13589,ok,ships,f624503e9197ce70e68c4aa1d1b6a70777a1b97e85b26291a42ad60e8ac2b2bb
+13590.png,13590,ok,ships,fe567538ccb63a6e5793ce97070e1af312ba6b31993457a8df0420f6e3d4315c
+13591.png,13591,ok,ships,02f97889ef238f7abacd27431d1d4e34513a7da9773bb3fa4e278bcba1b19aeb
+13592.png,13592,ok,ships,c13e09326a8502252c4fc3713fff2663feb9260618bb81bec4f60ddb7ef783da
+13593.png,13593,ok,ships,54383d6a4103b1fce4d8d2bde46dffc8c4018437b4ceb8e347a7b0503fd0b1ae
+13594.png,13594,ok,ships,7db023cb16292f4b66d2ada19b7b572cbafcd07ab873cf7bde254a7327cb5cc2
+13595.png,13595,ok,ships,d86808e709fd90ef7f65085a8c2fc4b94f2e332e6776cce7bc2117a79f52666e
+13596.png,13596,ok,ships,58ed599be6de68dde302b865ecf4a09b7c8915a0381cd0c6532171692ca087cb
+13597.png,13597,ok,ships,c0a42c509a3cff8f8e9856af62a3ff5389ab7a663f631243c3acc86ab1a5e3ca
+13598.png,13598,ok,ships,741462bce1b9a1c47fc58e836f3319943c6fa0dda1b6f80d8c1fca3bb79ffcc2
+13599.png,13599,ok,ships,16ba2550c11a4523ba1329a6368db4ff26ce52cf29c8684a0d2c7cdcb83407ca
+13600.png,13600,ok,ships,8f654bdf18c615646d2d96349022991c4be02d0b34d9692ecb4d909ecf05892e
+13601.png,13601,ok,ships,dca3029b60311943d17c55c33d0848ccc704ba9860d69d0cc9aff443dac30522
+13602.png,13602,ok,ships,16de83e50fd7711d7bc5cc06c93fd48ff7f0d066c3b4c2d06e9ecfcedf071d51
+13603.png,13603,ok,ships,760f0924d8141fcfdb61a56f0b031508528a2d6812efee46ac02a6e0bcffdaa7
+13604.png,13604,ok,ships,322cf607a6efffc0ca551b0ff8031f039d247650822b5a8a681d83d57c89ae62
+13605.png,13605,ok,ships,bde9865b7c8bf589be49a9d1ac06e694ed0f2e292c68cb0867366464cdcdebcb
+13606.png,13606,ok,ships,a52791a828f591da0494a17f156caf14e6bb2e1fff42754a3008b88a8e61b57b
+13607.png,13607,ok,ships,4642ca16192d9676d0b7ef8243ed2843e81a358696090527cd7c771af7213312
+13608.png,13608,ok,ships,cdbc6af0de4682168186584aab80723b42020fcd6235d112e9167357c1d7a608
+3308 vines.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),
+3309 vines.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),
+3310 vines.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),
+3311 vines.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),
+3312 vines.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),
+3313 vines.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),
+3333 reeds.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),
+3318 fallen log.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),
+3319 fallen log.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),
+3708 metal chest.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),
+3332 water plants.png,,not an ID,left out: not named by a plain decimal art ID (TazUO itself would not load it; an alternate drawing beside its numbered file),

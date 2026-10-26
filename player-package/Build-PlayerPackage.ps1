@@ -39,6 +39,11 @@
                                app\music\shard-music.txt, the Config.txt lines Play.ps1 adds to a copy of the
                                player's own Music\Digital\Config.txt (Build-UoOverrides.ps1). The music gate
                                (Test-MusicRegistry) runs before staging and gate 4 checks the zip. See its SOURCE.txt.
+      vendor\zigholtul-redrawn-statics\   Zigholtul's redrawn world art (cc-P670): art\<id>.png, the PNGs that fit,
+                               into app\tazuo\ExternalImages\sl-redrawn-art\ (a folder TazUO never loads by itself;
+                               client patch 0008 draws them only while Options > Interface > Appearance > Redrawn world
+                               art is ticked, off by default). manifest.csv names every shipped file and its SHA-256:
+                               the folder must match it before staging, and gate 4 holds the zip to it. See its SOURCE.txt.
   clean-test\ (the Windows Sandbox kit) is never staged; gate 4 proves none of it ships.
   into player-package\dist\ShatteredLegacy-<stamp>.zip, which is gitignored, where <stamp>
   is the build time, yyyy.MM.dd.HHmm local. Beside it goes ShatteredLegacy-<stamp>.version.json,
@@ -128,6 +133,12 @@ $slGumpIds  = @($slRegistry | Where-Object { $_.kind -eq 'gump' } | ForEach-Obje
 $slAnimIds  = @($slRegistry | Where-Object { $_.kind -eq 'anim' } | ForEach-Object { [int]$_.id })
 $slBodyIds  = @($slRegistry | Where-Object { $_.kind -eq 'body' } | ForEach-Object { [int]$_.id })
 $slAnimFiles = @('sl-anim7.bin', 'sl-anim7-idx.bin')
+# cc-P670: Zigholtul's redrawn world art: manifest.csv's shipped rows (file -> SHA-256), for the staging check and gate 4.
+$rdDir  = Join-Path $PSScriptRoot 'vendor\zigholtul-redrawn-statics'
+$rdShip = @{}
+foreach ($r in @(Get-Content -LiteralPath (Join-Path $rdDir 'manifest.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)) {
+    if ($r.verdict -eq 'ok') { $rdShip[$r.file] = $r.sha256 }
+}
 # cc-P368: the music registry, for gate 4 (the staging section reads it again and runs the music gate on it).
 $slMusicRegistry = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot 'vendor\shattered-legacy-music\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
 # cc-P81: the Siege of Sosaria paperdoll art, SFW only (vendor\paperdoll-sos\SOURCE.txt). Its gump PNGs go into
@@ -358,11 +369,13 @@ function Test-PackageZip([string]$path) {
         if ($pdSfwNames.Count -ne $pdBodyIds.Count) { $fail += "$($pdSfwNames.Count) files under app/paperdoll-sfw/, expected $($pdBodyIds.Count)" }
         foreach ($g in $pdBodyIds) { if ($names -notcontains "app/paperdoll-sfw/$g.png") { $fail += "no app/paperdoll-sfw/$g.png" } }
         $sha = [Security.Cryptography.SHA256]::Create()
+        $zipSha = @{}
         try {
             foreach ($n in $names) {
                 if ($n -match $pdNsfwPath) { $fail += "NSFW GATE: $n has a name that only the local NSFW add-on may use" }
                 $st = $rel[$n].Open()
                 try { $h = -join ($sha.ComputeHash($st) | ForEach-Object { $_.ToString('x2') }) } finally { $st.Dispose() }
+                $zipSha[$n] = $h
                 if ($pdNsfw.ContainsKey($h)) { $fail += "NSFW GATE: $n is a Topless or Nude file from the paperdoll kit" }
                 elseif ($n -match $pdBodyPath) {
                     $id = $Matches[2]
@@ -387,6 +400,15 @@ function Test-PackageZip([string]$path) {
             if ($x -lt 0 -or $x -ge $fmtMaxX -or $y -lt 0 -or $y -ge $fmtMaxY) {
                 $fail += "$n opens at $x,$y, outside ${fmtMaxX}x$fmtMaxY"
             }
+        }
+
+        # cc-P670: the redrawn world art, exactly manifest.csv's shipped files, byte for byte, and nowhere else.
+        $rdNames = @($names | Where-Object { $_ -like 'app/tazuo/ExternalImages/sl-redrawn-art/*' })
+        if ($rdNames.Count -ne $rdShip.Count) { $fail += "$($rdNames.Count) files under app/tazuo/ExternalImages/sl-redrawn-art/, expected $($rdShip.Count) (vendor\zigholtul-redrawn-statics\manifest.csv)" }
+        foreach ($n in $rdNames) {
+            $f = $n.Substring('app/tazuo/ExternalImages/sl-redrawn-art/'.Length)
+            if (-not $rdShip.ContainsKey($f)) { $fail += "$n is not a shipped file of the redrawn art's manifest.csv" }
+            elseif ($zipSha[$n] -ne $rdShip[$f]) { $fail += "$n is not the vendored redrawn PNG (SHA-256 differs from manifest.csv)" }
         }
 
         # Our art: one PNG per registered ID and nothing else, and our records (cc-P26).
@@ -789,6 +811,17 @@ if (Test-Path -LiteralPath $slArtOut) {
 New-Item -ItemType Directory -Path $slArtOut -Force | Out-Null
 foreach ($f in $slPngs) { $vendored += ,@($f.FullName, (Join-Path $slArtOut $f.Name)) }
 $vendored += ,@((Join-Path $slArt 'records.json'), (Join-Path $stage 'app\art-records.json'))
+# cc-P670: Zigholtul's redrawn world art into ExternalImages\sl-redrawn-art\, exactly manifest.csv's shipped files.
+$rdPngs = @(Get-ChildItem -LiteralPath (Join-Path $rdDir 'art') -File)
+$rdHash = [Security.Cryptography.SHA256]::Create()
+try {
+    $bad = @($rdPngs | Where-Object { -not $rdShip.ContainsKey($_.Name) -or $rdShip[$_.Name] -ne (-join ($rdHash.ComputeHash([IO.File]::ReadAllBytes($_.FullName)) | ForEach-Object { $_.ToString('x2') })) } | ForEach-Object Name)
+} finally { $rdHash.Dispose() }
+if ($bad.Count) { throw "vendor\zigholtul-redrawn-statics\art holds files manifest.csv does not ship as they are: $($bad -join ', '). Not building." }
+if ($rdPngs.Count -ne $rdShip.Count) { throw "vendor\zigholtul-redrawn-statics\art holds $($rdPngs.Count) PNGs, manifest.csv ships $($rdShip.Count). Not building." }
+$rdOut = Join-Path $tazOut 'ExternalImages\sl-redrawn-art'
+New-Item -ItemType Directory -Path $rdOut -Force | Out-Null
+foreach ($f in $rdPngs) { $vendored += ,@($f.FullName, (Join-Path $rdOut $f.Name)) }
 # cc-P62: our gumps (gumps\<id>.png, exactly the registered gump IDs, never a Fiddle-Me-This name) and the
 # worn-item animation files, after the equipment-animation gate on the vendored copies.
 $slGumpDir = Join-Path $slArt 'gumps'

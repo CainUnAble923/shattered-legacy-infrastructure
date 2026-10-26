@@ -1,0 +1,338 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chase Fleming <ckfleming@gmail.com>
+Date: Mon, 26 Oct 2026 22:00:00 -0500
+Subject: [PATCH] Redrawn world art: Options > Interface > Appearance, an opt-in
+ box (off by default) that draws covered statics from Zigholtul's PNGs
+ (Shattered Legacy cc-P670)
+
+---
+ src/ClassicUO.Assets/ExternalImageLoader.cs        | 32 +++++++-
+ src/ClassicUO.Client/Configuration/Profile.cs      |  1 +
+ src/ClassicUO.Client/Game/Managers/SlRedrawnArt.cs | 91 +++++++++++++++++++++
+ .../UI/MyraWindows/Options/Tabs/AppearanceTab.cs   | 25 +++++-
+ src/ClassicUO.Client/Game/World.cs                 |  1 +
+ .../ClassicUO.UnitTests/Game/SlRedrawnArtTests.cs  | 94 ++++++++++++++++++++++
+ 6 files changed, 241 insertions(+), 3 deletions(-)
+
+diff --git a/src/ClassicUO.Assets/ExternalImageLoader.cs b/src/ClassicUO.Assets/ExternalImageLoader.cs
+index cc43da57b..8d0d1a3e4 100644
+--- a/src/ClassicUO.Assets/ExternalImageLoader.cs
++++ b/src/ClassicUO.Assets/ExternalImageLoader.cs
+@@ -663,15 +663,43 @@ namespace ClassicUO.Assets
+             return gump_availableFilePaths.TryGetValue(graphic, out p) ? p : null;
+         }
+ 
+-        /// <summary>The file an art index (item ID + 0x4000) is drawn from: a skin's remap, the ID's own PNG; null for
+-        /// the client's own art.</summary>
++        /// <summary>The file an art index (item ID + 0x4000) is drawn from: a skin's remap, the redrawn world art when it
++        /// is on (cc-P670), the ID's own PNG; null for the client's own art.</summary>
+         public string ResolveArtPath(uint graphic)
+         {
+             if (art_skinRemap.TryGetValue(graphic, out uint to) && art_availableFilePaths.TryGetValue(to, out string p))
+                 return p;
++            // cc-P670: then the redrawn world art, while it is on.
++            if (art_redrawnPaths.TryGetValue(graphic, out p))
++                return p;
+             return art_availableFilePaths.TryGetValue(graphic, out p) ? p : null;
+         }
+ 
++        // Shattered Legacy (cc-P670): the opt-in redrawn world art. Art indexes (item ID + 0x4000) drawn from a PNG outside
++        // ExternalImages\art (the package's ExternalImages\sl-redrawn-art, which TazUO never loads by itself), only while
++        // the player has ticked it. Replaces the whole table; returns every index whose source changed, its cached pixels
++        // dropped, so the caller redraws exactly those. Null or empty turns it off: stock art again.
++        private readonly Dictionary<uint, string> art_redrawnPaths = new Dictionary<uint, string>();
++
++        public List<uint> SetArtRedrawn(IReadOnlyDictionary<uint, string> paths)
++        {
++            var changed = new List<uint>();
++            foreach (KeyValuePair<uint, string> old in art_redrawnPaths)
++                if (paths == null || !paths.TryGetValue(old.Key, out string now) || now != old.Value)
++                    changed.Add(old.Key);
++            if (paths != null)
++                foreach (KeyValuePair<uint, string> now in paths)
++                    if (!art_redrawnPaths.ContainsKey(now.Key))
++                        changed.Add(now.Key);
++            art_redrawnPaths.Clear();
++            if (paths != null)
++                foreach (KeyValuePair<uint, string> now in paths)
++                    art_redrawnPaths[now.Key] = now.Value;
++            foreach (uint id in changed)
++                art_textureCache.Remove(id);
++            return changed;
++        }
++
+         public string GetGumpFilePath(uint graphic) => gump_availableFilePaths.TryGetValue(graphic, out string p) ? p : null;
+ 
+         public string GetArtFilePath(uint graphic) => art_availableFilePaths.TryGetValue(graphic, out string p) ? p : null;
+diff --git a/src/ClassicUO.Client/Configuration/Profile.cs b/src/ClassicUO.Client/Configuration/Profile.cs
+index 322737b48..a879bdfdb 100644
+--- a/src/ClassicUO.Client/Configuration/Profile.cs
++++ b/src/ClassicUO.Client/Configuration/Profile.cs
+@@ -442,6 +442,7 @@ namespace ClassicUO.Configuration
+         public bool WorldMapFlipMap { get; set => SetProperty(ref field, value); } = true;
+         public bool WorldMapShowFog { get; set => SetProperty(ref field, value); } = true; // Shattered Legacy patch (cc-P240)
+         public string SlSkins { get; set => SetProperty(ref field, value); } = string.Empty; // Shattered Legacy patch (cc-P362): UI skins, "kind=key;..."
++        public bool SlRedrawnArt { get; set => SetProperty(ref field, value); } // Shattered Legacy patch (cc-P670): redrawn world art, off by default
+         public bool WorldMapTopMost { get; set => SetProperty(ref field, value); }
+         public bool WorldMapFreeView { get; set => SetProperty(ref field, value); }
+         public WorldMapDoubleClickAction WorldMapDoubleClickAction { get; set => SetProperty(ref field, value); } = WorldMapDoubleClickAction.ToggleLock;
+diff --git a/src/ClassicUO.Client/Game/Managers/SlRedrawnArt.cs b/src/ClassicUO.Client/Game/Managers/SlRedrawnArt.cs
+new file mode 100644
+index 000000000..fb4362cf0
+--- /dev/null
++++ b/src/ClassicUO.Client/Game/Managers/SlRedrawnArt.cs
+@@ -0,0 +1,91 @@
++// SPDX-License-Identifier: BSD-2-Clause
++// Shattered Legacy patch (cc-P670): "Redrawn world art (Zigholtul)", an opt-in look in Options > Interface > Appearance,
++// off by default.
++//
++// Zigholtul's "UO Art Static Replacements for TazUO" redraw stock statics (fuller trees, crisper furniture, chests and
++// crystals). The player package ships the ones that sit on their tiles as stock does (shard-migration
++// notes/cc-P670-tools/fit.py) in ExternalImages\sl-redrawn-art\<item ID>.png: a folder TazUO never loads by itself, so
++// a client with the box unticked draws exactly the stock art. Ticked, each covered item ID is drawn from its PNG
++// (ExternalImageLoader.SetArtRedrawn, after a UI skin's remap and before the ID's own ExternalImages\art PNG). Client
++// side only: no packet, no server flag; other players see their own choice. Tiledata (height, light, animation) is the
++// stock file's either way: only the picture changes.
++
++using System;
++using System.Collections.Generic;
++using System.IO;
++using ClassicUO.Assets;
++using ClassicUO.Configuration;
++
++namespace ClassicUO.Game.Managers
++{
++    internal static class SlRedrawnArt
++    {
++        public const string FolderName = "sl-redrawn-art";
++
++        private static string _scannedFolder;
++        private static Dictionary<uint, string> _scanned;
++
++        /// <summary>The package's folder: ExternalImages\sl-redrawn-art beside TazUO.exe.</summary>
++        public static string DefaultFolder => Path.Combine(AppContext.BaseDirectory, "ExternalImages", FolderName);
++
++        /// <summary>Every PNG in the folder (not its subfolders) named by a plain decimal item ID, keyed by art index
++        /// (item ID + 0x4000). Any other name ("3308 vines.png", "0x0C8E.png") is not ours to guess at and is skipped.</summary>
++        public static Dictionary<uint, string> Scan(string folder)
++        {
++            var map = new Dictionary<uint, string>();
++            if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
++                return map;
++            foreach (string file in Directory.GetFiles(folder, "*.png", SearchOption.TopDirectoryOnly))
++            {
++                string name = Path.GetFileNameWithoutExtension(file);
++                if (name.Length == 0 || name.Length > 5)
++                    continue;
++                bool digits = true;
++                foreach (char c in name)
++                    digits &= c >= '0' && c <= '9';
++                if (digits && uint.TryParse(name, out uint id) && id < 0x10000)
++                    map[id + 0x4000] = file;
++            }
++            return map;
++        }
++
++        /// <summary>The table to draw from: the folder's PNGs when on, nothing when off.</summary>
++        public static Dictionary<uint, string> Paths(bool on, string folder)
++        {
++            if (!on)
++                return new Dictionary<uint, string>();
++            if (_scanned == null || _scannedFolder != folder)
++            {
++                _scanned = Scan(folder);
++                _scannedFolder = folder;
++            }
++            return new Dictionary<uint, string>(_scanned);
++        }
++
++        /// <summary>Whether this client has the art at all (the option is offered only then).</summary>
++        public static bool Installed => Scan(DefaultFolder).Count > 0;
++
++        /// <summary>Applies the current profile's choice: at login (World.CreatePlayer, after the profile loads) and when
++        /// the box changes. Every art index whose source changed is dropped from the atlas, so the world redraws with the
++        /// new look on the next frame; no restart.</summary>
++        public static void Apply()
++        {
++            bool on = ProfileManager.CurrentProfile?.SlRedrawnArt ?? false;
++            List<uint> changed = ExternalImageLoader.Instance.SetArtRedrawn(Paths(on, DefaultFolder));
++            var uo = Client.Game?.UO;
++            if (uo?.Arts != null)
++                foreach (uint idx in changed)
++                    uo.Arts.Invalidate(idx);
++        }
++
++        /// <summary>The option's choice: saved in the profile at once and applied live.</summary>
++        public static void Choose(bool on)
++        {
++            Profile profile = ProfileManager.CurrentProfile;
++            if (profile == null)
++                return;
++            profile.SlRedrawnArt = on;
++            Apply();
++        }
++    }
++}
+diff --git a/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/AppearanceTab.cs b/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/AppearanceTab.cs
+index bc60d49e3..d26764b50 100644
+--- a/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/AppearanceTab.cs
++++ b/src/ClassicUO.Client/Game/UI/MyraWindows/Options/Tabs/AppearanceTab.cs
+@@ -7,6 +7,7 @@ using System;
+ using System.Collections.Generic;
+ using System.Linq;
+ using ClassicUO.Assets;
++using ClassicUO.Configuration;
+ using ClassicUO.Game.Managers;
+ using ClassicUO.Game.UI.MyraWindows.Widgets;
+ using Microsoft.Xna.Framework.Graphics;
+@@ -30,8 +31,13 @@ public static class AppearanceTab
+             OptionsUi.VisualContainer(
+                 new VisualContainerProps { LabelText = "Shattered Legacy skins" },
+                 rows
++            ),
++            // cc-P670: the redrawn world art, off by default; offered only when this client has the art.
++            OptionsUi.VisualContainer(
++                new VisualContainerProps { LabelText = "World" },
++                RedrawnArtRow()
+             )
+-        ).WithSearch(new SearchMetadata("Appearance", ["skin", "appearance", "backpack", "bag", "chest", "crate", "scroll", "shattered legacy"]));
++        ).WithSearch(new SearchMetadata("Appearance", ["skin", "appearance", "backpack", "bag", "chest", "crate", "scroll", "shattered legacy", "redrawn", "world art", "trees", "zigholtul"]));
+     }
+ 
+     /// <summary>The list's labels: Classic, then each available skin as "Label (Author)".</summary>
+@@ -77,6 +83,23 @@ public static class AppearanceTab
+         );
+     }
+ 
++    public const string RedrawnArtLabel = "Redrawn world art (Zigholtul)";
++
++    // cc-P670: one checkbox. Off is the stock art, exactly; on draws each covered world item from Zigholtul's PNG.
++    private static OptionContent RedrawnArtRow()
++    {
++        bool installed = SlRedrawnArt.Installed;
++        return Option.Checkbox(
++            RedrawnArtLabel,
++            installed && (ProfileManager.CurrentProfile?.SlRedrawnArt ?? false),
++            on => SlRedrawnArt.Choose(installed && on),
++            tooltip: installed
++                ? "Fuller trees, crisper furniture, chests and crystals, redrawn by Zigholtul. Only you see it. Changes at once; no restart."
++                : "Not installed in this client: the world is drawn with the stock art.",
++            search: new SearchMetadata(RedrawnArtLabel, Keywords: ["redrawn", "world art", "trees", "zigholtul", "appearance"])
++        );
++    }
++
+     private static void SetPreview(Image image, SlSkins.Skin skin, bool art)
+     {
+         image.Renderable = null;
+diff --git a/src/ClassicUO.Client/Game/World.cs b/src/ClassicUO.Client/Game/World.cs
+index 4932bc692..9aae446e7 100644
+--- a/src/ClassicUO.Client/Game/World.cs
++++ b/src/ClassicUO.Client/Game/World.cs
+@@ -356,6 +356,7 @@ namespace ClassicUO.Game
+             }
+ 
+             SlSkins.Apply(); // Shattered Legacy patch (cc-P362): this profile's UI skins
++            SlRedrawnArt.Apply(); // Shattered Legacy patch (cc-P670): this profile's redrawn world art (off by default)
+ 
+             if (Player != null)
+             {
+diff --git a/tests/ClassicUO.UnitTests/Game/SlRedrawnArtTests.cs b/tests/ClassicUO.UnitTests/Game/SlRedrawnArtTests.cs
+new file mode 100644
+index 000000000..c0b33ece8
+--- /dev/null
++++ b/tests/ClassicUO.UnitTests/Game/SlRedrawnArtTests.cs
+@@ -0,0 +1,94 @@
++// Shattered Legacy patch (cc-P670): the opt-in redrawn world art (Game\Managers\SlRedrawnArt.cs, the redrawn table in
++// ExternalImageLoader, the Appearance tab's checkbox). The folders here hold empty stand-in files named like the IDs:
++// the table only needs to know a file is there, and no art is ever needed (or allowed) in a test.
++using System;
++using System.Collections.Generic;
++using System.IO;
++using ClassicUO.Assets;
++using ClassicUO.Game.Managers;
++using FluentAssertions;
++using Xunit;
++
++namespace ClassicUO.UnitTests.Game
++{
++    public class SlRedrawnArtTests : IDisposable
++    {
++        private readonly string _root = Path.Combine(Path.GetTempPath(), "sl-redrawn-" + Guid.NewGuid().ToString("N"));
++
++        public void Dispose()
++        {
++            ExternalImageLoader.Instance.SetArtRedrawn(null);
++            ExternalImageLoader.Instance.SetArtRemap(null);
++            if (Directory.Exists(_root))
++                Directory.Delete(_root, true);
++        }
++
++        private string Folder(params string[] names)
++        {
++            string dir = Path.Combine(_root, SlRedrawnArt.FolderName);
++            Directory.CreateDirectory(dir);
++            foreach (string n in names)
++                File.WriteAllBytes(Path.Combine(dir, n), Array.Empty<byte>());
++            return dir;
++        }
++
++        [Fact]
++        public void The_folder_is_its_own_and_is_never_one_TazUO_loads_by_itself()
++        {
++            SlRedrawnArt.FolderName.Should().Be("sl-redrawn-art");
++            SlRedrawnArt.FolderName.Should().NotBe("art").And.NotBe("gumps");
++        }
++
++        [Fact]
++        public void Scan_takes_only_PNGs_named_by_a_plain_decimal_item_ID_keyed_by_art_index()
++        {
++            string dir = Folder("3274.png", "6001.png", "3308 vines.png", "0x0C8E.png", "notes.txt", "12252.png");
++            File.WriteAllBytes(Path.Combine(dir, "nested.png"), Array.Empty<byte>());
++            Directory.CreateDirectory(Path.Combine(dir, "sub"));
++            File.WriteAllBytes(Path.Combine(dir, "sub", "4000.png"), Array.Empty<byte>());
++
++            Dictionary<uint, string> map = SlRedrawnArt.Scan(dir);
++
++            map.Keys.Should().BeEquivalentTo(new uint[] { 3274 + 0x4000, 6001 + 0x4000, 12252 + 0x4000 });
++            map[3274 + 0x4000].Should().Be(Path.Combine(dir, "3274.png"));
++            SlRedrawnArt.Scan(Path.Combine(_root, "missing")).Should().BeEmpty();
++        }
++
++        [Fact]
++        public void Off_is_stock_on_draws_the_redraw_and_switching_names_every_ID_to_redraw()
++        {
++            string dir = Folder("3274.png", "3275.png");
++            ExternalImageLoader loader = ExternalImageLoader.Instance;
++            uint a = 3274 + 0x4000, b = 3275 + 0x4000;
++
++            loader.ResolveArtPath(a).Should().BeNull("off by default: the client's own art");
++
++            List<uint> on = loader.SetArtRedrawn(SlRedrawnArt.Paths(true, dir));
++            on.Should().BeEquivalentTo(new[] { a, b });
++            loader.ResolveArtPath(a).Should().Be(Path.Combine(dir, "3274.png"));
++
++            loader.SetArtRedrawn(SlRedrawnArt.Paths(true, dir)).Should().BeEmpty("nothing changed");
++
++            List<uint> off = loader.SetArtRedrawn(SlRedrawnArt.Paths(false, dir));
++            off.Should().BeEquivalentTo(new[] { a, b });
++            loader.ResolveArtPath(a).Should().BeNull();
++            SlRedrawnArt.Paths(false, dir).Should().BeEmpty();
++        }
++
++        [Fact]
++        public void A_UI_skins_remap_still_wins_over_a_redraw()
++        {
++            string dir = Folder("7981.png");
++            string images = Path.Combine(_root, "images");
++            Directory.CreateDirectory(Path.Combine(images, "art"));
++            File.WriteAllBytes(Path.Combine(images, "art", "13049.png"), Array.Empty<byte>());
++            ExternalImageLoader loader = ExternalImageLoader.Instance;
++            loader.ScanImages(images);
++
++            loader.SetArtRedrawn(SlRedrawnArt.Paths(true, dir));
++            loader.SetArtRemap(new Dictionary<uint, uint> { [7981 + 0x4000] = 13049 + 0x4000 });
++
++            loader.ResolveArtPath(7981 + 0x4000).Should().Be(Path.Combine(images, "art", "13049.png"));
++        }
++    }
++}
