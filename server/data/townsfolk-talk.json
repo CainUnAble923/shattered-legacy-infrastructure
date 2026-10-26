@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "tag": "plaza",
+      "region": "New Haven",
+      "topics": [
+        {
+          "id": "hello",
+          "aliases": ["hello", "hello there", "hi", "greetings", "good day"],
+          "responses": [
+            {"phase": "any", "text": "Welcome to New Haven. The paperwork survived. We are still checking on everything else."},
+            {"phase": "any", "text": "Hello. If you are lost, you are in good company. Most of the town was new last week."}
+          ]
+        },
+        {
+          "id": "name",
+          "aliases": ["name", "what is your name", "who are you"],
+          "responses": [
+            {"phase": "any", "text": "{name}. I keep the plaza in order, or at least in rows."}
+          ]
+        },
+        {
+          "id": "job",
+          "aliases": ["job", "what is your job", "what do you do"],
+          "responses": [
+            {"phase": "any", "text": "I am the town steward. Lost travellers, lost purses and lost causes all come through here."}
+          ]
+        },
+        {
+          "id": "help",
+          "aliases": ["help", "where do i start", "i need help"],
+          "responses": [
+            {"phase": "core", "text": "Rook Hallowell is the League recruiter by the plaza. Double-click him to continue your lessons."},
+            {"phase": "any", "text": "The bank is by the plaza. The League registrar keeps an office to the south-west. Ask me about the inn if you need a rest."}
+          ]
+        },
+        {
+          "id": "inn",
+          "aliases": ["inn", "where is the inn", "tavern"],
+          "responses": [
+            {"phase": "any", "text": "The Bountiful Harvest Inn is north of the plaza. Food, drink and a bench to sit on."}
+          ]
+        },
+        {
+          "id": "rumors",
+          "aliases": ["rumors", "rumours", "any rumors", "news", "what is new"],
+          "responses": [
+            {"phase": "any", "text": "They say the League keeps a ledger of everyone who arrives. They also say the ledger keeps a ledger."},
+            {"phase": "any", "text": "A farmer swears his pigs learned to count. Only to three, but he is very proud."},
+            {"phase": "any", "text": "The banker counts the vault twice a day. Nobody has asked what the second count is for."}
+          ]
+        },
+        {
+          "id": "goodbye",
+          "aliases": ["goodbye", "bye", "farewell", "good bye"],
+          "responses": [
+            {"phase": "any", "text": "Safe travels. Come back with a story you can tell indoors."}
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "trades",
+      "region": "New Haven",
+      "topics": [
+        {
+          "id": "hello",
+          "aliases": ["hello", "hello there", "hi", "greetings", "good day"],
+          "responses": [
+            {"phase": "any", "text": "Hello. Mind the anvils. They do not move, and people keep testing that."},
+            {"phase": "any", "text": "Good day. If you are here to work, you are early. If you are here to watch, you are late."}
+          ]
+        },
+        {
+          "id": "name",
+          "aliases": ["name", "what is your name", "who are you"],
+          "responses": [
+            {"phase": "any", "text": "{name}. I run between the workshops, mostly with other people's hammers."}
+          ]
+        },
+        {
+          "id": "job",
+          "aliases": ["job", "what is your job", "what do you do"],
+          "responses": [
+            {"phase": "any", "text": "I keep the work moving. Tools, materials, then practice. The guilds can help with the first two."}
+          ]
+        },
+        {
+          "id": "help",
+          "aliases": ["help", "where do i start", "i need help"],
+          "responses": [
+            {"phase": "core", "text": "Finish your lessons with Rook Hallowell by the plaza first. The workshops will still be here."},
+            {"phase": "any", "text": "Speak to the guildmaster for the craft you want to learn. Your tutorial's optional lessons are still with Rook."}
+          ]
+        },
+        {
+          "id": "inn",
+          "aliases": ["inn", "where is the inn", "tavern"],
+          "responses": [
+            {"phase": "any", "text": "The Bountiful Harvest Inn is north of the plaza. Go there after the work, not during."}
+          ]
+        },
+        {
+          "id": "rumors",
+          "aliases": ["rumors", "rumours", "any rumors", "news", "what is new"],
+          "responses": [
+            {"phase": "any", "text": "Someone tried to smelt a frying pan for ore. The pan won."},
+            {"phase": "any", "text": "The smiths are arguing about which hammer is best. The hammers are not taking sides."}
+          ]
+        },
+        {
+          "id": "goodbye",
+          "aliases": ["goodbye", "bye", "farewell", "good bye"],
+          "responses": [
+            {"phase": "any", "text": "Off you go. Bring back whatever you borrow."}
+          ]
+        }
+      ]
+    },
+    {
+      "tag": "innkeeper",
+      "region": "the New Haven Inn",
+      "topics": [
+        {
+          "id": "hello",
+          "aliases": ["hello", "hello there", "hi", "greetings", "good day"],
+          "responses": [
+            {"phase": "any", "text": "Welcome in. Wipe your boots, the floor is new."},
+            {"phase": "any", "text": "Hello, traveller. Sit anywhere that is not already sitting on something."}
+          ]
+        },
+        {
+          "id": "name",
+          "aliases": ["name", "what is your name", "who are you"],
+          "responses": [
+            {"phase": "any", "text": "{name}. I keep this inn, and it keeps me busy."}
+          ]
+        },
+        {
+          "id": "job",
+          "aliases": ["job", "what is your job", "what do you do"],
+          "responses": [
+            {"phase": "any", "text": "Food, drink, and a place to catch your breath."}
+          ]
+        },
+        {
+          "id": "help",
+          "aliases": ["help", "where do i start", "i need help"],
+          "responses": [
+            {"phase": "core", "text": "Rook Hallowell is the League recruiter by the plaza, south of here. He has your lessons."},
+            {"phase": "any", "text": "The plaza is south of here, with the bank beside it. Buy a meal before you go, it helps."}
+          ]
+        },
+        {
+          "id": "inn",
+          "aliases": ["inn", "where is the inn", "tavern"],
+          "responses": [
+            {"phase": "any", "text": "You are standing in it. This is the Bountiful Harvest Inn."}
+          ]
+        },
+        {
+          "id": "rumors",
+          "aliases": ["rumors", "rumours", "any rumors", "news", "what is new"],
+          "responses": [
+            {"phase": "any", "text": "People arrive with empty pockets and very full plans. We sell breakfast to both."},
+            {"phase": "any", "text": "A guest asked for a room with a view of the sea. I gave him a window and a bucket."}
+          ]
+        },
+        {
+          "id": "goodbye",
+          "aliases": ["goodbye", "bye", "farewell", "good bye"],
+          "responses": [
+            {"phase": "any", "text": "Safe travels. Come back with a story you can tell indoors."}
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -58,6 +58,11 @@ COPY design/guild-hall-decor/templates.json /design/guild-hall-decor/templates.j
 # Copy serialization migration JSONs (needed for PetMimic VNContent generation)
 COPY server/migrations/ /build/modernuo/Projects/UOContent/Migrations/
 
+# cc-P631: the New Haven townsfolk's dialogue table (ClusterFTalkRules). Into the builder's Distribution/Data, where the
+# tests read the shipped bytes; the runtime stage copies that Data folder whole, so the server reads the same file at
+# /modernuo/Data/ShatteredLegacy/. Only .cs files reach the projects, so a data file needs its own line.
+COPY server/data/townsfolk-talk.json /build/modernuo/Distribution/Data/ShatteredLegacy/townsfolk-talk.json
+
 # Copy patch files and apply them
 COPY server/patches/ /patches/
 COPY docker/uo/apply-patches.sh /apply-patches.sh
