@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26.11
+
+### Staff
+- The Fold, the future home of the new player isle, now exists as its own world (with 16 private copies) on Trammel's map, closed to houses, recall, mark and gates, always in daylight. Nobody can reach it yet; on the test shard, [Fold goto <n> takes staff there.
+
 ## 2026.10.26.10
 
 ### Fixed
