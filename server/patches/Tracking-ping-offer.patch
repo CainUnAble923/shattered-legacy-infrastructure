@@ -1,0 +1,12 @@
+--- a/Projects/UOContent/Skills/Tracking/Tracking.cs
++++ b/Projects/UOContent/Skills/Tracking/Tracking.cs
+@@ -44,6 +44,9 @@
+             gumps.Close<TrackWhoGump>();
+             gumps.Close<TrackWhatGump>();
+             gumps.Send(new TrackWhatGump());
++
++            // cc-P625: from 90 Base Tracking, a small Ping menu beside the stock one (customizations ClusterFTrackingPing)
++            ClusterFTrackingPing.OfferFromTracking(pm);
+         }
+ 
+         return TimeSpan.FromSeconds(10.0); // 10 second delay before being able to re-use a skill
