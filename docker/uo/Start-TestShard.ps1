@@ -51,6 +51,11 @@ if ($Image -and $Image -cnotmatch '^sl-modernuo:[A-Za-z0-9._-]+$') { throw "-Ima
 if ($Commit -and $Commit -notmatch '^[0-9a-fA-F]{7,40}$') { throw "-Commit takes a commit hash (7 to 40 hex digits): $Commit" }
 if ($Fresh -and ($Image -or $Commit)) { throw "-Fresh with -Image or -Commit: start fresh on latest, or move the save aside first." }
 
+# cc-P668: on 2026-10-26 a test shard restart brought back an sl-ddns that published this PC's VPN exit as
+# shatteredlegacyuo.com. Before every stop and start, check sl-ddns takes its address from the gate only (Haven's), and
+# stop one that does not. It never touches DNS and never stops the shard from starting.
+try { & (Join-Path $PSScriptRoot 'Test-DdnsSafe.ps1') -Fix } catch { Write-Host ('Test-DdnsSafe: ' + $_.Exception.Message) -ForegroundColor Yellow }
+
 if ($Down) {
     # -t 60 as well as stop_grace_period in the compose file: D36's shutdown save needs seconds (D50).
     docker compose -f $compose down -t 60

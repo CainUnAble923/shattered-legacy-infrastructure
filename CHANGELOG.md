@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26.12
+
+### Staff
+- The website's address now always points at the house, with the game PC's VPN on or off: the DNS updater takes the house's address from the home server, and it refuses to publish, and leaves the address alone, when the home server cannot say it or says an address known to be a VPN's. A test shard restart stops an old DNS updater that could publish the VPN's address.
+
 ## 2026.10.26.11
 
 ### Staff
