@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26.3
+
+### Staff
+- League Echo, first piece (test shard only; off until [LeagueEcho on, and no Tome or Registrar page yet): a Mythril League character can call an Echo of the Stygian Dragon with [LeagueEcho call. It is a weak, friendly melee helper in League blue that stays 20 seconds, uses 2 follower slots and then lets the account call again only after 30 minutes. It fights wild creatures only, leaves no corpse or loot, can be dispelled, and fades if its caller logs out, dies, goes more than 12 tiles away, changes facet or enters a town, house, jail or other protected place. Felucca is refused. [LeagueEcho shows the switch and your account's wait; [LeagueEcho dismiss sends yours away.
+
 ## 2026.10.26
 
 ### Staff

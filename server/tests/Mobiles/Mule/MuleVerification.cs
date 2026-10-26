@@ -600,6 +600,6 @@ public class MuleVerification
         var back = new CharacterLeagueData(new BufferReader(buffer));
         Assert.Equal(MuleErrand.Delivered, back.MuleErrandStage);
         Assert.True(back.MuleGranted);
-        Assert.Equal(2, CharacterLeagueData.CurrentVersion); // cc-P280: v2 adds the League Register and the backpack tier
+        Assert.Equal(3, CharacterLeagueData.CurrentVersion); // cc-P280: v2 adds the League Register and the backpack tier; cc-P630: v3 the Tome serial
     }
 }

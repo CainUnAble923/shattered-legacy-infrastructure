@@ -226,6 +226,11 @@ public class ClusterFAccountData
     // and the climbing boots' gate. Written by ClusterFMinedBlocks (from Mining.Give).
     public MinedBlockRecord MinedBlocks { get; private set; } = new();
 
+    // -- The League Echo, once per account (v23, cc-P630) -------------------
+    // When the account may call its next Echo (LeagueEchoSystem): an absolute UTC time, set on a successful call.
+    // DateTime.MinValue = ready. Shared by every character and Tome on the account.
+    public DateTime LeagueEchoNextUseUtc { get; set; } = DateTime.MinValue;
+
     /// <summary>
     /// True when this record was read from a save before v15 that held account-level guild data
     /// (membership, Apprentice marks, reputation, scrip, work orders, commissions or an Artificer
@@ -467,6 +472,10 @@ public class ClusterFAccountData
         if (version >= 22)
             MinedBlocks = new MinedBlockRecord(r);
 
+        // v23 (cc-P630): the League Echo's next use. Before v23 no account had called one: ready.
+        if (version >= 23)
+            LeagueEchoNextUseUtc = r.ReadDateTime();
+
         // v8-only saves (no EncounteredCreatures yet): just read chunks.
         if (version == 8)
             ReadExploration(r);
@@ -500,7 +509,8 @@ public class ClusterFAccountData
     // 15: cc-P18, guild data per character. 16: cc-P48, LifetimeRenown and CharacterLeagueData.
     // 17: cc-P78, LearnedRecipes. 18: cc-P79, CharacterLootRecord per character. 19: cc-P80, TutorialRecord.
     // 20: cc-P150, CharacterRequisitionData per character. 21: cc-P229, LeagueTitleRecord. 22: cc-P238, MinedBlockRecord.
-    public const int CurrentVersion = 22;
+    // 23: cc-P630, LeagueEchoNextUseUtc.
+    public const int CurrentVersion = 23;
 
     public void Serialize(IGenericWriter w)
     {
@@ -616,6 +626,9 @@ public class ClusterFAccountData
 
         // v22: mined blocks
         MinedBlocks.Serialize(w);
+
+        // v23: the League Echo's next use
+        w.Write(LeagueEchoNextUseUtc);
     }
 
     // -- Flag helpers ------------------------------------------------------
@@ -689,7 +702,8 @@ public sealed class CharacterLeagueData
 {
     // v1 (cc-P69): the Compact Mule errand's stage and whether this character was granted its mule.
     // v2 (cc-P280): the League Register: its bound guild keys and the serial of the copy in force; the backpack tier.
-    public const int CurrentVersion = 2;
+    // v3 (cc-P630): the serial of the Tome of Echoes in force.
+    public const int CurrentVersion = 3;
 
     // 0 = not promoted past what registration gives (Iron on a registered account); 1 = Iron ... 17 = Celestial.
     public int Rank { get; set; }
@@ -714,6 +728,9 @@ public sealed class CharacterLeagueData
 
     // cc-P280: backpack upgrades bought, 0 (none, 125 items) to LeagueBackpack.Tiers.
     public int PackTier { get; set; }
+
+    // cc-P630: the serial of the Tome of Echoes in force; an older copy (re-issued) stops working. 0 = none issued.
+    public uint EchoTomeSerial { get; set; }
 
     public CharacterLeagueData() { }
 
@@ -749,6 +766,9 @@ public sealed class CharacterLeagueData
             RegisterSerial = r.ReadUInt();
             PackTier = r.ReadInt();
         }
+
+        if (version >= 3)
+            EchoTomeSerial = r.ReadUInt();
     }
 
     public void Serialize(IGenericWriter w)
@@ -770,6 +790,8 @@ public sealed class CharacterLeagueData
 
         w.Write(RegisterSerial);
         w.Write(PackTier);
+
+        w.Write(EchoTomeSerial);
     }
 }
 

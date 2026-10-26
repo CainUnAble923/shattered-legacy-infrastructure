@@ -589,7 +589,7 @@ public class AccountDataSerializerVerification
 
         // Written again it is the current version (21 since cc-P229), and it reads back whole.
         var (v16, v16Length) = Write(copy.Serialize);
-        Assert.Equal(22, VersionOf(v16)); // cc-P238: 22
+        Assert.Equal(23, VersionOf(v16)); // cc-P238: 22, cc-P630: 23
         var again = new BufferReader(v16);
         var reread = new ClusterFAccountData(again);
         Assert.Equal(v16Length, again.Position);
@@ -652,7 +652,7 @@ public class AccountDataSerializerVerification
         // Written again it is the current version (21 since cc-P229), and it reads back whole.
         var (v15, v15Length) = Write(copy.Serialize);
         Assert.Equal(ClusterFAccountData.CurrentVersion, VersionOf(v15));
-        Assert.Equal(22, VersionOf(v15)); // cc-P238: 22
+        Assert.Equal(23, VersionOf(v15)); // cc-P238: 22, cc-P630: 23
         var again = new BufferReader(v15);
         new ClusterFAccountData(again);
         Assert.Equal(v15Length, again.Position);
@@ -693,7 +693,7 @@ public class AccountDataSerializerVerification
 
         // Written again it is the current version (21 since cc-P229), and it reads back whole with nothing more dropped.
         var (v15, v15Length) = Write(copy.Serialize);
-        Assert.Equal(22, VersionOf(v15)); // cc-P238: 22
+        Assert.Equal(23, VersionOf(v15)); // cc-P238: 22, cc-P630: 23
         var again = new BufferReader(v15);
         var reread = new ClusterFAccountData(again);
         Assert.Equal(v15Length, again.Position);
