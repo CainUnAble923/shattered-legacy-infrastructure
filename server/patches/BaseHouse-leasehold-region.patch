@@ -1,0 +1,47 @@
+--- a/Projects/UOContent/Multis/Houses/BaseHouse.cs	2026-10-26 03:29:58.690314100 -0500
++++ b/Projects/UOContent/Multis/Houses/BaseHouse.cs	2026-10-26 03:29:59.139970200 -0500
+@@ -1642,14 +1642,20 @@
+             }
+         }
+ 
++        // Shattered Legacy (cc-P634): the region UpdateRegion registers; BaseHouse keeps owning it (Region, ban
++        // location, cleanup on delete).
++        protected virtual HouseRegion CreateRegion() => new HouseRegion(this);
++
+         public virtual void UpdateRegion()
+         {
+             m_Region?.Unregister();
+ 
+             if (Map != null)
+             {
+-                m_Region = new HouseRegion(this);
+-                m_Region.Register();
++                // Shattered Legacy (cc-P634): a house type may build its own region (a town leasehold's is the town's
++                // child). Null while the house cannot yet say its area (a leasehold mid-load); it updates again after.
++                m_Region = CreateRegion();
++                m_Region?.Register();
+             }
+             else
+             {
+
+--- a/Projects/UOContent/Regions/HouseRegion.cs	2026-10-26 03:29:58.730504200 -0500
++++ b/Projects/UOContent/Regions/HouseRegion.cs	2026-10-26 03:29:59.140972100 -0500
+@@ -24,6 +24,18 @@
+         GoLocation = new Point3D(house.X + ban.X, house.Y + ban.Y, house.Z + ban.Z);
+     }
+ 
++    // Shattered Legacy (cc-P634): a house region inside another region (a town leasehold under its town, so the
++    // town's guards answer inside), with its own priority and 3D area.
++    protected HouseRegion(BaseHouse house, Region parent, int priority, Rectangle3D[] area)
++        : base(null, house.Map, parent, priority, area)
++    {
++        House = house;
++
++        var ban = house.RelativeBanLocation;
++
++        GoLocation = new Point3D(house.X + ban.X, house.Y + ban.Y, house.Z + ban.Z);
++    }
++
+     public BaseHouse House { get; }
+ 
+     public static void Initialize()

@@ -827,6 +827,14 @@ apply_patch "$PATCHES/BaseExplosionPotion-self-blast-achievement.patch"
 # they go last. Alternatives argued in shard-migration notes/cc-P238-climbing-boots.md; pinned by ClimbingBootsVerification.
 apply_patch "$PATCHES/PlayerMobile-climbed-tile-rules.patch"
 apply_patch "$PATCHES/HousePlacement-climbed-tile.patch"
+
+# cc-P634 (ours): Town Houses (leaseholds), stage 1. BaseHouse.UpdateRegion builds its region through a new virtual
+# CreateRegion (stock houses still get the stock HouseRegion), and HouseRegion gains a protected constructor that takes
+# a parent, a priority and a 3D area, so a leasehold's region is its town's child and the town's guards answer inside.
+# BaseHouse.m_Region is private and Region has no setter, so a subclass cannot supply its own region without this; no
+# other patch touches these two files. Alternatives argued in shard-migration notes/cc-P550-review-town-houses-design.md
+# (correction 1); pinned by LeaseholdVerification.
+apply_patch "$PATCHES/BaseHouse-leasehold-region.patch"
 # cc-P239 (F-14, ours): creature levels and Appraisal. BaseCreature.OnSingleClick sends the con color as its own
 # label after the name (the name line and its notoriety hue stay pinned's), and Item Identification's target hands a
 # creature or NPC to Appraisal (a player and every item stay stock). One call each into customizations

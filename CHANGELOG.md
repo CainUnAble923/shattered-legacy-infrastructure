@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26.7
+
+### Staff
+- Town houses, first piece (test shard only; no rent and no player leasing yet): [Leaseholds new <lowest z> <highest z> makes a town house site over an empty town building (target two corners of its floor, then the street spot outside its door), and refuses one that holds a creature, spawner or house, overlaps another site, or reaches outside the town. [Leaseholds door registers the building's own doors. [Leaseholds assign gives a player a test lease with no money: the building becomes their house (house sign, house doors, lockdowns, friends, the account's one house) while the town guards still answer inside. [Leaseholds end gives the building back with its own doors; [Leaseholds lists sites, and go and remove work on them. Belongings are not packed yet when a lease ends: empty the house first.
+
 ## 2026.10.26.5
 
 ### Staff
