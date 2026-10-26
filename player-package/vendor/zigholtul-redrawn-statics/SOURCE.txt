@@ -1,0 +1,22 @@
+UO Art Static Replacements for TazUO 2.0, by Zigholtul.
+https://www.servuo.dev/archive/uo-art-static-replacements-for-tazuo.2576/
+Posted 2026-01-10, updated 2026-09-10. Downloaded 2026-10-13 by the daily art task (D:\UO\third-party\tazuo-static-
+replacements\SOURCE.txt). No license file; terms none stated. Credit: Zigholtul. Vendored here by cc-P670 (2026-10-26).
+
+FLAG (from the download's own description): these are redraws of EA's world statics, "either redone by AI, me, both
+in conjunction, and a few taken directly from the Enhanced Client". They ship ONLY inside the player package, as
+client-side replacements behind an opt-in box, never as standalone art and never reposted.
+
+What is here (made by shard-migration notes\cc-P670-tools\vendor.py, never by hand):
+  art\<item ID>.png   787 of the download's 1,019 PNGs, byte for byte: the ones that stand on their tile as the stock
+                      art does (notes\cc-P670-tools\fit.py). Into app\tazuo\ExternalImages\sl-redrawn-art\, a folder
+                      TazUO never loads by itself: the client draws them only while the player has ticked Options >
+                      Interface > Appearance > "Redrawn world art (Zigholtul)" (client\patches\0008-redrawn-world-art.patch).
+  manifest.csv        every file of the download: its verdict, why, and the SHA-256 of each shipped one. The package's
+                      gate holds the zip to it.
+
+Left out (232), with the reason per file in manifest.csv:
+  181  do not stand where the stock art does (shop signs hang lower, vines and branches placed elsewhere, ankhs, moongates)
+   34  water statics: another blue than stock water land, so the sea drew as a patchwork of squares
+    6  a tree set the pack covers only in part (3315-3322: its fallen log is only "3318 fallen log.png")
+   11  not named by a plain decimal ID ("3308 vines.png" and the like): TazUO itself would not load them; alternates

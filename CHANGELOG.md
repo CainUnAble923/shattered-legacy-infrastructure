@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26.13
+
+### Added
+- Redrawn world art you can turn on: Options, Interface, Appearance, "Redrawn world art (Zigholtul)". Fuller trees, crisper furniture, chests and crystals, drawn over the stock look; only you see it, it changes at once, and it is off until you tick it. By Zigholtul. Update your game through the launcher to see the option.
+
 ## 2026.10.26.12
 
 ### Staff

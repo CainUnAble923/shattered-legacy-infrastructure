@@ -112,11 +112,18 @@ What is in here
                Optional looks for your backpack, bags, metal chests, crates and
                spell scrolls (Options, Interface, Appearance; only you see them)
                by Carl Hamilton, Safera, Castiel, Erachiro and CorvaeOboro.
+               Optional redrawn world art (Options, Interface, Appearance, "Redrawn
+               world art (Zigholtul)"; off until you tick it; only you see it):
+               fuller trees, crisper furniture, chests and crystals, from
+               Zigholtul's UO Art Static Replacements for TazUO, in
+               app\tazuo\ExternalImages\sl-redrawn-art\. They are redraws of
+               Ultima Online's own world art (some made with AI, a few taken from
+               EA's Enhanced Client) and ship only inside this package.
   app\music\   Shattered Legacy's own music for chosen places and fights, when any
                ships: remixes of the Ultima Online music by Zigholtul (UO Classic
                Music, SOS Mix) and ParanoiaPhD (IceYouMusic remixes), credited by
                track in app\music\shard-music.txt. The stock music stays as it is;
                type [ShardMusic off in game to keep only the stock music.
   app\         the scripts that set it up and start it
-  Nothing from EA is included. Ultima Online itself comes from EA's own free
+  No EA game file is included. Ultima Online itself comes from EA's own free
   installer at https://uo.com/client-download/
