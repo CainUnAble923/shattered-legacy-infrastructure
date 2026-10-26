@@ -560,6 +560,12 @@ apply_patch "$PATCHES/Bard-musicianship-reduction-osi.patch"
 apply_patch "$PATCHES/BaseWeapon-block-chance-osi.patch"
 apply_patch "$PATCHES/Tracking-radius-osi.patch"
 apply_patch "$PATCHES/NetherCyclone-resist-osi.patch"
+# cc-P625 (Tracking Ping, stage 1): the Tracking skill, after sending its stock menu, calls customizations
+# ClusterFTrackingPing.OfferFromTracking, which from 90 Base sends a small Ping menu beside it. One call, one hunk, after
+# the radius patch above (same file). Rejected: replacing the skill callback from customizations (Initialize order between
+# the two is not guaranteed) and a fifth button in the StaticGump (its layout is cached per type, so it cannot depend on
+# the skill). Pinned by TrackingPingVerification.
+apply_patch "$PATCHES/Tracking-ping-offer.patch"
 
 # cc-P67 (cc-P54 B.3/B.4, Chase's decisions 10 and 11): four more effects read a skill with no upper bound, and the skills
 # behind them climb past OSI's tops now or will. Each patched line reads the player's skill through ClusterFSkillClamps,

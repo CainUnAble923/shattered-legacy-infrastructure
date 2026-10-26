@@ -29,6 +29,13 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.25.11
+
+### Added
+- Tracking Ping: at 90 Tracking (trained skill; gear does not count) use Tracking and press Ping, or type [TrackingPing, to sense the creatures around you on your floor for a few seconds. Your chat gets the count (hostile, neutral, friendly, and how tough the hostiles look), and [TrackingPing results lists them. A ping costs 15 stamina, reveals you, and can be used once every 30 seconds. Its range and length grow with Tracking up to 200.
+- From 120 Tracking, a ping also finds players you can see within 12 tiles, and they feel watched. Hidden players are never found, and neither are the pets of hidden owners.
+- Ping does not work inside dungeons yet, and dots on the mini map come in a later update.
+
 ## 2026.10.25.10
 
 ### Changed
