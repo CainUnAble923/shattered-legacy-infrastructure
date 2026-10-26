@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.26
+
+### Staff
+- League investigation warrants, first piece (test shard only; investigations are off and nothing is sold yet): [add LeagueInvestigationWarrant makes a warrant for The Siegebreaker or The Hollow Oak, bound to the first player who picks it up. Double-click gives directions to its site, or the reason it cannot be called. [LeagueInvestigationSeed dryrun lists the investigation markers it would place, at Covetous's harpy hall and the Yew woods, and refuses a site near a town, a house or the Covetous Void Pool.
+
 ## 2026.10.25.14
 
 ### Staff
