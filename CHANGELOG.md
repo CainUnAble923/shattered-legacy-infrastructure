@@ -40,6 +40,7 @@ Example:
 ### Staff
 - [Tutorial copies lists the isle's 16 private copies, who is on each, and who is waiting.
 - The loop vision's two full-screen stills are reserved and off (clusterf.tutorial.visionPanels); placeholders ship until the drawings do.
+- The player package keeps the stock Trammel and Felucca land until the Siege of Sosaria swap goes live: the new map is built and checked but stays out of the download, behind one switch (player-package/vendor/sos-trammel-map/switch.txt, off). The swap's go-live release turns it on.
 
 ## 2026.10.27.3
 
