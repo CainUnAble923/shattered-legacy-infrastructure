@@ -642,3 +642,11 @@ No pixel of the art changed and the canvas is kept. The tool re-reads every PNG 
 Records (records.json), written by hand: the stock butte's own tiledata, read from the client's tiledata.mul (SHA-256
 44f48a45...): "archery butte", 0x00008040 (ArticleAn | Impassable), weight 255, height 10, for every picture in both
 facings. No animdata: the server shows each still. Server copy: ScoringArcheryButteArt.Records.
+
+Loop vision panels, gumps 23209 and 23210 (cc-P665, P481 F5)
+-------------------------------------------------------------
+A PLACEHOLDER pair until Chase draws the real stills (art request p665-vision-panels, filed by cc-P665): 23209 the
+broken sword, 23210 the League crest (a ring of stones round a broken sword). Each is a dark 800 x 600 field with a
+label, made by shard-migration notes\cc-P665-tools\make_placeholders.py. The server shows them only when
+clusterf.tutorial.visionPanels is on (off by default), so the loop vision runs without them. Ours; no third-party
+content.

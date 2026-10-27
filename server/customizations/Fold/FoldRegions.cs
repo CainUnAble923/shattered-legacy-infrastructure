@@ -17,7 +17,8 @@
 //     633-642), so recall and gate out of the Fold, and into it from anywhere, are both refused. Only our own moongates
 //     and staff move people across.
 //   - Always day: AlterLightLevel sets the global level to LightCycle.DayLevel, as DungeonRegion.cs:27-30 sets the
-//     dungeon level. A client's own light setting can still override it (P605 risk 7).
+//     dungeon level. A client's own light setting can still override it (P605 risk 7). cc-P665: a player inside the
+//     loop vision gets the scene's level instead (TutorialVisionScene.AlterLight), for them alone.
 //   Trammel's protections (Young, no non-consensual PvP) come from the map's TrammelRules, not from here.
 //
 // FoldMirrorRegion: Trammel over void C (x 6160-6639, y 1832-2279), where the Wakening Isle's tiles are painted (design
@@ -53,6 +54,7 @@ public class FoldRegion : NoHousingRegion
     public override void AlterLightLevel(Mobile m, ref int global, ref int personal)
     {
         global = LightCycle.DayLevel;
+        Server.Tutorial.TutorialVisionScene.AlterLight(m, ref global, ref personal); // cc-P665: the vision's light, per player
     }
 }
 

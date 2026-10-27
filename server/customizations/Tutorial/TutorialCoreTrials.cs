@@ -28,8 +28,6 @@ public static class TutorialCoreTrials
         public TutorialTrialProgress Progress { get; } = new(station.Key);
         public Item? Supply;
         public TimerExecutionToken Timer;
-        public DateTime VisionAt;
-        public int VisionLine;
         public int Ticks;
     }
 
@@ -58,7 +56,7 @@ public static class TutorialCoreTrials
         "core.death" => "Follow the arrow into the training yard to the pale gray rat, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
         "core.banking" => "Follow the arrow through the practice bank's door in the trades square to Merrin the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
         "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss to finish this lesson; you can read about the League without joining.",
-        "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the bright blue rune stone. Stay nearby until the vision ends; it will not change your character.",
+        "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the bright blue rune stone. Watch the vision; it lasts under a minute, holds you still, and will not change your character.",
         "core.travel" => "Follow the arrow to the end of the dock and walk into the shimmering blue moongate, or double-click it. It takes you, and your pet, to Rook on the New Haven plaza.",
         _ => "Double-click Tamsin on the Wakening Isle's beach to choose this lesson."
     };
@@ -183,6 +181,7 @@ public static class TutorialCoreTrials
     {
         if (!Active.Remove(pm.Serial, out var trial)) { return; }
         trial.Timer.Cancel();
+        TutorialVisionScene.End(pm, false); // cc-P665: a cancelled lesson ends its vision (back at the stones, unfrozen)
         trial.Supply?.Delete(); // exact supplied instance only, even if moved to the bank
         pm.QuestArrow?.Stop();
     }
@@ -224,20 +223,10 @@ public static class TutorialCoreTrials
             case "core.death" when pm.Alive && trial.Progress.Step == 2 && Nearby(pm, TutorialCorePlacement.HealerSpot, 4):
                 Observe(pm, TutorialAction.Resurrected);
                 break;
-            case "core.loop" when trial.Progress.Step == 1:
-                if (!pm.Alive || !Nearby(pm, TutorialCorePlacement.Spot("core.loop"), 4))
-                {
-                    trial.Progress.Reset(); trial.VisionLine = 0;
-                    ClusterFTutorial.SystemLine(pm, "Stay beside the bright blue rune stone until the vision ends. Double-click it to restart the vision.");
-                    break;
-                }
-                if (Core.Now < trial.VisionAt) { break; }
-                if (trial.VisionLine < TutorialVision.Lines.Length)
-                {
-                    pm.SendMessage(0x3B2, TutorialVision.Lines[trial.VisionLine++]);
-                    trial.VisionAt = Core.Now + TimeSpan.FromSeconds(2);
-                }
-                else { Observe(pm, TutorialAction.VisionFinished); }
+            // cc-P665: the scene (TutorialVisionScene) runs the vision and reports its end; a started vision with no scene
+            // playing (it ended early) can be started again from the stone.
+            case "core.loop" when trial.Progress.Step == 1 && !TutorialVisionScene.IsPlaying(pm):
+                trial.Progress.Reset();
                 break;
         }
     }
@@ -279,10 +268,15 @@ public static class TutorialCoreTrials
         if (!pm.Alive || !IsDoing(pm, "core.loop") || !Nearby(pm, TutorialCorePlacement.Spot("core.loop"))) { return; }
         var trial = Current(pm)!;
         if (trial.Progress.Step != 0) { return; }
+        if (TutorialVisionScene.IsPlaying(pm)) { return; }
         Observe(pm, TutorialAction.VisionStarted);
-        trial.VisionAt = Core.Now;
-        pm.FixedParticles(0x376A, 9, 32, 5030, 0x8AF, 0, EffectLayer.Waist);
-        pm.PlaySound(0x1F7);
+        // cc-P665: the 45-second scene; its last beat finishes the lesson, an early end lets the stone start it again.
+        if (!TutorialVisionScene.Play(pm, p => Observe(p, TutorialAction.VisionFinished), VisionEnded)) { trial.Progress.Reset(); }
+    }
+
+    private static void VisionEnded(PlayerMobile pm)
+    {
+        if (IsDoing(pm, "core.loop")) { Current(pm)!.Progress.Reset(); }
     }
 }
 

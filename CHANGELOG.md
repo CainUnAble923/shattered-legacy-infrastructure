@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.27.4
+
+### Changed
+- Test shard: the loop vision at the Wakening Isle's standing stones is now a short scene of its own, under a minute: the world darkens, the Stranger strikes the Gem, your own echo wakes and speaks, and a hooded figure of the League appears. Only you see and hear it, words show in the middle of the screen, and it changes nothing about your character. If you log out or are interrupted, you are back at the stones and can watch it again.
+
+### Staff
+- The loop vision's two full-screen stills are reserved and off (clusterf.tutorial.visionPanels); placeholders ship until the drawings do.
+
 ## 2026.10.27.3
 
 ### Added
