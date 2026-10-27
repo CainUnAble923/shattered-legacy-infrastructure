@@ -29,6 +29,13 @@
 //   [ClusterFSeedTutorialFarm [dryrun | force]   places what is missing; moves and deletes nothing; idempotent.
 // It refuses on any shard that is not the test shard (ClusterFStaffHub.IsTestShard) unless clusterf.tutorialFarm.allowLive
 // is true, which nobody sets until Chase says the farm goes live.
+//
+// cc-P663 (P481 F3): the farm is on the Wakening Isle now (TutorialIsleFarmLayout: every piece shifted by (+3314, +1364),
+// its height above the old ground kept), and its lesson is the core station core.farm, after chat: Wren answers a trainee
+// only once the lessons before it are done, and the third step finishes it (TutorialCoreTrials.FarmFinished). An account
+// that already has its pet starts at the pests. The isle seeder (TutorialCorePlacement) calls Seed: the isle's farm, its
+// door, Wren, the pests and the pen. [ClusterFSeedTutorialFarm now seeds only New Haven's farm props (the farmhouse,
+// door and pen) that the wing trials still use there (the pen trial, the porch tour stop) until S7 moves them.
 
 #nullable enable
 
@@ -52,18 +59,25 @@ namespace Server.Tutorial
         public const string PestsKey = "farm.pests";
         public const string HealKey = "farm.heal";
         public const string TamingStation = "animals.taming";
+        public const string CoreStation = "core.farm";
         public const string HealingStation = "combat.healing";
 
         public static readonly string[] FarmPetLines = ["dog", "cat"];
 
-        /// <summary>Just outside the gate, beside the sign (3401,2613).</summary>
-        public static readonly Point3D FarmhandSpot = new(3400, 2614, 0);
+        /// <summary>The isle farm's spot for New Haven farm spot <paramref name="p"/> (the farm moved whole).</summary>
+        public static Point2D OnIsle(Point2D p) => new(p.X + TutorialIsleFarmLayout.Shift.X, p.Y + TutorialIsleFarmLayout.Shift.Y);
 
-        /// <summary>The crop rows the pests live in, and the pen (inside its own fence, x 3393-3398, y 2604-2608).</summary>
-        public static readonly Point2D PestSpot = new(3388, 2614);
+        /// <summary>Just outside the gate, beside the sign (New Haven's 3400,2614, moved with the farm).</summary>
+        public static readonly Point2D FarmhandSpot = OnIsle(new Point2D(3400, 2614));
+
+        /// <summary>The crop rows the pests live in, and the pen (inside its own fence), on the isle.</summary>
+        public static readonly Point2D PestSpot = OnIsle(new Point2D(3388, 2614));
         public const int PestRange = 3;
         public const int PestCount = 3;
-        public static readonly Point2D PenSpot = new(3395, 2606);
+        /// <summary>New Haven's pen (x 3393-3398, y 2604-2608), still seeded there for the wing trials' pen.</summary>
+        public static readonly Point2D HavenPenSpot = new(3395, 2606);
+
+        public static readonly Point2D PenSpot = OnIsle(HavenPenSpot); // after HavenPenSpot: static fields run in order
         public const int PenRange = 2;
         public const int PenCount = 4;
 
@@ -79,10 +93,11 @@ namespace Server.Tutorial
         public static Func<bool> IsTestShard { get; set; } = () => ClusterFStaffHub.IsTestShard;
 
         /// <summary>Whether the server's Trammel has the map patch (the two trees gone). Tests replace it.</summary>
-        public static Func<bool> MapPatched { get; set; } = () => TreesLeft(Map.Trammel) == 0;
+        public static Func<bool> MapPatched { get; set; } = () => TreesLeft(HavenSpots.Map) == 0;
 
         // The Farmhand's lines (ours, for Chase's eye) and the Echo's (the "System:" voice).
-        public const string NotTraineeLine = "These farm lessons are for characters taking the tutorial. Double-click Rook on the plaza to check your progress.";
+        public const string NotTraineeLine = "These farm lessons are for characters taking the tutorial. Double-click Tamsin on the beach to check your progress.";
+        public const string NotYetLine = "Finish {0} first, then come back to me.";
         public const string PetOfferLine = "Choose a dog or cat in the window. This is your one tutorial pet, which you keep after graduation.";
         public const string NoSlotLine = "You cannot control another pet right now. Stable one of your pets with an animal trainer, then come back.";
         public const string PestsLine = "Walk into the cabbage rows, say 'all kill', then click a rat or grass snake for your pet to attack. Defeat {0} pests to finish this step.";
@@ -153,11 +168,11 @@ namespace Server.Tutorial
         }
 
         /// <summary>The farm's vet, beside the Farmhand (placed by the tutorial seeder).</summary>
-        public static readonly Point3D FarmVetSpot = new(3400, 2612, 0);
+        public static readonly Point2D FarmVetSpot = OnIsle(new Point2D(3400, 2612));
 
-        public static TutorialVeterinarian? FindVet()
+        public static TutorialVeterinarian? FindVet(Map? map = null)
         {
-            foreach (var m in Map.Trammel.GetMobilesInRange(FarmVetSpot, 4))
+            foreach (var m in (map ?? TutorialWorld.Isle).GetMobilesInRange(new Point3D(FarmVetSpot, 0), 4))
             {
                 if (m is TutorialVeterinarian v && !v.Deleted)
                 {
@@ -182,8 +197,8 @@ namespace Server.Tutorial
         /// <summary>The station's handler: a line and a quest arrow to the Farmhand.</summary>
         public static void PointTo(PlayerMobile pm)
         {
-            ClusterFTutorial.SystemLine(pm, "Follow the arrow west of town, past the Bardic Guild, to the farm gate. Double-click Wren the Farmhand, who wears a straw hat and carries a pitchfork.");
-            if (TutorialFarmhand.Find() is { } hand && hand.Map == pm.Map)
+            ClusterFTutorial.SystemLine(pm, "Follow the arrow east along the road to the farm gate. Double-click Wren the Farmhand, who wears a straw hat and carries a pitchfork.");
+            if (TutorialFarmhand.Find(TutorialWorld.MapOf(pm)) is { } hand && hand.Map == pm.Map)
             {
                 pm.QuestArrow = new GuildDirectionArrow(pm, hand, hand.Location, hand.Map, "Wren the Farmhand");
             }
@@ -193,6 +208,14 @@ namespace Server.Tutorial
         public static int Talk(PlayerMobile pm, Mobile hand)
         {
             var step = StepOf(pm);
+
+            // cc-P663: the farm is a core station; a trainee with earlier lessons left is sent back to them.
+            if (step is >= 1 and <= 3 && RecordOf(pm) is { } record && !ClusterFTutorial.IsDone(record, CoreStation) &&
+                System.Linq.Enumerable.FirstOrDefault(ClusterFTutorial.CoreLeft(record)) is { } next && next.Key != CoreStation)
+            {
+                hand.SayTo(pm, string.Format(NotYetLine, next.Title));
+                return 0;
+            }
 
             switch (step)
             {
@@ -242,6 +265,7 @@ namespace Server.Tutorial
 
             RecordOf(pm)!.PetClaimed = true;
             ClusterFTutorial.SystemLine(pm, EchoPetLine);
+            CheckDone(pm);
             return pet;
         }
 
@@ -276,7 +300,22 @@ namespace Server.Tutorial
             RecordOf(pm)!.StationsDone.Add(PestsKey);
             ClusterFTutorial.SystemLine(pm, EchoPestsLine);
             ClusterFTutorial.CompleteStation(pm, TamingStation);
-            ClusterFTutorial.SystemLine(pm, "Return to Wren the Farmhand at the farm gate and double-click her.");
+            if (!CheckDone(pm))
+            {
+                ClusterFTutorial.SystemLine(pm, "Return to Wren the Farmhand at the farm gate and double-click her.");
+            }
+        }
+
+        /// <summary>cc-P663: all three steps done (StepOf 4) finishes core.farm. True when they are.</summary>
+        public static bool CheckDone(PlayerMobile pm)
+        {
+            if (StepOf(pm) != 4)
+            {
+                return false;
+            }
+
+            TutorialCoreTrials.FarmFinished(pm);
+            return true;
         }
 
         public enum BandageGift { Given, HasSome, NoneLeft, NoRoom }
@@ -330,6 +369,7 @@ namespace Server.Tutorial
             RecordOf(pm)!.StationsDone.Add(HealKey);
             ClusterFTutorial.SystemLine(pm, EchoHealLine);
             ClusterFTutorial.CompleteStation(pm, HealingStation);
+            CheckDone(pm);
             return true;
         }
 
@@ -356,8 +396,8 @@ namespace Server.Tutorial
         }
 
         [Usage("ClusterFSeedTutorialFarm [dryrun | force]")]
-        [Description("Places the New Haven tutorial farm (the farmhouse and field addon, its door, the Farmhand and the pest and pen spawners) where missing. Test shard only unless clusterf.tutorialFarm.allowLive; refuses while the map still has the two trees the farm's map patch removes, unless force. Moves and deletes nothing.")]
-        [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestOnly, DryRun = "dryrun", Summary = "Places the New Haven tutorial farm (farmhouse, field, Farmhand, spawners) on the test shard. Moves and deletes nothing.")]
+        [Description("Places New Haven's tutorial farm props (the farmhouse and field addon, its door and the pen spawner) that the wing trials use, where missing. The core farm, with Wren and the pests, is on the Wakening Isle ([ClusterFSeedTutorial). Test shard only unless clusterf.tutorialFarm.allowLive; refuses while the map still has the two trees the farm's map patch removes, unless force. Moves and deletes nothing.")]
+        [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestOnly, DryRun = "dryrun", Summary = "Places New Haven's tutorial farm props (farmhouse, field, pen) for the wing trials on the test shard. Moves and deletes nothing.")]
         private static void OnSeedCommand(CommandEventArgs e)
         {
             var mode = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "";
@@ -367,15 +407,72 @@ namespace Server.Tutorial
                 return;
             }
 
-            e.Mobile.SendMessage(Seed(mode == "dryrun", mode == "force").Message);
+            e.Mobile.SendMessage(SeedHaven(mode == "dryrun", mode == "force").Message);
         }
 
-        public static SeedResult Seed(bool dryRun, bool force = false)
+        private static SeedResult? Refusal(bool island)
         {
             if (!IsTestShard() && !AllowLive)
             {
                 return new SeedResult(true, 0, 0, 0, 0, 0,
                     "Tutorial farm: not seeded. This is not the test shard (and clusterf.tutorialFarm.allowLive is off).");
+            }
+
+            return island && TutorialWorld.Isle == null
+                ? new SeedResult(true, 0, 0, 0, 0, 0, "Tutorial farm: not seeded. The Fold (map 32) is not registered.")
+                : null;
+        }
+
+        /// <summary>cc-P663: the core farm on the isle: the farm addon, its door, Wren, the pests and the pen.</summary>
+        public static SeedResult Seed(bool dryRun)
+        {
+            if (Refusal(true) is { } refused)
+            {
+                return refused;
+            }
+
+            var map = TutorialWorld.Isle;
+            int addons = 0, doors = 0, hands = 0, spawners = 0, present = 0;
+
+            if (FindAddon<TutorialIsleFarmAddon>(map, TutorialIsleFarmLayout.Anchor) != null) { present++; }
+            else
+            {
+                if (!dryRun) { new TutorialIsleFarmAddon().MoveToWorld(TutorialIsleFarmLayout.Anchor, map); }
+                addons++;
+            }
+
+            if (FindDoor(map, TutorialIsleFarmLayout.DoorSpot) != null) { present++; }
+            else
+            {
+                if (!dryRun) { MakeDoor().MoveToWorld(TutorialIsleFarmLayout.DoorSpot, map); }
+                doors++;
+            }
+
+            if (TutorialFarmhand.Find(map) != null) { present++; }
+            else
+            {
+                if (!dryRun)
+                {
+                    var spot = TutorialWorld.Ground(map, FarmhandSpot);
+                    new TutorialFarmhand { Direction = Direction.East, Home = spot, RangeHome = 0 }.MoveToWorld(spot, map);
+                }
+
+                hands++;
+            }
+
+            SeedSpawners(map, SpawnerRows, dryRun, ref spawners, ref present);
+
+            var verb = dryRun ? "would place" : "placed";
+            return new SeedResult(false, addons, doors, hands, spawners, present,
+                $"Tutorial farm on the isle{(dryRun ? " (dry run)" : "")}: {verb} {addons} farm addon, {doors} door, {hands} Farmhand, {spawners} spawners; already there {present}.");
+        }
+
+        /// <summary>New Haven's farm props for the wing trials: the farm addon, its door and the pen (no Wren, no pests).</summary>
+        public static SeedResult SeedHaven(bool dryRun, bool force = false)
+        {
+            if (Refusal(false) is { } refused)
+            {
+                return refused;
             }
 
             if (!force && !MapPatched())
@@ -384,36 +481,34 @@ namespace Server.Tutorial
                     "Tutorial farm: not seeded. The server's map still has the two trees inside the fence; load the map patch first (or use force).");
             }
 
-            var map = Map.Trammel;
-            int addons = 0, doors = 0, hands = 0, spawners = 0, present = 0;
+            var map = HavenSpots.Map;
+            int addons = 0, doors = 0, spawners = 0, present = 0;
 
-            if (FindAddon(map) != null) { present++; }
+            if (FindAddon<TutorialFarmAddon>(map, TutorialFarmLayout.Anchor) != null) { present++; }
             else
             {
                 if (!dryRun) { new TutorialFarmAddon().MoveToWorld(TutorialFarmLayout.Anchor, map); }
                 addons++;
             }
 
-            if (FindDoor(map) != null) { present++; }
+            if (FindDoor(map, TutorialFarmLayout.DoorSpot) != null) { present++; }
             else
             {
                 if (!dryRun) { MakeDoor().MoveToWorld(TutorialFarmLayout.DoorSpot, map); }
                 doors++;
             }
 
-            if (TutorialFarmhand.Find() != null) { present++; }
-            else
-            {
-                if (!dryRun)
-                {
-                    var spot = new Point3D(FarmhandSpot.X, FarmhandSpot.Y, map.GetAverageZ(FarmhandSpot.X, FarmhandSpot.Y));
-                    new TutorialFarmhand { Direction = Direction.East, Home = spot, RangeHome = 0 }.MoveToWorld(spot, map);
-                }
+            SeedSpawners(map, HavenSpawnerRows, dryRun, ref spawners, ref present);
 
-                hands++;
-            }
+            var verb = dryRun ? "would place" : "placed";
+            return new SeedResult(false, addons, doors, 0, spawners, present,
+                $"New Haven farm props{(dryRun ? " (dry run)" : "")}: {verb} {addons} farm addon, {doors} door, {spawners} spawners; already there {present}.");
+        }
 
-            foreach (var (spot, range, count, types) in SpawnerRows)
+        private static void SeedSpawners(Map map, (Point2D Spot, int Range, int Count, string[] Types)[] rows, bool dryRun,
+            ref int spawners, ref int present)
+        {
+            foreach (var (spot, range, count, types) in rows)
             {
                 if (FindSpawner(map, spot, types[0]) != null) { present++; continue; }
 
@@ -430,10 +525,6 @@ namespace Server.Tutorial
 
                 spawners++;
             }
-
-            var verb = dryRun ? "would place" : "placed";
-            return new SeedResult(false, addons, doors, hands, spawners, present,
-                $"Tutorial farm{(dryRun ? " (dry run)" : "")}: {verb} {addons} farm addon, {doors} door, {hands} Farmhand, {spawners} spawners; already there {present}.");
         }
 
         public static readonly (Point2D Spot, int Range, int Count, string[] Types)[] SpawnerRows =
@@ -442,12 +533,17 @@ namespace Server.Tutorial
             (PenSpot, PenRange, PenCount, PenTypes)
         ];
 
+        public static readonly (Point2D Spot, int Range, int Count, string[] Types)[] HavenSpawnerRows =
+        [
+            (HavenPenSpot, PenRange, PenCount, PenTypes)
+        ];
+
         /// <summary>The layout's door art 0x06AD: dark wood, facing SouthCW = 4 (closed id 0x06A5 + 2 x facing, Doors.cs DarkWoodDoor).</summary>
         public static BaseDoor MakeDoor() => new DarkWoodDoor(DoorFacing.SouthCW);
 
-        public static TutorialFarmAddon? FindAddon(Map map)
+        public static T? FindAddon<T>(Map map, Point3D anchor) where T : BaseAddon
         {
-            foreach (var item in map.GetItemsInRange<TutorialFarmAddon>(TutorialFarmLayout.Anchor, 2))
+            foreach (var item in map.GetItemsInRange<T>(anchor, 2))
             {
                 if (!item.Deleted)
                 {
@@ -458,16 +554,19 @@ namespace Server.Tutorial
             return null;
         }
 
+        /// <summary>The isle's farm addon.</summary>
+        public static TutorialIsleFarmAddon? FindAddon(Map map) => FindAddon<TutorialIsleFarmAddon>(map, TutorialIsleFarmLayout.Anchor);
+
         /// <summary>
         /// The farmhouse door, open or closed. cc-P453: an open door stands at its offset (pinned BaseDoor: +1,+1 for
         /// SouthCW), so it is matched by where it stands closed.
         /// </summary>
-        public static BaseDoor? FindDoor(Map map)
+        public static BaseDoor? FindDoor(Map map, Point3D doorSpot)
         {
-            foreach (var item in map.GetItemsInRange<BaseDoor>(TutorialFarmLayout.DoorSpot, 2))
+            foreach (var item in map.GetItemsInRange<BaseDoor>(doorSpot, 2))
             {
                 var closed = item.Open ? new Point3D(item.X - item.Offset.X, item.Y - item.Offset.Y, item.Z - item.Offset.Z) : item.Location;
-                if (!item.Deleted && closed == TutorialFarmLayout.DoorSpot)
+                if (!item.Deleted && closed == doorSpot)
                 {
                     return item;
                 }
@@ -475,6 +574,9 @@ namespace Server.Tutorial
 
             return null;
         }
+
+        /// <summary>The isle farmhouse's door.</summary>
+        public static BaseDoor? FindDoor(Map map) => FindDoor(map, TutorialIsleFarmLayout.DoorSpot);
 
         public static Spawner? FindSpawner(Map map, Point2D spot, string firstType)
         {
@@ -529,6 +631,23 @@ namespace Server.Items
         {
             var a = TutorialFarmLayout.Anchor;
             foreach (var (id, x, y, z) in TutorialFarmLayout.Pieces)
+            {
+                AddComponent(new AddonComponent(id), x - a.X, y - a.Y, z - a.Z);
+            }
+        }
+
+        public override string DefaultName => "the League farm";
+    }
+
+    /// <summary>cc-P663: the same farm on the Wakening Isle (TutorialIsleFarmLayout), anchored on the farmhouse's centre.</summary>
+    [SerializationGenerator(0, false)]
+    public partial class TutorialIsleFarmAddon : BaseAddon
+    {
+        [Constructible]
+        public TutorialIsleFarmAddon()
+        {
+            var a = TutorialIsleFarmLayout.Anchor;
+            foreach (var (id, x, y, z) in TutorialIsleFarmLayout.Pieces)
             {
                 AddComponent(new AddonComponent(id), x - a.X, y - a.Y, z - a.Z);
             }
@@ -599,9 +718,9 @@ namespace Server.Mobiles
             TutorialFarm.Talk(pm, this);
         }
 
-        public static TutorialFarmhand? Find()
+        public static TutorialFarmhand? Find(Map? map = null)
         {
-            foreach (var m in Map.Trammel.GetMobilesInRange(TutorialFarm.FarmhandSpot, 10))
+            foreach (var m in (map ?? TutorialWorld.Isle).GetMobilesInRange(new Point3D(TutorialFarm.FarmhandSpot, 0), 10))
             {
                 if (m is TutorialFarmhand h && !h.Deleted)
                 {

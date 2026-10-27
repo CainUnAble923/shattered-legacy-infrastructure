@@ -180,8 +180,9 @@ namespace Server.Tutorial
                 "Follow the arrow to each stop and read the lesson when you arrive. The blank recall rune in your backpack is a loan and disappears when the tour ends.",
                 Stops:
                 [
-                    (() => TutorialCorePlacement.GateSpot, "the moongate",
-                        "This practice gate works only during the main travel lesson and returns you to the plaza. For travel elsewhere, public moongates offer destinations and shipwrights sell boat deeds."),
+                    // cc-P663: the tutorial's own gate is on the isle now; the tour starts at New Haven's public one.
+                    (() => HavenSpots.PublicMoongate, "the moongate",
+                        "This public moongate offers destinations across the lands; the isle's moongate only ever brings trainees to Rook. Shipwrights sell boat deeds for travel by sea."),
                     (() => TutorialRecruiter.Spot, "the plaza",
                         "A recall rune stores a location when you cast Mark on it. Return with Recall, Gate Travel, or Sacred Journey; a runebook stores up to 16 runes.")
                 ]),
@@ -192,7 +193,7 @@ namespace Server.Tutorial
                 [
                     (() => YardSpot, "the training yard",
                         "Blue names usually mean innocent; gray names can be attacked, and red names mark murderers. Harming an innocent can make you gray for a while."),
-                    (() => TutorialCorePlacement.HealerSpot, "the healer",
+                    (() => HavenSpots.Healer, "the healer",
                         "Karma and fame affect your title; killing innocent players can give you murder counts. Five murder counts make your name red, and some healers will refuse to help you."),
                     (() => TutorialRecruiter.Spot, "the plaza",
                         "In a guarded town, say 'guards' if someone attacks you unlawfully. Trammel generally prevents attacks on other players; Felucca allows them.")
@@ -557,7 +558,7 @@ namespace Server.Tutorial
                     if (!trial.Finished)
                     {
                         var (next, name) = PointAt(trial);
-                        TutorialCoreTrials.Point(pm, next, name);
+                        TutorialCoreTrials.Point(pm, next, name, HavenSpots.Map);
                     }
                 }
             }

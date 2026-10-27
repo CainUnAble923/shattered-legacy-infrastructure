@@ -60,6 +60,7 @@ public class TutorialVerification : IDisposable
         }
 
         ClusterFTutorial.Enabled = true;
+        FoldMaps.Configure(); // cc-P663: the lessons are on the isle (map 32)
         TutorialCoreTrials.EnsureHooks();
         ClusterFLootBoxes.LoopProvider = ClusterFLoops.LoopOf;
     }
@@ -83,6 +84,7 @@ public class TutorialVerification : IDisposable
             Account[slot] = Pm;
             Pm.MoveToWorld(new Point3D(1700, 1700 + slot, 0), Map.Trammel);
             Ns = PacketTestUtilities.CreateTestNetState();
+            Ns.Account = Account; // cc-P663: the start choice moves the trainee to the isle, a map change
             Pm.NetState = Ns;
             Ns.Mobile = Pm;
         }
@@ -124,6 +126,7 @@ public class TutorialVerification : IDisposable
             "core.paperdoll" => [TutorialAction.Equipped],
             "core.backpack" => [TutorialAction.OpenedBag],
             "core.chat" => [TutorialAction.SaidPhrase],
+            "core.farm" => [TutorialAction.FarmDone],
             "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
             "core.banking" => [TutorialAction.Deposited],
             "core.travel" => [TutorialAction.UsedGate],
@@ -144,7 +147,7 @@ public class TutorialVerification : IDisposable
         using var p = new Player();
         Assert.Equal(TutorialState.NotStarted, p.Record.State);
 
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         Assert.Equal(TutorialState.InCore, p.Record.State);
         Assert.Equal((uint)p.Pm.Serial, p.Record.CharacterSerial);
         ClusterFTutorial.CompleteStation(p.Pm, "core.movement");
@@ -170,7 +173,7 @@ public class TutorialVerification : IDisposable
     public void SkippingNeedsBothConfirmationsGrantsItsAchievementOnceAndRemedialGrantsTheSecond()
     {
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
 
         // The first confirmation alone skips nothing.
         new TutorialSkipGump(1).OnResponse(p.Ns, new RelayInfo(TutorialSkipGump.BtnYes, default, default, default, default));
@@ -202,7 +205,7 @@ public class TutorialVerification : IDisposable
     public void TheTutorialRunsOncePerAccount()
     {
         using var first = new Player();
-        ClusterFTutorial.OnLogin(first.Pm);
+        TutorialTestStart.Begin(first.Pm);
         Assert.Equal(TutorialState.InCore, first.Record.State);
 
         using var second = new Player(first.Account, 1);
@@ -226,7 +229,7 @@ public class TutorialVerification : IDisposable
         using var p = new Player();
         p.Account.Young = true;
         p.Pm.Young = true;
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         p.Pm.Skills[SkillName.Swords].Base = 45.0;
         p.Pm.Skills[SkillName.Mining].Base = 30.0;
 
@@ -234,7 +237,7 @@ public class TutorialVerification : IDisposable
         var levelBefore = ClusterFLootBoxes.LevelOf(p.Pm);
         var loopBefore = ClusterFLootBoxes.CurrentLoop(p.Pm);
 
-        foreach (var station in TutorialStations.Core.Where(s => s.Key != "core.loop"))
+        foreach (var station in TutorialStations.Core.TakeWhile(s => s.Key != "core.loop")) // cc-P663: travel is after it now
         {
             ClusterFTutorial.RunStation(p.Pm, station);
             FeedTrial(p.Pm, station.Key);
@@ -263,7 +266,7 @@ public class TutorialVerification : IDisposable
     {
         using var newbie = new Player();
         using var veteran = new Player();
-        ClusterFTutorial.OnLogin(newbie.Pm);
+        TutorialTestStart.Begin(newbie.Pm);
         veteran.Record.State = TutorialState.Graduated;
 
         var echo = new TutorialEcho();
@@ -293,7 +296,7 @@ public class TutorialVerification : IDisposable
     public void ResetClearsEvidenceAndReplacesSuppliesAndAnotherCharacterCannotUseTheRecord()
     {
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         var movement = TutorialStations.Find("core.movement")!;
         ClusterFTutorial.RunStation(p.Pm, movement);
         TutorialCoreTrials.Observe(p.Pm, TutorialAction.FirstMark);
@@ -324,12 +327,12 @@ public class TutorialVerification : IDisposable
     {
         using var p = new Player();
         using var stranger = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.movement")!);
-        p.Pm.MoveToWorld(TutorialCorePlacement.FirstMark, Map.Trammel);
+        p.Pm.MoveToWorld(TutorialCorePlacement.FirstMark, TutorialWorld.Isle);
         ShardTestClock.Advance(TimeSpan.FromSeconds(0.5));
         Assert.DoesNotContain("core.movement", p.Record.StationsDone);
-        p.Pm.MoveToWorld(TutorialCorePlacement.SecondMark, Map.Trammel);
+        p.Pm.MoveToWorld(TutorialCorePlacement.SecondMark, TutorialWorld.Isle);
         ShardTestClock.Advance(TimeSpan.FromSeconds(0.5));
         Assert.Contains("core.movement", p.Record.StationsDone);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.backpack")!);
@@ -353,14 +356,21 @@ public class TutorialVerification : IDisposable
         Assert.DoesNotContain("core.chat", p.Record.StationsDone);
         EventSink.InvokeSpeech(new SpeechEventArgs(p.Pm, TutorialCoreTrials.Phrase, MessageType.Regular, 0, []));
         Assert.Contains("core.chat", p.Record.StationsDone);
+        // cc-P663: the farm, after chat: an account with its pet starts at the pests; the heal finishes core.farm.
+        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.farm")!);
+        p.Record.PetClaimed = true;
+        for (var i = 0; i < TutorialFarm.PestsToClear; i++) { TutorialFarm.CountPest(p.Pm); }
+        Assert.DoesNotContain("core.farm", p.Record.StationsDone);
+        Assert.True(TutorialFarm.OnHealed(p.Pm));
+        Assert.Contains("core.farm", p.Record.StationsDone);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.death")!);
         var echo = new TutorialDeathEcho();
         var healer = new TutorialHealer();
         try
         {
-            echo.MoveToWorld(TutorialCorePlacement.DeathSpot, Map.Trammel);
-            healer.MoveToWorld(TutorialCorePlacement.HealerSpot, Map.Trammel);
-            p.Pm.MoveToWorld(echo.Location, Map.Trammel);
+            echo.MoveToWorld(TutorialCorePlacement.DeathSpot, TutorialWorld.Isle);
+            healer.MoveToWorld(TutorialCorePlacement.HealerSpot, TutorialWorld.Isle);
+            p.Pm.MoveToWorld(echo.Location, TutorialWorld.Isle);
             new TutorialDeathGump(echo).OnResponse(p.Ns, new RelayInfo(1, default, default, default, default));
             Assert.False(p.Pm.Alive);
             // The curated fixture does not register generated player events; invoke this real handler explicitly.
@@ -385,47 +395,49 @@ public class TutorialVerification : IDisposable
         ShardTestClock.Advance(TimeSpan.FromSeconds(0.5));
         Assert.Contains("core.banking", p.Record.StationsDone);
         Assert.True(token.Deleted);
-        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.travel")!);
-        var gate = new TutorialTravelGate();
-        var fits = TutorialCorePlacement.Fits;
-        try
-        {
-            gate.MoveToWorld(TutorialCorePlacement.GateSpot, Map.Trammel);
-            p.Pm.MoveToWorld(gate.Location, Map.Trammel);
-            TutorialCorePlacement.Fits = _ => false;
-            gate.OnDoubleClick(p.Pm);
-            Assert.DoesNotContain("core.travel", p.Record.StationsDone);
-            TutorialCorePlacement.Fits = _ => true;
-            gate.OnDoubleClick(p.Pm);
-            Assert.Equal(TutorialCorePlacement.GateExit, p.Pm.Location);
-            Assert.Contains("core.travel", p.Record.StationsDone);
-        }
-        finally { gate.Delete(); TutorialCorePlacement.Fits = fits; }
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.league")!);
         var registrar = new LeagueRegistrar();
         try
         {
-            registrar.MoveToWorld(TutorialCorePlacement.Spot("core.league"), Map.Trammel);
+            registrar.MoveToWorld(TutorialCorePlacement.Spot("core.league"), TutorialWorld.Isle);
             registrar.OnDoubleClick(p.Pm);
             Assert.DoesNotContain("core.league", p.Record.StationsDone);
-            p.Pm.MoveToWorld(registrar.Location, Map.Trammel);
+            p.Pm.MoveToWorld(registrar.Location, TutorialWorld.Isle);
             registrar.OnDoubleClick(p.Pm);
             Assert.Contains("core.league", p.Record.StationsDone);
         }
         finally { registrar.Delete(); }
-        p.Pm.MoveToWorld(TutorialCorePlacement.Spot("core.loop"), Map.Trammel);
+        p.Pm.MoveToWorld(TutorialCorePlacement.Spot("core.loop"), TutorialWorld.Isle);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.loop")!);
         TutorialCoreTrials.WatchVision(p.Pm);
         Assert.DoesNotContain("core.loop", p.Record.StationsDone);
         ShardTestClock.Advance(TimeSpan.FromSeconds(9));
         Assert.Contains("core.loop", p.Record.StationsDone);
+        // cc-P663: the dock moongate is the last lesson; it sets the trainee down beside Rook in New Haven.
+        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.travel")!);
+        var gate = new TutorialTravelGate();
+        var fits = TutorialCorePlacement.FitsOn;
+        try
+        {
+            gate.MoveToWorld(TutorialCorePlacement.GateSpot, TutorialWorld.Isle);
+            p.Pm.MoveToWorld(gate.Location, TutorialWorld.Isle);
+            TutorialCorePlacement.FitsOn = (_, _) => false;
+            gate.OnDoubleClick(p.Pm);
+            Assert.DoesNotContain("core.travel", p.Record.StationsDone);
+            TutorialCorePlacement.FitsOn = (_, _) => true;
+            gate.OnDoubleClick(p.Pm);
+            Assert.Equal(TutorialCorePlacement.GateExit, p.Pm.Location);
+            Assert.Same(Map.Trammel, p.Pm.Map);
+            Assert.Contains("core.travel", p.Record.StationsDone);
+        }
+        finally { gate.Delete(); TutorialCorePlacement.FitsOn = fits; }
     }
 
     [Fact]
     public void SeederRefusesLiveAndUnpatchedMapsAndIsIdempotentWithAFakeMap()
     {
         var testWorld = TutorialCorePlacement.IsTestShard;
-        var fits = TutorialCorePlacement.Fits;
+        var fits = TutorialCorePlacement.FitsOn;
         var farmWorld = TutorialFarm.IsTestShard;
         var patched = TutorialFarm.MapPatched;
         var items = new HashSet<Item>(World.Items.Values);
@@ -437,25 +449,26 @@ public class TutorialVerification : IDisposable
             Assert.Contains("Test world only", TutorialSeeder.Seed(false));
             TutorialCorePlacement.IsTestShard = () => true;
             TutorialFarm.IsTestShard = () => true;
-            TutorialFarm.MapPatched = () => false;
-            Assert.Contains("map patch", TutorialSeeder.Seed(false));
             TutorialFarm.MapPatched = () => true;
-            TutorialCorePlacement.Fits = _ => false;
+            // cc-P663: a void isle (no P662 patch) fails the fit check, and the refusal names the patch.
+            TutorialCorePlacement.FitsOn = (_, map) => map != TutorialWorld.Isle;
+            Assert.Contains("P662", TutorialSeeder.Seed(false));
+            TutorialCorePlacement.FitsOn = (_, _) => false;
             Assert.Contains("blocked", TutorialSeeder.Seed(false));
-            TutorialCorePlacement.Fits = _ => true;
+            TutorialCorePlacement.FitsOn = (_, _) => true;
             TutorialSeeder.Seed(true);
             Assert.Equal(items.Count, World.Items.Count);
             Assert.Equal(mobiles.Count, World.Mobiles.Count);
-            Assert.Contains("placed 9 station markers", TutorialSeeder.Seed(false));
+            Assert.Contains("placed 10 station markers", TutorialSeeder.Seed(false));
             var itemCount = World.Items.Count;
             var mobileCount = World.Mobiles.Count;
-            Assert.Contains("placed 0 station markers, 0 NPCs/echo/vets, 0 gate, 0 walking tiles", TutorialSeeder.Seed(false));
+            Assert.Contains("placed 0 station markers, 0 NPCs/echo/vets, 0 moongate, 0 walking tiles, 0 doors, 0 props", TutorialSeeder.Seed(false));
             Assert.Equal(itemCount, World.Items.Count);
             Assert.Equal(mobileCount, World.Mobiles.Count);
         }
         finally
         {
-            TutorialCorePlacement.IsTestShard = testWorld; TutorialCorePlacement.Fits = fits;
+            TutorialCorePlacement.IsTestShard = testWorld; TutorialCorePlacement.FitsOn = fits;
             TutorialFarm.IsTestShard = farmWorld; TutorialFarm.MapPatched = patched;
             foreach (var item in World.Items.Values.ToArray()) { if (!items.Contains(item)) { item.Delete(); } }
             foreach (var mobile in World.Mobiles.Values.ToArray()) { if (!mobiles.Contains(mobile)) { mobile.Delete(); } }
@@ -469,8 +482,8 @@ public class TutorialVerification : IDisposable
     {
         string[] expected =
         [
-            "core.movement", "core.paperdoll", "core.backpack", "core.chat", "core.death", "core.banking", "core.travel",
-            "core.league", "core.loop", "combat.weapons", "combat.healing", "magic.magery", "magic.necromancy",
+            "core.movement", "core.paperdoll", "core.backpack", "core.chat", "core.farm", "core.death", "core.banking",
+            "core.travel", "core.league", "core.loop", "combat.weapons", "combat.healing", "magic.magery", "magic.necromancy",
             "magic.chivalry", "magic.bushido", "magic.ninjitsu", "magic.mysticism", "gathering.mining",
             "gathering.lumberjacking", "gathering.fishing", "gathering.camping", "crafting.blacksmithy",
             "crafting.tailoring", "crafting.carpentry", "crafting.tinkering", "crafting.alchemy", "crafting.fletching",
@@ -478,10 +491,10 @@ public class TutorialVerification : IDisposable
             "thieving.trial", "housing.basics", "travel.wing", "reputation.wing", "shard.systems"
         ];
         Assert.Equal(expected.OrderBy(k => k), TutorialStations.All.Select(s => s.Key).OrderBy(k => k));
-        Assert.Equal(9, TutorialStations.Core.Count());
+        Assert.Equal(10, TutorialStations.Core.Count()); // cc-P663: core.farm
 
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         Assert.Equal("Finish the main lessons listed in Rook's window before you graduate.", ClusterFTutorial.Graduate(p.Pm));
 
         WalkTheCore(p.Pm);
@@ -511,7 +524,7 @@ public class TutorialVerification : IDisposable
         using var p = new Player();
         p.Account.AccessLevel = AccessLevel.GameMaster;
         p.Pm.AccessLevel = AccessLevel.GameMaster;
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         Assert.Equal(TutorialState.NotStarted, p.Record.State);
         Assert.False(ClusterFTutorial.IsParticipant(p.Pm));
     }
@@ -547,7 +560,7 @@ public class TutorialVerification : IDisposable
     public void AnotherCharacterOnTheAccountChangesNothing()
     {
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         using var alt = new Player(p.Account, 1);
 
         var page = new TutorialRecruiterGump(alt.Pm);

@@ -270,7 +270,7 @@ public class BurrowsCreaturesVerification
     {
         using var newbie = new Player();
         using var veteran = new Player();
-        ClusterFTutorial.OnLogin(newbie.Pm);
+        ClusterFTutorial.TryEnter(newbie.Pm);
         veteran.Record.State = TutorialState.Graduated;
         Assert.True(ClusterFTutorial.IsParticipant(newbie.Pm));
         Assert.False(ClusterFTutorial.IsParticipant(veteran.Pm));
@@ -324,7 +324,7 @@ public class BurrowsCreaturesVerification
     public void TheOverdraftsDropIsExactlyItsList()
     {
         using var newbie = new Player();
-        ClusterFTutorial.OnLogin(newbie.Pm);
+        ClusterFTutorial.TryEnter(newbie.Pm);
 
         for (var i = 0; i < 20; i++)
         {
@@ -437,7 +437,7 @@ public class BurrowsCreaturesVerification
     public void TheHoardingRatCallsTwoPennyRatsOnceAndTheBurrowMothersBroodStopsAtHerCapsAndDiesWithHer()
     {
         using var newbie = new Player();
-        ClusterFTutorial.OnLogin(newbie.Pm);
+        ClusterFTutorial.TryEnter(newbie.Pm);
 
         var rat = new HoardingRat();
         var spot = new Point3D(1200, 1200, 0);

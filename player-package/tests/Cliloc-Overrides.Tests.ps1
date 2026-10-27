@@ -261,6 +261,9 @@ Fact 'TheServerAndThePackageAgreeOnEveryNumber' {
     # cc-P415: the trash bag's corpse claim.
     $want['Clear a corpse'] = (& $num 'ClearACorpse')
     $want['Clear corpses nearby'] = (& $num 'ClearCorpsesNearby')
+    # cc-P663: the start choice's two city descriptions.
+    $want['Start with the tutorial (recommended): wake on the Wakening Isle, learn the basics along one road, then take the moongate to New Haven.'] = (& $num 'TutorialIslandCity')
+    $want['Skip the tutorial: start in New Haven.'] = (& $num 'NewHavenSkipCity')
     Assert-Equal $want.Count $ours.Count 'one entry per server constant'
     foreach ($e in $ours) { Assert-Equal $want["$($e.text)"] ([int]$e.number) "$($e.text)" }
     Assert-Equal $ours.Count $slClilocRegistry.Count 'registry rows'

@@ -29,6 +29,18 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.27
+
+### Added
+- Test shard: a new character chooses where to start. "Tutorial Island" (the first choice, recommended) wakes you on the Wakening Isle; "New Haven" skips the tutorial and starts you in town.
+- Test shard: the tutorial is on the Wakening Isle now, one road from the beach to the dock. Tamsin on the beach starts each lesson; the farm, with your pet, is one of them; the moongate at the end of the dock is the last, and it takes you and your pets to Rook in New Haven, who graduates you.
+
+### Changed
+- Test shard: Rook's "Restart the tutorial" sends you to the Wakening Isle's beach; the dock's moongate brings you back to him.
+
+### Staff
+- [ClusterFSeedTutorial now seeds the tutorial on the Wakening Isle (the Fold, map 32) and refuses until the isle's map patch is on the server; Rook and the town vet stay in New Haven. [ClusterFSeedTutorialFarm now places only New Haven's farmhouse, door and pen, for the optional lessons there. [Tutorial enter also sends the player to the isle.
+
 ## 2026.10.26.13
 
 ### Added

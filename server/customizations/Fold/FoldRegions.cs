@@ -22,7 +22,7 @@
 //
 // FoldMirrorRegion: Trammel over void C (x 6160-6639, y 1832-2279), where the Wakening Isle's tiles are painted (design
 // 3.1). The same tiles exist on Trammel, where no road, gate or teleporter reaches them; if a bug or a future teleporter
-// ever puts a player there, they are sent to the New Haven start (CharacterCreation's start city). Staff are left
+// ever puts a player there, they are sent to the New Haven start (HavenSpots.Start, cc-P663). Staff are left
 // alone, so they can inspect the tiles on Trammel. Travel into it is refused for players too, so a rune never lands
 // one there. P24 and P481 found void C in no pinned region and no ServUO Trammel region.
 //
@@ -30,7 +30,6 @@
 // every start. Neither holds saved data.
 
 using System;
-using Server.Engines.CharacterCreation;
 using Server.Mobiles;
 using Server.Spells;
 
@@ -83,15 +82,11 @@ public class FoldMirrorRegion : BaseRegion
         Instance.Register();
     }
 
-    /// <summary>Where a player found here goes: the New Haven start.</summary>
-    public static (Point3D Location, Map Map) Home
-    {
-        get
-        {
-            var city = CharacterCreation.GetStartingCities()[0];
-            return (city.Location, city.Map);
-        }
-    }
+    /// <summary>
+    /// Where a player found here goes: the New Haven start. cc-P663: read from HavenSpots, since the start list's first
+    /// entry is now "Tutorial Island", whose coordinates are only a button's place on the city screen.
+    /// </summary>
+    public static (Point3D Location, Map Map) Home => (Server.Tutorial.HavenSpots.Start, Server.Tutorial.HavenSpots.Map);
 
     public static bool SendsHome(Mobile m) => m is PlayerMobile && m.AccessLevel == AccessLevel.Player;
 

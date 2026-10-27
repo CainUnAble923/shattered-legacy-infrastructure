@@ -4,7 +4,8 @@ namespace Server.Tutorial;
 public enum TutorialAction
 {
     FirstMark, SecondMark, Equipped, OpenedBag, SaidPhrase, EchoDeath,
-    HealerOffer, Resurrected, Deposited, UsedGate, TalkedToLeague, VisionStarted, VisionFinished
+    HealerOffer, Resurrected, Deposited, UsedGate, TalkedToLeague, VisionStarted, VisionFinished,
+    FarmDone // cc-P663: Wren's three steps (TutorialFarm.StepOf reaches 4)
 }
 
 public sealed class TutorialTrialProgress(string key)
@@ -23,6 +24,7 @@ public sealed class TutorialTrialProgress(string key)
             "core.paperdoll" => [TutorialAction.Equipped],
             "core.backpack" => [TutorialAction.OpenedBag],
             "core.chat" => [TutorialAction.SaidPhrase],
+            "core.farm" => [TutorialAction.FarmDone],
             "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
             "core.banking" => [TutorialAction.Deposited],
             "core.travel" => [TutorialAction.UsedGate],

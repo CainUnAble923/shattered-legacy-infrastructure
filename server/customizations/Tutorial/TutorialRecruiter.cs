@@ -5,6 +5,8 @@
 // (notes/cc-P80-tools). Placing an NPC changes a world, so it is never done at load by default:
 //   [ClusterFSeedTutorial [dryrun]   places missing core props/NPCs and the P276 farm, on the test world only.
 // tutorial.seedOnWorldLoad (default false) uses the same test-only seeder at world load.
+// cc-P663: the core lessons moved to the Wakening Isle, with Tamsin (TutorialGuide). Rook stays on the plaza (HavenSpots)
+// for graduation, the wings, skip and remedial training, and sends a trainee with core lessons left to the isle.
 
 #nullable enable
 
@@ -16,13 +18,14 @@ using Server.Commands;
 using Server.Gumps;
 using Server.ContextMenus;
 using Server.Items;
+using Server.Tutorial;
 
 namespace Server.Mobiles
 {
     [SerializationGenerator(0, false)]
     public partial class TutorialRecruiter : BaseCreature
     {
-        public static readonly Point3D Spot = new(3500, 2572, 14);
+        public static Point3D Spot => HavenSpots.Rook;
 
         [Constructible]
         public TutorialRecruiter() : base(AIType.AI_Animal, FightMode.None, 10, 1)
@@ -61,7 +64,7 @@ namespace Server.Mobiles
             }
 
             Server.Tutorial.ClusterFTutorial.AdoptOrphanedRecord(pm); // cc-P613: a record whose character is gone
-            Say("Welcome to New Haven. My window shows your tutorial progress.");
+            SayTo(pm, "Welcome to New Haven. My window shows your tutorial progress."); // cc-P663: to this player only
             pm.CloseGump<Server.Tutorial.TutorialRecruiterGump>();
             pm.SendGump(new Server.Tutorial.TutorialRecruiterGump(pm));
         }
@@ -69,9 +72,18 @@ namespace Server.Mobiles
         public override void GetContextMenuEntries(Mobile from, ref PooledRefList<ContextMenuEntry> list) =>
             base.GetContextMenuEntries(from, ref list);
 
-        /// <summary>A quest arrow from the player to the recruiter, if one stands near its spot.</summary>
+        /// <summary>
+        /// A quest arrow from the player to the recruiter, if one stands near its spot. cc-P663: a trainee on the isle is
+        /// pointed at Tamsin instead (the moongate is the way to Rook).
+        /// </summary>
         public static void PointTo(PlayerMobile pm)
         {
+            if (TutorialWorld.IsOnIsle(pm))
+            {
+                Server.Tutorial.TutorialGuide.PointTo(pm);
+                return;
+            }
+
             var recruiter = Find();
             if (recruiter != null && recruiter.Map == pm.Map)
             {
@@ -81,7 +93,7 @@ namespace Server.Mobiles
 
         public static TutorialRecruiter? Find()
         {
-            foreach (var m in Map.Trammel.GetMobilesInRange(Spot, 15))
+            foreach (var m in HavenSpots.Map.GetMobilesInRange(Spot, 15))
             {
                 if (m is TutorialRecruiter r && !r.Deleted)
                 {

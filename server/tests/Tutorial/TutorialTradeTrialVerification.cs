@@ -131,7 +131,7 @@ public class TutorialTradeTrialVerification : IDisposable
             Assert.DoesNotContain("coming soon", TutorialCoreTrials.Hint(station.Key), StringComparison.OrdinalIgnoreCase);
         }
 
-        Assert.Equal(37, TutorialStations.All.Length);
+        Assert.Equal(38, TutorialStations.All.Length); // cc-P663: core.farm joined the core
         Assert.Equal(20, TutorialWingTrials.Trades.Length); // 28 wing stations less P290's 8
         Assert.Equal(28, TutorialStations.All.Count(s => !s.IsCore));
     }

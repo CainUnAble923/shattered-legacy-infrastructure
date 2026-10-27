@@ -38,6 +38,7 @@ public class TutorialDeliveryRecoveryVerification
         ShardTestHost.EnsureAccounts();
         ShardTestHost.EnsureSkillChecks();
         ClusterFTutorial.Enabled = true;
+        FoldMaps.Configure(); // cc-P663: the lessons are on the isle (map 32)
         TutorialFarm.EnsureHooks();
         if (ClusterFAchievementSystem.Definitions.Count == 0)
         {
@@ -60,6 +61,7 @@ public class TutorialDeliveryRecoveryVerification
             if (enter)
             {
                 Assert.True(ClusterFTutorial.TryEnter(first));
+                TutorialTestStart.ToTheFarm(first); // cc-P663: the farm is core.farm, after chat
             }
         }
 

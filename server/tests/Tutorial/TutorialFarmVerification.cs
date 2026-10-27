@@ -52,6 +52,7 @@ public class TutorialFarmVerification
         ShardTestHost.EnsureAccounts();
         ShardTestHost.EnsureSkillChecks();
         ClusterFTutorial.Enabled = true;
+        FoldMaps.Configure(); // cc-P663: the farm is on the isle (map 32)
         TutorialFarm.EnsureHooks(); // Initialize never runs in the test host
         if (ClusterFAchievementSystem.Definitions.Count == 0)
         {
@@ -82,6 +83,7 @@ public class TutorialFarmVerification
             if (participant)
             {
                 Assert.True(ClusterFTutorial.TryEnter(Pm));
+                TutorialTestStart.ToTheFarm(Pm); // cc-P663: the farm is core.farm, after chat
             }
         }
 
@@ -127,7 +129,7 @@ public class TutorialFarmVerification
     private static List<BaseDoor> DoorsNearTheFarmhouse()
     {
         var doors = new List<BaseDoor>();
-        foreach (var d in Map.Trammel.GetItemsInRange<BaseDoor>(TutorialFarmLayout.DoorSpot, 3))
+        foreach (var d in TutorialWorld.Isle.GetItemsInRange<BaseDoor>(TutorialIsleFarmLayout.DoorSpot, 3))
         {
             doors.Add(d);
         }
@@ -144,10 +146,10 @@ public class TutorialFarmVerification
 
     private static void CleanFarm()
     {
-        var map = Map.Trammel;
+        var map = TutorialWorld.Isle;
         TutorialFarm.FindAddon(map)?.Delete();
         TutorialFarm.FindDoor(map)?.Delete();
-        TutorialFarmhand.Find()?.Delete();
+        TutorialFarmhand.Find(map)?.Delete();
         foreach (var (spot, _, _, types) in TutorialFarm.SpawnerRows)
         {
             var s = TutorialFarm.FindSpawner(map, spot, types[0]);
@@ -163,6 +165,7 @@ public class TutorialFarmVerification
     {
         var testShard = TutorialFarm.IsTestShard;
         var patched = TutorialFarm.MapPatched;
+        var isle = TutorialWorld.Isle;
         CleanFarm();
 
         try
@@ -172,43 +175,48 @@ public class TutorialFarmVerification
             var live = TutorialFarm.Seed(false);
             Assert.True(live.Refused);
             Assert.Contains("not the test shard", live.Message);
-            Assert.Null(TutorialFarm.FindAddon(Map.Trammel));
+            Assert.Null(TutorialFarm.FindAddon(isle));
 
+            // cc-P663: the two trees are New Haven's; only its prop seeding (SeedHaven) waits for that patch.
             TutorialFarm.IsTestShard = () => true;
             TutorialFarm.MapPatched = () => false;
-            var unpatched = TutorialFarm.Seed(false);
+            var unpatched = TutorialFarm.SeedHaven(false);
             Assert.True(unpatched.Refused);
             Assert.Contains("two trees", unpatched.Message);
-            Assert.Null(TutorialFarm.FindAddon(Map.Trammel));
+            Assert.Null(TutorialFarm.FindAddon<TutorialFarmAddon>(Map.Trammel, TutorialFarmLayout.Anchor));
 
             TutorialFarm.MapPatched = () => true;
             var dry = TutorialFarm.Seed(true);
             Assert.Equal((false, 1, 1, 1, 2, 0), (dry.Refused, dry.Addons, dry.Doors, dry.Farmhands, dry.Spawners, dry.Present));
-            Assert.Null(TutorialFarm.FindAddon(Map.Trammel));
+            Assert.Null(TutorialFarm.FindAddon(isle));
 
             var first = TutorialFarm.Seed(false);
             Assert.Equal((false, 1, 1, 1, 2, 0), (first.Refused, first.Addons, first.Doors, first.Farmhands, first.Spawners, first.Present));
 
-            var addon = TutorialFarm.FindAddon(Map.Trammel);
+            // cc-P663: the isle's farm: the same 330 pieces moved by (+3314, +1364), each at its height above the old ground.
+            var addon = TutorialFarm.FindAddon(isle);
             Assert.NotNull(addon);
-            Assert.Equal(TutorialFarmLayout.Anchor, addon!.Location);
+            Assert.Same(isle, addon!.Map);
+            Assert.Equal(TutorialIsleFarmLayout.Anchor, addon.Location);
             Assert.Equal(TutorialFarmLayout.Pieces.Length, addon.Components.Count);
             var placed = addon.Components.Select(c => (c.ItemID, c.X, c.Y, c.Z)).OrderBy(t => t).ToArray();
-            var wanted = TutorialFarmLayout.Pieces.Select(p => (p.Id, p.X, p.Y, p.Z)).OrderBy(t => t).ToArray();
+            var wanted = TutorialIsleFarmLayout.Pieces.Select(p => (p.Id, p.X, p.Y, p.Z)).OrderBy(t => t).ToArray();
             Assert.Equal(wanted, placed);
+            var moved = TutorialFarmLayout.Pieces.Select(p => (p.Id, p.X + 3314, p.Y + 1364)).OrderBy(t => t).ToArray();
+            Assert.Equal(moved, TutorialIsleFarmLayout.Pieces.Select(p => (p.Id, p.X, p.Y)).OrderBy(t => t).ToArray());
 
-            var door = TutorialFarm.FindDoor(Map.Trammel);
+            var door = TutorialFarm.FindDoor(isle);
             Assert.IsType<DarkWoodDoor>(door);
             Assert.Equal(0x06AD, door!.ItemID);
-            Assert.Equal(TutorialFarmLayout.DoorSpot, door.Location);
+            Assert.Equal(TutorialIsleFarmLayout.DoorSpot, door.Location);
 
-            var hand = TutorialFarmhand.Find();
+            var hand = TutorialFarmhand.Find(isle);
             Assert.NotNull(hand);
             Assert.Equal((TutorialFarm.FarmhandSpot.X, TutorialFarm.FarmhandSpot.Y), (hand!.X, hand.Y));
 
             foreach (var (spot, range, count, types) in TutorialFarm.SpawnerRows)
             {
-                var s = TutorialFarm.FindSpawner(Map.Trammel, spot, types[0]);
+                var s = TutorialFarm.FindSpawner(isle, spot, types[0]);
                 Assert.NotNull(s);
                 Assert.Equal((count, range), (s!.Count, s.HomeRange));
                 Assert.Equal(types, s.Entries.Select(e => e.SpawnedName).ToArray());
@@ -216,12 +224,23 @@ public class TutorialFarmVerification
 
             var again = TutorialFarm.Seed(false);
             Assert.Equal((0, 0, 0, 0, 5), (again.Addons, again.Doors, again.Farmhands, again.Spawners, again.Present));
+
+            // New Haven keeps the farmhouse, door and pen for the wing trials, with no Wren and no pests.
+            var haven = TutorialFarm.SeedHaven(false);
+            Assert.Equal((false, 1, 1, 0, 1), (haven.Refused, haven.Addons, haven.Doors, haven.Farmhands, haven.Spawners));
+            Assert.Null(TutorialFarm.FindSpawner(Map.Trammel, new Point2D(3388, 2614), TutorialFarm.PestTypes[0]));
+            Assert.Null(TutorialFarmhand.Find(Map.Trammel));
         }
         finally
         {
             TutorialFarm.IsTestShard = testShard;
             TutorialFarm.MapPatched = patched;
             CleanFarm();
+            TutorialFarm.FindAddon<TutorialFarmAddon>(Map.Trammel, TutorialFarmLayout.Anchor)?.Delete();
+            TutorialFarm.FindDoor(Map.Trammel, TutorialFarmLayout.DoorSpot)?.Delete();
+            var pen = TutorialFarm.FindSpawner(Map.Trammel, TutorialFarm.HavenPenSpot, TutorialFarm.PenTypes[0]);
+            pen?.RemoveSpawns();
+            pen?.Delete();
         }
     }
 
@@ -573,14 +592,14 @@ public class TutorialFarmVerification
         try
         {
             SeedFarm();
-            var door = TutorialFarm.FindDoor(Map.Trammel)!;
+            var door = TutorialFarm.FindDoor(TutorialWorld.Isle)!;
             door.Open = true;
-            Assert.NotEqual(TutorialFarmLayout.DoorSpot, door.Location); // an open door stands aside
+            Assert.NotEqual(TutorialIsleFarmLayout.DoorSpot, door.Location); // an open door stands aside
 
             var again = TutorialFarm.Seed(false);
             Assert.Equal((0, 5), (again.Doors, again.Present));
             Assert.Single(DoorsNearTheFarmhouse());
-            Assert.Same(door, TutorialFarm.FindDoor(Map.Trammel));
+            Assert.Same(door, TutorialFarm.FindDoor(TutorialWorld.Isle));
         }
         finally
         {
@@ -608,8 +627,8 @@ public class TutorialFarmVerification
         try
         {
             SeedFarm();
-            var pests = TutorialFarm.FindSpawner(Map.Trammel, TutorialFarm.PestSpot, TutorialFarm.PestTypes[0])!;
-            var pen = TutorialFarm.FindSpawner(Map.Trammel, TutorialFarm.PenSpot, TutorialFarm.PenTypes[0])!;
+            var pests = TutorialFarm.FindSpawner(TutorialWorld.Isle, TutorialFarm.PestSpot, TutorialFarm.PestTypes[0])!;
+            var pen = TutorialFarm.FindSpawner(TutorialWorld.Isle, TutorialFarm.PenSpot, TutorialFarm.PenTypes[0])!;
             Assert.True(pests.Running && pen.Running);
             Assert.Equal(TutorialFarm.PestCount, pests.Spawned.Count);
             Assert.Equal(TutorialFarm.PenCount, pen.Spawned.Count);

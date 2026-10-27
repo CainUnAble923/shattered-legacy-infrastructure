@@ -70,6 +70,14 @@ public static class ShardClilocs
     /// <summary>"Clear corpses nearby": the trash bag's entry to clear every monster corpse in reach.</summary>
     public const int ClearCorpsesNearby = 1_900_013;
 
+    // cc-P663 (P481 F3): the start choice's two city descriptions on the character creation screen (TutorialStart.Cities).
+
+    /// <summary>"Start with the tutorial (recommended): wake on the Wakening Isle, learn the basics along one road, then take the moongate to New Haven."</summary>
+    public const int TutorialIslandCity = 1_900_014;
+
+    /// <summary>"Skip the tutorial: start in New Haven."</summary>
+    public const int NewHavenSkipCity = 1_900_015;
+
     /// <summary>
     /// The deed line for a post-Valorite material, and (cc-P123) for the woods, EA's lines as ServUO's
     /// SmallBODGump.GetMaterialNumberFor gives them (:123-132); 0 (no line, pinned's value) for any other. Pinned's gumps
