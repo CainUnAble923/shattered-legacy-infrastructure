@@ -111,7 +111,8 @@ public static partial class CharacterCreation
 
     public static readonly CityInfo[] NewHavenStartingCities =
     [
-        new("New Haven", "The Bountiful Harvest Inn", 1150168, 3503, 2574, 14, Map.Trammel),
+        // cc-P678: the start moved with New Haven into the author's Haven (Tutorial/HavenSpots.cs, the one place).
+        new("New Haven", "The Bountiful Harvest Inn", 1150168, Server.Tutorial.HavenSpots.Start.X, Server.Tutorial.HavenSpots.Start.Y, Server.Tutorial.HavenSpots.Start.Z, Map.Trammel),
         new("Britain", "The Wayfarer's Inn", 1075074, 1602, 1591, 20, Map.Trammel)
         // Magincia removed because it burned down.
     ];

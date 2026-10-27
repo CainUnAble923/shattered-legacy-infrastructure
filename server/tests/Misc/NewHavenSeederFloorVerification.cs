@@ -32,7 +32,7 @@ public class NewHavenSeederFloorVerification
     // Measured 2026-09-30 (PT-05); every tile fits at its z.
     private static readonly Dictionary<string, Point3D> MeasuredFloor = new()
     {
-        ["Sir Helper"] = new(3503, 2574, 14),
+        ["Sir Helper"] = new(3634, 2586, 0), // cc-P678: the new start, measured on SoS 3.0 (notes/cc-P678-tools/townmap.py)
         ["Andric"] = new(3535, 2536, 20),
         ["Kashiel"] = new(3538, 2536, 20),
         ["Asandos"] = new(3504, 2519, 27),

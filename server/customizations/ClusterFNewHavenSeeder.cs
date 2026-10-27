@@ -20,7 +20,8 @@ public static class ClusterFNewHavenSeeder
     // facing the entry used before (cc-P19, the League Registrar); world-load repair accepts that too.
     internal static readonly SeedEntry[] Entries =
     {
-        new("Sir Helper", "Town square", typeof(SirHelper), () => new SirHelper(), 3503, 2574, Direction.South, 14),
+        // cc-P678: on the new start, as on the old (Tutorial/HavenSpots.cs).
+        new("Sir Helper", "Town square", typeof(SirHelper), () => new SirHelper(), 3634, 2586, Direction.South, 0),
 
         new("Andric", "New Haven Bowyer", typeof(Andric), () => new Andric(), 3535, 2536, Direction.South, 20),
         new("Kashiel", "New Haven Bowyer", typeof(Kashiel), () => new Kashiel(), 3538, 2536, Direction.South, 20),

@@ -46,7 +46,7 @@ namespace Server.Tutorial
         public static readonly Point2D FarmField = new(3390, 2606);
         public static readonly Point2D GoatSpot = new(3395, 2606);
 
-        public static readonly Point2D TourCentre = new(3460, 2590);
+        public static readonly Point2D TourCentre = new(HavenSpots.Centre.X, HavenSpots.Centre.Y); // cc-P678: was 3460,2590
 
         public sealed record TradeTrial(
             string Key,

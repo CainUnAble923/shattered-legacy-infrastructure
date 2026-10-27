@@ -67,7 +67,7 @@ public partial class NewHavenQuestBoard : QuestGiverItem
 
     // The corner of the New Haven town square, one tile from where every new character
     // arrives (CharacterCreation: 3503, 2574, 14 Trammel, where Sir Helper stands).
-    public static readonly Point3D HomeLocation = new(3502, 2573, 14);
+    public static readonly Point3D HomeLocation = Server.Tutorial.HavenSpots.QuestBoard; // cc-P678: was 3502,2573,14
 
     public const int UseRange = 2;
 

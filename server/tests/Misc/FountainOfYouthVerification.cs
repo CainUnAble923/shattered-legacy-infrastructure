@@ -231,7 +231,7 @@ public class FountainOfYouthVerification
 
             _out.WriteLine(FountainOfYouthSystem.Seed(false, FountainMode.Fixed));
             var f = Assert.Single(FountainOfYouthSystem.Fountains);
-            Assert.Equal(new Point3D(3497, 2583, 14), f.Location);
+            Assert.Equal(new Point3D(3646, 2596, 0), f.Location); // cc-P678: on the new square (was 3497,2583,14)
             Assert.Equal(Map.Trammel, f.Map);
             Assert.Equal(FountainMode.Fixed, f.Mode);
             Assert.Null(f.Sanctum); // the test shard's fixed fountain has no no-mark zone
