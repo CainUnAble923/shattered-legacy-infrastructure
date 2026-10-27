@@ -352,6 +352,12 @@ public partial class TutorialHealer : Healer
 {
     [Constructible]
     public TutorialHealer() { Name = "Sera"; Title = "the tutorial healer"; CantWalk = true; }
+    // cc-P666: a dead bonded pet stepping near her gets the line pointing to Tobin (the Farmhand's cooldown, shared).
+    public override void OnMovement(Mobile m, Point3D oldLocation)
+    {
+        base.OnMovement(m, oldLocation);
+        if (m is BaseCreature { IsDeadBondedPet: true } pet && InRange(pet, 4)) { TutorialFarm.NoticeGhostPet(this, pet); }
+    }
     // A ghost's double-click reaches OnDoubleClickDead (pinned Mobile.Use), never OnDoubleClick. The stock offer needs a
     // step into range (BaseHealer.OnMovement), and the death lesson teleports the ghost here, so this is the way to ask.
     public override void OnDoubleClickDead(Mobile from)

@@ -2,13 +2,17 @@
 // character had no way back), the animal trainers' elixir of rebirth and the graduation box's blessed one. Notes:
 // shard-migration notes/cc-P480-tutorial-first-play-fixes.md.
 //
-// Pinned ModernUO's Veterinarian sells and trains only; it has no resurrection (no OnMovement offer, no gump). ServUO's
-// does (Scripts/Mobiles/NPCs/Veterinarian.cs: GetDeadPets, GetResurrectionFee, VetResurrectGump), and TutorialVeterinarian
-// is that behaviour on a subclass: a player stepping within 3 tiles with a dead bonded pet nearby is offered its
-// resurrection for ServUO's fee, 100 + 1.1041^MinTameSkill gold from the bank (100 to 30,000), and the pet loses 0.2 of
-// each skill. Like ServUO, the pet's body must have faded first (its corpse gone). Departures, both for new players: free
-// while the owner is Young, and a double-click asks as well as the step in; the player is not frozen while the offer is
-// open. The tutorial seeder places one at the farm gate and one in New Haven when it has no vet (TutorialCorePlacement).
+// cc-P666: every stock Veterinarian now brings pets back on ServUO's terms (Mobiles/NPCs/VetResurrection.cs). Tobin
+// keeps his own offer, with the same fee, skill loss and line of sight. Departures, both for new players: free while
+// the owner is Young, and a double-click asks as well as the step in; the player is not frozen while the offer is open.
+// Off the isle, like ServUO, the pet's body must have faded first (its corpse gone) and it loses 0.2 of each skill.
+//
+// On the isle (any Fold map, P481 section 8 and F6): a Young owner's pet ghost that comes within 3 tiles of Tobin is
+// brought back at once, free and with no skill loss, and the things on its corpse go back to it. Its body need not have
+// faded. The pet still died, so the lesson means something. A pet that is not a Young owner's pays and loses as
+// anywhere else. Notes: shard-migration notes/cc-P666-pet-protection-vet.md.
+//
+// The tutorial seeder places Tobin at the farm gate, and one in New Haven when it has no vet (TutorialCorePlacement).
 
 #nullable enable
 
@@ -24,27 +28,58 @@ namespace Server.Tutorial
 {
     public static class TutorialPetCare
     {
-        /// <summary>The owner's dead bonded pets within 12 tiles (ServUO Veterinarian.GetDeadPets, without the automaton).</summary>
-        public static BaseCreature[] DeadPetsOf(Mobile owner)
-        {
-            var pets = new List<BaseCreature>();
-            foreach (var m in owner.GetMobilesInRange(12))
-            {
-                if (m is BaseCreature { IsDeadBondedPet: true } bc && bc.ControlMaster == owner)
-                {
-                    pets.Add(bc);
-                }
-            }
+        /// <summary>How close to Tobin a Young owner's pet ghost comes back on the isle by itself.</summary>
+        public const int IsleReviveRange = 3;
 
-            return pets.ToArray();
-        }
+        /// <summary>The owner's dead bonded pets within 12 tiles and in sight (ServUO Veterinarian.GetDeadPets).</summary>
+        public static BaseCreature[] DeadPetsOf(Mobile owner) => VetResurrection.DeadPets(owner);
 
         /// <summary>ServUO's fee, free while the owner is Young.</summary>
         public static int Fee(Mobile owner, BaseCreature pet) =>
-            owner is PlayerMobile { Young: true } ? 0 : Math.Clamp((int)(100 + Math.Pow(1.1041, pet.MinTameSkill)), 100, 30000);
+            owner is PlayerMobile { Young: true } ? 0 : VetResurrection.Fee(pet);
+
+        /// <summary>Whether the isle's rule covers this pet at this vet: on a Fold map, a Young owner's dead bonded pet.</summary>
+        public static bool IsleCare(Mobile vet, BaseCreature pet) =>
+            FoldMaps.IsFold(vet.Map) && pet.Map == vet.Map && pet.IsDeadBondedPet && pet.ControlMaster is PlayerMobile { Young: true };
+
+        /// <summary>
+        /// The isle's revival: the corpse's things go back to the pet (worn things back on it where the layer is free, the
+        /// rest into its pack, or at its feet when it has none), the corpse goes, and the pet comes back with every skill.
+        /// </summary>
+        public static void ReviveWhole(BaseCreature pet)
+        {
+            if (pet.Corpse is { Deleted: false } corpse)
+            {
+                foreach (var item in new List<Item>(corpse.Items))
+                {
+                    if (item.Layer is > Layer.Invalid and <= Layer.LastUserValid and not Layer.Backpack &&
+                        pet.FindItemOnLayer(item.Layer) == null)
+                    {
+                        pet.AddItem(item);
+                    }
+                    else
+                    {
+                        pet.AddToBackpack(item);
+                    }
+                }
+
+                corpse.Delete();
+            }
+
+            pet.Corpse = null;
+            pet.PlaySound(0x214);
+            pet.ResurrectPet();
+        }
 
         public const string IfYourPetDiesLine =
             "If your pet dies, wait for its body to disappear, then take its ghost to a vet or use an elixir of rebirth.";
+
+        /// <summary>The farm's pet lesson line (P481 walk step 7), said when the farm lessons are done.</summary>
+        public const string FarmPetLessonLine =
+            "If your pet dies, bring its ghost to a vet. Here on the island, Tobin brings it back free and whole while " +
+            "you are Young. Every town's vet can do it too, for a fee from your bank.";
+
+        public const string IsleRevivedLine = "Your pet is alive again, with everything it carried.";
     }
 
     /// <summary>The vet's offer: one button per dead pet, with its fee.</summary>
@@ -58,9 +93,12 @@ namespace Server.Tutorial
             _vet = vet;
             _pets = pets;
             var h = 130 + pets.Length * 30;
+            var allWhole = Array.TrueForAll(pets, p => TutorialPetCare.IsleCare(vet, p));
             TutorialStyle.Panel(this, 440, h);
             AddLabel(24, 18, TutorialStyle.HeadingHue, "Bring your pet back to life");
-            AddHtml(24, 42, 392, 40, TutorialStyle.Html("Choose the pet you want to bring back. It loses 0.2 points in every skill."), false, false);
+            AddHtml(24, 42, 392, 40, TutorialStyle.Html(allWhole
+                ? "Choose the pet you want to bring back. On this island it keeps all its skills."
+                : "Choose the pet you want to bring back. It loses 0.2 points in every skill."), false, false);
             for (var i = 0; i < pets.Length; i++)
             {
                 var fee = TutorialPetCare.Fee(pets[i].ControlMaster ?? pets[i], pets[i]);
@@ -98,10 +136,15 @@ namespace Server.Mobiles
         {
         }
 
+        // Veterinarian's own offer (VetResurrection.OnVetMovement) skips this type: Tobin answers here.
         public override void OnMovement(Mobile m, Point3D oldLocation)
         {
             base.OnMovement(m, oldLocation);
-            if (m is PlayerMobile { Alive: true } pm && InRange(pm, 3) && !Utility.InRange(Location, oldLocation, 3))
+            if (m is BaseCreature pet && InRange(pet, TutorialPetCare.IsleReviveRange) && TutorialPetCare.IsleCare(this, pet))
+            {
+                ReviveWhole(pet);
+            }
+            else if (m is PlayerMobile { Alive: true } pm && InRange(pm, 3) && !Utility.InRange(Location, oldLocation, 3))
             {
                 Offer(pm);
             }
@@ -117,22 +160,48 @@ namespace Server.Mobiles
             base.OnDoubleClick(from);
         }
 
-        /// <summary>Offers the player's dead pets, if any. True when it did.</summary>
+        /// <summary>
+        /// Brings back at once the player's isle-covered pets standing within 3 tiles, then offers the rest, if any. True
+        /// when it did either.
+        /// </summary>
         public bool Offer(PlayerMobile pm)
         {
-            var pets = TutorialPetCare.DeadPetsOf(pm);
-            if (pets.Length == 0)
+            var revived = false;
+            var rest = new List<BaseCreature>();
+            foreach (var pet in TutorialPetCare.DeadPetsOf(pm))
             {
-                return false;
+                if (InRange(pet, TutorialPetCare.IsleReviveRange) && TutorialPetCare.IsleCare(this, pet))
+                {
+                    ReviveWhole(pet);
+                    revived = true;
+                }
+                else
+                {
+                    rest.Add(pet);
+                }
+            }
+
+            if (rest.Count == 0)
+            {
+                return revived;
             }
 
             SayTo(pm, "I can bring your pet back. Choose its name in the window.");
             pm.CloseGump<TutorialVetResurrectGump>();
-            pm.SendGump(new TutorialVetResurrectGump(this, pets));
+            pm.SendGump(new TutorialVetResurrectGump(this, rest.ToArray()));
             return true;
         }
 
-        /// <summary>ServUO VetResurrectGump's checks and effect, with the Young fee.</summary>
+        private void ReviveWhole(BaseCreature pet)
+        {
+            TutorialPetCare.ReviveWhole(pet);
+            if (pet.ControlMaster is { } owner && owner.Map == Map && owner.InRange(this, 12))
+            {
+                SayTo(owner, TutorialPetCare.IsleRevivedLine);
+            }
+        }
+
+        /// <summary>ServUO VetResurrectGump's checks and effect, with the Young fee and the isle's rule.</summary>
         public bool Resurrect(Mobile from, BaseCreature pet)
         {
             // cc-P610 (P514's P475/P480 findings): checked again at the answer, not only at the offer. The offer stays open
@@ -156,6 +225,11 @@ namespace Server.Mobiles
             {
                 from.SendMessage("Only this pet's owner can ask the vet to bring it back."); // cc-P609: was cliloc 1113200
             }
+            else if (TutorialPetCare.IsleCare(this, pet))
+            {
+                ReviveWhole(pet);
+                return true;
+            }
             else if (pet.Corpse is { Deleted: false })
             {
                 from.SendMessage("Wait until your pet's body disappears, then ask the vet again."); // cc-P609: was cliloc 1113279
@@ -170,7 +244,7 @@ namespace Server.Mobiles
                 pet.ResurrectPet();
                 for (var j = 0; j < pet.Skills.Length; ++j)
                 {
-                    pet.Skills[j].Base -= 0.2;
+                    pet.Skills[j].Base -= VetResurrection.SkillLoss;
                 }
 
                 if (pet.Map == Map.Internal)

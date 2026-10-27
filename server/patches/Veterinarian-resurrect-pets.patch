@@ -1,0 +1,15 @@
+--- a/Projects/UOContent/Mobiles/Vendors/NPC/Veterinarian.cs
++++ b/Projects/UOContent/Mobiles/Vendors/NPC/Veterinarian.cs
+@@ -21,5 +21,12 @@
+         {
+             m_SBInfos.Add(new SBVeterinarian());
+         }
++
++        // cc-P666: ServUO's offer to bring a dead bonded pet back, on every vet (customizations VetResurrection.cs).
++        public override void OnMovement(Mobile m, Point3D oldLocation)
++        {
++            base.OnMovement(m, oldLocation);
++            VetResurrection.OnVetMovement(this, m, oldLocation);
++        }
+     }
+ }

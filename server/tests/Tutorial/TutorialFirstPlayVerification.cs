@@ -413,9 +413,8 @@ public class TutorialFirstPlayVerification : IDisposable
         vet.MoveToWorld(new Point3D(p.Pm.X + 1, p.Pm.Y, p.Pm.Z), p.Pm.Map);
         p.Litter.Add(vet);
         vet.OnMovement(p.Pm, new Point3D(p.Pm.X + 10, p.Pm.Y, p.Pm.Z));
-        var offer = p.Pm.FindGump<TutorialVetResurrectGump>();
-        Assert.NotNull(offer);
-        offer!.OnResponse(p.Ns, Press(1));
+        // cc-P666: on the isle, a Young owner's pet within 3 tiles of the vet comes back at once, with no window.
+        Assert.Null(p.Pm.FindGump<TutorialVetResurrectGump>());
         Assert.False(pet.IsDeadBondedPet);
     }
 
