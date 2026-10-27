@@ -306,7 +306,7 @@ public class TutorialIsleVerification : IDisposable
             case TutorialStart.Outcome.Isle:
                 Assert.Equal(TutorialState.InCore, r.State);
                 Assert.Equal((uint)pm.Serial, r.CharacterSerial);
-                Assert.Same(TutorialWorld.Isle, pm.Map);
+                Assert.True(TutorialCopies.IsCopy(pm.Map)); // cc-P664: their own copy of the isle
                 Assert.Equal(TutorialWorld.Arrival, pm.Location);
                 Assert.True(TutorialWorld.IsOnIsle(pm));
                 if (before == Before.DeletedMidCore)
@@ -491,9 +491,9 @@ public class TutorialIsleVerification : IDisposable
 
         new TutorialRecruiterGump(pm).OnResponse(pm.NetState!, new RelayInfo(TutorialRecruiterGump.BtnRemedial, default, default, default, default));
         Assert.Equal(TutorialState.Remedial, t.Record.State);
-        Assert.Same(TutorialWorld.Isle, pm.Map);
+        Assert.True(TutorialCopies.IsCopy(pm.Map)); // cc-P664: their own copy of the isle
         Assert.Equal(TutorialWorld.Arrival, pm.Location);
-        Assert.Same(TutorialWorld.Isle, pet.Map); // the pet came along
+        Assert.Same(pm.Map, pet.Map); // the pet came along
 
         foreach (var key in TutorialStations.Core.Select(s => s.Key).TakeWhile(k => k != "core.travel"))
         {
