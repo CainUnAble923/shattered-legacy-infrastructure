@@ -922,6 +922,10 @@ apply_patch "$PATCHES/HarvestBank-lumber-stumps.patch"
 # back. Alternatives: notes/cc-P480-tutorial-first-play-fixes.md.
 apply_patch "$PATCHES/AnimalTrainer-elixir-of-rebirth.patch"
 
+# P666: every stock vet brings a dead bonded pet back, as ServUO's does (one OnMovement override calling customizations
+# VetResurrection.OnVetMovement). Alternatives: notes/cc-P666-pet-protection-vet.md.
+apply_patch "$PATCHES/Veterinarian-resurrect-pets.patch"
+
 # P427 (cc-P379 finding 3): one hook line in PlayerMobile.OnDamage, where pinned's Mobile.Damage reports every hit
 # (Mobile.cs:6009, after RegisterDamage), into customizations ClusterFNotedBySystem.PlayerDamaged. Noted by the System
 # needs "this creature damaged this player" past a heal to full, and pinned empties the damage list at full hits

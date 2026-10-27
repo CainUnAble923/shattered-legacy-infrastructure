@@ -29,6 +29,13 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.27.3
+
+### Added
+- Every town's vet can now bring your dead bonded pet back to life. Walk up to the vet with your pet's ghost nearby, once its body has disappeared, and choose the pet in the window. The vet charges a fee from your bank that depends on how hard the pet is to tame, and the pet loses a little of each skill.
+- On the Wakening Isle, while you are Young, your pet's ghost comes back to life the moment it reaches Tobin the vet at the farm gate: free, with no skill loss, and with everything it was carrying. You do not have to wait for its body to disappear.
+- At the farm, Wren tells you what to do if your pet dies, and Sera the healer at the shrine sends pet ghosts to Tobin.
+
 ## 2026.10.27.2
 
 ### Fixed

@@ -105,7 +105,7 @@ namespace Server.Tutorial
         public const string HealLine = "Double-click a bandage in your backpack, then click yourself or an injured pet. A successful heal finishes this step.";
         public const string NoMoreBandagesLine = "I have no more free bandages for you. You can buy more from a healer in town.";
         public const string NoRoomForBandagesLine = "Your backpack is too full for these bandages. Make room in it, then double-click me again.";
-        public const string DoneLine = "You finished the farm lessons. If your bonded pet dies, bring its ghost to Tobin the vet beside me.";
+        public const string DoneLine = "You finished the farm lessons. If your bonded pet dies, bring its ghost to Tobin the vet beside me. While you are Young, he brings it back free.";
         public const string EchoPetLine = "This pet is yours to keep. Say 'all follow me' to have it follow you.";
         public const string EchoPestsLine = "You cleared the farm pests. Return to Wren the Farmhand at the gate.";
         public const string EchoHealLine = "Your bandage restored health and finished the farm's healing lesson.";
@@ -150,8 +150,27 @@ namespace Server.Tutorial
         // owner per cooldown.
         public static readonly TimeSpan GhostPetCooldown = TimeSpan.FromMinutes(2);
         public const string GhostPetLine = "Your pet has died. Wait for its body to disappear, then bring its ghost to Tobin the vet beside me.";
-        public const string GhostPetNoVetLine = "Your pet has died. Wait for its body to disappear, then bring its ghost to the vet by the New Haven stables.";
+        public const string GhostPetNoVetLine = "Your pet has died. Wait for its body to disappear, then bring its ghost to any town's vet.";
+        // cc-P666: a Young owner's pet on the isle comes back at Tobin at once, free and whole (TutorialPetCare.IsleCare).
+        public const string GhostPetYoungLine = "Your pet has died. Bring its ghost to Tobin the vet beside me. While you are Young, he brings it back free, with everything it carried.";
+        // cc-P666: Sera, the healer at the shrine, points pet ghosts to Tobin too.
+        public const string HealerGhostPetLine = "I heal people, not pets. Wait for your pet's body to disappear, then bring its ghost to Tobin the vet at the farm gate.";
+        public const string HealerGhostPetYoungLine = "I heal people, not pets. Bring your pet's ghost to Tobin the vet at the farm gate. While you are Young, he brings it back free.";
         private static readonly Dictionary<Serial, DateTime> _ghostPetSaid = new();
+
+        /// <summary>The dead pet line for this speaker (Wren, or Sera the healer) and this pet.</summary>
+        public static string GhostPetLineFor(Mobile speaker, BaseCreature pet)
+        {
+            if (FindVet() == null)
+            {
+                return GhostPetNoVetLine;
+            }
+
+            var young = FoldMaps.IsFold(pet.Map) && pet.ControlMaster is PlayerMobile { Young: true };
+            return speaker is TutorialHealer
+                ? young ? HealerGhostPetYoungLine : HealerGhostPetLine
+                : young ? GhostPetYoungLine : GhostPetLine;
+        }
 
         /// <summary>Says the dead pet line to its owner, unless said to them within the cooldown. True when it spoke.</summary>
         public static bool NoticeGhostPet(Mobile hand, BaseCreature pet)
@@ -163,7 +182,7 @@ namespace Server.Tutorial
             }
 
             _ghostPetSaid[owner.Serial] = Core.Now;
-            hand.SayTo(owner, FindVet() != null ? GhostPetLine : GhostPetNoVetLine);
+            hand.SayTo(owner, GhostPetLineFor(hand, pet));
             return true;
         }
 
@@ -315,6 +334,7 @@ namespace Server.Tutorial
             }
 
             TutorialCoreTrials.FarmFinished(pm);
+            ClusterFTutorial.SystemLine(pm, TutorialPetCare.FarmPetLessonLine); // cc-P666: the farm's pet lesson line
             return true;
         }
 
