@@ -13,6 +13,8 @@ internal static class TutorialTestStart
     public static void Begin(PlayerMobile pm, TutorialStart.Choice choice = TutorialStart.Choice.Isle)
     {
         FoldMaps.Configure();
+        // cc-P705: the test world's map is void at the isle's site (no P662 patch in the host); it stands in for the land.
+        TutorialWorld.IsleReady = () => true;
         TutorialStart.Record(pm, choice);
         ClusterFTutorial.OnLogin(pm);
     }

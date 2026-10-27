@@ -42,6 +42,7 @@ public class TutorialIsleVerification : IDisposable
     private readonly Func<PlayerMobile, int> _loopProvider = ClusterFLootBoxes.LoopProvider;
     private readonly Func<Point3D, Map, bool> _fits = TutorialCorePlacement.FitsOn;
     private readonly Action<PlayerMobile> _rewards = ClusterFTutorial.GraduationRewards;
+    private readonly Func<bool> _isleReady = TutorialWorld.IsleReady;
 
     public TutorialIsleVerification()
     {
@@ -60,6 +61,7 @@ public class TutorialIsleVerification : IDisposable
         ClusterFLootBoxes.LoopProvider = ClusterFLoops.LoopOf;
         TutorialCorePlacement.FitsOn = (_, _) => true;
         ClusterFTutorial.GraduationRewards = _ => { };
+        TutorialWorld.IsleReady = () => true; // cc-P705: the host's map is void at the isle; it stands in for P662's land
     }
 
     public void Dispose()
@@ -67,6 +69,7 @@ public class TutorialIsleVerification : IDisposable
         ClusterFLootBoxes.LoopProvider = _loopProvider;
         TutorialCorePlacement.FitsOn = _fits;
         ClusterFTutorial.GraduationRewards = _rewards;
+        TutorialWorld.IsleReady = _isleReady;
     }
 
     /// <summary>An account with characters made on demand, each connected and standing at the New Haven start.</summary>
@@ -546,5 +549,79 @@ public class TutorialIsleVerification : IDisposable
         Assert.Equal(HavenSpots.Start, cities[1].Location);
         Assert.Equal(TutorialStart.Choice.Isle, TutorialStart.ChoiceOf(cities[0]));
         Assert.Equal(TutorialStart.Choice.Haven, TutorialStart.ChoiceOf(cities[1]));
+    }
+
+    // ---------------------------------------------------------------- cc-P705: the Codex findings on P663
+
+    // P1: the dock's stops stand on the planks, not on the sea floor under them; a floor is stood on, a roof is not.
+    [Fact]
+    public void TheGroundIsTheWalkableSurfaceNotTheLandUnderIt()
+    {
+        // Flags and heights as stock tiledata has them (the host loads none): plank 0x07C9, cobbles 0x0515, grey slate
+        // 0x049C, static water 0x1797.
+        const TileFlag plank = TileFlag.Background | TileFlag.Surface | TileFlag.NoShoot;
+        const TileFlag water = TileFlag.Background | TileFlag.Impassable | TileFlag.Wet;
+        Assert.Equal(-2, TutorialWorld.SurfaceZ(-5, [(-3, plank, 1)]));                  // a dock plank over the sea
+        Assert.Equal(0, TutorialWorld.SurfaceZ(0, [(0, plank, 0), (20, plank, 0)]));     // a floor under a slate roof
+        Assert.Equal(-5, TutorialWorld.SurfaceZ(-5, [(-5, water, 0)]));                  // static water is no surface
+        Assert.Equal(3, TutorialWorld.SurfaceZ(3, []));                                  // bare land
+    }
+
+    // P2: the tutorial-off list's New Haven entry follows HavenSpots, as every other New Haven spot does (S7 moves them).
+    [Fact]
+    public void TheTutorialOffListReadsNewHavensStartFromHavenSpots()
+    {
+        var start = HavenSpots.Start;
+        try
+        {
+            HavenSpots.Start = new Point3D(3510, 2580, 15);
+            var city = Assert.Single(Server.Engines.CharacterCreation.CharacterCreation.TutorialOffCities());
+            Assert.Equal("New Haven", city.City);
+            Assert.Equal(HavenSpots.Start, city.Location);
+            Assert.Same(HavenSpots.Map, city.Map);
+        }
+        finally
+        {
+            HavenSpots.Start = start;
+        }
+    }
+
+    // P2: staff who keep the default "Tutorial Island" start at New Haven's start, never at the entry's display spot.
+    [Fact]
+    public void StaffWhoPickTheIsleStartInNewHavenNotInTheSea()
+    {
+        using var t = new Trainees();
+        var gm = t.Add();
+        gm.AccessLevel = AccessLevel.GameMaster;
+        var (at, map) = TutorialStart.OnCreated(gm, TutorialStart.Cities()[0]);
+        Assert.Equal((HavenSpots.Start, HavenSpots.Map), (at, map));
+        Assert.NotEqual(TutorialStart.IsleDisplay, at);
+        Assert.Equal(TutorialStart.Choice.None, TutorialStart.Pending(gm)); // staff are never enrolled
+    }
+
+    // The missing isle: a release with the start choice but before P662's map patch never strands a character in the
+    // void. The pick starts in New Haven, and the account's tutorial stays unused.
+    [Fact]
+    public void WithoutTheIslesLandTheIslePickStartsInNewHaven()
+    {
+        using var t = new Trainees();
+        var pm = t.Add();
+        TutorialWorld.IsleReady = () => false;
+        Create(pm, TutorialStart.Choice.Isle);
+        Assert.Same(HavenSpots.Map, pm.Map);
+        Assert.Equal(HavenSpots.Start, pm.Location);
+        Assert.Equal(TutorialStart.Outcome.IsleMissing, TutorialStart.ConsumeAtLogin(pm));
+        Assert.Same(HavenSpots.Map, pm.Map);
+        Assert.Equal(HavenSpots.Start, pm.Location);
+        Assert.Equal(TutorialState.NotStarted, t.Record.State);
+        Assert.False(ClusterFTutorial.IsParticipant(pm));
+        Assert.Equal(TutorialStart.Choice.None, TutorialStart.Pending(pm));
+
+        // Once the land is there, a new character of the account goes to the isle as usual.
+        TutorialWorld.IsleReady = () => true;
+        var next = t.Add();
+        Create(next, TutorialStart.Choice.Isle);
+        Assert.Equal(TutorialStart.Outcome.Isle, TutorialStart.ConsumeAtLogin(next));
+        Assert.True(TutorialWorld.IsOnIsle(next));
     }
 }
