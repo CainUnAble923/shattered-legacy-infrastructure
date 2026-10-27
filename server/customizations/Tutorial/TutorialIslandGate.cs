@@ -16,13 +16,16 @@ public static class TutorialIslandGate
     public static void Configure() =>
         Enabled = ServerConfiguration.GetOrUpdateSetting("clusterf.tutorial.islandGate", true);
 
-    // Pinned Distribution/Data/regions.json: Haven Island NoHousingRegion (3314,2345,500,750).
-    // Include the island's underground tutorial space: Rootdeep is stored off-map, but its only entrance is on
-    // Old Haven island. F-35 needs trainees to go down and return. It must not become a mainland-exit bypass.
-    // These bounds work before regions are registered, and include the docks and surrounding water.
-    public static bool IsOnIsland(Point3D location, Map? map) => map == Map.Trammel &&
-        (location.X >= 3314 && location.X < 3814 && location.Y >= 2345 && location.Y < 3095 ||
-         OldHavenBurrowsRegion.Area.Contains(location));
+    // Pinned Distribution/Data/regions.json: Haven Island NoHousingRegion (3314,2345,500,750), read from HavenSpots (cc-P663;
+    // S7 moves it with New Haven). Include the island's underground tutorial space: Rootdeep is stored off-map, but its
+    // only entrance is on Old Haven island. F-35 needs trainees to go down and return. It must not become a mainland-exit
+    // bypass. These bounds work before regions are registered, and include the docks and surrounding water.
+    // cc-P663 (P605 risk 4): the Fold, where the Wakening Isle is (map 32 and its copies), counts as the island too. That is
+    // the allowed route for a loop-0 trainee: the start choice and Rook's remedial trip from Haven onto the isle, and the
+    // dock moongate back. Nothing else reaches the Fold (FoldRegion refuses every travel spell into and out of it).
+    public static bool IsOnIsland(Point3D location, Map? map) =>
+        FoldMaps.IsFold(map) ||
+        map == HavenSpots.Map && (HavenSpots.InIslandBounds(location) || OldHavenBurrowsRegion.Area.Contains(location));
 
     private static bool NeedsGraduation(Mobile? mobile) => Enabled && mobile is PlayerMobile pm &&
         pm.AccessLevel == AccessLevel.Player && IsOnIsland(pm.Location, pm.Map) && ClusterFLoops.LoopOf(pm) == 0;

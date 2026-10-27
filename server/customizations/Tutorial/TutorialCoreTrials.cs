@@ -1,5 +1,8 @@
 // cc-P289: server-observed core trials. In-flight evidence resets on disconnect/restart;
 // completed stations remain in TutorialRecord. Only one trial and one timer per character.
+// cc-P663: the lessons are on the Wakening Isle; "nearby", arrows, effects and the death lesson use the trainee's lesson
+// map (TutorialWorld.MapOf). core.farm is Wren's three steps (TutorialFarm), finished by FarmFinished. A reconnect cancels
+// the trial (ClusterFTutorial.OnLogin) and starting the lesson again makes its practice item fresh (P605 risk 3).
 #nullable enable
 using System;
 using System.Collections.Generic;
@@ -47,16 +50,17 @@ public static class TutorialCoreTrials
     // who has never played), in two short sentences where it can.
     public static string Hint(string key) => key switch
     {
-        "core.movement" => "Hold the right mouse button toward the glowing blue floor tile beside Rook to walk onto it, then walk onto the gold tile. Point farther from your character while holding the button to run.",
-        "core.backpack" => "Double-click your character to open the character window, then double-click its backpack picture. Inside your backpack, double-click the blue practice bag.",
-        "core.paperdoll" => "Double-click your character to open the character window, then drag the blue practice cloak from your backpack onto your character's picture. If you already wear a cloak, drag it into your backpack first.",
-        "core.chat" => $"Press Enter, type '{Phrase}', then press Enter again to speak. The Journal records what you say.",
-        "core.death" => "Follow the arrow to the pale gray rat at the farm gate, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
-        "core.banking" => "Follow the arrow to the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
-        "core.travel" => "Follow the arrow to the tall, shimmering blue arch at the farm gate. Double-click it to return to the New Haven plaza.",
-        "core.league" => "Follow the arrow to Elara Voss and double-click the door on the north side of her house to enter. Double-click Elara to finish this lesson; you can read about the League without joining.",
-        "core.loop" => "Follow the arrow to the bright blue rune stone at the farm gate. Double-click it and stay nearby until the vision ends; it will not change your character.",
-        _ => "Double-click Rook on the New Haven plaza to choose this lesson."
+        "core.movement" => "Hold the right mouse button toward the glowing blue floor tile in the road, up from the beach, to walk onto it, then walk onto the gold tile. Point farther from your character while holding the button to run.",
+        "core.backpack" => "Follow the arrow to the camp beside the road. Double-click your character to open the character window, then double-click its backpack picture. Inside your backpack, double-click the blue practice bag.",
+        "core.paperdoll" => "Follow the arrow to the clothes rack. Double-click your character to open the character window, then drag the blue practice cloak from your backpack onto your character's picture. If you already wear a cloak, drag it into your backpack first.",
+        "core.chat" => $"Follow the arrow to the signpost. Press Enter, type '{Phrase}', then press Enter again to speak. The Journal records what you say.",
+        "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Choose your pet, clear the pests in the cabbage rows, then heal with a bandage.",
+        "core.death" => "Follow the arrow into the training yard to the pale gray rat, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
+        "core.banking" => "Follow the arrow through the practice bank's door in the trades square to Merrin the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
+        "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss to finish this lesson; you can read about the League without joining.",
+        "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the bright blue rune stone. Stay nearby until the vision ends; it will not change your character.",
+        "core.travel" => "Follow the arrow to the end of the dock and walk into the shimmering blue moongate, or double-click it. It takes you, and your pet, to Rook on the New Haven plaza.",
+        _ => "Double-click Tamsin on the Wakening Isle's beach to choose this lesson."
     };
 
     /// <summary>A lesson's practice item, made fresh (bright and named for what it is: cc-P480).</summary>
@@ -125,11 +129,13 @@ public static class TutorialCoreTrials
         if (trial.Supply != null && !pm.AddToBackpack(trial.Supply))
         {
             Cancel(pm);
-            ClusterFTutorial.SystemLine(pm, "Make room in your backpack, then choose this lesson again in Rook's window.");
+            ClusterFTutorial.SystemLine(pm, "Make room in your backpack, then choose this lesson again in Tamsin's window.");
             return;
         }
         Timer.StartTimer(TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(250), () => Tick(trial), out trial.Timer);
         Show(pm, trial);
+        // cc-P663: farm steps finished before the farm was a core station (or before this start) count at once.
+        if (station.Key == "core.farm" && TutorialFarm.StepOf(pm) == 4) { Observe(pm, TutorialAction.FarmDone); }
     }
 
     private static void Show(PlayerMobile pm, Trial trial)
@@ -148,14 +154,17 @@ public static class TutorialCoreTrials
         _ => TutorialCorePlacement.Spot(t.Station.Key)
     };
 
-    public static void Point(PlayerMobile pm, Point3D spot, string label)
+    /// <summary>An arrow to a spot on <paramref name="map"/> (the lesson map unless given), shown while the trainee is on it.</summary>
+    public static void Point(PlayerMobile pm, Point3D spot, string label, Map? map = null)
     {
+        map ??= TutorialWorld.MapOf(pm);
         pm.QuestArrow?.Stop();
-        if (pm.Map == Map.Trammel) { pm.QuestArrow = new GuildDirectionArrow(pm, pm, spot, Map.Trammel, label); }
+        if (pm.Map == map) { pm.QuestArrow = new GuildDirectionArrow(pm, pm, spot, map, label); }
     }
 
-    public static bool Nearby(PlayerMobile pm, Point3D spot, int range = 3) =>
-        pm.Map == Map.Trammel && pm.InRange(spot, range) && Math.Abs(pm.Z - spot.Z) <= 16;
+    /// <summary>Near a spot on the trainee's lesson map (or the given map).</summary>
+    public static bool Nearby(PlayerMobile pm, Point3D spot, int range = 3, Map? map = null) =>
+        pm.Map == (map ?? TutorialWorld.MapOf(pm)) && pm.InRange(spot, range) && Math.Abs(pm.Z - spot.Z) <= 16;
 
     // Shared by real hooks and fakes. Callers supply evidence, never a generic "done" button.
     public static bool Observe(PlayerMobile pm, TutorialAction action)
@@ -203,7 +212,7 @@ public static class TutorialCoreTrials
                 break;
             case "core.movement" when trial.Ticks % 8 == 1:
                 // cc-P480: the tile to walk onto sparkles every two seconds.
-                Effects.SendLocationEffect(Destination(trial), Map.Trammel, 0x376A, 16, 10,
+                Effects.SendLocationEffect(Destination(trial), TutorialWorld.MapOf(pm), 0x376A, 16, 10,
                     trial.Progress.Step == 0 ? TutorialStyle.BlueTileHue : TutorialStyle.GoldTileHue, 0);
                 break;
             case "core.paperdoll" when pm.Alive && trial.Supply?.Parent == pm:
@@ -252,10 +261,17 @@ public static class TutorialCoreTrials
         if (!IsDoing(pm, "core.death") || pm.FindMostRecentDamager(true) is not TutorialDeathEcho) { return; }
         Observe(pm, TutorialAction.EchoDeath);
         // PlayerDeathEvent is after YoungDeathTeleport (pinned PlayerMobile.OnDeath).
-        // Return this lesson's ghost from Old Haven to the farm, without changing Young.
-        pm.MoveToWorld(TutorialCorePlacement.GhostSpot, Map.Trammel);
+        // Return this lesson's ghost to the yard (Young's death teleport may have moved it), without changing Young.
+        pm.MoveToWorld(TutorialCorePlacement.GhostSpot, TutorialWorld.MapOf(pm));
         ClusterFTutorial.SystemLine(pm, "You are a ghost. Double-click Sera beside you and click Resurrect to return to life.");
         Point(pm, TutorialCorePlacement.HealerSpot, "Sera the healer");
+    }
+
+    /// <summary>cc-P663: Wren's farm steps are all done (TutorialFarm.StepOf is 4): core.farm is finished.</summary>
+    public static void FarmFinished(PlayerMobile pm)
+    {
+        if (IsDoing(pm, "core.farm")) { Observe(pm, TutorialAction.FarmDone); }
+        else { ClusterFTutorial.CompleteStation(pm, "core.farm"); }
     }
 
     public static void WatchVision(PlayerMobile pm)
@@ -294,7 +310,7 @@ public sealed class TutorialTrialGump : Gump
                 if (ClusterFTutorial.CoreLeft(record).FirstOrDefault() is { } next) { ClusterFTutorial.RunStation(pm, next); }
                 else
                 {
-                    ClusterFTutorial.SystemLine(pm, "You finished the main lessons. Follow the arrow to Rook on the New Haven plaza and choose Graduate, or try an optional lesson.");
+                    ClusterFTutorial.SystemLine(pm, "You finished the main lessons. Follow the arrow to Rook on the New Haven plaza and choose Graduate, or try an optional lesson there.");
                     TutorialRecruiter.PointTo(pm);
                 }
             }

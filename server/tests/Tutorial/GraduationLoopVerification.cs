@@ -28,6 +28,7 @@ public class GraduationLoopVerification : IDisposable
 
     public GraduationLoopVerification()
     {
+        FoldMaps.Configure(); // cc-P663: remedial training sends the trainee to the isle (map 32)
         if (AccountSecurity.CurrentAlgorithm == PasswordProtectionAlgorithm.None)
         {
             AccountSecurity.CurrentAlgorithm = PasswordProtectionAlgorithm.PBKDF2;

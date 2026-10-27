@@ -46,6 +46,7 @@ public class TutorialFirstPlayVerification : IDisposable
         }
 
         ClusterFTutorial.Enabled = true;
+        FoldMaps.Configure(); // cc-P663: the lessons are on the isle (map 32)
         TutorialCoreTrials.EnsureHooks();
         TutorialFarm.EnsureHooks();
         ClusterFLootBoxes.LoopProvider = ClusterFLoops.LoopOf;
@@ -103,6 +104,7 @@ public class TutorialFirstPlayVerification : IDisposable
         "core.paperdoll" => [TutorialAction.Equipped],
         "core.backpack" => [TutorialAction.OpenedBag],
         "core.chat" => [TutorialAction.SaidPhrase],
+            "core.farm" => [TutorialAction.FarmDone],
         "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
         "core.banking" => [TutorialAction.Deposited],
         "core.travel" => [TutorialAction.UsedGate],
@@ -153,7 +155,7 @@ public class TutorialFirstPlayVerification : IDisposable
     public void RooksMenuShowsOnlyTheCoreAndSkipUntilTheCoreIsDone()
     {
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
 
         var before = new TutorialRecruiterGump(p.Pm);
         var buttons = Buttons(before);
@@ -198,7 +200,7 @@ public class TutorialFirstPlayVerification : IDisposable
 
         // Partway through the old order (movement, then paperdoll): the backpack is next, the paperdoll stays done.
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         p.Record.StationsDone.Add("core.movement");
         p.Record.StationsDone.Add("core.paperdoll");
 
@@ -212,7 +214,7 @@ public class TutorialFirstPlayVerification : IDisposable
 
         // Only the first lesson done (either order): the backpack lesson is next, and the paperdoll waits for it.
         using var q = new Player();
-        ClusterFTutorial.OnLogin(q.Pm);
+        TutorialTestStart.Begin(q.Pm);
         Play(q.Pm, "core.movement");
         Assert.Equal("core.backpack", ClusterFTutorial.CoreLeft(q.Record).First().Key);
         ClusterFTutorial.RunStation(q.Pm, TutorialStations.Find("core.paperdoll")!);
@@ -225,7 +227,7 @@ public class TutorialFirstPlayVerification : IDisposable
     public void TheSeederPlacesABrightBlueAndABrightGoldFloorTileOnce()
     {
         var testWorld = TutorialCorePlacement.IsTestShard;
-        var fits = TutorialCorePlacement.Fits;
+        var fits = TutorialCorePlacement.FitsOn;
         var farmWorld = TutorialFarm.IsTestShard;
         var patched = TutorialFarm.MapPatched;
         var items = new HashSet<Item>(World.Items.Values);
@@ -233,7 +235,7 @@ public class TutorialFirstPlayVerification : IDisposable
         try
         {
             TutorialCorePlacement.IsTestShard = () => true;
-            TutorialCorePlacement.Fits = _ => true;
+            TutorialCorePlacement.FitsOn = (_, _) => true;
             TutorialFarm.IsTestShard = () => true;
             TutorialFarm.MapPatched = () => true;
 
@@ -241,7 +243,7 @@ public class TutorialFirstPlayVerification : IDisposable
             List<Item> Tiles(Point3D at, int hue)
             {
                 var found = new List<Item>();
-                foreach (var i in Map.Trammel.GetItemsAt(at))
+                foreach (var i in TutorialWorld.Isle.GetItemsAt(at))
                 {
                     if (i.ItemID == TutorialStyle.FloorTileId && i.Hue == hue && !items.Contains(i))
                     {
@@ -261,7 +263,7 @@ public class TutorialFirstPlayVerification : IDisposable
         }
         finally
         {
-            TutorialCorePlacement.IsTestShard = testWorld; TutorialCorePlacement.Fits = fits;
+            TutorialCorePlacement.IsTestShard = testWorld; TutorialCorePlacement.FitsOn = fits;
             TutorialFarm.IsTestShard = farmWorld; TutorialFarm.MapPatched = patched;
             foreach (var item in World.Items.Values.ToArray()) { if (!items.Contains(item)) { item.Delete(); } }
             foreach (var mobile in World.Mobiles.Values.ToArray()) { if (!mobiles.Contains(mobile)) { mobile.Delete(); } }
@@ -274,7 +276,7 @@ public class TutorialFirstPlayVerification : IDisposable
     public void EveryTutorialGumpUsesTheSharedLightTextAndNoneSaysSystem()
     {
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         var echo = new TutorialDeathEcho();
         var healer = new TutorialHealer();
         p.Litter.Add(echo);
@@ -311,7 +313,7 @@ public class TutorialFirstPlayVerification : IDisposable
     public void TheSuppliesAreBrightAndAMissingOneIsReplacedByHintAndArrow()
     {
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         Assert.Contains("tile", TutorialCoreTrials.Hint("core.movement"));
         Assert.Contains("backpack", TutorialCoreTrials.Hint("core.banking"));
 
@@ -353,7 +355,7 @@ public class TutorialFirstPlayVerification : IDisposable
     public void TheCompanionPickIsNeverLostAndRookOffersItUntilChosen()
     {
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         PlayCoreUntil(p.Pm, null);
         Assert.Null(ClusterFTutorial.Graduate(p.Pm));
 
@@ -383,7 +385,7 @@ public class TutorialFirstPlayVerification : IDisposable
     {
         var pet = ClusterFTutorial.GivePet(p.Pm, "dog")!;
         p.Litter.Add(pet);
-        pet.MoveToWorld(new Point3D(TutorialFarm.FarmhandSpot.X + 2, TutorialFarm.FarmhandSpot.Y, TutorialFarm.FarmhandSpot.Z), Map.Trammel);
+        pet.MoveToWorld(new Point3D(TutorialFarm.FarmhandSpot.X + 2, TutorialFarm.FarmhandSpot.Y, 0), TutorialWorld.Isle);
         pet.Kill();
         pet.Corpse?.Delete(); // its body has faded
         Assert.True(pet.IsDeadBondedPet);
@@ -394,11 +396,11 @@ public class TutorialFirstPlayVerification : IDisposable
     public void TheFarmhandNoticesADeadPetOncePerCooldownAndTheFarmVetBringsItBack()
     {
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         p.Pm.Young = true;
-        p.Pm.MoveToWorld(TutorialFarm.FarmhandSpot, Map.Trammel);
+        p.Pm.MoveToWorld(new Point3D(TutorialFarm.FarmhandSpot, 0), TutorialWorld.Isle);
         var hand = new TutorialFarmhand();
-        hand.MoveToWorld(new Point3D(TutorialFarm.FarmhandSpot.X, TutorialFarm.FarmhandSpot.Y - 1, TutorialFarm.FarmhandSpot.Z), Map.Trammel);
+        hand.MoveToWorld(new Point3D(TutorialFarm.FarmhandSpot.X, TutorialFarm.FarmhandSpot.Y - 1, 0), TutorialWorld.Isle);
         p.Litter.Add(hand);
         var pet = DeadPet(p);
 
@@ -408,7 +410,7 @@ public class TutorialFirstPlayVerification : IDisposable
         Assert.True(TutorialFarm.NoticeGhostPet(hand, pet));
 
         var vet = new TutorialVeterinarian();
-        vet.MoveToWorld(new Point3D(p.Pm.X + 1, p.Pm.Y, p.Pm.Z), Map.Trammel);
+        vet.MoveToWorld(new Point3D(p.Pm.X + 1, p.Pm.Y, p.Pm.Z), p.Pm.Map);
         p.Litter.Add(vet);
         vet.OnMovement(p.Pm, new Point3D(p.Pm.X + 10, p.Pm.Y, p.Pm.Z));
         var offer = p.Pm.FindGump<TutorialVetResurrectGump>();
@@ -432,7 +434,7 @@ public class TutorialFirstPlayVerification : IDisposable
     public void TheGraduationBoxHoldsAnElixirAndTrainersAndRangersSellIt()
     {
         using var p = new Player();
-        ClusterFTutorial.OnLogin(p.Pm);
+        TutorialTestStart.Begin(p.Pm);
         PlayCoreUntil(p.Pm, null);
         Assert.Null(ClusterFTutorial.Graduate(p.Pm));
         LootBox? box = null;

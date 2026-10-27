@@ -18,6 +18,12 @@
 // taken up by the account's next character to log in or double-click Rook (AdoptOrphanedRecord), progress and claims
 // kept.
 //
+// cc-P663 (P481 F3): the core moved to the Wakening Isle (TutorialWorld), taught by Tamsin (TutorialGuide); Rook stays on
+// the New Haven plaza for graduation, the wings, skip and remedial training (HavenSpots). Entry is now the start choice
+// at character creation (TutorialStart), consumed at the character's first login; a character with no choice (created
+// before this build) is never entered or moved. The farm is a core station (core.farm), and travel, the dock moongate,
+// is the last: a travel key saved under the old order counts only once every other core station is done (IsDone).
+//
 // The two voices: the League recruiter teaches (overhead and gumps); the System voice (the fanfare's) is the snark,
 // confirmations and achievements, sent as System lines and through ClusterFFanfare. cc-P480: the client already shows
 // such a line as "System: ...", so the text carries no prefix of its own (it read "System: System:").
@@ -86,16 +92,26 @@ public static class ClusterFTutorial
         TutorialCoreTrials.Cancel(pm);
         if (Enabled)
         {
-            AdoptOrphanedRecord(pm);
-            if (!TryEnter(pm) && IsParticipant(pm))
+            // cc-P663: the start choice decides entry, and says its own lines; without one (a character from before it)
+            // nothing enters or moves.
+            if (TutorialStart.ConsumeAtLogin(pm) == TutorialStart.Outcome.None)
             {
-                SystemLine(pm, "Your finished lessons are saved. Double-click Rook to choose your next lesson.");
-                TutorialRecruiter.PointTo(pm);
-            }
-            else if (RecordOf(pm) is { } waiting && CompanionPending(waiting) && IsRecordedCharacter(pm, waiting))
-            {
-                SystemLine(pm, "You still have a pet to choose. Double-click Rook on the New Haven plaza to open the choices.");
-                TutorialRecruiter.PointTo(pm);
+                AdoptOrphanedRecord(pm);
+                if (IsParticipant(pm) && TutorialWorld.IsOnIsle(pm))
+                {
+                    SystemLine(pm, "Your finished lessons are saved. Double-click Tamsin to choose your next lesson.");
+                    TutorialGuide.PointTo(pm);
+                }
+                else if (IsParticipant(pm))
+                {
+                    SystemLine(pm, "Your finished lessons are saved. Double-click Rook on the New Haven plaza to continue.");
+                    TutorialRecruiter.PointTo(pm);
+                }
+                else if (RecordOf(pm) is { } waiting && CompanionPending(waiting) && IsRecordedCharacter(pm, waiting))
+                {
+                    SystemLine(pm, "You still have a pet to choose. Double-click Rook on the New Haven plaza to open the choices.");
+                    TutorialRecruiter.PointTo(pm);
+                }
             }
         }
 
@@ -108,8 +124,11 @@ public static class ClusterFTutorial
         }
     }
 
-    /// <summary>Enters this character into the core if its account has never started the tutorial. True when it did.</summary>
-    public static bool TryEnter(PlayerMobile pm)
+    /// <summary>
+    /// Enters this character into the core if its account has never started the tutorial. True when it did. cc-P663: the
+    /// start choice (TutorialStart) calls it quiet and says its own lines; staff's [Tutorial enter is not quiet.
+    /// </summary>
+    public static bool TryEnter(PlayerMobile pm, bool quiet = false)
     {
         // cc-P289 play-through: the Golem's Admin was greeted and pointed at Rook. Staff are never entered.
         if (pm.AccessLevel > AccessLevel.Player || pm.Account?.AccessLevel > AccessLevel.Player ||
@@ -122,9 +141,12 @@ public static class ClusterFTutorial
         record.CharacterSerial = (uint)pm.Serial;
         record.StartedAt = Core.Now;
 
-        SystemLine(pm, "Welcome to New Haven. Rook Hallowell, your tutorial guide, is waiting on the town plaza.");
-        SystemLine(pm, "Follow the arrow and double-click Rook with two quick left clicks. Rook's window lets you start a lesson or skip the tutorial.");
-        TutorialRecruiter.PointTo(pm);
+        if (!quiet)
+        {
+            SystemLine(pm, "Your tutorial has started. Tamsin, your guide, waits on the Wakening Isle's beach; Rook on the New Haven plaza can send you there.");
+            TutorialGuide.PointTo(pm);
+        }
+
         return true;
     }
 
@@ -150,11 +172,38 @@ public static class ClusterFTutorial
 
     // -- Stations --
 
+    /// <summary>
+    /// A core station done, for ordering and graduation. cc-P663: travel (now last) saved under the old order, before the
+    /// stations that now come ahead of it, counts only once every other core station is done.
+    /// </summary>
+    public static bool IsDone(TutorialRecord record, string key)
+    {
+        if (!record.StationsDone.Contains(key))
+        {
+            return false;
+        }
+
+        if (key != TutorialStations.LastCore)
+        {
+            return true;
+        }
+
+        foreach (var s in TutorialStations.Core)
+        {
+            if (s.Key != key && !record.StationsDone.Contains(s.Key))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public static IEnumerable<TutorialStation> CoreLeft(TutorialRecord record)
     {
         foreach (var s in TutorialStations.Core)
         {
-            if (!record.StationsDone.Contains(s.Key))
+            if (!IsDone(record, s.Key))
             {
                 yield return s;
             }
@@ -223,6 +272,7 @@ public static class ClusterFTutorial
         record.State = TutorialState.Skipped;
         record.WasSkipped = true;
         record.FinishedAt = Core.Now;
+        TutorialStart.SendHome(pm); // cc-P663: a skip on the isle wakes in New Haven, pets and all
         SystemLine(pm, "You skipped the tutorial. Double-click Rook if you want to take the lessons and earn their rewards later.");
 
         if (SkipCountsAsGraduation)
@@ -256,7 +306,9 @@ public static class ClusterFTutorial
         record.CharacterSerial = (uint)pm.Serial;
         record.StationsDone.Clear();
         record.StartedAt = Core.Now;
-        SystemLine(pm, "You have restarted the tutorial with its usual rewards. Choose the first lesson in Rook's window.");
+        SystemLine(pm, "You have restarted the tutorial with its usual rewards. Rook sends you to the Wakening Isle; the moongate on its dock brings you back.");
+        // cc-P663: Rook's remedial trip, onto the Fold past the island gate (TutorialIslandGate counts the Fold as the island).
+        TutorialStart.SendToIsle(pm);
         return true;
     }
 
@@ -392,7 +444,9 @@ public static class ClusterFTutorial
             switch (verb)
             {
                 case "enter":
-                    from.SendMessage(TryEnter(pm) ? "Entered." : "Its account has already started the tutorial.");
+                    var entered = TryEnter(pm, quiet: true);
+                    if (entered) { TutorialStart.SendToIsle(pm); }
+                    from.SendMessage(entered ? "Entered, and sent to the isle." : "Its account has already started the tutorial.");
                     break;
                 case "station" when key != null && TutorialStations.Find(key) is { } station:
                     RunStation(pm, station);

@@ -1,4 +1,8 @@
 // cc-P289: test-world lesson props, not a map build. No terrain, architecture or permanent decor is changed.
+// cc-P663 (P481 F3): the core's props and NPCs stand on the Wakening Isle now (TutorialWorld, map 32), at P481 11.2's stops
+// shifted to site A (P673 1.4); every lookup asks the lesson map. New Haven keeps Rook and its vet (HavenSpots). The isle's
+// walls, floors, fences, dock and stones are P662's map patch; the doors, NPCs, lesson props and the moongate are server
+// items placed here, so the seeder refuses until that patch is on the server (the void fails its fit check).
 #nullable enable
 using System;
 using System.Collections.Generic;
@@ -14,83 +18,136 @@ namespace Server.Tutorial;
 public static class TutorialCorePlacement
 {
     public static Func<bool> IsTestShard { get; set; } = () => ClusterFStaffHub.IsTestShard;
-    // Fake map seam for tests; the real seeder always checks the loaded server map.
-    public static Func<Point3D, bool> Fits { get; set; } = p => Map.Trammel.CanFit(p, 16, false, false);
-    public static readonly Point3D FirstMark = new(3499, 2571, 14);
-    public static readonly Point3D SecondMark = new(3501, 2571, 14);
-    public static Point3D DeathSpot => Ground(3402, 2617);
-    public static Point3D HealerSpot => Ground(3402, 2613);
-    public static Point3D GhostSpot => Ground(3403, 2614);
-    public static Point3D GateSpot => Ground(3402, 2615);
-    public static readonly Point3D GateExit = new(3501, 2572, 14);
+    // Fake map seam for tests; the real seeder always checks the loaded server map (the lesson map, or New Haven's).
+    public static Func<Point3D, Map, bool> FitsOn { get; set; } = (p, map) => map.CanFit(p, 16, false, false);
+    public static bool Fits(Point3D p) => FitsOn(p, TutorialWorld.Isle);
+    private static Point3D Ground(Point2D p) => TutorialWorld.Ground(p);
+
+    public static Point3D FirstMark => Ground(TutorialWorld.BlueTile);
+    public static Point3D SecondMark => Ground(TutorialWorld.GoldTile);
+    public static Point3D DeathSpot => Ground(TutorialWorld.Echo);
+    public static Point3D HealerSpot => Ground(TutorialWorld.Healer);
+    public static Point3D GhostSpot => Ground(TutorialWorld.GhostSpot);
+    public static Point3D GateSpot => Ground(TutorialWorld.Moongate);
+    public static Point3D GateExit => HavenSpots.MoongateExit;
     // cc-P480 Part 8: a vet beside the Farmhand, and one in New Haven by the stables when the town has none.
-    public static Point3D FarmVetSpot => Ground(TutorialFarm.FarmVetSpot.X, TutorialFarm.FarmVetSpot.Y);
-    public static readonly Point3D NewHavenVetSpot = new(3526, 2578, 7);
-    public static readonly Point3D NewHavenCentre = new(3500, 2590, 0);
-    private static Point3D Ground(int x, int y) => new(x, y, Map.Trammel.GetAverageZ(x, y));
+    public static Point3D FarmVetSpot => Ground(TutorialFarm.FarmVetSpot);
+    public static Point3D BankerSpot => Ground(TutorialWorld.Banker);
+    public static Point3D ElaraSpot => Ground(TutorialWorld.Elara);
+
+    /// <summary>Where a lesson sends the arrow: the thing to walk to, use or talk to.</summary>
     public static Point3D Spot(string key) => key switch
     {
         "core.movement" => FirstMark,
-        "core.paperdoll" => new Point3D(3499, 2572, 14),
-        "core.backpack" => new Point3D(3499, 2573, 14),
-        "core.chat" => new Point3D(3500, 2571, 14),
+        "core.backpack" => Ground(TutorialWorld.Camp),
+        "core.paperdoll" => Ground(TutorialWorld.Rack),
+        "core.chat" => Ground(TutorialWorld.Signpost),
+        "core.farm" => Ground(TutorialFarm.FarmhandSpot),
         "core.death" => DeathSpot,
-        "core.banking" => ClusterFNewHavenSeeder.BankAnchor,
+        "core.banking" => BankerSpot,
+        "core.league" => ElaraSpot,
+        "core.loop" => Ground(TutorialWorld.Stones),
         "core.travel" => GateSpot,
-        "core.league" => ClusterFNewHavenSeeder.RegistrarAnchor,
-        "core.loop" => Ground(3402, 2619),
-        _ => TutorialRecruiter.Spot
+        _ => Ground(TutorialWorld.Guide)
     };
 
-    public static TutorialStationMarker? FindMarker(string key)
+    /// <summary>Where each lesson's marker stands: its stop on the road (P481 11.2), outside any door.</summary>
+    public static Point3D MarkerSpot(string key) => key switch
     {
-        foreach (var item in Map.Trammel.GetItemsInRange<TutorialStationMarker>(Spot(key), 0))
+        "core.movement" => Ground(new Point2D(TutorialWorld.BlueTile.X, TutorialWorld.BlueTile.Y + 1)),
+        "core.farm" => Ground(TutorialWorld.FarmGate),
+        "core.death" => Ground(TutorialWorld.Yard),
+        "core.banking" => Ground(TutorialWorld.BankStop),
+        "core.league" => Ground(TutorialWorld.LodgeStop),
+        "core.travel" => Ground(TutorialWorld.DockEnd),
+        _ => Spot(key)
+    };
+
+    // The stops' props (all stock art, server items so P662's statics stay the map's own): id, spot, name.
+    public static readonly (int Id, Point2D At, string Name)[] Props =
+    [
+        (0x0DE3, new Point2D(TutorialWorld.Camp.X - 1, TutorialWorld.Camp.Y - 2), "campfire"),
+        (0x0A55, new Point2D(TutorialWorld.Camp.X + 1, TutorialWorld.Camp.Y - 2), "bedroll"),
+        (0x0A55, new Point2D(TutorialWorld.Camp.X + 2, TutorialWorld.Camp.Y - 2), "bedroll"),
+        (0x0EC6, new Point2D(TutorialWorld.Rack.X, TutorialWorld.Rack.Y - 2), "clothes rack"),
+        (0x0B97, new Point2D(TutorialWorld.Signpost.X, TutorialWorld.Signpost.Y - 2), "signpost: the farm, east"),
+        (0x0E7C, TutorialWorld.BankBox, "practice bank box")
+    ];
+
+    public static TutorialStationMarker? FindMarker(string key, Map map)
+    {
+        foreach (var item in map.GetItemsInRange<TutorialStationMarker>(MarkerSpot(key), 0))
         { if (!item.Deleted && item.StationKey == key) { return item; } }
         return null;
     }
 
-    private static Mobile? FindMobile(Type type, Point3D spot)
+    public static TutorialStationMarker? FindMarker(string key) => FindMarker(key, TutorialWorld.Isle);
+
+    private static Mobile? FindMobile(Map map, Type type, Point3D spot)
     {
-        foreach (var m in Map.Trammel.GetMobilesInRange(spot, 2))
+        foreach (var m in map.GetMobilesInRange(spot, 2))
         { if (!m.Deleted && type.IsInstanceOfType(m)) { return m; } }
         return null;
     }
 
-    private static bool HasItem<T>(Point3D spot) where T : Item
+    private static bool HasItem<T>(Map map, Point3D spot, Func<T, bool>? match = null) where T : Item
     {
-        foreach (var item in Map.Trammel.GetItemsInRange<T>(spot, 0))
-        { if (!item.Deleted) { return true; } }
+        foreach (var item in map.GetItemsInRange<T>(spot, 0))
+        { if (!item.Deleted && (match == null || match(item))) { return true; } }
         return false;
     }
+
+    private static bool HasDoor(Map map, Point3D spot)
+    {
+        foreach (var door in map.GetItemsInRange<BaseDoor>(spot, 2))
+        {
+            var closed = door.Open ? new Point3D(door.X - door.Offset.X, door.Y - door.Offset.Y, door.Z - door.Offset.Z) : door.Location;
+            if (!door.Deleted && closed == spot) { return true; }
+        }
+        return false;
+    }
+
+    /// <summary>The practice bank's and the lodge's doors, both in an east-west wall (south and north walls).</summary>
+    public static BaseDoor MakeDoor() => new DarkWoodDoor(DoorFacing.WestCW);
 
     public static string Seed(bool dryRun)
     {
         if (!IsTestShard()) { return "Tutorial: refused. Test world only; live is never seeded."; }
-        if (!TutorialFarm.MapPatched()) { return "Tutorial: refused. Apply P276's farm map patch first."; }
-        var map = Map.Trammel;
-        var markers = TutorialStations.Core.Where(s => FindMarker(s.Key) == null).ToArray();
+        var map = TutorialWorld.Isle;
+        if (map == null) { return "Tutorial: refused. The Fold (map 32) is not registered."; }
+        var haven = HavenSpots.Map;
+        var markers = TutorialStations.Core.Where(s => FindMarker(s.Key, map) == null).ToArray();
         var mobiles = new (Type Type, Point3D Spot, Func<Mobile> Make)[]
         {
-            (typeof(TutorialRecruiter), TutorialRecruiter.Spot, () => new TutorialRecruiter()),
+            (typeof(TutorialGuide), Ground(TutorialWorld.Guide), () => new TutorialGuide { Direction = Direction.West }),
             (typeof(TutorialDeathEcho), DeathSpot, () => new TutorialDeathEcho()),
             (typeof(TutorialHealer), HealerSpot, () => new TutorialHealer()),
-            (typeof(Banker), Spot("core.banking"), () => new Banker { Name = "Merrin", CantWalk = true }),
-            (typeof(LeagueRegistrar), Spot("core.league"), () => new LeagueRegistrar { CantWalk = true }),
+            (typeof(Banker), BankerSpot, () => new Banker { Name = "Merrin", CantWalk = true }),
+            (typeof(LeagueRegistrar), ElaraSpot, () => new LeagueRegistrar { CantWalk = true }),
             (typeof(TutorialVeterinarian), FarmVetSpot, () => new TutorialVeterinarian { Name = "Tobin", Direction = Direction.East })
-        }.Where(row => FindMobile(row.Type, row.Spot) == null).ToList();
-        // New Haven's own vet, when the town has none (pinned's spawn data has none there). The farm's is out of range.
-        if (FindTownVet() == null) { mobiles.Add((typeof(TutorialVeterinarian), NewHavenVetSpot, () => new TutorialVeterinarian())); }
-        var gateMissing = !HasItem<TutorialTravelGate>(GateSpot);
-        var goldMissing = !HasItem<TutorialWalkMark>(SecondMark);
-        var blueMissing = !HasItem<TutorialBlueWalkTile>(FirstMark);
+        }.Where(row => FindMobile(map, row.Type, row.Spot) == null).ToList();
+        var rookMissing = TutorialRecruiter.Find() == null;
+        // New Haven's own vet, when the town has none (pinned's spawn data has none there).
+        var townVetMissing = FindTownVet() == null;
+        var gateMissing = !HasItem<TutorialTravelGate>(map, GateSpot);
+        var goldMissing = !HasItem<TutorialWalkMark>(map, SecondMark);
+        var blueMissing = !HasItem<TutorialBlueWalkTile>(map, FirstMark);
+        var doors = new[] { Ground(TutorialWorld.BankDoor), Ground(TutorialWorld.LodgeDoor) }.Where(p => !HasDoor(map, p)).ToArray();
+        var props = Props.Where(p => !HasItem<Item>(map, Ground(p.At), i => i.ItemID == p.Id && i.Name == p.Name)).ToArray();
 
         // Preflight the whole requested surface before mutation. Markers are passable, so NPCs can share their tile.
         // CanFit reads the server's actual land/statics/items. Never guess a clear tile from an offline picture.
-        foreach (var point in markers.Select(s => Spot(s.Key)).Concat(mobiles.Select(r => r.Spot))
-                     .Concat(new[] { FirstMark, SecondMark, GateSpot, GateExit, GhostSpot }))
+        foreach (var point in markers.Select(s => MarkerSpot(s.Key)).Concat(mobiles.Select(r => r.Spot))
+                     .Concat(new[] { FirstMark, SecondMark, GateSpot, GhostSpot, Ground(TutorialWorld.Beach) })
+                     .Concat(doors).Concat(props.Select(p => Ground(p.At))))
         {
-            if (!Fits(point))
-            { return $"Tutorial: refused. Tile {point} is blocked; nothing placed. Check the test world's map and props."; }
+            if (!FitsOn(point, map))
+            { return $"Tutorial: refused. Isle tile {point} is blocked; nothing placed. Is P662's isle patch on the server's map?"; }
+        }
+        foreach (var point in new[] { GateExit, HavenSpots.Rook }.Concat(townVetMissing ? new[] { HavenSpots.VetSpot } : []))
+        {
+            if (!FitsOn(point, haven))
+            { return $"Tutorial: refused. New Haven tile {point} is blocked; nothing placed."; }
         }
         if (TileData.ItemTable[0x1F14].Impassable)
         { return "Tutorial: refused. The station marker art is impassable in this tiledata."; }
@@ -101,25 +158,32 @@ public static class TutorialCorePlacement
         {
             TutorialCoreTrials.EnsureHooks();
             foreach (var station in markers)
-            { new TutorialStationMarker(station.Key).MoveToWorld(Spot(station.Key), map); }
+            { new TutorialStationMarker(station.Key).MoveToWorld(MarkerSpot(station.Key), map); }
             foreach (var row in mobiles)
-            {
-                var m = row.Make();
-                if (m is BaseCreature bc) { bc.Home = row.Spot; bc.RangeHome = 0; bc.CantWalk = true; }
-                m.MoveToWorld(row.Spot, map);
-            }
+            { Place(row.Make(), row.Spot, map); }
+            if (rookMissing) { Place(new TutorialRecruiter(), HavenSpots.Rook, haven); }
+            if (townVetMissing) { Place(new TutorialVeterinarian(), HavenSpots.VetSpot, haven); }
             if (gateMissing) { new TutorialTravelGate().MoveToWorld(GateSpot, map); }
             if (blueMissing) { new TutorialBlueWalkTile().MoveToWorld(FirstMark, map); }
             if (goldMissing) { new TutorialWalkMark().MoveToWorld(SecondMark, map); }
+            foreach (var spot in doors) { MakeDoor().MoveToWorld(spot, map); }
+            foreach (var (id, at, name) in props) { new Static(id) { Name = name }.MoveToWorld(Ground(at), map); }
         }
         var tiles = (blueMissing ? 1 : 0) + (goldMissing ? 1 : 0);
-        return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {mobiles.Count} NPCs/echo/vets, {(gateMissing ? 1 : 0)} gate, {tiles} walking tiles. {farm.Message}";
+        var npcs = mobiles.Count + (rookMissing ? 1 : 0) + (townVetMissing ? 1 : 0);
+        return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {npcs} NPCs/echo/vets, {(gateMissing ? 1 : 0)} moongate, {tiles} walking tiles, {doors.Length} doors, {props.Length} props. {farm.Message}";
     }
 
-    /// <summary>Any vet in New Haven (60 tiles of its centre; the farm's, 100 tiles west, is outside).</summary>
+    private static void Place(Mobile m, Point3D spot, Map map)
+    {
+        if (m is BaseCreature bc) { bc.Home = spot; bc.RangeHome = 0; bc.CantWalk = true; }
+        m.MoveToWorld(spot, map);
+    }
+
+    /// <summary>Any vet in New Haven (60 tiles of its centre).</summary>
     public static Mobile? FindTownVet()
     {
-        foreach (var m in Map.Trammel.GetMobilesInRange(NewHavenCentre, 60))
+        foreach (var m in HavenSpots.Map.GetMobilesInRange(HavenSpots.Centre, 60))
         {
             if (m is Veterinarian { Deleted: false }) { return m; }
         }
@@ -164,21 +228,54 @@ public partial class TutorialBlueWalkTile : Item
     public TutorialBlueWalkTile() : base(TutorialStyle.FloorTileId) { Name = "glowing blue floor tile"; Movable = false; Hue = TutorialStyle.BlueTileHue; }
 }
 
+/// <summary>
+/// cc-P663: the dock's moongate out to New Haven, the last core lesson. Walk into it or double-click it (P605 risk 3). It
+/// takes the trainee's pets with them (TutorialWorld.Cross) and sets them down beside Rook. It lets through a trainee on
+/// the travel lesson, one whose core is done, and anyone not in the tutorial; a trainee with earlier lessons left is told
+/// which one comes next.
+/// </summary>
 [SerializationGenerator(0, false)]
 public partial class TutorialTravelGate : Item
 {
     [Constructible]
-    public TutorialTravelGate() : base(0xF6C) { Name = "tutorial moongate to New Haven"; Movable = false; }
-    // cc-P480: the gate keeps the moongate's own blue (it was tinted pale gray, 0x482).
-    [AfterDeserialization(false)] private void Unhue() => Hue = 0;
+    public TutorialTravelGate() : base(0xF6C) { Name = "moongate to New Haven"; Movable = false; }
+    // cc-P480: the gate keeps the moongate's own blue (it was tinted pale gray, 0x482). cc-P663: and the new name.
+    [AfterDeserialization(false)] private void Unhue() { Hue = 0; Name = "moongate to New Haven"; }
+
+    public override bool OnMoveOver(Mobile m)
+    {
+        if (m is PlayerMobile pm) { Timer.DelayCall(TimeSpan.Zero, () => Use(pm, Location)); }
+        return true;
+    }
+
     public override void OnDoubleClick(Mobile from)
     {
-        if (from is not PlayerMobile { Alive: true } pm || !TutorialCoreTrials.Nearby(pm, Location) ||
-            !TutorialCoreTrials.IsDoing(pm, "core.travel")) { return; }
-        if (!TutorialCorePlacement.Fits(TutorialCorePlacement.GateExit))
-        { ClusterFTutorial.SystemLine(pm, "The place where this gate sends you is blocked. Ask a staff member for help."); return; }
-        pm.MoveToWorld(TutorialCorePlacement.GateExit, Map.Trammel);
-        TutorialCoreTrials.Observe(pm, TutorialAction.UsedGate);
+        if (from is PlayerMobile pm && TutorialCoreTrials.Nearby(pm, Location)) { Use(pm, Location); }
+    }
+
+    /// <summary>Sends <paramref name="pm"/> through, if they may go. True when they crossed.</summary>
+    public static bool Use(PlayerMobile pm, Point3D gate)
+    {
+        if (!pm.Alive || pm.Deleted || pm.Map == null || !pm.InRange(gate, 3)) { return false; }
+        var record = ClusterFTutorial.RecordOf(pm);
+        var doing = TutorialCoreTrials.IsDoing(pm, "core.travel");
+        if (!doing && ClusterFTutorial.IsParticipant(pm) && record != null && !ClusterFTutorial.CoreDone(record) &&
+            ClusterFTutorial.CoreLeft(record).FirstOrDefault() is { } next && next.Key != "core.travel")
+        {
+            ClusterFTutorial.SystemLine(pm, $"The moongate is your last lesson. Finish {next.Title} first.");
+            return false;
+        }
+        if (!TutorialCorePlacement.FitsOn(TutorialCorePlacement.GateExit, HavenSpots.Map))
+        { ClusterFTutorial.SystemLine(pm, "The place where this gate sends you is blocked. Ask a staff member for help."); return false; }
+        if (!TutorialWorld.Cross(pm, TutorialCorePlacement.GateExit, HavenSpots.Map)) { return false; }
+        pm.PlaySound(0x1FE);
+        if (doing || ClusterFTutorial.IsParticipant(pm) && record != null && !ClusterFTutorial.IsDone(record, "core.travel"))
+        {
+            if (!doing) { ClusterFTutorial.RunStation(pm, TutorialStations.Find("core.travel")!); }
+            TutorialCoreTrials.Observe(pm, TutorialAction.UsedGate);
+        }
+        if (ClusterFTutorial.IsParticipant(pm)) { TutorialRecruiter.PointTo(pm); }
+        return true;
     }
 }
 

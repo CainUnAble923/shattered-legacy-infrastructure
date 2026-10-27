@@ -14,6 +14,8 @@
     { "number": 1900010, "text": "All items must be made with Celestial ingots." },
     { "number": 1900011, "text": "Craft This Order" },
     { "number": 1900012, "text": "Clear a corpse" },
-    { "number": 1900013, "text": "Clear corpses nearby" }
+    { "number": 1900013, "text": "Clear corpses nearby" },
+    { "number": 1900014, "text": "Start with the tutorial (recommended): wake on the Wakening Isle, learn the basics along one road, then take the moongate to New Haven." },
+    { "number": 1900015, "text": "Skip the tutorial: start in New Haven." }
   ]
 }

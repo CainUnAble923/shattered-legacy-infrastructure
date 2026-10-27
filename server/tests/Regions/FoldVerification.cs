@@ -223,9 +223,9 @@ public class FoldVerification
 
             ShardTestClock.Advance(TimeSpan.FromMilliseconds(100));
 
-            var city = CharacterCreation.GetStartingCities()[0];
+            // cc-P663: the New Haven start (HavenSpots); the start list's first entry is the isle's now.
             Assert.Same(Map.Trammel, trainee.Map);
-            Assert.Equal(city.Location, trainee.Location);
+            Assert.Equal(Server.Tutorial.HavenSpots.Start, trainee.Location);
             Assert.Equal(InVoidC, staff.Location);
         }
         finally

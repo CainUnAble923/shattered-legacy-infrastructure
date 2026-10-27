@@ -222,7 +222,7 @@ namespace Server.Tutorial
             if (pm.Map == Map.Trammel && !trial.Finished)
             {
                 var (spot, name) = trial.Armed && trial.Target != null ? (trial.Target.Location, "the blue training echo") : PointAt(trial);
-                TutorialCoreTrials.Point(pm, spot, name);
+                TutorialCoreTrials.Point(pm, spot, name, HavenSpots.Map);
             }
 
             pm.CloseGump<TutorialWingTrialGump>();

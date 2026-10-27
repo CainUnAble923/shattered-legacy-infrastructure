@@ -128,7 +128,14 @@ public static partial class CharacterCreation
 
     private static CityInfo[] ConstructAvailableStartingCities()
     {
-        // ClusterF: All new characters start in New Haven only.
+        // cc-P663 (P481 F3): with the tutorial on (the test shard until F4 ships), two entries: "Tutorial Island" (index 0,
+        // the default) and "New Haven" (skip), both as Trammel; TutorialStart reads the choice. Otherwise every new
+        // character starts in New Haven only (ClusterF).
+        if (Server.Tutorial.ClusterFTutorial.Enabled)
+        {
+            return Server.Tutorial.TutorialStart.Cities();
+        }
+
         return
         [
             new("New Haven", "The Bountiful Harvest Inn", 1150168, 3503, 2574, 14, Map.Trammel)
@@ -266,7 +273,11 @@ public static partial class CharacterCreation
         }
 
         var city = GetStartLocation(args);
-        newChar.MoveToWorld(city.Location, city.Map);
+        // cc-P663: the start choice is recorded on the new character and decides where it wakes (TutorialStart).
+        var (startAt, startMap) = newChar is PlayerMobile starter
+            ? Server.Tutorial.TutorialStart.OnCreated(starter, city)
+            : (city.Location, city.Map);
+        newChar.MoveToWorld(startAt, startMap);
 
         logger.Information(
             "Login: {0}: New character being created (account={1}, character={2}, serial={3}, started.city={4}, started.location={5}, started.map={6})",
@@ -275,8 +286,8 @@ public static partial class CharacterCreation
             newChar.Name,
             newChar.Serial,
             city.City,
-            city.Location,
-            city.Map);
+            startAt,
+            startMap);
 
         new WelcomeTimer(newChar).Start();
     }

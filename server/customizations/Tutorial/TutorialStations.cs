@@ -56,24 +56,29 @@ public static class TutorialStations
     [
         // -- The required core (in order). cc-P480: the backpack before the paperdoll, since dressing takes the cloak
         //    out of the backpack (Chase 10-23). Records hold done keys, not positions, so saved progress carries on.
+        //    cc-P663: on the Wakening Isle, one line west to east (P481 11.2): the farm joins the core after chat, and
+        //    travel, the dock moongate out to New Haven, is last (ClusterFTutorial.IsDone counts an old travel key only
+        //    once the rest are done).
         new("core.movement", TutorialWing.Core, "Walk and run", None, None, None,
-            ["Options", "Global Scaling", "Hotkeys"], null, "New Haven plaza"),
+            ["Options", "Global Scaling", "Hotkeys"], null, "the bright tiles in the road, up from the beach"),
         new("core.backpack", TutorialWing.Core, "Your backpack", None, None, None,
-            ["Grid Containers", "Item comparison"], null, "New Haven plaza"),
+            ["Grid Containers", "Item comparison"], null, "the camp beside the road"),
         new("core.paperdoll", TutorialWing.Core, "Your character window and clothes", None, None, None,
-            ["Alternate Paperdoll", "Durability gump"], null, "New Haven plaza"),
+            ["Alternate Paperdoll", "Durability gump"], null, "the clothes rack"),
         new("core.chat", TutorialWing.Core, "Speak and read your Journal", None, None, None,
-            ["Journal and filters", "TTF fonts", "Nameplates"], null, "New Haven plaza"),
+            ["Journal and filters", "TTF fonts", "Nameplates"], null, "the signpost at the meadow's edge"),
+        new("core.farm", TutorialWing.Core, "The farm: your pet, pests and bandages", None, None, None,
+            ["Pet scaling", "Follow mode"], null, "the farm gate, with Wren the Farmhand"),
         new("core.death", TutorialWing.Core, "Death and resurrection", None, None, None,
-            ["Info Bar"], null, "the farm gate, beside Sera the healer"),
+            ["Info Bar"], null, "the training yard, beside Sera the healer"),
         new("core.banking", TutorialWing.Core, "The bank", None, None, None,
-            ["Grid Containers"], null, "New Haven Bank"),
-        new("core.travel", TutorialWing.Core, "Getting around", None, None, None,
-            ["World Map", "Macros"], null, "the moongate"),
+            ["Grid Containers"], null, "the practice bank in the trades square"),
         new("core.league", TutorialWing.Core, "The League of Extraordinary Citizens", None, None, None,
-            [], null, "the League field office"),
+            [], null, "the League lodge"),
         new("core.loop", TutorialWing.Core, "Watch a loop vision", None, None, None,
-            ["Skill progress bar"], null, "the bright blue rune stone at the farm gate"),
+            ["Skill progress bar"], null, "the standing stones on the knoll"),
+        new("core.travel", TutorialWing.Core, "Getting around", None, None, None,
+            ["World Map", "Macros"], null, "the moongate at the end of the dock"),
 
         // -- Combat wing --
         new("combat.weapons", TutorialWing.Combat, "Pick your weapon",
@@ -153,6 +158,9 @@ public static class TutorialStations
              "Legion scripting (advanced)", "Script library browser (advanced)"], null, "Elara Voss's house, the bank, then Rook"),
     ];
 
+    /// <summary>cc-P663: the last core lesson, the dock moongate out to New Haven.</summary>
+    public const string LastCore = "core.travel";
+
     public static TutorialStation? Find(string key) => Array.Find(All, s => s.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
 
     public static IEnumerable<TutorialStation> Core
@@ -179,6 +187,7 @@ public static class TutorialStations
         ["core.paperdoll"] = TutorialCoreTrials.Start,
         ["core.backpack"] = TutorialCoreTrials.Start,
         ["core.chat"] = TutorialCoreTrials.Start,
+        ["core.farm"] = TutorialCoreTrials.Start,
         ["core.death"] = TutorialCoreTrials.Start,
         ["core.banking"] = TutorialCoreTrials.Start,
         ["core.travel"] = TutorialCoreTrials.Start,

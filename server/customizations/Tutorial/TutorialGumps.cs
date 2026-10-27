@@ -9,6 +9,9 @@
 // cc-P480: light text on the dark background from TutorialStyle; Rook's menu shows the core only until it is done (Chase
 // 10-23); the companion pick shows each pet's picture and what it grows into.
 // cc-P453: the account's other characters get Rook's page read-only (no buttons, and a reply from them runs nothing).
+// cc-P663: the same page is Tamsin's on the Wakening Isle (guide: the core and the skip, no wings or graduation); Rook's
+// adds a button that sends a trainee with core lessons left to the isle (TutorialStart.SendToIsle), and a core lesson
+// pressed in his window does the same.
 
 #nullable enable
 
@@ -29,12 +32,16 @@ public class TutorialRecruiterGump : Gump
     public const int BtnRemedial = 2;
     public const int BtnGraduate = 3;
     public const int BtnCompanion = 4;
+    public const int BtnToIsle = 5;
     public const int BtnStationBase = 100;
 
     private const int Width = 620;
     private const int Row = 20;
 
     private readonly PlayerMobile _pm;
+
+    /// <summary>cc-P663: Tamsin's page on the isle rather than Rook's.</summary>
+    public readonly bool Guide;
 
     /// <summary>cc-P453: another character on the account sees the page with no buttons.</summary>
     public readonly bool ReadOnly;
@@ -60,13 +67,15 @@ public class TutorialRecruiterGump : Gump
         _ => "You have not started the tutorial."
     };
 
-    public TutorialRecruiterGump(PlayerMobile pm) : base(60, 40)
+    public TutorialRecruiterGump(PlayerMobile pm, bool guide = false) : base(60, 40)
     {
         _pm = pm;
+        Guide = guide;
         var record = ClusterFTutorial.RecordOf(pm);
         ReadOnly = record is { State: not TutorialState.NotStarted } && !ClusterFTutorial.IsRecordedCharacter(pm, record);
         var active = !ReadOnly && record is { IsActive: true };
-        var wings = active && WingsOpen(record!);
+        var wings = active && !guide && WingsOpen(record!);
+        var toIsle = active && !guide && !ClusterFTutorial.CoreDone(record!);
 
         // The optional lessons, grouped under their wing, split into two columns at a group boundary.
         var left = new List<(TutorialWing Wing, TutorialStation? Station)>();
@@ -87,7 +96,7 @@ public class TutorialRecruiterGump : Gump
         var h = 100;
         if (active)
         {
-            h += 24 + core.Count * Row + (wings ? 30 + Math.Max(left.Count, right.Count) * Row : 30) + 50;
+            h += 24 + core.Count * Row + (wings ? 30 + Math.Max(left.Count, right.Count) * Row : 30) + 50 + (toIsle ? 30 : 0);
         }
         else if (ReadOnly || record != null && ClusterFTutorial.CompanionPending(record))
         {
@@ -96,7 +105,7 @@ public class TutorialRecruiterGump : Gump
 
         AddPage(0);
         TutorialStyle.Panel(this, Width, h);
-        AddLabel(24, 18, TutorialStyle.HeadingHue, "Rook Hallowell: New Haven tutorial");
+        AddLabel(24, 18, TutorialStyle.HeadingHue, guide ? "Tamsin: the Wakening Isle" : "Rook Hallowell: New Haven tutorial");
         AddLabel(24, 42, TutorialStyle.TextHue, record == null ? "You have not started the tutorial on this account." : StateText(record.State));
 
         var y = 72;
@@ -131,7 +140,16 @@ public class TutorialRecruiterGump : Gump
             }
             else
             {
-                AddLabel(24, y + 6, TutorialStyle.TextHue, "Finish the main lessons to open trade and skill lessons.");
+                AddLabel(24, y + 6, TutorialStyle.TextHue, guide
+                    ? "The moongate on the dock is your last lesson. Rook in New Haven graduates you and opens trade and skill lessons."
+                    : "Finish the main lessons to open trade and skill lessons.");
+                y += 30;
+            }
+
+            if (toIsle)
+            {
+                AddButton(24, y, 4005, 4007, BtnToIsle);
+                AddLabel(60, y + 2, TutorialStyle.ActionHue, "Go to the Wakening Isle to take your lessons");
                 y += 30;
             }
 
@@ -142,7 +160,7 @@ public class TutorialRecruiterGump : Gump
                 AddLabel(60, y + 2, TutorialStyle.WarnHue, "Skip the tutorial");
             }
 
-            if (ClusterFTutorial.CoreDone(record))
+            if (!guide && ClusterFTutorial.CoreDone(record))
             {
                 AddButton(Width / 2 + 10, y, 4023, 4025, BtnGraduate);
                 AddLabel(Width / 2 + 46, y + 2, TutorialStyle.DoneHue, "Graduate");
@@ -197,14 +215,21 @@ public class TutorialRecruiterGump : Gump
                 _pm.SendGump(new TutorialSkipGump(1));
                 return;
             case BtnRemedial:
-                ClusterFTutorial.StartRemedial(_pm);
-                _pm.SendGump(new TutorialRecruiterGump(_pm));
+                ClusterFTutorial.StartRemedial(_pm); // cc-P663: and the trip to the isle
+                return;
+            case BtnToIsle:
+                if (!Guide && ClusterFTutorial.IsParticipant(_pm) && ClusterFTutorial.RecordOf(_pm) is { } trainee &&
+                    !ClusterFTutorial.CoreDone(trainee) && TutorialCoreTrials.Nearby(_pm, TutorialRecruiter.Spot, 4, HavenSpots.Map))
+                {
+                    TutorialStart.SendToIsle(_pm);
+                }
+
                 return;
             case BtnCompanion:
                 ClusterFTutorial.OfferCompanion(_pm);
                 return;
             case BtnGraduate:
-                if (!TutorialCoreTrials.Nearby(_pm, TutorialRecruiter.Spot, 4))
+                if (Guide || !TutorialCoreTrials.Nearby(_pm, TutorialRecruiter.Spot, 4, HavenSpots.Map))
                 {
                     ClusterFTutorial.SystemLine(_pm, "Follow the arrow back to Rook on the New Haven plaza. Double-click Rook and choose Graduate.");
                     TutorialRecruiter.PointTo(_pm);
@@ -228,6 +253,14 @@ public class TutorialRecruiterGump : Gump
         var station = TutorialStations.All[index];
         if (!station.IsCore && (ClusterFTutorial.RecordOf(_pm) is not { } record || !WingsOpen(record)))
         {
+            return;
+        }
+
+        // cc-P663: core lessons are taught on the isle; pressed in Rook's window, one sends the trainee there.
+        if (station.IsCore && !Guide && !TutorialWorld.IsOnIsle(_pm) && ClusterFTutorial.IsParticipant(_pm) &&
+            ClusterFTutorial.RecordOf(_pm) is { } r && !ClusterFTutorial.CoreDone(r))
+        {
+            TutorialStart.SendToIsle(_pm);
             return;
         }
 
