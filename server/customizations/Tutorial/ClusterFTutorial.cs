@@ -92,6 +92,9 @@ public static class ClusterFTutorial
         TutorialCoreTrials.Cancel(pm);
         if (Enabled)
         {
+            // cc-P664: a trainee whose copy of the isle was freed while they were away goes to a fresh one.
+            TutorialCopies.OnLogin(pm);
+
             // cc-P663: the start choice decides entry, and says its own lines; without one (a character from before it)
             // nothing enters or moves.
             if (TutorialStart.ConsumeAtLogin(pm) == TutorialStart.Outcome.None)
@@ -424,13 +427,24 @@ public static class ClusterFTutorial
 
     // -- Staff --
 
-    [Usage("Tutorial <status | enter | station <key> | skip | remedial | graduate | reset>")]
-    [Description("Targets a player and shows or moves their account's tutorial: enter starts it, station runs one station, skip skips it (no confirmations), remedial starts remedial training, graduate graduates, reset clears the record.")]
+    [Usage("Tutorial <status | enter | station <key> | skip | remedial | graduate | reset | copies>")]
+    [Description("Targets a player and shows or moves their account's tutorial: enter starts it, station runs one station, skip skips it (no confirmations), remedial starts remedial training, graduate graduates, reset clears the record. copies (no target) lists the isle's private copies.")]
     [ShardCommand(CommandCategory.DevTool, Shard = CommandShard.TestOnly)]
     private static void OnTutorialCommand(CommandEventArgs e)
     {
         var verb = e.Length > 0 ? e.GetString(0).ToLowerInvariant() : "status";
         var key = e.Length > 1 ? e.GetString(1) : null;
+
+        if (verb == "copies")
+        {
+            // cc-P664: the isle's 16 private copies, who holds each, and who waits.
+            foreach (var line in TutorialCopies.Report())
+            {
+                e.Mobile.SendMessage(line);
+            }
+
+            return;
+        }
 
         e.Mobile.SendMessage("Target a player.");
         e.Mobile.BeginTarget(-1, false, Targeting.TargetFlags.None, (from, targeted) =>

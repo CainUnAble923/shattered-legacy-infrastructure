@@ -110,10 +110,15 @@ public static class TutorialCorePlacement
     /// <summary>The practice bank's and the lodge's doors, both in an east-west wall (south and north walls).</summary>
     public static BaseDoor MakeDoor() => new DarkWoodDoor(DoorFacing.WestCW);
 
-    public static string Seed(bool dryRun)
+    public static string Seed(bool dryRun) => SeedOn(TutorialWorld.Isle, dryRun, withHaven: true);
+
+    /// <summary>
+    /// cc-P664: seeds the isle's lessons onto <paramref name="map"/>: the Fold, or one tutorial copy (TutorialCopies seeds
+    /// each on first use and after a reset). <paramref name="withHaven"/> also places Rook and the town vet in New Haven.
+    /// </summary>
+    public static string SeedOn(Map? map, bool dryRun, bool withHaven)
     {
         if (!IsTestShard()) { return "Tutorial: refused. Test world only; live is never seeded."; }
-        var map = TutorialWorld.Isle;
         if (map == null) { return "Tutorial: refused. The Fold (map 32) is not registered."; }
         var haven = HavenSpots.Map;
         var markers = TutorialStations.Core.Where(s => FindMarker(s.Key, map) == null).ToArray();
@@ -126,9 +131,9 @@ public static class TutorialCorePlacement
             (typeof(LeagueRegistrar), ElaraSpot, () => new LeagueRegistrar { CantWalk = true }),
             (typeof(TutorialVeterinarian), FarmVetSpot, () => new TutorialVeterinarian { Name = "Tobin", Direction = Direction.East })
         }.Where(row => FindMobile(map, row.Type, row.Spot) == null).ToList();
-        var rookMissing = TutorialRecruiter.Find() == null;
+        var rookMissing = withHaven && TutorialRecruiter.Find() == null;
         // New Haven's own vet, when the town has none (pinned's spawn data has none there).
-        var townVetMissing = FindTownVet() == null;
+        var townVetMissing = withHaven && FindTownVet() == null;
         var gateMissing = !HasItem<TutorialTravelGate>(map, GateSpot);
         var goldMissing = !HasItem<TutorialWalkMark>(map, SecondMark);
         var blueMissing = !HasItem<TutorialBlueWalkTile>(map, FirstMark);
@@ -144,7 +149,7 @@ public static class TutorialCorePlacement
             if (!FitsOn(point, map))
             { return $"Tutorial: refused. Isle tile {point} is blocked; nothing placed. Is P662's isle patch on the server's map?"; }
         }
-        foreach (var point in new[] { GateExit, HavenSpots.Rook }.Concat(townVetMissing ? new[] { HavenSpots.VetSpot } : []))
+        foreach (var point in (withHaven ? new[] { GateExit, HavenSpots.Rook } : Array.Empty<Point3D>()).Concat(townVetMissing ? new[] { HavenSpots.VetSpot } : []))
         {
             if (!FitsOn(point, haven))
             { return $"Tutorial: refused. New Haven tile {point} is blocked; nothing placed."; }
@@ -152,7 +157,7 @@ public static class TutorialCorePlacement
         if (TileData.ItemTable[0x1F14].Impassable)
         { return "Tutorial: refused. The station marker art is impassable in this tiledata."; }
 
-        var farm = TutorialFarm.Seed(dryRun);
+        var farm = TutorialFarm.Seed(map, dryRun);
         if (farm.Refused) { return farm.Message; }
         if (!dryRun)
         {

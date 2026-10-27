@@ -186,11 +186,30 @@ public static class TutorialStart
     }
 
     /// <summary>Wakes a trainee on the isle's beach (with their pets) and points them at Tamsin.</summary>
-    public static void SendToIsle(PlayerMobile pm)
+    public static void SendToIsle(PlayerMobile pm) => SendToIsle(pm, atNextLesson: false);
+
+    /// <summary>
+    /// cc-P664: onto the trainee's own copy of the isle (or their party's; TutorialCopies.Claim), on the beach, or at
+    /// their first undone lesson. When every copy is in use, onto the Fold's beach to wait.
+    /// </summary>
+    public static void SendToIsle(PlayerMobile pm, bool atNextLesson)
     {
-        if (!TutorialWorld.IsOnIsle(pm))
+        if (TutorialCopies.Claim(pm) is not { } copy)
         {
-            TutorialWorld.Cross(pm, TutorialWorld.Arrival, TutorialWorld.MapOf(pm));
+            TutorialCopies.Wait(pm);
+            return;
+        }
+
+        if (pm.Map != copy || atNextLesson) // a freed copy can come back to the same trainee under a new generation
+        {
+            TutorialWorld.Cross(pm, atNextLesson ? TutorialCopies.NextLessonSpot(pm, copy) : TutorialWorld.Ground(copy, TutorialWorld.Beach), copy);
+        }
+
+        if (atNextLesson)
+        {
+            ClusterFTutorial.SystemLine(pm, "You are on your own copy of the Wakening Isle, at your next lesson.");
+            TutorialGuide.PointTo(pm);
+            return;
         }
 
         ClusterFTutorial.SystemLine(pm, "You wake on a quiet shore: the Wakening Isle.");

@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.27.3
+
+### Added
+- Test shard: the Wakening Isle is your own. Each new player, or a party together, gets a private copy of the isle, so nobody else's pests, pets or doors get in the way of a lesson. Log out and back in within half an hour and you are still there; after longer, you start a fresh copy at your next lesson. If every copy is busy, you wait a moment on the beach and are taken to yours as soon as one is free.
+
+### Staff
+- [Tutorial copies lists the isle's 16 private copies, who is on each, and who is waiting.
+
 ## 2026.10.27
 
 ### Added

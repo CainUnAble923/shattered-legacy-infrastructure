@@ -424,14 +424,16 @@ namespace Server.Tutorial
         }
 
         /// <summary>cc-P663: the core farm on the isle: the farm addon, its door, Wren, the pests and the pen.</summary>
-        public static SeedResult Seed(bool dryRun)
+        public static SeedResult Seed(bool dryRun) => Seed(TutorialWorld.Isle, dryRun);
+
+        /// <summary>cc-P664: the core farm onto one map: the Fold, or a tutorial copy (TutorialCopies).</summary>
+        public static SeedResult Seed(Map map, bool dryRun)
         {
             if (Refusal(true) is { } refused)
             {
                 return refused;
             }
 
-            var map = TutorialWorld.Isle;
             int addons = 0, doors = 0, hands = 0, spawners = 0, present = 0;
 
             if (FindAddon<TutorialIsleFarmAddon>(map, TutorialIsleFarmLayout.Anchor) != null) { present++; }
