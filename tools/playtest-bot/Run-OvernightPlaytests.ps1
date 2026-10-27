@@ -20,6 +20,9 @@
   5. Runs the checks (python -m uobot.run), each -Runs times; then the soak, unless -SkipSoak.
   6. Tears it down (docker compose -p sl-uo-bot down -t 60), keeps the world folder, writes the report to
      D:\UO\shard-migration\testing\bot-runs\<yyyy-MM-dd-HHmm>\.
+     cc-P706: its transcripts\ (10 to 21 MB a night) are git-ignored by the docs repo (.gitignore), as run.log is; only
+     report.md, results.json, email.txt and the other small files are committed. Commit-ShardWork.ps1 leaves anything
+     else over its 5 MB cap under testing\bot-runs\ out of a commit instead of refusing the merge.
   7. cc-P102: moves transcripts older than retentionDays to iCloud Drive (uobot\archive.py; copied, verified, then
      removed), then emails the summary with the Golem's mail settings (read only), unless -NoEmail.
   If any step throws (a build that fails, a shard that will not boot), the scratch shard is stopped if this run started
