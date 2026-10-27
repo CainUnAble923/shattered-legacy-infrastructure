@@ -405,6 +405,44 @@ Fact 'P611_ASlowMapParseIsOnTheBarByName' {
     Assert-True ($again.Said -notmatch 'Preparing') "a part that is skipped every time does not rebuild every start: $($again.Said)"
 }
 
+# cc-P674 (SoS swap S1): with app\map\ holding the shipped base, a real launch lists Trammel's and Felucca's map, both
+# from the base, and the next start only checks. The base is a synthetic one-chunk facet (Map-Overrides.Tests.ps1's
+# layout), the patch one cell.
+Fact 'P674_AShippedBaseMapReachesTheListForTrammelAndFeluccaAndTheNextStartOnlyChecks' {
+    $uo = New-UoDir 'sos-uo'
+    $app = New-Install 'sos'
+    . (Join-Path $appSrc 'Apply-MapOps.ps1')
+    $mapDir = Join-Path $app 'map'
+    New-Item -ItemType Directory -Path $mapDir -Force | Out-Null
+    $block = New-Object byte[] 196
+    for ($i = 0; $i -lt 64; $i++) { $block[4 + $i * 3] = 9 }
+    $ms = New-Object IO.MemoryStream; $w = New-Object IO.BinaryWriter($ms)
+    $w.Write([uint32]0x50594D); $w.Write([int]5); $w.Write([uint32]4246727747); $w.Write([int64]28); $w.Write([int]100); $w.Write([int]1)
+    $w.Write([int]1); $w.Write([int64]0)
+    $w.Write([int64]74); $w.Write([int]0); $w.Write([int](196 * 4096)); $w.Write([int](196 * 4096))
+    $w.Write([uint64](Get-UopNameHash 'build/map1legacymul/00000000.dat')); $w.Write([uint32]0); $w.Write([int16]0)
+    for ($b = 0; $b -lt 4096; $b++) { $w.Write($block, 0, 196) }
+    $w.Flush()
+    [IO.File]::WriteAllBytes((Join-Path $mapDir 'base-map1legacymul.uop'), $ms.ToArray())
+    $idx = New-Object byte[] (4096 * 12)
+    for ($b = 0; $b -lt 4096; $b++) { [BitConverter]::GetBytes([int]-1).CopyTo($idx, $b * 12); [BitConverter]::GetBytes([int]-1).CopyTo($idx, $b * 12 + 4) }
+    [IO.File]::WriteAllBytes((Join-Path $mapDir 'base-staidx1.mul'), $idx)
+    [IO.File]::WriteAllBytes((Join-Path $mapDir 'base-statics1.mul'), (New-Object byte[] 0))
+    [IO.File]::WriteAllText((Join-Path $app 'trammel.mapops'), "F 1 0`nL 1 1 5 0`n")
+    $r = Invoke-Prepare $app $uo 60
+    Assert-True ($r.Result) "built: $($r.Said)"
+    $live = Join-Path $app 'uo-overrides'
+    $list = [IO.File]::ReadAllText((Join-Path $live 'files-override.txt'))
+    foreach ($k in 'map1legacymul.uop', 'map0legacymul.uop', 'statics0.mul', 'staidx0.mul') {
+        Assert-True ($list -match "(?m)^$([regex]::Escape($k))=") "the list names $k`: $list"
+    }
+    Assert-True ($list -match '(?m)^statics0\.mul=.*statics1\.mul\r?$') "Felucca reads Trammel's statics: $list"
+    Assert-True (Test-Path (Join-Path $live 'map0LegacyMUL.uop')) 'the Felucca copy is in the live set'
+    Assert-Equal 9 ([IO.File]::ReadAllBytes((Join-Path $live 'map0LegacyMUL.uop'))[78]) "the base's land"
+    $again = Invoke-Prepare $app $uo 60
+    Assert-True ($again.Said -notmatch 'Preparing') "the next start only checks: $($again.Said)"
+}
+
 # --- the real Play.ps1, and the updater handing over to it, in a sandbox ----------------------------------------
 # The game is a stub TazUO.exe that writes when it started and its command line. The shard is a loopback listener
 # (Play.ps1's test hook SL_PLAY_SERVER), the update check is -NoUpdate and the Legion scripts are -NoScripts (or a stub

@@ -306,9 +306,10 @@ Fact 'TheServersCopyOfTheRecordsIsRecordsJsonAndEveryIdIsRegistered' {
     # cc-P266 the 47 second-block winter decor IDs (13192-13238) and the advent calendar gump 22469; cc-P364 the 14 League
     # bestiary bodies (2072-2085); cc-P362 the 29 UI skin gumps (23052-23080) and 64 scroll skin art IDs (13049-13112); cc-P365 the 34 mount and evo bodies (2088-2133)
     # and 18 mount items (46672-46689); cc-P436 the nine guild and League frame gumps (23200-23208).
-    Assert-Equal 801 $reg.Count 'registry rows'   # cc-P632: + 20 art; cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art; cc-P436: + 9 gumps
+    # cc-P665 the two vision panel gumps (23209-23210), fixed in cc-P674.
+    Assert-Equal 803 $reg.Count 'registry rows'   # cc-P665: + 2 gumps (the vision panels); cc-P632: + 20 art; cc-P139: + body 2048; cc-P140: + 23 Burrows bodies; cc-P147: + 3 gumps; cc-P237: + 34 art; cc-P236: + 6 art; cc-P241: + 10 gumps; cc-P243: + 38 art; cc-P242: + 54 art; cc-P265: + 279 art; cc-P266: + 47 art + 1 gump; cc-P364: + 14 bodies; cc-P277: + 2 bodies + 2 art; cc-P362: + 29 gumps + 64 art; cc-P365: + 34 bodies + 18 art; cc-P436: + 9 gumps
     Assert-Equal 74 @($reg | Where-Object { $_.kind -eq 'body' }).Count 'body rows: 2048 (cc-P139), 2049-2071 (cc-P140), 2072-2085 (cc-P364), 2086-2087 (cc-P277), 34 of 2088-2133 (cc-P365)'
-    Assert-Equal 54 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468, 22469, 23052-23080 (cc-P362) and 23200-23208 (cc-P436)'
+    Assert-Equal 56 @($reg | Where-Object { $_.kind -eq 'gump' }).Count 'gump rows: 64783, 54783, 22456-22458, 22459-22468, 22469, 23052-23080 (cc-P362), 23200-23208 (cc-P436) and 23209-23210 (cc-P665)'
     Assert-Equal 672 @($reg | Where-Object { $_.kind -eq 'art' }).Count 'art rows (cc-P632: + 20 butte pictures)'
 }
 

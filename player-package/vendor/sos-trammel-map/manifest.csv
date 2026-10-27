@@ -1,0 +1,18 @@
+# Siege of Sosaria Trammel Map 3.0 by Zigholtul, as the player package ships it (cc-P674, SoS swap S1). SOURCE.txt says
+# what it is and its terms. The files are 5 to 90 MB, over the repo's 5 MB rule, so they live only on the build PC in
+# files\ (git-ignored); Add-SosMap.ps1 makes them from the author's download and this manifest is what both it and
+# Build-PlayerPackage.ps1 check them against. Change a row only together with the file it describes.
+# kind    source: the author's file as downloaded (D:\UO\third-party\sos-trammel-map\..., "from" relative to it).
+#         ship: a file in files\, shipped as app\map\<file> and checked by the build (gate 3) and in the zip (gate 4).
+# file    the file's name. A ship file is base-<the client's name, lower case>: never the name of an EA file.
+# bytes   its size.
+# sha256  upper case.
+# from    for a source, where it is; for a ship file, what it is made from and how.
+kind,file,bytes,sha256,from
+source,Siege of Sosaria Trammel Map (3.0).zip,36845885,F076D898585E1389AD885293E7CD2465C10676686FF52FFE7765DFE227B73958,_zips\Siege of Sosaria Trammel Map (3.0).zip
+source,Map1.mul,89915392,27EB6EF719EC371AD5B091C094BDD44AE42B20AA695405FFD02E13F7F2D3AB9E,Siege of Sosaria Trammel Map (3.0)\Siege of Sosaria Trammel Map (UNFINISHED)\Map1.mul
+source,Staidx1.mul,5505024,ED86BD336B9DC96F96CDF732ABCB801F5EF3DDAE9C133EC98F55A4EA9A0B21FF,Siege of Sosaria Trammel Map (3.0)\Siege of Sosaria Trammel Map (UNFINISHED)\Staidx1.mul
+source,Statics1.mul,46271141,859886BCFE4AB5D139E1BD84B687333ED1AF57BAEABE4A44468DD7244CE9C3BB,Siege of Sosaria Trammel Map (3.0)\Siege of Sosaria Trammel Map (UNFINISHED)\Statics1.mul
+ship,base-map1legacymul.uop,89919252,5A12BD8A3149C2F76C4B92ABD9066DB69B85D26843A2AD1FBFA93DC0A9891D52,Map1.mul packed as facet 1 by mapops.py pack (112 entries of 4096 blocks)
+ship,base-statics1.mul,46271141,859886BCFE4AB5D139E1BD84B687333ED1AF57BAEABE4A44468DD7244CE9C3BB,Statics1.mul unchanged
+ship,base-staidx1.mul,5505024,ED86BD336B9DC96F96CDF732ABCB801F5EF3DDAE9C133EC98F55A4EA9A0B21FF,Staidx1.mul unchanged

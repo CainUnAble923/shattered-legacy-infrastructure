@@ -134,6 +134,7 @@ param(
     [string]$AnimMul,
     [string]$AnimIdx,
     [string]$MapOps,
+    [string]$MapBase,  # cc-P674: the shipped base map (app\map, base-<name> files); when there, Felucca reads it too
     [string]$Music,    # cc-P368: the folder holding shard-music.txt and our mp3 files (app\music)
     [string]$ListDir,      # cc-P411: the folder the override list names (the final one when -OutDir is staging)
     [switch]$CheckOnly,    # cc-P411: compare the stamps only
@@ -149,6 +150,7 @@ if (-not $AnimIdx) { $AnimIdx = Join-Path $PSScriptRoot 'sl-anim7-idx.bin' }
 if (-not $Clilocs) { $Clilocs = Join-Path $PSScriptRoot 'cliloc-entries.json' }
 if (-not $OutDir)  { $OutDir  = Join-Path $PSScriptRoot 'uo-overrides' }
 if (-not $MapOps)  { $MapOps  = Join-Path $PSScriptRoot 'trammel.mapops' }
+if (-not $MapBase) { $MapBase = Join-Path $PSScriptRoot 'map' }
 if (-not $Music)   { $Music   = Join-Path $PSScriptRoot 'music' }
 if (-not $ListDir) { $ListDir = $OutDir }
 $ListRoot = [IO.Path]::GetFullPath($ListDir)
@@ -892,7 +894,11 @@ function Build-Map {
     if (-not (Test-Path -LiteralPath $MapOps)) { return }
     . (Join-Path $PSScriptRoot 'Apply-MapOps.ps1')
     # cc-P411: the list names the final folder; with -CheckOnly a stale map is said, not built.
-    $r = @(Build-MapOverride -UoDir $UoDir -Ops $MapOps -OutDir $OutDir -ListDir $ListRoot -CheckOnly:$CheckOnly)
+    # cc-P674: with the shipped base (the Siege of Sosaria map) the patch goes on it instead of the player's own files,
+    # and Felucca (map 0) gets the same land.
+    $base = @{}
+    if (Test-Path -LiteralPath (Join-Path $MapBase 'base-map1legacymul.uop')) { $base = @{ BaseDir = $MapBase; AlsoAs = @(0) } }
+    $r = @(Build-MapOverride -UoDir $UoDir -Ops $MapOps -OutDir $OutDir -ListDir $ListRoot -CheckOnly:$CheckOnly @base)
     if (@($r | Where-Object { $_ -isnot [string] }).Count) { $script:Stale.Add('map'); return }
     Stop-Step
     $r

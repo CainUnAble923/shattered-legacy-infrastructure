@@ -124,6 +124,11 @@ What is in here
                Music, SOS Mix) and ParanoiaPhD (IceYouMusic remixes), credited by
                track in app\music\shard-music.txt. The stock music stays as it is;
                type [ShardMusic off in game to keep only the stock music.
+  app\map\     the land of Trammel and Felucca: "Siege of Sosaria Trammel Map 3.0"
+               by Zigholtul (https://www.servuo.dev/archive/siege-of-sosaria-trammel-map.2450/).
+               Shattered Legacy's own changes (app\trammel.mapops) are put on a copy of
+               it at your first start. It is the author's work, built on Ultima Online's
+               land, and ships only inside this package.
   app\         the scripts that set it up and start it
   No EA game file is included. Ultima Online itself comes from EA's own free
   installer at https://uo.com/client-download/

@@ -1,0 +1,42 @@
+Siege of Sosaria Trammel Map 3.0 by Zigholtul, the land of Trammel and Felucca (cc-P674, SoS swap S1)
+====================================================================================================
+
+What it is
+----------
+  "Siege of Sosaria Trammel Map 3.0" by Zigholtul: an overhaul of Trammel with new islands, towns, dungeons and the
+  Glimmerwood region, 7168 x 4096 like stock Trammel. Shattered Legacy's Trammel AND Felucca are both built on it
+  (Chase's choice, 2026-10-26; the assessment is cc-P669, the plan cc-P673, both in the docs repo's notes\).
+  Source: https://www.servuo.dev/archive/siege-of-sosaria-trammel-map.2450/ (posted 2025-05-16, updated
+  2026-03-27; "update 2" is the author's last). Downloaded 2026-10-12 by the overseer; the download record is
+  D:\UO\third-party\sos-trammel-map\SOURCE.txt and the zip is kept beside it (manifest.csv, kind source).
+
+Terms (read 2026-10-12, servuo.dev page): the author writes "feel free to take advantage to your hearts content.
+Even if it means using something like RadCopy to snag a few dungeons here and there." No license file. Credit
+Zigholtul wherever the map is shown: the package README ("What is in here"), this file, the CHANGELOG line on the swap
+day, the in-game patch notes and the shard wiki's world-map page (S16 writes those).
+
+It uses no custom art: all 8,683 item ids it places have art in the stock 7.0.117.0 art file (cc-P669). It ships only
+the map, its statics and their index; no tiledata, hues or multis.
+
+What is here
+------------
+  manifest.csv     every file, its size and SHA-256: the author's (kind source) and what ships (kind ship).
+  Add-SosMap.ps1   makes files\ from the author's download: checks his three files against the manifest, copies the
+                   statics and index, packs Map1.mul as a facet-1 UOP (the docs repo's scripts\mapbuild\mapops.py pack),
+                   and checks every result. Refuses on any mismatch and leaves nothing half written.
+  files\           GIT-IGNORED: base-map1legacymul.uop (90 MB), base-statics1.mul (46 MB), base-staidx1.mul (5.5 MB),
+                   over the 5 MB rule, so only on the build PC.
+
+How it reaches the player
+-------------------------
+  Build-PlayerPackage.ps1 refuses to build unless files\ matches manifest.csv, and stages the three as
+  app\map\base-<name>. They are the only map files the zip holds; gate 4 still refuses any other .mul or .uop and any
+  file named like an EA file, and holds these three to the manifest's hashes.
+  At start, Play.ps1 (Build-UoOverrides.ps1 -> Apply-MapOps.ps1) copies them into app\uo-overrides\ under the
+  client's names, applies our own patch (app\trammel.mapops) on top, then writes map0LegacyMUL.uop: the patched land
+  with Felucca's entry names (the same bytes; a UOP's entries are found by a hash of their names). Felucca's statics
+  lines name Trammel's two files. The stamp (map-stamp.txt) names the three base files, so later starts skip all of
+  it until the package brings a new base. The player's own EA map files are read by nothing.
+
+Not EA's: these files are the author's work, built on EA's terrain; nothing in them is copied from the player's
+install or from EA's download. The README's "No EA game file is included" still holds.
