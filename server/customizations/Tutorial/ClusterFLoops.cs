@@ -66,13 +66,8 @@ namespace Server.Tutorial
 
     public static class TutorialVision
     {
-        public static readonly string[] Lines =
-        [
-            "You see a vision of a sword striking a gem. The gem breaks, and the world fades away.",
-            "In the vision, you wake at the beginning with your level and skills reset. This is a preview of a future loop system.",
-            "In this vision, your League progress, recipes, achievements, and guild ranks remain. Your companion stays with you too.",
-            "The vision is over. Your level, skills, and belongings have not changed."
-        ];
+        /// <summary>cc-P665: the vision is a staged scene now (TutorialVisionScene); these are its subtitles.</summary>
+        public static string[] Lines => TutorialVisionScene.Subtitles;
 
         /// <summary>Compatibility entry to the timed vision. Real character progression remains untouched.</summary>
         public static void RunLoopDemo(PlayerMobile pm)

@@ -411,7 +411,7 @@ public class TutorialVerification : IDisposable
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.loop")!);
         TutorialCoreTrials.WatchVision(p.Pm);
         Assert.DoesNotContain("core.loop", p.Record.StationsDone);
-        ShardTestClock.Advance(TimeSpan.FromSeconds(9));
+        ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Length + 1)); // cc-P665: the staged scene
         Assert.Contains("core.loop", p.Record.StationsDone);
         // cc-P663: the dock moongate is the last lesson; it sets the trainee down beside Rook in New Haven.
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.travel")!);
