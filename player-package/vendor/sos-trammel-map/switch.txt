@@ -1,0 +1,7 @@
+# cc-P713: does the player package ship the Siege of Sosaria land (app\map\)? One word on its own line: off or on.
+#   off  (the default until the swap goes live) no app\map\: Play.ps1 puts app\trammel.mapops on the player's own
+#        stock Trammel, exactly as packages did before cc-P674, and the README does not credit the map.
+#   on   manifest.csv's three ship rows as app\map\: Trammel and Felucca are built on them (cc-P674).
+# Turn it on only in the swap's go-live release, when the server runs the same land (SoS swap plan, cc-P673).
+# Build-PlayerPackage.ps1 reads it; its -SosMap on|off overrides it for one run (tests, or -CheckZip of an older zip).
+off

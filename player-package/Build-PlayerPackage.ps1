@@ -49,6 +49,14 @@
                                base-statics1.mul and base-staidx1.mul, git-ignored (5 to 90 MB; Add-SosMap.ps1 makes
                                them). manifest.csv's ship rows are the sizes and SHA-256 the build checks before
                                staging them as app\map\<file>; gate 4 holds the zip to the same rows. See its SOURCE.txt.
+                               cc-P713: ONLY WHEN SWITCHED ON. vendor\sos-trammel-map\switch.txt holds one word, off
+                               (the default) or on. Off: no app\map\, nothing of files\ is read or needed, the README's
+                               app\map\ lines are left out, and Play.ps1 puts app\trammel.mapops on the player's own
+                               stock Trammel, exactly as before cc-P674. Gate 4 then refuses any app\map\ file.
+                               TO TURN IT ON for the swap's go-live release (and not before: the server must run the
+                               SoS land too), change switch.txt's word to on, run vendor\sos-trammel-map\Add-SosMap.ps1
+                               if files\ is empty, and build. -SosMap on|off overrides the file for one run (tests,
+                               or -CheckZip of a package built the other way); a release build leaves it out.
   clean-test\ (the Windows Sandbox kit) is never staged; gate 4 proves none of it ships.
   into player-package\dist\ShatteredLegacy-<stamp>.zip, which is gitignored, where <stamp>
   is the build time, yyyy.MM.dd.HHmm local. Beside it goes ShatteredLegacy-<stamp>.version.json,
@@ -59,8 +67,8 @@
 
   Nothing of EA's goes in. The player's own EA install supplies the game data. Gate 4 enforces it
   on the finished zip: no .mul, .uop, .idx or .def file (but for app\map\'s three, which are Zigholtul's map and must
-  be exactly vendor\sos-trammel-map\manifest.csv's ship rows, cc-P674), no file named like any file in the EA
-  folder (-UoData, the shard's client-data by default), and nothing under app\uo-overrides\,
+  be exactly vendor\sos-trammel-map\manifest.csv's ship rows, cc-P674, and only with the switch on, cc-P713), no
+  file named like any file in the EA folder (-UoData, the shard's client-data by default), and nothing under app\uo-overrides\,
   which Play.ps1 makes on a player's computer from their own EA files. A payload folder that holds
   app\uo-overrides\ (someone ran Play.ps1 from payload\) stops the build before anything is staged.
 
@@ -109,7 +117,10 @@ param(
     [string]$Notes,
     [string]$UoData,
     # cc-P144: where the official Legion scripts are published; the package ships that set as it is at build time.
-    [string]$ScriptsBase = 'https://get.shatteredlegacyuo.com/scripts/'
+    [string]$ScriptsBase = 'https://get.shatteredlegacyuo.com/scripts/',
+    # cc-P713: empty means vendor\sos-trammel-map\switch.txt decides (off until the swap goes live). For tests and for
+    # -CheckZip of a package built the other way; a release build leaves it out.
+    [ValidateSet('', 'on', 'off')][string]$SosMap
 )
 
 $ErrorActionPreference = 'Stop'
@@ -150,6 +161,24 @@ $sosDir  = Join-Path $PSScriptRoot 'vendor\sos-trammel-map'
 $sosShip = @{}
 foreach ($r in @(Get-Content -LiteralPath (Join-Path $sosDir 'manifest.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)) {
     if ($r.kind -eq 'ship') { $sosShip[$r.file] = $r }
+}
+# cc-P713: the switch. switch.txt's one word (off or on; # lines are comments); anything else stops the build, so a
+# typo never ships the wrong land. Off: the package carries no app\map\ and the player's own stock Trammel is patched.
+function Get-SosMapSwitch([string]$path) {
+    if (-not (Test-Path -LiteralPath $path)) { throw "SOS MAP SWITCH: $path is missing; it must hold off or on. Not building." }
+    $w = @(Get-Content -LiteralPath $path | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith('#') })
+    if ($w.Count -ne 1 -or @('on', 'off') -cnotcontains $w[0]) { throw "SOS MAP SWITCH: $path must hold one line, off or on (got: $($w -join ' | ')). Not building." }
+    return $w[0]
+}
+$sosFrom = '-SosMap'
+if (-not $SosMap) { $SosMap = Get-SosMapSwitch (Join-Path $sosDir 'switch.txt'); $sosFrom = 'vendor\sos-trammel-map\switch.txt' }
+$sosOn = $SosMap -eq 'on'
+# cc-P713: the README with its app\map\ entry left out (the line naming the folder and the indented ones under it), for
+# a package with the switch off. Exactly one entry, or the build stops: a reworded README must not ship a stale credit.
+function Remove-SosMapReadme([string]$text) {
+    $rx = [regex]'(?m)^  app\\map\\ [^\r\n]*\r?\n(?: {15}[^\r\n]*\r?\n)*'
+    if ($rx.Matches($text).Count -ne 1) { throw "SOS MAP SWITCH: payload\README.txt has no single app\map\ entry to leave out. Not building." }
+    return $rx.Replace($text, '')
 }
 # cc-P368: the music registry, for gate 4 (the staging section reads it again and runs the music gate on it).
 $slMusicRegistry = @(Get-Content -LiteralPath (Join-Path $PSScriptRoot 'vendor\shattered-legacy-music\registry.csv') | Where-Object { $_ -and -not $_.StartsWith('#') } | ConvertFrom-Csv)
@@ -474,16 +503,26 @@ function Test-PackageZip([string]$path) {
 
         # cc-P674: the land (Zigholtul's Siege of Sosaria map): app/map/ holds exactly manifest.csv's ship rows, each
         # byte for byte (SHA-256), and those three are the only map data files the zip may hold.
+        # cc-P713: only with the switch on. Off, app/map/ holds nothing (no exemption below) and the README does not
+        # credit the map; on, the README credits it.
         $sosOk = @{}
         $sosNames = @($names | Where-Object { $_ -like 'app/map/*' })
-        if ($sosNames.Count -ne $sosShip.Count) { $fail += "$($sosNames.Count) files under app/map/, expected $($sosShip.Count) (vendor\sos-trammel-map\manifest.csv)" }
-        foreach ($n in $sosNames) {
-            $f = $n.Substring('app/map/'.Length)
-            if (-not $sosShip.ContainsKey($f)) { $fail += "$n is not a ship row of vendor\sos-trammel-map\manifest.csv" }
-            elseif ($zipSha[$n] -ne "$($sosShip[$f].sha256)".ToLowerInvariant() -or $rel[$n].Length -ne [int64]$sosShip[$f].bytes) { $fail += "$n is not the file vendor\sos-trammel-map\manifest.csv records (SHA-256)" }
-            else { $sosOk[$n] = $true }
+        $readme = $rel['README.txt']
+        $credits = $readme -and ((Read-ZipText $readme) -match 'Siege of Sosaria Trammel Map')
+        if ($sosOn) {
+            if ($sosNames.Count -ne $sosShip.Count) { $fail += "$($sosNames.Count) files under app/map/, expected $($sosShip.Count) (vendor\sos-trammel-map\manifest.csv)" }
+            foreach ($n in $sosNames) {
+                $f = $n.Substring('app/map/'.Length)
+                if (-not $sosShip.ContainsKey($f)) { $fail += "$n is not a ship row of vendor\sos-trammel-map\manifest.csv" }
+                elseif ($zipSha[$n] -ne "$($sosShip[$f].sha256)".ToLowerInvariant() -or $rel[$n].Length -ne [int64]$sosShip[$f].bytes) { $fail += "$n is not the file vendor\sos-trammel-map\manifest.csv records (SHA-256)" }
+                else { $sosOk[$n] = $true }
+            }
+            foreach ($f in $sosShip.Keys) { if ($names -notcontains "app/map/$f") { $fail += "no app/map/$f (the Siege of Sosaria map)" } }
+            if (-not $credits) { $fail += 'README.txt does not credit the Siege of Sosaria Trammel Map that app/map/ ships' }
+        } else {
+            foreach ($n in $sosNames) { $fail += "$n shipped, but the Siege of Sosaria map is switched off (vendor\sos-trammel-map\switch.txt)" }
+            if ($credits) { $fail += 'README.txt credits the Siege of Sosaria Trammel Map, which is switched off (vendor\sos-trammel-map\switch.txt)' }
         }
-        foreach ($f in $sosShip.Keys) { if ($names -notcontains "app/map/$f") { $fail += "no app/map/$f (the Siege of Sosaria map)" } }
 
         # Nothing of EA's: no EA data file by type or by name, nothing made from one (cc-P26).
         foreach ($n in $names) {
@@ -928,17 +967,26 @@ $vendored += ,@((Join-Path $slMap 'trammel.mapops'), (Join-Path $stage 'app\tram
 # one's size and SHA-256 (the files are git-ignored; Add-SosMap.ps1 makes them from the author's download). Play.ps1
 # applies trammel.mapops to copies of them instead of the player's own map, and gives Felucca the same land
 # (Apply-MapOps.ps1 -BaseDir -AlsoAs 0). Checked byte for byte in gate 3, and against the manifest in gate 4.
-$sosFail = @()
-foreach ($f in @($sosShip.Keys | Sort-Object)) {
-    $src = Join-Path $sosDir "files\$f"
-    if (-not (Test-Path -LiteralPath $src)) { $sosFail += "files\$f is missing"; continue }
-    if ((Get-Item -LiteralPath $src).Length -ne [int64]$sosShip[$f].bytes -or
-        (Get-FileHash -LiteralPath $src -Algorithm SHA256).Hash -ne "$($sosShip[$f].sha256)".ToUpperInvariant()) { $sosFail += "files\$f is not the file manifest.csv records (size and SHA-256)" }
+# cc-P713: only with vendor\sos-trammel-map\switch.txt on. Off, files\ is not read, and the staged README loses its
+# app\map\ entry (Remove-SosMapReadme), so it reads as it did before cc-P674.
+if ($sosOn) {
+    $sosFail = @()
+    foreach ($f in @($sosShip.Keys | Sort-Object)) {
+        $src = Join-Path $sosDir "files\$f"
+        if (-not (Test-Path -LiteralPath $src)) { $sosFail += "files\$f is missing"; continue }
+        if ((Get-Item -LiteralPath $src).Length -ne [int64]$sosShip[$f].bytes -or
+            (Get-FileHash -LiteralPath $src -Algorithm SHA256).Hash -ne "$($sosShip[$f].sha256)".ToUpperInvariant()) { $sosFail += "files\$f is not the file manifest.csv records (size and SHA-256)" }
+    }
+    if ($sosShip.Count -ne 3) { $sosFail += "manifest.csv has $($sosShip.Count) ship rows, expected 3 (the map, its statics and their index)" }
+    if ($sosFail.Count) { throw "SOS MAP GATE: $($sosFail -join '; '). Run vendor\sos-trammel-map\Add-SosMap.ps1. Not building." }
+    New-Item -ItemType Directory -Path (Join-Path $stage 'app\map') -Force | Out-Null
+    foreach ($f in @($sosShip.Keys | Sort-Object)) { $vendored += ,@((Join-Path $sosDir "files\$f"), (Join-Path $stage "app\map\$f")) }
+    Write-Host "  land: the Siege of Sosaria map (switched on: $sosFrom)"
+} else {
+    $rmPath = Join-Path $stage 'README.txt'
+    [IO.File]::WriteAllText($rmPath, (Remove-SosMapReadme ([IO.File]::ReadAllText($rmPath))), (New-Object Text.ASCIIEncoding))
+    Write-Host "  land: stock Trammel and Felucca (the Siege of Sosaria map is switched off: $sosFrom)"
 }
-if ($sosShip.Count -ne 3) { $sosFail += "manifest.csv has $($sosShip.Count) ship rows, expected 3 (the map, its statics and their index)" }
-if ($sosFail.Count) { throw "SOS MAP GATE: $($sosFail -join '; '). Run vendor\sos-trammel-map\Add-SosMap.ps1. Not building." }
-New-Item -ItemType Directory -Path (Join-Path $stage 'app\map') -Force | Out-Null
-foreach ($f in @($sosShip.Keys | Sort-Object)) { $vendored += ,@((Join-Path $sosDir "files\$f"), (Join-Path $stage "app\map\$f")) }
 
 # --- our own music (cc-P368) -------------------------------------------------------------------
 # vendor\shattered-legacy-music\registry.csv: each row's tracks\<file>.mp3 as app\music\<file>.mp3 (byte for byte, gate 3),

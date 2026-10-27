@@ -29,6 +29,10 @@ What is here
 
 How it reaches the player
 -------------------------
+  cc-P713: ONLY WHILE switch.txt SAYS on. It says off until the swap goes live (the server must run this land
+  too): an off package ships no app\map\, reads nothing of files\, leaves this map out of the README, and Play.ps1
+  patches the player's own stock Trammel as before cc-P674. To turn it on for the go-live release: change switch.txt
+  to on, run Add-SosMap.ps1 if files\ is empty, and build. Gate 4 holds a zip to whichever way the switch is set.
   Build-PlayerPackage.ps1 refuses to build unless files\ matches manifest.csv, and stages the three as
   app\map\base-<name>. They are the only map files the zip holds; gate 4 still refuses any other .mul or .uop and any
   file named like an EA file, and holds these three to the manifest's hashes.
