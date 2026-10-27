@@ -26,8 +26,11 @@ public static class TutorialWorld
     /// <summary>The isle's map: the Fold (32). F4 adds the copies.</summary>
     public static Map Isle => FoldMaps.Fold;
 
-    /// <summary>The map a trainee's core lessons are on. One copy for now, so the Fold.</summary>
-    public static Map MapOf(PlayerMobile pm) => Isle;
+    /// <summary>
+    /// The map a trainee's core lessons are on: the tutorial copy they are on or logged out on (cc-P664, TutorialCopies),
+    /// else the Fold. No side effects: copies are handed out only by TutorialStart.SendToIsle.
+    /// </summary>
+    public static Map MapOf(PlayerMobile pm) => TutorialCopies.CopyOf(pm) ?? Isle;
 
     /// <summary>P673 1.4: site A minus P481's void C. Every stop below is P481 11.2's plus this.</summary>
     public static readonly Point2D SiteShift = new(424, 1992);

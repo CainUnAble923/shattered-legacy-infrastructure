@@ -31,10 +31,14 @@ Example:
 
 ## 2026.10.27.4
 
+### Added
+- Test shard: the Wakening Isle is your own. Each new player, or a party together, gets a private copy of the isle, so nobody else's pests, pets or doors get in the way of a lesson. Log out and back in within half an hour and you are still there; after longer, you start a fresh copy at your next lesson. If every copy is busy, you wait a moment on the beach and are taken to yours as soon as one is free.
+
 ### Changed
 - Test shard: the loop vision at the Wakening Isle's standing stones is now a short scene of its own, under a minute: the world darkens, the Stranger strikes the Gem, your own echo wakes and speaks, and a hooded figure of the League appears. Only you see and hear it, words show in the middle of the screen, and it changes nothing about your character. If you log out or are interrupted, you are back at the stones and can watch it again.
 
 ### Staff
+- [Tutorial copies lists the isle's 16 private copies, who is on each, and who is waiting.
 - The loop vision's two full-screen stills are reserved and off (clusterf.tutorial.visionPanels); placeholders ship until the drawings do.
 
 ## 2026.10.27.3
