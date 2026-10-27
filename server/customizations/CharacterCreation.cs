@@ -136,11 +136,16 @@ public static partial class CharacterCreation
             return Server.Tutorial.TutorialStart.Cities();
         }
 
-        return
-        [
-            new("New Haven", "The Bountiful Harvest Inn", 1150168, 3503, 2574, 14, Map.Trammel)
-        ];
+        return TutorialOffCities();
     }
+
+    // cc-P705 (Codex on P663): the tutorial-off list reads New Haven's start from HavenSpots too, so S7 moves it with
+    // every other New Haven spot.
+    public static CityInfo[] TutorialOffCities() =>
+    [
+        new("New Haven", "The Bountiful Harvest Inn", 1150168, Server.Tutorial.HavenSpots.Start.X,
+            Server.Tutorial.HavenSpots.Start.Y, Server.Tutorial.HavenSpots.Start.Z, Server.Tutorial.HavenSpots.Map)
+    ];
 
     [GeneratedEvent(nameof(CharacterCreatedEvent))]
     public static partial void CharacterCreatedEvent(CharacterCreatedEventArgs e);

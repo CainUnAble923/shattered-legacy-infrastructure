@@ -15,6 +15,7 @@
 
 #nullable enable
 
+using System;
 using System.Collections.Generic;
 using Server.Mobiles;
 
@@ -70,7 +71,53 @@ public static class TutorialWorld
     public static readonly Point2D DockEnd = new(6831, 3991);
     public static readonly Point2D Moongate = new(6832, 3991);
 
-    public static Point3D Ground(Map map, Point2D p) => new(p.X, p.Y, map.GetAverageZ(p.X, p.Y));
+    /// <summary>
+    /// Where someone stands at <paramref name="p"/>: the walkable surface there (cc-P705, Codex on P663: a dock's planks
+    /// over the sea, not the sea floor under them), else the land's average Z.
+    /// </summary>
+    public static Point3D Ground(Map map, Point2D p)
+    {
+        var avg = map.GetAverageZ(p.X, p.Y);
+        var statics = new List<(int Z, TileFlag Flags, int Height)>();
+        foreach (var tile in map.Tiles.GetStaticAndMultiTiles(p.X, p.Y))
+        {
+            var data = TileData.ItemTable[tile.ID & TileData.MaxItemValue];
+            statics.Add((tile.Z, data.Flags, data.CalcHeight));
+        }
+
+        return new Point3D(p.X, p.Y, SurfaceZ(avg, statics));
+    }
+
+    /// <summary>
+    /// The highest walkable surface (Surface and not Impassable; height as ItemData.CalcHeight) whose top is above the land and within a person's height
+    /// of it (PersonHeight 16, pinned Movement), else <paramref name="landAvg"/>: planks 2 above the sea are stood on, a
+    /// roof 20 above a floor is not.
+    /// </summary>
+    public static int SurfaceZ(int landAvg, IEnumerable<(int Z, TileFlag Flags, int Height)> statics)
+    {
+        var best = landAvg;
+        foreach (var (z, flags, height) in statics)
+        {
+            if ((flags & TileFlag.Surface) == 0 || (flags & TileFlag.Impassable) != 0)
+            {
+                continue;
+            }
+
+            var top = z + height;
+            if (top > best && top < landAvg + 16)
+            {
+                best = top;
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>
+    /// cc-P705: whether the isle's land is on this server's map (P662's patch): the beach fits a person. Until it is, the
+    /// site is void and a "Tutorial Island" pick starts in New Haven instead (TutorialStart). A seam for tests.
+    /// </summary>
+    public static Func<bool> IsleReady { get; set; } = () => Isle is { } isle && isle.CanFit(Arrival, 16, false, false);
 
     public static Point3D Ground(Point2D p) => Ground(Isle, p);
 

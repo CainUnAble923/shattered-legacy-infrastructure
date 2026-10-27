@@ -53,7 +53,9 @@ public static class TutorialStart
         /// <summary>New Haven; the account graduated or skipped (Rook offers a skipper remedial training).</summary>
         Finished,
         /// <summary>New Haven, nothing else.</summary>
-        Haven
+        Haven,
+        /// <summary>cc-P705: chose the isle, but the isle's land is not on this server's map yet; New Haven, tutorial unused.</summary>
+        IsleMissing
     }
 
     /// <summary>The two entries, in order: the isle (index 0, the default) and New Haven.</summary>
@@ -121,11 +123,12 @@ public static class TutorialStart
         var choice = ClusterFTutorial.Enabled ? ChoiceOf(city) : Choice.None;
         if (choice == Choice.None || IsStaff(pm))
         {
-            return (city.Location, city.Map);
+            // cc-P705 (Codex on P663): the isle's entry carries display coordinates in the sea; nobody is placed there.
+            return ChoiceOf(city) == Choice.Isle ? (HavenSpots.Start, HavenSpots.Map) : (city.Location, city.Map);
         }
 
         Record(pm, choice);
-        return Decide(pm, choice) == Outcome.Isle && TutorialWorld.Isle != null
+        return Decide(pm, choice) == Outcome.Isle && TutorialWorld.Isle != null && TutorialWorld.IsleReady()
             ? (TutorialWorld.Arrival, TutorialWorld.Isle)
             : (HavenSpots.Start, HavenSpots.Map);
     }
@@ -143,6 +146,12 @@ public static class TutorialStart
 
         ClusterFAccountPersistence.GetOrCreate(acct).FlagValues.Remove(Key(pm));
         var outcome = Decide(pm, choice);
+        // cc-P705: a release with the start choice but without the isle's map patch never strands anyone in the void.
+        if (outcome == Outcome.Isle && !TutorialWorld.IsleReady())
+        {
+            outcome = Outcome.IsleMissing;
+        }
+
         switch (outcome)
         {
             case Outcome.Isle:
@@ -179,6 +188,10 @@ public static class TutorialStart
                 break;
             case Outcome.Haven:
                 SendHome(pm);
+                break;
+            case Outcome.IsleMissing:
+                SendHome(pm);
+                ClusterFTutorial.SystemLine(pm, "The Wakening Isle is not open on this world yet, so this character starts in New Haven. Your account has not used its tutorial: a character you make once the isle opens can still take it.");
                 break;
         }
 

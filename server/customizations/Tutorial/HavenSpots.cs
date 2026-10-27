@@ -15,8 +15,11 @@ public static class HavenSpots
     /// <summary>The map New Haven is on.</summary>
     public static Map Map => Map.Trammel;
 
-    /// <summary>The New Haven start: character creation's city, the skip, the Fold's send-home (3503,2574,14).</summary>
-    public static readonly Point3D Start = new(3503, 2574, 14);
+    /// <summary>
+    /// The New Haven start: character creation's city (with the tutorial on or off, cc-P705), the skip, the Fold's
+    /// send-home (3503,2574,14). Settable only as a seam for tests; S7 changes the value here.
+    /// </summary>
+    public static Point3D Start { get; set; } = new(3503, 2574, 14);
 
     /// <summary>Rook Hallowell, on the plaza two tiles from the start (cc-P80).</summary>
     public static readonly Point3D Rook = new(3500, 2572, 14);

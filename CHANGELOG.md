@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.27.2
+
+### Fixed
+- Test shard: choosing "Tutorial Island" while the Wakening Isle is not yet on the world's map now starts you in New Haven with a note saying so, instead of in empty darkness. Your account's tutorial stays unused, so a character made once the isle opens can still take it.
+
+### Staff
+- A staff character made with "Tutorial Island" selected starts at New Haven's start, not in the sea where the island's button is drawn. With the tutorial off, New Haven's start comes from the same place as every other New Haven spot. The tutorial's lesson marker and moongate at the end of the dock stand on the dock, not on the sea floor under it.
+
 ## 2026.10.27
 
 ### Added
