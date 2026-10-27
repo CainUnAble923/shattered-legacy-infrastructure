@@ -29,6 +29,13 @@
   The stamp (map-stamp.txt): the three EA files' sizes and times and the patch's hash; when it matches and the copies
   are there, nothing is rebuilt (every start but the first after an update or an EA patch).
 
+  cc-P674 (the Siege of Sosaria swap, S1): -BaseDir names a folder whose base-<name> files (base-map1legacymul.uop,
+  base-statics1.mul, base-staidx1.mul: the shipped app\map\) replace the player's own as the map the patch applies to.
+  -AlsoAs 0 then also gives Felucca the result: map0LegacyMUL.uop is a copy of the patched map1LegacyMUL.uop with
+  each entry's name hash rewritten from build/map1legacymul/ to build/map0legacymul/ (the client finds a UOP's
+  entries by those hashes only; the data is the same), and Felucca's statics lines name Trammel's two files, which
+  the client opens read-only and shared. The stamp names the base files and the extra facets, so a new base rebuilds.
+
   Returns the override lines for files-override.txt (lowercase names, as TazUO's UOFilesOverrideMap keys them):
       map1legacymul.uop=<path>  statics1.mul=<path>  staidx1.mul=<path>
   Throws on anything that is not right (the caller turns that into one yellow line and starts without the map).
@@ -39,7 +46,7 @@
   a BOM as Windows-1252).
 #>
 
-$MapStampFormat = 'uo-map 1'
+$MapStampFormat = 'uo-map 2'   # cc-P674: 2 names each base file by its full path and adds the facets it is also
 $MapBlockBytes = 196
 $MapBlocksPerChunk = 4096
 $MapBlocksHigh = @{ 0 = 512; 1 = 512; 2 = 200; 3 = 256; 4 = 181; 5 = 160 }   # facet height in blocks (FACETS in uofiles.py)
@@ -105,19 +112,64 @@ function Get-UopEntries([string]$path) {
     return $map
 }
 
-function Get-MapStamp([string]$uoDir, [string[]]$files, [string]$ops) {
+function Get-MapStamp([string[]]$paths, [string]$ops, [int[]]$also) {
     $parts = @($MapStampFormat)
-    foreach ($f in $files) {
-        $i = Get-Item -LiteralPath (Join-Path $uoDir $f)
-        $parts += "$f $($i.Length) $($i.LastWriteTimeUtc.Ticks)"
+    foreach ($p in $paths) {
+        $i = Get-Item -LiteralPath $p
+        $parts += "$([IO.Path]::GetFullPath($p)) $($i.Length) $($i.LastWriteTimeUtc.Ticks)"
     }
     $parts += "ops $((Get-FileHash -LiteralPath $ops -Algorithm SHA256).Hash)"
+    $parts += "also $(@($also) -join ',')"
     return ($parts -join "`n")
+}
+
+# cc-P674: the shipped base's name for one of the facet's files (base-map1legacymul.uop and so on). Never an EA name,
+# so the package's gate 4 can still refuse any file named like one of EA's.
+function Get-MapBaseName([string]$f) { 'base-' + $f.ToLowerInvariant() }
+
+# cc-P674: copies a facet's UOP map to another facet's name: the same bytes, with every entry's name hash
+# build/map<From>legacymul/<chunk>.dat rewritten to build/map<To>legacymul/<chunk>.dat. Throws on an entry whose hash
+# is none of the From names (a file this was not made for).
+function Copy-UopRenamed([string]$Source, [string]$Destination, [int]$From, [int]$To) {
+    Copy-Item -LiteralPath $Source -Destination $Destination -Force
+    $fs = [IO.File]::Open($Destination, 'Open', 'ReadWrite', 'None')
+    try {
+        $r = New-Object IO.BinaryReader($fs)
+        $w = New-Object IO.BinaryWriter($fs)
+        if ($r.ReadUInt32() -ne 0x50594D) { throw "$Source is not a UOP file" }
+        $fs.Position = 12
+        $next = $r.ReadInt64()
+        $rename = @{}; $named = 0; $done = 0
+        while ($next -ne 0) {
+            $fs.Position = $next
+            $count = $r.ReadInt32(); $next = $r.ReadInt64()
+            $table = $fs.Position
+            for ($i = 0; $i -lt $count; $i++) {
+                $fs.Position = $table + $i * 34
+                $off = $r.ReadInt64()
+                if ($off -eq 0) { continue }
+                $fs.Position = $table + $i * 34 + 20
+                $h = $r.ReadUInt64()
+                while (-not $rename.ContainsKey($h) -and $named -lt 4096) {
+                    $rename[(Get-UopNameHash ('build/map{0}legacymul/{1:D8}.dat' -f $From, $named))] = Get-UopNameHash ('build/map{0}legacymul/{1:D8}.dat' -f $To, $named)
+                    $named++
+                }
+                if (-not $rename.ContainsKey($h)) { throw "$Source holds an entry that is not a map$From chunk" }
+                $fs.Position = $table + $i * 34 + 20
+                $w.Write([uint64]$rename[$h])
+                $done++
+            }
+        }
+        $w.Flush()
+    } finally { $fs.Close() }
+    return $done
 }
 
 function Build-MapOverride {
     param([Parameter(Mandatory = $true)][string]$UoDir, [Parameter(Mandatory = $true)][string]$Ops, [Parameter(Mandatory = $true)][string]$OutDir,
-          [string]$ListDir, [switch]$CheckOnly)
+          [string]$ListDir, [switch]$CheckOnly,
+          [string]$BaseDir,    # cc-P674: the shipped base map (app\map\), in place of the player's own files
+          [int[]]$AlsoAs = @())  # cc-P674: the facets that also read the result (0: Felucca on the SoS land)
     if (-not (Test-Path -LiteralPath $Ops)) { return }      # a package with no map patch
     $sw = [Diagnostics.Stopwatch]::StartNew()
     $traced = [bool](Get-Command Start-Step -ErrorAction SilentlyContinue)
@@ -159,15 +211,26 @@ function Build-MapOverride {
     if ($facet -lt 0) { throw 'trammel.mapops has no F line' }
     $blocksHigh = $MapBlocksHigh[$facet]
     $files = @("map${facet}LegacyMUL.uop", "statics$facet.mul", "staidx$facet.mul")
-    foreach ($f in $files) { if (-not (Test-Path -LiteralPath (Join-Path $UoDir $f))) { throw "$f is not in $UoDir" } }
+    $src = @(foreach ($f in $files) { if ($BaseDir) { Join-Path $BaseDir (Get-MapBaseName $f) } else { Join-Path $UoDir $f } })
+    for ($i = 0; $i -lt 3; $i++) { if (-not (Test-Path -LiteralPath $src[$i])) { throw "$(Split-Path $src[$i] -Leaf) is not in $(Split-Path $src[$i] -Parent)" } }
+    foreach ($a in $AlsoAs) { if ($a -eq $facet -or -not $MapBlocksHigh.ContainsKey($a) -or $MapBlocksHigh[$a] -ne $MapBlocksHigh[$facet]) { throw "facet $a cannot read facet $facet's map" } }
+    $alsoFiles = @(foreach ($a in $AlsoAs) { "map${a}LegacyMUL.uop" })
 
     # --- the stamp -------------------------------------------------------------------------
     & $step 'map.stamp'   # cc-P611: hashing the patch
     $stampOut = Join-Path $OutDir 'map-stamp.txt'
-    $stamp = Get-MapStamp $UoDir $files $Ops
-    $lines = { $o = $(if ($ListDir) { [IO.Path]::GetFullPath($ListDir) } else { (Resolve-Path -LiteralPath $OutDir).Path }); foreach ($f in $files) { "$($f.ToLowerInvariant())=$(Join-Path $o $f)" } }
+    $stamp = Get-MapStamp $src $Ops $AlsoAs
+    $lines = {
+        $o = $(if ($ListDir) { [IO.Path]::GetFullPath($ListDir) } else { (Resolve-Path -LiteralPath $OutDir).Path })
+        foreach ($f in $files) { "$($f.ToLowerInvariant())=$(Join-Path $o $f)" }
+        foreach ($a in $AlsoAs) {   # cc-P674: Felucca's own map, and Trammel's statics, read by both
+            "map${a}legacymul.uop=$(Join-Path $o "map${a}LegacyMUL.uop")"
+            "statics$a.mul=$(Join-Path $o $files[1])"
+            "staidx$a.mul=$(Join-Path $o $files[2])"
+        }
+    }
     if ((Test-Path -LiteralPath $stampOut) -and [IO.File]::ReadAllText($stampOut) -ceq $stamp -and
-        @($files | Where-Object { -not (Test-Path -LiteralPath (Join-Path $OutDir $_)) }).Count -eq 0) {
+        @($files + $alsoFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $OutDir $_)) }).Count -eq 0) {
         return (& $lines)
     }
     if ($CheckOnly) { return [pscustomobject]@{ Stale = 'map' } }
@@ -177,7 +240,7 @@ function Build-MapOverride {
     # --- the land: a copy of EA's file with our cells written in place -----------------------
     $mapOut = Join-Path $OutDir $files[0]
     & $step 'map.copy'
-    Copy-Item -LiteralPath (Join-Path $UoDir $files[0]) -Destination $mapOut -Force
+    Copy-Item -LiteralPath $src[0] -Destination $mapOut -Force
     & $step 'map.read'
     $entries = Get-UopEntries $mapOut
     $chunkOffset = @{}   # chunk -> absolute offset of its first block
@@ -190,8 +253,8 @@ function Build-MapOverride {
         }
         return $chunkOffset[$chunk] + ($b % $MapBlocksPerChunk) * $MapBlockBytes
     }
-    $idx = [IO.File]::ReadAllBytes((Join-Path $UoDir $files[2]))
-    $sta = [IO.File]::ReadAllBytes((Join-Path $UoDir $files[1]))
+    $idx = [IO.File]::ReadAllBytes($src[2])
+    $sta = [IO.File]::ReadAllBytes($src[1])
     $drifted = 0
     & $step 'map.ops'
     $sha = [Security.Cryptography.SHA256]::Create()
@@ -256,6 +319,10 @@ function Build-MapOverride {
     & $step 'map.write'
     [IO.File]::WriteAllBytes((Join-Path $OutDir $files[1]), $staOut.ToArray())
     [IO.File]::WriteAllBytes((Join-Path $OutDir $files[2]), $idx)
+    foreach ($a in $AlsoAs) {
+        & $step "map.copy$a"   # cc-P674: Felucca's copy of the patched land
+        $null = Copy-UopRenamed $mapOut (Join-Path $OutDir "map${a}LegacyMUL.uop") $facet $a
+    }
     [IO.File]::WriteAllText($stampOut, $stamp, (New-Object Text.ASCIIEncoding))
     Write-Host ("  Shattered Legacy map: patched copies of {0} ({1} cells, {2} pieces added, {3} removed) in {4:n1} s." -f $files[0], $land.Count,
         (@($adds.Values | ForEach-Object { $_.Count }) | Measure-Object -Sum).Sum, (@($removes.Values | ForEach-Object { $_.Count }) | Measure-Object -Sum).Sum, ($sw.ElapsedMilliseconds / 1000)) -ForegroundColor Gray

@@ -107,3 +107,7 @@ player-package/vendor/shattered-legacy-art/anim-src/bodies/2086.vd
 # over the 5 MB rule; Add-Track.ps1 copies each in from D:/UO/third-party/ and registry.csv (committed) carries its SHA-256,
 # which Build-PlayerPackage.ps1 checks before staging.
 player-package/vendor/shattered-legacy-music/tracks/
+# cc-P674: the Siege of Sosaria map the package ships (vendor/sos-trammel-map/files/, 5 to 90 MB each, over the 5 MB rule);
+# Add-SosMap.ps1 makes them from the author's download and manifest.csv (committed) carries their SHA-256, which
+# Build-PlayerPackage.ps1 checks before staging.
+player-package/vendor/sos-trammel-map/files/
