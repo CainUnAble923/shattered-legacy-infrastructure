@@ -40,8 +40,8 @@ public static class TutorialCorePlacement
     {
         "core.movement" => FirstMark,
         "core.backpack" => Ground(TutorialWorld.Camp),
-        "core.paperdoll" => Ground(TutorialWorld.Rack),
-        "core.chat" => Ground(TutorialWorld.Signpost),
+        "core.paperdoll" => Ground(ClothesTable), // cc-P718: the table the cloak lies on
+        "core.chat" => Ground(ChatSignpost), // cc-P718: the post itself, not the stop in front of it
         "core.farm" => Ground(TutorialFarm.FarmhandSpot),
         "core.death" => DeathSpot,
         "core.banking" => BankerSpot,
@@ -55,6 +55,8 @@ public static class TutorialCorePlacement
     public static Point3D MarkerSpot(string key) => key switch
     {
         "core.movement" => Ground(new Point2D(TutorialWorld.BlueTile.X, TutorialWorld.BlueTile.Y + 1)),
+        "core.paperdoll" => Ground(TutorialWorld.Rack),
+        "core.chat" => Ground(TutorialWorld.Signpost),
         "core.farm" => Ground(TutorialWorld.FarmGate),
         "core.death" => Ground(TutorialWorld.Yard),
         "core.banking" => Ground(TutorialWorld.BankStop),
@@ -63,6 +65,19 @@ public static class TutorialCorePlacement
         _ => Spot(key)
     };
 
+    // cc-P718 item 5: the clothes stop's table, beside the rack, where each trainee's cloak waits.
+    public static readonly Point2D ClothesTable = new(TutorialWorld.Rack.X - 1, TutorialWorld.Rack.Y - 2);
+    public const int TableId = 0x0B8F; // "table": a surface 6 high
+    public const int TableHeight = 6;
+
+    // cc-P718 item 6: a standing post with its sign board (0xA854, "sign_post"), where the chat lesson's post stood. The
+    // old art, 0x0B97, is the arm that hangs a shop sign from a wall: on the ground it read as debris (Chase, 10-28).
+    public static readonly Point2D ChatSignpost = new(TutorialWorld.Signpost.X, TutorialWorld.Signpost.Y - 2);
+    public const int SignpostId = 0xA854;
+    public const string ChatSignpostName = "Farm signpost: say 'I am ready to learn'";
+    public const int OldSignpostId = 0x0B97;
+    public const string OldChatSignpostName = "signpost: the farm, east";
+
     // The stops' props (all stock art, server items so P662's statics stay the map's own): id, spot, name.
     public static readonly (int Id, Point2D At, string Name)[] Props =
     [
@@ -70,7 +85,8 @@ public static class TutorialCorePlacement
         (0x0A55, new Point2D(TutorialWorld.Camp.X + 1, TutorialWorld.Camp.Y - 2), "bedroll"),
         (0x0A55, new Point2D(TutorialWorld.Camp.X + 2, TutorialWorld.Camp.Y - 2), "bedroll"),
         (0x0EC6, new Point2D(TutorialWorld.Rack.X, TutorialWorld.Rack.Y - 2), "clothes rack"),
-        (0x0B97, new Point2D(TutorialWorld.Signpost.X, TutorialWorld.Signpost.Y - 2), "signpost: the farm, east"),
+        (TableId, ClothesTable, "table"),
+        (SignpostId, ChatSignpost, ChatSignpostName),
         (0x0E7C, TutorialWorld.BankBox, "practice bank box")
     ];
 
@@ -172,11 +188,22 @@ public static class TutorialCorePlacement
             if (blueMissing) { new TutorialBlueWalkTile().MoveToWorld(FirstMark, map); }
             if (goldMissing) { new TutorialWalkMark().MoveToWorld(SecondMark, map); }
             foreach (var spot in doors) { MakeDoor().MoveToWorld(spot, map); }
+            RemoveOldSignpost(map); // cc-P718
             foreach (var (id, at, name) in props) { new Static(id) { Name = name }.MoveToWorld(Ground(at), map); }
         }
         var tiles = (blueMissing ? 1 : 0) + (goldMissing ? 1 : 0);
         var npcs = mobiles.Count + (rookMissing ? 1 : 0) + (townVetMissing ? 1 : 0);
         return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {npcs} NPCs/echo/vets, {(gateMissing ? 1 : 0)} moongate, {tiles} walking tiles, {doors.Length} doors, {props.Length} props. {farm.Message}";
+    }
+
+    /// <summary>cc-P718: removes the old wall-arm chat signpost a seeded world still has. Returns how many.</summary>
+    public static int RemoveOldSignpost(Map map)
+    {
+        var old = new List<Item>();
+        foreach (var i in map.GetItemsInRange<Static>(Ground(ChatSignpost), 0))
+        { if (!i.Deleted && i.ItemID == OldSignpostId && i.Name == OldChatSignpostName) { old.Add(i); } }
+        foreach (var i in old) { i.Delete(); }
+        return old.Count;
     }
 
     private static void Place(Mobile m, Point3D spot, Map map)
@@ -304,6 +331,81 @@ public partial class TutorialPracticeCloak : Cloak
 {
     public TutorialPracticeCloak() { Name = "blue practice cloak"; Hue = TutorialStyle.SupplyHue; LootType = LootType.Blessed; }
     [AfterDeserialization(false)] private void ClearAbandonedLesson() => Delete();
+}
+
+/// <summary>
+/// cc-P718 items 2 and 5: the clothes lesson's cloak. It waits on the table at the clothes stop, for its trainee alone, and
+/// is theirs to keep: blessed (kept on death), and Nontransferable, so it cannot be sold, traded, banked, handed over or
+/// dropped (pinned Item: OnDroppedToWorld, OnDroppedInto anything but the backpack, OnDroppedToMobile; GenericSellInfo
+/// .IsSellable). Nothing takes it back at graduation, the skip or leaving the isle. No bonus (the notes propose one).
+/// </summary>
+[SerializationGenerator(0, false)]
+public partial class WakeningIsleCloak : Cloak
+{
+    public const string CloakName = "cloak of the Wakening Isle";
+
+    [SerializableField(0)]
+    [SerializedCommandProperty(AccessLevel.GameMaster)]
+    private Mobile? _owner;
+
+    [Constructible]
+    public WakeningIsleCloak() : this(null) { }
+
+    public WakeningIsleCloak(Mobile? owner)
+    {
+        _owner = owner;
+        Name = CloakName;
+        Hue = TutorialStyle.SupplyHue;
+        LootType = LootType.Blessed;
+    }
+
+    public override bool Nontransferable => true;
+
+    public override void HandleInvalidTransfer(Mobile from) =>
+        from.SendMessage(0x3B2, "Your cloak of the Wakening Isle is yours alone. Keep it in your backpack or wear it.");
+
+    // Lying on the table, only its trainee (and staff) can pick it up.
+    public override bool CheckLift(Mobile from, Item item, ref LRReason reject)
+    {
+        if (Parent == null && Owner != null && from != Owner && from.AccessLevel == AccessLevel.Player)
+        {
+            from.SendMessage(0x3B2, "That cloak is waiting for another trainee.");
+            reject = LRReason.Inspecific;
+            return false;
+        }
+
+        return base.CheckLift(from, item, ref reject);
+    }
+
+    /// <summary>The isle cloak <paramref name="pm"/> has on them (worn or anywhere in the backpack), or null.</summary>
+    public static WakeningIsleCloak? On(PlayerMobile pm) =>
+        pm.FindItemOnLayer(Layer.Cloak) as WakeningIsleCloak ?? pm.Backpack?.FindItemByType<WakeningIsleCloak>();
+
+    /// <summary>The cloak waiting on the clothes table for <paramref name="pm"/> on <paramref name="map"/>, or null.</summary>
+    public static WakeningIsleCloak? OnTable(PlayerMobile pm, Map map)
+    {
+        foreach (var c in map.GetItemsInRange<WakeningIsleCloak>(TutorialWorld.Ground(map, TutorialCorePlacement.ClothesTable), 0))
+        {
+            if (!c.Deleted && c.Parent == null && c.Owner == pm) { return c; }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// One cloak per character: when <paramref name="pm"/> has none on them and none waits on the table, a new one is set
+    /// on the table. Returns the cloak waiting on the table (new or old), or null when they already have theirs.
+    /// </summary>
+    public static WakeningIsleCloak? EnsureOnTable(PlayerMobile pm)
+    {
+        if (On(pm) != null) { return null; }
+        var map = TutorialWorld.MapOf(pm);
+        if (map == null) { return null; }
+        if (OnTable(pm, map) is { } waiting) { return waiting; }
+        var cloak = new WakeningIsleCloak(pm);
+        var table = TutorialWorld.Ground(map, TutorialCorePlacement.ClothesTable);
+        cloak.MoveToWorld(new Point3D(table.X, table.Y, table.Z + TutorialCorePlacement.TableHeight), map);
+        return cloak;
+    }
 }
 
 [SerializationGenerator(0, false)]

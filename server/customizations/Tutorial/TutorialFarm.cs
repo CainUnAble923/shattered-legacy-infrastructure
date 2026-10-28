@@ -50,6 +50,13 @@ using Server.Misc;
 using Server.Mobiles;
 using Server.Network;
 
+// cc-P718 (Chase's isle walk, 10-28): step 2 begins with the pet commands (items 10): Wren sets the pet to stay and the
+// trainee makes it follow ("all follow me") and guard ("all guard me"), by speech or the pet's menu; the pet's own order
+// is the evidence, so either way counts. Then the pest part opens: Wren opens the field gate (TutorialPestGate, which only
+// a trainee on that part or staff can open), the pests fight only such a trainee or their pet (item 7) and never step
+// outside the field fence, and one of the pests must fall to the pet on "all kill". Step 3's line now says how to use a
+// bandage and how to make more (item 9).
+
 namespace Server.Tutorial
 {
     public static class TutorialFarm
@@ -102,7 +109,38 @@ namespace Server.Tutorial
         public const string NoSlotLine = "You cannot control another pet right now. Stable one of your pets with an animal trainer, then come back.";
         public const string PestsLine = "Walk into the cabbage rows, say 'all kill', then click a rat or grass snake for your pet to attack. Defeat {0} pests to finish this step.";
         public const string PestsLeftLine = "Defeat {0} more rats or grass snakes in the cabbage rows.";
-        public const string HealLine = "Double-click a bandage in your backpack, then click yourself or an injured pet. A successful heal finishes this step.";
+        public const string HealLine = "Here are some bandages. To heal, double-click a bandage in your backpack, then click yourself or your hurt pet. A successful heal finishes this step.";
+        // cc-P718 item 9: the one line on making more, said after the bandages are handed over.
+        public const string MakeBandagesLine = "Later you can make your own bandages: double-click a pair of scissors, then click a pile of cloth to cut it into bandages.";
+
+        // cc-P718 item 10: the pet commands, the first part of step 2.
+        public const string FollowKey = "farm.cmd.follow";
+        public const string GuardKey = "farm.cmd.guard";
+        public const string CommandsLine = "Your pet obeys spoken commands. I told it to stay. Say 'all follow me' and it follows you; then say 'all guard me' and it guards you. You can say your pet's name instead of 'all', or click your pet with the right mouse button and choose a command from its menu.";
+        public const string FollowDoneLine = "Your pet follows you. Now say 'all guard me', or choose Guard from your pet's menu.";
+        public const string GuardDoneLine = "Your pet guards you. I opened the field gate for you: walk into the cabbage rows, say 'all kill', then click a rat or grass snake for your pet to attack. Defeat {0} pests. If the gate swings shut, double-click it to open it.";
+        public const string NoPetForCommandsLine = "You have no pet with you, so the command lesson is skipped. I opened the field gate: defeat {0} rats or grass snakes in the cabbage rows.";
+        public const string PetKillLine = "Now let your pet fight one: say 'all kill', then click a rat or grass snake.";
+        public const string GateClosedLine = "Wren keeps this gate shut until your pest lesson. Double-click Wren the Farmhand first.";
+
+        /// <summary>
+        /// cc-P718 item 7: inside the field fence (P276's x 3381-3399, y 2603-2619, moved to the isle), where the pests stay.
+        /// End points exclusive (Rectangle2D): x 6696-6712, y 3968-3982.
+        /// </summary>
+        public static readonly Rectangle2D PestField = new(OnIsle(new Point2D(3382, 2604)), OnIsle(new Point2D(3399, 2619)));
+
+        /// <summary>
+        /// cc-P718: the field's gate, in the two-tile gap of its east fence (6713, 3978-3979; the layout leaves it open).
+        /// Every wooden gate's art is impassable open or shut, and pinned swings a gate in a north-south fence east by one
+        /// tile (BaseDoor offsets), so two halves would stand on both tiles outside the gap (Wren's and the one below it)
+        /// and shut the field: the P718 bot run could not get in. So one gate, on the gap's south tile, swinging north-east
+        /// onto Wren's own tile (NorthCCW, offset +1,-1), and a fence piece closing the gap's north tile. A player walks in
+        /// from the tile below Wren.
+        /// </summary>
+        public static readonly Point2D[] FieldGateSpots = [new(6713, 3979)];
+
+        public static readonly Point2D FieldFenceSpot = new(6713, 3978);
+        public const int FieldFenceId = 0x0837; // the layout's own wooden fence, north-south
         // cc-P707: the pests die to the pet before they bite, so nobody is hurt and a bandage only says "That being is not
         // damaged!". Wren gives an unhurt trainee a scratch to practise on.
         public const string ScratchLine = "A rat nipped your ankle in the rows. Double-click a bandage in your backpack, then click yourself to treat it. A successful heal finishes this step.";
@@ -268,7 +306,11 @@ namespace Server.Tutorial
                     pm.CloseGump<TutorialFarmPetGump>();
                     pm.SendGump(new TutorialFarmPetGump());
                     break;
+                case 2 when !CommandsDone(pm):
+                    hand.SayTo(pm, BeginCommands(pm) ? CommandsLine : string.Format(NoPetForCommandsLine, PestsToClear));
+                    break;
                 case 2:
+                    OpenFieldGate(hand.Map);
                     var left = Math.Max(0, PestsToClear - PestsKilled(pm));
                     hand.SayTo(pm, PestsKilled(pm) == 0 ? string.Format(PestsLine, PestsToClear) : string.Format(PestsLeftLine, left));
                     break;
@@ -280,6 +322,11 @@ namespace Server.Tutorial
                         BandageGift.NoRoom => NoRoomForBandagesLine,
                         _ => Scratch(pm) ? ScratchLine : HealLine
                     });
+                    if (gift is BandageGift.Given or BandageGift.HasSome)
+                    {
+                        hand.SayTo(pm, MakeBandagesLine); // cc-P718 item 9
+                    }
+
                     break;
                 default:
                     hand.SayTo(pm, DoneLine);
@@ -307,7 +354,11 @@ namespace Server.Tutorial
 
             RecordOf(pm)!.PetClaimed = true;
             ClusterFTutorial.SystemLine(pm, EchoPetLine);
-            CheckDone(pm);
+            if (!CheckDone(pm) && StepOf(pm) == 2 && !CommandsDone(pm))
+            {
+                ClusterFTutorial.SystemLine(pm, BeginCommands(pm) ? CommandsLine : string.Format(NoPetForCommandsLine, PestsToClear));
+            }
+
             return pet;
         }
 
@@ -320,15 +371,40 @@ namespace Server.Tutorial
             {
                 var who = entry.Damager is BaseCreature { Controlled: true } pet ? pet.ControlMaster : entry.Damager;
 
-                if (who is PlayerMobile pm && StepOf(pm) == 2 && credited.Add(pm))
+                if (who is PlayerMobile pm && PestPartOn(pm) && credited.Add(pm))
                 {
-                    CountPest(pm);
+                    CountPest(pm, ByPetOnCommand(pest, pm));
                 }
             }
         }
 
-        public static void CountPest(PlayerMobile pm)
+        // cc-P718: a pest the trainee's pet damaged while under the kill command.
+        private static bool ByPetOnCommand(FarmPest pest, PlayerMobile pm)
         {
+            foreach (var entry in pest.DamageEntries.ToArray())
+            {
+                if (entry.Damager is BaseCreature { Controlled: true } pet && pet.ControlMaster == pm && pet.ControlOrder == OrderType.Attack)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Trainees whose pet has felled a pest on command this run (in memory, like the count).
+        private static readonly HashSet<Serial> _petKilled = new();
+
+        /// <summary>A pest counts for the trainee; staff and tests credit it as the pet's, on command.</summary>
+        public static void CountPest(PlayerMobile pm) => CountPest(pm, true);
+
+        public static void CountPest(PlayerMobile pm, bool byPetOnCommand)
+        {
+            if (byPetOnCommand)
+            {
+                _petKilled.Add(pm.Serial);
+            }
+
             var n = PestsKilled(pm) + 1;
             _pestsKilled[pm.Serial] = n;
 
@@ -338,7 +414,15 @@ namespace Server.Tutorial
                 return;
             }
 
+            // cc-P718 item 10: at least one pest falls to the pet on "all kill", when the trainee has a pet with them.
+            if (!_petKilled.Contains(pm.Serial) && PetsOf(pm).Count > 0)
+            {
+                ClusterFTutorial.SystemLine(pm, PetKillLine);
+                return;
+            }
+
             _pestsKilled.Remove(pm.Serial);
+            _petKilled.Remove(pm.Serial);
             RecordOf(pm)!.StationsDone.Add(PestsKey);
             ClusterFTutorial.SystemLine(pm, EchoPestsLine);
             ClusterFTutorial.CompleteStation(pm, TamingStation);
@@ -359,6 +443,158 @@ namespace Server.Tutorial
             TutorialCoreTrials.FarmFinished(pm);
             ClusterFTutorial.SystemLine(pm, TutorialPetCare.FarmPetLessonLine); // cc-P666: the farm's pet lesson line
             return true;
+        }
+
+        // -- cc-P718 item 10: the pet commands --
+
+        public static bool CommandsDone(PlayerMobile pm) => Has(pm, FollowKey) && Has(pm, GuardKey);
+
+        /// <summary>cc-P718: the pest part of step 2, after the commands: the pests fight the trainee only now.</summary>
+        public static bool PestPartOn(PlayerMobile pm) => StepOf(pm) == 2 && CommandsDone(pm);
+
+        /// <summary>The trainee's living pets on their map.</summary>
+        public static List<BaseCreature> PetsOf(PlayerMobile pm)
+        {
+            var pets = new List<BaseCreature>();
+            foreach (var f in pm.AllFollowers ?? [])
+            {
+                if (f is BaseCreature { Controlled: true, Alive: true, Deleted: false, IsDeadBondedPet: false } pet &&
+                    pet.ControlMaster == pm && pet.Map == pm.Map)
+                {
+                    pets.Add(pet);
+                }
+            }
+
+            return pets;
+        }
+
+        private static readonly HashSet<PlayerMobile> _watching = new();
+        private static TimerExecutionToken _watchTimer;
+
+        /// <summary>
+        /// Starts the commands: the trainee's pets stay, and their orders are watched until they follow and then guard.
+        /// False when the trainee has no pet with them: the commands are skipped and the field gate opens.
+        /// </summary>
+        public static bool BeginCommands(PlayerMobile pm)
+        {
+            var pets = PetsOf(pm);
+            if (pets.Count == 0)
+            {
+                var record = RecordOf(pm)!;
+                record.StationsDone.Add(FollowKey);
+                record.StationsDone.Add(GuardKey);
+                OpenFieldGate(pm.Map);
+                return false;
+            }
+
+            if (!Has(pm, FollowKey))
+            {
+                foreach (var pet in pets)
+                {
+                    pet.ControlTarget = null;
+                    pet.ControlOrder = OrderType.Stay;
+                }
+            }
+
+            _watching.Add(pm);
+            if (!_watchTimer.Running)
+            {
+                Timer.StartTimer(TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500), WatchAll, out _watchTimer);
+            }
+
+            return true;
+        }
+
+        private static void WatchAll()
+        {
+            foreach (var pm in new List<PlayerMobile>(_watching))
+            {
+                CheckCommands(pm);
+            }
+
+            if (_watching.Count == 0)
+            {
+                _watchTimer.Cancel();
+            }
+        }
+
+        /// <summary>Reads the pets' orders (speech or menu, both set them): follow first, then guard. True when both are done.</summary>
+        public static bool CheckCommands(PlayerMobile pm)
+        {
+            if (pm.Deleted || StepOf(pm) != 2 || CommandsDone(pm))
+            {
+                _watching.Remove(pm);
+                return CommandsDone(pm);
+            }
+
+            var pets = PetsOf(pm);
+            var record = RecordOf(pm)!;
+            if (!Has(pm, FollowKey) && pets.Exists(p => p.ControlOrder == OrderType.Follow && p.ControlTarget == pm))
+            {
+                record.StationsDone.Add(FollowKey);
+                ClusterFTutorial.SystemLine(pm, FollowDoneLine);
+            }
+            else if (Has(pm, FollowKey) && pets.Exists(p => p.ControlOrder == OrderType.Guard))
+            {
+                record.StationsDone.Add(GuardKey);
+                _watching.Remove(pm);
+                OpenFieldGate(pm.Map);
+                ClusterFTutorial.SystemLine(pm, string.Format(GuardDoneLine, PestsToClear));
+                return true;
+            }
+
+            return false;
+        }
+
+        // -- cc-P718 item 7: the field gate --
+
+        /// <summary>The field gate's two halves on <paramref name="map"/>, open or closed.</summary>
+        public static List<TutorialPestGate> FieldGates(Map? map)
+        {
+            var gates = new List<TutorialPestGate>();
+            if (map == null)
+            {
+                return gates;
+            }
+
+            foreach (var spot in FieldGateSpots)
+            {
+                if (FindDoor(map, TutorialWorld.Ground(map, spot)) is TutorialPestGate gate)
+                {
+                    gates.Add(gate);
+                }
+            }
+
+            return gates;
+        }
+
+        /// <summary>Wren opens the field gate (it closes again by itself, as any gate).</summary>
+        public static void OpenFieldGate(Map? map)
+        {
+            foreach (var gate in FieldGates(map))
+            {
+                if (!gate.Open)
+                {
+                    gate.Open = true;
+                }
+            }
+        }
+
+        /// <summary>The field gate (one, see FieldGateSpots).</summary>
+        public static TutorialPestGate[] MakeFieldGates() => [new(DoorFacing.NorthCCW)];
+
+        /// <summary>The fence piece closing the gap's north tile on <paramref name="map"/>, or null.</summary>
+        public static Item? FindFieldFence(Map map)
+        {
+            foreach (var item in map.GetItemsInRange<Static>(TutorialWorld.Ground(map, FieldFenceSpot), 0))
+            {
+                if (!item.Deleted && item.ItemID == FieldFenceId)
+                {
+                    return item;
+                }
+            }
+
+            return null;
         }
 
         public enum BandageGift { Given, HasSome, NoneLeft, NoRoom }
@@ -516,7 +752,11 @@ namespace Server.Tutorial
 
             int addons = 0, doors = 0, hands = 0, spawners = 0, present = 0;
 
-            if (FindAddon<TutorialIsleFarmAddon>(map, TutorialIsleFarmLayout.Anchor) != null) { present++; }
+            if (FindAddon<TutorialIsleFarmAddon>(map, TutorialIsleFarmLayout.Anchor) is { } placed)
+            {
+                present++;
+                if (!dryRun) { FixGateSign(placed); } // cc-P718
+            }
             else
             {
                 if (!dryRun) { new TutorialIsleFarmAddon().MoveToWorld(TutorialIsleFarmLayout.Anchor, map); }
@@ -528,6 +768,24 @@ namespace Server.Tutorial
             {
                 if (!dryRun) { MakeDoor().MoveToWorld(TutorialIsleFarmLayout.DoorSpot, map); }
                 doors++;
+            }
+
+            // cc-P718 item 7: the field gate, closed, in the gap of the east fence, and a fence piece beside it (both
+            // counted with the doors).
+            if (FindFieldFence(map) != null) { present++; }
+            else
+            {
+                if (!dryRun) { new Static(FieldFenceId) { Name = "wooden fence" }.MoveToWorld(TutorialWorld.Ground(map, FieldFenceSpot), map); }
+                doors++;
+            }
+
+            var gates = MakeFieldGates();
+            for (var i = 0; i < FieldGateSpots.Length; i++)
+            {
+                var spot = TutorialWorld.Ground(map, FieldGateSpots[i]);
+                if (FindDoor(map, spot) != null) { present++; gates[i].Delete(); }
+                else if (dryRun) { doors++; gates[i].Delete(); }
+                else { gates[i].MoveToWorld(spot, map); doors++; }
             }
 
             if (TutorialFarmhand.Find(map) != null) { present++; }
@@ -639,6 +897,48 @@ namespace Server.Tutorial
         /// <summary>The isle's farm addon.</summary>
         public static TutorialIsleFarmAddon? FindAddon(Map map) => FindAddon<TutorialIsleFarmAddon>(map, TutorialIsleFarmLayout.Anchor);
 
+        // cc-P718 item 6: the farm gate's sign was P276's wall arm (0x0B97) with a board hung on it (0x0BCF), standing on
+        // the ground, where it read as debris. On the isle it is a standing post with its board (0xA854) instead. The
+        // generated layout keeps P276's pieces; the isle's addon swaps them as it is built, and FixGateSign mends a farm
+        // placed before.
+        public const int OldSignArm = 0x0B97;
+        public const int OldSignBoard = 0x0BCF;
+        public const int GateSignpost = 0xA854;
+        public const string GateSignpostName = "Farm signpost: Wren the Farmhand at the gate";
+
+        /// <summary>The isle farm's art for a layout piece, or null to leave it out.</summary>
+        public static int? IsleArt(int id) => id switch
+        {
+            OldSignArm => GateSignpost,
+            OldSignBoard => null,
+            _ => id
+        };
+
+        /// <summary>cc-P718: swaps an isle farm's old gate sign for the standing post. Returns the pieces changed.</summary>
+        public static int FixGateSign(BaseAddon addon)
+        {
+            var changed = 0;
+            foreach (var c in addon.Components.ToArray())
+            {
+                if (c.ItemID == OldSignArm)
+                {
+                    c.ItemID = GateSignpost;
+                    c.Name = GateSignpostName;
+                    changed++;
+                }
+                else if (c.ItemID == OldSignBoard)
+                {
+                    // Detached first: a component deleted while attached deletes its whole addon (AddonComponent.OnAfterDelete).
+                    addon.Components.Remove(c);
+                    c._addon = null;
+                    c.Delete();
+                    changed++;
+                }
+            }
+
+            return changed;
+        }
+
         /// <summary>
         /// The farmhouse door, open or closed. cc-P453: an open door stands at its offset (pinned BaseDoor: +1,+1 for
         /// SouthCW), so it is matched by where it stands closed.
@@ -731,7 +1031,18 @@ namespace Server.Items
             var a = TutorialIsleFarmLayout.Anchor;
             foreach (var (id, x, y, z) in TutorialIsleFarmLayout.Pieces)
             {
-                AddComponent(new AddonComponent(id), x - a.X, y - a.Y, z - a.Z);
+                if (TutorialFarm.IsleArt(id) is not { } art)
+                {
+                    continue;
+                }
+
+                var c = new AddonComponent(art);
+                if (art == TutorialFarm.GateSignpost)
+                {
+                    c.Name = TutorialFarm.GateSignpostName; // cc-P718
+                }
+
+                AddComponent(c, x - a.X, y - a.Y, z - a.Z);
             }
         }
 
@@ -782,6 +1093,16 @@ namespace Server.Mobiles
             {
                 TutorialFarm.NoticeGhostPet(this, pet);
             }
+            else if (m is PlayerMobile pm && TutorialGreeting.NeedsWren(pm))
+            {
+                TutorialGreeting.TryGreet(this, pm, TutorialGreeting.WrenLine); // cc-P718
+            }
+        }
+
+        public override void OnThink()
+        {
+            base.OnThink();
+            TutorialGreeting.GreetAround(this, TutorialGreeting.NeedsWren, TutorialGreeting.WrenLine); // cc-P718
         }
 
         public override void OnDoubleClick(Mobile from)
@@ -820,6 +1141,43 @@ namespace Server.Mobiles
     {
         protected FarmPest()
         {
+        }
+
+        // cc-P718 item 7: a pest fights only a trainee on the pest part of the farm lesson, or that trainee's pet; anyone
+        // earlier in the lessons is never attacked, and a blow from them does nothing.
+        public static bool Fights(Mobile? m)
+        {
+            var player = m is BaseCreature { Controlled: true } pet ? pet.ControlMaster : m;
+            return player is PlayerMobile pm && TutorialFarm.PestPartOn(pm);
+        }
+
+        public override bool IsEnemy(Mobile m) => Fights(m) && base.IsEnemy(m);
+
+        public override bool CanBeHarmful(Mobile target, bool message, bool ignoreOurBlessedness) =>
+            Fights(target) && base.CanBeHarmful(target, message, ignoreOurBlessedness);
+
+        public override void Damage(int amount, Mobile? from = null, bool informMount = true, bool ignoreEvilOmen = false)
+        {
+            if (from != null && !Fights(from))
+            {
+                return;
+            }
+
+            base.Damage(amount, from, informMount, ignoreEvilOmen);
+        }
+
+        // ...and never steps outside the field fence, even through an open gate.
+        public override bool CheckMovement(Direction d, out int newZ)
+        {
+            int x = X, y = Y;
+            Movement.Movement.Offset(d, ref x, ref y);
+            if (!TutorialFarm.PestField.Contains(new Point2D(x, y)) && FoldMaps.IsFold(Map))
+            {
+                newZ = Z;
+                return false;
+            }
+
+            return base.CheckMovement(d, out newZ);
         }
 
         public override void OnDeath(Container c)
@@ -891,5 +1249,28 @@ namespace Server.Mobiles
         }
 
         public override string CorpseName => "a snake corpse";
+    }
+
+    /// <summary>
+    /// cc-P718 item 7: the farm field's gate. A light wood gate that a trainee opens only on the pest part of the farm
+    /// lesson (or later), and staff always; Wren opens it when that part begins. It closes by itself, as any gate.
+    /// </summary>
+    [SerializationGenerator(0, false)]
+    public partial class TutorialPestGate : LightWoodGate
+    {
+        [Constructible]
+        public TutorialPestGate(DoorFacing facing) : base(facing) => Name = "farm field gate";
+
+        public override void Use(Mobile from)
+        {
+            if (from.AccessLevel == AccessLevel.Player && !Open &&
+                !(from is PlayerMobile pm && (TutorialFarm.PestPartOn(pm) || TutorialFarm.StepOf(pm) >= 3)))
+            {
+                from.SendMessage(0x3B2, TutorialFarm.GateClosedLine);
+                return;
+            }
+
+            base.Use(from);
+        }
     }
 }

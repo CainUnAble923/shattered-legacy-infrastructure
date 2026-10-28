@@ -5,7 +5,8 @@ public enum TutorialAction
 {
     FirstMark, SecondMark, Equipped, OpenedBag, SaidPhrase, EchoDeath,
     HealerOffer, Resurrected, Deposited, UsedGate, TalkedToLeague, VisionStarted, VisionFinished,
-    FarmDone // cc-P663: Wren's three steps (TutorialFarm.StepOf reaches 4)
+    FarmDone, // cc-P663: Wren's three steps (TutorialFarm.StepOf reaches 4)
+    OpenedPaperdoll // cc-P718: the trainee opened their own character window (EventSink.PaperdollRequest)
 }
 
 public sealed class TutorialTrialProgress(string key)
@@ -22,7 +23,9 @@ public sealed class TutorialTrialProgress(string key)
         {
             "core.movement" => [TutorialAction.FirstMark, TutorialAction.SecondMark],
             "core.paperdoll" => [TutorialAction.Equipped],
-            "core.backpack" => [TutorialAction.OpenedBag],
+            // cc-P718 item 4: new clients start with the character window closed, and the backpack lesson is the first
+            // that needs it, so it is opened first.
+            "core.backpack" => [TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag],
             "core.chat" => [TutorialAction.SaidPhrase],
             "core.farm" => [TutorialAction.FarmDone],
             "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
