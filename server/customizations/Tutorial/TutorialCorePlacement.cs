@@ -453,8 +453,8 @@ public partial class TutorialPracticeCloak : Cloak
 }
 
 /// <summary>
-/// cc-P718 items 2 and 5: the clothes lesson's cloak. It waits on the table at the clothes stop, for its trainee alone, and
-/// is theirs to keep: blessed (kept on death), and Nontransferable, so it cannot be sold, traded, banked, handed over or
+/// cc-P718 items 2 and 5: the clothes lesson's cloak. It waits at the clothes stop for its trainee alone (cc-P728: in a
+/// chest that appears for them, TutorialCloakChest), and is theirs to keep: blessed (kept on death), and Nontransferable, so it cannot be sold, traded, banked, handed over or
 /// dropped (pinned Item: OnDroppedToWorld, OnDroppedInto anything but the backpack, OnDroppedToMobile; GenericSellInfo
 /// .IsSellable). Nothing takes it back at graduation, the skip or leaving the isle. No bonus (the notes propose one).
 /// </summary>
@@ -500,7 +500,10 @@ public partial class WakeningIsleCloak : Cloak
     public static WakeningIsleCloak? On(PlayerMobile pm) =>
         pm.FindItemOnLayer(Layer.Cloak) as WakeningIsleCloak ?? pm.Backpack?.FindItemByType<WakeningIsleCloak>();
 
-    /// <summary>The cloak waiting on the clothes table for <paramref name="pm"/> on <paramref name="map"/>, or null.</summary>
+    /// <summary>
+    /// A cloak lying loose on the clothes table for <paramref name="pm"/> on <paramref name="map"/> (cc-P718 set it there;
+    /// since cc-P728 it comes in TutorialCloakChest, which takes such a cloak off the table), or null.
+    /// </summary>
     public static WakeningIsleCloak? OnTable(PlayerMobile pm, Map map)
     {
         foreach (var c in map.GetItemsInRange<WakeningIsleCloak>(TutorialWorld.Ground(map, TutorialCorePlacement.ClothesTable), 0))
@@ -510,20 +513,162 @@ public partial class WakeningIsleCloak : Cloak
         return null;
     }
 
-    /// <summary>
-    /// One cloak per character: when <paramref name="pm"/> has none on them and none waits on the table, a new one is set
-    /// on the table. Returns the cloak waiting on the table (new or old), or null when they already have theirs.
-    /// </summary>
-    public static WakeningIsleCloak? EnsureOnTable(PlayerMobile pm)
+}
+
+/// <summary>
+/// cc-P728 item 3 (Chase 10-28 15:23): the clothes lesson's chest. It appears for one trainee on the table by the clothes
+/// rack (or the nearest free tile beside it, when a party member's chest is on the table), with a sparkle and a sound, and
+/// holds their cloak of the Wakening Isle. Only that trainee (or staff) can open it, nothing can be put in it, and it
+/// vanishes once the cloak is out of it and on them (worn or in the backpack). The lesson is still done when the cloak is
+/// worn. One cloak per character, as before (cc-P718): a trainee with no cloak gets the chest again, a new cloak inside,
+/// when the lesson starts, restarts or its Hint and arrow is clicked; a trainee who has theirs gets none. A copy's reset
+/// sweeps a chest left behind.
+/// </summary>
+[SerializationGenerator(0, false)]
+public partial class TutorialCloakChest : BaseContainer
+{
+    public const string ChestName = "chest with your cloak";
+    public const int ChestId = 0x0E43;    // a wooden chest
+    public const int SparkleId = 0x376A;  // the sparkle it appears in
+    public const int PuffId = 0x3728;     // the puff it vanishes in
+    public const int ChimeSound = 0x1F5;  // pinned's sparkle sound (BaseDoor, TrappableContainer)
+    public const string OthersLine = "That chest is waiting for another trainee.";
+    public const string NothingInLine = "This chest only holds your cloak. Keep your things in your backpack.";
+
+    [SerializableField(0)]
+    [SerializedCommandProperty(AccessLevel.GameMaster)]
+    private Mobile? _owner;
+
+    private TimerExecutionToken _watch;
+    private int _watched;
+
+    [Constructible]
+    public TutorialCloakChest() : this(null) { }
+
+    // Movable, but never lifted (CheckLift): pinned lets nothing be lifted out of an immovable container (CannotLift, seen
+    // in the P728 bot run and probed in the test host), so an immovable chest would hold the cloak for good.
+    public TutorialCloakChest(Mobile? owner) : base(ChestId)
     {
-        if (On(pm) != null) { return null; }
+        _owner = owner;
+        Name = ChestName;
+        Hue = TutorialStyle.SupplyHue;
+    }
+
+    public override bool Decays => false;
+
+    public bool IsFor(Mobile m) => m == Owner || m.AccessLevel > AccessLevel.Player;
+
+    public override void OnDoubleClick(Mobile from)
+    {
+        if (!IsFor(from)) { from.SendMessage(0x3B2, OthersLine); return; }
+        base.OnDoubleClick(from);
+    }
+
+    public override bool CheckLift(Mobile from, Item item, ref LRReason reject)
+    {
+        if (item == this && from.AccessLevel == AccessLevel.Player) { reject = LRReason.CannotLift; return false; } // it stays put
+        if (item != this && !IsFor(from)) { from.SendMessage(0x3B2, OthersLine); reject = LRReason.Inspecific; return false; }
+        return base.CheckLift(from, item, ref reject);
+    }
+
+    public override bool OnDragDrop(Mobile from, Item dropped) { from.SendMessage(0x3B2, NothingInLine); return false; }
+
+    public override bool OnDragDropInto(Mobile from, Item item, Point3D p) { from.SendMessage(0x3B2, NothingInLine); return false; }
+
+    public override bool OnStackAttempt(Mobile from, Item stack, Item dropped) { from.SendMessage(0x3B2, NothingInLine); return false; }
+
+    public override void OnItemRemoved(Item item)
+    {
+        base.OnItemRemoved(item);
+        // The cloak is out (lifted, still in the hand): watch until it is on the trainee, or back in here.
+        if (item is WakeningIsleCloak && !_watch.Running)
+        {
+            _watched = 0;
+            Timer.StartTimer(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), () => { if (CheckTaken() || ++_watched >= 120) { _watch.Cancel(); } }, out _watch);
+        }
+    }
+
+    public override void OnAfterDelete()
+    {
+        base.OnAfterDelete();
+        _watch.Cancel();
+    }
+
+    /// <summary>Vanishes once its cloak is out of it and on its trainee. True when it did (or is gone).</summary>
+    public bool CheckTaken()
+    {
+        if (Deleted) { return true; }
+        if (FindItemByType<WakeningIsleCloak>() != null || Owner is not PlayerMobile pm || WakeningIsleCloak.On(pm) == null) { return false; }
+        Vanish();
+        return true;
+    }
+
+    public void Vanish()
+    {
+        if (Map is { } map && map != Map.Internal)
+        {
+            Effects.SendLocationEffect(Location, map, PuffId, 20, 10, 0, 0);
+            Effects.PlaySound(Location, map, ChimeSound);
+        }
+        Delete();
+    }
+
+    /// <summary>The chest waiting for <paramref name="pm"/> at the clothes table on <paramref name="map"/>, or null.</summary>
+    public static TutorialCloakChest? Find(PlayerMobile pm, Map map)
+    {
+        foreach (var c in map.GetItemsInRange<TutorialCloakChest>(TutorialWorld.Ground(map, TutorialCorePlacement.ClothesTable), 3))
+        {
+            if (!c.Deleted && c.Parent == null && c.Owner == pm) { return c; }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// One cloak per character: when <paramref name="pm"/> has none on them, their chest (with a cloak in it) is at the
+    /// clothes table. A cloak still lying on the table from before cc-P728 is taken off it. Returns the waiting chest (new or
+    /// old), or null when they already have their cloak.
+    /// </summary>
+    public static TutorialCloakChest? EnsureFor(PlayerMobile pm)
+    {
+        if (WakeningIsleCloak.On(pm) != null) { return null; }
         var map = TutorialWorld.MapOf(pm);
         if (map == null) { return null; }
-        if (OnTable(pm, map) is { } waiting) { return waiting; }
-        var cloak = new WakeningIsleCloak(pm);
+        WakeningIsleCloak.OnTable(pm, map)?.Delete();
+        if (Find(pm, map) is { } waiting)
+        {
+            if (waiting.FindItemByType<WakeningIsleCloak>() == null) { waiting.DropItem(new WakeningIsleCloak(pm)); }
+            return waiting;
+        }
+        var chest = new TutorialCloakChest(pm);
+        chest.DropItem(new WakeningIsleCloak(pm));
+        var at = Spot(map);
+        chest.MoveToWorld(at, map);
+        Effects.SendLocationEffect(at, map, SparkleId, 16, 10, TutorialStyle.SupplyHue, 0);
+        Effects.PlaySound(at, map, ChimeSound);
+        return chest;
+    }
+
+    /// <summary>On the table, or beside it when another trainee's chest is there (a party shares a copy).</summary>
+    public static Point3D Spot(Map map)
+    {
         var table = TutorialWorld.Ground(map, TutorialCorePlacement.ClothesTable);
-        cloak.MoveToWorld(new Point3D(table.X, table.Y, table.Z + TutorialCorePlacement.TableHeight), map);
-        return cloak;
+        var top = new Point3D(table.X, table.Y, table.Z + TutorialCorePlacement.TableHeight);
+        if (!Taken(map, top)) { return top; }
+        foreach (var (dx, dy) in new[] { (-1, 0), (0, 1), (-1, 1), (0, -1), (-1, -1), (-2, 0) })
+        {
+            var p = TutorialWorld.Ground(map, new Point2D(table.X + dx, table.Y + dy));
+            if (!Taken(map, p) && TutorialCorePlacement.FitsOn(p, map)) { return p; }
+        }
+        return top;
+    }
+
+    private static bool Taken(Map map, Point3D p)
+    {
+        foreach (var c in map.GetItemsInRange<TutorialCloakChest>(p, 0))
+        {
+            if (!c.Deleted && c.Parent == null && c.Z == p.Z) { return true; }
+        }
+        return false;
     }
 }
 

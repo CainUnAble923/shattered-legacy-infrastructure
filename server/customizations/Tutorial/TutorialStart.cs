@@ -181,6 +181,14 @@ public static class TutorialStart
     }
 
     /// <summary>
+    /// cc-P728: this character's first login will wake them on the isle's beach (TutorialWake), so the login's other windows
+    /// wait for it. Read without side effects, by login handlers that may run before ConsumeAtLogin.
+    /// </summary>
+    public static bool WillWake(PlayerMobile pm) =>
+        ClusterFTutorial.Enabled && Pending(pm) is var choice && choice != Choice.None &&
+        Decide(pm, choice) == Outcome.Isle && TutorialWorld.IsleReady();
+
+    /// <summary>
     /// The first login: consumes this character's choice (only its own) and carries out the table. None when it had none.
     /// </summary>
     public static Outcome ConsumeAtLogin(PlayerMobile pm)

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ModernUO.CodeGeneratedEvents;
+using Server.Commands;
 using Server.Gumps;
 using Server.Items;
 using Server.Mobiles;
@@ -30,7 +31,13 @@ public static class TutorialCoreTrials
         public TimerExecutionToken Timer;
         public int Ticks;
         public Point3D ArrowAt; // cc-P720: where the arrow points now (the bank lesson moves it)
+        public string? Now; // cc-P728: the step the trainee is on now, at the top of the lesson window
     }
+
+    // cc-P728 item 6: a finished lesson names the next and points at its signpost; a closed lesson window comes back.
+    public const string NextLessonLine = "Next: {0}. Click Next lesson in the lesson window, or follow the arrow to its signpost and double-click it.";
+    public const string ReopenLine = "If you closed the lesson window, type [lesson and press Enter to open it again.";
+    public const string NoLessonLine = "You have no tutorial lesson running.";
 
     public static void Initialize() => EnsureHooks();
     public static void EnsureHooks()
@@ -40,6 +47,79 @@ public static class TutorialCoreTrials
         _hooked = true;
         EventSink.Speech += OnSpeech;
         EventSink.PaperdollRequest += OnPaperdollRequest; // cc-P718 item 4
+        CommandSystem.Register("Lesson", AccessLevel.Player, OnLessonCommand); // cc-P728 item 6
+    }
+
+    [Usage("Lesson")]
+    [Description("Opens your tutorial lesson's window again.")]
+    [ShardCommand(CommandCategory.Player)]
+    private static void OnLessonCommand(CommandEventArgs e)
+    {
+        if (e.Mobile is PlayerMobile pm) { Reopen(pm); }
+    }
+
+    /// <summary>cc-P728 item 6: [lesson: the running lesson's window again (with its step now), or the next lesson's.</summary>
+    public static bool Reopen(PlayerMobile pm)
+    {
+        if (!ClusterFTutorial.IsParticipant(pm)) { pm.SendMessage(0x3B2, NoLessonLine); return false; }
+        if (Current(pm) is { } trial)
+        {
+            pm.CloseGump<TutorialTrialGump>();
+            pm.SendGump(new TutorialTrialGump(trial.Station, false, trial.Now));
+            return true;
+        }
+        if (ClusterFTutorial.RecordOf(pm) is { } record && ClusterFTutorial.CoreLeft(record).FirstOrDefault() is { } next)
+        {
+            pm.CloseGump<TutorialTrialGump>();
+            pm.SendGump(new TutorialTrialGump(next, false));
+            return true;
+        }
+        ClusterFTutorial.SystemLine(pm, "You finished the main lessons. Double-click Rook on the New Haven plaza to graduate or try an optional lesson.");
+        return false;
+    }
+
+    /// <summary>
+    /// cc-P728 item 6: the step the trainee is on now, said in the system line and over their head, at the top of the lesson
+    /// window (sent again, so a closed one comes back), with the arrow on where to go.
+    /// </summary>
+    public static void NowStep(PlayerMobile pm, string line, Point3D spot, string label)
+    {
+        ClusterFTutorial.SystemLine(pm, line);
+        Overhead(pm, line);
+        Point(pm, spot, label);
+        if (Current(pm) is { } trial)
+        {
+            trial.Now = line;
+            pm.CloseGump<TutorialTrialGump>();
+            pm.SendGump(new TutorialTrialGump(trial.Station, false, line));
+        }
+    }
+
+    /// <summary>The step-now line is spent once the trainee acts on it (Wren gives the next herself).</summary>
+    public static void ClearNow(PlayerMobile pm)
+    {
+        if (Current(pm) is { } trial) { trial.Now = null; }
+    }
+
+    /// <summary>A line over the trainee's own head, for them alone.</summary>
+    public static void Overhead(PlayerMobile pm, string line)
+    {
+        if (pm.NetState is { } ns) { pm.PrivateOverheadMessage(MessageType.Regular, 0x3B2, false, line, ns); }
+    }
+
+    /// <summary>
+    /// cc-P728 item 6: after a finished lesson, the next one is named in the system line and over the trainee's head, and
+    /// the arrow points at its signpost (double-click it to start). Nothing when no core lesson is left: CompleteStation
+    /// has sent them to Rook.
+    /// </summary>
+    public static void PointToNext(PlayerMobile pm)
+    {
+        if (ClusterFTutorial.RecordOf(pm) is not { } record || ClusterFTutorial.CoreLeft(record).FirstOrDefault() is not { } next) { return; }
+        var line = string.Format(NextLessonLine, next.Title);
+        ClusterFTutorial.SystemLine(pm, line);
+        ClusterFTutorial.SystemLine(pm, ReopenLine);
+        Overhead(pm, $"Next: {next.Title}");
+        Point(pm, TutorialCorePlacement.SignSpot(next.Key), TutorialCorePlacement.SignName(next.Key));
     }
 
     // cc-P718 item 4: the trainee opened their own character window (a double-click on themselves, or the client's
@@ -64,9 +144,9 @@ public static class TutorialCoreTrials
     {
         "core.movement" => "Hold the right mouse button toward the glowing blue floor tile in the road, up from the beach, to walk onto it, then walk onto the gold tile. Point farther from your character while holding the button to run.",
         "core.backpack" => "Follow the arrow to the camp beside the road. First open your character window: double-click your own character (two quick left clicks on yourself), or click the paperdoll button. Then double-click the backpack picture in that window, and inside your backpack double-click the blue practice bag.",
-        "core.paperdoll" => "Follow the arrow to the table by the clothes rack: your blue cloak of the Wakening Isle lies on it. To move a thing, click it, hold the left mouse button down, move the mouse, and let go: that is drag and drop. Drag the cloak onto your character's picture in the character window to wear it, or into your backpack first and double-click it there. If you already wear a cloak, drag it into your backpack first. The cloak is yours to keep.",
+        "core.paperdoll" => "Follow the arrow to the table by the clothes rack: a chest appears there for you, with your blue cloak of the Wakening Isle inside. Double-click the chest to open it. To move a thing, click it, hold the left mouse button down, move the mouse, and let go: that is drag and drop. Drag the cloak onto your character's picture in the character window to wear it, or into your backpack and double-click it there. If you already wear a cloak, drag it into your backpack first. The cloak is yours to keep.",
         "core.chat" => $"Follow the arrow to the signpost. Press Enter, type '{Phrase}', then press Enter again to speak. The Journal records what you say.",
-        "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Choose your pet and learn its commands, hold a pitchfork and switch to war mode (press Tab), clear the pests in the cabbage rows, then heal Pip with a bandage.",
+        "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Choose your pet, hold the pitchfork she gives you and switch to war mode (press Tab), teach your pet its commands, clear the pests in the cabbage rows, then heal Pip with a bandage.",
         "core.death" => "Follow the arrow into the training yard to the pale gray rat, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
         "core.banking" => "Follow the arrow through the practice bank's door in the trades square to Merrin the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
         "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss to finish this lesson; you can read about the League without joining.",
@@ -143,7 +223,7 @@ public static class TutorialCoreTrials
             ClusterFTutorial.SystemLine(pm, "Make room in your backpack, then choose this lesson again in Tamsin's window.");
             return;
         }
-        if (station.Key == "core.paperdoll") { WakeningIsleCloak.EnsureOnTable(pm); } // cc-P718: on the table, not in the bag
+        if (station.Key == "core.paperdoll") { TutorialCloakChest.EnsureFor(pm); } // cc-P728: a chest appears with the cloak
         Timer.StartTimer(TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(250), () => Tick(trial), out trial.Timer);
         Show(pm, trial);
         // cc-P663: farm steps finished before the farm was a core station (or before this start) count at once.
@@ -153,12 +233,12 @@ public static class TutorialCoreTrials
     private static void Show(PlayerMobile pm, Trial trial)
     {
         Resupply(pm, trial);
-        if (trial.Station.Key == "core.paperdoll") { WakeningIsleCloak.EnsureOnTable(pm); } // cc-P718: a lost cloak comes back
+        if (trial.Station.Key == "core.paperdoll") { TutorialCloakChest.EnsureFor(pm); } // cc-P718: a lost cloak comes back (cc-P728: in its chest)
         ClusterFTutorial.SystemLine(pm, Hint(trial.Station.Key));
         Point(pm, Destination(trial), ArrowLabel(trial));
         trial.ArrowAt = Destination(trial);
         pm.CloseGump<TutorialTrialGump>();
-        pm.SendGump(new TutorialTrialGump(trial.Station, false));
+        pm.SendGump(new TutorialTrialGump(trial.Station, false, trial.Now));
     }
 
     // cc-P720 item 4: what the arrow is pointing at, named.
@@ -197,6 +277,7 @@ public static class TutorialCoreTrials
         ClusterFTutorial.CompleteStation(pm, trial.Station.Key);
         pm.CloseGump<TutorialTrialGump>();
         pm.SendGump(new TutorialTrialGump(trial.Station, true));
+        PointToNext(pm); // cc-P728 item 6
         return true;
     }
 
@@ -310,16 +391,21 @@ public static class TutorialCoreTrials
 
 public sealed class TutorialTrialGump : Gump
 {
+    public const string FinishedText = "Lesson finished. Click Next lesson / graduate to continue. If you close this window, type [lesson and press Enter to open it again.";
     private readonly TutorialStation _station;
     private readonly bool _done;
-    public TutorialTrialGump(TutorialStation station, bool done) : base(80, 80)
+    /// <summary>cc-P728 item 6: the step the trainee is on now, shown above the hint; null for none.</summary>
+    public string? Now { get; }
+    public TutorialTrialGump(TutorialStation station, bool done, string? now = null) : base(80, 80)
     {
-        _station = station; _done = done;
-        TutorialStyle.Panel(this, 480, 240);
+        _station = station; _done = done; Now = now;
+        var extra = now != null ? 56 : 0;
+        TutorialStyle.Panel(this, 480, 240 + extra);
         AddLabel(24, 18, TutorialStyle.HeadingHue, station.Title);
-        AddHtml(24, 50, 432, 100, TutorialStyle.Html(done ? "Lesson finished. Click Next lesson / graduate to continue." : TutorialCoreTrials.Hint(station.Key)), false, false);
-        AddButton(24, 166, 4005, 4007, 1); AddLabel(60, 168, done ? TutorialStyle.DoneHue : TutorialStyle.ActionHue, done ? "Next lesson / graduate" : "Hint and arrow");
-        AddButton(24, 204, 4017, 4019, 2); AddLabel(60, 206, TutorialStyle.TextHue, "Restart this lesson");
+        if (now != null) { AddHtml(24, 46, 432, 50, TutorialStyle.HeadingHtml("Now: " + now), false, false); }
+        AddHtml(24, 50 + extra, 432, 100, TutorialStyle.Html(done ? FinishedText : TutorialCoreTrials.Hint(station.Key)), false, false);
+        AddButton(24, 166 + extra, 4005, 4007, 1); AddLabel(60, 168 + extra, done ? TutorialStyle.DoneHue : TutorialStyle.ActionHue, done ? "Next lesson / graduate" : "Hint and arrow");
+        AddButton(24, 204 + extra, 4017, 4019, 2); AddLabel(60, 206 + extra, TutorialStyle.TextHue, "Restart this lesson");
     }
     public override void OnResponse(NetState sender, in RelayInfo info)
     {
