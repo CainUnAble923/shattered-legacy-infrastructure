@@ -103,6 +103,11 @@ namespace Server.Tutorial
         public const string PestsLine = "Walk into the cabbage rows, say 'all kill', then click a rat or grass snake for your pet to attack. Defeat {0} pests to finish this step.";
         public const string PestsLeftLine = "Defeat {0} more rats or grass snakes in the cabbage rows.";
         public const string HealLine = "Double-click a bandage in your backpack, then click yourself or an injured pet. A successful heal finishes this step.";
+        // cc-P707: the pests die to the pet before they bite, so nobody is hurt and a bandage only says "That being is not
+        // damaged!". Wren gives an unhurt trainee a scratch to practise on.
+        public const string ScratchLine = "A rat nipped your ankle in the rows. Double-click a bandage in your backpack, then click yourself to treat it. A successful heal finishes this step.";
+        // cc-P707 run 4: said when a bandage on the heal step finds nobody hurt (the trainee's hits came back by themselves).
+        public const string ScratchAgainLine = "A rat nipped your ankle in the rows. Double-click a bandage again, then click yourself to treat it.";
         public const string NoMoreBandagesLine = "I have no more free bandages for you. You can buy more from a healer in town.";
         public const string NoRoomForBandagesLine = "Your backpack is too full for these bandages. Make room in it, then double-click me again.";
         public const string DoneLine = "You finished the farm lessons. If your bonded pet dies, bring its ghost to Tobin the vet beside me. While you are Young, he brings it back free.";
@@ -136,6 +141,8 @@ namespace Server.Tutorial
             // cc-P453: the heal step listens to the bandage patch, not SkillEvents.SkillUsed (pinned rolls the skills on
             // a failed treatment too).
             BandageHealed = OnBandageHealed;
+            SureHeal = (healer, _) => healer is PlayerMobile pm && StepOf(pm) == 3; // cc-P707
+            Unhurt = OnUnhurt; // cc-P707 run 4
         }
 
         /// <summary>
@@ -143,6 +150,21 @@ namespace Server.Tutorial
         /// delegate rather than a direct call, so the patch only needs this class to exist.
         /// </summary>
         public static Action<Mobile, Mobile>? BandageHealed { get; set; }
+
+        /// <summary>
+        /// cc-P707: asked by Bandage-tutorial-real-heal.patch before the healing roll (healer, patient). True makes the
+        /// bandage heal: a trainee on the farm's heal step, whatever their Healing (pinned's chance is (Healing + 10)%, one
+        /// in ten for a newcomer without it). The heal is still real, so BandageHealed still finishes the step.
+        /// </summary>
+        public static Func<Mobile, Mobile, bool>? SureHeal { get; set; }
+
+        /// <summary>
+        /// cc-P707 run 4: asked by Bandage-tutorial-real-heal.patch when a bandage finds its patient unhurt, as it begins
+        /// ("That being is not damaged!") or as it ends (the hits came back meanwhile). True when the farm handled it
+        /// instead: the trainee got a scratch and was told to bandage again, and pinned's message and the Placebo
+        /// achievement are skipped.
+        /// </summary>
+        public static Func<Mobile, Mobile, bool>? Unhurt { get; set; }
 
         public static TutorialRecord? RecordOf(PlayerMobile pm) => ClusterFTutorial.RecordOf(pm);
 
@@ -251,11 +273,12 @@ namespace Server.Tutorial
                     hand.SayTo(pm, PestsKilled(pm) == 0 ? string.Format(PestsLine, PestsToClear) : string.Format(PestsLeftLine, left));
                     break;
                 case 3:
-                    hand.SayTo(pm, GiveBandages(pm) switch
+                    var gift = GiveBandages(pm);
+                    hand.SayTo(pm, gift switch
                     {
                         BandageGift.NoneLeft => NoMoreBandagesLine,
                         BandageGift.NoRoom => NoRoomForBandagesLine,
-                        _ => HealLine
+                        _ => Scratch(pm) ? ScratchLine : HealLine
                     });
                     break;
                 default:
@@ -341,6 +364,30 @@ namespace Server.Tutorial
         public enum BandageGift { Given, HasSome, NoneLeft, NoRoom }
 
         /// <summary>
+        /// cc-P707: step 3 needs a bandage that really heals. When neither the trainee nor a pet of theirs within 12 tiles is
+        /// hurt, takes a fifth of the trainee's hits (at least 5, never the last one). True when it did.
+        /// </summary>
+        public static bool Scratch(PlayerMobile pm)
+        {
+            if (!pm.Alive || pm.Hits < pm.HitsMax)
+            {
+                return false;
+            }
+
+            foreach (var f in pm.AllFollowers ?? [])
+            {
+                if (f is BaseCreature { Alive: true, Deleted: false } pet && pet.Map == pm.Map && pet.InRange(pm, 12) &&
+                    pet.Hits < pet.HitsMax)
+                {
+                    return false;
+                }
+            }
+
+            pm.Hits = Math.Max(1, pm.HitsMax - Math.Max(5, pm.HitsMax / 5));
+            return pm.Hits < pm.HitsMax;
+        }
+
+        /// <summary>
         /// Step 3's bandages: a stack when the pack has none, counted on the account's record and capped at BandageIssues
         /// (cc-P453: the pack check alone let a banked or traded stack be asked for again, and sold).
         /// cc-P613 (P573 #1): counted only once the stack is in the pack. A pack too full (or none) gets nothing, on the
@@ -377,6 +424,19 @@ namespace Server.Tutorial
             {
                 OnHealed(pm);
             }
+        }
+
+        // Step 3, a bandage on an unhurt patient: the trainee or one of their pets. Scratch refuses while anyone is hurt.
+        public static bool OnUnhurt(Mobile healer, Mobile patient)
+        {
+            if (healer is not PlayerMobile pm || StepOf(pm) != 3 ||
+                patient != pm && (patient as BaseCreature)?.ControlMaster != pm || !Scratch(pm))
+            {
+                return false;
+            }
+
+            pm.SendMessage(ScratchAgainLine);
+            return true;
         }
 
         public static bool OnHealed(PlayerMobile pm)

@@ -7,7 +7,7 @@
 //   - a trainee already on a current copy (or logged out on one) keeps it; a party member joins the copy a member of
 //     their party is on; anyone else gets the first free copy, seeded (TutorialCorePlacement.SeedOn) if it is not;
 //   - a copy is held while anyone is on it online, and for 30 minutes after the last occupant left or logged out
-//     (HoldAfterLeaving); then Tick frees it: it removes exactly what its seeding placed (Placed), sweeps anything else
+//     (HoldAfterLeaving; cc-P707: the setting clusterf.tutorial.copyHoldMinutes, 30); then Tick frees it: it removes exactly what its seeding placed (Placed), sweeps anything else
 //     left on it (corpses, dropped items; a pet left behind goes home to New Haven), raises its generation and reseeds;
 //   - a trainee who logs in on a copy whose generation moved on (it was freed while they were away) goes to a fresh copy
 //     at their first undone lesson (OnLogin);
@@ -34,8 +34,12 @@ public static class TutorialCopies
 {
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(TutorialCopies));
 
-    /// <summary>How long a copy stays held after its last occupant left or logged out.</summary>
-    public static readonly TimeSpan HoldAfterLeaving = TimeSpan.FromMinutes(30);
+    /// <summary>
+    /// How long a copy stays held after its last occupant left or logged out. cc-P707: the setting
+    /// clusterf.tutorial.copyHoldMinutes (30, at least 1), so a test world can watch a copy reset.
+    /// </summary>
+    public static TimeSpan HoldAfterLeaving =>
+        TimeSpan.FromMinutes(Math.Max(1, ServerConfiguration.GetOrUpdateSetting("clusterf.tutorial.copyHoldMinutes", 30)));
 
     public const string WaitLine =
         "Every copy of the Wakening Isle is in use right now. Wait here on the beach: you will be taken to your own as soon as one is free.";

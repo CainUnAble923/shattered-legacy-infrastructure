@@ -23,6 +23,11 @@
 //  10. An outsider cannot make a pest their combatant, so never swings or rolls a skill at it.
 //  11. Reseeding with the farmhouse door open places no second door.
 //  12. The pen and the pests are replaced after a death and a taming.
+// cc-P707 (the isle play-through, notes/cc-P707-isle-playthrough.md):
+//  13. On the heal step an unhurt trainee with an unhurt pet gets a scratch to bandage, and Wren says so; a trainee or
+//      pet already hurt gets none.
+//  14. On the heal step a trainee with no Healing heals with every bandage (the practice bandage works), and finishes the
+//      step; off the step the stock chance stands.
 
 #nullable enable
 
@@ -457,6 +462,99 @@ public class TutorialFarmVerification
                 item.Delete();
             }
         }
+    }
+
+    // ---------------------------------------------------------------- 13 (cc-P707)
+
+    [Fact]
+    public void AnUnhurtTraineeOnTheHealStepGetsAScratchToBandage()
+    {
+        var hand = new TutorialFarmhand();
+        hand.MoveToWorld(new Point3D(3396, 2614, 0), Map.Trammel);
+        using var p = new Player(true);
+        p.Litter.Add(hand);
+        Assert.Equal(1, TutorialFarm.Talk(p.Pm, hand));
+        var pet = TutorialFarm.ChoosePet(p.Pm, "dog")!;
+        p.Litter.Add(pet);
+        pet.MoveToWorld(p.Pm.Location, p.Pm.Map);
+        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
+        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+
+        // Nobody hurt: a scratch, and the line says what to do with it.
+        pet.Hits = pet.HitsMax;
+        p.Pm.Hits = p.Pm.HitsMax;
+        var full = p.Pm.HitsMax;
+        Assert.Equal(3, TutorialFarm.Talk(p.Pm, hand));
+        Assert.True(p.Pm.Hits < full, $"hits {p.Pm.Hits} of {full}");
+        Assert.True(p.Pm.Hits >= 1);
+        Assert.False(TutorialFarm.Scratch(p.Pm)); // hurt now: no second scratch
+
+        // The pet already hurt: the trainee is left alone.
+        p.Pm.Hits = p.Pm.HitsMax;
+        pet.Hits = pet.HitsMax / 2;
+        Assert.False(TutorialFarm.Scratch(p.Pm));
+        Assert.Equal(p.Pm.HitsMax, p.Pm.Hits);
+    }
+
+    // ---------------------------------------------------------------- 14 (cc-P707)
+
+    [Fact]
+    public void ATraineeWithNoHealingHealsWithEveryPracticeBandage()
+    {
+        using var p = new Player(true);
+        p.Record.PetClaimed = true;
+        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
+        p.Pm.Skills.Healing.Base = 0;
+        p.Pm.Skills.Anatomy.Base = 0;
+        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+        Assert.True(TutorialFarm.SureHeal?.Invoke(p.Pm, p.Pm));
+
+        // Ten bandages at a one-in-ten chance would all heal once in ten billion runs; the practice bandage always does.
+        for (var i = 0; i < 10; i++)
+        {
+            p.Pm.Hits = p.Pm.HitsMax - 20;
+            var before = p.Pm.Hits;
+            new Bandaging(p.Pm, p.Pm, 0).Finish();
+            Assert.True(p.Pm.Hits > before, $"bandage {i + 1}: hits {p.Pm.Hits}, before {before}");
+            Assert.Contains(TutorialFarm.HealKey, p.Record.StationsDone);
+            Assert.Equal(4, TutorialFarm.StepOf(p.Pm));
+            Assert.False(TutorialFarm.SureHeal?.Invoke(p.Pm, p.Pm)); // off the step: the stock chance again
+            p.Record.StationsDone.Remove(TutorialFarm.HealKey); // back on the step for the next bandage
+        }
+    }
+
+    // ---------------------------------------------------------------- 15 (cc-P707 run 4)
+
+    [Fact]
+    public void ABandageThatFindsNobodyHurtOnTheHealStepGivesAScratch()
+    {
+        using var p = new Player(true);
+        p.Record.PetClaimed = true;
+        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
+        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+
+        // As it ends: the trainee's hits came back during the bandage's delay (the play-through's run 4).
+        p.Pm.Hits = p.Pm.HitsMax;
+        new Bandaging(p.Pm, p.Pm, 0).Finish();
+        Assert.True(p.Pm.Hits < p.Pm.HitsMax, $"hits {p.Pm.Hits} of {p.Pm.HitsMax}");
+        Assert.Equal(3, TutorialFarm.StepOf(p.Pm)); // not finished: only a real heal does that
+
+        // The next bandage treats the scratch and finishes the step.
+        new Bandaging(p.Pm, p.Pm, 0).Finish();
+        Assert.Equal(4, TutorialFarm.StepOf(p.Pm));
+
+        // As it begins, back on the step: "That being is not damaged!" becomes a scratch.
+        p.Record.StationsDone.Remove(TutorialFarm.HealKey);
+        p.Pm.Hits = p.Pm.HitsMax;
+        Assert.Null(BandageContext.BeginHeal(p.Pm, p.Pm));
+        Assert.True(p.Pm.Hits < p.Pm.HitsMax, $"hits {p.Pm.Hits} of {p.Pm.HitsMax}");
+
+        // Off the step, an unhurt patient is left alone.
+        p.Record.StationsDone.Add(TutorialFarm.HealKey);
+        p.Pm.Hits = p.Pm.HitsMax;
+        Assert.False(TutorialFarm.OnUnhurt(p.Pm, p.Pm));
+        Assert.Null(BandageContext.BeginHeal(p.Pm, p.Pm));
+        Assert.Equal(p.Pm.HitsMax, p.Pm.Hits);
     }
 
     // ---------------------------------------------------------------- 8 (P420 #4 = P421 #1)

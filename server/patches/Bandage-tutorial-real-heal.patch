@@ -1,6 +1,30 @@
 --- "a/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
 +++ "b/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
-@@ -416,6 +416,8 @@
+@@ -375,7 +375,11 @@
+ 
+             if (Patient.Hits == Patient.HitsMax)
+             {
+-                Healer.SendLocalizedMessage(1010395); // You heal what little damage your patient had.
++                // Shattered Legacy (cc-P707): on the tutorial farm's heal step, a scratch to bandage instead.
++                if (Server.Tutorial.TutorialFarm.Unhurt?.Invoke(Healer, Patient) != true)
++                {
++                    Healer.SendLocalizedMessage(1010395); // You heal what little damage your patient had.
++                }
+                 return;
+             }
+ 
+@@ -386,7 +390,9 @@
+             var anatomy = Healer.Skills[secondarySkill].Value;
+             var chance = (healing + 10.0) / 100.0 - Slips * 0.02;
+ 
+-            if (chance > Utility.RandomDouble())
++            // Shattered Legacy (cc-P707): the tutorial farm's practice bandage works whatever the trainee's Healing, when
++            // nothing slipped (TutorialFarm.SureHeal; a slip still fails it, as cc-P453's fact wants).
++            if (chance > Utility.RandomDouble() || Slips == 0 && Server.Tutorial.TutorialFarm.SureHeal?.Invoke(Healer, Patient) == true)
+             {
+                 healerNumber = 500969; // You finish applying the bandages.
+ 
+@@ -433,6 +439,8 @@
                  }
  
                  Patient.Heal((int)toHeal, Healer, false);
@@ -9,3 +33,18 @@
              }
              else
              {
+@@ -483,8 +491,12 @@
+         else if (!patient.Poisoned && patient.Hits == patient.HitsMax && !BleedAttack.IsBleeding(patient) &&
+                  creature?.IsDeadPet != true)
+         {
+-            healer.SendLocalizedMessage(500955); // That being is not damaged!
+-            ClusterFJokeAchievements.HealedUnhurt(healer); // Shattered Legacy (cc-P231): a joke achievement
++            // Shattered Legacy (cc-P707): on the tutorial farm's heal step, a scratch to bandage instead.
++            if (Server.Tutorial.TutorialFarm.Unhurt?.Invoke(healer, patient) != true)
++            {
++                healer.SendLocalizedMessage(500955); // That being is not damaged!
++                ClusterFJokeAchievements.HealedUnhurt(healer); // Shattered Legacy (cc-P231): a joke achievement
++            }
+         }
+         else if (!patient.Alive && patient.Map?.CanFit(patient.Location, 16, false, false) != true)
+         {

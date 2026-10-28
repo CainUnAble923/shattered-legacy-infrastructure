@@ -222,6 +222,35 @@ public class TutorialCopiesVerification : IDisposable
         Assert.Same(copy, TutorialCopies.CurrentCopyOf(pm));
     }
 
+    // ---------------------------------------------------------------- 3b (cc-P707)
+
+    [Fact]
+    public void TheHoldIsTheSettingSoATestWorldCanShortenIt()
+    {
+        Assert.Equal(TimeSpan.FromMinutes(30), TutorialCopies.HoldAfterLeaving);
+        var pm = Trainee("CopyShortHold");
+        var slot = TutorialCopies.SlotOf(pm.Map);
+        var generation = slot.Generation;
+        var now = Core.Now;
+        try
+        {
+            ServerConfiguration.SetSetting("clusterf.tutorial.copyHoldMinutes", 2);
+            Assert.Equal(TimeSpan.FromMinutes(2), TutorialCopies.HoldAfterLeaving);
+            LogOut(pm, now);
+            TutorialCopies.Tick(now + TimeSpan.FromMinutes(1));
+            Assert.True(slot.InUse); // held for the two minutes
+            TutorialCopies.Tick(now + TimeSpan.FromMinutes(3));
+            Assert.False(slot.InUse); // freed after them
+            Assert.Equal(generation + 1, slot.Generation);
+            ServerConfiguration.SetSetting("clusterf.tutorial.copyHoldMinutes", 0);
+            Assert.Equal(TimeSpan.FromMinutes(1), TutorialCopies.HoldAfterLeaving); // never less than a minute
+        }
+        finally
+        {
+            ServerConfiguration.SetSetting("clusterf.tutorial.copyHoldMinutes", 30);
+        }
+    }
+
     // ---------------------------------------------------------------- 4
 
     [Fact]
