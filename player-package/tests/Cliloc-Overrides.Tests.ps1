@@ -264,6 +264,8 @@ Fact 'TheServerAndThePackageAgreeOnEveryNumber' {
     # cc-P663: the start choice's two city descriptions.
     $want['Start with the tutorial (recommended): wake on the Wakening Isle, learn the basics along one road, then take the moongate to New Haven.'] = (& $num 'TutorialIslandCity')
     $want['Skip the tutorial: start in New Haven.'] = (& $num 'NewHavenSkipCity')
+    # cc-P717: New Haven shown locked until the account graduates or skips.
+    $want["Locked: your account's first character starts on Tutorial Island. New Haven opens once a character finishes or skips the tutorial."] = (& $num 'NewHavenLockedCity')
     Assert-Equal $want.Count $ours.Count 'one entry per server constant'
     foreach ($e in $ours) { Assert-Equal $want["$($e.text)"] ([int]$e.number) "$($e.text)" }
     Assert-Equal $ours.Count $slClilocRegistry.Count 'registry rows'

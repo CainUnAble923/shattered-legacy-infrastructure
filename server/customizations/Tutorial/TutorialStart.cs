@@ -19,6 +19,16 @@
 //   | Tutorial character deleted mid-way| isle, re-bound to this one, done keys kept    | skip (an orphaned core or wings)     |
 //   | Created before go-live (no choice)| never entered or moved (P80 item 1)           | -                                    |
 //
+// cc-P717 (Chase, 2026-10-28): the account's first character must take the isle. Until a character of the account
+// graduates or skips (the account flag HavenUnlockedFlag, set by ClusterFTutorial.Graduate and Skip and kept when that
+// character is deleted), the list's second entry is "New Haven (locked)" with a one-line reason, and any New Haven pick
+// counts as the isle (Decide), so a client that sends New Haven anyway starts on the isle. Staff accounts always see
+// both. The list is built per account at login (CharacterCreation.GetStartingCities(account), from AccountHandler by
+// AccountHandler-per-account-start-cities.patch). The reset's account flags ([ResetMyAccount, [ClusterFReset) clear the
+// flag, which locks it again. An account that graduated or skipped before cc-P717 has no flag: its list shows New Haven
+// locked, and either pick starts in New Haven as before (Decide's "finished" row), until the flag is earned again.
+// (Counting a finished record as unlocked instead would survive the reset, which clears flags but not the record.)
+//
 // Creation already places an isle pick on the isle when Decide says so then; the login decides again, since another
 // character of the account may have entered in between, and moves the character if the answer changed. Staff are
 // never entered or moved.
@@ -34,6 +44,13 @@ public static class TutorialStart
 {
     public const string IsleCity = "Tutorial Island";
     public const string HavenCity = "New Haven";
+    public const string LockedHavenCity = "New Haven (locked)";
+
+    /// <summary>
+    /// cc-P717: an account flag, set once a character of the account graduates or skips; New Haven is a start from then
+    /// on. The reset's account flags clear it.
+    /// </summary>
+    public const string HavenUnlockedFlag = "tutorial.havenUnlocked";
 
     /// <summary>The isle entry's button on TazUO's Trammel picture: sea south of the new New Haven. Display only.</summary>
     public static readonly Point3D IsleDisplay = new(3650, 2932, -5);
@@ -65,9 +82,33 @@ public static class TutorialStart
         new(HavenCity, "The Bountiful Harvest Inn", ShardClilocs.NewHavenSkipCity, HavenSpots.Start.X, HavenSpots.Start.Y, HavenSpots.Start.Z, Map.Trammel)
     ];
 
+    /// <summary>
+    /// cc-P717: the list for this account: both entries for staff and for an account that has unlocked New Haven,
+    /// otherwise the isle and New Haven shown locked.
+    /// </summary>
+    public static CityInfo[] Cities(IAccount? account)
+    {
+        var cities = Cities();
+        if (account == null || account.AccessLevel >= AccessLevel.GameMaster || IsHavenUnlocked(account))
+        {
+            return cities;
+        }
+
+        var haven = cities[1];
+        cities[1] = new CityInfo(LockedHavenCity, haven.Building, ShardClilocs.NewHavenLockedCity, haven.X, haven.Y, haven.Z, haven.Map);
+        return cities;
+    }
+
+    /// <summary>cc-P717: a character of this account has graduated or skipped since the account's last flag reset.</summary>
+    public static bool IsHavenUnlocked(IAccount account) =>
+        ClusterFAccountPersistence.Get(account)?.HasFlag(HavenUnlockedFlag) == true;
+
+    /// <summary>cc-P717: graduation and the skip (ClusterFTutorial) open New Haven for the whole account.</summary>
+    public static void Unlock(IAccount account) => ClusterFAccountPersistence.GetOrCreate(account).SetFlag(HavenUnlockedFlag);
+
     public static Choice ChoiceOf(CityInfo? city) => city?.City switch
     {
-        IsleCity => Choice.Isle,
+        IsleCity or LockedHavenCity => Choice.Isle,
         HavenCity => Choice.Haven,
         _ => Choice.None
     };
@@ -97,6 +138,12 @@ public static class TutorialStart
         if (c == Choice.None || IsStaff(pm) || ClusterFTutorial.RecordOf(pm) is not { } record)
         {
             return Outcome.None;
+        }
+
+        // cc-P717: New Haven is not a start until the account has unlocked it; the pick is the isle's.
+        if (c == Choice.Haven && pm.Account is IAccount acct && !IsHavenUnlocked(acct))
+        {
+            c = Choice.Isle;
         }
 
         var orphaned = record.IsActive && ClusterFTutorial.IsRecordedCharacter(pm, record);

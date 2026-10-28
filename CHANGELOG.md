@@ -29,6 +29,14 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.28
+
+### Changed
+- Test shard: your account's first character starts on Tutorial Island. "New Haven" shows as locked on the character creation screen until one of your characters finishes or skips the tutorial; from then on, every new character on the account can choose New Haven, even if that character is later deleted.
+
+### Staff
+- Staff accounts always see both starts. The reset window's account flags box ([ResetMyAccount, [ClusterFReset, the Reset Stone) locks New Haven again, so day one can be tried again; [Tutorial reset also clears the account's tutorial record.
+
 ## 2026.10.27.4
 
 ### Added

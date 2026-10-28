@@ -78,6 +78,9 @@ public static class ShardClilocs
     /// <summary>"Skip the tutorial: start in New Haven."</summary>
     public const int NewHavenSkipCity = 1_900_015;
 
+    /// <summary>cc-P717: "Locked: your account's first character starts on Tutorial Island. New Haven opens once a character finishes or skips the tutorial."</summary>
+    public const int NewHavenLockedCity = 1_900_016;
+
     /// <summary>
     /// The deed line for a post-Valorite material, and (cc-P123) for the woods, EA's lines as ServUO's
     /// SmallBODGump.GetMaterialNumberFor gives them (:123-132); 0 (no line, pinned's value) for any other. Pinned's gumps

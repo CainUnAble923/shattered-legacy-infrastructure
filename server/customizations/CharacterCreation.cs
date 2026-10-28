@@ -127,6 +127,11 @@ public static partial class CharacterCreation
     public static CityInfo[] GetStartingCities() =>
         _availableStartingCities ??= ConstructAvailableStartingCities();
 
+    // cc-P717: the list one account sees (AccountHandler, AccountHandler-per-account-start-cities.patch). With the tutorial
+    // on, New Haven shows locked until the account graduates or skips (TutorialStart.Cities); otherwise the shared list.
+    public static CityInfo[] GetStartingCities(IAccount account) =>
+        Server.Tutorial.ClusterFTutorial.Enabled ? Server.Tutorial.TutorialStart.Cities(account) : GetStartingCities();
+
     private static CityInfo[] ConstructAvailableStartingCities()
     {
         // cc-P663 (P481 F3): with the tutorial on (the test shard until F4 ships), two entries: "Tutorial Island" (index 0,
