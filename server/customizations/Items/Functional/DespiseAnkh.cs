@@ -1,6 +1,6 @@
 // ServUO: Items/Functional/DespiseAnkh.cs (CC4 Despise).
 //
-// The two ankhs at the top of the good side (5474, 525, 79) and the evil side (5472, 754, 10). Using one
+// The two ankhs at the top of the good side (5474, 525, 79) and the evil side (5473, 754, 10; cc-P677). Using one
 // hands a WispOrb of its alignment to a player whose karma has the same sign, one orb per player.
 //
 // Dropped (D-30): the Whispering With Wisps hooks. ServUO completes a Town Cryer quest objective here

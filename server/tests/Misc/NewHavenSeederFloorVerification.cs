@@ -38,8 +38,8 @@ public class NewHavenSeederFloorVerification
         ["Kashiel"] = new(3743, 2579, 40),
         ["Asandos"] = new(3665, 2609, 0),
         ["Clairesse"] = new(3689, 2465, 0),
-        ["Gervis"] = new(3505, 2749, 0),
-        ["Mugg"] = new(3507, 2747, 0),
+        ["Gervis"] = new(3501, 2741, 1), // cc-P677: the mine camp on SoS
+        ["Mugg"] = new(3497, 2747, 4),
         ["Lowel"] = new(3633, 2497, 0),
         ["Lyle"] = new(3641, 2465, 0),
         ["Nibbet"] = new(3664, 2496, 0),
@@ -70,7 +70,7 @@ public class NewHavenSeederFloorVerification
         ["Hamato"] = new(3741, 2562, 40),
         ["Mulcivikh"] = new(3729, 2635, 40),
         ["Morganna"] = new(3731, 2633, 40),
-        ["Jacob Waltz"] = new(3510, 2745, 0),
+        ["Jacob Waltz"] = new(3501, 2743, 1),
         ["George Hephaestus"] = new(3634, 2616, 0),
         ["League Registrar"] = new(3660, 2549, 0),
     };

@@ -10,7 +10,7 @@ namespace Server.Mobiles;
 /// Miners' Compact Survey Archivist - accepts ore discovery reports from players
 /// who carry a Prospector's Logbook and grants Compact Standing and Mining Vouchers.
 ///
-/// Location: Trammel 3496, 2754, Z=4 (mine camp, at the Survey Archivist's tent opening; cc-P16)
+/// Location: Trammel 3498, 2738, Z=4 (mine camp, at the Survey Archivist's tent opening; cc-P16, moved in cc-P677)
 /// Seeded by: ClusterFInstitutionSeeder
 /// </summary>
 [SerializationGenerator(0, false)]

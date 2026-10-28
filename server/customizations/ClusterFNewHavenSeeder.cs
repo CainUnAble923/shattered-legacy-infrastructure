@@ -27,8 +27,8 @@ public static class ClusterFNewHavenSeeder
         new("Kashiel", "the Bullseye Marksmen", typeof(Kashiel), () => new Kashiel(), 3743, 2579, Direction.South, 40),
         new("Asandos", "the Haven inn", typeof(Asandos), () => new Asandos(), 3665, 2609, Direction.South, 0),
         new("Clairesse", "A Stitch in Time", typeof(Clairesse), () => new Clairesse(), 3689, 2465, Direction.South, 0),
-        new("Gervis", "Mountainside (south)", typeof(Gervis), () => new Gervis(), 3505, 2749, Direction.South, 0),
-        new("Mugg", "Mine (south mountains)", typeof(Mugg), () => new Mugg(), 3507, 2747, Direction.South, 0),
+        new("Gervis", "Mountainside (south)", typeof(Gervis), () => new Gervis(), 3501, 2741, Direction.South, 1), // cc-P677: 3505, 2749 is rock on SoS
+        new("Mugg", "Mine (south mountains)", typeof(Mugg), () => new Mugg(), 3497, 2747, Direction.South, 4), // cc-P677: 3507, 2747 is rock on SoS
         new("Lowel", "Carpenters of Haven", typeof(Lowel), () => new Lowel(), 3633, 2497, Direction.South, 0),
         new("Lyle", "Haven Magery School", typeof(Lyle), () => new Lyle(), 3641, 2465, Direction.South, 0),
         new("Nibbet", "Haven Clockworks and Tinker Shop", typeof(Nibbet), () => new Nibbet(), 3664, 2496, Direction.South, 0),
@@ -64,7 +64,7 @@ public static class ClusterFNewHavenSeeder
 
         new("Mulcivikh", "the east house (Keepers of the Last Door)", typeof(Mulcivikh), () => new Mulcivikh(), 3729, 2635, Direction.South, 40),
         new("Morganna", "the east house (Keepers of the Last Door)", typeof(Morganna), () => new Morganna(), 3731, 2633, Direction.South, 40),
-        new SeedEntry("Jacob Waltz", "Mine camp (south mountains)", typeof(JacobWaltz), () => new JacobWaltz(), 3510, 2745, Direction.South, 0).WasAt(3511, 2744, 0),
+        new SeedEntry("Jacob Waltz", "Mine camp (south mountains)", typeof(JacobWaltz), () => new JacobWaltz(), 3501, 2743, Direction.South, 1).WasAt(3511, 2744, 0),
         new("George Hephaestus", "The Haven Blacksmith", typeof(GeorgeHephaestus), () => new GeorgeHephaestus(), 3634, 2616, Direction.South, 0),
 
         // League of Extraordinary Citizens field office: cc-P678, the free hall north-east of the square in SoS Haven

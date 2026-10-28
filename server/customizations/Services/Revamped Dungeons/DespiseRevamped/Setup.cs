@@ -79,7 +79,7 @@ public static class DespiseRevampedSetup
 
         ankh = new DespiseAnkh(Alignment.Evil);
         WeakEntityCollection.Add(CollectionKey, ankh);
-        ankh.MoveToWorld(new Point3D(5472, 754, 10), Map.Trammel);
+        ankh.MoveToWorld(new Point3D(5473, 754, 10), Map.Trammel); // cc-P677: SoS puts a pedestal on 5472, 754
 
         SetupTeleporters();
 
@@ -135,11 +135,11 @@ public static class DespiseRevampedSetup
 
         // Gate3
         gate1 = new GateTeleporter(3948, 1965, new Point3D(5387, 628, 30), Map.Trammel);
-        gate2 = new GateTeleporter(3948, 1960, new Point3D(5388, 753, 5), Map.Trammel);
+        gate2 = new GateTeleporter(3948, 1960, new Point3D(5387, 753, 5), Map.Trammel); // cc-P677: SoS's pedestal on 5388
         WeakEntityCollection.Add(CollectionKey, gate1);
         WeakEntityCollection.Add(CollectionKey, gate2);
 
-        gate1.MoveToWorld(new Point3D(5388, 753, 5), Map.Trammel);
+        gate1.MoveToWorld(new Point3D(5387, 753, 5), Map.Trammel);
         gate2.MoveToWorld(new Point3D(5387, 628, 30), Map.Trammel);
     }
 }

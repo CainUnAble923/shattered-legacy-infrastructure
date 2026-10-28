@@ -443,7 +443,7 @@ public class ExodusEncounterVerification
             var tome = deed.Build(a, tile, shrineFloor);
             Assert.NotNull(tome);
             Assert.True(deed.Deleted);
-            Assert.Equal(new Point3D(1858, 875, 12), tome.Location);
+            Assert.Equal(new Point3D(1858, 875, 0), tome.Location); // cc-P677: SpotFor, the SoS shrine glyph at its ground
             Assert.Equal(Map.Trammel, tome.Map);
             Assert.Same(a, tome.Owner);
             Assert.Contains(tome, ExodusTomeAltar.Instances);

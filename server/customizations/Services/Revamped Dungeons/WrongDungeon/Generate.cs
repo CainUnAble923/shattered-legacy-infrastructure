@@ -36,9 +36,9 @@ public static class WrongGenerator
     // ServUO Generate.cs: (destination, where it stands), the same eight on each facet.
     public static readonly (Point3D Dest, Point3D At)[] Teleporters =
     {
-        (new Point3D(5690, 569, 25), new Point3D(5827, 590, 1)),
-        (new Point3D(5829, 595, 0), new Point3D(5690, 573, 25)),
-        (new Point3D(5690, 569, 25), new Point3D(5872, 532, 24)),
+        (new Point3D(5690, 569, 25), new Point3D(5827, 592, 0)), // cc-P677: ServUO 5827, 590, 1, rock on SoS
+        (new Point3D(5829, 595, 0), new Point3D(5690, 571, 25)), // cc-P677: ServUO 5690, 573, 25, rock on SoS
+        (new Point3D(5690, 569, 25), new Point3D(5872, 532, 15)), // cc-P677: ServUO z 24; the floor is 15 on SoS
         (new Point3D(5827, 593, 0), new Point3D(5732, 554, 24)),
         (new Point3D(5703, 639, 0), new Point3D(5708, 625, 0)),
         (new Point3D(5792, 526, 10), new Point3D(5698, 662, 0)),

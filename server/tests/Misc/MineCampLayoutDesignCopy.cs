@@ -9,13 +9,13 @@ namespace ShatteredLegacy.Tests;
 
 internal static class MineCampLayoutDesignCopy
 {
-    public const string Sha256 = "f2fa305dd65ed435474e7f585e4823e6621bd086ff430877cc7ebffd640380d1";
+    public const string Sha256 = "c80a1b13a5331e0c4e3bf3778d7dda424450430c57cb526940eed1dde54289cd";
 
     public const string Json =
 """
 {
  "map": "Trammel",
- "source": "design/mine-camp-tents/camp.py; z values are client-side estimates, verify on the server",
+ "source": "design/mine-camp-tents/camp.py; z values are client-side estimates, verify on the server; cc-P677: on the Siege of Sosaria land the Archivist's tent moved (+2, -16) to the open ground at the mountain's foot and every z was re-measured there (shard-migration notes/cc-P677-tools/replace_camp.py)",
  "addons": [
   {
    "name": "MinersCompactTent",
@@ -26,7 +26,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "tent wall",
      "x": 3494,
      "y": 2744,
-     "z": 5
+     "z": 3
     },
     {
      "group": "tent",
@@ -34,7 +34,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "tent wall",
      "x": 3495,
      "y": 2743,
-     "z": 5
+     "z": 2
     },
     {
      "group": "tent",
@@ -42,7 +42,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "tent wall",
      "x": 3496,
      "y": 2743,
-     "z": 5
+     "z": 2
     },
     {
      "group": "tent",
@@ -50,7 +50,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "tent wall",
      "x": 3497,
      "y": 2743,
-     "z": 5
+     "z": 2
     },
     {
      "group": "tent",
@@ -58,7 +58,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "tent wall",
      "x": 3495,
      "y": 2745,
-     "z": 5
+     "z": 2
     },
     {
      "group": "tent",
@@ -66,7 +66,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "tent wall",
      "x": 3496,
      "y": 2745,
-     "z": 5
+     "z": 2
     },
     {
      "group": "tent",
@@ -74,7 +74,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "tent wall",
      "x": 3497,
      "y": 2745,
-     "z": 5
+     "z": 2
     },
     {
      "group": "tent",
@@ -82,7 +82,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "tent roof",
      "x": 3495,
      "y": 2744,
-     "z": 19
+     "z": 17
     },
     {
      "group": "tent",
@@ -90,7 +90,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "tent roof",
      "x": 3496,
      "y": 2744,
-     "z": 19
+     "z": 16
     },
     {
      "group": "tent",
@@ -98,7 +98,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "tent roof",
      "x": 3497,
      "y": 2744,
-     "z": 16
+     "z": 13
     },
     {
      "group": "deco",
@@ -106,7 +106,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "bedroll",
      "x": 3495,
      "y": 2742,
-     "z": 5
+     "z": 4
     },
     {
      "group": "deco",
@@ -114,7 +114,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "iron ingots",
      "x": 3496,
      "y": 2742,
-     "z": 5
+     "z": 3
     },
     {
      "group": "deco",
@@ -122,7 +122,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "iron ingot%s",
      "x": 3496,
      "y": 2742,
-     "z": 6
+     "z": 4
     },
     {
      "group": "deco",
@@ -130,7 +130,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "barrel",
      "x": 3497,
      "y": 2742,
-     "z": 5
+     "z": 2
     },
     {
      "group": "deco",
@@ -138,7 +138,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "brazier",
      "x": 3499,
      "y": 2742,
-     "z": 2
+     "z": 1
     },
     {
      "group": "deco",
@@ -146,7 +146,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "crate",
      "x": 3498,
      "y": 2743,
-     "z": 4
+     "z": 2
     },
     {
      "group": "deco",
@@ -154,7 +154,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "pickaxe",
      "x": 3498,
      "y": 2743,
-     "z": 7
+     "z": 5
     },
     {
      "group": "deco",
@@ -162,7 +162,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "iron ore",
      "x": 3499,
      "y": 2743,
-     "z": 3
+     "z": 2
     },
     {
      "group": "deco",
@@ -170,7 +170,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "iron ore",
      "x": 3500,
      "y": 2743,
-     "z": 3
+     "z": 2
     },
     {
      "group": "deco",
@@ -178,7 +178,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "sledge hammer",
      "x": 3500,
      "y": 2744,
-     "z": 2
+     "z": 1
     },
     {
      "group": "deco",
@@ -186,7 +186,7 @@ internal static class MineCampLayoutDesignCopy
      "name": "shovel",
      "x": 3500,
      "y": 2742,
-     "z": 2
+     "z": 1
     }
    ]
   },
@@ -197,177 +197,177 @@ internal static class MineCampLayoutDesignCopy
      "group": "tent",
      "id": "0x036F",
      "name": "tent wall",
-     "x": 3492,
-     "y": 2754,
-     "z": 5
-    },
-    {
-     "group": "tent",
-     "id": "0x036E",
-     "name": "tent wall",
-     "x": 3493,
-     "y": 2753,
-     "z": 5
-    },
-    {
-     "group": "tent",
-     "id": "0x036E",
-     "name": "tent wall",
      "x": 3494,
-     "y": 2753,
+     "y": 2738,
+     "z": 6
+    },
+    {
+     "group": "tent",
+     "id": "0x036E",
+     "name": "tent wall",
+     "x": 3495,
+     "y": 2737,
      "z": 5
+    },
+    {
+     "group": "tent",
+     "id": "0x036E",
+     "name": "tent wall",
+     "x": 3496,
+     "y": 2737,
+     "z": 4
     },
     {
      "group": "tent",
      "id": "0x036D",
      "name": "tent wall",
+     "x": 3497,
+     "y": 2737,
+     "z": 4
+    },
+    {
+     "group": "tent",
+     "id": "0x0369",
+     "name": "tent wall",
      "x": 3495,
-     "y": 2753,
+     "y": 2739,
      "z": 5
     },
     {
      "group": "tent",
      "id": "0x0369",
      "name": "tent wall",
-     "x": 3493,
-     "y": 2755,
-     "z": 5
-    },
-    {
-     "group": "tent",
-     "id": "0x0369",
-     "name": "tent wall",
-     "x": 3494,
-     "y": 2755,
-     "z": 5
+     "x": 3496,
+     "y": 2739,
+     "z": 6
     },
     {
      "group": "tent",
      "id": "0x0368",
      "name": "tent wall",
+     "x": 3497,
+     "y": 2739,
+     "z": 4
+    },
+    {
+     "group": "tent",
+     "id": "0x0603",
+     "name": "tent roof",
      "x": 3495,
-     "y": 2755,
-     "z": 5
+     "y": 2738,
+     "z": 20
     },
     {
      "group": "tent",
      "id": "0x0603",
      "name": "tent roof",
-     "x": 3493,
-     "y": 2754,
-     "z": 19
-    },
-    {
-     "group": "tent",
-     "id": "0x0603",
-     "name": "tent roof",
-     "x": 3494,
-     "y": 2754,
+     "x": 3496,
+     "y": 2738,
      "z": 19
     },
     {
      "group": "tent",
      "id": "0x0633",
      "name": "tent roof",
-     "x": 3495,
-     "y": 2754,
-     "z": 16
+     "x": 3497,
+     "y": 2738,
+     "z": 15
     },
     {
      "group": "deco",
      "id": "0x0E31",
      "name": "brazier",
-     "x": 3496,
-     "y": 2756,
+     "x": 3498,
+     "y": 2740,
      "z": 4
     },
     {
      "group": "deco",
      "id": "0x0B4A",
      "name": "writing table",
-     "x": 3497,
-     "y": 2753,
-     "z": 3
+     "x": 3499,
+     "y": 2737,
+     "z": 5
     },
     {
      "group": "deco",
      "id": "0x14EB",
      "name": "map",
-     "x": 3497,
-     "y": 2753,
-     "z": 8
+     "x": 3499,
+     "y": 2737,
+     "z": 10
     },
     {
      "group": "deco",
      "id": "0x0A0F",
      "name": "candle",
-     "x": 3497,
-     "y": 2753,
-     "z": 8
+     "x": 3499,
+     "y": 2737,
+     "z": 10
     },
     {
      "group": "deco",
      "id": "0x0B5F",
      "name": "bench",
-     "x": 3496,
-     "y": 2753,
-     "z": 4
+     "x": 3498,
+     "y": 2737,
+     "z": 5
     },
     {
      "group": "deco",
      "id": "0x1047",
      "name": "globe",
-     "x": 3496,
-     "y": 2755,
+     "x": 3498,
+     "y": 2739,
      "z": 4
     },
     {
      "group": "deco",
      "id": "0x0E42",
      "name": "wooden chest",
-     "x": 3497,
-     "y": 2755,
-     "z": 2
+     "x": 3499,
+     "y": 2739,
+     "z": 4
     },
     {
      "group": "deco",
      "id": "0x2270",
      "name": "scroll",
-     "x": 3497,
-     "y": 2755,
-     "z": 6
+     "x": 3499,
+     "y": 2739,
+     "z": 8
     },
     {
      "group": "deco",
      "id": "0x2272",
      "name": "scroll",
-     "x": 3497,
-     "y": 2755,
-     "z": 6
+     "x": 3499,
+     "y": 2739,
+     "z": 8
     },
     {
      "group": "deco",
      "id": "0x09AA",
      "name": "wooden box",
-     "x": 3493,
-     "y": 2752,
-     "z": 6
+     "x": 3495,
+     "y": 2736,
+     "z": 5
     },
     {
      "group": "deco",
      "id": "0x1057",
      "name": "sextant",
-     "x": 3493,
-     "y": 2752,
-     "z": 9
+     "x": 3495,
+     "y": 2736,
+     "z": 8
     },
     {
      "group": "deco",
      "id": "0x0A59",
      "name": "bedroll",
-     "x": 3494,
-     "y": 2756,
-     "z": 6
+     "x": 3496,
+     "y": 2740,
+     "z": 4
     }
    ]
   }
@@ -395,8 +395,8 @@ internal static class MineCampLayoutDesignCopy
     1
    ],
    "to": [
-    3496,
-    2754,
+    3498,
+    2738,
     4
    ],
    "facing": "East"
