@@ -156,6 +156,7 @@ public class TutorialFarmVerification
         TutorialFarm.FindDoor(map)?.Delete();
         foreach (var gate in TutorialFarm.FieldGates(map)) { gate.Delete(); } // cc-P718
         TutorialFarm.FindFieldFence(map)?.Delete();
+        TutorialFarm.FindPip(map)?.Delete(); // cc-P721
         TutorialFarmhand.Find(map)?.Delete();
         foreach (var (spot, _, _, types) in TutorialFarm.SpawnerRows)
         {
@@ -195,11 +196,12 @@ public class TutorialFarmVerification
             TutorialFarm.MapPatched = () => true;
             var dry = TutorialFarm.Seed(true);
             // cc-P718: the farmhouse door, the field gate and the fence piece beside it.
-            Assert.Equal((false, 1, 3, 1, 2, 0), (dry.Refused, dry.Addons, dry.Doors, dry.Farmhands, dry.Spawners, dry.Present));
+            // cc-P721: Wren and Pip.
+            Assert.Equal((false, 1, 3, 2, 2, 0), (dry.Refused, dry.Addons, dry.Doors, dry.Farmhands, dry.Spawners, dry.Present));
             Assert.Null(TutorialFarm.FindAddon(isle));
 
             var first = TutorialFarm.Seed(false);
-            Assert.Equal((false, 1, 3, 1, 2, 0), (first.Refused, first.Addons, first.Doors, first.Farmhands, first.Spawners, first.Present));
+            Assert.Equal((false, 1, 3, 2, 2, 0), (first.Refused, first.Addons, first.Doors, first.Farmhands, first.Spawners, first.Present));
 
             // cc-P663: the isle's farm. cc-P720: its own design now (the cottage laid whole on the flat meadow, one fence
             // ring), so it is no longer New Haven's 330 pieces moved by (+3314, +1364).
@@ -233,7 +235,7 @@ public class TutorialFarmVerification
             }
 
             var again = TutorialFarm.Seed(false);
-            Assert.Equal((0, 0, 0, 0, 7), (again.Addons, again.Doors, again.Farmhands, again.Spawners, again.Present));
+            Assert.Equal((0, 0, 0, 0, 8), (again.Addons, again.Doors, again.Farmhands, again.Spawners, again.Present));
 
             // New Haven keeps the farmhouse, door and pen for the wing trials, with no Wren and no pests.
             var haven = TutorialFarm.SeedHaven(false);
@@ -311,8 +313,15 @@ public class TutorialFarmVerification
             pet.ControlOrder = OrderType.Follow;
             TutorialFarm.CheckCommands(p.Pm);
             pet.ControlOrder = OrderType.Guard;
+            TutorialFarm.CheckCommands(p.Pm);
+            var fork = p.Pm.Backpack.FindItemByType<TutorialPitchfork>()!; // cc-P721: the weapon, then war mode
+            fork.Layer = Layer.TwoHanded;
+            Assert.True(p.Pm.EquipItem(fork));
+            TutorialFarm.CheckCommands(p.Pm);
+            p.Pm.Warmode = true;
             Assert.True(TutorialFarm.CheckCommands(p.Pm));
             pet.ControlOrder = OrderType.Attack;
+            TutorialFarm.NoteStruck(p.Pm); // cc-P721: the trainee's own blow
 
             // 2. Three pests the pet damaged; a pest nobody of theirs touched does not count.
             var untouched = new FarmRat();
@@ -709,7 +718,7 @@ public class TutorialFarmVerification
             Assert.NotEqual(TutorialIsleFarmLayout.DoorSpot, door.Location); // an open door stands aside
 
             var again = TutorialFarm.Seed(false);
-            Assert.Equal((0, 7), (again.Doors, again.Present)); // cc-P718: and the field gate and its fence piece
+            Assert.Equal((0, 8), (again.Doors, again.Present)); // cc-P718: and the field gate and its fence piece; cc-P721: Pip
             Assert.Single(DoorsNearTheFarmhouse());
             Assert.Same(door, TutorialFarm.FindDoor(TutorialWorld.Isle));
         }

@@ -155,6 +155,14 @@ public class TutorialIsleWalkFixesVerification : IDisposable
 
     private static Point3D Beside(IEntity m, int dx) => new(m.X + dx, m.Y, m.Z);
 
+    /// <summary>cc-P721: the trainee takes Wren's pitchfork in hand (the host has no tiledata: its layer is set).</summary>
+    private static void Hold(PlayerMobile pm)
+    {
+        var fork = pm.Backpack!.FindItemByType<TutorialPitchfork>()!;
+        fork.Layer = Layer.TwoHanded;
+        Assert.True(pm.EquipItem(fork));
+    }
+
     // ---------------------------------------------------------------- 1
 
     [Fact]
@@ -420,9 +428,13 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         gates[0].Use(p.Pm);
         Assert.False(gates[0].Open);
 
-        // The commands done: the pests fight, and Wren opened the gate.
+        // The commands done (and, since cc-P721, the pitchfork in hand and war mode): the pests fight, and Wren opened the gate.
         p.Record.StationsDone.UnionWith([TutorialFarm.FollowKey]);
         pet.ControlOrder = OrderType.Guard;
+        Assert.False(TutorialFarm.CheckCommands(p.Pm));
+        Hold(p.Pm);
+        Assert.False(TutorialFarm.CheckCommands(p.Pm));
+        p.Pm.Warmode = true;
         Assert.True(TutorialFarm.CheckCommands(p.Pm));
         Assert.True(TutorialFarm.PestPartOn(p.Pm));
         Assert.True(rat.IsEnemy(p.Pm));
@@ -507,7 +519,7 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         var wren = p.Add(new TutorialFarmhand());
         wren.MoveToWorld(Beside(p.Pm, 1), p.Pm.Map);
         p.Record.PetClaimed = true;
-        p.Record.StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.PestsKey]);
+        p.Record.StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.WeaponKey, TutorialFarm.WarKey, TutorialFarm.PestsKey]);
         Assert.Equal(3, TutorialFarm.Talk(p.Pm, wren));
         Assert.NotNull(p.Pm.Backpack!.FindItemByType<Bandage>());
         Assert.Contains("double-click a bandage", TutorialFarm.HealLine, StringComparison.OrdinalIgnoreCase);
@@ -537,6 +549,10 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         Assert.False(TutorialFarm.CheckCommands(p.Pm));
         Assert.Contains(TutorialFarm.FollowKey, p.Record.StationsDone);
         pet.ControlOrder = OrderType.Guard;
+        Assert.False(TutorialFarm.CheckCommands(p.Pm)); // cc-P721: then the weapon and war mode
+        Hold(p.Pm);
+        Assert.False(TutorialFarm.CheckCommands(p.Pm));
+        p.Pm.Warmode = true;
         Assert.True(TutorialFarm.CheckCommands(p.Pm));
         Assert.True(TutorialFarm.PestPartOn(p.Pm));
         Assert.Contains("all follow me", TutorialFarm.CommandsLine);
@@ -546,6 +562,7 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         // The pests: none by the pet on command, so the step waits for one.
         for (var i = 0; i < TutorialFarm.PestsToClear; i++) { TutorialFarm.CountPest(p.Pm, false); }
         Assert.DoesNotContain(TutorialFarm.PestsKey, p.Record.StationsDone);
+        TutorialFarm.NoteStruck(p.Pm); // cc-P721: and one struck by the trainee
         TutorialFarm.CountPest(p.Pm, true);
         Assert.Contains(TutorialFarm.PestsKey, p.Record.StationsDone);
         Assert.Equal(3, TutorialFarm.StepOf(p.Pm));

@@ -968,6 +968,13 @@ apply_patch "$PATCHES/Notoriety-tutorial-creature-outsiders.patch"
 # other Bandage patches above. Notes: notes/cc-P610-fix-drafts-from-p533.md.
 apply_patch "$PATCHES/Bandage-asclepius-bonus.patch"
 
+# cc-P721 (Chase 10-28 09:16: "thought bandaging failed"): three tutorial hooks in Bandage, read only on the Wakening
+# Isle by TutorialFarm: a trainee's bandage on themselves takes 4 s there (BandageSeconds; pinned's AOS self delay is
+# 5 + (120 - Dex) / 20, 9.3 s at Dex 35), the start says how long to wait with a cue over their head (BandageBegun), and
+# a failed roll says so plainly (BandageFumbled). Off the isle every hook returns pinned's own value or does nothing.
+# Made with diff -u against the Bandage.cs every patch above leaves. Notes: notes/cc-P721-isle-bandage-wait.md.
+apply_patch "$PATCHES/Bandage-tutorial-wait-lines.patch"
+
 # P610 (P487 #4): BaseCreature: a KeepsLoyalty hook the hourly LoyaltyTimer reads, so a controlled companion's loyalty
 # never drains to a release (Companions/BaseCompanion overrides it). Ordinary pets keep stock loyalty. Two hunks: the
 # virtual beside Commandable, and the drain's condition. Notes: notes/cc-P610-fix-drafts-from-p533.md.

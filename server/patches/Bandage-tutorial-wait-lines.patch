@@ -1,0 +1,29 @@
+--- "a/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
++++ "b/Projects/UOContent/Items/Skill Items/Misc/Bandage.cs"
+@@ -448,6 +448,8 @@
+             {
+                 healerNumber = 500968; // You apply the bandages, but they barely help.
+                 playSound = false;
++                // Shattered Legacy (cc-P721): on the Wakening Isle a trainee is told plainly that the roll failed.
++                Server.Tutorial.TutorialFarm.BandageFumbled?.Invoke(Healer, Patient);
+             }
+         }
+ 
+@@ -560,6 +562,8 @@
+             var context = GetContext(healer);
+ 
+             context?.StopHeal();
++            // Shattered Legacy (cc-P721): a trainee on the Wakening Isle bandages themselves faster (TutorialFarm).
++            seconds = Server.Tutorial.TutorialFarm.BandageSeconds?.Invoke(healer, patient, seconds) ?? seconds;
+             seconds *= 1000;
+ 
+             context = new BandageContext(healer, patient, TimeSpan.FromMilliseconds(seconds));
+@@ -572,6 +576,8 @@
+             }
+ 
+             healer.SendLocalizedMessage(500956); // You begin applying the bandages.
++            // Shattered Legacy (cc-P721): on the Wakening Isle, how long to wait, and a cue over the trainee's head.
++            Server.Tutorial.TutorialFarm.BandageBegun?.Invoke(healer, patient, seconds / 1000);
+             return context;
+         }
+ 
