@@ -14,8 +14,8 @@ namespace Server;
 
 public static class FoldCommands
 {
-    /// <summary>The Wakening Isle's west beach, where a trainee wakes (design 11.2, stop 0).</summary>
-    public static readonly Point2D Arrival = new(6214, 2001);
+    /// <summary>The Wakening Isle's west beach, where a trainee wakes (design 11.2, stop 0; cc-P675: site A, TutorialWorld.Beach).</summary>
+    public static Point2D Arrival => Server.Tutorial.TutorialWorld.Beach;
 
     public const string LiveRefusal = "[Fold works on the test shard only, for now.";
     public const string Usage = "Usage: [Fold goto <n> [x y]. n 0 is the Fold (map 32), 1 to 16 a tutorial copy (maps 33 to 48).";
@@ -28,7 +28,7 @@ public static class FoldCommands
     }
 
     [Usage("Fold goto <n> [x y]")]
-    [Description("Test shard only. Moves you onto the Fold: n 0 is the Fold itself (map 32), 1 to 16 a tutorial copy (maps 33 to 48). Without x y, the isle's arrival beach (6214, 2001); Z is the land's height there.")]
+    [Description("Test shard only. Moves you onto the Fold: n 0 is the Fold itself (map 32), 1 to 16 a tutorial copy (maps 33 to 48). Without x y, the isle's arrival beach (6638, 3993); Z is the land's height there.")]
     [ShardCommand(CommandCategory.DevTool, Shard = CommandShard.TestOnly, Summary = "Staff travel onto the Fold (0) or one of its 16 tutorial copies, at the arrival beach or at x y.")]
     private static void OnFold(CommandEventArgs e) => e.Mobile.SendMessage(Goto(e.Mobile, e.Arguments, IsTestShard));
 

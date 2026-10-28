@@ -4,7 +4,7 @@
 // Design: shard-migration notes/cc-P481-new-player-start-area-design.md sections 3.1, 11 and 12; P605 risk 8.
 // Notes: shard-migration notes/cc-P661-fold-map-32.md.
 //
-//   index 32       "TheFold"        the Fold itself (the Wakening Isle is painted into Trammel's void C, F2)
+//   index 32       "TheFold"        the Fold itself (the Wakening Isle is painted into Trammel's site A, F2; P673 1.4)
 //   index 33-48    "TheFold 1-16"   the tutorial copies, one per trainee or party (F4 hands them out)
 //
 // Every one is client id 1 and file index 1: the client is told map 1 (OutgoingMapPackets.cs:62, (byte)map.MapID) and
