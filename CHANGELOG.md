@@ -37,10 +37,14 @@ Example:
 ### Changed
 - Test shard: the loop vision at the Wakening Isle's standing stones is now a short scene of its own, under a minute: the world darkens, the Stranger strikes the Gem, your own echo wakes and speaks, and a hooded figure of the League appears. Only you see and hear it, words show in the middle of the screen, and it changes nothing about your character. If you log out or are interrupted, you are back at the stones and can watch it again.
 
+### Fixed
+- Test shard: the farm's healing lesson on the Wakening Isle can always be finished. Wren gives you a small scratch to bandage when nobody is hurt (and so does a bandage that finds nobody hurt, for example when your health came back by itself), and her practice bandages always work, even if you have not learned Healing.
+
 ### Staff
 - [Tutorial copies lists the isle's 16 private copies, who is on each, and who is waiting.
 - The loop vision's two full-screen stills are reserved and off (clusterf.tutorial.visionPanels); placeholders ship until the drawings do.
 - The player package keeps the stock Trammel and Felucca land until the Siege of Sosaria swap goes live: the new map is built and checked but stays out of the download, behind one switch (player-package/vendor/sos-trammel-map/switch.txt, off). The swap's go-live release turns it on.
+- clusterf.tutorial.copyHoldMinutes (30) sets how long an empty copy of the isle is held before it resets; a test world can shorten it.
 
 ## 2026.10.27.3
 
