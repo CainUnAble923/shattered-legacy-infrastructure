@@ -62,6 +62,9 @@ COPY server/migrations/ /build/modernuo/Projects/UOContent/Migrations/
 # tests read the shipped bytes; the runtime stage copies that Data folder whole, so the server reads the same file at
 # /modernuo/Data/ShatteredLegacy/. Only .cs files reach the projects, so a data file needs its own line.
 COPY server/data/townsfolk-talk.json /build/modernuo/Distribution/Data/ShatteredLegacy/townsfolk-talk.json
+# cc-P676 (SoS swap S3): Trammel's regions on the SoS land, read by RegionJsonSerializer-shard-maps.patch in place of
+# pinned's Trammel regions (made by shard-migration notes/cc-P676-tools/gen_regions.py).
+COPY server/data/regions-trammel.json /build/modernuo/Distribution/Data/ShatteredLegacy/regions-trammel.json
 
 # Copy patch files and apply them
 COPY server/patches/ /patches/

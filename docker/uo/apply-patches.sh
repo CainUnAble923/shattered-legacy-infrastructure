@@ -878,6 +878,13 @@ apply_patch "$PATCHES/ArmsLore-item-knowledge.patch"
 # GuardedRegion wholesale (hides upstream drift). Argued in shard-migration notes/cc-P628-build-guard-patrols-pilot.md;
 # pinned by GuardWitnessVerification.
 apply_patch "$PATCHES/GuardedRegion-witness-observe.patch"
+# cc-P676 (SoS swap S3): Trammel's regions on the Siege of Sosaria land. LoadRegions reads pinned's
+# Data/regions.json whole and registers each region as it is read, so a data file cannot replace one map's
+# regions without this: Data/ShatteredLegacy/regions-<map>.json takes the place of pinned's regions of each map it
+# names, and every other map keeps pinned's. The alternative, a merged copy of pinned's whole regions.json in the
+# repo, would hide upstream's region changes. Argued in shard-migration notes/cc-P676-sos-trammel-regions.md;
+# pinned by SosTrammelRegionsVerification.
+apply_patch "$PATCHES/RegionJsonSerializer-shard-maps.patch"
 
 # cc-P262 (ours): accessory slots (extra rings, bracelets, toe rings). AosAttributes.GetValue adds the active jewellery in
 # the wearer's accessory container, which customizations ClusterFAccessories decides (resists need no patch: the
