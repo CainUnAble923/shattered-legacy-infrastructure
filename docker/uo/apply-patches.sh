@@ -454,6 +454,12 @@ apply_patch "$PATCHES/ImportCleanupTests-guid-key.patch"
 # edited copy of upstream's JSON, argued in shard-migration/notes/cc-P42-defect-batch-3.md, Part J; pinned by
 # DespiseStockSpawnsVerification (proved red).
 apply_patch "$PATCHES/ImportSpawners-despise-exclusion.patch"
+# cc-P681 (SoS swap S9). On the Siege of Sosaria land, which Trammel and Felucca both read, the importer asks
+# customizations ClusterFSosSpawnPlacements.Place about every spawner it reads, before building it: a stock spawner
+# whose home the land broke is built at the home shard-migration notes/cc-P681-tools/regrade.py found (by guid and
+# facet), and one with no home within reach is not built. A table we own rather than edited copies of upstream's JSON,
+# as the Despise exclusion above; pinned by SosSpawnPlacementsVerification (proved red).
+apply_patch "$PATCHES/ImportSpawners-sos-placements.patch"
 
 # cc-P32 Part C (F-27, ours). Self Repair leaves the random property table for armor, shields and hats (two
 # m_Props.Set lines, as pinned already does for Mage Armor), so loot and runic crafting never roll it; the rare
