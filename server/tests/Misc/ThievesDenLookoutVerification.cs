@@ -1,10 +1,11 @@
 // ThievesDenLookoutVerification.cs
 //
 // cc-P22, the F-9 follow-up: a Thieves' Den lookout on the stool by the New Haven fighting pit sends players to the
-// guildmaster in the inn's back room. Notes in shard-migration notes/cc-P22-small-features-1.md.
+// guildmaster in the inn's back room. cc-P678: on SoS both stand in The Haven Thieves' Guild (the lookout at 3689,2510,
+// the guildmaster at 3689,2512). Notes in shard-migration notes/cc-P22-small-features-1.md.
 //
 // Facts:
-//   1. The seeder run twice places one lookout, on the stool (3440,2558,56), facing east, not walking; a dry run
+//   1. The seeder run twice places one lookout, at his post (3689,2510,0; was the stool at 3440,2558,56), facing east, not walking; a dry run
 //      places none.
 //   2. The lookout's arrow points at a Thieves' Den guildmaster that exists, and says so when the guildmaster is
 //      missing (P15's rule: reported, never silently skipped).
@@ -22,7 +23,7 @@ namespace ShatteredLegacy.Tests;
 [Collection("Sequential UOContent Tests")]
 public class ThievesDenLookoutVerification
 {
-    private static readonly Point3D Stool = new(3440, 2558, 56);
+    private static readonly Point3D Stool = new(3689, 2510, 0); // cc-P678: his post in The Haven Thieves' Guild
 
     private readonly ITestOutputHelper _out;
 
@@ -106,7 +107,7 @@ public class ThievesDenLookoutVerification
 
             told = lookout.SendToGuildmaster(pm);
             _out.WriteLine($"missing: {told}");
-            Assert.Contains("is not at Bountiful Harvest Inn, back room", told);
+            Assert.Contains("is not at The Haven Thieves' Guild", told);
             Assert.Null(pm.QuestArrow);
         }
         finally

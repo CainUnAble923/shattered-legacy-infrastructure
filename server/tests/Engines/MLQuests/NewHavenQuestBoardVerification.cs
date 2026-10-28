@@ -60,7 +60,9 @@ public class NewHavenQuestBoardVerification
     // cc-P30: the same board on upstream d4531cd9. Item is v11 there (was 9) and writes LastMoved as an anchored
     // time, 8 bytes that depend on the clock (was one delta byte, 00), so those 16 hex digits are masked. Every
     // byte the board itself owns is unchanged.
-    private const string SaveShapeAtD4531 = "0B00000010101604################AE0D0D0A0EC5C10201010000000000000000";
+    // cc-P678: the board moved with New Haven (HavenSpots.QuestBoard 3633,2585,0; was 3502,2573,14). Its location is in
+    // the save, so these bytes changed with it: X 0x0E31, Y 0x0A19, and Z 0, which the location's encoding leaves out.
+    private const string SaveShapeAtD4531 = "0B00000010101404################310E190AC5C10201010000000000000000";
 
     private static readonly Point3D BoardSpot = new(1000, 1000, 0);
 

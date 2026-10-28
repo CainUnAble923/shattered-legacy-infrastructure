@@ -20,7 +20,7 @@ public static class ClusterFHalloweenDecorLayout
 
     public static readonly BankInfo[] Banks =
     {
-        new("new-haven", "New Haven", "Trammel", new[] { (3484, 2570), (3484, 2576) }),
+        new("new-haven", "New Haven", "Trammel", new[] { (3620, 2617), (3624, 2616) }),
         new("britain", "Britain (west bank)", "Trammel", new[] { (1425, 1690) }),
         new("moonglow", "Moonglow", "Trammel", new[] { (4471, 1156) }),
         new("trinsic", "Trinsic", "Trammel", new[] { (1897, 2684) }),
@@ -45,23 +45,16 @@ public static class ClusterFHalloweenDecorLayout
 
     public static readonly Row[] Rows =
     {
-        new("new-haven/out-1", "new-haven", "New Haven", "Trammel", 3492, 2565, 15, 0x0ED0, "bones", 0x000, "outside"),
-        new("new-haven/out-2", "new-haven", "New Haven", "Trammel", 3480, 2580, 15, 0x0C6B, "a pumpkin", 0x000, "outside"),
-        new("new-haven/out-3", "new-haven", "New Haven", "Trammel", 3485, 2580, 15, 0x0ECD, "bones", 0x000, "outside"),
-        new("new-haven/out-4", "new-haven", "New Haven", "Trammel", 3492, 2576, 15, 0x0F35, "hay", 0x000, "outside"),
-        new("new-haven/out-5", "new-haven", "New Haven", "Trammel", 3482, 2580, 17, 0x0C6C, "a pumpkin", 0x000, "outside"),
-        new("new-haven/out-6", "new-haven", "New Haven", "Trammel", 3489, 2580, 15, 0x0C6A, "a pumpkin", 0x000, "outside"),
-        new("new-haven/web-1", "new-haven", "New Haven", "Trammel", 3490, 2565, 20, 0x0EE4, "a cobweb", 0x000, "corner"),
-        new("new-haven/web-2", "new-haven", "New Haven", "Trammel", 3492, 2570, 20, 0x0EE3, "a cobweb", 0x000, "corner"),
-        new("new-haven/web-3", "new-haven", "New Haven", "Trammel", 3484, 2578, 20, 0x0EE6, "a cobweb", 0x000, "corner"),
-        new("new-haven/web-4", "new-haven", "New Haven", "Trammel", 3490, 2578, 20, 0x0EE5, "a cobweb", 0x000, "corner"),
-        new("new-haven/web-5", "new-haven", "New Haven", "Trammel", 3485, 2567, 20, 0x0EE5, "a cobweb", 0x000, "corner"),
-        new("new-haven/web-6", "new-haven", "New Haven", "Trammel", 3492, 2574, 20, 0x0EE6, "a cobweb", 0x000, "corner"),
-        new("new-haven/in-1", "new-haven", "New Haven", "Trammel", 3484, 2573, 20, 0x1ADD, "a pile of skulls", 0x000, "indoor"),
-        new("new-haven/in-2", "new-haven", "New Haven", "Trammel", 3488, 2565, 20, 0x1AE3, "a skull", 0x000, "indoor"),
-        new("new-haven/in-3", "new-haven", "New Haven", "Trammel", 3479, 2574, 20, 0x1AE3, "a skull", 0x000, "indoor"),
-        new("new-haven/in-4", "new-haven", "New Haven", "Trammel", 3480, 2567, 20, 0x0ECA, "bones", 0x000, "indoor"),
-        new("new-haven/in-5", "new-haven", "New Haven", "Trammel", 3491, 2571, 20, 0x1AE3, "a skull", 0x000, "indoor"),
+        new("new-haven/lantern-1", "new-haven", "New Haven", "Trammel", 3625, 2623, 0, 0x0A22, "a lantern", 0x000, "outside"),
+        new("new-haven/out-1", "new-haven", "New Haven", "Trammel", 3622, 2623, 0, 0x0C6A, "a pumpkin", 0x000, "outside"),
+        new("new-haven/out-2", "new-haven", "New Haven", "Trammel", 3617, 2623, 0, 0x0C64, "a gourd", 0x000, "outside"),
+        new("new-haven/out-3", "new-haven", "New Haven", "Trammel", 3620, 2623, 0, 0x0C6C, "a pumpkin", 0x000, "outside"),
+        new("new-haven/web-1", "new-haven", "New Haven", "Trammel", 3616, 2610, 0, 0x0EE3, "a cobweb", 0x000, "corner"),
+        new("new-haven/web-2", "new-haven", "New Haven", "Trammel", 3616, 2621, 0, 0x0EE6, "a cobweb", 0x000, "corner"),
+        new("new-haven/in-1", "new-haven", "New Haven", "Trammel", 3616, 2619, 0, 0x1ADD, "a pile of skulls", 0x000, "indoor"),
+        new("new-haven/in-2", "new-haven", "New Haven", "Trammel", 3617, 2610, 0, 0x0ECB, "bones", 0x000, "indoor"),
+        new("new-haven/table-1", "new-haven", "New Haven", "Trammel", 3617, 2617, 6, 0x0C6C, "a pumpkin", 0x000, "table"),
+        new("new-haven/table-2", "new-haven", "New Haven", "Trammel", 3622, 2618, 6, 0x1854, "a skull with a candle", 0x000, "table"),
         new("britain/lantern-1", "britain", "Britain (west bank)", "Trammel", 1436, 1693, 0, 0x0A22, "a lantern", 0x000, "outside"),
         new("britain/lantern-3", "britain", "Britain (west bank)", "Trammel", 1442, 1691, 0, 0x0A22, "a lantern", 0x000, "outside"),
         new("britain/out-1", "britain", "Britain (west bank)", "Trammel", 1426, 1693, 0, 0x0F34, "hay", 0x000, "outside"),

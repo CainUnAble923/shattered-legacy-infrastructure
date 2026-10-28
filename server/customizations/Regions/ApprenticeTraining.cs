@@ -32,8 +32,9 @@
 //   3. The buff and the enter line come at the first boosted gain when the quest was accepted inside the region (pinned
 //      has no accept hook to reach), and the buff goes at the gain that completes the quest; ServUO does both at once.
 //   4. The buff names the skill by its display name ("Resisting Spells"), not ServUO's enum name ("MagicResist").
-//   5. Old Haven Training is ServUO's rectangle plus one more, south and west, so the whole walk from New Haven to the
-//      Rootdeep hole (3619,2620, OldHavenBurrowsRegion.HoleEntrance) and pinned's southern undead spawners (Outdoors.json, 3625-3651, 2591-2627) are inside.
+//   5. On SoS (cc-P678) Old Haven is the author's Haven town, which is New Haven now, so Old Haven Training is the north
+//      woods between the town and the shore (x 3590-3710, y 2378-2459), where Old Haven's undead field was moved
+//      (ClusterFHavenTownSpawns.TrainingField). It was ServUO's rectangle plus the walk to the Rootdeep hole (cc-P189).
 // Only Old Haven Training is registered. ServUO's other Haven apprentice regions (Haven Mountains, Springs And Things
 // Workshop, Haven Dojo, Gorge's Shop, Haven Library, Enhanced Tracking Skill) are in the table but not registered: Chase
 // decides (notes). A quest whose region is not registered gets no boost, as ServUO logs an invalid region and gives none.
@@ -288,13 +289,14 @@ public static class ApprenticeTraining
 public class ApprenticeTrainingRegion : ApprenticeRegion
 {
     /// <summary>
-    /// ServUO's "Old Haven Training" (Data/Regions.xml:1442-1444, x 3589, y 2443, 115 x 100) and the walk to the Rootdeep
-    /// hole south and west of it (deviation 5). Rectangle3D's end is exclusive.
+    /// cc-P678: the north woods, x 3590-3710, y 2378-2459, around the undead field's new spot (ClusterFHavenTownSpawns.
+    /// TrainingField, 3640,2418, home and walking range 40). On SoS ServUO's "Old Haven Training" (Data/Regions.xml:
+    /// 1442-1444, x 3589, y 2443, 115 x 100) and P189's walk to the Rootdeep hole are the author's Haven town, New Haven
+    /// now (deviation 5). The region stops at the town's north edge (y 2460). Rectangle3D's end is exclusive.
     /// </summary>
     public static readonly Rectangle3D[] OldHavenArea =
     [
-        new(new Point3D(3589, 2443, MinZ), new Point3D(3704, 2543, MaxZ)),
-        new(new Point3D(3546, 2543, MinZ), new Point3D(3704, 2651, MaxZ))
+        new(new Point3D(3590, 2378, MinZ), new Point3D(3711, 2460, MaxZ))
     ];
 
     public static ApprenticeTrainingRegion? OldHaven { get; private set; }

@@ -27,7 +27,7 @@ namespace Server
 {
     public static class ClusterFResetStoneSeeder
     {
-        public static readonly Point3D Location = new(3501, 2575, 14);
+        public static readonly Point3D Location = Server.Tutorial.HavenSpots.ResetStone; // cc-P678: was 3501,2575,14
 
         private static bool _seedOnWorldLoad;
 
@@ -92,7 +92,7 @@ namespace Server
             foreach (var item in World.Items.Values)
             {
                 if (item is ResetStone stone && !stone.Deleted && stone.Map == map &&
-                    ClusterFNewHavenServicesSeeder.IsNewHaven(stone.Location))
+                    Server.Tutorial.HavenSpots.InTown(stone.Location)) // cc-P678: the new town (was the old plaza's region)
                 {
                     return stone;
                 }

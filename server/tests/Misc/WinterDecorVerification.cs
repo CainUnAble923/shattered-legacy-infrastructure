@@ -1,16 +1,18 @@
 // WinterDecorVerification.cs
 //
 // cc-P34 and cc-P266 (F-22): the dated winter decor for New Haven on the shared seasonal switch. Notes in
-// shard-migration notes/cc-P34-winter-decor.md and notes/cc-P266-new-haven-winter-decor.md.
+// shard-migration notes/cc-P34-winter-decor.md and notes/cc-P266-new-haven-winter-decor.md. cc-P678 moved every row into
+// SoS Haven (notes/cc-P678-tools/winter): the rows sit in HavenSpots.Town, and the fixed tiles are HavenSpots' own.
 //
 // What the facts pin:
 //   1. The placement table loads: keys unique, no item twice on a tile, every item ID is a registered winter ID (the
 //      layout's RegisteredIds, from registry.csv: P34's 0x3C40-0x3C6E and P266's 0x3388-0x33B6) or one of the OSI
 //      holiday IDs pinned's own classes use; the bank, the square and the main roads have trees, lights, garlands and
 //      snow; exactly one row is the advent calendar.
-//   2. No row sits on a door, a door's swing tile, an NPC post, a spawner tile, the quest board, the arrival tile or
-//      the Reset Stone, on a League field office component, or on a P237 community-art tile (the two seeders never
-//      share a spot). The doors, posts, office and community rows are the seeders' own tables, not copies.
+//   2. No row sits on an NPC post, a spawner tile, the quest board, the arrival tile, Rook, the moongate's way out,
+//      the Fountain of Youth or the Reset Stone, on a League field office component, or on
+//      a P237 community-art tile (the two seeders never share a spot). The posts, office, community rows and
+//      HavenSpots are the seeders' own tables, not copies. (cc-P678: doors and their swings are the SoS validator's.)
 //   3. The switch: the setting keys are clusterf.seasonal.winter.start, .end and .automatic with defaults 12-01 and
 //      01-06; the window is inclusive and wraps the year; a bad setting falls back and says so.
 //   4. The automatic check acts only when the season changes: the decor is placed in range (December 1), a staff
@@ -27,7 +29,7 @@
 //      for a day not yet come; the gift lands in the backpack; a new year starts fresh; the calendar is placed by the
 //      seeder as its own type and comes down with the rest.
 // The test host has no map files, so nothing here asks the map about z: the rows were checked offline against the
-// server's map files (notes/cc-P266-tools/validate.py).
+// Siege of Sosaria map files (notes/cc-P678-tools/winter/validate.py; P266's were the old map's).
 
 using System;
 using System.Collections.Generic;
@@ -35,6 +37,7 @@ using System.Linq;
 using Server;
 using Server.Items;
 using Server.Mobiles;
+using Server.Tutorial;
 using Xunit;
 
 namespace ShatteredLegacy.Tests;
@@ -50,8 +53,9 @@ public class WinterDecorVerification
         0x08E2, 0x08E0, 0x08E6, 0x08E5, 0x08E3, 0x2377
     };
 
-    private static readonly (int X, int Y) QuestBoard = (3502, 2573);
-    private static readonly (int X, int Y) ArrivalTile = (3503, 2574);
+    // cc-P678: the board and the arrival tile are HavenSpots' (the square in SoS Haven).
+    private static readonly (int X, int Y) QuestBoard = (HavenSpots.QuestBoard.X, HavenSpots.QuestBoard.Y);
+    private static readonly (int X, int Y) ArrivalTile = (HavenSpots.Start.X, HavenSpots.Start.Y);
 
     private static void Clean()
     {
@@ -90,8 +94,11 @@ public class WinterDecorVerification
         {
             Assert.True(registered.Contains(r.ItemId) || OsiIds.Contains(r.ItemId), $"{r.Key}: 0x{r.ItemId:X4} is neither a registered winter ID nor an OSI holiday ID");
             Assert.False(string.IsNullOrWhiteSpace(r.Name), r.Key);
-            Assert.InRange(r.X, 3400, 3560);
-            Assert.InRange(r.Y, 2460, 2660);
+            // the entrance arches stand on the roads into town, so they may sit up to 3 tiles outside the town box
+            var slack = r.Area == "entrance" ? 3 : 0;
+            var box = new Rectangle2D(HavenSpots.Town.X - slack, HavenSpots.Town.Y - slack, HavenSpots.Town.Width + 2 * slack,
+                HavenSpots.Town.Height + 2 * slack);
+            Assert.True(box.Contains(new Point2D(r.X, r.Y)), $"{r.Key} at {r.X},{r.Y} is outside Haven's town box");
             Assert.Contains(r.Layer, new[] { "osi", "community", ClusterFWinterDecor.CalendarLayer });
         }
 
@@ -132,22 +139,9 @@ public class WinterDecorVerification
         var bad = new Dictionary<(int, int), string>();
         void Add(int x, int y, string why) => bad.TryAdd((x, y), why);
 
-        var doors = 0;
-        foreach (var d in ClusterFNewHavenServicesSeeder.Decoration)
-        {
-            if (!d.TypeName.EndsWith("Door", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            doors++;
-            var facing = Enum.Parse<DoorFacing>(d.Header.Split("Facing=")[1].TrimEnd(')'));
-            var off = BaseDoor.GetOffset(facing);
-            Add(d.Location.X, d.Location.Y, $"door {d.Header}");
-            Add(d.Location.X + off.X, d.Location.Y + off.Y, $"swing of {d.Header} at {d.Location}");
-        }
-
-        Assert.True(doors >= 60, $"{doors} doors read");
+        // cc-P678: the doors were ClusterFNewHavenServicesSeeder's (ServUO NewHaven.cfg, the ML plaza's), retired with
+        // the plaza. SoS Haven's doors are pinned's decoration and DoorGenerator's, which the layout's SoS validator
+        // keeps clear with their swing tiles (shard-migration notes/cc-P678-tools/winter/validate.py).
 
         foreach (var e in ClusterFNewHavenSeeder.Entries)
         {
@@ -163,13 +157,25 @@ public class WinterDecorVerification
         Add(QuestBoard.X, QuestBoard.Y, "quest board");
         Add(ArrivalTile.X, ArrivalTile.Y, "arrival tile");
         Add(ClusterFResetStoneSeeder.Location.X, ClusterFResetStoneSeeder.Location.Y, "Reset Stone");
+        Add(HavenSpots.Rook.X, HavenSpots.Rook.Y, "Rook");
+        Add(HavenSpots.MoongateExit.X, HavenSpots.MoongateExit.Y, "the moongate's way out");
+
+        // cc-P678: the Fountain of Youth's addon, pinned StoneFountainAddon's offsets -2..+1 from its spot.
+        for (var dx = -2; dx <= 1; dx++)
+        {
+            for (var dy = -2; dy <= 1; dy++)
+            {
+                Add(HavenSpots.FountainOfYouth.X + dx, HavenSpots.FountainOfYouth.Y + dy, "the Fountain of Youth");
+            }
+        }
+
         foreach (var c in ClusterFRegistrarOfficeLayout.Components)
         {
             Add(c.X, c.Y, $"office {c.Name}");
         }
 
         // cc-P266: P237's community art keeps its spots.
-        Assert.True(ClusterFCommunityArtLayout.Rows.Length >= 40, "the community art table");
+        Assert.True(ClusterFCommunityArtLayout.Rows.Length >= 36, "the community art table"); // cc-P678: 36 on SoS
         foreach (var c in ClusterFCommunityArtLayout.Rows)
         {
             Add(c.X, c.Y, $"community art {c.Key}");

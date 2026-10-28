@@ -10,8 +10,7 @@
 //   - "made": a craft's product turned up in the backpack (more of the product type than when the lesson began, loaners
 //     not counted). Materials and the tool are lent; the product is the trainee's to keep (F-35: craft it, bank it).
 //   - a tour stop: standing near each stop of a tour in turn (the arrow points at the next).
-// Places: the trades yard (TradesYard, open ground south-east of P290's training yard, checked standable from the map
-// files) for gathering, crafting, bard and thieving; the tutorial farm's field beside the pen for animals (P276); New
+// Places: the trades yard (TradesYard, open ground west of P290's training yard, cc-P678's yards.py on the SoS files) for gathering, crafting, bard and thieving; the tutorial farm's field beside the pen for animals (P276); New
 // Haven itself for the tours. Every trial puts its own things beside the trainee when it arms (a vein, a tree, a pond,
 // an anvil and forge, a chest, a mark, a goat, two echoes) and takes them away with the loans. Props are named
 // PropPrefix and, like loaners, any left by a restart are deleted when the world loads.
@@ -40,13 +39,13 @@ namespace Server.Tutorial
         public const int TourReach = 160;
 
         /// <summary>The trades yard: open ground south-east of the training yard (map files, notes cc-P291).</summary>
-        public static readonly Point2D TradesYard = new(3426, 2626);
+        public static readonly Point2D TradesYard = new(3617, 2554); // cc-P678: was 3426,2626, forest on SoS
 
         /// <summary>The farm field beside the pen's west gap (P276's layout: pen x 3393-3398, y 2604-2608).</summary>
         public static readonly Point2D FarmField = new(3390, 2606);
         public static readonly Point2D GoatSpot = new(3395, 2606);
 
-        public static readonly Point2D TourCentre = new(3460, 2590);
+        public static readonly Point2D TourCentre = new(HavenSpots.Centre.X, HavenSpots.Centre.Y); // cc-P678: was 3460,2590
 
         public sealed record TradeTrial(
             string Key,
@@ -62,7 +61,7 @@ namespace Server.Tutorial
         }
 
         private const string Made = "made";
-        private const string AtYard = "the trades yard, southeast of the training yard";
+        private const string AtYard = "the trades yard, west of the training yard";
 
         private static (string, string) S(SkillName skill, string label) => (skill.ToString(), label);
 
@@ -170,7 +169,7 @@ namespace Server.Tutorial
                 "Follow the arrow to the first stop. Walk close to each stop to read its lesson.",
                 Stops:
                 [
-                    (() => Ground(3383, 2612), "the farmhouse porch",
+                    (() => Ground(3708, 2593), "the farmhouse porch", // cc-P678: the stables farmhouse's south porch
                         "Use a house deed on open land where housing is allowed, then lock items in place and secure containers inside. TazUO's Options can make nearby roofs and walls transparent."),
                     (() => ClusterFNewHavenSeeder.BankAnchor, "the bank",
                         "Keep a house deed in your bank until you are ready to use it. Visit your house regularly to refresh it and prevent decay.")
@@ -227,7 +226,7 @@ namespace Server.Tutorial
             : pm.InRange(new Point3D(t.Place.X, t.Place.Y, pm.Z), t.IsTour ? TourReach : LeaveRange);
 
         public static string FollowLine(string key) => Trade(key) is not { } t
-            ? "Follow the arrow to the training yard, east of the farm gate. Your lesson begins when you arrive."
+            ? "Follow the arrow to the training yard, behind the Little Shop of Magic. Your lesson begins when you arrive."
             : $"Follow the arrow to {t.Where}. Your lesson begins when you arrive.";
 
         public static string LeftLine(string key) => Trade(key) is not { } t

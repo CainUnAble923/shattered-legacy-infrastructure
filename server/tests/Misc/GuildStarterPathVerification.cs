@@ -582,7 +582,7 @@ public class GuildStarterPathVerification
 
             said = ClusterFGuildStarter.ShowTheWay(pm, warriors);
             _out.WriteLine($"missing: {said}");
-            Assert.Contains("is not at Warrior's Guild Hall", said);
+            Assert.Contains("is not at the Proving Grounds", said); // cc-P678
             Assert.Null(pm.QuestArrow);
 
             // Another facet: said, not pointed.

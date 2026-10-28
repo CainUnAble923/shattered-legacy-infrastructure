@@ -2,11 +2,12 @@
 // Young player's real entry warns and changes protection. Notes: shard-migration notes/cc-P610-fix-drafts-from-p533.md.
 //
 // Facts:
-//   1. Seeded and saved with the map built, then started without it: the saved way down is shut (a step on the burrow
-//      mouth stays in Old Haven), the ladder up still works, and starting again with the map restores it; a teleporter
-//      staff switched off themselves stays off. The world-up step is the server's, not the seeder's (P425 #1).
-//   2. A Young player with a connection who steps into the burrow mouth gets the dungeon warning, and Young protection
-//      holds on the approach and not on the Landing (P504 #2).
+//   1. Seeded and saved with the map built, then started without it: the saved way down is shut (a step on the cellar
+//      hatch stays in the Second Bank of Haven; cc-P678, was the burrow mouth in Old Haven), the ladder up still works,
+//      and starting again with the map restores it; a teleporter staff switched off themselves stays off, through a
+//      start without the map and one with it. The world-up step is the server's, not the seeder's (P425 #1).
+//   2. A Young player with a connection who steps onto the cellar hatch gets the dungeon warning, and Young protection
+//      holds in the bank and not on the Landing (P504 #2).
 
 using System;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ namespace ShatteredLegacy.Tests;
 [Collection("Sequential UOContent Tests")]
 public class RootdeepMapSafetyVerification
 {
-    private static readonly Point3D BesideMound = new(3619, 2623, 0);
+    private static readonly Point3D BesideHatch = new(3621, 2620, 0); // cc-P678: where the ladder lands
 
     public RootdeepMapSafetyVerification()
     {
@@ -72,23 +73,21 @@ public class RootdeepMapSafetyVerification
     public void ASavedWayDownIsShutWhileTheMapIsMissingAndOpensWhenItIsBack()
     {
         var mapBuilt = ClusterFRootdeepSeeder.MapBuilt;
-        var walker = NewPlayer(BesideMound);
+        var walker = NewPlayer(BesideHatch);
         try
         {
             // Placed as the seeder places them (its own method), then saved and loaded.
             ClusterFRootdeepSeeder.MapBuilt = () => true;
-            var hole = ClusterFRootdeepSeeder.Teleporters.First(r => r.To == Arrival && r.X == 3619 && r.Y == 2620);
+            var hole = Assert.Single(ClusterFRootdeepSeeder.Teleporters, r => r.To == Arrival);
+            Assert.Equal((3618, 2620), (hole.X, hole.Y));
             var down = Reload(ClusterFRootdeepSeeder.PlaceTeleporter(Map.Trammel, hole));
-            var other = ClusterFRootdeepSeeder.Teleporters.First(r => r.To == Arrival && r != hole);
-            var staffOff = Reload(ClusterFRootdeepSeeder.PlaceTeleporter(Map.Trammel, other));
-            staffOff.Active = false; // staff's own choice
             var up = Reload(ClusterFRootdeepSeeder.PlaceTeleporter(Map.Trammel, ClusterFRootdeepSeeder.LadderUp));
 
             // The overlay is gone at the next start.
             ClusterFRootdeepSeeder.MapBuilt = () => false;
             WorldUp();
             down.OnMoveOver(walker);
-            Assert.Equal(BesideMound, walker.Location); // not sent into the unbuilt interior
+            Assert.Equal(BesideHatch, walker.Location); // not sent into the unbuilt interior
             Assert.True(up.Active, "the ladder up still takes anyone inside back out");
 
             // The overlay is back.
@@ -97,7 +96,14 @@ public class RootdeepMapSafetyVerification
             Assert.True(down.Active);
             down.OnMoveOver(walker);
             Assert.Equal(Arrival, walker.Location);
-            Assert.False(staffOff.Active, "a teleporter staff switched off stays off");
+
+            // Staff switch it off themselves: a start without the map, then one with it, leave it off.
+            down.Active = false;
+            ClusterFRootdeepSeeder.MapBuilt = () => false;
+            WorldUp();
+            ClusterFRootdeepSeeder.MapBuilt = () => true;
+            WorldUp();
+            Assert.False(down.Active, "a teleporter staff switched off stays off");
         }
         finally
         {
@@ -116,7 +122,7 @@ public class RootdeepMapSafetyVerification
     public void AYoungPlayersRealEntryWarnsAndLeavesYoungProtectionBehind()
     {
         var mapBuilt = ClusterFRootdeepSeeder.MapBuilt;
-        var pm = NewPlayer(BesideMound);
+        var pm = NewPlayer(BesideHatch);
         var ns = PacketTestUtilities.CreateTestNetState();
         pm.NetState = ns;
         ns.Mobile = pm;
@@ -126,15 +132,15 @@ public class RootdeepMapSafetyVerification
         try
         {
             ClusterFRootdeepSeeder.MapBuilt = () => true;
-            var hole = ClusterFRootdeepSeeder.Teleporters.First(r => r.To == Arrival && r.X == 3619 && r.Y == 2620);
+            var hole = Assert.Single(ClusterFRootdeepSeeder.Teleporters, r => r.To == Arrival);
             t = ClusterFRootdeepSeeder.PlaceTeleporter(Map.Trammel, hole);
 
-            var approach = Region.Find(BesideMound, Map.Trammel).GetRegion<BaseRegion>();
+            var approach = Region.Find(BesideHatch, Map.Trammel).GetRegion<BaseRegion>();
             Assert.NotNull(approach);
-            Assert.True(approach.YoungProtected, "Old Haven's approach protects the Young");
+            Assert.True(approach.YoungProtected, "the bank protects the Young");
             Assert.Null(pm.FindGump<YoungDungeonWarningGump>());
 
-            t.OnMoveOver(pm); // the step into the mouth
+            t.OnMoveOver(pm); // the step onto the hatch
             Assert.Equal(Arrival, pm.Location);
             var landing = pm.Region.GetRegion<BaseRegion>();
             Assert.IsType<OldHavenBurrowsRegion>(landing);

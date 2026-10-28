@@ -6,7 +6,8 @@
 // What the facts pin:
 //   1. The placement table loads: keys unique, no item twice on a facet tile, every row's bank is a listed bank on the
 //      same facet, every facet is a named map, every item ID is one of the stock pieces the table uses, no row sits
-//      on or beside a banker's tile or on a teleporter tile listed for its box.
+//      on or beside a banker's tile or on a teleporter tile listed for its box. New Haven's bank is the Second Bank of
+//      Haven on SoS (cc-P678), its rows in the town at that bank.
 //   2. The season window: "MM-DD" parsing, the default October 24 to November 2 inclusive, a window that wraps the
 //      year (December 1 to January 6), a bad setting falls back to the default and says so.
 //   3. The automatic check acts only when the season changes: it puts the decor up when the window opens, leaves a
@@ -21,13 +22,15 @@
 //      HalloweenDecor the list does not know is swept and reported.
 //   6. The setting keys are exactly clusterf.seasonal.halloween.start, .end and .automatic.
 // The test host has no map files and no tiledata (D27), so nothing here asks the map about z or art: the rows were
-// checked offline against the server's map files (notes/cc-P267-tools/validate.py, its table in the notes).
+// checked offline against the server's map files (notes/cc-P267-tools/validate.py, its table in the notes); New
+// Haven's rows against the SoS map files (notes/cc-P678-tools/art/hw_validate.py, hw-validate.out.txt).
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Server;
 using Server.Items;
+using Server.Tutorial;
 using Xunit;
 
 namespace ShatteredLegacy.Tests;
@@ -96,6 +99,17 @@ public class HalloweenDecorVerification
         {
             Assert.True(byKey.TryGetValue(key, out var b) && b.Facet == facet, key);
             Assert.True(rows.Count(r => r.Bank == key) >= 5, $"{key}: {rows.Count(r => r.Bank == key)} rows");
+        }
+
+        // cc-P678: New Haven's bank is the Second Bank of Haven on SoS: pinned's banker spawner and our Sarsmea Smythe,
+        // and every New Haven row is in the town, inside the bank's box (3615-3631, 2609-2623) or at its outer wall.
+        Assert.Equal(new[] { (3620, 2617), (3624, 2616) }, byKey["new-haven"].Bankers);
+        Assert.Equal(new Point3D(3620, 2617, 0), HavenSpots.Bank);
+        foreach (var r in rows.Where(r => r.Bank == "new-haven"))
+        {
+            Assert.True(HavenSpots.InTown(new Point3D(r.X, r.Y, r.Z)), r.Key);
+            Assert.InRange(r.X, 3614, 3632);
+            Assert.InRange(r.Y, 2608, 2624);
         }
     }
 

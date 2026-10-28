@@ -1,6 +1,8 @@
-// cc-P19: props for the League of Extraordinary Citizens Field Office in New Haven (Trammel), the
-// two-room house where the League Registrar sits (walls x3453-3462, y2596-2603, floor z18). Adds items
-// only; the map's own bed, dresser, table and chair stay as they are.
+// cc-P19: props for the League of Extraordinary Citizens Field Office in New Haven (Trammel), where the
+// League Registrar sits. cc-P678: on SoS the office is the free hall north-east of the square (walls x3658-3674,
+// y2547-2562, floor z0, the street door at 3667-3668,2562; the quarters are the back room behind the long counter,
+// 3670-3673, 2548-2550); it was the two-room house at x3453-3462, y2596-2603, z18. Adds items only; the map's own
+// counters and furniture stay as they are.
 //
 // The layout is design/registrar-office/layout.json, generated into ClusterFRegistrarOfficeLayout.cs by
 // cc-P16's mechanism, and placed by cc-P16's placer (ClusterFMineCampSeeder.SeedAddons). One addon per
@@ -42,7 +44,7 @@ namespace Server
     {
         public const string SignName = "League of Extraordinary Citizens";
 
-        // The sign, by item id (design: 0x0BCF at 3463,2597). cc-P31: 0x0BD0 at 3460,2595 left the design.
+        // The sign, by item id (design: 0x0BCF at 3670,2563 since cc-P678). cc-P31: 0x0BD0 left the design.
         public const int SignItemID = 0x0BCF;
 
         // cc-P51: the Staff Hub's Travel row. The office's addons have no standing point of their own, so this is the

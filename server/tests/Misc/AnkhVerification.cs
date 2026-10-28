@@ -6,7 +6,8 @@
 // notes/cc-P137-usable-ankhs-and-playtest-fixes.md.
 //
 // Facts:
-//   1. Seeding puts a working AnkhWest, art 0x3 over 0x2, on the New Haven static (3464,2600-2601,27), places every
+//   1. Seeding puts a working AnkhWest, art 0x3 over 0x2, by New Haven's League office (3676,2562-2563,0; cc-P678,
+//      was over the static at 3464,2600-2601,27, forest on SoS), places every
 //      entry once, and seeding again places nothing.
 //   2. A working ankh already within 2 tiles of an entry is kept and nothing is stacked beside it.
 //   3. A ghost that walks up to the New Haven ankh is offered resurrection: it reaches the offer's last gate.
@@ -36,7 +37,7 @@ namespace ShatteredLegacy.Tests;
 [Collection("Sequential UOContent Tests")]
 public class AnkhVerification
 {
-    private static readonly Point3D NewHaven = new(3464, 2600, 27);
+    private static readonly Point3D NewHaven = new(3676, 2562, 0);
 
     private static HashSet<Serial> ItemsNow() => World.Items.Keys.ToHashSet();
 

@@ -43,8 +43,10 @@ public class OldHavenBurrowsRegion : DungeonRegion
     /// New Haven, and the seeder's teleporter down stands on it (ClusterFRootdeepSeeder.Teleporters). Was named
     /// ProvisionalEntrance until P188. cc-P413: the hole is now an ant-hill burrow whose dark mouth is x 3617-3619,
     /// y 2617-2620 (ClusterFRootdeepSeeder.Mouth*); this tile is one of the twelve, so the Entrance stays here.
+    /// cc-P678: on SoS the bank is the author's rebuilt Second Bank of Haven, New Haven's bank, and the way down is the
+    /// cellar hatch in its main hall (ClusterFRootdeepSeeder.Hole), so the Entrance moves there.
     /// </summary>
-    public static readonly Point3D HoleEntrance = new(3619, 2620, 0);
+    public static readonly Point3D HoleEntrance = new(3618, 2620, 0);
 
     /// <summary>Hostile creatures that may attack one Young player at once (decisions file item 2: 2 to 3, pick 3).</summary>
     public const int MaxHostilesOnYoung = 3;

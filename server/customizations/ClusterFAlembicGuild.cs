@@ -10,13 +10,19 @@
 //
 // Everything else about the guild is data in the shared tables: its GuildDef (ClusterFGuildSystem), its skills
 // (GuildSkillTable, which also decides its starter kit: the creation items of Alchemy and Taste ID), and its post
-// (GuildLocations: the Little Shop of Alchemy, New Haven, 3463,2565,35).
+// (GuildLocations: the Order of the Alembic hall, Haven, 3608,2497,0).
 //
-// The hall is the Little Shop of Alchemy (walls x3456-3465, y2562-2571, floor z35; pinned's Alchemist and Herbalist
-// spawn at 3461,2566 and Sadrah the courier stands at 3462,2567). The props stand along the north wall, the back
-// wall in the client's view; props against the south or east wall are hidden behind it. Every tile was checked
-// standable or blocked offline with the port of pinned Map.CanFit (notes/cc-P77-tools/walk.py): the guildmaster's
-// tile fits at z35 and all eight tiles around it are reachable from both doors.
+// cc-P678: New Haven moved into the author's Haven town on SoS, and the Order into a free building there (outer walls
+// x3599-3615, y2495-2511, floor z0). It has three rooms: the hall, the north room (x3608-3614, y2496-2502, a bed against
+// its north wall), entered from the room below through the arch at 3611,2503; that room's street door is the double
+// arch at 3615,2507-2508 in the east wall. The guildmaster stands at 3608,2497 and Sadrah the courier at 3610,2497.
+// The props keep the old shop's set: the shelf of dried herbs on the north wall behind Sadrah, the paired alchemist
+// tables (mortar and pestle, flask, scales) against the north wall in the north-east corner, and the cauldron with the
+// third table (heating stand, full vials) on the carpet's east edge. None stands on or beside the guildmaster, on a
+// stock decoration or spawner tile, or beside a doorway; the walk from the street door to every tile around the
+// guildmaster and to Sadrah stays open (checked offline against the SoS map files with pinned's movement rules,
+// shard-migration notes/cc-P678-tools/office/check.py). Before cc-P678 the hall was the Little Shop of Alchemy in New
+// Haven (walls x3456-3465, y2562-2571, floor z35), the props along its north wall.
 //
 // Placing the guildmaster and the props changes a world, so neither happens at world load by default:
 //   [ClusterFSeedGuildHalls [dryrun]      places the guildmaster with the other Seeded guildmasters (existing command)
@@ -62,17 +68,17 @@ namespace Server
         // the addon sits at the first component.
         public static readonly MineCampComponent[] Hall =
         [
-            new("hall", 0x2DD4, "alchemist table", 3458, 2563, 35),
-            new("hall", 0x2DD4, "alchemist table", 3459, 2563, 35),
-            new("hall", 0x0E9B, "mortar and pestle", 3458, 2563, 40),
-            new("hall", 0x182A, "flask", 3458, 2563, 40),
-            new("hall", 0x1852, "scales", 3459, 2563, 40),
-            new("hall", 0x0A9D, "wooden shelf", 3462, 2563, 35),
-            new("hall", 0x0C41, "dried herbs", 3462, 2563, 47),
-            new("hall", 0x0975, "cauldron", 3463, 2563, 35),
-            new("hall", 0x2DD4, "alchemist table", 3464, 2563, 35),
-            new("hall", 0x184A, "heating stand", 3464, 2563, 40),
-            new("hall", 0x185D, "full vials", 3464, 2563, 40),
+            new("hall", 0x2DD4, "alchemist table", 3613, 2496, 0),
+            new("hall", 0x2DD4, "alchemist table", 3614, 2496, 0),
+            new("hall", 0x0E9B, "mortar and pestle", 3613, 2496, 5),
+            new("hall", 0x182A, "flask", 3613, 2496, 5),
+            new("hall", 0x1852, "scales", 3614, 2496, 5),
+            new("hall", 0x0A9D, "wooden shelf", 3610, 2496, 0),
+            new("hall", 0x0C41, "dried herbs", 3610, 2496, 12),
+            new("hall", 0x0975, "cauldron", 3613, 2499, 0),
+            new("hall", 0x2DD4, "alchemist table", 3613, 2500, 0),
+            new("hall", 0x184A, "heating stand", 3613, 2500, 5),
+            new("hall", 0x185D, "full vials", 3613, 2500, 5),
         ];
 
         internal static readonly (Type Type, Func<BaseAddon> Create, MineCampComponent[] Components)[] Addons =
@@ -103,7 +109,7 @@ namespace Server
         }
 
         [Usage("ClusterFSeedAlembicHall [dryrun]")]
-        [Description("Places the Order of the Alembic's hall props in the Little Shop of Alchemy, New Haven, if they are not on Trammel. dryrun lists what it would place and changes nothing. Moves and deletes nothing.")]
+        [Description("Places the Order of the Alembic's hall props in its hall in New Haven (SoS Haven), if they are not on Trammel. dryrun lists what it would place and changes nothing. Moves and deletes nothing.")]
         [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places the Order of the Alembic's hall props in New Haven if they are not on Trammel. Moves and deletes nothing.")]
         private static void OnSeedCommand(CommandEventArgs e)
         {

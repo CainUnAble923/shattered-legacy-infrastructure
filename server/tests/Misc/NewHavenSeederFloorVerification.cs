@@ -7,8 +7,9 @@
 // which is under a building's floor. Notes in shard-migration notes/cc-P17-playtest-bugs-1.md.
 //
 // The test host has no map files, so no fact here can ask the map where the floor is. The floors
-// below were measured offline by a port of pinned Map.CanFit (Map.cs:925-1010, height 16) over the
-// client map, statics and pinned's New Haven decoration, and every one fits. What the facts pin:
+// below were measured offline: cc-P678 re-measured every one on the Siege of Sosaria files with the playbook's walk
+// (pinned's movement rules and GetAverageZ, shard-migration notes/cc-P678-tools/soswalk.py; edit_floorfact.py writes
+// this table and stops if a tile is not its floor). Before, a port of pinned Map.CanFit over the old client map. What the facts pin:
 //   1. No entry takes its z from the land height any more, and every entry is on its measured floor.
 //   2. World-load repair leaves an NPC on its pre-PT-05 tile alone (an existing world is Chase's to
 //      change, by command); the repair command moves it; an NPC anywhere else is repaired by both.
@@ -32,46 +33,46 @@ public class NewHavenSeederFloorVerification
     // Measured 2026-09-30 (PT-05); every tile fits at its z.
     private static readonly Dictionary<string, Point3D> MeasuredFloor = new()
     {
-        ["Sir Helper"] = new(3503, 2574, 14),
-        ["Andric"] = new(3535, 2536, 20),
-        ["Kashiel"] = new(3538, 2536, 20),
-        ["Asandos"] = new(3504, 2519, 27),
-        ["Clairesse"] = new(3497, 2551, 20),
+        ["Sir Helper"] = new(3634, 2586, 0),
+        ["Andric"] = new(3743, 2577, 40),
+        ["Kashiel"] = new(3743, 2579, 40),
+        ["Asandos"] = new(3665, 2609, 0),
+        ["Clairesse"] = new(3689, 2465, 0),
         ["Gervis"] = new(3505, 2749, 0),
         ["Mugg"] = new(3507, 2747, 0),
-        ["Lowel"] = new(3444, 2638, 28),
-        ["Lyle"] = new(3487, 2498, 52),
-        ["Nibbet"] = new(3488, 2568, 20),
-        ["Norton"] = new(3507, 2603, 1),
-        ["Sadrah"] = new(3462, 2567, 35),
-        ["Hargrove"] = new(3446, 2640, 28),
-        ["Aelorn"] = new(3524, 2536, 20),
-        ["Dimethro"] = new(3527, 2536, 20),
-        ["Churchill"] = new(3531, 2531, 20),
-        ["Robyn"] = new(3535, 2531, 20),
-        ["Recaro"] = new(3535, 2534, 20),
-        ["Alden Armstrong"] = new(3535, 2537, 20),
-        ["Jockles"] = new(3535, 2544, 20),
-        ["Tyl Ariadne"] = new(3525, 2556, 20),
-        ["Alefian"] = new(3469, 2492, 71),
-        ["Gustar"] = new(3472, 2492, 71),
-        ["Jillian"] = new(3476, 2493, 72),
-        ["Kaelynna"] = new(3479, 2492, 71),
-        ["Mithneral"] = new(3484, 2493, 52),
-        ["Amelia Youngstone"] = new(3459, 2529, 53),
-        ["Andreas Vesalius"] = new(3458, 2551, 35),
-        ["Avicenna"] = new(3461, 2551, 35),
-        ["Sarsmea Smythe"] = new(3492, 2577, 15),
-        ["Ryuichi"] = new(3422, 2520, 21),
-        ["Chiyo"] = new(3424, 2520, 21),
-        ["Jun"] = new(3420, 2520, 21),
-        ["Walker"] = new(3418, 2520, 21),
-        ["Hamato"] = new(3494, 2414, 55),
-        ["Mulcivikh"] = new(3555, 2457, 15),
-        ["Morganna"] = new(3547, 2462, 15),
+        ["Lowel"] = new(3633, 2497, 0),
+        ["Lyle"] = new(3641, 2465, 0),
+        ["Nibbet"] = new(3664, 2496, 0),
+        ["Norton"] = new(3650, 2654, 0),
+        ["Sadrah"] = new(3610, 2497, 0),
+        ["Hargrove"] = new(3635, 2498, 0),
+        ["Aelorn"] = new(3729, 2578, 40),
+        ["Dimethro"] = new(3731, 2576, 40),
+        ["Churchill"] = new(3731, 2578, 40),
+        ["Robyn"] = new(3729, 2580, 40),
+        ["Recaro"] = new(3733, 2575, 40),
+        ["Alden Armstrong"] = new(3733, 2577, 40),
+        ["Jockles"] = new(3731, 2580, 40),
+        ["Tyl Ariadne"] = new(3733, 2579, 40),
+        ["Alefian"] = new(3641, 2467, 0),
+        ["Gustar"] = new(3643, 2466, 0),
+        ["Jillian"] = new(3643, 2468, 0),
+        ["Kaelynna"] = new(3641, 2469, 0),
+        ["Mithneral"] = new(3645, 2465, 0),
+        ["Amelia Youngstone"] = new(3664, 2498, 0),
+        ["Andreas Vesalius"] = new(3660, 2577, 0),
+        ["Avicenna"] = new(3660, 2579, 0),
+        ["Sarsmea Smythe"] = new(3624, 2616, 0),
+        ["Ryuichi"] = new(3739, 2562, 40),
+        ["Chiyo"] = new(3738, 2564, 40),
+        ["Jun"] = new(3740, 2564, 40),
+        ["Walker"] = new(3737, 2566, 40),
+        ["Hamato"] = new(3741, 2562, 40),
+        ["Mulcivikh"] = new(3729, 2635, 40),
+        ["Morganna"] = new(3731, 2633, 40),
         ["Jacob Waltz"] = new(3510, 2745, 0),
-        ["George Hephaestus"] = new(3471, 2542, 36),
-        ["League Registrar"] = new(3459, 2601, 18),
+        ["George Hephaestus"] = new(3634, 2616, 0),
+        ["League Registrar"] = new(3660, 2549, 0),
     };
 
     [Fact]
@@ -105,21 +106,23 @@ public class NewHavenSeederFloorVerification
         _out.WriteLine(string.Join("\n", wrong));
         Assert.Empty(wrong);
 
-        // The Anatomy quest giver, by name.
-        Assert.Equal(new Point3D(3458, 2551, 35), entries.Single(e => e.Type == typeof(AndreasVesalius)).GetLocation());
+        // The Anatomy quest giver, by name (cc-P678: in the Healers of Haven).
+        Assert.Equal(MeasuredFloor["Andreas Vesalius"], entries.Single(e => e.Type == typeof(AndreasVesalius)).GetLocation());
     }
 
     [Fact]
     public void WorldLoadLeavesAnNpcOnItsOldTileAndTheRepairCommandMovesIt()
     {
-        var entry = ClusterFNewHavenSeeder.Entries.Single(e => e.Type == typeof(Jun));
+        // cc-P678: Jun's legacy tile went with the ML plaza (a fresh world on swap day); Jacob Waltz at the mine camp keeps
+        // his (the tile before PT-05, 3511,2744,0).
+        var entry = ClusterFNewHavenSeeder.Entries.Single(e => e.Type == typeof(JacobWaltz));
         Assert.True(entry.HasLegacyLocation);
 
-        var jun = new Jun();
+        var jun = new JacobWaltz();
         try
         {
-            // As the seeder placed him before PT-05: inside a lantern at 3426,2520,21.
-            Place(jun, new Point3D(3426, 2520, 21));
+            // As the seeder placed him before PT-05.
+            Place(jun, new Point3D(3511, 2744, 0));
             Assert.False(ClusterFNewHavenSeeder.NeedsRepair(jun, entry, acceptLegacyTiles: true));
             Assert.True(ClusterFNewHavenSeeder.NeedsRepair(jun, entry));
 
@@ -129,7 +132,7 @@ public class NewHavenSeederFloorVerification
             Assert.False(ClusterFNewHavenSeeder.NeedsRepair(jun, entry));
 
             // Anywhere else, both do, as before PT-05.
-            Place(jun, new Point3D(3430, 2530, 21));
+            Place(jun, new Point3D(3515, 2750, 0));
             Assert.True(ClusterFNewHavenSeeder.NeedsRepair(jun, entry, acceptLegacyTiles: true));
             Assert.True(ClusterFNewHavenSeeder.NeedsRepair(jun, entry));
         }

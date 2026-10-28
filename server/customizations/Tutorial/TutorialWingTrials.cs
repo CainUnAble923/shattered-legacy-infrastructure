@@ -3,11 +3,11 @@
 //
 // Eight stations (TutorialStations keys): combat.weapons, combat.healing, magic.magery, magic.necromancy,
 // magic.chivalry, magic.bushido, magic.ninjitsu, magic.mysticism. One shape for all of them:
-//   - Rook's menu (or [Tutorial station <key>) starts the trial: a page and an arrow to the training yard, east of the
-//     farm gate (Yard). On arrival the trial "arms": it lends what the lesson needs (loaners: a weapon, bandages, a
-//     book and reagents), lends skill for the lesson's length (a skill mod named LoanName, never saved, so the base
-//     skill and its gains stay the player's own), and brings its own training creature or wounded villager beside
-//     the player (TutorialTrainingEcho, a TutorialCreature: only the trainee can touch it).
+//   - Rook's menu (or [Tutorial station <key>) starts the trial: a page and an arrow to the training yard, behind the
+//     Little Shop of Magic in New Haven (Yard). On arrival the trial "arms": it lends what the lesson needs (loaners:
+//     a weapon, bandages, a book and reagents), lends skill for the lesson's length (a skill mod named LoanName, never
+//     saved, so the base skill and its gains stay the player's own), and brings its own training creature or wounded
+//     villager beside the player (TutorialTrainingEcho, a TutorialCreature: only the trainee can touch it).
 //   - Done is server-checked evidence, never a button: three hits with the picked weapon's skill; a bandage that
 //     healed the player and one that healed the villager; for a spell, a successful roll of the school's casting skill
 //     and then damage (or, for Chivalry, a heal) on the trial's creature within EvidenceWindow; for Bushido and
@@ -45,8 +45,12 @@ namespace Server.Tutorial
         public const int HitsToFinish = 3;
         public static readonly TimeSpan EvidenceWindow = TimeSpan.FromSeconds(10);
 
-        /// <summary>The training yard: open ground east of the farm gate (checked standable from the map files, notes cc-P290).</summary>
-        public static readonly Point2D Yard = new(3411, 2617);
+        /// <summary>
+        /// The training yard: cc-P678, the grass behind the Little Shop of Magic in SoS Haven, 25 tiles from the start; its
+        /// 7 x 5 is open, flat (one Z), uncovered and reachable on foot (notes/cc-P678-tools/yards.py). Was east of the
+        /// west farm's gate (3411,2617, cc-P290), which is forest on SoS.
+        /// </summary>
+        public static readonly Point2D Yard = new(3633, 2562);
 
         public static Point3D Ground(int x, int y) => new(x, y, Map.Trammel.GetAverageZ(x, y));
         public static Point3D YardSpot => Ground(Yard.X, Yard.Y);

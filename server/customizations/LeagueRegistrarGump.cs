@@ -316,7 +316,7 @@ public class LeagueRegistrarGump : GuildStyledGump
             "<BASEFONT COLOR=#AAAAAA>Every skill has one, and joining is free. The Guild Board in the " +
             "town square, or [guild, lists them all and shows you the way to each guildmaster.</BASEFONT><BR><BR>" +
             $"<BASEFONT COLOR=#5599FF>{step}. Explore.</BASEFONT> " +
-            "<BASEFONT COLOR=#AAAAAA>The ruins of Old Haven lie to the southwest. " +
+            "<BASEFONT COLOR=#AAAAAA>Something lies beneath Haven: ask at the Second Bank. " +
             "Use [achievements to track your progress across Shattered Legacy.</BASEFONT>";
 
         AddHtml(16, 78, W - 32, H - 128, html, false, true);

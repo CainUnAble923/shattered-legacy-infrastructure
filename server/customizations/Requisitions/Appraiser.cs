@@ -310,7 +310,7 @@ public static class ClusterFRequisitionSeeder
     // City are next to pinned's Banker spawners (Distribution/Data/Spawns) and are checked by CanFit when placed.
     public static readonly Post[] AppraiserPosts =
     [
-        new("New Haven", "League field office", 1, 3461, 2599, 18, Direction.West, true),
+        new("New Haven", "League field office", 1, 3660, 2551, 0, Direction.South, true),
         new("Britain", "outside the West Bank", 1, 1426, 1694, 0, Direction.North, true),
         new("Trinsic", "by the bank", 1, 1900, 2685, 10, Direction.West, true),
         new("Minoc", "by the bank", 1, 2505, 554, 0, Direction.West, true),
@@ -322,7 +322,9 @@ public static class ClusterFRequisitionSeeder
     ];
 
     /// <summary>The League board in the field office: on the north wall, beside the flowerpot (ClusterFRegistrarOfficeLayout).</summary>
-    public static readonly Post OfficeBoard = new("New Haven", "League field office, north wall", 1, 3459, 2596, 18, Direction.North, true);
+    // cc-P678: the office moved into SoS Haven's hall (walls x3658-3674, y2547-2562, floor z0). The board hangs on the
+    // north wall's tile above the free floor tile 3662,2548, the flowerpot at 3663,2548 beside it (was 3459,2596,18).
+    public static readonly Post OfficeBoard = new("New Haven", "League field office, north wall", 1, 3662, 2547, 0, Direction.North, true);
 
     public static void Configure()
     {

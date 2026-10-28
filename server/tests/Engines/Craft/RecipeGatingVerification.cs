@@ -353,7 +353,7 @@ public class RecipeGatingVerification
 
         // The help page for a book hint names the guild's hall.
         var lines = RecipeHintGump.Lines(SkillName.Blacksmith, c.Band);
-        Assert.Contains(lines, l => l.Contains("Society of Smiths") && l.Contains("Forge and Anvil"));
+        Assert.Contains(lines, l => l.Contains("Society of Smiths") && l.Contains("The Haven Blacksmith")); // cc-P678
     }
 
     // ---------------------------------------------------------------- 6

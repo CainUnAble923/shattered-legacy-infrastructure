@@ -20,6 +20,12 @@
 //     collapsed south wall (3619,2623), facing the mound and two tiles from the mouth. A re-run on a world seeded by
 //     P188 keeps the hole's teleporter, adds the other eleven and points the ladder's at the new landing (retargeted,
 //     not duplicated).
+//     cc-P678 (SoS swap S7): on the Siege of Sosaria map the ruined Second Bank is the author's rebuilt Second Bank of
+//     Haven, New Haven's bank, and the ant hill is gone (S2 drops it from the map patch). The way down is a cellar hatch in
+//     the corner of the bank's main hall (3618,2620, one tile west of the old hole, three from the bankers): the
+//     seeder places the hatch (art 0x3E65 "hatch", a surface 3 high set one below the floor so it is walkable; a server
+//     item, so the town's statics are untouched) and one teleporter down on its tile; the mouth is that one tile. The ladder up lands three tiles from it
+//     in the same hall (3621,2620). The retarget above still points an older ladder at the new landing.
 //   - cc-P275: the eight stock floor traps of "watch the floor" (shard-migration notes/cc-P201-deployable-traps-design.md
 //     section 6.1, every tile checked against the built floor, notes/cc-P167-tools/plan-cells.json, and clear of
 //     decor): mushroom puffs by the decoy chests, spikes on one tile of each Warren descent, a saw at the Thicket's
@@ -79,14 +85,19 @@ public static class ClusterFRootdeepSeeder
         public Point3D To => new(ToX, ToY, 0);
     }
 
-    /// <summary>P188's hole in the Second Bank of Haven (OldHavenBurrowsRegion.HoleEntrance), now one tile of the mouth.</summary>
-    public static readonly Point2D Hole = new(3619, 2620);
+    /// <summary>cc-P678: the cellar hatch in the Second Bank of Haven's main hall (OldHavenBurrowsRegion.HoleEntrance).</summary>
+    public static readonly Point2D Hole = new(3618, 2620);
+
+    /// <summary>The hatch: OSI's "hatch" art, a Surface 3 high, so a player walks onto it and the teleporter fires.</summary>
+    public const int HatchItemId = 0x3E65;
+
+    public const string HatchName = "a cellar hatch";
 
     /// <summary>
-    /// cc-P413: the burrow's dark mouth, inclusive: the dark core (columns 2-4, rows 1-4) of OSI's sinkhole set, which
-    /// the map patch lays with its first piece at 3615,2616. Every tile takes a player down.
+    /// The tiles that take a player down, inclusive. cc-P413 made it the ant hill's twelve-tile mouth; cc-P678 makes it
+    /// the hatch's one tile.
     /// </summary>
-    public const int MouthX1 = 3617, MouthY1 = 2617, MouthX2 = 3619, MouthY2 = 2620;
+    public const int MouthX1 = 3618, MouthY1 = 2620, MouthX2 = 3618, MouthY2 = 2620;
 
     public static bool IsMouth(int x, int y) => x >= MouthX1 && x <= MouthX2 && y >= MouthY1 && y <= MouthY2;
 
@@ -94,13 +105,14 @@ public static class ClusterFRootdeepSeeder
     public static readonly Point2D LadderFoot = new(5193, 1132);
 
     /// <summary>
-    /// cc-P413: where the ladder up lands: outside the bank's collapsed south wall (the gap is 3618-3620,2622), facing
-    /// the mound, two tiles south of the mouth, so nobody is sent straight back down. Outside every spawner's walking box.
+    /// cc-P678: where the ladder up lands: the bank's main hall, three tiles east of the hatch (cc-P413's was outside the
+    /// ruined bank's south wall, by the mound), so nobody is sent straight back down. Floor Z 0, reached on foot from the
+    /// town (notes/cc-P678-tools/soswalk.py).
     /// </summary>
-    public static readonly Point2D BesideMound = new(3619, 2623);
+    public static readonly Point2D BesideHatch = new(3621, 2620);
 
     public static readonly TeleporterRow LadderUp =
-        new("the rope ladder up to Old Haven", LadderFoot.X, LadderFoot.Y, BesideMound.X, BesideMound.Y);
+        new("the rope ladder up to the Second Bank of Haven", LadderFoot.X, LadderFoot.Y, BesideHatch.X, BesideHatch.Y);
 
     /// <summary>One teleporter down on every mouth tile, row by row, then the ladder up.</summary>
     public static readonly TeleporterRow[] Teleporters = MouthTeleporters();
@@ -113,7 +125,7 @@ public static class ClusterFRootdeepSeeder
         {
             for (var x = MouthX1; x <= MouthX2; x++)
             {
-                rows.Add(new TeleporterRow($"the burrow mouth ({x},{y}) down to the Landing", x, y, Arrival.X, Arrival.Y));
+                rows.Add(new TeleporterRow($"the cellar hatch ({x},{y}) down to the Landing", x, y, Arrival.X, Arrival.Y));
             }
         }
 
@@ -258,7 +270,7 @@ public static class ClusterFRootdeepSeeder
     }
 
     [Usage("ClusterFSeedRootdeep [dryrun | force]")]
-    [Description("Places the Rootdeep Burrows' spawners, the landing's working ankh, the Vault's crawlway, the eight floor traps and the two teleporters of the way in (the hole in Old Haven, the ladder up), where missing. Refuses until the map batch has built the landing, unless force. Moves and deletes nothing.")]
+    [Description("Places the Rootdeep Burrows' spawners, the landing's working ankh, the Vault's crawlway, the eight floor traps, the cellar hatch in the Second Bank of Haven and the two teleporters of the way in (the hatch, the ladder up), where missing. Refuses until the map batch has built the landing, unless force. Moves and deletes nothing.")]
     [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.Skips, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "Places the Rootdeep Burrows' spawners, landing ankh, crawlway and the way-in teleporters once the map batch has built them.")]
     private static void OnSeedCommand(CommandEventArgs e)
     {
@@ -274,7 +286,7 @@ public static class ClusterFRootdeepSeeder
 
     public readonly record struct SeedResult(
         bool Refused, int Spawners, int Ankhs, int Crawlways, int Present, string Message, int Teleporters = 0, int FloorTraps = 0,
-        int FloorTrapsPresent = 0, int TeleportersRetargeted = 0
+        int FloorTrapsPresent = 0, int TeleportersRetargeted = 0, int Hatches = 0, int HatchesPresent = 0
     );
 
     public static SeedResult Seed(bool dryRun, bool force = false)
@@ -314,7 +326,7 @@ public static class ClusterFRootdeepSeeder
         {
             if (!dryRun)
             {
-                new ClusterFNewHavenServicesSeeder.DecorEntry(AnkhHeader, ankh.X, ankh.Y, ankh.Z).Read().Generate([map]);
+                new ClusterFDecorLine(AnkhHeader, ankh.X, ankh.Y, ankh.Z).Read().Generate([map]);
             }
 
             ankhs++;
@@ -366,6 +378,21 @@ public static class ClusterFRootdeepSeeder
             teleporters++;
         }
 
+        int hatches = 0, hatchesPresent = 0;
+        if (FindHatch(map) != null)
+        {
+            hatchesPresent++;
+        }
+        else
+        {
+            if (!dryRun)
+            {
+                PlaceHatch(map);
+            }
+
+            hatches++;
+        }
+
         int floorTraps = 0, floorTrapsPresent = 0;
 
         foreach (var row in FloorTraps)
@@ -386,8 +413,8 @@ public static class ClusterFRootdeepSeeder
 
         var verb = dryRun ? "would place" : "placed";
         return new SeedResult(false, spawners, ankhs, crawlways, present,
-            $"Rootdeep Burrows{(dryRun ? " (dry run)" : "")}: {verb} {spawners} spawners, {ankhs} ankh, {crawlways} crawlway, {teleporters} teleporters, {floorTraps} floor traps; {(dryRun ? "would point" : "pointed")} {retargeted} teleporters at their new landing; already there {present} (and {floorTrapsPresent} floor traps).",
-            teleporters, floorTraps, floorTrapsPresent, retargeted);
+            $"Rootdeep Burrows{(dryRun ? " (dry run)" : "")}: {verb} {spawners} spawners, {ankhs} ankh, {crawlways} crawlway, {teleporters} teleporters, {hatches} hatch, {floorTraps} floor traps; {(dryRun ? "would point" : "pointed")} {retargeted} teleporters at their new landing; already there {present} (and {hatchesPresent} hatch, {floorTrapsPresent} floor traps).",
+            teleporters, floorTraps, floorTrapsPresent, retargeted, hatches, hatchesPresent);
     }
 
     /// <summary>cc-P275: a new stock trap of the row's kind (spikes facing west, the saw and gas on the floor, greater gas).</summary>
@@ -414,6 +441,34 @@ public static class ClusterFRootdeepSeeder
         foreach (var item in map.GetItemsInRange<BaseTrap>(new Point3D(row.X, row.Y, 0), 0))
         {
             if (!item.Deleted && item.GetType().Name == row.Kind)
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The hatch sits one below the bank's floor (land Z 0): its top is then Z 2, within pinned's StepHeight 2
+    /// (Engines/Pathing/Movement.cs:265, :346), so a player walks onto it and the teleporter under it fires. At Z 0 its top
+    /// (3) is a step too high and nobody could reach the tile (notes/cc-P678-tools/soswalk.py shows both).
+    /// </summary>
+    public static Point3D HatchAt => new(Hole.X, Hole.Y, -1);
+
+    /// <summary>cc-P678: the cellar hatch, an immovable Static on the bank's floor.</summary>
+    public static Static PlaceHatch(Map map)
+    {
+        var hatch = new Static(HatchItemId) { Name = HatchName };
+        hatch.MoveToWorld(HatchAt, map);
+        return hatch;
+    }
+
+    public static Static FindHatch(Map map)
+    {
+        foreach (var item in map.GetItemsInRange<Static>(HatchAt, 0))
+        {
+            if (!item.Deleted && item.ItemID == HatchItemId)
             {
                 return item;
             }

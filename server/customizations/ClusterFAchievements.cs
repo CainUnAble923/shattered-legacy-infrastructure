@@ -169,7 +169,7 @@ public sealed class AchievementTrigger
             TriggerKind.AnySkill           => $"reached {Level:N0} in a skill",
             TriggerKind.SkillsAtLevel      => $"reached {Level:N0} in {n:N0} skills",
             TriggerKind.SpecificSkill      => $"reached {Level:N0} in {SkillInfo.Table[(int)OnSkill!.Value].Name}",
-            TriggerKind.VisitOldHaven      => "found the ruins of Old Haven",
+            TriggerKind.VisitOldHaven      => "found the way beneath Haven", // cc-P678: the hatch; the key is unchanged
             TriggerKind.VisitFacet         => $"set foot in {FacetName}",
             TriggerKind.VisitAllFacets     => "visited all five facets",
             TriggerKind.JoinLeague         => "registered with the League",
@@ -547,7 +547,7 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
         // -- Discovery ----------------------------------------------------
         Reg("discovery.old_haven",
             "A Bad Neighborhood",
-            "Discover the ruins of Old Haven. Nobody lives there anymore. That is, objectively, information you now possess.",
+            "Find the way beneath Haven, through the hatch in the Second Bank. Nobody keeps their gold down there. That is, objectively, information you now possess.",
             AchievementCategory.Discovery, ap: 15, renown: 35,
             trigger:          T.Event(TriggerKind.VisitOldHaven),
             flavor:     "The real treasure was the foreboding atmosphere.",

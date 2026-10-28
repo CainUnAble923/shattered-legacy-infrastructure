@@ -192,7 +192,7 @@ public static class FountainOfYouthSystem
 {
     private static readonly ILogger logger = LogFactory.GetLogger(typeof(FountainOfYouthSystem));
 
-    public static readonly Point3D NewHavenSpot = new(3497, 2583, 14);
+    public static readonly Point3D NewHavenSpot = Server.Tutorial.HavenSpots.FountainOfYouth; // cc-P678: was 3497,2583,14
 
     public const string ClockTag = ClusterFYoungPlayer.ClockStartTag;
     public const string LastDrinkTag = "clusterf.fountainOfYouth.lastDrink";

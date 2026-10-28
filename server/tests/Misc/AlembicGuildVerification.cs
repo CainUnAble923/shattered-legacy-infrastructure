@@ -10,8 +10,9 @@
 //      Order's; the Healers keep Healing and Anatomy.
 //   3. The Order's ranks read through GuildRankIndex: six ranks on the generic steps, its own names (placeholders),
 //      the Apprentice task lifting the index to 1, and League promotion counting it like any guild.
-//   4. The guildmaster's post is the tile measured walkable offline (pinned Map.CanFit port, notes/cc-P77-tools/walk.py),
-//      clear of the hall props, Sadrah and the Alchemist spawn; the hall seeder would place it there.
+//   4. The guildmaster's post is the tile measured walkable offline (pinned Map.CanFit port, notes/cc-P77-tools/walk.py;
+//      cc-P678: SoS Haven, notes/cc-P678-tools/office/check.py), clear of the hall props and Sadrah; the hall seeder
+//      would place it there.
 // And: the hall props are an addon at their design tiles, and the Order has a row in the Guild Directory, which is
 // also the League Registrar's Guild Referrals.
 //
@@ -38,12 +39,13 @@ public class AlembicGuildVerification
 {
     private readonly ITestOutputHelper _out;
 
-    // Measured 2026-10-12 with the hall props placed: fits at z35, all eight neighbors reachable from both doors.
-    private static readonly Point3D MeasuredPost = new(3463, 2565, 35);
+    // cc-P678: the Order's hall in SoS Haven. Measured against the SoS map files with the hall props placed
+    // (shard-migration notes/cc-P678-tools/office/check.py): stands at z0, every neighbor not under a static is reachable
+    // from the street door. Before: the Little Shop of Alchemy, 3463,2565,35.
+    private static readonly Point3D MeasuredPost = new(3608, 2497, 0);
 
-    // What else stands in the shop: Sadrah the courier (ClusterFNewHavenSeeder) and pinned's Alchemist spawn.
-    private static readonly Point2D Sadrah = new(3462, 2567);
-    private static readonly Point2D AlchemistSpawn = new(3461, 2566);
+    // What else stands in the hall: Sadrah the courier (ClusterFNewHavenSeeder). No stock spawner is in the building.
+    private static readonly Point2D Sadrah = new(3610, 2497);
 
     public AlembicGuildVerification(ITestOutputHelper output)
     {
@@ -238,12 +240,12 @@ public class AlembicGuildVerification
         // Not on the shop's other NPCs, and no prop on the post or the eight tiles around it.
         var post = new Point2D(loc.Point.X, loc.Point.Y);
         Assert.NotEqual(Sadrah, post);
-        Assert.NotEqual(AlchemistSpawn, post);
 
         foreach (var c in ClusterFAlembicGuild.Hall)
         {
             var near = Math.Max(Math.Abs(c.X - loc.Point.X), Math.Abs(c.Y - loc.Point.Y)) <= 1;
             Assert.False(near, $"{c.Name} at {c.X},{c.Y} stands on or beside the guildmaster");
+            Assert.False(c.X == Sadrah.X && c.Y == Sadrah.Y, $"{c.Name} at {c.X},{c.Y} stands on Sadrah");
         }
 
         // The hall seeder, as a dry run: it would place this guildmaster on this tile and changes nothing.
@@ -282,9 +284,12 @@ public class AlembicGuildVerification
             var design = ClusterFAlembicGuild.Hall.Select(c => (c.ItemID, c.X, c.Y, c.Z)).OrderBy(t => t).ToList();
             Assert.Equal(design, placed);
 
-            // Every prop is inside the shop's walls (x3457-3464, y2563-2570), along the north wall.
-            Assert.All(ClusterFAlembicGuild.Hall, c => Assert.InRange(c.X, 3457, 3464));
-            Assert.All(ClusterFAlembicGuild.Hall, c => Assert.Equal(2563, c.Y));
+            // cc-P678: every prop is inside the hall's north room (x3608-3614, y2496-2502), on its floor (z0) or on a
+            // table there, and the room's doorway (3611,2503) and the tiles inside next to it stay clear.
+            Assert.All(ClusterFAlembicGuild.Hall, c => Assert.InRange(c.X, 3608, 3614));
+            Assert.All(ClusterFAlembicGuild.Hall, c => Assert.InRange(c.Y, 2496, 2502));
+            Assert.All(ClusterFAlembicGuild.Hall, c => Assert.InRange(c.Z, 0, 12));
+            Assert.DoesNotContain(ClusterFAlembicGuild.Hall, c => c.Y == 2502 && c.X is >= 3610 and <= 3612);
         }
         finally
         {
