@@ -1,0 +1,16 @@
+--- a/Projects/UOContent/Mobiles/PlayerMobile.cs
++++ b/Projects/UOContent/Mobiles/PlayerMobile.cs
+@@ -1736,6 +1736,13 @@
+ 
+         public override bool Move(Direction d)
+         {
++            // Shattered Legacy (cc-P728): a trainee lying on the Wakening Isle's beach gets up at their first move, a
++            // step or a turn; that request is spent on getting up (customizations TutorialWake.OnMoveRequest).
++            if (Server.Tutorial.TutorialWake.OnMoveRequest(this))
++            {
++                return false;
++            }
++
+             if (NetState != null)
+             {
+                 var gumps = NetState.GetGumps();

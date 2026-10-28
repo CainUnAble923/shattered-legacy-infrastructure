@@ -307,18 +307,19 @@ public class TutorialFarmVerification
             Assert.Null(TutorialFarm.ChoosePet(p.Pm, "cat")); // one pet
             Assert.Equal(2, TutorialFarm.StepOf(p.Pm));
 
-            // cc-P718: the commands first (the pet's order is the evidence), then the pests fight, and the pet attacks.
+            // cc-P728: the weapon, then war mode, then the commands (the pet's order is the evidence); then the pests fight,
+            // and the pet attacks.
+            var fork = p.Pm.Backpack.FindItemByType<TutorialPitchfork>()!;
+            fork.Layer = Layer.TwoHanded;
+            Assert.True(p.Pm.EquipItem(fork));
+            TutorialFarm.CheckCommands(p.Pm);
+            p.Pm.Warmode = true;
+            TutorialFarm.CheckCommands(p.Pm);
             Assert.Equal(OrderType.Stay, pet.ControlOrder);
             pet.ControlTarget = p.Pm;
             pet.ControlOrder = OrderType.Follow;
             TutorialFarm.CheckCommands(p.Pm);
             pet.ControlOrder = OrderType.Guard;
-            TutorialFarm.CheckCommands(p.Pm);
-            var fork = p.Pm.Backpack.FindItemByType<TutorialPitchfork>()!; // cc-P721: the weapon, then war mode
-            fork.Layer = Layer.TwoHanded;
-            Assert.True(p.Pm.EquipItem(fork));
-            TutorialFarm.CheckCommands(p.Pm);
-            p.Pm.Warmode = true;
             Assert.True(TutorialFarm.CheckCommands(p.Pm));
             pet.ControlOrder = OrderType.Attack;
             TutorialFarm.NoteStruck(p.Pm); // cc-P721: the trainee's own blow

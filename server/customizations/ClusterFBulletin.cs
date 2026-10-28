@@ -110,12 +110,13 @@ public static class ClusterFBulletinSystem
 
         if (unread.Count == 0 && notes == null) return;
 
-        // Small delay so the player has fully loaded in before we send the gump.
-        Timer.StartTimer(TimeSpan.FromSeconds(2.0), () =>
+        // Small delay so the player has fully loaded in before we send the gump. cc-P728: on a first login that wakes on the
+        // Wakening Isle's beach, it comes after the trainee has stood up (TutorialWake.Hold).
+        Server.Tutorial.TutorialWake.Hold(pm, () => Timer.StartTimer(TimeSpan.FromSeconds(2.0), () =>
         {
             if (pm.NetState != null)
                 pm.SendGump(new BulletinGump(pm, unread, notes));
-        });
+        }));
     }
 
     public static List<BulletinEntry> UnreadFor(IAccount acct)

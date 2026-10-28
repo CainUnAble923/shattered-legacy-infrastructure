@@ -65,6 +65,14 @@ using Server.Network;
 // and waits until it is held, then until war mode is on (Tab, or the Peace/War button); the pest part also wants one
 // pest struck by the trainee themselves.
 
+// cc-P728 (Chase 10-28 15:25 to 15:27): the farm's combat part starts with the weapon. Once the pet is chosen, Wren hands
+// the pitchfork (hold it: drag it to the hand on the character window, or double-click it), then war mode, then the pet's
+// commands, then the gate opens on the pests (BeginCombat, CheckCommands). P726 moves the pet and its commands after the
+// pests; this order lets it do that by moving them alone. Wren never says "Defeat 0 more": with the count reached she says
+// what is still missing (the pet's kill, the trainee's own strike). When the rows are clear she says so, and the next step
+// ("Go back to Wren...") is in her overhead line, over the trainee's head, in the system line and at the top of the lesson
+// window (reopened), with the arrow back on her (TutorialCoreTrials.NowStep).
+
 namespace Server.Tutorial
 {
     public static class TutorialFarm
@@ -115,7 +123,8 @@ namespace Server.Tutorial
         public const string NotYetLine = "Finish {0} first, then come back to me.";
         public const string PetOfferLine = "Choose a dog or cat in the window. This is your one tutorial pet, which you keep after graduation.";
         public const string NoSlotLine = "You cannot control another pet right now. Stable one of your pets with an animal trainer, then come back.";
-        public const string PestsLine = "Walk into the cabbage rows, say 'all kill', then click a rat or grass snake for your pet to attack. Defeat {0} pests to finish this step.";
+        public const string PestsLine = "Walk into the cabbage rows, double-click a rat or grass snake to attack it yourself, then say 'all kill' and click one for your pet. Defeat {0} pests to finish this step.";
+        public const string PestsNoPetLine = "Walk into the cabbage rows and double-click a rat or grass snake to attack it. Defeat {0} pests to finish this step.";
         public const string PestsLeftLine = "Defeat {0} more rats or grass snakes in the cabbage rows.";
         public const string HealLine = "Here are some bandages. To heal, double-click a bandage in your backpack, then click yourself or your hurt pet. A successful heal finishes this step.";
         // cc-P721: the heal step's patient, and how long a bandage takes.
@@ -132,14 +141,18 @@ namespace Server.Tutorial
         public const string GuardKey = "farm.cmd.guard";
         public const string CommandsLine = "Your pet obeys spoken commands. I told it to stay. Say 'all follow me' and it follows you; then say 'all guard me' and it guards you. You can say your pet's name instead of 'all', or click your pet with the right mouse button and choose a command from its menu.";
         public const string FollowDoneLine = "Your pet follows you. Now say 'all guard me', or choose Guard from your pet's menu.";
-        public const string GuardDoneLine = "Your pet guards you. Now a weapon: I put a pitchfork in your backpack. Drag it onto your character's hand in your character window, or double-click it, to hold it. If you already hold a weapon, drag that into your backpack first.";
+        public const string GuardDoneLine = "Your pet guards you. I opened the field gate for you: walk into the cabbage rows and double-click a rat or grass snake to attack it yourself, then say 'all kill' and click one for your pet. Defeat {0} pests. If the gate swings shut, double-click it to open it.";
+
+        // cc-P728 item 4: the weapon comes first in the combat part.
+        public const string PitchforkLine = "Before the pests, a weapon: I put a pitchfork in your backpack. Drag it onto your character's hand in your character window, or double-click it, to hold it. If you already hold a weapon, drag that into your backpack first.";
+        public const string PitchforkNoRoomLine = "Your backpack is too full for the pitchfork. Make room, then double-click me again.";
         // cc-P721: the weapon and war mode, before the first fight.
         public const string WeaponKey = "farm.weapon";
         public const string WarKey = "farm.war";
         public const string WeaponDoneLine = "You hold the pitchfork. Now press Tab, or click the Peace/War button on your character window, to switch to war mode: that is how you fight. Press Tab again for peace mode when you are done.";
-        public const string WarDoneLine = "You are in war mode. I opened the field gate for you: walk into the cabbage rows and double-click a rat or grass snake to attack it yourself, then say 'all kill' and click one for your pet. Defeat {0} pests. If the gate swings shut, double-click it to open it.";
+        public const string WarDoneLine = "You are in war mode: that is how you fight. Press Tab again for peace mode when you are done. Now your pet: " + CommandsLine;
         public const string StrikeLine = "Now strike one yourself: in war mode, double-click a rat or grass snake.";
-        public const string NoPetForCommandsLine = "You have no pet with you, so the pet commands are skipped. Now a weapon: I put a pitchfork in your backpack. Drag it onto your character's hand in your character window, or double-click it, to hold it. If you already hold a weapon, drag that into your backpack first.";
+        public const string NoPetForCommandsLine = "You are in war mode, and you have no pet with you, so the pet commands are skipped. I opened the field gate for you: walk into the cabbage rows and double-click a rat or grass snake to attack it. Defeat {0} pests. If the gate swings shut, double-click it to open it.";
         public const string PetKillLine = "Now let your pet fight one: say 'all kill', then click a rat or grass snake.";
         public const string GateClosedLine = "Wren keeps this gate shut until your pest lesson. Double-click Wren the Farmhand first.";
 
@@ -170,7 +183,7 @@ namespace Server.Tutorial
         public const string NoRoomForBandagesLine = "Your backpack is too full for these bandages. Make room in it, then double-click me again.";
         public const string DoneLine = "You finished the farm lessons. If your bonded pet dies, bring its ghost to Tobin the vet beside me. While you are Young, he brings it back free.";
         public const string EchoPetLine = "This pet is yours to keep. Say 'all follow me' to have it follow you.";
-        public const string EchoPestsLine = "You cleared the farm pests. Return to Wren the Farmhand at the gate.";
+        public const string EchoPestsLine = "The cabbage rows are clear! Go back to Wren at the farm gate and double-click her.";
         public const string EchoHealLine = "Your bandage restored health and finished the farm's healing lesson.";
 
         // Pests counted per character this run (not saved: a restart starts the step's count again).
@@ -315,6 +328,7 @@ namespace Server.Tutorial
         public static int Talk(PlayerMobile pm, Mobile hand)
         {
             var step = StepOf(pm);
+            TutorialCoreTrials.ClearNow(pm); // cc-P728: Wren gives the next step herself
 
             // cc-P663: the farm is a core station; a trainee with earlier lessons left is sent back to them.
             if (step is >= 1 and <= 3 && RecordOf(pm) is { } record && !ClusterFTutorial.IsDone(record, CoreStation) &&
@@ -335,12 +349,11 @@ namespace Server.Tutorial
                     pm.SendGump(new TutorialFarmPetGump());
                     break;
                 case 2 when !CommandsDone(pm):
-                    hand.SayTo(pm, BeginCommands(pm) ? CommandsLine : string.Format(NoPetForCommandsLine, PestsToClear));
+                    hand.SayTo(pm, BeginCombat(pm));
                     break;
                 case 2:
                     OpenFieldGate(hand.Map);
-                    var left = Math.Max(0, PestsToClear - PestsKilled(pm));
-                    hand.SayTo(pm, PestsKilled(pm) == 0 ? string.Format(PestsLine, PestsToClear) : string.Format(PestsLeftLine, left));
+                    hand.SayTo(pm, PestsNow(pm));
                     break;
                 case 3:
                     var gift = GiveBandages(pm);
@@ -388,7 +401,7 @@ namespace Server.Tutorial
             ClusterFTutorial.SystemLine(pm, EchoPetLine);
             if (!CheckDone(pm) && StepOf(pm) == 2 && !CommandsDone(pm))
             {
-                ClusterFTutorial.SystemLine(pm, BeginCommands(pm) ? CommandsLine : string.Format(NoPetForCommandsLine, PestsToClear));
+                ClusterFTutorial.SystemLine(pm, BeginCombat(pm)); // cc-P728: the pitchfork first
             }
 
             return pet;
@@ -468,12 +481,43 @@ namespace Server.Tutorial
             _petKilled.Remove(pm.Serial);
             _struck.Remove(pm.Serial);
             RecordOf(pm)!.StationsDone.Add(PestsKey);
-            ClusterFTutorial.SystemLine(pm, EchoPestsLine);
             ClusterFTutorial.CompleteStation(pm, TamingStation);
             if (!CheckDone(pm))
             {
-                ClusterFTutorial.SystemLine(pm, "Return to Wren the Farmhand at the farm gate and double-click her.");
+                Cleared(pm);
             }
+        }
+
+        /// <summary>
+        /// cc-P728 item 6: the rows are clear. Said plainly with the next step, by Wren over her head, over the trainee's, in
+        /// the system line and at the top of the lesson window (reopened if closed), and the arrow turns back to her.
+        /// </summary>
+        public static void Cleared(PlayerMobile pm)
+        {
+            var map = TutorialWorld.MapOf(pm);
+            var hand = TutorialFarmhand.Find(map);
+            hand?.SayTo(pm, EchoPestsLine);
+            TutorialCoreTrials.NowStep(pm, EchoPestsLine, hand?.Location ?? TutorialWorld.Ground(map ?? TutorialWorld.Isle, FarmhandSpot), "Wren the Farmhand");
+        }
+
+        /// <summary>
+        /// cc-P728 item 6: what Wren says on the pest part: the pests to go, or with the count reached, what is still missing
+        /// (never "Defeat 0 more").
+        /// </summary>
+        public static string PestsNow(PlayerMobile pm)
+        {
+            var left = PestsToClear - PestsKilled(pm);
+            if (PestsKilled(pm) == 0)
+            {
+                return string.Format(PetsOf(pm).Count > 0 ? PestsLine : PestsNoPetLine, PestsToClear);
+            }
+
+            if (left > 0)
+            {
+                return string.Format(PestsLeftLine, left);
+            }
+
+            return !_petKilled.Contains(pm.Serial) && PetsOf(pm).Count > 0 ? PetKillLine : StrikeLine;
         }
 
         /// <summary>cc-P663: all three steps done (StepOf 4) finishes core.farm. True when they are.</summary>
@@ -491,7 +535,7 @@ namespace Server.Tutorial
 
         // -- cc-P718 item 10: the pet commands --
 
-        /// <summary>cc-P721: the pet commands, then the weapon in hand and war mode: what the pest part waits for.</summary>
+        /// <summary>cc-P721: the weapon in hand, war mode and the pet commands (cc-P728's order): what the pest part waits for.</summary>
         public static bool CommandsDone(PlayerMobile pm) =>
             Has(pm, FollowKey) && Has(pm, GuardKey) && Has(pm, WeaponKey) && Has(pm, WarKey);
 
@@ -518,36 +562,49 @@ namespace Server.Tutorial
         private static TimerExecutionToken _watchTimer;
 
         /// <summary>
-        /// Starts the commands: the trainee's pets stay, and their orders are watched until they follow and then guard.
-        /// False when the trainee has no pet with them: the commands are skipped and the field gate opens.
+        /// cc-P728 item 4: starts (or picks up) the combat part, in order: the pitchfork in hand, war mode, then the pet's
+        /// commands. Hands the pitchfork when it is the step, watches the trainee, and returns Wren's line for where they are.
         /// </summary>
-        public static bool BeginCommands(PlayerMobile pm)
+        public static string BeginCombat(PlayerMobile pm)
         {
-            var pets = PetsOf(pm);
-            var noPet = pets.Count == 0;
-            if (noPet)
+            Watch(pm);
+            if (!Has(pm, WeaponKey))
             {
-                var record = RecordOf(pm)!;
-                record.StationsDone.Add(FollowKey);
-                record.StationsDone.Add(GuardKey);
-                GivePitchfork(pm); // cc-P721: the weapon and war mode still come first
-            }
-            else if (!Has(pm, FollowKey))
-            {
-                foreach (var pet in pets)
-                {
-                    pet.ControlTarget = null;
-                    pet.ControlOrder = OrderType.Stay;
-                }
+                return GivePitchfork(pm) != null || HoldsPitchfork(pm) || pm.Backpack?.FindItemByType<TutorialPitchfork>() != null
+                    ? PitchforkLine
+                    : PitchforkNoRoomLine;
             }
 
+            if (!Has(pm, WarKey))
+            {
+                return WeaponDoneLine;
+            }
+
+            if (!Has(pm, FollowKey))
+            {
+                StayPets(PetsOf(pm));
+                return CommandsLine;
+            }
+
+            return FollowDoneLine;
+        }
+
+        private static void StayPets(List<BaseCreature> pets)
+        {
+            foreach (var pet in pets)
+            {
+                pet.ControlTarget = null;
+                pet.ControlOrder = OrderType.Stay;
+            }
+        }
+
+        private static void Watch(PlayerMobile pm)
+        {
             _watching.Add(pm);
             if (!_watchTimer.Running)
             {
                 Timer.StartTimer(TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500), WatchAll, out _watchTimer);
             }
-
-            return !noPet;
         }
 
         private static void WatchAll()
@@ -563,7 +620,11 @@ namespace Server.Tutorial
             }
         }
 
-        /// <summary>Reads the pets' orders (speech or menu, both set them): follow first, then guard. True when both are done.</summary>
+        /// <summary>
+        /// cc-P728 item 4: the combat part, one step per call, in order: the pitchfork in hand, war mode, the pet following,
+        /// the pet guarding (its orders come from speech or its menu; both set them). With no pet along at war mode the
+        /// commands are skipped. Then the field gate opens. True when all are done.
+        /// </summary>
         public static bool CheckCommands(PlayerMobile pm)
         {
             if (pm.Deleted || StepOf(pm) != 2 || CommandsDone(pm))
@@ -574,32 +635,56 @@ namespace Server.Tutorial
 
             var pets = PetsOf(pm);
             var record = RecordOf(pm)!;
-            if (!Has(pm, FollowKey) && pets.Exists(p => p.ControlOrder == OrderType.Follow && p.ControlTarget == pm))
+            if (!Has(pm, WeaponKey))
             {
-                record.StationsDone.Add(FollowKey);
-                ClusterFTutorial.SystemLine(pm, FollowDoneLine);
+                if (HoldsPitchfork(pm))
+                {
+                    record.StationsDone.Add(WeaponKey);
+                    ClusterFTutorial.SystemLine(pm, WeaponDoneLine);
+                }
             }
-            else if (Has(pm, FollowKey) && !Has(pm, GuardKey) && pets.Exists(p => p.ControlOrder == OrderType.Guard))
+            else if (!Has(pm, WarKey))
+            {
+                if (pm.Warmode)
+                {
+                    record.StationsDone.Add(WarKey);
+                    if (pets.Count == 0)
+                    {
+                        record.StationsDone.Add(FollowKey);
+                        record.StationsDone.Add(GuardKey);
+                        return OpenPests(pm, NoPetForCommandsLine);
+                    }
+
+                    if (!Has(pm, FollowKey))
+                    {
+                        StayPets(pets);
+                        ClusterFTutorial.SystemLine(pm, WarDoneLine);
+                    }
+                }
+            }
+            else if (!Has(pm, FollowKey))
+            {
+                if (pets.Exists(p => p.ControlOrder == OrderType.Follow && p.ControlTarget == pm))
+                {
+                    record.StationsDone.Add(FollowKey);
+                    ClusterFTutorial.SystemLine(pm, FollowDoneLine);
+                }
+            }
+            else if (!Has(pm, GuardKey) && pets.Exists(p => p.ControlOrder == OrderType.Guard))
             {
                 record.StationsDone.Add(GuardKey);
-                GivePitchfork(pm); // cc-P721
-                ClusterFTutorial.SystemLine(pm, GuardDoneLine);
-            }
-            else if (Has(pm, GuardKey) && !Has(pm, WeaponKey) && HoldsPitchfork(pm))
-            {
-                record.StationsDone.Add(WeaponKey);
-                ClusterFTutorial.SystemLine(pm, WeaponDoneLine);
-            }
-            else if (Has(pm, WeaponKey) && !Has(pm, WarKey) && pm.Warmode)
-            {
-                record.StationsDone.Add(WarKey);
-                _watching.Remove(pm);
-                OpenFieldGate(pm.Map);
-                ClusterFTutorial.SystemLine(pm, string.Format(WarDoneLine, PestsToClear));
-                return true;
             }
 
-            return false;
+            // A trainee who had the commands before the weapon (the order before cc-P728) goes on to the pests here too.
+            return CommandsDone(pm) && OpenPests(pm, GuardDoneLine);
+        }
+
+        private static bool OpenPests(PlayerMobile pm, string line)
+        {
+            _watching.Remove(pm);
+            OpenFieldGate(pm.Map);
+            ClusterFTutorial.SystemLine(pm, string.Format(line, PestsToClear));
+            return true;
         }
 
         // -- cc-P721: the pitchfork --
@@ -620,8 +705,7 @@ namespace Server.Tutorial
             if (!pm.PlaceInBackpack(fork))
             {
                 fork.Delete();
-                ClusterFTutorial.SystemLine(pm, "Your backpack is too full for the pitchfork. Make room, then double-click Wren again.");
-                return null;
+                return null; // BeginCombat says so (PitchforkNoRoomLine)
             }
 
             return fork;

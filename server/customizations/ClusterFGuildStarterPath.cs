@@ -766,6 +766,11 @@ public static class GuildWelcome
     [OnEvent(nameof(PlayerMobile.PlayerLoginEvent))]
     public static void OnLogin(PlayerMobile pm)
     {
+        // cc-P728: not on the Wakening Isle (the Fold), where no Guild Board or guild is in reach: the welcome waits, unshown,
+        // for the character's first login in town.
+        if (FoldMaps.IsFold(pm.Map))
+            return;
+
         var record = ClusterFGuildStarter.GetRecord(pm);
         if (record == null || record.WelcomeShown)
             return;

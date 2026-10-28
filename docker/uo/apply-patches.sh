@@ -998,6 +998,13 @@ apply_patch "$PATCHES/BOD-properties-guild-pay.patch"
 # and the no-patch signals (hit points, damage entries) are wiped by regeneration to full (Mobile.cs Hits setter clears
 # the damage entries at full). Argued in the same notes; pinned by HammerCraftOrderVerification.
 apply_patch "$PATCHES/PlayerMobile-craft-order-hurt.patch"
+# cc-P728 (Chase 10-28 15:22): a new character lies on the Wakening Isle's beach until the player tries to move. One call
+# at the top of PlayerMobile.Move into customizations TutorialWake.OnMoveRequest, which is true (the request refused,
+# the trainee standing up) only while that trainee lies there. Pinned refuses a frozen step in Mobile.CanMove before
+# EventSink.Movement or any region hook, and lets a frozen turn through with no hook at all, so nothing without a patch
+# sees the attempt. Made with diff -u against the PlayerMobile.cs every patch above leaves. Alternatives argued in
+# shard-migration notes/cc-P728-isle-walkthrough-fixes-4.md.
+apply_patch "$PATCHES/PlayerMobile-tutorial-wake-move.patch"
 # cc-P269 (High Seas fishing, second half). FishingPole.cs gains ServUO's bait and hook (version 0 -> 1, migrated from
 # pinned's v0 by the generator): BaitType, EnhancedBait, BaitUses, HookType, HookUses, OriginalHue, OnFishedHarvest and
 # the tooltip lines; a partial class could add the members but not the saved version or the generated serializer, and
