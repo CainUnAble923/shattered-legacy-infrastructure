@@ -9,7 +9,7 @@ public class TutorialTrialProgressVerification
     [Theory]
     [InlineData("core.movement", TutorialAction.FirstMark, TutorialAction.SecondMark)]
     [InlineData("core.paperdoll", TutorialAction.Equipped, TutorialAction.Equipped)]
-    [InlineData("core.backpack", TutorialAction.OpenedBag, TutorialAction.OpenedBag)]
+    [InlineData("core.backpack", TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag)] // cc-P718
     [InlineData("core.chat", TutorialAction.SaidPhrase, TutorialAction.SaidPhrase)]
     [InlineData("core.death", TutorialAction.EchoDeath, TutorialAction.Resurrected)]
     [InlineData("core.banking", TutorialAction.Deposited, TutorialAction.Deposited)]

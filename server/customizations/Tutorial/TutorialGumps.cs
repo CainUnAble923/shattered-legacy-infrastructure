@@ -54,6 +54,7 @@ public class TutorialRecruiterGump : Gump
     {
         TutorialWing.Thieving => "Thieving and stealth",
         TutorialWing.ShardSystems => "Shard features",
+        TutorialWing.Client => "Client settings",
         _ => wing.ToString()
     };
 
@@ -82,7 +83,7 @@ public class TutorialRecruiterGump : Gump
         var right = new List<(TutorialWing Wing, TutorialStation? Station)>();
         if (wings)
         {
-            var groups = TutorialStations.All.Where(s => !s.IsCore).GroupBy(s => s.Wing).ToList();
+            var groups = TutorialStations.All.Where(s => !s.IsCore && !TutorialStations.IsAnytime(s.Key)).GroupBy(s => s.Wing).ToList();
             var total = groups.Sum(g => g.Count() + 1);
             foreach (var g in groups)
             {
@@ -93,10 +94,12 @@ public class TutorialRecruiterGump : Gump
         }
 
         var core = TutorialStations.Core.ToList();
+        var anytime = TutorialStations.Anytime.ToList(); // cc-P718: optional at any time
         var h = 100;
         if (active)
         {
-            h += 24 + core.Count * Row + (wings ? 30 + Math.Max(left.Count, right.Count) * Row : 30) + 50 + (toIsle ? 30 : 0);
+            h += 24 + core.Count * Row + (wings ? 30 + Math.Max(left.Count, right.Count) * Row : 30) + 50 + (toIsle ? 30 : 0) +
+                 (anytime.Count > 0 ? 30 + anytime.Count * Row : 0);
         }
         else if (ReadOnly || record != null && ClusterFTutorial.CompanionPending(record))
         {
@@ -127,6 +130,19 @@ public class TutorialRecruiterGump : Gump
                 AddButton(24, y, 4005, 4007, BtnStationBase + Array.IndexOf(TutorialStations.All, s));
                 AddLabel(60, y + 2, done ? TutorialStyle.DoneHue : s == next ? TutorialStyle.ActionHue : TutorialStyle.TextHue,
                     $"{i + 1}. {s.Title}{(done ? " (done)" : s == next ? " (next)" : "")}");
+            }
+
+            if (anytime.Count > 0)
+            {
+                AddLabel(24, y + 6, TutorialStyle.HeadingHue, "Optional, at any time (you can skip these)");
+                y += 30;
+                foreach (var s in anytime)
+                {
+                    var done = record!.StationsDone.Contains(s.Key);
+                    AddButton(24, y, 4005, 4007, BtnStationBase + Array.IndexOf(TutorialStations.All, s));
+                    AddLabel(60, y + 2, done ? TutorialStyle.DoneHue : TutorialStyle.TextHue, $"{s.Title}{(done ? " (done)" : "")}");
+                    y += Row;
+                }
             }
 
             if (wings)
@@ -251,7 +267,8 @@ public class TutorialRecruiterGump : Gump
 
         // A wing's button is not shown before the core is done; a reply naming one anyway runs nothing (staff use [Tutorial).
         var station = TutorialStations.All[index];
-        if (!station.IsCore && (ClusterFTutorial.RecordOf(_pm) is not { } record || !WingsOpen(record)))
+        if (!station.IsCore && !TutorialStations.IsAnytime(station.Key) &&
+            (ClusterFTutorial.RecordOf(_pm) is not { } record || !WingsOpen(record)))
         {
             return;
         }

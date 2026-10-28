@@ -66,6 +66,22 @@ public partial class LeagueRegistrar : BaseCreature
     public override bool ClickTitle      => true;
     public override bool ShowFameTitle   => false;
 
+    // cc-P718: on the Wakening Isle she speaks first to a trainee on the League lesson (TutorialGreeting).
+    public override void OnMovement(Mobile m, Point3D oldLocation)
+    {
+        base.OnMovement(m, oldLocation);
+        if (m is PlayerMobile pm && Tutorial.TutorialGreeting.NeedsElara(pm))
+        {
+            Tutorial.TutorialGreeting.TryGreet(this, pm, Tutorial.TutorialGreeting.ElaraLine);
+        }
+    }
+
+    public override void OnThink()
+    {
+        base.OnThink();
+        Tutorial.TutorialGreeting.GreetAround(this, Tutorial.TutorialGreeting.NeedsElara, Tutorial.TutorialGreeting.ElaraLine);
+    }
+
     // ── Interaction ───────────────────────────────────────────────────────────
 
     public override void OnDoubleClick(Mobile from)
