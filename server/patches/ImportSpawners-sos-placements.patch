@@ -1,0 +1,17 @@
+--- a/Projects/UOContent/Engines/Spawners/Commands/ImportSpawnersCommand.cs
++++ b/Projects/UOContent/Engines/Spawners/Commands/ImportSpawnersCommand.cs
+@@ -241,6 +241,14 @@
+                 continue;
+             }
+ 
++            // Shattered Legacy (cc-P681, SoS swap S9): on the Siege of Sosaria land, which Trammel and Felucca both read,
++            // a stock spawner whose home moved is built at its new home, and one left out is not built
++            // (ClusterFSosSpawnPlacements, by the data's guid and facet).
++            if (!ClusterFSosSpawnPlacements.Place(dto.Guid, map, ref location))
++            {
++                continue;
++            }
++
+             BaseSpawner spawner;
+             try
+             {
