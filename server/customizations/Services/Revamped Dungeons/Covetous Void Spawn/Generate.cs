@@ -28,7 +28,7 @@ public static class Generate
 {
     public const string CollectionKey = "newcovetous";
 
-    public static readonly Point3D ControllerLocation = new(5605, 1998, 10);
+    public static readonly Point3D ControllerLocation = new(5606, 1998, 0); // cc-P677: ServUO 5605, 1998, 10 is a flowstone on SoS; the floor is 0
     public static readonly Point3D CoraSpawnerLocation = new(5457, 1808, 0);
     public static readonly Point3D VelaSpawnerLocation = new(2254, 1207, 0);
 

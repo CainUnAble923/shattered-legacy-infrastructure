@@ -2,7 +2,7 @@ diff --git a/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs b/Proje
 index 4cd8d8c..640023d 100644
 --- a/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs
 +++ b/Projects/UOContent/Engines/Stealables/StealableArtifacts.cs
-@@ -172,8 +172,80 @@ public class StealableArtifacts : GenericPersistence
+@@ -172,8 +172,83 @@
          new(Map.Malas, new Point3D(146, 623, 1), 18432, 27648, typeof(Painting6WestArtifact)),
          new(Map.Malas, new Point3D(178, 629, -1), 18432, 27648, typeof(ManStatuetteEastArtifact)),
  
@@ -64,17 +64,20 @@ index 4cd8d8c..640023d 100644
 +        // UnderWorld - Artifact rarity 9
 +        new(Map.TerMur, new Point3D(1066, 1193, -36), 18432, 27648, typeof(TyballsFlaskStandArtifact)),
 +        new(Map.TerMur, new Point3D(1131, 1128, -42), 18432, 27648, typeof(BlockAndTackleArtifact)),
++        // Shattered Legacy (cc-P677): parked on Map.Internal, never spawned (CheckRespawn), slots kept. The Siege of
++        // Sosaria map puts the author's dungeons where the Ararat wreck and Castle Blackthorne stood (this shard builds
++        // no wreck; Blackthorn is off until P691 moves it into the Fold, which gives its 6 their new spots).
 +        //Ararat Stealables (Exploring the Deep) - Artifact rarity 8
-+        new(Map.Trammel, new Point3D(6303, 1664, 11), 9216, 13824, typeof(SternAnchorOfBmvArarat)),
-+        new(Map.Trammel, new Point3D(6303, 1756, 20), 9216, 13824, typeof(ShipsBellOfBmvArarat)),
-+        new(Map.Trammel, new Point3D(6313, 1753, -14), 9216, 13824, typeof(FigureheadOfBmvArarat)),
++        new(Map.Internal, new Point3D(6303, 1664, 11), 9216, 13824, typeof(SternAnchorOfBmvArarat)),
++        new(Map.Internal, new Point3D(6303, 1756, 20), 9216, 13824, typeof(ShipsBellOfBmvArarat)),
++        new(Map.Internal, new Point3D(6313, 1753, -14), 9216, 13824, typeof(FigureheadOfBmvArarat)),
 +        // Castle Blackthorne Stealables - Rarity 8 - does not show rarity on items
-+        new(Map.Trammel, new Point3D(6436, 2606, 11), 9216, 13824, typeof(KingsGildedStatue)),
-+        new(Map.Trammel, new Point3D(6298, 2673, 0), 9216, 13824, typeof(KingsPainting1)),
-+        new(Map.Trammel, new Point3D(6455, 2700, 0), 9216, 13824, typeof(KingsPainting2)),
-+        new(Map.Felucca, new Point3D(6436, 2606, 11), 9216, 13824, typeof(KingsGildedStatue)),
-+        new(Map.Felucca, new Point3D(6298, 2673, 0), 9216, 13824, typeof(KingsPainting1)),
-+        new(Map.Felucca, new Point3D(6455, 2700, 0), 9216, 13824, typeof(KingsPainting2)),
++        new(Map.Internal, new Point3D(6436, 2606, 11), 9216, 13824, typeof(KingsGildedStatue)),
++        new(Map.Internal, new Point3D(6298, 2673, 0), 9216, 13824, typeof(KingsPainting1)),
++        new(Map.Internal, new Point3D(6455, 2700, 0), 9216, 13824, typeof(KingsPainting2)),
++        new(Map.Internal, new Point3D(6436, 2606, 11), 9216, 13824, typeof(KingsGildedStatue)),
++        new(Map.Internal, new Point3D(6298, 2673, 0), 9216, 13824, typeof(KingsPainting1)),
++        new(Map.Internal, new Point3D(6455, 2700, 0), 9216, 13824, typeof(KingsPainting2)),
 +        //TOL - Artifact rarity 11 - does not show rarity on item
 +        new(Map.TerMur, new Point3D(538, 1496, 40), 36864, 55296, typeof(StretchedDinosaurHide)),
 +        new(Map.TerMur, new Point3D(174, 1808, 80), 36864, 55296, typeof(CarvedMyrmydexGlyph)),
@@ -85,3 +88,15 @@ index 4cd8d8c..640023d 100644
      };
  
      public static Type[] TypesOfEntries
+@@ -416,6 +491,11 @@
+                 Item = null;
+             }
+ 
++            if (Entry.Map == Map.Internal)
++            {
++                return; // Shattered Legacy (cc-P677): a parked entry keeps its slot and never spawns
++            }
++
+             if (Item == null && Core.Now >= NextRespawn)
+             {
+                 Item = Entry.CreateInstance();

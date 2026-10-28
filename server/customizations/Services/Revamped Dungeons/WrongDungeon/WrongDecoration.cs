@@ -305,9 +305,9 @@ public static class WrongDecoration
         new("WrongBarredMetalDoor", 0x0687, 5667, 567, 20, DoorFacing.EastCCW),
         new("WrongBarredMetalDoor", 0x0687, 5727, 567, 20, DoorFacing.EastCCW),
         new("Static", 0x031A, 5652, 552, 20, null),
-        new("Static", 0x375A, 5690, 573, 25, null),
-        new("Static", 0x375A, 5827, 590, 1, null),
-        new("Static", 0x375A, 5872, 532, 24, null),
+        new("Static", 0x375A, 5690, 571, 25, null), // cc-P677: with its teleporter
+        new("Static", 0x375A, 5827, 592, 0, null), // cc-P677: with its teleporter
+        new("Static", 0x375A, 5872, 532, 15, null), // cc-P677: with its teleporter
         new("Static", 0x375A, 5792, 525, 10, null),
         new("Static", 0x375A, 5698, 662, 1, null),
         new("Static", 0x375A, 5708, 625, 1, null),

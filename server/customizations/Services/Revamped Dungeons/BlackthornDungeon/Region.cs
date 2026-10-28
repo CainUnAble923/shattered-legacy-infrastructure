@@ -64,8 +64,20 @@ public static class BlackthornRegions
     private static readonly Dictionary<Map, BlackthornDungeon> _dungeons = new();
     private static BlackthornCastle _castle;
 
+    /// <summary>
+    ///     cc-P677 (SoS swap S8): off. On the Siege of Sosaria land the dungeon's area (DungeonBounds) holds the author's
+    ///     own dungeons and the castle's is his town, so neither region registers at start and [GenBlackthorn refuses.
+    ///     The code stays whole for P691, which moves Blackthorn into the Fold's zone 5 and turns this on there.
+    /// </summary>
+    public static bool OnThisLand { get; set; }
+
     public static void Initialize()
     {
+        if (!OnThisLand)
+        {
+            return;
+        }
+
         Register(Map.Trammel);
         Register(Map.Felucca);
     }

@@ -12,7 +12,7 @@ namespace Server;
 ///
 /// Current institutions:
 ///   - Miners' Compact Liaison at Trammel 3498, 2744, Z=4 (mine camp, at its tent's opening)
-///   - Survey Archivist at Trammel 3496, 2754, Z=4 (mine camp, at its tent's opening)
+///   - Survey Archivist at Trammel 3498, 2738, Z=4 (mine camp, at its tent's opening; moved with it, cc-P677)
 ///   - Outriders' Guildmaster at Trammel 3524, 2574, Z=7 (New Haven stables area)
 ///   - Foresters' Guildmaster at Trammel 3441, 2637, Z=28 (New Haven carpenter shop area)
 ///   - Artificers' Guildmaster at TerMur 797, 3431, Z=-10 (Royal City enchanter district)
@@ -58,7 +58,7 @@ public static class ClusterFInstitutionSeeder
         SeedNpc(
             typeof(SurveyArchivist),
             () => new SurveyArchivist(),
-            x: 3496, y: 2754, z: 4,
+            x: 3498, y: 2738, z: 4,
             Direction.East,
             map: Map.Trammel,
             label: "Survey Archivist",

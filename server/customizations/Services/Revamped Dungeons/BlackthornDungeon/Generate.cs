@@ -84,6 +84,13 @@ public static class GenerateBlackthornDungeon
     [ShardCommand(CommandCategory.WorldGeneration, Rerun = CommandRerun.Replaces, Shard = CommandShard.Any, NoDryRun = true, Summary = "Blackthorn Dungeon (revamped) on Trammel and Felucca: the hitching post, the invasion-room doors, the New Magincia blockers, the Felucca castle teleporters, the 44 dungeon spawners and the 10 Agent of the Crown spawners. Deletes its earlier placement first, so it can run again.")]
     public static void Generate_OnCommand(CommandEventArgs e)
     {
+        if (!BlackthornRegions.OnThisLand)
+        {
+            // cc-P677: its area is the author's dungeons on the Siege of Sosaria land; P691 moves it into the Fold.
+            e.Mobile.SendMessage("Blackthorn Dungeon is off on this land until it moves into the Fold (P691). Nothing placed.");
+            return;
+        }
+
         var deleted = Delete();
 
         if (deleted > 0)

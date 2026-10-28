@@ -17,17 +17,19 @@ namespace Server.Items;
 [SerializationGenerator(0, false)]
 public partial class ExodusSummoningAlter : BaseDecayingItem
 {
-    /// <summary>ServUO: the tome's spot per shrine region name.</summary>
+    /// <summary>The tome's spot per shrine region name. ServUO's spots stood on stock's raised shrines; on the Siege of
+    /// Sosaria land (cc-P677) each is the shrine glyph's tile at its standing Z. Honor has no glyph there, only its
+    /// region, so its spot is ServUO's x, y on the ground.</summary>
     public static readonly (string Region, Point3D Spot)[] ShrineSpots =
     {
-        ("Shrine of Compassion", new Point3D(1858, 875, 12)),
-        ("Shrine of Honesty", new Point3D(4209, 564, 60)),
-        ("Shrine of Honor", new Point3D(1727, 3528, 15)),
-        ("Shrine of Humility", new Point3D(4274, 3697, 12)),
-        ("Shrine of Justice", new Point3D(1301, 634, 28)),
-        ("Shrine of Sacrifice", new Point3D(3355, 290, 16)),
-        ("Shrine of Spirituality", new Point3D(1606, 2490, 20)),
-        ("Shrine of Valor", new Point3D(2492, 3931, 17))
+        ("Shrine of Compassion", new Point3D(1858, 875, 0)),
+        ("Shrine of Honesty", new Point3D(4209, 564, 65)),
+        ("Shrine of Honor", new Point3D(1727, 3528, 3)),
+        ("Shrine of Humility", new Point3D(4274, 3697, 0)),
+        ("Shrine of Justice", new Point3D(1301, 634, 16)),
+        ("Shrine of Sacrifice", new Point3D(3355, 290, 4)),
+        ("Shrine of Spirituality", new Point3D(1595, 2490, 25)),
+        ("Shrine of Valor", new Point3D(2492, 3931, 10))
     };
 
     [Constructible]

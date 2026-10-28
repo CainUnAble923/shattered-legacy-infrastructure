@@ -46,8 +46,9 @@ public static class ClusterFSouthMineDecor
 
     private static string Seed(bool dryRun, bool replace)
     {
-        var forgeLocation = new Point3D(3508, 2746, 0);
-        var anvilLocation = new Point3D(3510, 2746, 0);
+        // cc-P677: SoS's mountain covers ServUO's 3508, 2746 and 3510, 2746; the camp's open ground at its foot
+        var forgeLocation = new Point3D(3499, 2746, 4);
+        var anvilLocation = new Point3D(3498, 2746, 4);
 
         var existingForge = FindItem<Forge>(forgeLocation);
         var existingAnvil = FindItem<Anvil>(anvilLocation);

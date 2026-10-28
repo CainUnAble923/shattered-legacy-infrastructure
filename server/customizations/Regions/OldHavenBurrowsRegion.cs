@@ -63,7 +63,7 @@ public class OldHavenBurrowsRegion : DungeonRegion
     public OldHavenBurrowsRegion() : base(RegionName, Map.Trammel, DefaultPriority, Area)
     {
         Entrance = HoleEntrance;
-        GoLocation = new Point3D(5191, 1195, 0); // the middle; the map batch sets the real arrival spot
+        GoLocation = new Point3D(5191, 1192, 0); // near the middle (cc-P677: 5191, 1195 is void on SoS); the map batch sets the real arrival spot
     }
 
     public static void Initialize()
