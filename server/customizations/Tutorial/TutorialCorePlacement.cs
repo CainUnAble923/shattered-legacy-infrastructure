@@ -65,6 +65,50 @@ public static class TutorialCorePlacement
         _ => Spot(key)
     };
 
+    /// <summary>
+    /// cc-P720 item 3: where each lesson's signpost stands, beside its stop. The standing signpost is impassable, so it
+    /// cannot stand on the stop (the road runs through it). Each is the nearest tile to the stop that is off the walked
+    /// route and the road, outside every building, clear of every spot, door and gate, fits a person, and leaves the stop
+    /// reachable (shard-migration notes/cc-P720-tools/sign_spots.py, on the built isle).
+    /// </summary>
+    public static Point2D SignPoint(string key) => key switch
+    {
+        "core.movement" => new Point2D(6646, 3994),
+        "core.backpack" => new Point2D(6656, 3992),
+        "core.paperdoll" => new Point2D(6665, 3993),
+        "core.chat" => new Point2D(6692, 3991),
+        "core.farm" => new Point2D(6714, 3981),
+        "core.death" => new Point2D(6736, 3996),
+        "core.banking" => new Point2D(6762, 3982),
+        "core.league" => new Point2D(6780, 3994),
+        "core.loop" => new Point2D(6794, 3981),
+        "core.travel" => new Point2D(6831, 3992),
+        _ => new Point2D(MarkerSpot(key).X, MarkerSpot(key).Y)
+    };
+
+    public static Point3D SignSpot(string key) => Ground(SignPoint(key));
+
+    /// <summary>cc-P720 item 3: the lesson sign's name, shown on a single click: "Lesson 5: The farm: ...".</summary>
+    public static string SignName(string key)
+    {
+        var core = TutorialStations.Core.ToList();
+        var i = core.FindIndex(s => s.Key == key);
+        return i < 0 ? TutorialStations.Find(key)?.Title ?? key : $"Lesson {i + 1}: {core[i].Title}";
+    }
+
+    public const int OldMarkerId = 0x1F14; // the rune the markers were before cc-P720
+
+    /// <summary>
+    /// cc-P720 item 4: the practice bank's floor (inside its walls). The bank lesson's arrow points at the door until the
+    /// trainee stands in here, then at Merrin.
+    /// </summary>
+    public static readonly Rectangle2D BankFloor = new(new Point2D(6758, 3973), new Point2D(6767, 3980));
+
+    public static bool InBank(Point3D p) => BankFloor.Contains(new Point2D(p.X, p.Y));
+
+    // cc-P720 item 5: the League's notice board, inside the lodge on its north wall, west of the door.
+    public static readonly Point2D LeagueBoard = new(6780, 3996);
+
     // cc-P718 item 5: the clothes stop's table, beside the rack, where each trainee's cloak waits.
     public static readonly Point2D ClothesTable = new(TutorialWorld.Rack.X - 1, TutorialWorld.Rack.Y - 2);
     public const int TableId = 0x0B8F; // "table": a surface 6 high
@@ -92,7 +136,7 @@ public static class TutorialCorePlacement
 
     public static TutorialStationMarker? FindMarker(string key, Map map)
     {
-        foreach (var item in map.GetItemsInRange<TutorialStationMarker>(MarkerSpot(key), 0))
+        foreach (var item in map.GetItemsInRange<TutorialStationMarker>(TutorialWorld.Ground(map, SignPoint(key)), 0))
         { if (!item.Deleted && item.StationKey == key) { return item; } }
         return null;
     }
@@ -123,8 +167,40 @@ public static class TutorialCorePlacement
         return false;
     }
 
-    /// <summary>The practice bank's and the lodge's doors, both in an east-west wall (south and north walls).</summary>
-    public static BaseDoor MakeDoor() => new DarkWoodDoor(DoorFacing.WestCW);
+    /// <summary>
+    /// The practice bank's and the lodge's doors, both in an east-west wall (south and north walls). cc-P720: hung
+    /// WestCCW, so open the door folds back into the wall line (pinned offset -1, 0); WestCW swung it out past the wall
+    /// (Chase 10-28).
+    /// </summary>
+    public static BaseDoor MakeDoor() => new DarkWoodDoor(DoorFacing.WestCCW);
+
+    public const int DoorClosedId = 0x06A9; // DarkWoodDoor WestCCW, closed
+
+    /// <summary>cc-P720: a door at <paramref name="spot"/> hung another way (before cc-P720), or null.</summary>
+    private static BaseDoor? OldDoor(Map map, Point3D spot)
+    {
+        foreach (var door in map.GetItemsInRange<BaseDoor>(spot, 2))
+        {
+            var closed = door.Open ? new Point3D(door.X - door.Offset.X, door.Y - door.Offset.Y, door.Z - door.Offset.Z) : door.Location;
+            if (!door.Deleted && closed == spot && door.ClosedId != DoorClosedId) { return door; }
+        }
+        return null;
+    }
+
+    /// <summary>cc-P720: moves every lesson marker still on its stop (a rune, before cc-P720) to its sign spot.</summary>
+    public static int MoveOldMarkers(Map map)
+    {
+        var moved = new List<TutorialStationMarker>();
+        foreach (var station in TutorialStations.Core)
+        {
+            foreach (var item in map.GetItemsInRange<TutorialStationMarker>(TutorialWorld.Ground(map, new Point2D(MarkerSpot(station.Key).X, MarkerSpot(station.Key).Y)), 0))
+            {
+                if (!item.Deleted && item.StationKey == station.Key && item.Location != TutorialWorld.Ground(map, SignPoint(station.Key))) { moved.Add(item); }
+            }
+        }
+        foreach (var m in moved) { m.MoveToSign(); }
+        return moved.Count;
+    }
 
     public static string Seed(bool dryRun) => SeedOn(TutorialWorld.Isle, dryRun, withHaven: true);
 
@@ -137,6 +213,7 @@ public static class TutorialCorePlacement
         if (!IsTestShard()) { return "Tutorial: refused. Test world only; live is never seeded."; }
         if (map == null) { return "Tutorial: refused. The Fold (map 32) is not registered."; }
         var haven = HavenSpots.Map;
+        if (!dryRun) { MoveOldMarkers(map); } // cc-P720: a rune on its stop becomes the sign beside it
         var markers = TutorialStations.Core.Where(s => FindMarker(s.Key, map) == null).ToArray();
         var mobiles = new (Type Type, Point3D Spot, Func<Mobile> Make)[]
         {
@@ -153,14 +230,19 @@ public static class TutorialCorePlacement
         var gateMissing = !HasItem<TutorialTravelGate>(map, GateSpot);
         var goldMissing = !HasItem<TutorialWalkMark>(map, SecondMark);
         var blueMissing = !HasItem<TutorialBlueWalkTile>(map, FirstMark);
-        var doors = new[] { Ground(TutorialWorld.BankDoor), Ground(TutorialWorld.LodgeDoor) }.Where(p => !HasDoor(map, p)).ToArray();
+        var doorSpots = new[] { Ground(TutorialWorld.BankDoor), Ground(TutorialWorld.LodgeDoor) };
+        var rehung = doorSpots.Select(p => OldDoor(map, p)).Where(d => d != null).ToArray(); // cc-P720
+        var doors = doorSpots.Where(p => !HasDoor(map, p) || rehung.Any(d => d!.Map == map && OldSpot(d) == p)).ToArray();
+        var boardMissing = !HasItem<TutorialLeagueBoard>(map, Ground(LeagueBoard));
         var props = Props.Where(p => !HasItem<Item>(map, Ground(p.At), i => i.ItemID == p.Id && i.Name == p.Name)).ToArray();
 
-        // Preflight the whole requested surface before mutation. Markers are passable, so NPCs can share their tile.
+        // Preflight the whole requested surface before mutation. cc-P720: the markers are signposts beside the stops now
+        // (impassable), on tiles no NPC, door or prop uses.
         // CanFit reads the server's actual land/statics/items. Never guess a clear tile from an offline picture.
-        foreach (var point in markers.Select(s => MarkerSpot(s.Key)).Concat(mobiles.Select(r => r.Spot))
+        foreach (var point in markers.Select(s => SignSpot(s.Key)).Concat(mobiles.Select(r => r.Spot))
                      .Concat(new[] { FirstMark, SecondMark, GateSpot, GhostSpot, Ground(TutorialWorld.Beach) })
-                     .Concat(doors).Concat(props.Select(p => Ground(p.At))))
+                     .Concat(doors.Where(p => !rehung.Any(d => OldSpot(d!) == p))).Concat(props.Select(p => Ground(p.At)))
+                     .Concat(boardMissing ? new[] { Ground(LeagueBoard) } : []))
         {
             if (!FitsOn(point, map))
             { return $"Tutorial: refused. Isle tile {point} is blocked; nothing placed. Is P662's isle patch on the server's map?"; }
@@ -170,16 +252,13 @@ public static class TutorialCorePlacement
             if (!FitsOn(point, haven))
             { return $"Tutorial: refused. New Haven tile {point} is blocked; nothing placed."; }
         }
-        if (TileData.ItemTable[0x1F14].Impassable)
-        { return "Tutorial: refused. The station marker art is impassable in this tiledata."; }
-
         var farm = TutorialFarm.Seed(map, dryRun);
         if (farm.Refused) { return farm.Message; }
         if (!dryRun)
         {
             TutorialCoreTrials.EnsureHooks();
             foreach (var station in markers)
-            { new TutorialStationMarker(station.Key).MoveToWorld(MarkerSpot(station.Key), map); }
+            { new TutorialStationMarker(station.Key).MoveToWorld(TutorialWorld.Ground(map, SignPoint(station.Key)), map); }
             foreach (var row in mobiles)
             { Place(row.Make(), row.Spot, map); }
             if (rookMissing) { Place(new TutorialRecruiter(), HavenSpots.Rook, haven); }
@@ -187,14 +266,18 @@ public static class TutorialCorePlacement
             if (gateMissing) { new TutorialTravelGate().MoveToWorld(GateSpot, map); }
             if (blueMissing) { new TutorialBlueWalkTile().MoveToWorld(FirstMark, map); }
             if (goldMissing) { new TutorialWalkMark().MoveToWorld(SecondMark, map); }
+            foreach (var d in rehung) { d!.Delete(); } // cc-P720: rehung WestCCW
             foreach (var spot in doors) { MakeDoor().MoveToWorld(spot, map); }
+            if (boardMissing) { new TutorialLeagueBoard().MoveToWorld(Ground(LeagueBoard), map); }
             RemoveOldSignpost(map); // cc-P718
             foreach (var (id, at, name) in props) { new Static(id) { Name = name }.MoveToWorld(Ground(at), map); }
         }
         var tiles = (blueMissing ? 1 : 0) + (goldMissing ? 1 : 0);
         var npcs = mobiles.Count + (rookMissing ? 1 : 0) + (townVetMissing ? 1 : 0);
-        return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {npcs} NPCs/echo/vets, {(gateMissing ? 1 : 0)} moongate, {tiles} walking tiles, {doors.Length} doors, {props.Length} props. {farm.Message}";
+        return $"Tutorial{(dryRun ? " dry run" : "")}: {(dryRun ? "would place" : "placed")} {markers.Length} station markers, {npcs} NPCs/echo/vets, {(gateMissing ? 1 : 0)} moongate, {tiles} walking tiles, {doors.Length} doors, {props.Length + (boardMissing ? 1 : 0)} props. {farm.Message}";
     }
+
+    private static Point3D OldSpot(BaseDoor d) => d.Open ? new Point3D(d.X - d.Offset.X, d.Y - d.Offset.Y, d.Z - d.Offset.Z) : d.Location;
 
     /// <summary>cc-P718: removes the old wall-arm chat signpost a seeded world still has. Returns how many.</summary>
     public static int RemoveOldSignpost(Map map)
@@ -227,19 +310,55 @@ public static class TutorialCorePlacement
 public partial class TutorialStationMarker : Item
 {
     [SerializableField(0)] private string _stationKey;
-    public TutorialStationMarker(string key) : base(0x1F14)
+    // cc-P720 item 3: a standing signpost with its board, named for the lesson (it was a blue rune on the stop).
+    public TutorialStationMarker(string key) : base(TutorialCorePlacement.SignpostId)
     {
-        _stationKey = key; Movable = false; Hue = TutorialStyle.SupplyHue;
-        Name = TutorialStations.Find(key)?.Title ?? key;
+        _stationKey = key; Movable = false;
+        Name = TutorialCorePlacement.SignName(key);
     }
-    // cc-P480: markers placed before were pale gray (0x482).
-    [AfterDeserialization(false)] private void Brighten() => Hue = TutorialStyle.SupplyHue;
+
+    // cc-P720: a marker placed before (a rune on its stop) becomes the sign beside the stop once the world has loaded.
+    [AfterDeserialization(false)] private void AsSign() => Timer.DelayCall(TimeSpan.Zero, MoveToSign);
+
+    /// <summary>cc-P720: the signpost's art and name, at its sign spot on its own map.</summary>
+    public void MoveToSign()
+    {
+        if (Deleted) { return; }
+        ItemID = TutorialCorePlacement.SignpostId;
+        Hue = 0;
+        Name = TutorialCorePlacement.SignName(StationKey);
+        if (Map is { } map && map != Map.Internal)
+        {
+            var at = TutorialWorld.Ground(map, TutorialCorePlacement.SignPoint(StationKey));
+            if (Location != at) { MoveToWorld(at, map); }
+        }
+    }
     public override void OnDoubleClick(Mobile from)
     {
         if (from is not PlayerMobile pm || !pm.Alive || !TutorialCoreTrials.Nearby(pm, Location) ||
             TutorialStations.Find(StationKey) is not { } station) { return; }
         if (StationKey == "core.loop" && TutorialCoreTrials.IsDoing(pm, StationKey)) { TutorialCoreTrials.WatchVision(pm); }
         else { ClusterFTutorial.RunStation(pm, station); }
+    }
+}
+
+/// <summary>
+/// cc-P720 item 5: the League's notice board in the lodge. Double-click it to read about the League without joining: it
+/// opens the League's own window, as Elara does (LeagueRegistrarGump), and finishes no lesson.
+/// </summary>
+[SerializationGenerator(0, false)]
+public partial class TutorialLeagueBoard : Item
+{
+    public const string BoardName = "League notice board: read about the League";
+
+    [Constructible]
+    public TutorialLeagueBoard() : base(0x1E5E) { Movable = false; Name = BoardName; }
+
+    public override void OnDoubleClick(Mobile from)
+    {
+        if (from is not PlayerMobile pm) { return; }
+        if (!pm.InRange(Location, 3)) { pm.SendLocalizedMessage(500446); return; } // That is too far away.
+        pm.SendGump(new LeagueRegistrarGump(pm));
     }
 }
 

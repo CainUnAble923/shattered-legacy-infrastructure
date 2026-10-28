@@ -29,6 +29,19 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.28.4
+
+### Changed
+- Test shard: Wren's farmhouse on the Wakening Isle is rebuilt as one whole thatched cottage: roof, walls, steps and door line up, the chimney is part of the hearth inside, and it is furnished, with its own sign by the door.
+- Test shard: the farm field has one tidy fence all round, with the animal pen closed inside it and the field gate at Wren's spot the only way in.
+- Test shard: each lesson on the Wakening Isle is marked by a standing signpost named for it ("Lesson 5: The farm ..."), in place of the blue rune on the ground. Double-click the sign to start that lesson.
+- Test shard: the practice bank looks like a bank: a pitched roof, windows, a bank sign by the door, a counter with Merrin behind it, vault chests, a carpet and lights. The lesson's arrow points at the door, then at Merrin once you are inside.
+- Test shard: the League lodge has a roof, its door in the north wall, League banners outside, and inside a desk for Elara, bookshelves, chairs and a notice board: double-click it to read about the League without joining.
+- Test shard: the bank's and the lodge's doors fold back against the wall when open instead of swinging out past it.
+
+### Fixed
+- Test shard: you can walk onto the dock to the Wakening Isle's moongate: its first planks were a step too high from the beach.
+
 ## 2026.10.28.2
 
 ### Added

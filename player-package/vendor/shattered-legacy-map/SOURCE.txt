@@ -12,6 +12,13 @@ trammel.mapops   facet 1 (Trammel): the Rootdeep Burrows (x 5136-5247, y 1128-12
                  5575,3015) at x 3615-3620, y 2616-2621, its dark mouth x 3617-3619, y 2617-2620, with thirteen loose
                  rocks and debris on the rim (0x1771-0x177C, 0x0C2E-0x0C30, all passable): 49 S+ lines added, the
                  hole's one S+ line gone, one more B line.
+                 cc-P662, 2026-10-26: the Wakening Isle (x 6594-6865, y 3905-4049, site A of cc-P673), on void.
+                 cc-P720, 2026-10-28 (Chase's isle walk, round 2): the isle rebuilt in place by the same driver
+                 (notes/cc-P662-tools/build_isle.py): the bank and the lodge as OSI's stone shop (windows, pitched
+                 shingle roof, gable) and furnished; no meadow fence; no flowers by the road; the sand under the dock's
+                 shore end at the beach's height, so the planks are one step up. P720 built it on the SoS copy; this
+                 stock-land file (release/isle-20261028, cc-P722) takes the same lines for its 44 changed blocks, which
+                 sit on void in both maps (their B fingerprints are the same on both).
 
 Format: shard-migration scripts/mapbuild/mapops.py (one line per changed land cell, L x y tile z; per static added,
 S+ x y z id hue; per EA static removed, S- x y z id hue; B lines fingerprint EA's blocks so the applier can say
