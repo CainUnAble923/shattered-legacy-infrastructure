@@ -275,6 +275,11 @@ public static class ClusterFTutorial
         record.State = TutorialState.Skipped;
         record.WasSkipped = true;
         record.FinishedAt = Core.Now;
+        if (pm.Account is IAccount skipper)
+        {
+            TutorialStart.Unlock(skipper); // cc-P717: New Haven is a start for the account's next characters
+        }
+
         TutorialStart.SendHome(pm); // cc-P663: a skip on the isle wakes in New Haven, pets and all
         SystemLine(pm, "You skipped the tutorial. Double-click Rook if you want to take the lessons and earn their rewards later.");
 
@@ -381,6 +386,10 @@ public static class ClusterFTutorial
         var remedial = record.State == TutorialState.Remedial;
         record.State = TutorialState.Graduated;
         record.FinishedAt = Core.Now;
+        if (pm.Account is IAccount graduate)
+        {
+            TutorialStart.Unlock(graduate); // cc-P717
+        }
 
         ClusterFLoops.Graduate(pm);
         GraduationRewards(pm);

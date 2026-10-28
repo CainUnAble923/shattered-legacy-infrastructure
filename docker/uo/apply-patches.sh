@@ -402,6 +402,13 @@ apply_patch "$PATCHES/StealableArtifacts-servuo-entries.patch"
 # shard-migration/notes/cc-P9-test-center.md section 3; pinned by TestCenterVerification.
 apply_patch "$PATCHES/AccountHandler-test-center-deletion.patch"
 
+# cc-P717 (ours, Chase 2026-10-28). The account's first character must take Tutorial Island; New Haven opens for the
+# account once a character graduates or skips. Pinned hands every account the same cached city list at game login, before
+# any character exists, and the generated GameServerLoginEvent has no handler order a second handler could rely on to
+# replace it afterwards. One line: the list is asked for with the account (CharacterCreation.GetStartingCities(account),
+# which is the shared list unless the tutorial is on). Argued in shard-migration/notes/cc-P717-isle-first.md.
+apply_patch "$PATCHES/AccountHandler-per-account-start-cities.patch"
+
 # P18 (F-5, ours). Young status by time played: 2 weeks (336 h of account game time) instead of 40 h, the
 # login countdown in days and hours, and no skill-total rule (the murder rule stays). The duration and the
 # countdown are in pinned Account.cs and the skill rule in pinned PlayerMobile.OnSkillChange, with no hook to

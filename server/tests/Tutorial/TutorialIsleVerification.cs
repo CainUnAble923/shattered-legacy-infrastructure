@@ -15,6 +15,9 @@
 //   7. A reconnect regenerates the current lesson's practice item.
 //   8. Remedial: Rook's button sends a skipper (and the pet) to the isle's beach past the island gate; the moongate
 //      brings them back beside Rook, who graduates them with the second achievement.
+//   cc-P717 (Chase, 2026-10-28): the account's first character must take the isle. A new account's list shows New Haven
+//   locked; graduating or skipping unlocks it for the whole account, kept after that character is deleted; staff see
+//   both; a New Haven pick while locked starts on the isle; the reset's account flags lock it again.
 //   And: the city list offers the isle first and New Haven second, both as Trammel, with our cliloc descriptions; with
 //   the tutorial off (live), creation records no choice, so turning it on later skips nobody.
 
@@ -62,6 +65,7 @@ public class TutorialIsleVerification : IDisposable
         TutorialCorePlacement.FitsOn = (_, _) => true;
         ClusterFTutorial.GraduationRewards = _ => { };
         TutorialWorld.IsleReady = () => true; // cc-P705: the host's map is void at the isle; it stands in for P662's land
+        TutorialTestStart.ReleaseIdleCopies(); // cc-P717: these facts' isle picks leave copies behind
     }
 
     public void Dispose()
@@ -259,15 +263,16 @@ public class TutorialIsleVerification : IDisposable
     public static IEnumerable<object[]> Rows() =>
     [
         [Before.Fresh, TutorialStart.Choice.Isle, TutorialStart.Outcome.Isle],
-        [Before.Fresh, TutorialStart.Choice.Haven, TutorialStart.Outcome.Skip],
+        // cc-P717: New Haven is locked until the account graduates or skips; a locked pick of it is the isle's row.
+        [Before.Fresh, TutorialStart.Choice.Haven, TutorialStart.Outcome.Isle],
         [Before.InCoreElsewhere, TutorialStart.Choice.Isle, TutorialStart.Outcome.Elsewhere],
-        [Before.InCoreElsewhere, TutorialStart.Choice.Haven, TutorialStart.Outcome.Haven],
+        [Before.InCoreElsewhere, TutorialStart.Choice.Haven, TutorialStart.Outcome.Elsewhere],
         [Before.Graduated, TutorialStart.Choice.Isle, TutorialStart.Outcome.Finished],
         [Before.Graduated, TutorialStart.Choice.Haven, TutorialStart.Outcome.Haven],
         [Before.Skipped, TutorialStart.Choice.Isle, TutorialStart.Outcome.Finished],
         [Before.Skipped, TutorialStart.Choice.Haven, TutorialStart.Outcome.Haven],
         [Before.DeletedMidCore, TutorialStart.Choice.Isle, TutorialStart.Outcome.Isle],
-        [Before.DeletedMidCore, TutorialStart.Choice.Haven, TutorialStart.Outcome.Skip]
+        [Before.DeletedMidCore, TutorialStart.Choice.Haven, TutorialStart.Outcome.Isle]
     ];
 
     [Theory]
@@ -284,7 +289,8 @@ public class TutorialIsleVerification : IDisposable
             switch (before)
             {
                 case Before.Graduated:
-                    t.Record.State = TutorialState.Graduated;
+                    FinishCore(t.Record); // cc-P717: a real graduation, which unlocks New Haven
+                    Assert.Null(ClusterFTutorial.Graduate(first));
                     break;
                 case Before.Skipped:
                     Assert.True(ClusterFTutorial.Skip(first));
@@ -479,8 +485,10 @@ public class TutorialIsleVerification : IDisposable
     {
         using var t = new Trainees();
         var pm = t.Add();
-        Create(pm, TutorialStart.Choice.Haven);
+        // cc-P717: a fresh account cannot skip at creation (New Haven is locked); it skips from the isle.
+        Create(pm, TutorialStart.Choice.Isle);
         ClusterFTutorial.OnLogin(pm);
+        Assert.True(ClusterFTutorial.Skip(pm));
         Assert.Equal(TutorialState.Skipped, t.Record.State);
 
         var pet = ClusterFTutorial.GivePet(pm, "dog")!;
@@ -623,5 +631,121 @@ public class TutorialIsleVerification : IDisposable
         Create(next, TutorialStart.Choice.Isle);
         Assert.Equal(TutorialStart.Outcome.Isle, TutorialStart.ConsumeAtLogin(next));
         Assert.True(TutorialWorld.IsOnIsle(next));
+    }
+
+    // ---------------------------------------------------------------- cc-P717: the isle first, New Haven after
+
+    private static string[] CityNames(IAccount account) =>
+        Server.Engines.CharacterCreation.CharacterCreation.GetStartingCities(account).Select(c => c.City).ToArray();
+
+    private static void FinishCore(TutorialRecord record)
+    {
+        foreach (var s in TutorialStations.Core)
+        {
+            record.StationsDone.Add(s.Key);
+        }
+    }
+
+    [Fact]
+    public void ANewAccountSeesNewHavenLockedWithItsReason()
+    {
+        using var t = new Trainees();
+        Assert.False(TutorialStart.IsHavenUnlocked(t.Account));
+        var cities = Server.Engines.CharacterCreation.CharacterCreation.GetStartingCities(t.Account);
+        Assert.Equal([TutorialStart.IsleCity, TutorialStart.LockedHavenCity], cities.Select(c => c.City).ToArray());
+        Assert.Equal([ShardClilocs.TutorialIslandCity, ShardClilocs.NewHavenLockedCity], cities.Select(c => c.Description).ToArray());
+        Assert.Equal(TutorialStart.Choice.Isle, TutorialStart.ChoiceOf(cities[1])); // the locked entry is the isle
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GraduatingOrSkippingUnlocksNewHavenForTheWholeAccount(bool graduate)
+    {
+        using var t = new Trainees();
+        var first = t.Add();
+        Create(first, TutorialStart.Choice.Isle);
+        ClusterFTutorial.OnLogin(first);
+        Assert.False(TutorialStart.IsHavenUnlocked(t.Account));
+
+        if (graduate)
+        {
+            FinishCore(t.Record);
+            Assert.Null(ClusterFTutorial.Graduate(first));
+        }
+        else
+        {
+            Assert.True(ClusterFTutorial.Skip(first));
+        }
+
+        Assert.True(TutorialStart.IsHavenUnlocked(t.Account));
+        Assert.Equal([TutorialStart.IsleCity, TutorialStart.HavenCity], CityNames(t.Account));
+
+        // Kept after the character who earned it is deleted; the account's next character may start in New Haven.
+        first.Delete();
+        Assert.True(TutorialStart.IsHavenUnlocked(t.Account));
+        var next = t.Add();
+        Create(next, TutorialStart.Choice.Haven);
+        Assert.Equal(TutorialStart.Outcome.Haven, TutorialStart.ConsumeAtLogin(next));
+        Assert.Same(HavenSpots.Map, next.Map);
+        Assert.Equal(HavenSpots.Start, next.Location);
+    }
+
+    [Fact]
+    public void StaffAccountsAlwaysSeeBoth()
+    {
+        using var t = new Trainees();
+        t.Account.AccessLevel = AccessLevel.GameMaster;
+        Assert.Equal([TutorialStart.IsleCity, TutorialStart.HavenCity], CityNames(t.Account));
+    }
+
+    [Fact]
+    public void ANewHavenPickWhileLockedStartsOnTheIsle()
+    {
+        using var t = new Trainees();
+        var pm = t.Add();
+        Create(pm, TutorialStart.Choice.Haven); // a client that sends the unlocked list's "New Haven" anyway
+        Assert.True(TutorialWorld.IsOnIsle(pm));
+        Assert.Equal(TutorialStart.Outcome.Isle, TutorialStart.ConsumeAtLogin(pm));
+        Assert.Equal(TutorialState.InCore, t.Record.State);
+        Assert.False(t.Record.WasSkipped);
+        Assert.Equal(0, ClusterFLoops.LoopOf(pm));
+    }
+
+    [Fact]
+    public void TheResetsAccountFlagsLockNewHavenAgain()
+    {
+        using var t = new Trainees();
+        var pm = t.Add();
+        Create(pm, TutorialStart.Choice.Isle);
+        ClusterFTutorial.OnLogin(pm);
+        Assert.True(ClusterFTutorial.Skip(pm));
+        Assert.True(TutorialStart.IsHavenUnlocked(t.Account));
+
+        // [ResetMyAccount and [ClusterFReset both run ExecuteReset; its "account flags" box clears the unlock.
+        ClusterFDevTools.ExecuteReset(pm, pm, t.Account, new ResetOptions { Flags = true });
+        Assert.False(TutorialStart.IsHavenUnlocked(t.Account));
+        Assert.Equal([TutorialStart.IsleCity, TutorialStart.LockedHavenCity], CityNames(t.Account));
+
+        // Earned again by the next skip or graduation.
+        t.Record.State = TutorialState.InCore;
+        Assert.True(ClusterFTutorial.Skip(pm));
+        Assert.True(TutorialStart.IsHavenUnlocked(t.Account));
+    }
+
+    // Only the flag unlocks: a finished record would survive the reset, which clears flags but not the record. An account
+    // that finished before cc-P717 sees New Haven locked, and either pick still starts in New Haven.
+    [Fact]
+    public void AnAccountThatFinishedBeforeThisBuildSeesItLockedAndStartsInNewHaven()
+    {
+        using var t = new Trainees();
+        t.Record.State = TutorialState.Graduated; // no unlock flag: saved before cc-P717
+        Assert.False(TutorialStart.IsHavenUnlocked(t.Account));
+        var pm = t.Add();
+        Create(pm, TutorialStart.Choice.Haven);
+        Assert.Equal(TutorialStart.Outcome.Finished, TutorialStart.ConsumeAtLogin(pm));
+        Assert.Same(HavenSpots.Map, pm.Map);
+        Assert.Equal(HavenSpots.Start, pm.Location);
+        Assert.Equal(TutorialState.Graduated, t.Record.State);
     }
 }
