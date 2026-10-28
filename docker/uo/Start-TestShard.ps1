@@ -14,7 +14,9 @@
       .\docker\uo\Start-TestShard.ps1 -NoMapOverlay
                                                  cc-P188: start on EA's Trammel, without our map changes (an empty
                                                  overlay is mounted), to see what the map patch adds or to prove
-                                                 status.json's rootdeepMap reads false without it
+                                                 status.json's rootdeepMap reads false without it. cc-P675: also
+                                                 without the Siege of Sosaria map; Felucca then shows EA's Trammel too
+                                                 (it reads Trammel's files since the swap)
 
   After a start it waits for the container's health check (docker-compose.test.yml, cc-P96). Healthy: the
   image is tagged sl-modernuo:good-<commit> from its sl.commit label (build.sh), and the commit is written
@@ -161,6 +163,9 @@ if ($j -notmatch '"0\.0\.0\.0:2594"' -or $j -match ':2593"') {
 # so the shard reads our map1LegacyMUL.uop, statics1.mul and staidx1.mul and EA's everything else. The overlay is
 # (re)built here when the patch or the EA files changed (the applier's stamp decides); an empty overlay folder is
 # harmless, the shard then reads EA's Trammel.
+# cc-P675 (SoS swap S2): the overlay is the Siege of Sosaria map plus our patch, built from the package's SoS files
+# (player-package\vendor\sos-trammel-map\files\, Add-SosMap.ps1), and Trammel and Felucca both read it. Without those
+# files the overlay is left as it is, with a warning, as it was without EA's client data.
 $overlayDir = "$repo\client-data\sl-map-overlay"
 $overlayIn  = '/var/lib/uo/client-data/sl-map-overlay'
 if (-not (Test-Path -LiteralPath $overlayDir)) { New-Item -ItemType Directory -Path $overlayDir -Force | Out-Null }
@@ -171,11 +176,11 @@ if ($NoMapOverlay) {
     if (-not (Test-Path -LiteralPath $empty)) { New-Item -ItemType Directory -Path $empty -Force | Out-Null }
     $env:CLIENT_DATA_OVERLAY = $empty
     Write-Host "-NoMapOverlay: an empty overlay is mounted; the shard reads EA's Trammel" -ForegroundColor Yellow
-} elseif (Test-Path -LiteralPath (Join-Path $eaData 'map1LegacyMUL.uop')) {
+} elseif (Test-Path -LiteralPath "$repo\player-package\vendor\sos-trammel-map\files\base-map1legacymul.uop") {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'Build-MapOverlay.ps1') -UoData $eaData -Out $overlayDir
     if ($LASTEXITCODE -ne 0) { throw "Build-MapOverlay.ps1 failed ($LASTEXITCODE). Not starting." }
 } else {
-    Write-Host "no EA client data at ${eaData}: the map overlay is left as it is" -ForegroundColor Yellow
+    Write-Host "no Siege of Sosaria map files in player-package\vendor\sos-trammel-map\files (Add-SosMap.ps1): the map overlay is left as it is" -ForegroundColor Yellow
 }
 if ($j -notmatch [regex]::Escape('"' + $overlayIn + '"')) {
     $j = $j -replace '("dataDirectories":\s*\[)', ('$1' + "`n" + '    "' + $overlayIn + '",')

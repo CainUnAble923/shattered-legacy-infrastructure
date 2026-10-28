@@ -21,14 +21,18 @@
 //     loop vision gets the scene's level instead (TutorialVisionScene.AlterLight), for them alone.
 //   Trammel's protections (Young, no non-consensual PvP) come from the map's TrammelRules, not from here.
 //
-// FoldMirrorRegion: Trammel over void C (x 6160-6639, y 1832-2279), where the Wakening Isle's tiles are painted (design
-// 3.1). The same tiles exist on Trammel, where no road, gate or teleporter reaches them; if a bug or a future teleporter
-// ever puts a player there, they are sent to the New Haven start (HavenSpots.Start, cc-P663). Staff are left
-// alone, so they can inspect the tiles on Trammel. Travel into it is refused for players too, so a rune never lands
-// one there. P24 and P481 found void C in no pinned region and no ServUO Trammel region.
+// FoldMirrorRegion: Trammel and Felucca over the empty room of site A (x 6160-7167, y 3744-4095; cc-P673 1.4), where the
+// Wakening Isle's tiles are painted (trammel.mapops, cc-P662). The same tiles exist on Trammel, and on Felucca since it
+// reads Trammel's files (SosMaps.cs, cc-P675), where no road, gate or teleporter reaches them; if a bug or a future
+// teleporter ever puts a player there, they are sent to the New Haven start (HavenSpots.Start, cc-P663). Staff are left
+// alone, so they can inspect the tiles. Travel into it is refused for players too, so a rune never lands one there.
+// cc-P675: it was void C (x 6160-6639, y 1832-2279) on stock Trammel; on the Siege of Sosaria map that is the author's
+// Passage of Lost Souls (level 2 at 6202, 2116), so it moved before the swap goes live. The room is site A with the
+// buffer P673 kept round it for the Fold's later zones (434 tiles west, 161 north, to the east and south edges), void
+// in the SoS file (notes/cc-P673-sos-swap-plan.md 1.1-1.3).
 //
 // FoldMirrorRegion is registered in Initialize, after RegionJsonSerializer.LoadRegions and World.Load (Main.cs:669-673),
-// every start. Neither holds saved data.
+// every start, once on each map. Neither holds saved data.
 
 using System;
 using Server.Mobiles;
@@ -62,27 +66,38 @@ public class FoldMirrorRegion : BaseRegion
 {
     public const string RegionName = "the Fold's mirror";
 
-    /// <summary>Void C, x 6160-6639, y 1832-2279 inclusive (Rectangle3D's end is exclusive).</summary>
-    public static readonly Rectangle3D Area = new(new Point3D(6160, 1832, MinZ), new Point3D(6640, 2280, MaxZ));
+    /// <summary>Site A's empty room, x 6160-7167, y 3744-4095 inclusive (Rectangle3D's end is exclusive): to the map's edges.</summary>
+    public static readonly Rectangle3D Area = new(new Point3D(6160, 3744, MinZ), new Point3D(7168, 4096, MaxZ));
 
     public const string SentHomeMessage = "The empty land lets go of you, and you wake in New Haven.";
 
+    /// <summary>Trammel's mirror.</summary>
     public static FoldMirrorRegion Instance { get; private set; }
 
-    public FoldMirrorRegion() : base(RegionName, Map.Trammel, DefaultPriority, Area)
+    /// <summary>cc-P675: Felucca's twin (Felucca reads Trammel's files).</summary>
+    public static FoldMirrorRegion FeluccaInstance { get; private set; }
+
+    public FoldMirrorRegion(Map map) : base(RegionName, map, DefaultPriority, Area)
     {
     }
 
     public static void Initialize()
     {
-        if (Instance != null || Map.Trammel == null)
+        if ((Instance == null || Instance.Map != Map.Trammel) && Map.Trammel != null)
         {
-            return;
+            Instance = new FoldMirrorRegion(Map.Trammel);
+            Instance.Register();
         }
 
-        Instance = new FoldMirrorRegion();
-        Instance.Register();
+        if ((FeluccaInstance == null || FeluccaInstance.Map != Map.Felucca) && Map.Felucca != null)
+        {
+            FeluccaInstance = new FoldMirrorRegion(Map.Felucca);
+            FeluccaInstance.Register();
+        }
     }
+
+    /// <summary>True on the two maps the mirror covers.</summary>
+    public static bool Mirrors(Map map) => map != null && (map == Map.Trammel || map == Map.Felucca);
 
     /// <summary>
     /// Where a player found here goes: the New Haven start. cc-P663: read from HavenSpots, since the start list's first
@@ -112,7 +127,7 @@ public class FoldMirrorRegion : BaseRegion
     /// <summary>Moves <paramref name="m"/> to the New Haven start if it is still a player inside the mirror.</summary>
     public static void SendHome(Mobile m)
     {
-        if (m == null || m.Deleted || !SendsHome(m) || m.Map != Map.Trammel || !Area.Contains(m.Location))
+        if (m == null || m.Deleted || !SendsHome(m) || !Mirrors(m.Map) || !Area.Contains(m.Location))
         {
             return;
         }

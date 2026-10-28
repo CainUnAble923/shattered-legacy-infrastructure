@@ -5,9 +5,11 @@
 // C:\Ultima Online Classic), so every fact here is [SkippableFact] and skips without tile data, as pinned's own
 // pathfinding tests do (Fixtures/TileDataRequirement.cs). With tile data (the builder image run by hand with the
 // client folder mounted and MODERNUO_TEST_DATA_DIR set, notes section 5) they:
-//   1. check the real adapter (Map.Tiles and TileData) against New Haven tiles read independently from the UOP by name
-//      hash in cc-P134 (notes/cc-P134-vseuoaware-art-checks-mcp.md section 4): Trammel 3503,2574 is land 0x03E9 Z 14
-//      with no statics, and 3503,2573 holds statics 0x0D33 and 0x0B24 at Z 14;
+//   1. check the real adapter (Map.Tiles and TileData) against tiles read independently from the UOP by name hash.
+//      cc-P675: on the Siege of Sosaria map (the server's map overlay mounted over the client folder; shard-migration
+//      notes/cc-P675-tools/spots.py read them): Trammel 3503,2574 (stock New Haven, forest now) is land 0x0006 Z 14 with
+//      no statics, and Valunstead 479,388 holds floors 0x04AB at Z 20 and 40 and roof 0x0596 at 49 on land 0x0006 Z 15.
+//      It was cc-P134's stock read (notes/cc-P134-vseuoaware-art-checks-mcp.md section 4) until the swap;
 //   2. run [ValidateSpots' rule over the twelve spawn files the World setup tab lists and over every decoration file
 //      pinned's [Decorate reads, and over New Haven's statics and shore, writing the reports to SL_MAPCHECK_REPORT_DIR
 //      when it is set (the notes quote them). These report; they fail only if a file cannot be read.
@@ -83,16 +85,18 @@ public class MapCheckRealDataVerification
     }
 
     [SkippableFact]
-    public void TheRealAdapterReadsNewHavenAsTheIndependentUopReadDid()
+    public void TheRealAdapterReadsTheSosMapAsTheIndependentUopReadDid()
     {
         TileDataRequirement.SkipIfMissing();
         var src = new ClusterFMapTileSource(Map.Trammel);
         var land = src.GetLandTile(3503, 2574);
-        Assert.Equal(0x03E9, land.ID);
+        Assert.Equal(0x0006, land.ID);
         Assert.Equal(14, land.Z);
         Assert.Empty(src.GetStaticTiles(3503, 2574));
-        var statics = src.GetStaticTiles(3503, 2573).Select(s => (s.ID, s.Z)).OrderBy(s => s.ID).ToArray();
-        Assert.Equal(new[] { (0x0B24, 14), (0x0D33, 14) }, statics);
+        Assert.Equal(0x0006, src.GetLandTile(479, 388).ID);
+        Assert.Equal(15, src.GetLandTile(479, 388).Z);
+        var statics = src.GetStaticTiles(479, 388).Select(s => (s.ID, s.Z)).OrderBy(s => s.Z).ToArray();
+        Assert.Equal(new[] { (0x04AB, 20), (0x04AB, 40), (0x0596, 49) }, statics);
         // And the flags come from the real tiledata: deep water is Wet, grass is not, a wall is Impassable.
         Assert.True((src.LandFlags(0x00A8) & TileFlag.Wet) != 0, "0x00A8 water is Wet");
         Assert.True((src.LandFlags(0x0003) & (TileFlag.Wet | TileFlag.Impassable)) == 0, "0x0003 grass is open");
