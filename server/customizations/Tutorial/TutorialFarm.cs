@@ -41,6 +41,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ModernUO.Serialization;
 using Server.Commands;
 using Server.Engines.Spawners;
@@ -752,7 +753,19 @@ namespace Server.Tutorial
 
             int addons = 0, doors = 0, hands = 0, spawners = 0, present = 0;
 
-            if (FindAddon<TutorialIsleFarmAddon>(map, TutorialIsleFarmLayout.Anchor) is { } placed)
+            // cc-P720: a farm laid with an older layout (P663's hillside farmhouse) is taken up, with its door, and laid again.
+            if (FindAddon<TutorialIsleFarmAddon>(map, TutorialIsleFarmLayout.Anchor) is { } old && !IsCurrent(old))
+            {
+                if (!dryRun)
+                {
+                    old.Delete();
+                    FindDoor(map, TutorialIsleFarmLayout.OldDoorSpot)?.Delete();
+                }
+
+                addons++;
+                if (!dryRun) { new TutorialIsleFarmAddon().MoveToWorld(TutorialIsleFarmLayout.Anchor, map); }
+            }
+            else if (FindAddon<TutorialIsleFarmAddon>(map, TutorialIsleFarmLayout.Anchor) is { } placed)
             {
                 present++;
                 if (!dryRun) { FixGateSign(placed); } // cc-P718
@@ -766,7 +779,7 @@ namespace Server.Tutorial
             if (FindDoor(map, TutorialIsleFarmLayout.DoorSpot) != null) { present++; }
             else
             {
-                if (!dryRun) { MakeDoor().MoveToWorld(TutorialIsleFarmLayout.DoorSpot, map); }
+                if (!dryRun) { MakeIsleDoor().MoveToWorld(TutorialIsleFarmLayout.DoorSpot, map); }
                 doors++;
             }
 
@@ -881,6 +894,22 @@ namespace Server.Tutorial
         /// <summary>The layout's door art 0x06AD: dark wood, facing SouthCW = 4 (closed id 0x06A5 + 2 x facing, Doors.cs DarkWoodDoor).</summary>
         public static BaseDoor MakeDoor() => new DarkWoodDoor(DoorFacing.SouthCW);
 
+        /// <summary>cc-P720: the isle farmhouse's door, in the cottage's south wall (OSI's 0x06A5 there).</summary>
+        public static BaseDoor MakeIsleDoor() => new DarkWoodDoor(DoorFacing.WestCW);
+
+        /// <summary>
+        /// cc-P720: true when <paramref name="addon"/> holds exactly today's layout (art and offsets; the gate sign as the
+        /// addon lays it). A farm laid before (P663's hillside farmhouse) is not.
+        /// </summary>
+        public static bool IsCurrent(BaseAddon addon)
+        {
+            var a = TutorialIsleFarmLayout.Anchor;
+            var wanted = TutorialIsleFarmLayout.Pieces.Where(p => IsleArt(p.Id) != null)
+                .Select(p => (IsleArt(p.Id)!.Value, p.X - a.X, p.Y - a.Y, p.Z - a.Z)).OrderBy(t => t).ToList();
+            var placed = addon.Components.Select(c => (c.ItemID, c.Offset.X, c.Offset.Y, c.Offset.Z)).OrderBy(t => t).ToList();
+            return wanted.SequenceEqual(placed);
+        }
+
         public static T? FindAddon<T>(Map map, Point3D anchor) where T : BaseAddon
         {
             foreach (var item in map.GetItemsInRange<T>(anchor, 2))
@@ -905,6 +934,10 @@ namespace Server.Tutorial
         public const int OldSignBoard = 0x0BCF;
         public const int GateSignpost = 0xA854;
         public const string GateSignpostName = "Farm signpost: Wren the Farmhand at the gate";
+
+        // cc-P720 item 6: the farmhouse's own sign (the cottage multi's brass sign, on its hanger by the steps)
+        public const int HouseSignId = 0x0BD2;
+        public const string HouseSignName = "Wren's farmhouse";
 
         /// <summary>The isle farm's art for a layout piece, or null to leave it out.</summary>
         public static int? IsleArt(int id) => id switch
@@ -1040,6 +1073,10 @@ namespace Server.Items
                 if (art == TutorialFarm.GateSignpost)
                 {
                     c.Name = TutorialFarm.GateSignpostName; // cc-P718
+                }
+                else if (art == TutorialFarm.HouseSignId)
+                {
+                    c.Name = TutorialFarm.HouseSignName; // cc-P720
                 }
 
                 AddComponent(c, x - a.X, y - a.Y, z - a.Z);
