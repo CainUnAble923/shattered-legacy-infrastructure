@@ -36,12 +36,39 @@ using Server.Items;
 using Server.Mobiles;
 using Server.Network;
 
+// cc-P721 (Chase 10-28 09:22, "vision is cool, it's dark at beginning, we need actor to swing sword at gem"): the
+// opening is lit from its second beat (Lit, and two braziers by the Gem), the Stranger walks up to the Gem and swings
+// at it (a one-handed attack animation facing it, a sword hit, a burst on the Gem) before it breaks, and every beat is
+// later, so each line stays up longer: 45 s became 61 s (+36%). The beats' seconds are named in Beats.
+
 namespace Server.Tutorial;
 
 public static class TutorialVisionScene
 {
-    /// <summary>The scene's length in seconds: the last beat releases the player.</summary>
-    public const int Length = 45;
+    /// <summary>cc-P721: each beat's second (P665's in brackets).</summary>
+    public static class Beats
+    {
+        public const int Start = 0;       // [0] fade to black, "A vision."
+        public const int Lights = 2;      // [3] lit: the Gem, the braziers, the Stranger at a distance
+        public const int Walk = 4;        // the Stranger walks to the Gem: 4, 5, 6
+        public const int Face = 7;        // turns to it
+        public const int Strike = 8;      // [8] the swing, the hit, the bolt, "The sword strikes the Gem."
+        public const int Burst = 9;       // [9]
+        public const int Shards = 16;     // [12] the shards and the broken sword
+        public const int Flash = 23;      // [17]
+        public const int Fold = 24;       // [18]
+        public const int Echo = 28;       // [21]
+        public const int EchoSays = 30;   // [22]
+        public const int EchoFade = 39;   // [29]
+        public const int Hooded = 41;     // [30]
+        public const int HoodedSays = 42; // [31]
+        public const int Keep = 47;       // [34]
+        public const int FadeOut = 52;    // [38]
+        public const int Gate = 57;       // [42]
+    }
+
+    /// <summary>The scene's length in seconds: the last beat releases the player. cc-P721: 61 (P665: 45).</summary>
+    public const int Length = 61;
 
     /// <summary>Full-screen panel 1, the broken sword (registry.csv, a placeholder until Chase draws it).</summary>
     public const int PanelBrokenSword = 23209;
@@ -54,8 +81,12 @@ public static class TutorialVisionScene
 
     // Light levels (0 is full day, 30 near black: LightCycle's scale).
     public const int Black = 30;
-    public const int Dim = 18;
+    public const int Dim = 12;   // cc-P721: was 18, too dark to follow
+    public const int Lit = 6;    // cc-P721: the opening, so the Gem and the Stranger read from the first beat
     public const int Flash = 0;
+    public const int BrazierId = 0x0E31; // a lit brazier
+    public const int SwordHitSound = 0x237; // the longsword's hit (Longsword.DefHitSound)
+    public const int SlashAnimation = 9;    // a one-handed slash (WeaponAnimation.Slash1H)
 
     public const int GemHue = 0x08AF;      // Celestial (ResourceInfo.cs)
     public const int DarkHue = 0x455;      // near-black cloth
@@ -143,6 +174,12 @@ public static class TutorialVisionScene
             return false;
         }
 
+        TutorialWake.Stand(pm); // cc-P721: never both at once
+        // cc-P721: the windows that sit over the middle of the screen would hide the scene (the P721 capture: the lesson
+        // page and the patch notes covered the Gem and the Stranger), so they close as it starts.
+        pm.CloseGump<TutorialTrialGump>();
+        pm.CloseGump<TutorialRecruiterGump>();
+        pm.CloseGump<Server.BulletinGump>();
         var scene = new Scene(pm, pm.Map, finished, ended) { Origin = pm.Location };
         Active[pm.Serial] = scene;
         pm.Frozen = true;
@@ -238,38 +275,63 @@ public static class TutorialVisionScene
         var pm = s.Player;
         switch (s.Second)
         {
-            case 0: // Touch the stones: frozen, fade to black.
+            case Beats.Start: // Touch the stones: frozen, fade to black.
                 Screen(s, ScreenEffectType.FadeOut);
                 SetLight(s, Black);
                 TargetSparkle(s, pm, 0x376A);
                 Sound(s, 0x1FE);
                 Subtitle(s, 0);
                 break;
-            case 3: // Dim light up: the Gem on a plinth, the Stranger beside it with a longsword.
+            case Beats.Lights: // Lit: the Gem on a plinth between two braziers, the Stranger at a distance with a longsword.
                 Screen(s, ScreenEffectType.FadeIn);
-                SetLight(s, Dim);
+                SetLight(s, Lit);
                 var pedestal = Place(s, new TutorialVisionProp(PedestalId), At(s, 2, -2));
                 s.Gem = Place(s, new TutorialVisionProp(GemId) { Hue = GemHue, Name = "the Gem of Immortality" },
                     new Point3D(pedestal.X, pedestal.Y, pedestal.Z + TileData.ItemTable[PedestalId].CalcHeight));
-                s.Stranger = Figure(s, TutorialVisionFigure.Stranger(), At(s, 3, -1), Direction.West);
+                Place(s, new TutorialVisionProp(BrazierId) { Name = "a brazier", Light = LightType.Circle300 }, At(s, 1, -3));
+                Place(s, new TutorialVisionProp(BrazierId) { Name = "a brazier", Light = LightType.Circle300 }, At(s, 3, -3));
+                s.Stranger = Figure(s, TutorialVisionFigure.Stranger(), At(s, 6, -1), Direction.West);
                 Sparkle(s, s.Gem, 0x376A, GemHue);
                 Sound(s, 0x20F);
                 Subtitle(s, 1);
                 break;
-            case 5:
-            case 7:
-                if (s.Gem != null) { Sparkle(s, s.Gem, 0x376A, GemHue); }
+            case Beats.Walk:
+            case Beats.Walk + 1:
+            case Beats.Walk + 2: // the Stranger walks up to the Gem, a tile a second
+                if (s.Stranger is { Deleted: false } walker)
+                {
+                    var to = At(s, 6 - (s.Second - Beats.Walk + 1), -1);
+                    walker.Direction = Direction.West | Direction.Running;
+                    walker.MoveToWorld(to, s.Map);
+                }
+
+                if (s.Gem != null && s.Second != Beats.Walk + 1) { Sparkle(s, s.Gem, 0x376A, GemHue); }
                 break;
-            case 8: // The strike.
+            case Beats.Face: // facing the Gem (up and to the left of it), the sword raised
+                if (s.Stranger is { Deleted: false } facer) { facer.Direction = Direction.Up; }
+                break;
+            case Beats.Strike: // The strike: a real swing at the Gem, the hit, the bolt.
+                if (s.Stranger is { Deleted: false } striker)
+                {
+                    striker.Direction = Direction.Up;
+                    striker.Animate(SlashAnimation, 7, 1, true, false, 0);
+                }
+
+                Sound(s, SwordHitSound);
                 if (s.Gem != null) { Bolt(s, s.Gem); }
                 Sound(s, 0x29);
                 Subtitle(s, 2);
                 break;
-            case 9:
+            case Beats.Burst:
                 if (s.Gem != null) { Sparkle(s, s.Gem, 0x36BD, 0, 20); }
                 Sound(s, 0x307);
                 break;
-            case 12: // The shards and the broken sword.
+            case Beats.Burst + 2: // a second blow, so it is seen
+                if (s.Stranger is { Deleted: false } again) { again.Animate(SlashAnimation, 7, 1, true, false, 0); }
+                Sound(s, SwordHitSound);
+                if (s.Gem != null) { Sparkle(s, s.Gem, 0x3709, GemHue, 20); }
+                break;
+            case Beats.Shards: // The shards and the broken sword.
                 if (s.Gem is { } gem)
                 {
                     foreach (var (dx, dy) in ShardOffsets)
@@ -288,19 +350,19 @@ public static class TutorialVisionScene
                 Sound(s, 0x211);
                 Subtitle(s, 3);
                 break;
-            case 17: // White flash, then black: the world folds.
+            case Beats.Flash: // White flash, then black: the world folds.
                 Screen(s, ScreenEffectType.LightFlash);
                 SetLight(s, Flash);
                 Sound(s, 0x220);
                 Subtitle(s, 4);
                 Panel(s, PanelBrokenSword);
                 break;
-            case 18:
+            case Beats.Fold:
                 Screen(s, ScreenEffectType.FadeOut);
                 SetLight(s, Black);
                 RemoveAllPlaced(s);
                 break;
-            case 21: // Dim light: the player's own echo appears and speaks.
+            case Beats.Echo: // Dim light: the player's own echo appears and speaks.
                 Screen(s, ScreenEffectType.FadeIn);
                 ClosePanel(s);
                 SetLight(s, Dim);
@@ -308,30 +370,30 @@ public static class TutorialVisionScene
                 Sparkle(s, s.Echo, 0x376A);
                 Sound(s, 0x44D);
                 break;
-            case 22:
+            case Beats.EchoSays:
                 Say(s, s.Echo, EchoLine);
                 Subtitle(s, 5);
                 break;
-            case 29:
+            case Beats.EchoFade:
                 if (s.Echo != null) { Sparkle(s, s.Echo, 0x374A); }
                 Sound(s, 0x3C4);
                 break;
-            case 30: // A hooded figure at the edge of the light, and the broken sword in a ring of stones (the crest).
+            case Beats.Hooded: // A hooded figure at the edge of the light, and the broken sword in a ring of stones (the crest).
                 RemoveAllPlaced(s);
                 s.Hooded = Figure(s, TutorialVisionFigure.Hooded(), At(s, -3, -3), Direction.Down);
                 s.Sword = Place(s, new TutorialVisionProp(SwordId) { Name = "the broken sword", Hue = DarkHue }, At(s, -2, -1));
                 Sound(s, 0x212);
                 Panel(s, PanelCrest);
                 break;
-            case 31:
+            case Beats.HoodedSays:
                 Say(s, s.Hooded, FigureLine);
                 Subtitle(s, 6);
                 break;
-            case 34:
+            case Beats.Keep:
                 ClosePanel(s);
                 Subtitle(s, 7);
                 break;
-            case 38: // Fade to black; back to the stones.
+            case Beats.FadeOut: // Fade to black; back to the stones.
                 Screen(s, ScreenEffectType.FadeOut);
                 SetLight(s, Black);
                 RemoveAllPlaced(s);
@@ -339,7 +401,7 @@ public static class TutorialVisionScene
                 Sound(s, 0x1FE);
                 Subtitle(s, 8);
                 break;
-            case 42:
+            case Beats.Gate:
                 Subtitle(s, 9);
                 break;
             case Length: // Light restored, released.

@@ -191,8 +191,8 @@ public class TutorialCopiesVerification : IDisposable
         RecordOf(a).PetClaimed = true;
         RecordOf(b).PetClaimed = true;
         // cc-P718: past the pet commands, so the pests fight them.
-        RecordOf(a).StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey]);
-        RecordOf(b).StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey]);
+        RecordOf(a).StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.WeaponKey, TutorialFarm.WarKey]);
+        RecordOf(b).StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.WeaponKey, TutorialFarm.WarKey]);
         Assert.Equal(2, TutorialFarm.StepOf(a));
         Assert.Equal(2, TutorialFarm.StepOf(b));
 
