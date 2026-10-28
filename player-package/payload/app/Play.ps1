@@ -333,6 +333,8 @@ if (-not $reachable) {
 # --- settings -------------------------------------------------------------------
 # Launch-Settings.ps1: keeps the saved login, rewrites only what the launcher owns.
 Write-LaunchSettings -Path $settingsPath -Target $target -UoDir $uoDir -ClientVersion $clientVersion -Test:$Test
+# cc-P719: a new character starts walking, with its paperdoll closed; a profile that already exists is never changed.
+$null = Initialize-NewProfileDefaults -ProfilesDir (Join-Path $taz 'Data\Profiles')
 
 Write-Host ''
 Write-Host "  $label" -ForegroundColor Cyan
