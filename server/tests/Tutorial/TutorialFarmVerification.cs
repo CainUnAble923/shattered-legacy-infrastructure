@@ -65,6 +65,14 @@ public class TutorialFarmVerification
         }
     }
 
+    /// <summary>cc-P726: on the healing lesson: the farm done (the pests, the pet and its commands).</summary>
+    private static void OnHealingLesson(Player p)
+    {
+        p.Record.PetClaimed = true;
+        p.Record.StationsDone.UnionWith([TutorialFarm.PestsKey, TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.CoreStation]);
+        Assert.True(TutorialFarm.HealingOn(p.Pm));
+    }
+
     private sealed class Player : IDisposable
     {
         public readonly Account Account = new($"p276{Guid.NewGuid():N}"[..16], "p276-test-only");
@@ -295,35 +303,19 @@ public class TutorialFarmVerification
             Assert.Equal(0, TutorialFarm.Talk(stranger.Pm, hand));
             Assert.False(stranger.Pm.HasGump<TutorialFarmPetGump>());
 
-            // 1. The pet.
+            // cc-P726: 1. The fight: the pitchfork in hand, war mode, then the pests. No pet before the pests.
             Assert.Equal(1, TutorialFarm.Talk(p.Pm, hand));
-            Assert.True(p.Pm.HasGump<TutorialFarmPetGump>());
-            Assert.Null(TutorialFarm.ChoosePet(p.Pm, "fox")); // the farm offers a dog or a cat
-            var pet = TutorialFarm.ChoosePet(p.Pm, "dog");
-            Assert.NotNull(pet);
-            Assert.Equal("dog", pet!.Line.Key);
-            Assert.True(pet.IsBonded && pet.Controlled && pet.ControlMaster == p.Pm);
-            Assert.True(p.Record.PetClaimed);
-            Assert.Null(TutorialFarm.ChoosePet(p.Pm, "cat")); // one pet
-            Assert.Equal(2, TutorialFarm.StepOf(p.Pm));
-
-            // cc-P718: the commands first (the pet's order is the evidence), then the pests fight, and the pet attacks.
-            Assert.Equal(OrderType.Stay, pet.ControlOrder);
-            pet.ControlTarget = p.Pm;
-            pet.ControlOrder = OrderType.Follow;
-            TutorialFarm.CheckCommands(p.Pm);
-            pet.ControlOrder = OrderType.Guard;
-            TutorialFarm.CheckCommands(p.Pm);
-            var fork = p.Pm.Backpack.FindItemByType<TutorialPitchfork>()!; // cc-P721: the weapon, then war mode
+            Assert.False(p.Pm.HasGump<TutorialFarmPetGump>());
+            Assert.Null(TutorialFarm.ChoosePet(p.Pm, "dog"));
+            var fork = p.Pm.Backpack.FindItemByType<TutorialPitchfork>()!;
             fork.Layer = Layer.TwoHanded;
             Assert.True(p.Pm.EquipItem(fork));
             TutorialFarm.CheckCommands(p.Pm);
             p.Pm.Warmode = true;
             Assert.True(TutorialFarm.CheckCommands(p.Pm));
-            pet.ControlOrder = OrderType.Attack;
             TutorialFarm.NoteStruck(p.Pm); // cc-P721: the trainee's own blow
 
-            // 2. Three pests the pet damaged; a pest nobody of theirs touched does not count.
+            // Three pests the trainee damaged; a pest nobody of theirs touched does not count.
             var untouched = new FarmRat();
             untouched.MoveToWorld(new Point3D(3388, 2614, 0), Map.Trammel);
             untouched.Kill();
@@ -334,17 +326,39 @@ public class TutorialFarmVerification
             {
                 pest.MoveToWorld(new Point3D(3388, 2614, 0), Map.Trammel);
                 p.Litter.Add(pest);
-                pest.Damage(1, pet);
-                Assert.Contains(pest.DamageEntries.ToArray(), e => e.Damager == pet);
+                pest.Damage(1, p.Pm);
+                Assert.Contains(pest.DamageEntries.ToArray(), e => e.Damager == p.Pm);
                 pest.Kill();
             }
 
             Assert.Contains(TutorialFarm.PestsKey, p.Record.StationsDone);
-            Assert.Contains(TutorialFarm.TamingStation, p.Record.StationsDone);
+            Assert.Equal(2, TutorialFarm.StepOf(p.Pm));
+
+            // 2. The pet, as thanks.
+            Assert.Equal(2, TutorialFarm.Talk(p.Pm, hand));
+            Assert.True(p.Pm.HasGump<TutorialFarmPetGump>());
+            Assert.Null(TutorialFarm.ChoosePet(p.Pm, "fox")); // the farm offers a dog or a cat
+            var pet = TutorialFarm.ChoosePet(p.Pm, "dog");
+            Assert.NotNull(pet);
+            Assert.Equal("dog", pet!.Line.Key);
+            Assert.True(pet.IsBonded && pet.Controlled && pet.ControlMaster == p.Pm);
+            Assert.True(p.Record.PetClaimed);
+            Assert.Null(TutorialFarm.ChoosePet(p.Pm, "cat")); // one pet
             Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
 
-            // 3. Bandages, then a heal that worked (on the pet: Veterinary).
-            Assert.Equal(3, TutorialFarm.Talk(p.Pm, hand));
+            // 3. Its commands (the pet's order is the evidence).
+            Assert.Equal(OrderType.Stay, pet.ControlOrder);
+            pet.ControlTarget = p.Pm;
+            pet.ControlOrder = OrderType.Follow;
+            TutorialFarm.CheckCommands(p.Pm);
+            pet.ControlOrder = OrderType.Guard;
+            Assert.True(TutorialFarm.CheckCommands(p.Pm));
+            Assert.Contains(TutorialFarm.TamingStation, p.Record.StationsDone);
+            Assert.Equal(4, TutorialFarm.StepOf(p.Pm));
+
+            // 4. The healing lesson (cc-P726: its own, after the farm): bandages, then a heal that worked (on the pet).
+            Assert.True(TutorialFarm.HealingOn(p.Pm));
+            Assert.Equal(TutorialFarm.BandageGift.Given, TutorialFarm.BeginHealing(p.Pm));
             Assert.NotNull(p.Pm.Backpack.FindItemByType<Bandage>());
             pet.MoveToWorld(p.Pm.Location, p.Pm.Map);
             pet.Hits = pet.HitsMax / 2;
@@ -416,6 +430,7 @@ public class TutorialFarmVerification
         try
         {
             ClusterFTutorial.SkipCountsAsGraduation = true;
+            p.Record.StationsDone.Add(TutorialFarm.PestsKey); // cc-P726: the pet comes after the pests
             Assert.NotNull(TutorialFarm.ChoosePet(p.Pm, "dog"));
             Assert.True(RoundTrip(p.Account).PetClaimed); // the claim is saved
 
@@ -423,7 +438,7 @@ public class TutorialFarmVerification
             Assert.True(ClusterFTutorial.StartRemedial(p.Pm));
             Assert.True(RoundTrip(p.Account).PetClaimed); // remedial training clears the stations, not the claim
 
-            Assert.Equal(2, TutorialFarm.StepOf(p.Pm)); // straight to the pests, with the dog they have
+            Assert.Equal(1, TutorialFarm.StepOf(p.Pm)); // the pests again; the dog they have skips the reward
             Assert.Null(TutorialFarm.ChoosePet(p.Pm, "cat"));
 
             foreach (var station in TutorialStations.Core)
@@ -496,18 +511,18 @@ public class TutorialFarmVerification
         hand.MoveToWorld(new Point3D(3396, 2614, 0), Map.Trammel);
         using var p = new Player(true);
         p.Litter.Add(hand);
-        Assert.Equal(1, TutorialFarm.Talk(p.Pm, hand));
+        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
+        Assert.Equal(2, TutorialFarm.Talk(p.Pm, hand)); // cc-P726: the pet, after the pests
         var pet = TutorialFarm.ChoosePet(p.Pm, "dog")!;
         p.Litter.Add(pet);
         pet.MoveToWorld(p.Pm.Location, p.Pm.Map);
-        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
-        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+        OnHealingLesson(p);
 
         // Nobody hurt: a scratch, and the line says what to do with it.
         pet.Hits = pet.HitsMax;
         p.Pm.Hits = p.Pm.HitsMax;
         var full = p.Pm.HitsMax;
-        Assert.Equal(3, TutorialFarm.Talk(p.Pm, hand));
+        TutorialFarm.BeginHealing(p.Pm); // cc-P726: the healing lesson starts
         Assert.True(p.Pm.Hits < full, $"hits {p.Pm.Hits} of {full}");
         Assert.True(p.Pm.Hits >= 1);
         Assert.False(TutorialFarm.Scratch(p.Pm)); // hurt now: no second scratch
@@ -525,11 +540,10 @@ public class TutorialFarmVerification
     public void ATraineeWithNoHealingHealsWithEveryPracticeBandage()
     {
         using var p = new Player(true);
-        p.Record.PetClaimed = true;
-        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
+        OnHealingLesson(p);
         p.Pm.Skills.Healing.Base = 0;
         p.Pm.Skills.Anatomy.Base = 0;
-        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+        Assert.True(TutorialFarm.HealingOn(p.Pm));
         Assert.True(TutorialFarm.SureHeal?.Invoke(p.Pm, p.Pm));
 
         // Ten bandages at a one-in-ten chance would all heal once in ten billion runs; the practice bandage always does.
@@ -540,7 +554,7 @@ public class TutorialFarmVerification
             new Bandaging(p.Pm, p.Pm, 0).Finish();
             Assert.True(p.Pm.Hits > before, $"bandage {i + 1}: hits {p.Pm.Hits}, before {before}");
             Assert.Contains(TutorialFarm.HealKey, p.Record.StationsDone);
-            Assert.Equal(4, TutorialFarm.StepOf(p.Pm));
+            Assert.False(TutorialFarm.HealingOn(p.Pm));
             Assert.False(TutorialFarm.SureHeal?.Invoke(p.Pm, p.Pm)); // off the step: the stock chance again
             p.Record.StationsDone.Remove(TutorialFarm.HealKey); // back on the step for the next bandage
         }
@@ -552,19 +566,18 @@ public class TutorialFarmVerification
     public void ABandageThatFindsNobodyHurtOnTheHealStepGivesAScratch()
     {
         using var p = new Player(true);
-        p.Record.PetClaimed = true;
-        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
-        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+        OnHealingLesson(p);
+        Assert.True(TutorialFarm.HealingOn(p.Pm));
 
         // As it ends: the trainee's hits came back during the bandage's delay (the play-through's run 4).
         p.Pm.Hits = p.Pm.HitsMax;
         new Bandaging(p.Pm, p.Pm, 0).Finish();
         Assert.True(p.Pm.Hits < p.Pm.HitsMax, $"hits {p.Pm.Hits} of {p.Pm.HitsMax}");
-        Assert.Equal(3, TutorialFarm.StepOf(p.Pm)); // not finished: only a real heal does that
+        Assert.True(TutorialFarm.HealingOn(p.Pm)); // not finished: only a real heal does that
 
         // The next bandage treats the scratch and finishes the step.
         new Bandaging(p.Pm, p.Pm, 0).Finish();
-        Assert.Equal(4, TutorialFarm.StepOf(p.Pm));
+        Assert.False(TutorialFarm.HealingOn(p.Pm));
 
         // As it begins, back on the step: "That being is not damaged!" becomes a scratch.
         p.Record.StationsDone.Remove(TutorialFarm.HealKey);
@@ -589,15 +602,14 @@ public class TutorialFarmVerification
         hand.MoveToWorld(new Point3D(3396, 2614, 0), Map.Trammel);
         using var p = new Player(true);
         p.Litter.Add(hand);
-        p.Record.PetClaimed = true;
-        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
-        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+        OnHealingLesson(p);
+        Assert.True(TutorialFarm.HealingOn(p.Pm));
 
         var banked = 0;
         for (var i = 0; i < TutorialFarm.BandageIssues + 2; i++)
         {
-            Assert.Equal(3, TutorialFarm.Talk(p.Pm, hand));
-            Assert.Equal(3, TutorialFarm.Talk(p.Pm, hand)); // the pack has some: no second stack
+            TutorialFarm.BeginHealing(p.Pm);
+            Assert.NotEqual(TutorialFarm.BandageGift.Given, TutorialFarm.BeginHealing(p.Pm)); // the pack has some: no second stack
             if (p.Pm.Backpack.FindItemByType<Bandage>() is { } stack)
             {
                 p.Pm.BankBox.DropItem(stack); // banked (or traded, or sold) and asked again
@@ -618,8 +630,7 @@ public class TutorialFarmVerification
     public void AFailedTreatmentLeavesTheHealStepAndARealHealCompletesIt()
     {
         using var p = new Player(true);
-        p.Record.PetClaimed = true;
-        p.Record.StationsDone.Add(TutorialFarm.PestsKey);
+        OnHealingLesson(p);
         p.Pm.Skills.Healing.Cap = 120.0;
         p.Pm.Skills.Healing.Base = 120.0; // the skill roll always passes
 
@@ -640,14 +651,14 @@ public class TutorialFarmVerification
             new Bandaging(p.Pm, p.Pm, 100).Finish(); // so many slips the treatment fails
             Assert.Equal(hits, p.Pm.Hits);
             Assert.Equal(new[] { true }, rolled);    // and still the Healing roll passed
-            Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+            Assert.True(TutorialFarm.HealingOn(p.Pm));
             Assert.DoesNotContain(TutorialFarm.HealKey, p.Record.StationsDone);
 
             p.Pm.Hits = p.Pm.HitsMax - 20;
             new Bandaging(p.Pm, p.Pm, 0).Finish();
             Assert.True(p.Pm.Hits > p.Pm.HitsMax - 20);
             Assert.Contains(TutorialFarm.HealKey, p.Record.StationsDone);
-            Assert.Equal(4, TutorialFarm.StepOf(p.Pm));
+            Assert.False(TutorialFarm.HealingOn(p.Pm));
         }
         finally
         {

@@ -125,6 +125,12 @@ public static class ClusterFTutorial
         {
             ClusterFLoops.Graduate(pm);
         }
+
+        // cc-P728: windows held for a wake-up that did not play (every copy in use, no client) come now.
+        if (!TutorialWake.IsLying(pm))
+        {
+            TutorialWake.Release(pm);
+        }
     }
 
     /// <summary>
@@ -183,7 +189,8 @@ public static class ClusterFTutorial
     {
         if (!record.StationsDone.Contains(key))
         {
-            return false;
+            // cc-P726: bandaging was the farm's third step; a record that did it there has done core.healing.
+            return key == TutorialFarm.HealingStationKey && record.StationsDone.Contains(TutorialFarm.HealKey);
         }
 
         if (key != TutorialStations.LastCore)

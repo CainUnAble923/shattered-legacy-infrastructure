@@ -300,7 +300,16 @@ public static partial class CharacterCreation
             startAt,
             startMap);
 
-        new WelcomeTimer(newChar).Start();
+        // cc-P728: a character waking on the Wakening Isle's beach gets the greeting alone, after standing up; the test
+        // center's eleven lines about the bank (every 10 s for two minutes) are not needed during the first lessons.
+        if (newChar is PlayerMobile waking && Server.Tutorial.TutorialStart.WillWake(waking))
+        {
+            Server.Tutorial.TutorialWake.Hold(waking, () => new WelcomeTimer(waking, 1).Start());
+        }
+        else
+        {
+            new WelcomeTimer(newChar).Start();
+        }
     }
 
     private static CityInfo GetStartLocation(CharacterCreatedEventArgs args)

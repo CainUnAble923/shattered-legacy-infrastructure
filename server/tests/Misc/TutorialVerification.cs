@@ -127,6 +127,7 @@ public class TutorialVerification : IDisposable
             "core.backpack" => [TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag], // cc-P718: the character window first
             "core.chat" => [TutorialAction.SaidPhrase],
             "core.farm" => [TutorialAction.FarmDone],
+            "core.healing" => [TutorialAction.Healed],
             "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
             "core.banking" => [TutorialAction.Deposited],
             "core.travel" => [TutorialAction.UsedGate],
@@ -349,8 +350,8 @@ public class TutorialVerification : IDisposable
         Assert.Contains("core.backpack", p.Record.StationsDone);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.paperdoll")!);
         // The fake host has no tiledata; give this practice item's fake its real equipment layer.
-        // cc-P718: the cloak waits on the clothes table.
-        var cloak = WakeningIsleCloak.OnTable(p.Pm, TutorialWorld.MapOf(p.Pm))!;
+        // cc-P728: the cloak waits in a chest by the clothes rack.
+        var cloak = TutorialCloakChest.Find(p.Pm, TutorialWorld.MapOf(p.Pm)!)!.FindItemByType<WakeningIsleCloak>()!;
         cloak.Layer = Layer.Cloak;
         Assert.True(p.Pm.EquipItem(cloak));
         ShardTestClock.Advance(TimeSpan.FromSeconds(0.5));
@@ -365,8 +366,12 @@ public class TutorialVerification : IDisposable
         p.Record.PetClaimed = true;
         for (var i = 0; i < TutorialFarm.PestsToClear; i++) { TutorialFarm.CountPest(p.Pm); }
         Assert.DoesNotContain("core.farm", p.Record.StationsDone);
-        Assert.True(TutorialFarm.OnHealed(p.Pm));
+        // cc-P726: the commands (no pet along: they wait) finish the farm; the heal is the next lesson's.
+        TutorialFarm.BeginCommands(p.Pm);
         Assert.Contains("core.farm", p.Record.StationsDone);
+        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.healing")!);
+        Assert.True(TutorialFarm.OnHealed(p.Pm));
+        Assert.Contains("core.healing", p.Record.StationsDone);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.death")!);
         var echo = new TutorialDeathEcho();
         var healer = new TutorialHealer();
@@ -463,7 +468,7 @@ public class TutorialVerification : IDisposable
             TutorialSeeder.Seed(true);
             Assert.Equal(items.Count, World.Items.Count);
             Assert.Equal(mobiles.Count, World.Mobiles.Count);
-            Assert.Contains("placed 10 station markers", TutorialSeeder.Seed(false));
+            Assert.Contains("placed 11 station markers", TutorialSeeder.Seed(false)); // cc-P726: core.healing
             var itemCount = World.Items.Count;
             var mobileCount = World.Mobiles.Count;
             Assert.Contains("placed 0 station markers, 0 NPCs/echo/vets, 0 moongate, 0 walking tiles, 0 doors, 0 props", TutorialSeeder.Seed(false));
@@ -486,7 +491,7 @@ public class TutorialVerification : IDisposable
     {
         string[] expected =
         [
-            "core.movement", "core.paperdoll", "core.backpack", "core.chat", "core.farm", "core.death", "core.banking",
+            "core.movement", "core.paperdoll", "core.backpack", "core.chat", "core.farm", "core.healing", "core.death", "core.banking",
             "core.travel", "core.league", "core.loop", "combat.weapons", "combat.healing", "magic.magery", "magic.necromancy",
             "magic.chivalry", "magic.bushido", "magic.ninjitsu", "magic.mysticism", "gathering.mining",
             "gathering.lumberjacking", "gathering.fishing", "gathering.camping", "crafting.blacksmithy",
@@ -495,7 +500,7 @@ public class TutorialVerification : IDisposable
             "thieving.trial", "housing.basics", "travel.wing", "reputation.wing", "shard.systems", "client.tips"
         ];
         Assert.Equal(expected.OrderBy(k => k), TutorialStations.All.Select(s => s.Key).OrderBy(k => k));
-        Assert.Equal(10, TutorialStations.Core.Count()); // cc-P663: core.farm
+        Assert.Equal(11, TutorialStations.Core.Count()); // cc-P663: core.farm; cc-P726: core.healing
 
         using var p = new Player();
         TutorialTestStart.Begin(p.Pm);

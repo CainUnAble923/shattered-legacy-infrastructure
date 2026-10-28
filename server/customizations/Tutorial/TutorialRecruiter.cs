@@ -114,13 +114,53 @@ namespace Server.Tutorial
     {
         public static void Configure()
         {
-            var seedOnLoad = ServerConfiguration.GetOrUpdateSetting("tutorial.seedOnWorldLoad", false);
-            if (seedOnLoad)
+            // cc-P728 item 7 (Chase 10-28 15:28, "pip is missing"): the isle's pieces come out at every world load, so an
+            // update never needs a staff command. tutorial.seedMissingOnLoad (true) runs the idempotent seed while the
+            // tutorial is on (the test shard; live once the isle opens there): only what is missing is placed, on the Fold's
+            // isle and on every seeded copy, and what it placed is logged. tutorial.seedOnWorldLoad (false, before cc-P728)
+            // still forces it, as it did.
+            var missingOnLoad = ServerConfiguration.GetOrUpdateSetting("tutorial.seedMissingOnLoad", true);
+            var forced = ServerConfiguration.GetOrUpdateSetting("tutorial.seedOnWorldLoad", false);
+            if (missingOnLoad || forced)
             {
-                EventSink.WorldLoad += () => Console.WriteLine($"[Tutorial] {Seed(false)}");
+                // cc-P726: on the first tick after the load, not inside it: an entity made during World.Load reaches
+                // World.Items only once the load ends, so the copies' top-up counted nothing ("nothing missing") and left
+                // what it placed off the copy's reset list (seen in the P726 bot run's shard log).
+                EventSink.WorldLoad += () => Timer.DelayCall(TimeSpan.Zero, () =>
+                {
+                    foreach (var line in SeedMissing(forced))
+                    {
+                        Console.WriteLine($"[Tutorial] {line}");
+                    }
+                });
             }
 
             CommandSystem.Register("ClusterFSeedTutorial", AccessLevel.Administrator, OnSeed);
+        }
+
+        /// <summary>
+        /// cc-P728 item 7: places what is missing on the Fold's isle (with Rook and New Haven's vet) and on every seeded copy.
+        /// Nothing while the tutorial is off (unless <paramref name="forced"/>) or the isle's land is not on this server's map.
+        /// Returns the lines to log.
+        /// </summary>
+        public static List<string> SeedMissing(bool forced = false)
+        {
+            var lines = new List<string>();
+            if (!ClusterFTutorial.Enabled && !forced)
+            {
+                lines.Add("Seed on load: skipped, the tutorial is off on this shard.");
+                return lines;
+            }
+
+            if (!TutorialWorld.IsleReady())
+            {
+                lines.Add("Seed on load: skipped, the Wakening Isle's land is not on this server's map.");
+                return lines;
+            }
+
+            lines.Add($"Seed on load, the Fold: {Seed(false)}");
+            lines.AddRange(TutorialCopies.TopUpSeeded());
+            return lines;
         }
 
         [Usage("ClusterFSeedTutorial [dryrun]")]

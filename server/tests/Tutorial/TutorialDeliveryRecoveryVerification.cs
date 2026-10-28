@@ -138,8 +138,8 @@ public class TutorialDeliveryRecoveryVerification
             t.Litter.Add(hand);
             hand.MoveToWorld(new Point3D(Spot.X + 1, Spot.Y, Spot.Z), Map.Trammel);
             t.Record.PetClaimed = true;
-            t.Record.StationsDone.Add(TutorialFarm.PestsKey);
-            Assert.Equal(3, TutorialFarm.StepOf(pm));
+            t.Record.StationsDone.UnionWith([TutorialFarm.PestsKey, TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.CoreStation]); // cc-P726: on the healing lesson
+            Assert.True(TutorialFarm.HealingOn(pm));
 
             var ballast = new List<Item>();
             var pack = pm.Backpack;
@@ -166,7 +166,7 @@ public class TutorialDeliveryRecoveryVerification
             var ground = BandagesOnTheGround();
             for (var i = 0; i < TutorialFarm.BandageIssues + 2; i++)
             {
-                Assert.Equal(3, TutorialFarm.Talk(pm, hand));
+                TutorialFarm.BeginHealing(pm); // cc-P726: the healing lesson hands the bandages
             }
 
             Assert.True(TutorialFarm.GiveBandages(pm) != TutorialFarm.BandageGift.Given, why);
@@ -181,7 +181,7 @@ public class TutorialDeliveryRecoveryVerification
                 pm.AddItem(new Backpack());
             }
 
-            Assert.Equal(3, TutorialFarm.Talk(pm, hand));
+            TutorialFarm.BeginHealing(pm); // cc-P726: the healing lesson hands the bandages
             Assert.Equal(1, t.Record.BandagesIssued);
             Assert.NotNull(pm.Backpack!.FindItemByType<Bandage>());
             Assert.Equal(ground, BandagesOnTheGround());
@@ -198,11 +198,11 @@ public class TutorialDeliveryRecoveryVerification
         t.Litter.Add(hand);
         hand.MoveToWorld(new Point3D(Spot.X + 1, Spot.Y, Spot.Z), Map.Trammel);
         t.Record.PetClaimed = true;
-        t.Record.StationsDone.Add(TutorialFarm.PestsKey);
+        t.Record.StationsDone.UnionWith([TutorialFarm.PestsKey, TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.CoreStation]); // cc-P726: on the healing lesson
 
         for (var i = 0; i < TutorialFarm.BandageIssues + 2; i++)
         {
-            TutorialFarm.Talk(pm, hand);
+            TutorialFarm.BeginHealing(pm);
             if (pm.Backpack.FindItemByType<Bandage>() is { } stack)
             {
                 pm.BankBox.DropItem(stack);

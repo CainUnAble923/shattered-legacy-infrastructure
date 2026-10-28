@@ -16,7 +16,9 @@
 //   8. On the isle each skill gains at most once per interval; off the isle the shard's rate is untouched.
 //   9. Wren's heal step hands bandages and the lines say how to use them and how to make more.
 //  10. The pet commands: Wren sets the pet to stay; follow, then guard (by any means that sets the order) open the pests;
-//      one pest must fall to the pet on command.
+//      one pest must fall to the pet on command. cc-P728: after the pitchfork in hand and war mode, which come first.
+// cc-P728: the cloak of fact 2 and 5 now comes in a chest (TutorialIsleWalkFixes4Verification); this fact takes it from
+// there and keeps the rest.
 
 #nullable enable
 
@@ -128,6 +130,7 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         "core.backpack" => [TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag],
         "core.chat" => [TutorialAction.SaidPhrase],
         "core.farm" => [TutorialAction.FarmDone],
+        "core.healing" => [TutorialAction.Healed],
         "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
         "core.banking" => [TutorialAction.Deposited],
         "core.travel" => [TutorialAction.UsedGate],
@@ -238,7 +241,7 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         Assert.Equal(1, TutorialGreeting.GreetAround(wren, TutorialGreeting.NeedsWren, TutorialGreeting.WrenLine));
         Assert.Equal(0, TutorialGreeting.GreetAround(wren, TutorialGreeting.NeedsWren, TutorialGreeting.WrenLine));
 
-        Assert.NotNull(TutorialFarm.ChoosePet(p.Pm, "dog"));
+        Assert.NotNull(TutorialFarm.GivePitchfork(p.Pm)); // cc-P726: Wren has started the trainee on the fight
         ShardTestClock.Advance(TutorialGreeting.Interval + TimeSpan.FromSeconds(1));
         Assert.False(TutorialGreeting.NeedsWren(p.Pm));
         Assert.Equal(0, TutorialGreeting.GreetAround(wren, TutorialGreeting.NeedsWren, TutorialGreeting.WrenLine));
@@ -257,11 +260,9 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.paperdoll")!);
 
         var map = TutorialWorld.MapOf(p.Pm);
-        var cloak = WakeningIsleCloak.OnTable(p.Pm, map);
+        var cloak = TutorialCloakChest.Find(p.Pm, map)?.FindItemByType<WakeningIsleCloak>(); // cc-P728: in its chest
         Assert.NotNull(cloak);
-        Assert.Null(cloak!.Parent);
-        Assert.Equal((TutorialCorePlacement.ClothesTable.X, TutorialCorePlacement.ClothesTable.Y), (cloak.X, cloak.Y));
-        Assert.Same(p.Pm, cloak.Owner);
+        Assert.Same(p.Pm, cloak!.Owner);
         Assert.Equal(WakeningIsleCloak.CloakName, cloak.Name);
         Assert.Equal(LootType.Blessed, cloak.LootType);
         Assert.True(cloak.Nontransferable); // no sale (GenericSellInfo.IsSellable), trade, bank or drop
@@ -270,20 +271,20 @@ public class TutorialIsleWalkFixesVerification : IDisposable
 
         // Another trainee cannot take it.
         var reject = LRReason.Inspecific;
-        Assert.False(cloak.CheckLift(other.Pm, cloak, ref reject));
+        Assert.False(TutorialCloakChest.Find(p.Pm, map)!.CheckLift(other.Pm, cloak, ref reject));
 
-        // A restart puts no second one on the table; a lost one comes back with Hint and arrow.
+        // A restart puts out no second one; a lost one comes back with Hint and arrow.
         TutorialCoreTrials.Reset(p.Pm, TutorialStations.Find("core.paperdoll")!);
-        Assert.Same(cloak, WakeningIsleCloak.OnTable(p.Pm, map));
+        Assert.Same(cloak, TutorialCloakChest.Find(p.Pm, map)?.FindItemByType<WakeningIsleCloak>());
         cloak.Delete();
         new TutorialTrialGump(TutorialStations.Find("core.paperdoll")!, false).OnResponse(p.Ns, new RelayInfo(1, default, default, default, default));
-        cloak = WakeningIsleCloak.OnTable(p.Pm, map);
+        cloak = TutorialCloakChest.Find(p.Pm, map)?.FindItemByType<WakeningIsleCloak>();
         Assert.NotNull(cloak);
 
         // Into the backpack: it cannot be dropped back on the ground.
         p.Pm.Backpack.DropItem(cloak!);
         Assert.False(cloak!.OnDroppedToWorld(p.Pm, p.Pm.Location));
-        Assert.Null(WakeningIsleCloak.EnsureOnTable(p.Pm)); // they have theirs: no other appears
+        Assert.Null(TutorialCloakChest.EnsureFor(p.Pm)); // they have theirs: no other appears
 
         // Worn: the lesson is done and the cloak stays on them.
         cloak.Layer = Layer.Cloak; // the host has no tiledata
@@ -404,18 +405,13 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         var rat = p.Add(new FarmRat());
         rat.MoveToWorld(new Point3D(TutorialFarm.PestSpot, 0), p.Pm.Map);
 
-        // Step 1 (no pet yet): never an enemy, and a blow does nothing.
+        // Step 1 before the pitchfork and war mode (cc-P726: no pet yet): never an enemy, and a blow does nothing.
         Assert.Equal(1, TutorialFarm.StepOf(p.Pm));
         Assert.False(rat.IsEnemy(p.Pm));
         Assert.False(rat.CanBeHarmful(p.Pm, false, false));
         rat.Damage(5, p.Pm);
         Assert.Equal(rat.HitsMax, rat.Hits);
-
-        // Step 2 before the commands: still not; nor against the pet.
-        var pet = TutorialFarm.ChoosePet(p.Pm, "dog")!;
-        Assert.Equal(2, TutorialFarm.StepOf(p.Pm));
-        Assert.False(rat.IsEnemy(p.Pm));
-        Assert.False(rat.IsEnemy(pet));
+        TutorialFarm.BeginCombat(p.Pm); // Wren hands the pitchfork
 
         // The gate opens only for a trainee on the pest part.
         var gates = TutorialFarm.MakeFieldGates();
@@ -428,10 +424,7 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         gates[0].Use(p.Pm);
         Assert.False(gates[0].Open);
 
-        // The commands done (and, since cc-P721, the pitchfork in hand and war mode): the pests fight, and Wren opened the gate.
-        p.Record.StationsDone.UnionWith([TutorialFarm.FollowKey]);
-        pet.ControlOrder = OrderType.Guard;
-        Assert.False(TutorialFarm.CheckCommands(p.Pm));
+        // The pitchfork in hand and war mode: the pests fight, and Wren opened the gate.
         Hold(p.Pm);
         Assert.False(TutorialFarm.CheckCommands(p.Pm));
         p.Pm.Warmode = true;
@@ -520,7 +513,8 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         wren.MoveToWorld(Beside(p.Pm, 1), p.Pm.Map);
         p.Record.PetClaimed = true;
         p.Record.StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.WeaponKey, TutorialFarm.WarKey, TutorialFarm.PestsKey]);
-        Assert.Equal(3, TutorialFarm.Talk(p.Pm, wren));
+        Assert.Equal(4, TutorialFarm.Talk(p.Pm, wren)); // cc-P726: the farm is done; bandages are the next lesson's
+        ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find(TutorialFarm.HealingStationKey)!);
         Assert.NotNull(p.Pm.Backpack!.FindItemByType<Bandage>());
         Assert.Contains("double-click a bandage", TutorialFarm.HealLine, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("scissors", TutorialFarm.MakeBandagesLine);
@@ -530,15 +524,29 @@ public class TutorialIsleWalkFixesVerification : IDisposable
     // ---------------------------------------------------------------- 10
 
     [Fact]
-    public void ThePetCommandsComeFirstAndOnePestMustFallToThePet()
+    public void ThePetCommandsFollowThePetGivenAfterThePests()
     {
         using var p = new Player();
         TutorialTestStart.Begin(p.Pm);
         PlayCoreUntil(p.Pm, "core.farm");
+        // cc-P726: the pests first (the pitchfork, war mode, one struck by the trainee; no pet's kill needed), then the pet.
+        TutorialFarm.BeginCombat(p.Pm);
+        Hold(p.Pm);
+        Assert.False(TutorialFarm.CheckCommands(p.Pm));
+        p.Pm.Warmode = true;
+        Assert.True(TutorialFarm.CheckCommands(p.Pm));
+        Assert.True(TutorialFarm.PestPartOn(p.Pm));
+        for (var i = 0; i < TutorialFarm.PestsToClear; i++) { TutorialFarm.CountPest(p.Pm, false); }
+        Assert.DoesNotContain(TutorialFarm.PestsKey, p.Record.StationsDone);
+        TutorialFarm.NoteStruck(p.Pm); // cc-P721: one struck by the trainee
+        TutorialFarm.CountPest(p.Pm, false);
+        Assert.Contains(TutorialFarm.PestsKey, p.Record.StationsDone);
+        Assert.Equal(2, TutorialFarm.StepOf(p.Pm));
+
         var pet = TutorialFarm.ChoosePet(p.Pm, "cat")!;
-        Assert.Equal(OrderType.Stay, pet.ControlOrder); // Wren told it to stay
+        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
         Assert.False(TutorialFarm.CommandsDone(p.Pm));
-        Assert.False(TutorialFarm.PestPartOn(p.Pm));
+        Assert.Equal(OrderType.Stay, pet.ControlOrder); // Wren told it to stay
 
         // Guard before follow does not count; follow (speech or the pet's menu: both set the order), then guard.
         pet.ControlOrder = OrderType.Guard;
@@ -549,22 +557,11 @@ public class TutorialIsleWalkFixesVerification : IDisposable
         Assert.False(TutorialFarm.CheckCommands(p.Pm));
         Assert.Contains(TutorialFarm.FollowKey, p.Record.StationsDone);
         pet.ControlOrder = OrderType.Guard;
-        Assert.False(TutorialFarm.CheckCommands(p.Pm)); // cc-P721: then the weapon and war mode
-        Hold(p.Pm);
-        Assert.False(TutorialFarm.CheckCommands(p.Pm));
-        p.Pm.Warmode = true;
         Assert.True(TutorialFarm.CheckCommands(p.Pm));
-        Assert.True(TutorialFarm.PestPartOn(p.Pm));
+        Assert.Equal(4, TutorialFarm.StepOf(p.Pm)); // the farm is done
+        Assert.Contains("core.farm", p.Record.StationsDone);
         Assert.Contains("all follow me", TutorialFarm.CommandsLine);
         Assert.Contains("all guard me", TutorialFarm.CommandsLine);
         Assert.Contains("menu", TutorialFarm.CommandsLine);
-
-        // The pests: none by the pet on command, so the step waits for one.
-        for (var i = 0; i < TutorialFarm.PestsToClear; i++) { TutorialFarm.CountPest(p.Pm, false); }
-        Assert.DoesNotContain(TutorialFarm.PestsKey, p.Record.StationsDone);
-        TutorialFarm.NoteStruck(p.Pm); // cc-P721: and one struck by the trainee
-        TutorialFarm.CountPest(p.Pm, true);
-        Assert.Contains(TutorialFarm.PestsKey, p.Record.StationsDone);
-        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
     }
 }

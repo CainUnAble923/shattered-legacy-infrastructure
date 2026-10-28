@@ -29,6 +29,32 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.28.8
+
+### Added
+- Pet Info: click your evo pet with the right mouse button and choose Pet Info, or type [PetInfo and click it, to see its kind, its stage, how close it is to the next one, its loyalty and how it grows.
+- Test shard: a new lesson on the Wakening Isle, Healing: Pip the farm boy sits hurt on a bench inside the farmhouse, and you bandage him.
+- Test shard: on the Wakening Isle, the Quests button on your character window shows your lessons: which are done, the one you are on with its steps ticked, and what comes next. Your other quests are one click away.
+
+### Changed
+- Test shard: at the farm, your pet is now Wren's thanks for clearing the rats and snakes: first the pitchfork, war mode and the pests, then you choose a dog or a cat, then its commands.
+- The cloak of the Wakening Isle and Wren's pitchfork now help you heal: worn and held on the Wakening Isle they make a rat fight safe, and elsewhere they still give a little hit point regeneration.
+
+## 2026.10.28.7
+
+### Changed
+- Test shard: waking on the Wakening Isle's beach, you stay down on the sand until you move; your first move gets you up and the first lesson starts. If you wait, the System says "Move to get up."
+- Test shard: on a new character's first login, the patch notes, your first achievement and the welcome lines wait until you have stood up on the beach, and the guild welcome waits until you reach town.
+- Test shard: at the clothes stop, a chest appears with your cloak of the Wakening Isle inside: double-click the chest, then drag the cloak to your backpack or onto your character. Only you can open it, and it goes once you have the cloak.
+- Test shard: at the farm, Wren hands you the pitchfork first: hold it and switch to war mode, then teach your pet its commands, then the pests.
+- Test shard: when the cabbage rows are clear, Wren, the System and the lesson window all say so and tell you to go back to Wren, and the arrow points at her. Each finished lesson names the next one and points at its signpost, and typing [lesson opens the lesson window again.
+
+### Fixed
+- Test shard: Wren no longer says "Defeat 0 more rats or grass snakes"; she says what is still left to do.
+
+### Staff
+- New Wakening Isle pieces (like Pip at the farm) now appear on the test world by themselves at each restart, on the isle and on every copy; the server log lists what was placed.
+
 ## 2026.10.28.6
 
 ### Added

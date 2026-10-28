@@ -65,6 +65,21 @@ using Server.Network;
 // and waits until it is held, then until war mode is on (Tab, or the Peace/War button); the pest part also wants one
 // pest struck by the trainee themselves.
 
+// cc-P728 (Chase 10-28 15:25 to 15:27): the farm's combat part starts with the weapon. Once the pet is chosen, Wren hands
+// the pitchfork (hold it: drag it to the hand on the character window, or double-click it), then war mode, then the pet's
+// commands, then the gate opens on the pests (BeginCombat, CheckCommands). P726 moves the pet and its commands after the
+// pests; this order lets it do that by moving them alone. Wren never says "Defeat 0 more": with the count reached she says
+// what is still missing (the pet's kill, the trainee's own strike). When the rows are clear she says so, and the next step
+// ("Go back to Wren...") is in her overhead line, over the trainee's head, in the system line and at the top of the lesson
+// window (reopened), with the arrow back on her (TutorialCoreTrials.NowStep).
+
+// cc-P726 (Chase 10-28 12:22 to 12:25): the pet is the reward. The farm's order is now: the pitchfork in hand, war mode,
+// the pests (step 1); then Wren thanks the trainee with the pet, a dog or a cat (step 2); then its commands (step 3); done
+// (step 4). Bandaging left the farm: it is its own core lesson after it, core.healing, with Pip on a bench inside the
+// farmhouse (BeginHealing, OnHealed). The pests no longer wait for a pet's kill (there is no pet yet), only for one
+// struck by the trainee. An old record keeps its progress: pests done and the pet claimed with its commands is step 4,
+// and the old heal key counts for core.healing (ClusterFTutorial.IsDone).
+
 namespace Server.Tutorial
 {
     public static class TutorialFarm
@@ -113,15 +128,16 @@ namespace Server.Tutorial
         // The Farmhand's lines (ours, for Chase's eye) and the Echo's (the "System:" voice).
         public const string NotTraineeLine = "These farm lessons are for characters taking the tutorial. Double-click Tamsin on the beach to check your progress.";
         public const string NotYetLine = "Finish {0} first, then come back to me.";
-        public const string PetOfferLine = "Choose a dog or cat in the window. This is your one tutorial pet, which you keep after graduation.";
+        public const string PetOfferLine = "Thank you! The rows are safe again. As thanks, take a pet of your own: choose a dog or a cat in the window. It grows as it fights beside you, and it is yours to keep after the isle.";
         public const string NoSlotLine = "You cannot control another pet right now. Stable one of your pets with an animal trainer, then come back.";
-        public const string PestsLine = "Walk into the cabbage rows, say 'all kill', then click a rat or grass snake for your pet to attack. Defeat {0} pests to finish this step.";
+        public const string PestsLine = "Walk into the cabbage rows, double-click a rat or grass snake to attack it yourself, then say 'all kill' and click one for your pet. Defeat {0} pests to finish this step.";
+        public const string PestsNoPetLine = "Walk into the cabbage rows and double-click a rat or grass snake to attack it. Defeat {0} pests to finish this step.";
         public const string PestsLeftLine = "Defeat {0} more rats or grass snakes in the cabbage rows.";
         public const string HealLine = "Here are some bandages. To heal, double-click a bandage in your backpack, then click yourself or your hurt pet. A successful heal finishes this step.";
         // cc-P721: the heal step's patient, and how long a bandage takes.
-        public const string PipLine = "Here are some bandages. Pip, my helper, cut his arm on the fence. Double-click a bandage in your backpack, then click Pip.";
+        public const string PipLine = "Here are some bandages. Pip, the farm boy, cut his arm on the fence and sits hurt on the bench inside the farmhouse. Double-click a bandage in your backpack, then click Pip.";
         public const string WaitLine = "A bandage takes a few seconds. You will see 'You begin applying the bandages': stand still and wait until 'You finish applying the bandages'. A bandage that heals finishes this step.";
-        public const string PipNotYouLine = "You are not hurt. Pip is the one who needs it: double-click a bandage, then click Pip beside Wren.";
+        public const string PipNotYouLine = "You are not hurt. Pip is the one who needs it: double-click a bandage, then click Pip on the bench in the farmhouse.";
         public const string FumbleLine = "You fumble the bandage. Try again: double-click a bandage, then click your patient.";
         public const double IsleSelfBandageSeconds = 4.0;
         // cc-P718 item 9: the one line on making more, said after the bandages are handed over.
@@ -132,15 +148,20 @@ namespace Server.Tutorial
         public const string GuardKey = "farm.cmd.guard";
         public const string CommandsLine = "Your pet obeys spoken commands. I told it to stay. Say 'all follow me' and it follows you; then say 'all guard me' and it guards you. You can say your pet's name instead of 'all', or click your pet with the right mouse button and choose a command from its menu.";
         public const string FollowDoneLine = "Your pet follows you. Now say 'all guard me', or choose Guard from your pet's menu.";
-        public const string GuardDoneLine = "Your pet guards you. Now a weapon: I put a pitchfork in your backpack. Drag it onto your character's hand in your character window, or double-click it, to hold it. If you already hold a weapon, drag that into your backpack first.";
+        public const string GuardDoneLine = "Your pet guards you. Those are its commands: say 'all kill' and click a foe to send it to fight, and 'all follow me' to call it back.";
+        public const string NoPetForCommandsLine = "You have no pet with you, so its commands wait for another time.";
+        // cc-P726 item 2: how to see the pet's progress, said when it is given.
+        public const string PetInfoLine = "To see how your pet is doing, click it with the right mouse button and choose Pet Info, or type [PetInfo and click your pet.";
+
+        // cc-P728 item 4: the weapon comes first in the combat part.
+        public const string PitchforkLine = "Before the pests, a weapon: I put a pitchfork in your backpack. Drag it onto your character's hand in your character window, or double-click it, to hold it. If you already hold a weapon, drag that into your backpack first.";
+        public const string PitchforkNoRoomLine = "Your backpack is too full for the pitchfork. Make room, then double-click me again.";
         // cc-P721: the weapon and war mode, before the first fight.
         public const string WeaponKey = "farm.weapon";
         public const string WarKey = "farm.war";
         public const string WeaponDoneLine = "You hold the pitchfork. Now press Tab, or click the Peace/War button on your character window, to switch to war mode: that is how you fight. Press Tab again for peace mode when you are done.";
-        public const string WarDoneLine = "You are in war mode. I opened the field gate for you: walk into the cabbage rows and double-click a rat or grass snake to attack it yourself, then say 'all kill' and click one for your pet. Defeat {0} pests. If the gate swings shut, double-click it to open it.";
+        public const string WarDoneLine = "You are in war mode: that is how you fight. Press Tab again for peace mode when you are done. I opened the field gate for you: walk into the cabbage rows and double-click a rat or grass snake to attack it. Defeat {0} pests. If the gate swings shut, double-click it to open it.";
         public const string StrikeLine = "Now strike one yourself: in war mode, double-click a rat or grass snake.";
-        public const string NoPetForCommandsLine = "You have no pet with you, so the pet commands are skipped. Now a weapon: I put a pitchfork in your backpack. Drag it onto your character's hand in your character window, or double-click it, to hold it. If you already hold a weapon, drag that into your backpack first.";
-        public const string PetKillLine = "Now let your pet fight one: say 'all kill', then click a rat or grass snake.";
         public const string GateClosedLine = "Wren keeps this gate shut until your pest lesson. Double-click Wren the Farmhand first.";
 
         /// <summary>
@@ -168,10 +189,10 @@ namespace Server.Tutorial
         public const string ScratchAgainLine = "A rat nipped your ankle in the rows. Double-click a bandage again, then click yourself to treat it.";
         public const string NoMoreBandagesLine = "I have no more free bandages for you. You can buy more from a healer in town.";
         public const string NoRoomForBandagesLine = "Your backpack is too full for these bandages. Make room in it, then double-click me again.";
-        public const string DoneLine = "You finished the farm lessons. If your bonded pet dies, bring its ghost to Tobin the vet beside me. While you are Young, he brings it back free.";
-        public const string EchoPetLine = "This pet is yours to keep. Say 'all follow me' to have it follow you.";
-        public const string EchoPestsLine = "You cleared the farm pests. Return to Wren the Farmhand at the gate.";
-        public const string EchoHealLine = "Your bandage restored health and finished the farm's healing lesson.";
+        public const string DoneLine = "You finished the farm lesson. If your bonded pet dies, bring its ghost to Tobin the vet beside me. While you are Young, he brings it back free. Pip, in the farmhouse, could use your help next.";
+        public const string EchoPetLine = "This pet is yours to keep.";
+        public const string EchoPestsLine = "The cabbage rows are clear! Go back to Wren at the farm gate and double-click her.";
+        public const string EchoHealLine = "Your bandage restored health and finished the healing lesson.";
 
         // Pests counted per character this run (not saved: a restart starts the step's count again).
         private static readonly Dictionary<Serial, int> _pestsKilled = new();
@@ -199,7 +220,7 @@ namespace Server.Tutorial
             // cc-P453: the heal step listens to the bandage patch, not SkillEvents.SkillUsed (pinned rolls the skills on
             // a failed treatment too).
             BandageHealed = OnBandageHealed;
-            SureHeal = (healer, _) => healer is PlayerMobile pm && StepOf(pm) == 3; // cc-P707
+            SureHeal = (healer, _) => healer is PlayerMobile pm && HealingOn(pm); // cc-P707; cc-P726: the healing lesson
             Unhurt = OnUnhurt; // cc-P707 run 4
             BandageSeconds = IsleSeconds; // cc-P721
             // cc-P721: pinned's Trammel rules refuse a player's beneficial act on an uncontrolled creature ("Players
@@ -294,12 +315,19 @@ namespace Server.Tutorial
 
         public static int PestsKilled(PlayerMobile pm) => _pestsKilled.TryGetValue(pm.Serial, out var n) ? n : 0;
 
-        /// <summary>The step a participant is on: 1 pet, 2 pests, 3 heal, 4 done; 0 when not a participant.</summary>
+        /// <summary>
+        /// cc-P726: the step a participant is on: 1 the fight (pitchfork, war mode, pests), 2 the pet as the reward, 3 its
+        /// commands, 4 done; 0 when not a participant. An account that already has its tutorial pet goes from 1 to 3.
+        /// </summary>
         public static int StepOf(PlayerMobile pm) =>
             !ClusterFTutorial.IsParticipant(pm) ? 0 :
-            RecordOf(pm)?.PetClaimed != true ? 1 :
-            !Has(pm, PestsKey) ? 2 :
-            !Has(pm, HealKey) ? 3 : 4;
+            !Has(pm, PestsKey) ? 1 :
+            RecordOf(pm)?.PetClaimed != true ? 2 :
+            !CommandsDone(pm) ? 3 : 4;
+
+        /// <summary>cc-P726: Wren has started the fight (the pitchfork handed or held): her greeting stops.</summary>
+        public static bool CombatStarted(PlayerMobile pm) =>
+            StepOf(pm) != 1 || Has(pm, WeaponKey) || HoldsPitchfork(pm) || pm.Backpack?.FindItemByType<TutorialPitchfork>() != null;
 
         /// <summary>The station's handler: a line and a quest arrow to the Farmhand.</summary>
         public static void PointTo(PlayerMobile pm)
@@ -315,6 +343,7 @@ namespace Server.Tutorial
         public static int Talk(PlayerMobile pm, Mobile hand)
         {
             var step = StepOf(pm);
+            TutorialCoreTrials.ClearNow(pm); // cc-P728: Wren gives the next step herself
 
             // cc-P663: the farm is a core station; a trainee with earlier lessons left is sent back to them.
             if (step is >= 1 and <= 3 && RecordOf(pm) is { } record && !ClusterFTutorial.IsDone(record, CoreStation) &&
@@ -329,38 +358,23 @@ namespace Server.Tutorial
                 case 0:
                     hand.SayTo(pm, NotTraineeLine);
                     break;
+                case 1 when !ArmedDone(pm):
+                    hand.SayTo(pm, BeginCombat(pm));
+                    break;
                 case 1:
-                    hand.SayTo(pm, PetOfferLine);
+                    OpenFieldGate(hand.Map);
+                    hand.SayTo(pm, PestsNow(pm));
+                    break;
+                case 2:
+                    hand.SayTo(pm, PetOfferLine); // cc-P726: the pet, as thanks for the cleared rows
                     pm.CloseGump<TutorialFarmPetGump>();
                     pm.SendGump(new TutorialFarmPetGump());
                     break;
-                case 2 when !CommandsDone(pm):
-                    hand.SayTo(pm, BeginCommands(pm) ? CommandsLine : string.Format(NoPetForCommandsLine, PestsToClear));
-                    break;
-                case 2:
-                    OpenFieldGate(hand.Map);
-                    var left = Math.Max(0, PestsToClear - PestsKilled(pm));
-                    hand.SayTo(pm, PestsKilled(pm) == 0 ? string.Format(PestsLine, PestsToClear) : string.Format(PestsLeftLine, left));
-                    break;
                 case 3:
-                    var gift = GiveBandages(pm);
-                    var pip = FindPip(hand.Map); // cc-P721: a patient who stays hurt
-                    hand.SayTo(pm, gift switch
-                    {
-                        BandageGift.NoneLeft => NoMoreBandagesLine,
-                        BandageGift.NoRoom => NoRoomForBandagesLine,
-                        _ when pip != null => PipLine,
-                        _ => Scratch(pm) ? ScratchLine : HealLine
-                    });
-                    if (gift is BandageGift.Given or BandageGift.HasSome)
-                    {
-                        hand.SayTo(pm, WaitLine); // cc-P721
-                        hand.SayTo(pm, MakeBandagesLine); // cc-P718 item 9
-                        pip?.PointTo(pm);
-                    }
-
+                    hand.SayTo(pm, BeginCommands(pm));
                     break;
                 default:
+                    CheckDone(pm);
                     hand.SayTo(pm, DoneLine);
                     break;
             }
@@ -371,7 +385,7 @@ namespace Server.Tutorial
         /// <summary>Step 1: the pet. Null when refused (not on this step, not a farm line, or no follower slot).</summary>
         public static EvoPet? ChoosePet(PlayerMobile pm, string line)
         {
-            if (StepOf(pm) != 1 || Array.IndexOf(FarmPetLines, line) < 0)
+            if (StepOf(pm) != 2 || Array.IndexOf(FarmPetLines, line) < 0)
             {
                 return null;
             }
@@ -386,9 +400,10 @@ namespace Server.Tutorial
 
             RecordOf(pm)!.PetClaimed = true;
             ClusterFTutorial.SystemLine(pm, EchoPetLine);
-            if (!CheckDone(pm) && StepOf(pm) == 2 && !CommandsDone(pm))
+            ClusterFTutorial.SystemLine(pm, PetInfoLine); // cc-P726 item 2
+            if (!CheckDone(pm) && StepOf(pm) == 3)
             {
-                ClusterFTutorial.SystemLine(pm, BeginCommands(pm) ? CommandsLine : string.Format(NoPetForCommandsLine, PestsToClear));
+                ClusterFTutorial.SystemLine(pm, BeginCommands(pm)); // cc-P726: the commands follow the pet
             }
 
             return pet;
@@ -450,13 +465,6 @@ namespace Server.Tutorial
                 return;
             }
 
-            // cc-P718 item 10: at least one pest falls to the pet on "all kill", when the trainee has a pet with them.
-            if (!_petKilled.Contains(pm.Serial) && PetsOf(pm).Count > 0)
-            {
-                ClusterFTutorial.SystemLine(pm, PetKillLine);
-                return;
-            }
-
             // cc-P721: and the trainee has attacked one themselves.
             if (!_struck.Contains(pm.Serial))
             {
@@ -468,12 +476,42 @@ namespace Server.Tutorial
             _petKilled.Remove(pm.Serial);
             _struck.Remove(pm.Serial);
             RecordOf(pm)!.StationsDone.Add(PestsKey);
-            ClusterFTutorial.SystemLine(pm, EchoPestsLine);
-            ClusterFTutorial.CompleteStation(pm, TamingStation);
             if (!CheckDone(pm))
             {
-                ClusterFTutorial.SystemLine(pm, "Return to Wren the Farmhand at the farm gate and double-click her.");
+                Cleared(pm);
             }
+        }
+
+        /// <summary>
+        /// cc-P728 item 6: the rows are clear. Said plainly with the next step, by Wren over her head, over the trainee's, in
+        /// the system line and at the top of the lesson window (reopened if closed), and the arrow turns back to her.
+        /// </summary>
+        public static void Cleared(PlayerMobile pm)
+        {
+            var map = TutorialWorld.MapOf(pm);
+            var hand = TutorialFarmhand.Find(map);
+            hand?.SayTo(pm, EchoPestsLine);
+            TutorialCoreTrials.NowStep(pm, EchoPestsLine, hand?.Location ?? TutorialWorld.Ground(map ?? TutorialWorld.Isle, FarmhandSpot), "Wren the Farmhand");
+        }
+
+        /// <summary>
+        /// cc-P728 item 6: what Wren says on the pest part: the pests to go, or with the count reached, what is still missing
+        /// (never "Defeat 0 more").
+        /// </summary>
+        public static string PestsNow(PlayerMobile pm)
+        {
+            var left = PestsToClear - PestsKilled(pm);
+            if (PestsKilled(pm) == 0)
+            {
+                return string.Format(PestsNoPetLine, PestsToClear); // cc-P726: no pet yet
+            }
+
+            if (left > 0)
+            {
+                return string.Format(PestsLeftLine, left);
+            }
+
+            return StrikeLine;
         }
 
         /// <summary>cc-P663: all three steps done (StepOf 4) finishes core.farm. True when they are.</summary>
@@ -484,6 +522,8 @@ namespace Server.Tutorial
                 return false;
             }
 
+            ClusterFTutorial.CompleteStation(pm, TamingStation); // cc-P726: the pet and its commands
+
             TutorialCoreTrials.FarmFinished(pm);
             ClusterFTutorial.SystemLine(pm, TutorialPetCare.FarmPetLessonLine); // cc-P666: the farm's pet lesson line
             return true;
@@ -491,12 +531,14 @@ namespace Server.Tutorial
 
         // -- cc-P718 item 10: the pet commands --
 
-        /// <summary>cc-P721: the pet commands, then the weapon in hand and war mode: what the pest part waits for.</summary>
-        public static bool CommandsDone(PlayerMobile pm) =>
-            Has(pm, FollowKey) && Has(pm, GuardKey) && Has(pm, WeaponKey) && Has(pm, WarKey);
+        /// <summary>cc-P726: the pet's commands, follow and guard (step 3).</summary>
+        public static bool CommandsDone(PlayerMobile pm) => Has(pm, FollowKey) && Has(pm, GuardKey);
 
-        /// <summary>cc-P718: the pest part of step 2, after the commands: the pests fight the trainee only now.</summary>
-        public static bool PestPartOn(PlayerMobile pm) => StepOf(pm) == 2 && CommandsDone(pm);
+        /// <summary>cc-P721: the weapon in hand and war mode: what the pest part waits for.</summary>
+        public static bool ArmedDone(PlayerMobile pm) => Has(pm, WeaponKey) && Has(pm, WarKey);
+
+        /// <summary>cc-P718: the pest part of step 1, once armed: the pests fight the trainee only now.</summary>
+        public static bool PestPartOn(PlayerMobile pm) => StepOf(pm) == 1 && ArmedDone(pm);
 
         /// <summary>The trainee's living pets on their map.</summary>
         public static List<BaseCreature> PetsOf(PlayerMobile pm)
@@ -518,36 +560,64 @@ namespace Server.Tutorial
         private static TimerExecutionToken _watchTimer;
 
         /// <summary>
-        /// Starts the commands: the trainee's pets stay, and their orders are watched until they follow and then guard.
-        /// False when the trainee has no pet with them: the commands are skipped and the field gate opens.
+        /// cc-P728 item 4: starts (or picks up) the combat part, in order: the pitchfork in hand, war mode, then the pet's
+        /// commands. Hands the pitchfork when it is the step, watches the trainee, and returns Wren's line for where they are.
         /// </summary>
-        public static bool BeginCommands(PlayerMobile pm)
+        public static string BeginCombat(PlayerMobile pm)
+        {
+            Watch(pm);
+            if (!Has(pm, WeaponKey))
+            {
+                return GivePitchfork(pm) != null || HoldsPitchfork(pm) || pm.Backpack?.FindItemByType<TutorialPitchfork>() != null
+                    ? PitchforkLine
+                    : PitchforkNoRoomLine;
+            }
+
+            return !Has(pm, WarKey) ? WeaponDoneLine : PestsNow(pm);
+        }
+
+        /// <summary>
+        /// cc-P726: step 3, the commands of the pet just given: the pets stay, and their orders are watched until they
+        /// follow and then guard. With no pet along they wait for another time, and the farm is done. Wren's line.
+        /// </summary>
+        public static string BeginCommands(PlayerMobile pm)
         {
             var pets = PetsOf(pm);
-            var noPet = pets.Count == 0;
-            if (noPet)
+            if (pets.Count == 0)
             {
                 var record = RecordOf(pm)!;
                 record.StationsDone.Add(FollowKey);
                 record.StationsDone.Add(GuardKey);
-                GivePitchfork(pm); // cc-P721: the weapon and war mode still come first
-            }
-            else if (!Has(pm, FollowKey))
-            {
-                foreach (var pet in pets)
-                {
-                    pet.ControlTarget = null;
-                    pet.ControlOrder = OrderType.Stay;
-                }
+                CheckDone(pm);
+                return NoPetForCommandsLine;
             }
 
+            Watch(pm);
+            if (Has(pm, FollowKey))
+            {
+                return FollowDoneLine;
+            }
+
+            StayPets(pets);
+            return CommandsLine;
+        }
+
+        private static void StayPets(List<BaseCreature> pets)
+        {
+            foreach (var pet in pets)
+            {
+                pet.ControlTarget = null;
+                pet.ControlOrder = OrderType.Stay;
+            }
+        }
+
+        private static void Watch(PlayerMobile pm)
+        {
             _watching.Add(pm);
             if (!_watchTimer.Running)
             {
                 Timer.StartTimer(TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(500), WatchAll, out _watchTimer);
             }
-
-            return !noPet;
         }
 
         private static void WatchAll()
@@ -563,43 +633,67 @@ namespace Server.Tutorial
             }
         }
 
-        /// <summary>Reads the pets' orders (speech or menu, both set them): follow first, then guard. True when both are done.</summary>
+        /// <summary>
+        /// cc-P728 item 4: the combat part, one step per call, in order: the pitchfork in hand, war mode, the pet following,
+        /// the pet guarding (its orders come from speech or its menu; both set them). With no pet along at war mode the
+        /// commands are skipped. Then the field gate opens. True when all are done.
+        /// </summary>
         public static bool CheckCommands(PlayerMobile pm)
         {
-            if (pm.Deleted || StepOf(pm) != 2 || CommandsDone(pm))
+            var step = StepOf(pm);
+            if (pm.Deleted || step is not (1 or 3) || step == 1 && ArmedDone(pm))
             {
                 _watching.Remove(pm);
-                return CommandsDone(pm);
+                return step == 1 ? ArmedDone(pm) : step == 4;
+            }
+
+            var record = RecordOf(pm)!;
+            if (step == 1)
+            {
+                if (!Has(pm, WeaponKey) && HoldsPitchfork(pm))
+                {
+                    record.StationsDone.Add(WeaponKey);
+                    ClusterFTutorial.SystemLine(pm, WeaponDoneLine);
+                }
+                else if (Has(pm, WeaponKey) && pm.Warmode)
+                {
+                    record.StationsDone.Add(WarKey);
+                    return OpenPests(pm, WarDoneLine);
+                }
+
+                return false;
             }
 
             var pets = PetsOf(pm);
-            var record = RecordOf(pm)!;
-            if (!Has(pm, FollowKey) && pets.Exists(p => p.ControlOrder == OrderType.Follow && p.ControlTarget == pm))
+            if (!Has(pm, FollowKey))
             {
-                record.StationsDone.Add(FollowKey);
-                ClusterFTutorial.SystemLine(pm, FollowDoneLine);
-            }
-            else if (Has(pm, FollowKey) && !Has(pm, GuardKey) && pets.Exists(p => p.ControlOrder == OrderType.Guard))
-            {
-                record.StationsDone.Add(GuardKey);
-                GivePitchfork(pm); // cc-P721
-                ClusterFTutorial.SystemLine(pm, GuardDoneLine);
-            }
-            else if (Has(pm, GuardKey) && !Has(pm, WeaponKey) && HoldsPitchfork(pm))
-            {
-                record.StationsDone.Add(WeaponKey);
-                ClusterFTutorial.SystemLine(pm, WeaponDoneLine);
-            }
-            else if (Has(pm, WeaponKey) && !Has(pm, WarKey) && pm.Warmode)
-            {
-                record.StationsDone.Add(WarKey);
-                _watching.Remove(pm);
-                OpenFieldGate(pm.Map);
-                ClusterFTutorial.SystemLine(pm, string.Format(WarDoneLine, PestsToClear));
-                return true;
+                if (pets.Exists(p => p.ControlOrder == OrderType.Follow && p.ControlTarget == pm))
+                {
+                    record.StationsDone.Add(FollowKey);
+                    ClusterFTutorial.SystemLine(pm, FollowDoneLine);
+                }
+
+                return false;
             }
 
-            return false;
+            if (!pets.Exists(p => p.ControlOrder == OrderType.Guard))
+            {
+                return false;
+            }
+
+            record.StationsDone.Add(GuardKey);
+            _watching.Remove(pm);
+            ClusterFTutorial.SystemLine(pm, GuardDoneLine);
+            CheckDone(pm);
+            return true;
+        }
+
+        private static bool OpenPests(PlayerMobile pm, string line)
+        {
+            _watching.Remove(pm);
+            OpenFieldGate(pm.Map);
+            ClusterFTutorial.SystemLine(pm, string.Format(line, PestsToClear));
+            return true;
         }
 
         // -- cc-P721: the pitchfork --
@@ -620,8 +714,7 @@ namespace Server.Tutorial
             if (!pm.PlaceInBackpack(fork))
             {
                 fork.Delete();
-                ClusterFTutorial.SystemLine(pm, "Your backpack is too full for the pitchfork. Make room, then double-click Wren again.");
-                return null;
+                return null; // BeginCombat says so (PitchforkNoRoomLine)
             }
 
             return fork;
@@ -644,19 +737,41 @@ namespace Server.Tutorial
                 return null;
             }
 
-            foreach (var m in map.GetMobilesInRange(TutorialWorld.Ground(map, PipSpot), 3))
+            // cc-P726: on his bench in the farmhouse, or (a world seeded before) by the barrel at the gate.
+            foreach (var at in new[] { PipBench, TutorialWorld.Ground(map, OldPipSpot) })
             {
-                if (m is TutorialWoundedHelper pip && !pip.Deleted)
+                foreach (var m in map.GetMobilesInRange(at, 3))
                 {
-                    return pip;
+                    if (m is TutorialWoundedHelper pip && !pip.Deleted)
+                    {
+                        return pip;
+                    }
                 }
             }
 
             return null;
         }
 
-        /// <summary>Pip's place: by the barrel south of the gate, out of the way of the gate and Wren.</summary>
-        public static readonly Point2D PipSpot = new(6715, 3981);
+        /// <summary>
+        /// cc-P726 item 4 (Chase 10-28 12:25, 15:28): Pip sits hurt on a bench inside the farmhouse, against its east wall
+        /// between the bed and the box, on the floor boards (Z 7, TutorialIsleFarmLayout), blood on the floor around him.
+        /// The client draws a person on a bench tile seated.
+        /// </summary>
+        public static readonly Point2D PipSpot = new(6692, 3975);
+        public static readonly Point3D PipBench = new(6692, 3975, 7);
+        public static readonly Point2D OldPipSpot = new(6715, 3981); // cc-P721's, by the barrel south of the gate
+
+        public const int BenchId = 0x0B2D; // "wooden bench", the north-south piece along the east wall
+
+        /// <summary>The bench's two tiles and the blood decals (stock "blood" art 0x122A-0x122E) on the floor beside it.</summary>
+        public static readonly (int Id, Point3D At, string Name)[] PipProps =
+        [
+            (BenchId, new Point3D(6692, 3975, 7), "wooden bench"),
+            (BenchId, new Point3D(6692, 3976, 7), "wooden bench"),
+            (0x122A, new Point3D(6691, 3975, 7), "blood"),
+            (0x122D, new Point3D(6691, 3976, 7), "blood"),
+            (0x122C, new Point3D(6691, 3974, 7), "blood")
+        ];
 
         /// <summary>cc-P721: Pip may be bandaged; every other beneficial act is <paramref name="inner"/>'s (pinned's) to judge.</summary>
         public static bool AllowBeneficial(Mobile from, Mobile target, AllowBeneficialHandler? inner) =>
@@ -817,7 +932,7 @@ namespace Server.Tutorial
         // Step 3, a bandage on an unhurt patient: the trainee or one of their pets. Scratch refuses while anyone is hurt.
         public static bool OnUnhurt(Mobile healer, Mobile patient)
         {
-            if (healer is not PlayerMobile pm || StepOf(pm) != 3 ||
+            if (healer is not PlayerMobile pm || !HealingOn(pm) ||
                 patient != pm && (patient as BaseCreature)?.ControlMaster != pm)
             {
                 return false;
@@ -842,7 +957,7 @@ namespace Server.Tutorial
 
         public static bool OnHealed(PlayerMobile pm)
         {
-            if (StepOf(pm) != 3)
+            if (!HealingOn(pm))
             {
                 return false;
             }
@@ -850,13 +965,60 @@ namespace Server.Tutorial
             RecordOf(pm)!.StationsDone.Add(HealKey);
             ClusterFTutorial.SystemLine(pm, EchoHealLine);
             ClusterFTutorial.CompleteStation(pm, HealingStation);
-            CheckDone(pm);
+            TutorialCoreTrials.HealingFinished(pm);
             return true;
+        }
+
+        // -- cc-P726 item 4: the healing lesson, core.healing, after the farm --
+
+        public const string HealingStationKey = "core.healing";
+
+        /// <summary>The healing lesson is the trainee's to do: the farm done, the heal not yet.</summary>
+        public static bool HealingOn(PlayerMobile pm) =>
+            ClusterFTutorial.IsParticipant(pm) && !Has(pm, HealKey) &&
+            (TutorialCoreTrials.IsDoing(pm, HealingStationKey) || RecordOf(pm) is { } r && ClusterFTutorial.IsDone(r, CoreStation));
+
+        /// <summary>
+        /// The healing lesson starts: bandages (a stack when the pack has none), how to use them and how long they take,
+        /// and the arrow to Pip on his bench. With no Pip on the map, the trainee's own scratch is the patient.
+        /// </summary>
+        public static BandageGift BeginHealing(PlayerMobile pm)
+        {
+            var gift = GiveBandages(pm);
+            var pip = FindPip(TutorialWorld.MapOf(pm));
+            ClusterFTutorial.SystemLine(pm, gift switch
+            {
+                BandageGift.NoneLeft => NoMoreBandagesLine,
+                BandageGift.NoRoom => NoRoomForBandagesLine,
+                _ when pip != null => PipLine,
+                _ => Scratch(pm) ? ScratchLine : HealLine
+            });
+            if (gift is BandageGift.Given or BandageGift.HasSome)
+            {
+                ClusterFTutorial.SystemLine(pm, WaitLine); // cc-P721
+                ClusterFTutorial.SystemLine(pm, MakeBandagesLine); // cc-P718 item 9
+                pip?.PointTo(pm);
+            }
+
+            return gift;
         }
 
         // -- The seeder --
 
         public readonly record struct SeedResult(bool Refused, int Addons, int Doors, int Farmhands, int Spawners, int Present, string Message);
+
+        private static bool HasProp(Map map, int id, Point3D at, string name)
+        {
+            foreach (var i in map.GetItemsInRange<Static>(at, 0))
+            {
+                if (!i.Deleted && i.ItemID == id && i.Z == at.Z && i.Name == name)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         /// <summary>How many of the two trees' four statics the server's map still holds (0 once the patch is on).</summary>
         public static int TreesLeft(Map map)
@@ -965,14 +1127,31 @@ namespace Server.Tutorial
                 else { gates[i].MoveToWorld(spot, map); doors++; }
             }
 
-            // cc-P721: Pip, the heal step's patient, when his spot is clear (he is optional: Wren falls back to a scratch).
-            if (FindPip(map) != null) { present++; }
-            else if (TutorialCorePlacement.FitsOn(TutorialWorld.Ground(map, PipSpot), map))
+            // cc-P721: Pip, the healing lesson's patient (he is optional: the lesson falls back to a scratch). cc-P726: on his
+            // bench in the farmhouse, with blood around him; one placed by the gate before is moved there.
+            foreach (var (id, at, name) in PipProps)
+            {
+                if (!HasProp(map, id, at, name) && !dryRun)
+                {
+                    new Static(id) { Name = name }.MoveToWorld(at, map);
+                }
+            }
+
+            if (FindPip(map) is { } pip)
+            {
+                present++;
+                if (!dryRun && pip.Location != PipBench)
+                {
+                    pip.Home = PipBench;
+                    pip.Direction = Direction.West;
+                    pip.MoveToWorld(PipBench, map);
+                }
+            }
+            else
             {
                 if (!dryRun)
                 {
-                    var spot = TutorialWorld.Ground(map, PipSpot);
-                    new TutorialWoundedHelper { Direction = Direction.West, Home = spot, RangeHome = 0 }.MoveToWorld(spot, map);
+                    new TutorialWoundedHelper { Direction = Direction.West, Home = PipBench, RangeHome = 0 }.MoveToWorld(PipBench, map);
                 }
 
                 hands++;
@@ -1493,7 +1672,7 @@ namespace Server.Mobiles
         public override void Use(Mobile from)
         {
             if (from.AccessLevel == AccessLevel.Player && !Open &&
-                !(from is PlayerMobile pm && (TutorialFarm.PestPartOn(pm) || TutorialFarm.StepOf(pm) >= 3)))
+                !(from is PlayerMobile pm && (TutorialFarm.PestPartOn(pm) || TutorialFarm.StepOf(pm) >= 2)))
             {
                 from.SendMessage(0x3B2, TutorialFarm.GateClosedLine);
                 return;
