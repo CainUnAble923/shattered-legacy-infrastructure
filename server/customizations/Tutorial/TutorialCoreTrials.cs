@@ -38,6 +38,19 @@ public static class TutorialCoreTrials
         if (_hooked) { return; }
         _hooked = true;
         EventSink.Speech += OnSpeech;
+        EventSink.PaperdollRequest += OnPaperdollRequest; // cc-P718 item 4
+    }
+
+    // cc-P718 item 4: the trainee opened their own character window (a double-click on themselves, or the client's
+    // paperdoll button: both reach Mobile.DisplayPaperdollTo, which raises PaperdollRequest).
+    private static void OnPaperdollRequest(Mobile beholder, Mobile beheld)
+    {
+        if (beholder == beheld && beholder is PlayerMobile { Alive: true } pm && IsDoing(pm, "core.backpack") &&
+            Current(pm)!.Progress.Step == 0)
+        {
+            Observe(pm, TutorialAction.OpenedPaperdoll);
+            ClusterFTutorial.SystemLine(pm, "That is your character window. Now double-click the backpack picture in it, then double-click the blue practice bag inside your backpack.");
+        }
     }
 
     public static Trial? Current(PlayerMobile pm) => Active.GetValueOrDefault(pm.Serial);
@@ -49,14 +62,14 @@ public static class TutorialCoreTrials
     public static string Hint(string key) => key switch
     {
         "core.movement" => "Hold the right mouse button toward the glowing blue floor tile in the road, up from the beach, to walk onto it, then walk onto the gold tile. Point farther from your character while holding the button to run.",
-        "core.backpack" => "Follow the arrow to the camp beside the road. Double-click your character to open the character window, then double-click its backpack picture. Inside your backpack, double-click the blue practice bag.",
-        "core.paperdoll" => "Follow the arrow to the clothes rack. Double-click your character to open the character window, then drag the blue practice cloak from your backpack onto your character's picture. If you already wear a cloak, drag it into your backpack first.",
+        "core.backpack" => "Follow the arrow to the camp beside the road. First open your character window: double-click your own character (two quick left clicks on yourself), or click the paperdoll button. Then double-click the backpack picture in that window, and inside your backpack double-click the blue practice bag.",
+        "core.paperdoll" => "Follow the arrow to the table by the clothes rack: your blue cloak of the Wakening Isle lies on it. To move a thing, click it, hold the left mouse button down, move the mouse, and let go: that is drag and drop. Drag the cloak onto your character's picture in the character window to wear it, or into your backpack first and double-click it there. If you already wear a cloak, drag it into your backpack first. The cloak is yours to keep.",
         "core.chat" => $"Follow the arrow to the signpost. Press Enter, type '{Phrase}', then press Enter again to speak. The Journal records what you say.",
-        "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Choose your pet, clear the pests in the cabbage rows, then heal with a bandage.",
+        "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Choose your pet and learn its commands, hold a pitchfork and switch to war mode (press Tab), clear the pests in the cabbage rows, then heal Pip with a bandage.",
         "core.death" => "Follow the arrow into the training yard to the pale gray rat, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
         "core.banking" => "Follow the arrow through the practice bank's door in the trades square to Merrin the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
         "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss to finish this lesson; you can read about the League without joining.",
-        "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the bright blue rune stone. Watch the vision; it lasts under a minute, holds you still, and will not change your character.",
+        "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the bright blue rune stone. Watch the vision; it lasts about a minute, holds you still, and will not change your character.",
         "core.travel" => "Follow the arrow to the end of the dock and walk into the shimmering blue moongate, or double-click it. It takes you, and your pet, to Rook on the New Haven plaza.",
         _ => "Double-click Tamsin on the Wakening Isle's beach to choose this lesson."
     };
@@ -64,7 +77,6 @@ public static class TutorialCoreTrials
     /// <summary>A lesson's practice item, made fresh (bright and named for what it is: cc-P480).</summary>
     public static Item? MakeSupply(string key) => key switch
     {
-        "core.paperdoll" => new TutorialPracticeCloak(),
         "core.backpack" => new TutorialPracticeBag { Name = "blue practice bag", Hue = TutorialStyle.SupplyHue, LootType = LootType.Blessed },
         "core.banking" => new TutorialBankToken(),
         _ => null
@@ -130,6 +142,7 @@ public static class TutorialCoreTrials
             ClusterFTutorial.SystemLine(pm, "Make room in your backpack, then choose this lesson again in Tamsin's window.");
             return;
         }
+        if (station.Key == "core.paperdoll") { WakeningIsleCloak.EnsureOnTable(pm); } // cc-P718: on the table, not in the bag
         Timer.StartTimer(TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(250), () => Tick(trial), out trial.Timer);
         Show(pm, trial);
         // cc-P663: farm steps finished before the farm was a core station (or before this start) count at once.
@@ -139,6 +152,7 @@ public static class TutorialCoreTrials
     private static void Show(PlayerMobile pm, Trial trial)
     {
         Resupply(pm, trial);
+        if (trial.Station.Key == "core.paperdoll") { WakeningIsleCloak.EnsureOnTable(pm); } // cc-P718: a lost cloak comes back
         ClusterFTutorial.SystemLine(pm, Hint(trial.Station.Key));
         Point(pm, Destination(trial), trial.Station.Title);
         pm.CloseGump<TutorialTrialGump>();
@@ -214,7 +228,7 @@ public static class TutorialCoreTrials
                 Effects.SendLocationEffect(Destination(trial), TutorialWorld.MapOf(pm), 0x376A, 16, 10,
                     trial.Progress.Step == 0 ? TutorialStyle.BlueTileHue : TutorialStyle.GoldTileHue, 0);
                 break;
-            case "core.paperdoll" when pm.Alive && trial.Supply?.Parent == pm:
+            case "core.paperdoll" when pm.Alive && pm.FindItemOnLayer(Layer.Cloak) is WakeningIsleCloak:
                 Observe(pm, TutorialAction.Equipped);
                 break;
             case "core.banking" when pm.Alive && trial.Supply?.IsChildOf(pm.FindBankNoCreate()) == true:
@@ -270,7 +284,7 @@ public static class TutorialCoreTrials
         if (trial.Progress.Step != 0) { return; }
         if (TutorialVisionScene.IsPlaying(pm)) { return; }
         Observe(pm, TutorialAction.VisionStarted);
-        // cc-P665: the 45-second scene; its last beat finishes the lesson, an early end lets the stone start it again.
+        // cc-P665: the scene (61 s since cc-P721); its last beat finishes the lesson, an early end lets the stone start it again.
         if (!TutorialVisionScene.Play(pm, p => Observe(p, TutorialAction.VisionFinished), VisionEnded)) { trial.Progress.Reset(); }
     }
 

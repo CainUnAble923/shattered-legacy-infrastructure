@@ -122,7 +122,7 @@ public class TutorialTradeTrialVerification : IDisposable
         foreach (var station in TutorialStations.All)
         {
             Assert.True(TutorialStations.Handlers.ContainsKey(station.Key), $"{station.Key} has no lesson");
-            if (!station.IsCore)
+            if (!station.IsCore && !TutorialStations.IsAnytime(station.Key)) // cc-P718: the client tips are not a wing
             {
                 Assert.True(TutorialWingTrials.IsWingTrial(station.Key), $"{station.Key} is not a wing trial");
                 Assert.DoesNotContain("coming soon", TutorialWingTrials.Hint(station.Key), StringComparison.OrdinalIgnoreCase);
@@ -131,9 +131,9 @@ public class TutorialTradeTrialVerification : IDisposable
             Assert.DoesNotContain("coming soon", TutorialCoreTrials.Hint(station.Key), StringComparison.OrdinalIgnoreCase);
         }
 
-        Assert.Equal(38, TutorialStations.All.Length); // cc-P663: core.farm joined the core
+        Assert.Equal(39, TutorialStations.All.Length); // cc-P663: core.farm joined the core; cc-P718: client.tips
         Assert.Equal(20, TutorialWingTrials.Trades.Length); // 28 wing stations less P290's 8
-        Assert.Equal(28, TutorialStations.All.Count(s => !s.IsCore));
+        Assert.Equal(28, TutorialStations.All.Count(s => !s.IsCore && !TutorialStations.IsAnytime(s.Key)));
     }
 
     // ---------------------------------------------------------------- 2

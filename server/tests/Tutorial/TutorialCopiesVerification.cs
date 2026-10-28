@@ -138,6 +138,43 @@ public class TutorialCopiesVerification : IDisposable
         ClusterFTutorial.OnLogin(pm);
     }
 
+    // cc-P718: a copy whose seeding placed nothing (the isle's land was missing then) is not left "seeded" and empty: the
+    // next claim seeds it again. The overnight bot's world had six such copies, and the P718 bot run woke on an empty one.
+    [Fact]
+    public void ACopyWhoseSeedingPlacedNothingIsSeededAgainAtTheNextClaim()
+    {
+        var seed = TutorialCopies.SeedCopy;
+        try
+        {
+            TutorialCopies.SeedCopy = _ => "Tutorial: refused. (the isle's land is missing)";
+            var first = Trainee("CopyEmpty");
+            var slot = TutorialCopies.SlotOf(first.Map);
+            Assert.Empty(slot.Placed);
+            Assert.False(slot.Seeded);
+
+            TutorialStart.SendHome(first);
+            TutorialCopies.Tick(Core.Now + TimeSpan.FromMinutes(31));
+            Assert.False(slot.InUse);
+
+            // An old save's state: seeded, with nothing placed.
+            foreach (var s in TutorialCopies.Slots)
+            {
+                s.Seeded = true;
+                s.Placed.Clear();
+            }
+
+            TutorialCopies.SeedCopy = seed;
+            var next = Trainee("CopyRetry");
+            var again = TutorialCopies.SlotOf(next.Map);
+            Assert.True(again.Seeded);
+            Assert.NotEmpty(again.Placed);
+        }
+        finally
+        {
+            TutorialCopies.SeedCopy = seed;
+        }
+    }
+
     private static List<BaseCreature> Pests(Map map) =>
         TutorialFarm.FindSpawner(map, TutorialFarm.PestSpot, TutorialFarm.PestTypes[0])!.Spawned.Keys.OfType<BaseCreature>().ToList();
 
@@ -153,6 +190,9 @@ public class TutorialCopiesVerification : IDisposable
         Assert.NotSame(a.Map, b.Map);
         RecordOf(a).PetClaimed = true;
         RecordOf(b).PetClaimed = true;
+        // cc-P718: past the pet commands, so the pests fight them.
+        RecordOf(a).StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.WeaponKey, TutorialFarm.WarKey]);
+        RecordOf(b).StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.WeaponKey, TutorialFarm.WarKey]);
         Assert.Equal(2, TutorialFarm.StepOf(a));
         Assert.Equal(2, TutorialFarm.StepOf(b));
 

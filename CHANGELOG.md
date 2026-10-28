@@ -29,6 +29,36 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.28.3
+
+### Added
+- Test shard: a new character's first moments on the Wakening Isle: you lie on the wet sand in the dark while the waves wash in, then get up as the light comes.
+- Test shard: dying on the Wakening Isle tells you what to do: you are a ghost, follow the arrow to Sera the healer to come back to life, and (if your things are on your body) follow the arrow back to it and double-click it.
+- Test shard: at the farm, before the pests, Wren gives you a pitchfork to keep and teaches you to fight: hold the pitchfork, press Tab (or the Peace/War button) for war mode, and double-click a rat to attack it yourself.
+
+### Changed
+- Test shard: the farm's bandage lesson has a patient who stays hurt: Pip, the farm boy beside Wren. Wren tells you a bandage takes a few seconds; on the isle your own bandage takes 4 seconds, you see how long to wait, and a failed try says so plainly so you can try again.
+- Test shard: the loop vision at the standing stones is lit from the start, the Stranger walks up to the Gem and strikes it with his sword, and the whole vision is slower and easier to read (about a minute). Windows that covered the middle of the screen close when it starts.
+
+## 2026.10.28.2
+
+### Added
+- Test shard: on the Wakening Isle, Tamsin, Wren and Elara speak first when you come near and tell you to double-click them, every half minute until you do.
+- Test shard: your cloak from the Wakening Isle is yours to keep. It waits on the table by the clothes rack: drag it onto your character to wear it. It stays with you after death and cannot be sold, traded or dropped.
+- Test shard: optional client tips, at any time from Tamsin's or Rook's window. The first shows how to turn on Always run.
+- Test shard: at the farm, Wren teaches pet commands before the pests: say "all follow me", then "all guard me" (or use your pet's menu), and let your pet take at least one pest with "all kill". She hands you bandages, says how to use them, and how to make more with scissors and cloth.
+
+### Changed
+- Test shard: the backpack lesson starts by opening your character window: double-click yourself, or click the paperdoll button.
+- Test shard: the farm's rats and snakes stay behind the field gate and leave you alone until your pest lesson; Wren opens the gate when it starts.
+- Test shard: the signposts on the Wakening Isle are proper standing signposts, named so you can tell what they say.
+
+### Fixed
+- Test shard: fighting on the Wakening Isle no longer floods the screen with skill gains: each skill can rise at most once every 10 seconds there.
+
+### Staff
+- clusterf.tutorial.gainSecondsPerSkill (10) sets the Wakening Isle's gain pace; 0 turns it off.
+
 ## 2026.10.28
 
 ### Changed

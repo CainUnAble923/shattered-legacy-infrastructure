@@ -153,7 +153,7 @@ public class TutorialIsleVerification : IDisposable
         TutorialAction[] actions = key switch
         {
             "core.movement" => [TutorialAction.FirstMark, TutorialAction.SecondMark],
-            "core.backpack" => [TutorialAction.OpenedBag],
+            "core.backpack" => [TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag], // cc-P718: the character window first
             "core.paperdoll" => [TutorialAction.Equipped],
             "core.chat" => [TutorialAction.SaidPhrase],
             "core.farm" => [TutorialAction.FarmDone],

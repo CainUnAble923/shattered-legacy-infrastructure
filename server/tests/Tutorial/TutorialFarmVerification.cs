@@ -154,6 +154,9 @@ public class TutorialFarmVerification
         var map = TutorialWorld.Isle;
         TutorialFarm.FindAddon(map)?.Delete();
         TutorialFarm.FindDoor(map)?.Delete();
+        foreach (var gate in TutorialFarm.FieldGates(map)) { gate.Delete(); } // cc-P718
+        TutorialFarm.FindFieldFence(map)?.Delete();
+        TutorialFarm.FindPip(map)?.Delete(); // cc-P721
         TutorialFarmhand.Find(map)?.Delete();
         foreach (var (spot, _, _, types) in TutorialFarm.SpawnerRows)
         {
@@ -192,20 +195,24 @@ public class TutorialFarmVerification
 
             TutorialFarm.MapPatched = () => true;
             var dry = TutorialFarm.Seed(true);
-            Assert.Equal((false, 1, 1, 1, 2, 0), (dry.Refused, dry.Addons, dry.Doors, dry.Farmhands, dry.Spawners, dry.Present));
+            // cc-P718: the farmhouse door, the field gate and the fence piece beside it.
+            // cc-P721: Wren and Pip.
+            Assert.Equal((false, 1, 3, 2, 2, 0), (dry.Refused, dry.Addons, dry.Doors, dry.Farmhands, dry.Spawners, dry.Present));
             Assert.Null(TutorialFarm.FindAddon(isle));
 
             var first = TutorialFarm.Seed(false);
-            Assert.Equal((false, 1, 1, 1, 2, 0), (first.Refused, first.Addons, first.Doors, first.Farmhands, first.Spawners, first.Present));
+            Assert.Equal((false, 1, 3, 2, 2, 0), (first.Refused, first.Addons, first.Doors, first.Farmhands, first.Spawners, first.Present));
 
             // cc-P663: the isle's farm: the same 330 pieces moved by (+3314, +1364), each at its height above the old ground.
             var addon = TutorialFarm.FindAddon(isle);
             Assert.NotNull(addon);
             Assert.Same(isle, addon!.Map);
             Assert.Equal(TutorialIsleFarmLayout.Anchor, addon.Location);
-            Assert.Equal(TutorialFarmLayout.Pieces.Length, addon.Components.Count);
+            // cc-P718: the gate's wall-arm sign is the standing post, and its hung board is left out.
+            Assert.Equal(TutorialFarmLayout.Pieces.Length - 1, addon.Components.Count);
             var placed = addon.Components.Select(c => (c.ItemID, c.X, c.Y, c.Z)).OrderBy(t => t).ToArray();
-            var wanted = TutorialIsleFarmLayout.Pieces.Select(p => (p.Id, p.X, p.Y, p.Z)).OrderBy(t => t).ToArray();
+            var wanted = TutorialIsleFarmLayout.Pieces.Where(p => TutorialFarm.IsleArt(p.Id) != null)
+                .Select(p => (TutorialFarm.IsleArt(p.Id)!.Value, p.X, p.Y, p.Z)).OrderBy(t => t).ToArray();
             Assert.Equal(wanted, placed);
             var moved = TutorialFarmLayout.Pieces.Select(p => (p.Id, p.X + 3314, p.Y + 1364)).OrderBy(t => t).ToArray();
             Assert.Equal(moved, TutorialIsleFarmLayout.Pieces.Select(p => (p.Id, p.X, p.Y)).OrderBy(t => t).ToArray());
@@ -228,7 +235,7 @@ public class TutorialFarmVerification
             }
 
             var again = TutorialFarm.Seed(false);
-            Assert.Equal((0, 0, 0, 0, 5), (again.Addons, again.Doors, again.Farmhands, again.Spawners, again.Present));
+            Assert.Equal((0, 0, 0, 0, 8), (again.Addons, again.Doors, again.Farmhands, again.Spawners, again.Present));
 
             // New Haven keeps the farmhouse, door and pen for the wing trials, with no Wren and no pests.
             var haven = TutorialFarm.SeedHaven(false);
@@ -299,6 +306,22 @@ public class TutorialFarmVerification
             Assert.True(p.Record.PetClaimed);
             Assert.Null(TutorialFarm.ChoosePet(p.Pm, "cat")); // one pet
             Assert.Equal(2, TutorialFarm.StepOf(p.Pm));
+
+            // cc-P718: the commands first (the pet's order is the evidence), then the pests fight, and the pet attacks.
+            Assert.Equal(OrderType.Stay, pet.ControlOrder);
+            pet.ControlTarget = p.Pm;
+            pet.ControlOrder = OrderType.Follow;
+            TutorialFarm.CheckCommands(p.Pm);
+            pet.ControlOrder = OrderType.Guard;
+            TutorialFarm.CheckCommands(p.Pm);
+            var fork = p.Pm.Backpack.FindItemByType<TutorialPitchfork>()!; // cc-P721: the weapon, then war mode
+            fork.Layer = Layer.TwoHanded;
+            Assert.True(p.Pm.EquipItem(fork));
+            TutorialFarm.CheckCommands(p.Pm);
+            p.Pm.Warmode = true;
+            Assert.True(TutorialFarm.CheckCommands(p.Pm));
+            pet.ControlOrder = OrderType.Attack;
+            TutorialFarm.NoteStruck(p.Pm); // cc-P721: the trainee's own blow
 
             // 2. Three pests the pet damaged; a pest nobody of theirs touched does not count.
             var untouched = new FarmRat();
@@ -695,7 +718,7 @@ public class TutorialFarmVerification
             Assert.NotEqual(TutorialIsleFarmLayout.DoorSpot, door.Location); // an open door stands aside
 
             var again = TutorialFarm.Seed(false);
-            Assert.Equal((0, 5), (again.Doors, again.Present));
+            Assert.Equal((0, 8), (again.Doors, again.Present)); // cc-P718: and the field gate and its fence piece; cc-P721: Pip
             Assert.Single(DoorsNearTheFarmhouse());
             Assert.Same(door, TutorialFarm.FindDoor(TutorialWorld.Isle));
         }
