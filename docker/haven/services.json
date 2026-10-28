@@ -34,13 +34,44 @@
       "verified": "cc-P109 (the sunflower-live alias and its pinned host keys)."
     }
   },
-  "sections": ["Sunflower", "Filament", "Monitoring", "Ultima Online / Shattered Legacy", "Admin"],
+  "sections": [
+    "Sunflower",
+    "Filament",
+    "Monitoring",
+    "Ultima Online / Shattered Legacy",
+    "Admin"
+  ],
   "tailscaleServe": [
-    { "tailnetPort": 80, "target": "http://127.0.0.1:3000", "service": "homepage", "_why": "The dashboard at http://haven.tail81098d.ts.net/. Port 80 on Haven's own interfaces is NPM's (0.0.0.0:80, the public website), so the tailnet's port 80 is Tailscale Serve's, which answers only on the tailnet." },
-    { "tailnetPort": 8093, "target": "http://127.0.0.1:8093", "service": "play-tests", "_why": "The ops pages on the same port as on the LAN." },
-    { "tailnetPort": 8787, "target": "http://127.0.0.1:8787", "service": "print-queue", "_why": "The print queue on the same port as on the LAN, once P109's deploy has moved it." },
-    { "tailnetPort": 8097, "target": "http://127.0.0.1:8097", "service": "scripts-dev", "_why": "cc-P144: the Legion scripts' dev channel on the same port as on the LAN, once Publish-LegionScripts.ps1 -Mode SetupDev has started it. Chase's PCs flagged dev read http://haven.tail81098d.ts.net:8097/scripts.json." },
-    { "tailnetPort": 9000, "target": "http://127.0.0.1:9000", "service": "portainer-haven", "_why": "cc-P163: Portainer on the tailnet at http://haven.tail81098d.ts.net:9000/, its plain HTTP port on loopback (Serve forwards to loopback HTTP only). At home, https://192.168.1.61:9443/ too. Portainer (Haven): deploy sets it, and so does every Mega dashboard deploy once it answers." },
+    {
+      "tailnetPort": 80,
+      "target": "http://127.0.0.1:3000",
+      "service": "homepage",
+      "_why": "The dashboard at http://haven.tail81098d.ts.net/. Port 80 on Haven's own interfaces is NPM's (0.0.0.0:80, the public website), so the tailnet's port 80 is Tailscale Serve's, which answers only on the tailnet."
+    },
+    {
+      "tailnetPort": 8093,
+      "target": "http://127.0.0.1:8093",
+      "service": "play-tests",
+      "_why": "The ops pages on the same port as on the LAN."
+    },
+    {
+      "tailnetPort": 8787,
+      "target": "http://127.0.0.1:8787",
+      "service": "print-queue",
+      "_why": "The print queue on the same port as on the LAN, once P109's deploy has moved it."
+    },
+    {
+      "tailnetPort": 8097,
+      "target": "http://127.0.0.1:8097",
+      "service": "scripts-dev",
+      "_why": "cc-P144: the Legion scripts' dev channel on the same port as on the LAN, once Publish-LegionScripts.ps1 -Mode SetupDev has started it. Chase's PCs flagged dev read http://haven.tail81098d.ts.net:8097/scripts.json."
+    },
+    {
+      "tailnetPort": 9000,
+      "target": "http://127.0.0.1:9000",
+      "service": "portainer-haven",
+      "_why": "cc-P163: Portainer on the tailnet at http://haven.tail81098d.ts.net:9000/, its plain HTTP port on loopback (Serve forwards to loopback HTTP only). At home, https://192.168.1.61:9443/ too. Portainer (Haven): deploy sets it, and so does every Mega dashboard deploy once it answers."
+    },
     {
       "tailnetPort": 8098,
       "target": "http://127.0.0.1:8098",
@@ -60,21 +91,57 @@
       "image": "sunflower-print-queue:local (built on Haven from python:3-alpine)",
       "compose": "/home/chase/sunflower-print-queue/stack/docker-compose.yml (source: C:\\dev\\sunflower\\print-queue\\docker-compose.yml)",
       "ports": [
-        { "lan": "192.168.1.61:8787", "loopback": "127.0.0.1:8787", "tailnet": "http://haven.tail81098d.ts.net:8787/", "container": 8787 }
+        {
+          "lan": "192.168.1.61:8787",
+          "loopback": "127.0.0.1:8787",
+          "tailnet": "http://haven.tail81098d.ts.net:8787/",
+          "container": 8787
+        }
       ],
       "volumes": [
-        { "host": "/home/chase/sunflower-print-queue/data", "container": "/data", "what": "queue.json, the daily backups, push-state.json. Customer orders." },
-        { "host": "/home/chase/sunflower-print-queue/logs", "container": "/logs", "what": "push.log" },
-        { "host": "/home/chase/sunflower-print-queue/keys", "container": "/keys", "what": "its own SSH key for Hostinger, ssh_config, the pinned known_hosts (read only)" }
+        {
+          "host": "/home/chase/sunflower-print-queue/data",
+          "container": "/data",
+          "what": "queue.json, the daily backups, push-state.json. Customer orders."
+        },
+        {
+          "host": "/home/chase/sunflower-print-queue/logs",
+          "container": "/logs",
+          "what": "push.log"
+        },
+        {
+          "host": "/home/chase/sunflower-print-queue/keys",
+          "container": "/keys",
+          "what": "its own SSH key for Hostinger, ssh_config, the pinned known_hosts (read only)"
+        }
       ],
-      "env": ["TZ", "PQ_DATA", "PQ_LOGS", "PQ_BIND", "PQ_PORT", "PQ_SSH_CONFIG", "PQ_KEY", "PQ_HOST_LABEL"],
+      "env": [
+        "TZ",
+        "PQ_DATA",
+        "PQ_LOGS",
+        "PQ_BIND",
+        "PQ_PORT",
+        "PQ_SSH_CONFIG",
+        "PQ_KEY",
+        "PQ_HOST_LABEL"
+      ],
       "secrets": [
-        { "name": "keys/sunflower-live (ed25519 private key)", "where": "Haven /home/chase/sunflower-print-queue/keys, made there by the deploy; never leaves Haven", "createdIn": "Print queue: deploy makes it; its public half goes into Hostinger hPanel > Advanced > SSH Access > SSH keys" }
+        {
+          "name": "keys/sunflower-live (ed25519 private key)",
+          "where": "Haven /home/chase/sunflower-print-queue/keys, made there by the deploy; never leaves Haven",
+          "createdIn": "Print queue: deploy makes it; its public half goes into Hostinger hPanel > Advanced > SSH Access > SSH keys"
+        }
       ],
       "health": "http://192.168.1.61:8787/api/push",
-      "dependsOn": ["sunflower-store", "tailscale"],
+      "dependsOn": [
+        "sunflower-store",
+        "tailscale"
+      ],
       "neededBy": [],
-      "backup": ["/home/chase/sunflower-print-queue/data", "/home/chase/sunflower-print-queue/keys"],
+      "backup": [
+        "/home/chase/sunflower-print-queue/data",
+        "/home/chase/sunflower-print-queue/keys"
+      ],
       "neverExpose": true,
       "verified": "Deployed to Haven 2026-10-18 08:56 by Print queue: deploy (scripts/shard-console-output/deploys/20261018-085610_print-queue.log: key proved from Haven, 7 files moved and checked by SHA-256, 6 orders served, first push from Haven OK). Discover 2026-10-18 09:46: Up (healthy) on 127.0.0.1:8787 and 192.168.1.61:8787.",
       "tiles": [
@@ -90,10 +157,39 @@
             "url": "http://192.168.1.61:8787/api/summary",
             "refreshInterval": 60000,
             "mappings": [
-              { "field": "active", "label": "Orders", "format": "number" },
-              { "field": "printing", "label": "Printing", "format": "number" },
-              { "field": "backlogPlates", "label": "Plates to print", "format": "number" },
-              { "field": "pushOk", "label": "Lead-time page", "remap": [ { "value": true, "to": "Updated" }, { "value": false, "to": "Push failing" }, { "any": true, "to": "Not pushed yet" } ] }
+              {
+                "field": "active",
+                "label": "Orders",
+                "format": "number"
+              },
+              {
+                "field": "printing",
+                "label": "Printing",
+                "format": "number"
+              },
+              {
+                "field": "backlogPlates",
+                "label": "Plates to print",
+                "format": "number"
+              },
+              {
+                "field": "pushOk",
+                "label": "Lead-time page",
+                "remap": [
+                  {
+                    "value": true,
+                    "to": "Updated"
+                  },
+                  {
+                    "value": false,
+                    "to": "Push failing"
+                  },
+                  {
+                    "any": true,
+                    "to": "Not pushed yet"
+                  }
+                ]
+              }
             ]
           }
         }
@@ -111,14 +207,37 @@
       "image": "",
       "compose": "",
       "start": "C:\\dev\\sunflower\\print-queue\\Start Print Queue.cmd (py queue_server.py), the desktop shortcut Sunflower Print Queue",
-      "ports": [ { "lan": "", "loopback": "127.0.0.1:8787", "tailnet": "", "container": 0 } ],
-      "volumes": [ { "host": "C:\\dev\\sunflower\\print-queue\\data", "container": "", "what": "renamed data.moved-20261018 by the move (kept, not served); the queue lives on Haven now" } ],
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "127.0.0.1:8787",
+          "tailnet": "",
+          "container": 0
+        }
+      ],
+      "volumes": [
+        {
+          "host": "C:\\dev\\sunflower\\print-queue\\data",
+          "container": "",
+          "what": "renamed data.moved-20261018 by the move (kept, not served); the queue lives on Haven now"
+        }
+      ],
       "env": [],
-      "secrets": [ { "name": "Chase's own SSH key for sunflower-live", "where": "the game PC's ~/.ssh (never copied anywhere)", "createdIn": "already there" } ],
+      "secrets": [
+        {
+          "name": "Chase's own SSH key for sunflower-live",
+          "where": "the game PC's ~/.ssh (never copied anywhere)",
+          "createdIn": "already there"
+        }
+      ],
       "health": "",
-      "dependsOn": ["sunflower-store"],
+      "dependsOn": [
+        "sunflower-store"
+      ],
       "neededBy": [],
-      "backup": ["C:\\dev\\sunflower\\print-queue\\data.moved-20261018 (the copy taken before the move; Haven's data is the live one)"],
+      "backup": [
+        "C:\\dev\\sunflower\\print-queue\\data.moved-20261018 (the copy taken before the move; Haven's data is the live one)"
+      ],
       "verified": "cc-P109 (2026-10-14). Retired 2026-10-18 08:56: the deploy found the game PC server not running and renamed its data data.moved-20261018 (20261018-085610_print-queue.log). cc-P163 removed its tile.",
       "_note": "Listens on the tower's loopback only, so Haven cannot see it; its up/down comes from the game PC snapshot, which looks for the process. Print queue: deploy stops it, and the two never push at once.",
       "tiles": []
@@ -133,17 +252,37 @@
       "container": "",
       "image": "WordPress on Hostinger",
       "compose": "",
-      "ports": [ { "lan": "", "loopback": "", "tailnet": "", "public": "https://sunflowercustomgiftshop.com", "container": 0 } ],
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnet": "",
+          "public": "https://sunflowercustomgiftshop.com",
+          "container": 0
+        }
+      ],
       "volumes": [],
       "env": [],
       "secrets": [],
       "health": "https://sunflowercustomgiftshop.com",
       "dependsOn": [],
-      "neededBy": ["print-queue", "print-queue-tower"],
-      "backup": ["Hostinger's own backups (hPanel)"],
+      "neededBy": [
+        "print-queue",
+        "print-queue-tower"
+      ],
+      "backup": [
+        "Hostinger's own backups (hPanel)"
+      ],
       "verified": "cc-P110 tile.",
       "tiles": [
-        { "section": "Sunflower", "name": "Live store", "icon": "mdi-storefront", "href": "https://sunflowercustomgiftshop.com", "description": "Sunflower Custom Gifts (Hostinger)", "siteMonitor": "https://sunflowercustomgiftshop.com" }
+        {
+          "section": "Sunflower",
+          "name": "Live store",
+          "icon": "mdi-storefront",
+          "href": "https://sunflowercustomgiftshop.com",
+          "description": "Sunflower Custom Gifts (Hostinger)",
+          "siteMonitor": "https://sunflowercustomgiftshop.com"
+        }
       ]
     },
     {
@@ -156,17 +295,33 @@
       "container": "",
       "image": "wordpress and mariadb (sunflower-devstack)",
       "compose": "C:\\dev\\sunflower\\sunflower-devstack",
-      "ports": [ { "lan": "192.168.1.58:8080", "loopback": "", "tailnet": "", "container": 80 } ],
+      "ports": [
+        {
+          "lan": "192.168.1.58:8080",
+          "loopback": "",
+          "tailnet": "",
+          "container": 80
+        }
+      ],
       "volumes": [],
       "env": [],
       "secrets": [],
       "health": "http://192.168.1.58:8080",
       "dependsOn": [],
       "neededBy": [],
-      "backup": ["C:\\dev\\sunflower\\sunflower-devstack (its own repo, no remote)"],
+      "backup": [
+        "C:\\dev\\sunflower\\sunflower-devstack (its own repo, no remote)"
+      ],
       "verified": "cc-P110 tile. Not running on 2026-10-17 (no container in docker ps -a).",
       "tiles": [
-        { "section": "Sunflower", "name": "Dev store", "icon": "mdi-storefront-outline", "href": "http://192.168.1.58:8080", "description": "Local copy on the game PC (http://192.168.1.58:8080 while the devstack runs)", "siteMonitor": "http://192.168.1.58:8080" }
+        {
+          "section": "Sunflower",
+          "name": "Dev store",
+          "icon": "mdi-storefront-outline",
+          "href": "http://192.168.1.58:8080",
+          "description": "Local copy on the game PC (http://192.168.1.58:8080 while the devstack runs)",
+          "siteMonitor": "http://192.168.1.58:8080"
+        }
       ]
     },
     {
@@ -179,14 +334,34 @@
       "container": "spoolman",
       "image": "ghcr.io/donkie/spoolman:latest",
       "compose": "/opt/spoolman (compose folder from Discover, 2026-10-18; not ours)",
-      "ports": [ { "lan": "0.0.0.0:7912 (all interfaces, and [::]:7912: its own compose, not ours)", "loopback": "", "tailnet": "http://haven.tail81098d.ts.net:7912/", "container": 8000 } ],
-      "volumes": [ { "host": "unverified", "container": "/home/app/.local/share/spoolman", "what": "THE FILAMENT DATABASE. Never touch, never move without a backup." } ],
-      "env": ["SPOOLMAN_METRICS_ENABLED", "TZ"],
+      "ports": [
+        {
+          "lan": "0.0.0.0:7912 (all interfaces, and [::]:7912: its own compose, not ours)",
+          "loopback": "",
+          "tailnet": "http://haven.tail81098d.ts.net:7912/",
+          "container": 8000
+        }
+      ],
+      "volumes": [
+        {
+          "host": "unverified",
+          "container": "/home/app/.local/share/spoolman",
+          "what": "THE FILAMENT DATABASE. Never touch, never move without a backup."
+        }
+      ],
+      "env": [
+        "SPOOLMAN_METRICS_ENABLED",
+        "TZ"
+      ],
       "secrets": [],
       "health": "http://192.168.1.61:7912/api/v1/health",
       "dependsOn": [],
-      "neededBy": ["monitoring-prometheus"],
-      "backup": ["Spoolman's data volume or folder (path unverified; Discover prints its mounts)"],
+      "neededBy": [
+        "monitoring-prometheus"
+      ],
+      "backup": [
+        "Spoolman's data volume or folder (path unverified; Discover prints its mounts)"
+      ],
       "neverMove": "its database volume, except by the runbook's Spoolman steps",
       "verified": "Chase's notes from the Sunflower chat (2026-10-15): http://haven.tail81098d.ts.net:7912/, REST at /api/v1/, health /api/v1/health, no login. The container name, image tag, compose path and volume are unverified.",
       "tiles": [
@@ -197,7 +372,10 @@
           "href": "http://haven.tail81098d.ts.net:7912/",
           "description": "Filament spools and what is left on each",
           "siteMonitor": "http://192.168.1.61:7912/api/v1/health",
-          "widget": { "type": "spoolman", "url": "http://192.168.1.61:7912" }
+          "widget": {
+            "type": "spoolman",
+            "url": "http://192.168.1.61:7912"
+          }
         }
       ]
     },
@@ -212,17 +390,35 @@
       "image": "prom/prometheus:v3.14.0",
       "compose": "/opt/monitoring (compose folder from Discover, 2026-10-18; config /opt/monitoring/prometheus.yml per Chase's notes). Not ours: installed by hand",
       "ports": [
-        { "lan": "", "loopback": "", "tailnetBind": "100.98.32.16:9090", "tailnet": "http://haven.tail81098d.ts.net:9090/", "container": 9090, "note": "from Discover: published on Haven's tailnet address only, so not on the LAN" }
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnetBind": "100.98.32.16:9090",
+          "tailnet": "http://haven.tail81098d.ts.net:9090/",
+          "container": 9090,
+          "note": "from Discover: published on Haven's tailnet address only, so not on the LAN"
+        }
       ],
       "volumes": [
-        { "host": "from Discover (the next Mega dashboard: deploy prints mounts)", "container": "/prometheus", "what": "the time series, 5-year retention (Chase's notes)" }
+        {
+          "host": "from Discover (the next Mega dashboard: deploy prints mounts)",
+          "container": "/prometheus",
+          "what": "the time series, 5-year retention (Chase's notes)"
+        }
       ],
       "env": [],
       "secrets": [],
       "health": "http://100.98.32.16:9090/-/healthy",
-      "dependsOn": ["spoolman"],
-      "neededBy": ["monitoring-grafana"],
-      "backup": ["/opt/monitoring/prometheus.yml", "the Prometheus data volume or folder (from Discover: the next deploy prints mounts)"],
+      "dependsOn": [
+        "spoolman"
+      ],
+      "neededBy": [
+        "monitoring-grafana"
+      ],
+      "backup": [
+        "/opt/monitoring/prometheus.yml",
+        "the Prometheus data volume or folder (from Discover: the next deploy prints mounts)"
+      ],
       "verified": "Discover 2026-10-18 09:46 (20261018-094603_mega-dashboard.log): monitoring-prometheus, prom/prometheus:v3.14.0, Up 3 days, 100.98.32.16:9090->9090/tcp, compose folder /opt/monitoring. /-/healthy answered 200 on 100.98.32.16 from the game PC (cc-P163). Volumes from Discover once it prints mounts. Was the planned entry 'prometheus' until cc-P163.",
       "tiles": [
         {
@@ -250,10 +446,21 @@
       "image": "grafana/grafana:13.1.8",
       "compose": "/opt/monitoring (compose folder from Discover, 2026-10-18). Not ours: installed by hand",
       "ports": [
-        { "lan": "", "loopback": "", "tailnetBind": "100.98.32.16:3001", "tailnet": "http://haven.tail81098d.ts.net:3001/", "container": 3000, "note": "from Discover: published on Haven's tailnet address only, so not on the LAN" }
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnetBind": "100.98.32.16:3001",
+          "tailnet": "http://haven.tail81098d.ts.net:3001/",
+          "container": 3000,
+          "note": "from Discover: published on Haven's tailnet address only, so not on the LAN"
+        }
       ],
       "volumes": [
-        { "host": "from Discover (the next Mega dashboard: deploy prints mounts)", "container": "/var/lib/grafana", "what": "dashboards, users, the service account" }
+        {
+          "host": "from Discover (the next Mega dashboard: deploy prints mounts)",
+          "container": "/var/lib/grafana",
+          "what": "dashboards, users, the service account"
+        }
       ],
       "env": [],
       "secrets": [
@@ -264,9 +471,13 @@
         }
       ],
       "health": "http://100.98.32.16:3001/api/health",
-      "dependsOn": ["monitoring-prometheus"],
+      "dependsOn": [
+        "monitoring-prometheus"
+      ],
       "neededBy": [],
-      "backup": ["the Grafana data volume or folder (/var/lib/grafana in the container; from Discover: the next deploy prints mounts)"],
+      "backup": [
+        "the Grafana data volume or folder (/var/lib/grafana in the container; from Discover: the next deploy prints mounts)"
+      ],
       "verified": "Discover 2026-10-18 09:46 (20261018-094603_mega-dashboard.log): monitoring-grafana, grafana/grafana:13.1.8, Up 3 days, 100.98.32.16:3001->3000/tcp, compose folder /opt/monitoring. /api/health answered 200 on 100.98.32.16 from the game PC (cc-P163). Was the planned entry 'grafana' until cc-P163.",
       "tiles": [
         {
@@ -284,7 +495,10 @@
               "Authorization": "Bearer {{HOMEPAGE_VAR_GRAFANA_TOKEN}}"
             },
             "mappings": [
-              { "label": "Dashboards", "format": "size" }
+              {
+                "label": "Dashboards",
+                "format": "size"
+              }
             ]
           }
         }
@@ -301,19 +515,68 @@
       "image": "python:3-alpine",
       "compose": "/home/chase/sl-ops/stack/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\ops\\docker-compose.yml, project sl-ops)",
       "ports": [
-        { "lan": "192.168.1.61:8093", "loopback": "127.0.0.1:8093", "tailnet": "http://haven.tail81098d.ts.net:8093/", "container": 8000 },
-        { "lan": "192.168.1.61:8094", "loopback": "", "tailnet": "", "container": 8001, "note": "the token listener: export, ingest, the game PC snapshot" }
+        {
+          "lan": "192.168.1.61:8093",
+          "loopback": "127.0.0.1:8093",
+          "tailnet": "http://haven.tail81098d.ts.net:8093/",
+          "container": 8000
+        },
+        {
+          "lan": "192.168.1.61:8094",
+          "loopback": "",
+          "tailnet": "",
+          "container": 8001,
+          "note": "the token listener: export, ingest, the game PC snapshot"
+        }
       ],
       "volumes": [
-        { "host": "/home/chase/sl-ops/data", "container": "/data/ops", "what": "THE play-test results, ideas and bug reports since the cutover, and the game PC snapshot" },
-        { "host": "/home/chase/sl-ops/repo", "container": "/repo", "what": "the read-only clones (rebuilt by git-pull)" }
+        {
+          "host": "/home/chase/sl-ops/data",
+          "container": "/data/ops",
+          "what": "THE play-test results, ideas and bug reports since the cutover, and the game PC snapshot"
+        },
+        {
+          "host": "/home/chase/sl-ops/repo",
+          "container": "/repo",
+          "what": "the read-only clones (rebuilt by git-pull)"
+        }
       ],
-      "env": ["PLAYTESTS_TOKEN", "TZ", "PLAYTESTS_ROOT", "PLAYTESTS_LIB", "PLAYTESTS_HTML", "PLAYTESTS_DATA", "PLAYTESTS_PORT", "PLAYTESTS_LAN_PORT", "IMPORT_SECONDS", "STATUS_PAGE", "REPO_STAMP", "SHARD_DEPLOYED", "PLAYTESTS_HOST_ROOT", "PYTHONDONTWRITEBYTECODE"],
-      "secrets": [ { "name": "PLAYTESTS_TOKEN", "where": "Haven /home/chase/sl-ops/ops.env (chmod 600) and the game PC's D:\\UO\\haven-ops\\token.txt", "createdIn": "Ops pages: deploy (asked once, or made)" } ],
+      "env": [
+        "PLAYTESTS_TOKEN",
+        "TZ",
+        "PLAYTESTS_ROOT",
+        "PLAYTESTS_LIB",
+        "PLAYTESTS_HTML",
+        "PLAYTESTS_DATA",
+        "PLAYTESTS_PORT",
+        "PLAYTESTS_LAN_PORT",
+        "IMPORT_SECONDS",
+        "STATUS_PAGE",
+        "REPO_STAMP",
+        "SHARD_DEPLOYED",
+        "PLAYTESTS_HOST_ROOT",
+        "PYTHONDONTWRITEBYTECODE"
+      ],
+      "secrets": [
+        {
+          "name": "PLAYTESTS_TOKEN",
+          "where": "Haven /home/chase/sl-ops/ops.env (chmod 600) and the game PC's D:\\UO\\haven-ops\\token.txt",
+          "createdIn": "Ops pages: deploy (asked once, or made)"
+        }
+      ],
       "health": "http://192.168.1.61:8093/api/summary",
-      "dependsOn": ["ops-git-pull", "tailscale"],
-      "neededBy": ["homepage", "gamepc-host"],
-      "backup": ["/home/chase/sl-ops/data", "/home/chase/sl-ops/ops.env"],
+      "dependsOn": [
+        "ops-git-pull",
+        "tailscale"
+      ],
+      "neededBy": [
+        "homepage",
+        "gamepc-host"
+      ],
+      "backup": [
+        "/home/chase/sl-ops/data",
+        "/home/chase/sl-ops/ops.env"
+      ],
       "verified": "Deployed and cut over 2026-10-16 (deploy transcripts 20261016-073937 and 20261016-080906).",
       "tiles": [
         {
@@ -323,7 +586,33 @@
           "href": "http://haven.tail81098d.ts.net:8093/",
           "description": "Waiting play tests. Mark Pass or Fail",
           "siteMonitor": "http://192.168.1.61:8093/api/summary",
-          "widget": { "type": "customapi", "url": "http://192.168.1.61:8093/api/summary", "refreshInterval": 60000, "mappings": [ { "field": "open", "label": "Open", "format": "number" }, { "field": "failed", "label": "Failed", "format": "number" }, { "field": "passed", "label": "Passed", "format": "number" }, { "field": "blocked", "label": "Blocked", "format": "number" } ] }
+          "widget": {
+            "type": "customapi",
+            "url": "http://192.168.1.61:8093/api/summary",
+            "refreshInterval": 60000,
+            "mappings": [
+              {
+                "field": "open",
+                "label": "Open",
+                "format": "number"
+              },
+              {
+                "field": "failed",
+                "label": "Failed",
+                "format": "number"
+              },
+              {
+                "field": "passed",
+                "label": "Passed",
+                "format": "number"
+              },
+              {
+                "field": "blocked",
+                "label": "Blocked",
+                "format": "number"
+              }
+            ]
+          }
         },
         {
           "section": "Ultima Online / Shattered Legacy",
@@ -332,7 +621,18 @@
           "href": "http://haven.tail81098d.ts.net:8093/",
           "description": "New feature ideas, waiting for the features chat (Ideas tab)",
           "siteMonitor": "http://192.168.1.61:8093/api/summary",
-          "widget": { "type": "customapi", "url": "http://192.168.1.61:8093/api/summary", "refreshInterval": 60000, "mappings": [ { "field": "ideas_new", "label": "New ideas", "format": "number" } ] }
+          "widget": {
+            "type": "customapi",
+            "url": "http://192.168.1.61:8093/api/summary",
+            "refreshInterval": 60000,
+            "mappings": [
+              {
+                "field": "ideas_new",
+                "label": "New ideas",
+                "format": "number"
+              }
+            ]
+          }
         },
         {
           "section": "Ultima Online / Shattered Legacy",
@@ -341,9 +641,32 @@
           "href": "http://haven.tail81098d.ts.net:8093/",
           "description": "New bug reports, waiting for the overseer (Bugs tab)",
           "siteMonitor": "http://192.168.1.61:8093/api/summary",
-          "widget": { "type": "customapi", "url": "http://192.168.1.61:8093/api/summary", "refreshInterval": 60000, "mappings": [ { "field": "bugs_new", "label": "New bugs", "format": "number" }, { "field": "unloggedFails", "label": "Fails not logged", "format": "number" } ] }
+          "widget": {
+            "type": "customapi",
+            "url": "http://192.168.1.61:8093/api/summary",
+            "refreshInterval": 60000,
+            "mappings": [
+              {
+                "field": "bugs_new",
+                "label": "New bugs",
+                "format": "number"
+              },
+              {
+                "field": "unloggedFails",
+                "label": "Fails not logged",
+                "format": "number"
+              }
+            ]
+          }
         },
-        { "section": "Ultima Online / Shattered Legacy", "name": "Shard status", "icon": "/icons/shattered_legacy_logo.png", "href": "http://haven.tail81098d.ts.net:8093/status", "description": "Playable gates, the CC queue, play tests and how old the judgment is", "siteMonitor": "http://192.168.1.61:8093/status" }
+        {
+          "section": "Ultima Online / Shattered Legacy",
+          "name": "Shard status",
+          "icon": "/icons/shattered_legacy_logo.png",
+          "href": "http://haven.tail81098d.ts.net:8093/status",
+          "description": "Playable gates, the CC queue, play tests and how old the judgment is",
+          "siteMonitor": "http://192.168.1.61:8093/status"
+        }
       ]
     },
     {
@@ -358,18 +681,46 @@
       "compose": "/home/chase/sl-ops/stack/docker-compose.yml (project sl-ops)",
       "ports": [],
       "volumes": [
-        { "host": "/home/chase/sl-ops/repo", "container": "/repo", "what": "clones of both repos, pulled from GitHub every 2 minutes" },
-        { "host": "/home/chase/sl-ops/keys", "container": "/keys", "what": "the read-only deploy key for shard-migration (read only)" }
+        {
+          "host": "/home/chase/sl-ops/repo",
+          "container": "/repo",
+          "what": "clones of both repos, pulled from GitHub every 2 minutes"
+        },
+        {
+          "host": "/home/chase/sl-ops/keys",
+          "container": "/keys",
+          "what": "the read-only deploy key for shard-migration (read only)"
+        }
       ],
-      "env": ["SHARD_MIGRATION_URL", "SHATTERED_LEGACY_URL", "PULL_SECONDS", "GIT_SSH_COMMAND"],
-      "secrets": [ { "name": "keys/shard-migration (read-only GitHub deploy key)", "where": "Haven /home/chase/sl-ops/keys, made there; never leaves Haven", "createdIn": "Ops pages: deploy makes it; its public half is a deploy key on GitHub (shard-migration > Settings > Deploy keys, write access off)" } ],
+      "env": [
+        "SHARD_MIGRATION_URL",
+        "SHATTERED_LEGACY_URL",
+        "PULL_SECONDS",
+        "GIT_SSH_COMMAND"
+      ],
+      "secrets": [
+        {
+          "name": "keys/shard-migration (read-only GitHub deploy key)",
+          "where": "Haven /home/chase/sl-ops/keys, made there; never leaves Haven",
+          "createdIn": "Ops pages: deploy makes it; its public half is a deploy key on GitHub (shard-migration > Settings > Deploy keys, write access off)"
+        }
+      ],
       "health": "",
       "dependsOn": [],
-      "neededBy": ["play-tests"],
-      "backup": ["/home/chase/sl-ops/keys"],
+      "neededBy": [
+        "play-tests"
+      ],
+      "backup": [
+        "/home/chase/sl-ops/keys"
+      ],
       "verified": "Deploy transcripts, 2026-10-16.",
       "tiles": [
-        { "section": "Ultima Online / Shattered Legacy", "name": "Ops pages repo pull", "icon": "mdi-source-pull", "description": "Keeps Haven's clones of both repos current from GitHub (2 minutes)" }
+        {
+          "section": "Ultima Online / Shattered Legacy",
+          "name": "Ops pages repo pull",
+          "icon": "mdi-source-pull",
+          "description": "Keeps Haven's clones of both repos current from GitHub (2 minutes)"
+        }
       ]
     },
     {
@@ -382,18 +733,47 @@
       "container": "sl-website",
       "image": "nginx:alpine",
       "compose": "/home/chase/shattered-legacy/docker/website/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\website)",
-      "ports": [ { "lan": "", "loopback": "", "tailnet": "", "public": "https://shatteredlegacyuo.com through NPM (network sl-website-net)", "container": 80 } ],
-      "volumes": [ { "host": "/home/chase/shattered-legacy/docker/website/html", "container": "/usr/share/nginx/html", "what": "the site (Deploy-Website.ps1 copies it)" } ],
-      "env": ["TZ"],
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnet": "",
+          "public": "https://shatteredlegacyuo.com through NPM (network sl-website-net)",
+          "container": 80
+        }
+      ],
+      "volumes": [
+        {
+          "host": "/home/chase/shattered-legacy/docker/website/html",
+          "container": "/usr/share/nginx/html",
+          "what": "the site (Deploy-Website.ps1 copies it)"
+        }
+      ],
+      "env": [
+        "TZ"
+      ],
       "secrets": [],
       "health": "https://shatteredlegacyuo.com",
-      "dependsOn": ["npm", "uo-status", "ddns"],
+      "dependsOn": [
+        "npm",
+        "uo-status",
+        "ddns"
+      ],
       "neededBy": [],
-      "backup": ["/home/chase/shattered-legacy/docker/website/html (also in git)"],
+      "backup": [
+        "/home/chase/shattered-legacy/docker/website/html (also in git)"
+      ],
       "neverMove": "its NPM routing (public)",
       "verified": "proxy-discovery.txt, 2026-09-29.",
       "tiles": [
-        { "section": "Ultima Online / Shattered Legacy", "name": "Website", "icon": "/icons/shattered_legacy_logo.png", "href": "https://shatteredlegacyuo.com", "description": "Landing page and download (public, through NPM)", "siteMonitor": "https://shatteredlegacyuo.com" }
+        {
+          "section": "Ultima Online / Shattered Legacy",
+          "name": "Website",
+          "icon": "/icons/shattered_legacy_logo.png",
+          "href": "https://shatteredlegacyuo.com",
+          "description": "Landing page and download (public, through NPM)",
+          "siteMonitor": "https://shatteredlegacyuo.com"
+        }
       ]
     },
     {
@@ -406,18 +786,47 @@
       "container": "sl-wiki",
       "image": "ghcr.io/dokuwiki/dokuwiki:latest",
       "compose": "/home/chase/shattered-legacy/docker/wiki/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\wiki)",
-      "ports": [ { "lan": "", "loopback": "", "tailnet": "", "public": "https://wiki.shatteredlegacyuo.com through NPM (network sl-wiki-net)", "container": 8080 } ],
-      "volumes": [ { "host": "Docker volume sl-wiki-storage (external)", "container": "/storage", "what": "pages, media, conf, plugins" } ],
-      "env": ["TZ"],
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnet": "",
+          "public": "https://wiki.shatteredlegacyuo.com through NPM (network sl-wiki-net)",
+          "container": 8080
+        }
+      ],
+      "volumes": [
+        {
+          "host": "Docker volume sl-wiki-storage (external)",
+          "container": "/storage",
+          "what": "pages, media, conf, plugins"
+        }
+      ],
+      "env": [
+        "TZ"
+      ],
       "secrets": [],
       "health": "https://wiki.shatteredlegacyuo.com",
-      "dependsOn": ["npm", "ddns"],
+      "dependsOn": [
+        "npm",
+        "ddns"
+      ],
       "neededBy": [],
-      "backup": ["Docker volume sl-wiki-storage", "/home/chase/backups/wiki-pages-* (earlier copies)"],
+      "backup": [
+        "Docker volume sl-wiki-storage",
+        "/home/chase/backups/wiki-pages-* (earlier copies)"
+      ],
       "neverMove": "its NPM routing (public)",
       "verified": "proxy-discovery.txt, 2026-09-29; repo compose.",
       "tiles": [
-        { "section": "Ultima Online / Shattered Legacy", "name": "Wiki", "icon": "/icons/shattered_legacy_logo.png", "href": "https://wiki.shatteredlegacyuo.com", "description": "DokuWiki (public, through NPM)", "siteMonitor": "https://wiki.shatteredlegacyuo.com" }
+        {
+          "section": "Ultima Online / Shattered Legacy",
+          "name": "Wiki",
+          "icon": "/icons/shattered_legacy_logo.png",
+          "href": "https://wiki.shatteredlegacyuo.com",
+          "description": "DokuWiki (public, through NPM)",
+          "siteMonitor": "https://wiki.shatteredlegacyuo.com"
+        }
       ]
     },
     {
@@ -430,17 +839,46 @@
       "container": "sl-downloads",
       "image": "nginx:alpine",
       "compose": "/home/chase/shattered-legacy/docker/downloads/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\downloads)",
-      "ports": [ { "lan": "", "loopback": "", "tailnet": "", "public": "https://get.shatteredlegacyuo.com through NPM (network sl-downloads-net)", "container": 80 } ],
-      "volumes": [ { "host": "/home/chase/sharttered-legacy/downloads (DOWNLOADS_PATH; the misspelling is the real folder, seen 2026-09-28)", "container": "/usr/share/nginx/html", "what": "client files and patches; scripts/ is the Legion scripts' OFFICIAL channel (cc-P144: scripts.json and the .py files, written only by Publish-LegionScripts.ps1 -Mode Promote, which finds this folder with docker inspect)" } ],
-      "env": ["TZ", "DOWNLOADS_PATH"],
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnet": "",
+          "public": "https://get.shatteredlegacyuo.com through NPM (network sl-downloads-net)",
+          "container": 80
+        }
+      ],
+      "volumes": [
+        {
+          "host": "/home/chase/sharttered-legacy/downloads (DOWNLOADS_PATH; the misspelling is the real folder, seen 2026-09-28)",
+          "container": "/usr/share/nginx/html",
+          "what": "client files and patches; scripts/ is the Legion scripts' OFFICIAL channel (cc-P144: scripts.json and the .py files, written only by Publish-LegionScripts.ps1 -Mode Promote, which finds this folder with docker inspect)"
+        }
+      ],
+      "env": [
+        "TZ",
+        "DOWNLOADS_PATH"
+      ],
       "secrets": [],
       "health": "https://get.shatteredlegacyuo.com",
-      "dependsOn": ["npm"],
+      "dependsOn": [
+        "npm"
+      ],
       "neededBy": [],
-      "backup": ["the downloads folder (Publish-PlayerPackage.ps1 rebuilds it)", "~/backups/legion-scripts/<version>/ (each official scripts set Promote replaced)"],
+      "backup": [
+        "the downloads folder (Publish-PlayerPackage.ps1 rebuilds it)",
+        "~/backups/legion-scripts/<version>/ (each official scripts set Promote replaced)"
+      ],
       "verified": "haven-discovery-output.txt, 2026-09-28.",
       "tiles": [
-        { "section": "Ultima Online / Shattered Legacy", "name": "Downloads", "icon": "nginx", "href": "https://get.shatteredlegacyuo.com", "description": "Client files and patches (public, through NPM)", "siteMonitor": "https://get.shatteredlegacyuo.com" }
+        {
+          "section": "Ultima Online / Shattered Legacy",
+          "name": "Downloads",
+          "icon": "nginx",
+          "href": "https://get.shatteredlegacyuo.com",
+          "description": "Client files and patches (public, through NPM)",
+          "siteMonitor": "https://get.shatteredlegacyuo.com"
+        }
       ]
     },
     {
@@ -453,17 +891,43 @@
       "container": "sl-scripts-dev",
       "image": "nginx:alpine",
       "compose": "/home/chase/sl-scripts-dev/stack/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\scripts-dev, project sl-scripts-dev)",
-      "ports": [ { "lan": "192.168.1.61:8097", "loopback": "127.0.0.1:8097", "tailnet": "http://haven.tail81098d.ts.net:8097/", "container": 80 } ],
-      "volumes": [ { "host": "/home/chase/sl-scripts-dev/html", "container": "/usr/share/nginx/html", "what": "the dev channel: scripts.json and the .py files Publish-LegionScripts.ps1 -Mode Dev puts there (read only in the container)" } ],
-      "env": ["TZ"],
+      "ports": [
+        {
+          "lan": "192.168.1.61:8097",
+          "loopback": "127.0.0.1:8097",
+          "tailnet": "http://haven.tail81098d.ts.net:8097/",
+          "container": 80
+        }
+      ],
+      "volumes": [
+        {
+          "host": "/home/chase/sl-scripts-dev/html",
+          "container": "/usr/share/nginx/html",
+          "what": "the dev channel: scripts.json and the .py files Publish-LegionScripts.ps1 -Mode Dev puts there (read only in the container)"
+        }
+      ],
+      "env": [
+        "TZ"
+      ],
       "secrets": [],
       "health": "http://192.168.1.61:8097/scripts.json",
-      "dependsOn": ["tailscale"],
+      "dependsOn": [
+        "tailscale"
+      ],
       "neededBy": [],
-      "backup": ["~/backups/legion-scripts/dev/<version>/ (each dev set a publish replaced; the scripts themselves are in the scripts repo on GitHub)"],
+      "backup": [
+        "~/backups/legion-scripts/dev/<version>/ (each dev set a publish replaced; the scripts themselves are in the scripts repo on GitHub)"
+      ],
       "verified": "Built by cc-P144. Running on Haven by 2026-10-18 09:45: Discover 09:46 shows sl-scripts-dev Up on 127.0.0.1:8097 and 192.168.1.61:8097, and that deploy set Serve 8097. scripts.json answered 200 from the game PC (cc-P163).",
       "tiles": [
-        { "section": "Ultima Online / Shattered Legacy", "name": "Legion scripts (dev)", "icon": "mdi-script-text", "href": "http://haven.tail81098d.ts.net:8097/scripts.json", "description": "The dev channel: half-tested scripts for Chase's own PCs (Tailscale only)", "siteMonitor": "http://192.168.1.61:8097/scripts.json" }
+        {
+          "section": "Ultima Online / Shattered Legacy",
+          "name": "Legion scripts (dev)",
+          "icon": "mdi-script-text",
+          "href": "http://haven.tail81098d.ts.net:8097/scripts.json",
+          "description": "The dev channel: half-tested scripts for Chase's own PCs (Tailscale only)",
+          "siteMonitor": "http://192.168.1.61:8097/scripts.json"
+        }
       ]
     },
     {
@@ -481,9 +945,17 @@
       "ports": [],
       "volumes": [],
       "env": [],
-      "secrets": [ { "name": "the ops token (bearer, PLAYTESTS_TOKEN)", "where": "D:\\UO\\haven-ops\\token.txt on the game PC and /home/chase/sl-ops/ops.env on Haven", "createdIn": "Ops pages: deploy (asked once, or made)" } ],
+      "secrets": [
+        {
+          "name": "the ops token (bearer, PLAYTESTS_TOKEN)",
+          "where": "D:\\UO\\haven-ops\\token.txt on the game PC and /home/chase/sl-ops/ops.env on Haven",
+          "createdIn": "Ops pages: deploy (asked once, or made)"
+        }
+      ],
       "health": "http://192.168.1.61:8094/api/gamepc",
-      "dependsOn": ["play-tests"],
+      "dependsOn": [
+        "play-tests"
+      ],
       "neededBy": [],
       "backup": [],
       "verified": "cc-P107 snapshot, installed (task SL game PC snapshot, 2026-10-17).",
@@ -497,12 +969,42 @@
             "type": "customapi",
             "url": "http://192.168.1.61:8094/api/gamepc",
             "refreshInterval": 60000,
-            "headers": { "Authorization": "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}" },
+            "headers": {
+              "Authorization": "Bearer {{HOMEPAGE_VAR_OPS_TOKEN}}"
+            },
             "mappings": [
-              { "field": "offline", "label": "Game PC", "remap": [ { "value": false, "to": "Up" }, { "value": true, "to": "Offline" }, { "any": true, "to": "No snapshot yet" } ] },
-              { "field": "offlineSince", "label": "Offline since", "format": "relativeDate" },
-              { "field": "receivedAt", "label": "Last push", "format": "relativeDate" },
-              { "field": "snapshot.golem.running", "label": "Golem running" }
+              {
+                "field": "offline",
+                "label": "Game PC",
+                "remap": [
+                  {
+                    "value": false,
+                    "to": "Up"
+                  },
+                  {
+                    "value": true,
+                    "to": "Offline"
+                  },
+                  {
+                    "any": true,
+                    "to": "No snapshot yet"
+                  }
+                ]
+              },
+              {
+                "field": "offlineSince",
+                "label": "Offline since",
+                "format": "relativeDate"
+              },
+              {
+                "field": "receivedAt",
+                "label": "Last push",
+                "format": "relativeDate"
+              },
+              {
+                "field": "snapshot.golem.running",
+                "label": "Golem running"
+              }
             ]
           }
         }
@@ -518,17 +1020,45 @@
       "container": "sl-uo-status",
       "image": "nginx:alpine",
       "compose": "D:\\ShatteredLegacy\\docker\\uo-status\\docker-compose.yml",
-      "ports": [ { "lan": "192.168.1.58:8092 (published on all interfaces)", "loopback": "", "tailnet": "http://chases-tower.tail81098d.ts.net:8092/", "container": 80 } ],
-      "volumes": [ { "host": "D:\\ShatteredLegacy\\server\\lib\\uo\\modernuo\\status", "container": "/usr/share/nginx/html", "what": "shards.json, migration.json, downloads.json (read only)" } ],
-      "env": ["TZ", "SERVER_PATH"],
+      "ports": [
+        {
+          "lan": "192.168.1.58:8092 (published on all interfaces)",
+          "loopback": "",
+          "tailnet": "http://chases-tower.tail81098d.ts.net:8092/",
+          "container": 80
+        }
+      ],
+      "volumes": [
+        {
+          "host": "D:\\ShatteredLegacy\\server\\lib\\uo\\modernuo\\status",
+          "container": "/usr/share/nginx/html",
+          "what": "shards.json, migration.json, downloads.json (read only)"
+        }
+      ],
+      "env": [
+        "TZ",
+        "SERVER_PATH"
+      ],
       "secrets": [],
       "health": "http://192.168.1.58:8092/shards.json",
-      "dependsOn": ["shard-probe"],
-      "neededBy": ["website"],
+      "dependsOn": [
+        "shard-probe"
+      ],
+      "neededBy": [
+        "website"
+      ],
       "backup": [],
       "verified": "docker ps on the game PC, 2026-10-17.",
       "tiles": [
-        { "section": "Monitoring", "name": "Status feed", "icon": "nginx", "href": "http://192.168.1.58:8092/shards.json", "description": "What the website reads (sl-uo-status on the game PC)", "siteMonitor": "http://192.168.1.58:8092/shards.json", "snapshot": "sl-uo-status" },
+        {
+          "section": "Monitoring",
+          "name": "Status feed",
+          "icon": "nginx",
+          "href": "http://192.168.1.58:8092/shards.json",
+          "description": "What the website reads (sl-uo-status on the game PC)",
+          "siteMonitor": "http://192.168.1.58:8092/shards.json",
+          "snapshot": "sl-uo-status"
+        },
         {
           "section": "Ultima Online / Shattered Legacy",
           "name": "Public progress page",
@@ -536,7 +1066,21 @@
           "href": "https://shatteredlegacyuo.com/migration.html",
           "description": "Defects and content reach, as players see them",
           "siteMonitor": "http://192.168.1.58:8092/migration.json",
-          "widget": { "type": "customapi", "url": "http://192.168.1.58:8092/migration.json", "refreshInterval": 300000, "mappings": [ { "field": "defects.open", "label": "Open defects" }, { "field": "content.reachableFiles", "label": "In reach" } ] }
+          "widget": {
+            "type": "customapi",
+            "url": "http://192.168.1.58:8092/migration.json",
+            "refreshInterval": 300000,
+            "mappings": [
+              {
+                "field": "defects.open",
+                "label": "Open defects"
+              },
+              {
+                "field": "content.reachableFiles",
+                "label": "In reach"
+              }
+            ]
+          }
         },
         {
           "section": "Ultima Online / Shattered Legacy",
@@ -545,7 +1089,29 @@
           "href": "https://shatteredlegacyuo.com/migration.html",
           "description": "servuo.dev queue, 5 a night",
           "siteMonitor": "http://192.168.1.58:8092/downloads.json",
-          "widget": { "type": "customapi", "url": "http://192.168.1.58:8092/downloads.json", "refreshInterval": 300000, "mappings": [ { "field": "art.done", "label": "Art done" }, { "field": "art.todo", "label": "Art to go" }, { "field": "code.done", "label": "Scripts done" }, { "field": "nightsLeft", "label": "Nights left" } ] }
+          "widget": {
+            "type": "customapi",
+            "url": "http://192.168.1.58:8092/downloads.json",
+            "refreshInterval": 300000,
+            "mappings": [
+              {
+                "field": "art.done",
+                "label": "Art done"
+              },
+              {
+                "field": "art.todo",
+                "label": "Art to go"
+              },
+              {
+                "field": "code.done",
+                "label": "Scripts done"
+              },
+              {
+                "field": "nightsLeft",
+                "label": "Nights left"
+              }
+            ]
+          }
         }
       ]
     },
@@ -560,16 +1126,36 @@
       "image": "python:3-alpine",
       "compose": "D:\\ShatteredLegacy\\docker\\uo-status\\docker-compose.yml",
       "ports": [],
-      "volumes": [ { "host": "D:\\ShatteredLegacy\\server\\lib\\uo\\modernuo\\status", "container": "/status", "what": "writes shards.json" } ],
-      "env": ["TZ", "SL_LIVE_ENABLED", "SERVER_PATH"],
+      "volumes": [
+        {
+          "host": "D:\\ShatteredLegacy\\server\\lib\\uo\\modernuo\\status",
+          "container": "/status",
+          "what": "writes shards.json"
+        }
+      ],
+      "env": [
+        "TZ",
+        "SL_LIVE_ENABLED",
+        "SERVER_PATH"
+      ],
       "secrets": [],
       "health": "",
-      "dependsOn": ["test-shard"],
-      "neededBy": ["uo-status"],
+      "dependsOn": [
+        "test-shard"
+      ],
+      "neededBy": [
+        "uo-status"
+      ],
       "backup": [],
       "verified": "docker ps on the game PC, 2026-10-17.",
       "tiles": [
-        { "section": "Monitoring", "name": "Shard probe", "icon": "mdi-radar", "description": "Checks the test shard's port every few seconds and writes shards.json", "snapshot": "sl-shard-probe" }
+        {
+          "section": "Monitoring",
+          "name": "Shard probe",
+          "icon": "mdi-radar",
+          "description": "Checks the test shard's port every few seconds and writes shards.json",
+          "snapshot": "sl-shard-probe"
+        }
       ]
     },
     {
@@ -582,14 +1168,33 @@
       "container": "sl-modernuo-test",
       "image": "sl-modernuo:latest (built by docker/uo/build.sh)",
       "compose": "D:\\ShatteredLegacy\\docker\\uo\\docker-compose.test.yml",
-      "ports": [ { "lan": "192.168.1.58:2594 tcp and udp (all interfaces; the router forwards 2593 only)", "loopback": "", "tailnet": "", "container": 2594 } ],
-      "volumes": [ { "host": "D:\\ShatteredLegacy\\server\\lib\\uo\\modernuo-test", "container": "", "what": "the test world's saves and its shard-commit.json" } ],
-      "env": ["see docker/uo/docker-compose.test.yml"],
+      "ports": [
+        {
+          "lan": "192.168.1.58:2594 tcp and udp (all interfaces; the router forwards 2593 only)",
+          "loopback": "",
+          "tailnet": "",
+          "container": 2594
+        }
+      ],
+      "volumes": [
+        {
+          "host": "D:\\ShatteredLegacy\\server\\lib\\uo\\modernuo-test",
+          "container": "",
+          "what": "the test world's saves and its shard-commit.json"
+        }
+      ],
+      "env": [
+        "see docker/uo/docker-compose.test.yml"
+      ],
       "secrets": [],
       "health": "http://192.168.1.58:8092/shards.json",
       "dependsOn": [],
-      "neededBy": ["shard-probe"],
-      "backup": ["the shard's own save backups (docker/uo, never committed)"],
+      "neededBy": [
+        "shard-probe"
+      ],
+      "backup": [
+        "the shard's own save backups (docker/uo, never committed)"
+      ],
       "verified": "docker ps on the game PC, 2026-10-17. Restart policy no: Start-TestShard.ps1 and the Shard Console start it.",
       "tiles": [
         {
@@ -602,9 +1207,29 @@
             "url": "http://192.168.1.58:8092/shards.json",
             "refreshInterval": 30000,
             "mappings": [
-              { "field": "shards.0.name", "label": "Shard" },
-              { "field": "shards.0.up", "label": "State", "remap": [ { "value": true, "to": "Up" }, { "value": false, "to": "Down" } ] },
-              { "field": "generatedAt", "label": "Probed", "format": "relativeDate" }
+              {
+                "field": "shards.0.name",
+                "label": "Shard"
+              },
+              {
+                "field": "shards.0.up",
+                "label": "State",
+                "remap": [
+                  {
+                    "value": true,
+                    "to": "Up"
+                  },
+                  {
+                    "value": false,
+                    "to": "Down"
+                  }
+                ]
+              },
+              {
+                "field": "generatedAt",
+                "label": "Probed",
+                "format": "relativeDate"
+              }
             ]
           }
         }
@@ -621,16 +1246,60 @@
       "image": "qmcgaw/ddns-updater:latest",
       "compose": "D:\\ShatteredLegacy\\docker\\uo\\docker-compose.yml",
       "ports": [],
-      "volumes": [ { "host": "Docker volume ddns_data (project uo)", "container": "/updater/data", "what": "its update history" }, { "host": "Docker volume ddns_tls (project uo)", "container": "/tls (read only)", "what": "the gate's certificate bundle (SSL_CERT_FILE), cc-P668" } ],
-      "env": ["CONFIG", "PERIOD", "UPDATE_COOLDOWN_PERIOD", "PUBLICIP_FETCHERS", "PUBLICIP_HTTP_PROVIDERS", "PUBLICIPV4_HTTP_PROVIDERS", "PUBLICIPV6_HTTP_PROVIDERS", "SSL_CERT_FILE", "RESOLVER_ADDRESS", "LOG_LEVEL", "CF_ZONE_ID", "CF_API_TOKEN", "DOMAIN"],
-      "secrets": [ { "name": "CF_API_TOKEN, CF_ZONE_ID", "where": "D:\\ShatteredLegacy\\docker\\uo\\.env on the game PC (git-ignored)", "createdIn": "Cloudflare dashboard > My Profile > API Tokens (DNS edit on the zone)" } ],
+      "volumes": [
+        {
+          "host": "Docker volume ddns_data (project uo)",
+          "container": "/updater/data",
+          "what": "its update history"
+        },
+        {
+          "host": "Docker volume ddns_tls (project uo)",
+          "container": "/tls (read only)",
+          "what": "the gate's certificate bundle (SSL_CERT_FILE), cc-P668"
+        }
+      ],
+      "env": [
+        "CONFIG",
+        "PERIOD",
+        "UPDATE_COOLDOWN_PERIOD",
+        "PUBLICIP_FETCHERS",
+        "PUBLICIP_HTTP_PROVIDERS",
+        "PUBLICIPV4_HTTP_PROVIDERS",
+        "PUBLICIPV6_HTTP_PROVIDERS",
+        "SSL_CERT_FILE",
+        "RESOLVER_ADDRESS",
+        "LOG_LEVEL",
+        "CF_ZONE_ID",
+        "CF_API_TOKEN",
+        "DOMAIN"
+      ],
+      "secrets": [
+        {
+          "name": "CF_API_TOKEN, CF_ZONE_ID",
+          "where": "D:\\ShatteredLegacy\\docker\\uo\\.env on the game PC (git-ignored)",
+          "createdIn": "Cloudflare dashboard > My Profile > API Tokens (DNS edit on the zone)"
+        }
+      ],
       "health": "",
-      "dependsOn": ["ddns-gate"],
-      "neededBy": ["website", "wiki"],
-      "backup": ["D:\\ShatteredLegacy\\docker\\uo\\.env"],
+      "dependsOn": [
+        "ddns-gate"
+      ],
+      "neededBy": [
+        "website",
+        "wiki"
+      ],
+      "backup": [
+        "D:\\ShatteredLegacy\\docker\\uo\\.env"
+      ],
       "verified": "docker ps on the game PC, 2026-10-17. cc-P668 (2026-10-26): on 10-26 it published the VPN's exit 159.26.100.174 and was stopped (restart=no) by the overseer; docker/uo/docker-compose.yml now gives it the gate as its only address source (PUBLICIP_FETCHERS=http). Until it is recreated from that file, the container on the game PC is the old one, and docker/uo/Test-DdnsSafe.ps1 says UNSAFE.",
       "tiles": [
-        { "section": "Ultima Online / Shattered Legacy", "name": "DDNS updater", "icon": "cloudflare", "description": "Keeps shatteredlegacyuo.com pointed at the house (Cloudflare)", "snapshot": "sl-ddns" }
+        {
+          "section": "Ultima Online / Shattered Legacy",
+          "name": "DDNS updater",
+          "icon": "cloudflare",
+          "description": "Keeps shatteredlegacyuo.com pointed at the house (Cloudflare)",
+          "snapshot": "sl-ddns"
+        }
       ]
     },
     {
@@ -644,12 +1313,32 @@
       "image": "python:3-alpine",
       "compose": "D:\\ShatteredLegacy\\docker\\uo\\docker-compose.yml (service ddns-gate, project uo; code docker\\uo\\ddns-gate)",
       "ports": [],
-      "volumes": [ { "host": "Docker volume ddns_tls (project uo)", "container": "/tls", "what": "its self-signed certificate and the bundle sl-ddns trusts" }, { "host": "Docker volume ddns_gate (project uo)", "container": "/data", "what": "gate-state.json: VPN exits it has learned" } ],
-      "env": ["HAVEN_URLS", "EGRESS_URLS", "BLOCK", "LEARN_AFTER"],
+      "volumes": [
+        {
+          "host": "Docker volume ddns_tls (project uo)",
+          "container": "/tls",
+          "what": "its self-signed certificate and the bundle sl-ddns trusts"
+        },
+        {
+          "host": "Docker volume ddns_gate (project uo)",
+          "container": "/data",
+          "what": "gate-state.json: VPN exits it has learned"
+        }
+      ],
+      "env": [
+        "HAVEN_URLS",
+        "EGRESS_URLS",
+        "BLOCK",
+        "LEARN_AFTER"
+      ],
       "secrets": [],
       "health": "docker exec sl-ddns-gate python /app/gate.py --reach (docker\\uo\\Test-DdnsSafe.ps1 -Reach)",
-      "dependsOn": ["homeip"],
-      "neededBy": ["ddns"],
+      "dependsOn": [
+        "homeip"
+      ],
+      "neededBy": [
+        "ddns"
+      ],
       "backup": [],
       "verified": "cc-P668 (2026-10-26): built and proven on the game PC as its own project with a dummy token (scripts/tests/ddns/Test-DdnsHomeIp.ps1). Not on the uo project until sl-ddns is recreated from docker/uo/docker-compose.yml.",
       "tiles": []
@@ -665,18 +1354,45 @@
       "image": "python:3-alpine",
       "compose": "/home/chase/sl-homeip/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\homeip, project sl-homeip)",
       "ports": [
-        { "lan": "192.168.1.61:8098", "loopback": "127.0.0.1:8098", "tailnet": "http://haven.tail81098d.ts.net:8098/", "container": 8000 }
+        {
+          "lan": "192.168.1.61:8098",
+          "loopback": "127.0.0.1:8098",
+          "tailnet": "http://haven.tail81098d.ts.net:8098/",
+          "container": 8000
+        }
       ],
-      "volumes": [ { "host": "/home/chase/sl-homeip/homeip.py", "container": "/app/homeip.py", "what": "the service (read only)" } ],
-      "env": ["TZ", "LOOKUPS", "REFRESH", "MAX_AGE"],
+      "volumes": [
+        {
+          "host": "/home/chase/sl-homeip/homeip.py",
+          "container": "/app/homeip.py",
+          "what": "the service (read only)"
+        }
+      ],
+      "env": [
+        "TZ",
+        "LOOKUPS",
+        "REFRESH",
+        "MAX_AGE"
+      ],
       "secrets": [],
       "health": "http://192.168.1.61:8098/ip",
-      "dependsOn": ["tailscale"],
-      "neededBy": ["ddns-gate"],
+      "dependsOn": [
+        "tailscale"
+      ],
+      "neededBy": [
+        "ddns-gate"
+      ],
       "backup": [],
       "verified": "cc-P668 (2026-10-26): built and proven on the game PC (scripts/tests/ddns). Not deployed: docker/homeip/Deploy-HavenHomeIp.ps1 -Mode Deploy puts it on Haven. 8098 refused connections on 192.168.1.61 from the game PC on 2026-10-26, so nothing listened there then.",
       "tiles": [
-        { "section": "Ultima Online / Shattered Legacy", "name": "Home IP", "icon": "mdi-ip-network", "href": "http://haven.tail81098d.ts.net:8098/status", "description": "The house's public address, which sl-ddns publishes (Tailscale only)", "siteMonitor": "http://192.168.1.61:8098/ip" }
+        {
+          "section": "Ultima Online / Shattered Legacy",
+          "name": "Home IP",
+          "icon": "mdi-ip-network",
+          "href": "http://haven.tail81098d.ts.net:8098/status",
+          "description": "The house's public address, which sl-ddns publishes (Tailscale only)",
+          "siteMonitor": "http://192.168.1.61:8098/ip"
+        }
       ]
     },
     {
@@ -690,23 +1406,67 @@
       "image": "jc21/nginx-proxy-manager:latest",
       "compose": "/home/chase/shattered-legacy/docker/proxy/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\proxy)",
       "ports": [
-        { "lan": "0.0.0.0:80, 0.0.0.0:443", "loopback": "", "tailnet": "", "public": "80 and 443, forwarded by the router: THE public entry to the house", "container": 80 },
-        { "lan": "", "loopback": "127.0.0.1:81", "tailnet": "", "container": 81, "note": "admin page: Shard Console > Websites > Open NPM opens an SSH tunnel to it" }
+        {
+          "lan": "0.0.0.0:80, 0.0.0.0:443",
+          "loopback": "",
+          "tailnet": "",
+          "public": "80 and 443, forwarded by the router: THE public entry to the house",
+          "container": 80
+        },
+        {
+          "lan": "",
+          "loopback": "127.0.0.1:81",
+          "tailnet": "",
+          "container": 81,
+          "note": "admin page: Shard Console > Websites > Open NPM opens an SSH tunnel to it"
+        }
       ],
       "volumes": [
-        { "host": "Docker volume proxy_npm_data", "container": "/data", "what": "proxy hosts, users, its database" },
-        { "host": "Docker volume proxy_npm_letsencrypt", "container": "/etc/letsencrypt", "what": "the certificates" }
+        {
+          "host": "Docker volume proxy_npm_data",
+          "container": "/data",
+          "what": "proxy hosts, users, its database"
+        },
+        {
+          "host": "Docker volume proxy_npm_letsencrypt",
+          "container": "/etc/letsencrypt",
+          "what": "the certificates"
+        }
       ],
-      "env": ["DISABLE_IPV6"],
-      "secrets": [ { "name": "NPM admin login", "where": "the vault (Vaultwarden)", "createdIn": "NPM's admin page" } ],
+      "env": [
+        "DISABLE_IPV6"
+      ],
+      "secrets": [
+        {
+          "name": "NPM admin login",
+          "where": "the vault (Vaultwarden)",
+          "createdIn": "NPM's admin page"
+        }
+      ],
       "health": "",
       "dependsOn": [],
-      "neededBy": ["npm-admin-tailnet", "website", "wiki", "downloads", "vaultwarden", "kevins-parts-wp"],
-      "backup": ["Docker volumes proxy_npm_data and proxy_npm_letsencrypt"],
+      "neededBy": [
+        "npm-admin-tailnet",
+        "website",
+        "wiki",
+        "downloads",
+        "vaultwarden",
+        "kevins-parts-wp"
+      ],
+      "backup": [
+        "Docker volumes proxy_npm_data and proxy_npm_letsencrypt"
+      ],
       "neverMove": "its hosts and ports: the public website, wiki, downloads and vault all route through it. Nothing on the intranet is ever added to it.",
       "verified": "proxy-discovery.txt, 2026-09-29.",
       "tiles": [
-        { "section": "Admin", "name": "Nginx Proxy Manager", "icon": "nginx-proxy-manager", "href": "http://localhost:8081/", "description": "Up or down: its front door, port 80. The admin link is the SSH tunnel: Shard Console > Websites > Open NPM opens both", "siteMonitor": "http://192.168.1.61:80/" }
+        {
+          "section": "Admin",
+          "name": "Nginx Proxy Manager",
+          "icon": "nginx-proxy-manager",
+          "href": "http://localhost:8081/",
+          "description": "Up or down: its front door, port 80. The admin link is the SSH tunnel: Shard Console > Websites > Open NPM opens both",
+          "siteMonitor": "http://192.168.1.61:80/"
+        }
       ]
     },
     {
@@ -720,17 +1480,31 @@
       "image": "alpine/socat:1.8.1.1",
       "compose": "/home/chase/shattered-legacy/docker/npm-admin-tailnet (compose folder from Discover, 2026-10-18). Not in this repo: made by hand on Haven",
       "ports": [
-        { "lan": "", "loopback": "", "tailnet": "http://haven.tail81098d.ts.net:81/", "container": 0, "note": "from Discover: no published ports, and Haven listens on 100.98.32.16:81, so it runs in the host network and forwards the tailnet's :81 to NPM's admin on 127.0.0.1:81 (inferred; its compose is not in the repo)" }
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnet": "http://haven.tail81098d.ts.net:81/",
+          "container": 0,
+          "note": "from Discover: no published ports, and Haven listens on 100.98.32.16:81, so it runs in the host network and forwards the tailnet's :81 to NPM's admin on 127.0.0.1:81 (inferred; its compose is not in the repo)"
+        }
       ],
       "volumes": [
-        { "host": "from Discover (the next Mega dashboard: deploy prints mounts)", "container": "", "what": "probably none: a socat forwarder keeps no data" }
+        {
+          "host": "from Discover (the next Mega dashboard: deploy prints mounts)",
+          "container": "",
+          "what": "probably none: a socat forwarder keeps no data"
+        }
       ],
       "env": [],
       "secrets": [],
       "health": "http://100.98.32.16:81/",
-      "dependsOn": ["npm"],
+      "dependsOn": [
+        "npm"
+      ],
       "neededBy": [],
-      "backup": ["its compose folder /home/chase/shattered-legacy/docker/npm-admin-tailnet (it is not in git)"],
+      "backup": [
+        "its compose folder /home/chase/shattered-legacy/docker/npm-admin-tailnet (it is not in git)"
+      ],
       "verified": "Discover 2026-10-18 09:46 (20261018-094603_mega-dashboard.log): npm-admin-tailnet, alpine/socat:1.8.1.1, Up 3 days, no published ports; listening ports show 100.98.32.16:81. http://haven.tail81098d.ts.net:81/ answered 200 from the game PC (cc-P163). Who made it and when is not recorded.",
       "tiles": [
         {
@@ -753,18 +1527,52 @@
       "container": "sl-vaultwarden",
       "image": "vaultwarden/server:latest",
       "compose": "/home/chase/shattered-legacy/docker/vaultwarden/docker-compose.yml (on Haven only; not in either repo)",
-      "ports": [ { "lan": "", "loopback": "", "tailnet": "", "public": "https://vault.chasekfleming.com through NPM (network sl-vaultwarden-net)", "container": 80 } ],
-      "volumes": [ { "host": "the data folder named in its compose (unverified)", "container": "/data", "what": "THE VAULT" } ],
-      "env": ["SIGNUPS_ALLOWED"],
-      "secrets": [ { "name": "the vault itself", "where": "never in a file, a widget or a dashboard", "createdIn": "" } ],
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnet": "",
+          "public": "https://vault.chasekfleming.com through NPM (network sl-vaultwarden-net)",
+          "container": 80
+        }
+      ],
+      "volumes": [
+        {
+          "host": "the data folder named in its compose (unverified)",
+          "container": "/data",
+          "what": "THE VAULT"
+        }
+      ],
+      "env": [
+        "SIGNUPS_ALLOWED"
+      ],
+      "secrets": [
+        {
+          "name": "the vault itself",
+          "where": "never in a file, a widget or a dashboard",
+          "createdIn": ""
+        }
+      ],
       "health": "https://vault.chasekfleming.com/alive",
-      "dependsOn": ["npm"],
+      "dependsOn": [
+        "npm"
+      ],
       "neededBy": [],
-      "backup": ["/home/chase/backups/vault-data-*.tgz (made 2026-09-29, owner-only)", "its data folder"],
+      "backup": [
+        "/home/chase/backups/vault-data-*.tgz (made 2026-09-29, owner-only)",
+        "its data folder"
+      ],
       "neverMove": "without the runbook's Vaultwarden steps. A link tile only: never a widget, never a credential",
       "verified": "batch-output.txt, 2026-09-29 (sign-ups off, healthy).",
       "tiles": [
-        { "section": "Admin", "name": "Password vault", "icon": "bitwarden", "href": "https://vault.chasekfleming.com", "description": "Vaultwarden on Haven. A link only", "siteMonitor": "https://vault.chasekfleming.com/alive" }
+        {
+          "section": "Admin",
+          "name": "Password vault",
+          "icon": "bitwarden",
+          "href": "https://vault.chasekfleming.com",
+          "description": "Vaultwarden on Haven. A link only",
+          "siteMonitor": "https://vault.chasekfleming.com/alive"
+        }
       ]
     },
     {
@@ -777,17 +1585,55 @@
       "container": "sl-homepage",
       "image": "ghcr.io/gethomepage/homepage:v1.13.1",
       "compose": "/home/chase/sl-home/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\dashboard\\haven, project sl-home)",
-      "ports": [ { "lan": "192.168.1.61:3000", "loopback": "127.0.0.1:3000", "tailnet": "http://haven.tail81098d.ts.net/", "container": 3000 } ],
-      "volumes": [ { "host": "/home/chase/sl-home/config", "container": "/app/config", "what": "the generated config (from this file)" } ],
-      "env": ["TZ", "HOMEPAGE_ALLOWED_HOSTS", "HOMEPAGE_VAR_OPS_TOKEN", "HOMEPAGE_VAR_GRAFANA_TOKEN", "HOMEPAGE_VAR_PORTAINER_KEY", "HOMEPAGE_VAR_PORTAINER_ENV"],
-      "secrets": [ { "name": "HOMEPAGE_VAR_OPS_TOKEN, HOMEPAGE_VAR_GRAFANA_TOKEN, HOMEPAGE_VAR_PORTAINER_KEY", "where": "Haven /home/chase/sl-home/dashboard.env (chmod 600). The ops token is copied there by the deploy on Haven; Chase pastes the other two", "createdIn": "see grafana and portainer-haven" } ],
+      "ports": [
+        {
+          "lan": "192.168.1.61:3000",
+          "loopback": "127.0.0.1:3000",
+          "tailnet": "http://haven.tail81098d.ts.net/",
+          "container": 3000
+        }
+      ],
+      "volumes": [
+        {
+          "host": "/home/chase/sl-home/config",
+          "container": "/app/config",
+          "what": "the generated config (from this file)"
+        }
+      ],
+      "env": [
+        "TZ",
+        "HOMEPAGE_ALLOWED_HOSTS",
+        "HOMEPAGE_VAR_OPS_TOKEN",
+        "HOMEPAGE_VAR_GRAFANA_TOKEN",
+        "HOMEPAGE_VAR_PORTAINER_KEY",
+        "HOMEPAGE_VAR_PORTAINER_ENV"
+      ],
+      "secrets": [
+        {
+          "name": "HOMEPAGE_VAR_OPS_TOKEN, HOMEPAGE_VAR_GRAFANA_TOKEN, HOMEPAGE_VAR_PORTAINER_KEY",
+          "where": "Haven /home/chase/sl-home/dashboard.env (chmod 600). The ops token is copied there by the deploy on Haven; Chase pastes the other two",
+          "createdIn": "see grafana and portainer-haven"
+        }
+      ],
       "health": "http://192.168.1.61:3000/",
-      "dependsOn": ["homepage-dockerproxy", "play-tests", "tailscale"],
+      "dependsOn": [
+        "homepage-dockerproxy",
+        "play-tests",
+        "tailscale"
+      ],
       "neededBy": [],
-      "backup": ["/home/chase/sl-home/dashboard.env (the config is regenerated from git)"],
+      "backup": [
+        "/home/chase/sl-home/dashboard.env (the config is regenerated from git)"
+      ],
       "verified": "Running on Haven since Mega dashboard: deploy, 2026-10-18 08:50 (redeployed 08:59 and 09:46; Discover 09:46: Up (healthy) on 127.0.0.1:3000 and 192.168.1.61:3000). Built by cc-P110 and this prompt; not deployed yet (no deploy transcript).",
       "tiles": [
-        { "section": "Admin", "name": "This dashboard", "icon": "homepage", "href": "http://haven.tail81098d.ts.net/", "description": "Homepage on Haven. Generated from docker/haven/services.json" }
+        {
+          "section": "Admin",
+          "name": "This dashboard",
+          "icon": "homepage",
+          "href": "http://haven.tail81098d.ts.net/",
+          "description": "Homepage on Haven. Generated from docker/haven/services.json"
+        }
       ]
     },
     {
@@ -801,16 +1647,32 @@
       "image": "tecnativa/docker-socket-proxy:v0.4.1",
       "compose": "/home/chase/sl-home/docker-compose.yml (project sl-home)",
       "ports": [],
-      "volumes": [ { "host": "/var/run/docker.sock", "container": "/var/run/docker.sock", "what": "read only; GET on containers only, no POST" } ],
-      "env": ["CONTAINERS", "POST"],
+      "volumes": [
+        {
+          "host": "/var/run/docker.sock",
+          "container": "/var/run/docker.sock",
+          "what": "read only; GET on containers only, no POST"
+        }
+      ],
+      "env": [
+        "CONTAINERS",
+        "POST"
+      ],
       "secrets": [],
       "health": "",
       "dependsOn": [],
-      "neededBy": ["homepage"],
+      "neededBy": [
+        "homepage"
+      ],
       "backup": [],
       "verified": "cc-P110 proof (403 on every POST). Running on Haven since 2026-10-18 (Discover 09:46).",
       "tiles": [
-        { "section": "Admin", "name": "Dashboard Docker proxy", "icon": "mdi-docker", "description": "Lets the dashboard read Haven's container states, nothing else" }
+        {
+          "section": "Admin",
+          "name": "Dashboard Docker proxy",
+          "icon": "mdi-docker",
+          "description": "Lets the dashboard read Haven's container states, nothing else"
+        }
       ]
     },
     {
@@ -824,12 +1686,32 @@
       "image": "portainer/portainer-ce:2.45.2",
       "compose": "/home/chase/sl-portainer/docker-compose.yml (source: D:\\ShatteredLegacy\\docker\\portainer-haven, project sl-portainer)",
       "ports": [
-        { "lan": "192.168.1.61:9443", "loopback": "127.0.0.1:9443", "tailnet": "", "container": 9443, "note": "HTTPS, Portainer's own self-signed certificate" },
-        { "lan": "", "loopback": "127.0.0.1:9000", "tailnet": "http://haven.tail81098d.ts.net:9000/", "container": 9000, "note": "Portainer's plain HTTP port, loopback only, for Tailscale Serve (P133's rule: Serve forwards to loopback HTTP)" }
+        {
+          "lan": "192.168.1.61:9443",
+          "loopback": "127.0.0.1:9443",
+          "tailnet": "",
+          "container": 9443,
+          "note": "HTTPS, Portainer's own self-signed certificate"
+        },
+        {
+          "lan": "",
+          "loopback": "127.0.0.1:9000",
+          "tailnet": "http://haven.tail81098d.ts.net:9000/",
+          "container": 9000,
+          "note": "Portainer's plain HTTP port, loopback only, for Tailscale Serve (P133's rule: Serve forwards to loopback HTTP)"
+        }
       ],
       "volumes": [
-        { "host": "Docker volume portainer_data", "container": "/data", "what": "Portainer's own database: the admin user, access tokens, settings" },
-        { "host": "/var/run/docker.sock", "container": "/var/run/docker.sock", "what": "Docker on Haven (read and write: Portainer manages it)" }
+        {
+          "host": "Docker volume portainer_data",
+          "container": "/data",
+          "what": "Portainer's own database: the admin user, access tokens, settings"
+        },
+        {
+          "host": "/var/run/docker.sock",
+          "container": "/var/run/docker.sock",
+          "what": "Docker on Haven (read and write: Portainer manages it)"
+        }
       ],
       "env": [],
       "secrets": [
@@ -852,7 +1734,9 @@
       "health": "https://192.168.1.61:9443/api/system/status",
       "dependsOn": [],
       "neededBy": [],
-      "backup": ["Docker volume portainer_data (Portainer (Haven): deploy also tars it to /home/chase/sl-portainer/backup-<time>.tgz before it replaces anything)"],
+      "backup": [
+        "Docker volume portainer_data (Portainer (Haven): deploy also tars it to /home/chase/sl-portainer/backup-<time>.tgz before it replaces anything)"
+      ],
       "verified": "cc-P163: the image and the data volume from Portainer's docs (docs.portainer.io/start/install-ce/server/docker/linux: portainer/portainer-ce:lts, volume portainer_data at /data; 2.45.2 is lts on Docker Hub, same digest, 2026-10-08). Not on Haven before (Discover 2026-10-18: 'in the inventory, not on Haven: portainer'). Set state to running after Portainer (Haven): deploy.",
       "tiles": [
         {
@@ -881,17 +1765,40 @@
       "container": "sl-portainer",
       "image": "portainer/portainer-ce:latest",
       "compose": "D:\\ShatteredLegacy\\docker\\portainer\\docker-compose.yml",
-      "ports": [ { "lan": "192.168.1.58:9000 and :9443 (all interfaces)", "loopback": "", "tailnet": "https://chases-tower.tail81098d.ts.net:9443/", "container": 9443 } ],
-      "volumes": [ { "host": "Docker volume portainer_data", "container": "/data", "what": "Portainer's own database" } ],
+      "ports": [
+        {
+          "lan": "192.168.1.58:9000 and :9443 (all interfaces)",
+          "loopback": "",
+          "tailnet": "https://chases-tower.tail81098d.ts.net:9443/",
+          "container": 9443
+        }
+      ],
+      "volumes": [
+        {
+          "host": "Docker volume portainer_data",
+          "container": "/data",
+          "what": "Portainer's own database"
+        }
+      ],
       "env": [],
       "secrets": [],
       "health": "http://192.168.1.58:9000/api/system/status",
       "dependsOn": [],
       "neededBy": [],
-      "backup": ["Docker volume portainer_data"],
+      "backup": [
+        "Docker volume portainer_data"
+      ],
       "verified": "docker ps on the game PC, 2026-10-17.",
       "tiles": [
-        { "section": "Admin", "name": "Portainer (game PC)", "icon": "portainer", "href": "https://192.168.1.58:9443", "description": "Docker on the game PC", "siteMonitor": "http://192.168.1.58:9000/api/system/status", "snapshot": "sl-portainer" }
+        {
+          "section": "Admin",
+          "name": "Portainer (game PC)",
+          "icon": "portainer",
+          "href": "https://192.168.1.58:9443",
+          "description": "Docker on the game PC",
+          "siteMonitor": "http://192.168.1.58:9000/api/system/status",
+          "snapshot": "sl-portainer"
+        }
       ]
     },
     {
@@ -904,9 +1811,25 @@
       "container": "sl-dashboard",
       "image": "ghcr.io/gethomepage/homepage:latest",
       "compose": "/home/chase/shattered-legacy/docker/dashboard/docker-compose.yml",
-      "ports": [ { "lan": "0.0.0.0:3000 (all interfaces, while it runs)", "loopback": "", "tailnet": "", "container": 3000 } ],
-      "volumes": [ { "host": "/home/chase/shattered-legacy/docker/dashboard/config", "container": "/app/config", "what": "the June config" } ],
-      "env": ["TZ", "HOMEPAGE_ALLOWED_HOSTS"],
+      "ports": [
+        {
+          "lan": "0.0.0.0:3000 (all interfaces, while it runs)",
+          "loopback": "",
+          "tailnet": "",
+          "container": 3000
+        }
+      ],
+      "volumes": [
+        {
+          "host": "/home/chase/shattered-legacy/docker/dashboard/config",
+          "container": "/app/config",
+          "what": "the June config"
+        }
+      ],
+      "env": [
+        "TZ",
+        "HOMEPAGE_ALLOWED_HOSTS"
+      ],
       "secrets": [],
       "health": "",
       "dependsOn": [],
@@ -914,7 +1837,12 @@
       "backup": [],
       "verified": "haven-discovery-output.txt, 2026-09-28.",
       "tiles": [
-        { "section": "Admin", "name": "Old Homepage (Haven)", "icon": "homepage", "description": "Stopped on purpose: Mega dashboard: roll back starts it again. Exited is right" }
+        {
+          "section": "Admin",
+          "name": "Old Homepage (Haven)",
+          "icon": "homepage",
+          "description": "Stopped on purpose: Mega dashboard: roll back starts it again. Exited is right"
+        }
       ]
     },
     {
@@ -927,9 +1855,25 @@
       "container": "sl-dashboard",
       "image": "ghcr.io/gethomepage/homepage:latest",
       "compose": "D:\\ShatteredLegacy\\docker\\dashboard\\docker-compose.yml",
-      "ports": [ { "lan": "192.168.1.58:3000 (all interfaces)", "loopback": "", "tailnet": "", "container": 3000 } ],
-      "volumes": [ { "host": "D:\\ShatteredLegacy\\docker\\dashboard\\config", "container": "/app/config", "what": "the game PC's config" } ],
-      "env": ["TZ", "HOMEPAGE_ALLOWED_HOSTS"],
+      "ports": [
+        {
+          "lan": "192.168.1.58:3000 (all interfaces)",
+          "loopback": "",
+          "tailnet": "",
+          "container": 3000
+        }
+      ],
+      "volumes": [
+        {
+          "host": "D:\\ShatteredLegacy\\docker\\dashboard\\config",
+          "container": "/app/config",
+          "what": "the game PC's config"
+        }
+      ],
+      "env": [
+        "TZ",
+        "HOMEPAGE_ALLOWED_HOSTS"
+      ],
       "secrets": [],
       "health": "",
       "dependsOn": [],
@@ -937,7 +1881,13 @@
       "backup": [],
       "verified": "docker ps on the game PC, 2026-10-17.",
       "tiles": [
-        { "section": "Admin", "name": "Old Homepage (game PC)", "icon": "homepage", "description": "Stopped on purpose after the deploy; the rollback starts it again", "snapshot": "sl-dashboard" }
+        {
+          "section": "Admin",
+          "name": "Old Homepage (game PC)",
+          "icon": "homepage",
+          "description": "Stopped on purpose after the deploy; the rollback starts it again",
+          "snapshot": "sl-dashboard"
+        }
       ]
     },
     {
@@ -950,9 +1900,24 @@
       "container": "sl-play-tests",
       "image": "python:3-alpine",
       "compose": "D:\\ShatteredLegacy\\docker\\test-queue\\docker-compose.yml",
-      "ports": [ { "lan": "192.168.1.58:8093", "loopback": "127.0.0.1:8093", "tailnet": "", "container": 8000 } ],
-      "volumes": [ { "host": "D:\\UO\\shard-migration\\testing", "container": "/data/testing", "what": "the mirror of Haven's play-test data (refreshed at each commit)" } ],
-      "env": ["see docker/test-queue/docker-compose.yml"],
+      "ports": [
+        {
+          "lan": "192.168.1.58:8093",
+          "loopback": "127.0.0.1:8093",
+          "tailnet": "",
+          "container": 8000
+        }
+      ],
+      "volumes": [
+        {
+          "host": "D:\\UO\\shard-migration\\testing",
+          "container": "/data/testing",
+          "what": "the mirror of Haven's play-test data (refreshed at each commit)"
+        }
+      ],
+      "env": [
+        "see docker/test-queue/docker-compose.yml"
+      ],
       "secrets": [],
       "health": "",
       "dependsOn": [],
@@ -960,7 +1925,13 @@
       "backup": [],
       "verified": "docker ps -a on the game PC, 2026-10-17 (Exited, 28 hours).",
       "tiles": [
-        { "section": "Admin", "name": "Ops pages (game PC copy)", "icon": "mdi-backup-restore", "description": "Stopped on purpose since the cutover; Ops pages: roll back starts it", "snapshot": "sl-play-tests" }
+        {
+          "section": "Admin",
+          "name": "Ops pages (game PC copy)",
+          "icon": "mdi-backup-restore",
+          "description": "Stopped on purpose since the cutover; Ops pages: roll back starts it",
+          "snapshot": "sl-play-tests"
+        }
       ]
     },
     {
@@ -973,17 +1944,47 @@
       "container": "kevins-parts-wp",
       "image": "wordpress (tag unverified)",
       "compose": "/home/chase/clients/kevins-parts (P89; file name unverified)",
-      "ports": [ { "lan": "", "loopback": "", "tailnet": "", "public": "through NPM (host name unverified)", "container": 80 } ],
-      "volumes": [ { "host": "unverified", "container": "", "what": "a client's site" } ],
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnet": "",
+          "public": "through NPM (host name unverified)",
+          "container": 80
+        }
+      ],
+      "volumes": [
+        {
+          "host": "unverified",
+          "container": "",
+          "what": "a client's site"
+        }
+      ],
       "env": [],
-      "secrets": [ { "name": "its database password", "where": "that stack's own env (on Haven; never read here)", "createdIn": "" } ],
+      "secrets": [
+        {
+          "name": "its database password",
+          "where": "that stack's own env (on Haven; never read here)",
+          "createdIn": ""
+        }
+      ],
       "health": "",
-      "dependsOn": ["kevins-parts-db", "npm"],
+      "dependsOn": [
+        "kevins-parts-db",
+        "npm"
+      ],
       "neededBy": [],
-      "backup": ["/home/chase/clients/kevins-parts and its volumes"],
+      "backup": [
+        "/home/chase/clients/kevins-parts and its volumes"
+      ],
       "verified": "cc-P89 inventory (containers kevins-parts-wp, kevins-parts-db under /home/chase/clients/).",
       "tiles": [
-        { "section": "Admin", "name": "Kevin's Parts site", "icon": "wordpress", "description": "A client's WordPress, hosted on Haven. Up or down only" }
+        {
+          "section": "Admin",
+          "name": "Kevin's Parts site",
+          "icon": "wordpress",
+          "description": "A client's WordPress, hosted on Haven. Up or down only"
+        }
       ]
     },
     {
@@ -997,16 +1998,37 @@
       "image": "mariadb or mysql (unverified)",
       "compose": "/home/chase/clients/kevins-parts (P89; file name unverified)",
       "ports": [],
-      "volumes": [ { "host": "unverified", "container": "", "what": "the client's database" } ],
+      "volumes": [
+        {
+          "host": "unverified",
+          "container": "",
+          "what": "the client's database"
+        }
+      ],
       "env": [],
-      "secrets": [ { "name": "its database passwords", "where": "that stack's own env (on Haven; never read here)", "createdIn": "" } ],
+      "secrets": [
+        {
+          "name": "its database passwords",
+          "where": "that stack's own env (on Haven; never read here)",
+          "createdIn": ""
+        }
+      ],
       "health": "",
       "dependsOn": [],
-      "neededBy": ["kevins-parts-wp"],
-      "backup": ["its database volume (a dump before any move)"],
+      "neededBy": [
+        "kevins-parts-wp"
+      ],
+      "backup": [
+        "its database volume (a dump before any move)"
+      ],
       "verified": "cc-P89 inventory.",
       "tiles": [
-        { "section": "Admin", "name": "Kevin's Parts database", "icon": "mariadb", "description": "The client site's database. Up or down only" }
+        {
+          "section": "Admin",
+          "name": "Kevin's Parts database",
+          "icon": "mariadb",
+          "description": "The client site's database. Up or down only"
+        }
       ]
     },
     {
@@ -1019,18 +2041,50 @@
       "container": "",
       "image": "tailscaled (system service)",
       "compose": "",
-      "ports": [ { "lan": "", "loopback": "", "tailnet": "80, 8093, 8787, 8097 by Tailscale Serve (tailscaleServe above)", "container": 0 } ],
-      "volumes": [ { "host": "/var/lib/tailscale", "container": "", "what": "the node's identity and its Serve config" } ],
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "",
+          "tailnet": "80, 8093, 8787, 8097 by Tailscale Serve (tailscaleServe above)",
+          "container": 0
+        }
+      ],
+      "volumes": [
+        {
+          "host": "/var/lib/tailscale",
+          "container": "",
+          "what": "the node's identity and its Serve config"
+        }
+      ],
       "env": [],
-      "secrets": [ { "name": "the node key", "where": "/var/lib/tailscale on Haven (root only)", "createdIn": "tailscale up (Chase's login)" } ],
+      "secrets": [
+        {
+          "name": "the node key",
+          "where": "/var/lib/tailscale on Haven (root only)",
+          "createdIn": "tailscale up (Chase's login)"
+        }
+      ],
       "health": "",
       "dependsOn": [],
-      "neededBy": ["homepage", "play-tests", "print-queue", "scripts-dev", "homeip"],
+      "neededBy": [
+        "homepage",
+        "play-tests",
+        "print-queue",
+        "scripts-dev",
+        "homeip"
+      ],
       "backup": [],
       "verified": "tailscale status on the game PC, 2026-10-17: haven active, direct 192.168.1.61.",
       "_note": "Its tile reads the game PC snapshot (tailscale status --json on the game PC: is Haven's node online). A check from inside Haven would only reach Haven itself, not the tailnet.",
       "tiles": [
-        { "section": "Admin", "name": "Tailscale", "icon": "tailscale", "href": "https://login.tailscale.com/admin/machines", "description": "The only way in from outside the house: Haven as the game PC's Tailscale sees it", "snapshot": "tailscale" }
+        {
+          "section": "Admin",
+          "name": "Tailscale",
+          "icon": "tailscale",
+          "href": "https://login.tailscale.com/admin/machines",
+          "description": "The only way in from outside the house: Haven as the game PC's Tailscale sees it",
+          "snapshot": "tailscale"
+        }
       ]
     },
     {
@@ -1187,6 +2241,118 @@
       "backup": [],
       "verified": "Built and tested by cc-P182 (the forwarder in a throwaway container of this image: binds 127.0.0.2, replaces a forged proof); not deployed yet (Install-WebConsole.ps1 -Tailscale).",
       "_note": "network_mode service:tailscale: it shares the node's namespace and publishes nothing. Adds X-UOConsole-Proof, which the web console's tailnet listener demands, so a container on this PC that reaches 127.0.0.1:8096 directly cannot act as Chase (P155's Deviation 2).",
+      "tiles": []
+    },
+    {
+      "key": "spindle-web",
+      "name": "Filament Watch (Spindle)",
+      "host": "haven",
+      "owner": "Sunflower",
+      "kind": "container",
+      "state": "running (seen 2026-10-28)",
+      "container": "spindle-web-1",
+      "image": "spindle-web",
+      "compose": "/home/chase/spindle (project spindle; not ours)",
+      "ports": [
+        {
+          "lan": "",
+          "loopback": "127.0.0.1:8000",
+          "tailnet": "https://haven.tail81098d.ts.net:8443/ (Tailscale Serve HTTPS :8443 -> 127.0.0.1:8000, set by hand, not in tailscaleServe)",
+          "container": 8000
+        }
+      ],
+      "volumes": [
+        {
+          "host": "/home/chase/spindle/config",
+          "container": "/app/config",
+          "what": "Spindle config (bind)"
+        }
+      ],
+      "env": [],
+      "secrets": [],
+      "health": "",
+      "dependsOn": [
+        "spindle-db",
+        "spindle-worker"
+      ],
+      "neededBy": [
+        "print-queue"
+      ],
+      "backup": [
+        "/home/chase/spindle/config"
+      ],
+      "verified": "2026-10-28 docker inspect and tailscale serve status on Haven. Dot is container state: http://host.docker.internal:8000 does not answer from sl-homepage (no host-gateway mapping, and Spindle binds loopback only).",
+      "tiles": [
+        {
+          "section": "Filament",
+          "name": "Filament Watch",
+          "icon": "mdi-tag-search",
+          "href": "https://haven.tail81098d.ts.net:8443/",
+          "description": "Filament prices and deals (Spindle)"
+        }
+      ]
+    },
+    {
+      "key": "spindle-worker",
+      "name": "Filament Watch worker (Spindle)",
+      "host": "haven",
+      "owner": "Sunflower",
+      "kind": "container",
+      "state": "running (seen 2026-10-28)",
+      "container": "spindle-worker-1",
+      "image": "spindle-worker",
+      "compose": "/home/chase/spindle (project spindle; not ours)",
+      "ports": [],
+      "volumes": [
+        {
+          "host": "/home/chase/spindle/config",
+          "container": "/app/config",
+          "what": "Spindle config (bind)"
+        }
+      ],
+      "env": [],
+      "secrets": [],
+      "health": "",
+      "dependsOn": [
+        "spindle-db"
+      ],
+      "neededBy": [
+        "spindle-web"
+      ],
+      "backup": [],
+      "verified": "2026-10-28 docker inspect on Haven.",
+      "tiles": []
+    },
+    {
+      "key": "spindle-db",
+      "name": "Filament Watch database (Spindle)",
+      "host": "haven",
+      "owner": "Sunflower",
+      "kind": "container",
+      "state": "running (seen 2026-10-28)",
+      "container": "spindle-db-1",
+      "image": "postgres:16-alpine",
+      "compose": "/home/chase/spindle (project spindle; not ours)",
+      "ports": [],
+      "volumes": [
+        {
+          "host": "/var/lib/docker/volumes/spindle_pgdata/_data",
+          "container": "/var/lib/postgresql/data",
+          "what": "Filament Watch's price history (named volume spindle_pgdata)"
+        }
+      ],
+      "env": [],
+      "secrets": [],
+      "health": "",
+      "dependsOn": [],
+      "neededBy": [
+        "spindle-web",
+        "spindle-worker"
+      ],
+      "backup": [
+        "named volume spindle_pgdata (pg_dump preferred)"
+      ],
+      "verified": "2026-10-28 docker inspect on Haven.",
       "tiles": []
     }
   ]
