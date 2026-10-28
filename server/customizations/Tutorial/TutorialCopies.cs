@@ -125,7 +125,8 @@ public static class TutorialCopies
                 return null;
             }
 
-            if (!free.Seeded)
+            // cc-P718: a copy whose seeding placed nothing (refused: the isle's land was not on the map then) is seeded again.
+            if (!free.Seeded || free.Placed.Count == 0)
             {
                 Seed(free);
             }
@@ -347,7 +348,10 @@ public static class TutorialCopies
             }
         }
 
-        slot.Seeded = true;
+        // cc-P718: a refused seeding (nothing placed) leaves the copy unseeded, so its next claim tries again. The overnight
+        // bot's world held six copies "seeded (0 pieces)" from nights without the isle's map overlay, and trainees woke on
+        // an empty copy.
+        slot.Seeded = slot.Placed.Count > 0;
         logger.Information("Tutorial copy {N} seeded ({Count} pieces): {Result}", slot.N, slot.Placed.Count, result);
     }
 

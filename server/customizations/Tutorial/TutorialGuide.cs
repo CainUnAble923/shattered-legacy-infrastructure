@@ -39,12 +39,30 @@ public partial class TutorialGuide : BaseCreature
     public override bool IsInvulnerable => true;
     public override bool ClickTitle => true;
 
+    // cc-P718: she speaks first to a trainee who has not used her yet (TutorialGreeting).
+    public override void OnMovement(Mobile m, Point3D oldLocation)
+    {
+        base.OnMovement(m, oldLocation);
+        if (m is PlayerMobile pm && TutorialGreeting.NeedsGuide(pm))
+        {
+            TutorialGreeting.TryGreet(this, pm, TutorialGreeting.TamsinLine);
+        }
+    }
+
+    public override void OnThink()
+    {
+        base.OnThink();
+        TutorialGreeting.GreetAround(this, TutorialGreeting.NeedsGuide, TutorialGreeting.TamsinLine);
+    }
+
     public override void OnDoubleClick(Mobile from)
     {
         if (from is not PlayerMobile pm)
         {
             return;
         }
+
+        TutorialGreeting.UsedGuide(pm);
 
         if (!pm.InRange(Location, 4))
         {

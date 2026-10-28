@@ -55,6 +55,10 @@ public class FoldRegion : NoHousingRegion
         return m == null || m.AccessLevel > AccessLevel.Player;
     }
 
+    // cc-P718 item 8: on the Wakening Isle each skill gains at most once per TutorialSkillPace.Interval.
+    public override bool AllowGain(Mobile m, Skill skill, object obj) =>
+        Server.Tutorial.TutorialSkillPace.Allow(m, skill) && base.AllowGain(m, skill, obj);
+
     public override void AlterLightLevel(Mobile m, ref int global, ref int personal)
     {
         global = LightCycle.DayLevel;

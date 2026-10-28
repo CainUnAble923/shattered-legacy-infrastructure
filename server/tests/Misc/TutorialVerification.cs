@@ -124,7 +124,7 @@ public class TutorialVerification : IDisposable
         {
             "core.movement" => [TutorialAction.FirstMark, TutorialAction.SecondMark],
             "core.paperdoll" => [TutorialAction.Equipped],
-            "core.backpack" => [TutorialAction.OpenedBag],
+            "core.backpack" => [TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag], // cc-P718: the character window first
             "core.chat" => [TutorialAction.SaidPhrase],
             "core.farm" => [TutorialAction.FarmDone],
             "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
@@ -342,11 +342,15 @@ public class TutorialVerification : IDisposable
         finally { gold.Delete(); }
         bag.OnDoubleClick(stranger.Pm);
         Assert.DoesNotContain("core.backpack", p.Record.StationsDone);
+        bag.OnDoubleClick(p.Pm); // cc-P718: before the character window, the bag does not finish the lesson
+        Assert.DoesNotContain("core.backpack", p.Record.StationsDone);
+        p.Pm.DisplayPaperdollTo(p.Pm); // the real hook: EventSink.PaperdollRequest
         bag.OnDoubleClick(p.Pm);
         Assert.Contains("core.backpack", p.Record.StationsDone);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.paperdoll")!);
         // The fake host has no tiledata; give this practice item's fake its real equipment layer.
-        var cloak = TutorialCoreTrials.Current(p.Pm)!.Supply!;
+        // cc-P718: the cloak waits on the clothes table.
+        var cloak = WakeningIsleCloak.OnTable(p.Pm, TutorialWorld.MapOf(p.Pm))!;
         cloak.Layer = Layer.Cloak;
         Assert.True(p.Pm.EquipItem(cloak));
         ShardTestClock.Advance(TimeSpan.FromSeconds(0.5));
@@ -488,7 +492,7 @@ public class TutorialVerification : IDisposable
             "gathering.lumberjacking", "gathering.fishing", "gathering.camping", "crafting.blacksmithy",
             "crafting.tailoring", "crafting.carpentry", "crafting.tinkering", "crafting.alchemy", "crafting.fletching",
             "crafting.cooking", "crafting.inscription", "crafting.cartography", "animals.taming", "bard.trial",
-            "thieving.trial", "housing.basics", "travel.wing", "reputation.wing", "shard.systems"
+            "thieving.trial", "housing.basics", "travel.wing", "reputation.wing", "shard.systems", "client.tips"
         ];
         Assert.Equal(expected.OrderBy(k => k), TutorialStations.All.Select(s => s.Key).OrderBy(k => k));
         Assert.Equal(10, TutorialStations.Core.Count()); // cc-P663: core.farm

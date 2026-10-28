@@ -276,6 +276,7 @@ public static class ClusterFSkillGain
 
         // cc-P189: ServUO's apprentice training multiplies each gain (Regions/ApprenticeTraining.cs), whatever the rate.
         Server.Regions.ApprenticeTraining.OnGain(from, skill, before);
+        Server.Tutorial.TutorialSkillPace.Note(from, skill, before); // cc-P718: the isle's gain pace
 
         if (ShouldBoost(from, skill) && skill.BaseFixedPoint > before)
         {

@@ -102,7 +102,7 @@ public class TutorialFirstPlayVerification : IDisposable
     {
         "core.movement" => [TutorialAction.FirstMark, TutorialAction.SecondMark],
         "core.paperdoll" => [TutorialAction.Equipped],
-        "core.backpack" => [TutorialAction.OpenedBag],
+        "core.backpack" => [TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag], // cc-P718: the character window first
         "core.chat" => [TutorialAction.SaidPhrase],
             "core.farm" => [TutorialAction.FarmDone],
         "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
@@ -161,7 +161,7 @@ public class TutorialFirstPlayVerification : IDisposable
         var buttons = Buttons(before);
         foreach (var s in TutorialStations.All)
         {
-            if (s.IsCore)
+            if (s.IsCore || TutorialStations.IsAnytime(s.Key)) // cc-P718: the client tips are offered at any time
             {
                 Assert.Contains(StationButton(s.Key), buttons);
             }
@@ -317,7 +317,7 @@ public class TutorialFirstPlayVerification : IDisposable
         Assert.Contains("tile", TutorialCoreTrials.Hint("core.movement"));
         Assert.Contains("backpack", TutorialCoreTrials.Hint("core.banking"));
 
-        foreach (var key in new[] { "core.backpack", "core.paperdoll", "core.banking" })
+        foreach (var key in new[] { "core.backpack", "core.banking" }) // cc-P718: the cloak waits on the table instead
         {
             PlayCoreUntil(p.Pm, key);
             var station = TutorialStations.Find(key)!;

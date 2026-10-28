@@ -29,7 +29,8 @@ public enum TutorialWing
     Housing,
     Travel,
     Reputation,
-    ShardSystems
+    ShardSystems,
+    Client // cc-P718 item 3: client settings, optional at any time
 }
 
 /// <summary>One station: a core lesson or a wing trial.</summary>
@@ -156,7 +157,28 @@ public static class TutorialStations
         new("shard.systems", TutorialWing.ShardSystems, "Rewards and extra jewelry slots", None, None, None,
             ["Skill progress bar", "Autoloot", "Scavenger", "Nearby loot", "Vendors: advanced shop, trade, auto buy and sell",
              "Legion scripting (advanced)", "Script library browser (advanced)"], null, "Elara Voss's house, the bank, then Rook"),
+
+        // -- cc-P718 item 3: optional at any time, on the isle (Tamsin's window) or with Rook; never needed to graduate --
+        new(TutorialClientTips.Key, TutorialWing.Client, "Client tips: always run", None, None, None,
+            ["Options"], null, "Tamsin's window or Rook's, at any time"),
     ];
+
+    /// <summary>cc-P718: optional lessons offered at any time, before the core is done too (Tamsin's window shows them).</summary>
+    public static bool IsAnytime(string key) => key.Equals(TutorialClientTips.Key, StringComparison.OrdinalIgnoreCase);
+
+    public static IEnumerable<TutorialStation> Anytime
+    {
+        get
+        {
+            foreach (var s in All)
+            {
+                if (IsAnytime(s.Key))
+                {
+                    yield return s;
+                }
+            }
+        }
+    }
 
     /// <summary>cc-P663: the last core lesson, the dock moongate out to New Haven.</summary>
     public const string LastCore = "core.travel";
@@ -193,5 +215,6 @@ public static class TutorialStations
         ["core.travel"] = TutorialCoreTrials.Start,
         ["core.league"] = TutorialCoreTrials.Start,
         ["core.loop"] = TutorialCoreTrials.Start,
+        [TutorialClientTips.Key] = TutorialClientTips.Start, // cc-P718
     };
 }
