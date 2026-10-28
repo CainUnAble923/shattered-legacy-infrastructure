@@ -5,13 +5,17 @@
 // Notes: shard-migration notes/cc-P189-cont-old-haven-new-player-safe.md.
 //
 // Facts:
-//   S1. The seeder places ServUO's Drelgor at 3651,2509 and no OldHavenMage or Vorlak spawner.
+//   S1. The seeder places ServUO's Drelgor at 3640,2418 and no OldHavenMage or Vorlak spawner.
+//
+// cc-P678: on the Siege of Sosaria map Old Haven is the author's Haven town, New Haven now, so Old Haven's undead field,
+// Drelgor and "Old Haven Training" moved to the north woods between the town and the shore (x 3590-3710, y 2378-2459;
+// ClusterFHavenTownSpawns.TrainingField). The facts below are the same facts on the new ground.
 //   S2. [ClusterFOldHavenRetire removes exactly the mage and Vorlak spawners in Old Haven (one still under Vorlak's old
 //       name), their creatures, and a stray mage; it keeps Drelgor's spawner, the stock skeleton spawner, a spawner
 //       staff mixed, and a mage spawner outside Old Haven. The dry run changes nothing and reports the same counts.
-//   A1. "Old Haven Training" is registered at start, as ServUO draws it plus the walk to the Rootdeep hole, and not over
-//       New Haven.
-//   A2. Drelgor's broadcast test holds for him at his spawn and a player at the hole (Drelgor.cs BroadcastMessage).
+//   A1. "Old Haven Training" is registered at start over the north woods, and not over New Haven.
+//   A2. Drelgor's broadcast test holds for him at his spawn and a player at the woods' east edge (Drelgor.cs
+//       BroadcastMessage).
 //   A3. A player holding a New Haven apprentice quest gains x2 to x4 on that skill inside the region (ServUO
 //       SkillCheck.cs:404-407), through the shard's real gain handler; the same player outside gains x1.
 //   A4. Nobody else gets it: no quest, another skill's quest, the quest's skill at 50, a quest whose region is not
@@ -40,11 +44,11 @@ namespace ShatteredLegacy.Tests;
 [Collection("Sequential UOContent Tests")]
 public class OldHavenNewPlayerSafeVerification
 {
-    private static readonly Point3D DrelgorHome = new(3651, 2509, 0);
-    private static readonly Point3D Hole = new(3619, 2620, 0);
-    private static readonly Point3D NewHavenBank = new(3485, 2572, 0);
-    // P371: outside Old Haven Training, while remaining on the tutorial island before graduation.
-    private static readonly Point3D FarAway = new(3503, 2574, 14);
+    private static readonly Point3D DrelgorHome = new(3640, 2418, 34);
+    // inside Old Haven Training: the north woods' east side
+    private static readonly Point3D WoodsEdge = new(3700, 2440, 0);
+    // P371: outside Old Haven Training, while remaining on the tutorial island before graduation (cc-P678: the start).
+    private static readonly Point3D FarAway = new(3634, 2586, 0);
 
     private readonly ITestOutputHelper _out;
 
@@ -57,7 +61,7 @@ public class OldHavenNewPlayerSafeVerification
 
     private static List<Spawner> OldHavenSpawners() =>
         World.Items.Values.OfType<Spawner>()
-            .Where(s => !s.Deleted && s.Map == Map.Trammel && s.X is >= 3520 and <= 3680 && s.Y is >= 2420 and <= 2600)
+            .Where(s => !s.Deleted && s.Map == Map.Trammel && s.X is >= 3590 and <= 3710 && s.Y is >= 2378 and <= 2459)
             .ToList();
 
     // ---------------------------------------------------------------- S1
@@ -77,7 +81,7 @@ public class OldHavenNewPlayerSafeVerification
             _out.WriteLine(string.Join(" | ", names));
 
             Assert.DoesNotContain(made, s => s.Entries.Any(e => ClusterFOldHavenSeeder.RetiredTypes.Contains(e.SpawnedName)));
-            Assert.Equal(["Drelgor at 3651,2509"], names);
+            Assert.Equal(["Drelgor at 3640,2418"], names);
         }
         finally
         {
@@ -115,16 +119,16 @@ public class OldHavenNewPlayerSafeVerification
 
         public Scene()
         {
-            Mages = Place(new Point3D(3600, 2510, 0), "OldHavenMage");
-            OldVorlak = Place(new Point3D(3622, 2488, 0), "DrelgorTheImpaler"); // placed before cc-P129's rename
+            Mages = Place(new Point3D(3600, 2400, 0), "OldHavenMage");
+            OldVorlak = Place(new Point3D(3622, 2420, 0), "DrelgorTheImpaler"); // placed before cc-P129's rename
             Drelgor = Place(DrelgorHome, "Drelgor");
-            Skeletons = Place(new Point3D(3650, 2509, 0), "Skeleton");          // pinned's Outdoors.json spawner's spot
-            Mixed = Place(new Point3D(3618, 2540, 0), "OldHavenMage", "Skeleton");
+            Skeletons = Place(new Point3D(3660, 2430, 0), "Skeleton");          // an undead spawner in the woods
+            Mixed = Place(new Point3D(3618, 2440, 0), "OldHavenMage", "Skeleton");
             MagesElsewhere = Place(new Point3D(1500, 1500, 0), "OldHavenMage");  // a new home outside Old Haven
 
             Stray = new OldHavenMage();
             Made.Add(Stray);
-            Stray.MoveToWorld(new Point3D(3590, 2470, 0), Map.Trammel);
+            Stray.MoveToWorld(new Point3D(3595, 2410, 0), Map.Trammel);
         }
 
         public IEnumerable<IEntity> Removed =>
@@ -167,7 +171,7 @@ public class OldHavenNewPlayerSafeVerification
 
         Assert.Equal("ClusterF Old Haven retire dry run: would delete 2 spawners with 2 creatures, and 1 creatures with no spawner.", dry[^1]);
         Assert.Equal("ClusterF Old Haven retire complete: deleted 2 spawners with 2 creatures, and 1 creatures with no spawner.", real[^1]);
-        Assert.Single(real, l => l.StartsWith("[MIXED, KEPT] Spawner at (3618,2540,", StringComparison.Ordinal));
+        Assert.Single(real, l => l.StartsWith("[MIXED, KEPT] Spawner at (3618,2440,", StringComparison.Ordinal));
 
         // A second run finds nothing more.
         Assert.Equal("ClusterF Old Haven retire complete: deleted 0 spawners with 0 creatures, and 0 creatures with no spawner.", ClusterFOldHavenSeeder.Retire(false)[^1]);
@@ -176,17 +180,18 @@ public class OldHavenNewPlayerSafeVerification
     // ---------------------------------------------------------------- A1, A2
 
     [Fact]
-    public void A1_OldHavenTrainingCoversServUOsRectangleAndTheWalkToTheHole()
+    public void A1_OldHavenTrainingCoversTheNorthWoods()
     {
         Region At(int x, int y) => Region.Find(new Point3D(x, y, 0), Map.Trammel);
 
-        foreach (var (x, y) in new[] { (3589, 2443), (3703, 2542), (3651, 2509), (3619, 2620), (3546, 2600), (3703, 2650) })
+        foreach (var (x, y) in new[] { (3590, 2378), (3710, 2378), (3590, 2459), (3710, 2459), (3640, 2418), (3700, 2440) })
         {
             var r = At(x, y);
             Assert.True(r is ApprenticeRegion && r.Name == "Old Haven Training", $"{x},{y}: {r?.Name} ({r?.GetType().Name})");
         }
 
-        foreach (var (x, y) in new[] { (3588, 2443), (3704, 2500), (3545, 2600), (3600, 2651), (3485, 2572), (3589, 2442) })
+        // outside: one past each edge, the town's start, the bank (and the cellar hatch beside it), the old ruin's field
+        foreach (var (x, y) in new[] { (3589, 2418), (3711, 2418), (3640, 2377), (3640, 2460), (3634, 2586), (3618, 2620), (3651, 2509) })
         {
             Assert.False(At(x, y).IsPartOf("Old Haven Training"), $"{x},{y} is inside");
         }
@@ -195,12 +200,12 @@ public class OldHavenNewPlayerSafeVerification
     }
 
     [Fact]
-    public void A2_DrelgorsBroadcastTestHoldsBetweenHisHomeAndTheHole()
+    public void A2_DrelgorsBroadcastTestHoldsBetweenHisHomeAndTheWoodsEdge()
     {
         var drelgor = new Drelgor();
         drelgor.MoveToWorld(DrelgorHome, Map.Trammel);
         var pm = new PlayerMobile { Player = true };
-        pm.MoveToWorld(Hole, Map.Trammel);
+        pm.MoveToWorld(WoodsEdge, Map.Trammel);
 
         try
         {
@@ -307,7 +312,7 @@ public class OldHavenNewPlayerSafeVerification
     [Fact]
     public void A3_AQuestHolderGainsTwoToFourTimesInsideAndOnceOutside()
     {
-        var pm = Player(Hole);
+        var pm = Player(WoodsEdge);
 
         try
         {
@@ -338,13 +343,13 @@ public class OldHavenNewPlayerSafeVerification
     [Fact]
     public void A4_NobodyElseGetsIt()
     {
-        var none = Player(Hole);
-        var young = Player(Hole, young: true);
-        var otherSkill = Player(Hole);
-        var atFifty = Player(Hole);
-        var unregistered = Player(Hole);
-        var accelerated = Player(Hole);
-        var notYoung = Player(Hole);
+        var none = Player(WoodsEdge);
+        var young = Player(WoodsEdge, young: true);
+        var otherSkill = Player(WoodsEdge);
+        var atFifty = Player(WoodsEdge);
+        var unregistered = Player(WoodsEdge);
+        var accelerated = Player(WoodsEdge);
+        var notYoung = Player(WoodsEdge);
 
         try
         {
@@ -387,8 +392,8 @@ public class OldHavenNewPlayerSafeVerification
         {
             Take<DefyingTheArcane>(holder);
 
-            holder.MoveToWorld(Hole, Map.Trammel);
-            other.MoveToWorld(Hole, Map.Trammel);
+            holder.MoveToWorld(WoodsEdge, Map.Trammel);
+            other.MoveToWorld(WoodsEdge, Map.Trammel);
             Assert.True(ApprenticeTraining.HasBuff(holder));
             Assert.False(ApprenticeTraining.HasBuff(other));
 

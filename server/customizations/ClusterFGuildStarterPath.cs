@@ -209,28 +209,28 @@ public static class GuildLocations
     // placed by someone else; spawned stock guildmasters wander, so their tile is their spawn point.
     public static readonly GuildLocation[] All =
     [
-        new("warriors",   "Warrior's Guild Hall", "New Haven",             typeof(WarriorGuildmaster),              GuildLocation.TrammelIndex, 3530, 2537, 20, true),
-        new("arcane",     "New Haven Magery School", "New Haven",          typeof(MageGuildmaster),                 GuildLocation.TrammelIndex, 3486, 2494, 52, true),
-        new("healers",    "Healer's Hall", "New Haven",                    typeof(HealerGuildmaster),               GuildLocation.TrammelIndex, 3463, 2558, 36, false),
-        new("rangers",    "New Haven stables", "New Haven",                typeof(OutridersGuildmaster),            GuildLocation.TrammelIndex, 3524, 2574, 7,  false),
+        new("warriors", "the Proving Grounds", "New Haven", typeof(WarriorGuildmaster),              GuildLocation.TrammelIndex, 3729, 2576, 40, true),
+        new("arcane", "Haven Magery School", "New Haven", typeof(MageGuildmaster),                 GuildLocation.TrammelIndex, 3645, 2467, 0, true),
+        new("healers", "the Healers of Haven", "New Haven", typeof(HealerGuildmaster),               GuildLocation.TrammelIndex, 3665, 2581, 0, false),
+        new("rangers", "the farmhouse stables", "New Haven", typeof(OutridersGuildmaster),            GuildLocation.TrammelIndex, 3705, 2585, 20, false),
         new("mining",     "Mine camp, south mountains", "New Haven",       typeof(MinersCompactLiaison),            GuildLocation.TrammelIndex, 3498, 2744, 4,  false, Direction.East),
-        new("smithing",   "Forge and Anvil", "New Haven",                  typeof(BlacksmithGuildmaster),           GuildLocation.TrammelIndex, 3469, 2536, 41, false),
-        new("tinkers",    "Springs N Things", "New Haven",                 typeof(TinkerGuildmaster),               GuildLocation.TrammelIndex, 3458, 2524, 53, false),
-        new("thieves",    "Bountiful Harvest Inn, back room", "New Haven", typeof(ThiefGuildmaster),                GuildLocation.TrammelIndex, 3495, 2515, 27, true),
-        new("dojo",       "Ninja Dojo", "New Haven",                       typeof(TwinPathsDojoGuildmaster),        GuildLocation.TrammelIndex, 3420, 2517, 21, true),
-        new("keepers",    "Necromancers Guild Hall", "New Haven",          typeof(KeepersOfTheLastDoorGuildmaster), GuildLocation.TrammelIndex, 3551, 2463, 15, true),
-        new("foresters",  "Carpenters of New Haven", "New Haven",          typeof(ForestersGuildmaster),            GuildLocation.TrammelIndex, 3441, 2637, 28, false),
-        new("tailoring",  "A Stitch In Time", "New Haven",                 typeof(TailorGuildmaster),               GuildLocation.TrammelIndex, 3494, 2551, 20, false),
-        new("maritime",   "New Haven Docks", "New Haven",                  typeof(FisherGuildmaster),               GuildLocation.TrammelIndex, 3507, 2597, 1,  true),
-        new("custodians", "Civic hall, upstairs", "New Haven",             typeof(SanitationWarden),                GuildLocation.TrammelIndex, 3506, 2560, 21, false),
-        new("merchants",  "New Haven Bank", "New Haven",                   typeof(MerchantGuildmaster),             GuildLocation.TrammelIndex, 3488, 2567, 20, true),
-        new("bards",      "Bardic Guild", "New Haven",                     typeof(BardGuildmaster),                 GuildLocation.TrammelIndex, 3410, 2608, 55, true),
-        new("artificers", "New Haven Magery School", "New Haven",          typeof(ArtificersGuildmaster),           GuildLocation.TrammelIndex, 3483, 2501, 52, true, Direction.South, new Point3D(3490, 2627, 0)),
+        new("smithing", "The Haven Blacksmith", "New Haven", typeof(BlacksmithGuildmaster),           GuildLocation.TrammelIndex, 3645, 2617, 0, false),
+        new("tinkers", "Haven Clockworks and Tinker Shop", "New Haven", typeof(TinkerGuildmaster),               GuildLocation.TrammelIndex, 3667, 2506, 0, false),
+        new("thieves", "The Haven Thieves' Guild", "New Haven", typeof(ThiefGuildmaster),                GuildLocation.TrammelIndex, 3689, 2512, 0, true),
+        new("dojo", "the east cottage (Twin Paths dojo)", "New Haven", typeof(TwinPathsDojoGuildmaster),        GuildLocation.TrammelIndex, 3737, 2562, 40, true),
+        new("keepers", "the east house (Keepers of the Last Door)", "New Haven", typeof(KeepersOfTheLastDoorGuildmaster), GuildLocation.TrammelIndex, 3729, 2633, 40, true),
+        new("foresters", "the Woodsman in Haven", "New Haven", typeof(ForestersGuildmaster),            GuildLocation.TrammelIndex, 3737, 2681, 40, false),
+        new("tailoring", "A Stitch in Time", "New Haven", typeof(TailorGuildmaster),               GuildLocation.TrammelIndex, 3687, 2477, 0, false),
+        new("maritime", "the docks", "New Haven", typeof(FisherGuildmaster),               GuildLocation.TrammelIndex, 3654, 2654, 0, true),
+        new("custodians", "League field office", "New Haven", typeof(SanitationWarden),                GuildLocation.TrammelIndex, 3662, 2549, 0, false),
+        new("merchants", "the Second Bank of Haven", "New Haven", typeof(MerchantGuildmaster),             GuildLocation.TrammelIndex, 3622, 2616, 0, true),
+        new("bards", "the Bardic Guild in Haven", "New Haven", typeof(BardGuildmaster),                 GuildLocation.TrammelIndex, 3657, 2528, 0, true),
+        new("artificers", "Haven Magery School", "New Haven", typeof(ArtificersGuildmaster),           GuildLocation.TrammelIndex, 3643, 2470, 0, true),
         new("artificers", "Royal City", "Ter Mur",                         typeof(ArtificersGuildmaster),           GuildLocation.TerMurIndex,  797,  3431, -10, false, Direction.West),
         // cc-P77: the Little Shop of Alchemy (pinned's Alchemist spawns at 3461,2566,37 on its z35 floor). The tile
         // fits at z35 with the hall props placed, and every tile around it is reachable from both doors
         // (notes/cc-P77-tools/walk.py, the CanFit port).
-        new(ClusterFAlembicGuild.Key, "Little Shop of Alchemy", "New Haven", typeof(AlembicGuildmaster),             GuildLocation.TrammelIndex, 3463, 2565, 35, true),
+        new(ClusterFAlembicGuild.Key, "Order of the Alembic hall", "New Haven", typeof(AlembicGuildmaster),             GuildLocation.TrammelIndex, 3608, 2497, 0, true),
     ];
 
     // Guild members who are not guildmasters and only send players on to one (cc-P22, the F-9 follow-up). Kept out of
@@ -239,7 +239,7 @@ public static class GuildLocations
     // tiledata height 1, so its top is z56; the stool is not a surface, so z56 is set, never walked to).
     public static readonly GuildLocation[] Lookouts =
     [
-        new("thieves",    "Fighting pit, upper floor", "New Haven",        typeof(ThievesDenLookout),               GuildLocation.TrammelIndex, 3440, 2558, 56, true, Direction.East),
+        new("thieves", "The Haven Thieves' Guild", "New Haven", typeof(ThievesDenLookout),               GuildLocation.TrammelIndex, 3689, 2510, 0, true, Direction.East),
     ];
 
     public static List<GuildLocation> For(string guildKey)
@@ -511,35 +511,36 @@ public static class ClusterFGuildStarter
     // -- The trainers' line (F-9 Decision 2.4) --
 
     // Each New Haven skill trainer and the hall it stands in (ClusterFNewHavenSeeder's areas), as the
-    // guild whose hall that is. Sarsmea Smythe stands in the bank, the Merchants' Exchange's hall.
+    // guild whose hall that is. Sarsmea Smythe stands in the bank, the Merchants' Exchange's hall. cc-P678: the halls of
+    // the author's Haven (shard-migration notes/cc-P678-tools/out/homes.csv).
     private static readonly Dictionary<Type, (string GuildKey, string Hall)> TrainerHalls = new()
     {
-        [typeof(Aelorn)] = ("warriors", "Warrior's Guild Hall"),
-        [typeof(Dimethro)] = ("warriors", "Warrior's Guild Hall"),
-        [typeof(Churchill)] = ("warriors", "Warrior's Guild Hall"),
-        [typeof(Robyn)] = ("warriors", "Warrior's Guild Hall"),
-        [typeof(Recaro)] = ("warriors", "Warrior's Guild Hall"),
-        [typeof(AldenArmstrong)] = ("warriors", "Warrior's Guild Hall"),
-        [typeof(Jockles)] = ("warriors", "Warrior's Guild Hall"),
-        [typeof(TylAriadne)] = ("warriors", "Warrior's Guild Hall"),
-        [typeof(Alefian)] = ("arcane", "Magery School"),
-        [typeof(Gustar)] = ("arcane", "Magery School"),
-        [typeof(Jillian)] = ("arcane", "Magery School"),
-        [typeof(Kaelynna)] = ("arcane", "Magery School"),
-        [typeof(Mithneral)] = ("arcane", "Magery School"),
-        [typeof(AmeliaYoungstone)] = ("tinkers", "Springs N Things"),
-        [typeof(AndreasVesalius)] = ("healers", "Healer's Hall"),
-        [typeof(Avicenna)] = ("healers", "Healer's Hall"),
-        [typeof(SarsmeaSmythe)] = ("merchants", "New Haven Bank"),
-        [typeof(Ryuichi)] = ("dojo", "Ninja Dojo"),
-        [typeof(Chiyo)] = ("dojo", "Ninja Dojo"),
-        [typeof(Jun)] = ("dojo", "Ninja Dojo"),
-        [typeof(Walker)] = ("dojo", "Ninja Dojo"),
-        [typeof(Hamato)] = ("dojo", "Hamato Dojo"),
-        [typeof(Mulcivikh)] = ("keepers", "Necromancers Guild Hall"),
-        [typeof(Morganna)] = ("keepers", "Necromancers Guild Hall"),
+        [typeof(Aelorn)] = ("warriors", "the Proving Grounds"),
+        [typeof(Dimethro)] = ("warriors", "the Proving Grounds"),
+        [typeof(Churchill)] = ("warriors", "the Proving Grounds"),
+        [typeof(Robyn)] = ("warriors", "the Proving Grounds"),
+        [typeof(Recaro)] = ("warriors", "the Proving Grounds"),
+        [typeof(AldenArmstrong)] = ("warriors", "the Proving Grounds"),
+        [typeof(Jockles)] = ("warriors", "the Proving Grounds"),
+        [typeof(TylAriadne)] = ("warriors", "the Proving Grounds"),
+        [typeof(Alefian)] = ("arcane", "Haven Magery School"),
+        [typeof(Gustar)] = ("arcane", "Haven Magery School"),
+        [typeof(Jillian)] = ("arcane", "Haven Magery School"),
+        [typeof(Kaelynna)] = ("arcane", "Haven Magery School"),
+        [typeof(Mithneral)] = ("arcane", "Haven Magery School"),
+        [typeof(AmeliaYoungstone)] = ("tinkers", "Haven Clockworks and Tinker Shop"),
+        [typeof(AndreasVesalius)] = ("healers", "the Healers of Haven"),
+        [typeof(Avicenna)] = ("healers", "the Healers of Haven"),
+        [typeof(SarsmeaSmythe)] = ("merchants", "the Second Bank of Haven"),
+        [typeof(Ryuichi)] = ("dojo", "the east cottage"),
+        [typeof(Chiyo)] = ("dojo", "the east cottage"),
+        [typeof(Jun)] = ("dojo", "the east cottage"),
+        [typeof(Walker)] = ("dojo", "the east cottage"),
+        [typeof(Hamato)] = ("dojo", "the east cottage"),
+        [typeof(Mulcivikh)] = ("keepers", "the east house"),
+        [typeof(Morganna)] = ("keepers", "the east house"),
         [typeof(JacobWaltz)] = ("mining", "mine camp"),
-        [typeof(GeorgeHephaestus)] = ("smithing", "Forge and Anvil"),
+        [typeof(GeorgeHephaestus)] = ("smithing", "The Haven Blacksmith"),
     };
 
     public static IReadOnlyDictionary<Type, (string GuildKey, string Hall)> TrainerHallTable => TrainerHalls;

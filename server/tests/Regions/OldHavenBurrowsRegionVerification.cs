@@ -89,7 +89,7 @@ public class OldHavenBurrowsRegionVerification : IDisposable
         Assert.IsType<OldHavenBurrowsRegion>(region);
         Assert.Same(OldHavenBurrowsRegion.Instance, region);
         Assert.IsAssignableFrom<DungeonRegion>(region);
-        Assert.Equal(new Point3D(3619, 2620, 0), ((DungeonRegion)region).Entrance);
+        Assert.Equal(new Point3D(3618, 2620, 0), ((DungeonRegion)region).Entrance); // cc-P678: the cellar hatch in the Second Bank
         Assert.False(region.AllowHousing(null, Inside));
 
         foreach (var corner in new[] { new Point3D(5136, 1128, 0), new Point3D(5247, 1128, 0), new Point3D(5136, 1263, 0), new Point3D(5247, 1263, 0) })

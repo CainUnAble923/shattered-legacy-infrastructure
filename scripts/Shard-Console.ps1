@@ -6821,14 +6821,17 @@ $script:WorldSetupOrder = @(
         Title  = 'Fresh world, once: generation, in this order'
         Source = 'notes/shard-console.md section 8 and notes/reachability-audit.md section 5 (spawn files, then Shame, then Despise, then save); docs/client-test-queue.md:49 (Shame then Despise)'
         Steps  = @(
-            # Syntax from docker/uo/SERVER.md:355-357; the twelve paths from notes/reachability-audit.md section 5.
+            # Syntax from docker/uo/SERVER.md:355-357; the twelve paths from notes/reachability-audit.md section 5, and
+            # cc-P678's two: New Haven is pre-UOML Haven on SoS, its people from uoml/trammel (ClusterFHavenTownSpawns
+            # admits only those inside the town).
             foreach ($f in @(
                 'post-uoml/termur/Abyss.json', 'post-uoml/termur/TerMur.json', 'post-uoml/termur/Underworld.json',
                 'shared/malas/Citadel.json', 'shared/malas/Labyrinth.json',
                 'shared/trammel/Sanctuary.json', 'shared/felucca/Sanctuary.json',
                 'shared/trammel/PrismOfLight.json', 'shared/felucca/PrismOfLight.json',
                 'post-uoml/trammel/Vendors.json', 'post-uoml/felucca/Vendors.json',
-                'post-uoml/trammel/Outdoors.json')) {
+                'post-uoml/trammel/Outdoors.json',
+                'uoml/trammel/Vendors.json', 'uoml/trammel/TownsLife.json')) {
                 New-StockStep ('[GenerateSpawners Data/Spawns/' + $f) 'Developer' 'pinned. A spawn file ported content comes through. Re-running replaces, not duplicates.'
             }
             (New-OrderStep 'GenerateNewShame')
@@ -6838,11 +6841,10 @@ $script:WorldSetupOrder = @(
     }
     [pscustomobject]@{
         Key    = 'newhaven'
-        Title  = 'Existing world: New Haven services, NPCs and guild halls, in this order'
+        Title  = 'Existing world: New Haven NPCs and guild halls, in this order'
+        # cc-P678: ClusterFSeedNewHavenServices (the ML plaza's decoration and stand-in Healer) retired with the plaza.
         Source = 'notes/cc-P17-playtest-bugs-1.md:624-637 (a fresh world runs the first two after the spawn files, :634-637)'
         Steps  = @(
-            (New-OrderStep 'ClusterFSeedNewHavenServices' 'dryrun')
-            (New-OrderStep 'ClusterFSeedNewHavenServices')
             (New-OrderStep 'ClusterFSeedNewHaven' 'dryrun')
             (New-OrderStep 'ClusterFSeedNewHaven' 'repair')
             (New-OrderStep 'ClusterFSeedGuildHalls' 'repair')

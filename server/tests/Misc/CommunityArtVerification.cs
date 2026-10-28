@@ -5,7 +5,8 @@
 // What the facts pin:
 //   1. The placement table: keys unique, no two rows on one tile at one z, every row's item ID one this set
 //      registered (the generated RegisteredIds list, which the package fact checks against registry.csv), all inside
-//      Haven's box.
+//      SoS Haven's box, the orc camp outside the town (HavenSpots.Town) and the rest inside it, no support beam
+//      (cc-P678 dropped them).
 //   2. place twice adds nothing: the second run places 0 and the world's item count does not move; a dry run changes
 //      nothing.
 //   3. replace and clear remove only this seeder's items: a gold pile and a same-art lookalike on a row's tile stay, a
@@ -14,13 +15,15 @@
 //   4. CommunityArt round-trips with its key.
 //   5. The server's in-memory records for the art are in place after ShatteredLegacyArt.Apply.
 // The art itself (registry, PNGs, records.json against the C# table) is checked by player-package\tests. The test host
-// has no map files, so nothing here asks the map about z: the rows were checked offline against the server's map files
-// (notes/cc-P237-tools/validate.py).
+// has no map files, so nothing here asks the map about z: the rows were checked offline against the SoS map files
+// (notes/cc-P678-tools/art/art_validate.py, cc-P237-tools/validate.py's rules on SoS; cc-P678 moved New Haven into the
+// author's Haven).
 
 using System;
 using System.Linq;
 using Server;
 using Server.Items;
+using Server.Tutorial;
 using Xunit;
 
 namespace ShatteredLegacy.Tests;
@@ -42,7 +45,7 @@ public class CommunityArtVerification
     public void EveryRowUsesARegisteredIdAndNoTwoRowsShareATileAndZ()
     {
         var rows = ClusterFCommunityArtLayout.Rows;
-        Assert.True(rows.Length >= 40, $"{rows.Length} rows");
+        Assert.True(rows.Length >= 36, $"{rows.Length} rows");
         Assert.Equal(rows.Length, rows.Select(r => r.Key).Distinct().Count());
         var tiles = rows.GroupBy(r => (r.X, r.Y, r.Z)).Where(g => g.Count() > 1).Select(g => string.Join("+", g.Select(r => r.Key)));
         Assert.Empty(tiles);
@@ -54,9 +57,17 @@ public class CommunityArtVerification
         {
             Assert.True(registered.Contains(r.ItemId), $"{r.Key}: 0x{r.ItemId:X4} is not a registered ID of this set");
             Assert.False(string.IsNullOrWhiteSpace(r.Name), r.Key);
-            Assert.InRange(r.X, 3400, 3660);
-            Assert.InRange(r.Y, 2460, 2660);
+            // cc-P678: SoS Haven, the box the rows were checked in (notes/cc-P678-tools/art/art_protected.py BOX).
+            Assert.InRange(r.X, 3520, 3790);
+            Assert.InRange(r.Y, 2440, 2720);
+            // The orc camp lies just outside the town; everything else is in it.
+            var p = new Point3D(r.X, r.Y, r.Z);
+            Assert.True(r.Area == "camp" ? !HavenSpots.InTown(p) : HavenSpots.InTown(p), $"{r.Key} at {p}: the camp is outside the town, the rest inside");
         }
+
+        // cc-P678: the bridge support beams were dropped (SoS's docks have no raised boardwalk over a lower pier).
+        Assert.DoesNotContain(rows, r => r.Key.StartsWith("beam-"));
+        Assert.Equal(9, rows.Count(r => r.Area == "camp"));
 
         foreach (var rec in ClusterFCommunityArtRecords.Records)
         {

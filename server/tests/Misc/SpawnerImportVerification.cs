@@ -14,10 +14,11 @@
 //      old object deleted, nothing added.
 //   3. The same spawner (the data's guid) on the same x,y,z is still replaced, and a spawner the data does
 //      not name on that tile is left alone.
-//   4. Pinned's post-uoml/trammel/Vendors.json, imported for real, keeps every one of its spawners, the
-//      eight New Haven vendors P17 found missing among them, and a second import changes nothing.
-//   5. With pinned's Healer spawner back, the New Haven services seeder retires its own stand-in (P17's,
-//      at 3462,2559,35) and places no second one; its dry run only reports it.
+//   4. Pinned's post-uoml/trammel/Vendors.json, imported for real, keeps every one of its spawners the import hook
+//      admits, and a second import changes nothing. cc-P678: on SoS the hook refuses the ML plaza's town spawners
+//      (ClusterFHavenTownSpawns), which include the eight New Haven vendors P17 found missing, so those eight are now
+//      the refused ones; fact 1 still proves stacked spawners survive. (Fact 5, the New Haven services seeder's
+//      stand-in Healer, went with that seeder in cc-P678.)
 
 using System;
 using System.Collections.Generic;
@@ -243,7 +244,7 @@ public class SpawnerImportVerification
     };
 
     [Fact]
-    public void PinnedVendorsFileKeepsEverySpawnerWithNewHavensVendors()
+    public void PinnedVendorsFileKeepsEverySpawnerTheHavenHookAdmits()
     {
         var dev = NewDeveloper();
         var guids = GuidsIn(VendorsFile);
@@ -254,88 +255,28 @@ public class SpawnerImportVerification
             var first = SpawnersWith(guids);
             _out.WriteLine($"{VendorsFile}: {guids.Count} spawners in the file, {first.Count} in the world after one import");
 
+            var refused = guids.Where(ClusterFHavenTownSpawns.Refused.Contains).ToHashSet();
+            _out.WriteLine($"  refused by the Haven hook: {refused.Count}");
+            Assert.True(refused.Count >= 50, $"{refused.Count} ML plaza spawners refused");
+            Assert.DoesNotContain(first, s => refused.Contains(s.Guid));
+
             foreach (var (x, y, z, spawns) in NewHavenLost)
             {
-                var here = first.Where(s => s.X == x && s.Y == y && s.Z == z).ToList();
-                _out.WriteLine($"  {x},{y},{z} {spawns}: {string.Join(", ", here.Select(s => s.Entries[0].SpawnedName))}");
-                Assert.Contains(here, s => s.Entries.Any(e => e.SpawnedName == spawns));
+                // P17's eight: in the file, inside the old plaza, and refused now
+                Assert.True(ClusterFHavenTownSpawns.InOldPlaza(new Point3D(x, y, z)), $"{x},{y},{z} {spawns}");
+                Assert.DoesNotContain(first, s => s.X == x && s.Y == y && s.Z == z);
             }
 
-            Assert.Equal(guids.Count, first.Count);
+            Assert.Equal(guids.Count - refused.Count, first.Count);
 
             Import(dev, VendorsFile);
             var second = SpawnersWith(guids);
-            Assert.Equal(guids.Count, second.Count);
+            Assert.Equal(guids.Count - refused.Count, second.Count);
             Assert.All(first, s => Assert.True(s.Deleted));
         }
         finally
         {
             DeleteSpawners(guids);
-            dev.Delete();
-        }
-    }
-
-    // ---------------------------------------------------------------- 5
-
-    [Fact]
-    public void SeederRetiresItsStandInHealerOnceThePinnedOneIsBack()
-    {
-        var dev = NewDeveloper();
-        var guids = GuidsIn(VendorsFile);
-        var map = Map.Trammel;
-
-        static bool InSeededArea(Item item) =>
-            !item.Deleted && item.Parent == null && item.Map == Map.Trammel &&
-            item.X >= 3400 && item.X <= 3570 && item.Y >= 2440 && item.Y <= 2660;
-
-        var before = World.Items.Values.Where(InSeededArea).ToHashSet();
-
-        // The stand-in as P17's seeder placed it on a world without pinned's Healer.
-        Assert.Null(ClusterFNewHavenServicesSeeder.FindStandInHealerSpawner(map));
-        Assert.False(ClusterFNewHavenServicesSeeder.HasDataHealerSpawner(map));
-        var seeded = ClusterFNewHavenServicesSeeder.Seed(false);
-        var standIn = ClusterFNewHavenServicesSeeder.FindStandInHealerSpawner(map);
-
-        try
-        {
-            Assert.True(seeded.HealerPlaced);
-            Assert.NotNull(standIn);
-            var standInHealers = standIn.Spawned.Keys.OfType<Healer>().ToList();
-
-            Import(dev, VendorsFile);
-            Assert.True(ClusterFNewHavenServicesSeeder.HasDataHealerSpawner(map),
-                "pinned's Healer spawner is not in the world after importing Vendors.json");
-
-            var dry = ClusterFNewHavenServicesSeeder.Seed(true);
-            _out.WriteLine(dry.Message);
-            Assert.True(dry.StandInRetired);
-            Assert.False(standIn.Deleted, "the dry run deleted the stand-in");
-
-            var real = ClusterFNewHavenServicesSeeder.Seed(false);
-            _out.WriteLine(real.Message);
-            Assert.True(real.StandInRetired);
-            Assert.False(real.HealerPlaced);
-            Assert.True(standIn.Deleted);
-            Assert.All(standInHealers, h => Assert.True(h.Deleted, "a stand-in Healer outlived its spawner"));
-            Assert.Null(ClusterFNewHavenServicesSeeder.FindStandInHealerSpawner(map));
-
-            var again = ClusterFNewHavenServicesSeeder.Seed(false);
-            Assert.False(again.StandInRetired);
-            Assert.False(again.HealerPlaced);
-        }
-        finally
-        {
-            standIn?.Delete();
-            DeleteSpawners(guids);
-
-            // What the seeder placed for decoration, so later facts start from the same world.
-            var placed = World.Items.Values.Where(i => InSeededArea(i) && !before.Contains(i)).ToList();
-            foreach (var item in placed)
-            {
-                item.Delete();
-            }
-
-            _out.WriteLine($"removed {placed.Count} items the seeder placed");
             dev.Delete();
         }
     }

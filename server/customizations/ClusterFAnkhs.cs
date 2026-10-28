@@ -1,6 +1,6 @@
 // cc-P137: every ankh a player sees either works like OSI's or is known to be decoration.
 //
-// Chase, 2026-10-16: the ankh by the League Registrar's office in New Haven "needs to be usable". It is a map
+// Chase, 2026-10-16: the ankh by the League Registrar's office in New Haven "needs to be usable". It was a map
 // static (0x3/0x2, facing west, Trammel 3464,2600,27), not pinned's working ankh (Items/Construction/Ankhs.cs:
 // AnkhWest/AnkhNorth, which offer resurrection to a ghost that comes within a tile and give a living player
 // Lock/Unlock Karma on the context menu). A map static has no behavior at all.
@@ -51,8 +51,11 @@ public static class ClusterFAnkhs
 
     public static readonly Placement[] Placements =
     {
-        // Ours (fidelity D-123): Chase's New Haven ankh, over the static 0x3/0x2 at 3464,2600-2601,27, same art and facing.
-        new("AnkhWest 0x0003", 1, 3464, 2600, 27, "ours, Chase 2026-10-16"),
+        // Ours (fidelity D-123): Chase's New Haven ankh by the League office. It stood over the static 0x3/0x2 at
+        // 3464,2600-2601,27; on SoS (cc-P678) that is forest and the office is the hall north-east of the square, so
+        // the ankh stands on the grass by the hall's south-east corner, 3676,2562-2563,0, same art and facing.
+        // (The town's own working ankh is pinned haven.cfg's AnkhNorth at 3606,2582, placed by [Decorate.)
+        new("AnkhWest 0x0003", 1, 3676, 2562, 0, "ours, Chase 2026-10-16; cc-P678 by the new office"),
         new("AnkhWest 0x0003 (Hue=0x47E)", 0, 6937, 719, 27, "ServUO Felucca/_champion teleporters.cfg"),
         new("AnkhWest 0x0003 (Hue=0x47E)", 0, 6947, 987, -5, "ServUO Felucca/_champion teleporters.cfg"),
         new("AnkhNorth 0x0004", 5, 79, 345, 1, "ServUO Stygian Abyss/Ter Mur/Stygian Abyss.cfg"),
@@ -118,7 +121,7 @@ public static class ClusterFAnkhs
                 continue;
             }
 
-            var generated = new ClusterFNewHavenServicesSeeder.DecorEntry(p.Header, p.X, p.Y, p.Z).Read().Generate([p.Map]);
+            var generated = new ClusterFDecorLine(p.Header, p.X, p.Y, p.Z).Read().Generate([p.Map]);
             placed += generated > 0 ? 1 : 0;
             present += generated > 0 ? 0 : 1;
         }

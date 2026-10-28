@@ -69,7 +69,7 @@ public static class ClusterFInstitutionSeeder
         SeedNpc(
             typeof(SanitationWarden),
             () => new SanitationWarden(),
-            x: 3506, y: 2560, z: 21,
+            x: 3662, y: 2549, z: 0,
             Direction.South,
             map: Map.Trammel,
             label: "Sanitation Warden",
@@ -79,7 +79,7 @@ public static class ClusterFInstitutionSeeder
         SeedNpc(
             typeof(OutridersGuildmaster),
             () => new OutridersGuildmaster(),
-            x: 3524, y: 2574, z: 7,
+            x: 3705, y: 2585, z: 20,
             Direction.South,
             map: Map.Trammel,
             label: "Outriders' Guildmaster",
@@ -89,7 +89,7 @@ public static class ClusterFInstitutionSeeder
         SeedNpc(
             typeof(ForestersGuildmaster),
             () => new ForestersGuildmaster(),
-            x: 3441, y: 2637, z: 28,
+            x: 3737, y: 2681, z: 40,
             Direction.South,
             map: Map.Trammel,
             label: "Foresters' Guildmaster",

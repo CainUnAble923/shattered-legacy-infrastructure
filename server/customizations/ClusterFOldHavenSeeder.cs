@@ -11,8 +11,10 @@ namespace Server;
 ///
 /// Old Haven centre is near (3677, 2625) on Trammel.  The seeder places:
 ///   - One Drelgor spawner: ServUO's Drelgor the Impaler, the "Cleansing Old Haven" quest
-///     target, where ServUO's own spawn data puts him (Spawns/trammel.xml "Old Haven
-///     [Drelgor]": 3651,2509, range 50, one at a time). Added by cc-P129.
+///     target, one at a time. Added by cc-P129 where ServUO's own spawn data puts him (Spawns/trammel.xml
+///     "Old Haven [Drelgor]": 3651,2509, range 50); cc-P678 moved him with Old Haven's undead field to the
+///     north woods (ClusterFHavenTownSpawns.TrainingField, 3640,2418), range 35, since on SoS Old Haven is
+///     the author's Haven town, New Haven now.
 ///
 /// cc-P189 (Chase, 2026-10-19: "too hard for new players"; new players walk through Old Haven to the
 /// Rootdeep hole): the five OldHavenMage spawners (2-3 mages each, 2-5 minute respawn) and the
@@ -22,7 +24,7 @@ namespace Server;
 /// spawners (post-uoml/trammel/Outdoors.json) and are not this seeder's.
 ///
 /// Bounds check used to identify "Old Haven" world area (IsOldHavenArea):
-///   X 3520-3680, Y 2420-2600 on Trammel
+///   X 3590-3710, Y 2378-2459 on Trammel, the north woods (cc-P678; was X 3520-3680, Y 2420-2600)
 /// </summary>
 public static class ClusterFOldHavenSeeder
 {
@@ -37,9 +39,9 @@ public static class ClusterFOldHavenSeeder
         new(
             label:    "Drelgor the Impaler (ServUO)",
             typeName: "Drelgor",
-            x: 3651, y: 2509,
+            x: 3640, y: 2418,
             count: 1,
-            homeRange: 50,
+            homeRange: 35,
             minDelay: TimeSpan.FromMinutes(30),
             maxDelay: TimeSpan.FromMinutes(30)
         ),
@@ -100,8 +102,8 @@ public static class ClusterFOldHavenSeeder
     };
 
     [Usage("ClusterFOldHavenRetire [dryrun]")]
-    [Description("Removes the Old Haven Mage and Vorlak spawners, and their creatures, from Old Haven, and pinned's town crier spawner in the ruins with its crier.")]
-    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "DELETES the Old Haven Mage and Vorlak spawners in Old Haven and their creatures (cc-P189), and the ruins' town crier spawner with its crier (cc-P188). Any argument but dryrun deletes.")]
+    [Description("Removes the Old Haven Mage and Vorlak spawners, and their creatures, from Old Haven.")]
+    [ShardCommand(CommandCategory.WorldSetup, Rerun = CommandRerun.DeletesAgain, Shard = CommandShard.TestFirst, DryRun = "dryrun", Summary = "DELETES the Old Haven Mage and Vorlak spawners in Old Haven and their creatures (cc-P189). Any argument but dryrun deletes.")]
     private static void ClusterFOldHavenRetire_OnCommand(CommandEventArgs e)
     {
         var dryRun = e.Length > 0 && e.GetString(0).Equals("dryrun", StringComparison.OrdinalIgnoreCase);
@@ -116,9 +118,8 @@ public static class ClusterFOldHavenSeeder
     /// Deletes every spawner in Old Haven whose entries are all retired types (deleting a spawner deletes what it spawned,
     /// pinned BaseSpawner.OnDelete -> RemoveSpawns, BaseSpawner.cs:1245-1290), and any retired creature in Old Haven that
     /// no spawner owns and no player controls. A spawner that also spawns something else is reported and kept: staff
-    /// mixed it, so staff decide. cc-P188: also pinned's town crier spawner in the ruins (ClusterFOldHavenStockSpawns,
-    /// found by its guid anywhere on Trammel: it stands at 3652,2619, south of this seeder's box). Returns the lines the
-    /// command shows.
+    /// mixed it, so staff decide. (cc-P188 also retired pinned's town crier here; cc-P678 gave him back to the town,
+    /// ClusterFHavenTownSpawns.) Returns the lines the command shows.
     /// </summary>
     internal static List<string> Retire(bool dryRun)
     {
@@ -152,13 +153,6 @@ public static class ClusterFOldHavenSeeder
             spawners.Add(spawner);
             creatures += spawner.Spawned.Count;
             lines.Add($"{(dryRun ? "[DRY RUN] " : "")}Spawner at ({spawner.X},{spawner.Y},{spawner.Z}) entries: {names}, {spawner.Spawned.Count} spawned");
-        }
-
-        if (ClusterFOldHavenStockSpawns.FindCrierSpawner() is { } crier)
-        {
-            spawners.Add(crier);
-            creatures += crier.Spawned.Count;
-            lines.Add($"{(dryRun ? "[DRY RUN] " : "")}Spawner at ({crier.X},{crier.Y},{crier.Z}) entries: {string.Join(", ", crier.Entries.Select(se => se.SpawnedName))}, {crier.Spawned.Count} spawned (pinned's Old Haven town crier, cc-P188)");
         }
 
         var strays = new List<Mobile>();
@@ -349,8 +343,8 @@ public static class ClusterFOldHavenSeeder
     }
 
     private static bool IsOldHavenArea(Point3D loc) =>
-        loc.X >= 3520 && loc.X <= 3680 &&
-        loc.Y >= 2420 && loc.Y <= 2600;
+        loc.X >= 3590 && loc.X <= 3710 &&
+        loc.Y >= 2378 && loc.Y <= 2459;
 
     // -----------------------------------------------------------------------
     // Spawn config descriptor (internal, not the engine's SpawnerEntry type)

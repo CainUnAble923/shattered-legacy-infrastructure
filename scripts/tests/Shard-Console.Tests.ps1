@@ -727,9 +727,11 @@ Fact 'DiscoveryFindsEveryRegisterCallInTheTree' {
 }
 
 Fact 'TheElevenSeedersTheBriefNamesAreAllFoundAndDeclaredWorldSetup' {
+    # cc-P678 retired ClusterFOldHavenCleanup (on SoS it would delete New Haven's own vendors) and
+    # ClusterFSeedNewHavenServices (the ML plaza's decoration), so nine of the eleven.
     $eleven = 'ClusterFSeedGuildHalls', 'ClusterFSeedNewHaven', 'ClusterFSeedOldHaven', 'ClusterFSeedInstitutions',
-              'ClusterFSeedNewHavenServices', 'ClusterFSeedResetStone', 'ClusterFSeedMineCamp', 'ClusterFSouthMineDecor',
-              'ClusterFOldHavenCleanup', 'ClusterFMoveMineCampNpcs', 'SeedRoyalCity'
+              'ClusterFSeedResetStone', 'ClusterFSeedMineCamp', 'ClusterFSouthMineDecor',
+              'ClusterFMoveMineCampNpcs', 'SeedRoyalCity'
     foreach ($n in $eleven) {
         $e = Get-WorldEntry $n
         Assert-True ($null -ne $e) "$n discovered"
@@ -774,8 +776,9 @@ Fact 'AnUnclassifiedCommandSurfacesInTheNewGroupAndNeverVanishes' {
 Fact 'TheRenderedDryRunIsAWordOfThatCommandsOwnUsage' {
     $withDry = @($worldCmds | Where-Object { $_.DryRunCommand })
     # Counted 2026-09-30: nine declare one. A new one is welcome; one of these losing it is not.
-    $nine = 'ClusterFMoveMineCampNpcs', 'ClusterFOldHavenCleanup', 'ClusterFSeedGuildHalls', 'ClusterFSeedMineCamp', 'ClusterFSeedNewHaven',
-            'ClusterFSeedNewHavenServices', 'ClusterFSeedOldHaven', 'ClusterFSeedResetStone', 'ClusterFSouthMineDecor'
+    # cc-P678: ClusterFOldHavenCleanup and ClusterFSeedNewHavenServices retired, so seven.
+    $nine = 'ClusterFMoveMineCampNpcs', 'ClusterFSeedGuildHalls', 'ClusterFSeedMineCamp', 'ClusterFSeedNewHaven',
+            'ClusterFSeedOldHaven', 'ClusterFSeedResetStone', 'ClusterFSouthMineDecor'
     foreach ($n in $nine) { Assert-True ([bool](Get-WorldEntry $n).DryRunCommand) "$n renders its dry run" }
     foreach ($e in $withDry) {
         Assert-Equal ('[' + $e.Name + ' ' + $e.DryRun) $e.DryRunCommand $e.Name
@@ -820,11 +823,11 @@ Fact 'EveryStepOfTheOrderListIsARegisteredWorldCommandWithAFlagItsUsageLists' {
     }
 }
 
-Fact 'TheFreshWorldGroupIsTheTwelveSpawnFilesThenShameThenDespiseThenSave' {
+Fact 'TheFreshWorldGroupIsTheFourteenSpawnFilesThenShameThenDespiseThenSave' {
     $fresh = @($groups | Where-Object { $_.Key -eq 'fresh' })[0]
     $c = @($fresh.Items)
     $spawn = @($c | Where-Object { $_.Command -like '`[GenerateSpawners *' })
-    Assert-Equal 12 $spawn.Count 'reachability-audit section 5 lists twelve paths; the brief said ten'
+    Assert-Equal 14 $spawn.Count 'reachability-audit section 5 lists twelve paths (the brief said ten); cc-P678 adds pre-UOML Haven''s two'
     $pinned = 'D:\UO\ModernUO-pinned\Distribution'
     if (Test-Path $pinned) {
         foreach ($s in $spawn) {
@@ -832,7 +835,7 @@ Fact 'TheFreshWorldGroupIsTheTwelveSpawnFilesThenShameThenDespiseThenSave' {
             Assert-True (Test-Path (Join-Path $pinned $rel)) "$rel exists in pinned Distribution"
         }
     }
-    $rest = @($c | Select-Object -Skip 12 | ForEach-Object { $_.Command })
+    $rest = @($c | Select-Object -Skip 14 | ForEach-Object { $_.Command })
     Assert-Equal '[GenerateNewShame,[SetupDespise,[save' ($rest -join ',')
     Assert-True $fresh.CopyAll 'the fresh-world group copies as a whole'
 }
@@ -879,7 +882,7 @@ Fact 'EveryRowIsOneCommandWithOneCopyAndADryRunIsItsOwnRowJustAbove' {
     }
     $noOrder = @($groups | Where-Object { $_.Key -eq 'noorder' })[0]
     $cmds = @($noOrder.Items | ForEach-Object { $_.Command })
-    Assert-True ($cmds -ccontains '[ClusterFOldHavenCleanup dryrun') ($cmds -join ' | ')
+    Assert-True ($cmds -ccontains '[ClusterFOldHavenRetire dryrun') ($cmds -join ' | ')
 }
 
 Fact 'ATestOnlyCommandSaysSoInItsLine' {
@@ -891,7 +894,7 @@ Fact 'ATestOnlyCommandSaysSoInItsLine' {
 Fact 'RedMeansTestOnlyUnclassifiedOrAPlainRunThatDeletesAndNothingElse' {
     $red = @($groups | ForEach-Object { $_.Items } | Where-Object { $_.Warn } | ForEach-Object { $_.Command }) | Sort-Object -Unique
     # cc-P189: [ClusterFOldHavenRetire deletes the Old Haven mage and Vorlak spawners, so it is red too.
-    Assert-Equal '[ClearRoyalCityVendors,[ClusterFDespiseStockCleanup,[ClusterFOldHavenCleanup,[ClusterFOldHavenRetire,[ClusterFSeedResetStone,[ClusterFSeedResetStone dryrun,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red, and a dry run deletes nothing'
+    Assert-Equal '[ClearRoyalCityVendors,[ClusterFDespiseStockCleanup,[ClusterFOldHavenRetire,[ClusterFSeedResetStone,[ClusterFSeedResetStone dryrun,[DeleteDespise,[DeleteShame,[SeedRoyalCity' ($red -join ',') 'deletes nothing must not be red, and a dry run deletes nothing'
 }
 
 Fact 'TheScriptAndItsFactsAreAsciiWithNoBom' {

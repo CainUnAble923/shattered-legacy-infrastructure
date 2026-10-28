@@ -374,7 +374,9 @@ public class TutorialTradeTrialVerification : IDisposable
     {
         using var p = new Player(TutorialWingTrials.TourCentre);
         Begin(p, "travel.wing");
-        p.Pm.MoveToWorld(new Point3D(TutorialWingTrials.TourCentre.X + 200, TutorialWingTrials.TourCentre.Y, 0), Map.Trammel);
+        // 200 tiles south: past the tour's reach (160) and still on the island, which the island gate keeps a trainee on
+        // (cc-P678: 200 east of the new centre is off the island)
+        p.Pm.MoveToWorld(new Point3D(TutorialWingTrials.TourCentre.X, TutorialWingTrials.TourCentre.Y + 200, 0), Map.Trammel);
         Tick();
         Assert.Null(TutorialWingTrials.Current(p.Pm));
 

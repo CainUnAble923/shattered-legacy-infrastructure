@@ -60,7 +60,7 @@ public static class HavenSpots
     /// New Haven's public moongate: the open field east of the square. S4 (P673) puts PMList's New Haven gate here; the
     /// travel tour points at it. (Was pinned PublicMoongate.cs:194's 3450,2677,25, sea on SoS.)
     /// </summary>
-    public static readonly Point3D PublicMoongate = new(3696, 2570, 16);
+    public static readonly Point3D PublicMoongate = new(3696, 2570, 14);
 
     /// <summary>The town healer: pinned's pre-UOML Haven healer spawner (Spawns/uoml/trammel/Vendors.json).</summary>
     public static readonly Point3D Healer = new(3665, 2581, 0);

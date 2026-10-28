@@ -10,7 +10,7 @@ namespace Server.Mobiles;
 
 /// <summary>
 /// League Registrar — the League of Extraordinary Citizens representative
-/// stationed at the New Haven field office (Trammel 3459, 2601).
+/// stationed at the New Haven field office (Trammel 3660, 2549; cc-P678, the hall north-east of the square).
 ///
 /// Behaviour:
 ///   - Double-click or "Talk" context menu opens LeagueRegistrarGump.

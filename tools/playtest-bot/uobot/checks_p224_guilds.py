@@ -71,8 +71,8 @@ def msgs_since(c, n):
 # guildmaster is pinned's spawned stock vendor (it wanders from its tile), the Warden is placed by ClusterFInstitutionSeeder
 # (:69-76). The bot never runs a seeder: it looks, then [add]s.
 POSTS = {
-    "smithing": ("BlacksmithGuildmaster", (3469, 2536, 41), "Society of Smiths"),
-    "custodians": ("SanitationWarden", (3506, 2560, 21), "The Custodians"),
+    "smithing": ("BlacksmithGuildmaster", (3645, 2617, 0), "Society of Smiths"),     # cc-P678: The Haven Blacksmith
+    "custodians": ("SanitationWarden", (3662, 2549, 0), "The Custodians"),           # cc-P678: the League field office
 }
 
 TALK = 3006146                 # GuildMembershipEntry (ClusterFGuildSystem.cs:785-786), added to every guildmaster with a def
@@ -450,9 +450,9 @@ def cleanup(p, corpse):
 def hunt(a, p, type_name, bodies, fair):
     """Spawns the creature beside the player and kills it: a fair kill (pinned at 1 hit and CantWalk, the player's bare
     hands, checks._wait_kill topping the player up) or the admin's [kill. Returns (corpse serial or None, note)."""
-    # Open ground beside the square (the Warden's post is on a building at z 21: the second trial's orc could not be
-    # reached there), and the creature's damage pinned to 1 as well as its hits, so a dragon cannot kill the Custodian.
-    move_player(a, p, 3512, 2581, 14)
+    # Open ground near the square (cc-P678: the tutorial's training yard behind the Little Shop of Magic; the Warden's
+    # post is indoors), and the creature's damage pinned to 1 as well as its hits, so a dragon cannot kill the Custodian.
+    move_player(a, p, 3633, 2562, 0)
     staff_target(a, "[set Hits 175 Stam 100", p)
     before = set(p.items)
     mob = spawn(a, p, type_name, bodies)

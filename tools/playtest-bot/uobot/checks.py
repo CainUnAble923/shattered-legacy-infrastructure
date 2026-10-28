@@ -351,7 +351,8 @@ RACES = [("human", True), ("elf", False), ("gargoyle", True), ("human", False), 
 @check("T-039", "A new character is pointed at the board", kind="BOT-PARTIAL", left="T-039: a new player can find the board by eye")
 def t_039(ctx):
     # ClusterFGuildStarterPath.cs:768-780: "Follow the arrow to the Guild Board in New Haven's square." (same map), or
-    # "The Guild Board stands in ...". The board's spot: NewHavenQuestBoard.HomeLocation (3502, 2573, 14), :69.
+    # "The Guild Board stands in ...". The board's spot: NewHavenQuestBoard.HomeLocation (HavenSpots.QuestBoard,
+    # 3633, 2585, 0; cc-P678).
     race, female = RACES[SHARED.setdefault("t039", 0) % len(RACES)]
     SHARED["t039"] += 1
     c = ctx.fresh(race=race, female=female)

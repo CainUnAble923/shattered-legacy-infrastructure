@@ -23,9 +23,9 @@ BENCH = 0x0B2D                                                 # a wooden bench 
 FLOOR = 0x0519                                                 # "stone pavers Dark"
 HUE = 1157
 
-# The square: new characters used to start a tile from the board at (3502, 2573, 14) (T-039). The work box sits
-# east of it, well inside the admin's view.
-SQUARE = (3503, 2574, 14)
+# The square: new characters start a tile from the board (T-039; cc-P678: HavenSpots.Start in the author's Haven, the
+# board at 3633,2585). The work box sits east of it, well inside the admin's view.
+SQUARE = (3634, 2586, 0)
 BOX_DX, BOX_DY = 6, 4
 
 

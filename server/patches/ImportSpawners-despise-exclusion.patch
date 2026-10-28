@@ -7,9 +7,9 @@
 +            // Shattered Legacy (cc-P42 Part J, D53): Trammel Despise runs the revamp only. A stock spawner of
 +            // shared/trammel/Despise.json keeps its treasure chests and loses its creatures; one with nothing left is
 +            // not placed. Every other spawner is admitted untouched (ClusterFDespiseStockSpawns.Admit).
-+            // cc-P188: and the Old Haven town crier spawner of shared/trammel/TownsPeople.json is not placed
-+            // (ClusterFOldHavenStockSpawns.Admit); the skeletons beside it are.
-+            if (!ClusterFDespiseStockSpawns.Admit(spawner, map) || !ClusterFOldHavenStockSpawns.Admit(spawner, map))
++            // cc-P678: and on Trammel New Haven is the author's Haven town on SoS: the ML plaza's town spawners, Old
++            // Haven's ruin spawners and the pre-UOML spawners outside Haven are not placed (ClusterFHavenTownSpawns.Admit).
++            if (!ClusterFDespiseStockSpawns.Admit(spawner, map) || !ClusterFHavenTownSpawns.Admit(spawner, map))
 +            {
 +                spawner.Delete();
 +                continue;

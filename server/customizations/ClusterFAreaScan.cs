@@ -20,9 +20,9 @@ public static class ClusterFAreaScan
 {
     private static readonly Dictionary<string, (int x1, int y1, int x2, int y2)> Zones = new()
     {
-        ["haven"]    = (3400, 2400, 3760, 2760),   // whole island
-        ["oldhaven"] = (3520, 2420, 3700, 2640),   // Old Haven ruins
-        ["newhaven"] = (3400, 2490, 3570, 2760),   // New Haven town
+        ["haven"]    = (3314, 2345, 3813, 3094),   // whole island (cc-P678: HavenSpots.IslandBounds)
+        ["oldhaven"] = (3590, 2378, 3710, 2459),   // Old Haven Training, the north woods (cc-P678; was the ruins)
+        ["newhaven"] = (3568, 2460, 3761, 2712),   // New Haven town (cc-P678: the author's Haven, HavenSpots.Town)
     };
 
     public static void Configure()

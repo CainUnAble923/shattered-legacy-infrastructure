@@ -43,7 +43,7 @@ public class HavenMoveVerification
         Assert.Equal(new Point3D(3646, 2596, 0), FountainOfYouthSystem.NewHavenSpot);
         Assert.Equal(new Point2D(3660, 2590), TutorialWingTrials.TourCentre);
         Assert.True(Utility.InRange(HavenSpots.VetSpot, HavenSpots.Centre, 60), "the vet counts as New Haven's");
-        Assert.Equal(new Point3D(3696, 2570, 16), HavenSpots.PublicMoongate);
+        Assert.Equal(new Point3D(3696, 2570, 14), HavenSpots.PublicMoongate);
         Assert.Equal(new Point3D(3665, 2581, 0), HavenSpots.Healer);
         Assert.Equal(new Point3D(3712, 2580, 20), HavenSpots.VetSpot);
     }
