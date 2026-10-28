@@ -65,11 +65,11 @@ public static class TutorialCoreTrials
         "core.backpack" => "Follow the arrow to the camp beside the road. First open your character window: double-click your own character (two quick left clicks on yourself), or click the paperdoll button. Then double-click the backpack picture in that window, and inside your backpack double-click the blue practice bag.",
         "core.paperdoll" => "Follow the arrow to the table by the clothes rack: your blue cloak of the Wakening Isle lies on it. To move a thing, click it, hold the left mouse button down, move the mouse, and let go: that is drag and drop. Drag the cloak onto your character's picture in the character window to wear it, or into your backpack first and double-click it there. If you already wear a cloak, drag it into your backpack first. The cloak is yours to keep.",
         "core.chat" => $"Follow the arrow to the signpost. Press Enter, type '{Phrase}', then press Enter again to speak. The Journal records what you say.",
-        "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Choose your pet, clear the pests in the cabbage rows, then heal with a bandage.",
+        "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Choose your pet and learn its commands, hold a pitchfork and switch to war mode (press Tab), clear the pests in the cabbage rows, then heal Pip with a bandage.",
         "core.death" => "Follow the arrow into the training yard to the pale gray rat, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
         "core.banking" => "Follow the arrow through the practice bank's door in the trades square to Merrin the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
         "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss to finish this lesson; you can read about the League without joining.",
-        "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the bright blue rune stone. Watch the vision; it lasts under a minute, holds you still, and will not change your character.",
+        "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the bright blue rune stone. Watch the vision; it lasts about a minute, holds you still, and will not change your character.",
         "core.travel" => "Follow the arrow to the end of the dock and walk into the shimmering blue moongate, or double-click it. It takes you, and your pet, to Rook on the New Haven plaza.",
         _ => "Double-click Tamsin on the Wakening Isle's beach to choose this lesson."
     };
@@ -284,7 +284,7 @@ public static class TutorialCoreTrials
         if (trial.Progress.Step != 0) { return; }
         if (TutorialVisionScene.IsPlaying(pm)) { return; }
         Observe(pm, TutorialAction.VisionStarted);
-        // cc-P665: the 45-second scene; its last beat finishes the lesson, an early end lets the stone start it again.
+        // cc-P665: the scene (61 s since cc-P721); its last beat finishes the lesson, an early end lets the stone start it again.
         if (!TutorialVisionScene.Play(pm, p => Observe(p, TutorialAction.VisionFinished), VisionEnded)) { trial.Progress.Reset(); }
     }
 

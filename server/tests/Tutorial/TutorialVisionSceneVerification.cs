@@ -164,18 +164,18 @@ public class TutorialVisionSceneVerification
         Assert.True(p.Pm.HasGump<TutorialVisionSubtitleGump>());
         Assert.Equal("A vision.", p.Pm.FindGump<TutorialVisionSubtitleGump>()!.Text);
 
-        ShardTestClock.Advance(TimeSpan.FromSeconds(4)); // the Gem and the Stranger
-        Assert.Equal(TutorialVisionScene.Dim, GlobalLight(p.Pm));
+        ShardTestClock.Advance(TimeSpan.FromSeconds(4)); // the Gem and the Stranger, lit (cc-P721)
+        Assert.Equal(TutorialVisionScene.Lit, GlobalLight(p.Pm));
         Assert.Contains(FiguresNear(p), f => f.Name == "the Stranger");
         Assert.Contains(PropsNear(p), i => i.ItemID == TutorialVisionScene.GemId);
         Assert.False(Done(p));
 
-        ShardTestClock.Advance(TimeSpan.FromSeconds(19)); // 23 s: the echo has spoken
+        ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Beats.EchoSays + 1 - 4)); // the echo has spoken
         Assert.Contains(FiguresNear(p), f => f.Name == p.Pm.Name);
         Assert.Equal(TutorialVisionScene.EchoLine, p.Pm.FindGump<TutorialVisionSubtitleGump>()!.Text);
         Assert.True(p.Pm.Frozen);
 
-        ShardTestClock.Advance(TimeSpan.FromSeconds(23)); // 46 s: over
+        ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Length - TutorialVisionScene.Beats.EchoSays)); // over
 
         Assert.True(Done(p));
         Assert.False(TutorialVisionScene.IsPlaying(p.Pm));
@@ -272,7 +272,7 @@ public class TutorialVisionSceneVerification
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.loop")!);
         TutorialCoreTrials.WatchVision(p.Pm);
         Assert.True(TutorialVisionScene.IsPlaying(p.Pm));
-        ShardTestClock.Advance(TimeSpan.FromSeconds(46));
+        ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Length + 1));
         Assert.True(Done(p));
     }
 
@@ -364,7 +364,7 @@ public class TutorialVisionSceneVerification
         var loopBefore = ClusterFLoops.LoopOf(p.Pm);
 
         TutorialCoreTrials.WatchVision(p.Pm);
-        ShardTestClock.Advance(TimeSpan.FromSeconds(46));
+        ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Length + 1));
 
         Assert.True(Done(p));
         Assert.Equal(skillsBefore, Enum.GetValues<SkillName>().Select(s => p.Pm.Skills[s].Base).ToArray());
@@ -386,9 +386,9 @@ public class TutorialVisionSceneVerification
         using (var off = AtTheStones())
         {
             TutorialCoreTrials.WatchVision(off.Pm);
-            ShardTestClock.Advance(TimeSpan.FromSeconds(17.5));
+            ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Beats.Flash + 0.5));
             Assert.False(off.Pm.HasGump<TutorialVisionPanelGump>());
-            ShardTestClock.Advance(TimeSpan.FromSeconds(29));
+            ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Length - TutorialVisionScene.Beats.Flash));
             Assert.True(Done(off));
         }
 
@@ -397,11 +397,11 @@ public class TutorialVisionSceneVerification
         {
             using var on = AtTheStones();
             TutorialCoreTrials.WatchVision(on.Pm);
-            ShardTestClock.Advance(TimeSpan.FromSeconds(17.5));
+            ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Beats.Flash + 0.5));
             Assert.Equal(TutorialVisionScene.PanelBrokenSword, on.Pm.FindGump<TutorialVisionPanelGump>()!.GumpId);
-            ShardTestClock.Advance(TimeSpan.FromSeconds(13)); // 30.5 s
+            ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Beats.Hooded - TutorialVisionScene.Beats.Flash)); // the crest
             Assert.Equal(TutorialVisionScene.PanelCrest, on.Pm.FindGump<TutorialVisionPanelGump>()!.GumpId);
-            ShardTestClock.Advance(TimeSpan.FromSeconds(16));
+            ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialVisionScene.Length - TutorialVisionScene.Beats.Hooded));
             Assert.True(Done(on));
             Assert.False(on.Pm.HasGump<TutorialVisionPanelGump>());
         }

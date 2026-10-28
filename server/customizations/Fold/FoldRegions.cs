@@ -62,6 +62,7 @@ public class FoldRegion : NoHousingRegion
     public override void AlterLightLevel(Mobile m, ref int global, ref int personal)
     {
         global = LightCycle.DayLevel;
+        Server.Tutorial.TutorialWake.AlterLight(m, ref global, ref personal); // cc-P721: waking on the beach
         Server.Tutorial.TutorialVisionScene.AlterLight(m, ref global, ref personal); // cc-P665: the vision's light, per player
     }
 }
