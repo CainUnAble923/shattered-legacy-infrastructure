@@ -20,6 +20,11 @@ trammel.mapops   facet 1 (Trammel): the Rootdeep Burrows (x 5136-5247, y 1128-12
                  Haven (its 2 blocks; that bank is the author's Second Bank of Haven now, and cc-P678's cellar
                  hatch is a server item) and cc-P276's four farm removals (the farm is on the isle; the old spot
                  is his forest). Every B line now fingerprints his blocks, not EA's.
+                 cc-P720, 2026-10-28 (Chase's isle walk, round 2): the isle rebuilt in place by the same driver
+                 (notes/cc-P662-tools/build_isle.py, on the SoS copy): the bank and the lodge as OSI's stone shop
+                 (windows, pitched shingle roof, gable) and furnished; no meadow fence; no flowers by the road; the
+                 sand under the dock's shore end at the beach's height, so the planks are one step up. Same 875
+                 blocks; 3,435 S+ lines.
 
 Format: shard-migration scripts/mapbuild/mapops.py (one line per changed land cell, L x y tile z; per static added,
 S+ x y z id hue; per EA static removed, S- x y z id hue; B lines fingerprint EA's blocks so the applier can say

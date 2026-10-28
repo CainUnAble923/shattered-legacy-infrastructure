@@ -29,6 +29,7 @@ public static class TutorialCoreTrials
         public Item? Supply;
         public TimerExecutionToken Timer;
         public int Ticks;
+        public Point3D ArrowAt; // cc-P720: where the arrow points now (the bank lesson moves it)
     }
 
     public static void Initialize() => EnsureHooks();
@@ -69,7 +70,7 @@ public static class TutorialCoreTrials
         "core.death" => "Follow the arrow into the training yard to the pale gray rat, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
         "core.banking" => "Follow the arrow through the practice bank's door in the trades square to Merrin the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
         "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss to finish this lesson; you can read about the League without joining.",
-        "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the bright blue rune stone. Watch the vision; it lasts under a minute, holds you still, and will not change your character.",
+        "core.loop" => "Follow the arrow up the knoll to the standing stones and double-click the lesson's signpost there. Watch the vision; it lasts under a minute, holds you still, and will not change your character.",
         "core.travel" => "Follow the arrow to the end of the dock and walk into the shimmering blue moongate, or double-click it. It takes you, and your pet, to Rook on the New Haven plaza.",
         _ => "Double-click Tamsin on the Wakening Isle's beach to choose this lesson."
     };
@@ -154,15 +155,23 @@ public static class TutorialCoreTrials
         Resupply(pm, trial);
         if (trial.Station.Key == "core.paperdoll") { WakeningIsleCloak.EnsureOnTable(pm); } // cc-P718: a lost cloak comes back
         ClusterFTutorial.SystemLine(pm, Hint(trial.Station.Key));
-        Point(pm, Destination(trial), trial.Station.Title);
+        Point(pm, Destination(trial), ArrowLabel(trial));
+        trial.ArrowAt = Destination(trial);
         pm.CloseGump<TutorialTrialGump>();
         pm.SendGump(new TutorialTrialGump(trial.Station, false));
     }
+
+    // cc-P720 item 4: what the arrow is pointing at, named.
+    private static string ArrowLabel(Trial t) => t.Station.Key == "core.banking"
+        ? TutorialCorePlacement.InBank(t.Player.Location) ? "Merrin the banker" : "the practice bank's door"
+        : t.Station.Title;
 
     private static Point3D Destination(Trial t) => t.Station.Key switch
     {
         "core.movement" => t.Progress.Step == 0 ? TutorialCorePlacement.FirstMark : TutorialCorePlacement.SecondMark,
         "core.death" => t.Progress.Step == 0 ? TutorialCorePlacement.DeathSpot : TutorialCorePlacement.HealerSpot,
+        // cc-P720 item 4: the bank's door until the trainee is inside, then Merrin
+        "core.banking" when !TutorialCorePlacement.InBank(t.Player.Location) => TutorialWorld.Ground(TutorialWorld.MapOf(t.Player) ?? TutorialWorld.Isle, TutorialWorld.BankDoor),
         _ => TutorialCorePlacement.Spot(t.Station.Key)
     };
 
@@ -233,6 +242,11 @@ public static class TutorialCoreTrials
                 break;
             case "core.banking" when pm.Alive && trial.Supply?.IsChildOf(pm.FindBankNoCreate()) == true:
                 Observe(pm, TutorialAction.Deposited);
+                break;
+            case "core.banking" when Destination(trial) != trial.ArrowAt:
+                // cc-P720 item 4: through the door, the arrow turns to Merrin (and back to the door on leaving)
+                Point(pm, Destination(trial), ArrowLabel(trial));
+                trial.ArrowAt = Destination(trial);
                 break;
             case "core.death" when pm.Alive && trial.Progress.Step == 2 && Nearby(pm, TutorialCorePlacement.HealerSpot, 4):
                 Observe(pm, TutorialAction.Resurrected);

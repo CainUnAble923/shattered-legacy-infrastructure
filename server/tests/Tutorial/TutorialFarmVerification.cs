@@ -201,23 +201,23 @@ public class TutorialFarmVerification
             var first = TutorialFarm.Seed(false);
             Assert.Equal((false, 1, 3, 1, 2, 0), (first.Refused, first.Addons, first.Doors, first.Farmhands, first.Spawners, first.Present));
 
-            // cc-P663: the isle's farm: the same 330 pieces moved by (+3314, +1364), each at its height above the old ground.
+            // cc-P663: the isle's farm. cc-P720: its own design now (the cottage laid whole on the flat meadow, one fence
+            // ring), so it is no longer New Haven's 330 pieces moved by (+3314, +1364).
             var addon = TutorialFarm.FindAddon(isle);
             Assert.NotNull(addon);
             Assert.Same(isle, addon!.Map);
             Assert.Equal(TutorialIsleFarmLayout.Anchor, addon.Location);
             // cc-P718: the gate's wall-arm sign is the standing post, and its hung board is left out.
-            Assert.Equal(TutorialFarmLayout.Pieces.Length - 1, addon.Components.Count);
+            Assert.Equal(TutorialIsleFarmLayout.Pieces.Count(p => TutorialFarm.IsleArt(p.Id) != null), addon.Components.Count);
             var placed = addon.Components.Select(c => (c.ItemID, c.X, c.Y, c.Z)).OrderBy(t => t).ToArray();
             var wanted = TutorialIsleFarmLayout.Pieces.Where(p => TutorialFarm.IsleArt(p.Id) != null)
                 .Select(p => (TutorialFarm.IsleArt(p.Id)!.Value, p.X, p.Y, p.Z)).OrderBy(t => t).ToArray();
             Assert.Equal(wanted, placed);
-            var moved = TutorialFarmLayout.Pieces.Select(p => (p.Id, p.X + 3314, p.Y + 1364)).OrderBy(t => t).ToArray();
-            Assert.Equal(moved, TutorialIsleFarmLayout.Pieces.Select(p => (p.Id, p.X, p.Y)).OrderBy(t => t).ToArray());
+            Assert.True(TutorialFarm.IsCurrent(addon));
 
             var door = TutorialFarm.FindDoor(isle);
             Assert.IsType<DarkWoodDoor>(door);
-            Assert.Equal(0x06AD, door!.ItemID);
+            Assert.Equal(0x06A5, door!.ItemID); // cc-P720: the cottage's door, in its south wall (WestCW)
             Assert.Equal(TutorialIsleFarmLayout.DoorSpot, door.Location);
 
             var hand = TutorialFarmhand.Find(isle);

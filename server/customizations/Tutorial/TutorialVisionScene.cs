@@ -193,7 +193,7 @@ public static class TutorialVisionScene
         if (completed) { scene.Finished?.Invoke(pm); }
         else
         {
-            if (pm.NetState != null) { ClusterFTutorial.SystemLine(pm, "The vision fades. Double-click the bright blue rune stone to see it again."); }
+            if (pm.NetState != null) { ClusterFTutorial.SystemLine(pm, "The vision fades. Double-click the lesson's signpost by the stones to see it again."); }
             scene.Ended?.Invoke(pm);
         }
     }
