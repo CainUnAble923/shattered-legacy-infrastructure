@@ -205,7 +205,7 @@ public static class ClusterFDevTools
         if (opts.Flags)
         {
             // cc-P48: registration is the "league.joined" flag; every character's League rank goes with it.
-            data.Flags.Clear();
+            data.Flags.Clear(); // cc-P717: with it TutorialStart.HavenUnlockedFlag, so New Haven is locked again
             data.FlagValues.Clear();
             data.ClearLeagueData();
 
@@ -213,7 +213,7 @@ public static class ClusterFDevTools
                 if (account[i] is PlayerMobile ranked)
                     ClusterFBankLimit.Apply(ranked, false);
 
-            admin.SendMessage("League registration, every character's League rank, and every account flag cleared.");
+            admin.SendMessage("League registration, every character's League rank, and every account flag cleared. New Haven is locked at character creation until a character finishes or skips the tutorial.");
         }
 
         if (opts.Bulletins)
@@ -273,7 +273,7 @@ public class ResetOptions
         if (Achievements) items.Add("Achievements and Achievement Points: the account");
         if (Renown)       items.Add("Renown and the restoration registry: the account");
         if (Discoveries)  items.Add("Ore, wood and imbuing discoveries, creatures encountered: the account");
-        if (Flags)        items.Add("League registration, every character's League rank and all account flags: the account");
+        if (Flags)        items.Add("League registration, every character's League rank, all account flags and the New Haven start: the account");
         if (Bulletins)    items.Add("Bulletin read position: the account");
         return items;
     }

@@ -1,0 +1,14 @@
+--- a/Projects/UOContent/Accounting/AccountHandler.cs
++++ b/Projects/UOContent/Accounting/AccountHandler.cs
+@@ -475,7 +475,10 @@
+             logger.Information("Login: {NetState} Account '{Username}' at character list", e.State, un);
+             e.State.Account = acct;
+             e.Accepted = true;
+-            e.CityInfo = CharacterCreation.GetStartingCities();
++            // Shattered Legacy (cc-P717): the list is built for this account. With the tutorial on, New Haven shows locked
++            // until a character of the account graduates or skips (TutorialStart.Cities). See
++            // shard-migration/notes/cc-P717-isle-first.md.
++            e.CityInfo = CharacterCreation.GetStartingCities(acct);
+         }
+     }
+ 
