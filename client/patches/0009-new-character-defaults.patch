@@ -1,0 +1,111 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Chase Fleming <ckfleming@gmail.com>
+Date: Wed, 28 Oct 2026 12:00:00 -0500
+Subject: [PATCH] New character defaults: a profile switch that skips the
+ paperdoll request at login, on unless a profile says otherwise (Shattered
+ Legacy cc-P719)
+
+---
+ src/ClassicUO.Client/Configuration/Profile.cs      |  1 +
+ .../Network/PacketHandlers/LoginComplete.cs        |  4 +-
+ .../Configuration/SlNewCharacterDefaultsTests.cs   | 62 ++++++++++++++++++++++
+ 3 files changed, 66 insertions(+), 1 deletion(-)
+
+diff --git a/src/ClassicUO.Client/Configuration/Profile.cs b/src/ClassicUO.Client/Configuration/Profile.cs
+index a879bdfdb..4f35abf18 100644
+--- a/src/ClassicUO.Client/Configuration/Profile.cs
++++ b/src/ClassicUO.Client/Configuration/Profile.cs
+@@ -443,6 +443,7 @@ namespace ClassicUO.Configuration
+         public bool WorldMapShowFog { get; set => SetProperty(ref field, value); } = true; // Shattered Legacy patch (cc-P240)
+         public string SlSkins { get; set => SetProperty(ref field, value); } = string.Empty; // Shattered Legacy patch (cc-P362): UI skins, "kind=key;..."
+         public bool SlRedrawnArt { get; set => SetProperty(ref field, value); } // Shattered Legacy patch (cc-P670): redrawn world art, off by default
++        public bool SlOpenPaperdollAtLogin { get; set => SetProperty(ref field, value); } = true; // Shattered Legacy patch (cc-P719): ask for the own paperdoll at login; the launcher's default.json turns it off for new characters
+         public bool WorldMapTopMost { get; set => SetProperty(ref field, value); }
+         public bool WorldMapFreeView { get; set => SetProperty(ref field, value); }
+         public WorldMapDoubleClickAction WorldMapDoubleClickAction { get; set => SetProperty(ref field, value); } = WorldMapDoubleClickAction.ToggleLock;
+diff --git a/src/ClassicUO.Client/Network/PacketHandlers/LoginComplete.cs b/src/ClassicUO.Client/Network/PacketHandlers/LoginComplete.cs
+index de542cc06..d44efc123 100644
+--- a/src/ClassicUO.Client/Network/PacketHandlers/LoginComplete.cs
++++ b/src/ClassicUO.Client/Network/PacketHandlers/LoginComplete.cs
+@@ -25,7 +25,9 @@ internal static class LoginComplete
+             AsyncNetClient.Socket.Send_OpenChat("");
+ 
+             AsyncNetClient.Socket.Send_SkillsRequest(world.Player);
+-            ObjectActionQueue.Instance.Enqueue(ObjectActionQueueItem.DoubleClick(world.Player | 0x8000_0000), ActionPriority.UseItem);
++            // Shattered Legacy patch (cc-P719): a profile can start without the paperdoll; one saved open still comes back with the gumps below.
++            if (ProfileManager.CurrentProfile.SlOpenPaperdollAtLogin)
++                ObjectActionQueue.Instance.Enqueue(ObjectActionQueueItem.DoubleClick(world.Player | 0x8000_0000), ActionPriority.UseItem);
+ 
+             if (Client.Game.UO.Version >= ClassicUO.Utility.ClientVersion.CV_306E)
+                 AsyncNetClient.Socket.Send_ClientType();
+diff --git a/tests/ClassicUO.UnitTests/Configuration/SlNewCharacterDefaultsTests.cs b/tests/ClassicUO.UnitTests/Configuration/SlNewCharacterDefaultsTests.cs
+new file mode 100644
+index 000000000..f96939c3a
+--- /dev/null
++++ b/tests/ClassicUO.UnitTests/Configuration/SlNewCharacterDefaultsTests.cs
+@@ -0,0 +1,62 @@
++// Shattered Legacy patch (cc-P719): a new character starts walking, with its paperdoll closed. The player package's
++// launcher writes Data\Profiles\default.json (player-package\payload\app\Launch-Settings.ps1, $NewProfileDefaults)
++// only where there is none; TazUO builds a new character's profile from it (ProfileManager.NewFromDefault). These
++// facts read that file's exact text the way TazUO does.
++using System.Text.Json;
++using ClassicUO.Configuration;
++using FluentAssertions;
++using Xunit;
++
++namespace ClassicUO.UnitTests.Configuration
++{
++    public class SlNewCharacterDefaultsTests
++    {
++        // What the launcher writes: PowerShell 5.1's ConvertTo-Json of $NewProfileDefaults.
++        private const string LauncherDefault = "{\r\n    \"always_run\":  false,\r\n    \"sl_open_paperdoll_at_login\":  false\r\n}";
++
++        private static Profile Read(string json) => JsonSerializer.Deserialize(json, ProfileJsonContext.DefaultToUse.Profile);
++
++        [Fact]
++        public void The_launchers_default_makes_a_character_that_walks_and_does_not_ask_for_its_paperdoll()
++        {
++            Profile p = Read(LauncherDefault);
++
++            p.AlwaysRun.Should().BeFalse();
++            p.SlOpenPaperdollAtLogin.Should().BeFalse();
++        }
++
++        [Fact]
++        public void Every_other_setting_keeps_TazUOs_own_default()
++        {
++            Profile p = Read(LauncherDefault);
++            Profile stock = new Profile();
++
++            p.AlwaysRunUnlessHidden.Should().Be(stock.AlwaysRunUnlessHidden);
++            p.EnablePathfind.Should().Be(stock.EnablePathfind);
++            p.UseModernPaperdoll.Should().Be(stock.UseModernPaperdoll);
++            p.WindowClientBounds.Should().Be(stock.WindowClientBounds);
++        }
++
++        [Fact]
++        public void A_profile_saved_before_this_patch_still_opens_the_paperdoll_and_keeps_its_running()
++        {
++            // A returning player's profile.json has always_run and no sl_open_paperdoll_at_login.
++            Profile p = Read("{\"always_run\": true}");
++
++            p.AlwaysRun.Should().BeTrue();
++            p.SlOpenPaperdollAtLogin.Should().BeTrue();
++            new Profile().SlOpenPaperdollAtLogin.Should().BeTrue();
++        }
++
++        [Fact]
++        public void The_switch_is_saved_under_the_key_the_launcher_sets()
++        {
++            Profile p = new Profile { SlOpenPaperdollAtLogin = false };
++
++            string json = JsonSerializer.Serialize(p, ProfileJsonContext.DefaultToUse.Profile);
++
++            // Only the text: reading a whole saved profile back runs setters that need the game's UI (OptionsFont).
++            json.Should().Contain("\"sl_open_paperdoll_at_login\": false").And.Contain("\"always_run\": true");
++        }
++    }
++}
+-- 
+2.47.0
+

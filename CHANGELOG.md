@@ -29,6 +29,11 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.28.4
+
+### Changed
+- A new character walks until you turn on Always run (Options, then Gameplay, then Movement), and starts with its character window closed: double-click yourself to open it. Characters you already have keep their own settings.
+
 ## 2026.10.28.3
 
 ### Added
