@@ -207,7 +207,7 @@ public static class TutorialStart
                     ClusterFTutorial.AdoptOrphanedRecord(pm);
                 }
 
-                SendToIsle(pm);
+                SendToIsle(pm, atNextLesson: false, wake: true); // cc-P721: the first arrival wakes on the sand
                 break;
             case Outcome.Skip:
                 ClusterFTutorial.AdoptOrphanedRecord(pm);
@@ -252,7 +252,10 @@ public static class TutorialStart
     /// cc-P664: onto the trainee's own copy of the isle (or their party's; TutorialCopies.Claim), on the beach, or at
     /// their first undone lesson. When every copy is in use, onto the Fold's beach to wait.
     /// </summary>
-    public static void SendToIsle(PlayerMobile pm, bool atNextLesson)
+    public static void SendToIsle(PlayerMobile pm, bool atNextLesson) => SendToIsle(pm, atNextLesson, wake: false);
+
+    /// <summary>cc-P721: <paramref name="wake"/> plays the washed-ashore wake-up (TutorialWake) before the first lines.</summary>
+    public static void SendToIsle(PlayerMobile pm, bool atNextLesson, bool wake)
     {
         if (TutorialCopies.Claim(pm) is not { } copy)
         {
@@ -272,9 +275,21 @@ public static class TutorialStart
             return;
         }
 
-        ClusterFTutorial.SystemLine(pm, "You wake on a quiet shore: the Wakening Isle.");
-        ClusterFTutorial.SystemLine(pm, "Follow the arrow and double-click Tamsin, your guide, with two quick left clicks. Tamsin's window starts each lesson.");
-        TutorialGuide.PointTo(pm);
+        void FirstLines()
+        {
+            ClusterFTutorial.SystemLine(pm, "You wake on a quiet shore: the Wakening Isle.");
+            ClusterFTutorial.SystemLine(pm, "Follow the arrow and double-click Tamsin, your guide, with two quick left clicks. Tamsin's window starts each lesson.");
+            TutorialGuide.PointTo(pm);
+        }
+
+        if (wake)
+        {
+            TutorialWake.Play(pm, FirstLines);
+        }
+        else
+        {
+            FirstLines();
+        }
     }
 
     /// <summary>Sets a character down at the New Haven start if they are on the Fold.</summary>
