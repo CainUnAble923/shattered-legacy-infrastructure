@@ -1,0 +1,98 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "366c8e65-1405-509d-b30c-6ae6b9cbfa93",
+    "name": "Tigerclaw Fortress garrison 1",
+    "location": [
+      2595,
+      1085,
+      8
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6d72302f-4486-54ee-b3b1-4927c40d2504",
+    "name": "Tigerclaw Fortress garrison 2",
+    "location": [
+      2609,
+      1060,
+      8
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "eafa7c10-95c9-58ac-85eb-46435f584077",
+    "name": "Tigerclaw Fortress garrison 1",
+    "location": [
+      2595,
+      1085,
+      8
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "77d8a9b7-b0fd-5358-ae7a-e382872ac2fb",
+    "name": "Tigerclaw Fortress garrison 2",
+    "location": [
+      2609,
+      1060,
+      8
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  }
+]

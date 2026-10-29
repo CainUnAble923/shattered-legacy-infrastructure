@@ -1,0 +1,964 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "ac742b5d-35da-5ee8-858c-8965aa44dec2",
+    "name": "Kameron Kove Alchemist",
+    "location": [
+      1258,
+      2530,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Alchemist",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "446e8dd0-c610-5dc5-a446-ba63cb3595cb",
+    "name": "Kameron Kove Banker",
+    "location": [
+      1297,
+      2461,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Banker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "63ae6fe9-035c-56c9-aa1b-b06c566816a4",
+    "name": "Kameron Kove Blacksmith",
+    "location": [
+      1260,
+      2502,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Blacksmith",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3e91a1af-54a1-5b19-8adb-3efcfb90e6ab",
+    "name": "Kameron Kove Carpenter",
+    "location": [
+      1280,
+      2503,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Carpenter",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7c506387-5993-57c2-9f09-94589dc2e49d",
+    "name": "Kameron Kove Fisherman",
+    "location": [
+      1274,
+      2422,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Fisherman",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "13ac899b-88aa-5942-837d-a991709aa382",
+    "name": "Kameron Kove Healer",
+    "location": [
+      1299,
+      2489,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Healer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "36c3a8c0-72b2-52cc-8aa0-664fb1436b9d",
+    "name": "Kameron Kove InnKeeper",
+    "location": [
+      1254,
+      2452,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "InnKeeper",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5dbadeca-6467-5f2b-94a2-91a0ce09aac5",
+    "name": "Kameron Kove Provisioner",
+    "location": [
+      1230,
+      2436,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Provisioner",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3b5060ef-fdd7-55b8-bb89-689076d78fd7",
+    "name": "Kameron Kove Shipwright",
+    "location": [
+      1324,
+      2450,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Shipwright",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "aee6ed98-adba-55a5-a542-80a07d3cf3cc",
+    "name": "Kameron Kove Tailor",
+    "location": [
+      1299,
+      2444,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tailor",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "2b9ae877-cc97-5f06-a917-36c5dd0e7449",
+    "name": "Kameron Kove guard post 1",
+    "location": [
+      1293,
+      2457,
+      25
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "393c6179-a315-5c11-9205-2654801d1e8d",
+    "name": "Kameron Kove guard post 2",
+    "location": [
+      1205,
+      2402,
+      1
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fdfb4cf0-67ff-51fe-9603-d6a3fe8085b8",
+    "name": "Kameron Kove guard post 3",
+    "location": [
+      1251,
+      2541,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "1d9f3aff-2c03-5afd-8d63-455dec7d67cf",
+    "name": "Kameron Kove guard post 4",
+    "location": [
+      1218,
+      2471,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fb5beeba-118c-56ad-8b3f-984584b7692e",
+    "name": "Kameron Kove guard post 5",
+    "location": [
+      1343,
+      2462,
+      -1
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b0d614b6-cc87-527c-8e15-cd7757ce0a45",
+    "name": "Kameron Kove guard post 6",
+    "location": [
+      1251,
+      2402,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f86a059a-7e4b-56d5-9670-ba0f245fd511",
+    "name": "Kameron Kove town animals 1",
+    "location": [
+      1297,
+      2503,
+      1
+    ],
+    "map": "Trammel",
+    "count": 5,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 46,
+    "walkingRange": 46,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 5,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "87d4492c-d765-5f66-b836-062efc2d47fd",
+    "name": "Kameron Kove town crier",
+    "location": [
+      1292,
+      2456,
+      20
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 1,
+    "walkingRange": 5,
+    "entries": [
+      {
+        "name": "TownCrier",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fe7be5d4-e67e-5a6d-b571-f5a0b05afdee",
+    "name": "Kameron Kove townspeople 1",
+    "location": [
+      1297,
+      2503,
+      1
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e5c69862-4d26-590d-8709-1944f35eee68",
+    "name": "Kameron Kove Alchemist",
+    "location": [
+      1258,
+      2530,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Alchemist",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "89ac74ee-47fd-5ce3-a87e-8c5fe3f336c6",
+    "name": "Kameron Kove Banker",
+    "location": [
+      1297,
+      2461,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Banker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "0437883d-79ca-51f8-89de-ab9a3b216544",
+    "name": "Kameron Kove Blacksmith",
+    "location": [
+      1260,
+      2502,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Blacksmith",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a24c0bfc-094f-538c-9986-e3d766917e7d",
+    "name": "Kameron Kove Carpenter",
+    "location": [
+      1280,
+      2503,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Carpenter",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "93d400bf-da48-5bce-9985-7bb3a3851eb9",
+    "name": "Kameron Kove Fisherman",
+    "location": [
+      1274,
+      2422,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Fisherman",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "01427a23-f8e7-5b57-b7dc-1055ba138a1c",
+    "name": "Kameron Kove Healer",
+    "location": [
+      1299,
+      2489,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Healer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "339146e1-6d00-5cc4-aa8a-d7e0642a46b9",
+    "name": "Kameron Kove InnKeeper",
+    "location": [
+      1254,
+      2452,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "InnKeeper",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "af9abd8c-2989-59cf-88a4-9a535a9e131e",
+    "name": "Kameron Kove Provisioner",
+    "location": [
+      1230,
+      2436,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Provisioner",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5e6474d2-9950-5145-baba-6691fdc012e5",
+    "name": "Kameron Kove Shipwright",
+    "location": [
+      1324,
+      2450,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Shipwright",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7ede1fe1-a62e-5aa6-89f8-7239c07d36b0",
+    "name": "Kameron Kove Tailor",
+    "location": [
+      1299,
+      2444,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tailor",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d9c8446b-6088-52cb-83f9-8abba6e07edc",
+    "name": "Kameron Kove guard post 1",
+    "location": [
+      1293,
+      2457,
+      25
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d729a81b-f1f0-545e-ba11-da29d749b742",
+    "name": "Kameron Kove guard post 2",
+    "location": [
+      1205,
+      2402,
+      1
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "78dd9269-3528-5763-bde4-d6649a704fba",
+    "name": "Kameron Kove guard post 3",
+    "location": [
+      1251,
+      2541,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "05b187c1-e608-5f7f-af58-79f9f08d36c2",
+    "name": "Kameron Kove guard post 4",
+    "location": [
+      1218,
+      2471,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3ee998fa-aed9-5923-8fed-5425014b08c2",
+    "name": "Kameron Kove guard post 5",
+    "location": [
+      1343,
+      2462,
+      -1
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e6f0465a-7cd9-5399-a326-5649eff8ba17",
+    "name": "Kameron Kove guard post 6",
+    "location": [
+      1251,
+      2402,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8cab6753-68c4-57d1-8935-7a519d423502",
+    "name": "Kameron Kove town animals 1",
+    "location": [
+      1297,
+      2503,
+      1
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 46,
+    "walkingRange": 46,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b1c42648-cf09-5c0e-b9da-88cb079f0b2e",
+    "name": "Kameron Kove town crier",
+    "location": [
+      1292,
+      2456,
+      20
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 1,
+    "walkingRange": 5,
+    "entries": [
+      {
+        "name": "TownCrier",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "765702d7-9fd4-56a9-963e-d9a5fa253aca",
+    "name": "Kameron Kove townspeople 1",
+    "location": [
+      1297,
+      2503,
+      1
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  }
+]

@@ -1,0 +1,1334 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "aec82ba5-2402-57f3-8b17-8d4acf1cb89c",
+    "name": "Kettleburg AnimalTrainer",
+    "location": [
+      583,
+      2506,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 0,
+    "entries": [
+      {
+        "name": "AnimalTrainer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "74e789f1-ba1f-52c2-b3eb-823d1bc4aed1",
+    "name": "Kettleburg Banker",
+    "location": [
+      632,
+      2395,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Banker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5bc842db-d4e6-5d2c-a9fb-2134b181a10c",
+    "name": "Kettleburg Blacksmith",
+    "location": [
+      633,
+      2575,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Blacksmith",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "228561e7-ea67-5c24-8460-20ebb8d9c17d",
+    "name": "Kettleburg Cook",
+    "location": [
+      708,
+      2417,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Cook",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "37887772-72ec-5cbc-af63-3b942ae6dd32",
+    "name": "Kettleburg Farmer",
+    "location": [
+      571,
+      2456,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Farmer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "15d5d6b2-ebf3-5e9d-90e8-5a26212ac2b8",
+    "name": "Kettleburg Healer",
+    "location": [
+      706,
+      2515,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Healer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "cdd18ac2-c3d4-5162-8433-ead393eb5119",
+    "name": "Kettleburg InnKeeper",
+    "location": [
+      629,
+      2531,
+      6
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "InnKeeper",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a3ca9e50-9724-5ddf-89c1-368a7870b66c",
+    "name": "Kettleburg Provisioner",
+    "location": [
+      680,
+      2346,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Provisioner",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b74e9f80-d0f0-5238-93ba-de22a5d2b577",
+    "name": "Kettleburg Tailor",
+    "location": [
+      560,
+      2540,
+      2
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tailor",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "89d02bd3-7e31-5a8a-94c5-bc481359d5b1",
+    "name": "Kettleburg Tinker",
+    "location": [
+      688,
+      2409,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "Tinker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "af158c65-fe81-5a95-bcc7-4745a53e3021",
+    "name": "Kettleburg guard post 1",
+    "location": [
+      627,
+      2390,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "9322723b-d85a-5925-b296-a15bf4cfaaaf",
+    "name": "Kettleburg guard post 2",
+    "location": [
+      607,
+      2607,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6ece1a5a-8a4d-537e-bc4b-0f8351f0769c",
+    "name": "Kettleburg guard post 3",
+    "location": [
+      480,
+      2368,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "1fb933b6-31f0-5b89-987f-9601707b4990",
+    "name": "Kettleburg guard post 4",
+    "location": [
+      727,
+      2510,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "485c93e1-9204-5ad8-9bba-0f03d78c2cd2",
+    "name": "Kettleburg guard post 5",
+    "location": [
+      544,
+      2498,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "926f6040-0ce8-5ddc-90e0-3462447b003d",
+    "name": "Kettleburg guard post 6",
+    "location": [
+      726,
+      2392,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "297b7d2f-6164-5f00-aad9-061547bb82db",
+    "name": "Kettleburg town animals 1",
+    "location": [
+      635,
+      2481,
+      0
+    ],
+    "map": "Trammel",
+    "count": 19,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 19,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "17d4a8ed-af14-553e-8993-488c9490c350",
+    "name": "Kettleburg town animals 2",
+    "location": [
+      553,
+      2338,
+      0
+    ],
+    "map": "Trammel",
+    "count": 19,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 19,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fd59e223-efad-550c-8183-3a3c49733c87",
+    "name": "Kettleburg town animals 3",
+    "location": [
+      553,
+      2411,
+      0
+    ],
+    "map": "Trammel",
+    "count": 19,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 19,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5782cd0b-2472-5e9c-8469-33133c4a082c",
+    "name": "Kettleburg town animals 4",
+    "location": [
+      480,
+      2433,
+      0
+    ],
+    "map": "Trammel",
+    "count": 19,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 19,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 19,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e911c463-f824-588b-a5d8-ac3e79a400f2",
+    "name": "Kettleburg town crier",
+    "location": [
+      626,
+      2389,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 1,
+    "walkingRange": 5,
+    "entries": [
+      {
+        "name": "TownCrier",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "dedacc6d-14c5-5514-8e36-7abb64572799",
+    "name": "Kettleburg townspeople 1",
+    "location": [
+      635,
+      2481,
+      0
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "618aa396-a705-5482-83e6-8525eec38527",
+    "name": "Kettleburg townspeople 2",
+    "location": [
+      553,
+      2338,
+      0
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d80a1241-e254-5ec6-b435-2189c7297207",
+    "name": "Kettleburg townspeople 3",
+    "location": [
+      553,
+      2411,
+      0
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3523e7d7-efaf-521d-895d-79a1e8af1935",
+    "name": "Kettleburg AnimalTrainer",
+    "location": [
+      583,
+      2506,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 0,
+    "entries": [
+      {
+        "name": "AnimalTrainer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "67058872-575e-5c1c-9c19-d0ee549d5b2f",
+    "name": "Kettleburg Banker",
+    "location": [
+      632,
+      2395,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Banker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "2550b1d7-c788-519a-b8b6-8e10ed2ff30e",
+    "name": "Kettleburg Blacksmith",
+    "location": [
+      633,
+      2575,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Blacksmith",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b03fadc1-7094-5348-b8fc-f6f745137a7b",
+    "name": "Kettleburg Cook",
+    "location": [
+      708,
+      2417,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Cook",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5ea98692-f08a-51ff-9f94-2deedb00e9c1",
+    "name": "Kettleburg Farmer",
+    "location": [
+      571,
+      2456,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Farmer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "c88ca9e9-b27c-5c88-bc95-9b4b917d0f5f",
+    "name": "Kettleburg Healer",
+    "location": [
+      706,
+      2515,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Healer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "76e9ec66-d7f5-552c-b75f-a77d2e72d18a",
+    "name": "Kettleburg InnKeeper",
+    "location": [
+      629,
+      2531,
+      6
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "InnKeeper",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4608b643-2b2f-5ad7-8ffa-f0cc6d0a0176",
+    "name": "Kettleburg Provisioner",
+    "location": [
+      680,
+      2346,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Provisioner",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5dd06059-a789-5fc5-b109-aa413eeb26e9",
+    "name": "Kettleburg Tailor",
+    "location": [
+      560,
+      2540,
+      2
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tailor",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7e20fd25-1a75-54f9-8a38-b3f246046ef2",
+    "name": "Kettleburg Tinker",
+    "location": [
+      688,
+      2409,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "Tinker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a79ba160-3860-5a9d-9035-1e4750247260",
+    "name": "Kettleburg guard post 1",
+    "location": [
+      627,
+      2390,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "57f6f3b8-5421-566b-bf28-409890638a82",
+    "name": "Kettleburg guard post 2",
+    "location": [
+      607,
+      2607,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "45751d57-4a87-5f6e-b34d-884b414034a6",
+    "name": "Kettleburg guard post 3",
+    "location": [
+      480,
+      2368,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "aa866d8a-5225-50bd-908b-b6dcb52a13ce",
+    "name": "Kettleburg guard post 4",
+    "location": [
+      727,
+      2510,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "765d0704-91b2-56af-a300-5b3f90f19f14",
+    "name": "Kettleburg guard post 5",
+    "location": [
+      544,
+      2498,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "570accc2-82f5-5932-b7e2-c7037cb4d3db",
+    "name": "Kettleburg guard post 6",
+    "location": [
+      726,
+      2392,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4defdc45-523e-5169-99c0-c881fd2aea2a",
+    "name": "Kettleburg town animals 1",
+    "location": [
+      635,
+      2481,
+      0
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4626d630-6071-540e-a67b-9ab4646d0710",
+    "name": "Kettleburg town animals 2",
+    "location": [
+      553,
+      2338,
+      0
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4bcf0b58-f38b-5ee6-b480-30d9f83b9109",
+    "name": "Kettleburg town animals 3",
+    "location": [
+      553,
+      2411,
+      0
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ab5c1736-c3b5-5cfb-b5db-e516cab4b9c7",
+    "name": "Kettleburg town animals 4",
+    "location": [
+      480,
+      2433,
+      0
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a028098d-e429-56b7-85c8-4ac231e0b88b",
+    "name": "Kettleburg town crier",
+    "location": [
+      626,
+      2389,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 1,
+    "walkingRange": 5,
+    "entries": [
+      {
+        "name": "TownCrier",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d07dd8be-ae3a-54c3-bc3e-7f5254010505",
+    "name": "Kettleburg townspeople 1",
+    "location": [
+      635,
+      2481,
+      0
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f3e35dd7-7c67-58b6-b120-a810ed62d4ce",
+    "name": "Kettleburg townspeople 2",
+    "location": [
+      553,
+      2338,
+      0
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ac1f8db0-654c-5de9-890f-020ad0198cf4",
+    "name": "Kettleburg townspeople 3",
+    "location": [
+      553,
+      2411,
+      0
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  }
+]

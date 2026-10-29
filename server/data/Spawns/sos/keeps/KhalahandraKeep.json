@@ -1,0 +1,290 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "4cb8fb05-2902-55a6-8d79-79b4d4f97259",
+    "name": "Khalahandra Keep garrison 1",
+    "location": [
+      2505,
+      1707,
+      50
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "21c930b5-b9bb-5daf-a3e9-891d3180b085",
+    "name": "Khalahandra Keep garrison 2",
+    "location": [
+      2502,
+      1704,
+      45
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "059611b7-7b71-5722-a76a-23dc5b1fba56",
+    "name": "Khalahandra Keep garrison 3",
+    "location": [
+      2502,
+      1707,
+      47
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "96ae04b1-4ae0-5462-ac48-92b3a81f16c8",
+    "name": "Khalahandra Keep garrison 4",
+    "location": [
+      2487,
+      1675,
+      20
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "bb288dc5-7c8b-5a55-a5f7-c3155874f086",
+    "name": "Khalahandra Keep garrison 5",
+    "location": [
+      2490,
+      1673,
+      20
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4a45de47-001b-5f34-91ea-9faa7203927a",
+    "name": "Khalahandra Keep garrison 6",
+    "location": [
+      2490,
+      1676,
+      20
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "bf6eab96-9682-5f8c-a750-3b5e35ed36e5",
+    "name": "Khalahandra Keep garrison 1",
+    "location": [
+      2505,
+      1707,
+      50
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5df9bc4b-1d9e-5da9-82e1-f6e6109c5968",
+    "name": "Khalahandra Keep garrison 2",
+    "location": [
+      2502,
+      1704,
+      45
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6b120956-9851-5c1d-a49d-862843857459",
+    "name": "Khalahandra Keep garrison 3",
+    "location": [
+      2502,
+      1707,
+      47
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ea7b2b19-291c-5107-a5d7-fdc4462b98d2",
+    "name": "Khalahandra Keep garrison 4",
+    "location": [
+      2487,
+      1675,
+      20
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "75c18ee1-9ba1-5bab-8a2d-48f0417b9ab7",
+    "name": "Khalahandra Keep garrison 5",
+    "location": [
+      2490,
+      1673,
+      20
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a0ba2e1d-d1e9-5250-89c0-702812cd9f36",
+    "name": "Khalahandra Keep garrison 6",
+    "location": [
+      2490,
+      1676,
+      20
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  }
+]

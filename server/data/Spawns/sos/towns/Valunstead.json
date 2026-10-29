@@ -1,0 +1,1809 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "39ef7d87-5f0f-547e-95dd-4dccd2c16254",
+    "name": "Valunstead Alchemist",
+    "location": [
+      478,
+      365,
+      15
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "Alchemist",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "452358b7-7fec-5281-99a2-63ed96675dcb",
+    "name": "Valunstead AnimalTrainer",
+    "location": [
+      486,
+      214,
+      7
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "AnimalTrainer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "77f16307-7693-57af-b5c1-f32d05fd912e",
+    "name": "Valunstead Baker",
+    "location": [
+      344,
+      454,
+      12
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Baker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a9106d73-93a1-5340-8720-217269bc21af",
+    "name": "Valunstead Banker",
+    "location": [
+      482,
+      430,
+      25
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "Banker",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "28d2add6-1c47-538b-a2e0-6f2ffa11b7fe",
+    "name": "Valunstead Blacksmith",
+    "location": [
+      267,
+      338,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Blacksmith",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "81668674-b43a-52f7-bb08-198cfc499a3d",
+    "name": "Valunstead Bowyer",
+    "location": [
+      519,
+      304,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Bowyer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "eace5728-d90c-5c9d-84f3-032ed1784de9",
+    "name": "Valunstead Carpenter",
+    "location": [
+      306,
+      349,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Carpenter",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a24dac93-7dca-5304-9a6e-343f97c4a17d",
+    "name": "Valunstead Healer",
+    "location": [
+      332,
+      386,
+      7
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Healer",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ab7784cc-bbfd-5aca-afd9-32ec64fa1f69",
+    "name": "Valunstead InnKeeper",
+    "location": [
+      381,
+      407,
+      13
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "InnKeeper",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "44181c79-a24b-52ce-b1ab-652e92457332",
+    "name": "Valunstead Provisioner",
+    "location": [
+      356,
+      422,
+      12
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Provisioner",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "bfa4da62-59f4-5b1d-a267-115f5ca554f6",
+    "name": "Valunstead Tailor",
+    "location": [
+      326,
+      406,
+      12
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tailor",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "91d00b7d-2678-51c0-b427-84a9cab0aff1",
+    "name": "Valunstead guard post 1",
+    "location": [
+      478,
+      434,
+      15
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4012f9b6-d2f0-5fc3-95f4-b2fadf3cb1ce",
+    "name": "Valunstead guard post 2",
+    "location": [
+      462,
+      180,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a8a73c66-cb27-5428-af72-725ed81c5699",
+    "name": "Valunstead guard post 3",
+    "location": [
+      261,
+      397,
+      -5
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "891aa107-2a25-5260-bd1f-f407cfb73dee",
+    "name": "Valunstead guard post 4",
+    "location": [
+      278,
+      205,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fc180288-bda8-54a0-9966-b8f7b91aa707",
+    "name": "Valunstead guard post 5",
+    "location": [
+      659,
+      394,
+      36
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6cd8e8f6-e526-5764-afcd-9260c42debb4",
+    "name": "Valunstead guard post 6",
+    "location": [
+      600,
+      256,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5dd89ff6-616f-5c0f-9ed6-36f2c43a9e00",
+    "name": "Valunstead guard post 7",
+    "location": [
+      407,
+      307,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "61a8a543-9cbd-53f3-9dca-70fd79a57f69",
+    "name": "Valunstead guard post 8",
+    "location": [
+      369,
+      415,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ee9d9c26-73d1-5fc5-8153-5f177cf16f93",
+    "name": "Valunstead town animals 1",
+    "location": [
+      249,
+      301,
+      10
+    ],
+    "map": "Trammel",
+    "count": 23,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 23,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "1253a21e-1b9b-54f0-8f29-40725e842364",
+    "name": "Valunstead town animals 2",
+    "location": [
+      370,
+      204,
+      0
+    ],
+    "map": "Trammel",
+    "count": 23,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 23,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "74c62764-2f6a-5370-a872-8324a0abbcef",
+    "name": "Valunstead town animals 3",
+    "location": [
+      509,
+      294,
+      10
+    ],
+    "map": "Trammel",
+    "count": 23,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 23,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "67772997-86c7-5a7b-ba08-7ae1ed2ded4f",
+    "name": "Valunstead town animals 4",
+    "location": [
+      568,
+      384,
+      10
+    ],
+    "map": "Trammel",
+    "count": 23,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 23,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4717c1e0-357f-565f-a2fb-4050ede2d145",
+    "name": "Valunstead town animals 5",
+    "location": [
+      330,
+      305,
+      0
+    ],
+    "map": "Trammel",
+    "count": 23,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 23,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d4974fe8-a36d-5339-9b43-43b995c2995f",
+    "name": "Valunstead town animals 6",
+    "location": [
+      406,
+      486,
+      15
+    ],
+    "map": "Trammel",
+    "count": 23,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 23,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 23,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7fb775cb-2f5b-5e5e-9045-39af94f03020",
+    "name": "Valunstead town crier",
+    "location": [
+      477,
+      434,
+      15
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 1,
+    "walkingRange": 5,
+    "entries": [
+      {
+        "name": "TownCrier",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4cb7bb67-24c3-5be5-aecc-74494fdd2bed",
+    "name": "Valunstead townspeople 1",
+    "location": [
+      249,
+      301,
+      10
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8024c424-0e4e-50e0-b615-57e61da1455b",
+    "name": "Valunstead townspeople 2",
+    "location": [
+      370,
+      204,
+      0
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "c6261a74-0f9a-57d7-8dee-1043adb4d8e1",
+    "name": "Valunstead townspeople 3",
+    "location": [
+      509,
+      294,
+      10
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "cacb993b-4bf2-5a3e-97d6-4c776ea9b4d1",
+    "name": "Valunstead townspeople 4",
+    "location": [
+      568,
+      384,
+      10
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3dedd48b-8c1d-5c90-bf21-fe0c715dc5c9",
+    "name": "Valunstead townspeople 5",
+    "location": [
+      330,
+      305,
+      0
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "bb47a128-6884-5b45-aae8-1a3d1404f096",
+    "name": "Valunstead Alchemist",
+    "location": [
+      478,
+      365,
+      15
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "Alchemist",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "33281a31-f13c-5072-b7b6-5c726cf0bb54",
+    "name": "Valunstead AnimalTrainer",
+    "location": [
+      486,
+      214,
+      7
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "AnimalTrainer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "436c6b2b-07fd-5194-813b-f020d54a32ba",
+    "name": "Valunstead Baker",
+    "location": [
+      344,
+      454,
+      12
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Baker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5101e565-5d5d-5bda-bdad-386f84d10ee1",
+    "name": "Valunstead Banker",
+    "location": [
+      482,
+      430,
+      25
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "Banker",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "89057de0-b923-5051-bf55-28403114c8f7",
+    "name": "Valunstead Blacksmith",
+    "location": [
+      267,
+      338,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Blacksmith",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ee5cde56-09be-5108-99e7-96f00e2de11c",
+    "name": "Valunstead Bowyer",
+    "location": [
+      519,
+      304,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Bowyer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "49711bbc-74ac-5813-a635-abe6b42f4d2c",
+    "name": "Valunstead Carpenter",
+    "location": [
+      306,
+      349,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Carpenter",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a4610cb9-bd3d-59f5-b5f8-3ac1a0e2d501",
+    "name": "Valunstead Healer",
+    "location": [
+      332,
+      386,
+      7
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Healer",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b89647ef-57cd-5d03-a6c5-89752f531f55",
+    "name": "Valunstead InnKeeper",
+    "location": [
+      381,
+      407,
+      13
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "InnKeeper",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a0496762-d2fb-582b-b190-62346f1b5a50",
+    "name": "Valunstead Provisioner",
+    "location": [
+      356,
+      422,
+      12
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Provisioner",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "31b1b2e3-2564-5f50-8f1e-89522fafaa76",
+    "name": "Valunstead Tailor",
+    "location": [
+      326,
+      406,
+      12
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tailor",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "00214de0-384a-5917-86ae-2d61fe578ffa",
+    "name": "Valunstead guard post 1",
+    "location": [
+      478,
+      434,
+      15
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4c4b1f6b-b7fb-55d9-b9d5-7af215c83ee5",
+    "name": "Valunstead guard post 2",
+    "location": [
+      462,
+      180,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b23301d3-317d-582a-94e4-3a9cc90ed1b2",
+    "name": "Valunstead guard post 3",
+    "location": [
+      261,
+      397,
+      -5
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fcfa8930-57ef-5c55-9cee-e9861212d562",
+    "name": "Valunstead guard post 4",
+    "location": [
+      278,
+      205,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "48da538f-9bd4-5776-b5a8-70a697122128",
+    "name": "Valunstead guard post 5",
+    "location": [
+      659,
+      394,
+      36
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "98869aff-20c0-533b-a5ee-1d4a997e6005",
+    "name": "Valunstead guard post 6",
+    "location": [
+      600,
+      256,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a99efd4a-3b3f-547c-884e-b28c3e7a5fa9",
+    "name": "Valunstead guard post 7",
+    "location": [
+      407,
+      307,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "aed62e8b-956f-5c52-894c-d62f1ee75730",
+    "name": "Valunstead guard post 8",
+    "location": [
+      369,
+      415,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8c170124-4e2a-5f4f-bef7-6cea2f80e489",
+    "name": "Valunstead town animals 1",
+    "location": [
+      249,
+      301,
+      10
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "879e87e3-6b7c-58df-a355-664226191ddf",
+    "name": "Valunstead town animals 2",
+    "location": [
+      370,
+      204,
+      0
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b89a96ab-134c-5512-9fc2-6b14e6b562f3",
+    "name": "Valunstead town animals 3",
+    "location": [
+      509,
+      294,
+      10
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fcb23a8a-e922-543b-af48-9b671a7cd4f3",
+    "name": "Valunstead town animals 4",
+    "location": [
+      568,
+      384,
+      10
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "0743ec9d-6e76-594e-a85f-2528956ef08d",
+    "name": "Valunstead town animals 5",
+    "location": [
+      330,
+      305,
+      0
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "97ba8198-37c7-5f71-aa57-abfab8344f4f",
+    "name": "Valunstead town animals 6",
+    "location": [
+      406,
+      486,
+      15
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "c3171e5d-fd6a-5479-b692-fd58fb8a977e",
+    "name": "Valunstead town animals 7",
+    "location": [
+      494,
+      364,
+      8
+    ],
+    "map": "Felucca",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 50,
+    "walkingRange": 50,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "775dd4f4-cca2-5adc-ad74-07a41dc910ff",
+    "name": "Valunstead town crier",
+    "location": [
+      477,
+      434,
+      15
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 1,
+    "walkingRange": 5,
+    "entries": [
+      {
+        "name": "TownCrier",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "345ba939-e0ff-5274-8abb-e87fca28a6bb",
+    "name": "Valunstead townspeople 1",
+    "location": [
+      249,
+      301,
+      10
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3adbe5e3-13e6-5557-8acb-c56976d5698b",
+    "name": "Valunstead townspeople 2",
+    "location": [
+      370,
+      204,
+      0
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e7d666b3-3bde-5891-a910-9bcf493ea813",
+    "name": "Valunstead townspeople 3",
+    "location": [
+      509,
+      294,
+      10
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d44efaac-e0e0-5fae-ab82-2db3e8224696",
+    "name": "Valunstead townspeople 4",
+    "location": [
+      568,
+      384,
+      10
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3e2b4adc-a58d-5557-83d3-d75645255b01",
+    "name": "Valunstead townspeople 5",
+    "location": [
+      330,
+      305,
+      0
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  }
+]

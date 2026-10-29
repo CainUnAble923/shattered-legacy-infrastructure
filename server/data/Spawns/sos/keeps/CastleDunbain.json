@@ -1,0 +1,98 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "cc10329d-25e6-5d06-b8b9-17c82b53f194",
+    "name": "Castle Dunbain garrison 1",
+    "location": [
+      1329,
+      1381,
+      8
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "bb059721-4b47-5ab7-a25d-0d82d4eb1162",
+    "name": "Castle Dunbain garrison 2",
+    "location": [
+      1332,
+      1381,
+      6
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "50d5dcf0-85b0-524c-9cc0-a299acaf26ad",
+    "name": "Castle Dunbain garrison 1",
+    "location": [
+      1329,
+      1381,
+      8
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "15054773-0bac-580c-9503-b87e00963903",
+    "name": "Castle Dunbain garrison 2",
+    "location": [
+      1332,
+      1381,
+      6
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  }
+]

@@ -1,0 +1,916 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "4582d14a-8bba-50f4-b368-0ab86f00a693",
+    "name": "Hammerhill Alchemist",
+    "location": [
+      1611,
+      1060,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Alchemist",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a8a087c8-563a-5446-8858-7b5028bdcb9a",
+    "name": "Hammerhill Baker",
+    "location": [
+      1489,
+      968,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Baker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "1f3d007c-1a5a-5ed4-89f8-3d434702e451",
+    "name": "Hammerhill Banker",
+    "location": [
+      1538,
+      985,
+      5
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Banker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "14a6add7-0b7d-55e1-9ba4-8b793811c634",
+    "name": "Hammerhill Blacksmith",
+    "location": [
+      1510,
+      986,
+      10
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Blacksmith",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4e51036b-9010-54a6-a096-141c3022ee53",
+    "name": "Hammerhill Healer",
+    "location": [
+      1594,
+      994,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Healer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "cd6fa099-e509-5b78-837f-bb3de7ffad6c",
+    "name": "Hammerhill InnKeeper",
+    "location": [
+      1563,
+      985,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "InnKeeper",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f9f28cea-d492-50e5-a91e-6decdf1d942b",
+    "name": "Hammerhill Provisioner",
+    "location": [
+      1599,
+      1036,
+      13
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Provisioner",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "043b24c0-6b46-5841-aeac-77ec9e941dad",
+    "name": "Hammerhill Tailor",
+    "location": [
+      1518,
+      1043,
+      5
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tailor",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "29f970a2-8deb-5e13-8c66-e7d35542317d",
+    "name": "Hammerhill Tinker",
+    "location": [
+      1521,
+      1014,
+      15
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tinker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "05a67244-d164-581a-b019-f3463822b35e",
+    "name": "Hammerhill guard post 1",
+    "location": [
+      1532,
+      991,
+      5
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a11958a2-150f-5402-9931-a7adf9b3418a",
+    "name": "Hammerhill guard post 2",
+    "location": [
+      1549,
+      1071,
+      -12
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "99432fd2-e9eb-5308-97ef-8a4f33a74425",
+    "name": "Hammerhill guard post 3",
+    "location": [
+      1609,
+      974,
+      5
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "73150d2b-d5ac-5895-b979-489ee07dabbd",
+    "name": "Hammerhill guard post 4",
+    "location": [
+      1609,
+      1034,
+      10
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "2a9c077a-59ef-5edc-9a8e-72fa8ac06a0c",
+    "name": "Hammerhill guard post 5",
+    "location": [
+      1492,
+      1048,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "0d2948c7-197b-5ba2-956c-d1bb8c305d6e",
+    "name": "Hammerhill guard post 6",
+    "location": [
+      1532,
+      1031,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "563f7e76-5d8e-598d-ad36-f553e67e20a3",
+    "name": "Hammerhill town animals 1",
+    "location": [
+      1493,
+      975,
+      10
+    ],
+    "map": "Trammel",
+    "count": 5,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 38,
+    "walkingRange": 38,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 5,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7ff8aa3a-7c25-5a28-a292-1643f9559755",
+    "name": "Hammerhill town crier",
+    "location": [
+      1531,
+      991,
+      5
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 1,
+    "walkingRange": 5,
+    "entries": [
+      {
+        "name": "TownCrier",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "74f17861-4c8d-5b99-a814-a7d8ebf428cc",
+    "name": "Hammerhill townspeople 1",
+    "location": [
+      1493,
+      975,
+      10
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "2fcf82a1-7698-564a-b85a-e22838da49ff",
+    "name": "Hammerhill Alchemist",
+    "location": [
+      1611,
+      1060,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Alchemist",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6afa9bde-3954-5c9e-91f4-18b71bcfb9f6",
+    "name": "Hammerhill Baker",
+    "location": [
+      1489,
+      968,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Baker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7444e601-4e70-521b-8191-9353fbe7bf1b",
+    "name": "Hammerhill Banker",
+    "location": [
+      1538,
+      985,
+      5
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Banker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "147482ff-d21c-5e75-b815-097c03c93e7b",
+    "name": "Hammerhill Blacksmith",
+    "location": [
+      1510,
+      986,
+      10
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Blacksmith",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "636a2ea0-dd4a-5e5e-a577-2769b055eb83",
+    "name": "Hammerhill Healer",
+    "location": [
+      1594,
+      994,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Healer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "537a60b7-8aa2-529c-b9cf-8debaa269c66",
+    "name": "Hammerhill InnKeeper",
+    "location": [
+      1563,
+      985,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "InnKeeper",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a33bacf5-ff9c-52c6-84c5-9fde3bc0cb09",
+    "name": "Hammerhill Provisioner",
+    "location": [
+      1599,
+      1036,
+      13
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Provisioner",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "9dedb82e-9ceb-5a3e-ab7b-6a2b91ea0753",
+    "name": "Hammerhill Tailor",
+    "location": [
+      1518,
+      1043,
+      5
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tailor",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "47b5d81e-9178-5b47-bbb2-3504df5891ea",
+    "name": "Hammerhill Tinker",
+    "location": [
+      1521,
+      1014,
+      15
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tinker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "911621c3-f7c7-5a21-8d0c-79246cd5db43",
+    "name": "Hammerhill guard post 1",
+    "location": [
+      1532,
+      991,
+      5
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "17bf78c9-f51b-584f-9722-efd19e4a5089",
+    "name": "Hammerhill guard post 2",
+    "location": [
+      1549,
+      1071,
+      -12
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "617def04-6811-5c7c-b498-2daf05360203",
+    "name": "Hammerhill guard post 3",
+    "location": [
+      1609,
+      974,
+      5
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8ec54767-612a-5600-a213-ae0d7b31cc13",
+    "name": "Hammerhill guard post 4",
+    "location": [
+      1609,
+      1034,
+      10
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3ec7d59a-f8cc-5a64-b998-c4e0f6d35850",
+    "name": "Hammerhill guard post 5",
+    "location": [
+      1492,
+      1048,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "221fb62c-7e0f-5342-8a12-7cbc5680a70b",
+    "name": "Hammerhill guard post 6",
+    "location": [
+      1532,
+      1031,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f261a7d7-7af8-546e-8c34-0b7dd53fe05f",
+    "name": "Hammerhill town animals 1",
+    "location": [
+      1493,
+      975,
+      10
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 38,
+    "walkingRange": 38,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "75556252-71fc-5b8e-89cd-1938ce6d6bbe",
+    "name": "Hammerhill town crier",
+    "location": [
+      1531,
+      991,
+      5
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 1,
+    "walkingRange": 5,
+    "entries": [
+      {
+        "name": "TownCrier",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4b27b844-c920-57a2-bec0-68318cd087b7",
+    "name": "Hammerhill townspeople 1",
+    "location": [
+      1493,
+      975,
+      10
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  }
+]
