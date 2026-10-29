@@ -1,0 +1,1003 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "2443c107-8ada-5dca-93b3-911aa0a36ece",
+    "name": "Elmhaven Alchemist",
+    "location": [
+      1992,
+      3260,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "Alchemist",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "cab17ee5-7a0d-55ed-8c06-240eb2a7f539",
+    "name": "Elmhaven Banker",
+    "location": [
+      1965,
+      3159,
+      1
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Banker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "2172ef96-deac-5e90-abd6-2bffd1bdaf0f",
+    "name": "Elmhaven Blacksmith",
+    "location": [
+      1919,
+      3204,
+      1
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Blacksmith",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f6bcf2cb-9d66-54dd-946a-53c5242adb31",
+    "name": "Elmhaven Bowyer",
+    "location": [
+      1965,
+      3226,
+      1
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "Bowyer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8dab0f6d-4a6e-5b48-b7c0-fbdb865ba5dd",
+    "name": "Elmhaven Carpenter",
+    "location": [
+      2010,
+      3191,
+      2
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Carpenter",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d44ba4cc-5469-5c56-b92c-a7fb46c7f55c",
+    "name": "Elmhaven Farmer",
+    "location": [
+      2023,
+      3221,
+      1
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Farmer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "1bd5f7a3-1bcc-5ec5-b922-d4c31da6bfa8",
+    "name": "Elmhaven Healer",
+    "location": [
+      1995,
+      3248,
+      1
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Healer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7d51c8dd-009a-5dd8-bea4-9cc513f8e3bf",
+    "name": "Elmhaven InnKeeper",
+    "location": [
+      1935,
+      3136,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 0,
+    "entries": [
+      {
+        "name": "InnKeeper",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e63cb2ef-83c1-54f9-972a-190a6832284a",
+    "name": "Elmhaven Provisioner",
+    "location": [
+      1961,
+      3244,
+      1
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Provisioner",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "c3fee1d7-f451-5004-91ac-e86415841e48",
+    "name": "Elmhaven Tailor",
+    "location": [
+      1924,
+      3241,
+      3
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tailor",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "bca61943-05b0-5131-a899-2b30ba5b9b27",
+    "name": "Elmhaven guard post 1",
+    "location": [
+      1950,
+      3174,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "32c191b1-76c9-5503-b17b-d75e1e20357e",
+    "name": "Elmhaven guard post 2",
+    "location": [
+      2047,
+      3137,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "007010c1-cef6-5748-af2e-1d828b921fa6",
+    "name": "Elmhaven guard post 3",
+    "location": [
+      2047,
+      3234,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5cf031fd-8c87-5516-bc90-5a21c0c069de",
+    "name": "Elmhaven guard post 4",
+    "location": [
+      1944,
+      3263,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8b9478e4-707b-5720-ad86-01b87f483f6d",
+    "name": "Elmhaven guard post 5",
+    "location": [
+      1892,
+      3137,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f41cadab-77a2-5cd1-86da-9b69970c27d2",
+    "name": "Elmhaven guard post 6",
+    "location": [
+      1891,
+      3248,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "16fecb88-d262-5084-b070-449544d42d9a",
+    "name": "Elmhaven town animals 1",
+    "location": [
+      1897,
+      3189,
+      0
+    ],
+    "map": "Trammel",
+    "count": 22,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 42,
+    "walkingRange": 42,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 22,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 22,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4285d5bc-5a32-582d-8623-c03bdbf2f3bc",
+    "name": "Elmhaven town crier",
+    "location": [
+      1949,
+      3173,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 1,
+    "walkingRange": 5,
+    "entries": [
+      {
+        "name": "TownCrier",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8854f63d-aaf7-5af9-8348-c012bb7efed4",
+    "name": "Elmhaven townspeople 1",
+    "location": [
+      1897,
+      3189,
+      0
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "38542e61-3955-5726-8b8d-835cfbe6fc88",
+    "name": "Elmhaven Alchemist",
+    "location": [
+      1992,
+      3260,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "Alchemist",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e78a8579-6047-59e3-af34-87eb59bd6985",
+    "name": "Elmhaven Banker",
+    "location": [
+      1965,
+      3159,
+      1
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Banker",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a7c557f6-f5e2-55aa-b12f-82bf6d6f7ae9",
+    "name": "Elmhaven Blacksmith",
+    "location": [
+      1919,
+      3204,
+      1
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Blacksmith",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "efb5cff6-d959-5ea7-8863-f379b7852506",
+    "name": "Elmhaven Bowyer",
+    "location": [
+      1965,
+      3226,
+      1
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "Bowyer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "82e13d67-3117-51d3-b993-7f9a640a4d94",
+    "name": "Elmhaven Carpenter",
+    "location": [
+      2010,
+      3191,
+      2
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Carpenter",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "25ac2095-5e00-51f2-a4cb-e021cd049263",
+    "name": "Elmhaven Farmer",
+    "location": [
+      2023,
+      3221,
+      1
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Farmer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a8f4fa87-25bd-56ea-a85e-2176091d04df",
+    "name": "Elmhaven Healer",
+    "location": [
+      1995,
+      3248,
+      1
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Healer",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e46383a0-4204-58a0-9cec-be1b42289385",
+    "name": "Elmhaven InnKeeper",
+    "location": [
+      1935,
+      3136,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 0,
+    "entries": [
+      {
+        "name": "InnKeeper",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ae5957e2-d5bf-5c20-9241-9ad9a89d099b",
+    "name": "Elmhaven Provisioner",
+    "location": [
+      1961,
+      3244,
+      1
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Provisioner",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7f40269d-599e-5443-b6c0-1911db47f345",
+    "name": "Elmhaven Tailor",
+    "location": [
+      1924,
+      3241,
+      3
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 2,
+    "entries": [
+      {
+        "name": "Tailor",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "9183d7e0-6fe2-59b7-afc9-80382e2ad59d",
+    "name": "Elmhaven guard post 1",
+    "location": [
+      1950,
+      3174,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "32290b52-d436-5afb-81fd-6817dea76894",
+    "name": "Elmhaven guard post 2",
+    "location": [
+      2047,
+      3137,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "61ebb86b-1e55-59df-80e2-4b4a3d4c950d",
+    "name": "Elmhaven guard post 3",
+    "location": [
+      2047,
+      3234,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7285566f-3e12-5eec-bd55-c5bba59b921e",
+    "name": "Elmhaven guard post 4",
+    "location": [
+      1944,
+      3263,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6de44621-7b1d-5798-8768-5f3b17480a30",
+    "name": "Elmhaven guard post 5",
+    "location": [
+      1892,
+      3137,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "1af5cd75-8dd4-5a37-a504-7ebe6b72e9d8",
+    "name": "Elmhaven guard post 6",
+    "location": [
+      1891,
+      3248,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ad8815b0-cccf-54e6-b452-2f99b3ef88ef",
+    "name": "Elmhaven town animals 1",
+    "location": [
+      1897,
+      3189,
+      0
+    ],
+    "map": "Felucca",
+    "count": 13,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 42,
+    "walkingRange": 42,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 13,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 13,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 13,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 13,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e158ba07-bf53-5e5a-9254-5fd4982d0240",
+    "name": "Elmhaven town animals 2",
+    "location": [
+      1995,
+      3227,
+      0
+    ],
+    "map": "Felucca",
+    "count": 13,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 42,
+    "walkingRange": 42,
+    "entries": [
+      {
+        "name": "Bird",
+        "maxCount": 13,
+        "probability": 100
+      },
+      {
+        "name": "Cat",
+        "maxCount": 13,
+        "probability": 100
+      },
+      {
+        "name": "Dog",
+        "maxCount": 13,
+        "probability": 100
+      },
+      {
+        "name": "Rat",
+        "maxCount": 13,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f540c834-6958-5912-a9cd-1dbe1a283f0b",
+    "name": "Elmhaven town crier",
+    "location": [
+      1949,
+      3173,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 1,
+    "walkingRange": 5,
+    "entries": [
+      {
+        "name": "TownCrier",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "dfefdf65-9374-5c83-9056-ea0a6ea18835",
+    "name": "Elmhaven townspeople 1",
+    "location": [
+      1897,
+      3189,
+      0
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "EscortableMage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Noble",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SeekerOfAdventure",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  }
+]

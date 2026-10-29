@@ -1,0 +1,2052 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "ebdb8f00-382e-5901-9c8a-b19abbf16854",
+    "name": "Glimmerwood dirt 1",
+    "location": [
+      2548,
+      3262,
+      -10
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a7d658d7-ab65-5e58-8cb1-20e5ab27ee9a",
+    "name": "Glimmerwood dirt 2",
+    "location": [
+      2422,
+      3469,
+      -21
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6e4d8e3f-1ae8-5deb-b93d-1f4280eb5010",
+    "name": "Glimmerwood dirt 3",
+    "location": [
+      2566,
+      3357,
+      -29
+    ],
+    "map": "Trammel",
+    "count": 6,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 10,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "OrcBomber",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "OrcCaptain",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "01862b51-86db-5f5b-b237-15a1923aa19f",
+    "name": "Glimmerwood grass 1",
+    "location": [
+      2593,
+      3162,
+      10
+    ],
+    "map": "Trammel",
+    "count": 6,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fee02a4c-3c6d-5a78-b930-340739076ea5",
+    "name": "Glimmerwood jungle 1",
+    "location": [
+      2498,
+      3417,
+      -16
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSerpent",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Gorilla",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TropicalBird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WhippingVine",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6c30f862-5f5f-5382-880e-5dc21b56d2a0",
+    "name": "Glimmerwood jungle 10",
+    "location": [
+      2578,
+      3310,
+      -10
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "GiantSerpent",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Mongbat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "43729e91-449d-5441-9c76-c141cf0c6c73",
+    "name": "Glimmerwood jungle 11",
+    "location": [
+      2467,
+      3495,
+      -17
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "GiantSerpent",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Mongbat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "638d7d1c-2ab7-5ddc-aa64-96ba4edb531c",
+    "name": "Glimmerwood jungle 12",
+    "location": [
+      2275,
+      3447,
+      -45
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3ae564b7-7ae0-563b-9154-578938ee7234",
+    "name": "Glimmerwood jungle 2",
+    "location": [
+      2523,
+      3352,
+      -2
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "42b3feaa-ae84-5749-a596-04389e1bd220",
+    "name": "Glimmerwood jungle 3",
+    "location": [
+      2427,
+      3520,
+      5
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ccc267c8-d7b3-58d9-af39-dc36fac1b17b",
+    "name": "Glimmerwood jungle 4",
+    "location": [
+      2580,
+      3488,
+      -2
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "9d0cd9d9-cd20-5b51-a152-fbfa49bacf89",
+    "name": "Glimmerwood jungle 5",
+    "location": [
+      2515,
+      3541,
+      -3
+    ],
+    "map": "Trammel",
+    "count": 10,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "c36aa938-51c4-5b2a-9a01-d29bc0a896f9",
+    "name": "Glimmerwood jungle 6",
+    "location": [
+      2700,
+      3498,
+      5
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSerpent",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Gorilla",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TropicalBird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WhippingVine",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f384ea0e-388f-5dd3-8080-ec9f399b399d",
+    "name": "Glimmerwood jungle 7",
+    "location": [
+      2409,
+      3420,
+      -3
+    ],
+    "map": "Trammel",
+    "count": 8,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 8,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b47ce9d1-c5fa-5fe0-9887-6be9e8608add",
+    "name": "Glimmerwood jungle 8",
+    "location": [
+      2534,
+      3412,
+      -7
+    ],
+    "map": "Trammel",
+    "count": 10,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 10,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f1cdd55b-4a0e-579d-b780-c8c80e8a5200",
+    "name": "Glimmerwood jungle 9",
+    "location": [
+      2597,
+      3357,
+      -19
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "14991119-2cc8-5107-83fe-a5e7ff20e0ce",
+    "name": "Glimmerwood dirt 1",
+    "location": [
+      2353,
+      3467,
+      0
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "c4ae6ec1-4d44-5c3b-b3d0-4e34d0f9b03e",
+    "name": "Glimmerwood dirt 2",
+    "location": [
+      2701,
+      3482,
+      4
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "1bda095b-fd7a-56ce-a301-5271a70a52b4",
+    "name": "Glimmerwood dirt 3",
+    "location": [
+      2581,
+      3469,
+      -12
+    ],
+    "map": "Felucca",
+    "count": 6,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 15,
+    "walkingRange": 15,
+    "entries": [
+      {
+        "name": "SavageShaman",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Savage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SavageRider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "92862593-7522-5c2e-bc18-c83b842d936f",
+    "name": "Glimmerwood grass 1",
+    "location": [
+      2624,
+      3134,
+      10
+    ],
+    "map": "Felucca",
+    "count": 6,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d23a0be0-9374-5c70-b71b-8f762ac1d553",
+    "name": "Glimmerwood jungle 1",
+    "location": [
+      2594,
+      3375,
+      -21
+    ],
+    "map": "Felucca",
+    "count": 10,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "45b4b0c0-a2a7-51ff-8481-e4869c81b5f7",
+    "name": "Glimmerwood jungle 10",
+    "location": [
+      2493,
+      3394,
+      -2
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Lizardman",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "bb0fdcc1-bbde-51c1-b7e5-d8cab1c2c68a",
+    "name": "Glimmerwood jungle 2",
+    "location": [
+      2762,
+      3429,
+      0
+    ],
+    "map": "Felucca",
+    "count": 10,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "0775b848-5046-5d79-a659-9319a33a40d9",
+    "name": "Glimmerwood jungle 3",
+    "location": [
+      2601,
+      3451,
+      -1
+    ],
+    "map": "Felucca",
+    "count": 10,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "dbb98107-d179-5881-b71c-1dae2688d88d",
+    "name": "Glimmerwood jungle 4",
+    "location": [
+      2304,
+      3472,
+      -24
+    ],
+    "map": "Felucca",
+    "count": 10,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "9f9f0494-318c-5942-97a0-fce18fd01bd0",
+    "name": "Glimmerwood jungle 5",
+    "location": [
+      2723,
+      3532,
+      1
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "60203d33-6563-514e-9736-9e3563bc0fd8",
+    "name": "Glimmerwood jungle 6",
+    "location": [
+      2252,
+      3408,
+      -25
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSerpent",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Gorilla",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TropicalBird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WhippingVine",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e9d3de5d-e4c9-5459-9c27-1a751e7edf9d",
+    "name": "Glimmerwood jungle 7",
+    "location": [
+      2703,
+      3445,
+      0
+    ],
+    "map": "Felucca",
+    "count": 8,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 8,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8e45ca1e-9c3a-5690-859e-fbb4863f963c",
+    "name": "Glimmerwood jungle 8",
+    "location": [
+      2482,
+      3455,
+      -5
+    ],
+    "map": "Felucca",
+    "count": 10,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f58dec73-84f4-52c3-9963-cd2fc44b568d",
+    "name": "Glimmerwood jungle 9",
+    "location": [
+      2307,
+      3436,
+      -29
+    ],
+    "map": "Felucca",
+    "count": 8,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 8,
+        "probability": 100
+      }
+    ]
+  }
+]

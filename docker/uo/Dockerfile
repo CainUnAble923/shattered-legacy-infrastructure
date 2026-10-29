@@ -75,6 +75,10 @@ COPY server/data/Locations/ /build/modernuo/Distribution/Data/ShatteredLegacy/Lo
 # cc-P680 (SoS swap S5): the Trammel and Felucca decoration on the SoS land, read by Decorate-sos-decoration.patch in
 # place of pinned's Data/Decoration/{Britannia,Trammel,Felucca} (made by shard-migration notes/cc-P680-tools/deco.py).
 COPY server/data/Decoration/ /build/modernuo/Distribution/Data/ShatteredLegacy/Decoration/
+# cc-P682 (SoS swap S10): the people of the author's new towns and keeps and the wild on his new land, in pinned's
+# spawn format beside pinned's own (Data/Spawns/sos/{towns,keeps,wild}), built by the stock [GenerateSpawners (made by
+# shard-migration notes/cc-P682-tools/build_spawns.py).
+COPY server/data/Spawns/ /build/modernuo/Distribution/Data/Spawns/
 
 # Copy patch files and apply them
 COPY server/patches/ /patches/

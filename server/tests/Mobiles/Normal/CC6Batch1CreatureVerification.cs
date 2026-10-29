@@ -105,7 +105,10 @@ public class CC6Batch1CreatureVerification
         var spawnsDir = Path.Combine(Core.BaseDirectory, "Data", "Spawns");
         Assert.True(Directory.Exists(spawnsDir), $"no spawn data at {spawnsDir}");
 
-        var files = Directory.GetFiles(spawnsDir, "*.json", SearchOption.AllDirectories);
+        // Stock's files only: Data/Spawns/sos is the shard's own set (cc-P682, copies of stock wild spawners).
+        var files = Directory.GetFiles(spawnsDir, "*.json", SearchOption.AllDirectories)
+            .Where(f => !Path.GetRelativePath(spawnsDir, f).Replace('\\', '/').StartsWith("sos/", StringComparison.Ordinal))
+            .ToArray();
         Assert.True(files.Length > 100, $"expected pinned ModernUO's 109 spawn files, found {files.Length}");
 
         // entry name (lower case) -> number of spawner entries naming it, across every file the admin gump generates

@@ -823,19 +823,20 @@ Fact 'EveryStepOfTheOrderListIsARegisteredWorldCommandWithAFlagItsUsageLists' {
     }
 }
 
-Fact 'TheFreshWorldGroupIsTheFourteenSpawnFilesThenShameThenDespiseThenSave' {
+Fact 'TheFreshWorldGroupIsTheFifteenSpawnStepsThenShameThenDespiseThenSave' {
     $fresh = @($groups | Where-Object { $_.Key -eq 'fresh' })[0]
     $c = @($fresh.Items)
     $spawn = @($c | Where-Object { $_.Command -like '`[GenerateSpawners *' })
-    Assert-Equal 14 $spawn.Count 'reachability-audit section 5 lists twelve paths (the brief said ten); cc-P678 adds pre-UOML Haven''s two'
+    Assert-Equal 15 $spawn.Count 'reachability-audit section 5 lists twelve paths (the brief said ten); cc-P678 adds pre-UOML Haven''s two; cc-P682 the SoS set'
+    Assert-Equal '[GenerateSpawners Data/Spawns/sos/**/*.json' $spawn[14].Command 'cc-P682: the SoS set, after the stock files'
     $pinned = 'D:\UO\ModernUO-pinned\Distribution'
     if (Test-Path $pinned) {
-        foreach ($s in $spawn) {
+        foreach ($s in @($spawn | Select-Object -First 14)) {
             $rel = $s.Command.Substring('[GenerateSpawners '.Length)
             Assert-True (Test-Path (Join-Path $pinned $rel)) "$rel exists in pinned Distribution"
         }
     }
-    $rest = @($c | Select-Object -Skip 14 | ForEach-Object { $_.Command })
+    $rest = @($c | Select-Object -Skip 15 | ForEach-Object { $_.Command })
     Assert-Equal '[GenerateNewShame,[SetupDespise,[save' ($rest -join ',')
     Assert-True $fresh.CopyAll 'the fresh-world group copies as a whole'
 }

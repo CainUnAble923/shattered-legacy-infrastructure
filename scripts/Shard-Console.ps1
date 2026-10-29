@@ -6834,6 +6834,9 @@ $script:WorldSetupOrder = @(
                 'uoml/trammel/Vendors.json', 'uoml/trammel/TownsLife.json')) {
                 New-StockStep ('[GenerateSpawners Data/Spawns/' + $f) 'Developer' 'pinned. A spawn file ported content comes through. Re-running replaces, not duplicates.'
             }
+            # cc-P682 (SoS swap S10): the people of the author's new towns and keeps and the wild on his new land, our
+            # files in pinned's spawn format (server/data/Spawns/sos, made by shard-migration notes/cc-P682-tools).
+            (New-StockStep '[GenerateSpawners Data/Spawns/sos/**/*.json' 'Developer' 'pinned command, our data: the SoS new towns, keeps and new land (cc-P682). Re-running replaces, not duplicates.')
             (New-OrderStep 'GenerateNewShame')
             (New-OrderStep 'SetupDespise')
             (New-StockStep '[save' 'Administrator' 'pinned. Save after generation (docker/uo/SERVER.md:360).')

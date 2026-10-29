@@ -1,0 +1,9367 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "8eb67b11-dac1-5b1e-9e2a-4e328d637606",
+    "name": "island 1 forest 1",
+    "location": [
+      303,
+      3369,
+      3
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f295ee2f-7786-5902-b92c-6b7c80145c37",
+    "name": "island 1 grass 1",
+    "location": [
+      301,
+      3352,
+      2
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "0184c831-8ce4-5595-a651-dc4ba1ee1577",
+    "name": "island 1 grass 2",
+    "location": [
+      226,
+      3357,
+      0
+    ],
+    "map": "Trammel",
+    "count": 5,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "83a9f0ed-b792-5fdf-9edb-6ea603bcd9bf",
+    "name": "island 1 grass 3",
+    "location": [
+      274,
+      3320,
+      4
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f440f502-5b32-5c4c-8b90-c5581fca40a9",
+    "name": "island 1 jungle 1",
+    "location": [
+      259,
+      3147,
+      0
+    ],
+    "map": "Trammel",
+    "count": 6,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 26,
+    "walkingRange": 26,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f39a31e9-84fc-51de-a5ed-bc217886ead7",
+    "name": "island 105 jungle 1",
+    "location": [
+      3048,
+      2737,
+      2
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ddaf2e58-e65e-534d-8194-6c83bc7ab5f9",
+    "name": "island 107 jungle 1",
+    "location": [
+      3227,
+      2396,
+      6
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "facdce02-d936-5ed5-a4c8-320b710785a7",
+    "name": "island 119 dirt 1",
+    "location": [
+      3210,
+      1065,
+      0
+    ],
+    "map": "Trammel",
+    "count": 6,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "37ea9a07-483f-5f2b-b9fd-6714f2ddc71e",
+    "name": "island 119 forest 1",
+    "location": [
+      3275,
+      1099,
+      9
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3473bb07-7978-550f-88cc-5dc76193ab38",
+    "name": "island 119 forest 2",
+    "location": [
+      3182,
+      1058,
+      3
+    ],
+    "map": "Trammel",
+    "count": 6,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Mongbat",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Bogling",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Llama",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Gaman",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Rabbit",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "JackRabbit",
+        "maxCount": 6,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "cc40f3ec-6606-5e4b-bd0b-ae68fc3ac15f",
+    "name": "island 119 grass 1",
+    "location": [
+      3173,
+      1098,
+      0
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "58880456-99c2-5803-be10-cab2009ee2f0",
+    "name": "island 119 grass 2",
+    "location": [
+      3247,
+      1033,
+      2
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f13ba783-f27f-5a18-9930-414f9bf49a38",
+    "name": "island 13 grass 1",
+    "location": [
+      487,
+      686,
+      11
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "2ba623b1-4882-586a-9b4f-80bfe7a17ede",
+    "name": "island 134 forest 1",
+    "location": [
+      3291,
+      1777,
+      4
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Corpser",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Reaper",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Zombie",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3bddff64-8aa7-5d4e-85cc-101c5b49a9f9",
+    "name": "island 134 grass 1",
+    "location": [
+      3318,
+      1760,
+      2
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8f48a642-794e-59a3-9f17-0a186030f1d9",
+    "name": "island 134 jungle 1",
+    "location": [
+      3267,
+      1748,
+      2
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSerpent",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Mongbat",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "df2bea78-850f-5e3c-9742-51c04d0a1768",
+    "name": "island 155 forest 1",
+    "location": [
+      3449,
+      2934,
+      22
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fbe8f98e-38e9-5564-82ae-725e5dad4dd9",
+    "name": "island 155 forest 2",
+    "location": [
+      3565,
+      2833,
+      57
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Corpser",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "DireWolf",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Reaper",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Zombie",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a3f40a73-236d-53e5-945b-c506bc02960a",
+    "name": "island 155 forest 3",
+    "location": [
+      3392,
+      2859,
+      7
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "21ee574d-d910-56ad-9b57-16179bb83ca8",
+    "name": "island 155 forest 4",
+    "location": [
+      3596,
+      3040,
+      16
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f5597cdd-a1d8-5cf1-aaa6-bec4093379eb",
+    "name": "island 155 forest 5",
+    "location": [
+      3426,
+      2878,
+      11
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6ac2f6af-7fbb-55ea-b1e3-c1da62f7f9ac",
+    "name": "island 155 forest 6",
+    "location": [
+      3543,
+      3022,
+      14
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a24c5c3d-fb85-59b3-bb93-8768870bb950",
+    "name": "island 155 forest 7",
+    "location": [
+      3356,
+      2912,
+      17
+    ],
+    "map": "Trammel",
+    "count": 15,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Mongbat",
+        "maxCount": 14,
+        "probability": 100
+      },
+      {
+        "name": "Bogling",
+        "maxCount": 14,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Llama",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Gaman",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Rabbit",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "JackRabbit",
+        "maxCount": 5,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5579b487-5fc6-5df5-a3c3-51cf6bd7a97e",
+    "name": "island 155 grass 1",
+    "location": [
+      3628,
+      2838,
+      44
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 20,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "Imp",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4164ae0e-610e-5d33-bb62-06bcaeca35a7",
+    "name": "island 155 grass 2",
+    "location": [
+      3636,
+      2869,
+      49
+    ],
+    "map": "Trammel",
+    "count": 15,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Mongbat",
+        "maxCount": 10,
+        "probability": 100
+      },
+      {
+        "name": "Bogling",
+        "maxCount": 10,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Llama",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 15,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Rabbit",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "JackRabbit",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6ad8d952-8017-5c23-afcf-c8753884fb37",
+    "name": "island 16 dirt 1",
+    "location": [
+      619,
+      3744,
+      2
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 10,
+    "entries": [
+      {
+        "name": "spellbinder",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Zombie",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "306f9685-7bb9-580e-9450-628c3f935db5",
+    "name": "island 16 dirt 2",
+    "location": [
+      604,
+      3713,
+      0
+    ],
+    "map": "Trammel",
+    "count": 16,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 15,
+    "walkingRange": 15,
+    "entries": [
+      {
+        "name": "SavageShaman",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Savage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SavageRider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6915c8b6-4976-5260-8d4f-5aa9d2373001",
+    "name": "island 16 dirt 3",
+    "location": [
+      681,
+      3606,
+      0
+    ],
+    "map": "Trammel",
+    "count": 14,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 10,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "OrcBomber",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "OrcCaptain",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "913a3889-0f44-526c-8ed1-4bf505cbe796",
+    "name": "island 16 dirt 4",
+    "location": [
+      661,
+      3762,
+      4
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 15,
+    "walkingRange": 15,
+    "entries": [
+      {
+        "name": "Brigand",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "c20a40cc-2ee3-5cca-81e0-96a118835270",
+    "name": "island 16 grass 1",
+    "location": [
+      658,
+      3699,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "02455aaf-19e8-58bb-b22e-b26a3f201463",
+    "name": "island 162 grass 1",
+    "location": [
+      3634,
+      851,
+      0
+    ],
+    "map": "Trammel",
+    "count": 8,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "abb15749-63e9-5efb-9728-c866511f9a7c",
+    "name": "island 162 grass 2",
+    "location": [
+      3621,
+      791,
+      1
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d487fbca-b17c-5a21-82bb-f1ddd10733e5",
+    "name": "island 162 sand 1",
+    "location": [
+      3599,
+      801,
+      0
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "EarthElemental",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "18687ae4-237c-5a2b-8064-5f076515fadc",
+    "name": "island 17 forest 1",
+    "location": [
+      817,
+      3042,
+      9
+    ],
+    "map": "Trammel",
+    "count": 8,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Corpser",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Reaper",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Zombie",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e0dababb-e845-5904-9045-491085c5c8e7",
+    "name": "island 17 grass 1",
+    "location": [
+      870,
+      2990,
+      0
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4474e119-29c0-5ffa-8fcf-cbd5139ebcc2",
+    "name": "island 17 grass 2",
+    "location": [
+      778,
+      2999,
+      9
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b048c4dc-325f-5eb1-b43b-b94fc2db7595",
+    "name": "island 17 grass 3",
+    "location": [
+      792,
+      2889,
+      11
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Corpser",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "DireWolf",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Harpy",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Reaper",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fd849f15-5f61-52af-86e6-04fc887879e3",
+    "name": "island 181 dirt 1",
+    "location": [
+      4316,
+      2822,
+      10
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "SavageShaman",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Savage",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "SavageRider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fe22079e-cf84-59cc-bce0-b447c8007c16",
+    "name": "island 181 jungle 1",
+    "location": [
+      4211,
+      2875,
+      21
+    ],
+    "map": "Trammel",
+    "count": 10,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a9373216-ee55-5a2f-abb7-1e36aa5a0ef8",
+    "name": "island 181 jungle 2",
+    "location": [
+      4264,
+      2894,
+      15
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Lizardman",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "42196299-dfd3-5b35-830b-364d240016c2",
+    "name": "island 191 dirt 1",
+    "location": [
+      4529,
+      2831,
+      -4
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 10,
+    "entries": [
+      {
+        "name": "spellbinder",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Zombie",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d54defb3-b44d-58d8-a3b1-384da0461350",
+    "name": "island 191 dirt 2",
+    "location": [
+      4536,
+      2796,
+      2
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "c62e6b58-c727-596c-8d31-9aa142e56560",
+    "name": "island 191 dirt 3",
+    "location": [
+      4443,
+      2838,
+      8
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "56f61e2d-117e-5aa1-affd-faed4da5fd58",
+    "name": "island 191 dirt 4",
+    "location": [
+      4584,
+      2844,
+      6
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e54fa9bc-5afd-566d-ae2e-6a02c62f2fc9",
+    "name": "island 191 dirt 5",
+    "location": [
+      4578,
+      2805,
+      3
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4e7d87bf-8eb5-5165-a7b7-284df2cc3bdd",
+    "name": "island 191 grass 1",
+    "location": [
+      4528,
+      2847,
+      10
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fc0d051f-21f2-55fa-ac29-033a2494eb56",
+    "name": "island 192 sand 1",
+    "location": [
+      4452,
+      2710,
+      7
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "EarthElemental",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "0d1c14d4-96e4-5b16-ae59-fe4c147cafaa",
+    "name": "island 195 dirt 1",
+    "location": [
+      4453,
+      2652,
+      26
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e7a07107-3fed-5ea9-bb38-2cb5d5d7d8bd",
+    "name": "island 195 grass 1",
+    "location": [
+      4529,
+      2673,
+      13
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4128117c-b602-501d-a803-bc1b0bc6b0ee",
+    "name": "island 195 grass 2",
+    "location": [
+      4485,
+      2661,
+      35
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "34a752f3-1597-5744-ab60-0ecf8de96398",
+    "name": "island 198 grass 1",
+    "location": [
+      4615,
+      2570,
+      0
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8fe1043f-7183-5bf3-bb2a-4f8cebabb2b9",
+    "name": "island 2 forest 1",
+    "location": [
+      338,
+      3438,
+      0
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 24,
+    "walkingRange": 24,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ea5dcfba-9f25-59cb-9a71-d9b9008a83a6",
+    "name": "island 2 grass 1",
+    "location": [
+      291,
+      3533,
+      0
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d14b743f-cd99-5b14-afc9-239b7c6ba07a",
+    "name": "island 2 grass 2",
+    "location": [
+      326,
+      3497,
+      1
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 18,
+    "walkingRange": 18,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "0399d788-791a-5025-b730-1e5cd93453e3",
+    "name": "island 25 forest 1",
+    "location": [
+      1381,
+      3458,
+      4
+    ],
+    "map": "Trammel",
+    "count": 6,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ghoul",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Zombie",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5a95c2f6-4ea8-51ec-afe3-11843b5ad76f",
+    "name": "island 25 grass 1",
+    "location": [
+      1402,
+      3510,
+      6
+    ],
+    "map": "Trammel",
+    "count": 3,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7e8c691c-9a24-53e2-9a34-cb865064f2a1",
+    "name": "island 37 dirt 1",
+    "location": [
+      1788,
+      3804,
+      0
+    ],
+    "map": "Trammel",
+    "count": 5,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 15,
+    "walkingRange": 15,
+    "entries": [
+      {
+        "name": "SavageShaman",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Savage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SavageRider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4e71fbe6-8850-59f5-8e09-0799ab4b7c17",
+    "name": "island 37 forest 1",
+    "location": [
+      1820,
+      3880,
+      5
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b35c2215-76c5-528c-a848-5c4acbab03c9",
+    "name": "island 37 grass 1",
+    "location": [
+      1745,
+      3821,
+      0
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "bada7e9b-8b8d-50dc-b7f8-9723a64fd04e",
+    "name": "island 37 jungle 1",
+    "location": [
+      1717,
+      3802,
+      0
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Lizardman",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3bd6400f-e70a-593f-947d-3c0f79424404",
+    "name": "island 37 sand 1",
+    "location": [
+      1848,
+      3795,
+      1
+    ],
+    "map": "Trammel",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Scorpion",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "adf958c7-ac3b-5bb0-a408-470ab6c6af55",
+    "name": "island 4 grass 1",
+    "location": [
+      316,
+      3088,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "91c65cbb-becc-5101-9e2b-b67e72d36567",
+    "name": "island 5 forest 1",
+    "location": [
+      357,
+      3091,
+      0
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e09acc2e-963e-5e58-9e68-8c019166841d",
+    "name": "island 5 forest 2",
+    "location": [
+      442,
+      3299,
+      1
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Harpy",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8fde58c0-b22e-5d0b-adf9-3f772c04b886",
+    "name": "island 5 grass 1",
+    "location": [
+      477,
+      2958,
+      0
+    ],
+    "map": "Trammel",
+    "count": 8,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 8,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "c387e1ce-97bc-59d7-a68b-4f9cf3ba9d3b",
+    "name": "island 5 grass 2",
+    "location": [
+      452,
+      3274,
+      0
+    ],
+    "map": "Trammel",
+    "count": 4,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 20,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "Imp",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "c23c2b4f-003c-5076-83a8-9d7fb4f6d11a",
+    "name": "island 5 grass 3",
+    "location": [
+      448,
+      3158,
+      0
+    ],
+    "map": "Trammel",
+    "count": 9,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Mongbat",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 6,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "bdb2db5b-974b-5e49-9450-94db3b28c5ff",
+    "name": "island 5 grass 4",
+    "location": [
+      484,
+      2985,
+      0
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 25,
+    "walkingRange": 25,
+    "entries": [
+      {
+        "name": "Mongbat",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bogling",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Llama",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Rabbit",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "JackRabbit",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4f52d32d-a184-5b70-9fea-2fa2827b1669",
+    "name": "island 5 jungle 1",
+    "location": [
+      439,
+      3100,
+      0
+    ],
+    "map": "Trammel",
+    "count": 6,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Lizardman",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 6,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5a9f89ab-7cc9-5335-b79b-200fa14c1497",
+    "name": "island 51 forest 1",
+    "location": [
+      2004,
+      1713,
+      0
+    ],
+    "map": "Trammel",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "0a50aa3a-da57-598f-ba8d-1f65ad593190",
+    "name": "island 51 forest 2",
+    "location": [
+      1877,
+      1696,
+      13
+    ],
+    "map": "Trammel",
+    "count": 11,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Corpser",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "DireWolf",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Harpy",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Reaper",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 9,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "2c4051d9-f9fb-5d27-b32c-9dcfa66efc37",
+    "name": "island 51 forest 3",
+    "location": [
+      1923,
+      1794,
+      10
+    ],
+    "map": "Trammel",
+    "count": 9,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 25,
+    "walkingRange": 25,
+    "entries": [
+      {
+        "name": "Mongbat",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Bogling",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Llama",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Rabbit",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "JackRabbit",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3bdbce77-86ff-5fc8-adbd-7770b816c942",
+    "name": "island 51 grass 1",
+    "location": [
+      1981,
+      1807,
+      0
+    ],
+    "map": "Trammel",
+    "count": 9,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Corpser",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Reaper",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Zombie",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "40d01dbb-1431-5fdd-b65f-858a1f9ff67f",
+    "name": "island 1 forest 1",
+    "location": [
+      228,
+      3355,
+      0
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a473713c-f6c9-5547-8c33-6287cd680cb7",
+    "name": "island 1 grass 1",
+    "location": [
+      272,
+      3277,
+      0
+    ],
+    "map": "Felucca",
+    "count": 5,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "61fb9405-4924-5615-a300-ee63be618b88",
+    "name": "island 1 grass 2",
+    "location": [
+      330,
+      3219,
+      0
+    ],
+    "map": "Felucca",
+    "count": 5,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5e97a3bb-90ba-587d-ac98-b028023b6b49",
+    "name": "island 1 jungle 1",
+    "location": [
+      330,
+      3157,
+      0
+    ],
+    "map": "Felucca",
+    "count": 6,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "eeba88f7-952c-5fb0-9dd9-7ee97a15bba8",
+    "name": "island 105 jungle 1",
+    "location": [
+      3046,
+      2738,
+      2
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ebcf7644-ddbf-52d9-9710-90dca76320e7",
+    "name": "island 107 jungle 1",
+    "location": [
+      3228,
+      2402,
+      2
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "236cbf12-aa42-5d99-bcbb-5005b1cdc371",
+    "name": "island 119 dirt 1",
+    "location": [
+      3212,
+      1067,
+      0
+    ],
+    "map": "Felucca",
+    "count": 6,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "SavageShaman",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Savage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SavageRider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "dbcd263b-63f6-5528-a064-22d217a14f77",
+    "name": "island 119 forest 1",
+    "location": [
+      3198,
+      1059,
+      0
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d7c00e00-084b-51b2-9951-4b1a7acfd0e7",
+    "name": "island 119 forest 2",
+    "location": [
+      3176,
+      1097,
+      1
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fc85d1c7-8cc6-56a1-9351-5f4f918afc7a",
+    "name": "island 119 grass 1",
+    "location": [
+      3280,
+      1063,
+      2
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5df076c7-8276-53a5-9b2c-c98df0bd9027",
+    "name": "island 13 grass 1",
+    "location": [
+      486,
+      676,
+      22
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ghoul",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Zombie",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d59f9e40-2565-57f6-8502-1a3e68b9bb4c",
+    "name": "island 134 forest 1",
+    "location": [
+      3257,
+      1767,
+      0
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "58442bc9-053b-50f4-95fe-eb754b6480cb",
+    "name": "island 134 grass 1",
+    "location": [
+      3307,
+      1736,
+      1
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4910fb9c-4656-5b29-a72e-d9481fc7397d",
+    "name": "island 134 jungle 1",
+    "location": [
+      3306,
+      1744,
+      2
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b51c4a2c-f566-554b-ac78-805cde778342",
+    "name": "island 155 forest 1",
+    "location": [
+      3654,
+      3065,
+      6
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "42fe8ab0-dce2-5f98-9b10-9bc936261178",
+    "name": "island 155 forest 2",
+    "location": [
+      3545,
+      3030,
+      13
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "65bafe84-5357-5d9f-bcca-2d2dc49884bf",
+    "name": "island 155 forest 3",
+    "location": [
+      3479,
+      3044,
+      8
+    ],
+    "map": "Felucca",
+    "count": 5,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "466449bb-8ef2-523b-a4fe-615114a8fd13",
+    "name": "island 155 forest 4",
+    "location": [
+      3540,
+      2957,
+      10
+    ],
+    "map": "Felucca",
+    "count": 5,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Harpy",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 5,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "079b7842-c98b-5551-a63a-0bf34b24c8cd",
+    "name": "island 155 forest 5",
+    "location": [
+      3496,
+      3004,
+      12
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "68fdf555-5955-59ee-8842-b226f8e97ff6",
+    "name": "island 155 forest 6",
+    "location": [
+      3348,
+      2932,
+      6
+    ],
+    "map": "Felucca",
+    "count": 5,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Mongbat",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "1552882d-2d77-5f07-b39e-3c153637a855",
+    "name": "island 155 forest 7",
+    "location": [
+      3646,
+      2957,
+      6
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "99afb6ee-f2d0-5f21-bf49-178684556ce3",
+    "name": "island 155 forest 8",
+    "location": [
+      3406,
+      2962,
+      9
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "13a8d83b-5643-5c77-b11b-bf0d73e1538e",
+    "name": "island 155 forest 9",
+    "location": [
+      3419,
+      2881,
+      11
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e624f484-636f-538e-bd51-d0c5988a996b",
+    "name": "island 155 grass 1",
+    "location": [
+      3423,
+      2985,
+      6
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 20,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "Imp",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e2e01ca9-d0bb-5829-b31a-196f39f125b4",
+    "name": "island 155 grass 2",
+    "location": [
+      3567,
+      3010,
+      17
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSerpent",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Gorilla",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TropicalBird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WhippingVine",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "0d0e6c83-b326-5159-aa6c-6477c934ad59",
+    "name": "island 155 grass 3",
+    "location": [
+      3681,
+      3004,
+      5
+    ],
+    "map": "Felucca",
+    "count": 8,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e7a8910a-e488-5824-9c54-21101d4be108",
+    "name": "island 16 dirt 1",
+    "location": [
+      700,
+      3641,
+      2
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7289cb58-127b-591a-a62a-7288d64aab42",
+    "name": "island 16 dirt 2",
+    "location": [
+      681,
+      3708,
+      0
+    ],
+    "map": "Felucca",
+    "count": 16,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "SavageShaman",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Savage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SavageRider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a6cfb031-d9bc-5a56-b04f-643043ce649a",
+    "name": "island 16 dirt 3",
+    "location": [
+      595,
+      3720,
+      2
+    ],
+    "map": "Felucca",
+    "count": 14,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 10,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "OrcBomber",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "OrcCaptain",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a0a84e4e-5047-57a3-9f13-0e98efb52d80",
+    "name": "island 16 dirt 4",
+    "location": [
+      667,
+      3606,
+      0
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "2744adaf-eaf1-5c3b-8d44-a6646fce51a4",
+    "name": "island 16 grass 1",
+    "location": [
+      666,
+      3769,
+      4
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3d2ad144-fe3b-5d02-835e-dbdc6f2d814d",
+    "name": "island 162 grass 1",
+    "location": [
+      3704,
+      863,
+      0
+    ],
+    "map": "Felucca",
+    "count": 8,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "cdc49c12-965c-51ac-aa36-ddb70306ccf9",
+    "name": "island 162 grass 2",
+    "location": [
+      3652,
+      866,
+      0
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Mongbat",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f294d9e5-4020-5dca-85d0-6a253dcadb83",
+    "name": "island 162 sand 1",
+    "location": [
+      3755,
+      817,
+      1
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Scorpion",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "ff4c21dd-7310-5cc2-873f-5fd1c776ecad",
+    "name": "island 162 sand 2",
+    "location": [
+      3640,
+      745,
+      0
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Scorpion",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7c760e2d-99b2-57f9-84e2-fafacda923e2",
+    "name": "island 162 sand 3",
+    "location": [
+      3609,
+      761,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "GiantSpider",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Scorpion",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "36443ace-346a-5d14-8639-56d0368b6248",
+    "name": "island 17 forest 1",
+    "location": [
+      820,
+      3022,
+      7
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "1d3ce855-468b-59d3-b85d-2fd9e93a303b",
+    "name": "island 17 forest 2",
+    "location": [
+      819,
+      3059,
+      4
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Gargoyle",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "bae6c49b-fd6b-598c-ae9a-aae41a0525e7",
+    "name": "island 17 forest 3",
+    "location": [
+      862,
+      2980,
+      3
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Harpy",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "859f0490-55cf-554e-ad7e-e1ab34500156",
+    "name": "island 17 grass 1",
+    "location": [
+      834,
+      2985,
+      3
+    ],
+    "map": "Felucca",
+    "count": 8,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 8,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "24dc0cc1-9986-5afb-992b-7375a772c0c1",
+    "name": "island 181 dirt 1",
+    "location": [
+      4318,
+      2819,
+      10
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 15,
+    "walkingRange": 15,
+    "entries": [
+      {
+        "name": "Brigand",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "9f7f6630-3505-5e0f-817a-33c599d7b2a2",
+    "name": "island 181 jungle 1",
+    "location": [
+      4327,
+      2862,
+      26
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSerpent",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Gorilla",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TropicalBird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WhippingVine",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "73237795-e1f6-53fe-9eeb-a262627581dc",
+    "name": "island 181 jungle 2",
+    "location": [
+      4182,
+      2939,
+      22
+    ],
+    "map": "Felucca",
+    "count": 8,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Lizardman",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 8,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5493469a-883f-5f2d-bceb-ec351fc64585",
+    "name": "island 181 jungle 3",
+    "location": [
+      4269,
+      2823,
+      42
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Alligator",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "SilverSerpent",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Snake",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "6d887c39-b255-59bd-9d1b-57aa1bdbc114",
+    "name": "island 191 dirt 1",
+    "location": [
+      4496,
+      2839,
+      1
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 15,
+    "walkingRange": 15,
+    "entries": [
+      {
+        "name": "Brigand",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "80d08f0e-8d8c-54d6-b5af-52f977b99b2c",
+    "name": "island 191 dirt 2",
+    "location": [
+      4525,
+      2806,
+      -1
+    ],
+    "map": "Felucca",
+    "count": 14,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 10,
+    "walkingRange": 10,
+    "entries": [
+      {
+        "name": "Orc",
+        "maxCount": 8,
+        "probability": 100
+      },
+      {
+        "name": "OrcBomber",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "OrcCaptain",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7cef8e20-9684-55ae-9685-57d31147e00d",
+    "name": "island 191 dirt 3",
+    "location": [
+      4441,
+      2829,
+      8
+    ],
+    "map": "Felucca",
+    "count": 6,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "SavageShaman",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Savage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SavageRider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "74a92d71-c24a-5e7a-965a-4ea3d44f8f90",
+    "name": "island 191 grass 1",
+    "location": [
+      4582,
+      2860,
+      0
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "2a004359-e901-530a-bb32-39b8c94aa0e2",
+    "name": "island 192 sand 1",
+    "location": [
+      4591,
+      2709,
+      6
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "EarthElemental",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8a72aac6-0fcf-5925-9c26-b1d0902a3d8f",
+    "name": "island 192 sand 2",
+    "location": [
+      4542,
+      2697,
+      8
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "GiantSpider",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Scorpion",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "767004c3-c0c5-579e-8465-ad952d0a3792",
+    "name": "island 195 dirt 1",
+    "location": [
+      4497,
+      2655,
+      10
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "SavageShaman",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Savage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SavageRider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "81fd3e29-12f7-5e38-87d8-97648ed62ad3",
+    "name": "island 195 grass 1",
+    "location": [
+      4613,
+      2653,
+      1
+    ],
+    "map": "Felucca",
+    "count": 6,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "d34e6699-2786-57cc-bf1a-886057fb37fd",
+    "name": "island 198 grass 1",
+    "location": [
+      4559,
+      2579,
+      1
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Brigand",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Harpy",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Spectre",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8827802c-2640-5b08-b6d0-7635c6d72278",
+    "name": "island 198 sand 1",
+    "location": [
+      4585,
+      2538,
+      2
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "GiantSpider",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Scorpion",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e5e9e969-71d7-5951-9e35-7b8f27c75909",
+    "name": "island 2 forest 1",
+    "location": [
+      251,
+      3601,
+      0
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 20,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Mongbat",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "b5966641-15d0-5214-bb97-12802050862c",
+    "name": "island 2 grass 1",
+    "location": [
+      370,
+      3425,
+      0
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 20,
+    "walkingRange": 20,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "eefae937-489c-54de-9eb1-a729d914f603",
+    "name": "island 25 forest 1",
+    "location": [
+      1390,
+      3484,
+      2
+    ],
+    "map": "Felucca",
+    "count": 5,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Corpser",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "DireWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Reaper",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Zombie",
+        "maxCount": 5,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "755a0263-944d-51c6-8ebd-afa6305e79cb",
+    "name": "island 25 grass 1",
+    "location": [
+      1408,
+      3392,
+      1
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 16,
+    "walkingRange": 16,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "58f40b80-574c-5ea6-97db-ba97130bb098",
+    "name": "island 25 grass 2",
+    "location": [
+      1379,
+      3525,
+      0
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Wisp",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "80342b7b-0068-5a22-99a1-309ce3df9510",
+    "name": "island 37 dirt 1",
+    "location": [
+      1796,
+      3824,
+      0
+    ],
+    "map": "Felucca",
+    "count": 5,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "SavageShaman",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Savage",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "SavageRider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "OrcishLord",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8f929fb8-07a9-5fe4-8095-84f3ffb3ccbd",
+    "name": "island 37 forest 1",
+    "location": [
+      1745,
+      3789,
+      7
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "f965fef8-b5d2-5c3b-b27e-14eed7d18384",
+    "name": "island 37 grass 1",
+    "location": [
+      1822,
+      3895,
+      4
+    ],
+    "map": "Felucca",
+    "count": 6,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Harpy",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 6,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "46e97484-f1e3-52a8-b2da-03a3ef7e795c",
+    "name": "island 37 jungle 1",
+    "location": [
+      1721,
+      3823,
+      0
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Lizardman",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ratman",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "43820111-cea2-516e-ad7e-9c1ec0fedd08",
+    "name": "island 37 sand 1",
+    "location": [
+      1862,
+      3887,
+      1
+    ],
+    "map": "Felucca",
+    "count": 2,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "GiantSpider",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Scorpion",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "992822d1-3474-5c14-9d30-74133a5a52a8",
+    "name": "island 37 sand 2",
+    "location": [
+      1833,
+      3779,
+      7
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "GiantSpider",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Scorpion",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "0d10ec7f-4eb6-5d78-a660-27d72d06bec1",
+    "name": "island 4 grass 1",
+    "location": [
+      283,
+      3087,
+      1
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "01:00:00",
+    "maxDelay": "01:00:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Troll",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a2d90ace-4bf9-562e-8ccc-abc5a77fa366",
+    "name": "island 5 forest 1",
+    "location": [
+      372,
+      3101,
+      0
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "fe65c0aa-3ee8-5a4b-9b53-27d41289804b",
+    "name": "island 5 grass 1",
+    "location": [
+      407,
+      3127,
+      0
+    ],
+    "map": "Felucca",
+    "count": 3,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 3,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 3,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "5f567b53-2f60-5438-af86-2a7df8bc86f4",
+    "name": "island 5 grass 2",
+    "location": [
+      451,
+      3212,
+      0
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "2c3de011-9638-5b86-8c92-0d3e21b5c33d",
+    "name": "island 5 grass 3",
+    "location": [
+      534,
+      3116,
+      0
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "TimberWolf",
+        "maxCount": 7,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a6d85e8d-ce7c-5578-9b0e-40ba846a8bd7",
+    "name": "island 5 grass 4",
+    "location": [
+      423,
+      2913,
+      0
+    ],
+    "map": "Felucca",
+    "count": 4,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ghoul",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "HeadlessOne",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "OrcishMage",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Skeleton",
+        "maxCount": 4,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 4,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4493a41a-a7e0-52e7-9785-77eb3c96697d",
+    "name": "island 5 jungle 1",
+    "location": [
+      459,
+      3102,
+      0
+    ],
+    "map": "Felucca",
+    "count": 6,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 6,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "8cf647ae-ed33-5179-9a5a-0d126c4d1bf8",
+    "name": "island 51 forest 1",
+    "location": [
+      1929,
+      1779,
+      15
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a33d8c82-4092-5fd7-a9d1-eb765e86d3fa",
+    "name": "island 51 forest 2",
+    "location": [
+      2012,
+      1742,
+      -1
+    ],
+    "map": "Felucca",
+    "count": 5,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Ettin",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Lizardman",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Ogre",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 5,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "453a0537-2c0f-5bef-92e8-a66906e766f8",
+    "name": "island 51 forest 3",
+    "location": [
+      1991,
+      1796,
+      6
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "3c35fcc7-2b80-5e88-832b-9f1a7cd74a61",
+    "name": "island 51 forest 4",
+    "location": [
+      1925,
+      1824,
+      21
+    ],
+    "map": "Felucca",
+    "count": 7,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "Boar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Cougar",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Goat",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Horse",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Panther",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Pig",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "Sheep",
+        "maxCount": 7,
+        "probability": 100
+      },
+      {
+        "name": "BlackBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GrizzlyBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "BrownBear",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "TimberWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "GreyWolf",
+        "maxCount": 5,
+        "probability": 100
+      },
+      {
+        "name": "WanderingHealer",
+        "maxCount": 1,
+        "probability": 100
+      },
+      {
+        "name": "Bird",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Eagle",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "GreatHart",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Hind",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Bull",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Cow",
+        "maxCount": 2,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "7d70c26e-c82d-50e8-83f1-f94e990863be",
+    "name": "island 51 grass 1",
+    "location": [
+      1905,
+      1837,
+      5
+    ],
+    "map": "Felucca",
+    "count": 9,
+    "minDelay": "00:20:00",
+    "maxDelay": "00:20:00",
+    "team": 0,
+    "homeRange": 30,
+    "walkingRange": 30,
+    "entries": [
+      {
+        "name": "AirElemental",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "WaterElemental",
+        "maxCount": 2,
+        "probability": 100
+      },
+      {
+        "name": "Corpser",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "DireWolf",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Ettin",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Gargoyle",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Gazer",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Harpy",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Orc",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Reaper",
+        "maxCount": 9,
+        "probability": 100
+      },
+      {
+        "name": "Troll",
+        "maxCount": 9,
+        "probability": 100
+      }
+    ]
+  }
+]

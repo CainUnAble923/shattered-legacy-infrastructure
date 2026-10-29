@@ -1,0 +1,194 @@
+[
+  {
+    "$type": "Spawner",
+    "guid": "88ae33f1-f962-5058-8bdc-9eef3d24485f",
+    "name": "Fort Stormhammer garrison 1",
+    "location": [
+      1490,
+      1323,
+      2
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e46e74d4-96e2-54c3-891e-c0b1486cab36",
+    "name": "Fort Stormhammer garrison 2",
+    "location": [
+      1487,
+      1320,
+      2
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "422cbde2-a61b-5d3b-a8ae-c69cf7cb775a",
+    "name": "Fort Stormhammer garrison 3",
+    "location": [
+      1490,
+      1301,
+      2
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "4a51774d-95e6-5c22-ac82-49ab731e7104",
+    "name": "Fort Stormhammer garrison 4",
+    "location": [
+      1490,
+      1298,
+      2
+    ],
+    "map": "Trammel",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "a1936cf5-8d5a-5b1a-a68e-9b4a69b811b1",
+    "name": "Fort Stormhammer garrison 1",
+    "location": [
+      1490,
+      1323,
+      2
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "40c2577b-1011-5315-9188-49be7cd53726",
+    "name": "Fort Stormhammer garrison 2",
+    "location": [
+      1487,
+      1320,
+      2
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "593ffbb9-96be-58fd-89fc-aa8f9dd31dee",
+    "name": "Fort Stormhammer garrison 3",
+    "location": [
+      1490,
+      1301,
+      2
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  },
+  {
+    "$type": "Spawner",
+    "guid": "e1f3ca29-3ead-540f-82c0-e1f62b324a1f",
+    "name": "Fort Stormhammer garrison 4",
+    "location": [
+      1490,
+      1298,
+      2
+    ],
+    "map": "Felucca",
+    "count": 1,
+    "minDelay": "00:05:00",
+    "maxDelay": "00:10:00",
+    "team": 0,
+    "homeRange": 0,
+    "walkingRange": 1,
+    "entries": [
+      {
+        "name": "OrderGuard",
+        "maxCount": 1,
+        "probability": 100
+      }
+    ]
+  }
+]
