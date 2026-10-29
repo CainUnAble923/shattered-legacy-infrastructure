@@ -894,6 +894,8 @@ apply_patch "$PATCHES/RegionJsonSerializer-shard-maps.patch"
 # shard-migration notes/cc-P679-sos-s4-gates-and-teleporters.md; pinned by SosGatesVerification.
 apply_patch "$PATCHES/PublicMoongate-sos-gates.patch"
 apply_patch "$PATCHES/GenTeleporter-sos-teleporters.patch"
+# cc-P685 (SoS swap S12): Felucca's champion altars on the SoS land (three Lost Lands sites move, LL08's eject point)
+apply_patch "$PATCHES/GenChamps-sos-sites.patch"
 apply_patch "$PATCHES/GoLocations-sos-go-menu.patch"
 # cc-P680 (SoS swap S5): pinned's Trammel and Felucca decoration on the Siege of Sosaria land. [Decorate reads every cfg
 # of a folder; our decided copies of Britannia, Trammel and Felucca (unchanged entries kept, entries whose building

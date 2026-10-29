@@ -1,0 +1,29 @@
+--- a/Projects/UOContent/Engines/CannedEvil/GenChamps.cs
++++ b/Projects/UOContent/Engines/CannedEvil/GenChamps.cs
+@@ -28,6 +28,9 @@
+         CommandSystem.Register("GenChamps", AccessLevel.Developer, ChampGen_OnCommand);
+     }
+ 
++    // Shattered Legacy (cc-P685, SoS swap S12): on the Siege of Sosaria land LL06, LL07 and LL11 stand on new ground
++    // (P696's option A), and LL08 keeps its altar with a new eject point; the rest are pinned's. Checked on the map by
++    // shard-migration notes/cc-P685-tools/champs.py.
+     private static readonly ChampionEntry[] LLLocations =
+     [
+         new(typeof(LLChampionSpawn), new Point3D(5511, 2360, 42), Map.Felucca, new Point3D(5439, 2323, 26), Map.Felucca),
+@@ -35,12 +38,12 @@
+         new(typeof(LLChampionSpawn), new Point3D(5549, 2640, 16), Map.Felucca, new Point3D(5645, 2696, -8), Map.Felucca),
+         new(typeof(LLChampionSpawn), new Point3D(5636, 2916, 37), Map.Felucca, new Point3D(5721, 2949, 28), Map.Felucca),
+         new(typeof(LLChampionSpawn), new Point3D(6035, 2943, 50), Map.Felucca, new Point3D(6098, 2997, 17), Map.Felucca),
+-        new(typeof(LLChampionSpawn), new Point3D(5265, 3171, 105), Map.Felucca, new Point3D(5314, 3232, 2), Map.Felucca),
+-        new(typeof(LLChampionSpawn), new Point3D(5282, 3368, 50), Map.Felucca, new Point3D(5215, 3318, 3), Map.Felucca),
+-        new(typeof(LLChampionSpawn), new Point3D(5207, 3637, 20), Map.Felucca, new Point3D(5263, 3687, 0), Map.Felucca),
++        new(typeof(LLChampionSpawn), new Point3D(5432, 3220, 19), Map.Felucca, new Point3D(5423, 3183, -3), Map.Felucca),
++        new(typeof(LLChampionSpawn), new Point3D(5324, 3428, 15), Map.Felucca, new Point3D(5296, 3428, -5), Map.Felucca),
++        new(typeof(LLChampionSpawn), new Point3D(5207, 3637, 20), Map.Felucca, new Point3D(5209, 3609, 0), Map.Felucca),
+         new(typeof(LLChampionSpawn), new Point3D(5954, 3475, 25), Map.Felucca, new Point3D(6013, 3529, 0), Map.Felucca),
+         new(typeof(LLChampionSpawn), new Point3D(5982, 3882, 20), Map.Felucca, new Point3D(5929, 3820, -1), Map.Felucca),
+-        new(typeof(LLChampionSpawn), new Point3D(5724, 3991, 41), Map.Felucca, new Point3D(5774, 4041, 26), Map.Felucca),
++        new(typeof(LLChampionSpawn), new Point3D(5768, 4024, 20), Map.Felucca, new Point3D(5768, 3996, 0), Map.Felucca),
+         new(typeof(LLChampionSpawn), ChampionSpawnType.ForestLord, new Point3D(5559, 3757, 21), Map.Felucca, new Point3D(5513, 3878, 3), Map.Felucca)
+     ];
+ 
