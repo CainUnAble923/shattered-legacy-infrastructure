@@ -29,6 +29,12 @@ Example:
 - Restoring a Jacob's Pickaxe no longer refuses ingots kept in your bank.
 -->
 
+## 2026.10.29
+
+### Changed
+- Test shard: the Wakening Isle has real beaches now: sand runs down to the water and the surf breaks along the shore all the way round, instead of a jagged edge of square sand tiles against the sea. You can walk the sand right to the water's edge.
+- Test shard: the Wakening Isle is a tropical island: palms, banana trees and jungle trees, ferns, fan plants and grasses, thick in the island's middle and thinning out toward the beaches. The road, every lesson stop and the beach where you wake stay clear.
+
 ## 2026.10.28.12
 
 ### Fixed

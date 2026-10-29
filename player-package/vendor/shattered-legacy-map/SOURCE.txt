@@ -19,6 +19,13 @@ trammel.mapops   facet 1 (Trammel): the Rootdeep Burrows (x 5136-5247, y 1128-12
                  shore end at the beach's height, so the planks are one step up. P720 built it on the SoS copy; this
                  stock-land file (release/isle-20261028, cc-P722) takes the same lines for its 44 changed blocks, which
                  sit on void in both maps (their B fingerprints are the same on both).
+                 cc-P725, 2026-10-29 (Chase 10-28: shore tiles, a tropical island): the isle rebuilt in place
+                 by the same driver: the coast laid with OSI's surf pieces (0x179D-0x17B2) by a rule learned from
+                 stock Trammel's sandy beaches (notes/cc-P725-tools/survey_rule.py, shore-rule.json), the first sand
+                 ring at -4 in place of P662's plain water diamond, and the island planted with stock tropical art
+                 (palms, banana, o'hii, OSI's jungle trees whole, ferns, pampas). P725 built it on both bases; this
+                 stock-land file (release/isle-20261028, cc-P733) takes the same isle lines (they sit on void in both
+                 maps), and is byte for byte P725's stock-base build (notes/cc-P725-tools/trammel-stock-base.mapops).
 
 Format: shard-migration scripts/mapbuild/mapops.py (one line per changed land cell, L x y tile z; per static added,
 S+ x y z id hue; per EA static removed, S- x y z id hue; B lines fingerprint EA's blocks so the applier can say
