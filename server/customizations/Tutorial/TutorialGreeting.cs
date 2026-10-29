@@ -89,9 +89,9 @@ public static class TutorialGreeting
         ClusterFTutorial.IsParticipant(pm) && !_usedGuide.Contains(pm.Serial) &&
         ClusterFTutorial.RecordOf(pm) is { StationsDone.Count: 0 } && TutorialCoreTrials.Current(pm) == null;
 
-    /// <summary>A trainee whose next lesson is the farm and who has not chosen the pet.</summary>
+    /// <summary>A trainee whose next lesson is the farm and whom Wren has not started on it (cc-P726: the pitchfork).</summary>
     public static bool NeedsWren(PlayerMobile pm) =>
-        TutorialFarm.StepOf(pm) == 1 && ClusterFTutorial.RecordOf(pm) is { } record &&
+        !TutorialFarm.CombatStarted(pm) && ClusterFTutorial.RecordOf(pm) is { } record &&
         System.Linq.Enumerable.FirstOrDefault(ClusterFTutorial.CoreLeft(record))?.Key == TutorialFarm.CoreStation;
 
     /// <summary>A trainee on the League lesson.</summary>

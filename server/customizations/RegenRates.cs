@@ -63,6 +63,9 @@ namespace Server.Misc
             // cc-P128: the Barrab hemolymph concentrate (ServUO RegenRates.cs:236).
             points += BarrabHemolymphConcentrate.HPRegenBonus(from);
 
+            // cc-P726: the isle cloak and Wren's pitchfork (TutorialStarterGear): more on the Wakening Isle, a little elsewhere.
+            points += Server.Tutorial.TutorialStarterGear.RegenHits(from);
+
             if (Core.ML && from is PlayerMobile) // does racial bonus go before/after?
             {
                 if (from.Race == Race.Human)

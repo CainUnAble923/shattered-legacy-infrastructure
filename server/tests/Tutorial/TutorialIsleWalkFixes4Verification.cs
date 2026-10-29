@@ -318,56 +318,50 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
     // ---------------------------------------------------------------- 4 and 5
 
     [Fact]
-    public void TheFarmFightStartsWithThePitchforkThenWarModeThenThePetCommands()
+    public void TheFarmFightStartsWithThePitchforkThenWarModeThenThePests()
     {
         using var p = new Player();
         Awake(p);
         PlayCoreUntil(p.Pm, "core.farm");
-        var pet = TutorialFarm.ChoosePet(p.Pm, "dog")!;
-        Assert.Equal(2, TutorialFarm.StepOf(p.Pm));
+        Assert.Equal(1, TutorialFarm.StepOf(p.Pm));
+        Assert.Null(TutorialFarm.ChoosePet(p.Pm, "dog")); // cc-P726: no pet before the pests
 
-        // The pitchfork at once, with Wren's line on holding it; the commands do not count yet.
-        Assert.NotNull(p.Pm.Backpack!.FindItemByType<TutorialPitchfork>());
+        // The pitchfork at once, with Wren's line on holding it.
         Assert.Equal(TutorialFarm.PitchforkLine, TutorialFarm.BeginCombat(p.Pm));
+        Assert.NotNull(p.Pm.Backpack!.FindItemByType<TutorialPitchfork>());
         Assert.Contains("double-click it", TutorialFarm.PitchforkLine);
-        pet.ControlTarget = p.Pm;
-        pet.ControlOrder = OrderType.Follow;
-        Assert.False(TutorialFarm.CheckCommands(p.Pm));
-        Assert.DoesNotContain(TutorialFarm.FollowKey, p.Record.StationsDone);
+        Assert.False(TutorialFarm.PestPartOn(p.Pm));
 
         Hold(p.Pm);
         Assert.False(TutorialFarm.CheckCommands(p.Pm));
         Assert.Contains(TutorialFarm.WeaponKey, p.Record.StationsDone);
         Assert.Equal(TutorialFarm.WeaponDoneLine, TutorialFarm.BeginCombat(p.Pm)); // war mode next
-        Assert.DoesNotContain(TutorialFarm.WarKey, p.Record.StationsDone);
-
-        p.Pm.Warmode = true;
-        Assert.False(TutorialFarm.CheckCommands(p.Pm));
-        Assert.Contains(TutorialFarm.WarKey, p.Record.StationsDone);
-        Assert.Equal(OrderType.Stay, pet.ControlOrder); // Wren told it to stay: the commands now
-        Assert.Contains(TutorialFarm.CommandsLine, TutorialFarm.WarDoneLine);
         Assert.False(TutorialFarm.PestPartOn(p.Pm));
 
-        pet.ControlTarget = p.Pm;
-        pet.ControlOrder = OrderType.Follow;
-        Assert.False(TutorialFarm.CheckCommands(p.Pm));
-        pet.ControlOrder = OrderType.Guard;
+        // War mode: Wren opens the gate on the pests (cc-P726: the commands come with the pet, after them).
+        p.Pm.Warmode = true;
         Assert.True(TutorialFarm.CheckCommands(p.Pm));
+        Assert.Contains(TutorialFarm.WarKey, p.Record.StationsDone);
         Assert.True(TutorialFarm.PestPartOn(p.Pm));
+        Assert.DoesNotContain("all follow", TutorialFarm.WarDoneLine);
 
-        // The commands done under the old order: armed and in war mode, straight on to the pests.
+        // A record from the old orders (the pet and its commands first): armed and in war mode, straight on to the pests,
+        // and done once they are cleared.
         using var q = new Player();
         Awake(q);
         PlayCoreUntil(q.Pm, "core.farm");
-        var qpet = TutorialFarm.ChoosePet(q.Pm, "cat")!;
+        q.Record.PetClaimed = true;
         q.Record.StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey]);
-        qpet.ControlOrder = OrderType.Guard;
+        TutorialFarm.BeginCombat(q.Pm);
         Hold(q.Pm);
         Assert.False(TutorialFarm.CheckCommands(q.Pm));
         q.Pm.Warmode = true;
         Assert.True(TutorialFarm.CheckCommands(q.Pm));
         Assert.True(TutorialFarm.PestPartOn(q.Pm));
-        Assert.Equal(OrderType.Guard, qpet.ControlOrder); // not told to stay again
+        TutorialFarm.NoteStruck(q.Pm);
+        for (var i = 0; i < TutorialFarm.PestsToClear; i++) { TutorialFarm.CountPest(q.Pm, false); }
+        Assert.Equal(4, TutorialFarm.StepOf(q.Pm));
+        Assert.Contains("core.farm", q.Record.StationsDone);
     }
 
     // ---------------------------------------------------------------- 6
@@ -382,8 +376,7 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         var map = TutorialWorld.MapOf(p.Pm)!;
         var wren = p.Add(new TutorialFarmhand());
         wren.MoveToWorld(TutorialWorld.Ground(map, TutorialFarm.FarmhandSpot), map);
-        p.Record.PetClaimed = true;
-        p.Record.StationsDone.UnionWith([TutorialFarm.WeaponKey, TutorialFarm.WarKey, TutorialFarm.FollowKey, TutorialFarm.GuardKey]);
+        p.Record.StationsDone.UnionWith([TutorialFarm.WeaponKey, TutorialFarm.WarKey]); // cc-P726: armed, no pet yet
         Assert.True(TutorialFarm.PestPartOn(p.Pm));
 
         // The count reached without a strike of their own: Wren says what is missing, never "0 more".
@@ -410,7 +403,7 @@ public class TutorialIsleWalkFixes4Verification : IDisposable
         p.Pm.CloseGump<TutorialTrialGump>();
         Assert.True(TutorialCoreTrials.Reopen(p.Pm));
         Assert.Equal(TutorialFarm.EchoPestsLine, p.Pm.FindGump<TutorialTrialGump>()!.Now);
-        Assert.Equal(3, TutorialFarm.Talk(p.Pm, wren));
+        Assert.Equal(2, TutorialFarm.Talk(p.Pm, wren)); // cc-P726: the pet, as thanks
         Assert.True(TutorialCoreTrials.Reopen(p.Pm));
         Assert.Null(p.Pm.FindGump<TutorialTrialGump>()!.Now);
 

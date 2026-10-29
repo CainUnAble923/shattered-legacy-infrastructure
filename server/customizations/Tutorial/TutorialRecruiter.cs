@@ -123,13 +123,16 @@ namespace Server.Tutorial
             var forced = ServerConfiguration.GetOrUpdateSetting("tutorial.seedOnWorldLoad", false);
             if (missingOnLoad || forced)
             {
-                EventSink.WorldLoad += () =>
+                // cc-P726: on the first tick after the load, not inside it: an entity made during World.Load reaches
+                // World.Items only once the load ends, so the copies' top-up counted nothing ("nothing missing") and left
+                // what it placed off the copy's reset list (seen in the P726 bot run's shard log).
+                EventSink.WorldLoad += () => Timer.DelayCall(TimeSpan.Zero, () =>
                 {
                     foreach (var line in SeedMissing(forced))
                     {
                         Console.WriteLine($"[Tutorial] {line}");
                     }
-                };
+                });
             }
 
             CommandSystem.Register("ClusterFSeedTutorial", AccessLevel.Administrator, OnSeed);

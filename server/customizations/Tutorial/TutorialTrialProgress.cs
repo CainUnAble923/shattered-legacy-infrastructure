@@ -6,7 +6,8 @@ public enum TutorialAction
     FirstMark, SecondMark, Equipped, OpenedBag, SaidPhrase, EchoDeath,
     HealerOffer, Resurrected, Deposited, UsedGate, TalkedToLeague, VisionStarted, VisionFinished,
     FarmDone, // cc-P663: Wren's three steps (TutorialFarm.StepOf reaches 4)
-    OpenedPaperdoll // cc-P718: the trainee opened their own character window (EventSink.PaperdollRequest)
+    OpenedPaperdoll, // cc-P718: the trainee opened their own character window (EventSink.PaperdollRequest)
+    Healed // cc-P726: a bandage that really healed, in the healing lesson
 }
 
 public sealed class TutorialTrialProgress(string key)
@@ -19,7 +20,15 @@ public sealed class TutorialTrialProgress(string key)
     public bool Observe(TutorialAction action)
     {
         if (Done) { return false; }
-        TutorialAction[] expected = Key switch
+        var expected = Expected(Key);
+        if (Step >= expected.Length || action != expected[Step]) { return false; }
+        Done = ++Step == expected.Length;
+        return Done;
+    }
+
+    /// <summary>A lesson's evidence, in order (cc-P726: the quest log lists them as its steps).</summary>
+    public static TutorialAction[] Expected(string key) =>
+        key switch
         {
             "core.movement" => [TutorialAction.FirstMark, TutorialAction.SecondMark],
             "core.paperdoll" => [TutorialAction.Equipped],
@@ -28,6 +37,7 @@ public sealed class TutorialTrialProgress(string key)
             "core.backpack" => [TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag],
             "core.chat" => [TutorialAction.SaidPhrase],
             "core.farm" => [TutorialAction.FarmDone],
+            "core.healing" => [TutorialAction.Healed],
             "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
             "core.banking" => [TutorialAction.Deposited],
             "core.travel" => [TutorialAction.UsedGate],
@@ -35,9 +45,5 @@ public sealed class TutorialTrialProgress(string key)
             "core.loop" => [TutorialAction.VisionStarted, TutorialAction.VisionFinished],
             _ => []
         };
-        if (Step >= expected.Length || action != expected[Step]) { return false; }
-        Done = ++Step == expected.Length;
-        return Done;
-    }
 }
 

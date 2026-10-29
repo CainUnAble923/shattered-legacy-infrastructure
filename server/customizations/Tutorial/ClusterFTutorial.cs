@@ -189,7 +189,8 @@ public static class ClusterFTutorial
     {
         if (!record.StationsDone.Contains(key))
         {
-            return false;
+            // cc-P726: bandaging was the farm's third step; a record that did it there has done core.healing.
+            return key == TutorialFarm.HealingStationKey && record.StationsDone.Contains(TutorialFarm.HealKey);
         }
 
         if (key != TutorialStations.LastCore)
