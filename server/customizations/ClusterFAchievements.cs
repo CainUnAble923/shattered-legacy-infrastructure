@@ -1467,7 +1467,12 @@ public static partial class ClusterFAchievementSystem // partial: cc-P231's joke
     // -- Event hooks -------------------------------------------------------
 
     [OnEvent(nameof(PlayerMobile.PlayerLoginEvent))]
-    public static void OnLogin(PlayerMobile pm)
+    public static void OnLogin(PlayerMobile pm) =>
+        // cc-P728: on a first login that wakes on the Wakening Isle's beach, the login's earns (each a window, a fanfare and
+        // a loot box) come after the trainee has stood up.
+        Server.Tutorial.TutorialWake.Hold(pm, () => GrantAtLogin(pm));
+
+    public static void GrantAtLogin(PlayerMobile pm)
     {
         if (pm.Account is not IAccount acct) return;
 

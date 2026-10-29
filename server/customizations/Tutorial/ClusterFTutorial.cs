@@ -125,6 +125,12 @@ public static class ClusterFTutorial
         {
             ClusterFLoops.Graduate(pm);
         }
+
+        // cc-P728: windows held for a wake-up that did not play (every copy in use, no client) come now.
+        if (!TutorialWake.IsLying(pm))
+        {
+            TutorialWake.Release(pm);
+        }
     }
 
     /// <summary>

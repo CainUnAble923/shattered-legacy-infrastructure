@@ -355,6 +355,63 @@ public static class TutorialCopies
         logger.Information("Tutorial copy {N} seeded ({Count} pieces): {Result}", slot.N, slot.Placed.Count, result);
     }
 
+    /// <summary>
+    /// cc-P728 item 7: at world load, each seeded copy gets what its seeding places now and it lacks (a piece a later update
+    /// added, as P721 added Pip), and those pieces join what its reset removes. Copies not seeded yet are seeded at their next
+    /// claim, as before. Returns the lines to log.
+    /// </summary>
+    public static List<string> TopUpSeeded()
+    {
+        var lines = new List<string>();
+        foreach (var slot in Slots)
+        {
+            if (!slot.Seeded || MapOf(slot) is not { } map)
+            {
+                continue;
+            }
+
+            var before = new HashSet<Serial>(Pieces(map));
+            var result = SeedCopy(map);
+            var added = Pieces(map).Where(s => !before.Contains(s)).ToList();
+            slot.Placed.AddRange(added);
+            if (added.Count > 0)
+            {
+                lines.Add($"Seed on load, copy {slot.N}: placed {added.Count} missing pieces. {result}");
+                logger.Information("Tutorial copy {N} topped up at load ({Count} pieces): {Result}", slot.N, added.Count, result);
+            }
+        }
+
+        if (lines.Count == 0)
+        {
+            lines.Add("Seed on load, the copies: nothing missing.");
+        }
+
+        return lines;
+    }
+
+    // What a copy holds that seeding counts: its items on the ground and its non-player mobiles.
+    private static List<Serial> Pieces(Map map)
+    {
+        var list = new List<Serial>();
+        foreach (var item in World.Items.Values)
+        {
+            if (!item.Deleted && item.Map == map && item.Parent == null)
+            {
+                list.Add(item.Serial);
+            }
+        }
+
+        foreach (var m in World.Mobiles.Values)
+        {
+            if (!m.Deleted && m.Map == map && !m.Player)
+            {
+                list.Add(m.Serial);
+            }
+        }
+
+        return list;
+    }
+
     /// <summary>Staff: [Tutorial copies.</summary>
     public static IEnumerable<string> Report()
     {

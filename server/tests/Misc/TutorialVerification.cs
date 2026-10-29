@@ -349,8 +349,8 @@ public class TutorialVerification : IDisposable
         Assert.Contains("core.backpack", p.Record.StationsDone);
         ClusterFTutorial.RunStation(p.Pm, TutorialStations.Find("core.paperdoll")!);
         // The fake host has no tiledata; give this practice item's fake its real equipment layer.
-        // cc-P718: the cloak waits on the clothes table.
-        var cloak = WakeningIsleCloak.OnTable(p.Pm, TutorialWorld.MapOf(p.Pm))!;
+        // cc-P728: the cloak waits in a chest by the clothes rack.
+        var cloak = TutorialCloakChest.Find(p.Pm, TutorialWorld.MapOf(p.Pm)!)!.FindItemByType<WakeningIsleCloak>()!;
         cloak.Layer = Layer.Cloak;
         Assert.True(p.Pm.EquipItem(cloak));
         ShardTestClock.Advance(TimeSpan.FromSeconds(0.5));

@@ -10,10 +10,10 @@
 //      lesson; alive again with things on the body, an arrow back to it.
 //   4. The isle's gain pace covers Focus and Meditation too.
 //   5. The vision: lit from its second beat with braziers, the Stranger walks up and faces the Gem to strike, 61 s long.
-//   6. The first arrival lies on the sand (frozen, dark) and gets up after a few seconds with the arrow to Tamsin; a later
-//      trip to the isle does not.
-//   7. Wren hands one kept pitchfork after the commands; the pests wait for it in hand and war mode, and for one pest
-//      struck by the trainee.
+//   6. The first arrival lies on the sand (frozen, dark) and gets up (cc-P728: at their first move) with the arrow to
+//      Tamsin; a later trip to the isle does not.
+//   7. Wren hands one kept pitchfork (cc-P728: first, before war mode and the commands); the pests wait for it in hand,
+//      war mode and the commands, and for one pest struck by the trainee.
 
 #nullable enable
 
@@ -143,11 +143,11 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         }
     }
 
-    /// <summary>Into the tutorial on the isle, awake (the wake-up run to its end).</summary>
+    /// <summary>Into the tutorial on the isle, awake (cc-P728: up at the first move).</summary>
     private static void Awake(Player p)
     {
         TutorialTestStart.Begin(p.Pm);
-        ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialWake.Seconds + 1));
+        Assert.True(TutorialWake.OnMoveRequest(p.Pm));
         Assert.False(TutorialWake.IsLying(p.Pm));
     }
 
@@ -366,9 +366,9 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         Assert.True(p.Pm.Frozen);
         Assert.True(TutorialWake.LightOf(p.Pm) > 10); // dark
 
-        ShardTestClock.Advance(TimeSpan.FromSeconds(TutorialWake.Seconds - 1));
+        TutorialWake.Advance(p.Pm, 10);
         Assert.True(TutorialWake.IsLying(p.Pm)); // still down
-        ShardTestClock.Advance(TimeSpan.FromSeconds(2));
+        Assert.True(TutorialWake.OnMoveRequest(p.Pm)); // cc-P728: up at the first move
         Assert.False(TutorialWake.IsLying(p.Pm));
         Assert.False(p.Pm.Frozen);
         Assert.Null(TutorialWake.LightOf(p.Pm));
@@ -388,12 +388,8 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         Awake(p);
         PlayCoreUntil(p.Pm, "core.farm");
         var pet = TutorialFarm.ChoosePet(p.Pm, "dog")!;
-        pet.ControlTarget = p.Pm;
-        pet.ControlOrder = OrderType.Follow;
-        TutorialFarm.CheckCommands(p.Pm);
-        pet.ControlOrder = OrderType.Guard;
-        Assert.False(TutorialFarm.CheckCommands(p.Pm));
 
+        // cc-P728: the pitchfork comes as the combat part starts, before war mode and the commands.
         var fork = p.Pm.Backpack!.FindItemByType<TutorialPitchfork>();
         Assert.NotNull(fork);
         Assert.Equal(LootType.Blessed, fork!.LootType);
@@ -410,6 +406,12 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         Assert.Contains("Tab", TutorialFarm.WeaponDoneLine);
 
         p.Pm.Warmode = true;
+        Assert.False(TutorialFarm.CheckCommands(p.Pm)); // cc-P728: then the commands
+        Assert.Contains(TutorialFarm.WarKey, p.Record.StationsDone);
+        pet.ControlTarget = p.Pm;
+        pet.ControlOrder = OrderType.Follow;
+        TutorialFarm.CheckCommands(p.Pm);
+        pet.ControlOrder = OrderType.Guard;
         Assert.True(TutorialFarm.CheckCommands(p.Pm));
         Assert.True(TutorialFarm.PestPartOn(p.Pm));
 
