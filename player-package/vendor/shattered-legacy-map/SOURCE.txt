@@ -30,6 +30,12 @@ trammel.mapops   facet 1 (Trammel): the Rootdeep Burrows (x 5136-5247, y 1128-12
                  stock Trammel's sandy beaches (notes/cc-P725-tools/survey_rule.py, shore-rule.json), the first sand
                  ring at -4 in place of P662's plain water diamond, and the island planted with stock tropical art
                  (palms, banana, o'hii, OSI's jungle trees whole, ferns, pampas). Same 875 blocks; 4,618 S+ lines.
+                 cc-P687, 2026-10-29 (SoS swap S14): the author's cliff seams dressed near where players go: on
+                 every bare grass, dirt, sand, forest, jungle or snow tile within 40 of a town, road or moongate
+                 that stands 20 or more above its south or east neighbour (a new seam: not the same one on stock),
+                 OSI's tall grey boulders (0x1357-0x135C) at the low side's Z, one more each 20 Z, each under the
+                 tile's walking Z (notes/cc-P687-tools/dress.py). S14's five closure boxes are fenced instead.
+                 8,389 S+ lines on 6,143 faces.
 
 Format: shard-migration scripts/mapbuild/mapops.py (one line per changed land cell, L x y tile z; per static added,
 S+ x y z id hue; per EA static removed, S- x y z id hue; B lines fingerprint EA's blocks so the applier can say
