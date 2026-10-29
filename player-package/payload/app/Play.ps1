@@ -334,7 +334,10 @@ if (-not $reachable) {
 # Launch-Settings.ps1: keeps the saved login, rewrites only what the launcher owns.
 Write-LaunchSettings -Path $settingsPath -Target $target -UoDir $uoDir -ClientVersion $clientVersion -Test:$Test
 # cc-P719: a new character starts walking, with its paperdoll closed; a profile that already exists is never changed.
-$null = Initialize-NewProfileDefaults -ProfilesDir (Join-Path $taz 'Data\Profiles')
+# cc-P729: and opens no TazUO page at its first login: the default names the version of the client started here.
+$clientDir = $taz
+if ($target.ClientDir) { $clientDir = $target.ClientDir }
+$null = Initialize-NewProfileDefaults -ProfilesDir (Join-Path $taz 'Data\Profiles') -ClientDir $clientDir
 
 Write-Host ''
 Write-Host "  $label" -ForegroundColor Cyan

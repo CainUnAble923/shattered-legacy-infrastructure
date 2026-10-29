@@ -195,16 +195,48 @@ function Write-LaunchSettings {
 # with the paperdoll closed; Options > Gameplay > Movement > Always run turns running on.
 $NewProfileDefaults = [ordered]@{ always_run = $false; sl_open_paperdoll_at_login = $false }
 
-# Writes $ProfilesDir\default.json only where there is none, so a default the player saved (Options > Profile,
-# "Set as default") is kept, and a character that already has a profile.json never reads it: a returning player's
-# settings and layout stay theirs. Returns $true when it wrote the file.
+# cc-P729: the page TazUO opens at a character's first login is its own "TazUO Version History" gump (a changelog
+# note, the TazUO Wiki and Discord links). There is no switch for it: TazUO opens it whenever the profile's
+# last_version_history_shown is not the client's version, then stores the version (TazUO 3212623f,
+# WorldViewportGump.cs:108-114; the version is TazUO.dll's AssemblyVersion, CUOEnviroment.Version, "5.31.2.0" today).
+# So a new character's default carries the version of the client being started, and the page never opens for it.
+# The same branch also fetches TazUO's dev-branch API.py (a script editor's stub) from GitHub; a new character
+# skips that too.
+$NewProfileVersionKey = 'last_version_history_shown'
+
+# The AssemblyVersion of $ClientDir\TazUO.dll as TazUO prints it ("5.31.2.0"), or $null when there is none to read.
+function Get-TazUOClientVersion {
+    param([string]$ClientDir)
+    if (-not $ClientDir) { return $null }
+    $dll = Join-Path $ClientDir 'TazUO.dll'
+    if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) { return $null }
+    try { return [Reflection.AssemblyName]::GetAssemblyName($dll).Version.ToString() } catch { return $null }
+}
+
+# Writes $ProfilesDir\default.json where there is none, so a character that already has a profile.json never reads
+# it: a returning player's settings and layout stay theirs. A default the player saved (Options > Profile, "Set as
+# default": a whole profile) is kept byte for byte. One the launcher wrote itself (only the launcher's own keys, as
+# cc-P719 wrote it) is brought up to date: cc-P729's version key added, or moved to a newer client's version.
+# -ClientDir is the folder of the TazUO being started. Returns $true when it wrote the file.
 function Initialize-NewProfileDefaults {
-    param([string]$ProfilesDir)
+    param([string]$ProfilesDir, [string]$ClientDir)
+    $want = [ordered]@{}
+    foreach ($k in $NewProfileDefaults.Keys) { $want[$k] = $NewProfileDefaults[$k] }
+    $version = Get-TazUOClientVersion -ClientDir $ClientDir
+    if ($version) { $want[$NewProfileVersionKey] = $version }
+    $json = $want | ConvertTo-Json
     $f = Join-Path $ProfilesDir 'default.json'
-    if (Test-Path -LiteralPath $f) { return $false }
+    if (Test-Path -LiteralPath $f) {
+        $now = [IO.File]::ReadAllText($f)
+        try { $have = $now | ConvertFrom-Json } catch { return $false }
+        $ownKeys = @($NewProfileDefaults.Keys) + $NewProfileVersionKey
+        $names = @($have.PSObject.Properties | ForEach-Object { $_.Name })
+        if (@($names | Where-Object { $ownKeys -notcontains $_ }).Count -gt 0) { return $false }   # the player's own
+        if (-not $version -or $have.$NewProfileVersionKey -eq $version) { return $false }
+    }
     New-Item -ItemType Directory -Path $ProfilesDir -Force | Out-Null
     # No BOM, as Write-LaunchSettings.
-    [IO.File]::WriteAllText($f, ($NewProfileDefaults | ConvertTo-Json), (New-Object Text.UTF8Encoding $false))
+    [IO.File]::WriteAllText($f, $json, (New-Object Text.UTF8Encoding $false))
     return $true
 }
 
