@@ -1,0 +1,23 @@
+Wakening Isle addons (cc-P724, TutorialIsleAddons.cs): credits and terms
+
+Each is a ServUO/RunUO community script from servuo.dev, downloaded 2026-10-28 at Chase's request and kept for
+reference (never built or run from there) in D:\UO\third-party\code\<folder>. Ported to ModernUO here: the same
+stock-art pieces at the same offsets, as Wakening Isle decoration. No terms were stated for any of them; as with the
+other community work we use, the authors are credited, the work ships only inside the private repo and the shard, and
+it is not reposted. All four use stock Ultima Online art only: no client change.
+
+- Shipwreck (the west-facing one) by Celestial: "Shipwrecks! East, West and North facing".
+  https://www.servuo.dev/archive/shipwrecks-east-west-and-north-facing.1123/ (folder celestial-shipwrecks)
+  Ported: WakeningIsleShipwreckAddon, 20 pieces from ShipwreckWest_Addon.cs.
+
+- Lighthouse by Milva: "New Lighthouse".
+  https://www.servuo.dev/archive/new-lighthouse.157/ (folder new-lighthouse)
+  Ported: WakeningIsleLighthouseAddon, 3 pieces from NewLighthouseAddon.cs.
+
+- Moongate frame by Carl Hamilton: "MoongateStructure ADDON".
+  https://www.servuo.dev/archive/moongatestructure-addon.2275/ (folder moongate-structure)
+  Ported: WakeningIsleMoongateFrameAddon, 88 pieces and 3 lanterns from MoongateStructure.cs.
+
+- Brass fountain by Lagatha: "New Fountions".
+  https://www.servuo.dev/archive/new-fountions.1516/ (folder lagatha-brass-fountains)
+  Ported: WakeningIsleBrassFountain, BrassFountian's art (0xA62A/0xA62B) from Fountians.cs.
