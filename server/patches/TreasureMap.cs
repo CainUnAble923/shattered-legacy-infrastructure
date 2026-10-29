@@ -18,6 +18,8 @@
 //   - ResetLocation assigns the new location: ServUO computes one and discards it, so a reset only un-decoded the map.
 //   - A guardian is hued only when it spawned (ServUO dereferences the spawn before its null check).
 //   - OnChestOpened tells ClusterFAchievementSystem (the shard's "dug up a treasure map chest" trigger, built waiting for it).
+//   - ValidateLocation refuses ClusterFSosTreasureLand's tiles (cc-P684, SoS swap S11): S14's unfinished land, and on
+//     Felucca Trammel's towns and dungeons (the same SoS land, before S13 redraws Felucca's regions).
 //   - Creatures pinned and ours lack are out of the spawn tables (the list is in the notes).
 
 using System;
@@ -476,6 +478,11 @@ public partial class TreasureMap : MapItem
     public static bool ValidateLocation(int x, int y, Map map)
     {
         var lt = map.Tiles.GetLandTile(x, y);
+
+        if (ClusterFSosTreasureLand.Refused(x, y, lt.Z, map))
+        {
+            return false;
+        }
 
         // A host with no tile data (the test host) has no land table: nothing validates, and the caller's cap holds.
         if (TileData.LandTable == null || lt.ID < 0 || lt.ID >= TileData.LandTable.Length)
