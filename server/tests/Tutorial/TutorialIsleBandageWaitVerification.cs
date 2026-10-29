@@ -364,7 +364,7 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         TutorialTestStart.Begin(p.Pm);
         Assert.True(TutorialWorld.IsOnIsle(p.Pm));
         Assert.True(TutorialWake.IsLying(p.Pm));
-        Assert.True(p.Pm.Frozen);
+        Assert.False(p.Pm.Frozen); // cc-P732: held down by refusing their moves, not frozen
         Assert.True(TutorialWake.LightOf(p.Pm) > 10); // dark
 
         TutorialWake.Advance(p.Pm, 10);
@@ -372,7 +372,7 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         Assert.True(TutorialWake.OnMoveRequest(p.Pm)); // cc-P728: up at the first move
         Assert.False(TutorialWake.IsLying(p.Pm));
         Assert.False(p.Pm.Frozen);
-        Assert.Null(TutorialWake.LightOf(p.Pm));
+        Assert.Equal(TutorialWake.DawnLight[0], TutorialWake.LightOf(p.Pm)); // cc-P732: the dawn, then the isle's own
 
         // A later trip to the isle (remedial, a copy reset) does not lie them down again.
         TutorialStart.SendToIsle(p.Pm);
