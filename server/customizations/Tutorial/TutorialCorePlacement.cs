@@ -43,6 +43,7 @@ public static class TutorialCorePlacement
         "core.paperdoll" => Ground(ClothesTable), // cc-P718: the table the cloak lies on
         "core.chat" => Ground(ChatSignpost), // cc-P718: the post itself, not the stop in front of it
         "core.farm" => Ground(TutorialFarm.FarmhandSpot),
+        "core.healing" => TutorialFarm.PipBench, // cc-P726: Pip on his bench
         "core.death" => DeathSpot,
         "core.banking" => BankerSpot,
         "core.league" => ElaraSpot,
@@ -58,6 +59,7 @@ public static class TutorialCorePlacement
         "core.paperdoll" => Ground(TutorialWorld.Rack),
         "core.chat" => Ground(TutorialWorld.Signpost),
         "core.farm" => Ground(TutorialWorld.FarmGate),
+        "core.healing" => Ground(new Point2D(6690, 3979)), // the farmhouse door's step
         "core.death" => Ground(TutorialWorld.Yard),
         "core.banking" => Ground(TutorialWorld.BankStop),
         "core.league" => Ground(TutorialWorld.LodgeStop),
@@ -78,6 +80,7 @@ public static class TutorialCorePlacement
         "core.paperdoll" => new Point2D(6665, 3993),
         "core.chat" => new Point2D(6692, 3991),
         "core.farm" => new Point2D(6714, 3981),
+        "core.healing" => HealingSign,
         "core.death" => new Point2D(6736, 3996),
         "core.banking" => new Point2D(6762, 3982),
         "core.league" => new Point2D(6780, 3994),
@@ -87,6 +90,12 @@ public static class TutorialCorePlacement
     };
 
     public static Point3D SignSpot(string key) => Ground(SignPoint(key));
+
+    /// <summary>
+    /// cc-P726: the healing lesson's signpost, outside the farmhouse door (6690,3978) to the south-west, clear of its steps
+    /// (6689-6691,3979) and its own sign (6692,3979). The seeder's fit check refuses the isle if it is blocked.
+    /// </summary>
+    public static readonly Point2D HealingSign = new(6688, 3980);
 
     /// <summary>cc-P720 item 3: the lesson sign's name, shown on a single click: "Lesson 5: The farm: ...".</summary>
     public static string SignName(string key)

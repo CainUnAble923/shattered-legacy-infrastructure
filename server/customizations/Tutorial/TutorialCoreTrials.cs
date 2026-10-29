@@ -146,7 +146,8 @@ public static class TutorialCoreTrials
         "core.backpack" => "Follow the arrow to the camp beside the road. First open your character window: double-click your own character (two quick left clicks on yourself), or click the paperdoll button. Then double-click the backpack picture in that window, and inside your backpack double-click the blue practice bag.",
         "core.paperdoll" => "Follow the arrow to the table by the clothes rack: a chest appears there for you, with your blue cloak of the Wakening Isle inside. Double-click the chest to open it. To move a thing, click it, hold the left mouse button down, move the mouse, and let go: that is drag and drop. Drag the cloak onto your character's picture in the character window to wear it, or into your backpack and double-click it there. If you already wear a cloak, drag it into your backpack first. The cloak is yours to keep.",
         "core.chat" => $"Follow the arrow to the signpost. Press Enter, type '{Phrase}', then press Enter again to speak. The Journal records what you say.",
-        "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Choose your pet, hold the pitchfork she gives you and switch to war mode (press Tab), teach your pet its commands, clear the pests in the cabbage rows, then heal Pip with a bandage.",
+        "core.farm" => "Follow the arrow east along the road to the farm gate and double-click Wren the Farmhand, who wears a straw hat. Hold the pitchfork she gives you and switch to war mode (press Tab), clear the pests in the cabbage rows, then go back to Wren: she gives you a pet of your own and teaches its commands.",
+        "core.healing" => "Follow the arrow into the farmhouse by the field: Pip, the farm boy, sits hurt on the bench inside. Double-click a bandage in your backpack (this lesson gives you some), then click Pip. A bandage takes a few seconds: stand still until you see 'You finish applying the bandages'.",
         "core.death" => "Follow the arrow into the training yard to the pale gray rat, double-click it, and click Ready. After you die, double-click Sera beside it and click Resurrect to return to life.",
         "core.banking" => "Follow the arrow through the practice bank's door in the trades square to Merrin the banker and say 'bank' to open your bank box. Drag the blue practice token, a small blue pile of coins in your backpack, into that box.",
         "core.league" => "Follow the arrow to the League lodge and double-click the door on its north side to enter. Double-click Elara Voss to finish this lesson; you can read about the League without joining.",
@@ -228,6 +229,12 @@ public static class TutorialCoreTrials
         Show(pm, trial);
         // cc-P663: farm steps finished before the farm was a core station (or before this start) count at once.
         if (station.Key == "core.farm" && TutorialFarm.StepOf(pm) == 4) { Observe(pm, TutorialAction.FarmDone); }
+        // cc-P726: the healing lesson hands its bandages and points at Pip; a heal done at the farm before counts at once.
+        if (station.Key == TutorialFarm.HealingStationKey)
+        {
+            if (TutorialFarm.Has(pm, TutorialFarm.HealKey)) { Observe(pm, TutorialAction.Healed); }
+            else { TutorialFarm.BeginHealing(pm); }
+        }
     }
 
     private static void Show(PlayerMobile pm, Trial trial)
@@ -363,6 +370,13 @@ public static class TutorialCoreTrials
         pm.MoveToWorld(TutorialCorePlacement.GhostSpot, TutorialWorld.MapOf(pm));
         ClusterFTutorial.SystemLine(pm, "You are a ghost. Double-click Sera beside you and click Resurrect to return to life.");
         Point(pm, TutorialCorePlacement.HealerSpot, "Sera the healer");
+    }
+
+    /// <summary>cc-P726: a bandage healed in the healing lesson: core.healing is finished.</summary>
+    public static void HealingFinished(PlayerMobile pm)
+    {
+        if (IsDoing(pm, TutorialFarm.HealingStationKey)) { Observe(pm, TutorialAction.Healed); }
+        else { ClusterFTutorial.CompleteStation(pm, TutorialFarm.HealingStationKey); }
     }
 
     /// <summary>cc-P663: Wren's farm steps are all done (TutorialFarm.StepOf is 4): core.farm is finished.</summary>

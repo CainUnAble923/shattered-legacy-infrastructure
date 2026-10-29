@@ -105,6 +105,7 @@ public class TutorialFirstPlayVerification : IDisposable
         "core.backpack" => [TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag], // cc-P718: the character window first
         "core.chat" => [TutorialAction.SaidPhrase],
             "core.farm" => [TutorialAction.FarmDone],
+            "core.healing" => [TutorialAction.Healed],
         "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
         "core.banking" => [TutorialAction.Deposited],
         "core.travel" => [TutorialAction.UsedGate],

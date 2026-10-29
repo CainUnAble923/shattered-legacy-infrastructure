@@ -157,6 +157,7 @@ public class TutorialIsleVerification : IDisposable
             "core.paperdoll" => [TutorialAction.Equipped],
             "core.chat" => [TutorialAction.SaidPhrase],
             "core.farm" => [TutorialAction.FarmDone],
+            "core.healing" => [TutorialAction.Healed],
             "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
             "core.banking" => [TutorialAction.Deposited],
             "core.league" => [TutorialAction.TalkedToLeague],
@@ -186,7 +187,7 @@ public class TutorialIsleVerification : IDisposable
     public void TheCoreRunsWestToEastWithTheFarmAndTravelLast()
     {
         Assert.Equal(
-            ["core.movement", "core.backpack", "core.paperdoll", "core.chat", "core.farm", "core.death", "core.banking",
+            ["core.movement", "core.backpack", "core.paperdoll", "core.chat", "core.farm", "core.healing", "core.death", "core.banking",
              "core.league", "core.loop", "core.travel"],
             TutorialStations.Core.Select(s => s.Key).ToArray());
 
@@ -205,7 +206,7 @@ public class TutorialIsleVerification : IDisposable
         ClusterFTutorial.RunStation(pm, TutorialStations.Find("core.farm")!);
         Assert.Null(TutorialCoreTrials.Current(pm));
 
-        foreach (var key in new[] { "core.chat", "core.farm", "core.death", "core.banking", "core.league" })
+        foreach (var key in new[] { "core.chat", "core.farm", "core.healing", "core.death", "core.banking", "core.league" })
         {
             Play(pm, key);
             Assert.False(ClusterFTutorial.CoreDone(t.Record));
@@ -216,7 +217,7 @@ public class TutorialIsleVerification : IDisposable
         Assert.True(ClusterFTutorial.IsDone(t.Record, "core.travel"));
         Assert.True(ClusterFTutorial.CoreDone(t.Record));
         Assert.Equal(TutorialState.InWings, t.Record.State);
-        Assert.Equal(10, t.Record.StationsDone.Count(k => k.StartsWith("core.", StringComparison.Ordinal)));
+        Assert.Equal(11, t.Record.StationsDone.Count(k => k.StartsWith("core.", StringComparison.Ordinal))); // cc-P726: core.healing
     }
 
     // ---------------------------------------------------------------- 2

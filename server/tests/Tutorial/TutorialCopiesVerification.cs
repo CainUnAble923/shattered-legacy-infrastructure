@@ -193,8 +193,8 @@ public class TutorialCopiesVerification : IDisposable
         // cc-P718: past the pet commands, so the pests fight them.
         RecordOf(a).StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.WeaponKey, TutorialFarm.WarKey]);
         RecordOf(b).StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.WeaponKey, TutorialFarm.WarKey]);
-        Assert.Equal(2, TutorialFarm.StepOf(a));
-        Assert.Equal(2, TutorialFarm.StepOf(b));
+        Assert.Equal(1, TutorialFarm.StepOf(a)); // cc-P726: armed, on the pests (the pet comes after)
+        Assert.Equal(1, TutorialFarm.StepOf(b));
 
         var mine = Pests(a.Map);
         var theirs = Pests(b.Map);

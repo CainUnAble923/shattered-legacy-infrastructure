@@ -118,6 +118,7 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         "core.backpack" => [TutorialAction.OpenedPaperdoll, TutorialAction.OpenedBag],
         "core.chat" => [TutorialAction.SaidPhrase],
         "core.farm" => [TutorialAction.FarmDone],
+        "core.healing" => [TutorialAction.Healed],
         "core.death" => [TutorialAction.EchoDeath, TutorialAction.HealerOffer, TutorialAction.Resurrected],
         "core.banking" => [TutorialAction.Deposited],
         "core.travel" => [TutorialAction.UsedGate],
@@ -157,8 +158,8 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         Awake(p);
         PlayCoreUntil(p.Pm, "core.farm");
         p.Record.PetClaimed = true;
-        p.Record.StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.WeaponKey, TutorialFarm.WarKey, TutorialFarm.PestsKey]);
-        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+        p.Record.StationsDone.UnionWith([TutorialFarm.FollowKey, TutorialFarm.GuardKey, TutorialFarm.WeaponKey, TutorialFarm.WarKey, TutorialFarm.PestsKey, TutorialFarm.CoreStation]);
+        Assert.True(TutorialFarm.HealingOn(p.Pm)); // cc-P726: the healing lesson, after the farm
         var pip = p.Add(new TutorialWoundedHelper());
         pip.MoveToWorld(TutorialWorld.Ground(p.Pm.Map!, TutorialFarm.PipSpot), p.Pm.Map);
         p.Pm.MoveToWorld(new Point3D(pip.X, pip.Y + 1, pip.Z), pip.Map);
@@ -219,13 +220,13 @@ public class TutorialIsleBandageWaitVerification : IDisposable
 
         // A failed try: the step stays open, and he stays hurt.
         TutorialFarm.BandageFumbled!(p.Pm, pip);
-        Assert.Equal(3, TutorialFarm.StepOf(p.Pm));
+        Assert.True(TutorialFarm.HealingOn(p.Pm)); // cc-P726: the lesson stays open
         Assert.Equal(hurt, pip.Hits);
 
         // A bandage that heals him finishes the step; he is cut again a little later.
         pip.Hits = hurt + 5;
         TutorialFarm.BandageHealed!(p.Pm, pip);
-        Assert.Equal(4, TutorialFarm.StepOf(p.Pm));
+        Assert.False(TutorialFarm.HealingOn(p.Pm)); // cc-P726: the healing lesson is done
         ShardTestClock.Advance(TutorialWoundedHelper.WoundAgainAfter + TimeSpan.FromSeconds(1));
         Assert.Equal(Math.Max(1, pip.HitsMax / 3), pip.Hits);
     }
@@ -387,9 +388,8 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         using var p = new Player();
         Awake(p);
         PlayCoreUntil(p.Pm, "core.farm");
-        var pet = TutorialFarm.ChoosePet(p.Pm, "dog")!;
-
-        // cc-P728: the pitchfork comes as the combat part starts, before war mode and the commands.
+        // cc-P726: the pitchfork comes as the fight starts, before war mode and the pests; the pet after them.
+        TutorialFarm.BeginCombat(p.Pm);
         var fork = p.Pm.Backpack!.FindItemByType<TutorialPitchfork>();
         Assert.NotNull(fork);
         Assert.Equal(LootType.Blessed, fork!.LootType);
@@ -406,13 +406,8 @@ public class TutorialIsleBandageWaitVerification : IDisposable
         Assert.Contains("Tab", TutorialFarm.WeaponDoneLine);
 
         p.Pm.Warmode = true;
-        Assert.False(TutorialFarm.CheckCommands(p.Pm)); // cc-P728: then the commands
-        Assert.Contains(TutorialFarm.WarKey, p.Record.StationsDone);
-        pet.ControlTarget = p.Pm;
-        pet.ControlOrder = OrderType.Follow;
-        TutorialFarm.CheckCommands(p.Pm);
-        pet.ControlOrder = OrderType.Guard;
         Assert.True(TutorialFarm.CheckCommands(p.Pm));
+        Assert.Contains(TutorialFarm.WarKey, p.Record.StationsDone);
         Assert.True(TutorialFarm.PestPartOn(p.Pm));
 
         // The pests: the pet's kills alone do not finish it; one struck by the trainee does.

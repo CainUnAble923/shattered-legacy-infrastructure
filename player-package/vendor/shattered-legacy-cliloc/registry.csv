@@ -20,3 +20,4 @@ number,text,used_by,added
 1900014,"Start with the tutorial (recommended): wake on the Wakening Isle, learn the basics along one road, then take the moongate to New Haven.","character creation city list, Tutorial Island description (TutorialStart.Cities)",cc-P663
 1900015,Skip the tutorial: start in New Haven.,"character creation city list, New Haven (skip) description (TutorialStart.Cities)",cc-P663
 1900016,"Locked: your account's first character starts on Tutorial Island. New Haven opens once a character finishes or skips the tutorial.","character creation city list, New Haven shown locked until the account graduates or skips (TutorialStart.Cities)",cc-P717
+1900017,Pet Info,"evo pet context menu for its owner (EvoPetInfo.PetInfoEntry)",cc-P726
