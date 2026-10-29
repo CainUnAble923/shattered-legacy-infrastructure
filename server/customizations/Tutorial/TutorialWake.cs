@@ -17,6 +17,15 @@
 // while down ends the lie at once. The washed-ashore moment comes first: the first login's other windows and welcome
 // lines (the patch notes, the first achievement and its fanfare, the welcome lines) wait in Hold until the trainee has
 // stood up, and come HeldDelay later. Notes: shard-migration notes/cc-P728-isle-walkthrough-fixes-4.md.
+//
+// cc-P732 (P731 in the real client): TazUO sends no step or turn while the server marks the player Frozen (its
+// PlayerMobile.Walk checks IsParalyzed), so the freeze made "Move to get up." do nothing until the safety. The trainee is
+// no longer frozen: the move patch refuses their moves while they lie (the client snaps back) and the first one, a step
+// or a turn, gets them up. TazUO also ends a server animation on the standing frame, so the death animation played once
+// showed them standing; the lying pose is now the death animation played backward from its last frames with the longest
+// frame delay (HoldPose: TazUO draws frame 5, then holds frames 4 and 3, all on the ground, about 20 s each), sent again
+// every HoldEverySeconds. The dark stays until they stand (it came up after 4 s, and the first light packet went out
+// before the client was in the world), then a short dawn. Notes: shard-migration notes/cc-P732-isle-wake-pose.md.
 
 #nullable enable
 
@@ -35,19 +44,30 @@ public static class TutorialWake
     public static readonly TimeSpan HeldDelay = TimeSpan.FromSeconds(2);
     public const int DieAnimation = 21;   // the human death animation (fall)
     public const int DieFrames = 6;
+    // cc-P732: the held pose. Backward from frame HoldFrames (5, flat on the ground) at the longest delay (TazUO: 80 ms x
+    // (delay + 1) a frame, so 20.5 s on each of frames 4 and 3), sent again every HoldEverySeconds.
+    public const int HoldFrames = 5;
+    public const int HoldDelay = 255;
+    public const int HoldEverySeconds = 20;
+    public const int DarkLight = 24;     // 0 day, 30 near black
+    public static readonly int[] DawnLight = [14, 6]; // after standing, one a second
     public const int WaveSound = 0x12;    // "wave01_l"
     public const string LyingLine = "You wake on cold sand, soaked and aching. Waves wash over your boots...";
     public const string MoveHintLine = "Move to get up.";
 
     private sealed class Lie
     {
-        public int Light = 24; // 0 day, 30 near black
+        public int Light = DarkLight;
         public int Seconds;
+        public int Poses; // cc-P732: how many times the held pose was sent
         public Action? Up;
         public TimerExecutionToken Timer;
     }
 
     private static readonly Dictionary<Serial, Lie> _lying = new();
+
+    // cc-P732: the dawn after standing, the light level until it is back to the isle's own.
+    private static readonly Dictionary<Serial, int> _dawn = new();
 
     // Each trainee's first-login windows and lines, held until they have stood up (Hold, Release).
     private static readonly Dictionary<Serial, List<Action>> _held = new();
@@ -67,7 +87,11 @@ public static class TutorialWake
 
     public static bool IsLying(Mobile m) => _lying.ContainsKey(m.Serial);
 
-    public static int? LightOf(Mobile m) => _lying.TryGetValue(m.Serial, out var l) ? l.Light : null;
+    public static int? LightOf(Mobile m) =>
+        _lying.TryGetValue(m.Serial, out var l) ? l.Light : _dawn.TryGetValue(m.Serial, out var d) ? d : null;
+
+    /// <summary>cc-P732 (tests): how many times the lying pose has been sent to <paramref name="m"/>, or -1 when not lying.</summary>
+    public static int PosesSent(Mobile m) => _lying.TryGetValue(m.Serial, out var l) ? l.Poses : -1;
 
     /// <summary>FoldRegion.AlterLightLevel: the waking light, for this trainee alone.</summary>
     public static void AlterLight(Mobile m, ref int global, ref int personal)
@@ -95,9 +119,9 @@ public static class TutorialWake
         EnsureHooks();
         var lie = new Lie { Up = up };
         _lying[pm.Serial] = lie;
-        pm.Frozen = true;
+        _dawn.Remove(pm.Serial);
         pm.CheckLightLevels(true);
-        pm.Animate(DieAnimation, DieFrames, 1, true, false, 0);
+        HoldPose(pm, lie);
         pm.NetState.SendSoundEffect(WaveSound, pm.Location);
         ClusterFTutorial.SystemLine(pm, LyingLine);
         Timer.StartTimer(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), () => Tick(pm, lie), out lie.Timer);
@@ -113,6 +137,13 @@ public static class TutorialWake
         }
     }
 
+    /// <summary>cc-P732: the death animation backward from the ground, frame by frame at the longest delay.</summary>
+    private static void HoldPose(PlayerMobile pm, Lie lie)
+    {
+        pm.Animate(DieAnimation, HoldFrames, 1, false, false, HoldDelay);
+        lie.Poses++;
+    }
+
     private static void Tick(PlayerMobile pm, Lie lie)
     {
         if (!_lying.TryGetValue(pm.Serial, out var current) || current != lie)
@@ -122,13 +153,16 @@ public static class TutorialWake
         }
 
         var s = ++lie.Seconds;
-        if (s == 2)
+        // cc-P732: the dark and the pose again a second in (the login's went out before the client was in the world),
+        // then the pose every HoldEverySeconds; the light stays dark until they stand.
+        if (s == 1)
         {
-            SetLight(pm, lie, 14);
+            pm.CheckLightLevels(true);
         }
-        else if (s == 4)
+
+        if (s % HoldEverySeconds == 1)
         {
-            SetLight(pm, lie, 6);
+            HoldPose(pm, lie);
         }
 
         if (s % WaveEverySeconds == 2)
@@ -167,7 +201,7 @@ public static class TutorialWake
     }
 
     /// <summary>
-    /// Gets up (the death animation backward), unfrozen, the light back, then the lie's lines and, HeldDelay later, the
+    /// Gets up (the death animation backward), the light coming back (Dawn), then the lie's lines and, HeldDelay later, the
     /// windows and lines that were held.
     /// </summary>
     public static void Stand(PlayerMobile pm)
@@ -178,17 +212,20 @@ public static class TutorialWake
         }
 
         lie.Timer.Cancel();
-        pm.Frozen = false;
-        pm.CheckLightLevels(true);
         if (pm.Deleted || pm.NetState == null)
         {
+            pm.CheckLightLevels(true);
             _held.Remove(pm.Serial);
             return;
         }
 
+        Dawn(pm, 0);
+
         if (pm.Alive)
         {
-            pm.Animate(DieAnimation, DieFrames, 1, false, false, 0);
+            // cc-P732: from frame HoldFrames (on the ground) up, at the normal pace; from DieFrames TazUO drew the standing
+            // frame first.
+            pm.Animate(DieAnimation, HoldFrames, 1, false, false, 1);
         }
 
         lie.Up?.Invoke();
@@ -256,16 +293,31 @@ public static class TutorialWake
             if (_lying.Remove(pm.Serial, out var lie))
             {
                 lie.Timer.Cancel();
-                pm.Frozen = false;
             }
+
+            _dawn.Remove(pm.Serial);
 
             _held.Remove(pm.Serial);
         }
     }
 
-    private static void SetLight(PlayerMobile pm, Lie lie, int level)
+    // cc-P732: the light comes up after they stand, one DawnLight step a second, then the isle's own.
+    private static void Dawn(PlayerMobile pm, int step)
     {
-        lie.Light = level;
+        if (IsLying(pm) || pm.Deleted)
+        {
+            return;
+        }
+
+        if (step < DawnLight.Length)
+        {
+            _dawn[pm.Serial] = DawnLight[step];
+            pm.CheckLightLevels(true);
+            Timer.StartTimer(TimeSpan.FromSeconds(1), () => Dawn(pm, step + 1));
+            return;
+        }
+
+        _dawn.Remove(pm.Serial);
         pm.CheckLightLevels(true);
     }
 }
