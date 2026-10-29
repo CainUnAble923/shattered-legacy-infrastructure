@@ -54,7 +54,9 @@ public static class ClusterFAnkhs
         // Ours (fidelity D-123): Chase's New Haven ankh by the League office. It stood over the static 0x3/0x2 at
         // 3464,2600-2601,27; on SoS (cc-P678) that is forest and the office is the hall north-east of the square, so
         // the ankh stands on the grass by the hall's south-east corner, 3676,2562-2563,0, same art and facing.
-        // (The town's own working ankh is pinned haven.cfg's AnkhNorth at 3606,2582, placed by [Decorate.)
+        // (cc-P680: pinned haven.cfg's AnkhNorth at 3606,2582 stood in Old Haven's shrine, which the SoS town does not
+        // rebuild: that tile is under a hall's upper floor, so the decoration for SoS leaves it out and this is the
+        // town's working ankh.)
         new("AnkhWest 0x0003", 1, 3676, 2562, 0, "ours, Chase 2026-10-16; cc-P678 by the new office"),
         new("AnkhWest 0x0003 (Hue=0x47E)", 0, 6937, 719, 27, "ServUO Felucca/_champion teleporters.cfg"),
         new("AnkhWest 0x0003 (Hue=0x47E)", 0, 6947, 987, -5, "ServUO Felucca/_champion teleporters.cfg"),

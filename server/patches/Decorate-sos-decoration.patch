@@ -1,0 +1,18 @@
+--- "a/Projects/UOContent/Commands/Object Creation/Decorate.cs"
++++ "b/Projects/UOContent/Commands/Object Creation/Decorate.cs"
+@@ -51,6 +51,15 @@
+ 
+         public static void Generate(string folder, params Map[] maps)
+         {
++            // Shattered Legacy (cc-P680, SoS swap S5): a decoration folder we ship under Data/ShatteredLegacy/Decoration
++            // (Britannia, Trammel and Felucca: pinned's cfgs decided for the Siege of Sosaria land, made by
++            // shard-migration notes/cc-P680-tools/deco.py) is read in place of pinned's; every other folder is pinned's.
++            var shardFolder = folder.Replace("Data/Decoration/", "Data/ShatteredLegacy/Decoration/");
++            if (Directory.Exists(shardFolder))
++            {
++                folder = shardFolder;
++            }
++
+             if (!Directory.Exists(folder))
+             {
+                 return;
