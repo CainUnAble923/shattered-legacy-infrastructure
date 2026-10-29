@@ -30,6 +30,13 @@ public class SosDecorationVerification
 {
     private static readonly string[] Folders = ["Britannia", "Trammel", "Felucca"];
 
+    // cc-P683 (SoS swap S6): the author's dungeon decoration ships in Trammel and Felucca beside pinned's decided cfgs.
+    // It is not pinned's: these facts count pinned's files only, and SosDungeonDecorationVerification holds its own.
+    private const string Ours = "sos-dungeons.cfg";
+
+    private static IEnumerable<string> PinnedFiles(string root, string folder) =>
+        Directory.GetFiles(Path.Combine(root, folder), "*.cfg").Where(f => Path.GetFileName(f) != Ours);
+
     private static string? Root()
     {
         // Never Core.BaseDirectory (see SosTrammelRegionsVerification.Find): the test assembly's folder, then up.
@@ -52,7 +59,7 @@ public class SosDecorationVerification
     }
 
     private static Dictionary<string, List<DecorationList>> ReadFolder(string root, string folder) =>
-        Directory.GetFiles(Path.Combine(root, folder), "*.cfg")
+        PinnedFiles(root, folder)
             .ToDictionary(Path.GetFileName, f => DecorationList.ReadAll(f))!;
 
     private static IEnumerable<(string Header, Point3D Location)> Entries(string root, string folder, string file)
@@ -109,7 +116,7 @@ public class SosDecorationVerification
         var root = Root();
         Assert.NotNull(root);
         int Count(string folder) =>
-            Directory.GetFiles(Path.Combine(root!, folder), "*.cfg").Sum(f => Entries(root!, folder, Path.GetFileName(f)).Count());
+            PinnedFiles(root!, folder).Sum(f => Entries(root!, folder, Path.GetFileName(f)).Count());
 
         Assert.Equal(20486, Count("Britannia"));
         Assert.Equal(2150, Count("Trammel"));
