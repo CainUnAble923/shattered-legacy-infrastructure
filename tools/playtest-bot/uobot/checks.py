@@ -362,7 +362,8 @@ def t_039(ctx):
         # Quote only the sentence that names the board.
         board = next((s.strip() for s in re.split(r"(?<=[.!?])", line or "") if "Guild Board" in s), None)
         x, y = (c.pos or (0, 0))[:2]
-        dist = max(abs(x - 3502), abs(y - 2573))
+        # cc-P688 (SoS swap S15): from the board's spot (HavenSpots.QuestBoard, 3633,2585), not stock New Haven's 3502,2573
+        dist = max(abs(x - 3633), abs(y - 2585))
         ok = bool(m or board) and dist <= 40
         return ok, "%s %s at %s: message %r; welcome gump says %r; the board is %d tiles away" % (
             race, "female" if female else "male", (c.pos or ())[:3], m["text"] if m else None, board, dist)

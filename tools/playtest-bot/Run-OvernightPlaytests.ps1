@@ -12,7 +12,9 @@
   1. Checks rule 1 first: the live shard (sl-modernuo, 2593) and the real test shard (sl-modernuo-test, 2594) are never
      started, stopped or rebuilt here; their state is recorded before and after, and the run fails if either changed.
   2. Builds sl-modernuo:bot through the gates (docker/uo/build.sh -t sl-modernuo:bot), unless -SkipBuild.
-  3. Makes the scratch world in D:\UO\bot-shard (outside both repos): a COPY of the test world's newest complete automatic
+  3. Makes the scratch world in D:\UO\bot-shard (outside both repos): cc-P688, the test shard's map first (BotRoot\
+     sl-map-overlay: the Siege of Sosaria map plus the code under test's trammel.mapops, docker\uo\Build-MapOverlay.ps1),
+     then a COPY of the test world's newest complete automatic
      backup, a copy of Configuration-test set to 127.0.0.1:2595 and "Shattered Legacy BOT", and a TestAccountWipe request
      (cc-P73) that keeps the world and leaves one admin, slbot-admin, whose random password lives only in
      tools\playtest-bot\secrets.local.json (git-ignored) and is never printed.
@@ -194,6 +196,10 @@ try {
     $env:BOT_ROOT = $BotRoot -replace '\\', '/'
     $envFile = Join-Path $repo 'docker\uo\.env'
     $env:CLIENT_DATA_PATH = (Select-String -LiteralPath $envFile -Pattern '^CLIENT_DATA_PATH=(.*)$' | Select-Object -First 1).Matches[0].Groups[1].Value
+    # cc-P688: the map overlay's mount (docker-compose.bot.yml), outside both repos beside the world copy.
+    $overlay = Join-Path $BotRoot 'sl-map-overlay'
+    New-Item -ItemType Directory -Force -Path $overlay | Out-Null
+    $env:CLIENT_DATA_OVERLAY = $overlay -replace '\\', '/'
 
     # -- 2. the image
     $src = $repo
@@ -221,6 +227,14 @@ try {
 
     # -- 3. the scratch world
     Say '== making the scratch world' 'Cyan'
+    # cc-P688 (SoS swap S15): the test shard's land, built as Start-TestShard.ps1 builds it: the SoS base files the
+    # package ships (git-ignored, so the working tree's, also under -Commit) and the code under test's patch. The
+    # applier's stamp skips the work when neither changed. No overlay, no run: the checks' spots are on the SoS land.
+    $ops = Join-Path $src 'player-package\vendor\shattered-legacy-map\trammel.mapops'
+    $sosBase = Join-Path $repo 'player-package\vendor\sos-trammel-map\files'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repo 'docker\uo\Build-MapOverlay.ps1') -UoData $env:CLIENT_DATA_PATH -Out $overlay -Ops $ops -Base $sosBase 2>&1 |
+        ForEach-Object { Say ('  ' + (Text $_)) }
+    if ($LASTEXITCODE -ne 0) { throw ('Build-MapOverlay.ps1 failed (' + $LASTEXITCODE + '): the scratch shard would read EA''s Trammel') }
     & docker compose -f $compose -p $project down -t 60 2>&1 | Out-Null    # a previous run left up by -KeepUp
     $world = Join-Path $BotRoot 'world'
     $conf = Join-Path $BotRoot 'Configuration'
@@ -256,8 +270,9 @@ try {
         Say ("  setting {0} = {1}" -f $k, $set.$k)
     }
     if ($set.'serverListing.address' -ne '127.0.0.1') { throw 'Rule 1 refused: serverListing.address is not 127.0.0.1' }
+    if (@($cfgShard.dataDirectories)[0] -ne '/var/lib/uo/client-data/sl-map-overlay') { throw 'sl-map-overlay is not first in dataDirectories: the scratch shard would read EA''s Trammel' }
     # commitSha (cc-P102): the full commit, so the next night's work check can tell whether the code has changed.
-    $facts = [ordered]@{ code = $builtFrom; commitSha = $commitSha; backup = $backup.Name; testCenterEnable = $set.'testCenter.enable'; testCenterSkillGainMultiplier = $set.'testCenter.skillGainMultiplier';
+    $facts = [ordered]@{ code = $builtFrom; commitSha = $commitSha; backup = $backup.Name; map = ('SoS + ' + $ops); testCenterEnable = $set.'testCenter.enable'; testCenterSkillGainMultiplier = $set.'testCenter.skillGainMultiplier';
         autoAccountCreation = $set.'accountHandler.enableAutoAccountCreation'; skillGainAmountMultiplier = $set.'clusterf.skillGain.amountMultiplier' }
     [IO.File]::WriteAllText((Join-Path $runDir 'world.json'), ($facts | ConvertTo-Json), (New-Object Text.UTF8Encoding $false))
 

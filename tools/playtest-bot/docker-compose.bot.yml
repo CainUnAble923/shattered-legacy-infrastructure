@@ -22,6 +22,10 @@ services:
       - ${BOT_ROOT}/Configuration:/modernuo/Configuration
       - ${BOT_ROOT}/world:/var/lib/uo/modernuo
       - ${CLIENT_DATA_PATH}:/var/lib/uo/client-data/classic-client:ro
+      # cc-P688 (SoS swap S15): the map the test shard reads (docker/uo/Build-MapOverlay.ps1: the Siege of Sosaria map
+      # plus our trammel.mapops), built by Run-OvernightPlaytests.ps1 into BOT_ROOT\sl-map-overlay and first in the
+      # Configuration copy's dataDirectories. Without it the scratch shard read EA's Trammel under the SoS code.
+      - ${CLIENT_DATA_OVERLAY}:/var/lib/uo/client-data/sl-map-overlay:ro
     environment:
       TZ: ${TZ:-America/Chicago}
       # One of TestAccountWipe's three locks (server/customizations/Misc/TestAccountWipe.cs). A scratch copy of the test
